@@ -1,0 +1,73 @@
+/* --- Страница настроек --- */
+.page-settings{ gap:14px; }
+
+.settings-scroll-wrap{
+  display:flex; flex-direction:column; gap:14px;
+  padding:6px;
+  overflow-y:scroll; overflow-x:hidden;
+  max-height:calc(100vh - 226px);
+}
+
+.set-section{ padding:14px 16px; display:flex; flex-direction:column; gap:4px; }
+.set-section-head{ display:flex; align-items:center; gap:10px; margin-bottom:6px; }
+.set-section-icon{
+  width:30px; height:30px; border-radius:9px;
+  display:flex; align-items:center; justify-content:center;
+}
+.set-section-title{
+  font-family:var(--font-display); font-weight:700; font-size:14.5px;
+  color:var(--text-primary); flex:1;
+}
+.set-section-head .badge{ font-family:var(--font-mono); }
+
+.set-section-body{ display:flex; flex-direction:column; gap:6px; }
+
+.set-row{
+  display:flex; align-items:center; justify-content:space-between; gap:16px;
+  padding:9px 4px; border-bottom:1px solid var(--glass-border);
+}
+.set-row:last-child{ border-bottom:none; }
+.set-info{ flex:1; min-width:0; }
+.set-label{ font-size:13px; font-weight:600; color:var(--text-primary); }
+.set-info .muted-sm{ margin-top:2px; }
+.set-control{ display:flex; align-items:center; gap:8px; flex-shrink:0; }
+
+/* Переключатель (switch) */
+.switch{
+  width:42px; height:24px; border-radius:999px;
+  background:var(--track); border:1px solid var(--glass-border);
+  position:relative; cursor:pointer; padding:0; transition:background .2s, border-color .2s;
+}
+.switch .switch-knob{
+  position:absolute; top:2px; left:2px; width:18px; height:18px; border-radius:50%;
+  background:var(--text-tertiary); transition:transform .2s, background .2s;
+}
+.switch.is-on{ background:var(--teal-soft); border-color:rgba(63,199,171,0.5); }
+.switch.is-on .switch-knob{ transform:translateX(18px); background:var(--teal); }
+
+/* Числовой ввод */
+.num-ctrl{ display:flex; align-items:center; gap:8px; }
+.num-input{
+  width:90px; background:var(--track); border:1px solid var(--glass-border);
+  border-radius:9px; padding:6px 9px; color:var(--text-primary);
+  font-family:var(--font-mono); font-size:12.5px;
+}
+.num-input:focus{ outline:none; border-color:var(--violet); }
+
+/* Текстовый ввод */
+.text-input{
+  min-width:240px; background:var(--track); border:1px solid var(--glass-border);
+  border-radius:9px; padding:6px 10px; color:var(--text-primary); font-size:12.5px;
+}
+.text-input:focus{ outline:none; border-color:var(--violet); }
+
+.mono-val{
+  font-family:var(--font-mono); font-size:12px; color:var(--text-secondary);
+  min-width:26px; text-align:right;
+}
+
+/* Селект внутри настроек — пошире */
+.set-control .select-wrap select{ min-width:130px; }
+
+/* Индикатор статуса в тулбаре */
+.tb-badge-saving{ color:var(--amber); }

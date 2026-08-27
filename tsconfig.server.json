@@ -1,0 +1,20 @@
+{
+  // Серверные TS-исходники живут в server/ts/, компилируются в server/ (рядом с
+  // обычными .js) — существующие require("./monitor") работают без изменений.
+  // Явный список "files" нужен, т.к. include-паттерны внутри outDir исключаются tsc.
+  // При добавлении новых *.ts допишите их сюда.
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "sourceMap": false,
+    "declaration": false,
+    "types": ["node"],
+    "outDir": "server",
+    "rootDir": "server/ts"
+  },
+  "files": ["server/ts/monitor.ts"]
+}

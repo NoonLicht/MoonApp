@@ -1,0 +1,132 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+/* Сброс для прозрачного окна: без margin и белого фона вокруг оболочки,
+   иначе по краям виден «ореол»/рамка. */
+html, body{
+  margin:0; padding:0;
+  background:transparent;
+  overflow:hidden;
+  height:100%;
+}
+#root{ height:100%; }
+
+/* Полностью скрываем все полосы прокрутки во всём приложении. */
+*::-webkit-scrollbar{ width:0; height:0; display:none; background:transparent; }
+*{ scrollbar-width:none; scrollbar-color:transparent transparent; }
+*{ -ms-overflow-style:none; }
+
+.app-shell{
+  --font-display:'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
+  --font-body:'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-mono:'JetBrains Mono', ui-monospace, monospace;
+  --amber:#f0a63d; --amber-soft:rgba(240,166,61,0.16);
+  --violet:#8b7bf0; --violet-soft:rgba(139,123,240,0.16);
+  --teal:#3fc7ab; --teal-soft:rgba(63,199,171,0.16);
+  --coral:#ea6b6b; --coral-soft:rgba(234,107,107,0.16);
+  --success:#3fc78a;
+  position:relative; min-height:100vh; width:100%; overflow:hidden;
+  font-family:var(--font-body); color:var(--text-primary);
+  -webkit-font-smoothing:antialiased;
+  background:var(--bg-base);
+}
+.app-shell.theme-dark{
+  --bg-base:#0c0e16; --bg-base-2:#11141f;
+  --bg-alpha:rgba(12,14,22,0.93);
+  --glass:rgba(255,255,255,0.055); --glass-strong:rgba(255,255,255,0.09);
+  --glass-border:rgba(255,255,255,0.10); --track:rgba(255,255,255,0.08);
+  --surface-solid:#161927;
+  --text-primary:#f1f0f6; --text-secondary:#a9a8bb; --text-tertiary:#71708a;
+  --shadow:0 8px 30px rgba(0,0,0,0.35);
+}
+.app-shell.theme-light{
+  --bg-base:#eef0f6; --bg-base-2:#e6e8f2;
+  --bg-alpha:rgba(238,240,246,0.94);
+  --glass:rgba(255,255,255,0.55); --glass-strong:rgba(255,255,255,0.78);
+  --glass-border:rgba(20,20,40,0.08); --track:rgba(20,20,40,0.07);
+  --surface-solid:#ffffff;
+  --text-primary:#1c1d2b; --text-secondary:#5b5b70; --text-tertiary:#8b8ba0;
+  --shadow:0 8px 30px rgba(30,30,60,0.10);
+}
+.app-shell, .app-shell *{ box-sizing:border-box; transition:background-color .25s ease, border-color .25s ease, color .25s ease; }
+
+/* Окно едва прозрачное (alpha ~0.93), матовое размытие — backdrop-filter + blur-блобы.
+   Текст и карточки непрозрачны, читаемость не страдает. */
+.app-shell{ background:var(--bg-alpha); height:100vh; border-radius:18px; overflow:hidden;
+  backdrop-filter:blur(30px) saturate(1.1);
+  -webkit-backdrop-filter:blur(30px) saturate(1.1); }
+
+/* Подгоняем декоративный слой под скругление окна. */
+.mesh{ border-radius:inherit; }
+
+/* Frameless-окно: перетаскивание за верхнюю панель */
+.titlebar-drag{ -webkit-app-region: drag; }
+.no-drag{ -webkit-app-region: no-drag; }
+.win-controls{ display:flex; gap:2px; }
+.win-btn{ width:34px; height:26px; display:inline-flex; align-items:center; justify-content:center; background:none; border:none; border-radius:8px; color:var(--text-tertiary); cursor:pointer; }
+.win-btn:hover{ background:var(--track); color:var(--text-primary); }
+.win-close:hover{ background:var(--coral); color:#fff; }
+
+.mesh{ position:fixed; inset:0; z-index:0; overflow:hidden; pointer-events:none; }
+.blob{ position:absolute; border-radius:50%; filter:blur(90px) saturate(0.5); opacity:0.22; }
+.theme-light .blob{ opacity:0.14; }
+.blob-a{ width:520px; height:520px; top:-180px; left:-120px; background:var(--amber); animation:drift1 22s ease-in-out infinite; }
+.blob-b{ width:560px; height:560px; bottom:-220px; right:-160px; background:var(--violet); animation:drift2 26s ease-in-out infinite; }
+@keyframes drift1{ 0%,100%{ transform:translate(0,0);} 50%{ transform:translate(60px,40px);} }
+@keyframes drift2{ 0%,100%{ transform:translate(0,0);} 50%{ transform:translate(-50px,-30px);} }
+
+.glass{ background:var(--glass); border:1px solid var(--glass-border); backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px); border-radius:16px; }
+
+.top-toolbar{
+  position:fixed; top:14px; left:14px; right:14px; z-index:40;
+  display:grid; grid-template-columns:1fr auto 1fr; align-items:center;
+  height:46px;
+  padding:0 12px; border-radius:14px;
+  background:var(--glass-strong); border:1px solid var(--glass-border);
+  backdrop-filter:blur(22px); -webkit-backdrop-filter:blur(22px); box-shadow:var(--shadow);
+}
+.tb-side-left{ min-width:0; }
+.tb-center{ min-width:0; display:flex; align-items:center; justify-content:center; gap:10px; }
+.tb-title{ display:flex; align-items:center; gap:8px; font-weight:600; font-size:13px; color:var(--text-primary); white-space:nowrap; }
+.tb-dynamic{ display:flex; align-items:center; gap:8px; min-width:0; -webkit-app-region:no-drag; }
+.tb-side-right{ min-width:0; display:flex; align-items:center; justify-content:flex-end; gap:6px; }
+.theme-toggle{ background:none; border:none; cursor:pointer; color:var(--text-tertiary); display:flex; align-items:center; padding:6px; flex-shrink:0; }
+.theme-dark .ico-sun{ display:none; } .theme-light .ico-moon{ display:none; }
+
+/* Компактные поля в верхнем тулбаре: вместо вертикального стека
+   (label сверху, контрол снизу) показываем label рядом с контролом,
+   чтобы пилюля тулбара оставалась однорядной и аккуратной. */
+.tb-dynamic .field{ flex-direction:row; align-items:center; gap:7px; width:auto !important; }
+.tb-dynamic .field-label{ font-size:10px; margin:0; white-space:nowrap; line-height:1; }
+.tb-dynamic input[type="range"]{ width:110px; flex-shrink:0; }
+.tb-dynamic .select-wrap select{ padding:5px 24px 5px 11px; font-size:11.5px; }
+.tb-dynamic .icon-btn{ width:28px; height:28px; flex-shrink:0; }
+
+/* Контент: верхний отступ небольшой (тулбар близко к верху),
+   нижний — чтобы контент не заходил под нижнее меню (док ~82px + зазор). */
+.content-area{ position:relative; z-index:1; padding:72px 24px 96px; max-width:1080px; margin:0 auto; overflow:hidden; }
+.page{ display:flex; flex-direction:column; gap:14px; overflow:hidden; }
+.page-flush{ height:calc(100vh - 168px); }
+
+.eyebrow{ font-size:11px; color:var(--text-tertiary); font-family:var(--font-mono); text-transform:uppercase; letter-spacing:0.08em; }
+.page-title{ margin:2px 0 0; font-family:var(--font-display); font-size:24px; font-weight:700; color:var(--text-primary); }
+.section-head{ display:flex; align-items:flex-end; justify-content:space-between; gap:10px; }
+
+.field{ display:flex; flex-direction:column; gap:5px; }
+.field-label{ font-size:11px; color:var(--text-tertiary); font-family:var(--font-mono); text-transform:uppercase; letter-spacing:0.06em; }
+
+.muted-sm{ font-size:11.5px; color:var(--text-tertiary); }
+.tone-amber{ background:var(--amber-soft); color:var(--amber); }
+.tone-violet{ background:var(--violet-soft); color:var(--violet); }
+.tone-teal{ background:var(--teal-soft); color:var(--teal); }
+/* --- Отключение фоновых blur-эффектов (performance.backgroundBlur = false) ---
+   Убираем backdrop-filter у оболочки, основанных на нём поверхностей и карточек,
+   а декоративные блобы приглушаем, чтобы не было жёстких краёв без размытия. */
+.app-shell.no-blur{ backdrop-filter:none !important; -webkit-backdrop-filter:none !important; }
+.app-shell.no-blur .glass,
+.app-shell.no-blur .top-toolbar,
+.app-shell.no-blur .bottom-dock{ backdrop-filter:none !important; -webkit-backdrop-filter:none !important; }
+.app-shell.no-blur .blob{ filter:none !important; opacity:0.05; }
+
+/* RTL (арабский): зеркалим смещения блобов, чтобы декор не вылезал за левый край. */
+.app-shell[dir="rtl"] .blob-a{ left:auto; right:-120px; }
+.app-shell[dir="rtl"] .blob-b{ right:auto; left:-160px; }

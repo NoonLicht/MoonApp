@@ -1,0 +1,63 @@
+{
+  "name": "personal-app",
+  "productName": "PersonalApp",
+  "version": "0.1.0",
+  "description": "Personal desktop utility panel (Electron + React + Vite + Node backend)",
+  "author": "you",
+  "type": "commonjs",
+  "main": "electron/main.js",
+  "scripts": {
+    "dev": "vite",
+    "build:web": "vite build",
+    "compile:server": "tsc -p tsconfig.server.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json && npm run compile:server",
+    "start:server": "npm run compile:server && node server/index.js",
+    "start": "npm run compile:server && npm run build:web && electron .",
+    "dist": "npm run compile:server && npm run build:web && electron-builder --win",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "keywords": [],
+  "license": "MIT",
+  "dependencies": {
+    "adm-zip": "^0.6.0",
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "multer": "^2.2.0",
+    "smart-buffer": "^4.2.0",
+    "socks-proxy-agent": "^10.1.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.25",
+    "@types/node": "^22.20.1",
+    "@types/react": "^18.3.31",
+    "@types/react-dom": "^18.3.7",
+    "@vitejs/plugin-react": "^4.7.0",
+    "electron": "^31.3.0",
+    "electron-builder": "^24.13.3",
+    "lucide-react": "^0.417.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "recharts": "^2.15.4",
+    "typescript": "^5.9.3",
+    "vite": "^5.4.21",
+    "vitest": "^2.1.9"
+  },
+  "build": {
+    "appId": "com.personal.app",
+    "productName": "PersonalApp",
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "server/**/*",
+      "package.json"
+    ],
+    "asarUnpack": [
+      "server/vendor/lhm/**"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.ico"
+    }
+  }
+}

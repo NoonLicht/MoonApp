@@ -1,0 +1,184 @@
+import React, { useState, useEffect } from "react";
+import {
+  Store, Repeat, Video, Music2, BookOpen, Activity, CheckSquare, MessageSquare,
+  Mic2, Archive, Sun, Moon, Minus, Square, X, Settings2, Shield,
+} from "lucide-react";
+import { I18nProvider, useI18n } from "./i18n";
+import { ToolbarContext } from "./components/Toolbar";
+import ProxyPanel from "./components/ProxyPanel";
+import { api } from "./api/client";
+
+// Стили
+import "./styles/theme.css";
+import "./styles/ui.css";
+import "./styles/pages.css";
+import "./styles/chat.css";
+import "./styles/dock.css";
+import "./styles/settings.css";
+
+// Страницы
+import StorePage from "./pages/StorePage";
+import ConverterPage from "./pages/ConverterPage";
+import VideoPage from "./pages/VideoPage";
+import MusicPage from "./pages/MusicPage";
+import BooksPage from "./pages/BooksPage";
+import MonitorPage from "./pages/MonitorPage";
+import TodoPage from "./pages/TodoPage";
+import AiChatPage from "./pages/AiChatPage";
+import VoicePage from "./pages/VoicePage";
+import ArchiverPage from "./pages/ArchiverPage";
+import SettingsPage from "./pages/SettingsPage";
+
+const PAGES = [
+  { id: "store", i18n: "nav.store", icon: Store },
+  { id: "convert", i18n: "nav.convert", icon: Repeat },
+  { id: "video", i18n: "nav.video", icon: Video },
+  { id: "music", i18n: "nav.music", icon: Music2 },
+  { id: "books", i18n: "nav.books", icon: BookOpen },
+  { id: "monitor", i18n: "nav.monitor", icon: Activity },
+  { id: "todo", i18n: "nav.todo", icon: CheckSquare },
+  { id: "aichat", i18n: "nav.aichat", icon: MessageSquare },
+  { id: "voice", i18n: "nav.voice", icon: Mic2 },
+  { id: "archive", i18n: "nav.archive", icon: Archive },
+  { id: "settings", i18n: "nav.settings", icon: Settings2 },
+];
+
+const PAGE_COMPONENTS = {
+  store: StorePage,
+  convert: ConverterPage,
+  video: VideoPage,
+  music: MusicPage,
+  books: BooksPage,
+  monitor: MonitorPage,
+  todo: TodoPage,
+  aichat: AiChatPage,
+  voice: VoicePage,
+  archive: ArchiverPage,
+  settings: SettingsPage,
+};
+function Shell({ active, setActive, theme, toggleTheme, toolbarNode, setToolbarNode, blur, proxyPanelVisible, setProxyPanelVisible }) {
+  const { t, lang } = useI18n();
+  const ActivePage = PAGE_COMPONENTS[active];
+  const activeMeta = PAGES.find((p) => p.id === active);
+
+  return (
+    <div className={`app-shell theme-${theme} ${blur ? "" : "no-blur"}`} dir={lang === "ar" ? "rtl" : "ltr"}>
+      <div className="mesh" aria-hidden="true">
+        <span className="blob blob-a" />
+        <span className="blob blob-b" />
+      </div>
+
+      <ToolbarContext.Provider value={setToolbarNode}>
+        <header className="top-toolbar titlebar-drag">
+          <div className="tb-side-left" aria-hidden="true" />
+          <div className="tb-center">
+            <div className="tb-title">
+              <activeMeta.icon size={15} strokeWidth={2.2} />
+              <span>{t(activeMeta.i18n)}</span>
+            </div>
+            <div className="tb-dynamic">{toolbarNode}</div>
+          </div>
+          <div className="tb-side-right">
+            <button className="proxy-toggle no-drag" onClick={() => setProxyPanelVisible((v) => !v)} title={t("proxy.title")}>
+              <Shield size={15} />
+            </button>
+            <button className="theme-toggle no-drag" onClick={toggleTheme} title={t("common.theme")}>
+              <Sun className="ico-sun" size={15} />
+              <Moon className="ico-moon" size={15} />
+            </button>
+            <div className="win-controls no-drag">
+              <button className="win-btn" onClick={() => window.appBridge?.minimize()} title={t("common.minimize")}><Minus size={15} /></button>
+              <button className="win-btn" onClick={() => window.appBridge?.toggleMaximize()} title={t("common.maximize")}><Square size={12} /></button>
+              <button className="win-btn win-close" onClick={() => window.appBridge?.close()} title={t("common.close")}><X size={15} /></button>
+            </div>
+          </div>
+        </header>
+
+        {proxyPanelVisible && (
+        <ProxyPanel onClose={() => setProxyPanelVisible(false)} />
+      )}
+
+      <main className="content-area" key={active}>
+          <ActivePage />
+        </main>
+      </ToolbarContext.Provider>
+
+      <nav className="bottom-dock">
+        <div className="dock-scroll">
+          {PAGES.map((p) => {
+            const Icon = p.icon;
+            const isActive = p.id === active;
+            return (
+              <button
+                key={p.id}
+                className={`dock-btn ${isActive ? "is-active" : ""}`}
+                onClick={() => setActive(p.id)}
+                aria-label={t(p.i18n)}
+              >
+                <span className="dock-icon"><Icon size={18} strokeWidth={2} /></span>
+              </button>
+            );
+          })}
+        </div>
+      </nav>
+    </div>
+  );
+}
+export default function App() {
+  const [theme, setTheme] = useState("dark");
+  const [active, setActive] = useState("store");
+  const [lang, setLang] = useState("en");
+  const [blur, setBlur] = useState(true);
+  const [toolbarNode, setToolbarNode] = useState(null);
+  const [proxyPanelVisible, setProxyPanelVisible] = useState(false);
+
+  // Подтягиваем тему, стартовую страницу, язык и blur из настроек приложения.
+  useEffect(() => {
+    api.getSettings()
+      .then((s) => {
+        if (s?.appearance?.theme) setTheme(s.appearance.theme);
+        if (s?.general?.startPage) setActive(s.general.startPage);
+        if (s?.general?.language) setLang(s.general.language);
+        if (s?.performance?.backgroundBlur != null) setBlur(!!s.performance.backgroundBlur);
+      })
+      .catch(() => {});
+  }, []);
+
+  // Синхронизация изменений из страницы настроек: тема, язык, blur.
+  useEffect(() => {
+    const onTheme = (e) => setTheme(e.detail);
+    const onSetting = (e) => {
+      const { path, value } = e.detail || {};
+      if (path === "general.language") setLang(value);
+      else if (path === "performance.backgroundBlur") setBlur(!!value);
+    };
+    window.addEventListener("app:theme", onTheme);
+    window.addEventListener("app:setting", onSetting);
+    return () => {
+      window.removeEventListener("app:theme", onTheme);
+      window.removeEventListener("app:setting", onSetting);
+    };
+  }, []);
+
+  const toggleTheme = () => {
+    const next = theme === "dark" ? "light" : "dark";
+    setTheme(next);
+    api.updateSettings({ appearance: { theme: next } }).catch(() => {});
+  };
+
+  return (
+    <I18nProvider lang={lang}>
+      <Shell
+        active={active}
+        setActive={setActive}
+        theme={theme}
+        toggleTheme={toggleTheme}
+        toolbarNode={toolbarNode}
+        setToolbarNode={setToolbarNode}
+        blur={blur}
+        proxyPanelVisible={proxyPanelVisible}
+        setProxyPanelVisible={setProxyPanelVisible}
+      />
+    </I18nProvider>
+  );
+}

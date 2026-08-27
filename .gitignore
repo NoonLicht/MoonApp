@@ -1,0 +1,46 @@
+# ---------- Зависимости и сборка ----------
+node_modules/
+dist/
+build/
+*.tsbuildinfo
+.vite/
+
+# ---------- Логи ----------
+*.log
+
+# ---------- Данные приложения (меняются локально) ----------
+storage/
+secrets.json
+settings.json
+data.json
+backups/
+*.db
+*.sqlite
+
+# ---------- Скачиваемые бинари / артефакты ----------
+*.exe
+*.dll
+*.bat
+*.cmd
+*.zip
+*.7z
+*.msi
+*.msix
+*.appx
+*.tmp
+
+# ---------- Система / редакторы ----------
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/
+
+# ---------- Компилируемый JS из TypeScript-исходников ----------
+# server/ts/*.ts -> server/*.js (собирается через tsc; исходники в server/ts/)
+server/monitor.js
+server/ts/*.d.ts
+
+bb.txt
+tc.txt
+*.txt
