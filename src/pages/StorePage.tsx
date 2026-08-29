@@ -4,34 +4,51 @@ import { Glass, Btn, IconBtn, SectionHead, Select, Field, EmptyHint, Badge, Prog
 import { usePageToolbar } from "../components/Toolbar";
 import { useI18n } from "../i18n";
 import { api } from "../api/client";
+import type { AppItem } from "../api/types";
 
 const CATEGORIES = ["Browser", "Dev Tools", "Media", "Utilities", "Security", "Office", "Comms", "Other", "winget"];
-const SOURCE_TONE = { winget: "violet", comss: "teal", custom: "amber" };
+const SOURCE_TONE: Record<string, string> = { winget: "violet", comss: "teal", custom: "amber" };
+
+interface ProgState {
+  done: number;
+  total: number;
+  current: string;
+  items: unknown[];
+  status?: string;
+  error?: string;
+}
+
+interface WingetIdx {
+  state: string;
+  cached: number;
+  done?: number;
+  total?: number;
+}
 
 export default function StorePage() {
   const { t } = useI18n();
-  const [items, setItems] = useState([]);
-  const [live, setLive] = useState([]);
+  const [items, setItems] = useState<AppItem[]>([]);
+  const [live, setLive] = useState<AppItem[]>([]);
   const [query, setQuery] = useState("");
   const [cat, setCat] = useState("All");
   const [tab, setTab] = useState("all");
   const [favOnly, setFavOnly] = useState(false);
-  const [busy, setBusy] = useState(null);
+  const [busy, setBusy] = useState<string | null>(null);
   const [bulkMsg, setBulkMsg] = useState("");
   const [scraping, setScraping] = useState(false);
-  const [prog, setProg] = useState(null);
-  const [wingetIdx, setWingetIdx] = useState(null);
+  const [prog, setProg] = useState<ProgState | null>(null);
+  const [wingetIdx, setWingetIdx] = useState<WingetIdx | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [form, setForm] = useState({ name: "", url: "", category: "Other" });
   const [error, setError] = useState("");
-  const searchTimer = useRef(null);
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const load = () => api.getApps().then((d) => setItems(d.items)).catch(() => {});
   useEffect(() => { load(); }, []);
 
   // Автозапуск полной индексации winget (a-z, 0-9) + опрос статуса
   useEffect(() => {
-    let timer = null;
+    let timer: ReturnType<typeof setTimeout> | null = null;
     (async () => {
       const st = await api.wingetStatus().catch(() => null);
       if (!st) return;
@@ -45,22 +62,22 @@ export default function StorePage() {
       };
       timer = setTimeout(poll, 1200);
     })();
-    return () => clearTimeout(timer);
+    return () => { if (timer) clearTimeout(timer); };
   }, []);
 
   // Живой поиск по winget
   useEffect(() => {
-    clearTimeout(searchTimer.current);
+    if (searchTimer.current) clearTimeout(searchTimer.current);
     const q = query.trim();
     if (!q) { setLive([]); return; }
     searchTimer.current = setTimeout(() => {
       api.wingetSearch(q).then((found) => setLive(found)).catch(() => setLive([]));
     }, 400);
-    return () => clearTimeout(searchTimer.current);
+    return () => { if (searchTimer.current) clearTimeout(searchTimer.current); };
   }, [query]);
 
   const all = useMemo(() => {
-    const map = new Map();
+    const map = new Map<string, AppItem>();
     for (const a of items) map.set(a.key, a);
     for (const a of live) if (!map.has(a.key)) map.set(a.key, a);
     return [...map.values()];
@@ -76,25 +93,25 @@ export default function StorePage() {
     );
   }, [all, query, cat, favOnly, tab]);
 
-  const counts = useMemo(() => ({
+  const counts = useMemo<Record<string, number>>(() => ({
     all: all.length,
     winget: all.filter((a) => a.source === "winget").length,
     comss: all.filter((a) => a.source !== "winget").length,
   }), [all]);
-  async function toggleFav(item) {
+async function toggleFav(item: AppItem) {
     const r = await api.favoriteApp(item.key);
-    const patch = (list) => list.map((a) => (a.key === item.key ? { ...a, favorite: r.favorite } : a));
+    const patch = (list: AppItem[]) => list.map((a) => (a.key === item.key ? { ...a, favorite: r.favorite } : a));
     setItems(patch); setLive(patch);
   }
 
-  async function install(item) {
+  async function install(item: AppItem) {
     setBusy(item.key); setError(""); setBulkMsg("");
     try {
-      const r = await api.installApp(item.key);
+      const r = (await api.installApp(item.key)) as { method?: string; ok?: boolean; file?: string };
       if (r.method === "winget") setBulkMsg(r.ok ? t("store.installOk", { name: item.name }) : t("store.installFail"));
       else setBulkMsg(t("store.installerLaunched", { file: r.file }));
     } catch (e) {
-      setError(e.message);
+      setError((e as Error).message);
     } finally {
       setBusy(null);
     }
@@ -103,14 +120,16 @@ export default function StorePage() {
   async function parseComss() {
     setScraping(true); setError(""); setBulkMsg(""); setProg({ done: 0, total: 0, current: "", items: [] });
     try {
-      const cats = await api.comssCategories();
+      const cats = (await api.comssCategories()) as { code: string }[];
       const codes = cats.map((c) => c.code);
       const { jobId } = await api.comssScrape(codes, 0);
       const started = Date.now();
       while (Date.now() - started < 15 * 60 * 1000) {
-        const p = await api.comssProgress(jobId).catch(() => null);
+        const p = (await api.comssProgress(jobId).catch(() => null)) as {
+          done: number; total: number; current: string; status?: string; error?: string; items?: unknown[];
+        } | null;
         if (!p) { await new Promise((r) => setTimeout(r, 700)); continue; }
-        setProg({ done: p.done, total: p.total, current: p.current, items: p.items, status: p.status, error: p.error });
+        setProg({ done: p.done, total: p.total, current: p.current || "", items: p.items || [], status: p.status, error: p.error });
         if (p.status === "done" || p.status === "error") {
           if (p.status === "error") setError(p.error || t("store.comssError"));
           else if (p.items?.length) {
@@ -126,7 +145,7 @@ export default function StorePage() {
       }
       setProg(null);
     } catch (e) {
-      setError(e.message);
+      setError((e as Error).message);
       setProg(null);
     } finally {
       setScraping(false);
@@ -135,18 +154,18 @@ export default function StorePage() {
 
   async function addCustom() {
     setError("");
-    if (!form.name.trim() || !form.url.trim()) return setError(t("store.fillError"));
+    if (!form.name.trim() || !form.url.trim()) { setError(t("store.fillError")); return; }
     try {
-      const app = await api.addCatalog(form.name.trim(), form.url.trim(), form.category);
+      const app = (await api.addCatalog(form.name.trim(), form.url.trim(), form.category)) as { id: number; name: string; url: string; category: string };
       setItems((list) => [{ key: `catalog:${app.id}`, id: app.id, name: app.name, url: app.url, category: app.category, source: "custom", favorite: false }, ...list]);
       setForm({ name: "", url: "", category: "Other" });
       setAddOpen(false);
     } catch (e) {
-      setError(e.message);
+      setError((e as Error).message);
     }
   }
 
-  async function remove(item) {
+  async function remove(item: AppItem) {
     if (!item.id) return;
     await api.deleteCatalog(item.id);
     setItems((list) => list.filter((a) => a.key !== item.key));
@@ -166,10 +185,10 @@ export default function StorePage() {
   const totalPages = Math.max(1, Math.ceil(results.length / pageSize));
   const safePage = Math.min(page, totalPages);
   const shown = results.slice((safePage - 1) * pageSize, safePage * pageSize);
-  const goPage = (p) => setPage(Math.min(Math.max(1, p), totalPages));
+  const goPage = (p: number) => setPage(Math.min(Math.max(1, p), totalPages));
   const from = Math.max(1, safePage - 2);
   const to = Math.min(totalPages, from + 4);
-  const pageList = [];
+  const pageList: number[] = [];
   for (let i = from; i <= to; i++) pageList.push(i);
   const tabLabel = tab === "all" ? t("store.tabAll") : tab === "winget" ? t("store.tabWinget") : t("store.tabComss");
 

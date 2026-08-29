@@ -4,10 +4,11 @@ import { Glass, Btn, Badge, Select, SectionHead, EmptyHint } from "../components
 import { usePageToolbar } from "../components/Toolbar";
 import { useI18n } from "../i18n";
 import { api } from "../api/client";
+import type { BooksItem } from "../api/types";
 
 export default function BooksPage() {
   const { t } = useI18n();
-  const [books, setBooks] = useState([]);
+  const [books, setBooks] = useState<BooksItem[]>([]);
   const [query, setQuery] = useState("");
   const [fmtFilter, setFmtFilter] = useState(t("books.allFormats"));
 

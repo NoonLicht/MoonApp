@@ -8,14 +8,14 @@ const TTS_LANGS = ["English", "Spanish", "French", "German", "Japanese"];
 
 export default function VoicePage() {
   const { t } = useI18n();
-  const [sample, setSample] = useState(null);
+  const [sample, setSample] = useState<string | null>(null);
   const [language, setLanguage] = useState("English");
   const [voiceName, setVoiceName] = useState("Custom clone");
   const [text, setText] = useState("");
   const [exaggeration, setExaggeration] = useState(0.5);
   const [cfgWeight, setCfgWeight] = useState(0.5);
   const [state, setState] = useState("idle");
-  const inputRef = useRef(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
 
   usePageToolbar(
     <>

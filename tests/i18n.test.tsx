@@ -12,7 +12,7 @@ function Probe() {
   );
 }
 
-function renderFor(lang) {
+function renderFor(lang: string) {
   return renderToString(
     <I18nProvider lang={lang}>
       <Probe />
@@ -26,7 +26,7 @@ describe("i18n — 6 официальных языков ООН", () => {
   });
 
   it("переводит ключи на каждый язык", () => {
-    const cases = {
+    const cases: Record<string, string[]> = {
       en: ["Store", "Performance", "New chat", "All"],
       ru: ["Магазин", "Производительность", "Новый чат", "Все"],
       es: ["Tienda", "Rendimiento", "Nuevo chat", "Todos"],

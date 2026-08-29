@@ -4,19 +4,20 @@ import { Glass, Btn, IconBtn, Field, Select, EmptyHint } from "../components/ui"
 import { usePageToolbar } from "../components/Toolbar";
 import { useI18n } from "../i18n";
 import { api, streamChatSend } from "../api/client";
+import type { ProviderInfo, Conversation, ChatMessage } from "../api/types";
 
 export default function AiChatPage() {
   const { t } = useI18n();
-  const [providers, setProviders] = useState([]);
+  const [providers, setProviders] = useState<ProviderInfo[]>([]);
   const [chatCfg, setChatCfg] = useState({ temperature: 0.7, maxTokens: 1024, model: "", provider: "openai" });
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [convs, setConvs] = useState([]);
-  const [activeId, setActiveId] = useState(null);
-  const [messages, setMessages] = useState([]);
+  const [convs, setConvs] = useState<Conversation[]>([]);
+  const [activeId, setActiveId] = useState<number | null>(null);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
-  const [keyPrompt, setKeyPrompt] = useState(null);
-  const scrollRef = useRef(null);
+  const [keyPrompt, setKeyPrompt] = useState<ProviderInfo | null>(null);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     api.getProviders().then(setProviders).catch(() => {});
@@ -63,15 +64,15 @@ export default function AiChatPage() {
       setInput("");
       api.getProviders().then(setProviders).catch(() => {});
     } catch (e) {
-      setMessages((m) => [...m, { role: "assistant", text: `⚠ ${e.message}` }]);
+      setMessages((m) => [...m, { role: "assistant", text: `⚠ ${(e as Error).message}` }]);
     }
   };
 
   const send = async () => {
     if (!input.trim() || sending) return;
     if (!activeId) return;
-    if (!provider?.configured) { setKeyPrompt(provider); return; }
-    const roleMsg = { role: "user", text: input };
+    if (!provider?.configured) { setKeyPrompt(provider ?? null); return; }
+    const roleMsg: ChatMessage = { role: "user", text: input };
     setMessages((m) => [...m, roleMsg]);
     setInput("");
     setSending(true);
@@ -84,22 +85,19 @@ export default function AiChatPage() {
         stream: true,
       }, (ev) => {
         if (ev.type === "token") {
-          setMessages((m) => {
-            const next = m.some((x) => x.role === "assistant") ? m.slice(0, -1) : m;
-            return [...next, { role: "assistant", text: ev.text }];
-          });
+          setMessages((m) => [...m, { role: "assistant", text: ev.text || "" }]);
+        } else if (ev.type === "error") {
+          setMessages((m) => [...m, { role: "assistant", text: `⚠ ${ev.message || "error"}` }]);
         }
-        if (ev.type === "done") setMessages((m) => [...m.slice(0, -1), { role: "assistant", text: ev.text }]);
-        if (ev.type === "error") setMessages((m) => [...m, { role: "assistant", text: `⚠ ${ev.message}` }]);
       });
     } catch (e) {
-      setMessages((m) => [...m, { role: "assistant", text: `⚠ ${e.message}` }]);
+      setMessages((m) => [...m, { role: "assistant", text: `⚠ ${(e as Error).message}` }]);
     } finally {
       setSending(false);
     }
   };
 
-  const delConv = async (id) => {
+  const delConv = async (id: number) => {
     await api.deleteConversation(id);
     const rest = convs.filter((c) => c.id !== id);
     setConvs(rest);
@@ -107,14 +105,14 @@ export default function AiChatPage() {
   };
 
   return (
-<div className="page page-flush">
+    <div className="page page-flush">
       {settingsOpen && (
         <Glass className="settings-drawer">
           <Field label={t("aichat.temperature", { v: chatCfg.temperature.toFixed(1) })} w={180}>
             <input type="range" min="0" max="1.5" step="0.1" value={chatCfg.temperature} onChange={(e) => setChatCfg((s) => ({ ...s, temperature: parseFloat(e.target.value) }))} />
           </Field>
           <Field label={t("aichat.maxTokens")} w={130}>
-            <input type="number" className="num-input" value={chatCfg.maxTokens} onChange={(e) => setChatCfg((s) => ({ ...s, maxTokens: e.target.value }))} />
+            <input type="number" className="num-input" value={chatCfg.maxTokens} onChange={(e) => setChatCfg((s) => ({ ...s, maxTokens: parseInt(e.target.value, 10) || 0 }))} />
           </Field>
           <Btn icon={Plus} onClick={newChat}>{t("aichat.newChat")}</Btn>
         </Glass>
@@ -143,7 +141,7 @@ export default function AiChatPage() {
           {convs.length === 0 && <div className="muted-sm" style={{ padding: 8 }}>{t("aichat.noChats")}</div>}
         </Glass>
 
-        <Glass className="chat-scroll" ref={scrollRef} style={{ flex: 1, padding: 14, minHeight: 0 }}>
+        <div className="glass chat-scroll" ref={scrollRef} style={{ flex: 1, padding: 14, minHeight: 0 }}>
           {messages.map((m, i) => (
             <div key={i} className={`chat-bubble-row ${m.role === "user" ? "is-user" : ""}`}>
               <div className={`chat-bubble ${m.role === "user" ? "is-user" : "is-assistant"}`}>{m.text}</div>
@@ -155,7 +153,7 @@ export default function AiChatPage() {
             </div>
           )}
           {!messages.length && !sending && <EmptyHint icon={Send} text={t("aichat.start")} />}
-        </Glass>
+        </div>
       </div>
 
       <Glass className="chat-input-bar">

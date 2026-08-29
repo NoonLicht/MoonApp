@@ -3,16 +3,29 @@ import { Shield, Power, PowerOff, RefreshCw, X, Download, Bookmark, Clipboard } 
 import { Btn, Field, ProgressBar } from "../components/ui";
 import { useI18n } from "../i18n";
 import { api } from "../api/client";
+import type { ProxyStatus, VlessProfile } from "../api/types";
 
-export default function ProxyPanel({ onClose }) {
+interface ProxyInstallStatus {
+  state: string;
+  progress: number;
+  phase: string;
+  error: string;
+  installed: boolean;
+}
+
+interface ProxyPanelProps {
+  onClose: () => void;
+}
+
+export default function ProxyPanel({ onClose }: ProxyPanelProps) {
   const { t } = useI18n();
-  const [status, setStatus] = useState(null);
+  const [status, setStatus] = useState<ProxyStatus | null>(null);
   const [link, setLink] = useState("");
-  const [install, setInstall] = useState(null);
+  const [install, setInstall] = useState<ProxyInstallStatus | null>(null);
   const [loading, setLoading] = useState(false);
   const [pingLoading, setPingLoading] = useState(false);
-  const [pingError, setPingError] = useState(null);
-  const [savedVless, setSavedVless] = useState([]);
+  const [pingError, setPingError] = useState<string | null>(null);
+  const [savedVless, setSavedVless] = useState<VlessProfile[]>([]);
   const [saveLink, setSaveLink] = useState("");
   const [saveName, setSaveName] = useState("");
 
@@ -20,6 +33,7 @@ export default function ProxyPanel({ onClose }) {
     api.getProxyStatus().then((s) => { setStatus(s); if (s.vlessLink) setLink(s.vlessLink); }).catch(() => {});
     api.getProxyInstall().then((s) => setInstall(s)).catch(() => {});
     loadSaved();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadSaved = async () => { try { setSavedVless(await api.getSavedVless()); } catch {} };
@@ -29,7 +43,7 @@ export default function ProxyPanel({ onClose }) {
     try {
       if (status?.enabled) { const s = await api.stopProxy(); setStatus(s); }
       else { if (!link.trim()) return; const s = await api.startProxy(link.trim()); setStatus(s); }
-    } catch (e) { setStatus((prev) => ({ ...prev, error: e.message })); }
+    } catch (e) { setStatus((prev) => ({ ...(prev as ProxyStatus), error: (e as Error).message })); }
     setLoading(false);
   };
 
@@ -37,9 +51,9 @@ export default function ProxyPanel({ onClose }) {
     setPingLoading(true); setPingError(null);
     try {
       const r = await api.pingProxy();
-      setStatus((prev) => ({ ...prev, pingMs: r.pingMs, country: r.country }));
+      setStatus((prev) => ({ ...(prev as ProxyStatus), pingMs: r.pingMs, country: r.country }));
       if (!r.pingMs && r.error) setPingError(r.error);
-    } catch (e) { setPingError(e.message); }
+    } catch (e) { setPingError((e as Error).message); }
     setPingLoading(false);
   };
 
@@ -57,24 +71,24 @@ export default function ProxyPanel({ onClose }) {
     const l = link.trim() || saveLink.trim(); if (!l) return;
     const n = saveName.trim() || undefined;
     try { await api.saveVless(l, n); setSaveLink(""); setSaveName(""); await loadSaved(); }
-    catch (e) { alert("Save failed: " + e.message); }
+    catch (e) { alert("Save failed: " + (e as Error).message); }
   };
 
   const pasteFromClipboard = async () => {
     try {
       const txt = await navigator.clipboard.readText();
       if (txt) setLink(txt.trim());
-    } catch (e) { setPingError("Clipboard: " + e.message); }
+    } catch (e) { setPingError("Clipboard: " + (e as Error).message); }
   };
 
-  const handleDeleteProfile = async (id) => {
-    try { await api.deleteVless(id); await loadSaved(); } catch (e) { alert("Delete failed: " + e.message); }
+  const handleDeleteProfile = async (id: string) => {
+    try { await api.deleteVless(id); await loadSaved(); } catch (e) { alert("Delete failed: " + (e as Error).message); }
   };
 
-  const isOk = status?.enabled && status?.running;
-  const hasError = status?.error && status.error !== "Not running";
+  const isOk = !!(status?.enabled && status?.running);
+  const hasError = !!(status?.error && status.error !== "Not running");
   const isInstalled = install?.installed || status?.installed;
-return (
+  return (
     <div className="proxy-panel-overlay" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="proxy-panel">
         {/* Шапка */}
@@ -83,17 +97,17 @@ return (
             <span className="proxy-shield"><Shield size={18} strokeWidth={2} /></span>
             <div className="proxy-title-text">
               <div className="proxy-eyebrow">{t("proxy.title")}</div>
-              <h1 className="proxy-h1">SOCKS5 · 127.0.0.1:{status?.port || 10808}</h1>
+              <h1>{status?.port || 10808}</h1>
             </div>
           </div>
-          <span className={"proxy-status " + (isOk ? "on" : "off")}>
+          <span className={`proxy-status ${isOk ? "on" : "off"}`}>
             <span className="proxy-status-dot" />
             {isOk ? (status?.country || t("proxy.connected")) : t("proxy.disconnected")}
           </span>
           <button className="proxy-panel-close" onClick={onClose} title={t("common.close")}><X size={15} /></button>
         </div>
 
-        {hasError && <div className="proxy-error">{status.error}</div>}
+        {hasError && <div className="proxy-error">{status?.error}</div>}
 
         {/* Поле VLESS / JSON */}
         <Field label={t("proxy.profile")}>
@@ -112,7 +126,7 @@ return (
                 const isActive = link === vl.link;
                 return (
                   <div key={vl.id} className="proxy-chip">
-                    <button className={"proxy-chip-main" + (isActive ? " active" : "")} onClick={() => setLink(vl.link)} title={vl.link}>
+                    <button className={`proxy-chip-main ${isActive ? "active" : ""}`} onClick={() => setLink(vl.link)} title={vl.link}>
                       <span className="proxy-chip-name">{vl.name}</span>
                       <span className="proxy-chip-type">vless</span>
                     </button>

@@ -10,7 +10,7 @@ import { useI18n, LANGS } from "../i18n";
 import { api } from "../api/client";
 
 /* Сервисный словарь бейджей разделов: слово -> ключ перевода */
-const BADGE_KEYS = {
+const BADGE_KEYS: Record<string, string> = {
   "saved auto": "savedAuto",
   "recommended on": "recommended",
   live: "live",
@@ -20,10 +20,10 @@ const BADGE_KEYS = {
 };
 
 /* ---------- Утилиты для точечного чтения/записи вложенных путей ---------- */
-function getAt(obj, path) {
+function getAt(obj: any, path: string): any {
   return path.split(".").reduce((a, k) => (a == null ? a : a[k]), obj);
 }
-function setAt(obj, path, value) {
+function setAt(obj: any, path: string, value: unknown): any {
   const keys = path.split(".");
   const clone = JSON.parse(JSON.stringify(obj));
   let cur = clone;
@@ -36,7 +36,7 @@ function setAt(obj, path, value) {
 }
 
 /* ---------- Мелкие UI-элементы ---------- */
-function Row({ label, hint, children }) {
+function Row({ label, hint, children }: { label: React.ReactNode; hint?: React.ReactNode; children: React.ReactNode }) {
   return (
     <div className="set-row">
       <div className="set-info">
@@ -48,7 +48,7 @@ function Row({ label, hint, children }) {
   );
 }
 
-function BoolRow({ label, hint, value, onChange }) {
+function BoolRow({ label, hint, value, onChange }: { label: string; hint?: string; value: boolean; onChange: (v: boolean) => void }) {
   return (
     <Row label={label} hint={hint}>
       <button
@@ -64,7 +64,7 @@ function BoolRow({ label, hint, value, onChange }) {
   );
 }
 
-function NumberInput({ value, onChange, min, max, step, suffix }) {
+function NumberInput({ value, onChange, min, max, step, suffix }: { value: number | string; onChange: (v: number | "") => void; min?: number; max?: number; step?: number; suffix?: string }) {
   return (
     <div className="num-ctrl">
       <input
@@ -81,7 +81,7 @@ function NumberInput({ value, onChange, min, max, step, suffix }) {
   );
 }
 
-function TextInput({ value, onChange, placeholder }) {
+function TextInput({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
   return (
     <input
       className="text-input"
@@ -93,7 +93,7 @@ function TextInput({ value, onChange, placeholder }) {
 }
 
 /* ---------- Блок секции ---------- */
-function Section({ title, icon: Icon, badge, children }) {
+function Section({ title, icon: Icon, badge, children }: { title: string; icon: React.ElementType; badge?: string; children: React.ReactNode }) {
   const { t } = useI18n();
   const badgeText = badge ? t(`badge.${BADGE_KEYS[badge] || badge}`) : null;
   const isFuture = badge === "future";
@@ -114,12 +114,13 @@ function Section({ title, icon: Icon, badge, children }) {
     </Glass>
   );
 }
+
 export default function SettingsPage() {
   const { t } = useI18n();
-  const [s, setS] = useState(null);
+  const [s, setS] = useState<any>(null);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
-  const [dirtyMap, setDirtyMap] = useState(new Set());
+  const [dirtyMap, setDirtyMap] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     api.getSettings().then(setS).catch(() => setError(t("settings.loadError") || "Не удалось загрузить настройки"));
@@ -133,12 +134,12 @@ export default function SettingsPage() {
     [dirtyMap.size, t]
   );
 
-  async function persist(next, path) {
+  async function persist(next: any, path: string) {
     setS(next);
     // Сохраняется только изменённая ветка (вложенный patch), deep-merge на сервере.
     const keys = path.split(".");
-    let patch = {};
-    let cur = patch;
+    let patch: any = {};
+    let cur: any = patch;
     for (let i = 0; i < keys.length - 1; i++) {
       cur[keys[i]] = {};
       cur = cur[keys[i]];
@@ -151,12 +152,12 @@ export default function SettingsPage() {
       setDirtyMap((d) => { const n = new Set(d); n.delete(path); return n; });
       setTimeout(() => setSaved(false), 1500);
     } catch (e) {
-      setError(e.message);
+      setError((e as Error).message);
       setDirtyMap((d) => new Set(d).add(path));
     }
   }
 
-  function change(path, value) {
+  function change(path: string, value: unknown) {
     // Спец-обработка темы: синхронизируем основной App.
     if (path === "appearance.theme") {
       window.dispatchEvent(new CustomEvent("app:theme", { detail: value }));
@@ -172,7 +173,7 @@ export default function SettingsPage() {
       setS(fresh);
       setError("");
     } catch (e) {
-      setError(e.message);
+      setError((e as Error).message);
     }
   }
 
@@ -227,7 +228,8 @@ export default function SettingsPage() {
           <BoolRow label={t("settings.autoLaunch")} hint={t("settings.autoLaunchHint")} value={g.autoLaunch} onChange={(v) => change("general.autoLaunch", v)} />
           <BoolRow label={t("settings.minimizeToTray")} hint={t("settings.minimizeToTrayHint")} value={g.minimizeToTray} onChange={(v) => change("general.minimizeToTray", v)} />
         </Section>
-{/* ---- Внешний вид ---- */}
+
+        {/* ---- Внешний вид ---- */}
         <Section title={t("settings.appearance")} icon={Palette} badge="live">
           <Row label={t("settings.theme")} hint={t("settings.themeHint")}>
             <Select value={ap.theme} onChange={(e) => change("appearance.theme", e.target.value)} options={["dark", "light"]} />
@@ -270,7 +272,8 @@ export default function SettingsPage() {
           </Row>
           <BoolRow label={t("settings.rememberSize")} hint={t("settings.rememberSizeHint")} value={win.rememberSize} onChange={(v) => change("window.rememberSize", v)} />
         </Section>
-{/* ---- Чат / ИИ ---- */}
+
+        {/* ---- Чат / ИИ ---- */}
         <Section title={t("settings.chat")} icon={MessageSquare} badge="active">
           <Row label={t("chat.chatProvider")} hint={t("chat.chatProviderHint")}>
             <Select value={chat.provider} onChange={(e) => change("chat.provider", e.target.value)} options={["openai", "anthropic", "gemini", "mistral", "deepseek", "ollama"]} />
@@ -332,7 +335,8 @@ export default function SettingsPage() {
             <TextInput value={media.ytdlpPath} onChange={(v) => change("media.ytdlpPath", v)} placeholder="yt-dlp" />
           </Row>
         </Section>
-{/* ---- Голос ---- */}
+
+        {/* ---- Голос ---- */}
         <Section title={t("settings.voice")} icon={Mic2} badge="future">
           <Row label={t("voiceSettings.voiceEngine")} hint={t("voiceSettings.voiceEngineHint")}>
             <Select value={voice.engine} onChange={(e) => change("voice.engine", e.target.value)} options={["local", "cloud"]} />

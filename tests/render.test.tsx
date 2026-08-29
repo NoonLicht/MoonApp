@@ -19,7 +19,7 @@ describe("render smoke (ловит runtime-краши рендера)", () => {
     expect(() => renderToString(React.createElement(App))).not.toThrow();
   });
 
-  const pages = [
+  const pages: [string, React.ComponentType][] = [
     ["Store", StorePage],
     ["Todo", TodoPage],
     ["AiChat", AiChatPage],

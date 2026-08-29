@@ -4,6 +4,7 @@ import { Btn, IconBtn, Glass, Badge, SectionHead, ProgressBar, Checkbox, EmptyHi
 import { usePageToolbar } from "../components/Toolbar";
 import { useI18n } from "../i18n";
 import { api } from "../api/client";
+import type { ArchiveItem } from "../api/types";
 
 const OPTIONS = [
   { k: "css", labelKey: "arch.inlineCSS", icon: FileText },
@@ -12,19 +13,21 @@ const OPTIONS = [
   { k: "removeScripts", labelKey: "arch.strip", icon: ShieldCheck },
 ];
 
+type OptKey = "css" | "images" | "fonts" | "removeScripts";
+
 export default function ArchiverPage() {
   const { t } = useI18n();
   const [url, setUrl] = useState("");
-  const [opts, setOpts] = useState({ css: true, images: true, fonts: true, removeScripts: false });
+  const [opts, setOpts] = useState<Record<OptKey, boolean>>({ css: true, images: true, fonts: true, removeScripts: false });
   const [saving, setSaving] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [archives, setArchives] = useState([]);
+  const [archives, setArchives] = useState<ArchiveItem[]>([]);
 
   useEffect(() => { api.getArchives().then(setArchives).catch(() => {}); }, []);
 
   usePageToolbar(<Badge tone="violet" mono>{t("arch.singleFile")}</Badge>, [t]);
 
-  const toggle = (k) => setOpts((o) => ({ ...o, [k]: !o[k] }));
+  const toggle = (k: OptKey) => setOpts((o) => ({ ...o, [k]: !o[k] }));
 
   const save = () => {
     if (!url.trim()) return;
@@ -54,8 +57,8 @@ export default function ArchiverPage() {
 
       <Glass className="option-grid">
         {OPTIONS.map(({ k, labelKey, icon: Icon }) => (
-          <button key={k} className={`option-item ${opts[k] ? "is-on" : ""}`} onClick={() => toggle(k)}>
-            <Checkbox checked={opts[k]} onClick={() => toggle(k)} />
+          <button key={k} className={`option-item ${opts[k as OptKey] ? "is-on" : ""}`} onClick={() => toggle(k as OptKey)}>
+            <Checkbox checked={opts[k as OptKey]} onClick={() => toggle(k as OptKey)} />
             <Icon size={15} />
             <span>{t(labelKey)}</span>
           </button>

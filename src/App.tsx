@@ -29,7 +29,11 @@ import VoicePage from "./pages/VoicePage";
 import ArchiverPage from "./pages/ArchiverPage";
 import SettingsPage from "./pages/SettingsPage";
 
-const PAGES = [
+type PageId =
+  | "store" | "convert" | "video" | "music" | "books" | "monitor"
+  | "todo" | "aichat" | "voice" | "archive" | "settings";
+
+const PAGES: { id: PageId; i18n: string; icon: React.ElementType }[] = [
   { id: "store", i18n: "nav.store", icon: Store },
   { id: "convert", i18n: "nav.convert", icon: Repeat },
   { id: "video", i18n: "nav.video", icon: Video },
@@ -43,7 +47,7 @@ const PAGES = [
   { id: "settings", i18n: "nav.settings", icon: Settings2 },
 ];
 
-const PAGE_COMPONENTS = {
+const PAGE_COMPONENTS: Record<PageId, React.ComponentType> = {
   store: StorePage,
   convert: ConverterPage,
   video: VideoPage,
@@ -56,10 +60,25 @@ const PAGE_COMPONENTS = {
   archive: ArchiverPage,
   settings: SettingsPage,
 };
-function Shell({ active, setActive, theme, toggleTheme, toolbarNode, setToolbarNode, blur, proxyPanelVisible, setProxyPanelVisible }) {
+
+interface ShellProps {
+  active: PageId;
+  setActive: (id: PageId) => void;
+  theme: string;
+  toggleTheme: () => void;
+  toolbarNode: React.ReactNode;
+  setToolbarNode: (node: React.ReactNode) => void;
+  blur: boolean;
+  proxyPanelVisible: boolean;
+  setProxyPanelVisible: React.Dispatch<React.SetStateAction<boolean>>;
+}
+
+function Shell({ active, setActive, theme, toggleTheme, toolbarNode, setToolbarNode, blur, proxyPanelVisible, setProxyPanelVisible }: ShellProps) {
   const { t, lang } = useI18n();
   const ActivePage = PAGE_COMPONENTS[active];
   const activeMeta = PAGES.find((p) => p.id === active);
+  const MetaIcon = activeMeta!.icon;
+  const metaTitle = t(activeMeta!.i18n);
 
   return (
     <div className={`app-shell theme-${theme} ${blur ? "" : "no-blur"}`} dir={lang === "ar" ? "rtl" : "ltr"}>
@@ -73,8 +92,8 @@ function Shell({ active, setActive, theme, toggleTheme, toolbarNode, setToolbarN
           <div className="tb-side-left" aria-hidden="true" />
           <div className="tb-center">
             <div className="tb-title">
-              <activeMeta.icon size={15} strokeWidth={2.2} />
-              <span>{t(activeMeta.i18n)}</span>
+              <MetaIcon size={15} strokeWidth={2.2} />
+              <span>{metaTitle}</span>
             </div>
             <div className="tb-dynamic">{toolbarNode}</div>
           </div>
@@ -95,10 +114,10 @@ function Shell({ active, setActive, theme, toggleTheme, toolbarNode, setToolbarN
         </header>
 
         {proxyPanelVisible && (
-        <ProxyPanel onClose={() => setProxyPanelVisible(false)} />
-      )}
+          <ProxyPanel onClose={() => setProxyPanelVisible(false)} />
+        )}
 
-      <main className="content-area" key={active}>
+        <main className="content-area" key={active}>
           <ActivePage />
         </main>
       </ToolbarContext.Provider>
@@ -124,32 +143,34 @@ function Shell({ active, setActive, theme, toggleTheme, toolbarNode, setToolbarN
     </div>
   );
 }
+
 export default function App() {
   const [theme, setTheme] = useState("dark");
-  const [active, setActive] = useState("store");
+  const [active, setActive] = useState<PageId>("store");
   const [lang, setLang] = useState("en");
   const [blur, setBlur] = useState(true);
-  const [toolbarNode, setToolbarNode] = useState(null);
+  const [toolbarNode, setToolbarNode] = useState<React.ReactNode>(null);
   const [proxyPanelVisible, setProxyPanelVisible] = useState(false);
 
   // Подтягиваем тему, стартовую страницу, язык и blur из настроек приложения.
   useEffect(() => {
     api.getSettings()
       .then((s) => {
-        if (s?.appearance?.theme) setTheme(s.appearance.theme);
-        if (s?.general?.startPage) setActive(s.general.startPage);
-        if (s?.general?.language) setLang(s.general.language);
-        if (s?.performance?.backgroundBlur != null) setBlur(!!s.performance.backgroundBlur);
+        const sc = s as any;
+        if (sc?.appearance?.theme) setTheme(sc.appearance.theme);
+        if (sc?.general?.startPage) setActive(sc.general.startPage);
+        if (sc?.general?.language) setLang(sc.general.language);
+        if (sc?.performance?.backgroundBlur != null) setBlur(!!sc.performance.backgroundBlur);
       })
       .catch(() => {});
   }, []);
 
   // Синхронизация изменений из страницы настроек: тема, язык, blur.
   useEffect(() => {
-    const onTheme = (e) => setTheme(e.detail);
-    const onSetting = (e) => {
-      const { path, value } = e.detail || {};
-      if (path === "general.language") setLang(value);
+    const onTheme = (e: Event) => setTheme((e as CustomEvent<string>).detail);
+    const onSetting = (e: Event) => {
+      const { path, value } = (e as CustomEvent<{ path: string; value: unknown }>).detail || {};
+      if (path === "general.language") setLang(value as string);
       else if (path === "performance.backgroundBlur") setBlur(!!value);
     };
     window.addEventListener("app:theme", onTheme);

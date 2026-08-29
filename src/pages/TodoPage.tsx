@@ -4,16 +4,17 @@ import { Btn, IconBtn, Glass, Badge, SectionHead, Select, EmptyHint, Checkbox } 
 import { usePageToolbar } from "../components/Toolbar";
 import { useI18n } from "../i18n";
 import { api } from "../api/client";
+import type { Task } from "../api/types";
 
 const FILTERS = ["All", "Active", "Done"];
 
 export default function TodoPage() {
   const { t } = useI18n();
-  const [tasks, setTasks] = useState([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [filter, setFilter] = useState("All");
   const [text, setText] = useState("");
   const [loaded, setLoaded] = useState(false);
-  const dragIndex = useRef(null);
+  const dragIndex = useRef<number | null>(null);
 
   useEffect(() => { api.getTasks().then(setTasks).catch(() => setTasks([])).finally(() => setLoaded(true)); }, []);
 
@@ -31,21 +32,21 @@ export default function TodoPage() {
     setText("");
   };
 
-  const toggle = async (id) => {
+  const toggle = async (id: number) => {
     const task = tasks.find((x) => x.id === id);
     if (!task) return;
     const next = await api.toggleTask(id, !task.done);
     setTasks((prev) => prev.map((x) => (x.id === id ? { ...x, done: next.done } : x)));
   };
 
-  const remove = async (id) => {
+  const remove = async (id: number) => {
     await api.deleteTask(id);
     setTasks((prev) => prev.filter((x) => x.id !== id));
   };
 
-  const onDragStart = (i) => () => { dragIndex.current = i; };
-  const onDragOver = (e) => e.preventDefault();
-  const onDrop = async (i) => {
+  const onDragStart = (i: number) => () => { dragIndex.current = i; };
+  const onDragOver = (e: React.DragEvent) => e.preventDefault();
+  const onDrop = async (i: number) => {
     const from = dragIndex.current;
     if (from === null || from === i) return;
     setTasks((prev) => {
