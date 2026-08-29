@@ -18,7 +18,8 @@
     "close": "Close",
     "theme": "Toggle theme",
     "all": "All",
-    "loading": "Loading…"
+    "loading": "Loading�",
+    "loadMore": "Load more"
   },
   "settings": {
     "title": "Settings",
@@ -241,7 +242,12 @@
     "search": "Search titles or authors",
     "download": "Download",
     "empty": "No books match your search",
-    "allFormats": "All formats"
+    "allFormats": "All formats",
+    "clearFilters": "Clear filters",
+    "syncNew": "Sync new",
+    "syncAll": "Sync all genres",
+    "syncing": "Syncing... {n} books",
+    "downloaded": "Downloaded: {file}"
   },
   "monitor": {
     "title": "Monitoring",
@@ -345,7 +351,7 @@
     "saved": "Saved to downloads",
     "ytdlpMissing": "yt-dlp is not installed (click below to install)"
   },
-"proxy": {
+  "proxy": {
     "title": "Proxy",
     "connected": "Connected",
     "disconnected": "Disconnected",

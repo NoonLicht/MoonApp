@@ -18,7 +18,8 @@
     "close": "Cerrar",
     "theme": "Cambiar tema",
     "all": "Todos",
-    "loading": "Cargando…"
+    "loading": "Cargando…",
+    "loadMore": "Cargar más"
   },
   "settings": {
     "title": "Ajustes",
@@ -241,7 +242,12 @@
     "search": "Buscar por títulos o autores",
     "download": "Descargar",
     "empty": "No hay libros que coincidan",
-    "allFormats": "Todos los formatos"
+    "allFormats": "Todos los formatos",
+    "clearFilters": "Limpiar filtros",
+    "syncNew": "Sinc. novedades",
+    "syncAll": "Sinc. géneros",
+    "syncing": "Sincronizando... {n} libros",
+    "downloaded": "Descargado: {file}"
   },
   "monitor": {
     "title": "Monitor",

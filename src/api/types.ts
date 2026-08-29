@@ -1,3 +1,64 @@
+/* -------------------------------- Флибуста / Книги ----------------------- */
+
+/** Книга из каталога Флибусты (OPDS). */
+export interface FlibustaBook {
+  id: string;            // "tag:book:..."
+  bid: number;           // числовой id для скачивания
+  title: string;
+  author: string;
+  genres: string[];
+  language: string | null;
+  year: number | null;
+  formats: string[];     // ["fb2","epub","mobi","pdf",...]
+  sizeText: string;      // "3074 Kb" и т.п.
+  cover: string | null;  // url к обложке
+  description: string;
+  updatedAt: string;
+}
+
+/** Статистика каталога (для построения фильтров). */
+export interface BooksCatalogStats {
+  count: number;
+  lastSync: string | null;
+  genres: string[];
+  langs: string[];
+}
+
+/** Результат поиска/фильтрации по каталогу. */
+export interface BooksSearchResult {
+  total: number;
+  page: number;
+  pageSize: number;
+  hasMore: boolean;
+  items: FlibustaBook[];
+  stats: BooksCatalogStats;
+}
+
+/** Статус фоновой синхронизации каталога. */
+export interface BooksSyncStatus {
+  running: boolean;
+  mode: string;
+  done: number;
+  total: number;
+  current: string;
+  added: number;
+  error: string;
+}
+
+/** Результат живущего OPDS-поиска. */
+export interface BooksLiveSearchResult {
+  books: FlibustaBook[];
+  next: string | null;
+}
+
+/** Результат скачивания книги. */
+export interface BookDownloadResult {
+  file: string;
+  name: string;
+  size: number;
+  fmt: string;
+  bid: number;
+}
 /**
  * Общие типы контрактов фронтенда. Зеркалит структуры бэкенда
  * (server/db.js tables, routes/*, server/ts/monitor.ts).

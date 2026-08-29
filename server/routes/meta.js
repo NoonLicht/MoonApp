@@ -73,9 +73,7 @@ router.post("/archives", (req, res) => {
   res.status(201).json({ ok: true, id: info.lastInsertRowid, name, size_text });
 });
 
-// Книги — каталог (заполняется на старте, см. index.js seed).
-router.get("/books", (req, res) => {
-  res.json(stmts.bookAll.all());
-});
+// Книги — перенесены в routes/books.js (полноценный каталог по OPDS).
+// router.get("/books", ...) больше не здесь — см. /api/books.
 
 module.exports = router;

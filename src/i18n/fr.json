@@ -18,7 +18,8 @@
     "close": "Fermer",
     "theme": "Changer de thème",
     "all": "Tous",
-    "loading": "Chargement…"
+    "loading": "Chargement…",
+    "loadMore": "Charger plus"
   },
   "settings": {
     "title": "Réglages",
@@ -241,7 +242,12 @@
     "search": "Rechercher par titres ou auteurs",
     "download": "Télécharger",
     "empty": "Aucun livre ne correspond",
-    "allFormats": "Tous les formats"
+    "allFormats": "Tous les formats",
+    "clearFilters": "Effacer filtres",
+    "syncNew": "Sync nouveautés",
+    "syncAll": "Sync genres",
+    "syncing": "Synchronisation... {n} livres",
+    "downloaded": "Téléchargé: {file}"
   },
   "monitor": {
     "title": "Moniteur",

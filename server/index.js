@@ -17,6 +17,7 @@ const appsRouter = require("./routes/apps");
 const convertRouter = require("./routes/convert");
 const videoRouter = require("./routes/video");
 const proxyRouter = require("./routes/proxy");
+const booksRouter = require("./routes/books");
 const monitor = require("./monitor");
 const proxy = require("./proxy");
 
@@ -72,6 +73,7 @@ function createApp() {
   app.use("/api/convert", convertRouter);
   app.use("/api/video", videoRouter);
   app.use("/api/proxy", proxyRouter);
+  app.use("/api/books", booksRouter);
 
   // Раздача собранного фронта (dist), если он собран.
   const dist = path.join(__dirname, "..", "dist");

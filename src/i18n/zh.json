@@ -18,7 +18,8 @@
     "close": "关闭",
     "theme": "切换主题",
     "all": "全部",
-    "loading": "加载中…"
+    "loading": "加载中…",
+    "loadMore": "加载更多"
   },
   "settings": {
     "title": "设置",
@@ -241,7 +242,12 @@
     "search": "按书名或作者搜索",
     "download": "下载",
     "empty": "没有匹配的书籍",
-    "allFormats": "所有格式"
+    "allFormats": "所有格式",
+    "clearFilters": "清除筛选",
+    "syncNew": "同步新书",
+    "syncAll": "同步所有分类",
+    "syncing": "同步中... {n} 本书",
+    "downloaded": "已下载: {file}"
   },
   "monitor": {
     "title": "监控",

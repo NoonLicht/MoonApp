@@ -9,9 +9,11 @@ import type {
   ConvertTools, ConvertResult, ConvertInstallStatus,
   VideoInfo, VideoDownloadResult, VideoJobStatus, YtdlpInstallStatus,
   LhmStatus, MonitorSnapshot, ProviderInfo, Task, ProxyStatus, VlessProfile,
+  FlibustaBook, BooksCatalogStats, BooksSearchResult, BooksSyncStatus,
+  BooksLiveSearchResult, BookDownloadResult,
 } from "./types";
 
-export type { AppItem, ArchiveItem, BackupInfo, BooksItem, ChatMessage, Conversation, ConvertTools, ConvertResult, ConvertInstallStatus, VideoInfo, VideoDownloadResult, VideoJobStatus, YtdlpInstallStatus, LhmStatus, MonitorSnapshot, ProviderInfo, Task, ProxyStatus, VlessProfile };
+export type { AppItem, ArchiveItem, BackupInfo, BooksItem, ChatMessage, Conversation, ConvertTools, ConvertResult, ConvertInstallStatus, VideoInfo, VideoDownloadResult, VideoJobStatus, YtdlpInstallStatus, LhmStatus, MonitorSnapshot, ProviderInfo, Task, ProxyStatus, VlessProfile, FlibustaBook, BooksCatalogStats, BooksSearchResult, BooksSyncStatus, BooksLiveSearchResult, BookDownloadResult };
 
 const BASE = ""; // одно origin (Vite-proxy или раздача Express)
 
@@ -88,7 +90,18 @@ export const api = {
   deleteConversation: (id: number) => req("DELETE", `/chat/${id}`),
 
   // Books / monitor / archives
-  getBooks: () => req<BooksItem[]>("GET", "/books"),
+  // Books (Флибуста) — поиск/фильтры/пагинация по локальному каталогу
+  getBooks: (params?: string) => req<BooksSearchResult>("GET", `/books${params ? '?' + params : ''}`),
+  getBooksFacets: () => req<BooksCatalogStats>("GET", "/books/facets"),
+  getBooksSyncStatus: () => req<BooksSyncStatus>("GET", "/books/sync"),
+  startBooksSync: (mode: string) => req<{ ok: boolean; reason?: string; status: BooksSyncStatus }>("POST", "/books/sync", { mode }),
+  /** Живой OPDS-поиск (мгновенно, без локального хранения). */
+  booksLiveSearch: (q: string, page?: number) =>
+    req<BooksLiveSearchResult>("POST", "/books/live-search", { q, page }),
+  /** Скачать книгу по bid+fmt. */
+  downloadBook: (bid: number, fmt: string) =>
+    req<BookDownloadResult>("POST", "/books/download", { bid, fmt }),
+
   getMonitor: () => req<MonitorSnapshot>("GET", "/monitor"),
   getArchives: () => req<ArchiveItem[]>("GET", "/archives"),
 
