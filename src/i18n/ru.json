@@ -17,7 +17,8 @@
     "maximize": "Развернуть",
     "close": "Закрыть",
     "theme": "Переключить тему",
-    "all": "Все"
+    "all": "Все",
+    "loading": "Загрузка…"
   },
   "settings": {
     "title": "Настройки",
@@ -296,7 +297,19 @@
     "embedHint": "Встроенный сервис ConvertX запускается автоматически при первом открытии.",
     "embedMissing": "Рантайм конвертера отсутствует в этой установке.",
     "embedStart": "Запустить конвертер",
-    "formatsNote": "Для медиа-форматов нужен ffmpeg в PATH. Для документов/книг — соответствующие инструменты (pandoc, Calibre, LibreOffice…)."
+    "formatsNote": "Для медиа-форматов нужен ffmpeg в PATH. Для документов/книг — соответствующие инструменты (pandoc, Calibre, LibreOffice…).",
+    "hwCpu": "Процессор — {name}",
+    "hwMotherboard": "Материнская плата — {name}",
+    "hwDrive": "Накопитель — {name}",
+    "hwGpu": "Видеокарта — {name}",
+    "coreTemps": "Температуры ядер",
+    "corePowers": "Потребление ядер · Вт",
+    "coreClocks": "Частоты ядер · МГц",
+    "currents": "Токи",
+    "speeds": "Скорости",
+    "levels": "Уровни",
+    "controls": "Управление",
+    "data": "Данные"
   },
   "voice": {
     "title": "Клонирование голоса",
@@ -343,7 +356,8 @@
     "enable": "Включить прокси",
     "disable": "Отключить прокси",
     "singboxMissing": "sing-box не установлен",
-    "installSingbox": "Установить sing-box",
+    "installSingBox": "Установить sing-box",
+    "placeholder": "vless://… или JSON-профиль",
     "subscriptions": "Подписки",
     "subName": "Имя",
     "add": "Добавить",

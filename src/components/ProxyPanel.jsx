@@ -90,7 +90,7 @@ return (
             <span className="proxy-status-dot" />
             {isOk ? (status?.country || t("proxy.connected")) : t("proxy.disconnected")}
           </span>
-          <button className="proxy-panel-close" onClick={onClose} title="Close"><X size={15} /></button>
+          <button className="proxy-panel-close" onClick={onClose} title={t("common.close")}><X size={15} /></button>
         </div>
 
         {hasError && <div className="proxy-error">{status.error}</div>}
@@ -98,7 +98,7 @@ return (
         {/* Поле VLESS / JSON */}
         <Field label={t("proxy.profile")}>
           <div className="proxy-link-row">
-            <input className="proxy-link" value={link} onChange={(e) => setLink(e.target.value)} placeholder="vless://… или JSON-профиль" spellCheck={false} />
+            <input className="proxy-link" value={link} onChange={(e) => setLink(e.target.value)} placeholder={t("proxy.placeholder")} spellCheck={false} />
             <button className="proxy-paste" onClick={pasteFromClipboard} title={t("proxy.paste")}><Clipboard size={14} /></button>
           </div>
         </Field>

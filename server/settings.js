@@ -13,7 +13,6 @@ const DEFAULTS = {
     startPage: "store",      // открывается при запуске
     autoLaunch: false,       // TODO: автозапуск с Windows
     minimizeToTray: false,   // TODO: свёрнутая кнопка в трей
-    closeToTray: false,      // TODO: закрытие → в трей, а не выход
   },
 
   // --- Внешний вид ---
@@ -71,9 +70,6 @@ const DEFAULTS = {
   // --- Видео / Музыка (это уже yt-dlp) ---
   media: {
     ytdlpPath: "",           // путь к yt-dlp (пусто = искать в PATH)
-    defaultVideoQuality: "1080p",
-    defaultAudioBitrate: "320 kbps",
-    concurrentDownloads: 3,  // параллельных загрузок
   },
 
   // --- Голос / клонирование (пока TODO — локальный TTS) ---
@@ -100,7 +96,6 @@ const DEFAULTS = {
   backup: {
     auto: true,
     intervalHours: 24,
-    keep: 5,
   },
 
   // --- Продвинутое / развитие ---

@@ -17,7 +17,8 @@
     "maximize": "Maximize",
     "close": "Close",
     "theme": "Toggle theme",
-    "all": "All"
+    "all": "All",
+    "loading": "Loading…"
   },
   "settings": {
     "title": "Settings",
@@ -296,7 +297,19 @@
     "embedHint": "The built-in ConvertX service starts automatically on first use.",
     "embedMissing": "Converter runtime is missing from this installation.",
     "embedStart": "Start converter",
-    "formatsNote": "Media formats require ffmpeg installed and available in PATH. Documents/e-books need the corresponding tools (pandoc, Calibre, LibreOffice…)."
+    "formatsNote": "Media formats require ffmpeg installed and available in PATH. Documents/e-books need the corresponding tools (pandoc, Calibre, LibreOffice…).",
+    "hwCpu": "Processor — {name}",
+    "hwMotherboard": "Motherboard — {name}",
+    "hwDrive": "Drive — {name}",
+    "hwGpu": "GPU — {name}",
+    "coreTemps": "Core temperatures",
+    "corePowers": "Core power draw · W",
+    "coreClocks": "Core clocks · MHz",
+    "currents": "Current",
+    "speeds": "Transfer speeds",
+    "levels": "Levels",
+    "controls": "Controls",
+    "data": "Data"
   },
   "voice": {
     "title": "Audio cloning",
@@ -343,7 +356,8 @@
     "enable": "Enable proxy",
     "disable": "Disable proxy",
     "singboxMissing": "sing-box not installed",
-    "installSingbox": "Install sing-box",
+    "installSingBox": "Install sing-box",
+    "placeholder": "vless://… or JSON profile",
     "subscriptions": "Subscriptions",
     "subName": "Name",
     "add": "Add",

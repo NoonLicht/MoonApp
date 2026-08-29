@@ -13,7 +13,7 @@ import type { LhmStatus, MonitorSnapshot } from "../api/types";
 
 const INTERVAL_OPTIONS = [100, 200, 300, 500, 750, 1000];
 const HIST_MAX = 60;
-type CpuView = "total" | "cores" | "threads";
+type CpuView = "cores" | "threads";
 interface HistPoint { t: number; cpu: number; gpu: number; per: number[] }
 
 function fmtUptime(sec: number): string {
@@ -60,7 +60,7 @@ export default function MonitorPage() {
   const { t } = useI18n();
   const [live, setLive] = useState(true);
   const [interval_, setInterval_] = useState<number>(500);
-  const [view, setView] = useState<CpuView>("total");
+  const [view, setView] = useState<CpuView>("cores");
   const [data, setData] = useState<MonitorSnapshot | null>(null);
   const [tick, setTick] = useState(0); // перерисовка при обновлении истории
   const [pollNonce, setPollNonce] = useState(0); // немедленный опрос после действий с LHM
@@ -115,7 +115,6 @@ export default function MonitorPage() {
           value={view}
           onChange={(e) => setView(e.target.value as CpuView)}
           options={[
-            { value: "total", label: t("monitor.viewTotal") },
             { value: "cores", label: t("monitor.viewCores") },
             { value: "threads", label: t("monitor.viewThreads") },
           ]}
@@ -183,7 +182,7 @@ function MonitorBody({ data, t, points, view, onLhmChanged }: {
       <LoadChart points={points} />
 
       {/* Ядра/потоки — плитками, как в диспетчере задач */}
-      <CpuTiles key={view} points={points} mode={view === "total" ? "cores" : view} coresPhysical={data.cpu.coresPhysical} t={t} />
+      <CpuTiles key={view} points={points} mode={view} coresPhysical={data.cpu.coresPhysical} t={t} />
 
       {/* RAM / VRAM */}
       <div className="donut-row">
@@ -587,29 +586,30 @@ function SubHead({ children }: { children: React.ReactNode }) {
   return <div className="field-label" style={{ margin: "12px 0 6px" }}>{children}</div>;
 }
 
-const GROUP_ORDER: { type: string; title: string }[] = [
-  { type: "Temperature", title: "Температуры" },
-  { type: "Fan", title: "Вентиляторы" },
-  { type: "Voltage", title: "Напряжения" },
-  { type: "Current", title: "Токи" },
-  { type: "Power", title: "Потребляемая мощность" },
-  { type: "Clock", title: "Частоты" },
-  { type: "Load", title: "Загрузка" },
-  { type: "Throughput", title: "Скорости" },
-  { type: "Level", title: "Уровни" },
-  { type: "Control", title: "Управление" },
+const GROUP_KEYS: { type: string; key: string }[] = [
+  { type: "Temperature", key: "monitor.temps" },
+  { type: "Fan", key: "monitor.fans" },
+  { type: "Voltage", key: "monitor.voltages" },
+  { type: "Current", key: "monitor.currents" },
+  { type: "Power", key: "monitor.powers" },
+  { type: "Clock", key: "monitor.clocks" },
+  { type: "Load", key: "monitor.loads" },
+  { type: "Throughput", key: "monitor.speeds" },
+  { type: "Level", key: "monitor.levels" },
+  { type: "Control", key: "monitor.controls" },
 ];
 
 function GenericGroups({ sensors, hideTypes = [] }: { sensors: AllSensor[]; hideTypes?: string[] }) {
+  const { t } = useI18n();
   const visible = sensors.filter((s) => !hideTypes.includes(s.type));
   return (
     <>
-      {GROUP_ORDER.map(({ type, title }) => {
+      {GROUP_KEYS.map(({ type, key }) => {
         const rows = visible.filter((s) => s.type === type);
         if (!rows.length) return null;
         return (
           <div key={type}>
-            <SubHead>{title}</SubHead>
+            <SubHead>{t(key)}</SubHead>
             <ValueList rows={rows.map((s) => ({ key: s.id, name: s.name, text: fmtSensor(s) }))} />
           </div>
         );
@@ -619,7 +619,7 @@ function GenericGroups({ sensors, hideTypes = [] }: { sensors: AllSensor[]; hide
         if (!rows.length) return null;
         return (
           <div>
-            <SubHead>Данные</SubHead>
+            <SubHead>{t("monitor.data")}</SubHead>
             <ValueList rows={rows.map((s) => ({ key: s.id, name: s.name, text: fmtSensor(s) }))} />
           </div>
         );
@@ -666,6 +666,7 @@ function isHiddenSensor(s: AllSensor): boolean {
 }
 
 function SensorSections({ data }: { data: MonitorSnapshot }) {
+  const { t } = useI18n();
   const all: AllSensor[] = (data.sensorsAll || []).filter((s) => !isHiddenSensor(s));
   if (!all.length) return null;
 
@@ -732,18 +733,18 @@ function SensorSections({ data }: { data: MonitorSnapshot }) {
         );
         return (
           <Glass className="chart-panel">
-            <SubHead>Процессор — {cpuName}</SubHead>
+            <SubHead>{t("monitor.hwCpu", { name: cpuName })}</SubHead>
             {tempsPkg.length > 0 && (
               <>
-                <SubHead>Температуры</SubHead>
+                <SubHead>{t("monitor.temps")}</SubHead>
                 <ValueList rows={tempsPkg.map((x) => ({ key: x.id, name: x.name, text: fmtSensor(x) }))} />
               </>
             )}
             {(tempsCore.length > 0 || powersCore.length > 0 || clocksAll.length > 0) && (
               <div className="split" style={{ flexWrap: "wrap", gap: 14, marginTop: 6 }}>
-                <ColumnPanel title="Температуры ядер" rows={tempsCore} />
-                <ColumnPanel title="Потребление ядер · Вт" rows={powersCore} />
-                <ColumnPanel title="Частоты ядер · МГц" rows={clocksAll} />
+                <ColumnPanel title={t("monitor.coreTemps")} rows={tempsCore} />
+                <ColumnPanel title={t("monitor.corePowers")} rows={powersCore} />
+                <ColumnPanel title={t("monitor.coreClocks")} rows={clocksAll} />
               </div>
             )}
             <GenericGroups sensors={restSensors} hideTypes={["Factor", "Level", "Control", "Clock"]} />
@@ -754,7 +755,7 @@ function SensorSections({ data }: { data: MonitorSnapshot }) {
       {/* ---- Материнская плата (сенсоры LPC: напряжения, температуры, вентиляторы) ---- */}
       {mbSensors.length > 0 && (
         <Glass className="chart-panel">
-          <SubHead>Материнская плата — {mbName}</SubHead>
+          <SubHead>{t("monitor.hwMotherboard", { name: mbName })}</SubHead>
           <GenericGroups sensors={mbSensors} />
         </Glass>
       )}
@@ -762,7 +763,7 @@ function SensorSections({ data }: { data: MonitorSnapshot }) {
       {/* ---- Накопители (по каждому отдельно) ---- */}
       {[...driveGroups.entries()].map(([key, s]) => (
         <Glass className="chart-panel" key={key}>
-          <SubHead>Накопитель — {getDriveName(key)}</SubHead>
+          <SubHead>{t("monitor.hwDrive", { name: getDriveName(key) })}</SubHead>
           <GenericGroups sensors={s} />
         </Glass>
       ))}
@@ -770,7 +771,7 @@ function SensorSections({ data }: { data: MonitorSnapshot }) {
       {/* ---- Видеокарта ---- */}
       {[...gpuGroups.entries()].map(([key, s]) => (
         <Glass className="chart-panel" key={key}>
-          <SubHead>Видеокарта — {getGpuName(key)}</SubHead>
+          <SubHead>{t("monitor.hwGpu", { name: getGpuName(key) })}</SubHead>
           <GenericGroups sensors={s} />
         </Glass>
       ))}

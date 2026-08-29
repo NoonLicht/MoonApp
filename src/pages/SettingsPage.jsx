@@ -226,7 +226,6 @@ export default function SettingsPage() {
           </Row>
           <BoolRow label={t("settings.autoLaunch")} hint={t("settings.autoLaunchHint")} value={g.autoLaunch} onChange={(v) => change("general.autoLaunch", v)} />
           <BoolRow label={t("settings.minimizeToTray")} hint={t("settings.minimizeToTrayHint")} value={g.minimizeToTray} onChange={(v) => change("general.minimizeToTray", v)} />
-          <BoolRow label={t("settings.closeToTray")} hint={t("settings.closeToTrayHint")} value={g.closeToTray} onChange={(v) => change("general.closeToTray", v)} />
         </Section>
 {/* ---- Внешний вид ---- */}
         <Section title={t("settings.appearance")} icon={Palette} badge="live">
@@ -332,15 +331,6 @@ export default function SettingsPage() {
           <Row label={t("media.mediaYtdlp")} hint={t("media.mediaYtdlpHint")}>
             <TextInput value={media.ytdlpPath} onChange={(v) => change("media.ytdlpPath", v)} placeholder="yt-dlp" />
           </Row>
-          <Row label={t("media.mediaVideo")} hint={t("media.mediaVideoHint")}>
-            <Select value={media.defaultVideoQuality} onChange={(e) => change("media.defaultVideoQuality", e.target.value)} options={["360p", "480p", "720p", "1080p", "4K"]} />
-          </Row>
-          <Row label={t("media.mediaAudio")} hint={t("media.mediaAudioHint")}>
-            <Select value={media.defaultAudioBitrate} onChange={(e) => change("media.defaultAudioBitrate", e.target.value)} options={["128 kbps", "192 kbps", "320 kbps", "FLAC"]} />
-          </Row>
-          <Row label={t("media.mediaConcurrent")} hint={t("media.mediaConcurrentHint")}>
-            <NumberInput value={media.concurrentDownloads} onChange={(v) => change("media.concurrentDownloads", v)} min={1} max={10} />
-          </Row>
         </Section>
 {/* ---- Голос ---- */}
         <Section title={t("settings.voice")} icon={Mic2} badge="future">
@@ -377,9 +367,6 @@ export default function SettingsPage() {
           <BoolRow label={t("backupSettings.backupEnable")} hint={t("backupSettings.backupEnableHint")} value={backup.auto} onChange={(v) => change("backup.auto", v)} />
           <Row label={t("backupSettings.backupInterval")} hint={t("backupSettings.backupIntervalHint")}>
             <NumberInput value={backup.intervalHours} onChange={(v) => change("backup.intervalHours", v)} min={1} max={720} suffix=" h" />
-          </Row>
-          <Row label={t("backupSettings.backupKeep")} hint={t("backupSettings.backupKeepHint")}>
-            <NumberInput value={backup.keep} onChange={(v) => change("backup.keep", v)} min={1} max={50} />
           </Row>
         </Section>
 

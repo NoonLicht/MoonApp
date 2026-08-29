@@ -35,7 +35,7 @@ function rotate() {
   const all = fs.readdirSync(DIRS.backups)
     .map((n) => ({ n, t: fs.statSync(path.join(DIRS.backups, n)).mtimeMs }))
     .sort((a, b) => b.t - a.t);
-  const keep = settings.get("backup").keep;
+  const keep = settings.get("backup").keep ?? 5;
   all.slice(keep).forEach(({ n }) => {
     try { fs.rmSync(path.join(DIRS.backups, n), { recursive: true, force: true }); } catch {}
   });
