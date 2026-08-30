@@ -1,35 +1,26 @@
 "use strict";
 
 /**
- * Flibusta OPDS-клиент + локальный каталог книг.
+ * Flibusta OPDS-клиент + локальный каталог книг (sql.js).
  *
- * Источник данных: OPDS-каталог флибусты (https://opds.flibusta.is/opds).
- * Метаданные (библиографические) берутся из публичного OPDS-фида;
- * сами файлы книг скачиваются по одной по явному действию пользователя.
+ * Метаданные из OPDS-фида (https://opds.flibusta.is);
+ * хранятся в SQLite-БД (books_catalog.db) с async lazy-load и TTL-выгрузкой.
  *
- * Два режима работы:
- *  1) Живой OPDS-поиск — мгновенный доступ ко всей библиотеке без хранения.
- *  2) Локальный каталог — наполняется новинками и обходом по жанрам
- *     (фоновый джоб с прогрессом и resume). Нужен для широких фильтров
- *     (год / язык / жанр) по закешированному подмножеству.
+ * parseEntry/parseFeed — синхронные (чистый парсинг XML).
+ * addBooks/catalogStats/searchCatalog — async (работа с БД).
  */
 
-const fs = require("fs");
 const path = require("path");
 const { DIRS } = require("./config");
+const booksDb = require("./books-db");
 const logger = require("./logger");
 
 const BASE = "https://opds.flibusta.is";
-const CATALOG_FILE = path.join(DIRS.storage, "books_catalog.json");
 
-// Соответствие MIME-типа acquisition-ссылки -> расширение формата.
-const MIME_TO_FMT = {
-  "application/fb2+zip": "fb2",
-  "application/epub+zip": "epub",
-  "application/x-mobipocket-ebook": "mobi",
-  "application/pdf": "pdf",
-  "application/html+zip": "html",
-  "application/txt+zip": "txt",
+const FORMAT_MAP = {
+  "application/fb2+zip": "fb2", "application/epub+zip": "epub",
+  "application/x-mobipocket-ebook": "mobi", "application/pdf": "pdf",
+  "application/html+zip": "html", "application/txt+zip": "txt",
   "application/rtf+zip": "rtf",
 };
 
@@ -52,22 +43,18 @@ async function fetchFeed(pathname, { timeout = 30000 } = {}) {
 
 function decodeEntities(s) {
   return String(s == null ? "" : s)
-    .replace(/&quot;/g, "\"")
-    .replace(/&#39;|&apos;/g, "'")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, "\"").replace(/&#39;|&apos;/g, "'")
+    .replace(/&lt;/g, "<").replace(/&gt;/g, ">")
     .replace(/&amp;/g, "&")
     .replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n)))
     .replace(/&#x([0-9a-fA-F]+);/g, (_, n) => String.fromCodePoint(parseInt(n, 16)));
 }
 
-// Достать первый текст внутри тега (без атрибутов). tag может быть "dc:title".
 function inner(xml, tag) {
   const m = xml.match(new RegExp(`<${tag}(?:\\s[^>]*)?>([\\s\\S]*?)</${tag}>`, "i"));
   return m ? m[1] : null;
 }
 
-// Достать id книги из <id> и числовой bid из /b/{bid}
 function parseBookId(xml) {
   const id = inner(xml, "id");
   const idStr = id ? id.trim() : "";
@@ -75,7 +62,6 @@ function parseBookId(xml) {
   return { id: idStr, bid: m ? Number(m[1]) : null };
 }
 
-// Собрать все категории (жанры) из <category term="..."/>
 function parseGenres(xml) {
   const g = [];
   const re = /<category\s+term="([^"]*)"/gi;
@@ -84,7 +70,6 @@ function parseGenres(xml) {
   return Array.from(new Set(g));
 }
 
-// Собрать acquisition-ссылки на форматы. href вида /b/{bid}/{fmt}
 function parseFormats(xml) {
   const seen = new Set();
   const out = [];
@@ -95,290 +80,361 @@ function parseFormats(xml) {
     const isRel = /rel="http:\/\/opds-spec\.org\/acquisition[^"]*"/.test(attrs);
     if (!isRel) continue;
     const typeM = attrs.match(/type="([^"]*)"/);
-    const hrefM = attrs.match(/href="([^"]*)"/);
-    if (!typeM || !hrefM) continue;
-    const fmt = MIME_TO_FMT[typeM[1].toLowerCase()] || null;
-    if (!fmt) continue;
-    if (seen.has(fmt)) continue;
-    seen.add(fmt);
-    out.push({ fmt, href: hrefM[1] });
+    const mime = typeM ? typeM[1].trim() : "";
+    const fmt = FORMAT_MAP[mime];
+    if (fmt && !seen.has(fmt)) { seen.add(fmt); out.push(fmt); }
   }
   return out;
 }
 
-// Достать обложку (rel="http://opds-spec.org/image") — порядок атрибутов не важен.
 function parseCover(xml) {
-  const re = /<link\s+([^>]*?)>/gi;
-  let m;
-  while ((m = re.exec(xml))) {
-    const a = m[1] || "";
-    if (/rel="http:\/\/opds-spec\.org\/image"/.test(a)) {
-      const href = a.match(/href="([^"]*)"/);
-      if (href) return href[1];
-    }
-  }
-  return null;
+  const re1 = /<link\s+[^>]*href="([^"]+)"[^>]*rel="http:\/\/opds-spec\.org\/image"[^>]*\/?>/i;
+  const m1 = re1.exec(xml);
+  if (m1) return decodeEntities(m1[1]);
+  const re2 = /<link\s+[^>]*rel="http:\/\/opds-spec\.org\/image"[^>]*href="([^"]+)"[^>]*\/?>/i;
+  const m2 = re2.exec(xml);
+  return m2 ? decodeEntities(m2[1]) : null;
 }
 
-// Аннотация и размер из <content type="text/html">…</content>
-function parseContentText(xml) {
+function parseContentMeta(xml) {
   const c = inner(xml, "content");
-  if (!c) return { description: "", sizeText: "" };
-  const text = decodeEntities(c)
-    .replace(/<[^>]+>/g, " ")        // снять теги
-    .replace(/&[a-z]+;/gi, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-  const sizeM = c.match(/Размер:\s*([^</]+)/i);
+  if (!c) return { language: null, year: null, sizeText: null };
+  const decoded = decodeEntities(c);
+  const langM = decoded.match(/Язык:\s*([^<]+)/i) || decoded.match(/language:\s*([^<]+)/i);
+  const yearM = decoded.match(/Год издания:\s*(\d{4})/i) || decoded.match(/год:\s*(\d{4})/i) || decoded.match(/year:\s*(\d{4})/i);
+  const sizeM = decoded.match(/Размер:\s*([^<]+)/i) || decoded.match(/size:\s*([^<]+)/i);
   return {
-    description: text,
-    sizeText: sizeM ? decodeEntities(sizeM[1].trim()) : "",
+    language: langM ? langM[1].trim() : null,
+    year: yearM ? Number(yearM[1]) : null,
+    sizeText: sizeM ? sizeM[1].trim() : null,
   };
 }
 
-/** Разобрать один <entry> в объект книги. Вернёт null, если это не книга. */
+function parseDescription(xml) {
+  const c = inner(xml, "content");
+  if (!c) return "";
+  const clean = decodeEntities(c).replace(/<[^>]*>/g, "").trim();
+  const idx = clean.search(/(Формат:|Год издания:|Язык:|Размер:)/);
+  return idx > 0 ? clean.slice(0, idx).trim() : clean;
+}
+/* ------------------------- Парсинг entry / feed ----------------------- */
+
 function parseEntry(xml) {
   const { id, bid } = parseBookId(xml);
-  if (!/^tag:book:/.test(id) || !bid) return null;
-  const title = inner(xml, "title");
-  const authorEl = inner(xml, "author");
-  const authorMatch = authorEl ? authorEl.match(/<name>([\s\S]*?)<\/name>/i) : null;
-  const yearRaw = inner(xml, "dc:issued");
-  const year = yearRaw ? parseInt(String(yearRaw).trim(), 10) : null;
+  if (!bid) return null;
+  const title = decodeEntities((inner(xml, "title") || "").trim());
+  const author = inner(xml, "author")
+    ? decodeEntities((inner(xml, "author").match(/<name>([\s\S]*?)<\/name>/) || [,""])[1].trim())
+    : "";
+  const genres = parseGenres(xml);
   const formats = parseFormats(xml);
-  const { description, sizeText } = parseContentText(xml);
+  if (!formats.length) return null;
+  const { language, year, sizeText } = parseContentMeta(xml);
+  const cover = parseCover(xml);
+  const description = parseDescription(xml);
+  const updated = (inner(xml, "updated") || "").trim();
+
   return {
-    id,
-    bid,
-    title: title ? decodeEntities(title.trim()) : "(без названия)",
-    author: authorMatch ? decodeEntities(authorMatch[1].trim()) : "",
-    genres: parseGenres(xml),
-    language: (inner(xml, "dc:language") || "").trim() || null,
-    year: Number.isFinite(year) ? year : null,
-    formats: formats.map((f) => f.fmt),
-    sizeText,
-    cover: parseCover(xml),
-    description: description.slice(0, 500),
-    updatedAt: (inner(xml, "updated") || "").trim(),
+    id: id || `book:${bid}`, bid, title, author, genres,
+    language: language || "", year, formats, sizeText: sizeText || "",
+    cover: cover || "", description, updatedAt: updated,
   };
 }
 
-/** Разобрать весь фид: вернуть { books, next } где next — href rel=next (полный путь) или null. */
 function parseFeed(xml) {
   const books = [];
   const entryRe = /<entry>([\s\S]*?)<\/entry>/gi;
   let m;
   while ((m = entryRe.exec(xml))) {
-    const b = parseEntry(m[1]);
-    if (b) books.push(b);
+    const book = parseEntry(m[0]);
+    if (book) books.push(book);
   }
-  // Порядок атрибутов не важен: ищем link с rel="next"
+  // rel="next" может быть до и после href
   let next = null;
-  const linkRe = /<link\s+([^>]*?)>/gi;
-  let lm;
-  while ((lm = linkRe.exec(xml))) {
-    const a = lm[1] || "";
-    if (/rel="next"/.test(a)) {
-      const href = a.match(/href="([^"]*)"/);
-      if (href) { next = href[1]; break; }
-    }
+  const nextRe = /<link\s+[^>]*href="([^"]+)"[^>]*rel="next"[^>]*\/?>/i;
+  const nextMatch = nextRe.exec(xml);
+  if (nextMatch) {
+    next = nextMatch[1];
+  } else {
+    const nextRe2 = /<link\s+[^>]*rel="next"[^>]*href="([^"]+)"[^>]*\/?>/i;
+    const nextMatch2 = nextRe2.exec(xml);
+    if (nextMatch2) next = nextMatch2[1];
   }
-  if (next && !/^https?:/.test(next)) next = BASE + next;
   return { books, next };
 }
-/* --------------------------- Локальный каталог ------------------------ */
 
-let cache = null; // { books: [], byId: Map<id,index>, lastSync: string }
+/* ------------------------- Локальный каталог (SQLite) ----------------- */
 
-function loadCatalog() {
-  if (cache) return cache;
-  try {
-    const raw = JSON.parse(fs.readFileSync(CATALOG_FILE, "utf8"));
-    const books = Array.isArray(raw.books) ? raw.books : [];
-    const byId = new Map();
-    for (let i = 0; i < books.length; i++) byId.set(books[i].id, i);
-    cache = { books, byId, lastSync: raw.lastSync || null };
-  } catch {
-    cache = { books: [], byId: new Map(), lastSync: null };
-  }
-  return cache;
-}
-
-function saveCatalog() {
-  const c = loadCatalog();
-  const tmp = CATALOG_FILE + ".tmp";
-  const payload = JSON.stringify({ lastSync: c.lastSync, books: c.books });
-  try {
-    fs.writeFileSync(tmp, payload, "utf8");
-    fs.renameSync(tmp, CATALOG_FILE);
-  } catch (e) {
-    try { fs.writeFileSync(CATALOG_FILE, payload, "utf8"); } catch { /* ignore */ }
-    logger.warn("flibusta.catalog_save_fallback", { error: e.message });
-  }
-}
-
-/** Добавить книги в каталог с дедупликацией по id. Возвращает число добавленных. */
-function addBooks(list) {
-  const c = loadCatalog();
+async function addBooks(list) {
+  const db = await booksDb.getDb();
   let added = 0;
-  for (const b of list) {
-    if (!b.id) continue;
-    if (c.byId.has(b.id)) continue;
-    c.byId.set(b.id, c.books.length);
-    c.books.push(b);
-    added++;
+  const insBook = db.prepare(
+    `INSERT OR IGNORE INTO books (id,bid,title,title_lower,author,author_lower,language,year,formats,sizeText,cover,description,updatedAt) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`
+  );
+  const insGenre = db.prepare(
+    `INSERT OR IGNORE INTO book_genres (book_id,genre) VALUES (?,?)`
+  );
+  db.run("BEGIN");
+  for (const raw of list) {
+    const book = {
+      id: "", bid: 0, title: "", author: "", genres: [], language: "",
+      year: null, formats: [], sizeText: "", cover: "", description: "",
+      updatedAt: new Date().toISOString(),
+      ...(raw || {}),
+    };
+    if (!book.id) continue;
+    insBook.bind([
+      book.id, book.bid, book.title, (book.title || "").toLowerCase(),
+      book.author, (book.author || "").toLowerCase(),
+      book.language || null, book.year || null,
+      JSON.stringify(book.formats || []),
+      book.sizeText || null, book.cover || null,
+      book.description || null, book.updatedAt || null,
+    ]);
+    insBook.step();
+    const changes = db.getRowsModified();
+    insBook.reset();
+    if (changes > 0) {
+      added++;
+      if (book.genres && Array.isArray(book.genres)) {
+        for (const g of book.genres) {
+          insGenre.bind([book.id, g]);
+          insGenre.step();
+          insGenre.reset();
+        }
+      }
+    }
   }
+  db.run("COMMIT");
+  insBook.free();
+  insGenre.free();
   return added;
 }
 
-function catalogStats() {
-  const c = loadCatalog();
-  const genres = Array.from(new Set(c.books.flatMap((b) => b.genres || []))).sort();
-  const langs = Array.from(new Set(c.books.map((b) => b.language).filter(Boolean))).sort();
-  return {
-    count: c.books.length,
-    lastSync: c.lastSync,
-    genres,
-    langs,
-  };
+async function catalogStats() {
+  await booksDb.getDb();
+  const count = await booksDb.queryValue("SELECT COUNT(*) FROM books", [], 0);
+  const genreRows = await booksDb.queryAll("SELECT DISTINCT genre FROM book_genres ORDER BY genre");
+  const genres = genreRows.map(r => r.genre).filter(Boolean);
+  const langRows = await booksDb.queryAll(
+    "SELECT DISTINCT language FROM books WHERE language IS NOT NULL AND language != '' ORDER BY language"
+  );
+  const langs = langRows.map(r => r.language).filter(Boolean);
+  return { count, genres, langs };
 }
 
-/* ------------------------- Серверный поиск ---------------------------- */
+async function searchCatalog({ q, genre, lang, yearFrom, yearTo, page = 1, pageSize = 40 } = {}) {
+  page = Math.max(1, Number(page) || 1);
+  pageSize = Math.min(200, Math.max(1, Number(pageSize) || 40));
 
-/**
- * Поиск/фильтры/пагинация по локальному каталогу.
- * Параметры: { q, genre, lang, yearFrom, yearTo, page, pageSize }
- */
-function searchCatalog(params = {}) {
-  const c = loadCatalog();
-  const {
-    q = "", genre = "", lang = "", yearFrom = "", yearTo = "",
-    page = 1, pageSize = 40,
-  } = params;
-  const needle = String(q).trim().toLowerCase();
-  const g = String(genre).trim().toLowerCase();
-  const l = String(lang).trim().toLowerCase();
-  const yF = String(yearFrom).trim() ? Number(yearFrom) : null;
-  const yT = String(yearTo).trim() ? Number(yearTo) : null;
+  const clauses = [];
+  const params = [];
 
-  let rows = c.books;
-  if (needle) {
-    rows = rows.filter((b) =>
-      b.title.toLowerCase().includes(needle) ||
-      (b.author || "").toLowerCase().includes(needle)
-    );
+  if (q && String(q).trim()) {
+    const like = `%${String(q).trim().toLowerCase()}%`;
+    clauses.push("(b.title_lower LIKE ? OR b.author_lower LIKE ?)");
+    params.push(like, like);
   }
-  if (g) rows = rows.filter((b) => (b.genres || []).some((x) => String(x).toLowerCase().includes(g)));
-  if (l) rows = rows.filter((b) => (b.language || "").toLowerCase() === l);
-  if (yF != null) rows = rows.filter((b) => b.year == null || b.year >= yF);
-  if (yT != null) rows = rows.filter((b) => b.year == null || b.year <= yT);
+  if (genre && String(genre).trim()) {
+    clauses.push("b.id IN (SELECT book_id FROM book_genres WHERE genre = ?)");
+    params.push(String(genre).trim());
+  }
+  if (lang && String(lang).trim()) {
+    clauses.push("b.language = ?");
+    params.push(String(lang).trim());
+  }
+  if (yearFrom) {
+    clauses.push("b.year >= ?");
+    params.push(Number(yearFrom));
+  }
+  if (yearTo) {
+    clauses.push("b.year <= ?");
+    params.push(Number(yearTo));
+  }
 
-  const total = rows.length;
-  const p = Math.max(1, Number(page) || 1);
-  const ps = Math.min(200, Math.max(1, Number(pageSize) || 40));
-  const start = (p - 1) * ps;
-  const items = rows.slice(start, start + ps).map((b) => ({ ...b }));
-  return { total, page: p, pageSize: ps, hasMore: start + ps < total, items };
+  const where = clauses.length ? "WHERE " + clauses.join(" AND ") : "";
+  const offset = (page - 1) * pageSize;
+  const total = await booksDb.queryValue(
+    `SELECT COUNT(*) FROM books b ${where}`, params, 0
+  );
+
+  const sql = `SELECT b.*, GROUP_CONCAT(bg.genre, '||') AS genres_concat FROM books b
+    LEFT JOIN book_genres bg ON b.id = bg.book_id
+    ${where} GROUP BY b.id ORDER BY b.title COLLATE NOCASE LIMIT ? OFFSET ?`;
+  const dataParams = [...params, pageSize, offset];
+  const rows = await booksDb.queryAll(sql, dataParams);
+
+  const items = rows.map(r => ({
+    id: r.id || "",
+    bid: r.bid || 0,
+    title: r.title || "",
+    author: r.author || "",
+    genres: r.genres_concat ? r.genres_concat.split("||").filter(Boolean) : [],
+    language: r.language || "",
+    year: r.year || null,
+    formats: r.formats ? JSON.parse(r.formats) : [],
+    sizeText: r.sizeText || "",
+    cover: r.cover || "",
+    description: r.description || "",
+    updatedAt: r.updatedAt || "",
+  }));
+
+  return { items, total, hasMore: offset + pageSize < total };
 }
+/* ------------------------- Живой OPDS-поиск --------------------------- */
 
-/* --------------------------- Живой OPDS-поиск ------------------------- */
-
-/**
- * Поиск по всей библиотеке через OPDS API (без хранения).
- * Возвращает страницу книг + инфо о доступности следующих страниц.
- */
-async function opdsSearchBooks(query, page = 0) {
-  const q = encodeURIComponent(String(query).trim());
-  const suffix = page > 0 ? `&page=${page}` : "";
-  const xml = await fetchFeed(`/opds/search?searchType=books&searchTerm=${q}${suffix}`);
+async function opdsSearchBooks(q, page = 0) {
+  const p = Number(page) || 0;
+  const xml = await fetchFeed(`/opds/search/${encodeURIComponent(String(q).trim())}?page=${p}`, { timeout: 20000 });
   return parseFeed(xml);
 }
 
-/* ---------------------------- Фоновый джоб ---------------------------- */
-/* Паттерн как winget.startIndexing: один запуск, прогресс, resume. */
+/* ------------------------- Фоновый сбор (sync) ------------------------ */
 
-let job = null;      // активный запущенный джоб (Promise) или null
-let jobState = null; // { running, mode, done, total, current, added, error }
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
-function syncStatus() {
-  return { ...(jobState || { running: false, mode: "", done: 0, total: 0, current: "", added: 0, error: "" }) };
-}
+let job = null;
+let jobState = { running: false, mode: "", done: 0, total: 0, current: "", added: 0, error: "" };
 
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+function syncStatus() { return { ...jobState }; }
 
-/** Обход новинок с пагинацией: наполняет каталог свежими поступлениями. */
-function crawlNewPages() {
-  if (job) return job;
-  jobState = { running: true, mode: "new", done: 0, total: 0, current: "новинки", added: 0, error: "" };
+async function crawlNewPages() {
+  jobState = { running: true, mode: "new", done: 0, total: 0, current: "получение списка", added: 0, error: "" };
+  booksDb.ref();
   job = (async () => {
     try {
-      let next = BASE + "/opds/new/0/new";
+      let next = "/opds/new/0/new";
       let guard = 0;
+      let persistCounter = 0;
       while (next && guard++ < 200) {
-        const xml = await fetchFeed(next.replace(BASE, ""), { timeout: 40000 });
+        const xml = await fetchFeed(next, { timeout: 40000 });
         const { books, next: n } = parseFeed(xml);
-        jobState.added += addBooks(books);
-        jobState.done++;
-        const m = n && n.match(/\/opds\/new\/(\d+)/);
-        jobState.total = m ? Number(m[1]) + 1 : jobState.done;
-        saveCatalog();                        // инкрементальный кэш
-        await sleep(350);                     // вежливый интервал
+        const added = await addBooks(books);
+        jobState.added += added;
+        jobState.done = guard;
+        persistCounter += added;
+        if (persistCounter >= 50) { booksDb.persist(); persistCounter = 0; }
+        await sleep(250);
         next = n;
       }
-      cache.lastSync = new Date().toISOString();
-      saveCatalog();
+      booksDb.persist();
       jobState.running = false;
-      logger.info("flibusta.sync_new_done", { added: jobState.added, count: loadCatalog().books.length });
+      logger.info("flibusta.sync_new_done", { added: jobState.added });
     } catch (e) {
       jobState.running = false;
       jobState.error = e.message;
       logger.error("flibusta.sync_new_error", { error: e.message });
     } finally {
       job = null;
+      booksDb.unref();
     }
   })();
   return job;
 }
 
-/** Обход по жанрам: для каждого жанра проходим страницы его фида. */
-function crawlByGenres() {
-  if (job) return job;
+/**
+ * Извлечь ссылки на подкатегории из фида (ссылки вида /opds/genres/... с type="application/atom+xml").
+ */
+function extractSubCategoryLinks(xml) {
+  const links = new Set();
+  // <link> может иметь атрибуты в любом порядке, кавычки " или '
+  const linkRe = /<link\s+([^>]*?)>/gi;
+  let m;
+  while ((m = linkRe.exec(xml))) {
+    const attrs = m[1];
+    const hrefM = attrs.match(/href\s*=\s*["'](\/opds\/genres\/[^"']*)["']/i);
+    const typeM = attrs.match(/type\s*=\s*["'](application\/atom\+xml[^"']*)["']/i);
+    if (hrefM && typeM) {
+      let href = hrefM[1];
+      if (!href.startsWith("/")) href = "/" + href;
+      links.add(href);
+    }
+  }
+  return Array.from(links);
+}
+
+/**
+ * Рекурсивный обход жанрового дерева Flibusta.
+ * Один уровень: парсит книги из фида, потом ищет подкатегории и заходит в них рекурсивно.
+ */
+async function crawlGenreRecursive(pathname, depth = 0) {
+  if (depth > 5) return; // защита от бесконечной вложенности
+  const feedXml = await fetchFeed(pathname, { timeout: 40000 });
+  // Парсим книги из этого фида
+  const { books, next } = parseFeed(feedXml);
+  if (books.length > 0) {
+    const added = await addBooks(books);
+    jobState.added += added;
+    // Пагинация по страницам книг внутри этой категории
+    if (next) {
+      let nextUrl = BASE + next;
+      let guard = 0;
+      while (nextUrl && guard++ < 200) {
+        await sleep(250);
+        const pageXml = await fetchFeed(nextUrl.replace(BASE, ""), { timeout: 40000 });
+        const pageResult = parseFeed(pageXml);
+        const pageAdded = await addBooks(pageResult.books);
+        jobState.added += pageAdded;
+        nextUrl = pageResult.next ? BASE + pageResult.next : null;
+      }
+    }
+  }
+  // Рекурсивно обходим подкатегории (если книг не было — значит это категория-контейнер)
+  const subCategories = extractSubCategoryLinks(feedXml);
+  for (const sub of subCategories) {
+    if (jobState.error) break;
+    await sleep(250);
+    await crawlGenreRecursive(sub.replace(BASE, ""), depth + 1);
+  }
+}
+
+async function crawlByGenres() {
   jobState = { running: true, mode: "genres", done: 0, total: 0, current: "получение списка жанров", added: 0, error: "" };
+  booksDb.ref();
   job = (async () => {
     try {
       const rootXml = await fetchFeed("/opds/genres", { timeout: 40000 });
+      logger.info("flibusta.genres_root_len", { len: rootXml.length });
       const genreLinks = [];
       const re = /<entry>([\s\S]*?)<\/entry>/gi;
       let m;
       while ((m = re.exec(rootXml))) {
-        const linkM = m[1].match(/<link\s+[^>]*href="(\/opds\/genres\/[^"]*)"/i);
-        if (linkM) genreLinks.push(linkM[1]);
+        const linkM =
+          m[1].match(/<link\s+[^>]*href="(\/opds\/genres\/[^"]*)"/i) ||
+          m[1].match(/<link\s+[^>]*href='(\/opds\/genres\/[^']*)'/i);
+        if (linkM) {
+          let href = linkM[1];
+          if (!href.startsWith("/")) href = "/" + href;
+          genreLinks.push(href);
+        }
       }
+      logger.info("flibusta.genres_found", { count: genreLinks.length, sample: genreLinks.slice(0, 5) });
       jobState.total = genreLinks.length;
       for (const link of genreLinks) {
+        if (jobState.error) break;
         jobState.current = decodeURIComponent(link.split("/").pop() || "");
-        let next = BASE + link;
-        let guard = 0;
-        while (next && guard++ < 400) {
-          const feedXml = await fetchFeed(next.replace(BASE, ""), { timeout: 40000 });
-          const { books, next: n } = parseFeed(feedXml);
-          jobState.added += addBooks(books);
-          await sleep(250);
-          next = n;
-        }
         jobState.done++;
-        saveCatalog();
+        try {
+          await crawlGenreRecursive(link.replace(BASE, ""), 0);
+        } catch (e) {
+          const genreError = `жанр «${jobState.current}»: ${e.message}`;
+          logger.warn("flibusta.genre_error", { genre: jobState.current, error: e.message });
+          jobState.error = jobState.error
+            ? jobState.error + "; " + genreError
+            : genreError;
+        }
+        booksDb.persist();
       }
-      cache.lastSync = new Date().toISOString();
-      saveCatalog();
       jobState.running = false;
-      logger.info("flibusta.sync_genres_done", { added: jobState.added, count: loadCatalog().books.length });
+      const cnt = await booksDb.queryValue("SELECT COUNT(*) FROM books", [], 0);
+      logger.info("flibusta.sync_genres_done", { added: jobState.added, count: cnt, errors: jobState.error || "none" });
     } catch (e) {
       jobState.running = false;
       jobState.error = e.message;
       logger.error("flibusta.sync_genres_error", { error: e.message });
     } finally {
       job = null;
+      booksDb.unref();
     }
   })();
   return job;
@@ -393,19 +449,15 @@ function startSync(mode) {
 
 /* ------------------------- Скачивание книги --------------------------- */
 
-/**
- * Скачивает файл книги с OPDS в storage/downloads.
- * bid — числовой id книги, fmt — формат (fb2|epub|mobi|pdf|...).
- */
 async function downloadBook(bid, fmt, destDir = DIRS.downloads) {
+  const fs = require("fs");
   const fmtNorm = String(fmt || "").trim().toLowerCase();
   if (!/^(fb2|epub|mobi|pdf|html|txt|rtf)$/.test(fmtNorm)) {
-    throw new Error(`Не поддерживаемый формат: ${fmt || ""}`);
+    throw new Error(`Неподдерживаемый формат: ${fmt || ""}`);
   }
   const url = `${BASE}/b/${Number(bid)}/${fmtNorm}`;
   const res = await fetch(url, {
-    redirect: "follow",
-    signal: AbortSignal.timeout(120000),
+    redirect: "follow", signal: AbortSignal.timeout(120000),
     headers: {
       "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/126.0 Safari/537.36",
       Accept: "*/*",
@@ -434,22 +486,9 @@ async function downloadBook(bid, fmt, destDir = DIRS.downloads) {
   return { file, name, size: received, fmt: fmtNorm, bid: Number(bid) };
 }
 
-/** Очистить каталог и кэш (полезно в тестах/при смене storage). */
-function resetCatalog() {
-  cache = { books: [], byId: new Map(), lastSync: null };
-}
+function resetCatalog() { booksDb.reset(); }
 
 module.exports = {
-  BASE,
-  parseFeed,
-  parseEntry,
-  addBooks,
-  loadCatalog,
-  catalogStats,
-  searchCatalog,
-  opdsSearchBooks,
-  startSync,
-  syncStatus,
-  downloadBook,
-  resetCatalog,
+  BASE, parseFeed, parseEntry, addBooks, catalogStats, searchCatalog,
+  opdsSearchBooks, startSync, syncStatus, downloadBook, resetCatalog,
 };

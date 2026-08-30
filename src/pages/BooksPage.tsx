@@ -11,6 +11,7 @@ export default function BooksPage() {
   const [items, setItems] = useState<FlibustaBook[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(40);
   const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(false);
   const [downloading, setDownloading] = useState<number | null>(null);
@@ -18,7 +19,6 @@ export default function BooksPage() {
   const [syncStatus, setSyncStatus] = useState<{ running: boolean; added: number; error: string } | null>(null);
   const busyRef = useRef(false);
 
-  // Фильтры
   const [query, setQuery] = useState("");
   const [genre, setGenre] = useState("");
   const [lang, setLang] = useState("");
@@ -27,8 +27,7 @@ export default function BooksPage() {
   const [liveMode, setLiveMode] = useState(false);
   const [liveQuery, setLiveQuery] = useState("");
 
-  /** Поиск по локальному каталогу (пагинированный). */
-  const doSearch = useCallback(async (p: number, reset?: boolean) => {
+  const doSearch = useCallback(async (p: number) => {
     if (busyRef.current) return;
     busyRef.current = true;
     setLoading(true);
@@ -40,20 +39,18 @@ export default function BooksPage() {
       if (yearFrom) params.set("yearFrom", yearFrom);
       if (yearTo) params.set("yearTo", yearTo);
       params.set("page", String(p));
-      params.set("pageSize", "40");
+      params.set("pageSize", String(pageSize));
       const res = await api.getBooks(params.toString());
-      setItems(reset ? res.items : (s) => [...s, ...res.items]);
+      setItems(res.items);
       setTotal(res.total);
       setPage(p);
       setHasMore(res.hasMore);
       setStats(res.stats);
-    } catch { /* silently */ }
+    } catch { /* */ }
     setLoading(false);
     busyRef.current = false;
-  }, [query, genre, lang, yearFrom, yearTo]);
-
-  /** Живой OPDS-поиск (без хранения). */
-  const doLiveSearch = useCallback(async (q: string) => {
+  }, [query, genre, lang, yearFrom, yearTo, pageSize]);
+const doLiveSearch = useCallback(async (q: string) => {
     if (!q.trim()) { setItems([]); setTotal(0); return; }
     setLoading(true);
     try {
@@ -65,17 +62,14 @@ export default function BooksPage() {
     setLoading(false);
   }, []);
 
-  // Первичная загрузка
-  useEffect(() => { doSearch(1, true); }, [doSearch]);
+  useEffect(() => { doSearch(1); }, [doSearch]);
 
-  // Живой поиск при изменении liveQuery
   useEffect(() => {
     if (!liveMode) return;
     const id = setTimeout(() => doLiveSearch(liveQuery), 250);
     return () => clearTimeout(id);
   }, [liveQuery, liveMode, doLiveSearch]);
 
-  // Скачивание книги
   const handleDownload = async (bid: number, fmt: string) => {
     setDownloading(bid);
     try {
@@ -87,7 +81,6 @@ export default function BooksPage() {
     setDownloading(null);
   };
 
-  // Синхронизация
   const handleSync = async (mode: string) => {
     setSyncStatus({ running: true, added: 0, error: "" });
     try {
@@ -96,42 +89,79 @@ export default function BooksPage() {
       const poll = setInterval(async () => {
         const s = await api.getBooksSyncStatus();
         setSyncStatus({ running: s.running, added: s.added, error: s.error });
-        if (!s.running) { clearInterval(poll); doSearch(1, true); }
-      }, 1000);
-    } catch { setSyncStatus({ running: false, added: 0, error: "error" }); }
+        if (!s.running) { clearInterval(poll); doSearch(1); }
+      }, 1200);
+    } catch (e: any) { setSyncStatus({ running: false, added: 0, error: e.message }); }
   };
 
-  // Очистить фильтры
-  const clearFilters = () => {
-    setQuery(""); setGenre(""); setLang(""); setYearFrom(""); setYearTo("");
-    setLiveMode(false); setLiveQuery("");
-    doSearch(1, true);
+  const handleImportDumps = async () => {
+    setSyncStatus({ running: true, added: 0, error: "" });
+    try {
+      const res = await api.startBooksImport();
+      if (!res.ok) return;
+      const poll = setInterval(async () => {
+        const s = await api.getBooksImportStatus();
+        setSyncStatus({ running: s.running, added: s.added, error: s.error });
+        if (!s.running) { clearInterval(poll); doSearch(1); }
+      }, 1200);
+    } catch (e: any) { setSyncStatus({ running: false, added: 0, error: e.message }); }
   };
 
-  const statLine = stats
-    ? t("books.results", { n: total || 0, g: stats.genres?.length || 0, l: stats.langs?.length || 0, total: stats.count })
-    : "";
-
-  usePageToolbar(
-    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-      <Btn variant="secondary" icon={Filter} onClick={clearFilters} disabled={!genre && !lang && !yearFrom} style={{ fontSize: 12 }}>
-        {t("books.clearFilters")}
-      </Btn>
-      <Btn variant="secondary" icon={RefreshCw} onClick={() => handleSync("new")} disabled={syncStatus?.running} style={{ fontSize: 12 }}>
-        {syncStatus?.running ? "..." : t("books.syncNew")}
-      </Btn>
-      <Btn variant="secondary" icon={RefreshCw} onClick={() => handleSync("genres")} disabled={syncStatus?.running} style={{ fontSize: 12 }}>
-        {syncStatus?.running ? "..." : t("books.syncAll")}
-      </Btn>
+  const handleResetCatalog = async () => {
+    if (!window.confirm("Очистить весь каталог книг? Это удалит базу данных и все синхронизированные книги.")) return;
+    setSyncStatus({ running: false, added: 0, error: "" });
+    try {
+      await api.resetBooksCatalog();
+      setItems([]);
+      setTotal(0);
+      setStats(null);
+    } catch (e: any) { setSyncStatus({ running: false, added: 0, error: e.message }); }
+  };
+usePageToolbar(
+    <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+      {!syncStatus?.running && (
+        <>
+          <Btn icon={RefreshCw} variant="secondary" onClick={() => handleSync("new")} style={{ fontSize: 11 }}>
+            {t("books.syncNew")}
+          </Btn>
+          <Btn icon={RefreshCw} variant="secondary" onClick={() => handleSync("genres")} style={{ fontSize: 11 }}>
+            {t("books.syncAll")}
+          </Btn>
+          <Btn icon={Download} variant="secondary" onClick={() => handleImportDumps()} style={{ fontSize: 11 }}>
+            Импорт из дампов
+          </Btn>
+          <Btn icon={RefreshCw} variant="danger" onClick={() => handleResetCatalog()} style={{ fontSize: 11 }}>
+            Очистить БД
+          </Btn>
+        </>
+      )}
+      {(query || genre || lang || yearFrom || yearTo) && !liveMode && (
+        <Btn icon={Filter} variant="ghost" onClick={() => { setQuery(""); setGenre(""); setLang(""); setYearFrom(""); setYearTo(""); doSearch(1); }} style={{ fontSize: 11 }}>
+          {t("books.clearFilters")}
+        </Btn>
+      )}
     </div>,
-    [syncStatus, genre, lang, yearFrom, t]
+    [syncStatus, query, genre, lang, yearFrom, yearTo, liveMode, t, handleSync, handleImportDumps, handleResetCatalog, doSearch]
   );
+const statLine = stats ? `${t("common.all")}: ${stats.count}` : "";
+
+  // Пагинация
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const safePage = Math.min(page, totalPages);
+  const goPage = (p: number) => {
+    const np = Math.min(Math.max(1, p), totalPages);
+    setPage(np);
+    doSearch(np);
+  };
+  const from = Math.max(1, safePage - 2);
+  const to = Math.min(totalPages, from + 4);
+  const pageList: number[] = [];
+  for (let i = from; i <= to; i++) pageList.push(i);
 
   return (
-    <div className="page">
+    <div className="page-fill">
       <SectionHead eyebrow={statLine} title={t("books.title")} />
 
-      {/* Поиск */}
       <Glass className="url-bar" style={{ marginBottom: 12 }}>
         <Search size={16} />
         <input
@@ -141,38 +171,39 @@ export default function BooksPage() {
             if (liveMode) setLiveQuery(e.target.value);
             else { setQuery(e.target.value); setPage(1); }
           }}
-          onKeyDown={(e) => { if (e.key === "Enter" && !liveMode) doSearch(1, true); }}
+          onKeyDown={(e) => { if (e.key === "Enter" && !liveMode) doSearch(1); }}
           style={{ flex: 1 }}
         />
       </Glass>
 
-      {/* Фильтры */}
       {!liveMode && stats && (
         <div className="book-filters" style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12, padding: "0 4px" }}>
           <Select
             value={lang}
-            onChange={(e) => { setLang(e.target.value); doSearch(1, true); }}
+            onChange={(e) => { setLang(e.target.value); doSearch(1); }}
             options={[{ value: "", label: `Язык: все` }, ...stats.langs.map((l: string) => ({ value: l, label: l }))]}
             style={{ minWidth: 90, fontSize: 12 }}
           />
           <input type="number" placeholder="Год с" value={yearFrom}
-            onChange={(e) => setYearFrom(e.target.value)} onBlur={() => doSearch(1, true)}
+            onChange={(e) => setYearFrom(e.target.value)} onBlur={() => doSearch(1)}
             style={{ width: 64, padding: "4px 6px" }} />
           <input type="number" placeholder="Год по" value={yearTo}
-            onChange={(e) => setYearTo(e.target.value)} onBlur={() => doSearch(1, true)}
+            onChange={(e) => setYearTo(e.target.value)} onBlur={() => doSearch(1)}
             style={{ width: 64, padding: "4px 6px" }} />
         </div>
       )}
-
-      {/* Синхронизация */}
-      {syncStatus?.running && (
+{syncStatus?.running && (
         <Glass style={{ padding: 8, marginBottom: 12, fontSize: 12, display: "flex", gap: 8, alignItems: "center" }}>
           <Loader2 size={14} className="spin" /> {t("books.syncing", { n: syncStatus.added })}
         </Glass>
       )}
+      {!syncStatus?.running && syncStatus?.error && !syncStatus?.added && (
+        <Glass style={{ padding: 8, marginBottom: 12, fontSize: 12, display: "flex", gap: 8, alignItems: "center", borderColor: "var(--coral)" }}>
+          <span style={{ color: "var(--coral)" }}>⚠ {syncStatus.error}</span>
+        </Glass>
+      )}
 
-      {/* Книги */}
-      <div className="book-list">
+      <div className="book-list" style={{ flex: 1, maxHeight: "none" }}>
         {items.map((b) => (
           <Glass className="book-row" key={b.id}>
             <div className="book-cover">
@@ -211,11 +242,18 @@ export default function BooksPage() {
       </div>
 
       {/* Пагинация */}
-      {hasMore && !liveMode && (
-        <div style={{ textAlign: "center", padding: 16 }}>
-          <Btn variant="primary" onClick={() => doSearch(page + 1)} disabled={loading}>
-            {loading ? "..." : `${t("common.loadMore")} (${total - page * 40})`}
-          </Btn>
+      {totalPages > 1 && !liveMode && (
+        <div className="pager">
+          <button className="pager-btn" disabled={safePage === 1} onClick={() => goPage(safePage - 1)}>{t("books.prev")}</button>
+          {pageList.map((p) => (
+            <button key={p} className={`pager-page ${p === safePage ? "is-active" : ""}`} onClick={() => goPage(p)}>{p}</button>
+          ))}
+          <button className="pager-btn" disabled={safePage === totalPages} onClick={() => goPage(safePage + 1)}>{t("books.next")}</button>
+          <div className="page-size">
+            <Select value={String(pageSize)} onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); doSearch(1); }} options={["20", "40", "80"]} />
+            <span className="field-label">{t("books.perPage")}</span>
+          </div>
+          <span className="pager-info">{t("books.page", { page: safePage, total: totalPages })}</span>
         </div>
       )}
     </div>

@@ -3,6 +3,7 @@
 const express = require("express");
 const path = require("path");
 const flibusta = require("../flibusta");
+const dumpImport = require("../flibusta-dump-import");
 const { DIRS } = require("../config");
 const logger = require("../logger");
 
@@ -12,18 +13,21 @@ const router = express.Router();
  * GET /api/books — поиск/фильтры/пагинация по локальному каталогу.
  * Параметры: q, genre, lang, yearFrom, yearTo, page, pageSize.
  */
-router.get("/", (req, res) => {
+router.get("/", async (req, res) => {
   try {
-    const stats = flibusta.catalogStats();
-    res.json({ ...flibusta.searchCatalog(req.query), stats });
+    const [stats, searchResult] = await Promise.all([
+      flibusta.catalogStats(),
+      flibusta.searchCatalog(req.query),
+    ]);
+    res.json({ ...searchResult, stats });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
 });
 
 /** GET /api/books/facets — доступные для фильтров жанры/языки/счётчик. */
-router.get("/facets", (req, res) => {
-  try { res.json(flibusta.catalogStats()); }
+router.get("/facets", async (req, res) => {
+  try { res.json(await flibusta.catalogStats()); }
   catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -90,6 +94,29 @@ router.get("/file", (req, res) => {
     res.type(types[ext] || "application/octet-stream");
     res.sendFile(file);
   } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/** POST /api/books/reset-catalog — очистить локальный каталог и удалить БД. */
+router.post("/reset-catalog", (req, res) => {
+  try {
+    flibusta.resetCatalog();
+    logger.action("flibusta.catalog_reset");
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/** POST /api/books/import-dumps — запустить импорт из MySQL-дампов. */
+router.post("/import-dumps", (req, res) => {
+  try {
+    logger.action("flibusta.dump_import_start");
+    res.json(dumpImport.runImport());
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/** GET /api/books/import-dumps — статус импорта. */
+router.get("/import-dumps", (req, res) => {
+  try { res.json(dumpImport.status()); }
+  catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 module.exports = router;

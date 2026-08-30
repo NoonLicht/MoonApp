@@ -109,7 +109,8 @@
 .app-actions{ display:flex; gap:6px; margin-top:auto; }
 
 /* --- books --- */
-.book-list{ display:flex; flex-direction:column; gap:12px; overflow-y:scroll; overflow-x:hidden; max-height:calc(100vh - 296px); padding-right:8px; }
+.book-list{ display:flex; flex-direction:column; gap:12px; overflow-y:auto; overflow-x:hidden; max-height:calc(100vh - 296px); padding-right:8px; }
+.page-fill .book-list{ flex:1; max-height:none; margin-bottom:0; }
 .book-list::-webkit-scrollbar{ width:10px; height:0; display:block; }
 .book-list::-webkit-scrollbar-track{ background:var(--track); border-radius:999px; }
 

@@ -247,7 +247,11 @@
     "syncNew": "Sync new",
     "syncAll": "Sync all genres",
     "syncing": "Syncing... {n} books",
-    "downloaded": "Downloaded: {file}"
+    "downloaded": "Downloaded: {file}",
+    "prev": "‹ Prev",
+    "next": "Next ›",
+    "perPage": "per page",
+    "page": "Page {page} / {total}"
   },
   "monitor": {
     "title": "Monitoring",

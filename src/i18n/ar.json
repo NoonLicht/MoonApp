@@ -247,7 +247,11 @@
     "syncNew": "مزامنة الجديد",
     "syncAll": "مزامنة الأصناف",
     "syncing": "جاري المزامنة... {n} كتاب",
-    "downloaded": "تم التحميل: {file}"
+    "downloaded": "تم التحميل: {file}",
+    "prev": "‹ السابق",
+    "next": "التالي ›",
+    "perPage": "بالصفحة",
+    "page": "صفحة {page} / {total}"
   },
   "monitor": {
     "title": "المراقبة",

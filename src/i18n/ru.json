@@ -247,7 +247,11 @@
     "syncNew": "Новинки",
     "syncAll": "Все жанры",
     "syncing": "Синхронизация... {n} книг",
-    "downloaded": "Сохранено: {file}"
+    "downloaded": "Сохранено: {file}",
+    "prev": "‹ Назад",
+    "next": "Вперёд ›",
+    "perPage": "на странице",
+    "page": "Стр. {page} / {total}"
   },
   "monitor": {
     "title": "Мониторинг",

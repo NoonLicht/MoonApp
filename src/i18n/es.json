@@ -247,7 +247,11 @@
     "syncNew": "Sinc. novedades",
     "syncAll": "Sinc. géneros",
     "syncing": "Sincronizando... {n} libros",
-    "downloaded": "Descargado: {file}"
+    "downloaded": "Descargado: {file}",
+    "prev": "‹ Anterior",
+    "next": "Siguiente ›",
+    "perPage": "por página",
+    "page": "Página {page} / {total}"
   },
   "monitor": {
     "title": "Monitor",

@@ -247,7 +247,11 @@
     "syncNew": "同步新书",
     "syncAll": "同步所有分类",
     "syncing": "同步中... {n} 本书",
-    "downloaded": "已下载: {file}"
+    "downloaded": "已下载: {file}",
+    "prev": "‹ 上一页",
+    "next": "下一页 ›",
+    "perPage": "每页",
+    "page": "第 {page} / {total} 页"
   },
   "monitor": {
     "title": "监控",

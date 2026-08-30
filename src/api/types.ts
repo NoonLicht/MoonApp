@@ -45,6 +45,16 @@ export interface BooksSyncStatus {
   error: string;
 }
 
+/** Статус импорта из MySQL-дампов. */
+export interface BooksImportStatus {
+  running: boolean;
+  done: number;
+  total: number;
+  current: string;
+  added: number;
+  error: string;
+}
+
 /** Результат живущего OPDS-поиска. */
 export interface BooksLiveSearchResult {
   books: FlibustaBook[];

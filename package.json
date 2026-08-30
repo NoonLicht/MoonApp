@@ -25,7 +25,8 @@
     "express": "^4.19.2",
     "multer": "^2.2.0",
     "smart-buffer": "^4.2.0",
-    "socks-proxy-agent": "^10.1.0"
+    "socks-proxy-agent": "^10.1.0",
+    "sql.js": "^1.14.2"
   },
   "devDependencies": {
     "@types/express": "^4.17.25",
