@@ -119,4 +119,10 @@ router.get("/import-dumps", (req, res) => {
   catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+/** GET /api/books/import-logs — буфер логов импорта (до 500 строк). */
+router.get("/import-logs", (req, res) => {
+  try { res.json(dumpImport.getLogs(Number(req.query.n) || 200)); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 module.exports = router;

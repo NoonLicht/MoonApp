@@ -10,10 +10,10 @@ import type {
   VideoInfo, VideoDownloadResult, VideoJobStatus, YtdlpInstallStatus,
   LhmStatus, MonitorSnapshot, ProviderInfo, Task, ProxyStatus, VlessProfile,
   FlibustaBook, BooksCatalogStats, BooksSearchResult, BooksSyncStatus, BooksImportStatus,
-  BooksLiveSearchResult, BookDownloadResult,
+  BooksLiveSearchResult, BookDownloadResult, ImportLogEntry,
 } from "./types";
 
-export type { AppItem, ArchiveItem, BackupInfo, BooksItem, ChatMessage, Conversation, ConvertTools, ConvertResult, ConvertInstallStatus, VideoInfo, VideoDownloadResult, VideoJobStatus, YtdlpInstallStatus, LhmStatus, MonitorSnapshot, ProviderInfo, Task, ProxyStatus, VlessProfile, FlibustaBook, BooksCatalogStats, BooksSearchResult, BooksSyncStatus, BooksImportStatus, BooksLiveSearchResult, BookDownloadResult };
+export type { AppItem, ArchiveItem, BackupInfo, BooksItem, ChatMessage, Conversation, ConvertTools, ConvertResult, ConvertInstallStatus, VideoInfo, VideoDownloadResult, VideoJobStatus, YtdlpInstallStatus, LhmStatus, MonitorSnapshot, ProviderInfo, Task, ProxyStatus, VlessProfile, FlibustaBook, BooksCatalogStats, BooksSearchResult, BooksSyncStatus, BooksImportStatus, BooksLiveSearchResult, BookDownloadResult, ImportLogEntry };
 
 const BASE = ""; // одно origin (Vite-proxy или раздача Express)
 
@@ -97,6 +97,7 @@ export const api = {
   startBooksSync: (mode: string) => req<{ ok: boolean; reason?: string; status: BooksSyncStatus }>("POST", "/books/sync", { mode }),
   startBooksImport: () => req<{ ok: boolean }>("POST", "/books/import-dumps"),
   getBooksImportStatus: () => req<BooksImportStatus>("GET", "/books/import-dumps"),
+  getBooksImportLogs: (n?: number) => req<ImportLogEntry[]>("GET", "/books/import-logs" + (n ? `?n=${n}` : "")),
   resetBooksCatalog: () => req<{ ok: boolean }>("POST", "/books/reset-catalog"),
   /** Живой OPDS-поиск (мгновенно, без локального хранения). */
   booksLiveSearch: (q: string, page?: number) =>

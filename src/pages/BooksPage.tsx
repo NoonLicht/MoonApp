@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { Search, BookOpen, Download, RefreshCw, Loader2, Filter } from "lucide-react";
+import { Search, BookOpen, Download, RefreshCw, Loader2, Filter, ScrollText } from "lucide-react";
 import { Glass, Btn, Badge, Select, SectionHead, EmptyHint } from "../components/ui";
 import { usePageToolbar } from "../components/Toolbar";
 import { useI18n } from "../i18n";
@@ -117,6 +117,25 @@ const doLiveSearch = useCallback(async (q: string) => {
       setStats(null);
     } catch (e: any) { setSyncStatus({ running: false, added: 0, error: e.message }); }
   };
+
+  // — Временная кнопка логов импорта —
+  const [showImportLogs, setShowImportLogs] = useState(false);
+  const [importLogs, setImportLogs] = useState<{ ts: string; msg: string }[]>([]);
+  const logPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const handleOpenImportLogs = async () => {
+    setShowImportLogs(true);
+    try { setImportLogs(await api.getBooksImportLogs(500)); } catch { /* ignore */ }
+    logPollRef.current = setInterval(async () => {
+      try { setImportLogs(await api.getBooksImportLogs(500)); } catch { /* ignore */ }
+    }, 2000);
+  };
+  const handleCloseImportLogs = () => {
+    setShowImportLogs(false);
+    if (logPollRef.current) { clearInterval(logPollRef.current); logPollRef.current = null; }
+  };
+  useEffect(() => {
+    return () => { if (logPollRef.current) clearInterval(logPollRef.current); };
+  }, []);
 usePageToolbar(
     <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
       {!syncStatus?.running && (
@@ -130,6 +149,9 @@ usePageToolbar(
           <Btn icon={Download} variant="secondary" onClick={() => handleImportDumps()} style={{ fontSize: 11 }}>
             Импорт из дампов
           </Btn>
+          <Btn icon={ScrollText} variant="ghost" onClick={handleOpenImportLogs} style={{ fontSize: 11 }}>
+            Логи импорта
+          </Btn>
           <Btn icon={RefreshCw} variant="danger" onClick={() => handleResetCatalog()} style={{ fontSize: 11 }}>
             Очистить БД
           </Btn>
@@ -141,7 +163,7 @@ usePageToolbar(
         </Btn>
       )}
     </div>,
-    [syncStatus, query, genre, lang, yearFrom, yearTo, liveMode, t, handleSync, handleImportDumps, handleResetCatalog, doSearch]
+    [syncStatus, query, genre, lang, yearFrom, yearTo, liveMode, t, handleSync, handleImportDumps, handleOpenImportLogs, handleResetCatalog, doSearch]
   );
 const statLine = stats ? `${t("common.all")}: ${stats.count}` : "";
 
@@ -254,6 +276,33 @@ const statLine = stats ? `${t("common.all")}: ${stats.count}` : "";
             <span className="field-label">{t("books.perPage")}</span>
           </div>
           <span className="pager-info">{t("books.page", { page: safePage, total: totalPages })}</span>
+        </div>
+      )}
+
+      {showImportLogs && (
+        <div style={{
+          position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999,
+          background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center",
+        }} onClick={handleCloseImportLogs}>
+          <div style={{
+            width: "90vw", height: "80vh", background: "#111", border: "1px solid #333",
+            borderRadius: 8, display: "flex", flexDirection: "column", overflow: "hidden",
+          }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 12px", borderBottom: "1px solid #333" }}>
+              <strong style={{ color: "#aaa", fontSize: 12 }}>Логи импорта (обновление каждые 2 с)</strong>
+              <span onClick={handleCloseImportLogs} style={{ cursor: "pointer", color: "#888", fontSize: 14 }}>✕</span>
+            </div>
+            <div style={{ flex: 1, overflow: "auto", padding: "8px 12px", font: "11px/1.5 monospace", color: "#0f0" }}>
+              {importLogs.length === 0
+                ? <span style={{ color: "#555" }}>Логов пока нет — запустите импорт</span>
+                : importLogs.map((l, i) => (
+                    <div key={i} style={{ whiteSpace: "pre-wrap", wordBreak: "break-all" }}>
+                      <span style={{ color: "#888" }}>{l.ts}</span> <span>{l.msg}</span>
+                    </div>
+                  ))
+              }
+            </div>
+          </div>
         </div>
       )}
     </div>

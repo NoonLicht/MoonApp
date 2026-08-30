@@ -10,8 +10,10 @@
  *   sequences, book_sequences       — циклы/серии (libseqname, libseq)
  *   book_ratings                    — рейтинги книг (librate)
  *   book_translators                — переводчики (libtranslator)
- *   book_annotations                — аннотации книг (b.annotations)
- *   book_recs                       — похожие книги по со-рекомендациям (librecs)
+ *   book_recs                       — похожие книги (librecs; отключено из-за OOM, включить FLIB_IMPORT_RECS=1)
+ *   book_annotations                — аннотации книг (b.annotations) → только description в books
+ *
+ * Режим отладки: importLogs буфер (кольцевой, 500 строк).
  */
 
 const zlib = require("zlib");
@@ -41,12 +43,22 @@ const DUMP_FILES = {
 };
 
 const REQUIRED = ["book", "avtorname", "avtor", "genre", "genrelist"];
-const OPTIONAL = ["seqname", "seq", "rate", "translator", "recs", "apics", "bpics", "bannots"];
+const OPTIONAL = ["seqname", "seq", "rate", "translator", "apics", "bpics", "bannots", "filename"];
 
 const CACHE_DIR = path.join(DIRS.storage, "dump_cache");
 let importState = { running: false, done: 0, total: 0, current: "", added: 0, error: "" };
 function status() { return { ...importState }; }
 function step() { importState.done = Math.min(importState.total, importState.done + 1); }
+// Кольцевой буфер логов импорта (для кнопки "Логи импорта" на фронте)
+const MAX_LOG_LINES = 500;
+const logBuffer = [];
+function pushLog(msg) {
+  logBuffer.push({ ts: new Date().toISOString().slice(11,19), msg: String(msg).slice(0,500) });
+  if (logBuffer.length > MAX_LOG_LINES) logBuffer.splice(0, logBuffer.length - MAX_LOG_LINES);
+}
+function getLogs(n = 200) {
+  return logBuffer.slice(-n);
+}
 
 /* ------------------------------------------------------------------ */
 /*  Парсинг MySQL INSERT                                             */
@@ -222,6 +234,7 @@ function stripHtml(html) {
 async function runImport() {
   if (importState.running) return { ok: false, reason: "already_running" };
   importState = { running: true, done: 0, total: 0, current: "", added: 0, error: "" };
+  pushLog("=== Импорт запущен ===");
   booksDb.ref();
   if (!fs.existsSync(CACHE_DIR)) fs.mkdirSync(CACHE_DIR, { recursive: true });
 
@@ -244,9 +257,17 @@ async function runImport() {
     const startMs = Date.now();
     const db = await booksDb.getDb();
     const tag = (bid) => `tag:book:${bid}`;
+    // Обёртка для опциональных файлов: сбой одного не роняет весь импорт.
+    const safe = async (label, fn) => {
+      try { await fn(); }
+      catch (e) {
+        const msg = e && e.message ? e.message : String(e);
+        logger.error("flibusta.dump_import_skip", { step: label, error: msg });
+      }
+    };
     try {
       // ---- Авторы (avtorname) + фото (apics, опц.) ----
-      importState.current = "Загрузка авторов...";
+      importState.current = "Загрузка авторов..."; pushLog(importState.current);
       const authorMap = new Map();
       const authorPicMap = new Map();
       await streamInsertRows(available.avtorname, (r) => {
@@ -254,7 +275,7 @@ async function runImport() {
         if (id && !authorMap.has(id)) authorMap.set(id, buildAuthorName(r));
       });
       if (available.apics) {
-        importState.current = "Загрузка фото авторов...";
+        importState.current = "Загрузка фото авторов..."; pushLog(importState.current);
         for (const r of await collectRows(available.apics)) {
           const aid = Number(r[0]);
           if (aid && !authorPicMap.has(aid)) authorPicMap.set(aid, String(r[2] || ""));
@@ -263,7 +284,7 @@ async function runImport() {
       step();
 
       // ---- Жанры (мастер — genrelist) ----
-      importState.current = "Загрузка жанров...";
+      importState.current = "Загрузка жанров..."; pushLog(importState.current);
       const genreNameMap = new Map();
       for (const r of await collectRows(available.genrelist)) {
         const gid = Number(r[0]);
@@ -273,7 +294,7 @@ async function runImport() {
       step();
 
       // ---- Привязка авторов к книгам (avtor) ----
-      importState.current = "Загрузка привязок авторов...";
+      importState.current = "Загрузка привязок авторов..."; pushLog(importState.current);
       const bookAuthorMap = new Map();
       await streamInsertRows(available.avtor, (r) => {
         const bid = Number(r[0]), aid = Number(r[1]);
@@ -285,7 +306,7 @@ async function runImport() {
       step();
 
       // ---- Привязка жанров к книгам (libgenre link) ----
-      importState.current = "Загрузка привязок жанров...";
+      importState.current = "Загрузка привязок жанров..."; pushLog(importState.current);
       const bookGenreMap = new Map();
       await streamInsertRows(available.genre, (r) => {
         const bid = Number(r[1]), gid = Number(r[2]);
@@ -312,7 +333,7 @@ async function runImport() {
         }
       });
       if (available.bpics) {
-        importState.current = "Загрузка обложек...";
+        importState.current = "Загрузка обложек..."; pushLog(importState.current);
         await streamInsertRows(available.bpics, (r) => {
           const bid = Number(r[0]);
           if (bid && !bookCoverMap.has(bid)) bookCoverMap.set(bid, String(r[2] || ""));
@@ -324,7 +345,7 @@ async function runImport() {
       const seqNameMap = new Map();
       const bookSeqMap = new Map();
       if (available.seqname) {
-        importState.current = "Загрузка циклов...";
+        importState.current = "Загрузка циклов..."; pushLog(importState.current);
         for (const r of await collectRows(available.seqname)) {
           const sid = Number(r[0]);
           if (sid && !seqNameMap.has(sid)) seqNameMap.set(sid, String(r[1] || "").trim());
@@ -332,7 +353,7 @@ async function runImport() {
       }
       step();
       if (available.seq) {
-        importState.current = "Загрузка привязок циклов...";
+        importState.current = "Загрузка привязок циклов..."; pushLog(importState.current);
         await streamInsertRows(available.seq, (r) => {
           const bid = Number(r[0]), sid = Number(r[1]);
           if (!bid || !sid) return;
@@ -346,7 +367,7 @@ async function runImport() {
       // ---- Переводчики (translator, опц.) ----
       const bookTranslatorMap = new Map();
       if (available.translator) {
-        importState.current = "Загрузка переводчиков...";
+        importState.current = "Загрузка переводчиков..."; pushLog(importState.current);
         await streamInsertRows(available.translator, (r) => {
           const bid = Number(r[0]), tid = Number(r[1]);
           if (!bid || !tid) return;
@@ -360,9 +381,9 @@ async function runImport() {
       // ---- Рейтинги (rate, опц.) — агрегация по книгам ----
       const bookRatingMap = new Map();
       if (available.rate) {
-        importState.current = "Загрузка рейтингов...";
+        importState.current = "Загрузка рейтингов..."; pushLog(importState.current);
         await streamInsertRows(available.rate, (r) => {
-          const bid = Number(r[1]);
+          const bid = Number(r[2]);
           const rate = Number(r[3]);
           if (!bid || !rate) return;
           const agg = bookRatingMap.get(bid) || { sum: 0, count: 0 };
@@ -373,9 +394,10 @@ async function runImport() {
       step();
 
       // ---- Похожие книги (recs, опц.) — со-рекомендации ----
-      const bookRecsMap = new Map();
-      if (available.recs) {
-        importState.current = "Загрузка рекомендаций...";
+      // ВНИМАНИЕ: строит полный граф (~868k узлов) — 3+ ГБ, OOM. Отключено, включить FLIB_IMPORT_RECS=1
+      const bookRecsMap = process.env.FLIB_IMPORT_RECS ? new Map() : null;
+      if (bookRecsMap && available.recs) await safe("recs", async () => {
+        importState.current = "Загрузка рекомендаций..."; pushLog("⚠ recs: построение графа (FLIB_IMPORT_RECS=1)...");
         const userBooks = new Map();
         await streamInsertRows(available.recs, (r) => {
           const uid = Number(r[1]), bid = Number(r[2]);
@@ -398,11 +420,12 @@ async function runImport() {
           }
         }
         userBooks.clear();
-      }
+      });
+      if (!bookRecsMap) pushLog("⏭ recs: пропущено (нет FLIB_IMPORT_RECS)");
       step();
 
 // ---- Вставка книг ----
-      importState.current = "Вставка книг в БД...";
+      importState.current = "Вставка книг в БД..."; pushLog(importState.current);
       const insBook = db.prepare(
         `INSERT OR IGNORE INTO books (id,bid,title,title_lower,author,author_lower,language,year,formats,sizeText,cover,description,updatedAt) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`
       );
@@ -414,19 +437,17 @@ async function runImport() {
       const BATCH = 800;
       const flushBooks = () => {
         if (pendingBookBatch.length === 0) return;
-        db.run("BEGIN");
         let n = 0;
-        for (const b of pendingBookBatch) {
-          insBook.bind([b.id, b.bid, b.title, b.titleLow, b.author, b.authorLow, b.lang, b.year,
-            JSON.stringify(b.formats), null, b.cover, null, new Date().toISOString()]);
-          insBook.step();
-          if (db.getRowsModified() > 0) {
-            n++;
-            for (const g of b.genres) { insGenre.bind([b.id, g]); insGenre.step(); insGenre.reset(); }
+        db.transaction((batch) => {
+          for (const b of batch) {
+            const info = insBook.run(b.id, b.bid, b.title, b.titleLow, b.author, b.authorLow, b.lang, b.year,
+              JSON.stringify(b.formats), null, b.cover, null, new Date().toISOString());
+            if (info.changes > 0) {
+              n++;
+              for (const g of b.genres) insGenre.run(b.id, g);
+            }
           }
-          insBook.reset();
-        }
-        db.run("COMMIT");
+        })(pendingBookBatch);
         inserted += n;
         importState.added = inserted;
         pendingBookBatch = [];
@@ -438,7 +459,7 @@ async function runImport() {
         const bid = Number(r[0]);
         const title = String(r[3] || "").trim();
         const lang = String(r[5] || "").trim().toLowerCase();
-        const year = r[10] != null ? Number(r[10]) : null;
+        const year = r[6] != null && Number(r[6]) > 0 ? Number(r[6]) : null;
         const authors = bookAuthorMap.get(bid) || [];
         const author = authors.length ? (authorMap.get(authors[0].aid) || "") : "";
         const coverPath = bookCoverMap.get(bid);
@@ -454,88 +475,73 @@ async function runImport() {
         if (pendingBookBatch.length >= BATCH) flushBooks();
       });
       flushBooks();
-      insBook.free();
-      insGenre.free();
 
       // ---- Авторы и привязки ----
-      importState.current = "Вставка авторов...";
+      importState.current = "Вставка авторов..."; pushLog(importState.current);
       const insAuthor = db.prepare(`INSERT OR IGNORE INTO authors (id,name,name_lower,pic) VALUES (?,?,?,?)`);
       const insBookAuthor = db.prepare(`INSERT OR IGNORE INTO book_authors (book_id,author_id,pos) VALUES (?,?,?)`);
-      db.run("BEGIN");
-      for (const [aid, name] of authorMap) {
-        const picPath = authorPicMap.get(aid);
-        insAuthor.bind([aid, name, name.toLowerCase(), picPath ? BASE + "/fb2/" + String(picPath).replace(/^\/+/, "") : null]);
-        insAuthor.step(); insAuthor.reset();
-      }
-      db.run("COMMIT");
-      insAuthor.free();
-      db.run("BEGIN");
-      for (const [bid, arr] of bookAuthorMap) {
-        const bId = tag(bid);
-        for (const a of arr) { insBookAuthor.bind([bId, a.aid, a.pos]); insBookAuthor.step(); insBookAuthor.reset(); }
-      }
-      db.run("COMMIT");
-      insBookAuthor.free();
+      db.transaction(() => {
+        for (const [aid, name] of authorMap) {
+          const picPath = authorPicMap.get(aid);
+          insAuthor.run(aid, name, name.toLowerCase(), picPath ? BASE + "/fb2/" + String(picPath).replace(/^\/+/, "") : null);
+        }
+      })();
+      db.transaction(() => {
+        for (const [bid, arr] of bookAuthorMap) {
+          const bId = tag(bid);
+          for (const a of arr) insBookAuthor.run(bId, a.aid, a.pos);
+        }
+      })();
       step();
 
       // ---- Циклы ----
       const insSeq = db.prepare(`INSERT OR IGNORE INTO sequences (id,name,name_lower) VALUES (?,?,?)`);
       const insBookSeq = db.prepare(`INSERT OR IGNORE INTO book_sequences (book_id,seq_id,number) VALUES (?,?,?)`);
-      db.run("BEGIN");
-      for (const [sid, name] of seqNameMap) { insSeq.bind([sid, name, name.toLowerCase()]); insSeq.step(); insSeq.reset(); }
-      db.run("COMMIT");
-      insSeq.free();
-      db.run("BEGIN");
-      for (const [bid, arr] of bookSeqMap) for (const s of arr) { insBookSeq.bind([tag(bid), s.seqId, s.num]); insBookSeq.step(); insBookSeq.reset(); }
-      db.run("COMMIT");
-      insBookSeq.free();
+      db.transaction(() => {
+        for (const [sid, name] of seqNameMap) insSeq.run(sid, name, name.toLowerCase());
+      })();
+      db.transaction(() => {
+        for (const [bid, arr] of bookSeqMap) for (const s of arr) insBookSeq.run(tag(bid), s.seqId, s.num);
+      })();
       step();
 
 // ---- Рейтинги ----
       const insRate = db.prepare(`INSERT OR REPLACE INTO book_ratings (book_id,rating,votes) VALUES (?,?,?)`);
-      db.run("BEGIN");
-      for (const [bid, agg] of bookRatingMap) {
-        insRate.bind([tag(bid), +(agg.sum / agg.count).toFixed(2), agg.count]);
-        insRate.step(); insRate.reset();
-      }
-      db.run("COMMIT");
-      insRate.free();
+      db.transaction(() => {
+        for (const [bid, agg] of bookRatingMap) {
+          insRate.run(tag(bid), +(agg.sum / agg.count).toFixed(2), agg.count);
+        }
+      })();
       step();
 
       // ---- Переводчики ----
       const insTr = db.prepare(`INSERT OR IGNORE INTO book_translators (book_id,translator_id,pos) VALUES (?,?,?)`);
-      db.run("BEGIN");
-      for (const [bid, arr] of bookTranslatorMap) for (const t of arr) { insTr.bind([tag(bid), t.tid, t.pos]); insTr.step(); insTr.reset(); }
-      db.run("COMMIT");
-      insTr.free();
+      db.transaction(() => {
+        for (const [bid, arr] of bookTranslatorMap) for (const t of arr) insTr.run(tag(bid), t.tid, t.pos);
+      })();
       step();
 
       // ---- Похожие книги (топ N на книгу) ----
       const insRec = db.prepare(`INSERT OR IGNORE INTO book_recs (book_id,related_book_id) VALUES (?,?)`);
-      db.run("BEGIN");
-      for (const [bid, relMap] of bookRecsMap) {
-        const tops = Array.from(relMap.entries()).sort((a, b) => b[1] - a[1]).slice(0, 40);
-        for (const [rel] of tops) { insRec.bind([tag(bid), tag(rel)]); insRec.step(); insRec.reset(); }
-      }
-      db.run("COMMIT");
-      insRec.free();
+      if (bookRecsMap) db.transaction(() => {
+        for (const [bid, relMap] of bookRecsMap) {
+          const tops = Array.from(relMap.entries()).sort((a, b) => b[1] - a[1]).slice(0, 40);
+          for (const [rel] of tops) insRec.run(tag(bid), tag(rel));
+        }
+      })();
       step();
 
       // ---- Аннотации книг (опц.) ----
-      if (available.bannots) {
-        importState.current = "Загрузка аннотаций...";
-        const insAnn = db.prepare(`INSERT OR IGNORE INTO book_annotations (book_id,title,body) VALUES (?,?,?)`);
+      if (available.bannots) await safe("bannots", async () => {
+        importState.current = "Загрузка аннотаций..."; pushLog(importState.current);
         const updDesc = db.prepare(`UPDATE books SET description=? WHERE id=? AND (description IS NULL OR description='')`);
         let annBatch = [];
         let annFlushCount = 0;
         const flushAnn = () => {
           if (annBatch.length === 0) return;
-          db.run("BEGIN");
-          for (const a of annBatch) {
-            insAnn.bind([a.id, a.title, a.body]); insAnn.step(); insAnn.reset();
-            if (a.desc) { updDesc.bind([a.desc, a.id]); updDesc.step(); updDesc.reset(); }
-          }
-          db.run("COMMIT");
+          db.transaction((batch) => {
+            for (const a of batch) if (a.desc) updDesc.run(a.desc, a.id);
+          })(annBatch);
           annBatch = [];
           annFlushCount++;
           if (annFlushCount % 100 === 0) booksDb.persist();
@@ -543,25 +549,23 @@ async function runImport() {
         await streamInsertRows(available.bannots, (r) => {
           const bid = Number(r[0]);
           if (!bid) return;
-          annBatch.push({ id: tag(bid), title: String(r[2] || "").trim() || null, body: String(r[3] || ""), desc: stripHtml(r[3]) || null });
+          annBatch.push({ id: tag(bid), title: String(r[2] || "").trim() || null, desc: stripHtml(r[3]) && stripHtml(r[3]).trim() || null });
           if (annBatch.length >= 400) flushAnn();
         });
         flushAnn();
-        insAnn.free();
-        updDesc.free();
-        step();
-      }
+      });
+      step();
 
       booksDb.persist();
       const secs = ((Date.now() - startMs) / 1000).toFixed(1);
       const cnt = await booksDb.queryValue("SELECT COUNT(*) FROM books", [], 0);
       logger.info("flibusta.dump_import_done", { added: inserted, count: cnt, seconds: secs });
       importState.running = false;
-      importState.current = "Готово";
+      importState.current = "Готово"; pushLog("Импорт завершён");
     } catch (e) {
       importState.running = false;
-      importState.error = e.message;
-      logger.error("flibusta.dump_import_error", { error: e.message });
+      importState.error = (e && e.message) ? e.message : String(e);
+      logger.error("flibusta.dump_import_error", { error: importState.error });
     } finally {
       booksDb.unref();
     }
@@ -570,4 +574,4 @@ async function runImport() {
   return { ok: true };
 }
 
-module.exports = { runImport, status };
+module.exports = { runImport, status, getLogs, pushLog };

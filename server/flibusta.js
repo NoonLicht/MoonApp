@@ -1,10 +1,10 @@
 "use strict";
 
 /**
- * Flibusta OPDS-клиент + локальный каталог книг (sql.js).
+ * Flibusta OPDS-клиент + локальный каталог книг (better-sqlite3).
  *
  * Метаданные из OPDS-фида (https://opds.flibusta.is);
- * хранятся в SQLite-БД (books_catalog.db) с async lazy-load и TTL-выгрузкой.
+ * хранятся в нативной SQLite (better-sqlite3) на диске (books_catalog.db).
  *
  * parseEntry/parseFeed — синхронные (чистый парсинг XML).
  * addBooks/catalogStats/searchCatalog — async (работа с БД).
@@ -167,48 +167,40 @@ function parseFeed(xml) {
 
 async function addBooks(list) {
   const db = await booksDb.getDb();
-  let added = 0;
   const insBook = db.prepare(
     `INSERT OR IGNORE INTO books (id,bid,title,title_lower,author,author_lower,language,year,formats,sizeText,cover,description,updatedAt) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`
   );
   const insGenre = db.prepare(
     `INSERT OR IGNORE INTO book_genres (book_id,genre) VALUES (?,?)`
   );
-  db.run("BEGIN");
-  for (const raw of list) {
-    const book = {
-      id: "", bid: 0, title: "", author: "", genres: [], language: "",
-      year: null, formats: [], sizeText: "", cover: "", description: "",
-      updatedAt: new Date().toISOString(),
-      ...(raw || {}),
-    };
-    if (!book.id) continue;
-    insBook.bind([
-      book.id, book.bid, book.title, (book.title || "").toLowerCase(),
-      book.author, (book.author || "").toLowerCase(),
-      book.language || null, book.year || null,
-      JSON.stringify(book.formats || []),
-      book.sizeText || null, book.cover || null,
-      book.description || null, book.updatedAt || null,
-    ]);
-    insBook.step();
-    const changes = db.getRowsModified();
-    insBook.reset();
-    if (changes > 0) {
-      added++;
-      if (book.genres && Array.isArray(book.genres)) {
-        for (const g of book.genres) {
-          insGenre.bind([book.id, g]);
-          insGenre.step();
-          insGenre.reset();
+  const runAll = db.transaction((items) => {
+    let added = 0;
+    for (const raw of items) {
+      const book = {
+        id: "", bid: 0, title: "", author: "", genres: [], language: "",
+        year: null, formats: [], sizeText: "", cover: "", description: "",
+        updatedAt: new Date().toISOString(),
+        ...(raw || {}),
+      };
+      if (!book.id) continue;
+      const info = insBook.run(
+        book.id, book.bid, book.title, (book.title || "").toLowerCase(),
+        book.author, (book.author || "").toLowerCase(),
+        book.language || null, book.year || null,
+        JSON.stringify(book.formats || []),
+        book.sizeText || null, book.cover || null,
+        book.description || null, book.updatedAt || null
+      );
+      if (info.changes > 0) {
+        added++;
+        if (book.genres && Array.isArray(book.genres)) {
+          for (const g of book.genres) insGenre.run(book.id, g);
         }
       }
     }
-  }
-  db.run("COMMIT");
-  insBook.free();
-  insGenre.free();
-  return added;
+    return added;
+  });
+  return runAll(list);
 }
 
 async function catalogStats() {

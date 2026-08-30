@@ -55,6 +55,8 @@ export interface BooksImportStatus {
   error: string;
 }
 
+export type ImportLogEntry = { ts: string; msg: string };
+
 /** Результат живущего OPDS-поиска. */
 export interface BooksLiveSearchResult {
   books: FlibustaBook[];
