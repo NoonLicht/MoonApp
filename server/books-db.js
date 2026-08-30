@@ -52,6 +52,58 @@ function _initSchema(db) {
   db.run("CREATE INDEX IF NOT EXISTS idx_books_language ON books(language)");
   db.run("CREATE INDEX IF NOT EXISTS idx_books_year     ON books(year)");
   db.run("CREATE INDEX IF NOT EXISTS idx_books_bid      ON books(bid)");
+
+  /* Расширенная схема: авторы, циклы, рейтинги, переводчики, аннотации, рекомендации. */
+  db.run(`CREATE TABLE IF NOT EXISTS authors (
+    id INTEGER PRIMARY KEY,
+    name TEXT,
+    name_lower TEXT,
+    pic TEXT
+  )`);
+  db.run(`CREATE TABLE IF NOT EXISTS book_authors (
+    book_id TEXT NOT NULL,
+    author_id INTEGER NOT NULL,
+    pos INTEGER,
+    PRIMARY KEY (book_id, author_id)
+  )`);
+  db.run("CREATE INDEX IF NOT EXISTS idx_ba_author ON book_authors(author_id)");
+  db.run(`CREATE TABLE IF NOT EXISTS sequences (
+    id INTEGER PRIMARY KEY,
+    name TEXT,
+    name_lower TEXT
+  )`);
+  db.run("CREATE INDEX IF NOT EXISTS idx_seq_name ON sequences(name_lower)");
+  db.run(`CREATE TABLE IF NOT EXISTS book_sequences (
+    book_id TEXT NOT NULL,
+    seq_id INTEGER NOT NULL,
+    number INTEGER,
+    PRIMARY KEY (book_id, seq_id)
+  )`);
+  db.run("CREATE INDEX IF NOT EXISTS idx_bs_seq ON book_sequences(seq_id)");
+  db.run(`CREATE TABLE IF NOT EXISTS book_ratings (
+    book_id TEXT PRIMARY KEY,
+    rating REAL,
+    votes INTEGER
+  )`);
+  db.run("CREATE INDEX IF NOT EXISTS idx_rate_votes ON book_ratings(votes)");
+  db.run(`CREATE TABLE IF NOT EXISTS book_translators (
+    book_id TEXT NOT NULL,
+    translator_id INTEGER NOT NULL,
+    pos INTEGER,
+    PRIMARY KEY (book_id, translator_id)
+  )`);
+  db.run("CREATE INDEX IF NOT EXISTS idx_bt_trans ON book_translators(translator_id)");
+  db.run(`CREATE TABLE IF NOT EXISTS book_annotations (
+    book_id TEXT PRIMARY KEY,
+    title TEXT,
+    body TEXT
+  )`);
+  db.run(`CREATE TABLE IF NOT EXISTS book_recs (
+    book_id TEXT NOT NULL,
+    related_book_id TEXT NOT NULL,
+    PRIMARY KEY (book_id, related_book_id)
+  )`);
+  db.run("CREATE INDEX IF NOT EXISTS idx_recs_related ON book_recs(related_book_id)");
 }
 
 function _persist() {
