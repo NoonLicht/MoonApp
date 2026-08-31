@@ -11,7 +11,6 @@
  *   book_ratings                    — рейтинги книг (librate)
  *   book_translators                — переводчики (libtranslator)
  *   book_recs                       — похожие книги (librecs; отключено из-за OOM, включить FLIB_IMPORT_RECS=1)
- *   book_annotations                — аннотации книг (b.annotations) → только description в books
  *
  * Режим отладки: importLogs буфер (кольцевой, 500 строк).
  */
@@ -37,13 +36,10 @@ const DUMP_FILES = {
   rate: "lib.librate.sql.gz",
   translator: "lib.libtranslator.sql.gz",
   recs: "lib.librecs.sql.gz",
-  apics: "lib.a.annotations_pics.sql.gz",
-  bpics: "lib.b.annotations_pics.sql.gz",
-  bannots: "lib.b.annotations.sql.gz",
 };
 
 const REQUIRED = ["book", "avtorname", "avtor", "genre", "genrelist"];
-const OPTIONAL = ["seqname", "seq", "rate", "translator", "apics", "bpics", "bannots", "filename"];
+const OPTIONAL = ["seqname", "seq", "rate", "translator", "filename"];
 
 const CACHE_DIR = path.join(DIRS.storage, "dump_cache");
 let importState = { running: false, done: 0, total: 0, current: "", added: 0, error: "" };
@@ -217,14 +213,6 @@ function buildAuthorName(r) {
   let name = parts.join(" ");
   if (nick && !name.includes(nick)) name = name ? name + " (" + nick + ")" : nick;
   return name;
-}
-
-function stripHtml(html) {
-  return String(html == null ? "" : html)
-    .replace(/<[^>]+>/g, " ")
-    .replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
-    .replace(/&quot;/g, "\"").replace(/&#39;/g, "'").replace(/&[a-z]+;/gi, " ")
-    .replace(/\s+/g, " ").trim();
 }
 
 /* ------------------------------------------------------------------ */
@@ -470,8 +458,6 @@ async function runImport() {
         const title = String(r[3] || "").trim();
         const lang = String(r[5] || "").trim().toLowerCase();
         const year = r[6] != null && Number(r[6]) > 0 ? Number(r[6]) : null;
-        // Пропускаем книги не на русском/английском и с пустым названием
-        if (!bid || !title || !lang || (lang !== "ru" && lang !== "en")) return;
         const authors = bookAuthorMap.get(bid) || [];
         const author = authors.length ? (authorMap.get(authors[0].aid) || "") : "";
         const coverPath = bookCoverMap.get(bid);
@@ -541,31 +527,6 @@ async function runImport() {
           for (const [rel] of tops) insRec.run(tag(bid), tag(rel));
         }
       })();
-      step();
-
-      // ---- Аннотации книг (опц.) ----
-      if (available.bannots) await safe("bannots", async () => {
-        importState.current = "Загрузка аннотаций..."; pushLog(importState.current);
-        const updDesc = db.prepare(`UPDATE books SET description=? WHERE id=? AND (description IS NULL OR description='')`);
-        let annBatch = [];
-        let annFlushCount = 0;
-        const flushAnn = () => {
-          if (annBatch.length === 0) return;
-          db.transaction((batch) => {
-            for (const a of batch) if (a.desc) updDesc.run(a.desc, a.id);
-          })(annBatch);
-          annBatch = [];
-          annFlushCount++;
-          if (annFlushCount % 100 === 0) booksDb.persist();
-        };
-        await streamInsertRows(available.bannots, (r) => {
-          const bid = Number(r[0]);
-          if (!bid) return;
-          annBatch.push({ id: tag(bid), title: String(r[2] || "").trim() || null, desc: stripHtml(r[3]) && stripHtml(r[3]).trim() || null });
-          if (annBatch.length >= 400) flushAnn();
-        });
-        flushAnn();
-      });
       step();
 
       booksDb.persist();
