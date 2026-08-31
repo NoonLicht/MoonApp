@@ -219,46 +219,96 @@ async function searchCatalog({ q, titleQ, authorQ, genre, lang, yearFrom, yearTo
   page = Math.max(1, Number(page) || 1);
   pageSize = Math.min(200, Math.max(1, Number(pageSize) || 40));
 
-  const clauses = [];
   const params = [];
+  const rankCases = [];     // CASE WHEN ... THEN N for ORDER BY
+  const rankParams = [];    // params for ranking
+  const orClauses = [];     // WHERE — broad OR to catch everything
+  const andClauses = [];    // WHERE — strict filters (genre, lang, year)
 
-  // unified search (live-search/legacy)
+  // ---- helper: add text search with ranking ----
+  function addTextSearch(field, fieldLower, query) {
+    const qs = String(query).trim();
+    if (!qs) return;
+    const ql = qs.toLowerCase();
+    const words = ql.split(/\s+/).filter(Boolean);
+
+    // 1) WHERE — broad OR for partial matches
+    for (const w of words) {
+      orClauses.push(fieldLower + " LIKE ?");
+      params.push(`%${w}%`);
+    }
+
+    // 2) ORDER BY ranking
+    //    exact match (full phrase)
+    rankCases.push("CASE WHEN " + fieldLower + " = ? THEN 0 ELSE 1 END");
+    rankParams.push(ql);
+    //    all words present (AND)
+    if (words.length > 1) {
+      const andCond = words.map(w => fieldLower + " LIKE ?").join(" AND ");
+      rankCases.push("CASE WHEN " + andCond + " THEN 0 ELSE 1 END");
+      for (const w of words) rankParams.push(`%${w}%`);
+    }
+  }
+
+  // unified search (live-search/legacy) — search both title and author
   if (q && String(q).trim()) {
-    const like = `%${String(q).trim().toLowerCase()}%`;
-    clauses.push("(b.title_lower LIKE ? OR b.author_lower LIKE ?)");
-    params.push(like, like);
+    const qs = String(q).trim().toLowerCase();
+    const words = qs.split(/\s+/).filter(Boolean);
+    // WHERE — broad OR across both fields
+    for (const w of words) {
+      orClauses.push("(b.title_lower LIKE ? OR b.author_lower LIKE ?)");
+      params.push(`%${w}%`, `%${w}%`);
+    }
+    // ranking — exact title match, exact author match, all-words title, all-words author
+    rankCases.push("CASE WHEN b.title_lower = ? THEN 0 ELSE 1 END");
+    rankParams.push(qs);
+    rankCases.push("CASE WHEN b.author_lower = ? THEN 1 ELSE 2 END");
+    rankParams.push(qs);
+    if (words.length > 1) {
+      const tAnd = words.map(w => "b.title_lower LIKE ?").join(" AND ");
+      const aAnd = words.map(w => "b.author_lower LIKE ?").join(" AND ");
+      rankCases.push("CASE WHEN " + tAnd + " THEN 0 ELSE 1 END");
+      for (const w of words) rankParams.push(`%${w}%`);
+      rankCases.push("CASE WHEN " + aAnd + " THEN 1 ELSE 2 END");
+      for (const w of words) rankParams.push(`%${w}%`);
+    }
   }
-  // title: split into words, AND them — "война мир" matches "Война и мир"
+  // separate title search
   if (titleQ && String(titleQ).trim()) {
-    for (const w of String(titleQ).trim().split(/\\s+/).filter(Boolean)) {
-      clauses.push("b.title_lower LIKE ?");
-      params.push(`%${w.toLowerCase()}%`);
-    }
+    addTextSearch("title_lower", "b.title_lower", titleQ);
   }
-  // author: same word-split logic
+  // separate author search
   if (authorQ && String(authorQ).trim()) {
-    for (const w of String(authorQ).trim().split(/\\s+/).filter(Boolean)) {
-      clauses.push("b.author_lower LIKE ?");
-      params.push(`%${w.toLowerCase()}%`);
-    }
+    addTextSearch("author_lower", "b.author_lower", authorQ);
   }
+  // genre filter
   if (genre && String(genre).trim()) {
-    clauses.push("b.id IN (SELECT book_id FROM book_genres WHERE genre = ?)");
+    andClauses.push("b.id IN (SELECT book_id FROM book_genres WHERE genre = ?)");
     params.push(String(genre).trim());
   }
+  // language filter
   if (lang && String(lang).trim()) {
-    clauses.push("b.language = ?");
+    andClauses.push("b.language = ?");
     params.push(String(lang).trim());
   }
   if (yearFrom) {
-    clauses.push("b.year >= ?");
+    andClauses.push("b.year >= ?");
     params.push(Number(yearFrom));
   }
   if (yearTo) {
-    clauses.push("b.year <= ?");
+    andClauses.push("b.year <= ?");
     params.push(Number(yearTo));
   }
-  const where = clauses.length ? "WHERE " + clauses.join(" AND ") : "";
+  // Build WHERE: broad OR for text search, then AND for filters
+  const searchClause = orClauses.length ? "(" + orClauses.join(" OR ") + ")" : "";
+  const filterClause = andClauses.length ? andClauses.join(" AND ") : "";
+  const allWhere = [searchClause, filterClause].filter(Boolean).join(" AND ");
+  const where = allWhere ? "WHERE " + allWhere : "";
+
+  // Build ORDER BY: rank cases first, then title
+  const rankSql = rankCases.length ? rankCases.join(" + ") + " ASC, " : "";
+  const orderSql = rankSql + "b.title COLLATE NOCASE";
+
   const offset = (page - 1) * pageSize;
   const total = await booksDb.queryValue(
     `SELECT COUNT(*) FROM books b ${where}`, params, 0
@@ -266,9 +316,11 @@ async function searchCatalog({ q, titleQ, authorQ, genre, lang, yearFrom, yearTo
 
   const sql = `SELECT b.*, GROUP_CONCAT(bg.genre, '||') AS genres_concat FROM books b
     LEFT JOIN book_genres bg ON b.id = bg.book_id
-    ${where} GROUP BY b.id ORDER BY b.title COLLATE NOCASE LIMIT ? OFFSET ?`;
-  const dataParams = [...params, pageSize, offset];
+    ${where} GROUP BY b.id ORDER BY ${orderSql} LIMIT ? OFFSET ?`;
+  const dataParams = [...params, ...rankParams, pageSize, offset];
   const rows = await booksDb.queryAll(sql, dataParams);
+
+
 
   const items = rows.map(r => ({
     id: r.id || "",
