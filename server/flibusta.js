@@ -215,17 +215,32 @@ async function catalogStats() {
   return { count, genres, langs };
 }
 
-async function searchCatalog({ q, genre, lang, yearFrom, yearTo, page = 1, pageSize = 40 } = {}) {
+async function searchCatalog({ q, titleQ, authorQ, genre, lang, yearFrom, yearTo, page = 1, pageSize = 40 } = {}) {
   page = Math.max(1, Number(page) || 1);
   pageSize = Math.min(200, Math.max(1, Number(pageSize) || 40));
 
   const clauses = [];
   const params = [];
 
+  // unified search (live-search/legacy)
   if (q && String(q).trim()) {
     const like = `%${String(q).trim().toLowerCase()}%`;
     clauses.push("(b.title_lower LIKE ? OR b.author_lower LIKE ?)");
     params.push(like, like);
+  }
+  // title: split into words, AND them — "война мир" matches "Война и мир"
+  if (titleQ && String(titleQ).trim()) {
+    for (const w of String(titleQ).trim().split(/\\s+/).filter(Boolean)) {
+      clauses.push("b.title_lower LIKE ?");
+      params.push(`%${w.toLowerCase()}%`);
+    }
+  }
+  // author: same word-split logic
+  if (authorQ && String(authorQ).trim()) {
+    for (const w of String(authorQ).trim().split(/\\s+/).filter(Boolean)) {
+      clauses.push("b.author_lower LIKE ?");
+      params.push(`%${w.toLowerCase()}%`);
+    }
   }
   if (genre && String(genre).trim()) {
     clauses.push("b.id IN (SELECT book_id FROM book_genres WHERE genre = ?)");
@@ -243,7 +258,6 @@ async function searchCatalog({ q, genre, lang, yearFrom, yearTo, page = 1, pageS
     clauses.push("b.year <= ?");
     params.push(Number(yearTo));
   }
-
   const where = clauses.length ? "WHERE " + clauses.join(" AND ") : "";
   const offset = (page - 1) * pageSize;
   const total = await booksDb.queryValue(

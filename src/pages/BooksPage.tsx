@@ -19,15 +19,12 @@ export default function BooksPage() {
   const [syncStatus, setSyncStatus] = useState<{ running: boolean; added: number; error: string } | null>(null);
   const busyRef = useRef(false);
 
-  const [query, setQuery] = useState("");
-  const [genre, setGenre] = useState("");
-  const [lang, setLang] = useState("");
-  const [yearFrom, setYearFrom] = useState("");
-// — Модалка информации о книге —
+  const [titleQ, setTitleQ] = useState("");
+  const [authorQ, setAuthorQ] = useState("");
+  // — Модалка информации о книге —
   const [selectedBook, setSelectedBook] = useState<FlibustaBook | null>(null);
   const handleBookClick = (book: FlibustaBook) => setSelectedBook(book);
   const handleCloseBookInfo = () => setSelectedBook(null);
-  const [yearTo, setYearTo] = useState("");
   const [liveMode, setLiveMode] = useState(false);
   const [liveQuery, setLiveQuery] = useState("");
 
@@ -37,11 +34,8 @@ export default function BooksPage() {
     setLoading(true);
     try {
       const params = new URLSearchParams();
-      if (query) params.set("q", query);
-      if (genre) params.set("genre", genre);
-      if (lang) params.set("lang", lang);
-      if (yearFrom) params.set("yearFrom", yearFrom);
-      if (yearTo) params.set("yearTo", yearTo);
+      if (titleQ) params.set("titleQ", titleQ);
+      if (authorQ) params.set("authorQ", authorQ);
       params.set("page", String(p));
       params.set("pageSize", String(pageSize));
       const res = await api.getBooks(params.toString());
@@ -53,7 +47,7 @@ export default function BooksPage() {
     } catch { /* */ }
     setLoading(false);
     busyRef.current = false;
-  }, [query, genre, lang, yearFrom, yearTo, pageSize]);
+  }, [titleQ, authorQ, pageSize]);
 const doLiveSearch = useCallback(async (q: string) => {
     if (!q.trim()) { setItems([]); setTotal(0); return; }
     setLoading(true);
@@ -161,13 +155,13 @@ usePageToolbar(
           </Btn>
         </>
       )}
-      {(query || genre || lang || yearFrom || yearTo) && !liveMode && (
-        <Btn icon={Filter} variant="ghost" onClick={() => { setQuery(""); setGenre(""); setLang(""); setYearFrom(""); setYearTo(""); doSearch(1); }} style={{ fontSize: 11 }}>
+      {(titleQ || authorQ) && !liveMode && (
+        <Btn icon={Filter} variant="ghost" onClick={() => { setTitleQ(""); setAuthorQ(""); doSearch(1); }} style={{ fontSize: 11 }}>
           {t("books.clearFilters")}
         </Btn>
       )}
     </div>,
-    [syncStatus, query, genre, lang, yearFrom, yearTo, liveMode, t, handleSync, handleImportDumps, handleOpenImportLogs, handleResetCatalog, doSearch]
+    [syncStatus, titleQ, authorQ, liveMode, t, handleSync, handleImportDumps, handleOpenImportLogs, handleResetCatalog, doSearch]
   );
 const statLine = stats ? `${t("common.all")}: ${stats.count}` : "";
 
@@ -188,36 +182,29 @@ const statLine = stats ? `${t("common.all")}: ${stats.count}` : "";
     <div className="page-fill">
       <SectionHead eyebrow={statLine} title={t("books.title")} />
 
-      <Glass className="url-bar" style={{ marginBottom: 12 }}>
-        <Search size={16} />
-        <input
-          placeholder={t("books.search")}
-          value={liveMode ? liveQuery : query}
-          onChange={(e) => {
-            if (liveMode) setLiveQuery(e.target.value);
-            else { setQuery(e.target.value); setPage(1); }
-          }}
-          onKeyDown={(e) => { if (e.key === "Enter" && !liveMode) doSearch(1); }}
-          style={{ flex: 1 }}
-        />
-      </Glass>
-
-      {!liveMode && stats && (
-        <div className="book-filters" style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12, padding: "0 4px" }}>
-          <Select
-            value={lang}
-            onChange={(e) => { setLang(e.target.value); doSearch(1); }}
-            options={[{ value: "", label: `Язык: все` }, ...stats.langs.map((l: string) => ({ value: l, label: l }))]}
-            style={{ minWidth: 90, fontSize: 12 }}
+      <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+        <Glass className="url-bar" style={{ flex: 1, padding: "6px 10px" }}>
+          <Search size={16} />
+          <input
+            placeholder={"Название"}
+            value={liveMode ? liveQuery : titleQ}
+            onChange={(e) => {
+              if (liveMode) setLiveQuery(e.target.value);
+              else { setTitleQ(e.target.value); setPage(1); }
+            }}
+            onKeyDown={(e) => { if (e.key === "Enter" && !liveMode) doSearch(1); }}
           />
-          <input type="number" placeholder="Год с" value={yearFrom}
-            onChange={(e) => setYearFrom(e.target.value)} onBlur={() => doSearch(1)}
-            style={{ width: 64, padding: "4px 6px" }} />
-          <input type="number" placeholder="Год по" value={yearTo}
-            onChange={(e) => setYearTo(e.target.value)} onBlur={() => doSearch(1)}
-            style={{ width: 64, padding: "4px 6px" }} />
-        </div>
-      )}
+        </Glass>
+        <Glass className="url-bar" style={{ flex: 1, padding: "6px 10px" }}>
+          <Search size={16} />
+          <input
+            placeholder={"Автор"}
+            value={liveMode ? "" : authorQ}
+            onChange={(e) => { setAuthorQ(e.target.value); setPage(1); }}
+            onKeyDown={(e) => { if (e.key === "Enter") doSearch(1); }}
+          />
+        </Glass>
+      </div>
 {syncStatus?.running && (
         <Glass style={{ padding: 8, marginBottom: 12, fontSize: 12, display: "flex", gap: 8, alignItems: "center" }}>
           <Loader2 size={14} className="spin" /> {t("books.syncing", { n: syncStatus.added })}
