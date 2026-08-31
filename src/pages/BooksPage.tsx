@@ -23,6 +23,10 @@ export default function BooksPage() {
   const [genre, setGenre] = useState("");
   const [lang, setLang] = useState("");
   const [yearFrom, setYearFrom] = useState("");
+// — Модалка информации о книге —
+  const [selectedBook, setSelectedBook] = useState<FlibustaBook | null>(null);
+  const handleBookClick = (book: FlibustaBook) => setSelectedBook(book);
+  const handleCloseBookInfo = () => setSelectedBook(null);
   const [yearTo, setYearTo] = useState("");
   const [liveMode, setLiveMode] = useState(false);
   const [liveQuery, setLiveQuery] = useState("");
@@ -227,7 +231,7 @@ const statLine = stats ? `${t("common.all")}: ${stats.count}` : "";
 
       <div className="book-list" style={{ flex: 1, maxHeight: "none" }}>
         {items.map((b) => (
-          <Glass className="book-row" key={b.id}>
+          <Glass className="book-row" key={b.id} style={{ cursor: "pointer" }} onClick={() => handleBookClick(b)}>
             <div className="book-cover">
               {b.cover
                 ? <img src={b.cover} alt="" style={{ width: 44, height: 64, objectFit: "cover", borderRadius: 4 }} />
@@ -247,7 +251,7 @@ const statLine = stats ? `${t("common.all")}: ${stats.count}` : "";
                 </div>
               </div>
               <p className="book-desc">{b.description?.slice(0, 200)}</p>
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 4 }}>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 4 }} onClick={e => e.stopPropagation()}>
                 {(b.formats || ["fb2", "epub", "mobi"]).map((fmt: string) => (
                   <Btn key={fmt} variant="secondary" icon={Download}
                     disabled={downloading === b.bid}
@@ -301,6 +305,81 @@ const statLine = stats ? `${t("common.all")}: ${stats.count}` : "";
                     </div>
                   ))
               }
+            </div>
+          </div>
+        </div>
+      )}
+{/* Модалка информации о книге */}
+      {selectedBook && (
+        <div style={{
+          position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 9998,
+          background: "rgba(0,0,0,0.65)", display: "flex", alignItems: "center", justifyContent: "center",
+          backdropFilter: "blur(3px)", WebkitBackdropFilter: "blur(3px)",
+        }} onClick={handleCloseBookInfo}>
+          <div style={{
+            width: 600, maxWidth: "92vw", height: 540, background: "var(--glass-bg)",
+            border: "1px solid var(--glass-border)", borderRadius: 16,
+            boxShadow: "0 20px 60px rgba(0,0,0,0.5)", overflow: "hidden",
+            display: "flex", flexDirection: "column",
+          }} onClick={e => e.stopPropagation()}>
+            <div style={{
+              display: "flex", justifyContent: "space-between", alignItems: "center",
+              padding: "14px 18px 10px", borderBottom: "1px solid var(--glass-border)",
+            }}>
+              <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {selectedBook.title}
+              </span>
+              <span onClick={handleCloseBookInfo} style={{
+                cursor: "pointer", color: "var(--text-secondary)", fontSize: 18,
+                lineHeight: 1, marginLeft: 12, flexShrink: 0,
+              }}>✕</span>
+            </div>
+            <div style={{ flex: 1, overflow: "auto", padding: "16px 20px 20px" }}>
+              <div style={{ display: "flex", gap: 18, marginBottom: 16 }}>
+                <div style={{
+                  width: 110, height: 154, borderRadius: 10, flexShrink: 0, overflow: "hidden",
+                  background: "var(--card-bg)", display: "flex", alignItems: "center", justifyContent: "center",
+                }}>
+                  {selectedBook.cover
+                    ? <img src={selectedBook.cover} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    : <BookOpen size={32} strokeWidth={1.4} style={{ opacity: 0.35 }} />
+                  }
+                </div>
+                <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6 }}>
+                  <div style={{ fontSize: 17, fontWeight: 600, lineHeight: 1.3 }}>{selectedBook.title}</div>
+                  <div style={{ fontSize: 14, color: "var(--text-secondary)" }}>{selectedBook.author}</div>
+                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap", fontSize: 12.5, color: "var(--text-secondary)" }}>
+                    {selectedBook.year && <span>📅 {selectedBook.year}</span>}
+                    {selectedBook.language && <span>🌐 {selectedBook.language}</span>}
+                    {selectedBook.sizeText && <span>💾 {selectedBook.sizeText}</span>}
+                    {selectedBook.updatedAt && <span>🔄 {new Date(selectedBook.updatedAt).toLocaleDateString()}</span>}
+                  </div>
+                  <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginTop: 4 }}>
+                    {(selectedBook.genres || []).map((g: string) => <Badge key={g}>{g}</Badge>)}
+                  </div>
+                </div>
+              </div>
+              {selectedBook.description && (
+                <div style={{ marginBottom: 16 }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 5, textTransform: "uppercase", letterSpacing: 0.7 }}>Аннотация</div>
+                  <p style={{ margin: 0, fontSize: 14, lineHeight: 1.7, color: "var(--text-primary)", whiteSpace: "pre-wrap" }}>
+                    {selectedBook.description}
+                  </p>
+                </div>
+              )}
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.7 }}>Скачать</div>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  {(selectedBook.formats || ["fb2", "epub", "mobi"]).map((fmt: string) => (
+                    <Btn key={fmt} variant="secondary" icon={Download}
+                      disabled={downloading === selectedBook.bid}
+                      onClick={() => handleDownload(selectedBook.bid, fmt)}
+                      style={{ fontSize: 12, padding: "4px 12px" }}>
+                      {fmt.toUpperCase()}
+                    </Btn>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
         </div>

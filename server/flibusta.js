@@ -187,7 +187,7 @@ async function addBooks(list) {
         book.id, book.bid, book.title, (book.title || "").toLowerCase(),
         book.author, (book.author || "").toLowerCase(),
         book.language || null, book.year || null,
-        JSON.stringify(book.formats || []),
+        JSON.stringify((book.formats && book.formats.length > 0) ? book.formats : null),
         book.sizeText || null, book.cover || null,
         book.description || null, book.updatedAt || null
       );
@@ -264,7 +264,7 @@ async function searchCatalog({ q, genre, lang, yearFrom, yearTo, page = 1, pageS
     genres: r.genres_concat ? r.genres_concat.split("||").filter(Boolean) : [],
     language: r.language || "",
     year: r.year || null,
-    formats: r.formats ? JSON.parse(r.formats) : [],
+    formats: (r.formats && r.formats !== "[]") ? JSON.parse(r.formats) : ["fb2", "epub", "mobi"],
     sizeText: r.sizeText || "",
     cover: r.cover || "",
     description: r.description || "",

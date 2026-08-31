@@ -394,14 +394,23 @@ async function runImport() {
       step();
 
       // ---- Похожие книги (recs, опц.) — со-рекомендации ----
-      // ВНИМАНИЕ: строит полный граф (~868k узлов) — 3+ ГБ, OOM. Отключено, включить FLIB_IMPORT_RECS=1
-      const bookRecsMap = process.env.FLIB_IMPORT_RECS ? new Map() : null;
-      if (bookRecsMap && available.recs) await safe("recs", async () => {
-        importState.current = "Загрузка рекомендаций..."; pushLog("⚠ recs: построение графа (FLIB_IMPORT_RECS=1)...");
+      // Сначала собираем множество bid книг, которые пройдут языковой фильтр
+      const validBookIds = new Set();
+      await streamInsertRows(available.book, (r) => {
+        const bid = Number(r[0]);
+        const title = String(r[3] || "").trim();
+        const lang = String(r[5] || "").trim().toLowerCase();
+        if (bid && title && lang && (lang === "ru" || lang === "en")) validBookIds.add(bid);
+      });
+      pushLog(`✓ recs: собрано ${validBookIds.size} книг для построения графа`);
+
+      const bookRecsMap = new Map();
+      if (available.recs) await safe("recs", async () => {
+        importState.current = "Загрузка рекомендаций..."; pushLog("⚙ recs: построение графа со-рекомендаций (только ru/en)...");
         const userBooks = new Map();
         await streamInsertRows(available.recs, (r) => {
           const uid = Number(r[1]), bid = Number(r[2]);
-          if (!uid || !bid) return;
+          if (!uid || !bid || !validBookIds.has(bid)) return;
           const set = userBooks.get(uid) || new Set();
           set.add(bid);
           userBooks.set(uid, set);
@@ -420,8 +429,9 @@ async function runImport() {
           }
         }
         userBooks.clear();
+        validBookIds.clear();
       });
-      if (!bookRecsMap) pushLog("⏭ recs: пропущено (нет FLIB_IMPORT_RECS)");
+      pushLog(`✓ recs: граф готов (${bookRecsMap.size} книг с рекомендациями)`);
       step();
 
 // ---- Вставка книг ----
@@ -441,7 +451,7 @@ async function runImport() {
         db.transaction((batch) => {
           for (const b of batch) {
             const info = insBook.run(b.id, b.bid, b.title, b.titleLow, b.author, b.authorLow, b.lang, b.year,
-              JSON.stringify(b.formats), null, b.cover, null, new Date().toISOString());
+              JSON.stringify(b.formats.length > 0 ? b.formats : null), null, b.cover, null, new Date().toISOString());
             if (info.changes > 0) {
               n++;
               for (const g of b.genres) insGenre.run(b.id, g);
@@ -460,6 +470,8 @@ async function runImport() {
         const title = String(r[3] || "").trim();
         const lang = String(r[5] || "").trim().toLowerCase();
         const year = r[6] != null && Number(r[6]) > 0 ? Number(r[6]) : null;
+        // Пропускаем книги не на русском/английском и с пустым названием
+        if (!bid || !title || !lang || (lang !== "ru" && lang !== "en")) return;
         const authors = bookAuthorMap.get(bid) || [];
         const author = authors.length ? (authorMap.get(authors[0].aid) || "") : "";
         const coverPath = bookCoverMap.get(bid);
