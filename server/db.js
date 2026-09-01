@@ -67,6 +67,7 @@ const tables = {
   messages: new Table(["conversation_id", "role", "text", "created_at"], "id"),
   archived_pages: new Table(["name", "size_text", "saved_at"], "-id"),
   books: new Table(["title", "author", "year", "fmt", "tone", "description"], "title"),
+  notes: new Table(["title", "content", "tags", "folder", "created_at", "updated_at"], "-updated_at"),
   catalog: new Table(["name", "url", "source", "category", "wingetId", "favorite", "added_at"], "-id"),
   favorites: new Table(["key"], "key"),
 };
@@ -124,6 +125,7 @@ const stmts = {
   taskAll: { all: () => tables.tasks.all() },
   taskToggle: { run: (done, id) => run(() => tables.tasks.updateWhere((r) => r.id === id, { done })) },
   taskDelete: { run: (id) => run(() => tables.tasks.delete(id)) },
+  taskUpdate: { run: (value, field, id) => run(() => tables.tasks.updateWhere((r) => r.id === id, { [field]: value })) },
   taskOrder: { run: (pos, id) => run(() => tables.tasks.updateWhere((r) => r.id === id, { pos })) },
 
   // Conversations
@@ -151,8 +153,8 @@ const stmts = {
   archInsert: { run: (name, size_text) => run(() => tables.archived_pages.insert([name, size_text, now()])) },
   archAll: { all: () => tables.archived_pages.all() },
 
-  // Books
-  bookAll: { all: () => tables.books.all() },
+  // Notes
+  noteAll: { all: () => tables.books.all() },
   bookInsert: {
     run: (title, author, year, fmt, tone, description) => run(() => tables.books.insert([title, author, year, fmt, tone, description])),
   },

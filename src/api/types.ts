@@ -89,6 +89,39 @@ export interface Task {
 }
 
 /* ---------------------------------- Чат ----------------------------------- */
+/* --------------------------------- Заметки ------------------------------ */
+
+export interface Note {
+  id: number;
+  title: string;
+  content: string;
+  tags: string;
+  folder: string;
+  created_at: string;
+  updated_at: string;
+  wikiLinks?: string[];
+  backlinks?: { id: number; title: string }[];
+  linkTargets?: { title: string; exists: boolean; targetId: number | null }[];
+}
+
+export interface GraphNode {
+  id: string;
+  type: "note" | "task";
+  label: string;
+  noteId?: number;
+  taskId?: number;
+  done?: boolean;
+}
+
+export interface GraphEdge {
+  source: string;
+  target: string;
+}
+
+export interface GraphData {
+  nodes: GraphNode[];
+  edges: GraphEdge[];
+}
 
 export interface Conversation {
   id: number;

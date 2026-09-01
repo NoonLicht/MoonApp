@@ -15,6 +15,7 @@ import "./styles/pages.css";
 import "./styles/chat.css";
 import "./styles/dock.css";
 import "./styles/settings.css";
+import "./styles/notes.css";
 
 // Страницы
 import StorePage from "./pages/StorePage";

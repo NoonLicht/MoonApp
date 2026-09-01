@@ -11,6 +11,7 @@ import type {
   LhmStatus, MonitorSnapshot, ProviderInfo, Task, ProxyStatus, VlessProfile,
   FlibustaBook, BooksCatalogStats, BooksSearchResult, BooksSyncStatus, BooksImportStatus,
   BooksLiveSearchResult, BookDownloadResult, ImportLogEntry,
+  Note, GraphData, GraphNode, GraphEdge,
 } from "./types";
 
 export type { AppItem, ArchiveItem, BackupInfo, BooksItem, ChatMessage, Conversation, ConvertTools, ConvertResult, ConvertInstallStatus, VideoInfo, VideoDownloadResult, VideoJobStatus, YtdlpInstallStatus, LhmStatus, MonitorSnapshot, ProviderInfo, Task, ProxyStatus, VlessProfile, FlibustaBook, BooksCatalogStats, BooksSearchResult, BooksSyncStatus, BooksImportStatus, BooksLiveSearchResult, BookDownloadResult, ImportLogEntry };
@@ -75,6 +76,23 @@ export const api = {
   toggleTask: (id: number, done: boolean) => req<Task>("PATCH", `/tasks/${id}`, { done }),
   reorderTasks: (ids: number[]) => req("PUT", "/tasks/order", { ids }),
   deleteTask: (id: number) => req("DELETE", `/tasks/${id}`),
+
+  // Settings / providers
+
+  // Notes
+  getNotes: () => req<{ notes: Note[]; folders: string[] }>("GET", "/tasks/notes"),
+  getNote: (id: number) => req<Note>("GET", `/tasks/notes/${id}`),
+  createNote: (title: string, content?: string, tags?: string, folder?: string) =>
+    req<Note>("POST", "/tasks/notes", { title, content, tags, folder }),
+  updateNote: (id: number, data: Partial<{ title: string; content: string; tags: string; folder: string }>) =>
+    req<Note>("PATCH", `/tasks/notes/${id}`, data),
+  deleteNote: (id: number) => req<{ ok: boolean }>("DELETE", `/tasks/notes/${id}`),
+  searchNotes: (q: string) => req<Note[]>("GET", `/tasks/notes/search?q=${encodeURIComponent(q)}`),
+  exportNote: (id: number) => fetch("/api/tasks/notes/" + id + "/export", { headers: tokenHeaders() }),
+  importVault: (dirPath: string) => req<{ imported: number; skipped: number; total: number }>("POST", "/tasks/import-vault", { dirPath }),
+
+  // Graph
+  getGraph: (noteId?: number) => req<GraphData>("GET", `/tasks/graph${noteId ? "?noteId=" + noteId : ""}`),
 
   // Settings / providers
   getSettings: () => req("GET", "/settings"),
