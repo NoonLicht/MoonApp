@@ -733,7 +733,18 @@
   color: var(--amber); cursor: pointer;
 }
 /* Rendered GFM table (non-edit preview) */
-.note-cm-host .cm-table-wrap { margin: 8px 0; max-width: 100%; }
+.note-cm-host .cm-note .cm-line.lp-tbl-inactive {
+  visibility: hidden;
+  display: block;
+  height: auto;
+  overflow: visible;
+}
+.note-cm-host .cm-note .cm-line.lp-tbl-inactive .cm-table-wrap {
+  visibility: visible;
+}
+.note-cm-host .cm-table-wrap {
+  margin: 8px 0; max-width: 100%;
+}
 .note-cm-host .cm-table {
   border-collapse: collapse; width: auto; max-width: 100%; table-layout: fixed;
   font-size: 14px; color: var(--text-primary);
