@@ -6,6 +6,27 @@ const logger = require("../logger");
 
 const router = express.Router();
 
+// ─── Helper: auto-create missing notes from [[wiki-links]] ───
+function autoCreateMissingNotes(content) {
+  if (!content) return 0;
+  const links = [...String(content).matchAll(/\[\[([^\]]+)\]\]/g)].map(m => m[1].trim()).filter(Boolean);
+  if (!links.length) return 0;
+  const unique = [...new Set(links)];
+  const existing = new Set(stmts.noteAll.all().map(n => n.title.toLowerCase()));
+  let created = 0;
+  for (const t of unique) {
+    if (!existing.has(t.toLowerCase())) {
+      stmts.noteInsert.run(t, "", "", "");
+      existing.add(t.toLowerCase());
+      created++;
+    }
+  }
+  if (created) logger.info("notes.auto_created", { count: created });
+  return created;
+}
+
+function esc(s){return s.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");}
+
 // TASKS
 router.get("/",(req,res)=>res.json(stmts.taskAll.all()));
 
@@ -43,12 +64,7 @@ router.put("/order",(req,res)=>{
   res.json({ok:true});
 });
 
-router.delete("/:id",(req,res)=>{
-  stmts.taskDelete.run(Number(req.params.id));
-res.json({ok:true});
-});
-
-// NOTES
+// NOTES (должны быть ПЕРЕД /:id, чтобы "/notes" не перехватывался как ":id")
 router.get("/notes",(req,res)=>{
   try{
     const notes=stmts.noteAll.all();
@@ -83,6 +99,7 @@ router.post("/notes",(req,res)=>{
     if(!title||!String(title).trim())return res.status(400).json({error:"empty title"});
     const info=stmts.noteInsert.run(String(title).trim(),content,tags,folder);
     const note=stmts.noteAll.all().find(n=>n.id===info.lastInsertRowid);
+    autoCreateMissingNotes(content);
     logger.action("note.add",{id:note.id,title:note.title});
     res.status(201).json(note);
   }catch(e){res.status(500).json({error:e.message});}
@@ -96,12 +113,28 @@ router.patch("/notes/:id",(req,res)=>{
     const{title,content,tags,folder}=req.body||{};
     stmts.noteUpdate.run(title!=null?String(title).trim():ex.title,content!=null?content:ex.content,tags!=null?tags:ex.tags,folder!=null?folder:ex.folder,id);
     logger.action("note.update",{id});
-    res.json(stmts.noteGet.get(id));
+    const created = autoCreateMissingNotes(content);
+    const note = stmts.noteGet.get(id);
+    res.json({ ...note, createdNotes: created });
   }catch(e){res.status(500).json({error:e.message});}
 });
 
 router.delete("/notes/:id",(req,res)=>{
   try{stmts.noteDelete.run(Number(req.params.id));res.json({ok:true});}catch(e){res.status(500).json({error:e.message});}
+});
+
+router.delete("/notes",(req,res)=>{
+  try{
+    const before = stmts.noteAll.all().length;
+    stmts.noteDeleteAll.run();
+    logger.action("notes.delete_all",{ deleted: before });
+    res.json({ ok: true, deleted: before });
+  }catch(e){res.status(500).json({error:e.message});}
+});
+
+router.delete("/:id",(req,res)=>{
+  stmts.taskDelete.run(Number(req.params.id));
+  res.json({ok:true});
 });
 
 // GRAPH
@@ -159,5 +192,4 @@ router.get("/notes/:id/export",(req,res)=>{
   }catch(e){res.status(500).json({error:e.message});}
 });
 
-function esc(s){return s.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");}
 module.exports = router;

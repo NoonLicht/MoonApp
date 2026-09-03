@@ -376,7 +376,45 @@ export interface VlessProfile {
   name: string;
   updatedAt: string;
 }
-/** Мост из electron/preload.js (contextIsolation). */
+/* -------------------------------- Музыка / Аудио --------------------------- */
+
+/** Результат поиска трека. */
+export interface MusicTrack {
+  id: string;
+  title: string;
+  artist: string;
+  duration: number | null;
+  durationString: string;
+  thumbnail: string | null;
+  webpageUrl: string;
+}
+
+/** Результат поиска. */
+export interface MusicSearchResult {
+  tracks: MusicTrack[];
+  source: string;
+}
+
+/** Ответ /api/music/formats */
+export interface MusicFormats {
+  formats: string[];
+  qualityMap: Record<string, { format: string; quality: number }>;
+}
+
+/** Ответ на старт скачивания. */
+export interface MusicDownloadStart {
+  id: string;
+}
+
+/** Статус джобы скачивания. */
+export interface MusicJobStatus {
+  id: string;
+  state: "running" | "done" | "error" | string;
+  progress: number;
+  error: string;
+  files: { name: string; size: number; key: string }[];
+  found?: boolean;
+}
 declare global {
   interface Window {
     appBridge?: {

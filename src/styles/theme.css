@@ -103,8 +103,9 @@ html, body{
 
 /* Контент: верхний отступ небольшой (тулбар близко к верху),
    нижний — чтобы контент не заходил под нижнее меню (док ~82px + зазор). */
-.content-area{ position:relative; z-index:1; padding:72px 24px 96px; max-width:1080px; margin:0 auto; overflow:hidden; }
-.page{ display:flex; flex-direction:column; gap:14px; overflow:hidden; }
+.app-shell{ display:flex; flex-direction:column; }
+.content-area{ position:relative; z-index:1; padding:72px 24px 96px; display:flex; flex-direction:column; flex:1; min-height:0; overflow:hidden; }
+.page{ display:flex; flex-direction:column; gap:14px; overflow:hidden; flex:1; min-height:0; }
 .page-flush{ height:calc(100vh - 168px); }
 
 .eyebrow{ font-size:11px; color:var(--text-tertiary); font-family:var(--font-mono); text-transform:uppercase; letter-spacing:0.08em; }

@@ -405,13 +405,10 @@
   },
   "music": {
     "title": "Music downloader",
-    "eyebrow": "Fetch and save audio",
-    "paste": "Paste a track or playlist URL",
-    "find": "Find",
-    "empty": "Search above to preview a track",
-    "placeholder": "Source connector not configured — parsing backend is a placeholder for now.",
-    "untitled": "Untitled track",
-    "unknown": "Unknown artist · 3:41",
+    "eyebrow": "Search and save audio",
+    "paste": "Enter a track or artist name",
+    "find": "Search",
+    "empty": "Start searching above to find tracks",
     "download": "Download"
   },
   "arch": {

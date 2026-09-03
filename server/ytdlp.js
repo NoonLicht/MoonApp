@@ -386,8 +386,102 @@ function installYtDlp() {
   return installState;
 }
 
+// --- Поиск музыки (через ytsearch:) ---
+
+function sanitizeTrack(entry) {
+  return {
+    id: entry.id || "",
+    title: entry.title || "Untitled",
+    artist: entry.artist || entry.uploader || entry.creator || "Unknown",
+    duration: entry.duration || null,
+    durationString: entry.duration_string || "",
+    thumbnail: entry.thumbnail || null,
+    webpageUrl: entry.webpage_url || entry.url || "",
+  };
+}
+
+async function searchTracks(query, limit = 15) {
+  const d = await detectYtDlp();
+  if (!d.found) throw new Error("yt-dlp not found");
+  const searchUrl = `ytsearch${limit}:${query}`;
+  const stdout = await runJson(d.path, searchUrl);
+  const data = JSON.parse(stdout);
+  const entries = data.entries || [data];
+  const tracks = entries.filter((e) => e && e.title).map(sanitizeTrack);
+  return { tracks, source: data.extractor || "youtube" };
+}
+
+// --- Скачивание аудио (через --extract-audio) ---
+
+const AUDIO_FORMATS = ["mp3", "m4a", "flac", "opus", "wav"];
+// quality: 0 = best (VBR ~320kbps для mp3), 9 = worst
+const FORMAT_QUALITY_MAP = {
+  "320 kbps": { format: "mp3", quality: 0 },
+  "256 kbps": { format: "m4a", quality: 0 },
+  "192 kbps": { format: "mp3", quality: 3 },
+  "128 kbps": { format: "mp3", quality: 5 },
+  "FLAC":     { format: "flac", quality: 0 },
+  "OPUS":     { format: "opus", quality: 0 },
+  "WAV":      { format: "wav", quality: 0 },
+  "AAC":      { format: "m4a", quality: 1 },
+};
+
+function startAudioDownload({ url, format = "mp3", quality = 0 }) {
+  const jobId = crypto.randomBytes(6).toString("hex");
+  const token = `pa_${jobId}`;
+  const outDir = DIRS.downloads;
+  const outTemplate = path.join(outDir, `${token}.%(ext)s`);
+
+  const args = [
+    "--no-playlist", "--ignore-config", "--no-warnings", "--no-call-home", "--no-update",
+    "--newline", "--retries", "3", "--fragment-retries", "3",
+    "--restrict-filenames", "-o", outTemplate,
+    "--extract-audio",
+    "--audio-format", format,
+    "--audio-quality", String(quality),
+    "--embed-thumbnail",
+    "--add-metadata",
+    "--no-embed-subs",
+    url,
+  ];
+  const proxyUrl = proxy.getProxyUrl();
+  if (proxyUrl) args.push("--proxy", proxyUrl);
+
+  const job = { id: jobId, url, title: "", token, state: "running", progress: 0, error: "", stderrBuf: "", outDir, files: [] };
+  JOBS.set(jobId, job);
+
+  resolvedBin().then(async (bin) => {
+    const ffmpeg = await detectFfmpeg();
+    const spawnArgs = [...args];
+    if (ffmpeg.found) {
+      spawnArgs.splice(spawnArgs.indexOf("--no-playlist"), 0, "--ffmpeg-location", ffmpeg.path);
+    }
+    const child = spawn(bin, spawnArgs, { windowsHide: true });
+    job.child = child;
+    child.stdout.on("data", (d) => parseProgress(job, d));
+    child.stderr.on("data", (d) => {
+      parseProgress(job, d);
+      job.stderrBuf += d.toString();
+      if (job.stderrBuf.length > 4000) job.stderrBuf = job.stderrBuf.slice(-2000);
+    });
+    child.on("error", (e) => finalizeJob(job, "error", e.message));
+    child.on("close", (code) => {
+      if (job.state !== "error") {
+        if (code === 0) finalizeJob(job, "done");
+        else {
+          const errMsg = job.stderrBuf.split(/[\\r\\n]+/).filter(Boolean).slice(-5).join(" · ") || `yt-dlp exited with code ${code}`;
+          finalizeJob(job, "error", errMsg);
+        }
+      }
+    });
+  }).catch((e) => { const jr = JOBS.get(jobId); if (jr) finalizeJob(jr, "error", e.message); });
+
+  return { id: jobId };
+}
+
 module.exports = {
   BUNDLED_BIN, YTDLP_URL, YTDLP_MAX_BYTES,
   detectYtDlp, fetchInfo, startDownload, jobStatus, installStatus, installYtDlp,
   FILES, getDownloadFile,
+  searchTracks, startAudioDownload, AUDIO_FORMATS, FORMAT_QUALITY_MAP,
 };

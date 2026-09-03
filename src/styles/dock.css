@@ -1,5 +1,5 @@
 /* --- bottom dock --- */
-.bottom-dock{ position:fixed; bottom:18px; left:50%; transform:translateX(-50%); z-index:40; max-width:94vw; }
+.bottom-dock{ position:fixed; bottom:18px; left:50%; transform:translateX(-50%); z-index:40; }
 .dock-scroll{ display:flex; align-items:center; gap:5px; padding:7px 10px; border-radius:999px; background:var(--glass-strong); border:1px solid var(--glass-border); backdrop-filter:blur(22px); -webkit-backdrop-filter:blur(22px); box-shadow:var(--shadow); overflow-x:auto; scrollbar-width:none; max-width:100%; }
 .dock-scroll::-webkit-scrollbar{ display:none; }
 .dock-btn{ position:relative; display:flex; align-items:center; justify-content:center; background:none; border:none; cursor:pointer; padding:6px 4px; flex-shrink:0; transform:translateY(0); transition:transform .28s cubic-bezier(.34,1.56,.64,1); }

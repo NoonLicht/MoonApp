@@ -1,8 +1,8 @@
-/**
- * Типизированный API-клиент к Node-бэкенду (Express).
- * Чаты со стримингом читаются через fetch + ReadableStream (SSE-пакет).
- * Все запросы несут заголовок x-pa-token (токен генерирует Electron,
- * см. electron/main.js → preload.js → window.appBridge.getToken).
+﻿/**
+ * РўРёРїРёР·РёСЂРѕРІР°РЅРЅС‹Р№ API-РєР»РёРµРЅС‚ Рє Node-Р±СЌРєРµРЅРґСѓ (Express).
+ * Р§Р°С‚С‹ СЃРѕ СЃС‚СЂРёРјРёРЅРіРѕРј С‡РёС‚Р°СЋС‚СЃСЏ С‡РµСЂРµР· fetch + ReadableStream (SSE-РїР°РєРµС‚).
+ * Р’СЃРµ Р·Р°РїСЂРѕСЃС‹ РЅРµСЃСѓС‚ Р·Р°РіРѕР»РѕРІРѕРє x-pa-token (С‚РѕРєРµРЅ РіРµРЅРµСЂРёСЂСѓРµС‚ Electron,
+ * СЃРј. electron/main.js в†’ preload.js в†’ window.appBridge.getToken).
  */
 import type {
   AppItem, ArchiveItem, BackupInfo, BooksItem, ChatMessage, Conversation,
@@ -12,11 +12,12 @@ import type {
   FlibustaBook, BooksCatalogStats, BooksSearchResult, BooksSyncStatus, BooksImportStatus,
   BooksLiveSearchResult, BookDownloadResult, ImportLogEntry,
   Note, GraphData, GraphNode, GraphEdge,
+  MusicTrack, MusicSearchResult, MusicFormats, MusicDownloadStart, MusicJobStatus,
 } from "./types";
 
-export type { AppItem, ArchiveItem, BackupInfo, BooksItem, ChatMessage, Conversation, ConvertTools, ConvertResult, ConvertInstallStatus, VideoInfo, VideoDownloadResult, VideoJobStatus, YtdlpInstallStatus, LhmStatus, MonitorSnapshot, ProviderInfo, Task, ProxyStatus, VlessProfile, FlibustaBook, BooksCatalogStats, BooksSearchResult, BooksSyncStatus, BooksImportStatus, BooksLiveSearchResult, BookDownloadResult, ImportLogEntry };
+export type { AppItem, ArchiveItem, BackupInfo, BooksItem, ChatMessage, Conversation, ConvertTools, ConvertResult, ConvertInstallStatus, VideoInfo, VideoDownloadResult, VideoJobStatus, YtdlpInstallStatus, LhmStatus, MonitorSnapshot, ProviderInfo, Task, ProxyStatus, VlessProfile, FlibustaBook, BooksCatalogStats, BooksSearchResult, BooksSyncStatus, BooksImportStatus, BooksLiveSearchResult, BookDownloadResult, ImportLogEntry, MusicTrack, MusicSearchResult, MusicFormats, MusicDownloadStart, MusicJobStatus };
 
-const BASE = ""; // одно origin (Vite-proxy или раздача Express)
+const BASE = ""; // РѕРґРЅРѕ origin (Vite-proxy РёР»Рё СЂР°Р·РґР°С‡Р° Express)
 
 function tokenHeaders(): Record<string, string> {
   const t = window.appBridge?.getToken?.();
@@ -48,8 +49,8 @@ function toFormData(file: File, to: string): FormData {
 }
 
 /**
- * Multipart-запрос к бэкенду (загрузка файла). Прокидывается доступ к токену,
- * Content-Type задаёт сам браузер (boundary). Ошибки — как в req().
+ * Multipart-Р·Р°РїСЂРѕСЃ Рє Р±СЌРєРµРЅРґСѓ (Р·Р°РіСЂСѓР·РєР° С„Р°Р№Р»Р°). РџСЂРѕРєРёРґС‹РІР°РµС‚СЃСЏ РґРѕСЃС‚СѓРї Рє С‚РѕРєРµРЅСѓ,
+ * Content-Type Р·Р°РґР°С‘С‚ СЃР°Рј Р±СЂР°СѓР·РµСЂ (boundary). РћС€РёР±РєРё вЂ” РєР°Рє РІ req().
  */
 async function multipart<T = unknown>(url: string, formData: FormData): Promise<T> {
   const res = await fetch(`${BASE}/api${url}`, {
@@ -85,8 +86,9 @@ export const api = {
   createNote: (title: string, content?: string, tags?: string, folder?: string) =>
     req<Note>("POST", "/tasks/notes", { title, content, tags, folder }),
   updateNote: (id: number, data: Partial<{ title: string; content: string; tags: string; folder: string }>) =>
-    req<Note>("PATCH", `/tasks/notes/${id}`, data),
+    req<Note & { createdNotes?: number[] }>("PATCH", `/tasks/notes/${id}`, data),
   deleteNote: (id: number) => req<{ ok: boolean }>("DELETE", `/tasks/notes/${id}`),
+  deleteAllNotes: () => req<{ ok: boolean; deleted: number }>("DELETE", "/tasks/notes"),
   searchNotes: (q: string) => req<Note[]>("GET", `/tasks/notes/search?q=${encodeURIComponent(q)}`),
   exportNote: (id: number) => fetch("/api/tasks/notes/" + id + "/export", { headers: tokenHeaders() }),
   importVault: (dirPath: string) => req<{ imported: number; skipped: number; total: number }>("POST", "/tasks/import-vault", { dirPath }),
@@ -108,7 +110,7 @@ export const api = {
   deleteConversation: (id: number) => req("DELETE", `/chat/${id}`),
 
   // Books / monitor / archives
-  // Books (Флибуста) — поиск/фильтры/пагинация по локальному каталогу
+  // Books (Р¤Р»РёР±СѓСЃС‚Р°) вЂ” РїРѕРёСЃРє/С„РёР»СЊС‚СЂС‹/РїР°РіРёРЅР°С†РёСЏ РїРѕ Р»РѕРєР°Р»СЊРЅРѕРјСѓ РєР°С‚Р°Р»РѕРіСѓ
   getBooks: (params?: string) => req<BooksSearchResult>("GET", `/books${params ? '?' + params : ''}`),
   getBooksFacets: () => req<BooksCatalogStats>("GET", "/books/facets"),
   getBooksSyncStatus: () => req<BooksSyncStatus>("GET", "/books/sync"),
@@ -117,10 +119,10 @@ export const api = {
   getBooksImportStatus: () => req<BooksImportStatus>("GET", "/books/import-dumps"),
   getBooksImportLogs: (n?: number) => req<ImportLogEntry[]>("GET", "/books/import-logs" + (n ? `?n=${n}` : "")),
   resetBooksCatalog: () => req<{ ok: boolean }>("POST", "/books/reset-catalog"),
-  /** Живой OPDS-поиск (мгновенно, без локального хранения). */
+  /** Р–РёРІРѕР№ OPDS-РїРѕРёСЃРє (РјРіРЅРѕРІРµРЅРЅРѕ, Р±РµР· Р»РѕРєР°Р»СЊРЅРѕРіРѕ С…СЂР°РЅРµРЅРёСЏ). */
   booksLiveSearch: (q: string, page?: number) =>
     req<BooksLiveSearchResult>("POST", "/books/live-search", { q, page }),
-  /** Скачать книгу по bid+fmt. */
+  /** РЎРєР°С‡Р°С‚СЊ РєРЅРёРіСѓ РїРѕ bid+fmt. */
   downloadBook: (bid: number, fmt: string) =>
     req<BookDownloadResult>("POST", "/books/download", { bid, fmt }),
 
@@ -128,13 +130,13 @@ export const api = {
   getArchives: () => req<ArchiveItem[]>("GET", "/archives"),
 
 
-  // Convert (страница конвертации файлов — нативный движок через FFmpeg)
+  // Convert (СЃС‚СЂР°РЅРёС†Р° РєРѕРЅРІРµСЂС‚Р°С†РёРё С„Р°Р№Р»РѕРІ вЂ” РЅР°С‚РёРІРЅС‹Р№ РґРІРёР¶РѕРє С‡РµСЂРµР· FFmpeg)
   getConvertTools: () => req<ConvertTools>("GET", "/convert/tools"),
   getConvertInstall: () => req<ConvertInstallStatus>("GET", "/convert/install"),
   startConvertInstall: () => req<ConvertInstallStatus>("POST", "/convert/install/start"),
   uploadConvert: (file: File, to: string) =>
     multipart<ConvertResult>("/convert", toFormData(file, to)),
-  /** Скачивает результат одним разом в виде blob (с токеном, обходит защиту /api). */
+  /** РЎРєР°С‡РёРІР°РµС‚ СЂРµР·СѓР»СЊС‚Р°С‚ РѕРґРЅРёРј СЂР°Р·РѕРј РІ РІРёРґРµ blob (СЃ С‚РѕРєРµРЅРѕРј, РѕР±С…РѕРґРёС‚ Р·Р°С‰РёС‚Сѓ /api). */
   downloadConvert: async (key: string): Promise<{ blob: Blob; name: string }> => {
     const res = await fetch(`${BASE}/api/convert/download/${encodeURIComponent(key)}`, {
       headers: { ...tokenHeaders() },
@@ -148,7 +150,7 @@ export const api = {
     return { blob: await res.blob(), name };
   },
 
-  // Video (страница загрузки видео через yt-dlp)
+  // Video (СЃС‚СЂР°РЅРёС†Р° Р·Р°РіСЂСѓР·РєРё РІРёРґРµРѕ С‡РµСЂРµР· yt-dlp)
   getVideoInfo: (url: string) => req<VideoInfo>("GET", `/video/info?url=${encodeURIComponent(url)}`),
   startVideoDownload: (body: { url: string; info: VideoInfo; height?: number; container?: string; subs?: string[]; thumb?: { embed: boolean } }) =>
     req<VideoDownloadResult>("POST", "/video/download", body),
@@ -168,7 +170,7 @@ export const api = {
   getVideoInstall: () => req<YtdlpInstallStatus>("GET", "/video/install"),
   startVideoInstall: () => req<YtdlpInstallStatus>("POST", "/video/install/start"),
 
-  // LibreHardwareMonitor (датчики температур/вентиляторов/напряжений)
+  // LibreHardwareMonitor (РґР°С‚С‡РёРєРё С‚РµРјРїРµСЂР°С‚СѓСЂ/РІРµРЅС‚РёР»СЏС‚РѕСЂРѕРІ/РЅР°РїСЂСЏР¶РµРЅРёР№)
   getLhmStatus: () => req<LhmStatus>("GET", "/monitor/lhm"),
   startLhm: () => req<{ ok: boolean; already?: boolean; error?: string }>("POST", "/monitor/lhm/start"),
   downloadLhmEngine: () => req<{ ok: boolean; already?: boolean; error?: string }>("POST", "/monitor/lhm/download"),
@@ -178,7 +180,7 @@ export const api = {
   createBackup: () => req("POST", "/backup"),
   listBackups: () => req<BackupInfo[]>("GET", "/backup"),
 
-  // Catalog (каталог загрузок)
+  // Catalog (РєР°С‚Р°Р»РѕРі Р·Р°РіСЂСѓР·РѕРє)
   getCatalog: () => req("GET", "/catalog"),
   addCatalog: (name: string, url: string, category: string) =>
     req("POST", "/catalog", { name, url, category }),
@@ -187,7 +189,7 @@ export const api = {
   downloadAndInstall: (id: number) => req("POST", `/catalog/${id}/download-and-install`),
   installAllFavorites: () => req("POST", "/catalog/install-all", { onlyFavorites: true }),
 
-  // Apps (объединённый каталог: winget + custom/comss)
+  // Apps (РѕР±СЉРµРґРёРЅС‘РЅРЅС‹Р№ РєР°С‚Р°Р»РѕРі: winget + custom/comss)
   getApps: () => req<{ ready: boolean; items: AppItem[] }>("GET", "/apps"),
   favoriteApp: (key: string) => req<{ ok: boolean; favorite: boolean }>("POST", "/apps/favorite", { key }),
   installApp: (key: string) => req("POST", "/apps/install", { key }),
@@ -207,23 +209,42 @@ export const api = {
   pingProxy: () => req<{ pingMs: number | null; country: string | null; error?: string }>("POST", "/proxy/ping"),
   getProxyInstall: () => req<{ state: string; progress: number; phase: string; error: string; installed: boolean }>("GET", "/proxy/install"),
   startProxyInstall: () => req<{ state: string; progress: number; phase: string; error: string; installed: boolean }>("POST", "/proxy/install/start"),
-  // Сохранённые VLESS
+  // РЎРѕС…СЂР°РЅС‘РЅРЅС‹Рµ VLESS
   getSavedVless: () => req<VlessProfile[]>("GET", "/proxy/vless"),
   saveVless: (link: string, name?: string) => req<VlessProfile>("POST", "/proxy/vless/save", { link, name }),
   deleteVless: (id: string) => req<{ ok: boolean }>("DELETE", `/proxy/vless/${id}`),
 
-  // Логирование действий
+// Music / Audio
+  musicSearch: (q: string) => req<MusicSearchResult>("GET", `/music/search?q=${encodeURIComponent(q)}`),
+  musicDownload: (url: string, format?: string, quality?: number) =>
+    req<MusicDownloadStart>("POST", "/music/download", { url, format, quality }),
+  musicJobStatus: (id: string) => req<MusicJobStatus>("GET", `/music/status/${id}`),
+  musicDownloadFile: (key: string) => {
+    const t = window.appBridge?.getToken?.();
+    return fetch(`/api/music/download/${key}`, {
+      headers: t ? { "x-pa-token": t } : {},
+    }).then(async (res) => {
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const disp = res.headers.get("content-disposition") || "";
+      const match = /filename\*?=(?:UTF-8'')?([^;\s]+)/i.exec(disp);
+      const name = match ? decodeURIComponent(match[1]) : "audio.mp3";
+      const blob = await res.blob();
+      return { blob, name };
+    });
+  },
+  musicFormats: () => req<MusicFormats>("GET", "/music/formats"),
+  // Р›РѕРіРёСЂРѕРІР°РЅРёРµ РґРµР№СЃС‚РІРёР№
   logAction: (event: string, data?: unknown) => req("POST", "/log", { event, data }),
 };
 
-/** Событие стрима чата. */
+/** РЎРѕР±С‹С‚РёРµ СЃС‚СЂРёРјР° С‡Р°С‚Р°. */
 export interface StreamEvent {
   type: "token" | "done" | "error";
   text?: string;
   message?: string;
 }
 
-/** Потоковая отправка в чат. onEvent({type:'token'|'done'|'error'}). */
+/** РџРѕС‚РѕРєРѕРІР°СЏ РѕС‚РїСЂР°РІРєР° РІ С‡Р°С‚. onEvent({type:'token'|'done'|'error'}). */
 export async function streamChatSend(
   conversationId: number,
   body: { text: string; model?: string; temperature?: number; maxTokens?: number; stream?: boolean },
@@ -235,7 +256,7 @@ export async function streamChatSend(
     body: JSON.stringify(body),
   });
   if (res.status === 409 || res.status === 401) {
-    let msg = "Ошибка";
+    let msg = "РћС€РёР±РєР°";
     try { msg = (await res.json()).error || msg; } catch { /* keep */ }
     throw new Error(msg);
   }

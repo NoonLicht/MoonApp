@@ -1,5 +1,5 @@
 import React from "react";
-import { FileText, Folder, Plus, Search } from "lucide-react";
+import { FileText, Folder, Plus, Search, Trash2 } from "lucide-react";
 import type { Note } from "../api/types";
 
 interface Props {
@@ -8,10 +8,11 @@ interface Props {
   onSelect: (note: Note) => void;
   onNewNote: (folder?: string) => void;
   onImportVault: () => void;
+  onDeleteAll: () => void;
   query: string; onQueryChange: (q: string) => void;
 }
 
-export default function NoteExplorer({ notes, folders, activeId, onSelect, onNewNote, onImportVault, query, onQueryChange }: Props) {
+export default function NoteExplorer({ notes, folders, activeId, onSelect, onNewNote, onImportVault, onDeleteAll, query, onQueryChange }: Props) {
   const filtered = query.trim() ? notes.filter(n => n.title.toLowerCase().includes(query.toLowerCase()) || n.content.toLowerCase().includes(query.toLowerCase())) : notes;
   const byFolder: Record<string, Note[]> = {};
   for (const n of filtered) { const f = n.folder || "(root)"; if (!byFolder[f]) byFolder[f] = []; byFolder[f].push(n); }
@@ -22,6 +23,7 @@ export default function NoteExplorer({ notes, folders, activeId, onSelect, onNew
         <span className="note-explorer-title">Files</span>
         <button className="icon-btn" onClick={() => onNewNote()} title="New note"><Plus size={14} /></button>
         <button className="icon-btn" onClick={onImportVault} title="Import Obsidian vault"><Folder size={14} /></button>
+        <button className="icon-btn" onClick={onDeleteAll} title="Delete all notes"><Trash2 size={14} /></button>
       </div>
       <div className="note-explorer-search">
         <Search size={13} />

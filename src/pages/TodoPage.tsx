@@ -4,7 +4,7 @@ import {
   LayoutList, Columns3, Share2, Download, Upload, ListChecks,
   X, Calendar, Clock, Hash, Tag, RefreshCw,
 } from "lucide-react";
-import { Btn, IconBtn, Glass, Badge, SectionHead, Select, EmptyHint, Checkbox, Field } from "../components/ui";
+import { Btn, IconBtn, Glass, Badge, SectionHead, Select, EmptyHint, Checkbox } from "../components/ui";
 import { usePageToolbar } from "../components/Toolbar";
 import { useI18n } from "../i18n";
 import { api } from "../api/client";
@@ -46,6 +46,25 @@ export default function TodoPage() {
   // ─── Graph ───
   const [graph, setGraph] = useState<GraphData | null>(null);
   const [graphMode, setGraphMode] = useState<"full" | "local">("full");
+
+  // ─── Initial data load (tasks + notes) ───
+  const loadAll = useCallback(async () => {
+    try {
+      const [ts, nd] = await Promise.all([api.getTasks(), api.getNotes()]);
+      setTasks(ts);
+      setNotes(nd.notes);
+      setFolders(nd.folders);
+    } catch {}
+  }, []);
+
+  useEffect(() => { loadAll(); }, [loadAll]);
+
+  // Reload the note list every time the Notes/Galaxy view opens (fresh data).
+  useEffect(() => {
+    if (view === "notes" || view === "graph") {
+      api.getNotes().then((d) => { setNotes(d.notes); setFolders(d.folders); }).catch(() => {});
+    }
+  }, [view]);
 // ─── Task handlers ───
   const addTask = async () => {
     if (!text.trim()) return;
@@ -112,6 +131,9 @@ export default function TodoPage() {
       .then((updated) => {
         setNotes((prev) => prev.map((n) => (n.id === updated.id ? updated : n)));
         setSaving(false);
+        if ((updated as any).createdNotes?.length) {
+          api.getNotes().then((d) => { setNotes(d.notes); setFolders(d.folders); }).catch(() => {});
+        }
       })
       .catch(() => setSaving(false));
   }, [activeNoteId, noteTitle, noteContent, noteTags, noteFolder]);
@@ -136,6 +158,21 @@ export default function TodoPage() {
         setNoteFolder("");
         setNoteBacklinks([]);
       }
+    } catch {}
+  };
+
+  const deleteAllNotes = async () => {
+    if (!window.confirm("Delete ALL notes? This cannot be undone.")) return;
+    try {
+      await api.deleteAllNotes();
+      setNotes([]);
+      setFolders([]);
+      setActiveNoteId(0);
+      setNoteTitle("");
+      setNoteContent("");
+      setNoteTags("");
+      setNoteFolder("");
+      setNoteBacklinks([]);
     } catch {}
   };
 
@@ -173,7 +210,10 @@ export default function TodoPage() {
   useEffect(() => { if (view === "graph") loadGraph(); }, [view, loadGraph]);
 
   const openNoteFromGraph = (node: any) => {
-    if (node.type === "note" && node.noteId) loadNote(node.noteId);
+    if (node.type === "note" && node.noteId) {
+      loadNote(node.noteId);
+      setView("notes");
+    }
   };
 
   // ─── View ───
@@ -187,7 +227,7 @@ export default function TodoPage() {
     [filter, view]
   );
 return (
-    <div className="page">
+    <div className="page page-fill">
       <SectionHead eyebrow={t("todo.eyebrow", { n: open })} title={t("todo.title")}
         action={
           <div className="view-tabs">
@@ -234,32 +274,35 @@ return (
         <KanbanBoard tasks={tasks} onToggle={toggleTask} onEdit={(t) => setEditTask(t)} onDelete={removeTask} />
       )}
 
-      {/* ── NOTES VIEW ── */}
+      {/* ── NOTES VIEW (Obsidian-style) ── */}
       {view === "notes" && (
         <div className="todo-layout">
           <NoteExplorer notes={notes} folders={folders} activeId={activeNoteId}
-            onSelect={(n) => loadNote(n.id)} onNewNote={createNote} onImportVault={importVault}
+            onSelect={(n) => loadNote(n.id)} onNewNote={createNote} onImportVault={importVault} onDeleteAll={deleteAllNotes}
             query={noteSearch} onQueryChange={setNoteSearch} />
 
           <div className="note-main">
             {activeNoteId ? (
               <>
                 <div className="note-meta">
-                  <Field label="Title" w={200}>
-                    <input className="text-input" value={noteTitle} onChange={(e) => setNoteTitle(e.target.value)} style={{ fontSize: 13 }} />
-                  </Field>
-                  <Field label="Tags" w={160}>
-                    <input className="text-input" value={noteTags} onChange={(e) => setNoteTags(e.target.value)} placeholder="#tag1,#tag2" style={{ fontSize: 12 }} />
-                  </Field>
-                  <Field label="Folder" w={140}>
-                    <Select value={noteFolder} onChange={(e) => setNoteFolder(e.target.value)}
-                      options={["", ...folders]} />
-                  </Field>
-                  <span className="muted-sm" style={{ marginLeft: "auto" }}>
-                    {saving ? "Saving..." : "Auto-saved"}
-                  </span>
-                  <IconBtn icon={Download} onClick={() => exportNote(activeNoteId)} title="Export .md" />
-                  <IconBtn icon={Trash2} onClick={() => deleteNote(activeNoteId)} title="Delete note" />
+                  <input className="note-title-input" value={noteTitle}
+                    onChange={(e) => setNoteTitle(e.target.value)} placeholder="Untitled" />
+                  <div className="note-meta-right">
+                    <span className="note-save-status">
+                      {saving ? "Saving..." : "Auto-saved"}
+                    </span>
+                    <IconBtn icon={Download} onClick={() => exportNote(activeNoteId)} title="Export .md" />
+                    <IconBtn icon={Trash2} onClick={() => deleteNote(activeNoteId)} title="Delete note" />
+                  </div>
+                </div>
+
+                <div className="note-tags-row">
+                  {noteTags.split(",").filter(Boolean).map((tag, i) => (
+                    <span key={i} className="note-tag">#{tag.trim()}</span>
+                  ))}
+                  <input className="note-tag-input" value={noteTags}
+                    onChange={(e) => setNoteTags(e.target.value)}
+                    placeholder={noteTags ? "" : "#tag1, #tag2, ..."} />
                 </div>
 
                 <NoteEditor content={noteContent} onChange={setNoteContent}
@@ -277,7 +320,10 @@ return (
                 )}
               </>
             ) : (
-              <EmptyHint icon={FileText} text="Select a note or create a new one" />
+              <div className="note-empty">
+                <FileText size={24} strokeWidth={1.4} />
+                <span style={{ fontSize: 13, color: "var(--text-tertiary)" }}>Select a note or create a new one</span>
+              </div>
             )}
           </div>
         </div>
@@ -293,7 +339,9 @@ return (
               <button className="graph-mode-btn" onClick={loadGraph}><RefreshCw size={12} /> Refresh</button>
             </div>
             {graph && graph.nodes.length > 0 ? (
-              <GraphView data={graph} onNodeClick={openNoteFromGraph} width={780} height={500} />
+              <div className="graph-wrap">
+                <GraphView data={graph} onNodeClick={openNoteFromGraph} />
+              </div>
             ) : (
               <EmptyHint icon={Share2} text="No connections yet. Add [[wiki links]] to your notes to build the graph." />
             )}

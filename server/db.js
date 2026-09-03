@@ -1,5 +1,6 @@
 const fs = require("fs");
 const { FILES } = require("./config");
+const notesFs = require("./notes-fs");
 const logger = require("./logger");
 
 // Лёгкий JS-стор вместо полноценной БД — данные живут в JSON.
@@ -67,7 +68,6 @@ const tables = {
   messages: new Table(["conversation_id", "role", "text", "created_at"], "id"),
   archived_pages: new Table(["name", "size_text", "saved_at"], "-id"),
   books: new Table(["title", "author", "year", "fmt", "tone", "description"], "title"),
-  notes: new Table(["title", "content", "tags", "folder", "created_at", "updated_at"], "-updated_at"),
   catalog: new Table(["name", "url", "source", "category", "wingetId", "favorite", "added_at"], "-id"),
   favorites: new Table(["key"], "key"),
 };
@@ -101,6 +101,24 @@ function load() {
     for (const k of Object.keys(tables)) {
       if (data[k]) tables[k].loadJSON(data[k]);
       tables[k].seq = Math.max(tables[k].seq, ...tables[k].rows.map((r) => r.id || 0));
+    }
+    // Миграция: заметки из data.json -> .md файлы (только если в storage/notes/ пусто)
+    if (data.notes && Array.isArray(data.notes.rows) && data.notes.rows.length > 0) {
+      const notesDir = notesFs.NOTES_DIR;
+      if (fs.existsSync(notesDir)) {
+        const existing = fs.readdirSync(notesDir).filter(f => f.endsWith(".md"));
+        if (existing.length === 0) {
+          logger.info("notes-fs.migrate.start", { count: data.notes.rows.length });
+          for (const note of data.notes.rows) {
+            notesFs.insert(note.title, note.content, note.tags || "", note.folder || "");
+          }
+          logger.info("notes-fs.migrate.done", { count: data.notes.rows.length });
+        }
+      } else {
+        for (const note of data.notes.rows) {
+          notesFs.insert(note.title, note.content, note.tags || "", note.folder || "");
+        }
+      }
     }
   } catch { /* первый запуск — файла ещё нет */ }
 }
@@ -142,36 +160,37 @@ const stmts = {
 
   // Messages
   msgInsert: { run: (conversation_id, role, text) => run(() => tables.messages.insert([conversation_id, role, text, now()])) },
-  msgFor: {
-    all: (conversation_id) => tables.messages.all().filter((m) => m.conversation_id === conversation_id),
-  },
-  msgRecent: {
-    all: (conversation_id, limit) => tables.messages.all().filter((m) => m.conversation_id === conversation_id).slice(-limit),
-  },
+  msgFor: { all: (conversation_id) => tables.messages.all().filter((m) => m.conversation_id === conversation_id) },
+  msgRecent: { all: (conversation_id, limit) => tables.messages.all().filter((m) => m.conversation_id === conversation_id).slice(-limit) },
 
   // Archives
   archInsert: { run: (name, size_text) => run(() => tables.archived_pages.insert([name, size_text, now()])) },
   archAll: { all: () => tables.archived_pages.all() },
 
-  // Notes
-  noteAll: { all: () => tables.books.all() },
-  bookInsert: {
-    run: (title, author, year, fmt, tone, description) => run(() => tables.books.insert([title, author, year, fmt, tone, description])),
-  },
+  // Notes — файловое хранение (каждая заметка = .md файл в storage/notes/)
+  noteAll: { all: () => notesFs.all() },
+  noteGet: { get: (id) => notesFs.get(id) },
+  noteInsert: { run: (title, content, tags, folder) => notesFs.insert(title, content, tags, folder) },
+  noteUpdate: { run: (title, content, tags, folder, id) => notesFs.update(title, content, tags, folder, id) },
+  noteDelete: { run: (id) => notesFs.delete(id) },
+  noteDeleteAll: { run: () => notesFs.deleteAll() },
+  noteSearch: { all: (q) => notesFs.search(q) },
 
-  // Catalog (пользовательский каталог загрузок)
+  // Books
+  bookAll: { all: () => tables.books.all() },
+  bookInsert: { run: (title, author, year, fmt, tone, description) => run(() => tables.books.insert([title, author, year, fmt, tone, description])) },
+
+  // Catalog
   catAll: { all: () => tables.catalog.all() },
   catInsert: { run: (name, url, source, category, wingetId) => run(() => tables.catalog.insert([name, url, source, category || "Other", wingetId || null, 0, now()])) },
   catDelete: { run: (id) => run(() => tables.catalog.delete(id)) },
   catSetFavorite: { run: (id, favorite) => run(() => tables.catalog.updateWhere((r) => r.id === id, { favorite: favorite ? 1 : 0 })) },
   catGet: { get: (id) => tables.catalog.get(id) },
 
-  // Favorites (универсальные ключи: winget:<id> или catalog:<id>)
+  // Favorites
   favAll: { all: () => tables.favorites.all() },
   favHas: (key) => !!tables.favorites.rows.find((r) => r.key === key),
-  favAdd: (key) => run(() => {
-    if (!tables.favorites.rows.find((r) => r.key === key)) tables.favorites.insert([key]);
-  }),
+  favAdd: (key) => run(() => { if (!tables.favorites.rows.find((r) => r.key === key)) tables.favorites.insert([key]); }),
   favRemove: (key) => run(() => tables.favorites.deleteWhere((r) => r.key === key)),
 };
 
