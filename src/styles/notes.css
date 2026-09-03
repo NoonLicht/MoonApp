@@ -578,39 +578,39 @@
 /* ================================================================ */
 /* Tables in TipTap                                                  */
 /* ================================================================ */
+.note-tiptap .tableWrapper {
+  overflow-x: auto; margin: 8px 0;
+}
 .note-tiptap table {
-  width: auto; border-collapse: collapse; margin: 8px 0;
-  overflow: hidden; table-layout: fixed;
+  width: auto; border-collapse: collapse;
+  margin: 0; table-layout: fixed;
   min-width: 120px; max-width: 100%;
 }
+/* Default: each column starts at 25% of the table; once you drag a
+   border, TipTap writes explicit px widths (col/) that win over this. */
 .note-tiptap th, .note-tiptap td {
   border: 1px solid var(--glass-border);
   padding: 6px 10px; text-align: left;
   position: relative; vertical-align: top;
   word-break: break-word; white-space: normal;
   overflow-wrap: break-word;
-  min-width: 40px;
-}
-/* Default column width: 25% for 2-col tables (50% each), auto for others */
-.note-tiptap th:first-child,
-.note-tiptap td:first-child {
-  width: auto;
+  min-width: 40px; width: 25%;
 }
 .note-tiptap th {
   background: var(--track); font-weight: 600;
   color: var(--text-secondary); font-size: 0.9em;
 }
-/* Table resize handles — visible on hover and always present */
-.note-tiptap .tableCellResizeHandle {
+/* Resize: prosemirror-tables renders a `.column-resize-handle` widget
+   on the right edge of the active column, and sets `.resize-cursor`
+   on the editor while the pointer is over a column border. */
+.note-tiptap .column-resize-handle {
   position: absolute; right: -3px; top: 0; bottom: 0;
-  width: 6px; background: var(--amber); opacity: 0;
-  cursor: col-resize; transition: opacity 0.12s;
-  z-index: 10; border-radius: 3px;
+  width: 6px; background: var(--amber); opacity: 0.7;
+  z-index: 5; border-radius: 3px; pointer-events: none;
 }
-.note-tiptap th:hover .tableCellResizeHandle,
-.note-tiptap td:hover .tableCellResizeHandle { opacity: 0.35; }
-.note-tiptap .tableCellResizeHandle:hover,
-.note-tiptap .tableCellResizeHandle.dragging { opacity: 0.9 !important; }
+/* Cursor changes over a column border (the whole editor gets this class) */
+.note-tiptap.resize-cursor,
+.note-tiptap.resize-cursor * { cursor: col-resize !important; }
 /* Selected cell */
 .note-tiptap .selectedCell {
   background: var(--amber-soft);
@@ -675,3 +675,76 @@
   -webkit-backdrop-filter: blur(16px) !important;
 }
 .note-fullscreen .note-textarea { font-size: 15px; }
+/* ================================================================ */
+/* CodeMirror 6 editor (Obsidian-style live preview)                 */
+/* ================================================================ */
+.note-cm-host { height: 100%; min-height: 300px; }
+.note-cm-host .cm-editor {
+  height: 100%; font-size: 15px; line-height: 1.6;
+  color: var(--text-primary);
+  background: transparent;
+}
+.note-cm-host .cm-editor.cm-focused { outline: none; }
+.note-cm-host .cm-gutters {
+  background: transparent; color: var(--text-tertiary);
+  border-right: 1px solid var(--glass-border);
+}
+.note-cm-host .cm-content { line-height: 1.6; }
+/* Content limited + centered */
+.note-cm-host .cm-scroller { max-width: 720px; margin: 0 auto; width: 100%; }
+/* Placeholder */
+.note-cm-host .cm-editor .cm-placeholder {
+  color: var(--text-tertiary); font-style: italic;
+}
+/* Selection */
+.note-cm-host .cm-editor .cm-selectionBackground { background: var(--amber-soft); }
+/* ---- Live preview styled blocks ---- */
+.note-cm-host .cm-note .lp-h { font-weight: 700; color: var(--text-primary); }
+.note-cm-host .cm-note .lp-h1 { font-size: 1.9em; margin: .5em 0 .2em; display: inline-block; }
+.note-cm-host .cm-note .lp-h2 { font-size: 1.55em; margin: .45em 0 .2em; display: inline-block; }
+.note-cm-host .cm-note .lp-h3 { font-size: 1.3em; margin: .4em 0 .15em; display: inline-block; }
+.note-cm-host .cm-note .lp-h4 { font-size: 1.15em; margin: .3em 0 .15em; display: inline-block; }
+.note-cm-host .cm-note .lp-h5 { font-size: 1.05em; margin: .25em 0 .1em; display: inline-block; }
+.note-cm-host .cm-note .lp-h6 { font-size: 1em; margin: .2em 0 .1em; display: inline-block; }
+/* Lists */
+.note-cm-host .cm-note .lp-list, .note-cm-host .cm-note .lp-olist {
+  color: var(--text-primary);
+}
+.note-cm-host .cm-note .lp-quote {
+  color: var(--text-secondary); font-style: italic;
+  border-left: 3px solid var(--amber); padding-left: 10px;
+}
+/* Tasks */
+.note-cm-host .cm-note .lp-task { color: var(--text-primary); }
+.note-cm-host .cm-note .lp-task.lp-checked { color: var(--text-tertiary); text-decoration: line-through; }
+.note-cm-host .cm-note .lp-box {
+  display: inline-block; width: 15px; text-align: center; margin-right: 4px;
+  color: var(--amber); font-size: 15px; user-select: none;
+}
+/* Horizontal rule */
+.note-cm-host .cm-note .lp-hr {
+  border: 0; border-top: 2px solid var(--glass-border); margin: 10px 0;
+}
+/* Wiki links + tags */
+.note-cm-host .cm-note .lp-wikilink {
+  color: var(--amber); text-decoration: underline; cursor: pointer;
+}
+.note-cm-host .cm-note .lp-tag {
+  color: var(--amber); cursor: pointer;
+}
+/* Rendered GFM table (non-edit preview) */
+.note-cm-host .cm-table-wrap { margin: 8px 0; max-width: 100%; }
+.note-cm-host .cm-table {
+  border-collapse: collapse; width: auto; max-width: 100%; table-layout: fixed;
+  font-size: 14px; color: var(--text-primary);
+}
+.note-cm-host .cm-table th, .note-cm-host .cm-table td {
+  border: 1px solid var(--glass-border); padding: 5px 10px; text-align: left;
+  word-break: break-word; vertical-align: top;
+}
+.note-cm-host .cm-table th {
+  background: var(--track); font-weight: 600; color: var(--text-secondary);
+}
+/* Fullscreen support */
+.note-fullscreen .note-cm-host { height: 100%; }
+.note-fullscreen .note-cm-host .cm-editor { height: 82vh; }
