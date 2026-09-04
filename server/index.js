@@ -7,7 +7,6 @@ const { db, stmts } = require("./db");
 const backups = require("./backup");
 const settings = require("./settings");
 
-const tasksRouter = require("./routes/tasks");
 const chatRouter = require("./routes/chat");
 const settingsRouter = require("./routes/settings");
 const backupRouter = require("./routes/backup");
@@ -65,7 +64,6 @@ function createApp() {
   app.use(express.json({ limit: "2mb" }));
 
   app.get("/api/health", (req, res) => res.json({ ok: true }));
-  app.use("/api/tasks", tasksRouter);
   app.use("/api/chat", chatRouter);
   app.use("/api/settings", settingsRouter);
   app.use("/api/backup", backupRouter);

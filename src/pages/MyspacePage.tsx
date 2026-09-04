@@ -17,9 +17,8 @@ interface OFile { path: string; name: string; content: string; frontmatter: Reco
 function dirname(p: string) { const a = p.replace(/\\/g, "/").split("/"); a.pop(); return a.join("/"); }
 export default function MyspacePage() {
   const { t } = useI18n();
-  usePageToolbar(<div style={{display:"flex",alignItems:"center",gap:10,fontSize:13,fontWeight:600,color:"var(--text-secondary)"}}>
-    <FileText size={16} /> My Space
-  </div>, []);
+  // Показываем пустой тулбар, чтобы убрать старую надпись
+  usePageToolbar(<div style={{display:"flex",alignItems:"center",gap:10}}></div>, []);
 
   const [leftOpen, setLeftOpen] = useState(true);
   const [rightOpen, setRightOpen] = useState(true);

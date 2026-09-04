@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import {
-  Settings2, Palette, Gauge, MonitorCog, MessageSquare, ListChecks,
+  Settings2, Palette, Gauge, MonitorCog, MessageSquare,
   Package, Repeat, Clapperboard, Mic2, Archive, Activity, Database,
   ShieldCheck, Check, RotateCcw,
 } from "lucide-react";
@@ -186,7 +186,7 @@ export default function SettingsPage() {
   }
 
   const g = s.general, ap = s.appearance, pf = s.performance, win = s.window;
-  const chat = s.chat, tasks = s.tasks, store = s.store, conv = s.converter;
+  const chat = s.chat, store = s.store, conv = s.converter;
   const media = s.media, voice = s.voice, arch = s.archiver, mon = s.monitor;
   const backup = s.backup, adv = s.advanced;
 
@@ -222,7 +222,7 @@ export default function SettingsPage() {
             <Select
               value={g.startPage}
               onChange={(e) => change("general.startPage", e.target.value)}
-              options={["store", "convert", "video", "music", "books", "monitor", "todo", "aichat", "voice", "archive", "settings"]}
+              options={["store", "convert", "video", "music", "books", "monitor", "myspace", "aichat", "voice", "archive", "settings"]}
             />
           </Row>
           <BoolRow label={t("settings.autoLaunch")} hint={t("settings.autoLaunchHint")} value={g.autoLaunch} onChange={(v) => change("general.autoLaunch", v)} />
@@ -296,17 +296,6 @@ export default function SettingsPage() {
           <BoolRow label={t("chat.chatStream")} hint={t("chat.chatStreamHint")} value={chat.stream} onChange={(v) => change("chat.stream", v)} />
           <Row label={t("chat.chatContext")} hint={t("chat.chatContextHint")}>
             <NumberInput value={chat.contextMessages} onChange={(v) => change("chat.contextMessages", v)} min={4} max={100} suffix=" msg" />
-          </Row>
-        </Section>
-
-        {/* ---- Задачи ---- */}
-        <Section title={t("settings.tasks")} icon={ListChecks} badge="active">
-          <BoolRow label={t("tasks.tasksSmart")} hint={t("tasks.tasksSmartHint")} value={tasks.smartParsing} onChange={(v) => change("tasks.smartParsing", v)} />
-          <Row label={t("tasks.tasksPriority")} hint={t("tasks.tasksPriorityHint")}>
-            <Select value={tasks.defaultPriority} onChange={(e) => change("tasks.defaultPriority", e.target.value)} options={["High", "Med", "Low"]} />
-          </Row>
-          <Row label={t("tasks.tasksTag")} hint={t("tasks.tasksTagHint")}>
-            <TextInput value={tasks.defaultTag} onChange={(v) => change("tasks.defaultTag", v)} placeholder="General" />
           </Row>
         </Section>
 

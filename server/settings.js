@@ -47,13 +47,6 @@ const DEFAULTS = {
     contextMessages: 30,     // сколько последних сообщений уходит в контекст
   },
 
-  // --- Задачи ---
-  tasks: {
-    smartParsing: false,     // future: распознавать теги/приоритеты/сроки из текста
-    defaultPriority: "Med",
-    defaultTag: "General",
-  },
-
   // --- Store / каталог загрузок ---
   store: {
     downloadDir: "",         // пусто = дефолтная папка (storage/downloads)

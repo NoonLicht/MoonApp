@@ -6,7 +6,6 @@
     "music": "Music",
     "books": "Books",
     "monitor": "Monitor",
-    "todo": "Tasks",
     "myspace": "My Space",
     "aichat": "AI Chat",
     "voice": "Voice",
@@ -66,7 +65,6 @@
     "rememberSize": "Remember size & position",
     "rememberSizeHint": "Restore window size and position between launches",
     "chat": "AI Chat",
-    "tasks": "Tasks",
     "storeSection": "Store & Downloads",
     "converter": "Converter",
     "media": "Media",
@@ -90,14 +88,6 @@
     "chatStreamHint": "Stream tokens live in real time",
     "chatContext": "Context messages",
     "chatContextHint": "How many recent messages are used in a request"
-  },
-  "tasks": {
-    "tasksSmart": "Smart parsing",
-    "tasksSmartHint": "Recognize priorities, tags and due dates from text",
-    "tasksPriority": "Default priority",
-    "tasksPriorityHint": "Priority of new tasks (if not chosen)",
-    "tasksTag": "Default tag",
-    "tasksTagHint": "Tag of new tasks"
   },
   "storeSection": {
     "storeDir": "Download directory",
@@ -211,15 +201,6 @@
     "next": "Next ›",
     "perPage": "per page",
     "page": "Page {page} / {total}"
-  },
-  "todo": {
-    "eyebrow": "{n} open",
-    "title": "Tasks",
-    "placeholder": "Add a task and press enter",
-    "add": "Add",
-    "deleteTitle": "Delete",
-    "empty": "Nothing here",
-    "smart": "Smart parsing (tags, priority, due dates) — reserved for a future update."
   },
   "aichat": {
     "provider": "Provider",

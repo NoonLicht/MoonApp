@@ -6,7 +6,6 @@
     "music": "音乐",
     "books": "书籍",
     "monitor": "监控",
-    "todo": "任务",
     "myspace": "我的空间",
     "aichat": "AI聊天",
     "voice": "语音",
@@ -66,7 +65,6 @@
     "rememberSize": "记住窗口大小和位置",
     "rememberSizeHint": "在启动之间恢复窗口大小和位置",
     "chat": "AI聊天",
-    "tasks": "任务",
     "storeSection": "商店与下载",
     "converter": "转换器",
     "media": "媒体",
@@ -90,14 +88,6 @@
     "chatStreamHint": "实时流式输出令牌",
     "chatContext": "上下文消息",
     "chatContextHint": "请求中使用的最近消息数量"
-  },
-  "tasks": {
-    "tasksSmart": "智能解析",
-    "tasksSmartHint": "从文本识别优先级、标签和截止日期",
-    "tasksPriority": "默认优先级",
-    "tasksPriorityHint": "新任务的优先级（若未选择）",
-    "tasksTag": "默认标签",
-    "tasksTagHint": "新任务的标签"
   },
   "storeSection": {
     "storeDir": "下载目录",
@@ -211,15 +201,6 @@
     "next": "下一页 ›",
     "perPage": "每页",
     "page": "第 {page} / {total} 页"
-  },
-  "todo": {
-    "eyebrow": "{n} 个进行中",
-    "title": "任务",
-    "placeholder": "添加任务并按回车",
-    "add": "添加",
-    "deleteTitle": "删除",
-    "empty": "这里空无一物",
-    "smart": "智能解析（从文本识别标签、优先级、截止日期）— 预留给未来更新。"
   },
   "aichat": {
     "provider": "提供商",

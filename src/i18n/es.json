@@ -6,7 +6,6 @@
     "music": "Música",
     "books": "Libros",
     "monitor": "Monitor",
-    "todo": "Tareas",
     "myspace": "Mi Espacio",
     "aichat": "Chat IA",
     "voice": "Voz",
@@ -66,7 +65,6 @@
     "rememberSize": "Recordar tamaño y posición",
     "rememberSizeHint": "Restaurar tamaño y posición entre sesiones",
     "chat": "Chat IA",
-    "tasks": "Tareas",
     "storeSection": "Tienda y descargas",
     "converter": "Convertidor",
     "media": "Multimedia",
@@ -90,14 +88,6 @@
     "chatStreamHint": "Envía tokens en tiempo real",
     "chatContext": "Mensajes de contexto",
     "chatContextHint": "Cuántos mensajes recientes se usan en la petición"
-  },
-  "tasks": {
-    "tasksSmart": "Análisis inteligente",
-    "tasksSmartHint": "Reconocer prioridades, etiquetas y fechas en el texto",
-    "tasksPriority": "Prioridad por defecto",
-    "tasksPriorityHint": "Prioridad de tareas nuevas (si no se elige)",
-    "tasksTag": "Etiqueta por defecto",
-    "tasksTagHint": "Etiqueta de tareas nuevas"
   },
   "storeSection": {
     "storeDir": "Carpeta de descargas",
@@ -211,15 +201,6 @@
     "next": "Siguiente ›",
     "perPage": "por página",
     "page": "Página {page} / {total}"
-  },
-  "todo": {
-    "eyebrow": "{n} abiertas",
-    "title": "Tareas",
-    "placeholder": "Añade una tarea y pulsa intro",
-    "add": "Añadir",
-    "deleteTitle": "Eliminar",
-    "empty": "Nada aquí",
-    "smart": "Análisis inteligente (etiquetas, prioridad, fechas) — reservado."
   },
   "aichat": {
     "provider": "Proveedor",

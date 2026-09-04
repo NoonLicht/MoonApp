@@ -6,7 +6,6 @@
     "music": "الموسيقى",
     "books": "الكتب",
     "monitor": "المراقب",
-    "todo": "المهام",
     "myspace": "مساحتي",
     "aichat": "محادثة AI",
     "voice": "الصوت",
@@ -66,7 +65,6 @@
     "rememberSize": "تذكر الحجم والموضع",
     "rememberSizeHint": "استعادة حجم وموضع النافذة بين الجلسات",
     "chat": "محادثة AI",
-    "tasks": "المهام",
     "storeSection": "المتجر والتنزيلات",
     "converter": "المحول",
     "media": "الميديا",
@@ -90,14 +88,6 @@
     "chatStreamHint": "بث الرموز مباشرة في الوقت الفعلي",
     "chatContext": "رسائل السياق",
     "chatContextHint": "عدد الرسائل الحديثة المستخدمة في الطلب"
-  },
-  "tasks": {
-    "tasksSmart": "التحليل الذكي",
-    "tasksSmartHint": "التعرف على الأولويات والوسوم والمواعيد في النص",
-    "tasksPriority": "الأولوية الافتراضية",
-    "tasksPriorityHint": "أولوية المهام الجديدة (إن لم تُختر)",
-    "tasksTag": "الوسم الافتراضي",
-    "tasksTagHint": "وسم المهام الجديدة"
   },
   "storeSection": {
     "storeDir": "مجلد التنزيل",
@@ -211,15 +201,6 @@
     "next": "التالي ›",
     "perPage": "بالصفحة",
     "page": "صفحة {page} / {total}"
-  },
-  "todo": {
-    "eyebrow": "{n} مفتوحة",
-    "title": "المهام",
-    "placeholder": "أضف مهمة واضغط Enter",
-    "add": "إضافة",
-    "deleteTitle": "حذف",
-    "empty": "لا شيء هنا",
-    "smart": "التحليل الذكي (الوسوم، الأولوية، المواعيد) — محجوز لتحديث مستقبلي."
   },
   "aichat": {
     "provider": "المزود",

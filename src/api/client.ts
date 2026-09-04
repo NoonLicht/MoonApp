@@ -8,15 +8,15 @@ import type {
   AppItem, ArchiveItem, BackupInfo, BooksItem, ChatMessage, Conversation,
   ConvertTools, ConvertResult, ConvertInstallStatus,
   VideoInfo, VideoDownloadResult, VideoJobStatus, YtdlpInstallStatus,
-  LhmStatus, MonitorSnapshot, ProviderInfo, Task, ProxyStatus, VlessProfile,
+  LhmStatus, MonitorSnapshot, ProviderInfo, ProxyStatus, VlessProfile,
   FlibustaBook, BooksCatalogStats, BooksSearchResult, BooksSyncStatus, BooksImportStatus,
   BooksLiveSearchResult, BookDownloadResult, ImportLogEntry,
-  Note, GraphData, GraphNode, GraphEdge,
+  GraphData, GraphNode, GraphEdge,
   MusicTrack, MusicSearchResult, MusicFormats, MusicDownloadStart, MusicJobStatus,
   VaultFile, VaultFileContent, VaultSearchResult, VaultTag, VaultBacklink,
 } from "./types";
 
-export type { AppItem, ArchiveItem, BackupInfo, BooksItem, ChatMessage, Conversation, ConvertTools, ConvertResult, ConvertInstallStatus, VideoInfo, VideoDownloadResult, VideoJobStatus, YtdlpInstallStatus, LhmStatus, MonitorSnapshot, ProviderInfo, Task, ProxyStatus, VlessProfile, FlibustaBook, BooksCatalogStats, BooksSearchResult, BooksSyncStatus, BooksImportStatus, BooksLiveSearchResult, BookDownloadResult, ImportLogEntry, MusicTrack, MusicSearchResult, MusicFormats, MusicDownloadStart, MusicJobStatus, VaultFile, VaultFileContent, VaultSearchResult, VaultTag, VaultBacklink };
+export type { AppItem, ArchiveItem, BackupInfo, BooksItem, ChatMessage, Conversation, ConvertTools, ConvertResult, ConvertInstallStatus, VideoInfo, VideoDownloadResult, VideoJobStatus, YtdlpInstallStatus, LhmStatus, MonitorSnapshot, ProviderInfo, ProxyStatus, VlessProfile, FlibustaBook, BooksCatalogStats, BooksSearchResult, BooksSyncStatus, BooksImportStatus, BooksLiveSearchResult, BookDownloadResult, ImportLogEntry, MusicTrack, MusicSearchResult, MusicFormats, MusicDownloadStart, MusicJobStatus, VaultFile, VaultFileContent, VaultSearchResult, VaultTag, VaultBacklink };
 
 const BASE = ""; // РѕРґРЅРѕ origin (Vite-proxy РёР»Рё СЂР°Р·РґР°С‡Р° Express)
 
@@ -70,32 +70,6 @@ async function multipart<T = unknown>(url: string, formData: FormData): Promise<
 export const api = {
   // Health
   health: () => req<{ ok: boolean }>("GET", "/health"),
-
-  // Tasks
-  getTasks: () => req<Task[]>("GET", "/tasks"),
-  addTask: (text: string, priority: string, tag: string) =>
-    req<Task>("POST", "/tasks", { text, priority, tag }),
-  toggleTask: (id: number, done: boolean) => req<Task>("PATCH", `/tasks/${id}`, { done }),
-  reorderTasks: (ids: number[]) => req("PUT", "/tasks/order", { ids }),
-  deleteTask: (id: number) => req("DELETE", `/tasks/${id}`),
-
-  // Settings / providers
-
-  // Notes
-  getNotes: () => req<{ notes: Note[]; folders: string[] }>("GET", "/tasks/notes"),
-  getNote: (id: number) => req<Note>("GET", `/tasks/notes/${id}`),
-  createNote: (title: string, content?: string, tags?: string, folder?: string) =>
-    req<Note>("POST", "/tasks/notes", { title, content, tags, folder }),
-  updateNote: (id: number, data: Partial<{ title: string; content: string; tags: string; folder: string }>) =>
-    req<Note & { createdNotes?: number[] }>("PATCH", `/tasks/notes/${id}`, data),
-  deleteNote: (id: number) => req<{ ok: boolean }>("DELETE", `/tasks/notes/${id}`),
-  deleteAllNotes: () => req<{ ok: boolean; deleted: number }>("DELETE", "/tasks/notes"),
-  searchNotes: (q: string) => req<Note[]>("GET", `/tasks/notes/search?q=${encodeURIComponent(q)}`),
-  exportNote: (id: number) => fetch("/api/tasks/notes/" + id + "/export", { headers: tokenHeaders() }),
-  importVault: (dirPath: string) => req<{ imported: number; skipped: number; total: number }>("POST", "/tasks/import-vault", { dirPath }),
-
-  // Graph
-  getGraph: (noteId?: number) => req<GraphData>("GET", `/tasks/graph${noteId ? "?noteId=" + noteId : ""}`),
 
   // Settings / providers
   getSettings: () => req("GET", "/settings"),

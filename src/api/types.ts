@@ -76,34 +76,7 @@ export interface BookDownloadResult {
  * (server/db.js tables, routes/*, server/ts/monitor.ts).
  */
 
-/* --------------------------------- Задачи --------------------------------- */
-
-export interface Task {
-  id: number;
-  text: string;
-  done: number;
-  priority: "High" | "Med" | "Low" | string;
-  tag: string;
-  pos: number;
-  created_at: string;
-}
-
 /* ---------------------------------- Чат ----------------------------------- */
-/* --------------------------------- Заметки ------------------------------ */
-
-export interface Note {
-  id: number;
-  title: string;
-  content: string;
-  tags: string;
-  folder: string;
-  created_at: string;
-  updated_at: string;
-  wikiLinks?: string[];
-  backlinks?: { id: number; title: string }[];
-  linkTargets?: { title: string; exists: boolean; targetId: number | null }[];
-}
-
 /* ========================== Vault / MySpace ========================== */
 
 export interface VaultFile {

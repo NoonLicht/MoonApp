@@ -6,7 +6,6 @@
     "music": "Musique",
     "books": "Livres",
     "monitor": "Moniteur",
-    "todo": "Tâches",
     "myspace": "Mon Espace",
     "aichat": "Chat IA",
     "voice": "Voix",
@@ -66,7 +65,6 @@
     "rememberSize": "Mémoriser taille et position",
     "rememberSizeHint": "Restaurer la taille et la position entre les lancements",
     "chat": "Chat IA",
-    "tasks": "Tâches",
     "storeSection": "Boutique et téléchargements",
     "converter": "Convertisseur",
     "media": "Médias",
@@ -90,14 +88,6 @@
     "chatStreamHint": "Envoyer les jetons en temps réel",
     "chatContext": "Messages de contexte",
     "chatContextHint": "Combien de messages récents sont utilisés"
-  },
-  "tasks": {
-    "tasksSmart": "Analyse intelligente",
-    "tasksSmartHint": "Reconnaître priorités, étiquettes et échéances dans le texte",
-    "tasksPriority": "Priorité par défaut",
-    "tasksPriorityHint": "Priorité des nouvelles tâches (si non choisie)",
-    "tasksTag": "Étiquette par défaut",
-    "tasksTagHint": "Étiquette des nouvelles tâches"
   },
   "storeSection": {
     "storeDir": "Dossier de téléchargement",
@@ -211,15 +201,6 @@
     "next": "Suivant ›",
     "perPage": "par page",
     "page": "Page {page} / {total}"
-  },
-  "todo": {
-    "eyebrow": "{n} ouvertes",
-    "title": "Tâches",
-    "placeholder": "Ajoutez une tâche puis Entrée",
-    "add": "Ajouter",
-    "deleteTitle": "Supprimer",
-    "empty": "Rien ici",
-    "smart": "Analyse intelligente (étiquettes, priorité, échéances) — réservé."
   },
   "aichat": {
     "provider": "Fournisseur",

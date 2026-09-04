@@ -4,7 +4,7 @@ import { renderToString } from "react-dom/server";
 
 import App from "../src/App";
 import StorePage from "../src/pages/StorePage";
-import TodoPage from "../src/pages/TodoPage";
+import MyspacePage from "../src/pages/MyspacePage";
 import AiChatPage from "../src/pages/AiChatPage";
 import ConverterPage from "../src/pages/ConverterPage";
 import VideoPage from "../src/pages/VideoPage";
@@ -21,7 +21,7 @@ describe("render smoke (ловит runtime-краши рендера)", () => {
 
   const pages: [string, React.ComponentType][] = [
     ["Store", StorePage],
-    ["Todo", TodoPage],
+    ["Myspace", MyspacePage],
     ["AiChat", AiChatPage],
     ["Convert", ConverterPage],
     ["Video", VideoPage],

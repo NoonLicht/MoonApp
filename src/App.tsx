@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import {
-  Store, Repeat, Video, Music2, BookOpen, Activity, CheckSquare, MessageSquare,
+  Store, Repeat, Video, Music2, BookOpen, Activity, MessageSquare,
   Mic2, Archive, Sun, Moon, Minus, Square, X, Settings2, Shield, User,
 } from "lucide-react";
 import { I18nProvider, useI18n } from "./i18n";
@@ -24,7 +24,6 @@ import VideoPage from "./pages/VideoPage";
 import MusicPage from "./pages/MusicPage";
 import BooksPage from "./pages/BooksPage";
 import MonitorPage from "./pages/MonitorPage";
-import TodoPage from "./pages/TodoPage";
 import AiChatPage from "./pages/AiChatPage";
 import VoicePage from "./pages/VoicePage";
 import ArchiverPage from "./pages/ArchiverPage";
@@ -33,7 +32,7 @@ import MyspacePage from "./pages/MyspacePage";
 
 type PageId =
   | "store" | "convert" | "video" | "music" | "books" | "monitor"
-  | "todo" | "aichat" | "voice" | "archive" | "settings" | "myspace";
+  | "aichat" | "voice" | "archive" | "settings" | "myspace";
 
 const PAGES: { id: PageId; i18n: string; icon: React.ElementType }[] = [
   { id: "store", i18n: "nav.store", icon: Store },
@@ -42,7 +41,6 @@ const PAGES: { id: PageId; i18n: string; icon: React.ElementType }[] = [
   { id: "music", i18n: "nav.music", icon: Music2 },
   { id: "books", i18n: "nav.books", icon: BookOpen },
   { id: "monitor", i18n: "nav.monitor", icon: Activity },
-  { id: "todo", i18n: "nav.todo", icon: CheckSquare },
   { id: "myspace", i18n: "nav.myspace", icon: User },
   { id: "aichat", i18n: "nav.aichat", icon: MessageSquare },
   { id: "voice", i18n: "nav.voice", icon: Mic2 },
@@ -57,7 +55,6 @@ const PAGE_COMPONENTS: Record<PageId, React.ComponentType> = {
   music: MusicPage,
   books: BooksPage,
   monitor: MonitorPage,
-  todo: TodoPage,
   myspace: MyspacePage,
   aichat: AiChatPage,
   voice: VoicePage,
@@ -79,10 +76,13 @@ interface ShellProps {
 
 function Shell({ active, setActive, theme, toggleTheme, toolbarNode, setToolbarNode, blur, proxyPanelVisible, setProxyPanelVisible }: ShellProps) {
   const { t, lang } = useI18n();
-  const ActivePage = PAGE_COMPONENTS[active];
-  const activeMeta = PAGES.find((p) => p.id === active);
-  const MetaIcon = activeMeta!.icon;
-  const metaTitle = t(activeMeta!.i18n);
+  // Если активная страница была удалена или сохранена в настройках устаревшая
+  // (например "todo"), откатываемся к первой доступной странице.
+  const safeActive: PageId = PAGES.some((p) => p.id === active) ? active : (PAGES[0]?.id as PageId) ?? "store";
+  const ActivePage = PAGE_COMPONENTS[safeActive];
+  const activeMeta = PAGES.find((p) => p.id === safeActive)!;
+  const MetaIcon = activeMeta.icon;
+  const metaTitle = t(activeMeta.i18n);
 
   return (
     <div className={`app-shell theme-${theme} ${blur ? "" : "no-blur"}`} dir={lang === "ar" ? "rtl" : "ltr"}>
