@@ -8,6 +8,7 @@ import { usePageToolbar } from "../components/Toolbar";
 import { useI18n } from "../i18n";
 import { api } from "../api/client";
 import type { VaultFile, VaultSearchResult, VaultTag, VaultBacklink } from "../api/types";
+import EditingToolbar from "../components/EditingToolbar";
 
 type Side = "explorer" | "search" | "tags";
 type Right = "backlinks" | "outline";
@@ -373,6 +374,62 @@ export default function MyspacePage() {
         {/* Editor with live preview & scroll sync */}
         <div style={{flex:1,display:"flex",flexDirection:"column",minHeight:0}}>
           {error && <div style={{padding:"4px 12px",fontSize:12,color:"var(--coral)",background:"var(--coral-soft)",borderBottom:"1px solid var(--glass-border)"}}>{error}</div>}
+          {activeTab && <EditingToolbar
+            onFormat={(type, value) => {
+              const ta = document.querySelector(".ms-edit-textarea") as HTMLTextAreaElement;
+              const start = ta?.selectionStart ?? 0, end = ta?.selectionEnd ?? 0;
+              const sel = edContent.substring(start, end);
+              const wrap = (before, after) => {
+                const nc = edContent.substring(0, start) + before + sel + after + edContent.substring(end);
+                updContent(activeTab, nc);
+                setTimeout(() => { ta?.focus(); ta?.setSelectionRange(start + before.length, end + before.length); }, 0);
+              };
+              const append = (txt) => updContent(activeTab, edContent + txt);
+              if (type==="bold") wrap("**","**");
+              else if (type==="italic") wrap("*","*");
+              else if (type==="strike") wrap("~~","~~");
+              else if (type==="underline") wrap("<u>","</u>");
+              else if (type==="inlineCode") wrap("`","`");
+              else if (type==="superscript") wrap("^","^");
+              else if (type==="subscript") wrap("~","~");
+              else if (type==="wikiLink") wrap("[[","]]");
+              else if (type==="highlight"||type==="bgColor") wrap("==","==");
+              else if (type==="math") wrap("$","$");
+              else if (type==="h1") append("\n\n# ");
+              else if (type==="h2") append("\n\n## ");
+              else if (type==="h3") append("\n\n### ");
+              else if (type==="h4") append("\n\n#### ");
+              else if (type==="h5") append("\n\n##### ");
+              else if (type==="h6") append("\n\n###### ");
+              else if (type==="task") append("\n- [ ] ");
+              else if (type==="table") append("\n|  |  |\n|---|---|\n|  |  |\n");
+              else if (type==="blockquote") append("\n> ");
+              else if (type==="callout") append("\n> [!NOTE]\n> ");
+              else if (type==="hr") append("\n\n---\n");
+              else if (type==="codeBlock") append("\n```\n\n```\n");
+              else if (type==="mathBlock") append("\n$$\n\n$$\n");
+              else if (type==="ul") append("\n- ");
+              else if (type==="ol") append("\n1. ");
+              else if (type==="link") append("[text](url)");
+              else if (type==="textColor") wrap('<span style="color:'+(value||"#f0a63d")+'">',"</span>");
+              else if (type==="clearFormatting") {
+                let s = edContent.substring(start, end);
+                s = s.replace(/[*_~`#]/g,"").replace(/<\/?[^>]+>/g,"");
+                const nc = edContent.substring(0,start) + s + edContent.substring(end);
+                updContent(activeTab, nc);
+              }
+            }}
+            onUndo={() => document.execCommand("undo")}
+            onRedo={() => document.execCommand("redo")}
+            onAttach={() => {
+              const ta = document.querySelector(".ms-edit-textarea") as HTMLTextAreaElement;
+              const start = ta?.selectionStart??0, end = ta?.selectionEnd??0;
+              const sel = edContent.substring(start, end);
+              const wrapped = "![" + (sel||"image") + "](path/to/file)";
+              const nc = edContent.substring(0, start) + wrapped + edContent.substring(end);
+              updContent(activeTab, nc);
+            }}
+          />}
           {activeTab && (()=>{
             const af=openFiles.find(f=>f.path===activeTab);if(!af)return null;
             // Smooth scroll sync via requestAnimationFrame
