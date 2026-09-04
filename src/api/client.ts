@@ -14,9 +14,10 @@ import type {
   GraphData, GraphNode, GraphEdge,
   MusicTrack, MusicSearchResult, MusicFormats, MusicDownloadStart, MusicJobStatus,
   VaultFile, VaultFileContent, VaultSearchResult, VaultTag, VaultBacklink,
+  TaskItem, TaskCreatePayload,
 } from "./types";
 
-export type { AppItem, ArchiveItem, BackupInfo, BooksItem, ChatMessage, Conversation, ConvertTools, ConvertResult, ConvertInstallStatus, VideoInfo, VideoDownloadResult, VideoJobStatus, YtdlpInstallStatus, LhmStatus, MonitorSnapshot, ProviderInfo, ProxyStatus, VlessProfile, FlibustaBook, BooksCatalogStats, BooksSearchResult, BooksSyncStatus, BooksImportStatus, BooksLiveSearchResult, BookDownloadResult, ImportLogEntry, MusicTrack, MusicSearchResult, MusicFormats, MusicDownloadStart, MusicJobStatus, VaultFile, VaultFileContent, VaultSearchResult, VaultTag, VaultBacklink };
+export type { AppItem, ArchiveItem, BackupInfo, BooksItem, ChatMessage, Conversation, ConvertTools, ConvertResult, ConvertInstallStatus, VideoInfo, VideoDownloadResult, VideoJobStatus, YtdlpInstallStatus, LhmStatus, MonitorSnapshot, ProviderInfo, ProxyStatus, VlessProfile, FlibustaBook, BooksCatalogStats, BooksSearchResult, BooksSyncStatus, BooksImportStatus, BooksLiveSearchResult, BookDownloadResult, ImportLogEntry, MusicTrack, MusicSearchResult, MusicFormats, MusicDownloadStart, MusicJobStatus, VaultFile, VaultFileContent, VaultSearchResult, VaultTag, VaultBacklink, TaskItem, TaskCreatePayload };
 
 const BASE = ""; // РѕРґРЅРѕ origin (Vite-proxy РёР»Рё СЂР°Р·РґР°С‡Р° Express)
 
@@ -221,6 +222,13 @@ export const api = {
   myspaceTags: () => req<VaultTag[]>("GET", "/myspace/tags"),
   myspaceBacklinks: (path: string) => req<VaultBacklink[]>("GET", `/myspace/backlinks?path=${encodeURIComponent(path)}`),
   logAction: (event: string, data?: unknown) => req("POST", "/log", { event, data }),
+  // MySpace Tasks
+  tasksList: (params?: { status?: string; tag?: string; projectId?: string; search?: string }) =>
+    req<TaskItem[]>("GET", `/myspace/tasks?${new URLSearchParams(params as any).toString()}`),
+  tasksCreate: (payload: TaskCreatePayload) => req<TaskItem>("POST", "/myspace/tasks", payload),
+  tasksUpdate: (id: string, data: Partial<TaskItem>) => req<TaskItem>("PUT", `/myspace/tasks/${id}`, data),
+  tasksDelete: (id: string) => req<{ ok: boolean }>("DELETE", `/myspace/tasks/${id}`),
+  tasksTimer: (id: string, action: "start" | "pause") => req<TaskItem>("POST", `/myspace/tasks/${id}/timer`, { action }),
 };
 
 /** РЎРѕР±С‹С‚РёРµ СЃС‚СЂРёРјР° С‡Р°С‚Р°. */

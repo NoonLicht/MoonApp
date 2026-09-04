@@ -10,11 +10,13 @@ import { api } from "../api/client";
 import type { VaultFile, VaultSearchResult, VaultTag, VaultBacklink, GraphData, GraphNode, GraphEdge } from "../api/types";
 import EditingToolbar from "../components/EditingToolbar";
 import GraphView from "../components/GraphView";
+import TasksPanel from "../components/TasksPanel";
 
 type Side = "explorer" | "search" | "tags";
 type Right = "backlinks" | "outline" | "graph";
 interface OFile { path: string; name: string; content: string; frontmatter: Record<string, string>; outline: { level: number; text: string; line: number }[]; backlinks: VaultBacklink[]; modified: boolean; }
 function dirname(p: string) { const a = p.replace(/\\/g, "/").split("/"); a.pop(); return a.join("/"); }
+const viewTabStyle = (active: boolean): React.CSSProperties => ({display:"flex",alignItems:"center",gap:6,padding:"6px 14px",borderRadius:8,fontSize:12,fontWeight:active?600:400,background:active?"var(--glass)":"transparent",border:"1px solid var(--glass-border)",color:active?"var(--text-primary)":"var(--text-secondary)",cursor:"pointer",transition:"all 0.15s"});
 export default function MyspacePage() {
   const { t } = useI18n();
   // Показываем пустой тулбар, чтобы убрать старую надпись
@@ -22,6 +24,7 @@ export default function MyspacePage() {
 
   const [leftOpen, setLeftOpen] = useState(true);
   const [rightOpen, setRightOpen] = useState(true);
+  const [myspaceView, setMyspaceView] = useState<"notes"|"tasks">("notes");
   const [leftTab, setLeftTab] = useState<Side>("explorer");
   const [rightTab, setRightTab] = useState<Right>("backlinks");
   const [leftW, setLeftW] = useState(260);
@@ -362,7 +365,13 @@ export default function MyspacePage() {
     border:"none", outline:"none", resize:"none",
     background:"transparent", color:"var(--text-primary)"
   };
-  return (<div style={{display:"flex",flex:1,minHeight:0,overflow:"hidden"}}>
+  return (<div style={{display:"flex",flexDirection:"column",flex:1,minHeight:0,overflow:"hidden"}}>
+      {/* ─── VIEW SWITCHER ─── */}
+      <div style={{display:"flex", gap:4, padding:"4px 4px 0 4px"}}>
+        <button onClick={()=>setMyspaceView("notes")} style={viewTabStyle(myspaceView==="notes")}>📝 Notes</button>
+        <button onClick={()=>setMyspaceView("tasks")} style={viewTabStyle(myspaceView==="tasks")}>✓ Tasks</button>
+      </div>
+      {myspaceView === "notes" && (<div style={{display:"flex",flex:1,minHeight:0,overflow:"hidden"}}>
       {/* LEFT SIDEBAR */}
       {leftOpen && <div style={{width:leftW,minWidth:180,display:"flex",flexDirection:"column",
         background:"var(--surface-glass)",border:"1px solid var(--glass-border)",borderRadius:12,
@@ -775,10 +784,20 @@ export default function MyspacePage() {
               <GraphView data={graphData} onNodeClick={(node)=>{openFile(node.id);}} />
             </div>
           </div>}
-        </div>
-        <div onMouseDown={(e)=>startRes("r",e)} style={{position:"absolute",left:0,top:0,bottom:0,width:4,cursor:"col-resize"}} />
-      </div>}
-      {/* Fullscreen Graph Modal */}
+          </div>
+          <div onMouseDown={(e)=>startRes("r",e)} style={{position:"absolute",left:0,top:0,bottom:0,width:4,cursor:"col-resize"}} />
+        </div>}
+      </div>)}
+    {/* ─── TASKS VIEW ─── */}
+    {myspaceView === "tasks" && (
+      <div style={{display:"flex",flex:1,minHeight:0,overflow:"hidden", margin:"4px"}}>
+        <TasksPanel
+          onOpenNote={openFile}
+          vaultFiles={tree?.map(f => f.name.replace(/\.md$/i, '')) || []}
+        />
+      </div>
+    )}
+    {/* Fullscreen Graph Modal */}
       {graphFullscreen && <div onClick={()=>setGraphFullscreen(false)}
         style={{position:"fixed",inset:0,zIndex:9999,background:"rgba(0,0,0,0.6)",backdropFilter:"blur(8px)",display:"flex",alignItems:"center",justifyContent:"center"}}
         onKeyDown={(e)=>{if(e.key==="Escape")setGraphFullscreen(false);}} tabIndex={0}

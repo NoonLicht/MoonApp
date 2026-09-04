@@ -77,7 +77,62 @@ export interface BookDownloadResult {
  */
 
 /* ---------------------------------- Чат ----------------------------------- */
-/* ========================== Vault / MySpace ========================== */
+/* ========================== MySpace Tasks ========================== */
+
+export interface TaskChecklistItem {
+  id: string;
+  text: string;
+  completed: boolean;
+}
+
+export interface TaskAttachment {
+  name: string;
+  url: string;
+  type: string;
+}
+
+export type TaskStatus = "todo" | "in_progress" | "deferred" | "completed";
+export type TaskPriority = "low" | "medium" | "high" | "urgent";
+export type TaskRecurrence = "none" | "daily" | "weekly" | "weekdays" | "custom";
+
+export interface TaskItem {
+  id: string;
+  title: string;
+  description: string;
+  status: TaskStatus;
+  priority: TaskPriority;
+  estimatedTime: number;       // minutes
+  actualTime: number;          // minutes (tracked)
+  recurrence: TaskRecurrence;
+  dueDate: string | null;      // ISO date
+  reminderDateTime: string | null; // ISO datetime
+  checklist: TaskChecklistItem[];
+  attachments: TaskAttachment[];
+  urls: string[];
+  tags: string[];
+  projectId: string;
+  folder: string;
+  location: string;
+  dependencies: string[];      // taskId[] - blocked by
+  backlinks: string[];         // [[Note]] or @Task references
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TaskCreatePayload {
+  title: string;
+  description?: string;
+  status?: TaskStatus;
+  priority?: TaskPriority;
+  estimatedTime?: number;
+  dueDate?: string;
+  reminderDateTime?: string;
+  tags?: string[];
+  projectId?: string;
+  folder?: string;
+  dependencies?: string[];
+  recurrence?: TaskRecurrence;
+}
 
 export interface VaultFile {
   path: string;
