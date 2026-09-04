@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef, useCallback } from "react";
+﻿import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { FileText, Folder, Plus, Search, Tags, Hash, PanelRightOpen,
   PanelRightClose, PanelLeftOpen, PanelLeftClose, X, Link2, Type,  Bookmark, ChevronRight, ChevronDown, Globe, Trash2, Sparkles,
   Eye, PenLine, Maximize2, Minimize2, Settings2, ZoomIn, ZoomOut } from "lucide-react";
@@ -41,7 +41,7 @@ export default function MyspacePage() {
   const [edContent, setEdContent] = useState("");
   const saveTimer = useRef<any>(null);
   const [saving, setSaving] = useState(false);
-  const [previewMode, setPreviewMode] = useState<"edit"|"preview"|"split">("edit");
+  const [previewMode, setPreviewMode] = useState<"edit"|"preview"|"split">("split");
   const [error, setError] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
   // Load tree + auto-create welcome note if vault empty
@@ -224,25 +224,59 @@ export default function MyspacePage() {
   const buildGraphData = useCallback((): GraphData => {
     const nodesMap = new Map<string, GraphNode>();
     const edgeSet = new Set<string>();
+    // Build a lookup: lowercase title -> real path (from tree)
+    const titleToPath = new Map<string, string>();
+    const walkTree = (nodes: VaultFile[]) => {
+      for (const n of nodes) {
+        if (n.type === "note") {
+          const key = n.name.replace(/\.md$/i, "").toLowerCase();
+          if (!titleToPath.has(key)) titleToPath.set(key, n.path);
+        }
+        if (n.children) walkTree(n.children);
+      }
+    };
+    walkTree(tree);
+    // Also index openFiles
+    for (const f of openFiles) {
+      const key = f.name.replace(/\.md$/i, "").toLowerCase();
+      if (!titleToPath.has(key)) titleToPath.set(key, f.path);
+    }
+    // Add openFiles as nodes
     for (const f of openFiles) {
       if (!nodesMap.has(f.path)) {
         nodesMap.set(f.path, { id: f.path, type: "note", label: f.name.replace(/\.md$/, "") });
       }
+      // Extract [[WikiLinks]] from content and resolve to real paths
       const linkRegex = /\[\[([^\]]+)\]\]/g;
       let m;
       while ((m = linkRegex.exec(f.content)) !== null) {
         const targetTitle = m[1].trim();
-        const targetPath = targetTitle.toLowerCase().replace(/[^a-zа-я0-9\s_-]/g, "") + ".md";
+        const targetLower = targetTitle.toLowerCase();
+        // Try to find the actual file path from tree or openFiles
+        let targetPath = titleToPath.get(targetLower);
+        if (!targetPath) {
+          // Also try with .md suffix
+          targetPath = titleToPath.get(targetLower + ".md") ||
+            titleToPath.get(targetLower.replace(/\.md$/i, ""));
+        }
+        if (!targetPath) {
+          // Fallback: sanitize
+          targetPath = targetTitle.replace(/[<>:"/\\|?*]/g, "_").trim() + ".md";
+        }
         if (!nodesMap.has(targetPath)) {
-          nodesMap.set(targetPath, { id: targetPath, type: "note", label: targetTitle });
+          nodesMap.set(targetPath, {
+            id: targetPath, type: "note",
+            label: targetPath.replace(/\.md$/i, "").replace(/_/g, " ")
+          });
         }
         const edgeKey = f.path + "||" + targetPath;
         edgeSet.add(edgeKey);
       }
     }
+    // Add remaining tree nodes that aren't already in the map
     const addTreeNodes = (nodes: VaultFile[]) => {
       for (const n of nodes) {
-        if (n.type==="note" && !nodesMap.has(n.path)) {
+        if (n.type === "note" && !nodesMap.has(n.path)) {
           nodesMap.set(n.path, { id: n.path, type: "note", label: n.name.replace(/\.md$/, "") });
         }
         if (n.children) addTreeNodes(n.children);
@@ -287,7 +321,7 @@ export default function MyspacePage() {
     return { nodes: allNodes, edges: finalEdges };
   }, [openFiles, tree, activeTab, graphDepth, graphShowOrphans, graphSearch]);
 
-  const graphData = buildGraphData();
+  const graphData = useMemo(buildGraphData, [openFiles, tree, activeTab, graphDepth, graphShowOrphans, graphSearch]);
   const [rightSplit, setRightSplit] = useState(55); // % for backlinks top section
   const splitRef = useRef({ dragging: false, startY: 0, startPct: 55 });
   const renderNode = (node: VaultFile, depth: number = 0) => {
@@ -751,37 +785,37 @@ export default function MyspacePage() {
         onKeyDown={(e)=>{if(e.key==="Escape")setGraphFullscreen(false);}} tabIndex={0}
       >
         <div onClick={(e)=>e.stopPropagation()}
-          style={{width:"95vw",height:"95vh",background:"var(--surface-glass)",border:"1px solid var(--glass-border)",borderRadius:16,display:"flex",flexDirection:"column",overflow:"hidden",position:"relative"}}>
-          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"6px 12px",borderBottom:"1px solid var(--glass-border)",flexShrink:0}}>
-            <span style={{display:"flex",alignItems:"center",gap:6}}>
-              <span style={{fontSize:14,fontWeight:600,color:"var(--text-primary)"}}>Graph View</span>
+          style={{width:"92vw",height:"78vh",background:"var(--surface-glass)",border:"1px solid var(--glass-border)",borderRadius:16,display:"flex",flexDirection:"column",overflow:"hidden",position:"relative"}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 16px",borderBottom:"1px solid var(--glass-border)",flexShrink:0}}>
+            <span style={{display:"flex",alignItems:"center",gap:8}}>
+              <span style={{fontSize:15,fontWeight:600,color:"var(--text-primary)"}}>Graph View</span>
               <button onClick={()=>{setGraphDepth(5);setGraphShowOrphans(true);setGraphSearch("");}}
-                style={{background:"transparent",border:"1px solid var(--glass-border)",padding:"2px 8px",cursor:"pointer",color:"var(--teal)",display:"flex",borderRadius:6,fontSize:11,alignItems:"center",gap:3}} title="Show all nodes and connections">
-                <Globe size={12}/> Show all
+                style={{background:"transparent",border:"1px solid var(--glass-border)",padding:"3px 10px",cursor:"pointer",color:"var(--teal)",display:"flex",borderRadius:6,fontSize:12,alignItems:"center",gap:4}} title="Show all nodes and connections">
+                <Globe size={13}/> Show all
               </button>
             </span>
-            <div style={{display:"flex",alignItems:"center",gap:8}}>
-              <span style={{fontSize:11,color:"var(--text-tertiary)",display:"flex",alignItems:"center",gap:6}}>
-                <label style={{display:"flex",alignItems:"center",gap:2}}>
+            <div style={{display:"flex",alignItems:"center",gap:10}}>
+              <span style={{fontSize:12,color:"var(--text-tertiary)",display:"flex",alignItems:"center",gap:8}}>
+                <label style={{display:"flex",alignItems:"center",gap:3}}>
                   <input type="checkbox" checked={graphShowOrphans} onChange={e=>setGraphShowOrphans(e.target.checked)}/> Orphans
                 </label>
-                <label style={{display:"flex",alignItems:"center",gap:2}}>Depth
+                <label style={{display:"flex",alignItems:"center",gap:3}}>Depth
                   <select value={graphDepth} onChange={e=>setGraphDepth(Number(e.target.value))}
-                    style={{padding:"1px 4px",border:"1px solid var(--glass-border)",background:"var(--track)",color:"var(--text-primary)",fontSize:11,borderRadius:4}}>
+                    style={{padding:"2px 6px",border:"1px solid var(--glass-border)",background:"var(--track)",color:"var(--text-primary)",fontSize:11,borderRadius:4}}>
                     {[1,2,3,4,5].map(d=><option key={d} value={d}>{d}</option>)}
                   </select>
                 </label>
               </span>
               <button onClick={()=>setGraphFullscreen(false)}
-                style={{background:"transparent",border:"none",padding:"4px 8px",cursor:"pointer",color:"var(--text-tertiary)",display:"flex",borderRadius:6}} title="Close (Esc)">
-                <X size={16}/>
+                style={{background:"transparent",border:"none",padding:"4px 10px",cursor:"pointer",color:"var(--text-tertiary)",display:"flex",borderRadius:6}} title="Close (Esc)">
+                <X size={18}/>
               </button>
             </div>
           </div>
-          <div style={{display:"flex",alignItems:"center",gap:6,padding:"3px 12px",borderBottom:"1px solid var(--glass-border)",flexShrink:0}}>
-            <Search size={13} style={{color:"var(--text-tertiary)",flexShrink:0}}/>
+          <div style={{display:"flex",alignItems:"center",gap:8,padding:"6px 16px",borderBottom:"1px solid var(--glass-border)",flexShrink:0}}>
+            <Search size={14} style={{color:"var(--text-tertiary)",flexShrink:0}}/>
             <input placeholder="Search nodes..." value={graphSearch} onChange={e=>setGraphSearch(e.target.value)}
-              style={{flex:1,padding:"2px 6px",border:"none",background:"transparent",outline:"none",color:"var(--text-primary)",fontSize:13}}/>
+              style={{flex:1,padding:"4px 8px",border:"none",background:"transparent",outline:"none",color:"var(--text-primary)",fontSize:13}}/>
           </div>
           <div style={{flex:1,minHeight:0,position:"relative"}}>
             <GraphView data={graphData} onNodeClick={(node)=>{openFile(node.id);}} />

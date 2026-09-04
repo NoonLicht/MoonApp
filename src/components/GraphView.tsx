@@ -17,19 +17,19 @@ export default function GraphView({ data, onNodeClick, onClose }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [dims, setDims] = useState({ w: 600, h: 500 });
-  const [scale, setScale] = useState(1);
+  const [scale, setScale] = useState(0.65);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [showSettings, setShowSettings] = useState(false);
 
   // Settings (state for the UI, mirrored into a ref for the physics loop)
-  const [repulsion, setRepulsion] = useState(400);
-  const [centerGravity, setCenterGravity] = useState(0.0006);
-  const [damping, setDamping] = useState(0.9);
-  const [attraction, setAttraction] = useState(0.01);
-  const [nodeRadius, setNodeRadius] = useState(12);
-  const [edgeWidth, setEdgeWidth] = useState(0.7);
-  const [edgeRestLength, setEdgeRestLength] = useState(110);
-  const [edgeSpring, setEdgeSpring] = useState(0.006);
+  const [repulsion, setRepulsion] = useState(600);
+  const [centerGravity, setCenterGravity] = useState(0.0004);
+  const [damping, setDamping] = useState(0.87);
+  const [attraction, setAttraction] = useState(0.008);
+  const [nodeRadius, setNodeRadius] = useState(22);
+  const [edgeWidth, setEdgeWidth] = useState(1.2);
+  const [edgeRestLength, setEdgeRestLength] = useState(140);
+  const [edgeSpring, setEdgeSpring] = useState(0.008);
   const [noteColor, setNoteColor] = useState("#3fc7ab");
   const [taskColor, setTaskColor] = useState("#f0a63d");
 
@@ -51,14 +51,20 @@ export default function GraphView({ data, onNodeClick, onClose }: Props) {
   const scaleRef = useRef(scale); scaleRef.current = scale;
   const offsetRef = useRef(offset); offsetRef.current = offset;
 
-  // ResizeObserver → adaptive canvas
+  const dataRef = useRef(data);
+  dataRef.current = data;
+
+  // ResizeObserver → adaptive canvas with devicePixelRatio
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
     const ro = new ResizeObserver((entries) => {
       for (const entry of entries) {
         const { width, height } = entry.contentRect;
-        if (width > 0 && height > 0) setDims({ w: Math.round(width), h: Math.round(height) });
+        if (width > 0 && height > 0) {
+          const dpr = window.devicePixelRatio || 1;
+          setDims({ w: Math.round(width * dpr), h: Math.round(height * dpr) });
+        }
       }
     });
     ro.observe(el);
@@ -66,7 +72,7 @@ export default function GraphView({ data, onNodeClick, onClose }: Props) {
   }, []);
 
   // (Re)initialize node positions when graph data or size changes.
-  // Initial scatter is near the center so nodes spread outward then settle.
+  // Use a hash of data to avoid resetting on every render
   useEffect(() => {
     const cx = dims.w / 2, cy = dims.h / 2;
     const spread = Math.max(Math.min(cx, cy) * 0.35, 40);
@@ -153,31 +159,48 @@ export default function GraphView({ data, onNodeClick, onClose }: Props) {
     // Draw (cheap when settled)
     ctx.save();
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const dpr = window.devicePixelRatio || 1;
+    if (dpr > 1) ctx.scale(dpr, dpr);
+    const cssW = canvas.width / dpr;
+    const cssH = canvas.height / dpr;
     ctx.translate(off.x, off.y);
     ctx.scale(sc, sc);
-    ctx.strokeStyle = "rgba(255,255,255,0.12)";
-    ctx.lineWidth = S.edgeWidth;
+    ctx.strokeStyle = "rgba(255,255,255,0.22)";
+    ctx.lineWidth = Math.max(S.edgeWidth, 1.4);
     for (const e of es) {
       const s = ns.find(n => n.id === e.source), t = ns.find(n => n.id === e.target);
       if (!s || !t) continue;
       ctx.beginPath(); ctx.moveTo(s.x, s.y); ctx.lineTo(t.x, t.y); ctx.stroke();
     }
+    // Node circles with glow
     for (const n of ns) {
       const c = n.type === "note" ? S.noteColor : S.taskColor;
-      ctx.beginPath(); ctx.arc(n.x, n.y, S.nodeRadius, 0, Math.PI * 2);
+      const r = Math.max(S.nodeRadius, 6);
+      // Subtle glow
+      ctx.beginPath(); ctx.arc(n.x, n.y, r + 3, 0, Math.PI * 2);
+      ctx.fillStyle = c + "30"; ctx.fill();
+      // Main circle
+      ctx.beginPath(); ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
       ctx.fillStyle = c;
       ctx.fill();
-      if (n.pinned) { ctx.strokeStyle = "rgba(255,255,255,0.65)"; ctx.lineWidth = 2; ctx.stroke(); }
+      if (n.pinned) { ctx.strokeStyle = "#fff"; ctx.lineWidth = 2.5; ctx.stroke(); }
       else if (n.done) { ctx.strokeStyle = "#3fc78a"; ctx.lineWidth = 2; ctx.stroke(); }
     }
-    // Labels drawn in a separate pass so they aren't overdrawn by node circles
-    const labels = simRef.current;
-    for (const n of labels) {
-      ctx.fillStyle = "rgba(255,255,255,0.88)";
-      ctx.font = (S.nodeRadius > 9 ? 10 : 8.5) + "px Inter, sans-serif";
+    // Labels — clean text without background halo
+    const theData = dataRef.current;
+    for (const n of ns) {
+      const r = Math.max(S.nodeRadius, 6);
+      const lbl = (theData.nodes.find(gn => gn.id === n.id)?.label || "").slice(0, 28);
+      if (!lbl) continue;
+      const fontSize = Math.max(Math.min(r * 1.1, 15), 10);
+      ctx.font = "600 " + fontSize + "px Inter, system-ui, sans-serif";
       ctx.textAlign = "center";
-      const lbl = (data.nodes.find(gn => gn.id === n.id)?.label || "").slice(0, 25);
-      if (lbl) ctx.fillText(lbl, n.x, n.y + S.nodeRadius + 11);
+      ctx.textBaseline = "top";
+      ctx.fillStyle = "rgba(255,255,255,0.88)";
+      ctx.shadowColor = "rgba(0,0,0,0.8)";
+      ctx.shadowBlur = 4;
+      ctx.fillText(lbl, n.x, n.y + r + 6);
+      ctx.shadowBlur = 0;
     }
     ctx.restore();
   }
@@ -252,13 +275,13 @@ export default function GraphView({ data, onNodeClick, onClose }: Props) {
   return (
     <div ref={containerRef} className="graph-container" style={{ position: "relative", width: "100%", height: "100%" }}>
       <canvas ref={canvasRef} width={dims.w} height={dims.h}
-        style={{ width: dims.w, height: dims.h, cursor: "grab", display: "block" }}
+        style={{ width: Math.round(dims.w / (window.devicePixelRatio || 1)), height: Math.round(dims.h / (window.devicePixelRatio || 1)), cursor: "grab", display: "block" }}
         onMouseDown={handleMouseDown} onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp} onWheel={handleWheel} />
       <div className="graph-controls">
         <button onClick={() => setScale(s => Math.min(5, s * 1.3))}><ZoomIn size={14} /></button>
         <button onClick={() => setScale(s => Math.max(0.2, s * 0.7))}><ZoomOut size={14} /></button>
-        <button onClick={() => { setScale(1); setOffset({ x: 0, y: 0 }); }}><Maximize2 size={14} /></button>
+        <button onClick={() => { setScale(0.65); setOffset({ x: 0, y: 0 }); }}><Maximize2 size={14} /></button>
         {onClose && <button onClick={onClose}><X size={14} /></button>}
       </div>
 
