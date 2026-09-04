@@ -30,12 +30,10 @@ function preprocess(text: string): string {
   const out: string[] = [];
   for (let i = 0; i < lines.length; i++) {
     let l = lines[i];
-    // Code blocks — skip pre-processing inside them
     if (l.trimStart().startsWith("```")) {
       out.push(l);
       continue;
     }
-    // Checkboxes: - [ ] / - [x] → custom spans
     const cb = l.match(/^(\s*(?:[-*+]\s+)?)\[([ xX])\]\s*(.*)/);
     if (cb) {
       const checked = cb[2].toLowerCase() === "x";
@@ -44,9 +42,20 @@ function preprocess(text: string): string {
         `<span>${cb[3]}</span></span>`);
       continue;
     }
-    // WikiLinks [[...]] and #tags inside paragraphs — replace inline
+    // Math block $$...$$ FIRST (before inline math)
+    l = l.replace(/\$\$([^\$]+)\$\$/g, '<code class="md-math-block">$1</code>');
+    // Math inline $...$
+    l = l.replace(/\$([^\$]+)\$/g, '<code class="md-math">$1</code>');
+    // Superscript ^text^
+    l = l.replace(/\^([^\^]+)\^/g, "<sup>$1</sup>");
+    // Subscript ~text~
+    l = l.replace(/(?<!~)~([^~\s][^~]*[^~\s])~(?!~)/g, "<sub>$1</sub>");
+    // Highlight ==text== -> <mark>text</mark>
+    l = l.replace(/==([^=]+)==/g, "<mark>$1</mark>");
+    // WikiLinks [[...]]
     l = l.replace(/\[\[([^\]]+)\]\]/g, (_, title) =>
       `<span class="md-wl" data-title="${title.replace(/"/g,"&quot;")}">${title}</span>`);
+    // #tags
     l = l.replace(/(^|\s)(#[a-zA-Zа-яА-Я0-9_\-\/]+)/g, (_, sp, tag) =>
       `${sp}<span class="md-tg" data-tag="${tag}">${tag}</span>`);
     out.push(l);

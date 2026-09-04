@@ -15,7 +15,7 @@ import {
 
 /* ─── Types ─── */
 export interface EditingToolbarProps {
-  onFormat: (type: string, value?: string) => void;
+  onFormat: (type: string, value?: string, selectionRange?: {start:number;end:number;text:string}) => void;
   onUndo?: () => void;
   onRedo?: () => void;
   onAttach?: () => void;
@@ -283,21 +283,28 @@ export default function EditingToolbar({ onFormat, onUndo, onRedo, onAttach, isD
   const [activeFormats] = useState<Set<string>>(new Set());
   const [textColor, setTextColor] = useState("#f0a63d");
   const [bgColor, setBgColor] = useState("rgba(240,166,61,0.25)");
+  const savedSel = useRef<{start:number;end:number;text:string}>({start:0,end:0,text:""});
+  const captureSel = useCallback(() => {
+    const ta = document.querySelector(".ms-edit-textarea") as HTMLTextAreaElement;
+    if (ta) { savedSel.current = { start: ta.selectionStart, end: ta.selectionEnd, text: ta.value.substring(ta.selectionStart, ta.selectionEnd) }; }
+  }, []);
 
   const closeDropdown = useCallback(() => setOpenDropdown(null), []);
   const fmt = useCallback((type: string, value?: string) => {
-    onFormat(type, value);
+    if (type==="textColor"||type==="bgColor"||type==="highlight") onFormat(type, value, savedSel.current);
+    else onFormat(type, value);
     closeDropdown();
   }, [onFormat, closeDropdown]);
 
-  const toggleDropdown = (id: string) => setOpenDropdown(prev => prev === id ? null : id);
+  const toggleDropdown = (id: string) => { captureSel(); setOpenDropdown(prev => prev === id ? null : id); };
 
   const containerStyle: React.CSSProperties = {
     display: "flex", alignItems: "center", gap: 3, padding: "5px 8px",
     background: "var(--glass)", border: "1px solid var(--glass-border)",
     borderRadius: 10, backdropFilter: "blur(8px)",
-    flexShrink: 0, overflowX: "auto", overflowY: "hidden",
+    flexShrink: 0, overflow: "visible",
     width: "100%", minHeight: 38, boxSizing: "border-box" as const,
+    flexWrap: "nowrap" as const,
   };
 
   return (

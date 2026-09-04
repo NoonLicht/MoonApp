@@ -1,17 +1,18 @@
 ﻿import React, { useState, useEffect, useRef, useCallback } from "react";
 import { FileText, Folder, Plus, Search, Tags, Hash, PanelRightOpen,
   PanelRightClose, PanelLeftOpen, PanelLeftClose, X, Link2, Type,  Bookmark, ChevronRight, ChevronDown, Globe, Trash2, Sparkles,
-  Eye, PenLine } from "lucide-react";
+  Eye, PenLine, Maximize2, Minimize2, Settings2, ZoomIn, ZoomOut } from "lucide-react";
 import MarkdownRenderer from "../components/MarkdownRenderer";
 import { EmptyHint } from "../components/ui";
 import { usePageToolbar } from "../components/Toolbar";
 import { useI18n } from "../i18n";
 import { api } from "../api/client";
-import type { VaultFile, VaultSearchResult, VaultTag, VaultBacklink } from "../api/types";
+import type { VaultFile, VaultSearchResult, VaultTag, VaultBacklink, GraphData, GraphNode, GraphEdge } from "../api/types";
 import EditingToolbar from "../components/EditingToolbar";
+import GraphView from "../components/GraphView";
 
 type Side = "explorer" | "search" | "tags";
-type Right = "backlinks" | "outline";
+type Right = "backlinks" | "outline" | "graph";
 interface OFile { path: string; name: string; content: string; frontmatter: Record<string, string>; outline: { level: number; text: string; line: number }[]; backlinks: VaultBacklink[]; modified: boolean; }
 function dirname(p: string) { const a = p.replace(/\\/g, "/").split("/"); a.pop(); return a.join("/"); }
 export default function MyspacePage() {
@@ -118,6 +119,8 @@ export default function MyspacePage() {
     }
   };
 
+
+
   const schedSave = useCallback((p: string) => {
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(async () => {
@@ -213,6 +216,80 @@ export default function MyspacePage() {
 
   const [hoverDel, setHoverDel] = useState(null);
   const [dragOverPath, setDragOverPath] = useState(null);
+  const [graphFullscreen, setGraphFullscreen] = useState(false);
+  const [graphShowOrphans, setGraphShowOrphans] = useState(true);
+  const [graphDepth, setGraphDepth] = useState(3);
+  const [graphSearch, setGraphSearch] = useState("");
+  // Build graph data from all files' [[wikiLinks]]
+  const buildGraphData = useCallback((): GraphData => {
+    const nodesMap = new Map<string, GraphNode>();
+    const edgeSet = new Set<string>();
+    for (const f of openFiles) {
+      if (!nodesMap.has(f.path)) {
+        nodesMap.set(f.path, { id: f.path, type: "note", label: f.name.replace(/\.md$/, "") });
+      }
+      const linkRegex = /\[\[([^\]]+)\]\]/g;
+      let m;
+      while ((m = linkRegex.exec(f.content)) !== null) {
+        const targetTitle = m[1].trim();
+        const targetPath = targetTitle.toLowerCase().replace(/[^a-zа-я0-9\s_-]/g, "") + ".md";
+        if (!nodesMap.has(targetPath)) {
+          nodesMap.set(targetPath, { id: targetPath, type: "note", label: targetTitle });
+        }
+        const edgeKey = f.path + "||" + targetPath;
+        edgeSet.add(edgeKey);
+      }
+    }
+    const addTreeNodes = (nodes: VaultFile[]) => {
+      for (const n of nodes) {
+        if (n.type==="note" && !nodesMap.has(n.path)) {
+          nodesMap.set(n.path, { id: n.path, type: "note", label: n.name.replace(/\.md$/, "") });
+        }
+        if (n.children) addTreeNodes(n.children);
+      }
+    };
+    addTreeNodes(tree);
+    let allNodes = Array.from(nodesMap.values());
+    const edges = Array.from(edgeSet).map(k => {
+      const [s, t] = k.split("||");
+      return { source: s, target: t } as GraphEdge;
+    });
+    if (activeTab && graphDepth < 5) {
+      const visited = new Set<string>();
+      const queue: { path: string; depth: number }[] = [{ path: activeTab, depth: 0 }];
+      visited.add(activeTab);
+      const depthNodes = new Set<string>();
+      while (queue.length > 0) {
+        const q = queue.shift()!;
+        depthNodes.add(q.path);
+        if (q.depth >= graphDepth) continue;
+        for (const e of edges) {
+          const neighbor = e.source === q.path ? e.target : (e.target === q.path ? e.source : null);
+          if (neighbor && !visited.has(neighbor)) {
+            visited.add(neighbor);
+            queue.push({ path: neighbor, depth: q.depth + 1 });
+          }
+        }
+      }
+      allNodes = allNodes.filter(n => depthNodes.has(n.id));
+    }
+    if (!graphShowOrphans) {
+      const connected = new Set<string>();
+      for (const e of edges) { connected.add(e.source); connected.add(e.target); }
+      allNodes = allNodes.filter(n => connected.has(n.id));
+    }
+    if (graphSearch.trim()) {
+      const q = graphSearch.toLowerCase();
+      allNodes = allNodes.filter(n => n.label.toLowerCase().includes(q));
+    }
+    const finalIds = new Set(allNodes.map(n => n.id));
+    const finalEdges = edges.filter(e => finalIds.has(e.source) && finalIds.has(e.target));
+    return { nodes: allNodes, edges: finalEdges };
+  }, [openFiles, tree, activeTab, graphDepth, graphShowOrphans, graphSearch]);
+
+  const graphData = buildGraphData();
+  const [rightSplit, setRightSplit] = useState(55); // % for backlinks top section
+  const splitRef = useRef({ dragging: false, startY: 0, startPct: 55 });
   const renderNode = (node: VaultFile, depth: number = 0) => {
     const isExp = exp.has(node.path); const isSel = selPath===node.path;
     if (node.type==="folder") {
@@ -243,6 +320,7 @@ export default function MyspacePage() {
       {hoverDel===node.path&&<button onClick={(e)=>{e.stopPropagation();if(window.confirm("Delete "+node.name+"?")){delFile(node.path);}}}
         style={{background:"transparent",border:"none",padding:1,cursor:"pointer",color:"var(--coral)",display:"flex",flexShrink:0,marginLeft:4}}><Trash2 size={11}/></button>}
     </div>;
+
   };
 
   const txStyle: React.CSSProperties = {
@@ -375,16 +453,55 @@ export default function MyspacePage() {
         <div style={{flex:1,display:"flex",flexDirection:"column",minHeight:0}}>
           {error && <div style={{padding:"4px 12px",fontSize:12,color:"var(--coral)",background:"var(--coral-soft)",borderBottom:"1px solid var(--glass-border)"}}>{error}</div>}
           {activeTab && <EditingToolbar
-            onFormat={(type, value) => {
+            onFormat={(type, value, selRange) => {
               const ta = document.querySelector(".ms-edit-textarea") as HTMLTextAreaElement;
-              const start = ta?.selectionStart ?? 0, end = ta?.selectionEnd ?? 0;
-              const sel = edContent.substring(start, end);
-              const wrap = (before, after) => {
-                const nc = edContent.substring(0, start) + before + sel + after + edContent.substring(end);
-                updContent(activeTab, nc);
-                setTimeout(() => { ta?.focus(); ta?.setSelectionRange(start + before.length, end + before.length); }, 0);
+              if (!ta) return;
+              const savedScroll = ta.scrollTop;
+              const fullText = ta.value;
+              const start = selRange ? selRange.start : ta.selectionStart;
+              const end = selRange ? selRange.end : ta.selectionEnd;
+              const sel = fullText.substring(start, end);
+              const restore = (cb) => {
+                ta.focus();
+                cb();
+                requestAnimationFrame(() => { ta.scrollTop = savedScroll; });
               };
-              const append = (txt) => updContent(activeTab, edContent + txt);
+              const wrap = (before, after) => {
+                if (sel.startsWith(before) && sel.endsWith(after)) {
+                  const inner = sel.substring(before.length, sel.length - after.length);
+                  const nc = fullText.substring(0, start) + inner + fullText.substring(end);
+                  updContent(activeTab, nc);
+                  restore(() => ta.setSelectionRange(start, start + inner.length));
+                } else {
+                  const nc = fullText.substring(0, start) + before + sel + after + fullText.substring(end);
+                  updContent(activeTab, nc);
+                  restore(() => ta.setSelectionRange(start + before.length, end + before.length));
+                }
+              };
+              const lineStart = fullText.lastIndexOf("\n", start - 1) + 1;
+              const lineEnd = fullText.indexOf("\n", end);
+              const curLine = fullText.substring(lineStart, lineEnd === -1 ? fullText.length : lineEnd);
+              const insertAtCursor = (txt) => {
+                const nc = fullText.substring(0, end) + txt + fullText.substring(end);
+                updContent(activeTab, nc);
+                restore(() => ta.setSelectionRange(end + txt.length, end + txt.length));
+              };
+              const toggleHeading = (level) => {
+                const prefix = "#".repeat(level) + " ";
+                const hMatch = curLine.match(/^(#{1,6}) /);
+                let newLine;
+                if (hMatch) {
+                  const curLevel = hMatch[1].length;
+                  if (curLevel === level) newLine = curLine.substring(level + 1);
+                  else newLine = prefix + curLine.replace(/^#{1,6} /, "");
+                } else {
+                  newLine = prefix + curLine;
+                }
+                const nc = fullText.substring(0, lineStart) + newLine + fullText.substring(lineStart + curLine.length);
+                updContent(activeTab, nc);
+                const newEnd = lineStart + newLine.length;
+                restore(() => ta.setSelectionRange(newEnd, newEnd));
+              };
               if (type==="bold") wrap("**","**");
               else if (type==="italic") wrap("*","*");
               else if (type==="strike") wrap("~~","~~");
@@ -393,33 +510,32 @@ export default function MyspacePage() {
               else if (type==="superscript") wrap("^","^");
               else if (type==="subscript") wrap("~","~");
               else if (type==="wikiLink") wrap("[[","]]");
-              else if (type==="highlight"||type==="bgColor") wrap("==","==");
+              else if (type==="highlight") wrap("==","=="); else if (type==="bgColor") wrap('<span style="background:'+(value||"rgba(240,166,61,0.25)")+'">',"</span>");
               else if (type==="math") wrap("$","$");
-              else if (type==="h1") append("\n\n# ");
-              else if (type==="h2") append("\n\n## ");
-              else if (type==="h3") append("\n\n### ");
-              else if (type==="h4") append("\n\n#### ");
-              else if (type==="h5") append("\n\n##### ");
-              else if (type==="h6") append("\n\n###### ");
-              else if (type==="task") append("\n- [ ] ");
-              else if (type==="table") append("\n|  |  |\n|---|---|\n|  |  |\n");
-              else if (type==="blockquote") append("\n> ");
-              else if (type==="callout") append("\n> [!NOTE]\n> ");
-              else if (type==="hr") append("\n\n---\n");
-              else if (type==="codeBlock") append("\n```\n\n```\n");
-              else if (type==="mathBlock") append("\n$$\n\n$$\n");
-              else if (type==="ul") append("\n- ");
-              else if (type==="ol") append("\n1. ");
-              else if (type==="link") append("[text](url)");
+              else if (type==="h1") toggleHeading(1);
+              else if (type==="h2") toggleHeading(2);
+              else if (type==="h3") toggleHeading(3);
+              else if (type==="h4") toggleHeading(4);
+              else if (type==="h5") toggleHeading(5);
+              else if (type==="h6") toggleHeading(6);
+              else if (type==="task") insertAtCursor("- [ ] ");
+              else if (type==="table") insertAtCursor("|  |  |\n|---|---|\n|  |  |\n\n");
+              else if (type==="blockquote") insertAtCursor("> ");
+              else if (type==="callout") insertAtCursor("> [!NOTE]\n> ");
+              else if (type==="hr") insertAtCursor("\n\n---\n\n");
+              else if (type==="codeBlock") insertAtCursor("```\n\n```\n\n");
+              else if (type==="mathBlock") insertAtCursor("$\n\n$\n\n");
+              else if (type==="ul") insertAtCursor("- ");
+              else if (type==="ol") insertAtCursor("1. ");
+              else if (type==="link") { if (sel) wrap("[","](url)"); else insertAtCursor("[text](url)"); }
               else if (type==="textColor") wrap('<span style="color:'+(value||"#f0a63d")+'">',"</span>");
               else if (type==="clearFormatting") {
-                let s = edContent.substring(start, end);
-                s = s.replace(/[*_~`#]/g,"").replace(/<\/?[^>]+>/g,"");
-                const nc = edContent.substring(0,start) + s + edContent.substring(end);
+                let s = sel.replace(/\*\*/g,"").replace(/^\*|\*$/g,"").replace(/~~/g,"").replace(/<\/?[^>]+>/g,"").replace(/`/g,"").replace(/\$/g,"").replace(/==/g,"").replace(/[\^~]/g,"").replace(/style="[^"]*"/g,"");
+                const nc = fullText.substring(0,start)+s+fullText.substring(end);
                 updContent(activeTab, nc);
+                restore(() => ta.setSelectionRange(start, start + s.length));
               }
-            }}
-            onUndo={() => document.execCommand("undo")}
+            }}onUndo={() => document.execCommand("undo")}
             onRedo={() => document.execCommand("redo")}
             onAttach={() => {
               const ta = document.querySelector(".ms-edit-textarea") as HTMLTextAreaElement;
@@ -497,8 +613,8 @@ export default function MyspacePage() {
         margin:"4px 4px 4px 0",backdropFilter:"blur(8px)",position:"relative",flexShrink:0}}>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"6px 8px",borderBottom:"1px solid var(--glass-border)"}}>
           <div style={{display:"flex",gap:2}}>
-            {([["backlinks",Link2],["outline",Type]] as const).map(([id,Icon])=>(
-              <button key={id} onClick={()=>setRightTab(id)}
+            {([["backlinks",Link2],["outline",Type],["graph",Globe]] as const).map(([id,Icon])=>(
+              <button key={id} onClick={()=>setRightTab(id as any)}
                 style={{background:rightTab===id?"var(--track)":"transparent",border:"none",
                   padding:"4px 7px",borderRadius:6,cursor:"pointer",
                   color:rightTab===id?"var(--text-primary)":"var(--text-tertiary)"}}>
@@ -511,48 +627,166 @@ export default function MyspacePage() {
             <PanelRightClose size={13}/>
           </button>
         </div>
-        <div style={{flex:1,overflow:"auto",padding:"4px 6px"}}>
-          {rightTab==="backlinks" && (()=>{
-            const af = openFiles.find(f=>f.path===activeTab);
-            if (!af) return <div style={{padding:16,textAlign:"center",fontSize:12,color:"var(--text-tertiary)"}}>Open a note to see backlinks</div>;
-            const bl = af.backlinks;
-            const linked = bl.filter(b=>b.type==="linked");
-            const unlinked = bl.filter(b=>b.type==="unlinked");
-            return <>
-              <div style={{fontSize:11,fontWeight:600,color:"var(--text-secondary)",textTransform:"uppercase",letterSpacing:"0.03em",padding:"4px 8px",marginBottom:2}}>Linked ({linked.length})</div>
-              {linked.map(b=>(
-                <div key={b.path} onClick={()=>openFile(b.path)}
-                  style={{display:"flex",flexDirection:"column",gap:2,padding:"5px 8px",borderRadius:6,cursor:"pointer",fontSize:12,borderBottom:"1px solid var(--glass-border)"}}>
-                  <span style={{fontWeight:600,color:"var(--amber)"}}>{b.name}</span>
-                  <span style={{fontSize:11,color:"var(--text-tertiary)",lineHeight:1.3}}>{b.snippet}</span>
-                </div>
-              ))}
-              <div style={{fontSize:11,fontWeight:600,color:"var(--text-secondary)",textTransform:"uppercase",letterSpacing:"0.03em",padding:"4px 8px",marginTop:8,marginBottom:2}}>Unlinked ({unlinked.length})</div>
-              {unlinked.map(b=>(
-                <div key={b.path} onClick={()=>openFile(b.path)}
-                  style={{display:"flex",flexDirection:"column",gap:2,padding:"5px 8px",borderRadius:6,cursor:"pointer",fontSize:12,borderBottom:"1px solid var(--glass-border)"}}>
-                  <span style={{fontWeight:600,color:"var(--text-secondary)"}}>{b.name}</span>
-                  <span style={{fontSize:11,color:"var(--text-tertiary)",lineHeight:1.3}}>{b.snippet}</span>
-                </div>
-              ))}
-              {bl.length===0 && <div style={{padding:16,textAlign:"center",fontSize:12,color:"var(--text-tertiary)"}}>No backlinks</div>}
-            </>;
-          })()}
-          {rightTab==="outline" && (()=>{
-            const af = openFiles.find(f=>f.path===activeTab);
-            if (!af) return <div style={{padding:16,textAlign:"center",fontSize:12,color:"var(--text-tertiary)"}}>Open a note to see outline</div>;
-            return <>
-              {af.outline.map((h,i)=>(
-                <div key={i} style={{display:"flex",alignItems:"center",gap:4,padding:"3px 6px",paddingLeft:6+(h.level-1)*14,cursor:"pointer",borderRadius:4,fontSize:12}}>
-                  <span style={{fontSize:10,color:"var(--text-tertiary)",fontFamily:"var(--font-mono)",minWidth:14}}>H{h.level}</span>
-                  <span style={{color:"var(--text-secondary)"}}>{h.text}</span>
-                </div>
-              ))}
-              {af.outline.length===0 && <div style={{padding:16,textAlign:"center",fontSize:12,color:"var(--text-tertiary)"}}>No headings</div>}
-            </>;
-          })()}
+        <div style={{flex:1,display:"flex",flexDirection:"column",minHeight:0,overflow:"hidden"}}>
+          {rightTab==="backlinks" && <div style={{flex:1,display:"flex",flexDirection:"column",minHeight:0,position:"relative"}}>
+            {/* Top: Backlinks panel (resizable) */}
+            <div style={{flex:rightSplit,overflow:"auto",padding:"4px 6px",minHeight:100}}>
+              {(()=>{
+                const af = openFiles.find(f=>f.path===activeTab);
+                if (!af) return <div style={{padding:16,textAlign:"center",fontSize:12,color:"var(--text-tertiary)"}}>Open a note to see backlinks</div>;
+                const bl = af.backlinks;
+                const linked = bl.filter(b=>b.type==="linked");
+                const unlinked = bl.filter(b=>b.type==="unlinked");
+                return <>
+                  <div style={{fontSize:11,fontWeight:600,color:"var(--text-secondary)",textTransform:"uppercase",letterSpacing:"0.03em",padding:"4px 8px",marginBottom:2}}>Linked ({linked.length})</div>
+                  {linked.map(b=>(
+                    <div key={b.path} onClick={()=>openFile(b.path)}
+                      style={{display:"flex",flexDirection:"column",gap:2,padding:"5px 8px",borderRadius:6,cursor:"pointer",fontSize:12,borderBottom:"1px solid var(--glass-border)"}}>
+                      <span style={{fontWeight:600,color:"var(--amber)"}}>{b.name}</span>
+                      <span style={{fontSize:11,color:"var(--text-tertiary)",lineHeight:1.3}}>{b.snippet}</span>
+                    </div>
+                  ))}
+                  <div style={{fontSize:11,fontWeight:600,color:"var(--text-secondary)",textTransform:"uppercase",letterSpacing:"0.03em",padding:"4px 8px",marginTop:8,marginBottom:2}}>Unlinked ({unlinked.length})</div>
+                  {unlinked.map(b=>(
+                    <div key={b.path} onClick={()=>openFile(b.path)}
+                      style={{display:"flex",flexDirection:"column",gap:2,padding:"5px 8px",borderRadius:6,cursor:"pointer",fontSize:12,borderBottom:"1px solid var(--glass-border)"}}>
+                      <span style={{fontWeight:600,color:"var(--text-secondary)"}}>{b.name}</span>
+                      <span style={{fontSize:11,color:"var(--text-tertiary)",lineHeight:1.3}}>{b.snippet}</span>
+                    </div>
+                  ))}
+                  {bl.length===0 && <div style={{padding:16,textAlign:"center",fontSize:12,color:"var(--text-tertiary)"}}>No backlinks</div>}
+              </>;
+            })()}
+            </div>
+            {/* Horizontal resize handle */}
+            <div style={{height:4,cursor:"row-resize",background:"transparent",flexShrink:0,position:"relative",zIndex:5}}
+              onMouseDown={(e)=>{
+                e.preventDefault();
+                const el = e.currentTarget.parentElement;
+                if (!el) return;
+                const startY = e.clientY;
+                const startPct = rightSplit;
+                const totalH = el.clientHeight;
+                const onMove = (ev: MouseEvent) => {
+                  const dy = ev.clientY - startY;
+                  let pct = startPct + (dy / totalH * 100);
+                  pct = Math.max(25, Math.min(80, pct));
+                  setRightSplit(pct);
+                };
+                const onUp = () => { document.removeEventListener("mousemove", onMove); document.removeEventListener("mouseup", onUp); };
+                document.addEventListener("mousemove", onMove);
+                document.addEventListener("mouseup", onUp);
+              }}
+            />
+            {/* Bottom: Mini graph */}
+            <div style={{flex:100-rightSplit,display:"flex",flexDirection:"column",minHeight:80,overflow:"hidden",borderTop:"1px solid var(--glass-border)"}}>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"4px 6px",borderBottom:"1px solid var(--glass-border)",flexShrink:0}}>
+                <span style={{fontSize:11,fontWeight:600,color:"var(--text-secondary)",textTransform:"uppercase",letterSpacing:"0.03em"}}>Local Graph</span>
+                <button onClick={()=>setGraphFullscreen(true)}
+                  style={{background:"transparent",border:"none",padding:3,cursor:"pointer",color:"var(--text-tertiary)",display:"flex"}} title="Expand graph">
+                  <Maximize2 size={12}/>
+                </button>
+                <button onClick={()=>{setGraphDepth(5);setGraphShowOrphans(true);setGraphSearch("");}}
+                  style={{background:"transparent",border:"1px solid var(--glass-border)",padding:"1px 5px",cursor:"pointer",color:"var(--teal)",display:"flex",borderRadius:4,fontSize:10,alignItems:"center",gap:2}} title="Show all">
+                  <Globe size={10}/> All
+                </button>
+              </div>
+              <div style={{flex:1,minHeight:0,overflow:"hidden",position:"relative"}}>
+                <GraphView data={graphData} onNodeClick={(node)=>{openFile(node.id);}} />
+              </div>
+            </div>
+          </div>}
+          {rightTab==="outline" && <div style={{flex:1,overflow:"auto",padding:"4px 6px"}}>
+            {(()=>{
+              const af = openFiles.find(f=>f.path===activeTab);
+              if (!af) return <div style={{padding:16,textAlign:"center",fontSize:12,color:"var(--text-tertiary)"}}>Open a note to see outline</div>;
+              return <>
+                {af.outline.map((h,i)=>(
+                  <div key={i} style={{display:"flex",alignItems:"center",gap:4,padding:"3px 6px",paddingLeft:6+(h.level-1)*14,cursor:"pointer",borderRadius:4,fontSize:12}}>
+                    <span style={{fontSize:10,color:"var(--text-tertiary)",fontFamily:"var(--font-mono)",minWidth:14}}>H{h.level}</span>
+                    <span style={{color:"var(--text-secondary)"}}>{h.text}</span>
+                  </div>
+                ))}
+                {af.outline.length===0 && <div style={{padding:16,textAlign:"center",fontSize:12,color:"var(--text-tertiary)"}}>No headings</div>}
+              </>;
+            })()}
+          </div>}
+          {rightTab==="graph" && <div style={{flex:1,display:"flex",flexDirection:"column",minHeight:0}}>
+            <div style={{display:"flex",alignItems:"center",gap:6,padding:"4px 6px",borderBottom:"1px solid var(--glass-border)",flexShrink:0,flexWrap:"wrap"}}>
+              <span style={{fontSize:11,fontWeight:600,color:"var(--text-secondary)",textTransform:"uppercase",letterSpacing:"0.03em"}}>Global Graph</span>
+              <button onClick={()=>{setGraphDepth(5);setGraphShowOrphans(true);setGraphSearch("");}}
+                style={{background:"transparent",border:"1px solid var(--glass-border)",padding:"1px 6px",cursor:"pointer",color:"var(--teal)",display:"flex",borderRadius:4,fontSize:10,alignItems:"center",gap:2,marginLeft:"auto"}} title="Show all">
+                <Globe size={10}/> All
+              </button>
+              <button onClick={()=>setGraphFullscreen(true)}
+                style={{background:"transparent",border:"none",padding:3,cursor:"pointer",color:"var(--text-tertiary)",display:"flex"}} title="Fullscreen">
+                <Maximize2 size={12}/>
+              </button>
+            </div>
+            <div style={{display:"flex",alignItems:"center",gap:4,padding:"3px 6px",borderBottom:"1px solid var(--glass-border)",flexShrink:0,flexWrap:"wrap"}}>
+              <Search size={11} style={{color:"var(--text-tertiary)",flexShrink:0}}/>
+              <input placeholder="Filter nodes..." value={graphSearch} onChange={e=>setGraphSearch(e.target.value)}
+                style={{flex:1,minWidth:40,padding:"2px 4px",border:"none",background:"transparent",outline:"none",color:"var(--text-primary)",fontSize:11}}/>
+              <label style={{fontSize:10,color:"var(--text-tertiary)",display:"flex",alignItems:"center",gap:2,flexShrink:0}}>
+                <input type="checkbox" checked={graphShowOrphans} onChange={e=>setGraphShowOrphans(e.target.checked)}/> Orphans
+              </label>
+              <label style={{fontSize:10,color:"var(--text-tertiary)",display:"flex",alignItems:"center",gap:2,flexShrink:0}}>
+                Depth
+                <select value={graphDepth} onChange={e=>setGraphDepth(Number(e.target.value))}
+                  style={{padding:"1px 2px",border:"1px solid var(--glass-border)",background:"var(--track)",color:"var(--text-primary)",fontSize:10,borderRadius:4}}>
+                  {[1,2,3,4,5].map(d=><option key={d} value={d}>{d}</option>)}
+                </select>
+              </label>
+            </div>
+            <div style={{flex:1,minHeight:0,overflow:"hidden",position:"relative"}}>
+              <GraphView data={graphData} onNodeClick={(node)=>{openFile(node.id);}} />
+            </div>
+          </div>}
         </div>
         <div onMouseDown={(e)=>startRes("r",e)} style={{position:"absolute",left:0,top:0,bottom:0,width:4,cursor:"col-resize"}} />
+      </div>}
+      {/* Fullscreen Graph Modal */}
+      {graphFullscreen && <div onClick={()=>setGraphFullscreen(false)}
+        style={{position:"fixed",inset:0,zIndex:9999,background:"rgba(0,0,0,0.6)",backdropFilter:"blur(8px)",display:"flex",alignItems:"center",justifyContent:"center"}}
+        onKeyDown={(e)=>{if(e.key==="Escape")setGraphFullscreen(false);}} tabIndex={0}
+      >
+        <div onClick={(e)=>e.stopPropagation()}
+          style={{width:"95vw",height:"95vh",background:"var(--surface-glass)",border:"1px solid var(--glass-border)",borderRadius:16,display:"flex",flexDirection:"column",overflow:"hidden",position:"relative"}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"6px 12px",borderBottom:"1px solid var(--glass-border)",flexShrink:0}}>
+            <span style={{display:"flex",alignItems:"center",gap:6}}>
+              <span style={{fontSize:14,fontWeight:600,color:"var(--text-primary)"}}>Graph View</span>
+              <button onClick={()=>{setGraphDepth(5);setGraphShowOrphans(true);setGraphSearch("");}}
+                style={{background:"transparent",border:"1px solid var(--glass-border)",padding:"2px 8px",cursor:"pointer",color:"var(--teal)",display:"flex",borderRadius:6,fontSize:11,alignItems:"center",gap:3}} title="Show all nodes and connections">
+                <Globe size={12}/> Show all
+              </button>
+            </span>
+            <div style={{display:"flex",alignItems:"center",gap:8}}>
+              <span style={{fontSize:11,color:"var(--text-tertiary)",display:"flex",alignItems:"center",gap:6}}>
+                <label style={{display:"flex",alignItems:"center",gap:2}}>
+                  <input type="checkbox" checked={graphShowOrphans} onChange={e=>setGraphShowOrphans(e.target.checked)}/> Orphans
+                </label>
+                <label style={{display:"flex",alignItems:"center",gap:2}}>Depth
+                  <select value={graphDepth} onChange={e=>setGraphDepth(Number(e.target.value))}
+                    style={{padding:"1px 4px",border:"1px solid var(--glass-border)",background:"var(--track)",color:"var(--text-primary)",fontSize:11,borderRadius:4}}>
+                    {[1,2,3,4,5].map(d=><option key={d} value={d}>{d}</option>)}
+                  </select>
+                </label>
+              </span>
+              <button onClick={()=>setGraphFullscreen(false)}
+                style={{background:"transparent",border:"none",padding:"4px 8px",cursor:"pointer",color:"var(--text-tertiary)",display:"flex",borderRadius:6}} title="Close (Esc)">
+                <X size={16}/>
+              </button>
+            </div>
+          </div>
+          <div style={{display:"flex",alignItems:"center",gap:6,padding:"3px 12px",borderBottom:"1px solid var(--glass-border)",flexShrink:0}}>
+            <Search size={13} style={{color:"var(--text-tertiary)",flexShrink:0}}/>
+            <input placeholder="Search nodes..." value={graphSearch} onChange={e=>setGraphSearch(e.target.value)}
+              style={{flex:1,padding:"2px 6px",border:"none",background:"transparent",outline:"none",color:"var(--text-primary)",fontSize:13}}/>
+          </div>
+          <div style={{flex:1,minHeight:0,position:"relative"}}>
+            <GraphView data={graphData} onNodeClick={(node)=>{openFile(node.id);}} />
+          </div>
+        </div>
       </div>}
     </div>);
 }
