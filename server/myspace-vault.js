@@ -104,11 +104,12 @@ function deleteFile(filePath) {
   const fullPath = path.join(NOTEBOOK_DIR, filePath);
   try {
     if (fs.existsSync(fullPath)) {
-      fs.rmSync(fullPath, { force: true }); return { ok: true };
-    }
-    const dirPath = path.join(VAULT_DIR, "notes", filePath);
-    if (fs.existsSync(dirPath) && fs.statSync(dirPath).isDirectory()) {
-      fs.rmSync(dirPath, { recursive: true, force: true }); return { ok: true };
+      if (fs.statSync(fullPath).isDirectory()) {
+        fs.rmSync(fullPath, { recursive: true, force: true });
+      } else {
+        fs.rmSync(fullPath, { force: true });
+      }
+      return { ok: true };
     }
     return { ok: false, error: "not found" };
   } catch (e) { return { ok: false, error: e.message }; }

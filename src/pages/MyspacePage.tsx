@@ -166,6 +166,31 @@ export default function MyspacePage() {
     try { await api.myspaceDelete(p); closeTab(p); loadTree(); setError(""); }
     catch(e:any) { setError("Delete failed: "+e.message); }
   };
+  const deleteFolder = async (node: any) => {
+    // Move all children notes to root first
+    const moveFiles = async (nodes, parentPath) => {
+      for (const n of nodes) {
+        if (n.type==="note") {
+          const destName = n.name;
+          const exists = tree.some((x)=>x.path===destName);
+          if (exists) {
+            setError("Cannot move \""+n.name+"\" ? a file with this name already exists at root");
+            continue;
+          }
+          try { await api.myspaceRename(n.path, destName); } catch(ex) { setError("Failed to move: "+ex.message); }
+        } else if (n.type==="folder" && n.children) {
+          await moveFiles(n.children, n.path);
+        }
+      }
+    };
+    if (node.children) {
+      await moveFiles(node.children, node.path);
+      await new Promise(r => setTimeout(r, 200)); // wait for moves
+    }
+    // Delete the now-empty folder
+    try { await api.myspaceDelete(node.path); } catch(ex) { setError("Delete failed: "+ex.message); }
+    loadTree();
+  };
 
   useEffect(() => {
     if (!sq.trim()) { setSres([]); return; }
@@ -195,10 +220,14 @@ export default function MyspacePage() {
           onDragOver={(e)=>{e.preventDefault();e.stopPropagation();setDragOverPath(node.path);}}
           onDragLeave={()=>setDragOverPath(null)}
           onDrop={async (e)=>{e.preventDefault();e.stopPropagation();const src=e.dataTransfer.getData("text/plain");if(!src||src===node.path)return;const base=src.split("/").pop()||src;const dest=node.path+"/"+base;const exists=tree.some((n)=>n.path===dest||(n.children&&n.children.some((ch)=>ch.path===dest)));if(exists){setError("A file/folder named \""+base+"\" already exists in this folder");setDragOverPath(null);return;}try{await api.myspaceRename(src,dest);loadTree();setOpenFiles((prev)=>prev.map((f)=>f.path===src?{...f,path:dest,name:base}:f));setActiveTab((prev)=>prev===src?dest:prev);setSelPath((prev)=>prev===src?dest:prev);setError("");}catch(ex){setError("Move failed: "+ex.message);}setDragOverPath(null);}}
+          onMouseEnter={()=>setHoverDel(node.path)}
+          onMouseLeave={()=>setHoverDel(null)}
           style={{display:"flex",alignItems:"center",gap:4,padding:"3px 6px",paddingLeft:12+depth*16,borderRadius:4,fontSize:12,cursor:"pointer",color:"var(--text-secondary)",background:dragOverPath===node.path?"var(--teal-soft)":"transparent"}}>
           <span>{isExp ? <ChevronDown size={12}/> : <ChevronRight size={12}/>}</span>
           <Folder size={14} style={{color:"var(--amber)"}} />
-          <span>{node.name}</span>
+          <span style={{flex:1}}>{node.name}</span>
+          {hoverDel===node.path&&<button onClick={async (e)=>{e.stopPropagation();if(!window.confirm("Delete folder \""+node.name+"\"? Files inside will be moved to root."))return;setError("");await deleteFolder(node);}}
+            style={{background:"transparent",border:"none",padding:1,cursor:"pointer",color:"var(--coral)",display:"flex",flexShrink:0}}><Trash2 size={11}/></button>}
         </div>
         {isExp && node.children?.map(child=>renderNode(child, depth+1))}
       </div>;
