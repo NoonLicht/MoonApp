@@ -698,6 +698,14 @@
 }
 /* Selection */
 .note-cm-host .cm-editor .cm-selectionBackground { background: var(--amber-soft); }
+/* Cursor — white on dark, always visible when focused */
+.note-cm-host .cm-editor .cm-cursor {
+  border-left-color: var(--text-primary) !important;
+  border-left-width: 2px !important;
+}
+.note-cm-host .cm-editor.cm-focused .cm-cursor {
+  display: block !important;
+}
 /* ---- Live preview styled blocks ---- */
 .note-cm-host .cm-note .lp-h { font-weight: 700; color: var(--text-primary); }
 .note-cm-host .cm-note .lp-h1 { font-size: 1.9em; margin: .5em 0 .2em; display: inline-block; }
@@ -733,28 +741,28 @@
   color: var(--amber); cursor: pointer;
 }
 /* Rendered GFM table (non-edit preview) */
-.note-cm-host .cm-note .cm-line.lp-tbl-inactive {
-  visibility: hidden;
-  display: block;
-  height: auto;
-  overflow: visible;
-}
-.note-cm-host .cm-note .cm-line.lp-tbl-inactive .cm-table-wrap {
-  visibility: visible;
-}
 .note-cm-host .cm-table-wrap {
-  margin: 8px 0; max-width: 100%;
+  display: inline-block; width: 100%;
+  margin: 4px 0; max-width: 100%;
+  overflow-x: auto;
 }
-.note-cm-host .cm-table {
-  border-collapse: collapse; width: auto; max-width: 100%; table-layout: fixed;
+.note-cm-host .cm-table-wrap .cm-table {
+  border-collapse: collapse; width: auto; min-width: 100%; table-layout: fixed;
   font-size: 14px; color: var(--text-primary);
+  background: transparent;
 }
-.note-cm-host .cm-table th, .note-cm-host .cm-table td {
-  border: 1px solid var(--glass-border); padding: 5px 10px; text-align: left;
-  word-break: break-word; vertical-align: top;
+.note-cm-host .cm-table-wrap .cm-table th,
+.note-cm-host .cm-table-wrap .cm-table td {
+  border: 1px solid var(--glass-border);
+  padding: 6px 12px;
+  text-align: left;
+  word-break: break-word;
+  vertical-align: top;
 }
-.note-cm-host .cm-table th {
-  background: var(--track); font-weight: 600; color: var(--text-secondary);
+.note-cm-host .cm-table-wrap .cm-table th {
+  background: var(--track);
+  font-weight: 600;
+  color: var(--text-secondary);
 }
 /* Fullscreen support */
 .note-fullscreen .note-cm-host { height: 100%; }

@@ -1,0 +1,382 @@
+﻿import React, { useState, useEffect, useRef, useCallback } from "react";
+import { FileText, Folder, Plus, Search, Tags, Hash, PanelRightOpen,
+  PanelRightClose, PanelLeftOpen, PanelLeftClose, X, Link2, Type,
+  Bookmark, ChevronRight, ChevronDown, Globe, Trash2, Sparkles } from "lucide-react";
+import { EmptyHint } from "../components/ui";
+import { usePageToolbar } from "../components/Toolbar";
+import { useI18n } from "../i18n";
+import { api } from "../api/client";
+import type { VaultFile, VaultSearchResult, VaultTag, VaultBacklink } from "../api/types";
+
+type Side = "explorer" | "search" | "tags";
+type Right = "backlinks" | "outline";
+interface OFile { path: string; name: string; content: string; frontmatter: Record<string, string>; outline: { level: number; text: string; line: number }[]; backlinks: VaultBacklink[]; modified: boolean; }
+function dirname(p: string) { const a = p.replace(/\\/g, "/").split("/"); a.pop(); return a.join("/"); }
+export default function MyspacePage() {
+  const { t } = useI18n();
+  usePageToolbar(<div style={{display:"flex",alignItems:"center",gap:10,fontSize:13,fontWeight:600,color:"var(--text-secondary)"}}>
+    <FileText size={16} /> My Space
+  </div>, []);
+
+  const [leftOpen, setLeftOpen] = useState(true);
+  const [rightOpen, setRightOpen] = useState(true);
+  const [leftTab, setLeftTab] = useState<Side>("explorer");
+  const [rightTab, setRightTab] = useState<Right>("backlinks");
+  const [leftW, setLeftW] = useState(260);
+  const [rightW, setRightW] = useState(280);
+  const [tree, setTree] = useState<VaultFile[]>([]);
+  const [exp, setExp] = useState<Set<string>>(new Set());
+  const [selPath, setSelPath] = useState<string|null>(null);
+  const [openFiles, setOpenFiles] = useState<OFile[]>([]);
+  const [activeTab, setActiveTab] = useState<string|null>(null);
+  const [sq, setSq] = useState("");
+  const [sres, setSres] = useState<VaultSearchResult[]>([]);
+  const [tags, setTags] = useState<VaultTag[]>([]);
+  const [showCreate, setShowCreate] = useState(false);
+  const [crName, setCrName] = useState("");
+  const [crType, setCrType] = useState<"note"|"folder">("note");
+  const [edContent, setEdContent] = useState("");
+  const saveTimer = useRef<any>(null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+  // Load tree + auto-create welcome note if vault empty
+  useEffect(() => {
+    loadTree();
+    api.myspaceTags().then(setTags).catch(()=>{});
+    const timer = setTimeout(() => {
+      api.myspaceTree().then(async (t) => {
+        setTree(t);
+        if (!t || t.length === 0) {
+          // Create a "Getting Started" welcome note on first visit
+          try {
+            await api.myspaceWrite("Welcome.md", 
+              "# Welcome to My Space!\n\n" +
+              "This is your personal knowledge base. Here's what you can do:\n\n" +
+              "## Quick Start\n\n" +
+              "- **Create notes** with the + button in the sidebar\n" +
+              "- **Link notes** using [[WikiLinks]] like [[Another Note]]\n" +
+              "- **Tag content** with #tags for easy organization\n" +
+              "- **Search** across all your notes\n\n" +
+              "## Features\n\n" +
+              "- \Code blocks\ with syntax highlighting\n" +
+              "- Task lists: - [ ] todo, - [x] done\n" +
+              "- Auto-save while you type\n" +
+              "- Backlinks in the right panel\n" +
+              "- Full-text search across your vault\n\n" +
+              "Start writing by creating a new note or editing this one!\n",
+              {title: "Welcome", tags: "getting-started"}
+            );
+            const upd = await api.myspaceTree();
+            setTree(upd);
+            // Open the welcome note
+            const d = await api.myspaceRead("Welcome.md");
+            const f: OFile = {path:d.path, name:d.name, content:d.content,
+              frontmatter:d.frontmatter, outline:d.outline, backlinks:d.backlinks, modified:false};
+            setOpenFiles([f]);
+            setActiveTab("Welcome.md");
+            setSelPath("Welcome.md");
+            setEdContent(d.content);
+          } catch(e:any) { setError("Could not create welcome note: "+e.message); }
+        }
+      }).catch(()=>{});
+    }, 300);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const loadTree = () => { api.myspaceTree().then(setTree).catch(()=>{}); };
+  const openFile = useCallback(async (p: string) => {
+    const ex = openFiles.find(f=>f.path===p);
+    if (ex) { setActiveTab(p); setSelPath(p); return; }
+    try {
+      const d = await api.myspaceRead(p);
+      if (!d) { setError("File not found: "+p); return; }
+      const f: OFile = {path:d.path, name:d.name, content:d.content,
+        frontmatter:d.frontmatter, outline:d.outline, backlinks:d.backlinks, modified:false};
+      setOpenFiles((prev)=>[...prev, f]);
+      setActiveTab(p);
+      setSelPath(p);
+      setEdContent(d.content);
+      setError("");
+    } catch(e:any) { setError("Could not open file: "+e.message); }
+  }, [openFiles]);
+
+  const closeTab = (p: string) => {
+    setOpenFiles((prev)=>prev.filter(f=>f.path!==p));
+    if (activeTab===p) {
+      const rem = openFiles.filter(f=>f.path!==p);
+      setActiveTab(rem.length ? rem[rem.length-1].path : null);
+    }
+  };
+
+  const schedSave = useCallback((p: string) => {
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(async () => {
+      setSaving(true);
+      const f = openFiles.find(x=>x.path===p);
+      if (f&&f.modified) {
+        try { await api.myspaceWrite(p, f.content, f.frontmatter); setError(""); }
+        catch(e:any) { setError("Save failed: "+e.message); }
+        setOpenFiles((prev)=>prev.map(x=>x.path===p?{...x,modified:false}:x));
+      }
+      setSaving(false);
+    }, 800);
+  }, [openFiles]);
+
+  const updContent = (p: string, c: string) => {
+    setOpenFiles((prev)=>prev.map(f=>f.path===p?{...f,content:c,modified:true}:f));
+    if (activeTab===p) setEdContent(c);
+    schedSave(p);
+  };
+  useEffect(() => {
+    if (activeTab) { const f = openFiles.find(x=>x.path===activeTab); if (f) setEdContent(f.content); }
+  }, [activeTab, openFiles]);
+
+  const createItem = async () => {
+    if (!crName.trim()) return;
+    const base = ""; // root for now
+    const p = crType==="note" ? crName.trim()+".md" : crName.trim();
+    try {
+      if (crType==="note") {
+        await api.myspaceWrite(p, "", {title: crName.trim()});
+        await openFile(p);
+      } else {
+        await api.myspaceCreateFolder(p);
+        toggleExpand(dirname(p));
+      }
+      loadTree();
+      setShowCreate(false);
+      setCrName("");
+      setError("");
+    } catch(e:any) { setError("Failed to create: "+e.message); }
+  };
+
+  const delFile = async (p: string) => {
+    try { await api.myspaceDelete(p); closeTab(p); loadTree(); setError(""); }
+    catch(e:any) { setError("Delete failed: "+e.message); }
+  };
+
+  useEffect(() => {
+    if (!sq.trim()) { setSres([]); return; }
+    const t = setTimeout(() => { api.myspaceSearch(sq).then(setSres).catch(()=>{}); }, 400);
+    return ()=>clearTimeout(t);
+  }, [sq]);
+
+  const toggleExpand = (p: string) => {
+    setExp((prev)=>{const n=new Set(prev); if(n.has(p))n.delete(p); else n.add(p); return n;});
+  };
+
+  const activeFile = openFiles.find(f=>f.path===activeTab);
+  const startRes = (s: string, e: React.MouseEvent) => {
+    const r = {s, sx: e.clientX, sw: s==="l"?leftW:rightW};
+    const mv = (ev: MouseEvent)=>{const d=ev.clientX-r.sx;if(r.s==="l")setLeftW(Math.max(180,Math.min(400,r.sw+d)));else setRightW(Math.max(200,Math.min(500,r.sw-d)));};
+    const up = ()=>{document.removeEventListener("mousemove",mv);document.removeEventListener("mouseup",up);};
+    document.addEventListener("mousemove",mv);document.addEventListener("mouseup",up);
+  };
+
+  const renderNode = (node: VaultFile, depth: number = 0) => {
+    const isExp = exp.has(node.path); const isSel = selPath===node.path;
+    if (node.type==="folder") {
+      return <div key={node.path}>
+        <div onClick={()=>toggleExpand(node.path)} style={{display:"flex",alignItems:"center",gap:4,padding:"3px 6px",paddingLeft:12+depth*16,borderRadius:4,fontSize:12,cursor:"pointer",color:"var(--text-secondary)"}}>
+          <span>{isExp ? <ChevronDown size={12}/> : <ChevronRight size={12}/>}</span>
+          <Folder size={14} style={{color:"var(--amber)"}} />
+          <span>{node.name}</span>
+        </div>
+        {isExp && node.children?.map(child=>renderNode(child, depth+1))}
+      </div>;
+    }
+    return <div key={node.path} onClick={()=>{openFile(node.path);setSelPath(node.path);}}
+      style={{display:"flex",alignItems:"center",gap:4,padding:"3px 6px",paddingLeft:28+depth*16,borderRadius:4,fontSize:12,cursor:"pointer",background:isSel?"var(--amber-soft)":"transparent",color:isSel?"var(--amber)":"var(--text-secondary)"}}>
+      <FileText size={13} /><span>{node.name}</span>
+    </div>;
+  };
+
+  const txStyle: React.CSSProperties = {
+    flex:1, minHeight:0, width:"100%", padding:"20px 24px",
+    fontFamily:"var(--font-mono)", fontSize:14, lineHeight:1.6,
+    border:"none", outline:"none", resize:"none",
+    background:"transparent", color:"var(--text-primary)"
+  };
+  return (<div style={{display:"flex",flex:1,minHeight:0,overflow:"hidden"}}>
+      {/* LEFT SIDEBAR */}
+      {leftOpen && <div style={{width:leftW,minWidth:180,display:"flex",flexDirection:"column",
+        background:"var(--surface-glass)",border:"1px solid var(--glass-border)",borderRadius:12,
+        margin:"4px 0 4px 4px",backdropFilter:"blur(8px)",position:"relative",flexShrink:0}}>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"6px 8px",borderBottom:"1px solid var(--glass-border)"}}>
+          <div style={{display:"flex",gap:2}}>
+            {([["explorer",FileText],["search",Search],["tags",Tags]] as const).map(([id,Icon])=>(
+              <button key={id} onClick={()=>setLeftTab(id)}
+                style={{background:leftTab===id?"var(--track)":"transparent",border:"none",
+                  padding:"4px 7px",borderRadius:6,cursor:"pointer",
+                  color:leftTab===id?"var(--text-primary)":"var(--text-tertiary)"}}>
+                <Icon size={13}/>
+              </button>
+            ))}
+          </div>
+          <button onClick={()=>setLeftOpen(false)}
+            style={{background:"transparent",border:"none",padding:3,cursor:"pointer",color:"var(--text-tertiary)"}}>
+            <PanelLeftClose size={13}/>
+          </button>
+        </div>
+        <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
+          {leftTab==="explorer" && <>
+            <div style={{display:"flex",gap:4,padding:"4px 8px"}}>
+              <button onClick={()=>{setShowCreate(true);setCrType("note");setCrName("");setTimeout(()=>inputRef.current?.focus(),50);}}
+                style={{background:"transparent",border:"none",padding:"2px 5px",borderRadius:4,cursor:"pointer",color:"var(--text-tertiary)"}} title="New note"><Plus size={14}/></button>
+              <button onClick={()=>{setShowCreate(true);setCrType("folder");setCrName("");setTimeout(()=>inputRef.current?.focus(),50);}}
+                style={{background:"transparent",border:"none",padding:"2px 5px",borderRadius:4,cursor:"pointer",color:"var(--text-tertiary)"}} title="New folder"><Folder size={13}/></button>
+            </div>
+            {showCreate && <div style={{display:"flex",gap:4,padding:"0 8px 6px",alignItems:"center"}}>
+              <input ref={inputRef} placeholder={crType==="note"?"Note name...":"Folder name..."}
+                value={crName} onChange={e=>setCrName(e.target.value)}
+                onKeyDown={e=>{if(e.key==="Enter")createItem();if(e.key==="Escape"){setShowCreate(false);setCrName("");}}}
+                style={{flex:1,padding:"3px 7px",borderRadius:6,border:"1px solid var(--glass-border)",
+                  background:"var(--track)",outline:"none",color:"var(--text-primary)",fontSize:12}} />
+              <button onClick={()=>{setShowCreate(false);setCrName("");}}
+                style={{background:"transparent",border:"none",padding:2,cursor:"pointer",color:"var(--text-tertiary)"}}><X size={12}/></button>
+            </div>}
+            <div style={{flex:1,overflow:"auto",padding:"2px 4px"}}>
+              {tree.length===0 && <div style={{padding:16,textAlign:"center",fontSize:12,color:"var(--text-tertiary)"}}>Loading...</div>}
+              {tree.map(n=>renderNode(n))}
+            </div>
+          </>}
+          {leftTab==="search" && <>
+            <div style={{display:"flex",alignItems:"center",gap:6,padding:"4px 8px",color:"var(--text-tertiary)"}}>
+              <Search size={13}/>
+              <input placeholder="Search notes..." value={sq} onChange={e=>setSq(e.target.value)} autoFocus
+                style={{flex:1,padding:"3px 7px",borderRadius:6,border:"1px solid var(--glass-border)",background:"var(--track)",outline:"none",color:"var(--text-primary)",fontSize:12}} />
+            </div>
+            <div style={{flex:1,overflow:"auto",padding:"2px 4px"}}>
+              {sres.map(r=>(
+                <div key={r.path} onClick={()=>{openFile(r.path);setLeftTab("explorer");}}
+                  style={{display:"flex",flexDirection:"column",gap:2,padding:"5px 8px",borderRadius:6,cursor:"pointer",fontSize:12,borderBottom:"1px solid var(--glass-border)"}}>
+                  <span style={{fontWeight:600,color:"var(--text-primary)"}}>{r.name}</span>
+                  <span style={{fontSize:11,color:"var(--text-tertiary)",lineHeight:1.3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.snippet}</span>
+                </div>
+              ))}
+              {sq.trim() && sres.length===0 && <div style={{padding:16,textAlign:"center",fontSize:12,color:"var(--text-tertiary)"}}>No results</div>}
+            </div>
+          </>}
+          {leftTab==="tags" && <div style={{flex:1,overflow:"auto",padding:"2px 4px"}}>
+            {tags.map(t=>(
+              <div key={t.tag} onClick={()=>{setLeftTab("search");setSq(t.tag);}}
+                style={{display:"flex",alignItems:"center",gap:6,padding:"5px 8px",borderRadius:6,cursor:"pointer",fontSize:12}}>
+                <Hash size={12} style={{color:"var(--amber)"}} />
+                <span style={{flex:1,color:"var(--text-secondary)"}}>{t.tag}</span>
+                <span style={{fontSize:11,color:"var(--text-tertiary)",fontFamily:"var(--font-mono)"}}>{t.count}</span>
+              </div>
+            ))}
+            {tags.length===0 && <div style={{padding:16,textAlign:"center",fontSize:12,color:"var(--text-tertiary)"}}>No tags yet</div>}
+          </div>}
+        </div>
+        <div onMouseDown={(e)=>startRes("l",e)} style={{position:"absolute",right:0,top:0,bottom:0,width:4,cursor:"col-resize"}} />
+      </div>}
+      {/* CENTER EDITOR */}
+      <div style={{flex:1,display:"flex",flexDirection:"column",minWidth:0}}>
+        {!leftOpen && <button onClick={()=>setLeftOpen(true)}
+          style={{position:"absolute",left:4,top:60,zIndex:10,background:"var(--surface-glass)",
+            border:"1px solid var(--glass-border)",borderRadius:6,padding:4,cursor:"pointer",color:"var(--text-tertiary)"}}>
+          <PanelLeftOpen size={13}/>
+        </button>}
+        {/* Tab bar */}
+        <div style={{display:"flex",alignItems:"center",padding:"2px 0",margin:"0 4px",borderBottom:"1px solid var(--glass-border)",minHeight:30}}>
+          <div style={{flex:1,display:"flex",overflow:"auto",gap:2}}>
+            {openFiles.map(f=>(
+              <div key={f.path} onClick={()=>setActiveTab(f.path)}
+                style={{display:"flex",alignItems:"center",gap:4,padding:"3px 8px",borderRadius:"6px 6px 0 0",fontSize:12,cursor:"pointer",whiteSpace:"nowrap",
+                  background:activeTab===f.path?"var(--surface-glass)":"transparent",color:"var(--text-secondary)",
+                  border:activeTab===f.path?"1px solid var(--glass-border)":"1px solid transparent",borderBottom:"none"}}>
+                <FileText size={11}/>
+                <span>{f.name.replace(/\.md$/,"")}</span>
+                {f.modified && <span style={{width:5,height:5,borderRadius:"50%",background:"var(--amber)",display:"inline-block"}}/>}
+                <button onClick={(e)=>{e.stopPropagation();closeTab(f.path);}}
+                  style={{background:"transparent",border:"none",padding:1,cursor:"pointer",color:"var(--text-tertiary)",display:"flex"}}><X size={9}/></button>
+              </div>
+            ))}
+          </div>
+          <div style={{display:"flex",alignItems:"center",gap:4,paddingRight:6}}>
+            {saving && <span style={{fontSize:11,color:"var(--text-tertiary)"}}>saving...</span>}
+            <button onClick={()=>setRightOpen(!rightOpen)}
+              style={{background:"transparent",border:"none",padding:3,cursor:"pointer",color:"var(--text-tertiary)"}}>
+              {rightOpen ? <PanelRightClose size={13}/> : <PanelRightOpen size={13}/>}
+            </button>
+          </div>
+        </div>
+        {/* Editor */}
+        <div style={{flex:1,display:"flex",flexDirection:"column",minHeight:0}}>
+          {error && <div style={{padding:"4px 12px",fontSize:12,color:"var(--coral)",background:"var(--coral-soft)",borderBottom:"1px solid var(--glass-border)"}}>{error}</div>}
+          {activeTab && (()=>{const af=openFiles.find(f=>f.path===activeTab);if(!af)return null;
+          return <textarea value={edContent} onChange={e=>updContent(activeTab,e.target.value)}
+            placeholder="Start writing... Use [[wiki-links]] and #tags" style={txStyle} />;})()}
+          {!activeTab && <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:12,color:"var(--text-tertiary)"}}>
+            <FileText size={40} strokeWidth={1}/>
+            <span style={{fontSize:13}}>Select a note or create a new one</span>
+          </div>}
+        </div>
+      </div>
+      {/* RIGHT SIDEBAR */}
+      {rightOpen && <div style={{width:rightW,minWidth:200,display:"flex",flexDirection:"column",
+        background:"var(--surface-glass)",border:"1px solid var(--glass-border)",borderRadius:12,
+        margin:"4px 4px 4px 0",backdropFilter:"blur(8px)",position:"relative",flexShrink:0}}>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"6px 8px",borderBottom:"1px solid var(--glass-border)"}}>
+          <div style={{display:"flex",gap:2}}>
+            {([["backlinks",Link2],["outline",Type]] as const).map(([id,Icon])=>(
+              <button key={id} onClick={()=>setRightTab(id)}
+                style={{background:rightTab===id?"var(--track)":"transparent",border:"none",
+                  padding:"4px 7px",borderRadius:6,cursor:"pointer",
+                  color:rightTab===id?"var(--text-primary)":"var(--text-tertiary)"}}>
+                <Icon size={13}/>
+              </button>
+            ))}
+          </div>
+          <button onClick={()=>setRightOpen(false)}
+            style={{background:"transparent",border:"none",padding:3,cursor:"pointer",color:"var(--text-tertiary)"}}>
+            <PanelRightClose size={13}/>
+          </button>
+        </div>
+        <div style={{flex:1,overflow:"auto",padding:"4px 6px"}}>
+          {rightTab==="backlinks" && (()=>{
+            const af = openFiles.find(f=>f.path===activeTab);
+            if (!af) return <div style={{padding:16,textAlign:"center",fontSize:12,color:"var(--text-tertiary)"}}>Open a note to see backlinks</div>;
+            const bl = af.backlinks;
+            const linked = bl.filter(b=>b.type==="linked");
+            const unlinked = bl.filter(b=>b.type==="unlinked");
+            return <>
+              <div style={{fontSize:11,fontWeight:600,color:"var(--text-secondary)",textTransform:"uppercase",letterSpacing:"0.03em",padding:"4px 8px",marginBottom:2}}>Linked ({linked.length})</div>
+              {linked.map(b=>(
+                <div key={b.path} onClick={()=>openFile(b.path)}
+                  style={{display:"flex",flexDirection:"column",gap:2,padding:"5px 8px",borderRadius:6,cursor:"pointer",fontSize:12,borderBottom:"1px solid var(--glass-border)"}}>
+                  <span style={{fontWeight:600,color:"var(--amber)"}}>{b.name}</span>
+                  <span style={{fontSize:11,color:"var(--text-tertiary)",lineHeight:1.3}}>{b.snippet}</span>
+                </div>
+              ))}
+              <div style={{fontSize:11,fontWeight:600,color:"var(--text-secondary)",textTransform:"uppercase",letterSpacing:"0.03em",padding:"4px 8px",marginTop:8,marginBottom:2}}>Unlinked ({unlinked.length})</div>
+              {unlinked.map(b=>(
+                <div key={b.path} onClick={()=>openFile(b.path)}
+                  style={{display:"flex",flexDirection:"column",gap:2,padding:"5px 8px",borderRadius:6,cursor:"pointer",fontSize:12,borderBottom:"1px solid var(--glass-border)"}}>
+                  <span style={{fontWeight:600,color:"var(--text-secondary)"}}>{b.name}</span>
+                  <span style={{fontSize:11,color:"var(--text-tertiary)",lineHeight:1.3}}>{b.snippet}</span>
+                </div>
+              ))}
+              {bl.length===0 && <div style={{padding:16,textAlign:"center",fontSize:12,color:"var(--text-tertiary)"}}>No backlinks</div>}
+            </>;
+          })()}
+          {rightTab==="outline" && (()=>{
+            const af = openFiles.find(f=>f.path===activeTab);
+            if (!af) return <div style={{padding:16,textAlign:"center",fontSize:12,color:"var(--text-tertiary)"}}>Open a note to see outline</div>;
+            return <>
+              {af.outline.map((h,i)=>(
+                <div key={i} style={{display:"flex",alignItems:"center",gap:4,padding:"3px 6px",paddingLeft:6+(h.level-1)*14,cursor:"pointer",borderRadius:4,fontSize:12}}>
+                  <span style={{fontSize:10,color:"var(--text-tertiary)",fontFamily:"var(--font-mono)",minWidth:14}}>H{h.level}</span>
+                  <span style={{color:"var(--text-secondary)"}}>{h.text}</span>
+                </div>
+              ))}
+              {af.outline.length===0 && <div style={{padding:16,textAlign:"center",fontSize:12,color:"var(--text-tertiary)"}}>No headings</div>}
+            </>;
+          })()}
+        </div>
+        <div onMouseDown={(e)=>startRes("r",e)} style={{position:"absolute",left:0,top:0,bottom:0,width:4,cursor:"col-resize"}} />
+      </div>}
+    </div>);
+}

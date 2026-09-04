@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import {
   Store, Repeat, Video, Music2, BookOpen, Activity, CheckSquare, MessageSquare,
-  Mic2, Archive, Sun, Moon, Minus, Square, X, Settings2, Shield,
+  Mic2, Archive, Sun, Moon, Minus, Square, X, Settings2, Shield, User,
 } from "lucide-react";
 import { I18nProvider, useI18n } from "./i18n";
 import { ToolbarContext } from "./components/Toolbar";
@@ -29,10 +29,11 @@ import AiChatPage from "./pages/AiChatPage";
 import VoicePage from "./pages/VoicePage";
 import ArchiverPage from "./pages/ArchiverPage";
 import SettingsPage from "./pages/SettingsPage";
+import MyspacePage from "./pages/MyspacePage";
 
 type PageId =
   | "store" | "convert" | "video" | "music" | "books" | "monitor"
-  | "todo" | "aichat" | "voice" | "archive" | "settings";
+  | "todo" | "aichat" | "voice" | "archive" | "settings" | "myspace";
 
 const PAGES: { id: PageId; i18n: string; icon: React.ElementType }[] = [
   { id: "store", i18n: "nav.store", icon: Store },
@@ -42,6 +43,7 @@ const PAGES: { id: PageId; i18n: string; icon: React.ElementType }[] = [
   { id: "books", i18n: "nav.books", icon: BookOpen },
   { id: "monitor", i18n: "nav.monitor", icon: Activity },
   { id: "todo", i18n: "nav.todo", icon: CheckSquare },
+  { id: "myspace", i18n: "nav.myspace", icon: User },
   { id: "aichat", i18n: "nav.aichat", icon: MessageSquare },
   { id: "voice", i18n: "nav.voice", icon: Mic2 },
   { id: "archive", i18n: "nav.archive", icon: Archive },
@@ -56,6 +58,7 @@ const PAGE_COMPONENTS: Record<PageId, React.ComponentType> = {
   books: BooksPage,
   monitor: MonitorPage,
   todo: TodoPage,
+  myspace: MyspacePage,
   aichat: AiChatPage,
   voice: VoicePage,
   archive: ArchiverPage,

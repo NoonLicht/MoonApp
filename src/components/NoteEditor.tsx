@@ -68,11 +68,12 @@ function detectTable(
     if (sepRow < 0 && cells.length >= 2 && cells.every(isSepCell)) sepRow = rows.length - 1;
     i += 1;
   }
-  // Must have header + separator + at least one data row
   if (rows.length < 3 || sepRow < 1 || sepRow >= rows.length - 1) return null;
   return { end: i - 1, rows, headerSep: sepRow };
 }
-// TableWidget – renders <table>. Non-block replace on the first table line.
+
+// TableWidget – renders <table> over the whole table region.
+// Uses Decoration.replace WITHOUT block:true (block:true shows widget ABOVE text, not replacing it).
 // Click dispatches caret inside the region so decorations switch to raw GFM.
 class TableWidget extends WidgetType {
   constructor(
@@ -87,6 +88,7 @@ class TableWidget extends WidgetType {
   toDOM(view: EditorView): HTMLElement {
     const wrap = document.createElement("div");
     wrap.className = "cm-table-wrap";
+    // Click → move caret into the region → decorations skip it → raw GFM shown
     wrap.addEventListener("mousedown", (e: MouseEvent) => {
       e.preventDefault();
       const target = this.from + 1;
@@ -114,12 +116,6 @@ class TableWidget extends WidgetType {
   }
 }
 
-// Empty widget for non-first table lines
-class EmptyWidget extends WidgetType {
-  eq(o: WidgetType) { return o instanceof EmptyWidget; }
-  toDOM() { const d = document.createElement("span"); d.style.display = "none"; return d; }
-}
-
 // Block-level Live Preview decorations (Obsidian-style)
 function buildMarkdownDecorations(view: EditorView): DecorationSet {
   const builder = new RangeSetBuilder<Decoration>();
@@ -129,8 +125,8 @@ function buildMarkdownDecorations(view: EditorView): DecorationSet {
   const lines: { text: string }[] = [];
   for (let i = 1; i <= doc.lines; i += 1) lines.push({ text: doc.line(i).text });
 
-  // Find inactive table regions (caret OUTSIDE → render, inside → raw GFM)
-  const regions: { startLine: number; endLine: number; from: number; to: number; rows: string[][]; headerSep: number }[] = [];
+  // Find inactive table regions (caret OUTSIDE → render <table>; inside → raw GFM)
+  const regions: { from: number; to: number; rows: string[][]; headerSep: number }[] = [];
   let li = 0;
   while (li < lines.length) {
     const det = detectTable(lines, li);
@@ -139,7 +135,6 @@ function buildMarkdownDecorations(view: EditorView): DecorationSet {
     const eLine = det.end + 1;
     if (!(activeLine >= sLine && activeLine <= eLine)) {
       regions.push({
-        startLine: sLine, endLine: eLine,
         from: doc.line(sLine).from, to: doc.line(eLine).to,
         rows: det.rows, headerSep: det.headerSep,
       });
@@ -147,31 +142,27 @@ function buildMarkdownDecorations(view: EditorView): DecorationSet {
     li = det.end + 1;
   }
 
-  const regLines = new Set<number>();
-  for (const r of regions) for (let n = r.startLine; n <= r.endLine; n += 1) regLines.add(n);
-
   for (let i = 1; i <= doc.lines; i += 1) {
-    const region = regions.find((r) => r.startLine === i);
+    // Check if this line starts a table region
+    const region = regions.find((r) => {
+      const l = doc.line(i);
+      return l.from === r.from;
+    });
     if (region) {
-      // Replace each line individually (no block:true — it conflicts with markdown highlighting).
-      // First line gets the <table> widget; others get empty widget.
-      // All get a line-level class that hides raw text via CSS visibility trick.
-      for (let n = region.startLine; n <= region.endLine; n += 1) {
-        const l = doc.line(n);
-        builder.add(l.from, l.to, Decoration.line({ class: "lp-tbl-inactive" }));
-        if (n === region.startLine) {
-          builder.add(l.from, l.to, Decoration.replace({ widget: new TableWidget(region.rows, region.headerSep, region.from, region.to) }));
-        } else {
-          builder.add(l.from, l.to, Decoration.replace({ widget: new EmptyWidget() }));
-        }
-      }
-      i = region.endLine;
+      // Single Decoration.replace over the whole region — no block:true.
+      // This completely replaces the raw GFM text with the <table> widget.
+      builder.add(region.from, region.to, Decoration.replace({
+        widget: new TableWidget(region.rows, region.headerSep, region.from, region.to),
+      }));
+      // Skip all lines covered by this region
+      const eLine = doc.lineAt(region.to).number;
+      i = eLine;
       continue;
     }
 
     const line = doc.line(i);
     const text = line.text;
-    if (i === activeLine || regLines.has(i)) continue;
+    if (i === activeLine) continue;
 
     // Checkbox task
     const t = text.match(/^(\s*)[-*+]\s+\[( |x|X|\+)\]\s+(.+)$/);
@@ -234,8 +225,6 @@ const markdownLivePreviewPlugin = ViewPlugin.fromClass(
   },
   { decorations: (v) => v.deco },
 );
-
-/* WIKI_LINKS */
 // Wiki links and tags (clickable inline decorations)
 function buildLinkDecorations(view: EditorView): { set: DecorationSet; matches: WikiMatch[] } {
   const builder = new RangeSetBuilder<Decoration>();
@@ -296,7 +285,6 @@ function inlineLinksPlugin(getHandlers: () => { onWikiLink?: (t: string) => void
   );
 }
 
-/* TOOLBAR */
 // Toolbar commands
 function wrapSel(view: EditorView, before: string, after: string, hint: string) {
   const { from, to } = view.state.selection.main;
@@ -316,9 +304,10 @@ function insertBlock(view: EditorView, text: string) {
   const { from } = view.state.selection.main;
   const line = view.state.doc.lineAt(from);
   const nl = line.text.length > 0 ? "\n" : "";
+  // Trailing newline so caret lands AFTER the block, not inside it
   view.dispatch({
-    changes: { from: line.to, insert: nl + text },
-    selection: { anchor: line.to + nl.length + text.length },
+    changes: { from: line.to, insert: nl + text + "\n" },
+    selection: { anchor: line.to + nl.length + text.length + 1 },
     scrollIntoView: true,
   });
 }

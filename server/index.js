@@ -19,6 +19,7 @@ const videoRouter = require("./routes/video");
 const proxyRouter = require("./routes/proxy");
 const booksRouter = require("./routes/books");
 const musicRouter = require("./routes/music");
+const myspaceRouter = require("./routes/myspace");
 const monitor = require("./monitor");
 const proxy = require("./proxy");
 
@@ -76,6 +77,7 @@ function createApp() {
   app.use("/api/proxy", proxyRouter);
   app.use("/api/books", booksRouter);
   app.use("/api/music", musicRouter);
+  app.use("/api/myspace", myspaceRouter);
 
   // Раздача собранного фронта (dist), если он собран.
   const dist = path.join(__dirname, "..", "dist");

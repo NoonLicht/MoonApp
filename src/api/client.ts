@@ -13,9 +13,10 @@ import type {
   BooksLiveSearchResult, BookDownloadResult, ImportLogEntry,
   Note, GraphData, GraphNode, GraphEdge,
   MusicTrack, MusicSearchResult, MusicFormats, MusicDownloadStart, MusicJobStatus,
+  VaultFile, VaultFileContent, VaultSearchResult, VaultTag, VaultBacklink,
 } from "./types";
 
-export type { AppItem, ArchiveItem, BackupInfo, BooksItem, ChatMessage, Conversation, ConvertTools, ConvertResult, ConvertInstallStatus, VideoInfo, VideoDownloadResult, VideoJobStatus, YtdlpInstallStatus, LhmStatus, MonitorSnapshot, ProviderInfo, Task, ProxyStatus, VlessProfile, FlibustaBook, BooksCatalogStats, BooksSearchResult, BooksSyncStatus, BooksImportStatus, BooksLiveSearchResult, BookDownloadResult, ImportLogEntry, MusicTrack, MusicSearchResult, MusicFormats, MusicDownloadStart, MusicJobStatus };
+export type { AppItem, ArchiveItem, BackupInfo, BooksItem, ChatMessage, Conversation, ConvertTools, ConvertResult, ConvertInstallStatus, VideoInfo, VideoDownloadResult, VideoJobStatus, YtdlpInstallStatus, LhmStatus, MonitorSnapshot, ProviderInfo, Task, ProxyStatus, VlessProfile, FlibustaBook, BooksCatalogStats, BooksSearchResult, BooksSyncStatus, BooksImportStatus, BooksLiveSearchResult, BookDownloadResult, ImportLogEntry, MusicTrack, MusicSearchResult, MusicFormats, MusicDownloadStart, MusicJobStatus, VaultFile, VaultFileContent, VaultSearchResult, VaultTag, VaultBacklink };
 
 const BASE = ""; // РѕРґРЅРѕ origin (Vite-proxy РёР»Рё СЂР°Р·РґР°С‡Р° Express)
 
@@ -234,6 +235,17 @@ export const api = {
   },
   musicFormats: () => req<MusicFormats>("GET", "/music/formats"),
   // Р›РѕРіРёСЂРѕРІР°РЅРёРµ РґРµР№СЃС‚РІРёР№
+// MySpace / Vault
+  myspaceTree: () => req<VaultFile[]>("GET", "/myspace/tree"),
+  myspaceRead: (path: string) => req<VaultFileContent>("GET", `/myspace/file?path=${encodeURIComponent(path)}`),
+  myspaceWrite: (path: string, content: string, frontmatter?: Record<string, string>) =>
+    req("POST", "/myspace/file", { path, content, frontmatter }),
+  myspaceDelete: (path: string) => req("DELETE", `/myspace/file?path=${encodeURIComponent(path)}`),
+  myspaceRename: (oldPath: string, newPath: string) => req("PUT", "/myspace/rename", { oldPath, newPath }),
+  myspaceCreateFolder: (path: string) => req("POST", "/myspace/folder", { path }),
+  myspaceSearch: (q: string) => req<VaultSearchResult[]>("GET", `/myspace/search?q=${encodeURIComponent(q)}`),
+  myspaceTags: () => req<VaultTag[]>("GET", "/myspace/tags"),
+  myspaceBacklinks: (path: string) => req<VaultBacklink[]>("GET", `/myspace/backlinks?path=${encodeURIComponent(path)}`),
   logAction: (event: string, data?: unknown) => req("POST", "/log", { event, data }),
 };
 

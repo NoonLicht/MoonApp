@@ -104,6 +104,53 @@ export interface Note {
   linkTargets?: { title: string; exists: boolean; targetId: number | null }[];
 }
 
+/* ========================== Vault / MySpace ========================== */
+
+export interface VaultFile {
+  path: string;
+  name: string;
+  type: "note" | "folder" | "canvas";
+  ext?: string;
+  children?: VaultFile[];
+}
+
+export interface VaultFileContent {
+  path: string;
+  name: string;
+  ext: string;
+  content: string;
+  frontmatter: Record<string, string>;
+  tags: string[];
+  wikiLinks: string[];
+  outline: VaultOutlineEntry[];
+  backlinks: VaultBacklink[];
+}
+
+export interface VaultOutlineEntry {
+  level: number;
+  text: string;
+  line: number;
+}
+
+export interface VaultBacklink {
+  path: string;
+  name: string;
+  type: "linked" | "unlinked";
+  snippet: string;
+}
+
+export interface VaultSearchResult {
+  path: string;
+  name: string;
+  snippet: string;
+  matchStart: number;
+}
+
+export interface VaultTag {
+  tag: string;
+  count: number;
+}
+
 export interface GraphNode {
   id: string;
   type: "note" | "task";
