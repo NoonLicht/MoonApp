@@ -1,7 +1,8 @@
 ﻿import React, { useState, useEffect, useRef, useCallback } from "react";
 import { FileText, Folder, Plus, Search, Tags, Hash, PanelRightOpen,
-  PanelRightClose, PanelLeftOpen, PanelLeftClose, X, Link2, Type,
-  Bookmark, ChevronRight, ChevronDown, Globe, Trash2, Sparkles } from "lucide-react";
+  PanelRightClose, PanelLeftOpen, PanelLeftClose, X, Link2, Type,  Bookmark, ChevronRight, ChevronDown, Globe, Trash2, Sparkles,
+  Eye, PenLine } from "lucide-react";
+import MarkdownRenderer from "../components/MarkdownRenderer";
 import { EmptyHint } from "../components/ui";
 import { usePageToolbar } from "../components/Toolbar";
 import { useI18n } from "../i18n";
@@ -38,6 +39,7 @@ export default function MyspacePage() {
   const [edContent, setEdContent] = useState("");
   const saveTimer = useRef<any>(null);
   const [saving, setSaving] = useState(false);
+  const [previewMode, setPreviewMode] = useState<"edit"|"preview"|"split">("edit");
   const [error, setError] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
   // Load tree + auto-create welcome note if vault empty
@@ -84,7 +86,13 @@ export default function MyspacePage() {
     return () => clearTimeout(timer);
   }, []);
 
-  const loadTree = () => { api.myspaceTree().then(setTree).catch(()=>{}); };
+  const loadTree = () => { api.myspaceTree().then((t)=>{setTree(t);setExpAutoExpand(t);}).catch(()=>{}); };
+  const setExpAutoExpand = (nodes, parentPath="") => {
+    const toExpand = new Set();
+    const walk = (list, pp) => { for (const n of list) { if (n.type==="folder") { if (n.children && n.children.length > 0) { toExpand.add(n.path); walk(n.children, n.path); } } } };
+    walk(nodes, "");
+    setExp((prev)=>{const nxt=new Set(prev); toExpand.forEach(p=>nxt.add(p)); return nxt;});
+  };
   const openFile = useCallback(async (p: string) => {
     const ex = openFiles.find(f=>f.path===p);
     if (ex) { setActiveTab(p); setSelPath(p); return; }
@@ -136,6 +144,9 @@ export default function MyspacePage() {
     if (!crName.trim()) return;
     const base = ""; // root for now
     const p = crType==="note" ? crName.trim()+".md" : crName.trim();
+    // Check duplicate
+    const dup = (nodes) => { for (const n of nodes) { if (n.path===p) return true; if (n.children && dup(n.children)) return true; } return false; };
+    if (dup(tree)) { setError("A file/folder named \""+crName.trim()+"\" already exists"); return; }
     try {
       if (crType==="note") {
         await api.myspaceWrite(p, "", {title: crName.trim()});
@@ -174,11 +185,17 @@ export default function MyspacePage() {
     document.addEventListener("mousemove",mv);document.addEventListener("mouseup",up);
   };
 
+  const [hoverDel, setHoverDel] = useState(null);
+  const [dragOverPath, setDragOverPath] = useState(null);
   const renderNode = (node: VaultFile, depth: number = 0) => {
     const isExp = exp.has(node.path); const isSel = selPath===node.path;
     if (node.type==="folder") {
       return <div key={node.path}>
-        <div onClick={()=>toggleExpand(node.path)} style={{display:"flex",alignItems:"center",gap:4,padding:"3px 6px",paddingLeft:12+depth*16,borderRadius:4,fontSize:12,cursor:"pointer",color:"var(--text-secondary)"}}>
+        <div onClick={()=>toggleExpand(node.path)}
+          onDragOver={(e)=>{e.preventDefault();e.stopPropagation();setDragOverPath(node.path);}}
+          onDragLeave={()=>setDragOverPath(null)}
+          onDrop={async (e)=>{e.preventDefault();e.stopPropagation();const src=e.dataTransfer.getData("text/plain");if(!src||src===node.path)return;const base=src.split("/").pop()||src;const dest=node.path+"/"+base;const exists=tree.some((n)=>n.path===dest||(n.children&&n.children.some((ch)=>ch.path===dest)));if(exists){setError("A file/folder named \""+base+"\" already exists in this folder");setDragOverPath(null);return;}try{await api.myspaceRename(src,dest);loadTree();setOpenFiles((prev)=>prev.map((f)=>f.path===src?{...f,path:dest,name:base}:f));setActiveTab((prev)=>prev===src?dest:prev);setSelPath((prev)=>prev===src?dest:prev);setError("");}catch(ex){setError("Move failed: "+ex.message);}setDragOverPath(null);}}
+          style={{display:"flex",alignItems:"center",gap:4,padding:"3px 6px",paddingLeft:12+depth*16,borderRadius:4,fontSize:12,cursor:"pointer",color:"var(--text-secondary)",background:dragOverPath===node.path?"var(--teal-soft)":"transparent"}}>
           <span>{isExp ? <ChevronDown size={12}/> : <ChevronRight size={12}/>}</span>
           <Folder size={14} style={{color:"var(--amber)"}} />
           <span>{node.name}</span>
@@ -187,8 +204,14 @@ export default function MyspacePage() {
       </div>;
     }
     return <div key={node.path} onClick={()=>{openFile(node.path);setSelPath(node.path);}}
-      style={{display:"flex",alignItems:"center",gap:4,padding:"3px 6px",paddingLeft:28+depth*16,borderRadius:4,fontSize:12,cursor:"pointer",background:isSel?"var(--amber-soft)":"transparent",color:isSel?"var(--amber)":"var(--text-secondary)"}}>
-      <FileText size={13} /><span>{node.name}</span>
+      draggable={true}
+      onDragStart={(e)=>{e.dataTransfer.setData("text/plain",node.path);e.dataTransfer.effectAllowed="move";}}
+      onMouseEnter={()=>setHoverDel(node.path)}
+      onMouseLeave={()=>setHoverDel(null)}
+      style={{display:"flex",alignItems:"center",gap:2,padding:"3px 6px",paddingLeft:28+depth*16,borderRadius:4,fontSize:12,cursor:"pointer",background:isSel?"var(--amber-soft)":"transparent",color:isSel?"var(--amber)":"var(--text-secondary)"}}>
+      <FileText size={13} /><span style={{flex:1,overflow:"hidden",textOverflow:"ellipsis"}}>{node.name}</span>
+      {hoverDel===node.path&&<button onClick={(e)=>{e.stopPropagation();if(window.confirm("Delete "+node.name+"?")){delFile(node.path);}}}
+        style={{background:"transparent",border:"none",padding:1,cursor:"pointer",color:"var(--coral)",display:"flex",flexShrink:0,marginLeft:4}}><Trash2 size={11}/></button>}
     </div>;
   };
 
@@ -236,7 +259,10 @@ export default function MyspacePage() {
               <button onClick={()=>{setShowCreate(false);setCrName("");}}
                 style={{background:"transparent",border:"none",padding:2,cursor:"pointer",color:"var(--text-tertiary)"}}><X size={12}/></button>
             </div>}
-            <div style={{flex:1,overflow:"auto",padding:"2px 4px"}}>
+            <div style={{flex:1,overflow:"auto",padding:"2px 4px",minHeight:50}}
+              onDragOver={(e)=>{e.preventDefault();e.dataTransfer.dropEffect="move";}}
+              onDrop={async (e)=>{e.preventDefault();const src=e.dataTransfer.getData("text/plain");if(!src||!src.includes("/"))return;const base=src.split("/").pop()||src;const exists=tree.some((n)=>n.path===base);if(exists){setError("A file named \""+base+"\" already exists at root");return;}try{await api.myspaceRename(src,base);loadTree();setOpenFiles((prev)=>prev.map((f)=>f.path===src?{...f,path:base,name:base}:f));setActiveTab((prev)=>prev===src?base:prev);setSelPath((prev)=>prev===src?base:prev);setError("");}catch(ex){setError("Move failed: "+ex.message);}}}
+            >
               {tree.length===0 && <div style={{padding:16,textAlign:"center",fontSize:12,color:"var(--text-tertiary)"}}>Loading...</div>}
               {tree.map(n=>renderNode(n))}
             </div>
@@ -279,40 +305,104 @@ export default function MyspacePage() {
             border:"1px solid var(--glass-border)",borderRadius:6,padding:4,cursor:"pointer",color:"var(--text-tertiary)"}}>
           <PanelLeftOpen size={13}/>
         </button>}
-        {/* Tab bar */}
-        <div style={{display:"flex",alignItems:"center",padding:"2px 0",margin:"0 4px",borderBottom:"1px solid var(--glass-border)",minHeight:30}}>
-          <div style={{flex:1,display:"flex",overflow:"auto",gap:2}}>
+        <div style={{flex:1,display:"flex",flexDirection:"column",minHeight:0,margin:"4px 0",
+          background:"var(--surface-glass)",border:"1px solid var(--glass-border)",borderRadius:12,
+          backdropFilter:"blur(8px)",overflow:"hidden"}}>
+        {/* Header - matches side panel headers for alignment */}
+        <div style={{display:"flex",alignItems:"center",padding:"6px 8px",borderBottom:"1px solid var(--glass-border)",minHeight:28}}>
+          <div style={{flex:1,display:"flex",overflow:"auto",gap:2,alignItems:"center"}}>
             {openFiles.map(f=>(
               <div key={f.path} onClick={()=>setActiveTab(f.path)}
                 style={{display:"flex",alignItems:"center",gap:4,padding:"3px 8px",borderRadius:"6px 6px 0 0",fontSize:12,cursor:"pointer",whiteSpace:"nowrap",
-                  background:activeTab===f.path?"var(--surface-glass)":"transparent",color:"var(--text-secondary)",
+                  background:activeTab===f.path?"var(--surface-glass)":"transparent",color:activeTab===f.path?"var(--text-primary)":"var(--text-secondary)",
                   border:activeTab===f.path?"1px solid var(--glass-border)":"1px solid transparent",borderBottom:"none"}}>
                 <FileText size={11}/>
                 <span>{f.name.replace(/\.md$/,"")}</span>
                 {f.modified && <span style={{width:5,height:5,borderRadius:"50%",background:"var(--amber)",display:"inline-block"}}/>}
                 <button onClick={(e)=>{e.stopPropagation();closeTab(f.path);}}
-                  style={{background:"transparent",border:"none",padding:1,cursor:"pointer",color:"var(--text-tertiary)",display:"flex"}}><X size={9}/></button>
+                  style={{background:"transparent",border:"none",padding:1,cursor:"pointer",color:"var(--text-tertiary)",display:"flex",marginLeft:2}}><X size={9}/></button>
               </div>
             ))}
+            {openFiles.length===0 && <span style={{fontSize:12,color:"var(--text-tertiary)"}}>No open files</span>}
           </div>
-          <div style={{display:"flex",alignItems:"center",gap:4,paddingRight:6}}>
+          <div style={{display:"flex",alignItems:"center",gap:4}}>
             {saving && <span style={{fontSize:11,color:"var(--text-tertiary)"}}>saving...</span>}
+            {activeFile && <>
+              <button onClick={()=>setPreviewMode("edit")} title="Edit"
+                style={{background:previewMode==="edit"?"var(--track)":"transparent",border:"none",padding:"3px 5px",borderRadius:4,cursor:"pointer",color:previewMode==="edit"?"var(--amber)":"var(--text-tertiary)"}}><PenLine size={12}/></button>
+              <button onClick={()=>setPreviewMode("split")} title="Split view"
+                style={{background:previewMode==="split"?"var(--track)":"transparent",border:"none",padding:"3px 5px",borderRadius:4,cursor:"pointer",color:previewMode==="split"?"var(--amber)":"var(--text-tertiary)"}}><PanelRightOpen size={12}/></button>
+              <button onClick={()=>setPreviewMode("preview")} title="Preview"
+                style={{background:previewMode==="preview"?"var(--track)":"transparent",border:"none",padding:"3px 5px",borderRadius:4,cursor:"pointer",color:previewMode==="preview"?"var(--amber)":"var(--text-tertiary)"}}><Eye size={12}/></button>
+            </>}
             <button onClick={()=>setRightOpen(!rightOpen)}
               style={{background:"transparent",border:"none",padding:3,cursor:"pointer",color:"var(--text-tertiary)"}}>
               {rightOpen ? <PanelRightClose size={13}/> : <PanelRightOpen size={13}/>}
             </button>
           </div>
         </div>
-        {/* Editor */}
+        {/* Editor with live preview & scroll sync */}
         <div style={{flex:1,display:"flex",flexDirection:"column",minHeight:0}}>
           {error && <div style={{padding:"4px 12px",fontSize:12,color:"var(--coral)",background:"var(--coral-soft)",borderBottom:"1px solid var(--glass-border)"}}>{error}</div>}
-          {activeTab && (()=>{const af=openFiles.find(f=>f.path===activeTab);if(!af)return null;
-          return <textarea value={edContent} onChange={e=>updContent(activeTab,e.target.value)}
-            placeholder="Start writing... Use [[wiki-links]] and #tags" style={txStyle} />;})()}
+          {activeTab && (()=>{
+            const af=openFiles.find(f=>f.path===activeTab);if(!af)return null;
+            // Smooth scroll sync via requestAnimationFrame
+            const syncScroll = (source) => {
+              if (window._msSyncRaf) cancelAnimationFrame(window._msSyncRaf);
+              window._msSyncRaf = requestAnimationFrame(() => {
+                window._msSyncRaf = null;
+                const ta = document.querySelector(".ms-edit-textarea");
+                const pv = document.querySelector(".ms-preview-pane");
+                if (!ta || !pv) return;
+                if (source==="edit") {
+                  const sh = ta.scrollHeight - ta.clientHeight;
+                  if (sh > 0) { const r = ta.scrollTop / sh; pv.scrollTop = r * (pv.scrollHeight - pv.clientHeight); }
+                } else {
+                  const sh = pv.scrollHeight - pv.clientHeight;
+                  if (sh > 0) { const r = pv.scrollTop / sh; ta.scrollTop = r * (ta.scrollHeight - ta.clientHeight); }
+                }
+              });
+            };
+            const editPane = <textarea key="edit" className="ms-edit-textarea"
+              value={edContent} onChange={e=>updContent(activeTab,e.target.value)}
+              onScroll={()=>syncScroll("edit")}
+              placeholder="Start writing... Use [[wiki-links]] and #tags" style={{
+                ...txStyle, borderRight:previewMode==="split"?"1px solid var(--glass-border)":"none"
+              }} />;
+            const previewPane = <div key="preview" className="ms-preview-pane"
+              onScroll={()=>syncScroll("preview")} style={{
+                flex:1, minHeight:0, overflow:"auto", padding:"20px 24px",
+                background:"transparent"
+              }}>
+              <MarkdownRenderer content={edContent}
+                onWikiLink={(title: string)=>{
+                  const findNote = (nodes, ttl) => { for (const n of nodes) { if (n.type==="note" && (n.name.replace(/\.md$/,"").toLowerCase()===ttl.toLowerCase() || n.name===ttl+".md")) return n; if (n.children) { const r = findNote(n.children, ttl); if (r) return r; } } return null; };
+                  const t = findNote(tree, title);
+                  const fn = t ? t.path : title.replace(/[/\\?%*:|"<>]/g,"_")+".md";
+                  openFile(fn);
+                }}
+                onTagClick={(tag: string)=>{setLeftTab("search");setSq(tag);}}
+                onToggleCheckbox={(lineIndex: number)=>{
+                  const lines = edContent.split("\n");
+                  if (lineIndex >= lines.length) return;
+                  const l = lines[lineIndex];
+                  const m = l.match(/^(\s*(?:[-*+]\s+)?\[)([ xX])(\]\s*.*)/);
+                  if (!m) return;
+                  const newChar = m[2] === "x" || m[2] === "X" ? " " : "x";
+                  lines[lineIndex] = m[1] + newChar + m[3];
+                  updContent(activeTab, lines.join("\n"));
+                }}
+              />
+            </div>;
+            if (previewMode==="preview") return previewPane;
+            if (previewMode==="split") return <div style={{flex:1,display:"flex",minHeight:0,flexDirection:"row"}}>{editPane}{previewPane}</div>;
+            return editPane;
+          })()}
           {!activeTab && <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:12,color:"var(--text-tertiary)"}}>
             <FileText size={40} strokeWidth={1}/>
             <span style={{fontSize:13}}>Select a note or create a new one</span>
           </div>}
+        </div>
         </div>
       </div>
       {/* RIGHT SIDEBAR */}
@@ -380,3 +470,12 @@ export default function MyspacePage() {
       </div>}
     </div>);
 }
+
+
+
+
+
+
+
+
+

@@ -1,4 +1,20 @@
-import React from "react";
+import { useEffect, useRef, useMemo } from "react";
+import { marked } from "marked";
+import { markedHighlight } from "marked-highlight";
+import hljs from "highlight.js";
+import "highlight.js/styles/github-dark.css";
+
+marked.use(markedHighlight({
+  langPrefix: "hljs language-",
+  highlight(code, lang) {
+    if (lang && hljs.getLanguage(lang)) {
+      try { return hljs.highlight(code, { language: lang }).value; } catch {}
+    }
+    try { return hljs.highlightAuto(code).value; } catch {}
+    return code;
+  }
+}));
+
 
 interface Props {
   content: string;
@@ -7,74 +23,85 @@ interface Props {
   onToggleCheckbox?: (lineIndex: number) => void;
 }
 
-export default function MarkdownRenderer({ content, onWikiLink, onTagClick, onToggleCheckbox }: Props) {
-  const lines = content.split("\n");
-  const els: React.ReactNode[] = [];
-  let inCode = false, buf: string[] = [], lang = "";
-
-  const flush = (k: number | string) => {
-    if (!buf.length) return;
-    els.push(<pre key={`cb${k}`} className="md-code-block">{lang ? <div className="md-code-lang">{lang}</div> : null}<code>{buf.join("\n")}</code></pre>);
-    buf = []; lang = "";
-  };
-
+// Pre-process markdown content: convert interactive elements to HTML spans
+// before marked parse them away
+function preprocess(text: string): string {
+  const lines = text.split("\n");
+  const out: string[] = [];
   for (let i = 0; i < lines.length; i++) {
-    const l = lines[i];
+    let l = lines[i];
+    // Code blocks — skip pre-processing inside them
     if (l.trimStart().startsWith("```")) {
-      if (inCode) { flush(i); inCode = false; continue; }
-      else { inCode = true; lang = l.trim().slice(3).trim(); continue; }
+      out.push(l);
+      continue;
     }
-    if (inCode) { buf.push(l); continue; }
-
-    const t = l.trim();
-    if (!t) { els.push(<div key={i} className="md-empty" />); continue; }
-
-    const cb = l.match(/^(?:[-*+]\s+)?\[([ xX])\]\s*(.*)/);
+    // Checkboxes: - [ ] / - [x] → custom spans
+    const cb = l.match(/^(\s*(?:[-*+]\s+)?)\[([ xX])\]\s*(.*)/);
     if (cb) {
-      const c = cb[1].toLowerCase() === "x";
-      els.push(<div key={i} className="md-checkbox-row" onClick={() => onToggleCheckbox?.(i)}>
-        <span className={`md-checkbox ${c ? "is-checked" : ""}`}>{c ? "✓" : ""}</span>
-        <span style={{ textDecoration: c ? "line-through" : "none", opacity: c ? 0.6 : 1 }}>{renderInline(cb[2], onWikiLink, onTagClick, i)}</span>
-      </div>);
+      const checked = cb[2].toLowerCase() === "x";
+      out.push(`<span class="md-cb-row" data-line="${i}">` +
+        `<span class="md-cb${checked?" md-cb-checked":""}">${checked?"✓":""}</span>` +
+        `<span>${cb[3]}</span></span>`);
       continue;
     }
-
-    const h = l.match(/^(#{1,6})\s+(.*)/);
-    if (h) {
-      const Tag = `h${h[1].length}` as keyof JSX.IntrinsicElements;
-      els.push(<Tag key={i} className={`md-h md-h${h[1].length}`}>{renderInline(h[2], onWikiLink, onTagClick, i)}</Tag>);
-      continue;
-    }
-
-    if (l.trimStart().startsWith("> ")) {
-      els.push(<blockquote key={i} className="md-blockquote">{renderInline(l.replace(/^>\s*/, ""), onWikiLink, onTagClick, i)}</blockquote>);
-      continue;
-    }
-
-    if (/^[-*_]{3,}$/.test(t)) { els.push(<hr key={i} className="md-hr" />); continue; }
-
-    els.push(<p key={i} className="md-p">{renderInline(l, onWikiLink, onTagClick, i)}</p>);
+    // WikiLinks [[...]] and #tags inside paragraphs — replace inline
+    l = l.replace(/\[\[([^\]]+)\]\]/g, (_, title) =>
+      `<span class="md-wl" data-title="${title.replace(/"/g,"&quot;")}">${title}</span>`);
+    l = l.replace(/(^|\s)(#[a-zA-Zа-яА-Я0-9_\-\/]+)/g, (_, sp, tag) =>
+      `${sp}<span class="md-tg" data-tag="${tag}">${tag}</span>`);
+    out.push(l);
   }
-  if (inCode) flush("end");
-  return <div className="md-renderer">{els}</div>;
+  return out.join("\n");
 }
 
-function renderInline(text: string, onWikiLink?: (t: string) => void, onTagClick?: (t: string) => void, kp?: number | string): React.ReactNode[] {
-  const re = /(\[\[([^\]]+)\]\]|`[^`]+`|#[a-zA-Zа-яА-Я0-9_\/-]+|\[([^\]]+)\]\(([^)]+)\)|\*\*\*([^*]+)\*\*\*|\*\*([^*]+)\*\*|\*([^*]+)\*)/g;
-  const out: React.ReactNode[] = [];
-  let last = 0, idx = 0, m: RegExpExecArray | null;
-  while ((m = re.exec(text)) !== null) {
-    if (m.index > last) out.push(<span key={`t${kp}-${idx++}`}>{text.slice(last, m.index)}</span>);
-    const f = m[0];
-    if (f.startsWith("[[")) out.push(<span key={`w${kp}-${idx++}`} className="md-wiki-link" onClick={() => onWikiLink?.(m![2])}>{m![2]}</span>);
-    else if (f.startsWith("`") && f.endsWith("`")) out.push(<code key={`c${kp}-${idx++}`} className="md-inline-code">{f.slice(1, -1)}</code>);
-    else if (f.startsWith("#")) out.push(<span key={`tag${kp}-${idx++}`} className="md-tag" onClick={() => onTagClick?.(f)}>{f}</span>);
-    else if (f.startsWith("[")) out.push(<a key={`a${kp}-${idx++}`} className="md-link" href={m[4]!} target="_blank" rel="noreferrer">{m[3]}</a>);
-    else if (f.startsWith("***")) out.push(<strong key={`bi${kp}-${idx++}`}><em>{m[5]}</em></strong>);
-    else if (f.startsWith("**")) out.push(<strong key={`b${kp}-${idx++}`}>{m[6]}</strong>);
-    else if (f.startsWith("*")) out.push(<em key={`i${kp}-${idx++}`}>{m[7]}</em>);
-    last = re.lastIndex;
-  }
-  if (last < text.length) out.push(<span key={`t${kp}-${idx++}`}>{text.slice(last)}</span>);
-  return out.length ? out : [text];
+export default function MarkdownRenderer({ content, onWikiLink, onTagClick, onToggleCheckbox }: Props) {
+  const ref = useRef<HTMLDivElement>(null);
+
+  const html = useMemo(() => {
+    const preprocessed = preprocess(content);
+    try {
+      // marked.parseSync exists in v18+
+      return marked.parse(preprocessed) as string;
+    } catch {
+      return `<p>${preprocessed}</p>`;
+    }
+  }, [content]);
+
+  // Event delegation via useEffect
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const handler = (e: MouseEvent) => {
+      let target = e.target as HTMLElement;
+      // Walk up to find clickable span
+      while (target && target !== el) {
+        if (target.classList.contains("md-wl")) {
+          e.preventDefault();
+          const title = target.getAttribute("data-title");
+          if (title && onWikiLink) onWikiLink(title);
+          return;
+        }
+        if (target.classList.contains("md-tg")) {
+          e.preventDefault();
+          const tag = target.getAttribute("data-tag");
+          if (tag && onTagClick) onTagClick(tag);
+          return;
+        }
+        if (target.classList.contains("md-cb-row") || target.classList.contains("md-cb")) {
+          e.preventDefault();
+          const row = target.closest(".md-cb-row") as HTMLElement;
+          if (row) {
+            const line = row.getAttribute("data-line");
+            if (line && onToggleCheckbox) onToggleCheckbox(parseInt(line, 10));
+          }
+          return;
+        }
+        target = target.parentElement!;
+      }
+    };
+    el.addEventListener("click", handler);
+    return () => el.removeEventListener("click", handler);
+  }, [onWikiLink, onTagClick, onToggleCheckbox]);
+
+  return <div ref={ref} className="md-renderer" dangerouslySetInnerHTML={{ __html: html }} />;
 }
