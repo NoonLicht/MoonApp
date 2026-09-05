@@ -15,9 +15,10 @@ const logger = require("./logger");
 const VAULT_DIR = path.join(DIRS.storage, "vault");
 const NOTEBOOK_DIR = path.join(VAULT_DIR, "notes");
 const CANVAS_DIR = path.join(VAULT_DIR, "canvases");
+const HOLST_DIR = path.join(VAULT_DIR, "holsts"); // tldraw canvas data
 
 function ensureDirs() {
-  for (const d of [VAULT_DIR, NOTEBOOK_DIR, CANVAS_DIR]) {
+  for (const d of [VAULT_DIR, NOTEBOOK_DIR, CANVAS_DIR, HOLST_DIR]) {
     if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true });
   }
 }
@@ -240,6 +241,36 @@ function listCanvases() {
 
 ensureDirs();
 
+// Holst (tldraw canvas) operations
+function readHolst(name) {
+  const fp = path.join(HOLST_DIR, name.endsWith(".holst") ? name : name + ".holst");
+  if (!fs.existsSync(fp)) return null;
+  return JSON.parse(fs.readFileSync(fp, "utf8"));
+}
+
+function writeHolst(name, data) {
+  ensureDirs();
+  const fp = path.join(HOLST_DIR, name.endsWith(".holst") ? name : name + ".holst");
+  fs.writeFileSync(fp, JSON.stringify(data, null, 2), "utf8");
+  return { ok: true };
+}
+
+function listHolsts() {
+  ensureDirs();
+  let files = [];
+  try { files = fs.readdirSync(HOLST_DIR); } catch {}
+  return files.filter(f => f.endsWith(".holst")).map(f => ({ name: f.replace(".holst", ""), path: f }));
+}
+
+function deleteHolst(name) {
+  const fp = path.join(HOLST_DIR, name.endsWith(".holst") ? name : name + ".holst");
+  if (!fs.existsSync(fp)) return { ok: false, error: "not found" };
+  fs.unlinkSync(fp);
+  return { ok: true };
+}
+
+ensureDirs();
+
 module.exports = {
   buildTree: () => buildTree(NOTEBOOK_DIR),
   readFile: (p) => readFile(p),
@@ -254,5 +285,9 @@ module.exports = {
   readCanvas: (n) => readCanvas(n),
   writeCanvas: (n, d) => writeCanvas(n, d),
   listCanvases: () => listCanvases(),
-  VAULT_DIR, NOTEBOOK_DIR, CANVAS_DIR,
+  readHolst: (n) => readHolst(n),
+  writeHolst: (n, d) => writeHolst(n, d),
+  listHolsts: () => listHolsts(),
+  deleteHolst: (n) => deleteHolst(n),
+  VAULT_DIR, NOTEBOOK_DIR, CANVAS_DIR, HOLST_DIR,
 };

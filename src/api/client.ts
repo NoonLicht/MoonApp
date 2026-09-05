@@ -233,6 +233,11 @@ export const api = {
   myspaceListCanvases: () => req<{ name: string; path: string }[]>("GET", "/myspace/canvases"),
   myspaceReadCanvas: (name: string) => req<any>("GET", `/myspace/canvas?name=${encodeURIComponent(name)}`),
   myspaceWriteCanvas: (name: string, data: any) => req("POST", "/myspace/canvas", { name, data }),
+  // MySpace Holst (tldraw canvases)
+  myspaceListHolsts: () => req<{ name: string; path: string }[]>("GET", "/myspace/holsts"),
+  myspaceReadHolst: (name: string) => req<any>("GET", `/myspace/holst?name=${encodeURIComponent(name)}`),
+  myspaceWriteHolst: (name: string, data: any) => req("POST", "/myspace/holst", { name, data }),
+  myspaceDeleteHolst: (name: string) => req<{ ok: boolean }>("DELETE", `/myspace/holst?name=${encodeURIComponent(name)}`),
 };
 
 /** РЎРѕР±С‹С‚РёРµ СЃС‚СЂРёРјР° С‡Р°С‚Р°. */

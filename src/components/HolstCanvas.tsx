@@ -188,9 +188,9 @@ function HolstFlow({ canvasName, onBacklinksChange, onCreateCanvas }: { canvasNa
   }, [handleUndo, handleRedo, handleSave]);
 
   const [newCanvasName, setNewCanvasName] = useState("");
-const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-const onNodeDragStop = useCallback(() => setDirty(true), []);
+  const onNodeDragStop = useCallback(() => setDirty(true), []);
   const onViewportChange = useCallback((vp: { x: number; y: number; zoom: number }) => { zoomRef.current = vp.zoom; }, []);
 
   if (loading && canvasName) {
@@ -199,14 +199,41 @@ const onNodeDragStop = useCallback(() => setDirty(true), []);
 
   if (!canvasName) {
     return (
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", flex: 1, gap: 12, color: "var(--text-tertiary)", fontFamily: "var(--font-mono)" }}>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", flex: 1, gap: 16, color: "var(--text-tertiary)", fontFamily: "var(--font-mono)" }}>
         <span style={{ fontSize: 48, opacity: 0.5 }}>🎨</span>
-        <span style={{ fontSize: 14, fontWeight: 600 }}>Holst Canvas</span>
-        <span style={{ fontSize: 12 }}>Create or select a canvas from the explorer</span>
-        <button onClick={() => handleAddNode("sticky")}
-          style={{ padding: "8px 18px", borderRadius: 8, border: "1px solid var(--teal)", background: "var(--teal)", color: "#fff", fontSize: 12, cursor: "pointer", fontWeight: 600 }}>
-          Create Canvas +
-        </button>
+        <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text-secondary)" }}>Holst Canvas</span>
+        <span style={{ fontSize: 12 }}>Name your new canvas to get started</span>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <input
+            ref={inputRef}
+            placeholder="e.g. Project Board, Mind Map..."
+            value={newCanvasName}
+            onChange={(e) => setNewCanvasName(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter" && newCanvasName.trim()) onCreateCanvas?.(newCanvasName.trim()); }}
+            style={{
+              padding: "10px 14px", borderRadius: 8, border: "2px solid var(--glass-border)",
+              background: "var(--track)", outline: "none",
+              color: "var(--text-primary)", fontSize: 13, fontFamily: "var(--font-mono)",
+              width: 240, transition: "border-color 0.2s",
+            }}
+            onFocus={(e) => e.target.style.borderColor = "var(--teal)"}
+            onBlur={(e) => e.target.style.borderColor = "var(--glass-border)"}
+          />
+          <button
+            onClick={() => { if (newCanvasName.trim()) onCreateCanvas?.(newCanvasName.trim()); }}
+            style={{
+              padding: "10px 22px", borderRadius: 8,
+              border: "none", background: "var(--teal)",
+              color: "#fff", fontSize: 13, cursor: "pointer", fontWeight: 700,
+              fontFamily: "var(--font-mono)",
+              transition: "all 0.15s", boxShadow: "0 2px 8px rgba(45,212,191,0.3)",
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = "#2dd4bf"; e.currentTarget.style.boxShadow = "0 4px 16px rgba(45,212,191,0.5)"; e.currentTarget.style.transform = "scale(1.03)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = "var(--teal)"; e.currentTarget.style.boxShadow = "0 2px 8px rgba(45,212,191,0.3)"; e.currentTarget.style.transform = "scale(1)"; }}
+          >
+            Create Canvas +
+          </button>
+        </div>
       </div>
     );
   }
@@ -261,6 +288,8 @@ const onNodeDragStop = useCallback(() => setDirty(true), []);
 export default function HolstCanvas(props: { canvasName: string; onBacklinksChange?: (backlinks: string[]) => void; onCreateCanvas?: (name: string) => void }) {
   return <ReactFlowProvider><HolstFlow {...props} /></ReactFlowProvider>;
 }
+
+
 
 
 

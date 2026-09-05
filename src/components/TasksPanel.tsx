@@ -520,6 +520,16 @@ const TasksPanel: React.FC<TasksPanelProps> = ({ onOpenNote, vaultFiles }) => {
   }, [updateTask]);
 
   /* ----- calendar navigation ----- */
+/* ----- detail drawer ----- */
+  const openDetail = useCallback((task: TaskItem) => {
+    setSelectedTask(task);
+    setShowDetail(true);
+  }, []);
+
+  const closeDetail = useCallback(() => {
+    setSelectedTask(null);
+    setShowDetail(false);
+  }, []);
   const prevMonth = useCallback(() => {
     if (calendarMonth === 0) {
       setCalendarMonth(11);

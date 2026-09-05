@@ -11,7 +11,7 @@ import type { VaultFile, VaultSearchResult, VaultTag, VaultBacklink, GraphData, 
 import EditingToolbar from "../components/EditingToolbar";
 import GraphView from "../components/GraphView";
 import TasksPanel from "../components/TasksPanel";
-import HolstCanvas from "../components/HolstCanvas";
+import HolstCanvas from "../features/holst/HolstCanvas";
 
 type Side = "explorer" | "search" | "tags";
 type Right = "backlinks" | "outline" | "graph";

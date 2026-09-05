@@ -96,4 +96,37 @@ router.post("/canvas", (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// Holst (tldraw) CRUD
+router.get("/holsts", (req, res) => {
+  try { res.json(vault.listHolsts()); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+router.get("/holst", (req, res) => {
+  try {
+    const h = vault.readHolst(req.query.name);
+    if (!h) return res.status(404).json({ error: "not found" });
+    res.json(h);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+router.post("/holst", (req, res) => {
+  try {
+    const { name, data } = req.body || {};
+    if (!name) return res.status(400).json({ error: "name required" });
+    const saved = vault.writeHolst(name, data || {});
+    logger.action("holst.write", { name });
+    res.json(saved);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+router.delete("/holst", (req, res) => {
+  try {
+    const result = vault.deleteHolst(req.query.name);
+    if (!result.ok) return res.status(404).json(result);
+    logger.action("holst.delete", { name: req.query.name });
+    res.json(result);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 module.exports = router;
