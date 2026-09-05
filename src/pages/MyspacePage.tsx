@@ -1,7 +1,7 @@
 ﻿import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { FileText, Folder, Plus, Search, Tags, Hash, PanelRightOpen,
   PanelRightClose, PanelLeftOpen, PanelLeftClose, X, Link2, Type,  Bookmark, ChevronRight, ChevronDown, Globe, Trash2, Sparkles,
-  Eye, PenLine, Maximize2, Minimize2, Settings2, ZoomIn, ZoomOut } from "lucide-react";
+  Eye, PenLine, Maximize2, Minimize2, Settings2, ZoomIn, ZoomOut, Palette } from "lucide-react";
 import MarkdownRenderer from "../components/MarkdownRenderer";
 import { EmptyHint } from "../components/ui";
 import { usePageToolbar } from "../components/Toolbar";
@@ -11,6 +11,7 @@ import type { VaultFile, VaultSearchResult, VaultTag, VaultBacklink, GraphData, 
 import EditingToolbar from "../components/EditingToolbar";
 import GraphView from "../components/GraphView";
 import TasksPanel from "../components/TasksPanel";
+import HolstCanvas from "../components/HolstCanvas";
 
 type Side = "explorer" | "search" | "tags";
 type Right = "backlinks" | "outline" | "graph";
@@ -24,7 +25,8 @@ export default function MyspacePage() {
 
   const [leftOpen, setLeftOpen] = useState(true);
   const [rightOpen, setRightOpen] = useState(true);
-  const [myspaceView, setMyspaceView] = useState<"notes"|"tasks">("notes");
+  const [myspaceView, setMyspaceView] = useState<"notes"|"tasks"|"canvas">("notes");
+  const [canvasName, setCanvasName] = useState("");
   const [leftTab, setLeftTab] = useState<Side>("explorer");
   const [rightTab, setRightTab] = useState<Right>("backlinks");
   const [leftW, setLeftW] = useState(260);
@@ -291,6 +293,7 @@ export default function MyspacePage() {
       return { source: s, target: t } as GraphEdge;
     });
     if (activeTab && graphDepth < 5) {
+      // BFS from active tab to find depth-reachable nodes
       const visited = new Set<string>();
       const queue: { path: string; depth: number }[] = [{ path: activeTab, depth: 0 }];
       visited.add(activeTab);
@@ -308,6 +311,11 @@ export default function MyspacePage() {
         }
       }
       allNodes = allNodes.filter(n => depthNodes.has(n.id));
+    } else if (!activeTab && !graphShowOrphans) {
+      // No file open: show only connected nodes (hide orphans) unless user explicitly wants orphans
+      const connected = new Set<string>();
+      for (const e of edges) { connected.add(e.source); connected.add(e.target); }
+      allNodes = allNodes.filter(n => connected.has(n.id));
     }
     if (!graphShowOrphans) {
       const connected = new Set<string>();
@@ -319,7 +327,13 @@ export default function MyspacePage() {
       allNodes = allNodes.filter(n => n.label.toLowerCase().includes(q));
     }
     const finalIds = new Set(allNodes.map(n => n.id));
-    const finalEdges = edges.filter(e => finalIds.has(e.source) && finalIds.has(e.target));
+    let finalEdges = edges.filter(e => finalIds.has(e.source) && finalIds.has(e.target));
+    // Жёсткая фильтрация: если depth < 5 (локальный граф), показываем ТОЛЬКО
+    // рёбра, где хотя бы один конец — это активный файл (activeTab).
+    // Никаких транзитивных связей между файлами 2-го+ уровня!
+    if (activeTab && graphDepth < 5) {
+      finalEdges = finalEdges.filter(e => e.source === activeTab || e.target === activeTab);
+    }
     return { nodes: allNodes, edges: finalEdges };
   }, [openFiles, tree, activeTab, graphDepth, graphShowOrphans, graphSearch]);
 
@@ -370,6 +384,7 @@ export default function MyspacePage() {
       <div style={{display:"flex", gap:4, padding:"4px 4px 0 4px"}}>
         <button onClick={()=>setMyspaceView("notes")} style={viewTabStyle(myspaceView==="notes")}>📝 Notes</button>
         <button onClick={()=>setMyspaceView("tasks")} style={viewTabStyle(myspaceView==="tasks")}>✓ Tasks</button>
+        <button onClick={()=>setMyspaceView("canvas")} style={viewTabStyle(myspaceView==="canvas")}>🎨 Canvas</button>
       </div>
       {myspaceView === "notes" && (<div style={{display:"flex",flex:1,minHeight:0,overflow:"hidden"}}>
       {/* LEFT SIDEBAR */}
@@ -465,7 +480,11 @@ export default function MyspacePage() {
               <div key={f.path} onClick={()=>setActiveTab(f.path)}
                 style={{display:"flex",alignItems:"center",gap:4,padding:"3px 8px",borderRadius:"6px 6px 0 0",fontSize:12,cursor:"pointer",whiteSpace:"nowrap",
                   background:activeTab===f.path?"var(--surface-glass)":"transparent",color:activeTab===f.path?"var(--text-primary)":"var(--text-secondary)",
-                  border:activeTab===f.path?"1px solid var(--glass-border)":"1px solid transparent",borderBottom:"none"}}>
+                  borderTop:activeTab===f.path?"1px solid var(--glass-border)":"1px solid transparent",
+                  borderLeft:activeTab===f.path?"1px solid var(--glass-border)":"1px solid transparent",
+                  borderRight:activeTab===f.path?"1px solid var(--glass-border)":"1px solid transparent",
+                  borderBottom:"none",
+                  marginBottom:-0}}>
                 <FileText size={11}/>
                 <span>{f.name.replace(/\.md$/,"")}</span>
                 {f.modified && <span style={{width:5,height:5,borderRadius:"50%",background:"var(--amber)",display:"inline-block"}}/>}
@@ -790,10 +809,29 @@ export default function MyspacePage() {
       </div>)}
     {/* ─── TASKS VIEW ─── */}
     {myspaceView === "tasks" && (
-      <div style={{display:"flex",flex:1,minHeight:0,overflow:"hidden", margin:"4px"}}>
+      <div style={{display:"flex",flex:1,minHeight:0,overflow:"hidden"}}>
         <TasksPanel
           onOpenNote={openFile}
           vaultFiles={tree?.map(f => f.name.replace(/\.md$/i, '')) || []}
+        />
+      </div>
+    )}
+    {/* ─── CANVAS VIEW ─── */}
+    {myspaceView === "canvas" && (
+      <div style={{display:"flex",flex:1,minHeight:0,overflow:"hidden"}}>
+        <HolstCanvas
+          canvasName={canvasName}
+          onBacklinksChange={(linked) => {}}
+          onCreateCanvas={(name) => {
+            api.myspaceWriteCanvas(name, {
+              version: 1, viewport: { x: 0, y: 0, zoom: 1 },
+              nodes: [], edges: [],
+              metadata: { name, created: new Date().toISOString(), modified: new Date().toISOString() },
+            }).then(() => {
+              setCanvasName(name);
+              loadTree();
+            }).catch((e) => setError(e.message));
+          }}
         />
       </div>
     )}

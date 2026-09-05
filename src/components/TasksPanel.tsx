@@ -65,11 +65,14 @@ const statusLabel: Record<TaskStatus, string> = {
   completed: "Completed",
 };
 
-const statusColor: Record<TaskStatus, string> = {
-  todo: "var(--text-secondary)",
-  in_progress: "var(--amber)",
-  deferred: "var(--violet)",
-  completed: "var(--teal)",
+const statusColor = (s: TaskStatus): string => {
+  const map: Record<TaskStatus, string> = {
+    todo: "var(--text-secondary)",
+    in_progress: "var(--amber)",
+    deferred: "var(--violet)",
+    completed: "var(--teal)",
+  };
+  return map[s] || "var(--text-secondary)";
 };
 
 function formatTimer(sec: number): string {
@@ -109,6 +112,14 @@ const TasksPanel: React.FC<TasksPanelProps> = ({ onOpenNote, vaultFiles }) => {
   const [calendarMonth, setCalendarMonth] = useState(() => new Date().getMonth());
   const [calendarYear, setCalendarYear] = useState(() => new Date().getFullYear());
   const [checkedDays, setCheckedDays] = useState<Set<string>>(new Set());
+/* ----- load tasks on mount ----- */
+  useEffect(() => {
+    api.tasksList().then(setTasks).catch(() => {});
+    loadStreakAndProgress();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /* ----- derived data ----- */
 
   /* ----- derived data ----- */
   const tags = useMemo(() => {
@@ -254,9 +265,15 @@ const TasksPanel: React.FC<TasksPanelProps> = ({ onOpenNote, vaultFiles }) => {
     if (linkMatch) linkMatch.forEach(m => chips.push({ type: "link", value: m.slice(1) }));
     const tagMatch = text.match(/#(\w[\w-]*)/g);
     if (tagMatch) tagMatch.forEach(m => chips.push({ type: "tag", value: m.slice(1) }));
-    const prioMatch = text.match(/!(high|urgent|medium|low)\b/gi);
-    if (prioMatch) prioMatch.forEach(m => chips.push({ type: "priority", value: m.slice(1).toLowerCase() }));
-    const relMatch = text.match(/\b(today|tomorrow|next monday|next tuesday|next wednesday|next thursday|next friday|next saturday|next sunday)\b/gi);
+    const prioMatch = text.match(/!(high|urgent|medium|low|высокий|срочный|средний|низкий)\b/gi);
+    if (prioMatch) prioMatch.forEach(m => {
+      const v = m.slice(1).toLowerCase();
+      if (v === "высокий" || v === "срочный") chips.push({ type: "priority", value: v === "срочный" ? "urgent" : "high" });
+      else if (v === "средний") chips.push({ type: "priority", value: "medium" });
+      else if (v === "низкий") chips.push({ type: "priority", value: "low" });
+      else chips.push({ type: "priority", value: v });
+    });
+    const relMatch = text.match(/\b(today|tomorrow|next monday|next tuesday|next wednesday|next thursday|next friday|next saturday|next sunday|сегодня|завтра|следующий понедельник|следующий вторник|следующая среда|следующий четверг|следующая пятница|следующая суббота|следующее воскресенье)\b/gi);
     if (relMatch) relMatch.forEach(m => chips.push({ type: "date", value: m.toLowerCase() }));
     const timeMatch = text.match(/\b(\d{1,2}:\d{2})\b/g);
     if (timeMatch) timeMatch.forEach(m => chips.push({ type: "time", value: m }));
@@ -274,6 +291,38 @@ const TasksPanel: React.FC<TasksPanelProps> = ({ onOpenNote, vaultFiles }) => {
     parseQuickAdd(v);
   }, [parseQuickAdd]);
 
+/* ----- progress updater (declared BEFORE quick-add to avoid TDZ) ----- */
+  const updateProgress = useCallback((increment: number) => {
+    try {
+      const data = localStorage.getItem("tasks_progress");
+      let prog = data ? JSON.parse(data) : { streak: 0, weekly: [0, 0, 0, 0, 0, 0, 0], points: 0, lastDate: null };
+
+      const today = new Date().toDateString();
+      if (prog.lastDate !== today) {
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        if (prog.lastDate === yesterday.toDateString()) {
+          prog.streak += increment;
+        } else {
+          prog.streak = increment;
+        }
+        prog.lastDate = today;
+      } else {
+        prog.streak += increment;
+      }
+
+      const dayOfWeek = new Date().getDay();
+      prog.weekly[dayOfWeek] = (prog.weekly[dayOfWeek] || 0) + increment;
+      prog.points = (prog.points || 0) + increment * 10;
+
+      localStorage.setItem("tasks_progress", JSON.stringify(prog));
+      setStreakCount(prog.streak);
+      setWeeklyData(prog.weekly);
+      setPoints(prog.points);
+    } catch { /* ignore */ }
+  }, []);
+
+  /* ----- quick add create ----- */
   /* ----- quick add create ----- */
   const handleQuickAddCreate = useCallback(async () => {
     if (!quickAddText.trim()) return;
@@ -299,8 +348,8 @@ const TasksPanel: React.FC<TasksPanelProps> = ({ onOpenNote, vaultFiles }) => {
       if (relMatch) {
         const rel = relMatch[0].toLowerCase();
         const d = new Date();
-        if (rel === "today") { /* keep today */ }
-        else if (rel === "tomorrow") d.setDate(d.getDate() + 1);
+        if (rel === "today" || rel === "сегодня") { /* keep today */ }
+        else if (rel === "tomorrow" || rel === "завтра") d.setDate(d.getDate() + 1);
         else {
           const days = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
           const targetDay = days.indexOf(rel.replace("next ", ""));
@@ -332,38 +381,7 @@ const TasksPanel: React.FC<TasksPanelProps> = ({ onOpenNote, vaultFiles }) => {
       setErrorMsg("Failed to create task");
       setTimeout(() => setErrorMsg(null), 3000);
     }
-  }, [quickAddText, updateProgress]);
-
-  /* ----- progress updater ----- */
-  const updateProgress = useCallback((increment: number) => {
-    try {
-      const data = localStorage.getItem("tasks_progress");
-      let prog = data ? JSON.parse(data) : { streak: 0, weekly: [0, 0, 0, 0, 0, 0, 0], points: 0, lastDate: null };
-
-      const today = new Date().toDateString();
-      if (prog.lastDate !== today) {
-        const yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
-        if (prog.lastDate === yesterday.toDateString()) {
-          prog.streak += increment;
-        } else {
-          prog.streak = increment;
-        }
-        prog.lastDate = today;
-      } else {
-        prog.streak += increment;
-      }
-
-      const dayOfWeek = new Date().getDay();
-      prog.weekly[dayOfWeek] = (prog.weekly[dayOfWeek] || 0) + increment;
-      prog.points = (prog.points || 0) + increment * 10;
-
-      localStorage.setItem("tasks_progress", JSON.stringify(prog));
-      setStreakCount(prog.streak);
-      setWeeklyData(prog.weekly);
-      setPoints(prog.points);
-    } catch { /* ignore */ }
-  }, []);
+  }, [quickAddText]);
 
   /* ----- task actions ----- */
   const toggleTaskStatus = useCallback(async (task: TaskItem) => {
@@ -580,7 +598,7 @@ const TasksPanel: React.FC<TasksPanelProps> = ({ onOpenNote, vaultFiles }) => {
      ================================================================ */
   return (
     <div style={{
-      display: "flex", flexDirection: "column", height: "100%",
+      display: "flex", flexDirection: "column", flex: 1, width: "100%",
       background: "var(--surface-glass)", color: "var(--text-primary)",
       fontFamily: "var(--font-mono)", fontSize: 13,
       overflow: "hidden", position: "relative",
@@ -809,7 +827,7 @@ const TasksPanel: React.FC<TasksPanelProps> = ({ onOpenNote, vaultFiles }) => {
           </div>
         </div>
         {/* ------ CONTENT AREA ------ */}
-        <div style={{ flex: 1, overflow: "auto", padding: 8 }}>
+        <div style={{ flex: 1, overflow: "auto", padding: 8, width: "100%", boxSizing: "border-box" }}>
           {viewMode === "list" && renderListView()}
           {viewMode === "kanban" && renderKanbanView()}
           {viewMode === "calendar" && renderCalendarView()}

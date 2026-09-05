@@ -229,6 +229,10 @@ export const api = {
   tasksUpdate: (id: string, data: Partial<TaskItem>) => req<TaskItem>("PUT", `/myspace/tasks/${id}`, data),
   tasksDelete: (id: string) => req<{ ok: boolean }>("DELETE", `/myspace/tasks/${id}`),
   tasksTimer: (id: string, action: "start" | "pause") => req<TaskItem>("POST", `/myspace/tasks/${id}/timer`, { action }),
+  // MySpace Canvas
+  myspaceListCanvases: () => req<{ name: string; path: string }[]>("GET", "/myspace/canvases"),
+  myspaceReadCanvas: (name: string) => req<any>("GET", `/myspace/canvas?name=${encodeURIComponent(name)}`),
+  myspaceWriteCanvas: (name: string, data: any) => req("POST", "/myspace/canvas", { name, data }),
 };
 
 /** РЎРѕР±С‹С‚РёРµ СЃС‚СЂРёРјР° С‡Р°С‚Р°. */
