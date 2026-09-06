@@ -90,6 +90,8 @@ export const api = {
     req<Conversation>("PATCH", `/chat/${id}`, patch),
   chatTruncateFrom: (id: number, msgId: number) =>
     req<{ ok: boolean }>("DELETE", `/chat/${id}/messages/${msgId}`),
+  chatChoose: (id: number, text: string) =>
+    req<{ ok: boolean }>("POST", `/chat/${id}/choose`, { text }),
 
   // Books / monitor / archives
   // Books (Р¤Р»РёР±СѓСЃС‚Р°) вЂ” РїРѕРёСЃРє/С„РёР»СЊС‚СЂС‹/РїР°РіРёРЅР°С†РёСЏ РїРѕ Р»РѕРєР°Р»СЊРЅРѕРјСѓ РєР°С‚Р°Р»РѕРіСѓ
@@ -256,7 +258,7 @@ export interface StreamEvent {
 /** Потоковая отправка в чат. onEvent({type:'token'|'done'|'error'|'meta'}). */
 export async function streamChatSend(
   conversationId: number,
-  body: { text: string; model?: string; temperature?: number; maxTokens?: number; stream?: boolean; images?: string[] },
+  body: { text: string; model?: string; temperature?: number; maxTokens?: number; stream?: boolean; images?: string[]; topP?: number; frequencyPenalty?: number; presencePenalty?: number; systemPrompt?: string },
   onEvent: (ev: StreamEvent) => void,
   signal?: AbortSignal
 ): Promise<void> {
@@ -296,7 +298,7 @@ export async function streamChatSend(
 /** Arena: один вопрос двум моделям параллельно. События помечены side: "a"|"b". */
 export async function streamArena(
   conversationId: number,
-  body: { text: string; models: [string, string]; temperature?: number; maxTokens?: number; topP?: number; frequencyPenalty?: number; presencePenalty?: number; systemPrompt?: string; images?: string[] },
+  body: { text: string; models: [string, string]; temperature?: number; maxTokens?: number; topP?: number; frequencyPenalty?: number; presencePenalty?: number; systemPrompt?: string; images?: string[]; persist?: boolean },
   onEvent: (ev: StreamEvent) => void,
   signal?: AbortSignal
 ): Promise<void> {

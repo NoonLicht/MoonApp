@@ -27,7 +27,7 @@ export default function MsgList(props: {
       {messages.map((m, i) => (
         <div key={m.id ?? `i${i}`}>
           <div className={`chat-bubble-row ${m.role === "user" ? "is-user" : ""}`}>
-            {editing?.id === m.id ? (
+            {editing && editing.id === m.id ? (
               <div className="msg-edit">
                 <textarea value={editing.text} autoFocus
                   onChange={(e) => setEditing({ id: m.id!, text: e.target.value })}

@@ -246,7 +246,8 @@
     "maxTokens": "Max de jetons",
     "apiKey": "Clé API pour {label} (stockée chiffrée)",
     "saveKey": "Enregistrer la clé",
-    "cancel": "Annuler"
+    "cancel": "Annuler",
+    "chooseAnswer": "Choisir cette réponse"
   },
   "books": {
     "title": "Catalogue de livres",

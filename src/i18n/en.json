@@ -246,7 +246,8 @@
     "maxTokens": "Max tokens",
     "apiKey": "API key for {label} (stored encrypted)",
     "saveKey": "Save key",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "chooseAnswer": "Choose this answer"
   },
   "books": {
     "title": "Book catalog",

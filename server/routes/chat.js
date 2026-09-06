@@ -154,9 +154,10 @@ router.post("/:id/send", async (req, res) => {
   }
 });
 
-// POST /:id/arena — один вопрос двум моделям параллельно (SSE, события помечены side: "a"|"b")
+// POST /:id/arena — один вопрос двум моделям параллельно (SSE, события помечены side: "a"|"b").
+// persist=false — ответы НЕ пишутся в базу (пользователь выберет один через /choose).
 router.post("/:id/arena", async (req, res) => {
-  const { text, models, temperature, maxTokens, topP, frequencyPenalty, presencePenalty, systemPrompt, images } = req.body || {};
+  const { text, models, temperature, maxTokens, topP, frequencyPenalty, presencePenalty, systemPrompt, images, persist = true } = req.body || {};
   const [modelA, modelB] = Array.isArray(models) ? models : [];
   if (!text || !String(text).trim() || !modelA || !modelB) {
     return res.status(400).json({ error: "text and two models required" });
@@ -205,7 +206,7 @@ router.post("/:id/arena", async (req, res) => {
         onToken: (token) => emit({ type: "token", side, text: token }),
         signal: null,
       });
-      stmts.msgInsert.run(conv.id, "assistant", `[${side === "a" ? "A" : "B"} · ${mdl}]\n\n${full}`);
+      if (persist) stmts.msgInsert.run(conv.id, "assistant", `[${side === "a" ? "A" : "B"} · ${mdl}]\n\n${full}`);
       emit({ type: "done", side, text: full, model: mdl, stats: { ms: Date.now() - startedAt, chars: full.length, tokensApprox: Math.round(full.length / 4) } });
     } catch (e) {
       emit({ type: "error", side, message: e.message });
@@ -214,6 +215,18 @@ router.post("/:id/arena", async (req, res) => {
 
   await Promise.all([runSide("a", modelA), runSide("b", modelB)]);
   try { res.end(); } catch {}
+});
+
+// POST /:id/choose — сохранить выбранный в Arena ответ как ответ ассистента
+router.post("/:id/choose", (req, res) => {
+  const conv = stmts.convGet.get(Number(req.params.id));
+  if (!conv) return res.status(404).json({ error: "conversation not found" });
+  const { text } = req.body || {};
+  if (!text || !String(text).trim()) return res.status(400).json({ error: "empty text" });
+  stmts.msgInsert.run(conv.id, "assistant", String(text));
+  stmts.convTouch.run(conv.id);
+  logger.action("chat.arenaChoose", { id: conv.id });
+  res.json({ ok: true });
 });
 
 module.exports = router;

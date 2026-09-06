@@ -140,6 +140,7 @@
 .arena-col-head select{ flex:1; min-width:0; padding:4px 8px; background:var(--glass); border:1px solid var(--glass-border); border-radius:8px; color:var(--text-primary); font-size:11px; font-family:var(--font-mono); }
 .arena-col-body{ display:flex; flex-direction:column; gap:4px; }
 .arena-col-body .chat-bubble{ white-space:normal; }
-.arena-stats{ font-size:10px; color:var(--text-tertiary); font-family:var(--font-mono); }
+.arena-stats{ font-size:10px; color:var(--text-tertiary); font-family:var(--font-mono); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.arena-col-body > .btn, .arena-col-body button[class*=btn]{ align-self:flex-start; margin-top:2px; }
 
 @media (max-width:1100px){ .arena-grid{ grid-template-columns:1fr; } }

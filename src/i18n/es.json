@@ -246,7 +246,8 @@
     "maxTokens": "Máx. de tokens",
     "apiKey": "Clave API para {label} (se guarda cifrada)",
     "saveKey": "Guardar clave",
-    "cancel": "Cancelar"
+    "cancel": "Cancelar",
+    "chooseAnswer": "Elegir esta respuesta"
   },
   "books": {
     "title": "Catálogo de libros",

@@ -132,24 +132,6 @@ export default function AiChatPage() {
   const activeConv = convs.find((c) => c.id === activeId);
   const allPresets = useMemo(() => [...customPresets, ...SYSTEM_PROMPT_PRESETS], [customPresets]);
 
-  /* ── тулбар страницы ── */
-  usePageToolbar(
-    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-      <Field label={t("aichat.provider")} w={130}>
-        <Select value={chatCfg.provider}
-          onChange={(e) => setChatCfg({ provider: e.target.value, model: "" })}
-          options={providers.map((p) => p.id)} />
-      </Field>
-      <Field label={t("aichat.model")} w={200}>
-        <Select value={chatCfg.model} onChange={(e) => setChatCfg({ model: e.target.value })} options={models} />
-      </Field>
-      <IconBtn icon={Swords} active={arena.on} onClick={() => setArena((a) => ({ ...a, on: !a.on, a: a.a || chatCfg.model, b: a.b || (models[1] || chatCfg.model) }))} title={t("aichat.arena")} />
-      <IconBtn icon={Settings2} active={settingsOpen} onClick={() => setSettingsOpen((v) => !v)} title={t("aichat.modelSettings")} />
-      <IconBtn icon={Search} active={palette !== null} onClick={() => setPalette({ query: "" })} title="Ctrl+K" />
-    </div>,
-    [providers, chatCfg.provider, chatCfg.model, models, settingsOpen, arena.on, t]
-  );
-
   /* ── чаты ── */
   const newChat = async () => {
     try {
@@ -284,18 +266,15 @@ export default function AiChatPage() {
     setStreamingText("");
   };
 
-  /* ── Arena: два ответа параллельно ── */
-  const sendArena = async () => {
-    const txt = input.trim();
-    if (!txt || sending || !activeId || !arena.a || !arena.b) return;
+  /* ── Arena: прогон вопроса через две модели (persist=false — ответы в базу не пишутся) ── */
+  const runArena = async (questionText: string) => {
+    if (!activeId || sending || !arena.a || !arena.b) return;
     if (!provider?.configured) { setKeyPrompt(provider ?? null); return; }
-    setMessages((m) => [...m, { role: "user", text: txt }]);
-    setInput("");
     setSending(true);
     setArena((a) => ({ ...a, aText: { text: "", done: false }, bText: { text: "", done: false } }));
     try {
       await streamArena(activeId, {
-        text: txt, models: [arena.a, arena.b],
+        text: questionText, models: [arena.a, arena.b], persist: false,
         temperature: chatCfg.temperature, maxTokens: chatCfg.maxTokens,
         topP: chatCfg.topP, frequencyPenalty: chatCfg.frequencyPenalty,
         presencePenalty: chatCfg.presencePenalty,
@@ -306,18 +285,98 @@ export default function AiChatPage() {
           setArena((a) => ({ ...a, [key]: { ...a[key], text: a[key].text + (ev.text || "") } }));
         } else if (ev.type === "done" && ev.side) {
           setArena((a) => ({ ...a, [key]: { text: ev.text || "", done: true } }));
-          if (ev.side === "b") { setSending(false); if (activeId) refreshMessages(activeId); }
         } else if (ev.type === "error" && ev.side) {
           setArena((a) => ({ ...a, [key]: { text: `⚠ ${ev.message}`, done: true } }));
         }
       });
     } catch (e: any) {
       setMessages((m) => [...m, { role: "assistant", text: `⚠ ${e.message}` }]);
+    } finally {
       setSending(false);
     }
   };
 
-  /* ── регенерация / правка сообщения (усечение истории + повторная отправка) ── */
+  /* Включение Arena: если в чате уже есть последний вопрос — сразу прогоняем его (авто-регенерация) */
+  const toggleArena = () => {
+    if (arena.on) { setArena((a) => ({ ...a, on: false })); return; }
+    const a = models.includes(chatCfg.model) ? chatCfg.model : (models[0] || "");
+    const b = models[1] || models[0] || "";
+    if (!activeId) { setArena({ on: true, a, b, aText: { text: "", done: false }, bText: { text: "", done: false } }); return; }
+    const lastUser = [...messages].reverse().find((m) => m.role === "user");
+    if (lastUser?.id) {
+      // авто-регенерация: убираем вопрос и всё после него из истории, прогоняем через обе модели
+      const q = lastUser.text;
+      api.chatTruncateFrom(activeId, lastUser.id).catch(() => {});
+      setMessages((m) => m.filter((x) => (x.id || 0) < lastUser.id!));
+      setArena({ on: true, a, b, aText: { text: "", done: false }, bText: { text: "", done: false } });
+      setTimeout(() => runArenaWith(a, b, q), 0);
+    } else {
+      setArena({ on: true, a, b, aText: { text: "", done: false }, bText: { text: "", done: false } });
+    }
+  };
+
+  /* Прогон с явно заданными моделями (используется при авто-регенерации до установки стейта) */
+  const runArenaWith = async (ma: string, mb: string, questionText: string) => {
+    if (!activeId || sending || !ma || !mb) return;
+    if (!provider?.configured) { setKeyPrompt(provider ?? null); return; }
+    setSending(true);
+    setArena((a) => ({ ...a, aText: { text: "", done: false }, bText: { text: "", done: false } }));
+    try {
+      await streamArena(activeId, {
+        text: questionText, models: [ma, mb], persist: false,
+        temperature: chatCfg.temperature, maxTokens: chatCfg.maxTokens,
+        topP: chatCfg.topP, frequencyPenalty: chatCfg.frequencyPenalty,
+        presencePenalty: chatCfg.presencePenalty,
+        systemPrompt: systemPrompt || undefined,
+      }, (ev) => {
+        const key = ev.side === "a" ? "aText" : "bText";
+        if (ev.type === "token" && ev.side) {
+          setArena((a) => ({ ...a, [key]: { ...a[key], text: a[key].text + (ev.text || "") } }));
+        } else if (ev.type === "done" && ev.side) {
+          setArena((a) => ({ ...a, [key]: { text: ev.text || "", done: true } }));
+        } else if (ev.type === "error" && ev.side) {
+          setArena((a) => ({ ...a, [key]: { text: `⚠ ${ev.message}`, done: true } }));
+        }
+      });
+    } catch (e: any) {
+      setMessages((m) => [...m, { role: "assistant", text: `⚠ ${e.message}` }]);
+    } finally {
+      setSending(false);
+    }
+  };
+
+  /* Выбор понравившегося ответа: сохраняем в чат и выходим из Arena */
+  const chooseArenaSide = async (side: "a" | "b") => {
+    if (!activeId) return;
+    const st = side === "a" ? arena.aText : arena.bText;
+    if (!st.done || !st.text.trim() || st.text.startsWith("⚠")) return;
+    try {
+      await api.chatChoose(activeId, st.text);
+      setArena((a) => ({ ...a, on: false }));
+      await refreshMessages(activeId);
+      inputRef.current?.focus();
+    } catch { /* noop */ }
+  };
+
+  /* ── тулбар страницы ── */
+  usePageToolbar(
+    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+      <Field label={t("aichat.provider")} w={130}>
+        <Select value={chatCfg.provider}
+          onChange={(e) => setChatCfg({ provider: e.target.value, model: "" })}
+          options={providers.map((p) => p.id)} />
+      </Field>
+      <Field label={t("aichat.model")} w={200}>
+        <Select value={chatCfg.model} onChange={(e) => setChatCfg({ model: e.target.value })} options={models} />
+      </Field>
+      <IconBtn icon={Swords} active={arena.on} onClick={toggleArena} title={t("aichat.arena")} />
+      <IconBtn icon={Settings2} active={settingsOpen} onClick={() => setSettingsOpen((v) => !v)} title={t("aichat.modelSettings")} />
+      <IconBtn icon={Search} active={palette !== null} onClick={() => setPalette({ query: "" })} title="Ctrl+K" />
+    </div>,
+    [providers, chatCfg.provider, chatCfg.model, models, settingsOpen, arena.on, t]
+  );
+
+  /* ── регенерация последнего ответа ── */
   const regenerate = async () => {
     if (!activeId || sending) return;
     const lastUser = [...messages].reverse().find((m) => m.role === "user");
@@ -625,7 +684,16 @@ export default function AiChatPage() {
                                   : <span key={i} dangerouslySetInnerHTML={{ __html: renderInlineMd(seg.text) }} />)
                             : !st.done && <div className="typing"><span /><span /><span /></div>}
                         </div>
-                        {st.done && st.text && <div className="arena-stats">{t("aichat.chars", { n: st.text.length })}</div>}
+                        {st.done && st.text && (
+                          <>
+                            <div className="arena-stats">{t("aichat.chars", { n: st.text.length })} · {mdl}</div>
+                            {!st.text.startsWith("⚠") && (
+                              <Btn variant="primary" icon={Check} onClick={() => chooseArenaSide(side)}>
+                                {t("aichat.chooseAnswer")}
+                              </Btn>
+                            )}
+                          </>
+                        )}
                       </div>
                     </div>
                   );
@@ -664,7 +732,7 @@ export default function AiChatPage() {
             <textarea rows={1} ref={inputRef}
               placeholder={activeConv ? t("aichat.placeholder", { provider: activeConv.provider }) : t("aichat.createFirst")}
               value={input} onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); arena.on ? sendArena() : send(); } }}
+              onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); if (arena.on) { const q = input.trim(); if (q) { setInput(""); runArena(q); } } else send(); } }}
               disabled={!activeId} />
             <span className="char-counter" title={t("aichat.chars", { n: input.length })}>
               {input.length > 0 ? `${input.length} · ~${approxTokens(input)}` : ""}
@@ -677,7 +745,7 @@ export default function AiChatPage() {
             {sending ? (
               <IconBtn icon={Square} onClick={stopGeneration} title={t("aichat.stop")} style={{ color: "var(--coral)" }} />
             ) : (
-              <IconBtn icon={Send} onClick={() => (arena.on ? sendArena() : send())} title={t("aichat.send")} disabled={!activeId || !input.trim()} />
+              <IconBtn icon={Send} onClick={() => { if (arena.on) { const q = input.trim(); if (q) { setInput(""); runArena(q); } } else send(); }} title={t("aichat.send")} disabled={!activeId || !input.trim()} />
             )}
           </Glass>
         </div>

@@ -246,7 +246,8 @@
     "maxTokens": "最大令牌数",
     "apiKey": "用于 {label} 的 API 密钥（加密存储）",
     "saveKey": "保存密钥",
-    "cancel": "取消"
+    "cancel": "取消",
+    "chooseAnswer": "选择此回答"
   },
   "books": {
     "title": "图书目录",
