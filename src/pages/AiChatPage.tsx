@@ -483,8 +483,7 @@ export default function AiChatPage() {
               onChange={(e) => setChatCfg({ presencePenalty: parseFloat(e.target.value) })} />
               <span className="val">{chatCfg.presencePenalty.toFixed(1)}</span></label>
             <label><span>{t("aichat.maxTokens")}</span><input type="number" min="64" max="65536" step="64" value={chatCfg.maxTokens}
-              onChange={(e) => setChatCfg({ maxTokens: parseInt(e.target.value, 10) || 256 })}
-              style={{ width: 80, padding: "2px 8px", background: "var(--glass)", border: "1px solid var(--glass-border)", borderRadius: 6, color: "var(--text-primary)", fontFamily: "var(--font-mono)", fontSize: 12 }} />
+              onChange={(e) => setChatCfg({ maxTokens: parseInt(e.target.value, 10) || 256 })} />
             </label>
             <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--text-secondary)" }}>
               <input type="checkbox" checked={chatCfg.streaming}
@@ -527,7 +526,6 @@ export default function AiChatPage() {
             </div>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            <Btn icon={Plus} onClick={newChat}>{t("aichat.newChat")}</Btn>
             <Btn icon={Download} onClick={() => doExport("md")}>{t("aichat.exportMd")}</Btn>
             <Btn icon={Code2} onClick={() => doExport("json")}>{t("aichat.exportJson")}</Btn>
           </div>

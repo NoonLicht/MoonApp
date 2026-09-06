@@ -1,4 +1,4 @@
-﻿/* --- ai chat --- */
+/* --- ai chat --- */
 .settings-drawer{ display:flex; gap:20px; padding:14px 18px; margin-bottom:4px; flex-wrap:wrap; }
 .chat-scroll{ flex:1; overflow:hidden; display:flex; flex-direction:column; gap:10px; padding:4px 2px 12px; }
 .chat-bubble-row{ display:flex; }
@@ -44,6 +44,60 @@
 .sys-panel textarea { padding:8px; background:var(--track); border:1px solid var(--glass-border); border-radius:8px; color:var(--text-primary); font-family:var(--font-mono); font-size:11px; outline:none; resize:vertical; min-height:60px; width:100%; box-sizing:border-box; }
 /* --- AI Chat: расширения --- */
 .chat-main{ flex:1; min-width:0; display:flex; flex-direction:column; position:relative; }
+
+/* --- ширина поля кастомного промпта: во всю ширину, высота ≤ 20vh --- */
+.sys-panel{ flex:1 1 320px; min-width:280px; }
+.sys-panel textarea{
+  width:100%; box-sizing:border-box;
+  max-height:20vh; min-height:44px;
+  resize:vertical; overflow-y:auto;
+}
+
+/* --- слайдеры гиперпараметров --- */
+.hyperparams-panel input[type=range]{
+  -webkit-appearance:none; appearance:none;
+  flex:1; height:5px; border-radius:999px;
+  background:linear-gradient(90deg, var(--violet), var(--teal));
+  outline:none; cursor:pointer;
+}
+.hyperparams-panel input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none; appearance:none;
+  width:15px; height:15px; border-radius:50%;
+  background:var(--surface-solid, #1a1a1a);
+  border:2px solid var(--teal);
+  box-shadow:0 0 0 3px rgba(63,199,171,.15);
+  transition:transform .1s ease, box-shadow .1s ease;
+}
+.hyperparams-panel input[type=range]::-webkit-slider-thumb:hover{
+  transform:scale(1.15);
+  box-shadow:0 0 0 5px rgba(63,199,171,.22);
+}
+.hyperparams-panel input[type=range]::-moz-range-thumb{
+  width:13px; height:13px; border-radius:50%;
+  background:var(--surface-solid, #1a1a1a); border:2px solid var(--teal); cursor:pointer;
+}
+.hyperparams-panel input[type=range]::-moz-range-track{ height:5px; border-radius:999px; background:var(--track); }
+
+/* --- поле Max Tokens --- */
+.hyperparams-panel input[type=number]{
+  padding:4px 10px;
+  background:var(--track);
+  border:1px solid var(--glass-border);
+  border-radius:8px;
+  color:var(--text-primary);
+  font-family:var(--font-mono);
+  font-size:12px;
+  outline:none;
+  transition:border-color .12s ease, box-shadow .12s ease;
+}
+.hyperparams-panel input[type=number]:hover{ border-color:var(--violet); }
+.hyperparams-panel input[type=number]:focus{ border-color:var(--teal); box-shadow:0 0 0 3px rgba(63,199,171,.12); }
+
+/* --- иконка отправки по центру --- */
+.chat-input-bar .icon-btn{ align-self:center; }
+.chat-input-bar textarea{ align-self:center; }
+
+/* --- AI Chat: расширения --- */
 .hyper-presets{ display:flex; gap:6px; margin-bottom:4px; }
 .hyper-presets button{ background:var(--glass); border:1px solid var(--glass-border); border-radius:8px; padding:4px 10px; cursor:pointer; font-size:14px; transition:background .12s; }
 .hyper-presets button:hover{ background:var(--track); }
