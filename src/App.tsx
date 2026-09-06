@@ -4,6 +4,7 @@ import {
   Mic2, Archive, Sun, Moon, Minus, Square, X, Settings2, Shield, User,
 } from "lucide-react";
 import { I18nProvider, useI18n } from "./i18n";
+import { ContextMenuProvider } from "./components/ContextMenu";
 import { ToolbarContext } from "./components/Toolbar";
 import ProxyPanel from "./components/ProxyPanel";
 import { api } from "./api/client";
@@ -224,21 +225,24 @@ export default function App() {
 
   return (
     <I18nProvider lang={lang}>
-      <Shell
-        active={active}
-        setActive={setActive}
-        theme={theme}
-        toggleTheme={toggleTheme}
-        toolbarNode={toolbarNode}
-        setToolbarNode={setToolbarNode}
-        blur={blur}
-        accent={accent}
-        fontSize={fontSize}
-        reduceMotion={reduceMotion}
-        density={density}
-        proxyPanelVisible={proxyPanelVisible}
-        setProxyPanelVisible={setProxyPanelVisible}
-      />
+      {/* Провайдер на всё приложение: одно глобальное контекстное меню. */}
+      <ContextMenuProvider>
+        <Shell
+          active={active}
+          setActive={setActive}
+          theme={theme}
+          toggleTheme={toggleTheme}
+          toolbarNode={toolbarNode}
+          setToolbarNode={setToolbarNode}
+          blur={blur}
+          accent={accent}
+          fontSize={fontSize}
+          reduceMotion={reduceMotion}
+          density={density}
+          proxyPanelVisible={proxyPanelVisible}
+          setProxyPanelVisible={setProxyPanelVisible}
+        />
+      </ContextMenuProvider>
     </I18nProvider>
   );
 }

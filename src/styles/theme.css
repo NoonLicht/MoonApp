@@ -150,3 +150,58 @@ html, body{
 /* density-compact: компактнее отступы в списках/карточках. */
 .app-shell.density-compact .set-row { padding: 6px 4px; }
 .app-shell.density-compact .set-section { padding: 10px 12px; gap: 2px; }
+
+/* --- Глобальное контекстное меню (правая кнопка) --- */
+.ctx-menu {
+  position: fixed;
+  z-index: 9999;
+  min-width: 200px;
+  max-width: 280px;
+  padding: 6px;
+  border-radius: 12px;
+  background: var(--bg-card, rgba(24, 24, 32, 0.92));
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.09));
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(18px);
+  animation: ctx-in 0.12s ease-out;
+  user-select: none;
+}
+@keyframes ctx-in {
+  from { opacity: 0; transform: scale(0.96) translateY(-2px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+.ctx-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  height: 28px;
+  padding: 0 10px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-secondary, #ddd);
+  font-size: 12.5px;
+  cursor: pointer;
+  text-align: left;
+}
+.ctx-menu-item span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ctx-menu-item:hover:not(:disabled), .ctx-menu-item:focus-visible {
+  background: var(--violet-soft, rgba(139, 92, 246, 0.16));
+  color: var(--text-primary, #fff);
+  outline: none;
+}
+.ctx-menu-item.is-danger { color: var(--coral, #f87171); }
+.ctx-menu-item.is-danger:hover:not(:disabled) {
+  background: var(--coral-soft, rgba(248, 113, 113, 0.14));
+}
+.ctx-menu-item:disabled { opacity: 0.4; cursor: default; }
+.ctx-sep {
+  height: 1px;
+  margin: 5px 8px;
+  background: var(--border, rgba(255, 255, 255, 0.09));
+}
