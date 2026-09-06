@@ -562,5 +562,30 @@
     "myAutosaveHint": "Enregistrer automatiquement la note pendant la saisie (désactivé : Ctrl+S ou fermeture d'onglet)",
     "mySpellcheck": "Vérification orthographique",
     "mySpellcheckHint": "Activer le correcteur du navigateur dans l'éditeur de notes"
+  },
+  "ctx": {
+    "open": "Ouvrir",
+    "download": "Télécharger",
+    "downloadFmt": "Télécharger {{fmt}}",
+    "install": "Installer",
+    "favAdd": "Ajouter aux favoris",
+    "favRemove": "Retirer des favoris",
+    "copy": "Copier",
+    "copyName": "Copier le nom",
+    "copyLink": "Copier le lien",
+    "copyId": "Copier l'ID",
+    "remove": "Retirer du catalogue",
+    "rename": "Renommer",
+    "pin": "Épingler",
+    "unpin": "Désépingler",
+    "del": "Supprimer",
+    "newNote": "Nouvelle note",
+    "newFolder": "Nouveau dossier",
+    "select": "Sélectionner",
+    "paste": "Coller et ouvrir",
+    "clear": "Effacer",
+    "exportMd": "Exporter en Markdown",
+    "delFolder": "Supprimer le dossier",
+    "copyAuthor": "Copier l'auteur"
   }
 }

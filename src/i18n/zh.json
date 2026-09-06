@@ -562,5 +562,30 @@
     "myAutosaveHint": "输入时自动保存笔记内容（关闭时：Ctrl+S 或关闭标签页保存）",
     "mySpellcheck": "拼写检查",
     "mySpellcheckHint": "在笔记编辑器中启用浏览器拼写检查"
+  },
+  "ctx": {
+    "open": "打开",
+    "download": "下载",
+    "downloadFmt": "下载 {{fmt}}",
+    "install": "安装",
+    "favAdd": "添加到收藏",
+    "favRemove": "从收藏移除",
+    "copy": "复制",
+    "copyName": "复制名称",
+    "copyLink": "复制链接",
+    "copyId": "复制 ID",
+    "remove": "从目录移除",
+    "rename": "重命名",
+    "pin": "置顶",
+    "unpin": "取消置顶",
+    "del": "删除",
+    "newNote": "新建笔记",
+    "newFolder": "新建文件夹",
+    "select": "选择",
+    "paste": "粘贴并打开",
+    "clear": "清空",
+    "exportMd": "导出为 Markdown",
+    "delFolder": "删除文件夹",
+    "copyAuthor": "复制作者"
   }
 }

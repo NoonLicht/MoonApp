@@ -559,5 +559,30 @@
     "myAutosaveHint": "Save note content automatically while typing (off: Ctrl+S or tab close)",
     "mySpellcheck": "Spell check",
     "mySpellcheckHint": "Enable browser spellchecker in the note editor"
+  },
+  "ctx": {
+    "open": "Open",
+    "download": "Download",
+    "downloadFmt": "Download {{fmt}}",
+    "install": "Install",
+    "favAdd": "Add to favorites",
+    "favRemove": "Remove from favorites",
+    "copy": "Copy",
+    "copyName": "Copy name",
+    "copyLink": "Copy link",
+    "copyId": "Copy ID",
+    "remove": "Remove",
+    "rename": "Rename",
+    "pin": "Pin",
+    "unpin": "Unpin",
+    "del": "Delete",
+    "newNote": "New note",
+    "newFolder": "New folder",
+    "select": "Select",
+    "paste": "Paste and go",
+    "clear": "Clear",
+    "exportMd": "Export as Markdown",
+    "delFolder": "Delete folder",
+    "copyAuthor": "Copy author"
   }
 }
