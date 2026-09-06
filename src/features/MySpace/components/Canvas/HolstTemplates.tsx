@@ -1,32 +1,25 @@
 import React from "react";
+import { LayoutTemplate, X } from "lucide-react";
+import { TEMPLATES } from "./templates";
 
-const TEMPLATES = [
-  { id: "mindmap", name: "Mind Map", desc: "Central topic with branching notes", emoji: "🧠" },
-  { id: "retro", name: "Retrospective", desc: "Start / Stop / Continue", emoji: "🔄" },
-  { id: "sprint", name: "Sprint Planning", desc: "Effort vs Impact matrix", emoji: "📋" },
-  { id: "flowchart", name: "Flowchart", desc: "Decision nodes + arrows", emoji: "🔀" },
-];
-
-export default function TemplatesModal({
-  onClose,
-  onSelect,
-}: {
+export default function TemplatesModal({ onClose, onSelect }: {
   onClose: () => void;
   onSelect: (id: string) => void;
 }) {
   return (
-    <div className="holst-modal-overlay" onClick={onClose}>
+    <div className="holst-overlay" onClick={onClose}>
       <div className="holst-modal" onClick={(e) => e.stopPropagation()}>
-        <h3>📐 Templates</h3>
-        <div className="holst-templates-grid">
+        <h3><LayoutTemplate size={16} /> Templates Library</h3>
+        <div className="holst-tpl-grid">
           {TEMPLATES.map((t) => (
-            <button key={t.id} onClick={() => { onSelect(t.id); onClose(); }}>
-              <span style={{ fontSize: 20 }}>{t.emoji}</span>
-              <span style={{ fontWeight: 600 }}>{t.name}</span>
-              <span style={{ fontSize: 11, color: "var(--text-tertiary)" }}>{t.desc}</span>
+            <button key={t.id} className="holst-tpl-card" onClick={() => { onSelect(t.id); onClose(); }}>
+              <span className="tpl-emoji">{t.emoji}</span>
+              <span className="tpl-name">{t.name}</span>
+              <span className="tpl-desc">{t.desc}</span>
             </button>
           ))}
         </div>
+        <button className="holst-hbtn" onClick={onClose} style={{ marginTop: 12 }}><X size={13} /> Close</button>
       </div>
     </div>
   );

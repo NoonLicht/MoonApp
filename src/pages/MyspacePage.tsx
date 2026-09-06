@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { FileText, Folder, Plus, Search, Tags, Hash, PanelRightOpen,
   PanelRightClose, PanelLeftOpen, PanelLeftClose, X, Link2, Type,  Bookmark, ChevronRight, ChevronDown, Globe, Trash2, Sparkles,
   Eye, PenLine, Maximize2, Minimize2, Settings2, ZoomIn, ZoomOut, Palette } from "lucide-react";
@@ -866,6 +866,7 @@ export default function MyspacePage() {
       </div>}
     </div>);
 }
+
 
 
 

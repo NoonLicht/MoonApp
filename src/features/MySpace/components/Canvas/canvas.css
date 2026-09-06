@@ -1,0 +1,485 @@
+/* ============================================================
+   Holst Canvas — dark glassmorphic theme (app design system)
+   GPU-accelerated nodes, Figma-style selection, pastel sticky
+   ============================================================ */
+
+.holst-page {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 12px;
+  border: 1px solid var(--glass-border);
+  background: var(--bg-base-2);
+}
+
+/* ── React Flow viewport: GPU acceleration + seamless bg ── */
+.holst-page .react-flow {
+  --xy-background-color: var(--bg-base-2);
+  background: var(--bg-base-2);
+}
+.holst-page .react-flow__renderer { will-change: transform; }
+.holst-page .react-flow__node {
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  cursor: default;
+  font-family: var(--font-body);
+}
+.holst-page .react-flow__handle {
+  width: 10px; height: 10px;
+  min-width: 10px; min-height: 10px;
+  background: var(--surface-solid);
+  border: 2px solid var(--teal);
+  opacity: 0;
+  transition: opacity .12s ease, transform .12s ease;
+  /* enlarged invisible hit-area so grabbing a handle is easy */
+}
+.holst-page .react-flow__handle::after {
+  content: "";
+  position: absolute;
+  inset: -7px;
+  border-radius: 50%;
+}
+.holst-page:hover .react-flow__handle,
+.holst-page.show-handles .react-flow__handle,
+.holst-page .react-flow__node:hover .react-flow__handle { opacity: 1; }
+.holst-page .react-flow__handle:hover { transform: scale(1.35); }
+.holst-page .react-flow__handle.connectionindicator:hover { cursor: crosshair; }
+.holst-page .react-flow__edge-path,
+.holst-page .react-flow__connection-path {
+  will-change: transform;
+  vector-effect: non-scaling-stroke;
+}
+.holst-page .react-flow__attribution { display: none; }
+.holst-page .react-flow__node.selected { z-index: 20 !important; }
+
+/* ── Figma-style selection bounds ── */
+.holst-page .react-flow__nodesselection-rect,
+.holst-page .react-flow__selection {
+  background: rgba(59, 130, 246, 0.08);
+  border: 1.5px solid #3b82f6;
+  border-radius: 4px;
+}
+.holst-page .react-flow__resize-control.handle {
+  width: 9px; height: 9px;
+  background: #fff;
+  border: 1.5px solid #3b82f6;
+  border-radius: 2px;
+}
+.holst-page .react-flow__resize-control.line { border-color: #3b82f6; }
+
+/* ── Floating glass panels (header / dock) ── */
+.holst-float {
+  position: absolute;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: 12px;
+  background: var(--glass-strong);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: blur(22px);
+  box-shadow: var(--shadow);
+}
+.holst-top {
+  top: 10px; left: 12px; right: 12px;
+  justify-content: space-between;
+  padding: 5px 10px;
+}
+.holst-dock {
+  left: 12px; top: 50%;
+  transform: translateY(-50%);
+  flex-direction: column;
+  padding: 6px 5px;
+}
+.holst-zoom {
+  bottom: 14px; left: 50%;
+  transform: translateX(-50%);
+  padding: 4px 8px;
+}
+
+.holst-hbtn {
+  display: inline-flex; align-items: center; justify-content: center;
+  gap: 5px;
+  height: 28px; min-width: 28px;
+  padding: 0 7px;
+  border: none; border-radius: 8px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 11.5px; font-family: var(--font-body);
+  cursor: pointer;
+  transition: background .12s ease, color .12s ease;
+  white-space: nowrap;
+}
+.holst-hbtn:hover { background: var(--track); color: var(--text-primary); }
+.holst-hbtn.is-active { background: var(--violet-soft); color: var(--violet); }
+.holst-hbtn.is-danger { color: var(--coral); }
+.holst-hbtn:disabled { opacity: .4; cursor: default; }
+
+.holst-board-name {
+  height: 28px; width: 190px;
+  padding: 0 8px;
+  border: 1px solid transparent; border-radius: 8px;
+  background: transparent;
+  color: var(--text-primary);
+  font-family: var(--font-display);
+  font-size: 13px; font-weight: 600;
+  outline: none;
+}
+.holst-board-name:hover { border-color: var(--glass-border); background: var(--track); }
+.holst-board-name:focus { border-color: var(--violet); background: var(--track); }
+
+.holst-sep { width: 1px; height: 18px; background: var(--glass-border); margin: 0 2px; }
+
+/* timer */
+.holst-timer-clock {
+  font-family: var(--font-mono);
+  font-size: 13px; font-weight: 600;
+  color: var(--teal);
+  min-width: 46px; text-align: center;
+  letter-spacing: .04em;
+}
+.holst-timer-clock.expired { color: var(--coral); animation: holstPulse 1s ease infinite; }
+@keyframes holstPulse { 0%,100% { opacity: 1; } 50% { opacity: .45; } }
+
+.holst-vote-count {
+  position: absolute; top: -9px; right: -9px;
+  min-width: 18px; height: 18px;
+  padding: 0 4px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 9px;
+  background: var(--coral);
+  color: #fff;
+  font-size: 10px; font-weight: 700;
+  font-family: var(--font-mono);
+  box-shadow: 0 2px 6px rgba(0,0,0,.4);
+  pointer-events: none;
+  z-index: 5;
+}
+
+/* dock buttons */
+.holst-tbtn {
+  position: relative;
+  width: 34px; height: 34px;
+  display: flex; align-items: center; justify-content: center;
+  border: none; border-radius: 9px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background .12s ease, color .12s ease;
+}
+.holst-tbtn:hover { background: var(--track); color: var(--text-primary); }
+.holst-tbtn.is-active { background: var(--amber-soft); color: var(--amber); }
+.holst-tbtn .holst-kbd {
+  position: absolute; right: 2px; bottom: 1px;
+  font-size: 7px; font-family: var(--font-mono);
+  color: var(--text-tertiary);
+  pointer-events: none;
+}
+.holst-dock-sep { width: 22px; height: 1px; background: var(--glass-border); margin: 3px 0; }
+
+/* ── Popovers / dropdowns / modals ── */
+.holst-pop {
+  position: absolute;
+  z-index: 60;
+  min-width: 150px;
+  padding: 5px;
+  border-radius: 12px;
+  background: var(--surface-solid);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow);
+  display: flex; flex-direction: column; gap: 2px;
+}
+.holst-pop-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 9px;
+  border: none; border-radius: 8px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 12px; font-family: var(--font-body);
+  cursor: pointer; text-align: left;
+}
+.holst-pop-item:hover { background: var(--track); color: var(--text-primary); }
+.holst-pop-item .holst-kbd { margin-left: auto; font-size: 10px; font-family: var(--font-mono); color: var(--text-tertiary); }
+
+.holst-overlay {
+  position: absolute; inset: 0;
+  z-index: 80;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(5, 6, 12, 0.55);
+  backdrop-filter: blur(4px);
+}
+.holst-modal {
+  width: 560px; max-width: calc(100% - 60px);
+  max-height: 80%;
+  overflow: auto;
+  padding: 18px;
+  border-radius: 16px;
+  background: var(--surface-solid);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow);
+}
+.holst-modal h3 {
+  margin: 0 0 14px;
+  font-family: var(--font-display);
+  font-size: 16px; font-weight: 700;
+  color: var(--text-primary);
+  display: flex; align-items: center; gap: 8px;
+}
+.holst-tpl-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.holst-tpl-card {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 6px;
+  padding: 14px;
+  border: 1px solid var(--glass-border); border-radius: 12px;
+  background: var(--glass);
+  color: var(--text-primary);
+  cursor: pointer; text-align: left;
+  transition: border-color .12s ease, background .12s ease, transform .12s ease;
+  font-family: var(--font-body);
+}
+.holst-tpl-card:hover { border-color: var(--violet); background: var(--violet-soft); transform: translateY(-1px); }
+.holst-tpl-card .tpl-emoji { font-size: 22px; }
+.holst-tpl-card .tpl-name { font-size: 13px; font-weight: 600; }
+.holst-tpl-card .tpl-desc { font-size: 11px; color: var(--text-tertiary); }
+
+/* ── Nodes ── */
+.holst-node {
+  position: relative;
+  font-size: 12.5px;
+  color: #1c1d2b;
+}
+
+/* Sticky note */
+.holst-sticky {
+  width: 100%; height: 100%;
+  padding: 10px 12px;
+  border-radius: 4px 4px 12px 4px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28);
+  display: flex;
+  transform: rotate(-0.4deg);
+}
+.holst-sticky textarea {
+  flex: 1;
+  width: 100%;
+  border: none; outline: none;
+  background: transparent; resize: none;
+  font-family: var(--font-body);
+  font-size: 13px; font-weight: 500;
+  color: #1c1d2b;
+  line-height: 1.35;
+}
+
+/* Free text */
+.holst-text-node { width: 100%; height: 100%; display: flex; }
+.holst-text-node [contenteditable] {
+  flex: 1;
+  outline: none;
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  line-height: 1.4;
+  min-height: 1em;
+}
+
+/* Shapes */
+.holst-shape { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; position: relative; }
+.holst-shape svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.holst-shape .shape-label {
+  position: relative;
+  max-width: 90%;
+  text-align: center;
+  font-size: 12.5px; font-weight: 600;
+  color: #1c1d2b;
+  outline: none;
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+
+/* Smart frame */
+.holst-frame {
+  width: 100%; height: 100%;
+  border-radius: 10px;
+  border: 1.5px dashed;
+  background: transparent;
+  display: flex; flex-direction: column;
+  pointer-events: none;
+}
+.holst-frame-label {
+  display: inline-flex; align-self: flex-start;
+  padding: 3px 10px;
+  border-radius: 8px 0 8px 0;
+  font-size: 11px; font-weight: 700;
+  font-family: var(--font-mono);
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: #16181f;
+  outline: none;
+  pointer-events: auto;
+}
+
+/* Task card */
+.holst-task {
+  width: 100%; height: 100%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--surface-solid);
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+  display: flex; flex-direction: column; gap: 7px;
+  color: var(--text-primary);
+}
+.holst-task .task-top { display: flex; align-items: center; gap: 7px; }
+.holst-task .task-status {
+  font-size: 9.5px; font-weight: 700;
+  font-family: var(--font-mono);
+  text-transform: uppercase; letter-spacing: .05em;
+  padding: 2px 7px; border-radius: 6px;
+}
+.holst-task .task-title { font-size: 12.5px; font-weight: 600; outline: none; }
+.holst-task .task-sub { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-secondary); }
+.holst-task .task-sub input { accent-color: var(--teal); margin: 0; }
+.holst-task .task-due {
+  font-size: 9.5px; font-family: var(--font-mono);
+  color: var(--amber);
+  background: var(--amber-soft);
+  padding: 1px 6px; border-radius: 5px;
+  align-self: flex-start;
+}
+.holst-task .task-progress-track { height: 4px; border-radius: 2px; background: var(--track); overflow: hidden; }
+.holst-task .task-progress-fill { height: 100%; background: var(--teal); border-radius: 2px; transition: width .2s ease; }
+
+/* Markdown card */
+.holst-md {
+  width: 100%; height: 100%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--surface-solid);
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+  display: flex; flex-direction: column; gap: 6px;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+.holst-md .md-head { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 600; color: var(--violet); }
+.holst-md .md-title { font-size: 12.5px; font-weight: 700; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.holst-md .md-preview {
+  flex: 1;
+  font-size: 10.5px; line-height: 1.45;
+  color: var(--text-secondary);
+  overflow: hidden;
+  display: -webkit-box; -webkit-line-clamp: 7; -webkit-box-orient: vertical;
+}
+.holst-md .md-lazy {
+  font-size: 9.5px; font-family: var(--font-mono);
+  color: var(--text-tertiary);
+  display: flex; align-items: center; gap: 5px;
+}
+
+/* Matrix */
+.holst-matrix {
+  width: 100%; height: 100%;
+  display: grid;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--surface-solid);
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+  color: var(--text-primary);
+  overflow: hidden;
+}
+.holst-matrix .mx-title {
+  grid-column: 1 / -1;
+  font-size: 12px; font-weight: 700;
+  font-family: var(--font-display);
+  outline: none;
+}
+.holst-matrix .mx-cell {
+  border-radius: 9px;
+  padding: 7px 9px;
+  min-height: 52px;
+  display: flex; flex-direction: column; gap: 4px;
+  font-size: 10.5px;
+  overflow: hidden auto;
+}
+.holst-matrix .mx-cell-head { font-weight: 700; font-size: 10px; text-transform: uppercase; letter-spacing: .05em; font-family: var(--font-mono); }
+.holst-matrix .mx-chip {
+  padding: 2px 6px; border-radius: 5px;
+  font-size: 10px;
+  color: #1c1d2b; font-weight: 500;
+}
+
+/* Sticker */
+.holst-sticker {
+  font-size: 34px;
+  line-height: 1;
+  user-select: none;
+  filter: drop-shadow(0 3px 6px rgba(0,0,0,.35));
+}
+
+/* Stroke (pen) */
+.holst-stroke-node { width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+
+/* Connector edge flow dots */
+@keyframes holstDashFlow { to { stroke-dashoffset: -24; } }
+.holst-edge-animated { animation: holstDashFlow .8s linear infinite; }
+
+/* Slash palette */
+.holst-slash {
+  position: absolute;
+  z-index: 70;
+  width: 240px;
+  max-height: 300px;
+  overflow: auto;
+  padding: 5px;
+  border-radius: 12px;
+  background: var(--surface-solid);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow);
+  display: flex; flex-direction: column; gap: 1px;
+}
+
+/* Voting panel */
+.holst-vote-panel {
+  position: absolute;
+  right: 12px; top: 64px;
+  z-index: 40;
+  width: 230px;
+  padding: 14px;
+  border-radius: 14px;
+  background: var(--surface-solid);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow);
+  display: flex; flex-direction: column; gap: 10px;
+  color: var(--text-primary);
+}
+.holst-vote-panel h4 {
+  margin: 0;
+  font-size: 12px; font-weight: 700;
+  font-family: var(--font-mono);
+  text-transform: uppercase; letter-spacing: .06em;
+  display: flex; align-items: center; gap: 7px;
+  color: var(--amber);
+}
+.holst-vote-row { display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: var(--text-secondary); }
+
+.holst-canvas-hint {
+  position: absolute;
+  left: 50%; bottom: 58px;
+  transform: translateX(-50%);
+  z-index: 25;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: var(--glass-strong);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(14px);
+  color: var(--text-tertiary);
+  font-size: 11.5px;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+
+
