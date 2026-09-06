@@ -11,7 +11,7 @@ import type { VaultFile, VaultSearchResult, VaultTag, VaultBacklink, GraphData, 
 import EditingToolbar from "../components/EditingToolbar";
 import GraphView from "../components/GraphView";
 import TasksPanel from "../components/TasksPanel";
-import HolstCanvas from "../features/holst/HolstCanvas";
+import CanvasPage from "../features/MySpace/components/Canvas/CanvasPage";
 
 type Side = "explorer" | "search" | "tags";
 type Right = "backlinks" | "outline" | "graph";
@@ -26,7 +26,6 @@ export default function MyspacePage() {
   const [leftOpen, setLeftOpen] = useState(true);
   const [rightOpen, setRightOpen] = useState(true);
   const [myspaceView, setMyspaceView] = useState<"notes"|"tasks"|"canvas">("notes");
-  const [canvasName, setCanvasName] = useState("");
   const [leftTab, setLeftTab] = useState<Side>("explorer");
   const [rightTab, setRightTab] = useState<Right>("backlinks");
   const [leftW, setLeftW] = useState(260);
@@ -819,20 +818,7 @@ export default function MyspacePage() {
     {/* ─── CANVAS VIEW ─── */}
     {myspaceView === "canvas" && (
       <div style={{display:"flex",flex:1,minHeight:0,overflow:"hidden"}}>
-        <HolstCanvas
-          canvasName={canvasName}
-          onBacklinksChange={(linked) => {}}
-          onCreateCanvas={(name) => {
-            api.myspaceWriteCanvas(name, {
-              version: 1, viewport: { x: 0, y: 0, zoom: 1 },
-              nodes: [], edges: [],
-              metadata: { name, created: new Date().toISOString(), modified: new Date().toISOString() },
-            }).then(() => {
-              setCanvasName(name);
-              loadTree();
-            }).catch((e) => setError(e.message));
-          }}
-        />
+        <CanvasPage />
       </div>
     )}
     {/* Fullscreen Graph Modal */}

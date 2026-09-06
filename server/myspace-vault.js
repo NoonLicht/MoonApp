@@ -3,7 +3,7 @@
 /**
  * Vault (MySpace) — файловое хранение заметок, папок и canvas.
  * Каждая заметка = .md файл в storage/vault/notes/
- * Canvas = .canvas JSON-файлы в storage/vault/canvases/
+ * Canvas = .holst JSON-файлы в storage/vault/holts/
  * Поддержка YAML frontmatter, [[WikiLinks]], тегов.
  */
 
@@ -14,11 +14,10 @@ const logger = require("./logger");
 
 const VAULT_DIR = path.join(DIRS.storage, "vault");
 const NOTEBOOK_DIR = path.join(VAULT_DIR, "notes");
-const CANVAS_DIR = path.join(VAULT_DIR, "canvases");
-const HOLST_DIR = path.join(VAULT_DIR, "holsts"); // tldraw canvas data
+const HOLST_DIR = path.join(VAULT_DIR, "holts");
 
 function ensureDirs() {
-  for (const d of [VAULT_DIR, NOTEBOOK_DIR, CANVAS_DIR, HOLST_DIR]) {
+  for (const d of [VAULT_DIR, NOTEBOOK_DIR, HOLST_DIR]) {
     if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true });
   }
 }
@@ -45,10 +44,10 @@ function buildTree(dir, basePath = "") {
         name: entry.name, path: relPath, type: "folder",
         children: buildTree(path.join(dir, entry.name), relPath),
       });
-    } else if (entry.name.endsWith(".md") || entry.name.endsWith(".canvas")) {
+    } else if (entry.name.endsWith(".md") || entry.name.endsWith(".holst")) {
       tree.push({
         name: entry.name, path: relPath,
-        type: entry.name.endsWith(".canvas") ? "canvas" : "note",
+        type: entry.name.endsWith(".holst") ? "holst" : "note",
         ext: path.extname(entry.name),
       });
     }
@@ -218,54 +217,81 @@ function getOutline(content) {
   return headers;
 }
 
-// Canvas operations
-function readCanvas(name) {
-  const fp = path.join(CANVAS_DIR, name.endsWith(".canvas") ? name : name + ".canvas");
-  if (!fs.existsSync(fp)) return null;
-  return JSON.parse(fs.readFileSync(fp, "utf8"));
-}
+/* ======================== Holst / Canvas ======================== */
 
-function writeCanvas(name, data) {
-  ensureDirs();
-  const fp = path.join(CANVAS_DIR, name.endsWith(".canvas") ? name : name + ".canvas");
-  fs.writeFileSync(fp, JSON.stringify(data, null, 2), "utf8");
-  return { ok: true };
-}
-
-function listCanvases() {
-  ensureDirs();
-  let files = [];
-  try { files = fs.readdirSync(CANVAS_DIR); } catch {}
-  return files.filter(f => f.endsWith(".canvas")).map(f => ({ name: f.replace(".canvas", ""), path: f }));
-}
-
-ensureDirs();
-
-// Holst (tldraw canvas) operations
-function readHolst(name) {
-  const fp = path.join(HOLST_DIR, name.endsWith(".holst") ? name : name + ".holst");
-  if (!fs.existsSync(fp)) return null;
-  return JSON.parse(fs.readFileSync(fp, "utf8"));
-}
-
-function writeHolst(name, data) {
-  ensureDirs();
-  const fp = path.join(HOLST_DIR, name.endsWith(".holst") ? name : name + ".holst");
-  fs.writeFileSync(fp, JSON.stringify(data, null, 2), "utf8");
-  return { ok: true };
-}
-
+/**
+ * List all .holst files.
+ */
 function listHolsts() {
   ensureDirs();
-  let files = [];
-  try { files = fs.readdirSync(HOLST_DIR); } catch {}
-  return files.filter(f => f.endsWith(".holst")).map(f => ({ name: f.replace(".holst", ""), path: f }));
+  const items = [];
+  try {
+    const entries = fs.readdirSync(HOLST_DIR, { withFileTypes: true });
+    for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
+      if (entry.name.endsWith(".holst")) {
+        const fullPath = path.join(HOLST_DIR, entry.name);
+        try {
+          const raw = fs.readFileSync(fullPath, "utf8");
+          const data = JSON.parse(raw);
+          items.push({
+            name: entry.name.replace(".holst", ""),
+            path: entry.name,
+            updatedAt: data.meta?.updatedAt || data.updatedAt || null,
+            thumbnail: data.meta?.thumbnail || null,
+          });
+        } catch { /* skip corrupt */ }
+      }
+    }
+  } catch { /* empty */ }
+  return items;
 }
 
+/**
+ * Read a .holst file by name (without extension).
+ */
+function readHolst(name) {
+  ensureDirs();
+  const safeName = name.replace(/[^a-zA-Z0-9_\-]/g, "_");
+  const fullPath = path.join(HOLST_DIR, `${safeName}.holst`);
+  if (!fs.existsSync(fullPath)) return null;
+  const raw = fs.readFileSync(fullPath, "utf8");
+  try {
+    const data = JSON.parse(raw);
+    return { name: safeName, data };
+  } catch (e) {
+    return { name: safeName, data: null, error: "Invalid JSON" };
+  }
+}
+
+/**
+ * Write a .holst file. Expects { name, data } where data is the full tldraw store snapshot.
+ */
+function writeHolst(name, data) {
+  ensureDirs();
+  const safeName = name.replace(/[^a-zA-Z0-9_\-]/g, "_");
+  const fullPath = path.join(HOLST_DIR, `${safeName}.holst`);
+  const payload = {
+    meta: {
+      updatedAt: new Date().toISOString(),
+      name: safeName,
+    },
+    ...data,
+  };
+  fs.writeFileSync(fullPath, JSON.stringify(payload, null, 2), "utf8");
+  logger.action("holst.write", { name: safeName });
+  return { ok: true, name: safeName };
+}
+
+/**
+ * Delete a .holst file.
+ */
 function deleteHolst(name) {
-  const fp = path.join(HOLST_DIR, name.endsWith(".holst") ? name : name + ".holst");
-  if (!fs.existsSync(fp)) return { ok: false, error: "not found" };
-  fs.unlinkSync(fp);
+  ensureDirs();
+  const safeName = name.replace(/[^a-zA-Z0-9_\-]/g, "_");
+  const fullPath = path.join(HOLST_DIR, `${safeName}.holst`);
+  if (!fs.existsSync(fullPath)) return { ok: false, error: "Not found" };
+  fs.unlinkSync(fullPath);
+  logger.action("holst.delete", { name: safeName });
   return { ok: true };
 }
 
@@ -282,12 +308,9 @@ module.exports = {
   getAllTags: () => getAllTags(),
   getBacklinks: (p) => getBacklinks(p),
   getOutline: (c) => getOutline(c),
-  readCanvas: (n) => readCanvas(n),
-  writeCanvas: (n, d) => writeCanvas(n, d),
-  listCanvases: () => listCanvases(),
+  listHolsts: () => listHolsts(),
   readHolst: (n) => readHolst(n),
   writeHolst: (n, d) => writeHolst(n, d),
-  listHolsts: () => listHolsts(),
   deleteHolst: (n) => deleteHolst(n),
-  VAULT_DIR, NOTEBOOK_DIR, CANVAS_DIR, HOLST_DIR,
+  VAULT_DIR, NOTEBOOK_DIR, HOLST_DIR,
 };

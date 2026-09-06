@@ -1,4 +1,4 @@
-/* --- ai chat --- */
+﻿/* --- ai chat --- */
 .settings-drawer{ display:flex; gap:20px; padding:14px 18px; margin-bottom:4px; flex-wrap:wrap; }
 .chat-scroll{ flex:1; overflow:hidden; display:flex; flex-direction:column; gap:10px; padding:4px 2px 12px; }
 .chat-bubble-row{ display:flex; }
@@ -18,15 +18,27 @@
 .chat-conv.is-active{ background:var(--track); color:var(--text-primary); }
 .chat-conv .x{ margin-left:auto; opacity:0; }
 .chat-conv:hover .x{ opacity:1; }
-
 /* --- voice --- */
 .voice-textarea{ min-height:120px; resize:none; background:var(--track); border:1px solid var(--glass-border); border-radius:12px; padding:12px; color:var(--text-primary); font-family:var(--font-body); font-size:13.5px; outline:none; }
-.player{ display:flex; align-items:center; gap:10px; background:var(--track); border-radius:999px; padding:8px 14px; }
-.waveform{ flex:1; display:flex; align-items:center; gap:2px; height:26px; }
-.waveform span{ flex:1; background:var(--violet); border-radius:2px; transition:height .3s ease; }
-
-/* --- archiver --- */
-.option-grid{ display:grid; grid-template-columns:repeat(4, 1fr); gap:10px; padding:14px; }
-.option-item{ display:flex; align-items:center; gap:8px; background:none; border:1px solid transparent; border-radius:12px; padding:9px 10px; cursor:pointer; color:var(--text-secondary); font-size:12.5px; }
-.option-item.is-on{ background:var(--track); color:var(--text-primary); }
-.option-item.is-on .checkbox.is-checked{ background:var(--amber); border-color:var(--amber); color:#241605; }
+/* --- Code blocks --- */
+.chat-bubble pre { background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.06); border-radius:10px; overflow:hidden; margin:8px 0; font-size:12px; line-height:1.5; position:relative; }
+.chat-bubble pre .code-header { display:flex; align-items:center; justify-content:space-between; padding:5px 12px; background:rgba(255,255,255,0.04); border-bottom:1px solid rgba(255,255,255,0.06); font-size:10px; color:var(--text-tertiary); text-transform:uppercase; letter-spacing:0.04em; }
+.chat-bubble pre .code-header button { background:transparent; border:1px solid rgba(255,255,255,0.08); padding:2px 8px; border-radius:4px; color:var(--text-secondary); cursor:pointer; font-size:10px; font-family:inherit; }
+.chat-bubble pre .code-header button:hover { background:rgba(255,255,255,0.06); color:var(--text-primary); }
+.chat-bubble pre code { display:block; padding:10px 14px; overflow-x:auto; font-family:var(--font-mono); font-size:12px; color:var(--text-primary); }
+.streaming-cursor { display:inline-block; width:2px; height:14px; background:var(--teal); animation:blink-cursor 0.8s infinite; margin-left:1px; vertical-align:middle; }
+@keyframes blink-cursor { 0%,50%{ opacity:1; } 51%,100%{ opacity:0; } }
+.msg-actions { display:flex; gap:4px; padding:2px 0 4px; opacity:0.4; transition:opacity 0.15s; }
+.chat-bubble-row:hover .msg-actions { opacity:1; }
+.msg-actions button { display:flex; align-items:center; gap:3px; padding:2px 6px; border:none; background:transparent; color:var(--text-tertiary); cursor:pointer; font-size:10px; border-radius:4px; font-family:inherit; }
+.msg-actions button:hover { background:rgba(255,255,255,0.06); color:var(--text-secondary); }
+.chat-attachments { display:flex; gap:6px; flex-wrap:wrap; padding:4px 0; }
+.chat-attachment { display:flex; align-items:center; gap:4px; padding:3px 8px; background:var(--glass); border:1px solid var(--glass-border); border-radius:6px; font-size:11px; color:var(--text-secondary); }
+.hyperparams-panel { display:flex; flex-direction:column; gap:6px; padding:4px 0; }
+.hyperparams-panel label { display:flex; align-items:center; gap:8px; font-size:11px; color:var(--text-secondary); }
+.hyperparams-panel label span:first-child { min-width:60px; }
+.hyperparams-panel input[type=range] { flex:1; accent-color:var(--teal); height:4px; }
+.hyperparams-panel .val { min-width:28px; text-align:right; font-variant-numeric:tabular-nums; color:var(--text-primary); font-weight:500; font-size:12px; }
+.sys-panel { display:flex; flex-direction:column; gap:6px; }
+.sys-panel select { padding:4px 8px; background:var(--glass); border:1px solid var(--glass-border); border-radius:6px; color:var(--text-primary); font-size:11px; font-family:inherit; }
+.sys-panel textarea { padding:8px; background:var(--track); border:1px solid var(--glass-border); border-radius:8px; color:var(--text-primary); font-family:var(--font-mono); font-size:11px; outline:none; resize:vertical; min-height:60px; width:100%; box-sizing:border-box; }

@@ -74,57 +74,38 @@ router.get("/tags", (req, res) => {
   catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// Canvas CRUD
-router.get("/canvases", (req, res) => {
-  try { res.json(vault.listCanvases()); }
-  catch (e) { res.status(500).json({ error: e.message }); }
-});
+// ==================== Holst / Canvas ====================
 
-router.get("/canvas", (req, res) => {
-  try {
-    const c = vault.readCanvas(req.query.name);
-    if (!c) return res.status(404).json({ error: "not found" });
-    res.json(c);
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-router.post("/canvas", (req, res) => {
-  try {
-    const { name, data } = req.body || {};
-    if (!name) return res.status(400).json({ error: "name required" });
-    res.json(vault.writeCanvas(name, data || { nodes: [], edges: [] }));
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-// Holst (tldraw) CRUD
+// GET /api/myspace/holsts — list all .holst files
 router.get("/holsts", (req, res) => {
   try { res.json(vault.listHolsts()); }
   catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// GET /api/myspace/holst?name=... — read a .holst file
 router.get("/holst", (req, res) => {
   try {
-    const h = vault.readHolst(req.query.name);
-    if (!h) return res.status(404).json({ error: "not found" });
-    res.json(h);
+    const result = vault.readHolst(req.query.name);
+    if (!result) return res.status(404).json({ error: "not found" });
+    res.json(result);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// POST /api/myspace/holst — write a .holst file
 router.post("/holst", (req, res) => {
   try {
     const { name, data } = req.body || {};
     if (!name) return res.status(400).json({ error: "name required" });
-    const saved = vault.writeHolst(name, data || {});
-    logger.action("holst.write", { name });
-    res.json(saved);
+    const result = vault.writeHolst(name, data || {});
+    res.json(result);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// DELETE /api/myspace/holst?name=...
 router.delete("/holst", (req, res) => {
   try {
     const result = vault.deleteHolst(req.query.name);
     if (!result.ok) return res.status(404).json(result);
-    logger.action("holst.delete", { name: req.query.name });
     res.json(result);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });

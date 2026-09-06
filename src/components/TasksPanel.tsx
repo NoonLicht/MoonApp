@@ -874,14 +874,20 @@ const TasksPanel: React.FC<TasksPanelProps> = ({ onOpenNote, vaultFiles }) => {
       {/* ========== TASK DETAIL DRAWER ========== */}
       {showDetail && selectedTask && (
         <div style={{
-          position: "fixed", right: 0, top: 0, bottom: 0, width: 380,
+          position: "fixed", right: 0, top: "50%", width: 380,
+          height: "70vh", transform: "translateY(-50%)",
           background: "var(--surface-glass)",
           backdropFilter: "blur(16px)",
           WebkitBackdropFilter: "blur(16px)",
-          borderLeft: "1px solid var(--glass-border)", zIndex: 100,
+          borderLeft: "1px solid var(--glass-border)",
+          borderBottom: "1px solid var(--glass-border)",
+          borderBottomLeftRadius: 12,
+          borderTopLeftRadius: 12,
+          zIndex: 100,
           display: "flex", flexDirection: "column",
           boxShadow: "-4px 0 20px rgba(0,0,0,0.3)",
           transition: "transform 0.2s",
+          overflow: "hidden",
         }}>
           {/* Header */}
           <div style={{

@@ -1,7 +1,7 @@
 const express = require("express");
 const { stmts, db } = require("../db");
 const settings = require("../settings");
-const { getProvider } = require("../providers");
+const { PROVIDERS, getProvider } = require("../providers");
 const { getSecret } = require("../security");
 const logger = require("../logger");
 
@@ -29,14 +29,27 @@ router.delete("/:id", (req, res) => {
   res.json({ ok: true });
 });
 
-/**
- * POST /:id/send — отправка сообщения. Потоковый ответ по SSE.
- * Middleware must set req.conv and req.provider (ниже в router.use).
- */
-router.post("/:id/send", async (req, res) => {
-  const { text } = req.body || {};
-  const chatCfg = settings.get("chat");
+// GET /api/chat/models?provider=deepseek — dynamic model listing
+router.get("/models", async (req, res) => {
+  const { provider: providerId } = req.query;
+  if (!providerId) return res.status(400).json({ error: "provider required" });
+  try {
+    const provider = getProvider(providerId);
+    const secret = getSecret(provider.id);
+    if (!secret || typeof provider.listModels !== "function") {
+      return res.json(provider.models || []);
+    }
+    const models = await provider.listModels(secret);
+    res.json(models);
+  } catch {
+    try { res.json(getProvider(providerId).models || []); }
+    catch (e) { res.status(500).json({ error: e.message }); }
+  }
+});
 
+// POST /:id/send — streaming SSE with abort support
+router.post("/:id/send", async (req, res) => {
+  const { text, model, temperature, maxTokens, stream: streamReq, topP, frequencyPenalty, presencePenalty, systemPrompt } = req.body || {};
   if (!text || !String(text).trim()) {
     return res.status(400).json({ error: "empty message" });
   }
@@ -46,22 +59,24 @@ router.post("/:id/send", async (req, res) => {
   const provider = getProvider(conv.provider);
   const secret = getSecret(provider.id);
   if (!secret) {
-    return res.status(409).json({ error: `Provider "${provider.id}" не настроен: сохраните ключ в настройках.` });
+    return res.status(409).json({ error: `Provider "${provider.id}" not configured. Save API key.` });
   }
 
-  // Сохранение сообщения пользователя
   stmts.msgInsert.run(conv.id, "user", String(text));
   stmts.convTouch.run(conv.id);
 
-  // История для контекста загружается (последние N сообщений)
+  const chatCfg = settings.get("chat");
   const limit = Number(chatCfg.contextMessages) || 30;
-  const history = stmts.msgFor.all(conv.id)
-    .slice(-limit)
-    .map((m) => ({ role: m.role, text: m.text }));
-  const model = req.body?.model || chatCfg.model;
-  const temperature = req.body?.temperature ?? chatCfg.temperature;
-  const maxTokens = req.body?.maxTokens ?? chatCfg.maxTokens;
-  const stream = req.body?.stream ?? true;
+  const history = stmts.msgFor.all(conv.id).slice(-limit).map((m) => ({ role: m.role, text: m.text }));
+
+  const fullMessages = systemPrompt
+    ? [{ role: "system", text: systemPrompt }, ...history]
+    : history;
+
+  const finalModel = model || chatCfg.model || provider.models?.[0] || "";
+  const finalTemperature = temperature ?? chatCfg.temperature ?? 0.7;
+  const finalMaxTokens = maxTokens ?? chatCfg.maxTokens ?? 1024;
+  const streaming = streamReq !== false;
 
   res.writeHead(200, {
     "Content-Type": "text/event-stream",
@@ -69,27 +84,32 @@ router.post("/:id/send", async (req, res) => {
     Connection: "keep-alive",
   });
 
-  const emit = (payload) => res.write(`data: ${JSON.stringify(payload)}\n\n`);
+  const emit = (payload) => { try { res.write(`data: ${JSON.stringify(payload)}\n\n`); } catch {} };
+
+  const abortController = new AbortController();
+  req.on("close", () => abortController.abort());
 
   try {
-    const onToken = (token) => { if (stream) emit({ type: "token", text: token }); };
+    const onToken = (token) => { if (streaming) emit({ type: "token", text: token }); };
     const full = await provider.chat({
-      secret,
-      model,
-      messages: history,
-      temperature,
-      maxTokens,
-      stream,
-      onToken,
+      secret, model: finalModel, messages: fullMessages,
+      temperature: finalTemperature, maxTokens: finalMaxTokens, stream: streaming,
+      onToken, signal: abortController.signal,
+      topP, frequencyPenalty, presencePenalty,
     });
     stmts.msgInsert.run(conv.id, "assistant", full);
     logger.action("chat.completed", { id: conv.id, provider: provider.id, chars: full.length });
     emit({ type: "done", text: full });
   } catch (e) {
-    logger.error("chat.error", { id: conv.id, provider: provider.id, error: e.message });
-    emit({ type: "error", message: e.message });
+    if (e.name === "AbortError") {
+      logger.action("chat.aborted", { id: conv.id });
+      emit({ type: "error", message: "Generation stopped" });
+    } else {
+      logger.error("chat.error", { id: conv.id, error: e.message });
+      emit({ type: "error", message: e.message });
+    }
   } finally {
-    res.end();
+    try { res.end(); } catch {}
   }
 });
 

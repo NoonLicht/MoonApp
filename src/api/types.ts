@@ -490,6 +490,27 @@ export interface MusicJobStatus {
   files: { name: string; size: number; key: string }[];
   found?: boolean;
 }
+
+/* ========================== MySpace Canvas / Holst ========================== */
+
+export interface HolstFileEntry {
+  name: string;
+  path: string;
+  updatedAt: string | null;
+  thumbnail: string | null;
+}
+
+export interface HolstReadResult {
+  name: string;
+  data: any;
+  error?: string;
+}
+
+export interface HolstWriteResult {
+  ok: boolean;
+  name: string;
+}
+
 declare global {
   interface Window {
     appBridge?: {

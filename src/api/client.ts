@@ -15,9 +15,10 @@ import type {
   MusicTrack, MusicSearchResult, MusicFormats, MusicDownloadStart, MusicJobStatus,
   VaultFile, VaultFileContent, VaultSearchResult, VaultTag, VaultBacklink,
   TaskItem, TaskCreatePayload,
+  HolstFileEntry, HolstReadResult, HolstWriteResult,
 } from "./types";
 
-export type { AppItem, ArchiveItem, BackupInfo, BooksItem, ChatMessage, Conversation, ConvertTools, ConvertResult, ConvertInstallStatus, VideoInfo, VideoDownloadResult, VideoJobStatus, YtdlpInstallStatus, LhmStatus, MonitorSnapshot, ProviderInfo, ProxyStatus, VlessProfile, FlibustaBook, BooksCatalogStats, BooksSearchResult, BooksSyncStatus, BooksImportStatus, BooksLiveSearchResult, BookDownloadResult, ImportLogEntry, MusicTrack, MusicSearchResult, MusicFormats, MusicDownloadStart, MusicJobStatus, VaultFile, VaultFileContent, VaultSearchResult, VaultTag, VaultBacklink, TaskItem, TaskCreatePayload };
+export type { AppItem, ArchiveItem, BackupInfo, BooksItem, ChatMessage, Conversation, ConvertTools, ConvertResult, ConvertInstallStatus, VideoInfo, VideoDownloadResult, VideoJobStatus, YtdlpInstallStatus, LhmStatus, MonitorSnapshot, ProviderInfo, ProxyStatus, VlessProfile, FlibustaBook, BooksCatalogStats, BooksSearchResult, BooksSyncStatus, BooksImportStatus, BooksLiveSearchResult, BookDownloadResult, ImportLogEntry, MusicTrack, MusicSearchResult, MusicFormats, MusicDownloadStart, MusicJobStatus, VaultFile, VaultFileContent, VaultSearchResult, VaultTag, VaultBacklink, TaskItem, TaskCreatePayload, HolstFileEntry, HolstReadResult, HolstWriteResult };
 
 const BASE = ""; // РѕРґРЅРѕ origin (Vite-proxy РёР»Рё СЂР°Р·РґР°С‡Р° Express)
 
@@ -84,6 +85,7 @@ export const api = {
     req<Conversation>("POST", "/chat", { provider, title }),
   getMessages: (id: number) => req<ChatMessage[]>("GET", `/chat/${id}/messages`),
   deleteConversation: (id: number) => req("DELETE", `/chat/${id}`),
+  chatModels: (provider: string) => req<string[]>("GET", `/chat/models?provider=${encodeURIComponent(provider)}`),
 
   // Books / monitor / archives
   // Books (Р¤Р»РёР±СѓСЃС‚Р°) вЂ” РїРѕРёСЃРє/С„РёР»СЊС‚СЂС‹/РїР°РіРёРЅР°С†РёСЏ РїРѕ Р»РѕРєР°Р»СЊРЅРѕРјСѓ РєР°С‚Р°Р»РѕРіСѓ
@@ -221,6 +223,11 @@ export const api = {
   myspaceSearch: (q: string) => req<VaultSearchResult[]>("GET", `/myspace/search?q=${encodeURIComponent(q)}`),
   myspaceTags: () => req<VaultTag[]>("GET", "/myspace/tags"),
   myspaceBacklinks: (path: string) => req<VaultBacklink[]>("GET", `/myspace/backlinks?path=${encodeURIComponent(path)}`),
+  // MySpace Canvas / Holst
+  myspaceListHolsts: () => req<HolstFileEntry[]>("GET", "/myspace/holsts"),
+  myspaceReadHolst: (name: string) => req<HolstReadResult>("GET", `/myspace/holst?name=${encodeURIComponent(name)}`),
+  myspaceWriteHolst: (name: string, data: any) => req<HolstWriteResult>("POST", "/myspace/holst", { name, data }),
+  myspaceDeleteHolst: (name: string) => req<{ ok: boolean }>("DELETE", `/myspace/holst?name=${encodeURIComponent(name)}`),
   logAction: (event: string, data?: unknown) => req("POST", "/log", { event, data }),
   // MySpace Tasks
   tasksList: (params?: { status?: string; tag?: string; projectId?: string; search?: string }) =>
@@ -229,15 +236,6 @@ export const api = {
   tasksUpdate: (id: string, data: Partial<TaskItem>) => req<TaskItem>("PUT", `/myspace/tasks/${id}`, data),
   tasksDelete: (id: string) => req<{ ok: boolean }>("DELETE", `/myspace/tasks/${id}`),
   tasksTimer: (id: string, action: "start" | "pause") => req<TaskItem>("POST", `/myspace/tasks/${id}/timer`, { action }),
-  // MySpace Canvas
-  myspaceListCanvases: () => req<{ name: string; path: string }[]>("GET", "/myspace/canvases"),
-  myspaceReadCanvas: (name: string) => req<any>("GET", `/myspace/canvas?name=${encodeURIComponent(name)}`),
-  myspaceWriteCanvas: (name: string, data: any) => req("POST", "/myspace/canvas", { name, data }),
-  // MySpace Holst (tldraw canvases)
-  myspaceListHolsts: () => req<{ name: string; path: string }[]>("GET", "/myspace/holsts"),
-  myspaceReadHolst: (name: string) => req<any>("GET", `/myspace/holst?name=${encodeURIComponent(name)}`),
-  myspaceWriteHolst: (name: string, data: any) => req("POST", "/myspace/holst", { name, data }),
-  myspaceDeleteHolst: (name: string) => req<{ ok: boolean }>("DELETE", `/myspace/holst?name=${encodeURIComponent(name)}`),
 };
 
 /** РЎРѕР±С‹С‚РёРµ СЃС‚СЂРёРјР° С‡Р°С‚Р°. */
@@ -257,6 +255,7 @@ export async function streamChatSend(
     method: "POST",
     headers: { ...tokenHeaders(), "Content-Type": "application/json" },
     body: JSON.stringify(body),
+    signal,
   });
   if (res.status === 409 || res.status === 401) {
     let msg = "РћС€РёР±РєР°";
@@ -284,3 +283,5 @@ export async function streamChatSend(
     }
   }
 }
+
+
