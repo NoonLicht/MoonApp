@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
-import { Search, Star, Download, Trash2, Plus, Play, Inbox, RefreshCw, Globe, Box } from "lucide-react";
+import { Search, Star, Download, Trash2, Plus, Play, Inbox, RefreshCw, Globe, Box, Copy } from "lucide-react";
 import { Glass, Btn, IconBtn, SectionHead, Select, Field, EmptyHint, Badge, ProgressBar } from "../components/ui";
+import { useContextMenu, copyToClipboard } from "../components/ContextMenu";
 import { usePageToolbar } from "../components/Toolbar";
 import { useI18n } from "../i18n";
 import { api } from "../api/client";
@@ -27,6 +28,7 @@ interface WingetIdx {
 
 export default function StorePage() {
   const { t } = useI18n();
+  const menu = useContextMenu();
   const [items, setItems] = useState<AppItem[]>([]);
   const [live, setLive] = useState<AppItem[]>([]);
   const [query, setQuery] = useState("");
@@ -284,7 +286,21 @@ async function toggleFav(item: AppItem) {
       <div className="store-grid-wrap">
         <div className="store-grid">
           {shown.map((a) => (
-            <Glass className="app-card" key={a.key}>
+            <Glass
+              className="app-card"
+              key={a.key}
+              onContextMenu={(e) => menu.open(e, [
+                { label: t("ctx.install"), icon: Download, onClick: () => install(a) },
+                { label: a.favorite ? t("ctx.favRemove") : t("ctx.favAdd"), icon: Star, onClick: () => toggleFav(a) },
+                { separator: true },
+                { label: t("ctx.copyName"), icon: Copy, onClick: () => copyToClipboard(a.name) },
+                a.wingetId
+                  ? { label: t("ctx.copyId"), icon: Copy, onClick: () => copyToClipboard(a.wingetId || "") }
+                  : { label: t("ctx.copyLink"), icon: Copy, onClick: () => copyToClipboard(a.url || "") },
+                a.source !== "winget" && { separator: true },
+                a.source !== "winget" && { label: t("ctx.remove"), icon: Trash2, danger: true, onClick: () => remove(a) },
+              ])}
+            >
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                 <span className={`app-glyph tone-${SOURCE_TONE[a.source] || "violet"}`}>
                   {a.source === "winget" ? <Box size={18} /> : a.source === "comss" ? <Globe size={18} /> : a.name.slice(0, 2).toUpperCase()}

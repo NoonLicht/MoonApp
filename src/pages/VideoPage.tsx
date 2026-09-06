@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Video, Download, AlertTriangle, RefreshCw, Check, Image, Subtitles, Terminal } from "lucide-react";
+import { Video, Download, AlertTriangle, RefreshCw, Check, Image, Subtitles, Terminal, ClipboardPaste, X } from "lucide-react";
 import { Glass, Btn, Badge, Select, SectionHead, EmptyHint, ProgressBar } from "../components/ui";
+import { useContextMenu, copyToClipboard } from "../components/ContextMenu";
 import { usePageToolbar } from "../components/Toolbar";
 import { useI18n } from "../i18n";
 import { api } from "../api/client";
@@ -17,6 +18,7 @@ interface JobFile {
 
 export default function VideoPage() {
   const { t } = useI18n();
+  const menu = useContextMenu();
   const [u, setU] = useState("");
   const [st, setSt] = useState("idle");
   const [i, setI] = useState<VideoInfo | null>(null);
@@ -130,7 +132,14 @@ export default function VideoPage() {
           )}
         </Glass>
       )}
-      <Glass className="url-bar">
+      <Glass className="url-bar"
+        onContextMenu={(e) => menu.open(e, [
+          { label: t("ctx.paste"), icon: ClipboardPaste, onClick: async () => {
+              try { const txt = await navigator.clipboard.readText(); if (txt) setU(txt.trim()); } catch { /* нет доступа к буферу */ }
+            } },
+          u.length > 0 && { label: t("ctx.clear"), icon: X, onClick: () => setU("") },
+        ])}
+      >
         <Video size={16} />
         <input placeholder={t("video.paste")} value={u} onChange={(e) => setU(e.target.value)} onKeyDown={(e) => e.key === "Enter" && fi()} />
         <Btn variant="primary" onClick={fi} disabled={st === "parsing"}>{st === "parsing" ? t("video.fetching") : t("video.fetch")}</Btn>

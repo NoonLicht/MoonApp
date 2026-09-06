@@ -11,6 +11,7 @@ import { api, streamChatSend, streamArena } from "../api/client";
 import type { ProviderInfo, Conversation, ChatMessage } from "../api/types";
 import CodeBlock from "./AiChat/CodeBlock";
 import MsgList, { type MsgStats } from "./AiChat/MsgList";
+import { useContextMenu } from "../components/ContextMenu";
 import {
   renderInlineMd, parseSegments, approxTokens,
   SYSTEM_PROMPT_PRESETS, type SysPreset,
@@ -30,6 +31,7 @@ const HYPER_PRESETS: { id: string; label: string; cfg: Partial<ChatCfg> }[] = [
 ];
 
 export default function AiChatPage() {
+  const menu = useContextMenu();
   const { t, lang } = useI18n();
   const [providers, setProviders] = useState<ProviderInfo[]>([]);
   const [chatCfg, setChatCfgState] = useState<ChatCfg>(() => loadCfg());
@@ -661,7 +663,14 @@ export default function AiChatPage() {
                     onBlur={(e) => renameConv(c.id, e.target.value)}
                     onKeyDown={(e) => { if (e.key === "Enter") renameConv(c.id, (e.target as HTMLInputElement).value); if (e.key === "Escape") setRenaming(null); }} />
                 ) : (
-                  <div key={c.id} className={`chat-conv ${c.id === activeId ? "is-active" : ""}`} onClick={() => setActiveId(c.id)}>
+                  <div key={c.id} className={`chat-conv ${c.id === activeId ? "is-active" : ""}`} onClick={() => setActiveId(c.id)}
+                    onContextMenu={(e) => menu.open(e, [
+                      { label: t("ctx.open"), icon: FileText, onClick: () => setActiveId(c.id) },
+                      { label: t("ctx.rename"), icon: Pencil, onClick: () => setRenaming({ id: c.id, text: c.title }) },
+                      { label: c.pinned ? t("ctx.unpin") : t("ctx.pin"), icon: c.pinned ? PinOff : Pin, onClick: () => togglePin(c) },
+                      { separator: true },
+                      { label: t("ctx.del"), icon: Trash2, danger: true, onClick: () => delConv(c.id) },
+                    ])}>
                     {c.pinned ? <Pin size={11} style={{ color: "var(--amber)", flexShrink: 0 }} /> : null}
                     <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.title}</span>
                     <span className="x">

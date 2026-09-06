@@ -12,6 +12,7 @@ import EditingToolbar from "../components/EditingToolbar";
 import GraphView from "../components/GraphView";
 import TasksPanel from "../components/TasksPanel";
 import CanvasPage from "../features/MySpace/components/Canvas/CanvasPage";
+import { useContextMenu } from "../components/ContextMenu";
 
 type Side = "explorer" | "search" | "tags";
 type Right = "backlinks" | "outline" | "graph";
@@ -20,6 +21,7 @@ function dirname(p: string) { const a = p.replace(/\\/g, "/").split("/"); a.pop(
 const viewTabStyle = (active: boolean): React.CSSProperties => ({display:"flex",alignItems:"center",gap:6,padding:"6px 14px",borderRadius:8,fontSize:12,fontWeight:active?600:400,background:active?"var(--glass)":"transparent",border:"1px solid var(--glass-border)",color:active?"var(--text-primary)":"var(--text-secondary)",cursor:"pointer",transition:"all 0.15s"});
 export default function MyspacePage() {
   const { t } = useI18n();
+  const menu = useContextMenu();
   // Показываем пустой тулбар, чтобы убрать старую надпись
   usePageToolbar(<div style={{display:"flex",alignItems:"center",gap:10}}></div>, []);
 
@@ -368,11 +370,41 @@ export default function MyspacePage() {
   const graphData = useMemo(buildGraphData, [openFiles, tree, activeTab, graphDepth, graphShowOrphans, graphSearch]);
   const [rightSplit, setRightSplit] = useState(55); // % for backlinks top section
   const splitRef = useRef({ dragging: false, startY: 0, startPct: 55 });
+  // Переименование заметки/папки из контекстного меню: спрашиваем имя,
+  // строим новый путь в той же папке и обновляем открытые вкладки.
+  const renameNode = async (node: VaultFile) => {
+    const name = window.prompt(t("ctx.rename"), node.name);
+    if (!name || !name.trim() || name === node.name) return;
+    const dir = dirname(node.path);
+    const dest = dir ? `${dir}/${name.trim()}` : name.trim();
+    try {
+      await api.myspaceRename(node.path, dest);
+      setOpenFiles((prev) => prev.map((f) => f.path === node.path ? { ...f, path: dest, name: name.trim() } : f));
+      setActiveTab((p) => p === node.path ? dest : p);
+      setSelPath((p) => p === node.path ? dest : p);
+      loadTree();
+      setError("");
+    } catch (ex) { setError("Rename failed: " + (ex as Error).message); }
+  };
+
   const renderNode = (node: VaultFile, depth: number = 0) => {
     const isExp = exp.has(node.path); const isSel = selPath===node.path;
     if (node.type==="folder") {
       return <div key={node.path}>
         <div onClick={()=>toggleExpand(node.path)}
+          onContextMenu={(e)=>menu.open(e,[
+            { label: t("ctx.open"), icon: ChevronDown, onClick: () => toggleExpand(node.path) },
+            { label: t("ctx.newNote"), icon: FileText, onClick: async () => {
+                const name = window.prompt(t("ctx.newNote"));
+                if (!name || !name.trim()) return;
+                const p = node.path + "/" + name.trim().replace(/\.md$/, "") + ".md";
+                try { await api.myspaceWrite(p, "", { title: name.trim() }); loadTree(); openFile(p); setError(""); }
+                catch (ex) { setError("Create failed: " + (ex as Error).message); }
+              } },
+            { label: t("ctx.rename"), icon: PenLine, onClick: () => renameNode(node) },
+            { separator: true },
+            { label: t("ctx.delFolder"), icon: Trash2, danger: true, onClick: async () => { if (window.confirm("Delete folder \""+node.name+"\"? Files inside will be moved to root.")) await deleteFolder(node); } },
+          ])}
           onDragOver={(e)=>{e.preventDefault();e.stopPropagation();setDragOverPath(node.path);}}
           onDragLeave={()=>setDragOverPath(null)}
           onDrop={async (e)=>{e.preventDefault();e.stopPropagation();const src=e.dataTransfer.getData("text/plain");if(!src||src===node.path)return;const base=src.split("/").pop()||src;const dest=node.path+"/"+base;const exists=tree.some((n)=>n.path===dest||(n.children&&n.children.some((ch)=>ch.path===dest)));if(exists){setError("A file/folder named \""+base+"\" already exists in this folder");setDragOverPath(null);return;}try{await api.myspaceRename(src,dest);loadTree();setOpenFiles((prev)=>prev.map((f)=>f.path===src?{...f,path:dest,name:base}:f));setActiveTab((prev)=>prev===src?dest:prev);setSelPath((prev)=>prev===src?dest:prev);setError("");}catch(ex){setError("Move failed: "+ex.message);}setDragOverPath(null);}}
@@ -389,6 +421,12 @@ export default function MyspacePage() {
       </div>;
     }
     return <div key={node.path} onClick={()=>{openFile(node.path);setSelPath(node.path);}}
+      onContextMenu={(e)=>menu.open(e,[
+        { label: t("ctx.open"), icon: FileText, onClick: () => { openFile(node.path); setSelPath(node.path); } },
+        { label: t("ctx.rename"), icon: PenLine, onClick: () => renameNode(node) },
+        { separator: true },
+        { label: t("ctx.del"), icon: Trash2, danger: true, onClick: () => { if (window.confirm("Delete "+node.name+"?")) delFile(node.path); } },
+      ])}
       draggable={true}
       onDragStart={(e)=>{e.dataTransfer.setData("text/plain",node.path);e.dataTransfer.effectAllowed="move";}}
       onMouseEnter={()=>setHoverDel(node.path)}

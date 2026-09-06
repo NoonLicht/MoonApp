@@ -1,6 +1,7 @@
 import React from "react";
 import { Copy, RefreshCw, Pencil, Volume2, StopCircle, Check, X, Send } from "lucide-react";
 import { Btn, EmptyHint } from "../../components/ui";
+import { useContextMenu } from "../../components/ContextMenu";
 import CodeBlock from "./CodeBlock";
 import { renderInlineMd, parseSegments } from "./chatUtils";
 
@@ -22,6 +23,7 @@ export default function MsgList(props: {
   t: (key: string, params?: Record<string, unknown>) => string;
 }) {
   const { messages, sending, streamingText, editing, setEditing, copiedIdx, onCopy, onRegenerate, onSaveEdit, onSpeak, stopGeneration, lastStats, t } = props;
+  const menu = useContextMenu();
   return (
     <>
       {messages.map((m, i) => (
@@ -41,7 +43,12 @@ export default function MsgList(props: {
                 </div>
               </div>
             ) : (
-              <div className={`chat-bubble ${m.role === "user" ? "is-user" : "is-assistant"}`}>
+              <div
+                className={`chat-bubble ${m.role === "user" ? "is-user" : "is-assistant"}`}
+                onContextMenu={(e) => menu.open(e, [
+                  { label: t("aichat.copy"), icon: Copy, onClick: () => onCopy(m.text, i) },
+                ])}
+              >
                 {m.role === "user"
                   ? m.text
                   : parseSegments(m.text).map((seg, k) =>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { Search, BookOpen, Download, RefreshCw, Loader2, Filter, ScrollText } from "lucide-react";
+import { Search, BookOpen, Download, RefreshCw, Loader2, Filter, ScrollText, Copy } from "lucide-react";
 import { Glass, Btn, Badge, Select, SectionHead, EmptyHint } from "../components/ui";
+import { useContextMenu, copyToClipboard } from "../components/ContextMenu";
 import { usePageToolbar } from "../components/Toolbar";
 import { useI18n } from "../i18n";
 import { api } from "../api/client";
@@ -8,6 +9,7 @@ import type { FlibustaBook, BooksCatalogStats } from "../api/types";
 
 export default function BooksPage() {
   const { t } = useI18n();
+  const menu = useContextMenu();
   const [items, setItems] = useState<FlibustaBook[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -227,7 +229,24 @@ const statLine = stats ? `${t("common.all")}: ${stats.count}` : "";
 
       <div className="book-list" style={{ flex: 1, maxHeight: "none" }}>
         {items.map((b) => (
-          <Glass className="book-row" key={b.id} style={{ cursor: "pointer" }} onClick={() => handleBookClick(b)}>
+          <Glass
+            className="book-row"
+            key={b.id}
+            style={{ cursor: "pointer" }}
+            onClick={() => handleBookClick(b)}
+            onContextMenu={(e) => menu.open(e, [
+              { label: t("ctx.open"), icon: BookOpen, onClick: () => handleBookClick(b) },
+              { separator: true },
+              ...(b.formats || ["fb2", "epub", "mobi"]).map((fmt: string) => ({
+                label: t("ctx.downloadFmt", { fmt: fmt.toUpperCase() }),
+                icon: Download,
+                onClick: () => handleDownload(b.bid, fmt),
+              })),
+              { separator: true },
+              { label: t("ctx.copyName"), icon: Copy, onClick: () => copyToClipboard(b.title || "") },
+              { label: t("ctx.copyAuthor"), icon: Copy, onClick: () => copyToClipboard(b.author || "") },
+            ])}
+          >
             <div className="book-cover">
               {b.cover
                 ? <img src={b.cover} alt="" style={{ width: 44, height: 64, objectFit: "cover", borderRadius: 4 }} />

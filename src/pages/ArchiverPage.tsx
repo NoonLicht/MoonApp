@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { Archive, Download, FileText, ImageOff, Braces, ShieldCheck } from "lucide-react";
+import { Archive, Download, FileText, ImageOff, Braces, ShieldCheck, Copy } from "lucide-react";
+import { useContextMenu, copyToClipboard } from "../components/ContextMenu";
 import { Btn, IconBtn, Glass, Badge, SectionHead, ProgressBar, Checkbox, EmptyHint } from "../components/ui";
 import { usePageToolbar } from "../components/Toolbar";
 import { useI18n } from "../i18n";
@@ -17,6 +18,7 @@ type OptKey = "css" | "images" | "fonts" | "removeScripts";
 
 export default function ArchiverPage() {
   const { t } = useI18n();
+  const menu = useContextMenu();
   const [url, setUrl] = useState("");
   const [opts, setOpts] = useState<Record<OptKey, boolean>>({ css: true, images: true, fonts: true, removeScripts: false });
   const [saving, setSaving] = useState(false);
@@ -89,7 +91,13 @@ export default function ArchiverPage() {
       <div className="field-label" style={{ margin: "18px 2px 8px" }}>{t("arch.recent")}</div>
       <div className="task-list">
         {archives.map((a) => (
-          <Glass className="task-row" key={a.id}>
+          <Glass
+            className="task-row"
+            key={a.id}
+            onContextMenu={(e) => menu.open(e, [
+              { label: t("ctx.copyName"), icon: Copy, onClick: () => copyToClipboard(a.name) },
+            ])}
+          >
             <Archive size={16} />
             <span className="task-text">{a.name}</span>
             <span className="muted-sm" style={{ fontFamily: "var(--font-mono)" }}>{a.size_text}</span>

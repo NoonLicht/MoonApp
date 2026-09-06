@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback } from "react";
 import {
   Music2, Download, Search, RefreshCw, AlertTriangle, Check,
-  FileAudio, Disc3, Headphones,
+  FileAudio, Disc3, Headphones, Copy, Link2,
 } from "lucide-react";
 import { Glass, Btn, Badge, Select, SectionHead, EmptyHint, ProgressBar } from "../components/ui";
+import { useContextMenu, copyToClipboard } from "../components/ContextMenu";
 import { usePageToolbar } from "../components/Toolbar";
 import { useI18n } from "../i18n";
 import { api } from "../api/client";
@@ -33,6 +34,7 @@ interface JobFile {
 
 export default function MusicPage() {
   const { t } = useI18n();
+  const menu = useContextMenu();
 
   // Состояние поиска
   const [query, setQuery] = useState("");
@@ -223,6 +225,12 @@ export default function MusicPage() {
               className="music-track-row"
               onClick={() => selectTrack(track)}
               style={{ cursor: "pointer" }}
+              onContextMenu={(e) => menu.open(e, [
+                { label: t("ctx.select"), icon: Disc3, onClick: () => selectTrack(track) },
+                { separator: true },
+                { label: t("ctx.copyName"), icon: Copy, onClick: () => copyToClipboard(`${track.title} — ${track.artist}`) },
+                !!track.webpageUrl && { label: t("ctx.copyLink"), icon: Link2, onClick: () => copyToClipboard(track.webpageUrl || "") },
+              ])}
             >
               <div className="music-track-thumb">
                 {track.thumbnail ? (
