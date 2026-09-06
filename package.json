@@ -45,7 +45,6 @@
     "@tiptap/html": "^3.31.0",
     "@tiptap/react": "^3.31.0",
     "@tiptap/starter-kit": "^3.31.0",
-    "@tldraw/tldraw": "^5.4.0",
     "@types/dagre": "^0.7.54",
     "@types/turndown": "^5.0.6",
     "@xyflow/react": "^12.11.6",
