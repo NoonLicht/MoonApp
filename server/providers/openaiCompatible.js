@@ -19,7 +19,18 @@ function makeOpenAICompatible(o) {
       return h;
     },
     body({ model, messages, temperature, maxTokens, stream, topP, frequencyPenalty, presencePenalty, stop }) {
-      const b = { model, messages, temperature, max_tokens: maxTokens, stream };
+      const b = {
+        model,
+        messages: messages.map((m) => {
+          const imgs = Array.isArray(m.images) ? m.images : [];
+          if (imgs.length === 0) return { role: m.role, content: m.text };
+          // Vision: контент как массив частей (текст + image_url data-URL).
+          const parts = imgs.map((url) => ({ type: "image_url", image_url: { url } }));
+          parts.push({ type: "text", text: m.text });
+          return { role: m.role, content: parts };
+        }),
+        temperature, max_tokens: maxTokens, stream,
+      };
       if (topP !== undefined) b.top_p = topP;
       if (frequencyPenalty !== undefined) b.frequency_penalty = frequencyPenalty;
       if (presencePenalty !== undefined) b.presence_penalty = presencePenalty;

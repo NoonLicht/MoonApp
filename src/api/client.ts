@@ -86,6 +86,10 @@ export const api = {
   getMessages: (id: number) => req<ChatMessage[]>("GET", `/chat/${id}/messages`),
   deleteConversation: (id: number) => req("DELETE", `/chat/${id}`),
   chatModels: (provider: string) => req<string[]>("GET", `/chat/models?provider=${encodeURIComponent(provider)}`),
+  chatUpdateConv: (id: number, patch: { title?: string; pinned?: boolean }) =>
+    req<Conversation>("PATCH", `/chat/${id}`, patch),
+  chatTruncateFrom: (id: number, msgId: number) =>
+    req<{ ok: boolean }>("DELETE", `/chat/${id}/messages/${msgId}`),
 
   // Books / monitor / archives
   // Books (Р¤Р»РёР±СѓСЃС‚Р°) вЂ” РїРѕРёСЃРє/С„РёР»СЊС‚СЂС‹/РїР°РіРёРЅР°С†РёСЏ РїРѕ Р»РѕРєР°Р»СЊРЅРѕРјСѓ РєР°С‚Р°Р»РѕРіСѓ
@@ -238,18 +242,23 @@ export const api = {
   tasksTimer: (id: string, action: "start" | "pause") => req<TaskItem>("POST", `/myspace/tasks/${id}/timer`, { action }),
 };
 
-/** РЎРѕР±С‹С‚РёРµ СЃС‚СЂРёРјР° С‡Р°С‚Р°. */
+/** Событие стрима чата. */
 export interface StreamEvent {
-  type: "token" | "done" | "error";
+  type: "token" | "done" | "error" | "meta";
   text?: string;
   message?: string;
+  side?: "a" | "b";
+  model?: string;
+  title?: string;
+  stats?: { ms: number; chars: number; tokensApprox: number };
 }
 
-/** РџРѕС‚РѕРєРѕРІР°СЏ РѕС‚РїСЂР°РІРєР° РІ С‡Р°С‚. onEvent({type:'token'|'done'|'error'}). */
+/** Потоковая отправка в чат. onEvent({type:'token'|'done'|'error'|'meta'}). */
 export async function streamChatSend(
   conversationId: number,
-  body: { text: string; model?: string; temperature?: number; maxTokens?: number; stream?: boolean },
-  onEvent: (ev: StreamEvent) => void
+  body: { text: string; model?: string; temperature?: number; maxTokens?: number; stream?: boolean; images?: string[] },
+  onEvent: (ev: StreamEvent) => void,
+  signal?: AbortSignal
 ): Promise<void> {
   const res = await fetch(`${BASE}/api/chat/${conversationId}/send`, {
     method: "POST",
@@ -265,6 +274,45 @@ export async function streamChatSend(
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   if (!res.body) return;
 
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const parts = buffer.split("\n\n");
+    buffer = parts.pop() || "";
+    for (const part of parts) {
+      const line = part.split("\n").find((l) => l.startsWith("data:"));
+      if (!line) continue;
+      const payload = line.slice(5).trim();
+      if (!payload) continue;
+      try { onEvent(JSON.parse(payload) as StreamEvent); } catch { /* skip */ }
+    }
+  }
+}
+
+/** Arena: один вопрос двум моделям параллельно. События помечены side: "a"|"b". */
+export async function streamArena(
+  conversationId: number,
+  body: { text: string; models: [string, string]; temperature?: number; maxTokens?: number; topP?: number; frequencyPenalty?: number; presencePenalty?: number; systemPrompt?: string; images?: string[] },
+  onEvent: (ev: StreamEvent) => void,
+  signal?: AbortSignal
+): Promise<void> {
+  const res = await fetch(`${BASE}/api/chat/${conversationId}/arena`, {
+    method: "POST",
+    headers: { ...tokenHeaders(), "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    signal,
+  });
+  if (res.status === 409 || res.status === 401) {
+    let msg = "Ошибка";
+    try { msg = (await res.json()).error || msg; } catch { /* keep */ }
+    throw new Error(msg);
+  }
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  if (!res.body) return;
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
   let buffer = "";

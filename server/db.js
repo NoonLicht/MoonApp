@@ -64,7 +64,7 @@ class Table {
 
 const tables = {
   tasks: new Table(["text", "done", "priority", "tag", "pos", "created_at"], "pos"),
-  conversations: new Table(["provider", "title", "created_at", "updated_at"], "-updated_at"),
+  conversations: new Table(["provider", "title", "created_at", "updated_at", "pinned"], "-updated_at"),
   messages: new Table(["conversation_id", "role", "text", "created_at"], "id"),
   archived_pages: new Table(["name", "size_text", "saved_at"], "-id"),
   books: new Table(["title", "author", "year", "fmt", "tone", "description"], "title"),
@@ -147,7 +147,7 @@ const stmts = {
   taskOrder: { run: (pos, id) => run(() => tables.tasks.updateWhere((r) => r.id === id, { pos })) },
 
   // Conversations
-  convInsert: { run: (provider, title) => run(() => tables.conversations.insert([provider, title, now(), now()])) },
+  convInsert: { run: (provider, title) => run(() => tables.conversations.insert([provider, title, now(), now(), 0])) },
   convAll: { all: () => tables.conversations.all() },
   convGet: { get: (id) => tables.conversations.get(id) },
   convTouch: { run: (id) => run(() => tables.conversations.updateWhere((r) => r.id === id, { updated_at: now() })) },
@@ -157,11 +157,14 @@ const stmts = {
       tables.messages.deleteWhere((m) => m.conversation_id === id);
     }),
   },
+  convUpdate: { run: (id, patch) => run(() => tables.conversations.updateWhere((r) => r.id === id, { ...patch, updated_at: now() })) },
 
   // Messages
   msgInsert: { run: (conversation_id, role, text) => run(() => tables.messages.insert([conversation_id, role, text, now()])) },
   msgFor: { all: (conversation_id) => tables.messages.all().filter((m) => m.conversation_id === conversation_id) },
   msgRecent: { all: (conversation_id, limit) => tables.messages.all().filter((m) => m.conversation_id === conversation_id).slice(-limit) },
+  // Усечь историю начиная с message id (для «Регенерировать» / «Редактировать»)
+  msgTruncateFrom: { run: (conversation_id, fromId) => run(() => tables.messages.deleteWhere((m) => m.conversation_id === conversation_id && m.id >= fromId)) },
 
   // Archives
   archInsert: { run: (name, size_text) => run(() => tables.archived_pages.insert([name, size_text, now()])) },

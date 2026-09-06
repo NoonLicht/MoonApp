@@ -2,19 +2,42 @@ const { consumeSSE } = require("./stream");
 
 const API = "https://api.anthropic.com/v1/messages";
 const VERSION = "2023-06-01";
-const MODELS = ["claude-3-5-sonnet-latest", "claude-3-5-haiku-latest", "claude-3-opus-latest", "claude-3-7-sonnet-latest"];
+const MODELS = ["claude-sonnet-4-5", "claude-opus-4-1", "claude-opus-4", "claude-sonnet-4-0", "claude-3-7-sonnet-latest", "claude-3-5-haiku-latest"];
 
 function mapMessages(messages) {
-  // Anthropic принимает только user/assistant; last user-message может быть в content.
+  // Anthropic принимает только user/assistant; изображения — как content blocks.
   return messages
-    .map(({ role, text }) => ({ role: role === "user" ? "user" : "assistant", content: text }))
-    .filter((m) => m.content && String(m.content).trim().length > 0);
+    .map(({ role, text, images }) => {
+      const imgs = Array.isArray(images) ? images : [];
+      if (imgs.length === 0) {
+        return { role: role === "user" ? "user" : "assistant", content: text };
+      }
+      const content = [];
+      for (const dataUrl of imgs) {
+        const m = /^data:(image\/[a-zA-Z+]+);base64,(.+)$/.exec(dataUrl || "");
+        if (m) content.push({ type: "image", source: { type: "base64", media_type: m[1], data: m[2] } });
+      }
+      content.push({ type: "text", text });
+      return { role: role === "user" ? "user" : "assistant", content };
+    })
+    .filter((m) => (typeof m.content === "string" ? m.content.trim() : m.content.length > 0));
+}
+
+// GET https://api.anthropic.com/v1/models
+async function listModels(secret) {
+  const res = await fetch("https://api.anthropic.com/v1/models?limit=100", {
+    headers: { "x-api-key": secret, "anthropic-version": VERSION },
+  });
+  if (!res.ok) throw new Error(`list models failed: ${res.status}`);
+  const json = await res.json();
+  return (json.data || []).map((m) => m.id);
 }
 
 module.exports = {
   id: "anthropic",
   label: "Anthropic (Claude)",
   models: MODELS,
+  listModels,
   headers(secret) {
     return {
       "Content-Type": "application/json",
