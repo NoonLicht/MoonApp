@@ -21,6 +21,7 @@ const musicRouter = require("./routes/music");
 const myspaceRouter = require("./routes/myspace");
 const myspaceTasksRouter = require("./routes/myspace-tasks");
 const monitor = require("./monitor");
+const winget = require("./winget");
 const proxy = require("./proxy");
 
 // Токен для локального API. Electron делает его при старте и кидает в preload
@@ -100,6 +101,21 @@ function createApp() {
 
   // LibreHardwareMonitor запускается сам, если это включено в настройках и он установлен.
   monitor.autoStartLhmIfConfigured();
+
+  // store.wingetAutoIndex: при старте один раз индексируем полный каталог winget,
+  // если локальный кэш ещё не собран (иначе UI показывает только курируемый seed).
+  try {
+    if (settings.get("store").wingetAutoIndex !== false && !(winget.indexStatus().cached > 0)) {
+      winget.startIndexing();
+    }
+  } catch { /* индексация не критична для старта */ }
+
+  // monitor.autoStart: прогреваем телеметрию сразу после старта — первый
+  // getSnapshot собирает данные (WMI/nvidia-smi/LHM), чтобы UI мониторинга
+  // открылся уже с готовыми значениями, а не с нулями.
+  try {
+    if (settings.get("monitor").autoStart === true) void monitor.getSnapshot();
+  } catch { /* сбор телеметрии не должен ломать старт */ }
 
   // После рестарта прокси всегда выключен (состояние «включён» в настройках не хранится).
   try { proxy.stopProxy(); } catch {}

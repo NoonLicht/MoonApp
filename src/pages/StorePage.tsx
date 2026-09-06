@@ -178,9 +178,16 @@ async function toggleFav(item: AppItem) {
     [all.length, favCount, t]
   );
 
-  // Пагинация: 20/40/80 на страницу
+  // Пагинация: 20/40/80 на страницу. Начальное значение берётся из настроек
+  // (store.pageSize), чтобы выбор в «Настройках» применялся к магазину.
   const [pageSize, setPageSize] = useState(40);
   const [page, setPage] = useState(1);
+  useEffect(() => {
+    api.getSettings().then((s: any) => {
+      const p = Number(s?.store?.pageSize);
+      if ([20, 40, 80].includes(p)) setPageSize(p);
+    }).catch(() => { /* дефолт 40 */ });
+  }, []);
   useEffect(() => { setPage(1); }, [query, cat, favOnly, tab]);
   const totalPages = Math.max(1, Math.ceil(results.length / pageSize));
   const safePage = Math.min(page, totalPages);

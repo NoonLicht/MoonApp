@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Video, Download, AlertTriangle, RefreshCw, Check, Image, Subtitles, Terminal } from "lucide-react";
 import { Glass, Btn, Badge, Select, SectionHead, EmptyHint, ProgressBar } from "../components/ui";
 import { usePageToolbar } from "../components/Toolbar";
@@ -30,6 +30,16 @@ export default function VideoPage() {
   const [et, setEt] = useState(false);
   const [ins, setIns] = useState<YtdlpInstallStatus | null>(null);
 
+  // Дефолты загрузки из настроек (раздел «Видео»): макс. высота,
+  // вшивание обложки и автозагрузка субтитров.
+  const vcfg = useRef<{ defaultHeight?: string; embedThumbnail?: boolean; downloadSubs?: boolean }>({});
+  useEffect(() => {
+    api.getSettings().then((s: any) => {
+      vcfg.current = s?.video || {};
+      setEt(vcfg.current.embedThumbnail !== false);
+    }).catch(() => {});
+  }, []);
+
   useEffect(() => {
     if (!j) return;
     const timer = setInterval(async () => {
@@ -58,7 +68,15 @@ export default function VideoPage() {
     setSt("parsing"); setErr("");
     try {
       const d = await api.getVideoInfo(u.trim());
-      setI(d); setH(d.heights[0] || null); setSub([]); setSt("ready");
+      // Выбираем качество: «best» — максимум, иначе ближайшая высота <= лимита.
+      const dh = vcfg.current.defaultHeight || "best";
+      const pick = dh === "best"
+        ? (d.heights[0] || null)
+        : (d.heights.find((x: number) => x <= Number(dh)) || d.heights[d.heights.length - 1] || null);
+      setI(d);
+      setH(pick);
+      setSub(vcfg.current.downloadSubs ? Object.keys(d.subtitles || {}) : []);
+      setSt("ready");
     } catch (e) { setSt("error"); setErr((e as Error).message); }
   };
 

@@ -3,6 +3,21 @@ const path = require("path");
 const { spawn } = require("child_process");
 const { DIRS } = require("./config");
 const logger = require("./logger");
+const settings = require("./settings");
+
+// Каталог загрузок: пользовательская папка из настроек (store.downloadDir)
+// или дефолтная storage/downloads, если путь не задан/невалиден.
+function resolveDestDir() {
+  try {
+    const custom = String(settings.get("store").downloadDir || "").trim();
+    if (custom) {
+      fs.mkdirSync(custom, { recursive: true });
+      return custom;
+    }
+  } catch { /* чтение настроек не должно ломать загрузку */ }
+  fs.mkdirSync(DIRS.downloads, { recursive: true });
+  return DIRS.downloads;
+}
 
 // .bat/.cmd убрал специально — запуск скачанного скрипта это удалённое выполнение кода.
 const ALLOWED_EXT = [".exe", ".msi", ".msix", ".appx", ".zip"];
@@ -20,8 +35,9 @@ function fileNameFromUrl(url) {
   }
 }
 
-// Файл по url качается в каталог загрузок → { file, name, size }.
-async function download(url, destDir = DIRS.downloads) {
+// Файл по url качается в каталог загрузок (настройки store.downloadDir или
+// storage/downloads) → { file, name, size }.
+async function download(url, destDir = resolveDestDir()) {
   const href = String(url).trim();
   if (!/^https?:\/\//i.test(href)) throw new Error("Допускаются только http/https ссылки");
 

@@ -13,6 +13,7 @@ const DEFAULTS = {
     startPage: "store",      // открывается при запуске
     autoLaunch: false,       // TODO: автозапуск с Windows
     minimizeToTray: false,   // TODO: свёрнутая кнопка в трей
+    closeToTray: false,      // TODO: закрытие окна сворачивает в трей вместо выхода
   },
 
   // --- Внешний вид ---
@@ -60,9 +61,33 @@ const DEFAULTS = {
     preserveAudio: true,     // сохранять звук при конвертации видео
   },
 
+  // --- Видео (yt-dlp): значения по умолчанию для новой загрузки ---
+  video: {
+    defaultHeight: "best",   // best | 2160 | 1440 | 1080 | 720 | 480 — ограничение высоты
+    embedThumbnail: true,    // вшивать обложку в файл (требует ffmpeg)
+    downloadSubs: false,     // скачивать субтитры вместе с видео
+  },
+
+  // --- Музыка (yt-dlp): качество аудио по умолчанию ---
+  music: {
+    defaultQuality: "320 kbps", // 320/256/192/128 kbps | FLAC | OPUS | WAV | AAC
+  },
+
+  // --- Книги (Флибуста) ---
+  books: {
+    pageSize: 40,            // книг на страницу в локальном каталоге
+    preferLiveSearch: false, // сразу искать через живой OPDS-поиск, а не локальную базу
+  },
+
   // --- Видео / Музыка (это уже yt-dlp) ---
   media: {
     ytdlpPath: "",           // путь к yt-dlp (пусто = искать в PATH)
+  },
+
+  // --- My Space: поведение заметок ---
+  myspace: {
+    autosave: true,          // автосохранение заметки при вводе
+    spellcheck: false,       // проверка орфографии в редакторе
   },
 
   // --- Голос / клонирование (пока TODO — локальный TTS) ---

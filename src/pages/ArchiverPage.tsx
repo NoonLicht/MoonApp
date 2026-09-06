@@ -23,6 +23,20 @@ export default function ArchiverPage() {
   const [progress, setProgress] = useState(0);
   const [archives, setArchives] = useState<ArchiveItem[]>([]);
 
+  // Тумблеры по умолчанию берутся из настроек (archiver.defaultOptions),
+  // чтобы значения из «Настроек» применялись к новым архивациям.
+  useEffect(() => {
+    api.getSettings().then((s: any) => {
+      const d = s?.archiver?.defaultOptions;
+      if (d) setOpts((o) => ({
+        css: typeof d.css === "boolean" ? d.css : o.css,
+        images: typeof d.images === "boolean" ? d.images : o.images,
+        fonts: typeof d.fonts === "boolean" ? d.fonts : o.fonts,
+        removeScripts: typeof d.removeScripts === "boolean" ? d.removeScripts : o.removeScripts,
+      }));
+    }).catch(() => { /* дефолты из кода */ });
+  }, []);
+
   useEffect(() => { api.getArchives().then(setArchives).catch(() => {}); }, []);
 
   usePageToolbar(<Badge tone="violet" mono>{t("arch.singleFile")}</Badge>, [t]);

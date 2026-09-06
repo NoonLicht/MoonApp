@@ -80,6 +80,25 @@ export default function AiChatPage() {
     if (last.provider || last.model) {
       setChatCfgState((s) => ({ ...s, provider: last.provider || s.provider, model: last.model || s.model }));
     }
+    // Дефолты из настроек (chat.*) применяются один раз — если юзер ещё ни разу
+    // не сохранял свой конфиг чата в localStorage. Иначе его выбор перекрылся бы
+    // при каждом заходе на страницу.
+    try {
+      if (!localStorage.getItem("aichat.cfg.v2")) {
+        api.getSettings().then((s: any) => {
+          const c = s?.chat;
+          if (!c) return;
+          setChatCfgState((p) => ({
+            ...p,
+            provider: c.provider || p.provider,
+            model: c.model || p.model,
+            temperature: typeof c.temperature === "number" ? c.temperature : p.temperature,
+            maxTokens: typeof c.maxTokens === "number" ? c.maxTokens : p.maxTokens,
+            streaming: typeof c.stream === "boolean" ? c.stream : p.streaming,
+          }));
+        }).catch(() => { /* настройки недоступны — остаются встроенные дефолты */ });
+      }
+    } catch { /* localStorage недоступен */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

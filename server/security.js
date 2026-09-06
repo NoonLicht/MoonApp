@@ -14,8 +14,15 @@ function getElectronSafeStorage() {
 }
 
 function getMasterKey() {
-  // Сперва env-переменная, иначе dev-ключ (только для standalone без Electron!).
-  return crypto.createHash("sha256").update(process.env.PERSONAL_APP_MASTER_KEY || "dev-master-key-not-for-prod").digest();
+  // Приоритет: env-переменная → мастер-ключ из настроек (advanced.masterKey) →
+  // dev-ключ (только для standalone-запуска без Electron, небезопасно!).
+  const fromEnv = process.env.PERSONAL_APP_MASTER_KEY;
+  if (fromEnv) return crypto.createHash("sha256").update(fromEnv).digest();
+  try {
+    const fromSettings = String(require("./settings").get("advanced").masterKey || "").trim();
+    if (fromSettings) return crypto.createHash("sha256").update(fromSettings).digest();
+  } catch { /* settings может быть недоступен на раннем старте — идём в dev-ключ */ }
+  return crypto.createHash("sha256").update("dev-master-key-not-for-prod").digest();
 }
 
 const ALGO = "aes-256-gcm";

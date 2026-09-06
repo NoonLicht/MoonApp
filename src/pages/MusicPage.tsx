@@ -52,6 +52,13 @@ export default function MusicPage() {
 
   // Качество из тулбара
   const [quality, setQuality] = useState("320 kbps");
+
+  // Качество по умолчанию берём из настроек (раздел «Музыка»).
+  useEffect(() => {
+    api.getSettings().then((s: any) => {
+      if (s?.music?.defaultQuality) setQuality(s.music.defaultQuality);
+    }).catch(() => {});
+  }, []);
   const [fmtInfo, setFmtInfo] = useState<MusicFormats | null>(null);
 
   usePageToolbar(

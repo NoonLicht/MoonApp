@@ -73,7 +73,11 @@
     "monitor": "Monitoring",
     "backup": "Auto Backup",
     "advanced": "Advanced",
-    "loadError": "Failed to load settings"
+    "loadError": "Failed to load settings",
+    "video": "Video",
+    "musicSection": "Music",
+    "books": "Books",
+    "myspace": "My Space"
   },
   "chat": {
     "chatProvider": "Default provider",
@@ -87,7 +91,15 @@
     "chatStream": "Stream responses",
     "chatStreamHint": "Stream tokens live in real time",
     "chatContext": "Context messages",
-    "chatContextHint": "How many recent messages are used in a request"
+    "chatContextHint": "How many recent messages are used in a request",
+    "keysSection": "API keys",
+    "keysHint": "Keys are stored encrypted on this machine (DPAPI inside Electron, AES-256-GCM fallback) and are never sent back to the UI",
+    "keysEmpty": "No providers available",
+    "keyPlaceholder": "Paste API key…",
+    "keySave": "Save",
+    "keySaved": "Saved",
+    "keyConfigured": "configured",
+    "keyMissing": "not set"
   },
   "storeSection": {
     "storeDir": "Download directory",
@@ -264,7 +276,10 @@
     "prev": "‹ Prev",
     "next": "Next ›",
     "perPage": "per page",
-    "page": "Page {page} / {total}"
+    "page": "Page {page} / {total}",
+    "titleQ": "Title",
+    "authorQ": "Author",
+    "resetConfirm": "Clear the entire book catalog? This deletes the database and all synced books."
   },
   "monitor": {
     "title": "Monitoring",
@@ -519,5 +534,30 @@
   "_meta": {
     "code": "en",
     "native": "English"
+  },
+  "videoSection": {
+    "videoQuality": "Default max quality",
+    "videoQualityHint": "Max video height preselected for new downloads (best = no limit)",
+    "qualityBest": "Best available",
+    "videoEmbedThumb": "Embed thumbnail",
+    "videoEmbedThumbHint": "Write cover art into the downloaded file (needs ffmpeg)",
+    "videoSubs": "Download subtitles",
+    "videoSubsHint": "Preselect all available subtitles for new downloads"
+  },
+  "musicSection": {
+    "musicQuality": "Default audio quality",
+    "musicQualityHint": "Preselected quality on the Music page"
+  },
+  "booksSection": {
+    "booksPageSize": "Page size",
+    "booksPageSizeHint": "Books per page in the local catalog",
+    "booksPreferLive": "Live search by default",
+    "booksPreferLiveHint": "Search via live OPDS instantly instead of the local database"
+  },
+  "myspaceSection": {
+    "myAutosave": "Autosave notes",
+    "myAutosaveHint": "Save note content automatically while typing (off: Ctrl+S or tab close)",
+    "mySpellcheck": "Spell check",
+    "mySpellcheckHint": "Enable browser spellchecker in the note editor"
   }
 }

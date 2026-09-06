@@ -73,7 +73,11 @@
     "monitor": "Monitor",
     "backup": "Copia de seguridad automática",
     "advanced": "Avanzado",
-    "loadError": "No se pudieron cargar los ajustes"
+    "loadError": "No se pudieron cargar los ajustes",
+    "video": "Vídeo",
+    "musicSection": "Música",
+    "books": "Libros",
+    "myspace": "My Space"
   },
   "chat": {
     "chatProvider": "Proveedor por defecto",
@@ -87,7 +91,15 @@
     "chatStream": "Respuestas en streaming",
     "chatStreamHint": "Envía tokens en tiempo real",
     "chatContext": "Mensajes de contexto",
-    "chatContextHint": "Cuántos mensajes recientes se usan en la petición"
+    "chatContextHint": "Cuántos mensajes recientes se usan en la petición",
+    "keysSection": "Claves API",
+    "keysHint": "Las claves se guardan cifradas en este equipo (DPAPI dentro de Electron, si no AES-256-GCM) y nunca se devuelven a la interfaz",
+    "keysEmpty": "No hay proveedores disponibles",
+    "keyPlaceholder": "Pega la clave API…",
+    "keySave": "Guardar",
+    "keySaved": "Guardado",
+    "keyConfigured": "configurado",
+    "keyMissing": "sin definir"
   },
   "storeSection": {
     "storeDir": "Carpeta de descargas",
@@ -264,7 +276,10 @@
     "prev": "‹ Anterior",
     "next": "Siguiente ›",
     "perPage": "por página",
-    "page": "Página {page} / {total}"
+    "page": "Página {page} / {total}",
+    "titleQ": "Título",
+    "authorQ": "Autor",
+    "resetConfirm": "¿Vaciar todo el catálogo de libros? Esto borra la base de datos y todos los libros sincronizados."
   },
   "monitor": {
     "title": "Monitor",
@@ -326,7 +341,13 @@
     "speeds": "Velocidades de transferencia",
     "levels": "Niveles",
     "controls": "Controles",
-    "data": "Datos"
+    "data": "Datos",
+    "embedStarting": "Iniciando el servicio de conversión…",
+    "embedError": "No se pudo iniciar el conversor",
+    "embedHint": "El servicio ConvertX integrado se inicia automáticamente al primer uso.",
+    "embedMissing": "El runtime del conversor falta en esta instalación.",
+    "embedStart": "Iniciar conversor",
+    "formatsNote": "Los formatos multimedia requieren ffmpeg en PATH. Documentos/libros necesitan las herramientas correspondientes (pandoc, Calibre, LibreOffice…)."
   },
   "voice": {
     "title": "Clonación de voz",
@@ -516,5 +537,30 @@
   "_meta": {
     "code": "es",
     "native": "Español"
+  },
+  "videoSection": {
+    "videoQuality": "Calidad máxima por defecto",
+    "videoQualityHint": "Altura máxima de vídeo preseleccionada para nuevas descargas (best = sin límite)",
+    "qualityBest": "La mejor disponible",
+    "videoEmbedThumb": "Incrustar miniatura",
+    "videoEmbedThumbHint": "Escribir la portada en el archivo descargado (requiere ffmpeg)",
+    "videoSubs": "Descargar subtítulos",
+    "videoSubsHint": "Preseleccionar todos los subtítulos disponibles en nuevas descargas"
+  },
+  "musicSection": {
+    "musicQuality": "Calidad de audio por defecto",
+    "musicQualityHint": "Calidad preseleccionada en la página de Música"
+  },
+  "booksSection": {
+    "booksPageSize": "Tamaño de página",
+    "booksPageSizeHint": "Libros por página en el catálogo local",
+    "booksPreferLive": "Búsqueda en vivo por defecto",
+    "booksPreferLiveHint": "Buscar al instante vía OPDS en vivo en lugar de la base local"
+  },
+  "myspaceSection": {
+    "myAutosave": "Autoguardar notas",
+    "myAutosaveHint": "Guardar el contenido de la nota automáticamente al escribir (desactivado: Ctrl+S o cerrar pestaña)",
+    "mySpellcheck": "Corrección ortográfica",
+    "mySpellcheckHint": "Activar el corrector del navegador en el editor de notas"
   }
 }

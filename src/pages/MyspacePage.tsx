@@ -141,8 +141,37 @@ export default function MyspacePage() {
   const updContent = (p: string, c: string) => {
     setOpenFiles((prev)=>prev.map(f=>f.path===p?{...f,content:c,modified:true}:f));
     if (activeTab===p) setEdContent(c);
-    schedSave(p);
+    // Автосохранение можно выключить в настройках (раздел «My Space»):
+    // тогда изменения сохраняются по Ctrl+S или при закрытии вкладки.
+    if (msCfg.autosave) schedSave(p);
   };
+
+  // Ручное сохранение открытой вкладки по Ctrl+S (когда автосейв выключен).
+  useEffect(() => {
+    if (typeof window === "undefined") return; // SSR-окружение (smoke-тесты)
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s" && activeTab) {
+        e.preventDefault();
+        const f = openFiles.find(x => x.path === activeTab);
+        if (f) {
+          api.myspaceWrite(activeTab, f.content, f.frontmatter)
+            .then(() => { setError(""); setOpenFiles(prev => prev.map(x => x.path === activeTab ? { ...x, modified: false } : x)); })
+            .catch((ex: any) => setError("Save failed: " + ex?.message));
+        }
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [activeTab, openFiles]);
+
+  // Настройки My Space: автосохранение и проверка орфографии.
+  const [msCfg, setMsCfg] = useState<{ autosave: boolean; spellcheck: boolean }>({ autosave: true, spellcheck: false });
+  useEffect(() => {
+    api.getSettings().then((s: any) => {
+      const m = s?.myspace || {};
+      setMsCfg({ autosave: m.autosave !== false, spellcheck: !!m.spellcheck });
+    }).catch(() => {});
+  }, []);
   useEffect(() => {
     if (activeTab) { const f = openFiles.find(x=>x.path===activeTab); if (f) setEdContent(f.content); }
   }, [activeTab, openFiles]);
@@ -628,6 +657,7 @@ export default function MyspacePage() {
             const editPane = <textarea key="edit" className="ms-edit-textarea"
               value={edContent} onChange={e=>updContent(activeTab,e.target.value)}
               onScroll={()=>syncScroll("edit")}
+              spellCheck={msCfg.spellcheck}
               placeholder="Start writing... Use [[wiki-links]] and #tags" style={{
                 ...txStyle, borderRight:previewMode==="split"?"1px solid var(--glass-border)":"none"
               }} />;

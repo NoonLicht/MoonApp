@@ -1,8 +1,9 @@
-import React, { useState, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Mic2, Upload, Wand2, Play, Pause, Download } from "lucide-react";
 import { Glass, Btn, IconBtn, Field, Select, SectionHead } from "../components/ui";
 import { usePageToolbar } from "../components/Toolbar";
 import { useI18n } from "../i18n";
+import { api } from "../api/client";
 
 const TTS_LANGS = ["English", "Spanish", "French", "German", "Japanese"];
 
@@ -16,6 +17,14 @@ export default function VoicePage() {
   const [cfgWeight, setCfgWeight] = useState(0.5);
   const [state, setState] = useState("idle");
   const inputRef = useRef<HTMLInputElement | null>(null);
+
+  // Язык по умолчанию подставляется из настроек (voice.defaultLanguage).
+  useEffect(() => {
+    api.getSettings().then((s: any) => {
+      const lang = s?.voice?.defaultLanguage;
+      if (typeof lang === "string" && lang) setLanguage(lang);
+    }).catch(() => { /* остаются встроенные дефолты */ });
+  }, []);
 
   usePageToolbar(
     <>

@@ -73,7 +73,11 @@
     "monitor": "المراقبة",
     "backup": "النسخ الاحتياطي التلقائي",
     "advanced": "متقدم",
-    "loadError": "تعذر تحميل الإعدادات"
+    "loadError": "تعذر تحميل الإعدادات",
+    "video": "الفيديو",
+    "musicSection": "الموسيقى",
+    "books": "الكتب",
+    "myspace": "مساحتي"
   },
   "chat": {
     "chatProvider": "المزود الافتراضي",
@@ -87,7 +91,15 @@
     "chatStream": "الردود المتدفقة",
     "chatStreamHint": "بث الرموز مباشرة في الوقت الفعلي",
     "chatContext": "رسائل السياق",
-    "chatContextHint": "عدد الرسائل الحديثة المستخدمة في الطلب"
+    "chatContextHint": "عدد الرسائل الحديثة المستخدمة في الطلب",
+    "keysSection": "مفاتيح API",
+    "keysHint": "تُخزَّن المفاتيح مشفرة على هذا الجهاز (DPAPI داخل Electron، وإلا AES-256-GCM) ولا تُعاد أبداً إلى الواجهة",
+    "keysEmpty": "لا يوجد مزودون متاحون",
+    "keyPlaceholder": "الصق مفتاح API…",
+    "keySave": "حفظ",
+    "keySaved": "تم الحفظ",
+    "keyConfigured": "مُعدّ",
+    "keyMissing": "غير محدد"
   },
   "storeSection": {
     "storeDir": "مجلد التنزيل",
@@ -264,7 +276,10 @@
     "prev": "‹ السابق",
     "next": "التالي ›",
     "perPage": "بالصفحة",
-    "page": "صفحة {page} / {total}"
+    "page": "صفحة {page} / {total}",
+    "titleQ": "العنوان",
+    "authorQ": "المؤلف",
+    "resetConfirm": "إفراغ فهرس الكتب بالكامل؟ سيؤدي ذلك إلى حذف قاعدة البيانات وجميع الكتب المتزامنة."
   },
   "monitor": {
     "title": "المراقبة",
@@ -326,7 +341,13 @@
     "speeds": "سرعات النقل",
     "levels": "المستويات",
     "controls": "التحكم",
-    "data": "البيانات"
+    "data": "البيانات",
+    "embedStarting": "جارٍ بدء خدمة التحويل…",
+    "embedError": "فشل بدء المحوّل",
+    "embedHint": "تشتغل خدمة ConvertX المدمجة تلقائياً عند أول استخدام.",
+    "embedMissing": "بيئة تشغيل المحوّل غير موجودة في هذا التثبيت.",
+    "embedStart": "بدء المحوّل",
+    "formatsNote": "تتطلب صيغ الوسائط وجود ffmpeg في PATH. المستندات/الكتب تحتاج الأدوات المناسبة (pandoc وCalibre وLibreOffice…)."
   },
   "voice": {
     "title": "استنساخ الصوت",
@@ -516,5 +537,30 @@
   "_meta": {
     "code": "ar",
     "native": "العربية"
+  },
+  "videoSection": {
+    "videoQuality": "أقصى جودة افتراضية",
+    "videoQualityHint": "أقصى ارتفاع فيديو محدد مسبقاً للتنزيلات الجديدة (best = بلا حد)",
+    "qualityBest": "أفضل متاح",
+    "videoEmbedThumb": "تضمين الصورة المصغرة",
+    "videoEmbedThumbHint": "كتابة الغلاف داخل الملف المنزّل (يتطلب ffmpeg)",
+    "videoSubs": "تنزيل الترجمات",
+    "videoSubsHint": "تحديد جميع الترجمات المتاحة تلقائياً للتنزيلات الجديدة"
+  },
+  "musicSection": {
+    "musicQuality": "جودة الصوت الافتراضية",
+    "musicQualityHint": "الجودة المحددة مسبقاً في صفحة الموسيقى"
+  },
+  "booksSection": {
+    "booksPageSize": "حجم الصفحة",
+    "booksPageSizeHint": "عدد الكتب في كل صفحة بالفهرس المحلي",
+    "booksPreferLive": "البحث المباشر افتراضياً",
+    "booksPreferLiveHint": "البحث فوراً عبر OPDS المباشر بدلاً من قاعدة البيانات المحلية"
+  },
+  "myspaceSection": {
+    "myAutosave": "حفظ الملاحظات تلقائياً",
+    "myAutosaveHint": "حفظ محتوى الملاحظة تلقائياً أثناء الكتابة (عند الإيقاف: Ctrl+S أو إغلاق التبويب)",
+    "mySpellcheck": "التدقيق الإملائي",
+    "mySpellcheckHint": "تشغيل المدقق الإملائي للمتصفح في محرر الملاحظات"
   }
 }

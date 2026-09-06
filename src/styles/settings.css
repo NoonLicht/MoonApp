@@ -71,3 +71,26 @@
 
 /* Индикатор статуса в тулбаре */
 .tb-badge-saving{ color:var(--amber); }
+/* --- Сворачиваемое подменю «API-ключи» (раздел AI Chat) --- */
+.keys-panel{
+  display:flex; flex-direction:column; gap:8px;
+  padding:10px 12px; margin-bottom:6px;
+  border:1px solid var(--glass-border); border-radius:12px;
+  background:var(--track);
+}
+.keys-toggle{
+  display:flex; align-items:center; gap:8px;
+  background:transparent; border:none; cursor:pointer;
+  color:var(--text-primary); font-size:13px; font-weight:600;
+  padding:0; text-align:left;
+}
+.keys-toggle .chev{ margin-left:auto; transition:transform .2s; }
+.keys-toggle .chev.is-open{ transform:rotate(180deg); }
+.keys-body{ display:flex; flex-direction:column; gap:8px; }
+.keys-row{
+  display:flex; align-items:center; justify-content:space-between;
+  gap:12px; flex-wrap:wrap;
+}
+.keys-name{ display:flex; align-items:center; gap:8px; font-size:13px; font-weight:600; }
+.keys-actions{ display:flex; align-items:center; gap:8px; }
+.keys-actions .text-input{ min-width:220px; }

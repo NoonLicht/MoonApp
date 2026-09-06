@@ -1,15 +1,19 @@
-import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect, useRef } from "react";
 import {
   Settings2, Palette, Gauge, MonitorCog, MessageSquare,
   Package, Repeat, Clapperboard, Mic2, Archive, Activity, Database,
-  ShieldCheck, Check, RotateCcw,
+  ShieldCheck, Check, RotateCcw, Video, Music2, BookOpen, User,
+  ChevronDown, KeyRound, Save,
 } from "lucide-react";
 import { Glass, Btn, Select, SectionHead, Badge, EmptyHint } from "../components/ui";
 import { usePageToolbar } from "../components/Toolbar";
 import { useI18n, LANGS } from "../i18n";
 import { api } from "../api/client";
 
-/* Сервисный словарь бейджей разделов: слово -> ключ перевода */
+/**
+ * РЎРµСЂРІРёСЃРЅС‹Р№ СЃР»РѕРІР°СЂСЊ Р±РµР№РґР¶РµР№ СЂР°Р·РґРµР»РѕРІ: СЃР»РѕРІРѕ РёР· РЅР°СЃС‚СЂРѕРµРє -> РєР»СЋС‡ РїРµСЂРµРІРѕРґР°.
+ * РќСѓР¶РµРЅ, С‡С‚РѕР±С‹ Р±РµР№РґР¶Рё ("live", "future", вЂ¦) С‚РѕР¶Рµ Р»РѕРєР°Р»РёР·РѕРІР°Р»РёСЃСЊ.
+ */
 const BADGE_KEYS: Record<string, string> = {
   "saved auto": "savedAuto",
   "recommended on": "recommended",
@@ -19,10 +23,18 @@ const BADGE_KEYS: Record<string, string> = {
   dev: "dev",
 };
 
-/* ---------- Утилиты для точечного чтения/записи вложенных путей ---------- */
+/**
+ * РўРѕС‡РµС‡РЅРѕРµ С‡С‚РµРЅРёРµ РІР»РѕР¶РµРЅРЅРѕРіРѕ Р·РЅР°С‡РµРЅРёСЏ РїРѕ РїСѓС‚Рё "a.b.c".
+ * РСЃРїРѕР»СЊР·СѓРµС‚СЃСЏ, С‡С‚РѕР±С‹ РїР°С‚С‡РёС‚СЊ РЅР°СЃС‚СЂРѕР№РєРё (PATCH /settings) СѓР·РєРѕР№ РІРµС‚РєРѕР№.
+ */
 function getAt(obj: any, path: string): any {
   return path.split(".").reduce((a, k) => (a == null ? a : a[k]), obj);
 }
+
+/**
+ * РРјРјСѓС‚Р°Р±РµР»СЊРЅРѕ РїРёС€РµС‚ Р·РЅР°С‡РµРЅРёРµ РїРѕ РїСѓС‚Рё "a.b.c" Рё РІРѕР·РІСЂР°С‰Р°РµС‚ РєРѕРїРёСЋ РѕР±СЉРµРєС‚Р°.
+ * РўР°Рє РєРѕРјРїРѕРЅРµРЅС‚ РѕСЃС‚Р°С‘С‚СЃСЏ С‡РёСЃС‚С‹Рј: СЃС‚Р°СЂРѕРµ СЃРѕСЃС‚РѕСЏРЅРёРµ РЅРµ РјСѓС‚РёСЂСѓРµС‚СЃСЏ.
+ */
 function setAt(obj: any, path: string, value: unknown): any {
   const keys = path.split(".");
   const clone = JSON.parse(JSON.stringify(obj));
@@ -35,7 +47,7 @@ function setAt(obj: any, path: string, value: unknown): any {
   return clone;
 }
 
-/* ---------- Мелкие UI-элементы ---------- */
+/* ---------- РњРµР»РєРёРµ UI-СЌР»РµРјРµРЅС‚С‹ ---------- */
 function Row({ label, hint, children }: { label: React.ReactNode; hint?: React.ReactNode; children: React.ReactNode }) {
   return (
     <div className="set-row">
@@ -92,7 +104,7 @@ function TextInput({ value, onChange, placeholder }: { value: string; onChange: 
   );
 }
 
-/* ---------- Блок секции ---------- */
+/* ---------- Р‘Р»РѕРє СЃРµРєС†РёРё ---------- */
 function Section({ title, icon: Icon, badge, children }: { title: string; icon: React.ElementType; badge?: string; children: React.ReactNode }) {
   const { t } = useI18n();
   const badgeText = badge ? t(`badge.${BADGE_KEYS[badge] || badge}`) : null;
@@ -106,12 +118,88 @@ function Section({ title, icon: Icon, badge, children }: { title: string; icon: 
         <span className="set-section-title">{title}</span>
         {badgeText && (
           <Badge tone={isFuture ? "coral" : "violet"} mono>
-            {isFuture ? `⚠ ${badgeText}` : badgeText}
+            {isFuture ? `вљ  ${badgeText}` : badgeText}
           </Badge>
         )}
       </div>
       <div className="set-section-body">{children}</div>
     </Glass>
+  );
+}
+
+/**
+ * РЎРІРѕСЂР°С‡РёРІР°РµРјРѕРµ РїРѕРґРјРµРЅСЋ В«API-РєР»СЋС‡РёВ» РІРЅСѓС‚СЂРё СЂР°Р·РґРµР»Р° AI Chat.
+ *
+ * РљР°Рє СЌС‚Рѕ СЂР°Р±РѕС‚Р°РµС‚:
+ *  - СЃРїРёСЃРѕРє РїСЂРѕРІР°Р№РґРµСЂРѕРІ Р±РµСЂС‘С‚СЃСЏ СЃ GET /settings/providers (РІ РѕС‚РІРµС‚Рµ С‚РѕР»СЊРєРѕ
+ *    С„Р»Р°Рі В«РЅР°СЃС‚СЂРѕРµРЅВ», СЃР°РјРё РєР»СЋС‡Рё РЅРёРєРѕРіРґР° РЅРµ РѕС‚РґР°СЋС‚СЃСЏ РєР»РёРµРЅС‚Сѓ);
+ *  - РІРІРµРґС‘РЅРЅС‹Р№ РєР»СЋС‡ СѓС…РѕРґРёС‚ РѕРґРёРЅ СЂР°Р· POST-РѕРј РЅР° /settings/providers/:id/key;
+ *  - РЅР° СЃРµСЂРІРµСЂРµ РєР»СЋС‡ С€РёС„СЂСѓРµС‚СЃСЏ (safeStorage/DPAPI РІРЅСѓС‚СЂРё Electron, РёРЅР°С‡Рµ
+ *    AES-256-GCM СЃ РјР°СЃС‚РµСЂ-РєР»СЋС‡РѕРј) Рё С…СЂР°РЅРёС‚СЃСЏ РІ storage/secrets.json.
+ */
+function ApiKeysPanel() {
+  const { t } = useI18n();
+  const [open, setOpen] = useState(false);
+  const [providers, setProviders] = useState<{ id: string; label: string; configured: boolean; stub: boolean }[]>([]);
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [savedId, setSavedId] = useState<string | null>(null);
+
+  const refresh = () => {
+    api.getProviders().then((list: any) => setProviders(list || [])).catch(() => setProviders([]));
+  };
+  useEffect(() => { if (open) refresh(); }, [open]);
+
+  const save = async (id: string) => {
+    const key = (drafts[id] || "").trim();
+    if (!key) return;
+    try {
+      await api.saveKey(id, key);
+      setDrafts((d) => ({ ...d, [id]: "" }));
+      setSavedId(id);
+      refresh();
+      setTimeout(() => setSavedId(null), 1500);
+    } catch { /* РѕС€РёР±РєР° СЃРµС‚Рё вЂ” Р±РµР№РґР¶ В«configuredВ» РїСЂРѕСЃС‚Рѕ РЅРµ РѕР±РЅРѕРІРёС‚СЃСЏ */ }
+  };
+
+  return (
+    <div className="keys-panel">
+      <button type="button" className="keys-toggle" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
+        <KeyRound size={14} />
+        <span>{t("chat.keysSection")}</span>
+        <ChevronDown size={14} className={`chev ${open ? "is-open" : ""}`} />
+      </button>
+      {open && (
+        <div className="keys-body">
+          <div className="muted-sm">{t("chat.keysHint")}</div>
+          {providers.length === 0 && <div className="muted-sm">{t("chat.keysEmpty")}</div>}
+          {providers.map((p) => (
+            <div className="keys-row" key={p.id}>
+              <div className="keys-name">
+                <span>{p.label}</span>
+                <Badge tone={p.configured ? "teal" : "neutral"} mono>{p.configured ? t("chat.keyConfigured") : t("chat.keyMissing")}</Badge>
+              </div>
+              <div className="keys-actions">
+                <input
+                  type="password"
+                  className="text-input"
+                  value={drafts[p.id] || ""}
+                  placeholder={t("chat.keyPlaceholder")}
+                  onChange={(e) => setDrafts((d) => ({ ...d, [p.id]: e.target.value }))}
+                />
+                <Btn
+                  icon={savedId === p.id ? Check : Save}
+                  onClick={() => save(p.id)}
+                  disabled={!(drafts[p.id] || "").trim()}
+                  title={t("chat.keySave")}
+                >
+                  {savedId === p.id ? t("chat.keySaved") : t("chat.keySave")}
+                </Btn>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -123,7 +211,7 @@ export default function SettingsPage() {
   const [dirtyMap, setDirtyMap] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    api.getSettings().then(setS).catch(() => setError(t("settings.loadError") || "Не удалось загрузить настройки"));
+    api.getSettings().then(setS).catch(() => setError(t("settings.loadError") || "РќРµ СѓРґР°Р»РѕСЃСЊ Р·Р°РіСЂСѓР·РёС‚СЊ РЅР°СЃС‚СЂРѕР№РєРё"));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -136,7 +224,7 @@ export default function SettingsPage() {
 
   async function persist(next: any, path: string) {
     setS(next);
-    // Сохраняется только изменённая ветка (вложенный patch), deep-merge на сервере.
+    // РЎРѕС…СЂР°РЅСЏРµС‚СЃСЏ С‚РѕР»СЊРєРѕ РёР·РјРµРЅС‘РЅРЅР°СЏ РІРµС‚РєР° (РІР»РѕР¶РµРЅРЅС‹Р№ patch), deep-merge РЅР° СЃРµСЂРІРµСЂРµ.
     const keys = path.split(".");
     let patch: any = {};
     let cur: any = patch;
@@ -158,7 +246,7 @@ export default function SettingsPage() {
   }
 
   function change(path: string, value: unknown) {
-    // Спец-обработка темы: синхронизируем основной App.
+    // РЎРїРµС†-РѕР±СЂР°Р±РѕС‚РєР° С‚РµРјС‹: СЃРёРЅС…СЂРѕРЅРёР·РёСЂСѓРµРј РѕСЃРЅРѕРІРЅРѕР№ App.
     if (path === "appearance.theme") {
       window.dispatchEvent(new CustomEvent("app:theme", { detail: value }));
     }
@@ -187,6 +275,8 @@ export default function SettingsPage() {
 
   const g = s.general, ap = s.appearance, pf = s.performance, win = s.window;
   const chat = s.chat, store = s.store, conv = s.converter;
+  // РќРѕРІС‹Рµ СЃРµРєС†РёРё РјРѕРіСѓС‚ РѕС‚СЃСѓС‚СЃС‚РІРѕРІР°С‚СЊ РІ СЃС‚Р°СЂС‹С… settings.json вЂ” РґР°С‘Рј С„РѕР»Р±СЌРєРё.
+  const video = s.video || {}, musicS = s.music || {}, books = s.books || {}, mysp = s.myspace || {};
   const media = s.media, voice = s.voice, arch = s.archiver, mon = s.monitor;
   const backup = s.backup, adv = s.advanced;
 
@@ -209,76 +299,87 @@ export default function SettingsPage() {
       )}
 
       <Glass className="settings-scroll-wrap">
-        {/* ---- Общие ---- */}
-        <Section title={t("settings.general")} icon={Settings2} badge="saved auto">
-          <Row label={t("settings.language")} hint={t("settings.languageHint")}>
+        {/* ---- Store / Р·Р°РіСЂСѓР·РєРё (РґРѕРє: store) ---- */}
+        <Section title={t("settings.storeSection")} icon={Package} badge="active">
+          <Row label={t("storeSection.storeDir")} hint={t("storeSection.storeDirHint")}>
+            <TextInput value={store.downloadDir} onChange={(v) => change("store.downloadDir", v)} placeholder="C:\\Users\\You\\Downloads" />
+          </Row>
+          <BoolRow label={t("storeSection.storeAutoIndex")} hint={t("storeSection.storeAutoIndexHint")} value={store.wingetAutoIndex} onChange={(v) => change("store.wingetAutoIndex", v)} />
+          <Row label={t("storeSection.storePageSize")} hint={t("storeSection.storePageSizeHint")}>
+            <Select value={String(store.pageSize)} onChange={(e) => change("store.pageSize", Number(e.target.value))} options={["20", "40", "80"]} />
+          </Row>
+        </Section>
+
+        {/* ---- РљРѕРЅРІРµСЂС‚РµСЂ (РґРѕРє: convert) ---- */}
+        <Section title={t("settings.converter")} icon={Repeat} badge="active">
+          <Row label={t("convSection.convFfmpeg")} hint={t("convSection.convFfmpegHint")}>
+            <TextInput value={conv.ffmpegPath} onChange={(v) => change("converter.ffmpegPath", v)} placeholder="ffmpeg" />
+          </Row>
+          <BoolRow label={t("convSection.convAudio")} hint={t("convSection.convAudioHint")} value={conv.preserveAudio} onChange={(v) => change("converter.preserveAudio", v)} />
+        </Section>
+
+        {/* ---- Р’РёРґРµРѕ (РґРѕРє: video) вЂ” РґРµС„РѕР»С‚С‹ РґР»СЏ РЅРѕРІС‹С… Р·Р°РіСЂСѓР·РѕРє yt-dlp ---- */}
+        <Section title={t("settings.video")} icon={Video} badge="active">
+          <Row label={t("videoSection.videoQuality")} hint={t("videoSection.videoQualityHint")}>
             <Select
-              value={g.language}
-              onChange={(e) => change("general.language", e.target.value)}
-              options={LANGS.map((l) => ({ value: l.code, label: l.native }))}
+              value={String(video.defaultHeight ?? "best")}
+              onChange={(e) => change("video.defaultHeight", e.target.value)}
+              options={[
+                { value: "best", label: t("videoSection.qualityBest") },
+                { value: "2160", label: "2160p" }, { value: "1440", label: "1440p" },
+                { value: "1080", label: "1080p" }, { value: "720", label: "720p" },
+                { value: "480", label: "480p" },
+              ]}
             />
           </Row>
-          <Row label={t("settings.startPage")} hint={t("settings.startPageHint")}>
+          <BoolRow label={t("videoSection.videoEmbedThumb")} hint={t("videoSection.videoEmbedThumbHint")} value={video.embedThumbnail !== false} onChange={(v) => change("video.embedThumbnail", v)} />
+          <BoolRow label={t("videoSection.videoSubs")} hint={t("videoSection.videoSubsHint")} value={!!video.downloadSubs} onChange={(v) => change("video.downloadSubs", v)} />
+          <Row label={t("media.mediaYtdlp")} hint={t("media.mediaYtdlpHint")}>
+            <TextInput value={media.ytdlpPath} onChange={(v) => change("media.ytdlpPath", v)} placeholder="yt-dlp" />
+          </Row>
+        </Section>
+
+        {/* ---- РњСѓР·С‹РєР° (РґРѕРє: music) вЂ” РєР°С‡РµСЃС‚РІРѕ Р°СѓРґРёРѕ РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ ---- */}
+        <Section title={t("settings.musicSection")} icon={Music2} badge="active">
+          <Row label={t("musicSection.musicQuality")} hint={t("musicSection.musicQualityHint")}>
             <Select
-              value={g.startPage}
-              onChange={(e) => change("general.startPage", e.target.value)}
-              options={["store", "convert", "video", "music", "books", "monitor", "myspace", "aichat", "voice", "archive", "settings"]}
+              value={String(musicS.defaultQuality ?? "320 kbps")}
+              onChange={(e) => change("music.defaultQuality", e.target.value)}
+              options={["320 kbps", "256 kbps", "192 kbps", "128 kbps", "FLAC", "OPUS", "WAV", "AAC"]}
             />
           </Row>
-          <BoolRow label={t("settings.autoLaunch")} hint={t("settings.autoLaunchHint")} value={g.autoLaunch} onChange={(v) => change("general.autoLaunch", v)} />
-          <BoolRow label={t("settings.minimizeToTray")} hint={t("settings.minimizeToTrayHint")} value={g.minimizeToTray} onChange={(v) => change("general.minimizeToTray", v)} />
         </Section>
 
-        {/* ---- Внешний вид ---- */}
-        <Section title={t("settings.appearance")} icon={Palette} badge="live">
-          <Row label={t("settings.theme")} hint={t("settings.themeHint")}>
-            <Select value={ap.theme} onChange={(e) => change("appearance.theme", e.target.value)} options={["dark", "light"]} />
+        {/* ---- РљРЅРёРіРё (РґРѕРє: books) ---- */}
+        <Section title={t("settings.books")} icon={BookOpen} badge="active">
+          <Row label={t("booksSection.booksPageSize")} hint={t("booksSection.booksPageSizeHint")}>
+            <Select value={String(books.pageSize ?? 40)} onChange={(e) => change("books.pageSize", Number(e.target.value))} options={["20", "40", "80"]} />
           </Row>
-          <Row label={t("settings.accent")} hint={t("settings.accentHint")}>
-            <Select value={ap.accent} onChange={(e) => change("appearance.accent", e.target.value)} options={["amber", "violet", "teal", "coral"]} />
-          </Row>
-          <BoolRow label={t("settings.reduceMotion")} hint={t("settings.reduceMotionHint")} value={ap.reduceMotion} onChange={(v) => change("appearance.reduceMotion", v)} />
-          <Row label={t("settings.fontSize")} hint={t("settings.fontSizeHint")}>
-            <NumberInput value={ap.fontSize} onChange={(v) => change("appearance.fontSize", v)} min={11} max={20} suffix="px" />
-          </Row>
-          <Row label={t("settings.density")} hint={t("settings.densityHint")}>
-            <Select value={ap.density} onChange={(e) => change("appearance.density", e.target.value)} options={["comfortable", "compact"]} />
-          </Row>
+          <BoolRow label={t("booksSection.booksPreferLive")} hint={t("booksSection.booksPreferLiveHint")} value={!!books.preferLiveSearch} onChange={(v) => change("books.preferLiveSearch", v)} />
         </Section>
 
-        {/* ---- Производительность ---- */}
-        <Section title={t("settings.performance")} icon={Gauge} badge="recommended on">
-          <BoolRow
-            label={t("settings.hwAccel")}
-            hint={t("settings.hwAccelHint")}
-            value={pf.hardwareAcceleration}
-            onChange={(v) => change("performance.hardwareAcceleration", v)}
-          />
-          <BoolRow
-            label={t("settings.bgBlur")}
-            hint={t("settings.bgBlurHint")}
-            value={pf.backgroundBlur}
-            onChange={(v) => change("performance.backgroundBlur", v)}
-          />
+        {/* ---- РњРѕРЅРёС‚РѕСЂРёРЅРі (РґРѕРє: monitor) ---- */}
+        <Section title={t("settings.monitor")} icon={Activity} badge="active">
+          <BoolRow label={t("monSettings.monAutoStart")} hint={t("monSettings.monAutoStartHint")} value={mon.autoStart} onChange={(v) => change("monitor.autoStart", v)} />
+          <Row label={t("monSettings.monRefreshMs")} hint={t("monSettings.monIntervalHint")}>
+            <Select value={String(mon.refreshMs ?? 500)} onChange={(e) => change("monitor.refreshMs", Number(e.target.value))} options={[100, 200, 300, 500, 750, 1000].map((ms) => ({ value: String(ms), label: String(ms) }))} />
+          </Row>
+          <BoolRow label={t("monSettings.monLhmAuto")} hint={t("monSettings.monLhmAutoHint")} value={mon.lhmAutoStart !== false} onChange={(v) => change("monitor.lhmAutoStart", v)} />
         </Section>
 
-        {/* ---- Окно ---- */}
-        <Section title={t("settings.window")} icon={MonitorCog} badge="future">
-          <Row label={t("settings.width")} hint={t("settings.widthHint")}>
-            <NumberInput value={win.width} onChange={(v) => change("window.width", v)} min={800} max={4000} />
-          </Row>
-          <Row label={t("settings.height")} hint={t("settings.heightHint")}>
-            <NumberInput value={win.height} onChange={(v) => change("window.height", v)} min={600} max={3000} />
-          </Row>
-          <BoolRow label={t("settings.rememberSize")} hint={t("settings.rememberSizeHint")} value={win.rememberSize} onChange={(v) => change("window.rememberSize", v)} />
+        {/* ---- My Space (РґРѕРє: myspace) ---- */}
+        <Section title={t("settings.myspace")} icon={User} badge="active">
+          <BoolRow label={t("myspaceSection.myAutosave")} hint={t("myspaceSection.myAutosaveHint")} value={mysp.autosave !== false} onChange={(v) => change("myspace.autosave", v)} />
+          <BoolRow label={t("myspaceSection.mySpellcheck")} hint={t("myspaceSection.mySpellcheckHint")} value={!!mysp.spellcheck} onChange={(v) => change("myspace.spellcheck", v)} />
         </Section>
 
-        {/* ---- Чат / ИИ ---- */}
+        {/* ---- Р§Р°С‚ / РР (РґРѕРє: aichat) вЂ” СЃРѕ СЃРІРѕСЂР°С‡РёРІР°РµРјС‹Рј РїРѕРґРјРµРЅСЋ API-РєР»СЋС‡РµР№ ---- */}
         <Section title={t("settings.chat")} icon={MessageSquare} badge="active">
+          <ApiKeysPanel />
           <Row label={t("chat.chatProvider")} hint={t("chat.chatProviderHint")}>
             <Select value={chat.provider} onChange={(e) => change("chat.provider", e.target.value)} options={["openai", "anthropic", "gemini", "mistral", "deepseek", "ollama"]} />
           </Row>
-          <Row label={t("chat.chatModel")} hint={t("chat.chatModelHint", { model: chat.model || "—" })}>
+          <Row label={t("chat.chatModel")} hint={t("chat.chatModelHint", { model: chat.model || "вЂ”" })}>
             <TextInput value={chat.model} onChange={(v) => change("chat.model", v)} placeholder="gpt-4o-mini" />
           </Row>
           <Row label={t("chat.chatTemperature")} hint={t("chat.chatTemperatureHint")}>
@@ -299,34 +400,8 @@ export default function SettingsPage() {
           </Row>
         </Section>
 
-        {/* ---- Store / загрузки ---- */}
-        <Section title={t("settings.storeSection")} icon={Package} badge="active">
-          <Row label={t("storeSection.storeDir")} hint={t("storeSection.storeDirHint")}>
-            <TextInput value={store.downloadDir} onChange={(v) => change("store.downloadDir", v)} placeholder="C:\\Users\\You\\Downloads" />
-          </Row>
-          <BoolRow label={t("storeSection.storeAutoIndex")} hint={t("storeSection.storeAutoIndexHint")} value={store.wingetAutoIndex} onChange={(v) => change("store.wingetAutoIndex", v)} />
-          <Row label={t("storeSection.storePageSize")} hint={t("storeSection.storePageSizeHint")}>
-            <Select value={String(store.pageSize)} onChange={(e) => change("store.pageSize", Number(e.target.value))} options={["20", "40", "80"]} />
-          </Row>
-        </Section>
-
-        {/* ---- Конвертер ---- */}
-        <Section title={t("settings.converter")} icon={Repeat} badge="future">
-          <Row label={t("convSection.convFfmpeg")} hint={t("convSection.convFfmpegHint")}>
-            <TextInput value={conv.ffmpegPath} onChange={(v) => change("converter.ffmpegPath", v)} placeholder="ffmpeg" />
-          </Row>
-          <BoolRow label={t("convSection.convAudio")} hint={t("convSection.convAudioHint")} value={conv.preserveAudio} onChange={(v) => change("converter.preserveAudio", v)} />
-        </Section>
-
-        {/* ---- Видео / Музыка ---- */}
-        <Section title={t("settings.media")} icon={Clapperboard} badge="future">
-          <Row label={t("media.mediaYtdlp")} hint={t("media.mediaYtdlpHint")}>
-            <TextInput value={media.ytdlpPath} onChange={(v) => change("media.ytdlpPath", v)} placeholder="yt-dlp" />
-          </Row>
-        </Section>
-
-        {/* ---- Голос ---- */}
-        <Section title={t("settings.voice")} icon={Mic2} badge="future">
+        {/* ---- Р“РѕР»РѕСЃ (РґРѕРє: voice) ---- */}
+        <Section title={t("settings.voice")} icon={Mic2} badge="active">
           <Row label={t("voiceSettings.voiceEngine")} hint={t("voiceSettings.voiceEngineHint")}>
             <Select value={voice.engine} onChange={(e) => change("voice.engine", e.target.value)} options={["local", "cloud"]} />
           </Row>
@@ -338,24 +413,80 @@ export default function SettingsPage() {
           </Row>
         </Section>
 
-        {/* ---- Архиватор ---- */}
-        <Section title={t("settings.archiver")} icon={Archive} badge="future">
+        {/* ---- РђСЂС…РёРІР°С‚РѕСЂ ---- */}
+        <Section title={t("settings.archiver")} icon={Archive} badge="active">
           <BoolRow label={t("archSettings.archInline")} hint={t("archSettings.archInlineHint")} value={arch.defaultOptions.css} onChange={(v) => change("archiver.defaultOptions.css", v)} />
           <BoolRow label={t("archSettings.archImages")} hint={t("archSettings.archImagesHint")} value={arch.defaultOptions.images} onChange={(v) => change("archiver.defaultOptions.images", v)} />
           <BoolRow label={t("archSettings.archFonts")} hint={t("archSettings.archFontsHint")} value={arch.defaultOptions.fonts} onChange={(v) => change("archiver.defaultOptions.fonts", v)} />
           <BoolRow label={t("archSettings.archScripts")} hint={t("archSettings.archScriptsHint")} value={arch.defaultOptions.removeScripts} onChange={(v) => change("archiver.defaultOptions.removeScripts", v)} />
         </Section>
 
-        {/* ---- Мониторинг ---- */}
-        <Section title={t("settings.monitor")} icon={Activity} badge="active">
-          <BoolRow label={t("monSettings.monAutoStart")} hint={t("monSettings.monAutoStartHint")} value={mon.autoStart} onChange={(v) => change("monitor.autoStart", v)} />
-          <Row label={t("monSettings.monRefreshMs")} hint={t("monSettings.monIntervalHint")}>
-            <Select value={String(mon.refreshMs ?? 500)} onChange={(e) => change("monitor.refreshMs", Number(e.target.value))} options={[100, 200, 300, 500, 750, 1000].map((ms) => ({ value: String(ms), label: String(ms) }))} />
+        {/* ---- РћР±С‰РёРµ (РґРѕРє: settings) ---- */}
+        <Section title={t("settings.general")} icon={Settings2} badge="saved auto">
+          <Row label={t("settings.language")} hint={t("settings.languageHint")}>
+            <Select
+              value={g.language}
+              onChange={(e) => change("general.language", e.target.value)}
+              options={LANGS.map((l) => ({ value: l.code, label: l.native }))}
+            />
           </Row>
-          <BoolRow label={t("monSettings.monLhmAuto")} hint={t("monSettings.monLhmAutoHint")} value={mon.lhmAutoStart !== false} onChange={(v) => change("monitor.lhmAutoStart", v)} />
+          <Row label={t("settings.startPage")} hint={t("settings.startPageHint")}>
+            <Select
+              value={g.startPage}
+              onChange={(e) => change("general.startPage", e.target.value)}
+              options={["store", "convert", "video", "music", "books", "monitor", "myspace", "aichat", "voice", "archive", "settings"]}
+            />
+          </Row>
+          <BoolRow label={t("settings.autoLaunch")} hint={t("settings.autoLaunchHint")} value={g.autoLaunch} onChange={(v) => change("general.autoLaunch", v)} />
+          <BoolRow label={t("settings.minimizeToTray")} hint={t("settings.minimizeToTrayHint")} value={g.minimizeToTray} onChange={(v) => change("general.minimizeToTray", v)} />
+          <BoolRow label={t("settings.closeToTray")} hint={t("settings.closeToTrayHint")} value={!!g.closeToTray} onChange={(v) => change("general.closeToTray", v)} />
         </Section>
 
-        {/* ---- Автобэкап ---- */}
+        {/* ---- Р’РЅРµС€РЅРёР№ РІРёРґ ---- */}
+        <Section title={t("settings.appearance")} icon={Palette} badge="live">
+          <Row label={t("settings.theme")} hint={t("settings.themeHint")}>
+            <Select value={ap.theme} onChange={(e) => change("appearance.theme", e.target.value)} options={["dark", "light"]} />
+          </Row>
+          <Row label={t("settings.accent")} hint={t("settings.accentHint")}>
+            <Select value={ap.accent} onChange={(e) => change("appearance.accent", e.target.value)} options={["amber", "violet", "teal", "coral"]} />
+          </Row>
+          <BoolRow label={t("settings.reduceMotion")} hint={t("settings.reduceMotionHint")} value={ap.reduceMotion} onChange={(v) => change("appearance.reduceMotion", v)} />
+          <Row label={t("settings.fontSize")} hint={t("settings.fontSizeHint")}>
+            <NumberInput value={ap.fontSize} onChange={(v) => change("appearance.fontSize", v)} min={11} max={20} suffix="px" />
+          </Row>
+          <Row label={t("settings.density")} hint={t("settings.densityHint")}>
+            <Select value={ap.density} onChange={(e) => change("appearance.density", e.target.value)} options={["comfortable", "compact"]} />
+          </Row>
+        </Section>
+
+        {/* ---- РџСЂРѕРёР·РІРѕРґРёС‚РµР»СЊРЅРѕСЃС‚СЊ ---- */}
+        <Section title={t("settings.performance")} icon={Gauge} badge="recommended on">
+          <BoolRow
+            label={t("settings.hwAccel")}
+            hint={t("settings.hwAccelHint")}
+            value={pf.hardwareAcceleration}
+            onChange={(v) => change("performance.hardwareAcceleration", v)}
+          />
+          <BoolRow
+            label={t("settings.bgBlur")}
+            hint={t("settings.bgBlurHint")}
+            value={pf.backgroundBlur}
+            onChange={(v) => change("performance.backgroundBlur", v)}
+          />
+        </Section>
+
+        {/* ---- РћРєРЅРѕ ---- */}
+        <Section title={t("settings.window")} icon={MonitorCog} badge="active">
+          <Row label={t("settings.width")} hint={t("settings.widthHint")}>
+            <NumberInput value={win.width} onChange={(v) => change("window.width", v)} min={800} max={4000} />
+          </Row>
+          <Row label={t("settings.height")} hint={t("settings.heightHint")}>
+            <NumberInput value={win.height} onChange={(v) => change("window.height", v)} min={600} max={3000} />
+          </Row>
+          <BoolRow label={t("settings.rememberSize")} hint={t("settings.rememberSizeHint")} value={win.rememberSize} onChange={(v) => change("window.rememberSize", v)} />
+        </Section>
+
+        {/* ---- РђРІС‚РѕР±СЌРєР°Рї ---- */}
         <Section title={t("settings.backup")} icon={Database} badge="active">
           <BoolRow label={t("backupSettings.backupEnable")} hint={t("backupSettings.backupEnableHint")} value={backup.auto} onChange={(v) => change("backup.auto", v)} />
           <Row label={t("backupSettings.backupInterval")} hint={t("backupSettings.backupIntervalHint")}>
@@ -363,7 +494,7 @@ export default function SettingsPage() {
           </Row>
         </Section>
 
-        {/* ---- Продвинутое ---- */}
+        {/* ---- РџСЂРѕРґРІРёРЅСѓС‚РѕРµ ---- */}
         <Section title={t("settings.advanced")} icon={ShieldCheck} badge="dev">
           <BoolRow label={t("advanced.advancedTelemetry")} hint={t("advanced.advancedTelemetryHint")} value={adv.telemetry} onChange={(v) => change("advanced.telemetry", v)} />
           <Row label={t("advanced.advancedLogLevel")} hint={t("advanced.advancedLogLevelHint")}>

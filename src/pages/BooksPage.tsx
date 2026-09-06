@@ -28,6 +28,15 @@ export default function BooksPage() {
   const [liveMode, setLiveMode] = useState(false);
   const [liveQuery, setLiveQuery] = useState("");
 
+  // Размер страницы и режим поиска по умолчанию берём из настроек (раздел «Книги»).
+  useEffect(() => {
+    api.getSettings().then((s: any) => {
+      const b = s?.books || {};
+      if (b.pageSize) setPageSize(Number(b.pageSize) || 40);
+      if (b.preferLiveSearch) setLiveMode(true);
+    }).catch(() => {});
+  }, []);
+
   const doSearch = useCallback(async (p: number) => {
     if (busyRef.current) return;
     busyRef.current = true;
@@ -106,7 +115,7 @@ const doLiveSearch = useCallback(async (q: string) => {
   };
 
   const handleResetCatalog = async () => {
-    if (!window.confirm("Очистить весь каталог книг? Это удалит базу данных и все синхронизированные книги.")) return;
+    if (!window.confirm(t("books.resetConfirm"))) return;
     setSyncStatus({ running: false, added: 0, error: "" });
     try {
       await api.resetBooksCatalog();
@@ -186,7 +195,7 @@ const statLine = stats ? `${t("common.all")}: ${stats.count}` : "";
         <Glass className="url-bar" style={{ flex: 1, padding: "6px 10px" }}>
           <Search size={16} />
           <input
-            placeholder={"Название"}
+            placeholder={t("books.titleQ")}
             value={liveMode ? liveQuery : titleQ}
             onChange={(e) => {
               if (liveMode) setLiveQuery(e.target.value);
@@ -198,7 +207,7 @@ const statLine = stats ? `${t("common.all")}: ${stats.count}` : "";
         <Glass className="url-bar" style={{ flex: 1, padding: "6px 10px" }}>
           <Search size={16} />
           <input
-            placeholder={"Автор"}
+            placeholder={t("books.authorQ")}
             value={liveMode ? "" : authorQ}
             onChange={(e) => { setAuthorQ(e.target.value); setPage(1); }}
             onKeyDown={(e) => { if (e.key === "Enter") doSearch(1); }}

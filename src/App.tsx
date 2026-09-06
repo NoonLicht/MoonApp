@@ -70,11 +70,15 @@ interface ShellProps {
   toolbarNode: React.ReactNode;
   setToolbarNode: (node: React.ReactNode) => void;
   blur: boolean;
+  accent: string;
+  fontSize: number;
+  reduceMotion: boolean;
+  density: string;
   proxyPanelVisible: boolean;
   setProxyPanelVisible: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
-function Shell({ active, setActive, theme, toggleTheme, toolbarNode, setToolbarNode, blur, proxyPanelVisible, setProxyPanelVisible }: ShellProps) {
+function Shell({ active, setActive, theme, toggleTheme, toolbarNode, setToolbarNode, blur, accent, fontSize, reduceMotion, density, proxyPanelVisible, setProxyPanelVisible }: ShellProps) {
   const { t, lang } = useI18n();
   // Если активная страница была удалена или сохранена в настройках устаревшая
   // (например "todo"), откатываемся к первой доступной странице.
@@ -84,8 +88,22 @@ function Shell({ active, setActive, theme, toggleTheme, toolbarNode, setToolbarN
   const MetaIcon = activeMeta.icon;
   const metaTitle = t(activeMeta.i18n);
 
+  // Классы/стили, управляемые разделом «Внешний вид»:
+  //  - accent-* подменяет акцентный цвет (см. theme.css);
+  //  - reduce-motion отключает анимации и blur-блобы;
+  //  - density-compact уменьшает отступы списков;
+  //  - fontSize задаёт базовый размер шрифта.
+  const shellCls = [
+    "app-shell",
+    `theme-${theme}`,
+    `accent-${accent}`,
+    density === "compact" ? "density-compact" : "",
+    reduceMotion ? "reduce-motion" : "",
+    blur ? "" : "no-blur",
+  ].filter(Boolean).join(" ");
+
   return (
-    <div className={`app-shell theme-${theme} ${blur ? "" : "no-blur"}`} dir={lang === "ar" ? "rtl" : "ltr"}>
+    <div className={shellCls} style={{ fontSize: `${fontSize}px` }} dir={lang === "ar" ? "rtl" : "ltr"}>
       <div className="mesh" aria-hidden="true">
         <span className="blob blob-a" />
         <span className="blob blob-b" />
@@ -153,10 +171,14 @@ export default function App() {
   const [active, setActive] = useState<PageId>("store");
   const [lang, setLang] = useState("en");
   const [blur, setBlur] = useState(true);
+  const [accent, setAccent] = useState("amber");
+  const [fontSize, setFontSize] = useState(14);
+  const [reduceMotion, setReduceMotion] = useState(false);
+  const [density, setDensity] = useState("comfortable");
   const [toolbarNode, setToolbarNode] = useState<React.ReactNode>(null);
   const [proxyPanelVisible, setProxyPanelVisible] = useState(false);
 
-  // Подтягиваем тему, стартовую страницу, язык и blur из настроек приложения.
+  // Подтягиваем тему, стартовую страницу, язык, blur и внешние вид из настроек.
   useEffect(() => {
     api.getSettings()
       .then((s) => {
@@ -165,17 +187,26 @@ export default function App() {
         if (sc?.general?.startPage) setActive(sc.general.startPage);
         if (sc?.general?.language) setLang(sc.general.language);
         if (sc?.performance?.backgroundBlur != null) setBlur(!!sc.performance.backgroundBlur);
+        // Внешний вид: акцент, размер шрифта, анимации, плотность.
+        if (sc?.appearance?.accent) setAccent(sc.appearance.accent);
+        if (sc?.appearance?.fontSize) setFontSize(Number(sc.appearance.fontSize) || 14);
+        setReduceMotion(!!sc?.appearance?.reduceMotion);
+        if (sc?.appearance?.density) setDensity(sc.appearance.density);
       })
       .catch(() => {});
   }, []);
 
-  // Синхронизация изменений из страницы настроек: тема, язык, blur.
+  // Синхронизация изменений из страницы настроек: тема, язык, blur, внешний вид.
   useEffect(() => {
     const onTheme = (e: Event) => setTheme((e as CustomEvent<string>).detail);
     const onSetting = (e: Event) => {
       const { path, value } = (e as CustomEvent<{ path: string; value: unknown }>).detail || {};
       if (path === "general.language") setLang(value as string);
       else if (path === "performance.backgroundBlur") setBlur(!!value);
+      else if (path === "appearance.accent") setAccent(String(value));
+      else if (path === "appearance.fontSize") setFontSize(Number(value) || 14);
+      else if (path === "appearance.reduceMotion") setReduceMotion(!!value);
+      else if (path === "appearance.density") setDensity(String(value));
     };
     window.addEventListener("app:theme", onTheme);
     window.addEventListener("app:setting", onSetting);
@@ -201,6 +232,10 @@ export default function App() {
         toolbarNode={toolbarNode}
         setToolbarNode={setToolbarNode}
         blur={blur}
+        accent={accent}
+        fontSize={fontSize}
+        reduceMotion={reduceMotion}
+        density={density}
         proxyPanelVisible={proxyPanelVisible}
         setProxyPanelVisible={setProxyPanelVisible}
       />

@@ -73,7 +73,11 @@
     "monitor": "监控",
     "backup": "自动备份",
     "advanced": "高级",
-    "loadError": "无法加载设置"
+    "loadError": "无法加载设置",
+    "video": "视频",
+    "musicSection": "音乐",
+    "books": "书籍",
+    "myspace": "我的空间"
   },
   "chat": {
     "chatProvider": "默认提供商",
@@ -87,7 +91,15 @@
     "chatStream": "流式响应",
     "chatStreamHint": "实时流式输出令牌",
     "chatContext": "上下文消息",
-    "chatContextHint": "请求中使用的最近消息数量"
+    "chatContextHint": "请求中使用的最近消息数量",
+    "keysSection": "API 密钥",
+    "keysHint": "密钥在本机加密存储（Electron 内为 DPAPI，否则 AES-256-GCM），绝不会回传给界面",
+    "keysEmpty": "没有可用的服务商",
+    "keyPlaceholder": "粘贴 API 密钥…",
+    "keySave": "保存",
+    "keySaved": "已保存",
+    "keyConfigured": "已配置",
+    "keyMissing": "未设置"
   },
   "storeSection": {
     "storeDir": "下载目录",
@@ -264,7 +276,10 @@
     "prev": "‹ 上一页",
     "next": "下一页 ›",
     "perPage": "每页",
-    "page": "第 {page} / {total} 页"
+    "page": "第 {page} / {total} 页",
+    "titleQ": "书名",
+    "authorQ": "作者",
+    "resetConfirm": "清空整个书籍目录？这将删除数据库及所有已同步的书籍。"
   },
   "monitor": {
     "title": "监控",
@@ -326,7 +341,13 @@
     "speeds": "传输速度",
     "levels": "级别",
     "controls": "控制",
-    "data": "数据"
+    "data": "数据",
+    "embedStarting": "正在启动转换服务…",
+    "embedError": "转换器启动失败",
+    "embedHint": "内置的 ConvertX 服务会在首次使用时自动启动。",
+    "embedMissing": "此安装缺少转换器运行时。",
+    "embedStart": "启动转换器",
+    "formatsNote": "媒体格式需要 PATH 中有 ffmpeg。文档/电子书需要相应工具（pandoc、Calibre、LibreOffice…）。"
   },
   "voice": {
     "title": "语音克隆",
@@ -516,5 +537,30 @@
   "_meta": {
     "code": "zh",
     "native": "中文"
+  },
+  "videoSection": {
+    "videoQuality": "默认最高画质",
+    "videoQualityHint": "新下载默认选中的最大视频高度（best = 不限制）",
+    "qualityBest": "最佳可用",
+    "videoEmbedThumb": "嵌入封面",
+    "videoEmbedThumbHint": "将封面写入下载的文件（需要 ffmpeg）",
+    "videoSubs": "下载字幕",
+    "videoSubsHint": "新下载默认选中所有可用字幕"
+  },
+  "musicSection": {
+    "musicQuality": "默认音质",
+    "musicQualityHint": "音乐页面默认选中的音质"
+  },
+  "booksSection": {
+    "booksPageSize": "每页数量",
+    "booksPageSizeHint": "本地目录中每页显示的书籍数",
+    "booksPreferLive": "默认实时搜索",
+    "booksPreferLiveHint": "默认通过实时 OPDS 即时搜索，而非本地数据库"
+  },
+  "myspaceSection": {
+    "myAutosave": "自动保存笔记",
+    "myAutosaveHint": "输入时自动保存笔记内容（关闭时：Ctrl+S 或关闭标签页保存）",
+    "mySpellcheck": "拼写检查",
+    "mySpellcheckHint": "在笔记编辑器中启用浏览器拼写检查"
   }
 }

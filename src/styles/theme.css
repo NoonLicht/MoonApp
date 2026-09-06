@@ -131,3 +131,22 @@ html, body{
 /* RTL (арабский): зеркалим смещения блобов, чтобы декор не вылезал за левый край. */
 .app-shell[dir="rtl"] .blob-a{ left:auto; right:-120px; }
 .app-shell[dir="rtl"] .blob-b{ right:auto; left:-160px; }
+/* --- Внешний вид из настроек: акцент, анимации, плотность --- */
+/* accent-* подменяет «основной» акцентный цвет (--amber используется
+   в UI как главный), остальные переменные остаются доступны. */
+.app-shell.accent-violet { --amber: var(--violet); --amber-soft: var(--violet-soft); }
+.app-shell.accent-teal { --amber: var(--teal); --amber-soft: var(--teal-soft); }
+.app-shell.accent-coral { --amber: var(--coral); --amber-soft: var(--coral-soft); }
+
+/* reduce-motion: гасим анимации, переходы и декоративные blur-блобы. */
+.app-shell.reduce-motion *,
+.app-shell.reduce-motion *::before,
+.app-shell.reduce-motion *::after {
+  animation: none !important;
+  transition: none !important;
+}
+.app-shell.reduce-motion .mesh { display: none; }
+
+/* density-compact: компактнее отступы в списках/карточках. */
+.app-shell.density-compact .set-row { padding: 6px 4px; }
+.app-shell.density-compact .set-section { padding: 10px 12px; gap: 2px; }
