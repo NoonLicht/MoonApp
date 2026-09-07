@@ -1,4 +1,4 @@
-"use strict";
+﻿"use strict";
 
 /**
  * Видеосжатие: гибридный 3-ступенчатый пайплайн.
@@ -181,13 +181,16 @@ function qualityArgs(enc, crf) {
 // Возвращает СПИСОК кандидатов (software → hardware): аппаратный энкодер
 // может числиться в сборке, но не работать на конкретной машине (нет QSV/
 // NVIDIA) — тогда пробуется следующий из списка.
-async function codecEncoderCandidates(ffmpeg, codec, crf) {
+async function codecEncoderCandidates(ffmpeg, codec, crf, gpuFirst) {
   const lists = {
     av1:  ["libsvtav1", "libaom-av1", "av1_nvenc", "av1_qsv"],
     hevc: ["libx265", "hevc_nvenc", "hevc_qsv"],
     h264: ["libx264", "libopenh264", "h264_nvenc", "h264_qsv", "mpeg4"],
   };
-  const prefs = lists[codec] || lists.av1;
+  let prefs = lists[codec] || lists.av1;
+  // Быстрый режим: аппаратные энкодеры впереди (десятки раз быстрее CPU,
+  // ценой чуть большего файла при том же CRF).
+  if (gpuFirst) prefs = [...prefs.filter((e) => e.endsWith("_nvenc")), ...prefs.filter((e) => !e.endsWith("_nvenc"))];
   let cands = await encoderCandidates(ffmpeg, prefs, crf);
   // Кросс-кодек страховка: в сборках без software HEVC/AV1 (как у пользователя
   // только qsv) последний шанс — программный H.264, он есть почти везде.
@@ -200,6 +203,7 @@ async function codecEncoderCandidates(ffmpeg, codec, crf) {
     if (c.enc === "libx264") c.args.push("-preset", "medium"); // у openh264 нет -preset
     if (c.enc === "libx265") c.args.push("-preset", "medium", "-tag:v", "hvc1");
     if (c.enc === "hevc_nvenc" || c.enc === "hevc_qsv") c.args.push("-tag:v", "hvc1");
+    if (c.enc === "av1_nvenc") c.args.push("-preset", "P5");
   }
   return cands;
 }
@@ -224,6 +228,13 @@ function startJob(opts) {
     targetHeight: ["original", "1080", "720", "480"].includes(String(opts.targetHeight)) ? String(opts.targetHeight) : "original",
     aiWanted: opts.aiUpscale !== false && opts.aiUpscale !== "false" && cfg.aiUpscale !== false,
     aiScale: opts.aiScale === "4x" ? "4x" : (cfg.aiScale === "4x" ? "4x" : "2x"),
+    // Модель апскейла: x4plus — лучшее качество (медленно), animevideov3 —
+    // специально для видео, в 3-5 раз быстрее.
+    aiModel: ["realesrgan-x4plus", "realesrgan-x4plus-anime", "realesr-animevideov3-x2", "realesr-animevideov3-x4"].includes(opts.aiModel)
+      ? opts.aiModel
+      : (["realesrgan-x4plus", "realesrgan-x4plus-anime", "realesr-animevideov3-x2", "realesr-animevideov3-x4"].includes(cfg.aiModel) ? cfg.aiModel : "realesr-animevideov3-x4"),
+    // GPU-first: аппаратный NVENC-энкодер впереди программного (быстро, файл больше).
+    gpuFirst: opts.gpuFirst === true || cfg.gpuFirst === true,
     info: {}, steps: [], aiSkipped: false, error: "", done: false,
     createdAt: Date.now(),
   };
@@ -280,7 +291,7 @@ async function runPipeline(job) {
     // Промежуточник: перебор H.264-энкодеров (software → hardware).
     // QSV/NVENC числятся в сборке, но работают только на совместимом GPU —
     // при неудаче берём следующего кандидата.
-    const interCands = await codecEncoderCandidates(ffmpeg, "h264", 12);
+    const interCands = await codecEncoderCandidates(ffmpeg, "h264", 12, job.gpuFirst);
     if (!interCands.length) throw new Error("no_h264_encoder");
     if (workH) {
       let interDone = false;
@@ -314,18 +325,26 @@ async function runPipeline(job) {
       fs.mkdirSync(framesUpDir, { recursive: true });
       // Разборка на PNG-кадры (-fps_mode: -vsync удалён в FFmpeg 7+).
       await runFfmpeg(ffmpeg, ["-y", "-i", job.inputPath, "-fps_mode", "passthrough", path.join(framesDir, "f_%06d.png")], tracker);
-      // Апскейл всей папки кадров (x4 модель; итоговый масштаб задаёт сборка).
-      await new Promise((resolve, reject) => {
-        const child = spawn(realesrgan,
-          ["-i", framesDir, "-o", framesUpDir, "-n", "realesrgan-x4plus",
-           "-g", String(Number(cfg.gpuDeviceId ?? 0))],
-          { windowsHide: true });
-        let errTail = "";
-        child.stderr.on("data", (d) => { errTail = (errTail + String(d)).slice(-2000); });
-        child.on("error", reject);
-        child.on("close", (code) => code === 0 ? resolve() : reject(new Error(`realesrgan exit ${code}: ${errTail.slice(-150)}`)));
-      });
-      job.steps.push("ai-upscale");
+      // Модель должна лежать в storage/bin/models — иначе честный скип, а не падение.
+      const modelOk = fs.existsSync(path.join(DIRS.storage, "bin", "models", `${job.aiModel}.bin`))
+        && fs.existsSync(path.join(DIRS.storage, "bin", "models", `${job.aiModel}.param`));
+      if (!modelOk) {
+        job.aiSkipped = true; job.aiSkipReason = "model_missing";
+        logger.warn("compressor.aiModelMissing", { model: job.aiModel });
+      } else {
+        // Апскейл всей папки кадров выбранной моделью (итоговый масштаб задаёт сборка).
+        await new Promise((resolve, reject) => {
+          const child = spawn(realesrgan,
+            ["-i", framesDir, "-o", framesUpDir, "-n", job.aiModel,
+             "-g", String(Number(cfg.gpuDeviceId ?? 0))],
+            { windowsHide: true });
+          let errTail = "";
+          child.stderr.on("data", (d) => { errTail = (errTail + String(d)).slice(-2000); });
+          child.on("error", reject);
+          child.on("close", (code) => code === 0 ? resolve() : reject(new Error(`realesrgan exit ${code}: ${errTail.slice(-150)}`)));
+        });
+        job.steps.push("ai-upscale");
+      }
       if (cleanup) { try { fs.rmSync(framesDir, { recursive: true, force: true }); } catch { /* ignore */ } }
     } else if (job.aiWanted) {
       job.aiSkipped = true; // включено, но бинарь Real-ESRGAN не найден
@@ -348,7 +367,7 @@ async function runPipeline(job) {
       ["-y", ...imageSeq, "-i", job.inputPath, ...audioArgs, ...vf, ...vArgs, outFile], tracker);
     // Перебор энкодеров (software → hardware): QSV/NVENC могут числиться в
     // сборке, но не работать на машине (нет GPU / нет пакетов на выходе).
-    const cands = await codecEncoderCandidates(ffmpeg, job.codec, job.crf);
+    const cands = await codecEncoderCandidates(ffmpeg, job.codec, job.crf, job.gpuFirst);
     if (!cands.length) throw new Error(`no_encoder_${job.codec}`);
     let encoded = false;
     for (const c of cands) {

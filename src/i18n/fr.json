@@ -687,7 +687,10 @@
     "aiDownloading": "Téléchargement du modèle… {{p}} %",
     "aiReady": "Upscale IA prêt",
     "aiMissingHint": "Le modèle IA n'est pas installé — téléchargez-le ou désactivez l'upscale IA.",
-    "ffmpegMissing": "FFmpeg introuvable — installez-le dans « Convertisseur » ou placez ffmpeg.exe dans storage/ffmpeg."
+    "ffmpegMissing": "FFmpeg introuvable — installez-le dans « Convertisseur » ou placez ffmpeg.exe dans storage/ffmpeg.",
+    "aiModel": "Modèle IA",
+    "gpuFirst": "Encodage GPU (rapide)",
+    "gpuFirstHint": "Encodeur NVENC matériel en priorité : beaucoup plus rapide, fichier un peu plus volumineux"
   },
   "cmpSettings": {
     "cmpCodec": "Codec de sortie",

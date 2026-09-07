@@ -687,7 +687,10 @@
     "aiDownloading": "正在下载模型… {{p}}%",
     "aiReady": "AI 放大已就绪",
     "aiMissingHint": "AI 模型未安装——请下载或关闭 AI 放大。",
-    "ffmpegMissing": "未找到 FFmpeg——请在“转换器”中安装，或将 ffmpeg.exe 放入 storage/ffmpeg。"
+    "ffmpegMissing": "未找到 FFmpeg——请在“转换器”中安装，或将 ffmpeg.exe 放入 storage/ffmpeg。",
+    "aiModel": "AI 模型",
+    "gpuFirst": "GPU 编码（快速）",
+    "gpuFirstHint": "优先使用硬件 NVENC 编码器：速度快得多，文件略大"
   },
   "cmpSettings": {
     "cmpCodec": "输出编码器",

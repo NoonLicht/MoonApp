@@ -1,4 +1,4 @@
-"use strict";
+﻿"use strict";
 
 /**
  * API видеосжатия.
@@ -114,6 +114,8 @@ router.post("/", upload.single("file"), (req, res) => {
       targetHeight: String(req.body?.targetHeight || "original"),
       aiUpscale: req.body?.aiUpscale !== "false" && req.body?.aiUpscale !== false,
       aiScale: String(req.body?.aiScale || "2x"),
+      aiModel: String(req.body?.aiModel || "realesr-animevideov3-x4"),
+      gpuFirst: req.body?.gpuFirst === "true" || req.body?.gpuFirst === true,
     });
     logger.action("compressor.start", { id: job.id, name: job.name, size: job.size });
     res.status(201).json(view(job));

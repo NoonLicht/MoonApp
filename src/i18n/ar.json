@@ -687,7 +687,10 @@
     "aiDownloading": "جارٍ تنزيل النموذج… {{p}}%",
     "aiReady": "تكبير الذكاء الاصطناعي جاهز",
     "aiMissingHint": "نموذج الذكاء الاصطناعي غير مثبت — قم بتنزيله أو أوقف التكبير.",
-    "ffmpegMissing": "لم يتم العثور على FFmpeg — ثبّته من صفحة «المحول» أو ضع ffmpeg.exe في storage/ffmpeg."
+    "ffmpegMissing": "لم يتم العثور على FFmpeg — ثبّته من صفحة «المحول» أو ضع ffmpeg.exe في storage/ffmpeg.",
+    "aiModel": "نموذج الذكاء الاصطناعي",
+    "gpuFirst": "ترميز على GPU (سريع)",
+    "gpuFirstHint": "أولوية لمرمّز NVENC العتادي: أسرع بكثير، الملف أكبر قليلاً"
   },
   "cmpSettings": {
     "cmpCodec": "مرمز الإخراج",

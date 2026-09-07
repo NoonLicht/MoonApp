@@ -687,7 +687,10 @@
     "aiDownloading": "Descargando modelo… {{p}}%",
     "aiReady": "Escalado IA listo",
     "aiMissingHint": "El modelo de IA no está instalado: descárguelo o desactive el escalado IA.",
-    "ffmpegMissing": "FFmpeg no encontrado: instálelo en «Convertidor» o coloque ffmpeg.exe en storage/ffmpeg."
+    "ffmpegMissing": "FFmpeg no encontrado: instálelo en «Convertidor» o coloque ffmpeg.exe en storage/ffmpeg.",
+    "aiModel": "Modelo de IA",
+    "gpuFirst": "Codificación en GPU (rápida)",
+    "gpuFirstHint": "Codificador NVENC por hardware primero: mucho más rápido, archivo un poco más grande"
   },
   "cmpSettings": {
     "cmpCodec": "Códec de salida",

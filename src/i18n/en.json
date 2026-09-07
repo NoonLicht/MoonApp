@@ -684,7 +684,10 @@
     "aiDownloading": "Downloading model… {{p}}%",
     "aiReady": "AI upscale ready",
     "aiMissingHint": "AI model is not installed — download it or disable AI upscale.",
-    "ffmpegMissing": "FFmpeg not found — install it in Converter or put ffmpeg.exe in storage/ffmpeg."
+    "ffmpegMissing": "FFmpeg not found — install it in Converter or put ffmpeg.exe in storage/ffmpeg.",
+    "aiModel": "AI Model",
+    "gpuFirst": "GPU Encoding (Fast)",
+    "gpuFirstHint": "Hardware NVENC encoder first: much faster, file is slightly larger"
   },
   "cmpSettings": {
     "cmpCodec": "Output codec",

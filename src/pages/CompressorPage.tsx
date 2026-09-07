@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from "react";
-import { FileVideo, Upload, Download, Gauge, Sparkles, MonitorPlay, Trash2, Copy, FolderOpen, Columns2, Info, X } from "lucide-react";
+﻿import React, { useState, useEffect, useRef } from "react";
+import { FileVideo, Upload, Download, Gauge, Sparkles, MonitorPlay, Trash2, Copy, FolderOpen, Columns2, Info, X, Zap } from "lucide-react";
 import { Glass, Btn, Badge, Select, SectionHead, ProgressBar, EmptyHint } from "../components/ui";
 import { usePageToolbar } from "../components/Toolbar";
 import { useI18n } from "../i18n";
@@ -41,6 +41,8 @@ export default function CompressorPage() {
   const [targetH, setTargetH] = useState("original");
   const [ai, setAi] = useState(true);
   const [aiScale, setAiScale] = useState("2x");
+  const [aiModel, setAiModel] = useState("realesr-animevideov3-x4");
+  const [gpuFirst, setGpuFirst] = useState(false);
   // Состояние Real-ESRGAN: установлен / качается / ошибка.
   const [aiInfo, setAiInfo] = useState<{ installed: boolean; downloading: boolean; progress: number; error: string } | null>(null);
   const [job, setJob] = useState<CompressorJob | null>(null);
@@ -58,6 +60,8 @@ export default function CompressorPage() {
         if (typeof c.codec === "string") setCodec(c.codec);
         if (typeof c.aiUpscale === "boolean") setAi(c.aiUpscale);
         if (typeof c.aiScale === "string") setAiScale(c.aiScale);
+        if (typeof c.aiModel === "string") setAiModel(c.aiModel);
+        if (typeof c.gpuFirst === "boolean") setGpuFirst(c.gpuFirst);
       }
     }).catch(() => { /* дефолты из кода */ });
     // Статус Real-ESRGAN (для кнопки скачивания модели).
@@ -104,7 +108,7 @@ export default function CompressorPage() {
     if (!file) return;
     setDefect("");
     try {
-      const j = await api.compressVideo(file, { crf, codec, targetHeight: targetH, aiUpscale: ai, aiScale });
+      const j = await api.compressVideo(file, { crf, codec, targetHeight: targetH, aiUpscale: ai, aiScale, aiModel, gpuFirst });
       setJob(j);
       startPolling(j.id);
     } catch (e: any) {
@@ -193,6 +197,9 @@ export default function CompressorPage() {
             <Field label={t("cmp.aiScale")}>
               <Select value={aiScale} onChange={(e) => setAiScale(e.target.value)} options={["2x", "4x"]} />
             </Field>
+            <Field label={t("cmp.aiModel")}>
+              <Select value={aiModel} onChange={(e) => setAiModel(e.target.value)} options={["realesr-animevideov3-x4", "realesr-animevideov3-x2", "realesrgan-x4plus-anime", "realesrgan-x4plus"]} />
+            </Field>
           </div>
 
           {/* --- ИИ-апскейл: стилизованный тумблер + статус/скачивание модели --- */}
@@ -202,6 +209,13 @@ export default function CompressorPage() {
               <Sparkles size={15} strokeWidth={2} />
               <span>{t("cmp.aiUpscale")}</span>
               <span className={`cmp-switch ${ai ? "on" : ""}`} />
+            </button>
+            {/* Быстрое кодирование: NVENC впереди программных энкодеров. */}
+            <button type="button" className={`option-item ${gpuFirst ? "is-on" : ""}`}
+              onClick={() => setGpuFirst(!gpuFirst)} aria-pressed={gpuFirst} title={t("cmp.gpuFirstHint")}>
+              <Zap size={15} strokeWidth={2} />
+              <span>{t("cmp.gpuFirst")}</span>
+              <span className={`cmp-switch ${gpuFirst ? "on" : ""}`} />
             </button>
             {ai && aiInfo && !aiInfo.installed && !aiInfo.downloading && (
               <Btn icon={Download} onClick={aiDownload}>{t("cmp.aiDownload")}</Btn>

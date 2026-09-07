@@ -1,4 +1,4 @@
-const fs = require("fs");
+﻿const fs = require("fs");
 const { FILES } = require("./config");
 const logger = require("./logger");
 
@@ -118,6 +118,8 @@ const DEFAULTS = {
     crf: 22,                 // 0–50; 20–25 — sweet spot
     aiUpscale: true,         // Real-ESRGAN на GPU (если бинарь найден)
     aiScale: "2x",           // 2x | 4x
+    aiModel: "realesr-animevideov3-x4", // быстрая видео-модель; x4plus — качество
+    gpuFirst: false,         // быстрое кодирование через NVENC (файл чуть больше)
     gpuDeviceId: 0,          // ID GPU для Real-ESRGAN (gpus=Id:N)
     cleanupTemp: true,       // чистить промежуточные файлы после сжатия
   },
