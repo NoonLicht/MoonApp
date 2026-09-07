@@ -121,14 +121,64 @@ function runFfmpeg(ffmpeg, args, onProgress) {
   });
 }
 
-// Кодек-специфика: имя энкодера + аргументы качества.
-function encoderArgs(codec, crf) {
-  switch (codec) {
-    case "hevc": return ["-c:v", "libx265", "-crf", String(crf), "-preset", "medium", "-tag:v", "hvc1"];
-    case "h264": return ["-c:v", "libx264", "-crf", String(crf), "-preset", "medium"];
-    case "av1":
-    default:     return ["-c:v", "libsvtav1", "-crf", String(crf), "-preset", "6"];
-  }
+// --- Автоподбор энкодера ---
+// Сборки FFmpeg различаются: где-то есть libx264/libx265, где-то только
+// NVENC/QSV/OpenH264. Запрашиваем список энкодеров один раз и выбираем
+// первый доступный из приоритетного списка.
+let encoderCache = null;
+function availableEncoders(ffmpeg) {
+  if (encoderCache) return encoderCache;
+  return new Promise((resolve) => {
+    const child = spawn(ffmpeg, ["-hide_banner", "-encoders"], { windowsHide: true });
+    let out = "";
+    child.stdout.on("data", (d) => { out += String(d); });
+    child.stderr.on("data", (d) => { out += String(d); });
+    child.on("error", () => { encoderCache = new Set(); resolve(encoderCache); });
+    child.on("close", () => {
+      const set = new Set();
+      for (const line of out.split(/\r?\n/)) {
+        const m = /^\s*[VAS]+\.[.\dSBSX]+\s+(\S+)/.exec(line);
+        if (m) set.add(m[1]);
+      }
+      encoderCache = set;
+      resolve(set);
+    });
+  });
+}
+
+// Первый доступный энкодер из списка предпочтений (или null).
+async function pickEncoder(ffmpeg, prefs) {
+  const avail = await availableEncoders(ffmpeg);
+  for (const e of prefs) if (avail.has(e)) return e;
+  return null;
+}
+
+// Аргументы качества под конкретный энкодер (CRF-подобное поведение).
+function qualityArgs(enc, crf) {
+  if (enc === "mpeg4") return ["-qscale:v", String(Math.max(2, Math.min(31, Math.round(crf / 1.6))))];
+  if (enc.endsWith("_nvenc")) return ["-rc", "vbr", "-cq", String(Math.max(0, Math.min(51, crf)))];
+  if (enc.endsWith("_qsv")) return ["-global_quality", String(Math.max(0, Math.min(51, crf)))];
+  return ["-crf", String(crf)];
+}
+
+// Кодек-специфика: предпочтительные энкодеры + параметры качества.
+// Порядок — от лучшего сжатия к совместимости; ускорители GPU почти в конце,
+// т.к. при том же качестве дают файл больше программных.
+async function encoderArgs(ffmpeg, codec, crf) {
+  const lists = {
+    av1:  ["libsvtav1", "libaom-av1", "av1_nvenc", "av1_qsv"],
+    hevc: ["libx265", "hevc_nvenc", "hevc_qsv"],
+    h264: ["libx264", "libopenh264", "h264_nvenc", "h264_qsv", "mpeg4"],
+  };
+  const prefs = lists[codec] || lists.av1;
+  const enc = await pickEncoder(ffmpeg, prefs);
+  if (!enc) return null; // ни одного энкодера для кодека нет
+  const args = ["-c:v", enc, ...qualityArgs(enc, crf)];
+  if (enc === "libsvtav1") args.push("-preset", "6");
+  if (enc === "libx264" || enc === "libopenh264") args.push("-preset", "medium");
+  if (enc === "libx265") args.push("-preset", "medium", "-tag:v", "hvc1");
+  if (enc === "hevc_nvenc" || enc === "hevc_qsv") args.push("-tag:v", "hvc1");
+  return args;
 }
 
 // Бинарь Real-ESRGAN ищется в storage/bin (кладётся вручную или установщиком).
@@ -197,9 +247,13 @@ async function runPipeline(job) {
 
     // --- Шаг 1: Downscale до рабочей высоты. Звук: AAC (тащится до финала). ---
     setStage(job, "downscale", 1, 0, workH ? 40 : 10);
+    // Промежуточник: первый доступный H.264-энкодер (у сборок без libx264 —
+    // OpenH264/NVENC/QSV/mpeg4), near-lossless качество.
+    const interEnc = await encoderArgs(ffmpeg, "h264", 12);
+    if (!interEnc) throw new Error("no_h264_encoder");
     if (workH) {
       await runFfmpeg(ffmpeg,
-        ["-y", "-i", job.inputPath, "-vf", `scale=-2:${workH}`, "-c:v", "libx264", "-crf", "12", "-preset", "fast",
+        ["-y", "-i", job.inputPath, "-vf", `scale=-2:${workH}`, ...interEnc,
          "-c:a", "aac", "-b:a", "192k", downscaled],
         tracker);
       job.steps.push("downscale");
@@ -250,18 +304,10 @@ async function runPipeline(job) {
       : ["-i", job.inputPath];
     const tryEncode = (vArgs) => runFfmpeg(ffmpeg,
       ["-y", ...imageSeq, "-i", job.inputPath, ...audioArgs, ...vf, ...vArgs, outFile], tracker);
-    if (job.codec === "av1") {
-      // svtav1 есть не во всех сборках FFmpeg — при ошибке откат на libaom-av1.
-      try {
-        await tryEncode(encoderArgs("av1", job.crf));
-      } catch (e) {
-        if (/libsvtav1|Unknown encoder|Invalid encoder/i.test(String(e.message))) {
-          await tryEncode(["-c:v", "libaom-av1", "-crf", String(job.crf), "-cpu-used", "4"]);
-        } else throw e;
-      }
-    } else {
-      await tryEncode(encoderArgs(job.codec, job.crf));
-    }
+    // Автоподбор энкодера под выбранный кодек (fallback на NVENC/QSV/aom).
+    const vArgs = await encoderArgs(ffmpeg, job.codec, job.crf);
+    if (!vArgs) throw new Error(`no_encoder_${job.codec}`);
+    await tryEncode(vArgs);
     if (cleanup) {
       if (framesUpDir) { try { fs.rmSync(framesUpDir, { recursive: true, force: true }); } catch { /* ignore */ } }
       try { fs.rmSync(job.inputPath, { force: true }); } catch { /* ignore */ }
