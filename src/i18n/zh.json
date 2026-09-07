@@ -690,7 +690,8 @@
     "ffmpegMissing": "未找到 FFmpeg——请在“转换器”中安装，或将 ffmpeg.exe 放入 storage/ffmpeg。",
     "aiModel": "AI 模型",
     "gpuFirst": "GPU 编码（快速）",
-    "gpuFirstHint": "优先使用硬件 NVENC 编码器：速度快得多，文件略大"
+    "gpuFirstHint": "优先使用硬件 NVENC 编码器：速度快得多，文件略大",
+    "upHeight": "超分目标"
   },
   "cmpSettings": {
     "cmpCodec": "输出编码器",

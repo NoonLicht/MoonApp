@@ -119,6 +119,7 @@ const DEFAULTS = {
     aiUpscale: true,         // Real-ESRGAN на GPU (если бинарь найден)
     aiScale: "2x",           // 2x | 4x
     aiModel: "realesr-animevideov3-x4", // быстрая видео-модель; x4plus — качество
+    upHeight: "none",        // цель апскейла: 1080/1440/2160/4320; none = выкл
     gpuFirst: false,         // быстрое кодирование через NVENC (файл чуть больше)
     gpuDeviceId: 0,          // ID GPU для Real-ESRGAN (gpus=Id:N)
     cleanupTemp: true,       // чистить промежуточные файлы после сжатия

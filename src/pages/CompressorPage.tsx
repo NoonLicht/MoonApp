@@ -40,8 +40,8 @@ export default function CompressorPage() {
   const [codec, setCodec] = useState("av1");
   const [targetH, setTargetH] = useState("original");
   const [ai, setAi] = useState(true);
-  const [aiScale, setAiScale] = useState("2x");
   const [aiModel, setAiModel] = useState("realesr-animevideov3-x4");
+  const [upHeight, setUpHeight] = useState("none");
   const [gpuFirst, setGpuFirst] = useState(false);
   // Состояние Real-ESRGAN: установлен / качается / ошибка.
   const [aiInfo, setAiInfo] = useState<{ installed: boolean; downloading: boolean; progress: number; error: string } | null>(null);
@@ -59,7 +59,8 @@ export default function CompressorPage() {
         if (typeof c.crf === "number") setCrf(c.crf);
         if (typeof c.codec === "string") setCodec(c.codec);
         if (typeof c.aiUpscale === "boolean") setAi(c.aiUpscale);
-        if (typeof c.aiScale === "string") setAiScale(c.aiScale);
+        if (typeof c.aiScale === "string") { /* aiScale устарел: заменён upHeight */ }
+        if (typeof c.upHeight === "string") setUpHeight(c.upHeight);
         if (typeof c.aiModel === "string") setAiModel(c.aiModel);
         if (typeof c.gpuFirst === "boolean") setGpuFirst(c.gpuFirst);
       }
@@ -108,7 +109,7 @@ export default function CompressorPage() {
     if (!file) return;
     setDefect("");
     try {
-      const j = await api.compressVideo(file, { crf, codec, targetHeight: targetH, aiUpscale: ai, aiScale, aiModel, gpuFirst });
+      const j = await api.compressVideo(file, { crf, codec, targetHeight: targetH, aiUpscale: ai, upHeight, aiModel, gpuFirst });
       setJob(j);
       startPolling(j.id);
     } catch (e: any) {
@@ -191,24 +192,29 @@ export default function CompressorPage() {
             <Field label={t("cmp.codec")}>
               <Select value={codec} onChange={(e) => setCodec(e.target.value)} options={["av1", "hevc", "h264"]} />
             </Field>
+            {/* Разрешение сжатия: до чего ужимаем перед апскейлом (или итог, без ИИ). */}
             <Field label={t("cmp.resolution")}>
               <Select value={targetH} onChange={(e) => setTargetH(e.target.value)} options={["original", "1080", "720", "480"]} />
             </Field>
-            <Field label={t("cmp.aiScale")}>
-              <Select value={aiScale} onChange={(e) => setAiScale(e.target.value)} options={["2x", "4x"]} />
+            {/* Цель апскейла: none = без ИИ-этапа. */}
+            <Field label={t("cmp.upHeight")}>
+              <Select value={upHeight} onChange={(e) => setUpHeight(e.target.value)} options={["none", "1080", "1440", "2160", "4320"]} />
             </Field>
-            <Field label={t("cmp.aiModel")}>
-              <Select value={aiModel} onChange={(e) => setAiModel(e.target.value)} options={["realesr-animevideov3-x4", "realesr-animevideov3-x2", "realesrgan-x4plus-anime", "realesrgan-x4plus"]} />
-            </Field>
+            {upHeight !== "none" && (
+              <Field label={t("cmp.aiModel")}>
+                <Select value={aiModel} onChange={(e) => setAiModel(e.target.value)} options={["realesr-animevideov3-x4", "realesr-animevideov3-x2", "realesrgan-x4plus-anime", "realesrgan-x4plus"]} />
+              </Field>
+            )}
           </div>
 
           {/* --- ИИ-апскейл: стилизованный тумблер + статус/скачивание модели --- */}
           <div className="cmp-ai-row">
-            <button type="button" className={`option-item ${ai ? "is-on" : ""}`}
-              onClick={() => setAi(!ai)} aria-pressed={ai}>
+            <button type="button" className={`option-item ${ai && upHeight !== "none" ? "is-on" : ""}`}
+              onClick={() => setAi(!ai)} aria-pressed={ai} disabled={upHeight === "none"}
+              title={upHeight === "none" ? t("cmp.upHeight") : undefined}>
               <Sparkles size={15} strokeWidth={2} />
               <span>{t("cmp.aiUpscale")}</span>
-              <span className={`cmp-switch ${ai ? "on" : ""}`} />
+              <span className={`cmp-switch ${ai && upHeight !== "none" ? "on" : ""}`} />
             </button>
             {/* Быстрое кодирование: NVENC впереди программных энкодеров. */}
             <button type="button" className={`option-item ${gpuFirst ? "is-on" : ""}`}

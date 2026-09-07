@@ -690,7 +690,8 @@
     "ffmpegMissing": "FFmpeg no encontrado: instálelo en «Convertidor» o coloque ffmpeg.exe en storage/ffmpeg.",
     "aiModel": "Modelo de IA",
     "gpuFirst": "Codificación en GPU (rápida)",
-    "gpuFirstHint": "Codificador NVENC por hardware primero: mucho más rápido, archivo un poco más grande"
+    "gpuFirstHint": "Codificador NVENC por hardware primero: mucho más rápido, archivo un poco más grande",
+    "upHeight": "Objetivo de escalado"
   },
   "cmpSettings": {
     "cmpCodec": "Códec de salida",

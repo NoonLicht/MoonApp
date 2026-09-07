@@ -690,7 +690,8 @@
     "ffmpegMissing": "لم يتم العثور على FFmpeg — ثبّته من صفحة «المحول» أو ضع ffmpeg.exe في storage/ffmpeg.",
     "aiModel": "نموذج الذكاء الاصطناعي",
     "gpuFirst": "ترميز على GPU (سريع)",
-    "gpuFirstHint": "أولوية لمرمّز NVENC العتادي: أسرع بكثير، الملف أكبر قليلاً"
+    "gpuFirstHint": "أولوية لمرمّز NVENC العتادي: أسرع بكثير، الملف أكبر قليلاً",
+    "upHeight": "هدف التكبير"
   },
   "cmpSettings": {
     "cmpCodec": "مرمز الإخراج",

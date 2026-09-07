@@ -114,6 +114,7 @@ router.post("/", upload.single("file"), (req, res) => {
       targetHeight: String(req.body?.targetHeight || "original"),
       aiUpscale: req.body?.aiUpscale !== "false" && req.body?.aiUpscale !== false,
       aiScale: String(req.body?.aiScale || "2x"),
+      upHeight: String(req.body?.upHeight || "none"),
       aiModel: String(req.body?.aiModel || "realesr-animevideov3-x4"),
       gpuFirst: req.body?.gpuFirst === "true" || req.body?.gpuFirst === true,
     });

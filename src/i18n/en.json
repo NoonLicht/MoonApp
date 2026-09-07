@@ -687,7 +687,8 @@
     "ffmpegMissing": "FFmpeg not found — install it in Converter or put ffmpeg.exe in storage/ffmpeg.",
     "aiModel": "AI Model",
     "gpuFirst": "GPU Encoding (Fast)",
-    "gpuFirstHint": "Hardware NVENC encoder first: much faster, file is slightly larger"
+    "gpuFirstHint": "Hardware NVENC encoder first: much faster, file is slightly larger",
+    "upHeight": "Upscale Target"
   },
   "cmpSettings": {
     "cmpCodec": "Output codec",

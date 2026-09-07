@@ -228,6 +228,10 @@ function startJob(opts) {
     targetHeight: ["original", "1080", "720", "480"].includes(String(opts.targetHeight)) ? String(opts.targetHeight) : "original",
     aiWanted: opts.aiUpscale !== false && opts.aiUpscale !== "false" && cfg.aiUpscale !== false,
     aiScale: opts.aiScale === "4x" ? "4x" : (cfg.aiScale === "4x" ? "4x" : "2x"),
+    // Целевое разрешение апскейла (пользователь выбирает сам); none = без ИИ.
+    upHeight: ["none", "1080", "1440", "2160", "4320"].includes(String(opts.upHeight))
+      ? String(opts.upHeight)
+      : (["1080", "1440", "2160", "4320"].includes(String(cfg.upHeight)) ? String(cfg.upHeight) : "none"),
     // Модель апскейла: x4plus — лучшее качество (медленно), animevideov3 —
     // специально для видео, в 3-5 раз быстрее.
     aiModel: ["realesrgan-x4plus", "realesrgan-x4plus-anime", "realesr-animevideov3-x2", "realesr-animevideov3-x4"].includes(opts.aiModel)
@@ -254,6 +258,9 @@ function setStage(job, stage, step, base, span) {
 }
 
 async function runPipeline(job) {
+  // Временные файлы задания (сегменты кадров, апскейл-кадры) — на уровне
+  // функции, чтобы finally мог их почистить даже после ошибки в try.
+  const tmpDirs = [];
   // Файл мог исчезнуть (TTL-чистка, ручное удаление) — честная ошибка вместо
   // каскада «no_working_encoder» от каждого энкодера.
   if (!fs.existsSync(job.inputPath)) {
@@ -314,54 +321,113 @@ async function runPipeline(job) {
       job.inputPath = downscaled;
     }
 
-    // --- Шаг 2: AI Upscale покадрово (realesrgan-x4plus) ---
+    // --- Шаг 2: AI Upscale сегментной «лентой» ---
+    // Кадры пишутся в JPEG (в разы дешевле PNG), декодер и Real-ESRGAN
+    // работают параллельно: пока GPU апскейлит сегмент i, CPU уже пишет i+1.
     const realesrgan = findRealesrgan();
     let framesUpDir = null;
-    if (job.aiWanted && realesrgan) {
+    const upH = ["1080", "1440", "2160", "4320"].includes(String(job.upHeight)) ? Number(job.upHeight) : null;
+    if (job.aiWanted && upH && realesrgan) {
       setStage(job, "upscale", 2, workH ? 40 : 10, 20);
-      const framesDir = path.join(DIRS.compressorOut, `fr_${stamp}`);
+      const baseH = workH || Number(job.info.height) || 0;
+      // Коэффициент апскейла = цель / рабочая высота. animevideov3 умеет -s 2/3/4,
+      // x4plus-модели всегда 4x.
+      const ratio = baseH > 0 ? upH / baseH : 4;
+      const s = job.aiModel.startsWith("realesr-animevideov3")
+        ? String(Math.max(2, Math.min(4, Math.round(ratio))))
+        : "4";
       framesUpDir = path.join(DIRS.compressorOut, `fru_${stamp}`);
-      fs.mkdirSync(framesDir, { recursive: true });
       fs.mkdirSync(framesUpDir, { recursive: true });
-      // Разборка на PNG-кадры (-fps_mode: -vsync удалён в FFmpeg 7+).
-      await runFfmpeg(ffmpeg, ["-y", "-i", job.inputPath, "-fps_mode", "passthrough", path.join(framesDir, "f_%06d.png")], tracker);
-      // Модель должна лежать в storage/bin/models — иначе честный скип, а не падение.
+      tmpDirs.push(framesUpDir);
       const modelOk = fs.existsSync(path.join(DIRS.storage, "bin", "models", `${job.aiModel}.bin`))
         && fs.existsSync(path.join(DIRS.storage, "bin", "models", `${job.aiModel}.param`));
       if (!modelOk) {
         job.aiSkipped = true; job.aiSkipReason = "model_missing";
         logger.warn("compressor.aiModelMissing", { model: job.aiModel });
+        framesUpDir = null;
       } else {
-        // Апскейл всей папки кадров выбранной моделью (итоговый масштаб задаёт сборка).
+        // Сегментная лента: ffmpeg пишет сегмент N+1, GPU апскейлит сегмент N.
+        const SEG_SEC = 15;
+        const fpsN = Number(job.info.fps) || 30;
+        const duration = await probeDuration(ffprobe, job.inputPath);
+        const numSegs = Math.max(1, Math.ceil((duration || 60) / SEG_SEC));
+        const totalFrames = Math.round((duration || 60) * fpsN);
+        let nextNum = 1; // глобальный номер кадра (без дыр между сегментами)
+        let nextSeg = 0;
+        let upActive = 0;
+        const segErr = [];
         await new Promise((resolve, reject) => {
-          const child = spawn(realesrgan,
-            ["-i", framesDir, "-o", framesUpDir, "-n", job.aiModel,
-             "-g", String(Number(cfg.gpuDeviceId ?? 0))],
-            { windowsHide: true });
-          let errTail = "";
-          child.stderr.on("data", (d) => { errTail = (errTail + String(d)).slice(-2000); });
-          child.on("error", reject);
-          child.on("close", (code) => code === 0 ? resolve() : reject(new Error(`realesrgan exit ${code}: ${errTail.slice(-150)}`)));
+          let finished = false;
+          const maybeDone = () => { if (!finished && nextSeg >= numSegs && upActive === 0) { finished = true; resolve(); } };
+          const startUpscale = (i, dir) => {
+            upActive++;
+            const child = spawn(realesrgan,
+              ["-i", dir, "-o", framesUpDir, "-n", job.aiModel, "-f", "jpg",
+               "-s", s, "-j", "2:4:4",
+               ...(Number(cfg.gpuDeviceId) > 0 ? ["-g", String(Number(cfg.gpuDeviceId))] : [])],
+              { windowsHide: true });
+            let errTail = "";
+            child.stderr.on("data", (d) => { errTail = (errTail + String(d)).slice(-2000); });
+            child.on("error", (e) => { upActive--; segErr.push(String(e)); maybeDone(); });
+            child.on("close", (code) => {
+              upActive--;
+              if (code !== 0) segErr.push(`realesrgan exit ${code}: ${errTail.slice(-150)}`);
+              // Прогресс по фактическому числу готовых кадров.
+              try {
+                const done = fs.readdirSync(framesUpDir).length;
+                job.progress = Math.min(99, Math.round((workH ? 40 : 10) + (workH ? 20 : 20) * (done / Math.max(1, totalFrames))));
+              } catch { /* ignore */ }
+              try { fs.rmSync(dir, { recursive: true, force: true }); } catch { /* ignore */ }
+              maybeDone();
+            });
+          };
+          const startDecode = () => {
+            if (nextSeg >= numSegs) return;
+            const i = nextSeg++;
+            const dir = path.join(DIRS.compressorOut, `frs_${stamp}_${i}`);
+            fs.mkdirSync(dir, { recursive: true });
+            tmpDirs.push(dir);
+            const start = i * SEG_SEC;
+            const args = ["-y", "-ss", String(start), "-t", String(SEG_SEC), "-i", job.inputPath,
+              "-fps_mode", "passthrough", "-q:v", "2", "-start_number", String(nextNum),
+              path.join(dir, "f_%06d.jpg")];
+            nextNum += Math.round(SEG_SEC * fpsN); // сегменты одинаковой длины
+            runFfmpeg(ffmpeg, args, tracker).then(() => {
+              startUpscale(i, dir);
+              startDecode(); // держим декодер вперёд на 1 сегмент
+            }).catch((e) => {
+              logger.warn("compressor.segDecodeFail", { seg: i, err: String(e.message || e).slice(0, 160) });
+              segErr.push(String(e.message || e));
+              startDecode();
+              if (nextSeg >= numSegs && upActive === 0) { finished = true; reject(new Error(segErr[0] || "decode_failed")); }
+            });
+          };
+          startDecode();
         });
-        job.steps.push("ai-upscale");
+        if (segErr.length) {
+          // Апскейл не удался — продолжаем без него, из downscale-источника.
+          logger.warn("compressor.aiFallback", { errs: segErr.slice(0, 2) });
+          framesUpDir = null; job.aiSkipped = true; job.aiSkipReason = "upscale_failed";
+        } else {
+          job.steps.push("ai-upscale");
+        }
       }
-      if (cleanup) { try { fs.rmSync(framesDir, { recursive: true, force: true }); } catch { /* ignore */ } }
-    } else if (job.aiWanted) {
+    } else if (job.aiWanted && upH) {
       job.aiSkipped = true; // включено, но бинарь Real-ESRGAN не найден
     }
 
     // --- Шаг 3: Кодирование AV1/HEVC/H.264 + звук из исходника ---
-    setStage(job, "encode", 3, (job.aiWanted && framesUpDir) ? 60 : (workH ? 40 : 10), 40);
+    setStage(job, "encode", 3, (framesUpDir) ? 60 : (workH ? 40 : 10), 40);
     const outFile = path.join(DIRS.compressorOut, `cmp_${stamp}.mp4`);
-    // Итоговая высота: после 4x-апскейла возвращаемся к рабочей (суперсэмплинг).
-    const finalH = framesUpDir ? (workH || job.info.height || null) : (workH || null);
+    // Итоговая высота: цель апскейла, если он был; иначе — рабочая (downscale).
+    const finalH = framesUpDir ? upH : (workH || null);
     const fps = String(job.info.fps || "30");
     const fpsArg = /^\d+\/\d+$/.test(fps) ? fps : "30";
     const vf = finalH ? ["-vf", `scale=-2:${finalH}`] : [];
     // Звук всегда из исходного файла (-map 1:a); «?» — не падать без дорожки.
     const audioArgs = ["-map", "0:v", "-map", "1:a?", "-c:a", "aac", "-b:a", "192k", "-shortest"];
     const imageSeq = framesUpDir
-      ? ["-framerate", fpsArg, "-i", path.join(framesUpDir, "f_%06d.png")]
+      ? ["-framerate", fpsArg, "-i", path.join(framesUpDir, "f_%06d.jpg")]
       : ["-i", job.inputPath];
     const tryEncode = (vArgs) => runFfmpeg(ffmpeg,
       ["-y", ...imageSeq, "-i", job.inputPath, ...audioArgs, ...vf, ...vArgs, outFile], tracker);
@@ -381,19 +447,23 @@ async function runPipeline(job) {
       }
     }
     if (!encoded) throw new Error(`no_working_encoder_${job.codec}`);
-    if (cleanup) {
-      if (framesUpDir) { try { fs.rmSync(framesUpDir, { recursive: true, force: true }); } catch { /* ignore */ } }
-      try { fs.rmSync(job.inputPath, { force: true }); } catch { /* ignore */ }
-    }
 
     job.outFile = outFile;
     job.outSize = fs.existsSync(outFile) ? fs.statSync(outFile).size : 0;
     job.progress = 100; job.etaSec = 0;
     job.done = true; job.stage = "done";
-    logger.info("compressor.done", { id: job.id, size: job.outSize, codec: job.codec, crf: job.crf });
+    logger.info("compressor.done", { id: job.id, size: job.outSize, codec: job.codec, crf: job.crf, steps: job.steps });
   } catch (e) {
     job.error = String(e.message || e); job.stage = "error";
     logger.error("compressor.error", { id: job.id, error: job.error });
+  } finally {
+    // Очистка временных файлов: сегменты кадров, апскейл-кадры, вход и
+    // промежуточник — и при успехе, и при ошибке (если включена cleanupTemp).
+    if (cleanup) {
+      for (const p of tmpDirs) { try { fs.rmSync(p, { recursive: true, force: true }); } catch { /* ignore */ } }
+      try { fs.rmSync(job.inputPath, { force: true }); } catch { /* ignore */ }
+      try { fs.rmSync(path.join(DIRS.compressorOut, `ds_${stamp}.mp4`), { force: true }); } catch { /* ignore */ }
+    }
   }
 }
 
