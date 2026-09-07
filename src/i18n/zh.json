@@ -682,7 +682,12 @@
     "guide1": "流水线先降低分辨率，用 Real-ESRGAN AI 恢复细节，再用 AV1/HEVC 编码——文件小而无明显模糊。",
     "guide2": "GPU 要求：Real-ESRGAN 推荐使用 NVIDIA CUDA；AV1 使用 CPU (SVT-AV1) 或 NVENC，取决于 FFmpeg 构建。",
     "guide3": "如果缺少 FFmpeg — 在转换器页面一键安装。如果 AI 引擎缺失，该步骤会自动跳过。",
-    "guide4": "CRF 建议：20–25 为最佳平衡。越低越大越清晰；越高越小质量越差。"
+    "guide4": "CRF 建议：20–25 为最佳平衡。越低越大越清晰；越高越小质量越差。",
+    "aiDownload": "下载 AI 模型 (~65 MB)",
+    "aiDownloading": "正在下载模型… {{p}}%",
+    "aiReady": "AI 放大已就绪",
+    "aiMissingHint": "AI 模型未安装——请下载或关闭 AI 放大。",
+    "ffmpegMissing": "未找到 FFmpeg——请在“转换器”中安装，或将 ffmpeg.exe 放入 storage/ffmpeg。"
   },
   "cmpSettings": {
     "cmpCodec": "输出编码器",

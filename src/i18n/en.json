@@ -679,7 +679,12 @@
     "guide1": "The pipeline downscales the video to an intermediate resolution, optionally restores detail with Real-ESRGAN AI upscaling, then encodes with AV1/HEVC — small files without visible blur.",
     "guide2": "GPU requirements: NVIDIA CUDA is recommended for Real-ESRGAN; AV1 uses CPU (SVT-AV1) or GPU NVENC depending on your FFmpeg build.",
     "guide3": "If FFmpeg is missing — install it from the Converter page (one click). If AI upscale is enabled but the engine is missing, the step is skipped automatically.",
-    "guide4": "CRF guide: 20–25 is the sweet spot. Lower = bigger and better; higher = smaller and worse."
+    "guide4": "CRF guide: 20–25 is the sweet spot. Lower = bigger and better; higher = smaller and worse.",
+    "aiDownload": "Download AI model (~65 MB)",
+    "aiDownloading": "Downloading model… {{p}}%",
+    "aiReady": "AI upscale ready",
+    "aiMissingHint": "AI model is not installed — download it or disable AI upscale.",
+    "ffmpegMissing": "FFmpeg not found — install it in Converter or put ffmpeg.exe in storage/ffmpeg."
   },
   "cmpSettings": {
     "cmpCodec": "Output codec",

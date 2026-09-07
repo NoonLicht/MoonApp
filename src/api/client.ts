@@ -160,6 +160,9 @@ export const api = {
   compressorStatus: (id: string) => req<CompressorJob>("GET", `/compressor/${id}`),
   compressorDelete: (id: string) => req("DELETE", `/compressor/${id}`),
   compressorUrl: (id: string, what: "download" | "preview") => `/api/compressor/${id}/${what}`,
+  // ИИ-апскейл: наличие realesrgan-ncnn-vulkan и кнопка скачивания модели.
+  compressorAiStatus: () => req<{ installed: boolean; downloading: boolean; progress: number; error: string }>("GET", "/compressor/ai/status"),
+  compressorAiDownload: () => req<{ ok: boolean }>("POST", "/compressor/ai/download"),
 
   // --- F5-TTS студия ---
   ttsEngine: () => req<TtsEngine>("GET", "/tts/engine"),

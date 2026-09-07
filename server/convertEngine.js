@@ -56,7 +56,8 @@ const BUNDLED_BIN = path.join(BIN_DIR, "ffmpeg.exe");
 const FFMPEG_URL = "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip";
 const FFMPEG_MAX_BYTES = 300 * 1024 * 1024; // запас по размеру архива (~130 МБ)
 
-// Где ищется ffmpeg: явный путь из настроек, локальный бинарь, потом PATH.
+// Где ищется ffmpeg: явный путь из настроек, локальный бинарь (в т.ч. в
+// подпапках storage/ffmpeg — пользователь мог положить архив целиком), PATH.
 function ffmpegCandidates() {
   const cfg = settings.get("converter") || {};
   const explicit = String(cfg.ffmpegPath || "").trim();
@@ -66,6 +67,17 @@ function ffmpegCandidates() {
     if (!path.extname(explicit)) list.push(explicit + ".exe");
   }
   list.push(BUNDLED_BIN);
+  // Локальная установка «как скачалось»: storage/ffmpeg/<что угодно>/ffmpeg.exe.
+  try {
+    if (fs.existsSync(BIN_DIR)) {
+      for (const e of fs.readdirSync(BIN_DIR, { withFileTypes: true })) {
+        if (e.isDirectory()) {
+          const p = path.join(BIN_DIR, e.name, process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg");
+          if (fs.existsSync(p)) list.push(p);
+        }
+      }
+    }
+  } catch { /* не критично */ }
   list.push("ffmpeg");
   return list;
 }
@@ -111,12 +123,14 @@ function runVersion(cmd) {
   });
 }
 
-// Находится рабочий бинарь ffmpeg. → { found, path, version }.
+// Находится рабочий бинарь ffmpeg (+ ffprobe рядом). →
+// { found, path, version, ffmpeg, ffprobe } — поля ffmpeg/ffprobe содержат
+// готовые пути (их ждут compressor.js/tts.js/sitebak.js).
 async function detectFfmpeg({ force = false } = {}) {
   const now = Date.now();
   if (!force && detectCache && now - detectAt < 12000) return detectCache;
 
-  let result = { found: false, path: null, version: null };
+  let result = { found: false, path: null, version: null, ffmpeg: null, ffprobe: null };
   for (const cmd of ffmpegCandidates()) {
     // Для явного пути / локальной установки проверяется наличие файла,
     // иначе подхватывается из PATH.
@@ -125,7 +139,17 @@ async function detectFfmpeg({ force = false } = {}) {
     }
     const version = await runVersion(cmd);
     if (version) {
-      result = { found: true, path: cmd, version };
+      // ffprobe ищется рядом с найденным ffmpeg, затем в PATH.
+      const probeNext = path.join(path.dirname(cmd), /^win/i.test(process.platform) ? "ffprobe.exe" : "ffprobe");
+      const probeCandidates = [probeNext, "ffprobe"];
+      let ffprobe = null;
+      for (const p of probeCandidates) {
+        if (p.includes("/") || p.includes("\\") ? fs.existsSync(p) : true) {
+          const pv = await runVersionAny(p);
+          if (pv) { ffprobe = p; break; }
+        }
+      }
+      result = { found: true, path: cmd, version, ffmpeg: cmd, ffprobe };
       break;
     }
   }
@@ -133,6 +157,14 @@ async function detectFfmpeg({ force = false } = {}) {
   detectCache = result;
   detectAt = now;
   return result;
+}
+
+// Проверка любого CLI-бинаря (ffmpeg/ffprobe) на работоспособность.
+function runVersionAny(cmd) {
+  return new Promise((resolve) => {
+    execFile(cmd, ["-version"], { timeout: 8000, windowsHide: true, maxBuffer: 2 * 1024 * 1024 },
+      (err, stdout) => resolve(err ? null : String(stdout || "").split(/[\r\n]/)[0] || "unknown"));
+  });
 }
 
 // Полный отчёт для UI: готовность + категории/форматы.

@@ -41,6 +41,8 @@ export default function CompressorPage() {
   const [targetH, setTargetH] = useState("original");
   const [ai, setAi] = useState(true);
   const [aiScale, setAiScale] = useState("2x");
+  // Состояние Real-ESRGAN: установлен / качается / ошибка.
+  const [aiInfo, setAiInfo] = useState<{ installed: boolean; downloading: boolean; progress: number; error: string } | null>(null);
   const [job, setJob] = useState<CompressorJob | null>(null);
   const [defect, setDefect] = useState<string>(""); // подсказки (ffmpeg нет и т.п.)
   const [guide, setGuide] = useState(false);
@@ -58,8 +60,23 @@ export default function CompressorPage() {
         if (typeof c.aiScale === "string") setAiScale(c.aiScale);
       }
     }).catch(() => { /* дефолты из кода */ });
+    // Статус Real-ESRGAN (для кнопки скачивания модели).
+    api.compressorAiStatus().then(setAiInfo).catch(() => {});
     return () => { if (pollRef.current) window.clearInterval(pollRef.current); };
   }, []);
+
+  // Пока модель качается — опрашиваем прогресс.
+  useEffect(() => {
+    if (!aiInfo?.downloading) return;
+    const t = window.setInterval(() => {
+      api.compressorAiStatus().then((s) => { setAiInfo(s); if (!s.downloading) window.clearInterval(t); }).catch(() => {});
+    }, 1200);
+    return () => window.clearInterval(t);
+  }, [aiInfo?.downloading]);
+
+  const aiDownload = async () => {
+    try { await api.compressorAiDownload(); setAiInfo((p) => p ? { ...p, downloading: true, progress: 0, error: "" } : p); } catch { /* уже качается */ }
+  };
 
   // Опрос статуса активного задания.
   const startPolling = (id: string) => {
@@ -166,7 +183,7 @@ export default function CompressorPage() {
             </div>
           </div>
 
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <div className="cmp-controls">
             <Field label={t("cmp.codec")}>
               <Select value={codec} onChange={(e) => setCodec(e.target.value)} options={["av1", "hevc", "h264"]} />
             </Field>
@@ -177,13 +194,32 @@ export default function CompressorPage() {
               <Select value={aiScale} onChange={(e) => setAiScale(e.target.value)} options={["2x", "4x"]} />
             </Field>
           </div>
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <button className={`option-item ${ai ? "is-on" : ""}`} onClick={() => setAi(!ai)} style={{ width: "auto", padding: "6px 12px" }}>
-              <Sparkles size={15} /><span>{t("cmp.aiUpscale")}</span>
+
+          {/* --- ИИ-апскейл: стилизованный тумблер + статус/скачивание модели --- */}
+          <div className="cmp-ai-row">
+            <button type="button" className={`option-item ${ai ? "is-on" : ""}`}
+              onClick={() => setAi(!ai)} aria-pressed={ai}>
+              <Sparkles size={15} strokeWidth={2} />
+              <span>{t("cmp.aiUpscale")}</span>
+              <span className={`cmp-switch ${ai ? "on" : ""}`} />
             </button>
+            {ai && aiInfo && !aiInfo.installed && !aiInfo.downloading && (
+              <Btn icon={Download} onClick={aiDownload}>{t("cmp.aiDownload")}</Btn>
+            )}
+            {ai && aiInfo?.downloading && (
+              <div className="cmp-ai-progress">
+                <span className="muted-sm">{t("cmp.aiDownloading", { p: aiInfo.progress })}</span>
+                <ProgressBar value={aiInfo.progress} />
+              </div>
+            )}
+            {ai && aiInfo?.installed && <Badge tone="teal">✓ {t("cmp.aiReady")}</Badge>}
+            {ai && aiInfo?.error && <span className="muted-sm" style={{ color: "var(--coral)" }}>{aiInfo.error}</span>}
+          </div>
+
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <Btn variant="primary" icon={Gauge} onClick={start} disabled={busy}>
               {busy ? t("cmp.compressing") : t("cmp.compress")}
-            </Btn>
+           </Btn>
           </div>
         </Glass>
       )}
@@ -201,7 +237,9 @@ export default function CompressorPage() {
       )}
 
       {job?.stage === "error" && (
-        <Glass><span style={{ color: "var(--coral)" }}>{t("cmp.error")}: {job.error}</span></Glass>
+        <Glass><span style={{ color: "var(--coral)" }}>
+          {job.error === "ffmpeg_missing" ? t("cmp.ffmpegMissing") : `${t("cmp.error")}: ${job.error}`}
+        </span></Glass>
       )}
 
       {/* --- Результат: сравнение, скачивание, контекстное меню --- */}

@@ -682,7 +682,12 @@
     "guide1": "Le pipeline réduit la résolution intermédiaire, restaure les détails via l'IA (Real-ESRGAN), puis encode en AV1/HEVC — fichiers légers sans flou visible.",
     "guide2": "GPU : NVIDIA CUDA recommandé pour Real-ESRGAN ; AV1 utilise le CPU (SVT-AV1) ou NVENC selon votre FFmpeg.",
     "guide3": "Si FFmpeg manque — installez-le depuis la page Convertisseur. Sans moteur IA, l'étape est ignorée automatiquement.",
-    "guide4": "CRF : 20–25 est le point optimal. Plus bas = plus grand et meilleur ; plus haut = plus petit et pire."
+    "guide4": "CRF : 20–25 est le point optimal. Plus bas = plus grand et meilleur ; plus haut = plus petit et pire.",
+    "aiDownload": "Télécharger le modèle IA (~65 Mo)",
+    "aiDownloading": "Téléchargement du modèle… {{p}} %",
+    "aiReady": "Upscale IA prêt",
+    "aiMissingHint": "Le modèle IA n'est pas installé — téléchargez-le ou désactivez l'upscale IA.",
+    "ffmpegMissing": "FFmpeg introuvable — installez-le dans « Convertisseur » ou placez ffmpeg.exe dans storage/ffmpeg."
   },
   "cmpSettings": {
     "cmpCodec": "Codec de sortie",

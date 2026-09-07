@@ -682,7 +682,12 @@
     "guide1": "El pipeline reduce la resolución intermedia, restaura detalles con IA (Real-ESRGAN) y codifica en AV1/HEVC — archivos pequeños sin desenfoque visible.",
     "guide2": "GPU: se recomienda NVIDIA CUDA para Real-ESRGAN; AV1 usa CPU (SVT-AV1) o NVENC según tu FFmpeg.",
     "guide3": "Si falta FFmpeg — instálalo desde la página del Conversor. Si falta el motor de IA, el paso se omite automáticamente.",
-    "guide4": "CRF: 20–25 es el punto óptimo. Más bajo = más grande y mejor; más alto = más pequeño y peor."
+    "guide4": "CRF: 20–25 es el punto óptimo. Más bajo = más grande y mejor; más alto = más pequeño y peor.",
+    "aiDownload": "Descargar modelo de IA (~65 MB)",
+    "aiDownloading": "Descargando modelo… {{p}}%",
+    "aiReady": "Escalado IA listo",
+    "aiMissingHint": "El modelo de IA no está instalado: descárguelo o desactive el escalado IA.",
+    "ffmpegMissing": "FFmpeg no encontrado: instálelo en «Convertidor» o coloque ffmpeg.exe en storage/ffmpeg."
   },
   "cmpSettings": {
     "cmpCodec": "Códec de salida",

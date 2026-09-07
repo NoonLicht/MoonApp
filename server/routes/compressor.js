@@ -37,6 +37,64 @@ const upload = multer({
   limits: { fileSize: MAX_BYTES },
 });
 
+// --- Real-ESRGAN: статус и скачивание модели (ИИ-апскейл) ---
+// realesrgan-ncnn-vulkan умеет только картинки, пайплайн сам разбирает видео
+// на кадры. Бинарь не входит в поставку — пользователь качает одной кнопкой.
+const REALESRGAN_URL =
+  "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesrgan-ncnn-vulkan-20220424-windows.zip";
+const REALESRGAN_MAX = 200 * 1024 * 1024;
+
+let aiState = { downloading: false, progress: 0, error: "" };
+
+router.get("/ai/status", (req, res) => {
+  res.json({
+    installed: !!engine.findRealesrgan(),
+    downloading: aiState.downloading,
+    progress: aiState.progress,
+    error: aiState.error,
+  });
+});
+
+router.post("/ai/download", (req, res) => {
+  if (aiState.downloading) return res.status(409).json({ error: "already_downloading" });
+  if (engine.findRealesrgan()) return res.json({ ok: true, installed: true });
+  aiState = { downloading: true, progress: 0, error: "" };
+  logger.action("compressor.ai.download");
+  res.status(202).json({ ok: true, downloading: true });
+
+  (async () => {
+    try {
+      fs.mkdirSync(path.join(DIRS.storage, "bin"), { recursive: true });
+      const zipPath = path.join(DIRS.storage, "bin", "realesrgan.zip");
+      const r = await fetch(REALESRGAN_URL, { redirect: "follow" });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const declared = Number(r.headers.get("content-length") || 0);
+      if (declared > REALESRGAN_MAX) throw new Error("too_large");
+      let received = 0;
+      const ws = fs.createWriteStream(zipPath);
+      for await (const chunk of r.body) {
+        const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+        received += buf.length;
+        aiState.progress = declared ? Math.min(99, Math.round((100 * received) / declared)) : 0;
+        if (!ws.write(buf)) await new Promise((res2) => ws.once("drain", res2));
+      }
+      await new Promise((resolve, reject) => ws.end((e) => (e ? reject(e) : resolve())));
+      aiState.progress = 99;
+      // Zip распаковывается adm-zip: exe + папка models кладутся в storage/bin.
+      const AdmZip = require("adm-zip");
+      const zip = new AdmZip(zipPath);
+      zip.extractAllTo(path.join(DIRS.storage, "bin"), true);
+      fs.rmSync(zipPath, { force: true });
+      if (!engine.findRealesrgan()) throw new Error("exe_not_found_after_extract");
+      aiState = { downloading: false, progress: 100, error: "" };
+      logger.info("compressor.ai.installed", {});
+    } catch (e) {
+      aiState = { downloading: false, progress: 0, error: String(e.message || e) };
+      logger.error("compressor.ai.download_failed", { error: aiState.error });
+    }
+  })();
+});
+
 // Публичное представление задания: без путей к файлам на диске.
 function view(job) {
   if (!job) return null;
