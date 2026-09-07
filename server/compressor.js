@@ -137,7 +137,7 @@ function availableEncoders(ffmpeg) {
     child.on("close", () => {
       const set = new Set();
       for (const line of out.split(/\r?\n/)) {
-        const m = /^\s*[VAS]+\.[.\dSBSX]+\s+(\S+)/.exec(line);
+        const m = /^\s*[VAS][.\w]*\s+(\S+)/.exec(line);
         if (m) set.add(m[1]);
       }
       encoderCache = set;
@@ -153,6 +153,20 @@ async function pickEncoder(ffmpeg, prefs) {
   return null;
 }
 
+// Все доступные кандидаты по порядку предпочтений. Нужен список, а не один
+// энкодер: аппаратные (qsv/nvenc) присутствуют в любой сборке, но реально
+// работают только при наличии соответствующего GPU — такие попытки падают
+// с «stream received no packets», и надо откатываться на следующий.
+async function encoderCandidates(ffmpeg, prefs, crf) {
+  const avail = await availableEncoders(ffmpeg);
+  const out = [];
+  for (const enc of prefs) {
+    if (!avail.has(enc)) continue;
+    out.push({ enc, args: ["-c:v", enc, ...qualityArgs(enc, crf)] });
+  }
+  return out;
+}
+
 // Аргументы качества под конкретный энкодер (CRF-подобное поведение).
 function qualityArgs(enc, crf) {
   if (enc === "mpeg4") return ["-qscale:v", String(Math.max(2, Math.min(31, Math.round(crf / 1.6))))];
@@ -164,21 +178,30 @@ function qualityArgs(enc, crf) {
 // Кодек-специфика: предпочтительные энкодеры + параметры качества.
 // Порядок — от лучшего сжатия к совместимости; ускорители GPU почти в конце,
 // т.к. при том же качестве дают файл больше программных.
-async function encoderArgs(ffmpeg, codec, crf) {
+// Возвращает СПИСОК кандидатов (software → hardware): аппаратный энкодер
+// может числиться в сборке, но не работать на конкретной машине (нет QSV/
+// NVIDIA) — тогда пробуется следующий из списка.
+async function codecEncoderCandidates(ffmpeg, codec, crf) {
   const lists = {
     av1:  ["libsvtav1", "libaom-av1", "av1_nvenc", "av1_qsv"],
     hevc: ["libx265", "hevc_nvenc", "hevc_qsv"],
     h264: ["libx264", "libopenh264", "h264_nvenc", "h264_qsv", "mpeg4"],
   };
   const prefs = lists[codec] || lists.av1;
-  const enc = await pickEncoder(ffmpeg, prefs);
-  if (!enc) return null; // ни одного энкодера для кодека нет
-  const args = ["-c:v", enc, ...qualityArgs(enc, crf)];
-  if (enc === "libsvtav1") args.push("-preset", "6");
-  if (enc === "libx264" || enc === "libopenh264") args.push("-preset", "medium");
-  if (enc === "libx265") args.push("-preset", "medium", "-tag:v", "hvc1");
-  if (enc === "hevc_nvenc" || enc === "hevc_qsv") args.push("-tag:v", "hvc1");
-  return args;
+  let cands = await encoderCandidates(ffmpeg, prefs, crf);
+  // Кросс-кодек страховка: в сборках без software HEVC/AV1 (как у пользователя
+  // только qsv) последний шанс — программный H.264, он есть почти везде.
+  const swH264 = await encoderCandidates(ffmpeg, ["libx264", "libopenh264", "mpeg4"], crf);
+  for (const c of swH264) c.args.push("-tag:v", "avc1");
+  cands = cands.concat(swH264.map((c) => ({ ...c, cross: true })));
+  // Пост-аргументы для конкретных энкодеров.
+  for (const c of cands) {
+    if (c.enc === "libsvtav1") c.args.push("-preset", "6");
+    if (c.enc === "libx264") c.args.push("-preset", "medium"); // у openh264 нет -preset
+    if (c.enc === "libx265") c.args.push("-preset", "medium", "-tag:v", "hvc1");
+    if (c.enc === "hevc_nvenc" || c.enc === "hevc_qsv") c.args.push("-tag:v", "hvc1");
+  }
+  return cands;
 }
 
 // Бинарь Real-ESRGAN ищется в storage/bin (кладётся вручную или установщиком).
@@ -220,6 +243,13 @@ function setStage(job, stage, step, base, span) {
 }
 
 async function runPipeline(job) {
+  // Файл мог исчезнуть (TTL-чистка, ручное удаление) — честная ошибка вместо
+  // каскада «no_working_encoder» от каждого энкодера.
+  if (!fs.existsSync(job.inputPath)) {
+    job.error = "input_missing"; job.stage = "error";
+    logger.error("compressor.error", { id: job.id, error: job.error });
+    return;
+  }
   const cfg = settings.get("compressor") || {};
   const cleanup = cfg.cleanupTemp !== false;
   const { ffmpeg, ffprobe } = await detectFfmpeg();
@@ -247,15 +277,27 @@ async function runPipeline(job) {
 
     // --- Шаг 1: Downscale до рабочей высоты. Звук: AAC (тащится до финала). ---
     setStage(job, "downscale", 1, 0, workH ? 40 : 10);
-    // Промежуточник: первый доступный H.264-энкодер (у сборок без libx264 —
-    // OpenH264/NVENC/QSV/mpeg4), near-lossless качество.
-    const interEnc = await encoderArgs(ffmpeg, "h264", 12);
-    if (!interEnc) throw new Error("no_h264_encoder");
+    // Промежуточник: перебор H.264-энкодеров (software → hardware).
+    // QSV/NVENC числятся в сборке, но работают только на совместимом GPU —
+    // при неудаче берём следующего кандидата.
+    const interCands = await codecEncoderCandidates(ffmpeg, "h264", 12);
+    if (!interCands.length) throw new Error("no_h264_encoder");
     if (workH) {
-      await runFfmpeg(ffmpeg,
-        ["-y", "-i", job.inputPath, "-vf", `scale=-2:${workH}`, ...interEnc,
-         "-c:a", "aac", "-b:a", "192k", downscaled],
-        tracker);
+      let interDone = false;
+      for (const c of interCands) {
+        try {
+          await runFfmpeg(ffmpeg,
+            ["-y", "-i", job.inputPath, "-vf", `scale=-2:${workH}`, ...c.args,
+             "-c:a", "aac", "-b:a", "192k", downscaled],
+            tracker);
+          interDone = true;
+          break;
+        } catch (e) {
+          logger.warn("compressor.interEncoderFallback", { enc: c.enc, err: String(e.message || e).slice(0, 160) });
+          try { fs.rmSync(downscaled, { force: true }); } catch { /* ignore */ }
+        }
+      }
+      if (!interDone) throw new Error("no_working_h264_encoder");
       job.steps.push("downscale");
       if (cleanup) { try { fs.rmSync(job.inputPath, { force: true }); } catch { /* ignore */ } }
       job.inputPath = downscaled;
@@ -270,8 +312,8 @@ async function runPipeline(job) {
       framesUpDir = path.join(DIRS.compressorOut, `fru_${stamp}`);
       fs.mkdirSync(framesDir, { recursive: true });
       fs.mkdirSync(framesUpDir, { recursive: true });
-      // Разборка на PNG-кадры.
-      await runFfmpeg(ffmpeg, ["-y", "-i", job.inputPath, "-vsync", "0", path.join(framesDir, "f_%06d.png")], tracker);
+      // Разборка на PNG-кадры (-fps_mode: -vsync удалён в FFmpeg 7+).
+      await runFfmpeg(ffmpeg, ["-y", "-i", job.inputPath, "-fps_mode", "passthrough", path.join(framesDir, "f_%06d.png")], tracker);
       // Апскейл всей папки кадров (x4 модель; итоговый масштаб задаёт сборка).
       await new Promise((resolve, reject) => {
         const child = spawn(realesrgan,
@@ -304,10 +346,22 @@ async function runPipeline(job) {
       : ["-i", job.inputPath];
     const tryEncode = (vArgs) => runFfmpeg(ffmpeg,
       ["-y", ...imageSeq, "-i", job.inputPath, ...audioArgs, ...vf, ...vArgs, outFile], tracker);
-    // Автоподбор энкодера под выбранный кодек (fallback на NVENC/QSV/aom).
-    const vArgs = await encoderArgs(ffmpeg, job.codec, job.crf);
-    if (!vArgs) throw new Error(`no_encoder_${job.codec}`);
-    await tryEncode(vArgs);
+    // Перебор энкодеров (software → hardware): QSV/NVENC могут числиться в
+    // сборке, но не работать на машине (нет GPU / нет пакетов на выходе).
+    const cands = await codecEncoderCandidates(ffmpeg, job.codec, job.crf);
+    if (!cands.length) throw new Error(`no_encoder_${job.codec}`);
+    let encoded = false;
+    for (const c of cands) {
+      try {
+        await tryEncode(c.args);
+        encoded = true;
+        break;
+      } catch (e) {
+        logger.warn("compressor.encoderFallback", { enc: c.enc, err: String(e.message || e).slice(0, 160) });
+        try { fs.rmSync(outFile, { force: true }); } catch { /* ignore */ }
+      }
+    }
+    if (!encoded) throw new Error(`no_working_encoder_${job.codec}`);
     if (cleanup) {
       if (framesUpDir) { try { fs.rmSync(framesUpDir, { recursive: true, force: true }); } catch { /* ignore */ } }
       try { fs.rmSync(job.inputPath, { force: true }); } catch { /* ignore */ }
@@ -326,5 +380,5 @@ async function runPipeline(job) {
 
 function getJob(id) { return jobs.get(id) || null; }
 
-module.exports = { jobs, startJob, getJob, probeDuration, probeVideoInfo, runFfmpeg, encoderArgs, findRealesrgan };
+module.exports = { jobs, startJob, getJob, probeDuration, probeVideoInfo, runFfmpeg, codecEncoderCandidates, findRealesrgan };
 
