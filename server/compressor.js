@@ -161,6 +161,14 @@ function startJob(opts) {
   return job;
 }
 
+// Смена ступени пайплайна: stage/step для UI + база и вес ступени в общем
+// проценте прогресса (downscale 40%, AI 20%, encode 40%).
+function setStage(job, stage, step, base, span) {
+  job.stage = stage; job.step = step;
+  job.progress = base;
+  job._base = base; job._span = span;
+}
+
 async function runPipeline(job) {
   const cfg = settings.get("compressor") || {};
   const cleanup = cfg.cleanupTemp !== false;
