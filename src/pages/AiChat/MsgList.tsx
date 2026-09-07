@@ -4,6 +4,7 @@ import { Btn, EmptyHint } from "../../components/ui";
 import { useContextMenu } from "../../components/ContextMenu";
 import CodeBlock from "./CodeBlock";
 import { renderInlineMd, parseSegments } from "./chatUtils";
+import { sanitizeHtml } from "../../utils/sanitize";
 
 export interface MsgStats { ms: number; tokens: number }
 
@@ -54,7 +55,7 @@ export default function MsgList(props: {
                   : parseSegments(m.text).map((seg, k) =>
                       seg.type === "code"
                         ? <CodeBlock key={k} code={seg.text} lang={seg.lang || "text"} />
-                        : <span key={k} dangerouslySetInnerHTML={{ __html: renderInlineMd(seg.text) }} />)}
+                        : <span key={k} dangerouslySetInnerHTML={{ __html: sanitizeHtml(renderInlineMd(seg.text)) }} />)}
               </div>
             )}
           </div>
@@ -86,7 +87,7 @@ export default function MsgList(props: {
             {parseSegments(streamingText).map((seg, k) =>
               seg.type === "code"
                 ? <CodeBlock key={k} code={seg.text} lang={seg.lang || "text"} />
-                : <span key={k} dangerouslySetInnerHTML={{ __html: renderInlineMd(seg.text) }} />)}
+                : <span key={k} dangerouslySetInnerHTML={{ __html: sanitizeHtml(renderInlineMd(seg.text)) }} />)}
             <span className="streaming-cursor" />
           </div>
         </div>

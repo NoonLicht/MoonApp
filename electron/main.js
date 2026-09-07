@@ -50,19 +50,36 @@ function readSettings() {
 }
 
 // Точечная запись в settings.json (мержим в существующий объект, чтобы не
-// затирать секции, сохранённые сервером).
+// затирать секции, сохранённые сервером). Файл пишут два процесса (main и
+// Express-роуты), поэтому берём короткий lock-файл: кто не смог захватить за
+// 2 секунды — пропускает запись (потеря размера окна не критична).
+function withSettingsLock(fn) {
+  const storage =
+    process.env.PERSONAL_APP_STORAGE || path.join(__dirname, "..", "storage");
+  const lock = path.join(storage, "settings.lock");
+  let fd = null;
+  for (let i = 0; i < 20 && fd === null; i++) {
+    try { fd = fs.openSync(lock, "wx"); } catch { const t0 = Date.now(); while (Date.now() - t0 < 100) { /* busy-wait 100 мс */ } }
+  }
+  if (fd === null) return false;
+  try { return fn() !== false; } finally { try { fs.closeSync(fd); fs.rmSync(lock, { force: true }); } catch { /* ignore */ } }
+}
+
 function patchSettings(patch) {
   try {
     const storage =
       process.env.PERSONAL_APP_STORAGE || path.join(__dirname, "..", "storage");
     const file = path.join(storage, "settings.json");
-    let cur = {};
-    try { cur = JSON.parse(fs.readFileSync(file, "utf8")); } catch { /* файла ещё нет */ }
-    const merged = { ...cur };
-    for (const [section, values] of Object.entries(patch)) {
-      merged[section] = { ...(merged[section] || {}), ...values };
-    }
-    fs.writeFileSync(file, JSON.stringify(merged, null, 2), "utf8");
+    withSettingsLock(() => {
+      let cur = {};
+      try { cur = JSON.parse(fs.readFileSync(file, "utf8")); } catch { /* файла ещё нет */ }
+      const merged = { ...cur };
+      for (const [section, values] of Object.entries(patch)) {
+        merged[section] = { ...(merged[section] || {}), ...values };
+      }
+      fs.writeFileSync(file, JSON.stringify(merged, null, 2), "utf8");
+      return true;
+    });
   } catch { /* окно не должно падать из-за неудачной записи размера */ }
 }
 
@@ -81,6 +98,8 @@ function applyAutoLaunch() {
 
 // --- Трей ---
 let tray = null;
+// Временный файл с API-токеном (см. createWindow) — удаляется при выходе.
+let tokenFile = null;
 
 // Иконка трея: берём иконку самого exe (Windows умеет извлекать её нативно).
 async function makeTrayIcon() {
@@ -152,8 +171,13 @@ function registerWindowControls() {
 
 async function createWindow() {
   // Токен на одну сессию, чтобы сторонние запросы к локальному API не проходили.
-  // Уходит в preload через additionalArguments (см. appBridge.getToken).
+  // В argv он больше не передаётся (argv любого процесса виден через WMI) —
+  // вместо этого токен пишется во временный файл 0600, путь уходит в preload,
+  // файл удаляется при выходе.
   const token = crypto.randomBytes(24).toString("hex");
+  const os = require("os");
+  tokenFile = path.join(os.tmpdir(), `pa-token-${crypto.randomBytes(6).toString("hex")}`);
+  try { fs.writeFileSync(tokenFile, token, { mode: 0o600 }); } catch { tokenFile = null; }
 
   const port = await findFreePort(4000);
   startServer(port, { token });
@@ -182,8 +206,25 @@ async function createWindow() {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
       nodeIntegration: false,
-      additionalArguments: [`--pa-token=${token}`],
+      // Токен передаётся файлом, а не argv (argv виден другим процессам).
+      additionalArguments: tokenFile ? [`--pa-token-file=${tokenFile}`] : [],
+      sandbox: false,
     },
+  });
+
+  // CSP: даже если чужой HTML/Markdown пробьёт санитайзер — инлайн-скрипты
+  // и внешние загрузки запрещены. Собственный бандл — 'self'.
+  win.webContents.session.webRequest.onHeadersReceived((details, cb) => {
+    cb({
+      responseHeaders: {
+        ...details.responseHeaders,
+        "Content-Security-Policy": [
+          "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; " +
+          "img-src 'self' data: blob:; media-src 'self' data: blob:; font-src 'self' data:; " +
+          "connect-src 'self' ws://127.0.0.1:* http://127.0.0.1:*; object-src 'none'; frame-src 'none'; base-uri 'self'",
+        ],
+      },
+    });
   });
 
   win.setMenuBarVisibility(false);
@@ -235,7 +276,22 @@ app.whenReady().then(() => {
   createWindow();
 });
 
-app.on("before-quit", () => { quitting = true; });
+app.on("before-quit", () => {
+  quitting = true;
+  try { if (tokenFile) fs.rmSync(tokenFile, { force: true }); } catch { /* ignore */ }
+});
+
+// Reveal in File Explorer: выделить файл/папку в проводнике (контекстные меню
+// страниц видео/архива вызывают через appBridge.revealPath).
+ipcMain.handle("shell:reveal", (_e, p) => {
+  try {
+    const { shell } = require("electron");
+    const full = String(p || "");
+    if (!path.isAbsolute(full)) return false;
+    shell.showItemInFolder(full);
+    return true;
+  } catch { return false }
+});
 
 app.on("window-all-closed", () => {
   app.quit();

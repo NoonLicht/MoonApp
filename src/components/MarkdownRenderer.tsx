@@ -3,6 +3,7 @@ import { marked } from "marked";
 import { markedHighlight } from "marked-highlight";
 import hljs from "highlight.js";
 import "highlight.js/styles/github-dark.css";
+import { sanitizeHtml } from "../utils/sanitize";
 
 marked.use(markedHighlight({
   langPrefix: "hljs language-",
@@ -80,8 +81,9 @@ export default function MarkdownRenderer({ content, onWikiLink, onTagClick, onTo
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const handler = (e: MouseEvent) => {
-      let target = e.target as HTMLElement;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const handler = (e: any) => {
+      let target: any = e.target;
       // Walk up to find clickable span
       while (target && target !== el) {
         if (target.classList.contains("md-wl")) {
@@ -98,19 +100,21 @@ export default function MarkdownRenderer({ content, onWikiLink, onTagClick, onTo
         }
         if (target.classList.contains("md-cb-row") || target.classList.contains("md-cb")) {
           e.preventDefault();
-          const row = target.closest(".md-cb-row") as HTMLElement;
+          const row = target.closest(".md-cb-row");
           if (row) {
             const line = row.getAttribute("data-line");
             if (line && onToggleCheckbox) onToggleCheckbox(parseInt(line, 10));
           }
           return;
         }
-        target = target.parentElement!;
+        target = target.parentElement;
       }
     };
     el.addEventListener("click", handler);
     return () => el.removeEventListener("click", handler);
   }, [onWikiLink, onTagClick, onToggleCheckbox]);
 
-  return <div ref={ref} className="md-renderer" dangerouslySetInnerHTML={{ __html: html }} />;
+  // К2: HTML прогоняется через DOMPurify —marked пропускает сырой HTML,
+  // а свой регэксп-санитайзер не покрывал mXSS/style/srcdoc и т.п.
+  return <div ref={ref} className="md-renderer" dangerouslySetInnerHTML={{ __html: sanitizeHtml(html) }} />;
 }

@@ -26,6 +26,18 @@ function now() {
   return new Date().toISOString().replace("T", " ").slice(0, 19);
 }
 
+// Контейнмент путей (защита от path traversal): клиентский путь разрешается
+// внутри базовой папки. resolve + проверка префикса — любой "../../.." даёт
+// null, и операция отклоняется вместо выхода за пределы vault.
+function safeJoin(baseDir, relPath) {
+  const rel = String(relPath || "").replace(/\\/g, "/").replace(/^\/+/, "");
+  const full = path.resolve(baseDir, rel);
+  const base = path.resolve(baseDir);
+  if (full !== base && !full.startsWith(base + path.sep)) return null;
+  return full;
+}
+
+
 function slugify(title) {
   return String(title || "untitled")
     .toLowerCase()
@@ -56,8 +68,8 @@ function buildTree(dir, basePath = "") {
 }
 
 function readFile(filePath) {
-  const fullPath = path.join(NOTEBOOK_DIR, filePath);
-  if (!fs.existsSync(fullPath)) return null;
+  const fullPath = safeJoin(NOTEBOOK_DIR, filePath);
+  if (!fullPath || !fs.existsSync(fullPath)) return null;
   const raw = fs.readFileSync(fullPath, "utf8");
   const meta = { path: filePath, name: path.basename(filePath), ext: path.extname(filePath) };
   let content = raw;
@@ -85,7 +97,8 @@ function readFile(filePath) {
 
 function writeFile(filePath, content, frontmatter = {}) {
   ensureDirs();
-  const fullPath = path.join(NOTEBOOK_DIR, filePath);
+  const fullPath = safeJoin(NOTEBOOK_DIR, filePath);
+  if (!fullPath) return { ok: false, error: "forbidden path" };
   const dir = path.dirname(fullPath);
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
   let md = "";
@@ -101,7 +114,8 @@ function writeFile(filePath, content, frontmatter = {}) {
   return { path: filePath, ok: true };
 }
 function deleteFile(filePath) {
-  const fullPath = path.join(NOTEBOOK_DIR, filePath);
+  const fullPath = safeJoin(NOTEBOOK_DIR, filePath);
+  if (!fullPath) return { ok: false, error: "forbidden path" };
   try {
     if (fs.existsSync(fullPath)) {
       if (fs.statSync(fullPath).isDirectory()) {
@@ -116,8 +130,9 @@ function deleteFile(filePath) {
 }
 
 function renameFile(oldPath, newPath) {
-  const oldFull = path.join(NOTEBOOK_DIR, oldPath);
-  const newFull = path.join(NOTEBOOK_DIR, newPath);
+  const oldFull = safeJoin(NOTEBOOK_DIR, oldPath);
+  const newFull = safeJoin(NOTEBOOK_DIR, newPath);
+  if (!oldFull || !newFull) return { ok: false, error: "forbidden path" };
   try {
     const dir = path.dirname(newFull);
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
@@ -127,7 +142,8 @@ function renameFile(oldPath, newPath) {
 }
 
 function createFolder(folderPath) {
-  const fullPath = path.join(NOTEBOOK_DIR, folderPath);
+  const fullPath = safeJoin(NOTEBOOK_DIR, folderPath);
+  if (!fullPath) return { ok: false, error: "forbidden path" };
   try {
     fs.mkdirSync(fullPath, { recursive: true });
     return { ok: true, path: folderPath };

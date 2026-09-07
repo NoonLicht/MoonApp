@@ -12,6 +12,8 @@ function stamp() {
 // Возвращает путь или null, если что-то упало.
 function createBackup(trigger = "manual") {
   try {
+    // Пersist дебаунсится (М8) — перед копированием сбрасываем буфер на диск.
+    try { require("./db").flush(); } catch { /* noop */ }
     const dir = path.join(DIRS.backups, stamp());
     fs.mkdirSync(dir, { recursive: true });
 

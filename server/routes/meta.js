@@ -61,17 +61,8 @@ router.get("/monitor", async (req, res) => {
   }
 });
 
-// Архивация страниц — заглушка.
-router.get("/archives", (req, res) => {
-  res.json(stmts.archAll.all());
-});
-
-router.post("/archives", (req, res) => {
-  const { name = "untitled", size_text = "0 KB" } = req.body || {};
-  const info = stmts.archInsert.run(String(name), String(size_text));
-  logger.action("archive.add", { id: info.lastInsertRowid, name });
-  res.status(201).json({ ok: true, id: info.lastInsertRowid, name, size_text });
-});
+// Архивация страниц переехала в routes/archive.js (движок .sitebak).
+// Легаси-эндпоинты /api/archives и таблица archived_pages удалены (М9).
 
 // Книги — перенесены в routes/books.js (полноценный каталог по OPDS).
 // router.get("/books", ...) больше не здесь — см. /api/books.

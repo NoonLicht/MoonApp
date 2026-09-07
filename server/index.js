@@ -15,6 +15,9 @@ const catalogRouter = require("./routes/catalog");
 const appsRouter = require("./routes/apps");
 const convertRouter = require("./routes/convert");
 const videoRouter = require("./routes/video");
+const compressorRouter = require("./routes/compressor");
+const ttsRouter = require("./routes/tts");
+const archiveRouter = require("./routes/archive");
 const proxyRouter = require("./routes/proxy");
 const booksRouter = require("./routes/books");
 const musicRouter = require("./routes/music");
@@ -62,6 +65,19 @@ function createApp() {
 
   // Без открытого CORS (same-origin через Vite-proxy / раздачу dist),
   // лимит тела запроса урезан с 50mb до 2mb, и токен на всех /api-роутах.
+  // CSP на статику (API отвечает JSON — заголовок не нужен). Инлайн-скрипты
+  // запрещены: бандл Vite — внешние файлы. Это второй рубеж после DOMPurify.
+  app.use((req, res, next) => {
+    if (!req.path.startsWith("/api") && !req.path.startsWith("/events")) {
+      res.setHeader(
+        "Content-Security-Policy",
+        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; " +
+        "img-src 'self' data: blob:; media-src 'self' data: blob:; font-src 'self' data:; " +
+        "connect-src 'self' ws://127.0.0.1:* http://127.0.0.1:*; object-src 'none'; frame-src 'none'; base-uri 'self'"
+      );
+    }
+    next();
+  });
   app.use(authMiddleware);
   app.use(express.json({ limit: "2mb" }));
 
@@ -74,6 +90,9 @@ function createApp() {
   app.use("/api/apps", appsRouter);
   app.use("/api/convert", convertRouter);
   app.use("/api/video", videoRouter);
+  app.use("/api/compressor", compressorRouter);
+  app.use("/api/tts", ttsRouter);
+  app.use("/api/archive", archiveRouter);
   app.use("/api/proxy", proxyRouter);
   app.use("/api/books", booksRouter);
   app.use("/api/music", musicRouter);

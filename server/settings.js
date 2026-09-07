@@ -90,16 +90,49 @@ const DEFAULTS = {
     spellcheck: false,       // проверка орфографии в редакторе
   },
 
-  // --- Голос / клонирование (пока TODO — локальный TTS) ---
+  // --- Голос / клонирование (F5-TTS) ---
   voice: {
     engine: "local",         // local | cloud
     model: "",
     defaultLanguage: "English",
+    // F5-TTS hyperparameters (дефолты для студии).
+    exaggeration: 1.0,       // 0.5–2.0 — выразительность/динамика
+    cfgWeight: 2.0,          // 1.5–4.5 — строгость сходства с референсом
+    chunkSize: 250,          // ~символов на чанк (разбивка по знакам препинания)
+    precision: "fp16",       // fp16 (~4.5 ГБ VRAM) | fp32
+    nfeSteps: 32,            // диффузионные шаги F5-TTS (32–48)
+    vramGb: 4.5,             // зарезервируемый объём VRAM (информативно)
+    loudnessTarget: -16,     // EBU R128 target LUFS для нормализации
+    // Команда запуска F5-TTS (пусто = автопоиск: f5-tts_infer / python -m f5_tts)
+    f5Cmd: "",
   },
 
   // --- Архиватор страниц (пока TODO) ---
   archiver: {
     defaultOptions: { css: true, images: true, fonts: true, removeScripts: false },
+  },
+
+  // --- Видеосжатие (3-ступенчатый пайплайн) ---
+  compressor: {
+    codec: "av1",            // av1 | hevc | h264
+    crf: 22,                 // 0–50; 20–25 — sweet spot
+    aiUpscale: true,         // Real-ESRGAN на GPU (если бинарь найден)
+    aiScale: "2x",           // 2x | 4x
+    gpuDeviceId: 0,          // ID GPU для Real-ESRGAN (gpus=Id:N)
+    cleanupTemp: true,       // чистить промежуточные файлы после сжатия
+  },
+
+  // --- Web Archive / .sitebak ---
+  sitebak: {
+    maxConcurrent: 3,        // параллельных вкладок/браузеров Playwright
+    crawlDelayMs: 500,       // пауза между запросами (вежливость)
+    userAgent: "",           // пусто = стандартный Chromium UA
+    zstdDictKb: 1024,        // словарь ZSTD для текстового блока (КБ)
+    mediaFormat: "webp",     // original | lossless | webp | avif
+    stripExif: true,
+    stripScripts: true,
+    blockAds: true,
+    maxPages: 500,
   },
 
   // --- Мониторинг (пока TODO — реальный сбор телеметрии) ---
@@ -153,10 +186,7 @@ function load() {
   return cache;
 }
 
-function save() {
-  fs.writeFileSync(FILES.settings, JSON.stringify(cache, null, 2), "utf8");
-  logger.info("settings.save", {});
-}
+function save() { saveWithLock(); } // оставлено для совместимости экспорта
 
 function get(key) {
   const s = load();
@@ -165,9 +195,61 @@ function get(key) {
 
 function set(patch) {
   const s = load();
-  Object.assign(s, deepMerge(s, patch));
-  save();
+  const clean = sanitizePatch(patch);
+  Object.assign(s, deepMerge(s, clean));
+  saveWithLock();
   return s;
+}
+
+// Белая схема (С8): принимаются только ключи, существующие в DEFAULTS, и только
+// значения того же типа (number/string/boolean). Всё остальное отбрасывается —
+// произвольный JSON больше не может попасть в settings.json.
+function sanitizePatch(patch, schema = DEFAULTS, base = []) {
+  const out = {};
+  for (const k of Object.keys(patch || {})) {
+    const v = patch[k];
+    if (!(k in schema)) continue;
+    if (isPlainObject(schema[k])) {
+      if (isPlainObject(v)) {
+        const nested = sanitizePatch(v, schema[k], base.concat(k));
+        if (Object.keys(nested).length) out[k] = nested;
+      }
+      continue;
+    }
+    const t = typeof schema[k];
+    if (t === "number") {
+      const n = Number(v);
+      if (Number.isFinite(n)) out[k] = n;
+    } else if (t === "boolean") {
+      if (typeof v === "boolean") out[k] = v;
+    } else if (t === "string") {
+      if (typeof v === "string") out[k] = v.slice(0, 4000);
+    }
+  }
+  return out;
+}
+
+// Запись с коротким файловым lock (С10): settings.json пишут два процесса
+// (Express и electron-main с lastSize) — без блокировки возможна потеря записи.
+function saveWithLock() {
+  const lock = FILES.settings + ".lock";
+  let fd = null;
+  for (let i = 0; i < 20 && fd === null; i++) {
+    try { fd = fs.openSync(lock, "wx"); } catch { const t0 = Date.now(); while (Date.now() - t0 < 50) { /* busy */ } }
+  }
+  try {
+    if (fd === null) { // не дождались — пишем напрямую (лучше потерять гонку, чем запись)
+      fs.writeFileSync(FILES.settings, JSON.stringify(cache, null, 2), "utf8");
+    } else {
+      const tmp = FILES.settings + ".tmp";
+      fs.writeFileSync(tmp, JSON.stringify(cache, null, 2), "utf8");
+      try { fs.renameSync(tmp, FILES.settings); }
+      catch { fs.writeFileSync(FILES.settings, JSON.stringify(cache, null, 2), "utf8"); }
+    }
+  } finally {
+    if (fd !== null) { try { fs.closeSync(fd); fs.rmSync(lock, { force: true }); } catch { /* ignore */ } }
+  }
+  logger.info("settings.save", {});
 }
 
 module.exports = { load, get, set, DEFAULTS };

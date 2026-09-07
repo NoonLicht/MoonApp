@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Check, Copy } from "lucide-react";
 import { highlightCode } from "./chatUtils";
+import { sanitizeHtml } from "../../utils/sanitize";
 
 /** Код-блок с копированием на React (без onclick-инъекций в HTML). */
 export default function CodeBlock({ code, lang }: { code: string; lang: string }) {
@@ -18,7 +19,7 @@ export default function CodeBlock({ code, lang }: { code: string; lang: string }
           {copied ? <Check size={11} /> : <Copy size={11} />} {copied ? "✓" : "Copy"}
         </button>
       </div>
-      <code className={`language-${lang}`} dangerouslySetInnerHTML={{ __html: highlightCode(code, lang) }} />
+      <code className={`language-${lang}`} dangerouslySetInnerHTML={{ __html: sanitizeHtml(highlightCode(code, lang)) }} />
     </pre>
   );
 }

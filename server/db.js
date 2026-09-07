@@ -66,7 +66,7 @@ const tables = {
   tasks: new Table(["text", "done", "priority", "tag", "pos", "created_at"], "pos"),
   conversations: new Table(["provider", "title", "created_at", "updated_at", "pinned"], "-updated_at"),
   messages: new Table(["conversation_id", "role", "text", "created_at"], "id"),
-  archived_pages: new Table(["name", "size_text", "saved_at"], "-id"),
+  archived_pages: new Table(["name", "size_text", "saved_at"], "-id"), // устарело (М9), оставлено для совместимости старых data.json
   books: new Table(["title", "author", "year", "fmt", "tone", "description"], "title"),
   catalog: new Table(["name", "url", "source", "category", "wingetId", "favorite", "added_at"], "-id"),
   favorites: new Table(["key"], "key"),
@@ -78,7 +78,10 @@ function now() {
 
 // Запись атомарная: временный файл + rename. На Windows rename иногда отдаёт
 // EPERM, если файл занят (антивирус/редактор) — тогда запись идёт прямо в основной.
-function persist() {
+// М8: persist дебаунсится на 300 мс — при серии мутаций (стриминг чата)
+// диск дёргается один раз. flush() вызывается на exit, чтобы ничего не терялось.
+let persistTimer = null;
+function persistNow() {
   const payload = {};
   for (const k of Object.keys(tables)) payload[k] = tables[k].toJSON();
   const json = JSON.stringify(payload);
@@ -94,6 +97,17 @@ function persist() {
     }
   }
 }
+function persist() {
+  if (persistTimer) return;
+  persistTimer = setTimeout(() => { persistTimer = null; persistNow(); }, 300);
+  if (persistTimer.unref) persistTimer.unref();
+}
+// Немедленный сброс отложенной записи (используется бэкапом и exit-хуком).
+function flush() {
+  if (persistTimer) { clearTimeout(persistTimer); persistTimer = null; }
+  persistNow();
+}
+process.on("exit", () => { if (persistTimer) { clearTimeout(persistTimer); persistNow(); } });
 
 function load() {
   try {
@@ -212,4 +226,4 @@ const db = {
   prepare: () => ({ run: () => ({}), all: () => [], get: () => null }),
 };
 
-module.exports = { db, stmts, tables, exportSnapshot };
+module.exports = { db, stmts, tables, exportSnapshot, flush };

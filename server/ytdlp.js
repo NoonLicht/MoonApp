@@ -160,7 +160,7 @@ function runJson(bin, url) {
   return new Promise((resolve, reject) => {
     execFile(
       bin,
-      ["-J", "--no-playlist", "--ignore-config", "--no-warnings", "--no-call-home", url],
+      ["-J", "--no-playlist", "--ignore-config", "--no-warnings", "--no-call-home", "--", url],
       { timeout: 120000, windowsHide: true, maxBuffer: 64 * 1024 * 1024 },
       (err, stdout, stderr) => {
         if (err) {
@@ -296,7 +296,8 @@ function startDownload({ url, info, height, container, subs, thumb }) {
   if (subs && subs.length) args.push("--write-subs", "--sub-langs", subs.join(","), "--sub-format", "best");
   if (thumb) args.push(wantEmbed ? "--embed-thumbnail" : "--write-thumbnail");
   if (needsMerge) args.push("--merge-output-format", containerOut);
-  args.push("--format", plan.format, url);
+  // С9: "--" перед URL — URL вида "-o…" не будет истолкован как опция.
+  args.push("--format", plan.format, "--", url);
 
   const job = { id: jobId, url, title: info.title || "", token, state: "running", progress: 0, error: "", stderrBuf: "", outDir, files: [] };
   JOBS.set(jobId, job);
@@ -446,6 +447,7 @@ function startAudioDownload({ url, format = "mp3", quality = 0 }) {
   ];
   const proxyUrl = proxy.getProxyUrl();
   if (proxyUrl) args.push("--proxy", proxyUrl);
+  args.push("--", url); // С9: URL после end-of-options
 
   const job = { id: jobId, url, title: "", token, state: "running", progress: 0, error: "", stderrBuf: "", outDir, files: [] };
   JOBS.set(jobId, job);
