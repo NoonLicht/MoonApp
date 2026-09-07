@@ -354,7 +354,9 @@ async function runPipeline(job) {
         const duration = await probeDuration(ffprobe, job.inputPath);
         const numSegs = Math.max(1, Math.ceil((duration || 60) / SEG_SEC));
         const totalFrames = Math.round((duration || 60) * fpsN);
-        let nextNum = 1; // глобальный номер кадра (без дыр между сегментами)
+        let nextNum = 1; // глобальный номер кадра; растёт по ФАКТИЧЕСКОМУ числу
+        // кадров сегмента (см. ниже) — дыр в нумерации не бывает, поэтому
+        // image2-демуксер не обрывает видео после первого сегмента.
         let nextSeg = 0;
         const upQueue = [];     // готовые к апскейлу сегменты
         let upRunning = false;  // сейчас работает GPU-процесс (0 или 1)
@@ -372,36 +374,57 @@ async function runPipeline(job) {
               else resolve();
             }
           };
+          // Один запуск realesrgan на сегмент с ретраями тайла: 0 (авто) →
+          // 128 → 64. Меньше тайл — меньше VRAM, чуть медленнее, но без
+          // «квадратов» при нехватке видеопамяти.
+          const runUpscale = (dir, tile) => new Promise((res2, rej2) => {
+            const child = spawn(realesrgan,
+              ["-i", dir, "-o", framesUpDir, "-n", job.aiModel, "-f", "jpg",
+               "-s", s, "-t", String(tile), "-j", "2:4:4",
+               ...(Number(cfg.gpuDeviceId) > 0 ? ["-g", String(Number(cfg.gpuDeviceId))] : [])],
+              { windowsHide: true });
+            let errTail = "";
+            let done2 = false;
+            const finish = (code, err) => {
+              if (done2) return; done2 = true;
+              code === 0 ? res2() : rej2(new Error(`realesrgan exit ${code}: ${err.slice(-150)}`));
+            };
+            child.stderr.on("data", (d) => { errTail = (errTail + String(d)).slice(-2000); });
+            child.on("error", (e) => finish(1, String(e)));
+            child.on("close", (code) => finish(code, errTail));
+          });
           // Очередь апскейла: одновременно живёт максимум один realesrgan.
           const pump = () => {
             if (upRunning || upQueue.length === 0) { maybeDone(); return; }
             const dir = upQueue.shift();
             upRunning = true;
-            const child = spawn(realesrgan,
-              ["-i", dir, "-o", framesUpDir, "-n", job.aiModel, "-f", "jpg",
-               "-s", s, "-j", "2:4:4",
-               ...(Number(cfg.gpuDeviceId) > 0 ? ["-g", String(Number(cfg.gpuDeviceId))] : [])],
-              { windowsHide: true });
-            let errTail = "";
-            let finishedUp = false; // error+close могут прийти оба — guard
-            const finishUp = (d) => {
-              if (finishedUp) return;
-              finishedUp = true;
-              upRunning = false;
-              try { fs.rmSync(d, { recursive: true, force: true }); } catch { /* ignore */ }
-              pump();
+            const attempt = (tileIdx) => {
+              const tiles = [0, 128, 64];
+              if (tileIdx >= tiles.length) {
+                segErr.push(`segment ${dir} upscale failed (all tile sizes)`);
+                upRunning = false;
+                try { fs.readdirSync(dir).forEach((f) => { try { fs.rmSync(path.join(framesUpDir, f), { force: true }); } catch { /* ignore */ } }); } catch { /* ignore */ }
+                pump();
+                return;
+              }
+              runUpscale(dir, tiles[tileIdx]).then(() => {
+                // Прогресс по фактическому числу готовых кадров.
+                try {
+                  const done = fs.readdirSync(framesUpDir).length;
+                  job.progress = Math.min(99, Math.round((workH ? 40 : 10) + 20 * (done / Math.max(1, totalFrames))));
+                } catch { /* ignore */ }
+                upRunning = false;
+                try { fs.rmSync(dir, { recursive: true, force: true }); } catch { /* ignore */ }
+                pump();
+              }).catch((e) => {
+                logger.warn("compressor.upscaleRetry", { tile: tiles[tileIdx], err: String(e.message || e).slice(0, 160) });
+                // Убираем частично обработанные кадры этого сегмента — ретрай заново.
+                try { fs.readdirSync(dir).forEach((f) => { try { fs.rmSync(path.join(framesUpDir, f), { force: true }); } catch { /* ignore */ } }); } catch { /* ignore */ }
+                upRunning = false;
+                attempt(tileIdx + 1);
+              });
             };
-            child.stderr.on("data", (d) => { errTail = (errTail + String(d)).slice(-2000); });
-            child.on("error", (e) => { segErr.push(String(e)); finishUp(dir); });
-            child.on("close", (code) => {
-              if (code !== 0) segErr.push(`realesrgan exit ${code}: ${errTail.slice(-150)}`);
-              // Прогресс по фактическому числу готовых кадров.
-              try {
-                const done = fs.readdirSync(framesUpDir).length;
-                job.progress = Math.min(99, Math.round((workH ? 40 : 10) + 20 * (done / Math.max(1, totalFrames))));
-              } catch { /* ignore */ }
-              finishUp(dir);
-            });
+            attempt(0);
           };
           const startDecode = () => {
             if (nextSeg >= numSegs) {
@@ -412,10 +435,14 @@ async function runPipeline(job) {
             fs.mkdirSync(dir, { recursive: true });
             tmpDirs.push(dir);
             const start = i * SEG_SEC;
-            nextNum += Math.round(SEG_SEC * fpsN); // сегменты одинаковой длины
+            const startNum = nextNum; // номер первого кадра ЭТОГО сегмента
             runFfmpeg(ffmpeg, ["-y", "-ss", String(start), "-t", String(SEG_SEC), "-i", job.inputPath,
-              "-fps_mode", "passthrough", "-q:v", "2", "-start_number", String(nextNum - Math.round(SEG_SEC * fpsN)),
+              "-fps_mode", "passthrough", "-q:v", "2", "-start_number", String(startNum),
               path.join(dir, "f_%06d.jpg")], tracker).then(() => {
+              // СЛЕДУЮЩИЙ глобальный номер = фактическое число кадров сегмента.
+              // Никаких дыр в нумерации — image2 не обрывает видео.
+              const written = fs.readdirSync(dir).length;
+              nextNum = startNum + written;
               upQueue.push(dir);
               pump();               // GPU свободен — сразу берём следующий сегмент
               startDecode();        // декодер бежит вперёд, не ждёт GPU
@@ -428,13 +455,11 @@ async function runPipeline(job) {
           };
           startDecode();
         });
-        if (segErr.length) {
-          // Апскейл не удался — продолжаем без него, из downscale-источника.
-          logger.warn("compressor.aiFallback", { errs: segErr.slice(0, 2) });
-          framesUpDir = null; job.aiSkipped = true; job.aiSkipReason = "upscale_failed";
-        } else {
-          job.steps.push("ai-upscale");
-        }
+        // Если какой-то сегмент так и не апскейлился — падаем с понятной
+        // ошибкой, а НЕ отдаём обрезанные первые 15 секунд.
+        const failedSegs = segErr.filter((e) => /upscale failed|segment .* upscale failed/.test(e));
+        if (failedSegs.length) throw new Error("upscale_segment_failed");
+        job.steps.push("ai-upscale");
       }
     } else if (job.aiWanted && upH) {
       job.aiSkipped = true; // включено, но бинарь Real-ESRGAN не найден
@@ -446,13 +471,34 @@ async function runPipeline(job) {
     // Итоговая высота: цель апскейла, если он был; иначе — рабочая (downscale).
     const finalH = framesUpDir ? upH : (workH || null);
     const fps = String(job.info.fps || "30");
+    const fpsN = Number(job.info.fps) || 30;
     const fpsArg = /^\d+\/\d+$/.test(fps) ? fps : "30";
     const vf = finalH ? ["-vf", `scale=-2:${finalH}`] : [];
     // Звук всегда из исходного файла (-map 1:a); «?» — не падать без дорожки.
     const audioArgs = ["-map", "0:v", "-map", "1:a?", "-c:a", "aac", "-b:a", "192k", "-shortest"];
-    const imageSeq = framesUpDir
-      ? ["-framerate", fpsArg, "-i", path.join(framesUpDir, "f_%06d.jpg")]
-      : ["-i", job.inputPath];
+    let imageSeq;
+    if (framesUpDir) {
+      // Кадры собираются через ffconcat-список: НЕ зависит от непрерывности
+      // нумерации (realesrgan изредка пропускает кадр — image2 по номеру
+      // обрывался на первой дыре, давая «15-секундное» видео).
+      const files = fs.readdirSync(framesUpDir)
+        .filter((f) => /\.(jpg|jpeg|png)$/i.test(f))
+        .sort((a, b) => {
+          const na = parseInt(a.replace(/\D/g, ""), 10) || 0;
+          const nb = parseInt(b.replace(/\D/g, ""), 10) || 0;
+          return na - nb;
+        });
+      if (!files.length) throw new Error("upscale_empty");
+      const listPath = path.join(framesUpDir, "list.ffconcat");
+      const dur = (1 / fpsN).toFixed(6);
+      let lst = "ffconcat version 1.0\n";
+      for (const f of files) lst += `file '${f}'\nduration ${dur}\n`;
+      lst += `file '${files[files.length - 1]}'\n`; // последний кадр без duration — фиксация длительности
+      fs.writeFileSync(listPath, lst, "utf8");
+      imageSeq = ["-f", "concat", "-safe", "0", "-i", listPath];
+    } else {
+      imageSeq = ["-i", job.inputPath];
+    }
     const tryEncode = (vArgs) => runFfmpeg(ffmpeg,
       ["-y", ...imageSeq, "-i", job.inputPath, ...audioArgs, ...vf, ...vArgs, outFile], tracker);
     // Перебор энкодеров (software → hardware): QSV/NVENC могут числиться в
@@ -476,7 +522,8 @@ async function runPipeline(job) {
     job.outSize = fs.existsSync(outFile) ? fs.statSync(outFile).size : 0;
     job.progress = 100; job.etaSec = 0;
     job.done = true; job.stage = "done";
-    logger.info("compressor.done", { id: job.id, size: job.outSize, codec: job.codec, crf: job.crf, steps: job.steps });
+    // Длительность результата — для контроля целостности (лог/отладка).
+    probeDuration(ffprobe, outFile).then((d) => { job.durationSec = d; logger.info("compressor.done", { id: job.id, size: job.outSize, codec: job.codec, crf: job.crf, steps: job.steps, durationSec: d }); });
   } catch (e) {
     job.error = String(e.message || e); job.stage = "error";
     logger.error("compressor.error", { id: job.id, error: job.error });
