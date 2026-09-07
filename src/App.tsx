@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import {
-  Store, Repeat, Video, Music2, BookOpen, Activity, MessageSquare,
+  Store, Repeat, Gauge, Video, Music2, BookOpen, Activity, MessageSquare,
   Mic2, Archive, Sun, Moon, Minus, Square, X, Settings2, Shield, User,
 } from "lucide-react";
 import { I18nProvider, useI18n } from "./i18n";
@@ -21,6 +21,7 @@ import "./styles/notes.css";
 // Страницы
 import StorePage from "./pages/StorePage";
 import ConverterPage from "./pages/ConverterPage";
+import CompressorPage from "./pages/CompressorPage";
 import VideoPage from "./pages/VideoPage";
 import MusicPage from "./pages/MusicPage";
 import BooksPage from "./pages/BooksPage";
@@ -32,12 +33,13 @@ import SettingsPage from "./pages/SettingsPage";
 import MyspacePage from "./pages/MyspacePage";
 
 type PageId =
-  | "store" | "convert" | "video" | "music" | "books" | "monitor"
+  | "store" | "convert" | "compress" | "video" | "music" | "books" | "monitor"
   | "aichat" | "voice" | "archive" | "settings" | "myspace";
 
 const PAGES: { id: PageId; i18n: string; icon: React.ElementType }[] = [
   { id: "store", i18n: "nav.store", icon: Store },
   { id: "convert", i18n: "nav.convert", icon: Repeat },
+  { id: "compress", i18n: "nav.compress", icon: Gauge },
   { id: "video", i18n: "nav.video", icon: Video },
   { id: "music", i18n: "nav.music", icon: Music2 },
   { id: "books", i18n: "nav.books", icon: BookOpen },
@@ -52,6 +54,7 @@ const PAGES: { id: PageId; i18n: string; icon: React.ElementType }[] = [
 const PAGE_COMPONENTS: Record<PageId, React.ComponentType> = {
   store: StorePage,
   convert: ConverterPage,
+  compress: CompressorPage,
   video: VideoPage,
   music: MusicPage,
   books: BooksPage,

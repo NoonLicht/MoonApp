@@ -20,6 +20,14 @@ const DIRS = {
   convert: ensureDir(path.join(STORAGE_DIR, "convert")),
   convertIn: ensureDir(path.join(STORAGE_DIR, "convert", "in")),
   convertOut: ensureDir(path.join(STORAGE_DIR, "convert", "out")),
+  // Видеосжатие: исходники, промежуточные и готовые файлы.
+  compressorIn: ensureDir(path.join(STORAGE_DIR, "compressor", "in")),
+  compressorOut: ensureDir(path.join(STORAGE_DIR, "compressor", "out")),
+  // TTS: референсы голоса, чанки, готовые аудиокниги, профили.
+  tts: ensureDir(path.join(STORAGE_DIR, "tts")),
+  // Web Archive: рабочие папки краулера, распакованные архивы и .sitebak.
+  sitebak: ensureDir(path.join(STORAGE_DIR, "sitebak")),
+  sitebakExtracted: ensureDir(path.join(STORAGE_DIR, "sitebak", "extracted")),
 };
 
 const FILES = {

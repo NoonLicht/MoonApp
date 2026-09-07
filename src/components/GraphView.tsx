@@ -275,7 +275,7 @@ export default function GraphView({ data, onNodeClick, onClose }: Props) {
   return (
     <div ref={containerRef} className="graph-container" style={{ position: "relative", width: "100%", height: "100%" }}>
       <canvas ref={canvasRef} width={dims.w} height={dims.h}
-        style={{ width: Math.round(dims.w / (window.devicePixelRatio || 1)), height: Math.round(dims.h / (window.devicePixelRatio || 1)), cursor: "grab", display: "block" }}
+        style={{ width: Math.round(dims.w / ((typeof window !== "undefined" ? window.devicePixelRatio : 1) || 1)), height: Math.round(dims.h / ((typeof window !== "undefined" ? window.devicePixelRatio : 1) || 1)), cursor: "grab", display: "block" }}
         onMouseDown={handleMouseDown} onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp} onWheel={handleWheel} />
       <div className="graph-controls">

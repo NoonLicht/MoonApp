@@ -97,7 +97,7 @@ function TBtn({ icon: Icon, active, disabled, title, onClick, size = 15, style }
 }
 
 function DropdownItemBtn({ icon: Icon, label, active, onClick }: {
-  icon: React.ElementType; label: string; active?: boolean; onClick: () => void;
+  icon: React.ElementType; label: string; active?: boolean; value?: string; onClick: () => void;
 }) {
   return (
     <button

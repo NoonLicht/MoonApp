@@ -11,6 +11,7 @@ import { api, streamChatSend, streamArena } from "../api/client";
 import type { ProviderInfo, Conversation, ChatMessage } from "../api/types";
 import CodeBlock from "./AiChat/CodeBlock";
 import MsgList, { type MsgStats } from "./AiChat/MsgList";
+import { sanitizeHtml } from "../utils/sanitize";
 import { useContextMenu } from "../components/ContextMenu";
 import {
   renderInlineMd, parseSegments, approxTokens,
@@ -36,6 +37,13 @@ export default function AiChatPage() {
   const [providers, setProviders] = useState<ProviderInfo[]>([]);
   const [chatCfg, setChatCfgState] = useState<ChatCfg>(() => loadCfg());
   const setChatCfg = useCallback((patch: Partial<ChatCfg>) => {
+    // М7: вручную изменённые поля запоминаются — настройки приложения их
+    // больше не перезаписывают при следующем заходе.
+    try {
+      const touched = new Set<string>(JSON.parse(localStorage.getItem("aichat.cfg.touched") || "[]"));
+      for (const k of Object.keys(patch)) touched.add(k);
+      localStorage.setItem("aichat.cfg.touched", JSON.stringify([...touched]));
+    } catch { /* noop */ }
     setChatCfgState((s) => { const n = { ...s, ...patch }; saveCfg(n); return n; });
   }, []);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -83,23 +91,23 @@ export default function AiChatPage() {
       setChatCfgState((s) => ({ ...s, provider: last.provider || s.provider, model: last.model || s.model }));
     }
     // Дефолты из настроек (chat.*) применяются один раз — если юзер ещё ни разу
-    // не сохранял свой конфиг чата в localStorage. Иначе его выбор перекрылся бы
-    // при каждом заходе на страницу.
+    // М7: настройки chat.* синхронизируются при КАЖДОМ заходе на страницу,
+    // но перезаписывают только те поля, которые пользователь не менял вручную
+    // (ручные изменения пишутся в localStorage с флагом "cfg.touched").
     try {
-      if (!localStorage.getItem("aichat.cfg.v2")) {
-        api.getSettings().then((s: any) => {
-          const c = s?.chat;
-          if (!c) return;
-          setChatCfgState((p) => ({
-            ...p,
-            provider: c.provider || p.provider,
-            model: c.model || p.model,
-            temperature: typeof c.temperature === "number" ? c.temperature : p.temperature,
-            maxTokens: typeof c.maxTokens === "number" ? c.maxTokens : p.maxTokens,
-            streaming: typeof c.stream === "boolean" ? c.stream : p.streaming,
-          }));
-        }).catch(() => { /* настройки недоступны — остаются встроенные дефолты */ });
-      }
+      api.getSettings().then((s: any) => {
+        const c = s?.chat;
+        if (!c) return;
+        const touched = new Set(JSON.parse(localStorage.getItem("aichat.cfg.touched") || "[]"));
+        setChatCfgState((p: ChatCfg) => ({
+          ...p,
+          provider: touched.has("provider") ? p.provider : (c.provider || p.provider),
+          model: touched.has("model") ? p.model : (c.model || p.model),
+          temperature: touched.has("temperature") || typeof c.temperature !== "number" ? p.temperature : c.temperature,
+          maxTokens: touched.has("maxTokens") || typeof c.maxTokens !== "number" ? p.maxTokens : c.maxTokens,
+          streaming: touched.has("streaming") || typeof c.stream !== "boolean" ? p.streaming : c.stream,
+        }));
+      }).catch(() => { /* настройки недоступны — остаётся localStorage */ });
     } catch { /* localStorage недоступен */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -709,7 +717,7 @@ export default function AiChatPage() {
                             ? parseSegments(st.text).map((seg, i) =>
                                 seg.type === "code"
                                   ? <CodeBlock key={i} code={seg.text} lang={seg.lang || "text"} />
-                                  : <span key={i} dangerouslySetInnerHTML={{ __html: renderInlineMd(seg.text) }} />)
+                                  : <span key={i} dangerouslySetInnerHTML={{ __html: sanitizeHtml(renderInlineMd(seg.text)) }} />)
                             : !st.done && <div className="typing"><span /><span /><span /></div>}
                         </div>
                         {st.done && st.text && (

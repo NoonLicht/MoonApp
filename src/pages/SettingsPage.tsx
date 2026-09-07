@@ -277,7 +277,8 @@ export default function SettingsPage() {
   const chat = s.chat, store = s.store, conv = s.converter;
   // РќРѕРІС‹Рµ СЃРµРєС†РёРё РјРѕРіСѓС‚ РѕС‚СЃСѓС‚СЃС‚РІРѕРІР°С‚СЊ РІ СЃС‚Р°СЂС‹С… settings.json вЂ” РґР°С‘Рј С„РѕР»Р±СЌРєРё.
   const video = s.video || {}, musicS = s.music || {}, books = s.books || {}, mysp = s.myspace || {};
-  const media = s.media, voice = s.voice, arch = s.archiver, mon = s.monitor;
+  const media = s.media, voice = s.voice || {}, arch = s.archiver || {}, mon = s.monitor;
+  const comp = s.compressor || {}, sb = s.sitebak || {};
   const backup = s.backup, adv = s.advanced;
 
   return (
@@ -316,6 +317,24 @@ export default function SettingsPage() {
             <TextInput value={conv.ffmpegPath} onChange={(v) => change("converter.ffmpegPath", v)} placeholder="ffmpeg" />
           </Row>
           <BoolRow label={t("convSection.convAudio")} hint={t("convSection.convAudioHint")} value={conv.preserveAudio} onChange={(v) => change("converter.preserveAudio", v)} />
+        </Section>
+
+        {/* ---- Сжатие видео (док: compressor) — дефолты 3-ступенчатого пайплайна ---- */}
+        <Section title={t("settings.compressor")} icon={Gauge} badge="active">
+          <Row label={t("cmpSettings.cmpCodec")} hint={t("cmpSettings.cmpCodecHint")}>
+            <Select value={String(comp.codec ?? "av1")} onChange={(e) => change("compressor.codec", e.target.value)} options={["av1", "hevc", "h264"]} />
+          </Row>
+          <Row label={t("cmpSettings.cmpCrf", { v: comp.crf ?? 22 })} hint={t("cmpSettings.cmpCrfHint")}>
+            <input type="range" min="0" max="50" step="1" value={Number(comp.crf ?? 22)} onChange={(e) => change("compressor.crf", parseInt(e.target.value))} style={{ width: 180 }} />
+          </Row>
+          <BoolRow label={t("cmpSettings.cmpAi")} hint={t("cmpSettings.cmpAiHint")} value={comp.aiUpscale !== false} onChange={(v) => change("compressor.aiUpscale", v)} />
+          <Row label={t("cmpSettings.cmpAiScale")} hint={t("cmpSettings.cmpAiScaleHint")}>
+            <Select value={String(comp.aiScale ?? "2x")} onChange={(e) => change("compressor.aiScale", e.target.value)} options={["2x", "4x"]} />
+          </Row>
+          <Row label={t("cmpSettings.cmpGpu")} hint={t("cmpSettings.cmpGpuHint")}>
+            <NumberInput value={Number(comp.gpuDeviceId ?? 0)} onChange={(v) => change("compressor.gpuDeviceId", v)} min={0} max={8} />
+          </Row>
+          <BoolRow label={t("cmpSettings.cmpCleanup")} hint={t("cmpSettings.cmpCleanupHint")} value={comp.cleanupTemp !== false} onChange={(v) => change("compressor.cleanupTemp", v)} />
         </Section>
 
         {/* ---- Р’РёРґРµРѕ (РґРѕРє: video) вЂ” РґРµС„РѕР»С‚С‹ РґР»СЏ РЅРѕРІС‹С… Р·Р°РіСЂСѓР·РѕРє yt-dlp ---- */}
@@ -406,10 +425,29 @@ export default function SettingsPage() {
             <Select value={voice.engine} onChange={(e) => change("voice.engine", e.target.value)} options={["local", "cloud"]} />
           </Row>
           <Row label={t("voiceSettings.voiceModel")} hint={t("voiceSettings.voiceModelHint")}>
-            <TextInput value={voice.model} onChange={(v) => change("voice.model", v)} placeholder={t("advanced.advancedMasterKeyPlaceholder")} />
+            <TextInput value={voice.model} onChange={(v) => change("voice.model", v)} placeholder={t("voiceSettings.voiceModelPlaceholder")} />
           </Row>
           <Row label={t("voiceSettings.voiceLang")} hint={t("voiceSettings.voiceLangHint")}>
-            <Select value={voice.defaultLanguage} onChange={(e) => change("voice.defaultLanguage", e.target.value)} options={["English", "Spanish", "French", "German", "Japanese"]} />
+            <Select value={voice.defaultLanguage} onChange={(e) => change("voice.defaultLanguage", e.target.value)} options={["English", "Russian", "Chinese", "Spanish", "French", "German", "Japanese"]} />
+          </Row>
+          {/* --- F5-TTS гиперпараметры (дефолты студии) --- */}
+          <Row label={t("voiceSettings.voiceExag", { v: Number(voice.exaggeration ?? 1).toFixed(2) })} hint={t("voiceSettings.voiceExagHint")}>
+            <input type="range" min="0.5" max="2" step="0.05" value={Number(voice.exaggeration ?? 1)} onChange={(e) => change("voice.exaggeration", parseFloat(e.target.value))} style={{ width: 180 }} />
+          </Row>
+          <Row label={t("voiceSettings.voiceCfg", { v: Number(voice.cfgWeight ?? 2).toFixed(2) })} hint={t("voiceSettings.voiceCfgHint")}>
+            <input type="range" min="1.5" max="4.5" step="0.05" value={Number(voice.cfgWeight ?? 2)} onChange={(e) => change("voice.cfgWeight", parseFloat(e.target.value))} style={{ width: 180 }} />
+          </Row>
+          <Row label={t("voiceSettings.voiceChunk")} hint={t("voiceSettings.voiceChunkHint")}>
+            <NumberInput value={Number(voice.chunkSize ?? 250)} onChange={(v) => change("voice.chunkSize", v)} min={100} max={400} step={10} suffix=" ch" />
+          </Row>
+          <Row label={t("voiceSettings.voicePrecision")} hint={t("voiceSettings.voicePrecisionHint")}>
+            <Select value={String(voice.precision ?? "fp16")} onChange={(e) => change("voice.precision", e.target.value)} options={["fp16", "fp32"]} />
+          </Row>
+          <Row label={t("voiceSettings.voiceVram")} hint={t("voiceSettings.voiceVramHint")}>
+            <NumberInput value={Number(voice.vramGb ?? 4.5)} onChange={(v) => change("voice.vramGb", v)} min={2} max={48} step={0.5} suffix=" GB" />
+          </Row>
+          <Row label={t("voiceSettings.voiceLoudness")} hint={t("voiceSettings.voiceLoudnessHint")}>
+            <NumberInput value={Number(voice.loudnessTarget ?? -16)} onChange={(v) => change("voice.loudnessTarget", v)} min={-30} max={-8} step={1} suffix=" LUFS" />
           </Row>
         </Section>
 
@@ -419,6 +457,28 @@ export default function SettingsPage() {
           <BoolRow label={t("archSettings.archImages")} hint={t("archSettings.archImagesHint")} value={arch.defaultOptions.images} onChange={(v) => change("archiver.defaultOptions.images", v)} />
           <BoolRow label={t("archSettings.archFonts")} hint={t("archSettings.archFontsHint")} value={arch.defaultOptions.fonts} onChange={(v) => change("archiver.defaultOptions.fonts", v)} />
           <BoolRow label={t("archSettings.archScripts")} hint={t("archSettings.archScriptsHint")} value={arch.defaultOptions.removeScripts} onChange={(v) => change("archiver.defaultOptions.removeScripts", v)} />
+        </Section>
+
+        {/* ---- Web Archive / .sitebak (док: sitebak) — параметры краулера ---- */}
+        <Section title={t("settings.sitebak")} icon={Archive} badge="active">
+          <Row label={t("sbSettings.sbConcurrent")} hint={t("sbSettings.sbConcurrentHint")}>
+            <NumberInput value={Number(sb.maxConcurrent ?? 3)} onChange={(v) => change("sitebak.maxConcurrent", v)} min={1} max={8} />
+          </Row>
+          <Row label={t("sbSettings.sbDelay", { v: sb.crawlDelayMs ?? 500 })} hint={t("sbSettings.sbDelayHint")}>
+            <input type="range" min="0" max="3000" step="100" value={Number(sb.crawlDelayMs ?? 500)} onChange={(e) => change("sitebak.crawlDelayMs", parseInt(e.target.value))} style={{ width: 180 }} />
+          </Row>
+          <Row label={t("sbSettings.sbUa")} hint={t("sbSettings.sbUaHint")}>
+            <TextInput value={sb.userAgent} onChange={(v) => change("sitebak.userAgent", v)} placeholder="Mozilla/5.0 …" />
+          </Row>
+          <Row label={t("sbSettings.sbDict")} hint={t("sbSettings.sbDictHint")}>
+            <NumberInput value={Number(sb.zstdDictKb ?? 1024)} onChange={(v) => change("sitebak.zstdDictKb", v)} min={0} max={8192} step={256} suffix=" KB" />
+          </Row>
+          <Row label={t("sbSettings.sbMedia")} hint={t("sbSettings.sbMediaHint")}>
+            <Select value={String(sb.mediaFormat ?? "webp")} onChange={(e) => change("sitebak.mediaFormat", e.target.value)} options={["original", "lossless", "webp", "avif"]} />
+          </Row>
+          <Row label={t("sbSettings.sbMaxPages")} hint={t("sbSettings.sbMaxPagesHint")}>
+            <NumberInput value={Number(sb.maxPages ?? 500)} onChange={(v) => change("sitebak.maxPages", v)} min={10} max={5000} step={10} />
+          </Row>
         </Section>
 
         {/* ---- РћР±С‰РёРµ (РґРѕРє: settings) ---- */}
@@ -434,7 +494,7 @@ export default function SettingsPage() {
             <Select
               value={g.startPage}
               onChange={(e) => change("general.startPage", e.target.value)}
-              options={["store", "convert", "video", "music", "books", "monitor", "myspace", "aichat", "voice", "archive", "settings"]}
+              options={["store", "convert", "compress", "video", "music", "books", "monitor", "myspace", "aichat", "voice", "archive", "settings"]}
             />
           </Row>
           <BoolRow label={t("settings.autoLaunch")} hint={t("settings.autoLaunchHint")} value={g.autoLaunch} onChange={(v) => change("general.autoLaunch", v)} />

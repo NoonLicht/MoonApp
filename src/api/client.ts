@@ -26,6 +26,37 @@ export type { AppItem, ArchiveItem, BackupInfo, BooksItem, ChatMessage, Conversa
 
 const BASE = ""; // тот же origin: фронт и API вместе (Vite-proxy или раздача Express)
 
+/* --- Типы новых модулей: Compressor / TTS / Sitebak --- */
+export interface CompressorJob {
+  id: string; name: string; size: number;
+  stage: "queued" | "downscale" | "upscale" | "encode" | "done" | "error";
+  step?: number; progress: number; etaSec: number | null;
+  steps: string[]; aiSkipped: boolean; error: string; done: boolean;
+  outSize: number; crf?: number; codec?: string;
+  info?: { width?: number; height?: number; codec?: string };
+}
+export interface TtsProfile {
+  id: string; name: string; refFile?: string; language?: string;
+  exaggeration: number; cfgWeight: number; createdAt: number;
+}
+export interface TtsEngine {
+  ok: boolean; error?: string; python?: boolean;
+  defaults?: { language: string; exaggeration: number; cfgWeight: number; chunkSize: number; precision: string; loudnessTarget: number };
+}
+export interface TtsJob {
+  id: string; stage: string; progress: number; chunkIndex: number; chunksTotal: number;
+  error: string; done: boolean; outSize: number; opts?: { format?: string };
+}
+export interface SitebakJob {
+  id: string; url: string; name: string; stage: string; progress: number;
+  pages: number; origSize: number; bakSize: number; error: string; done: boolean;
+  stats?: { pages: number; origSize: number; bakSize: number; savedPct: number; compression?: { textAlgo: string; ratio: number }; rendered?: boolean };
+}
+export interface SitebakArchive {
+  id: string; name: string; site: string; createdAt: number;
+  stats?: SitebakJob["stats"];
+}
+
 function tokenHeaders(): Record<string, string> {
   const t = window.appBridge?.getToken?.();
   return t ? { "x-pa-token": t } : {};
@@ -116,7 +147,59 @@ export const api = {
     req<BookDownloadResult>("POST", "/books/download", { bid, fmt }),
 
   getMonitor: () => req<MonitorSnapshot>("GET", "/monitor"),
-  getArchives: () => req<ArchiveItem[]>("GET", "/archives"),
+  compressorReveal: (id: string) => req<{ path: string }>("GET", `/compressor/${id}/reveal`),
+  archiveReveal: (id: string) => req<{ path: string }>("GET", `/archive/${id}/reveal`),
+
+  // --- Compressor: 3-ступенчатое сжатие видео (downscale → AI upscale → AV1) ---
+  compressVideo: (file: File, opts: Record<string, string | number | boolean>) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    for (const [k, v] of Object.entries(opts)) fd.append(k, String(v));
+    return multipart<CompressorJob>("/compressor", fd);
+  },
+  compressorStatus: (id: string) => req<CompressorJob>("GET", `/compressor/${id}`),
+  compressorDelete: (id: string) => req("DELETE", `/compressor/${id}`),
+  compressorUrl: (id: string, what: "download" | "preview") => `/api/compressor/${id}/${what}`,
+
+  // --- F5-TTS студия ---
+  ttsEngine: () => req<TtsEngine>("GET", "/tts/engine"),
+  ttsProfiles: () => req<TtsProfile[]>("GET", "/tts/profiles"),
+  ttsSaveProfile: (p: Partial<TtsProfile>) => req<TtsProfile>("POST", "/tts/profiles", p),
+  ttsDeleteProfile: (id: string) => req("DELETE", `/tts/profiles/${id}`),
+  // Референс грузится отдельным шагом — сервер возвращает имя ref_* файла,
+  // которое дальше используется при генерации и сохранении профилей (С1).
+  ttsUploadReference: (file: File) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    return multipart<{ refFile: string; size: number }>("/tts/reference", fd);
+  },
+  // М5: импорт книги .epub — сервер распаковывает и возвращает чистый текст.
+  ttsImportEpub: (file: File) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    return multipart<{ text: string }>("/tts/import-epub", fd);
+  },
+  ttsStart: (refFile: string, opts: Record<string, string | number>) =>
+    req<TtsJob>("POST", "/tts", { refFile, ...opts }),
+  ttsStatus: (id: string) => req<TtsJob>("GET", `/tts/${id}`),
+  ttsDownload: async (id: string): Promise<{ blob: Blob; name: string }> => {
+    const res = await fetch(`${BASE}/api/tts/${id}/download`, { headers: { ...tokenHeaders() } });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    // М2: имя файла — реальный формат (audiobook.mp3 | audiobook.wav).
+    const cd = res.headers.get("content-disposition") || "";
+    const m = /filename="?([^";]+)"?/i.exec(cd);
+    return { blob: await res.blob(), name: m?.[1] || "audiobook.mp3" };
+  },
+
+  // --- Web Archive (.sitebak) ---
+  archiveStart: (opts: Record<string, unknown>) => req<SitebakJob>("POST", "/archive/start", opts),
+  archiveStatus: (id: string) => req<SitebakJob>("GET", `/archive/status/${id}`),
+  archiveList: () => req<SitebakArchive[]>("GET", "/archive/list"),
+  archiveDelete: (id: string) => req("DELETE", `/archive/${id}`),
+  archiveVerify: (id: string) => req<{ ok: number; bad: number; total: number; badPaths: string[] }>("POST", `/archive/${id}/verify`),
+  archiveExtract: (id: string) => req<{ ok: boolean; files: number }>("POST", `/archive/${id}/extract`),
+  archiveDownload: (id: string) => `/api/archive/${id}/download`,
+  archivePreview: (id: string, p = "") => `/api/archive/${id}/file?path=${encodeURIComponent(p || "index.html")}`,
 
 
   // Convert — страница конвертации файлов (нативный движок через FFmpeg)

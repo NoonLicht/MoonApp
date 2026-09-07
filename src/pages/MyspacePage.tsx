@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
+﻿import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { FileText, Folder, Plus, Search, Tags, Hash, PanelRightOpen,
   PanelRightClose, PanelLeftOpen, PanelLeftClose, X, Link2, Type,  Bookmark, ChevronRight, ChevronDown, Globe, Trash2, Sparkles,
   Eye, PenLine, Maximize2, Minimize2, Settings2, ZoomIn, ZoomOut, Palette } from "lucide-react";
@@ -13,6 +13,11 @@ import GraphView from "../components/GraphView";
 import TasksPanel from "../components/TasksPanel";
 import CanvasPage from "../features/MySpace/components/Canvas/CanvasPage";
 import { useContextMenu } from "../components/ContextMenu";
+
+// rAF-хэндл синхронного скролла редактор/превью (см. syncScroll ниже).
+declare global {
+  interface Window { _msSyncRaf?: number }
+}
 
 type Side = "explorer" | "search" | "tags";
 type Right = "backlinks" | "outline" | "graph";
@@ -94,9 +99,9 @@ export default function MyspacePage() {
   }, []);
 
   const loadTree = () => { api.myspaceTree().then((t)=>{setTree(t);setExpAutoExpand(t);}).catch(()=>{}); };
-  const setExpAutoExpand = (nodes, parentPath="") => {
-    const toExpand = new Set();
-    const walk = (list, pp) => { for (const n of list) { if (n.type==="folder") { if (n.children && n.children.length > 0) { toExpand.add(n.path); walk(n.children, n.path); } } } };
+  const setExpAutoExpand = (nodes: VaultFile[], parentPath = "") => {
+    const toExpand = new Set<string>();
+    const walk = (list: VaultFile[], pp: string) => { for (const n of list) { if (n.type==="folder") { if (n.children && n.children.length > 0) { toExpand.add(n.path); walk(n.children, n.path); } } } };
     walk(nodes, "");
     setExp((prev)=>{const nxt=new Set(prev); toExpand.forEach(p=>nxt.add(p)); return nxt;});
   };
@@ -183,7 +188,7 @@ export default function MyspacePage() {
     const base = ""; // root for now
     const p = crType==="note" ? crName.trim()+".md" : crName.trim();
     // Check duplicate
-    const dup = (nodes) => { for (const n of nodes) { if (n.path===p) return true; if (n.children && dup(n.children)) return true; } return false; };
+    const dup = (nodes: VaultFile[]): boolean => { for (const n of nodes) { if (n.path===p) return true; if (n.children && dup(n.children)) return true; } return false; };
     if (dup(tree)) { setError("A file/folder named \""+crName.trim()+"\" already exists"); return; }
     try {
       if (crType==="note") {
@@ -206,7 +211,7 @@ export default function MyspacePage() {
   };
   const deleteFolder = async (node: any) => {
     // Move all children notes to root first
-    const moveFiles = async (nodes, parentPath) => {
+    const moveFiles = async (nodes: VaultFile[], parentPath: string) => {
       for (const n of nodes) {
         if (n.type==="note") {
           const destName = n.name;
@@ -215,7 +220,7 @@ export default function MyspacePage() {
             setError("Cannot move \""+n.name+"\" ? a file with this name already exists at root");
             continue;
           }
-          try { await api.myspaceRename(n.path, destName); } catch(ex) { setError("Failed to move: "+ex.message); }
+          try { await api.myspaceRename(n.path, destName); } catch (ex: any) { setError("Failed to move: "+ex.message); }
         } else if (n.type==="folder" && n.children) {
           await moveFiles(n.children, n.path);
         }
@@ -226,7 +231,7 @@ export default function MyspacePage() {
       await new Promise(r => setTimeout(r, 200)); // wait for moves
     }
     // Delete the now-empty folder
-    try { await api.myspaceDelete(node.path); } catch(ex) { setError("Delete failed: "+ex.message); }
+    try { await api.myspaceDelete(node.path); } catch (ex: any) { setError("Delete failed: "+ex.message); }
     loadTree();
   };
 
@@ -248,8 +253,8 @@ export default function MyspacePage() {
     document.addEventListener("mousemove",mv);document.addEventListener("mouseup",up);
   };
 
-  const [hoverDel, setHoverDel] = useState(null);
-  const [dragOverPath, setDragOverPath] = useState(null);
+  const [hoverDel, setHoverDel] = useState<string | null>(null);
+  const [dragOverPath, setDragOverPath] = useState<string | null>(null);
   const [graphFullscreen, setGraphFullscreen] = useState(false);
   const [graphShowOrphans, setGraphShowOrphans] = useState(true);
   const [graphDepth, setGraphDepth] = useState(3);
@@ -407,7 +412,7 @@ export default function MyspacePage() {
           ])}
           onDragOver={(e)=>{e.preventDefault();e.stopPropagation();setDragOverPath(node.path);}}
           onDragLeave={()=>setDragOverPath(null)}
-          onDrop={async (e)=>{e.preventDefault();e.stopPropagation();const src=e.dataTransfer.getData("text/plain");if(!src||src===node.path)return;const base=src.split("/").pop()||src;const dest=node.path+"/"+base;const exists=tree.some((n)=>n.path===dest||(n.children&&n.children.some((ch)=>ch.path===dest)));if(exists){setError("A file/folder named \""+base+"\" already exists in this folder");setDragOverPath(null);return;}try{await api.myspaceRename(src,dest);loadTree();setOpenFiles((prev)=>prev.map((f)=>f.path===src?{...f,path:dest,name:base}:f));setActiveTab((prev)=>prev===src?dest:prev);setSelPath((prev)=>prev===src?dest:prev);setError("");}catch(ex){setError("Move failed: "+ex.message);}setDragOverPath(null);}}
+          onDrop={async (e)=>{e.preventDefault();e.stopPropagation();const src=e.dataTransfer.getData("text/plain");if(!src||src===node.path)return;const base=src.split("/").pop()||src;const dest=node.path+"/"+base;const exists=tree.some((n)=>n.path===dest||(n.children&&n.children.some((ch)=>ch.path===dest)));if(exists){setError("A file/folder named \""+base+"\" already exists in this folder");setDragOverPath(null);return;}try{await api.myspaceRename(src,dest);loadTree();setOpenFiles((prev)=>prev.map((f)=>f.path===src?{...f,path:dest,name:base}:f));setActiveTab((prev)=>prev===src?dest:prev);setSelPath((prev)=>prev===src?dest:prev);setError("");}catch (ex: any){setError("Move failed: "+ex.message);}setDragOverPath(null);}}
           onMouseEnter={()=>setHoverDel(node.path)}
           onMouseLeave={()=>setHoverDel(null)}
           style={{display:"flex",alignItems:"center",gap:4,padding:"3px 6px",paddingLeft:12+depth*16,borderRadius:4,fontSize:12,cursor:"pointer",color:"var(--text-secondary)",background:dragOverPath===node.path?"var(--teal-soft)":"transparent"}}>
@@ -492,7 +497,7 @@ export default function MyspacePage() {
             </div>}
             <div style={{flex:1,overflow:"auto",padding:"2px 4px",minHeight:50}}
               onDragOver={(e)=>{e.preventDefault();e.dataTransfer.dropEffect="move";}}
-              onDrop={async (e)=>{e.preventDefault();const src=e.dataTransfer.getData("text/plain");if(!src||!src.includes("/"))return;const base=src.split("/").pop()||src;const exists=tree.some((n)=>n.path===base);if(exists){setError("A file named \""+base+"\" already exists at root");return;}try{await api.myspaceRename(src,base);loadTree();setOpenFiles((prev)=>prev.map((f)=>f.path===src?{...f,path:base,name:base}:f));setActiveTab((prev)=>prev===src?base:prev);setSelPath((prev)=>prev===src?base:prev);setError("");}catch(ex){setError("Move failed: "+ex.message);}}}
+              onDrop={async (e)=>{e.preventDefault();const src=e.dataTransfer.getData("text/plain");if(!src||!src.includes("/"))return;const base=src.split("/").pop()||src;const exists=tree.some((n)=>n.path===base);if(exists){setError("A file named \""+base+"\" already exists at root");return;}try{await api.myspaceRename(src,base);loadTree();setOpenFiles((prev)=>prev.map((f)=>f.path===src?{...f,path:base,name:base}:f));setActiveTab((prev)=>prev===src?base:prev);setSelPath((prev)=>prev===src?base:prev);setError("");}catch (ex: any){setError("Move failed: "+ex.message);}}}
             >
               {tree.length===0 && <div style={{padding:16,textAlign:"center",fontSize:12,color:"var(--text-tertiary)"}}>Loading...</div>}
               {tree.map(n=>renderNode(n))}
@@ -588,12 +593,12 @@ export default function MyspacePage() {
               const start = selRange ? selRange.start : ta.selectionStart;
               const end = selRange ? selRange.end : ta.selectionEnd;
               const sel = fullText.substring(start, end);
-              const restore = (cb) => {
+              const restore = (cb: () => void) => {
                 ta.focus();
                 cb();
                 requestAnimationFrame(() => { ta.scrollTop = savedScroll; });
               };
-              const wrap = (before, after) => {
+              const wrap = (before: string, after: string) => {
                 if (sel.startsWith(before) && sel.endsWith(after)) {
                   const inner = sel.substring(before.length, sel.length - after.length);
                   const nc = fullText.substring(0, start) + inner + fullText.substring(end);
@@ -608,12 +613,12 @@ export default function MyspacePage() {
               const lineStart = fullText.lastIndexOf("\n", start - 1) + 1;
               const lineEnd = fullText.indexOf("\n", end);
               const curLine = fullText.substring(lineStart, lineEnd === -1 ? fullText.length : lineEnd);
-              const insertAtCursor = (txt) => {
+              const insertAtCursor = (txt: string) => {
                 const nc = fullText.substring(0, end) + txt + fullText.substring(end);
                 updContent(activeTab, nc);
                 restore(() => ta.setSelectionRange(end + txt.length, end + txt.length));
               };
-              const toggleHeading = (level) => {
+              const toggleHeading = (level: number) => {
                 const prefix = "#".repeat(level) + " ";
                 const hMatch = curLine.match(/^(#{1,6}) /);
                 let newLine;
@@ -676,10 +681,11 @@ export default function MyspacePage() {
           {activeTab && (()=>{
             const af=openFiles.find(f=>f.path===activeTab);if(!af)return null;
             // Smooth scroll sync via requestAnimationFrame
-            const syncScroll = (source) => {
+            const syncScroll = (source: string) => {
+              if (typeof window === "undefined") return; // среда без DOM (тесты)
               if (window._msSyncRaf) cancelAnimationFrame(window._msSyncRaf);
               window._msSyncRaf = requestAnimationFrame(() => {
-                window._msSyncRaf = null;
+                window._msSyncRaf = undefined;
                 const ta = document.querySelector(".ms-edit-textarea");
                 const pv = document.querySelector(".ms-preview-pane");
                 if (!ta || !pv) return;
@@ -706,7 +712,7 @@ export default function MyspacePage() {
               }}>
               <MarkdownRenderer content={edContent}
                 onWikiLink={(title: string)=>{
-                  const findNote = (nodes, ttl) => { for (const n of nodes) { if (n.type==="note" && (n.name.replace(/\.md$/,"").toLowerCase()===ttl.toLowerCase() || n.name===ttl+".md")) return n; if (n.children) { const r = findNote(n.children, ttl); if (r) return r; } } return null; };
+                  const findNote = (nodes: VaultFile[], ttl: string): VaultFile | null => { for (const n of nodes) { if (n.type==="note" && (n.name.replace(/\.md$/,"").toLowerCase()===ttl.toLowerCase() || n.name===ttl+".md")) return n; if (n.children) { const r: VaultFile | null = findNote(n.children, ttl); if (r) return r; } } return null; };
                   const t = findNote(tree, title);
                   const fn = t ? t.path : title.replace(/[/\\?%*:|"<>]/g,"_")+".md";
                   openFile(fn);
