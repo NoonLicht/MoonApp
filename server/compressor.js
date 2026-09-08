@@ -1,44 +1,37 @@
-﻿"use strict";
+"use strict";
 
 /**
- * Видеосжатие: гибридный 3-ступенчатый пайплайн.
+ * Видеосжатие: единый встроенный пайплайн с матрицей энкодеров.
  *
- * Как это работает:
- *  1. Downscale — FFmpeg уменьшает исходник до рабочей высоты (480/720/1080),
- *     промежуточник кодируется в near-lossless CRF 12. Звук уже здесь
- *     перекодируется в AAC — он прокидывается через все шаги до финала.
- *  2. AI Upscale — realesrgan-ncnn-vulkan работает ТОЛЬКО с картинками, поэтому
- *     видео разбирается на кадры: ffmpeg извлекает PNG-кадры, Real-ESRGAN
- *     (модель realesrgan-x4plus) апскейлит папку кадров 4x на GPU, финальный
- *     энкодер собирает кадры обратно (суперсэмплинг 4x -> рабочая высота) и
- *     мультиплексирует со звуковой дорожкой исходника. Нет бинаря — шаг
- *     помечается aiSkipped и пропускается.
- *  3. Encode — AV1 (libsvtav1, fallback libaom-av1) / HEVC / H.264 с CRF 0-50,
- *     звук AAC 192k (map из оригинала, «?» — не падать без дорожки).
- *
- * Очередь (С5): одно активное задание на модуль, остальные ждут в pending.
- * Чистка (С6): при загрузке модуля удаляются файлы старше 24 ч; Map заданий
- *   ограничена (готовые/ошибочные удаляются первыми, максимум 20).
- *
- * Прогресс: ffmpeg -progress pipe:1 даёт out_time_us; ETA — по фактической
- * скорости обработки, взвешенной по долям шагов (40/20/40%).
+ * Архитектура (rebuild 2.0):
+ *  - Один шаг кодирования поверх исходника: масштабирование (-vf scale) и
+ *    звук идут прямо в кодирующую команду. Промежуточных перекодирований нет.
+ *  - Матрица методов: CPU (libsvtav1, libx265, libx264, libaom-av1, rav1e,
+ *    Av1an-оркестратор) и GPU (NVENC/QSV/AMF через ffmpeg + rigaya-обёртки
+ *    NVEncC/QSVEncC/VCEEncC). Всё обнаруживается автоматически (encoders.js).
+ *  - Режимы качества: CRF/CQP, целевой битрейт (2-pass), ограниченное
+ *    качество (CRF + maxrate).
+ *  - Graceful fallback: недоступный/неудачный энкодер отбрасывается, очередь
+ *    кандидатов заканчивается программным H.264 (есть почти в любой сборке).
+ *  - Очередь: одно активное задание, TTL-чистка временных папок 24 ч.
  */
 
 const { execFile, spawn } = require("child_process");
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
-const settings = require("./settings");
+const os = require("os");
+const encoders = require("./encoders");
 const logger = require("./logger");
 const { DIRS } = require("./config");
 const { detectFfmpeg } = require("./convertEngine");
 
 // id -> job; завершённые остаются для скачивания (см. trimJobs).
 const jobs = new Map();
-const JOB_LIMIT = 20;
+const JOB_LIMIT = 30;
 const TTL_MS = 24 * 60 * 60 * 1000;
 
-// --- Очередь: одно активное задание, остальные ждут (С5) ---
+// --- Очередь: одно активное задание, остальные ждут ---
 let active = false;
 const pending = [];
 function enqueue(fn) {
@@ -55,7 +48,7 @@ function pump() {
     .finally(() => { active = false; pump(); });
 }
 
-// --- TTL-чистка временных папок при загрузке модуля (С6) ---
+// --- TTL-чистка временных папок при загрузке модуля ---
 function cleanupOldFiles(dir) {
   try {
     if (!fs.existsSync(dir)) return;
@@ -90,455 +83,382 @@ function probeDuration(ffprobe, file) {
   });
 }
 
-
 function probeVideoInfo(ffprobe, file) {
   return new Promise((resolve) => {
-    execFile(ffprobe, ["-v", "error", "-select_streams", "v:0",
-      "-show_entries", "stream=width,height,codec_name,avg_frame_rate", "-of", "json", file],
+    // Берём ВСЕ видеопотоки и выбираем основной (максимальное разрешение) —
+    // первым потоком в контейнере может оказаться обложка (mjpeg/png).
+    execFile(ffprobe, ["-v", "error", "-select_streams", "v",
+      "-show_entries", "stream=width,height,codec_name,avg_frame_rate,bit_rate", "-of", "json", file],
       { timeout: 20000, windowsHide: true, maxBuffer: 1024 * 1024 },
       (err, stdout) => {
         if (err) return resolve({});
         try {
-          const s = JSON.parse(String(stdout)).streams?.[0] || {};
-          resolve({ width: s.width, height: s.height, codec: s.codec_name, fps: s.avg_frame_rate });
+          const streams = JSON.parse(String(stdout)).streams || [];
+          const s = streams.filter((x) => x && x.codec_name)
+            .sort((a, b) => (b.width || 0) * (b.height || 0) - (a.width || 0) * (a.height || 0))[0] || {};
+          resolve({ width: s.width, height: s.height, codec: s.codec_name, fps: s.avg_frame_rate, bitRate: Number(s.bit_rate) || 0 });
         } catch { resolve({}); }
       });
   });
 }
 
-// Запуск ffmpeg с парсингом -progress: onProgress(секунды обработаны).
-function runFfmpeg(ffmpeg, args, onProgress) {
+
+// Запуск процесса (ffmpeg/rigaya/av1an) с парсингом прогресса.
+function runProc(cmd, args, onProgress, totalSec) {
   return new Promise((resolve, reject) => {
-    const child = spawn(ffmpeg, [...args, "-progress", "pipe:1", "-nostats"], { windowsHide: true });
+    const child = spawn(cmd, args, { windowsHide: true });
     let errTail = "";
-    child.stderr.on("data", (d) => { errTail = (errTail + String(d)).slice(-4000); });
+    child.stderr.on("data", (d) => {
+      const s = String(d);
+      errTail = (errTail + s).slice(-4000);
+      emitProgress(s, onProgress, totalSec);
+    });
     child.stdout.on("data", (d) => {
-      const m = /out_time_us=(\d+)/.exec(String(d));
-      if (m && onProgress) onProgress(Number(m[1]) / 1e6);
+      const s = String(d);
+      emitProgress(s, onProgress, totalSec);
     });
     child.on("error", reject);
-    child.on("close", (code) => code === 0 ? resolve() : reject(new Error(`ffmpeg exit ${code}: ${errTail.slice(-300)}`)));
+    child.on("close", (code) => code === 0 ? resolve() : reject(new Error(`${path.basename(String(cmd))} exit ${code}: ${errTail.slice(-300)}`)));
   });
 }
 
-// --- Автоподбор энкодера ---
-// Сборки FFmpeg различаются: где-то есть libx264/libx265, где-то только
-// NVENC/QSV/OpenH264. Запрашиваем список энкодеров один раз и выбираем
-// первый доступный из приоритетного списка.
-let encoderCache = null;
-function availableEncoders(ffmpeg) {
-  if (encoderCache) return encoderCache;
-  return new Promise((resolve) => {
-    const child = spawn(ffmpeg, ["-hide_banner", "-encoders"], { windowsHide: true });
-    let out = "";
-    child.stdout.on("data", (d) => { out += String(d); });
-    child.stderr.on("data", (d) => { out += String(d); });
-    child.on("error", () => { encoderCache = new Set(); resolve(encoderCache); });
-    child.on("close", () => {
-      const set = new Set();
-      for (const line of out.split(/\r?\n/)) {
-        const m = /^\s*[VAS][.\w]*\s+(\S+)/.exec(line);
-        if (m) set.add(m[1]);
-      }
-      encoderCache = set;
-      resolve(set);
-    });
-  });
+// ffmpeg даёт out_time_us; rigaya/av1an — проценты в выводе.
+function emitProgress(s, onProgress, totalSec) {
+  if (!onProgress) return;
+  const um = /out_time_us=(\d+)/.exec(s);
+  if (um) { onProgress(Number(um[1]) / 1e6); return; }
+  const pm = /\s(\d{1,3}(?:\.\d+)?)\s*%/.exec(s.slice(-300));
+  if (pm && totalSec > 0) onProgress((parseFloat(pm[1]) / 100) * totalSec);
 }
 
-// Первый доступный энкодер из списка предпочтений (или null).
-async function pickEncoder(ffmpeg, prefs) {
-  const avail = await availableEncoders(ffmpeg);
-  for (const e of prefs) if (avail.has(e)) return e;
-  return null;
+function setStage(job, stage, weightBase, weightSpan) {
+  job.stage = stage;
+  job.weightBase = weightBase;
+  job.weightSpan = weightSpan;
 }
 
-// Все доступные кандидаты по порядку предпочтений. Нужен список, а не один
-// энкодер: аппаратные (qsv/nvenc) присутствуют в любой сборке, но реально
-// работают только при наличии соответствующего GPU — такие попытки падают
-// с «stream received no packets», и надо откатываться на следующий.
-async function encoderCandidates(ffmpeg, prefs, crf) {
-  const avail = await availableEncoders(ffmpeg);
-  const out = [];
-  for (const enc of prefs) {
-    if (!avail.has(enc)) continue;
-    out.push({ enc, args: ["-c:v", enc, ...qualityArgs(enc, crf)] });
-  }
-  return out;
-}
-
-// Аргументы качества под конкретный энкодер (CRF-подобное поведение).
-function qualityArgs(enc, crf) {
-  if (enc === "mpeg4") return ["-qscale:v", String(Math.max(2, Math.min(31, Math.round(crf / 1.6))))];
-  if (enc.endsWith("_nvenc")) return ["-rc", "vbr", "-cq", String(Math.max(0, Math.min(51, crf)))];
-  if (enc.endsWith("_qsv")) return ["-global_quality", String(Math.max(0, Math.min(51, crf)))];
-  return ["-crf", String(crf)];
-}
-
-// Кодек-специфика: предпочтительные энкодеры + параметры качества.
-// Порядок — от лучшего сжатия к совместимости; ускорители GPU почти в конце,
-// т.к. при том же качестве дают файл больше программных.
-// Возвращает СПИСОК кандидатов (software → hardware): аппаратный энкодер
-// может числиться в сборке, но не работать на конкретной машине (нет QSV/
-// NVIDIA) — тогда пробуется следующий из списка.
-async function codecEncoderCandidates(ffmpeg, codec, crf, gpuFirst) {
-  const lists = {
-    av1:  ["libsvtav1", "libaom-av1", "av1_nvenc", "av1_qsv"],
-    hevc: ["libx265", "hevc_nvenc", "hevc_qsv"],
-    h264: ["libx264", "libopenh264", "h264_nvenc", "h264_qsv", "mpeg4"],
+// Прогресс: доля шага * вес + база. totalSec — длительность видео.
+function tracker(job, totalSec) {
+  return (sec) => {
+    const frac = totalSec > 0 ? Math.min(1, sec / totalSec) : 0;
+    job.progress = Math.min(99, Math.round((job.weightBase + frac * job.weightSpan) * 100));
+    const now = Date.now();
+    if (job.startedAt) {
+      const elapsed = (now - job.startedAt) / 1000;
+      if (job.progress > 2) job.etaSec = Math.max(0, Math.round((elapsed / job.progress) * (100 - job.progress)));
+    }
   };
-  let prefs = lists[codec] || lists.av1;
-  // Быстрый режим: аппаратные энкодеры впереди (десятки раз быстрее CPU,
-  // ценой чуть большего файла при том же CRF).
-  if (gpuFirst) prefs = [...prefs.filter((e) => e.endsWith("_nvenc")), ...prefs.filter((e) => !e.endsWith("_nvenc"))];
-  let cands = await encoderCandidates(ffmpeg, prefs, crf);
-  // Кросс-кодек страховка: в сборках без software HEVC/AV1 (как у пользователя
-  // только qsv) последний шанс — программный H.264, он есть почти везде.
-  const swH264 = await encoderCandidates(ffmpeg, ["libx264", "libopenh264", "mpeg4"], crf);
-  for (const c of swH264) c.args.push("-tag:v", "avc1");
-  cands = cands.concat(swH264.map((c) => ({ ...c, cross: true })));
-  // Пост-аргументы для конкретных энкодеров.
-  for (const c of cands) {
-    if (c.enc === "libsvtav1") c.args.push("-preset", "6");
-    if (c.enc === "libx264") c.args.push("-preset", "medium"); // у openh264 нет -preset
-    if (c.enc === "libx265") c.args.push("-preset", "medium", "-tag:v", "hvc1");
-    if (c.enc === "hevc_nvenc" || c.enc === "hevc_qsv") c.args.push("-tag:v", "hvc1");
-    if (c.enc === "av1_nvenc") c.args.push("-preset", "P5");
+}
+
+// ================== СИСТЕМНЫЕ ПРЕСЕТЫ ==================
+// targetMB — пресеты с лимитом размера: фронт считает битрейт из длительности
+// и шлёт targetKbps. Подписи пресетов — в i18n (cmp.preset_<id>).
+const SYSTEM_PRESETS = [
+  { id: "discord",   codec: "av1",  engine: "auto",   qualityMode: "bitrate", crf: null, speed: "8",      tenBit: false, targetHeight: "1080", audio: "aac",  audioKbps: 128, targetMB: 25 },
+  { id: "archival",  codec: "av1",  engine: "svtav1", qualityMode: "crf",     crf: 20,   speed: "4",      tenBit: true,  targetHeight: "original", audio: "copy", audioKbps: 192 },
+  { id: "fastgpu",   codec: "av1",  engine: "nvenc",  qualityMode: "crf",     crf: 26,   speed: "P5",     tenBit: false, targetHeight: "original", audio: "copy", audioKbps: 192 },
+  { id: "smallest",  codec: "av1",  engine: "auto",   qualityMode: "crf",     crf: 28,   speed: "6",      tenBit: false, targetHeight: "720",  audio: "opus", audioKbps: 96 },
+  { id: "universal", codec: "h264", engine: "x264",   qualityMode: "crf",     crf: 22,   speed: "medium", tenBit: false, targetHeight: "original", audio: "aac",  audioKbps: 192 },
+];
+
+// ================== НОРМАЛИЗАЦИЯ ПАРАМЕТОВ ==================
+const CODECS = ["av1", "hevc", "h264"];
+const QUALITY_MODES = ["crf", "bitrate", "constrained"];
+const HEIGHTS = ["original", "2160", "1440", "1080", "720", "480"];
+const ENGINES = ["auto", "svtav1", "x265", "x264", "aom", "rav1e", "av1an", "nvenc", "qsv", "amf", "nvencc", "qsvencc", "vceencc"];
+
+function clamp(n, a, b) { return Number.isFinite(n) ? Math.min(b, Math.max(a, n)) : a; }
+
+function defaultSpeed(engine) {
+  switch (engine) {
+    case "svtav1": case "av1an": return "6";
+    case "x265": case "x264": return "medium";
+    case "aom": return "4";
+    case "nvenc": return "P5";
+    case "qsv": return "medium";
+    case "amf": return "balanced";
+    default: return "6";
   }
-  return cands;
 }
 
-// Бинарь Real-ESRGAN ищется в storage/bin (кладётся вручную или установщиком).
-function findRealesrgan() {
-  const p = path.join(DIRS.storage, "bin", "realesrgan-ncnn-vulkan.exe");
-  return fs.existsSync(p) ? p : null;
+function normalizeParams(raw) {
+  const p = {
+    codec: CODECS.includes(raw.codec) ? raw.codec : "av1",
+    engine: ENGINES.includes(raw.engine) ? raw.engine : "auto",
+    qualityMode: QUALITY_MODES.includes(raw.qualityMode) ? raw.qualityMode : "crf",
+    crf: clamp(Number(raw.crf ?? 23), 0, 51),
+    targetKbps: clamp(Number(raw.targetKbps ?? 0), 0, 200000),
+    maxKbps: clamp(Number(raw.maxKbps ?? 0), 0, 200000),
+    speed: String(raw.speed || "").slice(0, 12),
+    tenBit: raw.tenBit === true || raw.tenBit === "true",
+    targetHeight: HEIGHTS.includes(String(raw.targetHeight)) ? String(raw.targetHeight) : "original",
+    audio: ["copy", "aac", "opus"].includes(raw.audio) ? raw.audio : "aac",
+    audioKbps: clamp(Number(raw.audioKbps ?? 192), 32, 320),
+    presetId: String(raw.presetId || "").slice(0, 40),
+  };
+  if (!p.speed) p.speed = defaultSpeed(p.engine);
+  return p;
 }
 
-/* -------------------- Запуск и выполнение задания -------------------- */
+// ================== КАНДИДАТЫ ЭНКОДЕРОВ (порядок fallback) ==================
+// Для выбранного движка: [выбранный, ...однокодекные запасные, x264-страховка].
+function engineCandidates(engine, codec, methods) {
+  const perCodec = {
+    av1:  ["svtav1", "nvenc", "qsv", "amf", "aom", "rav1e", "av1an"],
+    hevc: ["x265", "nvenc", "qsv", "amf"],
+    h264: ["x264", "nvenc", "qsv", "amf"],
+  };
+  const list = engine === "auto" ? perCodec[codec] : [engine, ...perCodec[codec].filter((e) => e !== engine)];
+  const ok = list.filter((e) => methods[e] === true);
+  // Кросс-кодек страховка: программный H.264 есть почти в любой сборке.
+  if (codec !== "h264" && methods.x264 && !ok.includes("x264")) ok.push("x264");
+  return ok;
+}
 
-function startJob(opts) {
-  const id = crypto.randomBytes(6).toString("hex");
-  const cfg = settings.get("compressor") || {};
+// ================== СБОРКА АРГУМЕНТОВ ==================
+const isWin = /^win/i.test(process.platform);
+
+function quoteCmd(cmd, args) {
+  const q = (s) => /\s/.test(String(s)) ? `"${String(s).replace(/"/g, '\\"')}"` : String(s);
+  return [cmd, ...args.map(q)].join(" ");
+}
+
+// Флаги качества под энкодер (CRF-подобное поведение).
+function qualityFlags(enc, crf) {
+  if (enc.endsWith("_nvenc")) return ["-rc", "vbr", "-cq", String(clamp(crf, 0, 51))];
+  if (enc.endsWith("_qsv")) return ["-global_quality", String(clamp(crf, 0, 51))];
+  if (enc.endsWith("_amf")) return ["-rc", "cqp", "-qp_i", String(clamp(crf, 0, 51)), "-qp_p", String(clamp(crf + 2, 0, 51))];
+  return ["-crf", String(clamp(crf, 0, 51))];
+}
+
+// Пресет скорости под энкодер.
+function speedArgs(enc, speed) {
+  if (!speed) return [];
+  if (enc === "libsvtav1") return ["-preset", String(clamp(parseInt(speed, 10) || 6, 0, 13))];
+  if (enc === "libaom-av1") return ["-cpu-used", String(clamp(parseInt(speed, 10) || 4, 0, 8))];
+  if (enc === "libx264" || enc === "libx265") return ["-preset", speed];
+  if (enc.endsWith("_nvenc")) return ["-preset", /^P[1-7]$/i.test(speed) ? speed.toLowerCase() : "p5"];
+  if (enc.endsWith("_qsv")) return ["-preset", speed];
+  if (enc.endsWith("_amf")) return ["-quality", speed];
+  return [];
+}
+
+// ffmpeg-вариант: полная команда кодирования. opts.pass 1/2 — двухпроходный
+// битрейт; opts.maxrateCap — ограниченный режим (CRF + потолок).
+function ffmpegArgs(job, ffEnc, opts = {}) {
+  const { crf, targetKbps, maxKbps, speed, tenBit, targetHeight, audio, audioKbps } = job;
+  const args = ["-y", "-i", job.inputPath];
+  if (opts.pass === 1) {
+    args.push("-map", "0:v:0", "-an"); // первый проход: только видео, без вывода
+  } else {
+    args.push("-map", "0:v:0", "-map", "0:a?"); // «?» — не падать без дорожки
+  }
+  if (targetHeight !== "original") args.push("-vf", `scale=-2:${targetHeight}`);
+  const hw = /_(nvenc|qsv|amf|mf)$/.test(ffEnc);
+  if (tenBit) args.push("-pix_fmt", hw ? "p010le" : "yuv420p10le");
+  args.push("-c:v", ffEnc);
+  if (opts.pass === 1 || opts.pass === 2) {
+    args.push("-b:v", `${targetKbps}k`, "-pass", String(opts.pass));
+  } else if (job.qualityMode === "bitrate" && targetKbps > 0) {
+    args.push("-b:v", `${targetKbps}k`);
+    if (maxKbps > 0) args.push("-maxrate", `${maxKbps}k`, "-bufsize", `${maxKbps * 2}k`);
+  } else if (job.qualityMode === "constrained" && maxKbps > 0) {
+    args.push(...qualityFlags(ffEnc, crf), "-maxrate", `${maxKbps}k`, "-bufsize", `${maxKbps * 2}k`);
+  } else {
+    args.push(...qualityFlags(ffEnc, crf));
+  }
+  const sp = speedArgs(ffEnc, speed);
+  if (sp.length) args.push(...sp);
+  if (ffEnc === "libx264" || ffEnc === "libx265") args.push("-threads", String(Math.min(16, os.cpus().length)));
+  if (opts.pass === 1) {
+    args.push("-f", "null", isWin ? "NUL" : "/dev/null");
+  } else {
+    if (audio === "copy") args.push("-c:a", "copy");
+    else if (audio === "opus") args.push("-c:a", "libopus", "-b:a", `${audioKbps}k`);
+    else args.push("-c:a", "aac", "-b:a", `${audioKbps}k`);
+    args.push("-shortest", opts.outFile);
+  }
+  return args;
+}
+
+// rigaya-обёртка (NVEncC/QSVEncC/VCEEncC): кодек + CQP/VBR + аудио.
+function rigayaArgs(job, opts = {}) {
+  const { crf, codec, speed, audio, audioKbps, targetHeight, tenBit } = job;
+  const args = ["--input", job.inputPath, "--output", opts.outFile, "--codec", codec];
+  if (job.qualityMode === "bitrate" && job.targetKbps > 0) {
+    args.push("--vbr", String(job.targetKbps));
+  } else if (job.qualityMode === "constrained" && job.maxKbps > 0) {
+    args.push("--qvbr", String(clamp(crf, 0, 51)), "--max-bitrate", String(job.maxKbps));
+  } else {
+    args.push("--cqp", `${clamp(crf, 0, 51)}:${clamp(crf + 2, 0, 51)}:${clamp(crf + 2, 0, 51)}`);
+  }
+  if (speed && speed.startsWith("--")) args.push(speed);
+  args.push("--output-depth", tenBit ? "10" : "8");
+  if (targetHeight !== "original") args.push("--resize", `-,${targetHeight}`);
+  if (audio === "copy") args.push("--audio-copy");
+  else if (audio === "opus") args.push("--audio-codec", "libopus", "--audio-bitrate", String(audioKbps));
+  else args.push("--audio-codec", "aac", "--audio-bitrate", String(audioKbps));
+  return args;
+}
+
+// Av1an: параллельное кодирование по сценам (оркестратор над svt-av1).
+function av1anArgs(job, opts = {}) {
+  const workers = Math.max(1, Math.min(os.cpus().length, 16));
+  return ["-i", job.inputPath, "-e", "svt-av1",
+    "-v", `--crf ${clamp(job.crf, 0, 63)} --preset ${clamp(parseInt(job.speed, 10) || 6, 0, 13)}`,
+    "--workers", String(workers), "-o", opts.outFile];
+}
+
+// Контейнер под аудио/кодек: opus в mp4 проблемный → webm (av1) или mkv.
+function outExt(job) {
+  if (job.audio === "opus") return job.codec === "av1" ? ".webm" : ".mkv";
+  return ".mp4";
+}
+
+// ================== ЗАПУСК И ВЫПОЛНЕНИЕ ЗАДАНИЯ ==================
+function startJob(raw) {
+  const params = normalizeParams(raw);
+  const id = crypto.randomUUID();
   const job = {
-    id, name: String(opts.name || "video"), size: Number(opts.size) || 0,
-    inputPath: opts.inputPath, outFile: "", outSize: 0,
-    stage: "queued", step: 0, progress: 0, etaSec: null,
-    crf: Math.max(0, Math.min(50, Number(opts.crf ?? cfg.crf ?? 22))),
-    codec: ["av1", "hevc", "h264"].includes(opts.codec) ? opts.codec : (cfg.codec || "av1"),
-    targetHeight: ["original", "1080", "720", "480"].includes(String(opts.targetHeight)) ? String(opts.targetHeight) : "original",
-    aiWanted: opts.aiUpscale !== false && opts.aiUpscale !== "false" && cfg.aiUpscale !== false,
-    aiScale: opts.aiScale === "4x" ? "4x" : (cfg.aiScale === "4x" ? "4x" : "2x"),
-    // Целевое разрешение апскейла (пользователь выбирает сам); none = без ИИ.
-    upHeight: ["none", "1080", "1440", "2160", "4320"].includes(String(opts.upHeight))
-      ? String(opts.upHeight)
-      : (["1080", "1440", "2160", "4320"].includes(String(cfg.upHeight)) ? String(cfg.upHeight) : "none"),
-    // Модель апскейла: x4plus — лучшее качество (медленно), animevideov3 —
-    // специально для видео, в 3-5 раз быстрее.
-    aiModel: ["realesrgan-x4plus", "realesrgan-x4plus-anime", "realesr-animevideov3-x2", "realesr-animevideov3-x4"].includes(opts.aiModel)
-      ? opts.aiModel
-      : (["realesrgan-x4plus", "realesrgan-x4plus-anime", "realesr-animevideov3-x2", "realesr-animevideov3-x4"].includes(cfg.aiModel) ? cfg.aiModel : "realesr-animevideov3-x4"),
-    // GPU-first: аппаратный NVENC-энкодер впереди программного (быстро, файл больше).
-    gpuFirst: opts.gpuFirst === true || cfg.gpuFirst === true,
-    info: {}, steps: [], aiSkipped: false, error: "", done: false,
-    createdAt: Date.now(),
+    id, createdAt: Date.now(), startedAt: 0,
+    inputPath: raw.inputPath, name: raw.name || "video", size: raw.size || 0,
+    ...params,
+    stage: "queued", progress: 0, etaSec: null, steps: [],
+    engineUsed: null, fallbacks: [], command: "",
+    done: false, error: "", outSize: 0, outFile: null,
+    info: {}, durationSec: 0,
+    weightBase: 0, weightSpan: 1,
   };
   jobs.set(id, job);
   trimJobs();
-  // Очередь: реальный пайплайн стартует, когда освободится предыдущий.
-  enqueue(() => runPipeline(job));
+  enqueue(() => runJob(job));
   return job;
 }
 
-// Смена ступени пайплайна: stage/step для UI + база и вес ступени в общем
-// проценте прогресса (downscale 40%, AI 20%, encode 40%).
-function setStage(job, stage, step, base, span) {
-  job.stage = stage; job.step = step;
-  job.progress = base;
-  job._base = base; job._span = span;
-}
-
-async function runPipeline(job) {
-  // Временные файлы задания (сегменты кадров, апскейл-кадры) — на уровне
-  // функции, чтобы finally мог их почистить даже после ошибки в try.
-  const tmpDirs = [];
-  // Файл мог исчезнуть (TTL-чистка, ручное удаление) — честная ошибка вместо
-  // каскада «no_working_encoder» от каждого энкодера.
-  if (!fs.existsSync(job.inputPath)) {
-    job.error = "input_missing"; job.stage = "error";
-    logger.error("compressor.error", { id: job.id, error: job.error });
-    return;
-  }
-  const cfg = settings.get("compressor") || {};
-  const cleanup = cfg.cleanupTemp !== false;
-  const { ffmpeg, ffprobe } = await detectFfmpeg();
-  if (!ffmpeg) { job.error = "ffmpeg_missing"; job.stage = "error"; return; }
-  const stamp = `${Date.now()}_${job.id}`;
-  const t0 = Date.now();
-
+async function runJob(job) {
+  const stamp = Date.now();
+  const passLog = path.join(DIRS.compressorOut, `pl_${stamp}`);
+  let lastErr = null;
   try {
-    const duration = await probeDuration(ffprobe, job.inputPath);
-    job.info = { ...job.info, ...(await probeVideoInfo(ffprobe, job.inputPath)) };
+    setStage(job, "analyze", 0, 0.05);
+    job.startedAt = Date.now();
+    const ff = await detectFfmpeg();
+    if (!ff.found) throw new Error("ffmpeg_missing");
+    const hw = await encoders.detectAll();
+    job.info = await probeVideoInfo(ff.ffprobe, job.inputPath);
+    job.durationSec = await probeDuration(ff.ffprobe, job.inputPath);
+    job.steps.push("analyze");
 
-    // Прогресс внутри шага -> общий %. ETA: секунд на секунду видео по уже
-    // пройденной части, экстраполяция на оставшийся процент пайплайна.
-    const tracker = (sec) => {
-      if (!duration || !job._span) return;
-      const frac = Math.min(1, sec / duration);
-      job.progress = Math.min(99, Math.round(job._base + job._span * frac));
-      const spent = (Date.now() - t0) / 1000;
-      const doneFrac = (job._base + job._span * frac) / 100;
-      if (doneFrac > 0.02) job.etaSec = Math.max(0, Math.round(spent * (1 - doneFrac) / doneFrac));
-    };
-
-    const downscaled = path.join(DIRS.compressorOut, `ds_${stamp}.mp4`);
-    const workH = job.targetHeight === "original" ? null : Number(job.targetHeight);
-
-    // --- Шаг 1: Downscale до рабочей высоты. Звук: AAC (тащится до финала). ---
-    setStage(job, "downscale", 1, 0, workH ? 40 : 10);
-    // Промежуточник: перебор H.264-энкодеров (software → hardware).
-    // QSV/NVENC числятся в сборке, но работают только на совместимом GPU —
-    // при неудаче берём следующего кандидата.
-    const interCands = await codecEncoderCandidates(ffmpeg, "h264", 12, job.gpuFirst);
-    if (!interCands.length) throw new Error("no_h264_encoder");
-    if (workH) {
-      let interDone = false;
-      for (const c of interCands) {
-        try {
-          await runFfmpeg(ffmpeg,
-            ["-y", "-i", job.inputPath, "-vf", `scale=-2:${workH}`, ...c.args,
-             "-c:a", "aac", "-b:a", "192k", downscaled],
-            tracker);
-          interDone = true;
-          break;
-        } catch (e) {
-          logger.warn("compressor.interEncoderFallback", { enc: c.enc, err: String(e.message || e).slice(0, 160) });
-          try { fs.rmSync(downscaled, { force: true }); } catch { /* ignore */ }
-        }
-      }
-      if (!interDone) throw new Error("no_working_h264_encoder");
-      job.steps.push("downscale");
-      if (cleanup) { try { fs.rmSync(job.inputPath, { force: true }); } catch { /* ignore */ } }
-      job.inputPath = downscaled;
-    }
-
-    // --- Шаг 2: AI Upscale сегментной «лентой» ---
-    // Кадры пишутся в JPEG (в разы дешевле PNG), декодер и Real-ESRGAN
-    // работают параллельно: пока GPU апскейлит сегмент i, CPU уже пишет i+1.
-    const realesrgan = findRealesrgan();
-    let framesUpDir = null;
-    const upH = ["1080", "1440", "2160", "4320"].includes(String(job.upHeight)) ? Number(job.upHeight) : null;
-    if (job.aiWanted && upH && realesrgan) {
-      setStage(job, "upscale", 2, workH ? 40 : 10, 20);
-      const baseH = workH || Number(job.info.height) || 0;
-      // Коэффициент апскейла = цель / рабочая высота. animevideov3 умеет -s 2/3/4,
-      // x4plus-модели всегда 4x.
-      const ratio = baseH > 0 ? upH / baseH : 4;
-      const s = job.aiModel.startsWith("realesr-animevideov3")
-        ? String(Math.max(2, Math.min(4, Math.round(ratio))))
-        : "4";
-      framesUpDir = path.join(DIRS.compressorOut, `fru_${stamp}`);
-      fs.mkdirSync(framesUpDir, { recursive: true });
-      tmpDirs.push(framesUpDir);
-      const modelOk = fs.existsSync(path.join(DIRS.storage, "bin", "models", `${job.aiModel}.bin`))
-        && fs.existsSync(path.join(DIRS.storage, "bin", "models", `${job.aiModel}.param`));
-      if (!modelOk) {
-        job.aiSkipped = true; job.aiSkipReason = "model_missing";
-        logger.warn("compressor.aiModelMissing", { model: job.aiModel });
-        framesUpDir = null;
-      } else {
-        // Сегментная лента: ffmpeg пишет сегмент N+1, GPU апскейлит сегмент N.
-        // ВАЖНО: realesrgan-процесс всегда ОДИН (очередь сегментов) — каждый
-        // процесс держит копию модели в VRAM/RAM, параллельные забивают память.
-        const SEG_SEC = 15;
-        const fpsN = Number(job.info.fps) || 30;
-        const duration = await probeDuration(ffprobe, job.inputPath);
-        const numSegs = Math.max(1, Math.ceil((duration || 60) / SEG_SEC));
-        const totalFrames = Math.round((duration || 60) * fpsN);
-        let nextNum = 1; // глобальный номер кадра; растёт по ФАКТИЧЕСКОМУ числу
-        // кадров сегмента (см. ниже) — дыр в нумерации не бывает, поэтому
-        // image2-демуксер не обрывает видео после первого сегмента.
-        let nextSeg = 0;
-        const upQueue = [];     // готовые к апскейлу сегменты
-        let upRunning = false;  // сейчас работает GPU-процесс (0 или 1)
-        let decodeDone = false;
-        const segErr = [];
-        await new Promise((resolve, reject) => {
-          let finished = false;
-          const maybeDone = () => {
-            if (!finished && decodeDone && upQueue.length === 0 && !upRunning) {
-              finished = true;
-              // Ошибка важна, только если не апскейлился вообще ни один кадр.
-              let produced = 0;
-              try { produced = fs.readdirSync(framesUpDir).length; } catch { /* ignore */ }
-              if (segErr.length && produced === 0) reject(new Error(segErr[0] || "upscale_failed"));
-              else resolve();
-            }
-          };
-          // Один запуск realesrgan на сегмент с ретраями тайла: 0 (авто) →
-          // 128 → 64. Меньше тайл — меньше VRAM, чуть медленнее, но без
-          // «квадратов» при нехватке видеопамяти.
-          const runUpscale = (dir, tile) => new Promise((res2, rej2) => {
-            const child = spawn(realesrgan,
-              ["-i", dir, "-o", framesUpDir, "-n", job.aiModel, "-f", "jpg",
-               "-s", s, "-t", String(tile), "-j", "2:4:4",
-               ...(Number(cfg.gpuDeviceId) > 0 ? ["-g", String(Number(cfg.gpuDeviceId))] : [])],
-              { windowsHide: true });
-            let errTail = "";
-            let done2 = false;
-            const finish = (code, err) => {
-              if (done2) return; done2 = true;
-              code === 0 ? res2() : rej2(new Error(`realesrgan exit ${code}: ${err.slice(-150)}`));
-            };
-            child.stderr.on("data", (d) => { errTail = (errTail + String(d)).slice(-2000); });
-            child.on("error", (e) => finish(1, String(e)));
-            child.on("close", (code) => finish(code, errTail));
-          });
-          // Очередь апскейла: одновременно живёт максимум один realesrgan.
-          const pump = () => {
-            if (upRunning || upQueue.length === 0) { maybeDone(); return; }
-            const dir = upQueue.shift();
-            upRunning = true;
-            const attempt = (tileIdx) => {
-              const tiles = [0, 128, 64];
-              if (tileIdx >= tiles.length) {
-                segErr.push(`segment ${dir} upscale failed (all tile sizes)`);
-                upRunning = false;
-                try { fs.readdirSync(dir).forEach((f) => { try { fs.rmSync(path.join(framesUpDir, f), { force: true }); } catch { /* ignore */ } }); } catch { /* ignore */ }
-                pump();
-                return;
-              }
-              runUpscale(dir, tiles[tileIdx]).then(() => {
-                // Прогресс по фактическому числу готовых кадров.
-                try {
-                  const done = fs.readdirSync(framesUpDir).length;
-                  job.progress = Math.min(99, Math.round((workH ? 40 : 10) + 20 * (done / Math.max(1, totalFrames))));
-                } catch { /* ignore */ }
-                upRunning = false;
-                try { fs.rmSync(dir, { recursive: true, force: true }); } catch { /* ignore */ }
-                pump();
-              }).catch((e) => {
-                logger.warn("compressor.upscaleRetry", { tile: tiles[tileIdx], err: String(e.message || e).slice(0, 160) });
-                // Убираем частично обработанные кадры этого сегмента — ретрай заново.
-                try { fs.readdirSync(dir).forEach((f) => { try { fs.rmSync(path.join(framesUpDir, f), { force: true }); } catch { /* ignore */ } }); } catch { /* ignore */ }
-                upRunning = false;
-                attempt(tileIdx + 1);
-              });
-            };
-            attempt(0);
-          };
-          const startDecode = () => {
-            if (nextSeg >= numSegs) {
-              decodeDone = true; maybeDone(); return;
-            }
-            const i = nextSeg++;
-            const dir = path.join(DIRS.compressorOut, `frs_${stamp}_${i}`);
-            fs.mkdirSync(dir, { recursive: true });
-            tmpDirs.push(dir);
-            const start = i * SEG_SEC;
-            const startNum = nextNum; // номер первого кадра ЭТОГО сегмента
-            runFfmpeg(ffmpeg, ["-y", "-ss", String(start), "-t", String(SEG_SEC), "-i", job.inputPath,
-              "-fps_mode", "passthrough", "-q:v", "2", "-start_number", String(startNum),
-              path.join(dir, "f_%06d.jpg")], tracker).then(() => {
-              // СЛЕДУЮЩИЙ глобальный номер = фактическое число кадров сегмента.
-              // Никаких дыр в нумерации — image2 не обрывает видео.
-              const written = fs.readdirSync(dir).length;
-              nextNum = startNum + written;
-              upQueue.push(dir);
-              pump();               // GPU свободен — сразу берём следующий сегмент
-              startDecode();        // декодер бежит вперёд, не ждёт GPU
-            }).catch((e) => {
-              logger.warn("compressor.segDecodeFail", { seg: i, err: String(e.message || e).slice(0, 160) });
-              segErr.push(String(e.message || e));
-              startDecode();
-              if (nextSeg >= numSegs && upQueue.length === 0 && !upRunning) { decodeDone = true; reject(new Error(segErr[0] || "decode_failed")); }
-            });
-          };
-          startDecode();
-        });
-        // Если какой-то сегмент так и не апскейлился — падаем с понятной
-        // ошибкой, а НЕ отдаём обрезанные первые 15 секунд.
-        const failedSegs = segErr.filter((e) => /upscale failed|segment .* upscale failed/.test(e));
-        if (failedSegs.length) throw new Error("upscale_segment_failed");
-        job.steps.push("ai-upscale");
-      }
-    } else if (job.aiWanted && upH) {
-      job.aiSkipped = true; // включено, но бинарь Real-ESRGAN не найден
-    }
-
-    // --- Шаг 3: Кодирование AV1/HEVC/H.264 + звук из исходника ---
-    setStage(job, "encode", 3, (framesUpDir) ? 60 : (workH ? 40 : 10), 40);
-    const outFile = path.join(DIRS.compressorOut, `cmp_${stamp}.mp4`);
-    // Итоговая высота: цель апскейла, если он был; иначе — рабочая (downscale).
-    const finalH = framesUpDir ? upH : (workH || null);
-    const fps = String(job.info.fps || "30");
-    const fpsN = Number(job.info.fps) || 30;
-    const fpsArg = /^\d+\/\d+$/.test(fps) ? fps : "30";
-    const vf = finalH ? ["-vf", `scale=-2:${finalH}`] : [];
-    // Звук всегда из исходного файла (-map 1:a); «?» — не падать без дорожки.
-    const audioArgs = ["-map", "0:v", "-map", "1:a?", "-c:a", "aac", "-b:a", "192k", "-shortest"];
-    let imageSeq;
-    if (framesUpDir) {
-      // Кадры собираются через ffconcat-список: НЕ зависит от непрерывности
-      // нумерации (realesrgan изредка пропускает кадр — image2 по номеру
-      // обрывался на первой дыре, давая «15-секундное» видео).
-      const files = fs.readdirSync(framesUpDir)
-        .filter((f) => /\.(jpg|jpeg|png)$/i.test(f))
-        .sort((a, b) => {
-          const na = parseInt(a.replace(/\D/g, ""), 10) || 0;
-          const nb = parseInt(b.replace(/\D/g, ""), 10) || 0;
-          return na - nb;
-        });
-      if (!files.length) throw new Error("upscale_empty");
-      const listPath = path.join(framesUpDir, "list.ffconcat");
-      const dur = (1 / fpsN).toFixed(6);
-      let lst = "ffconcat version 1.0\n";
-      for (const f of files) lst += `file '${f}'\nduration ${dur}\n`;
-      lst += `file '${files[files.length - 1]}'\n`; // последний кадр без duration — фиксация длительности
-      fs.writeFileSync(listPath, lst, "utf8");
-      imageSeq = ["-f", "concat", "-safe", "0", "-i", listPath];
-    } else {
-      imageSeq = ["-i", job.inputPath];
-    }
-    const tryEncode = (vArgs) => runFfmpeg(ffmpeg,
-      ["-y", ...imageSeq, "-i", job.inputPath, ...audioArgs, ...vf, ...vArgs, outFile], tracker);
-    // Перебор энкодеров (software → hardware): QSV/NVENC могут числиться в
-    // сборке, но не работать на машине (нет GPU / нет пакетов на выходе).
-    const cands = await codecEncoderCandidates(ffmpeg, job.codec, job.crf, job.gpuFirst);
+    // Кандидаты: выбранный движок → запасные того же кодека → x264.
+    const cands = engineCandidates(job.engine, job.codec, hw.methods);
     if (!cands.length) throw new Error(`no_encoder_${job.codec}`);
-    let encoded = false;
-    for (const c of cands) {
+    job.engineUsed = cands[0];
+
+    setStage(job, "encode", 0.05, 0.95);
+    const ext = outExt(job);
+    const outFile = path.join(DIRS.compressorOut, `cmp_${stamp}${ext}`);
+    const onProg = tracker(job, job.durationSec || 0);
+
+    for (const method of cands) {
       try {
-        await tryEncode(c.args);
-        encoded = true;
-        break;
+        const cmd = await encodeWithMethod(job, method, hw, ff, { outFile, passLog, onProg });
+        if (cmd) { job.command = cmd; break; }
       } catch (e) {
-        logger.warn("compressor.encoderFallback", { enc: c.enc, err: String(e.message || e).slice(0, 160) });
+        lastErr = e;
+        job.fallbacks.push(method);
+        logger.warn("compressor.fallback", { method, err: String(e.message || e).slice(0, 200) });
         try { fs.rmSync(outFile, { force: true }); } catch { /* ignore */ }
       }
     }
-    if (!encoded) throw new Error(`no_working_encoder_${job.codec}`);
+    if (!job.command) throw lastErr || new Error(`no_working_encoder_${job.codec}`);
 
     job.outFile = outFile;
     job.outSize = fs.existsSync(outFile) ? fs.statSync(outFile).size : 0;
     job.progress = 100; job.etaSec = 0;
     job.done = true; job.stage = "done";
-    // Длительность результата — для контроля целостности (лог/отладка).
-    probeDuration(ffprobe, outFile).then((d) => { job.durationSec = d; logger.info("compressor.done", { id: job.id, size: job.outSize, codec: job.codec, crf: job.crf, steps: job.steps, durationSec: d }); });
+    job.steps.push("encode");
+    logger.info("compressor.done", { id: job.id, size: job.outSize, engine: job.engineUsed, codec: job.codec, fallbacks: job.fallbacks });
   } catch (e) {
     job.error = String(e.message || e); job.stage = "error";
     logger.error("compressor.error", { id: job.id, error: job.error });
   } finally {
-    // Очистка временных файлов: сегменты кадров, апскейл-кадры, вход и
-    // промежуточник — и при успехе, и при ошибке (если включена cleanupTemp).
-    if (cleanup) {
-      for (const p of tmpDirs) { try { fs.rmSync(p, { recursive: true, force: true }); } catch { /* ignore */ } }
-      try { fs.rmSync(job.inputPath, { force: true }); } catch { /* ignore */ }
-      try { fs.rmSync(path.join(DIRS.compressorOut, `ds_${stamp}.mp4`), { force: true }); } catch { /* ignore */ }
+    try { fs.rmSync(job.inputPath, { force: true }); } catch { /* ignore */ }
+    try { fs.rmSync(`${passLog}-0.log`, { force: true }); } catch { /* ignore */ }
+    try { fs.rmSync(`${passLog}-0.log.mbtree`, { force: true }); } catch { /* ignore */ }
+  }
+}
+
+// Выполнение кодирования конкретным методом. Возвращает CLI-строку команды
+// (для «копировать команду»), либо бросает исключение → fallback.
+async function encodeWithMethod(job, method, hw, ff, ctx) {
+  const { outFile, onProg } = ctx;
+  const twoPass = job.qualityMode === "bitrate" && job.targetKbps > 0;
+
+  if (method === "av1an") {
+    // Оркестратор: параллелит SVT-AV1 по сценам. Фейл → следующий кандидат.
+    const exe = hw.externals.av1an;
+    const args = av1anArgs(job, { outFile });
+    await runProc(exe, args, onProg, job.durationSec);
+    return quoteCmd(exe, args);
+  }
+  if (method === "rav1e" && !hw.ffmpegEncoders.includes("librav1e")) {
+    // Отдельный бинарь rav1e: элементарный поток .ivf, mux делает ffmpeg.
+    const exe = hw.externals.rav1e;
+    const ivf = outFile.replace(/\.\w+$/, "") + ".ivf";
+    const args = [job.inputPath, "--output", ivf, "--crf", String(job.crf),
+      "--speed", String(clamp(parseInt(job.speed, 10) || 6, 0, 10))];
+    await runProc(exe, args, onProg, job.durationSec);
+    const mux = ["-y", "-i", ivf, "-i", job.inputPath, "-map", "0:v", "-map", "1:a?",
+      "-c", "copy", "-shortest", outFile];
+    await runProc(ff.ffmpeg, mux, null, 0);
+    try { fs.rmSync(ivf, { force: true }); } catch { /* ignore */ }
+    return quoteCmd(exe, args);
+  }
+  if (method === "nvencc" || method === "qsvencc" || method === "vceencc") {
+    const exe = hw.externals[method];
+    const args = rigayaArgs(job, { outFile });
+    await runProc(exe, args, onProg, job.durationSec);
+    return quoteCmd(exe, args);
+  }
+  // ffmpeg-методы: svtav1/x265/x264/aom/nvenc/qsv/amf
+  const prefs = encoders.METHOD_FFMPEG_ENC[method]?.[job.codec] || [];
+  const avail = prefs.filter((e) => hw.ffmpegEncoders.includes(e));
+  if (!avail.length) throw new Error(`ffmpeg_encoder_missing_${method}`);
+  let lastErr = null;
+  for (const ffEnc of avail) {
+    try {
+      if (twoPass) {
+        // Проход 1 (45% веса), затем проход 2 (50%).
+        setStage(job, "encode", 0.05, 0.45);
+        const p1 = ffmpegArgs(job, ffEnc, { pass: 1 });
+        await runProc(ff.ffmpeg, [...p1.slice(0, -3), "-passlogfile", ctx.passLog, ...p1.slice(-3)], onProg, job.durationSec);
+        setStage(job, "encode", 0.5, 0.5);
+        const p2 = ffmpegArgs(job, ffEnc, { pass: 2, outFile });
+        const p2full = [...p2.slice(0, -1), "-passlogfile", ctx.passLog, p2[p2.length - 1]];
+        await runProc(ff.ffmpeg, p2full, onProg, job.durationSec);
+        return quoteCmd(ff.ffmpeg, p2full);
+      }
+      const args = ffmpegArgs(job, ffEnc, { outFile });
+      await runProc(ff.ffmpeg, args, onProg, job.durationSec);
+      job.ffEnc = ffEnc;
+      return quoteCmd(ff.ffmpeg, args);
+    } catch (e) {
+      // Аппаратный энкодер может числиться в сборке, но не работать на машине.
+      lastErr = e;
+      logger.warn("compressor.ffEncFallback", { ffEnc, err: String(e.message || e).slice(0, 160) });
+      try { fs.rmSync(outFile, { force: true }); } catch { /* ignore */ }
     }
   }
+  throw lastErr || new Error(`ffmpeg_method_failed_${method}`);
 }
 
 function getJob(id) { return jobs.get(id) || null; }
 
-module.exports = { jobs, startJob, getJob, probeDuration, probeVideoInfo, runFfmpeg, codecEncoderCandidates, findRealesrgan };
+module.exports = {
+  jobs, startJob, getJob, SYSTEM_PRESETS, normalizeParams, engineCandidates,
+  probeDuration, probeVideoInfo,
+};
+
+
+
 

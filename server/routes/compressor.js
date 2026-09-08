@@ -1,16 +1,19 @@
-﻿"use strict";
+"use strict";
 
 /**
- * API видеосжатия.
+ * API видеосжатия (rebuild 2.0).
  *
- *  POST /api/compressor          — multipart { file, crf, codec, targetHeight, aiUpscale, aiScale }
- *                                  → запускает 3-ступенчатый пайплайн, возвращает job
- *  GET  /api/compressor/:id      — статус задания (stage, progress, etaSec, aiSkipped...)
- *  GET  /api/compressor/:id/download — скачивание результата (видео)
- *  GET  /api/compressor/:id/preview  — стриминг результата в <video> (сравнение)
- *  DELETE /api/compressor/:id    — удалить задание и файлы (правый клик → Delete File)
- *
- * Превью исходника фронт берёт через blob из File API (файл уже на клиенте).
+ *  POST /api/compressor            — multipart { file, ...params } → job
+ *  GET  /api/compressor/hardware   — CPU/GPU/методы/рекомендация
+ *  GET  /api/compressor/presets    — системные + пользовательские пресеты
+ *  POST /api/compressor/presets    — сохранить пользовательский пресет
+ *  DELETE /api/compressor/presets/:name — удалить пользовательский пресет
+ *  GET  /api/compressor/:id        — статус задания
+ *  GET  /api/compressor/:id/command — CLI-строка выполненной команды
+ *  GET  /api/compressor/:id/download — скачивание результата
+ *  GET  /api/compressor/:id/preview  — стриминг результата (сравнение)
+ *  GET  /api/compressor/:id/reveal   — путь для «открыть в проводнике»
+ *  DELETE /api/compressor/:id     — удалить задание и файлы
  */
 
 const express = require("express");
@@ -18,6 +21,8 @@ const multer = require("multer");
 const fs = require("fs");
 const path = require("path");
 const engine = require("../compressor");
+const encoders = require("../encoders");
+const settings = require("../settings");
 const { DIRS } = require("../config");
 const logger = require("../logger");
 
@@ -37,64 +42,6 @@ const upload = multer({
   limits: { fileSize: MAX_BYTES },
 });
 
-// --- Real-ESRGAN: статус и скачивание модели (ИИ-апскейл) ---
-// realesrgan-ncnn-vulkan умеет только картинки, пайплайн сам разбирает видео
-// на кадры. Бинарь не входит в поставку — пользователь качает одной кнопкой.
-const REALESRGAN_URL =
-  "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesrgan-ncnn-vulkan-20220424-windows.zip";
-const REALESRGAN_MAX = 200 * 1024 * 1024;
-
-let aiState = { downloading: false, progress: 0, error: "" };
-
-router.get("/ai/status", (req, res) => {
-  res.json({
-    installed: !!engine.findRealesrgan(),
-    downloading: aiState.downloading,
-    progress: aiState.progress,
-    error: aiState.error,
-  });
-});
-
-router.post("/ai/download", (req, res) => {
-  if (aiState.downloading) return res.status(409).json({ error: "already_downloading" });
-  if (engine.findRealesrgan()) return res.json({ ok: true, installed: true });
-  aiState = { downloading: true, progress: 0, error: "" };
-  logger.action("compressor.ai.download");
-  res.status(202).json({ ok: true, downloading: true });
-
-  (async () => {
-    try {
-      fs.mkdirSync(path.join(DIRS.storage, "bin"), { recursive: true });
-      const zipPath = path.join(DIRS.storage, "bin", "realesrgan.zip");
-      const r = await fetch(REALESRGAN_URL, { redirect: "follow" });
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      const declared = Number(r.headers.get("content-length") || 0);
-      if (declared > REALESRGAN_MAX) throw new Error("too_large");
-      let received = 0;
-      const ws = fs.createWriteStream(zipPath);
-      for await (const chunk of r.body) {
-        const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
-        received += buf.length;
-        aiState.progress = declared ? Math.min(99, Math.round((100 * received) / declared)) : 0;
-        if (!ws.write(buf)) await new Promise((res2) => ws.once("drain", res2));
-      }
-      await new Promise((resolve, reject) => ws.end((e) => (e ? reject(e) : resolve())));
-      aiState.progress = 99;
-      // Zip распаковывается adm-zip: exe + папка models кладутся в storage/bin.
-      const AdmZip = require("adm-zip");
-      const zip = new AdmZip(zipPath);
-      zip.extractAllTo(path.join(DIRS.storage, "bin"), true);
-      fs.rmSync(zipPath, { force: true });
-      if (!engine.findRealesrgan()) throw new Error("exe_not_found_after_extract");
-      aiState = { downloading: false, progress: 100, error: "" };
-      logger.info("compressor.ai.installed", {});
-    } catch (e) {
-      aiState = { downloading: false, progress: 0, error: String(e.message || e) };
-      logger.error("compressor.ai.download_failed", { error: aiState.error });
-    }
-  })();
-});
-
 // Публичное представление задания: без путей к файлам на диске.
 function view(job) {
   if (!job) return null;
@@ -102,6 +49,81 @@ function view(job) {
   return rest;
 }
 
+// --- Пресеты: системные из движка + пользовательские из settings.json ---
+function customPresets() {
+  try {
+    const raw = String(settings.get("compressor").customPresets || "");
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? arr.filter((p) => p && typeof p.name === "string") : [];
+  } catch { return []; }
+}
+
+function saveCustomPresets(list) {
+  settings.set({ compressor: { customPresets: JSON.stringify(list.slice(0, 30)) } });
+}
+
+// --- Железо + матрица методов + рекомендация (кэшируется в encoders.js) ---
+router.get("/hardware", async (req, res) => {
+  try {
+    const hw = await encoders.detectAll({ force: req.query.force === "1" });
+    const rec = await encoders.recommend();
+    res.json({
+      ffmpeg: hw.ffmpeg,
+      cpu: hw.cpu,
+      gpus: hw.gpus,
+      methods: hw.methods,
+      recommended: rec,
+      optimal: encoders.OPTIMAL,
+      speedScales: encoders.SPEED_SCALES,
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.get("/presets", (req, res) => {
+  res.json({ system: engine.SYSTEM_PRESETS, custom: customPresets() });
+});
+
+router.post("/presets", (req, res) => {
+  const body = req.body || {};
+  const name = String(body.name || "").trim().slice(0, 40);
+  if (!name) return res.status(400).json({ error: "missing_name" });
+  const params = engine.normalizeParams(body);
+  const list = customPresets().filter((p) => p.name !== name);
+  list.push({ name, params, createdAt: Date.now() });
+  saveCustomPresets(list);
+  logger.action("compressor.preset.save", { name });
+  res.status(201).json({ ok: true, custom: list });
+});
+
+router.delete("/presets/:name", (req, res) => {
+  const name = String(req.params.name || "");
+  const before = customPresets().length;
+  saveCustomPresets(customPresets().filter((p) => p.name !== name));
+  logger.action("compressor.preset.delete", { name });
+  res.json({ ok: true, removed: before - customPresets().length });
+});
+
+// --- Быстрый probe выбранного файла: кодек/разрешение/длительность.
+// Файл сразу удаляется — задание не создаётся.
+router.post("/probe", upload.single("file"), async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: "missing_file" });
+  try {
+    const { detectFfmpeg } = require("../convertEngine");
+    const ff = await detectFfmpeg();
+    if (!ff.found) throw new Error("ffmpeg_missing");
+    const info = await engine.probeVideoInfo(ff.ffprobe, req.file.path);
+    const duration = await engine.probeDuration(ff.ffprobe, req.file.path);
+    res.json({ ...info, duration });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  } finally {
+    try { fs.rmSync(req.file.path, { force: true }); } catch { /* ignore */ }
+  }
+});
+
+// --- Старт задания ---
 router.post("/", upload.single("file"), (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: "missing_file" });
@@ -109,16 +131,9 @@ router.post("/", upload.single("file"), (req, res) => {
       inputPath: req.file.path,
       name: req.file.originalname,
       size: req.file.size,
-      crf: Number(req.body?.crf ?? 22),
-      codec: String(req.body?.codec || "av1"),
-      targetHeight: String(req.body?.targetHeight || "original"),
-      aiUpscale: req.body?.aiUpscale !== "false" && req.body?.aiUpscale !== false,
-      aiScale: String(req.body?.aiScale || "2x"),
-      upHeight: String(req.body?.upHeight || "none"),
-      aiModel: String(req.body?.aiModel || "realesr-animevideov3-x4"),
-      gpuFirst: req.body?.gpuFirst === "true" || req.body?.gpuFirst === true,
+      ...req.body,
     });
-    logger.action("compressor.start", { id: job.id, name: job.name, size: job.size });
+    logger.action("compressor.start", { id: job.id, name: job.name, size: job.size, engine: job.engine, codec: job.codec });
     res.status(201).json(view(job));
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -129,6 +144,13 @@ router.get("/:id", (req, res) => {
   const job = engine.getJob(req.params.id);
   if (!job) return res.status(404).json({ error: "not_found" });
   res.json(view(job));
+});
+
+// CLI-строка выполненной команды (контекстное меню → «копировать команду»).
+router.get("/:id/command", (req, res) => {
+  const job = engine.getJob(req.params.id);
+  if (!job) return res.status(404).json({ error: "not_found" });
+  res.json({ command: job.command || "" });
 });
 
 router.get("/:id/download", (req, res) => {
@@ -155,7 +177,7 @@ router.delete("/:id", (req, res) => {
   res.json({ ok: true });
 });
 
-// М5: абсолютный путь результата для «Reveal in File Explorer»
+// Абсолютный путь результата для «Reveal in File Explorer»
 // (открывается через IPC shell.showItemInFolder, см. electron/main.js).
 router.get("/:id/reveal", (req, res) => {
   const job = engine.getJob(req.params.id);
@@ -164,3 +186,4 @@ router.get("/:id/reveal", (req, res) => {
 });
 
 module.exports = router;
+

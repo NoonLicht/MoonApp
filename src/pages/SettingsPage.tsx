@@ -319,21 +319,21 @@ export default function SettingsPage() {
           <BoolRow label={t("convSection.convAudio")} hint={t("convSection.convAudioHint")} value={conv.preserveAudio} onChange={(v) => change("converter.preserveAudio", v)} />
         </Section>
 
-        {/* ---- Сжатие видео (док: compressor) — дефолты 3-ступенчатого пайплайна ---- */}
+        {/* ---- Сжатие видео (док: compressor) — дефолты матрицы энкодеров ---- */}
         <Section title={t("settings.compressor")} icon={Gauge} badge="active">
+          <Row label={t("cmpSettings.cmpEngine")} hint={t("cmpSettings.cmpEngineHint")}>
+            <Select value={String(comp.engine ?? "auto")} onChange={(e) => change("compressor.engine", e.target.value)} options={["auto", "svtav1", "x265", "x264", "aom", "rav1e", "av1an", "nvenc", "qsv", "amf", "nvencc", "qsvencc", "vceencc"]} />
+          </Row>
           <Row label={t("cmpSettings.cmpCodec")} hint={t("cmpSettings.cmpCodecHint")}>
             <Select value={String(comp.codec ?? "av1")} onChange={(e) => change("compressor.codec", e.target.value)} options={["av1", "hevc", "h264"]} />
           </Row>
-          <Row label={t("cmpSettings.cmpCrf", { v: comp.crf ?? 22 })} hint={t("cmpSettings.cmpCrfHint")}>
-            <input type="range" min="0" max="50" step="1" value={Number(comp.crf ?? 22)} onChange={(e) => change("compressor.crf", parseInt(e.target.value))} style={{ width: 180 }} />
+          <Row label={t("cmpSettings.cmpMode")} hint={t("cmpSettings.cmpModeHint")}>
+            <Select value={String(comp.qualityMode ?? "crf")} onChange={(e) => change("compressor.qualityMode", e.target.value)} options={["crf", "bitrate", "constrained"]} />
           </Row>
-          <BoolRow label={t("cmpSettings.cmpAi")} hint={t("cmpSettings.cmpAiHint")} value={comp.aiUpscale !== false} onChange={(v) => change("compressor.aiUpscale", v)} />
-          <Row label={t("cmpSettings.cmpAiScale")} hint={t("cmpSettings.cmpAiScaleHint")}>
-            <Select value={String(comp.aiScale ?? "2x")} onChange={(e) => change("compressor.aiScale", e.target.value)} options={["2x", "4x"]} />
+          <Row label={t("cmpSettings.cmpCrf", { v: comp.crf ?? 23 })} hint={t("cmpSettings.cmpCrfHint")}>
+            <input type="range" min="0" max="51" step="1" value={Number(comp.crf ?? 23)} onChange={(e) => change("compressor.crf", parseInt(e.target.value))} style={{ width: 180 }} />
           </Row>
-          <Row label={t("cmpSettings.cmpGpu")} hint={t("cmpSettings.cmpGpuHint")}>
-            <NumberInput value={Number(comp.gpuDeviceId ?? 0)} onChange={(v) => change("compressor.gpuDeviceId", v)} min={0} max={8} />
-          </Row>
+          <BoolRow label={t("cmpSettings.cmpTenBit")} hint={t("cmpSettings.cmpTenBitHint")} value={comp.tenBit === true} onChange={(v) => change("compressor.tenBit", v)} />
           <BoolRow label={t("cmpSettings.cmpCleanup")} hint={t("cmpSettings.cmpCleanupHint")} value={comp.cleanupTemp !== false} onChange={(v) => change("compressor.cleanupTemp", v)} />
         </Section>
 

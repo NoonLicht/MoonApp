@@ -1,5 +1,5 @@
 import React from "react";
-import { ChevronDown, Check } from "lucide-react";
+import { Check } from "lucide-react";
 
 type DivProps = React.HTMLAttributes<HTMLElement>;
 
@@ -74,7 +74,6 @@ export function Select({ value, onChange, options, style }: {
           </option>
         ))}
       </select>
-      <ChevronDown size={13} className="select-caret" />
     </div>
   );
 }

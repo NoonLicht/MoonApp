@@ -112,17 +112,19 @@ const DEFAULTS = {
     defaultOptions: { css: true, images: true, fonts: true, removeScripts: false },
   },
 
-  // --- Видеосжатие (3-ступенчатый пайплайн) ---
+  // --- Видеосжатие (матрица энкодеров, см. server/encoders.js) ---
   compressor: {
+    engine: "auto",          // auto | svtav1 | x265 | x264 | aom | rav1e | av1an | nvenc | qsv | amf | nvencc | qsvencc | vceencc
     codec: "av1",            // av1 | hevc | h264
-    crf: 22,                 // 0–50; 20–25 — sweet spot
-    aiUpscale: true,         // Real-ESRGAN на GPU (если бинарь найден)
-    aiScale: "2x",           // 2x | 4x
-    aiModel: "realesr-animevideov3-x4", // быстрая видео-модель; x4plus — качество
-    upHeight: "none",        // цель апскейла: 1080/1440/2160/4320; none = выкл
-    gpuFirst: false,         // быстрое кодирование через NVENC (файл чуть больше)
-    gpuDeviceId: 0,          // ID GPU для Real-ESRGAN (gpus=Id:N)
-    cleanupTemp: true,       // чистить промежуточные файлы после сжатия
+    qualityMode: "crf",      // crf | bitrate | constrained
+    crf: 23,                 // 0–51 (CQP для GPU-энкодеров)
+    speed: "",               // пресет скорости энкодера (пусто = дефолт движка)
+    tenBit: false,           // 10-bit цвет (архивное качество)
+    targetHeight: "original",// original | 2160 | 1440 | 1080 | 720 | 480
+    audio: "aac",            // copy | aac | opus
+    audioKbps: 192,
+    cleanupTemp: true,       // чистить временные файлы после сжатия
+    customPresets: "",       // пользовательские пресеты (JSON-строка массива)
   },
 
   // --- Web Archive / .sitebak ---

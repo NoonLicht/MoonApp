@@ -29,11 +29,29 @@ const BASE = ""; // тот же origin: фронт и API вместе (Vite-pro
 /* --- Типы новых модулей: Compressor / TTS / Sitebak --- */
 export interface CompressorJob {
   id: string; name: string; size: number;
-  stage: "queued" | "downscale" | "upscale" | "encode" | "done" | "error";
-  step?: number; progress: number; etaSec: number | null;
-  steps: string[]; aiSkipped: boolean; error: string; done: boolean;
-  outSize: number; crf?: number; codec?: string;
-  info?: { width?: number; height?: number; codec?: string };
+  stage: "queued" | "analyze" | "encode" | "done" | "error";
+  progress: number; etaSec: number | null;
+  steps: string[]; error: string; done: boolean;
+  outSize: number;
+  codec: string; engine: string; engineUsed?: string; qualityMode: string;
+  crf: number; targetKbps: number; maxKbps: number; speed: string;
+  tenBit: boolean; targetHeight: string; audio: string; audioKbps: number;
+  fallbacks?: string[]; command?: string; durationSec?: number;
+  info?: { width?: number; height?: number; codec?: string; fps?: string; bitRate?: number };
+}
+export interface CompressorHardware {
+  ffmpeg: { found: boolean; path: string | null; version: string | null };
+  cpu: { name: string; coresPhysical: number; coresLogical: number };
+  gpus: { vendor: string; name: string; tier: string }[];
+  methods: Record<string, boolean>;
+  recommended: { engine: string; codec: string; qualityMode: string; crf: number; speed: string; hwName: string; reason: string };
+  optimal: Record<string, any>;
+  speedScales: Record<string, string[]>;
+}
+export interface CompressorPreset {
+  id?: string; name?: string; createdAt?: number;
+  params: Record<string, unknown>;
+  targetMB?: number;
 }
 export interface TtsProfile {
   id: string; name: string; refFile?: string; language?: string;
@@ -150,7 +168,7 @@ export const api = {
   compressorReveal: (id: string) => req<{ path: string }>("GET", `/compressor/${id}/reveal`),
   archiveReveal: (id: string) => req<{ path: string }>("GET", `/archive/${id}/reveal`),
 
-  // --- Compressor: 3-ступенчатое сжатие видео (downscale → AI upscale → AV1) ---
+  // --- Compressor: матрица энкодеров (CPU/GPU), пресеты, рекомендатель ---
   compressVideo: (file: File, opts: Record<string, string | number | boolean>) => {
     const fd = new FormData();
     fd.append("file", file);
@@ -160,9 +178,17 @@ export const api = {
   compressorStatus: (id: string) => req<CompressorJob>("GET", `/compressor/${id}`),
   compressorDelete: (id: string) => req("DELETE", `/compressor/${id}`),
   compressorUrl: (id: string, what: "download" | "preview") => `/api/compressor/${id}/${what}`,
-  // ИИ-апскейл: наличие realesrgan-ncnn-vulkan и кнопка скачивания модели.
-  compressorAiStatus: () => req<{ installed: boolean; downloading: boolean; progress: number; error: string }>("GET", "/compressor/ai/status"),
-  compressorAiDownload: () => req<{ ok: boolean }>("POST", "/compressor/ai/download"),
+  compressorHardware: () => req<CompressorHardware>("GET", "/compressor/hardware"),
+  compressorProbe: (file: File) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    return multipart<{ codec?: string; width?: number; height?: number; fps?: string; bitRate?: number; duration?: number }>("/compressor/probe", fd);
+  },
+  compressorCommand: (id: string) => req<{ command: string }>("GET", `/compressor/${id}/command`),
+  compressorPresets: () => req<{ system: CompressorPreset[]; custom: CompressorPreset[] }>("GET", "/compressor/presets"),
+  compressorSavePreset: (p: { name: string } & Record<string, unknown>) =>
+    req<{ ok: boolean; custom: CompressorPreset[] }>("POST", "/compressor/presets", p),
+  compressorDeletePreset: (name: string) => req<{ ok: boolean }>("DELETE", `/compressor/presets/${encodeURIComponent(name)}`),
 
   // --- F5-TTS студия ---
   ttsEngine: () => req<TtsEngine>("GET", "/tts/engine"),

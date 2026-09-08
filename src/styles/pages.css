@@ -1,4 +1,4 @@
-/* MonitorPage sensor panels */
+﻿/* MonitorPage sensor panels */
 .mono-panel {
   padding: 12px 14px;
   background: rgba(255, 255, 255, 0.03);
@@ -55,13 +55,13 @@
 .store-grid{ display:grid; grid-template-columns:repeat(5, minmax(0,1fr)); gap:12px; }
 .app-card{ min-width:0; }
 
-/* Видимая линия прокрутки у списка приложений */
+/* Р’РёРґРёРјР°СЏ Р»РёРЅРёСЏ РїСЂРѕРєСЂСѓС‚РєРё Сѓ СЃРїРёСЃРєР° РїСЂРёР»РѕР¶РµРЅРёР№ */
 .store-grid-wrap::-webkit-scrollbar{ width:10px; height:0; display:block; }
 .store-grid-wrap::-webkit-scrollbar-track{ background:var(--track); border-radius:999px; }
 .store-grid-wrap::-webkit-scrollbar-thumb{ background:linear-gradient(180deg, var(--amber), var(--violet)); border-radius:999px; border:2px solid transparent; background-clip:content-box; }
 .store-grid-wrap::-webkit-scrollbar-thumb:hover{ border:0; }
 
-/* --- вкладки All / Winget / Comss --- */
+/* --- РІРєР»Р°РґРєРё All / Winget / Comss --- */
 .tabs{ display:flex; gap:6px; }
 .tab{
   display:inline-flex; align-items:center; gap:7px;
@@ -79,7 +79,7 @@
 }
 .tab.is-active .tab-count{ background:rgba(0,0,0,0.15); color:var(--text-primary); }
 
-/* --- пагинация --- */
+/* --- РїР°РіРёРЅР°С†РёСЏ --- */
 .pager{ display:flex; align-items:center; justify-content:center; gap:10px; padding:10px 0 2px; flex-wrap:wrap; }
 .pager-btn{
   display:inline-flex; align-items:center; gap:5px;
@@ -114,7 +114,7 @@
 .book-list::-webkit-scrollbar{ width:10px; height:0; display:block; }
 .book-list::-webkit-scrollbar-track{ background:var(--track); border-radius:999px; }
 
-/* --- monitoring: прокрутка страницы --- */
+/* --- monitoring: РїСЂРѕРєСЂСѓС‚РєР° СЃС‚СЂР°РЅРёС†С‹ --- */
 .monitor-scroll{
   display:flex; flex-direction:column; gap:14px;
   overflow-y:auto; overflow-x:hidden;
@@ -126,10 +126,10 @@
 .monitor-scroll::-webkit-scrollbar-track{ background:var(--track); border-radius:999px; }
 .monitor-scroll::-webkit-scrollbar-thumb{ background:var(--glass-border); border-radius:999px; }
 
-/* --- monitoring: плитки ядер/потоков (как в диспетчере задач) --- */
+/* --- monitoring: РїР»РёС‚РєРё СЏРґРµСЂ/РїРѕС‚РѕРєРѕРІ (РєР°Рє РІ РґРёСЃРїРµС‚С‡РµСЂРµ Р·Р°РґР°С‡) --- */
 .core-tiles{ display:grid; grid-template-columns:repeat(auto-fill,minmax(148px,1fr)); gap:10px; }
 
-/* --- convert: встроенный ConvertX --- */
+/* --- convert: РІСЃС‚СЂРѕРµРЅРЅС‹Р№ ConvertX --- */
 .convertx-frame-wrap{ flex:1; display:flex; min-height:0; overflow:hidden; }
 
 .core-tile{
@@ -174,3 +174,48 @@
 .music-track-info{ flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
 .music-track-title{ font-weight:600; font-size:13.5px; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .live-pill.is-live{ background:var(--teal-soft); color:var(--teal); border-color:rgba(63,199,171,0.35); }
+/* ============================================================
+   Compressor 2.1: video left, settings right.
+   Player scales with window height (vh); narrow screens stack.
+   ============================================================ */
+.cmp-grid{ display:grid; grid-template-columns:minmax(0,1fr) minmax(360px,440px);
+  grid-template-rows:minmax(0,1fr); gap:14px; align-items:stretch;
+  flex:1; min-height:0; }
+.cmp-left{ display:flex; flex-direction:column; gap:12px; min-width:0; min-height:0;
+  overflow-y:auto; overscroll-behavior:contain; }
+
+.cmp-right{ display:flex; flex-direction:column; gap:12px; min-width:0; min-height:0;
+  overflow:hidden; }
+/* Карточка настроек занимает всю высоту колонки; прокрутка — внутри неё. */
+.cmp-fill{ flex:1; min-height:0; overflow-y:auto; overscroll-behavior:contain;
+  padding:14px 16px 14px 16px; }
+.cmp-fill::-webkit-scrollbar{ width:6px; }
+.cmp-fill::-webkit-scrollbar-thumb{ background:var(--glass-border); border-radius:6px; }
+.cmp-fill::-webkit-scrollbar-thumb:hover{ background:var(--text-tertiary); }
+.cmp-fill::-webkit-scrollbar-track{ background:transparent; }
+
+
+.cmp-left .dropzone{ min-height:clamp(200px,36vh,340px); justify-content:center; }
+.cmp-player{ position:relative; width:100%; flex:1; min-height:220px;
+  border-radius:12px; overflow:hidden; background:#000; user-select:none; }
+.cmp-player video{ position:absolute; inset:0; width:100%; height:100%;
+  object-fit:contain; background:#000; }
+.cmp-preview video{ width:100%; flex:1; min-height:0; object-fit:contain;
+  background:#000; border-radius:10px; }
+
+@media (max-width: 980px){
+  .cmp-grid{ grid-template-columns:1fr; grid-template-rows:none; }
+  .cmp-left{ overflow:visible; }
+  .cmp-right{ overflow:visible; }
+  .cmp-fill{ flex:none; overflow:visible; }
+}
+
+
+/* Карточка результата растягивается на всю высоту колонки. */
+.cmp-left .cmp-card{ flex:1; min-height:0; }
+
+/* Карточки компрессора: flex + внутренние отступы (.glass сам не flex). */
+.cmp-card{ display:flex; padding:14px 16px; box-sizing:border-box; min-width:0; }
+
+
+
