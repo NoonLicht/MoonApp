@@ -199,6 +199,8 @@ function slicePage(all, page, size) {
 /**
  * Агрегатор: собирает книги из OPDS-фида (по 20 на страницу OPDS),
  * пока не наберётся size*(page+1) штук. Возвращает { books, hasMore }.
+ * Устойчив к сбоям сети: одна повторная попытка на страницу, при сбое
+ * дальше первой страницы отдаётся частичный результат.
  */
 async function aggregateFeed(basePath, page, size = 80) {
   const p = Math.max(0, Number(page) || 0);
@@ -212,7 +214,20 @@ async function aggregateFeed(basePath, page, size = 80) {
   let cursor = basePath;
   let guard = 0;
   while (cursor && guard++ < 40) {
-    const xml = await fetchFeed(cursor);
+    let xml = null;
+    for (let attempt = 0; attempt < 2 && !xml; attempt++) {
+      try {
+        xml = await fetchFeed(cursor);
+      } catch (e) {
+        if (attempt === 1) {
+          // Вторая попытка не удалась: отдаём частичный результат или бросаем
+          if (acc.length > 0) { cursor = null; break; }
+          throw e;
+        }
+        await new Promise((r) => setTimeout(r, 600));
+      }
+    }
+    if (!xml) break;
     const { books, next } = parseFeed(xml);
     for (const b of books) if (!seen.has(b.bid)) { seen.add(b.bid); acc.push(b); }
     if (acc.length >= want) break;
@@ -439,8 +454,52 @@ async function searchInGenre(path, title, author, want) {
 }
 
 /**
+ * Поиск по автору: /opds/search?searchType=authors → фиды авторов →
+ * /opds/author/{id}/alphabet (20 книг/страница, пагинация rel=next).
+ * Берём до 3 подходящих авторов, пока не наберётся want книг.
+ */
+async function authorSearchBooks(authorQ, page = 0, size = 80) {
+  const p = Math.max(0, Number(page) || 0);
+  const want = size * (p + 1);
+  const acc = [];
+  const seen = new Set();
+
+  const xml = await fetchFeed(
+    `/opds/search?searchType=authors&searchTerm=${encodeURIComponent(String(authorQ).trim())}`,
+    { timeout: 30000 }
+  );
+  let authors = parseNavEntries(xml).filter((a) => /\/opds\/author\/\d+$/.test(a.href));
+  // OPDS отдаёт нечёткие совпадения — оставляем авторов, чьё имя реально содержит запрос
+  const q = String(authorQ).trim().toLowerCase();
+  const exact = authors.filter((a) => a.title.toLowerCase().includes(q));
+  if (exact.length) authors = exact;
+
+  for (const a of authors.slice(0, 3)) {
+    let cursor = a.href + "/alphabet";
+    let guard = 0;
+    while (cursor && guard++ < 10 && acc.length < want) {
+      try {
+        const feed = await fetchFeed(cursor, { timeout: 30000 });
+        const { books, next } = parseFeed(feed);
+        for (const b of books) if (!seen.has(b.bid)) { seen.has(b.bid); seen.add(b.bid); acc.push(b); }
+        cursor = next || null;
+      } catch {
+        break; // частичный результат
+      }
+    }
+    if (acc.length >= want) break;
+  }
+  // В фидах авторов встречаются журналы/сборники с чужими авторами — фильтруем,
+  // но если после фильтра пусто, возвращаем как есть.
+  const filtered = acc.filter((b) => (b.author || "").toLowerCase().includes(q));
+  return slicePage(filtered.length ? filtered : acc, p, size);
+}
+
+/**
  * Поиск: если задан жанр — ищем внутри жанрового фида (агрегируем и фильтруем
- * по подстрокам), иначе — /opds/search/{q} с агрегацией страниц.
+ * по подстрокам), иначе — /opds/search?searchType=books с агрегацией страниц.
+ * Комбинации: только автор → поиск авторов; автор+название → книги по названию,
+ * отфильтрованные по автору.
  */
 async function searchBooks({ q, authorQ, genre, page = 0, size = 80 } = {}) {
   const p = Math.max(0, Number(page) || 0);
@@ -467,23 +526,41 @@ async function searchBooks({ q, authorQ, genre, page = 0, size = 80 } = {}) {
     return slicePage(merged, p, size);
   }
 
-  const term = [title, author].filter(Boolean).join(" ");
-  if (!term) return { books: [], hasMore: false };
-  const key = `srch:${term.toLowerCase()}:${p}:${size}`;
+  // Только автор — настоящий поиск по автору
+  if (author && !title) {
+    const key = `auth:${author.toLowerCase()}:${p}:${size}`;
+    const cached = cacheGet(key);
+    if (cached) return cached;
+    const res = await authorSearchBooks(author, p, size);
+    cacheSet(key, res);
+    return res;
+  }
+
+  if (!title) return { books: [], hasMore: false };
+
+  // Название (возможно + фильтр по автору): ищем по названию, затем режем по автору
+  const key = `srch:${title}:${author}:${p}:${size}`;
   const cached = cacheGet(key);
   if (cached) return cached;
 
   const acc = [];
   const seen = new Set();
-  let cursor = `/opds/search?searchType=books&searchTerm=${encodeURIComponent(term)}`;
+  let cursor = `/opds/search?searchType=books&searchTerm=${encodeURIComponent(title)}`;
   let guard = 0;
   // Поиск у Flibusta медленный (страница может готовиться 10-25 с): длинный
   // таймаут на страницу, минимум страниц, частичный результат при сбое.
-  while (cursor && guard++ < 5) {
+  // Если нужен фильтр по автору — берём больше страниц (фильтр режет список).
+  const maxPages = author ? 15 : 5;
+  while (cursor && guard++ < maxPages) {
     try {
       const xml = await fetchFeed(cursor, { timeout: 30000 });
       const { books, next } = parseFeed(xml);
-      for (const b of books) if (!seen.has(b.bid)) { seen.add(b.bid); acc.push(b); }
+      for (const b of books) {
+        if (seen.has(b.bid)) continue;
+        seen.add(b.bid);
+        if (author && !(b.author || "").toLowerCase().includes(author)) continue;
+        acc.push(b);
+      }
       if (acc.length >= size * (p + 1)) break;
       cursor = next || null;
     } catch (e) {

@@ -47,7 +47,7 @@ export default function BooksPage() {
   const [selectedBook, setSelectedBook] = useState<FlibustaBook | null>(null);
   const reqId = useRef(0);
 
-  const doLoad = useCallback(async (tabV: Tab, pageV: number, gV: string, qV: string, aV: string) => {
+  const doLoad = useCallback(async (tabV: Tab, pageV: number, gV: string, qV: string, aV: string): Promise<boolean> => {
     const id = ++reqId.current;
     setLoading(true);
     setError("");
@@ -60,23 +60,31 @@ export default function BooksPage() {
       if (qV.trim()) params.set("q", qV);
       if (aV.trim()) params.set("authorQ", aV);
       const res = await api.getBooks(params.toString());
-      if (id !== reqId.current) return; // устаревший ответ
+      if (id !== reqId.current) return true; // устаревший ответ — не считаем ошибкой
       setItems(res.items || []);
       setHasMore(!!res.hasMore);
       setFlags(res.flags || {});
       setPopularFallback(!!res.popularFallback);
       setPage(pageV);
+      if (id === reqId.current) setLoading(false);
+      return true;
     } catch (e: any) {
-      if (id === reqId.current) { setItems([]); setError(e?.message || "error"); }
+      if (id === reqId.current) { setItems([]); setError(e?.message || "error"); setLoading(false); }
+      return false;
     }
-    if (id === reqId.current) setLoading(false);
   }, []);
 
   // genre-параметр для API: JSON-массив выбранных путей (или пусто)
   const genreParam = (arr: string[]) => (arr.length ? JSON.stringify(arr) : "");
 
-  // Начальная загрузка: новинки + жанры (жанры сортируем по алфавиту)
-  useEffect(() => { doLoad("new", 0, "", "", ""); }, [doLoad]);
+  // Начальная загрузка: новинки + жанры; при сбое сети — один авто-повтор
+  useEffect(() => {
+    const run = (isRetry: boolean) => doLoad("new", 0, "", "", "").then((ok) => {
+      if (!ok && !isRetry) setTimeout(() => doLoad("new", 0, "", "", ""), 1500);
+    });
+    run(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   useEffect(() => {
     api.getBookGenres().then((r) => setGenres((r.genres || []).sort((a, b) => a.title.localeCompare(b.title, "ru")))).catch(() => {});
   }, []);

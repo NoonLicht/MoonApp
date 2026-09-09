@@ -48,6 +48,7 @@ router.get("/", async (req, res) => {
     const flags = flibusta.myFlags(bids);
     res.json({ items: result.books, hasMore: !!result.hasMore, flags, popularFallback: !!result.popularFallback });
   } catch (e) {
+    logger.error("books.request_failed", { error: e.message, url: req.originalUrl });
     res.status(500).json({ error: e.message });
   }
 });
