@@ -280,22 +280,26 @@
   "books": {
     "title": "Catálogo de libros",
     "results": "{n} resultados",
-    "search": "Buscar por títulos o autores",
+    "search": "Buscar",
     "download": "Descargar",
     "empty": "No hay libros que coincidan",
     "allFormats": "Todos los formatos",
-    "clearFilters": "Limpiar filtros",
-    "syncNew": "Sinc. novedades",
-    "syncAll": "Sinc. géneros",
-    "syncing": "Sincronizando... {n} libros",
     "downloaded": "Descargado: {file}",
     "prev": "‹ Anterior",
     "next": "Siguiente ›",
-    "perPage": "por página",
-    "page": "Página {page} / {total}",
     "titleQ": "Título",
     "authorQ": "Autor",
-    "resetConfirm": "¿Vaciar todo el catálogo de libros? Esto borra la base de datos y todos los libros sincronizados."
+    "tabNew": "Novedades",
+    "tabPopular": "Populares",
+    "tabFav": "Favoritos",
+    "tabBm": "Marcadores",
+    "refresh": "Actualizar",
+    "allGenres": "Todos los géneros",
+    "popularFallback": "La valoración no está disponible por OPDS; se muestran las novedades.",
+    "opdsHint": "Catálogo OPDS de Flibusta",
+    "annotation": "Anotación",
+    "expandGenres": "Mostrar todos los géneros",
+    "collapseGenres": "Contraer géneros"
   },
   "monitor": {
     "title": "Monitor",
@@ -602,10 +606,7 @@
     "musicQualityHint": "Calidad preseleccionada en la página de Música"
   },
   "booksSection": {
-    "booksPageSize": "Tamaño de página",
-    "booksPageSizeHint": "Libros por página en el catálogo local",
-    "booksPreferLive": "Búsqueda en vivo por defecto",
-    "booksPreferLiveHint": "Buscar al instante vía OPDS en vivo en lugar de la base local"
+    "noSettings": "La búsqueda de libros funciona vía el catálogo OPDS de Flibusta. Favoritos y marcadores se guardan localmente."
   },
   "myspaceSection": {
     "myAutosave": "Autoguardar notas",

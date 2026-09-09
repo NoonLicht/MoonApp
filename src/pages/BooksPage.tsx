@@ -1,83 +1,106 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { Search, BookOpen, Download, RefreshCw, Loader2, Filter, ScrollText, Copy } from "lucide-react";
-import { Glass, Btn, Badge, Select, SectionHead, EmptyHint } from "../components/ui";
+import { Search, BookOpen, Download, RefreshCw, Loader2, Star, AlertCircle, Copy, ChevronsDown } from "lucide-react";
+import { Glass, Btn, Badge, SectionHead, EmptyHint } from "../components/ui";
 import { useContextMenu, copyToClipboard } from "../components/ContextMenu";
 import { usePageToolbar } from "../components/Toolbar";
 import { useI18n } from "../i18n";
 import { api } from "../api/client";
-import type { FlibustaBook, BooksCatalogStats } from "../api/types";
+import type { FlibustaBook, BookGenre } from "../api/types";
+
+const PAGE_SIZE = 80;
+
+/** Флажок языка по коду/названию из OPDS. */
+const LANG_FLAGS: Record<string, string> = {
+  ru: "🇷🇺", en: "🇬🇧", uk: "🇺🇦", de: "🇩🇪", fr: "🇫🇷", es: "🇪🇸",
+  it: "🇮🇹", pl: "🇵🇱", ja: "🇯🇵", zh: "🇨🇳", cs: "🇨🇿", bg: "🇧🇬",
+  be: "🇧🇾", sv: "🇸🇪", no: "🇳🇴", pt: "🇵🇹", nl: "🇳🇱", tr: "🇹🇷",
+  he: "🇮🇱", ar: "🇸🇦", el: "🇬🇷", la: "🇻🇦", eo: "🌍",
+};
+function langBadge(lang: string | null | undefined): string | null {
+  if (!lang) return null;
+  const code = lang.trim().toLowerCase().slice(0, 2);
+  if (LANG_FLAGS[code]) return LANG_FLAGS[code];
+  if (LANG_FLAGS[lang.trim().toLowerCase()]) return LANG_FLAGS[lang.trim().toLowerCase()];
+  return code.toUpperCase();
+}
+
+type Tab = "new" | "popular" | "myfav";
 
 export default function BooksPage() {
   const { t } = useI18n();
   const menu = useContextMenu();
+  const [tab, setTab] = useState<Tab>("new");
   const [items, setItems] = useState<FlibustaBook[]>([]);
-  const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(40);
+  const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const [downloading, setDownloading] = useState<number | null>(null);
-  const [stats, setStats] = useState<BooksCatalogStats | null>(null);
-  const [syncStatus, setSyncStatus] = useState<{ running: boolean; added: number; error: string } | null>(null);
-  const busyRef = useRef(false);
-
+  const [flags, setFlags] = useState<Record<string, { fav: boolean; bm: boolean }>>({});
+  const [genres, setGenres] = useState<BookGenre[]>([]);
+  const [genre, setGenre] = useState(""); // OPDS-путь выбранного жанра
+  const [popularFallback, setPopularFallback] = useState(false);
   const [titleQ, setTitleQ] = useState("");
   const [authorQ, setAuthorQ] = useState("");
-  // — Модалка информации о книге —
+  const [genresOpen, setGenresOpen] = useState(false);
   const [selectedBook, setSelectedBook] = useState<FlibustaBook | null>(null);
-  const handleBookClick = (book: FlibustaBook) => setSelectedBook(book);
-  const handleCloseBookInfo = () => setSelectedBook(null);
-  const [liveMode, setLiveMode] = useState(false);
-  const [liveQuery, setLiveQuery] = useState("");
+  const reqId = useRef(0);
 
-  // Размер страницы и режим поиска по умолчанию берём из настроек (раздел «Книги»).
-  useEffect(() => {
-    api.getSettings().then((s: any) => {
-      const b = s?.books || {};
-      if (b.pageSize) setPageSize(Number(b.pageSize) || 40);
-      if (b.preferLiveSearch) setLiveMode(true);
-    }).catch(() => {});
-  }, []);
-
-  const doSearch = useCallback(async (p: number) => {
-    if (busyRef.current) return;
-    busyRef.current = true;
+  const doLoad = useCallback(async (tabV: Tab, pageV: number, gV: string, qV: string, aV: string) => {
+    const id = ++reqId.current;
     setLoading(true);
+    setError("");
     try {
       const params = new URLSearchParams();
-      if (titleQ) params.set("titleQ", titleQ);
-      if (authorQ) params.set("authorQ", authorQ);
-      params.set("page", String(p));
-      params.set("pageSize", String(pageSize));
+      params.set("list", tabV);
+      params.set("page", String(pageV));
+      params.set("size", String(PAGE_SIZE));
+      if (gV) params.set("genre", gV);
+      if (qV.trim()) params.set("q", qV);
+      if (aV.trim()) params.set("authorQ", aV);
       const res = await api.getBooks(params.toString());
-      setItems(res.items);
-      setTotal(res.total);
-      setPage(p);
-      setHasMore(res.hasMore);
-      setStats(res.stats);
-    } catch { /* */ }
-    setLoading(false);
-    busyRef.current = false;
-  }, [titleQ, authorQ, pageSize]);
-const doLiveSearch = useCallback(async (q: string) => {
-    if (!q.trim()) { setItems([]); setTotal(0); return; }
-    setLoading(true);
-    try {
-      const res = await api.booksLiveSearch(q, 0);
-      setItems(res.books || []);
-      setTotal((res.books || []).length);
-      setHasMore(!!res.next);
-    } catch { /* */ }
-    setLoading(false);
+      if (id !== reqId.current) return; // устаревший ответ
+      setItems(res.items || []);
+      setHasMore(!!res.hasMore);
+      setFlags(res.flags || {});
+      setPopularFallback(!!res.popularFallback);
+      setPage(pageV);
+    } catch (e: any) {
+      if (id === reqId.current) { setItems([]); setError(e?.message || "error"); }
+    }
+    if (id === reqId.current) setLoading(false);
   }, []);
 
-  useEffect(() => { doSearch(1); }, [doSearch]);
-
+  // Начальная загрузка: новинки + жанры
+  useEffect(() => { doLoad("new", 0, "", "", ""); }, [doLoad]);
   useEffect(() => {
-    if (!liveMode) return;
-    const id = setTimeout(() => doLiveSearch(liveQuery), 250);
-    return () => clearTimeout(id);
-  }, [liveQuery, liveMode, doLiveSearch]);
+    api.getBookGenres().then((r) => setGenres(r.genres || [])).catch(() => {});
+  }, []);
+
+  // Стабильная ссылка на актуальные значения (для колбэков тулбара)
+  const stateRef = useRef({ tab, genre, titleQ, authorQ });
+  stateRef.current = { tab, genre, titleQ, authorQ };
+
+  const goTab = (tb: Tab) => { setTab(tb); doLoad(tb, 0, genre, titleQ, authorQ); };
+  const goPage = (p: number) => { if (p >= 0 && (p === 0 || hasMore || p < page)) doLoad(tab, p, genre, titleQ, authorQ); };
+  const doSearch = () => {
+    if (loading) return; // не дублируем запрос
+    const s = stateRef.current;
+    setTab("new");
+    doLoad("new", 0, s.genre, s.titleQ, s.authorQ);
+  };
+  // useCallback: handleRefresh должен быть стабильным — иначе тулбар
+  // перерисовывается каждый кадр (Maximum update depth exceeded).
+  const handleRefresh = useCallback(async () => {
+    try { await api.refreshBooks(); } catch { /* ignore */ }
+    const s = stateRef.current;
+    doLoad(s.tab, 0, s.genre, s.titleQ, s.authorQ);
+  }, [doLoad]);
+  const pickGenre = (g: string) => {
+    const ng = g === genre ? "" : g;
+    setGenre(ng);
+    doLoad("new", 0, ng, titleQ, authorQ);
+  };
 
   const handleDownload = async (bid: number, fmt: string) => {
     setDownloading(bid);
@@ -90,253 +113,185 @@ const doLiveSearch = useCallback(async (q: string) => {
     setDownloading(null);
   };
 
-  const handleSync = async (mode: string) => {
-    setSyncStatus({ running: true, added: 0, error: "" });
+  const toggleFlag = async (b: FlibustaBook, field: "fav") => {
     try {
-      const res = await api.startBooksSync(mode);
-      if (res.status) setSyncStatus({ running: res.status.running, added: res.status.added, error: res.status.error });
-      const poll = setInterval(async () => {
-        const s = await api.getBooksSyncStatus();
-        setSyncStatus({ running: s.running, added: s.added, error: s.error });
-        if (!s.running) { clearInterval(poll); doSearch(1); }
-      }, 1200);
-    } catch (e: any) { setSyncStatus({ running: false, added: 0, error: e.message }); }
+      const nf = await api.toggleBookFlag(field, b.bid, b);
+      setFlags((prev) => ({ ...prev, [b.bid]: { ...prev[b.bid], ...nf } }));
+      if (tab === "myfav" && !nf.fav) setItems((xs) => xs.filter((x) => x.bid !== b.bid));
+    } catch { /* ignore */ }
   };
 
-  const handleImportDumps = async () => {
-    setSyncStatus({ running: true, added: 0, error: "" });
-    try {
-      const res = await api.startBooksImport();
-      if (!res.ok) return;
-      const poll = setInterval(async () => {
-        const s = await api.getBooksImportStatus();
-        setSyncStatus({ running: s.running, added: s.added, error: s.error });
-        if (!s.running) { clearInterval(poll); doSearch(1); }
-      }, 1200);
-    } catch (e: any) { setSyncStatus({ running: false, added: 0, error: e.message }); }
-  };
-
-  const handleResetCatalog = async () => {
-    if (!window.confirm(t("books.resetConfirm"))) return;
-    setSyncStatus({ running: false, added: 0, error: "" });
-    try {
-      await api.resetBooksCatalog();
-      setItems([]);
-      setTotal(0);
-      setStats(null);
-    } catch (e: any) { setSyncStatus({ running: false, added: 0, error: e.message }); }
-  };
-
-  // — Временная кнопка логов импорта —
-  const [showImportLogs, setShowImportLogs] = useState(false);
-  const [importLogs, setImportLogs] = useState<{ ts: string; msg: string }[]>([]);
-  const logPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const handleOpenImportLogs = async () => {
-    setShowImportLogs(true);
-    try { setImportLogs(await api.getBooksImportLogs(500)); } catch { /* ignore */ }
-    logPollRef.current = setInterval(async () => {
-      try { setImportLogs(await api.getBooksImportLogs(500)); } catch { /* ignore */ }
-    }, 2000);
-  };
-  const handleCloseImportLogs = () => {
-    setShowImportLogs(false);
-    if (logPollRef.current) { clearInterval(logPollRef.current); logPollRef.current = null; }
-  };
-  useEffect(() => {
-    return () => { if (logPollRef.current) clearInterval(logPollRef.current); };
-  }, []);
-usePageToolbar(
+  usePageToolbar(
     <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-      {!syncStatus?.running && (
-        <>
-          <Btn icon={RefreshCw} variant="secondary" onClick={() => handleSync("new")} style={{ fontSize: 11 }}>
-            {t("books.syncNew")}
-          </Btn>
-          <Btn icon={RefreshCw} variant="secondary" onClick={() => handleSync("genres")} style={{ fontSize: 11 }}>
-            {t("books.syncAll")}
-          </Btn>
-          <Btn icon={Download} variant="secondary" onClick={() => handleImportDumps()} style={{ fontSize: 11 }}>
-            Импорт из дампов
-          </Btn>
-          <Btn icon={ScrollText} variant="ghost" onClick={handleOpenImportLogs} style={{ fontSize: 11 }}>
-            Логи импорта
-          </Btn>
-          <Btn icon={RefreshCw} variant="danger" onClick={() => handleResetCatalog()} style={{ fontSize: 11 }}>
-            Очистить БД
-          </Btn>
-        </>
-      )}
-      {(titleQ || authorQ) && !liveMode && (
-        <Btn icon={Filter} variant="ghost" onClick={() => { setTitleQ(""); setAuthorQ(""); doSearch(1); }} style={{ fontSize: 11 }}>
-          {t("books.clearFilters")}
-        </Btn>
-      )}
+      <Btn icon={RefreshCw} variant="secondary" onClick={handleRefresh} style={{ fontSize: 11 }}>
+        {t("books.refresh")}
+      </Btn>
     </div>,
-    [syncStatus, titleQ, authorQ, liveMode, t, handleSync, handleImportDumps, handleOpenImportLogs, handleResetCatalog, doSearch]
+    [handleRefresh]
   );
-const statLine = stats ? `${t("common.all")}: ${stats.count}` : "";
 
-  // Пагинация
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
-  const safePage = Math.min(page, totalPages);
-  const goPage = (p: number) => {
-    const np = Math.min(Math.max(1, p), totalPages);
-    setPage(np);
-    doSearch(np);
-  };
-  const from = Math.max(1, safePage - 2);
-  const to = Math.min(totalPages, from + 4);
-  const pageList: number[] = [];
-  for (let i = from; i <= to; i++) pageList.push(i);
-
+  const flagOf = (b: FlibustaBook) => flags[b.bid] || { fav: !!b.fav, bm: !!b.bm };
   return (
     <div className="page-fill">
-      <SectionHead eyebrow={statLine} title={t("books.title")} />
+      <SectionHead eyebrow={t("books.opdsHint")} title={t("books.title")} />
 
-      <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-        <Glass className="url-bar" style={{ flex: 1, padding: "6px 10px" }}>
-          <Search size={16} />
-          <input
-            placeholder={t("books.titleQ")}
-            value={liveMode ? liveQuery : titleQ}
-            onChange={(e) => {
-              if (liveMode) setLiveQuery(e.target.value);
-              else { setTitleQ(e.target.value); setPage(1); }
-            }}
-            onKeyDown={(e) => { if (e.key === "Enter" && !liveMode) doSearch(1); }}
-          />
-        </Glass>
-        <Glass className="url-bar" style={{ flex: 1, padding: "6px 10px" }}>
-          <Search size={16} />
-          <input
-            placeholder={t("books.authorQ")}
-            value={liveMode ? "" : authorQ}
-            onChange={(e) => { setAuthorQ(e.target.value); setPage(1); }}
-            onKeyDown={(e) => { if (e.key === "Enter") doSearch(1); }}
-          />
-        </Glass>
+      {/* Вкладки: новинки / популярное / избранное / закладки */}
+      <div style={{ display: "flex", gap: 6, marginBottom: 10, flexWrap: "wrap" }}>
+        {([
+          ["new", t("books.tabNew")],
+          ["popular", t("books.tabPopular")],
+          ["myfav", t("books.tabFav")],
+        ] as [Tab, string][]).map(([id, label]) => (
+          <button key={id} className={`pager-page ${tab === id ? "is-active" : ""}`} onClick={() => goTab(id)}>
+            {label}
+          </button>
+        ))}
       </div>
-{syncStatus?.running && (
+
+      {/* Поиск */}
+      <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+        <Glass className="url-bar" style={{ flex: 1, padding: "6px 10px" }}>
+          <Search size={16} />
+          <input placeholder={t("books.titleQ")} value={titleQ}
+            onChange={(e) => setTitleQ(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") doSearch(); }} />
+        </Glass>
+        <Glass className="url-bar" style={{ flex: 1, padding: "6px 10px" }}>
+          <Search size={16} />
+          <input placeholder={t("books.authorQ")} value={authorQ}
+            onChange={(e) => setAuthorQ(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") doSearch(); }} />
+        </Glass>
+        <Btn variant="secondary" onClick={doSearch} style={{ fontSize: 12 }}>{t("books.search")}</Btn>
+      </div>
+
+      {/* Жанры: одна строка со скроллом, разворачивается кнопкой */}
+      {genres.length > 0 && (
+        <div style={{ display: "flex", gap: 5, marginBottom: 12, alignItems: "center" }}>
+          <div style={{
+            display: "flex", gap: 5, flex: 1, minWidth: 0,
+            flexWrap: genresOpen ? "wrap" : "nowrap",
+            overflowX: genresOpen ? "visible" : "auto",
+            overflowY: "hidden", paddingBottom: 2,
+          }}>
+            <button className={`pager-page ${genre === "" ? "is-active" : ""}`} style={{ flexShrink: 0 }}
+              onClick={() => pickGenre("")}>
+              {t("books.allGenres")}
+            </button>
+            {genres.map((g) => {
+              const leaf = g.title.includes(" / ") ? g.title.split(" / ").pop()! : g.title;
+              return (
+                <button key={g.href} className={`pager-page ${genre === g.href ? "is-active" : ""}`}
+                  style={{ flexShrink: 0 }} title={g.title}
+                  onClick={() => pickGenre(g.href)}>
+                  {leaf}
+                </button>
+              );
+            })}
+          </div>
+          <button className="pager-btn" title={genresOpen ? t("books.collapseGenres") : t("books.expandGenres")}
+            onClick={() => setGenresOpen((v) => !v)}>
+            <ChevronsDown size={13} style={{ transform: genresOpen ? "rotate(180deg)" : "none", transition: "transform .15s" }} />
+          </button>
+        </div>
+      )}
+
+      {popularFallback && tab === "popular" && (
         <Glass style={{ padding: 8, marginBottom: 12, fontSize: 12, display: "flex", gap: 8, alignItems: "center" }}>
-          <Loader2 size={14} className="spin" /> {t("books.syncing", { n: syncStatus.added })}
+          <AlertCircle size={14} /> {t("books.popularFallback")}
         </Glass>
       )}
-      {!syncStatus?.running && syncStatus?.error && !syncStatus?.added && (
+      {error && (
         <Glass style={{ padding: 8, marginBottom: 12, fontSize: 12, display: "flex", gap: 8, alignItems: "center", borderColor: "var(--coral)" }}>
-          <span style={{ color: "var(--coral)" }}>⚠ {syncStatus.error}</span>
+          <span style={{ color: "var(--coral)" }}>⚠ {error}</span>
+        </Glass>
+      )}
+      {loading && (
+        <Glass style={{ padding: 8, marginBottom: 12, fontSize: 12, display: "flex", gap: 8, alignItems: "center" }}>
+          <Loader2 size={14} className="spin" /> {t("common.loading")}
         </Glass>
       )}
 
       <div className="book-list" style={{ flex: 1, maxHeight: "none" }}>
-        {items.map((b) => (
-          <Glass
-            className="book-row"
-            key={b.id}
-            style={{ cursor: "pointer" }}
-            onClick={() => handleBookClick(b)}
-            onContextMenu={(e) => menu.open(e, [
-              { label: t("ctx.open"), icon: BookOpen, onClick: () => handleBookClick(b) },
-              { separator: true },
-              ...(b.formats || ["fb2", "epub", "mobi"]).map((fmt: string) => ({
-                label: t("ctx.downloadFmt", { fmt: fmt.toUpperCase() }),
-                icon: Download,
-                onClick: () => handleDownload(b.bid, fmt),
-              })),
-              { separator: true },
-              { label: t("ctx.copyName"), icon: Copy, onClick: () => copyToClipboard(b.title || "") },
-              { label: t("ctx.copyAuthor"), icon: Copy, onClick: () => copyToClipboard(b.author || "") },
-            ])}
-          >
-            <div className="book-cover">
-              {b.cover
-                ? <img src={b.cover} alt="" style={{ width: 44, height: 64, objectFit: "cover", borderRadius: 4 }} />
-                : <BookOpen size={20} strokeWidth={1.6} />
-              }
-            </div>
-            <div className="book-body">
-              <div className="book-title-row">
-                <div>
-                  <div className="media-title">{b.title}</div>
-                  <div className="muted-sm">
-                    {b.author}{b.year ? ` · ${b.year}` : ""}{b.sizeText ? ` · ${b.sizeText}` : ""}
+        {items.map((b) => {
+          const fl = flagOf(b);
+          const lb = langBadge(b.language);
+          return (
+            <Glass className="book-row" key={b.bid || b.id} style={{ cursor: "pointer" }}
+              onClick={() => setSelectedBook(b)}
+              onContextMenu={(e) => menu.open(e, [
+                { label: t("ctx.open"), icon: BookOpen, onClick: () => setSelectedBook(b) },
+                { separator: true },
+                ...(b.formats || ["fb2", "epub", "mobi"]).map((fmt: string) => ({
+                  label: t("ctx.downloadFmt", { fmt: fmt.toUpperCase() }),
+                  icon: Download,
+                  onClick: () => handleDownload(b.bid, fmt),
+                })),
+                { separator: true },
+                { label: t("ctx.copyName"), icon: Copy, onClick: () => copyToClipboard(b.title || "") },
+                { label: t("ctx.copyAuthor"), icon: Copy, onClick: () => copyToClipboard(b.author || "") },
+              ])}
+            >
+              <div className="book-cover">
+                <BookOpen size={20} strokeWidth={1.6} />
+              </div>
+              <div className="book-body">
+                <div className="book-title-row">
+                  <div style={{ minWidth: 0 }}>
+                    <div className="media-title" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      {lb && <span style={{ fontSize: 13, flexShrink: 0 }} title={b.language || ""}>{lb}</span>}
+                      <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{b.title}</span>
+                    </div>
+                    <div className="muted-sm">
+                      {b.author}{b.year ? ` · ${b.year}` : ""}{b.sizeText ? ` · ${b.sizeText}` : ""}
+                    </div>
+                  </div>
+                  <div className="quality-row" style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                    {(b.genres || []).slice(0, 2).map((g: string) => <Badge key={g}>{g}</Badge>)}
+                    <Star size={16} style={{ cursor: "pointer", flexShrink: 0, color: fl.fav ? "#f5b50a" : "var(--text-tertiary)", fill: fl.fav ? "currentColor" : "none" }}
+                      onClick={(e: any) => { e.stopPropagation(); toggleFlag(b, "fav"); }} />
                   </div>
                 </div>
-                <div className="quality-row">
-                  {(b.genres || []).slice(0, 3).map((g: string) => <Badge key={g}>{g}</Badge>)}
+                <p className="book-desc">{b.description?.slice(0, 200)}</p>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 4 }} onClick={(e) => e.stopPropagation()}>
+                  {(b.formats || ["fb2", "epub", "mobi"]).map((fmt: string) => (
+                    <Btn key={fmt} variant="secondary" icon={Download}
+                      disabled={downloading === b.bid}
+                      onClick={() => handleDownload(b.bid, fmt)}
+                      style={{ fontSize: 11, padding: "2px 8px" }}>
+                      {fmt.toUpperCase()}
+                    </Btn>
+                  ))}
                 </div>
               </div>
-              <p className="book-desc">{b.description?.slice(0, 200)}</p>
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 4 }} onClick={e => e.stopPropagation()}>
-                {(b.formats || ["fb2", "epub", "mobi"]).map((fmt: string) => (
-                  <Btn key={fmt} variant="secondary" icon={Download}
-                    disabled={downloading === b.bid}
-                    onClick={() => handleDownload(b.bid, fmt)}
-                    style={{ fontSize: 11, padding: "2px 8px" }}>
-                    {fmt.toUpperCase()}
-                  </Btn>
-                ))}
-              </div>
-            </div>
-          </Glass>
-        ))}
+            </Glass>
+          );
+        })}
         {items.length === 0 && !loading && <EmptyHint icon={BookOpen} text={t("books.empty")} />}
       </div>
 
-      {/* Пагинация */}
-      {totalPages > 1 && !liveMode && (
+      {/* Пагинация: по 80 книг, prev/next */}
+      {(page > 0 || hasMore) && tab !== "myfav" && (
         <div className="pager">
-          <button className="pager-btn" disabled={safePage === 1} onClick={() => goPage(safePage - 1)}>{t("books.prev")}</button>
-          {pageList.map((p) => (
-            <button key={p} className={`pager-page ${p === safePage ? "is-active" : ""}`} onClick={() => goPage(p)}>{p}</button>
-          ))}
-          <button className="pager-btn" disabled={safePage === totalPages} onClick={() => goPage(safePage + 1)}>{t("books.next")}</button>
-          <div className="page-size">
-            <Select value={String(pageSize)} onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); doSearch(1); }} options={["20", "40", "80"]} />
-            <span className="field-label">{t("books.perPage")}</span>
-          </div>
-          <span className="pager-info">{t("books.page", { page: safePage, total: totalPages })}</span>
+          <button className="pager-btn" disabled={page === 0} onClick={() => goPage(page - 1)}>{t("books.prev")}</button>
+          <span className="pager-info">{page + 1}</span>
+          <button className="pager-btn" disabled={!hasMore} onClick={() => goPage(page + 1)}>{t("books.next")}</button>
         </div>
       )}
 
-      {showImportLogs && (
-        <div style={{
-          position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999,
-          background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center",
-        }} onClick={handleCloseImportLogs}>
-          <div style={{
-            width: "90vw", height: "80vh", background: "#111", border: "1px solid #333",
-            borderRadius: 8, display: "flex", flexDirection: "column", overflow: "hidden",
-          }} onClick={e => e.stopPropagation()}>
-            <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 12px", borderBottom: "1px solid #333" }}>
-              <strong style={{ color: "#aaa", fontSize: 12 }}>Логи импорта (обновление каждые 2 с)</strong>
-              <span onClick={handleCloseImportLogs} style={{ cursor: "pointer", color: "#888", fontSize: 14 }}>✕</span>
-            </div>
-            <div style={{ flex: 1, overflow: "auto", padding: "8px 12px", font: "11px/1.5 monospace", color: "#0f0" }}>
-              {importLogs.length === 0
-                ? <span style={{ color: "#555" }}>Логов пока нет — запустите импорт</span>
-                : importLogs.map((l, i) => (
-                    <div key={i} style={{ whiteSpace: "pre-wrap", wordBreak: "break-all" }}>
-                      <span style={{ color: "#888" }}>{l.ts}</span> <span>{l.msg}</span>
-                    </div>
-                  ))
-              }
-            </div>
-          </div>
-        </div>
-      )}
-{/* Модалка информации о книге */}
+      {/* Модалка информации о книге */}
       {selectedBook && (
         <div style={{
           position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 9998,
           background: "rgba(0,0,0,0.65)", display: "flex", alignItems: "center", justifyContent: "center",
           backdropFilter: "blur(3px)", WebkitBackdropFilter: "blur(3px)",
-        }} onClick={handleCloseBookInfo}>
+        }} onClick={() => setSelectedBook(null)}>
           <div style={{
             width: 600, maxWidth: "92vw", height: 540, background: "var(--glass-bg)",
             border: "1px solid var(--glass-border)", borderRadius: 16,
             boxShadow: "0 20px 60px rgba(0,0,0,0.5)", overflow: "hidden",
             display: "flex", flexDirection: "column",
-          }} onClick={e => e.stopPropagation()}>
+          }} onClick={(e) => e.stopPropagation()}>
             <div style={{
               display: "flex", justifyContent: "space-between", alignItems: "center",
               padding: "14px 18px 10px", borderBottom: "1px solid var(--glass-border)",
@@ -344,30 +299,28 @@ const statLine = stats ? `${t("common.all")}: ${stats.count}` : "";
               <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                 {selectedBook.title}
               </span>
-              <span onClick={handleCloseBookInfo} style={{
-                cursor: "pointer", color: "var(--text-secondary)", fontSize: 18,
-                lineHeight: 1, marginLeft: 12, flexShrink: 0,
-              }}>✕</span>
+              <span onClick={() => setSelectedBook(null)} style={{ cursor: "pointer", color: "var(--text-secondary)", fontSize: 18, lineHeight: 1, marginLeft: 12, flexShrink: 0 }}>✕</span>
             </div>
             <div style={{ flex: 1, overflow: "auto", padding: "16px 20px 20px" }}>
               <div style={{ display: "flex", gap: 18, marginBottom: 16 }}>
                 <div style={{
-                  width: 110, height: 154, borderRadius: 10, flexShrink: 0, overflow: "hidden",
+                  width: 110, height: 154, borderRadius: 10, flexShrink: 0,
                   background: "var(--card-bg)", display: "flex", alignItems: "center", justifyContent: "center",
                 }}>
-                  {selectedBook.cover
-                    ? <img src={selectedBook.cover} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                    : <BookOpen size={32} strokeWidth={1.4} style={{ opacity: 0.35 }} />
-                  }
+                  <BookOpen size={32} strokeWidth={1.4} style={{ opacity: 0.35 }} />
                 </div>
                 <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6 }}>
-                  <div style={{ fontSize: 17, fontWeight: 600, lineHeight: 1.3 }}>{selectedBook.title}</div>
+                  <div style={{ fontSize: 17, fontWeight: 600, lineHeight: 1.3, display: "flex", alignItems: "center", gap: 8 }}>
+                    {langBadge(selectedBook.language) && (
+                      <span style={{ fontSize: 16 }} title={selectedBook.language || ""}>{langBadge(selectedBook.language)}</span>
+                    )}
+                    <span>{selectedBook.title}</span>
+                  </div>
                   <div style={{ fontSize: 14, color: "var(--text-secondary)" }}>{selectedBook.author}</div>
                   <div style={{ display: "flex", gap: 10, flexWrap: "wrap", fontSize: 12.5, color: "var(--text-secondary)" }}>
-                    {selectedBook.year && <span>📅 {selectedBook.year}</span>}
                     {selectedBook.language && <span>🌐 {selectedBook.language}</span>}
+                    {selectedBook.year && <span>📅 {selectedBook.year}</span>}
                     {selectedBook.sizeText && <span>💾 {selectedBook.sizeText}</span>}
-                    {selectedBook.updatedAt && <span>🔄 {new Date(selectedBook.updatedAt).toLocaleDateString()}</span>}
                   </div>
                   <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginTop: 4 }}>
                     {(selectedBook.genres || []).map((g: string) => <Badge key={g}>{g}</Badge>)}
@@ -376,14 +329,18 @@ const statLine = stats ? `${t("common.all")}: ${stats.count}` : "";
               </div>
               {selectedBook.description && (
                 <div style={{ marginBottom: 16 }}>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 5, textTransform: "uppercase", letterSpacing: 0.7 }}>Аннотация</div>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 5, textTransform: "uppercase", letterSpacing: 0.7 }}>
+                    {t("books.annotation")}
+                  </div>
                   <p style={{ margin: 0, fontSize: 14, lineHeight: 1.7, color: "var(--text-primary)", whiteSpace: "pre-wrap" }}>
                     {selectedBook.description}
                   </p>
                 </div>
               )}
               <div>
-                <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.7 }}>Скачать</div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.7 }}>
+                  {t("books.download")}
+                </div>
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                   {(selectedBook.formats || ["fb2", "epub", "mobi"]).map((fmt: string) => (
                     <Btn key={fmt} variant="secondary" icon={Download}

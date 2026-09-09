@@ -1,6 +1,6 @@
 /* -------------------------------- Флибуста / Книги ----------------------- */
 
-/** Книга из каталога Флибусты (OPDS). */
+/** Книга из OPDS-фида Флибусты. */
 export interface FlibustaBook {
   id: string;            // "tag:book:..."
   bid: number;           // числовой id для скачивания
@@ -14,53 +14,23 @@ export interface FlibustaBook {
   cover: string | null;  // url к обложке
   description: string;
   updatedAt: string;
+  fav?: boolean;         // в избранном
+  bm?: boolean;          // в закладках
+  addedAt?: string;
 }
 
-/** Статистика каталога (для построения фильтров). */
-export interface BooksCatalogStats {
-  count: number;
-  lastSync: string | null;
-  genres: string[];
-  langs: string[];
+/** Жанр OPDS-фида. */
+export interface BookGenre {
+  title: string;
+  href: string;
 }
 
-/** Результат поиска/фильтрации по каталогу. */
-export interface BooksSearchResult {
-  total: number;
-  page: number;
-  pageSize: number;
-  hasMore: boolean;
+/** Результат фида/поиска (страница по size книг). */
+export interface BooksFeedResult {
   items: FlibustaBook[];
-  stats: BooksCatalogStats;
-}
-
-/** Статус фоновой синхронизации каталога. */
-export interface BooksSyncStatus {
-  running: boolean;
-  mode: string;
-  done: number;
-  total: number;
-  current: string;
-  added: number;
-  error: string;
-}
-
-/** Статус импорта из MySQL-дампов. */
-export interface BooksImportStatus {
-  running: boolean;
-  done: number;
-  total: number;
-  current: string;
-  added: number;
-  error: string;
-}
-
-export type ImportLogEntry = { ts: string; msg: string };
-
-/** Результат живущего OPDS-поиска. */
-export interface BooksLiveSearchResult {
-  books: FlibustaBook[];
-  next: string | null;
+  hasMore: boolean;
+  flags: Record<string, { fav: boolean; bm: boolean }>;
+  popularFallback?: boolean;
 }
 
 /** Результат скачивания книги. */

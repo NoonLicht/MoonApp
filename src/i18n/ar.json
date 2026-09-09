@@ -280,22 +280,26 @@
   "books": {
     "title": "كتالوج الكتب",
     "results": "{n} نتيجة",
-    "search": "البحث بالعناوين أو المؤلفين",
+    "search": "بحث",
     "download": "تنزيل",
     "empty": "لا كتب مطابقة",
     "allFormats": "كل الصيغ",
-    "clearFilters": "مسح الفلاتر",
-    "syncNew": "مزامنة الجديد",
-    "syncAll": "مزامنة الأصناف",
-    "syncing": "جاري المزامنة... {n} كتاب",
     "downloaded": "تم التحميل: {file}",
     "prev": "‹ السابق",
     "next": "التالي ›",
-    "perPage": "بالصفحة",
-    "page": "صفحة {page} / {total}",
     "titleQ": "العنوان",
     "authorQ": "المؤلف",
-    "resetConfirm": "إفراغ فهرس الكتب بالكامل؟ سيؤدي ذلك إلى حذف قاعدة البيانات وجميع الكتب المتزامنة."
+    "tabNew": "الجديد",
+    "tabPopular": "الأكثر شعبية",
+    "tabFav": "المفضلة",
+    "tabBm": "الإشارات المرجعية",
+    "refresh": "تحديث",
+    "allGenres": "كل الفئات",
+    "popularFallback": "التقييم غير متوفر عبر OPDS — يتم عرض الجديد.",
+    "opdsHint": "كتالوج Flibusta OPDS",
+    "annotation": "ملخص",
+    "expandGenres": "عرض كل الفئات",
+    "collapseGenres": "طي الفئات"
   },
   "monitor": {
     "title": "المراقبة",
@@ -602,10 +606,7 @@
     "musicQualityHint": "الجودة المحددة مسبقاً في صفحة الموسيقى"
   },
   "booksSection": {
-    "booksPageSize": "حجم الصفحة",
-    "booksPageSizeHint": "عدد الكتب في كل صفحة بالفهرس المحلي",
-    "booksPreferLive": "البحث المباشر افتراضياً",
-    "booksPreferLiveHint": "البحث فوراً عبر OPDS المباشر بدلاً من قاعدة البيانات المحلية"
+    "noSettings": "يعمل البحث عن الكتب مباشرة عبر كتالوج Flibusta OPDS. تُحفظ المفضلة والإشارات المرجعية محلياً."
   },
   "myspaceSection": {
     "myAutosave": "حفظ الملاحظات تلقائياً",

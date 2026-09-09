@@ -369,12 +369,11 @@ export default function SettingsPage() {
           </Row>
         </Section>
 
-        {/* ---- РљРЅРёРіРё (РґРѕРє: books) ---- */}
+        {/* ---- Книги (док: books) ---- */}
         <Section title={t("settings.books")} icon={BookOpen} badge="active">
-          <Row label={t("booksSection.booksPageSize")} hint={t("booksSection.booksPageSizeHint")}>
-            <Select value={String(books.pageSize ?? 40)} onChange={(e) => change("books.pageSize", Number(e.target.value))} options={["20", "40", "80"]} />
-          </Row>
-          <BoolRow label={t("booksSection.booksPreferLive")} hint={t("booksSection.booksPreferLiveHint")} value={!!books.preferLiveSearch} onChange={(v) => change("books.preferLiveSearch", v)} />
+          <div style={{ fontSize: 12.5, color: "var(--text-secondary)", lineHeight: 1.6 }}>
+            {t("booksSection.noSettings")}
+          </div>
         </Section>
 
         {/* ---- РњРѕРЅРёС‚РѕСЂРёРЅРі (РґРѕРє: monitor) ---- */}

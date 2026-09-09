@@ -280,22 +280,26 @@
   "books": {
     "title": "Каталог книг",
     "results": "{n} результатов",
-    "search": "Поиск по названиям или авторам",
+    "search": "Найти",
     "download": "Скачать",
     "empty": "Нет книг по вашему запросу",
     "allFormats": "Все форматы",
-    "clearFilters": "Сбросить фильтры",
-    "syncNew": "Новинки",
-    "syncAll": "Все жанры",
-    "syncing": "Синхронизация... {n} книг",
     "downloaded": "Сохранено: {file}",
     "prev": "‹ Назад",
     "next": "Вперёд ›",
-    "perPage": "на странице",
-    "page": "Стр. {page} / {total}",
     "titleQ": "Название",
     "authorQ": "Автор",
-    "resetConfirm": "Очистить весь каталог книг? Это удалит базу данных и все синхронизированные книги."
+    "tabNew": "Новинки",
+    "tabPopular": "Популярное",
+    "tabFav": "Избранное",
+    "tabBm": "Закладки",
+    "refresh": "Обновить",
+    "allGenres": "Все жанры",
+    "popularFallback": "Рейтинг недоступен через OPDS — показаны новинки.",
+    "opdsHint": "Каталог Flibusta OPDS",
+    "annotation": "Аннотация",
+    "expandGenres": "Показать все жанры",
+    "collapseGenres": "Свернуть жанры"
   },
   "monitor": {
     "title": "Мониторинг",
@@ -599,10 +603,7 @@
     "musicQualityHint": "Качество, выбранное по умолчанию на странице «Музыка»"
   },
   "booksSection": {
-    "booksPageSize": "Размер страницы",
-    "booksPageSizeHint": "Книг на страницу в локальном каталоге",
-    "booksPreferLive": "Живой поиск по умолчанию",
-    "booksPreferLiveHint": "Искать мгновенно через живой OPDS вместо локальной базы"
+    "noSettings": "Поиск книг работает напрямую через OPDS-каталог Flibusta. Избранное и закладки хранятся локально."
   },
   "myspaceSection": {
     "myAutosave": "Автосохранение заметок",

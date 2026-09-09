@@ -13,8 +13,7 @@ import type {
   ConvertTools, ConvertResult, ConvertInstallStatus,
   VideoInfo, VideoDownloadResult, VideoJobStatus, YtdlpInstallStatus,
   LhmStatus, MonitorSnapshot, ProviderInfo, ProxyStatus, VlessProfile,
-  FlibustaBook, BooksCatalogStats, BooksSearchResult, BooksSyncStatus, BooksImportStatus,
-  BooksLiveSearchResult, BookDownloadResult, ImportLogEntry,
+  FlibustaBook, BookGenre, BooksFeedResult, BookDownloadResult,
   GraphData, GraphNode, GraphEdge,
   MusicTrack, MusicSearchResult, MusicFormats, MusicDownloadStart, MusicJobStatus,
   VaultFile, VaultFileContent, VaultSearchResult, VaultTag, VaultBacklink,
@@ -22,7 +21,7 @@ import type {
   HolstFileEntry, HolstReadResult, HolstWriteResult,
 } from "./types";
 
-export type { AppItem, ArchiveItem, BackupInfo, BooksItem, ChatMessage, Conversation, ConvertTools, ConvertResult, ConvertInstallStatus, VideoInfo, VideoDownloadResult, VideoJobStatus, YtdlpInstallStatus, LhmStatus, MonitorSnapshot, ProviderInfo, ProxyStatus, VlessProfile, FlibustaBook, BooksCatalogStats, BooksSearchResult, BooksSyncStatus, BooksImportStatus, BooksLiveSearchResult, BookDownloadResult, ImportLogEntry, MusicTrack, MusicSearchResult, MusicFormats, MusicDownloadStart, MusicJobStatus, VaultFile, VaultFileContent, VaultSearchResult, VaultTag, VaultBacklink, TaskItem, TaskCreatePayload, HolstFileEntry, HolstReadResult, HolstWriteResult };
+export type { AppItem, ArchiveItem, BackupInfo, BooksItem, ChatMessage, Conversation, ConvertTools, ConvertResult, ConvertInstallStatus, VideoInfo, VideoDownloadResult, VideoJobStatus, YtdlpInstallStatus, LhmStatus, MonitorSnapshot, ProviderInfo, ProxyStatus, VlessProfile, FlibustaBook, BookGenre, BooksFeedResult, BookDownloadResult, MusicTrack, MusicSearchResult, MusicFormats, MusicDownloadStart, MusicJobStatus, VaultFile, VaultFileContent, VaultSearchResult, VaultTag, VaultBacklink, TaskItem, TaskCreatePayload, HolstFileEntry, HolstReadResult, HolstWriteResult };
 
 const BASE = ""; // тот же origin: фронт и API вместе (Vite-proxy или раздача Express)
 
@@ -148,18 +147,14 @@ export const api = {
     req<{ ok: boolean }>("POST", `/chat/${id}/choose`, { text }),
 
   // Books / monitor / archives
-  // Books — поиск/фильтры/пагинация по локальному каталогу Флибусты
-  getBooks: (params?: string) => req<BooksSearchResult>("GET", `/books${params ? '?' + params : ''}`),
-  getBooksFacets: () => req<BooksCatalogStats>("GET", "/books/facets"),
-  getBooksSyncStatus: () => req<BooksSyncStatus>("GET", "/books/sync"),
-  startBooksSync: (mode: string) => req<{ ok: boolean; reason?: string; status: BooksSyncStatus }>("POST", "/books/sync", { mode }),
-  startBooksImport: () => req<{ ok: boolean }>("POST", "/books/import-dumps"),
-  getBooksImportStatus: () => req<BooksImportStatus>("GET", "/books/import-dumps"),
-  getBooksImportLogs: (n?: number) => req<ImportLogEntry[]>("GET", "/books/import-logs" + (n ? `?n=${n}` : "")),
-  resetBooksCatalog: () => req<{ ok: boolean }>("POST", "/books/reset-catalog"),
-  /** Живой OPDS-поиск (мгновенно, без локального хранилища). */
-  booksLiveSearch: (q: string, page?: number) =>
-    req<BooksLiveSearchResult>("POST", "/books/live-search", { q, page }),
+  // Books — OPDS-фиды напрямую (без локального каталога) + избранное/закладки
+  getBooks: (params?: string) => req<BooksFeedResult>("GET", `/books${params ? '?' + params : ''}`),
+  getBookGenres: () => req<{ genres: BookGenre[] }>("GET", "/books/genres"),
+  refreshBooks: () => req<{ ok: boolean }>("POST", "/books/refresh"),
+  toggleBookFlag: (field: "fav" | "bm", bid: number, book: FlibustaBook) =>
+    req<{ fav: boolean; bm: boolean }>("POST", "/books/toggle", { field, bid, book }),
+  getBookFlags: (bids: number[]) =>
+    req<Record<string, { fav: boolean; bm: boolean }>>("GET", `/books/my-flags?bids=${bids.join(",")}`),
   /** Скачать книгу по bid+fmt. */
   downloadBook: (bid: number, fmt: string) =>
     req<BookDownloadResult>("POST", "/books/download", { bid, fmt }),

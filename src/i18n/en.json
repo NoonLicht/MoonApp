@@ -280,22 +280,26 @@
   "books": {
     "title": "Book catalog",
     "results": "{n} results",
-    "search": "Search titles or authors",
+    "search": "Search",
     "download": "Download",
     "empty": "No books match your search",
     "allFormats": "All formats",
-    "clearFilters": "Clear filters",
-    "syncNew": "Sync new",
-    "syncAll": "Sync all genres",
-    "syncing": "Syncing... {n} books",
     "downloaded": "Downloaded: {file}",
     "prev": "‹ Prev",
     "next": "Next ›",
-    "perPage": "per page",
-    "page": "Page {page} / {total}",
     "titleQ": "Title",
     "authorQ": "Author",
-    "resetConfirm": "Clear the entire book catalog? This deletes the database and all synced books."
+    "tabNew": "New arrivals",
+    "tabPopular": "Popular",
+    "tabFav": "Favorites",
+    "tabBm": "Bookmarks",
+    "refresh": "Refresh",
+    "allGenres": "All genres",
+    "popularFallback": "Rating is not available via OPDS — showing new arrivals instead.",
+    "opdsHint": "Flibusta OPDS catalog",
+    "annotation": "Annotation",
+    "expandGenres": "Show all genres",
+    "collapseGenres": "Collapse genres"
   },
   "monitor": {
     "title": "Monitoring",
@@ -599,10 +603,7 @@
     "musicQualityHint": "Preselected quality on the Music page"
   },
   "booksSection": {
-    "booksPageSize": "Page size",
-    "booksPageSizeHint": "Books per page in the local catalog",
-    "booksPreferLive": "Live search by default",
-    "booksPreferLiveHint": "Search via live OPDS instantly instead of the local database"
+    "noSettings": "Book search works via the Flibusta OPDS catalog. Favorites and bookmarks are stored locally."
   },
   "myspaceSection": {
     "myAutosave": "Autosave notes",

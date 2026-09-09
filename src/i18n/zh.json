@@ -280,22 +280,26 @@
   "books": {
     "title": "图书目录",
     "results": "{n} 条结果",
-    "search": "按书名或作者搜索",
+    "search": "搜索",
     "download": "下载",
     "empty": "没有匹配的书籍",
     "allFormats": "所有格式",
-    "clearFilters": "清除筛选",
-    "syncNew": "同步新书",
-    "syncAll": "同步所有分类",
-    "syncing": "同步中... {n} 本书",
     "downloaded": "已下载: {file}",
     "prev": "‹ 上一页",
     "next": "下一页 ›",
-    "perPage": "每页",
-    "page": "第 {page} / {total} 页",
     "titleQ": "书名",
     "authorQ": "作者",
-    "resetConfirm": "清空整个书籍目录？这将删除数据库及所有已同步的书籍。"
+    "tabNew": "新书",
+    "tabPopular": "热门",
+    "tabFav": "收藏",
+    "tabBm": "书签",
+    "refresh": "刷新",
+    "allGenres": "全部分类",
+    "popularFallback": "OPDS 不提供评分数据 — 显示新书。",
+    "opdsHint": "Flibusta OPDS 书库",
+    "annotation": "简介",
+    "expandGenres": "展开全部分类",
+    "collapseGenres": "收起分类"
   },
   "monitor": {
     "title": "监控",
@@ -602,10 +606,7 @@
     "musicQualityHint": "音乐页面默认选中的音质"
   },
   "booksSection": {
-    "booksPageSize": "每页数量",
-    "booksPageSizeHint": "本地目录中每页显示的书籍数",
-    "booksPreferLive": "默认实时搜索",
-    "booksPreferLiveHint": "默认通过实时 OPDS 即时搜索，而非本地数据库"
+    "noSettings": "图书搜索直接通过 Flibusta OPDS 目录工作。收藏与书签保存在本地。"
   },
   "myspaceSection": {
     "myAutosave": "自动保存笔记",
