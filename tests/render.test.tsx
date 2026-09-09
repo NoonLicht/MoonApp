@@ -10,7 +10,7 @@ import ConverterPage from "../src/pages/ConverterPage";
 import VideoPage from "../src/pages/VideoPage";
 import MusicPage from "../src/pages/MusicPage";
 import BooksPage from "../src/pages/BooksPage";
-import VoicePage from "../src/pages/VoicePage";
+import AudiobookTTSPage from "../src/pages/AudiobookTTSPage";
 import ArchiverPage from "../src/pages/ArchiverPage";
 import SettingsPage from "../src/pages/SettingsPage";
 
@@ -27,7 +27,7 @@ describe("render smoke (ловит runtime-краши рендера)", () => {
     ["Video", VideoPage],
     ["Music", MusicPage],
     ["Books", BooksPage],
-    ["Voice", VoicePage],
+    ["Voice", AudiobookTTSPage],
     ["Archive", ArchiverPage],
     ["Settings", SettingsPage],
   ];

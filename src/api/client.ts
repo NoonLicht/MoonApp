@@ -53,16 +53,31 @@ export interface CompressorPreset {
   targetMB?: number;
 }
 export interface TtsProfile {
-  id: string; name: string; refFile?: string; language?: string;
-  exaggeration: number; cfgWeight: number; createdAt: number;
+  id: string; name: string; refFile?: string; engine?: "f5" | "xtts";
+  language?: string; createdAt: number;
 }
-export interface TtsEngine {
-  ok: boolean; error?: string; python?: boolean;
-  defaults?: { language: string; exaggeration: number; cfgWeight: number; chunkSize: number; precision: string; loudnessTarget: number };
+export interface TtsPreset {
+  id: string; name: string; builtin?: boolean; engine: "f5" | "xtts";
+  params: Record<string, unknown>; refFile?: string; createdAt?: number;
+}
+export interface TtsHardware {
+  gpu: { found: boolean; name: string; vramTotalGb: number; vramUsedGb: number; utilPct: number; driver: string };
+  cpu: { name: string; cores: number };
+  platform: string;
+  optimal: Record<string, unknown> & { precision?: string; nfe?: string; cfg?: string; vram?: number };
+}
+export interface TtsChunk { text?: string; pauseMs?: number }
+export interface TtsBookChapter { title: string; text: string }
+export interface TtsBook {
+  title: string; author: string; coverImage: string | null;
+  chapters: TtsBookChapter[]; format?: string; encoding?: string;
 }
 export interface TtsJob {
-  id: string; stage: string; progress: number; chunkIndex: number; chunksTotal: number;
-  error: string; done: boolean; outSize: number; opts?: { format?: string };
+  id: string; engine: string; stage: string; progress: number; chunkIndex: number; chunksTotal: number;
+  error: string; done: boolean; outSize: number; outFile?: string;
+  vram?: { usedGb: number; totalGb: number; utilPct: number } | null;
+  opts?: { format?: string; title?: string; author?: string };
+  chunksPreview?: TtsChunk[];
 }
 export interface SitebakJob {
   id: string; url: string; name: string; stage: string; progress: number;
@@ -185,34 +200,39 @@ export const api = {
     req<{ ok: boolean; custom: CompressorPreset[] }>("POST", "/compressor/presets", p),
   compressorDeletePreset: (name: string) => req<{ ok: boolean }>("DELETE", `/compressor/presets/${encodeURIComponent(name)}`),
 
-  // --- F5-TTS студия ---
-  ttsEngine: () => req<TtsEngine>("GET", "/tts/engine"),
+  // --- Аудиокнижная TTS-студия (F5-TTS / Coqui XTTS v2) ---
+  ttsHardware: () => req<TtsHardware>("GET", "/tts/hardware"),
+  ttsPresets: () => req<TtsPreset[]>("GET", "/tts/presets"),
+  ttsSavePreset: (p: { name: string; engine: string; params: Record<string, unknown>; refFile?: string }) =>
+    req<TtsPreset>("POST", "/tts/presets", p),
+  ttsDeletePreset: (id: string) => req("DELETE", `/tts/presets/${id}`),
   ttsProfiles: () => req<TtsProfile[]>("GET", "/tts/profiles"),
   ttsSaveProfile: (p: Partial<TtsProfile>) => req<TtsProfile>("POST", "/tts/profiles", p),
   ttsDeleteProfile: (id: string) => req("DELETE", `/tts/profiles/${id}`),
-  // Референс грузится отдельным шагом — сервер возвращает имя ref_* файла,
-  // которое дальше используется при генерации и сохранении профилей (С1).
+  // Референс грузится отдельным шагом — сервер возвращает имя ref_* файла.
   ttsUploadReference: (file: File) => {
     const fd = new FormData();
     fd.append("file", file);
     return multipart<{ refFile: string; size: number }>("/tts/reference", fd);
   },
-  // М5: импорт книги .epub — сервер распаковывает и возвращает чистый текст.
-  ttsImportEpub: (file: File) => {
+  // Универсальный импорт книги: epub/fb2/fb2.zip/pdf/mobi/rtf/txt → главы.
+  ttsImportBook: (file: File) => {
     const fd = new FormData();
     fd.append("file", file);
-    return multipart<{ text: string }>("/tts/import-epub", fd);
+    return multipart<TtsBook>("/tts/import-book", fd);
   },
-  ttsStart: (refFile: string, opts: Record<string, string | number>) =>
-    req<TtsJob>("POST", "/tts", { refFile, ...opts }),
+  // NLP-предпросмотр чанков для Batch Editor (без генерации).
+  ttsPreviewChunks: (text: string, engine: string, opts: Record<string, unknown>) =>
+    req<{ chunks: TtsChunk[] }>("POST", "/tts/preview-chunks", { text, engine, ...opts }),
+  ttsStart: (body: Record<string, unknown>) => req<TtsJob>("POST", "/tts", body),
   ttsStatus: (id: string) => req<TtsJob>("GET", `/tts/${id}`),
+  ttsReveal: (path: string) => req<{ ok: boolean }>("POST", "/tts/reveal", { path }),
   ttsDownload: async (id: string): Promise<{ blob: Blob; name: string }> => {
     const res = await fetch(`${BASE}/api/tts/${id}/download`, { headers: { ...tokenHeaders() } });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    // М2: имя файла — реальный формат (audiobook.mp3 | audiobook.wav).
     const cd = res.headers.get("content-disposition") || "";
-    const m = /filename="?([^";]+)"?/i.exec(cd);
-    return { blob: await res.blob(), name: m?.[1] || "audiobook.mp3" };
+    const m = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(cd);
+    return { blob: await res.blob(), name: m?.[1] ? decodeURIComponent(m[1]) : "audiobook.mp3" };
   },
 
   // --- Web Archive (.sitebak) ---

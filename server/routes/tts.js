@@ -1,16 +1,22 @@
 "use strict";
 
 /**
- * API F5-TTS студии (аудиокниги).
+ * API аудиокнижной TTS-студии (F5-TTS + Coqui XTTS v2).
  *
- *  GET    /api/tts/engine          — доступность F5-TTS + дефолты из настроек
- *  GET    /api/tts/profiles        — список профилей голоса
- *  POST   /api/tts/profiles        — сохранить профиль { name, refPath, language, exaggeration, cfgWeight }
+ *  GET    /api/tts/hardware        — GPU/VRAM (nvidia-smi) + «Optimal for Your PC»
+ *  GET    /api/tts/presets         — системные + пользовательские пресеты
+ *  POST   /api/tts/presets         — сохранить пользовательский пресет
+ *  DELETE /api/tts/presets/:id     — удалить пользовательский пресет
+ *  GET    /api/tts/profiles        — профили голоса
+ *  POST   /api/tts/profiles        — сохранить профиль
  *  DELETE /api/tts/profiles/:id    — удалить профиль
- *  POST   /api/tts                 — multipart { file (референс), text, language, exaggeration, cfgWeight, format }
- *                                  → запуск пайплайна (чанкинг → инференс → сшивка → нормализация)
- *  GET    /api/tts/:id             — статус (chunkIndex/chunksTotal, stage, progress)
- *  GET    /api/tts/:id/download    — готовый mp3/wav
+ *  POST   /api/tts/reference       — загрузка референса (→ ref_* в storage/tts)
+ *  POST   /api/tts/import-book     — .epub/.fb2/.pdf/.mobi/.rtf/.txt → главы
+ *  POST   /api/tts/preview-chunks  — NLP-предпросмотр чанков (Batch Editor)
+ *  POST   /api/tts                 — запуск задания { refFile, engine, chunks[], ... }
+ *  GET    /api/tts/:id             — статус (stage/progress/chunkIndex/vram)
+ *  GET    /api/tts/:id/download    — готовый mp3/wav/m4b
+ *  POST   /api/tts/reveal          — показать файл в проводнике
  */
 
 const express = require("express");
@@ -19,7 +25,7 @@ const fs = require("fs");
 const path = require("path");
 const engine = require("../tts");
 const { DIRS } = require("../config");
-const settings = require("../settings");
+const bookParser = require("../bookParser");
 const logger = require("../logger");
 
 const router = express.Router();
@@ -28,30 +34,35 @@ const upload = multer({
   storage: multer.diskStorage({
     destination: DIRS.tts,
     filename: (req, file, cb) => {
-      const base = path.basename(String(file.originalname || "voice").replace(/[\\/:*?"<>|]+/g, "_"));
-      const ext = path.extname(base) || ".wav";
-      cb(null, `ref_${Date.now()}${ext}`);
+      const base = path.basename(String(file.originalname || "file").replace(/[\\/:*?"<>|]+/g, "_"));
+      cb(null, `up_${Date.now()}_${base}`);
     },
   }),
-  limits: { fileSize: 50 * 1024 * 1024 }, // референс 5–10 сек, 50 МБ с запасом
+  limits: { fileSize: 200 * 1024 * 1024 }, // книга может быть тяжёлой (pdf)
 });
 
-router.get("/engine", async (req, res) => {
-  const d = await engine.detect();
-  const v = settings.get("voice") || {};
-  res.json({
-    ok: d.ok, error: d.error || "", python: !!d.python,
-    defaults: {
-      language: v.defaultLanguage, exaggeration: v.exaggeration, cfgWeight: v.cfgWeight,
-      chunkSize: v.chunkSize, precision: v.precision, loudnessTarget: v.loudnessTarget,
-    },
-  });
+/* ------------------------- Железо ------------------------- */
+
+router.get("/hardware", async (req, res) => {
+  try { res.json(await engine.detectHardware()); }
+  catch (e) { res.status(500).json({ error: e.message }); }
 });
+
+/* ------------------------- Пресеты ------------------------- */
+
+router.get("/presets", (req, res) => res.json(engine.listPresets()));
+router.post("/presets", (req, res) => {
+  try {
+    const p = engine.saveUserPreset(req.body || {});
+    logger.action("tts.preset.save", { id: p.id, name: p.name });
+    res.status(201).json(p);
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+router.delete("/presets/:id", (req, res) => res.json({ ok: engine.deleteUserPreset(req.params.id) }));
+
+/* ------------------------- Профили ------------------------- */
 
 router.get("/profiles", (req, res) => res.json(engine.loadProfiles()));
-
-// Профиль: refFile — только имя ref_* файла, ранее загруженного на сервер
-// (клиентский путь не принимается — защита от path injection, С1).
 router.post("/profiles", (req, res) => {
   try {
     const p = engine.saveProfile({ ...req.body, refFile: req.body?.refFile });
@@ -59,78 +70,82 @@ router.post("/profiles", (req, res) => {
     res.status(201).json(p);
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
+router.delete("/profiles/:id", (req, res) => res.json({ ok: engine.deleteProfile(req.params.id) }));
 
-router.delete("/profiles/:id", (req, res) => {
-  res.json({ ok: engine.deleteProfile(req.params.id) });
-});
+/* ------------------------- Референс ------------------------- */
 
-// Загрузка референса отдельным шагом: файл попадает в storage/tts как ref_*,
-// имя возвращается UI и дальше используется при генерации/сохранении профиля.
 router.post("/reference", upload.single("file"), (req, res) => {
   if (!req.file) return res.status(400).json({ error: "missing_reference" });
-  res.status(201).json({ refFile: path.basename(req.file.path), size: req.file.size });
+  // Приводим к формату ref_* (его валидируют профиль и задание).
+  const ext = path.extname(req.file.originalname || "") || ".wav";
+  const refName = `ref_${Date.now()}${ext}`;
+  const finalPath = path.join(DIRS.tts, path.basename(refName));
+  try { fs.renameSync(req.file.path, finalPath); } catch { fs.copyFileSync(req.file.path, finalPath); }
+  res.status(201).json({ refFile: path.basename(finalPath), size: fs.statSync(finalPath).size });
 });
 
-router.post("/", (req, res) => {
-  try {
-    // С5: жёсткий лимит текста — 20k символов (~80-100 чанков) за один запрос.
-    const text = String(req.body?.text || "").trim().slice(0, 20000);
-    if (!text) return res.status(400).json({ error: "empty_text" });
-    const job = engine.startJob({
-      refPath: req.body?.refFile,
-      text,
-      language: req.body?.language,
-      exaggeration: req.body?.exaggeration,
-      cfgWeight: req.body?.cfgWeight,
-      format: req.body?.format,
-    });
-    logger.action("tts.start", { id: job.id, chars: text.length });
-    const { opts, ...rest } = job;
-    res.status(201).json({ ...rest, opts: { ...opts, text: undefined } });
-  } catch (e) {
-    res.status(400).json({ error: e.message });
-  }
-});
+/* ------------------------- Импорт книги ------------------------- */
 
-// Импорт книги .epub (М5): epub — это zip; adm-zip распаковывает, текст
-// извлекается из (X)HTML-документов с вырезанием тегов.
-router.post("/import-epub", upload.single("file"), async (req, res) => {
+router.post("/import-book", upload.single("file"), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: "missing_file" });
   try {
-    const AdmZip = require("adm-zip");
-    const zip = new AdmZip(req.file.path);
-    let text = "";
-    for (const e of zip.getEntries()) {
-      if (!/\.(x?html)$/i.test(e.entryName)) continue;
-      const html = e.getData().toString("utf8");
-      text += "\n\n" + html
-        .replace(/<script[\s\S]*?<\/script>/gi, "")
-        .replace(/<style[\s\S]*?<\/style>/gi, "")
-        .replace(/<\/(p|div|h[1-6]|li)>/gi, "\n")
-        .replace(/<[^>]+>/g, "");
-    }
-    text = text.replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
-      .replace(/[ \t]+/g, " ").replace(/\n{3,}/g, "\n\n").trim();
+    const book = await bookParser.parseBook(req.file.path, req.file.originalname);
     try { fs.rmSync(req.file.path, { force: true }); } catch { /* ignore */ }
-    if (!text) return res.status(422).json({ error: "no_text_in_epub" });
-    res.json({ text: text.slice(0, 600000) });
+    if (!book.chapters.length) return res.status(422).json({ error: "no_text_in_book" });
+    logger.action("tts.book.import", { name: req.file.originalname, chapters: book.chapters.length });
+    res.json(book);
   } catch (e) {
     try { fs.rmSync(req.file.path, { force: true }); } catch { /* ignore */ }
     res.status(500).json({ error: e.message });
   }
 });
 
+/* ------------------------- NLP-предпросмотр ------------------------- */
+
+router.post("/preview-chunks", (req, res) => {
+  try {
+    const chunks = engine.previewChunks(
+      String(req.body?.text || ""),
+      req.body?.engine,
+      {
+        expandNumbers: req.body?.expandNumbers !== false,
+        yoficate: req.body?.yoficate !== false,
+        markStress: !!req.body?.markStress,
+      }
+    );
+    res.json({ chunks });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+/* ------------------------- Задание ------------------------- */
+
+router.post("/", (req, res) => {
+  try {
+    const job = engine.startJob(req.body || {});
+    logger.action("tts.start", { id: job.id, engine: job.engine, chunks: job.chunksTotal });
+    const { items, ...rest } = job;
+    res.status(201).json({ ...rest, items: undefined, chunksPreview: items.slice(0, 5) });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
 router.get("/:id", (req, res) => {
   const job = engine.getJob(req.params.id);
   if (!job) return res.status(404).json({ error: "not_found" });
-  const { opts, ...rest } = job;
+  const { items, ...rest } = job;
   res.json(rest);
 });
 
 router.get("/:id/download", (req, res) => {
   const job = engine.getJob(req.params.id);
   if (!job?.done || !job.outFile || !fs.existsSync(job.outFile)) return res.status(404).json({ error: "not_ready" });
-  res.download(job.outFile, `audiobook.${job.opts.format}`);
+  const safeName = `${String(job.opts.title || "audiobook").replace(/[^\p{L}\p{N} _-]/gu, "").slice(0, 60) || "audiobook"}.${job.opts.format}`;
+  res.download(job.outFile, safeName);
+});
+
+router.post("/reveal", (req, res) => {
+  try { res.json({ ok: engine.revealInExplorer(req.body?.path) }); }
+  catch (e) { res.status(400).json({ error: e.message }); }
 });
 
 module.exports = router;
+

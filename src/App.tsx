@@ -27,7 +27,7 @@ import MusicPage from "./pages/MusicPage";
 import BooksPage from "./pages/BooksPage";
 import MonitorPage from "./pages/MonitorPage";
 import AiChatPage from "./pages/AiChatPage";
-import VoicePage from "./pages/VoicePage";
+import AudiobookTTSPage from "./pages/AudiobookTTSPage";
 import ArchiverPage from "./pages/ArchiverPage";
 import SettingsPage from "./pages/SettingsPage";
 import MyspacePage from "./pages/MyspacePage";
@@ -61,7 +61,7 @@ const PAGE_COMPONENTS: Record<PageId, React.ComponentType> = {
   monitor: MonitorPage,
   myspace: MyspacePage,
   aichat: AiChatPage,
-  voice: VoicePage,
+  voice: AudiobookTTSPage,
   archive: ArchiverPage,
   settings: SettingsPage,
 };

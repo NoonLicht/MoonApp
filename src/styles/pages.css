@@ -1,4 +1,4 @@
-﻿/* MonitorPage sensor panels */
+/* MonitorPage sensor panels */
 .mono-panel {
   padding: 12px 14px;
   background: rgba(255, 255, 255, 0.03);
@@ -55,13 +55,13 @@
 .store-grid{ display:grid; grid-template-columns:repeat(5, minmax(0,1fr)); gap:12px; }
 .app-card{ min-width:0; }
 
-/* Р’РёРґРёРјР°СЏ Р»РёРЅРёСЏ РїСЂРѕРєСЂСѓС‚РєРё Сѓ СЃРїРёСЃРєР° РїСЂРёР»РѕР¶РµРЅРёР№ */
+/* Видимая линия прокрутки у списка приложений */
 .store-grid-wrap::-webkit-scrollbar{ width:10px; height:0; display:block; }
 .store-grid-wrap::-webkit-scrollbar-track{ background:var(--track); border-radius:999px; }
 .store-grid-wrap::-webkit-scrollbar-thumb{ background:linear-gradient(180deg, var(--amber), var(--violet)); border-radius:999px; border:2px solid transparent; background-clip:content-box; }
 .store-grid-wrap::-webkit-scrollbar-thumb:hover{ border:0; }
 
-/* --- РІРєР»Р°РґРєРё All / Winget / Comss --- */
+/* --- вкладки All / Winget / Comss --- */
 .tabs{ display:flex; gap:6px; }
 .tab{
   display:inline-flex; align-items:center; gap:7px;
@@ -79,7 +79,7 @@
 }
 .tab.is-active .tab-count{ background:rgba(0,0,0,0.15); color:var(--text-primary); }
 
-/* --- РїР°РіРёРЅР°С†РёСЏ --- */
+/* --- пагинация --- */
 .pager{ display:flex; align-items:center; justify-content:center; gap:10px; padding:10px 0 2px; flex-wrap:wrap; }
 .pager-btn{
   display:inline-flex; align-items:center; gap:5px;
@@ -114,7 +114,7 @@
 .book-list::-webkit-scrollbar{ width:10px; height:0; display:block; }
 .book-list::-webkit-scrollbar-track{ background:var(--track); border-radius:999px; }
 
-/* --- monitoring: РїСЂРѕРєСЂСѓС‚РєР° СЃС‚СЂР°РЅРёС†С‹ --- */
+/* --- monitoring: прокрутка страницы --- */
 .monitor-scroll{
   display:flex; flex-direction:column; gap:14px;
   overflow-y:auto; overflow-x:hidden;
@@ -126,10 +126,10 @@
 .monitor-scroll::-webkit-scrollbar-track{ background:var(--track); border-radius:999px; }
 .monitor-scroll::-webkit-scrollbar-thumb{ background:var(--glass-border); border-radius:999px; }
 
-/* --- monitoring: РїР»РёС‚РєРё СЏРґРµСЂ/РїРѕС‚РѕРєРѕРІ (РєР°Рє РІ РґРёСЃРїРµС‚С‡РµСЂРµ Р·Р°РґР°С‡) --- */
+/* --- monitoring: плитки ядер/потоков (как в диспетчере задач) --- */
 .core-tiles{ display:grid; grid-template-columns:repeat(auto-fill,minmax(148px,1fr)); gap:10px; }
 
-/* --- convert: РІСЃС‚СЂРѕРµРЅРЅС‹Р№ ConvertX --- */
+/* --- convert: встроенный ConvertX --- */
 .convertx-frame-wrap{ flex:1; display:flex; min-height:0; overflow:hidden; }
 
 .core-tile{
@@ -186,7 +186,7 @@
 
 .cmp-right{ display:flex; flex-direction:column; gap:12px; min-width:0; min-height:0;
   overflow:hidden; }
-/* Карточка настроек занимает всю высоту колонки; прокрутка — внутри неё. */
+/* �������� �������� �������� ��� ������ �������; ��������� � ������ ��. */
 .cmp-fill{ flex:1; min-height:0; overflow-y:auto; overscroll-behavior:contain;
   padding:14px 16px 14px 16px; }
 .cmp-fill::-webkit-scrollbar{ width:6px; }
@@ -211,11 +211,126 @@
 }
 
 
-/* Карточка результата растягивается на всю высоту колонки. */
+/* �������� ���������� ������������� �� ��� ������ �������. */
 .cmp-left .cmp-card{ flex:1; min-height:0; }
 
-/* Карточки компрессора: flex + внутренние отступы (.glass сам не flex). */
+/* �������� �����������: flex + ���������� ������� (.glass ��� �� flex). */
 .cmp-card{ display:flex; padding:14px 16px; box-sizing:border-box; min-width:0; }
 
 
+
+
+
+/* ===== Audiobook TTS Studio ===== */
+
+/* �������: ����� 2 ������� �� ��� ������ ��������, � ���������. */
+.ab-presets { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 16px; }
+.ab-preset { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-radius: 10px; cursor: pointer; font-size: 12.5px; width: 100%; min-width: 0; box-sizing: border-box; }
+.ab-preset-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; }
+
+/* ��� �������: �����+VRAM / ���������+����� / ���������. */
+.ab-layout { display: grid; grid-template-columns: 300px minmax(0, 1fr) 330px; gap: 16px; align-items: start; }
+.ab-col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+@media (max-width: 1400px) { .ab-layout { grid-template-columns: 270px minmax(0, 1fr) 300px; } }
+
+.ab-center { min-width: 0; }
+.ab-right { position: sticky; top: 12px; }
+
+.ab-engines { display: flex; flex-direction: column; gap: 6px; }
+.ab-engine { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,.07); background: var(--card-bg, rgba(255,255,255,.03)); color: inherit; cursor: pointer; text-align: left; }
+.ab-engine.is-active { border-color: var(--accent, #eab308); box-shadow: 0 0 0 1px var(--accent, #eab308) inset; }
+.ab-ref-row { display: flex; gap: 6px; align-items: center; }
+
+.ab-tabs { display: flex; gap: 4px; margin-bottom: 8px; }
+.ab-tab { display: flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 8px; border: none; background: transparent; color: var(--text-secondary); cursor: pointer; font-size: 12.5px; }
+.ab-tab.is-active { background: var(--accent-soft, rgba(234,179,8,.12)); color: var(--text-primary); }
+.ab-tab-count { font-size: 10.5px; color: #34d399; background: rgba(52,211,153,.12); padding: 1px 6px; border-radius: 99px; }
+
+.ab-chapters { overflow: auto; max-height: 60vh; display: flex; flex-direction: column; gap: 4px; }
+.ab-chapter { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; cursor: pointer; }
+.ab-chapter:hover { background: rgba(255,255,255,.04); }
+.ab-chapter.is-active { background: var(--accent-soft, rgba(234,179,8,.12)); }
+
+.ab-chunks { overflow: auto; max-height: 58vh; display: flex; flex-direction: column; gap: 6px; padding-right: 4px; }
+.ab-chunk { border: 1px solid rgba(255,255,255,.06); border-radius: 8px; padding: 6px 8px; }
+.ab-chunk-pause { display: flex; align-items: center; gap: 6px; color: var(--accent, #eab308); font-size: 12px; justify-content: center; border-style: dashed; }
+.ab-chunk-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+.ab-chunk-text { width: 100%; background: transparent; border: none; color: var(--text-primary); resize: vertical; font-size: 12.5px; line-height: 1.45; }
+
+.ab-acc { border: 1px solid rgba(255,255,255,.07); border-radius: 10px; margin-top: 8px; overflow: visible; }
+.ab-acc-head { display: flex; align-items: center; gap: 6px; width: 100%; padding: 8px 10px; background: transparent; border: none; color: var(--text-primary); cursor: pointer; font-size: 13px; font-weight: 600; }
+.ab-acc-body { padding: 4px 10px 10px; display: flex; flex-direction: column; gap: 8px; }
+
+.ab-param { position: relative; }
+.ab-param-head { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+.ab-info-btn { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; border: 1px solid rgba(255,255,255,.15); background: transparent; color: var(--text-secondary); cursor: help; padding: 0; }
+.ab-info-btn:hover { color: var(--accent, #eab308); border-color: var(--accent, #eab308); }
+.ab-optimal-badge { margin-left: auto; font-size: 10.5px; color: #34d399; background: rgba(52,211,153,.12); padding: 2px 7px; border-radius: 99px; white-space: nowrap; }
+.ab-tooltip { position: absolute; z-index: 30; top: calc(100% + 6px); left: 0; right: 0; background: var(--card-bg, #1c1c22); border: 1px solid rgba(255,255,255,.1); border-radius: 10px; padding: 10px 12px; font-size: 12px; line-height: 1.5; color: var(--text-primary); box-shadow: 0 8px 30px rgba(0,0,0,.4); pointer-events: none; }
+
+.ab-player { display: flex; align-items: center; gap: 10px; margin-top: 16px; padding: 10px 14px; flex-wrap: wrap; }
+.ab-tab-badge { font-size: 10.5px; color: #34d399; background: rgba(52,211,153,.12); padding: 2px 8px; border-radius: 99px; }
+.ab-tab-badge-amber { color: #fbbf24; background: rgba(251,191,36,.12); }
+
+/* --- Прокрутка страницы студии (page-ab): page/content-area имеют overflow:hidden --- */
+.page-ab { overflow-y: auto; overflow-x: hidden; scroll-behavior: smooth; }
+.page-ab::-webkit-scrollbar { width: 10px; }
+.page-ab::-webkit-scrollbar-track { background: transparent; }
+.page-ab::-webkit-scrollbar-thumb { background: rgba(255,255,255,.12); border-radius: 99px; border: 2px solid transparent; background-clip: content-box; }
+.page-ab::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,.2); background-clip: content-box; }
+
+/* Компактный VRAM-монитор: одна строка вместо отдельной карточки-простыни. */
+.ab-vram { gap: 8px; padding: 10px 14px; }
+.ab-vram-head { display: flex; align-items: center; gap: 8px; min-width: 0; }
+
+/* Sticky-колонка настроек: липкая, но с собственным скроллом — иначе при
+   высоте больше вьюпорта низ настроек становится недостижим (обрезка). */
+.ab-right {
+  position: sticky; top: 0;
+  max-height: calc(100vh - 200px);
+  overflow-y: auto; overflow-x: hidden;
+  scrollbar-width: thin;
+  padding-right: 2px;
+}
+.ab-right::-webkit-scrollbar { width: 8px; }
+.ab-right::-webkit-scrollbar-track { background: transparent; }
+.ab-right::-webkit-scrollbar-thumb { background: rgba(255,255,255,.12); border-radius: 99px; }
+
+/* Липкий заголовок страницы: контекст раздела сохраняется при прокрутке
+   (тулбар приложения fixed — заголовок липнет прямо под ним). */
+.page-ab > .section-head {
+  position: sticky; top: 0; z-index: 30;
+  padding: 8px 10px;
+  background: var(--bg-alpha, rgba(12,14,22,.93));
+  backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+  border-radius: 12px;
+}
+
+/* Липкие заголовки секций Pro-настроек («Модель и VRAM», «Мастеринг»…). */
+.page-ab .ab-acc-head {
+  position: sticky; top: 56px; z-index: 10;
+  background: var(--bg-alpha, rgba(12,14,22,.93));
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  border-radius: 10px;
+}
+
+/* Липкая панель генерации: всегда видна при прокрутке, «висит» над плеером. */
+.ab-generate-bar {
+  position: sticky; bottom: 0; z-index: 20;
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  padding: 10px 14px; margin-top: 16px; border-radius: 14px;
+}
+
+/* Внутренние списки: фиксированная высота со своим скроллом, страница не растёт бесконечно. */
+.ab-chapters, .ab-chunks { max-height: calc(100vh - 480px); min-height: 160px; }
+
+/* --- Адаптив: узкое окно → панели переносятся, контент не обрезается --- */
+@media (max-width: 1500px) {
+  .ab-layout { grid-template-columns: 280px minmax(0, 1fr); }
+  .ab-right { grid-column: 1 / -1; position: static; max-height: none; }
+}
+@media (max-width: 1000px) {
+  .ab-layout { grid-template-columns: minmax(0, 1fr); }
+  .ab-presets { grid-template-columns: minmax(0, 1fr); }
+}
 
