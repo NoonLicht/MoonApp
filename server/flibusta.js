@@ -380,29 +380,47 @@ async function listGenres() {
   return { genres: out };
 }
 
-/** Книги жанра по пути фида (/opds/genres/... или /opds/genrenew/...). */
-async function genreBooks(genrePath, page = 0, size = 80) {
-  const p = decodeURIComponent(String(genrePath || ""));
-  if (!p.startsWith("/opds/")) throw new Error("bad genre path");
-  return aggregateFeed(p, page, size);
+/** Книги одного или нескольких жанров (genre: путь или JSON-массив путей). */
+async function genreBooks(genre, page = 0, size = 80) {
+  const paths = parseGenreParam(genre);
+  if (!paths.length) throw new Error("bad genre path");
+  const p = Math.max(0, Number(page) || 0);
+  if (paths.length === 1) return aggregateFeed(paths[0], p, size);
+  // Несколько жанров: параллельно берём страницу из каждого, перемешиваем чередованием
+  const parts = await Promise.all(paths.map((pt) => aggregateFeed(pt, p, size).catch(() => ({ books: [], hasMore: false }))));
+  const merged = [];
+  const seen = new Set();
+  const maxLen = Math.max(...parts.map((x) => x.books.length));
+  for (let i = 0; i < maxLen; i++) {
+    for (const part of parts) {
+      const b = part.books[i];
+      if (b && !seen.has(b.bid)) { seen.add(b.bid); merged.push(b); }
+    }
+  }
+  return { books: merged, hasMore: parts.some((x) => x.hasMore) };
 }
 
-/**
- * Поиск: если задан жанр — ищем внутри жанрового фида (агрегируем и фильтруем
- * по подстрокам), иначе — /opds/search/{q} с агрегацией страниц.
- */
-async function searchBooks({ q, authorQ, genre, page = 0, size = 80 } = {}) {
-  const p = Math.max(0, Number(page) || 0);
-  const title = String(q || "").trim().toLowerCase();
-  const author = String(authorQ || "").trim().toLowerCase();
+/** genre-параметр: один путь или JSON-массив путей. */
+function parseGenreParam(genre) {
+  const raw = decodeURIComponent(String(genre || "")).trim();
+  if (!raw) return [];
+  if (raw.startsWith("[")) {
+    try {
+      const arr = JSON.parse(raw);
+      return Array.isArray(arr) ? arr.filter((x) => typeof x === "string" && x.startsWith("/opds/")) : [];
+    } catch { return []; }
+  }
+  return raw.startsWith("/opds/") ? [raw] : [];
+}
 
-  if (genre) {
-    const acc = [];
-    const seen = new Set();
-    let cursor = genre;
-    let guard = 0;
-    const want = size * (p + 1) * 2; // с запасом — фильтр режет список
-    while (cursor && guard++ < 60 && acc.length < want) {
+/** Поиск внутри одного жанрового фида (внутренний helper). */
+async function searchInGenre(path, title, author, want) {
+  const acc = [];
+  const seen = new Set();
+  let cursor = path;
+  let guard = 0;
+  while (cursor && guard++ < 60 && acc.length < want) {
+    try {
       const xml = await fetchFeed(cursor);
       const { books, next } = parseFeed(xml);
       for (const b of books) {
@@ -413,8 +431,40 @@ async function searchBooks({ q, authorQ, genre, page = 0, size = 80 } = {}) {
         if (okT && okA) acc.push(b);
       }
       cursor = next || null;
+    } catch {
+      break; // частичный результат
     }
-    return slicePage(acc, p, size);
+  }
+  return acc;
+}
+
+/**
+ * Поиск: если задан жанр — ищем внутри жанрового фида (агрегируем и фильтруем
+ * по подстрокам), иначе — /opds/search/{q} с агрегацией страниц.
+ */
+async function searchBooks({ q, authorQ, genre, page = 0, size = 80 } = {}) {
+  const p = Math.max(0, Number(page) || 0);
+  const title = String(q || "").trim().toLowerCase();
+  const author = String(authorQ || "").trim().toLowerCase();
+  const genrePaths = parseGenreParam(genre);
+
+  if (genrePaths.length) {
+    // Поиск внутри одного или нескольких жанров (параллельно)
+    const want = size * (p + 1) * 2; // с запасом — фильтр режет список
+    const parts = await Promise.all(
+      genrePaths.map((pt) => searchInGenre(pt, title, author, want).catch(() => []))
+    );
+    // Чередуем результаты жанров, дедуплицируем
+    const merged = [];
+    const seen = new Set();
+    const maxLen = Math.max(0, ...parts.map((a) => a.length));
+    for (let i = 0; i < maxLen; i++) {
+      for (const part of parts) {
+        const b = part[i];
+        if (b && !seen.has(b.bid)) { seen.add(b.bid); merged.push(b); }
+      }
+    }
+    return slicePage(merged, p, size);
   }
 
   const term = [title, author].filter(Boolean).join(" ");

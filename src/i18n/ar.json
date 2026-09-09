@@ -299,7 +299,9 @@
     "opdsHint": "كتالوج Flibusta OPDS",
     "annotation": "ملخص",
     "expandGenres": "عرض كل الفئات",
-    "collapseGenres": "طي الفئات"
+    "collapseGenres": "طي الفئات",
+    "searchGenre": "تصفية الفئات…",
+    "removeGenre": "انقر للإزالة"
   },
   "monitor": {
     "title": "المراقبة",

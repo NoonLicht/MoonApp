@@ -299,7 +299,9 @@
     "opdsHint": "Каталог Flibusta OPDS",
     "annotation": "Аннотация",
     "expandGenres": "Показать все жанры",
-    "collapseGenres": "Свернуть жанры"
+    "collapseGenres": "Свернуть жанры",
+    "searchGenre": "Фильтр жанров…",
+    "removeGenre": "нажмите, чтобы убрать"
   },
   "monitor": {
     "title": "Мониторинг",

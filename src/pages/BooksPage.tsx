@@ -38,11 +38,12 @@ export default function BooksPage() {
   const [downloading, setDownloading] = useState<number | null>(null);
   const [flags, setFlags] = useState<Record<string, { fav: boolean; bm: boolean }>>({});
   const [genres, setGenres] = useState<BookGenre[]>([]);
-  const [genre, setGenre] = useState(""); // OPDS-путь выбранного жанра
   const [popularFallback, setPopularFallback] = useState(false);
   const [titleQ, setTitleQ] = useState("");
   const [authorQ, setAuthorQ] = useState("");
   const [genresOpen, setGenresOpen] = useState(false);
+  const [genreQ, setGenreQ] = useState("");
+  const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
   const [selectedBook, setSelectedBook] = useState<FlibustaBook | null>(null);
   const reqId = useRef(0);
 
@@ -71,35 +72,45 @@ export default function BooksPage() {
     if (id === reqId.current) setLoading(false);
   }, []);
 
-  // Начальная загрузка: новинки + жанры
+  // genre-параметр для API: JSON-массив выбранных путей (или пусто)
+  const genreParam = (arr: string[]) => (arr.length ? JSON.stringify(arr) : "");
+
+  // Начальная загрузка: новинки + жанры (жанры сортируем по алфавиту)
   useEffect(() => { doLoad("new", 0, "", "", ""); }, [doLoad]);
   useEffect(() => {
-    api.getBookGenres().then((r) => setGenres(r.genres || [])).catch(() => {});
+    api.getBookGenres().then((r) => setGenres((r.genres || []).sort((a, b) => a.title.localeCompare(b.title, "ru")))).catch(() => {});
   }, []);
 
   // Стабильная ссылка на актуальные значения (для колбэков тулбара)
-  const stateRef = useRef({ tab, genre, titleQ, authorQ });
-  stateRef.current = { tab, genre, titleQ, authorQ };
+  const stateRef = useRef({ tab, selectedGenres, titleQ, authorQ });
+  stateRef.current = { tab, selectedGenres, titleQ, authorQ };
 
-  const goTab = (tb: Tab) => { setTab(tb); doLoad(tb, 0, genre, titleQ, authorQ); };
-  const goPage = (p: number) => { if (p >= 0 && (p === 0 || hasMore || p < page)) doLoad(tab, p, genre, titleQ, authorQ); };
+  const goTab = (tb: Tab) => { setTab(tb); doLoad(tb, 0, genreParam(selectedGenres), titleQ, authorQ); };
+  const goPage = (p: number) => { if (p >= 0 && (p === 0 || hasMore || p < page)) doLoad(tab, p, genreParam(selectedGenres), titleQ, authorQ); };
   const doSearch = () => {
     if (loading) return; // не дублируем запрос
     const s = stateRef.current;
     setTab("new");
-    doLoad("new", 0, s.genre, s.titleQ, s.authorQ);
+    doLoad("new", 0, genreParam(s.selectedGenres), s.titleQ, s.authorQ);
   };
   // useCallback: handleRefresh должен быть стабильным — иначе тулбар
   // перерисовывается каждый кадр (Maximum update depth exceeded).
   const handleRefresh = useCallback(async () => {
     try { await api.refreshBooks(); } catch { /* ignore */ }
     const s = stateRef.current;
-    doLoad(s.tab, 0, s.genre, s.titleQ, s.authorQ);
+    doLoad(s.tab, 0, genreParam(s.selectedGenres), s.titleQ, s.authorQ);
   }, [doLoad]);
-  const pickGenre = (g: string) => {
-    const ng = g === genre ? "" : g;
-    setGenre(ng);
-    doLoad("new", 0, ng, titleQ, authorQ);
+  /** Тогл жанра в мультивыборе; выбранные жанры не сбрасываются поиском. */
+  const toggleGenre = (href: string) => {
+    const next = selectedGenres.includes(href)
+      ? selectedGenres.filter((g) => g !== href)
+      : [...selectedGenres, href];
+    setSelectedGenres(next);
+    doLoad("new", 0, genreParam(next), titleQ, authorQ);
+  };
+  const clearGenres = () => {
+    setSelectedGenres([]);
+    doLoad("new", 0, "", titleQ, authorQ);
   };
 
   const handleDownload = async (bid: number, fmt: string) => {
@@ -165,32 +176,59 @@ export default function BooksPage() {
         <Btn variant="secondary" onClick={doSearch} style={{ fontSize: 12 }}>{t("books.search")}</Btn>
       </div>
 
-      {/* Жанры: одна строка со скроллом, разворачивается кнопкой */}
+      {/* Жанры: свёрнуто — одна строка со скроллом; развёрнуто — поиск + скроллируемый список */}
       {genres.length > 0 && (
         <div style={{ display: "flex", gap: 5, marginBottom: 12, alignItems: "center" }}>
           <div style={{
             display: "flex", gap: 5, flex: 1, minWidth: 0,
             flexWrap: genresOpen ? "wrap" : "nowrap",
-            overflowX: genresOpen ? "visible" : "auto",
-            overflowY: "hidden", paddingBottom: 2,
+            alignContent: "flex-start",
+            overflowX: genresOpen ? "hidden" : "auto",
+            overflowY: genresOpen ? "auto" : "hidden",
+            maxHeight: genresOpen ? 200 : undefined,
+            paddingBottom: 2,
           }}>
-            <button className={`pager-page ${genre === "" ? "is-active" : ""}`} style={{ flexShrink: 0 }}
-              onClick={() => pickGenre("")}>
-              {t("books.allGenres")}
-            </button>
-            {genres.map((g) => {
-              const leaf = g.title.includes(" / ") ? g.title.split(" / ").pop()! : g.title;
+            {selectedGenres.map((href) => {
+              const g = genres.find((x) => x.href === href);
+              if (!g) return null;
               return (
-                <button key={g.href} className={`pager-page ${genre === g.href ? "is-active" : ""}`}
-                  style={{ flexShrink: 0 }} title={g.title}
-                  onClick={() => pickGenre(g.href)}>
-                  {leaf}
+                <button key={`sel-${href}`} className="pager-page is-active" style={{ flexShrink: 0 }}
+                  title={`${g.title} — ${t("books.removeGenre")}`}
+                  onClick={() => toggleGenre(href)}>
+                  ✕ {g.title}
                 </button>
               );
             })}
+            {genres
+              .filter((g) => !selectedGenres.includes(g.href))
+              .filter((g) => {
+                if (!genresOpen || !genreQ.trim()) return true;
+                return g.title.toLowerCase().includes(genreQ.trim().toLowerCase());
+              })
+              .map((g) => {
+                const leaf = g.title.includes(" / ") ? g.title.split(" / ").pop()! : g.title;
+                return (
+                  <button key={g.href} className="pager-page"
+                    style={{ flexShrink: 0 }} title={g.title}
+                    onClick={() => toggleGenre(g.href)}>
+                    {genresOpen ? leaf : (leaf.length > 34 ? leaf.slice(0, 34) + "…" : leaf)}
+                  </button>
+                );
+              })}
           </div>
+          {genresOpen && (
+            <Glass className="url-bar" style={{ padding: "2px 8px", flexShrink: 0, width: 170 }}>
+              <Search size={13} />
+              <input
+                placeholder={t("books.searchGenre")}
+                value={genreQ}
+                onChange={(e) => setGenreQ(e.target.value)}
+                style={{ fontSize: 12, padding: "2px 0" }}
+              />
+            </Glass>
+          )}
           <button className="pager-btn" title={genresOpen ? t("books.collapseGenres") : t("books.expandGenres")}
-            onClick={() => setGenresOpen((v) => !v)}>
+            onClick={() => { setGenresOpen((v) => !v); setGenreQ(""); }}>
             <ChevronsDown size={13} style={{ transform: genresOpen ? "rotate(180deg)" : "none", transition: "transform .15s" }} />
           </button>
         </div>

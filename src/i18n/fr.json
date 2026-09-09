@@ -299,7 +299,9 @@
     "opdsHint": "Catalogue OPDS Flibusta",
     "annotation": "Résumé",
     "expandGenres": "Afficher tous les genres",
-    "collapseGenres": "Réduire les genres"
+    "collapseGenres": "Réduire les genres",
+    "searchGenre": "Filtrer les genres…",
+    "removeGenre": "cliquer pour retirer"
   },
   "monitor": {
     "title": "Moniteur",

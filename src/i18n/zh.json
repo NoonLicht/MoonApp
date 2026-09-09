@@ -299,7 +299,9 @@
     "opdsHint": "Flibusta OPDS 书库",
     "annotation": "简介",
     "expandGenres": "展开全部分类",
-    "collapseGenres": "收起分类"
+    "collapseGenres": "收起分类",
+    "searchGenre": "筛选分类…",
+    "removeGenre": "点击移除"
   },
   "monitor": {
     "title": "监控",
