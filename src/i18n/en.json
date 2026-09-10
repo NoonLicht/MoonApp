@@ -587,6 +587,16 @@
     "collapse": "Collapse",
     "expand": "Expand"
   },
+  "player": {
+    "play": "Play",
+    "pause": "Pause",
+    "back5": "Back 5 seconds",
+    "back10": "Back 10 seconds",
+    "forward5": "Forward 5 seconds",
+    "forward10": "Forward 10 seconds",
+    "speed": "Playback speed",
+    "seek": "Playback position"
+  },
   "_meta": {
     "code": "en",
     "native": "English"
@@ -754,7 +764,7 @@
   },
   "ab": {
     "eyebrow": "Аудиокниги · Клонирование голоса",
-    "title": "Студия озвучивания книг",
+    "title": "Book narration",
     "statusBusy": "Рендер {i}/{n}",
     "statusDone": "Готово",
     "statusIdle": "Ожидание",
@@ -855,6 +865,17 @@
     "tipParagraphPause": "Тишина между абзацами и разделами книги.",
     "tipLoudness": "Единый уровень громкости по всем главам — стандарт аудиокниг (Audible/ЛитРес): −16 LUFS.",
     "tipSpeed": "Темп речи без изменения высоты тона.",
-    "tipFormat": "M4B/MP3 сохраняют маркеры глав; WAV — без сжатия, очень большие файлы."
+    "tipFormat": "M4B/MP3 сохраняют маркеры глав; WAV — без сжатия, очень большие файлы.",
+    "collapse": "Collapse",
+    "expand": "Expand",
+    "resetBook": "Reset book",
+    "resetBookHint": "Chapters, text and batches will be cleared",
+    "batchRange": "Batch range",
+    "rangeInfo": "{count} chunks · {chars} chars",
+    "onlyRange": "Selected range only",
+    "deleteRange": "Delete range",
+    "rangeStart": "Set range start",
+    "rangeEnd": "Set range end",
+    "rangeBadge": "Range {from}–{to}"
   }
 }

@@ -178,7 +178,7 @@ function deleteProfile(id) {
 const BUILTIN_PRESETS = [
   {
     id: "sys-fiction-xtts", builtin: true,
-    name: "Русская аудиокнига — драматическая проза (XTTS v2)",
+    name: "Драматическая проза (XTTS v2)",
     engine: "xtts", params: {
       precision: "float16", attention: "sdpa", gcEveryChunks: 1,
       temperature: 0.72, repetitionPenalty: 4.0, topK: 50, topP: 0.85,
@@ -189,7 +189,7 @@ const BUILTIN_PRESETS = [
   },
   {
     id: "sys-nonfiction-f5", builtin: true,
-    name: "Русская аудиокнига — нон-фикшн (F5-TTS быстро и чисто)",
+    name: "Нон-фикшн (F5-TTS быстро и чисто)",
     engine: "f5", params: {
       precision: "float16", attention: "sdpa", gcEveryChunks: 1,
       nfe: 36, cfg: 2.2, solver: "euler", speed: 1.0,
@@ -211,7 +211,7 @@ const BUILTIN_PRESETS = [
   },
   {
     id: "sys-bedtime", builtin: true,
-    name: "Сказка на ночь — медленное тёплое чтение",
+    name: "Сказка на ночь",
     engine: "xtts", params: {
       precision: "float16", attention: "sdpa", gcEveryChunks: 1,
       temperature: 0.65, repetitionPenalty: 5.0, topK: 40, topP: 0.8,

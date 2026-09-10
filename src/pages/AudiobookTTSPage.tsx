@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import {
-  Upload, Wand2, Download, Save, Trash2, Copy, RefreshCw, BookOpen, Cpu,
+  Upload, Wand2, Download, Save, Trash2, Copy, RefreshCw, BookOpen,
   ChevronDown, ChevronUp, Zap, Heart, SplitSquareHorizontal, Merge, ArrowUp,
-  ArrowDown, Pause, FolderOpen, ListMusic, FileText, Layers,
+  ArrowDown, Pause, FolderOpen, FileText, Layers, RotateCcw,
 } from "lucide-react";
-import { Glass, Btn, IconBtn, Field, Select, Badge, SectionHead, ProgressBar, EmptyHint, Checkbox } from "../components/ui";
+import { Glass, Btn, IconBtn, Select, Badge, SectionHead, ProgressBar, EmptyHint, Checkbox } from "../components/ui";
 import { ParamField } from "../components/ParamField";
-import { usePageToolbar } from "../components/Toolbar";
+import AudioPlayer from "../components/AudioPlayer";
 import { useI18n } from "../i18n";
 import { useContextMenu, copyToClipboard } from "../components/ContextMenu";
 import { api } from "../api/client";
@@ -36,6 +36,85 @@ const DEFAULT_PARAMS: Params = {
 const ACCEPT = ".epub,.fb2,.zip,.pdf,.mobi,.azw3,.rtf,.txt,.md";
 const TTS_LANGS = ["Russian", "English", "Chinese", "Spanish", "French", "German", "Japanese"];
 
+/* -------------- Подкомпоненты Pro-панели (уровень модуля) --------------
+   ВАЖНО: они объявлены здесь, а НЕ внутри страницы. Если объявить их внутри
+   функции страницы, то на каждый ре-рендер создаётся новый тип компонента,
+   React пересоздаёт DOM-узлы, и перетаскивание ползунка мышью обрывается на
+   первом же изменении (ползунок сдвигается ровно на одно деление). Данные
+   приходят пропсами единым пакетом `proPanel`, поэтому тип компонента
+   неизменен и DOM живёт между рендерами. */
+
+interface ProPanelProps {
+  params: Params;
+  setManual: (k: string, v: any) => void;
+  openAcc: Record<string, boolean>;
+  toggleAcc: (id: string) => void;
+}
+
+type ProParamsProps = Pick<ProPanelProps, "params" | "setManual">;
+type ProAccProps = Pick<ProPanelProps, "openAcc" | "toggleAcc">;
+
+/** Аккордеон Pro-панели: плавное раскрытие grid-rows 0fr→1fr, контент
+    смонтирован всегда — анимация работает и на открытие, и на закрытие. */
+function Accordion({ id, title, openAcc, toggleAcc, children }: ProAccProps & {
+  id: string; title: string; children: React.ReactNode;
+}) {
+  const open = !!openAcc[id];
+  return (
+    <div className="ab-acc">
+      <button className="ab-acc-head" aria-expanded={open} onClick={() => toggleAcc(id)}>
+        <ChevronDown size={14} className={`ab-acc-chev ${open ? "is-open" : ""}`} />
+        <span>{title}</span>
+      </button>
+      <div className={`ab-acc-collapse ${open ? "is-open" : ""}`}>
+        <div className="ab-acc-body">{children}</div>
+      </div>
+    </div>
+  );
+}
+
+/** Ползунок параметра: всегда доступен для ручной правки, изменение
+    автоматически выключает Smart Express (см. setManual на странице). */
+function ProSlider({ p, label, tip, opt, min, max, step, fmt, params, setManual }: ProParamsProps & {
+  p: string; label: string; tip: string; opt?: string;
+  min: number; max: number; step: number; fmt?: (v: number) => string;
+}) {
+  const raw = Number(params[p]);
+  const value = Number.isFinite(raw) ? raw : min;
+  return (
+    <ParamField label={`${label} — ${fmt ? fmt(value) : value}`} tooltip={tip} optimal={opt}>
+      <input type="range" min={min} max={max} step={step} value={value}
+        onChange={(e) => setManual(p, parseFloat(e.target.value))} />
+    </ParamField>
+  );
+}
+
+/** Выпадающий параметр Pro-панели. */
+function ProSelect({ p, label, tip, opt, options, params, setManual }: ProParamsProps & {
+  p: string; label: string; tip: string; opt?: string;
+  options: { value: string; label: string }[];
+}) {
+  return (
+    <ParamField label={label} tooltip={tip} optimal={opt}>
+      <Select value={String(params[p])} onChange={(e) => setManual(p, e.target.value)} options={options} />
+    </ParamField>
+  );
+}
+
+/** Булев параметр Pro-панели. */
+function ProToggle({ p, label, tip, params, setManual }: ProParamsProps & {
+  p: string; label: string; tip: string;
+}) {
+  return (
+    <ParamField label={label} tooltip={tip}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <Checkbox checked={!!params[p]} onClick={() => setManual(p, !params[p])} />
+        <span className="muted-sm">{params[p] ? "On" : "Off"}</span>
+      </div>
+    </ParamField>
+  );
+}
+
 export default function AudiobookTTSPage() {
   const { t } = useI18n();
   const menu = useContextMenu();
@@ -55,10 +134,19 @@ export default function AudiobookTTSPage() {
   const [engine, setEngine] = useState<EngineId>("f5");
   const [params, setParams] = useState<Params>({ ...DEFAULT_PARAMS });
   const setP = (k: string, v: any) => setParams((p) => ({ ...p, [k]: v }));
+  // Ручная правка в Pro-панели: значения больше не «авто-конфиг», поэтому
+  // Smart Express выключается — дальше всё настраивается как угодно.
+  const setManual = (k: string, v: any) =>
+    setParams((p) => ({ ...p, [k]: v, ...(p.mode === "express" ? { mode: "pro" } : {}) }));
 
   // --- Batch editor ---
   const [chunks, setChunks] = useState<TtsChunk[]>([]);
   const [chunksLoading, setChunksLoading] = useState(false);
+  // Диапазон батчей «с какого по какой»: применяется к массовым операциям
+  // (удаление) и, если включён onlyRange, ограничивает рендер.
+  const [batchFrom, setBatchFrom] = useState(1);
+  const [batchTo, setBatchTo] = useState(0);
+  const [onlyRange, setOnlyRange] = useState(false);
 
   // --- Генерация ---
   const [job, setJob] = useState<TtsJob | null>(null);
@@ -78,10 +166,56 @@ export default function AudiobookTTSPage() {
   // --- Правая панель ---
   const [proOpen, setProOpen] = useState(false);
   const [centerTab, setCenterTab] = useState<"book" | "batch">("book");
+  // Сворачивание рабочей области отдельно для каждой вкладки: длинные списки
+  // глав/батчей можно сложить, чтобы не крутить страницу до настроек.
+  const [wsOpen, setWsOpen] = useState<{ book: boolean; batch: boolean }>({ book: true, batch: true });
   const [openAcc, setOpenAcc] = useState<Record<string, boolean>>({ vram: true, f5: true, xtts: true, nlp: true, post: true, ref: false });
+  // Единый пакет данных для модульных подкомпонентов Pro-панели.
+  const toggleAcc = useCallback((id: string) => setOpenAcc((o) => ({ ...o, [id]: !o[id] })), []);
+  const proPanel = { params, setManual, openAcc, toggleAcc };
 
   const busy = !!job && !job.done && job.stage !== "error";
   const optimal = hw?.optimal || {};
+
+  // Рабочая область: у каждой вкладки своё состояние сворачивания.
+  const wsIsOpen = wsOpen[centerTab];
+  const toggleWs = () => setWsOpen((o) => ({ ...o, [centerTab]: !o[centerTab] }));
+
+  // Диапазон батчей «#с — #по»: значения всегда зажаты в границы списка,
+  // причём from ≤ to, чтобы нельзя было задать границы вразнобой.
+  const rangeCount = chunks.length ? Math.max(0, batchTo - batchFrom + 1) : 0;
+  const rangeChars = chunks.slice(batchFrom - 1, batchTo).reduce((n, c) => n + (c.text?.length || 0), 0);
+
+  const setRangeFrom = (v: number) => {
+    const n = Math.max(1, chunks.length);
+    const f = Math.min(Math.max(1, Math.round(v) || 1), n);
+    setBatchFrom(f);
+    setBatchTo((t) => Math.max(f, t >= 1 ? Math.min(t, n) : n));
+  };
+
+  const setRangeTo = (v: number) => {
+    const n = Math.max(1, chunks.length);
+    const t = Math.min(Math.max(1, Math.round(v) || n), n);
+    setBatchTo(t);
+    setBatchFrom((f) => Math.min(f, t));
+  };
+
+  // Массовая операция по выбранному диапазону: удалить батчи #from..#to.
+  const deleteRange = () => {
+    if (!chunks.length) return;
+    setChunks((cs) => [...cs.slice(0, batchFrom - 1), ...cs.slice(batchTo)]);
+    setOnlyRange(false);
+  };
+
+  // Smart Express ↔ Pro. Тумблер переехал из верхнего тулбара в шапку
+  // Pro-настроек, а его место в тулбаре занял монитор VRAM/GPU справа от заголовка.
+  // Express возвращает авто-конфиг (точность под вашу карту) и блокирует слайдеры.
+  const toggleExpress = () => {
+    const next = params.mode === "express" ? "pro" : "express";
+    if (next === "express") {
+      setParams((p) => ({ ...p, mode: "express", ...(optimal.precision ? { precision: optimal.precision } : {}) }));
+    } else setParams((p) => ({ ...p, mode: next }));
+  };
 
   const reloadPresets = useCallback(() => { api.ttsPresets().then(setPresets).catch(() => {}); }, []);
 
@@ -93,12 +227,23 @@ export default function AudiobookTTSPage() {
     return () => { if (pollRef.current) window.clearInterval(pollRef.current); };
   }, [reloadPresets]);
 
-  // VRAM-монитор в реальном времени (2 сек) — только во время генерации.
+  // Монитор VRAM/GPU живёт в шапке страницы, поэтому опрашивается всегда:
+  // часто во время генерации, реже в простое (сервер кэширует nvidia-smi).
   useEffect(() => {
-    if (!busy) return;
-    const id = window.setInterval(() => { api.ttsHardware().then(setHw).catch(() => {}); }, 2000);
+    const id = window.setInterval(
+      () => { api.ttsHardware().then(setHw).catch(() => {}); },
+      busy ? 2000 : 8000
+    );
     return () => window.clearInterval(id);
   }, [busy]);
+
+  // Границы диапазона всегда валидны для текущего списка: после пересборки
+  // чанков «с/по» подрезаются до #1..#N (и to = N, если ещё не задан).
+  useEffect(() => {
+    const n = chunks.length;
+    setBatchFrom((f) => (n ? Math.min(Math.max(1, f), n) : 1));
+    setBatchTo((t) => (n ? (t >= 1 ? Math.min(t, n) : n) : 0));
+  }, [chunks]);
 
   /* ------------------------- Импорт книги ------------------------- */
 
@@ -118,6 +263,19 @@ export default function AudiobookTTSPage() {
       }
       setChunks([]); // пересобираются вручную кнопкой или при генерации
     } catch { /* счётчик чанков покажет пустоту */ }
+  };
+
+  // Сброс книги: чистим структуру, текст и батчи, оставляя движок/референс/
+  // уже сгенерированный файл — чтобы можно было сразу загрузить другую книгу.
+  const resetBook = () => {
+    setBook(null);
+    setRawText("");
+    setChunks([]);
+    setChapterIdx(0);
+    setOnlyRange(false);
+    setBatchFrom(1);
+    setBatchTo(0);
+    setCenterTab("book");
   };
 
   /* ------------------------- Референс ------------------------- */
@@ -221,7 +379,12 @@ export default function AudiobookTTSPage() {
 
   const generate = async () => {
     if (!refFile) return;
-    const useChunks = chunks.length ? chunks : undefined;
+    // «Только диапазон»: рендерим лишь выбранные батчи #from..#to, иначе — весь
+    // текст целиком (сервер сам нарежет его на чанки).
+    const scoped = chunks.length && onlyRange && rangeCount > 0
+      ? chunks.slice(batchFrom - 1, batchTo)
+      : chunks;
+    const useChunks = scoped.length ? scoped : undefined;
     try {
       const j = await api.ttsStart({
         refFile, engine, chunks: useChunks, text: useChunks ? undefined : rawText,
@@ -263,64 +426,11 @@ export default function AudiobookTTSPage() {
     } catch { /* уже показано в UI */ }
   };
 
-  /* ------------------------- Подкомпоненты ------------------------- */
-
-  const Accordion = ({ id, title, children }: { id: string; title: string; children: React.ReactNode }) => (
-    <div className="ab-acc">
-      <button className="ab-acc-head" onClick={() => setOpenAcc((o) => ({ ...o, [id]: !o[id] }))}>
-        {openAcc[id] ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-        <span>{title}</span>
-      </button>
-      {openAcc[id] && <div className="ab-acc-body">{children}</div>}
-    </div>
-  );
-
-  // Slider/Select/Toggle Pro-панели; Smart Express блокирует ручные значения.
-  const ProSlider = ({ p, label, tip, opt, min, max, step, fmt }: {
-    p: string; label: string; tip: string; opt?: string;
-    min: number; max: number; step: number; fmt?: (v: number) => string;
-  }) => (
-    <ParamField label={`${label} — ${fmt ? fmt(Number(params[p])) : params[p]}`} tooltip={tip} optimal={opt}>
-      <input type="range" min={min} max={max} step={step} value={Number(params[p])} disabled={params.mode === "express"}
-        onChange={(e) => setP(p, parseFloat(e.target.value))} />
-    </ParamField>
-  );
-
-  const ProSelect = ({ p, label, tip, opt, options }: {
-    p: string; label: string; tip: string; opt?: string;
-    options: { value: string; label: string }[];
-  }) => (
-    <ParamField label={label} tooltip={tip} optimal={opt}>
-      <Select value={String(params[p])} onChange={(e) => setP(p, e.target.value)} options={options} />
-    </ParamField>
-  );
-
-  const ProToggle = ({ p, label, tip }: { p: string; label: string; tip: string }) => (
-    <ParamField label={label} tooltip={tip}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <Checkbox checked={!!params[p]} onClick={() => setP(p, !params[p])} />
-        <span className="muted-sm">{params[p] ? "On" : "Off"}</span>
-      </div>
-    </ParamField>
-  );
-
-  const vramPct = hw?.gpu?.vramTotalGb ? Math.min(100, Math.round((hw.gpu.vramUsedGb / hw.gpu.vramTotalGb) * 100)) : 0;
-
-  /* ------------------------- Тулбар ------------------------- */
-
-  usePageToolbar(
-    <>
-      <Field label={t("ab.expressMode")} w={160}>
-        <Checkbox checked={params.mode === "express"} onClick={() => {
-          const next = params.mode === "express" ? "pro" : "express";
-          if (next === "express") {
-            setParams((p) => ({ ...p, mode: "express", ...(optimal.precision ? { precision: optimal.precision } : {}) }));
-          } else setParams((p) => ({ ...p, mode: next }));
-        }} />
-      </Field>
-    </>,
-    [params.mode, optimal.precision, t]
-  );
+  /* --- Подкомпоненты Pro-панели ---
+     Accordion / ProSlider / ProSelect / ProToggle объявлены на уровне модуля
+     (см. начало файла) и получают данные пропсами через `proPanel`. Если
+     объявить их здесь, на каждый ре-рендер React будет пересоздавать DOM-узлы
+     и перетаскивание ползунка будет обрываться на первом делении. */
 
   return (
     <div className="page page-ab">
@@ -346,16 +456,17 @@ export default function AudiobookTTSPage() {
             {p.builtin && <Badge tone="teal">SYS</Badge>}
           </Glass>
         ))}
-        <Glass className="ab-preset">
+        <Glass className="ab-preset ab-preset-save">
           <input className="text-input" placeholder={t("ab.presetName")} value={presetName}
-            onChange={(e) => setPresetName(e.target.value)} style={{ width: 130 }} />
+            onChange={(e) => setPresetName(e.target.value)} style={{ flex: 1, minWidth: 0 }} />
           <IconBtn icon={Save} title={t("ab.savePreset")} onClick={savePreset} />
         </Glass>
       </div>
 
+      {/* --- Основная зона: панель управления слева, рабочая область справа --- */}
       <div className="ab-layout">
-        {/* --- Левая панель --- */}
-        <div className="ab-col" id="ab-left">
+        {/* Левая колонка (~340px): книга, движок, референс, железо */}
+        <div className="ab-col ab-left">
           <Glass className="split-pane">
             <div className="field-label">{t("ab.bookFile")}</div>
             <div className="dropzone" onClick={() => bookInputRef.current?.click()}
@@ -375,6 +486,17 @@ export default function AudiobookTTSPage() {
                   <span className="muted-sm">epub · fb2 · pdf · mobi · rtf · txt</span></>
               )}
             </div>
+
+            {/* Сброс книги: чистим главы/текст/батчи, чтобы сразу загрузить
+                другую книгу, не перезагружая страницу. */}
+            {book && (
+              <div className="ab-book-tools">
+                <Btn variant="secondary" icon={RotateCcw} onClick={resetBook} title={t("ab.resetBook")}>
+                  {t("ab.resetBook")}
+                </Btn>
+                <span className="muted-sm">{t("ab.resetBookHint")}</span>
+              </div>
+            )}
 
             <div className="field-label" style={{ marginTop: 10 }}>{t("ab.engine")}</div>
             <div className="ab-engines">
@@ -399,7 +521,7 @@ export default function AudiobookTTSPage() {
               <input className="text-input" value={profileName} onChange={(e) => setProfileName(e.target.value)} style={{ flex: 1 }} />
               <IconBtn icon={Save} title={t("ab.saveProfile")} onClick={saveProfile} />
             </div>
-            {sampleUrl && <audio src={sampleUrl} controls style={{ width: "100%", marginTop: 6 }} />}
+            {sampleUrl && <AudioPlayer src={sampleUrl} compact className="ab-ref-player" />}
             {profiles.length > 0 && (
               <div className="task-list" style={{ marginTop: 8 }}>
                 {profiles.map((p) => (
@@ -419,26 +541,136 @@ export default function AudiobookTTSPage() {
             )}
           </Glass>
 
-          {/* VRAM / GPU монитор — компактная строка */}
-          <Glass className="split-pane ab-vram">
-            <div className="ab-vram-head">
-              <Cpu size={13} />
-              <span className="muted-sm" style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {hw?.gpu?.found ? `${hw.gpu.name} · ${t("ab.vramUsage", { used: hw.gpu.vramUsedGb.toFixed(1), total: hw.gpu.vramTotalGb.toFixed(1) })} · CUDA ${hw.gpu.utilPct}%`
-                  : t("ab.gpuNotFound")}
-              </span>
-              {hw?.optimal?.precision && <span className="ab-tab-badge">{String(hw.optimal.precision).toUpperCase()}</span>}
-            </div>
-            {hw?.gpu?.found && <ProgressBar value={vramPct} />}
-            {job?.vram && job.vram.usedGb > (job.vram.totalGb || 8) * 0.9 && (
-              <div className="muted-sm" style={{ color: "var(--coral)" }}>⚠ {t("ab.vramSpike")} · {job.vram.usedGb.toFixed(1)} GB</div>
-            )}
-          </Glass>
         </div>
 
         {/* --- Центр: вкладки «Структура книги» / «Batch-редактор» --- */}
         <div className="ab-col ab-center">
-          <Glass className="split-pane ab-center-tabs">
+          {/* --- Pro-настройки: секция в потоке страницы, глобальный тумблер + под-аккордеоны --- */}
+          <Glass className="split-pane ab-pro">
+            <div className="ab-pro-head">
+              <div className="ab-pro-head-text">
+                <div className="field-label" style={{ marginBottom: 2 }}>{t("ab.proSettings")}</div>
+                {!proOpen && (
+                  <div className="muted-sm">{t("ab.expressNote", { precision: String(optimal.precision || "float16").toUpperCase() })}</div>
+                )}
+              </div>
+              <div className="ab-pro-head-actions">
+                {/* Smart Express переехал из верхнего тулбара в шапку Pro-настроек:
+                    его место в тулбаре занял монитор VRAM/GPU. */}
+                <div className="ab-express-toggle">
+                  <Checkbox checked={params.mode === "express"} onClick={toggleExpress} />
+                  <span className="muted-sm" onClick={toggleExpress} title={t("ab.expressMode")}>{t("ab.expressMode")}</span>
+                </div>
+                <Btn icon={proOpen ? ChevronUp : ChevronDown} onClick={() => setProOpen((v) => !v)}>
+                  {proOpen ? t("ab.hidePro") : t("ab.showPro")}
+                </Btn>
+              </div>
+            </div>
+            {/* Глобальное раскрытие: grid-rows 0fr→1fr, плавная анимация высоты */}
+            <div className={`ab-pro-collapse ${proOpen ? "is-open" : ""}`}>
+              <div className="ab-pro-inner">
+                <div className="ab-pro-accs">
+                  <Accordion {...proPanel} id="vram" title={t("ab.accVram")}>
+                    <ProSelect {...proPanel} p="precision" label={t("ab.precision")} tip={t("ab.tipPrecision")} opt={optimal.precision === params.precision ? t("ab.optimalForVram", { gb: String(optimal.vram || 8) }) : undefined}
+                      options={[{ value: "float16", label: "FP16" }, { value: "bfloat16", label: "BF16" }, { value: "float32", label: "FP32" }, { value: "int8", label: "INT8" }]} />
+                    <ProSelect {...proPanel} p="attention" label={t("ab.attention")} tip={t("ab.tipAttention")} opt={params.attention === "sdpa" ? t("ab.optimal") : undefined}
+                      options={[{ value: "flash", label: "FlashAttention-2" }, { value: "sdpa", label: "Torch SDPA" }, { value: "eager", label: "Eager" }]} />
+                    <ProToggle {...proPanel} p="gcEveryChunks" label={t("ab.vramGc")} tip={t("ab.tipVramGc")} />
+                  </Accordion>
+
+                  {engine === "f5" && (
+                    <Accordion {...proPanel} id="f5" title={t("ab.accF5")}>
+                      <ProSlider {...proPanel} p="nfe" label={t("ab.nfe")} tip={t("ab.tipNfe")} opt={t("ab.optimalNfe")} min={16} max={100} step={2} />
+                      <ProSlider {...proPanel} p="cfg" label={t("ab.cfg")} tip={t("ab.tipCfg")} opt={t("ab.optimalCfg")} min={1} max={10} step={0.1} fmt={(v) => v.toFixed(1)} />
+                      <ProSelect {...proPanel} p="solver" label="ODE Solver" tip={t("ab.tipSolver")} opt={params.solver === "euler" ? t("ab.optimal") : undefined}
+                        options={[{ value: "euler", label: "Euler" }, { value: "midpoint", label: "Midpoint" }, { value: "rk4", label: "RK4" }]} />
+                      <ProSlider {...proPanel} p="exaggeration" label={t("ab.exaggeration")} tip={t("ab.tipExaggeration")} min={0.5} max={2} step={0.05} fmt={(v) => v.toFixed(2)} />
+                    </Accordion>
+                  )}
+
+                  {engine === "xtts" && (
+                    <Accordion {...proPanel} id="xtts" title={t("ab.accXtts")}>
+                      <ProSlider {...proPanel} p="temperature" label={t("ab.temperature")} tip={t("ab.tipTemperature")} opt={t("ab.optimalTemp")} min={0.01} max={1.5} step={0.01} fmt={(v) => v.toFixed(2)} />
+                      <ProSlider {...proPanel} p="repetitionPenalty" label={t("ab.repPenalty")} tip={t("ab.tipRepPenalty")} opt={t("ab.optimalRep")} min={1} max={15} step={0.1} fmt={(v) => v.toFixed(1)} />
+                      <ProSlider {...proPanel} p="topK" label="Top-K" tip={t("ab.tipTopK")} min={1} max={100} step={1} />
+                      <ProSlider {...proPanel} p="topP" label="Top-P" tip={t("ab.tipTopP")} opt={t("ab.optimalTopP")} min={0.05} max={1} step={0.05} fmt={(v) => v.toFixed(2)} />
+                    </Accordion>
+                  )}
+
+                  <Accordion {...proPanel} id="nlp" title={t("ab.accNlp")}>
+                    <ProToggle {...proPanel} p="expandNumbers" label={t("ab.expandNumbers")} tip={t("ab.tipExpandNumbers")} />
+                    <ProToggle {...proPanel} p="yoficate" label={t("ab.yoficate")} tip={t("ab.tipYoficate")} />
+                    <ProToggle {...proPanel} p="markStress" label={t("ab.markStress")} tip={t("ab.tipMarkStress")} />
+                  </Accordion>
+
+                  <Accordion {...proPanel} id="post" title={t("ab.accPost")}>
+                    <ProSlider {...proPanel} p="crossFadeMs" label={t("ab.crossFade")} tip={t("ab.tipCrossFade")} opt={t("ab.optimalCrossFade")} min={0} max={500} step={10} fmt={(v) => `${v} ms`} />
+                    <ProSlider {...proPanel} p="sentencePauseMs" label={t("ab.sentencePause")} tip={t("ab.tipSentencePause")} opt="400 ms" min={100} max={1500} step={50} fmt={(v) => `${v} ms`} />
+                    <ProSlider {...proPanel} p="paragraphPauseMs" label={t("ab.paragraphPause")} tip={t("ab.tipParagraphPause")} opt="1200 ms" min={500} max={3000} step={100} fmt={(v) => `${v} ms`} />
+                    <ProSlider {...proPanel} p="loudnessTarget" label={t("ab.loudness")} tip={t("ab.tipLoudness")} opt="-16 LUFS" min={-24} max={-10} step={1} fmt={(v) => `${v} LUFS`} />
+                    <ProSlider {...proPanel} p="speed" label={t("ab.speed")} tip={t("ab.tipSpeed")} opt="1.0x" min={0.5} max={2} step={0.05} fmt={(v) => `${v.toFixed(2)}x`} />
+                    <ProSelect {...proPanel} p="format" label={t("ab.format")} tip={t("ab.tipFormat")} options={[{ value: "m4b", label: "M4B (главы)" }, { value: "mp3", label: "MP3 (главы)" }, { value: "wav", label: "WAV" }]} />
+                  </Accordion>
+                </div>
+
+                <div className="ab-pro-lang">
+                  <div className="field-label">{t("ab.language")}</div>
+                  <Select value={String(params.language)} onChange={(e) => setP("language", e.target.value)} options={TTS_LANGS} />
+                </div>
+              </div>
+            </div>
+          </Glass>
+
+          {/* --- Плеер + генерация: одна строка. Плеер занимает всё свободное
+              место (flex: 20), кнопка генерации компактная справа. --- */}
+          <Glass className="ab-run-bar">
+            <div className="ab-run-player">
+              <AudioPlayer src={resultUrl || undefined} />
+              {resultUrl && (
+                <div className="ab-run-actions"
+                  onContextMenu={(e) => menu.open(e, [
+                    { label: t("ab.downloadResult"), icon: Download, onClick: downloadResult },
+                    { label: t("ab.revealInExplorer"), icon: FolderOpen, onClick: () => job && api.ttsReveal(job.outFile || "").catch(() => {}) },
+                    { label: t("ab.reRender"), icon: RefreshCw, onClick: generate },
+                    { separator: true },
+                    { label: t("ctx.copyName"), icon: Copy, onClick: () => copyToClipboard(resultName) },
+                  ] as any)}>
+                  <IconBtn icon={Download} title={t("ab.downloadResult")} onClick={downloadResult} />
+                  <IconBtn icon={FolderOpen} title={t("ab.revealInExplorer")} onClick={() => job && api.ttsReveal(job.outFile || "").catch(() => {})} />
+                  <IconBtn icon={RefreshCw} title={t("ab.reRender")} onClick={generate} />
+                </div>
+              )}
+            </div>
+            <Btn variant="primary" icon={Wand2}
+              disabled={!refFile || busy || (!rawText.trim() && !chunks.length)} onClick={generate}>
+              {busy ? t("ab.generating") : t("ab.generate")}
+            </Btn>
+            {onlyRange && rangeCount > 0 && (
+              <span className="ab-tab-badge ab-tab-badge-amber">
+                {t("ab.rangeBadge", { from: batchFrom, to: batchTo })}
+              </span>
+            )}
+            {busy && (
+              <div className="ab-run-status">
+                <div className="muted-sm" style={{ marginBottom: 6 }}>
+                  {t("ab.chunkProgress", { i: (job?.chunkIndex || 0) + 1, n: job?.chunksTotal || 0 })}
+                </div>
+                <ProgressBar value={job?.progress || 0} />
+              </div>
+            )}
+            {job?.stage === "error" && (
+              <div className="ab-run-status muted-sm" style={{ color: "var(--coral)" }}>
+                {t("ab.renderError")}: {job.error}
+              </div>
+            )}
+            {job?.done && (
+              <span className="ab-tab-badge">{t("ab.statusDone")} · {(job.outSize / 1048576).toFixed(1)} MB</span>
+            )}
+          </Glass>
+
+          <Glass className="split-pane ab-workspace">
+            {/* Вкладки и кнопка сворачивания остаются на виду, даже когда
+                список глав/батчей сложен. */}
             <div className="ab-tabs">
               <button className={`ab-tab ${centerTab === "book" ? "is-active" : ""}`} onClick={() => setCenterTab("book")}>
                 <FileText size={13} /> {t("ab.tabBook")}
@@ -446,179 +678,106 @@ export default function AudiobookTTSPage() {
               <button className={`ab-tab ${centerTab === "batch" ? "is-active" : ""}`} onClick={() => setCenterTab("batch")}>
                 <Layers size={13} /> {t("ab.tabBatch")} {chunks.length > 0 && <span className="ab-tab-count">{chunks.length}</span>}
               </button>
+              <IconBtn icon={wsIsOpen ? ChevronUp : ChevronDown}
+                title={wsIsOpen ? t("ab.collapse") : t("ab.expand")}
+                onClick={toggleWs} />
             </div>
 
-            {centerTab === "book" ? (
-              book ? (
-                <div className="ab-chapters">
-                  {book.chapters.map((ch: TtsBookChapter, i: number) => (
-                    <div key={i} className={`ab-chapter ${i === chapterIdx ? "is-active" : ""}`}
-                      onClick={() => setChapterIdx(i)}
-                      onContextMenu={(e) => menu.open(e, [
-                        { label: t("ctx.copyName"), icon: Copy, onClick: () => copyToClipboard(ch.title) },
-                      ])}>
-                      <b>{i + 1}. {ch.title}</b>
-                      <span className="muted-sm">{ch.text.length} {t("ab.charsUnit")}</span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <EmptyHint icon={BookOpen} text={t("ab.noBook")} />
-              )
-            ) : (
-              <div className="ab-batch">
-                <div className="ab-ref-row">
-                  <Btn icon={RefreshCw} onClick={rebuildChunks} disabled={chunksLoading}>
-                    {chunksLoading ? t("ab.rebuilding") : t("ab.rebuildChunks")}
-                  </Btn>
-                  <span className="muted-sm">
-                    {chunks.length > 0 ? t("ab.chunkHint", { n: chunks.length, limit: engine === "xtts" ? 220 : 380 }) : t("ab.batchEmpty")}
-                  </span>
-                </div>
-                <div className="ab-chunks">
-                  {chunks.map((c, i) => (
-                    c.pauseMs && !c.text ? (
-                      <div key={i} className="ab-chunk ab-chunk-pause" onContextMenu={(e) => menu.open(e, [{ separator: true }, { label: t("ctx.del"), icon: Trash2, danger: true, onClick: () => setChunks((cs) => cs.filter((_, k) => k !== i)) }])}>
-                        <Pause size={12} /> {t("ab.pauseMarker", { ms: c.pauseMs })}
-                      </div>
-                    ) : (
-                      <div key={i} className="ab-chunk"
+            <div className={`ab-acc-collapse ${wsIsOpen ? "is-open" : ""}`}>
+              <div className="ab-acc-body">
+
+              {centerTab === "book" ? (
+                book ? (
+                  <div className="ab-chapters">
+                    {book.chapters.map((ch: TtsBookChapter, i: number) => (
+                      <div key={i} className={`ab-chapter ${i === chapterIdx ? "is-active" : ""}`}
+                        onClick={() => setChapterIdx(i)}
                         onContextMenu={(e) => menu.open(e, [
-                          { label: t("ab.rerenderChunk"), icon: Wand2, onClick: () => setP("chunkLimit", params.chunkLimit) },
-                          { label: t("ab.splitChunk"), icon: SplitSquareHorizontal, onClick: () => splitChunk(i) },
-                          { label: t("ab.mergeChunk"), icon: Merge, onClick: () => mergeWithNext(i) },
-                          { label: t("ab.addPause"), icon: Pause, onClick: () => addPause(i) },
-                          { separator: true },
-                          { label: t("ab.exportChunkWav"), icon: Download, onClick: () => {} },
-                          { label: t("ctx.copy"), icon: Copy, onClick: () => copyToClipboard(c.text || "") },
-                        ] as any)}>
-                        <div className="ab-chunk-head">
-                          <span className="muted-sm">#{i + 1} · {c.text?.length || 0}</span>
-                          <div style={{ display: "flex", gap: 2 }}>
-                            <IconBtn icon={ArrowUp} size={11} title={t("ab.moveUp")} onClick={() => moveChunk(i, -1)} />
-                            <IconBtn icon={ArrowDown} size={11} title={t("ab.moveDown")} onClick={() => moveChunk(i, 1)} />
-                            <IconBtn icon={SplitSquareHorizontal} size={11} title={t("ab.splitChunk")} onClick={() => splitChunk(i)} />
-                            <IconBtn icon={Merge} size={11} title={t("ab.mergeChunk")} onClick={() => mergeWithNext(i)} />
-                            <IconBtn icon={Pause} size={11} title={t("ab.addPause")} onClick={() => addPause(i)} />
-                            <IconBtn icon={Trash2} size={11} title={t("ctx.del")} onClick={() => setChunks((cs) => cs.filter((_, k) => k !== i))} />
-                          </div>
-                        </div>
-                        <textarea className="ab-chunk-text" value={c.text || ""}
-                          onChange={(e) => editChunkText(i, e.target.value)} rows={2} />
+                          { label: t("ctx.copyName"), icon: Copy, onClick: () => copyToClipboard(ch.title) },
+                        ])}>
+                        <b>{i + 1}. {ch.title}</b>
+                        <span className="muted-sm">{ch.text.length} {t("ab.charsUnit")}</span>
                       </div>
-                    )
-                  ))}
+                    ))}
+                  </div>
+                ) : (
+                  <EmptyHint icon={BookOpen} text={t("ab.noBook")} />
+                )
+              ) : (
+                <div className="ab-batch">
+                  <div className="ab-ref-row">
+                    <Btn icon={RefreshCw} onClick={rebuildChunks} disabled={chunksLoading}>
+                      {chunksLoading ? t("ab.rebuilding") : t("ab.rebuildChunks")}
+                    </Btn>
+                    <span className="muted-sm">
+                      {chunks.length > 0 ? t("ab.chunkHint", { n: chunks.length, limit: engine === "xtts" ? 220 : 380 }) : t("ab.batchEmpty")}
+                    </span>
+                  </div>
+
+                  {/* Диапазон «с какого по какой батч»: массовые операции и,
+                      при включённой галочке, рендер только этой части книги. */}
+                  <div className="ab-range">
+                    <span className="field-label">{t("ab.batchRange")}</span>
+                    <input className="ab-range-num" type="number" min={1} max={Math.max(1, chunks.length)}
+                      value={batchFrom} onChange={(e) => setRangeFrom(Number(e.target.value))} />
+                    <span className="muted-sm">—</span>
+                    <input className="ab-range-num" type="number" min={1} max={Math.max(1, chunks.length)}
+                      value={batchTo} onChange={(e) => setRangeTo(Number(e.target.value))} />
+                    <span className="muted-sm">{t("ab.rangeInfo", { count: rangeCount, chars: rangeChars })}</span>
+                    <div className="ab-range-actions">
+                      <Checkbox checked={onlyRange} onClick={() => setOnlyRange((v) => !v)} />
+                      <span className="muted-sm ab-range-only" onClick={() => setOnlyRange((v) => !v)}>
+                        {t("ab.onlyRange")}
+                      </span>
+                      <IconBtn icon={Trash2} title={t("ab.deleteRange")} onClick={deleteRange} disabled={!chunks.length} />
+                    </div>
+                  </div>
+
+                  <div className="ab-chunks">
+                    {chunks.map((c, i) => (
+                      c.pauseMs && !c.text ? (
+                        <div key={i} className={`ab-chunk ab-chunk-pause ${i + 1 >= batchFrom && i + 1 <= batchTo ? "is-in-range" : ""}`} onContextMenu={(e) => menu.open(e, [{ separator: true }, { label: t("ctx.del"), icon: Trash2, danger: true, onClick: () => setChunks((cs) => cs.filter((_, k) => k !== i)) }])}>
+                          <Pause size={12} /> {t("ab.pauseMarker", { ms: c.pauseMs })}
+                        </div>
+                      ) : (
+                        <div key={i} className={`ab-chunk ${i + 1 >= batchFrom && i + 1 <= batchTo ? "is-in-range" : ""}`}
+                          onContextMenu={(e) => menu.open(e, [
+                            { label: t("ab.rerenderChunk"), icon: Wand2, onClick: () => setP("chunkLimit", params.chunkLimit) },
+                            { label: t("ab.splitChunk"), icon: SplitSquareHorizontal, onClick: () => splitChunk(i) },
+                            { label: t("ab.mergeChunk"), icon: Merge, onClick: () => mergeWithNext(i) },
+                            { label: t("ab.addPause"), icon: Pause, onClick: () => addPause(i) },
+                            { separator: true },
+                            { label: t("ab.rangeStart"), icon: ArrowUp, onClick: () => setRangeFrom(i + 1) },
+                            { label: t("ab.rangeEnd"), icon: ArrowDown, onClick: () => setRangeTo(i + 1) },
+                            { separator: true },
+                            { label: t("ab.exportChunkWav"), icon: Download, onClick: () => {} },
+                            { label: t("ctx.copy"), icon: Copy, onClick: () => copyToClipboard(c.text || "") },
+                          ] as any)}>
+                          <div className="ab-chunk-head">
+                            <span className="muted-sm">#{i + 1} · {c.text?.length || 0}</span>
+                            <div style={{ display: "flex", gap: 2 }}>
+                              <IconBtn icon={ArrowUp} size={11} title={t("ab.moveUp")} onClick={() => moveChunk(i, -1)} />
+                              <IconBtn icon={ArrowDown} size={11} title={t("ab.moveDown")} onClick={() => moveChunk(i, 1)} />
+                              <IconBtn icon={SplitSquareHorizontal} size={11} title={t("ab.splitChunk")} onClick={() => splitChunk(i)} />
+                              <IconBtn icon={Merge} size={11} title={t("ab.mergeChunk")} onClick={() => mergeWithNext(i)} />
+                              <IconBtn icon={Pause} size={11} title={t("ab.addPause")} onClick={() => addPause(i)} />
+                              <IconBtn icon={Trash2} size={11} title={t("ctx.del")} onClick={() => setChunks((cs) => cs.filter((_, k) => k !== i))} />
+                            </div>
+                          </div>
+                          <textarea className="ab-chunk-text" value={c.text || ""}
+                            onChange={(e) => editChunkText(i, e.target.value)} rows={2} />
+                        </div>
+                      )
+                    ))}
+                  </div>
                 </div>
+              )}
               </div>
-            )}
-          </Glass>
-        </div>
-
-        {/* --- Правая панель: Pro-настройки (аккордеон) --- */}
-        <div className="ab-col ab-right">
-          <Glass className="split-pane">
-            <div className="field-label" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              {t("ab.proSettings")}
-              <Btn icon={proOpen ? ChevronUp : ChevronDown} onClick={() => setProOpen((v) => !v)}>
-                {proOpen ? t("ab.hidePro") : t("ab.showPro")}
-              </Btn>
             </div>
-            {!proOpen && <div className="muted-sm">{t("ab.expressNote", { precision: String(optimal.precision || "float16").toUpperCase() })}</div>}
-            {proOpen && (
-              <>
-                <Accordion id="vram" title={t("ab.accVram")}>
-                  <ProSelect p="precision" label={t("ab.precision")} tip={t("ab.tipPrecision")} opt={optimal.precision === params.precision ? t("ab.optimalForVram", { gb: String(optimal.vram || 8) }) : undefined}
-                    options={[{ value: "float16", label: "FP16" }, { value: "bfloat16", label: "BF16" }, { value: "float32", label: "FP32" }, { value: "int8", label: "INT8" }]} />
-                  <ProSelect p="attention" label={t("ab.attention")} tip={t("ab.tipAttention")} opt={params.attention === "sdpa" ? t("ab.optimal") : undefined}
-                    options={[{ value: "flash", label: "FlashAttention-2" }, { value: "sdpa", label: "Torch SDPA" }, { value: "eager", label: "Eager" }]} />
-                  <ProToggle p="gcEveryChunks" label={t("ab.vramGc")} tip={t("ab.tipVramGc")} />
-                </Accordion>
-
-                {engine === "f5" && (
-                  <Accordion id="f5" title={t("ab.accF5")}>
-                    <ProSlider p="nfe" label={t("ab.nfe")} tip={t("ab.tipNfe")} opt={t("ab.optimalNfe")} min={16} max={100} step={2} />
-                    <ProSlider p="cfg" label={t("ab.cfg")} tip={t("ab.tipCfg")} opt={t("ab.optimalCfg")} min={1} max={10} step={0.1} fmt={(v) => v.toFixed(1)} />
-                    <ProSelect p="solver" label="ODE Solver" tip={t("ab.tipSolver")} opt={params.solver === "euler" ? t("ab.optimal") : undefined}
-                      options={[{ value: "euler", label: "Euler" }, { value: "midpoint", label: "Midpoint" }, { value: "rk4", label: "RK4" }]} />
-                    <ProSlider p="exaggeration" label={t("ab.exaggeration")} tip={t("ab.tipExaggeration")} min={0.5} max={2} step={0.05} fmt={(v) => v.toFixed(2)} />
-                  </Accordion>
-                )}
-
-                {engine === "xtts" && (
-                  <Accordion id="xtts" title={t("ab.accXtts")}>
-                    <ProSlider p="temperature" label={t("ab.temperature")} tip={t("ab.tipTemperature")} opt={t("ab.optimalTemp")} min={0.01} max={1.5} step={0.01} fmt={(v) => v.toFixed(2)} />
-                    <ProSlider p="repetitionPenalty" label={t("ab.repPenalty")} tip={t("ab.tipRepPenalty")} opt={t("ab.optimalRep")} min={1} max={15} step={0.1} fmt={(v) => v.toFixed(1)} />
-                    <ProSlider p="topK" label="Top-K" tip={t("ab.tipTopK")} min={1} max={100} step={1} />
-                    <ProSlider p="topP" label="Top-P" tip={t("ab.tipTopP")} opt={t("ab.optimalTopP")} min={0.05} max={1} step={0.05} fmt={(v) => v.toFixed(2)} />
-                  </Accordion>
-                )}
-
-                <Accordion id="nlp" title={t("ab.accNlp")}>
-                  <ProToggle p="expandNumbers" label={t("ab.expandNumbers")} tip={t("ab.tipExpandNumbers")} />
-                  <ProToggle p="yoficate" label={t("ab.yoficate")} tip={t("ab.tipYoficate")} />
-                  <ProToggle p="markStress" label={t("ab.markStress")} tip={t("ab.tipMarkStress")} />
-                </Accordion>
-
-                <Accordion id="post" title={t("ab.accPost")}>
-                  <ProSlider p="crossFadeMs" label={t("ab.crossFade")} tip={t("ab.tipCrossFade")} opt={t("ab.optimalCrossFade")} min={0} max={500} step={10} fmt={(v) => `${v} ms`} />
-                  <ProSlider p="sentencePauseMs" label={t("ab.sentencePause")} tip={t("ab.tipSentencePause")} opt="400 ms" min={100} max={1500} step={50} fmt={(v) => `${v} ms`} />
-                  <ProSlider p="paragraphPauseMs" label={t("ab.paragraphPause")} tip={t("ab.tipParagraphPause")} opt="1200 ms" min={500} max={3000} step={100} fmt={(v) => `${v} ms`} />
-                  <ProSlider p="loudnessTarget" label={t("ab.loudness")} tip={t("ab.tipLoudness")} opt="-16 LUFS" min={-24} max={-10} step={1} fmt={(v) => `${v} LUFS`} />
-                  <ProSlider p="speed" label={t("ab.speed")} tip={t("ab.tipSpeed")} opt="1.0x" min={0.5} max={2} step={0.05} fmt={(v) => `${v.toFixed(2)}x`} />
-                  <ProSelect p="format" label={t("ab.format")} tip={t("ab.tipFormat")} options={[{ value: "m4b", label: "M4B (главы)" }, { value: "mp3", label: "MP3 (главы)" }, { value: "wav", label: "WAV" }]} />
-                </Accordion>
-              </>
-            )}
-
-            <div className="field-label" style={{ marginTop: 10 }}>{t("ab.language")}</div>
-            <Select value={String(params.language)} onChange={(e) => setP("language", e.target.value)} options={TTS_LANGS} />
           </Glass>
         </div>
       </div>
 
-      {/* Липкая панель генерации: всегда видна при прокрутке, «висит» над плеером */}
-      <Glass className="ab-generate-bar">
-        <Btn variant="primary" icon={Wand2} style={{ minWidth: 210, flexShrink: 0 }}
-          disabled={!refFile || busy || (!rawText.trim() && !chunks.length)} onClick={generate}>
-          {busy ? t("ab.generating") : t("ab.generate")}
-        </Btn>
-        {busy && (
-          <div style={{ flex: 1, minWidth: 180 }}>
-            <div className="muted-sm" style={{ marginBottom: 6 }}>
-              {t("ab.chunkProgress", { i: (job?.chunkIndex || 0) + 1, n: job?.chunksTotal || 0 })}
-            </div>
-            <ProgressBar value={job?.progress || 0} />
-          </div>
-        )}
-        {job?.stage === "error" && (
-          <div className="muted-sm" style={{ color: "var(--coral)", flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {t("ab.renderError")}: {job.error}
-          </div>
-        )}
-        {job?.done && (
-          <span className="ab-tab-badge">{t("ab.statusDone")} · {(job.outSize / 1048576).toFixed(1)} MB</span>
-        )}
-      </Glass>
-
-      {/* --- Нижний плеер аудиокниги --- */}
-      <Glass className="ab-player">
-        <ListMusic size={16} />
-        <audio src={resultUrl || undefined} controls style={{ flex: 1 }} />
-        {resultUrl && (
-          <div style={{ display: "flex", gap: 6 }}
-            onContextMenu={(e) => menu.open(e, [
-              { label: t("ab.downloadResult"), icon: Download, onClick: downloadResult },
-              { label: t("ab.revealInExplorer"), icon: FolderOpen, onClick: () => job && api.ttsReveal(job.outFile || "").catch(() => {}) },
-              { label: t("ab.reRender"), icon: RefreshCw, onClick: generate },
-              { separator: true },
-              { label: t("ctx.copyName"), icon: Copy, onClick: () => copyToClipboard(resultName) },
-            ] as any)}>
-            <Btn variant="primary" icon={Download} onClick={downloadResult}>{t("ab.downloadResult")}</Btn>
-            <Btn icon={FolderOpen} onClick={() => job && api.ttsReveal(job.outFile || "").catch(() => {})}>{t("ab.revealInExplorer")}</Btn>
-            <Btn icon={RefreshCw} onClick={generate}>{t("ab.reRender")}</Btn>
-          </div>
-        )}
-      </Glass>
     </div>
   );
 }

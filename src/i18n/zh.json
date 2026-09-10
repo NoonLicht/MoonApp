@@ -590,6 +590,16 @@
     "collapse": "折叠",
     "expand": "展开"
   },
+  "player": {
+    "play": "播放",
+    "pause": "暂停",
+    "back5": "后退 5 秒",
+    "back10": "后退 10 秒",
+    "forward5": "前进 5 秒",
+    "forward10": "前进 10 秒",
+    "speed": "播放速度",
+    "seek": "播放位置"
+  },
   "_meta": {
     "code": "zh",
     "native": "中文"
@@ -757,7 +767,7 @@
   },
   "ab": {
     "eyebrow": "Аудиокниги · Клонирование голоса",
-    "title": "Студия озвучивания книг",
+    "title": "有声书朗读",
     "statusBusy": "Рендер {i}/{n}",
     "statusDone": "Готово",
     "statusIdle": "Ожидание",
@@ -858,6 +868,17 @@
     "tipParagraphPause": "Тишина между абзацами и разделами книги.",
     "tipLoudness": "Единый уровень громкости по всем главам — стандарт аудиокниг (Audible/ЛитРес): −16 LUFS.",
     "tipSpeed": "Темп речи без изменения высоты тона.",
-    "tipFormat": "M4B/MP3 сохраняют маркеры глав; WAV — без сжатия, очень большие файлы."
+    "tipFormat": "M4B/MP3 сохраняют маркеры глав; WAV — без сжатия, очень большие файлы.",
+    "collapse": "收起",
+    "expand": "展开",
+    "resetBook": "重置书籍",
+    "resetBookHint": "章节、文本和分块将被清空",
+    "batchRange": "批次范围",
+    "rangeInfo": "{count} 个分块 · {chars} 字符",
+    "onlyRange": "仅选定范围",
+    "deleteRange": "删除范围",
+    "rangeStart": "范围起点",
+    "rangeEnd": "范围终点",
+    "rangeBadge": "{from}–{to} 范围"
   }
 }

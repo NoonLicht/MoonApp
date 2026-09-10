@@ -217,120 +217,171 @@
 /* �������� �����������: flex + ���������� ������� (.glass ��� �� flex). */
 .cmp-card{ display:flex; padding:14px 16px; box-sizing:border-box; min-width:0; }
 
-
-
-
-
 /* ===== Audiobook TTS Studio ===== */
+/* Layout rules: everything lives in normal document flow inside the page
+   scroll container (.page-ab). No position:fixed, no sticky overlays, no
+   viewport-height hacks. Sections stack: header -> presets -> controls +
+   workspace -> pro settings -> generate -> player. */
 
-/* �������: ����� 2 ������� �� ��� ������ ��������, � ���������. */
-.ab-presets { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 16px; }
-.ab-preset { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-radius: 10px; cursor: pointer; font-size: 12.5px; width: 100%; min-width: 0; box-sizing: border-box; }
+/* Page scroll container: theme .page has overflow:hidden, so the studio page
+   scrolls inside its own box (standard page scrolling, no floating bars). */
+.page-ab { overflow-y: auto; overflow-x: hidden; scroll-behavior: smooth; padding: 2px; }
+
+/* Cards inside flex columns keep their natural height (ui/notes css give
+   .split-pane flex:1, which would stretch them artificially). */
+.page-ab .ab-col .split-pane { flex: 0 0 auto; }
+
+/* Presets: responsive card grid - 2 columns on wide screens, collapses
+   gracefully to fewer columns on narrow windows. */
+.ab-presets { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
+.ab-preset { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-radius: 10px; cursor: pointer; font-size: 12.5px; width: 100%; min-width: 0; box-sizing: border-box; transition: background-color .15s ease, border-color .15s ease; }
+.ab-preset:hover { background: var(--glass-strong); }
+.ab-preset-save { cursor: default; }
+.ab-preset-save:hover { background: var(--glass); }
+.ab-preset-save .text-input { flex: 1; min-width: 0; }
 .ab-preset-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; }
 
-/* ��� �������: �����+VRAM / ���������+����� / ���������. */
-.ab-layout { display: grid; grid-template-columns: 300px minmax(0, 1fr) 330px; gap: 16px; align-items: start; }
+/* Main split layout: control panel (fixed ~340px) + workspace (fluid). */
+.ab-layout { display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: 16px; align-items: start; }
 .ab-col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
-@media (max-width: 1400px) { .ab-layout { grid-template-columns: 270px minmax(0, 1fr) 300px; } }
+.ab-left, .ab-center { min-width: 0; }
 
-.ab-center { min-width: 0; }
-.ab-right { position: sticky; top: 12px; }
+/* Левая колонка: фиксированная высота (≈ высота видимой области страницы).
+   Если содержимое не помещается — прокручивается ВНУТРИ колонки, а не
+   растягивает страницу. sticky держит колонку на месте при скролле центра. */
+.ab-left {
+  position: sticky;
+  top: 0;
+  height: calc(100vh - 196px);
+  min-height: 320px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  padding-right: 8px;
+}
+.ab-left::-webkit-scrollbar { width: 8px; display: block; }
+.ab-left::-webkit-scrollbar-track { background: var(--track); border-radius: 999px; }
+.ab-left::-webkit-scrollbar-thumb { background: var(--glass-border); border-radius: 999px; }
+.ab-left::-webkit-scrollbar-thumb:hover { background: var(--text-tertiary); }
 
+/* Engine selection cards. */
 .ab-engines { display: flex; flex-direction: column; gap: 6px; }
-.ab-engine { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,.07); background: var(--card-bg, rgba(255,255,255,.03)); color: inherit; cursor: pointer; text-align: left; }
-.ab-engine.is-active { border-color: var(--accent, #eab308); box-shadow: 0 0 0 1px var(--accent, #eab308) inset; }
-.ab-ref-row { display: flex; gap: 6px; align-items: center; }
+.ab-engine { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,.07); background: var(--track); color: inherit; cursor: pointer; text-align: left; transition: border-color .15s ease, background-color .15s ease; }
+.ab-engine:hover { border-color: rgba(255,255,255,.18); }
+.ab-engine.is-active { border-color: var(--amber, #eab308); box-shadow: 0 0 0 1px var(--amber, #eab308) inset; }
+.ab-ref-row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
 
-.ab-tabs { display: flex; gap: 4px; margin-bottom: 8px; }
-.ab-tab { display: flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 8px; border: none; background: transparent; color: var(--text-secondary); cursor: pointer; font-size: 12.5px; }
-.ab-tab.is-active { background: var(--accent-soft, rgba(234,179,8,.12)); color: var(--text-primary); }
+/* (Монитор VRAM/GPU был в левой колонке, затем в шапке — удалён: телеметрия
+   железа живёт на странице «Монитор».) */
+
+/* Workspace tabs. */
+.ab-tabs { display: flex; align-items: center; gap: 4px; margin-bottom: 8px; }
+.ab-tabs .icon-btn { margin-left: auto; }
+.ab-tab { display: flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 8px; border: none; background: transparent; color: var(--text-secondary); cursor: pointer; font-size: 12.5px; transition: background-color .15s ease, color .15s ease; }
+.ab-tab:hover { background: var(--track); color: var(--text-primary); }
+.ab-tab.is-active { background: var(--amber-soft, rgba(234,179,8,.12)); color: var(--text-primary); }
 .ab-tab-count { font-size: 10.5px; color: #34d399; background: rgba(52,211,153,.12); padding: 1px 6px; border-radius: 99px; }
 
-.ab-chapters { overflow: auto; max-height: 60vh; display: flex; flex-direction: column; gap: 4px; }
+/* Book chapters / batch chunks: natural height, they scroll together with
+   the page (no inner viewports, nothing gets clipped). */
+.ab-chapters { display: flex; flex-direction: column; gap: 4px; }
 .ab-chapter { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; cursor: pointer; }
 .ab-chapter:hover { background: rgba(255,255,255,.04); }
-.ab-chapter.is-active { background: var(--accent-soft, rgba(234,179,8,.12)); }
-
-.ab-chunks { overflow: auto; max-height: 58vh; display: flex; flex-direction: column; gap: 6px; padding-right: 4px; }
+.ab-chapter.is-active { background: var(--amber-soft, rgba(234,179,8,.12)); }
+.ab-chunks { display: flex; flex-direction: column; gap: 6px; }
 .ab-chunk { border: 1px solid rgba(255,255,255,.06); border-radius: 8px; padding: 6px 8px; }
-.ab-chunk-pause { display: flex; align-items: center; gap: 6px; color: var(--accent, #eab308); font-size: 12px; justify-content: center; border-style: dashed; }
+/* Батчи, попавшие в выбранный диапазон «с какого по какой». */
+.ab-chunk.is-in-range { border-color: rgba(240,166,61,.45); box-shadow: inset 0 0 0 1px rgba(240,166,61,.16); }
+.ab-range { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 8px 10px; border-radius: 10px; background: var(--track); border: 1px solid var(--glass-border); }
+.ab-range-num { width: 64px; background: var(--glass); border: 1px solid var(--glass-border); border-radius: 8px; padding: 5px 8px; color: var(--text-primary); font-family: var(--font-mono); font-size: 12px; outline: none; }
+.ab-range-num:focus { border-color: var(--amber); }
+.ab-range-only { cursor: pointer; user-select: none; }
+.ab-range-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+/* Сброс загруженной книги (левая колонка). */
+.ab-book-tools { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.ab-chunk-pause { display: flex; align-items: center; gap: 6px; color: var(--amber, #eab308); font-size: 12px; justify-content: center; border-style: dashed; }
 .ab-chunk-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
 .ab-chunk-text { width: 100%; background: transparent; border: none; color: var(--text-primary); resize: vertical; font-size: 12.5px; line-height: 1.45; }
 
-.ab-acc { border: 1px solid rgba(255,255,255,.07); border-radius: 10px; margin-top: 8px; overflow: visible; }
-.ab-acc-head { display: flex; align-items: center; gap: 6px; width: 100%; padding: 8px 10px; background: transparent; border: none; color: var(--text-primary); cursor: pointer; font-size: 13px; font-weight: 600; }
+/* Accordions: smooth height animation via grid-template-rows 0fr <-> 1fr.
+   Content stays mounted, so both open and close transitions animate;
+   visibility is toggled so hidden controls stay out of the tab order. */
+.ab-acc { border: 1px solid rgba(255,255,255,.07); border-radius: 10px; min-width: 0; overflow: hidden; }
+.ab-acc-head { display: flex; align-items: center; gap: 6px; width: 100%; padding: 9px 10px; background: transparent; border: none; color: var(--text-primary); cursor: pointer; font-size: 13px; font-weight: 600; text-align: left; transition: background-color .15s ease; }
+.ab-acc-head:hover { background: var(--track); }
+.ab-acc-chev { flex-shrink: 0; transition: transform .22s ease; }
+.ab-acc-chev.is-open { transform: rotate(180deg); }
+.ab-acc-collapse { display: grid; grid-template-rows: 0fr; visibility: hidden; transition: grid-template-rows .25s ease, visibility 0s linear .25s; }
+.ab-acc-collapse.is-open { grid-template-rows: 1fr; visibility: visible; transition: grid-template-rows .25s ease; }
+.ab-acc-collapse > .ab-acc-body { min-height: 0; overflow: hidden; }
 .ab-acc-body { padding: 4px 10px 10px; display: flex; flex-direction: column; gap: 8px; }
 
+/* Parameters with (i) hints: the tooltip is part of the flow (an in-place
+   hint block) - it never overlaps or clips neighbouring content. */
 .ab-param { position: relative; }
 .ab-param-head { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
-.ab-info-btn { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; border: 1px solid rgba(255,255,255,.15); background: transparent; color: var(--text-secondary); cursor: help; padding: 0; }
-.ab-info-btn:hover { color: var(--accent, #eab308); border-color: var(--accent, #eab308); }
+.ab-info-btn { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; border: 1px solid rgba(255,255,255,.15); background: transparent; color: var(--text-tertiary); cursor: pointer; flex-shrink: 0; padding: 0; }
+.ab-info-btn:hover { color: var(--text-primary); border-color: rgba(255,255,255,.3); }
 .ab-optimal-badge { margin-left: auto; font-size: 10.5px; color: #34d399; background: rgba(52,211,153,.12); padding: 2px 7px; border-radius: 99px; white-space: nowrap; }
-.ab-tooltip { position: absolute; z-index: 30; top: calc(100% + 6px); left: 0; right: 0; background: var(--card-bg, #1c1c22); border: 1px solid rgba(255,255,255,.1); border-radius: 10px; padding: 10px 12px; font-size: 12px; line-height: 1.5; color: var(--text-primary); box-shadow: 0 8px 30px rgba(0,0,0,.4); pointer-events: none; }
+.ab-tooltip { position: static; background: var(--surface-solid, #1c1c22); border: 1px solid var(--glass-border, rgba(255,255,255,.1)); border-radius: 10px; padding: 10px 12px; font-size: 12px; line-height: 1.5; color: var(--text-primary); }
 
-.ab-player { display: flex; align-items: center; gap: 10px; margin-top: 16px; padding: 10px 14px; flex-wrap: wrap; }
+/* Pro settings: an in-flow collapsible section below the workspace.
+   The master toggle animates the whole block; sub-accordions are laid out
+   in a responsive grid on wide screens. */
+.page-ab .ab-pro { flex: 0 0 auto; }
+.ab-pro-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.ab-pro-head-text { min-width: 0; }
+.ab-pro-collapse { display: grid; grid-template-rows: 0fr; visibility: hidden; transition: grid-template-rows .3s ease, visibility 0s linear .3s; }
+.ab-pro-collapse.is-open { grid-template-rows: 1fr; visibility: visible; transition: grid-template-rows .3s ease; }
+.ab-pro-inner { min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: 12px; }
+.ab-pro-accs { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 10px; align-items: start; }
+.ab-pro-lang { display: flex; flex-direction: column; gap: 6px; max-width: 300px; }
+
+/* Единая строка «плеер + генерация»: плеер занимает всё свободное место
+   (flex: 20), кнопка генерации — компактная, прижата вправо (flex: 0). */
+.ab-run-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 12px 14px; border-radius: 14px; }
+.page-ab .ab-run-bar { flex: 0 0 auto; }
+.ab-run-player { display: flex; align-items: center; flex: 20 1 380px; min-width: 0; }
+.ab-run-actions { display: flex; align-items: center; gap: 4px; flex: 0 0 auto; }
+.page-ab .ab-run-bar .btn-primary { flex: 0 0 auto; min-width: 168px; justify-content: center; min-height: 40px; font-size: 13.5px; }
+.ab-run-status { min-width: 0; flex: 1 1 200px; }
+/* Плеер-превью референса в левой колонке. */
+.ab-ref-player { margin-top: 6px; }
+
+/* Слайдеры Pro-панели (F5-TTS / XTTS v2 / мастеринг и паузы): удобная
+   зона захвата и крупный ползунок — тянутся мышью и правятся стрелками. */
+.ab-param input[type="range"] { -webkit-appearance: none; appearance: none; width: 100%; height: 18px; margin: 0; background: transparent; cursor: pointer; }
+.ab-param input[type="range"]::-webkit-slider-runnable-track { height: 4px; border-radius: 999px; background: var(--track); border: 1px solid var(--glass-border); }
+.ab-param input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 15px; height: 15px; margin-top: -5.5px; border-radius: 50%; background: var(--amber); border: 2px solid var(--surface-solid, #1a1a1a); box-shadow: 0 1px 5px rgba(0,0,0,.45); transition: transform .1s ease, box-shadow .1s ease; }
+.ab-param input[type="range"]:hover::-webkit-slider-thumb { transform: scale(1.12); box-shadow: 0 0 0 5px rgba(240,166,61,.2); }
+.ab-param input[type="range"]:active::-webkit-slider-thumb { transform: scale(1.18); box-shadow: 0 0 0 7px rgba(240,166,61,.26); }
+.ab-param input[type="range"]::-moz-range-track { height: 4px; border-radius: 999px; background: var(--track); border: 1px solid var(--glass-border); }
+.ab-param input[type="range"]::-moz-range-progress { height: 4px; border-radius: 999px; background: var(--amber); }
+.ab-param input[type="range"]::-moz-range-thumb { width: 13px; height: 13px; border-radius: 50%; background: var(--amber); border: 2px solid var(--surface-solid, #1a1a1a); cursor: pointer; }
+
+/* Тумблер Smart Express в шапке Pro-настроек (переехал из верхнего тулбара). */
+.ab-pro-head-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.ab-express-toggle { display: flex; align-items: center; gap: 7px; }
+.ab-express-toggle .muted-sm { cursor: pointer; user-select: none; }
+.ab-express-toggle:hover .muted-sm { color: var(--text-secondary); }
 .ab-tab-badge { font-size: 10.5px; color: #34d399; background: rgba(52,211,153,.12); padding: 2px 8px; border-radius: 99px; }
 .ab-tab-badge-amber { color: #fbbf24; background: rgba(251,191,36,.12); }
 
-/* --- Прокрутка страницы студии (page-ab): page/content-area имеют overflow:hidden --- */
-.page-ab { overflow-y: auto; overflow-x: hidden; scroll-behavior: smooth; }
-.page-ab::-webkit-scrollbar { width: 10px; }
-.page-ab::-webkit-scrollbar-track { background: transparent; }
-.page-ab::-webkit-scrollbar-thumb { background: rgba(255,255,255,.12); border-radius: 99px; border: 2px solid transparent; background-clip: content-box; }
-.page-ab::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,.2); background-clip: content-box; }
+/* Drop zone hover feedback (does not alter layout bounds). */
+.page-ab .dropzone { transition: border-color .15s ease, color .15s ease; }
+.page-ab .dropzone:hover { border-color: var(--amber, #eab308); color: var(--text-secondary); }
 
-/* Компактный VRAM-монитор: одна строка вместо отдельной карточки-простыни. */
-.ab-vram { gap: 8px; padding: 10px 14px; }
-.ab-vram-head { display: flex; align-items: center; gap: 8px; min-width: 0; }
-
-/* Sticky-колонка настроек: липкая, но с собственным скроллом — иначе при
-   высоте больше вьюпорта низ настроек становится недостижим (обрезка). */
-.ab-right {
-  position: sticky; top: 0;
-  max-height: calc(100vh - 200px);
-  overflow-y: auto; overflow-x: hidden;
-  scrollbar-width: thin;
-  padding-right: 2px;
-}
-.ab-right::-webkit-scrollbar { width: 8px; }
-.ab-right::-webkit-scrollbar-track { background: transparent; }
-.ab-right::-webkit-scrollbar-thumb { background: rgba(255,255,255,.12); border-radius: 99px; }
-
-/* Липкий заголовок страницы: контекст раздела сохраняется при прокрутке
-   (тулбар приложения fixed — заголовок липнет прямо под ним). */
-.page-ab > .section-head {
-  position: sticky; top: 0; z-index: 30;
-  padding: 8px 10px;
-  background: var(--bg-alpha, rgba(12,14,22,.93));
-  backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
-  border-radius: 12px;
-}
-
-/* Липкие заголовки секций Pro-настроек («Модель и VRAM», «Мастеринг»…). */
-.page-ab .ab-acc-head {
-  position: sticky; top: 56px; z-index: 10;
-  background: var(--bg-alpha, rgba(12,14,22,.93));
-  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
-  border-radius: 10px;
-}
-
-/* Липкая панель генерации: всегда видна при прокрутке, «висит» над плеером. */
-.ab-generate-bar {
-  position: sticky; bottom: 0; z-index: 20;
-  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
-  padding: 10px 14px; margin-top: 16px; border-radius: 14px;
-}
-
-/* Внутренние списки: фиксированная высота со своим скроллом, страница не растёт бесконечно. */
-.ab-chapters, .ab-chunks { max-height: calc(100vh - 480px); min-height: 160px; }
-
-/* --- Адаптив: узкое окно → панели переносятся, контент не обрезается --- */
-@media (max-width: 1500px) {
+/* Responsive: below 1200px Pro accordions go single-column; below 1024px
+   the whole layout stacks into one column, presets follow suit. */
+@media (max-width: 1440px) { .ab-layout { grid-template-columns: 300px minmax(0, 1fr); } }
+@media (max-width: 1200px) {
   .ab-layout { grid-template-columns: 280px minmax(0, 1fr); }
-  .ab-right { grid-column: 1 / -1; position: static; max-height: none; }
+  .ab-pro-accs { grid-template-columns: minmax(0, 1fr); }
 }
-@media (max-width: 1000px) {
+@media (max-width: 1024px) {
   .ab-layout { grid-template-columns: minmax(0, 1fr); }
   .ab-presets { grid-template-columns: minmax(0, 1fr); }
+  /* На узких экранах колонки идут друг под другом: фиксация высоты и
+     внутренний скролл отключаются, страница прокручивается как обычно. */
+  .ab-left { position: static; height: auto; min-height: 0; overflow: visible; padding-right: 0; }
 }
-

@@ -105,6 +105,10 @@ export function ProgressBar({ value }: { value: number }) {
   );
 }
 
+/**
+ * Заголовок страницы: `eyebrow` — надзаголовок, `title` — название,
+ * `action` — необязательный блок справа (статусы, кнопки).
+ */
 export function SectionHead({ eyebrow, title, action }: {
   eyebrow?: string; title: string; action?: React.ReactNode;
 }) {
