@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Search, Star, Download, Trash2, Plus, Play, Inbox, RefreshCw, Globe, Box, Copy } from "lucide-react";
 import { Glass, Btn, IconBtn, SectionHead, Select, Field, EmptyHint, Badge, ProgressBar } from "../components/ui";
 import { useContextMenu, copyToClipboard } from "../components/ContextMenu";
-import { usePageToolbar } from "../components/Toolbar";
 import { useI18n } from "../i18n";
 import { api } from "../api/client";
 import type { AppItem } from "../api/types";
@@ -174,11 +173,6 @@ async function toggleFav(item: AppItem) {
   }
 
   const favCount = all.filter((a) => a.favorite).length;
-
-  usePageToolbar(
-    <Badge tone="violet" mono>{t("store.badge", { apps: all.length, fav: favCount })}</Badge>,
-    [all.length, favCount, t]
-  );
 
   // Пагинация: 20/40/80 на страницу. Начальное значение берётся из настроек
   // (store.pageSize), чтобы выбор в «Настройках» применялся к магазину.

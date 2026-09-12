@@ -4,7 +4,7 @@ import {
   X, Zap, Save, SlidersHorizontal,
 } from "lucide-react";
 import { Glass, Btn, Badge, Select, SectionHead, ProgressBar } from "../components/ui";
-import { usePageToolbar, usePageActive, usePageBusy } from "../components/Toolbar";
+import { usePageActive, usePageBusy } from "../components/Toolbar";
 import { useI18n } from "../i18n";
 import { useContextMenu, copyToClipboard } from "../components/ContextMenu";
 import { api } from "../api/client";
@@ -268,13 +268,6 @@ export default function CompressorPage() {
       else copyToClipboard(path); // вне Electron — хотя бы путь в буфер
     } catch { /* не готово */ }
   };
-
-  usePageToolbar(
-    <>
-      <Badge tone="violet" mono>{t("cmp.badge2")}</Badge>
-    </>,
-    [t]
-  );
 
   const tone = crfTone(p.crf, p.codec);
   const saved = job?.done && job.size ? Math.round(100 - (100 * job.outSize) / job.size) : null;

@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Repeat, Upload, Download, Check, AlertTriangle, RefreshCw, FileUp, Terminal } from "lucide-react";
 import { Glass, Btn, Badge, Field, Select, SectionHead, EmptyHint, ProgressBar } from "../components/ui";
-import { usePageToolbar } from "../components/Toolbar";
 import { useI18n } from "../i18n";
 import { api } from "../api/client";
 import type { ConvertTools, ConvertResult, ConvertInstallStatus } from "../api/types";
@@ -80,16 +79,6 @@ export default function ConverterPage() {
     const ext = file.name.split(".").pop()?.toLowerCase() || "";
     return tools.categories.find((c) => c.inputs.includes(ext)) || null;
   }, [file, tools]);
-
-  // Плашка состояния FFmpeg в верхнем тулбаре (как на остальных страницах).
-  usePageToolbar(
-    tools
-      ? ffmpegFound
-        ? <Badge tone="teal" mono>{t("conv.ffmpegReady")}</Badge>
-        : <Badge tone="coral" mono>{t("conv.ffmpegMissing")}</Badge>
-      : null,
-    [tools, ffmpegFound]
-  );
 
   const pickFile = (f: File | null) => {
     setFile(f);

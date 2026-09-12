@@ -5,7 +5,7 @@ import {
 } from "lucide-react";
 import { useContextMenu, copyToClipboard } from "../components/ContextMenu";
 import { Btn, Glass, Badge, Select, SectionHead, ProgressBar, Field, Checkbox, EmptyHint } from "../components/ui";
-import { usePageToolbar, usePageActive, usePageBusy } from "../components/Toolbar";
+import { usePageActive, usePageBusy } from "../components/Toolbar";
 import { useI18n } from "../i18n";
 import { api } from "../api/client";
 import type { SitebakArchive, SitebakJob } from "../api/client";
@@ -96,14 +96,6 @@ export default function ArchiverPage() {
 
   // Незавершённое архивирование — страницу нельзя выгружать из памяти (LRU).
   usePageBusy(!!jobId);
-
-  usePageToolbar(
-    <>
-      <Badge tone="violet" mono>.sitebak</Badge>
-      <Badge tone={job?.stats?.rendered ? "teal" : "amber"}>{job?.stats?.rendered ? t("arch.playwright") : t("arch.fetchMode")}</Badge>
-    </>,
-    [t, job]
-  );
 
   const start = async () => {
     if (!/^https?:\/\//i.test(url.trim())) return;
