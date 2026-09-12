@@ -18,6 +18,7 @@ contextBridge.exposeInMainWorld("appBridge", {
   // Токен подставляется в заголовок x-pa-token (см. src/api/client.ts).
   getToken: () => readToken(),
   revealPath: (p) => ipcRenderer.invoke("shell:reveal", p),
+  refreshTray: () => ipcRenderer.send("bypass:tray-refresh"),
   minimize: () => ipcRenderer.send("win:minimize"),
   toggleMaximize: () => ipcRenderer.send("win:toggle-maximize"),
   close: () => ipcRenderer.send("win:close"),

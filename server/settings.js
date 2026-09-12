@@ -154,6 +154,33 @@ const DEFAULTS = {
     intervalHours: 24,
   },
 
+  // --- Lecture Recorder (whisper.cpp + VAD) ---
+  lecture: {
+    whisperBin: "",          // путь к whisper-cli/main.exe (пусто = автопоиск)
+    model: "",               // путь к ggml-модели (пусто = автопоиск models/ggml-*.bin)
+    language: "ru",          // язык лекции для Whisper
+    threads: 4,              // потоки CPU-фолбэка (OpenBLAS/AVX2)
+    initialPrompt: "Лекция по высшей математике, интегралы, дифференциалы, матрица, вектор, асимптота, теорема, производная, предел, множество",
+    vadSilenceMs: 700,       // пауза для закрытия чанка (400..1200)
+    vadMinChunkMs: 7000,     // целевой минимум чанка
+    vadMaxChunkMs: 18000,    // целевой максимум чанка (мягкий сплит)
+    vadForceSplitMs: 25000,  // принудительный сплит длинной речи
+    vadPadMs: 150,           // пре/пост-ролл паддинг
+    ollamaModel: "",         // модель Ollama для конспекта (пусто = llama3.2)
+    outputDir: "",           // экспорт .md/.srt/.vtt (пусто = хранить в storage/lectures)
+  },
+
+  // --- Zapret / DPI bypass (Flowseal/zapret-discord-youtube) ---
+  zapret: {
+    dir: "",                 // путь к каталогу движка (пусто = автопоиск resources/zapret)
+    mode: "process",         // process | service
+    defaultStrategy: "general",
+    gameFilterTcp: false,    // GameFilter: TCP-порты игр
+    gameFilterUdp: false,    // GameFilter: UDP-порты игр
+    customTargets: "",       // URL для диагностики через ; или с новой строки
+    autoApplyBest: false,    // авто-применять лучшую стратегию после auto-tune
+  },
+
   // --- Продвинутое / развитие ---
   advanced: {
     telemetry: false,        // TODO: анонимная статистика использования

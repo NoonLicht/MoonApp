@@ -28,6 +28,11 @@ const DIRS = {
   // Web Archive: рабочие папки краулера, распакованные архивы и .sitebak.
   sitebak: ensureDir(path.join(STORAGE_DIR, "sitebak")),
   sitebakExtracted: ensureDir(path.join(STORAGE_DIR, "sitebak", "extracted")),
+  // Lecture Recorder: raw WAV (fail-safe), чанки VAD и расшифровки.
+  lectures: ensureDir(path.join(STORAGE_DIR, "lectures")),
+  // DPI Bypass (zapret): сюда качается и распаковывается релиз с GitHub.
+  zapret: ensureDir(path.join(STORAGE_DIR, "zapret")),
+  tmp: ensureDir(path.join(STORAGE_DIR, "tmp")),
 };
 
 const FILES = {

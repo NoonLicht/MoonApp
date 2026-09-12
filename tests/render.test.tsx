@@ -13,6 +13,9 @@ import BooksPage from "../src/pages/BooksPage";
 import AudiobookTTSPage from "../src/pages/AudiobookTTSPage";
 import ArchiverPage from "../src/pages/ArchiverPage";
 import SettingsPage from "../src/pages/SettingsPage";
+import MonitorPage from "../src/pages/MonitorPage";
+import LectureRecorderPage from "../src/pages/LectureRecorderPage";
+import BypassControlPage from "../src/pages/BypassControlPage";
 
 describe("render smoke (ловит runtime-краши рендера)", () => {
   it("App (Store по умолчанию) рендерится без ошибок", () => {
@@ -30,6 +33,9 @@ describe("render smoke (ловит runtime-краши рендера)", () => {
     ["Voice", AudiobookTTSPage],
     ["Archive", ArchiverPage],
     ["Settings", SettingsPage],
+    ["Monitor", MonitorPage],
+    ["Lecture", LectureRecorderPage],
+    ["Bypass", BypassControlPage],
   ];
 
   for (const [name, Page] of pages) {

@@ -116,14 +116,103 @@ async function ensureTray() {
   const { Tray, Menu } = require("electron");
   tray = new Tray(await makeTrayIcon());
   tray.setToolTip("PersonalApp");
-  tray.setContextMenu(Menu.buildFromTemplate([
-    { label: "Открыть", click: () => showWindow() },
-    { type: "separator" },
-    { label: "Выход", click: () => { quitting = true; app.quit(); } },
-  ]));
+  tray.setContextMenu(Menu.buildFromTemplate(await trayTemplate()));
   // Левый клик по иконке — показать окно.
   tray.on("click", () => showWindow());
   return tray;
+}
+
+// --- Трей: быстрое переключение стратегий DPI-обхода (zapret) ---
+// Трей обращается к локальному API напрямую (тот же порт/токен, что у фронта).
+let apiPort = null;
+let apiToken = null;
+
+function zapretApi(urlPath, body) {
+  return new Promise((resolve) => {
+    if (!apiPort) return resolve(null);
+    const payload = body ? JSON.stringify(body) : null;
+    const req = http.request({
+      host: "127.0.0.1", port: apiPort, path: `/api/zapret${urlPath}`, method: payload ? "POST" : "GET",
+      headers: {
+        "x-pa-token": apiToken || "",
+        ...(payload ? { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) } : {}),
+      },
+      timeout: 8000,
+    }, (res) => {
+      let raw = "";
+      res.on("data", (d) => { raw += d; });
+      res.on("end", () => { try { resolve(JSON.parse(raw)); } catch { resolve(null); } });
+    });
+    req.on("error", () => resolve(null));
+    req.on("timeout", () => { req.destroy(); resolve(null); });
+    if (payload) req.write(payload);
+    req.end();
+  });
+}
+
+/** Перестроить меню трея (после переключения стратегии / старта/стопа). */
+async function refreshTray() {
+  const { Menu } = require("electron");
+  try { if (tray) tray.setContextMenu(Menu.buildFromTemplate(await trayTemplate())); } catch { /* окно уже уничтожено */ }
+}
+
+async function trayTemplate() {
+  const items = [
+    { label: "Открыть", click: () => showWindow() },
+    { type: "separator" },
+  ];
+  // Подменю «Обход блокировок»: статус + конфиги по группам + Стоп + обновление.
+  const [strategies, status, update] = await Promise.all([
+    zapretApi("/strategies"), zapretApi("/status"), zapretApi("/update"),
+  ]);
+  if (Array.isArray(strategies) && strategies.length) {
+    const active = status?.active;
+    const current = status?.strategy || null;
+    const version = status?.engine?.version || status?.version || null;
+    const groups = [
+      ["base", "Базовый"],
+      ["alt", "ALT"],
+      ["fake-tls-auto", "FAKE TLS AUTO"],
+      ["simple-fake", "SIMPLE FAKE"],
+      ["exp", "EXP"],
+    ];
+    const strategyItem = (s) => ({
+      label: s.name,
+      type: "checkbox",
+      checked: !!active && current === s.id,
+      click: () => { void zapretApi("/start", { strategyId: s.id, mode: "process" }).then(() => refreshTray()); },
+    });
+    const grouped = groups
+      .map(([g, title]) => {
+        const list = strategies.filter((s) => s.group === g);
+        return list.length ? { label: `${title} (${list.length})`, submenu: list.map(strategyItem) } : null;
+      })
+      .filter(Boolean);
+    const ungrouped = strategies.filter((s) => !groups.some(([g]) => g === s.group));
+    const subItems = [
+      { label: active ? `● Активно: ${current || "—"}` : "○ Остановлено", enabled: false },
+      { label: `Версия: ${version || "не установлена"}`, enabled: false },
+      { type: "separator" },
+      ...(ungrouped.length ? [...ungrouped.map(strategyItem)] : []),
+      ...grouped,
+      { type: "separator" },
+      { label: "Остановить обход", enabled: !!active, click: () => { void zapretApi("/stop").then(() => refreshTray()); } },
+    ];
+    // Обновление движка прямо из трея (прогресс виден на странице Bypass).
+    if (update && !update.error) {
+      const has = !!update.hasUpdate;
+      subItems.push({
+        label: has ? `⬇ Обновить zapret до ${update.latest}` : `⬇ Переустановить zapret ${update.installed || ""}`,
+        click: () => { void zapretApi("/install", { tag: has ? update.latest : undefined }).then(() => refreshTray()); },
+      });
+    }
+    items.push({ label: "Обход блокировок (zapret)", submenu: subItems });
+  }
+  items.push(
+    { type: "separator" },
+    { label: "Выход", click: () => { quitting = true; app.quit(); } },
+  );
+  return items;
 }
 
 function showWindow() {
@@ -181,6 +270,9 @@ async function createWindow() {
 
   const port = await findFreePort(4000);
   startServer(port, { token });
+  // Порт/токен для меню трея (быстрое переключение стратегий zapret).
+  apiPort = port;
+  apiToken = token;
 
   // Размер окна: берём из настроек (window.*); при rememberSize запоминаем
   // последний размер на закрытии и восстанавливаем на следующем запуске.
@@ -292,6 +384,10 @@ ipcMain.handle("shell:reveal", (_e, p) => {
     return true;
   } catch { return false }
 });
+
+// Обновить подменю zapret в трее: страница Bypass Control вызывает после
+// изменения стратегий/профилей, чтобы быстрые переключения были актуальны.
+ipcMain.on("bypass:tray-refresh", () => { void refreshTray(); });
 
 app.on("window-all-closed", () => {
   app.quit();

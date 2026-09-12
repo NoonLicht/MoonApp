@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import {
   Store, Repeat, Gauge, Video, Music2, BookOpen, Activity, MessageSquare,
-  Mic2, Archive, Sun, Moon, Minus, Square, X, Settings2, Shield, User,
+  Mic2, Archive, Sun, Moon, Minus, Square, X, Settings2, Shield, User, GraduationCap,
 } from "lucide-react";
 import { I18nProvider, useI18n } from "./i18n";
 import { ContextMenuProvider } from "./components/ContextMenu";
@@ -17,6 +17,8 @@ import "./styles/chat.css";
 import "./styles/dock.css";
 import "./styles/settings.css";
 import "./styles/notes.css";
+import "./styles/lecture.css";
+import "./styles/bypass.css";
 
 // Страницы
 import StorePage from "./pages/StorePage";
@@ -31,10 +33,12 @@ import AudiobookTTSPage from "./pages/AudiobookTTSPage";
 import ArchiverPage from "./pages/ArchiverPage";
 import SettingsPage from "./pages/SettingsPage";
 import MyspacePage from "./pages/MyspacePage";
+import LectureRecorderPage from "./pages/LectureRecorderPage";
+import BypassControlPage from "./pages/BypassControlPage";
 
 type PageId =
   | "store" | "convert" | "compress" | "video" | "music" | "books" | "monitor"
-  | "aichat" | "voice" | "archive" | "settings" | "myspace";
+  | "aichat" | "voice" | "archive" | "settings" | "myspace" | "lecture" | "bypass";
 
 const PAGES: { id: PageId; i18n: string; icon: React.ElementType }[] = [
   { id: "store", i18n: "nav.store", icon: Store },
@@ -47,6 +51,8 @@ const PAGES: { id: PageId; i18n: string; icon: React.ElementType }[] = [
   { id: "myspace", i18n: "nav.myspace", icon: User },
   { id: "aichat", i18n: "nav.aichat", icon: MessageSquare },
   { id: "voice", i18n: "nav.voice", icon: Mic2 },
+  { id: "lecture", i18n: "nav.lecture", icon: GraduationCap },
+  { id: "bypass", i18n: "nav.bypass", icon: Shield },
   { id: "archive", i18n: "nav.archive", icon: Archive },
   { id: "settings", i18n: "nav.settings", icon: Settings2 },
 ];
@@ -62,6 +68,8 @@ const PAGE_COMPONENTS: Record<PageId, React.ComponentType> = {
   myspace: MyspacePage,
   aichat: AiChatPage,
   voice: AudiobookTTSPage,
+  lecture: LectureRecorderPage,
+  bypass: BypassControlPage,
   archive: ArchiverPage,
   settings: SettingsPage,
 };

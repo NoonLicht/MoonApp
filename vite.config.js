@@ -16,6 +16,22 @@ export default defineConfig({
       "/api": "http://localhost:4000",
       "/events": "http://localhost:4000",
     },
+    watch: {
+      // НЕ следим за storage/: это рабочий каталог приложения, куда пишут внешние
+      // процессы. Проверка конфигов zapret запускает vendor-скрипт
+      // (storage/zapret/utils/test zapret.ps1), который создаёт и держит открытым
+      // файл storage/zapret/utils/test results/test_results_*.txt. Chokidar видит
+      // новый файл и пытается повесить на него fs.watch — Windows отдаёт EBUSY,
+      // а Vite не перехватывает ошибку вотчера и падает целиком.
+      // Глобы + регулярки — на случай разного поведения chokidar на Windows.
+      ignored: [
+        "**/storage/**",
+        "**/dist/**",
+        "**/.git/**",
+        /[\\/]storage[\\/]/,
+        /[\\/]dist[\\/]/,
+      ],
+    },
   },
   test: {
     // Не собираем чужие тесты из вендоренных проектов (ConvertX и т.п.)

@@ -70,6 +70,17 @@ const tables = {
   books: new Table(["title", "author", "year", "fmt", "tone", "description"], "title"),
   catalog: new Table(["name", "url", "source", "category", "wingetId", "favorite", "added_at"], "-id"),
   favorites: new Table(["key"], "key"),
+  // Lecture Recorder: сессии лекций и чанки расшифровки.
+  lectures: new Table(["title", "started_at", "ended_at", "duration_ms", "sample_rate", "channels", "raw_file", "status", "notes"], "-id"),
+  lecture_chunks: new Table(["lecture_id", "idx", "start_ms", "end_ms", "text", "status", "error", "file", "created_at"], "id"),
+  // Zapret / DPI bypass: профили запуска и пользовательские домены.
+  bypass_profiles: new Table(["name", "batch_file_path", "custom_args", "is_active", "is_service", "created_at"], "-id"),
+  bypass_custom_domains: new Table(["domain", "type", "is_enabled"], "domain"),
+  // Результаты последней полной проверки конфигов (огоньки на странице Bypass).
+  bypass_check_results: new Table(
+    ["strategy_id", "file", "ok", "ok_count", "error", "unsup", "ping_ok", "ping_fail", "checked_at", "run_started_at"],
+    "strategy_id"
+  ),
 };
 
 function now() {
@@ -209,6 +220,60 @@ const stmts = {
   favHas: (key) => !!tables.favorites.rows.find((r) => r.key === key),
   favAdd: (key) => run(() => { if (!tables.favorites.rows.find((r) => r.key === key)) tables.favorites.insert([key]); }),
   favRemove: (key) => run(() => tables.favorites.deleteWhere((r) => r.key === key)),
+
+  // Lectures
+  lectureInsert: { run: (title, sample_rate, channels) => run(() => tables.lectures.insert([title, now(), null, 0, sample_rate, channels, "", "recording", ""])) },
+  lectureAll: { all: () => tables.lectures.all() },
+  lectureGet: { get: (id) => tables.lectures.get(id) },
+  lectureUpdate: { run: (id, patch) => run(() => tables.lectures.updateWhere((r) => r.id === id, patch)) },
+  lectureDelete: { run: (id) => run(() => { tables.lectures.delete(id); tables.lecture_chunks.deleteWhere((c) => c.lecture_id === id); }) },
+
+  // Lecture chunks
+  chunkInsert: { run: (lecture_id, idx, start_ms, end_ms, file) => run(() => tables.lecture_chunks.insert([lecture_id, idx, start_ms, end_ms, "", "pending", "", file, now()])) },
+  chunkFor: { all: (lecture_id) => tables.lecture_chunks.all().filter((c) => c.lecture_id === lecture_id) },
+  chunkGet: { get: (id) => tables.lecture_chunks.get(id) },
+  chunkUpdate: { run: (id, patch) => run(() => tables.lecture_chunks.updateWhere((r) => r.id === id, patch)) },
+  chunkDeleteFor: { run: (lecture_id) => run(() => tables.lecture_chunks.deleteWhere((c) => c.lecture_id === lecture_id)) },
+
+  // Bypass profiles
+  bpAll: { all: () => tables.bypass_profiles.all() },
+  bpInsert: { run: (name, batch_file_path, custom_args, is_active, is_service) => run(() => tables.bypass_profiles.insert([name, batch_file_path || "", custom_args || "", is_active ? 1 : 0, is_service ? 1 : 0, now()])) },
+  bpGet: { get: (id) => tables.bypass_profiles.get(id) },
+  bpUpdate: { run: (id, patch) => run(() => tables.bypass_profiles.updateWhere((r) => r.id === id, patch)) },
+  bpDelete: { run: (id) => run(() => tables.bypass_profiles.delete(id)) },
+  bpClearActive: { run: () => run(() => tables.bypass_profiles.updateWhere(() => true, { is_active: 0 })) },
+
+  // Bypass custom domains
+  bcdAll: { all: () => tables.bypass_custom_domains.all() },
+  bcdInsert: { run: (domain, type, is_enabled) => run(() => { if (!tables.bypass_custom_domains.rows.find((r) => r.domain === domain && r.type === type)) tables.bypass_custom_domains.insert([domain, type, is_enabled ? 1 : 0]); }) },
+  bcdUpdate: { run: (id, patch) => run(() => tables.bypass_custom_domains.updateWhere((r) => r.id === id, patch)) },
+  bcdDelete: { run: (id) => run(() => tables.bypass_custom_domains.delete(id)) },
+
+  // Bypass check results (огоньки конфигов: живут до следующей полной проверки)
+  bcrAll: { all: () => tables.bypass_check_results.all() },
+  bcrUpsert: {
+    run: (strategy_id, row) => run(() => {
+      const patch = {
+        file: row.file || "",
+        ok: row.ok ? 1 : 0,
+        ok_count: Number(row.ok_count) || 0,
+        error: Number(row.error) || 0,
+        unsup: Number(row.unsup) || 0,
+        ping_ok: Number(row.ping_ok) || 0,
+        ping_fail: Number(row.ping_fail) || 0,
+        checked_at: row.checked_at || now(),
+        run_started_at: row.run_started_at || now(),
+      };
+      const existing = tables.bypass_check_results.rows.find((r) => r.strategy_id === strategy_id);
+      if (existing) { Object.assign(existing, patch); return { changes: 1 }; }
+      return tables.bypass_check_results.insert([
+        strategy_id, patch.file, patch.ok, patch.ok_count, patch.error,
+        patch.unsup, patch.ping_ok, patch.ping_fail, patch.checked_at, patch.run_started_at,
+      ]);
+    }),
+  },
+  bcrClear: { run: () => run(() => tables.bypass_check_results.deleteWhere(() => true)) },
+  bcrSetOk: { run: (ok, id) => run(() => tables.bypass_check_results.updateWhere((r) => r.id === id, { ok: ok ? 1 : 0 })) },
 };
 
 function exportSnapshot() {

@@ -23,6 +23,8 @@ const booksRouter = require("./routes/books");
 const musicRouter = require("./routes/music");
 const myspaceRouter = require("./routes/myspace");
 const myspaceTasksRouter = require("./routes/myspace-tasks");
+const lectureRouter = require("./routes/lecture");
+const zapretRouter = require("./routes/zapret");
 const monitor = require("./monitor");
 const winget = require("./winget");
 const proxy = require("./proxy");
@@ -98,6 +100,8 @@ function createApp() {
   app.use("/api/music", musicRouter);
   app.use("/api/myspace", myspaceRouter);
   app.use("/api/myspace/tasks", myspaceTasksRouter);
+  app.use("/api/lecture", lectureRouter);
+  app.use("/api/zapret", zapretRouter);
 
   // Раздача собранного фронта (dist), если он собран.
   const dist = path.join(__dirname, "..", "dist");

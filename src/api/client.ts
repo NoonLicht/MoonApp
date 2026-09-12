@@ -141,6 +141,68 @@ export const api = {
   // Health
   health: () => req<{ ok: boolean }>("GET", "/health"),
 
+  // Lecture Recorder
+  lectureEngine: () => req<LectureEngineStatus>("GET", "/lecture/engine"),
+  lectureSessions: () => req<LectureSession[]>("GET", "/lecture/sessions"),
+  lectureCreate: (title: string) =>
+    req<LectureCreateResult>("POST", "/lecture/sessions", { title, sampleRate: 16000, channels: 1 }),
+  lectureStatus: (id: number) => req<LectureStatus>("GET", `/lecture/${id}`),
+  lectureIngest: (id: number, body: ArrayBuffer) => rawPost(`/api/lecture/${id}/ingest`, body),
+  lectureEditChunk: (chunkId: number, text: string) =>
+    req<LectureChunk>("PATCH", `/lecture/chunks/${chunkId}`, { text }),
+  lectureMarker: (id: number, atMs: number, label: string) =>
+    req<{ atMs: number; timestamp: string; label: string }>("POST", `/lecture/${id}/markers`, { atMs, label }),
+  lectureStop: (id: number) => req<LectureStatus>("POST", `/lecture/${id}/stop`),
+  lectureDelete: (id: number) => req<{ ok: boolean }>("DELETE", `/lecture/${id}`),
+  lectureExportUrl: (id: number, format: "md" | "srt" | "vtt") => `/api/lecture/${id}/export?format=${format}`,
+  lectureAudioUrl: (id: number) => `/api/lecture/${id}/audio`,
+  lectureConspectus: (id: number) =>
+    req<{ markdown: string; model: string }>("POST", `/lecture/${id}/conspectus`),
+
+  // Zapret / DPI Bypass
+  zapretEngine: () => req<ZapretEngine>("GET", "/zapret/engine"),
+  zapretStrategies: () => req<ZapretStrategy[]>("GET", "/zapret/strategies"),
+  zapretBatFiles: () => req<ZapretBatFile[]>("GET", "/zapret/bat-files"),
+  zapretUpdate: () => req<ZapretUpdate>("GET", "/zapret/update"),
+  zapretInstall: (body?: { tag?: string }) => req<ZapretInstallState>("POST", "/zapret/install", body || {}),
+  zapretInstallStatus: () => req<ZapretInstallState>("GET", "/zapret/install-status"),
+  zapretPayloads: () => req<ZapretPayload[]>("GET", "/zapret/payloads"),
+  zapretStatus: () => req<ZapretStatus>("GET", "/zapret/status"),
+  zapretStart: (body: { strategyId?: string; customArgs?: string; mode?: string }) =>
+    req<ZapretStatus>("POST", "/zapret/start", body),
+  zapretStop: () => req<ZapretStatus>("POST", "/zapret/stop"),
+  zapretService: (action: "install" | "remove" | "status") =>
+    req<{ ok: boolean; installed?: boolean; running?: boolean }>("POST", "/zapret/service", { action }),
+  zapretDiagnostics: () => req<ZapretDiagnostics>("POST", "/zapret/diagnostics"),
+  zapretDiagnosticsTargets: () => req<{ targets: { id: string; name: string; kind: string; url?: string }[] }>("GET", "/zapret/diagnostics"),
+  zapretAutoTune: (apply?: boolean) => req<ZapretAutoTuneResult>("POST", "/zapret/auto-tune", { apply }),
+  zapretLists: () => req<ZapretList[]>("GET", "/zapret/lists"),
+  zapretSaveList: (name: string, content: string) =>
+    req<{ ok: boolean }>("PUT", `/zapret/lists/${encodeURIComponent(name)}`, { content }),
+  zapretProfiles: () => req<ZapretProfile[]>("GET", "/zapret/profiles"),
+  zapretSaveProfile: (body: { name: string; customArgs?: string; isService?: boolean; batchFilePath?: string }) =>
+    req<ZapretProfile>("POST", "/zapret/profiles", body),
+  zapretDeleteProfile: (id: number) => req<{ ok: boolean }>("DELETE", `/zapret/profiles/${id}`),
+  zapretActivateProfile: (id: number) => req<ZapretStatus>("POST", `/zapret/profiles/${id}/activate`),
+  zapretDomains: () => req<ZapretDomain[]>("GET", "/zapret/domains"),
+  zapretAddDomain: (domain: string, type: "include" | "exclude") =>
+    req<ZapretDomain[]>("POST", "/zapret/domains", { domain, type }),
+  zapretToggleDomain: (id: number, isEnabled: boolean) =>
+    req<ZapretDomain[]>("PATCH", `/zapret/domains/${id}`, { isEnabled }),
+  zapretDeleteDomain: (id: number) => req<ZapretDomain[]>("DELETE", `/zapret/domains/${id}`),
+  zapretCleanup: (body: { discord?: boolean; dns?: boolean }) =>
+    req<{ discord?: { freedKb: number }; dns?: { ok: boolean; error?: string } }>("POST", "/zapret/cleanup", body),
+  zapretGameFilter: (tcp: boolean, udp: boolean) =>
+    req<Record<string, unknown>>("POST", "/zapret/gamefilter", { tcp, udp }),
+  zapretSaveSettings: (body: { dir?: string; mode?: string; customTargets?: string; autoApplyBest?: boolean }) =>
+    req<Record<string, unknown>>("POST", "/zapret/settings", body),
+  // Проверка конфигов через service.bat (vendor utils/test zapret.ps1) + консоль
+  zapretCheckStatus: () => req<ZapretCheckState>("GET", "/zapret/check"),
+  zapretCheckStart: (fast?: boolean) => req<ZapretCheckState>("POST", "/zapret/check", { fast: fast !== false }),
+  zapretCheckStop: () => req<ZapretCheckState>("POST", "/zapret/check/stop"),
+  zapretServiceDiagnostics: () => req<ZapretCheckState>("POST", "/zapret/service-diagnostics"),
+  zapretFixUserLists: () => req<ZapretCheckState>("POST", "/zapret/user-lists"),
+
   // Settings / providers
   getSettings: () => req("GET", "/settings"),
   updateSettings: (patch: unknown) => req("PATCH", "/settings", patch),
@@ -466,4 +528,125 @@ export async function streamArena(
   }
 }
 
+
+
+/* ================= Lecture Recorder (whisper.cpp + VAD) ================= */
+
+export interface LectureEngineStatus {
+  ready: boolean; bin: string | null; model: string | null;
+  backend: string | null; language: string; activeSession: boolean;
+}
+export interface LectureSession {
+  id: number; title: string; started_at: string; ended_at: string | null;
+  duration_ms: number; sample_rate: number; channels: number;
+  raw_file: string; status: string; notes: string;
+}
+export interface LectureChunk {
+  id: number; lecture_id: number; idx: number; start_ms: number; end_ms: number;
+  text: string; status: "pending" | "done" | "empty" | "error"; error: string; file: string;
+}
+export interface LectureStatus {
+  lecture: LectureSession; chunks: LectureChunk[];
+  live: boolean; queue: number; transcribing: boolean;
+  recordingSec: number; vadStats: { frames: number; speechFrames: number; rejected: number; chunks: number } | null;
+  lastError: string; whisper: LectureEngineStatus;
+}
+export interface LectureCreateResult {
+  id: number; sampleRate: number; channels: number;
+  vad: { silenceMs: number; minChunkMs: number; maxChunkMs: number; forceSplitMs: number; padMs: number };
+  whisper: LectureEngineStatus;
+}
+
+/** POST бинарного тела (PCM-стрим) с токеном. */
+export async function rawPost(path: string, body: ArrayBuffer): Promise<Response> {
+  return fetch(`${BASE}${path}`, {
+    method: "POST",
+    headers: { ...tokenHeaders(), "Content-Type": "application/octet-stream" },
+    body,
+  });
+}
+
+/* ================= Zapret / DPI Bypass ================= */
+
+export interface ZapretEngine {
+  found: boolean; dir: string | null; installDir: string;
+  winws: string | null; binDir: string | null;
+  serviceBat: string | null; listsDir: string | null;
+  version: string | null; gameFilter: "all" | "tcp" | "udp" | "off";
+}
+export interface ZapretStrategy {
+  id: string; name: string; label: string;
+  group: "base" | "alt" | "fake-tls-auto" | "simple-fake" | "exp";
+  file: string; filePath: string; args: string; winwsCmd: string; index: number;
+}
+export interface ZapretBatFile {
+  name: string; file: string; sizeKb: number;
+  kind: "strategy" | "service"; args: string;
+}
+export interface ZapretUpdate {
+  engine: ZapretEngine;
+  installed: string | null; installedAt: string | null;
+  latest: string | null; hasUpdate: boolean;
+  downloadUrl: string | null; assetName: string | null; sizeBytes: number;
+  publishedAt: string | null; htmlUrl: string; notes: string;
+  error: string; repo: string;
+}
+export interface ZapretInstallState {
+  state: "idle" | "working" | "done" | "error";
+  progress: number; phase: string; error: string;
+  tag: string | null; at: number;
+  engine: ZapretEngine; installed: string | null;
+}
+export interface ZapretStatus {
+  active: boolean;
+  process: { running: boolean; pid: number | null; memKb: number | null };
+  service: { installed: boolean; running: boolean; raw: string; strategyFile?: string };
+  mode: string; profile: { strategyId: string; customArgs: string; mode: string } | null;
+  log: string[]; engine: ZapretEngine; strategy: string | null;
+  version: string | null; gameFilter: string;
+}
+export interface ZapretTargetResult {
+  id: string; name: string; kind: "http" | "udp"; url?: string;
+  ok: boolean; status: number | null; latencyMs: number; error: string | null; packetDrop: boolean;
+}
+export interface ZapretDiagnostics {
+  allOk: boolean; okCount: number; total: number; avgLatency: number; results: ZapretTargetResult[]; at: number;
+}
+export interface ZapretAutoTuneResult {
+  tried: { strategyId: string; allOk: boolean; okCount?: number; total?: number; avgLatency?: number; score?: number; error?: string }[];
+  best: string | null; applied: string | null;
+}
+export interface ZapretProfile {
+  id: number; name: string; batch_file_path: string; custom_args: string;
+  is_active: number; is_service: number; created_at: string;
+}
+export interface ZapretDomain { id: number; domain: string; type: "include" | "exclude"; is_enabled: number }
+export interface ZapretPayload { name: string; path: string; sizeKb: number }
+export interface ZapretList { name: string; content: string }
+
+/* --- Проверка конфигов (service.bat → utils/test zapret.ps1) --- */
+
+export interface ZapretCheckResult {
+  strategyId: string; file: string;
+  okCount: number; error: number; unsup: number;
+  pingOk: number; pingFail: number;
+  finished: boolean; failedToStart: boolean;
+}
+export interface ZapretCheckLight {
+  strategy_id: string; file: string; ok: number; ok_count: number;
+  error: number; unsup: number; ping_ok: number; ping_fail: number;
+  checked_at: string; run_started_at: string;
+}
+export interface ZapretCheckState {
+  state: "idle" | "working" | "done" | "error";
+  mode: "check" | "diag" | "lists" | null;
+  label: string; running: boolean;
+  startedAt: number; finishedAt: number; exitCode: number | null; error: string;
+  best: string | null;
+  bestId: string | null;
+  progress: { done: number; total: number; current: string | null };
+  results: ZapretCheckResult[];
+  log: string[]; logCursor: number;
+  lights: Record<string, ZapretCheckLight>;
+}
 
