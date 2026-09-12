@@ -7,6 +7,7 @@ import type {
   LectureChunk, LectureCreateResult, LectureEngineStatus, LectureSession, LectureStatus,
 } from "../api/client";
 import { useI18n } from "../i18n";
+import { usePageBusy } from "../components/Toolbar";
 
 /**
  * Lecture Recorder — реалтайм-запись лекции и академический speech-to-text.
@@ -92,6 +93,9 @@ export default function LectureRecorderPage() {
   const [notes, setNotes] = useState("");
   const [conspectusBusy, setConspectusBusy] = useState(false);
   const [showSessions, setShowSessions] = useState(false);
+
+  // Запись лекции и разбор в конспект — задачи: страницу нельзя выгружать (keep-alive).
+  usePageBusy(recording || conspectusBusy);
 
   const audioRef = useRef<{
     ctx: AudioContext; stream: MediaStream; processor: ScriptProcessorNode; source: MediaStreamAudioSourceNode;

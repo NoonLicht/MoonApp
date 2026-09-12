@@ -7,7 +7,7 @@ import {
 import dagre from "dagre";
 import { api } from "../../../../api/client";
 import { nodeTypes, edgeTypes } from "./nodes";
-import HolstHeader, { type TimerState, type VotingState } from "./HolstHeader";
+import HolstHeader from "./HolstHeader";
 import HolstToolbar, { type LineProps } from "./HolstToolbar";
 import TemplatesModal from "./HolstTemplates";
 import { EMPTY_CONNECTOR, STICKY_COLORS, type CanvasTool, type ShapeKind } from "./types";
@@ -58,9 +58,6 @@ function CanvasInner() {
   const [connectMenu, setConnectMenu] = useState<{ x: number; y: number; fx: number; fy: number; source: string; handle: string } | null>(null);
   const [penPreview, setPenPreview] = useState<{ x1: number; y1: number; x2: number; y2: number } | null>(null);
 
-  const [timer, setTimer] = useState<TimerState>({ seconds: 300, running: false, expired: false });
-  const [voting, setVoting] = useState<VotingState>({ active: false, votesPerUser: 3, minutes: 2 });
-  const [voteEndsAt, setVoteEndsAt] = useState<number | null>(null);
   const [zoom, setZoom] = useState(1);
   const [loaded, setLoaded] = useState(false);
 
@@ -148,7 +145,7 @@ function CanvasInner() {
             // re-attach runtime callbacks stripped during JSON persistence
             setNodes((doc.nodes as any[]).map((n) => ({
               ...n,
-              data: { ...n.data, setData, onVote: castVote, voting: false },
+              data: { ...n.data, setData },
             })));
             setEdges(doc.edges || []);
             if (doc.viewport) setViewport(doc.viewport);
@@ -191,65 +188,18 @@ function CanvasInner() {
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
   }, [save]);
 
-  /* ── facilitation timer tick ── */
-  useEffect(() => {
-    if (!timer.running) return;
-    const iv = setInterval(() => {
-      setTimer((t) => {
-        if (t.seconds <= 1) return { seconds: 0, running: false, expired: true };
-        return { ...t, seconds: t.seconds - 1 };
-      });
-    }, 1000);
-    return () => clearInterval(iv);
-  }, [timer.running]);
-
-  /* ── voting countdown ── */
-  useEffect(() => {
-    if (!voting.active || voteEndsAt == null) return;
-    const iv = setInterval(() => {
-      if (Date.now() >= voteEndsAt) {
-        setVoting((v) => ({ ...v, active: false }));
-        setVoteEndsAt(null);
-      }
-    }, 500);
-    return () => clearInterval(iv);
-  }, [voting.active, voteEndsAt]);
-
   /* ── zoom indicator sync ── */
   useEffect(() => {
     const iv = setInterval(() => setZoom(getViewport().zoom), 350);
     return () => clearInterval(iv);
   }, [getViewport]);
 
-  /* ── voting helpers ── */
-  const votingRef = useRef(false);
-  useEffect(() => { votingRef.current = voting.active; }, [voting.active]);
-
-  const castVote = useCallback((id: string) => {
-    if (!votingRef.current) return;
-    setNodes((ns) => ns.map((n) => {
-      if (n.id !== id) return n;
-      const current = Number((n.data as any)?.votes || 0);
-      return { ...n, data: { ...n.data, votes: current + 1 } };
-    }));
-  }, [setNodes]);
-
-  const startVoting = useCallback(() => {
-    if (voting.active) {
-      setVoting((v) => ({ ...v, active: false }));
-      setVoteEndsAt(null);
-      return;
-    }
-    setVoting((v) => ({ ...v, active: true }));
-    setVoteEndsAt(Date.now() + voting.minutes * 60_000);
-  }, [voting]);
-
   /* ── toolbar factory clicks ── */
   const spawnForTool = useCallback((flowPos: { x: number; y: number }) => {
     pushHistory();
     switch (tool) {
       case "sticky":
-        addNode("sticky", flowPos, { text: "", color: STICKY_COLORS[Math.floor(Math.random() * STICKY_COLORS.length)], setData, onVote: castVote, voting: voting.active });
+        addNode("sticky", flowPos, { text: "", color: STICKY_COLORS[Math.floor(Math.random() * STICKY_COLORS.length)], setData });
         break;
       case "text":
         addNode("text", flowPos, { text: "Text", fontSize: 16, weight: 600, align: "left", setData });
@@ -276,7 +226,7 @@ function CanvasInner() {
     }
     setTool("select");
     return true;
-  }, [tool, shape, sticker, addNode, setData, castVote, voting.active, pushHistory]);
+  }, [tool, shape, sticker, addNode, setData, pushHistory]);
 
   /* ── smart frame: moving a frame carries its children ── */
   const onNodeDragStart = useCallback((_: any, node: Node) => {
@@ -333,12 +283,12 @@ function CanvasInner() {
     if (!connectMenu) return;
     pushHistory();
     let n: Node;
-    if (kind === "note") n = addNode("sticky", { x: connectMenu.fx, y: connectMenu.fy }, { text: "", color: STICKY_COLORS[2], setData, onVote: castVote, voting: voting.active });
+    if (kind === "note") n = addNode("sticky", { x: connectMenu.fx, y: connectMenu.fy }, { text: "", color: STICKY_COLORS[2], setData });
     else if (kind === "task") n = addNode("task", { x: connectMenu.fx, y: connectMenu.fy }, { title: "New task", status: "todo", subtasks: [], setData });
     else n = addNode("shape", { x: connectMenu.fx, y: connectMenu.fy }, { shape: "diamond", label: "Decision", fill: STICKY_COLORS[0], stroke: "#16181f", w: 160, h: 90, setData });
     addConnectorEdge(connectMenu.source, connectMenu.handle, n.id, "l");
     setConnectMenu(null);
-  }, [connectMenu, addNode, addConnectorEdge, pushHistory, setData, castVote, voting.active]);
+  }, [connectMenu, addNode, addConnectorEdge, pushHistory, setData]);
 
   /* ── slash palette insert ── */
   const slashInsert = useCallback((kind: string) => {
@@ -346,15 +296,15 @@ function CanvasInner() {
     pushHistory();
     const pos = { x: slash.fx, y: slash.fy };
     switch (kind) {
-      case "note": addNode("sticky", pos, { text: "", color: STICKY_COLORS[3], setData, onVote: castVote, voting: voting.active }); break;
+      case "note": addNode("sticky", pos, { text: "", color: STICKY_COLORS[3], setData }); break;
       case "task": addNode("task", pos, { title: "New task", status: "todo", subtasks: [], setData }); break;
-      case "sticky": addNode("sticky", pos, { text: "", color: STICKY_COLORS[0], setData, onVote: castVote, voting: voting.active }); break;
+      case "sticky": addNode("sticky", pos, { text: "", color: STICKY_COLORS[0], setData }); break;
       case "matrix": addNode("matrix", pos, { title: "Impact Matrix", columns: ["Quick Wins", "Major", "Fill-ins", "Thankless"], items: [], setData }); break;
       case "frame": addNode("frame", pos, { label: "Retro Frame", color: "#e9d5ff", w: 420, h: 320, setData }); break;
       case "text": addNode("text", pos, { text: "Text", fontSize: 16, weight: 600, align: "left", setData }); break;
     }
     setSlash(null);
-  }, [slash, addNode, setData, castVote, voting.active, pushHistory]);
+  }, [slash, addNode, setData, pushHistory]);
 
   /* ── drop .md from MySpace sidebar ── */
   const onDrop = useCallback((event: React.DragEvent) => {
@@ -510,10 +460,10 @@ function CanvasInner() {
     const c = screenToFlowPosition({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
     const { nodes: tn, edges: te } = tpl.gen(c.x - 300, c.y - 200);
     pushHistory();
-    setNodes((ns) => [...ns, ...tn.map((n) => ({ ...n, data: { ...n.data, setData, onVote: castVote, voting: voting.active } }))]);
+    setNodes((ns) => [...ns, ...tn.map((n) => ({ ...n, data: { ...n.data, setData } }))]);
     setEdges((es) => [...es, ...te]);
     setTimeout(() => fitView({ padding: 0.2, duration: 350 }), 80);
-  }, [screenToFlowPosition, pushHistory, setNodes, setEdges, setData, castVote, voting.active, fitView]);
+  }, [screenToFlowPosition, pushHistory, setNodes, setEdges, setData, fitView]);
 
   /* ── keyboard: tools, undo/redo, slash, delete, fit ── */
   useEffect(() => {
@@ -621,11 +571,6 @@ function CanvasInner() {
         canRedo={future.current.length > 0}
         onUndo={undo}
         onRedo={redo}
-        timer={timer}
-        onTimer={(patch) => setTimer((t) => ({ ...t, ...patch }))}
-        onTimerAdd={(m) => setTimer((t) => ({ ...t, seconds: t.seconds + m * 60, expired: false }))}
-        voting={voting}
-        onVotingToggle={startVoting}
         onTemplates={() => setShowTemplates(true)}
         onExport={onExport}
         zoom={zoom}
@@ -647,35 +592,6 @@ function CanvasInner() {
         onSticker={setSticker}
         onAutoLayout={autoLayout}
       />
-
-      {/* voting panel */}
-      {voting.active && (
-        <div className="holst-vote-panel" onMouseDown={(e) => e.stopPropagation()}>
-          <h4>🗳 Voting active</h4>
-          <div className="holst-vote-row">
-            <span>Votes per user</span>
-            <input type="number" min={1} max={10} value={voting.votesPerUser}
-              onKeyDown={(e) => e.stopPropagation()}
-              onChange={(e) => setVoting((v) => ({ ...v, votesPerUser: Math.max(1, Math.min(10, Number(e.target.value) || 1)) }))}
-              style={{ width: 46, background: "var(--track)", border: "1px solid var(--glass-border)", borderRadius: 6, color: "var(--text-primary)", padding: "2px 6px", outline: "none" }} />
-          </div>
-          <div className="holst-vote-row">
-            <span>Duration</span>
-            <input type="number" min={1} max={30} value={voting.minutes}
-              onKeyDown={(e) => e.stopPropagation()}
-              onChange={(e) => setVoting((v) => ({ ...v, minutes: Math.max(1, Math.min(30, Number(e.target.value) || 1)) }))}
-              style={{ width: 46, background: "var(--track)", border: "1px solid var(--glass-border)", borderRadius: 6, color: "var(--text-primary)", padding: "2px 6px", outline: "none" }} />
-          </div>
-          <div className="holst-vote-row">
-            <span>Ends in</span>
-            <span style={{ fontFamily: "var(--font-mono)", color: voteEndsAt != null && voteEndsAt - Date.now() < 30_000 ? "var(--coral)" : "var(--teal)" }}>
-              {voteEndsAt != null ? `${Math.max(0, Math.ceil((voteEndsAt - Date.now()) / 1000))}s` : "∞"}
-            </span>
-          </div>
-          <div style={{ fontSize: 10.5, color: "var(--text-tertiary)" }}>Double-click sticky notes to vote 👍</div>
-          <button className="holst-hbtn is-danger" onClick={startVoting}>Stop voting</button>
-        </div>
-      )}
 
       {/* slash command palette */}
       {slash && (

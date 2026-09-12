@@ -9,6 +9,7 @@ import { ParamField } from "../components/ParamField";
 import AudioPlayer from "../components/AudioPlayer";
 import { useI18n } from "../i18n";
 import { useContextMenu, copyToClipboard } from "../components/ContextMenu";
+import { usePageBusy } from "../components/Toolbar";
 import { api } from "../api/client";
 import type { TtsProfile, TtsPreset, TtsHardware, TtsBook, TtsBookChapter, TtsChunk, TtsJob } from "../api/client";
 
@@ -175,6 +176,8 @@ export default function AudiobookTTSPage() {
   const proPanel = { params, setManual, openAcc, toggleAcc };
 
   const busy = !!job && !job.done && job.stage !== "error";
+  // Синтез озвучки — задача: страницу нельзя выгружать из памяти (keep-alive).
+  usePageBusy(busy);
   const optimal = hw?.optimal || {};
 
   // Рабочая область: у каждой вкладки своё состояние сворачивания.
@@ -465,7 +468,7 @@ export default function AudiobookTTSPage() {
 
       {/* --- Основная зона: панель управления слева, рабочая область справа --- */}
       <div className="ab-layout">
-        {/* Левая колонка (~340px): книга, движок, референс, железо */}
+        {/* Левая колонка (~340px): книга, референс голоса, движок */}
         <div className="ab-col ab-left">
           <Glass className="split-pane">
             <div className="field-label">{t("ab.bookFile")}</div>
@@ -498,32 +501,23 @@ export default function AudiobookTTSPage() {
               </div>
             )}
 
-            <div className="field-label" style={{ marginTop: 10 }}>{t("ab.engine")}</div>
-            <div className="ab-engines">
-              <div className={`ab-engine ${engine === "f5" ? "is-active" : ""}`} role="button" tabIndex={0}
-                onClick={() => setEngine("f5")} onKeyDown={(e) => e.key === "Enter" && setEngine("f5")}>
-                <Zap size={15} /><b>F5-TTS</b>
-                <span className="muted-sm">{t("ab.f5Desc")}</span>
-                <span className="ab-tab-badge">~3.8 GB · {t("ab.nonFiction")}</span>
-              </div>
-              <div className={`ab-engine ${engine === "xtts" ? "is-active" : ""}`} role="button" tabIndex={0}
-                onClick={() => setEngine("xtts")} onKeyDown={(e) => e.key === "Enter" && setEngine("xtts")}>
-                <Heart size={15} /><b>Coqui XTTS v2</b>
-                <span className="muted-sm">{t("ab.xttsDesc")}</span>
-                <span className="ab-tab-badge ab-tab-badge-amber">~4.5 GB · {t("ab.fiction")}</span>
-              </div>
-            </div>
-
+            {/* Референс голоса — компактной строкой сразу под импортом книги:
+                это первое, что нужно после книги, поэтому держим рядом. */}
             <div className="field-label" style={{ marginTop: 10 }}>{t("ab.reference")}</div>
-            <div className="ab-ref-row">
-              <Btn icon={Upload} onClick={() => refInputRef.current?.click()}>{t("ab.uploadRef")}</Btn>
+            <div className="ab-ref-row ab-ref-compact">
+              <button type="button" className={`ab-ref-pick ${refFile ? "has-file" : ""}`}
+                onClick={() => refInputRef.current?.click()} title={t("ab.uploadRef")}>
+                <Upload size={13} />
+                <span className="ab-ref-name">{refFile ? (sampleName || t("ab.uploadRef")) : t("ab.uploadRef")}</span>
+              </button>
               <input ref={refInputRef} type="file" hidden accept="audio/*" onChange={(e) => pickRef(e.target.files?.[0] || null)} />
-              <input className="text-input" value={profileName} onChange={(e) => setProfileName(e.target.value)} style={{ flex: 1 }} />
-              <IconBtn icon={Save} title={t("ab.saveProfile")} onClick={saveProfile} />
+              <input className="text-input ab-ref-input" value={profileName}
+                onChange={(e) => setProfileName(e.target.value)} placeholder={t("ab.saveProfile")} />
+              <IconBtn icon={Save} title={t("ab.saveProfile")} onClick={saveProfile} disabled={!refFile} />
             </div>
             {sampleUrl && <AudioPlayer src={sampleUrl} compact className="ab-ref-player" />}
             {profiles.length > 0 && (
-              <div className="task-list" style={{ marginTop: 8 }}>
+              <div className="task-list ab-ref-profiles">
                 {profiles.map((p) => (
                   <Glass key={p.id} className="task-row" onClick={() => applyProfile(p)}
                     onContextMenu={(e) => menu.open(e, [
@@ -539,6 +533,22 @@ export default function AudiobookTTSPage() {
                 ))}
               </div>
             )}
+
+            <div className="field-label" style={{ marginTop: 10 }}>{t("ab.engine")}</div>
+            <div className="ab-engines">
+              <div className={`ab-engine ${engine === "f5" ? "is-active" : ""}`} role="button" tabIndex={0}
+                onClick={() => setEngine("f5")} onKeyDown={(e) => e.key === "Enter" && setEngine("f5")}>
+                <Zap size={15} /><b>F5-TTS</b>
+                <span className="muted-sm">{t("ab.f5Desc")}</span>
+                <span className="ab-tab-badge">~3.8 GB · {t("ab.nonFiction")}</span>
+              </div>
+              <div className={`ab-engine ${engine === "xtts" ? "is-active" : ""}`} role="button" tabIndex={0}
+                onClick={() => setEngine("xtts")} onKeyDown={(e) => e.key === "Enter" && setEngine("xtts")}>
+                <Heart size={15} /><b>Coqui XTTS v2</b>
+                <span className="muted-sm">{t("ab.xttsDesc")}</span>
+                <span className="ab-tab-badge ab-tab-badge-amber">~4.5 GB · {t("ab.fiction")}</span>
+              </div>
+            </div>
           </Glass>
 
         </div>

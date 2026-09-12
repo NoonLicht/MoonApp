@@ -4,7 +4,7 @@ import {
   X, Zap, Save, SlidersHorizontal,
 } from "lucide-react";
 import { Glass, Btn, Badge, Select, SectionHead, ProgressBar } from "../components/ui";
-import { usePageToolbar } from "../components/Toolbar";
+import { usePageToolbar, usePageActive, usePageBusy } from "../components/Toolbar";
 import { useI18n } from "../i18n";
 import { useContextMenu, copyToClipboard } from "../components/ContextMenu";
 import { api } from "../api/client";
@@ -82,7 +82,6 @@ export default function CompressorPage() {
   const [saveModal, setSaveModal] = useState(false);
   const [presetName, setPresetName] = useState("");
   const inputRef = useRef<HTMLInputElement | null>(null);
-  const pollRef = useRef<number | null>(null);
 
   const patch = (u: Partial<Params>) => setP((prev) => ({ ...prev, ...u }));
 
@@ -118,7 +117,6 @@ export default function CompressorPage() {
         audioKbps: typeof c.audioKbps === "number" ? c.audioKbps : prev.audioKbps,
       }));
     }).catch(() => { /* дефолты из кода */ });
-    return () => { if (pollRef.current) window.clearInterval(pollRef.current); };
   }, []);
 
   // Методы, подходящие под выбранный кодек и доступные на этой машине.
@@ -152,25 +150,38 @@ export default function CompressorPage() {
     return Math.max(64, Math.round((totalKbits - audioK) / fileMeta.dur / 1000));
   })();
 
-  // Опрос статуса активного задания.
-  const startPolling = useCallback((id: string) => {
-    if (pollRef.current) window.clearInterval(pollRef.current);
-    pollRef.current = window.setInterval(async () => {
+  // Опрос активного задания. В фоне (страница не видима) он реже: сама задача
+  // идёт на сервере, а интерфейс догонит её сразу при возвращении (см. ниже).
+  const [jobId, setJobId] = useState<string | null>(null);
+  const isActive = usePageActive();
+
+  useEffect(() => {
+    if (!jobId) return undefined;
+    let stopped = false;
+    const tick = async () => {
       try {
-        const j = await api.compressorStatus(id);
+        const j = await api.compressorStatus(jobId);
+        if (stopped) return;
         setJob(j);
-        if (j.done || j.stage === "error") {
-          window.clearInterval(pollRef.current!);
-          pollRef.current = null;
-        }
+        if (j.done || j.stage === "error") setJobId(null);
       } catch { /* сеть моргнула — попробуем на следующем тике */ }
-    }, 1000);
-  }, []);
+    };
+    const timer = window.setInterval(tick, isActive ? 1000 : 4000);
+    if (isActive) void tick(); // при возврате сразу подтягиваем прогресс
+    return () => { stopped = true; window.clearInterval(timer); };
+  }, [jobId, isActive]);
+
+  // Незавершённое сжатие — страницу нельзя выгружать из памяти (LRU).
+  usePageBusy(!!jobId);
+
+  /** Сбросить активное задание (вместе с опросом). */
+  const closeJob = () => { setJobId(null); setJob(null); };
 
   const pick = (f: File | null) => {
     setFile(f);
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     setPreviewUrl(f ? URL.createObjectURL(f) : null);
+    setJobId(null);
     setJob(null);
     setFileMeta(null);
     setOrigCodec("");
@@ -203,7 +214,7 @@ export default function CompressorPage() {
       if (p.qualityMode === "bitrate") payload.targetKbps = computedKbps || p.targetKbps;
       const j = await api.compressVideo(file, payload);
       setJob(j);
-      startPolling(j.id);
+      setJobId(j.id);
     } catch (e: any) {
       setDefect(String(e.message || e));
     }
@@ -267,6 +278,8 @@ export default function CompressorPage() {
 
   const tone = crfTone(p.crf, p.codec);
   const saved = job?.done && job.size ? Math.round(100 - (100 * job.outSize) / job.size) : null;
+  // Пропорции исходника для превью (до загрузки метаданных — 16:9).
+  const previewAr = fileMeta && fileMeta.w > 0 && fileMeta.h > 0 ? fileMeta.w / fileMeta.h : 16 / 9;
   const done = job?.done;
   const busy = !!job && !done && job.stage !== "error";
   const rec = hw?.recommended;
@@ -309,7 +322,12 @@ export default function CompressorPage() {
                 { label: t("ctx.copyName"), icon: Copy, onClick: () => copyToClipboard(file.name) },
                 { label: t("cmp.rechoose"), icon: X, onClick: () => pick(null) },
               ])}>
-              {previewUrl && <video src={previewUrl} controls onLoadedMetadata={onMeta} />}
+              {previewUrl && (
+                <div className="cmp-player-wrap">
+                  <video src={previewUrl} controls onLoadedMetadata={onMeta}
+                    style={{ ["--cmp-ar" as string]: previewAr, ["--cmp-max-h" as string]: "52vh" }} />
+                </div>
+              )}
               <div className="media-title" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{file.name}</div>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                 {origCodec && <Badge tone="violet" mono>{origCodec.toUpperCase()}</Badge>}
@@ -331,7 +349,7 @@ export default function CompressorPage() {
                 { label: t("cmp.savePreset"), icon: Save, onClick: () => setSaveModal(true) },
                 { separator: true },
                 { label: t("cmp.download"), icon: Download, onClick: () => { window.location.href = api.compressorUrl(job.id, "download"); } },
-                { label: t("cmp.delete"), icon: Trash2, danger: true, onClick: async () => { await api.compressorDelete(job.id); pick(null); setJob(null); } },
+                { label: t("cmp.delete"), icon: Trash2, danger: true, onClick: async () => { await api.compressorDelete(job.id); pick(null); } },
               ])}>
               <SplitCompare
                 originalSrc={previewUrl || ""}
@@ -345,7 +363,7 @@ export default function CompressorPage() {
                   {t("cmp.download")}
                 </Btn>
                 <Btn icon={FileVideo} onClick={() => pick(null)}>{t("cmp.newVideo")}</Btn>
-                <Btn icon={SlidersHorizontal} onClick={() => { setJob(null); }}>{t("cmp.recompress")}</Btn>
+                <Btn icon={SlidersHorizontal} onClick={closeJob}>{t("cmp.recompress")}</Btn>
               </div>
             </Glass>
           )}
@@ -564,9 +582,14 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 /**
  * Split-плеер сравнения: оригинал под результатом, разделитель — клип-порт
- * результата, перетаскивается мышью. Воспроизведение синхронное: play/pause/
- * seek/loop дублируются на оба <video> (контроль рассинхрона в timeupdate).
- * Метаданные: оригинал — из fileMeta + job.size, результат — из job.
+ * результата, перетаскивается мышью.
+ *
+ * Синхронность: звучит всегда ТОЛЬКО одна дорожка (иначе слышен «флангер» и
+ * рассинхрон), а видео подтягиваются друг к другу — мягко через playbackRate и
+ * жёстко (seek) при большом расхождении.
+ *
+ * Размер: плеер масштабируется по ширине кадра и не вылезает за высоту окна,
+ * поэтому больших чёрных полос сверху/снизу нет (--cmp-ar / --cmp-max-h).
  */
 function SplitCompare({ originalSrc, resultSrc, job, fileMeta, savedPct }: {
   originalSrc: string;
@@ -576,24 +599,64 @@ function SplitCompare({ originalSrc, resultSrc, job, fileMeta, savedPct }: {
   savedPct: number | null;
 }) {
   const { t } = useI18n();
-  const refA = useRef<HTMLVideoElement | null>(null); // оригинал (низ)
+  const isActive = usePageActive();
+  const refA = useRef<HTMLVideoElement | null>(null); // оригинал (низ, со звуком)
   const refB = useRef<HTMLVideoElement | null>(null); // результат (верх, клип)
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const [split, setSplit] = useState(50);
   const [playing, setPlaying] = useState(false);
   const [pos, setPos] = useState(0);
+  const [audioSide, setAudioSide] = useState<"orig" | "result">("orig");
   const dragging = useRef(false);
 
-  const sync = (from: HTMLVideoElement | null, to: HTMLVideoElement | null) => {
-    if (from && to && Math.abs(from.currentTime - to.currentTime) > 0.15) to.currentTime = from.currentTime;
+  // Пропорции кадра: из <video> исходника, иначе из probe-метаданных задания.
+  const arRaw = fileMeta && fileMeta.w > 0 && fileMeta.h > 0
+    ? fileMeta.w / fileMeta.h
+    : (job.info?.width && job.info?.height ? job.info.width / job.info.height : 16 / 9);
+  const ar = Number.isFinite(arRaw) && arRaw > 0 ? arRaw : 16 / 9;
+
+  /* ── синхронизация ──
+   * Мягкая коррекция: опоздавшему слою на 1 кадр крутим playbackRate, это
+   * незаметно глазу и не даёт «щёлкнуть» звуком. Если разъехались сильно —
+   * жёстко переставляем время. */
+  const hardSync = (from: HTMLVideoElement | null, to: HTMLVideoElement | null, tol = 0.25) => {
+    if (from && to && Math.abs(from.currentTime - to.currentTime) > tol) to.currentTime = from.currentTime;
   };
+
+  useEffect(() => {
+    if (!playing) return undefined;
+    const timer = window.setInterval(() => {
+      const a = refA.current, b = refB.current;
+      if (!a || !b) return;
+      const drift = a.currentTime - b.currentTime;
+      if (Math.abs(drift) > 0.25) { b.currentTime = a.currentTime; a.playbackRate = 1; b.playbackRate = 1; return; }
+      // ведущий — оригинал (a), ведомый — результат (b)
+      b.playbackRate = Math.abs(drift) < 0.01 ? 1 : Math.min(1.05, Math.max(0.95, 1 + drift * 2));
+      a.playbackRate = 1;
+    }, 250);
+    return () => window.clearInterval(timer);
+  }, [playing]);
+
+  // Звучит ровно одна дорожка (иначе двойной звук даёт «эхо» и слышимый рассинхрон).
+  useEffect(() => {
+    if (refA.current) refA.current.muted = audioSide !== "orig";
+    if (refB.current) refB.current.muted = audioSide !== "result";
+  }, [audioSide, playing]);
+
+  // Уход со страницы — останавливаем воспроизведение (звук не должен играть фоном).
+  useEffect(() => {
+    if (isActive) return;
+    try { refA.current?.pause(); refB.current?.pause(); } catch { /* noop */ }
+    setPlaying(false);
+  }, [isActive]);
 
   const toggle = () => {
     const a = refA.current, b = refB.current;
     if (!a || !b) return;
     if (playing) { a.pause(); b.pause(); setPlaying(false); }
     else {
-      sync(a, b); sync(b, a);
+      hardSync(a, b, 0.001); hardSync(b, a, 0.001);
+      a.playbackRate = 1; b.playbackRate = 1;
       Promise.all([a.play(), b.play()]).then(() => setPlaying(true)).catch(() => { /* autoplay */ });
     }
   };
@@ -630,14 +693,15 @@ function SplitCompare({ originalSrc, resultSrc, job, fileMeta, savedPct }: {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8, flex: 1, minHeight: 0 }}>
-      <div ref={wrapRef} className="cmp-player">
+      {/* Центрируем плеер: он сам подбирает ширину по пропорции кадра. */}
+      <div className="cmp-player-wrap">
+      <div ref={wrapRef} className="cmp-player" style={{ ["--cmp-ar" as string]: ar, ["--cmp-max-h" as string]: "52vh" }}>
         {/* Оригинал — нижний слой */}
         <video ref={refA} src={originalSrc} playsInline loop
-          onTimeUpdate={(e) => { setPos(e.currentTarget.duration ? e.currentTarget.currentTime / e.currentTarget.duration : 0); sync(e.currentTarget, refB.current); }}
+          onTimeUpdate={(e) => setPos(e.currentTarget.duration ? e.currentTarget.currentTime / e.currentTarget.duration : 0)}
           onEnded={() => setPlaying(false)} />
         {/* Результат — верхний слой, обрезан до позиции разделителя */}
         <video ref={refB} src={resultSrc} playsInline loop
-          onTimeUpdate={(e) => sync(e.currentTarget, refA.current)}
           style={{ clipPath: `inset(0 0 0 ${split}%)` }} />
         {/* Разделитель */}
         <div
@@ -650,10 +714,17 @@ function SplitCompare({ originalSrc, resultSrc, job, fileMeta, savedPct }: {
           <button onClick={toggle} style={{ background: "none", border: "none", color: "#fff", cursor: "pointer", fontSize: 15 }}>{playing ? "⏸" : "▶"}</button>
           <input type="range" min="0" max="1" step="0.001" value={pos}
             onChange={(e) => seekTo(Number(e.target.value))} style={{ flex: 1, accentColor: "var(--amber)" }} />
+          {/* Звучит только одна дорожка — переключаем, какую слушать. */}
+          <button onClick={() => setAudioSide((s) => (s === "orig" ? "result" : "orig"))}
+            title={audioSide === "orig" ? t("cmp.original") : t("cmp.result")}
+            style={{ background: "none", border: "none", color: "#fff", cursor: "pointer", fontSize: 13 }}>
+            {audioSide === "orig" ? "🔊" : "🔈"}
+          </button>
         </div>
         {/* Подписи сторон */}
         <span style={{ position: "absolute", top: 8, left: 10, color: "#fff", fontSize: 12, background: "rgba(0,0,0,.55)", borderRadius: 6, padding: "2px 8px" }}>{t("cmp.original")}</span>
         <span style={{ position: "absolute", top: 8, right: 10, color: "#fff", fontSize: 12, background: "rgba(0,0,0,.55)", borderRadius: 6, padding: "2px 8px" }}>{t("cmp.result")}</span>
+      </div>
       </div>
 
       {/* Метаданные: оригинал слева, результат справа */}
@@ -670,7 +741,12 @@ function SplitCompare({ originalSrc, resultSrc, job, fileMeta, savedPct }: {
           <Badge tone="violet" mono>{t(`cmp.engine_${job.engineUsed || job.engine}`)}</Badge>
           <Badge tone="neutral">{fmtMB(job.outSize)}</Badge>
           <Badge tone="neutral">{fmtBitrate(outBitrate)}</Badge>
-          {savedPct != null && <Badge tone="teal">−{savedPct}%</Badge>}
+          {/* Размер мог и вырасти: тогда показываем «+N%», а не двойной минус. */}
+          {savedPct != null && (
+            savedPct >= 0
+              ? <Badge tone="teal">−{savedPct}%</Badge>
+              : <Badge tone="coral">+{Math.abs(savedPct)}%</Badge>
+          )}
         </div>
       </div>
     </div>

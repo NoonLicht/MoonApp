@@ -61,7 +61,13 @@ html, body{
 .app-shell{ background:var(--bg-alpha); height:100vh; border-radius:18px; overflow:hidden;
   --rail-w: 60px;
   --rail-gap: 12px;
-  --content-top: 72px;
+  --tbar-gap: 14px;        /* отступ верхней панели от краёв окна */
+  --tbar-h: 46px;          /* высота верхней панели */
+  /* Рельс страниц начинается ровно под панелью и тянется до нижнего края окна,
+     а контент — под обоими. --content-top выводится из панели, поэтому
+     изменения размеров панели автоматически сдвигают и рельс, и контент. */
+  --rail-top: calc(var(--tbar-gap) + var(--tbar-h) + 12px);
+  --content-top: var(--rail-top);
   --content-bottom: 28px;
   --vh-base: calc(var(--content-top) + var(--content-bottom));
   --content-max: 1680px;
@@ -90,10 +96,11 @@ html, body{
 .glass{ background:var(--glass); border:1px solid var(--glass-border); backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px); border-radius:16px; }
 
 .top-toolbar{
-  position:fixed; top:14px; right:14px; z-index:40;
-  left: calc(var(--rail-gap) + var(--rail-w) + 12px);
+  /* Панель управления приложением — во всю ширину окна (кнопки окна справа,
+     ничего не обрезается слева). Рельс страниц живёт ПОД ней. */
+  position:fixed; top:var(--tbar-gap); left:var(--tbar-gap); right:var(--tbar-gap); z-index:40;
   display:grid; grid-template-columns:1fr auto 1fr; align-items:center;
-  height:46px;
+  height:var(--tbar-h);
   padding:0 12px; border-radius:14px;
   background:var(--glass-strong); border:1px solid var(--glass-border);
   backdrop-filter:blur(22px); -webkit-backdrop-filter:blur(22px); box-shadow:var(--shadow);
@@ -114,6 +121,8 @@ html, body{
 .tb-dynamic input[type="range"]{ width:110px; flex-shrink:0; }
 .tb-dynamic .select-wrap select{ padding:5px 24px 5px 11px; font-size:11.5px; }
 .tb-dynamic .icon-btn{ width:28px; height:28px; flex-shrink:0; }
+/* Live-индикатор мониторинга в панели — компактная иконка без текста. */
+.tb-dynamic .live-pill{ padding:6px; border-radius:50%; gap:0; }
 
 /* Контент: верхний отступ — под верхний тулбар, боковой слева — под
    вертикальный док (rail). Нижний отступ небольшой: док больше не занимает низ. */
@@ -121,12 +130,22 @@ html, body{
 .content-area{ position:relative; z-index:1;
   padding: var(--content-top) 24px var(--content-bottom) calc(var(--rail-gap) + var(--rail-w) + 12px);
   display:flex; flex-direction:column; flex:1; min-height:0; overflow:hidden; }
-/* Ограничитель ширины контента: на ultrawide-мониторах (например 3440×1440)
-   содержимое не растягивается на всю ширину. Страницы-«редакторы» (канвас и
-   т.п.) помечаются классом .page-wide и занимают всю ширину. */
-.content-frame{ width:100%; max-width:var(--content-max); margin:0 auto;
-  display:flex; flex-direction:column; flex:1; min-height:0; }
-.content-frame:has(.page-wide){ max-width:none; }
+/* Стопка «живых» страниц: все лежат в одной ячейке грида, поэтому неактивные
+   сохраняют размеры и позиции прокрутки (см. keep-alive в App.tsx). Кнопки
+   ограничения ширины: на ultrawide контент не растягивается; страницы-редакторы
+   (канвас и т.п.) помечаются классом .page-wide и занимают всю ширину. */
+.pages-stack{ display:grid; grid-template-columns:minmax(0,1fr); grid-template-rows:minmax(0,1fr);
+  flex:1; min-height:0; }
+.page-host{ grid-area:1/1; min-width:0; min-height:0; width:100%; max-width:var(--content-max);
+  margin:0 auto; display:flex; flex-direction:column; }
+.page-host:has(.page-wide){ max-width:none; }
+/* Скрываем неактивные именно через visibility: display:none схлопывает размеры
+   (канвас/графики перестают измеряться) и сбрасывает scrollTop. */
+.page-host:not(.is-active){ visibility:hidden; pointer-events:none; }
+/* Страховка keep-alive: ни один узел скрытой страницы не должен «просветить»
+   себя обратно. Внутри компонентов встречается visibility:visible (аккордеоны),
+   и без этого правила скрытая страница «протекала» на остальные. */
+.page-host:not(.is-active) *{ visibility:hidden !important; }
 .page{ display:flex; flex-direction:column; gap:14px; overflow:hidden; flex:1; min-height:0; }
 /* Раньше высота считалась от 100vh; теперь область контента сама флексится,
    поэтому достаточно flex:1 (см. .content-area → .content-frame → .page). */
@@ -157,7 +176,7 @@ html, body{
 .app-shell[dir="rtl"] .blob-a{ left:auto; right:-120px; }
 .app-shell[dir="rtl"] .blob-b{ right:auto; left:-160px; }
 /* RTL: вертикальный док уходит вправо — тулбар и контент зеркалят отступы. */
-.app-shell[dir="rtl"] .top-toolbar{ left:14px; right:calc(var(--rail-gap) + var(--rail-w) + 12px); }
+.app-shell[dir="rtl"] .top-toolbar{ left:var(--tbar-gap); right:var(--tbar-gap); }
 .app-shell[dir="rtl"] .content-area{
   padding-left:24px;
   padding-right:calc(var(--rail-gap) + var(--rail-w) + 12px);
@@ -296,29 +315,57 @@ input[type="range"]{
    Адаптив верхнего тулбара и оболочки.
    Шкала брейкпоинтов (те же числа — в src/utils/useMediaQuery.ts):
      ≤640  xs  — минимальный режим;
-     ≤900  sm  — узкий: заголовок скрыт;
+     ≤900  sm  — узкий: в панели остаются только иконки;
      ≤1200 md  — промежуточный.
    ============================================================ */
 
-/* На узких экранах центр тулбара может не вмещать поля/кнопки — разрешаем
-   горизонтальную прокрутку самого центра, чтобы правое крыло (прокси/тема/
-   кнопки окна) всегда оставалось на месте. */
-@media (max-width: 1200px){
-  .tb-center{ overflow-x:auto; overflow-y:hidden; scrollbar-width:none; }
-  .tb-center::-webkit-scrollbar{ display:none; }
-  .tb-dynamic{ flex-wrap:nowrap; }
+/* Панель держим компактной: в ней только иконки и статус-бейджи, поэтому
+   прокрутка/перенос не нужны (и, что важно, overflow обрезал бы поповеры). */
+.tb-center{ flex-wrap:nowrap; }
+
+/* Меню-поповер тулбара (см. src/components/ToolbarMenu.tsx). */
+.tb-menu{ position:relative; display:flex; flex-shrink:0; }
+.tb-pop{
+  position:absolute; top:calc(100% + 12px); z-index:60;
+  min-width:210px; max-width:min(320px, 86vw);
+  padding:10px; border-radius:12px;
+  background:var(--glass-strong); border:1px solid var(--glass-border);
+  backdrop-filter:blur(22px); -webkit-backdrop-filter:blur(22px); box-shadow:var(--shadow);
+  display:flex; flex-direction:column; gap:10px;
+  animation:tb-pop-in .16s cubic-bezier(.2,.9,.3,1);
+}
+.tb-pop.is-left{ left:0; transform-origin:top left; }
+.tb-pop.is-right{ right:0; transform-origin:top right; }
+@keyframes tb-pop-in{
+  from{ opacity:0; transform:translateY(-6px) scale(.96); }
+  to{ opacity:1; transform:translateY(0) scale(1); }
+}
+/* Внутри панели поля вертикальные: правило .tb-dynamic .field делает их
+   строкой (для старой раскладки), в поповере это выглядело бы криво. */
+.tb-pop .field{ flex-direction:column; align-items:stretch; gap:5px; width:100% !important; }
+.tb-pop .field-label{ font-size:11px; letter-spacing:.06em; }
+.tb-pop .select-wrap{ width:100%; }
+.tb-pop .select-wrap select{ width:100%; padding:7px 26px 7px 11px; font-size:12px; }
+.tb-pop input[type="range"]{ width:100%; }
+.tb-pop-title{
+  font-size:11px; color:var(--text-tertiary); font-family:var(--font-mono);
+  text-transform:uppercase; letter-spacing:.06em; margin-bottom:-4px;
 }
 
 @media (max-width: 900px){
   .tb-title span{ display:none; }
-  .tb-center{ justify-content:flex-start; }
-  .tb-dynamic select{ font-size:11px; }
+  /* Узкий режим: никаких надписей — только иконки страницы/настроек и кнопки окна. */
+  .tb-dynamic .badge{ display:none; }
+  .tb-dynamic{ gap:4px; }
+  .tb-center{ gap:6px; }
 }
 
 @media (max-width: 640px){
-  /* Минимальный режим: док уже, отступы контента меньше. */
-  .app-shell{ --rail-w:50px; --rail-gap:8px; --content-top:64px; --content-bottom:16px; }
+  /* Минимальный режим: док уже, панель ниже, отступы контента меньше
+     (--rail-top и --content-top выводятся из --tbar-* и пересчитаются сами). */
+  .app-shell{ --rail-w:50px; --rail-gap:8px; --tbar-gap:10px; --tbar-h:42px; --content-bottom:16px; }
   .tb-side-right{ gap:2px; }
   .theme-toggle{ padding:4px; }
+  .tb-dynamic .icon-btn{ width:26px; height:26px; }
 }
 

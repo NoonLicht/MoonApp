@@ -1,11 +1,11 @@
-﻿import React, { useState, useEffect, useRef } from "react";
+﻿import React, { useState, useEffect } from "react";
 import {
   Archive, Download, Globe, Layers, Filter, Copy, Trash2, ShieldCheck, FileSearch,
   Play, ExternalLink, Loader2, FolderOpen, Compass, Wifi,
 } from "lucide-react";
 import { useContextMenu, copyToClipboard } from "../components/ContextMenu";
 import { Btn, Glass, Badge, Select, SectionHead, ProgressBar, Field, Checkbox, EmptyHint } from "../components/ui";
-import { usePageToolbar } from "../components/Toolbar";
+import { usePageToolbar, usePageActive, usePageBusy } from "../components/Toolbar";
 import { useI18n } from "../i18n";
 import { api } from "../api/client";
 import type { SitebakArchive, SitebakJob } from "../api/client";
@@ -50,7 +50,6 @@ export default function ArchiverPage() {
   const [job, setJob] = useState<SitebakJob | null>(null);
   const [archives, setArchives] = useState<SitebakArchive[]>([]);
   const [verifyResult, setVerifyResult] = useState<Record<string, string>>({});
-  const pollRef = useRef<number | null>(null);
 
   // Дефолты из настроек sitebak.* применяются при открытии страницы.
   useEffect(() => {
@@ -68,8 +67,35 @@ export default function ArchiverPage() {
       }
     }).catch(() => { /* дефолты из кода */ });
     api.archiveList().then(setArchives).catch(() => {});
-    return () => { if (pollRef.current) window.clearInterval(pollRef.current); };
   }, []);
+
+  /* ── опрос активного архивирования ──
+   * В фоне (страница не видима) опрос реже: краулер работает на сервере, а
+   * интерфейс догоняет его сразу при возвращении. */
+  const [jobId, setJobId] = useState<string | null>(null);
+  const isActive = usePageActive();
+
+  useEffect(() => {
+    if (!jobId) return undefined;
+    let stopped = false;
+    const tick = async () => {
+      try {
+        const s = await api.archiveStatus(jobId);
+        if (stopped) return;
+        setJob(s);
+        if (s.done || s.stage === "error") {
+          setJobId(null);
+          api.archiveList().then(setArchives).catch(() => {});
+        }
+      } catch { /* повтор на следующем тике */ }
+    };
+    const timer = window.setInterval(tick, isActive ? 1200 : 4000);
+    if (isActive) void tick();
+    return () => { stopped = true; window.clearInterval(timer); };
+  }, [jobId, isActive]);
+
+  // Незавершённое архивирование — страницу нельзя выгружать из памяти (LRU).
+  usePageBusy(!!jobId);
 
   usePageToolbar(
     <>
@@ -87,18 +113,7 @@ export default function ArchiverPage() {
         stripScripts, stripExif, blockAds, inlineAssets, delayMs, concurrency,
         cookies, userAgent,
       });
-      setJob(j); setVerifyResult({});
-      if (pollRef.current) window.clearInterval(pollRef.current);
-      pollRef.current = window.setInterval(async () => {
-        try {
-          const s = await api.archiveStatus(j.id);
-          setJob(s);
-          if (s.done || s.stage === "error") {
-            window.clearInterval(pollRef.current!); pollRef.current = null;
-            api.archiveList().then(setArchives).catch(() => {});
-          }
-        } catch { /* повтор на следующем тике */ }
-      }, 1200);
+      setJob(j); setVerifyResult({}); setJobId(j.id);
     } catch (e: any) {
       setJob({ id: "", url, name: "", stage: "error", progress: 0, pages: 0, origSize: 0, bakSize: 0, error: String(e.message || e), done: false });
     }

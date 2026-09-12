@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef, useMemo, memo } from "react";
 import {
-  Thermometer, Fan, HardDrive, Wifi, Info, CircleDot, Cpu, MemoryStick, Monitor,
+  Thermometer, Fan, HardDrive, Wifi, Info, CircleDot, Cpu, MemoryStick, Monitor, SlidersHorizontal,
 } from "lucide-react";
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
 } from "recharts";
 import { Glass, Select, SectionHead, Btn, Field } from "../components/ui";
-import { usePageToolbar } from "../components/Toolbar";
+import ToolbarMenu from "../components/ToolbarMenu";
+import { usePageToolbar, usePageActive } from "../components/Toolbar";
 import { useI18n } from "../i18n";
 import { api } from "../api/client";
 import type { LhmStatus, MonitorSnapshot } from "../api/types";
@@ -60,7 +61,7 @@ export default function MonitorPage() {
   const { t } = useI18n();
   const [live, setLive] = useState(true);
   const [interval_, setInterval_] = useState<number>(500);
-  const [view, setView] = useState<CpuView>("cores");
+  const [view, setView] = useState<CpuView>("threads");
   const [data, setData] = useState<MonitorSnapshot | null>(null);
   const [tick, setTick] = useState(0); // перерисовка при обновлении истории
   const [pollNonce, setPollNonce] = useState(0); // немедленный опрос после действий с LHM
@@ -85,6 +86,12 @@ export default function MonitorPage() {
       .catch(() => {});
   }, []);
 
+  /* ── keep-alive ──
+   * Страница больше не размонтируется при уходе, поэтому опрос нужно ставить на
+   * паузу вручную: невидимый график не должен гонять запросы к железу.
+   * При возвращении делаем один немедленный опрос (ниже, по isActive). */
+  const isActive = usePageActive();
+
   useEffect(() => {
     let stopped = false;
     const poll = async (): Promise<void> => {
@@ -104,34 +111,47 @@ export default function MonitorPage() {
       } catch { /* сервер недоступен — повторим по таймеру */ }
       finally { pendingRef.current = false; }
     };
-    void poll();
-    if (!live) return undefined;
+    if (isActive) void poll();
+    if (!live || !isActive) return undefined;
     const timer = setInterval(() => void poll(), interval_);
     return () => { stopped = true; clearInterval(timer); };
-  }, [live, interval_, pollNonce]);
+  }, [live, interval_, pollNonce, isActive]);
 
   usePageToolbar(
     <>
-      <button className={`live-pill ${live ? "is-live" : ""}`} onClick={() => setLive((v) => !v)}>
-        <CircleDot size={12} />{live ? t("monitor.live") : t("monitor.paused")}
+      {/* Live — иконка с цветовым индикатором: в панели не должно быть надписей. */}
+      <button className={`live-pill ${live ? "is-live" : ""}`} onClick={() => setLive((v) => !v)}
+        title={live ? t("monitor.live") : t("monitor.paused")}>
+        <CircleDot size={12} />
       </button>
-      <Field label={t("monitor.view")} w={120}>
-        <Select
-          value={view}
-          onChange={(e) => setView(e.target.value as CpuView)}
-          options={[
-            { value: "cores", label: t("monitor.viewCores") },
-            { value: "threads", label: t("monitor.viewThreads") },
-          ]}
-        />
-      </Field>
-      <Field label="ms" w={110}>
-        <Select
-          value={String(interval_)}
-          onChange={(e) => setInterval_(Number(e.target.value))}
-          options={INTERVAL_OPTIONS.map((ms) => ({ value: String(ms), label: String(ms) }))}
-        />
-      </Field>
+      {/* Вид CPU и частота опроса — в поповере (раньше это были два селекта
+          с подписями, на узком окне они наезжали друг на друга).
+          В заголовке поповера — ТЕКУЩИЕ значения, чтобы не дублировать
+          подпись поля «Вид ЦП». */}
+      <ToolbarMenu
+        icon={SlidersHorizontal}
+        title={t("monitor.view")}
+        align="right"
+        label={`${view === "threads" ? t("monitor.viewThreads") : t("monitor.viewCores")} · ${interval_} ms`}
+      >
+        <Field label={t("monitor.view")}>
+          <Select
+            value={view}
+            onChange={(e) => setView(e.target.value as CpuView)}
+            options={[
+              { value: "cores", label: t("monitor.viewCores") },
+              { value: "threads", label: t("monitor.viewThreads") },
+            ]}
+          />
+        </Field>
+        <Field label="ms">
+          <Select
+            value={String(interval_)}
+            onChange={(e) => setInterval_(Number(e.target.value))}
+            options={INTERVAL_OPTIONS.map((ms) => ({ value: String(ms), label: String(ms) }))}
+          />
+        </Field>
+      </ToolbarMenu>
     </>,
     [live, interval_, view, t]
   );

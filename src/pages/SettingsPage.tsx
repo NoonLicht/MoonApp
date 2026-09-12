@@ -301,6 +301,94 @@ export default function SettingsPage() {
 
       <Glass className="settings-scroll-wrap">
         {/* ---- Store / Р·Р°РіСЂСѓР·РєРё (РґРѕРє: store) ---- */}
+        {/* ---- Общее (док: settings) ---- */}
+        <Section title={t("settings.general")} icon={Settings2} badge="saved auto">
+          <Row label={t("settings.language")} hint={t("settings.languageHint")}>
+            <Select
+              value={g.language}
+              onChange={(e) => change("general.language", e.target.value)}
+              options={LANGS.map((l) => ({ value: l.code, label: l.native }))}
+            />
+          </Row>
+          <Row label={t("settings.startPage")} hint={t("settings.startPageHint")}>
+            <Select
+              value={g.startPage}
+              onChange={(e) => change("general.startPage", e.target.value)}
+              options={["store", "convert", "compress", "video", "music", "books", "monitor", "myspace", "aichat", "voice", "archive", "settings"]}
+            />
+          </Row>
+          <BoolRow label={t("settings.autoLaunch")} hint={t("settings.autoLaunchHint")} value={g.autoLaunch} onChange={(v) => change("general.autoLaunch", v)} />
+          <BoolRow label={t("settings.minimizeToTray")} hint={t("settings.minimizeToTrayHint")} value={g.minimizeToTray} onChange={(v) => change("general.minimizeToTray", v)} />
+          <BoolRow label={t("settings.closeToTray")} hint={t("settings.closeToTrayHint")} value={!!g.closeToTray} onChange={(v) => change("general.closeToTray", v)} />
+        </Section>
+
+        {/* ---- Внешний вид ---- */}
+        <Section title={t("settings.appearance")} icon={Palette} badge="live">
+          <Row label={t("settings.theme")} hint={t("settings.themeHint")}>
+            <Select value={ap.theme} onChange={(e) => change("appearance.theme", e.target.value)} options={["dark", "light"]} />
+          </Row>
+          <Row label={t("settings.accent")} hint={t("settings.accentHint")}>
+            <Select value={ap.accent} onChange={(e) => change("appearance.accent", e.target.value)} options={["amber", "violet", "teal", "coral"]} />
+          </Row>
+          <BoolRow label={t("settings.reduceMotion")} hint={t("settings.reduceMotionHint")} value={ap.reduceMotion} onChange={(v) => change("appearance.reduceMotion", v)} />
+          <Row label={t("settings.fontSize")} hint={t("settings.fontSizeHint")}>
+            <NumberInput value={ap.fontSize} onChange={(v) => change("appearance.fontSize", v)} min={11} max={20} suffix="px" />
+          </Row>
+          <Row label={t("settings.density")} hint={t("settings.densityHint")}>
+            <Select value={ap.density} onChange={(e) => change("appearance.density", e.target.value)} options={["comfortable", "compact"]} />
+          </Row>
+        </Section>
+
+        {/* ---- Производительность ---- */}
+        <Section title={t("settings.performance")} icon={Gauge} badge="recommended on">
+          <BoolRow
+            label={t("settings.hwAccel")}
+            hint={t("settings.hwAccelHint")}
+            value={pf.hardwareAcceleration}
+            onChange={(v) => change("performance.hardwareAcceleration", v)}
+          />
+          <BoolRow
+            label={t("settings.bgBlur")}
+            hint={t("settings.bgBlurHint")}
+            value={pf.backgroundBlur}
+            onChange={(v) => change("performance.backgroundBlur", v)}
+          />
+          {/* Keep-alive: страницы не пересоздаются при переключении вкладок
+              (прогресс задач и позиция скролла сохраняются). Память ограничивают
+              лимит по количеству и выгрузка простаивающих. */}
+          <BoolRow
+            label={t("settings.keepAlive")}
+            hint={t("settings.keepAliveHint")}
+            value={pf.keepPagesAlive !== false}
+            onChange={(v) => change("performance.keepPagesAlive", v)}
+          />
+          <Row label={t("settings.keepAliveLimit")} hint={t("settings.keepAliveLimitHint")}>
+            <Select
+              value={String(pf.keepPagesLimit ?? 6)}
+              onChange={(e) => change("performance.keepPagesLimit", Number(e.target.value))}
+              options={["3", "6", "9", "12"]}
+            />
+          </Row>
+          <Row label={t("settings.unloadIdle")} hint={t("settings.unloadIdleHint")}>
+            <NumberInput
+              value={Number(pf.unloadIdleMinutes ?? 5)}
+              onChange={(v) => change("performance.unloadIdleMinutes", v)}
+              min={0} max={120} suffix=" min"
+            />
+          </Row>
+        </Section>
+
+        {/* ---- Окно ---- */}
+        <Section title={t("settings.window")} icon={MonitorCog} badge="active">
+          <Row label={t("settings.width")} hint={t("settings.widthHint")}>
+            <NumberInput value={win.width} onChange={(v) => change("window.width", v)} min={640} max={4000} />
+          </Row>
+          <Row label={t("settings.height")} hint={t("settings.heightHint")}>
+            <NumberInput value={win.height} onChange={(v) => change("window.height", v)} min={520} max={3000} />
+          </Row>
+          <BoolRow label={t("settings.rememberSize")} hint={t("settings.rememberSizeHint")} value={win.rememberSize} onChange={(v) => change("window.rememberSize", v)} />
+        </Section>
+
         <Section title={t("settings.storeSection")} icon={Package} badge="active">
           <Row label={t("storeSection.storeDir")} hint={t("storeSection.storeDirHint")}>
             <TextInput value={store.downloadDir} onChange={(v) => change("store.downloadDir", v)} placeholder="C:\\Users\\You\\Downloads" />
@@ -478,71 +566,6 @@ export default function SettingsPage() {
           <Row label={t("sbSettings.sbMaxPages")} hint={t("sbSettings.sbMaxPagesHint")}>
             <NumberInput value={Number(sb.maxPages ?? 500)} onChange={(v) => change("sitebak.maxPages", v)} min={10} max={5000} step={10} />
           </Row>
-        </Section>
-
-        {/* ---- РћР±С‰РёРµ (РґРѕРє: settings) ---- */}
-        <Section title={t("settings.general")} icon={Settings2} badge="saved auto">
-          <Row label={t("settings.language")} hint={t("settings.languageHint")}>
-            <Select
-              value={g.language}
-              onChange={(e) => change("general.language", e.target.value)}
-              options={LANGS.map((l) => ({ value: l.code, label: l.native }))}
-            />
-          </Row>
-          <Row label={t("settings.startPage")} hint={t("settings.startPageHint")}>
-            <Select
-              value={g.startPage}
-              onChange={(e) => change("general.startPage", e.target.value)}
-              options={["store", "convert", "compress", "video", "music", "books", "monitor", "myspace", "aichat", "voice", "archive", "settings"]}
-            />
-          </Row>
-          <BoolRow label={t("settings.autoLaunch")} hint={t("settings.autoLaunchHint")} value={g.autoLaunch} onChange={(v) => change("general.autoLaunch", v)} />
-          <BoolRow label={t("settings.minimizeToTray")} hint={t("settings.minimizeToTrayHint")} value={g.minimizeToTray} onChange={(v) => change("general.minimizeToTray", v)} />
-          <BoolRow label={t("settings.closeToTray")} hint={t("settings.closeToTrayHint")} value={!!g.closeToTray} onChange={(v) => change("general.closeToTray", v)} />
-        </Section>
-
-        {/* ---- Р’РЅРµС€РЅРёР№ РІРёРґ ---- */}
-        <Section title={t("settings.appearance")} icon={Palette} badge="live">
-          <Row label={t("settings.theme")} hint={t("settings.themeHint")}>
-            <Select value={ap.theme} onChange={(e) => change("appearance.theme", e.target.value)} options={["dark", "light"]} />
-          </Row>
-          <Row label={t("settings.accent")} hint={t("settings.accentHint")}>
-            <Select value={ap.accent} onChange={(e) => change("appearance.accent", e.target.value)} options={["amber", "violet", "teal", "coral"]} />
-          </Row>
-          <BoolRow label={t("settings.reduceMotion")} hint={t("settings.reduceMotionHint")} value={ap.reduceMotion} onChange={(v) => change("appearance.reduceMotion", v)} />
-          <Row label={t("settings.fontSize")} hint={t("settings.fontSizeHint")}>
-            <NumberInput value={ap.fontSize} onChange={(v) => change("appearance.fontSize", v)} min={11} max={20} suffix="px" />
-          </Row>
-          <Row label={t("settings.density")} hint={t("settings.densityHint")}>
-            <Select value={ap.density} onChange={(e) => change("appearance.density", e.target.value)} options={["comfortable", "compact"]} />
-          </Row>
-        </Section>
-
-        {/* ---- РџСЂРѕРёР·РІРѕРґРёС‚РµР»СЊРЅРѕСЃС‚СЊ ---- */}
-        <Section title={t("settings.performance")} icon={Gauge} badge="recommended on">
-          <BoolRow
-            label={t("settings.hwAccel")}
-            hint={t("settings.hwAccelHint")}
-            value={pf.hardwareAcceleration}
-            onChange={(v) => change("performance.hardwareAcceleration", v)}
-          />
-          <BoolRow
-            label={t("settings.bgBlur")}
-            hint={t("settings.bgBlurHint")}
-            value={pf.backgroundBlur}
-            onChange={(v) => change("performance.backgroundBlur", v)}
-          />
-        </Section>
-
-        {/* ---- РћРєРЅРѕ ---- */}
-        <Section title={t("settings.window")} icon={MonitorCog} badge="active">
-          <Row label={t("settings.width")} hint={t("settings.widthHint")}>
-            <NumberInput value={win.width} onChange={(v) => change("window.width", v)} min={800} max={4000} />
-          </Row>
-          <Row label={t("settings.height")} hint={t("settings.heightHint")}>
-            <NumberInput value={win.height} onChange={(v) => change("window.height", v)} min={600} max={3000} />
-          </Row>
-          <BoolRow label={t("settings.rememberSize")} hint={t("settings.rememberSizeHint")} value={win.rememberSize} onChange={(v) => change("window.rememberSize", v)} />
         </Section>
 
         {/* ---- РђРІС‚РѕР±СЌРєР°Рї ---- */}

@@ -5,15 +5,21 @@
    на .app-shell (theme.css) — от них же считает левый отступ .content-area. */
 
 .bottom-dock{
-  position:fixed; left:var(--rail-gap); top:50%; transform:translateY(-50%);
-  z-index:40;
+  /* Рельс страниц занимает всю высоту от низа верхней панели до нижнего края
+     окна (--rail-top/--rail-gap из theme.css) и масштабируется вместе с окном. */
+  position:fixed; left:var(--rail-gap); top:var(--rail-top); bottom:var(--content-bottom);
+  z-index:40; display:flex; align-items: flex-start; min-height:0; justify-content: center;
+  flex-direction: column;
 }
 .dock-scroll{
-  display:flex; flex-direction:column; align-items:center; gap:4px;
-  padding:7px 6px; border-radius:18px;
+  display:flex; flex-direction:column; align-items:center; gap:4px; 
+  padding:7px 6px; border-radius:18px; justify-content: space-between;
   background:var(--glass-strong); border:1px solid var(--glass-border);
   backdrop-filter:blur(22px); -webkit-backdrop-filter:blur(22px); box-shadow:var(--shadow);
-  max-height:calc(100vh - var(--rail-gap) * 2 - 46px);
+  /* Панель растягивается на всю доступную высоту (рельс уже ограничен сверху
+     панелью управления, снизу — краем окна), при большом числе страниц
+     прокручивается внутри себя. */
+  min-height:0; max-height:100%;
   overflow-y:auto; overflow-x:hidden; scrollbar-width:none;
 }
 .dock-scroll::-webkit-scrollbar{ display:none; }

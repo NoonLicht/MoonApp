@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Video, Download, AlertTriangle, RefreshCw, Check, Image, Subtitles, Terminal, ClipboardPaste, X } from "lucide-react";
-import { Glass, Btn, Badge, Select, SectionHead, EmptyHint, ProgressBar } from "../components/ui";
+import { Video, Download, AlertTriangle, RefreshCw, Check, Image, Subtitles, Terminal, ClipboardPaste, X, SlidersHorizontal } from "lucide-react";
+import { Glass, Btn, Badge, Select, SectionHead, EmptyHint, ProgressBar, Field } from "../components/ui";
 import { useContextMenu, copyToClipboard } from "../components/ContextMenu";
+import ToolbarMenu from "../components/ToolbarMenu";
 import { usePageToolbar } from "../components/Toolbar";
 import { useI18n } from "../i18n";
 import { api } from "../api/client";
@@ -63,7 +64,14 @@ export default function VideoPage() {
     return () => clearInterval(timer);
   }, [ins?.state]);
 
-  usePageToolbar(<Select value={c} onChange={(e) => setC(e.target.value)} options={C} />, [c]);
+  usePageToolbar(
+    <ToolbarMenu icon={SlidersHorizontal} title={t("common.format")} align="right" label={c}>
+      <Field label={t("common.format")}>
+        <Select value={c} onChange={(e) => setC(e.target.value)} options={C} />
+      </Field>
+    </ToolbarMenu>,
+    [c, t]
+  );
 
   const fi = async () => {
     if (!u.trim()) return;

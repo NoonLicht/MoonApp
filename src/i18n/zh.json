@@ -21,7 +21,9 @@
     "theme": "切换主题",
     "all": "全部",
     "loading": "加载中…",
-    "loadMore": "加载更多"
+    "loadMore": "加载更多",
+    "quality": "质量",
+    "format": "格式"
   },
   "settings": {
     "title": "设置",
@@ -59,6 +61,12 @@
     "hwAccelHint": "使用 GPU 渲染。建议开启。若出现花屏或高 GPU 占用可关闭。需要重启。",
     "bgBlur": "背景模糊效果",
     "bgBlurHint": "玻璃和背景模糊效果（即时生效）。",
+    "keepAlive": "将页面保留在内存",
+    "keepAliveHint": "切换时不重建页面：保留任务进度和滚动位置。关闭可节省内存。",
+    "keepAliveLimit": "内存中页面数",
+    "keepAliveLimitHint": "保持挂载的页面数量（LRU）。有运行任务的页面不会被卸载。",
+    "unloadIdle": "空闲卸载，分钟",
+    "unloadIdleHint": "闲置多少分钟后卸载页面（0 — 从不）。",
     "window": "窗口",
     "width": "宽度",
     "widthHint": "启动时窗口宽度（像素）",

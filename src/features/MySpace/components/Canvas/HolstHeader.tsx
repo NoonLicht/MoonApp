@@ -1,11 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import {
-  Undo2, Redo2, Play, Pause, RotateCcw, Vote, LayoutTemplate,
-  Download, ZoomIn, ZoomOut, Maximize2, Crosshair, Timer,
+  Undo2, Redo2, LayoutTemplate, Download, ZoomIn, ZoomOut, Maximize2, Crosshair,
 } from "lucide-react";
-
-export interface TimerState { seconds: number; running: boolean; expired: boolean }
-export interface VotingState { active: boolean; votesPerUser: number; minutes: number }
 
 export interface HeaderProps {
   boardName: string;
@@ -14,11 +10,6 @@ export interface HeaderProps {
   canRedo: boolean;
   onUndo: () => void;
   onRedo: () => void;
-  timer: TimerState;
-  onTimer: (patch: Partial<TimerState>) => void;
-  onTimerAdd: (m: number) => void;
-  voting: VotingState;
-  onVotingToggle: () => void;
   onTemplates: () => void;
   onExport: (fmt: "png" | "svg" | "json") => void;
   zoom: number;
@@ -27,8 +18,6 @@ export interface HeaderProps {
   onFit: () => void;
   onResetZoom: () => void;
 }
-
-const fmt = (s: number) => `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 
 export default function HolstHeader(p: HeaderProps) {
   const [expOpen, setExpOpen] = useState(false);
@@ -60,31 +49,9 @@ export default function HolstHeader(p: HeaderProps) {
         <button className="holst-hbtn" title="Redo (Ctrl+Y)" disabled={!p.canRedo} onClick={p.onRedo}><Redo2 size={15} /></button>
       </div>
 
-      {/* center: facilitation timer */}
+      {/* right: templates, export, zoom */}
       <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
         <div className="holst-sep" />
-        <Timer size={13} style={{ color: "var(--text-tertiary)" }} />
-        <span className={`holst-timer-clock ${p.timer.expired ? "expired" : ""}`} title="Facilitation timer">
-          {fmt(Math.max(0, p.timer.seconds))}
-        </span>
-        <button
-          className={`holst-hbtn ${p.timer.running ? "is-active" : ""}`}
-          title={p.timer.running ? "Pause" : "Play"}
-          onClick={() => p.onTimer({ running: !p.timer.running, expired: false })}
-        >
-          {p.timer.running ? <Pause size={13} /> : <Play size={13} />}
-        </button>
-        <button className="holst-hbtn" title="+1 minute" onClick={() => p.onTimerAdd(1)}>+1m</button>
-        <button className="holst-hbtn" title="+5 minutes" onClick={() => p.onTimerAdd(5)}>+5m</button>
-        <button className="holst-hbtn" title="Reset timer" onClick={() => p.onTimer({ seconds: 300, running: false, expired: false })}><RotateCcw size={13} /></button>
-      </div>
-
-      {/* right: voting, templates, export, zoom */}
-      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-        <div className="holst-sep" />
-        <button className={`holst-hbtn ${p.voting.active ? "is-active" : ""}`} onClick={p.onVotingToggle} title="Voting mode">
-          <Vote size={14} /> {p.voting.active ? "Voting…" : "Start Voting"}
-        </button>
         <button className="holst-hbtn" onClick={p.onTemplates}><LayoutTemplate size={14} /> Template</button>
         <div ref={expRef} style={{ position: "relative" }}>
           <button className={`holst-hbtn ${expOpen ? "is-active" : ""}`} onClick={() => setExpOpen(!expOpen)}>

@@ -21,7 +21,9 @@
     "theme": "Changer de thème",
     "all": "Tous",
     "loading": "Chargement…",
-    "loadMore": "Charger plus"
+    "loadMore": "Charger plus",
+    "quality": "Qualité",
+    "format": "Format"
   },
   "settings": {
     "title": "Réglages",
@@ -59,6 +61,12 @@
     "hwAccelHint": "Utilise le GPU. À laisser activée. Désactiver si artefacts/gros usage GPU. Redémarrage requis.",
     "bgBlur": "Effets de flou d'arrière-plan",
     "bgBlurHint": "Effets de verre et de flou d'arrière-plan (s'applique immédiatement).",
+    "keepAlive": "Garder les pages en mémoire",
+    "keepAliveHint": "Ne pas recréer les pages au changement : progression des tâches et défilement conservés. Désactiver économise la RAM.",
+    "keepAliveLimit": "Pages en mémoire",
+    "keepAliveLimitHint": "Combien de pages restent montées (LRU). Les pages avec tâches actives ne sont jamais déchargées.",
+    "unloadIdle": "Décharger après, min",
+    "unloadIdleHint": "Minutes d'inactivité avant de décharger une page (0 — jamais).",
     "window": "Fenêtre",
     "width": "Largeur",
     "widthHint": "Largeur de la fenêtre au démarrage (px)",

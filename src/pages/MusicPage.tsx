@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback } from "react";
 import {
   Music2, Download, Search, RefreshCw, AlertTriangle, Check,
-  FileAudio, Disc3, Headphones, Copy, Link2,
+  FileAudio, Disc3, Headphones, Copy, Link2, SlidersHorizontal,
 } from "lucide-react";
-import { Glass, Btn, Badge, Select, SectionHead, EmptyHint, ProgressBar } from "../components/ui";
+import { Glass, Btn, Badge, Select, SectionHead, EmptyHint, ProgressBar, Field } from "../components/ui";
 import { useContextMenu, copyToClipboard } from "../components/ContextMenu";
+import ToolbarMenu from "../components/ToolbarMenu";
 import { usePageToolbar } from "../components/Toolbar";
 import { useI18n } from "../i18n";
 import { api } from "../api/client";
@@ -64,8 +65,12 @@ export default function MusicPage() {
   const [fmtInfo, setFmtInfo] = useState<MusicFormats | null>(null);
 
   usePageToolbar(
-    <Select value={quality} onChange={(e) => setQuality(e.target.value)} options={QUALITY_OPTIONS} />,
-    [quality]
+    <ToolbarMenu icon={SlidersHorizontal} title={t("common.quality")} align="right" label={quality}>
+      <Field label={t("common.quality")}>
+        <Select value={quality} onChange={(e) => setQuality(e.target.value)} options={QUALITY_OPTIONS} />
+      </Field>
+    </ToolbarMenu>,
+    [quality, t]
   );
 
   // Загружаем информацию о форматах при монтировании

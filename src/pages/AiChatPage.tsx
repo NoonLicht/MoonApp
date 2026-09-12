@@ -3,10 +3,11 @@ import {
   Settings2, Send, Plus, Trash2, KeyRound, StopCircle,
   Copy, Volume2, Paperclip, Mic, FileText, Square, Pencil, Pin, PinOff,
   Download, Swords, Search, Code2, ChevronDown, Check, X, Sparkles,
-  PanelLeftClose, PanelLeftOpen,
+  PanelLeftClose, PanelLeftOpen, SlidersHorizontal,
 } from "lucide-react";
 import { Glass, Btn, IconBtn, Field, Select, EmptyHint } from "../components/ui";
-import { usePageToolbar } from "../components/Toolbar";
+import ToolbarMenu from "../components/ToolbarMenu";
+import { usePageToolbar, usePageActive, usePageBusy } from "../components/Toolbar";
 import { useI18n } from "../i18n";
 import { useMediaQuery, BREAKPOINTS } from "../utils/useMediaQuery";
 import { api, streamChatSend, streamArena } from "../api/client";
@@ -98,6 +99,19 @@ export default function AiChatPage() {
     try { recogRef.current?.stop(); } catch { /* noop */ }
     try { window.speechSynthesis?.cancel(); } catch { /* noop */ }
   }, []);
+
+  /* ── keep-alive: уход со страницы ≠ остановка работы ──
+   * Страница остаётся смонтированной, поэтому SSE-стрим и озвучка продолжают
+   * работать фоном (ответ будет готов к возвращению). А вот микрофон глушим:
+   * распознавание речи не должно слушать фон, пока чат не на экране. */
+  const isActive = usePageActive();
+  useEffect(() => {
+    if (isActive) return;
+    try { recogRef.current?.stop(); } catch { /* noop */ }
+  }, [isActive]);
+
+  // Незавершённая генерация — страницу нельзя выгружать из памяти (LRU).
+  usePageBusy(sending);
 
   // При переходе через брейкпоинт выставляем панель чатов в «правильное»
   // состояние по умолчанию: узко — свёрнута, широко — развёрнута.
@@ -413,7 +427,7 @@ export default function AiChatPage() {
 
   /* ── тулбар страницы ── */
   usePageToolbar(
-    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
       {/* Сворачивание/разворачивание списка чатов (в узком режиме панель
           выезжает поверх контента). */}
       <IconBtn
@@ -422,17 +436,24 @@ export default function AiChatPage() {
         onClick={() => setSideOpen((v) => !v)}
         title={sideOpen ? t("aichat.hideSidebar") : t("aichat.showSidebar")}
       />
-      <Field label={t("aichat.provider")} w={130}>
-        <Select value={chatCfg.provider}
-          onChange={(e) => setChatCfg({ provider: e.target.value, model: "" })}
-          options={providers.map((p) => p.id)} />
-      </Field>
-      <Field label={t("aichat.model")} w={200}>
-        <Select value={chatCfg.model} onChange={(e) => setChatCfg({ model: e.target.value })} options={models} />
-      </Field>
+      {/* Провайдер и модель переехали в поповер: в панели — только иконки,
+          иначе на узком окне контролы накладывались друг на друга. */}
+      <ToolbarMenu
+        icon={SlidersHorizontal}
+        title={`${t("aichat.provider")} · ${t("aichat.model")}`}
+        label={`${chatCfg.provider} · ${chatCfg.model || "—"}`}
+      >
+        <Field label={t("aichat.provider")}>
+          <Select value={chatCfg.provider}
+            onChange={(e) => setChatCfg({ provider: e.target.value, model: "" })}
+            options={providers.map((p) => p.id)} />
+        </Field>
+        <Field label={t("aichat.model")}>
+          <Select value={chatCfg.model} onChange={(e) => setChatCfg({ model: e.target.value })} options={models} />
+        </Field>
+      </ToolbarMenu>
       <IconBtn icon={Swords} active={arena.on} onClick={toggleArena} title={t("aichat.arena")} />
       <IconBtn icon={Settings2} active={settingsOpen} onClick={() => setSettingsOpen((v) => !v)} title={t("aichat.modelSettings")} />
-      <IconBtn icon={Search} active={palette !== null} onClick={() => setPalette({ query: "" })} title="Ctrl+K" />
     </div>,
     [providers, chatCfg.provider, chatCfg.model, models, settingsOpen, arena.on, sideOpen, t]
   );

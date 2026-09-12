@@ -294,12 +294,15 @@ export default function BooksPage() {
                   </div>
                   <div className="quality-row" style={{ display: "flex", gap: 4, alignItems: "center" }}>
                     {(b.genres || []).slice(0, 2).map((g: string) => <Badge key={g}>{g}</Badge>)}
-                    <Star size={16} style={{ cursor: "pointer", flexShrink: 0, color: fl.fav ? "#f5b50a" : "var(--text-tertiary)", fill: fl.fav ? "currentColor" : "none" }}
-                      onClick={(e: any) => { e.stopPropagation(); toggleFlag(b, "fav"); }} />
                   </div>
                 </div>
                 <p className="book-desc">{b.description?.slice(0, 200)}</p>
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 4 }} onClick={(e) => e.stopPropagation()}>
+                {/* Закладка — первой в ряду скачивания (раньше висела у жанров). */}
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 4, alignItems: "center" }} onClick={(e) => e.stopPropagation()}>
+                  <button className={`book-fav ${fl.fav ? "is-on" : ""}`} title={t("books.tabFav")}
+                    onClick={() => toggleFlag(b, "fav")}>
+                    <Star size={15} style={{ fill: fl.fav ? "currentColor" : "none" }} />
+                  </button>
                   {(b.formats || ["fb2", "epub", "mobi"]).map((fmt: string) => (
                     <Btn key={fmt} variant="secondary" icon={Download}
                       disabled={downloading === b.bid}
@@ -387,7 +390,11 @@ export default function BooksPage() {
                 <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.7 }}>
                   {t("books.download")}
                 </div>
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+                  <button className={`book-fav ${flagOf(selectedBook).fav ? "is-on" : ""}`} title={t("books.tabFav")}
+                    onClick={() => toggleFlag(selectedBook, "fav")}>
+                    <Star size={16} style={{ fill: flagOf(selectedBook).fav ? "currentColor" : "none" }} />
+                  </button>
                   {(selectedBook.formats || ["fb2", "epub", "mobi"]).map((fmt: string) => (
                     <Btn key={fmt} variant="secondary" icon={Download}
                       disabled={downloading === selectedBook.bid}

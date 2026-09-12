@@ -134,32 +134,6 @@
 
 .holst-sep { width: 1px; height: 18px; background: var(--glass-border); margin: 0 2px; }
 
-/* timer */
-.holst-timer-clock {
-  font-family: var(--font-mono);
-  font-size: 13px; font-weight: 600;
-  color: var(--teal);
-  min-width: 46px; text-align: center;
-  letter-spacing: .04em;
-}
-.holst-timer-clock.expired { color: var(--coral); animation: holstPulse 1s ease infinite; }
-@keyframes holstPulse { 0%,100% { opacity: 1; } 50% { opacity: .45; } }
-
-.holst-vote-count {
-  position: absolute; top: -9px; right: -9px;
-  min-width: 18px; height: 18px;
-  padding: 0 4px;
-  display: flex; align-items: center; justify-content: center;
-  border-radius: 9px;
-  background: var(--coral);
-  color: #fff;
-  font-size: 10px; font-weight: 700;
-  font-family: var(--font-mono);
-  box-shadow: 0 2px 6px rgba(0,0,0,.4);
-  pointer-events: none;
-  z-index: 5;
-}
-
 /* dock buttons */
 .holst-tbtn {
   position: relative;
@@ -441,30 +415,7 @@
   display: flex; flex-direction: column; gap: 1px;
 }
 
-/* Voting panel */
-.holst-vote-panel {
-  position: absolute;
-  right: 12px; top: 64px;
-  z-index: 40;
-  width: 230px;
-  padding: 14px;
-  border-radius: 14px;
-  background: var(--surface-solid);
-  border: 1px solid var(--glass-border);
-  box-shadow: var(--shadow);
-  display: flex; flex-direction: column; gap: 10px;
-  color: var(--text-primary);
-}
-.holst-vote-panel h4 {
-  margin: 0;
-  font-size: 12px; font-weight: 700;
-  font-family: var(--font-mono);
-  text-transform: uppercase; letter-spacing: .06em;
-  display: flex; align-items: center; gap: 7px;
-  color: var(--amber);
-}
-.holst-vote-row { display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: var(--text-secondary); }
-
+/* Voting panel removed — функция голосования убрана вместе с таймером. */
 .holst-canvas-hint {
   position: absolute;
   left: 50%; bottom: 58px;

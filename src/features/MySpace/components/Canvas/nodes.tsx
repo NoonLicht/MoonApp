@@ -39,7 +39,7 @@ const stopKeys = (e: React.KeyboardEvent) => {
 /* Sticky note ------------------------------------------------------------- */
 
 function StickyNoteNode({ id, data, selected }: NodeProps) {
-  const d = data as { text: string; color: string; votes?: number; setData: (id: string, patch: any) => void; onVote?: (id: string) => void; voting?: boolean };
+  const d = data as { text: string; color: string; setData: (id: string, patch: any) => void };
   return (
     <div
       className="holst-node"
@@ -50,7 +50,6 @@ function StickyNoteNode({ id, data, selected }: NodeProps) {
         background: d.color,
         display: "flex", flexDirection: "column", overflow: "hidden",
       }}
-      onDoubleClick={() => d.onVote?.(id)}
     >
       <NodeResizer minWidth={140} minHeight={120} isVisible={selected} color="#3b82f6" />
       <textarea
@@ -65,7 +64,6 @@ function StickyNoteNode({ id, data, selected }: NodeProps) {
           color: "#1c1d2b", lineHeight: 1.35, cursor: "text",
         }}
       />
-      {d.votes ? <span className="holst-vote-count">{d.votes}</span> : null}
       <NodeHandles />
     </div>
   );

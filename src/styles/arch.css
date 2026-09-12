@@ -39,7 +39,7 @@
 .arch-fields{ display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); }
 .arch-fields .field{ width: auto !important; min-width: 0; }
 /* .text-input в settings.css имеет min-width:240px — здесь он не нужен. */
-.arch-page .text-input{ min-width: 0; width: 100%; }
+.arch-page .text-input{ min-width: 0; width: 100% !important; }
 .arch-fields .select-wrap{ width: 100%; }
 .arch-fields .select-wrap select{ width: 100%; }
 .arch-fields input[type="range"]{ width: 100%; }

@@ -8,6 +8,7 @@ import type {
   ZapretStatus, ZapretStrategy, ZapretUpdate,
 } from "../api/client";
 import { useI18n } from "../i18n";
+import { usePageActive, usePageBusy } from "../components/Toolbar";
 
 /**
  * Bypass Control — простая страница обхода блокировок (Flowseal/zapret-discord-youtube).
@@ -80,12 +81,25 @@ export default function BypassControlPage() {
 
   const checkRunning = !!check?.running;
 
+  /* ── keep-alive ──
+   * Страница не размонтируется при уходе, поэтому «фоновый» опрос статуса
+   * ставим на паузу по видимости. Прогон проверки и установка движка — задачи,
+   * они продолжаются и помечают страницу занятой (нельзя выгружать из памяти). */
+  const isActive = usePageActive();
+  usePageBusy(checkRunning || installState?.state === "working");
+
   // Живой статус движка (во время проверки vendor-скрипт сам глушит и поднимает winws).
   useEffect(() => {
-    if (checkRunning) return;
+    if (checkRunning || !isActive) return;
     const timer = setInterval(() => { api.zapretStatus().then(setStatus).catch(() => { /* ignore */ }); }, 2500);
     return () => clearInterval(timer);
-  }, [checkRunning]);
+  }, [checkRunning, isActive]);
+
+  // Возврат на страницу: сразу обновляем статус, чтобы кнопки не врали.
+  useEffect(() => {
+    if (!isActive) return;
+    api.zapretStatus().then(setStatus).catch(() => { /* ignore */ });
+  }, [isActive]);
 
   // Прогресс установки/обновления движка.
   useEffect(() => {

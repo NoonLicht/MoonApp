@@ -111,6 +111,15 @@
 .app-actions{ display:flex; gap:6px; margin-top:auto; }
 
 /* --- books --- */
+/* Кнопка закладки: стоит первой в ряду скачивания (см. BooksPage.tsx). */
+.book-fav{
+  display:inline-flex; align-items:center; justify-content:center;
+  width:27px; height:27px; padding:0; flex-shrink:0;
+  background:none; border:1px solid transparent; border-radius:8px;
+  color:var(--text-tertiary); cursor:pointer; transition:color .15s ease, background .15s ease;
+}
+.book-fav:hover{ color:var(--text-primary); background:var(--track); }
+.book-fav.is-on{ color:#f5b50a; }
 .book-list{ display:flex; flex-direction:column; gap:12px; overflow-y:auto; overflow-x:hidden; max-height:calc(100vh - var(--vh-base) - 196px); padding-right:8px; }
 .page-fill .book-list{ flex:1; max-height:none; margin-bottom:0; }
 .book-list::-webkit-scrollbar{ width:10px; height:0; display:block; }
@@ -206,12 +215,25 @@
 
 
 .cmp-left .dropzone{ min-height:clamp(200px,36vh,340px); justify-content:center; }
-.cmp-player{ position:relative; width:100%; flex:1; min-height:220px;
-  border-radius:12px; overflow:hidden; background:#000; user-select:none; }
+/* Плеер масштабируется по ширине кадра, но не вылезает за доступную высоту:
+   width = min(100%, maxH × AR) при aspect-ratio = AR — коробка ВСЕГДА совпадает
+   с пропорцией видео, поэтому больших чёрных полос сверху/снизу не остаётся. */
+.cmp-player-wrap{ display:flex; justify-content:center; align-items:center; width:100%; min-height:0; }
+.cmp-player{
+  position:relative; flex:0 0 auto;
+  width:min(100%, calc(var(--cmp-max-h, 52vh) * var(--cmp-ar, 1.7778)));
+  aspect-ratio:var(--cmp-ar, 1.7778);
+  max-height:var(--cmp-max-h, 52vh);
+  border-radius:12px; overflow:hidden; background:#000; user-select:none;
+}
 .cmp-player video{ position:absolute; inset:0; width:100%; height:100%;
   object-fit:contain; background:#000; }
-.cmp-preview video{ width:100%; flex:1; min-height:0; object-fit:contain;
-  background:#000; border-radius:10px; }
+.cmp-preview video{
+  width:min(100%, calc(var(--cmp-max-h, 52vh) * var(--cmp-ar, 1.7778)));
+  aspect-ratio:var(--cmp-ar, 1.7778);
+  max-height:var(--cmp-max-h, 52vh);
+  flex:0 0 auto; object-fit:contain; background:#000; border-radius:10px;
+}
 
 @media (max-width: 980px){
   /* Узкий формат: колонки складываются, а страница целиком прокручивается
@@ -259,17 +281,19 @@
 .ab-col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
 .ab-left, .ab-center { min-width: 0; }
 
-/* Левая колонка: фиксированная высота (≈ высота видимой области страницы).
-   Если содержимое не помещается — прокручивается ВНУТРИ колонки, а не
-   растягивает страницу. sticky держит колонку на месте при скролле центра. */
+/* Левая колонка: по высоте содержимого, но не выше видимой области страницы.
+   Раньше высота была ЖЁСТКОЙ (height) — под содержимым оставался большой пустой
+   «хвост», а лишнее обрезалось. Теперь: max-height + внутренний скролл. */
 .ab-left {
   position: sticky;
   top: 0;
-  height: calc(100vh - var(--vh-base) - 96px);
-  min-height: 320px;
+  max-height: calc(100vh - var(--vh-base) - 96px);
+  min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
-  overscroll-behavior: contain;
+  /* auto (не contain): когда колонка докручена до конца, колесо продолжает
+     прокручивать страницу — иначе скролл «залипал» на левой колонке. */
+  overscroll-behavior: auto;
   padding-right: 8px;
 }
 .ab-left::-webkit-scrollbar { width: 8px; display: block; }
@@ -324,9 +348,13 @@
 .ab-acc-head:hover { background: var(--track); }
 .ab-acc-chev { flex-shrink: 0; transition: transform .22s ease; }
 .ab-acc-chev.is-open { transform: rotate(180deg); }
-.ab-acc-collapse { display: grid; grid-template-rows: 0fr; visibility: hidden; transition: grid-template-rows .25s ease, visibility 0s linear .25s; }
-.ab-acc-collapse.is-open { grid-template-rows: 1fr; visibility: visible; transition: grid-template-rows .25s ease; }
+/* Аккордеоны: закрытое состояние прячем у ВНУТРЕННЕГО блока. Важно: открытое
+   состояние НЕ ставит visibility:visible — иначе общий предок .page-host
+   (keep-alive скрывает неактивные страницы через visibility:hidden) переставал
+   действовать и содержимое страницы «протекало» на другие вкладки. */
+.ab-acc-collapse { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .25s ease; }
 .ab-acc-collapse > .ab-acc-body { min-height: 0; overflow: hidden; }
+.ab-acc-collapse:not(.is-open) > .ab-acc-body { visibility: hidden; transition: visibility 0s linear .25s; }
 .ab-acc-body { padding: 4px 10px 10px; display: flex; flex-direction: column; gap: 8px; }
 
 /* Parameters with (i) hints: the tooltip is part of the flow (an in-place
@@ -344,9 +372,10 @@
 .page-ab .ab-pro { flex: 0 0 auto; }
 .ab-pro-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .ab-pro-head-text { min-width: 0; }
-.ab-pro-collapse { display: grid; grid-template-rows: 0fr; visibility: hidden; transition: grid-template-rows .3s ease, visibility 0s linear .3s; }
-.ab-pro-collapse.is-open { grid-template-rows: 1fr; visibility: visible; transition: grid-template-rows .3s ease; }
+.ab-pro-collapse { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .3s ease; }
 .ab-pro-inner { min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: 12px; }
+/* Прячем закрытое состояние у внутреннего блока (см. комментарий к .ab-acc-collapse). */
+.ab-pro-collapse:not(.is-open) > .ab-pro-inner { visibility: hidden; transition: visibility 0s linear .3s; }
 .ab-pro-accs { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 10px; align-items: start; }
 .ab-pro-lang { display: flex; flex-direction: column; gap: 6px; max-width: 300px; }
 
@@ -384,6 +413,28 @@
 .page-ab .dropzone { transition: border-color .15s ease, color .15s ease; }
 .page-ab .dropzone:hover { border-color: var(--amber, #eab308); color: var(--text-secondary); }
 
+/* Компактный импорт книги: меньше «воздуха» — рабочей области достаётся больше. */
+.page-ab .dropzone { padding: 14px 12px; gap: 5px; font-size: 12.5px; border-radius: 12px; }
+.page-ab .dropzone .muted-sm { font-size: 10.5px; }
+
+/* Референс голоса — одна компактная строка под импортом книги:
+   [ выбрать файл ] [ имя профиля ] [ сохранить ]. */
+.ab-ref-compact { display: flex; align-items: center; gap: 6px; flex-wrap: nowrap; }
+.ab-ref-pick {
+  display: flex; align-items: center; gap: 6px; min-width: 0; flex: 0 1 auto;
+  padding: 6px 10px; border-radius: 9px; cursor: pointer;
+  background: var(--track); border: 1px dashed var(--glass-border);
+  color: var(--text-tertiary); font-family: var(--font-body); font-size: 12px;
+  transition: border-color .15s ease, color .15s ease;
+}
+.ab-ref-pick:hover { border-color: var(--amber, #eab308); color: var(--text-secondary); }
+.ab-ref-pick.has-file { border-style: solid; border-color: var(--amber-soft, rgba(234,179,8,.3)); color: var(--text-primary); }
+.ab-ref-name { min-width: 0; max-width: 116px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ab-ref-input { flex: 1 1 70px; min-width: 0; width: auto; padding: 5px 8px; font-size: 12px; }
+.ab-ref-player { margin-top: 6px; }
+/* Список сохранённых профилей — компактный, со своим скроллом. */
+.ab-ref-profiles { margin-top: 6px; max-height: 120px; overflow-y: auto; }
+
 /* Responsive: below 1200px Pro accordions go single-column; below 1024px
    the whole layout stacks into one column, presets follow suit. */
 @media (max-width: 1440px) { .ab-layout { grid-template-columns: 300px minmax(0, 1fr); } }
@@ -396,5 +447,5 @@
   .ab-presets { grid-template-columns: minmax(0, 1fr); }
   /* На узких экранах колонки идут друг под другом: фиксация высоты и
      внутренний скролл отключаются, страница прокручивается как обычно. */
-  .ab-left { position: static; height: auto; min-height: 0; overflow: visible; padding-right: 0; }
+  .ab-left { position: static; max-height: none; min-height: 0; overflow: visible; padding-right: 0; }
 }
