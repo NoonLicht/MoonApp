@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo, memo } from "react";
 import {
   Thermometer, Fan, HardDrive, Wifi, Info, CircleDot, Cpu, MemoryStick, Monitor,
 } from "lucide-react";
@@ -67,6 +67,11 @@ export default function MonitorPage() {
   const histRef = useRef<HistPoint[]>([]);
   const pendingRef = useRef(false); // не пускаем параллельные опросы: старый ответ может перезаписать новый
 
+  // Иммутабельный снимок истории для дочерних компонентов. Сам histRef мутируется
+  // напрямую (push/shift), поэтому передавать его в memo-дети нельзя — они бы
+  // сравнивали ссылку и никогда не перерисовывались. Копия обновляется на новый tick.
+  const points = useMemo(() => histRef.current.slice(), [tick]);
+
   // Стартовый интервал опроса — из настроек приложения (миллисекунды).
   useEffect(() => {
     api.getSettings()
@@ -134,15 +139,16 @@ export default function MonitorPage() {
   return (
     <div className="page">
       <div className="monitor-scroll">
-        <MonitorBody data={data} t={t} points={histRef.current} view={view} onLhmChanged={() => setPollNonce((x) => x + 1)} />
+        <MonitorBody data={data} t={t} points={points} tick={tick} view={view} onLhmChanged={() => setPollNonce((x) => x + 1)} />
       </div>
     </div>
   );
 }
 
-function MonitorBody({ data, t, points, view, onLhmChanged }: {
+function MonitorBody({ data, t, points, tick, view, onLhmChanged }: {
   data: MonitorSnapshot | null;
   points: HistPoint[];
+  tick: number;
   view: CpuView;
   onLhmChanged: () => void;
   t: (key: string, params?: Record<string, unknown>) => string;
@@ -182,7 +188,7 @@ function MonitorBody({ data, t, points, view, onLhmChanged }: {
       <LoadChart points={points} />
 
       {/* Ядра/потоки — плитками, как в диспетчере задач */}
-      <CpuTiles key={view} points={points} mode={view} coresPhysical={data.cpu.coresPhysical} t={t} />
+      <CpuTiles key={view} points={points} tick={tick} mode={view} coresPhysical={data.cpu.coresPhysical} t={t} />
 
       {/* RAM / VRAM */}
       <div className="donut-row">
@@ -278,8 +284,8 @@ function groupCores(per: number[], coresPhysical: number | null): number[] {
 const CORE_COLORS = Array.from({ length: 32 }, (_, i) => `hsl(${(i * 47 + 20) % 360}, 70%, 62%)`);
 
 /** График суммарной загрузки CPU/GPU (для вида «Всего»). */
-function LoadChart({ points }: { points: HistPoint[] }) {
-  const rows = points.map((p, idx) => ({ t: idx, cpu: p.cpu, gpu: p.gpu }));
+const LoadChart = memo(function LoadChart({ points }: { points: HistPoint[] }) {
+  const rows = useMemo(() => points.map((p, idx) => ({ t: idx, cpu: p.cpu, gpu: p.gpu })), [points]);
   return (
     <Glass className="chart-panel">
       <div className="field-label" style={{ marginBottom: 8 }}>CPU / GPU %</div>
@@ -312,12 +318,12 @@ function LoadChart({ points }: { points: HistPoint[] }) {
       </ResponsiveContainer>
     </Glass>
   );
-}
+});
 
 /* -------------------- Плитки ядер/потоков (диспетчер задач) ----------------- */
 
 /** Мини-график на чистом SVG — в десятки раз дешевле recharts для 12+ плиток. */
-function Sparkline({ values, color }: { values: number[]; color: string }) {
+const Sparkline = memo(function Sparkline({ values, color }: { values: number[]; color: string }) {
   const w = 120;
   const h = 34;
   if (values.length < 2) {
@@ -337,19 +343,28 @@ function Sparkline({ values, color }: { values: number[]; color: string }) {
       <polyline points={line} fill="none" stroke={color} strokeWidth={1.8} vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
     </svg>
   );
-}
+});
+
+const SMOOTH_TAU_MS = 160; // постоянная времени экспоненциального сглаживания
+const SMOOTH_EPS = 0.15;   // % — порог «значение догнало цель»
 
 /**
  * Плитки по каждому ядру/потоку.
- * Плавность: один общий rAF-цикл экспоненциально доводит отображаемые
- * значения до целевых (tau ≈ 160 мс), поэтому проценты «плывут», а не прыгают,
- * даже если сэмплы приходят рывками (окно замера CPU ≥250 мс).
+ * Плавность: один rAF-цикл экспоненциально доводит отображаемые значения до
+ * целевых (tau ≈ 160 мс), поэтому проценты «плывут», а не прыгают, даже если
+ * сэмплы приходят рывками (окно замера CPU ≥250 мс).
+ * ВАЖНО: цикл крутится только пока значения не «догнали» цель; как только
+ * остановились — он засыпает и будится лишь на новый tick. Раньше rAF
+ * планировался безусловно каждый кадр (60 fps вхолостую) — это и давало
+ * постоянный аллокационный шторм и рост памяти на странице монитора.
  */
-function CpuTiles({ points, mode, coresPhysical, t }: {
+function CpuTiles({ points, mode, coresPhysical, t, tick }: {
   points: HistPoint[];
   mode: "cores" | "threads";
   coresPhysical: number | null;
   t: (key: string, params?: Record<string, unknown>) => string;
+  /** Номер успешного опроса: маркер «пришли новые данные» (points — мутируемый массив). */
+  tick: number;
 }) {
   const last = points[points.length - 1];
   const seriesCount = !last
@@ -358,17 +373,21 @@ function CpuTiles({ points, mode, coresPhysical, t }: {
       ? last.per.length
       : groupCores(last.per, coresPhysical).length;
 
-  // История по каждой серии (для спарклайнов). ВАЖНО: считаем прямо в рендере —
-  // points это один и тот же мутируемый массив, useMemo здесь никогда бы
-  // не пересчитался (это и была причина «замёрших» плиток).
-  const series: number[][] = Array.from({ length: seriesCount }, (_, i) =>
-    points.map((p) => {
-      const vals = mode === "threads" ? p.per : groupCores(p.per, coresPhysical);
-      return vals[i] ?? 0;
-    })
-  );
+  // История по каждой серии (для спарклайнов). points — один и тот же мутируемый
+  // массив, поэтому зависим от tick: пересчёт ровно один раз на опрос, а не на
+  // каждый кадр анимации (иначе аллоцировали бы N×HIST_MAX массивов 60 раз/с).
+  const series = useMemo<number[][]>(() => {
+    if (!seriesCount) return [];
+    return Array.from({ length: seriesCount }, (_, i) =>
+      points.map((p) => {
+        const vals = mode === "threads" ? p.per : groupCores(p.per, coresPhysical);
+        return vals[i] ?? 0;
+      })
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tick, seriesCount, mode, coresPhysical]);
 
-  // Сглаженные текущие значения
+  // Целевые (последние) значения серий.
   const targetRef = useRef<number[]>([]);
   targetRef.current = series.map((s) => s[s.length - 1] ?? 0);
 
@@ -376,33 +395,57 @@ function CpuTiles({ points, mode, coresPhysical, t }: {
   const dispRef = useRef<number[]>(disp);
   dispRef.current = disp;
 
+  // Единственный rAF-цикл. Функция кадра хранится в ref, чтобы перезапуск
+  // (и планирование следующего кадра изнутри себя) не ловил stale closure.
+  const rafRef = useRef(0);
+  const lastFrameRef = useRef(0);
+  const stepRef = useRef<(now: number) => void>(() => {});
+
+  stepRef.current = (now: number): void => {
+    const dt = lastFrameRef.current ? Math.min(64, now - lastFrameRef.current) : 16;
+    lastFrameRef.current = now;
+    const tg = targetRef.current;
+    const prev = dispRef.current;
+    // Число серий изменилось (первый кадр или пришёл/ушёл coresPhysical) —
+    // сразу принимаем цели: иначе cur[i] был бы undefined, dt-выражение дало бы
+    // NaN и плитки «залипли» бы на нулях.
+    if (prev.length !== tg.length) {
+      const snapped = tg.slice();
+      dispRef.current = snapped;
+      setDisp(snapped);
+      rafRef.current = 0;
+      return;
+    }
+    const cur = prev.slice();
+    let moved = false;
+    for (let i = 0; i < tg.length; i++) {
+      const d = tg[i] - cur[i];
+      if (Math.abs(d) > SMOOTH_EPS) {
+        cur[i] += d * (1 - Math.exp(-dt / SMOOTH_TAU_MS));
+        moved = true;
+      } else {
+        cur[i] = tg[i];
+      }
+    }
+    if (moved) {
+      dispRef.current = cur;
+      setDisp(cur);
+      rafRef.current = requestAnimationFrame(stepRef.current);
+    } else {
+      rafRef.current = 0; // цель достигнута — цикл спит и не грузит CPU
+    }
+  };
+
+  // Пришли новые данные — будим цикл (если он спал).
   useEffect(() => {
-    let raf = 0;
-    let lastT = 0;
-    const TAU = 160;
-    const step = (now: number): void => {
-      const dt = lastT ? Math.min(64, now - lastT) : 16;
-      lastT = now;
-      const tg = targetRef.current;
-      const cur = dispRef.current.slice();
-      let moved = false;
-      for (let i = 0; i < tg.length; i++) {
-        const d = tg[i] - cur[i];
-        if (Math.abs(d) > 0.15) {
-          cur[i] += d * (1 - Math.exp(-dt / TAU));
-          moved = true;
-        } else {
-          cur[i] = tg[i];
-        }
-      }
-      if (moved) {
-        dispRef.current = cur;
-        setDisp(cur);
-      }
-      raf = requestAnimationFrame(step);
-    };
-    raf = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(raf);
+    lastFrameRef.current = 0;
+    if (!rafRef.current) rafRef.current = requestAnimationFrame(stepRef.current);
+  }, [tick]);
+
+  // Размонтирование (в т.ч. смена вида через key) — гасим кадр.
+  useEffect(() => () => {
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    rafRef.current = 0;
   }, []);
 
   if (!seriesCount) return null;
@@ -667,7 +710,15 @@ function isHiddenSensor(s: AllSensor): boolean {
 
 function SensorSections({ data }: { data: MonitorSnapshot }) {
   const { t } = useI18n();
-  const all: AllSensor[] = (data.sensorsAll || []).filter((s) => !isHiddenSensor(s));
+  // Дедуплицируем по id: LHM иногда отдаёт один сенсор дважды (напр.
+  // /gpu-nvidia/0/load/3). Дубли давали одинаковые React-ключи в списках
+  // датчиков и лавину предупреждений в консоли на каждом опросе.
+  const seenIds = new Set<string>();
+  const all: AllSensor[] = (data.sensorsAll || []).filter((s) => {
+    if (isHiddenSensor(s)) return false;
+    if (s.id) { if (seenIds.has(s.id)) return false; seenIds.add(s.id); }
+    return true;
+  });
   if (!all.length) return null;
 
   // Группируем по префиксу parent: /amdcpu/ /intelcpu/ /lpc/ /gpu/ /nvme/ /ssd/ /hdd/

@@ -57,7 +57,10 @@
 }
 
 /* --- Карточки / сетка --- */
-.bp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+/* Обе карточки (стратегии и проверка) выравниваются по высоте строки
+   (align-items:stretch — поведение grid по умолчанию). Высота строки задаётся
+   содержимым: чем больше конфигов, тем выше плитки, до разумного потолка. */
+.bp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: stretch; }
 .bp-card {
   border: 1px solid var(--border, rgba(255,255,255,.1)); border-radius: 14px; padding: 14px;
   display: flex; flex-direction: column; gap: 10px; background: var(--surface, rgba(255,255,255,.02));
@@ -103,8 +106,16 @@
 
 .bp-tiles {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
-  gap: 6px; max-height: 300px; overflow-y: auto; padding: 2px;
+  gap: 6px; padding: 2px;
+  /* Высота «подстраивается» под число конфигов: плитки растут, пока не
+     упрутся в потолок, дальше — внутренняя прокрутка. */
+  flex: 1 1 auto; min-height: 0;
+  max-height: min(62vh, 520px);
+  overflow-y: auto;
 }
+/* Служебная строка под плитками (текущий конфиг + «Запустить») прижимается
+   к низу карточки, чтобы карточка не выглядела «обрезанной». */
+.bp-tiles + .bp-row { margin-top: auto; }
 .bp-tile {
   position: relative; display: flex; flex-direction: column; gap: 2px; align-items: flex-start;
   padding: 8px 10px; border-radius: 10px; cursor: pointer; text-align: left;
@@ -132,12 +143,14 @@
 .bp-tile .bp-light { position: absolute; top: 8px; left: 8px; }
 
 /* --- Консоль проверки (vendor utils/test zapret.ps1) --- */
-.bp-console { display: flex; flex-direction: column; gap: 6px; border-top: 1px dashed var(--border, rgba(255,255,255,.12)); padding-top: 8px; }
+/* Панель проверки растягивается на всю высоту карточки, а её консоль занимает
+   свободное место — так обе карточки ряда выглядят выровненными. */
+.bp-console { display: flex; flex-direction: column; gap: 6px; border-top: 1px dashed var(--border, rgba(255,255,255,.12)); padding-top: 8px; flex: 1 1 auto; min-height: 0; }
 .bp-console-head { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 600; }
 .bp-console-state { margin-left: auto; font-weight: 400; text-align: right; min-width: 0; }
 .bp-console-body {
   margin: 0; font-family: ui-monospace, Consolas, monospace; font-size: 10.5px; line-height: 1.45;
-  max-height: 340px; min-height: 180px; overflow: auto; white-space: pre-wrap; word-break: break-word;
+  flex: 1 1 auto; min-height: 140px; overflow: auto; white-space: pre-wrap; word-break: break-word;
   background: rgba(0,0,0,.3); border-radius: 8px; padding: 8px;
 }
 .bp-console-line { display: block; }

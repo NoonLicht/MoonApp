@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { Copy, RefreshCw, Pencil, Volume2, StopCircle, Check, X, Send } from "lucide-react";
 import { Btn, EmptyHint } from "../../components/ui";
 import { useContextMenu } from "../../components/ContextMenu";
@@ -7,6 +7,31 @@ import { renderInlineMd, parseSegments } from "./chatUtils";
 import { sanitizeHtml } from "../../utils/sanitize";
 
 export interface MsgStats { ms: number; tokens: number }
+
+/**
+ * Тело сообщения (markdown + код-блоки).
+ *
+ * Аудит B16: раньше `parseSegments → marked.parse → sanitizeHtml` и
+ * `hljs.highlightAuto` выполнялись для КАЖДОГО сообщения на КАЖДОМ рендере,
+ * т.е. вся история перепарсивалась на каждый токен стрима → фризы UI.
+ * Здесь разбор и санитайз мемоизированы по тексту, а сам компонент обёрнут в
+ * React.memo: во время стриминга перерисовывается только последний пузырь.
+ */
+const BubbleContent = React.memo(function BubbleContent({ text }: { text: string }) {
+  const segs = useMemo(() => parseSegments(text), [text]);
+  const htmls = useMemo(
+    () => segs.map((s) => (s.type === "code" ? "" : sanitizeHtml(renderInlineMd(s.text)))),
+    [segs]
+  );
+  return (
+    <>
+      {segs.map((seg, k) =>
+        seg.type === "code"
+          ? <CodeBlock key={k} code={seg.text} lang={seg.lang || "text"} />
+          : <span key={k} dangerouslySetInnerHTML={{ __html: htmls[k] }} />)}
+    </>
+  );
+});
 
 export default function MsgList(props: {
   messages: { id?: number; role: "user" | "assistant"; text: string }[];
@@ -52,10 +77,7 @@ export default function MsgList(props: {
               >
                 {m.role === "user"
                   ? m.text
-                  : parseSegments(m.text).map((seg, k) =>
-                      seg.type === "code"
-                        ? <CodeBlock key={k} code={seg.text} lang={seg.lang || "text"} />
-                        : <span key={k} dangerouslySetInnerHTML={{ __html: sanitizeHtml(renderInlineMd(seg.text)) }} />)}
+                  : <BubbleContent text={m.text} />}
               </div>
             )}
           </div>
@@ -84,10 +106,7 @@ export default function MsgList(props: {
       {streamingText && (
         <div className="chat-bubble-row">
           <div className="chat-bubble is-assistant">
-            {parseSegments(streamingText).map((seg, k) =>
-              seg.type === "code"
-                ? <CodeBlock key={k} code={seg.text} lang={seg.lang || "text"} />
-                : <span key={k} dangerouslySetInnerHTML={{ __html: sanitizeHtml(renderInlineMd(seg.text)) }} />)}
+            <BubbleContent text={streamingText} />
             <span className="streaming-cursor" />
           </div>
         </div>

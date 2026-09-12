@@ -1,0 +1,103 @@
+/* ============================================================
+   Веб-архиватор (.sitebak).
+   Страница целиком прокручивается и перестраивается от 640px до ultrawide:
+   карточки настроек — auto-fit сетка, поля тянутся по ширине ячейки,
+   готовые архивы — сетка карточек (на узком экране одна колонка).
+   ============================================================ */
+
+/* .page в теме имеет overflow:hidden — здесь нужен скролл. */
+.page.arch-page{
+  overflow-y: auto; overflow-x: hidden; scroll-behavior: smooth;
+  padding: 2px 2px 10px;
+}
+
+/* --- Шаг 1: адрес страницы --- */
+.arch-hero{ padding: 9px 9px 9px 15px; flex: 0 0 auto; }
+.arch-url{ display: flex; align-items: center; gap: 10px; color: var(--text-tertiary); min-width: 0; }
+.arch-url > svg{ flex: 0 0 auto; }
+.arch-url input{
+  flex: 1; min-width: 0; background: none; border: none; outline: none;
+  color: var(--text-primary); font-size: 14px; font-family: var(--font-body);
+}
+.arch-url input::placeholder{ color: var(--text-tertiary); }
+.arch-url .btn{ flex: 0 0 auto; }
+
+/* --- Шаг 2: секции настроек --- */
+.arch-sections{
+  display: grid; gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+  align-items: start;
+}
+.arch-card{ padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.arch-card-head{
+  display: flex; align-items: center; gap: 8px;
+  font-size: 13px; font-weight: 700; color: var(--text-primary);
+}
+.arch-card-head > svg{ color: var(--violet); flex: 0 0 auto; }
+
+/* Поля настроек: колонки подстраиваются под ширину карточки. */
+.arch-fields{ display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); }
+.arch-fields .field{ width: auto !important; min-width: 0; }
+/* .text-input в settings.css имеет min-width:240px — здесь он не нужен. */
+.arch-page .text-input{ min-width: 0; width: 100%; }
+.arch-fields .select-wrap{ width: 100%; }
+.arch-fields .select-wrap select{ width: 100%; }
+.arch-fields input[type="range"]{ width: 100%; }
+
+.arch-chips{ display: flex; flex-wrap: wrap; gap: 8px; }
+.arch-chips .option-item{ max-width: 100%; }
+.arch-chips .option-item span{ overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Длинные строковые поля (User-Agent, Cookie) — на всю ширину карточки. */
+.arch-field-wide{ grid-column: 1 / -1; min-width: 0; }
+
+/* --- Прогресс / статистика / ошибка --- */
+.arch-progress{ padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; flex: 0 0 auto; }
+.arch-progress-head{ display: flex; justify-content: space-between; gap: 10px; font-size: 12px; color: var(--text-secondary); }
+.arch-stats{ padding: 12px 16px; display: flex; gap: 8px; flex-wrap: wrap; flex: 0 0 auto; }
+.arch-error{
+  padding: 10px 14px; border-radius: 12px; font-size: 13px; word-break: break-word;
+  background: var(--coral-soft); color: var(--coral); border: 1px solid rgba(234,107,107,.3);
+}
+
+/* --- Готовые архивы --- */
+.arch-results-head{ display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 2px 2px 0; }
+.arch-archive-grid{
+  display: grid; gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  align-items: start;
+}
+.arch-archive-grid .empty-hint{ grid-column: 1 / -1; }
+
+.arch-archive{ padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.arch-archive-top{ display: flex; align-items: flex-start; gap: 10px; min-width: 0; }
+.arch-archive-icon{
+  width: 32px; height: 32px; flex: 0 0 auto; border-radius: 9px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--violet-soft); color: var(--violet);
+}
+.arch-archive-titles{ min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.arch-archive-name{
+  font-weight: 600; font-size: 13.5px; color: var(--text-primary);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.arch-archive-site{
+  background: none; border: none; padding: 0; cursor: pointer; text-align: left;
+  font-size: 11.5px; color: var(--text-tertiary); font-family: inherit;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.arch-archive-site:hover{ color: var(--text-secondary); text-decoration: underline; }
+.arch-archive-stats{ display: flex; flex-wrap: wrap; gap: 6px; }
+.arch-archive-date{ font-variant-numeric: tabular-nums; }
+.arch-archive-verify{ color: var(--teal); }
+.arch-archive-actions{ display: flex; gap: 8px; flex-wrap: wrap; margin-top: auto; padding-top: 2px; }
+.arch-archive-actions .btn{ flex: 1 1 auto; justify-content: center; }
+
+/* --- Узкие экраны --- */
+@media (max-width: 640px){
+  .arch-hero{ padding: 10px 12px; }
+  .arch-url{ flex-wrap: wrap; }
+  .arch-url .btn{ width: 100%; justify-content: center; }
+  .arch-sections{ grid-template-columns: 1fr; }
+  .arch-archive-grid{ grid-template-columns: 1fr; }
+  .arch-archive-actions .btn{ flex: 1 1 100%; }
+}

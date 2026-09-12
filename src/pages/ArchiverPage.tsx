@@ -1,23 +1,30 @@
 ﻿import React, { useState, useEffect, useRef } from "react";
-import { Archive, Download, Globe, Layers, Filter, Copy, Trash2, ShieldCheck, FileSearch, Play, ExternalLink, Loader2, FolderOpen } from "lucide-react";
+import {
+  Archive, Download, Globe, Layers, Filter, Copy, Trash2, ShieldCheck, FileSearch,
+  Play, ExternalLink, Loader2, FolderOpen, Compass, Wifi,
+} from "lucide-react";
 import { useContextMenu, copyToClipboard } from "../components/ContextMenu";
-import { Btn, IconBtn, Glass, Badge, Select, SectionHead, ProgressBar, Field, Checkbox, EmptyHint } from "../components/ui";
+import { Btn, Glass, Badge, Select, SectionHead, ProgressBar, Field, Checkbox, EmptyHint } from "../components/ui";
 import { usePageToolbar } from "../components/Toolbar";
 import { useI18n } from "../i18n";
 import { api } from "../api/client";
 import type { SitebakArchive, SitebakJob } from "../api/client";
+import "../styles/arch.css";
 
 /**
  * Web Archive Engine (.sitebak): краулер + упаковщик офлайн-копий.
  *
- * Как это работает:
- *  - Четыре блока параметров: Обход (URL/глубина/домен/лимит), Медиа
- *    (AVIF/WebP/EXIF/видео), Контент (strip scripts/inline/block ads),
- *    Сеть (delay/concurrency/cookies/User-Agent). Дефолты — из настроек sitebak.*.
+ * Вёрстка: страница — вертикальная колонка со скроллом (на любой ширине окна),
+ * три адаптивные секции настроек (обход / контент / сеть) и сетка карточек
+ * готовых архивов. Поля тянутся по ширине ячейки, поэтому на узких экранах
+ * (до 640px) ничего не обрезается. Стили — в src/styles/arch.css.
+ *
+ * Логика:
+ *  - Дефолты секций — из настроек sitebak.*.
  *  - POST /archive/start запускает 5-стадийный пайплайн; страница опрашивает
  *    статус (crawl → optimize → pack → done) и прогресс.
  *  - Карточки архивов: статистика (страницы, исходный размер, .sitebak,
- *    % экономии), кнопки скачать/проверить/извлечь/превью, контекстное меню.
+ *    % экономии), кнопки скачать/проверить, контекстное меню.
  */
 
 const DEPTHS = ["0", "1", "2", "3", "4", "5", "full"];
@@ -110,106 +117,123 @@ export default function ArchiverPage() {
     }
   };
 
+  /** Тумблер-чип секции «Контент и фильтры». */
+  const chip = (on: boolean, toggle: () => void, Icon: React.ElementType, label: string) => (
+    <button className={`option-item ${on ? "is-on" : ""}`} onClick={toggle}>
+      <Checkbox checked={on} onClick={toggle} />
+      <Icon size={15} /><span>{label}</span>
+    </button>
+  );
+
   return (
-    <div className="page">
+    <div className="page arch-page">
       <SectionHead eyebrow={t("arch.eyebrow")} title={t("arch.title")} />
 
-      {/* --- Блок 1: Обход (URL, глубина, домен, лимит, медиа-режим) --- */}
-      <Glass className="option-grid" style={{ flexDirection: "column", alignItems: "stretch", gap: 10 }}
+      {/* --- Шаг 1: адрес страницы --- */}
+      <Glass className="arch-hero"
         onContextMenu={(e) => menu.open(e, [
           url.length > 0 && { label: t("ctx.copyLink"), icon: Copy, onClick: () => copyToClipboard(url) },
           url.length > 0 && { label: t("ctx.clear"), icon: Trash2, onClick: () => setUrl("") },
         ])}>
-        <div className="url-bar">
+        <div className="arch-url">
           <Globe size={16} />
-          <input placeholder={t("arch.paste")} value={url} onChange={(e) => setUrl(e.target.value)} onKeyDown={(e) => e.key === "Enter" && start()} />
+          <input placeholder={t("arch.paste")} value={url}
+            onChange={(e) => setUrl(e.target.value)} onKeyDown={(e) => e.key === "Enter" && start()} />
           <Btn variant="primary" icon={busy ? Loader2 : Archive} onClick={start} disabled={busy}>
             {busy ? t("arch.archiving") : t("arch.savePage")}
           </Btn>
         </div>
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <Field label={t("arch.depth")}>
-            <Select value={depth} onChange={(e) => setDepth(e.target.value)} options={DEPTHS} />
-          </Field>
-          <Field label={t("arch.scope")}>
-            <Select value={scope} onChange={(e) => setScope(e.target.value)} options={SCOPES} />
-          </Field>
-          <Field label={t("arch.maxPages")}>
-            <input className="text-input" type="number" min="1" max="5000" value={maxPages}
-              onChange={(e) => setMaxPages(parseInt(e.target.value) || 500)} style={{ width: 100 }} />
-          </Field>
-          <Field label={t("arch.imageMode")}>
-            <Select value={imageMode} onChange={(e) => setImageMode(e.target.value)} options={IMG_MODES} />
-          </Field>
-        </div>
       </Glass>
 
-      {/* --- Блоки 2/3: Контент и фильтры (strip/inline/block) --- */}
-      <Glass className="option-grid">
-        <button className={`option-item ${stripScripts ? "is-on" : ""}`} onClick={() => setStripScripts(!stripScripts)}>
-          <Checkbox checked={stripScripts} onClick={() => setStripScripts(!stripScripts)} />
-          <Filter size={15} /><span>{t("arch.stripScripts")}</span>
-        </button>
-        <button className={`option-item ${blockAds ? "is-on" : ""}`} onClick={() => setBlockAds(!blockAds)}>
-          <Checkbox checked={blockAds} onClick={() => setBlockAds(!blockAds)} />
-          <ShieldCheck size={15} /><span>{t("arch.blockAds")}</span>
-        </button>
-        <button className={`option-item ${inlineAssets ? "is-on" : ""}`} onClick={() => setInlineAssets(!inlineAssets)}>
-          <Checkbox checked={inlineAssets} onClick={() => setInlineAssets(!inlineAssets)} />
-          <Layers size={15} /><span>{t("arch.inlineAssets")}</span>
-        </button>
-        <button className={`option-item ${stripExif ? "is-on" : ""}`} onClick={() => setStripExif(!stripExif)}>
-          <Checkbox checked={stripExif} onClick={() => setStripExif(!stripExif)} />
-          <FileSearch size={15} /><span>{t("arch.stripExif")}</span>
-        </button>
-      </Glass>
+      {/* --- Шаг 2: настройки — три адаптивные секции --- */}
+      <div className="arch-sections">
+        <Glass className="arch-card">
+          <div className="arch-card-head"><Compass size={15} /> {t("arch.sectionCrawl")}</div>
+          <div className="arch-fields">
+            <Field label={t("arch.depth")}>
+              <Select value={depth} onChange={(e) => setDepth(e.target.value)} options={DEPTHS} />
+            </Field>
+            <Field label={t("arch.scope")}>
+              <Select value={scope} onChange={(e) => setScope(e.target.value)} options={SCOPES} />
+            </Field>
+            <Field label={t("arch.maxPages")}>
+              <input className="text-input" type="number" min="1" max="5000" value={maxPages}
+                onChange={(e) => setMaxPages(parseInt(e.target.value) || 500)} />
+            </Field>
+            <Field label={t("arch.imageMode")}>
+              <Select value={imageMode} onChange={(e) => setImageMode(e.target.value)} options={IMG_MODES} />
+            </Field>
+          </div>
+        </Glass>
 
-      {/* --- Блок 4: Сеть и вежливость --- */}
-      <Glass className="option-grid" style={{ alignItems: "flex-end", gap: 12, flexWrap: "wrap" }}>
-        <Field label={t("arch.delay", { v: delayMs })}>
-          <input type="range" min="0" max="3000" step="100" value={delayMs}
-            onChange={(e) => setDelayMs(parseInt(e.target.value))} style={{ width: 140 }} />
-        </Field>
-        <Field label={t("arch.concurrency", { v: concurrency })}>
-          <input type="range" min="1" max="8" step="1" value={concurrency}
-            onChange={(e) => setConcurrency(parseInt(e.target.value))} style={{ width: 140 }} />
-        </Field>
-        <Field label={t("arch.userAgent")}>
-          <input className="text-input" value={userAgent} onChange={(e) => setUserAgent(e.target.value)} style={{ width: 260 }} />
-        </Field>
-        <Field label={t("arch.cookies")}>
-          <input className="text-input" value={cookies} onChange={(e) => setCookies(e.target.value)} style={{ width: 260 }} placeholder="k=v; k2=v2" />
-        </Field>
-      </Glass>
+        {/* --- Контент и фильтры (strip/inline/block) --- */}
+        <Glass className="arch-card">
+          <div className="arch-card-head"><Filter size={15} /> {t("arch.sectionContent")}</div>
+          <div className="arch-chips">
+            {chip(stripScripts, () => setStripScripts(!stripScripts), Filter, t("arch.stripScripts"))}
+            {chip(blockAds, () => setBlockAds(!blockAds), ShieldCheck, t("arch.blockAds"))}
+            {chip(inlineAssets, () => setInlineAssets(!inlineAssets), Layers, t("arch.inlineAssets"))}
+            {chip(stripExif, () => setStripExif(!stripExif), FileSearch, t("arch.stripExif"))}
+          </div>
+        </Glass>
+
+        {/* --- Блок 4: Сеть и вежливость --- */}
+        <Glass className="arch-card">
+          <div className="arch-card-head"><Wifi size={15} /> {t("arch.sectionNetwork")}</div>
+          <div className="arch-fields">
+            <Field label={t("arch.delay", { v: delayMs })}>
+              <input type="range" min="0" max="3000" step="100" value={delayMs}
+                onChange={(e) => setDelayMs(parseInt(e.target.value))} />
+            </Field>
+            <Field label={t("arch.concurrency", { v: concurrency })}>
+              <input type="range" min="1" max="8" step="1" value={concurrency}
+                onChange={(e) => setConcurrency(parseInt(e.target.value))} />
+            </Field>
+            {/* Длинные строки (User-Agent, Cookie) занимают всю ширину карточки. */}
+            <div className="arch-field-wide">
+              <Field label={t("arch.userAgent")}>
+                <input className="text-input" value={userAgent} onChange={(e) => setUserAgent(e.target.value)} />
+              </Field>
+            </div>
+            <div className="arch-field-wide">
+              <Field label={t("arch.cookies")}>
+                <input className="text-input" value={cookies} onChange={(e) => setCookies(e.target.value)} placeholder="k=v; k2=v2" />
+              </Field>
+            </div>
+          </div>
+        </Glass>
+      </div>
 
       {/* --- Прогресс стадий --- */}
       {busy && job && (
-        <Glass className="chart-panel">
-          <div className="muted-sm" style={{ marginBottom: 8 }}>
-            {t(`arch.stage_${job.stage}`)} · {t("arch.pagesDone", { n: job.pages })}
+        <Glass className="arch-progress">
+          <div className="arch-progress-head">
+            <span>{t(`arch.stage_${job.stage}`)} · {t("arch.pagesDone", { n: job.pages })}</span>
+            <span>{job.progress}%</span>
           </div>
           <ProgressBar value={job.progress} />
         </Glass>
       )}
       {job?.stage === "error" && (
-        <Glass><span style={{ color: "var(--coral)" }}>{t("cmp.error")}: {job.error}</span></Glass>
+        <div className="arch-error">{t("cmp.error")}: {job.error}</div>
       )}
       {job?.done && job.stats && (
-        <Glass className="chart-panel">
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <Badge tone="teal">{t("arch.pagesDone", { n: job.stats.pages })}</Badge>
-            <Badge tone="violet">{t("cmp.original")}: {fmtMB(job.stats.origSize)}</Badge>
-            <Badge tone="amber">.sitebak: {fmtMB(job.stats.bakSize)}</Badge>
-            <Badge tone="teal">−{job.stats.savedPct}%</Badge>
-          </div>
+        <Glass className="arch-stats">
+          <Badge tone="teal">{t("arch.pagesDone", { n: job.stats.pages })}</Badge>
+          <Badge tone="violet">{t("cmp.original")}: {fmtMB(job.stats.origSize)}</Badge>
+          <Badge tone="amber">.sitebak: {fmtMB(job.stats.bakSize)}</Badge>
+          <Badge tone="teal">−{job.stats.savedPct}%</Badge>
         </Glass>
       )}
 
-      {/* --- Карточки готовых архивов (+ контекстное меню) --- */}
-      <div className="field-label" style={{ margin: "18px 2px 8px" }}>{t("arch.recent")}</div>
-      <div className="task-list">
+      {/* --- Готовые архивы: карточки (+ контекстное меню) --- */}
+      <div className="arch-results-head">
+        <span className="field-label">{t("arch.recent")}</span>
+        {archives.length > 0 && <span className="muted-sm">{archives.length}</span>}
+      </div>
+      <div className="arch-archive-grid">
         {archives.map((a) => (
-          <Glass className="task-row" key={a.id}
+          <Glass className="arch-archive" key={a.id}
             onContextMenu={(e) => menu.open(e, [
               { label: t("arch.openLive"), icon: ExternalLink, onClick: () => window.open(a.site, "_blank") },
               { label: t("arch.previewOffline"), icon: Play, onClick: () => window.open(api.archivePreview(a.id), "_blank") },
@@ -223,18 +247,27 @@ export default function ArchiverPage() {
               { separator: true },
               { label: t("ctx.del"), icon: Trash2, danger: true, onClick: async () => { await api.archiveDelete(a.id); api.archiveList().then(setArchives).catch(() => {}); } },
             ])}>
-            <Archive size={16} />
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div className="task-text" style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{a.name}</div>
-              <div className="muted-sm">
-                {t("arch.pagesDone", { n: a.stats?.pages ?? 0 })} · {fmtMB(a.stats?.origSize)} → {fmtMB(a.stats?.bakSize)}
-                {a.stats?.savedPct != null ? ` · −${a.stats.savedPct}%` : ""}
-                {a.stats?.compression ? ` · ${a.stats.compression.textAlgo}` : ""}
+            <div className="arch-archive-top">
+              <span className="arch-archive-icon"><Archive size={16} /></span>
+              <div className="arch-archive-titles">
+                <div className="arch-archive-name" title={a.name}>{a.name}</div>
+                <button className="arch-archive-site" title={a.site}
+                  onClick={() => window.open(a.site, "_blank")}>{a.site}</button>
               </div>
-              {verifyResult[a.id] && <div className="muted-sm" style={{ color: "var(--teal)" }}>{verifyResult[a.id]}</div>}
             </div>
-            <IconBtn icon={ShieldCheck} title={t("arch.verify")} onClick={() => doVerify(a.id)} />
-            <IconBtn icon={Download} title={t("arch.download")} onClick={() => { window.location.href = api.archiveDownload(a.id); }} />
+            <div className="arch-archive-stats">
+              <Badge tone="teal">{t("arch.pagesDone", { n: a.stats?.pages ?? 0 })}</Badge>
+              <Badge tone="violet">{fmtMB(a.stats?.origSize)} → {fmtMB(a.stats?.bakSize)}</Badge>
+              {a.stats?.savedPct != null && <Badge tone="amber">−{a.stats.savedPct}%</Badge>}
+              {a.stats?.compression && <Badge tone="neutral" mono>{a.stats.compression.textAlgo}</Badge>}
+            </div>
+            <div className="muted-sm arch-archive-date">{new Date(a.createdAt).toLocaleString()}</div>
+            {verifyResult[a.id] && <div className="muted-sm arch-archive-verify">{verifyResult[a.id]}</div>}
+            <div className="arch-archive-actions">
+              <Btn icon={ShieldCheck} onClick={() => doVerify(a.id)}>{t("arch.verify")}</Btn>
+              <Btn icon={Download} variant="secondary"
+                onClick={() => { window.location.href = api.archiveDownload(a.id); }}>{t("arch.download")}</Btn>
+            </div>
           </Glass>
         ))}
         {archives.length === 0 && <EmptyHint icon={Archive} text={t("arch.empty")} />}

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   FileVideo, Upload, Download, Gauge, Trash2, Copy, FolderOpen,
-  Info, X, Zap, Save, SlidersHorizontal,
+  X, Zap, Save, SlidersHorizontal,
 } from "lucide-react";
 import { Glass, Btn, Badge, Select, SectionHead, ProgressBar } from "../components/ui";
 import { usePageToolbar } from "../components/Toolbar";
@@ -79,7 +79,6 @@ export default function CompressorPage() {
   const [targetMB, setTargetMB] = useState(25);
   const [job, setJob] = useState<CompressorJob | null>(null);
   const [defect, setDefect] = useState("");
-  const [guide, setGuide] = useState(false);
   const [saveModal, setSaveModal] = useState(false);
   const [presetName, setPresetName] = useState("");
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -262,7 +261,6 @@ export default function CompressorPage() {
   usePageToolbar(
     <>
       <Badge tone="violet" mono>{t("cmp.badge2")}</Badge>
-      <Btn icon={Info} onClick={() => setGuide(true)}>{t("cmp.howItWorks")}</Btn>
     </>,
     [t]
   );
@@ -284,7 +282,7 @@ export default function CompressorPage() {
   };
 
   return (
-    <div className="page">
+    <div className="page cmp-page">
       <SectionHead eyebrow={t("cmp.eyebrow")} title={t("cmp.title")} />
 
       <div className="cmp-grid">
@@ -548,21 +546,8 @@ export default function CompressorPage() {
         </div>
       )}
 
-      {/* --- Модалка-гайд: CPU vs GPU, CRF, пресеты --- */}
-      {guide && (
-        <div className="modal-overlay" onClick={() => setGuide(false)}>
-          <Glass className="modal-panel" onClick={(e: any) => e.stopPropagation()}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div className="media-title">{t("cmp.guideTitle")}</div>
-              <button onClick={() => setGuide(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-tertiary)", display: "flex" }}><X size={16} /></button>
-            </div>
-            <p className="muted-sm">{t("cmp.guideCpu")}</p>
-            <p className="muted-sm">{t("cmp.guideGpu")}</p>
-            <p className="muted-sm">{t("cmp.guideCrf")}</p>
-            <p className="muted-sm">{t("cmp.guidePresets")}</p>
-          </Glass>
-        </div>
-      )}
+      {/* --- Модалка-гайд (CPU vs GPU, CRF, пресеты) удалена вместе с кнопкой
+             «Как это работает» в тулбаре. --- */}
     </div>
   );
 }

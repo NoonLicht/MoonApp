@@ -3,10 +3,12 @@ import {
   Settings2, Send, Plus, Trash2, KeyRound, StopCircle,
   Copy, Volume2, Paperclip, Mic, FileText, Square, Pencil, Pin, PinOff,
   Download, Swords, Search, Code2, ChevronDown, Check, X, Sparkles,
+  PanelLeftClose, PanelLeftOpen,
 } from "lucide-react";
 import { Glass, Btn, IconBtn, Field, Select, EmptyHint } from "../components/ui";
 import { usePageToolbar } from "../components/Toolbar";
 import { useI18n } from "../i18n";
+import { useMediaQuery, BREAKPOINTS } from "../utils/useMediaQuery";
 import { api, streamChatSend, streamArena } from "../api/client";
 import type { ProviderInfo, Conversation, ChatMessage } from "../api/types";
 import CodeBlock from "./AiChat/CodeBlock";
@@ -73,11 +75,33 @@ export default function AiChatPage() {
   const [autoScroll, setAutoScroll] = useState(true);
   const [showDown, setShowDown] = useState(false);
 
+  /* ── боковая панель чатов ──
+   * В обычном режиме её можно свернуть вбок кнопкой в тулбаре; на узких
+   * экранах она превращается в выезжающий drawer и по умолчанию скрыта
+   * («вместо всех диалогов» остаётся только кнопка). */
+  const isNarrow = useMediaQuery(`(max-width: ${BREAKPOINTS.sm}px)`);
+  const [sideOpen, setSideOpen] = useState(!isNarrow);
+
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const recogRef = useRef<any>(null);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
+
+  /* ── B2: при уходе со страницы глушим всё, что может «висеть» в фоне ──
+   * abortRef — иначе SSE-стрим продолжает писаться в мёртвый компонент, а
+   * сервер продолжает генерацию; recogRef — иначе распознавание речи висит
+   * во включённом состоянии; speechSynthesis — иначе TTS продолжает говорить
+   * уже на другой странице. */
+  useEffect(() => () => {
+    try { abortRef.current?.abort(); } catch { /* noop */ }
+    try { recogRef.current?.stop(); } catch { /* noop */ }
+    try { window.speechSynthesis?.cancel(); } catch { /* noop */ }
+  }, []);
+
+  // При переходе через брейкпоинт выставляем панель чатов в «правильное»
+  // состояние по умолчанию: узко — свёрнута, широко — развёрнута.
+  useEffect(() => { setSideOpen(!isNarrow); }, [isNarrow]);
 
   /* ── первичная загрузка ── */
   useEffect(() => {
@@ -390,6 +414,14 @@ export default function AiChatPage() {
   /* ── тулбар страницы ── */
   usePageToolbar(
     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+      {/* Сворачивание/разворачивание списка чатов (в узком режиме панель
+          выезжает поверх контента). */}
+      <IconBtn
+        icon={sideOpen ? PanelLeftClose : PanelLeftOpen}
+        active={sideOpen}
+        onClick={() => setSideOpen((v) => !v)}
+        title={sideOpen ? t("aichat.hideSidebar") : t("aichat.showSidebar")}
+      />
       <Field label={t("aichat.provider")} w={130}>
         <Select value={chatCfg.provider}
           onChange={(e) => setChatCfg({ provider: e.target.value, model: "" })}
@@ -402,7 +434,7 @@ export default function AiChatPage() {
       <IconBtn icon={Settings2} active={settingsOpen} onClick={() => setSettingsOpen((v) => !v)} title={t("aichat.modelSettings")} />
       <IconBtn icon={Search} active={palette !== null} onClick={() => setPalette({ query: "" })} title="Ctrl+K" />
     </div>,
-    [providers, chatCfg.provider, chatCfg.model, models, settingsOpen, arena.on, t]
+    [providers, chatCfg.provider, chatCfg.model, models, settingsOpen, arena.on, sideOpen, t]
   );
 
   /* ── регенерация последнего ответа ── */
@@ -652,8 +684,13 @@ export default function AiChatPage() {
         </div>
       )}
 
-      <div className="chat-side">
+      <div className={`chat-side ${sideOpen ? "" : "is-collapsed"} ${isNarrow ? "is-narrow" : ""}`}>
+        {/* В узком режиме панель выезжает поверх контента — клик по затемнению закрывает. */}
+        {isNarrow && sideOpen && (
+          <div className="chat-side-backdrop" onClick={() => setSideOpen(false)} />
+        )}
         {/* ─── сайдбар чатов ─── */}
+        <div className="chat-sidebar">
         <Glass className="chat-conv-list" style={{ padding: 8 }}>
           <div className="conv-search">
             <Search size={12} />
@@ -661,7 +698,7 @@ export default function AiChatPage() {
               placeholder={t("aichat.search")} />
             {search && <button onClick={() => setSearch("")}><X size={11} /></button>}
           </div>
-          <Btn icon={Plus} onClick={newChat} style={{ marginBottom: 6 }}>{t("aichat.newChat")}</Btn>
+          <Btn icon={Plus} onClick={() => { newChat(); if (isNarrow) setSideOpen(false); }} style={{ marginBottom: 6 }}>{t("aichat.newChat")}</Btn>
           {groupedConvs.map((g) => (
             <div key={g.label} className="conv-group">
               <div className="conv-group-label">{g.label}</div>
@@ -671,7 +708,8 @@ export default function AiChatPage() {
                     onBlur={(e) => renameConv(c.id, e.target.value)}
                     onKeyDown={(e) => { if (e.key === "Enter") renameConv(c.id, (e.target as HTMLInputElement).value); if (e.key === "Escape") setRenaming(null); }} />
                 ) : (
-                  <div key={c.id} className={`chat-conv ${c.id === activeId ? "is-active" : ""}`} onClick={() => setActiveId(c.id)}
+                  <div key={c.id} className={`chat-conv ${c.id === activeId ? "is-active" : ""}`}
+                    onClick={() => { setActiveId(c.id); if (isNarrow) setSideOpen(false); }}
                     onContextMenu={(e) => menu.open(e, [
                       { label: t("ctx.open"), icon: FileText, onClick: () => setActiveId(c.id) },
                       { label: t("ctx.rename"), icon: Pencil, onClick: () => setRenaming({ id: c.id, text: c.title }) },
@@ -693,6 +731,7 @@ export default function AiChatPage() {
           ))}
           {convs.length === 0 && <div className="muted-sm" style={{ padding: 8 }}>{t("aichat.noChats")}</div>}
         </Glass>
+        </div>
 
         {/* ─── основная колонка ─── */}
         <div className="chat-main">

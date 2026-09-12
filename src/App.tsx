@@ -152,7 +152,10 @@ function Shell({ active, setActive, theme, toggleTheme, toolbarNode, setToolbarN
         )}
 
         <main className="content-area" key={active}>
-          <ActivePage />
+          {/* .content-frame ограничивает ширину контента на ultrawide-мониторах. */}
+          <div className="content-frame">
+            <ActivePage />
+          </div>
         </main>
       </ToolbarContext.Provider>
 
@@ -167,6 +170,7 @@ function Shell({ active, setActive, theme, toggleTheme, toolbarNode, setToolbarN
                 className={`dock-btn ${isActive ? "is-active" : ""}`}
                 onClick={() => setActive(p.id)}
                 aria-label={t(p.i18n)}
+                title={t(p.i18n)}
               >
                 <span className="dock-icon"><Icon size={18} strokeWidth={2} /></span>
               </button>

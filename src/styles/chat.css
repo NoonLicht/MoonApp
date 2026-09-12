@@ -12,8 +12,15 @@
 @keyframes blink{ 0%,80%,100%{ opacity:.2;} 40%{ opacity:1;} }
 .chat-input-bar{ display:flex; align-items:flex-end; gap:10px; padding:10px 10px 10px 16px; border-radius:20px; margin-top:8px; }
 .chat-input-bar textarea{ flex:1; background:none; border:none; outline:none; resize:none; color:var(--text-primary); font-family:var(--font-body); font-size:13.5px; max-height:120px; padding:8px 0; }
-.chat-side{ display:flex; gap:14px; height:100%; }
-.chat-conv-list{ width:230px; flex-shrink:0; display:flex; flex-direction:column; gap:6px; }
+.chat-side{ display:flex; gap:14px; flex:1; min-height:0; position:relative; overflow:hidden; }
+.chat-side.is-collapsed{ gap:0; }
+/* Обёртка сайдбара: её ширина и управляет сворачиванием (внутри — Glass,
+   у которого свой inline-padding, поэтому анимируем именно обёртку). */
+.chat-sidebar{ width:230px; flex-shrink:0; display:flex; flex-direction:column; min-height:0; overflow:hidden;
+  transition:width .22s ease, opacity .18s ease, transform .22s ease; }
+.chat-conv-list{ width:100%; flex:1; min-height:0; display:flex; flex-direction:column; gap:6px; overflow-y:auto; }
+.chat-conv-list::-webkit-scrollbar{ width:6px; }
+.chat-conv-list::-webkit-scrollbar-thumb{ background:var(--glass-border); border-radius:6px; }
 .chat-conv{ display:flex; align-items:center; gap:8px; padding:9px 11px; border-radius:12px; cursor:pointer; font-size:12.5px; color:var(--text-secondary); }
 .chat-conv.is-active{ background:var(--track); color:var(--text-primary); }
 .chat-conv .x{ margin-left:auto; opacity:0; }
@@ -43,7 +50,7 @@
 .sys-panel select { padding:4px 8px; background:var(--glass); border:1px solid var(--glass-border); border-radius:6px; color:var(--text-primary); font-size:11px; font-family:inherit; }
 .sys-panel textarea { padding:8px; background:var(--track); border:1px solid var(--glass-border); border-radius:8px; color:var(--text-primary); font-family:var(--font-mono); font-size:11px; outline:none; resize:vertical; min-height:60px; width:100%; box-sizing:border-box; }
 /* --- AI Chat: расширения --- */
-.chat-main{ flex:1; min-width:0; display:flex; flex-direction:column; position:relative; }
+.chat-main{ flex:1; min-width:0; min-height:0; display:flex; flex-direction:column; position:relative; }
 
 /* --- ширина поля кастомного промпта: во всю ширину, высота ≤ 20vh --- */
 .sys-panel{ flex:1 1 320px; min-width:280px; }
@@ -144,3 +151,40 @@
 .arena-col-body > .btn, .arena-col-body button[class*=btn]{ align-self:flex-start; margin-top:2px; }
 
 @media (max-width:1100px){ .arena-grid{ grid-template-columns:1fr; } }
+/* ============================================================
+   Сворачивание списка чатов + выезжающая панель на узких экранах.
+   Состояния задаются классами на .chat-side (см. AiChatPage.tsx):
+     .is-collapsed — панель свёрнута;
+     .is-narrow    — узкий экран: панель выезжает поверх контента.
+   ============================================================ */
+
+/* Свёрнутая панель в обычном режиме: ширина → 0, содержимое обрезано. */
+.chat-side.is-collapsed .chat-sidebar{
+  width:0; opacity:0; pointer-events:none;
+}
+
+/* Узкий режим: панель лежит поверх чата, затемнение закрывает её по клику. */
+.chat-side.is-narrow .chat-sidebar{
+  position:absolute; left:0; top:0; bottom:0; width:min(300px, 86%); z-index:25;
+  opacity:1; pointer-events:auto;
+  filter:drop-shadow(0 12px 32px rgba(0,0,0,.45));
+}
+.chat-side.is-narrow.is-collapsed .chat-sidebar{
+  width:min(300px, 86%);
+  transform:translateX(-105%);
+  opacity:0; pointer-events:none;
+}
+.chat-side.is-narrow .chat-conv-list{ height:100%; }
+
+.chat-side-backdrop{
+  position:absolute; inset:0; z-index:20;
+  background:rgba(0,0,0,.45);
+  backdrop-filter:blur(2px); -webkit-backdrop-filter:blur(2px);
+  animation:chat-backdrop-in .16s ease-out;
+}
+@keyframes chat-backdrop-in{ from{ opacity:0; } to{ opacity:1; } }
+
+/* RTL (арабский): панель выезжает справа. */
+.app-shell[dir="rtl"] .chat-side.is-narrow .chat-sidebar{ left:auto; right:0; }
+.app-shell[dir="rtl"] .chat-side.is-narrow.is-collapsed .chat-sidebar{ transform:translateX(105%); }
+

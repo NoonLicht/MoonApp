@@ -6,6 +6,12 @@ const path = require("path");
 const fs = require("fs");
 const { startServer } = require("../server");
 
+// Минимальный размер окна. Ниже этой ширины/высоты вёрстка уходит в
+// «одноколоночный» режим (вертикальный док, адаптивный тулбар), поэтому
+// меньше — нельзя: интерфейс начнёт обрезаться.
+const MIN_WIN_WIDTH = 640;
+const MIN_WIN_HEIGHT = 520;
+
 // Аппаратное ускорение Chromium. По умолчанию вкл.; если в настройках
 // performance.hardwareAcceleration=false — выключается ДО создания окна, иначе не подхватится.
 function applyHardwareAcceleration() {
@@ -276,10 +282,12 @@ async function createWindow() {
 
   // Размер окна: берём из настроек (window.*); при rememberSize запоминаем
   // последний размер на закрытии и восстанавливаем на следующем запуске.
+  // Минимальный «оптимальный» размер: вёрстка рассчитана и проверена начиная
+  // с этой ширины/высоты (одна колонка, вертикальный док, адаптивный тулбар).
   const ws = readSettings()?.window || {};
   const remembered = readSettings()?.window?.lastSize || {};
-  const width = Math.max(800, Number(ws.width) || 1180);
-  const height = Math.max(600, Number(ws.height) || 820);
+  const width = Math.max(MIN_WIN_WIDTH, Number(ws.width) || 1180);
+  const height = Math.max(MIN_WIN_HEIGHT, Number(ws.height) || 820);
   const startW = ws.rememberSize !== false && remembered.width ? Number(remembered.width) : width;
   const startH = ws.rememberSize !== false && remembered.height ? Number(remembered.height) : height;
 
@@ -288,8 +296,8 @@ async function createWindow() {
   win = new BrowserWindow({
     width: startW,
     height: startH,
-    minWidth: 800,
-    minHeight: 600,
+    minWidth: MIN_WIN_WIDTH,
+    minHeight: MIN_WIN_HEIGHT,
     transparent: true,
     frame: false,
     hasShadow: false,

@@ -51,7 +51,20 @@ html, body{
 
 /* Окно едва прозрачное (alpha ~0.93), матовое размытие — backdrop-filter + blur-блобы.
    Текст и карточки непрозрачны, читаемость не страдает. */
+/* Переменные раскладки. Значения читаются несколькими файлами (dock.css,
+   pages.css, settings.css), поэтому правим их в одном месте.
+     --rail-*       — вертикальный док слева (высота/отступ + зазор);
+     --content-*    — отступы контентной области;
+     --vh-base      — верхний+нижний отступ контента; из него считаются
+                      max-height списков на страницах (см. страницы ниже);
+     --content-max  — ограничитель ширины контента на ultrawide-мониторах. */
 .app-shell{ background:var(--bg-alpha); height:100vh; border-radius:18px; overflow:hidden;
+  --rail-w: 60px;
+  --rail-gap: 12px;
+  --content-top: 72px;
+  --content-bottom: 28px;
+  --vh-base: calc(var(--content-top) + var(--content-bottom));
+  --content-max: 1680px;
   backdrop-filter:blur(30px) saturate(1.1);
   -webkit-backdrop-filter:blur(30px) saturate(1.1); }
 
@@ -77,7 +90,8 @@ html, body{
 .glass{ background:var(--glass); border:1px solid var(--glass-border); backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px); border-radius:16px; }
 
 .top-toolbar{
-  position:fixed; top:14px; left:14px; right:14px; z-index:40;
+  position:fixed; top:14px; right:14px; z-index:40;
+  left: calc(var(--rail-gap) + var(--rail-w) + 12px);
   display:grid; grid-template-columns:1fr auto 1fr; align-items:center;
   height:46px;
   padding:0 12px; border-radius:14px;
@@ -101,12 +115,23 @@ html, body{
 .tb-dynamic .select-wrap select{ padding:5px 24px 5px 11px; font-size:11.5px; }
 .tb-dynamic .icon-btn{ width:28px; height:28px; flex-shrink:0; }
 
-/* Контент: верхний отступ небольшой (тулбар близко к верху),
-   нижний — чтобы контент не заходил под нижнее меню (док ~82px + зазор). */
+/* Контент: верхний отступ — под верхний тулбар, боковой слева — под
+   вертикальный док (rail). Нижний отступ небольшой: док больше не занимает низ. */
 .app-shell{ display:flex; flex-direction:column; }
-.content-area{ position:relative; z-index:1; padding:72px 24px 96px; display:flex; flex-direction:column; flex:1; min-height:0; overflow:hidden; }
+.content-area{ position:relative; z-index:1;
+  padding: var(--content-top) 24px var(--content-bottom) calc(var(--rail-gap) + var(--rail-w) + 12px);
+  display:flex; flex-direction:column; flex:1; min-height:0; overflow:hidden; }
+/* Ограничитель ширины контента: на ultrawide-мониторах (например 3440×1440)
+   содержимое не растягивается на всю ширину. Страницы-«редакторы» (канвас и
+   т.п.) помечаются классом .page-wide и занимают всю ширину. */
+.content-frame{ width:100%; max-width:var(--content-max); margin:0 auto;
+  display:flex; flex-direction:column; flex:1; min-height:0; }
+.content-frame:has(.page-wide){ max-width:none; }
 .page{ display:flex; flex-direction:column; gap:14px; overflow:hidden; flex:1; min-height:0; }
-.page-flush{ height:calc(100vh - 168px); }
+/* Раньше высота считалась от 100vh; теперь область контента сама флексится,
+   поэтому достаточно flex:1 (см. .content-area → .content-frame → .page). */
+.page-flush{ flex:1; min-height:0; }
+.page-wide{ max-width:none; }
 
 .eyebrow{ font-size:11px; color:var(--text-tertiary); font-family:var(--font-mono); text-transform:uppercase; letter-spacing:0.08em; }
 .page-title{ margin:2px 0 0; font-family:var(--font-display); font-size:24px; font-weight:700; color:var(--text-primary); }
@@ -131,6 +156,12 @@ html, body{
 /* RTL (арабский): зеркалим смещения блобов, чтобы декор не вылезал за левый край. */
 .app-shell[dir="rtl"] .blob-a{ left:auto; right:-120px; }
 .app-shell[dir="rtl"] .blob-b{ right:auto; left:-160px; }
+/* RTL: вертикальный док уходит вправо — тулбар и контент зеркалят отступы. */
+.app-shell[dir="rtl"] .top-toolbar{ left:14px; right:calc(var(--rail-gap) + var(--rail-w) + 12px); }
+.app-shell[dir="rtl"] .content-area{
+  padding-left:24px;
+  padding-right:calc(var(--rail-gap) + var(--rail-w) + 12px);
+}
 /* --- Внешний вид из настроек: акцент, анимации, плотность --- */
 /* accent-* подменяет «основной» акцентный цвет (--amber используется
    в UI как главный), остальные переменные остаются доступны. */
@@ -261,3 +292,33 @@ input[type="range"]{
   accent-color:var(--amber);
   height:4px; cursor:pointer;
 }
+/* ============================================================
+   Адаптив верхнего тулбара и оболочки.
+   Шкала брейкпоинтов (те же числа — в src/utils/useMediaQuery.ts):
+     ≤640  xs  — минимальный режим;
+     ≤900  sm  — узкий: заголовок скрыт;
+     ≤1200 md  — промежуточный.
+   ============================================================ */
+
+/* На узких экранах центр тулбара может не вмещать поля/кнопки — разрешаем
+   горизонтальную прокрутку самого центра, чтобы правое крыло (прокси/тема/
+   кнопки окна) всегда оставалось на месте. */
+@media (max-width: 1200px){
+  .tb-center{ overflow-x:auto; overflow-y:hidden; scrollbar-width:none; }
+  .tb-center::-webkit-scrollbar{ display:none; }
+  .tb-dynamic{ flex-wrap:nowrap; }
+}
+
+@media (max-width: 900px){
+  .tb-title span{ display:none; }
+  .tb-center{ justify-content:flex-start; }
+  .tb-dynamic select{ font-size:11px; }
+}
+
+@media (max-width: 640px){
+  /* Минимальный режим: док уже, отступы контента меньше. */
+  .app-shell{ --rail-w:50px; --rail-gap:8px; --content-top:64px; --content-bottom:16px; }
+  .tb-side-right{ gap:2px; }
+  .theme-toggle{ padding:4px; }
+}
+

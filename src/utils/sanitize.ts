@@ -16,6 +16,21 @@ const config = {
   ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto|tel|data|blob):|[^a-z]|[a-z+.-]+(?:[^a-z+.\-:]|$))/i,
 };
 
+/* Кэш: санитайз вызывается на каждом рендере для одних и тех же строк
+ * (markdown истории + подсветка кода), а DOMPurify парсит HTML в живой DOM —
+ * это один из самых дорогих вызовов при стриминге. Ограниченный размер,
+ * чтобы кэш не рос бесконечно. */
+const CACHE_MAX = 600;
+const cache = new Map<string, string>();
+
 export function sanitizeHtml(html: string): string {
-  return DOMPurify.sanitize(html, config);
+  const hit = cache.get(html);
+  if (hit !== undefined) return hit;
+  const out = DOMPurify.sanitize(html, config);
+  if (cache.size >= CACHE_MAX) {
+    const oldest = cache.keys().next().value; // Map хранит порядок вставки
+    if (oldest !== undefined) cache.delete(oldest);
+  }
+  cache.set(html, out);
+  return out;
 }

@@ -125,7 +125,15 @@ router.post("/:id/send", async (req, res) => {
 
   const startedAt = Date.now();
   const abortController = new AbortController();
-  req.on("close", () => abortController.abort());
+  // ВАЖНО: на Node 18+ событие 'close' у req срабатывает сразу после того, как
+  // прочитано тело запроса (express.json), а НЕ при отключении клиента. Из-за
+  // этого abort() убивал генерацию на первой же миллисекунде и в чат прилетало
+  // «Generation stopped» у любого провайдера (проверено на Node v24: req
+  // 'close' приходит на +1ms). Реальный признак ухода клиента — 'close' у
+  // ответа при незавершённой записи (res.writableEnded === false).
+  res.on("close", () => {
+    if (!res.writableEnded) abortController.abort();
+  });
 
   try {
     const onToken = (token) => { if (streaming) emit({ type: "token", text: token }); };

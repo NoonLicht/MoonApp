@@ -270,6 +270,8 @@
     "model": "Model",
     "modelSettings": "Model settings",
     "newChat": "New chat",
+    "hideSidebar": "Hide chat list",
+    "showSidebar": "Show chat list",
     "noChats": "No chats yet",
     "placeholder": "Message {provider}…",
     "createFirst": "Create a chat first",
@@ -514,6 +516,9 @@
     "playwright": "Playwright",
     "fetchMode": "Fetch mode",
     "mediaTitle": "Video & audio",
+    "sectionCrawl": "Crawl",
+    "sectionContent": "Content & filters",
+    "sectionNetwork": "Network & politeness",
     "stage_queued": "Queued…"
   },
   "myspace": {

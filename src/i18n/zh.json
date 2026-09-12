@@ -266,6 +266,8 @@
     "model": "模型",
     "modelSettings": "模型设置",
     "newChat": "新建聊天",
+    "hideSidebar": "隐藏聊天列表",
+    "showSidebar": "显示聊天列表",
     "noChats": "还没有聊天",
     "placeholder": "给 {provider} 发消息…",
     "createFirst": "请先创建聊天",
@@ -513,6 +515,9 @@
     "playwright": "Playwright",
     "fetchMode": "Fetch 模式",
     "mediaTitle": "视频与音频",
+    "sectionCrawl": "抓取",
+    "sectionContent": "内容与过滤",
+    "sectionNetwork": "网络与礼貌",
     "stage_queued": "排队中…"
   },
   "myspace": {

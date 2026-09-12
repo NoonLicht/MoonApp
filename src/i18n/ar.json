@@ -266,6 +266,8 @@
     "model": "النموذج",
     "modelSettings": "إعدادات النموذج",
     "newChat": "محادثة جديدة",
+    "hideSidebar": "إخفاء قائمة المحادثات",
+    "showSidebar": "إظهار قائمة المحادثات",
     "noChats": "لا محادثات بعد",
     "placeholder": "رسالة إلى {provider}…",
     "createFirst": "أنشئ محادثة أولاً",
@@ -513,6 +515,9 @@
     "playwright": "Playwright",
     "fetchMode": "وضع Fetch",
     "mediaTitle": "الفيديو والصوت",
+    "sectionCrawl": "الزحف",
+    "sectionContent": "المحتوى والمرشحات",
+    "sectionNetwork": "الشبكة والأدب",
     "stage_queued": "في قائمة الانتظار…"
   },
   "myspace": {

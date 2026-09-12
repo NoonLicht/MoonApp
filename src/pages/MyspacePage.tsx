@@ -450,7 +450,7 @@ export default function MyspacePage() {
     border:"none", outline:"none", resize:"none",
     background:"transparent", color:"var(--text-primary)"
   };
-  return (<div style={{display:"flex",flexDirection:"column",flex:1,minHeight:0,overflow:"hidden"}}>
+  return (<div className="page-wide" style={{display:"flex",flexDirection:"column",flex:1,minHeight:0,overflow:"hidden"}}>
       {/* ─── VIEW SWITCHER ─── */}
       <div style={{display:"flex", gap:4, padding:"4px 4px 0 4px"}}>
         <button onClick={()=>setMyspaceView("notes")} style={viewTabStyle(myspaceView==="notes")}>📝 Notes</button>

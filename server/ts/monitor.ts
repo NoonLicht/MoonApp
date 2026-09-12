@@ -98,7 +98,7 @@ function toArray<T>(x: T | T[] | null | undefined): T[] {
 /** Запуск PowerShell-скрипта с таймаутом; stdout c фолбэком кодировки (кириллица). */
 function execPs(script: string, timeoutMs = 10000): Promise<string> {
   return new Promise((resolve, reject) => {
-    execFile(
+    const child = execFile(
       "powershell.exe",
       ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", script],
       { timeout: timeoutMs, maxBuffer: 64 * 1024 * 1024, windowsHide: true, encoding: "buffer" },
@@ -111,6 +111,16 @@ function execPs(script: string, timeoutMs = 10000): Promise<string> {
         resolve(text);
       }
     );
+    // На Windows kill() дочернего процесса срабатывает не всегда, а при частом
+    // опросе датчиков зависшие powershell.exe копились бы (утечка процессов и
+    // памяти). Если процесс не закрылся к таймауту+запас — добиваем дерево по PID.
+    const killTree = (): void => {
+      try { if (child.pid) exec(`taskkill /PID ${child.pid} /T /F`, { windowsHide: true }, () => { /* ignore */ }); } catch { /* ignore */ }
+    };
+    const killTimer = setTimeout(killTree, timeoutMs + 500);
+    const clear = (): void => clearTimeout(killTimer);
+    child.once("close", clear);
+    child.once("error", clear);
   });
 }
 
@@ -245,12 +255,20 @@ function parseLhm(lsen: Row[], lhw: Row[]): LhmSensors {
   };
 
   const out: LhmSensors = { temperatures: [], fans: [], voltages: [], currents: [], powers: [], clocks: [], loads: [], data: [], all: [] };
+  const seenIds = new Set<string>();
   for (const s of lsen) {
     if (str(s.SensorType) === "__hwname__") continue; // служебная строка движка
+    const id = str(s.Identifier);
+    // Один и тот же сенсор может прийти дважды — от самого адаптера и от его
+    // sub-hardware (напр. /gpu-nvidia/0/load/3). Дубли ломают уникальность
+    // React-ключей в списках датчиков — оставляем только первое вхождение.
+    if (id) {
+      if (seenIds.has(id)) continue;
+      seenIds.add(id);
+    }
     const name = str(s.Name);
     const type = str(s.SensorType);
     const hw = hwOf(str(s.Parent));
-    const id = str(s.Identifier);
     const value = num(s.Value);
     out.all.push({ id, name, type, parent: str(s.Parent), hw, value });
     if (type === "Temperature") out.temperatures.push({ id, name, hw, value });
@@ -318,6 +336,28 @@ async function queryAcpiTemps(): Promise<TempSensor[]> {
   } catch {
     return [];
   }
+}
+
+/**
+ * Кэш ACPI-температур. Это PowerShell-запрос, а вызывается он на КАЖДОМ цикле
+ * сбора, когда LibreHardwareMonitor не установлен. Без кэша при частом опросе
+ * (monitor.refreshMs может быть 100 мс) powershell.exe запускался бы почти
+ * непрерывно. ACPI-зоны грубые (±3°C), поэтому TTL 5 с не влияет на общую
+ * картину, но снимает нагрузку. In-flight дедупликация не даёт двум
+ * одновременным collect() запустить два PowerShell-процесса.
+ */
+let acpiCache: TempSensor[] | null = null;
+let acpiAt = 0;
+let acpiPending: Promise<TempSensor[]> | null = null;
+const ACPI_TTL_MS = 5000;
+
+async function getCachedAcpiTemps(): Promise<TempSensor[]> {
+  if (acpiCache && Date.now() - acpiAt < ACPI_TTL_MS) return acpiCache;
+  if (acpiPending) return acpiPending;
+  acpiPending = queryAcpiTemps()
+    .then((t) => { acpiCache = t; acpiAt = Date.now(); return t; })
+    .finally(() => { acpiPending = null; });
+  return acpiPending;
 }
 
 /* ------------------------------- GPU: nvidia-smi -------------------------- */
@@ -431,26 +471,32 @@ function buildNetwork(wmi: WmiBatch | null): NetIfaceInfo[] {
 /* --------- Кэш WMI (медленный PowerShell) — обновляем реже, чем датчики ------- */
 let wmiCache: Awaited<ReturnType<typeof queryWmi>> | null = null;
 let wmiAt = 0;
+let wmiPending: ReturnType<typeof queryWmi> | null = null;
 const WMI_TTL_MS = 3000;
 
 async function getCachedWmi() {
   if (wmiCache && Date.now() - wmiAt < WMI_TTL_MS) return wmiCache;
-  const r = await queryWmi();
-  wmiCache = r;
-  wmiAt = Date.now();
-  return r;
+  // Дедупликация одновременных запросов: иначе фоновый цикл сбора и запрос
+  // /api/monitor могли запустить два PowerShell-опроса параллельно.
+  if (wmiPending) return wmiPending;
+  wmiPending = queryWmi()
+    .then((r) => { wmiCache = r; wmiAt = Date.now(); return r; })
+    .finally(() => { wmiPending = null; });
+  return wmiPending;
 }
 
 let nvCache: Awaited<ReturnType<typeof queryNvidiaGpus>> | null = null;
 let nvAt = 0;
+let nvPending: ReturnType<typeof queryNvidiaGpus> | null = null;
 const NV_TTL_MS = 2000;
 
 async function getCachedNvidia() {
   if (nvCache && Date.now() - nvAt < NV_TTL_MS) return nvCache;
-  const r = await queryNvidiaGpus();
-  nvCache = r;
-  nvAt = Date.now();
-  return r;
+  if (nvPending) return nvPending;
+  nvPending = queryNvidiaGpus()
+    .then((r) => { nvCache = r; nvAt = Date.now(); return r; })
+    .finally(() => { nvPending = null; });
+  return nvPending;
 }
 
 async function collect(): Promise<SystemSnapshot> {
@@ -474,7 +520,7 @@ async function collect(): Promise<SystemSnapshot> {
 
   // Если LHM не даёт температур — пробуем ACPI Thermal Zone (без установки ПО).
   let temperatures = lhm.temperatures;
-  if (temperatures.length === 0) temperatures = await queryAcpiTemps();
+  if (temperatures.length === 0) temperatures = await getCachedAcpiTemps();
 
   const totalMb = Math.round(totalMem / 1024 ** 2);
   const usedMb = Math.round((totalMem - freeMem) / 1024 ** 2);
@@ -715,8 +761,18 @@ export async function downloadEngine(): Promise<{ ok: boolean; error?: string }>
 }
 
 
-/** Отвечает ли WMI-пространство root/LibreHardwareMonitor. */
-async function lhmWmiAlive(): Promise<boolean> {
+/**
+ * Отвечает ли WMI-пространство root/LibreHardwareMonitor.
+ * Это PowerShell-запрос, а вызывается он и из lhmStatus() (UI опрашивает статус
+ * каждые 5 с), и из автозапуска. Кэш 10 с убирает лишние спавны; force=true
+ * используется там, где мы ЖДЁМ появления LHM (startLhm) — там нужна свежесть.
+ */
+const LHM_ALIVE_TTL_MS = 10000;
+let lhmAliveCache = false;
+let lhmAliveAt = 0;
+let lhmAlivePending: Promise<boolean> | null = null;
+
+async function probeLhmWmi(): Promise<boolean> {
   try {
     const out = await execPs(
       "(Get-CimInstance -Namespace root/LibreHardwareMonitor -ClassName Sensor | Measure-Object).Count",
@@ -727,6 +783,17 @@ async function lhmWmiAlive(): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+async function lhmWmiAlive(force = false): Promise<boolean> {
+  if (!force) {
+    if (lhmAliveAt && Date.now() - lhmAliveAt < LHM_ALIVE_TTL_MS) return lhmAliveCache;
+    if (lhmAlivePending) return lhmAlivePending;
+  }
+  const run = probeLhmWmi().then((v) => { lhmAliveCache = v; lhmAliveAt = Date.now(); return v; });
+  if (force) return run;
+  lhmAlivePending = run.finally(() => { lhmAlivePending = null; });
+  return lhmAlivePending;
 }
 
 /**
@@ -765,6 +832,9 @@ while ($true) {
     }
     $rows = @()
     $hwrows = @()
+    # Один и тот же сенсор может прийти и от адаптера, и от его sub-hardware
+    # (напр. /gpu-nvidia/0/load/3) — дедуплицируем по Identifier.
+    $seen = [System.Collections.Generic.HashSet[string]]::new()
     foreach ($hw in $comp.Hardware) {
       $hwrows += '{"id":"' + (('' + $hw.Identifier).Replace('\\', '\\\\').Replace('"', '\\\\"')) + '","name":"' + (('' + $hw.Name).Replace('\\', '\\\\').Replace('"', '\\\\"')) + '","type":"' + $hw.HardwareType + '"}'
       $items = @($hw) + @($hw.SubHardware)
@@ -773,6 +843,7 @@ while ($true) {
         foreach ($s in @($h.Sensors)) {
           if ($null -eq $s.Value) { continue }
           $sid = ('' + $s.Identifier).Replace('\\', '\\\\').Replace('"', '\\\\"')
+          if (-not $seen.Add($sid)) { continue }
           $sname = ('' + $s.Name).Replace('\\', '\\\\').Replace('"', '\\\\"')
           $valStr = ([double]$s.Value).ToString('R', $culture)
           $rows += '{"id":"' + $sid + '","name":"' + $sname + '","type":"' + $s.SensorType + '","parent":"' + $hid + '","value":' + $valStr + '}'
@@ -832,8 +903,28 @@ export async function startEngine(timeoutMs = 30000): Promise<{ ok: boolean; alr
   return { ok: false, error: "timeout_waiting_sensors" };
 }
 
-/** Свежие данные headless-движка: сенсоры + реальные имена железа. */
+/**
+ * Кэш разбора sensors.json (~350 мс). Фоновый сбор может вызываться по
+ * monitor.refreshMs (вплоть до 100 мс), а движок переписывает файл лишь раз в
+ * ~0.9 с — без кэша мы бы парсили ~22 КБ JSON десятки раз в секунду впустую.
+ * На «свежесть» это не влияет: движок всё равно отдаёт новые данные реже.
+ */
+let engineReadAt = 0;
+let engineReadCache: {
+  lsen: Row[]; lhw: Row[]; hwlist: { id: string; name: string; type: string }[];
+} | null = null;
+const ENGINE_READ_TTL_MS = 350;
+
 function readEngineSensors(): {
+  lsen: Row[]; lhw: Row[]; hwlist: { id: string; name: string; type: string }[];
+} | null {
+  if (Date.now() - engineReadAt < ENGINE_READ_TTL_MS) return engineReadCache;
+  engineReadAt = Date.now();
+  engineReadCache = parseEngineSensors();
+  return engineReadCache;
+}
+
+function parseEngineSensors(): {
   lsen: Row[]; lhw: Row[]; hwlist: { id: string; name: string; type: string }[];
 } | null {
   if (!engineOutputFresh() || !engineSchemaCurrent()) return null;
@@ -882,7 +973,7 @@ export async function downloadAndStartEngine(): Promise<{ ok: boolean; already?:
  * Окно скрываем; ждём появления WMI-пространства до timeoutMs.
  */
 export async function startLhm(timeoutMs = 25000): Promise<{ ok: boolean; already?: boolean; error?: string }> {
-  if (await lhmWmiAlive()) return { ok: true, already: true };
+  if (await lhmWmiAlive(true)) return { ok: true, already: true };
 
   const exe = findLhmExe();
   if (!exe) return { ok: false, error: "not_installed" };
@@ -903,7 +994,7 @@ export async function startLhm(timeoutMs = 25000): Promise<{ ok: boolean; alread
   const startedAt = Date.now();
   while (Date.now() - startedAt < timeoutMs) {
     await sleep(700);
-    if (await lhmWmiAlive()) return { ok: true };
+    if (await lhmWmiAlive(true)) return { ok: true };
   }
   return { ok: false, error: "timeout_waiting_wmi" };
 }

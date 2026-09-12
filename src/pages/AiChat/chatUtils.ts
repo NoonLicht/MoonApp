@@ -23,20 +23,65 @@ export function sanitizeHtml(html: string): string {
   return root.innerHTML;
 }
 
+/* ─────────────── Кэш тяжёлых преобразований (аудит B16) ───────────────
+ * Во время стриминга пузырь ответа перерисовывается на каждый токен, и раньше
+ * вместе с ним перепарсивалась вся история чата: marked.parse + санитайз +
+ * hljs.highlightAuto. Входные строки при этом не меняются, поэтому кэшируем
+ * результат по входу. Размер ограничен, чтобы кэш не рос бесконечно. */
+const MD_CACHE_MAX = 400;
+const HL_CACHE_MAX = 300;
+/** Ниже этой длины код без явного языка НЕ прогоняем через highlightAuto
+ *  (он сканирует весь набор языков и стоит дорого на каждом токене). */
+const AUTO_HIGHLIGHT_MIN = 240;
+
+function memoString(cache: Map<string, string>, key: string, max: number, compute: () => string): string {
+  const hit = cache.get(key);
+  if (hit !== undefined) return hit;
+  const val = compute();
+  if (cache.size >= max) {
+    const oldest = cache.keys().next().value; // Map хранит порядок вставки
+    if (oldest !== undefined) cache.delete(oldest);
+  }
+  cache.set(key, val);
+  return val;
+}
+
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+const inlineMdCache = new Map<string, string>();
+
 /** Обычный markdown (без код-блоков — они рендерятся отдельно) → безопасный HTML. */
 export function renderInlineMd(text: string): string {
   if (!text) return "";
-  try {
-    return sanitizeHtml(marked.parse(text) as string);
-  } catch {
-    return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  }
+  return memoString(inlineMdCache, text, MD_CACHE_MAX, () => {
+    try {
+      return sanitizeHtml(marked.parse(text) as string);
+    } catch {
+      return escapeHtml(text);
+    }
+  });
 }
 
 export interface MsgSegment { type: "md" | "code"; text: string; lang?: string }
 
-/** Разбор сообщения на сегменты: обычный markdown / код-блоки. */
+const segCache = new Map<string, MsgSegment[]>();
+
+/** Разбор сообщения на сегменты: обычный markdown / код-блоки (с кэшем). */
 export function parseSegments(text: string): MsgSegment[] {
+  const hit = segCache.get(text);
+  if (hit) return hit; // стабильная ссылка — не ломает useMemo у потребителей
+  const out = parseSegmentsUncached(text);
+  if (segCache.size >= MD_CACHE_MAX) {
+    const oldest = segCache.keys().next().value;
+    if (oldest !== undefined) segCache.delete(oldest);
+  }
+  segCache.set(text, out);
+  return out;
+}
+
+function parseSegmentsUncached(text: string): MsgSegment[] {
   const out: MsgSegment[] = [];
   const re = /```([\w+-]*)\n?([\s\S]*?)(?:```|$)/g;
   let last = 0;
@@ -50,14 +95,25 @@ export function parseSegments(text: string): MsgSegment[] {
   return out.length ? out : [{ type: "md", text }];
 }
 
-/** Подсветка кода для CodeBlock. */
+const hlCache = new Map<string, string>();
+
+/** Подсветка кода для CodeBlock (с кэшем; highlightAuto — только для
+ *  длинных сниппетов без явного языка). */
 export function highlightCode(code: string, lang: string): string {
-  try {
-    if (lang && hljs.getLanguage(lang)) return hljs.highlight(code, { language: lang }).value;
-    return hljs.highlightAuto(code).value;
-  } catch {
-    return code.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  }
+  return memoString(hlCache, lang + "\u0000" + code, HL_CACHE_MAX, () => {
+    try {
+      // Язык известен — подсвечиваем точно и дешево.
+      if (lang && lang !== "text" && hljs.getLanguage(lang)) {
+        return hljs.highlight(code, { language: lang }).value;
+      }
+      // Язык неизвестен/не задан: highlightAuto перебирает все языки — гоняем
+      // его только на достаточно длинном коде, иначе отдаём как есть.
+      if (code.length >= AUTO_HIGHLIGHT_MIN) return hljs.highlightAuto(code).value;
+      return escapeHtml(code);
+    } catch {
+      return escapeHtml(code);
+    }
+  });
 }
 
 export const approxTokens = (s: string) => Math.max(0, Math.round(s.length / 4));

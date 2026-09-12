@@ -270,6 +270,8 @@
     "model": "Модель",
     "modelSettings": "Настройки модели",
     "newChat": "Новый чат",
+    "hideSidebar": "Свернуть список чатов",
+    "showSidebar": "Показать список чатов",
     "noChats": "Чатов пока нет",
     "placeholder": "Сообщение {provider}…",
     "createFirst": "Сначала создайте чат",
@@ -514,6 +516,9 @@
     "playwright": "Playwright",
     "fetchMode": "Fetch-режим",
     "mediaTitle": "Видео и аудио",
+    "sectionCrawl": "Обход",
+    "sectionContent": "Контент и фильтры",
+    "sectionNetwork": "Сеть и вежливость",
     "stage_queued": "В очереди…"
   },
   "myspace": {

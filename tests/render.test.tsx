@@ -16,6 +16,7 @@ import SettingsPage from "../src/pages/SettingsPage";
 import MonitorPage from "../src/pages/MonitorPage";
 import LectureRecorderPage from "../src/pages/LectureRecorderPage";
 import BypassControlPage from "../src/pages/BypassControlPage";
+import CompressorPage from "../src/pages/CompressorPage";
 
 describe("render smoke (ловит runtime-краши рендера)", () => {
   it("App (Store по умолчанию) рендерится без ошибок", () => {
@@ -32,6 +33,7 @@ describe("render smoke (ловит runtime-краши рендера)", () => {
     ["Books", BooksPage],
     ["Voice", AudiobookTTSPage],
     ["Archive", ArchiverPage],
+    ["Compress", CompressorPage],
     ["Settings", SettingsPage],
     ["Monitor", MonitorPage],
     ["Lecture", LectureRecorderPage],
