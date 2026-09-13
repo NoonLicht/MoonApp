@@ -1,6 +1,6 @@
 {
-  "name": "personal-app",
-  "productName": "PersonalApp",
+  "name": "moon-app",
+  "productName": "MoonApp",
   "version": "0.1.0",
   "description": "Personal desktop utility panel (Electron + React + Vite + Node backend)",
   "author": "NoonLicht",
