@@ -110,7 +110,8 @@
     "publish": {
       "provider": "github",
       "owner": "NoonLicht",
-      "repo": "MoonApp"
+      "repo": "MoonApp",
+      "releaseType": "release"
     },
     "win": {
       "target": [
