@@ -13,7 +13,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json && npm run compile:server",
     "start:server": "npm run compile:server && node server/index.js",
     "start": "npm run compile:server && npm run build:web && electron .",
-    "dist": "npm run compile:server && npm run build:web && electron-builder --win",
+    "dist": "npm run compile:server && npm run build:web && electron-builder --win && npm run rebuild:node",
     "rebuild:electron": "electron-rebuild -f -w better-sqlite3",
     "rebuild:node": "npm rebuild better-sqlite3",
     "test": "vitest run",

@@ -86,6 +86,32 @@ router.post("/install", async (req, res) => {
   }
 });
 
+// Скачивание установщика без установки (кнопка «Скачать» на карточке).
+router.post("/download", async (req, res) => {
+  const { key } = req.body || {};
+  if (!key) return res.status(400).json({ error: "missing key" });
+  try {
+    if (key.startsWith("winget:")) {
+      const id = key.slice(7);
+      const r = await winget.downloadPackage(id);
+      if (!r.ok) return res.status(500).json({ error: "winget download failed", tail: r.tail });
+      res.json({ ok: true, method: "winget", id, file: r.file, dir: r.dir });
+      return;
+    }
+    if (key.startsWith("catalog:")) {
+      const app = stmts.catGet.get(Number(key.slice(8)));
+      if (!app) return res.status(404).json({ error: "not found" });
+      const { file } = await download(app.url);
+      res.json({ ok: true, method: "catalog", file });
+      return;
+    }
+    res.status(400).json({ error: "bad key" });
+  } catch (e) {
+    logger.error("apps.download_error", { key, error: e.message });
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // Живой поиск по winget
 router.get("/winget/search", async (req, res) => {
   const q = (req.query.q || "").toString().trim();

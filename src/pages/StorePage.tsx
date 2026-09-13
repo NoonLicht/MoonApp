@@ -35,6 +35,7 @@ export default function StorePage() {
   const [tab, setTab] = useState("all");
   const [favOnly, setFavOnly] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
+  const [downBusy, setDownBusy] = useState<string | null>(null);
   const [bulkMsg, setBulkMsg] = useState("");
   const [scraping, setScraping] = useState(false);
   const [prog, setProg] = useState<ProgState | null>(null);
@@ -115,6 +116,20 @@ async function toggleFav(item: AppItem) {
       setError((e as Error).message);
     } finally {
       setBusy(null);
+    }
+  }
+
+  // Скачивание установщика без установки (файл падает в папку загрузок).
+  async function downloadOnly(item: AppItem) {
+    setDownBusy(item.key); setError(""); setBulkMsg("");
+    try {
+      const r = (await api.downloadApp(item.key)) as { ok?: boolean; file?: string; dir?: string };
+      if (r.file) setBulkMsg(t("store.downloadOk", { file: r.file }));
+      else setBulkMsg(t("store.downloadDir", { dir: r.dir || "" }));
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setDownBusy(null);
     }
   }
 
@@ -285,6 +300,7 @@ async function toggleFav(item: AppItem) {
               key={a.key}
               onContextMenu={(e) => menu.open(e, [
                 { label: t("ctx.install"), icon: Download, onClick: () => install(a) },
+                { label: t("ctx.download"), icon: Download, onClick: () => downloadOnly(a) },
                 { label: a.favorite ? t("ctx.favRemove") : t("ctx.favAdd"), icon: Star, onClick: () => toggleFav(a) },
                 { separator: true },
                 { label: t("ctx.copyName"), icon: Copy, onClick: () => copyToClipboard(a.name) },
@@ -316,7 +332,13 @@ async function toggleFav(item: AppItem) {
                 {a.wingetId ? a.wingetId + (a.version ? ` · ${a.version}` : "") : (a.url || "").replace(/^https?:\/\//, "")}
               </div>
               <div className="app-actions">
-                <Btn variant="primary" icon={busy === a.key ? RefreshCw : Download} onClick={() => install(a)} disabled={busy === a.key}>
+                <IconBtn
+                  icon={downBusy === a.key ? RefreshCw : Download}
+                  onClick={() => downloadOnly(a)}
+                  disabled={downBusy === a.key || busy === a.key}
+                  title={t("store.downloadTitle")}
+                />
+                <Btn variant="primary" icon={busy === a.key ? RefreshCw : Play} onClick={() => install(a)} disabled={busy === a.key || downBusy === a.key}>
                   {busy === a.key ? "…" : t("store.install")}
                 </Btn>
                 {a.source !== "winget" && <IconBtn icon={Trash2} onClick={() => remove(a)} title={t("store.rmTitle")} />}

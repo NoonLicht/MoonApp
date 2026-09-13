@@ -491,6 +491,10 @@ declare global {
       minimize: () => void;
       toggleMaximize: () => void;
       close: () => void;
+      // Обновления приложения (работают только в packaged-сборке).
+      checkUpdates?: () => Promise<{ ok: boolean; available?: boolean; version?: string | null; reason?: string }>;
+      toggleAutoUpdate?: () => Promise<{ ok: boolean; enabled?: boolean; reason?: string }>;
+      downloadUpdate?: () => Promise<{ ok: boolean; available?: boolean; version?: string | null; downloading?: boolean; reason?: string }>;
     };
   }
 }

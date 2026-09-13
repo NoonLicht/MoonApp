@@ -2,6 +2,7 @@ const { execFile } = require("child_process");
 const fs = require("fs");
 const path = require("path");
 const { DIRS } = require("./config");
+const downloads = require("./downloads");
 const logger = require("./logger");
 
 const INDEX_FILE = path.join(DIRS.storage, "winget_index.json");
@@ -135,6 +136,34 @@ async function install(id) {
   return { ok: code === 0, id, tail: decode(stdout).slice(-2000) };
 }
 
+// Установщик пакета скачивается в каталог загрузок БЕЗ установки.
+// `winget download` доступен с winget 1.6 (Win 10 22H2+/Win 11 обычно есть).
+// Возвращаем скачанный файл (если удалось однозначно определить) и каталог.
+function listDirSafe(dir) {
+  try { return fs.readdirSync(dir); } catch { return []; }
+}
+
+async function downloadPackage(id) {
+  const destDir = downloads.resolveDestDir();
+  fs.mkdirSync(destDir, { recursive: true });
+  const before = new Set(listDirSafe(destDir));
+  const { stdout, code } = await runWinget([
+    "download", "--id", id,
+    "--download-directory", destDir,
+    "--accept-package-agreements",
+    "--accept-source-agreements",
+    "--disable-interactivity",
+  ]);
+  const tail = decode(stdout).slice(-2000);
+  // Свежих файлов может быть несколько (манифест .yaml + установщик) —
+  // выбираем только установочные расширения.
+  const exts = [".exe", ".msi", ".msix", ".appx", ".zip"];
+  const fresh = listDirSafe(destDir).filter((f) => !before.has(f) && exts.includes(path.extname(f).toLowerCase()));
+  const file = fresh.length ? path.join(destDir, fresh[fresh.length - 1]) : null;
+  logger.action("winget.download", { id, code, files: fresh.length });
+  return { ok: code === 0, id, file, dir: destDir, tail };
+}
+
 /* ------------------------------------------------------------------ */
 //  Полный каталог: фоновый индексатор по буквам/цифрам с кэшем
 /* ------------------------------------------------------------------ */
@@ -187,4 +216,4 @@ function startIndexing() {
   return indexRun;
 }
 
-module.exports = { search, seed, install, parseTable, indexStatus, startIndexing, readIndex };
+module.exports = { search, seed, install, downloadPackage, parseTable, indexStatus, startIndexing, readIndex };

@@ -11,6 +11,7 @@ const DEFAULTS = {
   general: {
     language: "ru",
     startPage: "store",      // открывается при запуске
+    autoUpdate: true,        // автообновление приложения (electron-updater)
     autoLaunch: false,       // TODO: автозапуск с Windows
     minimizeToTray: false,   // TODO: свёрнутая кнопка в трей
     closeToTray: false,      // TODO: закрытие окна сворачивает в трей вместо выхода

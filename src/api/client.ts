@@ -371,6 +371,7 @@ export const api = {
   getApps: () => req<{ ready: boolean; items: AppItem[] }>("GET", "/apps"),
   favoriteApp: (key: string) => req<{ ok: boolean; favorite: boolean }>("POST", "/apps/favorite", { key }),
   installApp: (key: string) => req("POST", "/apps/install", { key }),
+  downloadApp: (key: string) => req<{ ok: boolean; method: string; file?: string; dir?: string }>("POST", "/apps/download", { key }),
   wingetSearch: (q: string) => req<AppItem[]>("GET", `/apps/winget/search?q=${encodeURIComponent(q)}`),
   wingetStatus: () => req<{ state: string; cached: number }>("GET", "/apps/winget/status"),
   wingetIndex: () => req("POST", "/apps/winget/index"),

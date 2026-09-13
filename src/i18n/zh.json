@@ -26,6 +26,21 @@
     "format": "格式"
   },
   "settings": {
+    "updatesTitle": "应用更新",
+    "updatesAutoLabel": "启用更新",
+    "updatesAutoHint": "自动检查并下载新版本；安装前会征求确认。",
+    "updatesEnable": "启用更新",
+    "updatesDisable": "停用更新",
+    "updatesDownload": "下载更新",
+    "updatesDownloadLabel": "立即下载更新",
+    "updatesDownloadHint": "检查并下载新版本；就绪后会通知你。",
+    "updatesChecking": "正在检查更新…",
+    "updatesNone": "已是最新版本",
+    "updatesDownloading": "正在下载更新 {v}…",
+    "updatesOnMsg": "已启用更新",
+    "updatesOffMsg": "已停用更新",
+    "updatesDevHint": "仅安装版支持更新",
+    "updatesError": "检查更新失败：{msg}",
     "title": "设置",
     "eyebrow": "偏好与应用行为",
     "reload": "重置",
@@ -203,6 +218,9 @@
     "recommended": "建议开启"
   },
   "store": {
+    "downloadTitle": "仅下载安装包，不进行安装",
+    "downloadOk": "安装包已下载：{file}",
+    "downloadDir": "文件下载至：{dir}",
     "title": "应用安装器",
     "eyebrow": "{count} 个{tab}应用 · {fav} 个收藏 · {pages} 页",
     "tabAll": "全部",
@@ -641,6 +659,7 @@
     "mySpellcheckHint": "在笔记编辑器中启用浏览器拼写检查"
   },
   "ctx": {
+    "download": "下载",
     "open": "打开",
     "download": "下载",
     "downloadFmt": "下载 {{fmt}}",

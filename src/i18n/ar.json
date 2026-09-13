@@ -26,6 +26,21 @@
     "format": "الصيغة"
   },
   "settings": {
+    "updatesTitle": "تحديثات التطبيق",
+    "updatesAutoLabel": "تمكين التحديثات",
+    "updatesAutoHint": "فحص وتنزيل الإصدارات الجديدة تلقائيًا؛ التثبيت يتطلب تأكيدك.",
+    "updatesEnable": "تمكين التحديثات",
+    "updatesDisable": "تعطيل التحديثات",
+    "updatesDownload": "تنزيل التحديث",
+    "updatesDownloadLabel": "تنزيل التحديث الآن",
+    "updatesDownloadHint": "يفحص وينزّل الإصدار الجديد؛ سنخبرك عند الجهوزية.",
+    "updatesChecking": "جارٍ فحص التحديثات…",
+    "updatesNone": "لديك الإصدار الأحدث",
+    "updatesDownloading": "جارٍ تنزيل التحديث {v}…",
+    "updatesOnMsg": "تم تمكين التحديثات",
+    "updatesOffMsg": "تم تعطيل التحديثات",
+    "updatesDevHint": "التحديثات تعمل فقط في النسخة المثبتة",
+    "updatesError": "تعذر التحقق من التحديثات: {msg}",
     "title": "الإعدادات",
     "eyebrow": "التفضيلات وسلوك التطبيق",
     "reload": "إعادة تعيين",
@@ -203,6 +218,9 @@
     "recommended": "موصى به"
   },
   "store": {
+    "downloadTitle": "تنزيل المثبِّت دون التثبيت",
+    "downloadOk": "تم تنزيل المثبِّت: {file}",
+    "downloadDir": "تم تنزيل الملفات إلى: {dir}",
     "title": "مثبّت التطبيقات",
     "eyebrow": "{count} {tab} تطبيق · {fav} مفضل · {pages} صفحة",
     "tabAll": "الكل",
@@ -641,6 +659,7 @@
     "mySpellcheckHint": "تشغيل المدقق الإملائي للمتصفح في محرر الملاحظات"
   },
   "ctx": {
+    "download": "تنزيل",
     "open": "فتح",
     "download": "تنزيل",
     "downloadFmt": "تنزيل {{fmt}}",

@@ -370,16 +370,38 @@ async function createWindow() {
 // --- Автообновление (только в packaged-сборке) ---
 // Источник — GitHub Releases (build.publish в package.json). Новая версия
 // скачивается в фоне; установка — по подтверждению пользователя (перезапуск).
+// Автообновление можно выключить в Настройках (settings.json → general.autoUpdate).
 // В dev-режиме проверка отключена: updatable=false у неупакованного приложения.
 let updateTimer = null;
+let updaterReady = false;
+
+function updatesEnabled() {
+  try { return readSettings()?.general?.autoUpdate !== false; } catch { return true; }
+}
+
+function scheduleUpdateTimer() {
+  if (updateTimer) { clearInterval(updateTimer); updateTimer = null; }
+  if (!updaterReady || !updatesEnabled()) return;
+  // Повторная проверка каждые 4 часа, пока приложение открыто.
+  updateTimer = setInterval(() => { void autoUpdater.checkForUpdates().catch(() => {}); }, 4 * 60 * 60 * 1000);
+}
 
 function setupAutoUpdates() {
   if (!app.isPackaged) return;
   try {
     autoUpdater.logger = console;
-    autoUpdater.autoDownload = true;
+    autoUpdater.autoDownload = updatesEnabled();
     autoUpdater.on("update-downloaded", (info) => {
-      const { dialog } = require("electron");
+      const { dialog, Notification } = require("electron");
+      // Системное уведомление + диалог с предложением перезапуска.
+      try {
+        const n = new Notification({
+          title: "PersonalApp",
+          body: `Обновление ${info.version} скачано и готово к установке`,
+        });
+        n.on("click", () => showWindow());
+        n.show();
+      } catch { /* уведомления могут быть недоступны */ }
       dialog.showMessageBox({
         type: "info",
         message: `Обновление ${info.version} скачано`,
@@ -392,9 +414,9 @@ function setupAutoUpdates() {
       }).catch(() => { /* окно уже закрыто и т.п. */ });
     });
     autoUpdater.on("error", (err) => console.error("[updater]", err?.message || err));
-    void autoUpdater.checkForUpdates().catch(() => {});
-    // Повторная проверка каждые 4 часа, пока приложение открыто.
-    updateTimer = setInterval(() => { void autoUpdater.checkForUpdates().catch(() => {}); }, 4 * 60 * 60 * 1000);
+    updaterReady = true;
+    if (updatesEnabled()) void autoUpdater.checkForUpdates().catch(() => {});
+    scheduleUpdateTimer();
   } catch (e) {
     console.error("[updater] init failed:", e);
   }
@@ -408,6 +430,36 @@ ipcMain.handle("updates:check", async () => {
     const v = r?.updateInfo?.version || null;
     const isUpdate = !!v && v !== app.getVersion();
     return { ok: true, available: isUpdate, version: isUpdate ? v : null };
+  } catch (e) {
+    return { ok: false, reason: e?.message || "error" };
+  }
+});
+
+// Вкл/выкл автообновления (кнопка в Настройках). Состояние — в settings.json.
+ipcMain.handle("updates:toggle", async () => {
+  if (!app.isPackaged) return { ok: false, reason: "dev" };
+  const enabled = !updatesEnabled();
+  try { patchSettings({ general: { autoUpdate: enabled } }); } catch { /* ок, статус вернём как есть */ }
+  if (updaterReady) {
+    autoUpdater.autoDownload = enabled;
+    if (enabled) void autoUpdater.checkForUpdates().catch(() => {});
+    scheduleUpdateTimer();
+  }
+  return { ok: true, enabled };
+});
+
+// Ручное скачивание обновления: проверка → downloadUpdate. По завершении
+// сработает «update-downloaded» (системное уведомление + диалог установки).
+ipcMain.handle("updates:download", async () => {
+  if (!app.isPackaged) return { ok: false, reason: "dev" };
+  try {
+    autoUpdater.autoDownload = true; // ручная кнопка — всегда скачиваем
+    const r = await autoUpdater.checkForUpdates();
+    const v = r?.updateInfo?.version || null;
+    const isUpdate = !!v && v !== app.getVersion();
+    if (!isUpdate) return { ok: true, available: false, version: null };
+    void autoUpdater.downloadUpdate().catch((e) => console.error("[updater]", e?.message || e));
+    return { ok: true, available: true, version: v, downloading: true };
   } catch (e) {
     return { ok: false, reason: e?.message || "error" };
   }

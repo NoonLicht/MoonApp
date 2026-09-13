@@ -115,4 +115,4 @@ function runInstaller(absPath) {
   return { launched: true, cmd };
 }
 
-module.exports = { download, runInstaller, fileNameFromUrl, ALLOWED_EXT };
+module.exports = { download, runInstaller, fileNameFromUrl, resolveDestDir, ALLOWED_EXT };

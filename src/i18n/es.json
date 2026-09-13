@@ -26,6 +26,21 @@
     "format": "Formato"
   },
   "settings": {
+    "updatesTitle": "Actualizaciones de la app",
+    "updatesAutoLabel": "Activar actualizaciones",
+    "updatesAutoHint": "Comprobación y descarga automáticas de nuevas versiones; la instalación requiere tu confirmación.",
+    "updatesEnable": "Activar actualizaciones",
+    "updatesDisable": "Desactivar actualizaciones",
+    "updatesDownload": "Descargar actualización",
+    "updatesDownloadLabel": "Descargar actualización ahora",
+    "updatesDownloadHint": "Comprueba y descarga la nueva versión; te avisaremos cuando esté lista.",
+    "updatesChecking": "Buscando actualizaciones…",
+    "updatesNone": "Ya tienes la última versión",
+    "updatesDownloading": "Descargando la actualización {v}…",
+    "updatesOnMsg": "Actualizaciones activadas",
+    "updatesOffMsg": "Actualizaciones desactivadas",
+    "updatesDevHint": "Las actualizaciones funcionan solo en la instalación",
+    "updatesError": "No se pudo comprobar actualizaciones: {msg}",
     "title": "Ajustes",
     "eyebrow": "Preferencias y comportamiento de la app",
     "reload": "Restablecer",
@@ -203,6 +218,9 @@
     "recommended": "recomendado"
   },
   "store": {
+    "downloadTitle": "Descargar el instalador sin instalar",
+    "downloadOk": "Instalador descargado: {file}",
+    "downloadDir": "Archivos descargados en: {dir}",
     "title": "Instalador de aplicaciones",
     "eyebrow": "{count} {tab} apps · {fav} favoritos · {pages} págs.",
     "tabAll": "Todos",
@@ -641,6 +659,7 @@
     "mySpellcheckHint": "Activar el corrector del navegador en el editor de notas"
   },
   "ctx": {
+    "download": "Descargar",
     "open": "Abrir",
     "download": "Descargar",
     "downloadFmt": "Descargar {{fmt}}",

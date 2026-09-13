@@ -3,7 +3,7 @@ import {
   Settings2, Palette, Gauge, MonitorCog, MessageSquare,
   Package, Repeat, Clapperboard, Mic2, Archive, Activity, Database,
   ShieldCheck, Check, RotateCcw, Video, Music2, BookOpen, User,
-  ChevronDown, KeyRound, Save,
+  ChevronDown, KeyRound, Save, RefreshCw, Download,
 } from "lucide-react";
 import { Glass, Btn, Select, SectionHead, Badge, EmptyHint } from "../components/ui";
 import { usePageToolbar } from "../components/Toolbar";
@@ -215,6 +215,52 @@ export default function SettingsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Обновления приложения (appBridge; работают только в packaged-сборке).
+  const [updEnabled, setUpdEnabled] = useState(true);
+  const [updBusy, setUpdBusy] = useState<string | null>(null);
+  const [updStatus, setUpdStatus] = useState("");
+
+  async function toggleUpdates() {
+    const br = window.appBridge;
+    if (!br?.toggleAutoUpdate) { setUpdStatus(t("settings.updatesDevHint")); return; }
+    setUpdBusy("toggle"); setUpdStatus("");
+    try {
+      const r = await br.toggleAutoUpdate();
+      if (r.ok) {
+        setUpdEnabled(!!r.enabled);
+        setS((cur: any) => (cur ? setAt(cur, "general.autoUpdate", !!r.enabled) : cur));
+        setUpdStatus(r.enabled ? t("settings.updatesOnMsg") : t("settings.updatesOffMsg"));
+      } else {
+        setUpdStatus(t("settings.updatesDevHint"));
+      }
+    } catch (e) {
+      setUpdStatus((e as Error).message);
+    } finally {
+      setUpdBusy(null);
+    }
+  }
+
+  async function downloadUpdateNow() {
+    const br = window.appBridge;
+    if (!br?.downloadUpdate) { setUpdStatus(t("settings.updatesDevHint")); return; }
+    setUpdBusy("download"); setUpdStatus(t("settings.updatesChecking"));
+    try {
+      const r = await br.downloadUpdate();
+      if (!r.ok) setUpdStatus(t("settings.updatesError", { msg: r.reason || "" }));
+      else if (!r.available) setUpdStatus(t("settings.updatesNone"));
+      else setUpdStatus(t("settings.updatesDownloading", { v: r.version || "" }));
+    } catch (e) {
+      setUpdStatus((e as Error).message);
+    } finally {
+      setUpdBusy(null);
+    }
+  }
+
+  // Синхронизируем состояние кнопки обновлений с settings.json после загрузки.
+  useEffect(() => {
+    if (s) setUpdEnabled(s?.general?.autoUpdate !== false);
+  }, [s]);
+
   usePageToolbar(
     <Badge tone="teal" mono>
       {dirtyMap.size ? t("settings.unsaved", { n: dirtyMap.size }) : t("settings.saved")}
@@ -320,6 +366,26 @@ export default function SettingsPage() {
           <BoolRow label={t("settings.autoLaunch")} hint={t("settings.autoLaunchHint")} value={g.autoLaunch} onChange={(v) => change("general.autoLaunch", v)} />
           <BoolRow label={t("settings.minimizeToTray")} hint={t("settings.minimizeToTrayHint")} value={g.minimizeToTray} onChange={(v) => change("general.minimizeToTray", v)} />
           <BoolRow label={t("settings.closeToTray")} hint={t("settings.closeToTrayHint")} value={!!g.closeToTray} onChange={(v) => change("general.closeToTray", v)} />
+        </Section>
+
+        {/* ---- Обновления приложения (док: general.autoUpdate) ---- */}
+        <Section title={t("settings.updatesTitle")} icon={RefreshCw} badge="active">
+          <Row label={t("settings.updatesAutoLabel")} hint={t("settings.updatesAutoHint")}>
+            <Btn icon={updBusy === "toggle" ? RefreshCw : Check} onClick={toggleUpdates} disabled={updBusy !== null}>
+              {updEnabled ? t("settings.updatesDisable") : t("settings.updatesEnable")}
+            </Btn>
+          </Row>
+          <Row label={t("settings.updatesDownloadLabel")} hint={t("settings.updatesDownloadHint")}>
+            <Btn
+              variant="primary"
+              icon={updBusy === "download" ? RefreshCw : Download}
+              onClick={downloadUpdateNow}
+              disabled={updBusy !== null}
+            >
+              {t("settings.updatesDownload")}
+            </Btn>
+          </Row>
+          {updStatus && <div className="muted-sm" style={{ marginTop: -6 }}>{updStatus}</div>}
         </Section>
 
         {/* ---- Внешний вид ---- */}

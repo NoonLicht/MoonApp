@@ -30,6 +30,21 @@
     "delete": "Delete"
   },
   "settings": {
+    "updatesTitle": "App updates",
+    "updatesAutoLabel": "Enable updates",
+    "updatesAutoHint": "Automatic check & download of new versions; install requires your confirmation.",
+    "updatesEnable": "Enable updates",
+    "updatesDisable": "Disable updates",
+    "updatesDownload": "Download update",
+    "updatesDownloadLabel": "Download update now",
+    "updatesDownloadHint": "Check and download the new version; we'll notify you when it's ready.",
+    "updatesChecking": "Checking for updates…",
+    "updatesNone": "You're on the latest version",
+    "updatesDownloading": "Update {v} is downloading…",
+    "updatesOnMsg": "Updates enabled",
+    "updatesOffMsg": "Updates disabled",
+    "updatesDevHint": "Updates work only in the installed build",
+    "updatesError": "Failed to check for updates: {msg}",
     "title": "Settings",
     "eyebrow": "Preferences & app behaviour",
     "reload": "Reload",
@@ -207,6 +222,9 @@
     "recommended": "recommended on"
   },
   "store": {
+    "downloadTitle": "Download the installer without installing",
+    "downloadOk": "Installer downloaded: {file}",
+    "downloadDir": "Files downloaded to: {dir}",
     "title": "App installer",
     "eyebrow": "{count} {tab} apps · {fav} favorites · {pages} pages",
     "tabAll": "All",
@@ -642,6 +660,7 @@
     "mySpellcheckHint": "Enable browser spellchecker in the note editor"
   },
   "ctx": {
+    "download": "Download",
     "open": "Open",
     "download": "Download",
     "downloadFmt": "Download {{fmt}}",

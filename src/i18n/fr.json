@@ -26,6 +26,21 @@
     "format": "Format"
   },
   "settings": {
+    "updatesTitle": "Mises à jour de l'appli",
+    "updatesAutoLabel": "Activer les mises à jour",
+    "updatesAutoHint": "Vérification et téléchargement automatiques des nouvelles versions ; l'installation requiert votre confirmation.",
+    "updatesEnable": "Activer les mises à jour",
+    "updatesDisable": "Désactiver les mises à jour",
+    "updatesDownload": "Télécharger la mise à jour",
+    "updatesDownloadLabel": "Télécharger la mise à jour maintenant",
+    "updatesDownloadHint": "Vérifie et télécharge la nouvelle version ; vous serez prévenu quand ce sera prêt.",
+    "updatesChecking": "Recherche de mises à jour…",
+    "updatesNone": "Vous avez déjà la dernière version",
+    "updatesDownloading": "Téléchargement de la mise à jour {v}…",
+    "updatesOnMsg": "Mises à jour activées",
+    "updatesOffMsg": "Mises à jour désactivées",
+    "updatesDevHint": "Les mises à jour fonctionnent uniquement dans la version installée",
+    "updatesError": "Échec de la vérification des mises à jour : {msg}",
     "title": "Réglages",
     "eyebrow": "Préférences et comportement de l'app",
     "reload": "Réinitialiser",
@@ -203,6 +218,9 @@
     "recommended": "recommandé"
   },
   "store": {
+    "downloadTitle": "Télécharger l'installateur sans installer",
+    "downloadOk": "Installateur téléchargé : {file}",
+    "downloadDir": "Fichiers téléchargés dans : {dir}",
     "title": "Installeur d'applications",
     "eyebrow": "{count} {tab} apps · {fav} favoris · {pages} pages",
     "tabAll": "Tous",
@@ -641,6 +659,7 @@
     "mySpellcheckHint": "Activer le correcteur du navigateur dans l'éditeur de notes"
   },
   "ctx": {
+    "download": "Télécharger",
     "open": "Ouvrir",
     "download": "Télécharger",
     "downloadFmt": "Télécharger {{fmt}}",

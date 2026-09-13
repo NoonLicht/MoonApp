@@ -19,6 +19,10 @@ contextBridge.exposeInMainWorld("appBridge", {
   getToken: () => readToken(),
   revealPath: (p) => ipcRenderer.invoke("shell:reveal", p),
   refreshTray: () => ipcRenderer.send("bypass:tray-refresh"),
+  // Обновления приложения (работают только в packaged-сборке).
+  checkUpdates: () => ipcRenderer.invoke("updates:check"),
+  toggleAutoUpdate: () => ipcRenderer.invoke("updates:toggle"),
+  downloadUpdate: () => ipcRenderer.invoke("updates:download"),
   minimize: () => ipcRenderer.send("win:minimize"),
   toggleMaximize: () => ipcRenderer.send("win:toggle-maximize"),
   close: () => ipcRenderer.send("win:close"),
