@@ -3,6 +3,22 @@ const fs = require("fs");
 const express = require("express");
 const config = require("./config");
 const logger = require("./logger");
+
+// Глобальные перехватчики процесса: необработанные исключения и отклонённые
+// промисы попадают в полный журнал (logs/audit.log), а значит — в файл,
+// который собирает кнопка «Собрать логи» в Настройках.
+process.on("uncaughtException", (err) => {
+  logger.error("process.uncaughtException", {
+    message: err?.message || String(err),
+    stack: String(err?.stack || "").slice(0, 4000),
+  });
+});
+process.on("unhandledRejection", (reason) => {
+  logger.error("process.unhandledRejection", {
+    message: String(reason?.message || reason).slice(0, 1000),
+    stack: String(reason?.stack || "").slice(0, 4000),
+  });
+});
 const { db, stmts } = require("./db");
 const backups = require("./backup");
 const settings = require("./settings");

@@ -3,9 +3,11 @@ import {
   Settings2, Palette, Gauge, MonitorCog, MessageSquare,
   Package, Repeat, Clapperboard, Mic2, Archive, Activity, Database,
   ShieldCheck, Check, RotateCcw, Video, Music2, BookOpen, User,
-  ChevronDown, KeyRound, Save, RefreshCw, Download,
+  ChevronDown, KeyRound, Save, RefreshCw, Download, FileDown, FolderOpen, ClipboardCopy,
 } from "lucide-react";
 import { Glass, Btn, Select, SectionHead, Badge, EmptyHint } from "../components/ui";
+import { copyToClipboard } from "../components/ContextMenu";
+import { snapshotUiSettings } from "../utils/telemetry";
 import { usePageToolbar } from "../components/Toolbar";
 import { useI18n, LANGS } from "../i18n";
 import { api } from "../api/client";
@@ -256,6 +258,46 @@ export default function SettingsPage() {
     }
   }
 
+  // --- Логи и диагностика ---
+  // Кнопка собирает ОДИН файл со всеми событиями приложения (клики, навигация,
+  // загрузки, предупреждения, ошибки) и кладёт его в storage рядом с программой,
+  // чтобы пользователь мог переслать его разработчику.
+  const [diagBusy, setDiagBusy] = useState(false);
+  const [diagFile, setDiagFile] = useState("");
+  const [diagStatus, setDiagStatus] = useState("");
+  const [diagCopied, setDiagCopied] = useState(false);
+
+  async function collectLogs() {
+    setDiagBusy(true); setDiagCopied(false); setDiagStatus(t("settings.diagCollecting"));
+    try {
+      // Сначала отправляем снимок локальных настроек интерфейса (localStorage),
+      // чтобы он попал в отчёт вместе с настройками страниц из settings.json.
+      await snapshotUiSettings();
+      const r = await api.collectLogs();
+      setDiagFile(r.file);
+      setDiagStatus(t("settings.diagReady", {
+        events: r.events,
+        kb: Math.max(1, Math.round(r.size / 1024)),
+      }));
+    } catch (e) {
+      setDiagStatus(t("settings.diagError", { msg: (e as Error).message }));
+    } finally {
+      setDiagBusy(false);
+    }
+  }
+
+  async function revealLogs() {
+    const br = (window as any).appBridge;
+    if (br?.revealPath && diagFile) await br.revealPath(diagFile);
+    else copyToClipboard(diagFile);
+  }
+
+  async function copyLogsPath() {
+    copyToClipboard(diagFile);
+    setDiagCopied(true);
+    setTimeout(() => setDiagCopied(false), 1500);
+  }
+
   // Синхронизируем состояние кнопки обновлений с settings.json после загрузки.
   useEffect(() => {
     if (s) setUpdEnabled(s?.general?.autoUpdate !== false);
@@ -386,6 +428,28 @@ export default function SettingsPage() {
             </Btn>
           </Row>
           {updStatus && <div className="muted-sm" style={{ marginTop: -6 }}>{updStatus}</div>}
+        </Section>
+
+        {/* ---- Логи и диагностика: один файл со всеми событиями ---- */}
+        <Section title={t("settings.diagTitle")} icon={FileDown} badge="active">
+          <Row label={t("settings.diagLabel")} hint={t("settings.diagHint")}>
+            <Btn variant="primary" icon={diagBusy ? RefreshCw : FileDown} onClick={collectLogs} disabled={diagBusy}>
+              {diagBusy ? t("settings.diagCollecting") : t("settings.diagCollect")}
+            </Btn>
+          </Row>
+          {diagFile && (
+            <Row label={t("settings.diagFile")} hint={diagFile}>
+              <div style={{ display: "flex", gap: 8 }}>
+                <Btn icon={FolderOpen} onClick={revealLogs} title={t("settings.diagRevealTitle")}>
+                  {t("settings.diagReveal")}
+                </Btn>
+                <Btn icon={ClipboardCopy} onClick={copyLogsPath} title={t("settings.diagCopyTitle")}>
+                  {diagCopied ? t("settings.diagCopied") : t("settings.diagCopy")}
+                </Btn>
+              </div>
+            </Row>
+          )}
+          {diagStatus && <div className="muted-sm" style={{ marginTop: -6 }}>{diagStatus}</div>}
         </Section>
 
         {/* ---- Внешний вид ---- */}

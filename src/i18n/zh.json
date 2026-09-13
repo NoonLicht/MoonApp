@@ -15,6 +15,7 @@
     "bypass": "绕过限制"
   },
   "common": {
+    "openAppDir": "打开应用所在文件夹",
     "minimize": "最小化",
     "maximize": "最大化",
     "close": "关闭",
@@ -26,6 +27,19 @@
     "format": "格式"
   },
   "settings": {
+    "diagTitle": "日志与诊断",
+    "diagLabel": "为开发者收集日志",
+    "diagHint": "一个文件包含应用的全部事件：点击、导航、下载、警告与错误。文件会出现在程序旁的 storage 文件夹中。",
+    "diagCollect": "收集日志",
+    "diagCollecting": "正在收集日志…",
+    "diagFile": "报告文件",
+    "diagReveal": "在文件夹中显示",
+    "diagRevealTitle": "打开包含该文件的文件夹",
+    "diagCopy": "复制路径",
+    "diagCopyTitle": "复制文件路径",
+    "diagCopied": "路径已复制",
+    "diagReady": "完成：{events} 个事件，{kb} KB",
+    "diagError": "收集日志失败：{msg}",
     "updatesTitle": "应用更新",
     "updatesAutoLabel": "启用更新",
     "updatesAutoHint": "自动检查并下载新版本；安装前会征求确认。",

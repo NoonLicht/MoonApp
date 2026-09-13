@@ -111,6 +111,9 @@ html, body{
 .tb-dynamic{ display:flex; align-items:center; gap:8px; min-width:0; -webkit-app-region:no-drag; }
 .tb-side-right{ min-width:0; display:flex; align-items:center; justify-content:flex-end; gap:6px; }
 .theme-toggle{ background:none; border:none; cursor:pointer; color:var(--text-tertiary); display:flex; align-items:center; padding:6px; flex-shrink:0; }
+/* Кнопка «открыть папку с приложением» в верхней панели (слева от прокси). */
+.app-dir-toggle{ background:none; border:none; cursor:pointer; color:var(--text-tertiary); display:flex; align-items:center; padding:6px; flex-shrink:0; border-radius:8px; }
+.app-dir-toggle:hover{ color:var(--text-primary); background:var(--track); }
 .theme-dark .ico-sun{ display:none; } .theme-light .ico-moon{ display:none; }
 
 /* Компактные поля в верхнем тулбаре: вместо вертикального стека
@@ -366,6 +369,7 @@ input[type="range"]{
   .app-shell{ --rail-w:50px; --rail-gap:8px; --tbar-gap:10px; --tbar-h:42px; --content-bottom:16px; }
   .tb-side-right{ gap:2px; }
   .theme-toggle{ padding:4px; }
+  .app-dir-toggle{ padding:4px; }
   .tb-dynamic .icon-btn{ width:26px; height:26px; }
 }
 

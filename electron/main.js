@@ -31,6 +31,47 @@ function applyHardwareAcceleration() {
 }
 applyHardwareAcceleration();
 
+// --- Логирование main-процесса ---
+// Всё, что Electron пишет в console.warn/error (обновления, трей, окно),
+// дублируется в storage/logs/main.log. Этот файл попадает в диагностический
+// отчёт кнопки «Собрать логи» в Настройках. Ротация: >2 МБ → main.1.log.
+// Дополнительно ключевые события main уходят в общий журнал audit.log —
+// тогда они видны в отчёте в общей хронологии с действиями пользователя.
+const MAIN_LOG = path.join(STORAGE_DIR, "logs", "main.log");
+let mainLogSize = -1;
+
+// require("../server/logger") безопасен: storagePath уже выставил
+// PERSONAL_APP_STORAGE, поэтому logger пишет в правильный storage.
+const serverLogger = (() => { try { return require("../server/logger"); } catch { return null; } })();
+
+function mlog(level, event, data) {
+  try { serverLogger?.log?.(level, event, data); } catch { /* ignore */ }
+}
+
+function appendMainLog(level, args) {
+  try {
+    fs.mkdirSync(path.dirname(MAIN_LOG), { recursive: true });
+    const text = args.map((a) => {
+      if (a instanceof Error) return a.stack || a.message;
+      if (typeof a === "string") return a;
+      try { return JSON.stringify(a); } catch { return String(a); }
+    }).join(" ");
+    const line = `${new Date().toISOString()}  ${level}  ${text}\n`;
+    if (mainLogSize < 0) mainLogSize = fs.existsSync(MAIN_LOG) ? fs.statSync(MAIN_LOG).size : 0;
+    if (mainLogSize > 2 * 1024 * 1024) {
+      try { fs.renameSync(MAIN_LOG, MAIN_LOG.replace(/\.log$/, ".1.log")); } catch { /* ignore */ }
+      mainLogSize = 0;
+    }
+    fs.appendFileSync(MAIN_LOG, line);
+    mainLogSize += Buffer.byteLength(line);
+  } catch { /* приложение не должно падать из-за лога */ }
+}
+
+for (const lvl of ["warn", "error"]) {
+  const orig = console[lvl].bind(console);
+  console[lvl] = (...args) => { appendMainLog(lvl.toUpperCase(), args); orig(...args); };
+}
+
 function findFreePort(start = 4000, maxTry = 100) {
   return new Promise((resolve, reject) => {
     let port = start;
@@ -393,6 +434,7 @@ function setupAutoUpdates() {
     autoUpdater.autoDownload = updatesEnabled();
     autoUpdater.on("update-downloaded", (info) => {
       const { dialog, Notification } = require("electron");
+      mlog("info", "updater.downloaded", { version: info.version });
       // Системное уведомление + диалог с предложением перезапуска.
       try {
         const n = new Notification({
@@ -413,9 +455,9 @@ function setupAutoUpdates() {
         if (response === 0) { quitting = true; autoUpdater.quitAndInstall(); }
       }).catch(() => { /* окно уже закрыто и т.п. */ });
     });
-    autoUpdater.on("error", (err) => console.error("[updater]", err?.message || err));
+    autoUpdater.on("error", (err) => { mlog("error", "updater.error", { error: err?.message || String(err) }); console.error("[updater]", err?.message || err); });
     updaterReady = true;
-    if (updatesEnabled()) void autoUpdater.checkForUpdates().catch(() => {});
+    if (updatesEnabled()) { mlog("info", "updater.check", { trigger: "startup" }); void autoUpdater.checkForUpdates().catch(() => {}); }
     scheduleUpdateTimer();
   } catch (e) {
     console.error("[updater] init failed:", e);
@@ -440,6 +482,7 @@ ipcMain.handle("updates:toggle", async () => {
   if (!app.isPackaged) return { ok: false, reason: "dev" };
   const enabled = !updatesEnabled();
   try { patchSettings({ general: { autoUpdate: enabled } }); } catch { /* ок, статус вернём как есть */ }
+  mlog("action", "updater.toggle", { enabled });
   if (updaterReady) {
     autoUpdater.autoDownload = enabled;
     if (enabled) void autoUpdater.checkForUpdates().catch(() => {});
@@ -468,6 +511,7 @@ ipcMain.handle("updates:download", async () => {
 app.whenReady().then(() => {
   registerWindowControls();
   if (safeStorage) app.setName("PersonalApp");
+  mlog("info", "app.start", { version: app.getVersion(), packaged: app.isPackaged, platform: process.platform });
   // general.autoLaunch: синхронизируем автозапуск с настройками при каждом старте.
   applyAutoLaunch();
   createWindow();
@@ -478,6 +522,21 @@ app.whenReady().then(() => {
 app.on("before-quit", () => {
   quitting = true;
   try { if (tokenFile) fs.rmSync(tokenFile, { force: true }); } catch { /* ignore */ }
+});
+
+// Открыть каталог, в котором установлено приложение (кнопка в верхней панели,
+// слева от кнопки прокси). В собранной версии — папка рядом с exe, в dev — корень проекта.
+ipcMain.handle("shell:open-app-dir", () => {
+  try {
+    const { shell } = require("electron");
+    const dir = app.isPackaged ? path.dirname(app.getPath("exe")) : path.join(__dirname, "..");
+    void shell.openPath(dir);
+    mlog("action", "shell.open_app_dir", { dir });
+    return { ok: true, dir };
+  } catch (e) {
+    mlog("error", "shell.open_app_dir_failed", { error: e?.message || String(e) });
+    return { ok: false, error: e?.message || String(e) };
+  }
 });
 
 // Reveal in File Explorer: выделить файл/папку в проводнике (контекстные меню

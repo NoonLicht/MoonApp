@@ -15,6 +15,7 @@
     "bypass": "تجاوز الحظر"
   },
   "common": {
+    "openAppDir": "فتح مجلد التطبيق",
     "minimize": "تصغير",
     "maximize": "تكبير",
     "close": "إغلاق",
@@ -26,6 +27,19 @@
     "format": "الصيغة"
   },
   "settings": {
+    "diagTitle": "السجلات والتشخيص",
+    "diagLabel": "جمع السجلات للمطوّر",
+    "diagHint": "ملف واحد يضم كل أحداث التطبيق: النقرات والتنقل والتنزيلات والتحذيرات والأخطاء. يظهر الملف في مجلد storage بجانب البرنامج.",
+    "diagCollect": "جمع السجلات",
+    "diagCollecting": "جارٍ جمع السجلات…",
+    "diagFile": "ملف التقرير",
+    "diagReveal": "إظهار في المجلد",
+    "diagRevealTitle": "فتح المجلد الذي يحتوي الملف",
+    "diagCopy": "نسخ المسار",
+    "diagCopyTitle": "نسخ مسار الملف",
+    "diagCopied": "تم نسخ المسار",
+    "diagReady": "تم: {events} حدثًا، {kb} كيلوبايت",
+    "diagError": "تعذر جمع السجلات: {msg}",
     "updatesTitle": "تحديثات التطبيق",
     "updatesAutoLabel": "تمكين التحديثات",
     "updatesAutoHint": "فحص وتنزيل الإصدارات الجديدة تلقائيًا؛ التثبيت يتطلب تأكيدك.",

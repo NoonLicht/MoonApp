@@ -18,6 +18,8 @@ contextBridge.exposeInMainWorld("appBridge", {
   // Токен подставляется в заголовок x-pa-token (см. src/api/client.ts).
   getToken: () => readToken(),
   revealPath: (p) => ipcRenderer.invoke("shell:reveal", p),
+  // Открыть каталог установки приложения (кнопка в верхней панели).
+  openAppDir: () => ipcRenderer.invoke("shell:open-app-dir"),
   refreshTray: () => ipcRenderer.send("bypass:tray-refresh"),
   // Обновления приложения (работают только в packaged-сборке).
   checkUpdates: () => ipcRenderer.invoke("updates:check"),

@@ -10,6 +10,19 @@ router.get("/health", (req, res) => {
   res.json({ ok: true, uptime: process.uptime(), version: "0.1.0" });
 });
 
+// POST /api/log — приём событий с фронта (клики, навигация, ошибки UI).
+// Кладём в полный журнал audit.log: он целиком попадает в файл кнопки
+// «Собрать логи». Уровень события задаёт фронт (action | info | warn | error).
+router.post("/log", (req, res) => {
+  const body = req.body || {};
+  const events = Array.isArray(body.events) ? body.events.slice(0, 500) : [body];
+  for (const e of events) {
+    if (!e || !e.event) continue;
+    logger.log(String(e.level || "action"), String(e.event), e.data);
+  }
+  res.json({ ok: true });
+});
+
 // --- Управление LibreHardwareMonitor (источник датчиков) ---
 router.get("/monitor/lhm", async (req, res) => {
   try { res.json(await monitor.lhmStatus()); }

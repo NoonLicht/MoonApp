@@ -15,6 +15,7 @@
     "bypass": "Bloqueos"
   },
   "common": {
+    "openAppDir": "Abrir la carpeta de la aplicación",
     "minimize": "Minimizar",
     "maximize": "Maximizar",
     "close": "Cerrar",
@@ -26,6 +27,19 @@
     "format": "Formato"
   },
   "settings": {
+    "diagTitle": "Registros y diagnóstico",
+    "diagLabel": "Recopilar registros para el desarrollador",
+    "diagHint": "Un solo archivo con todos los eventos de la app: clics, navegación, descargas, avisos y errores. El archivo aparece en la carpeta storage junto al programa.",
+    "diagCollect": "Recopilar registros",
+    "diagCollecting": "Recopilando registros…",
+    "diagFile": "Archivo del informe",
+    "diagReveal": "Mostrar en la carpeta",
+    "diagRevealTitle": "Abrir la carpeta con el archivo",
+    "diagCopy": "Copiar ruta",
+    "diagCopyTitle": "Copiar la ruta del archivo",
+    "diagCopied": "Ruta copiada",
+    "diagReady": "Listo: {events} eventos, {kb} KB",
+    "diagError": "No se pudieron recopilar los registros: {msg}",
     "updatesTitle": "Actualizaciones de la app",
     "updatesAutoLabel": "Activar actualizaciones",
     "updatesAutoHint": "Comprobación y descarga automáticas de nuevas versiones; la instalación requiere tu confirmación.",

@@ -20,6 +20,7 @@ import type {
   TaskItem, TaskCreatePayload,
   HolstFileEntry, HolstReadResult, HolstWriteResult,
 } from "./types";
+import { logEvent } from "../utils/telemetry";
 
 export type { AppItem, ArchiveItem, BackupInfo, BooksItem, ChatMessage, Conversation, ConvertTools, ConvertResult, ConvertInstallStatus, VideoInfo, VideoDownloadResult, VideoJobStatus, YtdlpInstallStatus, LhmStatus, MonitorSnapshot, ProviderInfo, ProxyStatus, VlessProfile, FlibustaBook, BookGenre, BooksFeedResult, BookDownloadResult, MusicTrack, MusicSearchResult, MusicFormats, MusicDownloadStart, MusicJobStatus, VaultFile, VaultFileContent, VaultSearchResult, VaultTag, VaultBacklink, TaskItem, TaskCreatePayload, HolstFileEntry, HolstReadResult, HolstWriteResult };
 
@@ -95,19 +96,30 @@ function tokenHeaders(): Record<string, string> {
 }
 
 async function req<T = unknown>(method: string, url: string, body?: unknown): Promise<T> {
-  const res = await fetch(`${BASE}/api${url}`, {
-    method,
-    headers: {
-      ...tokenHeaders(),
-      ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
-    },
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-  });
+  const t0 = Date.now();
+  const ts = () => Date.now() - t0;
+  let res: Response;
+  try {
+    res = await fetch(`${BASE}/api${url}`, {
+      method,
+      headers: {
+        ...tokenHeaders(),
+        ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
+      },
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    });
+  } catch (e) {
+    // Сетевой сбой (сервер не отвечает) — в общий журнал для диагностики.
+    logEvent("error", "api.fail", { method, path: url, ms: ts(), error: (e as Error).message });
+    throw e;
+  }
   if (!res.ok) {
     let msg = `HTTP ${res.status}`;
     try { msg = (await res.json()).error || msg; } catch { /* keep default */ }
+    if (url !== "/health") logEvent("error", "api.error", { method, path: url, status: res.status, ms: ts(), error: msg });
     throw new Error(msg);
   }
+  if (url !== "/health") logEvent("action", "api.ok", { method, path: url, status: res.status, ms: ts() });
   return (res.status === 204 ? null : await res.json()) as T;
 }
 
@@ -124,6 +136,7 @@ function toFormData(file: File, to: string): FormData {
  * браузер ставит сам. Ошибки обрабатываются как в req().
  */
 async function multipart<T = unknown>(url: string, formData: FormData): Promise<T> {
+  const t0 = Date.now();
   const res = await fetch(`${BASE}/api${url}`, {
     method: "POST",
     headers: { ...tokenHeaders() },
@@ -132,8 +145,10 @@ async function multipart<T = unknown>(url: string, formData: FormData): Promise<
   if (!res.ok) {
     let msg = `HTTP ${res.status}`;
     try { msg = (await res.json()).error || msg; } catch { /* keep */ }
+    logEvent("error", "api.error", { method: "POST(multipart)", path: url, status: res.status, ms: Date.now() - t0, error: msg });
     throw new Error(msg);
   }
+  logEvent("action", "api.ok", { method: "POST(multipart)", path: url, status: res.status, ms: Date.now() - t0 });
   return res.json() as T;
 }
 
@@ -380,6 +395,11 @@ export const api = {
     req<{ ok: boolean; jobId: string }>("POST", "/apps/comss/scrape", { categories, limit }),
   comssProgress: (jobId: string) => req("GET", `/apps/comss/progress?job=${encodeURIComponent(jobId)}`),
   comssImport: (items: unknown[]) => req<{ added: number; skipped: number }>("POST", "/apps/comss/import", { items }),
+
+  // Диагностика: собрать файл со всеми логами (клики, навигация, ошибки).
+  // Файл создаётся в корне storage — рядом с приложением у установленной сборки.
+  collectLogs: () => req<{ ok: boolean; file: string; size: number; events: number }>("POST", "/backup/logs"),
+  logReports: () => req<{ file: string; size: number; mtime: string }[]>("GET", "/backup/logs"),
 
   // Proxy
   getProxyStatus: () => req<ProxyStatus>("GET", "/proxy/status"),

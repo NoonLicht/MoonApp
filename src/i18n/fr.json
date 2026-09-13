@@ -15,6 +15,7 @@
     "bypass": "Contournement"
   },
   "common": {
+    "openAppDir": "Ouvrir le dossier de l'application",
     "minimize": "Réduire",
     "maximize": "Agrandir",
     "close": "Fermer",
@@ -26,6 +27,19 @@
     "format": "Format"
   },
   "settings": {
+    "diagTitle": "Journaux et diagnostic",
+    "diagLabel": "Collecter les journaux pour le développeur",
+    "diagHint": "Un seul fichier avec tous les événements de l'appli : clics, navigation, téléchargements, avertissements et erreurs. Le fichier apparaît dans le dossier storage à côté du programme.",
+    "diagCollect": "Collecter les journaux",
+    "diagCollecting": "Collecte des journaux…",
+    "diagFile": "Fichier du rapport",
+    "diagReveal": "Afficher dans le dossier",
+    "diagRevealTitle": "Ouvrir le dossier contenant le fichier",
+    "diagCopy": "Copier le chemin",
+    "diagCopyTitle": "Copier le chemin du fichier",
+    "diagCopied": "Chemin copié",
+    "diagReady": "Terminé : {events} événements, {kb} Ko",
+    "diagError": "Échec de la collecte des journaux : {msg}",
     "updatesTitle": "Mises à jour de l'appli",
     "updatesAutoLabel": "Activer les mises à jour",
     "updatesAutoHint": "Vérification et téléchargement automatiques des nouvelles versions ; l'installation requiert votre confirmation.",

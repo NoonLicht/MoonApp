@@ -491,6 +491,8 @@ declare global {
       minimize: () => void;
       toggleMaximize: () => void;
       close: () => void;
+      // Открыть каталог установки приложения (кнопка в верхней панели).
+      openAppDir?: () => Promise<{ ok: boolean; dir?: string; error?: string }>;
       // Обновления приложения (работают только в packaged-сборке).
       checkUpdates?: () => Promise<{ ok: boolean; available?: boolean; version?: string | null; reason?: string }>;
       toggleAutoUpdate?: () => Promise<{ ok: boolean; enabled?: boolean; reason?: string }>;

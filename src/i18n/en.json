@@ -16,6 +16,7 @@
     "bypass": "Bypass"
   },
   "common": {
+    "openAppDir": "Open application folder",
     "minimize": "Minimize",
     "maximize": "Maximize",
     "close": "Close",
@@ -30,6 +31,19 @@
     "delete": "Delete"
   },
   "settings": {
+    "diagTitle": "Logs & diagnostics",
+    "diagLabel": "Collect logs for the developer",
+    "diagHint": "A single file with every app event: clicks, navigation, downloads, warnings and errors. The file appears in the storage folder next to the app.",
+    "diagCollect": "Collect logs",
+    "diagCollecting": "Collecting logs…",
+    "diagFile": "Report file",
+    "diagReveal": "Show in folder",
+    "diagRevealTitle": "Open the folder with the file",
+    "diagCopy": "Copy path",
+    "diagCopyTitle": "Copy the file path",
+    "diagCopied": "Path copied",
+    "diagReady": "Done: {events} events, {kb} KB",
+    "diagError": "Failed to collect logs: {msg}",
     "updatesTitle": "App updates",
     "updatesAutoLabel": "Enable updates",
     "updatesAutoHint": "Automatic check & download of new versions; install requires your confirmation.",

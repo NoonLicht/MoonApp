@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   Store, Repeat, Gauge, Video, Music2, BookOpen, Activity, MessageSquare,
-  Mic2, Archive, Sun, Moon, Minus, Square, X, Settings2, Shield, User, GraduationCap,
+  Mic2, Archive, Sun, Moon, Minus, Square, X, Settings2, Shield, User, GraduationCap, FolderOpen,
 } from "lucide-react";
 import { I18nProvider, useI18n } from "./i18n";
 import { ContextMenuProvider } from "./components/ContextMenu";
 import { ToolbarContext, PageHostContext, PageBusyContext } from "./components/Toolbar";
 import { evictPages, touchPage, samePages, KEEP_ALIVE_DEFAULT_LIMIT, KEEP_ALIVE_DEFAULT_IDLE_MIN } from "./utils/pageCache";
+import { initTelemetry, setCurrentPage } from "./utils/telemetry";
 import ProxyPanel from "./components/ProxyPanel";
 import { api } from "./api/client";
 
@@ -225,6 +226,15 @@ function Shell({ active, setActive, theme, toggleTheme, toolbarNodes, setPageToo
             <div className="tb-dynamic">{toolbarNode}</div>
           </div>
           <div className="tb-side-right">
+            {/* Открыть папку, где установлено приложение (см. electron/main.js → shell:open-app-dir). */}
+            <button
+              className="app-dir-toggle no-drag"
+              onClick={() => window.appBridge?.openAppDir?.()}
+              title={t("common.openAppDir")}
+              aria-label={t("common.openAppDir")}
+            >
+              <FolderOpen size={15} />
+            </button>
             <button className="proxy-toggle no-drag" onClick={() => setProxyPanelVisible((v) => !v)} title={t("proxy.title")}>
               <Shield size={15} />
             </button>
@@ -309,6 +319,17 @@ export default function App() {
       return prev[id] === node ? prev : { ...prev, [id]: node };
     });
   }, []);
+
+  // Полный клиентский журнал: клики, навигация, ошибки, запросы к API.
+  // События уходят в logs/audit.log и попадают в файл кнопки «Собрать логи».
+  useEffect(() => {
+    initTelemetry();
+  }, []);
+
+  // Смена страницы — в журнал (по какой странице ходил пользователь).
+  useEffect(() => {
+    setCurrentPage(active);
+  }, [active]);
 
   // Подтягиваем тему, стартовую страницу, язык, blur и внешние вид из настроек.
   useEffect(() => {
