@@ -220,7 +220,7 @@
     "advancedLogLevel": "Nivel de registro",
     "advancedLogLevelHint": "Nivel de detalle del registro",
     "advancedMasterKey": "Clave maestra",
-    "advancedMasterKeyHint": "Tu clave maestra de cifrado (ahora de env PERSONAL_APP_MASTER_KEY)",
+    "advancedMasterKeyHint": "Tu clave maestra de cifrado (ahora de env MOONAPP_MASTER_KEY)",
     "advancedMasterKeyPlaceholder": "déjalo vacío"
   },
   "badge": {

@@ -21,7 +21,7 @@ const logger = require("./logger");
 const MAX_REPORTS = 10;
 const MAX_AUDIT_BYTES = 24 * 1024 * 1024;   // полный журнал (хвост, если больше)
 const MAX_TAIL_BYTES = 2 * 1024 * 1024;     // хвост app.log / main.log
-const REPORT_PREFIX = "PersonalApp-logs-";
+const REPORT_PREFIX = "MoonApp-logs-";
 
 function readFileSafe(file) {
   try { return fs.readFileSync(file, "utf8"); } catch { return ""; }
@@ -270,7 +270,7 @@ function stamp() {
 function collect() {
   const startedAt = Date.now();
   const parts = [];
-  parts.push("PersonalApp — диагностический отчёт\n");
+  parts.push("MoonApp — диагностический отчёт\n");
   parts.push("Файл содержит все события приложения: навигацию, нажатия, загрузки,\n");
   parts.push("предупреждения и ошибки. Передайте его разработчику для разбора проблемы.\n");
   parts.push(section("Окружение"));

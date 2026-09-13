@@ -5,7 +5,7 @@ import os from "os";
 
 beforeAll(() => {
   // Изолируем storage для тестов во временной папке (как в tests/server.test.ts).
-  process.env.PERSONAL_APP_STORAGE = fs.mkdtempSync(path.join(os.tmpdir(), "pa-bypass-"));
+  process.env.MOONAPP_STORAGE = fs.mkdtempSync(path.join(os.tmpdir(), "moonapp-bypass-"));
 });
 
 describe("zapret — пользовательские списки (ipset/hostlist)", () => {

@@ -2,14 +2,15 @@
  * Единая точка вычисления пути к папке данных приложения (storage/).
  *
  * Порядок приоритета:
- *  1. PERSONAL_APP_STORAGE — явный оверрайд (используется в dev, тестах и CI).
- *  2. Собранное приложение (app.isPackaged) — storage/ живёт в папке установки,
- *     рядом с exe: <install>\storage. Так все рабочие папки (ffmpeg, zapret,
- *     архивы, загрузки) лежат в одном месте рядом с программой и переживают
- *     обновления (NSIS заменяет только файлы из манифеста).
+ *  1. Собранное приложение (app.isPackaged) — storage/ ВСЕГДА в папке установки,
+ *     рядом с exe: <install>\storage. Переменная окружения здесь игнорируется
+ *     намеренно: иначе запущенная копия подхватывала бы данные и настройки
+ *     другого места (например, папки с исходниками), что уже приводило к
+ *     «переезду» настроек между сборками.
  *     Если папка установки не доступна на запись (например, Program Files
- *     без прав администратора) — фолбэк в %APPDATA%\PersonalApp\storage.
- *  3. Dev-режим — storage/ рядом с проектом, как раньше.
+ *     без прав администратора) — фолбэк в %APPDATA%\MoonApp\storage.
+ *  2. MOONAPP_STORAGE — явный оверрайд, только для dev/тестов/CI.
+ *  3. Dev-режим — storage/ рядом с проектом.
  *
  * Модуль вычисляет путь один раз при первом обращении и экспортирует
  * константы, поэтому его можно безопасно require'ить в любом порядке.
@@ -38,10 +39,8 @@ function probeWritable(dir) {
 }
 
 function resolveStorageDir() {
-  // 1) Явный оверрайд (dev-скрипты, тесты, ручной запуск).
-  if (process.env.PERSONAL_APP_STORAGE) return process.env.PERSONAL_APP_STORAGE;
-
-  // 2) Упакованное приложение → storage/ в папке установки.
+  // 1) Упакованное приложение → только storage/ в папке установки.
+  //    Оверрайд из окружения здесь не применяется (см. комментарий выше).
   if (_electron?.app?.isPackaged) {
     const installDir = path.dirname(_electron.app.getPath("exe"));
     const portable = path.join(installDir, "storage");
@@ -52,7 +51,10 @@ function resolveStorageDir() {
     return appData;
   }
 
-  // 3) Dev — как раньше: storage/ рядом с проектом.
+  // 2) Явный оверрайд (dev-скрипты, тесты, ручной запуск сервера).
+  if (process.env.MOONAPP_STORAGE) return process.env.MOONAPP_STORAGE;
+
+  // 3) Dev — storage/ рядом с проектом.
   return path.join(__dirname, "..", "storage");
 }
 
@@ -60,6 +62,6 @@ const STORAGE_DIR = resolveStorageDir();
 
 // Подставляем путь дочернему серверному коду ДО его require. server/config.js
 // и server/ts/monitor.ts читают эту переменную — серверные модули трогать не нужно.
-process.env.PERSONAL_APP_STORAGE = STORAGE_DIR;
+process.env.MOONAPP_STORAGE = STORAGE_DIR;
 
 module.exports = { STORAGE_DIR, resolveStorageDir, probeWritable };

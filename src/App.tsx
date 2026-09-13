@@ -337,7 +337,11 @@ export default function App() {
       .then((s) => {
         const sc = s as any;
         if (sc?.appearance?.theme) setTheme(sc.appearance.theme);
-        if (sc?.general?.startPage) setActive(sc.general.startPage);
+        // Стартовая страница: если в настройках что-то неизвестное (старый
+        // settings.json, ручная правка) — открываем первую страницу «App»
+        // (установщик приложений, id "store").
+        const startPage = String(sc?.general?.startPage || "");
+        setActive(PAGES.some((p) => p.id === startPage) ? (startPage as PageId) : "store");
         if (sc?.general?.language) setLang(sc.general.language);
         if (sc?.performance?.backgroundBlur != null) setBlur(!!sc.performance.backgroundBlur);
         // Внешний вид: акцент, размер шрифта, анимации, плотность.

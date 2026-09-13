@@ -6,7 +6,7 @@ import os from "os";
 // Изолируем storage: логи и отчёты пишутся во временную папку.
 beforeAll(() => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "pa-diag-"));
-  process.env.PERSONAL_APP_STORAGE = tmp;
+  process.env.MOONAPP_STORAGE = tmp;
 });
 
 const SECRET_VALUE = "sk-super-secret-value-999";
@@ -17,7 +17,7 @@ describe("diagnostics (полный журнал и файл отчёта)", () 
     logger.action("ui.click", { page: "store", text: "Собрать логи" });
     logger.error("ui.error", { message: "boom" });
 
-    const storage = process.env.PERSONAL_APP_STORAGE!;
+    const storage = process.env.MOONAPP_STORAGE!;
     const audit = fs.readFileSync(logger.files.audit, "utf8");
     expect(audit).toContain("ui.click");
     expect(audit).toContain("Собрать логи");
@@ -42,8 +42,8 @@ describe("diagnostics (полный журнал и файл отчёта)", () 
 
     expect(fs.existsSync(report.file)).toBe(true);
     expect(report.size).toBeGreaterThan(0);
-    expect(path.dirname(report.file)).toBe(process.env.PERSONAL_APP_STORAGE!);
-    expect(path.basename(report.file).startsWith("PersonalApp-logs-")).toBe(true);
+    expect(path.dirname(report.file)).toBe(process.env.MOONAPP_STORAGE!);
+    expect(path.basename(report.file).startsWith("MoonApp-logs-")).toBe(true);
 
     const text = fs.readFileSync(report.file, "utf8");
     // Обязательные секции отчёта.

@@ -192,7 +192,7 @@ const DEFAULTS = {
   advanced: {
     telemetry: false,        // TODO: анонимная статистика использования
     logLevel: "info",        // info | warn | error
-    masterKey: "",           // TODO: мастер-ключ шифрования (пока env PERSONAL_APP_MASTER_KEY)
+    masterKey: "",           // TODO: мастер-ключ шифрования (пока env MOONAPP_MASTER_KEY)
   },
 };
 

@@ -220,7 +220,7 @@
     "advancedLogLevel": "مستوى السجل",
     "advancedLogLevelHint": "مستوى تفاصيل السجل",
     "advancedMasterKey": "المفتاح الرئيسي",
-    "advancedMasterKeyHint": "مفتاح التشفير الخاص (حالياً من env PERSONAL_APP_MASTER_KEY)",
+    "advancedMasterKeyHint": "مفتاح التشفير الخاص (حالياً من env MOONAPP_MASTER_KEY)",
     "advancedMasterKeyPlaceholder": "اتركه فارغاً"
   },
   "badge": {

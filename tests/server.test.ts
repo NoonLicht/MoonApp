@@ -6,7 +6,7 @@ import os from "os";
 beforeAll(() => {
   // Изолируем storage для тестов во временной папке.
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "pa-test-"));
-  process.env.PERSONAL_APP_STORAGE = tmp;
+  process.env.MOONAPP_STORAGE = tmp;
 });
 
 describe("security (шифрование ключей)", () => {
@@ -19,7 +19,7 @@ describe("security (шифрование ключей)", () => {
     expect(sec.getSecret("missing")).toBeNull();
 
     // На диске должен лежать зашифрованный токен (не открытый ключ).
-    const stored = JSON.parse(fs.readFileSync(path.join(process.env.PERSONAL_APP_STORAGE!, "secrets.json"), "utf8"))["test-provider"];
+    const stored = JSON.parse(fs.readFileSync(path.join(process.env.MOONAPP_STORAGE!, "secrets.json"), "utf8"))["test-provider"];
     expect(stored).toBeTruthy();
     expect(stored.startsWith("__aes__") || stored.startsWith("__ss__")).toBe(true);
     expect(stored).not.toContain(plain);

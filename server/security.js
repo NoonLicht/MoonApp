@@ -16,7 +16,7 @@ function getElectronSafeStorage() {
 function getMasterKey() {
   // Приоритет: env-переменная → мастер-ключ из настроек (advanced.masterKey) →
   // dev-ключ (только для standalone-запуска без Electron, небезопасно!).
-  const fromEnv = process.env.PERSONAL_APP_MASTER_KEY;
+  const fromEnv = process.env.MOONAPP_MASTER_KEY;
   if (fromEnv) return crypto.createHash("sha256").update(fromEnv).digest();
   try {
     const fromSettings = String(require("./settings").get("advanced").masterKey || "").trim();

@@ -6,7 +6,7 @@ import os from "os";
 let tmpDir;
 beforeAll(() => {
   tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "pa-flib-"));
-  process.env.PERSONAL_APP_STORAGE = tmpDir;
+  process.env.MOONAPP_STORAGE = tmpDir;
 });
 
 async function flib() {

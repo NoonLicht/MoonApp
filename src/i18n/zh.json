@@ -220,7 +220,7 @@
     "advancedLogLevel": "日志级别",
     "advancedLogLevelHint": "日志详细级别",
     "advancedMasterKey": "主密钥",
-    "advancedMasterKeyHint": "自己的加密主密钥（当前来自 env PERSONAL_APP_MASTER_KEY）",
+    "advancedMasterKeyHint": "自己的加密主密钥（当前来自 env MOONAPP_MASTER_KEY）",
     "advancedMasterKeyPlaceholder": "留空"
   },
   "badge": {

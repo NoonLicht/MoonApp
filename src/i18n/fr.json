@@ -220,7 +220,7 @@
     "advancedLogLevel": "Niveau de journal",
     "advancedLogLevelHint": "Niveau de détail du journal",
     "advancedMasterKey": "Clé maîtresse",
-    "advancedMasterKeyHint": "Votre clé de chiffrement (actuellement env PERSONAL_APP_MASTER_KEY)",
+    "advancedMasterKeyHint": "Votre clé de chiffrement (actuellement env MOONAPP_MASTER_KEY)",
     "advancedMasterKeyPlaceholder": "laisser vide"
   },
   "badge": {

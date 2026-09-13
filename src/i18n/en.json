@@ -224,7 +224,7 @@
     "advancedLogLevel": "Log level",
     "advancedLogLevelHint": "Log verbosity level",
     "advancedMasterKey": "Master key",
-    "advancedMasterKeyHint": "Own master encryption key (currently from env PERSONAL_APP_MASTER_KEY)",
+    "advancedMasterKeyHint": "Own master encryption key (currently from env MOONAPP_MASTER_KEY)",
     "advancedMasterKeyPlaceholder": "leave empty"
   },
   "badge": {

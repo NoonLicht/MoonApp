@@ -5,9 +5,9 @@ const { contextBridge, ipcRenderer } = require("electron");
 // процессам через WMI). Файл удаляется main-процессом при выходе.
 const fs = require("fs");
 function readToken() {
-  const arg = process.argv.find((a) => a.startsWith("--pa-token-file="));
+  const arg = process.argv.find((a) => a.startsWith("--moonapp-token-file="));
   if (!arg) return null;
-  try { return fs.readFileSync(arg.slice("--pa-token-file=".length), "utf8").trim(); }
+  try { return fs.readFileSync(arg.slice("--moonapp-token-file=".length), "utf8").trim(); }
   catch { return null; }
 }
 
@@ -15,7 +15,7 @@ function readToken() {
 contextBridge.exposeInMainWorld("appBridge", {
   version: () => process.versions.electron,
   platform: process.platform,
-  // Токен подставляется в заголовок x-pa-token (см. src/api/client.ts).
+  // Токен подставляется в заголовок x-moonapp-token (см. src/api/client.ts).
   getToken: () => readToken(),
   revealPath: (p) => ipcRenderer.invoke("shell:reveal", p),
   // Открыть каталог установки приложения (кнопка в верхней панели).

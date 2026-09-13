@@ -46,7 +46,7 @@ const winget = require("./winget");
 const proxy = require("./proxy");
 
 // Токен для локального API. Electron делает его при старте и кидает в preload
-// (additionalArguments), фронт подставляет в заголовок x-pa-token.
+// (additionalArguments), фронт подставляет в заголовок x-moonapp-token.
 // Без токена (dev, node server/index.js) сервер ничего не проверяет,
 // но слушает строго 127.0.0.1.
 let AUTH_TOKEN = null;
@@ -55,7 +55,7 @@ function authMiddleware(req, res, next) {
   if (!AUTH_TOKEN) return next();
   const protectedPath = req.path.startsWith("/api") || req.path.startsWith("/events");
   if (!protectedPath) return next(); // статика dist/ не секрет
-  if (req.get("x-pa-token") !== AUTH_TOKEN) {
+  if (req.get("x-moonapp-token") !== AUTH_TOKEN) {
     return res.status(401).json({ error: "unauthorized" });
   }
   next();
@@ -163,7 +163,7 @@ function createApp() {
 }
 
 function startServer(port = config.PORT, opts = {}) {
-  AUTH_TOKEN = opts.token || process.env.PERSONAL_APP_TOKEN || null;
+  AUTH_TOKEN = opts.token || process.env.MOONAPP_TOKEN || null;
   if (!AUTH_TOKEN) {
     logger.warn("server.no_token", { hint: "standalone/dev mode: API без аутентификации" });
   }

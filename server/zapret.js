@@ -60,7 +60,7 @@ function findEngineDir() {
   const c = cfg();
   const candidates = [
     c.dir && String(c.dir).trim() && path.resolve(String(c.dir).trim()),
-    process.env.PERSONAL_APP_ZAPRET && path.resolve(process.env.PERSONAL_APP_ZAPRET),
+    process.env.MOONAPP_ZAPRET && path.resolve(process.env.MOONAPP_ZAPRET),
     DIRS.zapret,
     path.join(__dirname, "..", "resources", "zapret"),
     path.join(__dirname, "vendor", "zapret"),
@@ -361,7 +361,7 @@ function writeGameFilter() {
 const GITHUB_REPO = "Flowseal/zapret-discord-youtube";
 const GITHUB_API = `https://api.github.com/repos/${GITHUB_REPO}`;
 const GITHUB_DL = `https://github.com/${GITHUB_REPO}/releases/download`;
-const GH_HEADERS = { "User-Agent": "personal-app", Accept: "application/vnd.github+json" };
+const GH_HEADERS = { "User-Agent": "MoonApp", Accept: "application/vnd.github+json" };
 const VERSION_FILE = ".pa-bypass.json";
 
 let installState = { state: "idle", progress: 0, phase: "", error: "", tag: null, at: 0 };

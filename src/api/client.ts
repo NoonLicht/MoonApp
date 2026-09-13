@@ -4,7 +4,7 @@
  * Как это работает:
  *  - все запросы идут на `${BASE}/api/<путь>` (BASE пустой: фронт и API на одном
  *    origin — Vite-proxy в dev, раздача Express в prod);
- *  - каждый запрос несёт заголовок x-pa-token (токен генерирует Electron,
+ *  - каждый запрос несёт заголовок x-moonapp-token (токен генерирует Electron,
  *    см. electron/main.js → preload.js → window.appBridge.getToken);
  *  - streamChatSend/streamArena читают SSE-стрим через fetch + ReadableStream.
  */
@@ -92,7 +92,7 @@ export interface SitebakArchive {
 
 function tokenHeaders(): Record<string, string> {
   const t = window.appBridge?.getToken?.();
-  return t ? { "x-pa-token": t } : {};
+  return t ? { "x-moonapp-token": t } : {};
 }
 
 async function req<T = unknown>(method: string, url: string, body?: unknown): Promise<T> {
@@ -421,7 +421,7 @@ export const api = {
   musicDownloadFile: (key: string) => {
     const t = window.appBridge?.getToken?.();
     return fetch(`/api/music/download/${key}`, {
-      headers: t ? { "x-pa-token": t } : {},
+      headers: t ? { "x-moonapp-token": t } : {},
     }).then(async (res) => {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const disp = res.headers.get("content-disposition") || "";

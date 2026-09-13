@@ -5,7 +5,7 @@ const crypto = require("crypto");
 const path = require("path");
 const fs = require("fs");
 // Вычисляем путь к storage ДО require("../server"): модуль выставляет
-// process.env.PERSONAL_APP_STORAGE, который читают server/config.js и monitor.
+// process.env.MOONAPP_STORAGE, который читают server/config.js и monitor.
 const { STORAGE_DIR } = require("./storagePath");
 const { startServer } = require("../server");
 // Автообновление (работает только в packaged-сборке; в dev отключено ниже).
@@ -41,7 +41,7 @@ const MAIN_LOG = path.join(STORAGE_DIR, "logs", "main.log");
 let mainLogSize = -1;
 
 // require("../server/logger") безопасен: storagePath уже выставил
-// PERSONAL_APP_STORAGE, поэтому logger пишет в правильный storage.
+// MOONAPP_STORAGE, поэтому logger пишет в правильный storage.
 const serverLogger = (() => { try { return require("../server/logger"); } catch { return null; } })();
 
 function mlog(level, event, data) {
@@ -160,7 +160,7 @@ async function ensureTray() {
   if (tray) return tray;
   const { Tray, Menu } = require("electron");
   tray = new Tray(await makeTrayIcon());
-  tray.setToolTip("PersonalApp");
+  tray.setToolTip("MoonApp");
   tray.setContextMenu(Menu.buildFromTemplate(await trayTemplate()));
   // Левый клик по иконке — показать окно.
   tray.on("click", () => showWindow());
@@ -179,7 +179,7 @@ function zapretApi(urlPath, body) {
     const req = http.request({
       host: "127.0.0.1", port: apiPort, path: `/api/zapret${urlPath}`, method: payload ? "POST" : "GET",
       headers: {
-        "x-pa-token": apiToken || "",
+        "x-moonapp-token": apiToken || "",
         ...(payload ? { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) } : {}),
       },
       timeout: 8000,
@@ -311,7 +311,7 @@ async function createWindow() {
   // файл удаляется при выходе.
   const token = crypto.randomBytes(24).toString("hex");
   const os = require("os");
-  tokenFile = path.join(os.tmpdir(), `pa-token-${crypto.randomBytes(6).toString("hex")}`);
+  tokenFile = path.join(os.tmpdir(), `moonapp-token-${crypto.randomBytes(6).toString("hex")}`);
   try { fs.writeFileSync(tokenFile, token, { mode: 0o600 }); } catch { tokenFile = null; }
 
   const port = await findFreePort(4000);
@@ -347,7 +347,7 @@ async function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
       // Токен передаётся файлом, а не argv (argv виден другим процессам).
-      additionalArguments: tokenFile ? [`--pa-token-file=${tokenFile}`] : [],
+      additionalArguments: tokenFile ? [`--moonapp-token-file=${tokenFile}`] : [],
       sandbox: false,
     },
   });
@@ -438,7 +438,7 @@ function setupAutoUpdates() {
       // Системное уведомление + диалог с предложением перезапуска.
       try {
         const n = new Notification({
-          title: "PersonalApp",
+          title: "MoonApp",
           body: `Обновление ${info.version} скачано и готово к установке`,
         });
         n.on("click", () => showWindow());
@@ -510,8 +510,10 @@ ipcMain.handle("updates:download", async () => {
 
 app.whenReady().then(() => {
   registerWindowControls();
-  if (safeStorage) app.setName("PersonalApp");
+  if (safeStorage) app.setName("MoonApp");
   mlog("info", "app.start", { version: app.getVersion(), packaged: app.isPackaged, platform: process.platform });
+  // Путь данных виден в диагностическом отчёте — сразу понятно, куда всё пишется.
+  mlog("info", "app.storage", { dir: STORAGE_DIR, packaged: app.isPackaged });
   // general.autoLaunch: синхронизируем автозапуск с настройками при каждом старте.
   applyAutoLaunch();
   createWindow();

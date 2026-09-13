@@ -4,7 +4,7 @@ const fs = require("fs");
 // Пути к данным приложения. В разработке storage/ живёт рядом с проектом,
 // а в собранном exe Electron подсовывает сюда свой userData-каталог.
 const STORAGE_DIR =
-  process.env.PERSONAL_APP_STORAGE || path.join(__dirname, "..", "storage");
+  process.env.MOONAPP_STORAGE || path.join(__dirname, "..", "storage");
 
 function ensureDir(p) {
   if (!fs.existsSync(p)) fs.mkdirSync(p, { recursive: true });

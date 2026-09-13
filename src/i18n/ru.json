@@ -195,7 +195,7 @@
     "advancedLogLevel": "Уровень логов",
     "advancedLogLevelHint": "Уровень детализации логов",
     "advancedMasterKey": "Мастер-ключ",
-    "advancedMasterKeyHint": "Свой мастер-ключ шифрования (сейчас из env PERSONAL_APP_MASTER_KEY)",
+    "advancedMasterKeyHint": "Свой мастер-ключ шифрования (сейчас из env MOONAPP_MASTER_KEY)",
     "advancedMasterKeyPlaceholder": "оставьте пустым"
   },
   "badge": {

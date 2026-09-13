@@ -42,7 +42,7 @@ async function flush() {
     await fetch("/api/log", {
       method: "POST",
       keepalive: true,
-      headers: { "Content-Type": "application/json", ...(t ? { "x-pa-token": t } : {}) },
+      headers: { "Content-Type": "application/json", ...(t ? { "x-moonapp-token": t } : {}) },
       body: JSON.stringify({ events }),
     });
   } catch { /* журнал не должен ломать интерфейс */ }

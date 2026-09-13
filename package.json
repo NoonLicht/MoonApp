@@ -1,8 +1,8 @@
 {
-  "name": "moon-app",
+  "name": "moonapp",
   "productName": "MoonApp",
   "version": "0.1.0",
-  "description": "Personal desktop utility panel (Electron + React + Vite + Node backend)",
+  "description": "MoonApp — desktop utility panel (Electron + React + Vite + Node backend)",
   "author": "NoonLicht",
   "type": "commonjs",
   "main": "electron/main.js",
@@ -86,8 +86,8 @@
     "vitest": "^2.1.9"
   },
   "build": {
-    "appId": "com.personal.app",
-    "productName": "PersonalApp",
+    "appId": "com.moonapp.app",
+    "productName": "MoonApp",
     "files": [
       "dist/**/*",
       "electron/**/*",
@@ -95,7 +95,13 @@
       "package.json",
       "!server/vendor/bun/**",
       "!server/vendor/convertx/**",
-      "!server/ts/**"
+      "!server/ts/**",
+      "!storage/**",
+      "!**/settings.json",
+      "!**/secrets.json",
+      "!**/data.json",
+      "!**/logs/**",
+      "!**/*.log"
     ],
     "asarUnpack": [
       "server/vendor/lhm/**",
@@ -120,7 +126,7 @@
       "perMachine": false,
       "allowToChangeInstallationDirectory": true,
       "deleteAppDataOnUninstall": false,
-      "artifactName": "PersonalApp-Setup-${version}.${ext}"
+      "artifactName": "MoonApp-Setup-${version}.${ext}"
     }
   }
 }

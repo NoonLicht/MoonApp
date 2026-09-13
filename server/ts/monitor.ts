@@ -660,7 +660,7 @@ const LHM_EXE = "LibreHardwareMonitor.exe";
 // pid.txt) пишутся в storage/bin/lhm — там точно можно писать и вне asar.
 const VENDOR_DIR = path.join(__dirname, "..", "vendor", "lhm");
 const BIN_DIR = path.join(
-  process.env.PERSONAL_APP_STORAGE || path.join(__dirname, "..", "storage"),
+  process.env.MOONAPP_STORAGE || path.join(__dirname, "..", "storage"),
   "bin", "lhm"
 );
 function resolveDllDir(): string {
@@ -713,7 +713,7 @@ export async function downloadEngine(): Promise<{ ok: boolean; error?: string }>
   // Резолвим ассет через GitHub API: имена в релизах меняются.
   const apiRes = await fetch(
     "https://api.github.com/repos/LibreHardwareMonitor/LibreHardwareMonitor/releases/latest",
-    { headers: { "User-Agent": "personal-app" }, signal: AbortSignal.timeout(20000) }
+    { headers: { "User-Agent": "MoonApp" }, signal: AbortSignal.timeout(20000) }
   );
   if (!apiRes.ok) return { ok: false, error: `GitHub API HTTP ${apiRes.status}` };
   const meta = await apiRes.json() as { assets?: { name: string; browser_download_url: string }[] };

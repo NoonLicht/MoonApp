@@ -23,7 +23,7 @@ describe("chat SSE (регресс 'Generation stopped')", () => {
   beforeAll(async () => {
     // Изолированное хранилище: реальные ключи и чаты не трогаем.
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "pa-chat-"));
-    process.env.PERSONAL_APP_STORAGE = tmp;
+    process.env.MOONAPP_STORAGE = tmp;
 
     const express = (await import("express")).default;
     const security: any = await import("../server/security");
