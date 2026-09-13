@@ -33,7 +33,9 @@ jobs:
         env:
           # Встроенный токен — electron-builder публикует в текущий репозиторий.
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npm run dist -- --publish always
+        # electron-builder вызывается напрямую: `npm run dist -- --publish always`
+        # передал бы аргументы в конец всей цепочки скрипта, а не в publisher.
+        run: npm run compile:server && npm run build:web && npx electron-builder --win --publish always
 
       # Инсталлятор + latest.yml + .blockmap попадают в Release автоматически.
       # Если шаг publish упал, артефакты всё равно можно скачать из Actions.
