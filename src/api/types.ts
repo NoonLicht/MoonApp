@@ -478,6 +478,10 @@ export interface ProxyNode {
   isSelected: boolean;
   /** Узел убран пользователем из списка (скрыт), но остаётся в подписке. */
   isExcluded: boolean;
+  /** Транспорт узла: tcp/ws/grpc/… (xhttp движок не поддерживает). */
+  transport?: string;
+  /** Движок (sing-box) не умеет этот транспорт — узел запустить нельзя. */
+  unsupported?: boolean;
 }
 
 /** Подписка с вложенными узлами. */

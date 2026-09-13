@@ -498,7 +498,8 @@
     "pingCancel": "Detener",
     "enginePaths": "Rutas comprobadas",
     "errPortBusy": "El puerto {port} está ocupado: cierra el otro proxy/VPN y reinténtalo",
-    "errStartTimeout": "sing-box no arrancó a tiempo. Comprueba la configuración del nodo"
+    "errStartTimeout": "sing-box no arrancó a tiempo. Comprueba la configuración del nodo",
+    "unsupported": "El motor sing-box no admite este transporte (p. ej. XHTTP): el nodo no se puede iniciar"
   },
   "video": {
     "title": "Descarga de vídeo",

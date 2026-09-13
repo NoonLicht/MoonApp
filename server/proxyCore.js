@@ -359,12 +359,18 @@ function parseSubscription(input) {
   const raw = String(input || "").trim();
   if (!raw) return { format: "uri", nodes: [] };
 
-  // 1) JSON (sing-box конфиг или массив нод) — «как есть».
+  // 1) JSON (Xray/V2Ray или sing-box конфиг, либо массив нод) — разбираем outbounds.
   if (raw.startsWith("{") || raw.startsWith("[")) {
     try {
       const o = JSON.parse(raw);
-      if (o && Array.isArray(o.outbounds)) return { format: "json", nodes: [], config: o, raw };
       if (Array.isArray(o)) return { format: "json", nodes: o.map(parseUri).filter(Boolean), raw };
+      if (o && Array.isArray(o.outbounds)) {
+        // Раньше здесь возвращался ПУСТОЙ список: JSON-конфиги (самый частый
+        // формат экспорта) не импортировались вообще — а это и есть «ничего не
+        // добавилось после импорта».
+        const nodes = o.outbounds.map(nodeFromJsonOutbound).filter(Boolean);
+        return { format: "json", nodes, config: o, raw };
+      }
     } catch { /* падаем ниже на base64/URI */ }
   }
 
@@ -395,6 +401,16 @@ function tlsBlock(node) {
   return tls;
 }
 
+/** Транспорты, которые умеет движок (sing-box). xhttp/kcp он НЕ поддерживает —
+ *  такие узлы импортируем, но помечаем как неподдерживаемые, чтобы UI не врал. */
+const SUPPORTED_TRANSPORTS = ["", "tcp", "ws", "grpc", "http", "h2", "httpupgrade", "quic"];
+
+/** Поддерживает ли движок этот узел (протокол + транспорт). */
+function isNodeSupported(node) {
+  if (!node || !SUPPORTED_PROTOCOLS.includes(node.protocol)) return false;
+  return SUPPORTED_TRANSPORTS.includes(String(node.network || "").toLowerCase());
+}
+
 /** Транспорт (network/path/host) → sing-box transport-блок или undefined. */
 function transportBlock(node) {
   const net = String(node.network || "").toLowerCase();
@@ -402,10 +418,136 @@ function transportBlock(node) {
     return { type: "ws", path: node.path || "/", headers: node.host ? { Host: node.host } : undefined };
   }
   if (net === "grpc") return { type: "grpc", service_name: node.serviceName || "" };
+  if (net === "quic") return { type: "quic" };
+  if (net === "httpupgrade") return { type: "httpupgrade", host: node.host || undefined, path: node.path || "/" };
   if (net === "http" || net === "h2") {
     return { type: "http", host: node.host ? [node.host] : undefined, path: node.path || "/" };
   }
   return undefined;
+}
+
+// --- Импорт JSON-конфигов (Xray/V2Ray и sing-box) ---
+
+/** Осмысленное имя узла: generic-теги («proxy», «proxy-2») заменяем адресом. */
+function pickTag(tag, address) {
+  const t = String(tag || "").trim();
+  if (!t) return address || "";
+  if (/^(proxy|out|outbound|node|vless|vmess|trojan|ss|shadowsocks|direct|block)(-\d+)?$/i.test(t)) return address || t;
+  return t;
+}
+
+/** Транспорт + TLS из streamSettings (формат Xray/V2Ray) → поля нашего узла. */
+function fromXrayStream(stream) {
+  const s = stream || {};
+  const net = String(s.network || "tcp").toLowerCase();
+  const sec = String(s.security || "none").toLowerCase();
+  const reality = s.realitySettings || {};
+  const tls = s.tlsSettings || {};
+  const ws = s.wsSettings || {};
+  const grpc = s.grpcSettings || {};
+  const xhttp = s.xhttpSettings || {};
+  const http = s.httpSettings || {};
+  const upg = s.httpupgradeSettings || {};
+  const hostFromHeaders = ws.headers && (ws.headers.Host || ws.headers.host);
+  const httpHost = Array.isArray(http.host) ? http.host[0] : http.host;
+
+  return {
+    network: net === "tcp" ? "" : net,
+    security: sec,
+    sni: reality.serverName || tls.serverName || "",
+    fp: reality.fingerprint || tls.fingerprint || "",
+    pbk: reality.publicKey || "",
+    sid: reality.shortId || "",
+    spx: reality.spiderX || "",
+    alpn: Array.isArray(tls.alpn) ? tls.alpn.join(",") : "",
+    insecure: !!tls.allowInsecure,
+    path: ws.path || xhttp.path || http.path || upg.path || "",
+    host: hostFromHeaders || xhttp.host || httpHost || upg.host || "",
+    serviceName: grpc.serviceName || "",
+  };
+}
+
+/** Один outbound Xray/V2Ray → узел или null (freedom/blackhole/неизвестное). */
+function nodeFromXrayOutbound(ob) {
+  const proto = String(ob.protocol || "").toLowerCase();
+  const settings = ob.settings || {};
+  const stream = fromXrayStream(ob.streamSettings);
+  const base = { protocol: proto, ...stream };
+
+  if (proto === "vless" || proto === "vmess") {
+    const v = (settings.vnext || [])[0] || {};
+    const u = (v.users || [])[0] || {};
+    if (!v.address) return null;
+    const node = {
+      ...base,
+      server: v.address,
+      port: Number(v.port),
+      uuid: u.id || "",
+      tag: pickTag(ob.tag, v.address),
+    };
+    if (proto === "vless") node.flow = u.flow || "";
+    else { node.alterId = Number(u.alterId) || 0; node.cipher = u.security || "auto"; }
+    return node.server && Number.isFinite(node.port) ? node : null;
+  }
+  if (proto === "trojan" || proto === "shadowsocks") {
+    const s0 = (settings.servers || [])[0] || {};
+    if (!s0.address) return null;
+    const node = {
+      ...base,
+      server: s0.address,
+      port: Number(s0.port),
+      password: s0.password || "",
+      tag: pickTag(ob.tag, s0.address),
+    };
+    if (proto === "shadowsocks") node.method = s0.method || "";
+    return node.server && Number.isFinite(node.port) ? node : null;
+  }
+  return null; // freedom, blackhole, dns, socks, http… — не узлы
+}
+
+/** Один outbound sing-box → узел или null. */
+function nodeFromSingBoxOutbound(ob) {
+  const type = String(ob.type || "").toLowerCase();
+  if (!["vless", "vmess", "trojan", "hysteria2", "tuic", "shadowsocks", "ssh"].includes(type)) return null;
+  const tls = ob.tls || {};
+  const tr = ob.transport || {};
+  const reality = tls.reality || {};
+  const utls = tls.utls || {};
+  const headers = tr.headers || {};
+  const host = tr.host || headers.Host || headers.host || "";
+  const node = {
+    protocol: type,
+    server: ob.server,
+    port: Number(ob.server_port),
+    tag: pickTag(ob.tag, ob.server),
+    network: tr.type ? String(tr.type).toLowerCase() : "",
+    security: reality.enabled ? "reality" : (tls.enabled ? "tls" : "none"),
+    sni: tls.server_name || "",
+    fp: utls.fingerprint || "",
+    pbk: reality.public_key || "",
+    sid: reality.short_id || "",
+    alpn: Array.isArray(tls.alpn) ? tls.alpn.join(",") : "",
+    insecure: !!tls.insecure,
+    path: tr.path || "",
+    host: Array.isArray(host) ? (host[0] || "") : host,
+    serviceName: tr.service_name || "",
+  };
+  if (type === "vless") { node.uuid = ob.uuid || ""; node.flow = ob.flow || ""; }
+  if (type === "vmess") { node.uuid = ob.uuid || ""; node.alterId = ob.alter_id || 0; node.cipher = ob.security || "auto"; }
+  if (type === "trojan" || type === "hysteria2" || type === "shadowsocks") node.password = ob.password || "";
+  if (type === "shadowsocks") node.method = ob.method || "";
+  if (type === "tuic") { node.uuid = ob.uuid || ""; node.password = ob.password || ""; }
+  if (type === "ssh") node.user = ob.user || "";
+  if (type === "hysteria2" && ob.obfs) { node.obfs = ob.obfs.type || ""; node.obfsPassword = ob.obfs.password || ""; }
+  return node.server && Number.isFinite(node.port) ? node : null;
+}
+
+/** Outbound из JSON любого формата → узел. Формат определяется по полям. */
+function nodeFromJsonOutbound(ob) {
+  if (!ob || typeof ob !== "object") return null;
+  if (ob.protocol) return nodeFromXrayOutbound(ob);
+  if (ob.type) return nodeFromSingBoxOutbound(ob);
+  return null;
 }
 
 // --- Генерация outbound ---
@@ -468,6 +610,9 @@ function buildOutbound(node, tag = "proxy") {
 
 /** Итоговый конфиг sing-box: socks5 + http inbound, один outbound, direct-роут. */
 function buildSingBoxConfig(node, opts = {}) {
+  // Неподдерживаемый транспорт (xhttp/kcp) нельзя «схлопнуть» в tcp по умолчанию:
+  // получился бы конфиг, валидный по синтаксису, но заведомо нерабочий.
+  if (!isNodeSupported(node)) return null;
   const out = buildOutbound(node, "proxy");
   if (!out) return null;
   const socksPort = Number(opts.socksPort) || DEFAULT_SOCKS_PORT;
@@ -712,7 +857,11 @@ async function startCore(input, opts = {}) {
 
   const cfg = buildSingBoxConfig(node, { socksPort: opts.socksPort, httpPort: opts.httpPort });
   if (!cfg) {
-    CORE = { ...CORE, running: false, enabled: false, error: "Unsupported protocol: " + node.protocol };
+    // Явно различаем «протокол не наш» и «транспорт не умеет движок» (xhttp и т.п.):
+    // иначе пользователь видит только непонятную ошибку соединения.
+    const why = isNodeSupported(node) ? "Unsupported protocol: " + node.protocol
+      : `unsupported_transport:${node.network || node.protocol}`;
+    CORE = { ...CORE, running: false, enabled: false, error: why };
     return getCoreStatus();
   }
 
@@ -869,21 +1018,65 @@ function requestThroughProxy(url, opts = {}) {
 // --- Пинг отдельного узла (для «пропинговать все») ---
 
 // Отдельные порты: пинг не должен занимать порты активного прокси (10808/10809).
+// Диапазоны SOCKS и HTTP НЕ пересекаются, а между пингами порты ротируются:
+// иначе «залипший» слушатель от прошлого узла заставил бы измерить следующий узел
+// через чужое ядро (результаты пинга тогда не соответствуют узлам).
 const PING_SOCKS_PORT = 10818;
-const PING_HTTP_PORT = 10819;
+const PING_HTTP_PORT = 10918;
+const PING_PORT_POOL = 16;
+let pingPortCursor = 0;
+
+/** Свободная пара портов для временного ядра (ротация + пропуск занятых). */
+async function pickPingPorts() {
+  for (let i = 0; i < PING_PORT_POOL; i++) {
+    const idx = (pingPortCursor + i) % PING_PORT_POOL;
+    const socksPort = PING_SOCKS_PORT + idx;
+    const httpPort = PING_HTTP_PORT + idx;
+    if (!(await isPortOpen(socksPort)) && !(await isPortOpen(httpPort))) {
+      pingPortCursor = (idx + 1) % PING_PORT_POOL;
+      return { socksPort, httpPort };
+    }
+  }
+  // Всё занято — берём следующую по кругу: попробовать лучше, чем не пинговать.
+  const socksPort = PING_SOCKS_PORT + pingPortCursor;
+  const httpPort = PING_HTTP_PORT + pingPortCursor;
+  pingPortCursor = (pingPortCursor + 1) % PING_PORT_POOL;
+  return { socksPort, httpPort };
+}
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-/** Открыт ли TCP-порт на локальном хосте (готовность ядра / занятость порта). */
-function isPortOpen(port, timeoutMs = 400) {
+/**
+ * Цели для пинга. Их НЕСКОЛЬКО намеренно: часть рабочих узлов не ходит в Google
+ * (география/DNS/фильтры), и единственная цель давала ложные «блок».
+ */
+const PING_TARGETS = [
+  "https://www.google.com/generate_204",
+  "https://cp.cloudflare.com/generate_204",
+  "https://www.gstatic.com/generate_204",
+];
+
+/** Стандартный бюджет одного узла: ОДИН запрос на 2.5 с ловил только ближние
+ *  узлы (первое подключение через свежее ядро = DNS + TCP + TLS + reality). */
+const PING_DEFAULT_TIMEOUT = 6000;
+const PING_TOTAL_BUDGET = 15000;
+
+/** Открыт ли TCP-порт (по умолчанию — локальный хост). */
+function isPortOpen(port, timeoutMs = 400, host = PROXY_HOST) {
   return new Promise((resolve) => {
     const net = require("net");
-    const sock = net.connect({ host: PROXY_HOST, port });
+    const sock = net.connect({ host, port });
     const done = (v) => { try { sock.destroy(); } catch { /* ignore */ } resolve(v); };
     sock.setTimeout(timeoutMs, () => done(false));
     sock.once("connect", () => done(true));
     sock.once("error", () => done(false));
   });
+}
+
+/** Быстрая проверка доступности сервера узла (TCP). Ложное «нет» исключено:
+ *  если TCP до узла не открывается, sing-box тоже не подключится. */
+function canConnectTo(host, port, timeoutMs = 2500) {
+  return isPortOpen(Number(port), timeoutMs, host);
 }
 
 /**
@@ -928,11 +1121,32 @@ function pingDebug(label, extra) {
  * Активное ядро не трогаем вообще — иначе «пропинговать все» рвало бы текущее
  * соединение пользователя.
  */
-async function pingNode(node, { timeout = 2500, socksPort = PING_SOCKS_PORT, httpPort = PING_HTTP_PORT } = {}) {
+async function pingNode(node, opts = {}) {
+  const timeout = Number(opts.timeout) || PING_DEFAULT_TIMEOUT;
+  const tcpCheck = opts.tcpCheck !== false;
+  // Порты по умолчанию подбираются динамически (ротация + пропуск занятых).
+  const ports = (opts.socksPort != null && opts.httpPort != null)
+    ? { socksPort: opts.socksPort, httpPort: opts.httpPort }
+    : await pickPingPorts();
+  const { socksPort, httpPort } = ports;
   const tStart = Date.now();
   const engine = await detectEngine();
   if (!engine.found) return { ok: false, state: "blocked", ttfbMs: null, country: null, error: "engine_missing" };
   pingDebug("engine", { ms: Date.now() - tStart, path: engine.path });
+
+  // Транспорт, который движок не умеет (xhttp/kcp) — сразу честная причина,
+  // а не «timeout» после запуска ядра.
+  if (!isNodeSupported(node)) {
+    return { ok: false, state: "blocked", ttfbMs: null, country: null, error: `unsupported_transport:${node.network || node.protocol}` };
+  }
+
+  // Быстрый фильтр: если TCP до сервера узла не открывается, sing-box всё равно
+  // не подключится. Не тратим секунды на запуск ядра ради заведомо мёртвого узла.
+  if (tcpCheck) {
+    const up = await canConnectTo(node.server, node.port, Math.min(2500, timeout));
+    pingDebug("tcp", { ms: Date.now() - tStart, up });
+    if (!up) return { ok: false, state: "blocked", ttfbMs: null, country: null, error: "unreachable" };
+  }
 
   const cfg = buildSingBoxConfig(node, { socksPort, httpPort });
   if (!cfg) return { ok: false, state: "blocked", ttfbMs: null, country: null, error: "unsupported_protocol" };
@@ -959,35 +1173,47 @@ async function pingNode(node, { timeout = 2500, socksPort = PING_SOCKS_PORT, htt
 
     // Фаза 1: ждём, пока ядро откроет SOCKS-порт. Это дешёвый TCP-коннект, а не
     // проба через прокси: иначе «мёртвый» узел заставлял бы ждать полный таймаут.
-    const ready = await waitPortReady(socksPort, () => ({ spawned: child != null, exitCode: child.exitCode, spawnErr }), 3000);
+    const ready = await waitPortReady(socksPort, () => ({ spawned: child != null, exitCode: child.exitCode, spawnErr }), 5000);
     pingDebug("ready", { ms: Date.now() - tStart, ok: ready.ok, error: ready.error });
     if (!ready.ok) {
       return { ok: false, state: "blocked", ttfbMs: null, country: null, error: ready.error };
     }
 
-    // Фаза 2: порт открыт → делаем РЕАЛЬНЫЙ запрос и меряем TTFB. Провал здесь
-    // означает проблему самого узла, повторять бессмысленно.
-    const target = LATENCY_TARGETS[0];
-    const r = await requestThroughProxyOn(socksPort, target.url, { timeout });
-    pingDebug("ttfb", { ms: Date.now() - tStart, ok: r.ok, status: r.status, error: r.error, ttfbMs: r.ttfbMs });
-    if (!r.ok || (target.expect && r.status !== target.expect)) {
-      return { ok: false, state: "blocked", ttfbMs: null, country: null, error: r.error || `HTTP ${r.status}` };
+    // Фаза 2: замер. Перебираем цели и делаем повторы: первое подключение через
+    // только что поднятое ядро часто не успевает (DNS + TCP + TLS/REALITY), а
+    // одиночная попытка на 2.5 с отбрасывала рабочие дальние узлы.
+    const targets = Array.isArray(opts.targets) && opts.targets.length ? opts.targets : PING_TARGETS;
+    const deadline = Date.now() + PING_TOTAL_BUDGET;
+    let lastErr = "timeout";
+    for (const target of targets) {
+      for (let attempt = 1; attempt <= 2; attempt++) {
+        const r = await requestThroughProxyOn(socksPort, target, { timeout });
+        pingDebug("ttfb", { ms: Date.now() - tStart, target, attempt, ok: r.ok, status: r.status, error: r.error, ttfbMs: r.ttfbMs });
+        if (r.ok && r.status < 400) {
+          const state = classifyLatency(true, r.ttfbMs);
+          return { ok: true, state, ttfbMs: r.ttfbMs, country: await bestEffortCountry(socksPort), error: "" };
+        }
+        lastErr = r.error || `HTTP ${r.status}`;
+        if (Date.now() > deadline) return { ok: false, state: "blocked", ttfbMs: null, country: null, error: lastErr };
+        await sleep(250);
+      }
     }
-
-    const state = classifyLatency(true, r.ttfbMs);
-    let country = null;
-    // Страна — best-effort: не влияет на результат пинга.
-    try {
-      const info = await requestThroughProxyOn(socksPort, IPINFO_URL, { timeout: 1500 });
-      if (info.ok && info.body) country = JSON.parse(info.body).country || null;
-    } catch { /* страна необязательна */ }
-    return { ok: true, state, ttfbMs: r.ttfbMs, country, error: "" };
+    return { ok: false, state: "blocked", ttfbMs: null, country: null, error: lastErr };
   } finally {
     const tStop = Date.now();
     await stopChild(child);
     pingDebug("stopped", { ms: Date.now() - tStop, totalMs: Date.now() - tStart });
     try { fs.rmSync(cfgPath, { force: true }); } catch { /* уже удалён */ }
   }
+}
+
+/** Страна выхода — best-effort: не влияет на результат пинга. */
+async function bestEffortCountry(socksPort) {
+  try {
+    const info = await requestThroughProxyOn(socksPort, IPINFO_URL, { timeout: 2000 });
+    if (info.ok && info.body) return JSON.parse(info.body).country || null;
+  } catch { /* страна необязательна */ }
+  return null;
 }
 
 /**
@@ -1127,8 +1353,11 @@ module.exports = {
   startCore, stopCore, getCoreStatus, getCoreProxyUrl, getCoreHttpProxyUrl,
   // пинг/сеть
   testLatency, classifyLatency, requestThroughProxy, requestThroughProxyOn, fetchText,
-  pingNode, PING_SOCKS_PORT, PING_HTTP_PORT,
+  pingNode, PING_SOCKS_PORT, PING_HTTP_PORT, PING_TARGETS, PING_DEFAULT_TIMEOUT,
   // Экспортируем часть внутренних помощников для тестов запуска ядра:
-  // isPortOpen — проверка готовности/занятости порта, stopChild — гарантированный стоп.
-  isPortOpen, stopChild,
+  // isPortOpen — проверка готовности/занятости порта, stopChild — гарантированный стоп,
+  // canConnectTo — быстрый TCP-фильтр узла.
+  isPortOpen, stopChild, canConnectTo,
+  // импорт JSON-конфигов
+  isNodeSupported, SUPPORTED_TRANSPORTS, nodeFromJsonOutbound, nodeFromXrayOutbound, nodeFromSingBoxOutbound,
 };

@@ -498,7 +498,8 @@
     "pingCancel": "Arrêter",
     "enginePaths": "Chemins vérifiés",
     "errPortBusy": "Le port {port} est occupé : fermez l'autre proxy/VPN puis réessayez",
-    "errStartTimeout": "sing-box n'a pas démarré à temps. Vérifiez la configuration du nœud"
+    "errStartTimeout": "sing-box n'a pas démarré à temps. Vérifiez la configuration du nœud",
+    "unsupported": "Le moteur sing-box ne prend pas en charge ce transport (ex. XHTTP) : le nœud ne peut pas être démarré"
   },
   "video": {
     "title": "Téléchargement de vidéos",

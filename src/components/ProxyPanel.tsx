@@ -204,13 +204,17 @@ export default function ProxyPanel({ onClose }: ProxyPanelProps) {
       <button
         className="proxy-node-main"
         onClick={() => void selectNode(n.id)}
-        title={n.server || ""}
-        disabled={n.isExcluded}
+        title={n.unsupported ? t("proxy.unsupported") : (n.server || "")}
+        disabled={n.isExcluded || n.unsupported}
       >
         <Server size={13} />
         <span className="proxy-node-name">{n.name || n.server}</span>
+        {/* Пометка «движок не умеет этот транспорт» (например XHTTP). */}
+        {n.unsupported && <span className="proxy-chip-type tone-coral">!</span>}
         <span className={`proxy-chip-type tone-${PROTO_TONE[n.protocol] || "neutral"}`}>{(n.protocol || "").slice(0, 5).toUpperCase()}</span>
-        <span className={`proxy-ping ${pingClass(n)}`}>{n.pingMs != null ? `${n.pingMs}ms` : "—"}</span>
+        <span className={`proxy-ping ${pingClass(n)}`} title={pingError(n.id) || undefined}>
+          {n.pingMs != null ? `${n.pingMs}ms` : "—"}
+        </span>
       </button>
       {n.isExcluded ? (
         <button className="proxy-paste" title={t("proxy.restoreNode")} disabled={busy === "hide:" + n.id} onClick={() => void restoreNode(n.id)}>
@@ -231,6 +235,12 @@ export default function ProxyPanel({ onClose }: ProxyPanelProps) {
   const hiddenTotal = nodes.filter((n) => n.isExcluded).length;
 
   const pingClass = (n: ProxyNode) => n.pingMs == null ? "blocked" : (n.pingMs <= 300 ? "online" : "degraded");
+
+  /** Причина отказа последнего пинга — показываем в подсказке к значку ms. */
+  const pingError = (id: number) => {
+    const r = ping?.results?.find((x) => x.id === id);
+    return r && !r.ok ? (r.error || "blocked") : "";
+  };
   const latClass = lat ? lat.state : "offline";
 
   return (

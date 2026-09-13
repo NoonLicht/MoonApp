@@ -246,6 +246,10 @@ function summarizeNode(row) {
     country: row.country_code || "",
     isSelected: !!row.is_selected,
     isExcluded: !!row.is_excluded,
+    // Транспорт + признак поддержки движком (xhttp/kcp не поддерживаются) —
+    // UI показывает это, чтобы «красный» узел не выглядел загадкой.
+    transport: parsed ? (parsed.network || "tcp") : "",
+    unsupported: parsed ? !proxyCore.isNodeSupported(parsed) : true,
   };
 }
 

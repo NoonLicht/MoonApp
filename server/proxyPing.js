@@ -93,7 +93,7 @@ function selectNodes({ subId = null, ids = null, onlyMissing = false } = {}) {
  * Запустить пинг (в фоне). Возвращает стартовый статус сразу.
  * `pinger` инъектируется в тестах вместо реального proxyCore.pingNode.
  */
-function start({ subId = null, ids = null, onlyMissing = false, timeout = 2500, pinger } = {}) {
+function start({ subId = null, ids = null, onlyMissing = false, timeout = 6000, pinger } = {}) {
   if (PING.running) return getStatus();
 
   const rows = selectNodes({ subId, ids, onlyMissing });

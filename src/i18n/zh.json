@@ -498,7 +498,8 @@
     "pingCancel": "停止",
     "enginePaths": "已检查的路径",
     "errPortBusy": "端口 {port} 被占用：请关闭其他代理/VPN 后重试",
-    "errStartTimeout": "sing-box 未及时启动。请检查节点配置"
+    "errStartTimeout": "sing-box 未及时启动。请检查节点配置",
+    "unsupported": "sing-box 引擎不支持此传输方式（例如 XHTTP）——该节点无法启动"
   },
   "video": {
     "title": "视频下载",

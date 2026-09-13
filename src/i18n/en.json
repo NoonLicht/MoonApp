@@ -519,7 +519,8 @@
     "pingCancel": "Stop",
     "enginePaths": "Checked paths",
     "errPortBusy": "Port {port} is busy: close the other proxy/VPN and retry",
-    "errStartTimeout": "sing-box did not start in time. Check the node config"
+    "errStartTimeout": "sing-box did not start in time. Check the node config",
+    "unsupported": "The sing-box engine does not support this transport (e.g. XHTTP) — the node cannot be started"
   },
   "conv": {
     "title": "Convert",
