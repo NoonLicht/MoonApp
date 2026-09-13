@@ -4,7 +4,12 @@ const http = require("http");
 const crypto = require("crypto");
 const path = require("path");
 const fs = require("fs");
+// Вычисляем путь к storage ДО require("../server"): модуль выставляет
+// process.env.PERSONAL_APP_STORAGE, который читают server/config.js и monitor.
+const { STORAGE_DIR } = require("./storagePath");
 const { startServer } = require("../server");
+// Автообновление (работает только в packaged-сборке; в dev отключено ниже).
+const { autoUpdater } = require("electron-updater");
 
 // Минимальный размер окна. Ниже этой ширины/высоты вёрстка уходит в
 // «одноколоночный» режим (вертикальный док, адаптивный тулбар), поэтому
@@ -16,9 +21,7 @@ const MIN_WIN_HEIGHT = 520;
 // performance.hardwareAcceleration=false — выключается ДО создания окна, иначе не подхватится.
 function applyHardwareAcceleration() {
   try {
-    const storage =
-      process.env.PERSONAL_APP_STORAGE || path.join(__dirname, "..", "storage");
-    const raw = JSON.parse(fs.readFileSync(path.join(storage, "settings.json"), "utf8"));
+    const raw = JSON.parse(fs.readFileSync(path.join(STORAGE_DIR, "settings.json"), "utf8"));
     if (raw?.performance?.hardwareAcceleration === false) {
       app.disableHardwareAcceleration();
     }
@@ -47,9 +50,7 @@ function findFreePort(start = 4000, maxTry = 100) {
 // события происходят редко (закрытие/сворачивание окна, старт приложения).
 function readSettings() {
   try {
-    const storage =
-      process.env.PERSONAL_APP_STORAGE || path.join(__dirname, "..", "storage");
-    return JSON.parse(fs.readFileSync(path.join(storage, "settings.json"), "utf8"));
+    return JSON.parse(fs.readFileSync(path.join(STORAGE_DIR, "settings.json"), "utf8"));
   } catch {
     return {};
   }
@@ -60,9 +61,7 @@ function readSettings() {
 // Express-роуты), поэтому берём короткий lock-файл: кто не смог захватить за
 // 2 секунды — пропускает запись (потеря размера окна не критична).
 function withSettingsLock(fn) {
-  const storage =
-    process.env.PERSONAL_APP_STORAGE || path.join(__dirname, "..", "storage");
-  const lock = path.join(storage, "settings.lock");
+  const lock = path.join(STORAGE_DIR, "settings.lock");
   let fd = null;
   for (let i = 0; i < 20 && fd === null; i++) {
     try { fd = fs.openSync(lock, "wx"); } catch { const t0 = Date.now(); while (Date.now() - t0 < 100) { /* busy-wait 100 мс */ } }
@@ -73,9 +72,8 @@ function withSettingsLock(fn) {
 
 function patchSettings(patch) {
   try {
-    const storage =
-      process.env.PERSONAL_APP_STORAGE || path.join(__dirname, "..", "storage");
-    const file = path.join(storage, "settings.json");
+    fs.mkdirSync(STORAGE_DIR, { recursive: true }); // storage может ещё не существовать
+    const file = path.join(STORAGE_DIR, "settings.json");
     withSettingsLock(() => {
       let cur = {};
       try { cur = JSON.parse(fs.readFileSync(file, "utf8")); } catch { /* файла ещё нет */ }
@@ -165,6 +163,7 @@ async function refreshTray() {
 async function trayTemplate() {
   const items = [
     { label: "Открыть", click: () => showWindow() },
+    { label: "Проверить обновления", visible: !!app.isPackaged, click: () => { void autoUpdater.checkForUpdates().catch(() => {}); } },
     { type: "separator" },
   ];
   // Подменю «Обход блокировок»: статус + конфиги по группам + Стоп + обновление.
@@ -368,12 +367,60 @@ async function createWindow() {
   win.on("closed", () => { win = null; });
 }
 
+// --- Автообновление (только в packaged-сборке) ---
+// Источник — GitHub Releases (build.publish в package.json). Новая версия
+// скачивается в фоне; установка — по подтверждению пользователя (перезапуск).
+// В dev-режиме проверка отключена: updatable=false у неупакованного приложения.
+let updateTimer = null;
+
+function setupAutoUpdates() {
+  if (!app.isPackaged) return;
+  try {
+    autoUpdater.logger = console;
+    autoUpdater.autoDownload = true;
+    autoUpdater.on("update-downloaded", (info) => {
+      const { dialog } = require("electron");
+      dialog.showMessageBox({
+        type: "info",
+        message: `Обновление ${info.version} скачано`,
+        detail: "Установить сейчас? Приложение перезапустится. Данные в storage не затрагиваются.",
+        buttons: ["Перезапустить и установить", "Позже"],
+        defaultId: 0,
+        cancelId: 1,
+      }).then(({ response }) => {
+        if (response === 0) { quitting = true; autoUpdater.quitAndInstall(); }
+      }).catch(() => { /* окно уже закрыто и т.п. */ });
+    });
+    autoUpdater.on("error", (err) => console.error("[updater]", err?.message || err));
+    void autoUpdater.checkForUpdates().catch(() => {});
+    // Повторная проверка каждые 4 часа, пока приложение открыто.
+    updateTimer = setInterval(() => { void autoUpdater.checkForUpdates().catch(() => {}); }, 4 * 60 * 60 * 1000);
+  } catch (e) {
+    console.error("[updater] init failed:", e);
+  }
+}
+
+// Ручная проверка (кнопка/пункт меню): возвращает версию апдейта или null.
+ipcMain.handle("updates:check", async () => {
+  if (!app.isPackaged) return { ok: false, reason: "dev" };
+  try {
+    const r = await autoUpdater.checkForUpdates();
+    const v = r?.updateInfo?.version || null;
+    const isUpdate = !!v && v !== app.getVersion();
+    return { ok: true, available: isUpdate, version: isUpdate ? v : null };
+  } catch (e) {
+    return { ok: false, reason: e?.message || "error" };
+  }
+});
+
 app.whenReady().then(() => {
   registerWindowControls();
   if (safeStorage) app.setName("PersonalApp");
   // general.autoLaunch: синхронизируем автозапуск с настройками при каждом старте.
   applyAutoLaunch();
   createWindow();
+  // Проверка обновлений — после создания окна, чтобы не задерживать старт.
+  setTimeout(() => setupAutoUpdates(), 5000);
 });
 
 app.on("before-quit", () => {

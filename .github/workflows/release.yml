@@ -1,0 +1,49 @@
+name: Release
+
+# Сборка и публикация NSIS-инсталлятора в GitHub Releases.
+# Триггер — пуш тега вида v0.1.0 (создаётся командой npm version patch/minor/major).
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write # нужно для создания Release и загрузки артефактов
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build and publish
+        env:
+          # Встроенный токен — electron-builder публикует в текущий репозиторий.
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm run dist -- --publish always
+
+      # Инсталлятор + latest.yml + .blockmap попадают в Release автоматически.
+      # Если шаг publish упал, артефакты всё равно можно скачать из Actions.
+      - name: Upload artifacts (fallback)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: installer
+          path: |
+            dist/*.exe
+            dist/latest.yml
+            dist/*.blockmap
+          if-no-files-found: ignore

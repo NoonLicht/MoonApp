@@ -1,0 +1,7 @@
+LibreHardwareMonitorLib — https://github.com/LibreHardwareMonitor/LibreHardwareMonitor
+Лицензия: Mozilla Public License 2.0 (https://mozilla.org/MPL/2.0/)
+
+Содержимое этой папки — неизменённые бинарные файлы библиотеки из официального
+репозитория LibreHardwareMonitor (v0.9.6). Используется исключительно как
+источник данных аппаратных датчиков для страницы «Мониторинг».
+Исходный код библиотеки доступен по ссылке выше в соответствии с MPL-2.0.

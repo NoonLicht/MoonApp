@@ -1,7 +1,8 @@
 # ---------- Зависимости и сборка ----------
 node_modules/
 dist/
-build/
+build/*
+!build/icon.ico
 *.tsbuildinfo
 .vite/
 
@@ -44,3 +45,13 @@ server/ts/*.d.ts
 bb.txt
 tc.txt
 *.txt
+
+# ---------- Локальные инструкции разработчика (не публикуются) ----------
+RELEASE.md
+
+# ---------- Мусор vendor (convertx в сборку не входит) ----------
+server/vendor/convertx/
+
+# ---------- Исключения: нужные бинарники идут в репозиторий ----------
+# DLL LibreHardwareMonitor (монитор железа) — поставляются в инсталляторе.
+!server/vendor/lhm/**
