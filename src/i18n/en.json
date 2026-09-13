@@ -89,6 +89,8 @@
     "fontSizeHint": "Base font size (px)",
     "density": "Density",
     "densityHint": "List layout density",
+    "opaqueBg": "Opaque background",
+    "opaqueBgHint": "Remove window transparency: solid background without blur",
     "performance": "Performance",
     "hwAccel": "Hardware acceleration",
     "hwAccelHint": "Uses GPU for rendering. Keep on. Turn off on artifacts/high GPU usage. Requires restart.",
@@ -273,7 +275,10 @@
     "prev": "‹ Prev",
     "next": "Next ›",
     "perPage": "per page",
-    "page": "Page {page} / {total}"
+    "page": "Page {page} / {total}",
+    "backToTop": "Back to top",
+    "firstPage": "First page",
+    "lastPage": "Last page"
   },
   "aichat": {
     "search": "Search chats",
@@ -459,7 +464,9 @@
     "download": "Download {quality}",
     "downloading": "Downloading {p}%",
     "saved": "Saved to downloads",
-    "ytdlpMissing": "yt-dlp is not installed (click below to install)"
+    "ytdlpMissing": "yt-dlp is not installed (click below to install)",
+    "errUnsupported": "This site is not supported by yt-dlp. Try another link.",
+    "errTimeout": "The source timed out. Check your connection or enable the proxy and try again."
   },
   "proxy": {
     "title": "Proxy",
@@ -964,7 +971,7 @@
     "legendOk": "green — config works",
     "legendErr": "red — does not work",
     "legendIdle": "grey — not checked yet",
-    "serviceWarn": "The Windows service «zapret» is installed: it blocks the config check. Remove it — the simple start does not need it.",
+    "serviceWarn": "The Windows service «zapret» is installed (service mode). Config checking is unavailable while the service is active — remove it («Remove service») before checking.",
     "checkNoResults": "The check returned no results",
     "uacCancelled": "Administrator prompt was cancelled",
     "consoleError": "error",
@@ -1012,8 +1019,13 @@
     "mode": "Mode",
     "modeProcess": "Process (winws.exe)",
     "modeService": "Windows service",
+    "modeServiceHint": "winws runs as a Windows service — no console window. Start installs the service for the selected config (like service.bat → 1. Install Service); Stop removes it (→ 2. Remove Services).",
+    "modeProcessHint": "winws runs as an elevated process via the engine's .bat: a console window appears and stays in the taskbar while the bypass is on — it cannot be closed without stopping the bypass.",
     "serviceInstall": "Install service",
     "serviceRemove": "Remove service",
+    "serviceInstallHint": "Install the Windows service for the selected config (auto-start, survives reboot)",
+    "checkOne": "Check config",
+    "checkOneHint": "Run tests for the selected config only",
     "customArgs": "Custom winws.exe args",
     "customArgsHint": "--filter-tcp 443 --dpi-desync fake,disorder2 --dpi-desync-fooling md5sig --dpi-desync-fake-tls bin/tls_clienthello_www_google_com.bin",
     "reloadStrategies": "Reload",

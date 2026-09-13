@@ -85,6 +85,8 @@
     "fontSizeHint": "基础字体大小（像素）",
     "density": "密度",
     "densityHint": "列表布局密度",
+    "opaqueBg": "不透明背景",
+    "opaqueBgHint": "去除窗口半透明：纯色背景且无模糊",
     "performance": "性能",
     "hwAccel": "硬件加速",
     "hwAccelHint": "使用 GPU 渲染。建议开启。若出现花屏或高 GPU 占用可关闭。需要重启。",
@@ -269,7 +271,10 @@
     "prev": "‹ 上一页",
     "next": "下一页 ›",
     "perPage": "每页",
-    "page": "第 {page} / {total} 页"
+    "page": "第 {page} / {total} 页",
+    "backToTop": "回到顶部",
+    "firstPage": "第一页",
+    "lastPage": "最后一页"
   },
   "aichat": {
     "search": "搜索聊天",
@@ -479,7 +484,9 @@
     "download": "下载 {quality}",
     "downloading": "下载中 {p}%",
     "saved": "已保存到下载",
-    "ytdlpMissing": "yt-dlp 未安装（点击下方安装）"
+    "ytdlpMissing": "yt-dlp 未安装（点击下方安装）",
+    "errUnsupported": "yt-dlp 不支持该网站。请尝试其他链接。",
+    "errTimeout": "源站超时。请检查网络或启用代理后重试。"
   },
   "conv": {
     "title": "转换",
@@ -936,7 +943,12 @@
     "legendOk": "绿色 — 配置可用",
     "legendErr": "红色 — 不可用",
     "legendIdle": "灰色 — 未检查",
-    "serviceWarn": "已安装 zapret 服务：它会阻止配置检查。请先删除该服务——简单启动不需要它。",
+    "serviceWarn": "已安装 zapret 服务（服务模式）。服务处于活动状态时无法进行配置检查——请先删除服务（“删除服务”）再检查。",
+    "mode": "模式",
+    "modeProcess": "进程（winws.exe）",
+    "modeService": "Windows 服务",
+    "modeServiceHint": "winws 作为 Windows 服务运行——没有控制台窗口。“启动”会为所选配置安装服务（相当于 service.bat → 1. Install Service）；“停止”会删除它（→ 2. Remove Services）。",
+    "modeProcessHint": "winws 通过引擎的 .bat 以管理员进程运行：会出现一个控制台窗口，并在绕过启用期间一直留在任务栏中——无法单独关闭。",
     "checkNoResults": "检查未返回结果",
     "uacCancelled": "管理员权限请求已取消",
     "consoleError": "错误",
@@ -973,7 +985,11 @@
     "starting": "启动中…",
     "start": "启动",
     "stop": "停止",
+    "serviceInstall": "安装服务",
     "serviceRemove": "删除服务",
+    "serviceInstallHint": "为所选配置安装 Windows 服务（开机自启）",
+    "checkOne": "检查配置",
+    "checkOneHint": "仅对所选配置运行测试",
     "engineTitle": "zapret 引擎",
     "engineNotInstalled": "未安装",
     "engineLatest": "GitHub 上",

@@ -31,6 +31,20 @@ function applyHardwareAcceleration() {
 }
 applyHardwareAcceleration();
 
+// --- Одна инстанция приложения ---
+// Повторный запуск (двойной клик по ярлыку, клик по закреплённой иконке) раньше
+// поднимал ВТОРУЮ копию: свой BrowserWindow, свой Express-сервер на следующем
+// свободном порту и ту же папку storage. Две копии конкурировали за
+// settings.json/БД/порт/WinDivert — окно «зависало», а скрытая копия оставалась
+// висеть в панели задач. Теперь экземпляр один: второй запуск лишь поднимает
+// окно уже работающего приложения и сразу завершается.
+const gotSingleInstanceLock = app.requestSingleInstanceLock();
+if (!gotSingleInstanceLock) {
+  app.quit();
+} else {
+  app.on("second-instance", () => { showWindow(); });
+}
+
 // --- Логирование main-процесса ---
 // Всё, что Electron пишет в console.warn/error (обновления, трей, окно),
 // дублируется в storage/logs/main.log. Этот файл попадает в диагностический
@@ -146,13 +160,39 @@ let tray = null;
 // Временный файл с API-токеном (см. createWindow) — удаляется при выходе.
 let tokenFile = null;
 
-// Иконка трея: берём иконку самого exe (Windows умеет извлекать её нативно).
+// Иконка трея: сначала пробуем настоящий .ico-файл (build/icon.ico). Раньше
+// иконка бралась только из exe через app.getFileIcon(..., { size: "normal" }) —
+// на frameless/transparent-окне она часто приходила пустой/битой, и трей
+// показывал пустой квадрат. Файловый .ico ресайзим под системный размер трея.
+let trayIconCache = null;
+
+function trayIconCandidates() {
+  const list = [];
+  // packaged: icon.ico кладётся в resources/ (build.extraResources в package.json).
+  if (process.resourcesPath) list.push(path.join(process.resourcesPath, "icon.ico"));
+  // dev: build/icon.ico рядом с проектом.
+  list.push(path.join(__dirname, "..", "build", "icon.ico"));
+  return list;
+}
+
 async function makeTrayIcon() {
-  try {
-    const icon = await app.getFileIcon(process.execPath, { size: "normal" });
-    if (!icon.isEmpty()) return icon;
-  } catch { /* фолбэк ниже */ }
   const { nativeImage } = require("electron");
+  if (trayIconCache) return trayIconCache;
+  for (const p of trayIconCandidates()) {
+    try {
+      if (!fs.existsSync(p)) continue;
+      const img = nativeImage.createFromPath(p);
+      if (img && !img.isEmpty()) {
+        trayIconCache = img.resize({ width: 16, height: 16 });
+        return trayIconCache;
+      }
+    } catch { /* пробуем следующий источник */ }
+  }
+  // Фолбэк: иконка самого exe (Windows умеет извлекать её нативно).
+  try {
+    const icon = await app.getFileIcon(process.execPath, { size: "small" });
+    if (icon && !icon.isEmpty()) { trayIconCache = icon; return trayIconCache; }
+  } catch { /* ниже — пустая картинка */ }
   return nativeImage.createEmpty();
 }
 
@@ -162,8 +202,10 @@ async function ensureTray() {
   tray = new Tray(await makeTrayIcon());
   tray.setToolTip("MoonApp");
   tray.setContextMenu(Menu.buildFromTemplate(await trayTemplate()));
-  // Левый клик по иконке — показать окно.
+  // Левый клик и двойной клик по иконке — показать окно.
   tray.on("click", () => showWindow());
+  tray.on("double-click", () => showWindow());
+  mlog("action", "tray.create", {});
   return tray;
 }
 
@@ -226,7 +268,7 @@ async function trayTemplate() {
       label: s.name,
       type: "checkbox",
       checked: !!active && current === s.id,
-      click: () => { void zapretApi("/start", { strategyId: s.id, mode: "process" }).then(() => refreshTray()); },
+      click: () => { void zapretApi("/start", { strategyId: s.id, mode: (readSettings()?.zapret?.mode === "process" ? "process" : "service") }).then(() => refreshTray()); },
     });
     const grouped = groups
       .map(([g, title]) => {
@@ -263,10 +305,35 @@ async function trayTemplate() {
 
 function showWindow() {
   if (!win) return;
-  win.show();
-  win.focus();
+  try {
+    // Окно могло остаться в состоянии minimized после hide() — без restore()
+    // show() не возвращает его к жизни, и клик выглядит «зависшим».
+    if (win.isMinimized()) win.restore();
+    win.setSkipTaskbar(false);
+    win.show();
+    win.focus();
+    // Прозрачное frameless-окно после hide/show иногда не перерисовывается —
+    // просим Chromium отрисовать кадр заново.
+    try { win.webContents.invalidate?.(); } catch { /* не критично */ }
+    mlog("action", "win.show", {});
+  } catch (e) {
+    mlog("error", "win.show_failed", { error: e?.message || String(e) });
+  }
   try { tray?.destroy(); } catch { /* уже уничтожен */ }
   tray = null;
+}
+
+/**
+ * Скрыть окно в трей. Трей создаём ДО hide() и снимаем кнопку с панели задач:
+ * иначе при закрытии/сворачивании окно остаётся висеть в таскбаре, а по клику
+ * на него ничего не происходит (выглядит как зависание).
+ */
+async function hideToTray(reason) {
+  if (!win) return;
+  try { await ensureTray(); } catch { /* трей мог не создаться — прячем всё равно */ }
+  try { win.setSkipTaskbar(true); } catch { /* ignore */ }
+  try { win.hide(); } catch { /* ignore */ }
+  mlog("action", "win.hide", { reason });
 }
 
 // Ожидание сервера: иначе окно откроется пустым.
@@ -331,11 +398,29 @@ async function createWindow() {
   const startW = ws.rememberSize !== false && remembered.width ? Number(remembered.width) : width;
   const startH = ws.rememberSize !== false && remembered.height ? Number(remembered.height) : height;
 
+  // Позиция окна (window.lastPos): помним её рядом с размером, но восстанавливаем
+  // только если окно попадает на текущий набор мониторов — иначе после смены
+  // конфигурации экранов окно оказывалось бы за пределами рабочего стола.
+  let startX, startY;
+  const rememberedPos = readSettings()?.window?.lastPos || {};
+  if (ws.rememberSize !== false && Number.isFinite(Number(rememberedPos.x)) && Number.isFinite(Number(rememberedPos.y))) {
+    try {
+      const { screen } = require("electron");
+      const px = Number(rememberedPos.x), py = Number(rememberedPos.y);
+      const onScreen = screen.getAllDisplays().some((d) => {
+        const a = d.workArea;
+        return px + startW > a.x + 40 && px < a.x + a.width - 40 && py + 40 > a.y && py < a.y + a.height - 40;
+      });
+      if (onScreen) { startX = px; startY = py; }
+    } catch { /* screen недоступен — остаётся позиция по умолчанию */ }
+  }
+
   // Окно полупрозрачное и без системной рамки.
   // Вся матовость — из CSS (blur-фильтры и цвета).
   win = new BrowserWindow({
     width: startW,
     height: startH,
+    ...(startX !== undefined ? { x: startX, y: startY } : {}),
     minWidth: MIN_WIN_WIDTH,
     minHeight: MIN_WIN_HEIGHT,
     transparent: true,
@@ -373,14 +458,15 @@ async function createWindow() {
   if (!ready) console.error("[electron] server health-check failed; loading anyway");
   win.loadURL(`http://127.0.0.1:${port}`);
 
-  // window.rememberSize: последний размер окна пишется в settings.json
-  // (window.lastSize), чтобы следующее открытие было в нём же.
+  // window.rememberSize: последние размер И позиция окна пишутся в settings.json
+  // (window.lastSize/lastPos), чтобы следующее открытие было в них же.
   win.on("close", () => {
     try {
       const cfg = readSettings()?.window || {};
       if (cfg.rememberSize !== false && !win.isMaximized() && !win.isMinimized()) {
         const [w, h] = win.getSize();
-        patchSettings({ window: { lastSize: { width: w, height: h } } });
+        const [x, y] = win.getPosition();
+        patchSettings({ window: { lastSize: { width: w, height: h }, lastPos: { x, y } } });
       }
     } catch { /* любое состояние окна ок */ }
   });
@@ -388,10 +474,11 @@ async function createWindow() {
   // general.minimizeToTray: сворачивание прячет окно в трей вместо таскбара.
   win.on("minimize", () => {
     try {
-      if (readSettings()?.general?.minimizeToTray === true) {
-        win.hide();
-        void ensureTray();
-      }
+      if (readSettings()?.general?.minimizeToTray !== true) return;
+      // hide() синхронно внутри события minimize оставляет окно в «полу-свёрнутом»
+      // состоянии (баг Electron): в панели задач остаётся кнопка, а окно мёртвое.
+      // Откладываем до следующего тика, когда сворачивание завершится.
+      setImmediate(() => { void hideToTray("minimize"); });
     } catch { /* обычное сворачивание */ }
   });
 
@@ -400,8 +487,7 @@ async function createWindow() {
     try {
       if (quitting || readSettings()?.general?.closeToTray !== true) return;
       e.preventDefault();
-      win.hide();
-      void ensureTray();
+      void hideToTray("close");
     } catch { /* обычное закрытие */ }
   });
 
@@ -509,6 +595,7 @@ ipcMain.handle("updates:download", async () => {
 });
 
 app.whenReady().then(() => {
+  if (!gotSingleInstanceLock) return;
   registerWindowControls();
   if (safeStorage) app.setName("MoonApp");
   mlog("info", "app.start", { version: app.getVersion(), packaged: app.isPackaged, platform: process.platform });

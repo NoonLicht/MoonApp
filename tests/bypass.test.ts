@@ -198,3 +198,25 @@ describe("zapret — запуск конфига через сам .bat движ
 });
 
 });
+describe("zapret — порядок конфигов как в vendor utils/test zapret.ps1", () => {
+  it("нумерует ALT перед ALT10 и держит general.bat последним (как PowerShell)", async () => {
+    const zapret = await import("../server/zapret");
+    const files = [
+      "general.bat",
+      "general (ALT).bat",
+      "general (ALT2).bat",
+      "general (ALT10).bat",
+      "general (EXP).bat",
+      "service.bat", // служебный — отфильтровывается вызывающим, не участвует в сортировке
+    ].filter((f) => !/^service/i.test(f));
+    const order = zapret.vendorOrder(files);
+    expect(order).toEqual([
+      "general (ALT).bat",
+      "general (ALT2).bat",
+      "general (ALT10).bat",
+      "general (EXP).bat",
+      "general.bat",
+    ]);
+  });
+});
+

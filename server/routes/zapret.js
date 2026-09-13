@@ -76,7 +76,7 @@ router.post("/stop", async (req, res) => {
 });
 
 router.post("/service", async (req, res) => {
-  try { res.json(await zapret.serviceAction(String(req.body?.action || "status"))); }
+  try { res.json(await zapret.serviceAction(String(req.body?.action || "status"), req.body?.strategyId)); }
   catch (e) { res.status(400).json({ error: e.message }); }
 });
 
@@ -212,9 +212,9 @@ router.post("/settings", (req, res) => {
 /** Состояние консоли + огоньки конфигов (поллинг из UI). */
 router.get("/check", (req, res) => res.json(zapret.checkStatus()));
 
-/** Полная проверка конфигов: неинтерактивно, вывод — в консоль страницы. */
+/** Полная проверка конфигов (или одного — по strategyId): неинтерактивно, вывод — в консоль страницы. */
 router.post("/check", async (req, res) => {
-  try { res.json(await zapret.startConfigCheck({ fast: req.body?.fast !== false })); }
+  try { res.json(await zapret.startConfigCheck({ fast: req.body?.fast !== false, strategyId: req.body?.strategyId })); }
   catch (e) { res.status(400).json({ error: e.message }); }
 });
 

@@ -56,3 +56,6 @@ server/vendor/convertx/
 # ---------- Исключения: нужные бинарники идут в репозиторий ----------
 # DLL LibreHardwareMonitor (монитор железа) — поставляются в инсталляторе.
 !server/vendor/lhm/**
+# yt-dlp.exe / sing-box.exe в репозиторий НЕ коммитим (крупные): их скачивает
+# `npm run fetch:engines` при сборке инсталлятора (в т.ч. в CI).
+# См. scripts/fetch-engines.js.

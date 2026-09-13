@@ -467,6 +467,7 @@ export default function SettingsPage() {
           <Row label={t("settings.density")} hint={t("settings.densityHint")}>
             <Select value={ap.density} onChange={(e) => change("appearance.density", e.target.value)} options={["comfortable", "compact"]} />
           </Row>
+          <BoolRow label={t("settings.opaqueBg")} hint={t("settings.opaqueBgHint")} value={!!ap.opaqueBackground} onChange={(v) => change("appearance.opaqueBackground", v)} />
         </Section>
 
         {/* ---- Производительность ---- */}
@@ -666,14 +667,6 @@ export default function SettingsPage() {
           <Row label={t("voiceSettings.voiceLoudness")} hint={t("voiceSettings.voiceLoudnessHint")}>
             <NumberInput value={Number(voice.loudnessTarget ?? -16)} onChange={(v) => change("voice.loudnessTarget", v)} min={-30} max={-8} step={1} suffix=" LUFS" />
           </Row>
-        </Section>
-
-        {/* ---- РђСЂС…РёРІР°С‚РѕСЂ ---- */}
-        <Section title={t("settings.archiver")} icon={Archive} badge="active">
-          <BoolRow label={t("archSettings.archInline")} hint={t("archSettings.archInlineHint")} value={arch.defaultOptions.css} onChange={(v) => change("archiver.defaultOptions.css", v)} />
-          <BoolRow label={t("archSettings.archImages")} hint={t("archSettings.archImagesHint")} value={arch.defaultOptions.images} onChange={(v) => change("archiver.defaultOptions.images", v)} />
-          <BoolRow label={t("archSettings.archFonts")} hint={t("archSettings.archFontsHint")} value={arch.defaultOptions.fonts} onChange={(v) => change("archiver.defaultOptions.fonts", v)} />
-          <BoolRow label={t("archSettings.archScripts")} hint={t("archSettings.archScriptsHint")} value={arch.defaultOptions.removeScripts} onChange={(v) => change("archiver.defaultOptions.removeScripts", v)} />
         </Section>
 
         {/* ---- Web Archive / .sitebak (док: sitebak) — параметры краулера ---- */}

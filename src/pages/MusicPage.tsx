@@ -9,6 +9,7 @@ import ToolbarMenu from "../components/ToolbarMenu";
 import { usePageToolbar } from "../components/Toolbar";
 import { useI18n } from "../i18n";
 import { api } from "../api/client";
+import MediaLoading from "../components/MediaLoading";
 import type { MusicTrack, MusicFormats, MusicJobStatus } from "../api/types";
 
 // Форматы/качества для выбора в тулбаре
@@ -36,6 +37,12 @@ interface JobFile {
 export default function MusicPage() {
   const { t } = useI18n();
   const menu = useContextMenu();
+  // Понятный текст для частых ошибок yt-dlp: сайт не поддержан / таймаут источника.
+  const errText = (raw: string): string => {
+    if (/Unsupported URL/i.test(raw)) return t("video.errUnsupported");
+    if (/timed out|timeout/i.test(raw)) return t("video.errTimeout");
+    return raw;
+  };
 
   // Состояние поиска
   const [query, setQuery] = useState("");
@@ -205,15 +212,13 @@ export default function MusicPage() {
 
       {/* Результаты поиска */}
       {searchState === "searching" && (
-        <Glass>
-          <span className="muted-sm"><RefreshCw size={14} className="spin" /> {t("common.loading")}</span>
-        </Glass>
+        <MediaLoading kind="music" label={t("common.loading")} indeterminate />
       )}
 
       {searchState === "error" && searchError && (
         <Glass className="source-placeholder" style={{ borderColor: "var(--coral)" }}>
           <AlertTriangle size={16} style={{ color: "var(--coral)" }} />
-          <span>{searchError}</span>
+          <span>{errText(searchError)}</span>
         </Glass>
       )}
 
@@ -301,19 +306,19 @@ export default function MusicPage() {
 
             {/* Прогресс */}
             {downloadState === "downloading" && (
-              <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 8 }}>
-                <div className="muted-sm">
-                  <RefreshCw size={14} className="spin" /> {t("video.downloading", { p: downloadProgress })}
-                </div>
-                <ProgressBar value={downloadProgress} />
-              </div>
+              <MediaLoading
+                kind="music"
+                title={selectedTrack.title}
+                label={t("video.downloading", { p: downloadProgress })}
+                progress={downloadProgress}
+              />
             )}
 
             {/* Ошибка */}
             {downloadState === "error" && downloadError && (
               <div className="source-placeholder" style={{ borderColor: "var(--coral)", padding: "8px 12px" }}>
                 <AlertTriangle size={14} style={{ color: "var(--coral)" }} />
-                <span>{downloadError}</span>
+                <span>{errText(downloadError)}</span>
               </div>
             )}
 

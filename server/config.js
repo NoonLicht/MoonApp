@@ -33,6 +33,20 @@ const DIRS = {
   // DPI Bypass (zapret): сюда качается и распаковывается релиз с GitHub.
   zapret: ensureDir(path.join(STORAGE_DIR, "zapret")),
   tmp: ensureDir(path.join(STORAGE_DIR, "tmp")),
+  // --- Папки самозагружаемых бинарников (создаём сразу, а не «лениво») ---
+  // Раньше они появлялись только после первой установки соответствующего
+  // движка, из-за чего на свежей установке в storage не хватало подпапок.
+  ffmpeg: ensureDir(path.join(STORAGE_DIR, "ffmpeg")),
+  ytdlp: ensureDir(path.join(STORAGE_DIR, "ytdlp")),
+  singbox: ensureDir(path.join(STORAGE_DIR, "singbox")),
+  // LHM: артефакты мониторинга (pid.txt и т.п.) — вне asar.
+  bin: ensureDir(path.join(STORAGE_DIR, "bin")),
+  binLhm: ensureDir(path.join(STORAGE_DIR, "bin", "lhm")),
+  // My Space: хранилище заметок и холстов + старый редактор заметок.
+  vault: ensureDir(path.join(STORAGE_DIR, "vault")),
+  vaultNotes: ensureDir(path.join(STORAGE_DIR, "vault", "notes")),
+  vaultHolts: ensureDir(path.join(STORAGE_DIR, "vault", "holts")),
+  notes: ensureDir(path.join(STORAGE_DIR, "notes")),
 };
 
 const FILES = {

@@ -12,18 +12,19 @@ const DEFAULTS = {
     language: "ru",
     startPage: "store",      // открывается при запуске
     autoUpdate: true,        // автообновление приложения (electron-updater)
-    autoLaunch: false,       // TODO: автозапуск с Windows
-    minimizeToTray: false,   // TODO: свёрнутая кнопка в трей
-    closeToTray: false,      // TODO: закрытие окна сворачивает в трей вместо выхода
+    autoLaunch: false,       // автозапуск с Windows (electron/main.js → applyAutoLaunch)
+    minimizeToTray: false,   // сворачивание прячет окно в трей (electron/main.js)
+    closeToTray: false,      // закрытие окна сворачивает в трей вместо выхода
   },
 
   // --- Внешний вид ---
   appearance: {
     theme: "dark",           // dark | light
     accent: "amber",         // amber | violet | teal | coral
-    reduceMotion: false,     // TODO: вырубать анимации/blur-блобы
-    fontSize: 14,            // TODO: базовый размер шрифта
-    density: "comfortable",  // future: comfortable | compact
+    reduceMotion: false,     // вырубать анимации/blur-блобы
+    fontSize: 14,            // базовый размер шрифта
+    density: "comfortable",  // comfortable | compact
+    opaqueBackground: false, // непрозрачный фон вместо полупрозрачного окна
   },
 
   // --- Производительность ---
@@ -42,7 +43,7 @@ const DEFAULTS = {
   window: {
     width: 1180,
     height: 820,
-    rememberSize: true,      // future: запоминать размер/позицию окна
+    rememberSize: true,      // запоминать размер И позицию окна (electron/main.js)
   },
 
   // --- Чат / ИИ ---
@@ -81,10 +82,9 @@ const DEFAULTS = {
   },
 
   // --- Книги (Флибуста) ---
-  books: {
-    pageSize: 40,            // книг на страницу в локальном каталоге
-    preferLiveSearch: false, // сразу искать через живой OPDS-поиск, а не локальную базу
-  },
+  // Настроек нет намеренно: поиск и каталог работают напрямую через OPDS
+  // Flibusta, локальной базы книг больше нет (server/flibusta.js).
+  // Избранное и закладки хранятся в БД, а не в settings.json.
 
   // --- Видео / Музыка (это уже yt-dlp) ---
   media: {
@@ -114,10 +114,10 @@ const DEFAULTS = {
     f5Cmd: "",
   },
 
-  // --- Архиватор страниц (пока TODO) ---
-  archiver: {
-    defaultOptions: { css: true, images: true, fonts: true, removeScripts: false },
-  },
+  // --- Архиватор страниц ---
+  // Настроек нет: страницы архивирует движок Web Archive (.sitebak), а его
+  // параметры живут в секции sitebak.* ниже. Старая секция archiver.defaultOptions
+  // была легаси и ни на что не влияла — удалена.
 
   // --- Видеосжатие (матрица энкодеров, см. server/encoders.js) ---
   compressor: {
@@ -180,7 +180,13 @@ const DEFAULTS = {
   // --- Zapret / DPI bypass (Flowseal/zapret-discord-youtube) ---
   zapret: {
     dir: "",                 // путь к каталогу движка (пусто = автопоиск resources/zapret)
-    mode: "process",         // process | service
+    // process — winws как elevated-процесс: открывает ОКНО КОНСОЛИ, которое
+    //           висит в панели задач и не закрывается отдельно от обхода;
+    // service — winws как служба Windows (это пункты 1/2 в service.bat:
+    //           Install Service → выбор профиля / Remove Services). Окна нет.
+    // По умолчанию — служба, чтобы запуск конфига не оставлял консоль.
+    mode: "service",
+    modeMigratedToService: false, // разовая миграция старого "process" → service (см. load)
     defaultStrategy: "general",
     gameFilterTcp: false,    // GameFilter: TCP-порты игр
     gameFilterUdp: false,    // GameFilter: UDP-порты игр
@@ -190,9 +196,12 @@ const DEFAULTS = {
 
   // --- Продвинутое / развитие ---
   advanced: {
-    telemetry: false,        // TODO: анонимная статистика использования
-    logLevel: "info",        // info | warn | error
-    masterKey: "",           // TODO: мастер-ключ шифрования (пока env MOONAPP_MASTER_KEY)
+    telemetry: false,        // анонимная статистика использования (logger: action-события)
+    logLevel: "info",        // debug | info | warn | error — минимальная важность для app.log
+    masterKey: "",           // мастер-ключ AES для секретов без Electron (server/security.js)
+
+    // ВНИМАНИЕ: ключи, которых нет в DEFAULTS, отбрасываются sanitizePatch при
+    // сохранении. window.lastSize/lastPos пишет main-процесс напрямую (patchSettings).
   },
 };
 
@@ -221,6 +230,13 @@ function load() {
     cache = deepMerge(DEFAULTS, raw);
   } catch {
     cache = JSON.parse(JSON.stringify(DEFAULTS));
+  }
+  // Разовая миграция (0.1.x): раньше запуск конфига всегда шёл процессом и
+  // оставлял окно консоли в панели задач. Переводим сохранённые настройки на
+  // режим службы (без окна); пользователь может вернуть process переключателем.
+  if (cache?.zapret && cache.zapret.modeMigratedToService !== true) {
+    cache.zapret.mode = "service";
+    cache.zapret.modeMigratedToService = true;
   }
   return cache;
 }

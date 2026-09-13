@@ -17,6 +17,9 @@ async function getSocksAgent() {
 
 const BIN_DIR = path.join(DIRS.storage, "singbox");
 const BUNDLED_BIN = path.join(BIN_DIR, "sing-box.exe");
+// Бинарь из комплекта инсталлятора: server/vendor/singbox/sing-box.exe
+// (в собранной сборке — app.asar.unpacked, см. build.asarUnpack).
+const VENDOR_BIN = path.join(__dirname, "vendor", "singbox", "sing-box.exe");
 const SB_VER = "1.11.0";
 const SB_URL = `https://github.com/SagerNet/sing-box/releases/download/v${SB_VER}/sing-box-${SB_VER}-windows-amd64.zip`;
 const DEF_PORT = 10808;
@@ -173,7 +176,7 @@ function normalizeConfig(cfg) {
 // --- Детекция sing-box ---
 
 let dc = null, da = 0;
-function sbCand() { return [BUNDLED_BIN, "sing-box"]; }
+function sbCand() { return [BUNDLED_BIN, VENDOR_BIN, "sing-box"]; }
 function runSBVer(b) {
   return new Promise((r) => {
     const { execFile } = require("child_process");
@@ -205,7 +208,7 @@ function getStatus() {
     enabled: PS.enabled, running: PS.running, port: PS.port,
     pingMs: PS.pingMs, country: PS.country, error: PS.error,
     vlessLink: vl, validLink: !!parsed,
-    installed: fs.existsSync(BUNDLED_BIN) || !!det.found,
+    installed: fs.existsSync(BUNDLED_BIN) || fs.existsSync(VENDOR_BIN) || !!det.found,
     singBoxVersion: det.version || null, childPid: PS.child?.pid || null,
   };
 }
@@ -297,7 +300,7 @@ async function pingProxy(timeout = 8000) {
 // --- Установка ---
 
 let is = { state: "idle", progress: 0, phase: "", error: "" };
-function instStat() { return { ...is, installed: fs.existsSync(BUNDLED_BIN) }; }
+function instStat() { return { ...is, installed: fs.existsSync(BUNDLED_BIN) || fs.existsSync(VENDOR_BIN) }; }
 async function installSB() {
   if (is.state === "working") return instStat();
   is = { state: "working", progress: 0, phase: "download", error: "" };

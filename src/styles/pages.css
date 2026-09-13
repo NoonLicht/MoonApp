@@ -63,6 +63,19 @@
 .store-grid-wrap::-webkit-scrollbar-thumb{ background:linear-gradient(180deg, var(--amber), var(--violet)); border-radius:999px; border:2px solid transparent; background-clip:content-box; }
 .store-grid-wrap::-webkit-scrollbar-thumb:hover{ border:0; }
 
+/* Кнопка «В начало» (страница магазина): плавающая, над нижним доком. */
+.store-top-btn{
+  position:fixed; right:34px; bottom:88px; z-index:50;
+  width:40px; height:40px; border-radius:999px;
+  display:inline-flex; align-items:center; justify-content:center;
+  background:linear-gradient(135deg, var(--amber), var(--violet));
+  color:#1a1206; border:none; cursor:pointer;
+  box-shadow:var(--shadow);
+  animation:tb-pop-in .16s cubic-bezier(.2,.9,.3,1);
+}
+.store-top-btn:hover{ filter:brightness(1.08); }
+.theme-light .store-top-btn{ color:#1c1d2b; }
+
 /* --- вкладки All / Winget / Comss --- */
 .tabs{ display:flex; gap:6px; }
 .tab{
@@ -101,6 +114,8 @@
 .pager-page.is-active{ background:linear-gradient(135deg,var(--amber-soft),var(--violet-soft)); border-color:rgba(240,166,61,0.4); color:var(--text-primary); font-weight:700; }
 .page-size{ display:inline-flex; align-items:center; gap:7px; margin-left:6px; }
 .page-size .field-label{ margin:0; }
+/* Многоточие в пагинации (между крайними и окном номеров) */
+.pager-gap{ color:var(--text-tertiary); font-family:var(--font-mono); font-size:12px; padding:0 2px; user-select:none; }
 .theme-light .pager-btn, .theme-light .pager-page{ background:rgba(20,20,40,0.06); border-color:rgba(20,20,40,0.12); }
 .app-card{ background:var(--glass); border:1px solid var(--glass-border); border-radius:16px; padding:14px; display:flex; flex-direction:column; gap:8px; }
 .app-glyph{ width:42px; height:42px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-family:var(--font-display); font-weight:700; font-size:14px; }

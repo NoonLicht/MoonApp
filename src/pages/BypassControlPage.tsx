@@ -39,6 +39,9 @@ export default function BypassControlPage() {
   const [check, setCheck] = useState<ZapretCheckState | null>(null);
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
+  // Режим запуска: "service" (служба Windows — без окна консоли, аналог
+  // service.bat → 1. Install Service) либо "process" (elevated winws — с окном).
+  const [mode, setMode] = useState<"process" | "service">("service");
   const consoleRef = useRef<HTMLPreElement | null>(null);
 
   /** Понятный текст ошибки по коду бэкенда. */
@@ -76,6 +79,13 @@ export default function BypassControlPage() {
     void refresh();
     void checkUpdates();
     api.zapretCheckStatus().then(setCheck).catch(() => { /* ещё не проверяли */ });
+    // Сохранённый режим запуска (по умолчанию — служба, без окна консоли).
+    api.getSettings()
+      .then((s: unknown) => {
+        const z = (s as { zapret?: { mode?: string } })?.zapret;
+        setMode(z?.mode === "process" ? "process" : "service");
+      })
+      .catch(() => { /* дефолт — служба */ });
   }, [refresh, checkUpdates]);
 
 
@@ -150,13 +160,26 @@ export default function BypassControlPage() {
 
   const doStart = (strategyId: string) => guard("start", async () => {
     setSelected(strategyId);
-    setStatus(await api.zapretStart({ strategyId }));
+    setStatus(await api.zapretStart({ strategyId, mode }));
   });
   const doStop = () => guard("stop", () => api.zapretStop());
+  // Смена режима: сохраняем в настройках, чтобы трей и следующий запуск его учли.
+  const doSetMode = (m: string) => guard("mode", async () => {
+    const next: "process" | "service" = m === "process" ? "process" : "service";
+    await api.zapretSaveSettings({ mode: next });
+    setMode(next);
+  });
   const doInstall = (tag?: string) => guard("install", async () => {
     setInstallState(await api.zapretInstall(tag ? { tag } : undefined));
   });
   const doRemoveService = () => guard("service", () => api.zapretService("remove"));
+  const doInstallService = (strategyId: string) => guard("service", () => api.zapretService("install", strategyId));
+  // Проверка ТОЛЬКО выбранного конфига (vendor-скрипт: standard tests, выбранные конфиги).
+  const doCheckOne = (strategyId: string) => {
+    setSelected(strategyId);
+    setError("");
+    api.zapretCheckStart(true, strategyId).then(setCheck).catch((e) => setError(errorText(e)));
+  };
 
   async function doRunCheck() {
     setError("");
@@ -201,6 +224,13 @@ export default function BypassControlPage() {
         </div>
         <div className="bp-banner-actions">
           {checkRunning && <span className="bp-chip run">{t("bypass.checkRunningChip")}</span>}
+          <label className="bp-mode" title={mode === "service" ? t("bypass.modeServiceHint") : t("bypass.modeProcessHint")}>
+            <span className="bp-dim">{t("bypass.mode")}</span>
+            <select value={mode} disabled={active || busy === "mode"} onChange={(e) => void doSetMode(e.target.value)}>
+              <option value="service">{t("bypass.modeService")}</option>
+              <option value="process">{t("bypass.modeProcess")}</option>
+            </select>
+          </label>
           {!active ? (
             <button className="bp-btn success" disabled={busy === "start" || !engine?.found}
               onClick={() => void doStart(selected)}>
@@ -228,7 +258,7 @@ export default function BypassControlPage() {
       )}
       {error && <div className="bp-error">{error}</div>}
       {!!engine?.found && (
-        <div className="bp-note"><Terminal size={14} /> <span>{t("bypass.launchNote")}</span></div>
+        <div className="bp-note"><Terminal size={14} /> <span>{mode === "service" ? t("bypass.modeServiceHint") : t("bypass.modeProcessHint")}</span></div>
       )}
 
       {/* Движок: проверка обновлений + скачать/обновить релиз с GitHub */}
@@ -335,10 +365,31 @@ export default function BypassControlPage() {
           </div>
           <div className="bp-row spread">
             <span className="bp-dim">{current ? current.file : t("bypass.selectHint")}</span>
-            <button className="bp-btn tiny ghost" disabled={busy === "start" || !engine?.found}
-              onClick={() => void doStart(selected)}>
-              <Play size={12} /> {t("bypass.start")}
-            </button>
+            <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+              <button className="bp-btn tiny ghost"
+                disabled={checkRunning || !engine?.found || !!status?.service?.installed}
+                title={t("bypass.checkOneHint")}
+                onClick={() => void doCheckOne(selected)}>
+                <Terminal size={12} /> {t("bypass.checkOne")}
+              </button>
+              {!status?.service?.installed ? (
+                <button className="bp-btn tiny ghost"
+                  disabled={busy === "service" || !engine?.found}
+                  title={t("bypass.serviceInstallHint")}
+                  onClick={() => void doInstallService(selected)}>
+                  <Shield size={12} /> {t("bypass.serviceInstall")}
+                </button>
+              ) : (
+                <button className="bp-btn tiny ghost" disabled={busy === "service"}
+                  onClick={() => void doRemoveService()}>
+                  {t("bypass.serviceRemove")}
+                </button>
+              )}
+              <button className="bp-btn tiny success" disabled={busy === "start" || !engine?.found}
+                onClick={() => void doStart(selected)}>
+                <Play size={12} /> {t("bypass.start")}
+              </button>
+            </div>
           </div>
         </section>
 

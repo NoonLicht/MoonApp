@@ -29,6 +29,11 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      # Движки «из коробки»: yt-dlp.exe и sing-box.exe кладутся в server/vendor,
+      # оттуда попадают в resources/app.asar.unpacked (build.asarUnpack).
+      - name: Fetch bundled engine binaries
+        run: npm run fetch:engines
+
       - name: Build and publish
         env:
           # Встроенный токен — electron-builder публикует в текущий репозиторий.

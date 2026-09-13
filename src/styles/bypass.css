@@ -19,6 +19,14 @@
 .bp-badge { font-weight: 800; font-size: 15px; letter-spacing: .3px; color: #34d399; }
 .bp-banner.off .bp-badge { color: inherit; opacity: .75; }
 .bp-banner-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+/* Переключатель режима запуска (служба без окна / процесс с окном консоли) */
+.bp-mode { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; }
+.bp-mode select {
+  background: var(--surface, rgba(255,255,255,.08)); color: inherit;
+  border: 1px solid var(--border, rgba(255,255,255,.15)); border-radius: 8px;
+  padding: 5px 8px; font-size: 12.5px; cursor: pointer; max-width: 240px;
+}
+.bp-mode select:disabled { opacity: .5; cursor: not-allowed; }
 .bp-dim { opacity: .55; font-size: 12px; }
 
 /* --- Кнопки / чипы / служебные строки --- */
@@ -143,14 +151,16 @@
 .bp-tile .bp-light { position: absolute; top: 8px; left: 8px; }
 
 /* --- Консоль проверки (vendor utils/test zapret.ps1) --- */
-/* Панель проверки растягивается на всю высоту карточки, а её консоль занимает
-   свободное место — так обе карточки ряда выглядят выровненными. */
-.bp-console { display: flex; flex-direction: column; gap: 6px; border-top: 1px dashed var(--border, rgba(255,255,255,.12)); padding-top: 8px; flex: 1 1 auto; min-height: 0; }
+/* Панель проверки больше НЕ растягивается на всю высоту карточки: у консоли
+   фиксированная высота, а прокрутка — внутри её окна. Иначе длинный лог тянул
+   карточку вниз на всю страницу. */
+.bp-console { display: flex; flex-direction: column; gap: 6px; border-top: 1px dashed var(--border, rgba(255,255,255,.12)); padding-top: 8px; flex: 0 0 auto; }
 .bp-console-head { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 600; }
 .bp-console-state { margin-left: auto; font-weight: 400; text-align: right; min-width: 0; }
 .bp-console-body {
   margin: 0; font-family: ui-monospace, Consolas, monospace; font-size: 10.5px; line-height: 1.45;
-  flex: 1 1 auto; min-height: 140px; overflow: auto; white-space: pre-wrap; word-break: break-word;
+  height: min(320px, 42vh); max-height: min(320px, 42vh); overflow-y: auto; overflow-x: hidden;
+  white-space: pre-wrap; word-break: break-word;
   background: rgba(0,0,0,.3); border-radius: 8px; padding: 8px;
 }
 .bp-console-line { display: block; }

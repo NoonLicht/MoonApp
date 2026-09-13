@@ -6,6 +6,7 @@ import ToolbarMenu from "../components/ToolbarMenu";
 import { usePageToolbar } from "../components/Toolbar";
 import { useI18n } from "../i18n";
 import { api } from "../api/client";
+import MediaLoading from "../components/MediaLoading";
 import type { VideoInfo, YtdlpInstallStatus } from "../api/types";
 
 const C = ["MP4", "WEBM", "MKV"];
@@ -20,6 +21,12 @@ interface JobFile {
 export default function VideoPage() {
   const { t } = useI18n();
   const menu = useContextMenu();
+  // Понятный текст для частых ошибок yt-dlp: сайт не поддержан / таймаут источника.
+  const errText = (raw: string): string => {
+    if (/Unsupported URL/i.test(raw)) return t("video.errUnsupported");
+    if (/timed out|timeout/i.test(raw)) return t("video.errTimeout");
+    return raw;
+  };
   const [u, setU] = useState("");
   const [st, setSt] = useState("idle");
   const [i, setI] = useState<VideoInfo | null>(null);
@@ -153,7 +160,7 @@ export default function VideoPage() {
         <Btn variant="primary" onClick={fi} disabled={st === "parsing"}>{st === "parsing" ? t("video.fetching") : t("video.fetch")}</Btn>
       </Glass>
       {st === "idle" && <EmptyHint icon={Video} text={t("video.empty")} />}
-      {st === "parsing" && <Glass><span className="muted-sm">{t("video.fetching")}</span></Glass>}
+      {st === "parsing" && <MediaLoading kind="video" label={t("video.fetching")} indeterminate />}
       {st === "ready" && i && (
         <Glass className="media-preview">
           <div className="media-thumb tone-amber">
@@ -179,12 +186,7 @@ export default function VideoPage() {
         </Glass>
       )}
       {st === "downloading" && (
-        <Glass>
-          <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 8 }}>
-            <div className="muted-sm"><RefreshCw size={14} className="spin" /> {t("video.downloading", { p })}</div>
-            <ProgressBar value={p} />
-          </div>
-        </Glass>
+        <MediaLoading kind="video" title={i?.title} label={t("video.downloading", { p })} progress={p} />
       )}
       {st === "done" && jf.length > 0 && (
         <Glass className="media-preview">
@@ -202,7 +204,7 @@ export default function VideoPage() {
       {st === "error" && err && (
         <Glass className="source-placeholder" style={{ borderColor: "var(--coral)" }}>
           <AlertTriangle size={16} style={{ color: "var(--coral)" }} />
-          <span>{err}</span>
+          <span>{errText(err)}</span>
         </Glass>
       )}
     </div>

@@ -63,6 +63,9 @@ async function detectFfmpeg() {
 
 const BIN_DIR = path.join(DIRS.storage, "ytdlp");
 const BUNDLED_BIN = path.join(BIN_DIR, "yt-dlp.exe");
+// Бинарь из комплекта инсталлятора: server/vendor/ytdlp/yt-dlp.exe
+// (в собранной сборке — app.asar.unpacked, см. build.asarUnpack).
+const VENDOR_BIN = path.join(__dirname, "vendor", "ytdlp", "yt-dlp.exe");
 // Официальный портативный exe (PyInstaller), на машине не нужен Python.
 const YTDLP_URL = "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe";
 const YTDLP_MAX_BYTES = 300 * 1024 * 1024;
@@ -79,6 +82,7 @@ function ytdlpCandidates() {
     if (!path.extname(explicit)) list.push(explicit + ".exe");
   }
   list.push(BUNDLED_BIN);
+  list.push(VENDOR_BIN);
   list.push("yt-dlp");
   return list;
 }
@@ -160,17 +164,36 @@ function runJson(bin, url) {
   return new Promise((resolve, reject) => {
     execFile(
       bin,
-      ["-J", "--no-playlist", "--ignore-config", "--no-warnings", "--no-call-home", "--", url],
+      ["-J", "--no-playlist", "--ignore-config", "--no-warnings", "--socket-timeout", "30", "--", url],
       { timeout: 120000, windowsHide: true, maxBuffer: 64 * 1024 * 1024 },
       (err, stdout, stderr) => {
         if (err) {
-          const msg = String(stderr || err.message).split(/[\r\n]/).filter(Boolean).slice(-4).join(" ");
+          const msg = meaningfulStderr(stderr || err.message);
           return reject(new Error(msg || err.message));
         }
         resolve(stdout);
       }
     );
   });
+}
+
+/**
+ * yt-dlp подмешивает в stderr предупреждения (в т.ч. про deprecated-опции и
+ * ссылку на issue), из-за которых настоящая строка «ERROR: …» терялась в хвосте.
+ * Оставляем только содержательные строки. Заодно «Unsupported URL» превращаем в
+ * понятный пользователю код.
+ */
+function meaningfulStderr(raw) {
+  const lines = String(raw || "").split(/[\r\n]+/).map((l) => l.trim()).filter(Boolean);
+  const filtered = lines.filter((l) =>
+    !/^Deprecated Feature:/i.test(l) &&
+    !/deprecated/i.test(l) &&
+    !/issues\/14198/.test(l) &&
+    !/Please remove them/i.test(l) &&
+    l !== "ERROR:"
+  );
+  const list = (filtered.length ? filtered : lines).slice(-5);
+  return list.join(" · ");
 }
 
 // Достаётся мета и список форматов по URL.
@@ -287,7 +310,7 @@ function startDownload({ url, info, height, container, subs, thumb }) {
   const needsMerge = plan.needsMerge || wantEmbed || containerOut !== (plan.container || "mp4");
 
   const args = [
-    "--no-playlist", "--ignore-config", "--no-warnings", "--no-call-home", "--no-update",
+    "--no-playlist", "--ignore-config", "--no-warnings", "--no-update", "--socket-timeout", "30",
     "--newline", "--retries", "3", "--fragment-retries", "3",
     "--restrict-filenames", "-o", outTemplate,
   ];
@@ -323,7 +346,7 @@ function startDownload({ url, info, height, container, subs, thumb }) {
       if (job.state !== "error") {
         if (code === 0) finalizeJob(job, "done");
         else {
-          const errMsg = job.stderrBuf.split(/[\r\n]+/).filter(Boolean).slice(-5).join(" · ") || `yt-dlp exited with code ${code}`;
+          const errMsg = meaningfulStderr(job.stderrBuf) || `yt-dlp exited with code ${code}`;
           finalizeJob(job, "error", errMsg);
         }
       }
@@ -353,7 +376,7 @@ function getDownloadFile(key) {
 
 let installState = { state: "idle", progress: 0, phase: "", error: "" };
 
-function installStatus() { return { ...installState, installed: fs.existsSync(BUNDLED_BIN) }; }
+function installStatus() { return { ...installState, installed: fs.existsSync(BUNDLED_BIN) || fs.existsSync(VENDOR_BIN) }; }
 
 function installYtDlp() {
   if (installState.state === "working") return installState;
@@ -434,7 +457,7 @@ function startAudioDownload({ url, format = "mp3", quality = 0 }) {
   const outTemplate = path.join(outDir, `${token}.%(ext)s`);
 
   const args = [
-    "--no-playlist", "--ignore-config", "--no-warnings", "--no-call-home", "--no-update",
+    "--no-playlist", "--ignore-config", "--no-warnings", "--no-update", "--socket-timeout", "30",
     "--newline", "--retries", "3", "--fragment-retries", "3",
     "--restrict-filenames", "-o", outTemplate,
     "--extract-audio",

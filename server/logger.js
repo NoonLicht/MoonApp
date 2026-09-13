@@ -14,7 +14,8 @@ const { DIRS, FILES } = require("./config");
 //      предупреждения. Ротация: >8 МБ → audit.1.log (предыдущий архив).
 //
 // Настройки из advanced.* управляют записью в app.log:
-//   advanced.logLevel = "error" | "warn" | "info" — минимальный уровень системных событий;
+//   advanced.logLevel = "debug" | "info" | "warn" | "error" — минимальная
+//     ВАЖНОСТЬ события (ниже порога — не пишется);
 //   advanced.telemetry = false — события уровня "action" (клики, навигация) не пишутся.
 // Файл настроек читается напрямую (без require("./settings")), т.к. settings.js
 // сам использует logger — так избегаем циклической зависимости.
@@ -29,15 +30,18 @@ function levelFilter() {
   let telemetry = false;
   try {
     const advanced = JSON.parse(fs.readFileSync(FILES.settings, "utf8"))?.advanced || {};
-    if (["error", "warn", "info"].includes(advanced.logLevel)) logLevel = advanced.logLevel;
+    if (["debug", "error", "warn", "info"].includes(advanced.logLevel)) logLevel = advanced.logLevel;
     telemetry = !!advanced.telemetry;
   } catch { /* настроек нет — дефолты */ }
   cachedFilter = { logLevel, telemetry };
   return cachedFilter;
 }
 
-// Порог для системных событий: error < warn < info.
-const LEVEL_RANK = { error: 0, warn: 1, info: 2, action: 3 };
+// Важность системных событий: debug < info < warn < error. Пишем всё, что не
+// ниже выбранного порога (logLevel="info" → info+warn+error). Раньше порядок был
+// обратным, из-за чего при дефолтном "info" в app.log попадали ТОЛЬКО info, а
+// ошибки/предупреждения молча отбрасывались.
+const LEVEL_RANK = { debug: 0, info: 1, warn: 2, error: 3, action: 4 };
 
 /* --- Полный журнал (audit.log): без фильтров, с ротацией --- */
 const AUDIT_FILE = path.join(DIRS.logs, "audit.log");
@@ -69,12 +73,12 @@ function append(entry) {
   appendAudit(entry);
   // 2) Рабочий лог — по фильтрам настроек.
   const { logLevel, telemetry } = levelFilter();
-  const rank = LEVEL_RANK[entry.level] ?? 3;
+  const rank = LEVEL_RANK[entry.level] ?? LEVEL_RANK.info;
   // action (телеметрия юзера) пишется только при включённой advanced.telemetry,
-  // системные события фильтруются по advanced.logLevel.
+  // системные события фильтруются по advanced.logLevel (минимальная важность).
   if (entry.level === "action") {
     if (!telemetry) return;
-  } else if (rank < LEVEL_RANK[logLevel]) {
+  } else if (rank < (LEVEL_RANK[logLevel] ?? LEVEL_RANK.info)) {
     return;
   }
   const line = JSON.stringify({ ts: new Date().toISOString(), ...entry }) + "\n";
@@ -86,6 +90,7 @@ function append(entry) {
 }
 
 const logger = {
+  debug(event, data) { append({ level: "debug", event, data }); },
   info(event, data) { append({ level: "info", event, data }); },
   warn(event, data) { append({ level: "warn", event, data }); },
   error(event, data) { append({ level: "error", event, data }); },
@@ -93,7 +98,7 @@ const logger = {
   action(event, data) { append({ level: "action", event, data }); },
   // Явный уровень (используется приёмом событий с фронта: /api/log).
   log(level, event, data) {
-    const lvl = ["error", "warn", "info", "action"].includes(level) ? level : "info";
+    const lvl = ["debug", "error", "warn", "info", "action"].includes(level) ? level : "info";
     append({ level: lvl, event, data });
   },
   // Пути к журналам — нужны сборщику диагностического файла.

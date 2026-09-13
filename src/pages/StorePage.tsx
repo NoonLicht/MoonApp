@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
-import { Search, Star, Download, Trash2, Plus, Play, Inbox, RefreshCw, Globe, Box, Copy } from "lucide-react";
+import { Search, Star, Download, Trash2, Plus, Play, Inbox, RefreshCw, Globe, Box, Copy, ArrowUp, ChevronsLeft, ChevronsRight } from "lucide-react";
 import { Glass, Btn, IconBtn, SectionHead, Select, Field, EmptyHint, Badge, ProgressBar } from "../components/ui";
 import { useContextMenu, copyToClipboard } from "../components/ContextMenu";
 import { useI18n } from "../i18n";
@@ -44,6 +44,9 @@ export default function StorePage() {
   const [form, setForm] = useState({ name: "", url: "", category: "Other" });
   const [error, setError] = useState("");
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Скролл-контейнер сетки и кнопка «В начало» (показывается после прокрутки).
+  const gridWrapRef = useRef<HTMLDivElement | null>(null);
+  const [showTop, setShowTop] = useState(false);
 
   const load = () => api.getApps().then((d) => setItems(d.items)).catch(() => {});
   useEffect(() => { load(); }, []);
@@ -200,14 +203,40 @@ async function toggleFav(item: AppItem) {
     }).catch(() => { /* дефолт 40 */ });
   }, []);
   useEffect(() => { setPage(1); }, [query, cat, favOnly, tab]);
+  // Возврат к началу списка при смене страницы/фильтра (иначе остаёшься внизу).
+  useEffect(() => {
+    gridWrapRef.current?.scrollTo({ top: 0 });
+    setShowTop(false);
+  }, [query, cat, favOnly, tab, page]);
+
+  const onGridScroll = () => {
+    const el = gridWrapRef.current;
+    if (!el) return;
+    const next = el.scrollTop > 300;
+    setShowTop((prev) => (prev === next ? prev : next));
+  };
   const totalPages = Math.max(1, Math.ceil(results.length / pageSize));
   const safePage = Math.min(page, totalPages);
   const shown = results.slice((safePage - 1) * pageSize, safePage * pageSize);
   const goPage = (p: number) => setPage(Math.min(Math.max(1, p), totalPages));
-  const from = Math.max(1, safePage - 2);
-  const to = Math.min(totalPages, from + 4);
-  const pageList: number[] = [];
-  for (let i = from; i <= to; i++) pageList.push(i);
+  // «В начало»: вернуть на первую страницу списка И прокрутить сетку наверх.
+  // Нужно, когда ушёл далеко по страницам: кнопка «1» в пейджере пропадает из
+  // окна номеров (показываются только 5 страниц вокруг текущей).
+  const goFirst = () => {
+    goPage(1);
+    gridWrapRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+  };
+  // Номера страниц: окно вокруг текущей + ВСЕГДА первая и последняя (с «…»),
+  // иначе при уходе далеко кнопка «1» пропадала и вернуться было нечем.
+  const pageItems: (number | "gap")[] = [];
+  {
+    const window = 2;
+    const start = Math.max(1, safePage - window);
+    const end = Math.min(totalPages, safePage + window);
+    if (start > 1) { pageItems.push(1); if (start > 2) pageItems.push("gap"); }
+    for (let i = start; i <= end; i++) pageItems.push(i);
+    if (end < totalPages) { if (end < totalPages - 1) pageItems.push("gap"); pageItems.push(totalPages); }
+  }
   const tabLabel = tab === "all" ? t("store.tabAll") : tab === "winget" ? t("store.tabWinget") : t("store.tabComss");
 
   return (
@@ -292,7 +321,7 @@ async function toggleFav(item: AppItem) {
           <span>{error || bulkMsg}</span>
         </Glass>
       )}
-      <div className="store-grid-wrap">
+      <div className="store-grid-wrap" ref={gridWrapRef} onScroll={onGridScroll}>
         <div className="store-grid">
           {shown.map((a) => (
             <Glass
@@ -349,14 +378,33 @@ async function toggleFav(item: AppItem) {
         {results.length === 0 && <EmptyHint icon={Inbox} text={t("store.empty")} />}
       </div>
 
+      {/* «В начало»: видна при прокрутке вниз ИЛИ когда открыта не первая
+          страница пагинации (чтобы всегда был быстрый возврат на страницу 1). */}
+      {(showTop || safePage > 1) && (
+        <button
+          className="store-top-btn"
+          onClick={goFirst}
+          title={t("store.backToTop")}
+          aria-label={t("store.backToTop")}
+        >
+          <ArrowUp size={16} />
+        </button>
+      )}
+
       {/* Пагинация */}
       {totalPages > 1 && (
         <div className="pager">
+          <button className="pager-btn" disabled={safePage === 1} onClick={goFirst}
+            title={t("store.firstPage")} aria-label={t("store.firstPage")}><ChevronsLeft size={14} /></button>
           <button className="pager-btn" disabled={safePage === 1} onClick={() => goPage(safePage - 1)}>{t("store.prev")}</button>
-          {pageList.map((p) => (
-            <button key={p} className={`pager-page ${p === safePage ? "is-active" : ""}`} onClick={() => goPage(p)}>{p}</button>
+          {pageItems.map((p, i) => (
+            p === "gap"
+              ? <span key={`gap-${i}`} className="pager-gap">…</span>
+              : <button key={p} className={`pager-page ${p === safePage ? "is-active" : ""}`} onClick={() => goPage(p)}>{p}</button>
           ))}
           <button className="pager-btn" disabled={safePage === totalPages} onClick={() => goPage(safePage + 1)}>{t("store.next")}</button>
+          <button className="pager-btn" disabled={safePage === totalPages} onClick={() => goPage(totalPages)}
+            title={t("store.lastPage")} aria-label={t("store.lastPage")}><ChevronsRight size={14} /></button>
           <div className="page-size">
             <Select value={String(pageSize)} onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }} options={["20", "40", "80"]} />
             <span className="field-label">{t("store.perPage")}</span>

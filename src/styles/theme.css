@@ -175,6 +175,18 @@ html, body{
 .app-shell.no-blur .bottom-dock{ backdrop-filter:none !important; -webkit-backdrop-filter:none !important; }
 .app-shell.no-blur .blob{ filter:none !important; opacity:0.05; }
 
+/* --- Непрозрачный фон (appearance.opaqueBackground = true) ---
+   Полностью убираем полупрозрачность окна: сплошной фон, без backdrop-blur
+   и без скругления — иначе по углам просвечивает рабочий стол. */
+.app-shell.opaque-bg{
+  background:var(--bg-base);
+  backdrop-filter:none !important; -webkit-backdrop-filter:none !important;
+  border-radius:0;
+}
+.app-shell.opaque-bg .glass,
+.app-shell.opaque-bg .top-toolbar,
+.app-shell.opaque-bg .bottom-dock{ backdrop-filter:none !important; -webkit-backdrop-filter:none !important; }
+
 /* RTL (арабский): зеркалим смещения блобов, чтобы декор не вылезал за левый край. */
 .app-shell[dir="rtl"] .blob-a{ left:auto; right:-120px; }
 .app-shell[dir="rtl"] .blob-b{ right:auto; left:-160px; }

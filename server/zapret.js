@@ -241,6 +241,36 @@ function listBatFiles() {
   } catch { return []; }
 }
 
+/**
+ * Порядок .bat-файлов ровно как в vendor-скрипте utils/test zapret.ps1:
+ *   Sort-Object { [Regex]::Replace($_.Name, "(\d+)", { PadLeft(8, "0") }) }
+ * (проверено: совпадает с PowerShell на движке Flowseal). Вынесено в чистую
+ * функцию, чтобы покрыть тестом.
+ */
+function vendorOrder(files) {
+  const pad = (name) => String(name).replace(/(\d+)/g, (m) => m.padStart(8, "0"));
+  return [...files].sort((a, b) => pad(a).localeCompare(pad(b), "en", { sensitivity: "base" }));
+}
+
+/**
+ * Номер конфига ровно так, как его показывает vendor-скрипт utils/test zapret.ps1
+ * (Get-ChildItem *.bat | Where-Object { $_.Name -notlike "service*" } | Sort-Object …).
+ * Нужен, чтобы проверять ОДИН конфиг (ответ на интерактивный выбор), не показывая
+ * пользователю консольный ввод. Возвращает 1-based индекс или 0, если не найден.
+ */
+function vendorBatIndex(targetFile) {
+  const st = engineStatus();
+  if (!st.found) return 0;
+  let files = [];
+  try {
+    files = fs.readdirSync(st.dir)
+      .filter((f) => /\.bat$/i.test(f))
+      .filter((f) => !/^service/i.test(f));
+  } catch { return 0; }
+  const idx = vendorOrder(files).findIndex((f) => f.toLowerCase() === String(targetFile || "").toLowerCase());
+  return idx >= 0 ? idx + 1 : 0;
+}
+
 
 /**
  * Разбор .bat-конфига Flowseal → { vars, tokens }.
@@ -936,15 +966,14 @@ async function stop(opts = {}) {
       }
     }
   } catch { /* ignore */ }
-  // Если работает служба — глушим её (UAC).
+  // Если установлена служба — УДАЛЯЕМ её (аналог пункта 2 service.bat
+  // «Remove Services»). Просто `net stop` оставил бы winws автозапускаемым и
+  // держащим драйвер WinDivert, из-за чего следующий запуск конфликтовал бы.
   try {
     const svc = await queryService();
-    if (svc.installed && svc.running) {
-      const r = await runElevatedScript(
-        ["@echo off", `net stop ${SERVICE_NAME} >nul 2>&1`, "echo STOPPED"].join("\r\n"),
-        "zapret_service_stop", 90000
-      );
-      stopped = stopped || r.ok;
+    if (svc.installed) {
+      try { await removeService(); stopped = true; }
+      catch { /* нет прав / уже удалена — не критично */ }
     }
   } catch { /* ignore */ }
   if (stopped) logger.action("zapret.stop", {});
@@ -1002,20 +1031,22 @@ async function status() {
   };
 }
 
-async function serviceAction(action) {
+async function serviceAction(action, strategyId) {
   const st = engineStatus();
   if (action === "status") return { ok: true, ...(await queryService()) };
   if (!st.found) throw new Error("engine_not_found");
   if (action === "install") {
-    // Без выбранной стратегии ставим дефолтную (general).
-    const tokens = buildArgs(cfg().defaultStrategy || "general", "").tokens;
-    await installService(cfg().defaultStrategy || "general", tokens);
+    // Установка службы для выбранного профиля; без выбора — дефолтная стратегия.
+    const id = strategyId || cfg().defaultStrategy || "general";
+    if (!listStrategies().some((s) => s.id === id)) throw new Error("strategy_not_found");
+    const tokens = buildArgs(id, "").tokens;
+    await installService(id, tokens);
   } else if (action === "remove") {
     await removeService();
   } else {
     throw new Error("unknown_service_action");
   }
-  logger.action("zapret.service", { action });
+  logger.action("zapret.service", { action, strategyId: strategyId || null });
   return { ok: true, ...(await queryService()) };
 }
 
@@ -1425,7 +1456,8 @@ function runConsoleScript(body, mode, opts = {}) {
  * Проверка всех конфигов «как пункт 12 service.bat», но неинтерактивно и быстро:
  * стандартные тесты по utils/targets.txt для всех general*.bat.
  *
- * @param {{ fast?: boolean, timeoutSec?: number, parallel?: number }} [opts]
+ * @param {{ fast?: boolean, timeoutSec?: number, parallel?: number, strategyId?: string }} [opts]
+ *   strategyId — проверить ТОЛЬКО выбранный конфиг (иначе проверяются все).
  */
 async function startConfigCheck(opts = {}) {
   if (consoleState.running) return checkStatus();
@@ -1439,9 +1471,20 @@ async function startConfigCheck(opts = {}) {
   try { ensureUserLists(); } catch { /* ignore */ }
 
   const fast = opts.fast !== false;
-  // Ответы vendor-скрипту: 1 = standard tests (HTTP/ping), 1 = все конфиги.
+  // Ответы vendor-скрипту: 1 = standard tests (HTTP/ping); затем либо 1 = все
+  // конфиги, либо 2 = выбранные + номер конфига (проверка одного).
+  let answers = "1\r\n1\r\n";
+  let scope = "all configs";
+  if (opts.strategyId) {
+    const strat = listStrategies().find((s) => s.id === opts.strategyId);
+    if (!strat) throw new Error("strategy_not_found");
+    const idx = vendorBatIndex(strat.file);
+    if (!idx) throw new Error("strategy_not_found");
+    answers = `1\r\n2\r\n${idx}\r\n`;
+    scope = `single config: ${strat.file} (#${idx})`;
+  }
   const answersFile = path.join(DIRS.tmp, "zapret_check_answers.txt");
-  fs.writeFileSync(answersFile, "1\r\n1\r\n", "utf8");
+  fs.writeFileSync(answersFile, answers, "utf8");
   consoleReset("check", path.join("utils", "test zapret.ps1"));
   try { stmts.bcrClear.run(); } catch { /* ignore */ } // старые огоньки гасим до новой проверки
   const body = [
@@ -1450,11 +1493,11 @@ async function startConfigCheck(opts = {}) {
     `cd /d "${st.dir}"`,
     ...(fast ? [`set "TEST_CURL_TIMEOUT=${opts.timeoutSec || 2}"`, `set "TEST_MAX_PARALLEL=${opts.parallel || 16}"`] : []),
     "set \"NO_UPDATE_CHECK=1\"",
-    `echo [PA] ${fast ? "fast" : "full"} check: all configs, standard tests`,
+    `echo [PA] ${fast ? "fast" : "full"} check: ${scope}, standard tests`,
     `powershell -NoProfile -ExecutionPolicy Bypass -File "${script}" < "${answersFile}" >> "${CONSOLE_LOG}" 2>&1`,
     "echo [PA] powershell exit %ERRORLEVEL%",
   ].join("\r\n");
-  logger.action("zapret.check.start", { fast, configs: listStrategies().length });
+  logger.action("zapret.check.start", { fast, configs: opts.strategyId ? 1 : listStrategies().length, strategyId: opts.strategyId || null });
   runConsoleScript(body, "check", { workingDir: st.dir });
   return checkStatus();
 }
@@ -1665,6 +1708,7 @@ module.exports = {
   clearDiscordCache, flushDns,
   // Пользовательские списки + проверка конфигов/консоль
   USER_LIST_DEFAULTS, ensureUserLists, missingListFiles, strategyId, lightOk, lightGreen, finalizeLights,
+  vendorOrder, vendorBatIndex,
   decideWinwsStarted, detectRunningWinws, buildBatLaunchScript, waitForWinws,
   startConfigCheck, stopConfigCheck, checkStatus, parseCheckOutput,
   runServiceDiagnostics, fixUserLists,

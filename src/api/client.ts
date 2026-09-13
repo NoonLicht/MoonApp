@@ -186,8 +186,8 @@ export const api = {
   zapretStart: (body: { strategyId?: string; customArgs?: string; mode?: string }) =>
     req<ZapretStatus>("POST", "/zapret/start", body),
   zapretStop: () => req<ZapretStatus>("POST", "/zapret/stop"),
-  zapretService: (action: "install" | "remove" | "status") =>
-    req<{ ok: boolean; installed?: boolean; running?: boolean }>("POST", "/zapret/service", { action }),
+  zapretService: (action: "install" | "remove" | "status", strategyId?: string) =>
+    req<{ ok: boolean; installed?: boolean; running?: boolean }>("POST", "/zapret/service", { action, strategyId }),
   zapretDiagnostics: () => req<ZapretDiagnostics>("POST", "/zapret/diagnostics"),
   zapretDiagnosticsTargets: () => req<{ targets: { id: string; name: string; kind: string; url?: string }[] }>("GET", "/zapret/diagnostics"),
   zapretAutoTune: (apply?: boolean) => req<ZapretAutoTuneResult>("POST", "/zapret/auto-tune", { apply }),
@@ -213,7 +213,7 @@ export const api = {
     req<Record<string, unknown>>("POST", "/zapret/settings", body),
   // Проверка конфигов через service.bat (vendor utils/test zapret.ps1) + консоль
   zapretCheckStatus: () => req<ZapretCheckState>("GET", "/zapret/check"),
-  zapretCheckStart: (fast?: boolean) => req<ZapretCheckState>("POST", "/zapret/check", { fast: fast !== false }),
+  zapretCheckStart: (fast?: boolean, strategyId?: string) => req<ZapretCheckState>("POST", "/zapret/check", { fast: fast !== false, strategyId }),
   zapretCheckStop: () => req<ZapretCheckState>("POST", "/zapret/check/stop"),
   zapretServiceDiagnostics: () => req<ZapretCheckState>("POST", "/zapret/service-diagnostics"),
   zapretFixUserLists: () => req<ZapretCheckState>("POST", "/zapret/user-lists"),

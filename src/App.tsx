@@ -98,6 +98,7 @@ interface ShellProps {
   fontSize: number;
   reduceMotion: boolean;
   density: string;
+  opaqueBg: boolean;
   proxyPanelVisible: boolean;
   setProxyPanelVisible: React.Dispatch<React.SetStateAction<boolean>>;
   keepPagesAlive: boolean;
@@ -122,7 +123,7 @@ function PageHost({ id, active, children }: { id: PageId; active: boolean; child
   );
 }
 
-function Shell({ active, setActive, theme, toggleTheme, toolbarNodes, setPageToolbar, blur, accent, fontSize, reduceMotion, density, proxyPanelVisible, setProxyPanelVisible, keepPagesAlive, keepPagesLimit, unloadIdleMinutes }: ShellProps) {
+function Shell({ active, setActive, theme, toggleTheme, toolbarNodes, setPageToolbar, blur, accent, fontSize, reduceMotion, density, opaqueBg, proxyPanelVisible, setProxyPanelVisible, keepPagesAlive, keepPagesLimit, unloadIdleMinutes }: ShellProps) {
   const { t, lang } = useI18n();
   // Если активная страница была удалена или сохранена в настройках устаревшая
   // (например "todo"), откатываемся к первой доступной странице.
@@ -204,6 +205,7 @@ function Shell({ active, setActive, theme, toggleTheme, toolbarNodes, setPageToo
     `accent-${accent}`,
     density === "compact" ? "density-compact" : "",
     reduceMotion ? "reduce-motion" : "",
+    opaqueBg ? "opaque-bg" : "",
     blur ? "" : "no-blur",
   ].filter(Boolean).join(" ");
 
@@ -300,6 +302,7 @@ export default function App() {
   const [fontSize, setFontSize] = useState(14);
   const [reduceMotion, setReduceMotion] = useState(false);
   const [density, setDensity] = useState("comfortable");
+  const [opaqueBg, setOpaqueBg] = useState(false);
   const [toolbarNodes, setToolbarNodes] = useState<Record<string, React.ReactNode>>({});
   const [proxyPanelVisible, setProxyPanelVisible] = useState(false);
   // keep-alive: держать ли страницы смонтированными и как ограничивать память.
@@ -349,6 +352,7 @@ export default function App() {
         if (sc?.appearance?.fontSize) setFontSize(Number(sc.appearance.fontSize) || 14);
         setReduceMotion(!!sc?.appearance?.reduceMotion);
         if (sc?.appearance?.density) setDensity(sc.appearance.density);
+        setOpaqueBg(!!sc?.appearance?.opaqueBackground);
         // Производительность: keep-alive страниц.
         if (sc?.performance?.keepPagesAlive != null) setKeepPagesAlive(!!sc.performance.keepPagesAlive);
         if (sc?.performance?.keepPagesLimit != null) setKeepPagesLimit(Math.max(1, Number(sc.performance.keepPagesLimit) || KEEP_ALIVE_DEFAULT_LIMIT));
@@ -371,6 +375,7 @@ export default function App() {
       else if (path === "appearance.fontSize") setFontSize(Number(value) || 14);
       else if (path === "appearance.reduceMotion") setReduceMotion(!!value);
       else if (path === "appearance.density") setDensity(String(value));
+      else if (path === "appearance.opaqueBackground") setOpaqueBg(!!value);
     };
     window.addEventListener("app:theme", onTheme);
     window.addEventListener("app:setting", onSetting);
@@ -402,6 +407,7 @@ export default function App() {
           fontSize={fontSize}
           reduceMotion={reduceMotion}
           density={density}
+          opaqueBg={opaqueBg}
           proxyPanelVisible={proxyPanelVisible}
           setProxyPanelVisible={setProxyPanelVisible}
           keepPagesAlive={keepPagesAlive}

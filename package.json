@@ -12,8 +12,9 @@
     "compile:server": "tsc -p tsconfig.server.json",
     "typecheck": "tsc --noEmit -p tsconfig.json && npm run compile:server",
     "start:server": "npm run compile:server && node server/index.js",
+    "fetch:engines": "node scripts/fetch-engines.js",
     "start": "npm run compile:server && npm run build:web && electron .",
-    "dist": "npm run compile:server && npm run build:web && electron-builder --win && npm run rebuild:node",
+    "dist": "npm run compile:server && npm run build:web && npm run fetch:engines && electron-builder --win && npm run rebuild:node",
     "rebuild:electron": "electron-rebuild -f -w better-sqlite3",
     "rebuild:node": "npm rebuild better-sqlite3",
     "test": "vitest run",
@@ -105,7 +106,12 @@
     ],
     "asarUnpack": [
       "server/vendor/lhm/**",
+      "server/vendor/ytdlp/**",
+      "server/vendor/singbox/**",
       "server/engines/**"
+    ],
+    "extraResources": [
+      { "from": "build/icon.ico", "to": "icon.ico" }
     ],
     "publish": {
       "provider": "github",

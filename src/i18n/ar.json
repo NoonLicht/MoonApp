@@ -85,6 +85,8 @@
     "fontSizeHint": "حجم الخط الأساسي (بكسل)",
     "density": "الكثافة",
     "densityHint": "كثافة تخطيط القوائم",
+    "opaqueBg": "خلفية معتمة",
+    "opaqueBgHint": "إزالة شفافية النافذة: خلفية صلبة بدون ضبابية",
     "performance": "الأداء",
     "hwAccel": "تسريع الأجهزة",
     "hwAccelHint": "يستخدم وحدة معالجة الرسوم. أبقِه مفعلاً؛ أطفئه عند الأعطال أو الاستهلاك العالي. يتطلب إعادة تشغيل.",
@@ -269,7 +271,10 @@
     "prev": "‹ السابق",
     "next": "التالي ›",
     "perPage": "بالصفحة",
-    "page": "صفحة {page} / {total}"
+    "page": "صفحة {page} / {total}",
+    "backToTop": "إلى الأعلى",
+    "firstPage": "الصفحة الأولى",
+    "lastPage": "الصفحة الأخيرة"
   },
   "aichat": {
     "search": "بحث في الدردشات",
@@ -479,7 +484,9 @@
     "download": "تنزيل {quality}",
     "downloading": "جارٍ التنزيل {p}%",
     "saved": "حُفظ في التنزيلات",
-    "ytdlpMissing": "yt-dlp غير مثبّت (اضغط أدناه للتثبيت)"
+    "ytdlpMissing": "yt-dlp غير مثبّت (اضغط أدناه للتثبيت)",
+    "errUnsupported": "هذا الموقع غير مدعوم من yt-dlp. جرّب رابطاً آخر.",
+    "errTimeout": "انتهت مهلة المصدر. تحقق من الاتصال أو شغّل البروكسي."
   },
   "conv": {
     "title": "المحول",
@@ -936,7 +943,12 @@
     "legendOk": "أخضر — الإعداد يعمل",
     "legendErr": "أحمر — لا يعمل",
     "legendIdle": "رمادي — لم يُفحص",
-    "serviceWarn": "خدمة «zapret» مثبتة: وهي تمنع فحص الإعدادات. احذفها — التشغيل البسيط لا يحتاجها.",
+    "serviceWarn": "خدمة «zapret» مثبتة (وضع الخدمة). فحص الإعدادات غير متاح ما دامت الخدمة نشطة — احذفها («حذف الخدمة») قبل الفحص.",
+    "mode": "الوضع",
+    "modeProcess": "عملية (winws.exe)",
+    "modeService": "خدمة Windows",
+    "modeServiceHint": "يعمل winws كخدمة Windows — بلا نافذة أوامر. «تشغيل» يثبّت الخدمة للإعداد المحدد (مثل service.bat → 1. Install Service)، و«إيقاف» يحذفها (→ 2. Remove Services).",
+    "modeProcessHint": "يعمل winws كعملية بصلاحيات مرتفعة عبر ملف .bat الخاص بالمحرّك: تظهر نافذة أوامر وتبقى في شريط المهام طالما التجاوز مفعّل — لا يمكن إغلاقها وحدها.",
     "checkNoResults": "لم يُرجع الفحص أي نتائج",
     "uacCancelled": "تم إلغاء طلب صلاحيات المسؤول",
     "consoleError": "خطأ",
@@ -973,7 +985,11 @@
     "starting": "جارٍ التشغيل…",
     "start": "تشغيل",
     "stop": "إيقاف",
+    "serviceInstall": "تثبيت الخدمة",
     "serviceRemove": "حذف الخدمة",
+    "serviceInstallHint": "تثبيت خدمة Windows للإعداد المحدد (تشغيل تلقائي)",
+    "checkOne": "فحص الإعداد",
+    "checkOneHint": "تشغيل الاختبارات على الإعداد المحدد فقط",
     "engineTitle": "محرّك zapret",
     "engineNotInstalled": "غير مثبّت",
     "engineLatest": "على GitHub",

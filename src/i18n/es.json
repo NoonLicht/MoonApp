@@ -85,6 +85,8 @@
     "fontSizeHint": "Tamaño de fuente base (px)",
     "density": "Densidad",
     "densityHint": "Densidad del diseño de las listas",
+    "opaqueBg": "Fondo opaco",
+    "opaqueBgHint": "Quitar la transparencia de la ventana: fondo sólido sin desenfoque",
     "performance": "Rendimiento",
     "hwAccel": "Aceleración por hardware",
     "hwAccelHint": "Usa la GPU. Déjala activada. Desactívala con fallos/alto uso de GPU. Requiere reinicio.",
@@ -269,7 +271,10 @@
     "prev": "‹ Anterior",
     "next": "Siguiente ›",
     "perPage": "por página",
-    "page": "Página {page} / {total}"
+    "page": "Página {page} / {total}",
+    "backToTop": "Volver arriba",
+    "firstPage": "Primera página",
+    "lastPage": "Última página"
   },
   "aichat": {
     "search": "Buscar chats",
@@ -479,7 +484,9 @@
     "download": "Descargar {quality}",
     "downloading": "Descargando {p}%",
     "saved": "Guardado en descargas",
-    "ytdlpMissing": "yt-dlp no está instalado (haz clic abajo para instalarlo)"
+    "ytdlpMissing": "yt-dlp no está instalado (haz clic abajo para instalarlo)",
+    "errUnsupported": "yt-dlp no admite este sitio. Prueba con otro enlace.",
+    "errTimeout": "La fuente agotó el tiempo de espera. Revisa la conexión o activa el proxy."
   },
   "conv": {
     "title": "Convertidor",
@@ -936,8 +943,17 @@
     "starting": "Iniciando…",
     "start": "Iniciar",
     "stop": "Detener",
-    "serviceWarn": "El servicio de Windows «zapret» está instalado: bloquea la comprobación de perfiles. Elimínalo — el inicio simple no lo necesita.",
+    "serviceWarn": "El servicio de Windows «zapret» está instalado (modo servicio). La comprobación de perfiles no está disponible mientras el servicio esté activo: elimínalo («Eliminar servicio») antes de comprobar.",
+    "mode": "Modo",
+    "modeProcess": "Proceso (winws.exe)",
+    "modeService": "Servicio de Windows",
+    "modeServiceHint": "winws se ejecuta como servicio de Windows — sin ventana de consola. «Iniciar» instala el servicio para el perfil seleccionado (como service.bat → 1. Install Service); «Detener» lo elimina (→ 2. Remove Services).",
+    "modeProcessHint": "winws se ejecuta como proceso elevado mediante el .bat del motor: aparece una ventana de consola que permanece en la barra de tareas mientras el bypass está activo; no se puede cerrar por separado.",
+    "serviceInstall": "Instalar servicio",
     "serviceRemove": "Eliminar servicio",
+    "serviceInstallHint": "Instalar el servicio de Windows para el perfil seleccionado (inicio automático)",
+    "checkOne": "Comprobar perfil",
+    "checkOneHint": "Ejecutar pruebas solo para el perfil seleccionado",
     "engineTitle": "Motor de zapret",
     "engineNotInstalled": "no instalado",
     "engineLatest": "En GitHub",

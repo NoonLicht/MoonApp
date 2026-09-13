@@ -85,6 +85,8 @@
     "fontSizeHint": "Taille de police de base (px)",
     "density": "Densité",
     "densityHint": "Densité de mise en page des listes",
+    "opaqueBg": "Fond opaque",
+    "opaqueBgHint": "Supprimer la transparence de la fenêtre : fond uni sans flou",
     "performance": "Performances",
     "hwAccel": "Accélération matérielle",
     "hwAccelHint": "Utilise le GPU. À laisser activée. Désactiver si artefacts/gros usage GPU. Redémarrage requis.",
@@ -269,7 +271,10 @@
     "prev": "‹ Précédent",
     "next": "Suivant ›",
     "perPage": "par page",
-    "page": "Page {page} / {total}"
+    "page": "Page {page} / {total}",
+    "backToTop": "Haut de page",
+    "firstPage": "Première page",
+    "lastPage": "Dernière page"
   },
   "aichat": {
     "search": "Rechercher des chats",
@@ -479,7 +484,9 @@
     "download": "Télécharger {quality}",
     "downloading": "Téléchargement {p}%",
     "saved": "Enregistré dans les téléchargements",
-    "ytdlpMissing": "yt-dlp n'est pas installé (cliquez ci-dessous pour installer)"
+    "ytdlpMissing": "yt-dlp n'est pas installé (cliquez ci-dessous pour installer)",
+    "errUnsupported": "Ce site n'est pas pris en charge par yt-dlp. Essayez un autre lien.",
+    "errTimeout": "La source a expiré. Vérifiez la connexion ou activez le proxy."
   },
   "conv": {
     "title": "Convertisseur",
@@ -936,7 +943,12 @@
     "legendOk": "vert — la configuration fonctionne",
     "legendErr": "rouge — ne fonctionne pas",
     "legendIdle": "gris — non vérifié",
-    "serviceWarn": "Le service « zapret » est installé : il bloque la vérification des configurations. Supprimez-le — le démarrage simple n'en a pas besoin.",
+    "serviceWarn": "Le service « zapret » est installé (mode service). La vérification des configurations est indisponible tant que le service est actif — supprimez-le (« Supprimer le service ») avant de vérifier.",
+    "mode": "Mode",
+    "modeProcess": "Processus (winws.exe)",
+    "modeService": "Service Windows",
+    "modeServiceHint": "winws s'exécute comme service Windows — aucune fenêtre de console. « Démarrer » installe le service pour la configuration sélectionnée (comme service.bat → 1. Install Service) ; « Arrêter » le supprime (→ 2. Remove Services).",
+    "modeProcessHint": "winws s'exécute en processus élevé via le .bat du moteur : une fenêtre de console apparaît et reste dans la barre des tâches tant que le contournement est actif — impossible de la fermer séparément.",
     "checkNoResults": "La vérification n'a donné aucun résultat",
     "uacCancelled": "Demande d'administrateur annulée",
     "consoleError": "erreur",
@@ -973,7 +985,11 @@
     "starting": "Démarrage…",
     "start": "Démarrer",
     "stop": "Arrêter",
+    "serviceInstall": "Installer le service",
     "serviceRemove": "Supprimer le service",
+    "serviceInstallHint": "Installer le service Windows pour la configuration sélectionnée (démarrage auto)",
+    "checkOne": "Vérifier la configuration",
+    "checkOneHint": "Lancer les tests uniquement pour la configuration sélectionnée",
     "engineTitle": "Moteur zapret",
     "engineNotInstalled": "non installé",
     "engineLatest": "Sur GitHub",
