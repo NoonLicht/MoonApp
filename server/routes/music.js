@@ -25,7 +25,7 @@ router.get("/search", async (req, res) => {
   try {
     const q = String(req.query.q || "").trim();
     if (!q) return res.status(400).json({ error: "missing_query" });
-    const result = await ytdlp.searchTracks(q, 15);
+    const result = await ytdlp.searchTracks(q, 15, req.proxyUrl);
     res.json(result);
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -40,7 +40,7 @@ router.post("/download", async (req, res) => {
   try {
     const { url, format, quality } = req.body || {};
     if (!url) return res.status(400).json({ error: "missing_url" });
-    const result = ytdlp.startAudioDownload({ url, format: format || "mp3", quality: quality != null ? quality : 0 });
+    const result = ytdlp.startAudioDownload({ url, format: format || "mp3", quality: quality != null ? quality : 0, proxyUrl: req.proxyUrl });
     logger.action("music.download.start", { id: result.id, url, format });
     res.json(result);
   } catch (e) {

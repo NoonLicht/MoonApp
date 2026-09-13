@@ -35,6 +35,9 @@ const compressorRouter = require("./routes/compressor");
 const ttsRouter = require("./routes/tts");
 const archiveRouter = require("./routes/archive");
 const proxyRouter = require("./routes/proxy");
+const proxyCoreRouter = require("./routes/proxyCore");
+const perPageProxy = require("./middleware/perPageProxy");
+const proxySubs = require("./proxySubscriptions");
 const booksRouter = require("./routes/books");
 const musicRouter = require("./routes/music");
 const myspaceRouter = require("./routes/myspace");
@@ -98,6 +101,9 @@ function createApp() {
   });
   app.use(authMiddleware);
   app.use(express.json({ limit: "2mb" }));
+  // Per-page проксирование: по заголовку X-App-Page размечаем req.appPage /
+  // req.proxy / req.proxyUrl (см. server/middleware/perPageProxy.js).
+  app.use(perPageProxy.perPageProxyMiddleware);
 
   app.get("/api/health", (req, res) => res.json({ ok: true }));
   app.use("/api/chat", chatRouter);
@@ -112,6 +118,7 @@ function createApp() {
   app.use("/api/tts", ttsRouter);
   app.use("/api/archive", archiveRouter);
   app.use("/api/proxy", proxyRouter);
+  app.use("/api/proxycore", proxyCoreRouter);
   app.use("/api/books", booksRouter);
   app.use("/api/music", musicRouter);
   app.use("/api/myspace", myspaceRouter);
@@ -137,6 +144,9 @@ function createApp() {
   });
 
   backups.startAuto();
+
+  // Фоновое обновление подписок прокси (первичный проход + раз в 6 часов).
+  try { proxySubs.startAutoSync(); } catch (e) { logger.warn("proxycore.autosync.failed", { error: e.message }); }
 
   // LibreHardwareMonitor запускается сам, если это включено в настройках и он установлен.
   monitor.autoStartLhmIfConfigured();

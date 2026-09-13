@@ -1,4 +1,5 @@
 const { consumeSSE } = require("./stream");
+const { pageFetch } = require("../middleware/perPageProxy");
 
 const API = "https://api.anthropic.com/v1/messages";
 const VERSION = "2023-06-01";
@@ -25,7 +26,7 @@ function mapMessages(messages) {
 
 // GET https://api.anthropic.com/v1/models
 async function listModels(secret) {
-  const res = await fetch("https://api.anthropic.com/v1/models?limit=100", {
+  const res = await pageFetch("https://api.anthropic.com/v1/models?limit=100", {
     headers: { "x-api-key": secret, "anthropic-version": VERSION },
   });
   if (!res.ok) throw new Error(`list models failed: ${res.status}`);
@@ -59,7 +60,7 @@ module.exports = {
     };
     if (sys) bodyObj.system = sys;
 
-    const res = await fetch(API, {
+    const res = await pageFetch(API, {
       method: "POST",
       headers: this.headers(secret),
       body: JSON.stringify(bodyObj),

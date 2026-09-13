@@ -108,6 +108,7 @@
       "server/vendor/lhm/**",
       "server/vendor/ytdlp/**",
       "server/vendor/singbox/**",
+      "server/vendor/proxy-core/**",
       "server/engines/**"
     ],
     "extraResources": [

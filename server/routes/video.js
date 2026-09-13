@@ -22,7 +22,7 @@ router.get("/info", async (req, res) => {
   try {
     const url = String(req.query.url || "").trim();
     if (!url || !/^https?:\/\//i.test(url)) return res.status(400).json({ error: "invalid_url" });
-    const info = await ytdlp.fetchInfo(url);
+    const info = await ytdlp.fetchInfo(url, req.proxyUrl);
     res.json(info);
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -33,7 +33,7 @@ router.post("/download", async (req, res) => {
   try {
     const { url, info, height, container, subs, thumb } = req.body || {};
     if (!url || !info) return res.status(400).json({ error: "missing_url" });
-    const result = ytdlp.startDownload({ url, info, height, container, subs, thumb });
+    const result = ytdlp.startDownload({ url, info, height, container, subs, thumb, proxyUrl: req.proxyUrl });
     logger.action("video.download.start", { id: result.id, url });
     res.json(result);
   } catch (e) {

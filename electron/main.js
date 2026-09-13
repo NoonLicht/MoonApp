@@ -1,4 +1,4 @@
-const { app, BrowserWindow, safeStorage, ipcMain } = require("electron");
+const { app, BrowserWindow, safeStorage, ipcMain, session } = require("electron");
 const net = require("net");
 const http = require("http");
 const crypto = require("crypto");
@@ -643,6 +643,33 @@ ipcMain.handle("shell:reveal", (_e, p) => {
 // Обновить подменю zapret в трее: страница Bypass Control вызывает после
 // изменения стратегий/профилей, чтобы быстрые переключения были актуальны.
 ipcMain.on("bypass:tray-refresh", () => { void refreshTray(); });
+
+// --- Встроенный прокси: глобальный прокси Chromium ---
+// Ядро (sing-box) слушает локальный SOCKS5/HTTP. Здесь мы заворачиваем ВЕСЬ
+// сетевой стек Chromium (картинки-превью, внешние ресурсы) в этот прокси.
+// Локальные адреса (<local> = 127.0.0.1/::1/localhost) всегда идут мимо —
+// иначе фронт ушёл бы в петлю на собственный API Express.
+// Per-page фильтрация на уровне Chromium невозможна (все страницы SPA с одного
+// origin) — она реализована в backend по API-роутам (см. server/db.js ppr*).
+ipcMain.handle("proxy:apply-session", async (_e, cfg) => {
+  try {
+    const rules = cfg && cfg.proxyRules ? String(cfg.proxyRules) : null;
+    if (rules) {
+      await session.defaultSession.setProxy({
+        mode: "fixed_servers",
+        proxyRules: rules,
+        proxyBypassRules: "<local>",
+      });
+    } else {
+      await session.defaultSession.setProxy({ mode: "direct" });
+    }
+    mlog("action", "proxy.apply_session", { rules: rules || "direct" });
+    return { ok: true, proxyRules: rules };
+  } catch (e) {
+    mlog("error", "proxy.apply_session_failed", { error: e?.message || String(e) });
+    return { ok: false, error: e?.message || String(e) };
+  }
+});
 
 app.on("window-all-closed", () => {
   app.quit();

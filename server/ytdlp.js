@@ -160,11 +160,14 @@ function sanitizeInfo(info) {
   };
 }
 
-function runJson(bin, url) {
+function runJson(bin, url, proxyUrl) {
   return new Promise((resolve, reject) => {
+    const args = ["-J", "--no-playlist", "--ignore-config", "--no-warnings", "--socket-timeout", "30"];
+    if (proxyUrl) args.push("--proxy", proxyUrl);
+    args.push("--", url);
     execFile(
       bin,
-      ["-J", "--no-playlist", "--ignore-config", "--no-warnings", "--socket-timeout", "30", "--", url],
+      args,
       { timeout: 120000, windowsHide: true, maxBuffer: 64 * 1024 * 1024 },
       (err, stdout, stderr) => {
         if (err) {
@@ -197,10 +200,10 @@ function meaningfulStderr(raw) {
 }
 
 // Достаётся мета и список форматов по URL.
-async function fetchInfo(url) {
+async function fetchInfo(url, proxyUrl) {
   const d = await detectYtDlp();
   if (!d.found) throw new Error("yt-dlp not found");
-  const stdout = await runJson(d.path, url);
+  const stdout = await runJson(d.path, url, proxyUrl);
   return sanitizeInfo(JSON.parse(stdout));
 }
 
@@ -295,7 +298,7 @@ function registerFiles(job) {
     return { name: f.name, size: f.size, key };
   });
 }
-function startDownload({ url, info, height, container, subs, thumb }) {
+function startDownload({ url, info, height, container, subs, thumb, proxyUrl }) {
   const jobId = crypto.randomBytes(6).toString("hex");
   const token = `pa_${jobId}`;
   const outDir = DIRS.downloads;
@@ -314,8 +317,9 @@ function startDownload({ url, info, height, container, subs, thumb }) {
     "--newline", "--retries", "3", "--fragment-retries", "3",
     "--restrict-filenames", "-o", outTemplate,
   ];
-  const proxyUrl = proxy.getProxyUrl();
-  if (proxyUrl) args.push("--proxy", proxyUrl);
+  // proxyUrl из per-page решения (req.proxyUrl); undefined → старое поведение.
+  const effProxy = proxyUrl !== undefined ? proxyUrl : proxy.getProxyUrl();
+  if (effProxy) args.push("--proxy", effProxy);
   if (subs && subs.length) args.push("--write-subs", "--sub-langs", subs.join(","), "--sub-format", "best");
   if (thumb) args.push(wantEmbed ? "--embed-thumbnail" : "--write-thumbnail");
   if (needsMerge) args.push("--merge-output-format", containerOut);
@@ -424,11 +428,11 @@ function sanitizeTrack(entry) {
   };
 }
 
-async function searchTracks(query, limit = 15) {
+async function searchTracks(query, limit = 15, proxyUrl) {
   const d = await detectYtDlp();
   if (!d.found) throw new Error("yt-dlp not found");
   const searchUrl = `ytsearch${limit}:${query}`;
-  const stdout = await runJson(d.path, searchUrl);
+  const stdout = await runJson(d.path, searchUrl, proxyUrl);
   const data = JSON.parse(stdout);
   const entries = data.entries || [data];
   const tracks = entries.filter((e) => e && e.title).map(sanitizeTrack);
@@ -450,7 +454,7 @@ const FORMAT_QUALITY_MAP = {
   "AAC":      { format: "m4a", quality: 1 },
 };
 
-function startAudioDownload({ url, format = "mp3", quality = 0 }) {
+function startAudioDownload({ url, format = "mp3", quality = 0, proxyUrl }) {
   const jobId = crypto.randomBytes(6).toString("hex");
   const token = `pa_${jobId}`;
   const outDir = DIRS.downloads;
@@ -468,8 +472,8 @@ function startAudioDownload({ url, format = "mp3", quality = 0 }) {
     "--no-embed-subs",
     url,
   ];
-  const proxyUrl = proxy.getProxyUrl();
-  if (proxyUrl) args.push("--proxy", proxyUrl);
+  const effProxy = proxyUrl !== undefined ? proxyUrl : proxy.getProxyUrl();
+  if (effProxy) args.push("--proxy", effProxy);
   args.push("--", url); // С9: URL после end-of-options
 
   const job = { id: jobId, url, title: "", token, state: "running", progress: 0, error: "", stderrBuf: "", outDir, files: [] };

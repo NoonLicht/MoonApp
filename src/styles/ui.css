@@ -196,6 +196,56 @@ select option{ background-color:var(--surface-solid); color:var(--text-primary);
 /* РЈСЃС‚Р°РЅРѕРІРєР° sing-box */
 .proxy-install-section{ display:flex; flex-direction:column; gap:8px; padding-top:12px; border-top:1px solid var(--glass-border); }
 .proxy-install-section .btn{ align-self:flex-start; }
+/* --- Встроенный прокси: серверы, подписки, страницы, пинг --- */
+.proxy-hint{ font-size:11.5px; color:var(--text-tertiary); }
+.proxy-lat{ display:flex; flex-wrap:wrap; align-items:center; gap:8px; font-size:11px; color:var(--text-secondary); background:var(--track); border:1px solid var(--glass-border); border-radius:10px; padding:7px 10px; }
+.proxy-lat-targets{ font-family:var(--font-mono); color:var(--text-tertiary); }
+.proxy-lat-ip{ font-family:var(--font-mono); color:var(--text-secondary); }
+.proxy-ping{ font-size:10px; font-family:var(--font-mono); font-weight:700; padding:1px 7px; border-radius:999px; flex-shrink:0; }
+.proxy-ping.online{ background:var(--teal-soft); color:var(--teal); }
+.proxy-ping.degraded{ background:var(--amber-soft); color:var(--amber); }
+.proxy-ping.blocked{ background:var(--coral-soft); color:var(--coral); }
+.proxy-chip-type.tone-neutral{ background:var(--track); color:var(--text-tertiary); }
+.proxy-chip-type.tone-coral{ background:var(--coral-soft); color:var(--coral); }
+.proxy-node-list{ display:flex; flex-direction:column; gap:4px; max-height:180px; overflow-y:auto; flex-wrap: wrap; align-content: stretch; justify-content: flex-start; align-items: stretch;}
+.proxy-node{ display:flex; border:1px solid var(--glass-border); border-radius:10px; background:var(--track); overflow:hidden; width:50%;}
+.proxy-node.active{ border-color:var(--violet); box-shadow:inset 0 0 0 1px rgba(139,123,240,0.35);}
+.proxy-node-main{ flex:1; display:flex; align-items:center; gap:8px; padding:7px 10px; background:none; border:none; color:var(--text-primary); cursor:pointer; font-size:12px; min-width:0; }
+.proxy-node-main:hover{ background:var(--violet-soft); }
+.proxy-node-name{ flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:left; }
+.proxy-sub{ border:1px solid var(--glass-border); border-radius:10px; background:var(--track); }
+.proxy-sub-head{ display:flex; align-items:center; gap:8px; padding:6px 10px; }
+.proxy-sub-name{ flex:1; min-width:0; font-size:12px; color:var(--text-primary); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.proxy-sub-meta{ font-size:10px; font-family:var(--font-mono); color:var(--text-tertiary); flex-shrink:0; }
+/* Карточка подписки: свой список серверов + место под скрытые узлы. */
+.proxy-sub{ margin-bottom:6px; }
+.proxy-sub .proxy-node-list{ padding:0 9px 6px; }
+.proxy-node.excluded{ opacity:.55; }
+.proxy-node-main:disabled{ cursor:default; }
+.proxy-hidden-label{ padding:6px 10px 2px; font-size:10px; font-family:var(--font-mono); color:var(--text-tertiary); }
+.proxy-hidden-toggle{ margin-top:6px; align-self:flex-start; background:none; border:none; padding:0; color:var(--violet); font-size:11px; cursor:pointer; text-decoration:underline; }
+.proxy-hidden-toggle:hover{ color:var(--text-primary); }
+/* Пинг всех конфигов: полоса прогресса + текущий узел. */
+.proxy-ping-progress{ display:flex; align-items:center; gap:8px; margin:6px 0; }
+.proxy-ping-bar{ flex:1; height:4px; border-radius:99px; background:var(--track); overflow:hidden; }
+.proxy-ping-fill{ display:block; height:100%; background:var(--violet); transition:width .25s ease; }
+.proxy-ping-text{ font-size:10px; font-family:var(--font-mono); color:var(--text-tertiary); white-space:nowrap; }
+/* Список проверенных путей к движку (виден, только когда sing-box не найден). */
+.proxy-path-list{ margin:4px 0 0; padding-left:14px; font-size:10px; font-family:var(--font-mono); }
+.proxy-path-list li{ list-style:none; word-break:break-all; }
+.proxy-path-list li.ok{ color:var(--teal); }
+.proxy-path-list li.miss{ color:var(--text-tertiary); }
+.proxy-page-list{ display:grid; grid-template-columns:1fr 1fr; gap:5px; }
+.proxy-page{ display:flex; align-items:center; justify-content:space-between; gap:6px; padding:6px 9px; border-radius:9px; border:1px solid var(--glass-border); background:var(--track); color:var(--text-secondary); cursor:pointer; font-size:11.5px; }
+.proxy-page:hover{ border-color:var(--violet); }
+.proxy-page.on{ border-color:var(--teal); color:var(--text-primary); }
+.proxy-page.off{ opacity:.75; }
+.proxy-page-name{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.proxy-page-flag{ font-size:9.5px; font-family:var(--font-mono); text-transform:uppercase; letter-spacing:.05em; color:var(--text-tertiary); flex-shrink:0; }
+.proxy-page.on .proxy-page-flag{ color:var(--teal); }
+@media (max-width:520px){ .proxy-page-list{ grid-template-columns:1fr; } }
+
+
 /* --- AudioPlayer: плеер в стиле приложения (стекло + янтарный акцент) --- */
 .audio-player{ display:flex; align-items:center; gap:8px; width:100%; min-width:0; background:var(--track); border:1px solid var(--glass-border); border-radius:999px; padding:6px 12px; }
 .audio-player.is-compact{ padding:4px 8px; gap:6px; }

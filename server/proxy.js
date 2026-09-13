@@ -223,6 +223,8 @@ async function startProxy(profileArg) {
   const bin = await detectSB();
   if (!bin.found) { PS = { ...PS, enabled: false, running: false, error: "sing-box not found" }; return getStatus(); }
   if (PS.child) { try { PS.child.kill(); } catch {} PS.child = null; }
+  // Порт 10808 один: при запуске legacy-прокси гасим встроенное ядро sing-box.
+  try { await require("./proxyCore").stopCore(); } catch { /* ядро не загружено */ }
   const cDir = path.join(BIN_DIR, "configs");
   fs.mkdirSync(cDir, { recursive: true });
   // Сносятся старые конфиги, если есть

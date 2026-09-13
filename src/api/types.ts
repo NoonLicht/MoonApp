@@ -422,6 +422,91 @@ export interface VlessProfile {
   name: string;
   updatedAt: string;
 }
+
+/* ------------------- Встроенный прокси (sing-box core) -------------------- */
+
+/** Состояние ядра sing-box. */
+export interface ProxyCoreStatus {
+  running: boolean;
+  enabled: boolean;
+  error: string;
+  socksPort: number;
+  httpPort: number;
+  node: { protocol: string; tag: string; server: string; port: number; country?: string | null } | null;
+  childPid: number | null;
+  install?: ProxyInstallStatus;
+}
+
+/** Прогресс установки движка sing-box. */
+export interface ProxyInstallStatus {
+  state: string;
+  progress: number;
+  phase: string;
+  error: string;
+  errorDetail?: string;
+  installed: boolean;
+  path?: string | null;
+  /** Проверенные пути к sing-box.exe — видны в UI, если движка нет. */
+  candidates?: { path: string; exists: boolean }[];
+}
+
+/** Прогресс «пропинговать все». */
+export interface ProxyPingStatus {
+  running: boolean;
+  total: number;
+  done: number;
+  ok: number;
+  failed: number;
+  currentId: number | null;
+  currentName: string;
+  startedAt: number;
+  finishedAt: number;
+  error: string;
+  results: { id: number; name: string; ok: boolean; ttfbMs: number | null; error: string }[];
+}
+
+/** Узел подписки (компактная запись для UI). */
+export interface ProxyNode {
+  id: number;
+  subId: number;
+  name: string;
+  protocol: string;
+  server: string | null;
+  port: number | null;
+  pingMs: number | null;
+  country: string;
+  isSelected: boolean;
+  /** Узел убран пользователем из списка (скрыт), но остаётся в подписке. */
+  isExcluded: boolean;
+}
+
+/** Подписка с вложенными узлами. */
+export interface ProxySubscription {
+  id: number;
+  name: string;
+  url: string;
+  last_updated: string;
+  auto_update_enabled: number;
+  nodes: ProxyNode[];
+}
+
+/** Правило «страница → прокси/direct». */
+export interface ProxyPageRule {
+  id: number;
+  route_path: string;
+  is_proxied: number;
+}
+
+/** Результат реального TTFB-пинга через SOCKS5. */
+export interface ProxyLatency {
+  state: "online" | "degraded" | "blocked" | "offline";
+  latencyMs: number | null;
+  targets: { url: string; state: string; status: number; ttfbMs: number | null; error: string }[];
+  ip: string | null;
+  country: string | null;
+  isp: string | null;
+  error?: string;
+}
 /* -------------------------------- Музыка / Аудио --------------------------- */
 
 /** Результат поиска трека. */

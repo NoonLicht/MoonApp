@@ -3,6 +3,7 @@ const { stmts, db } = require("../db");
 const settings = require("../settings");
 const { PROVIDERS, getProvider } = require("../providers");
 const { getSecret } = require("../security");
+const { runWithPage } = require("../middleware/perPageProxy");
 const logger = require("../logger");
 
 const router = express.Router();
@@ -44,7 +45,7 @@ router.get("/models", async (req, res) => {
     if (!secret || typeof provider.listModels !== "function") {
       return res.json(provider.models || []);
     }
-    const models = await provider.listModels(secret);
+    const models = await runWithPage(req.appPage, () => provider.listModels(secret));
     if (Array.isArray(models) && models.length) modelsCache.set(providerId, { at: Date.now(), models });
     res.json(models.length ? models : (provider.models || []));
   } catch {
@@ -137,12 +138,12 @@ router.post("/:id/send", async (req, res) => {
 
   try {
     const onToken = (token) => { if (streaming) emit({ type: "token", text: token }); };
-    const full = await provider.chat({
+    const full = await runWithPage(req.appPage, () => provider.chat({
       secret, model: finalModel, messages: fullMessages,
       temperature: finalTemperature, maxTokens: finalMaxTokens, stream: streaming,
       onToken, signal: abortController.signal,
       topP, frequencyPenalty, presencePenalty,
-    });
+    }));
     stmts.msgInsert.run(conv.id, "assistant", full);
     logger.action("chat.completed", { id: conv.id, provider: provider.id, chars: full.length });
     emit({
@@ -206,14 +207,14 @@ router.post("/:id/arena", async (req, res) => {
     const startedAt = Date.now();
     let full = "";
     try {
-      full = await provider.chat({
+      full = await runWithPage(req.appPage, () => provider.chat({
         secret, model: mdl, messages: fullMessages,
         temperature: temperature ?? chatCfg.temperature ?? 0.7,
         maxTokens: maxTokens ?? chatCfg.maxTokens ?? 1024,
         stream: true, topP, frequencyPenalty, presencePenalty,
         onToken: (token) => emit({ type: "token", side, text: token }),
         signal: null,
-      });
+      }));
       if (persist) stmts.msgInsert.run(conv.id, "assistant", `[${side === "a" ? "A" : "B"} · ${mdl}]\n\n${full}`);
       emit({ type: "done", side, text: full, model: mdl, stats: { ms: Date.now() - startedAt, chars: full.length, tokensApprox: Math.round(full.length / 4) } });
     } catch (e) {

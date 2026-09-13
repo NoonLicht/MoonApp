@@ -81,7 +81,23 @@ const tables = {
     ["strategy_id", "file", "ok", "ok_count", "error", "unsup", "ping_ok", "ping_fail", "checked_at", "run_started_at"],
     "strategy_id"
   ),
+  // Встроенный прокси (sing-box): подписки, узлы и правила «страница → прокси».
+  // config_json хранит нормализованный узел (см. server/proxyCore.js parseUri).
+  // is_excluded: узел, который пользователь убрал из списка вручную. Храним его
+  // как «скрытый», а не удаляем: иначе авто-обновление подписки вернёт его назад.
+  proxy_subscriptions: new Table(["name", "url", "last_updated", "auto_update_enabled"], "-id"),
+  proxy_nodes: new Table(["sub_id", "name", "protocol", "config_json", "ping_ms", "country_code", "is_selected", "is_excluded"], "-id"),
+  // Прокси-правило страницы: route_path = id страницы приложения ('video', 'music'…),
+  // is_proxied: 1 — трафик страницы идёт через прокси, 0 — напрямую (bypass).
+  proxy_page_rules: new Table(["route_path", "is_proxied"], "route_path"),
 };
+
+// Снимок объявленных колонок ДО load(): loadJSON перезаписывает cols данными из
+// data.json, поэтому колонки, добавленные в код позже (у старых файлов их нет),
+// нужно досыпать вручную — иначе insert() молча не запишет их значения.
+// Досыпаем В КОНЕЦ, чтобы позиционное соответствие старых колонок не сломалось.
+const DECLARED_COLS = {};
+for (const k of Object.keys(tables)) DECLARED_COLS[k] = tables[k].cols.slice();
 
 function now() {
   return new Date().toISOString().replace("T", " ").slice(0, 19);
@@ -125,6 +141,10 @@ function load() {
     const data = JSON.parse(fs.readFileSync(FILES.data, "utf8"));
     for (const k of Object.keys(tables)) {
       if (data[k]) tables[k].loadJSON(data[k]);
+      // Миграция схемы: возвращаем колонки, которых не было в файле.
+      for (const c of DECLARED_COLS[k]) {
+        if (!tables[k].cols.includes(c)) tables[k].cols.push(c);
+      }
       tables[k].seq = Math.max(tables[k].seq, ...tables[k].rows.map((r) => r.id || 0));
     }
     // Миграция: заметки из data.json -> .md файлы (только если в storage/notes/ пусто)
@@ -274,6 +294,51 @@ const stmts = {
   },
   bcrClear: { run: () => run(() => tables.bypass_check_results.deleteWhere(() => true)) },
   bcrSetOk: { run: (ok, id) => run(() => tables.bypass_check_results.updateWhere((r) => r.id === id, { ok: ok ? 1 : 0 })) },
+
+  // ---- Встроенный прокси: подписки ----
+  psubAll: { all: () => tables.proxy_subscriptions.all() },
+  psubGet: { get: (id) => tables.proxy_subscriptions.get(id) },
+  psubInsert: { run: (name, url, auto_update_enabled) => run(() => tables.proxy_subscriptions.insert([name || "", url || "", now(), auto_update_enabled ? 1 : 0])) },
+  psubUpdate: { run: (id, patch) => run(() => tables.proxy_subscriptions.updateWhere((r) => r.id === id, patch)) },
+  psubTouch: { run: (id) => run(() => tables.proxy_subscriptions.updateWhere((r) => r.id === id, { last_updated: now() })) },
+  psubDelete: {
+    run: (id) => run(() => {
+      tables.proxy_subscriptions.delete(id);
+      tables.proxy_nodes.deleteWhere((n) => n.sub_id === id);
+    }),
+  },
+
+  // ---- Встроенный прокси: узлы ----
+  pnodeAll: { all: () => tables.proxy_nodes.all() },
+  pnodeGet: { get: (id) => tables.proxy_nodes.get(id) },
+  pnodeForSub: { all: (sub_id) => tables.proxy_nodes.all().filter((n) => n.sub_id === sub_id) },
+  pnodeInsert: { run: (sub_id, name, protocol, config_json) => run(() => tables.proxy_nodes.insert([sub_id, name || "", protocol || "", config_json || "", null, "", 0, 0])) },
+  pnodeUpdate: { run: (id, patch) => run(() => tables.proxy_nodes.updateWhere((r) => r.id === id, patch)) },
+  pnodeDelete: { run: (id) => run(() => tables.proxy_nodes.delete(id)) },
+  pnodeDeleteForSub: { run: (sub_id) => run(() => tables.proxy_nodes.deleteWhere((n) => n.sub_id === sub_id)) },
+  pnodeClearSelected: { run: () => run(() => tables.proxy_nodes.updateWhere(() => true, { is_selected: 0 })) },
+  pnodeGetSelected: { get: () => tables.proxy_nodes.all().find((n) => n.is_selected) || null },
+  // «Удаление» узла = скрытие (иначе обновление подписки вернёт узел обратно)
+  // и снятие выбора, чтобы ядро не осталось на скрытом узле.
+  pnodeExclude: { run: (id) => run(() => tables.proxy_nodes.updateWhere((r) => r.id === id, { is_excluded: 1, is_selected: 0 })) },
+  pnodeRestore: { run: (id) => run(() => tables.proxy_nodes.updateWhere((r) => r.id === id, { is_excluded: 0 })) },
+  pnodeExcludedForSub: { all: (sub_id) => tables.proxy_nodes.all().filter((n) => n.sub_id === sub_id && !!n.is_excluded) },
+
+  // ---- Встроенный прокси: правила страниц (page → proxied/direct) ----
+  pprAll: { all: () => tables.proxy_page_rules.all() },
+  pprGet: { get: (id) => tables.proxy_page_rules.get(id) },
+  pprSet: {
+    run: (route_path, is_proxied) => run(() => {
+      const existing = tables.proxy_page_rules.rows.find((r) => r.route_path === route_path);
+      const flag = is_proxied ? 1 : 0;
+      if (existing) return tables.proxy_page_rules.updateWhere((r) => r.route_path === route_path, { is_proxied: flag });
+      return tables.proxy_page_rules.insert([route_path, flag]);
+    }),
+  },
+  pprDelete: { run: (id) => run(() => tables.proxy_page_rules.delete(id)) },
+  pprDeleteByPath: { run: (route_path) => run(() => tables.proxy_page_rules.deleteWhere((r) => r.route_path === route_path)) },
+  /** null — правила нет (по умолчанию страница проксируется). */
+  pprIsProxied: { get: (route_path) => { const r = tables.proxy_page_rules.rows.find((x) => x.route_path === route_path); return r ? !!r.is_proxied : null; } },
 };
 
 function exportSnapshot() {

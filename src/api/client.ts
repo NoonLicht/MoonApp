@@ -13,6 +13,7 @@ import type {
   ConvertTools, ConvertResult, ConvertInstallStatus,
   VideoInfo, VideoDownloadResult, VideoJobStatus, YtdlpInstallStatus,
   LhmStatus, MonitorSnapshot, ProviderInfo, ProxyStatus, VlessProfile,
+  ProxyCoreStatus, ProxyNode, ProxySubscription, ProxyPageRule, ProxyLatency, ProxyInstallStatus, ProxyPingStatus,
   FlibustaBook, BookGenre, BooksFeedResult, BookDownloadResult,
   GraphData, GraphNode, GraphEdge,
   MusicTrack, MusicSearchResult, MusicFormats, MusicDownloadStart, MusicJobStatus,
@@ -20,7 +21,7 @@ import type {
   TaskItem, TaskCreatePayload,
   HolstFileEntry, HolstReadResult, HolstWriteResult,
 } from "./types";
-import { logEvent } from "../utils/telemetry";
+import { logEvent, getCurrentPage } from "../utils/telemetry";
 
 export type { AppItem, ArchiveItem, BackupInfo, BooksItem, ChatMessage, Conversation, ConvertTools, ConvertResult, ConvertInstallStatus, VideoInfo, VideoDownloadResult, VideoJobStatus, YtdlpInstallStatus, LhmStatus, MonitorSnapshot, ProviderInfo, ProxyStatus, VlessProfile, FlibustaBook, BookGenre, BooksFeedResult, BookDownloadResult, MusicTrack, MusicSearchResult, MusicFormats, MusicDownloadStart, MusicJobStatus, VaultFile, VaultFileContent, VaultSearchResult, VaultTag, VaultBacklink, TaskItem, TaskCreatePayload, HolstFileEntry, HolstReadResult, HolstWriteResult };
 
@@ -95,6 +96,17 @@ function tokenHeaders(): Record<string, string> {
   return t ? { "x-moonapp-token": t } : {};
 }
 
+/**
+ * Заголовок X-App-Page: какой страницей инициирован запрос. По нему бэкенд
+ * решает, идти во внешнюю сеть напрямую или через прокси (per-page правила,
+ * см. server/middleware/perPageProxy.js + таблицу proxy_page_rules).
+ * На уровне Chromium такая фильтрация невозможна — все страницы SPA делят один
+ * origin, поэтому разграничение живёт на бэкенде.
+ */
+function pageHeaders(): Record<string, string> {
+  return { "X-App-Page": getCurrentPage() };
+}
+
 async function req<T = unknown>(method: string, url: string, body?: unknown): Promise<T> {
   const t0 = Date.now();
   const ts = () => Date.now() - t0;
@@ -104,6 +116,7 @@ async function req<T = unknown>(method: string, url: string, body?: unknown): Pr
       method,
       headers: {
         ...tokenHeaders(),
+        ...pageHeaders(),
         ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
       },
       body: body !== undefined ? JSON.stringify(body) : undefined,
@@ -139,7 +152,7 @@ async function multipart<T = unknown>(url: string, formData: FormData): Promise<
   const t0 = Date.now();
   const res = await fetch(`${BASE}/api${url}`, {
     method: "POST",
-    headers: { ...tokenHeaders() },
+    headers: { ...tokenHeaders(), ...pageHeaders() },
     body: formData,
   });
   if (!res.ok) {
@@ -413,6 +426,33 @@ export const api = {
   saveVless: (link: string, name?: string) => req<VlessProfile>("POST", "/proxy/vless/save", { link, name }),
   deleteVless: (id: string) => req<{ ok: boolean }>("DELETE", `/proxy/vless/${id}`),
 
+  // Proxy core (встроенный sing-box): узлы, подписки, правила страниц
+  proxyCoreStatus: () => req<ProxyCoreStatus>("GET", "/proxycore/status"),
+  proxyCoreStart: (p: { id?: number; uri?: string }) => req<ProxyCoreStatus>("POST", "/proxycore/start", p),
+  proxyCoreStop: () => req<ProxyCoreStatus>("POST", "/proxycore/stop"),
+  proxyCoreInstallStatus: () => req<ProxyInstallStatus>("GET", "/proxycore/install"),
+  proxyCoreInstall: () => req<ProxyInstallStatus>("POST", "/proxycore/install/start"),
+  proxyCoreLatency: (timeout?: number) => req<ProxyLatency>("GET", `/proxycore/latency${timeout ? `?timeout=${timeout}` : ""}`),
+  proxyCoreSubscriptions: () => req<ProxySubscription[]>("GET", "/proxycore/subscriptions"),
+  proxyCoreAddSubscription: (name: string, url: string) => req<{ id: number; refresh: { added?: number; error?: string } }>("POST", "/proxycore/subscriptions", { name, url }),
+  proxyCoreRefreshSubscription: (id: number) => req<{ added: number }>("POST", `/proxycore/subscriptions/${id}/refresh`),
+  proxyCoreDeleteSubscription: (id: number) => req<{ changes: number }>("DELETE", `/proxycore/subscriptions/${id}`),
+  proxyCoreNodes: () => req<ProxyNode[]>("GET", "/proxycore/nodes"),
+  proxyCoreSelectNode: (id: number) => req<{ ok: boolean }>("POST", "/proxycore/nodes/select", { id }),
+  /** Убрать узел из списка (он останется скрытым и при обновлении подписки). */
+  proxyCoreHideNode: (id: number) => req<{ ok: boolean; hidden: boolean }>("DELETE", `/proxycore/nodes/${id}`),
+  /** Вернуть ранее скрытый узел. */
+  proxyCoreRestoreNode: (id: number) => req<{ ok: boolean; hidden: boolean }>("POST", `/proxycore/nodes/${id}/restore`),
+  /** Вернуть все скрытые узлы (или одной подписки). */
+  proxyCoreRestoreHidden: (subId?: number) => req<{ ok: boolean; restored: number }>("DELETE", `/proxycore/nodes/hidden${subId != null ? `?sub=${subId}` : ""}`),
+  /** Пропинговать все конфиги (реальный TTFB через временное ядро). */
+  proxyCorePingNodes: (p: { subId?: number; ids?: number[]; onlyMissing?: boolean } = {}) =>
+    req<ProxyPingStatus>("POST", "/proxycore/nodes/ping", p),
+  proxyCorePingStatus: () => req<ProxyPingStatus>("GET", "/proxycore/nodes/ping"),
+  proxyCorePingCancel: () => req<ProxyPingStatus>("POST", "/proxycore/nodes/ping/cancel"),
+  proxyCorePages: () => req<ProxyPageRule[]>("GET", "/proxycore/pages"),
+  proxyCoreSetPage: (route: string, isProxied: boolean) => req<{ ok: boolean }>("POST", "/proxycore/pages", { route, isProxied }),
+
 // Music / Audio
   musicSearch: (q: string) => req<MusicSearchResult>("GET", `/music/search?q=${encodeURIComponent(q)}`),
   musicDownload: (url: string, format?: string, quality?: number) =>
@@ -479,7 +519,7 @@ export async function streamChatSend(
 ): Promise<void> {
   const res = await fetch(`${BASE}/api/chat/${conversationId}/send`, {
     method: "POST",
-    headers: { ...tokenHeaders(), "Content-Type": "application/json" },
+    headers: { ...tokenHeaders(), ...pageHeaders(), "Content-Type": "application/json" },
     body: JSON.stringify(body),
     signal,
   });
@@ -519,7 +559,7 @@ export async function streamArena(
 ): Promise<void> {
   const res = await fetch(`${BASE}/api/chat/${conversationId}/arena`, {
     method: "POST",
-    headers: { ...tokenHeaders(), "Content-Type": "application/json" },
+    headers: { ...tokenHeaders(), ...pageHeaders(), "Content-Type": "application/json" },
     body: JSON.stringify(body),
     signal,
   });

@@ -20,7 +20,11 @@ const AdmZip = require("adm-zip");
 const SB_VER = "1.11.0";
 const root = path.join(__dirname, "..");
 const YTDLP_OUT = path.join(root, "server", "vendor", "ytdlp", "yt-dlp.exe");
+// sing-box кладём в ДВЕ точки: legacy-путь страницы «Прокси» (singbox) и новый
+// каталог встроенного ядра (proxy-core), который читает server/proxyCore.js
+// (detectEngine → VENDOR_BIN).
 const SINGBOX_OUT = path.join(root, "server", "vendor", "singbox", "sing-box.exe");
+const PROXY_CORE_OUT = path.join(root, "server", "vendor", "proxy-core", "sing-box.exe");
 const YTDLP_URL = "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe";
 const SINGBOX_URL = `https://github.com/SagerNet/sing-box/releases/download/v${SB_VER}/sing-box-${SB_VER}-windows-amd64.zip`;
 
@@ -40,16 +44,23 @@ async function main() {
     console.log(`[fetch-engines] yt-dlp.exe → ${YTDLP_OUT} (${buf.length} bytes)`);
   }
 
-  if (fs.existsSync(SINGBOX_OUT)) {
-    console.log(`[fetch-engines] sing-box.exe уже есть: ${SINGBOX_OUT}`);
+  // sing-box нужен в двух путях (legacy singbox + proxy-core). Архив качается
+  // один раз и раскладывается туда, где файла ещё нет.
+  const singBoxTargets = [SINGBOX_OUT, PROXY_CORE_OUT];
+  const missing = singBoxTargets.filter((p) => !fs.existsSync(p));
+  if (missing.length === 0) {
+    console.log(`[fetch-engines] sing-box.exe уже есть: ${singBoxTargets.join(", ")}`);
   } else {
     const zipBuf = await fetchBuffer(SINGBOX_URL);
     const zip = new AdmZip(zipBuf);
     const entry = zip.getEntries().find((e) => /(^|\/)sing-box\.exe$/i.test(e.entryName));
     if (!entry) throw new Error("sing-box.exe не найден внутри архива");
-    fs.mkdirSync(path.dirname(SINGBOX_OUT), { recursive: true });
-    fs.writeFileSync(SINGBOX_OUT, entry.getData());
-    console.log(`[fetch-engines] sing-box.exe → ${SINGBOX_OUT} (${entry.header.size} bytes)`);
+    const data = entry.getData();
+    for (const out of missing) {
+      fs.mkdirSync(path.dirname(out), { recursive: true });
+      fs.writeFileSync(out, data);
+      console.log(`[fetch-engines] sing-box.exe → ${out} (${entry.header.size} bytes)`);
+    }
   }
 }
 

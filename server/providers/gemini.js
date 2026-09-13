@@ -1,4 +1,5 @@
 const { consumeSSE } = require("./stream");
+const { pageFetch } = require("../middleware/perPageProxy");
 
 const BASE = "https://generativelanguage.googleapis.com/v1beta/models";
 const MODELS = ["gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.0-flash", "gemini-1.5-pro", "gemini-1.5-flash"];
@@ -22,7 +23,7 @@ function mapMessages(messages) {
 
 // GET {BASE}?key=... → { models: [{ name: "models/gemini-2.5-pro", ... }] }
 async function listModels(secret) {
-  const res = await fetch(`${BASE}?pageSize=100&key=${encodeURIComponent(secret)}`);
+  const res = await pageFetch(`${BASE}?pageSize=100&key=${encodeURIComponent(secret)}`);
   if (!res.ok) throw new Error(`list models failed: ${res.status}`);
   const json = await res.json();
   return (json.models || [])
@@ -43,7 +44,7 @@ module.exports = {
       contents: mapMessages(messages),
       generationConfig: { temperature: temperature ?? 0.7, maxOutputTokens: maxTokens || 1024 },
     };
-    const res = await fetch(this.mkUrl(model, secret), {
+    const res = await pageFetch(this.mkUrl(model, secret), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),

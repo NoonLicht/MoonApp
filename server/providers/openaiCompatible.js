@@ -1,4 +1,5 @@
 const { consumeSSE } = require("./stream");
+const { pageFetch } = require("../middleware/perPageProxy");
 
 /**
  * Universal OpenAI-compatible API client.
@@ -38,14 +39,14 @@ function makeOpenAICompatible(o) {
       return b;
     },
     async listModels(secret) {
-      const res = await fetch(this.modelsUrl(), { headers: this.headers(secret) });
+      const res = await pageFetch(this.modelsUrl(), { headers: this.headers(secret) });
       if (!res.ok) throw new Error(`list models failed: ${res.status}`);
       const json = await res.json();
       return (json.data || []).map((m) => m.id);
     },
     async chat({ secret, model, messages, temperature, maxTokens, stream, onToken, signal, topP, frequencyPenalty, presencePenalty }) {
       const body = this.body({ model, messages, temperature, maxTokens, stream: true, topP, frequencyPenalty, presencePenalty });
-      const res = await fetch(this.buildUrl(), {
+      const res = await pageFetch(this.buildUrl(), {
         method: "POST", headers: this.headers(secret), signal,
         body: JSON.stringify(body),
       });

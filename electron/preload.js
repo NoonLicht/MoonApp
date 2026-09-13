@@ -21,6 +21,9 @@ contextBridge.exposeInMainWorld("appBridge", {
   // Открыть каталог установки приложения (кнопка в верхней панели).
   openAppDir: () => ipcRenderer.invoke("shell:open-app-dir"),
   refreshTray: () => ipcRenderer.send("bypass:tray-refresh"),
+  // Встроенный прокси: применить ({ proxyRules: "socks5://127.0.0.1:10808" })
+  // или снять (null) глобальный прокси Chromium (session.defaultSession).
+  applyProxySession: (cfg) => ipcRenderer.invoke("proxy:apply-session", cfg),
   // Обновления приложения (работают только в packaged-сборке).
   checkUpdates: () => ipcRenderer.invoke("updates:check"),
   toggleAutoUpdate: () => ipcRenderer.invoke("updates:toggle"),
