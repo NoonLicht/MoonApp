@@ -8,6 +8,7 @@ import { usePageToolbar } from "../components/Toolbar";
 import { useI18n } from "../i18n";
 import { api } from "../api/client";
 import MediaCatalog from "../components/media/MediaCatalog";
+import MediaBrowse from "../components/media/MediaBrowse";
 import MediaDetailModal from "../components/media/MediaDetailModal";
 import PlayerModal from "../components/media/PlayerModal";
 import MediaStatsCard from "../components/media/MediaStatsCard";
@@ -47,6 +48,8 @@ export default function MoviesPage() {
 
   const [detail, setDetail] = useState<{ kind: MediaKind; id: number; summary?: MediaSummary | null } | null>(null);
   const [player, setPlayer] = useState<{ trailerKey: string | null } | null>(null);
+  /** Открытая подборка «Все …» (null — обычный каталог каруселей). */
+  const [browse, setBrowse] = useState<{ category: string; title: string } | null>(null);
 
   const [library, setLibrary] = useState<MediaLibrary | null>(null);
   const [stats, setStats] = useState<MediaStats | null>(null);
@@ -57,6 +60,9 @@ export default function MoviesPage() {
     api.moviesStatus().then(setStatus).catch(() => setStatus(null));
   }, []);
   useEffect(() => { loadStatus(); }, [loadStatus]);
+
+  // Смена типа медиа (фильмы/сериалы) меняет набор подборок — закрываем открытый список.
+  useEffect(() => { setBrowse(null); }, [kind]);
 
   // Личная библиотека + агрегированная статистика.
   const loadLibrary = useCallback(() => {
@@ -75,6 +81,7 @@ export default function MoviesPage() {
   const runSearch = useCallback(async () => {
     const q = query.trim();
     if (!q) { setSearchItems([]); setSearched(false); return; }
+    setBrowse(null); // поиск показываем поверх каталога, а не поверх открытой подборки
     setSearching(true);
     setSearched(true);
     try {
@@ -115,11 +122,11 @@ export default function MoviesPage() {
     <div className="mv-toolbar">
       {/* Тип медиа: фильмы / сериалы */}
       <div className="mv-seg">
-        <button className={kind === "movie" ? "is-active" : ""} onClick={() => setKind("movie")}>
-          <Film size={14} /> {t("movies.movies")}
+        <button className={kind === "movie" ? "is-active" : ""} onClick={() => setKind("movie")} title={t("movies.movies")}>
+          <Film size={14} /> <span className="mv-seg-label">{t("movies.movies")}</span>
         </button>
-        <button className={kind === "tv" ? "is-active" : ""} onClick={() => setKind("tv")}>
-          <Tv size={14} /> {t("movies.series")}
+        <button className={kind === "tv" ? "is-active" : ""} onClick={() => setKind("tv")} title={t("movies.series")}>
+          <Tv size={14} /> <span className="mv-seg-label">{t("movies.series")}</span>
         </button>
       </div>
 
@@ -204,9 +211,24 @@ export default function MoviesPage() {
         </Glass>
       )}
 
-      {/* Каталог подборок TMDB */}
+      {/* Каталог подборок TMDB либо полный список выбранной подборки («Все …») */}
       {view === "catalog" && (
-        <MediaCatalog kind={kind} reloadNonce={reloadNonce} onSelect={(k, id, s) => setDetail({ kind: k, id, summary: s })} />
+        browse ? (
+          <MediaBrowse
+            kind={kind}
+            category={browse.category}
+            title={browse.title}
+            onBack={() => setBrowse(null)}
+            onSelect={(k, id, s) => setDetail({ kind: k, id, summary: s })}
+          />
+        ) : (
+          <MediaCatalog
+            kind={kind}
+            reloadNonce={reloadNonce}
+            onSelect={(k, id, s) => setDetail({ kind: k, id, summary: s })}
+            onSeeAll={(category, title) => setBrowse({ category, title })}
+          />
+        )
       )}
 
       {/* Мой список: watchlist + статусы */}

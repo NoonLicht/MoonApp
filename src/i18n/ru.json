@@ -739,7 +739,16 @@
     "keyHint": "Метаданные фильмов и сериалов берутся из TMDB (themoviedb.org). Войдите и запросите API Key или Read Access Token, затем вставьте его здесь.",
     "keyLabel": "API Key / Read Access Token",
     "keySave": "Сохранить",
-    "keyWhere": "Ключ шифруется и хранится локально, на наши серверы он не отправляется."
+    "keyWhere": "Ключ шифруется и хранится локально, на наши серверы он не отправляется.",
+    "seeAll": "Все",
+    "browseBack": "Назад в каталог",
+    "browseCount": "{n} тайтлов",
+    "loadMore": "Показать ещё",
+    "resetRating": "Сбросить оценку",
+    "prevImage": "Предыдущее",
+    "nextImage": "Следующее",
+    "photoOf": "{i} / {n}",
+    "providersMore": "+{n} ещё"
   },
   "moviesSettings": {
     "language": "Язык метаданных",

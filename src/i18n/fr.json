@@ -770,7 +770,16 @@
     "keyHint": "Les métadonnées proviennent de TMDB (themoviedb.org). Connectez-vous, demandez une API Key ou un Read Access Token, puis collez-la ici.",
     "keyLabel": "API Key / Read Access Token",
     "keySave": "Enregistrer",
-    "keyWhere": "La clé est chiffrée et stockée localement ; elle n'est jamais envoyée à nos serveurs."
+    "keyWhere": "La clé est chiffrée et stockée localement ; elle n'est jamais envoyée à nos serveurs.",
+    "seeAll": "Voir tout",
+    "browseBack": "Retour au catalogue",
+    "browseCount": "{n} titres",
+    "loadMore": "Afficher plus",
+    "resetRating": "Effacer la note",
+    "prevImage": "Précédent",
+    "nextImage": "Suivant",
+    "photoOf": "{i} / {n}",
+    "providersMore": "+{n} de plus"
   },
   "moviesSettings": {
     "language": "Langue des métadonnées",

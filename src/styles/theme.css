@@ -99,15 +99,19 @@ html, body{
   /* Панель управления приложением — во всю ширину окна (кнопки окна справа,
      ничего не обрезается слева). Рельс страниц живёт ПОД ней. */
   position:fixed; top:var(--tbar-gap); left:var(--tbar-gap); right:var(--tbar-gap); z-index:40;
-  display:grid; grid-template-columns:1fr auto 1fr; align-items:center;
+  display:grid; grid-template-columns:minmax(0,1fr) minmax(0,auto) minmax(0,1fr); align-items:center;
   height:var(--tbar-h);
   padding:0 12px; border-radius:14px;
   background:var(--glass-strong); border:1px solid var(--glass-border);
   backdrop-filter:blur(22px); -webkit-backdrop-filter:blur(22px); box-shadow:var(--shadow);
 }
 .tb-side-left{ min-width:0; }
+/* Центр — панель конкретной страницы. min-width:0 и «сжимаемые» дети не дают
+   грид-колонке вырасти на max-content и налезть на кнопки окна в узком окне. */
 .tb-center{ min-width:0; display:flex; align-items:center; justify-content:center; gap:10px; }
-.tb-title{ display:flex; align-items:center; gap:8px; font-weight:600; font-size:13px; color:var(--text-primary); white-space:nowrap; }
+.tb-dynamic > *{ min-width:0; }
+.tb-title{ display:flex; align-items:center; gap:8px; font-weight:600; font-size:13px; color:var(--text-primary); white-space:nowrap; min-width:0; overflow:hidden; }
+.tb-title span{ overflow:hidden; text-overflow:ellipsis; }
 .tb-dynamic{ display:flex; align-items:center; gap:8px; min-width:0; -webkit-app-region:no-drag; }
 .tb-side-right{ min-width:0; display:flex; align-items:center; justify-content:flex-end; gap:6px; }
 .theme-toggle{ background:none; border:none; cursor:pointer; color:var(--text-tertiary); display:flex; align-items:center; padding:6px; flex-shrink:0; }
@@ -380,6 +384,8 @@ input[type="range"]{
   .tb-dynamic .badge{ display:none; }
   .tb-dynamic{ gap:4px; }
   .tb-center{ gap:6px; }
+  .top-toolbar{ padding:0 8px; }
+  .win-btn{ width:30px; }
 }
 
 @media (max-width: 640px){
@@ -390,5 +396,10 @@ input[type="range"]{
   .theme-toggle{ padding:4px; }
   .app-dir-toggle{ padding:4px; }
   .tb-dynamic .icon-btn{ width:26px; height:26px; }
+  .tb-center{ gap:4px; }
+  /* Только поля, стоящие в панели напрямую: в выпадающих меню тулбара
+     (.tb-pop) подписи и слайдеры должны остаться полноразмерными. */
+  .tb-dynamic > .field .field-label{ display:none; }
+  .tb-dynamic > .field input[type="range"]{ width:70px; }
 }
 

@@ -770,7 +770,16 @@
     "keyHint": "影视元数据来自 TMDB（themoviedb.org）。请登录并申请 API Key 或 Read Access Token，然后粘贴到此处。",
     "keyLabel": "API Key / Read Access Token",
     "keySave": "保存",
-    "keyWhere": "密钥会加密并保存在本地，绝不会发送到我们的服务器。"
+    "keyWhere": "密钥会加密并保存在本地，绝不会发送到我们的服务器。",
+    "seeAll": "查看全部",
+    "browseBack": "返回目录",
+    "browseCount": "{n} 部作品",
+    "loadMore": "显示更多",
+    "resetRating": "清除评分",
+    "prevImage": "上一张",
+    "nextImage": "下一张",
+    "photoOf": "{i} / {n}",
+    "providersMore": "另有 {n} 个"
   },
   "moviesSettings": {
     "language": "元数据语言",

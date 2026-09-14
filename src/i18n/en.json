@@ -771,7 +771,16 @@
     "keyHint": "Movies & TV metadata comes from TMDB (themoviedb.org). Sign in, request an API Key or Read Access Token, then paste it here.",
     "keyLabel": "API Key / Read Access Token",
     "keySave": "Save",
-    "keyWhere": "The key is encrypted and stored locally; it is never sent to our servers."
+    "keyWhere": "The key is encrypted and stored locally; it is never sent to our servers.",
+    "seeAll": "See all",
+    "browseBack": "Back to catalog",
+    "browseCount": "{n} titles",
+    "loadMore": "Show more",
+    "resetRating": "Reset rating",
+    "prevImage": "Previous",
+    "nextImage": "Next",
+    "photoOf": "{i} / {n}",
+    "providersMore": "+{n} more"
   },
   "moviesSettings": {
     "language": "Metadata language",

@@ -770,7 +770,16 @@
     "keyHint": "تأتي بيانات الأفلام والمسلسلات من TMDB (themoviedb.org). سجّل الدخول واطلب API Key أو Read Access Token ثم الصقه هنا.",
     "keyLabel": "API Key / Read Access Token",
     "keySave": "حفظ",
-    "keyWhere": "يُشفَّر المفتاح ويُخزَّن محليًا، ولا يُرسَل إلى خوادمنا."
+    "keyWhere": "يُشفَّر المفتاح ويُخزَّن محليًا، ولا يُرسَل إلى خوادمنا.",
+    "seeAll": "عرض الكل",
+    "browseBack": "العودة إلى الفهرس",
+    "browseCount": "{n} عنوانًا",
+    "loadMore": "عرض المزيد",
+    "resetRating": "إعادة تعيين التقييم",
+    "prevImage": "السابق",
+    "nextImage": "التالي",
+    "photoOf": "{i} / {n}",
+    "providersMore": "+{n} أخرى"
   },
   "moviesSettings": {
     "language": "لغة البيانات الوصفية",

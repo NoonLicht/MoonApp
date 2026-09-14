@@ -1,8 +1,9 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   X, Star, Play, Bookmark, BookmarkCheck, Check, Eye, Clock, Calendar,
   AlertTriangle, Users, Image as ImageIcon, Film, Tv, Layers,
+  ChevronLeft, ChevronRight, RotateCcw,
 } from "lucide-react";
 import { Glass, Btn, Badge, EmptyHint } from "../ui";
 import { usePageActive } from "../Toolbar";
@@ -12,6 +13,7 @@ import { api } from "../../api/client";
 import SourcesList from "./SourcesList";
 import { mediaErrorText } from "./MediaCatalog";
 import { imgUrl, imgCssUrl } from "./mediaImg";
+import { stepIndex } from "./gallery";
 import type {
   MediaKind, MediaSummary, MediaDetails, MediaState, MediaWatchStatus,
 } from "../../api/types";
@@ -83,13 +85,21 @@ export default function MediaDetailModal({
   const [error, setError] = useState<{ text: string; needsKey: boolean; needsProxy: boolean } | null>(null);
   const [tab, setTab] = useState<TabId>("overview");
   const [busy, setBusy] = useState(false);
-  const [lightbox, setLightbox] = useState<string | null>(null);
+  /** Индекс открытого фото в ленте галереи (null — лайтбокс закрыт). */
+  const [lightbox, setLightbox] = useState<number | null>(null);
+
+  /** Лента галереи: кадры + постеры (индекс = позиция в лайтбоксе). */
+  const gallery = details ? [...details.gallery.backdrops, ...details.gallery.posters] : [];
+  /** Длина ленты для обработчика клавиатуры (он живёт дольше одного рендера). */
+  const galleryLen = useRef(0);
+  galleryLen.current = gallery.length;
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     setDetails(null);
     setPersonal(null);
+    setLightbox(null); // закрываем лайтбокс: лента галереи нового тайтла другая
     try {
       const d = await api.moviesDetails(kind, id);
       setDetails(d);
@@ -105,11 +115,15 @@ export default function MediaDetailModal({
 
   useEffect(() => { void load(); }, [load]);
 
-  // Esc закрывает модалку/лайтбокс.
+  // Esc закрывает лайтбокс/модалку, ←/→ перелистывают фото в лайтбоксе.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "Escape") return;
-      if (lightbox) setLightbox(null); else onClose();
+      if (e.key === "Escape") { if (lightbox != null) setLightbox(null); else onClose(); return; }
+      if (lightbox == null) return;
+      if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+        e.preventDefault();
+        setLightbox((i) => stepIndex(i, e.key === "ArrowRight" ? 1 : -1, galleryLen.current));
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -241,10 +255,20 @@ export default function MediaDetailModal({
                     )}
                   </div>
 
-                  {/* Личная оценка 1–10 */}
+                  {/* Личная оценка 1–10 + сброс случайной оценки */}
                   <div className="mv-detail-rating">
                     <span className="muted-sm">{t("movies.myRating")}</span>
                     <StarRating value={myRating} onRate={rate} />
+                    {myRating > 0 && (
+                      <button
+                        className="mv-chip-btn mv-rating-reset"
+                        onClick={() => void rate(0)}
+                        disabled={busy}
+                        title={t("movies.resetRating")}
+                      >
+                        <RotateCcw size={12} /> {t("movies.resetRating")}
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -301,12 +325,12 @@ export default function MediaDetailModal({
                   )}
                 </>
               )}
-              {/* Галерея: кадры и постеры (клик — лайтбокс) */}
+              {/* Галерея: кадры и постеры (клик — лайтбокс, ←/→ листают) */}
               {tab === "gallery" && (
-                (details.gallery.backdrops.length + details.gallery.posters.length) > 0 ? (
+                gallery.length > 0 ? (
                   <div className="mv-gallery">
-                    {[...details.gallery.backdrops, ...details.gallery.posters].map((src, i) => (
-                      <button key={i} className="mv-gallery-item" onClick={() => setLightbox(src)}>
+                    {gallery.map((src, i) => (
+                      <button key={i} className="mv-gallery-item" onClick={() => setLightbox(i)}>
                         <img src={imgUrl(src)} alt="" loading="lazy" />
                       </button>
                     ))}
@@ -348,10 +372,31 @@ export default function MediaDetailModal({
 
       {/* Лайтбокс — сосед карточки (не внутри .mv-detail): у .glass есть
           backdrop-filter, а он создаёт containing block для position:fixed,
-          из-за чего «полноэкранный» просмотр обрезался рамками карточки. */}
-      {lightbox && (
-        <div className="mv-lightbox" onClick={() => setLightbox(null)}>
-          <img src={imgUrl(lightbox)} alt="" />
+          из-за чего «полноэкранный» просмотр обрезался рамками карточки.
+          Клики гасим (stopPropagation): иначе они всплывали до backdrop и
+          закрывали саму карточку тайтла. */}
+      {lightbox != null && gallery[lightbox] && (
+        <div className="mv-lightbox" onClick={(e) => { e.stopPropagation(); setLightbox(null); }}>
+          {gallery.length > 1 && (
+            <button
+              className="mv-lightbox-btn is-prev"
+              onClick={(e) => { e.stopPropagation(); setLightbox((i) => stepIndex(i, -1, gallery.length)); }}
+              title={t("movies.prevImage")} aria-label={t("movies.prevImage")}
+            >
+              <ChevronLeft size={22} />
+            </button>
+          )}
+          <img src={imgUrl(gallery[lightbox])} alt="" />
+          {gallery.length > 1 && (
+            <button
+              className="mv-lightbox-btn is-next"
+              onClick={(e) => { e.stopPropagation(); setLightbox((i) => stepIndex(i, 1, gallery.length)); }}
+              title={t("movies.nextImage")} aria-label={t("movies.nextImage")}
+            >
+              <ChevronRight size={22} />
+            </button>
+          )}
+          <div className="mv-lightbox-count">{t("movies.photoOf", { i: lightbox + 1, n: gallery.length })}</div>
         </div>
       )}
     </div>,

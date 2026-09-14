@@ -1,10 +1,9 @@
-import React, { useEffect, useState, useCallback } from "react";
-import { Star, Calendar, Film, Tv, RefreshCw, AlertTriangle } from "lucide-react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
+import { Star, Calendar, Film, Tv, RefreshCw, AlertTriangle, ChevronLeft, ChevronRight, ArrowRight } from "lucide-react";
 import { Glass, Btn, Badge, EmptyHint } from "../ui";
 import { useI18n } from "../../i18n";
 import { api } from "../../api/client";
 import { imgUrl, imgCssUrl } from "./mediaImg";
-import { useRailWheel } from "./useRailWheel";
 import type { MediaKind, MediaSummary, MediaListResult, MediaGenre } from "../../api/types";
 
 /**
@@ -18,6 +17,8 @@ interface MediaCatalogProps {
   onSelect: (kind: MediaKind, id: number, summary?: MediaSummary) => void;
   /** Внешний счётчик обновления (кнопка «Обновить» в тулбаре страницы). */
   reloadNonce: number;
+  /** Открыть полный список подборки (плитка «Все» в конце карусели). */
+  onSeeAll?: (category: string, title: string) => void;
 }
 
 function posterOf(item: MediaSummary): string | null {
@@ -43,24 +44,106 @@ function MediaCard({ item, onSelect }: { item: MediaSummary; onSelect: (k: Media
   );
 }
 
-/** Горизонтальная карусель с заголовком. */
+/**
+ * Плитка «Все» в конце карусели: открывает полный список подборки.
+ * Стоит последней карточкой, поэтому видна после прокрутки ряда.
+ */
+function SeeAllCard({ title, onClick }: { title: string; onClick: () => void }) {
+  const { t } = useI18n();
+  return (
+    <button className="mv-card mv-card-all" onClick={onClick} title={`${t("movies.seeAll")}: ${title}`}>
+      <span className="mv-card-all-art">
+        <ArrowRight size={22} strokeWidth={2} />
+      </span>
+      <span className="mv-card-all-text">{t("movies.seeAll")}</span>
+      <span className="mv-card-all-sub">{title}</span>
+    </button>
+  );
+}
+
+/**
+ * Горизонтальная карусель с заголовком и стрелками листания.
+ *
+ * Колесом мыши ряд НЕ прокручивается (страница скроллится вертикально как
+ * обычно) — листать нужно стрелками «‹ ›» в заголовке, которые появляются,
+ * когда ряд действительно шире видимой области, и гаснут на краях.
+ */
 function MediaRow({
-  title, items, loading, onSelect,
+  title, items, loading, onSelect, onSeeAll, category,
 }: {
   title: string; items: MediaSummary[]; loading?: boolean;
   onSelect: (k: MediaKind, id: number, s?: MediaSummary) => void;
+  onSeeAll?: (category: string, title: string) => void;
+  /** Идентификатор подборки для плитки «Все» (popular, top_rated, genre:28…). */
+  category?: string;
 }) {
-  // Колесо мыши прокручивает ряд по горизонтали (скроллбары в приложении скрыты).
-  const railRef = useRailWheel<HTMLDivElement>();
+  const { t } = useI18n();
+  const railRef = useRef<HTMLDivElement | null>(null);
+  const [edges, setEdges] = useState({ prev: false, next: false });
+
+  /** Пересчитать доступность стрелок по текущей позиции и ширине ряда. */
+  const sync = useCallback(() => {
+    const el = railRef.current;
+    if (!el) return;
+    const max = el.scrollWidth - el.clientWidth;
+    setEdges({ prev: el.scrollLeft > 4, next: max > 4 && el.scrollLeft < max - 4 });
+  }, []);
+
+  useEffect(() => {
+    const el = railRef.current;
+    if (!el) return;
+    sync();
+    // Картинки приезжают асинхронно и меняют scrollWidth — пересчитываем ещё раз.
+    const late = window.setTimeout(sync, 400);
+    const ro = new ResizeObserver(sync);
+    ro.observe(el);
+    el.addEventListener("scroll", sync, { passive: true });
+    return () => {
+      window.clearTimeout(late);
+      ro.disconnect();
+      el.removeEventListener("scroll", sync);
+    };
+  }, [sync, items, loading]);
+
+  /** Листнуть ряд на видимую страницу (плавно, как слайдер). */
+  const page = useCallback((dir: number) => {
+    const el = railRef.current;
+    if (!el) return;
+    el.scrollBy({ left: dir * Math.max(180, el.clientWidth * 0.85), behavior: "smooth" });
+  }, []);
+
   if (!loading && items.length === 0) return null;
+  const showNav = edges.prev || edges.next;
+
   return (
     <section className="mv-row">
-      <div className="mv-row-head"><h3>{title}</h3></div>
+      <div className="mv-row-head">
+        <h3>{title}</h3>
+        {showNav && (
+          <div className="mv-rail-nav">
+            <button
+              className="mv-rail-btn" onClick={() => page(-1)} disabled={!edges.prev}
+              title={t("movies.prevImage")} aria-label={t("movies.prevImage")}
+            >
+              <ChevronLeft size={15} />
+            </button>
+            <button
+              className="mv-rail-btn" onClick={() => page(1)} disabled={!edges.next}
+              title={t("movies.nextImage")} aria-label={t("movies.nextImage")}
+            >
+              <ChevronRight size={15} />
+            </button>
+          </div>
+        )}
+      </div>
       <div className="mv-row-scroll" ref={railRef}>
         {loading && Array.from({ length: 6 }).map((_, i) => <div key={i} className="mv-card is-skeleton" />)}
         {!loading && items.map((it) => (
           <MediaCard key={`${it.kind}-${it.id}`} item={it} onSelect={onSelect} />
         ))}
+        {!loading && onSeeAll && category && items.length > 0 && (
+          <SeeAllCard title={title} onClick={() => onSeeAll(category, title)} />
+        )}
       </div>
     </section>
   );
@@ -78,7 +161,7 @@ export function mediaErrorText(
   return { text: (e as Error)?.message || t("movies.errGeneric"), needsKey: false, needsProxy: false };
 }
 
-export default function MediaCatalog({ kind, onSelect, reloadNonce }: MediaCatalogProps) {
+export default function MediaCatalog({ kind, onSelect, reloadNonce, onSeeAll }: MediaCatalogProps) {
   const { t } = useI18n();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<{ text: string; needsKey: boolean; needsProxy: boolean } | null>(null);
@@ -184,13 +267,18 @@ export default function MediaCatalog({ kind, onSelect, reloadNonce }: MediaCatal
         <MediaRow
           title={t("movies.byGenre", { name: genres.find((g) => g.id === genre)?.name || "" })}
           items={genreItems} loading={genreLoading} onSelect={onSelect}
+          category={`genre:${genre}`} onSeeAll={onSeeAll}
         />
       ) : (
         <>
-          <MediaRow title={t("movies.trending")} items={trending} loading={loading} onSelect={onSelect} />
-          <MediaRow title={t("movies.popular")} items={popular} loading={loading} onSelect={onSelect} />
-          <MediaRow title={t("movies.topRated")} items={topRated} loading={loading} onSelect={onSelect} />
-          <MediaRow title={upcomingTitle} items={upcoming} loading={loading} onSelect={onSelect} />
+          <MediaRow title={t("movies.trending")} items={trending} loading={loading} onSelect={onSelect}
+            category="trending" onSeeAll={onSeeAll} />
+          <MediaRow title={t("movies.popular")} items={popular} loading={loading} onSelect={onSelect}
+            category="popular" onSeeAll={onSeeAll} />
+          <MediaRow title={t("movies.topRated")} items={topRated} loading={loading} onSelect={onSelect}
+            category="top_rated" onSeeAll={onSeeAll} />
+          <MediaRow title={upcomingTitle} items={upcoming} loading={loading} onSelect={onSelect}
+            category={upcomingCategory} onSeeAll={onSeeAll} />
         </>
       )}
 

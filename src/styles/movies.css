@@ -38,6 +38,10 @@
   align-items: center;
   gap: 10px;
   flex-wrap: nowrap;
+  /* Панель живёт внутри .tb-dynamic и должна ужиматься вместе с окном:
+     элементы ниже — flex-элементы с min-width:0, а не «жёсткие» ширины. */
+  min-width: 0;
+  max-width: 100%;
 }
 
 .mv-seg {
@@ -48,6 +52,7 @@
   border-radius: 10px;
   background: var(--track);
   border: 1px solid var(--glass-border);
+  flex: 0 0 auto;
 }
 
 .mv-seg button {
@@ -78,7 +83,11 @@
   background: var(--track);
   border: 1px solid var(--glass-border);
   color: var(--text-tertiary);
-  min-width: 200px;
+  /* Гибкая ширина: раньше было min-width:200px, из-за чего в узком окне
+     тулбар не ужимался и элементы налезали друг на друга. */
+  flex: 1 1 160px;
+  min-width: 0;
+  max-width: 260px;
 }
 .mv-search-input {
   border: 0;
@@ -234,7 +243,84 @@
   overflow-x: auto;
   padding-bottom: 6px;
   scrollbar-width: thin;
+  scroll-behavior: smooth;
 }
+
+/* Стрелки листания карусели: появляются, когда ряд шире видимой области. */
+.mv-rail-nav { display: inline-flex; gap: 4px; flex: 0 0 auto; }
+.mv-rail-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  border: 1px solid var(--glass-border);
+  background: var(--track);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, opacity 0.15s;
+}
+.mv-rail-btn:hover:not(:disabled) { background: var(--glass-strong); color: var(--text-primary); }
+.mv-rail-btn:disabled { opacity: 0.32; cursor: default; }
+
+/* Плитка «Все» — последняя карточка карусели: открывает полный список подборки. */
+.mv-card-all { justify-content: center; }
+.mv-card-all-art {
+  aspect-ratio: 2 / 3;
+  border-radius: 12px;
+  border: 1px dashed var(--glass-border);
+  background: var(--track);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--violet);
+  transition: border-color 0.15s, background 0.15s;
+}
+.mv-card-all:hover .mv-card-all-art { border-color: var(--violet); background: var(--violet-soft); }
+.mv-card-all-text { font-size: 12px; font-weight: 500; color: var(--text-primary); }
+.mv-card-all-sub {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Полный список подборки («Все популярные» и т.п.). */
+.mv-browse { display: flex; flex-direction: column; gap: 14px; }
+.mv-browse-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.mv-browse-head h3 {
+  margin: 0;
+  font-size: 17px;
+  font-family: var(--font-display);
+  color: var(--text-primary);
+}
+.mv-browse-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border-radius: 9px;
+  border: 1px solid var(--glass-border);
+  background: var(--track);
+  color: var(--text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+}
+.mv-browse-back:hover { background: var(--glass-strong); color: var(--text-primary); }
+.mv-browse-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(136px, 1fr));
+  gap: 14px 12px;
+}
+.mv-browse-grid .mv-card.is-skeleton { height: auto; aspect-ratio: 2 / 3; }
+.mv-browse-more { display: flex; justify-content: center; padding: 4px 0 8px; }
 
 .mv-card {
   display: flex;
@@ -506,6 +592,22 @@
 .mv-star.is-on { color: var(--amber); }
 .mv-stars-value { margin-left: 8px; font-size: 12px; font-family: var(--font-mono); color: var(--text-secondary); }
 
+/* Маленькая кнопка-чип (например, «Сбросить оценку» рядом со звёздами). */
+.mv-chip-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--glass-border);
+  background: var(--track);
+  color: var(--text-tertiary);
+  font-size: 11px;
+  cursor: pointer;
+}
+.mv-chip-btn:hover:not(:disabled) { background: var(--glass-strong); color: var(--text-primary); }
+.mv-chip-btn:disabled { opacity: 0.5; cursor: default; }
+
 /* Табы карточки */
 .mv-detail-tabs {
   display: flex;
@@ -592,49 +694,111 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 30px;
+  padding: 30px 62px;
   cursor: zoom-out;
   pointer-events: auto;
 }
-.mv-lightbox img { max-width: 100%; max-height: 100%; border-radius: 12px; }
+.mv-lightbox img {
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: 12px;
+  object-fit: contain;
+}
+/* Листание галереи: кнопки по краям + счётчик кадров. */
+.mv-lightbox-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 42px;
+  height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1px solid var(--glass-border);
+  background: rgba(10, 12, 20, 0.72);
+  color: var(--text-primary);
+  cursor: pointer;
+  z-index: 1;
+}
+.mv-lightbox-btn:hover { background: var(--violet); color: #fff; }
+.mv-lightbox-btn.is-prev { left: 10px; }
+.mv-lightbox-btn.is-next { right: 10px; }
+.mv-lightbox-count {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(10, 12, 20, 0.72);
+  border: 1px solid var(--glass-border);
+  color: var(--text-secondary);
+  font-size: 11.5px;
+  font-family: var(--font-mono);
+}
 
 /* --------------------------- «Где смотреть» --------------------------- */
 
+/* Компактный футер «Где смотреть»: одна строка с чипами площадок + кнопки.
+   Раньше это были три ряда с подписями — занимало слишком много высоты. */
 .mv-sources {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  align-items: center;
   gap: 10px;
-  padding: 16px 22px 22px;
+  padding: 10px 22px 12px;
   border-top: 1px solid var(--glass-border);
   flex: 0 0 auto; /* футер карточки: «Где смотреть» + кнопки всегда под рукой */
+  flex-wrap: wrap;
 }
-.mv-sources-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.mv-sources-head h4 { margin: 0; font-size: 13px; color: var(--text-primary); }
-.mv-providers-link {
+.mv-sources-label {
+  flex: 0 0 auto;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-tertiary);
+}
+.mv-watch-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  min-width: 0;
+  flex: 1 1 200px;
+}
+.mv-chip {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 12px;
+  padding: 2px 7px 2px 3px;
+  border-radius: 999px;
+  border: 1px solid var(--glass-border);
+  background: var(--track);
+  font-size: 10.5px;
+  color: var(--text-secondary);
+  max-width: 150px;
+}
+.mv-chip img { width: 15px; height: 15px; border-radius: 4px; object-fit: cover; flex: 0 0 auto; }
+.mv-chip-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Тип площадки — рамкой: сплошная (подписка), пунктир (аренда), точки (покупка). */
+.mv-chip.is-flat { border-color: var(--glass-border); }
+.mv-chip.is-rent { border-style: dashed; }
+.mv-chip.is-buy { border-style: dotted; }
+.mv-chip.is-more { padding: 2px 7px; color: var(--text-tertiary); font-family: var(--font-mono); }
+/* Ссылка на TMDB в форме ключа (внешняя) и в футере «Где смотреть». */
+.mv-providers-link,
+.mv-sources-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   color: var(--violet);
   text-decoration: none;
 }
-.mv-providers-row { display: flex; align-items: flex-start; gap: 10px; }
-.mv-providers-label { flex: 0 0 110px; font-size: 11px; color: var(--text-tertiary); padding-top: 4px; }
-.mv-providers-list { display: flex; flex-wrap: wrap; gap: 8px; }
-.mv-provider {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 8px;
-  border-radius: 8px;
-  background: var(--track);
-  border: 1px solid var(--glass-border);
-  font-size: 11px;
-  color: var(--text-secondary);
-}
-.mv-provider img { width: 20px; height: 20px; border-radius: 5px; object-fit: cover; }
-.mv-sources-actions { display: flex; gap: 8px; flex-wrap: wrap; }
-
+.mv-providers-link { font-size: 12px; }
+.mv-providers-link:hover { text-decoration: underline; }
+.mv-sources-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-left: auto; }
 /* -------------------------------- Плеер -------------------------------- */
 
 .mv-player {
@@ -758,12 +922,64 @@
 .mv-key-gate h3 { margin: 0; font-size: 16px; font-family: var(--font-display); color: var(--text-primary); }
 .mv-key-links { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 
-/* Узкие окна: карточка и плеер занимают всю ширину, постер меньше. */
-@media (max-width: 760px) {
-  .mv-hero { min-height: 210px; }
+/* ---------------------- Адаптация под узкое окно ---------------------- */
+
+/* Тулбар страницы (живёт в верхней панели приложения): подписи сегментов
+   скрываются первыми — иконки «фильм/сериал» различимы и без текста, а
+   поиск остаётся гибким и ужимается вместе с панелью. */
+@media (max-width: 900px) {
+  .mv-seg-label { display: none; }
+}
+@media (max-width: 860px) {
+  .mv-toolbar { gap: 6px; }
+  .mv-seg button { padding: 5px 7px; }
+  .mv-seg { padding: 2px; }
+  .mv-search { max-width: 190px; padding: 5px 8px; }
+}
+@media (max-width: 700px) {
+  .mv-toolbar { gap: 4px; }
+  .mv-search { flex: 1 1 80px; max-width: 130px; }
+  .mv-catalog { gap: 14px; }
+}
+
+/* Карточка тайтла и плеер на узком экране: одна колонка, компактные отступы. */
+@media (max-width: 780px) {
+  .mv-modal-backdrop { padding: var(--content-top) 10px var(--content-bottom); }
+  .mv-detail-hero-body { flex-direction: column; gap: 12px; padding: 16px 14px 12px; }
+  /* Шапка карточки может оказаться высокой — ограничиваем и даём ей прокрутку,
+     чтобы вкладки и тело всегда оставались доступны. */
+  .mv-detail-hero { max-height: 46vh; overflow-y: auto; }
+  .mv-detail-poster { width: 112px; }
+  .mv-detail-info { padding-right: 30px; }
   .mv-hero-title { font-size: 21px; }
-  .mv-detail-hero-body { flex-direction: column; }
-  .mv-detail-poster { width: 120px; }
-  .mv-search { min-width: 120px; }
-  .mv-toolbar { flex-wrap: wrap; }
+  .mv-tagline { font-size: 11.5px; }
+  .mv-detail-tabs { padding: 6px 10px 0; overflow-x: auto; }
+  .mv-detail-tabs button { padding: 7px 9px; font-size: 11.5px; white-space: nowrap; }
+  .mv-detail-body { padding: 14px 14px; }
+  .mv-facts { grid-template-columns: 1fr; }
+  .mv-cast-grid { grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 10px; }
+  .mv-similar .mv-card { width: calc(50% - 6px); }
+  .mv-sources { padding: 8px 14px 10px; gap: 8px; }
+  .mv-sources-actions { margin-left: 0; }
+  .mv-player-head { padding: 8px 10px; }
+  .mv-gallery { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
+  .mv-lightbox { padding: 18px 6px 54px; }
+  .mv-lightbox-btn { width: 36px; height: 36px; }
+  .mv-lightbox-btn.is-prev { left: 4px; }
+  .mv-lightbox-btn.is-next { right: 4px; }
+  .mv-browse-grid { grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 12px 10px; }
+  .mv-hero { min-height: 210px; }
+  .mv-hero-body { padding: 18px 16px; }
+  .mv-error-inline { font-size: 11.5px; }
+}
+
+@media (max-width: 520px) {
+  .mv-detail-hero-body { padding: 12px 12px 10px; }
+  .mv-detail-poster { width: 92px; }
+  .mv-detail-actions .btn span { display: none; } /* в узком окне — только иконки */
+  .mv-detail-actions .btn { padding: 7px; }
+  .mv-browse-head h3 { font-size: 15px; }
+  .mv-browse-back span { display: none; }
+  .mv-similar .mv-card { width: calc(50% - 5px); }
+  .mv-card-all-sub { display: none; }
 }
