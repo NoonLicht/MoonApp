@@ -91,6 +91,16 @@ const DEFAULTS = {
     ytdlpPath: "",           // путь к yt-dlp (пусто = искать в PATH)
   },
 
+  // --- Фильмы и сериалы (страница «movies», каталог TMDB) ---
+  // ВАЖНО: API-ключ TMDB тут НЕ хранится — он секрет и живёт в storage/secrets.json
+  // (см. server/routes/movies.js → POST /api/movies/key). Здесь только настройки вида.
+  movies: {
+    language: "ru-RU",       // язык метаданных TMDB (ru-RU, en-US, …)
+    region: "RU",            // регион для «где смотреть» (watch/providers)
+    showAdult: false,        // включать фильмы 18+ в выдачу
+    cacheMinutes: 720,       // время жизни кэша метаданных TMDB, минут
+  },
+
   // --- My Space: поведение заметок ---
   myspace: {
     autosave: true,          // автосохранение заметки при вводе

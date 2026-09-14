@@ -20,10 +20,14 @@ import type {
   VaultFile, VaultFileContent, VaultSearchResult, VaultTag, VaultBacklink,
   TaskItem, TaskCreatePayload,
   HolstFileEntry, HolstReadResult, HolstWriteResult,
+  MediaKind, MediaSummary, MediaDetails, MediaCast, MediaCrew, MediaVideo, MediaProvider,
+  MediaProviders, MediaGallery, MediaGenre, MediaListResult, MediaWatchStatus,
+  MediaWatchlistEntry, MediaRatingEntry, MediaWatchEntry, MediaState, MediaLibrary,
+  MediaStats, MediaStatus, TorrentFile, TorrentAddResult, TorrentStatus,
 } from "./types";
 import { logEvent, getCurrentPage } from "../utils/telemetry";
 
-export type { AppItem, ArchiveItem, BackupInfo, BooksItem, ChatMessage, Conversation, ConvertTools, ConvertResult, ConvertInstallStatus, VideoInfo, VideoDownloadResult, VideoJobStatus, YtdlpInstallStatus, LhmStatus, MonitorSnapshot, ProviderInfo, ProxyStatus, VlessProfile, FlibustaBook, BookGenre, BooksFeedResult, BookDownloadResult, MusicTrack, MusicSearchResult, MusicFormats, MusicDownloadStart, MusicJobStatus, VaultFile, VaultFileContent, VaultSearchResult, VaultTag, VaultBacklink, TaskItem, TaskCreatePayload, HolstFileEntry, HolstReadResult, HolstWriteResult };
+export type { AppItem, ArchiveItem, BackupInfo, BooksItem, ChatMessage, Conversation, ConvertTools, ConvertResult, ConvertInstallStatus, VideoInfo, VideoDownloadResult, VideoJobStatus, YtdlpInstallStatus, LhmStatus, MonitorSnapshot, ProviderInfo, ProxyStatus, VlessProfile, FlibustaBook, BookGenre, BooksFeedResult, BookDownloadResult, MusicTrack, MusicSearchResult, MusicFormats, MusicDownloadStart, MusicJobStatus, VaultFile, VaultFileContent, VaultSearchResult, VaultTag, VaultBacklink, TaskItem, TaskCreatePayload, HolstFileEntry, HolstReadResult, HolstWriteResult, MediaKind, MediaSummary, MediaDetails, MediaCast, MediaCrew, MediaVideo, MediaProvider, MediaProviders, MediaGallery, MediaGenre, MediaListResult, MediaWatchStatus, MediaWatchlistEntry, MediaRatingEntry, MediaWatchEntry, MediaState, MediaLibrary, MediaStats, MediaStatus, TorrentFile, TorrentAddResult, TorrentStatus };
 
 const BASE = ""; // тот же origin: фронт и API вместе (Vite-proxy или раздача Express)
 
@@ -128,9 +132,13 @@ async function req<T = unknown>(method: string, url: string, body?: unknown): Pr
   }
   if (!res.ok) {
     let msg = `HTTP ${res.status}`;
-    try { msg = (await res.json()).error || msg; } catch { /* keep default */ }
+    let code: string | undefined;
+    try { const j = await res.json(); msg = j.error || msg; code = j.code; } catch { /* keep default */ }
     if (url !== "/health") logEvent("error", "api.error", { method, path: url, status: res.status, ms: ts(), error: msg });
-    throw new Error(msg);
+    const err = new Error(msg) as Error & { code?: string; status?: number };
+    err.code = code;
+    err.status = res.status;
+    throw err;
   }
   if (url !== "/health") logEvent("action", "api.ok", { method, path: url, status: res.status, ms: ts() });
   return (res.status === 204 ? null : await res.json()) as T;
@@ -497,6 +505,57 @@ export const api = {
   tasksUpdate: (id: string, data: Partial<TaskItem>) => req<TaskItem>("PUT", `/myspace/tasks/${id}`, data),
   tasksDelete: (id: string) => req<{ ok: boolean }>("DELETE", `/myspace/tasks/${id}`),
   tasksTimer: (id: string, action: "start" | "pause") => req<TaskItem>("POST", `/myspace/tasks/${id}/timer`, { action }),
+
+  // --- Фильмы и сериалы: каталог TMDB, библиотека, торрент-плеер ---
+  moviesStatus: () => req<MediaStatus>("GET", "/movies/status"),
+  moviesSaveKey: (key: string) => req<{ ok: boolean; hasKey: boolean }>("POST", "/movies/key", { key }),
+  moviesRefresh: () => req<{ ok: boolean }>("POST", "/movies/refresh"),
+  moviesTrending: (kind: MediaKind, window: "day" | "week" = "week", page = 1) =>
+    req<MediaListResult>("GET", `/movies/trending?kind=${kind}&window=${window}&page=${page}`),
+  moviesList: (kind: MediaKind, category = "popular", page = 1) =>
+    req<MediaListResult>("GET", `/movies/list?kind=${kind}&category=${category}&page=${page}`),
+  moviesSearch: (q: string, kind: MediaKind | "multi" = "multi", page = 1) =>
+    req<MediaListResult>("GET", `/movies/search?q=${encodeURIComponent(q)}&kind=${kind}&page=${page}`),
+  moviesGenres: (kind: MediaKind) => req<{ genres: MediaGenre[] }>("GET", `/movies/genres?kind=${kind}`),
+  moviesDiscover: (kind: MediaKind, p: { genre?: string | number; year?: string | number; sort?: string; page?: number } = {}) => {
+    const qs = new URLSearchParams();
+    qs.set("kind", kind);
+    if (p.genre) qs.set("genre", String(p.genre));
+    if (p.year) qs.set("year", String(p.year));
+    if (p.sort) qs.set("sort", p.sort);
+    if (p.page) qs.set("page", String(p.page));
+    return req<MediaListResult>("GET", `/movies/discover?${qs.toString()}`);
+  },
+  moviesDetails: (kind: MediaKind, id: number) => req<MediaDetails>("GET", `/movies/details/${kind}/${id}`),
+  moviesProviders: (kind: MediaKind, id: number) => req<MediaProviders>("GET", `/movies/providers/${kind}/${id}`),
+  moviesLibrary: () => req<MediaLibrary>("GET", "/movies/library"),
+  moviesState: (kind: MediaKind, id: number) => req<MediaState>("GET", `/movies/state/${kind}/${id}`),
+  moviesSetWatchlist: (p: {
+    kind: MediaKind; id: number; title: string; poster?: string;
+    year?: number | null; runtime?: number | null; genres?: (string | MediaGenre)[]; status: MediaWatchStatus;
+  }) => req<{ ok: boolean; watchlist: MediaWatchlistEntry }>("POST", "/movies/watchlist", p),
+  moviesRemoveWatchlist: (kind: MediaKind, id: number) => req<{ ok: boolean }>("DELETE", `/movies/watchlist/${kind}/${id}`),
+  moviesRate: (p: { kind: MediaKind; id: number; title?: string; rating: number }) =>
+    req<{ ok: boolean; rating: MediaRatingEntry | null }>("POST", "/movies/rate", p),
+  moviesWatch: (p: {
+    kind: MediaKind; id: number; title?: string; genres?: (string | MediaGenre)[];
+    cast?: { name: string }[]; runtime?: number | null; progress?: number;
+  }) => req<{ ok: boolean }>("POST", "/movies/watch", p),
+  moviesRemoveWatch: (kind: MediaKind, id: number) => req<{ ok: boolean }>("DELETE", `/movies/watch/${kind}/${id}`),
+  moviesStats: () => req<MediaStats>("GET", "/movies/stats"),
+  moviesClearStats: () => req<{ ok: boolean }>("POST", "/movies/stats/clear"),
+
+  // Торрент-плеер: источник (magnet/.torrent) задаёт пользователь.
+  moviesTorrentEngine: () => req<{ installed: boolean; client?: boolean; error?: string }>("GET", "/movies/torrent/engine"),
+  moviesTorrentActive: () => req<{ infoHash: string; name: string; progress: number; peers: number }[]>("GET", "/movies/torrent/active"),
+  moviesTorrentAdd: (p: { magnet?: string; torrent?: string }) => req<TorrentAddResult>("POST", "/movies/torrent/add", p),
+  moviesTorrentStatus: (infoHash: string) => req<TorrentStatus>("GET", `/movies/torrent/status/${encodeURIComponent(infoHash)}`),
+  moviesTorrentRemove: (infoHash: string) => req<{ removed: boolean }>("DELETE", `/movies/torrent/${encodeURIComponent(infoHash)}`),
+  moviesTorrentFile: (infoHash: string, index: number) =>
+    req<{ name: string; length: number; mime: string }>("GET", `/movies/torrent/file/${encodeURIComponent(infoHash)}/${index}`),
+  /** URL стрима для HTML5 <video> (Range поддерживается). */
+  moviesTorrentStreamUrl: (infoHash: string, index: number) =>
+    `/api/movies/torrent/stream/${encodeURIComponent(infoHash)}/${index}`,
 };
 
 /** Событие стрима чата. */

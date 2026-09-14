@@ -15,7 +15,11 @@ const DIRS = {
   storage: ensureDir(STORAGE_DIR),
   logs: ensureDir(path.join(STORAGE_DIR, "logs")),
   backups: ensureDir(path.join(STORAGE_DIR, "backups")),
+  // Загрузки приложения (книги, файлы из Store и т.п.).
   downloads: ensureDir(path.join(STORAGE_DIR, "downloads")),
+  // Торрент-плеер (страница «Фильмы и Сериалы»): кэш скачанных кусков.
+  // ВАЖНО: содержимое — пользовательский торрент, который он открыл сам.
+  torrents: ensureDir(path.join(STORAGE_DIR, "torrents")),
   // Конвертер: сюда падают временные файлы (in) и результаты (out).
   convert: ensureDir(path.join(STORAGE_DIR, "convert")),
   convertIn: ensureDir(path.join(STORAGE_DIR, "convert", "in")),

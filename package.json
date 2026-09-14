@@ -67,7 +67,8 @@
     "smart-buffer": "^4.2.0",
     "socks-proxy-agent": "^10.1.0",
     "tiptap-markdown": "^0.9.0",
-    "turndown": "^7.2.4"
+    "turndown": "^7.2.4",
+    "webtorrent": "^1.9.7"
   },
   "devDependencies": {
     "@electron/rebuild": "^4.2.0",
@@ -112,7 +113,10 @@
       "server/engines/**"
     ],
     "extraResources": [
-      { "from": "build/icon.ico", "to": "icon.ico" }
+      {
+        "from": "build/icon.ico",
+        "to": "icon.ico"
+      }
     ],
     "publish": {
       "provider": "github",
@@ -124,7 +128,9 @@
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "icon": "build/icon.ico"

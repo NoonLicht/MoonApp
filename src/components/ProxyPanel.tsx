@@ -7,7 +7,7 @@ import type { ProxyCoreStatus, ProxyNode, ProxySubscription, ProxyPageRule, Prox
 
 // Страницы приложения (id из App.tsx PAGES). Ярлык берём из nav.<id>.
 const PAGE_IDS = [
-  "store", "convert", "compress", "video", "music", "books", "monitor",
+  "store", "convert", "compress", "video", "movies", "music", "books", "monitor",
   "aichat", "voice", "archive", "lecture", "bypass", "myspace", "settings",
 ];
 

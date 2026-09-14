@@ -205,6 +205,54 @@ function ApiKeysPanel() {
   );
 }
 
+/**
+ * Строка API-ключа TMDB в разделе «Фильмы и Сериалы».
+ * Ключ уходит один раз POST-ом, на сервере шифруется (storage/secrets.json);
+ * статус «задан/не задан» берётся с бэкенда (GET /api/movies/status).
+ */
+function TmdbKeyRow() {
+  const { t } = useI18n();
+  const [configured, setConfigured] = useState<boolean | null>(null);
+  const [draft, setDraft] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    api.moviesStatus().then((st) => setConfigured(!!st.hasKey)).catch(() => setConfigured(null));
+  }, []);
+
+  const save = async () => {
+    const key = draft.trim();
+    if (!key) return;
+    setSaving(true);
+    try {
+      await api.moviesSaveKey(key);
+      setDraft("");
+      setConfigured(true);
+    } finally { setSaving(false); }
+  };
+
+  return (
+    <Row label={t("moviesSettings.keyLabel")} hint={t("moviesSettings.keyHint")}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <Badge tone={configured ? "teal" : "neutral"} mono>
+          {configured ? t("moviesSettings.keyConfigured") : t("moviesSettings.keyMissing")}
+        </Badge>
+        <input
+          type="password"
+          className="text-input"
+          value={draft}
+          placeholder="••••••"
+          onChange={(e) => setDraft(e.target.value)}
+          style={{ width: 200 }}
+        />
+        <Btn icon={Save} disabled={saving || !draft.trim()} onClick={() => void save()}>
+          {t("moviesSettings.keySave")}
+        </Btn>
+      </div>
+    </Row>
+  );
+}
+
 export default function SettingsPage() {
   const { t } = useI18n();
   const [s, setS] = useState<any>(null);
@@ -365,6 +413,7 @@ export default function SettingsPage() {
   const chat = s.chat, store = s.store, conv = s.converter;
   // РќРѕРІС‹Рµ СЃРµРєС†РёРё РјРѕРіСѓС‚ РѕС‚СЃСѓС‚СЃС‚РІРѕРІР°С‚СЊ РІ СЃС‚Р°СЂС‹С… settings.json вЂ” РґР°С‘Рј С„РѕР»Р±СЌРєРё.
   const video = s.video || {}, musicS = s.music || {}, books = s.books || {}, mysp = s.myspace || {};
+  const moviesCfg = s.movies || {};
   const media = s.media, voice = s.voice || {}, arch = s.archiver || {}, mon = s.monitor;
   const comp = s.compressor || {}, sb = s.sitebak || {};
   const backup = s.backup, adv = s.advanced;
@@ -589,6 +638,17 @@ export default function SettingsPage() {
         </Section>
 
         {/* ---- Книги (док: books) ---- */}
+        <Section title={t("nav.movies")} icon={Clapperboard} badge="active">
+          <TmdbKeyRow />
+          <Row label={t("moviesSettings.language")} hint={t("moviesSettings.languageHint")}>
+            <TextInput value={String(moviesCfg.language || "ru-RU")} onChange={(v) => change("movies.language", v)} placeholder="ru-RU" />
+          </Row>
+          <Row label={t("moviesSettings.region")} hint={t("moviesSettings.regionHint")}>
+            <TextInput value={String(moviesCfg.region || "RU")} onChange={(v) => change("movies.region", v)} placeholder="RU" />
+          </Row>
+          <BoolRow label={t("moviesSettings.adult")} hint={t("moviesSettings.adultHint")} value={!!moviesCfg.showAdult} onChange={(v) => change("movies.showAdult", v)} />
+        </Section>
+
         <Section title={t("settings.books")} icon={BookOpen} badge="active">
           <div style={{ fontSize: 12.5, color: "var(--text-secondary)", lineHeight: 1.6 }}>
             {t("booksSection.noSettings")}

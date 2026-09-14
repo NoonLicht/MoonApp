@@ -90,6 +90,25 @@ const tables = {
   // Прокси-правило страницы: route_path = id страницы приложения ('video', 'music'…),
   // is_proxied: 1 — трафик страницы идёт через прокси, 0 — напрямую (bypass).
   proxy_page_rules: new Table(["route_path", "is_proxied"], "route_path"),
+
+  // ---- Фильмы и сериалы (страница «movies»): личный список и статистика ----
+  // kind: "movie" | "tv", tmdb_id — идентификатор тайтла в TMDB.
+  // status: "plan" (в планах) | "watching" (смотрю) | "watched" (просмотрено).
+  media_watchlist: new Table(
+    ["kind", "tmdb_id", "title", "poster", "year", "status", "runtime", "genres", "added_at", "updated_at"],
+    "-updated_at"
+  ),
+  // Личная оценка 1–10 (одна запись на тайтл).
+  media_ratings: new Table(["kind", "tmdb_id", "title", "rating", "updated_at"], "-updated_at"),
+  // Статистика просмотров: каждая запись — факт просмотра/прогресс тайтла.
+  // genres/cast — JSON-строки массивов (жанры и главные актёры из TMDB),
+  // minutes — потраченные минуты (runtime × доля прогресса), для «часов просмотра».
+  media_watch_stats: new Table(
+    ["kind", "tmdb_id", "title", "genres", "cast", "runtime", "progress", "minutes", "watched_at"],
+    "-watched_at"
+  ),
+  // Кэш ответов TMDB (страницы каталога, детали, жанры), чтобы не дёргать API зря.
+  media_meta_cache: new Table(["key", "json", "cached_at"], "-id"),
 };
 
 // Снимок объявленных колонок ДО load(): loadJSON перезаписывает cols данными из
@@ -339,6 +358,99 @@ const stmts = {
   pprDeleteByPath: { run: (route_path) => run(() => tables.proxy_page_rules.deleteWhere((r) => r.route_path === route_path)) },
   /** null — правила нет (по умолчанию страница проксируется). */
   pprIsProxied: { get: (route_path) => { const r = tables.proxy_page_rules.rows.find((x) => x.route_path === route_path); return r ? !!r.is_proxied : null; } },
+
+  // ---- Фильмы и сериалы: список просмотра ----
+  // Ключ строки — пара (kind, tmdb_id): один тайтл = одна запись.
+  mwAll: { all: () => tables.media_watchlist.all() },
+  mwGet: {
+    get: (kind, tmdb_id) =>
+      tables.media_watchlist.rows.find((r) => r.kind === kind && r.tmdb_id === Number(tmdb_id)) || null,
+  },
+  /** Добавить/обновить запись списка (upsert по kind+tmdb_id). */
+  mwUpsert: {
+    run: (kind, tmdb_id, patch) => run(() => {
+      const id = Number(tmdb_id);
+      const existing = tables.media_watchlist.rows.find((r) => r.kind === kind && r.tmdb_id === id);
+      if (existing) return tables.media_watchlist.updateWhere((r) => r.id === existing.id, { ...patch, updated_at: now() });
+      return tables.media_watchlist.insert([
+        kind, id,
+        patch.title || "", patch.poster || "", patch.year || null, patch.status || "plan",
+        patch.runtime || null, patch.genres || "[]", now(), now(),
+      ]);
+    }),
+  },
+  mwDelete: {
+    run: (kind, tmdb_id) =>
+      run(() => tables.media_watchlist.deleteWhere((r) => r.kind === kind && r.tmdb_id === Number(tmdb_id))),
+  },
+
+  // ---- Фильмы и сериалы: личные оценки 1–10 ----
+  mrAll: { all: () => tables.media_ratings.all() },
+  mrGet: {
+    get: (kind, tmdb_id) =>
+      tables.media_ratings.rows.find((r) => r.kind === kind && r.tmdb_id === Number(tmdb_id)) || null,
+  },
+  mrSet: {
+    run: (kind, tmdb_id, title, rating) => run(() => {
+      const id = Number(tmdb_id);
+      const existing = tables.media_ratings.rows.find((r) => r.kind === kind && r.tmdb_id === id);
+      if (existing) return tables.media_ratings.updateWhere((r) => r.id === existing.id, { rating, title: title || existing.title, updated_at: now() });
+      return tables.media_ratings.insert([kind, id, title || "", rating, now()]);
+    }),
+  },
+  mrDelete: {
+    run: (kind, tmdb_id) =>
+      run(() => tables.media_ratings.deleteWhere((r) => r.kind === kind && r.tmdb_id === Number(tmdb_id))),
+  },
+
+  // ---- Фильмы и сериалы: статистика просмотров ----
+  msAll: { all: () => tables.media_watch_stats.all() },
+  msGet: {
+    get: (kind, tmdb_id) =>
+      tables.media_watch_stats.rows.find((r) => r.kind === kind && r.tmdb_id === Number(tmdb_id)) || null,
+  },
+  /** Отметить просмотр/прогресс: одна запись на тайтл (перезаписывается). */
+  msUpsert: {
+    run: (kind, tmdb_id, patch) => run(() => {
+      const id = Number(tmdb_id);
+      const existing = tables.media_watch_stats.rows.find((r) => r.kind === kind && r.tmdb_id === id);
+      const row = [
+        kind, id, patch.title || "", patch.genres || "[]", patch.cast || "[]",
+        patch.runtime || null, patch.progress != null ? patch.progress : 1,
+        patch.minutes != null ? patch.minutes : (patch.runtime || 0), now(),
+      ];
+      if (existing) {
+        const cols = tables.media_watch_stats.cols;
+        return tables.media_watch_stats.updateWhere((r) => r.id === existing.id, {
+          [cols[2]]: row[2], [cols[3]]: row[3], [cols[4]]: row[4],
+          [cols[5]]: row[5], [cols[6]]: row[6], [cols[7]]: row[7], [cols[8]]: row[8],
+        });
+      }
+      return tables.media_watch_stats.insert(row);
+    }),
+  },
+  msDelete: {
+    run: (kind, tmdb_id) =>
+      run(() => tables.media_watch_stats.deleteWhere((r) => r.kind === kind && r.tmdb_id === Number(tmdb_id))),
+  },
+  msClear: { run: () => run(() => tables.media_watch_stats.deleteWhere(() => true)) },
+
+  // ---- Фильмы и сериалы: кэш метаданных TMDB ----
+  mmcGet: {
+    get: (key) => {
+      const r = tables.media_meta_cache.rows.find((x) => x.key === key);
+      return r ? { json: r.json, cached_at: r.cached_at } : null;
+    },
+  },
+  mmcSet: {
+    run: (key, json) => run(() => {
+      const existing = tables.media_meta_cache.rows.find((r) => r.key === key);
+      const stamp = now();
+      if (existing) return tables.media_meta_cache.updateWhere((r) => r.id === existing.id, { json, cached_at: stamp });
+      return tables.media_meta_cache.insert([key, json, stamp]);
+    }),
+  },
+  mmcClear: { run: () => run(() => tables.media_meta_cache.deleteWhere(() => true)) },
 };
 
 function exportSnapshot() {

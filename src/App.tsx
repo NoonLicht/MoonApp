@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import {
   Store, Repeat, Gauge, Video, Music2, BookOpen, Activity, MessageSquare,
   Mic2, Archive, Sun, Moon, Minus, Square, X, Settings2, Shield, User, GraduationCap, FolderOpen,
+  Clapperboard,
 } from "lucide-react";
 import { I18nProvider, useI18n } from "./i18n";
 import { ContextMenuProvider } from "./components/ContextMenu";
@@ -21,6 +22,7 @@ import "./styles/settings.css";
 import "./styles/notes.css";
 import "./styles/lecture.css";
 import "./styles/bypass.css";
+import "./styles/movies.css";
 
 // Страницы
 import StorePage from "./pages/StorePage";
@@ -37,9 +39,10 @@ import SettingsPage from "./pages/SettingsPage";
 import MyspacePage from "./pages/MyspacePage";
 import LectureRecorderPage from "./pages/LectureRecorderPage";
 import BypassControlPage from "./pages/BypassControlPage";
+import MoviesPage from "./pages/MoviesPage";
 
 type PageId =
-  | "store" | "convert" | "compress" | "video" | "music" | "books" | "monitor"
+  | "store" | "convert" | "compress" | "video" | "movies" | "music" | "books" | "monitor"
   | "aichat" | "voice" | "archive" | "settings" | "myspace" | "lecture" | "bypass";
 
 const PAGES: { id: PageId; i18n: string; icon: React.ElementType }[] = [
@@ -47,6 +50,7 @@ const PAGES: { id: PageId; i18n: string; icon: React.ElementType }[] = [
   { id: "convert", i18n: "nav.convert", icon: Repeat },
   { id: "compress", i18n: "nav.compress", icon: Gauge },
   { id: "video", i18n: "nav.video", icon: Video },
+  { id: "movies", i18n: "nav.movies", icon: Clapperboard },
   { id: "music", i18n: "nav.music", icon: Music2 },
   { id: "books", i18n: "nav.books", icon: BookOpen },
   { id: "monitor", i18n: "nav.monitor", icon: Activity },
@@ -64,6 +68,7 @@ const PAGE_COMPONENTS: Record<PageId, React.ComponentType> = {
   convert: ConverterPage,
   compress: CompressorPage,
   video: VideoPage,
+  movies: MoviesPage,
   music: MusicPage,
   books: BooksPage,
   monitor: MonitorPage,
@@ -267,6 +272,12 @@ function Shell({ active, setActive, theme, toggleTheme, toolbarNodes, setPageToo
             ))}
           </div>
         </main>
+
+        {/* Хост порталов-оверлеев: сосед .content-area, поэтому у него снова
+            работает z-index и модалки перекрывают верхнюю панель (см.
+            src/components/overlayHost.ts). Когда порталов нет — узел пуст и
+            прозрачен для кликов (pointer-events:none в theme.css). */}
+        <div id="overlay-root" className="overlay-root" />
       </ToolbarContext.Provider>
       </PageBusyContext.Provider>
 

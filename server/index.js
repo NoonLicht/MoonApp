@@ -40,6 +40,7 @@ const perPageProxy = require("./middleware/perPageProxy");
 const proxySubs = require("./proxySubscriptions");
 const booksRouter = require("./routes/books");
 const musicRouter = require("./routes/music");
+const moviesRouter = require("./routes/movies");
 const myspaceRouter = require("./routes/myspace");
 const myspaceTasksRouter = require("./routes/myspace-tasks");
 const lectureRouter = require("./routes/lecture");
@@ -54,10 +55,23 @@ const proxy = require("./proxy");
 // но слушает строго 127.0.0.1.
 let AUTH_TOKEN = null;
 
+/**
+ * Пути /api, которые сознательно отдаются без токена: их грузит сам движок
+ * (теги <img>/<video>), а не fetch с заголовками. Проверка безопасности —
+ * внутри роутов (жёсткая валидация параметров).
+ */
+const RESOURCE_PATHS = ["/api/movies/image"];
+
 function authMiddleware(req, res, next) {
   if (!AUTH_TOKEN) return next();
   const protectedPath = req.path.startsWith("/api") || req.path.startsWith("/events");
   if (!protectedPath) return next(); // статика dist/ не секрет
+  // Ресурсные URL отдаются браузеру как <img src>/<video src>, поэтому заголовок
+  // x-moonapp-token передать нельзя. Такие пути валидируются по allowlist сами
+  // (пример: /api/movies/image — только image.tmdb.org, size из списка, path /file.jpg).
+  if (RESOURCE_PATHS.some((p) => req.path === p || req.path.startsWith(p + "/") || req.path.startsWith(p + "?"))) {
+    return next();
+  }
   if (req.get("x-moonapp-token") !== AUTH_TOKEN) {
     return res.status(401).json({ error: "unauthorized" });
   }
@@ -94,7 +108,11 @@ function createApp() {
         "Content-Security-Policy",
         "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; " +
         "img-src 'self' data: blob:; media-src 'self' data: blob:; font-src 'self' data:; " +
-        "connect-src 'self' ws://127.0.0.1:* http://127.0.0.1:*; object-src 'none'; frame-src 'none'; base-uri 'self'"
+        "connect-src 'self' ws://127.0.0.1:* http://127.0.0.1:*; object-src 'none'; " +
+        // frame-src: трейлеры — официальные YouTube-ролики TMDB (iframe плеера).
+        // Картинки TMDB приходят через /api/movies/image (img-src 'self'), поэтому
+        // внешние image.tmdb.org в CSP не нужны.
+        "frame-src https://www.youtube.com https://www.youtube-nocookie.com; base-uri 'self'"
       );
     }
     next();
@@ -121,6 +139,7 @@ function createApp() {
   app.use("/api/proxycore", proxyCoreRouter);
   app.use("/api/books", booksRouter);
   app.use("/api/music", musicRouter);
+  app.use("/api/movies", moviesRouter);
   app.use("/api/myspace", myspaceRouter);
   app.use("/api/myspace/tasks", myspaceTasksRouter);
   app.use("/api/lecture", lectureRouter);

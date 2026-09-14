@@ -571,6 +571,162 @@ export interface HolstWriteResult {
   name: string;
 }
 
+/* ------------------------ Фильмы и сериалы (страница movies) ----------------- */
+
+export type MediaKind = "movie" | "tv";
+
+/** Краткая карточка тайтла (карусели, сетки, поиск). */
+export interface MediaSummary {
+  kind: MediaKind;
+  id: number;
+  title: string;
+  originalTitle: string;
+  overview: string;
+  poster: string | null;
+  backdrop: string | null;
+  year: number | null;
+  date: string | null;
+  voteAverage: number;
+  voteCount: number;
+  popularity: number;
+  genreIds: number[];
+  adult: boolean;
+}
+
+export interface MediaCast { id: number; name: string; character: string; profile: string | null }
+export interface MediaCrew { id: number; name: string; job: string; department: string; profile: string | null }
+export interface MediaVideo { key: string; name: string; type: string; official?: boolean }
+export interface MediaProvider { id: number; name: string; logo: string | null; displayPriority?: number }
+
+/** Легальные площадки («где смотреть») по региону пользователя. */
+export interface MediaProviders {
+  region: string;
+  link: string | null;
+  flatrate: MediaProvider[];
+  rent: MediaProvider[];
+  buy: MediaProvider[];
+}
+
+export interface MediaGallery { backdrops: string[]; posters: string[] }
+export interface MediaGenre { id: number; name: string }
+
+/** Полная карточка тайтла (детали, каст, трейлеры, галерея, похожие). */
+export interface MediaDetails extends MediaSummary {
+  tagline: string;
+  status: string;
+  homepage: string;
+  runtime: number | null;
+  seasons: number;
+  episodes: number;
+  budget: number;
+  revenue: number;
+  genres: MediaGenre[];
+  countries: string[];
+  languages: string[];
+  ageRating: string | null;
+  imdbId: string | null;
+  cast: MediaCast[];
+  crew: MediaCrew[];
+  videos: MediaVideo[];
+  trailer: MediaVideo | null;
+  gallery: MediaGallery;
+  similar: MediaSummary[];
+  recommendations: MediaSummary[];
+  providers: MediaProviders;
+}
+
+/** Ответ подборки/трендов/discover. */
+export interface MediaListResult {
+  items: MediaSummary[];
+  page: number;
+  totalPages: number;
+  region?: string;
+  category?: string;
+}
+
+export type MediaWatchStatus = "plan" | "watching" | "watched";
+
+/** Запись личного списка просмотра. */
+export interface MediaWatchlistEntry {
+  id: number;
+  kind: MediaKind;
+  tmdb_id: number;
+  title: string;
+  poster: string;
+  year: number | null;
+  status: MediaWatchStatus;
+  runtime: number | null;
+  genres: (string | MediaGenre)[];
+  added_at: string;
+  updated_at: string;
+}
+
+/** Личная оценка 1–10. */
+export interface MediaRatingEntry {
+  id: number; kind: MediaKind; tmdb_id: number; title: string; rating: number; updated_at: string;
+}
+
+/** Запись статистики просмотра (одна на тайтл). */
+export interface MediaWatchEntry {
+  id: number; kind: MediaKind; tmdb_id: number; title: string;
+  genres: (string | MediaGenre)[]; cast: { name: string }[] | string[];
+  runtime: number | null; progress: number; minutes: number; watched_at: string;
+}
+
+export interface MediaState {
+  watchlist: MediaWatchlistEntry | null;
+  rating: MediaRatingEntry | null;
+  watch: MediaWatchEntry | null;
+}
+
+export interface MediaLibrary {
+  watchlist: MediaWatchlistEntry[];
+  ratings: MediaRatingEntry[];
+  stats: MediaWatchEntry[];
+}
+
+/** Агрегированная статистика просмотров. */
+export interface MediaStats {
+  totalTitles: number;
+  totalMinutes: number;
+  totalHours: number;
+  completed: number;
+  watchlist: { plan: number; watching: number; watched: number };
+  avgRating: number;
+  ratingCount: number;
+  ratingHistogram: { value: number; count: number }[];
+  topGenres: { name: string; count: number }[];
+  topActors: { name: string; count: number }[];
+  monthly: { month: string; count: number }[];
+}
+
+/** Статус страницы: есть ли ключ TMDB и движок торрентов. */
+export interface MediaStatus {
+  hasKey: boolean;
+  engine: { installed: boolean; client?: boolean; error?: string };
+  settings: { language?: string; region?: string; showAdult?: boolean; cacheMinutes?: number };
+}
+
+/* --- Торрент-плеер (источник задаёт пользователь: magnet/.torrent) --- */
+
+export interface TorrentFile {
+  index: number; name: string; path: string; length: number;
+  mime: string; progress: number; playable: boolean;
+}
+
+export interface TorrentAddResult {
+  infoHash: string; name: string; length: number; files: TorrentFile[];
+}
+
+export interface TorrentStatus {
+  infoHash: string; name: string;
+  ready: boolean; done: boolean; progress: number;
+  downloadSpeed: number; uploadSpeed: number;
+  downloaded: number; uploaded: number; length: number;
+  peers: number; timeRemaining: number | null; ratio: number;
+  files: TorrentFile[];
+}
+
 declare global {
   interface Window {
     appBridge?: {

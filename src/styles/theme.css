@@ -272,6 +272,13 @@ html, body{
 }
 
 /* --- Модалки (руководство сжатия и др.) --- */
+/* Хост порталов-оверлеев (см. src/components/overlayHost.ts + #overlay-root в App.tsx).
+   Лежит рядом с .content-area внутри .app-shell, поэтому z-index здесь снова
+   работает и модалки страниц перекрывают .top-toolbar (z-index:40). Пустой узел
+   не должен перехватывать клики: pointer-events:none, а сами модалки ставят auto. */
+.overlay-root{
+  position:fixed; inset:0; z-index:1000; pointer-events:none;
+}
 .modal-overlay {
   position: fixed;
   inset: 0;
