@@ -104,4 +104,21 @@ describe("MediaBrowse (полный список подборки)", () => {
     expect(html).toContain("mv-browse-grid");
     expect((html.match(/mv-card is-skeleton/g) || []).length).toBe(12);
   });
+
+  /**
+   * 20 тайтлов — это одна страница TMDB, а не «весь список». Пока первая
+   * страница не пришла, счётчик и «это весь список» показывать нельзя,
+   * иначе получается «0 тайтлов» и ложный финал.
+   */
+  it("до загрузки первой страницы не показывает счётчик и финал списка", () => {
+    const html = renderRu(
+      React.createElement(MediaBrowse, {
+        kind: "movie", category: "popular", title: "Популярное",
+        onBack: () => {}, onSelect: () => {},
+      })
+    );
+    expect(html).not.toContain("mv-browse-end");
+    expect(html).not.toContain("mv-browse-sentinel");
+    expect(html).not.toContain("тайтлов");
+  });
 });

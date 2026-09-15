@@ -72,7 +72,17 @@ const tables = {
   favorites: new Table(["key"], "key"),
   // Lecture Recorder: сессии лекций и чанки расшифровки.
   lectures: new Table(["title", "started_at", "ended_at", "duration_ms", "sample_rate", "channels", "raw_file", "status", "notes"], "-id"),
-  lecture_chunks: new Table(["lecture_id", "idx", "start_ms", "end_ms", "text", "status", "error", "file", "created_at"], "id"),
+  lecture_chunks: new Table(
+    [
+      "lecture_id", "idx", "start_ms", "end_ms", "text", "status", "error", "file", "created_at",
+      // Диагностика чанка: почему он пустой/пропущен и с каким уровнем звука
+      // (см. server/vad.js — «empty» больше не выдаётся за решение VAD).
+      "reason", "rms_db", "rms_peak_db", "speech_ratio", "noise_floor_db", "threshold_db", "zcr",
+      // Дорожка записи: mic — микрофон/аудитория, sys — системный звук (эфир лектора).
+      "source",
+    ],
+    "id"
+  ),
   // Zapret / DPI bypass: профили запуска и пользовательские домены.
   bypass_profiles: new Table(["name", "batch_file_path", "custom_args", "is_active", "is_service", "created_at"], "-id"),
   bypass_custom_domains: new Table(["domain", "type", "is_enabled"], "domain"),
@@ -268,7 +278,26 @@ const stmts = {
   lectureDelete: { run: (id) => run(() => { tables.lectures.delete(id); tables.lecture_chunks.deleteWhere((c) => c.lecture_id === id); }) },
 
   // Lecture chunks
-  chunkInsert: { run: (lecture_id, idx, start_ms, end_ms, file) => run(() => tables.lecture_chunks.insert([lecture_id, idx, start_ms, end_ms, "", "pending", "", file, now()])) },
+  // extra = { status, source, reason, rmsDb, ... } — диагностика пишется сразу,
+  // чтобы UI показал причину («шум», «тихий сигнал») в той же строке, что и чанк.
+  chunkInsert: {
+    run: (lecture_id, idx, start_ms, end_ms, file, extra = null) => run(() => {
+      const info = tables.lecture_chunks.insert([lecture_id, idx, start_ms, end_ms, "", "pending", "", file, now()]);
+      if (extra && Object.keys(extra).length) tables.lecture_chunks.updateWhere((r) => r.id === info.lastInsertRowid, extra);
+      return info;
+    }),
+  },
+  /** Строка-объяснение пропуска VAD: без WAV, без Whisper — только причина и уровень. */
+  chunkInsertSkipped: {
+    run: (lecture_id, idx, start_ms, end_ms, skip) => run(() => tables.lecture_chunks.insert([
+      lecture_id, idx, start_ms, end_ms,
+      "", "vad_skip", "", "", now(),
+      String(skip.reason || "noise"),
+      Number(skip.rmsDb ?? -100), Number(skip.rmsPeakDb ?? -100),
+      Number(skip.speechRatio ?? 0), Number(skip.noiseDb ?? -100), Number(skip.thresholdDb ?? -100),
+      Number(skip.zcr ?? 0), String(skip.source || "mic"),
+    ])),
+  },
   chunkFor: { all: (lecture_id) => tables.lecture_chunks.all().filter((c) => c.lecture_id === lecture_id) },
   chunkGet: { get: (id) => tables.lecture_chunks.get(id) },
   chunkUpdate: { run: (id, patch) => run(() => tables.lecture_chunks.updateWhere((r) => r.id === id, patch)) },

@@ -640,6 +640,8 @@ export interface MediaListResult {
   items: MediaSummary[];
   page: number;
   totalPages: number;
+  /** Всего записей в подборке по данным TMDB (для счётчика «N из M»). */
+  totalResults?: number;
   region?: string;
   category?: string;
 }
@@ -742,6 +744,13 @@ declare global {
       checkUpdates?: () => Promise<{ ok: boolean; available?: boolean; version?: string | null; reason?: string }>;
       toggleAutoUpdate?: () => Promise<{ ok: boolean; enabled?: boolean; reason?: string }>;
       downloadUpdate?: () => Promise<{ ok: boolean; available?: boolean; version?: string | null; downloading?: boolean; reason?: string }>;
+      /**
+       * Режим захвата звука: "loopback" — системный звук (WASAPI через
+       * setDisplayMediaRequestHandler в electron/main.js), "default" — обычный
+       * выбор экрана. Без loopback getDisplayMedia в Electron отдаёт видео и
+       * звук выбранного источника, а не звук системы (см. страницу лекций).
+       */
+      setCaptureMode?: (mode: "loopback" | "default") => Promise<{ ok: boolean; mode?: string; error?: string }>;
     };
   }
 }

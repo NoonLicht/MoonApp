@@ -14,7 +14,10 @@ const { autoUpdater } = require("electron-updater");
 // Минимальный размер окна. Ниже этой ширины/высоты вёрстка уходит в
 // «одноколоночный» режим (вертикальный док, адаптивный тулбар), поэтому
 // меньше — нельзя: интерфейс начнёт обрезаться.
-const MIN_WIN_WIDTH = 640;
+// 720px — нижняя граница шкалы брейкпоинтов: CSS-правила для ещё более
+// узких окон (≤700 / ≤640 / ≤520 в src/styles/*.css) в окне приложения
+// недостижимы, они остаются страховкой для запуска в браузере (vite dev).
+const MIN_WIN_WIDTH = 720;
 const MIN_WIN_HEIGHT = 520;
 
 // Аппаратное ускорение Chromium. По умолчанию вкл.; если в настройках
@@ -670,6 +673,90 @@ ipcMain.handle("proxy:apply-session", async (_e, cfg) => {
     return { ok: false, error: e?.message || String(e) };
   }
 });
+
+/* ------------------- Системный звук (WASAPI loopback) и права -------------------
+ * ПРОБЛЕМА, которую это решает: раньше «системный звук» на странице лекций
+ * захватывался через navigator.mediaDevices.getDisplayMedia({video,audio}).
+ * В Electron без setDisplayMediaRequestHandler это отдаёт ВИДЕО (скрин/окно),
+ * а аудиодорожка либо отсутствует, либо приходит от выбранного источника —
+ * пользователь получал в запись шум и «звук с камер», а не звук системы.
+ *
+ * РЕШЕНИЕ: Electron ≥ 31 умеет отдавать системный звук как WASAPI-loopback:
+ * в обработчике display-media выбираем экран и просим audio: "loopback".
+ * Тогда в поток приходит ТОЛЬКО звук устройства вывода (без видео).
+ *
+ * Обработчик ставится ЛЕНИВО, по IPC-запросу страницы лекций, и снимается
+ * сразу после захвата — иначе он подменил бы обычный выбор экрана всем
+ * остальным страницам приложения.
+ */
+let captureModeActive = false;
+
+function installLoopbackHandler() {
+  if (captureModeActive) return;
+  captureModeActive = true;
+  installMediaPermissions();
+  try {
+    session.defaultSession.setDisplayMediaRequestHandler(async (request, callback) => {
+      try {
+        const { desktopCapturer } = require("electron");
+        const sources = await desktopCapturer.getSources({ types: ["screen"] });
+        if (!sources.length) { callback({}); return; }
+        // audio: "loopback" — системный звук; видео нужно только как «носитель»
+        // (страница сразу останавливает video-треки, см. acquireSystemAudio).
+        callback({ video: sources[0], audio: "loopback" });
+      } catch (e) {
+        mlog("error", "capture.loopback_failed", { error: e?.message || String(e) });
+        callback({});
+      }
+    }, { useSystemPicker: false });
+  } catch (e) {
+    // Electron < 31 или иная сборка: не роняем приложение, страница покажет
+    // честную ошибку «системный звук недоступен» и предложит микрофон.
+    captureModeActive = false;
+    mlog("error", "capture.handler_unavailable", { error: e?.message || String(e) });
+  }
+}
+
+function removeLoopbackHandler() {
+  if (!captureModeActive) return;
+  try { session.defaultSession.setDisplayMediaRequestHandler(null); } catch { /* ignore */ }
+  captureModeActive = false;
+}
+
+// Режим захвата: "loopback" — системный звук, "default" — обычное поведение.
+ipcMain.handle("rec:capture-mode", (_e, mode) => {
+  if (String(mode) === "loopback") { installLoopbackHandler(); return { ok: true, mode: "loopback" }; }
+  removeLoopbackHandler();
+  return { ok: true, mode: "default" };
+});
+
+/**
+ * Права на медиа. По умолчанию Electron разрешает запросы молча, но мы
+ * ограничиваем их СВОИМ origin: приложение — локальный сервер на 127.0.0.1,
+ * и никакой внешний контент не должен получать доступ к микрофону.
+ * Ставится вместе с loopback-обработчиком (там гарантированно готов session).
+ */
+let permissionsInstalled = false;
+
+function installMediaPermissions() {
+  if (permissionsInstalled) return;
+  permissionsInstalled = true;
+  try {
+    session.defaultSession.setPermissionRequestHandler((wc, permission, callback) => {
+      const url = String(wc?.getURL?.() || "");
+      const own = /^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?\//.test(url);
+      if (permission === "media" || permission === "display-capture") return callback(own);
+      callback(true);
+    });
+    session.defaultSession.setPermissionCheckHandler((wc, permission, requestingOrigin) => {
+      if (permission !== "media" && permission !== "display-capture") return true;
+      const origin = String(requestingOrigin || "");
+      return /^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?(\/|$)/.test(origin);
+    });
+  } catch (e) {
+    mlog("error", "capture.permissions_failed", { error: e?.message || String(e) });
+  }
+}
 
 app.on("window-all-closed", () => {
   app.quit();

@@ -1,107 +1,969 @@
-/* ===== Lecture Recorder ===== */
+/* ===== Lecture Recorder (whisper.cpp + VAD) =====
+   Стили страницы построены на общих токенах приложения (--glass, --track,
+   --text-*, --amber, --shadow), поэтому тема, акцент, OLED-режим и
+   «непрозрачный фон» работают здесь так же, как на остальных страницах.
+
+   ВАЖНО: каждое правило либо вложено в .lec-page, либо начинается с .lec-*.
+   Раньше файл переопределял ГЛОБАЛЬНЫЙ .icon-btn (background:none вместо
+   var(--track)) — App.tsx подключает этот css глобально, поэтому иконки-кнопки
+   «плыли» на всех страницах сразу. */
 
 /* Прокрутка: .page в теме — overflow:hidden, страница лекций заполняет бокс
    (внутренние панели скроллятся сами). */
-.page.lec-page { height: auto; overflow: hidden; }
-.lec-page { display: flex; flex-direction: column; gap: 10px; height: 100%; min-height: 0; }
+.page.lec-page {
+  height: auto;
+  overflow: hidden;
+}
+.lec-page {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  height: 100%;
+  min-height: 0;
+  font-family: var(--font-body);
+  color: var(--text-secondary);
+}
 
-.lec-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.lec-engine { display: flex; align-items: center; gap: 6px; font-size: 13px; }
-.lec-ok { color: var(--ok, #34d399); }
-.lec-warn { color: var(--warn, #fbbf24); }
-.lec-sep { opacity: .4; }
-.lec-dim { opacity: .55; font-size: 12px; }
+/* Общий «стеклянный» вид панелей страницы — как у компонента .glass. */
+.lec-sessions,
+.lec-feed,
+.lec-notes,
+.lec-live-strip {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+}
 
-.lec-actions { display: flex; gap: 8px; position: relative; }
+/* Шапка страницы: слева инфо о движке, справа ряд кнопок.
+   ВАЖНО про ширину: раньше ни шапка, ни ряд кнопок не переносились, а .page
+   обрезает переполнение — на узком окне (≈850px) ряд кнопок уезжал за правый
+   край и последняя кнопка («Модель и ускорение») просто исчезала. Теперь и инфо,
+   и кнопки переносятся, поэтому ничего не пропадает на любой ширине. */
+.lec-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 5px;
+}
+.lec-engine {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+.lec-ok {
+  color: var(--teal);
+}
+.lec-warn {
+  color: var(--amber);
+}
+.lec-sep {
+  color: var(--text-tertiary);
+}
+.lec-dim {
+  color: var(--text-tertiary);
+  font-size: 12px;
+}
+.lec-saved {
+  color: var(--teal);
+  font-size: 11px;
+  white-space: nowrap;
+}
 
+/* Ряд кнопок шапки. margin-left:auto не даёт ему «потеряться» при переносе:
+   даже если кнопки уехали на вторую строку, они остаются прижатыми вправо. */
+.lec-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  margin-left: auto;
+}
+
+/* Кнопка-иконка шапки (без подписи).
+   Подписи убраны: в узком окне ряд кнопок распирал шапку и последняя кнопка
+   уезжала за край. Смысл кнопки остался в title (подсказка при наведении) и
+   aria-label (скринридер и тесты), а вид — аккуратный квадрат с подсветкой. */
+.lec-btn.icon {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  gap: 0;
+  justify-content: center;
+  border-radius: 11px;
+  /* В базовой .lec-btn transform не анимируется — иначе подъём был бы рывком. */
+  transition:
+    transform 0.14s ease,
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+.lec-btn.icon:hover {
+  background: var(--glass-strong);
+  border-color: var(--amber-soft);
+  color: var(--text-primary);
+  transform: translateY(-1px);
+}
+.lec-btn.icon:active {
+  transform: translateY(0);
+}
+.lec-btn.icon:focus-visible {
+  outline: 2px solid var(--amber);
+  outline-offset: 2px;
+}
+/* Открытая сейчас панель/архив — кнопка подсвечена акцентом. */
+.lec-btn.icon.on {
+  color: var(--amber);
+  border-color: var(--amber-soft);
+  background: var(--amber-soft);
+}
+
+/* Архив лекций */
 .lec-sessions {
-  border: 1px solid var(--border, rgba(255,255,255,.1)); border-radius: 10px;
-  padding: 6px; display: flex; flex-direction: column; gap: 4px; max-height: 180px; overflow: auto;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 180px;
+  overflow: auto;
 }
-.lec-session-row { display: flex; align-items: center; gap: 6px; }
+.lec-session-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
 .lec-session-open {
-  flex: 1; display: flex; justify-content: space-between; gap: 10px; align-items: center;
-  background: none; border: none; color: inherit; padding: 6px 8px; border-radius: 8px; cursor: pointer; text-align: left;
+  flex: 1;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+  background: none;
+  border: none;
+  color: inherit;
+  padding: 6px 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  text-align: left;
 }
-.lec-session-open:hover { background: var(--hover, rgba(255,255,255,.06)); }
-.lec-session-title { font-weight: 600; font-size: 13px; }
+.lec-session-open:hover {
+  background: var(--track);
+  color: var(--text-primary);
+}
+.lec-session-title {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--text-primary);
+}
 
-.lec-controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+/* Контролы записи */
+.lec-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
 .lec-title-input {
-  flex: 1; min-width: 180px; padding: 8px 12px; border-radius: 10px;
-  border: 1px solid var(--border, rgba(255,255,255,.12)); background: transparent; color: inherit; font-size: 13px;
+  flex: 1;
+  min-width: 180px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--glass-border);
+  background: var(--track);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 13px;
+  outline: none;
 }
-.lec-check { display: flex; align-items: center; gap: 6px; font-size: 12px; opacity: .9; cursor: pointer; }
+.lec-title-input:focus {
+  border-color: var(--violet);
+}
+.lec-title-input:disabled {
+  opacity: 0.6;
+}
+.lec-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.lec-check input {
+  accent-color: var(--amber);
+}
 
+/* Кнопки страницы — в общем стиле приложения (.btn из ui.css). */
 .lec-btn {
-  display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 10px;
-  border: 1px solid transparent; cursor: pointer; font-size: 13px; font-weight: 600;
-  background: var(--surface, rgba(255,255,255,.08)); color: inherit; transition: filter .15s, opacity .15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  font-weight: 600;
+  background: var(--track);
+  color: var(--text-primary);
+  transition:
+    filter 0.15s ease,
+    opacity 0.15s ease,
+    background-color 0.15s ease,
+    color 0.15s ease;
 }
-.lec-btn:hover { filter: brightness(1.1); }
-.lec-btn:disabled { opacity: .45; cursor: not-allowed; }
-.lec-btn.primary { background: #f59e0b; color: #1a1a1a; }
-.lec-btn.danger { background: #ef4444; color: #fff; }
-.lec-btn.ghost { background: transparent; border-color: var(--border, rgba(255,255,255,.15)); }
-.lec-btn.tiny { padding: 4px 8px; font-size: 11px; border-radius: 8px; }
-.lec-btn kbd { font-size: 10px; opacity: .6; border: 1px solid currentColor; border-radius: 4px; padding: 0 4px; }
+.lec-btn:hover {
+  filter: brightness(1.12);
+}
+.lec-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.lec-btn.primary {
+  background: linear-gradient(135deg, var(--amber), #d98a26);
+  color: #241605;
+}
+.lec-btn.danger {
+  background: var(--coral);
+  color: #fff;
+}
+.lec-btn.ghost {
+  background: transparent;
+  border-color: var(--glass-border);
+  color: var(--text-secondary);
+}
+.lec-btn.ghost:hover {
+  color: var(--text-primary);
+  border-color: var(--amber-soft);
+}
+.lec-btn.tiny {
+  padding: 4px 9px;
+  font-size: 11px;
+}
 
-.lec-viz { opacity: .3; }
-.lec-viz.on { opacity: 1; }
-.lec-rec-time { font-variant-numeric: tabular-nums; font-weight: 700; font-size: 14px; }
+.lec-viz {
+  opacity: 0.3;
+}
+.lec-viz.on {
+  opacity: 1;
+}
+.lec-rec-time {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+}
 
-.lec-error, .bp-error {
-  padding: 8px 12px; border-radius: 8px; font-size: 12px;
-  background: rgba(239, 68, 68, .12); color: #fca5a5;
+.lec-error {
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  background: var(--coral-soft);
+  color: var(--coral);
 }
 .lec-live-strip {
-  font-size: 12px; opacity: .7; padding: 4px 10px;
-  border-left: 2px solid #f59e0b;
+  font-size: 12px;
+  color: var(--text-tertiary);
+  padding: 6px 12px;
+  border-left: 2px solid var(--amber);
+  border-radius: 0 12px 12px 0;
 }
 
-.lec-split { flex: 1; display: grid; grid-template-columns: 1fr 380px; gap: 10px; min-height: 0; }
+/* Сплит: телепромтер / конспект */
+.lec-split {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 10px;
+  min-height: 0;
+}
 
 .lec-feed {
-  overflow-y: auto; padding: 10px 12px; border-radius: 12px;
-  border: 1px solid var(--border, rgba(255,255,255,.1)); background: var(--surface, rgba(255,255,255,.03));
+  overflow-y: auto;
+  padding: 10px 12px;
 }
-.lec-empty { opacity: .5; text-align: center; margin-top: 40px; font-size: 13px; }
-.lec-chunk { display: flex; gap: 8px; padding: 6px 4px; border-bottom: 1px dashed var(--border, rgba(255,255,255,.06)); align-items: flex-start; }
-.lec-chunk.st-pending .lec-text { opacity: .5; }
-.lec-chunk.st-error .lec-text { color: #fca5a5; }
+.lec-empty {
+  color: var(--text-tertiary);
+  text-align: center;
+  margin-top: 40px;
+  font-size: 13px;
+}
+.lec-chunk {
+  display: flex;
+  gap: 8px;
+  padding: 6px 4px;
+  align-items: flex-start;
+  border-bottom: 1px dashed var(--glass-border);
+}
+.lec-chunk.st-pending .lec-text {
+  opacity: 0.5;
+}
+.lec-chunk.st-error .lec-text {
+  color: var(--coral);
+}
 .lec-ts {
-  font-variant-numeric: tabular-nums; font-size: 11px; padding: 2px 6px; border-radius: 6px;
-  background: var(--surface, rgba(255,255,255,.08)); border: none; color: #f59e0b; cursor: pointer; flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
   font-weight: 600;
+  padding: 3px 7px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: var(--amber-soft);
+  color: var(--amber);
+  cursor: pointer;
+  font-family: var(--font-mono);
 }
-.lec-ts:hover { filter: brightness(1.2); }
-.lec-text { font-size: 14px; line-height: 1.5; cursor: text; }
-.lec-edit { flex: 1; }
+.lec-ts:hover {
+  border-color: var(--amber);
+}
+.lec-text {
+  font-size: 14px;
+  line-height: 1.5;
+  cursor: text;
+  color: var(--text-primary);
+}
+.lec-edit {
+  flex: 1;
+}
 .lec-edit textarea {
-  width: 100%; border-radius: 8px; border: 1px solid #f59e0b55; background: transparent; color: inherit;
-  font: inherit; padding: 6px; resize: vertical;
+  width: 100%;
+  border-radius: 8px;
+  border: 1px solid var(--amber-soft);
+  background: var(--track);
+  color: var(--text-primary);
+  font: inherit;
+  padding: 6px;
+  resize: vertical;
+  outline: none;
 }
-.lec-edit-actions { display: flex; gap: 6px; margin-top: 4px; }
+.lec-edit-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
 
+/* Конспект и заметки */
 .lec-notes {
-  display: flex; flex-direction: column; border-radius: 12px; min-height: 0;
-  border: 1px solid var(--border, rgba(255,255,255,.1)); overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  border-radius: 12px;
+  min-height: 0;
+  overflow: hidden;
 }
 .lec-notes-head {
-  display: flex; justify-content: space-between; align-items: center; padding: 8px 10px;
-  border-bottom: 1px solid var(--border, rgba(255,255,255,.08)); font-size: 13px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--glass-border);
+  font-size: 13px;
+  color: var(--text-primary);
 }
-.lec-notes-actions { display: flex; gap: 6px; }
+.lec-notes-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
 .lec-notes-area {
-  flex: 1; resize: none; border: none; background: transparent; color: inherit; padding: 10px;
-  font-family: ui-monospace, Consolas, monospace; font-size: 12.5px; line-height: 1.55; outline: none;
+  flex: 1;
+  resize: none;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  padding: 10px;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 1.55;
+  outline: none;
 }
 .lec-exports {
-  display: flex; gap: 6px; align-items: center; padding: 8px 10px; flex-wrap: wrap;
-  border-top: 1px solid var(--border, rgba(255,255,255,.08));
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding: 8px 10px;
+  flex-wrap: wrap;
+  border-top: 1px solid var(--glass-border);
 }
 
-.icon-btn {
-  background: none; border: none; color: inherit; opacity: .6; cursor: pointer; padding: 4px; border-radius: 6px;
+/* Кнопки-иконки ВНУТРИ страницы лекций (глобальный .icon-btn не трогаем). */
+.lec-page .icon-btn {
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: var(--text-tertiary);
+  opacity: 0.7;
+  cursor: pointer;
+  padding: 0;
+  border-radius: 50%;
 }
-.icon-btn:hover { opacity: 1; background: var(--hover, rgba(255,255,255,.08)); }
+.lec-page .icon-btn:hover {
+  opacity: 1;
+  color: var(--text-primary);
+  background: var(--track);
+}
+
+/* ===== Панель настройки движка (модель / сборка / устройство) =====
+   Классы с префиксом .lecs- изолированы от остальных страниц: используется
+   тот же набор токенов темы (--glass, --track, --amber, --teal, --violet).
+
+   ВАЖНО про отступы модалки: раньше overlay был position:fixed; inset:0;
+   padding:24px, то есть модалка центрировалась по ВСЕМУ окну и на узком окне
+   наезжала на левый рельс страниц, а на низком — на верхнюю панель управления.
+   Теперь внутренние отступы повторяют раскладку оболочки (--rail-* / --content-*),
+   поэтому модалка всегда живёт строго внутри контентной области. */
+.lecs-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.58);
+  backdrop-filter: blur(3px);
+  padding: var(--content-top) 24px var(--content-bottom)
+    calc(var(--rail-gap) + var(--rail-w) + 12px);
+}
+.lecs-modal {
+  width: 100%;
+  max-width: min(620px, 100%);
+  /* max-height считается от контентной зоны, а не от 86vh: при высоте окна
+     1030 и меньше верх модалки больше не залезает под панель управления. */
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  /* Почти непрозрачная подложка (--surface-solid), а не var(--glass).
+     --glass — это ~5% белого: страница просвечивала сквозь модалку и текст
+     панели сливался с содержимым за ней («текст не видно вообще»). */
+  background: var(--surface-solid);
+  background-image: linear-gradient(
+    180deg,
+    var(--glass-strong),
+    rgba(255, 255, 255, 0) 42%
+  );
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+  padding: 14px 16px 16px;
+}
+/* Тело со скроллом: шапка с крестиком остаётся видимой при любой высоте окна. */
+.lecs-body {
+  min-height: 0;
+  overflow: auto;
+  padding-right: 2px;
+}
+.lecs-panel,
+.lecs-inline-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.lecs-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.lecs-icon {
+  color: var(--amber);
+  display: inline-flex;
+}
+.lecs-title {
+  flex: 1;
+  min-width: 0;
+}
+.lecs-eyebrow {
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+.lecs-h1 {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  font-family: var(--font-body);
+}
+.lecs-pill {
+  font-size: 11px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  white-space: nowrap;
+  border: 1px solid var(--glass-border);
+  color: var(--text-secondary);
+}
+.lecs-pill.on {
+  color: var(--teal);
+  border-color: var(--teal);
+}
+.lecs-pill.off {
+  color: var(--amber);
+  border-color: var(--amber-soft);
+}
+.lecs-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-tertiary);
+  display: inline-flex;
+  padding: 4px;
+  border-radius: 50%;
+}
+.lecs-close:hover {
+  color: var(--text-primary);
+  background: var(--track);
+}
+
+.lecs-error {
+  color: var(--coral, #e5533d);
+  font-size: 12px;
+}
+.lecs-warn {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--amber);
+  background: var(--track);
+  border-radius: 10px;
+  padding: 7px 9px;
+}
+.lecs-ok {
+  color: var(--teal);
+  font-size: 11.5px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.lecs-bad {
+  color: var(--coral, #e5533d);
+  font-size: 11.5px;
+}
+.lecs-dim {
+  color: var(--text-tertiary);
+  font-size: 11.5px;
+}
+.lecs-hint {
+  line-height: 1.45;
+}
+
+/* --- Подсказки «лучше для вашего ПК» (панель движка) --- */
+/* Строка «Ваш ПК»: железо + что именно ему подходит. */
+.lecs-sys {
+  gap: 3px;
+}
+.lecs-sys-line {
+  font-size: 11.5px;
+  color: var(--text-secondary);
+}
+/* Совет по элементу каталога: Badge с уровнем + короткая причина. */
+.lecs-fit {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  font-size: 11px;
+  line-height: 1.4;
+  margin-top: 2px;
+}
+.lecs-fit-best {
+  color: var(--teal);
+}
+.lecs-fit-good {
+  color: var(--text-tertiary);
+}
+.lecs-fit-heavy {
+  color: var(--amber);
+}
+/* «Не для вашего ПК» — красный, как у ошибок: это не совет, а ограничение. */
+.lecs-fit-unfit {
+  color: var(--coral, #e5533d);
+}
+.lecs-path {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  word-break: break-all;
+}
+
+.lecs-block {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.lecs-block-label {
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.lecs-task {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  background: var(--track);
+  border-radius: 10px;
+  padding: 8px 10px;
+}
+.lecs-task-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.lecs-task-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.lecs-task-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.lecs-hw {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  color: var(--text-secondary);
+}
+.lecs-hw-text {
+  min-width: 0;
+}
+.lecs-mode {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin: 4px 0 2px;
+}
+.lecs-mode-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 11px;
+  border-radius: 999px;
+  border: 1px solid var(--glass-border);
+  background: var(--track);
+  color: var(--text-secondary);
+  font-family: var(--font-body);
+  font-size: 12px;
+  cursor: pointer;
+}
+.lecs-mode-btn.on {
+  border-color: var(--teal);
+  color: var(--teal);
+}
+.lecs-mode-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.lecs-select {
+  background: var(--track);
+  color: var(--text-primary);
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  padding: 4px 8px;
+  font-size: 12px;
+  max-width: 220px;
+}
+.lecs-verify {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+.lecs-verify-result {
+  font-size: 11.5px;
+}
+.lecs-verify-result.ok {
+  color: var(--teal);
+}
+.lecs-verify-result.bad {
+  color: var(--coral, #e5533d);
+}
+.lecs-link {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: var(--text-tertiary);
+  font-size: 11.5px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.lecs-link:hover {
+  color: var(--text-primary);
+}
+.lecs-log {
+  max-height: 180px;
+  overflow: auto;
+  background: var(--track);
+  border-radius: 8px;
+  padding: 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin: 0;
+}
+
+.lecs-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.lecs-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: var(--track);
+  padding: 7px 9px;
+}
+.lecs-row.active {
+  border-color: var(--teal);
+}
+.lecs-row-main {
+  min-width: 0;
+}
+.lecs-row-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.lecs-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.lecs-bin {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.lecs-input {
+  flex: 1;
+  min-width: 200px;
+  padding: 6px 10px;
+  border-radius: 9px;
+  border: 1px solid var(--glass-border);
+  background: var(--track);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  outline: none;
+}
+.lecs-input:focus {
+  border-color: var(--violet);
+}
+/* Узкие окна: конспект уезжает под телепромтер. */
+/* ===== Панель «Аудио» (микрофон, гейн, VAD) =====
+   Классы .leca-* — только для этой панели; общий «стеклянный» вид берётся из
+   .lecs-* (см. выше), чтобы модалки движка и аудио выглядели одинаково. */
+.leca-modal {
+  max-width: min(560px, 100%);
+}
+.leca-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.leca-label {
+  min-width: 150px;
+}
+
+/* Поле «подпись + значение + единица» одной неразрывной парой.
+   Зачем: три пары лежали плоским списком в одном .leca-row, и перенос строки
+   отрывал число от подписи — «Шов» уезжал к чужому 6000, а «Лимит» вставал
+   между 600 и 60, так что понять, что есть что, было невозможно.
+   .leca-pair держит подпись и поле вместе (перенос допускается только перед
+   единицей измерения), поэтому пара не может развалиться при любой ширине. */
+.leca-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.leca-pair {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+/* Пара, которая тянется на всю строку (селект модели): подпись и селект остаются
+   склеенными, но контрол занимает свободное место. */
+.leca-pair.grow {
+  flex: 1 1 240px;
+  min-width: 0;
+}
+.leca-unit {
+  font-size: 11.5px;
+}
+.leca-select {
+  flex: 1;
+  min-width: 160px;
+  max-width: none;
+}
+.leca-diag {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  font-size: 11.5px;
+  color: var(--text-secondary);
+}
+.leca-inline {
+  min-width: 0;
+}
+
+/* Индикатор уровня входа: полоска + отметка порога VAD. Без него «тихий
+   микрофон» и «шум выше порога» выглядят одинаково (пустые чанки). */
+.lec-meter {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: var(--track);
+}
+.lec-meter-bar {
+  position: relative;
+  width: 74px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--glass-border);
+  overflow: hidden;
+}
+.lec-meter-bar > i {
+  display: block;
+  height: 100%;
+  background: var(--teal);
+  transition: width 0.15s linear;
+}
+.lec-meter.quiet .lec-meter-bar > i {
+  background: var(--amber);
+}
+.lec-meter-mark {
+  position: absolute;
+  left: 8px;
+  top: 8px;
+  width: 1px;
+  height: 12px;
+  background: var(--text-tertiary);
+  opacity: 0.8;
+  pointer-events: none;
+}
+.lec-meter-db {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Метки дорожек в транскрипте: sys — эфир лектора, recheck — найденное
+   повторной проверкой пропусков. */
+.lec-src-sys {
+  color: var(--violet);
+  font-size: 10.5px;
+  font-weight: 600;
+}
+/* Дорожка микрофона (аудитория): подпись тише, чем эфир — она информационная. */
+.lec-src-mic {
+  color: var(--text-tertiary);
+  font-size: 10.5px;
+  font-weight: 600;
+}
+.lec-src-recheck {
+  color: var(--teal);
+  font-size: 11px;
+}
+
+/* Пропущенные VAD отрезки в ленте: показываем как «дыру» в таймлайне, а не
+   как обычный чанк — иначе пользователь принимает их за потерянную речь. */
+.lec-chunk.st-vad_skip {
+  opacity: 0.75;
+}
+.lec-chunk.st-vad_skip .lec-ts {
+  color: var(--amber);
+}
+
+/* Тексты панели «ИИ-конспект» (.leca-num — числовые поля панели конспекта и
+   аудио: фиксированная ширина, иначе input растягивался на всю строку). */
+.leca-num {
+  flex: 0 0 auto;
+  width: 110px;
+  min-width: 0;
+}
+
+/* Баннер конфликта заметок (авто-конспект vs ручная правка): прижат к шапке
+   блока заметок, кнопки выбора — справа, чтобы их не «съел» длинный текст. */
+.lec-notes-stale {
+  align-items: center;
+  margin: 8px 10px 0;
+  flex-wrap: wrap;
+}
+
+/* Полоса прогресса диаризации (скачивание пакета и разбор лекции). Полоска
+   сборочная: у неё нет подписи-шкалы, важны «идёт/сколько». */
+.leca-bar {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--glass-border);
+  overflow: hidden;
+  margin: 6px 0 2px;
+}
+.leca-bar > i {
+  display: block;
+  height: 100%;
+  background: var(--teal);
+  transition: width 0.2s linear;
+}
+
+/* Метка говорящего в ленте (диаризация): «№2» рядом с текстом чанка. */
+.lec-src-spk {
+  color: var(--amber);
+  font-size: 10.5px;
+  font-weight: 600;
+}
+
+@media (max-width: 1100px) {
+  .lec-split {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}

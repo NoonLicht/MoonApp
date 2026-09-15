@@ -100,6 +100,15 @@ function tokenHeaders(): Record<string, string> {
   return t ? { "x-moonapp-token": t } : {};
 }
 
+/** Имя файла из Content-Disposition (учитывает filename* с UTF-8). */
+function filenameFromDisposition(res: Response): string {
+  const cd = res.headers.get("content-disposition") || "";
+  const star = /filename\*=(?:UTF-8'')?([^;]+)/i.exec(cd);
+  if (star?.[1]) { try { return decodeURIComponent(star[1].trim().replace(/^"|"$/g, "")); } catch { /* как есть */ } }
+  const plain = /filename="?([^";]+)"?/i.exec(cd);
+  return plain?.[1] ? plain[1].trim() : "";
+}
+
 /**
  * Заголовок X-App-Page: какой страницей инициирован запрос. По нему бэкенд
  * решает, идти во внешнюю сеть напрямую или через прокси (per-page правила,
@@ -183,17 +192,99 @@ export const api = {
   lectureCreate: (title: string) =>
     req<LectureCreateResult>("POST", "/lecture/sessions", { title, sampleRate: 16000, channels: 1 }),
   lectureStatus: (id: number) => req<LectureStatus>("GET", `/lecture/${id}`),
-  lectureIngest: (id: number, body: ArrayBuffer) => rawPost(`/api/lecture/${id}/ingest`, body),
+  lectureIngest: (id: number, body: ArrayBuffer, track: "mic" | "sys" = "mic") =>
+    rawPost(`/api/lecture/${id}/ingest${track === "sys" ? "?track=sys" : ""}`, body),
+  // --- Аудиовход: микрофон, гейн, порог VAD + «Проверить пропуски» ---
+  // Настройки меняются до старта записи: VAD-опции читаются в createSession.
+  lectureAudio: () => req<LectureAudioSettings>("GET", "/lecture/audio"),
+  lectureAudioSet: (patch: {
+    micDeviceId?: string; micGain?: number; micAgc?: boolean;
+    vad?: { rmsThreshold?: number; adaptive?: boolean; thresholdFactor?: number; minSpeechRatio?: number; zcrGate?: boolean };
+  }) => req<LectureAudioSettings>("POST", "/lecture/audio", patch),
+  // Повторная расшифровка участков, потерянных VAD/Whisper (шум, тихий сигнал).
+  lectureRecheck: (id: number) => req<LectureRecheckState>("POST", `/lecture/${id}/recheck`, {}),
+  lectureRecheckState: (id: number) => req<LectureRecheckState>("GET", `/lecture/${id}/recheck`),
   lectureEditChunk: (chunkId: number, text: string) =>
     req<LectureChunk>("PATCH", `/lecture/chunks/${chunkId}`, { text }),
   lectureMarker: (id: number, atMs: number, label: string) =>
     req<{ atMs: number; timestamp: string; label: string }>("POST", `/lecture/${id}/markers`, { atMs, label }),
   lectureStop: (id: number) => req<LectureStatus>("POST", `/lecture/${id}/stop`),
   lectureDelete: (id: number) => req<{ ok: boolean }>("DELETE", `/lecture/${id}`),
-  lectureExportUrl: (id: number, format: "md" | "srt" | "vtt") => `/api/lecture/${id}/export?format=${format}`,
-  lectureAudioUrl: (id: number) => `/api/lecture/${id}/audio`,
+  // ВНИМАНИЕ: раньше здесь были lectureExportUrl/lectureAudioUrl — «голые»
+  // ссылки на /api/lecture/... Их нельзя использовать для скачивания: роуты
+  // закрыты токеном, а <a download>/<audio src> заголовок не передают (401).
+  // Для файлов используйте lectureDownloadExport/lectureDownloadAudio/
+  // lectureChunkAudio — они тянут blob с токеном (см. ниже).
+  lectureSetNotes: (id: number, notes: string) => req<LectureSession>("PATCH", `/lecture/${id}`, { notes }),
   lectureConspectus: (id: number) =>
-    req<{ markdown: string; model: string }>("POST", `/lecture/${id}/conspectus`),
+    req<LectureConspectusResult>("POST", `/lecture/${id}/conspectus`),
+  // Прогресс сборки конспекта: POST выше может идти минутами (десятки запросов
+  // к модели), поэтому страница параллельно опрашивает состояние.
+  lectureConspectusState: (id: number) =>
+    req<LectureConspectusState>("GET", `/lecture/${id}/conspectus`),
+  // --- ИИ-конспект: провайдер и режим запуска (панель «ИИ-конспект») ---
+  lectureConspectusSettings: () =>
+    req<LectureConspectusSettings>("GET", "/lecture/conspectus/settings"),
+  lectureConspectusSetSettings: (patch: {
+    providerId?: string; model?: string; trigger?: LectureConspectusTrigger;
+    autoMinChars?: number; chunkChars?: number; overlapChars?: number; maxChunks?: number;
+  }) => req<LectureConspectusSettings>("POST", "/lecture/conspectus/settings", patch),
+  lectureProviders: () => req<LectureProviderInfo[]>("GET", "/lecture/providers"),
+  lectureProviderModels: (id: string) =>
+    req<{ provider: string; models: string[] }>("GET", `/lecture/providers/${encodeURIComponent(id)}/models`),
+  // --- Разделение говорящих (sherpa-onnx diarization) ---
+  lectureDiarizeSetup: () => req<LectureDiarizeSetup>("GET", "/lecture/diarize/setup"),
+  lectureDiarizeInstall: (id: "bin" | "seg" | "emb" | "all" = "all") =>
+    req<LectureDiarizeSetup>("POST", "/lecture/diarize/install", { id }),
+  lectureDiarizeRemove: (id: string) => req<LectureDiarizeSetup>("POST", "/lecture/diarize/remove", { id }),
+  lectureDiarizeCancel: () => req<LectureDiarizeSetup>("POST", "/lecture/diarize/cancel", {}),
+  lectureDiarizeSet: (patch: {
+    enabled?: boolean; track?: "auto" | "sys" | "mic"; threshold?: number; speakers?: number;
+  }) => req<LectureDiarizeSettings>("POST", "/lecture/diarize/settings", patch),
+  lectureDiarizeRun: (id: number, track?: "sys" | "mic") =>
+    req<LectureDiarizeState>("POST", `/lecture/${id}/diarize`, track ? { track } : {}),
+  lectureDiarizeState: (id: number) => req<LectureDiarizeState>("GET", `/lecture/${id}/diarize`),
+  // --- Настройка движка распознавания: модель, сборка (CPU/CUDA), устройство ---
+  // Все методы возвращают один и тот же LectureEngineSetup, поэтому панель
+  // настроек после любого действия просто перезаписывает состояние целиком.
+  lectureEngineSetup: () => req<LectureEngineSetup>("GET", "/lecture/engine/setup"),
+  lectureEngineModel: (id: string, action: "select" | "download" | "remove" = "select") =>
+    req<LectureEngineSetup>("POST", "/lecture/engine/model", { id, action }),
+  lectureEngineBuild: (id: string, action: "select" | "download" = "select") =>
+    req<LectureEngineSetup>("POST", "/lecture/engine/build", { id, action }),
+  lectureEngineGpu: (mode: "auto" | "off", deviceId?: number) =>
+    req<LectureEngineSetup>("POST", "/lecture/engine/gpu", { mode, deviceId }),
+  lectureEngineBin: (path: string) => req<LectureEngineSetup>("POST", "/lecture/engine/bin", { path }),
+  lectureEngineCancel: () => req<LectureEngineSetup>("POST", "/lecture/engine/cancel", {}),
+  lectureEngineVerify: () => req<LectureEngineSetup>("POST", "/lecture/engine/verify", {}),
+  // Скачивания идут через fetch с токеном: <a download> не умеет заголовок
+  // x-moonapp-token, поэтому в Electron такие ссылки отдавали 401.
+  lectureDownloadExport: async (
+    id: number, format: "md" | "srt" | "vtt",
+    // Подписи говорящих: сервер не знает языка интерфейса, поэтому строки в
+    // экспорте подписывает клиент (dual-разметка mic/sys — см. speakerOf).
+    labels: { mic?: string; sys?: string; off?: boolean } = {},
+  ): Promise<{ blob: Blob; name: string }> => {
+    const q = new URLSearchParams({ format });
+    if (labels.off) q.set("labels", "off");
+    if (labels.mic) q.set("mic", labels.mic);
+    if (labels.sys) q.set("sys", labels.sys);
+    const res = await fetch(`${BASE}/api/lecture/${id}/export?${q.toString()}`, { headers: { ...tokenHeaders() } });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const name = filenameFromDisposition(res) || `lecture_${id}.${format}`;
+    return { blob: await res.blob(), name };
+  },
+  lectureDownloadAudio: async (id: number, track: "mic" | "sys" = "mic"): Promise<{ blob: Blob; name: string }> => {
+    const res = await fetch(`${BASE}/api/lecture/${id}/audio${track === "sys" ? "?track=sys" : ""}`, { headers: { ...tokenHeaders() } });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return { blob: await res.blob(), name: `lecture_${id}${track === "sys" ? "_sys" : ""}.wav` };
+  },
+  /** WAV отдельного VAD-чанка — для прослушивания фрагмента прямо в ленте. */
+  lectureChunkAudio: async (chunkId: number): Promise<Blob> => {
+    const res = await fetch(`${BASE}/api/lecture/chunks/${chunkId}/audio`, { headers: { ...tokenHeaders() } });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.blob();
+  },
 
   // Zapret / DPI Bypass
   zapretEngine: () => req<ZapretEngine>("GET", "/zapret/engine"),
@@ -655,6 +746,80 @@ export async function streamArena(
 export interface LectureEngineStatus {
   ready: boolean; bin: string | null; model: string | null;
   backend: string | null; language: string; activeSession: boolean;
+  // --- Появилось вместе с панелью настройки движка (модель/сборка/GPU) ---
+  /** Активная сборка: legacy | cpu | blas | cuda118 | cuda124 | custom. */
+  build: string | null; buildDir: string | null; buildCustom: boolean;
+  /** id выбранной модели из каталога ("" — авто: small → base → tiny). */
+  modelId: string;
+  /** auto — считать на видеокарте (CUDA), off — всегда процессор (флаг -ng). */
+  gpu: "auto" | "off"; deviceId: number; threads: number;
+  /** Предупреждения движка: cuda_without_nvidia, cuda_blackwell. */
+  warnings: string[];
+}
+
+/** Сборка whisper.cpp из каталога (CPU / OpenBLAS / CUDA 11.8 / CUDA 12.4). */
+/** Подсказка «лучше для вашего ПК» для модели или сборки (считает сервер). */
+export interface LectureFit {
+  /** best — рекомендуется именно вам, good — подойдёт, heavy — будет медленно,
+   *  unfit — не хватит памяти / нет подходящей видеокарты. */
+  level: "best" | "good" | "heavy" | "unfit";
+  /** Ключ причины для lecture.setup.fitWhy.* ("" — пояснять нечего). */
+  reason: string;
+  /** Сколько ГБ памяти нужно (для формулировки «нужно ~N ГБ ОЗУ»). */
+  gb: number;
+  best: boolean;
+}
+
+/** Сводка железа для строки «Ваш ПК» в панели движка. */
+export interface LectureSystemInfo {
+  cpu: string; cores: number; threads: number; ramGb: number;
+  gpu: string; gpuGb: number; cuda: boolean; blackwell: boolean; detected: boolean;
+}
+
+export interface LectureEngineBuild {
+  id: string; note: string; gpu: boolean; cuda: string;
+  sizeMb: number | null; installed: boolean; dir: string; bin: string | null;
+  backend: string | null; legacy?: boolean; active?: boolean;
+  /** Появилось вместе с подсказками «ваш ПК». */
+  recommend?: LectureFit;
+}
+
+/** Модель Whisper из каталога (tiny … large-v3 + q5-кванты). */
+export interface LectureModelEntry {
+  id: string; file: string; sizeMb: number; note: string; url: string;
+  downloaded: boolean; downloadedMb: number; active: boolean;
+  recommend?: LectureFit;
+}
+
+/** Прогресс текущей задачи установки (одна за раз: модель ИЛИ сборка). */
+export interface LectureEngineTask {
+  kind: "model" | "build" | null; state: "idle" | "working" | "done" | "error";
+  id: string | null; progress: number; phase: string; error: string;
+  received: number; total: number; at: number;
+}
+
+/** Железо, на котором реально можно считать (детект через nvidia-smi/WMI). */
+export interface LectureGpuInfo {
+  devices: { vendor: string; name: string; driver: string; memoryMb: number; cuda: boolean }[];
+  cudaCapable: boolean; name: string; memoryMb: number; driver: string;
+  cpu: string; blackwell: boolean; pending?: boolean;
+}
+
+/** Итог self-test: прогон модели на тестовом WAV (что реально поднялось). */
+export interface LectureEngineVerify {
+  ok: boolean; at: number; bin: string | null; model: string | null; modelId: string;
+  build: string | null; backend: string | null; gpuUsed: boolean;
+  computeCapability: string; elapsedMs: number; log: string; error: string;
+}
+
+/** Полное состояние настройки движка (ответ всех /lecture/engine/* роутов). */
+export interface LectureEngineSetup {
+  engine: LectureEngineStatus; gpu: LectureGpuInfo;
+  builds: LectureEngineBuild[]; models: LectureModelEntry[];
+  task: LectureEngineTask; verify: LectureEngineVerify | null;
+  tag: string; dirs: { whisper: string; models: string; builds: string };
+  /** Появилось вместе с подсказками «лучше для вашего ПК». */
+  system?: LectureSystemInfo;
 }
 export interface LectureSession {
   id: number; title: string; started_at: string; ended_at: string | null;
@@ -663,12 +828,160 @@ export interface LectureSession {
 }
 export interface LectureChunk {
   id: number; lecture_id: number; idx: number; start_ms: number; end_ms: number;
-  text: string; status: "pending" | "done" | "empty" | "error"; error: string; file: string;
+  text: string; status: "pending" | "done" | "empty" | "error" | "vad_skip"; error: string; file: string;
+  /** Почему чанк пустой/пропущен: whisper_empty | noise | hum | low_speech_ratio | noise_burst. */
+  reason?: string;
+  /** Диагностика уровня: dBFS по RMS и по пику, доля речи, шумовой пол, порог, ZCR. */
+  rms_db?: number; rms_peak_db?: number; speech_ratio?: number;
+  noise_floor_db?: number; threshold_db?: number; zcr?: number;
+  /** Дорожка: mic — микрофон/аудитория, sys — системный звук (эфир), recheck — найдено проверкой. */
+  source?: "mic" | "sys" | "recheck" | string;
+  /** Говорящий по диаризации (sherpa): «sys_0», «mic_2». Пусто — разбора не было. */
+  speaker?: string;
+  /** Доля доминирующего голоса в чанке (0..1): ниже 0.55 — в чанке звучали двое. */
+  speakerRatio?: number;
+}
+
+/** Живые метрики VAD по дорожке (порог, шумовой пол, пропуски). */
+export interface LectureVadMetrics {
+  thresholdDb: number; noiseFloorDb: number; adaptive: boolean; zcrGate: boolean;
+  lastZcr: number; skipped: number; skippedCount: number;
+  recordingSec?: number;
+  stats: { frames: number; speechFrames: number; rejected: number; chunks: number; loudFrames: number; noiseFrames: number; skippedMs: number };
+}
+
+/** Прогресс «Проверить пропуски» (повторная расшифровка потерянных участков). */
+export interface LectureRecheckState {
+  state: "idle" | "working" | "done" | "error";
+  progress: number; total: number; found: number; restored: number;
+  error: string; at: number; truncated: boolean;
+}
+
+/**
+ * AI-конспект: собирается чанками через провайдера чата (DeepSeek и др.).
+ * `blocks` — на сколько фрагментов разбили расшифровку, `truncated` — лекция
+ * длиннее предохранителя (conspectusMaxChunks), `ofTotal` — сколько блоков
+ * получилось бы целиком (для честного сообщения в UI).
+ */
+export interface LectureConspectusResult {
+  markdown: string; model: string; blocks: number; truncated: boolean; ofTotal: number;
+}
+
+/** Прогресс сборки конспекта (GET /lecture/:id/conspectus). */
+export interface LectureConspectusState {
+  state: "idle" | "working" | "done" | "error";
+  progress: number; total: number;
+  /** notes — идут черновые заметки по блокам, merge — сведение в конспект. */
+  phase: "" | "notes" | "merge" | "done";
+  model: string; error: string; truncated: boolean; at: number;
+  /** Режим запуска (smart/auto/manual) и провайдер — для бейджа в панели. */
+  trigger?: LectureConspectusTrigger;
+  providerId?: string;
+  autoMinChars?: number;
+  /** Символы распознанного текста на момент запроса. */
+  transcriptChars?: number;
+  conspectusAt?: string;
+  /** После сборки расшифровка заметно выросла — конспект стоит обновить. */
+  stale?: boolean;
+}
+
+/**
+ * Режим запуска конспекта: smart — авто с проверками (хватает ли текста, нет
+ * ли уже собранного конспекта), auto — авто всегда, manual — только кнопкой.
+ */
+export type LectureConspectusTrigger = "smart" | "auto" | "manual";
+
+/* ------------------------- Разделение говорящих (диаризация) ------------------------- */
+
+/** Пакет диаризации: бинарь sherpa, модель сегментации, модель эмбеддингов. */
+export interface LectureDiarizePackage {
+  id: "bin" | "seg" | "emb" | string;
+  sizeMb: number;
+  dir: string;
+  installed: boolean;
+}
+
+/** Задача установки пакета (прогресс скачивания/распаковки). */
+export interface LectureDiarizeTask {
+  kind: string | null;
+  state: "idle" | "working" | "done" | "error";
+  id: string | null;
+  progress: number;
+  /** download — качаем, extract — распаковываем архив. */
+  phase: "" | "download" | "extract" | string;
+  error: string;
+  received: number; total: number; at: number;
+}
+
+/** Настройки диаризации (GET /lecture/diarize/setup → settings). */
+export interface LectureDiarizeSettings {
+  enabled: boolean;
+  threshold: number;
+  speakers: number;
+  track: "auto" | "sys" | "mic";
+  limits: { threshold: [number, number]; speakers: [number, number] };
+  installed: { bin: string | null; seg: string | null; emb: string | null; ready: boolean };
+  task: LectureDiarizeTask;
+}
+
+/** Состояние пакета диаризации: что установлено и что происходит сейчас. */
+export interface LectureDiarizeSetup {
+  ready: boolean;
+  engine: { bin: string | null; seg: string | null; emb: string | null; version: string; dir: string };
+  packages: LectureDiarizePackage[];
+  task: LectureDiarizeTask;
+  settings: LectureDiarizeSettings;
+}
+
+/** Прогресс разбора говорящих в конкретной лекции. */
+export interface LectureDiarizeState {
+  state: "idle" | "working" | "done" | "error";
+  progress: number;
+  /** Какая дорожка считается сейчас: sys (эфир) или mic (аудитория). */
+  phase: string;
+  error: string;
+  tracks: string[];
+  speakers: number;
+  at: number;
+}
+
+/** Провайдер конспекта: ярлык, каталог моделей и признак заданного ключа. */
+export interface LectureProviderInfo {
+  id: string; label: string; models: string[]; hasKey: boolean;
+}
+
+/** Настройки ИИ-конспекта (GET/POST /lecture/conspectus/settings). */
+export interface LectureConspectusSettings {
+  providerId: string;
+  /** true — провайдер наследуется от настроек AI-чата (conspectusProvider = ""). */
+  providerFromChat: boolean;
+  chatProvider: string;
+  hasKey: boolean;
+  model: string;
+  trigger: LectureConspectusTrigger;
+  autoMinChars: number;
+  chunkChars: number; overlapChars: number; maxChunks: number;
+  triggerOptions: LectureConspectusTrigger[];
+  providers: LectureProviderInfo[];
+}
+
+/** Настройки аудиовхода: микрофон, гейн, порог VAD. */
+export interface LectureAudioSettings {
+  micDeviceId: string; micGain: number; micAgc: boolean;
+  vad: {
+    rmsThreshold: number; thresholdDb: number; adaptive: boolean; thresholdFactor: number;
+    minSpeechRatio: number; zcrGate: boolean;
+    silenceMs: number; minChunkMs: number; maxChunkMs: number; forceSplitMs: number;
+  };
+  limits: { micGain: [number, number]; rmsThreshold: [number, number]; thresholdFactor: [number, number]; minSpeechRatio: [number, number] };
 }
 export interface LectureStatus {
   lecture: LectureSession; chunks: LectureChunk[];
   live: boolean; queue: number; transcribing: boolean;
   recordingSec: number; vadStats: { frames: number; speechFrames: number; rejected: number; chunks: number } | null;
+  /** Живая диагностика по дорожкам (mic/sys): порог, шумовой пол, пропуски. */
+  vad?: Record<string, LectureVadMetrics> | null;
+  recheck?: LectureRecheckState;
   lastError: string; whisper: LectureEngineStatus;
 }
 export interface LectureCreateResult {
@@ -677,13 +990,19 @@ export interface LectureCreateResult {
   whisper: LectureEngineStatus;
 }
 
-/** POST бинарного тела (PCM-стрим) с токеном. */
+/**
+ * POST бинарного тела (PCM-стрим) с токеном.
+ * Бросает при не-2xx: вызывающий код (Lecture Recorder) должен узнать, что
+ * поток аудио до сервера потерян, а не молча копить «пустую» запись.
+ */
 export async function rawPost(path: string, body: ArrayBuffer): Promise<Response> {
-  return fetch(`${BASE}${path}`, {
+  const res = await fetch(`${BASE}${path}`, {
     method: "POST",
-    headers: { ...tokenHeaders(), "Content-Type": "application/octet-stream" },
+    headers: { ...tokenHeaders(), ...pageHeaders(), "Content-Type": "application/octet-stream" },
     body,
   });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res;
 }
 
 /* ================= Zapret / DPI Bypass ================= */

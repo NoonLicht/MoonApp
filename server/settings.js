@@ -19,7 +19,7 @@ const DEFAULTS = {
 
   // --- Внешний вид ---
   appearance: {
-    theme: "dark",           // dark | light
+    theme: "dark",           // dark | light | oled (oled = абсолютно чёрный фон для OLED)
     accent: "amber",         // amber | violet | teal | coral
     reduceMotion: false,     // вырубать анимации/blur-блобы
     fontSize: 14,            // базовый размер шрифта
@@ -175,6 +175,10 @@ const DEFAULTS = {
   lecture: {
     whisperBin: "",          // путь к whisper-cli/main.exe (пусто = автопоиск)
     model: "",               // путь к ggml-модели (пусто = автопоиск models/ggml-*.bin)
+    build: "auto",           // auto | legacy | cpu | blas | cuda118 | cuda124 — сборка движка
+    modelId: "",             // выбранная модель из каталога (пусто = авто: small → base → tiny)
+    gpu: "auto",             // auto — считать на NVIDIA (CUDA-сборка), off — всегда CPU
+    deviceId: 0,             // номер GPU для -dev (0 — первая видеокарта)
     language: "ru",          // язык лекции для Whisper
     threads: 4,              // потоки CPU-фолбэка (OpenBLAS/AVX2)
     initialPrompt: "Лекция по высшей математике, интегралы, дифференциалы, матрица, вектор, асимптота, теорема, производная, предел, множество",
@@ -183,7 +187,43 @@ const DEFAULTS = {
     vadMaxChunkMs: 18000,    // целевой максимум чанка (мягкий сплит)
     vadForceSplitMs: 25000,  // принудительный сплит длинной речи
     vadPadMs: 150,           // пре/пост-ролл паддинг
-    ollamaModel: "",         // модель Ollama для конспекта (пусто = llama3.2)
+    // --- Аудиовход (страница лекций → панель «Аудио») ---
+    // ВАЖНО: без выбранного устройства брался микрофон по умолчанию — часто это
+    // микрофон веб-камеры, из-за чего запись звучала «из-под стола».
+    micDeviceId: "",         // "" — устройство по умолчанию, иначе deviceId из enumerateDevices
+    micGain: 1,              // усиление входа 0.5..4 (лечит тихие микрофоны)
+    micAgc: false,           // autoGainControl браузера (по умолчанию выключен, чтобы не «качать» уровень)
+    // --- VAD: порог, адаптация, анти-шум ---
+    vadRmsThreshold: 0.008,  // стартовый порог RMS (0..1). −42 dBFS — типичная речь ≥ −30
+    vadAdaptive: true,       // подстраивать порог под шумовой пол записи
+    vadThresholdFactor: 2.5,   // порог = шумовой пол × этот множитель (≈ +8 дБ)
+    vadMinSpeechRatio: 0.15, // доля речи в чанке ниже этой → «шум/гул», не в Whisper
+    vadZcrGate: true,        // отбрасывать широкополосный шум по ZCR (шипение системы)
+    // --- AI-конспект: чанками через провайдера чата (DeepSeek и др.) ---
+    // Раньше конспект шёл в локальный Ollama и обрезался до последних 14 000
+    // символов — у длинной лекции терялось начало. Теперь расшифровка делится
+    // на блоки и каждый уходит в модель отдельно (см. generateConspectus).
+    // Провайдер по умолчанию — DeepSeek (лучшее соотношение цена/качество на
+    // длинных русских текстах). Пустая строка означала бы «взять из настроек
+    // чата», поэтому её по-прежнему понимаем, но сама настройка заполнена.
+    conspectusProvider: "deepseek", // "" — как в чате (chat.provider); "deepseek" — явно DeepSeek
+    conspectusModel: "",     // "" — узнать из /models провайдера (для DeepSeek — deepseek-chat)
+    // Режим запуска: smart — сам после окончания записи, но только если есть что
+    // конспектировать (см. maybeAutoConspectus); auto — всегда; manual — только кнопкой.
+    conspectusTrigger: "smart",
+    conspectusAutoMinChars: 1200, // smart: не тратить запросы, если расшифровки меньше N символов
+    // --- Разделение говорящих (sherpa-onnx diarization) ---
+    // Двухдорожечный режим даёт «эфир = лектор, микрофон = аудитория», но внутри
+    // дорожки говорящие не разделены. Sherpa кластеризует голоса (см. diarize.js).
+    // По умолчанию ВЫКЛЮЧЕНО: разбор длинной лекции занимает минуты CPU, и
+    // запускать его после каждой записи без спроса — плохая идея.
+    diarizeEnabled: false,     // true — разбирать говорящих сразу после остановки записи
+    diarizeTrack: "auto",      // auto — обе дорожки (sys + mic), иначе только выбранная
+    diarizeThreshold: 0.5,     // порог кластеризации (0.3..0.9): меньше → больше говорящих
+    diarizeSpeakers: -1,       // -1 — определить автоматически; >0 — точное число говорящих
+    conspectusChunkChars: 6000,  // символов расшифровки в одном запросе к модели
+    conspectusOverlapChars: 600, // «шов»: сколько символов предыдущего блока передаём как контекст
+    conspectusMaxChunks: 60,     // предохранитель: не больше N блоков за прогон
     outputDir: "",           // экспорт .md/.srt/.vtt (пусто = хранить в storage/lectures)
   },
 
@@ -247,6 +287,13 @@ function load() {
   if (cache?.zapret && cache.zapret.modeMigratedToService !== true) {
     cache.zapret.mode = "service";
     cache.zapret.modeMigratedToService = true;
+  }
+  // Разовая миграция: AI-конспект больше не ходит в Ollama (провайдер и модель
+  // берутся из настроек чата), поэтому ключ ollamaModel удаляем — иначе в файле
+  // остаётся «мёртвое» поле, которое путает при разборе настроек.
+  if (cache?.lecture && Object.prototype.hasOwnProperty.call(cache.lecture, "ollamaModel")) {
+    delete cache.lecture.ollamaModel;
+    try { saveWithLock(); } catch { /* файл только для чтения — не критично */ }
   }
   return cache;
 }

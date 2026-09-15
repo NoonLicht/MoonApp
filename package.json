@@ -13,6 +13,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json && npm run compile:server",
     "start:server": "npm run compile:server && node server/index.js",
     "fetch:engines": "node scripts/fetch-engines.js",
+    "fetch:whisper": "node scripts/fetch-whisper.js",
     "start": "npm run compile:server && npm run build:web && electron .",
     "dist": "npm run compile:server && npm run build:web && npm run fetch:engines && electron-builder --win && npm run rebuild:node",
     "rebuild:electron": "electron-rebuild -f -w better-sqlite3",

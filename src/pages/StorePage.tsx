@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
-import { Search, Star, Download, Trash2, Plus, Play, Inbox, RefreshCw, Globe, Box, Copy, ArrowUp, ChevronsLeft, ChevronsRight } from "lucide-react";
+import { Star, Download, Trash2, Plus, Play, Inbox, RefreshCw, Globe, Box, Copy, ArrowUp, ChevronsLeft, ChevronsRight } from "lucide-react";
+import ToolbarSearch from "../components/ToolbarSearch";
 import { Glass, Btn, IconBtn, SectionHead, Select, Field, EmptyHint, Badge, ProgressBar } from "../components/ui";
 import { useContextMenu, copyToClipboard } from "../components/ContextMenu";
 import { useI18n } from "../i18n";
@@ -273,8 +274,16 @@ async function toggleFav(item: AppItem) {
       </div>
 
       <Glass className="url-bar" style={{ padding: "6px 10px" }}>
-        <Search size={15} />
-        <input placeholder={t("store.search")} value={query} onChange={(e) => setQuery(e.target.value)} />
+        {/* Поиск по приложениям: в широкой панели — гибким полем, ниже 1200px —
+            иконкой с поповером чуть ниже панели (src/components/ToolbarSearch.tsx). */}
+        <ToolbarSearch
+          value={query}
+          onChange={setQuery}
+          placeholder={t("store.search")}
+          title={t("store.search")}
+          clearTitle={t("common.clear")}
+          bare
+        />
         <button
           className="badge"
           onClick={() => setFavOnly((v) => !v)}

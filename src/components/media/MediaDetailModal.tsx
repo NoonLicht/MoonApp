@@ -194,7 +194,7 @@ export default function MediaDetailModal({
 
   return createPortal(
     <div className="mv-modal-backdrop" onClick={onClose}>
-      <Glass className="mv-detail" onClick={(e) => e.stopPropagation()}>
+      <Glass className="mv-detail glass-solid" onClick={(e) => e.stopPropagation()}>
         <button className="mv-close mv-close-abs" onClick={onClose} title={t("common.close")}><X size={16} /></button>
 
         {loading && <div className="mv-detail-loading">{t("movies.loading")}</div>}

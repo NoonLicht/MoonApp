@@ -150,4 +150,21 @@ describe("tmdb — нормализация ответов TMDB", () => {
     const m = await tmdb();
     await expect(m.details("movie", 550)).rejects.toMatchObject({ code: "no_api_key" });
   });
+
+  /**
+   * TMDB отдаёт по 20 тайтлов на страницу, поэтому UI нужно знать не только
+   * номер страницы, но и общее число записей — для счётчика «Показано N из M».
+   */
+  it("pageInfo берёт total_results и total_pages из ответа TMDB", async () => {
+    const m = await tmdb();
+    expect(m.pageInfo({ page: 2, total_pages: 500, total_results: 10000 }, 1))
+      .toEqual({ page: 2, totalPages: 500, totalResults: 10000 });
+  });
+
+  it("pageInfo подставляет безопасные значения для битого ответа", async () => {
+    const m = await tmdb();
+    expect(m.pageInfo({}, 3)).toEqual({ page: 3, totalPages: 1, totalResults: 0 });
+    // total_results нет (тренды без него) — считаем по длине страницы.
+    expect(m.pageInfo({ results: [1, 2, 3] }, 1).totalResults).toBe(3);
+  });
 });

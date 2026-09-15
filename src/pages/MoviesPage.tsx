@@ -5,6 +5,7 @@ import {
 } from "lucide-react";
 import { Glass, Btn, Badge, SectionHead, EmptyHint, Field } from "../components/ui";
 import { usePageToolbar } from "../components/Toolbar";
+import ToolbarSearch from "../components/ToolbarSearch";
 import { useI18n } from "../i18n";
 import { api } from "../api/client";
 import MediaCatalog from "../components/media/MediaCatalog";
@@ -143,17 +144,16 @@ export default function MoviesPage() {
         </button>
       </div>
 
-      {/* Поиск по TMDB */}
-      <div className="mv-search">
-        <Search size={14} />
-        <input
-          className="mv-search-input"
-          value={query}
-          placeholder={t("movies.searchPlaceholder")}
-          onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter") void runSearch(); }}
-        />
-      </div>
+      {/* Поиск по TMDB: в широкой панели — полем, ниже 1200px — под иконкой
+          с поповером чуть ниже панели (см. src/components/ToolbarSearch.tsx). */}
+      <ToolbarSearch
+        value={query}
+        onChange={setQuery}
+        placeholder={t("movies.searchPlaceholder")}
+        title={t("movies.searchPlaceholder")}
+        clearTitle={t("movies.clear")}
+        onSubmit={() => void runSearch()}
+      />
 
       <Btn icon={RefreshCw} onClick={() => void refreshAll()} disabled={busy} title={t("movies.refresh")} />
     </div>,

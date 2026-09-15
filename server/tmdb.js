@@ -409,15 +409,29 @@ function toDetails(kind, raw, region) {
 
 const DETAIL_APPEND = "credits,videos,images,similar,recommendations,watch/providers,release_dates,content_ratings,external_ids";
 
+/**
+ * Форма страницы списка TMDB: то, что нужно UI для подкачки и счётчика.
+ *
+ * TMDB отдаёт по 20 тайтлов на страницу (`total_pages` до 500), сам список
+ * может быть в тысячи записей, поэтому «Показано N из M» берём из
+ * `total_results`, а не из длины массива.
+ */
+function pageInfo(json, page) {
+  return {
+    page: Number(json?.page) || page,
+    totalPages: Number(json?.total_pages) || 1,
+    totalResults: Number(json?.total_results) || (json?.results || []).length,
+  };
+}
+
 /** Тренды: kind = "movie"|"tv", window = "day"|"week". */
 async function trending(kind, window = "week", page = 1) {
   const k = normKind(kind);
   const { language, showAdult, region } = movieCfg();
   const json = await cached(`/trending/${k}/${window === "day" ? "day" : "week"}`, { language, page });
   return {
+    ...pageInfo(json, page),
     items: (json.results || []).map((r) => toSummary(k, r)).filter((r) => r && (showAdult || !r.adult)),
-    page: Number(json.page) || page,
-    totalPages: Number(json.total_pages) || 1,
     region,
   };
 }
@@ -433,10 +447,9 @@ async function list(kind, category = "popular", page = 1) {
   const { language, showAdult, region } = movieCfg();
   const json = await cached(`/${k}/${cat}`, { language, page });
   return {
+    ...pageInfo(json, page),
     category: cat,
     items: (json.results || []).map((r) => toSummary(k, r)).filter((r) => r && (showAdult || !r.adult)),
-    page: Number(json.page) || page,
-    totalPages: Number(json.total_pages) || 1,
     region,
   };
 }
@@ -444,7 +457,7 @@ async function list(kind, category = "popular", page = 1) {
 /** Поиск по названию (в переводе и оригинале — TMDB делает это сам). */
 async function search(query, kind = "multi", page = 1) {
   const q = String(query || "").trim();
-  if (!q) return { items: [], page: 1, totalPages: 1 };
+  if (!q) return { items: [], page: 1, totalPages: 1, totalResults: 0 };
   const { language, showAdult } = movieCfg();
   const path = kind === "multi" ? "/search/multi" : `/search/${normKind(kind)}`;
   const json = await cached(path, { query: q, language, page, include_adult: showAdult ? "true" : "false" });
@@ -452,7 +465,7 @@ async function search(query, kind = "multi", page = 1) {
     .filter((r) => r.media_type !== "person")
     .map((r) => toSummary(r.media_type === "tv" ? "tv" : "movie", r))
     .filter((r) => r && (showAdult || !r.adult));
-  return { items, page: Number(json.page) || page, totalPages: Number(json.total_pages) || 1 };
+  return { ...pageInfo(json, page), items };
 }
 
 /** Полная карточка тайтла (детали + каст + трейлеры + галерея + похожие + площадки). */
@@ -489,9 +502,8 @@ async function discover(kind, { genre, year, sort = "popularity.desc", page = 1 
   }
   const json = await cached(`/discover/${k}`, query);
   return {
+    ...pageInfo(json, page),
     items: (json.results || []).map((r) => toSummary(k, r)).filter((r) => r && (showAdult || !r.adult)),
-    page: Number(json.page) || page,
-    totalPages: Number(json.total_pages) || 1,
     region,
   };
 }
@@ -510,6 +522,7 @@ module.exports = {
   hasKey, clearCache,
   trending, list, search, details, genres, discover, watchProviders,
   imageUrl, normKind, toSummary, toDetails, ageRatingOf, providersOf, pickTrailer,
+  pageInfo,
   KIND_LABEL, _isBearer: isBearer,
   // Прокси картинок: валидация/ключ/ETag + загрузка через per-page прокси.
   imageKey, fetchImage, IMG_SIZES, validImgPath,

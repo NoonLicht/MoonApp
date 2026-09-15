@@ -1,9 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import {
-  Store, Repeat, Gauge, Video, Music2, BookOpen, Activity, MessageSquare,
-  Mic2, Archive, Sun, Moon, Minus, Square, X, Settings2, Shield, User, GraduationCap, FolderOpen,
-  Clapperboard,
-} from "lucide-react";
+import { Sun, Moon, Contrast, Minus, Square, X, Shield, FolderOpen } from "lucide-react";
 import { I18nProvider, useI18n } from "./i18n";
 import { ContextMenuProvider } from "./components/ContextMenu";
 import { ToolbarContext, PageHostContext, PageBusyContext } from "./components/Toolbar";
@@ -11,6 +7,8 @@ import { evictPages, touchPage, samePages, KEEP_ALIVE_DEFAULT_LIMIT, KEEP_ALIVE_
 import { initTelemetry, setCurrentPage } from "./utils/telemetry";
 import ProxyPanel from "./components/ProxyPanel";
 import { api } from "./api/client";
+import { PAGES } from "./navigation";
+import type { PageId } from "./navigation";
 
 // Стили
 import "./styles/theme.css";
@@ -41,27 +39,14 @@ import LectureRecorderPage from "./pages/LectureRecorderPage";
 import BypassControlPage from "./pages/BypassControlPage";
 import MoviesPage from "./pages/MoviesPage";
 
-type PageId =
-  | "store" | "convert" | "compress" | "video" | "movies" | "music" | "books" | "monitor"
-  | "aichat" | "voice" | "archive" | "settings" | "myspace" | "lecture" | "bypass";
+// Идентификаторы страниц и их перечень (PAGES) живут в src/navigation.ts —
+// общий источник для дока приложения и списка «Стартовая страница» в настройках.
 
-const PAGES: { id: PageId; i18n: string; icon: React.ElementType }[] = [
-  { id: "store", i18n: "nav.store", icon: Store },
-  { id: "convert", i18n: "nav.convert", icon: Repeat },
-  { id: "compress", i18n: "nav.compress", icon: Gauge },
-  { id: "video", i18n: "nav.video", icon: Video },
-  { id: "movies", i18n: "nav.movies", icon: Clapperboard },
-  { id: "music", i18n: "nav.music", icon: Music2 },
-  { id: "books", i18n: "nav.books", icon: BookOpen },
-  { id: "monitor", i18n: "nav.monitor", icon: Activity },
-  { id: "myspace", i18n: "nav.myspace", icon: User },
-  { id: "aichat", i18n: "nav.aichat", icon: MessageSquare },
-  { id: "voice", i18n: "nav.voice", icon: Mic2 },
-  { id: "lecture", i18n: "nav.lecture", icon: GraduationCap },
-  { id: "bypass", i18n: "nav.bypass", icon: Shield },
-  { id: "archive", i18n: "nav.archive", icon: Archive },
-  { id: "settings", i18n: "nav.settings", icon: Settings2 },
-];
+// Порядок перебора тем кнопкой в тулбаре (см. toggleTheme ниже):
+// тёмная → OLED (чистый чёрный) → светлая → снова тёмная.
+const THEME_CYCLE = ["dark", "oled", "light"] as const;
+
+// Перечень страниц (порядок в доке + названия) — в src/navigation.ts.
 
 const PAGE_COMPONENTS: Record<PageId, React.ComponentType> = {
   store: StorePage,
@@ -248,6 +233,7 @@ function Shell({ active, setActive, theme, toggleTheme, toolbarNodes, setPageToo
             <button className="theme-toggle no-drag" onClick={toggleTheme} title={t("common.theme")}>
               <Sun className="ico-sun" size={15} />
               <Moon className="ico-moon" size={15} />
+              <Contrast className="ico-oled" size={15} />
             </button>
             <div className="win-controls no-drag">
               <button className="win-btn" onClick={() => window.appBridge?.minimize()} title={t("common.minimize")}><Minus size={15} /></button>
@@ -397,7 +383,10 @@ export default function App() {
   }, []);
 
   const toggleTheme = () => {
-    const next = theme === "dark" ? "light" : "dark";
+    // Кнопка в тулбаре листает все три темы: тёмная → OLED (чистый чёрный) →
+    // светлая → снова тёмная. Выбор в настройках (appearance.theme) — точный.
+    const i = THEME_CYCLE.indexOf(theme as (typeof THEME_CYCLE)[number]);
+    const next = THEME_CYCLE[(i + 1) % THEME_CYCLE.length] || "dark";
     setTheme(next);
     api.updateSettings({ appearance: { theme: next } }).catch(() => {});
   };

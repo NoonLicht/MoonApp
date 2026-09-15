@@ -193,7 +193,7 @@ export default function PlayerModal({ onClose, trailerKey }: PlayerModalProps) {
 
   return createPortal(
     <div className="mv-modal-backdrop" onClick={closeAll}>
-      <Glass className="mv-player" onClick={(e) => e.stopPropagation()}>
+      <Glass className="mv-player glass-solid" onClick={(e) => e.stopPropagation()}>
         <div className="mv-player-head">
           <div className="mv-player-tabs">
             {trailerKey && (

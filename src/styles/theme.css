@@ -47,6 +47,49 @@ html, body{
   --text-primary:#1c1d2b; --text-secondary:#5b5b70; --text-tertiary:#8b8ba0;
   --shadow:0 8px 30px rgba(30,30,60,0.10);
 }
+/* --- OLED-тема: абсолютно чёрный фон для OLED-панелей ---
+   На OLED пиксель чистого чёрного (#000000) физически выключен — это максимум
+   контраста и минимум энергопотребления. Поэтому фон строго #000000, а объём и
+   «красоту» набираем не свечением, а полутонами поверхностей: панели и карточки
+   чуть светлее фона (лёгкий серый от --glass) + тонкие рамки + микро-градиент
+   «сверху светлее». Прозрачность окна (--bg-alpha) убрана: на чёрном она только
+   «пачкает» фон, а размывать под непрозрачным окном нечего. */
+.app-shell.theme-oled{
+  --bg-base:#000000; --bg-base-2:#000000;
+  --bg-alpha:#000000;
+  --glass:rgba(255,255,255,0.030); --glass-strong:rgba(255,255,255,0.045);
+  --glass-border:rgba(255,255,255,0.085); --track:rgba(255,255,255,0.055);
+  --surface-solid:#0a0a0d;
+  --text-primary:#f4f5f9; --text-secondary:#9a9baa; --text-tertiary:#63646f;
+  --shadow:0 10px 34px rgba(0,0,0,0.70);
+  /* Фон окна сплошной — размывать нечего, снимаем backdrop-filter оболочки. */
+  backdrop-filter:none; -webkit-backdrop-filter:none;
+}
+/* Панели, лежащие прямо на фоне (тулбар и док), в OLED тоже без blur: под ними
+   только чёрный фон. Плюс микро-градиент и чуть более заметная рамка, чтобы
+   поверхность «читалась» на чистом чёрном. */
+.app-shell.theme-oled .top-toolbar,
+.app-shell.theme-oled .dock-scroll{
+  backdrop-filter:none !important; -webkit-backdrop-filter:none !important;
+  background-image:linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0.012));
+  border-color:rgba(255,255,255,0.10);
+}
+/* Чистый чёрный: свечения-блобы зажигали бы пиксели и мутнили фон — скрываем их.
+   Красоту даёт микро-градиент «сверху светлее» на карточках и поповерах. */
+.app-shell.theme-oled .mesh{ display:none; }
+.app-shell.theme-oled .glass{
+  background-image:linear-gradient(180deg, rgba(255,255,255,0.030), rgba(255,255,255,0) 46%);
+  border-color:rgba(255,255,255,0.095);
+}
+.app-shell.theme-oled .tb-pop,
+.app-shell.theme-oled .proxy-panel{
+  background-image:linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0));
+}
+/* Единственный намеренный «свет» темы — мягкое акцентное свечение активного
+   пункта дока (работает с любым акцентом из настроек). */
+.app-shell.theme-oled .dock-btn.is-active .dock-icon{
+  box-shadow:0 0 0 4px var(--amber-soft), 0 0 16px var(--amber-soft), 0 8px 20px rgba(0,0,0,0.7);
+}
 .app-shell, .app-shell *{ box-sizing:border-box; transition:background-color .25s ease, border-color .25s ease, color .25s ease; }
 
 /* Окно едва прозрачное (alpha ~0.93), матовое размытие — backdrop-filter + blur-блобы.
@@ -95,6 +138,20 @@ html, body{
 
 .glass{ background:var(--glass); border:1px solid var(--glass-border); backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px); border-radius:16px; }
 
+/* Подложка модальных окон — почти непрозрачная.
+   Зачем: --glass это буквально ~5% белого, поэтому сквозь модалку просвечивала
+   страница (лента лекции, графики, списки) и её текст сливался с содержимым за
+   модалкой — жалоба «текст не видно вообще». --surface-solid непрозрачен во всех
+   трёх темах (тёмная/светлая/OLED) и уже используется для «настоящих»
+   поверхностей, а верхний блик оставляет стеклянный вид. */
+.glass-solid{
+  background:var(--surface-solid);
+  background-image:linear-gradient(180deg, var(--glass-strong), rgba(255,255,255,0) 42%);
+  border:1px solid var(--glass-border);
+  backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px);
+  border-radius:16px;
+}
+
 .top-toolbar{
   /* Панель управления приложением — во всю ширину окна (кнопки окна справа,
      ничего не обрезается слева). Рельс страниц живёт ПОД ней. */
@@ -118,7 +175,11 @@ html, body{
 /* Кнопка «открыть папку с приложением» в верхней панели (слева от прокси). */
 .app-dir-toggle{ background:none; border:none; cursor:pointer; color:var(--text-tertiary); display:flex; align-items:center; padding:6px; flex-shrink:0; border-radius:8px; }
 .app-dir-toggle:hover{ color:var(--text-primary); background:var(--track); }
-.theme-dark .ico-sun{ display:none; } .theme-light .ico-moon{ display:none; }
+/* Иконка кнопки-переключателя темы: тулбар показывает иконку текущей темы —
+   тёмная → луна, светлая → солнце, OLED → контраст. */
+.theme-dark .ico-sun, .theme-dark .ico-oled{ display:none; }
+.theme-light .ico-moon, .theme-light .ico-oled{ display:none; }
+.theme-oled .ico-sun, .theme-oled .ico-moon{ display:none; }
 
 /* Компактные поля в верхнем тулбаре: вместо вертикального стека
    (label сверху, контрол снизу) показываем label рядом с контролом,
@@ -377,6 +438,11 @@ input[type="range"]{
   font-size:11px; color:var(--text-tertiary); font-family:var(--font-mono);
   text-transform:uppercase; letter-spacing:.06em; margin-bottom:-4px;
 }
+/* Поиск в узкой панели (src/components/ToolbarSearch.tsx): в самой панели
+   остаётся только иконка, а поле раскрывается этим поповером чуть ниже
+   панели. Поле занимает всю ширину поповера — так его удобно набирать. */
+.tb-search-pop{ min-width:min(260px, 86vw); }
+.tb-search-pop .tb-search{ width:100%; max-width:none; flex:0 0 auto; }
 
 @media (max-width: 900px){
   .tb-title span{ display:none; }

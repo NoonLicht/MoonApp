@@ -3,14 +3,18 @@ import {
   Settings2, Palette, Gauge, MonitorCog, MessageSquare,
   Package, Repeat, Clapperboard, Mic2, Archive, Activity, Database,
   ShieldCheck, Check, RotateCcw, Video, Music2, BookOpen, User,
-  ChevronDown, KeyRound, Save, RefreshCw, Download, FileDown, FolderOpen, ClipboardCopy,
+  ChevronDown, KeyRound, Save, RefreshCw, Download, FileDown, FolderOpen, ClipboardCopy, Cpu, Sparkles, Users,
 } from "lucide-react";
 import { Glass, Btn, Select, SectionHead, Badge, EmptyHint } from "../components/ui";
 import { copyToClipboard } from "../components/ContextMenu";
 import { snapshotUiSettings } from "../utils/telemetry";
 import { usePageToolbar } from "../components/Toolbar";
 import { useI18n, LANGS } from "../i18n";
+import { startPageOptions } from "../navigation";
 import { api } from "../api/client";
+import LectureEnginePanel from "../components/LectureEnginePanel";
+import LectureConspectusPanel from "../components/LectureConspectusPanel";
+import LectureDiarizePanel from "../components/LectureDiarizePanel";
 
 /**
  * РЎРµСЂРІРёСЃРЅС‹Р№ СЃР»РѕРІР°СЂСЊ Р±РµР№РґР¶РµР№ СЂР°Р·РґРµР»РѕРІ: СЃР»РѕРІРѕ РёР· РЅР°СЃС‚СЂРѕРµРє -> РєР»СЋС‡ РїРµСЂРµРІРѕРґР°.
@@ -448,10 +452,13 @@ export default function SettingsPage() {
             />
           </Row>
           <Row label={t("settings.startPage")} hint={t("settings.startPageHint")}>
+            {/* Список строится из единого перечня страниц (src/navigation.ts):
+                новая страница автоматически появляется здесь, и настройки не
+                отстают от дока (раньше не хватало movies, lecture, bypass). */}
             <Select
               value={g.startPage}
               onChange={(e) => change("general.startPage", e.target.value)}
-              options={["store", "convert", "compress", "video", "music", "books", "monitor", "myspace", "aichat", "voice", "archive", "settings"]}
+              options={startPageOptions(t)}
             />
           </Row>
           <BoolRow label={t("settings.autoLaunch")} hint={t("settings.autoLaunchHint")} value={g.autoLaunch} onChange={(v) => change("general.autoLaunch", v)} />
@@ -504,7 +511,15 @@ export default function SettingsPage() {
         {/* ---- Внешний вид ---- */}
         <Section title={t("settings.appearance")} icon={Palette} badge="live">
           <Row label={t("settings.theme")} hint={t("settings.themeHint")}>
-            <Select value={ap.theme} onChange={(e) => change("appearance.theme", e.target.value)} options={["dark", "light"]} />
+            <Select
+              value={ap.theme}
+              onChange={(e) => change("appearance.theme", e.target.value)}
+              options={[
+                { value: "dark", label: t("settings.themeDark") },
+                { value: "oled", label: t("settings.themeOled") },
+                { value: "light", label: t("settings.themeLight") },
+              ]}
+            />
           </Row>
           <Row label={t("settings.accent")} hint={t("settings.accentHint")}>
             <Select value={ap.accent} onChange={(e) => change("appearance.accent", e.target.value)} options={["amber", "violet", "teal", "coral"]} />
@@ -561,7 +576,9 @@ export default function SettingsPage() {
         {/* ---- Окно ---- */}
         <Section title={t("settings.window")} icon={MonitorCog} badge="active">
           <Row label={t("settings.width")} hint={t("settings.widthHint")}>
-            <NumberInput value={win.width} onChange={(v) => change("window.width", v)} min={640} max={4000} />
+            {/* Нижняя граница — как MIN_WIN_WIDTH в electron/main.js:
+                меньше окно всё равно не станет. */}
+            <NumberInput value={win.width} onChange={(v) => change("window.width", v)} min={720} max={4000} />
           </Row>
           <Row label={t("settings.height")} hint={t("settings.heightHint")}>
             <NumberInput value={win.height} onChange={(v) => change("window.height", v)} min={520} max={3000} />
@@ -727,6 +744,26 @@ export default function SettingsPage() {
           <Row label={t("voiceSettings.voiceLoudness")} hint={t("voiceSettings.voiceLoudnessHint")}>
             <NumberInput value={Number(voice.loudnessTarget ?? -16)} onChange={(v) => change("voice.loudnessTarget", v)} min={-30} max={-8} step={1} suffix=" LUFS" />
           </Row>
+        </Section>
+
+        {/* ---- Lecture Recorder (док: lecture) — модель распознавания, сборка
+             движка (CPU/OpenBLAS/CUDA) и устройство счёта. Живёт и на странице
+             лекций (кнопка «Модель и ускорение»), здесь — та же панель inline. ---- */}
+        <Section title={t("lecture.setupBtn")} icon={Cpu} badge="active">
+          <LectureEnginePanel inline />
+        </Section>
+
+        {/* ---- ИИ-конспект: провайдер (по умолчанию DeepSeek), модель и режим
+             запуска (умный авто / всегда авто / вручную). Та же панель доступна
+             на странице лекций кнопкой «ИИ-конспект». ---- */}
+        <Section title={t("lecture.conspectusPanel.btn")} icon={Sparkles} badge="active">
+          <LectureConspectusPanel inline />
+        </Section>
+
+        {/* ---- Разделение говорящих (диаризация): пакет sherpa + порог/число
+             говорящих. На странице лекций та же панель — кнопкой «Говорящие». ---- */}
+        <Section title={t("lecture.diarizePanel.btn")} icon={Users} badge="active">
+          <LectureDiarizePanel inline />
         </Section>
 
         {/* ---- Web Archive / .sitebak (док: sitebak) — параметры краулера ---- */}

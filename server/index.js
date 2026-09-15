@@ -44,6 +44,7 @@ const moviesRouter = require("./routes/movies");
 const myspaceRouter = require("./routes/myspace");
 const myspaceTasksRouter = require("./routes/myspace-tasks");
 const lectureRouter = require("./routes/lecture");
+const lecture = require("./lecture");
 const zapretRouter = require("./routes/zapret");
 const monitor = require("./monitor");
 const winget = require("./winget");
@@ -95,6 +96,9 @@ function seedBooks() {
 
 function createApp() {
   seedBooks();
+  // Fail-safe лекций: сессии, оборванные падением приложения (status=recording,
+  // но процесса записи нет), помечаем interrupted и чиним header raw.wav.
+  try { lecture.recoverInterrupted(); } catch { /* журнал уже внутри */ }
 
   const app = express();
 

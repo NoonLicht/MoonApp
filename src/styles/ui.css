@@ -41,8 +41,16 @@ select option{ background-color:var(--surface-solid); color:var(--text-primary);
 
 .text-input{ width:100%; background:var(--track); border:1px solid var(--glass-border); border-radius:10px; padding:9px 12px; color:var(--text-primary); font-family:var(--font-body); font-size:13px; outline:none; }
 .num-input{ width:100%; background:var(--track); border:1px solid var(--glass-border); border-radius:10px; padding:8px 10px; color:var(--text-primary); font-family:var(--font-mono); font-size:13px; outline:none; }
-.tb-search{ display:flex; align-items:center; gap:6px; background:var(--track); border-radius:999px; padding:5px 12px; }
-.tb-search input{ background:none; border:none; outline:none; color:var(--text-primary); font-size:12px; font-family:var(--font-body); }
+/* Поиск в верхней панели (src/components/ToolbarSearch.tsx). Ширина гибкая:
+   поле ужимается вместе с панелью, а в узком окне и вовсе уезжает в поповер
+   под панелью (см. .tb-search-pop в theme.css). */
+.tb-search{ display:flex; align-items:center; gap:6px; background:var(--track); border:1px solid var(--glass-border); border-radius:999px; padding:5px 12px; flex:1 1 160px; min-width:0; max-width:260px; color:var(--text-tertiary); }
+.tb-search input{ flex:1; min-width:0; background:none; border:none; outline:none; color:var(--text-primary); font-size:12px; font-family:var(--font-body); }
+/* Поиск внутри чужой панели (url-bar магазина): панель уже оформлена сама,
+   поэтому «пилюля» и рамка не нужны — только гибкое поле. */
+.tb-search.is-bare{ background:none; border:0; padding:0; max-width:none; }
+.tb-search-clear{ background:none; border:none; cursor:pointer; display:inline-flex; align-items:center; padding:2px; border-radius:50%; color:var(--text-tertiary); flex-shrink:0; }
+.tb-search-clear:hover{ color:var(--text-primary); background:var(--track); }
 
 /* --- РѕР±С‰РёРµ Р»РµР№Р°СѓС‚С‹ --- */
 .url-bar{ display:flex; align-items:center; gap:10px; padding:8px 8px 8px 16px; border-radius:999px; color:var(--text-tertiary); }

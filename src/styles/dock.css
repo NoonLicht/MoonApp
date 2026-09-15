@@ -57,6 +57,12 @@
 }
 
 /* --- Прочие адаптивные правила страниц (узкие экраны) --- */
+@media (max-width:1199px){
+  /* Сетка магазина: ниже 1200px пять карточек в ряд уже не читаются — режем до
+     четырёх. Более узкие пороги (900 → 2, 640 → 1) идут ниже и перебивают это
+     правило. */
+  .store-grid{ grid-template-columns:repeat(4,minmax(0,1fr)); }
+}
 @media (max-width:900px){
   .split{ grid-template-columns:1fr; }
   .metric-row{ grid-template-columns:repeat(2,1fr); }

@@ -74,29 +74,9 @@
   color: var(--text-primary);
 }
 
-.mv-search {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 5px 10px;
-  border-radius: 10px;
-  background: var(--track);
-  border: 1px solid var(--glass-border);
-  color: var(--text-tertiary);
-  /* Гибкая ширина: раньше было min-width:200px, из-за чего в узком окне
-     тулбар не ужимался и элементы налезали друг на друга. */
-  flex: 1 1 160px;
-  min-width: 0;
-  max-width: 260px;
-}
-.mv-search-input {
-  border: 0;
-  background: transparent;
-  outline: none;
-  color: var(--text-primary);
-  font-size: 12px;
-  width: 100%;
-}
+/* Поиск по TMDB переехал в общий компонент ToolbarSearch (класс .tb-search,
+   см. src/components/ToolbarSearch.tsx + src/styles/ui.css): в широкой панели
+   он стоит полем, а уже 1200px прячется под иконку с поповером. */
 
 /* --------------------------- Ошибки/пусто --------------------------- */
 
@@ -320,7 +300,15 @@
   gap: 14px 12px;
 }
 .mv-browse-grid .mv-card.is-skeleton { height: auto; aspect-ratio: 2 / 3; }
-.mv-browse-more { display: flex; justify-content: center; padding: 4px 0 8px; }
+.mv-browse-more { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 4px 0 8px; }
+/* Невидимый маркер конца сетки: нужен только автоподгрузке (IntersectionObserver) */
+.mv-browse-sentinel { width: 100%; height: 1px; }
+.mv-browse-end {
+  padding: 4px 0 10px;
+  text-align: center;
+  font-size: 11.5px;
+  color: var(--text-tertiary);
+}
 
 .mv-card {
   display: flex;
@@ -925,20 +913,20 @@
 /* ---------------------- Адаптация под узкое окно ---------------------- */
 
 /* Тулбар страницы (живёт в верхней панели приложения): подписи сегментов
-   скрываются первыми — иконки «фильм/сериал» различимы и без текста, а
-   поиск остаётся гибким и ужимается вместе с панелью. */
-@media (max-width: 900px) {
+   «Фильмы / Сериалы» скрываются ниже 1050px — иконки «фильм/сериал»
+   различимы и без текста.
+   Поле поиска уступает место раньше (1200px): оно уходит в поповер под
+   панелью, см. src/components/ToolbarSearch.tsx. */
+@media (max-width: 1049px) {
   .mv-seg-label { display: none; }
 }
 @media (max-width: 860px) {
   .mv-toolbar { gap: 6px; }
   .mv-seg button { padding: 5px 7px; }
   .mv-seg { padding: 2px; }
-  .mv-search { max-width: 190px; padding: 5px 8px; }
 }
 @media (max-width: 700px) {
   .mv-toolbar { gap: 4px; }
-  .mv-search { flex: 1 1 80px; max-width: 130px; }
   .mv-catalog { gap: 14px; }
 }
 

@@ -24,6 +24,9 @@ contextBridge.exposeInMainWorld("appBridge", {
   // Встроенный прокси: применить ({ proxyRules: "socks5://127.0.0.1:10808" })
   // или снять (null) глобальный прокси Chromium (session.defaultSession).
   applyProxySession: (cfg) => ipcRenderer.invoke("proxy:apply-session", cfg),
+  // Режим захвата звука: "loopback" — системный звук (WASAPI), "default" — обычный.
+  // Нужен странице лекций: без него getDisplayMedia отдаёт видео/камеру, а не звук системы.
+  setCaptureMode: (mode) => ipcRenderer.invoke("rec:capture-mode", mode),
   // Обновления приложения (работают только в packaged-сборке).
   checkUpdates: () => ipcRenderer.invoke("updates:check"),
   toggleAutoUpdate: () => ipcRenderer.invoke("updates:toggle"),
