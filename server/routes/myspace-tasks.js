@@ -2,10 +2,16 @@ const express = require("express");
 const path = require("path");
 const fs = require("fs");
 const logger = require("../logger");
+const { DIRS } = require("../config");
 
 const router = express.Router();
 
-const STORAGE_DIR = path.join(__dirname, "..", "..", "storage", "vault");
+// Папка задач — storage\vault ВНУТРИ папки установки. Путь берём из
+// единственного источника истины (server/config.js → electron/storagePath.js),
+// а не относительно исходников: в собранной сборке код лежит внутри app.asar,
+// и прежний путь "../../storage/vault" указывал бы ВНУТРЬ архива, а не в
+// storage рядом с exe. DIRS.vault уже создан при require config.
+const STORAGE_DIR = DIRS.vault;
 const TASKS_FILE = path.join(STORAGE_DIR, "tasks.json");
 
 /* ─── Helpers ─── */

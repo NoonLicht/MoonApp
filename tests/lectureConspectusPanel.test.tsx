@@ -27,6 +27,11 @@ import ar from "../src/i18n/ar.json";
 const DICTS: Record<string, typeof en> = { en, ru, es, fr, zh, ar };
 const LANGS = Object.keys(DICTS);
 
+/** Локаль блока «Нарезка» — по её тексту находим нужный блок в HTML. */
+function dict(lang: string): Record<string, string> {
+  return (DICTS[lang].lecture as { conspectusPanel: Record<string, string> }).conspectusPanel;
+}
+
 /** Рендер панели в конкретном языке (inline — без оверлея, проще читать HTML). */
 function renderPanel(lang: string): string {
   return renderToString(
@@ -42,8 +47,8 @@ function renderPanel(lang: string): string {
  * внутри .leca-pair. Если разметку снова распустят в плоский список, шаблон
  * перестанет совпадать и glued = false — тест это заметит.
  */
-function fields(html: string) {
-  return [...html.matchAll(/<div class="leca-field">([\s\S]*?)<\/div>/g)].map((m) => {
+function fields(html: string, lang: string) {
+  return [...cutBlock(html, lang).matchAll(/<div class="leca-field">([\s\S]*?)<\/div>/g)].map((m) => {
     const inner = m[1];
     const glued = /class="leca-pair"><span class="lecs-dim leca-label">([^<]*)<\/span>(<input[^>]*>)/.exec(inner);
     const input = glued?.[2] ?? "";
@@ -57,16 +62,21 @@ function fields(html: string) {
   });
 }
 
-/** Кусок HTML с блоком «Нарезка»: от его заголовка до следующего блока. */
-function cutBlock(html: string): string {
-  const start = html.indexOf('lecs-block-label">');
-  const marker = "leca-field";
-  const from = html.lastIndexOf('lecs-block-label">', html.indexOf(marker));
-  const next = html.indexOf('class="lecs-block-label"', html.indexOf(marker));
-  return html.slice(from === -1 ? start : from, next === -1 ? html.length : next);
-}describe("Панель конспекта — блок «Нарезка» читается однозначно", () => {
+/**
+ * Кусок HTML с блоком «Нарезка»: от его заголовка до заголовка следующего
+ * блока. Якорь — ТЕКСТ заголовка («Нарезка расшифровки»): панель содержит
+ * другие .leca-field (выбор модели в блоке «Провайдер»), и поиск по первому
+ * полю больше не годится.
+ */
+function cutBlock(html: string, lang: string): string {
+  const start = html.indexOf(`lecs-block-label">${dict(lang).advanced}<`);
+  if (start === -1) return "";
+  const next = html.indexOf('class="lecs-block-label"', start + 1);
+  return html.slice(start, next === -1 ? html.length : next);
+}
+describe("Панель конспекта — блок «Нарезка» читается однозначно", () => {
   const html = renderPanel("ru");
-  const f = fields(html);
+  const f = fields(html, "ru");
 
   it("три поля: размер блока, перекрытие, максимум блоков — в этом порядке", () => {
     expect(f).toHaveLength(3);
@@ -89,7 +99,7 @@ function cutBlock(html: string): string {
   });
 
   it("в самом блоке больше нет плоского списка .leca-row", () => {
-    expect(cutBlock(html)).not.toContain("leca-row");
+    expect(cutBlock(html, "ru")).not.toContain("leca-row");
   });
 
   it("подписи и единицы уникальны (число не перепутаешь с соседним)", () => {
@@ -102,7 +112,7 @@ function cutBlock(html: string): string {
 
   it("все ключи заполнены в каждой локали (иначе UI показал бы сам ключ)", () => {
     for (const lang of LANGS) {
-      const block = (DICTS[lang].lecture as { conspectusPanel: Record<string, string> }).conspectusPanel;
+      const block = dict(lang);
       for (const key of KEYS) {
         expect(block[key], `${lang} → ${key}`).toBeTruthy();
         // Сырой ключ вместо текста начинается с «lecture.» — это и ловим.
@@ -115,13 +125,13 @@ function cutBlock(html: string): string {
     for (const lang of LANGS) {
       const html = renderPanel(lang);
       expect(html, lang).not.toContain("lecture.conspectusPanel.");
-      expect(fields(html), lang).toHaveLength(3);
+      expect(fields(html, lang), lang).toHaveLength(3);
     }
   });
 
   it("языки действительно отличаются (перевод берётся, а не фолбэк)", () => {
-    const en = fields(renderPanel("en")).map((x) => x.label);
-    const ru = fields(renderPanel("ru")).map((x) => x.label);
+    const en = fields(renderPanel("en"), "en").map((x) => x.label);
+    const ru = fields(renderPanel("ru"), "ru").map((x) => x.label);
     expect(en).toEqual(["Block size", "Overlap", "Max blocks"]);
     expect(ru).not.toEqual(en);
   });

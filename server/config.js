@@ -1,10 +1,20 @@
 const path = require("path");
 const fs = require("fs");
 
-// Пути к данным приложения. В разработке storage/ живёт рядом с проектом,
-// а в собранном exe Electron подсовывает сюда свой userData-каталог.
-const STORAGE_DIR =
-  process.env.MOONAPP_STORAGE || path.join(__dirname, "..", "storage");
+// Пути к данным приложения. Основной источник — process.env.MOONAPP_STORAGE:
+// его выставляет electron/storagePath.js (в собранной сборке это storage\
+// рядом с exe). Если переменной нет (сервер запущен напрямую/из тестов),
+// спрашиваем тот же резолвер, чтобы путь НИКОГДА не оказался внутри
+// app.asar (там запись невозможна), и лишь затем — dev-фолбэк storage/ рядом
+// с исходниками.
+const STORAGE_DIR = (() => {
+  if (process.env.MOONAPP_STORAGE) return process.env.MOONAPP_STORAGE;
+  try {
+    const resolved = require("../electron/storagePath").STORAGE_DIR;
+    if (resolved) return resolved;
+  } catch { /* не Electron-окружение (чистый Node/тесты) */ }
+  return path.join(__dirname, "..", "storage");
+})();
 
 function ensureDir(p) {
   if (!fs.existsSync(p)) fs.mkdirSync(p, { recursive: true });
