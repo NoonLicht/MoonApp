@@ -62,6 +62,7 @@ export default tseslint.config(
       "server/torrent.js",
       "server/ruNlp.js",
       "server/db.js",
+      "server/logBundle.js",
     ],
   },
 

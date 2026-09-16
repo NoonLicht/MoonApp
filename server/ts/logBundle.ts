@@ -1,9 +1,3 @@
-const fs = require("fs");
-const os = require("os");
-const path = require("path");
-const { DIRS, FILES } = require("./config");
-const logger = require("./logger");
-
 /**
  * Сборка диагностического файла для кнопки «Собрать логи» (Настройки).
  *
@@ -17,13 +11,33 @@ const logger = require("./logger");
  *   - хвост рабочего лога logs/app.log и лог main-процесса logs/main.log.
  *
  * Держим последние MAX_REPORTS файлов, чтобы папка не пухла от повторных нажатий.
+ *
+ * TS-исходник, как server/ts/db.ts: компилируется в server/logBundle.js командой
+ * `npm run compile:server`, поэтому require("./logBundle") из роутов и тестов
+ * работает без изменений.
  */
+import fs from "fs";
+import os from "os";
+import path from "path";
+import config from "./config";
+import logger from "./logger";
+import settings from "./settings";
+import { stmts } from "./db";
+
+const { DIRS, FILES } = config;
+
 const MAX_REPORTS = 10;
 const MAX_AUDIT_BYTES = 24 * 1024 * 1024; // полный журнал (хвост, если больше)
 const MAX_TAIL_BYTES = 2 * 1024 * 1024; // хвост app.log / main.log
 const REPORT_PREFIX = "MoonApp-logs-";
 
-function readFileSafe(file) {
+/** Минимум, который берём из electron: без него модуль работает и в чистом Node. */
+interface ElectronApp {
+  getVersion?: () => string;
+  getPath?: (name: string) => string;
+}
+
+function readFileSafe(file: string): string {
   try {
     return fs.readFileSync(file, "utf8");
   } catch {
@@ -32,7 +46,7 @@ function readFileSafe(file) {
 }
 
 // Хвост файла по байтам: если файл больше лимита — берём последние строки.
-function readTail(file, maxBytes) {
+function readTail(file: string, maxBytes: number): { text: string; truncated: boolean } {
   try {
     const st = fs.statSync(file);
     if (st.size <= maxBytes) return { text: fs.readFileSync(file, "utf8"), truncated: false };
@@ -52,30 +66,39 @@ function readTail(file, maxBytes) {
   }
 }
 
-function appVersion() {
+/**
+ * Версия приложения: в Electron — из package.json сборки (app.getVersion()),
+ * иначе — из package.json репозитория.
+ */
+export function appVersion(): string {
   try {
-    const { app } = require("electron");
-    if (app?.getVersion) return app.getVersion();
+    // electron есть только в собранном приложении; в dev/тестах import упадёт.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { app } = require("electron") as { app?: ElectronApp };
+    const v = app?.getVersion?.();
+    if (v) return v;
   } catch {
     /* сервер запущен без Electron (dev/тесты) */
   }
   try {
-    return require("../package.json").version || "unknown";
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    return (require("../package.json") as { version?: string }).version || "unknown";
   } catch {
     return "unknown";
   }
 }
 
-function section(title) {
+function section(title: string): string {
   return `\n==== ${title} ====\n`;
 }
-
-function describeEnvironment() {
+function describeEnvironment(): string {
   const cpu = os.cpus()[0]?.model || "unknown";
   let installDir = "unknown";
   try {
-    const { app } = require("electron");
-    if (app?.getPath) installDir = path.dirname(app.getPath("exe"));
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { app } = require("electron") as { app?: ElectronApp };
+    const exe = app?.getPath?.("exe");
+    if (exe) installDir = path.dirname(exe);
   } catch {
     /* dev */
   }
@@ -97,14 +120,14 @@ function describeEnvironment() {
 }
 
 // Настройки: секреты (secrets.json) не включаются — только имена ключей.
-function describeSettings() {
+function describeSettings(): string {
   let out = "";
-  const settings = readFileSafe(FILES.settings);
-  if (settings) {
+  const raw = readFileSafe(FILES.settings);
+  if (raw) {
     try {
-      out += JSON.stringify(JSON.parse(settings), null, 2) + "\n";
+      out += JSON.stringify(JSON.parse(raw), null, 2) + "\n";
     } catch {
-      out += settings + "\n";
+      out += raw + "\n";
     }
   } else {
     out += "(settings.json отсутствует)\n";
@@ -120,7 +143,7 @@ function describeSettings() {
   return out;
 }
 
-function describeDownloads() {
+function describeDownloads(): string {
   let out = "";
   try {
     const files = fs.readdirSync(DIRS.downloads);
@@ -140,14 +163,16 @@ function describeDownloads() {
 }
 
 // Счётчики БД: без самих данных (там личные заметки/задачи), только объёмы.
-function describeDataCounts() {
+function describeDataCounts(): string {
   try {
-    const { stmts } = require("./db");
-    const counts = {};
+    const counts: Record<string, number> = {};
     for (const [name, st] of Object.entries(stmts)) {
-      if (st && typeof st.all === "function" && name.endsWith("All")) {
+      // В stmts лежат и объекты { run/all/get }, и просто функции (favAdd…),
+      // поэтому наличие .all проверяем на каждом значении.
+      const all = (st as { all?: () => unknown[] }).all;
+      if (typeof all === "function" && name.endsWith("All")) {
         try {
-          counts[name] = st.all().length;
+          counts[name] = all.call(st).length;
         } catch {
           /* пропускаем */
         }
@@ -155,15 +180,20 @@ function describeDataCounts() {
     }
     return JSON.stringify(counts, null, 2) + "\n";
   } catch (e) {
-    return `(недоступно: ${e.message})\n`;
+    return `(недоступно: ${(e as Error).message})\n`;
   }
 }
-
 /* --- Настройки по страницам --- */
 // Какая секция settings.json относится к какой странице приложения.
 // Порядок = порядок страниц в доке; значения выводятся эффективные
 // (дефолт, перекрытый сохранённым), чтобы отчёт был самодостаточным.
-const PAGE_SETTINGS = [
+export interface SettingsPage {
+  id: string;
+  title: string;
+  sections: string[];
+}
+
+export const PAGE_SETTINGS: SettingsPage[] = [
   { id: "store", title: "Магазин приложений", sections: ["store"] },
   { id: "convert", title: "Конвертер файлов", sections: ["converter"] },
   { id: "compress", title: "Видеосжатие", sections: ["compressor"] },
@@ -185,14 +215,14 @@ const PAGE_SETTINGS = [
 ];
 
 // Выводит настройки каждой страницы с понятным заголовком.
-function describePageSettings() {
-  let merged;
+function describePageSettings(): string {
+  let merged: Record<string, unknown>;
   try {
-    merged = require("./settings").load();
+    merged = settings.load() as unknown as Record<string, unknown>;
   } catch {
     return "(настройки недоступны)\n";
   }
-  const used = new Set();
+  const used = new Set<string>();
   let out = "";
   for (const page of PAGE_SETTINGS) {
     out += `\n--- ${page.title}  [страница: ${page.id}] ---\n`;
@@ -216,9 +246,9 @@ function describePageSettings() {
  * вещи, не попадающие в settings.json: прогресс панели задач, флаги
  * редактирования конфига ИИ и т.п.). Берём последний снимок из audit.log.
  */
-function describeUiSnapshot() {
+function describeUiSnapshot(): string {
   const audit = readTail(logger.files.audit, MAX_AUDIT_BYTES);
-  let last = null;
+  let last: { ts?: string; data?: unknown } | null = null;
   for (const line of audit.text.split("\n")) {
     const s = line.trim();
     if (!s.includes("ui.settings.snapshot")) continue;
@@ -233,11 +263,16 @@ function describeUiSnapshot() {
     return "(снимок не найден — локальные настройки ещё не отправлялись; нажмите «Собрать логи» в интерфейсе)\n";
   return `Снято: ${last.ts}\n${JSON.stringify(last.data, null, 2)}\n`;
 }
+const LOG_LEVEL_TAG: Record<string, string> = {
+  error: "ERROR",
+  warn: "WARN ",
+  info: "INFO ",
+  action: "ACTION",
+};
 
-const LOG_LEVEL_TAG = { error: "ERROR", warn: "WARN ", info: "INFO ", action: "ACTION" };
 // NDJSON → читаемые строки: "2026-09-13T13:20:11.123Z  ACTION  ui.click  {...}"
-function formatNdjson(text) {
-  const out = [];
+function formatNdjson(text: string): string {
+  const out: string[] = [];
   for (const line of text.split("\n")) {
     const s = line.trim();
     if (!s) continue;
@@ -253,7 +288,7 @@ function formatNdjson(text) {
   return out.join("\n") + "\n";
 }
 
-function describeJournals() {
+function describeJournals(): string {
   const audit = readTail(logger.files.audit, MAX_AUDIT_BYTES);
   const rotated = readTail(logger.files.auditRotated, MAX_AUDIT_BYTES);
   const app = readTail(logger.files.app, MAX_TAIL_BYTES);
@@ -276,7 +311,13 @@ function describeJournals() {
   return out;
 }
 
-function listReports() {
+export interface ReportInfo {
+  file: string;
+  size: number;
+  mtime: string;
+}
+
+function listReports(): ReportInfo[] {
   try {
     return fs
       .readdirSync(DIRS.storage)
@@ -300,7 +341,7 @@ function listReports() {
   }
 }
 
-function cleanupOldReports() {
+function cleanupOldReports(): void {
   for (const r of listReports().slice(MAX_REPORTS)) {
     try {
       fs.rmSync(r.file, { force: true });
@@ -310,19 +351,18 @@ function cleanupOldReports() {
   }
 }
 
-function stamp() {
+function stamp(): string {
   const d = new Date();
-  const p = (n) => String(n).padStart(2, "0");
+  const p = (n: number): string => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}_${p(d.getHours())}-${p(d.getMinutes())}-${p(d.getSeconds())}`;
 }
-
 /**
  * Собрать диагностический файл. Возвращает { file, size, events }.
  * Файл создаётся в корне storage — рядом с приложением у установленной сборки.
  */
-function collect() {
+export function collect(): { file: string; size: number; events: number } {
   const startedAt = Date.now();
-  const parts = [];
+  const parts: string[] = [];
   parts.push("MoonApp — диагностический отчёт\n");
   parts.push("Файл содержит все события приложения: навигацию, нажатия, загрузки,\n");
   parts.push("предупреждения и ошибки. Передайте его разработчику для разбора проблемы.\n");
@@ -351,9 +391,10 @@ function collect() {
   return { file, size, events };
 }
 
-const pagesForSection = (section) => {
+/** К какой странице относится секция настроек (для группировки в отчёте). */
+export function pagesForSection(section: string): SettingsPage | null {
   for (const p of PAGE_SETTINGS) if (p.sections.includes(section)) return p;
   return null;
-};
+}
 
-module.exports = { collect, listReports, PAGE_SETTINGS, pagesForSection, appVersion };
+export { listReports };

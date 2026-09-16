@@ -37,6 +37,7 @@
     "server/ts/notes-fs.ts",
     "server/ts/torrent.ts",
     "server/ts/ruNlp.ts",
-    "server/ts/db.ts"
+    "server/ts/db.ts",
+    "server/ts/logBundle.ts"
   ]
 }
