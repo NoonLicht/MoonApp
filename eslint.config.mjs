@@ -67,6 +67,7 @@ export default tseslint.config(
       "server/convertEngine.js",
       "server/index.js",
       "server/bookParser.js",
+      "server/tmdb.js",
     ],
   },
 

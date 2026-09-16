@@ -42,6 +42,7 @@
     "server/ts/myspace-vault.ts",
     "server/ts/convertEngine.ts",
     "server/ts/index.ts",
-    "server/ts/bookParser.ts"
+    "server/ts/bookParser.ts",
+    "server/ts/tmdb.ts"
   ]
 }
