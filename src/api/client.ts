@@ -24,6 +24,7 @@ import type {
   MediaProviders, MediaGallery, MediaGenre, MediaListResult, MediaWatchStatus,
   MediaWatchlistEntry, MediaRatingEntry, MediaWatchEntry, MediaState, MediaLibrary,
   MediaStats, MediaStatus, TorrentFile, TorrentAddResult, TorrentStatus,
+  SettingsImportResult,
 } from "./types";
 import { logEvent, getCurrentPage } from "../utils/telemetry";
 
@@ -335,6 +336,44 @@ export const api = {
   updateSettings: (patch: unknown) => req("PATCH", "/settings", patch),
   getProviders: () => req<ProviderInfo[]>("GET", "/settings/providers"),
   saveKey: (id: string, key: string) => req("POST", `/settings/providers/${id}/key`, { key }),
+
+  /**
+   * Экспорт ВСЕХ настроек одним файлом (страница «Настройки» → «Экспорт»).
+   * POST, а не GET: клиент передаёт снимок локальных настроек страниц
+   * (localStorage), которые сервер не видит — см. src/utils/uiSettings.ts.
+   */
+  settingsExport: async (
+    opts: { includeSecrets?: boolean; ui?: Record<string, string> } = {},
+  ): Promise<{ blob: Blob; name: string }> => {
+    const res = await fetch(`${BASE}/api/settings/export`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...tokenHeaders(), ...pageHeaders() },
+      body: JSON.stringify({ includeSecrets: !!opts.includeSecrets, ui: opts.ui || {} }),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const name = filenameFromDisposition(res) || "moonapp-settings.json";
+    return { blob: await res.blob(), name };
+  },
+
+  /**
+   * Импорт настроек из файла экспорта (или «сырого» settings.json).
+   * importSecrets=false — ключи API из файла НЕ применяются (галочка в UI).
+   * Возвращает применённые настройки и отчёт (что пропущено).
+   */
+  settingsImport: (
+    payload: unknown,
+    opts: { importSecrets?: boolean; ui?: Record<string, string> } = {},
+  ): Promise<SettingsImportResult> => {
+    const file = (payload && typeof payload === "object" && !Array.isArray(payload))
+      ? payload as Record<string, unknown>
+      : {};
+    // Файл экспорта пересылаем как есть; «сырой» settings.json оборачиваем в
+    // settings.*, чтобы служебные поля не смешались с настройками.
+    const wrapped = (file.settings && typeof file.settings === "object")
+      ? { ...file, importSecrets: !!opts.importSecrets, ui: opts.ui || {} }
+      : { settings: file, importSecrets: !!opts.importSecrets, ui: opts.ui || {} };
+    return req<SettingsImportResult>("POST", "/settings/import", wrapped);
+  },
 
   // Chat
   getConversations: () => req<Conversation[]>("GET", "/chat"),

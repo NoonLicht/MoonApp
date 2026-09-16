@@ -193,6 +193,24 @@ export interface ProviderInfo {
   configured: boolean;
 }
 
+/* -------------------- Экспорт и импорт всех настроек ----------------------- */
+/**
+ * Отчёт импорта настроек (POST /api/settings/import).
+ * skipped — пути, которые НЕ применились (неизвестный ключ или чужой тип):
+ * показываем их пользователю, чтобы импорт не выглядел «полным» молча.
+ */
+export interface SettingsImportResult {
+  ok: boolean;
+  settings: Record<string, unknown>;
+  applied: number;
+  skipped: string[];
+  keysApplied: number;
+  keysSkipped: string[];
+  ui: Record<string, string>;
+  sourceVersion: string;
+}
+
+
 /* ------------------------------ Store / каталог ---------------------------- */
 
 export interface AppItem {

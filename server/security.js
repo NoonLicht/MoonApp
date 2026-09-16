@@ -98,4 +98,28 @@ function hasSecret(name) {
   return !!readSecrets()[name];
 }
 
-module.exports = { setSecret, getSecret, hasSecret, decryptSecret };
+/**
+ * Все секреты в открытом виде — для ЭКСПОРТА настроек в файл (см.
+ * server/routes/settings.js → POST /export). Наружу (в API-ответы, логи) этот
+ * список не отдаётся: только в скачанный пользователем файл по его запросу.
+ */
+function listSecrets() {
+  const out = {};
+  for (const name of Object.keys(readSecrets())) {
+    const plain = getSecret(name);
+    if (plain != null) out[name] = plain;
+  }
+  return out;
+}
+
+/** Имена известных секретов: провайдеры чата + TMDB (для импорта настроек). */
+function allowedSecretNames() {
+  const ids = [];
+  try { for (const p of require("./providers").PROVIDERS) ids.push(p.id); } catch { /* без каталога — только tmdb */ }
+  return ids.concat("tmdb");
+}
+
+module.exports = {
+  setSecret, getSecret, hasSecret, decryptSecret,
+  listSecrets, allowedSecretNames,
+};

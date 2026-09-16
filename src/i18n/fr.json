@@ -225,6 +225,25 @@
     "backupKeep": "Conserver les copies",
     "backupKeepHint": "Combien de copies récentes conserver"
   },
+  "settingsIO": {
+    "ioSection": "Paramètres : export et import",
+    "ioHint": "Transfère les paramètres de toutes les pages (chat, cours, vidéo, musique, compression, contournement, Web Archive, …) et les paramètres locaux de l'interface. Les notes, tâches et autres données ne sont pas incluses — utilisez les sauvegardes.",
+    "ioSecrets": "Inclure les clés d'API et les jetons",
+    "ioSecretsHint": "Clés des fournisseurs (DeepSeek, OpenAI, …) et TMDB. Ne partagez jamais le fichier contenant les clés.",
+    "ioFile": "Fichier de paramètres",
+    "ioFileHint": "Un seul fichier JSON avec tous les paramètres de toutes les pages",
+    "ioExport": "Exporter vers un fichier",
+    "ioImport": "Importer depuis un fichier",
+    "ioExported": "Paramètres enregistrés dans le fichier : {name}",
+    "ioExportError": "Échec de l'export : {msg}",
+    "ioImportDone": "Importé : {n} paramètres, {keys} clés",
+    "ioImportSkipped": "Champs inconnus ignorés : {n} ({list})",
+    "ioKeysSkipped": "Clés ignorées : {n}",
+    "ioImportError": "Échec de l'import : {msg}",
+    "ioBadFormat": "Ce fichier ne ressemble pas à un export de paramètres MoonApp",
+    "ioImportConfirm": "Importer les paramètres de « {name} » ? Les paramètres actuels seront remplacés.",
+    "ioRestartHint": "Certains paramètres système (démarrage auto, taille de la fenêtre, accélération) s'appliquent après redémarrage."
+  },
   "advanced": {
     "advancedTelemetry": "Télémétrie",
     "advancedTelemetryHint": "Envoyer des statistiques anonymes d'utilisation",

@@ -225,6 +225,25 @@
     "backupKeep": "保留备份数",
     "backupKeepHint": "保留多少份最近的副本"
   },
+  "settingsIO": {
+    "ioSection": "设置：导出与导入",
+    "ioHint": "传输所有页面的设置（聊天、录音、视频、音乐、压缩、绕过、Web Archive 等）以及界面本地设置。笔记、任务等数据不包含在内——请使用备份。",
+    "ioSecrets": "包含 API 密钥和令牌",
+    "ioSecretsHint": "服务商密钥（DeepSeek、OpenAI 等）和 TMDB。含密钥的文件不要分享给他人。",
+    "ioFile": "设置文件",
+    "ioFileHint": "一个 JSON 文件，包含所有页面的全部设置",
+    "ioExport": "导出到文件",
+    "ioImport": "从文件导入",
+    "ioExported": "设置已保存到文件：{name}",
+    "ioExportError": "导出失败：{msg}",
+    "ioImportDone": "已导入：{n} 项设置，{keys} 个密钥",
+    "ioImportSkipped": "已跳过未知字段：{n}（{list}）",
+    "ioKeysSkipped": "已跳过的密钥：{n}",
+    "ioImportError": "导入失败：{msg}",
+    "ioBadFormat": "该文件不像是 MoonApp 的设置导出文件",
+    "ioImportConfirm": "从“{name}”导入设置？当前设置将被替换。",
+    "ioRestartHint": "部分系统设置（自动启动、窗口大小、硬件加速）将在重启应用后生效。"
+  },
   "advanced": {
     "advancedTelemetry": "遥测",
     "advancedTelemetryHint": "发送匿名使用统计",

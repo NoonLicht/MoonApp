@@ -3,11 +3,14 @@ import {
   Settings2, Palette, Gauge, MonitorCog, MessageSquare,
   Package, Repeat, Clapperboard, Mic2, Archive, Activity, Database,
   ShieldCheck, Check, RotateCcw, Video, Music2, BookOpen, User,
-  ChevronDown, KeyRound, Save, RefreshCw, Download, FileDown, FolderOpen, ClipboardCopy, Cpu, Sparkles, Users,
+  ChevronDown, KeyRound, Save, RefreshCw, Download, FileDown, FolderOpen, ClipboardCopy, Cpu, Sparkles, Users, Upload,
 } from "lucide-react";
 import { Glass, Btn, Select, SectionHead, Badge, EmptyHint } from "../components/ui";
 import { copyToClipboard } from "../components/ContextMenu";
 import { snapshotUiSettings } from "../utils/telemetry";
+// Локальные настройки страниц (localStorage) — их нет в settings.json, поэтому
+// экспорт/импорт настроек переносит их отдельным блоком (см. ниже).
+import { collectUiSettings, applyUiSettings } from "../utils/uiSettings";
 import { usePageToolbar } from "../components/Toolbar";
 import { useI18n, LANGS } from "../i18n";
 import { startPageOptions } from "../navigation";
@@ -54,6 +57,46 @@ function setAt(obj: any, path: string, value: unknown): any {
 }
 
 /* ---------- РњРµР»РєРёРµ UI-СЌР»РµРјРµРЅС‚С‹ ---------- */
+/**
+ * Сохранить полученный blob под именем файла. Именно blob, а не ссылка на
+ * /api-роут: все роуты закрыты токеном (x-moonapp-token), который <a download>
+ * передать не может — прямая ссылка вернула бы 401.
+ */
+function saveBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+/**
+ * Применить импортированные настройки, которые приложение меняет НА ЛЕТУ.
+ * Список путей — ровно тот, что слушает App.tsx (событие app:setting) плюс тема
+ * отдельным событием app:theme; всё остальное (автозапуск, размер окна,
+ * аппаратное ускорение) читается только при старте — UI честно об этом пишет.
+ */
+function applyLiveSettings(settings: unknown) {
+  const s = settings as any;
+  if (!s || typeof s !== "object") return;
+  window.dispatchEvent(new CustomEvent("app:theme", { detail: String(s.appearance?.theme || "dark") }));
+  const paths = [
+    "general.language",
+    "performance.backgroundBlur", "performance.keepPagesAlive",
+    "performance.keepPagesLimit", "performance.unloadIdleMinutes",
+    "appearance.accent", "appearance.fontSize", "appearance.reduceMotion",
+    "appearance.density", "appearance.opaqueBackground",
+  ];
+  for (const path of paths) {
+    const value = path.split(".").reduce<any>((a, k) => (a == null ? a : a[k]), s);
+    if (value === undefined) continue;
+    window.dispatchEvent(new CustomEvent("app:setting", { detail: { path, value } }));
+  }
+}
+
 function Row({ label, hint, children }: { label: React.ReactNode; hint?: React.ReactNode; children: React.ReactNode }) {
   return (
     <div className="set-row">
@@ -348,6 +391,75 @@ export default function SettingsPage() {
     copyToClipboard(diagFile);
     setDiagCopied(true);
     setTimeout(() => setDiagCopied(false), 1500);
+  }
+
+  /* --- Экспорт и импорт всех настроек ---
+   * Файл содержит настройки ВСЕХ страниц: секции settings.json (эффективные
+   * значения) + локальные настройки интерфейса из localStorage + по галочке
+   * ключи API. Данные (заметки, задачи, история чатов) не входят — для них есть
+   * резервные копии в разделе «Автобэкап».
+   */
+  const [ioSecrets, setIoSecrets] = useState(false);   // включать/принимать ключи API
+  const [ioBusy, setIoBusy] = useState<"export" | "import" | null>(null);
+  const [ioStatus, setIoStatus] = useState("");
+  const [ioTone, setIoTone] = useState<"ok" | "warn" | "err">("ok");
+  const ioFileRef = useRef<HTMLInputElement>(null);
+
+  async function exportSettings() {
+    setIoBusy("export"); setIoStatus("");
+    try {
+      const { blob, name } = await api.settingsExport({
+        includeSecrets: ioSecrets,
+        // Сервер не видит localStorage — отдаём снимок настроек страниц.
+        ui: collectUiSettings(),
+      });
+      saveBlob(blob, name);
+      setIoTone("ok");
+      setIoStatus(t("settingsIO.ioExported", { name }));
+    } catch (e) {
+      setIoTone("err");
+      setIoStatus(t("settingsIO.ioExportError", { msg: (e as Error).message }));
+    } finally {
+      setIoBusy(null);
+    }
+  }
+
+  async function importSettingsFile(file: File) {
+    setIoBusy("import"); setIoStatus("");
+    try {
+      let payload: unknown = null;
+      try { payload = JSON.parse(await file.text()); } catch { /* ниже — понятная ошибка */ }
+      if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+        throw new Error(t("settingsIO.ioBadFormat"));
+      }
+      // Импорт заменяет текущие настройки — спрашиваем подтверждение.
+      if (!window.confirm(t("settingsIO.ioImportConfirm", { name: file.name }))) return;
+
+      const r = await api.settingsImport(payload, { importSecrets: ioSecrets });
+      // Локальные настройки страниц применяет клиент: localStorage — его зона.
+      applyUiSettings(r.ui);
+      setS(r.settings);
+      // Что App умеет менять на лету — применяем сразу (тема, язык, внешний вид,
+      // keep-alive). Остальное (автозапуск, окно, ускорение) — после перезапуска,
+      // о чём ниже говорит ioRestartHint.
+      applyLiveSettings(r.settings);
+
+      const parts = [t("settingsIO.ioImportDone", { n: r.applied, keys: r.keysApplied })];
+      if (r.skipped.length) {
+        parts.push(t("settingsIO.ioImportSkipped", { n: r.skipped.length, list: r.skipped.slice(0, 5).join(", ") }));
+      }
+      if (r.keysSkipped.length) parts.push(t("settingsIO.ioKeysSkipped", { n: r.keysSkipped.length }));
+      if (r.applied || r.keysApplied) parts.push(t("settingsIO.ioRestartHint"));
+      setIoTone(r.skipped.length || r.keysSkipped.length ? "warn" : "ok");
+      setIoStatus(parts.join(" "));
+    } catch (e) {
+      setIoTone("err");
+      setIoStatus(t("settingsIO.ioImportError", { msg: (e as Error).message }));
+    } finally {
+      setIoBusy(null);
+      // Сбрасываем input: иначе повторный выбор того же файла не вызовет onChange.
+      if (ioFileRef.current) ioFileRef.current.value = "";
+    }
   }
 
   // Синхронизируем состояние кнопки обновлений с settings.json после загрузки.
@@ -794,6 +906,57 @@ export default function SettingsPage() {
           <Row label={t("backupSettings.backupInterval")} hint={t("backupSettings.backupIntervalHint")}>
             <NumberInput value={backup.intervalHours} onChange={(v) => change("backup.intervalHours", v)} min={1} max={720} suffix=" h" />
           </Row>
+        </Section>
+
+        {/* Экспорт и импорт ВСЕХ настроек: секции settings.json для каждой страницы
+            + локальные настройки интерфейса (localStorage) + по галочке ключи API. */}
+        <Section title={t("settingsIO.ioSection")} icon={Download} badge="active">
+          <div className="muted-sm" style={{ marginBottom: 8 }}>{t("settingsIO.ioHint")}</div>
+          <BoolRow
+            label={t("settingsIO.ioSecrets")}
+            hint={t("settingsIO.ioSecretsHint")}
+            value={ioSecrets}
+            onChange={setIoSecrets}
+          />
+          <Row label={t("settingsIO.ioFile")} hint={t("settingsIO.ioFileHint")}>
+            <Btn
+              variant="primary"
+              icon={ioBusy === "export" ? RefreshCw : Download}
+              onClick={exportSettings}
+              disabled={!!ioBusy}
+            >
+              {t("settingsIO.ioExport")}
+            </Btn>
+            <Btn
+              icon={ioBusy === "import" ? RefreshCw : Upload}
+              onClick={() => ioFileRef.current?.click()}
+              disabled={!!ioBusy}
+            >
+              {t("settingsIO.ioImport")}
+            </Btn>
+          </Row>
+          {/* Скрытый input: выбор файла экспорта (.json) для импорта настроек. */}
+          <input
+            ref={ioFileRef}
+            type="file"
+            accept="application/json,.json"
+            style={{ display: "none" }}
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) void importSettingsFile(f);
+            }}
+          />
+          {ioStatus && (
+            <div
+              className="muted-sm"
+              style={{
+                marginTop: -6,
+                color: ioTone === "err" ? "var(--coral)" : ioTone === "warn" ? "var(--amber)" : "var(--success)",
+              }}
+            >
+              {ioStatus}
+            </div>
+          )}
         </Section>
 
         {/* ---- РџСЂРѕРґРІРёРЅСѓС‚РѕРµ ---- */}

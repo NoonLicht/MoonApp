@@ -303,4 +303,4 @@ const pagesForSection = (section) => {
   return null;
 };
 
-module.exports = { collect, listReports, PAGE_SETTINGS, pagesForSection };
+module.exports = { collect, listReports, PAGE_SETTINGS, pagesForSection, appVersion };

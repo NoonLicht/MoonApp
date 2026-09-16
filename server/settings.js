@@ -316,30 +316,61 @@ function set(patch) {
 // Белая схема (С8): принимаются только ключи, существующие в DEFAULTS, и только
 // значения того же типа (number/string/boolean). Всё остальное отбрасывается —
 // произвольный JSON больше не может попасть в settings.json.
-function sanitizePatch(patch, schema = DEFAULTS, base = []) {
+// skipped (необязательный массив) собирает пути отброшенных ключей — это нужно
+// импорту настроек: пользователь должен видеть, что именно не применилось.
+function sanitizePatch(patch, schema = DEFAULTS, base = [], skipped = null) {
   const out = {};
+  const note = (k) => { if (skipped) skipped.push(base.concat(k).join(".")); };
   for (const k of Object.keys(patch || {})) {
     const v = patch[k];
-    if (!(k in schema)) continue;
+    if (!(k in schema)) { note(k); continue; }
     if (isPlainObject(schema[k])) {
       if (isPlainObject(v)) {
-        const nested = sanitizePatch(v, schema[k], base.concat(k));
+        const nested = sanitizePatch(v, schema[k], base.concat(k), skipped);
         if (Object.keys(nested).length) out[k] = nested;
+      } else {
+        note(k);
       }
       continue;
     }
     const t = typeof schema[k];
     if (t === "number") {
       const n = Number(v);
-      if (Number.isFinite(n)) out[k] = n;
+      if (Number.isFinite(n)) out[k] = n; else note(k);
     } else if (t === "boolean") {
-      if (typeof v === "boolean") out[k] = v;
+      if (typeof v === "boolean") out[k] = v; else note(k);
     } else if (t === "string") {
-      if (typeof v === "string") out[k] = v.slice(0, 4000);
+      if (typeof v === "string") out[k] = v.slice(0, 4000); else note(k);
+    } else {
+      note(k);
     }
   }
   return out;
 }
+
+/**
+ * Импорт настроек ЦЕЛИКОМ из файла экспорта (Настройки → «Импорт»).
+ *
+ * Отличие от set(): принимает объект всех настроек и возвращает отчёт — что
+ * применилось (applied) и что отброшено (skipped: неизвестные ключи, чужие типы).
+ * Фильтр тот же, что у PATCH: файл могли отредактировать руками, и записывать
+ * строку вместо числа нельзя — страница потом падала бы на приведении типов.
+ *
+ * Ключи, которых НЕТ в файле, остаются как были: так импорт не затирает то, что
+ * пишет main-процесс (window.lastSize и т.п.) и появившееся в новых версиях.
+ *
+ * @returns {{settings: object, applied: object, skipped: string[]}}
+ */
+function importAll(patch) {
+  const skipped = [];
+  const clean = sanitizePatch(patch || {}, DEFAULTS, [], skipped);
+  const s = load();
+  Object.assign(s, deepMerge(s, clean));
+  saveWithLock();
+  logger.info("settings.import_all", { applied: Object.keys(clean).length, skipped: skipped.length });
+  return { settings: s, applied: clean, skipped };
+}
+
 
 // Запись с коротким файловым lock (С10): settings.json пишут два процесса
 // (Express и electron-main с lastSize) — без блокировки возможна потеря записи.
@@ -364,4 +395,4 @@ function saveWithLock() {
   logger.info("settings.save", {});
 }
 
-module.exports = { load, get, set, DEFAULTS };
+module.exports = { load, get, set, DEFAULTS, importAll, sanitizePatch };

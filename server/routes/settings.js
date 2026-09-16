@@ -1,6 +1,6 @@
 const express = require("express");
 const settings = require("../settings");
-const { setSecret, hasSecret } = require("../security");
+const { setSecret, hasSecret, listSecrets, allowedSecretNames } = require("../security");
 const { PROVIDERS } = require("../providers");
 const logger = require("../logger");
 const logBundle = require("../logBundle");
@@ -39,6 +39,106 @@ router.patch("/", (req, res) => {
     });
   }
   res.json(s);
+});
+
+/* ==================== Экспорт и импорт настроек ====================
+ * Перенос настроек между компьютерами: ОДИН json-файл со всеми секциями
+ * settings.json (настройки всех страниц — чат, лекции, видео, музыка, сжатие,
+ * обход, Web Archive и т.д.; список секций — DEFAULTS в server/settings.js),
+ * плюс локальные настройки интерфейса страниц из localStorage (сервер их не
+ * видит, поэтому клиент присылает снимок в теле), плюс по флагу ключи API.
+ *
+ * Данные (заметки, задачи, история чатов, подписки прокси) файл НЕ содержит —
+ * для них есть резервные копии (server/backup.js): это разные вещи.
+ */
+
+/** Плоский объект (не массив, не null) — базовая проверка входного JSON. */
+function isPlainObject(v) {
+  return v != null && typeof v === "object" && !Array.isArray(v);
+}
+
+// POST /api/settings/export { includeSecrets?, ui? } → файл moonapp-settings-*.json
+router.post("/export", (req, res) => {
+  try {
+    const includeSecrets = req.body?.includeSecrets === true;
+    const payload = {
+      app: "MoonApp",
+      kind: "moonapp-settings",
+      format: 1,
+      appVersion: logBundle.appVersion(),
+      exportedAt: new Date().toISOString(),
+      // Эффективные значения: дефолты, перекрытые сохранёнными настройками.
+      settings: settings.get(),
+      // Настройки интерфейса страниц из localStorage клиента (сырые строки).
+      ui: isPlainObject(req.body?.ui) ? req.body.ui : {},
+    };
+    if (includeSecrets) payload.secrets = listSecrets();
+
+    const name = `moonapp-settings-${new Date().toISOString().slice(0, 10)}.json`;
+    logger.action("settings.export", {
+      sections: Object.keys(payload.settings).length,
+      secrets: includeSecrets ? Object.keys(payload.secrets).length : 0,
+    });
+    res.setHeader("Content-Type", "application/json; charset=utf-8");
+    // Имя файла — только ASCII: Content-Disposition с кириллицей Node отклоняет.
+    res.setHeader("Content-Disposition", `attachment; filename="${name}"`);
+    res.send(JSON.stringify(payload, null, 2));
+  } catch (e) {
+    logger.error("settings.export.error", { error: e.message });
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/settings/import { файл экспорта } → применить настройки (и ключи)
+router.post("/import", (req, res) => {
+  try {
+    const body = req.body || {};
+    // Принимаем и наш файл экспорта ({ settings: {...} }), и «сырой» settings.json
+    // прямо из storage: обе формы — это одно и то же по смыслу.
+    const raw = isPlainObject(body.settings) ? body.settings : body;
+    if (!isPlainObject(raw)) return res.status(400).json({ error: "bad_format" });
+
+    const { settings: result, applied, skipped } = settings.importAll(raw);
+    const appliedPaths = flattenPatch(applied).map(([p]) => p);
+
+    // Ключи API — только по явному согласию (importSecrets) и только известные
+    // имена: иначе файл мог бы дописать в secrets.json произвольную запись.
+    const secrets = isPlainObject(body.secrets) ? body.secrets : null;
+    const keysSkipped = [];
+    let keysApplied = 0;
+    if (secrets) {
+      if (body.importSecrets === true) {
+        const allowed = new Set(allowedSecretNames());
+        for (const [name, value] of Object.entries(secrets)) {
+          if (!allowed.has(name) || typeof value !== "string" || !value.trim()) { keysSkipped.push(name); continue; }
+          setSecret(name, value.trim());
+          keysApplied++;
+        }
+      } else {
+        // Ключи в файле есть, но галочка «импортировать ключи» снята.
+        keysSkipped.push(...Object.keys(secrets));
+      }
+    }
+
+    logger.action("settings.import", {
+      applied: appliedPaths.length, skipped: skipped.length, keys: keysApplied, from: body.appVersion || null,
+    });
+    res.json({
+      ok: true,
+      settings: result,
+      applied: appliedPaths.length,
+      // Пути, которые не применились: неизвестный ключ или чужой тип значения.
+      skipped,
+      keysApplied,
+      keysSkipped,
+      // Локальные настройки страниц применяет клиент: localStorage — его зона.
+      ui: isPlainObject(body.ui) ? body.ui : {},
+      sourceVersion: typeof body.appVersion === "string" ? body.appVersion : "",
+    });
+  } catch (e) {
+    logger.error("settings.import.error", { error: e.message });
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // Список провайдеров + статус наличия ключа

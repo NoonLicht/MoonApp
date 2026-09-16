@@ -225,6 +225,25 @@
     "backupKeep": "Guardar copias",
     "backupKeepHint": "Cuántas copias recientes conservar"
   },
+  "settingsIO": {
+    "ioSection": "Ajustes: exportar e importar",
+    "ioHint": "Transfiere los ajustes de todas las páginas (chat, clases, vídeo, música, compresión, bypass, Web Archive, etc.) y los ajustes locales de la interfaz. Las notas, tareas y otros datos no se incluyen: para eso hay copias de seguridad.",
+    "ioSecrets": "Incluir claves de API y tokens",
+    "ioSecretsHint": "Claves de proveedores (DeepSeek, OpenAI, …) y TMDB. No compartas el archivo que contiene las claves.",
+    "ioFile": "Archivo de ajustes",
+    "ioFileHint": "Un archivo JSON con todos los ajustes de todas las páginas",
+    "ioExport": "Exportar a archivo",
+    "ioImport": "Importar desde archivo",
+    "ioExported": "Ajustes guardados en el archivo: {name}",
+    "ioExportError": "Error al exportar: {msg}",
+    "ioImportDone": "Importado: {n} ajustes, {keys} claves",
+    "ioImportSkipped": "Campos desconocidos omitidos: {n} ({list})",
+    "ioKeysSkipped": "Claves omitidas: {n}",
+    "ioImportError": "Error al importar: {msg}",
+    "ioBadFormat": "El archivo no parece una exportación de ajustes de MoonApp",
+    "ioImportConfirm": "¿Importar los ajustes de «{name}»? Los ajustes actuales se reemplazarán.",
+    "ioRestartHint": "Algunos ajustes del sistema (inicio automático, tamaño de ventana, aceleración) se aplican tras reiniciar la aplicación."
+  },
   "advanced": {
     "advancedTelemetry": "Telemetría",
     "advancedTelemetryHint": "Enviar estadísticas anónimas de uso",

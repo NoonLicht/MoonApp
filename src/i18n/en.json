@@ -225,6 +225,25 @@
     "backupKeep": "Keep backups",
     "backupKeepHint": "How many recent copies to store"
   },
+  "settingsIO": {
+    "ioSection": "Settings: export and import",
+    "ioHint": "Transfers the settings of every page (chat, lectures, video, music, compression, bypass, Web Archive, …) plus local interface settings. Notes, tasks and other data are not included — use backups for those.",
+    "ioSecrets": "Include API keys and tokens",
+    "ioSecretsHint": "Provider keys (DeepSeek, OpenAI, …) and TMDB. Never share the exported file with anyone.",
+    "ioFile": "Settings file",
+    "ioFileHint": "One JSON file with all settings of every page",
+    "ioExport": "Export to file",
+    "ioImport": "Import from file",
+    "ioExported": "Settings saved to file: {name}",
+    "ioExportError": "Export failed: {msg}",
+    "ioImportDone": "Imported: {n} settings, {keys} keys",
+    "ioImportSkipped": "Skipped {n} unknown fields: {list}",
+    "ioKeysSkipped": "Keys skipped: {n}",
+    "ioImportError": "Import failed: {msg}",
+    "ioBadFormat": "This file does not look like a MoonApp settings export",
+    "ioImportConfirm": "Import settings from \"{name}\"? Current settings will be replaced.",
+    "ioRestartHint": "Some system options (auto-start, window size, hardware acceleration) apply after restarting the app."
+  },
   "advanced": {
     "advancedTelemetry": "Telemetry",
     "advancedTelemetryHint": "Send anonymous usage statistics",
