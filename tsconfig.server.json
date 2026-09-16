@@ -16,5 +16,11 @@
     "outDir": "server",
     "rootDir": "server/ts"
   },
-  "files": ["server/ts/monitor.ts", "server/ts/jobStore.ts", "server/ts/fsUtil.ts", "server/ts/download.ts"]
+  "files": [
+    "server/ts/monitor.ts",
+    "server/ts/jobStore.ts",
+    "server/ts/fsUtil.ts",
+    "server/ts/download.ts",
+    "server/ts/setupTask.ts"
+  ]
 }

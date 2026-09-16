@@ -27,6 +27,7 @@ const { DIRS } = require("./config");
 const settings = require("./settings");
 const logger = require("./logger");
 const { downloadToFile } = require("./download");
+const { createSetupTask } = require("./setupTask");
 
 /* ------------------------- Пути ------------------------- */
 
@@ -412,65 +413,27 @@ function deviceArgs() {
 /**
  * Одна задача установки за раз (модель ИЛИ сборка) — состояние опрашивает UI
  * через GET /api/lecture/engine/setup.
+ *
+ * Машина состояния — общий модуль server/ts/setupTask.ts: ровно та же логика
+ * нужна диаризации (diarize.js), и две копии уже расходились бы текстом ошибки
+ * и сбросом флага отмены. `task` — прямая ссылка на состояние, поэтому прямые
+ * записи вида `task.phase = "install"` ниже продолжают работать.
  */
-let task = {
-  kind: null,
-  state: "idle",
-  id: null,
-  progress: 0,
-  phase: "",
-  error: "",
-  received: 0,
-  total: 0,
-  at: 0,
-};
-
-function taskSnapshot() {
-  return { ...task };
-}
-
-function resetTask(kind, id) {
-  task = {
-    kind,
-    state: "working",
-    id,
-    progress: 0,
-    phase: "download",
-    error: "",
-    received: 0,
-    total: 0,
-    at: Date.now(),
-  };
-}
-
-function failTask(e) {
-  task = { ...task, state: "error", phase: "", error: String(e?.message || e) };
-  logger.error("whisperEngine.task.error", { kind: task.kind, id: task.id, error: task.error });
-}
-
-function doneTask() {
-  task = { ...task, state: "done", phase: "", progress: 100 };
-}
-
-/** Отмена текущей загрузки (флаг читает поток скачивания). */
-let cancelFlag = false;
-function cancelTask() {
-  if (task.state !== "working") return taskSnapshot();
-  cancelFlag = true;
-  return taskSnapshot();
-}
+const setup = createSetupTask("whisperEngine");
+const task = setup.state;
+const taskSnapshot = () => setup.snapshot();
+const resetTask = (kind, id) => setup.reset(kind, id);
+const failTask = (e) => setup.fail(e);
+const doneTask = () => setup.done();
+const cancelTask = () => setup.cancel();
 
 /** Скачивание с прогрессом в task (общий модуль server/ts/download.ts). */
 async function downloadTo(url, destFile, timeoutMs = 30 * 60 * 1000) {
   return downloadToFile(url, destFile, {
     userAgent: "MoonApp/1.0 (+whisper.cpp)",
     timeoutMs,
-    shouldCancel: () => cancelFlag,
-    onProgress: ({ total, received }) => {
-      task.total = total;
-      task.received = received;
-      task.progress = total ? Math.min(100, Math.round((100 * received) / total)) : 0;
-    },
+    shouldCancel: () => setup.shouldCancel(),
+    onProgress: ({ total, received }) => setup.setDownloadProgress(received, total),
   });
 }
 
@@ -515,7 +478,6 @@ function downloadModel(id) {
   const entry = MODEL_CATALOG.find((m) => m.id === id);
   if (!entry) throw new Error("unknown_model");
   resetTask("model", entry.id);
-  cancelFlag = false;
   (async () => {
     try {
       const part = path.join(DL_DIR, `${entry.file}.part`);
@@ -534,8 +496,6 @@ function downloadModel(id) {
       });
     } catch (e) {
       failTask(e);
-    } finally {
-      cancelFlag = false;
     }
   })();
   return taskSnapshot();
@@ -584,7 +544,6 @@ function installBuild(id) {
   const entry = BUILD_CATALOG.find((b) => b.id === id);
   if (!entry) throw new Error("unknown_build");
   resetTask("build", entry.id);
-  cancelFlag = false;
   (async () => {
     let tmp = "";
     try {
@@ -603,7 +562,6 @@ function installBuild(id) {
     } catch (e) {
       failTask(e);
     } finally {
-      cancelFlag = false;
       if (tmp) {
         try {
           fs.rmSync(tmp, { recursive: true, force: true });

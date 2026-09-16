@@ -40,6 +40,32 @@ function nowISO() {
 
 /* ─── NLP Parser ─── */
 
+/**
+ * «at 20:00» (плюс 12-часовой формат с am/pm) → часы/минуты и исходный фрагмент.
+ * Возвращает null, если времени в тексте нет. Разбор один и тот же для
+ * «tomorrow», «today» и «next monday» — держим его в одном месте.
+ */
+function matchTime(text) {
+  const m = text.match(/at\s+(\d{1,2}):(\d{2})\s*(am|pm)?/i);
+  if (!m) return null;
+  let hours = parseInt(m[1], 10);
+  const minutes = parseInt(m[2], 10);
+  const ampm = (m[3] || "").toLowerCase();
+  if (ampm === "pm" && hours < 12) hours += 12;
+  if (ampm === "am" && hours === 12) hours = 0;
+  return { hours, minutes, raw: m[0] };
+}
+
+/** Дописать время из текста в уже вычисленную дату результата. */
+function applyTime(text, result) {
+  const time = matchTime(text);
+  if (!time) return text;
+  const dt = new Date(result.dueDate);
+  dt.setHours(time.hours, time.minutes, 0, 0);
+  result.dueDate = dt.toISOString();
+  return text.replace(time.raw, "").trim();
+}
+
 function parseTaskTitle(title) {
   const result = { title, priority: undefined, tags: [], dueDate: null, backlinks: [] };
   let text = title;
@@ -67,7 +93,7 @@ function parseTaskTitle(title) {
     });
     text = text.replace(/@(\w[\w\s]*\w|\w)|\[\[([^\]]+)\]\]/g, "").trim();
   }
-// Due date: "tomorrow"
+  // Due date: "tomorrow"
   const tomorrowMatch = text.match(/tomorrow/i);
   if (tomorrowMatch) {
     const tomorrow = new Date();
@@ -75,18 +101,7 @@ function parseTaskTitle(title) {
     tomorrow.setHours(0, 0, 0, 0);
     result.dueDate = tomorrow.toISOString();
     text = text.replace(/tomorrow/gi, "").trim();
-    const timeMatch = text.match(/at\s+(\d{1,2}):(\d{2})\s*(am|pm)?/i);
-    if (timeMatch) {
-      let hours = parseInt(timeMatch[1], 10);
-      const minutes = parseInt(timeMatch[2], 10);
-      const ampm = (timeMatch[3] || "").toLowerCase();
-      if (ampm === "pm" && hours < 12) hours += 12;
-      if (ampm === "am" && hours === 12) hours = 0;
-      const dt = new Date(result.dueDate);
-      dt.setHours(hours, minutes, 0, 0);
-      result.dueDate = dt.toISOString();
-      text = text.replace(timeMatch[0], "").trim();
-    }
+    text = applyTime(text, result);
   }
 
   // Handle "today"
@@ -96,22 +111,13 @@ function parseTaskTitle(title) {
     today.setHours(0, 0, 0, 0);
     result.dueDate = today.toISOString();
     text = text.replace(/today/gi, "").trim();
-    const timeMatch = text.match(/at\s+(\d{1,2}):(\d{2})\s*(am|pm)?/i);
-    if (timeMatch) {
-      let hours = parseInt(timeMatch[1], 10);
-      const minutes = parseInt(timeMatch[2], 10);
-      const ampm = (timeMatch[3] || "").toLowerCase();
-      if (ampm === "pm" && hours < 12) hours += 12;
-      if (ampm === "am" && hours === 12) hours = 0;
-      const dt = new Date(result.dueDate);
-      dt.setHours(hours, minutes, 0, 0);
-      result.dueDate = dt.toISOString();
-      text = text.replace(timeMatch[0], "").trim();
-    }
+    text = applyTime(text, result);
   }
 
   // Handle "next monday", "next tuesday", etc.
-  const nextWeekMatch = text.match(/next\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday)/i);
+  const nextWeekMatch = text.match(
+    /next\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday)/i,
+  );
   if (nextWeekMatch) {
     const dayNames = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
     const targetDay = dayNames.indexOf(nextWeekMatch[1].toLowerCase());
@@ -125,18 +131,7 @@ function parseTaskTitle(title) {
       nextDate.setHours(0, 0, 0, 0);
       result.dueDate = nextDate.toISOString();
       text = text.replace(nextWeekMatch[0], "").trim();
-      const timeMatch = text.match(/at\s+(\d{1,2}):(\d{2})\s*(am|pm)?/i);
-      if (timeMatch) {
-        let hours = parseInt(timeMatch[1], 10);
-        const minutes = parseInt(timeMatch[2], 10);
-        const ampm = (timeMatch[3] || "").toLowerCase();
-        if (ampm === "pm" && hours < 12) hours += 12;
-        if (ampm === "am" && hours === 12) hours = 0;
-        const dt = new Date(result.dueDate);
-        dt.setHours(hours, minutes, 0, 0);
-        result.dueDate = dt.toISOString();
-        text = text.replace(timeMatch[0], "").trim();
-      }
+      text = applyTime(text, result);
     }
   }
 
@@ -175,9 +170,10 @@ router.get("/", (req, res) => {
     }
     if (search) {
       const q = search.toLowerCase();
-      tasks = tasks.filter((t) =>
-        t.title.toLowerCase().includes(q) ||
-        (t.description && t.description.toLowerCase().includes(q))
+      tasks = tasks.filter(
+        (t) =>
+          t.title.toLowerCase().includes(q) ||
+          (t.description && t.description.toLowerCase().includes(q)),
       );
     }
 
@@ -286,7 +282,8 @@ router.put("/:id/checklist", (req, res) => {
   try {
     const { id } = req.params;
     const { checklist } = req.body || {};
-    if (!Array.isArray(checklist)) return res.status(400).json({ error: "checklist must be an array" });
+    if (!Array.isArray(checklist))
+      return res.status(400).json({ error: "checklist must be an array" });
 
     const tasks = loadTasks();
     const idx = tasks.findIndex((t) => t.id === id);

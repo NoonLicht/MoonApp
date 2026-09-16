@@ -16,6 +16,7 @@ server/monitor.js.map
 server/jobStore.js
 server/fsUtil.js
 server/download.js
+server/setupTask.js
 
 # Артефакты отчётов.
 coverage

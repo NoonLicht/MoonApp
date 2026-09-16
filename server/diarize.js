@@ -28,6 +28,7 @@ const { stmts } = require("./db");
 const settings = require("./settings");
 const logger = require("./logger");
 const { downloadToFile } = require("./download");
+const { createSetupTask } = require("./setupTask");
 
 /* ------------------------- Пути ------------------------- */
 
@@ -135,66 +136,25 @@ function installed() {
   return { bin, seg, emb, ready: !!(bin && seg && emb) };
 }
 /* ------------------------- Задача установки (прогресс в UI) -------------------------
- * Одна задача за раз — как у движка распознавания (whisperEngine): иначе два
- * параллельных скачивания писали бы прогресс в одно место и «дёргали» полоску.
+ * Одна задача за раз — машина состояния общая с движком распознавания
+ * (server/ts/setupTask.ts), иначе два параллельных скачивания писали бы прогресс
+ * в одно место и «дёргали» полоску.
  */
-let task = {
-  kind: null,
-  state: "idle",
-  id: null,
-  progress: 0,
-  phase: "",
-  error: "",
-  received: 0,
-  total: 0,
-  at: 0,
-};
-let cancelFlag = false;
-
-function taskSnapshot() {
-  return { ...task };
-}
-
-function resetTask(kind, id) {
-  task = {
-    kind,
-    state: "working",
-    id,
-    progress: 0,
-    phase: "download",
-    error: "",
-    received: 0,
-    total: 0,
-    at: Date.now(),
-  };
-}
-
-function failTask(e) {
-  task = { ...task, state: "error", phase: "", error: String(e?.message || e) };
-  logger.error("diarize.task.error", { kind: task.kind, id: task.id, error: task.error });
-}
-
-function doneTask() {
-  task = { ...task, state: "done", phase: "", progress: 100 };
-}
-
-function cancelTask() {
-  if (task.state !== "working") return taskSnapshot();
-  cancelFlag = true;
-  return taskSnapshot();
-}
+const setup = createSetupTask("diarize");
+const task = setup.state;
+const taskSnapshot = () => setup.snapshot();
+const resetTask = (kind, id) => setup.reset(kind, id);
+const failTask = (e) => setup.fail(e);
+const doneTask = () => setup.done();
+const cancelTask = () => setup.cancel();
 
 /** Скачивание с прогрессом (общий модуль server/ts/download.ts). */
 async function downloadTo(url, destFile, timeoutMs = 30 * 60 * 1000) {
   return downloadToFile(url, destFile, {
     userAgent: "MoonApp/1.0 (+sherpa-onnx diarization)",
     timeoutMs,
-    shouldCancel: () => cancelFlag,
-    onProgress: ({ total, received }) => {
-      task.total = total;
-      task.received = received;
-      task.progress = total ? Math.min(100, Math.round((100 * received) / total)) : 0;
-    },
+    shouldCancel: () => setup.shouldCancel(),
+    onProgress: ({ total, received }) => setup.setDownloadProgress(received, total),
   });
 }
 
@@ -224,7 +184,6 @@ async function installPackage(pkg) {
   const archive = pkg.kind === "archive";
   const dest = path.join(DL_DIR, pkg.file);
   resetTask("package", pkg.id);
-  cancelFlag = false;
   try {
     await downloadTo(pkg.url, dest);
     if (archive) {
