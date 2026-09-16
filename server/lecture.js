@@ -334,21 +334,21 @@ function pumpQueue(id) {
     });
 }
 
-function transcribeChunk(id, item) {
+/**
+ * Один прогон whisper-cli: запуск, ожидание, разбор результата.
+ *
+ * Перед запуском удаляем прошлый .srt: whisper создаёт файл только когда нашёл
+ * текст, поэтому иначе можно прочитать огрызок ПРЕДЫДУЩЕГО прогона (или пустой
+ * файл) и решить, что расшифровывать нечего.
+ */
+function runWhisper(bin, args, outBase, timeoutMs = 120000) {
   return new Promise((resolve, reject) => {
-    const bin = whisperEngine.findBin();
-    const model = whisperEngine.findModel();
-    if (!bin || !model) {
-      const err = new Error(bin ? "whisper_model_missing" : "whisper_not_installed");
-      if (item.chunkId)
-        stmts.chunkUpdate.run(item.chunkId, { status: "error", error: err.message });
-      return reject(err);
+    const srtPath = outBase + ".srt";
+    try {
+      fs.rmSync(srtPath, { force: true });
+    } catch {
+      /* ignore */
     }
-    const wavPath = path.join(sessionDir(id), item.file);
-    const outBase = wavPath.replace(/\.wav$/i, "");
-    // Аргументы собирает whisperEngine.transcribeArgs — там же флаги GPU
-    // (-ng для CPU-сборки/выключенной видеокарты, -dev N для выбора устройства).
-    const args = whisperEngine.transcribeArgs(model, wavPath, outBase);
     const proc = spawn(bin, args, { windowsHide: true });
     let stdout = "",
       stderr = "";
@@ -359,7 +359,7 @@ function transcribeChunk(id, item) {
         /* ignore */
       }
       reject(new Error("whisper_timeout"));
-    }, 120000);
+    }, timeoutMs);
     proc.stdout.on("data", (d) => {
       stdout += d.toString("utf8");
     });
@@ -374,39 +374,94 @@ function transcribeChunk(id, item) {
       clearTimeout(timer);
       if (code !== 0 && !stdout.trim())
         return reject(new Error(`whisper_exit_${code}: ${stderr.slice(-300)}`));
-      // whisper-cli с -osrt пишет <outBase>.srt; текст берём оттуда (с сегментами).
-      let text = "";
-      let segments = [];
-      try {
-        const srtPath = outBase + ".srt";
-        if (fs.existsSync(srtPath)) {
-          segments = parseSrt(fs.readFileSync(srtPath, "utf8"));
-          text = segments
-            .map((x) => x.text)
-            .join(" ")
-            .trim();
-        }
-      } catch {
-        /* ignore */
-      }
-      if (!text) text = stdout.replace(/\s+/g, " ").trim();
-      text = sanitizeText(text);
-      segments = segments.map((x) => ({ ...x, text: sanitizeText(x.text) })).filter((x) => x.text);
-      if (item.chunkId) {
-        // ВАЖНО: причина разделена. "empty" — это ответ Whisper (он не нашёл
-        // речи), а не решение VAD. Раньше UI подписывал всё как «отброшено
-        // VAD», и понять, что происходит с записью, было невозможно.
-        stmts.chunkUpdate.run(item.chunkId, {
-          text,
-          status: text ? "done" : "empty",
-          reason: text ? "" : "whisper_empty",
-          error: "",
-        });
-      }
-      logger.info("lecture.chunk.done", { id, file: item.file, chars: text.length });
-      resolve({ text, segments });
+      resolve(readChunkResult(outBase, stdout));
     });
   });
+}
+
+/**
+ * Разбор результата прогона: сегменты из SRT, иначе текст из stdout, затем
+ * вырезание галлюцинаций. Возвращает { text, segments }.
+ */
+function readChunkResult(outBase, stdout = "") {
+  let text = "";
+  let segments = [];
+  try {
+    const srtPath = outBase + ".srt";
+    if (fs.existsSync(srtPath)) {
+      segments = parseSrt(fs.readFileSync(srtPath, "utf8"));
+      text = segments
+        .map((x) => x.text)
+        .join(" ")
+        .trim();
+    }
+  } catch {
+    /* ignore */
+  }
+  if (!text)
+    text = String(stdout || "")
+      .replace(/\s+/g, " ")
+      .trim();
+  text = sanitizeText(text);
+  segments = segments.map((x) => ({ ...x, text: sanitizeText(x.text) })).filter((x) => x.text);
+  return { text, segments };
+}
+
+/**
+ * Прогон чанка с откатом: сначала штатно (с подсказкой из настроек), а если
+ * движок не нашёл текст — ещё раз БЕЗ --prompt (см. whisperEngine.
+ * needsPromptlessRetry). Возвращает { text, segments, promptless }.
+ *
+ * Зачем отдельной функцией: откат — это правило, а не деталь очереди, и оно
+ * проверяется тестом с подставным runner (без реального whisper-cli).
+ * Аргументы собирает whisperEngine.transcribeArgs — там же флаги GPU (-ng для
+ * CPU-сборки/выключенной видеокарты, -dev N для выбора устройства).
+ */
+async function transcribeFile(bin, model, wavPath, outBase, meta = {}, runner = runWhisper) {
+  const args = whisperEngine.transcribeArgs(model, wavPath, outBase);
+  const result = await runner(bin, args, outBase);
+  if (!whisperEngine.needsPromptlessRetry(result.text, whisperEngine.initialPrompt()))
+    return { ...result, promptless: false };
+  // ОТКАТ БЕЗ ПОДСКАЗКИ. large-v3-turbo на длинную русскую подсказку отвечает
+  // пустым SRT: движок грузит модель и через пару секунд молча завершается, а
+  // пользователь видит «нечего расшифровывать». Повтор без --prompt даёт текст.
+  logger.info("lecture.chunk.retry_no_prompt", {
+    id: meta.id ?? null,
+    file: meta.file ?? path.basename(wavPath),
+    source: meta.source ?? null,
+  });
+  const retryArgs = whisperEngine.transcribeArgs(model, wavPath, outBase, { prompt: null });
+  return { ...(await runner(bin, retryArgs, outBase)), promptless: true };
+}
+
+async function transcribeChunk(id, item) {
+  const bin = whisperEngine.findBin();
+  const model = whisperEngine.findModel();
+  if (!bin || !model) {
+    const err = new Error(bin ? "whisper_model_missing" : "whisper_not_installed");
+    if (item.chunkId) stmts.chunkUpdate.run(item.chunkId, { status: "error", error: err.message });
+    throw err;
+  }
+  const wavPath = path.join(sessionDir(id), item.file);
+  const outBase = wavPath.replace(/\.wav$/i, "");
+  const result = await transcribeFile(bin, model, wavPath, outBase, {
+    id,
+    file: item.file,
+    source: item.source,
+  });
+  if (item.chunkId) {
+    // ВАЖНО: причина разделена. "empty" — это ответ Whisper (он не нашёл
+    // речи), а не решение VAD. Раньше UI подписывал всё как «отброшено
+    // VAD», и понять, что происходит с записью, было невозможно.
+    stmts.chunkUpdate.run(item.chunkId, {
+      text: result.text,
+      status: result.text ? "done" : "empty",
+      reason: result.text ? "" : "whisper_empty",
+      error: "",
+    });
+  }
+  logger.info("lecture.chunk.done", { id, file: item.file, chars: result.text.length });
+  return result;
 }
 
 /** Вырезание галлюцинаций и схлопывание зацикленных повторов. */
@@ -1719,4 +1774,9 @@ module.exports = {
   sanitizeText,
   parseSrt,
   transcriptBlocks, // переиспользуется в тестах
+  // Прогон чанка с откатом без подсказки и разбор его результата — вынесены
+  // наружу для тестов (проверяются с подставным runner, без whisper-cli).
+  transcribeFile,
+  runWhisper,
+  readChunkResult,
 };

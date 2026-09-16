@@ -861,9 +861,15 @@ function verifyResult() {
  * Аргументы whisper-cli — ОДНО место для транскрипции и self-test, чтобы тест
  * проверял ровно те флаги, которыми потом идёт расшифровка лекций.
  */
-function transcribeArgs(model, wavPath, outBase) {
+function transcribeArgs(model, wavPath, outBase, opts = {}) {
   const c = cfg();
-  return [
+  // opts.prompt: строка — подсказка (по умолчанию из настроек); null — флага
+  // --prompt в команде НЕ будет. Второй вариант нужен откату в lecture.js:
+  // large-v3-turbo на длинную русскую подсказку отвечает пустым SRT (движок
+  // стартует, грузит модель в VRAM и молча завершается), а повтор без неё
+  // возвращает нормальный текст (см. needsPromptlessRetry).
+  const prompt = opts.prompt === undefined ? c.initialPrompt || "" : opts.prompt;
+  const args = [
     "-m",
     model,
     "-f",
@@ -876,13 +882,34 @@ function transcribeArgs(model, wavPath, outBase) {
     // т.е. тайминги сегментов теряются. Нам нужны валидные SRT-сегменты.
     "-t",
     String(Math.max(1, Math.min(16, Number(c.threads) || 4))),
-    "--prompt",
-    c.initialPrompt || "",
+  ];
+  if (prompt !== null) args.push("--prompt", String(prompt));
+  args.push(
     ...deviceArgs(),
     "-of",
     outBase,
     "-osrt", // сегменты с таймингами
-  ];
+  );
+  return args;
+}
+
+/** Текущая подсказка распознавания (то, что уйдёт в --prompt). */
+function initialPrompt() {
+  return String(cfg().initialPrompt || "");
+}
+
+/**
+ * Нужен ли повтор прогона БЕЗ подсказки: движок не нашёл текст, а подсказка была.
+ *
+ * Зачем: у large-v3-turbo длинная русская подсказка выбивает декодер в пустой
+ * ответ (проверено на сборке cuda124: с подсказкой — 0 байт SRT за ~2 с,
+ * без неё — нормальный текст; на CPU-прогоне той же сборки с -ng — тоже пусто,
+ * т.е. дело не в видеокарте). small с той же подсказкой считает нормально.
+ * Пользователь видел это как «включил GPU — модель мигнула и нечего
+ * расшифровывать», поэтому при пустом ответе повторяем прогон без --prompt.
+ */
+function needsPromptlessRetry(text, prompt) {
+  return !String(text || "").trim() && String(prompt || "").trim().length > 0;
 }
 
 /** Небольшой WAV (PCM 16 кГц моно) для self-test — без внешних файлов. */
@@ -1056,6 +1083,8 @@ module.exports = {
   verify,
   verifyResult,
   transcribeArgs,
+  initialPrompt,
+  needsPromptlessRetry,
   deviceArgs,
   deviceArgsFor,
   detectGpu,
