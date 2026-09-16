@@ -43,6 +43,7 @@ export default tseslint.config(
       // Генерируются из server/ts/*.ts при `npm run compile:server`.
       "server/config.js",
       "server/logger.js",
+      "server/settings.js",
       "server/monitor.js",
       "server/jobStore.js",
       "server/fsUtil.js",
