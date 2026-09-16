@@ -66,6 +66,7 @@ server/convertEngine.js
 server/index.js
 server/bookParser.js
 server/tmdb.js
+server/encoders.js
 
 bb.txt
 tc.txt
