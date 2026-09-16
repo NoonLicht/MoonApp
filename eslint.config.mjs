@@ -58,6 +58,8 @@ export default tseslint.config(
       "server/proxySubscriptions.js",
       "server/proxyPing.js",
       "server/winget.js",
+      "server/notes-fs.js",
+      "server/torrent.js",
     ],
   },
 

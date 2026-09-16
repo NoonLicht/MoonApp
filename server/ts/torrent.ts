@@ -1,5 +1,3 @@
-"use strict";
-
 /**
  * Торрент-движок для страницы «Фильмы и Сериалы».
  *
@@ -7,7 +5,7 @@
  * САМ (вставил magnet-ссылку или загрузил .torrent-файл). Это dual-use
  * инструмент общего назначения — как любой BitTorrent-клиент. Приложение НЕ
  * ищет и НЕ подбирает торренты и не парсит трекеры: источник задаёт пользователь
- * и сам отвечает за то, чтобы контент был легальным (публичное достояние,
+ * и сам отвечает за то, что контент был легальным (публичное достояние,
  * собственные файлы, Linux-дистрибутивы и т.п.).
  *
  * Как работает стриминг:
@@ -18,17 +16,68 @@
  *
  * Движок подключается «лениво» (require) — если пакет webtorrent отсутствует,
  * роуты возвращают понятный код engine_missing, а не падают.
+ *
+ * TS-исходник, как server/ts/download.ts: компилируется в server/torrent.js
+ * командой `npm run compile:server`. Типы webtorrent описаны минимальным
+ * структурным контрактом ниже — своей сборки типов у пакета нет.
  */
+import path from "path";
+import config from "./config";
+import logger from "./logger";
 
-const path = require("path");
-const { DIRS } = require("./config");
-const logger = require("./logger");
+const { DIRS } = config;
 
-let WebTorrent = null;
-let client = null;
+/** Файл внутри торрента (структурный срез webtorrent). */
+export interface TorrentFile {
+  name: string;
+  path: string;
+  length: number;
+  progress?: number;
+  _startPiece?: number;
+  _endPiece?: number;
+  createReadStream(opts: { start?: number; end?: number }): NodeJS.ReadableStream;
+}
+
+/** Торрент (структурный срез webtorrent). */
+export interface TorrentLike {
+  infoHash: string;
+  name?: string;
+  ready?: boolean;
+  done?: boolean;
+  progress?: number;
+  downloadSpeed?: number;
+  uploadSpeed?: number;
+  downloaded?: number;
+  uploaded?: number;
+  length?: number;
+  numPeers?: number;
+  timeRemaining?: number;
+  ratio?: number;
+  files: TorrentFile[];
+  pieces?: unknown[];
+  on(event: string, cb: (...args: never[]) => void): unknown;
+  removeListener(event: string, cb: (...args: never[]) => void): unknown;
+  deselect(start: number, end: number, priority: number | boolean): void;
+  select(start: number, end: number, priority: number): void;
+}
+
+/** Клиент webtorrent (структурный срез). */
+export interface TorrentClient {
+  torrents: TorrentLike[];
+  add(source: unknown, opts?: { path?: string }): TorrentLike;
+  get(id: unknown): TorrentLike | undefined;
+  remove(id: string, opts?: { destroyStore?: boolean }): void;
+  destroy(): void;
+  on(event: string, cb: (...args: unknown[]) => void): unknown;
+}
+
+type WebTorrentCtor = new (opts: { maxConns: number; torrentPort: number }) => TorrentClient;
+
+let WebTorrent: WebTorrentCtor | null = null;
+let client: TorrentClient | null = null;
 
 /** Коды MIME для стриминга (нужны <video>). Без внешних зависимостей. */
-const MIME = {
+const MIME: Record<string, string> = {
   ".mp4": "video/mp4",
   ".m4v": "video/mp4",
   ".webm": "video/webm",
@@ -51,41 +100,64 @@ const MIME = {
   ".vtt": "text/vtt",
 };
 
-function mimeOf(name) {
+/** MIME по расширению (неизвестное → application/octet-stream). */
+export function mimeOf(name: unknown): string {
   return MIME[path.extname(String(name || "")).toLowerCase()] || "application/octet-stream";
 }
 
+/** Ошибка с кодом — роуты разбирают её и отдают понятный ответ фронту. */
+export interface TorrentError extends Error {
+  code: string;
+}
+
 /** Информация об ошибке с кодом (для роутов). */
-function torrentError(code, message) {
-  const e = new Error(message || code);
+function torrentError(code: string, message?: string): TorrentError {
+  const e = new Error(message || code) as TorrentError;
   e.code = code;
   return e;
 }
 
 /** Ленивая загрузка webtorrent (CommonJS-версия 1.x — совместима с Electron/Node). */
-function engine() {
+function engine(): WebTorrentCtor {
   if (WebTorrent) return WebTorrent;
   try {
-    WebTorrent = require("webtorrent");
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    WebTorrent = require("webtorrent") as WebTorrentCtor;
   } catch (e) {
-    throw torrentError("engine_missing", `WebTorrent engine is not installed: ${e.message}`);
+    throw torrentError(
+      "engine_missing",
+      `WebTorrent engine is not installed: ${(e as Error).message}`,
+    );
   }
   return WebTorrent;
 }
 
 /** Единственный клиент на процесс. */
-function getClient() {
+function getClient(): TorrentClient {
   if (client) return client;
   const WT = engine();
   client = new WT({ maxConns: 55, torrentPort: 0 });
   client.on("error", (e) =>
-    logger.warn("torrent.client_error", { error: e?.message || String(e) }),
+    logger.warn("torrent.client_error", {
+      error: (e as Error)?.message || String(e),
+    }),
   );
   return client;
 }
 
+/** Файл торрента для фронта: размер, MIME и признак «это можно проиграть». */
+export interface TorrentFileInfo {
+  index: number;
+  name: string;
+  path: string;
+  length: number;
+  mime: string;
+  progress: number;
+  playable: boolean;
+}
+
 /** Краткое описание файла торрента для фронта. */
-function fileInfo(file, index) {
+function fileInfo(file: TorrentFile, index: number): TorrentFileInfo {
   return {
     index,
     name: file.name,
@@ -102,24 +174,28 @@ function fileInfo(file, index) {
 }
 
 /** Дождаться метаданных (список файлов) у торрента. */
-function waitForMetadata(torrent, timeoutMs = 60000) {
+function waitForMetadata(torrent: TorrentLike, timeoutMs = 60000): Promise<void> {
   if (torrent.ready) return Promise.resolve();
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
       cleanup();
       reject(
-        torrentError("metadata_timeout", "Timed out waiting for torrent metadata (no peers?)"),
+        torrentError(
+          "metadata_timeout",
+          `torrent metadata is not ready after ${timeoutMs} ms ` +
+            "(нет пиров/DHT недоступен или magnet без метаданных)",
+        ),
       );
     }, timeoutMs);
-    const onReady = () => {
+    const onReady = (): void => {
       cleanup();
       resolve();
     };
-    const onError = (e) => {
+    const onError = (e: unknown): void => {
       cleanup();
-      reject(torrentError("torrent_error", e?.message || String(e)));
+      reject(torrentError("torrent_error", (e as Error)?.message || String(e)));
     };
-    function cleanup() {
+    function cleanup(): void {
       clearTimeout(timer);
       torrent.removeListener("ready", onReady);
       torrent.removeListener("error", onError);
@@ -129,20 +205,27 @@ function waitForMetadata(torrent, timeoutMs = 60000) {
   });
 }
 
+/** Итог добавления торрента: метаданные и список файлов. */
+export interface TorrentAdded {
+  infoHash: string;
+  name: string;
+  length: number;
+  files: TorrentFileInfo[];
+}
+
 /**
  * Добавить торрент (magnet-строка или Buffer .torrent) и дождаться метаданных.
- * Возвращает { infoHash, name, length, files }.
  * Повторное добавление того же торрента не падает — возвращаем существующий.
  */
-async function add(source) {
+export async function add(source: unknown): Promise<TorrentAdded> {
   const c = getClient();
-  let torrent = null;
+  let torrent: TorrentLike | null = null;
   try {
     torrent = c.add(source, { path: DIRS.torrents });
   } catch {
     // Дубликат или некорректный источник — пробуем получить уже добавленный.
     try {
-      torrent = c.get(source);
+      torrent = c.get(source) || null;
     } catch {
       /* и такого торрента нет — обработаем ниже */
     }
@@ -157,24 +240,42 @@ async function add(source) {
   });
   return {
     infoHash: torrent.infoHash,
-    name: torrent.name,
-    length: torrent.length,
+    name: torrent.name || "",
+    length: Number(torrent.length) || 0,
     files: torrent.files.map((f, i) => fileInfo(f, i)),
   };
 }
 
 /** Есть ли движок (для понятной ошибки на фронте). */
-function engineStatus() {
+export function engineStatus(): { installed: boolean; client: boolean; error?: string } {
   try {
     engine();
     return { installed: true, client: !!client };
   } catch (e) {
-    return { installed: false, error: e.message };
+    return { installed: false, client: false, error: (e as Error).message };
   }
 }
 
+/** Состояние торрента для поллинга из UI. */
+export interface TorrentStatus {
+  infoHash: string;
+  name: string;
+  ready: boolean;
+  done: boolean;
+  progress: number;
+  downloadSpeed: number;
+  uploadSpeed: number;
+  downloaded: number;
+  uploaded: number;
+  length: number;
+  peers: number;
+  timeRemaining: number | null;
+  ratio: number;
+  files: TorrentFileInfo[];
+}
+
 /** Текущее состояние торрента (прогресс/скорость/пиры/файлы) или null. */
-function status(infoHash) {
+export function status(infoHash: unknown): TorrentStatus | null {
   if (!client || !infoHash) return null;
   const torrent = client.get(String(infoHash));
   if (!torrent) return null;
@@ -190,14 +291,16 @@ function status(infoHash) {
     uploaded: Number(torrent.uploaded) || 0,
     length: Number(torrent.length) || 0,
     peers: Number(torrent.numPeers) || 0,
-    timeRemaining: Number.isFinite(torrent.timeRemaining) ? torrent.timeRemaining : null,
+    timeRemaining: Number.isFinite(torrent.timeRemaining)
+      ? (torrent.timeRemaining as number)
+      : null,
     ratio: Number(torrent.ratio) || 0,
     files: (torrent.files || []).map((f, i) => fileInfo(f, i)),
   };
 }
 
 /** Найти файл по индексу с проверкой диапазона. */
-function fileAt(infoHash, index) {
+function fileAt(infoHash: unknown, index: unknown): { torrent: TorrentLike; file: TorrentFile } {
   if (!client) throw torrentError("no_torrent", "torrent client is not running");
   const torrent = client.get(String(infoHash));
   if (!torrent) throw torrentError("no_torrent", "torrent is not added");
@@ -213,12 +316,15 @@ function fileAt(infoHash, index) {
  * Метаданные файла для HTTP-ответа (Range-роут): размер, MIME, имя.
  * Приоритизируем загрузку именно этого файла (остальные не качаем).
  */
-function streamInfo(infoHash, index) {
+export function streamInfo(
+  infoHash: unknown,
+  index: unknown,
+): { name: string; length: number; mime: string } {
   const { torrent, file } = fileAt(infoHash, index);
   try {
     // Выделяем куски только выбранного файла — остальное не тратит канал.
-    torrent.deselect(0, torrent.pieces.length - 1, false);
-    torrent.select(file._startPiece, file._endPiece, 0);
+    torrent.deselect(0, (torrent.pieces?.length ?? 0) - 1, false);
+    torrent.select(file._startPiece ?? 0, file._endPiece ?? 0, 0);
   } catch {
     /* внутренние поля могут отличаться — не критично */
   }
@@ -229,16 +335,20 @@ function streamInfo(infoHash, index) {
  * ReadStream выбранного файла (для Range-запроса). start/end — байты.
  * Возвращает Node-стрим, который роут пайпит в ответ.
  */
-function createReadStream(infoHash, index, { start, end } = {}) {
+export function createReadStream(
+  infoHash: unknown,
+  index: unknown,
+  { start, end }: { start?: number; end?: number } = {},
+): NodeJS.ReadableStream {
   const { file } = fileAt(infoHash, index);
-  const opts = {};
+  const opts: { start?: number; end?: number } = {};
   if (Number.isFinite(start)) opts.start = start;
   if (Number.isFinite(end)) opts.end = end;
   return file.createReadStream(opts);
 }
 
 /** Прибрать торрент (остановить загрузку; куски в кэше остаются). */
-function remove(infoHash) {
+export function remove(infoHash: unknown): { removed: boolean } {
   if (!client) return { removed: false };
   try {
     const torrent = client.get(String(infoHash));
@@ -252,33 +362,24 @@ function remove(infoHash) {
 }
 
 /** Список активных торрентов. */
-function active() {
+export function active(): { infoHash: string; name: string; progress: number; peers: number }[] {
   if (!client) return [];
   return client.torrents.map((t) => ({
     infoHash: t.infoHash,
-    name: t.name,
+    name: t.name || "",
     progress: t.progress || 0,
     peers: t.numPeers || 0,
   }));
 }
 
-module.exports = {
-  engineStatus,
-  add,
-  status,
-  streamInfo,
-  createReadStream,
-  remove,
-  active,
-  mimeOf,
-  _reset: () => {
-    if (client) {
-      try {
-        client.destroy();
-      } catch {
-        /* ignore */
-      }
-      client = null;
+/** Сброс клиента — только для тестов и аварийного перезапуска движка. */
+export function _reset(): void {
+  if (client) {
+    try {
+      client.destroy();
+    } catch {
+      /* ignore */
     }
-  },
-};
+    client = null;
+  }
+}

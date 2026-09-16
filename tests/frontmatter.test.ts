@@ -96,7 +96,9 @@ describe("контракт: общий парсер вместо двух коп
   it.each(["notes-fs.js", "myspace-vault.js"])('%s использует require("./frontmatter")', (name) => {
     const src = readServer(name);
     expect(src).toContain('require("./frontmatter")');
-    expect(src).toContain("parseFrontmatter(");
+    // Вызов может быть и «сырым» (legacy .js), и виде `(0, frontmatter_1.parseFrontmatter)(raw)`
+    // — так tsc компилирует импорт из TS-исходника (server/ts/notes-fs.ts).
+    expect(src).toMatch(/parseFrontmatter/);
     // Локальная копия цикла разбора не должна вернуться.
     expect(src, `${name}: вернулась ручная разборка блока`).not.toMatch(/raw\.indexOf\("---", 3\)/);
   });

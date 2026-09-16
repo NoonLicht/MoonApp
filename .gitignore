@@ -56,6 +56,8 @@ server/comss.js
 server/proxySubscriptions.js
 server/proxyPing.js
 server/winget.js
+server/notes-fs.js
+server/torrent.js
 
 bb.txt
 tc.txt
