@@ -25,6 +25,9 @@ const encoders = require("../encoders");
 const settings = require("../settings");
 const { DIRS } = require("../config");
 const logger = require("../logger");
+// Загрузки названы по исходному имени файла (кириллица сохраняется), а fs.rmSync
+// такие пути на Windows молча не удаляет — временные файлы копились бы вечно.
+const { removePath } = require("../fsUtil");
 
 const router = express.Router();
 const MAX_BYTES = 2 * 1024 * 1024 * 1024; // 2 ГБ
@@ -119,7 +122,7 @@ router.post("/probe", upload.single("file"), async (req, res) => {
   } catch (e) {
     res.status(500).json({ error: e.message });
   } finally {
-    try { fs.rmSync(req.file.path, { force: true }); } catch { /* ignore */ }
+    try { removePath(req.file.path); } catch { /* ignore */ }
   }
 });
 
@@ -170,8 +173,8 @@ router.get("/:id/preview", (req, res) => {
 router.delete("/:id", (req, res) => {
   const job = engine.getJob(req.params.id);
   if (!job) return res.status(404).json({ error: "not_found" });
-  try { if (job.outFile) fs.rmSync(job.outFile, { force: true }); } catch { /* ignore */ }
-  try { fs.rmSync(job.inputPath, { force: true }); } catch { /* ignore */ }
+  try { if (job.outFile) removePath(job.outFile); } catch { /* ignore */ }
+  try { removePath(job.inputPath); } catch { /* ignore */ }
   engine.jobs.delete(req.params.id);
   logger.action("compressor.delete", { id: req.params.id });
   res.json({ ok: true });

@@ -27,6 +27,9 @@ const engine = require("../tts");
 const { DIRS } = require("../config");
 const bookParser = require("../bookParser");
 const logger = require("../logger");
+// Загруженная книга хранится под исходным именем (кириллица), а fs.rmSync такие
+// пути на Windows молча не удаляет — temp-файлы копились бы вечно.
+const { removePath } = require("../fsUtil");
 
 const router = express.Router();
 
@@ -90,12 +93,12 @@ router.post("/import-book", upload.single("file"), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: "missing_file" });
   try {
     const book = await bookParser.parseBook(req.file.path, req.file.originalname);
-    try { fs.rmSync(req.file.path, { force: true }); } catch { /* ignore */ }
+    try { removePath(req.file.path); } catch { /* ignore */ }
     if (!book.chapters.length) return res.status(422).json({ error: "no_text_in_book" });
     logger.action("tts.book.import", { name: req.file.originalname, chapters: book.chapters.length });
     res.json(book);
   } catch (e) {
-    try { fs.rmSync(req.file.path, { force: true }); } catch { /* ignore */ }
+    try { removePath(req.file.path); } catch { /* ignore */ }
     res.status(500).json({ error: e.message });
   }
 });

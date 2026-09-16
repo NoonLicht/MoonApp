@@ -19,6 +19,9 @@ const fs = require("fs");
 const { DIRS } = require("../config");
 const engine = require("../convertEngine");
 const logger = require("../logger");
+// Имя входного/готового файла наследует исходное (кириллица), а fs.rmSync такие
+// пути на Windows молча не удаляет — временные файлы копились бы вечно.
+const { removePath } = require("../fsUtil");
 
 const router = express.Router();
 // key -> { file, name, size, at }; уезжают после отправки (download).
@@ -68,7 +71,7 @@ router.post("/install/start", (req, res) => {
 router.post("/", upload.single("file"), async (req, res) => {
   const cleanupInput = () => {
     if (req.file && req.file.path && fs.existsSync(req.file.path)) {
-      try { fs.rmSync(req.file.path, { force: true }); } catch { /* ignore */ }
+      try { removePath(req.file.path); } catch { /* ignore */ }
     }
   };
 
@@ -111,7 +114,7 @@ router.get("/download/:key", (req, res) => {
   if (!entry) return res.status(404).json({ error: "not_found" });
 
   res.download(entry.file, entry.name, () => {
-    try { fs.rmSync(entry.file, { force: true }); } catch { /* ignore */ }
+    try { removePath(entry.file); } catch { /* ignore */ }
     results.delete(req.params.key);
   });
 });

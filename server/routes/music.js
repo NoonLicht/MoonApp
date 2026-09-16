@@ -14,6 +14,9 @@ const express = require("express");
 const fs = require("fs");
 const ytdlp = require("../ytdlp");
 const logger = require("../logger");
+// yt-dlp переименовывает скачанное в название трека (часто кириллица), а fs.rmSync
+// такие пути на Windows молча не удаляет — файлы оставались бы в storage.
+const { removePath } = require("../fsUtil");
 
 const router = express.Router();
 
@@ -69,7 +72,7 @@ router.get("/download/:key", (req, res) => {
     const entry = ytdlp.getDownloadFile(req.params.key);
     if (!entry) return res.status(404).json({ error: "not_found" });
     res.download(entry.path, entry.name, () => {
-      try { fs.rmSync(entry.path, { force: true }); } catch {}
+      try { removePath(entry.path); } catch {}
     });
   } catch (e) {
     res.status(500).json({ error: e.message });

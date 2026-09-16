@@ -456,11 +456,90 @@ function updateChunkText(chunkId, text) {
   return stmts.chunkGet.get(chunkId);
 }
 
+/**
+ * Зеркало заметок лекции в storage/notes (markdown-файл на каждую лекцию).
+ *
+ * Заметки и ИИ-конспект живут в JSON-сторе (storage/data.json), поэтому до этого
+ * были видны ТОЛЬКО внутри приложения. Теперь у каждой лекции есть зеркало —
+ * обычный .md файл в той же папке, где лежат остальные заметки
+ * (server/notes-fs.js → storage/notes/), и он обновляется при КАЖДОМ изменении:
+ *   • PATCH /api/lecture/:id — кнопка «Сохранить заметки»;
+ *   • маркер важного (Ctrl+B / F2);
+ *   • сборка ИИ-конспекта — и ручная кнопкой, и автоматическая (smart/auto).
+ *
+ * Идемпотентность: связь «лекция → заметка» хранится в САМОЙ лекции
+ * (notes_note_id). Повторные вызовы перезаписывают тот же файл, поэтому
+ * конспект, дособранный после новой порции расшифровки, не плодит копии.
+ * Если файл удалили с диска вручную, он будет создан заново с тем же id.
+ */
+
+/** Заголовок .md файла: название лекции + дата записи (когда она известна). */
+function lectureNoteTitle(lec) {
+  const base = String(lec?.title || "").trim() || "Лекция";
+  const date = String(lec?.started_at || "").slice(0, 10);
+  return date ? `Лекция: ${base} (${date})` : `Лекция: ${base}`;
+}
+
+function syncNotesFile(id) {
+  const lec = stmts.lectureGet.get(id);
+  if (!lec) return null;
+  const note = stmts.noteUpsert.run(Number(lec.notes_note_id) || 0, {
+    title: lectureNoteTitle(lec),
+    content: String(lec.notes || ""),
+    // Метки намеренно нейтральные (ASCII): язык интерфейса серверу неизвестен,
+    // а frontmatter читают сторонние редакторы и внешние инструменты.
+    tags: "lecture",
+    folder: "lectures",
+  });
+  // Первый вызов заводит заметку — запоминаем её id в лекции. Без этого
+  // следующий вызов создал бы ВТОРОЙ файл вместо обновления первого.
+  if (Number(lec.notes_note_id) !== Number(note.id)) {
+    stmts.lectureUpdate.run(id, { notes_note_id: note.id });
+  }
+  return note;
+}
+
+/** Сбой записи .md не должен ломать запись лекции — только предупреждение. */
+function syncNotesFileSafe(id, action) {
+  try { syncNotesFile(id); }
+  catch (e) { logger.warn("lecture.notesfile.error", { id, action, error: String(e?.message || e) }); }
+}
+
+/**
+ * Разовая синхронизация при старте: у лекций, записанных ДО появления зеркала,
+ * .md файла ещё нет. Заводим его сразу, чтобы старый конспект тоже лежал на
+ * диске и не ждал следующей правки заметок. Лекции БЕЗ заметок пропускаем:
+ * пустые .md в storage/notes только мусорили бы.
+ *
+ * @returns {number} сколько файлов реально завели
+ */
+function backfillNotesFiles() {
+  let count = 0;
+  for (const lec of stmts.lectureAll.all()) {
+    // Заметок нет или .md уже заведён — трогать нечего.
+    if (!lec.notes || Number(lec.notes_note_id)) continue;
+    try { if (syncNotesFile(lec.id)) count++; }
+    catch (e) { logger.warn("lecture.notesfile.error", { id: lec.id, action: "backfill", error: String(e?.message || e) }); }
+  }
+  if (count) logger.action("lecture.notesfile.backfill", { count });
+  return count;
+}
+
+/** Удалить .md файл лекции (вместе с самой лекцией). */
+function removeNotesFile(lec) {
+  const noteId = Number(lec?.notes_note_id) || 0;
+  if (!noteId) return;
+  try { stmts.noteDelete.run(noteId); }
+  catch (e) { logger.warn("lecture.notesfile.error", { id: lec?.id, action: "delete", error: String(e?.message || e) }); }
+}
+
 /** Сохранение заметок лекции (кнопка «Сохранить заметки» в конспекте). */
 function setNotes(id, notes) {
   const lec = stmts.lectureGet.get(id);
   if (!lec) throw new Error("session_not_found");
   stmts.lectureUpdate.run(id, { notes: String(notes || "").slice(0, 200000) });
+  // Каждая правка сразу уходит в .md файл лекции (полная синхронизация).
+  syncNotesFileSafe(id, "setNotes");
   return stmts.lectureGet.get(id);
 }
 
@@ -471,6 +550,7 @@ function addMarker(id, atMs, label) {
   const ts = fmtTs(atMs || 0);
   const note = `${lec.notes ? lec.notes + "\n" : ""}- [ ] **[${ts}]** ${String(label || "Важное").slice(0, 300)}`;
   stmts.lectureUpdate.run(id, { notes: note });
+  syncNotesFileSafe(id, "marker");
   return { atMs, timestamp: ts, label };
 }
 
@@ -514,6 +594,11 @@ function stopSession(id) {
 
 function deleteSession(id) {
   stopSession(id);
+  // Заметку лекции (её .md зеркало) убираем вместе с самой лекцией: иначе в
+  // storage/notes/ оставались бы «осиротевшие» файлы удалённых лекций. Снимок
+  // строки делаем ДО delete — после него id заметки уже негде взять.
+  const lec = stmts.lectureGet.get(id);
+  removeNotesFile(lec);
   // Удаление — явный форс: очередь транскрибации нам больше не нужна,
   // поэтому состояние сессии снимаем принудительно (pumpQueue ждал бы её конца).
   sessions.delete(id);
@@ -1088,6 +1173,10 @@ async function generateConspectus(id, opts = {}) {
       conspectus_at: new Date().toISOString().replace("T", " ").slice(0, 19),
       conspectus_len: transcriptWeight(id).chars,
     });
+    // Конспект сразу уходит в .md файл лекции: и при нажатии кнопки «ИИ-конспект»,
+    // и в авто-режиме (maybeAutoConspectus → generateConspectus) — файл
+    // перезаписывается тем же, а не заводится заново (см. syncNotesFile).
+    syncNotesFileSafe(id, "conspectus");
     logger.action("lecture.conspectus", {
       id, provider: target.provider.id, model: target.model,
       blocks: blocks.length, chars: markdown.length, ms: Date.now() - started, truncated,
@@ -1339,6 +1428,10 @@ module.exports = {
   // Настройки конспекта и выбор провайдера (панель «ИИ-конспект»).
   conspectusSettings, setConspectusSettings, conspectusProviders, providerModels,
   maybeAutoConspectus, transcriptWeight, conspectusStale, // переиспользуется в тестах
+  // Зеркало заметок лекций в storage/notes (см. syncNotesFile). backfillNotesFiles
+  // зовёт server/index.js при старте — он заводит .md для лекций, записанных до
+  // появления синхронизации; экспорт — для тестов.
+  backfillNotesFiles,
   sanitizeText, parseSrt, transcriptBlocks, // переиспользуется в тестах
 };
 

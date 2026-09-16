@@ -25,6 +25,9 @@ const encoders = require("./encoders");
 const logger = require("./logger");
 const { DIRS } = require("./config");
 const { detectFfmpeg } = require("./convertEngine");
+// Входной файл назван по исходному имени (кириллица сохраняется), а fs.rmSync
+// такие пути на Windows молча не удаляет — исходники копились бы в storage.
+const { removePath } = require("./fsUtil");
 
 // id -> job; завершённые остаются для скачивания (см. trimJobs).
 const jobs = new Map();
@@ -382,7 +385,7 @@ async function runJob(job) {
     job.error = String(e.message || e); job.stage = "error";
     logger.error("compressor.error", { id: job.id, error: job.error });
   } finally {
-    try { fs.rmSync(job.inputPath, { force: true }); } catch { /* ignore */ }
+    try { removePath(job.inputPath); } catch { /* ignore */ }
     try { fs.rmSync(`${passLog}-0.log`, { force: true }); } catch { /* ignore */ }
     try { fs.rmSync(`${passLog}-0.log.mbtree`, { force: true }); } catch { /* ignore */ }
   }

@@ -13,6 +13,9 @@ const fs = require("fs");
 const path = require("path");
 const { DIRS } = require("./config");
 const logger = require("./logger");
+// Удаление файлов с кириллическими именами: fs.rmSync на Windows этого молча
+// не делает, а заголовки заметок почти всегда русские (см. server/fsUtil.js).
+const { removePath } = require("./fsUtil");
 
 const NOTES_DIR = path.join(DIRS.storage, "notes");
 let noteMap = new Map();
@@ -98,15 +101,20 @@ function writeNoteFile(note) {
       if (f.startsWith(note.id + "-")) { const fp = path.join(NOTES_DIR, f); if (fp !== newPath) oldPath = fp; }
     }
   } catch {}
-  if (oldPath) try { fs.rmSync(oldPath, { force: true }); } catch {}
+  if (oldPath) removeNoteFileByPath(oldPath);
   fs.writeFileSync(newPath, serializeNote(note), "utf8");
+}
+
+/** Стереть файл заметки, честно сообщив в лог, если он остался на диске. */
+function removeNoteFileByPath(filePath) {
+  if (!removePath(filePath)) logger.warn("notes-fs.remove_failed", { file: filePath });
 }
 
 function removeNoteFile(note) {
   try {
     const files = fs.readdirSync(NOTES_DIR);
-    for (const f of files) if (f.startsWith(note.id + "-")) fs.rmSync(path.join(NOTES_DIR, f), { force: true });
-  } catch {}
+    for (const f of files) if (f.startsWith(note.id + "-")) removeNoteFileByPath(path.join(NOTES_DIR, f));
+  } catch { /* каталога нет — удалять нечего */ }
 }
 
 // --- Публичное API ---
@@ -173,6 +181,37 @@ function update(title, content, tags, folder, id) {
   return { changes: 1 };
 }
 
+/**
+ * Запись заметки с ЯВНО заданным id (0/пусто — «создай новую»).
+ *
+ * Нужна внешним источникам, которые держат ссылку на файл: заметки лекций
+ * (см. server/lecture.js → syncNotesFile) знают id заметки и перезаписывают
+ * ровно один и тот же .md. Отличие от update(): если файла нет в noteMap (его
+ * удалили с диска вручную), заметка создаётся заново с тем же id — иначе
+ * синхронизация молча теряла бы конспект, а при «обновлении» ничего не писала.
+ *
+ * @returns {object} актуальная заметка (с её id — вызывающий его сохраняет)
+ */
+function upsert(id, fields = {}) {
+  const wanted = Number(id) > 0 ? Number(id) : noteSeq + 1;
+  const ts = now();
+  const ex = noteMap.get(wanted);
+  const note = {
+    id: wanted,
+    title: fields.title != null ? String(fields.title) : (ex ? ex.title : ""),
+    content: fields.content != null ? String(fields.content) : (ex ? ex.content : ""),
+    tags: fields.tags != null ? String(fields.tags) : (ex ? ex.tags : ""),
+    folder: fields.folder != null ? String(fields.folder) : (ex ? ex.folder : ""),
+    // created_at переживает перезапись: это дата появления заметки, а не правки.
+    created_at: ex ? ex.created_at : ts,
+    updated_at: ts,
+  };
+  if (wanted > noteSeq) noteSeq = wanted;
+  noteMap.set(wanted, note);
+  writeNoteFile(note);
+  return { ...note };
+}
+
 function del(id) {
   const note = noteMap.get(id);
   if (!note) return { changes: 0 };
@@ -186,8 +225,8 @@ function deleteAll() {
   noteMap.clear();
   try {
     const files = fs.readdirSync(NOTES_DIR);
-    for (const f of files) if (f.endsWith(".md")) fs.rmSync(path.join(NOTES_DIR, f), { force: true });
-  } catch {}
+    for (const f of files) if (f.endsWith(".md")) removeNoteFileByPath(path.join(NOTES_DIR, f));
+  } catch { /* каталога нет — удалять нечего */ }
   noteSeq = 0;
   return { deleted: count };
 }
@@ -203,4 +242,4 @@ function search(q) {
 /** Загрузить, если директория существует */
 loadAll();
 
-module.exports = { loadAll, all, get, insert, update, delete: del, deleteAll, search, NOTES_DIR };
+module.exports = { loadAll, all, get, insert, update, upsert, delete: del, deleteAll, search, NOTES_DIR };

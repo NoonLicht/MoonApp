@@ -11,6 +11,9 @@ const fs = require("fs");
 const path = require("path");
 const { DIRS } = require("./config");
 const logger = require("./logger");
+// Заметки пользователя почти всегда названы по-русски, а fs.rmSync такие файлы
+// на Windows молча не удаляет — см. комментарий в server/fsUtil.js.
+const { removePath } = require("./fsUtil");
 
 const VAULT_DIR = path.join(DIRS.storage, "vault");
 const NOTEBOOK_DIR = path.join(VAULT_DIR, "notes");
@@ -113,16 +116,16 @@ function writeFile(filePath, content, frontmatter = {}) {
   fs.writeFileSync(fullPath, md, "utf8");
   return { path: filePath, ok: true };
 }
+
 function deleteFile(filePath) {
   const fullPath = safeJoin(NOTEBOOK_DIR, filePath);
   if (!fullPath) return { ok: false, error: "forbidden path" };
   try {
     if (fs.existsSync(fullPath)) {
-      if (fs.statSync(fullPath).isDirectory()) {
-        fs.rmSync(fullPath, { recursive: true, force: true });
-      } else {
-        fs.rmSync(fullPath, { force: true });
-      }
+      // Именно removePath, а не fs.rmSync: на Windows rmSync молча не удаляет
+      // файлы с кириллическими именами, поэтому «удалить заметку» возвращало
+      // успех, а .md оставался на диске (см. server/fsUtil.js).
+      if (!removePath(fullPath)) return { ok: false, error: "delete_failed" };
       return { ok: true };
     }
     return { ok: false, error: "not found" };

@@ -249,6 +249,9 @@ const stmts = {
   noteGet: { get: (id) => notesFs.get(id) },
   noteInsert: { run: (title, content, tags, folder) => notesFs.insert(title, content, tags, folder) },
   noteUpdate: { run: (title, content, tags, folder, id) => notesFs.update(title, content, tags, folder, id) },
+  // Запись заметки с заданным id (синхронизация заметок лекций с .md файлом):
+  // тот же id — тот же файл, а удалённый с диска файл создаётся заново.
+  noteUpsert: { run: (id, fields) => notesFs.upsert(id, fields) },
   noteDelete: { run: (id) => notesFs.delete(id) },
   noteDeleteAll: { run: () => notesFs.deleteAll() },
   noteSearch: { all: (q) => notesFs.search(q) },
