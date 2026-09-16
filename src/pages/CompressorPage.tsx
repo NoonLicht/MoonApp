@@ -54,20 +54,23 @@ const ENGINES: { id: string; kind: "cpu" | "gpu"; codec: string; label: string }
 
 const HEIGHTS = ["original", "2160", "1440", "1080", "720", "480"];
 
-// Локальное поле параметров страницы.
-interface Params {
-  codec: string;
-  engine: string;
-  qualityMode: string;
-  crf: number;
-  targetKbps: number;
-  maxKbps: number;
-  speed: string;
-  tenBit: boolean;
-  targetHeight: string;
-  audio: string;
-  audioKbps: number;
-}
+// Локальное поле параметров страницы. Это ровно те поля запуска задания, что
+// принимает сервер, поэтому берём их из CompressorJob — держать вторую копию
+// списка нельзя: добавив параметр в API, легко забыть про UI-черновик.
+type Params = Pick<
+  CompressorJob,
+  | "codec"
+  | "engine"
+  | "qualityMode"
+  | "crf"
+  | "targetKbps"
+  | "maxKbps"
+  | "speed"
+  | "tenBit"
+  | "targetHeight"
+  | "audio"
+  | "audioKbps"
+>;
 
 const DEFAULT_PARAMS: Params = {
   codec: "av1",

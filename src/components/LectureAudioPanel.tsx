@@ -3,7 +3,7 @@ import { X, Mic, Volume2, RefreshCw, Waves, AlertTriangle, Check } from "lucide-
 import { Btn, Badge } from "./ui";
 import { useI18n } from "../i18n";
 import type { TranslateFn } from "../i18n";
-import type { LectureAudioSettings, LectureVadMetrics } from "../api/client";
+import type { LectureAudioPatch, LectureAudioSettings, LectureVadMetrics } from "../api/client";
 
 /**
  * Панель «Аудио» страницы лекций: выбор микрофона, усиление входа и настройки
@@ -34,18 +34,7 @@ export default function LectureAudioPanel({
   metrics: LectureVadMetrics | null;
   recording: boolean;
   calibrating: boolean;
-  onSave: (patch: {
-    micDeviceId?: string;
-    micGain?: number;
-    micAgc?: boolean;
-    vad?: {
-      rmsThreshold?: number;
-      adaptive?: boolean;
-      thresholdFactor?: number;
-      minSpeechRatio?: number;
-      zcrGate?: boolean;
-    };
-  }) => Promise<void> | void;
+  onSave: (patch: LectureAudioPatch) => Promise<void> | void;
   onCalibrate: () => void;
   onRefreshDevices: () => void;
   inline?: boolean;

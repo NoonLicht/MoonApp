@@ -358,18 +358,8 @@ export const api = {
   // --- Аудиовход: микрофон, гейн, порог VAD + «Проверить пропуски» ---
   // Настройки меняются до старта записи: VAD-опции читаются в createSession.
   lectureAudio: () => req<LectureAudioSettings>("GET", "/lecture/audio"),
-  lectureAudioSet: (patch: {
-    micDeviceId?: string;
-    micGain?: number;
-    micAgc?: boolean;
-    vad?: {
-      rmsThreshold?: number;
-      adaptive?: boolean;
-      thresholdFactor?: number;
-      minSpeechRatio?: number;
-      zcrGate?: boolean;
-    };
-  }) => req<LectureAudioSettings>("POST", "/lecture/audio", patch),
+  lectureAudioSet: (patch: LectureAudioPatch) =>
+    req<LectureAudioSettings>("POST", "/lecture/audio", patch),
   // Повторная расшифровка участков, потерянных VAD/Whisper (шум, тихий сигнал).
   lectureRecheck: (id: number) => req<LectureRecheckState>("POST", `/lecture/${id}/recheck`, {}),
   lectureRecheckState: (id: number) => req<LectureRecheckState>("GET", `/lecture/${id}/recheck`),
@@ -1486,6 +1476,24 @@ export interface LectureAudioSettings {
     minSpeechRatio: [number, number];
   };
 }
+
+/**
+ * Патч аудионастроек для POST /lecture/audio: страница присылает только те поля,
+ * которые реально меняет (остальные остаются прежними). Выведен из
+ * LectureAudioSettings, чтобы подмножество полей нельзя было рассинхронизировать:
+ * раньше этот же список жил ещё и inline-типом в LectureAudioPanel.
+ */
+export type LectureAudioPatch = Partial<
+  Pick<LectureAudioSettings, "micDeviceId" | "micGain" | "micAgc">
+> & {
+  vad?: Partial<
+    Pick<
+      LectureAudioSettings["vad"],
+      "rmsThreshold" | "adaptive" | "thresholdFactor" | "minSpeechRatio" | "zcrGate"
+    >
+  >;
+};
+
 export interface LectureStatus {
   lecture: LectureSession;
   chunks: LectureChunk[];

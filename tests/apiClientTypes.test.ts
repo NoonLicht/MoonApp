@@ -16,6 +16,14 @@ import path from "path";
  * тест даёт понятное сообщение и не требует полной сборки).
  */
 const src = fs.readFileSync(path.resolve(__dirname, "..", "src", "api", "client.ts"), "utf8");
+const compressorPage = fs.readFileSync(
+  path.resolve(__dirname, "..", "src", "pages", "CompressorPage.tsx"),
+  "utf8",
+);
+const audioPanel = fs.readFileSync(
+  path.resolve(__dirname, "..", "src", "components", "LectureAudioPanel.tsx"),
+  "utf8",
+);
 
 /** Имена из `import type { ... } from "./types";` */
 function importedTypeNames(): string[] {
@@ -49,5 +57,45 @@ describe("src/api/client.ts — типы берутся из ./types один р
     const body = bodyWithoutTypeImport();
     const unused = importedTypeNames().filter((name) => !new RegExp(`\\b${name}\\b`).test(body));
     expect(unused, `неиспользуемые типы в импорте: ${unused.join(", ")}`).toEqual([]);
+  });
+});
+
+/**
+ * Общие типы на фронтенде не дублируются локальными копиями одного и того же
+ * набора полей:
+ *
+ * - CompressorPage держал `interface Params` — ручную копию 11 полей запуска
+ *   задания; теперь это `Pick<CompressorJob, ...>`, и список полей нельзя
+ *   рассинхронизировать с API;
+ * - LectureAudioPanel держал inline-тип `onSave` — копию патча аудионастроек;
+ *   теперь общий `LectureAudioPatch` из client.ts (сам client.ts использовал
+ *   ровно тот же структурный тип в `lectureAudioSet`).
+ */
+describe("Локальные копии общих типов не возвращаются", () => {
+  it("CompressorPage: поле параметров выведено из CompressorJob", () => {
+    expect(
+      compressorPage,
+      "Params снова объявлен отдельным интерфейсом с копией полей",
+    ).not.toMatch(/interface Params \{\s*codec:/);
+    expect(compressorPage, "Params должен выводиться из CompressorJob").toMatch(
+      /type Params = Pick<\s*CompressorJob,/,
+    );
+  });
+
+  it("LectureAudioPanel: onSave принимает общий LectureAudioPatch", () => {
+    expect(audioPanel, "в панели снова inline-копия полей аудиопатча").not.toMatch(
+      /vad\?:\s*\{\s*rmsThreshold\?:/,
+    );
+    expect(audioPanel, "onSave должен принимать LectureAudioPatch").toMatch(
+      /onSave:\s*\(patch: LectureAudioPatch\)/,
+    );
+  });
+
+  it("client.ts: патч аудионастроек объявлен один раз и используется в API", () => {
+    const declared = src.match(/type LectureAudioPatch/g) ?? [];
+    expect(declared.length, "LectureAudioPatch должен быть объявлен ровно один раз").toBe(1);
+    expect(src, "lectureAudioSet должен использовать LectureAudioPatch").toMatch(
+      /lectureAudioSet: \(patch: LectureAudioPatch\)/,
+    );
   });
 });
