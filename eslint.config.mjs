@@ -50,6 +50,10 @@ export default tseslint.config(
       "server/frontmatter.js",
       "server/download.js",
       "server/setupTask.js",
+      "server/security.js",
+      "server/elevate.js",
+      "server/backup.js",
+      "server/downloads.js",
     ],
   },
 
