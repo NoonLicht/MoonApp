@@ -54,7 +54,9 @@ function resourcesBins() {
       out.push(path.join(process.resourcesPath, "bin", "singbox", "sing-box.exe"));
       out.push(path.join(process.resourcesPath, "singbox", "sing-box.exe"));
     }
-  } catch { /* не Electron — resourcesPath отсутствует */ }
+  } catch {
+    /* не Electron — resourcesPath отсутствует */
+  }
   return out;
 }
 
@@ -64,7 +66,11 @@ const SUPPORTED_PROTOCOLS = ["vless", "vmess", "trojan", "hysteria2", "tuic", "s
 
 /** Безопасный decodeURIComponent: битая последовательность не роняет разбор. */
 function dec(s) {
-  try { return decodeURIComponent(String(s == null ? "" : s)); } catch { return String(s == null ? "" : s); }
+  try {
+    return decodeURIComponent(String(s == null ? "" : s));
+  } catch {
+    return String(s == null ? "" : s);
+  }
 }
 
 /** Разбор query-строки в объект (значения декодируются). */
@@ -89,10 +95,16 @@ function truthy(v) {
 /** Base64 → utf8 (терпит «URL-safe» алфавит и отсутствие padding). */
 function b64decode(input) {
   try {
-    const s = String(input || "").trim().replace(/-/g, "+").replace(/_/g, "/").replace(/\s+/g, "");
+    const s = String(input || "")
+      .trim()
+      .replace(/-/g, "+")
+      .replace(/_/g, "/")
+      .replace(/\s+/g, "");
     const padded = s + "=".repeat((4 - (s.length % 4)) % 4);
     return Buffer.from(padded, "base64").toString("utf8");
-  } catch { return ""; }
+  } catch {
+    return "";
+  }
 }
 
 /** host:port → { server, port }. Поддерживает [ipv6]:port. */
@@ -121,7 +133,6 @@ function fragmentTag(str, fallback) {
   return dec(String(str).slice(i + 1)) || fallback || "";
 }
 
-
 // --- Разбор URI по протоколам ---
 // Каждый парсер возвращает нормализованный узел:
 //   { protocol, tag, server, port, uuid?, password?, method?, flow?, security?,
@@ -149,7 +160,11 @@ function parseVless(uri) {
   if (!uuid || !server || !Number.isFinite(port)) return null;
   const p = parseQuery(query);
   return {
-    protocol: "vless", tag: tag || server, uuid, server, port,
+    protocol: "vless",
+    tag: tag || server,
+    uuid,
+    server,
+    port,
     flow: p.flow || "",
     security: p.security || (p.flow && p.flow.startsWith("xtls-") ? "tls" : "none"),
     sni: p.sni || p.host || "",
@@ -173,13 +188,21 @@ function parseVmess(uri) {
   const text = raw.startsWith("{") ? raw : b64decode(raw);
   if (!text.trim().startsWith("{")) return null;
   let o;
-  try { o = JSON.parse(text); } catch { return null; }
+  try {
+    o = JSON.parse(text);
+  } catch {
+    return null;
+  }
   const server = String(o.add || o.server || "").trim();
   const port = parseInt(o.port, 10);
   const uuid = String(o.id || o.uuid || "").trim();
   if (!server || !Number.isFinite(port) || !uuid) return null;
   return {
-    protocol: "vmess", tag: String(o.ps || o.remark || server), uuid, server, port,
+    protocol: "vmess",
+    tag: String(o.ps || o.remark || server),
+    uuid,
+    server,
+    port,
     alterId: Number(o.aid || o.alterId || 0),
     cipher: o.scy || "auto",
     security: String(o.tls || "").toLowerCase() === "tls" ? "tls" : "none",
@@ -203,7 +226,11 @@ function parseTrojan(uri) {
   if (!password || !server || !Number.isFinite(port)) return null;
   const p = parseQuery(query);
   return {
-    protocol: "trojan", tag: tag || server, password, server, port,
+    protocol: "trojan",
+    tag: tag || server,
+    password,
+    server,
+    port,
     security: p.security || "tls",
     sni: p.sni || p.peer || p.host || "",
     fp: p.fp || "",
@@ -227,7 +254,11 @@ function parseHysteria2(uri) {
   if (!server || !Number.isFinite(port)) return null;
   const p = parseQuery(query);
   return {
-    protocol: "hysteria2", tag: tag || server, password, server, port,
+    protocol: "hysteria2",
+    tag: tag || server,
+    password,
+    server,
+    port,
     sni: p.sni || p.peer || "",
     obfs: p.obfs || "",
     obfsPassword: p["obfs-password"] || "",
@@ -251,7 +282,12 @@ function parseTuic(uri) {
   if (!uuid || !server || !Number.isFinite(port)) return null;
   const p = parseQuery(query);
   return {
-    protocol: "tuic", tag: tag || server, uuid, password, server, port,
+    protocol: "tuic",
+    tag: tag || server,
+    uuid,
+    password,
+    server,
+    port,
     congestionControl: p.congestion_control || "bbr",
     udpRelayMode: p.udp_relay_mode || "native",
     sni: p.sni || "",
@@ -261,7 +297,6 @@ function parseTuic(uri) {
     params: p,
   };
 }
-
 
 /** ss:// — два исторических формата. */
 function parseShadowsocks(uri) {
@@ -302,8 +337,13 @@ function parseShadowsocks(uri) {
   const { server, port } = splitHostPort(hostport);
   if (!server || !Number.isFinite(port) || !method) return null;
   return {
-    protocol: "shadowsocks", tag: tag || server, server, port,
-    method: method.toLowerCase(), password, params: p,
+    protocol: "shadowsocks",
+    tag: tag || server,
+    server,
+    port,
+    method: method.toLowerCase(),
+    password,
+    params: p,
   };
 }
 
@@ -320,8 +360,6 @@ function parseSsh(uri) {
   if (!user || !server || !Number.isFinite(port)) return null;
   return { protocol: "ssh", tag: tag || server, user, password, server, port, params: {} };
 }
-
-
 
 // --- Точка входа разбора ---
 
@@ -348,7 +386,9 @@ function parseUri(input) {
   try {
     const node = parser(s);
     return node && node.server ? node : null;
-  } catch { return null; }
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -371,20 +411,37 @@ function parseSubscription(input) {
         const nodes = o.outbounds.map(nodeFromJsonOutbound).filter(Boolean);
         return { format: "json", nodes, config: o, raw };
       }
-    } catch { /* падаем ниже на base64/URI */ }
+    } catch {
+      /* падаем ниже на base64/URI */
+    }
   }
 
   // 2) base64-подписка (одна большая строка без «://»).
   if (!raw.includes("://")) {
     const decoded = b64decode(raw);
     if (decoded && decoded.includes("://")) {
-      return { format: "uri", nodes: decoded.split(/[\r\n]+/).map(parseUri).filter(Boolean), raw, decoded: true };
+      return {
+        format: "uri",
+        nodes: decoded
+          .split(/[\r\n]+/)
+          .map(parseUri)
+          .filter(Boolean),
+        raw,
+        decoded: true,
+      };
     }
     return { format: "uri", nodes: [], raw };
   }
 
   // 3) Список URI (по строкам или через запятую).
-  return { format: "uri", nodes: raw.split(/[\s,]+/).map(parseUri).filter(Boolean), raw };
+  return {
+    format: "uri",
+    nodes: raw
+      .split(/[\s,]+/)
+      .map(parseUri)
+      .filter(Boolean),
+    raw,
+  };
 }
 
 // --- TLS-хелпер (общий для tls/reality-протоколов) ---
@@ -392,7 +449,11 @@ function parseSubscription(input) {
 function tlsBlock(node) {
   const tls = { enabled: true };
   if (node.sni) tls.server_name = node.sni;
-  if (node.alpn) tls.alpn = String(node.alpn).split(",").map((x) => x.trim()).filter(Boolean);
+  if (node.alpn)
+    tls.alpn = String(node.alpn)
+      .split(",")
+      .map((x) => x.trim())
+      .filter(Boolean);
   if (node.insecure) tls.insecure = true;
   if (node.fp) tls.utls = { enabled: true, fingerprint: node.fp || "chrome" };
   if (node.security === "reality" || node.pbk) {
@@ -415,11 +476,16 @@ function isNodeSupported(node) {
 function transportBlock(node) {
   const net = String(node.network || "").toLowerCase();
   if (net === "ws") {
-    return { type: "ws", path: node.path || "/", headers: node.host ? { Host: node.host } : undefined };
+    return {
+      type: "ws",
+      path: node.path || "/",
+      headers: node.host ? { Host: node.host } : undefined,
+    };
   }
   if (net === "grpc") return { type: "grpc", service_name: node.serviceName || "" };
   if (net === "quic") return { type: "quic" };
-  if (net === "httpupgrade") return { type: "httpupgrade", host: node.host || undefined, path: node.path || "/" };
+  if (net === "httpupgrade")
+    return { type: "httpupgrade", host: node.host || undefined, path: node.path || "/" };
   if (net === "http" || net === "h2") {
     return { type: "http", host: node.host ? [node.host] : undefined, path: node.path || "/" };
   }
@@ -432,7 +498,8 @@ function transportBlock(node) {
 function pickTag(tag, address) {
   const t = String(tag || "").trim();
   if (!t) return address || "";
-  if (/^(proxy|out|outbound|node|vless|vmess|trojan|ss|shadowsocks|direct|block)(-\d+)?$/i.test(t)) return address || t;
+  if (/^(proxy|out|outbound|node|vless|vmess|trojan|ss|shadowsocks|direct|block)(-\d+)?$/i.test(t))
+    return address || t;
   return t;
 }
 
@@ -486,7 +553,10 @@ function nodeFromXrayOutbound(ob) {
       tag: pickTag(ob.tag, v.address),
     };
     if (proto === "vless") node.flow = u.flow || "";
-    else { node.alterId = Number(u.alterId) || 0; node.cipher = u.security || "auto"; }
+    else {
+      node.alterId = Number(u.alterId) || 0;
+      node.cipher = u.security || "auto";
+    }
     return node.server && Number.isFinite(node.port) ? node : null;
   }
   if (proto === "trojan" || proto === "shadowsocks") {
@@ -508,7 +578,8 @@ function nodeFromXrayOutbound(ob) {
 /** Один outbound sing-box → узел или null. */
 function nodeFromSingBoxOutbound(ob) {
   const type = String(ob.type || "").toLowerCase();
-  if (!["vless", "vmess", "trojan", "hysteria2", "tuic", "shadowsocks", "ssh"].includes(type)) return null;
+  if (!["vless", "vmess", "trojan", "hysteria2", "tuic", "shadowsocks", "ssh"].includes(type))
+    return null;
   const tls = ob.tls || {};
   const tr = ob.transport || {};
   const reality = tls.reality || {};
@@ -521,7 +592,7 @@ function nodeFromSingBoxOutbound(ob) {
     port: Number(ob.server_port),
     tag: pickTag(ob.tag, ob.server),
     network: tr.type ? String(tr.type).toLowerCase() : "",
-    security: reality.enabled ? "reality" : (tls.enabled ? "tls" : "none"),
+    security: reality.enabled ? "reality" : tls.enabled ? "tls" : "none",
     sni: tls.server_name || "",
     fp: utls.fingerprint || "",
     pbk: reality.public_key || "",
@@ -529,16 +600,30 @@ function nodeFromSingBoxOutbound(ob) {
     alpn: Array.isArray(tls.alpn) ? tls.alpn.join(",") : "",
     insecure: !!tls.insecure,
     path: tr.path || "",
-    host: Array.isArray(host) ? (host[0] || "") : host,
+    host: Array.isArray(host) ? host[0] || "" : host,
     serviceName: tr.service_name || "",
   };
-  if (type === "vless") { node.uuid = ob.uuid || ""; node.flow = ob.flow || ""; }
-  if (type === "vmess") { node.uuid = ob.uuid || ""; node.alterId = ob.alter_id || 0; node.cipher = ob.security || "auto"; }
-  if (type === "trojan" || type === "hysteria2" || type === "shadowsocks") node.password = ob.password || "";
+  if (type === "vless") {
+    node.uuid = ob.uuid || "";
+    node.flow = ob.flow || "";
+  }
+  if (type === "vmess") {
+    node.uuid = ob.uuid || "";
+    node.alterId = ob.alter_id || 0;
+    node.cipher = ob.security || "auto";
+  }
+  if (type === "trojan" || type === "hysteria2" || type === "shadowsocks")
+    node.password = ob.password || "";
   if (type === "shadowsocks") node.method = ob.method || "";
-  if (type === "tuic") { node.uuid = ob.uuid || ""; node.password = ob.password || ""; }
+  if (type === "tuic") {
+    node.uuid = ob.uuid || "";
+    node.password = ob.password || "";
+  }
   if (type === "ssh") node.user = ob.user || "";
-  if (type === "hysteria2" && ob.obfs) { node.obfs = ob.obfs.type || ""; node.obfsPassword = ob.obfs.password || ""; }
+  if (type === "hysteria2" && ob.obfs) {
+    node.obfs = ob.obfs.type || "";
+    node.obfsPassword = ob.obfs.password || "";
+  }
   return node.server && Number.isFinite(node.port) ? node : null;
 }
 
@@ -564,14 +649,22 @@ function buildOutbound(node, tag = "proxy") {
     case "vless": {
       // sing-box умеет только xtls-rprx-vision; прочие xtls-флоу недопустимы.
       const rawFlow = node.flow || "";
-      const flow = rawFlow === "xtls-rprx-vision" ? rawFlow : (rawFlow.startsWith("xtls-rprx-") ? "" : rawFlow);
+      const flow =
+        rawFlow === "xtls-rprx-vision" ? rawFlow : rawFlow.startsWith("xtls-rprx-") ? "" : rawFlow;
       const ob = { type: "vless", ...base, uuid: node.uuid, flow, packet_encoding: "xudp" };
       if (transport) ob.transport = transport;
-      if (node.security === "tls" || node.security === "reality" || rawFlow.startsWith("xtls-")) ob.tls = tlsBlock(node);
+      if (node.security === "tls" || node.security === "reality" || rawFlow.startsWith("xtls-"))
+        ob.tls = tlsBlock(node);
       return ob;
     }
     case "vmess": {
-      const ob = { type: "vmess", ...base, uuid: node.uuid, security: node.cipher || "auto", alter_id: node.alterId || 0 };
+      const ob = {
+        type: "vmess",
+        ...base,
+        uuid: node.uuid,
+        security: node.cipher || "auto",
+        alter_id: node.alterId || 0,
+      };
       if (transport) ob.transport = transport;
       if (node.security === "tls") ob.tls = tlsBlock(node);
       return ob;
@@ -589,7 +682,10 @@ function buildOutbound(node, tag = "proxy") {
     }
     case "tuic": {
       return {
-        type: "tuic", ...base, uuid: node.uuid, password: node.password,
+        type: "tuic",
+        ...base,
+        uuid: node.uuid,
+        password: node.password,
         congestion_control: node.congestionControl || "bbr",
         udp_relay_mode: node.udpRelayMode || "native",
         tls: tlsBlock(node),
@@ -633,15 +729,16 @@ function buildSingBoxConfig(node, opts = {}) {
   };
 }
 
-
 // --- Жизненный цикл движка ---
 
 /** Кандидаты пути к sing-box.exe: extraResources → пользовательский → вендор → PATH. */
 function binCandidates() {
   return [
     ...resourcesBins(),
-    BUNDLED_BIN, VENDOR_BIN,
-    VENDOR_LEGACY_BIN, BUNDLED_LEGACY_BIN,
+    BUNDLED_BIN,
+    VENDOR_BIN,
+    VENDOR_LEGACY_BIN,
+    BUNDLED_LEGACY_BIN,
     "sing-box",
   ];
 }
@@ -650,7 +747,11 @@ function binCandidates() {
 function existingEnginePath() {
   for (const c of binCandidates()) {
     if (c === "sing-box") continue;
-    try { if (fs.existsSync(c)) return c; } catch { /* путь недоступен */ }
+    try {
+      if (fs.existsSync(c)) return c;
+    } catch {
+      /* путь недоступен */
+    }
   }
   return null;
 }
@@ -661,9 +762,14 @@ let detectAt = 0;
 function runEngineVersion(bin) {
   return new Promise((resolve) => {
     const { execFile } = require("child_process");
-    execFile(bin, ["version"], { timeout: 8000, windowsHide: true, maxBuffer: 256 * 1024 }, (e, o) => {
-      resolve(e ? null : (String(o || "").split(/[\r\n]+/)[0] || "unknown"));
-    });
+    execFile(
+      bin,
+      ["version"],
+      { timeout: 8000, windowsHide: true, maxBuffer: 256 * 1024 },
+      (e, o) => {
+        resolve(e ? null : String(o || "").split(/[\r\n]+/)[0] || "unknown");
+      },
+    );
   });
 }
 
@@ -673,11 +779,17 @@ async function detectEngine({ force = false } = {}) {
   if (!force && detectCache && now - detectAt < 12000) return detectCache;
   let res = { found: false, path: null, version: null };
   for (const c of binCandidates()) {
-    if (c.includes("/") || c.includes("\\")) { if (!fs.existsSync(c)) continue; }
+    if (c.includes("/") || c.includes("\\")) {
+      if (!fs.existsSync(c)) continue;
+    }
     const v = await runEngineVersion(c);
-    if (v) { res = { found: true, path: c, version: v }; break; }
+    if (v) {
+      res = { found: true, path: c, version: v };
+      break;
+    }
   }
-  detectCache = res; detectAt = now;
+  detectCache = res;
+  detectAt = now;
   return res;
 }
 
@@ -695,7 +807,11 @@ function installStatus() {
 
 /** existsSync без исключений (битый/недоступный путь не должен ронять статус). */
 function fileExists(p) {
-  try { return fs.existsSync(p); } catch { return false; }
+  try {
+    return fs.existsSync(p);
+  } catch {
+    return false;
+  }
 }
 
 /** Скачивание и распаковка sing-box в пользовательский каталог (storage/proxyCore). */
@@ -710,8 +826,16 @@ async function installEngine() {
   installState = { state: "working", progress: 0, phase: "download", error: "" };
   fs.mkdirSync(CORE_DIR, { recursive: true });
   // Хвосты прошлой неудачной попытки: иначе распаковка может взять старый архив.
-  try { fs.rmSync(path.join(CORE_DIR, "engine.zip"), { force: true }); } catch { /* нет файла */ }
-  try { fs.rmSync(path.join(CORE_DIR, "_tmp_extract"), { recursive: true, force: true }); } catch { /* нет каталога */ }
+  try {
+    fs.rmSync(path.join(CORE_DIR, "engine.zip"), { force: true });
+  } catch {
+    /* нет файла */
+  }
+  try {
+    fs.rmSync(path.join(CORE_DIR, "_tmp_extract"), { recursive: true, force: true });
+  } catch {
+    /* нет каталога */
+  }
   try {
     installState.phase = "download";
     const res = await fetch(ENGINE_URL, {
@@ -743,8 +867,12 @@ async function installEngine() {
     const findExe = (dir) => {
       for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
         const p = path.join(dir, e.name);
-        if (e.isDirectory()) { if (findExe(p)) return true; }
-        else if (e.name.toLowerCase() === "sing-box.exe") { fs.copyFileSync(p, BUNDLED_BIN); return true; }
+        if (e.isDirectory()) {
+          if (findExe(p)) return true;
+        } else if (e.name.toLowerCase() === "sing-box.exe") {
+          fs.copyFileSync(p, BUNDLED_BIN);
+          return true;
+        }
       }
       return false;
     };
@@ -764,7 +892,13 @@ async function installEngine() {
       logger.warn("proxyCore.install.fallback", { path: fallback, error: e.message });
     } else {
       // Код вместо сырого текста — UI переводит его (proxy.installFailed).
-      installState = { state: "error", progress: 0, phase: "", error: "download_failed", errorDetail: e.message };
+      installState = {
+        state: "error",
+        progress: 0,
+        phase: "",
+        error: "download_failed",
+        errorDetail: e.message,
+      };
       logger.error("proxyCore.install.error", { error: e.message });
     }
   }
@@ -794,7 +928,14 @@ function getCoreStatus() {
     error: CORE.error,
     socksPort: CORE.socksPort,
     httpPort: CORE.httpPort,
-    node: CORE.node ? { protocol: CORE.node.protocol, tag: CORE.node.tag, server: CORE.node.server, port: CORE.node.port } : null,
+    node: CORE.node
+      ? {
+          protocol: CORE.node.protocol,
+          tag: CORE.node.tag,
+          server: CORE.node.server,
+          port: CORE.node.port,
+        }
+      : null,
     childPid: CORE.childPid,
   };
 }
@@ -853,13 +994,18 @@ async function startCore(input, opts = {}) {
   killStaleCoreProcess();
 
   // Два движка не могут делить порты 10808/10809 — гасим legacy VLESS-прокси.
-  try { require("./proxy").stopProxy(); } catch { /* legacy не загружен */ }
+  try {
+    require("./proxy").stopProxy();
+  } catch {
+    /* legacy не загружен */
+  }
 
   const cfg = buildSingBoxConfig(node, { socksPort: opts.socksPort, httpPort: opts.httpPort });
   if (!cfg) {
     // Явно различаем «протокол не наш» и «транспорт не умеет движок» (xhttp и т.п.):
     // иначе пользователь видит только непонятную ошибку соединения.
-    const why = isNodeSupported(node) ? "Unsupported protocol: " + node.protocol
+    const why = isNodeSupported(node)
+      ? "Unsupported protocol: " + node.protocol
       : `unsupported_transport:${node.network || node.protocol}`;
     CORE = { ...CORE, running: false, enabled: false, error: why };
     return getCoreStatus();
@@ -896,16 +1042,23 @@ async function startCore(input, opts = {}) {
   const socksPort = cfg.inbounds[0].listen_port;
   const httpPort = cfg.inbounds[1].listen_port;
   CORE = {
-    running: false, enabled: false, child, node,
-    socksPort, httpPort,
-    error: "", childPid: child.pid,
+    running: false,
+    enabled: false,
+    child,
+    node,
+    socksPort,
+    httpPort,
+    error: "",
+    childPid: child.pid,
   };
 
   // Логи копим только для диагностики ошибок: sing-box при warn-уровне молчит,
   // поэтому по ним НЕЛЬЗЯ судить об успехе (в старой версии строка про
   // "inbound ... bind: address already in use" принималась за успешный старт).
   let logTail = "";
-  const collect = (d) => { logTail = (logTail + d.toString()).slice(-4000); };
+  const collect = (d) => {
+    logTail = (logTail + d.toString()).slice(-4000);
+  };
   child.stdout.on("data", collect);
   child.stderr.on("data", collect);
   child.on("error", (e) => {
@@ -915,8 +1068,11 @@ async function startCore(input, opts = {}) {
     if (CORE.child !== child) return; // процесс заменён другим запуском/остановкой
     CORE = {
       ...CORE,
-      running: false, enabled: false, child: null, childPid: null,
-      error: CORE.error || (logTail.trim().slice(-300) || `sing-box exited with code ${code}`),
+      running: false,
+      enabled: false,
+      child: null,
+      childPid: null,
+      error: CORE.error || logTail.trim().slice(-300) || `sing-box exited with code ${code}`,
     };
     clearCorePid();
   });
@@ -932,10 +1088,12 @@ async function startCore(input, opts = {}) {
   } else if (CORE.child === child) {
     CORE = {
       ...CORE,
-      running: false, enabled: false,
-      error: ready.reason === "exited"
-        ? (logTail.trim().slice(-300) || `sing-box exited with code ${child.exitCode}`)
-        : "core_start_timeout",
+      running: false,
+      enabled: false,
+      error:
+        ready.reason === "exited"
+          ? logTail.trim().slice(-300) || `sing-box exited with code ${child.exitCode}`
+          : "core_start_timeout",
     };
     if (child.exitCode == null) await stopChild(child);
     logger.warn("proxyCore.notReady", { reason: ready.reason, log: logTail.slice(-300) });
@@ -985,27 +1143,50 @@ async function requestThroughProxyOn(socksPort, url, opts = {}) {
     // через SOCKS сокета ещё нет — «мёртвый» узел держал бы запрос до таймаута
     // самого sing-box (~5 с).
     hard = setTimeout(() => {
-      try { if (req) req.destroy(); } catch { /* ignore */ }
+      try {
+        if (req) req.destroy();
+      } catch {
+        /* ignore */
+      }
       finish({ ok: false, status: 0, ttfbMs: null, body: "", error: "timeout" });
     }, limitMs);
-    req = mod.request({
-      hostname: u.hostname,
-      port: u.port || (u.protocol === "https:" ? 443 : 80),
-      path: u.pathname + u.search,
-      method: opts.method || "GET",
-      headers: opts.headers || { "User-Agent": "Mozilla/5.0" },
-      agent,
-    }, (res) => {
-      const ttfbMs = Date.now() - started; // заголовки пришли → это и есть TTFB
-      let body = "";
-      res.on("data", (c) => { body += c; });
-      res.on("end", () => finish({ ok: res.statusCode >= 200 && res.statusCode < 300, status: res.statusCode, ttfbMs, body, error: "" }));
-    });
+    req = mod.request(
+      {
+        hostname: u.hostname,
+        port: u.port || (u.protocol === "https:" ? 443 : 80),
+        path: u.pathname + u.search,
+        method: opts.method || "GET",
+        headers: opts.headers || { "User-Agent": "Mozilla/5.0" },
+        agent,
+      },
+      (res) => {
+        const ttfbMs = Date.now() - started; // заголовки пришли → это и есть TTFB
+        let body = "";
+        res.on("data", (c) => {
+          body += c;
+        });
+        res.on("end", () =>
+          finish({
+            ok: res.statusCode >= 200 && res.statusCode < 300,
+            status: res.statusCode,
+            ttfbMs,
+            body,
+            error: "",
+          }),
+        );
+      },
+    );
     req.setTimeout(limitMs, () => {
-      try { req.destroy(); } catch { /* ignore */ }
+      try {
+        req.destroy();
+      } catch {
+        /* ignore */
+      }
       finish({ ok: false, status: 0, ttfbMs: null, body: "", error: "timeout" });
     });
-    req.on("error", (e) => finish({ ok: false, status: 0, ttfbMs: null, body: "", error: e.message }));
+    req.on("error", (e) =>
+      finish({ ok: false, status: 0, ttfbMs: null, body: "", error: e.message }),
+    );
     req.end();
   });
 }
@@ -1066,7 +1247,14 @@ function isPortOpen(port, timeoutMs = 400, host = PROXY_HOST) {
   return new Promise((resolve) => {
     const net = require("net");
     const sock = net.connect({ host, port });
-    const done = (v) => { try { sock.destroy(); } catch { /* ignore */ } resolve(v); };
+    const done = (v) => {
+      try {
+        sock.destroy();
+      } catch {
+        /* ignore */
+      }
+      resolve(v);
+    };
     sock.setTimeout(timeoutMs, () => done(false));
     sock.once("connect", () => done(true));
     sock.once("error", () => done(false));
@@ -1110,7 +1298,11 @@ async function waitPortFree(port, timeoutMs = 1500) {
 /** Диагностика фаз пинга (включается MOONAPP_PING_DEBUG=1). */
 function pingDebug(label, extra) {
   if (process.env.MOONAPP_PING_DEBUG) {
-    try { console.error(`[pingNode] ${label}${extra ? " " + JSON.stringify(extra) : ""}`); } catch { /* ignore */ }
+    try {
+      console.error(`[pingNode] ${label}${extra ? " " + JSON.stringify(extra) : ""}`);
+    } catch {
+      /* ignore */
+    }
   }
 }
 
@@ -1125,19 +1317,27 @@ async function pingNode(node, opts = {}) {
   const timeout = Number(opts.timeout) || PING_DEFAULT_TIMEOUT;
   const tcpCheck = opts.tcpCheck !== false;
   // Порты по умолчанию подбираются динамически (ротация + пропуск занятых).
-  const ports = (opts.socksPort != null && opts.httpPort != null)
-    ? { socksPort: opts.socksPort, httpPort: opts.httpPort }
-    : await pickPingPorts();
+  const ports =
+    opts.socksPort != null && opts.httpPort != null
+      ? { socksPort: opts.socksPort, httpPort: opts.httpPort }
+      : await pickPingPorts();
   const { socksPort, httpPort } = ports;
   const tStart = Date.now();
   const engine = await detectEngine();
-  if (!engine.found) return { ok: false, state: "blocked", ttfbMs: null, country: null, error: "engine_missing" };
+  if (!engine.found)
+    return { ok: false, state: "blocked", ttfbMs: null, country: null, error: "engine_missing" };
   pingDebug("engine", { ms: Date.now() - tStart, path: engine.path });
 
   // Транспорт, который движок не умеет (xhttp/kcp) — сразу честная причина,
   // а не «timeout» после запуска ядра.
   if (!isNodeSupported(node)) {
-    return { ok: false, state: "blocked", ttfbMs: null, country: null, error: `unsupported_transport:${node.network || node.protocol}` };
+    return {
+      ok: false,
+      state: "blocked",
+      ttfbMs: null,
+      country: null,
+      error: `unsupported_transport:${node.network || node.protocol}`,
+    };
   }
 
   // Быстрый фильтр: если TCP до сервера узла не открывается, sing-box всё равно
@@ -1145,11 +1345,19 @@ async function pingNode(node, opts = {}) {
   if (tcpCheck) {
     const up = await canConnectTo(node.server, node.port, Math.min(2500, timeout));
     pingDebug("tcp", { ms: Date.now() - tStart, up });
-    if (!up) return { ok: false, state: "blocked", ttfbMs: null, country: null, error: "unreachable" };
+    if (!up)
+      return { ok: false, state: "blocked", ttfbMs: null, country: null, error: "unreachable" };
   }
 
   const cfg = buildSingBoxConfig(node, { socksPort, httpPort });
-  if (!cfg) return { ok: false, state: "blocked", ttfbMs: null, country: null, error: "unsupported_protocol" };
+  if (!cfg)
+    return {
+      ok: false,
+      state: "blocked",
+      ttfbMs: null,
+      country: null,
+      error: "unsupported_protocol",
+    };
 
   const cfgDir = path.join(CORE_DIR, "configs");
   fs.mkdirSync(cfgDir, { recursive: true });
@@ -1157,7 +1365,13 @@ async function pingNode(node, opts = {}) {
   try {
     fs.writeFileSync(cfgPath, JSON.stringify(cfg, null, 2), "utf8");
   } catch (e) {
-    return { ok: false, state: "blocked", ttfbMs: null, country: null, error: "config_write_failed: " + e.message };
+    return {
+      ok: false,
+      state: "blocked",
+      ttfbMs: null,
+      country: null,
+      error: "config_write_failed: " + e.message,
+    };
   }
 
   let child = null;
@@ -1167,13 +1381,19 @@ async function pingNode(node, opts = {}) {
       stdio: ["ignore", "pipe", "pipe"],
     });
     let spawnErr = "";
-    child.on("error", (e) => { spawnErr = e.message; });
+    child.on("error", (e) => {
+      spawnErr = e.message;
+    });
     child.stdout.on("data", () => {});
     child.stderr.on("data", () => {});
 
     // Фаза 1: ждём, пока ядро откроет SOCKS-порт. Это дешёвый TCP-коннект, а не
     // проба через прокси: иначе «мёртвый» узел заставлял бы ждать полный таймаут.
-    const ready = await waitPortReady(socksPort, () => ({ spawned: child != null, exitCode: child.exitCode, spawnErr }), 5000);
+    const ready = await waitPortReady(
+      socksPort,
+      () => ({ spawned: child != null, exitCode: child.exitCode, spawnErr }),
+      5000,
+    );
     pingDebug("ready", { ms: Date.now() - tStart, ok: ready.ok, error: ready.error });
     if (!ready.ok) {
       return { ok: false, state: "blocked", ttfbMs: null, country: null, error: ready.error };
@@ -1182,19 +1402,35 @@ async function pingNode(node, opts = {}) {
     // Фаза 2: замер. Перебираем цели и делаем повторы: первое подключение через
     // только что поднятое ядро часто не успевает (DNS + TCP + TLS/REALITY), а
     // одиночная попытка на 2.5 с отбрасывала рабочие дальние узлы.
-    const targets = Array.isArray(opts.targets) && opts.targets.length ? opts.targets : PING_TARGETS;
+    const targets =
+      Array.isArray(opts.targets) && opts.targets.length ? opts.targets : PING_TARGETS;
     const deadline = Date.now() + PING_TOTAL_BUDGET;
     let lastErr = "timeout";
     for (const target of targets) {
       for (let attempt = 1; attempt <= 2; attempt++) {
         const r = await requestThroughProxyOn(socksPort, target, { timeout });
-        pingDebug("ttfb", { ms: Date.now() - tStart, target, attempt, ok: r.ok, status: r.status, error: r.error, ttfbMs: r.ttfbMs });
+        pingDebug("ttfb", {
+          ms: Date.now() - tStart,
+          target,
+          attempt,
+          ok: r.ok,
+          status: r.status,
+          error: r.error,
+          ttfbMs: r.ttfbMs,
+        });
         if (r.ok && r.status < 400) {
           const state = classifyLatency(true, r.ttfbMs);
-          return { ok: true, state, ttfbMs: r.ttfbMs, country: await bestEffortCountry(socksPort), error: "" };
+          return {
+            ok: true,
+            state,
+            ttfbMs: r.ttfbMs,
+            country: await bestEffortCountry(socksPort),
+            error: "",
+          };
         }
         lastErr = r.error || `HTTP ${r.status}`;
-        if (Date.now() > deadline) return { ok: false, state: "blocked", ttfbMs: null, country: null, error: lastErr };
+        if (Date.now() > deadline)
+          return { ok: false, state: "blocked", ttfbMs: null, country: null, error: lastErr };
         await sleep(250);
       }
     }
@@ -1203,7 +1439,11 @@ async function pingNode(node, opts = {}) {
     const tStop = Date.now();
     await stopChild(child);
     pingDebug("stopped", { ms: Date.now() - tStop, totalMs: Date.now() - tStart });
-    try { fs.rmSync(cfgPath, { force: true }); } catch { /* уже удалён */ }
+    try {
+      fs.rmSync(cfgPath, { force: true });
+    } catch {
+      /* уже удалён */
+    }
   }
 }
 
@@ -1212,7 +1452,9 @@ async function bestEffortCountry(socksPort) {
   try {
     const info = await requestThroughProxyOn(socksPort, IPINFO_URL, { timeout: 2000 });
     if (info.ok && info.body) return JSON.parse(info.body).country || null;
-  } catch { /* страна необязательна */ }
+  } catch {
+    /* страна необязательна */
+  }
   return null;
 }
 
@@ -1229,7 +1471,14 @@ async function waitPortReady(port, childState, timeoutMs) {
     if (st.exitCode != null) return { ok: false, error: `core_exited_${st.exitCode}` };
     const connected = await new Promise((resolve) => {
       const sock = net.connect({ host: PROXY_HOST, port });
-      const done = (v) => { try { sock.destroy(); } catch { /* ignore */ } resolve(v); };
+      const done = (v) => {
+        try {
+          sock.destroy();
+        } catch {
+          /* ignore */
+        }
+        resolve(v);
+      };
       sock.setTimeout(400, () => done(false));
       sock.once("connect", () => done(true));
       sock.once("error", () => done(false));
@@ -1245,15 +1494,32 @@ async function stopChild(child) {
   if (!child || child.exitCode != null) return;
   await new Promise((resolve) => {
     let settled = false;
-    const done = () => { if (!settled) { settled = true; clearTimeout(t); resolve(); } };
+    const done = () => {
+      if (!settled) {
+        settled = true;
+        clearTimeout(t);
+        resolve();
+      }
+    };
     const t = setTimeout(done, 1200);
     child.once("close", done);
-    try { child.kill(); } catch { done(); }
+    try {
+      child.kill();
+    } catch {
+      done();
+    }
   });
   // Не вышел за отведённое время — добиваем принудительно, иначе процесс
   // останется висеть и займёт SOCKS-порт для следующего узла.
   if (child.exitCode == null) {
-    try { execFileSync("taskkill", ["/PID", String(child.pid), "/T", "/F"], { windowsHide: true, stdio: "ignore" }); } catch { /* ignore */ }
+    try {
+      execFileSync("taskkill", ["/PID", String(child.pid), "/T", "/F"], {
+        windowsHide: true,
+        stdio: "ignore",
+      });
+    } catch {
+      /* ignore */
+    }
     await sleep(200);
   }
 }
@@ -1265,22 +1531,39 @@ async function stopChild(child) {
 const CORE_PID_FILE = path.join(CORE_DIR, "core.pid");
 
 function writeCorePid(pid) {
-  try { fs.writeFileSync(CORE_PID_FILE, String(pid), "utf8"); } catch { /* не критично */ }
+  try {
+    fs.writeFileSync(CORE_PID_FILE, String(pid), "utf8");
+  } catch {
+    /* не критично */
+  }
 }
 function clearCorePid() {
-  try { fs.rmSync(CORE_PID_FILE, { force: true }); } catch { /* уже удалён */ }
+  try {
+    fs.rmSync(CORE_PID_FILE, { force: true });
+  } catch {
+    /* уже удалён */
+  }
 }
 
 /** Прибить осиротевший процесс ядра от прошлого запуска приложения. */
 function killStaleCoreProcess() {
   let pid = 0;
-  try { pid = Number(fs.readFileSync(CORE_PID_FILE, "utf8").trim()); } catch { /* файла нет — процесса тоже */ }
+  try {
+    pid = Number(fs.readFileSync(CORE_PID_FILE, "utf8").trim());
+  } catch {
+    /* файла нет — процесса тоже */
+  }
   if (pid > 0) {
     try {
       process.kill(pid, 0); // процесс ещё жив?
-      execFileSync("taskkill", ["/PID", String(pid), "/T", "/F"], { windowsHide: true, stdio: "ignore" });
+      execFileSync("taskkill", ["/PID", String(pid), "/T", "/F"], {
+        windowsHide: true,
+        stdio: "ignore",
+      });
       logger.warn("proxyCore.stale.killed", { pid });
-    } catch { /* процесса уже нет — это норма */ }
+    } catch {
+      /* процесса уже нет — это норма */
+    }
   }
   clearCorePid();
 }
@@ -1297,7 +1580,15 @@ function classifyLatency(ok, ttfbMs) {
  */
 async function testLatency({ timeout = 3000 } = {}) {
   if (!CORE.running || !CORE.enabled) {
-    return { state: "offline", error: "Not running", latencyMs: null, targets: [], ip: null, country: null, isp: null };
+    return {
+      state: "offline",
+      error: "Not running",
+      latencyMs: null,
+      targets: [],
+      ip: null,
+      country: null,
+      isp: null,
+    };
   }
   const results = [];
   let best = null;
@@ -1307,17 +1598,29 @@ async function testLatency({ timeout = 3000 } = {}) {
     results.push({ url: t.url, state, status: r.status, ttfbMs: r.ttfbMs, error: r.error });
     if (state !== "blocked" && (best == null || r.ttfbMs < best)) best = r.ttfbMs;
   }
-  let ip = null, country = null, isp = null;
+  let ip = null,
+    country = null,
+    isp = null;
   try {
     const info = await requestThroughProxy(IPINFO_URL, { timeout });
     if (info.ok && info.body) {
       const d = JSON.parse(info.body);
-      ip = d.ip || null; country = d.country || null; isp = d.org || null;
-      results.push({ url: IPINFO_URL, state: classifyLatency(true, info.ttfbMs), status: info.status, ttfbMs: info.ttfbMs, error: "" });
+      ip = d.ip || null;
+      country = d.country || null;
+      isp = d.org || null;
+      results.push({
+        url: IPINFO_URL,
+        state: classifyLatency(true, info.ttfbMs),
+        status: info.status,
+        ttfbMs: info.ttfbMs,
+        error: "",
+      });
     }
-  } catch { /* ipinfo не обязателен */ }
+  } catch {
+    /* ipinfo не обязателен */
+  }
 
-  const state = best == null ? "blocked" : (best <= 300 ? "online" : "degraded");
+  const state = best == null ? "blocked" : best <= 300 ? "online" : "degraded";
   const node = CORE.node;
   if (node) node.country = country;
   return { state, latencyMs: best, targets: results, ip, country, isp };
@@ -1333,31 +1636,63 @@ async function fetchText(url, { timeout = 15000 } = {}) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), timeout);
   try {
-    const res = await fetch(url, { redirect: "follow", signal: ctrl.signal, headers: { "User-Agent": "MoonApp" } });
+    const res = await fetch(url, {
+      redirect: "follow",
+      signal: ctrl.signal,
+      headers: { "User-Agent": "MoonApp" },
+    });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return await res.text();
-  } finally { clearTimeout(timer); }
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 module.exports = {
   // константы
-  ENGINE_ID, ENGINE_VER, ENGINE_URL, SUPPORTED_PROTOCOLS,
-  DEFAULT_SOCKS_PORT, DEFAULT_HTTP_PORT,
+  ENGINE_ID,
+  ENGINE_VER,
+  ENGINE_URL,
+  SUPPORTED_PROTOCOLS,
+  DEFAULT_SOCKS_PORT,
+  DEFAULT_HTTP_PORT,
   // разбор
-  parseUri, parseSubscription,
+  parseUri,
+  parseSubscription,
   // генерация конфига
-  buildOutbound, buildSingBoxConfig,
+  buildOutbound,
+  buildSingBoxConfig,
   // движок
-  detectEngine, installEngine, installStatus,
+  detectEngine,
+  installEngine,
+  installStatus,
   // процесс
-  startCore, stopCore, getCoreStatus, getCoreProxyUrl, getCoreHttpProxyUrl,
+  startCore,
+  stopCore,
+  getCoreStatus,
+  getCoreProxyUrl,
+  getCoreHttpProxyUrl,
   // пинг/сеть
-  testLatency, classifyLatency, requestThroughProxy, requestThroughProxyOn, fetchText,
-  pingNode, PING_SOCKS_PORT, PING_HTTP_PORT, PING_TARGETS, PING_DEFAULT_TIMEOUT,
+  testLatency,
+  classifyLatency,
+  requestThroughProxy,
+  requestThroughProxyOn,
+  fetchText,
+  pingNode,
+  PING_SOCKS_PORT,
+  PING_HTTP_PORT,
+  PING_TARGETS,
+  PING_DEFAULT_TIMEOUT,
   // Экспортируем часть внутренних помощников для тестов запуска ядра:
   // isPortOpen — проверка готовности/занятости порта, stopChild — гарантированный стоп,
   // canConnectTo — быстрый TCP-фильтр узла.
-  isPortOpen, stopChild, canConnectTo,
+  isPortOpen,
+  stopChild,
+  canConnectTo,
   // импорт JSON-конфигов
-  isNodeSupported, SUPPORTED_TRANSPORTS, nodeFromJsonOutbound, nodeFromXrayOutbound, nodeFromSingBoxOutbound,
+  isNodeSupported,
+  SUPPORTED_TRANSPORTS,
+  nodeFromJsonOutbound,
+  nodeFromXrayOutbound,
+  nodeFromSingBoxOutbound,
 };

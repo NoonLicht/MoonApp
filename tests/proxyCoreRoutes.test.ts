@@ -32,17 +32,35 @@ describe("proxycore routes (порядок роутов + скрытие узл�
 
     const sub = stmts.psubInsert.run("t", "https://example.com/s", 1);
     const subId = sub.lastInsertRowid;
-    stmts.pnodeInsert.run(subId, "a", "vless", JSON.stringify({ protocol: "vless", server: "1.1.1.1", port: 443 }));
-    stmts.pnodeInsert.run(subId, "b", "trojan", JSON.stringify({ protocol: "trojan", server: "2.2.2.2", port: 443 }));
+    stmts.pnodeInsert.run(
+      subId,
+      "a",
+      "vless",
+      JSON.stringify({ protocol: "vless", server: "1.1.1.1", port: 443 }),
+    );
+    stmts.pnodeInsert.run(
+      subId,
+      "b",
+      "trojan",
+      JSON.stringify({ protocol: "trojan", server: "2.2.2.2", port: 443 }),
+    );
 
     const app = express();
     app.use(express.json({ limit: "2mb" }));
     app.use("/api/proxycore", router);
-    await new Promise<void>((resolve) => { srv = app.listen(0, "127.0.0.1", () => resolve()); });
+    await new Promise<void>((resolve) => {
+      srv = app.listen(0, "127.0.0.1", () => resolve());
+    });
     base = `http://127.0.0.1:${srv.address().port}`;
   });
 
-  afterAll(() => { try { srv?.close(); } catch { /* noop */ } });
+  afterAll(() => {
+    try {
+      srv?.close();
+    } catch {
+      /* noop */
+    }
+  });
 
   it("GET /nodes отдаёт флаг isExcluded", async () => {
     const res = await fetch(`${base}/api/proxycore/nodes`);
@@ -68,7 +86,9 @@ describe("proxycore routes (порядок роутов + скрытие узл�
     });
     expect(sel.status).toBe(409);
 
-    const restore = await fetch(`${base}/api/proxycore/nodes/${target.id}/restore`, { method: "POST" });
+    const restore = await fetch(`${base}/api/proxycore/nodes/${target.id}/restore`, {
+      method: "POST",
+    });
     expect(restore.status).toBe(200);
     expect(stmts.pnodeGet.get(target.id).is_excluded).toBe(0);
   });
@@ -91,7 +111,9 @@ describe("proxycore routes (порядок роутов + скрытие узл�
     const target = stmts.pnodeAll.all()[0];
     stmts.pnodeExclude.run(target.id);
 
-    const res = await fetch(`${base}/api/proxycore/nodes/hidden?sub=${subId}`, { method: "DELETE" });
+    const res = await fetch(`${base}/api/proxycore/nodes/hidden?sub=${subId}`, {
+      method: "DELETE",
+    });
     expect(res.status).toBe(200);
     const j: any = await res.json();
     expect(j.restored).toBe(1);
@@ -104,37 +126,49 @@ describe("proxycore routes (порядок роутов + скрытие узл�
    * «движок не найден» при полностью рабочем движке.
    */
   it("GET /status, POST /stop и POST /start всегда отдают блок install", async () => {
-    const status = await (await fetch(`${base}/api/proxycore/status`)).json() as any;
+    const status = (await (await fetch(`${base}/api/proxycore/status`)).json()) as any;
     expect(status.install).toBeTruthy();
     expect(status.install).toHaveProperty("installed");
     expect(Array.isArray(status.install.candidates)).toBe(true);
 
-    const stop = await (await fetch(`${base}/api/proxycore/stop`, { method: "POST" })).json() as any;
+    const stop = (await (
+      await fetch(`${base}/api/proxycore/stop`, { method: "POST" })
+    ).json()) as any;
     expect(stop.install).toBeTruthy();
     expect(stop.install).toHaveProperty("installed");
 
     // /start с заведомо нерабочим узлом всё равно обязан вернуть install.
-    const start = await (await fetch(`${base}/api/proxycore/start`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ uri: "vless://11111111-2222-3333-4444-555555555555@127.0.0.1:1?security=tls#t" }),
-    })).json() as any;
+    const start = (await (
+      await fetch(`${base}/api/proxycore/start`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          uri: "vless://11111111-2222-3333-4444-555555555555@127.0.0.1:1?security=tls#t",
+        }),
+      })
+    ).json()) as any;
     expect(start.install).toBeTruthy();
     expect(start.install).toHaveProperty("installed");
-    try { require("../server/proxyCore").stopCore(); } catch { /* noop */ }
+    try {
+      require("../server/proxyCore").stopCore();
+    } catch {
+      /* noop */
+    }
   });
 
   it("POST /nodes/ping: пустая выборка ids не запускает пинг (герметичный тест)", async () => {
-    const st = await (await fetch(`${base}/api/proxycore/nodes/ping`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ids: [] }),
-    })).json() as any;
+    const st = (await (
+      await fetch(`${base}/api/proxycore/nodes/ping`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: [] }),
+      })
+    ).json()) as any;
     // Пустой список = ничего не выбрано → ни одного узла, никаких процессов.
     expect(st.total).toBe(0);
     expect(st.running).toBe(false);
 
-    const progress = await (await fetch(`${base}/api/proxycore/nodes/ping`)).json() as any;
+    const progress = (await (await fetch(`${base}/api/proxycore/nodes/ping`)).json()) as any;
     expect(progress).toHaveProperty("done");
     expect(progress).toHaveProperty("results");
     await fetch(`${base}/api/proxycore/nodes/ping/cancel`, { method: "POST" });

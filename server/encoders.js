@@ -83,7 +83,7 @@ function classifyGpu(name) {
 }
 
 function nvidiaTier(name) {
-  if (/rtx (4|5)\d{3}/i.test(name)) return "av1";          // Ada/Blackwell: AV1 NVENC
+  if (/rtx (4|5)\d{3}/i.test(name)) return "av1"; // Ada/Blackwell: AV1 NVENC
   if (/rtx \d{3,4}|gtx 1\d{3}/i.test(name)) return "hevc"; // Turing+: HEVC/H.264 NVENC
   if (/nvidia|geforce|quadro/i.test(name)) return "h264";
   return "";
@@ -112,9 +112,13 @@ function findExeInBinDir(dir, re) {
         if (fs.statSync(nested).isDirectory()) {
           for (const n2 of fs.readdirSync(nested)) if (re.test(n2)) return path.join(nested, n2);
         }
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     }
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
   return null;
 }
 
@@ -122,7 +126,9 @@ async function detectExternalBins() {
   if (binCache && Date.now() - binAt < HW_TTL) return binCache;
   const out = {};
   for (const [id, spec] of Object.entries(EXTERNAL_BINS)) {
-    let exe = findExeInBinDir(DIRS.storage, spec.file) || findExeInBinDir(path.join(DIRS.storage, "bin"), spec.file);
+    let exe =
+      findExeInBinDir(DIRS.storage, spec.file) ||
+      findExeInBinDir(path.join(DIRS.storage, "bin"), spec.file);
     if (!exe) {
       // PATH-проверка: бинарь отвечает на --version?
       const ver = await run(spec.cmd, spec.verArgs, 5000);
@@ -135,7 +141,11 @@ async function detectExternalBins() {
   }
   binCache = out;
   binAt = Date.now();
-  logger.info("encoders.externals", { found: Object.entries(out).filter(([, v]) => v).map(([k]) => k) });
+  logger.info("encoders.externals", {
+    found: Object.entries(out)
+      .filter(([, v]) => v)
+      .map(([k]) => k),
+  });
   return out;
 }
 
@@ -146,8 +156,12 @@ function ffmpegEncoderSet(ffmpegPath) {
     const { spawn } = require("child_process");
     const child = spawn(ffmpegPath, ["-hide_banner", "-encoders"], { windowsHide: true });
     let out = "";
-    child.stdout.on("data", (d) => { out += String(d); });
-    child.stderr.on("data", (d) => { out += String(d); });
+    child.stdout.on("data", (d) => {
+      out += String(d);
+    });
+    child.stderr.on("data", (d) => {
+      out += String(d);
+    });
     child.on("error", () => resolve(new Set()));
     child.on("close", () => {
       const set = new Set();
@@ -210,22 +224,70 @@ async function recommend() {
   const av1Gpu = hw.gpus.find((x) => x.tier === "av1");
   const anyGpu = hw.gpus[0];
   if (av1Gpu && av1Gpu.vendor === "nvidia" && hw.methods.nvenc) {
-    return { engine: "nvenc", codec: "av1", qualityMode: "crf", crf: 26, speed: "P5", hwName: av1Gpu.name, reason: "gpuAv1" };
+    return {
+      engine: "nvenc",
+      codec: "av1",
+      qualityMode: "crf",
+      crf: 26,
+      speed: "P5",
+      hwName: av1Gpu.name,
+      reason: "gpuAv1",
+    };
   }
   if (av1Gpu && av1Gpu.vendor === "intel" && hw.methods.qsv) {
-    return { engine: "qsv", codec: "av1", qualityMode: "crf", crf: 26, speed: "medium", hwName: av1Gpu.name, reason: "gpuAv1" };
+    return {
+      engine: "qsv",
+      codec: "av1",
+      qualityMode: "crf",
+      crf: 26,
+      speed: "medium",
+      hwName: av1Gpu.name,
+      reason: "gpuAv1",
+    };
   }
   if (av1Gpu && av1Gpu.vendor === "amd" && hw.methods.amf) {
-    return { engine: "amf", codec: "av1", qualityMode: "crf", crf: 26, speed: "balanced", hwName: av1Gpu.name, reason: "gpuAv1" };
+    return {
+      engine: "amf",
+      codec: "av1",
+      qualityMode: "crf",
+      crf: 26,
+      speed: "balanced",
+      hwName: av1Gpu.name,
+      reason: "gpuAv1",
+    };
   }
   if (hw.methods.svtav1 && hw.cpu.coresLogical >= 8) {
     const engine = hw.externals.av1an ? "av1an" : "svtav1";
-    return { engine, codec: "av1", qualityMode: "crf", crf: 24, speed: "6", hwName: hw.cpu.name, reason: "cpuMulti" };
+    return {
+      engine,
+      codec: "av1",
+      qualityMode: "crf",
+      crf: 24,
+      speed: "6",
+      hwName: hw.cpu.name,
+      reason: "cpuMulti",
+    };
   }
   if (anyGpu && hw.methods.nvenc) {
-    return { engine: "nvenc", codec: "hevc", qualityMode: "crf", crf: 26, speed: "P5", hwName: anyGpu.name, reason: "gpuHevc" };
+    return {
+      engine: "nvenc",
+      codec: "hevc",
+      qualityMode: "crf",
+      crf: 26,
+      speed: "P5",
+      hwName: anyGpu.name,
+      reason: "gpuHevc",
+    };
   }
-  return { engine: "x264", codec: "h264", qualityMode: "crf", crf: 22, speed: "medium", hwName: hw.cpu.name, reason: "compat" };
+  return {
+    engine: "x264",
+    codec: "h264",
+    qualityMode: "crf",
+    crf: 22,
+    speed: "medium",
+    hwName: hw.cpu.name,
+    reason: "compat",
+  };
 }
 
 // --- Оптимальные диапазоны (для UI-бейджей «optimal») ---
@@ -233,16 +295,44 @@ const OPTIMAL = {
   crf: { av1: [22, 28], hevc: [20, 24], h264: [18, 22] },
   cqp: { av1: [24, 28], hevc: [24, 28], h264: [22, 26] },
   // Mbps AV1; HEVC примерно −30%, H.264 примерно +50% (UI учитывает множитель)
-  bitrate: { "2160": [8, 12], "1440": [5, 8], "1080": [2.5, 4], "720": [1.2, 2.5], "480": [0.6, 1.2] },
-  speed: { svtav1: [4, 6], aom: [4, 6], x265: ["medium", "slow"], x264: ["fast", "medium"], nvenc: ["P4", "P6"], qsv: ["fast", "slow"], amf: ["balanced"] },
+  bitrate: { 2160: [8, 12], 1440: [5, 8], 1080: [2.5, 4], 720: [1.2, 2.5], 480: [0.6, 1.2] },
+  speed: {
+    svtav1: [4, 6],
+    aom: [4, 6],
+    x265: ["medium", "slow"],
+    x264: ["fast", "medium"],
+    nvenc: ["P4", "P6"],
+    qsv: ["fast", "slow"],
+    amf: ["balanced"],
+  },
 };
 
 // Скоростные шкалы по энкодеру: от «архивного» к «черновику».
 const SPEED_SCALES = {
   svtav1: ["0", "2", "4", "6", "8", "10", "13"],
   aom: ["0", "2", "4", "6", "8"],
-  x265: ["ultrafast", "superfast", "veryfast", "faster", "fast", "medium", "slow", "slower", "veryslow"],
-  x264: ["ultrafast", "superfast", "veryfast", "faster", "fast", "medium", "slow", "slower", "veryslow"],
+  x265: [
+    "ultrafast",
+    "superfast",
+    "veryfast",
+    "faster",
+    "fast",
+    "medium",
+    "slow",
+    "slower",
+    "veryslow",
+  ],
+  x264: [
+    "ultrafast",
+    "superfast",
+    "veryfast",
+    "faster",
+    "fast",
+    "medium",
+    "slow",
+    "slower",
+    "veryslow",
+  ],
   nvenc: ["P1", "P2", "P3", "P4", "P5", "P6", "P7"],
   qsv: ["veryfast", "faster", "fast", "medium", "slow", "slower", "veryslow"],
   amf: ["speed", "balanced", "quality"],
@@ -257,16 +347,27 @@ const METHOD_FFMPEG_ENC = {
   x265: { hevc: ["libx265"] },
   x264: { h264: ["libx264", "libopenh264"] },
   rav1e: { av1: ["librav1e"] },
-  nvenc: { av1: ["av1_nvenc", "hevc_nvenc", "h264_nvenc"], hevc: ["hevc_nvenc", "h264_nvenc"], h264: ["h264_nvenc"] },
-  qsv: { av1: ["av1_qsv", "hevc_qsv", "h264_qsv"], hevc: ["hevc_qsv", "h264_qsv"], h264: ["h264_qsv"] },
-  amf: { av1: ["av1_amf", "hevc_amf", "h264_amf"], hevc: ["hevc_amf", "h264_amf"], h264: ["h264_amf"] },
+  nvenc: {
+    av1: ["av1_nvenc", "hevc_nvenc", "h264_nvenc"],
+    hevc: ["hevc_nvenc", "h264_nvenc"],
+    h264: ["h264_nvenc"],
+  },
+  qsv: {
+    av1: ["av1_qsv", "hevc_qsv", "h264_qsv"],
+    hevc: ["hevc_qsv", "h264_qsv"],
+    h264: ["h264_qsv"],
+  },
+  amf: {
+    av1: ["av1_amf", "hevc_amf", "h264_amf"],
+    hevc: ["hevc_amf", "h264_amf"],
+    h264: ["h264_amf"],
+  },
 };
 
 module.exports.recommend = recommend;
 module.exports.OPTIMAL = OPTIMAL;
 module.exports.SPEED_SCALES = SPEED_SCALES;
 module.exports.METHOD_FFMPEG_ENC = METHOD_FFMPEG_ENC;
-
 
 function detectCpu() {
   const cpus = os.cpus();

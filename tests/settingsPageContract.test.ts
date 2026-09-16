@@ -21,17 +21,19 @@ import path from "path";
 const LANG_CODES = ["en", "ru", "es", "fr", "zh", "ar"];
 const settingsSrc = fs.readFileSync(
   path.resolve(__dirname, "..", "src", "pages", "SettingsPage.tsx"),
-  "utf8"
+  "utf8",
 );
 const dicts = Object.fromEntries(
   LANG_CODES.map((l) => [
     l,
     JSON.parse(fs.readFileSync(path.resolve(__dirname, "..", "src", "i18n", `${l}.json`), "utf8")),
-  ])
+  ]),
 );
 
 function resolveKey(dict: any, key: string): unknown {
-  return key.split(".").reduce<any>((acc, k) => (acc && typeof acc === "object" ? acc[k] : null), dict);
+  return key
+    .split(".")
+    .reduce<any>((acc, k) => (acc && typeof acc === "object" ? acc[k] : null), dict);
 }
 
 describe("Страница «Настройки»: состав разделов и локализация", () => {
@@ -63,7 +65,13 @@ describe("Страница «Настройки»: состав разделов
       expect(settingsSrc, `нет ссылки на settings.${k}`).toContain(`settings.${k}`);
     }
     // Пути настроек — те, что читает сервер (server/settings.js → lecture.*).
-    for (const p of ["lecture.language", "lecture.initialPrompt", "lecture.threads", "lecture.vadSilenceMs", "lecture.vadPadMs"]) {
+    for (const p of [
+      "lecture.language",
+      "lecture.initialPrompt",
+      "lecture.threads",
+      "lecture.vadSilenceMs",
+      "lecture.vadPadMs",
+    ]) {
       expect(settingsSrc, `нет изменения ${p}`).toContain(`"${p}"`);
     }
   });
@@ -77,7 +85,7 @@ describe("Страница «Настройки»: состав разделов
     expect(settingsSrc).toContain("downloadUpdateNow");
   });
 
-  it("каждый статический ключ t(\"...\") есть во всех шести локалях", () => {
+  it('каждый статический ключ t("...") есть во всех шести локалях', () => {
     const keys = new Set<string>();
     for (const m of settingsSrc.matchAll(/\bt\(\s*"([a-zA-Z0-9_.]+)"/g)) keys.add(m[1]);
     expect(keys.size).toBeGreaterThan(100);

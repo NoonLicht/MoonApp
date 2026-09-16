@@ -18,8 +18,21 @@ import ar from "../src/i18n/ar.json";
  */
 const DICT: Record<string, typeof en> = { en, ru, es, fr, zh, ar };
 const ALL_IDS = [
-  "store", "convert", "compress", "video", "movies", "music", "books", "monitor",
-  "myspace", "aichat", "voice", "lecture", "bypass", "archive", "settings",
+  "store",
+  "convert",
+  "compress",
+  "video",
+  "movies",
+  "music",
+  "books",
+  "monitor",
+  "myspace",
+  "aichat",
+  "voice",
+  "lecture",
+  "bypass",
+  "archive",
+  "settings",
 ];
 
 describe("перечень страниц приложения (src/navigation.ts)", () => {
@@ -40,7 +53,10 @@ describe("перечень страниц приложения (src/navigation.t
     for (const [lang, dict] of Object.entries(DICT)) {
       for (const p of PAGES) {
         const key = p.i18n.replace(/^nav\./, "");
-        expect((dict as { nav: Record<string, string> }).nav[key], `${lang} → ${p.i18n}`).toBeTruthy();
+        expect(
+          (dict as { nav: Record<string, string> }).nav[key],
+          `${lang} → ${p.i18n}`,
+        ).toBeTruthy();
       }
     }
   });
@@ -57,7 +73,10 @@ describe("стартовая страница в настройках", () => {
     const options = startPageOptions((key) => key);
     expect(options.map((o) => o.value)).toEqual(ALL_IDS);
     for (const id of ["movies", "lecture", "bypass"]) {
-      expect(options.some((o) => o.value === id), id).toBe(true);
+      expect(
+        options.some((o) => o.value === id),
+        id,
+      ).toBe(true);
     }
   });
 
@@ -70,7 +89,9 @@ describe("стартовая страница в настройках", () => {
       });
       for (const o of options) {
         expect(o.label, `${lang} → ${o.value}`).toBeTruthy();
-        expect(o.label, `${lang} → ${o.value} не должен остаться ключом`).not.toBe(`nav.${o.value}`);
+        expect(o.label, `${lang} → ${o.value} не должен остаться ключом`).not.toBe(
+          `nav.${o.value}`,
+        );
       }
     }
   });

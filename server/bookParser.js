@@ -27,7 +27,11 @@ const CP1251_HIGH = "абвгдежзийклмнопрстуфхцчшщъыь�
 const CP866_HIGH = "АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ";
 
 function safeIconv() {
-  try { return require("iconv-lite"); } catch { return null; }
+  try {
+    return require("iconv-lite");
+  } catch {
+    return null;
+  }
 }
 function cp1251Char(code) {
   const map = "АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯабвгдежзийклмнопрстуфхцчшщъыьэюя";
@@ -48,19 +52,45 @@ function detectDecode(buf) {
   if (buf[0] === 0xef && buf[1] === 0xbb && buf[2] === 0xbf) {
     return { text: buf.slice(3).toString("utf8"), encoding: "utf-8-sig" };
   }
-  let nonAscii = 0, utf8Valid = true, high = 0;
+  let nonAscii = 0,
+    utf8Valid = true,
+    high = 0;
   for (let i = 0; i < buf.length; i++) {
     const b = buf[i];
     if (b < 0x80) continue;
-    nonAscii++; high++;
+    nonAscii++;
+    high++;
     if (b >= 0xc2 && b <= 0xdf) {
-      if (i + 1 < buf.length && buf[i + 1] >= 0x80 && buf[i + 1] <= 0xbf) { i++; continue; }
+      if (i + 1 < buf.length && buf[i + 1] >= 0x80 && buf[i + 1] <= 0xbf) {
+        i++;
+        continue;
+      }
       utf8Valid = false;
     } else if (b >= 0xe0 && b <= 0xef) {
-      if (i + 2 < buf.length && buf[i + 1] >= 0x80 && buf[i + 1] <= 0xbf && buf[i + 2] >= 0x80 && buf[i + 2] <= 0xbf) { i += 2; continue; }
+      if (
+        i + 2 < buf.length &&
+        buf[i + 1] >= 0x80 &&
+        buf[i + 1] <= 0xbf &&
+        buf[i + 2] >= 0x80 &&
+        buf[i + 2] <= 0xbf
+      ) {
+        i += 2;
+        continue;
+      }
       utf8Valid = false;
     } else if (b >= 0xf0 && b <= 0xf4) {
-      if (i + 3 < buf.length && buf[i + 1] >= 0x80 && buf[i + 1] <= 0xbf && buf[i + 2] >= 0x80 && buf[i + 2] <= 0xbf && buf[i + 3] >= 0x80 && buf[i + 3] <= 0xbf) { i += 3; continue; }
+      if (
+        i + 3 < buf.length &&
+        buf[i + 1] >= 0x80 &&
+        buf[i + 1] <= 0xbf &&
+        buf[i + 2] >= 0x80 &&
+        buf[i + 2] <= 0xbf &&
+        buf[i + 3] >= 0x80 &&
+        buf[i + 3] <= 0xbf
+      ) {
+        i += 3;
+        continue;
+      }
       utf8Valid = false;
     } else {
       utf8Valid = false;
@@ -79,7 +109,11 @@ function detectDecode(buf) {
   const enc = scores.cp866 > scores.cp1251 ? "cp866" : "cp1251";
   const iconv = safeIconv();
   if (iconv) {
-    try { return { text: iconv.decode(buf, enc), encoding: enc }; } catch { /* фолбэк */ }
+    try {
+      return { text: iconv.decode(buf, enc), encoding: enc };
+    } catch {
+      /* фолбэк */
+    }
   }
   return { text: buf.toString("utf8"), encoding: `${enc}(fallback-utf8)` };
 }
@@ -95,9 +129,16 @@ function htmlToText(html) {
     .replace(/<\/(p|div|li|blockquote)>/gi, "\n")
     .replace(/<br\s*\/?>/gi, "\n")
     .replace(/<[^>]+>/g, "")
-    .replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#(\d+);/g, (_, d) => String.fromCharCode(Number(d)))
-    .replace(/&mdash;/g, "—").replace(/&ndash;/g, "–").replace(/&laquo;/g, "«").replace(/&raquo;/g, "»");
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#(\d+);/g, (_, d) => String.fromCharCode(Number(d)))
+    .replace(/&mdash;/g, "—")
+    .replace(/&ndash;/g, "–")
+    .replace(/&laquo;/g, "«")
+    .replace(/&raquo;/g, "»");
 }
 
 /* --------------------- Умная чистка текста --------------------- */
@@ -128,7 +169,10 @@ function parseEpub(buf) {
   let opfPath = "";
   const container = zip.getEntry("META-INF/container.xml");
   if (container) {
-    const m = container.getData().toString("utf8").match(/full-path="([^"]+)"/);
+    const m = container
+      .getData()
+      .toString("utf8")
+      .match(/full-path="([^"]+)"/);
     if (m) opfPath = m[1];
   }
   const meta = { title: "", author: "", coverId: "" };
@@ -149,13 +193,17 @@ function parseEpub(buf) {
         if (id && href) items[id] = { href: baseDir !== "." ? `${baseDir}/${href}` : href };
       }
       const spineM = xml.match(/<spine[^>]*>([\s\S]*?)<\/spine>/);
-      if (spineM) for (const r of spineM[1].matchAll(/<itemref[^>]*idref="([^"]+)"/g)) spineIds.push(r[1]);
+      if (spineM)
+        for (const r of spineM[1].matchAll(/<itemref[^>]*idref="([^"]+)"/g)) spineIds.push(r[1]);
     }
   }
   const chapters = [];
   const order = spineIds.length
     ? spineIds.map((id) => items[id]).filter(Boolean)
-    : zip.getEntries().filter((e) => /\.x?html?$/i.test(e.entryName)).map((e) => e.entryName);
+    : zip
+        .getEntries()
+        .filter((e) => /\.x?html?$/i.test(e.entryName))
+        .map((e) => e.entryName);
   for (const item of order) {
     const entry = zip.getEntry(item.href || item);
     if (!entry) continue;
@@ -182,32 +230,44 @@ function parseFb2(buf) {
       const zip = new AdmZip(buf);
       const e = zip.getEntries().find((x) => /\.fb2$/i.test(x.entryName));
       if (e) xml = e.getData().toString("utf8");
-    } catch { /* не zip — оставляем как есть */ }
+    } catch {
+      /* не zip — оставляем как есть */
+    }
   }
   const titleInfo = xml.match(/<title-info>([\s\S]*?)<\/title-info>/);
-  const bookTitle = titleInfo ? (titleInfo[1].match(/<book-title>([\s\S]*?)<\/book-title>/) || [])[1]?.trim() : "";
-  const first = titleInfo ? (titleInfo[1].match(/<first-name>([\s\S]*?)<\/first-name>/) || [])[1]?.trim() || "" : "";
-  const last = titleInfo ? (titleInfo[1].match(/<last-name>([\s\S]*?)<\/last-name>/) || [])[1]?.trim() || "" : "";
+  const bookTitle = titleInfo
+    ? (titleInfo[1].match(/<book-title>([\s\S]*?)<\/book-title>/) || [])[1]?.trim()
+    : "";
+  const first = titleInfo
+    ? (titleInfo[1].match(/<first-name>([\s\S]*?)<\/first-name>/) || [])[1]?.trim() || ""
+    : "";
+  const last = titleInfo
+    ? (titleInfo[1].match(/<last-name>([\s\S]*?)<\/last-name>/) || [])[1]?.trim() || ""
+    : "";
   let coverImage = null;
   const bin = xml.match(/<binary[^>]*content-type="image\/[^"]+"[^>]*>([\s\S]*?)<\/binary>/);
   if (bin) coverImage = `data:image/jpeg;base64,${bin[1].replace(/\s+/g, "")}`;
   const chapters = [];
   const sectionRe = /<section[^>]*>([\s\S]*?)<\/section>/g;
-  let m, count = 0;
+  let m,
+    count = 0;
   while ((m = sectionRe.exec(xml)) !== null && count < 500) {
     count++;
     const body = m[1];
     const tM = body.match(/<title>([\s\S]*?)<\/title>/);
     const title = tM ? cleanText(htmlToText(tM[1])) : `Глава ${chapters.length + 1}`;
     const paras = [...body.matchAll(/<p[^>]*>([\s\S]*?)<\/p>/g)]
-      .map((p) => p[1].replace(/<[^>]+>/g, "").trim()).filter(Boolean);
+      .map((p) => p[1].replace(/<[^>]+>/g, "").trim())
+      .filter(Boolean);
     const text = cleanText(paras.join("\n"));
     if (text) chapters.push({ title, text });
   }
   if (!chapters.length) {
     const paras = [...xml.matchAll(/<p[^>]*>([\s\S]*?)<\/p>/g)]
-      .map((p) => p[1].replace(/<[^>]+>/g, "").trim()).filter(Boolean);
-    if (paras.length) chapters.push({ title: bookTitle || "Книга", text: cleanText(paras.join("\n")) });
+      .map((p) => p[1].replace(/<[^>]+>/g, "").trim())
+      .filter(Boolean);
+    if (paras.length)
+      chapters.push({ title: bookTitle || "Книга", text: cleanText(paras.join("\n")) });
   }
   return { title: bookTitle, author: `${first} ${last}`.trim(), coverImage, chapters };
 }
@@ -232,7 +292,8 @@ function parseMobi(buf) {
   const raw = buf.toString("latin1");
   const htmlStart = raw.search(/<html[\s>]/i);
   const htmlEnd = raw.lastIndexOf("</html>");
-  let html = htmlStart >= 0 ? raw.slice(htmlStart, htmlEnd > htmlStart ? htmlEnd + 7 : undefined) : "";
+  let html =
+    htmlStart >= 0 ? raw.slice(htmlStart, htmlEnd > htmlStart ? htmlEnd + 7 : undefined) : "";
   if (!html) html = raw.replace(/[^\x09\x0A\x0D\x20-\x7E\u00A0-\u024F\u0400-\u04FF]/g, "");
   const text = cleanText(htmlToText(html));
   return {
@@ -248,11 +309,16 @@ function parseRtf(buf) {
   t = t.replace(/\\'([0-9a-f]{2})/gi, (_, h) => String.fromCharCode(parseInt(h, 16)));
   t = t.replace(/\{\\\*[^{}]*\}/g, "");
   t = t.replace(/\\par[d]?/g, "\n").replace(/\\line/g, "\n");
-  t = t.replace(/\\u(-?\d+)\s?\??/g, (_, d) => String.fromCharCode(((Number(d) + 65536) % 65536)));
+  t = t.replace(/\\u(-?\d+)\s?\??/g, (_, d) => String.fromCharCode((Number(d) + 65536) % 65536));
   t = t.replace(/\\[a-z]+-?\d*\s?/gi, "");
   t = t.replace(/[{}]/g, "");
   const text = cleanText(t);
-  return { title: "", author: "", coverImage: null, chapters: text ? [{ title: "RTF", text }] : [] };
+  return {
+    title: "",
+    author: "",
+    coverImage: null,
+    chapters: text ? [{ title: "RTF", text }] : [],
+  };
 }
 
 function parseTxt(buf) {
@@ -275,7 +341,9 @@ function parseTxt(buf) {
   }
   flush();
   return {
-    title: "", author: "", coverImage: null,
+    title: "",
+    author: "",
+    coverImage: null,
     chapters: chapters.length ? chapters : [{ title: "Книга", text: cleaned }],
     encoding,
   };
@@ -290,17 +358,20 @@ async function parseBook(filePath, originalName) {
   let result;
   if (/\.epub$/.test(name) || (isZip && /\.epub/.test(name))) result = parseEpub(buf);
   else if (/\.fb2(\.zip)?$/.test(name) || (isZip && /\.fb2/.test(name))) result = parseFb2(buf);
-  else if (/\.pdf$/.test(name) || (buf[0] === 0x25 && buf[1] === 0x50 && buf[2] === 0x44 && buf[3] === 0x46)) result = await parsePdf(buf);
-  else if (/\.mobi$|\.azw3?$/.test(name) || buf.slice(60, 68).toString("latin1") === "BOOKMOBI") result = parseMobi(buf);
-  else if (/\.rtf$/.test(name) || buf.slice(0, 5).toString("latin1") === "{\\rtf") result = parseRtf(buf);
+  else if (
+    /\.pdf$/.test(name) ||
+    (buf[0] === 0x25 && buf[1] === 0x50 && buf[2] === 0x44 && buf[3] === 0x46)
+  )
+    result = await parsePdf(buf);
+  else if (/\.mobi$|\.azw3?$/.test(name) || buf.slice(60, 68).toString("latin1") === "BOOKMOBI")
+    result = parseMobi(buf);
+  else if (/\.rtf$/.test(name) || buf.slice(0, 5).toString("latin1") === "{\\rtf")
+    result = parseRtf(buf);
   else result = parseTxt(buf);
-  if (!result.title) result.title = path.basename(originalName || filePath, path.extname(originalName || filePath));
+  if (!result.title)
+    result.title = path.basename(originalName || filePath, path.extname(originalName || filePath));
   result.format = path.extname(name).replace(".", "") || "txt";
   return result;
 }
 
 module.exports = { parseBook, cleanText, detectDecode, htmlToText };
-
-
-
-

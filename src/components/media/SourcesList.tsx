@@ -24,14 +24,22 @@ interface SourcesListProps {
 const CHIP_LIMIT = 6;
 
 type ChipKind = "flat" | "rent" | "buy";
-interface Chip { provider: MediaProvider; kind: ChipKind }
+interface Chip {
+  provider: MediaProvider;
+  kind: ChipKind;
+}
 
 /**
  * Компактная полоска площадок: одна строка с чипами «логотип + название».
  * Тип (подписка/аренда/покупка) кодируется рамкой и подсказкой, а не отдельной
  * строкой с подписью — раньше три ряда растягивали футер карточки.
  */
-export default function SourcesList({ providers, hasTrailer, onTrailer, onTorrent }: SourcesListProps) {
+export default function SourcesList({
+  providers,
+  hasTrailer,
+  onTrailer,
+  onTorrent,
+}: SourcesListProps) {
   const { t } = useI18n();
 
   const all: Chip[] = [
@@ -56,7 +64,11 @@ export default function SourcesList({ providers, hasTrailer, onTrailer, onTorren
             className={`mv-chip is-${c.kind}`}
             title={`${kindLabel(c.kind)}: ${c.provider.name}`}
           >
-            {c.provider.logo ? <img src={imgUrl(c.provider.logo)} alt="" loading="lazy" /> : <Tv size={12} />}
+            {c.provider.logo ? (
+              <img src={imgUrl(c.provider.logo)} alt="" loading="lazy" />
+            ) : (
+              <Tv size={12} />
+            )}
             <span className="mv-chip-name">{c.provider.name}</span>
           </span>
         ))}
@@ -69,15 +81,27 @@ export default function SourcesList({ providers, hasTrailer, onTrailer, onTorren
           </span>
         )}
         {providers?.link && (
-          <a className="mv-sources-link" href={providers.link} target="_blank" rel="noreferrer noopener" title="TMDB">
+          <a
+            className="mv-sources-link"
+            href={providers.link}
+            target="_blank"
+            rel="noreferrer noopener"
+            title="TMDB"
+          >
             <ExternalLink size={12} />
           </a>
         )}
       </div>
 
       <div className="mv-sources-actions">
-        {hasTrailer && <Btn icon={Play} onClick={onTrailer}>{t("movies.watchTrailer")}</Btn>}
-        <Btn icon={Zap} onClick={onTorrent}>{t("movies.openPlayer")}</Btn>
+        {hasTrailer && (
+          <Btn icon={Play} onClick={onTrailer}>
+            {t("movies.watchTrailer")}
+          </Btn>
+        )}
+        <Btn icon={Zap} onClick={onTorrent}>
+          {t("movies.openPlayer")}
+        </Btn>
       </div>
     </div>
   );

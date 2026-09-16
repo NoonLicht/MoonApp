@@ -18,11 +18,10 @@ const ping = require("../server/proxyPing");
 const nodeJson = (server: string) => JSON.stringify({ protocol: "vless", server, port: 443 });
 
 /** Пингер-заглушка: ok для серверов, начинающихся на "good". */
-const stubPinger = async (node: any) => (
+const stubPinger = async (node: any) =>
   String(node.server).startsWith("good")
     ? { ok: true, ttfbMs: 123, country: "NL", state: "online", error: "" }
-    : { ok: false, ttfbMs: null, country: null, state: "blocked", error: "timeout" }
-);
+    : { ok: false, ttfbMs: null, country: null, state: "blocked", error: "timeout" };
 
 let subA = 0;
 let subB = 0;
@@ -35,7 +34,14 @@ beforeAll(() => {
   stmts.pnodeInsert.run(subB, "good-2", "vless", nodeJson("good-2.example"));
 });
 
-afterAll(() => { try { stmts.psubDelete.run(subA); stmts.psubDelete.run(subB); } catch { /* noop */ } });
+afterAll(() => {
+  try {
+    stmts.psubDelete.run(subA);
+    stmts.psubDelete.run(subB);
+  } catch {
+    /* noop */
+  }
+});
 
 describe("proxyPing — выбор узлов", () => {
   it("фильтрует по подписке и никогда не берёт скрытые", () => {

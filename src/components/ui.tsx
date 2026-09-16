@@ -9,7 +9,12 @@ export function Glass({
   style,
   children,
   ...rest
-}: { as?: React.ElementType; className?: string; style?: React.CSSProperties; children?: React.ReactNode } & DivProps) {
+}: {
+  as?: React.ElementType;
+  className?: string;
+  style?: React.CSSProperties;
+  children?: React.ReactNode;
+} & DivProps) {
   return (
     <Tag className={`glass ${className}`} style={style} {...rest}>
       {children}
@@ -45,7 +50,15 @@ export function IconBtn({ icon: Icon, active, size = 17, ...rest }: IconBtnProps
   );
 }
 
-export function Field({ label, children, w }: { label?: string; w?: number; children: React.ReactNode }) {
+export function Field({
+  label,
+  children,
+  w,
+}: {
+  label?: string;
+  w?: number;
+  children: React.ReactNode;
+}) {
   return (
     <label className="field" style={w ? { width: w } : undefined}>
       {label && <span className="field-label">{label}</span>}
@@ -54,16 +67,24 @@ export function Field({ label, children, w }: { label?: string; w?: number; chil
   );
 }
 
-export interface SelectOption { value: string; label: string }
+export interface SelectOption {
+  value: string;
+  label: string;
+}
 
-export function Select({ value, onChange, options, style }: {
+export function Select({
+  value,
+  onChange,
+  options,
+  style,
+}: {
   value: string;
   onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
   options: (string | SelectOption)[];
   style?: React.CSSProperties;
 }) {
   const list: SelectOption[] = (options || []).map((o) =>
-    typeof o === "object" && o != null ? o : { value: o, label: o }
+    typeof o === "object" && o != null ? o : { value: o, label: o },
   );
   return (
     <div className="select-wrap" style={style}>
@@ -78,7 +99,13 @@ export function Select({ value, onChange, options, style }: {
   );
 }
 
-export function Badge({ children, tone = "neutral", active, onClick, mono }: {
+export function Badge({
+  children,
+  tone = "neutral",
+  active,
+  onClick,
+  mono,
+}: {
   children: React.ReactNode;
   tone?: string;
   active?: boolean;
@@ -109,8 +136,14 @@ export function ProgressBar({ value }: { value: number }) {
  * Заголовок страницы: `eyebrow` — надзаголовок, `title` — название,
  * `action` — необязательный блок справа (статусы, кнопки).
  */
-export function SectionHead({ eyebrow, title, action }: {
-  eyebrow?: string; title: string; action?: React.ReactNode;
+export function SectionHead({
+  eyebrow,
+  title,
+  action,
+}: {
+  eyebrow?: string;
+  title: string;
+  action?: React.ReactNode;
 }) {
   return (
     <div className="section-head">

@@ -32,7 +32,9 @@ const CONSOLE_LOG = path.join(DIRS.logs, "zapret_console.log");
 
 /* ------------------------- Каталог движка ------------------------- */
 
-function cfg() { return settings.get("zapret"); }
+function cfg() {
+  return settings.get("zapret");
+}
 
 /** Каталог установки движка (куда качаем релиз с GitHub). */
 function installDir() {
@@ -52,7 +54,9 @@ function probeEngineDir(p) {
       if (!e.isDirectory()) continue;
       if (fs.existsSync(path.join(p, e.name, "bin", "winws.exe"))) return path.join(p, e.name);
     }
-  } catch { /* нет доступа/нет папки */ }
+  } catch {
+    /* нет доступа/нет папки */
+  }
   return null;
 }
 
@@ -76,7 +80,9 @@ function findEngineDir() {
 function engineStatus() {
   const dir = findEngineDir();
   const winws = dir
-    ? (fs.existsSync(path.join(dir, "bin", "winws.exe")) ? path.join(dir, "bin", "winws.exe") : path.join(dir, "winws.exe"))
+    ? fs.existsSync(path.join(dir, "bin", "winws.exe"))
+      ? path.join(dir, "bin", "winws.exe")
+      : path.join(dir, "winws.exe")
     : null;
   const info = localVersion();
   return {
@@ -127,9 +133,13 @@ function ensureUserLists(dir) {
   if (vendorBat && fs.existsSync(vendorBat)) {
     try {
       execFileSync("cmd.exe", ["/c", vendorBat, "load_user_lists"], {
-        cwd: engine, windowsHide: true, timeout: 20000,
+        cwd: engine,
+        windowsHide: true,
+        timeout: 20000,
       });
-    } catch { /* нет движка / не отработал — добьём дефолтами ниже */ }
+    } catch {
+      /* нет движка / не отработал — добьём дефолтами ниже */
+    }
   }
   const created = [];
   for (const name of Object.keys(USER_LIST_DEFAULTS)) {
@@ -141,7 +151,9 @@ function ensureUserLists(dir) {
       fs.mkdirSync(target, { recursive: true });
       fs.writeFileSync(p, USER_LIST_DEFAULTS[name] + "\n", "utf8");
       created.push(name);
-    } catch { /* нет доступа к каталогу */ }
+    } catch {
+      /* нет доступа к каталогу */
+    }
   }
   if (created.length) logger.action("zapret.userLists.create", { files: created });
   return created;
@@ -163,7 +175,11 @@ function missingListFiles(tokens, dir) {
     const val = m[2].replace(/^"|"$/g, "").trim();
     if (!/\.(txt|bin|list|dat)$/i.test(val)) continue; // только файловые аргументы
     const p = path.isAbsolute(val) ? val : path.join(base, val);
-    try { if (!fs.existsSync(p)) missing.push(path.basename(p)); } catch { missing.push(path.basename(p)); }
+    try {
+      if (!fs.existsSync(p)) missing.push(path.basename(p));
+    } catch {
+      missing.push(path.basename(p));
+    }
   }
   return [...new Set(missing)];
 }
@@ -185,7 +201,11 @@ function strategyGroup(fileName) {
 function strategyId(fileName) {
   const suffix = (fileName.match(/\(([^)]*)\)/) || [])[1];
   if (!suffix) return "general";
-  return suffix.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  return suffix
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
 }
 
 /** Порядок для UI: general → ALT (по номеру) → FAKE TLS AUTO → SIMPLE FAKE → прочее. */
@@ -193,7 +213,7 @@ function strategySortKey(s) {
   const label = String(s.label || "");
   const m = /(\d+)/.exec(label);
   // Базовый вариант группы идёт первым, затем ALT, ALT2, ALT3…
-  const rank = m ? parseInt(m[1], 10) : (/ALT/i.test(label) ? 1 : 0);
+  const rank = m ? parseInt(m[1], 10) : /ALT/i.test(label) ? 1 : 0;
   const order = { base: 0, alt: 1, "fake-tls-auto": 2, "simple-fake": 3, exp: 4 };
   return (order[s.group] ?? 9) * 1000 + rank;
 }
@@ -218,9 +238,13 @@ function listStrategies() {
         winwsCmd: `"${st.winws}" ${extractWinwsArgs(path.join(st.dir, f))}`,
       });
     }
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
   out.sort((a, b) => strategySortKey(a) - strategySortKey(b));
-  out.forEach((s, i) => { s.index = i + 1; });
+  out.forEach((s, i) => {
+    s.index = i + 1;
+  });
   return out;
 }
 
@@ -229,7 +253,8 @@ function listBatFiles() {
   const st = engineStatus();
   if (!st.found) return [];
   try {
-    return fs.readdirSync(st.dir)
+    return fs
+      .readdirSync(st.dir)
       .filter((f) => /\.bat$/i.test(f))
       .map((f) => ({
         name: f.replace(/\.bat$/i, ""),
@@ -238,7 +263,9 @@ function listBatFiles() {
         kind: /^general/i.test(f) ? "strategy" : "service",
         args: /^general/i.test(f) ? extractWinwsArgs(path.join(st.dir, f)) : "",
       }));
-  } catch { return []; }
+  } catch {
+    return [];
+  }
 }
 
 /**
@@ -263,14 +290,18 @@ function vendorBatIndex(targetFile) {
   if (!st.found) return 0;
   let files;
   try {
-    files = fs.readdirSync(st.dir)
+    files = fs
+      .readdirSync(st.dir)
       .filter((f) => /\.bat$/i.test(f))
       .filter((f) => !/^service/i.test(f));
-  } catch { return 0; }
-  const idx = vendorOrder(files).findIndex((f) => f.toLowerCase() === String(targetFile || "").toLowerCase());
+  } catch {
+    return 0;
+  }
+  const idx = vendorOrder(files).findIndex(
+    (f) => f.toLowerCase() === String(targetFile || "").toLowerCase(),
+  );
   return idx >= 0 ? idx + 1 : 0;
 }
-
 
 /**
  * Разбор .bat-конфига Flowseal → { vars, tokens }.
@@ -287,8 +318,11 @@ function parseBatConfig(batPath) {
   const dir = path.dirname(batPath);
   const result = { vars: {}, tokens: [], raw: "" };
   let raw;
-  try { raw = fs.readFileSync(batPath, "utf8").replace(/\r/g, ""); }
-  catch { return result; }
+  try {
+    raw = fs.readFileSync(batPath, "utf8").replace(/\r/g, "");
+  } catch {
+    return result;
+  }
   const joined = raw.replace(/\^\s*\n/g, " "); // склейка переносов bat
   result.raw = joined;
 
@@ -299,7 +333,10 @@ function parseBatConfig(batPath) {
   const line = joined.split("\n").find((l) => /winws(\.exe)?/i.test(l));
   if (!line) return result;
   const cut = line.search(/winws(\.exe)?/i);
-  let argsPart = line.slice(cut).replace(/^winws(\.exe)?"?/i, "").trim();
+  let argsPart = line
+    .slice(cut)
+    .replace(/^winws(\.exe)?"?/i, "")
+    .trim();
 
   const gf = cfg();
   const gfTcp = gf.gameFilterTcp ? GAME_TCP_PORTS : "12";
@@ -317,7 +354,9 @@ function parseBatConfig(batPath) {
   argsPart = argsPart.replace(/%([A-Za-z_][A-Za-z0-9_]*)%/g, (mm, name) => {
     const v = all[String(name).toUpperCase()];
     if (v === undefined) return "";
-    return String(v).replace(/%~dp0/gi, builtin["%~DP0"]).replace(/^"(.*)"$/, "$1");
+    return String(v)
+      .replace(/%~dp0/gi, builtin["%~DP0"])
+      .replace(/^"(.*)"$/, "$1");
   });
   argsPart = argsPart.replace(/%/g, "");
 
@@ -333,9 +372,17 @@ function splitWinArgs(s) {
   let inQ = false;
   let has = false;
   for (const ch of String(s || "")) {
-    if (ch === '"') { inQ = !inQ; has = true; continue; }
+    if (ch === '"') {
+      inQ = !inQ;
+      has = true;
+      continue;
+    }
     if (!inQ && /\s/.test(ch)) {
-      if (cur || has) { out.push(cur); cur = ""; has = false; }
+      if (cur || has) {
+        out.push(cur);
+        cur = "";
+        has = false;
+      }
       continue;
     }
     cur += ch;
@@ -375,9 +422,15 @@ function writeGameFilter() {
   const mode = readGameFilter();
   const f = gameFilterFile();
   try {
-    if (mode === "off") { if (fs.existsSync(f)) fs.rmSync(f, { force: true }); }
-    else { fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, mode, "utf8"); }
-  } catch { /* движок может быть не установлен */ }
+    if (mode === "off") {
+      if (fs.existsSync(f)) fs.rmSync(f, { force: true });
+    } else {
+      fs.mkdirSync(path.dirname(f), { recursive: true });
+      fs.writeFileSync(f, mode, "utf8");
+    }
+  } catch {
+    /* движок может быть не установлен */
+  }
   return mode;
 }
 
@@ -404,11 +457,17 @@ function localVersion() {
   try {
     const j = JSON.parse(fs.readFileSync(path.join(dir, VERSION_FILE), "utf8"));
     if (j && j.tag) return { tag: String(j.tag), installedAt: j.installedAt || null, dir };
-  } catch { /* нет файла — смотрим service.bat */ }
+  } catch {
+    /* нет файла — смотрим service.bat */
+  }
   try {
-    const m = /set\s+"LOCAL_VERSION=([^"]+)"/i.exec(fs.readFileSync(path.join(dir, "service.bat"), "utf8"));
+    const m = /set\s+"LOCAL_VERSION=([^"]+)"/i.exec(
+      fs.readFileSync(path.join(dir, "service.bat"), "utf8"),
+    );
     if (m) return { tag: m[1].trim(), installedAt: null, dir };
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
   return { tag: null, installedAt: null, dir };
 }
 
@@ -416,7 +475,9 @@ function localVersion() {
 async function fetchLatestRelease(force = false) {
   if (!force && releaseCache && Date.now() - releaseCache.at < 10 * 60 * 1000) return releaseCache;
   const res = await fetch(`${GITHUB_API}/releases/latest`, {
-    headers: GH_HEADERS, redirect: "follow", signal: AbortSignal.timeout(25000),
+    headers: GH_HEADERS,
+    redirect: "follow",
+    signal: AbortSignal.timeout(25000),
   });
   if (!res.ok) throw new Error(`github_http_${res.status}`);
   const data = await res.json();
@@ -482,7 +543,13 @@ function copyDir(src, dst) {
     const from = path.join(src, e.name);
     const to = path.join(dst, e.name);
     if (e.isDirectory()) copyDir(from, to);
-    else { try { fs.copyFileSync(from, to); } catch { /* занятый файл пропускаем */ } }
+    else {
+      try {
+        fs.copyFileSync(from, to);
+      } catch {
+        /* занятый файл пропускаем */
+      }
+    }
   }
 }
 
@@ -493,7 +560,14 @@ function copyDir(src, dst) {
  */
 function installEngine(opts = {}) {
   if (installState.state === "working") return installState;
-  installState = { state: "working", progress: 0, phase: "resolve", error: "", tag: opts.tag || null, at: Date.now() };
+  installState = {
+    state: "working",
+    progress: 0,
+    phase: "resolve",
+    error: "",
+    tag: opts.tag || null,
+    at: Date.now(),
+  };
   const target = installDir();
   const tmpRoot = path.join(DIRS.tmp, `zapret_dl_${Date.now()}`);
   (async () => {
@@ -501,12 +575,20 @@ function installEngine(opts = {}) {
       // 1. Останавливаем движок: файлы релиза иначе залочены.
       //    killForeign=false — чужую копию zapret не трогаем (она в другой папке).
       installState.phase = "stop";
-      try { await stop({ killForeign: false }); } catch { /* не запущен */ }
+      try {
+        await stop({ killForeign: false });
+      } catch {
+        /* не запущен */
+      }
 
       // 2. Определяем релиз (или конкретный тег).
       installState.phase = "resolve";
       const rel = opts.tag
-        ? { tag: opts.tag, zipName: `zapret-discord-youtube-${opts.tag}.zip`, zipUrl: `${GITHUB_DL}/${opts.tag}/zapret-discord-youtube-${opts.tag}.zip` }
+        ? {
+            tag: opts.tag,
+            zipName: `zapret-discord-youtube-${opts.tag}.zip`,
+            zipUrl: `${GITHUB_DL}/${opts.tag}/zapret-discord-youtube-${opts.tag}.zip`,
+          }
         : await fetchLatestRelease(true);
       installState.tag = rel.tag;
 
@@ -515,7 +597,9 @@ function installEngine(opts = {}) {
       fs.mkdirSync(tmpRoot, { recursive: true });
       const zipPath = path.join(tmpRoot, rel.zipName || "release.zip");
       const res = await fetch(rel.zipUrl, {
-        redirect: "follow", headers: { "User-Agent": "Mozilla/5.0" }, signal: AbortSignal.timeout(300000),
+        redirect: "follow",
+        headers: { "User-Agent": "Mozilla/5.0" },
+        signal: AbortSignal.timeout(300000),
       });
       if (!res.ok) throw new Error(`download_http_${res.status}`);
       const declared = Number(res.headers.get("content-length") || 0);
@@ -545,17 +629,25 @@ function installEngine(opts = {}) {
           try {
             const p = path.join(oldEngine, "lists", name);
             if (fs.existsSync(p)) keep[name] = fs.readFileSync(p, "utf8");
-          } catch { /* ignore */ }
+          } catch {
+            /* ignore */
+          }
         }
         try {
           const gf = gameFilterFile(oldEngine);
           if (fs.existsSync(gf)) keep.__gameFilter = fs.readFileSync(gf, "utf8");
-        } catch { /* ignore */ }
+        } catch {
+          /* ignore */
+        }
       }
 
       // 6. Заменяем каталог установки.
       installState.phase = "install";
-      try { fs.rmSync(target, { recursive: true, force: true, maxRetries: 3 }); } catch { /* частично занят */ }
+      try {
+        fs.rmSync(target, { recursive: true, force: true, maxRetries: 3 });
+      } catch {
+        /* частично занят */
+      }
       fs.mkdirSync(target, { recursive: true });
       copyDir(payload, target);
 
@@ -575,18 +667,51 @@ function installEngine(opts = {}) {
       }
       // Пользовательские списки движка: их ждут конфиги general*.bat
       // (без них winws не стартует — "cannot access ipset file ...").
-      try { ensureUserLists(); } catch { /* ignore */ }
-      fs.writeFileSync(path.join(target, VERSION_FILE), JSON.stringify({
-        tag: rel.tag, installedAt: new Date().toISOString(), source: GITHUB_REPO, asset: rel.zipName || "",
-      }, null, 2), "utf8");
+      try {
+        ensureUserLists();
+      } catch {
+        /* ignore */
+      }
+      fs.writeFileSync(
+        path.join(target, VERSION_FILE),
+        JSON.stringify(
+          {
+            tag: rel.tag,
+            installedAt: new Date().toISOString(),
+            source: GITHUB_REPO,
+            asset: rel.zipName || "",
+          },
+          null,
+          2,
+        ),
+        "utf8",
+      );
 
-      installState = { state: "done", progress: 100, phase: "", error: "", tag: rel.tag, at: Date.now() };
+      installState = {
+        state: "done",
+        progress: 100,
+        phase: "",
+        error: "",
+        tag: rel.tag,
+        at: Date.now(),
+      };
       logger.action("zapret.install.done", { tag: rel.tag, dir: target });
     } catch (e) {
-      installState = { state: "error", progress: 0, phase: "", error: String(e.message || e), tag: installState.tag, at: Date.now() };
+      installState = {
+        state: "error",
+        progress: 0,
+        phase: "",
+        error: String(e.message || e),
+        tag: installState.tag,
+        at: Date.now(),
+      };
       logger.error("zapret.install.error", { error: installState.error });
     } finally {
-      try { fs.rmSync(tmpRoot, { recursive: true, force: true, maxRetries: 2 }); } catch { /* ignore */ }
+      try {
+        fs.rmSync(tmpRoot, { recursive: true, force: true, maxRetries: 2 });
+      } catch {
+        /* ignore */
+      }
     }
   })();
   return installState;
@@ -594,8 +719,8 @@ function installEngine(opts = {}) {
 
 /* ------------------------- Запуск / остановка ------------------------- */
 
-let child = null;         // текущий процесс winws (режим process)
-let lastLog = [];         // хвост вывода winws
+let child = null; // текущий процесс winws (режим process)
+let lastLog = []; // хвост вывода winws
 let activeProfile = null; // { strategyId, customArgs, mode }
 
 function logLine(line) {
@@ -621,11 +746,15 @@ function readWinwsLog(lines = 40) {
   try {
     const txt = fs.readFileSync(WINWS_LOG, "utf8").replace(/\r/g, "");
     return txt.split("\n").filter(Boolean).slice(-lines);
-  } catch { return []; }
+  } catch {
+    return [];
+  }
 }
 
 /** Пауза. */
-function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
+function sleep(ms) {
+  return new Promise((r) => setTimeout(r, ms));
+}
 
 /**
  * Запуск winws.exe на постоянной основе (standalone-режим).
@@ -650,9 +779,13 @@ async function startElevatedProcess(st, tokens, strategyId) {
   fs.writeFileSync(file, script, "utf8");
   logLine(`start (elevated): ${strategyId} · ${tokens.length} args`);
   const r = await runElevated(file, [], {
-    wait: false, timeoutMs: 120000, softTimeoutMs: 15000, workingDir: st.binDir,
+    wait: false,
+    timeoutMs: 120000,
+    softTimeoutMs: 15000,
+    workingDir: st.binDir,
   });
-  if (!r.ok) throw new Error(r.error === "uac_cancelled" ? "uac_cancelled" : (r.error || "elevate_failed"));
+  if (!r.ok)
+    throw new Error(r.error === "uac_cancelled" ? "uac_cancelled" : r.error || "elevate_failed");
   // Ждём старта после подтверждения UAC: до 10 попыток по 1.5 c — нужно время
   // и на ответ в диалоге UAC, и на инициализацию драйвера WinDivert.
   for (let i = 0; i < 10; i++) {
@@ -678,9 +811,15 @@ function cleanOldRunScripts() {
     for (const f of fs.readdirSync(DIRS.tmp)) {
       if (!/^zapret_(run|service_|kill)/.test(f)) continue;
       const p = path.join(DIRS.tmp, f);
-      try { if (fs.statSync(p).mtimeMs < cutoff) fs.rmSync(p, { force: true }); } catch { /* занят */ }
+      try {
+        if (fs.statSync(p).mtimeMs < cutoff) fs.rmSync(p, { force: true });
+      } catch {
+        /* занят */
+      }
     }
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
 }
 
 /**
@@ -708,14 +847,24 @@ function decideWinwsStarted(input) {
   const procs = Array.isArray(input.procs) ? input.procs : [];
   const ours = procs.filter((p) => isOurWinws(p.path, input.engineDir));
   if (ours.length) {
-    return { started: true, pid: ours[0].pid, killed: Math.max(0, procs.length - ours.length), reason: "path" };
+    return {
+      started: true,
+      pid: ours[0].pid,
+      killed: Math.max(0, procs.length - ours.length),
+      reason: "path",
+    };
   }
   if (input.logStarted) {
     return { started: true, pid: procs.length ? procs[0].pid : null, killed: 0, reason: "log" };
   }
   const unknown = procs.filter((p) => !p.path);
   if (unknown.length) {
-    return { started: true, pid: unknown[0].pid, killed: Math.max(0, procs.length - unknown.length), reason: "elevated_path_unknown" };
+    return {
+      started: true,
+      pid: unknown[0].pid,
+      killed: Math.max(0, procs.length - unknown.length),
+      reason: "elevated_path_unknown",
+    };
   }
   return { started: false, pid: null, killed: 0, reason: "not_found" };
 }
@@ -750,7 +899,7 @@ function buildBatLaunchScript(batPath, engineDir) {
     "chcp 65001 >nul",
     // У приложения своя кнопка «Проверить обновления», а vendor-проверка может
     // задержать старт winws на ~9 c сетевым запросом — отключаем её.
-    "set \"NO_UPDATE_CHECK=1\"",
+    'set "NO_UPDATE_CHECK=1"',
     `cd /d "${engineDir}"`,
     // Два winws конфликтуют за драйвер WinDivert — начинаем с чистого листа.
     "taskkill /IM winws.exe /F >nul 2>&1",
@@ -781,9 +930,13 @@ async function launchBatElevated(strat, st) {
   fs.writeFileSync(file, buildBatLaunchScript(strat.filePath, st.dir), "utf8");
   logLine(`start (bat): ${path.basename(strat.filePath)}`);
   const r = await runElevated(file, [], {
-    wait: false, timeoutMs: 120000, softTimeoutMs: 15000, workingDir: st.dir,
+    wait: false,
+    timeoutMs: 120000,
+    softTimeoutMs: 15000,
+    workingDir: st.dir,
   });
-  if (!r.ok) throw new Error(r.error === "uac_cancelled" ? "uac_cancelled" : (r.error || "elevate_failed"));
+  if (!r.ok)
+    throw new Error(r.error === "uac_cancelled" ? "uac_cancelled" : r.error || "elevate_failed");
   // Всё лишнее уже погашено оболочкой, поэтому появившийся winws — наш.
   const det = await waitForWinws(25000);
   if (det.pid) return { pid: det.pid, pending: false };
@@ -804,7 +957,11 @@ async function start(opts = {}) {
 
   // Пользовательские списки движка обязаны существовать, иначе winws падает с
   // "cannot access ipset file ... failed to register ipset" (их создаёт service.bat).
-  try { ensureUserLists(); } catch { /* движок может быть не развёрнут */ }
+  try {
+    ensureUserLists();
+  } catch {
+    /* движок может быть не развёрнут */
+  }
   writeGameFilter();
 
   if (mode === "service") {
@@ -823,7 +980,10 @@ async function start(opts = {}) {
     child = null;
     const res = await startElevatedProcess(st, tokens, strategyId);
     if (res.pending) logLine("подтвердите UAC — движок стартует автоматически");
-    else logLine(`winws pid ${res.pid}${res.killed > 0 ? ` (остановлено сторонних: ${res.killed})` : ""}`);
+    else
+      logLine(
+        `winws pid ${res.pid}${res.killed > 0 ? ` (остановлено сторонних: ${res.killed})` : ""}`,
+      );
     activeProfile = { strategyId, customArgs, mode: "process", pending: !!res.pending };
   } else {
     // Простой запуск: тот же .bat, что пользователь запускал бы двойным кликом.
@@ -834,7 +994,12 @@ async function start(opts = {}) {
     activeProfile = { strategyId, customArgs, mode: "process", pending: !!res.pending };
   }
   setDefaultProfile(strategyId, customArgs, mode, strat.filePath);
-  logger.action("zapret.start", { strategyId, mode, customArgs: !!customArgs, tokens: tokens.length });
+  logger.action("zapret.start", {
+    strategyId,
+    mode,
+    customArgs: !!customArgs,
+    tokens: tokens.length,
+  });
   return status();
 }
 
@@ -848,7 +1013,11 @@ async function runElevatedScript(body, name, timeoutMs) {
       workingDir: engineStatus().dir || DIRS.tmp,
     });
   } finally {
-    try { fs.rmSync(file, { force: true }); } catch { /* ignore */ }
+    try {
+      fs.rmSync(file, { force: true });
+    } catch {
+      /* ignore */
+    }
   }
 }
 
@@ -868,7 +1037,11 @@ function serviceArg(t) {
 async function installService(strategyId, tokens) {
   const st = engineStatus();
   // Служба стартует winws напрямую — списки должны существовать до binPath.
-  try { ensureUserLists(); } catch { /* ignore */ }
+  try {
+    ensureUserLists();
+  } catch {
+    /* ignore */
+  }
   const missingSvc = missingListFiles(tokens);
   if (missingSvc.length) throw new Error(`missing_lists: ${missingSvc.join(", ")}`);
   const strat = listStrategies().find((s) => s.id === strategyId);
@@ -913,14 +1086,24 @@ async function removeService() {
 /** Список процессов winws.exe: [{ pid, path }] (для точечной остановки). */
 function listWinwsProcesses() {
   return new Promise((resolve) => {
-    exec("powershell -NoProfile -Command \"Get-Process winws -EA SilentlyContinue | ForEach-Object { ($_.Id.ToString() + '|' + $_.Path) }\"",
-      { windowsHide: true, timeout: 15000 }, (err, out) => {
+    exec(
+      "powershell -NoProfile -Command \"Get-Process winws -EA SilentlyContinue | ForEach-Object { ($_.Id.ToString() + '|' + $_.Path) }\"",
+      { windowsHide: true, timeout: 15000 },
+      (err, out) => {
         if (err) return resolve([]);
-        resolve(String(out || "").split(/\r?\n/)
-          .map((l) => l.trim()).filter(Boolean)
-          .map((l) => { const [pid, p] = l.split("|"); return { pid: parseInt(pid, 10), path: p || "" }; })
-          .filter((x) => x.pid));
-      });
+        resolve(
+          String(out || "")
+            .split(/\r?\n/)
+            .map((l) => l.trim())
+            .filter(Boolean)
+            .map((l) => {
+              const [pid, p] = l.split("|");
+              return { pid: parseInt(pid, 10), path: p || "" };
+            })
+            .filter((x) => x.pid),
+        );
+      },
+    );
   });
 }
 
@@ -929,7 +1112,9 @@ function isOurWinws(p, engineDir) {
   if (!engineDir || !p) return false;
   try {
     return path.resolve(p).toLowerCase().startsWith(path.resolve(engineDir).toLowerCase());
-  } catch { return false; }
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -942,7 +1127,11 @@ async function stop(opts = {}) {
   const engineDir = findEngineDir();
   let stopped = false;
   if (child && !child.killed) {
-    try { child.kill(); } catch { /* ignore */ }
+    try {
+      child.kill();
+    } catch {
+      /* ignore */
+    }
     stopped = true;
   }
   child = null;
@@ -961,21 +1150,30 @@ async function stop(opts = {}) {
         // Первый заход не удался (elevated-процесс) — повторяем с UAC.
         await runElevatedScript(
           ["@echo off", "taskkill /IM winws.exe /F >nul 2>&1", "echo OK"].join("\r\n"),
-          "zapret_kill", 60000
+          "zapret_kill",
+          60000,
         );
       }
     }
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
   // Если установлена служба — УДАЛЯЕМ её (аналог пункта 2 service.bat
   // «Remove Services»). Просто `net stop` оставил бы winws автозапускаемым и
   // держащим драйвер WinDivert, из-за чего следующий запуск конфликтовал бы.
   try {
     const svc = await queryService();
     if (svc.installed) {
-      try { await removeService(); stopped = true; }
-      catch { /* нет прав / уже удалена — не критично */ }
+      try {
+        await removeService();
+        stopped = true;
+      } catch {
+        /* нет прав / уже удалена — не критично */
+      }
     }
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
   if (stopped) logger.action("zapret.stop", {});
   return status();
 }
@@ -983,8 +1181,16 @@ async function stop(opts = {}) {
 function setDefaultProfile(strategyId, customArgs, mode, batchFilePath) {
   try {
     stmts.bpClearActive.run();
-    stmts.bpInsert.run(`auto: ${strategyId} (${mode})`, batchFilePath || "", customArgs || "", 1, mode === "service");
-  } catch { /* некритично */ }
+    stmts.bpInsert.run(
+      `auto: ${strategyId} (${mode})`,
+      batchFilePath || "",
+      customArgs || "",
+      1,
+      mode === "service",
+    );
+  } catch {
+    /* некритично */
+  }
 }
 
 /** Состояние службы zapret + активная стратегия из реестра (без UAC). */
@@ -993,8 +1199,10 @@ function queryService() {
     exec(`sc query ${SERVICE_NAME}`, { windowsHide: true }, (err, stdout) => {
       const installed = !err && /STATE/.test(stdout || "");
       const running = installed && /RUNNING/.test(stdout || "");
-      exec(`reg query "HKLM\\System\\CurrentControlSet\\Services\\${SERVICE_NAME}" /v zapret-discord-youtube`,
-        { windowsHide: true }, (e2, out2) => {
+      exec(
+        `reg query "HKLM\\System\\CurrentControlSet\\Services\\${SERVICE_NAME}" /v zapret-discord-youtube`,
+        { windowsHide: true },
+        (e2, out2) => {
           const m = /zapret-discord-youtube\s+REG_SZ\s+(.+)/i.exec(out2 || "");
           resolve({
             installed,
@@ -1002,28 +1210,40 @@ function queryService() {
             strategyFile: m ? m[1].trim() : "",
             raw: (stdout || "").trim().slice(-200),
           });
-        });
+        },
+      );
     });
   });
 }
 
 async function status() {
   const svc = await queryService();
-  let winwsRunning = false, winwsPid = null, memKb = null;
+  let winwsRunning = false,
+    winwsPid = null,
+    memKb = null;
   try {
-    const out = await new Promise((res) => exec('tasklist /FI "IMAGENAME eq winws.exe" /FO CSV /NH', { windowsHide: true }, (e, o) => res(o || "")));
+    const out = await new Promise((res) =>
+      exec('tasklist /FI "IMAGENAME eq winws.exe" /FO CSV /NH', { windowsHide: true }, (e, o) =>
+        res(o || ""),
+      ),
+    );
     const m = out.match(/"winws\.exe","(\d+)"/i);
-    if (m) { winwsRunning = true; winwsPid = parseInt(m[1], 10); }
+    if (m) {
+      winwsRunning = true;
+      winwsPid = parseInt(m[1], 10);
+    }
     const memM = out.match(/"([\d\s,.]+)\s+K"/i);
     if (memM) memKb = parseInt(memM[1].replace(/[^\d]/g, ""), 10);
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
   return {
     active: winwsRunning || svc.running,
     process: { running: winwsRunning, pid: winwsPid, memKb },
     service: svc,
-    mode: child ? "process" : (svc.running ? "service" : (cfg().mode || "process")),
+    mode: child ? "process" : svc.running ? "service" : cfg().mode || "process",
     profile: activeProfile,
-    log: (activeProfile?.mode === "process" ? readWinwsLog(40) : lastLog.slice(-40)),
+    log: activeProfile?.mode === "process" ? readWinwsLog(40) : lastLog.slice(-40),
     engine: engineStatus(),
     strategy: activeProfile?.strategyId || (svc.strategyFile ? strategyId(svc.strategyFile) : null),
     version: localVersion().tag,
@@ -1050,14 +1270,23 @@ async function serviceAction(action, strategyId) {
   return { ok: true, ...(await queryService()) };
 }
 
-
 /* ------------------------- Диагностика доступности ------------------------- */
 
 const DEFAULT_TARGETS = [
   { id: "youtube", name: "YouTube", url: "https://www.youtube.com/generate_204", kind: "http" },
   { id: "googlevideo", name: "googlevideo (CDN)", url: "https://www.youtube.com", kind: "http" },
-  { id: "discord-api", name: "Discord API", url: "https://discord.com/api/v9/gateway", kind: "http" },
-  { id: "discord-gw", name: "Discord Gateway (WSS)", url: "https://gateway.discord.gg/?v=9&encver=1", kind: "http" },
+  {
+    id: "discord-api",
+    name: "Discord API",
+    url: "https://discord.com/api/v9/gateway",
+    kind: "http",
+  },
+  {
+    id: "discord-gw",
+    name: "Discord Gateway (WSS)",
+    url: "https://gateway.discord.gg/?v=9&encver=1",
+    kind: "http",
+  },
   { id: "discord-voice", name: "Discord Voice (UDP/STUN)", kind: "udp" },
 ];
 
@@ -1070,19 +1299,40 @@ function parseCustomTargets() {
     .map((url, i) => ({ id: `custom${i}`, name: url, url, kind: "http", custom: true }));
 }
 
-function targets() { return [...DEFAULT_TARGETS, ...parseCustomTargets()]; }
+function targets() {
+  return [...DEFAULT_TARGETS, ...parseCustomTargets()];
+}
 
 /** HTTP-проба с таймингом. ok = 2xx..4xx (жёсткая блокировка даёт RST/timeout). */
 function httpProbe(url, timeoutMs = 6000) {
   return new Promise((resolve) => {
     const t0 = Date.now();
     try {
-      const req = https.get(url, { timeout: timeoutMs, rejectUnauthorized: false, headers: { "User-Agent": "Mozilla/5.0" } }, (res) => {
-        res.resume();
-        resolve({ ok: res.statusCode >= 200 && res.statusCode < 500, status: res.statusCode, latencyMs: Date.now() - t0, error: null });
+      const req = https.get(
+        url,
+        { timeout: timeoutMs, rejectUnauthorized: false, headers: { "User-Agent": "Mozilla/5.0" } },
+        (res) => {
+          res.resume();
+          resolve({
+            ok: res.statusCode >= 200 && res.statusCode < 500,
+            status: res.statusCode,
+            latencyMs: Date.now() - t0,
+            error: null,
+          });
+        },
+      );
+      req.on("timeout", () => {
+        req.destroy();
+        resolve({ ok: false, status: null, latencyMs: Date.now() - t0, error: "timeout" });
       });
-      req.on("timeout", () => { req.destroy(); resolve({ ok: false, status: null, latencyMs: Date.now() - t0, error: "timeout" }); });
-      req.on("error", (e) => resolve({ ok: false, status: null, latencyMs: Date.now() - t0, error: e.code || e.message }));
+      req.on("error", (e) =>
+        resolve({
+          ok: false,
+          status: null,
+          latencyMs: Date.now() - t0,
+          error: e.code || e.message,
+        }),
+      );
     } catch (e) {
       resolve({ ok: false, status: null, latencyMs: Date.now() - t0, error: e.message });
     }
@@ -1095,15 +1345,33 @@ function udpProbe(host = "stun.l.google.com", port = 19302, timeoutMs = 5000) {
     const t0 = Date.now();
     const sock = dgram.createSocket("udp4");
     const msg = Buffer.alloc(20);
-    msg.writeUInt16BE(0x0001, 0); msg.writeUInt16BE(0, 2);   // Binding Request
-    msg.writeUInt32BE(0x2112a442, 4);                        // magic cookie
+    msg.writeUInt16BE(0x0001, 0);
+    msg.writeUInt16BE(0, 2); // Binding Request
+    msg.writeUInt32BE(0x2112a442, 4); // magic cookie
     for (let i = 8; i < 20; i++) msg[i] = Math.floor(Math.random() * 256);
     let done = false;
-    const finish = (r) => { if (!done) { done = true; try { sock.close(); } catch { /* ignore */ } resolve(r); } };
+    const finish = (r) => {
+      if (!done) {
+        done = true;
+        try {
+          sock.close();
+        } catch {
+          /* ignore */
+        }
+        resolve(r);
+      }
+    };
     sock.on("message", () => finish({ ok: true, latencyMs: Date.now() - t0, error: null }));
-    sock.on("error", (e) => finish({ ok: false, latencyMs: Date.now() - t0, error: e.code || e.message }));
-    sock.send(msg, port, host, (e) => { if (e) finish({ ok: false, latencyMs: Date.now() - t0, error: e.code || e.message }); });
-    setTimeout(() => finish({ ok: false, latencyMs: Date.now() - t0, error: "timeout" }), timeoutMs);
+    sock.on("error", (e) =>
+      finish({ ok: false, latencyMs: Date.now() - t0, error: e.code || e.message }),
+    );
+    sock.send(msg, port, host, (e) => {
+      if (e) finish({ ok: false, latencyMs: Date.now() - t0, error: e.code || e.message });
+    });
+    setTimeout(
+      () => finish({ ok: false, latencyMs: Date.now() - t0, error: "timeout" }),
+      timeoutMs,
+    );
   });
 }
 
@@ -1117,9 +1385,15 @@ async function runDiagnostics() {
   const okCount = results.filter((r) => r.ok).length;
   const oks = results.filter((r) => r.ok);
   const avgLatency = Math.round(oks.reduce((a, r) => a + r.latencyMs, 0) / Math.max(1, oks.length));
-  return { allOk: results.length > 0 && okCount === results.length, okCount, total: results.length, avgLatency, results, at: Date.now() };
+  return {
+    allOk: results.length > 0 && okCount === results.length,
+    okCount,
+    total: results.length,
+    avgLatency,
+    results,
+    at: Date.now(),
+  };
 }
-
 
 /* ------------------------- Auto-Tuner (1-click) ------------------------- */
 
@@ -1142,24 +1416,41 @@ async function autoTune(opts = {}) {
         await start({ strategyId: s.id, mode: "process", customArgs: "" });
         await sleep(2500); // даём winws и WinDivert подняться
         const diag = await runDiagnostics();
-        const score = diag.allOk ? 0 : (diag.okCount * -10) + (diag.avgLatency / 100);
-        tried.push({ strategyId: s.id, allOk: diag.allOk, okCount: diag.okCount, total: diag.total, avgLatency: diag.avgLatency, score });
+        const score = diag.allOk ? 0 : diag.okCount * -10 + diag.avgLatency / 100;
+        tried.push({
+          strategyId: s.id,
+          allOk: diag.allOk,
+          okCount: diag.okCount,
+          total: diag.total,
+          avgLatency: diag.avgLatency,
+          score,
+        });
       } catch (e) {
         tried.push({ strategyId: s.id, allOk: false, error: String(e.message || e) });
       }
     }
-    const ranked = tried.filter((t) => !t.error).sort((a, b) => (b.allOk - a.allOk) || (a.score - b.score));
+    const ranked = tried
+      .filter((t) => !t.error)
+      .sort((a, b) => b.allOk - a.allOk || a.score - b.score);
     const best = ranked[0] || null;
     let applied = null;
     if (best && apply) {
       await start({ strategyId: best.strategyId, mode: "process", customArgs: "" });
       applied = best.strategyId;
     } else if (previous) {
-      try { await start(previous); } catch { /* вернуть прежний профиль не вышло — не критично */ }
+      try {
+        await start(previous);
+      } catch {
+        /* вернуть прежний профиль не вышло — не критично */
+      }
     } else {
       await stop();
     }
-    logger.action("zapret.autoTune", { tried: tried.length, best: best?.strategyId || null, applied });
+    logger.action("zapret.autoTune", {
+      tried: tried.length,
+      best: best?.strategyId || null,
+      applied,
+    });
     return { tried, best: best?.strategyId || null, applied };
   } finally {
     tuning = false;
@@ -1182,7 +1473,7 @@ const CONSOLE_MAX_LINES = 500;
 
 /** Общий поток вывода для правой панели-консоли (проверка/диагностика/списки). */
 const consoleState = {
-  mode: null,       // null | "check" | "diag" | "lists"
+  mode: null, // null | "check" | "diag" | "lists"
   label: "",
   running: false,
   startedAt: 0,
@@ -1190,9 +1481,9 @@ const consoleState = {
   exitCode: null,
   error: "",
   log: [],
-  cursor: 0,        // сколько байт CONSOLE_LOG уже прочитано
+  cursor: 0, // сколько байт CONSOLE_LOG уже прочитано
   best: null,
-  bestId: null,     // id конфига, который vendor-скрипт назвал лучшим
+  bestId: null, // id конфига, который vendor-скрипт назвал лучшим
   results: [],
   progress: { done: 0, total: 0, current: null },
 };
@@ -1200,11 +1491,25 @@ const consoleState = {
 /** Сбросить консоль под новый прогон. */
 function consoleReset(mode, label) {
   Object.assign(consoleState, {
-    mode, label, running: true, startedAt: Date.now(), finishedAt: 0,
-    exitCode: null, error: "", log: [], cursor: 0, best: null, bestId: null, results: [],
+    mode,
+    label,
+    running: true,
+    startedAt: Date.now(),
+    finishedAt: 0,
+    exitCode: null,
+    error: "",
+    log: [],
+    cursor: 0,
+    best: null,
+    bestId: null,
+    results: [],
     progress: { done: 0, total: mode === "check" ? listStrategies().length : 0, current: null },
   });
-  try { fs.writeFileSync(CONSOLE_LOG, "", "utf8"); } catch { /* ignore */ }
+  try {
+    fs.writeFileSync(CONSOLE_LOG, "", "utf8");
+  } catch {
+    /* ignore */
+  }
 }
 
 function consolePush(line) {
@@ -1218,14 +1523,17 @@ function consolePush(line) {
 function consoleWriteDirect(lines, persist) {
   try {
     fs.appendFileSync(CONSOLE_LOG, (lines || []).map((l) => `${l}\r\n`).join(""), "utf8");
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
   consoleDrain(persist !== false);
 }
 
 // Маркеры vendor-скрипта utils/test zapret.ps1.
 const CHECK_CFG_RE = /^\s*\[(\d+)\/(\d+)\]\s+(.+?\.bat)\s*$/;
 const CHECK_FAILED_RE = /Strategy failed to start/i;
-const CHECK_ANALYTICS_RE = /^\s*(.+?\.bat)\s*:\s*HTTP OK:\s*(\d+),\s*ERR:\s*(\d+),\s*UNSUP:\s*(\d+),\s*Ping OK:\s*(\d+),\s*Fail:\s*(\d+)/;
+const CHECK_ANALYTICS_RE =
+  /^\s*(.+?\.bat)\s*:\s*HTTP OK:\s*(\d+),\s*ERR:\s*(\d+),\s*UNSUP:\s*(\d+),\s*Ping OK:\s*(\d+),\s*Fail:\s*(\d+)/;
 const CHECK_BEST_RE = /^\s*Best (?:config|strategy):\s*(.+?)\s*$/i;
 
 /**
@@ -1253,12 +1561,20 @@ function finalizeLights() {
   const bestId = consoleState.bestId;
   try {
     for (const row of stmts.bcrAll.all()) {
-      const green = lightGreen({
-        strategyId: row.strategy_id, okCount: row.ok_count, error: row.error, unsup: row.unsup,
-      }, bestId);
+      const green = lightGreen(
+        {
+          strategyId: row.strategy_id,
+          okCount: row.ok_count,
+          error: row.error,
+          unsup: row.unsup,
+        },
+        bestId,
+      );
       if (green !== (Number(row.ok) === 1)) stmts.bcrSetOk.run(green ? 1 : 0, row.id);
     }
-  } catch { /* БД недоступна — не критично */ }
+  } catch {
+    /* БД недоступна — не критично */
+  }
 }
 
 /** Результат конфига по имени .bat-файла (id совпадает с id стратегии в UI). */
@@ -1267,8 +1583,15 @@ function resultFor(file) {
   let r = consoleState.results.find((x) => x.strategyId === sid);
   if (!r) {
     r = {
-      strategyId: sid, file, okCount: 0, error: 0, unsup: 0,
-      pingOk: 0, pingFail: 0, finished: false, failedToStart: false,
+      strategyId: sid,
+      file,
+      okCount: 0,
+      error: 0,
+      unsup: 0,
+      pingOk: 0,
+      pingFail: 0,
+      finished: false,
+      failedToStart: false,
     };
     consoleState.results.push(r);
   }
@@ -1288,9 +1611,13 @@ function saveLight(r, persist) {
       ping_ok: r.pingOk || 0,
       ping_fail: r.pingFail || 0,
       checked_at: new Date().toISOString(),
-      run_started_at: consoleState.startedAt ? new Date(consoleState.startedAt).toISOString() : null,
+      run_started_at: consoleState.startedAt
+        ? new Date(consoleState.startedAt).toISOString()
+        : null,
     });
-  } catch { /* БД недоступна — не критично */ }
+  } catch {
+    /* БД недоступна — не критично */
+  }
 }
 
 /** Разбор одной строки вывода vendor-скрипта. */
@@ -1350,7 +1677,8 @@ function consoleDrain(persist = true) {
     fs.readSync(fd, buf, 0, len, consoleState.cursor);
     fs.closeSync(fd);
     consoleState.cursor = size;
-    const text = buf.toString("utf8")
+    const text = buf
+      .toString("utf8")
       .replace(/\x1b\[[0-9;]*[A-Za-z]/g, "") // ANSI-цвета (в файл обычно не попадают)
       .replace(/\r/g, "");
     for (const raw of text.split("\n")) {
@@ -1359,7 +1687,9 @@ function consoleDrain(persist = true) {
       consolePush(line);
       if (consoleState.mode === "check") parseCheckLine(line, persist);
     }
-  } catch { /* лога ещё нет */ }
+  } catch {
+    /* лога ещё нет */
+  }
 }
 
 /** Финальный разбор файла результатов vendor-скрипта (utils/test results/*.txt). */
@@ -1376,14 +1706,19 @@ function parseCheckResultsFile(dir) {
       if (st.mtimeMs < (consoleState.startedAt || 0)) continue; // только свежий прогон
       if (!newest || st.mtimeMs > newest.mtimeMs) newest = { p, mtimeMs: st.mtimeMs };
     }
-  } catch { return 0; }
+  } catch {
+    return 0;
+  }
   if (!newest) return 0;
   let n = 0;
   try {
     const lines = fs.readFileSync(newest.p, "utf8").split(/\r?\n/);
     for (const raw of lines) {
       const line = raw.replace(/\s+$/, "");
-      const m = /^\s*(.+?\.bat)\s*:\s*HTTP OK:\s*(\d+),\s*ERR:\s*(\d+),\s*UNSUP:\s*(\d+),\s*Ping OK:\s*(\d+),\s*Fail:\s*(\d+)\s*$/.exec(line);
+      const m =
+        /^\s*(.+?\.bat)\s*:\s*HTTP OK:\s*(\d+),\s*ERR:\s*(\d+),\s*UNSUP:\s*(\d+),\s*Ping OK:\s*(\d+),\s*Fail:\s*(\d+)\s*$/.exec(
+          line,
+        );
       if (m) {
         const r = resultFor(m[1].trim());
         r.okCount = parseInt(m[2], 10);
@@ -1399,7 +1734,9 @@ function parseCheckResultsFile(dir) {
       const b = CHECK_BEST_RE.exec(line);
       if (b) setBest(b[1]);
     }
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
   return n;
 }
 
@@ -1421,7 +1758,14 @@ function parseCheckOutput(lines, opts = {}) {
 /** Завершение любого консольного прогона (общий хвост для check/diag). */
 function finishRun(r, mode) {
   consoleDrain(mode === "check");
-  if (mode === "check") { try { parseCheckResultsFile(); } catch { /* ignore */ } finalizeLights(); }
+  if (mode === "check") {
+    try {
+      parseCheckResultsFile();
+    } catch {
+      /* ignore */
+    }
+    finalizeLights();
+  }
   consoleState.running = false;
   consoleState.finishedAt = Date.now();
   consoleState.exitCode = r && Number.isFinite(r.exitCode) ? r.exitCode : null;
@@ -1431,13 +1775,18 @@ function finishRun(r, mode) {
     const kept = consoleState.error === "stopped_by_user" ? "stopped_by_user" : "";
     consoleState.error = consoleState.results.length
       ? kept
-      : (r && r.error ? String(r.error) : "no_results");
+      : r && r.error
+        ? String(r.error)
+        : "no_results";
   } else if (r && r.error && !consoleState.error) consoleState.error = String(r.error);
   if (mode === "check") {
     consoleState.progress.done = consoleState.results.filter((x) => x.finished).length;
   }
   logger.action("zapret.console.done", {
-    mode, exitCode: consoleState.exitCode, error: consoleState.error, results: consoleState.results.length,
+    mode,
+    exitCode: consoleState.exitCode,
+    error: consoleState.error,
+    results: consoleState.results.length,
   });
 }
 
@@ -1449,7 +1798,9 @@ function runConsoleScript(body, mode, opts = {}) {
     wait: true,
     timeoutMs: opts.timeoutMs || 20 * 60 * 1000,
     workingDir: opts.workingDir || DIRS.tmp,
-  }).then((r) => finishRun(r, mode)).catch((e) => finishRun({ ok: false, error: String(e.message || e) }, mode));
+  })
+    .then((r) => finishRun(r, mode))
+    .catch((e) => finishRun({ ok: false, error: String(e.message || e) }, mode));
 }
 
 /**
@@ -1468,7 +1819,11 @@ async function startConfigCheck(opts = {}) {
   if (svc.installed) throw new Error("service_installed");
   const script = path.join(st.dir, "utils", "test zapret.ps1");
   if (!fs.existsSync(script)) throw new Error("check_script_not_found");
-  try { ensureUserLists(); } catch { /* ignore */ }
+  try {
+    ensureUserLists();
+  } catch {
+    /* ignore */
+  }
 
   const fast = opts.fast !== false;
   // Ответы vendor-скрипту: 1 = standard tests (HTTP/ping); затем либо 1 = все
@@ -1486,18 +1841,31 @@ async function startConfigCheck(opts = {}) {
   const answersFile = path.join(DIRS.tmp, "zapret_check_answers.txt");
   fs.writeFileSync(answersFile, answers, "utf8");
   consoleReset("check", path.join("utils", "test zapret.ps1"));
-  try { stmts.bcrClear.run(); } catch { /* ignore */ } // старые огоньки гасим до новой проверки
+  try {
+    stmts.bcrClear.run();
+  } catch {
+    /* ignore */
+  } // старые огоньки гасим до новой проверки
   const body = [
     "@echo off",
     "chcp 65001 >nul",
     `cd /d "${st.dir}"`,
-    ...(fast ? [`set "TEST_CURL_TIMEOUT=${opts.timeoutSec || 2}"`, `set "TEST_MAX_PARALLEL=${opts.parallel || 16}"`] : []),
-    "set \"NO_UPDATE_CHECK=1\"",
+    ...(fast
+      ? [
+          `set "TEST_CURL_TIMEOUT=${opts.timeoutSec || 2}"`,
+          `set "TEST_MAX_PARALLEL=${opts.parallel || 16}"`,
+        ]
+      : []),
+    'set "NO_UPDATE_CHECK=1"',
     `echo [PA] ${fast ? "fast" : "full"} check: ${scope}, standard tests`,
     `powershell -NoProfile -ExecutionPolicy Bypass -File "${script}" < "${answersFile}" >> "${CONSOLE_LOG}" 2>&1`,
     "echo [PA] powershell exit %ERRORLEVEL%",
   ].join("\r\n");
-  logger.action("zapret.check.start", { fast, configs: opts.strategyId ? 1 : listStrategies().length, strategyId: opts.strategyId || null });
+  logger.action("zapret.check.start", {
+    fast,
+    configs: opts.strategyId ? 1 : listStrategies().length,
+    strategyId: opts.strategyId || null,
+  });
   runConsoleScript(body, "check", { workingDir: st.dir });
   return checkStatus();
 }
@@ -1522,7 +1890,9 @@ async function stopConfigCheck() {
     const file = path.join(DIRS.tmp, `zapret_check_stop_${Date.now()}.cmd`);
     fs.writeFileSync(file, body, "utf8");
     await runElevated(file, [], { wait: true, timeoutMs: 90000, workingDir: st.dir || DIRS.tmp });
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
   consoleDrain(false);
   logger.action("zapret.check.stop", {});
   return checkStatus();
@@ -1563,8 +1933,11 @@ async function fixUserLists() {
   const lines = [`[PA] user lists → ${st.listsDir || ""}`];
   if (fs.existsSync(bat)) {
     const out = await new Promise((resolve) => {
-      exec(`cmd /c ""${bat}" load_user_lists"`, { cwd: st.dir, windowsHide: true, timeout: 30000 },
-        (e, o, er) => resolve({ e, o, er }));
+      exec(
+        `cmd /c ""${bat}" load_user_lists"`,
+        { cwd: st.dir, windowsHide: true, timeout: 30000 },
+        (e, o, er) => resolve({ e, o, er }),
+      );
     });
     for (const l of String(out.o || "").split(/\r?\n/)) if (l.trim()) lines.push(l);
     if (out.e) lines.push(`[WARN] ${out.e.message}`);
@@ -1575,7 +1948,11 @@ async function fixUserLists() {
   const listsDir = st.listsDir || path.join(installDir(), "lists");
   for (const name of USER_LISTS) {
     let size = -1;
-    try { size = fs.statSync(path.join(listsDir, name)).size; } catch { /* нет файла */ }
+    try {
+      size = fs.statSync(path.join(listsDir, name)).size;
+    } catch {
+      /* нет файла */
+    }
     lines.push(`${size >= 0 ? "[OK]" : "[MISSING]"} ${name}${size >= 0 ? ` (${size} B)` : ""}`);
   }
   lines.push(created.length ? `[PA] создано: ${created.join(", ")}` : "[PA] все списки на месте");
@@ -1592,9 +1969,18 @@ async function fixUserLists() {
 function checkStatus() {
   if (consoleState.running) consoleDrain(true);
   const lights = {};
-  try { for (const row of stmts.bcrAll.all()) lights[row.strategy_id] = row; } catch { /* ignore */ }
-  const state = consoleState.running ? "working"
-    : (!consoleState.mode ? "idle" : (consoleState.error ? "error" : "done"));
+  try {
+    for (const row of stmts.bcrAll.all()) lights[row.strategy_id] = row;
+  } catch {
+    /* ignore */
+  }
+  const state = consoleState.running
+    ? "working"
+    : !consoleState.mode
+      ? "idle"
+      : consoleState.error
+        ? "error"
+        : "done";
   return {
     state,
     mode: consoleState.mode,
@@ -1626,8 +2012,11 @@ function listFilePath(name) {
 }
 
 function readList(name) {
-  try { return fs.readFileSync(listFilePath(name), "utf8"); }
-  catch { return ""; }
+  try {
+    return fs.readFileSync(listFilePath(name), "utf8");
+  } catch {
+    return "";
+  }
 }
 
 function writeList(name, content) {
@@ -1645,7 +2034,10 @@ function syncCustomDomains() {
     const type = name.startsWith("list-general") ? "include" : "exclude";
     const domains = rows.filter((r) => r.type === type).map((r) => r.domain);
     if (!domains.length) continue;
-    const existing = readList(name).split("\n").map((s) => s.trim()).filter(Boolean);
+    const existing = readList(name)
+      .split("\n")
+      .map((s) => s.trim())
+      .filter(Boolean);
     writeList(name, [...new Set([...existing, ...domains])].join("\n") + "\n");
   }
   return stmts.bcdAll.all();
@@ -1656,14 +2048,18 @@ function listPayloads() {
   const st = engineStatus();
   if (!st.binDir) return [];
   try {
-    return fs.readdirSync(st.binDir).filter((f) => /\.bin$/i.test(f)).map((f) => ({
-      name: f,
-      path: path.join(st.binDir, f),
-      sizeKb: Math.round(fs.statSync(path.join(st.binDir, f)).size / 102.4) / 10,
-    }));
-  } catch { return []; }
+    return fs
+      .readdirSync(st.binDir)
+      .filter((f) => /\.bin$/i.test(f))
+      .map((f) => ({
+        name: f,
+        path: path.join(st.binDir, f),
+        sizeKb: Math.round(fs.statSync(path.join(st.binDir, f)).size / 102.4) / 10,
+      }));
+  } catch {
+    return [];
+  }
 }
-
 
 /* ------------------------- Очистка (Discord cache / DNS) ------------------------- */
 
@@ -1675,8 +2071,13 @@ function clearDiscordCache() {
     for (const sub of ["Cache", "Code Cache", "GPUCache", "DawnCache"]) {
       const p = path.join(appdata, v, sub);
       try {
-        if (fs.existsSync(p)) { freed += dirSize(p); fs.rmSync(p, { recursive: true, force: true }); }
-      } catch { /* ignore */ }
+        if (fs.existsSync(p)) {
+          freed += dirSize(p);
+          fs.rmSync(p, { recursive: true, force: true });
+        }
+      } catch {
+        /* ignore */
+      }
     }
   }
   logger.action("zapret.cache.clear", { freedKb: freed });
@@ -1689,9 +2090,17 @@ function dirSize(p) {
     for (const f of fs.readdirSync(p, { withFileTypes: true })) {
       const fp = path.join(p, f.name);
       if (f.isDirectory()) total += dirSize(fp);
-      else { try { total += Math.ceil(fs.statSync(fp).size / 1024); } catch { /* ignore */ } }
+      else {
+        try {
+          total += Math.ceil(fs.statSync(fp).size / 1024);
+        } catch {
+          /* ignore */
+        }
+      }
     }
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
   return total;
 }
 
@@ -1701,19 +2110,54 @@ async function flushDns() {
 }
 
 module.exports = {
-  engineStatus, listStrategies, listBatFiles, extractWinwsArgs, tokenizeArgs, parseBatConfig,
-  start, stop, status, serviceAction,
-  targets, runDiagnostics, autoTune,
-  USER_LISTS, readList, writeList, syncCustomDomains, listPayloads,
-  clearDiscordCache, flushDns,
+  engineStatus,
+  listStrategies,
+  listBatFiles,
+  extractWinwsArgs,
+  tokenizeArgs,
+  parseBatConfig,
+  start,
+  stop,
+  status,
+  serviceAction,
+  targets,
+  runDiagnostics,
+  autoTune,
+  USER_LISTS,
+  readList,
+  writeList,
+  syncCustomDomains,
+  listPayloads,
+  clearDiscordCache,
+  flushDns,
   // Пользовательские списки + проверка конфигов/консоль
-  USER_LIST_DEFAULTS, ensureUserLists, missingListFiles, strategyId, lightOk, lightGreen, finalizeLights,
-  vendorOrder, vendorBatIndex,
-  decideWinwsStarted, detectRunningWinws, buildBatLaunchScript, waitForWinws,
-  startConfigCheck, stopConfigCheck, checkStatus, parseCheckOutput,
-  runServiceDiagnostics, fixUserLists,
+  USER_LIST_DEFAULTS,
+  ensureUserLists,
+  missingListFiles,
+  strategyId,
+  lightOk,
+  lightGreen,
+  finalizeLights,
+  vendorOrder,
+  vendorBatIndex,
+  decideWinwsStarted,
+  detectRunningWinws,
+  buildBatLaunchScript,
+  waitForWinws,
+  startConfigCheck,
+  stopConfigCheck,
+  checkStatus,
+  parseCheckOutput,
+  runServiceDiagnostics,
+  fixUserLists,
   // GitHub install/update + GameFilter
-  GITHUB_REPO, checkUpdate, installEngine, installStatus, localVersion, installDir,
-  readGameFilter, writeGameFilter, strategyGroup,
+  GITHUB_REPO,
+  checkUpdate,
+  installEngine,
+  installStatus,
+  localVersion,
+  installDir,
+  readGameFilter,
+  writeGameFilter,
+  strategyGroup,
 };
-

@@ -22,7 +22,14 @@ export interface ToolbarMenuProps {
  * накладывалось друг на друга), поэтому селекты/поля страниц живут здесь.
  * Закрывается по клику вне и по Esc.
  */
-export default function ToolbarMenu({ icon, title, align = "left", active, label, children }: ToolbarMenuProps) {
+export default function ToolbarMenu({
+  icon,
+  title,
+  align = "left",
+  active,
+  label,
+  children,
+}: ToolbarMenuProps) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -44,7 +51,12 @@ export default function ToolbarMenu({ icon, title, align = "left", active, label
 
   return (
     <div className="tb-menu" ref={rootRef}>
-      <IconBtn icon={icon} title={title} active={open || !!active} onClick={() => setOpen((v) => !v)} />
+      <IconBtn
+        icon={icon}
+        title={title}
+        active={open || !!active}
+        onClick={() => setOpen((v) => !v)}
+      />
       {open && (
         <div className={`tb-pop is-${align}`}>
           {label && <span className="tb-pop-title">{label}</span>}

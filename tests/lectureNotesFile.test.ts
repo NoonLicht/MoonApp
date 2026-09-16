@@ -50,8 +50,12 @@ function fakeTarget(reply: (prompt: string) => string) {
     secret: "test-key",
     model: "fake-model",
     cfg: {
-      providerId: "fake", model: "fake-model",
-      chunkChars: 400, overlapChars: 120, maxChunks: 3, temperature: 0.3,
+      providerId: "fake",
+      model: "fake-model",
+      chunkChars: 400,
+      overlapChars: 120,
+      maxChunks: 3,
+      temperature: 0.3,
     },
   };
 }
@@ -61,16 +65,26 @@ function sessionWithChunks(title: string, text: string) {
   const { stmts } = req("../server/db");
   const info = stmts.lectureInsert.run(title, 16000, 1);
   const id = Number(info.lastInsertRowid);
-  stmts.chunkInsert.run(id, 1, 40000, 60000, "chunk_00001.wav", { status: "done", text, error: "" });
+  stmts.chunkInsert.run(id, 1, 40000, 60000, "chunk_00001.wav", {
+    status: "done",
+    text,
+    error: "",
+  });
   return { id, stmts };
 }
 
 describe("Заметки лекции → .md файл в storage/notes", () => {
   it("ИИ-конспект (кнопка) создаёт .md файл с frontmatter и конспектом", async () => {
     const lecture = lectureMod();
-    const { id, stmts } = sessionWithChunks("Матанализ", "Предел функции и производная. ".repeat(20));
+    const { id, stmts } = sessionWithChunks(
+      "Матанализ",
+      "Предел функции и производная. ".repeat(20),
+    );
     const target = fakeTarget((prompt) =>
-      prompt.includes("=== ФРАГМЕНТ ===") ? "заметка по фрагменту" : "## Обзор\nКонспект лекции про пределы");
+      prompt.includes("=== ФРАГМЕНТ ===")
+        ? "заметка по фрагменту"
+        : "## Обзор\nКонспект лекции про пределы",
+    );
 
     await lecture.generateConspectus(id, { target });
 
@@ -86,15 +100,16 @@ describe("Заметки лекции → .md файл в storage/notes", () => 
     expect(body).toContain("Конспект лекции про пределы");
     // frontmatter: заголовок с названием и датой, метка и папка для внешних читателей
     expect(body).toMatch(/title: "Лекция: Матанализ \(\d{4}-\d{2}-\d{2}\)"/);
-    expect(body).toContain("tags: \"lecture\"");
-    expect(body).toContain("folder: \"lectures\"");
+    expect(body).toContain('tags: "lecture"');
+    expect(body).toContain('folder: "lectures"');
   });
 
   it("повторная сборка конспекта дописывает в ТОТ ЖЕ файл (копий нет)", async () => {
     const lecture = lectureMod();
     const { id, stmts } = sessionWithChunks("Физика", "Второй закон Ньютона. ".repeat(20));
     const target = fakeTarget((prompt) =>
-      prompt.includes("=== ФРАГМЕНТ ===") ? "черновик" : "## Конспект\nПервый прогон");
+      prompt.includes("=== ФРАГМЕНТ ===") ? "черновик" : "## Конспект\nПервый прогон",
+    );
 
     await lecture.generateConspectus(id, { target });
     const noteId = Number(stmts.lectureGet.get(id).notes_note_id);
@@ -102,15 +117,18 @@ describe("Заметки лекции → .md файл в storage/notes", () => 
     expect(first).toHaveLength(1);
 
     // Пришла новая расшифровка → материалы дособрали: файл должен быть тот же.
-    stmts.chunkInsert.run(id, 2, 60000, 80000, "chunk_00002.wav", { status: "done", text: "Импульс тела. ".repeat(20) });
+    stmts.chunkInsert.run(id, 2, 60000, 80000, "chunk_00002.wav", {
+      status: "done",
+      text: "Импульс тела. ".repeat(20),
+    });
     const target2 = fakeTarget(() => "## Конспект\nВторой прогон");
     await lecture.generateConspectus(id, { target: target2 });
 
     const after = filesFor(noteId);
     expect(after).toHaveLength(1);
-    expect(after[0]).toBe(first[0]);          // имя файла не изменилось
+    expect(after[0]).toBe(first[0]); // имя файла не изменилось
     const body = readFile(after[0]);
-    expect(body).toContain("Первый прогон");  // накопление, а не перезапись
+    expect(body).toContain("Первый прогон"); // накопление, а не перезапись
     expect(body).toContain("Второй прогон");
   });
 

@@ -35,8 +35,11 @@ function dict(lang: string): Record<string, string> {
 /** Рендер панели в конкретном языке (inline — без оверлея, проще читать HTML). */
 function renderPanel(lang: string): string {
   return renderToString(
-    React.createElement(I18nProvider, { lang },
-      React.createElement(LectureConspectusPanel, { inline: true }))
+    React.createElement(
+      I18nProvider,
+      { lang },
+      React.createElement(LectureConspectusPanel, { inline: true }),
+    ),
   );
 }
 
@@ -48,18 +51,23 @@ function renderPanel(lang: string): string {
  * перестанет совпадать и glued = false — тест это заметит.
  */
 function fields(html: string, lang: string) {
-  return [...cutBlock(html, lang).matchAll(/<div class="leca-field">([\s\S]*?)<\/div>/g)].map((m) => {
-    const inner = m[1];
-    const glued = /class="leca-pair"><span class="lecs-dim leca-label">([^<]*)<\/span>(<input[^>]*>)/.exec(inner);
-    const input = glued?.[2] ?? "";
-    return {
-      label: glued?.[1] ?? "",
-      glued: !!glued,
-      unit: /class="lecs-dim leca-unit">([^<]*)</.exec(inner)?.[1] ?? "",
-      value: /\bvalue="([^"]*)"/.exec(input)?.[1] ?? "",
-      aria: /aria-label="([^"]*)"/.exec(input)?.[1] ?? "",
-    };
-  });
+  return [...cutBlock(html, lang).matchAll(/<div class="leca-field">([\s\S]*?)<\/div>/g)].map(
+    (m) => {
+      const inner = m[1];
+      const glued =
+        /class="leca-pair"><span class="lecs-dim leca-label">([^<]*)<\/span>(<input[^>]*>)/.exec(
+          inner,
+        );
+      const input = glued?.[2] ?? "";
+      return {
+        label: glued?.[1] ?? "",
+        glued: !!glued,
+        unit: /class="lecs-dim leca-unit">([^<]*)</.exec(inner)?.[1] ?? "",
+        value: /\bvalue="([^"]*)"/.exec(input)?.[1] ?? "",
+        aria: /aria-label="([^"]*)"/.exec(input)?.[1] ?? "",
+      };
+    },
+  );
 }
 
 /**
@@ -106,9 +114,17 @@ describe("Панель конспекта — блок «Нарезка» чит
     expect(new Set(f.map((x) => x.label)).size).toBe(3);
     expect(new Set(f.map((x) => x.unit)).size).toBe(3);
   });
-});describe("Панель конспекта — переводы блока «Нарезка» на 6 языках", () => {
-  const KEYS = ["advanced", "chunkChars", "overlapChars", "maxChunks",
-    "chunkCharsUnit", "overlapCharsUnit", "maxChunksUnit"];
+});
+describe("Панель конспекта — переводы блока «Нарезка» на 6 языках", () => {
+  const KEYS = [
+    "advanced",
+    "chunkChars",
+    "overlapChars",
+    "maxChunks",
+    "chunkCharsUnit",
+    "overlapCharsUnit",
+    "maxChunksUnit",
+  ];
 
   it("все ключи заполнены в каждой локали (иначе UI показал бы сам ключ)", () => {
     for (const lang of LANGS) {

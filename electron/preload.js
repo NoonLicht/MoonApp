@@ -7,8 +7,11 @@ const fs = require("fs");
 function readToken() {
   const arg = process.argv.find((a) => a.startsWith("--moonapp-token-file="));
   if (!arg) return null;
-  try { return fs.readFileSync(arg.slice("--moonapp-token-file=".length), "utf8").trim(); }
-  catch { return null; }
+  try {
+    return fs.readFileSync(arg.slice("--moonapp-token-file=".length), "utf8").trim();
+  } catch {
+    return null;
+  }
 }
 
 // Мост для управления фреймлесс-окном и получения инфы о системе.

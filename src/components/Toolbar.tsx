@@ -13,7 +13,10 @@ export type ToolbarWriter = (id: string, node: ReactNode | null) => void;
 export const ToolbarContext = createContext<ToolbarWriter>(() => {});
 
 /** Окружение конкретной страницы: её id и признак «сейчас видима». */
-export interface PageHostState { id: string; active: boolean }
+export interface PageHostState {
+  id: string;
+  active: boolean;
+}
 export const PageHostContext = createContext<PageHostState>({ id: "", active: true });
 
 /** Признак «есть незавершённая работа» — такие страницы не выгружаются из памяти. */

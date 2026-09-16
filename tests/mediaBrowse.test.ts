@@ -1,15 +1,32 @@
 import { describe, it, expect } from "vitest";
 import {
-  AUTO_LOAD_LIMIT, canAutoLoad, formatCount, hasNextPage, mediaKey, mergePage, nextPage,
+  AUTO_LOAD_LIMIT,
+  canAutoLoad,
+  formatCount,
+  hasNextPage,
+  mediaKey,
+  mergePage,
+  nextPage,
 } from "../src/components/media/browsePaging";
 import type { MediaSummary } from "../src/api/types";
 
 /** Минимальная карточка: для склейки страниц важен только kind+id. */
 function item(kind: MediaSummary["kind"], id: number): MediaSummary {
   return {
-    kind, id, title: `T${id}`, originalTitle: `T${id}`, overview: "",
-    poster: null, backdrop: null, year: 2000, date: null,
-    voteAverage: 7, voteCount: 10, popularity: 1, genreIds: [], adult: false,
+    kind,
+    id,
+    title: `T${id}`,
+    originalTitle: `T${id}`,
+    overview: "",
+    poster: null,
+    backdrop: null,
+    year: 2000,
+    date: null,
+    voteAverage: 7,
+    voteCount: 10,
+    popularity: 1,
+    genreIds: [],
+    adult: false,
   };
 }
 

@@ -70,7 +70,11 @@ function authMiddleware(req, res, next) {
   // Ресурсные URL отдаются браузеру как <img src>/<video src>, поэтому заголовок
   // x-moonapp-token передать нельзя. Такие пути валидируются по allowlist сами
   // (пример: /api/movies/image — только image.tmdb.org, size из списка, path /file.jpg).
-  if (RESOURCE_PATHS.some((p) => req.path === p || req.path.startsWith(p + "/") || req.path.startsWith(p + "?"))) {
+  if (
+    RESOURCE_PATHS.some(
+      (p) => req.path === p || req.path.startsWith(p + "/") || req.path.startsWith(p + "?"),
+    )
+  ) {
     return next();
   }
   if (req.get("x-moonapp-token") !== AUTH_TOKEN) {
@@ -79,16 +83,50 @@ function authMiddleware(req, res, next) {
   next();
 }
 
-
 // Стартовые книги (как раньше MOCK_BOOKS).
 function seedBooks() {
   if (stmts.bookAll.all().length > 0) return;
   const books = [
-    ["The Quiet Algorithm", "N. Halvorsen", 2019, "EPUB,PDF", "amber", "A field guide to reasoning about systems that think in silence."],
-    ["Slow Static", "R. Adeyemi", 2021, "EPUB", "violet", "Essays on signal, noise, and the long half-life of information."],
-    ["Copper & Circuit", "M. Duval", 2016, "PDF,MOBI", "teal", "A short history of the workbench, from hand tools to relay."],
-    ["Foundations of Drift", "S. Okafor", 2023, "EPUB,PDF", "amber", "Distributed consensus through the lens of migratory systems."],
-    ["Glass Rooms", "T. Lindqvist", 2020, "MOBI", "violet", "A design memoir on transparency and interfaces."],
+    [
+      "The Quiet Algorithm",
+      "N. Halvorsen",
+      2019,
+      "EPUB,PDF",
+      "amber",
+      "A field guide to reasoning about systems that think in silence.",
+    ],
+    [
+      "Slow Static",
+      "R. Adeyemi",
+      2021,
+      "EPUB",
+      "violet",
+      "Essays on signal, noise, and the long half-life of information.",
+    ],
+    [
+      "Copper & Circuit",
+      "M. Duval",
+      2016,
+      "PDF,MOBI",
+      "teal",
+      "A short history of the workbench, from hand tools to relay.",
+    ],
+    [
+      "Foundations of Drift",
+      "S. Okafor",
+      2023,
+      "EPUB,PDF",
+      "amber",
+      "Distributed consensus through the lens of migratory systems.",
+    ],
+    [
+      "Glass Rooms",
+      "T. Lindqvist",
+      2020,
+      "MOBI",
+      "violet",
+      "A design memoir on transparency and interfaces.",
+    ],
   ];
   for (const b of books) stmts.bookInsert.run(...b);
   logger.info("seed.books", { count: books.length });
@@ -98,12 +136,20 @@ function createApp() {
   seedBooks();
   // Fail-safe лекций: сессии, оборванные падением приложения (status=recording,
   // но процесса записи нет), помечаем interrupted и чиним header raw.wav.
-  try { lecture.recoverInterrupted(); } catch { /* журнал уже внутри */ }
+  try {
+    lecture.recoverInterrupted();
+  } catch {
+    /* журнал уже внутри */
+  }
   // Заметки лекций синхронизируются с .md в storage/notes при каждом изменении
   // (кнопка, маркер, ИИ-конспект). У лекций, записанных ДО этой синхронизации,
   // файла ещё нет — заводим при старте. Ошибка не должна мешать запуску: лекции
   // работают и без зеркала, поэтому здесь только лог.
-  try { lecture.backfillNotesFiles(); } catch { /* зеркало не критично */ }
+  try {
+    lecture.backfillNotesFiles();
+  } catch {
+    /* зеркало не критично */
+  }
 
   const app = express();
 
@@ -116,12 +162,12 @@ function createApp() {
       res.setHeader(
         "Content-Security-Policy",
         "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; " +
-        "img-src 'self' data: blob:; media-src 'self' data: blob:; font-src 'self' data:; " +
-        "connect-src 'self' ws://127.0.0.1:* http://127.0.0.1:*; object-src 'none'; " +
-        // frame-src: трейлеры — официальные YouTube-ролики TMDB (iframe плеера).
-        // Картинки TMDB приходят через /api/movies/image (img-src 'self'), поэтому
-        // внешние image.tmdb.org в CSP не нужны.
-        "frame-src https://www.youtube.com https://www.youtube-nocookie.com; base-uri 'self'"
+          "img-src 'self' data: blob:; media-src 'self' data: blob:; font-src 'self' data:; " +
+          "connect-src 'self' ws://127.0.0.1:* http://127.0.0.1:*; object-src 'none'; " +
+          // frame-src: трейлеры — официальные YouTube-ролики TMDB (iframe плеера).
+          // Картинки TMDB приходят через /api/movies/image (img-src 'self'), поэтому
+          // внешние image.tmdb.org в CSP не нужны.
+          "frame-src https://www.youtube.com https://www.youtube-nocookie.com; base-uri 'self'",
       );
     }
     next();
@@ -174,7 +220,11 @@ function createApp() {
   backups.startAuto();
 
   // Фоновое обновление подписок прокси (первичный проход + раз в 6 часов).
-  try { proxySubs.startAutoSync(); } catch (e) { logger.warn("proxycore.autosync.failed", { error: e.message }); }
+  try {
+    proxySubs.startAutoSync();
+  } catch (e) {
+    logger.warn("proxycore.autosync.failed", { error: e.message });
+  }
 
   // LibreHardwareMonitor запускается сам, если это включено в настройках и он установлен.
   monitor.autoStartLhmIfConfigured();
@@ -185,17 +235,23 @@ function createApp() {
     if (settings.get("store").wingetAutoIndex !== false && !(winget.indexStatus().cached > 0)) {
       winget.startIndexing();
     }
-  } catch { /* индексация не критична для старта */ }
+  } catch {
+    /* индексация не критична для старта */
+  }
 
   // monitor.autoStart: прогреваем телеметрию сразу после старта — первый
   // getSnapshot собирает данные (WMI/nvidia-smi/LHM), чтобы UI мониторинга
   // открылся уже с готовыми значениями, а не с нулями.
   try {
     if (settings.get("monitor").autoStart === true) void monitor.getSnapshot();
-  } catch { /* сбор телеметрии не должен ломать старт */ }
+  } catch {
+    /* сбор телеметрии не должен ломать старт */
+  }
 
   // После рестарта прокси всегда выключен (состояние «включён» в настройках не хранится).
-  try { proxy.stopProxy(); } catch {}
+  try {
+    proxy.stopProxy();
+  } catch {}
 
   return app;
 }

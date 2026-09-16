@@ -31,7 +31,10 @@ function ffmpegCandidates() {
   const cfg = settings.get("converter") || {};
   const explicit = String(cfg.ffmpegPath || "").trim();
   const list = [];
-  if (explicit) { list.push(explicit); if (!path.extname(explicit)) list.push(explicit + ".exe"); }
+  if (explicit) {
+    list.push(explicit);
+    if (!path.extname(explicit)) list.push(explicit + ".exe");
+  }
   list.push(BUNDLED_FFMPEG);
   list.push("ffmpeg");
   return list;
@@ -39,10 +42,15 @@ function ffmpegCandidates() {
 
 function runFfmpegVersion(bin) {
   return new Promise((resolve) => {
-    execFile(bin, ["-version"], { timeout: 8000, windowsHide: true, maxBuffer: 1024 * 1024 }, (err, stdout) => {
-      if (err) return resolve(null);
-      resolve(String(stdout || "").split(/[\r\n]+/)[0] || "unknown");
-    });
+    execFile(
+      bin,
+      ["-version"],
+      { timeout: 8000, windowsHide: true, maxBuffer: 1024 * 1024 },
+      (err, stdout) => {
+        if (err) return resolve(null);
+        resolve(String(stdout || "").split(/[\r\n]+/)[0] || "unknown");
+      },
+    );
   });
 }
 
@@ -51,9 +59,14 @@ async function detectFfmpeg() {
   if (ffmpegCache && now - ffmpegAt < 12000) return ffmpegCache;
   let result = { found: false, path: null };
   for (const cmd of ffmpegCandidates()) {
-    if (cmd.includes("/") || cmd.includes("\\")) { if (!fs.existsSync(cmd)) continue; }
+    if (cmd.includes("/") || cmd.includes("\\")) {
+      if (!fs.existsSync(cmd)) continue;
+    }
     const ver = await runFfmpegVersion(cmd);
-    if (ver) { result = { found: true, path: cmd }; break; }
+    if (ver) {
+      result = { found: true, path: cmd };
+      break;
+    }
   }
   ffmpegCache = result;
   ffmpegAt = now;
@@ -89,10 +102,15 @@ function ytdlpCandidates() {
 
 function runVersion(bin) {
   return new Promise((resolve) => {
-    execFile(bin, ["--version"], { timeout: 8000, windowsHide: true, maxBuffer: 1024 * 1024 }, (err, stdout) => {
-      if (err) return resolve(null);
-      resolve(String(stdout || "").trim() || "unknown");
-    });
+    execFile(
+      bin,
+      ["--version"],
+      { timeout: 8000, windowsHide: true, maxBuffer: 1024 * 1024 },
+      (err, stdout) => {
+        if (err) return resolve(null);
+        resolve(String(stdout || "").trim() || "unknown");
+      },
+    );
   });
 }
 
@@ -106,7 +124,10 @@ async function detectYtDlp({ force = false } = {}) {
       if (!fs.existsSync(cmd)) continue;
     }
     const version = await runVersion(cmd);
-    if (version) { result = { found: true, path: cmd, version }; break; }
+    if (version) {
+      result = { found: true, path: cmd, version };
+      break;
+    }
   }
   detectCache = result;
   detectAt = now;
@@ -139,12 +160,16 @@ function sanitizeInfo(info) {
     }));
 
   // Уникальные разрешения (только видео-ряды), от макс к мин.
-  const heights = [...new Set(formats.filter((f) => f.height).map((f) => f.height))].sort((a, b) => b - a);
+  const heights = [...new Set(formats.filter((f) => f.height).map((f) => f.height))].sort(
+    (a, b) => b - a,
+  );
 
   const subs = {};
-  for (const lang of Object.keys(info.subtitles || {})) subs[lang] = (info.subtitles[lang] || []).map((x) => x.ext);
+  for (const lang of Object.keys(info.subtitles || {}))
+    subs[lang] = (info.subtitles[lang] || []).map((x) => x.ext);
   const auto = {};
-  for (const lang of Object.keys(info.automatic_captions || {})) auto[lang] = (info.automatic_captions[lang] || []).map((x) => x.ext);
+  for (const lang of Object.keys(info.automatic_captions || {}))
+    auto[lang] = (info.automatic_captions[lang] || []).map((x) => x.ext);
 
   return {
     title: info.title || "Untitled",
@@ -162,7 +187,14 @@ function sanitizeInfo(info) {
 
 function runJson(bin, url, proxyUrl) {
   return new Promise((resolve, reject) => {
-    const args = ["-J", "--no-playlist", "--ignore-config", "--no-warnings", "--socket-timeout", "30"];
+    const args = [
+      "-J",
+      "--no-playlist",
+      "--ignore-config",
+      "--no-warnings",
+      "--socket-timeout",
+      "30",
+    ];
     if (proxyUrl) args.push("--proxy", proxyUrl);
     args.push("--", url);
     execFile(
@@ -175,7 +207,7 @@ function runJson(bin, url, proxyUrl) {
           return reject(new Error(msg || err.message));
         }
         resolve(stdout);
-      }
+      },
     );
   });
 }
@@ -187,13 +219,17 @@ function runJson(bin, url, proxyUrl) {
  * понятный пользователю код.
  */
 function meaningfulStderr(raw) {
-  const lines = String(raw || "").split(/[\r\n]+/).map((l) => l.trim()).filter(Boolean);
-  const filtered = lines.filter((l) =>
-    !/^Deprecated Feature:/i.test(l) &&
-    !/deprecated/i.test(l) &&
-    !/issues\/14198/.test(l) &&
-    !/Please remove them/i.test(l) &&
-    l !== "ERROR:"
+  const lines = String(raw || "")
+    .split(/[\r\n]+/)
+    .map((l) => l.trim())
+    .filter(Boolean);
+  const filtered = lines.filter(
+    (l) =>
+      !/^Deprecated Feature:/i.test(l) &&
+      !/deprecated/i.test(l) &&
+      !/issues\/14198/.test(l) &&
+      !/Please remove them/i.test(l) &&
+      l !== "ERROR:",
   );
   const list = (filtered.length ? filtered : lines).slice(-5);
   return list.join(" · ");
@@ -219,11 +255,15 @@ function planFormat(formats, height) {
   const chosen = progressive[progressive.length - 1];
   if (chosen) return { format: `best[height<=?${t}]`, needsMerge: false, container: chosen.ext };
   // Если прогрессивного нет → DASH: bestvideo + bestaudio, yt-dlp сам склеивает через ffmpeg
-  return { format: `bestvideo[height<=?${t}]+bestaudio/best[height<=?${t}]`, needsMerge: true, container: "mp4" };
+  return {
+    format: `bestvideo[height<=?${t}]+bestaudio/best[height<=?${t}]`,
+    needsMerge: true,
+    container: "mp4",
+  };
 }
 // --- Скачивание ---
 
-const JOBS = new Map();  // jobId -> job
+const JOBS = new Map(); // jobId -> job
 const FILES = new Map(); // fileKey -> { path, name }
 
 function parseProgress(job, buf) {
@@ -234,7 +274,11 @@ function parseProgress(job, buf) {
 
 function scanOutFiles(job) {
   let list;
-  try { list = fs.readdirSync(job.outDir); } catch { return; }
+  try {
+    list = fs.readdirSync(job.outDir);
+  } catch {
+    return;
+  }
   const prefix = job.token + ".";
   for (const name of list) {
     if (!name.startsWith(prefix)) continue;
@@ -242,7 +286,9 @@ function scanOutFiles(job) {
     try {
       const size = fs.statSync(fp).size || 0;
       if (!job.files.some((f) => f.path === fp)) job.files.push({ path: fp, name, size });
-    } catch { /* skip */ }
+    } catch {
+      /* skip */
+    }
   }
 }
 
@@ -261,10 +307,12 @@ function finalizeJob(job, state, error) {
 
 /** Санитизирует строку для безопасного имени файла на Windows. */
 function safeFilename(s) {
-  return String(s || "video")
-    .replace(/[<>:"/\\|?*]/g, "_")
-    .replace(/\s+/g, " ")
-    .trim() || "video";
+  return (
+    String(s || "video")
+      .replace(/[<>:"/\\|?*]/g, "_")
+      .replace(/\s+/g, " ")
+      .trim() || "video"
+  );
 }
 
 /** Переименовывает файлы джобы из токен-имён в название видео. */
@@ -308,54 +356,84 @@ function startDownload({ url, info, height, container, subs, thumb, proxyUrl }) 
   const wantEmbed = thumb && thumb.embed;
 
   // Юзер выбрал контейнер — берётся он, иначе fallback на MP4.
-  const containerOut = (container && /^(mp4|mkv|webm)$/i.test(container))
-    ? container.toLowerCase() : plan.container || "mp4";
+  const containerOut =
+    container && /^(mp4|mkv|webm)$/i.test(container)
+      ? container.toLowerCase()
+      : plan.container || "mp4";
   const needsMerge = plan.needsMerge || wantEmbed || containerOut !== (plan.container || "mp4");
 
   const args = [
-    "--no-playlist", "--ignore-config", "--no-warnings", "--no-update", "--socket-timeout", "30",
-    "--newline", "--retries", "3", "--fragment-retries", "3",
-    "--restrict-filenames", "-o", outTemplate,
+    "--no-playlist",
+    "--ignore-config",
+    "--no-warnings",
+    "--no-update",
+    "--socket-timeout",
+    "30",
+    "--newline",
+    "--retries",
+    "3",
+    "--fragment-retries",
+    "3",
+    "--restrict-filenames",
+    "-o",
+    outTemplate,
   ];
   // proxyUrl из per-page решения (req.proxyUrl); undefined → старое поведение.
   const effProxy = proxyUrl !== undefined ? proxyUrl : proxy.getProxyUrl();
   if (effProxy) args.push("--proxy", effProxy);
-  if (subs && subs.length) args.push("--write-subs", "--sub-langs", subs.join(","), "--sub-format", "best");
+  if (subs && subs.length)
+    args.push("--write-subs", "--sub-langs", subs.join(","), "--sub-format", "best");
   if (thumb) args.push(wantEmbed ? "--embed-thumbnail" : "--write-thumbnail");
   if (needsMerge) args.push("--merge-output-format", containerOut);
   // С9: "--" перед URL — URL вида "-o…" не будет истолкован как опция.
   args.push("--format", plan.format, "--", url);
 
-  const job = { id: jobId, url, title: info.title || "", token, state: "running", progress: 0, error: "", stderrBuf: "", outDir, files: [] };
+  const job = {
+    id: jobId,
+    url,
+    title: info.title || "",
+    token,
+    state: "running",
+    progress: 0,
+    error: "",
+    stderrBuf: "",
+    outDir,
+    files: [],
+  };
   JOBS.set(jobId, job);
 
-  resolvedBin().then(async (bin) => {
-    // ffmpeg ищется — он нужен yt-dlp для слияния DASH video+audio
-    const ffmpeg = await detectFfmpeg();
-    const spawnArgs = [...args];
-    if (ffmpeg.found) {
-      spawnArgs.splice(spawnArgs.indexOf("--format"), 0, "--ffmpeg-location", ffmpeg.path);
-    }
-    const child = spawn(bin, spawnArgs, { windowsHide: true });
-    job.child = child;
-    child.stdout.on("data", (d) => parseProgress(job, d));
-    child.stderr.on("data", (d) => {
-      parseProgress(job, d);
-      job.stderrBuf += d.toString();
-      // Хранятся только последние ~2000 символов
-      if (job.stderrBuf.length > 4000) job.stderrBuf = job.stderrBuf.slice(-2000);
-    });
-    child.on("error", (e) => finalizeJob(job, "error", e.message));
-    child.on("close", (code) => {
-      if (job.state !== "error") {
-        if (code === 0) finalizeJob(job, "done");
-        else {
-          const errMsg = meaningfulStderr(job.stderrBuf) || `yt-dlp exited with code ${code}`;
-          finalizeJob(job, "error", errMsg);
-        }
+  resolvedBin()
+    .then(async (bin) => {
+      // ffmpeg ищется — он нужен yt-dlp для слияния DASH video+audio
+      const ffmpeg = await detectFfmpeg();
+      const spawnArgs = [...args];
+      if (ffmpeg.found) {
+        spawnArgs.splice(spawnArgs.indexOf("--format"), 0, "--ffmpeg-location", ffmpeg.path);
       }
+      const child = spawn(bin, spawnArgs, { windowsHide: true });
+      job.child = child;
+      child.stdout.on("data", (d) => parseProgress(job, d));
+      child.stderr.on("data", (d) => {
+        parseProgress(job, d);
+        job.stderrBuf += d.toString();
+        // Хранятся только последние ~2000 символов
+        if (job.stderrBuf.length > 4000) job.stderrBuf = job.stderrBuf.slice(-2000);
+      });
+      child.on("error", (e) => finalizeJob(job, "error", e.message));
+      child.on("close", (code) => {
+        if (job.state !== "error") {
+          if (code === 0) finalizeJob(job, "done");
+          else {
+            const errMsg = meaningfulStderr(job.stderrBuf) || `yt-dlp exited with code ${code}`;
+            finalizeJob(job, "error", errMsg);
+          }
+        }
+      });
+    })
+    .catch((e) => {
+      const jr = JOBS.get(jobId);
+      if (jr) finalizeJob(jr, "error", e.message);
     });
-  }).catch((e) => { const jr = JOBS.get(jobId); if (jr) finalizeJob(jr, "error", e.message); });
 
   return { id: jobId };
 }
@@ -364,7 +442,10 @@ function jobStatus(jobId) {
   const j = JOBS.get(jobId);
   if (!j) return { found: false };
   return {
-    id: j.id, state: j.state, progress: j.progress, error: j.error,
+    id: j.id,
+    state: j.state,
+    progress: j.progress,
+    error: j.error,
     files: j.state === "done" ? registerFiles(j) : [],
   };
 }
@@ -380,7 +461,9 @@ function getDownloadFile(key) {
 
 let installState = { state: "idle", progress: 0, phase: "", error: "" };
 
-function installStatus() { return { ...installState, installed: fs.existsSync(BUNDLED_BIN) || fs.existsSync(VENDOR_BIN) }; }
+function installStatus() {
+  return { ...installState, installed: fs.existsSync(BUNDLED_BIN) || fs.existsSync(VENDOR_BIN) };
+}
 
 function installYtDlp() {
   if (installState.state === "working") return installState;
@@ -390,7 +473,14 @@ function installYtDlp() {
   (async () => {
     try {
       installState.phase = "download";
-      const res = await fetch(YTDLP_URL, { redirect: "follow", headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/126.0 Safari/537.36", Accept: "*/*" } });
+      const res = await fetch(YTDLP_URL, {
+        redirect: "follow",
+        headers: {
+          "User-Agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/126.0 Safari/537.36",
+          Accept: "*/*",
+        },
+      });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const declared = Number(res.headers.get("content-length") || 0);
       if (declared > YTDLP_MAX_BYTES) throw new Error("yt-dlp подозрительно большой");
@@ -401,15 +491,26 @@ function installYtDlp() {
         for await (const chunk of res.body) {
           const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
           received += buf.length;
-          installState.progress = declared ? Math.min(100, Math.round((100 * received) / declared)) : 0;
+          installState.progress = declared
+            ? Math.min(100, Math.round((100 * received) / declared))
+            : 0;
           if (!ws.write(buf)) await new Promise((r) => ws.once("drain", r));
         }
-      } catch (e) { try { ws.destroy(); fs.rmSync(dlFile, { force: true }); } catch {} throw new Error(`Загрузка прервана: ${e.message}`, { cause: e }); }
+      } catch (e) {
+        try {
+          ws.destroy();
+          fs.rmSync(dlFile, { force: true });
+        } catch {}
+        throw new Error(`Загрузка прервана: ${e.message}`, { cause: e });
+      }
       await new Promise((resolve, reject) => ws.end((err) => (err ? reject(err) : resolve())));
       detectCache = null;
       installState = { state: "done", progress: 100, phase: "", error: "" };
       logger.info("ytdlp.install.done", { path: BUNDLED_BIN });
-    } catch (e) { installState = { state: "error", progress: 0, phase: "", error: e.message }; logger.error("ytdlp.install.error", { error: e.message }); }
+    } catch (e) {
+      installState = { state: "error", progress: 0, phase: "", error: e.message };
+      logger.error("ytdlp.install.error", { error: e.message });
+    }
   })();
   return installState;
 }
@@ -448,10 +549,10 @@ const FORMAT_QUALITY_MAP = {
   "256 kbps": { format: "m4a", quality: 0 },
   "192 kbps": { format: "mp3", quality: 3 },
   "128 kbps": { format: "mp3", quality: 5 },
-  "FLAC":     { format: "flac", quality: 0 },
-  "OPUS":     { format: "opus", quality: 0 },
-  "WAV":      { format: "wav", quality: 0 },
-  "AAC":      { format: "m4a", quality: 1 },
+  FLAC: { format: "flac", quality: 0 },
+  OPUS: { format: "opus", quality: 0 },
+  WAV: { format: "wav", quality: 0 },
+  AAC: { format: "m4a", quality: 1 },
 };
 
 function startAudioDownload({ url, format = "mp3", quality = 0, proxyUrl }) {
@@ -461,12 +562,25 @@ function startAudioDownload({ url, format = "mp3", quality = 0, proxyUrl }) {
   const outTemplate = path.join(outDir, `${token}.%(ext)s`);
 
   const args = [
-    "--no-playlist", "--ignore-config", "--no-warnings", "--no-update", "--socket-timeout", "30",
-    "--newline", "--retries", "3", "--fragment-retries", "3",
-    "--restrict-filenames", "-o", outTemplate,
+    "--no-playlist",
+    "--ignore-config",
+    "--no-warnings",
+    "--no-update",
+    "--socket-timeout",
+    "30",
+    "--newline",
+    "--retries",
+    "3",
+    "--fragment-retries",
+    "3",
+    "--restrict-filenames",
+    "-o",
+    outTemplate,
     "--extract-audio",
-    "--audio-format", format,
-    "--audio-quality", String(quality),
+    "--audio-format",
+    format,
+    "--audio-quality",
+    String(quality),
     "--embed-thumbnail",
     "--add-metadata",
     "--no-embed-subs",
@@ -476,41 +590,73 @@ function startAudioDownload({ url, format = "mp3", quality = 0, proxyUrl }) {
   if (effProxy) args.push("--proxy", effProxy);
   args.push("--", url); // С9: URL после end-of-options
 
-  const job = { id: jobId, url, title: "", token, state: "running", progress: 0, error: "", stderrBuf: "", outDir, files: [] };
+  const job = {
+    id: jobId,
+    url,
+    title: "",
+    token,
+    state: "running",
+    progress: 0,
+    error: "",
+    stderrBuf: "",
+    outDir,
+    files: [],
+  };
   JOBS.set(jobId, job);
 
-  resolvedBin().then(async (bin) => {
-    const ffmpeg = await detectFfmpeg();
-    const spawnArgs = [...args];
-    if (ffmpeg.found) {
-      spawnArgs.splice(spawnArgs.indexOf("--no-playlist"), 0, "--ffmpeg-location", ffmpeg.path);
-    }
-    const child = spawn(bin, spawnArgs, { windowsHide: true });
-    job.child = child;
-    child.stdout.on("data", (d) => parseProgress(job, d));
-    child.stderr.on("data", (d) => {
-      parseProgress(job, d);
-      job.stderrBuf += d.toString();
-      if (job.stderrBuf.length > 4000) job.stderrBuf = job.stderrBuf.slice(-2000);
-    });
-    child.on("error", (e) => finalizeJob(job, "error", e.message));
-    child.on("close", (code) => {
-      if (job.state !== "error") {
-        if (code === 0) finalizeJob(job, "done");
-        else {
-          const errMsg = job.stderrBuf.split(/[\\r\\n]+/).filter(Boolean).slice(-5).join(" · ") || `yt-dlp exited with code ${code}`;
-          finalizeJob(job, "error", errMsg);
-        }
+  resolvedBin()
+    .then(async (bin) => {
+      const ffmpeg = await detectFfmpeg();
+      const spawnArgs = [...args];
+      if (ffmpeg.found) {
+        spawnArgs.splice(spawnArgs.indexOf("--no-playlist"), 0, "--ffmpeg-location", ffmpeg.path);
       }
+      const child = spawn(bin, spawnArgs, { windowsHide: true });
+      job.child = child;
+      child.stdout.on("data", (d) => parseProgress(job, d));
+      child.stderr.on("data", (d) => {
+        parseProgress(job, d);
+        job.stderrBuf += d.toString();
+        if (job.stderrBuf.length > 4000) job.stderrBuf = job.stderrBuf.slice(-2000);
+      });
+      child.on("error", (e) => finalizeJob(job, "error", e.message));
+      child.on("close", (code) => {
+        if (job.state !== "error") {
+          if (code === 0) finalizeJob(job, "done");
+          else {
+            const errMsg =
+              job.stderrBuf
+                .split(/[\\r\\n]+/)
+                .filter(Boolean)
+                .slice(-5)
+                .join(" · ") || `yt-dlp exited with code ${code}`;
+            finalizeJob(job, "error", errMsg);
+          }
+        }
+      });
+    })
+    .catch((e) => {
+      const jr = JOBS.get(jobId);
+      if (jr) finalizeJob(jr, "error", e.message);
     });
-  }).catch((e) => { const jr = JOBS.get(jobId); if (jr) finalizeJob(jr, "error", e.message); });
 
   return { id: jobId };
 }
 
 module.exports = {
-  BUNDLED_BIN, YTDLP_URL, YTDLP_MAX_BYTES,
-  detectYtDlp, fetchInfo, startDownload, jobStatus, installStatus, installYtDlp,
-  FILES, getDownloadFile,
-  searchTracks, startAudioDownload, AUDIO_FORMATS, FORMAT_QUALITY_MAP,
+  BUNDLED_BIN,
+  YTDLP_URL,
+  YTDLP_MAX_BYTES,
+  detectYtDlp,
+  fetchInfo,
+  startDownload,
+  jobStatus,
+  installStatus,
+  installYtDlp,
+  FILES,
+  getDownloadFile,
+  searchTracks,
+  startAudioDownload,
+  AUDIO_FORMATS,
+  FORMAT_QUALITY_MAP,
 };

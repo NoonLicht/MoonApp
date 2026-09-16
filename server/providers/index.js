@@ -8,7 +8,17 @@ const openrouter = require("./openrouter");
 const groq = require("./groq");
 const perplexity = require("./perplexity");
 
-const PROVIDERS = [openai, anthropic, gemini, mistral, deepseek, ollama, openrouter, groq, perplexity];
+const PROVIDERS = [
+  openai,
+  anthropic,
+  gemini,
+  mistral,
+  deepseek,
+  ollama,
+  openrouter,
+  groq,
+  perplexity,
+];
 
 function getProvider(id) {
   const p = PROVIDERS.find((x) => x.id === id);

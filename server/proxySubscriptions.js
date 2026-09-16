@@ -39,7 +39,11 @@ function nodeKey(node) {
 
 /** Ключ узла из строки config_json (битый JSON → null). */
 function nodeKeyFromJson(configJson) {
-  try { return nodeKey(JSON.parse(configJson)); } catch { return null; }
+  try {
+    return nodeKey(JSON.parse(configJson));
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -55,7 +59,10 @@ async function refreshSubscription(id, { fetchText } = {}) {
   // перезаписи: выбор не должен слетать, а скрытые узлы не должны всплывать.
   const prevSelected = stmts.pnodeForSub.all(id).find((n) => n.is_selected) || null;
   const hiddenKeys = new Set(
-    stmts.pnodeExcludedForSub.all(id).map((n) => nodeKeyFromJson(n.config_json)).filter(Boolean)
+    stmts.pnodeExcludedForSub
+      .all(id)
+      .map((n) => nodeKeyFromJson(n.config_json))
+      .filter(Boolean),
   );
 
   const text = await doFetch(sub.url);
@@ -71,30 +78,51 @@ async function refreshSubscription(id, { fetchText } = {}) {
   // Возвращаем метку «скрыт» тем узлам, которые пользователь убрал раньше.
   let hidden = 0;
   for (const x of inserted) {
-    if (hiddenKeys.has(nodeKey(x.node))) { stmts.pnodeUpdate.run(x.id, { is_excluded: 1 }); hidden++; }
+    if (hiddenKeys.has(nodeKey(x.node))) {
+      stmts.pnodeUpdate.run(x.id, { is_excluded: 1 });
+      hidden++;
+    }
   }
 
   // Выбор восстанавливаем только среди видимых узлов.
   let restored = false;
   if (prevSelected) {
     let prev = null;
-    try { prev = JSON.parse(prevSelected.config_json); } catch { prev = null; }
+    try {
+      prev = JSON.parse(prevSelected.config_json);
+    } catch {
+      prev = null;
+    }
     if (prev && !hiddenKeys.has(nodeKey(prev))) {
       const match = inserted.find((x) => nodeKey(x.node) === nodeKey(prev));
-      if (match) { stmts.pnodeUpdate.run(match.id, { is_selected: 1 }); restored = true; }
+      if (match) {
+        stmts.pnodeUpdate.run(match.id, { is_selected: 1 });
+        restored = true;
+      }
     }
   }
 
   stmts.psubTouch.run(id);
   logger.action("proxycore.subscription.refresh", { id, added: inserted.length, restored, hidden });
-  return { added: inserted.length, total: inserted.length, format: parsed.format, restored, hidden };
+  return {
+    added: inserted.length,
+    total: inserted.length,
+    format: parsed.format,
+    restored,
+    hidden,
+  };
 }
 
 /**
  * Обновить подписки с auto_update_enabled, устаревшие старше maxAgeMs.
  * force=true — обновить все, независимо от даты.
  */
-async function syncDueSubscriptions({ maxAgeMs = SIX_HOURS_MS, force = false, fetchText, nowMs = Date.now() } = {}) {
+async function syncDueSubscriptions({
+  maxAgeMs = SIX_HOURS_MS,
+  force = false,
+  fetchText,
+  nowMs = Date.now(),
+} = {}) {
   const subs = stmts.psubAll.all().filter((s) => !!s.auto_update_enabled);
   const out = [];
   for (const s of subs) {
@@ -114,15 +142,31 @@ let timer = null;
 /** Фоновый авто-синк: первичный проход + интервал (не держит процесс живым). */
 function startAutoSync({ intervalMs = SIX_HOURS_MS, initialDelayMs = 15000 } = {}) {
   if (timer) return;
-  const kickoff = setTimeout(() => { void syncDueSubscriptions(); }, initialDelayMs);
+  const kickoff = setTimeout(() => {
+    void syncDueSubscriptions();
+  }, initialDelayMs);
   if (kickoff.unref) kickoff.unref();
-  timer = setInterval(() => { void syncDueSubscriptions(); }, intervalMs);
+  timer = setInterval(() => {
+    void syncDueSubscriptions();
+  }, intervalMs);
   if (timer.unref) timer.unref();
   logger.info("proxycore.autosync.start", { intervalMs });
 }
 
 function stopAutoSync() {
-  if (timer) { clearInterval(timer); timer = null; }
+  if (timer) {
+    clearInterval(timer);
+    timer = null;
+  }
 }
 
-module.exports = { SIX_HOURS_MS, nodeKey, parseUpdated, isStale, refreshSubscription, syncDueSubscriptions, startAutoSync, stopAutoSync };
+module.exports = {
+  SIX_HOURS_MS,
+  nodeKey,
+  parseUpdated,
+  isStale,
+  refreshSubscription,
+  syncDueSubscriptions,
+  startAutoSync,
+  stopAutoSync,
+};

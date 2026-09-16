@@ -15,8 +15,12 @@ describe("mediaImg — проксирование картинок TMDB", () => 
   });
 
   it("поддерживает любой размер, включая original (логотипы площадок)", () => {
-    expect(imgUrl("https://image.tmdb.org/t/p/original/abc.png")).toBe("/api/movies/image?s=original&p=%2Fabc.png");
-    expect(imgUrl("https://image.tmdb.org/t/p/w1280/b9q9VmbXDvJmTziRqkwdEmFdwhr.jpg")).toContain("s=w1280");
+    expect(imgUrl("https://image.tmdb.org/t/p/original/abc.png")).toBe(
+      "/api/movies/image?s=original&p=%2Fabc.png",
+    );
+    expect(imgUrl("https://image.tmdb.org/t/p/w1280/b9q9VmbXDvJmTziRqkwdEmFdwhr.jpg")).toContain(
+      "s=w1280",
+    );
   });
 
   it("идемпотентен: уже проксированный URL не переписывает", () => {
@@ -25,7 +29,9 @@ describe("mediaImg — проксирование картинок TMDB", () => 
   });
 
   it("не трогает нетематографические и внешние ссылки", () => {
-    expect(imgUrl("https://example.com/local/poster.jpg")).toBe("https://example.com/local/poster.jpg");
+    expect(imgUrl("https://example.com/local/poster.jpg")).toBe(
+      "https://example.com/local/poster.jpg",
+    );
     expect(imgUrl("/assets/placeholder.png")).toBe("/assets/placeholder.png");
   });
 
@@ -36,7 +42,9 @@ describe("mediaImg — проксирование картинок TMDB", () => 
   });
 
   it("imgCssUrl отдаёт готовое значение для background-image", () => {
-    expect(imgCssUrl("https://image.tmdb.org/t/p/w1280/bd.jpg")).toBe('url("/api/movies/image?s=w1280&p=%2Fbd.jpg")');
+    expect(imgCssUrl("https://image.tmdb.org/t/p/w1280/bd.jpg")).toBe(
+      'url("/api/movies/image?s=w1280&p=%2Fbd.jpg")',
+    );
     expect(imgCssUrl(null)).toBe("none");
   });
 });

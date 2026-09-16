@@ -26,10 +26,14 @@ function ensureDir() {
 }
 
 function slugify(title) {
-  return String(title || "untitled")
-    .toLowerCase()
-    .replace(/[^a-zа-яё0-9_-]/gi, "-")
-    .replace(/-+/g, "-").replace(/^-|-$/g, "").slice(0, 80) || "note";
+  return (
+    String(title || "untitled")
+      .toLowerCase()
+      .replace(/[^a-zа-яё0-9_-]/gi, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-|-$/g, "")
+      .slice(0, 80) || "note"
+  );
 }
 
 function noteFilename(note) {
@@ -45,11 +49,7 @@ function now() {
 }
 // Сериализовать заметку в .md с frontmatter
 function serializeNote(note) {
-  const fm = [
-    "---",
-    'title: "' + (note.title || "").replace(/"/g, '\\"') + '"',
-    "id: " + note.id,
-  ];
+  const fm = ["---", 'title: "' + (note.title || "").replace(/"/g, '\\"') + '"', "id: " + note.id];
   if (note.tags) fm.push('tags: "' + (note.tags || "").replace(/"/g, '\\"') + '"');
   if (note.folder) fm.push('folder: "' + (note.folder || "").replace(/"/g, '\\"') + '"');
   fm.push("created_at: " + (note.created_at || ""));
@@ -61,7 +61,15 @@ function serializeNote(note) {
 // Распарсить .md файл -> note-объект
 function parseNote(filePath) {
   const raw = fs.readFileSync(filePath, "utf8");
-  const note = { id: 0, title: "", content: "", tags: "", folder: "", created_at: "", updated_at: "" };
+  const note = {
+    id: 0,
+    title: "",
+    content: "",
+    tags: "",
+    folder: "",
+    created_at: "",
+    updated_at: "",
+  };
   if (raw.startsWith("---")) {
     const endIdx = raw.indexOf("---", 3);
     if (endIdx > 0) {
@@ -73,7 +81,11 @@ function parseNote(filePath) {
         if (colonIdx === -1) continue;
         const key = trimmed.slice(0, colonIdx).trim();
         let val = trimmed.slice(colonIdx + 1).trim();
-        if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) val = val.slice(1, -1);
+        if (
+          (val.startsWith('"') && val.endsWith('"')) ||
+          (val.startsWith("'") && val.endsWith("'"))
+        )
+          val = val.slice(1, -1);
         if (key === "title") note.title = val;
         else if (key === "id") note.id = Number(val) || 0;
         else if (key === "tags") note.tags = val;
@@ -98,7 +110,10 @@ function writeNoteFile(note) {
   try {
     const files = fs.readdirSync(NOTES_DIR);
     for (const f of files) {
-      if (f.startsWith(note.id + "-")) { const fp = path.join(NOTES_DIR, f); if (fp !== newPath) oldPath = fp; }
+      if (f.startsWith(note.id + "-")) {
+        const fp = path.join(NOTES_DIR, f);
+        if (fp !== newPath) oldPath = fp;
+      }
     }
   } catch {}
   if (oldPath) removeNoteFileByPath(oldPath);
@@ -113,8 +128,11 @@ function removeNoteFileByPath(filePath) {
 function removeNoteFile(note) {
   try {
     const files = fs.readdirSync(NOTES_DIR);
-    for (const f of files) if (f.startsWith(note.id + "-")) removeNoteFileByPath(path.join(NOTES_DIR, f));
-  } catch { /* каталога нет — удалять нечего */ }
+    for (const f of files)
+      if (f.startsWith(note.id + "-")) removeNoteFileByPath(path.join(NOTES_DIR, f));
+  } catch {
+    /* каталога нет — удалять нечего */
+  }
 }
 
 // --- Публичное API ---
@@ -125,7 +143,9 @@ function loadAll() {
   noteMap = new Map();
   noteSeq = 0;
   let files = [];
-  try { files = fs.readdirSync(NOTES_DIR); } catch {}
+  try {
+    files = fs.readdirSync(NOTES_DIR);
+  } catch {}
   for (const f of files.sort()) {
     if (!f.endsWith(".md")) continue;
     try {
@@ -148,7 +168,7 @@ function all() {
     const db = b.updated_at || b.created_at || "";
     return da > db ? -1 : da < db ? 1 : 0;
   });
-  return list.map(r => ({ ...r }));
+  return list.map((r) => ({ ...r }));
 }
 
 function get(id) {
@@ -159,7 +179,15 @@ function get(id) {
 function insert(title, content, tags, folder) {
   const id = ++noteSeq;
   const ts = now();
-  const note = { id, title: String(title || ""), content: String(content || ""), tags: String(tags || ""), folder: String(folder || ""), created_at: ts, updated_at: ts };
+  const note = {
+    id,
+    title: String(title || ""),
+    content: String(content || ""),
+    tags: String(tags || ""),
+    folder: String(folder || ""),
+    created_at: ts,
+    updated_at: ts,
+  };
   noteMap.set(id, note);
   writeNoteFile(note);
   return { lastInsertRowid: id };
@@ -198,10 +226,10 @@ function upsert(id, fields = {}) {
   const ex = noteMap.get(wanted);
   const note = {
     id: wanted,
-    title: fields.title != null ? String(fields.title) : (ex ? ex.title : ""),
-    content: fields.content != null ? String(fields.content) : (ex ? ex.content : ""),
-    tags: fields.tags != null ? String(fields.tags) : (ex ? ex.tags : ""),
-    folder: fields.folder != null ? String(fields.folder) : (ex ? ex.folder : ""),
+    title: fields.title != null ? String(fields.title) : ex ? ex.title : "",
+    content: fields.content != null ? String(fields.content) : ex ? ex.content : "",
+    tags: fields.tags != null ? String(fields.tags) : ex ? ex.tags : "",
+    folder: fields.folder != null ? String(fields.folder) : ex ? ex.folder : "",
     // created_at переживает перезапись: это дата появления заметки, а не правки.
     created_at: ex ? ex.created_at : ts,
     updated_at: ts,
@@ -226,20 +254,35 @@ function deleteAll() {
   try {
     const files = fs.readdirSync(NOTES_DIR);
     for (const f of files) if (f.endsWith(".md")) removeNoteFileByPath(path.join(NOTES_DIR, f));
-  } catch { /* каталога нет — удалять нечего */ }
+  } catch {
+    /* каталога нет — удалять нечего */
+  }
   noteSeq = 0;
   return { deleted: count };
 }
 
 function search(q) {
-  const query = String(q || "").toLowerCase().trim();
+  const query = String(q || "")
+    .toLowerCase()
+    .trim();
   if (!query) return [];
-  return Array.from(noteMap.values()).filter(n =>
-    n.title.toLowerCase().includes(query) || n.content.toLowerCase().includes(query)
-  ).map(r => ({ ...r }));
+  return Array.from(noteMap.values())
+    .filter((n) => n.title.toLowerCase().includes(query) || n.content.toLowerCase().includes(query))
+    .map((r) => ({ ...r }));
 }
 
 /** Загрузить, если директория существует */
 loadAll();
 
-module.exports = { loadAll, all, get, insert, update, upsert, delete: del, deleteAll, search, NOTES_DIR };
+module.exports = {
+  loadAll,
+  all,
+  get,
+  insert,
+  update,
+  upsert,
+  delete: del,
+  deleteAll,
+  search,
+  NOTES_DIR,
+};

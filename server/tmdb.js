@@ -31,7 +31,11 @@ const PAGE_ID = "movies";
 
 /** Есть ли ключ TMDB (без обращения к сети). */
 function hasKey() {
-  try { return !!security.getSecret("tmdb"); } catch { return false; }
+  try {
+    return !!security.getSecret("tmdb");
+  } catch {
+    return false;
+  }
 }
 
 /** Ошибка с машиночитаемым кодом — фронт показывает понятный текст. */
@@ -48,7 +52,11 @@ function isBearer(token) {
 
 function movieCfg() {
   let cfg = {};
-  try { cfg = settings.get("movies") || {}; } catch { /* настройки могут быть недоступны в тестах */ }
+  try {
+    cfg = settings.get("movies") || {};
+  } catch {
+    /* настройки могут быть недоступны в тестах */
+  }
   return {
     language: cfg.language || "ru-RU",
     region: String(cfg.region || "RU").toUpperCase(),
@@ -69,16 +77,26 @@ function cacheGet(key) {
     if (!Number.isFinite(at)) return null;
     if (Date.now() - at > cacheMinutes * 60_000) return null;
     return JSON.parse(hit.json);
-  } catch { return null; }
+  } catch {
+    return null;
+  }
 }
 
 function cacheSet(key, value) {
-  try { stmts.mmcSet.run(key, JSON.stringify(value)); } catch { /* кэш не критичен */ }
+  try {
+    stmts.mmcSet.run(key, JSON.stringify(value));
+  } catch {
+    /* кэш не критичен */
+  }
 }
 
 /** Сбросить кэш метаданных TMDB (кнопка «Обновить» на странице). */
 function clearCache() {
-  try { stmts.mmcClear.run(); } catch { /* ignore */ }
+  try {
+    stmts.mmcClear.run();
+  } catch {
+    /* ignore */
+  }
 }
 
 /* ------------------------------- HTTP --------------------------------- */
@@ -109,7 +127,11 @@ async function fetchJson(pathname, query = {}, { page = PAGE_ID, timeout = 20000
   };
 
   let useProxy = false;
-  try { useProxy = !!getUndiciDispatcherForPage(page); } catch { useProxy = false; }
+  try {
+    useProxy = !!getUndiciDispatcherForPage(page);
+  } catch {
+    useProxy = false;
+  }
 
   let res;
   try {
@@ -165,12 +187,27 @@ function imageUrl(path, size = POSTER_SIZE) {
 
 /** Размеры TMDB, разрешённые к проксированию (полный allowlist TMDB). */
 const IMG_SIZES = new Set([
-  "w45", "w92", "w154", "w185", "w200", "w300", "w342", "w500", "w780", "w1280", "h632", "original",
+  "w45",
+  "w92",
+  "w154",
+  "w185",
+  "w200",
+  "w300",
+  "w342",
+  "w500",
+  "w780",
+  "w1280",
+  "h632",
+  "original",
 ]);
 
 const IMG_MIME = {
-  ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png",
-  ".webp": "image/webp", ".gif": "image/gif", ".svg": "image/svg+xml",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".png": "image/png",
+  ".webp": "image/webp",
+  ".gif": "image/gif",
+  ".svg": "image/svg+xml",
 };
 
 /** Путь файла TMDB: строго "/abc.jpg" — без выхода из каталога и без query. */
@@ -188,7 +225,12 @@ function imageKey(rawSize, rawPath) {
   const path = String(rawPath || "");
   if (!validImgPath(path)) throw tmdbError("bad_path", `invalid image path: ${rawPath}`);
   const key = `${size}${path}`;
-  return { size, path, key, etag: `"${crypto.createHash("sha1").update(key).digest("hex").slice(0, 20)}"` };
+  return {
+    size,
+    path,
+    key,
+    etag: `"${crypto.createHash("sha1").update(key).digest("hex").slice(0, 20)}"`,
+  };
 }
 
 /** LRU-кэш байтов картинок: постеры повторяются, а сеть до CDN дорогая. */
@@ -244,7 +286,11 @@ async function fetchImage(rawSize, rawPath, { timeout = 15000 } = {}) {
   };
 
   let useProxy = false;
-  try { useProxy = !!getUndiciDispatcherForPage(PAGE_ID); } catch { useProxy = false; }
+  try {
+    useProxy = !!getUndiciDispatcherForPage(PAGE_ID);
+  } catch {
+    useProxy = false;
+  }
 
   const markFailed = (message) => {
     imgFailed.set(key, Date.now());
@@ -320,14 +366,20 @@ function ageRatingOf(kind, raw, region) {
   try {
     if (kind === "movie") {
       const list = raw?.release_dates?.results || [];
-      const entry = list.find((r) => r.iso_3166_1 === region) || list.find((r) => r.iso_3166_1 === "US");
-      const cert = (entry?.release_dates || []).map((d) => d.certification).find((c) => c && String(c).trim());
+      const entry =
+        list.find((r) => r.iso_3166_1 === region) || list.find((r) => r.iso_3166_1 === "US");
+      const cert = (entry?.release_dates || [])
+        .map((d) => d.certification)
+        .find((c) => c && String(c).trim());
       return cert ? String(cert).trim() : null;
     }
     const list = raw?.content_ratings?.results || [];
-    const entry = list.find((r) => r.iso_3166_1 === region) || list.find((r) => r.iso_3166_1 === "US");
+    const entry =
+      list.find((r) => r.iso_3166_1 === region) || list.find((r) => r.iso_3166_1 === "US");
     return entry?.rating ? String(entry.rating) : null;
-  } catch { return null; }
+  } catch {
+    return null;
+  }
 }
 
 /** Лучший трейлер (YouTube), иначе — любой ролик. */
@@ -341,12 +393,13 @@ function pickTrailer(videos) {
 function providersOf(raw, region) {
   const block = raw?.["watch/providers"]?.results?.[region] || null;
   if (!block) return { region, link: null, flatrate: [], rent: [], buy: [] };
-  const map = (arr) => (arr || []).map((p) => ({
-    id: p.provider_id,
-    name: p.provider_name,
-    logo: imageUrl(p.logo_path, PROFILE_SIZE),
-    displayPriority: p.display_priority,
-  }));
+  const map = (arr) =>
+    (arr || []).map((p) => ({
+      id: p.provider_id,
+      name: p.provider_name,
+      logo: imageUrl(p.logo_path, PROFILE_SIZE),
+      displayPriority: p.display_priority,
+    }));
   return {
     region,
     link: block.link || null,
@@ -361,10 +414,23 @@ function toDetails(kind, raw, region) {
   const base = toSummary(kind, raw);
   const isTv = kind === "tv";
   const crew = (raw?.credits?.crew || [])
-    .filter((c) => ["Director", "Writer", "Screenplay", "Creator", "Producer", "Composer", "Executive Producer"].includes(c.job))
+    .filter((c) =>
+      [
+        "Director",
+        "Writer",
+        "Screenplay",
+        "Creator",
+        "Producer",
+        "Composer",
+        "Executive Producer",
+      ].includes(c.job),
+    )
     .slice(0, 12)
     .map((c) => ({
-      id: c.id, name: c.name, job: c.job, department: c.department,
+      id: c.id,
+      name: c.name,
+      job: c.job,
+      department: c.department,
       profile: imageUrl(c.profile_path, PROFILE_SIZE),
     }));
 
@@ -375,7 +441,7 @@ function toDetails(kind, raw, region) {
     tagline: raw?.tagline || "",
     status: raw?.status || "",
     homepage: raw?.homepage || "",
-    runtime: isTv ? (raw?.episode_run_time?.[0] || null) : (raw?.runtime || null),
+    runtime: isTv ? raw?.episode_run_time?.[0] || null : raw?.runtime || null,
     seasons: isTv ? Number(raw?.number_of_seasons) || 0 : 0,
     episodes: isTv ? Number(raw?.number_of_episodes) || 0 : 0,
     budget: isTv ? 0 : Number(raw?.budget) || 0,
@@ -386,27 +452,40 @@ function toDetails(kind, raw, region) {
     ageRating: ageRatingOf(kind, raw, region),
     imdbId: raw?.external_ids?.imdb_id || null,
     cast: (raw?.credits?.cast || []).slice(0, 24).map((c) => ({
-      id: c.id, name: c.name, character: c.character || "",
+      id: c.id,
+      name: c.name,
+      character: c.character || "",
       profile: imageUrl(c.profile_path, PROFILE_SIZE),
     })),
     crew,
-    videos: (raw?.videos?.results || []).filter((v) => v.site === "YouTube" && v.key).slice(0, 12).map((v) => ({
-      key: v.key, name: v.name, type: v.type, official: !!v.official,
-    })),
+    videos: (raw?.videos?.results || [])
+      .filter((v) => v.site === "YouTube" && v.key)
+      .slice(0, 12)
+      .map((v) => ({
+        key: v.key,
+        name: v.name,
+        type: v.type,
+        official: !!v.official,
+      })),
     trailer: trailer ? { key: trailer.key, name: trailer.name, type: trailer.type } : null,
     gallery: {
-      backdrops: (images.backdrops || []).slice(0, 12).map((i) => imageUrl(i.file_path, BACKDROP_SIZE)),
+      backdrops: (images.backdrops || [])
+        .slice(0, 12)
+        .map((i) => imageUrl(i.file_path, BACKDROP_SIZE)),
       posters: (images.posters || []).slice(0, 12).map((i) => imageUrl(i.file_path, POSTER_SIZE)),
     },
     similar: (raw?.similar?.results || []).slice(0, 12).map((r) => toSummary(kind, r)),
-    recommendations: (raw?.recommendations?.results || []).slice(0, 12).map((r) => toSummary(kind, r)),
+    recommendations: (raw?.recommendations?.results || [])
+      .slice(0, 12)
+      .map((r) => toSummary(kind, r)),
     providers: providersOf(raw, region),
   };
 }
 
 /* ------------------------------ Публичный API -------------------------- */
 
-const DETAIL_APPEND = "credits,videos,images,similar,recommendations,watch/providers,release_dates,content_ratings,external_ids";
+const DETAIL_APPEND =
+  "credits,videos,images,similar,recommendations,watch/providers,release_dates,content_ratings,external_ids";
 
 /**
  * Форма страницы списка TMDB: то, что нужно UI для подкачки и счётчика.
@@ -427,10 +506,15 @@ function pageInfo(json, page) {
 async function trending(kind, window = "week", page = 1) {
   const k = normKind(kind);
   const { language, showAdult, region } = movieCfg();
-  const json = await cached(`/trending/${k}/${window === "day" ? "day" : "week"}`, { language, page });
+  const json = await cached(`/trending/${k}/${window === "day" ? "day" : "week"}`, {
+    language,
+    page,
+  });
   return {
     ...pageInfo(json, page),
-    items: (json.results || []).map((r) => toSummary(k, r)).filter((r) => r && (showAdult || !r.adult)),
+    items: (json.results || [])
+      .map((r) => toSummary(k, r))
+      .filter((r) => r && (showAdult || !r.adult)),
     region,
   };
 }
@@ -448,7 +532,9 @@ async function list(kind, category = "popular", page = 1) {
   return {
     ...pageInfo(json, page),
     category: cat,
-    items: (json.results || []).map((r) => toSummary(k, r)).filter((r) => r && (showAdult || !r.adult)),
+    items: (json.results || [])
+      .map((r) => toSummary(k, r))
+      .filter((r) => r && (showAdult || !r.adult)),
     region,
   };
 }
@@ -459,7 +545,12 @@ async function search(query, kind = "multi", page = 1) {
   if (!q) return { items: [], page: 1, totalPages: 1, totalResults: 0 };
   const { language, showAdult } = movieCfg();
   const path = kind === "multi" ? "/search/multi" : `/search/${normKind(kind)}`;
-  const json = await cached(path, { query: q, language, page, include_adult: showAdult ? "true" : "false" });
+  const json = await cached(path, {
+    query: q,
+    language,
+    page,
+    include_adult: showAdult ? "true" : "false",
+  });
   const items = (json.results || [])
     .filter((r) => r.media_type !== "person")
     .map((r) => toSummary(r.media_type === "tv" ? "tv" : "movie", r))
@@ -490,7 +581,9 @@ async function discover(kind, { genre, year, sort = "popularity.desc", page = 1 
   const k = normKind(kind);
   const { language, showAdult, region } = movieCfg();
   const query = {
-    language, page, sort_by: sort,
+    language,
+    page,
+    sort_by: sort,
     with_genres: genre || undefined,
     include_adult: showAdult ? "true" : "false",
     "vote_count.gte": sort === "vote_average.desc" ? 200 : undefined,
@@ -502,7 +595,9 @@ async function discover(kind, { genre, year, sort = "popularity.desc", page = 1 
   const json = await cached(`/discover/${k}`, query);
   return {
     ...pageInfo(json, page),
-    items: (json.results || []).map((r) => toSummary(k, r)).filter((r) => r && (showAdult || !r.adult)),
+    items: (json.results || [])
+      .map((r) => toSummary(k, r))
+      .filter((r) => r && (showAdult || !r.adult)),
     region,
   };
 }
@@ -518,11 +613,28 @@ async function watchProviders(kind, id) {
 
 module.exports = {
   PAGE_ID,
-  hasKey, clearCache,
-  trending, list, search, details, genres, discover, watchProviders,
-  imageUrl, normKind, toSummary, toDetails, ageRatingOf, providersOf, pickTrailer,
+  hasKey,
+  clearCache,
+  trending,
+  list,
+  search,
+  details,
+  genres,
+  discover,
+  watchProviders,
+  imageUrl,
+  normKind,
+  toSummary,
+  toDetails,
+  ageRatingOf,
+  providersOf,
+  pickTrailer,
   pageInfo,
-  KIND_LABEL, _isBearer: isBearer,
+  KIND_LABEL,
+  _isBearer: isBearer,
   // Прокси картинок: валидация/ключ/ETag + загрузка через per-page прокси.
-  imageKey, fetchImage, IMG_SIZES, validImgPath,
+  imageKey,
+  fetchImage,
+  IMG_SIZES,
+  validImgPath,
 };

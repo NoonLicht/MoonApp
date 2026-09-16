@@ -47,12 +47,14 @@ describe("highlightCode (подсветка кода)", () => {
   });
 
   it("длинный код без языка по-прежнему авто-подсвечивается", () => {
-    const long = Array.from({ length: 14 }, (_, i) =>
-      `  const value${i} = compute(${i}) * ${i + 1};`).join("\n");
+    const long = Array.from(
+      { length: 14 },
+      (_, i) => `  const value${i} = compute(${i}) * ${i + 1};`,
+    ).join("\n");
     expect(long.length).toBeGreaterThanOrEqual(240);
     const out = highlightCode(long, "");
-    expect(out).toContain("hljs-");                    // авто-подсветка включилась
-    expect(out).toBe(hljs.highlightAuto(long).value);  // и именно через highlightAuto
+    expect(out).toContain("hljs-"); // авто-подсветка включилась
+    expect(out).toBe(hljs.highlightAuto(long).value); // и именно через highlightAuto
   });
 
   it("экранирует HTML и кэширует результат", () => {

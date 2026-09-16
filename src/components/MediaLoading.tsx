@@ -38,10 +38,20 @@ export default function MediaLoading({
         <Icon size={26} strokeWidth={1.6} />
       </div>
       <div className="media-loading-info">
-        <div className="media-loading-title" title={title}>{title || label}</div>
-        {!indeterminate && <div className="media-loading-bar"><ProgressBar value={pct} /></div>}
+        <div className="media-loading-title" title={title}>
+          {title || label}
+        </div>
+        {!indeterminate && (
+          <div className="media-loading-bar">
+            <ProgressBar value={pct} />
+          </div>
+        )}
         <div className="media-loading-foot">
-          <span className="media-loading-dots" aria-hidden="true"><i /><i /><i /></span>
+          <span className="media-loading-dots" aria-hidden="true">
+            <i />
+            <i />
+            <i />
+          </span>
           <span className="media-loading-label">{label}</span>
           {!indeterminate && <span className="media-loading-pct">{pct}%</span>}
         </div>

@@ -1,172 +1,509 @@
 /* ===== Bypass Control (простая страница: движок + конфиги + проверка) ===== */
 
 /* Прокрутка: .page в теме имеет overflow:hidden, поэтому страница скроллится внутри своего бокса. */
-.page.bp-page { overflow-y: auto; overflow-x: hidden; scroll-behavior: smooth; padding: 2px; }
-.bp-page { display: flex; flex-direction: column; gap: 12px; }
-.bp-page .bp-card { flex: 0 0 auto; }
+.page.bp-page {
+  overflow-y: auto;
+  overflow-x: hidden;
+  scroll-behavior: smooth;
+  padding: 2px;
+}
+.bp-page {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.bp-page .bp-card {
+  flex: 0 0 auto;
+}
 
 /* --- Статус-баннер + запуск/остановка --- */
 .bp-banner {
-  display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  border-radius: 14px; padding: 14px 18px; border: 1px solid var(--border, rgba(255,255,255,.1));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-radius: 14px;
+  padding: 14px 18px;
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.1));
 }
-.bp-banner.on { background: linear-gradient(90deg, rgba(52, 211, 153, .14), transparent); border-color: rgba(52, 211, 153, .35); }
-.bp-banner.off { background: var(--surface, rgba(255,255,255,.04)); }
-.bp-banner-main { display: flex; align-items: center; gap: 12px; min-width: 0; }
-.bp-banner-main > svg { flex: 0 0 auto; }
-.bp-banner.on .bp-banner-main > svg { color: #34d399; }
-.bp-banner.off .bp-banner-main > svg { opacity: .4; }
-.bp-badge { font-weight: 800; font-size: 15px; letter-spacing: .3px; color: #34d399; }
-.bp-banner.off .bp-badge { color: inherit; opacity: .75; }
-.bp-banner-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.bp-banner.on {
+  background: linear-gradient(90deg, rgba(52, 211, 153, 0.14), transparent);
+  border-color: rgba(52, 211, 153, 0.35);
+}
+.bp-banner.off {
+  background: var(--surface, rgba(255, 255, 255, 0.04));
+}
+.bp-banner-main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.bp-banner-main > svg {
+  flex: 0 0 auto;
+}
+.bp-banner.on .bp-banner-main > svg {
+  color: #34d399;
+}
+.bp-banner.off .bp-banner-main > svg {
+  opacity: 0.4;
+}
+.bp-badge {
+  font-weight: 800;
+  font-size: 15px;
+  letter-spacing: 0.3px;
+  color: #34d399;
+}
+.bp-banner.off .bp-badge {
+  color: inherit;
+  opacity: 0.75;
+}
+.bp-banner-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
 /* Переключатель режима запуска (служба без окна / процесс с окном консоли) */
-.bp-mode { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; }
-.bp-mode select {
-  background: var(--surface, rgba(255,255,255,.08)); color: inherit;
-  border: 1px solid var(--border, rgba(255,255,255,.15)); border-radius: 8px;
-  padding: 5px 8px; font-size: 12.5px; cursor: pointer; max-width: 240px;
+.bp-mode {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
 }
-.bp-mode select:disabled { opacity: .5; cursor: not-allowed; }
-.bp-dim { opacity: .55; font-size: 12px; }
+.bp-mode select {
+  background: var(--surface, rgba(255, 255, 255, 0.08));
+  color: inherit;
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.15));
+  border-radius: 8px;
+  padding: 5px 8px;
+  font-size: 12.5px;
+  cursor: pointer;
+  max-width: 240px;
+}
+.bp-mode select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.bp-dim {
+  opacity: 0.55;
+  font-size: 12px;
+}
 
 /* --- Кнопки / чипы / служебные строки --- */
 .bp-btn {
-  display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 10px;
-  border: 1px solid transparent; cursor: pointer; font-size: 13px; font-weight: 600;
-  background: var(--surface, rgba(255,255,255,.08)); color: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  background: var(--surface, rgba(255, 255, 255, 0.08));
+  color: inherit;
 }
-.bp-btn:hover { filter: brightness(1.1); }
-.bp-btn:disabled { opacity: .45; cursor: not-allowed; }
-.bp-btn.success { background: #34d399; color: #06281c; }
-.bp-btn.danger { background: #ef4444; color: #fff; }
-.bp-btn.accent { background: #8b5cf6; color: #fff; }
-.bp-btn.ghost { background: transparent; border-color: var(--border, rgba(255,255,255,.15)); }
-.bp-btn.tiny { padding: 4px 8px; font-size: 11px; border-radius: 8px; }
+.bp-btn:hover {
+  filter: brightness(1.1);
+}
+.bp-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.bp-btn.success {
+  background: #34d399;
+  color: #06281c;
+}
+.bp-btn.danger {
+  background: #ef4444;
+  color: #fff;
+}
+.bp-btn.accent {
+  background: #8b5cf6;
+  color: #fff;
+}
+.bp-btn.ghost {
+  background: transparent;
+  border-color: var(--border, rgba(255, 255, 255, 0.15));
+}
+.bp-btn.tiny {
+  padding: 4px 8px;
+  font-size: 11px;
+  border-radius: 8px;
+}
 
-.bp-chip { font-size: 10px; padding: 2px 8px; border-radius: 99px; font-weight: 700; text-transform: uppercase; }
-.bp-chip.on { background: rgba(52, 211, 153, .2); color: #34d399; }
-.bp-chip.off { background: rgba(239, 68, 68, .15); color: #f87171; }
-.bp-chip.run { background: rgba(139, 92, 246, .2); color: #c4b5fd; }
+.bp-chip {
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 99px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.bp-chip.on {
+  background: rgba(52, 211, 153, 0.2);
+  color: #34d399;
+}
+.bp-chip.off {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+}
+.bp-chip.run {
+  background: rgba(139, 92, 246, 0.2);
+  color: #c4b5fd;
+}
 
 .bp-warn {
-  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
-  padding: 10px 14px; border-radius: 10px; font-size: 13px;
-  background: rgba(251, 191, 36, .12); color: #fcd34d;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  background: rgba(251, 191, 36, 0.12);
+  color: #fcd34d;
 }
-.bp-warn-row { justify-content: space-between; }
+.bp-warn-row {
+  justify-content: space-between;
+}
 .bp-error {
-  padding: 10px 14px; border-radius: 10px; font-size: 13px;
-  background: rgba(239, 68, 68, .12); color: #f87171; word-break: break-word;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  background: rgba(239, 68, 68, 0.12);
+  color: #f87171;
+  word-break: break-word;
 }
 .bp-note {
-  display: flex; align-items: center; gap: 10px;
-  padding: 9px 14px; border-radius: 10px; font-size: 12px; line-height: 1.45;
-  background: rgba(148, 163, 184, .1); color: #94a3b8;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 14px;
+  border-radius: 10px;
+  font-size: 12px;
+  line-height: 1.45;
+  background: rgba(148, 163, 184, 0.1);
+  color: #94a3b8;
 }
 
 /* --- Карточки / сетка --- */
 /* Обе карточки (стратегии и проверка) выравниваются по высоте строки
    (align-items:stretch — поведение grid по умолчанию). Высота строки задаётся
    содержимым: чем больше конфигов, тем выше плитки, до разумного потолка. */
-.bp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: stretch; }
+.bp-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  align-items: stretch;
+}
 .bp-card {
-  border: 1px solid var(--border, rgba(255,255,255,.1)); border-radius: 14px; padding: 14px;
-  display: flex; flex-direction: column; gap: 10px; background: var(--surface, rgba(255,255,255,.02));
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.1));
+  border-radius: 14px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: var(--surface, rgba(255, 255, 255, 0.02));
   min-width: 0;
 }
-.bp-card h3 { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 14px; }
-.bp-count { font-weight: 400; margin-left: auto; }
-.bp-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.bp-row.spread { justify-content: space-between; }
-@media (max-width: 980px) { .bp-grid { grid-template-columns: 1fr; } }
+.bp-card h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 14px;
+}
+.bp-count {
+  font-weight: 400;
+  margin-left: auto;
+}
+.bp-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.bp-row.spread {
+  justify-content: space-between;
+}
+@media (max-width: 980px) {
+  .bp-grid {
+    grid-template-columns: 1fr;
+  }
+}
 
 /* --- Движок --- */
-.bp-engine-card { gap: 12px; }
-.bp-engine-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
-.bp-engine-info { min-width: 0; flex: 1 1 320px; display: flex; flex-direction: column; gap: 4px; }
-.bp-engine-line { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13px; }
-.bp-engine-line .bp-sep { opacity: .4; }
-.bp-engine-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.bp-engine-card {
+  gap: 12px;
+}
+.bp-engine-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.bp-engine-info {
+  min-width: 0;
+  flex: 1 1 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.bp-engine-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 13px;
+}
+.bp-engine-line .bp-sep {
+  opacity: 0.4;
+}
+.bp-engine-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
 
-.bp-progress { display: flex; flex-direction: column; gap: 6px; }
-.bp-progress-head { display: flex; justify-content: space-between; font-size: 12px; }
-.bp-progress-track { height: 6px; border-radius: 99px; background: rgba(255,255,255,.09); overflow: hidden; }
-.bp-progress-fill { height: 100%; border-radius: 99px; background: #8b5cf6; transition: width .3s ease; }
-.bp-notes summary { cursor: pointer; font-size: 12px; opacity: .75; }
+.bp-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.bp-progress-head {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+}
+.bp-progress-track {
+  height: 6px;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.09);
+  overflow: hidden;
+}
+.bp-progress-fill {
+  height: 100%;
+  border-radius: 99px;
+  background: #8b5cf6;
+  transition: width 0.3s ease;
+}
+.bp-notes summary {
+  cursor: pointer;
+  font-size: 12px;
+  opacity: 0.75;
+}
 .bp-cmd {
-  margin: 0; font-family: ui-monospace, Consolas, monospace; font-size: 10.5px; line-height: 1.5;
-  max-height: 150px; overflow: auto; background: rgba(0,0,0,.25); border-radius: 8px; padding: 8px;
-  white-space: pre-wrap; word-break: break-word;
+  margin: 0;
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 10.5px;
+  line-height: 1.5;
+  max-height: 150px;
+  overflow: auto;
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 8px;
+  padding: 8px;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 /* --- Конфиги: легенда + плитки с огоньками --- */
-.bp-legend { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 11px; opacity: .85; }
-.bp-legend .bp-light { margin-left: 6px; }
-.bp-legend .bp-light:first-child { margin-left: 0; }
+.bp-legend {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  font-size: 11px;
+  opacity: 0.85;
+}
+.bp-legend .bp-light {
+  margin-left: 6px;
+}
+.bp-legend .bp-light:first-child {
+  margin-left: 0;
+}
 
 .bp-best {
-  display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12.5px;
-  padding: 7px 10px; border-radius: 10px; font-weight: 600;
-  background: rgba(52, 211, 153, .12); color: #34d399;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 12.5px;
+  padding: 7px 10px;
+  border-radius: 10px;
+  font-weight: 600;
+  background: rgba(52, 211, 153, 0.12);
+  color: #34d399;
 }
-.bp-best svg { flex: 0 0 auto; }
-.bp-best .bp-btn { margin-left: auto; }
+.bp-best svg {
+  flex: 0 0 auto;
+}
+.bp-best .bp-btn {
+  margin-left: auto;
+}
 
 .bp-tiles {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
-  gap: 6px; padding: 2px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+  gap: 6px;
+  padding: 2px;
   /* Высота «подстраивается» под число конфигов: плитки растут, пока не
      упрутся в потолок, дальше — внутренняя прокрутка. */
-  flex: 1 1 auto; min-height: 0;
+  flex: 1 1 auto;
+  min-height: 0;
   max-height: min(62vh, 520px);
   overflow-y: auto;
 }
 /* Служебная строка под плитками (текущий конфиг + «Запустить») прижимается
    к низу карточки, чтобы карточка не выглядела «обрезанной». */
-.bp-tiles + .bp-row { margin-top: auto; }
-.bp-tile {
-  position: relative; display: flex; flex-direction: column; gap: 2px; align-items: flex-start;
-  padding: 8px 10px; border-radius: 10px; cursor: pointer; text-align: left;
-  border: 1px solid var(--border, rgba(255,255,255,.12));
-  background: var(--surface, rgba(255,255,255,.03)); color: inherit;
-  transition: border-color .15s, background .15s;
+.bp-tiles + .bp-row {
+  margin-top: auto;
 }
-.bp-tile:hover { border-color: #f59e0b88; }
-.bp-tile.sel { border-color: #f59e0b; background: rgba(245, 158, 11, .1); }
-.bp-tile.running { box-shadow: inset 0 0 0 1px rgba(52, 211, 153, .6); }
-.bp-tile.light-ok { border-color: rgba(52, 211, 153, .5); }
-.bp-tile.light-err { border-color: rgba(239, 68, 68, .5); }
-.bp-tile-num { font-size: 10px; opacity: .5; font-variant-numeric: tabular-nums; padding-left: 12px; }
-.bp-tile-label { font-size: 12.5px; font-weight: 700; }
-.bp-tile-name { font-size: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
-.bp-tile .bp-chip { position: absolute; top: 6px; right: 6px; font-size: 9px; padding: 1px 5px; }
+.bp-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  align-items: flex-start;
+  padding: 8px 10px;
+  border-radius: 10px;
+  cursor: pointer;
+  text-align: left;
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.12));
+  background: var(--surface, rgba(255, 255, 255, 0.03));
+  color: inherit;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
+}
+.bp-tile:hover {
+  border-color: #f59e0b88;
+}
+.bp-tile.sel {
+  border-color: #f59e0b;
+  background: rgba(245, 158, 11, 0.1);
+}
+.bp-tile.running {
+  box-shadow: inset 0 0 0 1px rgba(52, 211, 153, 0.6);
+}
+.bp-tile.light-ok {
+  border-color: rgba(52, 211, 153, 0.5);
+}
+.bp-tile.light-err {
+  border-color: rgba(239, 68, 68, 0.5);
+}
+.bp-tile-num {
+  font-size: 10px;
+  opacity: 0.5;
+  font-variant-numeric: tabular-nums;
+  padding-left: 12px;
+}
+.bp-tile-label {
+  font-size: 12.5px;
+  font-weight: 700;
+}
+.bp-tile-name {
+  font-size: 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+.bp-tile .bp-chip {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  font-size: 9px;
+  padding: 1px 5px;
+}
 
 .bp-light {
-  display: inline-block; width: 9px; height: 9px; border-radius: 99px; flex: 0 0 auto;
-  background: rgba(255,255,255,.25); box-shadow: 0 0 0 1px rgba(0,0,0,.25) inset;
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 99px;
+  flex: 0 0 auto;
+  background: rgba(255, 255, 255, 0.25);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25) inset;
 }
-.bp-light.ok { background: #34d399; box-shadow: 0 0 6px rgba(52, 211, 153, .55); }
-.bp-light.err { background: #ef4444; box-shadow: 0 0 6px rgba(239, 68, 68, .5); }
-.bp-light.idle { background: rgba(255,255,255,.2); }
-.bp-tile .bp-light { position: absolute; top: 8px; left: 8px; }
+.bp-light.ok {
+  background: #34d399;
+  box-shadow: 0 0 6px rgba(52, 211, 153, 0.55);
+}
+.bp-light.err {
+  background: #ef4444;
+  box-shadow: 0 0 6px rgba(239, 68, 68, 0.5);
+}
+.bp-light.idle {
+  background: rgba(255, 255, 255, 0.2);
+}
+.bp-tile .bp-light {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+}
 
 /* --- Консоль проверки (vendor utils/test zapret.ps1) --- */
 /* Панель проверки больше НЕ растягивается на всю высоту карточки: у консоли
    фиксированная высота, а прокрутка — внутри её окна. Иначе длинный лог тянул
    карточку вниз на всю страницу. */
-.bp-console { display: flex; flex-direction: column; gap: 6px; border-top: 1px dashed var(--border, rgba(255,255,255,.12)); padding-top: 8px; flex: 0 0 auto; }
-.bp-console-head { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 600; }
-.bp-console-state { margin-left: auto; font-weight: 400; text-align: right; min-width: 0; }
-.bp-console-body {
-  margin: 0; font-family: ui-monospace, Consolas, monospace; font-size: 10.5px; line-height: 1.45;
-  height: min(320px, 42vh); max-height: min(320px, 42vh); overflow-y: auto; overflow-x: hidden;
-  white-space: pre-wrap; word-break: break-word;
-  background: rgba(0,0,0,.3); border-radius: 8px; padding: 8px;
+.bp-console {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border-top: 1px dashed var(--border, rgba(255, 255, 255, 0.12));
+  padding-top: 8px;
+  flex: 0 0 auto;
 }
-.bp-console-line { display: block; }
-.bp-console-line.meta { color: #8b5cf6; }
-.bp-console-line.cfg { color: #fcd34d; font-weight: 700; }
-.bp-console-line.head { color: #67e8f9; }
-.bp-console-line.ok { color: #34d399; }
-.bp-console-line.err { color: #f87171; }
-.bp-console-line.warn { color: #fbbf24; }
+.bp-console-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.bp-console-state {
+  margin-left: auto;
+  font-weight: 400;
+  text-align: right;
+  min-width: 0;
+}
+.bp-console-body {
+  margin: 0;
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 10.5px;
+  line-height: 1.45;
+  height: min(320px, 42vh);
+  max-height: min(320px, 42vh);
+  overflow-y: auto;
+  overflow-x: hidden;
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 8px;
+  padding: 8px;
+}
+.bp-console-line {
+  display: block;
+}
+.bp-console-line.meta {
+  color: #8b5cf6;
+}
+.bp-console-line.cfg {
+  color: #fcd34d;
+  font-weight: 700;
+}
+.bp-console-line.head {
+  color: #67e8f9;
+}
+.bp-console-line.ok {
+  color: #34d399;
+}
+.bp-console-line.err {
+  color: #f87171;
+}
+.bp-console-line.warn {
+  color: #fbbf24;
+}

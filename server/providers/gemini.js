@@ -2,7 +2,14 @@ const { consumeSSE } = require("./stream");
 const { pageFetch } = require("../middleware/perPageProxy");
 
 const BASE = "https://generativelanguage.googleapis.com/v1beta/models";
-const MODELS = ["gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.0-flash", "gemini-1.5-pro", "gemini-1.5-flash"];
+const MODELS = [
+  "gemini-2.5-pro",
+  "gemini-2.5-flash",
+  "gemini-2.5-flash-lite",
+  "gemini-2.0-flash",
+  "gemini-1.5-pro",
+  "gemini-1.5-flash",
+];
 
 function mapMessages(messages) {
   const out = [];
@@ -56,7 +63,10 @@ module.exports = {
       await consumeSSE(res.body, (j) => {
         const parts = j.candidates?.[0]?.content?.parts || [];
         for (const p of parts) {
-          if (p.text) { full += p.text; onToken?.(p.text); }
+          if (p.text) {
+            full += p.text;
+            onToken?.(p.text);
+          }
         }
       });
       return full;

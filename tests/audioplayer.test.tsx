@@ -9,7 +9,7 @@ describe("AudioPlayer", () => {
     const html = renderToString(
       <I18nProvider lang="ru">
         <AudioPlayer src="blob:demo" />
-      </I18nProvider>
+      </I18nProvider>,
     );
     expect(html).toContain("audio-player");
     expect(html).toContain("Назад на 10 секунд");
@@ -24,7 +24,7 @@ describe("AudioPlayer", () => {
     const html = renderToString(
       <I18nProvider lang="ru">
         <AudioPlayer src="blob:demo" compact />
-      </I18nProvider>
+      </I18nProvider>,
     );
     expect(html).toContain("is-compact");
     expect(html).not.toContain("Назад на 10 секунд");

@@ -13,7 +13,11 @@ import os from "os";
  *   2) реальное отключение клиента всё ещё абортит генерацию.
  */
 
-interface StreamEvent { type: string; text?: string; message?: string }
+interface StreamEvent {
+  type: string;
+  text?: string;
+  message?: string;
+}
 
 describe("chat SSE (регресс 'Generation stopped')", () => {
   let srv: { close: () => void; address: () => { port: number } } | null = null;
@@ -52,7 +56,13 @@ describe("chat SSE (регресс 'Generation stopped')", () => {
     base = `http://127.0.0.1:${srv!.address().port}`;
   });
 
-  afterAll(() => { try { srv?.close(); } catch { /* noop */ } });
+  afterAll(() => {
+    try {
+      srv?.close();
+    } catch {
+      /* noop */
+    }
+  });
 
   async function newConversation(): Promise<number> {
     const res = await fetch(`${base}/api/chat`, {
@@ -75,7 +85,13 @@ describe("chat SSE (регресс 'Generation stopped')", () => {
       buf = parts.pop() || "";
       for (const p of parts) {
         const line = p.split("\n").find((l) => l.startsWith("data:"));
-        if (line) { try { onEvent(JSON.parse(line.slice(5).trim())); } catch { /* skip */ } }
+        if (line) {
+          try {
+            onEvent(JSON.parse(line.slice(5).trim()));
+          } catch {
+            /* skip */
+          }
+        }
       }
     }
   }
@@ -113,8 +129,12 @@ describe("chat SSE (регресс 'Generation stopped')", () => {
         body: JSON.stringify({ text: "второй", model: "deepseek-chat", stream: true }),
         signal: ctl.signal,
       });
-      await readSse(res, () => { if (++got >= 2) ctl.abort(); });
-    } catch { /* ожидаемый AbortError на клиенте */ }
+      await readSse(res, () => {
+        if (++got >= 2) ctl.abort();
+      });
+    } catch {
+      /* ожидаемый AbortError на клиенте */
+    }
     expect(got).toBeGreaterThanOrEqual(2);
     await new Promise((r) => setTimeout(r, 300));
     expect(lastSignal?.aborted).toBe(true);

@@ -21,7 +21,9 @@ function getMasterKey() {
   try {
     const fromSettings = String(require("./settings").get("advanced").masterKey || "").trim();
     if (fromSettings) return crypto.createHash("sha256").update(fromSettings).digest();
-  } catch { /* settings может быть недоступен на раннем старте — идём в dev-ключ */ }
+  } catch {
+    /* settings может быть недоступен на раннем старте — идём в dev-ключ */
+  }
   return crypto.createHash("sha256").update("dev-master-key-not-for-prod").digest();
 }
 
@@ -41,7 +43,9 @@ function aesDecrypt(token) {
   const [ivB, tagB, dataB] = token.split(".");
   const decipher = crypto.createDecipheriv(ALGO, key, Buffer.from(ivB, "base64"));
   decipher.setAuthTag(Buffer.from(tagB, "base64"));
-  return Buffer.concat([decipher.update(Buffer.from(dataB, "base64")), decipher.final()]).toString("utf8");
+  return Buffer.concat([decipher.update(Buffer.from(dataB, "base64")), decipher.final()]).toString(
+    "utf8",
+  );
 }
 
 function encryptSecret(plain) {
@@ -115,11 +119,19 @@ function listSecrets() {
 /** Имена известных секретов: провайдеры чата + TMDB (для импорта настроек). */
 function allowedSecretNames() {
   const ids = [];
-  try { for (const p of require("./providers").PROVIDERS) ids.push(p.id); } catch { /* без каталога — только tmdb */ }
+  try {
+    for (const p of require("./providers").PROVIDERS) ids.push(p.id);
+  } catch {
+    /* без каталога — только tmdb */
+  }
   return ids.concat("tmdb");
 }
 
 module.exports = {
-  setSecret, getSecret, hasSecret, decryptSecret,
-  listSecrets, allowedSecretNames,
+  setSecret,
+  getSecret,
+  hasSecret,
+  decryptSecret,
+  listSecrets,
+  allowedSecretNames,
 };

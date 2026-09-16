@@ -17,16 +17,31 @@ process.env.MOONAPP_STORAGE = STORAGE;
 const legacyData = {
   proxy_subscriptions: {
     cols: ["name", "url", "last_updated", "auto_update_enabled"],
-    rows: [{ id: 7, name: "old", url: "https://example.com/s", last_updated: "", auto_update_enabled: 1 }],
+    rows: [
+      {
+        id: 7,
+        name: "old",
+        url: "https://example.com/s",
+        last_updated: "",
+        auto_update_enabled: 1,
+      },
+    ],
     seq: 7,
   },
   proxy_nodes: {
     cols: ["sub_id", "name", "protocol", "config_json", "ping_ms", "country_code", "is_selected"],
-    rows: [{
-      id: 1, sub_id: 7, name: "legacy", protocol: "vless",
-      config_json: JSON.stringify({ protocol: "vless", server: "1.1.1.1", port: 443 }),
-      ping_ms: null, country_code: "", is_selected: 1,
-    }],
+    rows: [
+      {
+        id: 1,
+        sub_id: 7,
+        name: "legacy",
+        protocol: "vless",
+        config_json: JSON.stringify({ protocol: "vless", server: "1.1.1.1", port: 443 }),
+        ping_ms: null,
+        country_code: "",
+        is_selected: 1,
+      },
+    ],
     seq: 1,
   },
 };
@@ -47,7 +62,12 @@ describe("db — миграция схемы", () => {
     expect(before.sub_id).toBe(7);
     expect(before.name).toBe("legacy");
 
-    const ins = stmts.pnodeInsert.run(7, "new", "trojan", JSON.stringify({ protocol: "trojan", server: "2.2.2.2", port: 443 }));
+    const ins = stmts.pnodeInsert.run(
+      7,
+      "new",
+      "trojan",
+      JSON.stringify({ protocol: "trojan", server: "2.2.2.2", port: 443 }),
+    );
     const row = stmts.pnodeGet.get(ins.lastInsertRowid);
     expect(row.sub_id).toBe(7);
     expect(row.name).toBe("new");
@@ -94,9 +114,11 @@ describe("подписка — скрытые узлы", () => {
   });
 
   it("nodeKey устойчив к перезаписи и различает узлы", () => {
-    expect(subs.nodeKey({ protocol: "vless", server: "a", port: 443 }))
-      .toBe(subs.nodeKey({ protocol: "vless", server: "a", port: 443 }));
-    expect(subs.nodeKey({ protocol: "vless", server: "a", port: 443 }))
-      .not.toBe(subs.nodeKey({ protocol: "vless", server: "a", port: 8443 }));
+    expect(subs.nodeKey({ protocol: "vless", server: "a", port: 443 })).toBe(
+      subs.nodeKey({ protocol: "vless", server: "a", port: 443 }),
+    );
+    expect(subs.nodeKey({ protocol: "vless", server: "a", port: 443 })).not.toBe(
+      subs.nodeKey({ protocol: "vless", server: "a", port: 8443 }),
+    );
   });
 });

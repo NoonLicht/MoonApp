@@ -24,7 +24,9 @@ try {
   // игнорируем, работаем как в dev.
   const e = require("electron");
   if (e && typeof e === "object") _electron = e;
-} catch { /* не в Electron-рантайме */ }
+} catch {
+  /* не в Electron-рантайме */
+}
 
 function probeWritable(dir) {
   try {
@@ -47,7 +49,11 @@ function resolveStorageDir() {
     if (probeWritable(portable)) return portable;
     // Фолбэк: установка в Program Files и т.п. — пишем в AppData.
     const appData = path.join(_electron.app.getPath("userData"), "storage");
-    try { fs.mkdirSync(appData, { recursive: true }); } catch { /* отдаём как есть */ }
+    try {
+      fs.mkdirSync(appData, { recursive: true });
+    } catch {
+      /* отдаём как есть */
+    }
     return appData;
   }
 

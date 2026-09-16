@@ -23,20 +23,29 @@ router.post("/log", (req, res) => {
 
 // --- Управление LibreHardwareMonitor (источник датчиков) ---
 router.get("/monitor/lhm", async (req, res) => {
-  try { res.json(await monitor.lhmStatus()); }
-  catch (e) { res.status(500).json({ error: e.message }); }
+  try {
+    res.json(await monitor.lhmStatus());
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // Запуск: находится установленный LHM, поднимается (UAC-запрос), ожидается WMI.
 router.post("/monitor/lhm/start", async (req, res) => {
-  try { res.json(await monitor.startLhm()); }
-  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+  try {
+    res.json(await monitor.startLhm());
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
 });
 
 // Скачать headless-движок (LibreHardwareMonitorLib с GitHub) и запустить его.
 router.post("/monitor/lhm/download", async (req, res) => {
-  try { res.json(await monitor.downloadAndStartEngine()); }
-  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+  try {
+    res.json(await monitor.downloadAndStartEngine());
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
 });
 
 router.post("/monitor/lhm/stop", (req, res) => {
@@ -59,9 +68,10 @@ router.get("/monitor", async (req, res) => {
       cpuTemp,
       gpuTemp,
       ram: s.memory.usedPercent,
-      vram: g0?.memoryUsedMb != null && g0?.memoryTotalMb
-        ? Math.round((100 * g0.memoryUsedMb) / g0.memoryTotalMb)
-        : null,
+      vram:
+        g0?.memoryUsedMb != null && g0?.memoryTotalMb
+          ? Math.round((100 * g0.memoryUsedMb) / g0.memoryTotalMb)
+          : null,
       fan1: s.fans[0]?.rpm ?? null,
       fan2: s.fans[1]?.rpm ?? null,
       history: [],

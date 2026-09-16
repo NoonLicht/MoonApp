@@ -1,51 +1,83 @@
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap");
 
 /* Сброс для прозрачного окна: без margin и белого фона вокруг оболочки,
    иначе по краям виден «ореол»/рамка. */
-html, body{
-  margin:0; padding:0;
-  background:transparent;
-  overflow:hidden;
-  height:100%;
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  overflow: hidden;
+  height: 100%;
 }
-#root{ height:100%; }
+#root {
+  height: 100%;
+}
 
 /* Полностью скрываем все полосы прокрутки во всём приложении. */
-*::-webkit-scrollbar{ width:0; height:0; display:none; background:transparent; }
-*{ scrollbar-width:none; scrollbar-color:transparent transparent; }
-*{ -ms-overflow-style:none; }
+*::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+  background: transparent;
+}
+* {
+  scrollbar-width: none;
+  scrollbar-color: transparent transparent;
+}
+* {
+  -ms-overflow-style: none;
+}
 
-.app-shell{
-  --font-display:'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
-  --font-body:'Inter', ui-sans-serif, system-ui, sans-serif;
-  --font-mono:'JetBrains Mono', ui-monospace, monospace;
-  --amber:#f0a63d; --amber-soft:rgba(240,166,61,0.16);
-  --violet:#8b7bf0; --violet-soft:rgba(139,123,240,0.16);
-  --teal:#3fc7ab; --teal-soft:rgba(63,199,171,0.16);
-  --coral:#ea6b6b; --coral-soft:rgba(234,107,107,0.16);
-  --success:#3fc78a;
-  position:relative; min-height:100vh; width:100%; overflow:hidden;
-  font-family:var(--font-body); color:var(--text-primary);
-  -webkit-font-smoothing:antialiased;
-  background:var(--bg-base);
+.app-shell {
+  --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-body: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --amber: #f0a63d;
+  --amber-soft: rgba(240, 166, 61, 0.16);
+  --violet: #8b7bf0;
+  --violet-soft: rgba(139, 123, 240, 0.16);
+  --teal: #3fc7ab;
+  --teal-soft: rgba(63, 199, 171, 0.16);
+  --coral: #ea6b6b;
+  --coral-soft: rgba(234, 107, 107, 0.16);
+  --success: #3fc78a;
+  position: relative;
+  min-height: 100vh;
+  width: 100%;
+  overflow: hidden;
+  font-family: var(--font-body);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  background: var(--bg-base);
 }
-.app-shell.theme-dark{
-  --bg-base:#0c0e16; --bg-base-2:#11141f;
-  --bg-alpha:rgba(12,14,22,0.93);
-  --glass:rgba(255,255,255,0.055); --glass-strong:rgba(255,255,255,0.09);
-  --glass-border:rgba(255,255,255,0.10); --track:rgba(255,255,255,0.08);
-  --surface-solid:#161927;
-  --text-primary:#f1f0f6; --text-secondary:#a9a8bb; --text-tertiary:#71708a;
-  --shadow:0 8px 30px rgba(0,0,0,0.35);
+.app-shell.theme-dark {
+  --bg-base: #0c0e16;
+  --bg-base-2: #11141f;
+  --bg-alpha: rgba(12, 14, 22, 0.93);
+  --glass: rgba(255, 255, 255, 0.055);
+  --glass-strong: rgba(255, 255, 255, 0.09);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --track: rgba(255, 255, 255, 0.08);
+  --surface-solid: #161927;
+  --text-primary: #f1f0f6;
+  --text-secondary: #a9a8bb;
+  --text-tertiary: #71708a;
+  --shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
 }
-.app-shell.theme-light{
-  --bg-base:#eef0f6; --bg-base-2:#e6e8f2;
-  --bg-alpha:rgba(238,240,246,0.94);
-  --glass:rgba(255,255,255,0.55); --glass-strong:rgba(255,255,255,0.78);
-  --glass-border:rgba(20,20,40,0.08); --track:rgba(20,20,40,0.07);
-  --surface-solid:#ffffff;
-  --text-primary:#1c1d2b; --text-secondary:#5b5b70; --text-tertiary:#8b8ba0;
-  --shadow:0 8px 30px rgba(30,30,60,0.10);
+.app-shell.theme-light {
+  --bg-base: #eef0f6;
+  --bg-base-2: #e6e8f2;
+  --bg-alpha: rgba(238, 240, 246, 0.94);
+  --glass: rgba(255, 255, 255, 0.55);
+  --glass-strong: rgba(255, 255, 255, 0.78);
+  --glass-border: rgba(20, 20, 40, 0.08);
+  --track: rgba(20, 20, 40, 0.07);
+  --surface-solid: #ffffff;
+  --text-primary: #1c1d2b;
+  --text-secondary: #5b5b70;
+  --text-tertiary: #8b8ba0;
+  --shadow: 0 8px 30px rgba(30, 30, 60, 0.1);
 }
 /* --- OLED-тема: абсолютно чёрный фон для OLED-панелей ---
    На OLED пиксель чистого чёрного (#000000) физически выключен — это максимум
@@ -54,43 +86,62 @@ html, body{
    чуть светлее фона (лёгкий серый от --glass) + тонкие рамки + микро-градиент
    «сверху светлее». Прозрачность окна (--bg-alpha) убрана: на чёрном она только
    «пачкает» фон, а размывать под непрозрачным окном нечего. */
-.app-shell.theme-oled{
-  --bg-base:#000000; --bg-base-2:#000000;
-  --bg-alpha:#000000;
-  --glass:rgba(255,255,255,0.030); --glass-strong:rgba(255,255,255,0.045);
-  --glass-border:rgba(255,255,255,0.085); --track:rgba(255,255,255,0.055);
-  --surface-solid:#0a0a0d;
-  --text-primary:#f4f5f9; --text-secondary:#9a9baa; --text-tertiary:#63646f;
-  --shadow:0 10px 34px rgba(0,0,0,0.70);
+.app-shell.theme-oled {
+  --bg-base: #000000;
+  --bg-base-2: #000000;
+  --bg-alpha: #000000;
+  --glass: rgba(255, 255, 255, 0.03);
+  --glass-strong: rgba(255, 255, 255, 0.045);
+  --glass-border: rgba(255, 255, 255, 0.085);
+  --track: rgba(255, 255, 255, 0.055);
+  --surface-solid: #0a0a0d;
+  --text-primary: #f4f5f9;
+  --text-secondary: #9a9baa;
+  --text-tertiary: #63646f;
+  --shadow: 0 10px 34px rgba(0, 0, 0, 0.7);
   /* Фон окна сплошной — размывать нечего, снимаем backdrop-filter оболочки. */
-  backdrop-filter:none; -webkit-backdrop-filter:none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 /* Панели, лежащие прямо на фоне (тулбар и док), в OLED тоже без blur: под ними
    только чёрный фон. Плюс микро-градиент и чуть более заметная рамка, чтобы
    поверхность «читалась» на чистом чёрном. */
 .app-shell.theme-oled .top-toolbar,
-.app-shell.theme-oled .dock-scroll{
-  backdrop-filter:none !important; -webkit-backdrop-filter:none !important;
-  background-image:linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0.012));
-  border-color:rgba(255,255,255,0.10);
+.app-shell.theme-oled .dock-scroll {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.012));
+  border-color: rgba(255, 255, 255, 0.1);
 }
 /* Чистый чёрный: свечения-блобы зажигали бы пиксели и мутнили фон — скрываем их.
    Красоту даёт микро-градиент «сверху светлее» на карточках и поповерах. */
-.app-shell.theme-oled .mesh{ display:none; }
-.app-shell.theme-oled .glass{
-  background-image:linear-gradient(180deg, rgba(255,255,255,0.030), rgba(255,255,255,0) 46%);
-  border-color:rgba(255,255,255,0.095);
+.app-shell.theme-oled .mesh {
+  display: none;
+}
+.app-shell.theme-oled .glass {
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0) 46%);
+  border-color: rgba(255, 255, 255, 0.095);
 }
 .app-shell.theme-oled .tb-pop,
-.app-shell.theme-oled .proxy-panel{
-  background-image:linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0));
+.app-shell.theme-oled .proxy-panel {
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0));
 }
 /* Единственный намеренный «свет» темы — мягкое акцентное свечение активного
    пункта дока (работает с любым акцентом из настроек). */
-.app-shell.theme-oled .dock-btn.is-active .dock-icon{
-  box-shadow:0 0 0 4px var(--amber-soft), 0 0 16px var(--amber-soft), 0 8px 20px rgba(0,0,0,0.7);
+.app-shell.theme-oled .dock-btn.is-active .dock-icon {
+  box-shadow:
+    0 0 0 4px var(--amber-soft),
+    0 0 16px var(--amber-soft),
+    0 8px 20px rgba(0, 0, 0, 0.7);
 }
-.app-shell, .app-shell *{ box-sizing:border-box; transition:background-color .25s ease, border-color .25s ease, color .25s ease; }
+.app-shell,
+.app-shell * {
+  box-sizing: border-box;
+  transition:
+    background-color 0.25s ease,
+    border-color 0.25s ease,
+    color 0.25s ease;
+}
 
 /* Окно едва прозрачное (alpha ~0.93), матовое размытие — backdrop-filter + blur-блобы.
    Текст и карточки непрозрачны, читаемость не страдает. */
@@ -101,11 +152,15 @@ html, body{
      --vh-base      — верхний+нижний отступ контента; из него считаются
                       max-height списков на страницах (см. страницы ниже);
      --content-max  — ограничитель ширины контента на ultrawide-мониторах. */
-.app-shell{ background:var(--bg-alpha); height:100vh; border-radius:18px; overflow:hidden;
+.app-shell {
+  background: var(--bg-alpha);
+  height: 100vh;
+  border-radius: 18px;
+  overflow: hidden;
   --rail-w: 60px;
   --rail-gap: 12px;
-  --tbar-gap: 14px;        /* отступ верхней панели от краёв окна */
-  --tbar-h: 46px;          /* высота верхней панели */
+  --tbar-gap: 14px; /* отступ верхней панели от краёв окна */
+  --tbar-h: 46px; /* высота верхней панели */
   /* Рельс страниц начинается ровно под панелью и тянется до нижнего края окна,
      а контент — под обоими. --content-top выводится из панели, поэтому
      изменения размеров панели автоматически сдвигают и рельс, и контент. */
@@ -114,29 +169,105 @@ html, body{
   --content-bottom: 28px;
   --vh-base: calc(var(--content-top) + var(--content-bottom));
   --content-max: 1680px;
-  backdrop-filter:blur(30px) saturate(1.1);
-  -webkit-backdrop-filter:blur(30px) saturate(1.1); }
+  backdrop-filter: blur(30px) saturate(1.1);
+  -webkit-backdrop-filter: blur(30px) saturate(1.1);
+}
 
 /* Подгоняем декоративный слой под скругление окна. */
-.mesh{ border-radius:inherit; }
+.mesh {
+  border-radius: inherit;
+}
 
 /* Frameless-окно: перетаскивание за верхнюю панель */
-.titlebar-drag{ -webkit-app-region: drag; }
-.no-drag{ -webkit-app-region: no-drag; }
-.win-controls{ display:flex; gap:2px; }
-.win-btn{ width:34px; height:26px; display:inline-flex; align-items:center; justify-content:center; background:none; border:none; border-radius:8px; color:var(--text-tertiary); cursor:pointer; }
-.win-btn:hover{ background:var(--track); color:var(--text-primary); }
-.win-close:hover{ background:var(--coral); color:#fff; }
+.titlebar-drag {
+  -webkit-app-region: drag;
+}
+.no-drag {
+  -webkit-app-region: no-drag;
+}
+.win-controls {
+  display: flex;
+  gap: 2px;
+}
+.win-btn {
+  width: 34px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  border-radius: 8px;
+  color: var(--text-tertiary);
+  cursor: pointer;
+}
+.win-btn:hover {
+  background: var(--track);
+  color: var(--text-primary);
+}
+.win-close:hover {
+  background: var(--coral);
+  color: #fff;
+}
 
-.mesh{ position:fixed; inset:0; z-index:0; overflow:hidden; pointer-events:none; }
-.blob{ position:absolute; border-radius:50%; filter:blur(90px) saturate(0.5); opacity:0.22; }
-.theme-light .blob{ opacity:0.14; }
-.blob-a{ width:520px; height:520px; top:-180px; left:-120px; background:var(--amber); animation:drift1 22s ease-in-out infinite; }
-.blob-b{ width:560px; height:560px; bottom:-220px; right:-160px; background:var(--violet); animation:drift2 26s ease-in-out infinite; }
-@keyframes drift1{ 0%,100%{ transform:translate(0,0);} 50%{ transform:translate(60px,40px);} }
-@keyframes drift2{ 0%,100%{ transform:translate(0,0);} 50%{ transform:translate(-50px,-30px);} }
+.mesh {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(90px) saturate(0.5);
+  opacity: 0.22;
+}
+.theme-light .blob {
+  opacity: 0.14;
+}
+.blob-a {
+  width: 520px;
+  height: 520px;
+  top: -180px;
+  left: -120px;
+  background: var(--amber);
+  animation: drift1 22s ease-in-out infinite;
+}
+.blob-b {
+  width: 560px;
+  height: 560px;
+  bottom: -220px;
+  right: -160px;
+  background: var(--violet);
+  animation: drift2 26s ease-in-out infinite;
+}
+@keyframes drift1 {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: translate(60px, 40px);
+  }
+}
+@keyframes drift2 {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: translate(-50px, -30px);
+  }
+}
 
-.glass{ background:var(--glass); border:1px solid var(--glass-border); backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px); border-radius:16px; }
+.glass {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border-radius: 16px;
+}
 
 /* Подложка модальных окон — почти непрозрачная.
    Зачем: --glass это буквально ~5% белого, поэтому сквозь модалку просвечивала
@@ -144,129 +275,343 @@ html, body{
    модалкой — жалоба «текст не видно вообще». --surface-solid непрозрачен во всех
    трёх темах (тёмная/светлая/OLED) и уже используется для «настоящих»
    поверхностей, а верхний блик оставляет стеклянный вид. */
-.glass-solid{
-  background:var(--surface-solid);
-  background-image:linear-gradient(180deg, var(--glass-strong), rgba(255,255,255,0) 42%);
-  border:1px solid var(--glass-border);
-  backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px);
-  border-radius:16px;
+.glass-solid {
+  background: var(--surface-solid);
+  background-image: linear-gradient(180deg, var(--glass-strong), rgba(255, 255, 255, 0) 42%);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border-radius: 16px;
 }
 
-.top-toolbar{
+.top-toolbar {
   /* Панель управления приложением — во всю ширину окна (кнопки окна справа,
      ничего не обрезается слева). Рельс страниц живёт ПОД ней. */
-  position:fixed; top:var(--tbar-gap); left:var(--tbar-gap); right:var(--tbar-gap); z-index:40;
-  display:grid; grid-template-columns:minmax(0,1fr) minmax(0,auto) minmax(0,1fr); align-items:center;
-  height:var(--tbar-h);
-  padding:0 12px; border-radius:14px;
-  background:var(--glass-strong); border:1px solid var(--glass-border);
-  backdrop-filter:blur(22px); -webkit-backdrop-filter:blur(22px); box-shadow:var(--shadow);
+  position: fixed;
+  top: var(--tbar-gap);
+  left: var(--tbar-gap);
+  right: var(--tbar-gap);
+  z-index: 40;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, auto) minmax(0, 1fr);
+  align-items: center;
+  height: var(--tbar-h);
+  padding: 0 12px;
+  border-radius: 14px;
+  background: var(--glass-strong);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: blur(22px);
+  box-shadow: var(--shadow);
 }
-.tb-side-left{ min-width:0; }
+.tb-side-left {
+  min-width: 0;
+}
 /* Центр — панель конкретной страницы. min-width:0 и «сжимаемые» дети не дают
    грид-колонке вырасти на max-content и налезть на кнопки окна в узком окне. */
-.tb-center{ min-width:0; display:flex; align-items:center; justify-content:center; gap:10px; }
-.tb-dynamic > *{ min-width:0; }
-.tb-title{ display:flex; align-items:center; gap:8px; font-weight:600; font-size:13px; color:var(--text-primary); white-space:nowrap; min-width:0; overflow:hidden; }
-.tb-title span{ overflow:hidden; text-overflow:ellipsis; }
-.tb-dynamic{ display:flex; align-items:center; gap:8px; min-width:0; -webkit-app-region:no-drag; }
-.tb-side-right{ min-width:0; display:flex; align-items:center; justify-content:flex-end; gap:6px; }
-.theme-toggle{ background:none; border:none; cursor:pointer; color:var(--text-tertiary); display:flex; align-items:center; padding:6px; flex-shrink:0; }
+.tb-center {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+.tb-dynamic > * {
+  min-width: 0;
+}
+.tb-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--text-primary);
+  white-space: nowrap;
+  min-width: 0;
+  overflow: hidden;
+}
+.tb-title span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tb-dynamic {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  -webkit-app-region: no-drag;
+}
+.tb-side-right {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+.theme-toggle {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-tertiary);
+  display: flex;
+  align-items: center;
+  padding: 6px;
+  flex-shrink: 0;
+}
 /* Кнопка «открыть папку с приложением» в верхней панели (слева от прокси). */
-.app-dir-toggle{ background:none; border:none; cursor:pointer; color:var(--text-tertiary); display:flex; align-items:center; padding:6px; flex-shrink:0; border-radius:8px; }
-.app-dir-toggle:hover{ color:var(--text-primary); background:var(--track); }
+.app-dir-toggle {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-tertiary);
+  display: flex;
+  align-items: center;
+  padding: 6px;
+  flex-shrink: 0;
+  border-radius: 8px;
+}
+.app-dir-toggle:hover {
+  color: var(--text-primary);
+  background: var(--track);
+}
 /* Иконка кнопки-переключателя темы: тулбар показывает иконку текущей темы —
    тёмная → луна, светлая → солнце, OLED → контраст. */
-.theme-dark .ico-sun, .theme-dark .ico-oled{ display:none; }
-.theme-light .ico-moon, .theme-light .ico-oled{ display:none; }
-.theme-oled .ico-sun, .theme-oled .ico-moon{ display:none; }
+.theme-dark .ico-sun,
+.theme-dark .ico-oled {
+  display: none;
+}
+.theme-light .ico-moon,
+.theme-light .ico-oled {
+  display: none;
+}
+.theme-oled .ico-sun,
+.theme-oled .ico-moon {
+  display: none;
+}
 
 /* Компактные поля в верхнем тулбаре: вместо вертикального стека
    (label сверху, контрол снизу) показываем label рядом с контролом,
    чтобы пилюля тулбара оставалась однорядной и аккуратной. */
-.tb-dynamic .field{ flex-direction:row; align-items:center; gap:7px; width:auto !important; }
-.tb-dynamic .field-label{ font-size:10px; margin:0; white-space:nowrap; line-height:1; }
-.tb-dynamic input[type="range"]{ width:110px; flex-shrink:0; }
-.tb-dynamic .select-wrap select{ padding:5px 24px 5px 11px; font-size:11.5px; }
-.tb-dynamic .icon-btn{ width:28px; height:28px; flex-shrink:0; }
+.tb-dynamic .field {
+  flex-direction: row;
+  align-items: center;
+  gap: 7px;
+  width: auto !important;
+}
+.tb-dynamic .field-label {
+  font-size: 10px;
+  margin: 0;
+  white-space: nowrap;
+  line-height: 1;
+}
+.tb-dynamic input[type="range"] {
+  width: 110px;
+  flex-shrink: 0;
+}
+.tb-dynamic .select-wrap select {
+  padding: 5px 24px 5px 11px;
+  font-size: 11.5px;
+}
+.tb-dynamic .icon-btn {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+}
 /* Live-индикатор мониторинга в панели — компактная иконка без текста. */
-.tb-dynamic .live-pill{ padding:6px; border-radius:50%; gap:0; }
+.tb-dynamic .live-pill {
+  padding: 6px;
+  border-radius: 50%;
+  gap: 0;
+}
 
 /* Контент: верхний отступ — под верхний тулбар, боковой слева — под
    вертикальный док (rail). Нижний отступ небольшой: док больше не занимает низ. */
-.app-shell{ display:flex; flex-direction:column; }
-.content-area{ position:relative; z-index:1;
-  padding: var(--content-top) 24px var(--content-bottom) calc(var(--rail-gap) + var(--rail-w) + 12px);
-  display:flex; flex-direction:column; flex:1; min-height:0; overflow:hidden; }
+.app-shell {
+  display: flex;
+  flex-direction: column;
+}
+.content-area {
+  position: relative;
+  z-index: 1;
+  padding: var(--content-top) 24px var(--content-bottom)
+    calc(var(--rail-gap) + var(--rail-w) + 12px);
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
 /* Стопка «живых» страниц: все лежат в одной ячейке грида, поэтому неактивные
    сохраняют размеры и позиции прокрутки (см. keep-alive в App.tsx). Кнопки
    ограничения ширины: на ultrawide контент не растягивается; страницы-редакторы
    (канвас и т.п.) помечаются классом .page-wide и занимают всю ширину. */
-.pages-stack{ display:grid; grid-template-columns:minmax(0,1fr); grid-template-rows:minmax(0,1fr);
-  flex:1; min-height:0; }
-.page-host{ grid-area:1/1; min-width:0; min-height:0; width:100%; max-width:var(--content-max);
-  margin:0 auto; display:flex; flex-direction:column; }
-.page-host:has(.page-wide){ max-width:none; }
+.pages-stack {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  flex: 1;
+  min-height: 0;
+}
+.page-host {
+  grid-area: 1/1;
+  min-width: 0;
+  min-height: 0;
+  width: 100%;
+  max-width: var(--content-max);
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+}
+.page-host:has(.page-wide) {
+  max-width: none;
+}
 /* Скрываем неактивные именно через visibility: display:none схлопывает размеры
    (канвас/графики перестают измеряться) и сбрасывает scrollTop. */
-.page-host:not(.is-active){ visibility:hidden; pointer-events:none; }
+.page-host:not(.is-active) {
+  visibility: hidden;
+  pointer-events: none;
+}
 /* Страховка keep-alive: ни один узел скрытой страницы не должен «просветить»
    себя обратно. Внутри компонентов встречается visibility:visible (аккордеоны),
    и без этого правила скрытая страница «протекала» на остальные. */
-.page-host:not(.is-active) *{ visibility:hidden !important; }
-.page{ display:flex; flex-direction:column; gap:14px; overflow:hidden; flex:1; min-height:0; }
+.page-host:not(.is-active) * {
+  visibility: hidden !important;
+}
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  overflow: hidden;
+  flex: 1;
+  min-height: 0;
+}
 /* Раньше высота считалась от 100vh; теперь область контента сама флексится,
    поэтому достаточно flex:1 (см. .content-area → .content-frame → .page). */
-.page-flush{ flex:1; min-height:0; }
-.page-wide{ max-width:none; }
+.page-flush {
+  flex: 1;
+  min-height: 0;
+}
+.page-wide {
+  max-width: none;
+}
 
-.eyebrow{ font-size:11px; color:var(--text-tertiary); font-family:var(--font-mono); text-transform:uppercase; letter-spacing:0.08em; }
-.page-title{ margin:2px 0 0; font-family:var(--font-display); font-size:24px; font-weight:700; color:var(--text-primary); }
-.section-head{ display:flex; align-items:flex-end; justify-content:space-between; gap:10px; }
+.eyebrow {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.page-title {
+  margin: 2px 0 0;
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.section-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 10px;
+}
 
-.field{ display:flex; flex-direction:column; gap:5px; }
-.field-label{ font-size:11px; color:var(--text-tertiary); font-family:var(--font-mono); text-transform:uppercase; letter-spacing:0.06em; }
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.field-label {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
 
-.muted-sm{ font-size:11.5px; color:var(--text-tertiary); }
-.tone-amber{ background:var(--amber-soft); color:var(--amber); }
-.tone-violet{ background:var(--violet-soft); color:var(--violet); }
-.tone-teal{ background:var(--teal-soft); color:var(--teal); }
+.muted-sm {
+  font-size: 11.5px;
+  color: var(--text-tertiary);
+}
+.tone-amber {
+  background: var(--amber-soft);
+  color: var(--amber);
+}
+.tone-violet {
+  background: var(--violet-soft);
+  color: var(--violet);
+}
+.tone-teal {
+  background: var(--teal-soft);
+  color: var(--teal);
+}
 /* --- Отключение фоновых blur-эффектов (performance.backgroundBlur = false) ---
    Убираем backdrop-filter у оболочки, основанных на нём поверхностей и карточек,
    а декоративные блобы приглушаем, чтобы не было жёстких краёв без размытия. */
-.app-shell.no-blur{ backdrop-filter:none !important; -webkit-backdrop-filter:none !important; }
+.app-shell.no-blur {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
 .app-shell.no-blur .glass,
 .app-shell.no-blur .top-toolbar,
-.app-shell.no-blur .bottom-dock{ backdrop-filter:none !important; -webkit-backdrop-filter:none !important; }
-.app-shell.no-blur .blob{ filter:none !important; opacity:0.05; }
+.app-shell.no-blur .bottom-dock {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+.app-shell.no-blur .blob {
+  filter: none !important;
+  opacity: 0.05;
+}
 
 /* --- Непрозрачный фон (appearance.opaqueBackground = true) ---
    Полностью убираем полупрозрачность окна: сплошной фон, без backdrop-blur
    и без скругления — иначе по углам просвечивает рабочий стол. */
-.app-shell.opaque-bg{
-  background:var(--bg-base);
-  backdrop-filter:none !important; -webkit-backdrop-filter:none !important;
-  border-radius:0;
+.app-shell.opaque-bg {
+  background: var(--bg-base);
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border-radius: 0;
 }
 .app-shell.opaque-bg .glass,
 .app-shell.opaque-bg .top-toolbar,
-.app-shell.opaque-bg .bottom-dock{ backdrop-filter:none !important; -webkit-backdrop-filter:none !important; }
+.app-shell.opaque-bg .bottom-dock {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
 
 /* RTL (арабский): зеркалим смещения блобов, чтобы декор не вылезал за левый край. */
-.app-shell[dir="rtl"] .blob-a{ left:auto; right:-120px; }
-.app-shell[dir="rtl"] .blob-b{ right:auto; left:-160px; }
+.app-shell[dir="rtl"] .blob-a {
+  left: auto;
+  right: -120px;
+}
+.app-shell[dir="rtl"] .blob-b {
+  right: auto;
+  left: -160px;
+}
 /* RTL: вертикальный док уходит вправо — тулбар и контент зеркалят отступы. */
-.app-shell[dir="rtl"] .top-toolbar{ left:var(--tbar-gap); right:var(--tbar-gap); }
-.app-shell[dir="rtl"] .content-area{
-  padding-left:24px;
-  padding-right:calc(var(--rail-gap) + var(--rail-w) + 12px);
+.app-shell[dir="rtl"] .top-toolbar {
+  left: var(--tbar-gap);
+  right: var(--tbar-gap);
+}
+.app-shell[dir="rtl"] .content-area {
+  padding-left: 24px;
+  padding-right: calc(var(--rail-gap) + var(--rail-w) + 12px);
 }
 /* --- Внешний вид из настроек: акцент, анимации, плотность --- */
 /* accent-* подменяет «основной» акцентный цвет (--amber используется
    в UI как главный), остальные переменные остаются доступны. */
-.app-shell.accent-violet { --amber: var(--violet); --amber-soft: var(--violet-soft); }
-.app-shell.accent-teal { --amber: var(--teal); --amber-soft: var(--teal-soft); }
-.app-shell.accent-coral { --amber: var(--coral); --amber-soft: var(--coral-soft); }
+.app-shell.accent-violet {
+  --amber: var(--violet);
+  --amber-soft: var(--violet-soft);
+}
+.app-shell.accent-teal {
+  --amber: var(--teal);
+  --amber-soft: var(--teal-soft);
+}
+.app-shell.accent-coral {
+  --amber: var(--coral);
+  --amber-soft: var(--coral-soft);
+}
 
 /* reduce-motion: гасим анимации, переходы и декоративные blur-блобы. */
 .app-shell.reduce-motion *,
@@ -275,11 +620,18 @@ html, body{
   animation: none !important;
   transition: none !important;
 }
-.app-shell.reduce-motion .mesh { display: none; }
+.app-shell.reduce-motion .mesh {
+  display: none;
+}
 
 /* density-compact: компактнее отступы в списках/карточках. */
-.app-shell.density-compact .set-row { padding: 6px 4px; }
-.app-shell.density-compact .set-section { padding: 10px 12px; gap: 2px; }
+.app-shell.density-compact .set-row {
+  padding: 6px 4px;
+}
+.app-shell.density-compact .set-section {
+  padding: 10px 12px;
+  gap: 2px;
+}
 
 /* --- Глобальное контекстное меню (правая кнопка) --- */
 .ctx-menu {
@@ -297,8 +649,14 @@ html, body{
   user-select: none;
 }
 @keyframes ctx-in {
-  from { opacity: 0; transform: scale(0.96) translateY(-2px); }
-  to   { opacity: 1; transform: scale(1) translateY(0); }
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(-2px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
 }
 .ctx-menu-item {
   display: flex;
@@ -320,16 +678,22 @@ html, body{
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.ctx-menu-item:hover:not(:disabled), .ctx-menu-item:focus-visible {
+.ctx-menu-item:hover:not(:disabled),
+.ctx-menu-item:focus-visible {
   background: var(--violet-soft, rgba(139, 92, 246, 0.16));
   color: var(--text-primary, #fff);
   outline: none;
 }
-.ctx-menu-item.is-danger { color: var(--coral, #f87171); }
+.ctx-menu-item.is-danger {
+  color: var(--coral, #f87171);
+}
 .ctx-menu-item.is-danger:hover:not(:disabled) {
   background: var(--coral-soft, rgba(248, 113, 113, 0.14));
 }
-.ctx-menu-item:disabled { opacity: 0.4; cursor: default; }
+.ctx-menu-item:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
 .ctx-sep {
   height: 1px;
   margin: 5px 8px;
@@ -341,8 +705,11 @@ html, body{
    Лежит рядом с .content-area внутри .app-shell, поэтому z-index здесь снова
    работает и модалки страниц перекрывают .top-toolbar (z-index:40). Пустой узел
    не должен перехватывать клики: pointer-events:none, а сами модалки ставят auto. */
-.overlay-root{
-  position:fixed; inset:0; z-index:1000; pointer-events:none;
+.overlay-root {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  pointer-events: none;
 }
 .modal-overlay {
   position: fixed;
@@ -365,38 +732,87 @@ html, body{
 }
 
 /* --- Страница сжатия видео: контролы в общем стиле приложения --- */
-.cmp-controls{ display:flex; gap:10px; flex-wrap:wrap; }
-.cmp-ai-row{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
-.cmp-ai-progress{ display:flex; flex-direction:column; gap:4px; min-width:180px; flex:1; max-width:280px; }
+.cmp-controls {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.cmp-ai-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.cmp-ai-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 180px;
+  flex: 1;
+  max-width: 280px;
+}
 
 /* Тумблер-чип (ИИ-апскейл и аналогичные опции) — как option-item в дизайне. */
-.option-item{
-  display:inline-flex; align-items:center; gap:8px;
-  padding:7px 14px; border-radius:999px;
-  border:1px solid var(--glass-border); background:var(--track);
-  color:var(--text-secondary); font-size:12.5px; cursor:pointer;
-  transition:border-color .15s ease, background .15s ease, color .15s ease;
+.option-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--glass-border);
+  background: var(--track);
+  color: var(--text-secondary);
+  font-size: 12.5px;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease,
+    color 0.15s ease;
 }
-.option-item:hover{ border-color:var(--amber-soft); color:var(--text-primary); }
-.option-item.is-on{ border-color:var(--amber); color:var(--amber); background:var(--amber-soft); }
+.option-item:hover {
+  border-color: var(--amber-soft);
+  color: var(--text-primary);
+}
+.option-item.is-on {
+  border-color: var(--amber);
+  color: var(--amber);
+  background: var(--amber-soft);
+}
 
 /* Переключатель внутри тумблера. */
-.cmp-switch{
-  width:26px; height:15px; border-radius:999px; position:relative;
-  background:var(--glass-border); transition:background .15s ease; flex-shrink:0;
+.cmp-switch {
+  width: 26px;
+  height: 15px;
+  border-radius: 999px;
+  position: relative;
+  background: var(--glass-border);
+  transition: background 0.15s ease;
+  flex-shrink: 0;
 }
-.cmp-switch::after{
-  content:""; position:absolute; top:2px; left:2px;
-  width:11px; height:11px; border-radius:50%; background:var(--text-primary);
-  transition:left .15s ease;
+.cmp-switch::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--text-primary);
+  transition: left 0.15s ease;
 }
-.cmp-switch.on{ background:var(--amber); }
-.cmp-switch.on::after{ left:13px; background:#241605; }
+.cmp-switch.on {
+  background: var(--amber);
+}
+.cmp-switch.on::after {
+  left: 13px;
+  background: #241605;
+}
 
 /* Все range-слайдеры приложения — фирменный акцентный цвет. */
-input[type="range"]{
-  accent-color:var(--amber);
-  height:4px; cursor:pointer;
+input[type="range"] {
+  accent-color: var(--amber);
+  height: 4px;
+  cursor: pointer;
 }
 /* ============================================================
    Адаптив верхнего тулбара и оболочки.
@@ -408,64 +824,149 @@ input[type="range"]{
 
 /* Панель держим компактной: в ней только иконки и статус-бейджи, поэтому
    прокрутка/перенос не нужны (и, что важно, overflow обрезал бы поповеры). */
-.tb-center{ flex-wrap:nowrap; }
+.tb-center {
+  flex-wrap: nowrap;
+}
 
 /* Меню-поповер тулбара (см. src/components/ToolbarMenu.tsx). */
-.tb-menu{ position:relative; display:flex; flex-shrink:0; }
-.tb-pop{
-  position:absolute; top:calc(100% + 12px); z-index:60;
-  min-width:210px; max-width:min(320px, 86vw);
-  padding:10px; border-radius:12px;
-  background:var(--glass-strong); border:1px solid var(--glass-border);
-  backdrop-filter:blur(22px); -webkit-backdrop-filter:blur(22px); box-shadow:var(--shadow);
-  display:flex; flex-direction:column; gap:10px;
-  animation:tb-pop-in .16s cubic-bezier(.2,.9,.3,1);
+.tb-menu {
+  position: relative;
+  display: flex;
+  flex-shrink: 0;
 }
-.tb-pop.is-left{ left:0; transform-origin:top left; }
-.tb-pop.is-right{ right:0; transform-origin:top right; }
-@keyframes tb-pop-in{
-  from{ opacity:0; transform:translateY(-6px) scale(.96); }
-  to{ opacity:1; transform:translateY(0) scale(1); }
+.tb-pop {
+  position: absolute;
+  top: calc(100% + 12px);
+  z-index: 60;
+  min-width: 210px;
+  max-width: min(320px, 86vw);
+  padding: 10px;
+  border-radius: 12px;
+  background: var(--glass-strong);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: blur(22px);
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  animation: tb-pop-in 0.16s cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+.tb-pop.is-left {
+  left: 0;
+  transform-origin: top left;
+}
+.tb-pop.is-right {
+  right: 0;
+  transform-origin: top right;
+}
+@keyframes tb-pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 /* Внутри панели поля вертикальные: правило .tb-dynamic .field делает их
    строкой (для старой раскладки), в поповере это выглядело бы криво. */
-.tb-pop .field{ flex-direction:column; align-items:stretch; gap:5px; width:100% !important; }
-.tb-pop .field-label{ font-size:11px; letter-spacing:.06em; }
-.tb-pop .select-wrap{ width:100%; }
-.tb-pop .select-wrap select{ width:100%; padding:7px 26px 7px 11px; font-size:12px; }
-.tb-pop input[type="range"]{ width:100%; }
-.tb-pop-title{
-  font-size:11px; color:var(--text-tertiary); font-family:var(--font-mono);
-  text-transform:uppercase; letter-spacing:.06em; margin-bottom:-4px;
+.tb-pop .field {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 5px;
+  width: 100% !important;
+}
+.tb-pop .field-label {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+}
+.tb-pop .select-wrap {
+  width: 100%;
+}
+.tb-pop .select-wrap select {
+  width: 100%;
+  padding: 7px 26px 7px 11px;
+  font-size: 12px;
+}
+.tb-pop input[type="range"] {
+  width: 100%;
+}
+.tb-pop-title {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: -4px;
 }
 /* Поиск в узкой панели (src/components/ToolbarSearch.tsx): в самой панели
    остаётся только иконка, а поле раскрывается этим поповером чуть ниже
    панели. Поле занимает всю ширину поповера — так его удобно набирать. */
-.tb-search-pop{ min-width:min(260px, 86vw); }
-.tb-search-pop .tb-search{ width:100%; max-width:none; flex:0 0 auto; }
-
-@media (max-width: 900px){
-  .tb-title span{ display:none; }
-  /* Узкий режим: никаких надписей — только иконки страницы/настроек и кнопки окна. */
-  .tb-dynamic .badge{ display:none; }
-  .tb-dynamic{ gap:4px; }
-  .tb-center{ gap:6px; }
-  .top-toolbar{ padding:0 8px; }
-  .win-btn{ width:30px; }
+.tb-search-pop {
+  min-width: min(260px, 86vw);
+}
+.tb-search-pop .tb-search {
+  width: 100%;
+  max-width: none;
+  flex: 0 0 auto;
 }
 
-@media (max-width: 640px){
+@media (max-width: 900px) {
+  .tb-title span {
+    display: none;
+  }
+  /* Узкий режим: никаких надписей — только иконки страницы/настроек и кнопки окна. */
+  .tb-dynamic .badge {
+    display: none;
+  }
+  .tb-dynamic {
+    gap: 4px;
+  }
+  .tb-center {
+    gap: 6px;
+  }
+  .top-toolbar {
+    padding: 0 8px;
+  }
+  .win-btn {
+    width: 30px;
+  }
+}
+
+@media (max-width: 640px) {
   /* Минимальный режим: док уже, панель ниже, отступы контента меньше
      (--rail-top и --content-top выводятся из --tbar-* и пересчитаются сами). */
-  .app-shell{ --rail-w:50px; --rail-gap:8px; --tbar-gap:10px; --tbar-h:42px; --content-bottom:16px; }
-  .tb-side-right{ gap:2px; }
-  .theme-toggle{ padding:4px; }
-  .app-dir-toggle{ padding:4px; }
-  .tb-dynamic .icon-btn{ width:26px; height:26px; }
-  .tb-center{ gap:4px; }
+  .app-shell {
+    --rail-w: 50px;
+    --rail-gap: 8px;
+    --tbar-gap: 10px;
+    --tbar-h: 42px;
+    --content-bottom: 16px;
+  }
+  .tb-side-right {
+    gap: 2px;
+  }
+  .theme-toggle {
+    padding: 4px;
+  }
+  .app-dir-toggle {
+    padding: 4px;
+  }
+  .tb-dynamic .icon-btn {
+    width: 26px;
+    height: 26px;
+  }
+  .tb-center {
+    gap: 4px;
+  }
   /* Только поля, стоящие в панели напрямую: в выпадающих меню тулбара
      (.tb-pop) подписи и слайдеры должны остаться полноразмерными. */
-  .tb-dynamic > .field .field-label{ display:none; }
-  .tb-dynamic > .field input[type="range"]{ width:70px; }
+  .tb-dynamic > .field .field-label {
+    display: none;
+  }
+  .tb-dynamic > .field input[type="range"] {
+    width: 70px;
+  }
 }
-

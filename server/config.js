@@ -12,7 +12,9 @@ const STORAGE_DIR = (() => {
   try {
     const resolved = require("../electron/storagePath").STORAGE_DIR;
     if (resolved) return resolved;
-  } catch { /* не Electron-окружение (чистый Node/тесты) */ }
+  } catch {
+    /* не Electron-окружение (чистый Node/тесты) */
+  }
   return path.join(__dirname, "..", "storage");
 })();
 

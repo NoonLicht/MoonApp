@@ -34,21 +34,46 @@ const XRAY_CONFIG = {
   inbounds: [{ listen: "127.0.0.1", port: 10808, protocol: "socks", settings: {}, tag: "socks" }],
   outbounds: [
     vlessOut("node1.example.com", 443, "xtls-rprx-vision", {
-      network: "tcp", security: "reality", tcpSettings: {},
-      realitySettings: { fingerprint: "firefox", publicKey: "PUBKEY_1", serverName: "node1.example.com" },
+      network: "tcp",
+      security: "reality",
+      tcpSettings: {},
+      realitySettings: {
+        fingerprint: "firefox",
+        publicKey: "PUBKEY_1",
+        serverName: "node1.example.com",
+      },
     }),
     vlessOut("node2.example.com", 443, "xtls-rprx-vision", {
-      network: "tcp", security: "reality", tcpSettings: {},
-      realitySettings: { fingerprint: "safari", publicKey: "PUBKEY_2", serverName: "node2.example.com", shortId: "2ef160ff49f7ea57" },
+      network: "tcp",
+      security: "reality",
+      tcpSettings: {},
+      realitySettings: {
+        fingerprint: "safari",
+        publicKey: "PUBKEY_2",
+        serverName: "node2.example.com",
+        shortId: "2ef160ff49f7ea57",
+      },
     }),
     vlessOut("node3.example.com", 444, "", {
-      network: "xhttp", security: "reality",
-      realitySettings: { fingerprint: "safari", publicKey: "PUBKEY_3", serverName: "node3.example.com", shortId: "34109b0d30255f9e" },
+      network: "xhttp",
+      security: "reality",
+      realitySettings: {
+        fingerprint: "safari",
+        publicKey: "PUBKEY_3",
+        serverName: "node3.example.com",
+        shortId: "34109b0d30255f9e",
+      },
       xhttpSettings: { host: "", mode: "packet-up", path: "/api/v1/events" },
     }),
     vlessOut("node4.example.com", 6437, "", {
-      network: "grpc", security: "reality",
-      realitySettings: { fingerprint: "safari", publicKey: "PUBKEY_4", serverName: "node4.example.com", shortId: "34109b0d30255f9e" },
+      network: "grpc",
+      security: "reality",
+      realitySettings: {
+        fingerprint: "safari",
+        publicKey: "PUBKEY_4",
+        serverName: "node4.example.com",
+        shortId: "34109b0d30255f9e",
+      },
       grpcSettings: { authority: "", mode: false, serviceName: "grpc" },
     }),
     { protocol: "freedom", tag: "direct" },
@@ -62,7 +87,10 @@ describe("импорт JSON — Xray/V2Ray", () => {
     expect(parsed.format).toBe("json");
     expect(parsed.nodes).toHaveLength(4);
     expect(parsed.nodes.map((n: any) => n.server)).toEqual([
-      "node1.example.com", "node2.example.com", "node3.example.com", "node4.example.com",
+      "node1.example.com",
+      "node2.example.com",
+      "node3.example.com",
+      "node4.example.com",
     ]);
   });
 
@@ -106,7 +134,8 @@ describe("импорт JSON — Xray/V2Ray", () => {
       const cfg = c.buildSingBoxConfig(n, { socksPort: 10908, httpPort: 10909 });
       expect(cfg).not.toBeNull();
       expect(cfg.outbounds[0].tls.reality.public_key).toBe(n.pbk);
-      if (n.network === "grpc") expect(cfg.outbounds[0].transport).toEqual({ type: "grpc", service_name: "grpc" });
+      if (n.network === "grpc")
+        expect(cfg.outbounds[0].transport).toEqual({ type: "grpc", service_name: "grpc" });
     }
   });
 });
@@ -117,12 +146,29 @@ describe("импорт JSON — sing-box формат", () => {
     const singbox = {
       outbounds: [
         {
-          type: "vless", tag: "proxy", server: "sb.example.com", server_port: 8443, uuid: UUID, flow: "xtls-rprx-vision",
-          tls: { enabled: true, server_name: "sb.example.com", utls: { enabled: true, fingerprint: "chrome" }, reality: { enabled: true, public_key: "PBK", short_id: "ab" } },
+          type: "vless",
+          tag: "proxy",
+          server: "sb.example.com",
+          server_port: 8443,
+          uuid: UUID,
+          flow: "xtls-rprx-vision",
+          tls: {
+            enabled: true,
+            server_name: "sb.example.com",
+            utls: { enabled: true, fingerprint: "chrome" },
+            reality: { enabled: true, public_key: "PBK", short_id: "ab" },
+          },
           transport: { type: "ws", path: "/ws", headers: { Host: "sb.example.com" } },
         },
         { type: "direct", tag: "direct" },
-        { type: "shadowsocks", tag: "ss", server: "ss.example.com", server_port: 8388, method: "aes-256-gcm", password: "pw" },
+        {
+          type: "shadowsocks",
+          tag: "ss",
+          server: "ss.example.com",
+          server_port: 8388,
+          method: "aes-256-gcm",
+          password: "pw",
+        },
       ],
     };
     const parsed = c.parseSubscription(JSON.stringify(singbox));

@@ -5,17 +5,22 @@ import hljs from "highlight.js";
 import "highlight.js/styles/github-dark.css";
 import { sanitizeHtml } from "../utils/sanitize";
 
-marked.use(markedHighlight({
-  langPrefix: "hljs language-",
-  highlight(code, lang) {
-    if (lang && hljs.getLanguage(lang)) {
-      try { return hljs.highlight(code, { language: lang }).value; } catch {}
-    }
-    try { return hljs.highlightAuto(code).value; } catch {}
-    return code;
-  }
-}));
-
+marked.use(
+  markedHighlight({
+    langPrefix: "hljs language-",
+    highlight(code, lang) {
+      if (lang && hljs.getLanguage(lang)) {
+        try {
+          return hljs.highlight(code, { language: lang }).value;
+        } catch {}
+      }
+      try {
+        return hljs.highlightAuto(code).value;
+      } catch {}
+      return code;
+    },
+  }),
+);
 
 interface Props {
   content: string;
@@ -38,9 +43,11 @@ function preprocess(text: string): string {
     const cb = l.match(/^(\s*(?:[-*+]\s+)?)\[([ xX])\]\s*(.*)/);
     if (cb) {
       const checked = cb[2].toLowerCase() === "x";
-      out.push(`<span class="md-cb-row" data-line="${i}">` +
-        `<span class="md-cb${checked?" md-cb-checked":""}">${checked?"✓":""}</span>` +
-        `<span>${cb[3]}</span></span>`);
+      out.push(
+        `<span class="md-cb-row" data-line="${i}">` +
+          `<span class="md-cb${checked ? " md-cb-checked" : ""}">${checked ? "✓" : ""}</span>` +
+          `<span>${cb[3]}</span></span>`,
+      );
       continue;
     }
     // Math block $$...$$ FIRST (before inline math)
@@ -54,17 +61,27 @@ function preprocess(text: string): string {
     // Highlight ==text== -> <mark>text</mark>
     l = l.replace(/==([^=]+)==/g, "<mark>$1</mark>");
     // WikiLinks [[...]]
-    l = l.replace(/\[\[([^\]]+)\]\]/g, (_, title) =>
-      `<span class="md-wl" data-title="${title.replace(/"/g,"&quot;")}">${title}</span>`);
+    l = l.replace(
+      /\[\[([^\]]+)\]\]/g,
+      (_, title) =>
+        `<span class="md-wl" data-title="${title.replace(/"/g, "&quot;")}">${title}</span>`,
+    );
     // #tags
-    l = l.replace(/(^|\s)(#[a-zA-Zа-яА-Я0-9_\-/]+)/g, (_, sp, tag) =>
-      `${sp}<span class="md-tg" data-tag="${tag}">${tag}</span>`);
+    l = l.replace(
+      /(^|\s)(#[a-zA-Zа-яА-Я0-9_\-/]+)/g,
+      (_, sp, tag) => `${sp}<span class="md-tg" data-tag="${tag}">${tag}</span>`,
+    );
     out.push(l);
   }
   return out.join("\n");
 }
 
-export default function MarkdownRenderer({ content, onWikiLink, onTagClick, onToggleCheckbox }: Props) {
+export default function MarkdownRenderer({
+  content,
+  onWikiLink,
+  onTagClick,
+  onToggleCheckbox,
+}: Props) {
   const ref = useRef<HTMLDivElement>(null);
 
   const html = useMemo(() => {
@@ -116,5 +133,11 @@ export default function MarkdownRenderer({ content, onWikiLink, onTagClick, onTo
 
   // К2: HTML прогоняется через DOMPurify —marked пропускает сырой HTML,
   // а свой регэксп-санитайзер не покрывал mXSS/style/srcdoc и т.п.
-  return <div ref={ref} className="md-renderer" dangerouslySetInnerHTML={{ __html: sanitizeHtml(html) }} />;
+  return (
+    <div
+      ref={ref}
+      className="md-renderer"
+      dangerouslySetInnerHTML={{ __html: sanitizeHtml(html) }}
+    />
+  );
 }

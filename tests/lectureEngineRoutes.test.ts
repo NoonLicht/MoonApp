@@ -50,13 +50,23 @@ describe("Lecture engine routes (/api/lecture/engine/*)", () => {
     const app = express();
     app.use(express.json({ limit: "2mb" }));
     app.use("/api/lecture", router);
-    await new Promise<void>((resolve) => { srv = app.listen(0, "127.0.0.1", () => resolve()); });
+    await new Promise<void>((resolve) => {
+      srv = app.listen(0, "127.0.0.1", () => resolve());
+    });
     base = `http://127.0.0.1:${srv.address().port}`;
   });
 
   afterAll(() => {
-    try { srv?.close(); } catch { /* noop */ }
-    try { fs.rmSync(storage, { recursive: true, force: true }); } catch { /* noop */ }
+    try {
+      srv?.close();
+    } catch {
+      /* noop */
+    }
+    try {
+      fs.rmSync(storage, { recursive: true, force: true });
+    } catch {
+      /* noop */
+    }
   });
 
   it("GET /engine/setup отдаёт полное состояние для панели", async () => {
@@ -64,8 +74,8 @@ describe("Lecture engine routes (/api/lecture/engine/*)", () => {
     expect(res.status).toBe(200);
     const s: any = await res.json();
     expect(s.engine).toBeTruthy();
-    expect(s.engine.ready).toBe(false);            // пустой storage — движка нет
-    expect(s.builds[0].id).toBe("legacy");         // установленная копия идёт первой
+    expect(s.engine.ready).toBe(false); // пустой storage — движка нет
+    expect(s.builds[0].id).toBe("legacy"); // установленная копия идёт первой
     expect(s.builds.length).toBeGreaterThanOrEqual(5);
     expect(s.models.length).toBeGreaterThanOrEqual(6);
     expect(s.task.state).toBe("idle");
@@ -103,7 +113,11 @@ describe("Lecture engine routes (/api/lecture/engine/*)", () => {
     expect(notDownloaded.status).toBe(400);
     expect(notDownloaded.body.error).toBe("model_not_downloaded");
 
-    for (const body of [{ id: "nope" }, { id: "nope", action: "download" }, { id: "nope", action: "remove" }]) {
+    for (const body of [
+      { id: "nope" },
+      { id: "nope", action: "download" },
+      { id: "nope", action: "remove" },
+    ]) {
       const bad = await post("/model", body);
       expect(bad.status).toBe(400);
       expect(bad.body.error).toBe("unknown_model");
@@ -131,12 +145,14 @@ describe("Lecture engine routes (/api/lecture/engine/*)", () => {
     // Авто-режим доступен всегда: это «выбери лучшую из установленных».
     const auto = await post("/build", { id: "auto" });
     expect(auto.status).toBe(200);
-    expect(auto.body.engine.build).toBe(null);   // в пустом storage ставить нечего
+    expect(auto.body.engine.build).toBe(null); // в пустом storage ставить нечего
     expect(auto.body.builds.some((b: any) => b.id === "cuda124")).toBe(true);
   });
 
   it("POST /engine/bin: путь проверяется, пустая строка возвращает автопоиск", async () => {
-    const missing = await post("/bin", { path: path.join(storage, "no-such-dir", "whisper-cli.exe") });
+    const missing = await post("/bin", {
+      path: path.join(storage, "no-such-dir", "whisper-cli.exe"),
+    });
     expect(missing.status).toBe(400);
     expect(missing.body.error).toBe("bin_not_found");
 
@@ -145,7 +161,7 @@ describe("Lecture engine routes (/api/lecture/engine/*)", () => {
     expect(custom.status).toBe(200);
     expect(custom.body.engine.buildCustom).toBe(true);
     expect(custom.body.engine.bin).toBe(process.execPath);
-    expect(custom.body.engine.ready).toBe(false);   // модели в storage нет
+    expect(custom.body.engine.ready).toBe(false); // модели в storage нет
 
     const reset = await post("/bin", { path: "   " });
     expect(reset.status).toBe(200);
@@ -157,7 +173,7 @@ describe("Lecture engine routes (/api/lecture/engine/*)", () => {
   it("POST /engine/cancel и /engine/verify без движка отвечают предсказуемо", async () => {
     const cancel = await post("/cancel");
     expect(cancel.status).toBe(200);
-    expect(cancel.body.task.state).toBe("idle");     // нечего отменять — не ошибка
+    expect(cancel.body.task.state).toBe("idle"); // нечего отменять — не ошибка
 
     const verify = await post("/verify");
     expect(verify.status).toBe(200);

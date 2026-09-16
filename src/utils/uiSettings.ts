@@ -25,7 +25,9 @@ export function collectUiSettings(): Record<string, string> {
       if (!k || SECRET_KEY_RE.test(k)) continue;
       out[k] = localStorage.getItem(k) ?? "";
     }
-  } catch { /* localStorage недоступен — отдаём пустой снимок */ }
+  } catch {
+    /* localStorage недоступен — отдаём пустой снимок */
+  }
   return out;
 }
 
@@ -38,7 +40,12 @@ export function applyUiSettings(ui: unknown): number {
   let n = 0;
   for (const [k, v] of Object.entries(ui as Record<string, unknown>)) {
     if (typeof v !== "string" || SECRET_KEY_RE.test(k)) continue;
-    try { localStorage.setItem(k, v); n++; } catch { /* квота переполнена — пропускаем */ }
+    try {
+      localStorage.setItem(k, v);
+      n++;
+    } catch {
+      /* квота переполнена — пропускаем */
+    }
   }
   return n;
 }

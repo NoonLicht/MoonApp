@@ -125,7 +125,10 @@ async function scrape(categories, limit = 20) {
     result.push(...items);
     logger.info("comss.category_done", { cat: cat.code, count: items.length });
   }
-  logger.action("comss.scrape", { categories: categories.map((c) => c.code), total: result.length });
+  logger.action("comss.scrape", {
+    categories: categories.map((c) => c.code),
+    total: result.length,
+  });
   return result;
 }
 
@@ -140,8 +143,18 @@ async function scrapeWithProgress(categories, limit = 20, onProgress) {
     done++;
     onProgress?.({ done, total: categories.length, current: "", items: result.slice() });
   }
-  logger.action("comss.scrape", { categories: categories.map((c) => c.code), total: result.length });
+  logger.action("comss.scrape", {
+    categories: categories.map((c) => c.code),
+    total: result.length,
+  });
   return result;
 }
 
-module.exports = { CATEGORIES, scrape, scrapeWithProgress, scrapeCategory, parseList, parseDirectUrls };
+module.exports = {
+  CATEGORIES,
+  scrape,
+  scrapeWithProgress,
+  scrapeCategory,
+  parseList,
+  parseDirectUrls,
+};

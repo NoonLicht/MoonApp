@@ -1,5 +1,14 @@
 import React, { memo, useEffect, useRef, useState } from "react";
-import { Handle, Position, NodeResizer, BaseEdge, EdgeLabelRenderer, getBezierPath, getStraightPath, getSmoothStepPath } from "@xyflow/react";
+import {
+  Handle,
+  Position,
+  NodeResizer,
+  BaseEdge,
+  EdgeLabelRenderer,
+  getBezierPath,
+  getStraightPath,
+  getSmoothStepPath,
+} from "@xyflow/react";
 import type { NodeProps, EdgeProps } from "@xyflow/react";
 import { FileText, Zap } from "lucide-react";
 import { api } from "../../../../api/client";
@@ -44,11 +53,15 @@ function StickyNoteNode({ id, data, selected }: NodeProps) {
     <div
       className="holst-node"
       style={{
-        width: "100%", height: "100%",
-        borderRadius: 4, border: selected ? "2px solid #3b82f6" : "none",
+        width: "100%",
+        height: "100%",
+        borderRadius: 4,
+        border: selected ? "2px solid #3b82f6" : "none",
         boxShadow: "0 4px 14px rgba(0,0,0,0.28)",
         background: d.color,
-        display: "flex", flexDirection: "column", overflow: "hidden",
+        display: "flex",
+        flexDirection: "column",
+        overflow: "hidden",
       }}
     >
       <NodeResizer minWidth={140} minHeight={120} isVisible={selected} color="#3b82f6" />
@@ -58,10 +71,18 @@ function StickyNoteNode({ id, data, selected }: NodeProps) {
         onKeyDown={stopKeys}
         onChange={(e) => d.setData?.(id, { text: e.target.value })}
         style={{
-          flex: 1, border: "none", outline: "none", resize: "none",
-          background: "transparent", padding: "10px 12px",
-          fontFamily: "var(--font-body)", fontSize: 13, fontWeight: 500,
-          color: "#1c1d2b", lineHeight: 1.35, cursor: "text",
+          flex: 1,
+          border: "none",
+          outline: "none",
+          resize: "none",
+          background: "transparent",
+          padding: "10px 12px",
+          fontFamily: "var(--font-body)",
+          fontSize: 13,
+          fontWeight: 500,
+          color: "#1c1d2b",
+          lineHeight: 1.35,
+          cursor: "text",
         }}
       />
       <NodeHandles />
@@ -72,13 +93,28 @@ function StickyNoteNode({ id, data, selected }: NodeProps) {
 /* Free text ---------------------------------------------------------------- */
 
 function TextNode({ id, data, selected }: NodeProps) {
-  const d = data as { text: string; fontSize: number; weight: number; align: string; color?: string; setData: (id: string, patch: any) => void };
+  const d = data as {
+    text: string;
+    fontSize: number;
+    weight: number;
+    align: string;
+    color?: string;
+    setData: (id: string, patch: any) => void;
+  };
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (ref.current && ref.current.innerText !== d.text) ref.current.innerText = d.text;
   }, []);
   return (
-    <div className="holst-node" style={{ width: "100%", height: "100%", border: selected ? "1px solid rgba(59,130,246,.5)" : "1px solid transparent", borderRadius: 6 }}>
+    <div
+      className="holst-node"
+      style={{
+        width: "100%",
+        height: "100%",
+        border: selected ? "1px solid rgba(59,130,246,.5)" : "1px solid transparent",
+        borderRadius: 6,
+      }}
+    >
       <NodeResizer minWidth={80} minHeight={30} isVisible={selected} color="#3b82f6" />
       <div
         ref={ref}
@@ -87,7 +123,18 @@ function TextNode({ id, data, selected }: NodeProps) {
         spellCheck={false}
         onKeyDown={stopKeys}
         onInput={(e) => d.setData?.(id, { text: (e.target as HTMLDivElement).innerText })}
-        style={{ fontSize: d.fontSize, fontWeight: d.weight, textAlign: d.align as any, color: d.color || "var(--text-primary)", width: "100%", height: "100%", padding: 4, cursor: "text", whiteSpace: "pre-wrap", overflow: "hidden" }}
+        style={{
+          fontSize: d.fontSize,
+          fontWeight: d.weight,
+          textAlign: d.align as any,
+          color: d.color || "var(--text-primary)",
+          width: "100%",
+          height: "100%",
+          padding: 4,
+          cursor: "text",
+          whiteSpace: "pre-wrap",
+          overflow: "hidden",
+        }}
       />
       <NodeHandles color="#8b7bf0" />
     </div>
@@ -96,16 +143,31 @@ function TextNode({ id, data, selected }: NodeProps) {
 
 /* Shapes -------------------------------------------------------------------- */
 
-function shapePath(kind: ShapeKind, w: number, h: number, fill: string, stroke: string): JSX.Element {
+function shapePath(
+  kind: ShapeKind,
+  w: number,
+  h: number,
+  fill: string,
+  stroke: string,
+): JSX.Element {
   const r = Math.min(w, h) / 2;
   const common = { fill, stroke, strokeWidth: 2 } as const;
   switch (kind) {
-    case "rect": return <rect x={1} y={1} width={w - 2} height={h - 2} rx={2} {...common} />;
-    case "rounded": return <rect x={1} y={1} width={w - 2} height={h - 2} rx={12} {...common} />;
-    case "circle": return <ellipse cx={w / 2} cy={h / 2} rx={r - 1} ry={r - 1} {...common} />;
-    case "diamond": return <polygon points={`${w / 2},1 ${w - 1},${h / 2} ${w / 2},${h - 1} 1,${h / 2}`} {...common} />;
+    case "rect":
+      return <rect x={1} y={1} width={w - 2} height={h - 2} rx={2} {...common} />;
+    case "rounded":
+      return <rect x={1} y={1} width={w - 2} height={h - 2} rx={12} {...common} />;
+    case "circle":
+      return <ellipse cx={w / 2} cy={h / 2} rx={r - 1} ry={r - 1} {...common} />;
+    case "diamond":
+      return (
+        <polygon points={`${w / 2},1 ${w - 1},${h / 2} ${w / 2},${h - 1} 1,${h / 2}`} {...common} />
+      );
     case "star": {
-      const cx = w / 2, cy = h / 2, R = Math.min(w, h) / 2 - 1, ri = R * 0.45;
+      const cx = w / 2,
+        cy = h / 2,
+        R = Math.min(w, h) / 2 - 1,
+        ri = R * 0.45;
       const pts: string[] = [];
       for (let i = 0; i < 10; i++) {
         const ang = (Math.PI / 5) * i - Math.PI / 2;
@@ -131,12 +193,24 @@ function shapePath(kind: ShapeKind, w: number, h: number, fill: string, stroke: 
 }
 
 function ShapeNode({ id, data, selected }: NodeProps) {
-  const d = data as { shape: ShapeKind; label: string; fill: string; stroke: string; w: number; h: number; setData: (id: string, patch: any) => void };
+  const d = data as {
+    shape: ShapeKind;
+    label: string;
+    fill: string;
+    stroke: string;
+    w: number;
+    h: number;
+    setData: (id: string, patch: any) => void;
+  };
   return (
     <div className="holst-node" style={{ width: "100%", height: "100%" }}>
       <NodeResizer minWidth={100} minHeight={80} isVisible={selected} color="#3b82f6" />
       <div className="holst-shape">
-        <svg viewBox={`0 0 ${d.w} ${d.h}`} preserveAspectRatio="none" style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}>
+        <svg
+          viewBox={`0 0 ${d.w} ${d.h}`}
+          preserveAspectRatio="none"
+          style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}
+        >
           {shapePath(d.shape, d.w, d.h, d.fill, selected ? "#3b82f6" : d.stroke)}
         </svg>
         <div
@@ -164,7 +238,11 @@ function SmartFrameNode({ id, data, selected }: NodeProps) {
     <div className="holst-node" style={{ width: "100%", height: "100%" }}>
       <div
         className="holst-frame"
-        style={{ borderColor: d.color, background: `${d.color}0d`, borderStyle: selected ? "solid" : "dashed" }}
+        style={{
+          borderColor: d.color,
+          background: `${d.color}0d`,
+          borderStyle: selected ? "solid" : "dashed",
+        }}
       >
         <div
           className="holst-frame-label"
@@ -193,10 +271,17 @@ const TASK_TONES: Record<TaskStatus, { bg: string; color: string }> = {
 function TaskCardNode({ id, data, selected }: NodeProps) {
   const d = data as unknown as TaskData & { setData: (id: string, patch: any) => void };
   const done = d.subtasks.filter((s) => s.done).length;
-  const pct = d.subtasks.length ? Math.round((done / d.subtasks.length) * 100) : d.status === "done" ? 100 : 0;
+  const pct = d.subtasks.length
+    ? Math.round((done / d.subtasks.length) * 100)
+    : d.status === "done"
+      ? 100
+      : 0;
   const tone = TASK_TONES[d.status];
   return (
-    <div className="holst-node holst-task" style={{ border: selected ? "2px solid #3b82f6" : "1px solid var(--glass-border)" }}>
+    <div
+      className="holst-node holst-task"
+      style={{ border: selected ? "2px solid #3b82f6" : "1px solid var(--glass-border)" }}
+    >
       <NodeResizer minWidth={200} minHeight={110} isVisible={selected} color="#3b82f6" />
       <div className="task-top">
         <select
@@ -204,7 +289,14 @@ function TaskCardNode({ id, data, selected }: NodeProps) {
           onKeyDown={stopKeys}
           onChange={(e) => d.setData?.(id, { status: e.target.value as TaskStatus })}
           className="task-status"
-          style={{ background: tone.bg, color: tone.color, border: "none", outline: "none", cursor: "pointer", fontWeight: 700 }}
+          style={{
+            background: tone.bg,
+            color: tone.color,
+            border: "none",
+            outline: "none",
+            cursor: "pointer",
+            fontWeight: 700,
+          }}
         >
           <option value="todo">To Do</option>
           <option value="inprogress">In Progress</option>
@@ -215,7 +307,17 @@ function TaskCardNode({ id, data, selected }: NodeProps) {
           value={d.due || ""}
           onKeyDown={stopKeys}
           onChange={(e) => d.setData?.(id, { due: e.target.value })}
-          style={{ marginLeft: "auto", background: "transparent", border: "none", outline: "none", color: "var(--amber)", fontSize: 10, fontFamily: "var(--font-mono)", width: 92, cursor: "pointer" }}
+          style={{
+            marginLeft: "auto",
+            background: "transparent",
+            border: "none",
+            outline: "none",
+            color: "var(--amber)",
+            fontSize: 10,
+            fontFamily: "var(--font-mono)",
+            width: 92,
+            cursor: "pointer",
+          }}
         />
       </div>
       <div
@@ -229,19 +331,27 @@ function TaskCardNode({ id, data, selected }: NodeProps) {
         {d.title}
       </div>
       {d.subtasks.map((s, i) => (
-        <label key={i} className="task-sub" style={{ textDecoration: s.done ? "line-through" : "none", opacity: s.done ? 0.6 : 1 }}>
+        <label
+          key={i}
+          className="task-sub"
+          style={{ textDecoration: s.done ? "line-through" : "none", opacity: s.done ? 0.6 : 1 }}
+        >
           <input
             type="checkbox"
             checked={s.done}
             onChange={(e) => {
-              const next = d.subtasks.map((x, j) => (j === i ? { ...x, done: e.target.checked } : x));
+              const next = d.subtasks.map((x, j) =>
+                j === i ? { ...x, done: e.target.checked } : x,
+              );
               d.setData?.(id, { subtasks: next });
             }}
           />
           <span style={{ fontSize: 11 }}>{s.text}</span>
         </label>
       ))}
-      <div className="task-progress-track"><div className="task-progress-fill" style={{ width: `${pct}%` }} /></div>
+      <div className="task-progress-track">
+        <div className="task-progress-fill" style={{ width: `${pct}%` }} />
+      </div>
       <NodeHandles color="#3fc78a" />
     </div>
   );
@@ -250,7 +360,13 @@ function TaskCardNode({ id, data, selected }: NodeProps) {
 /* Markdown card (lazy content) ---------------------------------------------------- */
 
 function MarkdownCardNode({ id, data, selected }: NodeProps) {
-  const d = data as { path: string; name: string; preview?: string; loaded?: boolean; setData: (id: string, patch: any) => void };
+  const d = data as {
+    path: string;
+    name: string;
+    preview?: string;
+    loaded?: boolean;
+    setData: (id: string, patch: any) => void;
+  };
   const [loading, setLoading] = useState(false);
   const load = async () => {
     if (d.loaded || loading) return;
@@ -259,16 +375,27 @@ function MarkdownCardNode({ id, data, selected }: NodeProps) {
       const f = await api.myspaceRead(d.path);
       const preview = (f?.content || "").replace(/[#*`>\-[\]]/g, "").slice(0, 420);
       d.setData?.(id, { preview, loaded: true });
-    } catch { d.setData?.(id, { preview: "⚠ Failed to load", loaded: true }); }
+    } catch {
+      d.setData?.(id, { preview: "⚠ Failed to load", loaded: true });
+    }
     setLoading(false);
   };
   return (
-    <div className="holst-node holst-md" style={{ border: selected ? "2px solid #3b82f6" : "1px solid var(--glass-border)" }} onClick={load} title={d.path}>
+    <div
+      className="holst-node holst-md"
+      style={{ border: selected ? "2px solid #3b82f6" : "1px solid var(--glass-border)" }}
+      onClick={load}
+      title={d.path}
+    >
       <NodeResizer minWidth={170} minHeight={120} isVisible={selected} color="#3b82f6" />
-      <div className="md-head"><FileText size={12} /> .md note</div>
+      <div className="md-head">
+        <FileText size={12} /> .md note
+      </div>
       <div className="md-title">{d.name}</div>
       <div className="md-preview">{d.loaded ? d.preview : "Open card to load note content…"}</div>
-      <div className="md-lazy"><Zap size={10} /> {loading ? "loading…" : d.loaded ? "loaded" : "lazy · click to fetch"}</div>
+      <div className="md-lazy">
+        <Zap size={10} /> {loading ? "loading…" : d.loaded ? "loaded" : "lazy · click to fetch"}
+      </div>
       <NodeHandles color="#8b7bf0" />
     </div>
   );
@@ -280,11 +407,20 @@ function MatrixNode({ id, data, selected }: NodeProps) {
   const d = data as unknown as MatrixData & { setData: (id: string, patch: any) => void };
   const cols = Math.max(2, d.columns.length);
   return (
-    <div className="holst-node holst-matrix" style={{ border: selected ? "2px solid #3b82f6" : "1px solid var(--glass-border)", gridTemplateColumns: `repeat(${cols}, 1fr)` }}>
+    <div
+      className="holst-node holst-matrix"
+      style={{
+        border: selected ? "2px solid #3b82f6" : "1px solid var(--glass-border)",
+        gridTemplateColumns: `repeat(${cols}, 1fr)`,
+      }}
+    >
       <NodeResizer minWidth={260} minHeight={190} isVisible={selected} color="#3b82f6" />
       <div
         className="mx-title"
-        contentEditable suppressContentEditableWarning spellCheck={false} onKeyDown={stopKeys}
+        contentEditable
+        suppressContentEditableWarning
+        spellCheck={false}
+        onKeyDown={stopKeys}
         onBlur={(e) => d.setData?.(id, { title: (e.target as HTMLDivElement).innerText })}
       >
         {d.title}
@@ -293,19 +429,44 @@ function MatrixNode({ id, data, selected }: NodeProps) {
         const items = d.items.filter((it) => it.col === ci);
         return (
           <div key={ci} className="mx-cell" style={{ background: "var(--glass)" }}>
-            <div className="mx-cell-head" style={{ color: ["#f0a63d", "#8b7bf0", "#3fc7ab", "#ea6b6b"][ci % 4] }}>{colName}</div>
+            <div
+              className="mx-cell-head"
+              style={{ color: ["#f0a63d", "#8b7bf0", "#3fc7ab", "#ea6b6b"][ci % 4] }}
+            >
+              {colName}
+            </div>
             {items.map((it, k) => (
-              <div key={k} className="mx-chip" style={{ background: it.color }}>{it.text}</div>
+              <div key={k} className="mx-chip" style={{ background: it.color }}>
+                {it.text}
+              </div>
             ))}
             <div
-              contentEditable suppressContentEditableWarning spellCheck={false} onKeyDown={stopKeys}
-              style={{ outline: "none", color: "var(--text-tertiary)", minHeight: 16, cursor: "text" }}
+              contentEditable
+              suppressContentEditableWarning
+              spellCheck={false}
+              onKeyDown={stopKeys}
+              style={{
+                outline: "none",
+                color: "var(--text-tertiary)",
+                minHeight: 16,
+                cursor: "text",
+              }}
               onBlur={(e) => {
                 const raw = (e.target as HTMLDivElement).innerText.trim();
                 if (!raw) return;
                 const others = d.items.filter((it) => it.col !== ci);
                 const colors = ["#fef08a", "#fbcfe8", "#bfdbfe", "#bbf7d0", "#e9d5ff", "#fed7aa"];
-                const next = [...others, ...raw.split("\n").filter(Boolean).map((t, i) => ({ col: ci, text: t, color: colors[(items.length + i) % colors.length] }))];
+                const next = [
+                  ...others,
+                  ...raw
+                    .split("\n")
+                    .filter(Boolean)
+                    .map((t, i) => ({
+                      col: ci,
+                      text: t,
+                      color: colors[(items.length + i) % colors.length],
+                    })),
+                ];
                 d.setData?.(id, { items: next });
                 (e.target as HTMLDivElement).innerText = "";
               }}
@@ -323,7 +484,10 @@ function MatrixNode({ id, data, selected }: NodeProps) {
 function StickerNode({ data }: NodeProps) {
   const d = data as { emoji: string };
   return (
-    <div className="holst-node holst-sticker" style={{ fontSize: 36, lineHeight: 1, textAlign: "center" }}>
+    <div
+      className="holst-node holst-sticker"
+      style={{ fontSize: 36, lineHeight: 1, textAlign: "center" }}
+    >
       {d.emoji}
       <NodeHandles color="#f0a63d" />
     </div>
@@ -333,11 +497,22 @@ function StickerNode({ data }: NodeProps) {
 /* Pen stroke ---------------------------------------------------------------------------- */
 
 function StrokeNode({ data, selected }: NodeProps) {
-  const d = data as { points: [number, number][]; color: string; width: number; opacity: number; w: number; h: number };
+  const d = data as {
+    points: [number, number][];
+    color: string;
+    width: number;
+    opacity: number;
+    w: number;
+    h: number;
+  };
   const pts = d.points.map((p) => `${p[0]},${p[1]}`).join(" ");
   return (
     <div className="holst-stroke-node">
-      <svg viewBox={`0 0 ${d.w} ${d.h}`} preserveAspectRatio="none" style={{ width: "100%", height: "100%", overflow: "visible" }}>
+      <svg
+        viewBox={`0 0 ${d.w} ${d.h}`}
+        preserveAspectRatio="none"
+        style={{ width: "100%", height: "100%", overflow: "visible" }}
+      >
         <polyline
           points={pts}
           fill="none"
@@ -366,17 +541,41 @@ export const nodeTypes = {
 
 /* Connector edge -------------------------------------------------------------------------- */
 
-function ConnectorEdge({ id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, data, selected, markerEnd, style }: EdgeProps) {
+function ConnectorEdge({
+  id,
+  sourceX,
+  sourceY,
+  targetX,
+  targetY,
+  sourcePosition,
+  targetPosition,
+  data,
+  selected,
+  markerEnd,
+  style,
+}: EdgeProps) {
   const cd = (data || {}) as Partial<ConnectorData>;
   const styleKind = cd.style || "bezier";
   const [path, labelX, labelY] =
     styleKind === "straight"
       ? getStraightPath({ sourceX, sourceY, targetX, targetY })
       : styleKind === "step"
-        ? getSmoothStepPath({ sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, borderRadius: 14 })
+        ? getSmoothStepPath({
+            sourceX,
+            sourceY,
+            targetX,
+            targetY,
+            sourcePosition,
+            targetPosition,
+            borderRadius: 14,
+          })
         : getBezierPath({ sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition });
 
-  const dashMap: Record<string, string | undefined> = { solid: undefined, dashed: "8 6", dotted: "2 5" };
+  const dashMap: Record<string, string | undefined> = {
+    solid: undefined,
+    dashed: "8 6",
+    dotted: "2 5",
+  };
   const dasharray = dashMap[cd.dash || "solid"];
 
   return (
@@ -395,15 +594,19 @@ function ConnectorEdge({ id, sourceX, sourceY, targetX, targetY, sourcePosition,
       />
       <EdgeLabelRenderer>
         {cd.animated && (
-          <div style={{
-            position: "absolute",
-            transform: `translate(-50%,-50%) translate(${labelX}px,${labelY}px)`,
-            width: 8, height: 8, borderRadius: "50%",
-            background: "#f0a63d",
-            boxShadow: "0 0 8px #f0a63d",
-            pointerEvents: "none",
-            fontSize: 0,
-          }} />
+          <div
+            style={{
+              position: "absolute",
+              transform: `translate(-50%,-50%) translate(${labelX}px,${labelY}px)`,
+              width: 8,
+              height: 8,
+              borderRadius: "50%",
+              background: "#f0a63d",
+              boxShadow: "0 0 8px #f0a63d",
+              pointerEvents: "none",
+              fontSize: 0,
+            }}
+          />
         )}
       </EdgeLabelRenderer>
     </>

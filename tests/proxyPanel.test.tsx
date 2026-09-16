@@ -18,7 +18,11 @@ beforeAll(() => {
  */
 describe("ProxyPanel (встроенный прокси)", () => {
   const html = renderToString(
-    React.createElement(I18nProvider, { lang: "ru" }, React.createElement(ProxyPanel, { onClose: () => {} }))
+    React.createElement(
+      I18nProvider,
+      { lang: "ru" },
+      React.createElement(ProxyPanel, { onClose: () => {} }),
+    ),
   );
 
   it("рендерит модалку с шапкой и действиями", () => {

@@ -33,7 +33,9 @@ export function ParamField({ label, tooltip, optimal, children }: ParamFieldProp
   return (
     <div className="ab-param" ref={wrapRef}>
       <div className="ab-param-head">
-        <span className="field-label" style={{ marginBottom: 0 }}>{label}</span>
+        <span className="field-label" style={{ marginBottom: 0 }}>
+          {label}
+        </span>
         <button
           type="button"
           className="ab-info-btn"

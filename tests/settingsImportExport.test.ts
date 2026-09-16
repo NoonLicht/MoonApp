@@ -35,7 +35,11 @@ describe("Настройки: экспорт и импорт (HTTP)", () => {
     });
     const text = await res.text();
     let parsed: any = null;
-    try { parsed = JSON.parse(text); } catch { /* не-JSON в ответе — ниже проверим статус */ }
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      /* не-JSON в ответе — ниже проверим статус */
+    }
     return { status: res.status, body: parsed, headers: res.headers };
   }
 
@@ -50,20 +54,32 @@ describe("Настройки: экспорт и импорт (HTTP)", () => {
     const app = express();
     app.use(express.json({ limit: "2mb" }));
     app.use("/api/settings", router);
-    await new Promise<void>((resolve) => { srv = app.listen(0, "127.0.0.1", () => resolve()); });
+    await new Promise<void>((resolve) => {
+      srv = app.listen(0, "127.0.0.1", () => resolve());
+    });
     base = `http://127.0.0.1:${srv.address().port}`;
   });
 
   afterAll(() => {
-    try { srv?.close(); } catch { /* noop */ }
-    try { req("../server/fsUtil").removePath(storage); } catch { /* noop */ }
+    try {
+      srv?.close();
+    } catch {
+      /* noop */
+    }
+    try {
+      req("../server/fsUtil").removePath(storage);
+    } catch {
+      /* noop */
+    }
   });
 
   it("экспорт отдаёт файл со всеми секциями настроек и локальными настройками UI", async () => {
-    const r = await call("POST", "/export", { ui: { "aichat.cfg.v2": "{\"temperature\":0.3}" } });
+    const r = await call("POST", "/export", { ui: { "aichat.cfg.v2": '{"temperature":0.3}' } });
     expect(r.status).toBe(200);
     // Имя файла — ASCII, иначе Node отклоняет заголовок Content-Disposition.
-    expect(r.headers.get("content-disposition")).toMatch(/attachment; filename="moonapp-settings-\d{4}-\d{2}-\d{2}\.json"/);
+    expect(r.headers.get("content-disposition")).toMatch(
+      /attachment; filename="moonapp-settings-\d{4}-\d{2}-\d{2}\.json"/,
+    );
 
     const p = r.body;
     expect(p.kind).toBe("moonapp-settings");
@@ -94,8 +110,8 @@ describe("Настройки: экспорт и импорт (HTTP)", () => {
       settings: {
         appearance: { theme: "light", fontSize: 18 },
         chat: { temperature: 0.2 },
-        notASection: { x: 1 },       // нет в DEFAULTS — неизвестная секция
-        general: { language: 42 },   // чужой тип: ожидалась строка
+        notASection: { x: 1 }, // нет в DEFAULTS — неизвестная секция
+        general: { language: 42 }, // чужой тип: ожидалась строка
       },
       ui: { tasks_progress: "{}" },
     });
@@ -126,7 +142,8 @@ describe("Настройки: экспорт и импорт (HTTP)", () => {
     expect(security().getSecret("deepseek")).toBe("sk-test-123"); // не перезаписан
 
     const on = await call("POST", "/import", {
-      settings: {}, importSecrets: true,
+      settings: {},
+      importSecrets: true,
       secrets: { deepseek: "sk-new", hacker: "evil" },
     });
     expect(on.body.keysApplied).toBe(1);

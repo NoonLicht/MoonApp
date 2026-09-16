@@ -35,7 +35,15 @@ router.post("/download", async (req, res) => {
   try {
     const { url, info, height, container, subs, thumb } = req.body || {};
     if (!url || !info) return res.status(400).json({ error: "missing_url" });
-    const result = ytdlp.startDownload({ url, info, height, container, subs, thumb, proxyUrl: req.proxyUrl });
+    const result = ytdlp.startDownload({
+      url,
+      info,
+      height,
+      container,
+      subs,
+      thumb,
+      proxyUrl: req.proxyUrl,
+    });
     logger.action("video.download.start", { id: result.id, url });
     res.json(result);
   } catch (e) {
@@ -51,19 +59,27 @@ router.get("/download/:key", (req, res) => {
   const entry = ytdlp.getDownloadFile(req.params.key);
   if (!entry) return res.status(404).json({ error: "not_found" });
   res.download(entry.path, entry.name, () => {
-    try { removePath(entry.path); } catch {}
+    try {
+      removePath(entry.path);
+    } catch {}
   });
 });
 
 // Статус yt-dlp
 router.get("/install", (req, res) => {
-  try { res.json(ytdlp.installStatus()); }
-  catch (e) { res.status(500).json({ error: e.message }); }
+  try {
+    res.json(ytdlp.installStatus());
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 router.post("/install/start", (req, res) => {
-  try { res.json(ytdlp.installYtDlp()); }
-  catch (e) { res.status(500).json({ error: e.message }); }
+  try {
+    res.json(ytdlp.installYtDlp());
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 module.exports = router;

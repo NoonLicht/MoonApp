@@ -71,14 +71,20 @@ router.post("/install/start", (req, res) => {
 router.post("/", upload.single("file"), async (req, res) => {
   const cleanupInput = () => {
     if (req.file && req.file.path && fs.existsSync(req.file.path)) {
-      try { removePath(req.file.path); } catch { /* ignore */ }
+      try {
+        removePath(req.file.path);
+      } catch {
+        /* ignore */
+      }
     }
   };
 
   try {
     if (!req.file) return res.status(400).json({ error: "missing_file" });
 
-    const to = String((req.body && req.body.to) || "").toLowerCase().replace(/^\./, "");
+    const to = String((req.body && req.body.to) || "")
+      .toLowerCase()
+      .replace(/^\./, "");
     const cat = engine.categoryOf(req.file.originalname);
 
     if (!to || !cat) {
@@ -90,11 +96,15 @@ router.post("/", upload.single("file"), async (req, res) => {
       return res.status(400).json({ error: "unsupported_target" });
     }
 
-    const outFile = path.join(DIRS.convertOut, `out_${Date.now()}_${crypto.randomBytes(4).toString("hex")}.${to}`);
+    const outFile = path.join(
+      DIRS.convertOut,
+      `out_${Date.now()}_${crypto.randomBytes(4).toString("hex")}.${to}`,
+    );
     const { size } = await engine.convert({ inputPath: req.file.path, to, outPath: outFile });
     cleanupInput();
 
-    const stem = path.basename(req.file.originalname, path.extname(req.file.originalname)) || "converted";
+    const stem =
+      path.basename(req.file.originalname, path.extname(req.file.originalname)) || "converted";
     const key = crypto.randomBytes(8).toString("hex");
     const name = `${stem}.${to}`;
     results.set(key, { file: outFile, name, size, at: Date.now() });
@@ -114,7 +124,11 @@ router.get("/download/:key", (req, res) => {
   if (!entry) return res.status(404).json({ error: "not_found" });
 
   res.download(entry.file, entry.name, () => {
-    try { removePath(entry.file); } catch { /* ignore */ }
+    try {
+      removePath(entry.file);
+    } catch {
+      /* ignore */
+    }
     results.delete(req.params.key);
   });
 });

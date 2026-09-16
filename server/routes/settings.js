@@ -110,7 +110,10 @@ router.post("/import", (req, res) => {
       if (body.importSecrets === true) {
         const allowed = new Set(allowedSecretNames());
         for (const [name, value] of Object.entries(secrets)) {
-          if (!allowed.has(name) || typeof value !== "string" || !value.trim()) { keysSkipped.push(name); continue; }
+          if (!allowed.has(name) || typeof value !== "string" || !value.trim()) {
+            keysSkipped.push(name);
+            continue;
+          }
           setSecret(name, value.trim());
           keysApplied++;
         }
@@ -121,7 +124,10 @@ router.post("/import", (req, res) => {
     }
 
     logger.action("settings.import", {
-      applied: appliedPaths.length, skipped: skipped.length, keys: keysApplied, from: body.appVersion || null,
+      applied: appliedPaths.length,
+      skipped: skipped.length,
+      keys: keysApplied,
+      from: body.appVersion || null,
     });
     res.json({
       ok: true,
@@ -143,13 +149,15 @@ router.post("/import", (req, res) => {
 
 // Список провайдеров + статус наличия ключа
 router.get("/providers", (req, res) => {
-  res.json(PROVIDERS.map((p) => ({
-    id: p.id,
-    label: p.label,
-    models: p.models,
-    stub: !!p.stub,
-    configured: hasSecret(p.id),
-  })));
+  res.json(
+    PROVIDERS.map((p) => ({
+      id: p.id,
+      label: p.label,
+      models: p.models,
+      stub: !!p.stub,
+      configured: hasSecret(p.id),
+    })),
+  );
 });
 
 // Сохранить ключ провайдера (клиент шлёт plaintext один раз, дальше он в зашифрованном виде)

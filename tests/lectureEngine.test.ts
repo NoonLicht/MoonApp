@@ -219,7 +219,7 @@ describe("whisperEngine — устройство счёта и флаги whispe
     const settings = require("../server/settings");
     e.selectBuild("cuda124");
     e.setGpuMode("auto", 0);
-    expect(e.deviceArgs()).toEqual([]);          // карта 0 — дефолт CUDA, флаг не нужен
+    expect(e.deviceArgs()).toEqual([]); // карта 0 — дефолт CUDA, флаг не нужен
     e.setGpuMode("auto", 1);
     expect(e.deviceArgs()).toEqual(["-dev", "1"]);
     e.setGpuMode("off");
@@ -245,7 +245,9 @@ describe("whisperEngine — устройство счёта и флаги whispe
     // Детект ещё не выполнялся — не вмешиваемся в выбор пользователя.
     expect(e.deviceArgsFor(cuda, null, false, 0)).toEqual([]);
     // CPU-сборка флагов не получает вообще.
-    expect(e.deviceArgsFor({ id: "cpu", backend: "cpu" }, { cudaCapable: true }, false, 1)).toEqual([]);
+    expect(e.deviceArgsFor({ id: "cpu", backend: "cpu" }, { cudaCapable: true }, false, 1)).toEqual(
+      [],
+    );
   });
 
   it("transcribeArgs: модель, язык, потоки, prompt и SRT-тайминги; без -nt", async () => {
@@ -301,11 +303,25 @@ describe("whisperEngine — устройство счёта и флаги whispe
 describe("whisperEngine — подсказки «ваш ПК»", () => {
   /** Слабый ноутбук: 6 ядер, 16 ГБ, без NVIDIA (реальный кейс пользователя). */
   const weak = {
-    cpu: "AMD Ryzen 5 220", cores: 6, threads: 12, ramMb: 16384,
-    gpuName: "", gpuMemoryMb: 0, gpuVendor: "", cuda: false, blackwell: false, detected: true,
+    cpu: "AMD Ryzen 5 220",
+    cores: 6,
+    threads: 12,
+    ramMb: 16384,
+    gpuName: "",
+    gpuMemoryMb: 0,
+    gpuVendor: "",
+    cuda: false,
+    blackwell: false,
+    detected: true,
   };
   const strong = { ...weak, cpu: "AMD Ryzen 9 7950X", cores: 16, threads: 32, ramMb: 65536 };
-  const rtx = { ...weak, cuda: true, gpuName: "NVIDIA GeForce RTX 4060", gpuVendor: "nvidia", gpuMemoryMb: 8192 };
+  const rtx = {
+    ...weak,
+    cuda: true,
+    gpuName: "NVIDIA GeForce RTX 4060",
+    gpuVendor: "nvidia",
+    gpuMemoryMb: 8192,
+  };
 
   it("best: слабый процессор → small, сильный → точнее, RTX → турбо", async () => {
     const e = await engine();
@@ -347,11 +363,20 @@ describe("whisperEngine — подсказки «ваш ПК»", () => {
   it("сборки: без NVIDIA — OpenBLAS, CUDA помечается как неподходящая", async () => {
     const e = await engine();
     expect(e.buildRecommend({ id: "blas" }, weak)).toMatchObject({ level: "best", best: true });
-    expect(e.buildRecommend({ id: "cuda124" }, weak)).toMatchObject({ level: "unfit", reason: "no_gpu" });
+    expect(e.buildRecommend({ id: "cuda124" }, weak)).toMatchObject({
+      level: "unfit",
+      reason: "no_gpu",
+    });
     // С NVIDIA картина обратная: CUDA — лучшая, OpenBLAS — запасной вариант.
     expect(e.buildRecommend({ id: "cuda124" }, rtx)).toMatchObject({ level: "best", best: true });
-    expect(e.buildRecommend({ id: "blas" }, rtx)).toMatchObject({ level: "good", reason: "cpu_fallback" });
-    expect(e.buildRecommend({ id: "cpu" }, weak)).toMatchObject({ level: "good", reason: "cpu_slow" });
+    expect(e.buildRecommend({ id: "blas" }, rtx)).toMatchObject({
+      level: "good",
+      reason: "cpu_fallback",
+    });
+    expect(e.buildRecommend({ id: "cpu" }, weak)).toMatchObject({
+      level: "good",
+      reason: "cpu_slow",
+    });
   });
 
   it("detectSystem описывает реальную машину (ядра, ОЗУ, GPU)", async () => {

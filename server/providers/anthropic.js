@@ -3,7 +3,14 @@ const { pageFetch } = require("../middleware/perPageProxy");
 
 const API = "https://api.anthropic.com/v1/messages";
 const VERSION = "2023-06-01";
-const MODELS = ["claude-sonnet-4-5", "claude-opus-4-1", "claude-opus-4", "claude-sonnet-4-0", "claude-3-7-sonnet-latest", "claude-3-5-haiku-latest"];
+const MODELS = [
+  "claude-sonnet-4-5",
+  "claude-opus-4-1",
+  "claude-opus-4",
+  "claude-sonnet-4-0",
+  "claude-3-7-sonnet-latest",
+  "claude-3-5-haiku-latest",
+];
 
 function mapMessages(messages) {
   // Anthropic принимает только user/assistant; изображения — как content blocks.
@@ -16,7 +23,8 @@ function mapMessages(messages) {
       const content = [];
       for (const dataUrl of imgs) {
         const m = /^data:(image\/[a-zA-Z+]+);base64,(.+)$/.exec(dataUrl || "");
-        if (m) content.push({ type: "image", source: { type: "base64", media_type: m[1], data: m[2] } });
+        if (m)
+          content.push({ type: "image", source: { type: "base64", media_type: m[1], data: m[2] } });
       }
       content.push({ type: "text", text });
       return { role: role === "user" ? "user" : "assistant", content };

@@ -30,9 +30,12 @@ function levelFilter() {
   let telemetry = false;
   try {
     const advanced = JSON.parse(fs.readFileSync(FILES.settings, "utf8"))?.advanced || {};
-    if (["debug", "error", "warn", "info"].includes(advanced.logLevel)) logLevel = advanced.logLevel;
+    if (["debug", "error", "warn", "info"].includes(advanced.logLevel))
+      logLevel = advanced.logLevel;
     telemetry = !!advanced.telemetry;
-  } catch { /* настроек нет — дефолты */ }
+  } catch {
+    /* настроек нет — дефолты */
+  }
   cachedFilter = { logLevel, telemetry };
   return cachedFilter;
 }
@@ -56,7 +59,9 @@ function rotateAuditIfNeeded() {
     if (auditSize < AUDIT_MAX_BYTES) return;
     fs.renameSync(AUDIT_FILE, AUDIT_ROTATED); // предыдущий архив перезаписывается
     auditSize = 0;
-  } catch { /* журнал не должен ронять приложение */ }
+  } catch {
+    /* журнал не должен ронять приложение */
+  }
 }
 
 function appendAudit(entry) {
@@ -65,7 +70,9 @@ function appendAudit(entry) {
     fs.appendFileSync(AUDIT_FILE, line);
     if (auditSize >= 0) auditSize += Buffer.byteLength(line);
     if (++auditWrites % 50 === 0) rotateAuditIfNeeded();
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
 }
 
 function append(entry) {
@@ -90,12 +97,22 @@ function append(entry) {
 }
 
 const logger = {
-  debug(event, data) { append({ level: "debug", event, data }); },
-  info(event, data) { append({ level: "info", event, data }); },
-  warn(event, data) { append({ level: "warn", event, data }); },
-  error(event, data) { append({ level: "error", event, data }); },
+  debug(event, data) {
+    append({ level: "debug", event, data });
+  },
+  info(event, data) {
+    append({ level: "info", event, data });
+  },
+  warn(event, data) {
+    append({ level: "warn", event, data });
+  },
+  error(event, data) {
+    append({ level: "error", event, data });
+  },
   // Действия юзера: клики, навигация и т.д.
-  action(event, data) { append({ level: "action", event, data }); },
+  action(event, data) {
+    append({ level: "action", event, data });
+  },
   // Явный уровень (используется приёмом событий с фронта: /api/log).
   log(level, event, data) {
     const lvl = ["debug", "error", "warn", "info", "action"].includes(level) ? level : "info";

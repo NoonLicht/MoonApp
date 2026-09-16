@@ -61,7 +61,9 @@ function fail(res, e, ctx) {
 }
 
 /** Обёртка async-роутов. */
-const wrap = (fn) => (req, res) => { Promise.resolve(fn(req, res)).catch((e) => fail(res, e, req.path)); };
+const wrap = (fn) => (req, res) => {
+  Promise.resolve(fn(req, res)).catch((e) => fail(res, e, req.path));
+};
 
 const parseInt01 = (v, d = 1) => {
   const n = Number(v);
@@ -72,7 +74,11 @@ const parseInt01 = (v, d = 1) => {
 
 router.get("/status", (req, res) => {
   let cfg = {};
-  try { cfg = settings.get("movies") || {}; } catch { /* ignore */ }
+  try {
+    cfg = settings.get("movies") || {};
+  } catch {
+    /* ignore */
+  }
   res.json({
     hasKey: hasSecret("tmdb"),
     engine: torrent.engineStatus(),
@@ -87,7 +93,9 @@ router.post("/key", (req, res) => {
     setSecret("tmdb", key);
     logger.action("movies.tmdb_key_saved");
     res.json({ ok: true, hasKey: true });
-  } catch (e) { fail(res, e, "key"); }
+  } catch (e) {
+    fail(res, e, "key");
+  }
 });
 
 /** Сбросить кэш метаданных TMDB. */
@@ -109,59 +117,93 @@ router.post("/refresh", (req, res) => {
  * заголовки. Безопасность обеспечивается жёсткой валидацией — хост всегда
  * image.tmdb.org, size из allowlist, path вида /file.jpg (без «..», без query).
  */
-router.get("/image", wrap(async (req, res) => {
-  const { key, etag } = tmdb.imageKey(req.query.s, req.query.p);
-  res.setHeader("ETag", etag);
-  res.setHeader("Cache-Control", "public, max-age=604800, immutable");
-  if (req.get("if-none-match") === etag) return res.status(304).end();
+router.get(
+  "/image",
+  wrap(async (req, res) => {
+    const { key, etag } = tmdb.imageKey(req.query.s, req.query.p);
+    res.setHeader("ETag", etag);
+    res.setHeader("Cache-Control", "public, max-age=604800, immutable");
+    if (req.get("if-none-match") === etag) return res.status(304).end();
 
-  const img = await tmdb.fetchImage(req.query.s, req.query.p);
-  res.setHeader("Content-Type", img.contentType);
-  res.setHeader("X-Moon-Img", img.cached ? "hit" : "miss");
-  logger.debug("movies.image", { key, cached: img.cached });
-  res.end(img.buffer);
-}));
+    const img = await tmdb.fetchImage(req.query.s, req.query.p);
+    res.setHeader("Content-Type", img.contentType);
+    res.setHeader("X-Moon-Img", img.cached ? "hit" : "miss");
+    logger.debug("movies.image", { key, cached: img.cached });
+    res.end(img.buffer);
+  }),
+);
 
 /* ==================== 2. Каталог (TMDB) ==================== */
 
-router.get("/trending", wrap(async (req, res) => {
-  const kind = tmdb.normKind(req.query.kind || "movie");
-  res.json(await tmdb.trending(kind, req.query.window === "day" ? "day" : "week", parseInt01(req.query.page)));
-}));
+router.get(
+  "/trending",
+  wrap(async (req, res) => {
+    const kind = tmdb.normKind(req.query.kind || "movie");
+    res.json(
+      await tmdb.trending(
+        kind,
+        req.query.window === "day" ? "day" : "week",
+        parseInt01(req.query.page),
+      ),
+    );
+  }),
+);
 
-router.get("/list", wrap(async (req, res) => {
-  const kind = tmdb.normKind(req.query.kind || "movie");
-  res.json(await tmdb.list(kind, String(req.query.category || "popular"), parseInt01(req.query.page)));
-}));
+router.get(
+  "/list",
+  wrap(async (req, res) => {
+    const kind = tmdb.normKind(req.query.kind || "movie");
+    res.json(
+      await tmdb.list(kind, String(req.query.category || "popular"), parseInt01(req.query.page)),
+    );
+  }),
+);
 
-router.get("/search", wrap(async (req, res) => {
-  const q = String(req.query.q || "").trim();
-  if (!q) return res.json({ items: [], page: 1, totalPages: 1 });
-  const kind = String(req.query.kind || "multi");
-  res.json(await tmdb.search(q, kind, parseInt01(req.query.page)));
-}));
+router.get(
+  "/search",
+  wrap(async (req, res) => {
+    const q = String(req.query.q || "").trim();
+    if (!q) return res.json({ items: [], page: 1, totalPages: 1 });
+    const kind = String(req.query.kind || "multi");
+    res.json(await tmdb.search(q, kind, parseInt01(req.query.page)));
+  }),
+);
 
-router.get("/genres", wrap(async (req, res) => {
-  res.json(await tmdb.genres(tmdb.normKind(req.query.kind || "movie")));
-}));
+router.get(
+  "/genres",
+  wrap(async (req, res) => {
+    res.json(await tmdb.genres(tmdb.normKind(req.query.kind || "movie")));
+  }),
+);
 
-router.get("/discover", wrap(async (req, res) => {
-  const kind = tmdb.normKind(req.query.kind || "movie");
-  res.json(await tmdb.discover(kind, {
-    genre: req.query.genre,
-    year: req.query.year,
-    sort: req.query.sort,
-    page: parseInt01(req.query.page),
-  }));
-}));
+router.get(
+  "/discover",
+  wrap(async (req, res) => {
+    const kind = tmdb.normKind(req.query.kind || "movie");
+    res.json(
+      await tmdb.discover(kind, {
+        genre: req.query.genre,
+        year: req.query.year,
+        sort: req.query.sort,
+        page: parseInt01(req.query.page),
+      }),
+    );
+  }),
+);
 
-router.get("/providers/:kind/:id", wrap(async (req, res) => {
-  res.json(await tmdb.watchProviders(tmdb.normKind(req.params.kind), req.params.id));
-}));
+router.get(
+  "/providers/:kind/:id",
+  wrap(async (req, res) => {
+    res.json(await tmdb.watchProviders(tmdb.normKind(req.params.kind), req.params.id));
+  }),
+);
 
-router.get("/details/:kind/:id", wrap(async (req, res) => {
-  res.json(await tmdb.details(tmdb.normKind(req.params.kind), req.params.id));
-}));
+router.get(
+  "/details/:kind/:id",
+  wrap(async (req, res) => {
+    res.json(await tmdb.details(tmdb.normKind(req.params.kind), req.params.id));
+  }),
+);
 
 /* ==================== 3. Личная библиотека и статистика ==================== */
 
@@ -169,13 +211,20 @@ router.get("/details/:kind/:id", wrap(async (req, res) => {
 function parseArr(v) {
   if (Array.isArray(v)) return v;
   if (typeof v !== "string" || !v) return [];
-  try { const a = JSON.parse(v); return Array.isArray(a) ? a : []; } catch { return []; }
+  try {
+    const a = JSON.parse(v);
+    return Array.isArray(a) ? a : [];
+  } catch {
+    return [];
+  }
 }
 
 router.get("/library", (req, res) => {
   const watchlist = stmts.mwAll.all().map((r) => ({ ...r, genres: parseArr(r.genres) }));
   const ratings = stmts.mrAll.all();
-  const stats = stmts.msAll.all().map((r) => ({ ...r, genres: parseArr(r.genres), cast: parseArr(r.cast) }));
+  const stats = stmts.msAll
+    .all()
+    .map((r) => ({ ...r, genres: parseArr(r.genres), cast: parseArr(r.cast) }));
   res.json({ watchlist, ratings, stats });
 });
 
@@ -197,7 +246,8 @@ router.post("/watchlist", (req, res) => {
   try {
     const kind = tmdb.normKind(req.body?.kind);
     const id = Number(req.body?.id);
-    if (!Number.isFinite(id) || id <= 0) return res.status(400).json({ error: "bad id", code: "bad_id" });
+    if (!Number.isFinite(id) || id <= 0)
+      return res.status(400).json({ error: "bad id", code: "bad_id" });
     const status = STATUSES.includes(req.body?.status) ? req.body.status : "plan";
     stmts.mwUpsert.run(kind, id, {
       title: String(req.body?.title || ""),
@@ -218,14 +268,18 @@ router.post("/watchlist", (req, res) => {
     }
     logger.action("movies.watchlist_set", { kind, id, status });
     res.json({ ok: true, watchlist: stmts.mwGet.get(kind, id) });
-  } catch (e) { fail(res, e, "watchlist"); }
+  } catch (e) {
+    fail(res, e, "watchlist");
+  }
 });
 
 router.delete("/watchlist/:kind/:id", (req, res) => {
   try {
     stmts.mwDelete.run(tmdb.normKind(req.params.kind), Number(req.params.id));
     res.json({ ok: true });
-  } catch (e) { fail(res, e, "watchlist_delete"); }
+  } catch (e) {
+    fail(res, e, "watchlist_delete");
+  }
 });
 
 /** Оценка 1–10. rating = 0 → снять оценку. */
@@ -233,13 +287,16 @@ router.post("/rate", (req, res) => {
   try {
     const kind = tmdb.normKind(req.body?.kind);
     const id = Number(req.body?.id);
-    if (!Number.isFinite(id) || id <= 0) return res.status(400).json({ error: "bad id", code: "bad_id" });
+    if (!Number.isFinite(id) || id <= 0)
+      return res.status(400).json({ error: "bad id", code: "bad_id" });
     const rating = Math.max(0, Math.min(10, Math.round(Number(req.body?.rating) || 0)));
     if (rating === 0) stmts.mrDelete.run(kind, id);
     else stmts.mrSet.run(kind, id, String(req.body?.title || ""), rating);
     logger.action("movies.rate", { kind, id, rating });
     res.json({ ok: true, rating: stmts.mrGet.get(kind, id) });
-  } catch (e) { fail(res, e, "rate"); }
+  } catch (e) {
+    fail(res, e, "rate");
+  }
 });
 
 /** Отметить просмотр/прогресс (идёт в статистику). */
@@ -247,7 +304,8 @@ router.post("/watch", (req, res) => {
   try {
     const kind = tmdb.normKind(req.body?.kind);
     const id = Number(req.body?.id);
-    if (!Number.isFinite(id) || id <= 0) return res.status(400).json({ error: "bad id", code: "bad_id" });
+    if (!Number.isFinite(id) || id <= 0)
+      return res.status(400).json({ error: "bad id", code: "bad_id" });
     const runtime = req.body?.runtime != null ? Number(req.body.runtime) : null;
     const progress = Math.max(0, Math.min(1, Number(req.body?.progress ?? 1)));
     const minutes = runtime ? Math.round(runtime * progress) : 0;
@@ -255,18 +313,24 @@ router.post("/watch", (req, res) => {
       title: String(req.body?.title || ""),
       genres: JSON.stringify(Array.isArray(req.body?.genres) ? req.body.genres : []),
       cast: JSON.stringify(Array.isArray(req.body?.cast) ? req.body.cast.slice(0, 12) : []),
-      runtime, progress, minutes,
+      runtime,
+      progress,
+      minutes,
     });
     logger.action("movies.watch", { kind, id, progress });
     res.json({ ok: true });
-  } catch (e) { fail(res, e, "watch"); }
+  } catch (e) {
+    fail(res, e, "watch");
+  }
 });
 
 router.delete("/watch/:kind/:id", (req, res) => {
   try {
     stmts.msDelete.run(tmdb.normKind(req.params.kind), Number(req.params.id));
     res.json({ ok: true });
-  } catch (e) { fail(res, e, "watch_delete"); }
+  } catch (e) {
+    fail(res, e, "watch_delete");
+  }
 });
 
 /** Агрегированная статистика просмотров. */
@@ -299,10 +363,11 @@ router.get("/stats", (req, res) => {
     }
   }
 
-  const top = (map, n) => [...map.entries()]
-    .map(([name, count]) => ({ name, count }))
-    .sort((a, b) => b.count - a.count)
-    .slice(0, n);
+  const top = (map, n) =>
+    [...map.entries()]
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, n);
 
   const byStatus = { plan: 0, watching: 0, watched: 0 };
   for (const w of watchlist) if (byStatus[w.status] != null) byStatus[w.status]++;
@@ -311,7 +376,10 @@ router.get("/stats", (req, res) => {
   let ratingSum = 0;
   for (const r of ratings) {
     const v = Math.round(Number(r.rating) || 0);
-    if (v >= 1 && v <= 10) { ratingHistogram[v - 1].count++; ratingSum += v; }
+    if (v >= 1 && v <= 10) {
+      ratingHistogram[v - 1].count++;
+      ratingSum += v;
+    }
   }
 
   res.json({
@@ -352,21 +420,26 @@ router.get("/torrent/active", (req, res) => {
  * Добавить торрент: { magnet } ИЛИ { torrent: "<base64 .torrent>" }.
  * Приложение не ищет торренты — источник передаёт сам пользователь.
  */
-router.post("/torrent/add", wrap(async (req, res) => {
-  const magnet = String(req.body?.magnet || "").trim();
-  const b64 = String(req.body?.torrent || "").trim();
-  let source;
-  if (magnet) {
-    if (!/^magnet:\?/i.test(magnet)) return res.status(400).json({ error: "not a magnet link", code: "bad_source" });
-    source = magnet;
-  } else if (b64) {
-    source = Buffer.from(b64, "base64");
-    if (!source.length) return res.status(400).json({ error: "empty .torrent payload", code: "bad_source" });
-  } else {
-    return res.status(400).json({ error: "magnet or torrent required", code: "bad_source" });
-  }
-  res.json(await torrent.add(source));
-}));
+router.post(
+  "/torrent/add",
+  wrap(async (req, res) => {
+    const magnet = String(req.body?.magnet || "").trim();
+    const b64 = String(req.body?.torrent || "").trim();
+    let source;
+    if (magnet) {
+      if (!/^magnet:\?/i.test(magnet))
+        return res.status(400).json({ error: "not a magnet link", code: "bad_source" });
+      source = magnet;
+    } else if (b64) {
+      source = Buffer.from(b64, "base64");
+      if (!source.length)
+        return res.status(400).json({ error: "empty .torrent payload", code: "bad_source" });
+    } else {
+      return res.status(400).json({ error: "magnet or torrent required", code: "bad_source" });
+    }
+    res.json(await torrent.add(source));
+  }),
+);
 
 router.get("/torrent/status/:infoHash", (req, res) => {
   const st = torrent.status(req.params.infoHash);
@@ -377,7 +450,9 @@ router.get("/torrent/status/:infoHash", (req, res) => {
 router.get("/torrent/file/:infoHash/:index", (req, res) => {
   try {
     res.json(torrent.streamInfo(req.params.infoHash, Number(req.params.index)));
-  } catch (e) { fail(res, e, "torrent_file"); }
+  } catch (e) {
+    fail(res, e, "torrent_file");
+  }
 });
 
 /**
@@ -391,7 +466,9 @@ router.get("/torrent/stream/:infoHash/:index", (req, res) => {
   let info;
   try {
     info = torrent.streamInfo(infoHash, idx);
-  } catch (e) { return fail(res, e, "torrent_stream"); }
+  } catch (e) {
+    return fail(res, e, "torrent_stream");
+  }
 
   const total = info.length;
   const range = req.headers.range;
@@ -419,11 +496,21 @@ router.get("/torrent/stream/:infoHash/:index", (req, res) => {
   }
 
   // Если клиент отключился (перемотка/закрытие) — гасим поток.
-  req.on("close", () => { try { stream.destroy(); } catch { /* ignore */ } });
+  req.on("close", () => {
+    try {
+      stream.destroy();
+    } catch {
+      /* ignore */
+    }
+  });
   stream.on("error", (e) => {
     logger.error("movies.torrent_stream_error", { infoHash, error: e?.message });
     if (!res.headersSent) res.status(500);
-    try { res.end(); } catch { /* ignore */ }
+    try {
+      res.end();
+    } catch {
+      /* ignore */
+    }
   });
   stream.pipe(res);
 });

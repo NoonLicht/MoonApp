@@ -13,15 +13,24 @@ function stamp() {
 function createBackup(trigger = "manual") {
   try {
     // Пersist дебаунсится (М8) — перед копированием сбрасываем буфер на диск.
-    try { require("./db").flush(); } catch { /* noop */ }
+    try {
+      require("./db").flush();
+    } catch {
+      /* noop */
+    }
     const dir = path.join(DIRS.backups, stamp());
     fs.mkdirSync(dir, { recursive: true });
 
     if (fs.existsSync(FILES.data)) fs.copyFileSync(FILES.data, path.join(dir, "data.json"));
-    if (fs.existsSync(FILES.settings)) fs.copyFileSync(FILES.settings, path.join(dir, "settings.json"));
-    if (fs.existsSync(FILES.secrets)) fs.copyFileSync(FILES.secrets, path.join(dir, "secrets.json"));
+    if (fs.existsSync(FILES.settings))
+      fs.copyFileSync(FILES.settings, path.join(dir, "settings.json"));
+    if (fs.existsSync(FILES.secrets))
+      fs.copyFileSync(FILES.secrets, path.join(dir, "secrets.json"));
 
-    fs.writeFileSync(path.join(dir, "meta.json"), JSON.stringify({ trigger, at: new Date().toISOString() }, null, 2));
+    fs.writeFileSync(
+      path.join(dir, "meta.json"),
+      JSON.stringify({ trigger, at: new Date().toISOString() }, null, 2),
+    );
 
     rotate();
     logger.info("backup.created", { trigger, dir });
@@ -34,12 +43,15 @@ function createBackup(trigger = "manual") {
 
 // Оставляем только последние N бэкапов.
 function rotate() {
-  const all = fs.readdirSync(DIRS.backups)
+  const all = fs
+    .readdirSync(DIRS.backups)
     .map((n) => ({ n, t: fs.statSync(path.join(DIRS.backups, n)).mtimeMs }))
     .sort((a, b) => b.t - a.t);
   const keep = settings.get("backup").keep ?? 5;
   all.slice(keep).forEach(({ n }) => {
-    try { fs.rmSync(path.join(DIRS.backups, n), { recursive: true, force: true }); } catch {}
+    try {
+      fs.rmSync(path.join(DIRS.backups, n), { recursive: true, force: true });
+    } catch {}
   });
 }
 
@@ -57,11 +69,18 @@ function startAuto() {
 }
 
 function list() {
-  return fs.readdirSync(DIRS.backups)
+  return fs
+    .readdirSync(DIRS.backups)
     .filter((n) => fs.existsSync(path.join(DIRS.backups, n, "meta.json")))
     .map((n) => {
-      try { return JSON.parse(fs.readFileSync(path.join(DIRS.backups, n, "meta.json"), "utf8")); }
-      catch { return { at: new Date(fs.statSync(path.join(DIRS.backups, n)).mtimeMs).toISOString(), trigger: "?" }; }
+      try {
+        return JSON.parse(fs.readFileSync(path.join(DIRS.backups, n, "meta.json"), "utf8"));
+      } catch {
+        return {
+          at: new Date(fs.statSync(path.join(DIRS.backups, n)).mtimeMs).toISOString(),
+          trigger: "?",
+        };
+      }
     })
     .reverse();
 }

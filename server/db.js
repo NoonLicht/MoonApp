@@ -18,7 +18,9 @@ class Table {
   insert(values) {
     const id = ++this.seq;
     const row = { id };
-    this.cols.forEach((c, i) => { row[c] = values[i]; });
+    this.cols.forEach((c, i) => {
+      row[c] = values[i];
+    });
     this.rows.push(row);
     return { lastInsertRowid: id };
   }
@@ -41,7 +43,12 @@ class Table {
   }
   updateWhere(fn, patch) {
     let changes = 0;
-    this.rows.forEach((r) => { if (fn(r)) { Object.assign(r, patch); changes++; } });
+    this.rows.forEach((r) => {
+      if (fn(r)) {
+        Object.assign(r, patch);
+        changes++;
+      }
+    });
     return { changes };
   }
   delete(id) {
@@ -54,7 +61,9 @@ class Table {
     this.rows = this.rows.filter((r) => !fn(r));
     return { changes: before - this.rows.length };
   }
-  toJSON() { return { cols: this.cols, rows: this.rows, seq: this.seq }; }
+  toJSON() {
+    return { cols: this.cols, rows: this.rows, seq: this.seq };
+  }
   loadJSON(j) {
     this.cols = j.cols;
     this.rows = j.rows || [];
@@ -64,39 +73,98 @@ class Table {
 
 const tables = {
   tasks: new Table(["text", "done", "priority", "tag", "pos", "created_at"], "pos"),
-  conversations: new Table(["provider", "title", "created_at", "updated_at", "pinned"], "-updated_at"),
+  conversations: new Table(
+    ["provider", "title", "created_at", "updated_at", "pinned"],
+    "-updated_at",
+  ),
   messages: new Table(["conversation_id", "role", "text", "created_at"], "id"),
   archived_pages: new Table(["name", "size_text", "saved_at"], "-id"), // устарело (М9), оставлено для совместимости старых data.json
   books: new Table(["title", "author", "year", "fmt", "tone", "description"], "title"),
-  catalog: new Table(["name", "url", "source", "category", "wingetId", "favorite", "added_at"], "-id"),
+  catalog: new Table(
+    ["name", "url", "source", "category", "wingetId", "favorite", "added_at"],
+    "-id",
+  ),
   favorites: new Table(["key"], "key"),
   // Lecture Recorder: сессии лекций и чанки расшифровки.
-  lectures: new Table(["title", "started_at", "ended_at", "duration_ms", "sample_rate", "channels", "raw_file", "status", "notes"], "-id"),
+  lectures: new Table(
+    [
+      "title",
+      "started_at",
+      "ended_at",
+      "duration_ms",
+      "sample_rate",
+      "channels",
+      "raw_file",
+      "status",
+      "notes",
+    ],
+    "-id",
+  ),
   lecture_chunks: new Table(
     [
-      "lecture_id", "idx", "start_ms", "end_ms", "text", "status", "error", "file", "created_at",
+      "lecture_id",
+      "idx",
+      "start_ms",
+      "end_ms",
+      "text",
+      "status",
+      "error",
+      "file",
+      "created_at",
       // Диагностика чанка: почему он пустой/пропущен и с каким уровнем звука
       // (см. server/vad.js — «empty» больше не выдаётся за решение VAD).
-      "reason", "rms_db", "rms_peak_db", "speech_ratio", "noise_floor_db", "threshold_db", "zcr",
+      "reason",
+      "rms_db",
+      "rms_peak_db",
+      "speech_ratio",
+      "noise_floor_db",
+      "threshold_db",
+      "zcr",
       // Дорожка записи: mic — микрофон/аудитория, sys — системный звук (эфир лектора).
       "source",
     ],
-    "id"
+    "id",
   ),
   // Zapret / DPI bypass: профили запуска и пользовательские домены.
-  bypass_profiles: new Table(["name", "batch_file_path", "custom_args", "is_active", "is_service", "created_at"], "-id"),
+  bypass_profiles: new Table(
+    ["name", "batch_file_path", "custom_args", "is_active", "is_service", "created_at"],
+    "-id",
+  ),
   bypass_custom_domains: new Table(["domain", "type", "is_enabled"], "domain"),
   // Результаты последней полной проверки конфигов (огоньки на странице Bypass).
   bypass_check_results: new Table(
-    ["strategy_id", "file", "ok", "ok_count", "error", "unsup", "ping_ok", "ping_fail", "checked_at", "run_started_at"],
-    "strategy_id"
+    [
+      "strategy_id",
+      "file",
+      "ok",
+      "ok_count",
+      "error",
+      "unsup",
+      "ping_ok",
+      "ping_fail",
+      "checked_at",
+      "run_started_at",
+    ],
+    "strategy_id",
   ),
   // Встроенный прокси (sing-box): подписки, узлы и правила «страница → прокси».
   // config_json хранит нормализованный узел (см. server/proxyCore.js parseUri).
   // is_excluded: узел, который пользователь убрал из списка вручную. Храним его
   // как «скрытый», а не удаляем: иначе авто-обновление подписки вернёт его назад.
   proxy_subscriptions: new Table(["name", "url", "last_updated", "auto_update_enabled"], "-id"),
-  proxy_nodes: new Table(["sub_id", "name", "protocol", "config_json", "ping_ms", "country_code", "is_selected", "is_excluded"], "-id"),
+  proxy_nodes: new Table(
+    [
+      "sub_id",
+      "name",
+      "protocol",
+      "config_json",
+      "ping_ms",
+      "country_code",
+      "is_selected",
+      "is_excluded",
+    ],
+    "-id",
+  ),
   // Прокси-правило страницы: route_path = id страницы приложения ('video', 'music'…),
   // is_proxied: 1 — трафик страницы идёт через прокси, 0 — напрямую (bypass).
   proxy_page_rules: new Table(["route_path", "is_proxied"], "route_path"),
@@ -105,8 +173,19 @@ const tables = {
   // kind: "movie" | "tv", tmdb_id — идентификатор тайтла в TMDB.
   // status: "plan" (в планах) | "watching" (смотрю) | "watched" (просмотрено).
   media_watchlist: new Table(
-    ["kind", "tmdb_id", "title", "poster", "year", "status", "runtime", "genres", "added_at", "updated_at"],
-    "-updated_at"
+    [
+      "kind",
+      "tmdb_id",
+      "title",
+      "poster",
+      "year",
+      "status",
+      "runtime",
+      "genres",
+      "added_at",
+      "updated_at",
+    ],
+    "-updated_at",
   ),
   // Личная оценка 1–10 (одна запись на тайтл).
   media_ratings: new Table(["kind", "tmdb_id", "title", "rating", "updated_at"], "-updated_at"),
@@ -115,7 +194,7 @@ const tables = {
   // minutes — потраченные минуты (runtime × доля прогресса), для «часов просмотра».
   media_watch_stats: new Table(
     ["kind", "tmdb_id", "title", "genres", "cast", "runtime", "progress", "minutes", "watched_at"],
-    "-watched_at"
+    "-watched_at",
   ),
   // Кэш ответов TMDB (страницы каталога, детали, жанры), чтобы не дёргать API зря.
   media_meta_cache: new Table(["key", "json", "cached_at"], "-id"),
@@ -155,15 +234,26 @@ function persistNow() {
 }
 function persist() {
   if (persistTimer) return;
-  persistTimer = setTimeout(() => { persistTimer = null; persistNow(); }, 300);
+  persistTimer = setTimeout(() => {
+    persistTimer = null;
+    persistNow();
+  }, 300);
   if (persistTimer.unref) persistTimer.unref();
 }
 // Немедленный сброс отложенной записи (используется бэкапом и exit-хуком).
 function flush() {
-  if (persistTimer) { clearTimeout(persistTimer); persistTimer = null; }
+  if (persistTimer) {
+    clearTimeout(persistTimer);
+    persistTimer = null;
+  }
   persistNow();
 }
-process.on("exit", () => { if (persistTimer) { clearTimeout(persistTimer); persistNow(); } });
+process.on("exit", () => {
+  if (persistTimer) {
+    clearTimeout(persistTimer);
+    persistNow();
+  }
+});
 
 function load() {
   try {
@@ -180,7 +270,7 @@ function load() {
     if (data.notes && Array.isArray(data.notes.rows) && data.notes.rows.length > 0) {
       const notesDir = notesFs.NOTES_DIR;
       if (fs.existsSync(notesDir)) {
-        const existing = fs.readdirSync(notesDir).filter(f => f.endsWith(".md"));
+        const existing = fs.readdirSync(notesDir).filter((f) => f.endsWith(".md"));
         if (existing.length === 0) {
           logger.info("notes-fs.migrate.start", { count: data.notes.rows.length });
           for (const note of data.notes.rows) {
@@ -194,7 +284,9 @@ function load() {
         }
       }
     }
-  } catch { /* первый запуск — файла ещё нет */ }
+  } catch {
+    /* первый запуск — файла ещё нет */
+  }
 }
 load();
 
@@ -209,46 +301,87 @@ function run(mutator) {
 const stmts = {
   // Tasks
   taskInsert: {
-    run: (text, done, priority, tag) => run(() => {
-      const maxPos = tables.tasks.rows.reduce((m, r) => Math.max(m, r.pos || 0), 0);
-      return tables.tasks.insert([text, done, priority, tag, maxPos + 1, now()]);
-    }),
+    run: (text, done, priority, tag) =>
+      run(() => {
+        const maxPos = tables.tasks.rows.reduce((m, r) => Math.max(m, r.pos || 0), 0);
+        return tables.tasks.insert([text, done, priority, tag, maxPos + 1, now()]);
+      }),
   },
   taskAll: { all: () => tables.tasks.all() },
-  taskToggle: { run: (done, id) => run(() => tables.tasks.updateWhere((r) => r.id === id, { done })) },
+  taskToggle: {
+    run: (done, id) => run(() => tables.tasks.updateWhere((r) => r.id === id, { done })),
+  },
   taskDelete: { run: (id) => run(() => tables.tasks.delete(id)) },
-  taskUpdate: { run: (value, field, id) => run(() => tables.tasks.updateWhere((r) => r.id === id, { [field]: value })) },
+  taskUpdate: {
+    run: (value, field, id) =>
+      run(() => tables.tasks.updateWhere((r) => r.id === id, { [field]: value })),
+  },
   taskOrder: { run: (pos, id) => run(() => tables.tasks.updateWhere((r) => r.id === id, { pos })) },
 
   // Conversations
-  convInsert: { run: (provider, title) => run(() => tables.conversations.insert([provider, title, now(), now(), 0])) },
+  convInsert: {
+    run: (provider, title) =>
+      run(() => tables.conversations.insert([provider, title, now(), now(), 0])),
+  },
   convAll: { all: () => tables.conversations.all() },
   convGet: { get: (id) => tables.conversations.get(id) },
-  convTouch: { run: (id) => run(() => tables.conversations.updateWhere((r) => r.id === id, { updated_at: now() })) },
-  convDelete: {
-    run: (id) => run(() => {
-      tables.conversations.delete(id);
-      tables.messages.deleteWhere((m) => m.conversation_id === id);
-    }),
+  convTouch: {
+    run: (id) =>
+      run(() => tables.conversations.updateWhere((r) => r.id === id, { updated_at: now() })),
   },
-  convUpdate: { run: (id, patch) => run(() => tables.conversations.updateWhere((r) => r.id === id, { ...patch, updated_at: now() })) },
+  convDelete: {
+    run: (id) =>
+      run(() => {
+        tables.conversations.delete(id);
+        tables.messages.deleteWhere((m) => m.conversation_id === id);
+      }),
+  },
+  convUpdate: {
+    run: (id, patch) =>
+      run(() =>
+        tables.conversations.updateWhere((r) => r.id === id, { ...patch, updated_at: now() }),
+      ),
+  },
 
   // Messages
-  msgInsert: { run: (conversation_id, role, text) => run(() => tables.messages.insert([conversation_id, role, text, now()])) },
-  msgFor: { all: (conversation_id) => tables.messages.all().filter((m) => m.conversation_id === conversation_id) },
-  msgRecent: { all: (conversation_id, limit) => tables.messages.all().filter((m) => m.conversation_id === conversation_id).slice(-limit) },
+  msgInsert: {
+    run: (conversation_id, role, text) =>
+      run(() => tables.messages.insert([conversation_id, role, text, now()])),
+  },
+  msgFor: {
+    all: (conversation_id) =>
+      tables.messages.all().filter((m) => m.conversation_id === conversation_id),
+  },
+  msgRecent: {
+    all: (conversation_id, limit) =>
+      tables.messages
+        .all()
+        .filter((m) => m.conversation_id === conversation_id)
+        .slice(-limit),
+  },
   // Усечь историю начиная с message id (для «Регенерировать» / «Редактировать»)
-  msgTruncateFrom: { run: (conversation_id, fromId) => run(() => tables.messages.deleteWhere((m) => m.conversation_id === conversation_id && m.id >= fromId)) },
+  msgTruncateFrom: {
+    run: (conversation_id, fromId) =>
+      run(() =>
+        tables.messages.deleteWhere((m) => m.conversation_id === conversation_id && m.id >= fromId),
+      ),
+  },
 
   // Archives
-  archInsert: { run: (name, size_text) => run(() => tables.archived_pages.insert([name, size_text, now()])) },
+  archInsert: {
+    run: (name, size_text) => run(() => tables.archived_pages.insert([name, size_text, now()])),
+  },
   archAll: { all: () => tables.archived_pages.all() },
 
   // Notes — файловое хранение (каждая заметка = .md файл в storage/notes/)
   noteAll: { all: () => notesFs.all() },
   noteGet: { get: (id) => notesFs.get(id) },
-  noteInsert: { run: (title, content, tags, folder) => notesFs.insert(title, content, tags, folder) },
-  noteUpdate: { run: (title, content, tags, folder, id) => notesFs.update(title, content, tags, folder, id) },
+  noteInsert: {
+    run: (title, content, tags, folder) => notesFs.insert(title, content, tags, folder),
+  },
+  noteUpdate: {
+    run: (title, content, tags, folder, id) => notesFs.update(title, content, tags, folder, id),
+  },
   // Запись заметки с заданным id (синхронизация заметок лекций с .md файлом):
   // тот же id — тот же файл, а удалённый с диска файл создаётся заново.
   noteUpsert: { run: (id, fields) => notesFs.upsert(id, fields) },
@@ -258,212 +391,419 @@ const stmts = {
 
   // Books
   bookAll: { all: () => tables.books.all() },
-  bookInsert: { run: (title, author, year, fmt, tone, description) => run(() => tables.books.insert([title, author, year, fmt, tone, description])) },
+  bookInsert: {
+    run: (title, author, year, fmt, tone, description) =>
+      run(() => tables.books.insert([title, author, year, fmt, tone, description])),
+  },
 
   // Catalog
   catAll: { all: () => tables.catalog.all() },
-  catInsert: { run: (name, url, source, category, wingetId) => run(() => tables.catalog.insert([name, url, source, category || "Other", wingetId || null, 0, now()])) },
+  catInsert: {
+    run: (name, url, source, category, wingetId) =>
+      run(() =>
+        tables.catalog.insert([name, url, source, category || "Other", wingetId || null, 0, now()]),
+      ),
+  },
   catDelete: { run: (id) => run(() => tables.catalog.delete(id)) },
-  catSetFavorite: { run: (id, favorite) => run(() => tables.catalog.updateWhere((r) => r.id === id, { favorite: favorite ? 1 : 0 })) },
+  catSetFavorite: {
+    run: (id, favorite) =>
+      run(() => tables.catalog.updateWhere((r) => r.id === id, { favorite: favorite ? 1 : 0 })),
+  },
   catGet: { get: (id) => tables.catalog.get(id) },
 
   // Favorites
   favAll: { all: () => tables.favorites.all() },
   favHas: (key) => !!tables.favorites.rows.find((r) => r.key === key),
-  favAdd: (key) => run(() => { if (!tables.favorites.rows.find((r) => r.key === key)) tables.favorites.insert([key]); }),
+  favAdd: (key) =>
+    run(() => {
+      if (!tables.favorites.rows.find((r) => r.key === key)) tables.favorites.insert([key]);
+    }),
   favRemove: (key) => run(() => tables.favorites.deleteWhere((r) => r.key === key)),
 
   // Lectures
-  lectureInsert: { run: (title, sample_rate, channels) => run(() => tables.lectures.insert([title, now(), null, 0, sample_rate, channels, "", "recording", ""])) },
+  lectureInsert: {
+    run: (title, sample_rate, channels) =>
+      run(() =>
+        tables.lectures.insert([title, now(), null, 0, sample_rate, channels, "", "recording", ""]),
+      ),
+  },
   lectureAll: { all: () => tables.lectures.all() },
   lectureGet: { get: (id) => tables.lectures.get(id) },
-  lectureUpdate: { run: (id, patch) => run(() => tables.lectures.updateWhere((r) => r.id === id, patch)) },
-  lectureDelete: { run: (id) => run(() => { tables.lectures.delete(id); tables.lecture_chunks.deleteWhere((c) => c.lecture_id === id); }) },
+  lectureUpdate: {
+    run: (id, patch) => run(() => tables.lectures.updateWhere((r) => r.id === id, patch)),
+  },
+  lectureDelete: {
+    run: (id) =>
+      run(() => {
+        tables.lectures.delete(id);
+        tables.lecture_chunks.deleteWhere((c) => c.lecture_id === id);
+      }),
+  },
 
   // Lecture chunks
   // extra = { status, source, reason, rmsDb, ... } — диагностика пишется сразу,
   // чтобы UI показал причину («шум», «тихий сигнал») в той же строке, что и чанк.
   chunkInsert: {
-    run: (lecture_id, idx, start_ms, end_ms, file, extra = null) => run(() => {
-      const info = tables.lecture_chunks.insert([lecture_id, idx, start_ms, end_ms, "", "pending", "", file, now()]);
-      if (extra && Object.keys(extra).length) tables.lecture_chunks.updateWhere((r) => r.id === info.lastInsertRowid, extra);
-      return info;
-    }),
+    run: (lecture_id, idx, start_ms, end_ms, file, extra = null) =>
+      run(() => {
+        const info = tables.lecture_chunks.insert([
+          lecture_id,
+          idx,
+          start_ms,
+          end_ms,
+          "",
+          "pending",
+          "",
+          file,
+          now(),
+        ]);
+        if (extra && Object.keys(extra).length)
+          tables.lecture_chunks.updateWhere((r) => r.id === info.lastInsertRowid, extra);
+        return info;
+      }),
   },
   /** Строка-объяснение пропуска VAD: без WAV, без Whisper — только причина и уровень. */
   chunkInsertSkipped: {
-    run: (lecture_id, idx, start_ms, end_ms, skip) => run(() => tables.lecture_chunks.insert([
-      lecture_id, idx, start_ms, end_ms,
-      "", "vad_skip", "", "", now(),
-      String(skip.reason || "noise"),
-      Number(skip.rmsDb ?? -100), Number(skip.rmsPeakDb ?? -100),
-      Number(skip.speechRatio ?? 0), Number(skip.noiseDb ?? -100), Number(skip.thresholdDb ?? -100),
-      Number(skip.zcr ?? 0), String(skip.source || "mic"),
-    ])),
+    run: (lecture_id, idx, start_ms, end_ms, skip) =>
+      run(() =>
+        tables.lecture_chunks.insert([
+          lecture_id,
+          idx,
+          start_ms,
+          end_ms,
+          "",
+          "vad_skip",
+          "",
+          "",
+          now(),
+          String(skip.reason || "noise"),
+          Number(skip.rmsDb ?? -100),
+          Number(skip.rmsPeakDb ?? -100),
+          Number(skip.speechRatio ?? 0),
+          Number(skip.noiseDb ?? -100),
+          Number(skip.thresholdDb ?? -100),
+          Number(skip.zcr ?? 0),
+          String(skip.source || "mic"),
+        ]),
+      ),
   },
-  chunkFor: { all: (lecture_id) => tables.lecture_chunks.all().filter((c) => c.lecture_id === lecture_id) },
+  chunkFor: {
+    all: (lecture_id) => tables.lecture_chunks.all().filter((c) => c.lecture_id === lecture_id),
+  },
   chunkGet: { get: (id) => tables.lecture_chunks.get(id) },
-  chunkUpdate: { run: (id, patch) => run(() => tables.lecture_chunks.updateWhere((r) => r.id === id, patch)) },
-  chunkDeleteFor: { run: (lecture_id) => run(() => tables.lecture_chunks.deleteWhere((c) => c.lecture_id === lecture_id)) },
+  chunkUpdate: {
+    run: (id, patch) => run(() => tables.lecture_chunks.updateWhere((r) => r.id === id, patch)),
+  },
+  chunkDeleteFor: {
+    run: (lecture_id) =>
+      run(() => tables.lecture_chunks.deleteWhere((c) => c.lecture_id === lecture_id)),
+  },
 
   // Bypass profiles
   bpAll: { all: () => tables.bypass_profiles.all() },
-  bpInsert: { run: (name, batch_file_path, custom_args, is_active, is_service) => run(() => tables.bypass_profiles.insert([name, batch_file_path || "", custom_args || "", is_active ? 1 : 0, is_service ? 1 : 0, now()])) },
+  bpInsert: {
+    run: (name, batch_file_path, custom_args, is_active, is_service) =>
+      run(() =>
+        tables.bypass_profiles.insert([
+          name,
+          batch_file_path || "",
+          custom_args || "",
+          is_active ? 1 : 0,
+          is_service ? 1 : 0,
+          now(),
+        ]),
+      ),
+  },
   bpGet: { get: (id) => tables.bypass_profiles.get(id) },
-  bpUpdate: { run: (id, patch) => run(() => tables.bypass_profiles.updateWhere((r) => r.id === id, patch)) },
+  bpUpdate: {
+    run: (id, patch) => run(() => tables.bypass_profiles.updateWhere((r) => r.id === id, patch)),
+  },
   bpDelete: { run: (id) => run(() => tables.bypass_profiles.delete(id)) },
-  bpClearActive: { run: () => run(() => tables.bypass_profiles.updateWhere(() => true, { is_active: 0 })) },
+  bpClearActive: {
+    run: () => run(() => tables.bypass_profiles.updateWhere(() => true, { is_active: 0 })),
+  },
 
   // Bypass custom domains
   bcdAll: { all: () => tables.bypass_custom_domains.all() },
-  bcdInsert: { run: (domain, type, is_enabled) => run(() => { if (!tables.bypass_custom_domains.rows.find((r) => r.domain === domain && r.type === type)) tables.bypass_custom_domains.insert([domain, type, is_enabled ? 1 : 0]); }) },
-  bcdUpdate: { run: (id, patch) => run(() => tables.bypass_custom_domains.updateWhere((r) => r.id === id, patch)) },
+  bcdInsert: {
+    run: (domain, type, is_enabled) =>
+      run(() => {
+        if (!tables.bypass_custom_domains.rows.find((r) => r.domain === domain && r.type === type))
+          tables.bypass_custom_domains.insert([domain, type, is_enabled ? 1 : 0]);
+      }),
+  },
+  bcdUpdate: {
+    run: (id, patch) =>
+      run(() => tables.bypass_custom_domains.updateWhere((r) => r.id === id, patch)),
+  },
   bcdDelete: { run: (id) => run(() => tables.bypass_custom_domains.delete(id)) },
 
   // Bypass check results (огоньки конфигов: живут до следующей полной проверки)
   bcrAll: { all: () => tables.bypass_check_results.all() },
   bcrUpsert: {
-    run: (strategy_id, row) => run(() => {
-      const patch = {
-        file: row.file || "",
-        ok: row.ok ? 1 : 0,
-        ok_count: Number(row.ok_count) || 0,
-        error: Number(row.error) || 0,
-        unsup: Number(row.unsup) || 0,
-        ping_ok: Number(row.ping_ok) || 0,
-        ping_fail: Number(row.ping_fail) || 0,
-        checked_at: row.checked_at || now(),
-        run_started_at: row.run_started_at || now(),
-      };
-      const existing = tables.bypass_check_results.rows.find((r) => r.strategy_id === strategy_id);
-      if (existing) { Object.assign(existing, patch); return { changes: 1 }; }
-      return tables.bypass_check_results.insert([
-        strategy_id, patch.file, patch.ok, patch.ok_count, patch.error,
-        patch.unsup, patch.ping_ok, patch.ping_fail, patch.checked_at, patch.run_started_at,
-      ]);
-    }),
+    run: (strategy_id, row) =>
+      run(() => {
+        const patch = {
+          file: row.file || "",
+          ok: row.ok ? 1 : 0,
+          ok_count: Number(row.ok_count) || 0,
+          error: Number(row.error) || 0,
+          unsup: Number(row.unsup) || 0,
+          ping_ok: Number(row.ping_ok) || 0,
+          ping_fail: Number(row.ping_fail) || 0,
+          checked_at: row.checked_at || now(),
+          run_started_at: row.run_started_at || now(),
+        };
+        const existing = tables.bypass_check_results.rows.find(
+          (r) => r.strategy_id === strategy_id,
+        );
+        if (existing) {
+          Object.assign(existing, patch);
+          return { changes: 1 };
+        }
+        return tables.bypass_check_results.insert([
+          strategy_id,
+          patch.file,
+          patch.ok,
+          patch.ok_count,
+          patch.error,
+          patch.unsup,
+          patch.ping_ok,
+          patch.ping_fail,
+          patch.checked_at,
+          patch.run_started_at,
+        ]);
+      }),
   },
   bcrClear: { run: () => run(() => tables.bypass_check_results.deleteWhere(() => true)) },
-  bcrSetOk: { run: (ok, id) => run(() => tables.bypass_check_results.updateWhere((r) => r.id === id, { ok: ok ? 1 : 0 })) },
+  bcrSetOk: {
+    run: (ok, id) =>
+      run(() => tables.bypass_check_results.updateWhere((r) => r.id === id, { ok: ok ? 1 : 0 })),
+  },
 
   // ---- Встроенный прокси: подписки ----
   psubAll: { all: () => tables.proxy_subscriptions.all() },
   psubGet: { get: (id) => tables.proxy_subscriptions.get(id) },
-  psubInsert: { run: (name, url, auto_update_enabled) => run(() => tables.proxy_subscriptions.insert([name || "", url || "", now(), auto_update_enabled ? 1 : 0])) },
-  psubUpdate: { run: (id, patch) => run(() => tables.proxy_subscriptions.updateWhere((r) => r.id === id, patch)) },
-  psubTouch: { run: (id) => run(() => tables.proxy_subscriptions.updateWhere((r) => r.id === id, { last_updated: now() })) },
+  psubInsert: {
+    run: (name, url, auto_update_enabled) =>
+      run(() =>
+        tables.proxy_subscriptions.insert([
+          name || "",
+          url || "",
+          now(),
+          auto_update_enabled ? 1 : 0,
+        ]),
+      ),
+  },
+  psubUpdate: {
+    run: (id, patch) =>
+      run(() => tables.proxy_subscriptions.updateWhere((r) => r.id === id, patch)),
+  },
+  psubTouch: {
+    run: (id) =>
+      run(() =>
+        tables.proxy_subscriptions.updateWhere((r) => r.id === id, { last_updated: now() }),
+      ),
+  },
   psubDelete: {
-    run: (id) => run(() => {
-      tables.proxy_subscriptions.delete(id);
-      tables.proxy_nodes.deleteWhere((n) => n.sub_id === id);
-    }),
+    run: (id) =>
+      run(() => {
+        tables.proxy_subscriptions.delete(id);
+        tables.proxy_nodes.deleteWhere((n) => n.sub_id === id);
+      }),
   },
 
   // ---- Встроенный прокси: узлы ----
   pnodeAll: { all: () => tables.proxy_nodes.all() },
   pnodeGet: { get: (id) => tables.proxy_nodes.get(id) },
   pnodeForSub: { all: (sub_id) => tables.proxy_nodes.all().filter((n) => n.sub_id === sub_id) },
-  pnodeInsert: { run: (sub_id, name, protocol, config_json) => run(() => tables.proxy_nodes.insert([sub_id, name || "", protocol || "", config_json || "", null, "", 0, 0])) },
-  pnodeUpdate: { run: (id, patch) => run(() => tables.proxy_nodes.updateWhere((r) => r.id === id, patch)) },
+  pnodeInsert: {
+    run: (sub_id, name, protocol, config_json) =>
+      run(() =>
+        tables.proxy_nodes.insert([
+          sub_id,
+          name || "",
+          protocol || "",
+          config_json || "",
+          null,
+          "",
+          0,
+          0,
+        ]),
+      ),
+  },
+  pnodeUpdate: {
+    run: (id, patch) => run(() => tables.proxy_nodes.updateWhere((r) => r.id === id, patch)),
+  },
   pnodeDelete: { run: (id) => run(() => tables.proxy_nodes.delete(id)) },
-  pnodeDeleteForSub: { run: (sub_id) => run(() => tables.proxy_nodes.deleteWhere((n) => n.sub_id === sub_id)) },
-  pnodeClearSelected: { run: () => run(() => tables.proxy_nodes.updateWhere(() => true, { is_selected: 0 })) },
+  pnodeDeleteForSub: {
+    run: (sub_id) => run(() => tables.proxy_nodes.deleteWhere((n) => n.sub_id === sub_id)),
+  },
+  pnodeClearSelected: {
+    run: () => run(() => tables.proxy_nodes.updateWhere(() => true, { is_selected: 0 })),
+  },
   pnodeGetSelected: { get: () => tables.proxy_nodes.all().find((n) => n.is_selected) || null },
   // «Удаление» узла = скрытие (иначе обновление подписки вернёт узел обратно)
   // и снятие выбора, чтобы ядро не осталось на скрытом узле.
-  pnodeExclude: { run: (id) => run(() => tables.proxy_nodes.updateWhere((r) => r.id === id, { is_excluded: 1, is_selected: 0 })) },
-  pnodeRestore: { run: (id) => run(() => tables.proxy_nodes.updateWhere((r) => r.id === id, { is_excluded: 0 })) },
-  pnodeExcludedForSub: { all: (sub_id) => tables.proxy_nodes.all().filter((n) => n.sub_id === sub_id && !!n.is_excluded) },
+  pnodeExclude: {
+    run: (id) =>
+      run(() =>
+        tables.proxy_nodes.updateWhere((r) => r.id === id, { is_excluded: 1, is_selected: 0 }),
+      ),
+  },
+  pnodeRestore: {
+    run: (id) => run(() => tables.proxy_nodes.updateWhere((r) => r.id === id, { is_excluded: 0 })),
+  },
+  pnodeExcludedForSub: {
+    all: (sub_id) => tables.proxy_nodes.all().filter((n) => n.sub_id === sub_id && !!n.is_excluded),
+  },
 
   // ---- Встроенный прокси: правила страниц (page → proxied/direct) ----
   pprAll: { all: () => tables.proxy_page_rules.all() },
   pprGet: { get: (id) => tables.proxy_page_rules.get(id) },
   pprSet: {
-    run: (route_path, is_proxied) => run(() => {
-      const existing = tables.proxy_page_rules.rows.find((r) => r.route_path === route_path);
-      const flag = is_proxied ? 1 : 0;
-      if (existing) return tables.proxy_page_rules.updateWhere((r) => r.route_path === route_path, { is_proxied: flag });
-      return tables.proxy_page_rules.insert([route_path, flag]);
-    }),
+    run: (route_path, is_proxied) =>
+      run(() => {
+        const existing = tables.proxy_page_rules.rows.find((r) => r.route_path === route_path);
+        const flag = is_proxied ? 1 : 0;
+        if (existing)
+          return tables.proxy_page_rules.updateWhere((r) => r.route_path === route_path, {
+            is_proxied: flag,
+          });
+        return tables.proxy_page_rules.insert([route_path, flag]);
+      }),
   },
   pprDelete: { run: (id) => run(() => tables.proxy_page_rules.delete(id)) },
-  pprDeleteByPath: { run: (route_path) => run(() => tables.proxy_page_rules.deleteWhere((r) => r.route_path === route_path)) },
+  pprDeleteByPath: {
+    run: (route_path) =>
+      run(() => tables.proxy_page_rules.deleteWhere((r) => r.route_path === route_path)),
+  },
   /** null — правила нет (по умолчанию страница проксируется). */
-  pprIsProxied: { get: (route_path) => { const r = tables.proxy_page_rules.rows.find((x) => x.route_path === route_path); return r ? !!r.is_proxied : null; } },
+  pprIsProxied: {
+    get: (route_path) => {
+      const r = tables.proxy_page_rules.rows.find((x) => x.route_path === route_path);
+      return r ? !!r.is_proxied : null;
+    },
+  },
 
   // ---- Фильмы и сериалы: список просмотра ----
   // Ключ строки — пара (kind, tmdb_id): один тайтл = одна запись.
   mwAll: { all: () => tables.media_watchlist.all() },
   mwGet: {
     get: (kind, tmdb_id) =>
-      tables.media_watchlist.rows.find((r) => r.kind === kind && r.tmdb_id === Number(tmdb_id)) || null,
+      tables.media_watchlist.rows.find((r) => r.kind === kind && r.tmdb_id === Number(tmdb_id)) ||
+      null,
   },
   /** Добавить/обновить запись списка (upsert по kind+tmdb_id). */
   mwUpsert: {
-    run: (kind, tmdb_id, patch) => run(() => {
-      const id = Number(tmdb_id);
-      const existing = tables.media_watchlist.rows.find((r) => r.kind === kind && r.tmdb_id === id);
-      if (existing) return tables.media_watchlist.updateWhere((r) => r.id === existing.id, { ...patch, updated_at: now() });
-      return tables.media_watchlist.insert([
-        kind, id,
-        patch.title || "", patch.poster || "", patch.year || null, patch.status || "plan",
-        patch.runtime || null, patch.genres || "[]", now(), now(),
-      ]);
-    }),
+    run: (kind, tmdb_id, patch) =>
+      run(() => {
+        const id = Number(tmdb_id);
+        const existing = tables.media_watchlist.rows.find(
+          (r) => r.kind === kind && r.tmdb_id === id,
+        );
+        if (existing)
+          return tables.media_watchlist.updateWhere((r) => r.id === existing.id, {
+            ...patch,
+            updated_at: now(),
+          });
+        return tables.media_watchlist.insert([
+          kind,
+          id,
+          patch.title || "",
+          patch.poster || "",
+          patch.year || null,
+          patch.status || "plan",
+          patch.runtime || null,
+          patch.genres || "[]",
+          now(),
+          now(),
+        ]);
+      }),
   },
   mwDelete: {
     run: (kind, tmdb_id) =>
-      run(() => tables.media_watchlist.deleteWhere((r) => r.kind === kind && r.tmdb_id === Number(tmdb_id))),
+      run(() =>
+        tables.media_watchlist.deleteWhere((r) => r.kind === kind && r.tmdb_id === Number(tmdb_id)),
+      ),
   },
 
   // ---- Фильмы и сериалы: личные оценки 1–10 ----
   mrAll: { all: () => tables.media_ratings.all() },
   mrGet: {
     get: (kind, tmdb_id) =>
-      tables.media_ratings.rows.find((r) => r.kind === kind && r.tmdb_id === Number(tmdb_id)) || null,
+      tables.media_ratings.rows.find((r) => r.kind === kind && r.tmdb_id === Number(tmdb_id)) ||
+      null,
   },
   mrSet: {
-    run: (kind, tmdb_id, title, rating) => run(() => {
-      const id = Number(tmdb_id);
-      const existing = tables.media_ratings.rows.find((r) => r.kind === kind && r.tmdb_id === id);
-      if (existing) return tables.media_ratings.updateWhere((r) => r.id === existing.id, { rating, title: title || existing.title, updated_at: now() });
-      return tables.media_ratings.insert([kind, id, title || "", rating, now()]);
-    }),
+    run: (kind, tmdb_id, title, rating) =>
+      run(() => {
+        const id = Number(tmdb_id);
+        const existing = tables.media_ratings.rows.find((r) => r.kind === kind && r.tmdb_id === id);
+        if (existing)
+          return tables.media_ratings.updateWhere((r) => r.id === existing.id, {
+            rating,
+            title: title || existing.title,
+            updated_at: now(),
+          });
+        return tables.media_ratings.insert([kind, id, title || "", rating, now()]);
+      }),
   },
   mrDelete: {
     run: (kind, tmdb_id) =>
-      run(() => tables.media_ratings.deleteWhere((r) => r.kind === kind && r.tmdb_id === Number(tmdb_id))),
+      run(() =>
+        tables.media_ratings.deleteWhere((r) => r.kind === kind && r.tmdb_id === Number(tmdb_id)),
+      ),
   },
 
   // ---- Фильмы и сериалы: статистика просмотров ----
   msAll: { all: () => tables.media_watch_stats.all() },
   msGet: {
     get: (kind, tmdb_id) =>
-      tables.media_watch_stats.rows.find((r) => r.kind === kind && r.tmdb_id === Number(tmdb_id)) || null,
+      tables.media_watch_stats.rows.find((r) => r.kind === kind && r.tmdb_id === Number(tmdb_id)) ||
+      null,
   },
   /** Отметить просмотр/прогресс: одна запись на тайтл (перезаписывается). */
   msUpsert: {
-    run: (kind, tmdb_id, patch) => run(() => {
-      const id = Number(tmdb_id);
-      const existing = tables.media_watch_stats.rows.find((r) => r.kind === kind && r.tmdb_id === id);
-      const row = [
-        kind, id, patch.title || "", patch.genres || "[]", patch.cast || "[]",
-        patch.runtime || null, patch.progress != null ? patch.progress : 1,
-        patch.minutes != null ? patch.minutes : (patch.runtime || 0), now(),
-      ];
-      if (existing) {
-        const cols = tables.media_watch_stats.cols;
-        return tables.media_watch_stats.updateWhere((r) => r.id === existing.id, {
-          [cols[2]]: row[2], [cols[3]]: row[3], [cols[4]]: row[4],
-          [cols[5]]: row[5], [cols[6]]: row[6], [cols[7]]: row[7], [cols[8]]: row[8],
-        });
-      }
-      return tables.media_watch_stats.insert(row);
-    }),
+    run: (kind, tmdb_id, patch) =>
+      run(() => {
+        const id = Number(tmdb_id);
+        const existing = tables.media_watch_stats.rows.find(
+          (r) => r.kind === kind && r.tmdb_id === id,
+        );
+        const row = [
+          kind,
+          id,
+          patch.title || "",
+          patch.genres || "[]",
+          patch.cast || "[]",
+          patch.runtime || null,
+          patch.progress != null ? patch.progress : 1,
+          patch.minutes != null ? patch.minutes : patch.runtime || 0,
+          now(),
+        ];
+        if (existing) {
+          const cols = tables.media_watch_stats.cols;
+          return tables.media_watch_stats.updateWhere((r) => r.id === existing.id, {
+            [cols[2]]: row[2],
+            [cols[3]]: row[3],
+            [cols[4]]: row[4],
+            [cols[5]]: row[5],
+            [cols[6]]: row[6],
+            [cols[7]]: row[7],
+            [cols[8]]: row[8],
+          });
+        }
+        return tables.media_watch_stats.insert(row);
+      }),
   },
   msDelete: {
     run: (kind, tmdb_id) =>
-      run(() => tables.media_watch_stats.deleteWhere((r) => r.kind === kind && r.tmdb_id === Number(tmdb_id))),
+      run(() =>
+        tables.media_watch_stats.deleteWhere(
+          (r) => r.kind === kind && r.tmdb_id === Number(tmdb_id),
+        ),
+      ),
   },
   msClear: { run: () => run(() => tables.media_watch_stats.deleteWhere(() => true)) },
 
@@ -475,12 +815,17 @@ const stmts = {
     },
   },
   mmcSet: {
-    run: (key, json) => run(() => {
-      const existing = tables.media_meta_cache.rows.find((r) => r.key === key);
-      const stamp = now();
-      if (existing) return tables.media_meta_cache.updateWhere((r) => r.id === existing.id, { json, cached_at: stamp });
-      return tables.media_meta_cache.insert([key, json, stamp]);
-    }),
+    run: (key, json) =>
+      run(() => {
+        const existing = tables.media_meta_cache.rows.find((r) => r.key === key);
+        const stamp = now();
+        if (existing)
+          return tables.media_meta_cache.updateWhere((r) => r.id === existing.id, {
+            json,
+            cached_at: stamp,
+          });
+        return tables.media_meta_cache.insert([key, json, stamp]);
+      }),
   },
   mmcClear: { run: () => run(() => tables.media_meta_cache.deleteWhere(() => true)) },
 };

@@ -19,7 +19,9 @@ async function consumeSSE(body, onJson) {
         if (!payload || payload === "[DONE]") continue;
         try {
           onJson(JSON.parse(payload));
-        } catch { /* пропускаем не-JSON фрагменты */ }
+        } catch {
+          /* пропускаем не-JSON фрагменты */
+        }
       }
     }
   };

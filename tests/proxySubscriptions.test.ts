@@ -57,8 +57,9 @@ describe("proxySubscriptions — обновление подписки", () => {
   });
 
   it("бросает на несуществующей подписке", async () => {
-    await expect(ps.refreshSubscription(999999, { fetchText: async () => "" }))
-      .rejects.toThrow("subscription_not_found");
+    await expect(ps.refreshSubscription(999999, { fetchText: async () => "" })).rejects.toThrow(
+      "subscription_not_found",
+    );
   });
 });
 
@@ -66,7 +67,10 @@ describe("proxySubscriptions — авто-синк", () => {
   it("обновляет только подписки с auto_update_enabled", async () => {
     const manual = stmts.psubInsert.run("manual-sub", "https://example.com/manual", 0);
     let calls = 0;
-    const fetchText = async () => { calls++; return b64(VLESS); };
+    const fetchText = async () => {
+      calls++;
+      return b64(VLESS);
+    };
 
     const res = await ps.syncDueSubscriptions({ force: true, fetchText });
     // Подписка с auto_update_enabled=0 не обновляется.
@@ -74,4 +78,3 @@ describe("proxySubscriptions — авто-синк", () => {
     expect(calls).toBeGreaterThan(0);
   });
 });
-

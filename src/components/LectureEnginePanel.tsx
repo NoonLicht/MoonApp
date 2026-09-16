@@ -1,6 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Cpu, Download, Trash2, X, RefreshCw, Check, AlertTriangle, Zap, FolderOpen, FileText,
+  Cpu,
+  Download,
+  Trash2,
+  X,
+  RefreshCw,
+  Check,
+  AlertTriangle,
+  Zap,
+  FolderOpen,
+  FileText,
 } from "lucide-react";
 import { Btn, Badge, ProgressBar } from "./ui";
 import { useI18n } from "../i18n";
@@ -36,8 +45,10 @@ function errorText(t: TranslateFn, raw: string): string {
   };
   const key = map[raw];
   if (key) return t(`lecture.setup.${key}`);
-  if (raw.startsWith("download_http_")) return t("lecture.setup.errDownload", { code: raw.replace("download_http_", "") });
-  if (/fetch failed|ENOTFOUND|ETIMEDOUT|aborted|timeout/i.test(raw)) return t("lecture.setup.errNetwork");
+  if (raw.startsWith("download_http_"))
+    return t("lecture.setup.errDownload", { code: raw.replace("download_http_", "") });
+  if (/fetch failed|ENOTFOUND|ETIMEDOUT|aborted|timeout/i.test(raw))
+    return t("lecture.setup.errNetwork");
   return raw;
 }
 
@@ -67,7 +78,13 @@ function fitClass(level: string): string {
  * процессор без видеокарты, где расшифровка идёт медленнее реального времени.
  * Причину считает сервер (lecture.setup.fitWhy.*), здесь только показываем.
  */
-function FitHint({ fit, t }: { fit?: { level: string; reason: string; gb: number }; t: TranslateFn }) {
+function FitHint({
+  fit,
+  t,
+}: {
+  fit?: { level: string; reason: string; gb: number };
+  t: TranslateFn;
+}) {
   if (!fit) return null;
   const tone = fit.level === "best" ? "teal" : fit.level === "heavy" ? "amber" : "neutral";
   return (
@@ -81,8 +98,14 @@ function FitHint({ fit, t }: { fit?: { level: string; reason: string; gb: number
 }
 
 export default function LectureEnginePanel({
-  onClose, inline = false, onChanged,
-}: { onClose?: () => void; inline?: boolean; onChanged?: () => void }) {
+  onClose,
+  inline = false,
+  onChanged,
+}: {
+  onClose?: () => void;
+  inline?: boolean;
+  onChanged?: () => void;
+}) {
   const { t } = useI18n();
   const [setup, setSetup] = useState<LectureEngineSetup | null>(null);
   const [busy, setBusy] = useState("");
@@ -97,25 +120,36 @@ export default function LectureEnginePanel({
   }, []);
 
   /** Обёртка над API-вызовами: единый busy/error и запись нового состояния. */
-  const run = useCallback(async (key: string, fn: () => Promise<LectureEngineSetup>) => {
-    setBusy(key); setError("");
-    try {
-      apply(await fn());
-      // Хост-страница обновляет свой бейдж «Whisper.cpp готов · backend» и имя модели.
-      onChanged?.();
-    } catch (e) { setError(errorText(t, String((e as Error)?.message || e))); }
-    setBusy("");
-  }, [apply, onChanged, t]);
+  const run = useCallback(
+    async (key: string, fn: () => Promise<LectureEngineSetup>) => {
+      setBusy(key);
+      setError("");
+      try {
+        apply(await fn());
+        // Хост-страница обновляет свой бейдж «Whisper.cpp готов · backend» и имя модели.
+        onChanged?.();
+      } catch (e) {
+        setError(errorText(t, String((e as Error)?.message || e)));
+      }
+      setBusy("");
+    },
+    [apply, onChanged, t],
+  );
 
   const refresh = useCallback(async () => {
-    try { apply(await api.lectureEngineSetup()); }
-    catch { /* бэкенд ещё поднимается — панель отрисует «нет данных» */ }
+    try {
+      apply(await api.lectureEngineSetup());
+    } catch {
+      /* бэкенд ещё поднимается — панель отрисует «нет данных» */
+    }
   }, [apply]);
 
   useEffect(() => {
     alive.current = true;
     void refresh();
-    return () => { alive.current = false; };
+    return () => {
+      alive.current = false;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -123,7 +157,9 @@ export default function LectureEnginePanel({
   const working = setup?.task.state === "working";
   useEffect(() => {
     if (!working) return;
-    const timer = setInterval(() => { void refresh(); }, 900);
+    const timer = setInterval(() => {
+      void refresh();
+    }, 900);
     return () => clearInterval(timer);
   }, [working, refresh]);
 
@@ -154,24 +190,28 @@ export default function LectureEnginePanel({
   const system = setup?.system || null;
   const bestModelId = models.find((m) => m.recommend?.best)?.id || "";
   const bestBuild = builds.find((b) => b.recommend?.best);
-  const bestBuildLabel = bestBuild ? t(`lecture.setup.build.${bestBuild.id}`) : t("lecture.setup.autoBuild");
+  const bestBuildLabel = bestBuild
+    ? t(`lecture.setup.build.${bestBuild.id}`)
+    : t("lecture.setup.autoBuild");
 
   const body = (
     <div className={inline ? "lecs-inline-body" : "lecs-panel"}>
       {/* Шапка */}
       <div className="lecs-head">
-        <span className="lecs-icon"><Zap size={17} /></span>
+        <span className="lecs-icon">
+          <Zap size={17} />
+        </span>
         <div className="lecs-title">
           <div className="lecs-eyebrow">{t("lecture.setup.eyebrow")}</div>
           <div className="lecs-h1">{t("lecture.setup.title")}</div>
         </div>
         <span className={`lecs-pill ${engine?.ready ? "on" : "off"}`}>
-          {engine?.ready
-            ? `${backendLabel(t, engine.backend)}`
-            : t("lecture.setup.notReady")}
+          {engine?.ready ? `${backendLabel(t, engine.backend)}` : t("lecture.setup.notReady")}
         </span>
         {!inline && (
-          <button className="lecs-close" onClick={onClose} title={t("common.close")}><X size={15} /></button>
+          <button className="lecs-close" onClick={onClose} title={t("common.close")}>
+            <X size={15} />
+          </button>
         )}
       </div>
 
@@ -190,7 +230,10 @@ export default function LectureEnginePanel({
           <div className="lecs-block-label">{t("lecture.setup.systemTitle")}</div>
           <div className="lecs-sys-line">
             {t("lecture.setup.systemLine", {
-              cpu: system.cpu || "—", cores: system.cores, threads: system.threads, ram: system.ramGb,
+              cpu: system.cpu || "—",
+              cores: system.cores,
+              threads: system.threads,
+              ram: system.ramGb,
             })}
           </div>
           <div className="lecs-dim lecs-hint">
@@ -201,7 +244,9 @@ export default function LectureEnginePanel({
           {!!bestModelId && (
             <div className="lecs-ok">
               <Zap size={12} />
-              <span>{t("lecture.setup.systemHint", { model: bestModelId, build: bestBuildLabel })}</span>
+              <span>
+                {t("lecture.setup.systemHint", { model: bestModelId, build: bestBuildLabel })}
+              </span>
             </div>
           )}
         </div>
@@ -212,7 +257,9 @@ export default function LectureEnginePanel({
         <div className="lecs-task">
           <div className="lecs-task-top">
             <span className="lecs-row-name">
-              {task.kind === "model" ? t("lecture.setup.downloadingModel") : t("lecture.setup.downloadingBuild")}
+              {task.kind === "model"
+                ? t("lecture.setup.downloadingModel")
+                : t("lecture.setup.downloadingBuild")}
               {task.id ? ` · ${task.id}` : ""}
             </span>
             <span className="lecs-dim">
@@ -223,15 +270,23 @@ export default function LectureEnginePanel({
           </div>
           <ProgressBar value={task.progress} />
           <div className="lecs-task-foot">
-            <span className="lecs-dim">{t(`lecture.setup.phase.${task.phase || "download"}`)} · {task.progress}%</span>
+            <span className="lecs-dim">
+              {t(`lecture.setup.phase.${task.phase || "download"}`)} · {task.progress}%
+            </span>
             <div className="lecs-task-actions">
               {task.state === "working" && (
                 <Btn variant="ghost" icon={X} onClick={cancelTask} disabled={busy === "cancel"}>
                   {t("common.cancel")}
                 </Btn>
               )}
-              {task.state === "done" && <span className="lecs-ok"><Check size={12} /> {t("lecture.setup.done")}</span>}
-              {task.state === "error" && <span className="lecs-bad">{errorText(t, task.error)}</span>}
+              {task.state === "done" && (
+                <span className="lecs-ok">
+                  <Check size={12} /> {t("lecture.setup.done")}
+                </span>
+              )}
+              {task.state === "error" && (
+                <span className="lecs-bad">{errorText(t, task.error)}</span>
+              )}
             </div>
           </div>
         </div>
@@ -244,9 +299,11 @@ export default function LectureEnginePanel({
           <Cpu size={14} />
           <div className="lecs-hw-text">
             <div className="lecs-row-name">
-              {gpu?.pending ? t("lecture.setup.gpuPending")
-                : gpu?.cudaCapable ? gpu.name
-                  : (gpu?.name || t("lecture.setup.gpuNone"))}
+              {gpu?.pending
+                ? t("lecture.setup.gpuPending")
+                : gpu?.cudaCapable
+                  ? gpu.name
+                  : gpu?.name || t("lecture.setup.gpuNone")}
             </div>
             <div className="lecs-dim">
               {gpu?.cudaCapable ? `${humanMb(gpu.memoryMb)} VRAM` : t("lecture.setup.gpuNoCuda")}
@@ -256,33 +313,51 @@ export default function LectureEnginePanel({
           </div>
         </div>
         <div className="lecs-mode">
-          <button className={`lecs-mode-btn ${gpuMode === "auto" ? "on" : ""}`}
-            onClick={() => setGpu("auto")} disabled={busy === "gpu"}>
+          <button
+            className={`lecs-mode-btn ${gpuMode === "auto" ? "on" : ""}`}
+            onClick={() => setGpu("auto")}
+            disabled={busy === "gpu"}
+          >
             <Zap size={13} /> {t("lecture.setup.modeGpu")}
           </button>
-          <button className={`lecs-mode-btn ${gpuMode === "off" ? "on" : ""}`}
-            onClick={() => setGpu("off")} disabled={busy === "gpu"}>
+          <button
+            className={`lecs-mode-btn ${gpuMode === "off" ? "on" : ""}`}
+            onClick={() => setGpu("off")}
+            disabled={busy === "gpu"}
+          >
             <Cpu size={13} /> {t("lecture.setup.modeCpu")}
           </button>
           {cudaDevices.length > 1 && (
-            <select className="lecs-select" value={String(engine?.deviceId ?? 0)}
-              onChange={(e) => setGpu(gpuMode, Number(e.target.value))}>
+            <select
+              className="lecs-select"
+              value={String(engine?.deviceId ?? 0)}
+              onChange={(e) => setGpu(gpuMode, Number(e.target.value))}
+            >
               {cudaDevices.map((d, i) => (
-                <option key={`${d.name}-${i}`} value={String(i)}>{d.name}</option>
+                <option key={`${d.name}-${i}`} value={String(i)}>
+                  {d.name}
+                </option>
               ))}
             </select>
           )}
         </div>
         <div className="lecs-dim lecs-hint">{t("lecture.setup.gpuHint")}</div>
         <div className="lecs-verify">
-          <Btn variant="secondary" icon={RefreshCw} onClick={runVerify}
-            disabled={busy === "verify" || !engine?.ready}>
+          <Btn
+            variant="secondary"
+            icon={RefreshCw}
+            onClick={runVerify}
+            disabled={busy === "verify" || !engine?.ready}
+          >
             {busy === "verify" ? t("lecture.setup.verifying") : t("lecture.setup.verify")}
           </Btn>
           {verify && busy !== "verify" && (
             <span className={`lecs-verify-result ${verify.ok ? "ok" : "bad"}`}>
               {verify.ok
-                ? t("lecture.setup.verifyOk", { backend: backendLabel(t, verify.backend), ms: verify.elapsedMs })
+                ? t("lecture.setup.verifyOk", {
+                    backend: backendLabel(t, verify.backend),
+                    ms: verify.elapsedMs,
+                  })
                 : `${t("lecture.setup.verifyFail")}: ${errorText(t, verify.error)}`}
             </span>
           )}
@@ -302,36 +377,57 @@ export default function LectureEnginePanel({
         <div className="lecs-list">
           {models.map((m) => {
             const isActive = m.id === activeModelId;
-            const installing = task?.state === "working" && task.kind === "model" && task.id === m.id;
+            const installing =
+              task?.state === "working" && task.kind === "model" && task.id === m.id;
             return (
               <div className={`lecs-row ${isActive ? "active" : ""}`} key={m.id}>
                 <div className="lecs-row-main">
                   <div className="lecs-row-name">
                     {m.id}
-                    <Badge tone={isActive ? "teal" : "neutral"} mono>{humanMb(m.downloaded ? m.downloadedMb : m.sizeMb)}</Badge>
-                    <Badge tone="violet" mono>{t(`lecture.setup.note.${m.note}`)}</Badge>
+                    <Badge tone={isActive ? "teal" : "neutral"} mono>
+                      {humanMb(m.downloaded ? m.downloadedMb : m.sizeMb)}
+                    </Badge>
+                    <Badge tone="violet" mono>
+                      {t(`lecture.setup.note.${m.note}`)}
+                    </Badge>
                   </div>
                   <div className="lecs-dim">
-                    {m.downloaded ? t("lecture.setup.downloaded") : t("lecture.setup.notDownloaded")}
+                    {m.downloaded
+                      ? t("lecture.setup.downloaded")
+                      : t("lecture.setup.notDownloaded")}
                     {isActive ? ` · ${t("lecture.setup.active")}` : ""}
                   </div>
                   <FitHint fit={m.recommend} t={t} />
                 </div>
                 <div className="lecs-row-actions">
                   {!m.downloaded && (
-                    <Btn variant="secondary" icon={Download} onClick={() => modelAction(m.id, "download")}
-                      disabled={!!busy || working}>
+                    <Btn
+                      variant="secondary"
+                      icon={Download}
+                      onClick={() => modelAction(m.id, "download")}
+                      disabled={!!busy || working}
+                    >
                       {installing ? t("lecture.setup.downloading") : t("lecture.setup.download")}
                     </Btn>
                   )}
                   {m.downloaded && !isActive && (
-                    <Btn variant="secondary" icon={Check} onClick={() => modelAction(m.id, "select")} disabled={!!busy}>
+                    <Btn
+                      variant="secondary"
+                      icon={Check}
+                      onClick={() => modelAction(m.id, "select")}
+                      disabled={!!busy}
+                    >
                       {t("lecture.setup.use")}
                     </Btn>
                   )}
                   {m.downloaded && (
-                    <Btn variant="ghost" icon={Trash2} onClick={() => modelAction(m.id, "remove")}
-                      disabled={!!busy || working} title={t("common.delete")} />
+                    <Btn
+                      variant="ghost"
+                      icon={Trash2}
+                      onClick={() => modelAction(m.id, "remove")}
+                      disabled={!!busy || working}
+                      title={t("common.delete")}
+                    />
                   )}
                 </div>
               </div>
@@ -344,31 +440,52 @@ export default function LectureEnginePanel({
       <div className="lecs-block">
         <div className="lecs-block-label">{t("lecture.setup.buildsTitle")}</div>
         <div className="lecs-list">
-          <div className={`lecs-row ${!engine?.build || engine.build === "auto" ? "active" : ""}`} key="auto">
+          <div
+            className={`lecs-row ${!engine?.build || engine.build === "auto" ? "active" : ""}`}
+            key="auto"
+          >
             <div className="lecs-row-main">
               <div className="lecs-row-name">
                 {t("lecture.setup.autoBuild")}
-                <Badge tone="violet" mono>auto</Badge>
+                <Badge tone="violet" mono>
+                  auto
+                </Badge>
               </div>
               <div className="lecs-dim">
-                {engine?.build ? `${t("lecture.setup.active")}: ${engine.build}` : t("lecture.setup.notReady")}
+                {engine?.build
+                  ? `${t("lecture.setup.active")}: ${engine.build}`
+                  : t("lecture.setup.notReady")}
               </div>
             </div>
             <div className="lecs-row-actions">
-              <Btn variant="secondary" icon={RefreshCw} onClick={() => buildAction("auto", "select")} disabled={!!busy}>
+              <Btn
+                variant="secondary"
+                icon={RefreshCw}
+                onClick={() => buildAction("auto", "select")}
+                disabled={!!busy}
+              >
                 {t("lecture.setup.use")}
               </Btn>
             </div>
           </div>
           {builds.map((b) => {
-            const installing = task?.state === "working" && task.kind === "build" && task.id === b.id;
+            const installing =
+              task?.state === "working" && task.kind === "build" && task.id === b.id;
             return (
               <div className={`lecs-row ${b.active ? "active" : ""}`} key={b.id}>
                 <div className="lecs-row-main">
                   <div className="lecs-row-name">
                     {t(`lecture.setup.build.${b.id}`)}
-                    {b.sizeMb != null && <Badge tone="neutral" mono>{humanMb(b.sizeMb)}</Badge>}
-                    {b.gpu && <Badge tone="teal" mono>{backendLabel(t, "cuda")}</Badge>}
+                    {b.sizeMb != null && (
+                      <Badge tone="neutral" mono>
+                        {humanMb(b.sizeMb)}
+                      </Badge>
+                    )}
+                    {b.gpu && (
+                      <Badge tone="teal" mono>
+                        {backendLabel(t, "cuda")}
+                      </Badge>
+                    )}
                   </div>
                   <div className="lecs-dim">
                     {b.installed ? t("lecture.setup.installed") : t("lecture.setup.notInstalled")}
@@ -378,13 +495,22 @@ export default function LectureEnginePanel({
                 </div>
                 <div className="lecs-row-actions">
                   {!b.installed && !b.legacy && (
-                    <Btn variant="secondary" icon={Download} onClick={() => buildAction(b.id, "download")}
-                      disabled={!!busy || working}>
+                    <Btn
+                      variant="secondary"
+                      icon={Download}
+                      onClick={() => buildAction(b.id, "download")}
+                      disabled={!!busy || working}
+                    >
                       {installing ? t("lecture.setup.downloading") : t("lecture.setup.download")}
                     </Btn>
                   )}
                   {b.installed && !b.active && (
-                    <Btn variant="secondary" icon={Check} onClick={() => buildAction(b.id, "select")} disabled={!!busy}>
+                    <Btn
+                      variant="secondary"
+                      icon={Check}
+                      onClick={() => buildAction(b.id, "select")}
+                      disabled={!!busy}
+                    >
                       {t("lecture.setup.use")}
                     </Btn>
                   )}
@@ -407,7 +533,12 @@ export default function LectureEnginePanel({
             onChange={(e) => setBinDraft(e.target.value)}
             spellCheck={false}
           />
-          <Btn variant="secondary" icon={Check} onClick={saveBin} disabled={busy === "bin" || binDraft === null}>
+          <Btn
+            variant="secondary"
+            icon={Check}
+            onClick={saveBin}
+            disabled={busy === "bin" || binDraft === null}
+          >
             {t("common.save")}
           </Btn>
           <span className="lecs-dim lecs-hint">{t("lecture.setup.binHint")}</span>

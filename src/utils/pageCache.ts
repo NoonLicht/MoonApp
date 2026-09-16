@@ -49,7 +49,9 @@ export function evictPages<T extends string>(input: EvictInput<T>): T[] {
 
   // 1) Простой: выкидываем всё, что не показывали дольше idleMs.
   if (input.idleMs > 0) {
-    out = out.filter((id) => pinned(id) || input.now - (input.lastUsed[id] ?? input.now) < input.idleMs);
+    out = out.filter(
+      (id) => pinned(id) || input.now - (input.lastUsed[id] ?? input.now) < input.idleMs,
+    );
   }
 
   // 2) Лимит: убираем самые старые с хвоста, пока не уложимся (пиннутые не трогаем).

@@ -32,7 +32,7 @@ const __FILES: Record<string, Dict> = {
 // Список языков + их «родное» название (из _meta каждого JSON).
 export const LANGS = Object.keys(__FILES).map((code) => ({
   code,
-  native: ((__FILES[code]?._meta as { native?: string } | undefined)?.native) || code,
+  native: (__FILES[code]?._meta as { native?: string } | undefined)?.native || code,
 }));
 
 const DICT = __FILES;
@@ -58,14 +58,17 @@ function translate(lang: string, key: string, params?: Record<string, unknown>):
   return format(val, params);
 }
 
-interface I18nValue { lang: string; t: TranslateFn }
+interface I18nValue {
+  lang: string;
+  t: TranslateFn;
+}
 
 const I18nContext = createContext<I18nValue>({ lang: "en", t: (key) => key });
 
 export function I18nProvider({ lang, children }: { lang: string; children: ReactNode }) {
   const value = useMemo<I18nValue>(
     () => ({ lang, t: (key, params) => translate(lang, key, params) }),
-    [lang]
+    [lang],
   );
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
 }

@@ -23,12 +23,29 @@ const logger = require("../logger");
 const router = express.Router();
 
 const MIME = {
-  ".html": "text/html", ".htm": "text/html", ".css": "text/css", ".js": "text/javascript",
-  ".json": "application/json", ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
-  ".webp": "image/webp", ".avif": "image/avif", ".gif": "image/gif", ".svg": "image/svg+xml",
-  ".ico": "image/x-icon", ".woff2": "font/woff2", ".woff": "font/woff", ".ttf": "font/ttf",
-  ".mp4": "video/mp4", ".webm": "video/webm", ".mp3": "audio/mpeg", ".ogg": "audio/ogg",
-  ".wav": "audio/wav", ".txt": "text/plain", ".xml": "application/xml",
+  ".html": "text/html",
+  ".htm": "text/html",
+  ".css": "text/css",
+  ".js": "text/javascript",
+  ".json": "application/json",
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".webp": "image/webp",
+  ".avif": "image/avif",
+  ".gif": "image/gif",
+  ".svg": "image/svg+xml",
+  ".ico": "image/x-icon",
+  ".woff2": "font/woff2",
+  ".woff": "font/woff",
+  ".ttf": "font/ttf",
+  ".mp4": "video/mp4",
+  ".webm": "video/webm",
+  ".mp3": "audio/mpeg",
+  ".ogg": "audio/ogg",
+  ".wav": "audio/wav",
+  ".txt": "text/plain",
+  ".xml": "application/xml",
 };
 
 // Путь к .sitebak файлу архива — через DIRS (М1: storage может быть
@@ -44,13 +61,16 @@ function bakFile(id) {
 // CSP (script-src 'none'). Даже если архив снимался с stripScripts=false,
 // превью не может стать вектором XSS против локального API (appBridge).
 function serveHtml(res, buf) {
-  const html = buf.toString("utf8")
+  const html = buf
+    .toString("utf8")
     .replace(/<script[\s\S]*?<\/script>/gi, "")
     .replace(/ on[a-z]+\s*=\s*"[^"]*"/gi, "")
     .replace(/ on[a-z]+\s*=\s*'[^']*'/gi, "");
-  res.setHeader("Content-Security-Policy",
+  res.setHeader(
+    "Content-Security-Policy",
     "default-src 'self'; script-src 'none'; style-src 'self' 'unsafe-inline'; " +
-    "img-src 'self' data:; media-src 'self'; font-src 'self' data:; object-src 'none'; frame-src 'none'; form-action 'none'");
+      "img-src 'self' data:; media-src 'self'; font-src 'self' data:; object-src 'none'; frame-src 'none'; form-action 'none'",
+  );
   res.setHeader("Content-Type", "text/html; charset=utf-8");
   res.send(html);
 }
@@ -146,7 +166,10 @@ router.get("/:id/raw/*", (req, res) => {
 router.get("/:id/download", (req, res) => {
   const file = bakFile(req.params.id);
   if (!file) return res.status(404).json({ error: "not_found" });
-  res.download(file, engine.loadArchiveList().find((a) => a.id === req.params.id)?.name || "archive.sitebak");
+  res.download(
+    file,
+    engine.loadArchiveList().find((a) => a.id === req.params.id)?.name || "archive.sitebak",
+  );
 });
 
 // М5: путь распакованной копии для «Reveal in File Explorer».

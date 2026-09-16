@@ -70,7 +70,9 @@ describe("startCore — реальный запуск ядра", () => {
     await core.stopCore();
     const net = require("net");
     const squatter = net.createServer(() => {});
-    await new Promise<void>((r) => squatter.listen(core.DEFAULT_SOCKS_PORT, "127.0.0.1", () => r()));
+    await new Promise<void>((r) =>
+      squatter.listen(core.DEFAULT_SOCKS_PORT, "127.0.0.1", () => r()),
+    );
     try {
       const st = await core.startCore(NODE);
       expect(st.running).toBe(false);

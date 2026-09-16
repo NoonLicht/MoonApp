@@ -25,7 +25,11 @@ describe("Миграция автообновления (settings.load)", () => 
 
   /** Свежий require модуля настроек — имитация нового запуска приложения. */
   function freshSettings(): any {
-    try { delete req.cache[req.resolve("../server/settings")]; } catch { /* не критично */ }
+    try {
+      delete req.cache[req.resolve("../server/settings")];
+    } catch {
+      /* не критично */
+    }
     return req("../server/settings");
   }
 
@@ -35,13 +39,21 @@ describe("Миграция автообновления (settings.load)", () => 
   });
 
   afterAll(() => {
-    try { req("../server/fsUtil").removePath(storage); } catch { /* noop */ }
+    try {
+      req("../server/fsUtil").removePath(storage);
+    } catch {
+      /* noop */
+    }
   });
 
   it("включает автообновление у старой установки и пишет это на диск", () => {
-    fs.writeFileSync(settingsFile(), JSON.stringify({
-      general: { autoUpdate: false, language: "ru" },
-    }), "utf8");
+    fs.writeFileSync(
+      settingsFile(),
+      JSON.stringify({
+        general: { autoUpdate: false, language: "ru" },
+      }),
+      "utf8",
+    );
 
     const got = freshSettings().get();
 
@@ -56,9 +68,13 @@ describe("Миграция автообновления (settings.load)", () => 
   });
 
   it("не трогает значение, если маркер миграции уже стоит", () => {
-    fs.writeFileSync(settingsFile(), JSON.stringify({
-      general: { autoUpdate: false, autoUpdateMigrated: true },
-    }), "utf8");
+    fs.writeFileSync(
+      settingsFile(),
+      JSON.stringify({
+        general: { autoUpdate: false, autoUpdateMigrated: true },
+      }),
+      "utf8",
+    );
 
     const got = freshSettings().get();
     expect(got.general.autoUpdate).toBe(false);

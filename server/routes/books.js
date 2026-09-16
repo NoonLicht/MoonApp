@@ -46,7 +46,12 @@ router.get("/", async (req, res) => {
 
     const bids = result.books.map((b) => b.bid);
     const flags = flibusta.myFlags(bids);
-    res.json({ items: result.books, hasMore: !!result.hasMore, flags, popularFallback: !!result.popularFallback });
+    res.json({
+      items: result.books,
+      hasMore: !!result.hasMore,
+      flags,
+      popularFallback: !!result.popularFallback,
+    });
   } catch (e) {
     logger.error("books.request_failed", { error: e.message, url: req.originalUrl });
     res.status(500).json({ error: e.message });
@@ -55,8 +60,11 @@ router.get("/", async (req, res) => {
 
 /** GET /api/books/genres — жанры OPDS (кэш 10 минут). */
 router.get("/genres", async (req, res) => {
-  try { res.json(await flibusta.listGenres()); }
-  catch (e) { res.status(500).json({ error: e.message }); }
+  try {
+    res.json(await flibusta.listGenres());
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 /** POST /api/books/refresh — сбросить кэш фидов (кнопки «Обновить»). */
@@ -74,15 +82,23 @@ router.post("/toggle", (req, res) => {
     if (!Number.isFinite(bid) || !bid) return res.status(400).json({ error: "bid required" });
     const flags = flibusta.toggleMyBook(field, bid, req.body?.book || {});
     res.json(flags);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 /** GET /api/books/my-flags?bids=1,2,3 — флаги для подсветки карточек. */
 router.get("/my-flags", (req, res) => {
   try {
-    const bids = String(req.query.bids || "").split(",").map(Number).filter(Boolean).slice(0, 500);
+    const bids = String(req.query.bids || "")
+      .split(",")
+      .map(Number)
+      .filter(Boolean)
+      .slice(0, 500);
     res.json(flibusta.myFlags(bids));
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 /** POST /api/books/download — скачать книгу. body: { bid, fmt }. */
@@ -107,13 +123,19 @@ router.get("/file", (req, res) => {
     const file = path.join(DIRS.downloads, path.basename(rel));
     const ext = path.extname(file).toLowerCase();
     const types = {
-      ".fb2": "application/xml", ".epub": "application/epub+zip",
-      ".mobi": "application/x-mobipocket-ebook", ".pdf": "application/pdf",
-      ".txt": "text/plain", ".html": "text/html", ".rtf": "application/rtf",
+      ".fb2": "application/xml",
+      ".epub": "application/epub+zip",
+      ".mobi": "application/x-mobipocket-ebook",
+      ".pdf": "application/pdf",
+      ".txt": "text/plain",
+      ".html": "text/html",
+      ".rtf": "application/rtf",
     };
     res.type(types[ext] || "application/octet-stream");
     res.sendFile(file);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 module.exports = router;

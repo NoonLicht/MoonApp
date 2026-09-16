@@ -4,12 +4,17 @@ import { EMPTY_CONNECTOR, STICKY_COLORS } from "./types";
 /* Template generators — return plain { nodes, edges } JSON. */
 
 let tplSeq = 0;
-const uid = (p: string) => `${p}_t${Date.now().toString(36)}${(tplSeq++).toString(36)}${Math.floor(Math.random() * 1e4).toString(36)}`;
+const uid = (p: string) =>
+  `${p}_t${Date.now().toString(36)}${(tplSeq++).toString(36)}${Math.floor(Math.random() * 1e4).toString(36)}`;
 
-export interface TplResult { nodes: Node[]; edges: Edge[] }
+export interface TplResult {
+  nodes: Node[];
+  edges: Edge[];
+}
 
 type NodeBuilder = (id: string, x: number, y: number, data: any, extra?: Partial<Node>) => Node;
-const mk: NodeBuilder = (id, x, y, data, extra = {}) => ({ id, position: { x, y }, data, ...extra } as Node);
+const mk: NodeBuilder = (id, x, y, data, extra = {}) =>
+  ({ id, position: { x, y }, data, ...extra }) as Node;
 
 const sticky = (x: number, y: number, text: string, color = STICKY_COLORS[0]) =>
   mk(uid("sticky"), x, y, { text, color }, { type: "sticky", style: { width: 170, height: 150 } });
@@ -18,20 +23,42 @@ const shape = (x: number, y: number, s: any) =>
   mk(uid("shape"), x, y, s, { type: "shape", style: { width: s.w, height: s.h } });
 
 const frame = (x: number, y: number, label: string, color: string, w: number, h: number) =>
-  mk(uid("frame"), x, y, { label, color, w, h }, { type: "frame", zIndex: -1, style: { width: w, height: h } });
+  mk(
+    uid("frame"),
+    x,
+    y,
+    { label, color, w, h },
+    { type: "frame", zIndex: -1, style: { width: w, height: h } },
+  );
 
 const task = (x: number, y: number, title: string, status = "todo") =>
-  mk(uid("task"), x, y, { title, status, subtasks: [{ text: "step", done: false }] }, { type: "task", style: { width: 210, height: 120 } });
+  mk(
+    uid("task"),
+    x,
+    y,
+    { title, status, subtasks: [{ text: "step", done: false }] },
+    { type: "task", style: { width: 210, height: 120 } },
+  );
 
 const matrix = (x: number, y: number, title: string, columns: string[], items: any[]) =>
-  mk(uid("matrix"), x, y, { title, columns, items }, { type: "matrix", style: { width: 460, height: 330 } });
+  mk(
+    uid("matrix"),
+    x,
+    y,
+    { title, columns, items },
+    { type: "matrix", style: { width: 460, height: 330 } },
+  );
 
-const conn = (src: string, dst: string, extraData: any = {}) => ({
-  id: uid("e"), source: src, target: dst,
-  type: "connector", markerEnd: { type: "arrowclosed", color: "#8b7bf0" },
-  style: { stroke: "#8b7bf0", strokeWidth: 2 },
-  data: { ...EMPTY_CONNECTOR, ...extraData },
-} as Edge);
+const conn = (src: string, dst: string, extraData: any = {}) =>
+  ({
+    id: uid("e"),
+    source: src,
+    target: dst,
+    type: "connector",
+    markerEnd: { type: "arrowclosed", color: "#8b7bf0" },
+    style: { stroke: "#8b7bf0", strokeWidth: 2 },
+    data: { ...EMPTY_CONNECTOR, ...extraData },
+  }) as Edge;
 
 /* ── Generators ── */
 
@@ -54,12 +81,18 @@ export function generateRetro(ox: number, oy: number): TplResult {
 
 export function generateSprint(ox: number, oy: number): TplResult {
   const nodes = [
-    matrix(ox, oy, "Sprint Impact Matrix", ["Quick Wins", "Major Projects", "Fill-ins", "Thankless"], [
-      { col: 0, text: "Fix onboarding", color: "#bbf7d0" },
-      { col: 1, text: "New editor", color: "#fef08a" },
-      { col: 2, text: "Docs", color: "#bfdbfe" },
-      { col: 3, text: "Legacy cleanup", color: "#fbcfe8" },
-    ]),
+    matrix(
+      ox,
+      oy,
+      "Sprint Impact Matrix",
+      ["Quick Wins", "Major Projects", "Fill-ins", "Thankless"],
+      [
+        { col: 0, text: "Fix onboarding", color: "#bbf7d0" },
+        { col: 1, text: "New editor", color: "#fef08a" },
+        { col: 2, text: "Docs", color: "#bfdbfe" },
+        { col: 3, text: "Legacy cleanup", color: "#fbcfe8" },
+      ],
+    ),
   ];
   return { nodes, edges: [] };
 }
@@ -87,7 +120,14 @@ export function generateCJM(ox: number, oy: number): TplResult {
   let prevId: string | null = null;
   stages.forEach((s, i) => {
     const x = ox + i * 220;
-    const n = shape(x, oy, { shape: "rounded", label: s, fill: STICKY_COLORS[i % 6], stroke: "#16181f", w: 180, h: 70 });
+    const n = shape(x, oy, {
+      shape: "rounded",
+      label: s,
+      fill: STICKY_COLORS[i % 6],
+      stroke: "#16181f",
+      w: 180,
+      h: 70,
+    });
     nodes.push(n);
     nodes.push(sticky(x + 10, oy + 100, "Touchpoint…", "#e5e7eb"));
     if (prevId) edges.push(conn(prevId, n.id, { style: "step" }));
@@ -97,10 +137,38 @@ export function generateCJM(ox: number, oy: number): TplResult {
 }
 
 export function generateFlowchart(ox: number, oy: number): TplResult {
-  const start = shape(ox, oy + 60, { shape: "rounded", label: "Start", fill: "#bbf7d0", stroke: "#16181f", w: 130, h: 56 });
-  const build = shape(ox + 220, oy + 60, { shape: "rounded", label: "Build", fill: "#bfdbfe", stroke: "#16181f", w: 130, h: 56 });
-  const decision = shape(ox + 440, oy + 40, { shape: "diamond", label: "Tests pass?", fill: "#fef08a", stroke: "#16181f", w: 170, h: 100 });
-  const ship = shape(ox + 700, oy, { shape: "rounded", label: "Ship 🚀", fill: "#bbf7d0", stroke: "#16181f", w: 130, h: 56 });
+  const start = shape(ox, oy + 60, {
+    shape: "rounded",
+    label: "Start",
+    fill: "#bbf7d0",
+    stroke: "#16181f",
+    w: 130,
+    h: 56,
+  });
+  const build = shape(ox + 220, oy + 60, {
+    shape: "rounded",
+    label: "Build",
+    fill: "#bfdbfe",
+    stroke: "#16181f",
+    w: 130,
+    h: 56,
+  });
+  const decision = shape(ox + 440, oy + 40, {
+    shape: "diamond",
+    label: "Tests pass?",
+    fill: "#fef08a",
+    stroke: "#16181f",
+    w: 170,
+    h: 100,
+  });
+  const ship = shape(ox + 700, oy, {
+    shape: "rounded",
+    label: "Ship 🚀",
+    fill: "#bbf7d0",
+    stroke: "#16181f",
+    w: 130,
+    h: 56,
+  });
   const fix = task(ox + 700, oy + 140, "Fix failing test", "inprogress");
   const nodes = [start, build, decision, ship, fix];
   const edges = [
@@ -112,10 +180,46 @@ export function generateFlowchart(ox: number, oy: number): TplResult {
   return { nodes, edges };
 }
 
-export const TEMPLATES: { id: string; name: string; desc: string; emoji: string; gen: (x: number, y: number) => TplResult }[] = [
-  { id: "retro", name: "Agile Retrospective", desc: "Went well / Improve / Actions columns", emoji: "🔄", gen: generateRetro },
-  { id: "sprint", name: "Sprint Impact Matrix", desc: "Effort × impact quadrants", emoji: "📋", gen: generateSprint },
-  { id: "mindmap", name: "Mind Map", desc: "Central topic with branches", emoji: "🧠", gen: generateMindMap },
-  { id: "cjm", name: "Customer Journey Map", desc: "5-stage CJM pipeline", emoji: "🛤", gen: generateCJM },
-  { id: "flowchart", name: "Flowchart Pipeline", desc: "Decision tree with tasks", emoji: "🔀", gen: generateFlowchart },
+export const TEMPLATES: {
+  id: string;
+  name: string;
+  desc: string;
+  emoji: string;
+  gen: (x: number, y: number) => TplResult;
+}[] = [
+  {
+    id: "retro",
+    name: "Agile Retrospective",
+    desc: "Went well / Improve / Actions columns",
+    emoji: "🔄",
+    gen: generateRetro,
+  },
+  {
+    id: "sprint",
+    name: "Sprint Impact Matrix",
+    desc: "Effort × impact quadrants",
+    emoji: "📋",
+    gen: generateSprint,
+  },
+  {
+    id: "mindmap",
+    name: "Mind Map",
+    desc: "Central topic with branches",
+    emoji: "🧠",
+    gen: generateMindMap,
+  },
+  {
+    id: "cjm",
+    name: "Customer Journey Map",
+    desc: "5-stage CJM pipeline",
+    emoji: "🛤",
+    gen: generateCJM,
+  },
+  {
+    id: "flowchart",
+    name: "Flowchart Pipeline",
+    desc: "Decision tree with tasks",
+    emoji: "🔀",
+    gen: generateFlowchart,
+  },
 ];

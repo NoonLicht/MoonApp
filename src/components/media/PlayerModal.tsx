@@ -1,8 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
-  X, Link2, Upload, Subtitles, HardDrive, Users, AlertTriangle,
-  Film, Zap, Download,
+  X,
+  Link2,
+  Upload,
+  Subtitles,
+  HardDrive,
+  Users,
+  AlertTriangle,
+  Film,
+  Zap,
+  Download,
 } from "lucide-react";
 import { Glass, Btn, Badge, Field, Select } from "../ui";
 import { usePageActive } from "../Toolbar";
@@ -34,8 +42,12 @@ interface PlayerModalProps {
 function fmtBytes(n?: number | null): string {
   if (!n || n < 0) return "0 B";
   const u = ["B", "KB", "MB", "GB", "TB"];
-  let i = 0; let v = n;
-  while (v >= 1024 && i < u.length - 1) { v /= 1024; i++; }
+  let i = 0;
+  let v = n;
+  while (v >= 1024 && i < u.length - 1) {
+    v /= 1024;
+    i++;
+  }
   return `${v.toFixed(v < 10 && i > 0 ? 1 : 0)} ${u[i]}`;
 }
 
@@ -134,15 +146,20 @@ export default function PlayerModal({ onClose, trailerKey }: PlayerModalProps) {
   }, []);
 
   /** Загрузить внешние субтитры пользователя. */
-  const loadSubs = useCallback(async (file: File) => {
-    try {
-      const text = await file.text();
-      const blob = new Blob([text], { type: "text/vtt" });
-      if (subUrl) URL.revokeObjectURL(subUrl);
-      setSubUrl(URL.createObjectURL(blob));
-      setSubLabel(file.name);
-    } catch { /* игнорируем: субтитры не критичны */ }
-  }, [subUrl]);
+  const loadSubs = useCallback(
+    async (file: File) => {
+      try {
+        const text = await file.text();
+        const blob = new Blob([text], { type: "text/vtt" });
+        if (subUrl) URL.revokeObjectURL(subUrl);
+        setSubUrl(URL.createObjectURL(blob));
+        setSubLabel(file.name);
+      } catch {
+        /* игнорируем: субтитры не критичны */
+      }
+    },
+    [subUrl],
+  );
 
   // Опрос статуса торрента (прогресс/скорость/пиры) во время загрузки.
   useEffect(() => {
@@ -152,11 +169,16 @@ export default function PlayerModal({ onClose, trailerKey }: PlayerModalProps) {
       try {
         const st = await api.moviesTorrentStatus(added.infoHash);
         if (alive) setStatus(st);
-      } catch { /* временная ошибка — ждём следующий тик */ }
+      } catch {
+        /* временная ошибка — ждём следующий тик */
+      }
     };
     void tick();
     const timer = window.setInterval(tick, 1500);
-    return () => { alive = false; window.clearInterval(timer); };
+    return () => {
+      alive = false;
+      window.clearInterval(timer);
+    };
   }, [added]);
 
   // Скорость воспроизведения + выбор аудиодорожек (если браузер их отдаёт).
@@ -166,8 +188,18 @@ export default function PlayerModal({ onClose, trailerKey }: PlayerModalProps) {
   }, [speed, fileIndex, added]);
 
   useEffect(() => {
-    const v = videoRef.current as (HTMLVideoElement & { audioTracks?: { length: number; [i: number]: { id: string; label: string; enabled: boolean } } }) | null;
-    if (!v || !v.audioTracks) { setAudioTracks([]); return; }
+    const v = videoRef.current as
+      | (HTMLVideoElement & {
+          audioTracks?: {
+            length: number;
+            [i: number]: { id: string; label: string; enabled: boolean };
+          };
+        })
+      | null;
+    if (!v || !v.audioTracks) {
+      setAudioTracks([]);
+      return;
+    }
     const list: { id: string; label: string }[] = [];
     for (let i = 0; i < v.audioTracks.length; i++) {
       const tr = v.audioTracks[i];
@@ -177,16 +209,20 @@ export default function PlayerModal({ onClose, trailerKey }: PlayerModalProps) {
   }, [fileIndex, added]);
 
   // При закрытии освобождаем blob-url субтитров и снимаем торрент.
-  useEffect(() => () => {
-    if (subUrl) URL.revokeObjectURL(subUrl);
-  }, [subUrl]);
+  useEffect(
+    () => () => {
+      if (subUrl) URL.revokeObjectURL(subUrl);
+    },
+    [subUrl],
+  );
 
   const closeAll = () => {
     if (added) api.moviesTorrentRemove(added.infoHash).catch(() => {});
     onClose();
   };
 
-  const streamUrl = added && fileIndex >= 0 ? api.moviesTorrentStreamUrl(added.infoHash, fileIndex) : null;
+  const streamUrl =
+    added && fileIndex >= 0 ? api.moviesTorrentStreamUrl(added.infoHash, fileIndex) : null;
   const currentFile = added?.files.find((f) => f.index === fileIndex) || null;
 
   if (!active) return null;
@@ -197,15 +233,23 @@ export default function PlayerModal({ onClose, trailerKey }: PlayerModalProps) {
         <div className="mv-player-head">
           <div className="mv-player-tabs">
             {trailerKey && (
-              <button className={mode === "trailer" ? "is-active" : ""} onClick={() => setMode("trailer")}>
+              <button
+                className={mode === "trailer" ? "is-active" : ""}
+                onClick={() => setMode("trailer")}
+              >
                 <Film size={14} /> {t("movies.trailer")}
               </button>
             )}
-            <button className={mode === "torrent" ? "is-active" : ""} onClick={() => setMode("torrent")}>
+            <button
+              className={mode === "torrent" ? "is-active" : ""}
+              onClick={() => setMode("torrent")}
+            >
               <Zap size={14} /> {t("movies.torrent")}
             </button>
           </div>
-          <button className="mv-close" onClick={closeAll} title={t("common.close")}><X size={16} /></button>
+          <button className="mv-close" onClick={closeAll} title={t("common.close")}>
+            <X size={16} />
+          </button>
         </div>
 
         {mode === "trailer" && trailerKey && (
@@ -230,9 +274,16 @@ export default function PlayerModal({ onClose, trailerKey }: PlayerModalProps) {
                     value={magnet}
                     onChange={(e) => setMagnet(e.target.value)}
                     placeholder="magnet:?xt=urn:btih:…"
-                    onKeyDown={(e) => { if (e.key === "Enter") void addTorrent(); }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") void addTorrent();
+                    }}
                   />
-                  <Btn variant="primary" icon={Link2} disabled={busy || !magnet.trim()} onClick={() => void addTorrent()}>
+                  <Btn
+                    variant="primary"
+                    icon={Link2}
+                    disabled={busy || !magnet.trim()}
+                    onClick={() => void addTorrent()}
+                  >
                     {t("movies.openSource")}
                   </Btn>
                 </div>
@@ -240,8 +291,14 @@ export default function PlayerModal({ onClose, trailerKey }: PlayerModalProps) {
               <label className="mv-file-btn">
                 <Upload size={14} /> {t("movies.openTorrentFile")}
                 <input
-                  type="file" accept=".torrent,application/x-bittorrent" hidden
-                  onChange={(e) => { const f = e.target.files?.[0]; if (f) void openTorrentFile(f); e.currentTarget.value = ""; }}
+                  type="file"
+                  accept=".torrent,application/x-bittorrent"
+                  hidden
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) void openTorrentFile(f);
+                    e.currentTarget.value = "";
+                  }}
                 />
               </label>
               <div className="muted-sm">{t("movies.torrentNotice")}</div>
@@ -253,7 +310,9 @@ export default function PlayerModal({ onClose, trailerKey }: PlayerModalProps) {
               <div className="mv-error-inline">
                 <AlertTriangle size={15} style={{ color: "var(--coral)" }} />
                 <span>{error.text}</span>
-                {error.code === "engine_missing" && <span className="muted-sm">{t("movies.torrentEngineHint")}</span>}
+                {error.code === "engine_missing" && (
+                  <span className="muted-sm">{t("movies.torrentEngineHint")}</span>
+                )}
               </div>
             )}
 
@@ -261,7 +320,15 @@ export default function PlayerModal({ onClose, trailerKey }: PlayerModalProps) {
             {streamUrl && currentFile && (
               <div className="mv-video-frame">
                 <video ref={videoRef} key={streamUrl} src={streamUrl} controls autoPlay playsInline>
-                  {subUrl && <track kind="subtitles" src={subUrl} srcLang="ru" label={subLabel || "subtitles"} default />}
+                  {subUrl && (
+                    <track
+                      kind="subtitles"
+                      src={subUrl}
+                      srcLang="ru"
+                      label={subLabel || "subtitles"}
+                      default
+                    />
+                  )}
                 </video>
               </div>
             )}
@@ -274,17 +341,26 @@ export default function PlayerModal({ onClose, trailerKey }: PlayerModalProps) {
                     value={String(speed)}
                     onChange={(e) => setSpeed(Number(e.target.value))}
                     options={[
-                      { value: "0.5", label: "0.5x" }, { value: "0.75", label: "0.75x" },
-                      { value: "1", label: "1x" }, { value: "1.25", label: "1.25x" },
-                      { value: "1.5", label: "1.5x" }, { value: "2", label: "2x" },
+                      { value: "0.5", label: "0.5x" },
+                      { value: "0.75", label: "0.75x" },
+                      { value: "1", label: "1x" },
+                      { value: "1.25", label: "1.25x" },
+                      { value: "1.5", label: "1.5x" },
+                      { value: "2", label: "2x" },
                     ]}
                   />
                 </Field>
                 <label className="mv-file-btn">
                   <Subtitles size={14} /> {subLabel || t("movies.subtitles")}
                   <input
-                    type="file" accept=".srt,.vtt,text/vtt,application/x-subrip" hidden
-                    onChange={(e) => { const f = e.target.files?.[0]; if (f) void loadSubs(f); e.currentTarget.value = ""; }}
+                    type="file"
+                    accept=".srt,.vtt,text/vtt,application/x-subrip"
+                    hidden
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) void loadSubs(f);
+                      e.currentTarget.value = "";
+                    }}
                   />
                 </label>
                 {audioTracks.length > 1 && (
@@ -292,7 +368,8 @@ export default function PlayerModal({ onClose, trailerKey }: PlayerModalProps) {
                     <Select
                       value={audioTracks[0].id}
                       onChange={(e) => {
-                        const v = videoRef.current as (HTMLVideoElement & { audioTracks?: any }) | null;
+                        const v = videoRef.current as
+                          (HTMLVideoElement & { audioTracks?: any }) | null;
                         if (!v?.audioTracks) return;
                         for (let i = 0; i < v.audioTracks.length; i++) {
                           v.audioTracks[i].enabled = v.audioTracks[i].id === e.target.value;
@@ -328,13 +405,25 @@ export default function PlayerModal({ onClose, trailerKey }: PlayerModalProps) {
             {status && (
               <div className="mv-status">
                 <div className="mv-status-bar">
-                  <div className="mv-status-fill" style={{ width: `${Math.round(status.progress * 100)}%` }} />
+                  <div
+                    className="mv-status-fill"
+                    style={{ width: `${Math.round(status.progress * 100)}%` }}
+                  />
                 </div>
                 <div className="mv-status-meta">
-                  <span><Download size={12} /> {Math.round(status.progress * 100)}%</span>
-                  <span><Zap size={12} /> {fmtSpeed(status.downloadSpeed)}</span>
-                  <span><Users size={12} /> {status.peers}</span>
-                  <span><HardDrive size={12} /> {fmtBytes(status.downloaded)} / {fmtBytes(status.length)}</span>
+                  <span>
+                    <Download size={12} /> {Math.round(status.progress * 100)}%
+                  </span>
+                  <span>
+                    <Zap size={12} /> {fmtSpeed(status.downloadSpeed)}
+                  </span>
+                  <span>
+                    <Users size={12} /> {status.peers}
+                  </span>
+                  <span>
+                    <HardDrive size={12} /> {fmtBytes(status.downloaded)} /{" "}
+                    {fmtBytes(status.length)}
+                  </span>
                 </div>
               </div>
             )}
@@ -342,6 +431,6 @@ export default function PlayerModal({ onClose, trailerKey }: PlayerModalProps) {
         )}
       </Glass>
     </div>,
-    getOverlayRoot() ?? document.body
+    getOverlayRoot() ?? document.body,
   );
 }

@@ -14,8 +14,8 @@
 type Ev = { level: string; event: string; data?: unknown };
 
 const FLUSH_INTERVAL_MS = 1500;
-const FLUSH_AT = 40;     // отправляем, не дожидаясь таймера
-const MAX_BATCH = 200;   // ограничение на размер пачки
+const FLUSH_AT = 40; // отправляем, не дожидаясь таймера
+const MAX_BATCH = 200; // ограничение на размер пачки
 
 let queue: Ev[] = [];
 let timer: ReturnType<typeof setTimeout> | null = null;
@@ -23,17 +23,30 @@ let currentPage = "unknown";
 let started = false;
 
 function token(): string | null {
-  try { return window.appBridge?.getToken?.() ?? null; } catch { return null; }
+  try {
+    return window.appBridge?.getToken?.() ?? null;
+  } catch {
+    return null;
+  }
 }
 
 function push(level: string, event: string, data?: unknown) {
   queue.push({ level, event, data });
-  if (queue.length >= FLUSH_AT) { void flush(); return; }
-  if (!timer) timer = setTimeout(() => { void flush(); }, FLUSH_INTERVAL_MS);
+  if (queue.length >= FLUSH_AT) {
+    void flush();
+    return;
+  }
+  if (!timer)
+    timer = setTimeout(() => {
+      void flush();
+    }, FLUSH_INTERVAL_MS);
 }
 
 async function flush() {
-  if (timer) { clearTimeout(timer); timer = null; }
+  if (timer) {
+    clearTimeout(timer);
+    timer = null;
+  }
   if (!queue.length) return;
   const events = queue.slice(0, MAX_BATCH);
   queue = queue.slice(events.length);
@@ -45,13 +58,26 @@ async function flush() {
       headers: { "Content-Type": "application/json", ...(t ? { "x-moonapp-token": t } : {}) },
       body: JSON.stringify({ events }),
     });
-  } catch { /* журнал не должен ломать интерфейс */ }
-  if (queue.length) timer = setTimeout(() => { void flush(); }, FLUSH_INTERVAL_MS);
+  } catch {
+    /* журнал не должен ломать интерфейс */
+  }
+  if (queue.length)
+    timer = setTimeout(() => {
+      void flush();
+    }, FLUSH_INTERVAL_MS);
 }
 
 /** Записать событие в полный журнал. */
-export function logEvent(level: "action" | "info" | "warn" | "error", event: string, data?: unknown) {
-  try { push(level, event, data); } catch { /* ignore */ }
+export function logEvent(
+  level: "action" | "info" | "warn" | "error",
+  event: string,
+  data?: unknown,
+) {
+  try {
+    push(level, event, data);
+  } catch {
+    /* ignore */
+  }
 }
 
 /** Текущая страница (логируется при смене и добавляется в описание кликов). */
@@ -87,9 +113,15 @@ export async function snapshotUiSettings(): Promise<void> {
         store[k] = raw.slice(0, 2000) + `…(обрезано, всего ${raw.length} симв.)`;
         continue;
       }
-      try { store[k] = JSON.parse(raw); } catch { store[k] = raw; }
+      try {
+        store[k] = JSON.parse(raw);
+      } catch {
+        store[k] = raw;
+      }
     }
-  } catch { /* localStorage недоступен — пропускаем */ }
+  } catch {
+    /* localStorage недоступен — пропускаем */
+  }
 
   const data = {
     page: currentPage,
@@ -130,9 +162,10 @@ function describeElement(el: Element | null): Record<string, unknown> | null {
     const input = el as HTMLInputElement;
     out.field = input.name || input.id || null;
     // Значения полей пишем (полезно для «что ввёл»), но пароли — только длиной.
-    out.value = input.type === "password"
-      ? `***(${String(input.value || "").length})`
-      : String(input.value || "").slice(0, 120);
+    out.value =
+      input.type === "password"
+        ? `***(${String(input.value || "").length})`
+        : String(input.value || "").slice(0, 120);
   }
   return out;
 }
@@ -162,8 +195,14 @@ function keyHandler(ev: KeyboardEvent) {
   // уже попадает в ui.change, а логировать каждую букву — шум.
   if (!ev.ctrlKey && !ev.altKey && !ev.metaKey) return;
   const combo = [
-    ev.ctrlKey && "Ctrl", ev.altKey && "Alt", ev.metaKey && "Meta", ev.shiftKey && "Shift", ev.key,
-  ].filter(Boolean).join("+");
+    ev.ctrlKey && "Ctrl",
+    ev.altKey && "Alt",
+    ev.metaKey && "Meta",
+    ev.shiftKey && "Shift",
+    ev.key,
+  ]
+    .filter(Boolean)
+    .join("+");
   logEvent("action", "ui.hotkey", { page: currentPage, combo });
 }
 
@@ -195,12 +234,19 @@ function hookConsole() {
           page: currentPage,
           level: lvl,
           args: args.map((a) => {
-            if (a instanceof Error) return { message: a.message, stack: String(a.stack || "").slice(0, 2000) };
+            if (a instanceof Error)
+              return { message: a.message, stack: String(a.stack || "").slice(0, 2000) };
             if (typeof a === "string") return a.slice(0, 500);
-            try { return JSON.parse(JSON.stringify(a)); } catch { return String(a).slice(0, 500); }
+            try {
+              return JSON.parse(JSON.stringify(a));
+            } catch {
+              return String(a).slice(0, 500);
+            }
           }),
         });
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
       orig(...args);
     };
   }
@@ -219,7 +265,8 @@ export function initTelemetry() {
   window.addEventListener("online", () => logEvent("info", "app.online"));
   window.addEventListener("offline", () => logEvent("warn", "app.offline"));
   document.addEventListener("visibilitychange", () =>
-    logEvent("action", "app.visibility", { state: document.visibilityState, page: currentPage }));
+    logEvent("action", "app.visibility", { state: document.visibilityState, page: currentPage }),
+  );
   window.addEventListener("beforeunload", () => {
     logEvent("info", "app.unload", { page: currentPage });
     void flush();

@@ -21,7 +21,21 @@ const { DIRS } = require("./config");
 const CATEGORIES = [
   {
     id: "video",
-    inputs: ["mp4", "mkv", "avi", "mov", "webm", "flv", "wmv", "m4v", "ts", "mpeg", "mpg", "gif", "3gp"],
+    inputs: [
+      "mp4",
+      "mkv",
+      "avi",
+      "mov",
+      "webm",
+      "flv",
+      "wmv",
+      "m4v",
+      "ts",
+      "mpeg",
+      "mpg",
+      "gif",
+      "3gp",
+    ],
     outputs: ["mp4", "webm", "mkv", "avi", "mov", "gif"],
   },
   {
@@ -38,7 +52,10 @@ const CATEGORIES = [
 
 // Расширение файла без точки, в нижнем регистре.
 function extOf(name) {
-  return path.extname(String(name || "")).toLowerCase().replace(/^\./, "");
+  return path
+    .extname(String(name || ""))
+    .toLowerCase()
+    .replace(/^\./, "");
 }
 
 // Категория определяется по расширению. → объект категории или null.
@@ -72,12 +89,18 @@ function ffmpegCandidates() {
     if (fs.existsSync(BIN_DIR)) {
       for (const e of fs.readdirSync(BIN_DIR, { withFileTypes: true })) {
         if (e.isDirectory()) {
-          const p = path.join(BIN_DIR, e.name, process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg");
+          const p = path.join(
+            BIN_DIR,
+            e.name,
+            process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg",
+          );
           if (fs.existsSync(p)) list.push(p);
         }
       }
     }
-  } catch { /* не критично */ }
+  } catch {
+    /* не критично */
+  }
   list.push("ffmpeg");
   return list;
 }
@@ -118,7 +141,7 @@ function runVersion(cmd) {
         const line = String(stdout || "").split(/[\r\n]/)[0] || "";
         const m = line.match(/ffmpeg version\s+([^\s]+)/i);
         resolve((m && m[1]) || line.trim() || "unknown");
-      }
+      },
     );
   });
 }
@@ -140,13 +163,19 @@ async function detectFfmpeg({ force = false } = {}) {
     const version = await runVersion(cmd);
     if (version) {
       // ffprobe ищется рядом с найденным ffmpeg, затем в PATH.
-      const probeNext = path.join(path.dirname(cmd), /^win/i.test(process.platform) ? "ffprobe.exe" : "ffprobe");
+      const probeNext = path.join(
+        path.dirname(cmd),
+        /^win/i.test(process.platform) ? "ffprobe.exe" : "ffprobe",
+      );
       const probeCandidates = [probeNext, "ffprobe"];
       let ffprobe = null;
       for (const p of probeCandidates) {
         if (p.includes("/") || p.includes("\\") ? fs.existsSync(p) : true) {
           const pv = await runVersionAny(p);
-          if (pv) { ffprobe = p; break; }
+          if (pv) {
+            ffprobe = p;
+            break;
+          }
         }
       }
       result = { found: true, path: cmd, version, ffmpeg: cmd, ffprobe };
@@ -162,8 +191,12 @@ async function detectFfmpeg({ force = false } = {}) {
 // Проверка любого CLI-бинаря (ffmpeg/ffprobe) на работоспособность.
 function runVersionAny(cmd) {
   return new Promise((resolve) => {
-    execFile(cmd, ["-version"], { timeout: 8000, windowsHide: true, maxBuffer: 2 * 1024 * 1024 },
-      (err, stdout) => resolve(err ? null : String(stdout || "").split(/[\r\n]/)[0] || "unknown"));
+    execFile(
+      cmd,
+      ["-version"],
+      { timeout: 8000, windowsHide: true, maxBuffer: 2 * 1024 * 1024 },
+      (err, stdout) => resolve(err ? null : String(stdout || "").split(/[\r\n]/)[0] || "unknown"),
+    );
   });
 }
 
@@ -182,14 +215,21 @@ async function tools() {
 // Доп. аргументы кодека/качества под целевой формат.
 function codecArgs(to) {
   switch (to) {
-    case "mp3": return ["-c:a", "libmp3lame", "-q:a", "2"];
+    case "mp3":
+      return ["-c:a", "libmp3lame", "-q:a", "2"];
     case "m4a":
-    case "aac": return ["-c:a", "aac"];
-    case "ogg": return ["-c:a", "libvorbis"];
-    case "opus": return ["-c:a", "libopus"];
-    case "webm": return ["-c:v", "libvpx", "-c:a", "libvorbis"];
-    case "gif": return ["-f", "gif"];
-    default: return [];
+    case "aac":
+      return ["-c:a", "aac"];
+    case "ogg":
+      return ["-c:a", "libvorbis"];
+    case "opus":
+      return ["-c:a", "libopus"];
+    case "webm":
+      return ["-c:v", "libvpx", "-c:a", "libvorbis"];
+    case "gif":
+      return ["-f", "gif"];
+    default:
+      return [];
   }
 }
 
@@ -210,7 +250,7 @@ function runFfmpeg(bin, inputPath, outPath, to) {
           return reject(new Error(tail || err.message));
         }
         resolve();
-      }
+      },
     );
   });
 }
@@ -249,7 +289,9 @@ function unpackWithTar(zipPath, destDir) {
       stdio: ["ignore", "ignore", "pipe"],
     });
     let err = "";
-    child.stderr.on("data", (d) => { err += d; });
+    child.stderr.on("data", (d) => {
+      err += d;
+    });
     child.on("error", reject);
     child.on("close", (code) => {
       if (code === 0) resolve();
@@ -282,7 +324,8 @@ function installFfmpeg() {
       const res = await fetch(FFMPEG_URL, {
         redirect: "follow",
         headers: {
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/126.0 Safari/537.36",
+          "User-Agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/126.0 Safari/537.36",
           Accept: "*/*",
         },
       });
@@ -292,17 +335,24 @@ function installFfmpeg() {
 
       let received = 0;
       const ws = fs.createWriteStream(zipPath);
-      ws.on("error", () => { /* ошибка записи обрабатывается ниже */ });
+      ws.on("error", () => {
+        /* ошибка записи обрабатывается ниже */
+      });
       // res.body — это веб-ReadableStream (у fetch нет .on/.pipe), поэтому for-await.
       try {
         for await (const chunk of res.body) {
           const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
           received += buf.length;
-          installState.progress = declared ? Math.min(100, Math.round((100 * received) / declared)) : 0;
+          installState.progress = declared
+            ? Math.min(100, Math.round((100 * received) / declared))
+            : 0;
           if (!ws.write(buf)) await new Promise((r) => ws.once("drain", r));
         }
       } catch (e) {
-        try { ws.destroy(); fs.rmSync(zipPath, { force: true }); } catch {}
+        try {
+          ws.destroy();
+          fs.rmSync(zipPath, { force: true });
+        } catch {}
         throw new Error(`Загрузка прервана: ${e.message}`, { cause: e });
       }
       await new Promise((resolve, reject) => {
@@ -335,6 +385,12 @@ function installFfmpeg() {
 }
 
 module.exports = {
-  CATEGORIES, extOf, categoryOf, detectFfmpeg, tools, convert,
-  installFfmpeg, installStatus,
+  CATEGORIES,
+  extOf,
+  categoryOf,
+  detectFfmpeg,
+  tools,
+  convert,
+  installFfmpeg,
+  installStatus,
 };

@@ -19,7 +19,9 @@ describe("security (шифрование ключей)", () => {
     expect(sec.getSecret("missing")).toBeNull();
 
     // На диске должен лежать зашифрованный токен (не открытый ключ).
-    const stored = JSON.parse(fs.readFileSync(path.join(process.env.MOONAPP_STORAGE!, "secrets.json"), "utf8"))["test-provider"];
+    const stored = JSON.parse(
+      fs.readFileSync(path.join(process.env.MOONAPP_STORAGE!, "secrets.json"), "utf8"),
+    )["test-provider"];
     expect(stored).toBeTruthy();
     expect(stored.startsWith("__aes__") || stored.startsWith("__ss__")).toBe(true);
     expect(stored).not.toContain(plain);

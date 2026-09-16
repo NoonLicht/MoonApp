@@ -57,8 +57,10 @@ async function main() {
       unpacked++;
     }
     fs.rmSync(zipPath, { force: true });
-    console.log(`[fetch-whisper] whisper.cpp ${WHISPER_TAG} → ${WHISPER_DIR}` +
-      ` (${unpacked} файлов, ${(size / 1048576).toFixed(1)} МБ)`);
+    console.log(
+      `[fetch-whisper] whisper.cpp ${WHISPER_TAG} → ${WHISPER_DIR}` +
+        ` (${unpacked} файлов, ${(size / 1048576).toFixed(1)} МБ)`,
+    );
   }
 
   if (fs.existsSync(MODEL_OUT)) {

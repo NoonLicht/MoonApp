@@ -45,19 +45,27 @@ function cleanupOldFiles(dir) {
     for (const name of fs.readdirSync(dir)) {
       const p = path.join(dir, name);
       try {
-        if (Date.now() - fs.statSync(p).mtimeMs > TTL_MS) fs.rmSync(p, { recursive: true, force: true });
-      } catch { /* занят — пропускаем */ }
+        if (Date.now() - fs.statSync(p).mtimeMs > TTL_MS)
+          fs.rmSync(p, { recursive: true, force: true });
+      } catch {
+        /* занят — пропускаем */
+      }
     }
-  } catch { /* не критично */ }
+  } catch {
+    /* не критично */
+  }
 }
 cleanupOldFiles(DIRS.compressorIn);
 cleanupOldFiles(DIRS.compressorOut);
 
 function probeDuration(ffprobe, file) {
   return new Promise((resolve) => {
-    execFile(ffprobe, ["-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", file],
+    execFile(
+      ffprobe,
+      ["-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", file],
       { timeout: 20000, windowsHide: true, maxBuffer: 1024 * 1024 },
-      (err, stdout) => resolve(err ? 0 : parseFloat(String(stdout).trim()) || 0));
+      (err, stdout) => resolve(err ? 0 : parseFloat(String(stdout).trim()) || 0),
+    );
   });
 }
 
@@ -65,21 +73,44 @@ function probeVideoInfo(ffprobe, file) {
   return new Promise((resolve) => {
     // Берём ВСЕ видеопотоки и выбираем основной (максимальное разрешение) —
     // первым потоком в контейнере может оказаться обложка (mjpeg/png).
-    execFile(ffprobe, ["-v", "error", "-select_streams", "v",
-      "-show_entries", "stream=width,height,codec_name,avg_frame_rate,bit_rate", "-of", "json", file],
+    execFile(
+      ffprobe,
+      [
+        "-v",
+        "error",
+        "-select_streams",
+        "v",
+        "-show_entries",
+        "stream=width,height,codec_name,avg_frame_rate,bit_rate",
+        "-of",
+        "json",
+        file,
+      ],
       { timeout: 20000, windowsHide: true, maxBuffer: 1024 * 1024 },
       (err, stdout) => {
         if (err) return resolve({});
         try {
           const streams = JSON.parse(String(stdout)).streams || [];
-          const s = streams.filter((x) => x && x.codec_name)
-            .sort((a, b) => (b.width || 0) * (b.height || 0) - (a.width || 0) * (a.height || 0))[0] || {};
-          resolve({ width: s.width, height: s.height, codec: s.codec_name, fps: s.avg_frame_rate, bitRate: Number(s.bit_rate) || 0 });
-        } catch { resolve({}); }
-      });
+          const s =
+            streams
+              .filter((x) => x && x.codec_name)
+              .sort(
+                (a, b) => (b.width || 0) * (b.height || 0) - (a.width || 0) * (a.height || 0),
+              )[0] || {};
+          resolve({
+            width: s.width,
+            height: s.height,
+            codec: s.codec_name,
+            fps: s.avg_frame_rate,
+            bitRate: Number(s.bit_rate) || 0,
+          });
+        } catch {
+          resolve({});
+        }
+      },
+    );
   });
 }
-
 
 // Запуск процесса (ffmpeg/rigaya/av1an) с парсингом прогресса.
 function runProc(cmd, args, onProgress, totalSec) {
@@ -96,7 +127,11 @@ function runProc(cmd, args, onProgress, totalSec) {
       emitProgress(s, onProgress, totalSec);
     });
     child.on("error", reject);
-    child.on("close", (code) => code === 0 ? resolve() : reject(new Error(`${path.basename(String(cmd))} exit ${code}: ${errTail.slice(-300)}`)));
+    child.on("close", (code) =>
+      code === 0
+        ? resolve()
+        : reject(new Error(`${path.basename(String(cmd))} exit ${code}: ${errTail.slice(-300)}`)),
+    );
   });
 }
 
@@ -104,7 +139,10 @@ function runProc(cmd, args, onProgress, totalSec) {
 function emitProgress(s, onProgress, totalSec) {
   if (!onProgress) return;
   const um = /out_time_us=(\d+)/.exec(s);
-  if (um) { onProgress(Number(um[1]) / 1e6); return; }
+  if (um) {
+    onProgress(Number(um[1]) / 1e6);
+    return;
+  }
   const pm = /\s(\d{1,3}(?:\.\d+)?)\s*%/.exec(s.slice(-300));
   if (pm && totalSec > 0) onProgress((parseFloat(pm[1]) / 100) * totalSec);
 }
@@ -123,7 +161,8 @@ function tracker(job, totalSec) {
     const now = Date.now();
     if (job.startedAt) {
       const elapsed = (now - job.startedAt) / 1000;
-      if (job.progress > 2) job.etaSec = Math.max(0, Math.round((elapsed / job.progress) * (100 - job.progress)));
+      if (job.progress > 2)
+        job.etaSec = Math.max(0, Math.round((elapsed / job.progress) * (100 - job.progress)));
     }
   };
 }
@@ -132,30 +171,111 @@ function tracker(job, totalSec) {
 // targetMB — пресеты с лимитом размера: фронт считает битрейт из длительности
 // и шлёт targetKbps. Подписи пресетов — в i18n (cmp.preset_<id>).
 const SYSTEM_PRESETS = [
-  { id: "discord",   codec: "av1",  engine: "auto",   qualityMode: "bitrate", crf: null, speed: "8",      tenBit: false, targetHeight: "1080", audio: "aac",  audioKbps: 128, targetMB: 25 },
-  { id: "archival",  codec: "av1",  engine: "svtav1", qualityMode: "crf",     crf: 20,   speed: "4",      tenBit: true,  targetHeight: "original", audio: "copy", audioKbps: 192 },
-  { id: "fastgpu",   codec: "av1",  engine: "nvenc",  qualityMode: "crf",     crf: 26,   speed: "P5",     tenBit: false, targetHeight: "original", audio: "copy", audioKbps: 192 },
-  { id: "smallest",  codec: "av1",  engine: "auto",   qualityMode: "crf",     crf: 28,   speed: "6",      tenBit: false, targetHeight: "720",  audio: "opus", audioKbps: 96 },
-  { id: "universal", codec: "h264", engine: "x264",   qualityMode: "crf",     crf: 22,   speed: "medium", tenBit: false, targetHeight: "original", audio: "aac",  audioKbps: 192 },
+  {
+    id: "discord",
+    codec: "av1",
+    engine: "auto",
+    qualityMode: "bitrate",
+    crf: null,
+    speed: "8",
+    tenBit: false,
+    targetHeight: "1080",
+    audio: "aac",
+    audioKbps: 128,
+    targetMB: 25,
+  },
+  {
+    id: "archival",
+    codec: "av1",
+    engine: "svtav1",
+    qualityMode: "crf",
+    crf: 20,
+    speed: "4",
+    tenBit: true,
+    targetHeight: "original",
+    audio: "copy",
+    audioKbps: 192,
+  },
+  {
+    id: "fastgpu",
+    codec: "av1",
+    engine: "nvenc",
+    qualityMode: "crf",
+    crf: 26,
+    speed: "P5",
+    tenBit: false,
+    targetHeight: "original",
+    audio: "copy",
+    audioKbps: 192,
+  },
+  {
+    id: "smallest",
+    codec: "av1",
+    engine: "auto",
+    qualityMode: "crf",
+    crf: 28,
+    speed: "6",
+    tenBit: false,
+    targetHeight: "720",
+    audio: "opus",
+    audioKbps: 96,
+  },
+  {
+    id: "universal",
+    codec: "h264",
+    engine: "x264",
+    qualityMode: "crf",
+    crf: 22,
+    speed: "medium",
+    tenBit: false,
+    targetHeight: "original",
+    audio: "aac",
+    audioKbps: 192,
+  },
 ];
 
 // ================== НОРМАЛИЗАЦИЯ ПАРАМЕТОВ ==================
 const CODECS = ["av1", "hevc", "h264"];
 const QUALITY_MODES = ["crf", "bitrate", "constrained"];
 const HEIGHTS = ["original", "2160", "1440", "1080", "720", "480"];
-const ENGINES = ["auto", "svtav1", "x265", "x264", "aom", "rav1e", "av1an", "nvenc", "qsv", "amf", "nvencc", "qsvencc", "vceencc"];
+const ENGINES = [
+  "auto",
+  "svtav1",
+  "x265",
+  "x264",
+  "aom",
+  "rav1e",
+  "av1an",
+  "nvenc",
+  "qsv",
+  "amf",
+  "nvencc",
+  "qsvencc",
+  "vceencc",
+];
 
-function clamp(n, a, b) { return Number.isFinite(n) ? Math.min(b, Math.max(a, n)) : a; }
+function clamp(n, a, b) {
+  return Number.isFinite(n) ? Math.min(b, Math.max(a, n)) : a;
+}
 
 function defaultSpeed(engine) {
   switch (engine) {
-    case "svtav1": case "av1an": return "6";
-    case "x265": case "x264": return "medium";
-    case "aom": return "4";
-    case "nvenc": return "P5";
-    case "qsv": return "medium";
-    case "amf": return "balanced";
-    default: return "6";
+    case "svtav1":
+    case "av1an":
+      return "6";
+    case "x265":
+    case "x264":
+      return "medium";
+    case "aom":
+      return "4";
+    case "nvenc":
+      return "P5";
+    case "qsv":
+      return "medium";
+    case "amf":
+      return "balanced";
+    default:
+      return "6";
   }
 }
 
@@ -169,7 +289,9 @@ function normalizeParams(raw) {
     maxKbps: clamp(Number(raw.maxKbps ?? 0), 0, 200000),
     speed: String(raw.speed || "").slice(0, 12),
     tenBit: raw.tenBit === true || raw.tenBit === "true",
-    targetHeight: HEIGHTS.includes(String(raw.targetHeight)) ? String(raw.targetHeight) : "original",
+    targetHeight: HEIGHTS.includes(String(raw.targetHeight))
+      ? String(raw.targetHeight)
+      : "original",
     audio: ["copy", "aac", "opus"].includes(raw.audio) ? raw.audio : "aac",
     audioKbps: clamp(Number(raw.audioKbps ?? 192), 32, 320),
     presetId: String(raw.presetId || "").slice(0, 40),
@@ -182,11 +304,12 @@ function normalizeParams(raw) {
 // Для выбранного движка: [выбранный, ...однокодекные запасные, x264-страховка].
 function engineCandidates(engine, codec, methods) {
   const perCodec = {
-    av1:  ["svtav1", "nvenc", "qsv", "amf", "aom", "rav1e", "av1an"],
+    av1: ["svtav1", "nvenc", "qsv", "amf", "aom", "rav1e", "av1an"],
     hevc: ["x265", "nvenc", "qsv", "amf"],
     h264: ["x264", "nvenc", "qsv", "amf"],
   };
-  const list = engine === "auto" ? perCodec[codec] : [engine, ...perCodec[codec].filter((e) => e !== engine)];
+  const list =
+    engine === "auto" ? perCodec[codec] : [engine, ...perCodec[codec].filter((e) => e !== engine)];
   const ok = list.filter((e) => methods[e] === true);
   // Кросс-кодек страховка: программный H.264 есть почти в любой сборке.
   if (codec !== "h264" && methods.x264 && !ok.includes("x264")) ok.push("x264");
@@ -197,7 +320,7 @@ function engineCandidates(engine, codec, methods) {
 const isWin = /^win/i.test(process.platform);
 
 function quoteCmd(cmd, args) {
-  const q = (s) => /\s/.test(String(s)) ? `"${String(s).replace(/"/g, '\\"')}"` : String(s);
+  const q = (s) => (/\s/.test(String(s)) ? `"${String(s).replace(/"/g, '\\"')}"` : String(s));
   return [cmd, ...args.map(q)].join(" ");
 }
 
@@ -205,7 +328,15 @@ function quoteCmd(cmd, args) {
 function qualityFlags(enc, crf) {
   if (enc.endsWith("_nvenc")) return ["-rc", "vbr", "-cq", String(clamp(crf, 0, 51))];
   if (enc.endsWith("_qsv")) return ["-global_quality", String(clamp(crf, 0, 51))];
-  if (enc.endsWith("_amf")) return ["-rc", "cqp", "-qp_i", String(clamp(crf, 0, 51)), "-qp_p", String(clamp(crf + 2, 0, 51))];
+  if (enc.endsWith("_amf"))
+    return [
+      "-rc",
+      "cqp",
+      "-qp_i",
+      String(clamp(crf, 0, 51)),
+      "-qp_p",
+      String(clamp(crf + 2, 0, 51)),
+    ];
   return ["-crf", String(clamp(crf, 0, 51))];
 }
 
@@ -215,7 +346,8 @@ function speedArgs(enc, speed) {
   if (enc === "libsvtav1") return ["-preset", String(clamp(parseInt(speed, 10) || 6, 0, 13))];
   if (enc === "libaom-av1") return ["-cpu-used", String(clamp(parseInt(speed, 10) || 4, 0, 8))];
   if (enc === "libx264" || enc === "libx265") return ["-preset", speed];
-  if (enc.endsWith("_nvenc")) return ["-preset", /^P[1-7]$/i.test(speed) ? speed.toLowerCase() : "p5"];
+  if (enc.endsWith("_nvenc"))
+    return ["-preset", /^P[1-7]$/i.test(speed) ? speed.toLowerCase() : "p5"];
   if (enc.endsWith("_qsv")) return ["-preset", speed];
   if (enc.endsWith("_amf")) return ["-quality", speed];
   return [];
@@ -241,13 +373,20 @@ function ffmpegArgs(job, ffEnc, opts = {}) {
     args.push("-b:v", `${targetKbps}k`);
     if (maxKbps > 0) args.push("-maxrate", `${maxKbps}k`, "-bufsize", `${maxKbps * 2}k`);
   } else if (job.qualityMode === "constrained" && maxKbps > 0) {
-    args.push(...qualityFlags(ffEnc, crf), "-maxrate", `${maxKbps}k`, "-bufsize", `${maxKbps * 2}k`);
+    args.push(
+      ...qualityFlags(ffEnc, crf),
+      "-maxrate",
+      `${maxKbps}k`,
+      "-bufsize",
+      `${maxKbps * 2}k`,
+    );
   } else {
     args.push(...qualityFlags(ffEnc, crf));
   }
   const sp = speedArgs(ffEnc, speed);
   if (sp.length) args.push(...sp);
-  if (ffEnc === "libx264" || ffEnc === "libx265") args.push("-threads", String(Math.min(16, os.cpus().length)));
+  if (ffEnc === "libx264" || ffEnc === "libx265")
+    args.push("-threads", String(Math.min(16, os.cpus().length)));
   if (opts.pass === 1) {
     args.push("-f", "null", isWin ? "NUL" : "/dev/null");
   } else {
@@ -274,7 +413,8 @@ function rigayaArgs(job, opts = {}) {
   args.push("--output-depth", tenBit ? "10" : "8");
   if (targetHeight !== "original") args.push("--resize", `-,${targetHeight}`);
   if (audio === "copy") args.push("--audio-copy");
-  else if (audio === "opus") args.push("--audio-codec", "libopus", "--audio-bitrate", String(audioKbps));
+  else if (audio === "opus")
+    args.push("--audio-codec", "libopus", "--audio-bitrate", String(audioKbps));
   else args.push("--audio-codec", "aac", "--audio-bitrate", String(audioKbps));
   return args;
 }
@@ -282,9 +422,18 @@ function rigayaArgs(job, opts = {}) {
 // Av1an: параллельное кодирование по сценам (оркестратор над svt-av1).
 function av1anArgs(job, opts = {}) {
   const workers = Math.max(1, Math.min(os.cpus().length, 16));
-  return ["-i", job.inputPath, "-e", "svt-av1",
-    "-v", `--crf ${clamp(job.crf, 0, 63)} --preset ${clamp(parseInt(job.speed, 10) || 6, 0, 13)}`,
-    "--workers", String(workers), "-o", opts.outFile];
+  return [
+    "-i",
+    job.inputPath,
+    "-e",
+    "svt-av1",
+    "-v",
+    `--crf ${clamp(job.crf, 0, 63)} --preset ${clamp(parseInt(job.speed, 10) || 6, 0, 13)}`,
+    "--workers",
+    String(workers),
+    "-o",
+    opts.outFile,
+  ];
 }
 
 // Контейнер под аудио/кодек: opus в mp4 проблемный → webm (av1) или mkv.
@@ -298,14 +447,28 @@ function startJob(raw) {
   const params = normalizeParams(raw);
   const id = crypto.randomUUID();
   const job = {
-    id, createdAt: Date.now(), startedAt: 0,
-    inputPath: raw.inputPath, name: raw.name || "video", size: raw.size || 0,
+    id,
+    createdAt: Date.now(),
+    startedAt: 0,
+    inputPath: raw.inputPath,
+    name: raw.name || "video",
+    size: raw.size || 0,
     ...params,
-    stage: "queued", progress: 0, etaSec: null, steps: [],
-    engineUsed: null, fallbacks: [], command: "",
-    done: false, error: "", outSize: 0, outFile: null,
-    info: {}, durationSec: 0,
-    weightBase: 0, weightSpan: 1,
+    stage: "queued",
+    progress: 0,
+    etaSec: null,
+    steps: [],
+    engineUsed: null,
+    fallbacks: [],
+    command: "",
+    done: false,
+    error: "",
+    outSize: 0,
+    outFile: null,
+    info: {},
+    durationSec: 0,
+    weightBase: 0,
+    weightSpan: 1,
   };
   jobs.set(id, job);
   trimJobs(jobs, JOB_LIMIT);
@@ -340,29 +503,57 @@ async function runJob(job) {
     for (const method of cands) {
       try {
         const cmd = await encodeWithMethod(job, method, hw, ff, { outFile, passLog, onProg });
-        if (cmd) { job.command = cmd; break; }
+        if (cmd) {
+          job.command = cmd;
+          break;
+        }
       } catch (e) {
         lastErr = e;
         job.fallbacks.push(method);
         logger.warn("compressor.fallback", { method, err: String(e.message || e).slice(0, 200) });
-        try { fs.rmSync(outFile, { force: true }); } catch { /* ignore */ }
+        try {
+          fs.rmSync(outFile, { force: true });
+        } catch {
+          /* ignore */
+        }
       }
     }
     if (!job.command) throw lastErr || new Error(`no_working_encoder_${job.codec}`);
 
     job.outFile = outFile;
     job.outSize = fs.existsSync(outFile) ? fs.statSync(outFile).size : 0;
-    job.progress = 100; job.etaSec = 0;
-    job.done = true; job.stage = "done";
+    job.progress = 100;
+    job.etaSec = 0;
+    job.done = true;
+    job.stage = "done";
     job.steps.push("encode");
-    logger.info("compressor.done", { id: job.id, size: job.outSize, engine: job.engineUsed, codec: job.codec, fallbacks: job.fallbacks });
+    logger.info("compressor.done", {
+      id: job.id,
+      size: job.outSize,
+      engine: job.engineUsed,
+      codec: job.codec,
+      fallbacks: job.fallbacks,
+    });
   } catch (e) {
-    job.error = String(e.message || e); job.stage = "error";
+    job.error = String(e.message || e);
+    job.stage = "error";
     logger.error("compressor.error", { id: job.id, error: job.error });
   } finally {
-    try { removePath(job.inputPath); } catch { /* ignore */ }
-    try { fs.rmSync(`${passLog}-0.log`, { force: true }); } catch { /* ignore */ }
-    try { fs.rmSync(`${passLog}-0.log.mbtree`, { force: true }); } catch { /* ignore */ }
+    try {
+      removePath(job.inputPath);
+    } catch {
+      /* ignore */
+    }
+    try {
+      fs.rmSync(`${passLog}-0.log`, { force: true });
+    } catch {
+      /* ignore */
+    }
+    try {
+      fs.rmSync(`${passLog}-0.log.mbtree`, { force: true });
+    } catch {
+      /* ignore */
+    }
   }
 }
 
@@ -383,13 +574,37 @@ async function encodeWithMethod(job, method, hw, ff, ctx) {
     // Отдельный бинарь rav1e: элементарный поток .ivf, mux делает ffmpeg.
     const exe = hw.externals.rav1e;
     const ivf = outFile.replace(/\.\w+$/, "") + ".ivf";
-    const args = [job.inputPath, "--output", ivf, "--crf", String(job.crf),
-      "--speed", String(clamp(parseInt(job.speed, 10) || 6, 0, 10))];
+    const args = [
+      job.inputPath,
+      "--output",
+      ivf,
+      "--crf",
+      String(job.crf),
+      "--speed",
+      String(clamp(parseInt(job.speed, 10) || 6, 0, 10)),
+    ];
     await runProc(exe, args, onProg, job.durationSec);
-    const mux = ["-y", "-i", ivf, "-i", job.inputPath, "-map", "0:v", "-map", "1:a?",
-      "-c", "copy", "-shortest", outFile];
+    const mux = [
+      "-y",
+      "-i",
+      ivf,
+      "-i",
+      job.inputPath,
+      "-map",
+      "0:v",
+      "-map",
+      "1:a?",
+      "-c",
+      "copy",
+      "-shortest",
+      outFile,
+    ];
     await runProc(ff.ffmpeg, mux, null, 0);
-    try { fs.rmSync(ivf, { force: true }); } catch { /* ignore */ }
+    try {
+      fs.rmSync(ivf, { force: true });
+    } catch {
+      /* ignore */
+    }
     return quoteCmd(exe, args);
   }
   if (method === "nvencc" || method === "qsvencc" || method === "vceencc") {
@@ -409,7 +624,12 @@ async function encodeWithMethod(job, method, hw, ff, ctx) {
         // Проход 1 (45% веса), затем проход 2 (50%).
         setStage(job, "encode", 0.05, 0.45);
         const p1 = ffmpegArgs(job, ffEnc, { pass: 1 });
-        await runProc(ff.ffmpeg, [...p1.slice(0, -3), "-passlogfile", ctx.passLog, ...p1.slice(-3)], onProg, job.durationSec);
+        await runProc(
+          ff.ffmpeg,
+          [...p1.slice(0, -3), "-passlogfile", ctx.passLog, ...p1.slice(-3)],
+          onProg,
+          job.durationSec,
+        );
         setStage(job, "encode", 0.5, 0.5);
         const p2 = ffmpegArgs(job, ffEnc, { pass: 2, outFile });
         const p2full = [...p2.slice(0, -1), "-passlogfile", ctx.passLog, p2[p2.length - 1]];
@@ -424,19 +644,27 @@ async function encodeWithMethod(job, method, hw, ff, ctx) {
       // Аппаратный энкодер может числиться в сборке, но не работать на машине.
       lastErr = e;
       logger.warn("compressor.ffEncFallback", { ffEnc, err: String(e.message || e).slice(0, 160) });
-      try { fs.rmSync(outFile, { force: true }); } catch { /* ignore */ }
+      try {
+        fs.rmSync(outFile, { force: true });
+      } catch {
+        /* ignore */
+      }
     }
   }
   throw lastErr || new Error(`ffmpeg_method_failed_${method}`);
 }
 
-function getJob(id) { return jobs.get(id) || null; }
+function getJob(id) {
+  return jobs.get(id) || null;
+}
 
 module.exports = {
-  jobs, startJob, getJob, SYSTEM_PRESETS, normalizeParams, engineCandidates,
-  probeDuration, probeVideoInfo,
+  jobs,
+  startJob,
+  getJob,
+  SYSTEM_PRESETS,
+  normalizeParams,
+  engineCandidates,
+  probeDuration,
+  probeVideoInfo,
 };
-
-
-
-

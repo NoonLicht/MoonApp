@@ -45,7 +45,9 @@ const gotSingleInstanceLock = app.requestSingleInstanceLock();
 if (!gotSingleInstanceLock) {
   app.quit();
 } else {
-  app.on("second-instance", () => { showWindow(); });
+  app.on("second-instance", () => {
+    showWindow();
+  });
 }
 
 // --- Логирование main-процесса ---
@@ -59,34 +61,59 @@ let mainLogSize = -1;
 
 // require("../server/logger") безопасен: storagePath уже выставил
 // MOONAPP_STORAGE, поэтому logger пишет в правильный storage.
-const serverLogger = (() => { try { return require("../server/logger"); } catch { return null; } })();
+const serverLogger = (() => {
+  try {
+    return require("../server/logger");
+  } catch {
+    return null;
+  }
+})();
 
 function mlog(level, event, data) {
-  try { serverLogger?.log?.(level, event, data); } catch { /* ignore */ }
+  try {
+    serverLogger?.log?.(level, event, data);
+  } catch {
+    /* ignore */
+  }
 }
 
 function appendMainLog(level, args) {
   try {
     fs.mkdirSync(path.dirname(MAIN_LOG), { recursive: true });
-    const text = args.map((a) => {
-      if (a instanceof Error) return a.stack || a.message;
-      if (typeof a === "string") return a;
-      try { return JSON.stringify(a); } catch { return String(a); }
-    }).join(" ");
+    const text = args
+      .map((a) => {
+        if (a instanceof Error) return a.stack || a.message;
+        if (typeof a === "string") return a;
+        try {
+          return JSON.stringify(a);
+        } catch {
+          return String(a);
+        }
+      })
+      .join(" ");
     const line = `${new Date().toISOString()}  ${level}  ${text}\n`;
     if (mainLogSize < 0) mainLogSize = fs.existsSync(MAIN_LOG) ? fs.statSync(MAIN_LOG).size : 0;
     if (mainLogSize > 2 * 1024 * 1024) {
-      try { fs.renameSync(MAIN_LOG, MAIN_LOG.replace(/\.log$/, ".1.log")); } catch { /* ignore */ }
+      try {
+        fs.renameSync(MAIN_LOG, MAIN_LOG.replace(/\.log$/, ".1.log"));
+      } catch {
+        /* ignore */
+      }
       mainLogSize = 0;
     }
     fs.appendFileSync(MAIN_LOG, line);
     mainLogSize += Buffer.byteLength(line);
-  } catch { /* приложение не должно падать из-за лога */ }
+  } catch {
+    /* приложение не должно падать из-за лога */
+  }
 }
 
 for (const lvl of ["warn", "error"]) {
   const orig = console[lvl].bind(console);
-  console[lvl] = (...args) => { appendMainLog(lvl.toUpperCase(), args); orig(...args); };
+  console[lvl] = (...args) => {
+    appendMainLog(lvl.toUpperCase(), args);
+    orig(...args);
+  };
 }
 
 function findFreePort(start = 4000, maxTry = 100) {
@@ -95,8 +122,12 @@ function findFreePort(start = 4000, maxTry = 100) {
     const tryListen = (p, attempt) => {
       if (attempt > maxTry) return reject(new Error("no free port"));
       const srv = net.createServer();
-      srv.once("error", () => { tryListen(p + 1, attempt + 1); });
-      srv.listen(p, () => { srv.close(() => resolve(p)); });
+      srv.once("error", () => {
+        tryListen(p + 1, attempt + 1);
+      });
+      srv.listen(p, () => {
+        srv.close(() => resolve(p));
+      });
     };
     tryListen(port, 0);
   });
@@ -122,10 +153,26 @@ function withSettingsLock(fn) {
   const lock = path.join(STORAGE_DIR, "settings.lock");
   let fd = null;
   for (let i = 0; i < 20 && fd === null; i++) {
-    try { fd = fs.openSync(lock, "wx"); } catch { const t0 = Date.now(); while (Date.now() - t0 < 100) { /* busy-wait 100 мс */ } }
+    try {
+      fd = fs.openSync(lock, "wx");
+    } catch {
+      const t0 = Date.now();
+      while (Date.now() - t0 < 100) {
+        /* busy-wait 100 мс */
+      }
+    }
   }
   if (fd === null) return false;
-  try { return fn() !== false; } finally { try { fs.closeSync(fd); fs.rmSync(lock, { force: true }); } catch { /* ignore */ } }
+  try {
+    return fn() !== false;
+  } finally {
+    try {
+      fs.closeSync(fd);
+      fs.rmSync(lock, { force: true });
+    } catch {
+      /* ignore */
+    }
+  }
 }
 
 function patchSettings(patch) {
@@ -134,7 +181,11 @@ function patchSettings(patch) {
     const file = path.join(STORAGE_DIR, "settings.json");
     withSettingsLock(() => {
       let cur = {};
-      try { cur = JSON.parse(fs.readFileSync(file, "utf8")); } catch { /* файла ещё нет */ }
+      try {
+        cur = JSON.parse(fs.readFileSync(file, "utf8"));
+      } catch {
+        /* файла ещё нет */
+      }
       const merged = { ...cur };
       for (const [section, values] of Object.entries(patch)) {
         merged[section] = { ...(merged[section] || {}), ...values };
@@ -142,7 +193,9 @@ function patchSettings(patch) {
       fs.writeFileSync(file, JSON.stringify(merged, null, 2), "utf8");
       return true;
     });
-  } catch { /* окно не должно падать из-за неудачной записи размера */ }
+  } catch {
+    /* окно не должно падать из-за неудачной записи размера */
+  }
 }
 
 // --- Автозапуск с Windows ---
@@ -155,7 +208,9 @@ function applyAutoLaunch() {
     if (cur.openAtLogin !== want) {
       app.setLoginItemSettings({ openAtLogin: want, path: process.execPath });
     }
-  } catch { /* в dev-режиме setLoginItemSettings может быть недоступен */ }
+  } catch {
+    /* в dev-режиме setLoginItemSettings может быть недоступен */
+  }
 }
 
 // --- Трей ---
@@ -189,13 +244,20 @@ async function makeTrayIcon() {
         trayIconCache = img.resize({ width: 16, height: 16 });
         return trayIconCache;
       }
-    } catch { /* пробуем следующий источник */ }
+    } catch {
+      /* пробуем следующий источник */
+    }
   }
   // Фолбэк: иконка самого exe (Windows умеет извлекать её нативно).
   try {
     const icon = await app.getFileIcon(process.execPath, { size: "small" });
-    if (icon && !icon.isEmpty()) { trayIconCache = icon; return trayIconCache; }
-  } catch { /* ниже — пустая картинка */ }
+    if (icon && !icon.isEmpty()) {
+      trayIconCache = icon;
+      return trayIconCache;
+    }
+  } catch {
+    /* ниже — пустая картинка */
+  }
   return nativeImage.createEmpty();
 }
 
@@ -221,20 +283,39 @@ function zapretApi(urlPath, body) {
   return new Promise((resolve) => {
     if (!apiPort) return resolve(null);
     const payload = body ? JSON.stringify(body) : null;
-    const req = http.request({
-      host: "127.0.0.1", port: apiPort, path: `/api/zapret${urlPath}`, method: payload ? "POST" : "GET",
-      headers: {
-        "x-moonapp-token": apiToken || "",
-        ...(payload ? { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) } : {}),
+    const req = http.request(
+      {
+        host: "127.0.0.1",
+        port: apiPort,
+        path: `/api/zapret${urlPath}`,
+        method: payload ? "POST" : "GET",
+        headers: {
+          "x-moonapp-token": apiToken || "",
+          ...(payload
+            ? { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) }
+            : {}),
+        },
+        timeout: 8000,
       },
-      timeout: 8000,
-    }, (res) => {
-      let raw = "";
-      res.on("data", (d) => { raw += d; });
-      res.on("end", () => { try { resolve(JSON.parse(raw)); } catch { resolve(null); } });
-    });
+      (res) => {
+        let raw = "";
+        res.on("data", (d) => {
+          raw += d;
+        });
+        res.on("end", () => {
+          try {
+            resolve(JSON.parse(raw));
+          } catch {
+            resolve(null);
+          }
+        });
+      },
+    );
     req.on("error", () => resolve(null));
-    req.on("timeout", () => { req.destroy(); resolve(null); });
+    req.on("timeout", () => {
+      req.destroy();
+      resolve(null);
+    });
     if (payload) req.write(payload);
     req.end();
   });
@@ -243,18 +324,30 @@ function zapretApi(urlPath, body) {
 /** Перестроить меню трея (после переключения стратегии / старта/стопа). */
 async function refreshTray() {
   const { Menu } = require("electron");
-  try { if (tray) tray.setContextMenu(Menu.buildFromTemplate(await trayTemplate())); } catch { /* окно уже уничтожено */ }
+  try {
+    if (tray) tray.setContextMenu(Menu.buildFromTemplate(await trayTemplate()));
+  } catch {
+    /* окно уже уничтожено */
+  }
 }
 
 async function trayTemplate() {
   const items = [
     { label: "Открыть", click: () => showWindow() },
-    { label: "Проверить обновления", visible: !!app.isPackaged, click: () => { void autoUpdater.checkForUpdates().catch(() => {}); } },
+    {
+      label: "Проверить обновления",
+      visible: !!app.isPackaged,
+      click: () => {
+        void autoUpdater.checkForUpdates().catch(() => {});
+      },
+    },
     { type: "separator" },
   ];
   // Подменю «Обход блокировок»: статус + конфиги по группам + Стоп + обновление.
   const [strategies, status, update] = await Promise.all([
-    zapretApi("/strategies"), zapretApi("/status"), zapretApi("/update"),
+    zapretApi("/strategies"),
+    zapretApi("/status"),
+    zapretApi("/update"),
   ]);
   if (Array.isArray(strategies) && strategies.length) {
     const active = status?.active;
@@ -271,12 +364,19 @@ async function trayTemplate() {
       label: s.name,
       type: "checkbox",
       checked: !!active && current === s.id,
-      click: () => { void zapretApi("/start", { strategyId: s.id, mode: (readSettings()?.zapret?.mode === "process" ? "process" : "service") }).then(() => refreshTray()); },
+      click: () => {
+        void zapretApi("/start", {
+          strategyId: s.id,
+          mode: readSettings()?.zapret?.mode === "process" ? "process" : "service",
+        }).then(() => refreshTray());
+      },
     });
     const grouped = groups
       .map(([g, title]) => {
         const list = strategies.filter((s) => s.group === g);
-        return list.length ? { label: `${title} (${list.length})`, submenu: list.map(strategyItem) } : null;
+        return list.length
+          ? { label: `${title} (${list.length})`, submenu: list.map(strategyItem) }
+          : null;
       })
       .filter(Boolean);
     const ungrouped = strategies.filter((s) => !groups.some(([g]) => g === s.group));
@@ -287,21 +387,39 @@ async function trayTemplate() {
       ...(ungrouped.length ? [...ungrouped.map(strategyItem)] : []),
       ...grouped,
       { type: "separator" },
-      { label: "Остановить обход", enabled: !!active, click: () => { void zapretApi("/stop").then(() => refreshTray()); } },
+      {
+        label: "Остановить обход",
+        enabled: !!active,
+        click: () => {
+          void zapretApi("/stop").then(() => refreshTray());
+        },
+      },
     ];
     // Обновление движка прямо из трея (прогресс виден на странице Bypass).
     if (update && !update.error) {
       const has = !!update.hasUpdate;
       subItems.push({
-        label: has ? `⬇ Обновить zapret до ${update.latest}` : `⬇ Переустановить zapret ${update.installed || ""}`,
-        click: () => { void zapretApi("/install", { tag: has ? update.latest : undefined }).then(() => refreshTray()); },
+        label: has
+          ? `⬇ Обновить zapret до ${update.latest}`
+          : `⬇ Переустановить zapret ${update.installed || ""}`,
+        click: () => {
+          void zapretApi("/install", { tag: has ? update.latest : undefined }).then(() =>
+            refreshTray(),
+          );
+        },
       });
     }
     items.push({ label: "Обход блокировок (zapret)", submenu: subItems });
   }
   items.push(
     { type: "separator" },
-    { label: "Выход", click: () => { quitting = true; app.quit(); } },
+    {
+      label: "Выход",
+      click: () => {
+        quitting = true;
+        app.quit();
+      },
+    },
   );
   return items;
 }
@@ -317,15 +435,26 @@ function showWindow() {
     win.focus();
     // Прозрачное frameless-окно после hide/show иногда не перерисовывается —
     // просим Chromium отрисовать кадр заново.
-    try { win.webContents.invalidate?.(); } catch { /* не критично */ }
+    try {
+      win.webContents.invalidate?.();
+    } catch {
+      /* не критично */
+    }
     mlog("action", "win.show", {});
   } catch (e) {
     mlog("error", "win.show_failed", { error: e?.message || String(e) });
   }
   // Обновление скачано и ждёт установки — обязательный диалог возвращаем на экран:
   // окно могло быть спрятано в трей, а пользователь мог закрыть диалог вместе с ним.
-  if (pendingUpdateVersion) setTimeout(() => { void showMandatoryUpdate(); }, 400);
-  try { tray?.destroy(); } catch { /* уже уничтожен */ }
+  if (pendingUpdateVersion)
+    setTimeout(() => {
+      void showMandatoryUpdate();
+    }, 400);
+  try {
+    tray?.destroy();
+  } catch {
+    /* уже уничтожен */
+  }
   tray = null;
 }
 
@@ -336,9 +465,21 @@ function showWindow() {
  */
 async function hideToTray(reason) {
   if (!win) return;
-  try { await ensureTray(); } catch { /* трей мог не создаться — прячем всё равно */ }
-  try { win.setSkipTaskbar(true); } catch { /* ignore */ }
-  try { win.hide(); } catch { /* ignore */ }
+  try {
+    await ensureTray();
+  } catch {
+    /* трей мог не создаться — прячем всё равно */
+  }
+  try {
+    win.setSkipTaskbar(true);
+  } catch {
+    /* ignore */
+  }
+  try {
+    win.hide();
+  } catch {
+    /* ignore */
+  }
   mlog("action", "win.hide", { reason });
 }
 
@@ -347,12 +488,18 @@ function waitForServer(port, timeoutMs = 8000) {
   const started = Date.now();
   return new Promise((resolve) => {
     const tryOnce = () => {
-      const req = http.get({ host: "127.0.0.1", port, path: "/api/health", timeout: 1500 }, (res) => {
-        res.resume();
-        resolve(true);
-      });
+      const req = http.get(
+        { host: "127.0.0.1", port, path: "/api/health", timeout: 1500 },
+        (res) => {
+          res.resume();
+          resolve(true);
+        },
+      );
       req.on("error", () => retry());
-      req.on("timeout", () => { req.destroy(); retry(); });
+      req.on("timeout", () => {
+        req.destroy();
+        retry();
+      });
     };
     const retry = () => {
       if (Date.now() - started > timeoutMs) return resolve(false);
@@ -385,7 +532,11 @@ async function createWindow() {
   const token = crypto.randomBytes(24).toString("hex");
   const os = require("os");
   tokenFile = path.join(os.tmpdir(), `moonapp-token-${crypto.randomBytes(6).toString("hex")}`);
-  try { fs.writeFileSync(tokenFile, token, { mode: 0o600 }); } catch { tokenFile = null; }
+  try {
+    fs.writeFileSync(tokenFile, token, { mode: 0o600 });
+  } catch {
+    tokenFile = null;
+  }
 
   const port = await findFreePort(4000);
   startServer(port, { token });
@@ -402,23 +553,39 @@ async function createWindow() {
   const width = Math.max(MIN_WIN_WIDTH, Number(ws.width) || 1180);
   const height = Math.max(MIN_WIN_HEIGHT, Number(ws.height) || 820);
   const startW = ws.rememberSize !== false && remembered.width ? Number(remembered.width) : width;
-  const startH = ws.rememberSize !== false && remembered.height ? Number(remembered.height) : height;
+  const startH =
+    ws.rememberSize !== false && remembered.height ? Number(remembered.height) : height;
 
   // Позиция окна (window.lastPos): помним её рядом с размером, но восстанавливаем
   // только если окно попадает на текущий набор мониторов — иначе после смены
   // конфигурации экранов окно оказывалось бы за пределами рабочего стола.
   let startX, startY;
   const rememberedPos = readSettings()?.window?.lastPos || {};
-  if (ws.rememberSize !== false && Number.isFinite(Number(rememberedPos.x)) && Number.isFinite(Number(rememberedPos.y))) {
+  if (
+    ws.rememberSize !== false &&
+    Number.isFinite(Number(rememberedPos.x)) &&
+    Number.isFinite(Number(rememberedPos.y))
+  ) {
     try {
       const { screen } = require("electron");
-      const px = Number(rememberedPos.x), py = Number(rememberedPos.y);
+      const px = Number(rememberedPos.x),
+        py = Number(rememberedPos.y);
       const onScreen = screen.getAllDisplays().some((d) => {
         const a = d.workArea;
-        return px + startW > a.x + 40 && px < a.x + a.width - 40 && py + 40 > a.y && py < a.y + a.height - 40;
+        return (
+          px + startW > a.x + 40 &&
+          px < a.x + a.width - 40 &&
+          py + 40 > a.y &&
+          py < a.y + a.height - 40
+        );
       });
-      if (onScreen) { startX = px; startY = py; }
-    } catch { /* screen недоступен — остаётся позиция по умолчанию */ }
+      if (onScreen) {
+        startX = px;
+        startY = py;
+      }
+    } catch {
+      /* screen недоступен — остаётся позиция по умолчанию */
+    }
   }
 
   // Окно полупрозрачное и без системной рамки.
@@ -451,8 +618,8 @@ async function createWindow() {
         ...details.responseHeaders,
         "Content-Security-Policy": [
           "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; " +
-          "img-src 'self' data: blob:; media-src 'self' data: blob:; font-src 'self' data:; " +
-          "connect-src 'self' ws://127.0.0.1:* http://127.0.0.1:*; object-src 'none'; frame-src 'none'; base-uri 'self'",
+            "img-src 'self' data: blob:; media-src 'self' data: blob:; font-src 'self' data:; " +
+            "connect-src 'self' ws://127.0.0.1:* http://127.0.0.1:*; object-src 'none'; frame-src 'none'; base-uri 'self'",
         ],
       },
     });
@@ -474,7 +641,9 @@ async function createWindow() {
         const [x, y] = win.getPosition();
         patchSettings({ window: { lastSize: { width: w, height: h }, lastPos: { x, y } } });
       }
-    } catch { /* любое состояние окна ок */ }
+    } catch {
+      /* любое состояние окна ок */
+    }
   });
 
   // general.minimizeToTray: сворачивание прячет окно в трей вместо таскбара.
@@ -484,8 +653,12 @@ async function createWindow() {
       // hide() синхронно внутри события minimize оставляет окно в «полу-свёрнутом»
       // состоянии (баг Electron): в панели задач остаётся кнопка, а окно мёртвое.
       // Откладываем до следующего тика, когда сворачивание завершится.
-      setImmediate(() => { void hideToTray("minimize"); });
-    } catch { /* обычное сворачивание */ }
+      setImmediate(() => {
+        void hideToTray("minimize");
+      });
+    } catch {
+      /* обычное сворачивание */
+    }
   });
 
   // general.closeToTray: «крестик» сворачивает в трей вместо выхода.
@@ -494,10 +667,14 @@ async function createWindow() {
       if (quitting || readSettings()?.general?.closeToTray !== true) return;
       e.preventDefault();
       void hideToTray("close");
-    } catch { /* обычное закрытие */ }
+    } catch {
+      /* обычное закрытие */
+    }
   });
 
-  win.on("closed", () => { win = null; });
+  win.on("closed", () => {
+    win = null;
+  });
 }
 
 // --- Обновления приложения (только в packaged-сборке) ---
@@ -526,14 +703,23 @@ let pendingUpdateVersion = null;
 let mandatoryDialogOpen = false;
 
 function scheduleUpdateTimer() {
-  if (updateTimer) { clearInterval(updateTimer); updateTimer = null; }
+  if (updateTimer) {
+    clearInterval(updateTimer);
+    updateTimer = null;
+  }
   if (!updaterReady) return;
   // Повторная проверка каждые 4 часа, пока приложение открыто.
-  updateTimer = setInterval(() => {
-    // Если обновление уже скачано, но диалог почему-то закрылся — показываем снова.
-    if (pendingUpdateVersion) { void showMandatoryUpdate(); return; }
-    void autoUpdater.checkForUpdates().catch(() => {});
-  }, 4 * 60 * 60 * 1000);
+  updateTimer = setInterval(
+    () => {
+      // Если обновление уже скачано, но диалог почему-то закрылся — показываем снова.
+      if (pendingUpdateVersion) {
+        void showMandatoryUpdate();
+        return;
+      }
+      void autoUpdater.checkForUpdates().catch(() => {});
+    },
+    4 * 60 * 60 * 1000,
+  );
 }
 
 /** Установить скачанное обновление и перезапустить приложение. */
@@ -568,15 +754,18 @@ async function showMandatoryUpdate() {
     });
     n.on("click", () => showWindow());
     n.show();
-  } catch { /* уведомления могут быть недоступны */ }
+  } catch {
+    /* уведомления могут быть недоступны */
+  }
   try {
     await dialog.showMessageBox(win && !win.isDestroyed() ? win : null, {
       type: "info",
       title: "MoonApp — обновление",
       message: `Скачано обновление ${version}`,
-      detail: "Приложение будет перезапущено и установит новую версию. Отказаться "
-        + "нельзя: это окно закрывается только установкой. Данные (папка storage) "
-        + "не затрагиваются.",
+      detail:
+        "Приложение будет перезапущено и установит новую версию. Отказаться " +
+        "нельзя: это окно закрывается только установкой. Данные (папка storage) " +
+        "не затрагиваются.",
       buttons: ["Перезапустить и установить"],
       defaultId: 0,
       cancelId: 0, // та же кнопка: крестик и Esc приводят к установке
@@ -603,16 +792,23 @@ function setupAutoUpdates() {
     autoUpdater.on("update-available", (info) => {
       mlog("info", "updater.available", { version: info?.version || null });
     });
-    autoUpdater.on("update-not-available", () => { mlog("info", "updater.up_to_date", {}); });
+    autoUpdater.on("update-not-available", () => {
+      mlog("info", "updater.up_to_date", {});
+    });
     autoUpdater.on("update-downloaded", (info) => {
       pendingUpdateVersion = info?.version || "";
       mlog("info", "updater.downloaded", { version: pendingUpdateVersion, mandatory: true });
       void showMandatoryUpdate();
     });
-    autoUpdater.on("error", (err) => { mlog("error", "updater.error", { error: err?.message || String(err) }); console.error("[updater]", err?.message || err); });
+    autoUpdater.on("error", (err) => {
+      mlog("error", "updater.error", { error: err?.message || String(err) });
+      console.error("[updater]", err?.message || err);
+    });
     updaterReady = true;
     mlog("info", "updater.check", { trigger: "startup" });
-    void autoUpdater.checkForUpdates().catch(() => { /* нет сети — повторим по таймеру */ });
+    void autoUpdater.checkForUpdates().catch(() => {
+      /* нет сети — повторим по таймеру */
+    });
     scheduleUpdateTimer();
   } catch (e) {
     console.error("[updater] init failed:", e);
@@ -661,7 +857,11 @@ app.whenReady().then(() => {
   if (!gotSingleInstanceLock) return;
   registerWindowControls();
   if (safeStorage) app.setName("MoonApp");
-  mlog("info", "app.start", { version: app.getVersion(), packaged: app.isPackaged, platform: process.platform });
+  mlog("info", "app.start", {
+    version: app.getVersion(),
+    packaged: app.isPackaged,
+    platform: process.platform,
+  });
   // Путь данных виден в диагностическом отчёте — сразу понятно, куда всё пишется.
   mlog("info", "app.storage", { dir: STORAGE_DIR, packaged: app.isPackaged });
   // general.autoLaunch: синхронизируем автозапуск с настройками при каждом старте.
@@ -675,7 +875,11 @@ app.whenReady().then(() => {
 
 app.on("before-quit", () => {
   quitting = true;
-  try { if (tokenFile) fs.rmSync(tokenFile, { force: true }); } catch { /* ignore */ }
+  try {
+    if (tokenFile) fs.rmSync(tokenFile, { force: true });
+  } catch {
+    /* ignore */
+  }
 });
 
 // Открыть каталог, в котором установлено приложение (кнопка в верхней панели,
@@ -702,12 +906,16 @@ ipcMain.handle("shell:reveal", (_e, p) => {
     if (!path.isAbsolute(full)) return false;
     shell.showItemInFolder(full);
     return true;
-  } catch { return false }
+  } catch {
+    return false;
+  }
 });
 
 // Обновить подменю zapret в трее: страница Bypass Control вызывает после
 // изменения стратегий/профилей, чтобы быстрые переключения были актуальны.
-ipcMain.on("bypass:tray-refresh", () => { void refreshTray(); });
+ipcMain.on("bypass:tray-refresh", () => {
+  void refreshTray();
+});
 
 // --- Встроенный прокси: глобальный прокси Chromium ---
 // Ядро (sing-box) слушает локальный SOCKS5/HTTP. Здесь мы заворачиваем ВЕСЬ
@@ -758,19 +966,25 @@ function installLoopbackHandler() {
   captureModeActive = true;
   installMediaPermissions();
   try {
-    session.defaultSession.setDisplayMediaRequestHandler(async (request, callback) => {
-      try {
-        const { desktopCapturer } = require("electron");
-        const sources = await desktopCapturer.getSources({ types: ["screen"] });
-        if (!sources.length) { callback({}); return; }
-        // audio: "loopback" — системный звук; видео нужно только как «носитель»
-        // (страница сразу останавливает video-треки, см. acquireSystemAudio).
-        callback({ video: sources[0], audio: "loopback" });
-      } catch (e) {
-        mlog("error", "capture.loopback_failed", { error: e?.message || String(e) });
-        callback({});
-      }
-    }, { useSystemPicker: false });
+    session.defaultSession.setDisplayMediaRequestHandler(
+      async (request, callback) => {
+        try {
+          const { desktopCapturer } = require("electron");
+          const sources = await desktopCapturer.getSources({ types: ["screen"] });
+          if (!sources.length) {
+            callback({});
+            return;
+          }
+          // audio: "loopback" — системный звук; видео нужно только как «носитель»
+          // (страница сразу останавливает video-треки, см. acquireSystemAudio).
+          callback({ video: sources[0], audio: "loopback" });
+        } catch (e) {
+          mlog("error", "capture.loopback_failed", { error: e?.message || String(e) });
+          callback({});
+        }
+      },
+      { useSystemPicker: false },
+    );
   } catch (e) {
     // Electron < 31 или иная сборка: не роняем приложение, страница покажет
     // честную ошибку «системный звук недоступен» и предложит микрофон.
@@ -781,13 +995,20 @@ function installLoopbackHandler() {
 
 function removeLoopbackHandler() {
   if (!captureModeActive) return;
-  try { session.defaultSession.setDisplayMediaRequestHandler(null); } catch { /* ignore */ }
+  try {
+    session.defaultSession.setDisplayMediaRequestHandler(null);
+  } catch {
+    /* ignore */
+  }
   captureModeActive = false;
 }
 
 // Режим захвата: "loopback" — системный звук, "default" — обычное поведение.
 ipcMain.handle("rec:capture-mode", (_e, mode) => {
-  if (String(mode) === "loopback") { installLoopbackHandler(); return { ok: true, mode: "loopback" }; }
+  if (String(mode) === "loopback") {
+    installLoopbackHandler();
+    return { ok: true, mode: "loopback" };
+  }
   removeLoopbackHandler();
   return { ok: true, mode: "default" };
 });
@@ -826,7 +1047,11 @@ app.on("window-all-closed", () => {
 
 // При выходе LHM останавливается, если он был запущен этим приложением.
 app.on("will-quit", () => {
-  try { require("../server/monitor").stopLhm(); } catch { /* пофиг */ }
+  try {
+    require("../server/monitor").stopLhm();
+  } catch {
+    /* пофиг */
+  }
 });
 
 app.on("activate", () => {

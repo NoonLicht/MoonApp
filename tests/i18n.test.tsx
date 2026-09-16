@@ -16,13 +16,17 @@ function renderFor(lang: string) {
   return renderToString(
     <I18nProvider lang={lang}>
       <Probe />
-    </I18nProvider>
+    </I18nProvider>,
   );
 }
 
 describe("i18n — 6 официальных языков ООН", () => {
   it("поддерживает все 6 языков", () => {
-    expect(LANGS.map((l) => l.code).sort().join(",")).toBe("ar,en,es,fr,ru,zh");
+    expect(
+      LANGS.map((l) => l.code)
+        .sort()
+        .join(","),
+    ).toBe("ar,en,es,fr,ru,zh");
   });
 
   it("переводит ключи на каждый язык", () => {

@@ -23,7 +23,9 @@ beforeAll(() => {
   process.env.MOONAPP_STORAGE = fs.mkdtempSync(path.join(os.tmpdir(), "moonapp-export-"));
 });
 
-function lectureMod(): any { return req("../server/lecture"); }
+function lectureMod(): any {
+  return req("../server/lecture");
+}
 
 describe("Выгрузка лекции — Content-Disposition с русским именем", () => {
   it("ASCII-часть заголовка безопасна, русское имя — в filename*", async () => {
@@ -76,7 +78,10 @@ describe("Выгрузка лекции — Content-Disposition с русски�
     const { stmts } = req("../server/db");
     const info = stmts.lectureInsert.run("Лекция по матанализу", 16000, 1);
     const id = Number(info.lastInsertRowid);
-    stmts.chunkInsert.run(id, 1, 0, 5000, "chunk_00001.wav", { status: "done", text: "Текст лекции" });
+    stmts.chunkInsert.run(id, 1, 0, 5000, "chunk_00001.wav", {
+      status: "done",
+      text: "Текст лекции",
+    });
     const md = lecture.exportContent(id, "md", { mode: "off" });
     expect(md.name).toBe("Лекция по матанализу.md");
     // А вот заголовок из него — уже безопасный.

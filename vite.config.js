@@ -24,13 +24,7 @@ export default defineConfig({
       // новый файл и пытается повесить на него fs.watch — Windows отдаёт EBUSY,
       // а Vite не перехватывает ошибку вотчера и падает целиком.
       // Глобы + регулярки — на случай разного поведения chokidar на Windows.
-      ignored: [
-        "**/storage/**",
-        "**/dist/**",
-        "**/.git/**",
-        /[\\/]storage[\\/]/,
-        /[\\/]dist[\\/]/,
-      ],
+      ignored: ["**/storage/**", "**/dist/**", "**/.git/**", /[\\/]storage[\\/]/, /[\\/]dist[\\/]/],
     },
   },
   test: {

@@ -33,7 +33,9 @@ describe("Заметки лекции → storage/notes (HTTP-роут)", () => 
 
   function filesForNote(noteId: number): string[] {
     if (noteId <= 0) return [];
-    return fs.readdirSync(notesDir()).filter((f) => f.endsWith(".md") && f.startsWith(`${noteId}-`));
+    return fs
+      .readdirSync(notesDir())
+      .filter((f) => f.endsWith(".md") && f.startsWith(`${noteId}-`));
   }
 
   function filesForLecture(id: number): string[] {
@@ -58,17 +60,31 @@ describe("Заметки лекции → storage/notes (HTTP-роут)", () => 
     const app = express();
     app.use(express.json({ limit: "2mb" }));
     app.use("/api/lecture", router);
-    await new Promise<void>((resolve) => { srv = app.listen(0, "127.0.0.1", () => resolve()); });
+    await new Promise<void>((resolve) => {
+      srv = app.listen(0, "127.0.0.1", () => resolve());
+    });
     base = `http://127.0.0.1:${srv.address().port}`;
   });
 
   afterAll(() => {
-    try { srv?.close(); } catch { /* noop */ }
-    try { req("../server/fsUtil").removePath(storage); } catch { /* noop */ }
+    try {
+      srv?.close();
+    } catch {
+      /* noop */
+    }
+    try {
+      req("../server/fsUtil").removePath(storage);
+    } catch {
+      /* noop */
+    }
   });
 
   it("создаёт сессию, сохраняет заметки и заводит .md в storage/notes", async () => {
-    const s = await call("POST", "/sessions", { title: "Матанализ", sampleRate: 16000, channels: 1 });
+    const s = await call("POST", "/sessions", {
+      title: "Матанализ",
+      sampleRate: 16000,
+      channels: 1,
+    });
     expect(s.status).toBe(201);
     const id = Number(s.body.id);
     expect(id).toBeGreaterThan(0);
@@ -105,8 +121,9 @@ describe("Заметки лекции → storage/notes (HTTP-роут)", () => 
     expect(m.status).toBe(201);
     const after = filesForNote(noteId);
     expect(after).toEqual(first); // имя файла не изменилось — копий нет
-    expect(fs.readFileSync(path.join(notesDir(), after[0]), "utf8"))
-      .toContain("- [ ] **[00:01:05]** Импульс");
+    expect(fs.readFileSync(path.join(notesDir(), after[0]), "utf8")).toContain(
+      "- [ ] **[00:01:05]** Импульс",
+    );
 
     // Удаление лекции убирает и её .md (нет «осиротевших» файлов). Фильтруем по
     // СОХРАНЁННОМУ noteId: после удаления лекции его уже негде взять.

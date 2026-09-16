@@ -32,9 +32,17 @@ describe("tmdb — нормализация ответов TMDB", () => {
   it("toSummary маппит фильм", async () => {
     const m = await tmdb();
     const s = m.toSummary("movie", {
-      id: 550, title: "Fight Club", original_title: "Fight Club", overview: "x",
-      poster_path: "/p.jpg", backdrop_path: "/b.jpg", release_date: "1999-10-15",
-      vote_average: 8.4, vote_count: 100, genre_ids: [18], adult: false,
+      id: 550,
+      title: "Fight Club",
+      original_title: "Fight Club",
+      overview: "x",
+      poster_path: "/p.jpg",
+      backdrop_path: "/b.jpg",
+      release_date: "1999-10-15",
+      vote_average: 8.4,
+      vote_count: 100,
+      genre_ids: [18],
+      adult: false,
     });
     expect(s.kind).toBe("movie");
     expect(s.id).toBe(550);
@@ -48,8 +56,12 @@ describe("tmdb — нормализация ответов TMDB", () => {
   it("toSummary маппит сериал (name / first_air_date)", async () => {
     const m = await tmdb();
     const s = m.toSummary("tv", {
-      id: 1399, name: "Game of Thrones", original_name: "Game of Thrones",
-      first_air_date: "2011-04-17", vote_average: 8.4, genre_ids: [10765],
+      id: 1399,
+      name: "Game of Thrones",
+      original_name: "Game of Thrones",
+      first_air_date: "2011-04-17",
+      vote_average: 8.4,
+      genre_ids: [10765],
     });
     expect(s.title).toBe("Game of Thrones");
     expect(s.year).toBe(2011);
@@ -91,7 +103,9 @@ describe("tmdb — нормализация ответов TMDB", () => {
         results: {
           RU: {
             link: "https://example/x",
-            flatrate: [{ provider_id: 1, provider_name: "Net", logo_path: "/l.png", display_priority: 1 }],
+            flatrate: [
+              { provider_id: 1, provider_name: "Net", logo_path: "/l.png", display_priority: 1 },
+            ],
           },
         },
       },
@@ -106,12 +120,19 @@ describe("tmdb — нормализация ответов TMDB", () => {
   it("toDetails собирает каст, трейлер, жанры, галерею и площадки", async () => {
     const m = await tmdb();
     const raw = {
-      id: 550, title: "Fight Club", release_date: "1999-10-15",
-      runtime: 139, status: "Released", budget: 63000000, revenue: 100000000,
+      id: 550,
+      title: "Fight Club",
+      release_date: "1999-10-15",
+      runtime: 139,
+      status: "Released",
+      budget: 63000000,
+      revenue: 100000000,
       genres: [{ id: 18, name: "Drama" }],
       credits: {
         cast: [{ id: 1, name: "Brad", character: "Tyler", profile_path: "/b.jpg" }],
-        crew: [{ id: 2, name: "Fincher", job: "Director", department: "Directing", profile_path: null }],
+        crew: [
+          { id: 2, name: "Fincher", job: "Director", department: "Directing", profile_path: null },
+        ],
       },
       videos: { results: [{ site: "YouTube", key: "abc", type: "Trailer", name: "T" }] },
       images: { backdrops: [{ file_path: "/bd.jpg" }], posters: [{ file_path: "/pp.jpg" }] },
@@ -157,8 +178,11 @@ describe("tmdb — нормализация ответов TMDB", () => {
    */
   it("pageInfo берёт total_results и total_pages из ответа TMDB", async () => {
     const m = await tmdb();
-    expect(m.pageInfo({ page: 2, total_pages: 500, total_results: 10000 }, 1))
-      .toEqual({ page: 2, totalPages: 500, totalResults: 10000 });
+    expect(m.pageInfo({ page: 2, total_pages: 500, total_results: 10000 }, 1)).toEqual({
+      page: 2,
+      totalPages: 500,
+      totalResults: 10000,
+    });
   });
 
   it("pageInfo подставляет безопасные значения для битого ответа", async () => {

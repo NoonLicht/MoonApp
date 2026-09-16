@@ -23,9 +23,12 @@ const logger = require("./logger");
 const BASE = "https://opds.flibusta.is";
 
 const FORMAT_MAP = {
-  "application/fb2+zip": "fb2", "application/epub+zip": "epub",
-  "application/x-mobipocket-ebook": "mobi", "application/pdf": "pdf",
-  "application/html+zip": "html", "application/txt+zip": "txt",
+  "application/fb2+zip": "fb2",
+  "application/epub+zip": "epub",
+  "application/x-mobipocket-ebook": "mobi",
+  "application/pdf": "pdf",
+  "application/html+zip": "html",
+  "application/txt+zip": "txt",
   "application/rtf+zip": "rtf",
 };
 
@@ -36,7 +39,8 @@ async function fetchFeed(pathname, { timeout = 20000 } = {}) {
   const res = await fetch(url, {
     signal: AbortSignal.timeout(timeout),
     headers: {
-      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/126.0 Safari/537.36",
+      "User-Agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/126.0 Safari/537.36",
       Accept: "application/atom+xml, application/xml, text/xml;q=0.9, */*;q=0.8",
     },
   });
@@ -48,8 +52,10 @@ async function fetchFeed(pathname, { timeout = 20000 } = {}) {
 
 function decodeEntities(s) {
   return String(s == null ? "" : s)
-    .replace(/&quot;/g, "\"").replace(/&#39;|&apos;/g, "'")
-    .replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;|&apos;/g, "'")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
     .replace(/&amp;/g, "&")
     .replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n)))
     .replace(/&#x([0-9a-fA-F]+);/g, (_, n) => String.fromCodePoint(parseInt(n, 16)));
@@ -87,15 +93,22 @@ function parseFormats(xml) {
     const typeM = attrs.match(/type="([^"]*)"/);
     const mime = typeM ? typeM[1].trim() : "";
     const fmt = FORMAT_MAP[mime];
-    if (fmt && !seen.has(fmt)) { seen.add(fmt); out.push(fmt); }
+    if (fmt && !seen.has(fmt)) {
+      seen.add(fmt);
+      out.push(fmt);
+    }
   }
   return out;
 }
 
 function parseCover(xml) {
-  const m1 = /<link\s+[^>]*href="([^"]+)"[^>]*rel="http:\/\/opds-spec\.org\/image"[^>]*\/?>/i.exec(xml);
+  const m1 = /<link\s+[^>]*href="([^"]+)"[^>]*rel="http:\/\/opds-spec\.org\/image"[^>]*\/?>/i.exec(
+    xml,
+  );
   if (m1) return decodeEntities(m1[1]);
-  const m2 = /<link\s+[^>]*rel="http:\/\/opds-spec\.org\/image"[^>]*href="([^"]+)"[^>]*\/?>/i.exec(xml);
+  const m2 = /<link\s+[^>]*rel="http:\/\/opds-spec\.org\/image"[^>]*href="([^"]+)"[^>]*\/?>/i.exec(
+    xml,
+  );
   return m2 ? decodeEntities(m2[1]) : null;
 }
 
@@ -104,7 +117,10 @@ function parseContentMeta(xml) {
   if (!c) return { language: null, year: null, sizeText: null };
   const decoded = decodeEntities(c);
   const langM = decoded.match(/Язык:\s*([^<,]+)/i) || decoded.match(/language:\s*([^<,]+)/i);
-  const yearM = decoded.match(/Год издания:\s*(\d{4})/i) || decoded.match(/год:\s*(\d{4})/i) || decoded.match(/year:\s*(\d{4})/i);
+  const yearM =
+    decoded.match(/Год издания:\s*(\d{4})/i) ||
+    decoded.match(/год:\s*(\d{4})/i) ||
+    decoded.match(/year:\s*(\d{4})/i);
   const sizeM = decoded.match(/Размер:\s*([^<]+)/i) || decoded.match(/size:\s*([^<]+)/i);
   return {
     language: langM ? langM[1].trim() : null,
@@ -116,7 +132,9 @@ function parseContentMeta(xml) {
 function parseDescription(xml) {
   const c = inner(xml, "content");
   if (!c) return "";
-  const clean = decodeEntities(c).replace(/<[^>]*>/g, "").trim();
+  const clean = decodeEntities(c)
+    .replace(/<[^>]*>/g, "")
+    .trim();
   const idx = clean.search(/(Формат:|Год издания:|Язык:|Размер:)/);
   return idx > 0 ? clean.slice(0, idx).trim() : clean;
 }
@@ -136,9 +154,18 @@ function parseEntry(xml) {
   const description = parseDescription(xml);
   const updated = (inner(xml, "updated") || "").trim();
   return {
-    id: id || `book:${bid}`, bid, title, author, genres,
-    language: language || "", year, formats, sizeText: sizeText || "",
-    cover: cover || "", description, updatedAt: updated,
+    id: id || `book:${bid}`,
+    bid,
+    title,
+    author,
+    genres,
+    language: language || "",
+    year,
+    formats,
+    sizeText: sizeText || "",
+    cover: cover || "",
+    description,
+    updatedAt: updated,
   };
 }
 
@@ -151,8 +178,9 @@ function parseFeed(xml) {
     if (book) books.push(book);
   }
   let next = null;
-  const nm = /<link\s+[^>]*href="([^"]+)"[^>]*rel="next"[^>]*\/?>/i.exec(xml)
-    || /<link\s+[^>]*rel="next"[^>]*href="([^"]+)"[^>]*\/?>/i.exec(xml);
+  const nm =
+    /<link\s+[^>]*href="([^"]+)"[^>]*rel="next"[^>]*\/?>/i.exec(xml) ||
+    /<link\s+[^>]*rel="next"[^>]*href="([^"]+)"[^>]*\/?>/i.exec(xml);
   if (nm) next = nm[1];
   return { books, next };
 }
@@ -165,10 +193,11 @@ function parseNavEntries(xml) {
   while ((m = entryRe.exec(xml))) {
     const e = m[0];
     const title = decodeEntities((inner(e, "title") || "").trim());
-    const lm = e.match(/<link\s+[^>]*href="([^"]+)"[^>]*type="application\/atom\+xml[^"]*"[^>]*\/?>/i)
-      || e.match(/<link\s+[^>]*type="application\/atom\+xml[^"]*"[^>]*href="([^"]+)"[^>]*\/?>/i)
-      || e.match(/<link\s+[^>]*href="([^"]+)"[^>]*rel="subsection"[^>]*\/?>/i)
-      || e.match(/<link\s+[^>]*rel="subsection"[^>]*href="([^"]+)"[^>]*\/?>/i);
+    const lm =
+      e.match(/<link\s+[^>]*href="([^"]+)"[^>]*type="application\/atom\+xml[^"]*"[^>]*\/?>/i) ||
+      e.match(/<link\s+[^>]*type="application\/atom\+xml[^"]*"[^>]*href="([^"]+)"[^>]*\/?>/i) ||
+      e.match(/<link\s+[^>]*href="([^"]+)"[^>]*rel="subsection"[^>]*\/?>/i) ||
+      e.match(/<link\s+[^>]*rel="subsection"[^>]*href="([^"]+)"[^>]*\/?>/i);
     if (title && lm) {
       let href = decodeEntities(lm[1]);
       if (!href.startsWith("/")) href = "/" + href;
@@ -185,11 +214,19 @@ const TTL = 10 * 60 * 1000;
 function cacheGet(key) {
   const hit = feedCache.get(key);
   if (!hit) return null;
-  if (Date.now() - hit.ts > TTL) { feedCache.delete(key); return null; }
+  if (Date.now() - hit.ts > TTL) {
+    feedCache.delete(key);
+    return null;
+  }
   return hit.data;
 }
-function cacheSet(key, data) { feedCache.set(key, { ts: Date.now(), data }); }
-function clearFeedCache() { feedCache.clear(); genresDeepCache = null; }
+function cacheSet(key, data) {
+  feedCache.set(key, { ts: Date.now(), data });
+}
+function clearFeedCache() {
+  feedCache.clear();
+  genresDeepCache = null;
+}
 
 function slicePage(all, page, size) {
   const start = page * size;
@@ -230,7 +267,11 @@ async function aggregateFeed(basePath, page, size = 80) {
     }
     if (!xml) break;
     const { books, next } = parseFeed(xml);
-    for (const b of books) if (!seen.has(b.bid)) { seen.add(b.bid); acc.push(b); }
+    for (const b of books)
+      if (!seen.has(b.bid)) {
+        seen.add(b.bid);
+        acc.push(b);
+      }
     if (acc.length >= want) break;
     cursor = next || null;
   }
@@ -257,7 +298,8 @@ async function fetchWithTimeout(url, timeout) {
     signal: AbortSignal.timeout(timeout),
     redirect: "follow",
     headers: {
-      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/126.0 Safari/537.36",
+      "User-Agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/126.0 Safari/537.36",
       Accept: "text/html,application/xhtml+xml,*/*;q=0.8",
     },
   });
@@ -268,17 +310,28 @@ async function fetchWithTimeout(url, timeout) {
 /** Разбор страницы /stat/b: <li><a href="/a/N">Автор</a> - <a href="/b/N">Название</a></li> */
 function parseStatBooks(html) {
   const out = [];
-  const re = /<li>\s*<a[^>]*href="\/a\/\d+"[^>]*>([\s\S]*?)<\/a>\s*-\s*<a[^>]*href="\/b\/(\d+)[^"]*"[^>]*>([\s\S]*?)<\/a>/gi;
+  const re =
+    /<li>\s*<a[^>]*href="\/a\/\d+"[^>]*>([\s\S]*?)<\/a>\s*-\s*<a[^>]*href="\/b\/(\d+)[^"]*"[^>]*>([\s\S]*?)<\/a>/gi;
   let m;
   while ((m = re.exec(html))) {
     const author = decodeEntities(m[1].replace(/<[^>]*>/g, "").trim());
     const bid = Number(m[2]);
     const title = decodeEntities(m[3].replace(/<[^>]*>/g, "").trim());
-    if (bid && title) out.push({
-      id: `book:${bid}`, bid, title, author, genres: [],
-      language: "", year: null, formats: ["fb2", "epub", "mobi"],
-      sizeText: "", cover: "", description: "", updatedAt: "",
-    });
+    if (bid && title)
+      out.push({
+        id: `book:${bid}`,
+        bid,
+        title,
+        author,
+        genres: [],
+        language: "",
+        year: null,
+        formats: ["fb2", "epub", "mobi"],
+        sizeText: "",
+        cover: "",
+        description: "",
+        updatedAt: "",
+      });
   }
   return out;
 }
@@ -294,8 +347,7 @@ async function popularBooks(page = 0, size = 80) {
   const seen = new Set();
   let lastError = null;
 
-  outer:
-  for (const mirror of MIRRORS) {
+  outer: for (const mirror of MIRRORS) {
     try {
       // проверяем доступность зеркала первой страницей
       let opdsPage = p;
@@ -305,7 +357,10 @@ async function popularBooks(page = 0, size = 80) {
         const html = await fetchWithTimeout(`${mirror}/stat/b${qs}`, 12000);
         const pageBooks = parseStatBooks(html);
         for (const b of pageBooks) {
-          if (!seen.has(b.bid)) { seen.add(b.bid); acc.push(b); }
+          if (!seen.has(b.bid)) {
+            seen.add(b.bid);
+            acc.push(b);
+          }
         }
         if (acc.length >= want || pageBooks.length === 0) break;
         opdsPage++;
@@ -339,12 +394,18 @@ let genresDeepCache = null;
 async function pool(jobs, size = 4) {
   const results = [];
   let i = 0;
-  await Promise.all(Array.from({ length: size }, async () => {
-    while (i < jobs.length) {
-      const idx = i++;
-      try { results[idx] = await jobs[idx](); } catch { results[idx] = null; }
-    }
-  }));
+  await Promise.all(
+    Array.from({ length: size }, async () => {
+      while (i < jobs.length) {
+        const idx = i++;
+        try {
+          results[idx] = await jobs[idx]();
+        } catch {
+          results[idx] = null;
+        }
+      }
+    }),
+  );
   return results;
 }
 
@@ -391,14 +452,19 @@ async function genreBooks(genre, page = 0, size = 80) {
   const p = Math.max(0, Number(page) || 0);
   if (paths.length === 1) return aggregateFeed(paths[0], p, size);
   // Несколько жанров: параллельно берём страницу из каждого, перемешиваем чередованием
-  const parts = await Promise.all(paths.map((pt) => aggregateFeed(pt, p, size).catch(() => ({ books: [], hasMore: false }))));
+  const parts = await Promise.all(
+    paths.map((pt) => aggregateFeed(pt, p, size).catch(() => ({ books: [], hasMore: false }))),
+  );
   const merged = [];
   const seen = new Set();
   const maxLen = Math.max(...parts.map((x) => x.books.length));
   for (let i = 0; i < maxLen; i++) {
     for (const part of parts) {
       const b = part.books[i];
-      if (b && !seen.has(b.bid)) { seen.add(b.bid); merged.push(b); }
+      if (b && !seen.has(b.bid)) {
+        seen.add(b.bid);
+        merged.push(b);
+      }
     }
   }
   return { books: merged, hasMore: parts.some((x) => x.hasMore) };
@@ -411,8 +477,12 @@ function parseGenreParam(genre) {
   if (raw.startsWith("[")) {
     try {
       const arr = JSON.parse(raw);
-      return Array.isArray(arr) ? arr.filter((x) => typeof x === "string" && x.startsWith("/opds/")) : [];
-    } catch { return []; }
+      return Array.isArray(arr)
+        ? arr.filter((x) => typeof x === "string" && x.startsWith("/opds/"))
+        : [];
+    } catch {
+      return [];
+    }
   }
   return raw.startsWith("/opds/") ? [raw] : [];
 }
@@ -455,7 +525,7 @@ async function authorSearchBooks(authorQ, page = 0, size = 80) {
 
   const xml = await fetchFeed(
     `/opds/search?searchType=authors&searchTerm=${encodeURIComponent(String(authorQ).trim())}`,
-    { timeout: 30000 }
+    { timeout: 30000 },
   );
   let authors = parseNavEntries(xml).filter((a) => /\/opds\/author\/\d+$/.test(a.href));
   // OPDS отдаёт нечёткие совпадения — оставляем авторов, чьё имя реально содержит запрос
@@ -470,7 +540,12 @@ async function authorSearchBooks(authorQ, page = 0, size = 80) {
       try {
         const feed = await fetchFeed(cursor, { timeout: 30000 });
         const { books, next } = parseFeed(feed);
-        for (const b of books) if (!seen.has(b.bid)) { seen.has(b.bid); seen.add(b.bid); acc.push(b); }
+        for (const b of books)
+          if (!seen.has(b.bid)) {
+            seen.has(b.bid);
+            seen.add(b.bid);
+            acc.push(b);
+          }
         cursor = next || null;
       } catch {
         break; // частичный результат
@@ -492,15 +567,19 @@ async function authorSearchBooks(authorQ, page = 0, size = 80) {
  */
 async function searchBooks({ q, authorQ, genre, page = 0, size = 80 } = {}) {
   const p = Math.max(0, Number(page) || 0);
-  const title = String(q || "").trim().toLowerCase();
-  const author = String(authorQ || "").trim().toLowerCase();
+  const title = String(q || "")
+    .trim()
+    .toLowerCase();
+  const author = String(authorQ || "")
+    .trim()
+    .toLowerCase();
   const genrePaths = parseGenreParam(genre);
 
   if (genrePaths.length) {
     // Поиск внутри одного или нескольких жанров (параллельно)
     const want = size * (p + 1) * 2; // с запасом — фильтр режет список
     const parts = await Promise.all(
-      genrePaths.map((pt) => searchInGenre(pt, title, author, want).catch(() => []))
+      genrePaths.map((pt) => searchInGenre(pt, title, author, want).catch(() => [])),
     );
     // Чередуем результаты жанров, дедуплицируем
     const merged = [];
@@ -509,7 +588,10 @@ async function searchBooks({ q, authorQ, genre, page = 0, size = 80 } = {}) {
     for (let i = 0; i < maxLen; i++) {
       for (const part of parts) {
         const b = part[i];
-        if (b && !seen.has(b.bid)) { seen.add(b.bid); merged.push(b); }
+        if (b && !seen.has(b.bid)) {
+          seen.add(b.bid);
+          merged.push(b);
+        }
       }
     }
     return slicePage(merged, p, size);
@@ -564,15 +646,19 @@ async function searchBooks({ q, authorQ, genre, page = 0, size = 80 } = {}) {
 /* ------------------------- Скачивание книги --------------------------- */
 
 async function downloadBook(bid, fmt, destDir = DIRS.downloads) {
-  const fmtNorm = String(fmt || "").trim().toLowerCase();
+  const fmtNorm = String(fmt || "")
+    .trim()
+    .toLowerCase();
   if (!/^(fb2|epub|mobi|pdf|html|txt|rtf)$/.test(fmtNorm)) {
     throw new Error(`Неподдерживаемый формат: ${fmt || ""}`);
   }
   const url = `${BASE}/b/${Number(bid)}/${fmtNorm}`;
   const res = await fetch(url, {
-    redirect: "follow", signal: AbortSignal.timeout(120000),
+    redirect: "follow",
+    signal: AbortSignal.timeout(120000),
     headers: {
-      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/126.0 Safari/537.36",
+      "User-Agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/126.0 Safari/537.36",
       Accept: "*/*",
     },
   });
@@ -590,7 +676,12 @@ async function downloadBook(bid, fmt, destDir = DIRS.downloads) {
     }
     ws.end();
   } catch (e) {
-    try { ws.destroy(); fs.rmSync(file, { force: true }); } catch { /* ignore */ }
+    try {
+      ws.destroy();
+      fs.rmSync(file, { force: true });
+    } catch {
+      /* ignore */
+    }
     throw e;
   }
   await new Promise((ok, bad) => ws.on("finish", ok).on("error", bad));
@@ -627,15 +718,25 @@ function toggleMyBook(field, bid, book) {
   const cur = row ? (field === "fav" ? row.fav : row.bm) : 0;
   const val = cur ? 0 : 1;
   if (row) {
-    db.prepare(`UPDATE my_books SET ${field} = ?, data = ? WHERE bid = ?`)
-      .run(val, JSON.stringify(book || {}), Number(bid));
+    db.prepare(`UPDATE my_books SET ${field} = ?, data = ? WHERE bid = ?`).run(
+      val,
+      JSON.stringify(book || {}),
+      Number(bid),
+    );
   } else {
-    db.prepare("INSERT INTO my_books (bid, data, fav, bm, addedAt) VALUES (?,?,?,?,?)")
-      .run(Number(bid), JSON.stringify(book || {}), field === "fav" ? 1 : 0, field === "bm" ? 1 : 0,
-        new Date().toISOString());
+    db.prepare("INSERT INTO my_books (bid, data, fav, bm, addedAt) VALUES (?,?,?,?,?)").run(
+      Number(bid),
+      JSON.stringify(book || {}),
+      field === "fav" ? 1 : 0,
+      field === "bm" ? 1 : 0,
+      new Date().toISOString(),
+    );
   }
   db.prepare("DELETE FROM my_books WHERE fav = 0 AND bm = 0").run();
-  const after = db.prepare("SELECT fav, bm FROM my_books WHERE bid = ?").get(Number(bid)) || { fav: 0, bm: 0 };
+  const after = db.prepare("SELECT fav, bm FROM my_books WHERE bid = ?").get(Number(bid)) || {
+    fav: 0,
+    bm: 0,
+  };
   return { fav: !!after.fav, bm: !!after.bm };
 }
 
@@ -643,9 +744,11 @@ function toggleMyBook(field, bid, book) {
 function myBooks(filter = "all") {
   const db = metaDb();
   const where = filter === "fav" ? "WHERE fav = 1" : filter === "bm" ? "WHERE bm = 1" : "";
-  const rows = db.prepare(`SELECT bid, data, fav, bm, addedAt FROM my_books ${where} ORDER BY addedAt DESC`).all();
+  const rows = db
+    .prepare(`SELECT bid, data, fav, bm, addedAt FROM my_books ${where} ORDER BY addedAt DESC`)
+    .all();
   return rows.map((r) => ({
-    ...(JSON.parse(r.data || "{}")),
+    ...JSON.parse(r.data || "{}"),
     bid: r.bid,
     fav: !!r.fav,
     bm: !!r.bm,
@@ -670,14 +773,28 @@ function legacyCleanup() {
   const old = path.join(DIRS.storage, "books_catalog.db");
   for (const f of [old, old + "-wal", old + "-shm", old + ".tmp"]) {
     try {
-      if (fs.existsSync(f)) { fs.rmSync(f, { force: true }); logger.info("flibusta.legacy_removed", { file: f }); }
-    } catch { }
+      if (fs.existsSync(f)) {
+        fs.rmSync(f, { force: true });
+        logger.info("flibusta.legacy_removed", { file: f });
+      }
+    } catch {}
   }
 }
 legacyCleanup();
 
 module.exports = {
-  BASE, parseFeed, parseEntry, parseNavEntries,
-  newBooks, popularBooks, listGenres, genreBooks, searchBooks,
-  downloadBook, toggleMyBook, myBooks, myFlags, clearFeedCache,
+  BASE,
+  parseFeed,
+  parseEntry,
+  parseNavEntries,
+  newBooks,
+  popularBooks,
+  listGenres,
+  genreBooks,
+  searchBooks,
+  downloadBook,
+  toggleMyBook,
+  myBooks,
+  myFlags,
+  clearFeedCache,
 };

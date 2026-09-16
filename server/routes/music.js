@@ -42,7 +42,12 @@ router.post("/download", async (req, res) => {
   try {
     const { url, format, quality } = req.body || {};
     if (!url) return res.status(400).json({ error: "missing_url" });
-    const result = ytdlp.startAudioDownload({ url, format: format || "mp3", quality: quality != null ? quality : 0, proxyUrl: req.proxyUrl });
+    const result = ytdlp.startAudioDownload({
+      url,
+      format: format || "mp3",
+      quality: quality != null ? quality : 0,
+      proxyUrl: req.proxyUrl,
+    });
     logger.action("music.download.start", { id: result.id, url, format });
     res.json(result);
   } catch (e) {
@@ -71,7 +76,9 @@ router.get("/download/:key", (req, res) => {
     const entry = ytdlp.getDownloadFile(req.params.key);
     if (!entry) return res.status(404).json({ error: "not_found" });
     res.download(entry.path, entry.name, () => {
-      try { removePath(entry.path); } catch {}
+      try {
+        removePath(entry.path);
+      } catch {}
     });
   } catch (e) {
     res.status(500).json({ error: e.message });

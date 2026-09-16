@@ -6,7 +6,10 @@ import CodeBlock from "./CodeBlock";
 import { renderInlineMd, parseSegments } from "./chatUtils";
 import { sanitizeHtml } from "../../utils/sanitize";
 
-export interface MsgStats { ms: number; tokens: number }
+export interface MsgStats {
+  ms: number;
+  tokens: number;
+}
 
 /**
  * Тело сообщения (markdown + код-блоки).
@@ -21,14 +24,17 @@ const BubbleContent = React.memo(function BubbleContent({ text }: { text: string
   const segs = useMemo(() => parseSegments(text), [text]);
   const htmls = useMemo(
     () => segs.map((s) => (s.type === "code" ? "" : sanitizeHtml(renderInlineMd(s.text)))),
-    [segs]
+    [segs],
   );
   return (
     <>
       {segs.map((seg, k) =>
-        seg.type === "code"
-          ? <CodeBlock key={k} code={seg.text} lang={seg.lang || "text"} />
-          : <span key={k} dangerouslySetInnerHTML={{ __html: htmls[k] }} />)}
+        seg.type === "code" ? (
+          <CodeBlock key={k} code={seg.text} lang={seg.lang || "text"} />
+        ) : (
+          <span key={k} dangerouslySetInnerHTML={{ __html: htmls[k] }} />
+        ),
+      )}
     </>
   );
 });
@@ -48,7 +54,21 @@ export default function MsgList(props: {
   lastStats: MsgStats | null;
   t: (key: string, params?: Record<string, unknown>) => string;
 }) {
-  const { messages, sending, streamingText, editing, setEditing, copiedIdx, onCopy, onRegenerate, onSaveEdit, onSpeak, stopGeneration, lastStats, t } = props;
+  const {
+    messages,
+    sending,
+    streamingText,
+    editing,
+    setEditing,
+    copiedIdx,
+    onCopy,
+    onRegenerate,
+    onSaveEdit,
+    onSpeak,
+    stopGeneration,
+    lastStats,
+    t,
+  } = props;
   const menu = useContextMenu();
   return (
     <>
@@ -57,31 +77,44 @@ export default function MsgList(props: {
           <div className={`chat-bubble-row ${m.role === "user" ? "is-user" : ""}`}>
             {editing && editing.id === m.id ? (
               <div className="msg-edit">
-                <textarea value={editing.text} autoFocus
+                <textarea
+                  value={editing.text}
+                  autoFocus
                   onChange={(e) => setEditing({ id: m.id!, text: e.target.value })}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); onSaveEdit(); }
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      onSaveEdit();
+                    }
                     if (e.key === "Escape") setEditing(null);
-                  }} />
+                  }}
+                />
                 <div style={{ display: "flex", gap: 6 }}>
-                  <Btn variant="primary" icon={Check} onClick={onSaveEdit}>{t("aichat.saveEdit")}</Btn>
-                  <Btn icon={X} onClick={() => setEditing(null)}>{t("aichat.cancel")}</Btn>
+                  <Btn variant="primary" icon={Check} onClick={onSaveEdit}>
+                    {t("aichat.saveEdit")}
+                  </Btn>
+                  <Btn icon={X} onClick={() => setEditing(null)}>
+                    {t("aichat.cancel")}
+                  </Btn>
                 </div>
               </div>
             ) : (
               <div
                 className={`chat-bubble ${m.role === "user" ? "is-user" : "is-assistant"}`}
-                onContextMenu={(e) => menu.open(e, [
-                  { label: t("aichat.copy"), icon: Copy, onClick: () => onCopy(m.text, i) },
-                ])}
+                onContextMenu={(e) =>
+                  menu.open(e, [
+                    { label: t("aichat.copy"), icon: Copy, onClick: () => onCopy(m.text, i) },
+                  ])
+                }
               >
-                {m.role === "user"
-                  ? m.text
-                  : <BubbleContent text={m.text} />}
+                {m.role === "user" ? m.text : <BubbleContent text={m.text} />}
               </div>
             )}
           </div>
-          <div className="msg-actions" style={{ justifyContent: m.role === "user" ? "flex-end" : "flex-start" }}>
+          <div
+            className="msg-actions"
+            style={{ justifyContent: m.role === "user" ? "flex-end" : "flex-start" }}
+          >
             {m.role === "assistant" && (
               <button onClick={() => onCopy(m.text, i)} title="Copy">
                 <Copy size={11} /> {copiedIdx === i ? t("aichat.copied") : t("aichat.copy")}
@@ -93,7 +126,10 @@ export default function MsgList(props: {
               </button>
             )}
             {m.role === "user" && m.id && !sending && (
-              <button onClick={() => setEditing({ id: m.id!, text: m.text })} title={t("aichat.edit")}>
+              <button
+                onClick={() => setEditing({ id: m.id!, text: m.text })}
+                title={t("aichat.edit")}
+              >
                 <Pencil size={11} /> {t("aichat.edit")}
               </button>
             )}
@@ -113,7 +149,13 @@ export default function MsgList(props: {
       )}
       {sending && !streamingText && (
         <div className="chat-bubble-row">
-          <div className="chat-bubble is-assistant"><div className="typing"><span /><span /><span /></div></div>
+          <div className="chat-bubble is-assistant">
+            <div className="typing">
+              <span />
+              <span />
+              <span />
+            </div>
+          </div>
         </div>
       )}
       {sending && (
@@ -124,7 +166,10 @@ export default function MsgList(props: {
         </div>
       )}
       {lastStats && !sending && (
-        <div className="gen-stats">⚡ {t("aichat.stats", { s: (lastStats.ms / 1000).toFixed(1), t: String(lastStats.tokens) })}</div>
+        <div className="gen-stats">
+          ⚡{" "}
+          {t("aichat.stats", { s: (lastStats.ms / 1000).toFixed(1), t: String(lastStats.tokens) })}
+        </div>
       )}
       {!messages.length && !sending && <EmptyHint icon={Send} text={t("aichat.start")} />}
     </>

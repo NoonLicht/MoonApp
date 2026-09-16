@@ -36,7 +36,9 @@ const upload = multer({
   storage: multer.diskStorage({
     destination: DIRS.compressorIn,
     filename: (req, file, cb) => {
-      const base = path.basename(String(file.originalname || "video").replace(/[\\/:*?"<>|]+/g, "_"));
+      const base = path.basename(
+        String(file.originalname || "video").replace(/[\\/:*?"<>|]+/g, "_"),
+      );
       const ext = path.extname(base) || ".mp4";
       const stem = path.basename(base, ext).slice(0, 60) || "video";
       cb(null, `${Date.now()}_${stem}${ext}`);
@@ -58,7 +60,9 @@ function customPresets() {
     const raw = String(settings.get("compressor").customPresets || "");
     const arr = JSON.parse(raw);
     return Array.isArray(arr) ? arr.filter((p) => p && typeof p.name === "string") : [];
-  } catch { return []; }
+  } catch {
+    return [];
+  }
 }
 
 function saveCustomPresets(list) {
@@ -90,7 +94,9 @@ router.get("/presets", (req, res) => {
 
 router.post("/presets", (req, res) => {
   const body = req.body || {};
-  const name = String(body.name || "").trim().slice(0, 40);
+  const name = String(body.name || "")
+    .trim()
+    .slice(0, 40);
   if (!name) return res.status(400).json({ error: "missing_name" });
   const params = engine.normalizeParams(body);
   const list = customPresets().filter((p) => p.name !== name);
@@ -122,7 +128,11 @@ router.post("/probe", upload.single("file"), async (req, res) => {
   } catch (e) {
     res.status(500).json({ error: e.message });
   } finally {
-    try { removePath(req.file.path); } catch { /* ignore */ }
+    try {
+      removePath(req.file.path);
+    } catch {
+      /* ignore */
+    }
   }
 });
 
@@ -136,7 +146,13 @@ router.post("/", upload.single("file"), (req, res) => {
       size: req.file.size,
       ...req.body,
     });
-    logger.action("compressor.start", { id: job.id, name: job.name, size: job.size, engine: job.engine, codec: job.codec });
+    logger.action("compressor.start", {
+      id: job.id,
+      name: job.name,
+      size: job.size,
+      engine: job.engine,
+      codec: job.codec,
+    });
     res.status(201).json(view(job));
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -158,7 +174,8 @@ router.get("/:id/command", (req, res) => {
 
 router.get("/:id/download", (req, res) => {
   const job = engine.getJob(req.params.id);
-  if (!job?.done || !job.outFile || !fs.existsSync(job.outFile)) return res.status(404).json({ error: "not_ready" });
+  if (!job?.done || !job.outFile || !fs.existsSync(job.outFile))
+    return res.status(404).json({ error: "not_ready" });
   const ext = path.extname(job.outFile);
   res.download(job.outFile, (job.name || "video").replace(/\.[^.]+$/, "") + `_compressed${ext}`);
 });
@@ -166,15 +183,24 @@ router.get("/:id/download", (req, res) => {
 // Стриминг для плеера сравнения (Range-запросы Express обработает сам).
 router.get("/:id/preview", (req, res) => {
   const job = engine.getJob(req.params.id);
-  if (!job?.done || !job.outFile || !fs.existsSync(job.outFile)) return res.status(404).json({ error: "not_ready" });
+  if (!job?.done || !job.outFile || !fs.existsSync(job.outFile))
+    return res.status(404).json({ error: "not_ready" });
   res.sendFile(job.outFile);
 });
 
 router.delete("/:id", (req, res) => {
   const job = engine.getJob(req.params.id);
   if (!job) return res.status(404).json({ error: "not_found" });
-  try { if (job.outFile) removePath(job.outFile); } catch { /* ignore */ }
-  try { removePath(job.inputPath); } catch { /* ignore */ }
+  try {
+    if (job.outFile) removePath(job.outFile);
+  } catch {
+    /* ignore */
+  }
+  try {
+    removePath(job.inputPath);
+  } catch {
+    /* ignore */
+  }
   engine.jobs.delete(req.params.id);
   logger.action("compressor.delete", { id: req.params.id });
   res.json({ ok: true });
@@ -189,4 +215,3 @@ router.get("/:id/reveal", (req, res) => {
 });
 
 module.exports = router;
-

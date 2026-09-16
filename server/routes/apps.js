@@ -54,7 +54,8 @@ router.post("/favorite", (req, res) => {
   const { key } = req.body || {};
   if (!key) return res.status(400).json({ error: "missing key" });
   const has = stmts.favHas(key);
-  if (has) stmts.favRemove(key); else stmts.favAdd(key);
+  if (has) stmts.favRemove(key);
+  else stmts.favAdd(key);
   logger.action("apps.favorite", { key, val: !has });
   res.json({ ok: true, favorite: !has });
 });
@@ -118,12 +119,17 @@ router.get("/winget/search", async (req, res) => {
   try {
     const found = await winget.search(q);
     const favs = favSet();
-    res.json(found.map((p) => ({
-      key: `winget:${p.id}`,
-      name: p.name, category: "winget", source: "winget",
-      wingetId: p.id, version: p.version,
-      favorite: favs.has(`winget:${p.id}`),
-    })));
+    res.json(
+      found.map((p) => ({
+        key: `winget:${p.id}`,
+        name: p.name,
+        category: "winget",
+        source: "winget",
+        wingetId: p.id,
+        version: p.version,
+        favorite: favs.has(`winget:${p.id}`),
+      })),
+    );
   } catch (e) {
     logger.error("winget.search_error", { error: e.message });
     res.status(500).json({ error: e.message });
@@ -155,23 +161,34 @@ const comssJobs = {};
 let comssSeq = 0;
 
 function finishComssJob(job) {
-  setTimeout(() => { delete comssJobs[job.id]; }, COMSS_JOB_TTL_MS).unref?.();
+  setTimeout(() => {
+    delete comssJobs[job.id];
+  }, COMSS_JOB_TTL_MS).unref?.();
 }
 
 router.post("/comss/scrape", (req, res) => {
-  const codes = (req.body?.categories) || comss.CATEGORIES.map((c) => c.code);
+  const codes = req.body?.categories || comss.CATEGORIES.map((c) => c.code);
   const limit = Math.min(Number(req.body?.limit) || 0, 100); // 0 = без ограничения (все карточки рубрики)
   const cats = comss.CATEGORIES.filter((c) => codes.includes(c.code));
-  const jobId = "comss-" + (++comssSeq);
+  const jobId = "comss-" + ++comssSeq;
   const job = { id: jobId, status: "running", done: 0, total: cats.length, current: "", items: [] };
   comssJobs[jobId] = job;
-  comss.scrapeWithProgress(cats, limit, (info) => {
-    job.done = info.done;
-    job.total = info.total;
-    job.current = info.current;
-    job.items = info.items;
-  }).then(() => { job.status = "done"; finishComssJob(job); })
-    .catch((e) => { job.status = "error"; job.error = e.message; finishComssJob(job); });
+  comss
+    .scrapeWithProgress(cats, limit, (info) => {
+      job.done = info.done;
+      job.total = info.total;
+      job.current = info.current;
+      job.items = info.items;
+    })
+    .then(() => {
+      job.status = "done";
+      finishComssJob(job);
+    })
+    .catch((e) => {
+      job.status = "error";
+      job.error = e.message;
+      finishComssJob(job);
+    });
   res.json({ ok: true, jobId });
 });
 
@@ -179,13 +196,22 @@ router.post("/comss/scrape", (req, res) => {
 router.get("/comss/progress", (req, res) => {
   const job = comssJobs[req.query.job];
   if (!job) return res.status(404).json({ error: "no such job" });
-  res.json({ id: job.id, status: job.status, done: job.done, total: job.total, current: job.current, items: job.items, error: job.error });
+  res.json({
+    id: job.id,
+    status: job.status,
+    done: job.done,
+    total: job.total,
+    current: job.current,
+    items: job.items,
+    error: job.error,
+  });
 });
 
 // Импорт найденного с comss с дедупликацией (winget приоритетнее)
 function normName(name) {
-  return String(name || "").toLowerCase()
-    .replace(/\([^)]*\)/g, "")       // убираем скобки-уточнения: "VS Code (VS Code)"
+  return String(name || "")
+    .toLowerCase()
+    .replace(/\([^)]*\)/g, "") // убираем скобки-уточнения: "VS Code (VS Code)"
     .replace(/[^a-zа-я0-9ё\s]/gi, "") // только буквы/цифры/пробелы
     .replace(/\s+/g, " ")
     .trim();
@@ -196,16 +222,32 @@ router.post("/comss/import", (req, res) => {
   const wingetNames = new Set(winget.seed().map((p) => normName(p.name)));
   const catalogNames = new Set(stmts.catAll.all().map((a) => normName(a.name)));
   const seen = new Set();
-  let added = 0, skipped = 0;
+  let added = 0,
+    skipped = 0;
   for (const it of items) {
     const name = String(it.name || "").trim();
-    if (!name || !it.url) { skipped++; continue; }
+    if (!name || !it.url) {
+      skipped++;
+      continue;
+    }
     const lower = normName(name);
-    if (!lower) { skipped++; continue; }
-    if (seen.has(lower)) { skipped++; continue; }
+    if (!lower) {
+      skipped++;
+      continue;
+    }
+    if (seen.has(lower)) {
+      skipped++;
+      continue;
+    }
     seen.add(lower);
-    if (catalogNames.has(lower)) { skipped++; continue; }      // уже в каталоге
-    if (wingetNames.has(lower)) { skipped++; continue; }       // есть в winget → предпочитаем winget
+    if (catalogNames.has(lower)) {
+      skipped++;
+      continue;
+    } // уже в каталоге
+    if (wingetNames.has(lower)) {
+      skipped++;
+      continue;
+    } // есть в winget → предпочитаем winget
     stmts.catInsert.run(name, it.url, "comss", it.category || "Other", null);
     catalogNames.add(lower);
     added++;

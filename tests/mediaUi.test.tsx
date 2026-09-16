@@ -43,8 +43,11 @@ describe("SourcesList (компактное «Где смотреть»)", () =>
   it("рисует одну строку чипов и сворачивает лишние в «+N ещё»", () => {
     const html = renderRu(
       React.createElement(SourcesList, {
-        providers: providersOf(3, 3, 3), hasTrailer: true, onTrailer: () => {}, onTorrent: () => {},
-      })
+        providers: providersOf(3, 3, 3),
+        hasTrailer: true,
+        onTrailer: () => {},
+        onTorrent: () => {},
+      }),
     );
     // Компактная полоска вместо трёх рядов с подписями.
     expect(html).toContain("mv-watch-row");
@@ -64,8 +67,11 @@ describe("SourcesList (компактное «Где смотреть»)", () =>
   it("показывает все площадки, когда их немного", () => {
     const html = renderRu(
       React.createElement(SourcesList, {
-        providers: providersOf(2, 1, 0), hasTrailer: false, onTrailer: () => {}, onTorrent: () => {},
-      })
+        providers: providersOf(2, 1, 0),
+        hasTrailer: false,
+        onTrailer: () => {},
+        onTorrent: () => {},
+      }),
     );
     expect(html).not.toContain("mv-chip is-more");
     expect((html.match(/class="mv-chip is-flat"/g) || []).length).toBe(2);
@@ -77,8 +83,11 @@ describe("SourcesList (компактное «Где смотреть»)", () =>
   it("без площадок показывает подсказку, а не пустую полоску", () => {
     const html = renderRu(
       React.createElement(SourcesList, {
-        providers: null, hasTrailer: false, onTrailer: () => {}, onTorrent: () => {},
-      })
+        providers: null,
+        hasTrailer: false,
+        onTrailer: () => {},
+        onTorrent: () => {},
+      }),
     );
     expect(html).not.toContain("mv-chip is-flat");
     expect(html).toContain("mv-watch-row");
@@ -93,9 +102,12 @@ describe("MediaBrowse (полный список подборки)", () => {
   it("рисует шапку с возвратом, заголовок и скелеты при загрузке", () => {
     const html = renderRu(
       React.createElement(MediaBrowse, {
-        kind: "movie", category: "popular", title: "Популярное",
-        onBack: () => {}, onSelect: () => {},
-      })
+        kind: "movie",
+        category: "popular",
+        title: "Популярное",
+        onBack: () => {},
+        onSelect: () => {},
+      }),
     );
     expect(html).toContain("mv-browse");
     expect(html).toContain("mv-browse-back");
@@ -113,9 +125,12 @@ describe("MediaBrowse (полный список подборки)", () => {
   it("до загрузки первой страницы не показывает счётчик и финал списка", () => {
     const html = renderRu(
       React.createElement(MediaBrowse, {
-        kind: "movie", category: "popular", title: "Популярное",
-        onBack: () => {}, onSelect: () => {},
-      })
+        kind: "movie",
+        category: "popular",
+        title: "Популярное",
+        onBack: () => {},
+        onSelect: () => {},
+      }),
     );
     expect(html).not.toContain("mv-browse-end");
     expect(html).not.toContain("mv-browse-sentinel");

@@ -46,11 +46,15 @@ router.get("/models", async (req, res) => {
       return res.json(provider.models || []);
     }
     const models = await runWithPage(req.appPage, () => provider.listModels(secret));
-    if (Array.isArray(models) && models.length) modelsCache.set(providerId, { at: Date.now(), models });
-    res.json(models.length ? models : (provider.models || []));
+    if (Array.isArray(models) && models.length)
+      modelsCache.set(providerId, { at: Date.now(), models });
+    res.json(models.length ? models : provider.models || []);
   } catch {
-    try { res.json(getProvider(providerId).models || []); }
-    catch (e) { res.status(500).json({ error: e.message }); }
+    try {
+      res.json(getProvider(providerId).models || []);
+    } catch (e) {
+      res.status(500).json({ error: e.message });
+    }
   }
 });
 
@@ -59,7 +63,8 @@ router.patch("/:id", (req, res) => {
   const id = Number(req.params.id);
   if (!stmts.convGet.get(id)) return res.status(404).json({ error: "conversation not found" });
   const patch = {};
-  if (typeof req.body?.title === "string" && req.body.title.trim()) patch.title = String(req.body.title).slice(0, 120);
+  if (typeof req.body?.title === "string" && req.body.title.trim())
+    patch.title = String(req.body.title).slice(0, 120);
   if (req.body?.pinned !== undefined) patch.pinned = req.body.pinned ? 1 : 0;
   stmts.convUpdate.run(id, patch);
   res.json(stmts.convGet.get(id));
@@ -73,7 +78,18 @@ router.delete("/:id/messages/:msgid", (req, res) => {
 
 // POST /:id/send — streaming SSE with abort support
 router.post("/:id/send", async (req, res) => {
-  const { text, model, temperature, maxTokens, stream: streamReq, topP, frequencyPenalty, presencePenalty, systemPrompt, images } = req.body || {};
+  const {
+    text,
+    model,
+    temperature,
+    maxTokens,
+    stream: streamReq,
+    topP,
+    frequencyPenalty,
+    presencePenalty,
+    systemPrompt,
+    images,
+  } = req.body || {};
   if (!text || !String(text).trim()) {
     return res.status(400).json({ error: "empty message" });
   }
@@ -83,7 +99,9 @@ router.post("/:id/send", async (req, res) => {
   const provider = getProvider(conv.provider);
   const secret = getSecret(provider.id);
   if (!secret) {
-    return res.status(409).json({ error: `Provider "${provider.id}" not configured. Save API key.` });
+    return res
+      .status(409)
+      .json({ error: `Provider "${provider.id}" not configured. Save API key.` });
   }
 
   // Авто-название чата по первому сообщению
@@ -93,13 +111,18 @@ router.post("/:id/send", async (req, res) => {
     if (autoTitle) stmts.convUpdate.run(conv.id, { title: autoTitle });
   }
 
-  const imgList = Array.isArray(images) ? images.filter((u) => /^data:image\//.test(u)).slice(0, 5) : [];
+  const imgList = Array.isArray(images)
+    ? images.filter((u) => /^data:image\//.test(u)).slice(0, 5)
+    : [];
   stmts.msgInsert.run(conv.id, "user", String(text));
   stmts.convTouch.run(conv.id);
 
   const chatCfg = settings.get("chat");
   const limit = Number(chatCfg.contextMessages) || 30;
-  const history = stmts.msgFor.all(conv.id).slice(-limit).map((m) => ({ role: m.role, text: m.text }));
+  const history = stmts.msgFor
+    .all(conv.id)
+    .slice(-limit)
+    .map((m) => ({ role: m.role, text: m.text }));
 
   // Картинки прикрепляем к последнему (только что добавленному) user-сообщению
   if (imgList.length && history.length && history[history.length - 1].role === "user") {
@@ -121,7 +144,11 @@ router.post("/:id/send", async (req, res) => {
     Connection: "keep-alive",
   });
 
-  const emit = (payload) => { try { res.write(`data: ${JSON.stringify(payload)}\n\n`); } catch {} };
+  const emit = (payload) => {
+    try {
+      res.write(`data: ${JSON.stringify(payload)}\n\n`);
+    } catch {}
+  };
   emit({ type: "meta", title: autoTitle || conv.title });
 
   const startedAt = Date.now();
@@ -137,18 +164,34 @@ router.post("/:id/send", async (req, res) => {
   });
 
   try {
-    const onToken = (token) => { if (streaming) emit({ type: "token", text: token }); };
-    const full = await runWithPage(req.appPage, () => provider.chat({
-      secret, model: finalModel, messages: fullMessages,
-      temperature: finalTemperature, maxTokens: finalMaxTokens, stream: streaming,
-      onToken, signal: abortController.signal,
-      topP, frequencyPenalty, presencePenalty,
-    }));
+    const onToken = (token) => {
+      if (streaming) emit({ type: "token", text: token });
+    };
+    const full = await runWithPage(req.appPage, () =>
+      provider.chat({
+        secret,
+        model: finalModel,
+        messages: fullMessages,
+        temperature: finalTemperature,
+        maxTokens: finalMaxTokens,
+        stream: streaming,
+        onToken,
+        signal: abortController.signal,
+        topP,
+        frequencyPenalty,
+        presencePenalty,
+      }),
+    );
     stmts.msgInsert.run(conv.id, "assistant", full);
     logger.action("chat.completed", { id: conv.id, provider: provider.id, chars: full.length });
     emit({
-      type: "done", text: full,
-      stats: { ms: Date.now() - startedAt, chars: full.length, tokensApprox: Math.round(full.length / 4) },
+      type: "done",
+      text: full,
+      stats: {
+        ms: Date.now() - startedAt,
+        chars: full.length,
+        tokensApprox: Math.round(full.length / 4),
+      },
     });
   } catch (e) {
     if (e.name === "AbortError") {
@@ -159,14 +202,27 @@ router.post("/:id/send", async (req, res) => {
       emit({ type: "error", message: e.message });
     }
   } finally {
-    try { res.end(); } catch {}
+    try {
+      res.end();
+    } catch {}
   }
 });
 
 // POST /:id/arena — один вопрос двум моделям параллельно (SSE, события помечены side: "a"|"b").
 // persist=false — ответы НЕ пишутся в базу (пользователь выберет один через /choose).
 router.post("/:id/arena", async (req, res) => {
-  const { text, models, temperature, maxTokens, topP, frequencyPenalty, presencePenalty, systemPrompt, images, persist = true } = req.body || {};
+  const {
+    text,
+    models,
+    temperature,
+    maxTokens,
+    topP,
+    frequencyPenalty,
+    presencePenalty,
+    systemPrompt,
+    images,
+    persist = true,
+  } = req.body || {};
   const [modelA, modelB] = Array.isArray(models) ? models : [];
   if (!text || !String(text).trim() || !modelA || !modelB) {
     return res.status(400).json({ error: "text and two models required" });
@@ -175,7 +231,10 @@ router.post("/:id/arena", async (req, res) => {
   if (!conv) return res.status(404).json({ error: "conversation not found" });
   const provider = getProvider(conv.provider);
   const secret = getSecret(provider.id);
-  if (!secret) return res.status(409).json({ error: `Provider "${provider.id}" not configured. Save API key.` });
+  if (!secret)
+    return res
+      .status(409)
+      .json({ error: `Provider "${provider.id}" not configured. Save API key.` });
 
   let autoTitle = null;
   if (conv.title === "New chat") {
@@ -183,46 +242,82 @@ router.post("/:id/arena", async (req, res) => {
     if (autoTitle) stmts.convUpdate.run(conv.id, { title: autoTitle });
   }
 
-  const imgList = Array.isArray(images) ? images.filter((u) => /^data:image\//.test(u)).slice(0, 5) : [];
+  const imgList = Array.isArray(images)
+    ? images.filter((u) => /^data:image\//.test(u)).slice(0, 5)
+    : [];
   stmts.msgInsert.run(conv.id, "user", String(text));
   stmts.convTouch.run(conv.id);
 
   const chatCfg = settings.get("chat");
   const limit = Number(chatCfg.contextMessages) || 30;
-  const history = stmts.msgFor.all(conv.id).slice(-limit).map((m) => ({ role: m.role, text: m.text }));
+  const history = stmts.msgFor
+    .all(conv.id)
+    .slice(-limit)
+    .map((m) => ({ role: m.role, text: m.text }));
   if (imgList.length && history.length && history[history.length - 1].role === "user") {
     history[history.length - 1].images = imgList;
   }
-  const fullMessages = systemPrompt ? [{ role: "system", text: systemPrompt }, ...history] : history;
+  const fullMessages = systemPrompt
+    ? [{ role: "system", text: systemPrompt }, ...history]
+    : history;
 
   res.writeHead(200, {
     "Content-Type": "text/event-stream",
     "Cache-Control": "no-cache",
     Connection: "keep-alive",
   });
-  const emit = (payload) => { try { res.write(`data: ${JSON.stringify(payload)}\n\n`); } catch {} };
+  const emit = (payload) => {
+    try {
+      res.write(`data: ${JSON.stringify(payload)}\n\n`);
+    } catch {}
+  };
   emit({ type: "meta", title: autoTitle || conv.title });
 
-  const runSide = (side, mdl) => (async () => {
-    const startedAt = Date.now();
-    try {
-      const full = await runWithPage(req.appPage, () => provider.chat({
-        secret, model: mdl, messages: fullMessages,
-        temperature: temperature ?? chatCfg.temperature ?? 0.7,
-        maxTokens: maxTokens ?? chatCfg.maxTokens ?? 1024,
-        stream: true, topP, frequencyPenalty, presencePenalty,
-        onToken: (token) => emit({ type: "token", side, text: token }),
-        signal: null,
-      }));
-      if (persist) stmts.msgInsert.run(conv.id, "assistant", `[${side === "a" ? "A" : "B"} · ${mdl}]\n\n${full}`);
-      emit({ type: "done", side, text: full, model: mdl, stats: { ms: Date.now() - startedAt, chars: full.length, tokensApprox: Math.round(full.length / 4) } });
-    } catch (e) {
-      emit({ type: "error", side, message: e.message });
-    }
-  })();
+  const runSide = (side, mdl) =>
+    (async () => {
+      const startedAt = Date.now();
+      try {
+        const full = await runWithPage(req.appPage, () =>
+          provider.chat({
+            secret,
+            model: mdl,
+            messages: fullMessages,
+            temperature: temperature ?? chatCfg.temperature ?? 0.7,
+            maxTokens: maxTokens ?? chatCfg.maxTokens ?? 1024,
+            stream: true,
+            topP,
+            frequencyPenalty,
+            presencePenalty,
+            onToken: (token) => emit({ type: "token", side, text: token }),
+            signal: null,
+          }),
+        );
+        if (persist)
+          stmts.msgInsert.run(
+            conv.id,
+            "assistant",
+            `[${side === "a" ? "A" : "B"} · ${mdl}]\n\n${full}`,
+          );
+        emit({
+          type: "done",
+          side,
+          text: full,
+          model: mdl,
+          stats: {
+            ms: Date.now() - startedAt,
+            chars: full.length,
+            tokensApprox: Math.round(full.length / 4),
+          },
+        });
+      } catch (e) {
+        emit({ type: "error", side, message: e.message });
+      }
+    })();
 
   await Promise.all([runSide("a", modelA), runSide("b", modelB)]);
-  try { res.end(); } catch {}
+  try {
+    res.end();
+  } catch {}
 });
 
 // POST /:id/choose — сохранить выбранный в Arena ответ как ответ ассистента

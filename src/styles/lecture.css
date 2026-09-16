@@ -453,11 +453,7 @@
      --glass — это ~5% белого: страница просвечивала сквозь модалку и текст
      панели сливался с содержимым за ней («текст не видно вообще»). */
   background: var(--surface-solid);
-  background-image: linear-gradient(
-    180deg,
-    var(--glass-strong),
-    rgba(255, 255, 255, 0) 42%
-  );
+  background-image: linear-gradient(180deg, var(--glass-strong), rgba(255, 255, 255, 0) 42%);
   border: 1px solid var(--glass-border);
   border-radius: 16px;
   box-shadow: var(--shadow);

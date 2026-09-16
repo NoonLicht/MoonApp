@@ -98,9 +98,18 @@ function start({ subId = null, ids = null, onlyMissing = false, timeout = 6000, 
 
   const rows = selectNodes({ subId, ids, onlyMissing });
   PING = {
-    running: true, total: rows.length, done: 0, ok: 0, failed: 0,
-    currentId: null, currentName: "", startedAt: Date.now(), finishedAt: 0,
-    error: "", cancelRequested: false, results: [],
+    running: true,
+    total: rows.length,
+    done: 0,
+    ok: 0,
+    failed: 0,
+    currentId: null,
+    currentName: "",
+    startedAt: Date.now(),
+    finishedAt: 0,
+    error: "",
+    cancelRequested: false,
+    results: [],
   };
   if (rows.length === 0) {
     PING = { ...PING, running: false, finishedAt: Date.now() };
@@ -113,7 +122,9 @@ function start({ subId = null, ids = null, onlyMissing = false, timeout = 6000, 
       PING = { ...PING, running: false, error: e.message, finishedAt: Date.now() };
       logger.error("proxycore.ping.error", { error: e.message });
     })
-    .finally(() => { currentRun = null; });
+    .finally(() => {
+      currentRun = null;
+    });
 
   return getStatus();
 }
@@ -125,7 +136,11 @@ async function runQueue(rows, doPing, timeout) {
     if (PING.cancelRequested) break;
 
     let node = null;
-    try { node = JSON.parse(row.config_json); } catch { /* битый config_json — остаётся null */ }
+    try {
+      node = JSON.parse(row.config_json);
+    } catch {
+      /* битый config_json — остаётся null */
+    }
 
     PING.currentId = row.id;
     PING.currentName = row.name || (node && node.server) || "";
@@ -144,12 +159,25 @@ async function runQueue(rows, doPing, timeout) {
     });
 
     PING.done++;
-    if (res.ok) PING.ok++; else PING.failed++;
-    PING.results.push({ id: row.id, name: PING.currentName, ok: !!res.ok, ttfbMs: res.ttfbMs, error: res.error || "" });
+    if (res.ok) PING.ok++;
+    else PING.failed++;
+    PING.results.push({
+      id: row.id,
+      name: PING.currentName,
+      ok: !!res.ok,
+      ttfbMs: res.ttfbMs,
+      error: res.error || "",
+    });
   }
 
   PING = { ...PING, running: false, currentId: null, currentName: "", finishedAt: Date.now() };
-  logger.action("proxycore.ping.done", { total: PING.total, done: PING.done, ok: PING.ok, failed: PING.failed, cancelled: PING.cancelRequested });
+  logger.action("proxycore.ping.done", {
+    total: PING.total,
+    done: PING.done,
+    ok: PING.ok,
+    failed: PING.failed,
+    cancelled: PING.cancelRequested,
+  });
   return getStatus();
 }
 

@@ -14,14 +14,28 @@ const VLESS =
   "&pbk=Xz8YkyWe2RC7jeze47EjerXXdEKiJ38OGR8kW9VLdS8&sid=58c837b6&spx=%2F&type=tcp#%F0%9F%87%B3%F0%9F%87%B1%20NL";
 const TROJAN = "trojan://pass123@example.com:443?sni=example.com&type=ws&path=%2Fws#TR";
 const HY2 = "hysteria2://secret@1.2.3.4:8443?sni=bing.com&obfs=salamander&obfs-password=abc#HY2";
-const TUIC = "tuic://11111111-2222-3333-4444-555555555555:pass@5.6.7.8:443?congestion_control=bbr&sni=x.com#TUIC";
+const TUIC =
+  "tuic://11111111-2222-3333-4444-555555555555:pass@5.6.7.8:443?congestion_control=bbr&sni=x.com#TUIC";
 const SS = "ss://YWVzLTI1Ni1nY206cGFzcw==@9.9.9.9:8388#SS"; // aes-256-gcm:pass
 const SSH = "ssh://root:toor@10.0.0.1:22#SSH";
-const VMESS = "vmess://" + Buffer.from(JSON.stringify({
-  v: "2", ps: "VM", add: "2.2.2.2", port: "443",
-  id: "11111111-2222-3333-4444-555555555555", aid: "0", scy: "auto",
-  net: "ws", host: "a.com", path: "/p", tls: "tls", sni: "a.com",
-})).toString("base64");
+const VMESS =
+  "vmess://" +
+  Buffer.from(
+    JSON.stringify({
+      v: "2",
+      ps: "VM",
+      add: "2.2.2.2",
+      port: "443",
+      id: "11111111-2222-3333-4444-555555555555",
+      aid: "0",
+      scy: "auto",
+      net: "ws",
+      host: "a.com",
+      path: "/p",
+      tls: "tls",
+      sni: "a.com",
+    }),
+  ).toString("base64");
 
 async function core() {
   return await import("../server/proxyCore");
@@ -54,10 +68,23 @@ describe("proxyCore — разбор ссылок", () => {
 
   it("разбирает Trojan/Hysteria2/TUIC/Shadowsocks/SSH", async () => {
     const c = await core();
-    expect(c.parseUri(TROJAN)).toMatchObject({ protocol: "trojan", server: "example.com", port: 443, network: "ws" });
-    expect(c.parseUri(HY2)).toMatchObject({ protocol: "hysteria2", obfs: "salamander", obfsPassword: "abc" });
+    expect(c.parseUri(TROJAN)).toMatchObject({
+      protocol: "trojan",
+      server: "example.com",
+      port: 443,
+      network: "ws",
+    });
+    expect(c.parseUri(HY2)).toMatchObject({
+      protocol: "hysteria2",
+      obfs: "salamander",
+      obfsPassword: "abc",
+    });
     expect(c.parseUri(TUIC)).toMatchObject({ protocol: "tuic", congestionControl: "bbr" });
-    expect(c.parseUri(SS)).toMatchObject({ protocol: "shadowsocks", method: "aes-256-gcm", password: "pass" });
+    expect(c.parseUri(SS)).toMatchObject({
+      protocol: "shadowsocks",
+      method: "aes-256-gcm",
+      password: "pass",
+    });
     expect(c.parseUri(SSH)).toMatchObject({ protocol: "ssh", user: "root", password: "toor" });
   });
 

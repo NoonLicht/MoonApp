@@ -1,10 +1,17 @@
 import React, { useState, useEffect, useRef, useMemo, memo } from "react";
 import {
-  Thermometer, Fan, HardDrive, Wifi, Info, CircleDot, Cpu, MemoryStick, Monitor, SlidersHorizontal,
+  Thermometer,
+  Fan,
+  HardDrive,
+  Wifi,
+  Info,
+  CircleDot,
+  Cpu,
+  MemoryStick,
+  Monitor,
+  SlidersHorizontal,
 } from "lucide-react";
-import {
-  AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
-} from "recharts";
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { Glass, Select, SectionHead, Btn, Field } from "../components/ui";
 import ToolbarMenu from "../components/ToolbarMenu";
 import { usePageToolbar, usePageActive } from "../components/Toolbar";
@@ -15,15 +22,30 @@ import type { LhmStatus, MonitorSnapshot } from "../api/types";
 const INTERVAL_OPTIONS = [100, 200, 300, 500, 750, 1000];
 const HIST_MAX = 60;
 type CpuView = "cores" | "threads";
-interface HistPoint { t: number; cpu: number; gpu: number; per: number[] }
+interface HistPoint {
+  t: number;
+  cpu: number;
+  gpu: number;
+  per: number[];
+}
 
 function fmtUptime(sec: number): string {
-  const d = Math.floor(sec / 86400), h = Math.floor((sec % 86400) / 3600), m = Math.floor((sec % 3600) / 60);
+  const d = Math.floor(sec / 86400),
+    h = Math.floor((sec % 86400) / 3600),
+    m = Math.floor((sec % 3600) / 60);
   return d > 0 ? `${d}d ${h}h` : h > 0 ? `${h}h ${m}m` : `${m}m`;
 }
 
-function MetricCard({ icon: Icon, tone, value, sub }: {
-  icon: React.ElementType; tone: string; value: string; sub: string;
+function MetricCard({
+  icon: Icon,
+  tone,
+  value,
+  sub,
+}: {
+  icon: React.ElementType;
+  tone: string;
+  value: string;
+  sub: string;
 }) {
   return (
     <Glass className="metric-card">
@@ -34,14 +56,30 @@ function MetricCard({ icon: Icon, tone, value, sub }: {
   );
 }
 
-function SensorList({ rows, unit }: { rows: { key: string; name: string; value: number | null }[]; unit: string }) {
+function SensorList({
+  rows,
+  unit,
+}: {
+  rows: { key: string; name: string; value: number | null }[];
+  unit: string;
+}) {
   if (!rows.length) return null;
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 6 }}>
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
+        gap: 6,
+      }}
+    >
       {rows.map((r) => (
         <div key={r.key} className="task-row" style={{ padding: "8px 10px" }}>
-          <span className="task-text" title={r.name}>{r.name}</span>
-          <span className="mono-val">{r.value != null ? `${Math.round(r.value * 100) / 100}${unit}` : "—"}</span>
+          <span className="task-text" title={r.name}>
+            {r.name}
+          </span>
+          <span className="mono-val">
+            {r.value != null ? `${Math.round(r.value * 100) / 100}${unit}` : "—"}
+          </span>
         </div>
       ))}
     </div>
@@ -51,7 +89,9 @@ function SensorList({ rows, unit }: { rows: { key: string; name: string; value: 
 function Panel({ title, children }: { title: React.ReactNode; children: React.ReactNode }) {
   return (
     <Glass className="chart-panel">
-      <div className="field-label" style={{ marginBottom: 8 }}>{title}</div>
+      <div className="field-label" style={{ marginBottom: 8 }}>
+        {title}
+      </div>
       {children}
     </Glass>
   );
@@ -75,7 +115,8 @@ export default function MonitorPage() {
 
   // Стартовый интервал опроса — из настроек приложения (миллисекунды).
   useEffect(() => {
-    api.getSettings()
+    api
+      .getSettings()
       .then((s) => {
         const mon = (s as { monitor?: { refreshMs?: number; refreshInterval?: string } })?.monitor;
         if (typeof mon?.refreshMs === "number" && mon.refreshMs >= 100 && mon.refreshMs <= 1000) {
@@ -105,23 +146,37 @@ export default function MonitorPage() {
         const hist = histRef.current;
         // Точка добавляется на КАЖДЫЙ успешный опрос: пер-ядерные значения могут
         // меняться при неизменном тотале, а CpuTiles читает именно их.
-        hist.push({ t: hist.length, cpu: s.cpu.loadTotalPercent, gpu: gpuLoad, per: s.cpu.loadPerCorePercent });
+        hist.push({
+          t: hist.length,
+          cpu: s.cpu.loadTotalPercent,
+          gpu: gpuLoad,
+          per: s.cpu.loadPerCorePercent,
+        });
         if (hist.length > HIST_MAX) hist.shift();
         setTick((x) => x + 1);
-      } catch { /* сервер недоступен — повторим по таймеру */ }
-      finally { pendingRef.current = false; }
+      } catch {
+        /* сервер недоступен — повторим по таймеру */
+      } finally {
+        pendingRef.current = false;
+      }
     };
     if (isActive) void poll();
     if (!live || !isActive) return undefined;
     const timer = setInterval(() => void poll(), interval_);
-    return () => { stopped = true; clearInterval(timer); };
+    return () => {
+      stopped = true;
+      clearInterval(timer);
+    };
   }, [live, interval_, pollNonce, isActive]);
 
   usePageToolbar(
     <>
       {/* Live — иконка с цветовым индикатором: в панели не должно быть надписей. */}
-      <button className={`live-pill ${live ? "is-live" : ""}`} onClick={() => setLive((v) => !v)}
-        title={live ? t("monitor.live") : t("monitor.paused")}>
+      <button
+        className={`live-pill ${live ? "is-live" : ""}`}
+        onClick={() => setLive((v) => !v)}
+        title={live ? t("monitor.live") : t("monitor.paused")}
+      >
         <CircleDot size={12} />
       </button>
       {/* Вид CPU и частота опроса — в поповере (раньше это были два селекта
@@ -153,19 +208,33 @@ export default function MonitorPage() {
         </Field>
       </ToolbarMenu>
     </>,
-    [live, interval_, view, t]
+    [live, interval_, view, t],
   );
 
   return (
     <div className="page">
       <div className="monitor-scroll">
-        <MonitorBody data={data} t={t} points={points} tick={tick} view={view} onLhmChanged={() => setPollNonce((x) => x + 1)} />
+        <MonitorBody
+          data={data}
+          t={t}
+          points={points}
+          tick={tick}
+          view={view}
+          onLhmChanged={() => setPollNonce((x) => x + 1)}
+        />
       </div>
     </div>
   );
 }
 
-function MonitorBody({ data, t, points, tick, view, onLhmChanged }: {
+function MonitorBody({
+  data,
+  t,
+  points,
+  tick,
+  view,
+  onLhmChanged,
+}: {
   data: MonitorSnapshot | null;
   points: HistPoint[];
   tick: number;
@@ -177,7 +246,10 @@ function MonitorBody({ data, t, points, tick, view, onLhmChanged }: {
     return (
       <>
         <SectionHead eyebrow={t("monitor.eyebrow")} title={t("monitor.title")} />
-        <Glass className="source-placeholder"><Info size={16} /><span>…</span></Glass>
+        <Glass className="source-placeholder">
+          <Info size={16} />
+          <span>…</span>
+        </Glass>
       </>
     );
   }
@@ -189,31 +261,77 @@ function MonitorBody({ data, t, points, tick, view, onLhmChanged }: {
       <SectionHead
         eyebrow={t("monitor.eyebrow")}
         title={t("monitor.title")}
-        action={(
-          <span className="badge tone-teal mono" title={`WMI: ${data.sources.wmi} · LHM: ${hasLhm} · nvidia-smi: ${data.sources.nvidiaSmi}`}>
+        action={
+          <span
+            className="badge tone-teal mono"
+            title={`WMI: ${data.sources.wmi} · LHM: ${hasLhm} · nvidia-smi: ${data.sources.nvidiaSmi}`}
+          >
             {data.system.hostname}
           </span>
-        )}
+        }
       />
 
       <div className="metric-row">
-        <MetricCard icon={Cpu} tone="amber" value={`${data.cpu.loadTotalPercent}%`} sub={`CPU · ${data.cpu.coresLogical} ${t("monitor.cores").toLowerCase()}`} />
-        <MetricCard icon={Thermometer} tone="amber" value={data.cpuTemp != null ? `${Math.round(data.cpuTemp)}°C` : "—"} sub={t("monitor.cpuTemp")} />
-        <MetricCard icon={Monitor} tone="violet" value={data.gpu[0]?.utilizationPercent != null ? `${data.gpu[0].utilizationPercent}%` : "—"} sub={(data.gpu[0]?.name || "GPU").slice(0, 28)} />
-        <MetricCard icon={Thermometer} tone="violet" value={data.gpuTemp != null ? `${Math.round(data.gpuTemp)}°C` : "—"} sub={t("monitor.gpuTemp")} />
-        <MetricCard icon={MemoryStick} tone="teal" value={`${data.memory.usedPercent}%`} sub={`${t("monitor.ram")} · ${(data.memory.usedMb / 1024).toFixed(1)}/${(data.memory.totalMb / 1024).toFixed(0)} GB`} />
-        <MetricCard icon={Fan} tone="teal" value={data.fans[0]?.rpm != null ? `${Math.round(data.fans[0].rpm)}` : "—"} sub={t("monitor.fanRpm", { n: 1 })} />
+        <MetricCard
+          icon={Cpu}
+          tone="amber"
+          value={`${data.cpu.loadTotalPercent}%`}
+          sub={`CPU · ${data.cpu.coresLogical} ${t("monitor.cores").toLowerCase()}`}
+        />
+        <MetricCard
+          icon={Thermometer}
+          tone="amber"
+          value={data.cpuTemp != null ? `${Math.round(data.cpuTemp)}°C` : "—"}
+          sub={t("monitor.cpuTemp")}
+        />
+        <MetricCard
+          icon={Monitor}
+          tone="violet"
+          value={
+            data.gpu[0]?.utilizationPercent != null ? `${data.gpu[0].utilizationPercent}%` : "—"
+          }
+          sub={(data.gpu[0]?.name || "GPU").slice(0, 28)}
+        />
+        <MetricCard
+          icon={Thermometer}
+          tone="violet"
+          value={data.gpuTemp != null ? `${Math.round(data.gpuTemp)}°C` : "—"}
+          sub={t("monitor.gpuTemp")}
+        />
+        <MetricCard
+          icon={MemoryStick}
+          tone="teal"
+          value={`${data.memory.usedPercent}%`}
+          sub={`${t("monitor.ram")} · ${(data.memory.usedMb / 1024).toFixed(1)}/${(data.memory.totalMb / 1024).toFixed(0)} GB`}
+        />
+        <MetricCard
+          icon={Fan}
+          tone="teal"
+          value={data.fans[0]?.rpm != null ? `${Math.round(data.fans[0].rpm)}` : "—"}
+          sub={t("monitor.fanRpm", { n: 1 })}
+        />
       </div>
 
       <LoadChart points={points} />
 
       {/* Ядра/потоки — плитками, как в диспетчере задач */}
-      <CpuTiles key={view} points={points} tick={tick} mode={view} coresPhysical={data.cpu.coresPhysical} t={t} />
+      <CpuTiles
+        key={view}
+        points={points}
+        tick={tick}
+        mode={view}
+        coresPhysical={data.cpu.coresPhysical}
+        t={t}
+      />
 
       {/* RAM / VRAM */}
       <div className="donut-row">
         <Glass className="chart-panel donut-panel">
-          <Donut label={`${t("monitor.ram")} · ${(data.memory.usedMb / 1024).toFixed(1)} GB`} value={data.memory.usedPercent} color="var(--amber)" />
+          <Donut
+            label={`${t("monitor.ram")} · ${(data.memory.usedMb / 1024).toFixed(1)} GB`}
+            value={data.memory.usedPercent}
+            color="var(--amber)"
+          />
         </Glass>
         {data.vram != null && (
           <Glass className="chart-panel donut-panel">
@@ -229,24 +347,52 @@ function MonitorBody({ data, t, points, tick, view, onLhmChanged }: {
 
       {/* Диски */}
       {data.disks.length > 0 && (
-        <Panel title={<><HardDrive size={13} style={{ verticalAlign: "-2px" }} /> {t("monitor.disks")}</>}>
+        <Panel
+          title={
+            <>
+              <HardDrive size={13} style={{ verticalAlign: "-2px" }} /> {t("monitor.disks")}
+            </>
+          }
+        >
           <div style={{ display: "grid", gap: 8 }}>
             {data.disks.map((d) => {
-              const usedGb = d.totalGb != null && d.freeGb != null ? +(d.totalGb - d.freeGb).toFixed(1) : null;
-              const usedPct = usedGb != null && d.totalGb ? Math.round((100 * usedGb) / d.totalGb) : 0;
-              const speeds = d.readMBs != null
-                ? `${t("monitor.readSpeed")} ${d.readMBs} · ${t("monitor.writeSpeed")} ${d.writeMBs ?? 0} MB/s`
-                : "";
+              const usedGb =
+                d.totalGb != null && d.freeGb != null ? +(d.totalGb - d.freeGb).toFixed(1) : null;
+              const usedPct =
+                usedGb != null && d.totalGb ? Math.round((100 * usedGb) / d.totalGb) : 0;
+              const speeds =
+                d.readMBs != null
+                  ? `${t("monitor.readSpeed")} ${d.readMBs} · ${t("monitor.writeSpeed")} ${d.writeMBs ?? 0} MB/s`
+                  : "";
               return (
-                <div key={d.drive} className="task-row" style={{ padding: "10px 12px", display: "block" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginBottom: 4 }}>
-                    <span className="task-text">{d.label} ({d.drive}){speeds ? ` — ${speeds}` : ""}</span>
+                <div
+                  key={d.drive}
+                  className="task-row"
+                  style={{ padding: "10px 12px", display: "block" }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      gap: 8,
+                      marginBottom: 4,
+                    }}
+                  >
+                    <span className="task-text">
+                      {d.label} ({d.drive}){speeds ? ` — ${speeds}` : ""}
+                    </span>
                     <span className="muted-sm mono-val" style={{ whiteSpace: "nowrap" }}>
                       {t("monitor.diskUsage", { used: usedGb ?? "?", total: d.totalGb ?? "?" })}
                     </span>
                   </div>
                   <div className="progress-track">
-                    <div className="progress-fill" style={{ width: `${usedPct}%`, background: usedPct > 90 ? "var(--coral)" : "var(--teal)" }} />
+                    <div
+                      className="progress-fill"
+                      style={{
+                        width: `${usedPct}%`,
+                        background: usedPct > 90 ? "var(--coral)" : "var(--teal)",
+                      }}
+                    />
                   </div>
                 </div>
               );
@@ -257,14 +403,26 @@ function MonitorBody({ data, t, points, tick, view, onLhmChanged }: {
 
       {/* Сеть */}
       {data.network.length > 0 && (
-        <Panel title={<><Wifi size={13} style={{ verticalAlign: "-2px" }} /> {t("monitor.network")}</>}>
-          <SensorList unit=" KB/s" rows={data.network.slice(0, 6).map((n, i) => ({
-            key: `n${i}`, name: n.name, value: (n.rxKBs ?? 0) + (n.txKBs ?? 0),
-          }))} />
+        <Panel
+          title={
+            <>
+              <Wifi size={13} style={{ verticalAlign: "-2px" }} /> {t("monitor.network")}
+            </>
+          }
+        >
+          <SensorList
+            unit=" KB/s"
+            rows={data.network.slice(0, 6).map((n, i) => ({
+              key: `n${i}`,
+              name: n.name,
+              value: (n.rxKBs ?? 0) + (n.txKBs ?? 0),
+            }))}
+          />
           <div className="muted-sm" style={{ marginTop: 6, display: "grid", gap: 2 }}>
             {data.network.slice(0, 6).map((n, i) => (
               <div key={i}>
-                ↓{n.rxKBs ?? 0} / ↑{n.txKBs ?? 0} KB/s — {n.name}{n.ipv4.length ? ` (${n.ipv4.join(", ")})` : ""}
+                ↓{n.rxKBs ?? 0} / ↑{n.txKBs ?? 0} KB/s — {n.name}
+                {n.ipv4.length ? ` (${n.ipv4.join(", ")})` : ""}
               </div>
             ))}
           </div>
@@ -272,14 +430,40 @@ function MonitorBody({ data, t, points, tick, view, onLhmChanged }: {
       )}
 
       {/* Система */}
-      <Panel title={<><Info size={13} style={{ verticalAlign: "-2px" }} /> {t("monitor.system")}</>}>
-        <div className="muted-sm" style={{ display: "grid", gap: 4, gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}>
-          <div>{t("monitor.os")}: {data.system.osName} {data.system.osVersion} (build {data.system.osBuild})</div>
-          <div>CPU: {data.cpu.model}{data.cpu.powerWatt != null ? ` · ${Math.round(data.cpu.powerWatt)} W` : ""}{data.cpu.clockMhz != null ? ` · ${(data.cpu.clockMhz / 1000).toFixed(2)} GHz` : ""}</div>
-          <div>{t("monitor.cores")}: {data.cpu.coresPhysical ?? "?"} / {data.cpu.coresLogical}</div>
-          <div>{t("monitor.uptime")}: {fmtUptime(data.system.uptimeSec)}</div>
+      <Panel
+        title={
+          <>
+            <Info size={13} style={{ verticalAlign: "-2px" }} /> {t("monitor.system")}
+          </>
+        }
+      >
+        <div
+          className="muted-sm"
+          style={{
+            display: "grid",
+            gap: 4,
+            gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+          }}
+        >
+          <div>
+            {t("monitor.os")}: {data.system.osName} {data.system.osVersion} (build{" "}
+            {data.system.osBuild})
+          </div>
+          <div>
+            CPU: {data.cpu.model}
+            {data.cpu.powerWatt != null ? ` · ${Math.round(data.cpu.powerWatt)} W` : ""}
+            {data.cpu.clockMhz != null ? ` · ${(data.cpu.clockMhz / 1000).toFixed(2)} GHz` : ""}
+          </div>
+          <div>
+            {t("monitor.cores")}: {data.cpu.coresPhysical ?? "?"} / {data.cpu.coresLogical}
+          </div>
+          <div>
+            {t("monitor.uptime")}: {fmtUptime(data.system.uptimeSec)}
+          </div>
           {data.system.batteryPercent != null && <div>Battery: {data.system.batteryPercent}%</div>}
-          <div>{t("monitor.host")}: {data.system.hostname} · {data.system.arch}</div>
+          <div>
+            {t("monitor.host")}: {data.system.hostname} · {data.system.arch}
+          </div>
         </div>
       </Panel>
     </>
@@ -305,10 +489,15 @@ const CORE_COLORS = Array.from({ length: 32 }, (_, i) => `hsl(${(i * 47 + 20) % 
 
 /** График суммарной загрузки CPU/GPU (для вида «Всего»). */
 const LoadChart = memo(function LoadChart({ points }: { points: HistPoint[] }) {
-  const rows = useMemo(() => points.map((p, idx) => ({ t: idx, cpu: p.cpu, gpu: p.gpu })), [points]);
+  const rows = useMemo(
+    () => points.map((p, idx) => ({ t: idx, cpu: p.cpu, gpu: p.gpu })),
+    [points],
+  );
   return (
     <Glass className="chart-panel">
-      <div className="field-label" style={{ marginBottom: 8 }}>CPU / GPU %</div>
+      <div className="field-label" style={{ marginBottom: 8 }}>
+        CPU / GPU %
+      </div>
       <ResponsiveContainer width="100%" height={180}>
         <AreaChart data={rows} margin={{ top: 4, right: 8, left: -24, bottom: 0 }}>
           <defs>
@@ -322,7 +511,11 @@ const LoadChart = memo(function LoadChart({ points }: { points: HistPoint[] }) {
             </linearGradient>
           </defs>
           <XAxis dataKey="t" hide />
-          <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: "var(--text-tertiary)" }} width={30} />
+          <YAxis
+            domain={[0, 100]}
+            tick={{ fontSize: 11, fill: "var(--text-tertiary)" }}
+            width={30}
+          />
           <Tooltip
             contentStyle={{
               background: "var(--surface-solid)",
@@ -332,8 +525,26 @@ const LoadChart = memo(function LoadChart({ points }: { points: HistPoint[] }) {
             }}
             labelFormatter={() => ""}
           />
-          <Area type="monotone" dataKey="cpu" stroke="var(--amber)" strokeWidth={2} fill="url(#cpuGrad)" name="CPU %" isAnimationActive={false} dot={false} />
-          <Area type="monotone" dataKey="gpu" stroke="var(--violet)" strokeWidth={2} fill="url(#gpuGrad)" name="GPU %" isAnimationActive={false} dot={false} />
+          <Area
+            type="monotone"
+            dataKey="cpu"
+            stroke="var(--amber)"
+            strokeWidth={2}
+            fill="url(#cpuGrad)"
+            name="CPU %"
+            isAnimationActive={false}
+            dot={false}
+          />
+          <Area
+            type="monotone"
+            dataKey="gpu"
+            stroke="var(--violet)"
+            strokeWidth={2}
+            fill="url(#gpuGrad)"
+            name="GPU %"
+            isAnimationActive={false}
+            dot={false}
+          />
         </AreaChart>
       </ResponsiveContainer>
     </Glass>
@@ -347,7 +558,13 @@ const Sparkline = memo(function Sparkline({ values, color }: { values: number[];
   const w = 120;
   const h = 34;
   if (values.length < 2) {
-    return <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" style={{ width: "100%", height: h, display: "block" }} />;
+    return (
+      <svg
+        viewBox={`0 0 ${w} ${h}`}
+        preserveAspectRatio="none"
+        style={{ width: "100%", height: h, display: "block" }}
+      />
+    );
   }
   const pt = (v: number, i: number): string => {
     const x = (i / (values.length - 1)) * w;
@@ -358,15 +575,26 @@ const Sparkline = memo(function Sparkline({ values, color }: { values: number[];
   const line = values.map(pt).join(" ");
   const area = `0,${h} ${line} ${w},${h}`;
   return (
-    <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" style={{ width: "100%", height: h, display: "block" }}>
+    <svg
+      viewBox={`0 0 ${w} ${h}`}
+      preserveAspectRatio="none"
+      style={{ width: "100%", height: h, display: "block" }}
+    >
       <polygon points={area} fill={color} opacity={0.14} />
-      <polyline points={line} fill="none" stroke={color} strokeWidth={1.8} vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
+      <polyline
+        points={line}
+        fill="none"
+        stroke={color}
+        strokeWidth={1.8}
+        vectorEffect="non-scaling-stroke"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 });
 
 const SMOOTH_TAU_MS = 160; // постоянная времени экспоненциального сглаживания
-const SMOOTH_EPS = 0.15;   // % — порог «значение догнало цель»
+const SMOOTH_EPS = 0.15; // % — порог «значение догнало цель»
 
 /**
  * Плитки по каждому ядру/потоку.
@@ -378,7 +606,13 @@ const SMOOTH_EPS = 0.15;   // % — порог «значение догнало
  * планировался безусловно каждый кадр (60 fps вхолостую) — это и давало
  * постоянный аллокационный шторм и рост памяти на странице монитора.
  */
-function CpuTiles({ points, mode, coresPhysical, t, tick }: {
+function CpuTiles({
+  points,
+  mode,
+  coresPhysical,
+  t,
+  tick,
+}: {
   points: HistPoint[];
   mode: "cores" | "threads";
   coresPhysical: number | null;
@@ -402,7 +636,7 @@ function CpuTiles({ points, mode, coresPhysical, t, tick }: {
       points.map((p) => {
         const vals = mode === "threads" ? p.per : groupCores(p.per, coresPhysical);
         return vals[i] ?? 0;
-      })
+      }),
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tick, seriesCount, mode, coresPhysical]);
@@ -463,10 +697,13 @@ function CpuTiles({ points, mode, coresPhysical, t, tick }: {
   }, [tick]);
 
   // Размонтирование (в т.ч. смена вида через key) — гасим кадр.
-  useEffect(() => () => {
-    if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    rafRef.current = 0;
-  }, []);
+  useEffect(
+    () => () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      rafRef.current = 0;
+    },
+    [],
+  );
 
   if (!seriesCount) return null;
 
@@ -478,17 +715,23 @@ function CpuTiles({ points, mode, coresPhysical, t, tick }: {
         return (
           <div key={i} className={`core-tile glass ${hot ? "is-hot" : ""}`}>
             <div className="core-tile-head">
-              <span className="core-tile-name">{t(mode === "cores" ? "monitor.coreN" : "monitor.threadN", { n: i })}</span>
-              <span className="core-tile-val" style={{ color: hot ? "var(--coral)" : undefined }}>{v}%</span>
+              <span className="core-tile-name">
+                {t(mode === "cores" ? "monitor.coreN" : "monitor.threadN", { n: i })}
+              </span>
+              <span className="core-tile-val" style={{ color: hot ? "var(--coral)" : undefined }}>
+                {v}%
+              </span>
             </div>
-            <Sparkline values={series[i] ?? []} color={hot ? "var(--coral)" : CORE_COLORS[i % CORE_COLORS.length]} />
+            <Sparkline
+              values={series[i] ?? []}
+              color={hot ? "var(--coral)" : CORE_COLORS[i % CORE_COLORS.length]}
+            />
           </div>
         );
       })}
     </div>
   );
 }
-
 
 /** Карточка управления LibreHardwareMonitor, когда сенсоры недоступны. */
 function LhmCard({ onChanged }: { onChanged: () => void }) {
@@ -497,7 +740,12 @@ function LhmCard({ onChanged }: { onChanged: () => void }) {
   const [busy, setBusy] = useState<"start" | "install" | null>(null);
   const [msg, setMsg] = useState("");
 
-  const refresh = (): void => { api.getLhmStatus().then(setStatus).catch(() => {}); };
+  const refresh = (): void => {
+    api
+      .getLhmStatus()
+      .then(setStatus)
+      .catch(() => {});
+  };
   useEffect(() => {
     refresh();
     const iv = setInterval(refresh, 5000);
@@ -507,35 +755,57 @@ function LhmCard({ onChanged }: { onChanged: () => void }) {
   if (status?.wmi) return null; // сенсоры уже работают
 
   const start = async (): Promise<void> => {
-    setBusy("start"); setMsg(t("monitor.lhmStarting"));
+    setBusy("start");
+    setMsg(t("monitor.lhmStarting"));
     try {
       await api.startLhm();
-      refresh(); onChanged();
-    } catch (e) { setMsg((e as Error).message); }
-    finally { setBusy(null); }
+      refresh();
+      onChanged();
+    } catch (e) {
+      setMsg((e as Error).message);
+    } finally {
+      setBusy(null);
+    }
   };
 
   const downloadEngine = async (): Promise<void> => {
-    setBusy("install"); setMsg(t("monitor.lhmDownloading"));
+    setBusy("install");
+    setMsg(t("monitor.lhmDownloading"));
     try {
       await api.downloadLhmEngine();
-      refresh(); onChanged();
-    } catch (e) { setMsg((e as Error).message); }
-    finally { setBusy(null); }
+      refresh();
+      onChanged();
+    } catch (e) {
+      setMsg((e as Error).message);
+    } finally {
+      setBusy(null);
+    }
   };
 
   const installViaWinget = async (): Promise<void> => {
-    setBusy("install"); setMsg(t("monitor.lhmInstalling"));
+    setBusy("install");
+    setMsg(t("monitor.lhmInstalling"));
     try {
       await api.installApp("winget:LibreHardwareMonitor.LibreHardwareMonitor");
       await new Promise((r) => setTimeout(r, 1500)); // даём winget дописать файлы
       refresh();
-    } catch (e) { setMsg((e as Error).message); }
-    finally { setBusy(null); }
+    } catch (e) {
+      setMsg((e as Error).message);
+    } finally {
+      setBusy(null);
+    }
   };
 
   return (
-    <Glass className="source-placeholder" style={{ borderColor: "var(--coral)", flexDirection: "column", alignItems: "flex-start", gap: 10 }}>
+    <Glass
+      className="source-placeholder"
+      style={{
+        borderColor: "var(--coral)",
+        flexDirection: "column",
+        alignItems: "flex-start",
+        gap: 10,
+      }}
+    >
       <span>{t("monitor.noData")}</span>
       {msg && <span className="muted-sm">{msg}</span>}
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -559,14 +829,19 @@ function LhmCard({ onChanged }: { onChanged: () => void }) {
           </Btn>
         )}
         {status?.pid != null && (
-          <Btn onClick={async () => { await api.stopLhm(); refresh(); }}>{t("monitor.lhmStop")}</Btn>
+          <Btn
+            onClick={async () => {
+              await api.stopLhm();
+              refresh();
+            }}
+          >
+            {t("monitor.lhmStop")}
+          </Btn>
         )}
       </div>
     </Glass>
   );
 }
-
-
 
 /** Кольцевая диаграмма на чистом CSS (conic-gradient), без recharts. */
 function Donut({ label, value, color }: { label: string; value: number; color: string }) {
@@ -584,22 +859,36 @@ function Donut({ label, value, color }: { label: string; value: number; color: s
           placeItems: "center",
         }}
       >
-        <div style={{
-          width: 86, height: 86, borderRadius: "50%",
-          background: "var(--surface-solid)",
-          display: "grid", placeItems: "center",
-        }}>
+        <div
+          style={{
+            width: 86,
+            height: 86,
+            borderRadius: "50%",
+            background: "var(--surface-solid)",
+            display: "grid",
+            placeItems: "center",
+          }}
+        >
           <div className="donut-value">{clamped}%</div>
         </div>
       </div>
-      <div className="muted-sm" style={{ textAlign: "center", marginTop: 6 }}>{label}</div>
+      <div className="muted-sm" style={{ textAlign: "center", marginTop: 6 }}>
+        {label}
+      </div>
     </div>
   );
 }
 
 /* ------------------- Дерево датчиков по железу (HWiNFO-стиль) -------------- */
 
-type AllSensor = { id: string; name: string; type: string; parent: string; hw: string; value: number | null };
+type AllSensor = {
+  id: string;
+  name: string;
+  type: string;
+  parent: string;
+  hw: string;
+  value: number | null;
+};
 
 function fmtSensor(s: AllSensor): string {
   const v = s.value;
@@ -624,7 +913,8 @@ function fmtSensor(s: AllSensor): string {
     if (v >= 1024) return `${(v / 1024).toFixed(0)} KB`;
     return `${v} B`;
   }
-  if (t === "throughput") return v >= 1048576 ? `${(v / 1048576).toFixed(2)} MB/s` : `${v.toFixed(1)} KB/s`;
+  if (t === "throughput")
+    return v >= 1048576 ? `${(v / 1048576).toFixed(2)} MB/s` : `${v.toFixed(1)} KB/s`;
   if (t === "level") return `${Math.round(v)}%`;
   if (t === "factor") return v >= 1000 ? `${(v / 1000).toFixed(1)} K` : `${Math.round(v)}`;
   if (t === "control") return `${Math.round(v)}%`;
@@ -637,7 +927,9 @@ function ValueList({ rows }: { rows: { key: string; name: string; text: string }
     <div className="mono-grid">
       {rows.map((r) => (
         <div key={r.key} className="mono-row">
-          <span className="mono-name" title={r.name}>{r.name}</span>
+          <span className="mono-name" title={r.name}>
+            {r.name}
+          </span>
           <span className="mono-val">{r.text}</span>
         </div>
       ))}
@@ -646,7 +938,11 @@ function ValueList({ rows }: { rows: { key: string; name: string; text: string }
 }
 
 function SubHead({ children }: { children: React.ReactNode }) {
-  return <div className="field-label" style={{ margin: "12px 0 6px" }}>{children}</div>;
+  return (
+    <div className="field-label" style={{ margin: "12px 0 6px" }}>
+      {children}
+    </div>
+  );
 }
 
 const GROUP_KEYS: { type: string; key: string }[] = [
@@ -662,7 +958,13 @@ const GROUP_KEYS: { type: string; key: string }[] = [
   { type: "Control", key: "monitor.controls" },
 ];
 
-function GenericGroups({ sensors, hideTypes = [] }: { sensors: AllSensor[]; hideTypes?: string[] }) {
+function GenericGroups({
+  sensors,
+  hideTypes = [],
+}: {
+  sensors: AllSensor[];
+  hideTypes?: string[];
+}) {
   const { t } = useI18n();
   const visible = sensors.filter((s) => !hideTypes.includes(s.type));
   return (
@@ -678,7 +980,15 @@ function GenericGroups({ sensors, hideTypes = [] }: { sensors: AllSensor[]; hide
         );
       })}
       {(() => {
-        const rows = visible.filter((s) => s.type === "Data" || s.type === "SmallData" || s.type === "Factor" || s.type === "Level" || s.type === "Control" || s.type === "Throughput");
+        const rows = visible.filter(
+          (s) =>
+            s.type === "Data" ||
+            s.type === "SmallData" ||
+            s.type === "Factor" ||
+            s.type === "Level" ||
+            s.type === "Control" ||
+            s.type === "Throughput",
+        );
         if (!rows.length) return null;
         return (
           <div>
@@ -719,7 +1029,7 @@ function ColumnPanel({ title, rows }: { title: string; rows: AllSensor[] }) {
 
 /** Имена сенсоров, которые не нужно показывать (мусор/дубликаты). */
 const HIDDEN_SENSOR_NAMES = [
-  /^temperature\s*#\d+$/i,  // Temperature #2 и т.п. у накопителей
+  /^temperature\s*#\d+$/i, // Temperature #2 и т.п. у накопителей
   /^warning\s*temperature$/i,
   /^critical\s*temperature$/i,
 ];
@@ -736,7 +1046,10 @@ function SensorSections({ data }: { data: MonitorSnapshot }) {
   const seenIds = new Set<string>();
   const all: AllSensor[] = (data.sensorsAll || []).filter((s) => {
     if (isHiddenSensor(s)) return false;
-    if (s.id) { if (seenIds.has(s.id)) return false; seenIds.add(s.id); }
+    if (s.id) {
+      if (seenIds.has(s.id)) return false;
+      seenIds.add(s.id);
+    }
     return true;
   });
   if (!all.length) return null;
@@ -752,7 +1065,9 @@ function SensorSections({ data }: { data: MonitorSnapshot }) {
   const cpuName = hw.find((h) => /amdcpu|intelcpu/i.test(h.id))?.name || "CPU";
   const mbName = hw.find((h) => /motherboard/i.test(h.id))?.name || "Motherboard";
   const gpuNames = new Map(hw.filter((h) => /gpu/i.test(h.id)).map((h) => [h.id, h.name]));
-  const driveNames = new Map(hw.filter((h) => /(nvme|hdd|ssd)/i.test(h.id)).map((h) => [h.id, h.name]));
+  const driveNames = new Map(
+    hw.filter((h) => /(nvme|hdd|ssd)/i.test(h.id)).map((h) => [h.id, h.name]),
+  );
 
   // Для накопителей — группируем по parent-префиксу (например /nvme/2)
   const driveGroups = new Map<string, AllSensor[]>();
@@ -789,38 +1104,50 @@ function SensorSections({ data }: { data: MonitorSnapshot }) {
   return (
     <>
       {/* ---- Процессор ---- */}
-      {cpuSensors.length > 0 && (() => {
-        const s = cpuSensors;
-        const tempsCore = s.filter((x) => x.type === "Temperature" && coreNum(x.name) != null).sort(byCoreNum);
-        const clocksAll = s.filter((x) => x.type === "Clock" && !/effective|bus|average/i.test(x.name)).sort(byCoreNum);
-        const powersCore = s.filter((x) => x.type === "Power" && coreNum(x.name) != null).sort(byCoreNum);
-        const tempsPkg = s.filter((x) => x.type === "Temperature" && coreNum(x.name) == null);
-        const restSensors = s.filter(
-          (x) =>
-            !(x.type === "Temperature" && coreNum(x.name) != null) &&
-            !(x.type === "Clock") &&
-            !(x.type === "Power" && coreNum(x.name) != null)
-        );
-        return (
-          <Glass className="chart-panel">
-            <SubHead>{t("monitor.hwCpu", { name: cpuName })}</SubHead>
-            {tempsPkg.length > 0 && (
-              <>
-                <SubHead>{t("monitor.temps")}</SubHead>
-                <ValueList rows={tempsPkg.map((x) => ({ key: x.id, name: x.name, text: fmtSensor(x) }))} />
-              </>
-            )}
-            {(tempsCore.length > 0 || powersCore.length > 0 || clocksAll.length > 0) && (
-              <div className="split" style={{ flexWrap: "wrap", gap: 14, marginTop: 6 }}>
-                <ColumnPanel title={t("monitor.coreTemps")} rows={tempsCore} />
-                <ColumnPanel title={t("monitor.corePowers")} rows={powersCore} />
-                <ColumnPanel title={t("monitor.coreClocks")} rows={clocksAll} />
-              </div>
-            )}
-            <GenericGroups sensors={restSensors} hideTypes={["Factor", "Level", "Control", "Clock"]} />
-          </Glass>
-        );
-      })()}
+      {cpuSensors.length > 0 &&
+        (() => {
+          const s = cpuSensors;
+          const tempsCore = s
+            .filter((x) => x.type === "Temperature" && coreNum(x.name) != null)
+            .sort(byCoreNum);
+          const clocksAll = s
+            .filter((x) => x.type === "Clock" && !/effective|bus|average/i.test(x.name))
+            .sort(byCoreNum);
+          const powersCore = s
+            .filter((x) => x.type === "Power" && coreNum(x.name) != null)
+            .sort(byCoreNum);
+          const tempsPkg = s.filter((x) => x.type === "Temperature" && coreNum(x.name) == null);
+          const restSensors = s.filter(
+            (x) =>
+              !(x.type === "Temperature" && coreNum(x.name) != null) &&
+              !(x.type === "Clock") &&
+              !(x.type === "Power" && coreNum(x.name) != null),
+          );
+          return (
+            <Glass className="chart-panel">
+              <SubHead>{t("monitor.hwCpu", { name: cpuName })}</SubHead>
+              {tempsPkg.length > 0 && (
+                <>
+                  <SubHead>{t("monitor.temps")}</SubHead>
+                  <ValueList
+                    rows={tempsPkg.map((x) => ({ key: x.id, name: x.name, text: fmtSensor(x) }))}
+                  />
+                </>
+              )}
+              {(tempsCore.length > 0 || powersCore.length > 0 || clocksAll.length > 0) && (
+                <div className="split" style={{ flexWrap: "wrap", gap: 14, marginTop: 6 }}>
+                  <ColumnPanel title={t("monitor.coreTemps")} rows={tempsCore} />
+                  <ColumnPanel title={t("monitor.corePowers")} rows={powersCore} />
+                  <ColumnPanel title={t("monitor.coreClocks")} rows={clocksAll} />
+                </div>
+              )}
+              <GenericGroups
+                sensors={restSensors}
+                hideTypes={["Factor", "Level", "Control", "Clock"]}
+              />
+            </Glass>
+          );
+        })()}
 
       {/* ---- Материнская плата (сенсоры LPC: напряжения, температуры, вентиляторы) ---- */}
       {mbSensors.length > 0 && (
@@ -848,8 +1175,3 @@ function SensorSections({ data }: { data: MonitorSnapshot }) {
     </>
   );
 }
-
-
-
-
-

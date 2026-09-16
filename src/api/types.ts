@@ -2,20 +2,20 @@
 
 /** Книга из OPDS-фида Флибусты. */
 export interface FlibustaBook {
-  id: string;            // "tag:book:..."
-  bid: number;           // числовой id для скачивания
+  id: string; // "tag:book:..."
+  bid: number; // числовой id для скачивания
   title: string;
   author: string;
   genres: string[];
   language: string | null;
   year: number | null;
-  formats: string[];     // ["fb2","epub","mobi","pdf",...]
-  sizeText: string;      // "3074 Kb" и т.п.
-  cover: string | null;  // url к обложке
+  formats: string[]; // ["fb2","epub","mobi","pdf",...]
+  sizeText: string; // "3074 Kb" и т.п.
+  cover: string | null; // url к обложке
   description: string;
   updatedAt: string;
-  fav?: boolean;         // в избранном
-  bm?: boolean;          // в закладках
+  fav?: boolean; // в избранном
+  bm?: boolean; // в закладках
   addedAt?: string;
 }
 
@@ -71,10 +71,10 @@ export interface TaskItem {
   description: string;
   status: TaskStatus;
   priority: TaskPriority;
-  estimatedTime: number;       // minutes
-  actualTime: number;          // minutes (tracked)
+  estimatedTime: number; // minutes
+  actualTime: number; // minutes (tracked)
   recurrence: TaskRecurrence;
-  dueDate: string | null;      // ISO date
+  dueDate: string | null; // ISO date
   reminderDateTime: string | null; // ISO datetime
   checklist: TaskChecklistItem[];
   attachments: TaskAttachment[];
@@ -83,8 +83,8 @@ export interface TaskItem {
   projectId: string;
   folder: string;
   location: string;
-  dependencies: string[];      // taskId[] - blocked by
-  backlinks: string[];         // [[Note]] or @Task references
+  dependencies: string[]; // taskId[] - blocked by
+  backlinks: string[]; // [[Note]] or @Task references
   created_at: string;
   updated_at: string;
 }
@@ -210,11 +210,10 @@ export interface SettingsImportResult {
   sourceVersion: string;
 }
 
-
 /* ------------------------------ Store / каталог ---------------------------- */
 
 export interface AppItem {
-  key: string;                 // "winget:<id>" | "catalog:<id>"
+  key: string; // "winget:<id>" | "catalog:<id>"
   id?: number;
   name: string;
   category: string;
@@ -249,10 +248,10 @@ export interface BackupInfo {
 
 /** Статус LibreHardwareMonitor (GET /api/monitor/lhm). */
 export interface LhmStatus {
-  wmi: boolean;            // пространство root/LibreHardwareMonitor отвечает
-  exePath: string | null;  // найденный путь к LibreHardwareMonitor.exe
-  pid: number | null;      // запущен ли нами (PID процесса)
-  bundled: boolean;        // скачан ли headless-движок (LibreHardwareMonitorLib)
+  wmi: boolean; // пространство root/LibreHardwareMonitor отвечает
+  exePath: string | null; // найденный путь к LibreHardwareMonitor.exe
+  pid: number | null; // запущен ли нами (PID процесса)
+  bundled: boolean; // скачан ли headless-движок (LibreHardwareMonitorLib)
 }
 
 /** Статус FFmpeg + каталог поддерживаемых форматов (GET /api/convert/tools). */
@@ -274,8 +273,8 @@ export interface ConvertResult {
 /** Статус/прогресс тихой установки FFmpeg (GET /api/convert/install). */
 export interface ConvertInstallStatus {
   state: "idle" | "working" | "done" | "error";
-  progress: number;   // 0..100 (скачивание)
-  phase: string;      // "download" | "extract" | ""
+  progress: number; // 0..100 (скачивание)
+  phase: string; // "download" | "extract" | ""
   error: string;
   installed: boolean; // ffmpeg.exe уже лежит в storage/ffmpeg/
 }
@@ -335,9 +334,22 @@ export interface YtdlpInstallStatus {
 
 /* ------------------------------- Мониторинг -------------------------------- */
 
-export interface TempSensor { id: string; name: string; hw: string; value: number | null }
-export interface FanSensor { name: string; hw: string; rpm: number | null }
-export interface ValueSensor { name: string; hw: string; value: number | null }
+export interface TempSensor {
+  id: string;
+  name: string;
+  hw: string;
+  value: number | null;
+}
+export interface FanSensor {
+  name: string;
+  hw: string;
+  rpm: number | null;
+}
+export interface ValueSensor {
+  name: string;
+  hw: string;
+  value: number | null;
+}
 
 export interface GpuInfo {
   name: string;
@@ -389,7 +401,14 @@ export interface MonitorSnapshot {
   powers: ValueSensor[];
   clocks: ValueSensor[];
   /** Полный срез сенсоров по железу (дерево датчиков HWiNFO-стиля). */
-  sensorsAll: { id: string; name: string; type: string; parent: string; hw: string; value: number | null }[];
+  sensorsAll: {
+    id: string;
+    name: string;
+    type: string;
+    parent: string;
+    hw: string;
+    value: number | null;
+  }[];
   hardware: { id: string; name: string; type: string }[];
   disks: DiskInfo[];
   network: NetIfaceInfo[];
@@ -450,7 +469,13 @@ export interface ProxyCoreStatus {
   error: string;
   socksPort: number;
   httpPort: number;
-  node: { protocol: string; tag: string; server: string; port: number; country?: string | null } | null;
+  node: {
+    protocol: string;
+    tag: string;
+    server: string;
+    port: number;
+    country?: string | null;
+  } | null;
   childPid: number | null;
   install?: ProxyInstallStatus;
 }
@@ -611,10 +636,31 @@ export interface MediaSummary {
   adult: boolean;
 }
 
-export interface MediaCast { id: number; name: string; character: string; profile: string | null }
-export interface MediaCrew { id: number; name: string; job: string; department: string; profile: string | null }
-export interface MediaVideo { key: string; name: string; type: string; official?: boolean }
-export interface MediaProvider { id: number; name: string; logo: string | null; displayPriority?: number }
+export interface MediaCast {
+  id: number;
+  name: string;
+  character: string;
+  profile: string | null;
+}
+export interface MediaCrew {
+  id: number;
+  name: string;
+  job: string;
+  department: string;
+  profile: string | null;
+}
+export interface MediaVideo {
+  key: string;
+  name: string;
+  type: string;
+  official?: boolean;
+}
+export interface MediaProvider {
+  id: number;
+  name: string;
+  logo: string | null;
+  displayPriority?: number;
+}
 
 /** Легальные площадки («где смотреть») по региону пользователя. */
 export interface MediaProviders {
@@ -625,8 +671,14 @@ export interface MediaProviders {
   buy: MediaProvider[];
 }
 
-export interface MediaGallery { backdrops: string[]; posters: string[] }
-export interface MediaGenre { id: number; name: string }
+export interface MediaGallery {
+  backdrops: string[];
+  posters: string[];
+}
+export interface MediaGenre {
+  id: number;
+  name: string;
+}
 
 /** Полная карточка тайтла (детали, каст, трейлеры, галерея, похожие). */
 export interface MediaDetails extends MediaSummary {
@@ -683,14 +735,26 @@ export interface MediaWatchlistEntry {
 
 /** Личная оценка 1–10. */
 export interface MediaRatingEntry {
-  id: number; kind: MediaKind; tmdb_id: number; title: string; rating: number; updated_at: string;
+  id: number;
+  kind: MediaKind;
+  tmdb_id: number;
+  title: string;
+  rating: number;
+  updated_at: string;
 }
 
 /** Запись статистики просмотра (одна на тайтл). */
 export interface MediaWatchEntry {
-  id: number; kind: MediaKind; tmdb_id: number; title: string;
-  genres: (string | MediaGenre)[]; cast: { name: string }[] | string[];
-  runtime: number | null; progress: number; minutes: number; watched_at: string;
+  id: number;
+  kind: MediaKind;
+  tmdb_id: number;
+  title: string;
+  genres: (string | MediaGenre)[];
+  cast: { name: string }[] | string[];
+  runtime: number | null;
+  progress: number;
+  minutes: number;
+  watched_at: string;
 }
 
 export interface MediaState {
@@ -730,20 +794,36 @@ export interface MediaStatus {
 /* --- Торрент-плеер (источник задаёт пользователь: magnet/.torrent) --- */
 
 export interface TorrentFile {
-  index: number; name: string; path: string; length: number;
-  mime: string; progress: number; playable: boolean;
+  index: number;
+  name: string;
+  path: string;
+  length: number;
+  mime: string;
+  progress: number;
+  playable: boolean;
 }
 
 export interface TorrentAddResult {
-  infoHash: string; name: string; length: number; files: TorrentFile[];
+  infoHash: string;
+  name: string;
+  length: number;
+  files: TorrentFile[];
 }
 
 export interface TorrentStatus {
-  infoHash: string; name: string;
-  ready: boolean; done: boolean; progress: number;
-  downloadSpeed: number; uploadSpeed: number;
-  downloaded: number; uploaded: number; length: number;
-  peers: number; timeRemaining: number | null; ratio: number;
+  infoHash: string;
+  name: string;
+  ready: boolean;
+  done: boolean;
+  progress: number;
+  downloadSpeed: number;
+  uploadSpeed: number;
+  downloaded: number;
+  uploaded: number;
+  length: number;
+  peers: number;
+  timeRemaining: number | null;
+  ratio: number;
   files: TorrentFile[];
 }
 
@@ -760,15 +840,28 @@ declare global {
       openAppDir?: () => Promise<{ ok: boolean; dir?: string; error?: string }>;
       // Обновления приложения (работают только в packaged-сборке). С 0.2.2
       // обновления обязательны: включение/выключение не предусмотрено.
-      checkUpdates?: () => Promise<{ ok: boolean; available?: boolean; version?: string | null; reason?: string }>;
-      downloadUpdate?: () => Promise<{ ok: boolean; available?: boolean; version?: string | null; downloading?: boolean; reason?: string }>;
+      checkUpdates?: () => Promise<{
+        ok: boolean;
+        available?: boolean;
+        version?: string | null;
+        reason?: string;
+      }>;
+      downloadUpdate?: () => Promise<{
+        ok: boolean;
+        available?: boolean;
+        version?: string | null;
+        downloading?: boolean;
+        reason?: string;
+      }>;
       /**
        * Режим захвата звука: "loopback" — системный звук (WASAPI через
        * setDisplayMediaRequestHandler в electron/main.js), "default" — обычный
        * выбор экрана. Без loopback getDisplayMedia в Electron отдаёт видео и
        * звук выбранного источника, а не звук системы (см. страницу лекций).
        */
-      setCaptureMode?: (mode: "loopback" | "default") => Promise<{ ok: boolean; mode?: string; error?: string }>;
+      setCaptureMode?: (
+        mode: "loopback" | "default",
+      ) => Promise<{ ok: boolean; mode?: string; error?: string }>;
     };
   }
 }

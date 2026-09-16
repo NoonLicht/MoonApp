@@ -40,31 +40,63 @@ function runElevated(exe, args = [], opts = {}) {
       windowsHide: true,
       cwd: opts.workingDir || undefined,
     });
-    let stdout = "", stderr = "";
+    let stdout = "",
+      stderr = "";
     let settled = false;
     // Мягкий таймаут: UAC-диалог может ждать ответа пользователя, но вызывающий
     // код не должен висеть — возвращаем pending и продолжаем работу.
     const softMs = Number(opts.softTimeoutMs) || 0;
     const softTimer = softMs
-      ? setTimeout(() => { if (!settled) { settled = true; clearTimeout(timer); resolve({ ok: true, pending: true, exitCode: null, pid: null, error: null }); } }, softMs)
+      ? setTimeout(() => {
+          if (!settled) {
+            settled = true;
+            clearTimeout(timer);
+            resolve({ ok: true, pending: true, exitCode: null, pid: null, error: null });
+          }
+        }, softMs)
       : null;
-    const timer = setTimeout(() => { try { proc.kill(); } catch { /* ignore */ } }, timeoutMs);
-    proc.stdout.on("data", (d) => { stdout += d.toString(); });
-    proc.stderr.on("data", (d) => { stderr += d.toString(); });
+    const timer = setTimeout(() => {
+      try {
+        proc.kill();
+      } catch {
+        /* ignore */
+      }
+    }, timeoutMs);
+    proc.stdout.on("data", (d) => {
+      stdout += d.toString();
+    });
+    proc.stderr.on("data", (d) => {
+      stderr += d.toString();
+    });
     proc.on("error", (e) => {
       if (settled) return;
-      settled = true; clearTimeout(timer); if (softTimer) clearTimeout(softTimer);
+      settled = true;
+      clearTimeout(timer);
+      if (softTimer) clearTimeout(softTimer);
       resolve({ ok: false, exitCode: null, pid: null, error: e.message });
     });
     proc.on("close", (code) => {
       if (softTimer) clearTimeout(softTimer);
       if (settled) return;
-      settled = true; clearTimeout(timer);
+      settled = true;
+      clearTimeout(timer);
       // 1223 / 1226 — пользователь отменил UAC.
-      if (code === 1223 || code === 1226) return resolve({ ok: false, exitCode: code, pid: null, error: "uac_cancelled" });
-      if (wait) return resolve({ ok: code === 0, exitCode: code, pid: null, error: code === 0 ? null : (stderr.trim().slice(-300) || `exit_${code}`) });
+      if (code === 1223 || code === 1226)
+        return resolve({ ok: false, exitCode: code, pid: null, error: "uac_cancelled" });
+      if (wait)
+        return resolve({
+          ok: code === 0,
+          exitCode: code,
+          pid: null,
+          error: code === 0 ? null : stderr.trim().slice(-300) || `exit_${code}`,
+        });
       const pid = parseInt(stdout.trim(), 10);
-      resolve({ ok: Number.isFinite(pid), exitCode: code, pid: Number.isFinite(pid) ? pid : null, error: Number.isFinite(pid) ? null : stdout.trim() || stderr.trim().slice(-300) });
+      resolve({
+        ok: Number.isFinite(pid),
+        exitCode: code,
+        pid: Number.isFinite(pid) ? pid : null,
+        error: Number.isFinite(pid) ? null : stdout.trim() || stderr.trim().slice(-300),
+      });
     });
   });
 }

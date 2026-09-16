@@ -17,7 +17,15 @@ const core = require("../server/proxyCore");
 const ping = require("../server/proxyPing");
 
 const UUID = "11111111-2222-3333-4444-555555555555";
-const vless = (server: string, port: number) => ({ protocol: "vless", server, port, uuid: UUID, tls: true, sni: "x.com", tag: "t" });
+const vless = (server: string, port: number) => ({
+  protocol: "vless",
+  server,
+  port,
+  uuid: UUID,
+  tls: true,
+  sni: "x.com",
+  tag: "t",
+});
 
 describe("пинг узла — методика", () => {
   it("несколько целей вместо одной (иначе часть рабочих узлов = «блок»)", () => {
@@ -51,9 +59,23 @@ describe("proxyPing — состояние после прогона", () => {
   it("после прогона прогресс закрыт, а результаты содержат причину", async () => {
     const sub = require("../server/db").stmts.psubInsert.run("p", "https://example.com/p", 1);
     const stmts = require("../server/db").stmts;
-    stmts.pnodeInsert.run(sub.lastInsertRowid, "n1", "vless", JSON.stringify(vless("127.0.0.1", 1)));
+    stmts.pnodeInsert.run(
+      sub.lastInsertRowid,
+      "n1",
+      "vless",
+      JSON.stringify(vless("127.0.0.1", 1)),
+    );
 
-    ping.start({ subId: sub.lastInsertRowid, pinger: async () => ({ ok: false, ttfbMs: null, country: null, state: "blocked", error: "unreachable" }) });
+    ping.start({
+      subId: sub.lastInsertRowid,
+      pinger: async () => ({
+        ok: false,
+        ttfbMs: null,
+        country: null,
+        state: "blocked",
+        error: "unreachable",
+      }),
+    });
     await ping.awaitCurrent();
     const st = ping.getStatus();
     expect(st.running).toBe(false);

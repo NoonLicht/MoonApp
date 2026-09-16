@@ -3,7 +3,13 @@ import { Sun, Moon, Contrast, Minus, Square, X, Shield, FolderOpen } from "lucid
 import { I18nProvider, useI18n } from "./i18n";
 import { ContextMenuProvider } from "./components/ContextMenu";
 import { ToolbarContext, PageHostContext, PageBusyContext } from "./components/Toolbar";
-import { evictPages, touchPage, samePages, KEEP_ALIVE_DEFAULT_LIMIT, KEEP_ALIVE_DEFAULT_IDLE_MIN } from "./utils/pageCache";
+import {
+  evictPages,
+  touchPage,
+  samePages,
+  KEEP_ALIVE_DEFAULT_LIMIT,
+  KEEP_ALIVE_DEFAULT_IDLE_MIN,
+} from "./utils/pageCache";
 import { initTelemetry, setCurrentPage } from "./utils/telemetry";
 import ProxyPanel from "./components/ProxyPanel";
 import { api } from "./api/client";
@@ -71,10 +77,13 @@ const PAGE_COMPONENTS: Record<PageId, React.ComponentType> = {
  * задач и т.п.) не должен перерисовывать скрытые страницы — они остаются
  * смонтированными, но «спящими». Контекст (id/active) при этом работает как надо.
  */
-const MEMO_PAGE_COMPONENTS = (Object.keys(PAGE_COMPONENTS) as PageId[]).reduce((acc, id) => {
-  acc[id] = React.memo(PAGE_COMPONENTS[id]);
-  return acc;
-}, {} as Record<PageId, React.ComponentType>);
+const MEMO_PAGE_COMPONENTS = (Object.keys(PAGE_COMPONENTS) as PageId[]).reduce(
+  (acc, id) => {
+    acc[id] = React.memo(PAGE_COMPONENTS[id]);
+    return acc;
+  },
+  {} as Record<PageId, React.ComponentType>,
+);
 
 interface ShellProps {
   active: PageId;
@@ -104,7 +113,15 @@ interface ShellProps {
  * Неактивные скрываются через visibility (а не display:none) — так сохраняются
  * размеры (канвас/графики не «схлопываются») и scrollTop.
  */
-function PageHost({ id, active, children }: { id: PageId; active: boolean; children: React.ReactNode }) {
+function PageHost({
+  id,
+  active,
+  children,
+}: {
+  id: PageId;
+  active: boolean;
+  children: React.ReactNode;
+}) {
   const value = useMemo(() => ({ id, active }), [id, active]);
   return (
     <div className={`page-host ${active ? "is-active" : ""}`} aria-hidden={!active}>
@@ -113,11 +130,31 @@ function PageHost({ id, active, children }: { id: PageId; active: boolean; child
   );
 }
 
-function Shell({ active, setActive, theme, toggleTheme, toolbarNodes, setPageToolbar, blur, accent, fontSize, reduceMotion, density, opaqueBg, proxyPanelVisible, setProxyPanelVisible, keepPagesAlive, keepPagesLimit, unloadIdleMinutes }: ShellProps) {
+function Shell({
+  active,
+  setActive,
+  theme,
+  toggleTheme,
+  toolbarNodes,
+  setPageToolbar,
+  blur,
+  accent,
+  fontSize,
+  reduceMotion,
+  density,
+  opaqueBg,
+  proxyPanelVisible,
+  setProxyPanelVisible,
+  keepPagesAlive,
+  keepPagesLimit,
+  unloadIdleMinutes,
+}: ShellProps) {
   const { t, lang } = useI18n();
   // Если активная страница была удалена или сохранена в настройках устаревшая
   // (например "todo"), откатываемся к первой доступной странице.
-  const safeActive: PageId = PAGES.some((p) => p.id === active) ? active : (PAGES[0]?.id as PageId) ?? "store";
+  const safeActive: PageId = PAGES.some((p) => p.id === active)
+    ? active
+    : ((PAGES[0]?.id as PageId) ?? "store");
   const activeMeta = PAGES.find((p) => p.id === safeActive)!;
   const MetaIcon = activeMeta.icon;
   const metaTitle = t(activeMeta.i18n);
@@ -197,74 +234,104 @@ function Shell({ active, setActive, theme, toggleTheme, toolbarNodes, setPageToo
     reduceMotion ? "reduce-motion" : "",
     opaqueBg ? "opaque-bg" : "",
     blur ? "" : "no-blur",
-  ].filter(Boolean).join(" ");
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   return (
-    <div className={shellCls} style={{ fontSize: `${fontSize}px` }} dir={lang === "ar" ? "rtl" : "ltr"}>
+    <div
+      className={shellCls}
+      style={{ fontSize: `${fontSize}px` }}
+      dir={lang === "ar" ? "rtl" : "ltr"}
+    >
       <div className="mesh" aria-hidden="true">
         <span className="blob blob-a" />
         <span className="blob blob-b" />
       </div>
 
       <PageBusyContext.Provider value={reportBusy}>
-      <ToolbarContext.Provider value={setPageToolbar}>
-        <header className="top-toolbar titlebar-drag">
-          <div className="tb-side-left" aria-hidden="true" />
-          <div className="tb-center">
-            <div className="tb-title">
-              <MetaIcon size={15} strokeWidth={2.2} />
-              <span>{metaTitle}</span>
+        <ToolbarContext.Provider value={setPageToolbar}>
+          <header className="top-toolbar titlebar-drag">
+            <div className="tb-side-left" aria-hidden="true" />
+            <div className="tb-center">
+              <div className="tb-title">
+                <MetaIcon size={15} strokeWidth={2.2} />
+                <span>{metaTitle}</span>
+              </div>
+              <div className="tb-dynamic">{toolbarNode}</div>
             </div>
-            <div className="tb-dynamic">{toolbarNode}</div>
-          </div>
-          <div className="tb-side-right">
-            {/* Открыть папку, где установлено приложение (см. electron/main.js → shell:open-app-dir). */}
-            <button
-              className="app-dir-toggle no-drag"
-              onClick={() => window.appBridge?.openAppDir?.()}
-              title={t("common.openAppDir")}
-              aria-label={t("common.openAppDir")}
-            >
-              <FolderOpen size={15} />
-            </button>
-            <button className="proxy-toggle no-drag" onClick={() => setProxyPanelVisible((v) => !v)} title={t("proxy.title")}>
-              <Shield size={15} />
-            </button>
-            <button className="theme-toggle no-drag" onClick={toggleTheme} title={t("common.theme")}>
-              <Sun className="ico-sun" size={15} />
-              <Moon className="ico-moon" size={15} />
-              <Contrast className="ico-oled" size={15} />
-            </button>
-            <div className="win-controls no-drag">
-              <button className="win-btn" onClick={() => window.appBridge?.minimize()} title={t("common.minimize")}><Minus size={15} /></button>
-              <button className="win-btn" onClick={() => window.appBridge?.toggleMaximize()} title={t("common.maximize")}><Square size={12} /></button>
-              <button className="win-btn win-close" onClick={() => window.appBridge?.close()} title={t("common.close")}><X size={15} /></button>
+            <div className="tb-side-right">
+              {/* Открыть папку, где установлено приложение (см. electron/main.js → shell:open-app-dir). */}
+              <button
+                className="app-dir-toggle no-drag"
+                onClick={() => window.appBridge?.openAppDir?.()}
+                title={t("common.openAppDir")}
+                aria-label={t("common.openAppDir")}
+              >
+                <FolderOpen size={15} />
+              </button>
+              <button
+                className="proxy-toggle no-drag"
+                onClick={() => setProxyPanelVisible((v) => !v)}
+                title={t("proxy.title")}
+              >
+                <Shield size={15} />
+              </button>
+              <button
+                className="theme-toggle no-drag"
+                onClick={toggleTheme}
+                title={t("common.theme")}
+              >
+                <Sun className="ico-sun" size={15} />
+                <Moon className="ico-moon" size={15} />
+                <Contrast className="ico-oled" size={15} />
+              </button>
+              <div className="win-controls no-drag">
+                <button
+                  className="win-btn"
+                  onClick={() => window.appBridge?.minimize()}
+                  title={t("common.minimize")}
+                >
+                  <Minus size={15} />
+                </button>
+                <button
+                  className="win-btn"
+                  onClick={() => window.appBridge?.toggleMaximize()}
+                  title={t("common.maximize")}
+                >
+                  <Square size={12} />
+                </button>
+                <button
+                  className="win-btn win-close"
+                  onClick={() => window.appBridge?.close()}
+                  title={t("common.close")}
+                >
+                  <X size={15} />
+                </button>
+              </div>
             </div>
-          </div>
-        </header>
+          </header>
 
-        {proxyPanelVisible && (
-          <ProxyPanel onClose={() => setProxyPanelVisible(false)} />
-        )}
+          {proxyPanelVisible && <ProxyPanel onClose={() => setProxyPanelVisible(false)} />}
 
-        {/* Стопка живых страниц: активная видима, остальные скрыты, но сохраняют
+          {/* Стопка живых страниц: активная видима, остальные скрыты, но сохраняют
             состояние (прогресс задач, ввод, позицию скролла). */}
-        <main className="content-area">
-          <div className="pages-stack">
-            {stack.map((id) => (
-              <PageHost key={id} id={id} active={id === safeActive}>
-                {React.createElement(MEMO_PAGE_COMPONENTS[id])}
-              </PageHost>
-            ))}
-          </div>
-        </main>
+          <main className="content-area">
+            <div className="pages-stack">
+              {stack.map((id) => (
+                <PageHost key={id} id={id} active={id === safeActive}>
+                  {React.createElement(MEMO_PAGE_COMPONENTS[id])}
+                </PageHost>
+              ))}
+            </div>
+          </main>
 
-        {/* Хост порталов-оверлеев: сосед .content-area, поэтому у него снова
+          {/* Хост порталов-оверлеев: сосед .content-area, поэтому у него снова
             работает z-index и модалки перекрывают верхнюю панель (см.
             src/components/overlayHost.ts). Когда порталов нет — узел пуст и
             прозрачен для кликов (pointer-events:none в theme.css). */}
-        <div id="overlay-root" className="overlay-root" />
-      </ToolbarContext.Provider>
+          <div id="overlay-root" className="overlay-root" />
+        </ToolbarContext.Provider>
       </PageBusyContext.Provider>
 
       <nav className="bottom-dock">
@@ -280,7 +347,9 @@ function Shell({ active, setActive, theme, toggleTheme, toolbarNodes, setPageToo
                 aria-label={t(p.i18n)}
                 title={t(p.i18n)}
               >
-                <span className="dock-icon"><Icon size={18} strokeWidth={2} /></span>
+                <span className="dock-icon">
+                  <Icon size={18} strokeWidth={2} />
+                </span>
               </button>
             );
           })}
@@ -333,7 +402,8 @@ export default function App() {
 
   // Подтягиваем тему, стартовую страницу, язык, blur и внешние вид из настроек.
   useEffect(() => {
-    api.getSettings()
+    api
+      .getSettings()
       .then((s) => {
         const sc = s as any;
         if (sc?.appearance?.theme) setTheme(sc.appearance.theme);
@@ -351,9 +421,14 @@ export default function App() {
         if (sc?.appearance?.density) setDensity(sc.appearance.density);
         setOpaqueBg(!!sc?.appearance?.opaqueBackground);
         // Производительность: keep-alive страниц.
-        if (sc?.performance?.keepPagesAlive != null) setKeepPagesAlive(!!sc.performance.keepPagesAlive);
-        if (sc?.performance?.keepPagesLimit != null) setKeepPagesLimit(Math.max(1, Number(sc.performance.keepPagesLimit) || KEEP_ALIVE_DEFAULT_LIMIT));
-        if (sc?.performance?.unloadIdleMinutes != null) setUnloadIdleMinutes(Math.max(0, Number(sc.performance.unloadIdleMinutes) || 0));
+        if (sc?.performance?.keepPagesAlive != null)
+          setKeepPagesAlive(!!sc.performance.keepPagesAlive);
+        if (sc?.performance?.keepPagesLimit != null)
+          setKeepPagesLimit(
+            Math.max(1, Number(sc.performance.keepPagesLimit) || KEEP_ALIVE_DEFAULT_LIMIT),
+          );
+        if (sc?.performance?.unloadIdleMinutes != null)
+          setUnloadIdleMinutes(Math.max(0, Number(sc.performance.unloadIdleMinutes) || 0));
       })
       .catch(() => {});
   }, []);
@@ -366,8 +441,10 @@ export default function App() {
       if (path === "general.language") setLang(value as string);
       else if (path === "performance.backgroundBlur") setBlur(!!value);
       else if (path === "performance.keepPagesAlive") setKeepPagesAlive(!!value);
-      else if (path === "performance.keepPagesLimit") setKeepPagesLimit(Math.max(1, Number(value) || KEEP_ALIVE_DEFAULT_LIMIT));
-      else if (path === "performance.unloadIdleMinutes") setUnloadIdleMinutes(Math.max(0, Number(value) || 0));
+      else if (path === "performance.keepPagesLimit")
+        setKeepPagesLimit(Math.max(1, Number(value) || KEEP_ALIVE_DEFAULT_LIMIT));
+      else if (path === "performance.unloadIdleMinutes")
+        setUnloadIdleMinutes(Math.max(0, Number(value) || 0));
       else if (path === "appearance.accent") setAccent(String(value));
       else if (path === "appearance.fontSize") setFontSize(Number(value) || 14);
       else if (path === "appearance.reduceMotion") setReduceMotion(!!value);

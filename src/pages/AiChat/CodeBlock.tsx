@@ -15,7 +15,12 @@ const CodeBlock = React.memo(function CodeBlock({ code, lang }: { code: string; 
   const html = useMemo(() => sanitizeHtml(highlightCode(code, lang)), [code, lang]);
 
   // Чистим таймер, чтобы не дёргать setState после размонтирования.
-  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
+  useEffect(
+    () => () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    },
+    [],
+  );
 
   const copy = () => {
     navigator.clipboard.writeText(code);

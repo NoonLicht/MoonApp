@@ -17,7 +17,13 @@ router.post("/", (req, res) => {
   if (!name || !url || !/^https?:\/\//i.test(String(url))) {
     return res.status(400).json({ error: "Нужны name и валидный http(s) url" });
   }
-  const info = stmts.catInsert.run(String(name).trim(), String(url).trim(), "custom", category || "Other", null);
+  const info = stmts.catInsert.run(
+    String(name).trim(),
+    String(url).trim(),
+    "custom",
+    category || "Other",
+    null,
+  );
   const app = stmts.catGet.get(info.lastInsertRowid);
   logger.action("catalog.add", { id: app.id, name: app.name });
   res.status(201).json({ ...app, favorite: !!app.favorite });

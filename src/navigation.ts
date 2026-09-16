@@ -1,14 +1,40 @@
 import {
-  Store, Repeat, Gauge, Video, Clapperboard, Music2, BookOpen, Activity,
-  User, MessageSquare, Mic2, GraduationCap, Shield, Archive, Settings2,
+  Store,
+  Repeat,
+  Gauge,
+  Video,
+  Clapperboard,
+  Music2,
+  BookOpen,
+  Activity,
+  User,
+  MessageSquare,
+  Mic2,
+  GraduationCap,
+  Shield,
+  Archive,
+  Settings2,
 } from "lucide-react";
 import type { ElementType } from "react";
 import type { TranslateFn } from "./i18n";
 
 /** Идентификатор страницы приложения (док, keep-alive, стартовая страница). */
 export type PageId =
-  | "store" | "convert" | "compress" | "video" | "movies" | "music" | "books" | "monitor"
-  | "aichat" | "voice" | "archive" | "settings" | "myspace" | "lecture" | "bypass";
+  | "store"
+  | "convert"
+  | "compress"
+  | "video"
+  | "movies"
+  | "music"
+  | "books"
+  | "monitor"
+  | "aichat"
+  | "voice"
+  | "archive"
+  | "settings"
+  | "myspace"
+  | "lecture"
+  | "bypass";
 
 export interface PageMeta {
   id: PageId;

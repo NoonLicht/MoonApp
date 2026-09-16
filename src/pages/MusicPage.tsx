@@ -1,7 +1,17 @@
 import { useState, useEffect, useCallback } from "react";
 import {
-  Music2, Download, Search, RefreshCw, AlertTriangle, Check,
-  FileAudio, Disc3, Headphones, Copy, Link2, SlidersHorizontal,
+  Music2,
+  Download,
+  Search,
+  RefreshCw,
+  AlertTriangle,
+  Check,
+  FileAudio,
+  Disc3,
+  Headphones,
+  Copy,
+  Link2,
+  SlidersHorizontal,
 } from "lucide-react";
 import { Glass, Btn, Badge, Select, SectionHead, EmptyHint, Field } from "../components/ui";
 import { useContextMenu, copyToClipboard } from "../components/ContextMenu";
@@ -13,7 +23,16 @@ import MediaLoading from "../components/MediaLoading";
 import type { MusicTrack, MusicFormats } from "../api/types";
 
 // Форматы/качества для выбора в тулбаре
-const QUALITY_OPTIONS = ["320 kbps", "256 kbps", "192 kbps", "128 kbps", "FLAC", "OPUS", "WAV", "AAC"];
+const QUALITY_OPTIONS = [
+  "320 kbps",
+  "256 kbps",
+  "192 kbps",
+  "128 kbps",
+  "FLAC",
+  "OPUS",
+  "WAV",
+  "AAC",
+];
 
 function fmtDuration(sec?: number | null): string {
   if (!sec && sec !== 0) return "";
@@ -51,7 +70,9 @@ export default function MusicPage() {
   const [searchError, setSearchError] = useState("");
 
   // Состояние скачивания
-  const [downloadState, setDownloadState] = useState<"idle" | "downloading" | "done" | "error">("idle");
+  const [downloadState, setDownloadState] = useState<"idle" | "downloading" | "done" | "error">(
+    "idle",
+  );
   const [downloadJobId, setDownloadJobId] = useState<string | null>(null);
   const [downloadProgress, setDownloadProgress] = useState(0);
   const [downloadError, setDownloadError] = useState("");
@@ -65,24 +86,34 @@ export default function MusicPage() {
 
   // Качество по умолчанию берём из настроек (раздел «Музыка»).
   useEffect(() => {
-    api.getSettings().then((s: any) => {
-      if (s?.music?.defaultQuality) setQuality(s.music.defaultQuality);
-    }).catch(() => {});
+    api
+      .getSettings()
+      .then((s: any) => {
+        if (s?.music?.defaultQuality) setQuality(s.music.defaultQuality);
+      })
+      .catch(() => {});
   }, []);
   const [fmtInfo, setFmtInfo] = useState<MusicFormats | null>(null);
 
   usePageToolbar(
     <ToolbarMenu icon={SlidersHorizontal} title={t("common.quality")} align="right" label={quality}>
       <Field label={t("common.quality")}>
-        <Select value={quality} onChange={(e) => setQuality(e.target.value)} options={QUALITY_OPTIONS} />
+        <Select
+          value={quality}
+          onChange={(e) => setQuality(e.target.value)}
+          options={QUALITY_OPTIONS}
+        />
       </Field>
     </ToolbarMenu>,
-    [quality, t]
+    [quality, t],
   );
 
   // Загружаем информацию о форматах при монтировании
   useEffect(() => {
-    api.musicFormats().then(setFmtInfo).catch(() => {});
+    api
+      .musicFormats()
+      .then(setFmtInfo)
+      .catch(() => {});
   }, []);
 
   // Опрос статуса джобы
@@ -102,7 +133,9 @@ export default function MusicPage() {
           setDownloadError(st.error || "");
           clearInterval(timer);
         }
-      } catch { /* пропускаем */ }
+      } catch {
+        /* пропускаем */
+      }
     }, 800);
     return () => clearInterval(timer);
   }, [downloadJobId]);
@@ -197,15 +230,15 @@ export default function MusicPage() {
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && doSearch()}
         />
-        <Btn
-          variant="primary"
-          onClick={doSearch}
-          disabled={searchState === "searching"}
-        >
+        <Btn variant="primary" onClick={doSearch} disabled={searchState === "searching"}>
           {searchState === "searching" ? (
-            <><RefreshCw size={14} className="spin" /> {t("common.loading")}</>
+            <>
+              <RefreshCw size={14} className="spin" /> {t("common.loading")}
+            </>
           ) : (
-            <><Search size={14} /> {t("music.find")}</>
+            <>
+              <Search size={14} /> {t("music.find")}
+            </>
           )}
         </Btn>
       </Glass>
@@ -235,12 +268,22 @@ export default function MusicPage() {
               className="music-track-row"
               onClick={() => selectTrack(track)}
               style={{ cursor: "pointer" }}
-              onContextMenu={(e) => menu.open(e, [
-                { label: t("ctx.select"), icon: Disc3, onClick: () => selectTrack(track) },
-                { separator: true },
-                { label: t("ctx.copyName"), icon: Copy, onClick: () => copyToClipboard(`${track.title} — ${track.artist}`) },
-                !!track.webpageUrl && { label: t("ctx.copyLink"), icon: Link2, onClick: () => copyToClipboard(track.webpageUrl || "") },
-              ])}
+              onContextMenu={(e) =>
+                menu.open(e, [
+                  { label: t("ctx.select"), icon: Disc3, onClick: () => selectTrack(track) },
+                  { separator: true },
+                  {
+                    label: t("ctx.copyName"),
+                    icon: Copy,
+                    onClick: () => copyToClipboard(`${track.title} — ${track.artist}`),
+                  },
+                  !!track.webpageUrl && {
+                    label: t("ctx.copyLink"),
+                    icon: Link2,
+                    onClick: () => copyToClipboard(track.webpageUrl || ""),
+                  },
+                ])
+              }
             >
               <div className="music-track-thumb">
                 {track.thumbnail ? (
@@ -262,7 +305,10 @@ export default function MusicPage() {
               <Btn
                 variant="ghost"
                 icon={Download}
-                onClick={(e) => { e.stopPropagation(); selectTrack(track); }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  selectTrack(track);
+                }}
               />
             </Glass>
           ))}
@@ -292,7 +338,9 @@ export default function MusicPage() {
             {/* Бейджи формата / качества */}
             {downloadState !== "downloading" && downloadState !== "done" && (
               <div className="quality-row" style={{ marginTop: 4 }}>
-                <Badge tone="violet" active>{quality}</Badge>
+                <Badge tone="violet" active>
+                  {quality}
+                </Badge>
                 <Badge tone="violet">{extByQuality()}</Badge>
               </div>
             )}
@@ -316,7 +364,10 @@ export default function MusicPage() {
 
             {/* Ошибка */}
             {downloadState === "error" && downloadError && (
-              <div className="source-placeholder" style={{ borderColor: "var(--coral)", padding: "8px 12px" }}>
+              <div
+                className="source-placeholder"
+                style={{ borderColor: "var(--coral)", padding: "8px 12px" }}
+              >
                 <AlertTriangle size={14} style={{ color: "var(--coral)" }} />
                 <span>{errText(downloadError)}</span>
               </div>
@@ -325,13 +376,17 @@ export default function MusicPage() {
             {/* Готово — кнопка "Скачать файл" */}
             {downloadState === "done" && jobFiles.length > 0 && (
               <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 8 }}>
-                <div style={{ color: "var(--success)", display: "flex", alignItems: "center", gap: 6 }}>
+                <div
+                  style={{ color: "var(--success)", display: "flex", alignItems: "center", gap: 6 }}
+                >
                   <Check size={16} /> {t("video.saved")}
                 </div>
                 {jobFiles.map((f) => (
                   <div key={f.key} style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <FileAudio size={16} className="muted-sm" />
-                    <span className="muted-sm">{f.name} · {fmtSize(f.size)}</span>
+                    <span className="muted-sm">
+                      {f.name} · {fmtSize(f.size)}
+                    </span>
                     <Btn variant="primary" icon={Download} onClick={() => dlFile(f.key)}>
                       {t("music.download")}
                     </Btn>
@@ -344,9 +399,7 @@ export default function MusicPage() {
       )}
 
       {/* Пустое состояние (idle) */}
-      {!showPlayer && (
-        <EmptyHint icon={Headphones} text={t("music.empty")} />
-      )}
+      {!showPlayer && <EmptyHint icon={Headphones} text={t("music.empty")} />}
     </div>
   );
 }

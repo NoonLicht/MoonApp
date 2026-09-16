@@ -19,12 +19,16 @@ const logger = require("./logger");
  * Держим последние MAX_REPORTS файлов, чтобы папка не пухла от повторных нажатий.
  */
 const MAX_REPORTS = 10;
-const MAX_AUDIT_BYTES = 24 * 1024 * 1024;   // полный журнал (хвост, если больше)
-const MAX_TAIL_BYTES = 2 * 1024 * 1024;     // хвост app.log / main.log
+const MAX_AUDIT_BYTES = 24 * 1024 * 1024; // полный журнал (хвост, если больше)
+const MAX_TAIL_BYTES = 2 * 1024 * 1024; // хвост app.log / main.log
 const REPORT_PREFIX = "MoonApp-logs-";
 
 function readFileSafe(file) {
-  try { return fs.readFileSync(file, "utf8"); } catch { return ""; }
+  try {
+    return fs.readFileSync(file, "utf8");
+  } catch {
+    return "";
+  }
 }
 
 // Хвост файла по байтам: если файл больше лимита — берём последние строки.
@@ -40,16 +44,26 @@ function readTail(file, maxBytes) {
       // первая строка может быть обрезана — отбрасываем её
       const raw = buf.toString("utf8");
       return { text: raw.slice(raw.indexOf("\n") + 1), truncated: true };
-    } finally { fs.closeSync(fd); }
-  } catch { return { text: "", truncated: false }; }
+    } finally {
+      fs.closeSync(fd);
+    }
+  } catch {
+    return { text: "", truncated: false };
+  }
 }
 
 function appVersion() {
   try {
     const { app } = require("electron");
     if (app?.getVersion) return app.getVersion();
-  } catch { /* сервер запущен без Electron (dev/тесты) */ }
-  try { return require("../package.json").version || "unknown"; } catch { return "unknown"; }
+  } catch {
+    /* сервер запущен без Electron (dev/тесты) */
+  }
+  try {
+    return require("../package.json").version || "unknown";
+  } catch {
+    return "unknown";
+  }
 }
 
 function section(title) {
@@ -62,7 +76,9 @@ function describeEnvironment() {
   try {
     const { app } = require("electron");
     if (app?.getPath) installDir = path.dirname(app.getPath("exe"));
-  } catch { /* dev */ }
+  } catch {
+    /* dev */
+  }
   const v = process.versions;
   const lines = [
     `Создан:            ${new Date().toISOString()}`,
@@ -85,8 +101,11 @@ function describeSettings() {
   let out = "";
   const settings = readFileSafe(FILES.settings);
   if (settings) {
-    try { out += JSON.stringify(JSON.parse(settings), null, 2) + "\n"; }
-    catch { out += settings + "\n"; }
+    try {
+      out += JSON.stringify(JSON.parse(settings), null, 2) + "\n";
+    } catch {
+      out += settings + "\n";
+    }
   } else {
     out += "(settings.json отсутствует)\n";
   }
@@ -95,7 +114,9 @@ function describeSettings() {
     const secrets = JSON.parse(readFileSafe(FILES.secrets) || "{}");
     const keys = Object.keys(secrets);
     out += keys.length ? keys.map((k) => `- ${k}`).join("\n") + "\n" : "(секретов нет)\n";
-  } catch { out += "(secrets.json не читается)\n"; }
+  } catch {
+    out += "(secrets.json не читается)\n";
+  }
   return out;
 }
 
@@ -108,9 +129,13 @@ function describeDownloads() {
       try {
         const st = fs.statSync(path.join(DIRS.downloads, f));
         out += `${f}\t${st.size} B\t${st.mtime.toISOString()}\n`;
-      } catch { out += `${f}\t?\n`; }
+      } catch {
+        out += `${f}\t?\n`;
+      }
     }
-  } catch { out += "(каталог загрузок недоступен)\n"; }
+  } catch {
+    out += "(каталог загрузок недоступен)\n";
+  }
   return out;
 }
 
@@ -121,7 +146,11 @@ function describeDataCounts() {
     const counts = {};
     for (const [name, st] of Object.entries(stmts)) {
       if (st && typeof st.all === "function" && name.endsWith("All")) {
-        try { counts[name] = st.all().length; } catch { /* пропускаем */ }
+        try {
+          counts[name] = st.all().length;
+        } catch {
+          /* пропускаем */
+        }
       }
     }
     return JSON.stringify(counts, null, 2) + "\n";
@@ -148,14 +177,21 @@ const PAGE_SETTINGS = [
   { id: "lecture", title: "Диктофон лекций", sections: ["lecture"] },
   { id: "bypass", title: "Обход блокировок", sections: ["zapret"] },
   { id: "archive", title: "Web Archive", sections: ["sitebak", "archiver"] },
-  { id: "settings", title: "Настройки приложения", sections: ["general", "appearance", "performance", "window", "backup", "advanced"] },
+  {
+    id: "settings",
+    title: "Настройки приложения",
+    sections: ["general", "appearance", "performance", "window", "backup", "advanced"],
+  },
 ];
 
 // Выводит настройки каждой страницы с понятным заголовком.
 function describePageSettings() {
   let merged;
-  try { merged = require("./settings").load(); }
-  catch { return "(настройки недоступны)\n"; }
+  try {
+    merged = require("./settings").load();
+  } catch {
+    return "(настройки недоступны)\n";
+  }
   const used = new Set();
   let out = "";
   for (const page of PAGE_SETTINGS) {
@@ -189,9 +225,12 @@ function describeUiSnapshot() {
     try {
       const e = JSON.parse(s);
       if (e.event === "ui.settings.snapshot") last = e;
-    } catch { /* строка не JSON — пропускаем */ }
+    } catch {
+      /* строка не JSON — пропускаем */
+    }
   }
-  if (!last) return "(снимок не найден — локальные настройки ещё не отправлялись; нажмите «Собрать логи» в интерфейсе)\n";
+  if (!last)
+    return "(снимок не найден — локальные настройки ещё не отправлялись; нажмите «Собрать логи» в интерфейсе)\n";
   return `Снято: ${last.ts}\n${JSON.stringify(last.data, null, 2)}\n`;
 }
 
@@ -239,21 +278,35 @@ function describeJournals() {
 
 function listReports() {
   try {
-    return fs.readdirSync(DIRS.storage)
+    return fs
+      .readdirSync(DIRS.storage)
       .filter((f) => f.startsWith(REPORT_PREFIX) && f.endsWith(".txt"))
       .map((f) => {
         const full = path.join(DIRS.storage, f);
-        let size = 0, mtime = "";
-        try { const st = fs.statSync(full); size = st.size; mtime = st.mtime.toISOString(); } catch { /* ignore */ }
+        let size = 0,
+          mtime = "";
+        try {
+          const st = fs.statSync(full);
+          size = st.size;
+          mtime = st.mtime.toISOString();
+        } catch {
+          /* ignore */
+        }
         return { file: full, size, mtime };
       })
       .sort((a, b) => (a.mtime < b.mtime ? 1 : -1));
-  } catch { return []; }
+  } catch {
+    return [];
+  }
 }
 
 function cleanupOldReports() {
   for (const r of listReports().slice(MAX_REPORTS)) {
-    try { fs.rmSync(r.file, { force: true }); } catch { /* ignore */ }
+    try {
+      fs.rmSync(r.file, { force: true });
+    } catch {
+      /* ignore */
+    }
   }
 }
 

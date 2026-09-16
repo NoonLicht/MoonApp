@@ -34,7 +34,13 @@ export interface ToolbarSearchProps {
  * в разметке — так медиазапрос в JS и CSS-правила совпадают.
  */
 export default function ToolbarSearch({
-  value, onChange, placeholder, onSubmit, title, clearTitle, bare,
+  value,
+  onChange,
+  placeholder,
+  onSubmit,
+  title,
+  clearTitle,
+  bare,
 }: ToolbarSearchProps) {
   const narrow = useMediaQuery(NARROW_TOOLBAR_QUERY);
   const [open, setOpen] = useState(false);

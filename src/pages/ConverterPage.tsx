@@ -1,11 +1,18 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Repeat, Check, AlertTriangle, RefreshCw, FileUp, Terminal } from "lucide-react";
-import { Glass, Btn, Badge, Field, Select, SectionHead, EmptyHint, ProgressBar } from "../components/ui";
+import {
+  Glass,
+  Btn,
+  Badge,
+  Field,
+  Select,
+  SectionHead,
+  EmptyHint,
+  ProgressBar,
+} from "../components/ui";
 import { useI18n } from "../i18n";
 import { api } from "../api/client";
 import type { ConvertTools, ConvertResult, ConvertInstallStatus } from "../api/types";
-
-
 
 const CAT_TONE: Record<string, string> = { video: "amber", audio: "violet", image: "teal" };
 
@@ -39,9 +46,15 @@ export default function ConverterPage() {
     let alive = true;
     api
       .getConvertTools()
-      .then((d) => { if (alive) setTools(d); })
-      .catch(() => { if (alive) setTools(null); });
-    return () => { alive = false; };
+      .then((d) => {
+        if (alive) setTools(d);
+      })
+      .catch(() => {
+        if (alive) setTools(null);
+      });
+    return () => {
+      alive = false;
+    };
   }, []);
 
   const ffmpegFound = !!tools?.ffmpeg?.found;
@@ -58,7 +71,9 @@ export default function ConverterPage() {
           const fresh = await api.getConvertTools();
           setTools(fresh);
         }
-      } catch { /* пропускаем опрос */ }
+      } catch {
+        /* пропускаем опрос */
+      }
     }, 900);
     return () => clearInterval(timer);
   }, [install?.state]);
@@ -94,7 +109,7 @@ export default function ConverterPage() {
     // Сбросим input, чтобы можно было выбрать тот же файл снова.
     if (e.target) e.target.value = "";
   };
-const convert = async () => {
+  const convert = async () => {
     if (!file || !to) return;
     setState("working");
     setError("");
@@ -133,9 +148,22 @@ const convert = async () => {
       {tools && !ffmpegFound && (
         <Glass
           className="source-placeholder"
-          style={{ flexDirection: "column", alignItems: "flex-start", gap: 8, borderColor: "var(--coral)" }}
+          style={{
+            flexDirection: "column",
+            alignItems: "flex-start",
+            gap: 8,
+            borderColor: "var(--coral)",
+          }}
         >
-          <span style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--text-primary)", fontWeight: 600 }}>
+          <span
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              color: "var(--text-primary)",
+              fontWeight: 600,
+            }}
+          >
             <AlertTriangle size={16} style={{ color: "var(--coral)" }} />
             {t("conv.ffmpegMissing")}
           </span>
@@ -158,7 +186,9 @@ const convert = async () => {
           )}
 
           {install?.state === "error" && (
-            <span className="muted-sm" style={{ color: "var(--coral)" }}>{install.error}</span>
+            <span className="muted-sm" style={{ color: "var(--coral)" }}>
+              {install.error}
+            </span>
           )}
         </Glass>
       )}
@@ -200,7 +230,10 @@ const convert = async () => {
           <div className="media-info">
             <div className="media-title">{file.name}</div>
             <div className="muted-sm">
-              {fmtSize(file.size)} · <Badge tone={CAT_TONE[category.id] || "violet"} mono>{category.id}</Badge>
+              {fmtSize(file.size)} ·{" "}
+              <Badge tone={CAT_TONE[category.id] || "violet"} mono>
+                {category.id}
+              </Badge>
             </div>
 
             <div className="quality-row">
@@ -255,7 +288,10 @@ const convert = async () => {
       )}
 
       {error && state === "error" && (
-        <Glass className="source-placeholder" style={{ borderColor: "var(--coral)", color: "var(--text-secondary)" }}>
+        <Glass
+          className="source-placeholder"
+          style={{ borderColor: "var(--coral)", color: "var(--text-secondary)" }}
+        >
           <AlertTriangle size={16} style={{ color: "var(--coral)" }} />
           <span>{error}</span>
         </Glass>

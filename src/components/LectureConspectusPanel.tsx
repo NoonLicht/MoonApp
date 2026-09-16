@@ -48,8 +48,14 @@ function chatLabel(cfg: LectureConspectusSettings | null): string {
 }
 
 export default function LectureConspectusPanel({
-  onClose, inline = false, onChanged,
-}: { onClose?: () => void; inline?: boolean; onChanged?: () => void }) {
+  onClose,
+  inline = false,
+  onChanged,
+}: {
+  onClose?: () => void;
+  inline?: boolean;
+  onChanged?: () => void;
+}) {
   const { t } = useI18n();
   const [cfg, setCfg] = useState<LectureConspectusSettings | null>(null);
   const [draft, setDraft] = useState<LectureConspectusSettings | null>(null);
@@ -71,30 +77,46 @@ export default function LectureConspectusPanel({
 
   useEffect(() => {
     let alive = true;
-    void api.lectureConspectusSettings()
-      .then((s) => { if (alive) apply(s); })
-      .catch(() => { /* бэкенд ещё поднимается — панель покажет «нет данных» */ });
-    return () => { alive = false; };
+    void api
+      .lectureConspectusSettings()
+      .then((s) => {
+        if (alive) apply(s);
+      })
+      .catch(() => {
+        /* бэкенд ещё поднимается — панель покажет «нет данных» */
+      });
+    return () => {
+      alive = false;
+    };
   }, [apply]);
 
   /** Живой список моделей выбранного провайдера (обновляется кнопкой рядом). */
-  const loadModels = useCallback(async (providerId: string) => {
-    if (!providerId) { setModels(null); return; }
-    setBusy("models");
-    setError("");
-    try {
-      const r = await api.lectureProviderModels(providerId);
-      setModels(r.models);
-    } catch (e) {
-      setModels(null);
-      setError(errorText(t, String((e as Error)?.message || e)));
-    }
-    setBusy("");
-  }, [t]);
+  const loadModels = useCallback(
+    async (providerId: string) => {
+      if (!providerId) {
+        setModels(null);
+        return;
+      }
+      setBusy("models");
+      setError("");
+      try {
+        const r = await api.lectureProviderModels(providerId);
+        setModels(r.models);
+      } catch (e) {
+        setModels(null);
+        setError(errorText(t, String((e as Error)?.message || e)));
+      }
+      setBusy("");
+    },
+    [t],
+  );
 
   // При смене провайдера список моделей прежнего неактуален — перезагружаем.
   useEffect(() => {
-    if (!draft?.providerId) { setModels(null); return; }
+    if (!draft?.providerId) {
+      setModels(null);
+      return;
+    }
     void loadModels(draft.providerId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draft?.providerId]);
@@ -111,35 +133,45 @@ export default function LectureConspectusPanel({
    * туда весь ответ сервера, «dirty» обнулился бы и кнопка «Сохранить» перестала
    * бы замечать правки в других полях.
    */
-  const saveField = useCallback(async (patch: Partial<LectureConspectusSettings>) => {
-    setBusy("field");
-    setError("");
-    try {
-      const next = await api.lectureConspectusSetSettings(patch);
-      setCfg((c) => {
-        if (!c) return next;
-        const merged: Record<string, unknown> = { ...c };
-        for (const k of Object.keys(patch)) merged[k] = (next as unknown as Record<string, unknown>)[k];
-        return merged as unknown as LectureConspectusSettings;
-      });
-      flashSaved();
-      onChanged?.();
-    } catch (e) {
-      setError(errorText(t, String((e as Error)?.message || e)));
-    }
-    setBusy("");
-  }, [t, onChanged, flashSaved]);
+  const saveField = useCallback(
+    async (patch: Partial<LectureConspectusSettings>) => {
+      setBusy("field");
+      setError("");
+      try {
+        const next = await api.lectureConspectusSetSettings(patch);
+        setCfg((c) => {
+          if (!c) return next;
+          const merged: Record<string, unknown> = { ...c };
+          for (const k of Object.keys(patch))
+            merged[k] = (next as unknown as Record<string, unknown>)[k];
+          return merged as unknown as LectureConspectusSettings;
+        });
+        flashSaved();
+        onChanged?.();
+      } catch (e) {
+        setError(errorText(t, String((e as Error)?.message || e)));
+      }
+      setBusy("");
+    },
+    [t, onChanged, flashSaved],
+  );
 
-  const pickModel = useCallback((model: string) => {
-    setDraft((d) => (d ? { ...d, model } : d));
-    void saveField({ model });
-  }, [saveField]);
+  const pickModel = useCallback(
+    (model: string) => {
+      setDraft((d) => (d ? { ...d, model } : d));
+      void saveField({ model });
+    },
+    [saveField],
+  );
 
   /** Смена провайдера: модель прежнего провайдера к новому не относится — сбрасываем. */
-  const pickProvider = useCallback((providerId: string) => {
-    setDraft((d) => (d ? { ...d, providerId, model: "" } : d));
-    void saveField({ providerId, model: "" });
-  }, [saveField]);
+  const pickProvider = useCallback(
+    (providerId: string) => {
+      setDraft((d) => (d ? { ...d, providerId, model: "" } : d));
+      void saveField({ providerId, model: "" });
+    },
+    [saveField],
+  );
 
   /**
    * Опции селекта модели: живой список провайдера + сохранённая модель.
@@ -157,19 +189,23 @@ export default function LectureConspectusPanel({
     setBusy("save");
     setError("");
     try {
-      apply(await api.lectureConspectusSetSettings({
-        providerId: draft.providerId,
-        model: draft.model,
-        trigger: draft.trigger,
-        autoMinChars: draft.autoMinChars,
-        chunkChars: draft.chunkChars,
-        overlapChars: draft.overlapChars,
-        maxChunks: draft.maxChunks,
-      }));
+      apply(
+        await api.lectureConspectusSetSettings({
+          providerId: draft.providerId,
+          model: draft.model,
+          trigger: draft.trigger,
+          autoMinChars: draft.autoMinChars,
+          chunkChars: draft.chunkChars,
+          overlapChars: draft.overlapChars,
+          maxChunks: draft.maxChunks,
+        }),
+      );
       setSaved(true);
       setTimeout(() => setSaved(false), 1500);
       onChanged?.();
-    } catch (e) { setError(errorText(t, String((e as Error)?.message || e))); }
+    } catch (e) {
+      setError(errorText(t, String((e as Error)?.message || e)));
+    }
     setBusy("");
   }, [draft, apply, onChanged, t, flashSaved]);
 
@@ -178,33 +214,39 @@ export default function LectureConspectusPanel({
 
   const active = cfg?.providers.find((p) => p.id === cfg.providerId);
   const noKey = !!cfg && !cfg.hasKey;
-  const dirty = !!draft && !!cfg && JSON.stringify(draft) !== JSON.stringify(cfg);const body = (
+  const dirty = !!draft && !!cfg && JSON.stringify(draft) !== JSON.stringify(cfg);
+  const body = (
     <div className={inline ? "lecs-inline-body" : "lecs-panel"}>
       {/* Шапка */}
       <div className="lecs-head">
-        <span className="lecs-icon"><Sparkles size={17} /></span>
+        <span className="lecs-icon">
+          <Sparkles size={17} />
+        </span>
         <div className="lecs-title">
           <div className="lecs-eyebrow">{t("lecture.conspectusPanel.eyebrow")}</div>
           <div className="lecs-h1">{t("lecture.conspectusPanel.title")}</div>
         </div>
         <span className={`lecs-pill ${cfg?.hasKey ? "on" : "off"}`}>
-          {active ? active.label : (cfg?.providerId || t("lecture.conspectusPanel.notReady"))}
+          {active ? active.label : cfg?.providerId || t("lecture.conspectusPanel.notReady")}
         </span>
         {!inline && (
-          <button className="lecs-close" onClick={onClose} title={t("common.close")}><X size={15} /></button>
+          <button className="lecs-close" onClick={onClose} title={t("common.close")}>
+            <X size={15} />
+          </button>
         )}
       </div>
-
       {!!error && <div className="lecs-error">{error}</div>}
-
       {/* Ключа нет — предупреждаем ЗАРАНЕЕ, а не при сборке конспекта. */}
       {noKey && (
         <div className="lecs-warn">
           <AlertTriangle size={13} />
-          <span>{t("lecture.conspectusPanel.needKey", { provider: active?.label || cfg?.providerId || "" })}</span>
+          <span>
+            {t("lecture.conspectusPanel.needKey", {
+              provider: active?.label || cfg?.providerId || "",
+            })}
+          </span>
         </div>
       )}
-
       {/* --- Режим запуска --- */}
       <div className="lecs-block">
         <div className="lecs-block-label">{t("lecture.conspectusPanel.mode")}</div>
@@ -224,7 +266,8 @@ export default function LectureConspectusPanel({
         <div className="lecs-dim lecs-hint">
           {t(`lecture.conspectusPanel.triggerHint.${draft?.trigger || "smart"}`)}
         </div>
-      </div>{/* --- Провайдер и модель --- */}
+      </div>
+      {/* --- Провайдер и модель --- */}
       <div className="lecs-block">
         <div className="lecs-block-label">{t("lecture.conspectusPanel.provider")}</div>
         <select
@@ -234,10 +277,13 @@ export default function LectureConspectusPanel({
           aria-label={t("lecture.conspectusPanel.provider")}
           onChange={(e) => pickProvider(e.target.value)}
         >
-          <option value="">{t("lecture.conspectusPanel.providerChat", { provider: chatLabel(cfg) })}</option>
+          <option value="">
+            {t("lecture.conspectusPanel.providerChat", { provider: chatLabel(cfg) })}
+          </option>
           {(cfg?.providers || []).map((p) => (
             <option key={p.id} value={p.id}>
-              {p.label}{p.hasKey ? "" : ` — ${t("lecture.conspectusPanel.noKeyShort")}`}
+              {p.label}
+              {p.hasKey ? "" : ` — ${t("lecture.conspectusPanel.noKeyShort")}`}
             </option>
           ))}
         </select>
@@ -258,7 +304,11 @@ export default function LectureConspectusPanel({
               onChange={(e) => pickModel(e.target.value)}
             >
               <option value="">{t("lecture.conspectusPanel.modelAuto")}</option>
-              {modelOptions.map((m) => <option key={m} value={m}>{m}</option>)}
+              {modelOptions.map((m) => (
+                <option key={m} value={m}>
+                  {m}
+                </option>
+              ))}
             </select>
           </span>
           <Btn
@@ -267,7 +317,9 @@ export default function LectureConspectusPanel({
             onClick={() => void loadModels(draft?.providerId || "")}
             disabled={busy === "models" || !draft?.providerId}
           >
-            {busy === "models" ? t("lecture.conspectusPanel.modelLoading") : t("lecture.conspectusPanel.modelRefresh")}
+            {busy === "models"
+              ? t("lecture.conspectusPanel.modelLoading")
+              : t("lecture.conspectusPanel.modelRefresh")}
           </Btn>
         </div>
         <div className="lecs-dim lecs-hint">
@@ -276,7 +328,6 @@ export default function LectureConspectusPanel({
             : t("lecture.conspectusPanel.modelHint")}
         </div>
       </div>
-
       {/* --- Умный порог: что считать «есть что конспектировать» --- */}
       {draft?.trigger === "smart" && (
         <div className="lecs-block">
@@ -289,12 +340,15 @@ export default function LectureConspectusPanel({
               max={200000}
               step={100}
               value={draft.autoMinChars}
-              onChange={(e) => setDraft((d) => (d ? { ...d, autoMinChars: Number(e.target.value) || 0 } : d))}
+              onChange={(e) =>
+                setDraft((d) => (d ? { ...d, autoMinChars: Number(e.target.value) || 0 } : d))
+              }
             />
             <span className="lecs-dim lecs-hint">{t("lecture.conspectusPanel.minCharsHint")}</span>
           </div>
         </div>
-      )}      {/* --- Тонкая настройка нарезки расшифровки --- */}
+      )}{" "}
+      {/* --- Тонкая настройка нарезки расшифровки --- */}
       <div className="lecs-block">
         <div className="lecs-block-label">{t("lecture.conspectusPanel.advanced")}</div>
         {/* Каждое поле — своя группа «подпись + значение + единица». Раньше три
@@ -306,10 +360,15 @@ export default function LectureConspectusPanel({
             <span className="lecs-dim leca-label">{t("lecture.conspectusPanel.chunkChars")}</span>
             <input
               className="lecs-input leca-num"
-              type="number" min={1500} max={20000} step={500}
+              type="number"
+              min={1500}
+              max={20000}
+              step={500}
               aria-label={t("lecture.conspectusPanel.chunkChars")}
               value={draft?.chunkChars ?? 6000}
-              onChange={(e) => setDraft((d) => (d ? { ...d, chunkChars: Number(e.target.value) || 6000 } : d))}
+              onChange={(e) =>
+                setDraft((d) => (d ? { ...d, chunkChars: Number(e.target.value) || 6000 } : d))
+              }
             />
           </span>
           <span className="lecs-dim leca-unit">{t("lecture.conspectusPanel.chunkCharsUnit")}</span>
@@ -319,35 +378,55 @@ export default function LectureConspectusPanel({
             <span className="lecs-dim leca-label">{t("lecture.conspectusPanel.overlapChars")}</span>
             <input
               className="lecs-input leca-num"
-              type="number" min={0} max={2000} step={50}
+              type="number"
+              min={0}
+              max={2000}
+              step={50}
               aria-label={t("lecture.conspectusPanel.overlapChars")}
               value={draft?.overlapChars ?? 600}
-              onChange={(e) => setDraft((d) => (d ? { ...d, overlapChars: Number(e.target.value) || 0 } : d))}
+              onChange={(e) =>
+                setDraft((d) => (d ? { ...d, overlapChars: Number(e.target.value) || 0 } : d))
+              }
             />
           </span>
-          <span className="lecs-dim leca-unit">{t("lecture.conspectusPanel.overlapCharsUnit")}</span>
+          <span className="lecs-dim leca-unit">
+            {t("lecture.conspectusPanel.overlapCharsUnit")}
+          </span>
         </div>
         <div className="leca-field">
           <span className="leca-pair">
             <span className="lecs-dim leca-label">{t("lecture.conspectusPanel.maxChunks")}</span>
             <input
               className="lecs-input leca-num"
-              type="number" min={1} max={300} step={1}
+              type="number"
+              min={1}
+              max={300}
+              step={1}
               aria-label={t("lecture.conspectusPanel.maxChunks")}
               value={draft?.maxChunks ?? 60}
-              onChange={(e) => setDraft((d) => (d ? { ...d, maxChunks: Number(e.target.value) || 60 } : d))}
+              onChange={(e) =>
+                setDraft((d) => (d ? { ...d, maxChunks: Number(e.target.value) || 60 } : d))
+              }
             />
           </span>
           <span className="lecs-dim leca-unit">{t("lecture.conspectusPanel.maxChunksUnit")}</span>
         </div>
         <div className="lecs-dim lecs-hint">{t("lecture.conspectusPanel.advancedHint")}</div>
       </div>
-
       <div className="lecs-verify">
-        <Btn variant="primary" icon={Check} onClick={() => void save()} disabled={!dirty || busy === "save"}>
+        <Btn
+          variant="primary"
+          icon={Check}
+          onClick={() => void save()}
+          disabled={!dirty || busy === "save"}
+        >
           {t("common.save")}
         </Btn>
-        {saved && <span className="lecs-ok"><Check size={12} /> {t("common.saved")}</span>}
+        {saved && (
+          <span className="lecs-ok">
+            <Check size={12} /> {t("common.saved")}
+          </span>
+        )}
         {!cfg && <span className="lecs-dim">{t("lecture.conspectusPanel.notReady")}</span>}
       </div>
     </div>

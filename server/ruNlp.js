@@ -13,16 +13,45 @@
 
 // Частотный словарь: «е» → «ё» только в известных словах (иначе вред).
 const YO_PLAIN_TO_YO = {
-  "все": "всё", "всего": "всего", "всем": "всём", "еще": "ещё", "ее": "её",
-  "четырех": "четырёх", "трех": "трёх", "пришел": "пришёл", "ушел": "ушёл",
-  "зашел": "зашёл", "пошел": "пошёл", "нашел": "нашёл", "шел": "шёл",
-  "жесткий": "жёсткий", "желудок": "жёлудок", "черный": "чёрный", "черного": "чёрного",
-  "зеленый": "зелёный", "желтый": "жёлтый", "легкий": "лёгкий", "легко": "легко",
-  "тяжелый": "тяжёлый", "ежик": "ёжик", "идет": "идёт", "ведет": "ведёт",
-  "несет": "несёт", "берет": "берёт", "живет": "живёт", "поет": "поёт",
-  "принес": "принёс", "отнес": "отнёс", "темный": "тёмный", "темнота": "темнота",
-  "шелест": "шелест", "шепчет": "шепчет", "надежды": "надежды", "звезд": "звёзд",
-  "озеро": "озеро", "затмение": "затмение",
+  все: "всё",
+  всего: "всего",
+  всем: "всём",
+  еще: "ещё",
+  ее: "её",
+  четырех: "четырёх",
+  трех: "трёх",
+  пришел: "пришёл",
+  ушел: "ушёл",
+  зашел: "зашёл",
+  пошел: "пошёл",
+  нашел: "нашёл",
+  шел: "шёл",
+  жесткий: "жёсткий",
+  желудок: "жёлудок",
+  черный: "чёрный",
+  черного: "чёрного",
+  зеленый: "зелёный",
+  желтый: "жёлтый",
+  легкий: "лёгкий",
+  легко: "легко",
+  тяжелый: "тяжёлый",
+  ежик: "ёжик",
+  идет: "идёт",
+  ведет: "ведёт",
+  несет: "несёт",
+  берет: "берёт",
+  живет: "живёт",
+  поет: "поёт",
+  принес: "принёс",
+  отнес: "отнёс",
+  темный: "тёмный",
+  темнота: "темнота",
+  шелест: "шелест",
+  шепчет: "шепчет",
+  надежды: "надежды",
+  звезд: "звёзд",
+  озеро: "озеро",
+  затмение: "затмение",
 };
 
 function yoficate(text) {
@@ -42,23 +71,62 @@ module.exports = { yoficate };
 
 const UNITS = ["", "один", "два", "три", "четыре", "пять", "шесть", "семь", "восемь", "девять"];
 const FEM_UNITS = ["", "одна", "две", "три", "четыре", "пять", "шесть", "семь", "восемь", "девять"];
-const TEENS = ["десять", "одиннадцать", "двенадцать", "тринадцать", "четырнадцать", "пятнадцать", "шестнадцать", "семнадцать", "восемнадцать", "девятнадцать"];
-const TENS = ["", "", "двадцать", "тридцать", "сорок", "пятьдесят", "шестьдесят", "семьдесят", "восемьдесят", "девяносто"];
-const HUNDREDS = ["", "сто", "двести", "триста", "четыреста", "пятьсот", "шестьсот", "семьсот", "восемьсот", "девятьсот"];
+const TEENS = [
+  "десять",
+  "одиннадцать",
+  "двенадцать",
+  "тринадцать",
+  "четырнадцать",
+  "пятнадцать",
+  "шестнадцать",
+  "семнадцать",
+  "восемнадцать",
+  "девятнадцать",
+];
+const TENS = [
+  "",
+  "",
+  "двадцать",
+  "тридцать",
+  "сорок",
+  "пятьдесят",
+  "шестьдесят",
+  "семьдесят",
+  "восемьдесят",
+  "девяносто",
+];
+const HUNDREDS = [
+  "",
+  "сто",
+  "двести",
+  "триста",
+  "четыреста",
+  "пятьсот",
+  "шестьсот",
+  "семьсот",
+  "восемьсот",
+  "девятьсот",
+];
 
 function threeDigitsToWords(n, fem = false) {
   const parts = [];
-  const h = Math.floor(n / 100), rest = n % 100;
+  const h = Math.floor(n / 100),
+    rest = n % 100;
   if (h) parts.push(HUNDREDS[h]);
-  if (rest >= 10 && rest < 20) { parts.push(TEENS[rest - 10]); return parts; }
-  const t = Math.floor(rest / 10), u = rest % 10;
+  if (rest >= 10 && rest < 20) {
+    parts.push(TEENS[rest - 10]);
+    return parts;
+  }
+  const t = Math.floor(rest / 10),
+    u = rest % 10;
   if (t) parts.push(TENS[t]);
   if (u) parts.push(fem ? FEM_UNITS[u] : UNITS[u]);
   return parts;
 }
 
 function pluralForm(n, one, few, many) {
-  const m10 = n % 10, m100 = n % 100;
+  const m10 = n % 10,
+    m100 = n % 100;
   if (m10 === 1 && m100 !== 11) return one;
   if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return few;
   return many;
@@ -68,7 +136,8 @@ function romanToInt(s) {
   const map = { I: 1, V: 5, X: 10, L: 50, C: 100, D: 500, M: 1000 };
   let total = 0;
   for (let i = 0; i < s.length; i++) {
-    const cur = map[s[i]], next = map[s[i + 1]] || 0;
+    const cur = map[s[i]],
+      next = map[s[i + 1]] || 0;
     total += cur < next ? -cur : cur;
   }
   return total;
@@ -99,7 +168,25 @@ function numberToRussian(numStr, ordinal = false) {
   }
   if (!groups.length) groups.push(threeDigitsToWords(n).join(" "));
   if (ordinal) {
-    const ordMap = { "один": "первый", "два": "второй", "три": "третий", "четыре": "четвертый", "пять": "пятый", "шесть": "шестой", "семь": "седьмой", "восемь": "восьмой", "девять": "девятый", "десять": "десятый", "двадцать": "двадцатый", "тридцать": "тридцатый", "сорок": "сороковой", "пятьдесят": "пятидесятый", "сто": "сотый", "тысяча": "тысячный", "ноль": "нулевой" };
+    const ordMap = {
+      один: "первый",
+      два: "второй",
+      три: "третий",
+      четыре: "четвертый",
+      пять: "пятый",
+      шесть: "шестой",
+      семь: "седьмой",
+      восемь: "восьмой",
+      девять: "девятый",
+      десять: "десятый",
+      двадцать: "двадцатый",
+      тридцать: "тридцатый",
+      сорок: "сороковой",
+      пятьдесят: "пятидесятый",
+      сто: "сотый",
+      тысяча: "тысячный",
+      ноль: "нулевой",
+    };
     const words = groups[groups.length - 1].split(" ");
     const w = words[words.length - 1];
     words[words.length - 1] = ordMap[w] || w + "ный";
@@ -115,14 +202,32 @@ module.exports.numberToRussian = numberToRussian;
 
 function expandNumbers(text) {
   return String(text || "")
-    .replace(/\b(\d{1,2}):(\d{2})\b/g, (_, h, m) =>
-      `${numberToRussian(h)} ${pluralForm(+h, "час", "часа", "часов")} ${numberToRussian(m)} ${pluralForm(+m, "минута", "минуты", "минут")}`)
+    .replace(
+      /\b(\d{1,2}):(\d{2})\b/g,
+      (_, h, m) =>
+        `${numberToRussian(h)} ${pluralForm(+h, "час", "часа", "часов")} ${numberToRussian(m)} ${pluralForm(+m, "минута", "минуты", "минут")}`,
+    )
     .replace(/\b(\d{1,4})\s?(гг?\.)/gi, (_, y) => `${numberToRussian(y, true)} год`)
-    .replace(/\b(\d+)\s?%/g, (_, d) => `${numberToRussian(d)} ${pluralForm(+d, "процент", "процента", "процентов")}`)
-    .replace(/\b(\d+),(\d+)\b/g, (_, a, b) =>
-      `${numberToRussian(a)} запятая ${b.split("").map((d) => numberToRussian(d)).join(" ")}`)
-    .replace(/\b(\d+)\.(\d+)\b/g, (_, a, b) =>
-      `${numberToRussian(a)} точка ${b.split("").map((d) => numberToRussian(d)).join(" ")}`)
+    .replace(
+      /\b(\d+)\s?%/g,
+      (_, d) => `${numberToRussian(d)} ${pluralForm(+d, "процент", "процента", "процентов")}`,
+    )
+    .replace(
+      /\b(\d+),(\d+)\b/g,
+      (_, a, b) =>
+        `${numberToRussian(a)} запятая ${b
+          .split("")
+          .map((d) => numberToRussian(d))
+          .join(" ")}`,
+    )
+    .replace(
+      /\b(\d+)\.(\d+)\b/g,
+      (_, a, b) =>
+        `${numberToRussian(a)} точка ${b
+          .split("")
+          .map((d) => numberToRussian(d))
+          .join(" ")}`,
+    )
     .replace(/\b(\d+)\b/g, (_, d) => numberToRussian(d))
     .replace(/\b([MDCLXVI]{2,})\b/g, (m) => (ROMAN_RE.test(m) ? String(romanToInt(m)) : m));
 }
@@ -132,7 +237,11 @@ module.exports.expandNumbers = expandNumbers;
 /* --------------------- Ударения (омографы) --------------------- */
 
 const HOMOGRAPHS = [
-  { word: "замок", stress: (before, after) => (/открыт|закрыт|ключ|двер/i.test(before + after) ? "замо́к" : "за́мок") },
+  {
+    word: "замок",
+    stress: (before, after) =>
+      /открыт|закрыт|ключ|двер/i.test(before + after) ? "замо́к" : "за́мок",
+  },
   { word: "мука", stress: (before) => (/пшен|ржа|тесто|хлеб/i.test(before) ? "мука́" : "му́ка") },
   { word: "белок", stress: () => "бело́к" },
   { word: "дорог", stress: () => "доро́г" },
@@ -143,7 +252,11 @@ function markStress(text) {
   for (const h of HOMOGRAPHS) {
     const re = new RegExp(`(\\S*)\\s?\\b${h.word}\\b(\\S*)`, "giu");
     t = t.replace(re, (m, before, after) => {
-      try { return h.stress(before || "", after || ""); } catch { return m; }
+      try {
+        return h.stress(before || "", after || "");
+      } catch {
+        return m;
+      }
     });
   }
   return t;
@@ -154,9 +267,35 @@ module.exports.markStress = markStress;
 /* --------------------- Сокращения-исключения --------------------- */
 
 const ABBREV = [
-  "т.д.", "т.п.", "т.е.", "т.к.", "т.н.", "г.", "ул.", "ст.", "руб.", "проф.",
-  "акад.", "др.", "пр.", "ж.", "д.", "см.", "им.", "св.", "гг.", "вв.", "стр.",
-  "мин.", "сек.", "тыс.", "млн.", "млрд.", "у.", "обл.", "кв.",
+  "т.д.",
+  "т.п.",
+  "т.е.",
+  "т.к.",
+  "т.н.",
+  "г.",
+  "ул.",
+  "ст.",
+  "руб.",
+  "проф.",
+  "акад.",
+  "др.",
+  "пр.",
+  "ж.",
+  "д.",
+  "см.",
+  "им.",
+  "св.",
+  "гг.",
+  "вв.",
+  "стр.",
+  "мин.",
+  "сек.",
+  "тыс.",
+  "млн.",
+  "млрд.",
+  "у.",
+  "обл.",
+  "кв.",
 ];
 
 // Скрываем сокращения (и десятичные точки) от сплиттера.
@@ -195,7 +334,10 @@ function chunkText(text, limit = 350) {
     const push = (s) => {
       let pauseMs = null;
       const m = s.match(/\[PAUSE=(\d+)ms\]/);
-      if (m) { pauseMs = Number(m[1]); s = s.replace(/\[PAUSE=\d+ms\]/g, "").trim(); }
+      if (m) {
+        pauseMs = Number(m[1]);
+        s = s.replace(/\[PAUSE=\d+ms\]/g, "").trim();
+      }
       if (s) out.push({ text: unprotectAbbrev(s), pauseMs });
       else if (pauseMs) out.push({ pauseMs });
     };
@@ -210,8 +352,10 @@ function chunkText(text, limit = 350) {
         s = s.slice(cut + 1).trim();
       }
       if (!s) continue;
-      if (cur && cur.length + s.length + 1 > limit) { push(cur); cur = s; }
-      else cur = cur ? `${cur} ${s}` : s;
+      if (cur && cur.length + s.length + 1 > limit) {
+        push(cur);
+        cur = s;
+      } else cur = cur ? `${cur} ${s}` : s;
     }
     if (cur.trim()) push(cur);
   }
@@ -230,7 +374,3 @@ function normalize(text, opts = {}) {
 
 module.exports.chunkText = chunkText;
 module.exports.normalize = normalize;
-
-
-
-

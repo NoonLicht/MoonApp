@@ -14,7 +14,9 @@ function resolveDestDir() {
       fs.mkdirSync(custom, { recursive: true });
       return custom;
     }
-  } catch { /* чтение настроек не должно ломать загрузку */ }
+  } catch {
+    /* чтение настроек не должно ломать загрузку */
+  }
   fs.mkdirSync(DIRS.downloads, { recursive: true });
   return DIRS.downloads;
 }
@@ -22,7 +24,7 @@ function resolveDestDir() {
 // .bat/.cmd убрал специально — запуск скачанного скрипта это удалённое выполнение кода.
 const ALLOWED_EXT = [".exe", ".msi", ".msix", ".appx", ".zip"];
 const MAX_DOWNLOAD_BYTES = 2 * 1024 * 1024 * 1024; // 2 ГБ, чтоб диск не забили
-const DOWNLOAD_TIMEOUT_MS = 10 * 60 * 1000;        // 10 минут на одну загрузку
+const DOWNLOAD_TIMEOUT_MS = 10 * 60 * 1000; // 10 минут на одну загрузку
 
 function fileNameFromUrl(url) {
   try {
@@ -45,7 +47,8 @@ async function download(url, destDir = resolveDestDir()) {
     redirect: "follow",
     signal: AbortSignal.timeout(DOWNLOAD_TIMEOUT_MS),
     headers: {
-      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+      "User-Agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
       Accept: "*/*",
       Referer: new URL(href).origin + "/",
     },
@@ -58,7 +61,9 @@ async function download(url, destDir = resolveDestDir()) {
   // Content-Length сверяется ещё до записи в файл.
   const declared = Number(res.headers.get("content-length") || 0);
   if (declared > MAX_DOWNLOAD_BYTES) {
-    throw new Error(`Файл слишком большой (${Math.round(declared / 1024 ** 2)} MB), лимит ${MAX_DOWNLOAD_BYTES / 1024 ** 2} MB`);
+    throw new Error(
+      `Файл слишком большой (${Math.round(declared / 1024 ** 2)} MB), лимит ${MAX_DOWNLOAD_BYTES / 1024 ** 2} MB`,
+    );
   }
 
   let received = 0;
@@ -77,9 +82,18 @@ async function download(url, destDir = resolveDestDir()) {
     }
   } catch (e) {
     // Частично скачанный файл удаляется.
-    try { ws.destroy(); fs.rmSync(file, { force: true }); } catch {}
-    if (tooBig) throw new Error(`Загрузка прервана: превышен лимит ${MAX_DOWNLOAD_BYTES / 1024 ** 2} MB`, { cause: e });
-    if (e.message === "limit-exceeded") throw new Error(`Загрузка прервана: превышен лимит ${MAX_DOWNLOAD_BYTES / 1024 ** 2} MB`, { cause: e });
+    try {
+      ws.destroy();
+      fs.rmSync(file, { force: true });
+    } catch {}
+    if (tooBig)
+      throw new Error(`Загрузка прервана: превышен лимит ${MAX_DOWNLOAD_BYTES / 1024 ** 2} MB`, {
+        cause: e,
+      });
+    if (e.message === "limit-exceeded")
+      throw new Error(`Загрузка прервана: превышен лимит ${MAX_DOWNLOAD_BYTES / 1024 ** 2} MB`, {
+        cause: e,
+      });
     throw e;
   }
   await new Promise((resolve, reject) => {

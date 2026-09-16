@@ -38,9 +38,9 @@ function walk(dir, out = []) {
 /** Нормализуем строку: убираем отступы/пробелы, чтобы ловить копипасту с другим форматированием. */
 const norm = (s) => s.replace(/\s+/g, " ").trim();
 
-const files = ROOTS.filter((r) => fs.existsSync(path.join(root, r))).flatMap((r) =>
-  walk(path.join(root, r)),
-).filter((f) => !GENERATED.has(path.relative(root, f)));
+const files = ROOTS.filter((r) => fs.existsSync(path.join(root, r)))
+  .flatMap((r) => walk(path.join(root, r)))
+  .filter((f) => !GENERATED.has(path.relative(root, f)));
 const index = new Map(); // normalized line -> [{file, line}]
 for (const f of files) {
   const lines = fs.readFileSync(f, "utf8").split(/\r?\n/);

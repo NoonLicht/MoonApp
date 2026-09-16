@@ -35,7 +35,9 @@ const { runWithPage } = require("./middleware/perPageProxy");
 // Прогреваем детект GPU в фоне: engineSummary() отдаёт предупреждения вида
 // «CUDA-сборка выбрана, но NVIDIA не найдена», а первый nvidia-smi занимает
 // ~50 мс — не хотим ждать его в запросе статуса.
-void whisperEngine.detectGpu().catch(() => { /* детект не критичен */ });
+void whisperEngine.detectGpu().catch(() => {
+  /* детект не критичен */
+});
 
 /** Типовые галлюцинации Whisper на тишине/шуме — вырезаем из результата. */
 const HALLUCINATION_RE = [
@@ -49,7 +51,12 @@ const HALLUCINATION_RE = [
   // /^\W*$/ отбрасывал ЛЮБУЮ русскую расшифровку как «пустую».
   /^[\p{P}\p{S}\s]*$/u,
 ];
-const HALLUCINATION_CONTAINS = ["subtitles by", "amara.org", "спасибо за просмотр", "подписывайтесь на канал"];
+const HALLUCINATION_CONTAINS = [
+  "subtitles by",
+  "amara.org",
+  "спасибо за просмотр",
+  "подписывайтесь на канал",
+];
 
 /* ------------------------- WAV ------------------------- */
 
@@ -60,7 +67,7 @@ function writeWavHeader(dataLen, sampleRate, channels) {
   header.write("WAVE", 8);
   header.write("fmt ", 12);
   header.writeUInt32LE(16, 16);
-  header.writeUInt16LE(1, 20);           // PCM
+  header.writeUInt16LE(1, 20); // PCM
   header.writeUInt16LE(channels, 22);
   header.writeUInt32LE(sampleRate, 24);
   header.writeUInt32LE(sampleRate * channels * 2, 28); // byte rate (16 bit)
@@ -73,7 +80,10 @@ function writeWavHeader(dataLen, sampleRate, channels) {
 
 function toWav(pcmInt16, sampleRate, channels = 1) {
   const header = writeWavHeader(pcmInt16.length * 2, sampleRate, channels);
-  return Buffer.concat([header, Buffer.from(pcmInt16.buffer, pcmInt16.byteOffset, pcmInt16.byteLength)]);
+  return Buffer.concat([
+    header,
+    Buffer.from(pcmInt16.buffer, pcmInt16.byteOffset, pcmInt16.byteLength),
+  ]);
 }
 
 /* ------------------------- Состояние ------------------------- */
@@ -81,9 +91,13 @@ function toWav(pcmInt16, sampleRate, channels = 1) {
 /** Активные сессии записи: id → { vads, rawFd, rawFile, queue, ... } */
 const sessions = new Map();
 
-function cfg() { return settings.get("lecture"); }
+function cfg() {
+  return settings.get("lecture");
+}
 
-function sessionDir(id) { return path.join(DIRS.lectures, String(id)); }
+function sessionDir(id) {
+  return path.join(DIRS.lectures, String(id));
+}
 
 /**
  * Поиск бинарника и модели живёт в whisperEngine: там же выбор сборки
@@ -152,8 +166,12 @@ function ensureTrack(s, src) {
   const file = path.join(sessionDir(s.id), key === "sys" ? "raw_sys.wav" : "raw.wav");
   fs.writeFileSync(file, writeWavHeader(0, s.sampleRate, 1));
   const track = {
-    src: key, file, fd: fs.openSync(file, "r+"), writePos: 44,
-    sampleRate: s.sampleRate, pcmWritten: 0,
+    src: key,
+    file,
+    fd: fs.openSync(file, "r+"),
+    writePos: 44,
+    sampleRate: s.sampleRate,
+    pcmWritten: 0,
     vad: new VadBufferManager(vadOptions(cfg(), s.sampleRate)),
   };
   s.tracks.set(key, track);
@@ -168,8 +186,11 @@ function primaryTrack(s) {
 
 function vadConfig(c) {
   return {
-    silenceMs: c.vadSilenceMs, minChunkMs: c.vadMinChunkMs,
-    maxChunkMs: c.vadMaxChunkMs, forceSplitMs: c.vadForceSplitMs, padMs: c.vadPadMs,
+    silenceMs: c.vadSilenceMs,
+    minChunkMs: c.vadMinChunkMs,
+    maxChunkMs: c.vadMaxChunkMs,
+    forceSplitMs: c.vadForceSplitMs,
+    padMs: c.vadPadMs,
   };
 }
 
@@ -216,7 +237,13 @@ function ingest(id, buf, track = "mic") {
   // Пропуски VAD пишем строками с причиной и уровнем: так пользователь видит
   // «шум −44 dBFS при пороге −38», а не загадочное «отброшено VAD».
   for (const skip of w.vad.drainSkipped()) {
-    stmts.chunkInsertSkipped.run(id, nextIdx(id), Math.round(skip.startMs), Math.round(skip.endMs), { ...skip, source: src });
+    stmts.chunkInsertSkipped.run(
+      id,
+      nextIdx(id),
+      Math.round(skip.startMs),
+      Math.round(skip.endMs),
+      { ...skip, source: src },
+    );
   }
   return {
     pending: s.queue.length,
@@ -253,10 +280,15 @@ function enqueueChunk(id, chunk, source = "mic") {
     thresholdDb: chunk.thresholdDb ?? -100,
     zcr: chunk.zcrMean ?? 0,
   });
-  s.queue.push({ chunkId: Number(info.lastInsertRowid), file: base, startMs: chunk.startMs, endMs: chunk.endMs, source });
+  s.queue.push({
+    chunkId: Number(info.lastInsertRowid),
+    file: base,
+    startMs: chunk.startMs,
+    endMs: chunk.endMs,
+    source,
+  });
   pumpQueue(id);
 }
-
 
 /* ------------------------- Транскрипция (whisper.cpp) ------------------------- */
 
@@ -281,7 +313,11 @@ function pumpQueue(id) {
   s.transcribing = true;
   transcribeChunk(id, item)
     .catch((e) => {
-      if (item.chunkId) stmts.chunkUpdate.run(item.chunkId, { status: "error", error: String(e.message || e).slice(0, 500) });
+      if (item.chunkId)
+        stmts.chunkUpdate.run(item.chunkId, {
+          status: "error",
+          error: String(e.message || e).slice(0, 500),
+        });
       s.lastError = String(e.message || e);
       logger.error("lecture.transcribe", { id, error: s.lastError });
     })
@@ -304,7 +340,8 @@ function transcribeChunk(id, item) {
     const model = whisperEngine.findModel();
     if (!bin || !model) {
       const err = new Error(bin ? "whisper_model_missing" : "whisper_not_installed");
-      if (item.chunkId) stmts.chunkUpdate.run(item.chunkId, { status: "error", error: err.message });
+      if (item.chunkId)
+        stmts.chunkUpdate.run(item.chunkId, { status: "error", error: err.message });
       return reject(err);
     }
     const wavPath = path.join(sessionDir(id), item.file);
@@ -313,14 +350,30 @@ function transcribeChunk(id, item) {
     // (-ng для CPU-сборки/выключенной видеокарты, -dev N для выбора устройства).
     const args = whisperEngine.transcribeArgs(model, wavPath, outBase);
     const proc = spawn(bin, args, { windowsHide: true });
-    let stdout = "", stderr = "";
-    const timer = setTimeout(() => { try { proc.kill(); } catch { /* ignore */ } reject(new Error("whisper_timeout")); }, 120000);
-    proc.stdout.on("data", (d) => { stdout += d.toString("utf8"); });
-    proc.stderr.on("data", (d) => { stderr += d.toString("utf8"); });
-    proc.on("error", (e) => { clearTimeout(timer); reject(e); });
+    let stdout = "",
+      stderr = "";
+    const timer = setTimeout(() => {
+      try {
+        proc.kill();
+      } catch {
+        /* ignore */
+      }
+      reject(new Error("whisper_timeout"));
+    }, 120000);
+    proc.stdout.on("data", (d) => {
+      stdout += d.toString("utf8");
+    });
+    proc.stderr.on("data", (d) => {
+      stderr += d.toString("utf8");
+    });
+    proc.on("error", (e) => {
+      clearTimeout(timer);
+      reject(e);
+    });
     proc.on("close", (code) => {
       clearTimeout(timer);
-      if (code !== 0 && !stdout.trim()) return reject(new Error(`whisper_exit_${code}: ${stderr.slice(-300)}`));
+      if (code !== 0 && !stdout.trim())
+        return reject(new Error(`whisper_exit_${code}: ${stderr.slice(-300)}`));
       // whisper-cli с -osrt пишет <outBase>.srt; текст берём оттуда (с сегментами).
       let text = "";
       let segments = [];
@@ -328,9 +381,14 @@ function transcribeChunk(id, item) {
         const srtPath = outBase + ".srt";
         if (fs.existsSync(srtPath)) {
           segments = parseSrt(fs.readFileSync(srtPath, "utf8"));
-          text = segments.map((x) => x.text).join(" ").trim();
+          text = segments
+            .map((x) => x.text)
+            .join(" ")
+            .trim();
         }
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
       if (!text) text = stdout.replace(/\s+/g, " ").trim();
       text = sanitizeText(text);
       segments = segments.map((x) => ({ ...x, text: sanitizeText(x.text) })).filter((x) => x.text);
@@ -368,9 +426,19 @@ function sanitizeText(text) {
     changedAny = false;
     for (let n = 1; n <= 6 && !changedAny; n++) {
       for (let i = 0; i + 2 * n <= words.length; i++) {
-        const a = words.slice(i, i + n).join(" ").toLowerCase();
+        const a = words
+          .slice(i, i + n)
+          .join(" ")
+          .toLowerCase();
         let j = i + n;
-        while (j + n <= words.length && words.slice(j, j + n).join(" ").toLowerCase() === a) j += n;
+        while (
+          j + n <= words.length &&
+          words
+            .slice(j, j + n)
+            .join(" ")
+            .toLowerCase() === a
+        )
+          j += n;
         if (j > i + n) {
           words.splice(i + n, j - (i + n));
           changedAny = true;
@@ -392,8 +460,12 @@ function parseSrt(srt) {
     // split(",")[0] отбрасывал доли секунды, и все сегменты «округлялись» до
     // целой секунды. Хвостовые настройки (position:…) отсекаются.
     const parts = m.split("-->").map((x) => x.trim().split(/\s+/)[0]);
-    const a = parts[0], b = parts[1];
-    const text = lines.slice(lines.indexOf(m) + 1).join(" ").trim();
+    const a = parts[0],
+      b = parts[1];
+    const text = lines
+      .slice(lines.indexOf(m) + 1)
+      .join(" ")
+      .trim();
     out.push({ start: srtTimeToSec(a), end: srtTimeToSec(b), text });
   }
   return out;
@@ -407,10 +479,11 @@ function srtTimeToSec(t) {
     return Number(m[1]) * 3600 + Number(m[2]) * 60 + Number(m[3]) + ms / 1000;
   }
   // Фолбэк для времени без долей секунды.
-  const [h, min, s] = String(t).split(":").map((x) => parseFloat(x) || 0);
+  const [h, min, s] = String(t)
+    .split(":")
+    .map((x) => parseFloat(x) || 0);
   return h * 3600 + min * 60 + s;
 }
-
 
 /* ------------------------- Статусы / правки ------------------------- */
 
@@ -428,9 +501,10 @@ function getStatus(id) {
     // вместо «Не записывается», иначе последние фразы выглядели потерянными.
     stopping: !!(s && s.stopping),
     transcribing: s ? s.transcribing : false,
-    recordingSec: s && main
-      ? Math.round(main.pcmWritten / main.sampleRate)
-      : Math.round((lecture.duration_ms || 0) / 1000),
+    recordingSec:
+      s && main
+        ? Math.round(main.pcmWritten / main.sampleRate)
+        : Math.round((lecture.duration_ms || 0) / 1000),
     vadStats: main ? main.vad.stats : null,
     // Живая диагностика: порог, шумовой пол и пропуски. Без неё «тишина/шум»
     // в транскрипте невозможно объяснить (см. панель «Аудио» на странице).
@@ -501,8 +575,11 @@ function syncNotesFile(id) {
 
 /** Сбой записи .md не должен ломать запись лекции — только предупреждение. */
 function syncNotesFileSafe(id, action) {
-  try { syncNotesFile(id); }
-  catch (e) { logger.warn("lecture.notesfile.error", { id, action, error: String(e?.message || e) }); }
+  try {
+    syncNotesFile(id);
+  } catch (e) {
+    logger.warn("lecture.notesfile.error", { id, action, error: String(e?.message || e) });
+  }
 }
 
 /**
@@ -518,8 +595,15 @@ function backfillNotesFiles() {
   for (const lec of stmts.lectureAll.all()) {
     // Заметок нет или .md уже заведён — трогать нечего.
     if (!lec.notes || Number(lec.notes_note_id)) continue;
-    try { if (syncNotesFile(lec.id)) count++; }
-    catch (e) { logger.warn("lecture.notesfile.error", { id: lec.id, action: "backfill", error: String(e?.message || e) }); }
+    try {
+      if (syncNotesFile(lec.id)) count++;
+    } catch (e) {
+      logger.warn("lecture.notesfile.error", {
+        id: lec.id,
+        action: "backfill",
+        error: String(e?.message || e),
+      });
+    }
   }
   if (count) logger.action("lecture.notesfile.backfill", { count });
   return count;
@@ -529,8 +613,15 @@ function backfillNotesFiles() {
 function removeNotesFile(lec) {
   const noteId = Number(lec?.notes_note_id) || 0;
   if (!noteId) return;
-  try { stmts.noteDelete.run(noteId); }
-  catch (e) { logger.warn("lecture.notesfile.error", { id: lec?.id, action: "delete", error: String(e?.message || e) }); }
+  try {
+    stmts.noteDelete.run(noteId);
+  } catch (e) {
+    logger.warn("lecture.notesfile.error", {
+      id: lec?.id,
+      action: "delete",
+      error: String(e?.message || e),
+    });
+  }
 }
 
 /** Сохранение заметок лекции (кнопка «Сохранить заметки» в конспекте). */
@@ -564,13 +655,25 @@ function stopSession(id) {
   for (const [key, t] of s.tracks) {
     for (const chunk of t.vad.flush()) enqueueChunk(id, chunk, key);
     for (const skip of t.vad.drainSkipped()) {
-      stmts.chunkInsertSkipped.run(id, nextIdx(id), Math.round(skip.startMs), Math.round(skip.endMs), { ...skip, source: key });
+      stmts.chunkInsertSkipped.run(
+        id,
+        nextIdx(id),
+        Math.round(skip.startMs),
+        Math.round(skip.endMs),
+        { ...skip, source: key },
+      );
     }
     try {
       // Чиним header дорожки (реальный размер данных).
       fs.writeSync(t.fd, writeWavHeader(t.pcmWritten * 2, t.sampleRate, 1), 0, 44, 0);
-    } catch { /* файл всё равно играбелен большинством плееров */ }
-    try { fs.closeSync(t.fd); } catch { /* ignore */ }
+    } catch {
+      /* файл всё равно играбелен большинством плееров */
+    }
+    try {
+      fs.closeSync(t.fd);
+    } catch {
+      /* ignore */
+    }
   }
   // Длительность = длина ЗАПИСАННОГО аудио (источник истины — то, что реально
   // лежит в fail-safe WAV), а не время «от старта до стопа»: клиент может
@@ -578,13 +681,18 @@ function stopSession(id) {
   // в шапке экспорта и в статусе сессии.
   const main = primaryTrack(s);
   const wallMs = Math.max(0, Date.now() - s.startedAt);
-  const audioMs = s.sampleRate > 0 ? Math.round(((main?.pcmWritten || 0) / s.sampleRate) * 1000) : 0;
+  const audioMs =
+    s.sampleRate > 0 ? Math.round(((main?.pcmWritten || 0) / s.sampleRate) * 1000) : 0;
   const durMs = audioMs > 0 ? audioMs : wallMs;
   // ВАЖНО: не удаляем состояние сессии здесь. В очереди могут ещё лежать
   // нераспознанные чанки (в т.ч. только что добавленные flush-ом). Раньше они
   // навсегда оставались «pending», потому что pumpQueue больше не находил
   // сессию. Теперь очередь дочитывается, а состояние удаляет сам pumpQueue.
-  stmts.lectureUpdate.run(id, { status: "stopped", ended_at: new Date().toISOString().replace("T", " ").slice(0, 19), duration_ms: durMs });
+  stmts.lectureUpdate.run(id, {
+    status: "stopped",
+    ended_at: new Date().toISOString().replace("T", " ").slice(0, 19),
+    duration_ms: durMs,
+  });
   s.endedAt = Date.now();
   logger.action("lecture.session.stop", { id, durMs, wallMs, audioMs, queue: s.queue.length });
   // Если очередь пуста и транскрипция не идёт — освобождаем сразу.
@@ -603,7 +711,11 @@ function deleteSession(id) {
   // поэтому состояние сессии снимаем принудительно (pumpQueue ждал бы её конца).
   sessions.delete(id);
   stmts.lectureDelete.run(id);
-  try { fs.rmSync(sessionDir(id), { recursive: true, force: true }); } catch { /* ignore */ }
+  try {
+    fs.rmSync(sessionDir(id), { recursive: true, force: true });
+  } catch {
+    /* ignore */
+  }
   logger.action("lecture.session.delete", { id });
   return true;
 }
@@ -628,9 +740,14 @@ function recoverInterrupted() {
         const sr = Number(lec.sample_rate) || 16000;
         durMs = Math.round((dataLen / 2 / sr) * 1000);
         const fd = fs.openSync(file, "r+");
-        try { fs.writeSync(fd, writeWavHeader(dataLen, sr, Number(lec.channels) || 1), 0, 44, 0); }
-        finally { fs.closeSync(fd); }
-      } catch { /* raw.wav мог не создаться — оставляем как есть */ }
+        try {
+          fs.writeSync(fd, writeWavHeader(dataLen, sr, Number(lec.channels) || 1), 0, 44, 0);
+        } finally {
+          fs.closeSync(fd);
+        }
+      } catch {
+        /* raw.wav мог не создаться — оставляем как есть */
+      }
       stmts.lectureUpdate.run(lec.id, {
         status: "interrupted",
         duration_ms: durMs,
@@ -638,7 +755,9 @@ function recoverInterrupted() {
       });
       fixed++;
     }
-  } catch (e) { logger.error("lecture.recover", { error: String(e.message || e) }); }
+  } catch (e) {
+    logger.error("lecture.recover", { error: String(e.message || e) });
+  }
   if (fixed) logger.action("lecture.recover.interrupted", { count: fixed });
   return fixed;
 }
@@ -647,12 +766,16 @@ function recoverInterrupted() {
 
 function fmtTs(ms) {
   const s = Math.floor(ms / 1000);
-  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+  const h = Math.floor(s / 3600),
+    m = Math.floor((s % 3600) / 60),
+    sec = s % 60;
   return [h, m, sec].map((x) => String(x).padStart(2, "0")).join(":");
 }
 
 function fmtSrtTime(sec) {
-  const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = Math.floor(sec % 60);
+  const h = Math.floor(sec / 3600),
+    m = Math.floor((sec % 3600) / 60),
+    s = Math.floor(sec % 60);
   const msPart = String(Math.round((sec % 1) * 1000)).padStart(3, "0");
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")},${msPart}`;
 }
@@ -690,7 +813,12 @@ function speakerOf(chunk, labels = {}) {
 function buildMarkdown(id, labels = {}) {
   const st = getStatus(id);
   if (!st) return "";
-  const lines = [`# ${st.lecture.title}`, "", `> Запись от ${st.lecture.started_at} · длительность ${fmtTs(st.recordingSec * 1000)}`, ""];
+  const lines = [
+    `# ${st.lecture.title}`,
+    "",
+    `> Запись от ${st.lecture.started_at} · длительность ${fmtTs(st.recordingSec * 1000)}`,
+    "",
+  ];
   if (st.lecture.notes) lines.push("## Важное (маркеры)", "", st.lecture.notes, "");
   lines.push("## Расшифровка", "");
   for (const c of st.chunks) {
@@ -711,7 +839,12 @@ function buildSrt(id, labels = {}) {
     const start = c.start_ms / 1000;
     const end = Math.max(c.end_ms / 1000, start + 1);
     const who = speakerOf(c, labels);
-    out.push(`${++idx}`, `${fmtSrtTime(start)} --> ${fmtSrtTime(end)}`, `${who ? `— ${who}: ` : ""}${c.text}`, "");
+    out.push(
+      `${++idx}`,
+      `${fmtSrtTime(start)} --> ${fmtSrtTime(end)}`,
+      `${who ? `— ${who}: ` : ""}${c.text}`,
+      "",
+    );
   }
   return out.join("\n");
 }
@@ -726,7 +859,11 @@ function buildVtt(id, labels = {}) {
     const end = Math.max(c.end_ms / 1000, start + 1);
     const who = speakerOf(c, labels);
     // Голос — блоком <v>: плееры (VLC и др.) читают это как имя говорящего.
-    out.push(`${fmtVttTime(start)} --> ${fmtVttTime(end)}`, who ? `<v ${who}>${c.text}` : c.text, "");
+    out.push(
+      `${fmtVttTime(start)} --> ${fmtVttTime(end)}`,
+      who ? `<v ${who}>${c.text}` : c.text,
+      "",
+    );
   }
   return out.join("\n");
 }
@@ -735,16 +872,31 @@ function buildVtt(id, labels = {}) {
 function exportContent(id, format, labels = {}) {
   // Подписи говорящих по диаризации (если она запускалась): sys_0 → «Лектор»,
   // sys_1 → «Лектор 2». Считаем один раз на экспорт, а не на каждый чанк.
-  const withSpeakers = labels && labels.mode !== "off"
-    ? { ...labels, speakers: diarize.speakerNames(id, labels) }
-    : labels;
-  if (format === "srt") return { mime: "application/x-subrip", body: buildSrt(id, withSpeakers), name: `lecture_${id}.srt` };
-  if (format === "vtt") return { mime: "text/vtt", body: buildVtt(id, withSpeakers), name: `lecture_${id}.vtt` };
-  return { mime: "text/markdown", body: buildMarkdown(id, withSpeakers), name: `${safeName(getStatus(id)?.lecture.title || "lecture")}.md` };
+  const withSpeakers =
+    labels && labels.mode !== "off"
+      ? { ...labels, speakers: diarize.speakerNames(id, labels) }
+      : labels;
+  if (format === "srt")
+    return {
+      mime: "application/x-subrip",
+      body: buildSrt(id, withSpeakers),
+      name: `lecture_${id}.srt`,
+    };
+  if (format === "vtt")
+    return { mime: "text/vtt", body: buildVtt(id, withSpeakers), name: `lecture_${id}.vtt` };
+  return {
+    mime: "text/markdown",
+    body: buildMarkdown(id, withSpeakers),
+    name: `${safeName(getStatus(id)?.lecture.title || "lecture")}.md`,
+  };
 }
 
 function safeName(name) {
-  return String(name).replace(/[\\/:*?"<>|]+/g, "_").slice(0, 80) || "lecture";
+  return (
+    String(name)
+      .replace(/[\\/:*?"<>|]+/g, "_")
+      .slice(0, 80) || "lecture"
+  );
 }
 
 /**
@@ -763,11 +915,13 @@ function contentDisposition(name) {
   // Кириллицу выкидываем целиком. Проверяем ИМЯ без расширения: у «.md» есть
   // буква, поэтому проверка по всему имени пропускала бы «filename=".md"».
   const base = full.slice(0, full.length - ext.length);
-  let asciiBase = base.replace(/[^\x20-\x7E]/g, "").replace(/["\\]/g, "").trim();
+  let asciiBase = base
+    .replace(/[^\x20-\x7E]/g, "")
+    .replace(/["\\]/g, "")
+    .trim();
   if (!/[A-Za-z0-9]/.test(asciiBase)) asciiBase = "lecture";
   return `attachment; filename="${asciiBase}${ext}"; filename*=UTF-8''${encodeURIComponent(full)}`;
 }
-
 
 /* ------------------------- AI-конспект (провайдер чата, чанками) ------------------------- */
 
@@ -865,7 +1019,9 @@ async function conspectusTarget(appPage) {
     let list = [];
     try {
       list = await runWithPage(appPage, () => provider.listModels(secret));
-    } catch { /* нет сети — берём каталог провайдера */ }
+    } catch {
+      /* нет сети — берём каталог провайдера */
+    }
     if (!Array.isArray(list) || !list.length) list = provider.models || [];
     // reasoner медленнее и хуже держит длинный контекст — предпочитаем chat-модель.
     model = list.find((m) => /chat|turbo|flash|mini|small|lite/i.test(m)) || list[0] || "";
@@ -921,21 +1077,28 @@ function setConspectusSettings(patch = {}) {
   if (patch.providerId !== undefined) {
     const id = String(patch.providerId || "");
     // "" — «как в чате» (chat.provider); иначе провайдер обязан существовать.
-    if (id && !PROVIDERS.some((p) => p.id === id)) throw new Error("conspectus_provider_unknown: " + id);
+    if (id && !PROVIDERS.some((p) => p.id === id))
+      throw new Error("conspectus_provider_unknown: " + id);
     next.conspectusProvider = id;
   }
   if (patch.model !== undefined) next.conspectusModel = String(patch.model || "").slice(0, 200);
   if (patch.trigger !== undefined) {
     const tr = String(patch.trigger || "");
-    if (!["smart", "auto", "manual"].includes(tr)) throw new Error("conspectus_trigger_unknown: " + tr);
+    if (!["smart", "auto", "manual"].includes(tr))
+      throw new Error("conspectus_trigger_unknown: " + tr);
     next.conspectusTrigger = tr;
   }
   if (patch.autoMinChars !== undefined) {
-    next.conspectusAutoMinChars = Math.round(num(patch.autoMinChars, 0, 200000, Number(c.conspectusAutoMinChars) || 0));
+    next.conspectusAutoMinChars = Math.round(
+      num(patch.autoMinChars, 0, 200000, Number(c.conspectusAutoMinChars) || 0),
+    );
   }
-  if (patch.chunkChars !== undefined) next.conspectusChunkChars = Math.round(num(patch.chunkChars, 1500, 20000, 6000));
-  if (patch.overlapChars !== undefined) next.conspectusOverlapChars = Math.round(num(patch.overlapChars, 0, 2000, 0));
-  if (patch.maxChunks !== undefined) next.conspectusMaxChunks = Math.round(num(patch.maxChunks, 1, 300, 60));
+  if (patch.chunkChars !== undefined)
+    next.conspectusChunkChars = Math.round(num(patch.chunkChars, 1500, 20000, 6000));
+  if (patch.overlapChars !== undefined)
+    next.conspectusOverlapChars = Math.round(num(patch.overlapChars, 0, 2000, 0));
+  if (patch.maxChunks !== undefined)
+    next.conspectusMaxChunks = Math.round(num(patch.maxChunks, 1, 300, 60));
   if (Object.keys(next).length) settings.set({ lecture: next });
   logger.action("lecture.conspectus.settings", next);
   return conspectusSettings();
@@ -954,7 +1117,9 @@ async function providerModels(id, appPage = null) {
   let list = [];
   try {
     list = await runWithPage(appPage, () => provider.listModels(secret));
-  } catch { /* нет сети — отдаём каталог провайдера, чтобы селект был не пустой */ }
+  } catch {
+    /* нет сети — отдаём каталог провайдера, чтобы селект был не пустой */
+  }
   if (!Array.isArray(list) || !list.length) list = provider.models || [];
   return { provider: provider.id, models: list.filter(Boolean).map(String) };
 }
@@ -985,7 +1150,11 @@ function conspectusStale(lec, chars) {
  */
 function maybeAutoConspectus(id) {
   let c;
-  try { c = conspectusCfg(); } catch { return; }
+  try {
+    c = conspectusCfg();
+  } catch {
+    return;
+  }
   if (c.trigger === "manual") return;
   if (conspectusJobs.get(id)?.state === "working") return; // уже собирается
   const lec = stmts.lectureGet.get(id);
@@ -994,11 +1163,21 @@ function maybeAutoConspectus(id) {
   if (!w.chars) return; // распознанных слов нет
   if (c.trigger === "smart") {
     if (w.chars < c.autoMinChars) {
-      logger.action("lecture.conspectus.skip", { id, chars: w.chars, min: c.autoMinChars, why: "too_short" });
+      logger.action("lecture.conspectus.skip", {
+        id,
+        chars: w.chars,
+        min: c.autoMinChars,
+        why: "too_short",
+      });
       return;
     }
     if (lec.conspectus_at && !conspectusStale(lec, w.chars)) {
-      logger.action("lecture.conspectus.skip", { id, chars: w.chars, prev: Number(lec.conspectus_len) || 0, why: "nothing_new" });
+      logger.action("lecture.conspectus.skip", {
+        id,
+        chars: w.chars,
+        prev: Number(lec.conspectus_len) || 0,
+        why: "nothing_new",
+      });
       return;
     }
   }
@@ -1019,7 +1198,11 @@ function maybeAutoConspectus(id) {
  */
 function maybeAutoDiarize(id) {
   let c;
-  try { c = cfg(); } catch { return; }
+  try {
+    c = cfg();
+  } catch {
+    return;
+  }
   if (c.diarizeEnabled !== true) return;
   if (diarize.diarizeState(id).state === "working") return;
   // Пакет не скачан — молча ничего не делаем: о необходимости скачать сообщит
@@ -1065,17 +1248,22 @@ function transcriptBlocks(chunks, chunkChars, overlapChars, maxChunks) {
 
 /** Один вызов модели: собираем поток целиком (панель ждёт готовый конспект). */
 async function askModel(target, prompt, appPage, maxTokens) {
-  const text = await runWithPage(appPage, () => target.provider.chat({
-    secret: target.secret,
-    model: target.model,
-    messages: [
-      { role: "system", text: "Ты помогаешь студенту с конспектами лекций. Пиши по-русски, только по тексту." },
-      { role: "user", text: prompt },
-    ],
-    temperature: target.cfg.temperature,
-    maxTokens: maxTokens || 3000,
-    stream: true,
-  }));
+  const text = await runWithPage(appPage, () =>
+    target.provider.chat({
+      secret: target.secret,
+      model: target.model,
+      messages: [
+        {
+          role: "system",
+          text: "Ты помогаешь студенту с конспектами лекций. Пиши по-русски, только по тексту.",
+        },
+        { role: "user", text: prompt },
+      ],
+      temperature: target.cfg.temperature,
+      maxTokens: maxTokens || 3000,
+      stream: true,
+    }),
+  );
   return String(text || "").trim();
 }
 
@@ -1086,10 +1274,21 @@ function conspectusState(id) {
   const lec = stmts.lectureGet.get(id);
   const w = lec ? transcriptWeight(id) : { chars: 0, chunks: [] };
   let c = null;
-  try { c = conspectusCfg(); } catch { /* настройки ещё не читаются — отдаём базовое */ }
+  try {
+    c = conspectusCfg();
+  } catch {
+    /* настройки ещё не читаются — отдаём базовое */
+  }
   return {
     ...(job || {
-      state: "idle", progress: 0, total: 0, phase: "", model: "", error: "", truncated: false, at: 0,
+      state: "idle",
+      progress: 0,
+      total: 0,
+      phase: "",
+      model: "",
+      error: "",
+      truncated: false,
+      at: 0,
     }),
     // Режим и «устаревание» для панели: в ручном режиме авто-сборки не будет,
     // а stale честно говорит, что после сборки расшифровка заметно выросла.
@@ -1114,16 +1313,27 @@ async function generateConspectus(id, opts = {}) {
   if (conspectusJobs.get(id)?.state === "working") throw new Error("conspectus_busy");
 
   const c = injected?.cfg ? { ...conspectusCfg(), ...injected.cfg } : conspectusCfg();
-  const { blocks, truncated, total } = transcriptBlocks(st.chunks, c.chunkChars, c.overlapChars, c.maxChunks);
+  const { blocks, truncated, total } = transcriptBlocks(
+    st.chunks,
+    c.chunkChars,
+    c.overlapChars,
+    c.maxChunks,
+  );
   const started = Date.now();
   const setJob = (patch) => conspectusJobs.set(id, { ...conspectusState(id), ...patch });
   setJob({
-    state: "working", progress: 0, total: blocks.length, phase: "notes",
-    model: "", error: "", truncated, at: started,
+    state: "working",
+    progress: 0,
+    total: blocks.length,
+    phase: "notes",
+    model: "",
+    error: "",
+    truncated,
+    at: started,
   });
   try {
     // target можно внедрить (тесты и локальные модели): тогда ключ/провайдер не нужны.
-    const target = injected || await conspectusTarget(appPage);
+    const target = injected || (await conspectusTarget(appPage));
     setJob({ model: target.model });
 
     // --- Первый проход: черновые заметки по каждому блоку ---
@@ -1146,17 +1356,23 @@ async function generateConspectus(id, opts = {}) {
       const groups = [];
       let cur = "";
       for (const n of notes) {
-        if (cur.length + n.length > c.chunkChars && cur) { groups.push(cur); cur = ""; }
+        if (cur.length + n.length > c.chunkChars && cur) {
+          groups.push(cur);
+          cur = "";
+        }
         cur += (cur ? "\n\n" : "") + n;
       }
       if (cur) groups.push(cur);
       const condensed = [];
       for (let i = 0; i < groups.length; i++) {
-        condensed.push(await askModel(
-          target,
-          `Сожми заметки по фрагментам лекции, сохранив все термины, формулы и вопросы.\n=== ЗАМЕТКИ ===\n${groups[i]}`,
-          appPage, 3000,
-        ));
+        condensed.push(
+          await askModel(
+            target,
+            `Сожми заметки по фрагментам лекции, сохранив все термины, формулы и вопросы.\n=== ЗАМЕТКИ ===\n${groups[i]}`,
+            appPage,
+            3000,
+          ),
+        );
         setJob({ progress: i + 1, total: groups.length });
       }
       markdown = await askModel(target, MERGE_PROMPT + condensed.join("\n\n"), appPage, 4000);
@@ -1178,16 +1394,28 @@ async function generateConspectus(id, opts = {}) {
     // перезаписывается тем же, а не заводится заново (см. syncNotesFile).
     syncNotesFileSafe(id, "conspectus");
     logger.action("lecture.conspectus", {
-      id, provider: target.provider.id, model: target.model,
-      blocks: blocks.length, chars: markdown.length, ms: Date.now() - started, truncated,
+      id,
+      provider: target.provider.id,
+      model: target.model,
+      blocks: blocks.length,
+      chars: markdown.length,
+      ms: Date.now() - started,
+      truncated,
     });
     setJob({
-      state: "done", progress: blocks.length, total: blocks.length, phase: "done",
-      model: target.model, error: "",
+      state: "done",
+      progress: blocks.length,
+      total: blocks.length,
+      phase: "done",
+      model: target.model,
+      error: "",
     });
     return {
-      markdown, model: `${target.provider.id}/${target.model}`,
-      blocks: blocks.length, truncated, ofTotal: total,
+      markdown,
+      model: `${target.provider.id}/${target.model}`,
+      blocks: blocks.length,
+      truncated,
+      ofTotal: total,
     };
   } catch (e) {
     const msg = String(e?.message || e);
@@ -1209,15 +1437,24 @@ async function generateConspectus(id, opts = {}) {
 const rechecks = new Map(); // id → состояние прогона
 
 function recheckState(id) {
-  return rechecks.get(id) || {
-    state: "idle", progress: 0, total: 0, found: 0, restored: 0,
-    error: "", at: 0, truncated: false,
-  };
+  return (
+    rechecks.get(id) || {
+      state: "idle",
+      progress: 0,
+      total: 0,
+      found: 0,
+      restored: 0,
+      error: "",
+      at: 0,
+      truncated: false,
+    }
+  );
 }
 
 /** Интервалы удачных чанков (status=done) в миллисекундах. */
 function transcribedSpans(id, padMs = 300) {
-  return stmts.chunkFor.all(id)
+  return stmts.chunkFor
+    .all(id)
     .filter((c) => c.status === "done")
     .map((c) => [Math.max(0, c.start_ms - padMs), c.end_ms + padMs])
     .sort((a, b) => a[0] - b[0]);
@@ -1268,8 +1505,14 @@ function startRecheck(id, opts = {}) {
   const maxChunks = Number(opts.maxChunks ?? 300);
 
   const st = {
-    state: "working", progress: 0, total: gaps.length, found: 0, restored: 0,
-    error: "", at: Date.now(), truncated: false,
+    state: "working",
+    progress: 0,
+    total: gaps.length,
+    found: 0,
+    restored: 0,
+    error: "",
+    at: Date.now(),
+    truncated: false,
   };
   rechecks.set(id, st);
   logger.action("lecture.recheck.start", { id, gaps: gaps.length, totalMs });
@@ -1293,7 +1536,10 @@ function startRecheck(id, opts = {}) {
       for (let gi = 0; gi < gaps.length; gi++) {
         if (st.state !== "working") break;
         const [gs, ge] = gaps[gi];
-        if (spentMs >= maxMs || st.found >= maxChunks) { st.truncated = true; break; }
+        if (spentMs >= maxMs || st.found >= maxChunks) {
+          st.truncated = true;
+          break;
+        }
         const from = Math.floor((gs / 1000) * raw.sampleRate);
         const to = Math.min(raw.pcm.length, Math.ceil((ge / 1000) * raw.sampleRate));
         // pass() прогоняет отрезок с АБСОЛЮТНЫМ таймкодом: иначе все найденные
@@ -1303,7 +1549,10 @@ function startRecheck(id, opts = {}) {
         for (const chunk of produced) {
           const idx = nextIdx(id);
           const file = `recheck_${String(idx).padStart(5, "0")}.wav`;
-          fs.writeFileSync(path.join(sessionDir(id), file), toWav(chunk.samples, raw.sampleRate, 1));
+          fs.writeFileSync(
+            path.join(sessionDir(id), file),
+            toWav(chunk.samples, raw.sampleRate, 1),
+          );
           const info = stmts.chunkInsert.run(id, idx, chunk.startMs, chunk.endMs, file, {
             source: "recheck",
             reason: chunk.reason || "",
@@ -1316,20 +1565,31 @@ function startRecheck(id, opts = {}) {
           });
           st.found++;
           const item = {
-            chunkId: Number(info.lastInsertRowid), file,
-            startMs: chunk.startMs, endMs: chunk.endMs, source: "recheck",
+            chunkId: Number(info.lastInsertRowid),
+            file,
+            startMs: chunk.startMs,
+            endMs: chunk.endMs,
+            source: "recheck",
           };
           try {
             const r = await transcribeChunk(id, item);
             if (r.text) st.restored++;
           } catch (e) {
-            stmts.chunkUpdate.run(item.chunkId, { status: "error", error: String(e.message || e).slice(0, 300) });
+            stmts.chunkUpdate.run(item.chunkId, {
+              status: "error",
+              error: String(e.message || e).slice(0, 300),
+            });
           }
         }
         st.progress = gaps.length ? Math.round(((gi + 1) / gaps.length) * 100) : 100;
       }
       st.state = "done";
-      logger.action("lecture.recheck.done", { id, found: st.found, restored: st.restored, truncated: st.truncated });
+      logger.action("lecture.recheck.done", {
+        id,
+        found: st.found,
+        restored: st.restored,
+        truncated: st.truncated,
+      });
       // Повторная проверка могла добыть новые куски текста: в smart-режиме это
       // законный повод пересобрать конспект (он помечается stale — см. conspectusStale).
       if (st.restored > 0) maybeAutoConspectus(id);
@@ -1387,14 +1647,19 @@ function setAudioSettings(patch = {}) {
     if (!Number.isFinite(n)) return fallback;
     return Math.min(hi, Math.max(lo, n));
   };
-  if (patch.micDeviceId !== undefined) next.micDeviceId = String(patch.micDeviceId || "").slice(0, 200);
-  if (patch.micGain !== undefined) next.micGain = num(patch.micGain, 0.5, 4, Number(c.micGain ?? 1));
+  if (patch.micDeviceId !== undefined)
+    next.micDeviceId = String(patch.micDeviceId || "").slice(0, 200);
+  if (patch.micGain !== undefined)
+    next.micGain = num(patch.micGain, 0.5, 4, Number(c.micGain ?? 1));
   if (patch.micAgc !== undefined) next.micAgc = !!patch.micAgc;
   const v = patch.vad || {};
-  if (v.rmsThreshold !== undefined) next.vadRmsThreshold = num(v.rmsThreshold, 0.0005, 0.2, Number(c.vadRmsThreshold));
+  if (v.rmsThreshold !== undefined)
+    next.vadRmsThreshold = num(v.rmsThreshold, 0.0005, 0.2, Number(c.vadRmsThreshold));
   if (v.adaptive !== undefined) next.vadAdaptive = !!v.adaptive;
-  if (v.thresholdFactor !== undefined) next.vadThresholdFactor = num(v.thresholdFactor, 1.5, 12, Number(c.vadThresholdFactor));
-  if (v.minSpeechRatio !== undefined) next.vadMinSpeechRatio = num(v.minSpeechRatio, 0, 1, Number(c.vadMinSpeechRatio));
+  if (v.thresholdFactor !== undefined)
+    next.vadThresholdFactor = num(v.thresholdFactor, 1.5, 12, Number(c.vadThresholdFactor));
+  if (v.minSpeechRatio !== undefined)
+    next.vadMinSpeechRatio = num(v.minSpeechRatio, 0, 1, Number(c.vadMinSpeechRatio));
   if (v.zcrGate !== undefined) next.vadZcrGate = !!v.zcrGate;
   if (Object.keys(next).length) settings.set({ lecture: next });
   logger.action("lecture.audio.settings", next);
@@ -1412,26 +1677,46 @@ function chunkAudioPath(chunkId) {
 function rawAudioPath(id, track = "mic") {
   const lec = stmts.lectureGet.get(id);
   if (!lec) return null;
-  const name = track === "sys" ? "raw_sys.wav" : (lec.raw_file || "raw.wav");
+  const name = track === "sys" ? "raw_sys.wav" : lec.raw_file || "raw.wav";
   const p = path.join(sessionDir(id), path.basename(name));
   return fs.existsSync(p) ? p : null;
 }
 
 module.exports = {
-  createSession, ingest, getStatus, stopSession, deleteSession,
-  updateChunkText, setNotes, addMarker, engineStatus,
-  exportContent, generateConspectus, conspectusState, chunkAudioPath, rawAudioPath,
-  audioSettings, setAudioSettings, startRecheck, recheckState,
+  createSession,
+  ingest,
+  getStatus,
+  stopSession,
+  deleteSession,
+  updateChunkText,
+  setNotes,
+  addMarker,
+  engineStatus,
+  exportContent,
+  generateConspectus,
+  conspectusState,
+  chunkAudioPath,
+  rawAudioPath,
+  audioSettings,
+  setAudioSettings,
+  startRecheck,
+  recheckState,
   recoverInterrupted,
   // Заголовок выгрузки: кириллические имена файлов (см. contentDisposition).
   contentDisposition,
   // Настройки конспекта и выбор провайдера (панель «ИИ-конспект»).
-  conspectusSettings, setConspectusSettings, conspectusProviders, providerModels,
-  maybeAutoConspectus, transcriptWeight, conspectusStale, // переиспользуется в тестах
+  conspectusSettings,
+  setConspectusSettings,
+  conspectusProviders,
+  providerModels,
+  maybeAutoConspectus,
+  transcriptWeight,
+  conspectusStale, // переиспользуется в тестах
   // Зеркало заметок лекций в storage/notes (см. syncNotesFile). backfillNotesFiles
   // зовёт server/index.js при старте — он заводит .md для лекций, записанных до
   // появления синхронизации; экспорт — для тестов.
   backfillNotesFiles,
-  sanitizeText, parseSrt, transcriptBlocks, // переиспользуется в тестах
+  sanitizeText,
+  parseSrt,
+  transcriptBlocks, // переиспользуется в тестах
 };
-

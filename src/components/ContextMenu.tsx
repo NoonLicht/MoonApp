@@ -1,4 +1,12 @@
-import React, { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState } from "react";
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 
 /**
  * Глобальное контекстное меню (правая кнопка мыши).
@@ -26,10 +34,18 @@ export interface CtxItem {
   onClick?: () => void;
 }
 
-interface CtxState { x: number; y: number; items: CtxItem[] }
+interface CtxState {
+  x: number;
+  y: number;
+  items: CtxItem[];
+}
 
-const Ctx = createContext<{ open: (e: React.MouseEvent, items: (CtxItem | false | null | undefined)[]) => void }>({
-  open: () => { /* провайдер не установлен — no-op */ },
+const Ctx = createContext<{
+  open: (e: React.MouseEvent, items: (CtxItem | false | null | undefined)[]) => void;
+}>({
+  open: () => {
+    /* провайдер не установлен — no-op */
+  },
 });
 
 /** Хук для страниц: const menu = useContextMenu(); menu.open(e, items). */
@@ -37,9 +53,9 @@ export function useContextMenu() {
   return useContext(Ctx);
 }
 
-const ITEM_H = 32;   // высота пункта (синхронно с CSS .ctx-menu-item)
-const PAD = 8;       // внутренние отступы меню
-const MIN_W = 200;   // min-width меню (CSS)
+const ITEM_H = 32; // высота пункта (синхронно с CSS .ctx-menu-item)
+const PAD = 8; // внутренние отступы меню
+const MIN_W = 200; // min-width меню (CSS)
 
 export function ContextMenuProvider({ children }: { children: React.ReactNode }) {
   const [st, setSt] = useState<CtxState | null>(null);
@@ -61,7 +77,9 @@ export function ContextMenuProvider({ children }: { children: React.ReactNode })
   useEffect(() => {
     if (!st) return;
     const close = () => setSt(null);
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setSt(null); };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setSt(null);
+    };
     window.addEventListener("click", close);
     window.addEventListener("contextmenu", close);
     window.addEventListener("resize", close);
@@ -106,12 +124,16 @@ export function ContextMenuProvider({ children }: { children: React.ReactNode })
                 role="menuitem"
                 disabled={it.disabled}
                 className={`ctx-menu-item${it.danger ? " is-danger" : ""}`}
-                onClick={(e) => { e.stopPropagation(); setSt(null); it.onClick?.(); }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSt(null);
+                  it.onClick?.();
+                }}
               >
                 {it.icon && <it.icon size={14} strokeWidth={1.8} />}
                 <span>{it.label}</span>
               </button>
-            )
+            ),
           )}
         </div>
       )}
@@ -130,7 +152,11 @@ export async function copyToClipboard(text: string) {
     ta.style.opacity = "0";
     document.body.appendChild(ta);
     ta.select();
-    try { document.execCommand("copy"); } catch { /* уже ничего не сделать */ }
+    try {
+      document.execCommand("copy");
+    } catch {
+      /* уже ничего не сделать */
+    }
     document.body.removeChild(ta);
   }
 }

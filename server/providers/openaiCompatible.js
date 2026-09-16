@@ -10,8 +10,12 @@ function makeOpenAICompatible(o) {
     id: o.id,
     label: o.label,
     models: o.models || [],
-    modelsUrl() { return `${o.baseUrl}/models`; },
-    buildUrl() { return `${o.baseUrl}/chat/completions`; },
+    modelsUrl() {
+      return `${o.baseUrl}/models`;
+    },
+    buildUrl() {
+      return `${o.baseUrl}/chat/completions`;
+    },
     headers(secret) {
       const h = { "Content-Type": "application/json" };
       if (o.authType === "Bearer") h.Authorization = `Bearer ${secret}`;
@@ -19,7 +23,17 @@ function makeOpenAICompatible(o) {
       if (o.extraHeaders) Object.assign(h, o.extraHeaders);
       return h;
     },
-    body({ model, messages, temperature, maxTokens, stream, topP, frequencyPenalty, presencePenalty, stop }) {
+    body({
+      model,
+      messages,
+      temperature,
+      maxTokens,
+      stream,
+      topP,
+      frequencyPenalty,
+      presencePenalty,
+      stop,
+    }) {
       const b = {
         model,
         messages: messages.map((m) => {
@@ -30,7 +44,9 @@ function makeOpenAICompatible(o) {
           parts.push({ type: "text", text: m.text });
           return { role: m.role, content: parts };
         }),
-        temperature, max_tokens: maxTokens, stream,
+        temperature,
+        max_tokens: maxTokens,
+        stream,
       };
       if (topP !== undefined) b.top_p = topP;
       if (frequencyPenalty !== undefined) b.frequency_penalty = frequencyPenalty;
@@ -44,10 +60,33 @@ function makeOpenAICompatible(o) {
       const json = await res.json();
       return (json.data || []).map((m) => m.id);
     },
-    async chat({ secret, model, messages, temperature, maxTokens, stream, onToken, signal, topP, frequencyPenalty, presencePenalty }) {
-      const body = this.body({ model, messages, temperature, maxTokens, stream: true, topP, frequencyPenalty, presencePenalty });
+    async chat({
+      secret,
+      model,
+      messages,
+      temperature,
+      maxTokens,
+      stream,
+      onToken,
+      signal,
+      topP,
+      frequencyPenalty,
+      presencePenalty,
+    }) {
+      const body = this.body({
+        model,
+        messages,
+        temperature,
+        maxTokens,
+        stream: true,
+        topP,
+        frequencyPenalty,
+        presencePenalty,
+      });
       const res = await pageFetch(this.buildUrl(), {
-        method: "POST", headers: this.headers(secret), signal,
+        method: "POST",
+        headers: this.headers(secret),
+        signal,
         body: JSON.stringify(body),
       });
       if (!res.ok) throw new Error(`api error ${res.status}: ${await res.text()}`);
@@ -55,7 +94,10 @@ function makeOpenAICompatible(o) {
         let full = "";
         await consumeSSE(res.body, (j) => {
           const d = j.choices?.[0]?.delta?.content;
-          if (d) { full += d; onToken?.(d); }
+          if (d) {
+            full += d;
+            onToken?.(d);
+          }
         });
         return full;
       }

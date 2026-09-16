@@ -29,7 +29,9 @@ function ensureDirs() {
 // внутри базовой папки. resolve + проверка префикса — любой "../../.." даёт
 // null, и операция отклоняется вместо выхода за пределы vault.
 function safeJoin(baseDir, relPath) {
-  const rel = String(relPath || "").replace(/\\/g, "/").replace(/^\/+/, "");
+  const rel = String(relPath || "")
+    .replace(/\\/g, "/")
+    .replace(/^\/+/, "");
   const full = path.resolve(baseDir, rel);
   const base = path.resolve(baseDir);
   if (full !== base && !full.startsWith(base + path.sep)) return null;
@@ -39,17 +41,24 @@ function safeJoin(baseDir, relPath) {
 function buildTree(dir, basePath = "") {
   const tree = [];
   let entries;
-  try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return tree; }
+  try {
+    entries = fs.readdirSync(dir, { withFileTypes: true });
+  } catch {
+    return tree;
+  }
   for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
     const relPath = basePath ? basePath + "/" + entry.name : entry.name;
     if (entry.isDirectory()) {
       tree.push({
-        name: entry.name, path: relPath, type: "folder",
+        name: entry.name,
+        path: relPath,
+        type: "folder",
         children: buildTree(path.join(dir, entry.name), relPath),
       });
     } else if (entry.name.endsWith(".md") || entry.name.endsWith(".holst")) {
       tree.push({
-        name: entry.name, path: relPath,
+        name: entry.name,
+        path: relPath,
         type: entry.name.endsWith(".holst") ? "holst" : "note",
         ext: path.extname(entry.name),
       });
@@ -76,13 +85,17 @@ function readFile(filePath) {
         if (colonIdx === -1) continue;
         const key = trimmed.slice(0, colonIdx).trim();
         let val = trimmed.slice(colonIdx + 1).trim();
-        if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) val = val.slice(1, -1);
+        if (
+          (val.startsWith('"') && val.endsWith('"')) ||
+          (val.startsWith("'") && val.endsWith("'"))
+        )
+          val = val.slice(1, -1);
         frontmatter[key] = val;
       }
     }
   }
-  const tags = [...content.matchAll(/(?:^|\s)(#[a-zA-Zа-яА-Я0-9_/-]+)/g)].map(m => m[1]);
-  const wikiLinks = [...content.matchAll(/\[\[([^\]]+)\]\]/g)].map(m => m[1]);
+  const tags = [...content.matchAll(/(?:^|\s)(#[a-zA-Zа-яА-Я0-9_/-]+)/g)].map((m) => m[1]);
+  const wikiLinks = [...content.matchAll(/\[\[([^\]]+)\]\]/g)].map((m) => m[1]);
   return { ...meta, content, frontmatter, tags, wikiLinks };
 }
 
@@ -117,7 +130,9 @@ function deleteFile(filePath) {
       return { ok: true };
     }
     return { ok: false, error: "not found" };
-  } catch (e) { return { ok: false, error: e.message }; }
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
 }
 
 function renameFile(oldPath, newPath) {
@@ -129,7 +144,9 @@ function renameFile(oldPath, newPath) {
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
     fs.renameSync(oldFull, newFull);
     return { ok: true, newPath };
-  } catch (e) { return { ok: false, error: e.message }; }
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
 }
 
 function createFolder(folderPath) {
@@ -138,27 +155,41 @@ function createFolder(folderPath) {
   try {
     fs.mkdirSync(fullPath, { recursive: true });
     return { ok: true, path: folderPath };
-  } catch (e) { return { ok: false, error: e.message }; }
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
 }
 
 function searchFiles(query) {
-  const q = String(query || "").toLowerCase().trim();
+  const q = String(query || "")
+    .toLowerCase()
+    .trim();
   if (!q) return [];
   const results = [];
   function walk(dir, basePath) {
     let entries;
-    try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
+    try {
+      entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
     for (const entry of entries) {
       const relPath = basePath ? basePath + "/" + entry.name : entry.name;
-      if (entry.isDirectory()) { walk(path.join(dir, entry.name), relPath); }
-      else if (entry.name.endsWith(".md")) {
+      if (entry.isDirectory()) {
+        walk(path.join(dir, entry.name), relPath);
+      } else if (entry.name.endsWith(".md")) {
         const fpath = path.join(dir, entry.name);
         const c = fs.readFileSync(fpath, "utf8");
         if (c.toLowerCase().includes(q)) {
           const idx = c.toLowerCase().indexOf(q);
           const start = Math.max(0, idx - 60);
           const end = Math.min(c.length, idx + q.length + 60);
-          results.push({ path: relPath, name: entry.name, snippet: c.slice(start, end).replace(/\n/g, " "), matchStart: idx });
+          results.push({
+            path: relPath,
+            name: entry.name,
+            snippet: c.slice(start, end).replace(/\n/g, " "),
+            matchStart: idx,
+          });
         }
       }
     }
@@ -170,18 +201,25 @@ function getAllTags() {
   const tagMap = new Map();
   function walk(dir) {
     let entries;
-    try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
+    try {
+      entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
     for (const entry of entries) {
-      if (entry.isDirectory()) { walk(path.join(dir, entry.name)); }
-      else if (entry.name.endsWith(".md")) {
+      if (entry.isDirectory()) {
+        walk(path.join(dir, entry.name));
+      } else if (entry.name.endsWith(".md")) {
         const raw = fs.readFileSync(path.join(dir, entry.name), "utf8");
-        const tags = [...raw.matchAll(/(?:^|\s)(#[a-zA-Zа-яА-Я0-9_/-]+)/g)].map(m => m[1]);
+        const tags = [...raw.matchAll(/(?:^|\s)(#[a-zA-Zа-яА-Я0-9_/-]+)/g)].map((m) => m[1]);
         for (const tag of tags) tagMap.set(tag, (tagMap.get(tag) || 0) + 1);
       }
     }
   }
   walk(NOTEBOOK_DIR);
-  return Array.from(tagMap.entries()).map(([tag, count]) => ({ tag, count })).sort((a, b) => b.count - a.count);
+  return Array.from(tagMap.entries())
+    .map(([tag, count]) => ({ tag, count }))
+    .sort((a, b) => b.count - a.count);
 }
 
 function getBacklinks(targetPath) {
@@ -189,20 +227,28 @@ function getBacklinks(targetPath) {
   const backlinks = [];
   function walk(dir, basePath) {
     let entries;
-    try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
+    try {
+      entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
     for (const entry of entries) {
       const relPath = basePath ? basePath + "/" + entry.name : entry.name;
-      if (entry.isDirectory()) { walk(path.join(dir, entry.name), relPath); }
-      else if (entry.name.endsWith(".md") && relPath !== targetPath) {
+      if (entry.isDirectory()) {
+        walk(path.join(dir, entry.name), relPath);
+      } else if (entry.name.endsWith(".md") && relPath !== targetPath) {
         const raw = fs.readFileSync(path.join(dir, entry.name), "utf8");
         const hasDirect = raw.includes(`[[${targetName}]]`);
         const hasUnlinked = !hasDirect && raw.toLowerCase().includes(targetName.toLowerCase());
         if (hasDirect || hasUnlinked) {
-          const idx = hasDirect ? raw.indexOf(`[[${targetName}]]`) : raw.toLowerCase().indexOf(targetName.toLowerCase());
+          const idx = hasDirect
+            ? raw.indexOf(`[[${targetName}]]`)
+            : raw.toLowerCase().indexOf(targetName.toLowerCase());
           const start = Math.max(0, idx - 60);
           const end = Math.min(raw.length, idx + targetName.length + 60 + (hasDirect ? 4 : 0));
           backlinks.push({
-            path: relPath, name: entry.name.replace(".md", ""),
+            path: relPath,
+            name: entry.name.replace(".md", ""),
             type: hasDirect ? "linked" : "unlinked",
             snippet: raw.slice(start, end).replace(/\n/g, " "),
           });
@@ -246,10 +292,14 @@ function listHolsts() {
             updatedAt: data.meta?.updatedAt || data.updatedAt || null,
             thumbnail: data.meta?.thumbnail || null,
           });
-        } catch { /* skip corrupt */ }
+        } catch {
+          /* skip corrupt */
+        }
       }
     }
-  } catch { /* empty */ }
+  } catch {
+    /* empty */
+  }
   return items;
 }
 
@@ -319,5 +369,7 @@ module.exports = {
   readHolst: (n) => readHolst(n),
   writeHolst: (n, d) => writeHolst(n, d),
   deleteHolst: (n) => deleteHolst(n),
-  VAULT_DIR, NOTEBOOK_DIR, HOLST_DIR,
+  VAULT_DIR,
+  NOTEBOOK_DIR,
+  HOLST_DIR,
 };

@@ -49,8 +49,12 @@ function fakeTarget(reply: (prompt: string, i: number) => string) {
       secret: "test-key",
       model: "fake-model",
       cfg: {
-        providerId: "fake", model: "fake-model",
-        chunkChars: 400, overlapChars: 120, maxChunks: 3, temperature: 0.3,
+        providerId: "fake",
+        model: "fake-model",
+        chunkChars: 400,
+        overlapChars: 120,
+        maxChunks: 3,
+        temperature: 0.3,
       },
     },
   };
@@ -64,7 +68,9 @@ async function sessionWithChunks(texts: string[]) {
   const id = Number(info.lastInsertRowid);
   texts.forEach((text, i) => {
     stmts.chunkInsert.run(id, i + 1, i * 20000, i * 20000 + 19000, `chunk_${i}.wav`, {
-      status: "done", text, error: "",
+      status: "done",
+      text,
+      error: "",
     });
   });
   return { lecture, stmts, id };
@@ -102,7 +108,13 @@ describe("AI-конспект — нарезка на блоки (transcriptBloc
   it("без текста чанков блоков нет", async () => {
     const lecture = await lectureMod();
     const { blocks, truncated } = lecture.transcriptBlocks(
-      [{ start_ms: 0, text: "" }, { start_ms: 1000, text: "   " }], 1000, 0, 10,
+      [
+        { start_ms: 0, text: "" },
+        { start_ms: 1000, text: "   " },
+      ],
+      1000,
+      0,
+      10,
     );
     expect(blocks).toEqual([]);
     expect(truncated).toBe(false);
@@ -123,10 +135,14 @@ describe("AI-конспект — сборка (generateConspectus)", () => {
     const { lecture, stmts, id } = await sessionWithChunks(
       // Тексты длиннее порога блока (400 символов в fake-настройках) — иначе
       // расшифровка влезла бы в один блок и второй проход не проверился бы.
-      Array.from({ length: 6 }, (_, i) => `Фрагмент ${i + 1}. ` + "определение производной и предела функции. ".repeat(8)),
+      Array.from(
+        { length: 6 },
+        (_, i) => `Фрагмент ${i + 1}. ` + "определение производной и предела функции. ".repeat(8),
+      ),
     );
     const fake = fakeTarget((prompt, i) =>
-      (prompt.includes("=== ФРАГМЕНТ ===") ? `заметка ${i + 1}` : "## Обзор\nготовый конспект"));
+      prompt.includes("=== ФРАГМЕНТ ===") ? `заметка ${i + 1}` : "## Обзор\nготовый конспект",
+    );
     const res = await lecture.generateConspectus(id, { target: fake.target });
 
     expect(res.markdown).toContain("## Обзор");
@@ -147,9 +163,22 @@ describe("AI-конспект — сборка (generateConspectus)", () => {
   it("ошибка провайдера попадает в состояние (UI покажет причину)", async () => {
     const { lecture, id } = await sessionWithChunks(["короткая расшифровка"]);
     const failing = {
-      provider: { id: "fake", chat: async () => { throw new Error("api error 401: invalid key"); } },
-      secret: "x", model: "fake-model",
-      cfg: { providerId: "fake", model: "fake-model", chunkChars: 400, overlapChars: 0, maxChunks: 3, temperature: 0.3 },
+      provider: {
+        id: "fake",
+        chat: async () => {
+          throw new Error("api error 401: invalid key");
+        },
+      },
+      secret: "x",
+      model: "fake-model",
+      cfg: {
+        providerId: "fake",
+        model: "fake-model",
+        chunkChars: 400,
+        overlapChars: 0,
+        maxChunks: 3,
+        temperature: 0.3,
+      },
     };
     await expect(lecture.generateConspectus(id, { target: failing })).rejects.toThrow(/401/);
     const st = lecture.conspectusState(id);
@@ -160,8 +189,9 @@ describe("AI-конспект — сборка (generateConspectus)", () => {
   it("пустой ответ модели — conspectus_empty_response, а не пустой конспект", async () => {
     const { lecture, id } = await sessionWithChunks(["текст лекции"]);
     const empty = fakeTarget(() => "   ");
-    await expect(lecture.generateConspectus(id, { target: empty.target }))
-      .rejects.toThrow(/conspectus_empty_response/);
+    await expect(lecture.generateConspectus(id, { target: empty.target })).rejects.toThrow(
+      /conspectus_empty_response/,
+    );
   });
 
   it("второй запуск во время сборки — conspectus_busy", async () => {
@@ -169,7 +199,9 @@ describe("AI-конспект — сборка (generateConspectus)", () => {
       Array.from({ length: 4 }, (_, i) => `Блок ${i + 1}. Определения и формулы.`),
     );
     let release: (() => void) | null = null;
-    const gate = new Promise<void>((r) => { release = r; });
+    const gate = new Promise<void>((r) => {
+      release = r;
+    });
     const slow = fakeTarget(() => "заметка");
     slow.target.provider.chat = async ({ messages }: { messages: { text: string }[] }) => {
       await gate; // держим первый запрос, пока не отпустим
@@ -178,7 +210,9 @@ describe("AI-конспект — сборка (generateConspectus)", () => {
     };
     const first = lecture.generateConspectus(id, { target: slow.target });
     await new Promise((r) => setTimeout(r, 30)); // даём прогону дойти до модели
-    await expect(lecture.generateConspectus(id, { target: slow.target })).rejects.toThrow(/conspectus_busy/);
+    await expect(lecture.generateConspectus(id, { target: slow.target })).rejects.toThrow(
+      /conspectus_busy/,
+    );
     release?.();
     const res = await first;
     expect(res.markdown).toContain("## Обзор");
@@ -204,8 +238,16 @@ describe("Экспорт — подписи говорящих (dual-track)", ()
     const info = stmts.lectureInsert.run("лекция с эфиром", 16000, 1);
     const id = Number(info.lastInsertRowid);
     // Дорожка эфира (лектор) и микрофона (аудитория) — как при двухдорожечной записи.
-    stmts.chunkInsert.run(id, 1, 0, 4000, "sys_00001.wav", { status: "done", text: "Лектор говорит", source: "sys" });
-    stmts.chunkInsert.run(id, 2, 4000, 8000, "chunk_00002.wav", { status: "done", text: "Студент спрашивает", source: "mic" });
+    stmts.chunkInsert.run(id, 1, 0, 4000, "sys_00001.wav", {
+      status: "done",
+      text: "Лектор говорит",
+      source: "sys",
+    });
+    stmts.chunkInsert.run(id, 2, 4000, 8000, "chunk_00002.wav", {
+      status: "done",
+      text: "Студент спрашивает",
+      source: "mic",
+    });
     return { lecture, id };
   }
 
@@ -236,7 +278,8 @@ describe("Экспорт — подписи говорящих (dual-track)", ()
     expect(out.body).not.toContain("— Лектор:");
     expect(out.body).toContain("Лектор говорит");
   });
-});describe("AI-конспект — настройки, провайдеры и умный авто-запуск", () => {
+});
+describe("AI-конспект — настройки, провайдеры и умный авто-запуск", () => {
   it("провайдер по умолчанию — DeepSeek, режим — умный авто", async () => {
     const lecture = await lectureMod();
     const s = lecture.conspectusSettings();
@@ -253,7 +296,11 @@ describe("Экспорт — подписи говорящих (dual-track)", ()
 
   it("сохраняет режим/провайдера и отвергает мусор", async () => {
     const lecture = await lectureMod();
-    const s = lecture.setConspectusSettings({ trigger: "manual", providerId: "openai", autoMinChars: 500 });
+    const s = lecture.setConspectusSettings({
+      trigger: "manual",
+      providerId: "openai",
+      autoMinChars: 500,
+    });
     expect(s.trigger).toBe("manual");
     expect(s.providerId).toBe("openai");
     expect(s.autoMinChars).toBe(500);
@@ -261,8 +308,12 @@ describe("Экспорт — подписи говорящих (dual-track)", ()
     // Пустая строка = «провайдер как в настройках чата».
     expect(lecture.setConspectusSettings({ providerId: "" }).providerFromChat).toBe(true);
 
-    expect(() => lecture.setConspectusSettings({ trigger: "sometimes" })).toThrow(/conspectus_trigger_unknown/);
-    expect(() => lecture.setConspectusSettings({ providerId: "not-a-provider" })).toThrow(/conspectus_provider_unknown/);
+    expect(() => lecture.setConspectusSettings({ trigger: "sometimes" })).toThrow(
+      /conspectus_trigger_unknown/,
+    );
+    expect(() => lecture.setConspectusSettings({ providerId: "not-a-provider" })).toThrow(
+      /conspectus_provider_unknown/,
+    );
 
     // Вернуть дефолт, чтобы не портить следующие проверки авто-запуска.
     lecture.setConspectusSettings({ trigger: "smart", providerId: "deepseek", autoMinChars: 1200 });
@@ -301,16 +352,21 @@ describe("Экспорт — подписи говорящих (dual-track)", ()
 
   it("конспект помечается устаревшим, когда расшифровка заметно выросла", async () => {
     const { lecture, stmts, id } = await sessionWithChunks(["В".repeat(2000)]);
-    const fake = fakeTarget((prompt) => (prompt.includes("=== ФРАГМЕНТ ===") ? "заметка" : "## Обзор"));
+    const fake = fakeTarget((prompt) =>
+      prompt.includes("=== ФРАГМЕНТ ===") ? "заметка" : "## Обзор",
+    );
     await lecture.generateConspectus(id, { target: fake.target });
 
     const lec = stmts.lectureGet.get(id);
-    expect(lec.conspectus_at).toBeTruthy();          // время сборки записано
+    expect(lec.conspectus_at).toBeTruthy(); // время сборки записано
     expect(lecture.transcriptWeight(id).chars).toBe(2000);
     expect(lecture.conspectusState(id).stale).toBe(false);
 
     // Дослали текст — конспект построен по меньшей части лекции.
-    stmts.chunkInsert.run(id, 5, 60000, 80000, "chunk_00005.wav", { status: "done", text: "Г".repeat(4000) });
+    stmts.chunkInsert.run(id, 5, 60000, 80000, "chunk_00005.wav", {
+      status: "done",
+      text: "Г".repeat(4000),
+    });
     expect(lecture.conspectusState(id).stale).toBe(true);
     expect(lecture.conspectusState(id).transcriptChars).toBe(6000);
   });

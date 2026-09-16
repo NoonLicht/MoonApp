@@ -29,13 +29,26 @@ let client = null;
 
 /** Коды MIME для стриминга (нужны <video>). Без внешних зависимостей. */
 const MIME = {
-  ".mp4": "video/mp4", ".m4v": "video/mp4", ".webm": "video/webm",
-  ".mkv": "video/x-matroska", ".avi": "video/x-msvideo", ".mov": "video/quicktime",
-  ".ts": "video/mp2t", ".m2ts": "video/mp2t", ".mpg": "video/mpeg", ".mpeg": "video/mpeg",
+  ".mp4": "video/mp4",
+  ".m4v": "video/mp4",
+  ".webm": "video/webm",
+  ".mkv": "video/x-matroska",
+  ".avi": "video/x-msvideo",
+  ".mov": "video/quicktime",
+  ".ts": "video/mp2t",
+  ".m2ts": "video/mp2t",
+  ".mpg": "video/mpeg",
+  ".mpeg": "video/mpeg",
   ".ogv": "video/ogg",
-  ".mp3": "audio/mpeg", ".m4a": "audio/mp4", ".aac": "audio/aac",
-  ".flac": "audio/flac", ".ogg": "audio/ogg", ".opus": "audio/ogg", ".wav": "audio/wav",
-  ".srt": "application/x-subrip", ".vtt": "text/vtt",
+  ".mp3": "audio/mpeg",
+  ".m4a": "audio/mp4",
+  ".aac": "audio/aac",
+  ".flac": "audio/flac",
+  ".ogg": "audio/ogg",
+  ".opus": "audio/ogg",
+  ".wav": "audio/wav",
+  ".srt": "application/x-subrip",
+  ".vtt": "text/vtt",
 };
 
 function mimeOf(name) {
@@ -65,7 +78,9 @@ function getClient() {
   if (client) return client;
   const WT = engine();
   client = new WT({ maxConns: 55, torrentPort: 0 });
-  client.on("error", (e) => logger.warn("torrent.client_error", { error: e?.message || String(e) }));
+  client.on("error", (e) =>
+    logger.warn("torrent.client_error", { error: e?.message || String(e) }),
+  );
   return client;
 }
 
@@ -79,7 +94,10 @@ function fileInfo(file, index) {
     mime: mimeOf(file.name),
     progress: Number(file.progress) || 0,
     // Играбельные «медиа»-файлы (по расширению/размеру).
-    playable: /\.(mp4|m4v|webm|mkv|avi|mov|ts|m2ts|mpg|mpeg|ogv|mp3|m4a|aac|flac|ogg|opus|wav)$/i.test(file.name),
+    playable:
+      /\.(mp4|m4v|webm|mkv|avi|mov|ts|m2ts|mpg|mpeg|ogv|mp3|m4a|aac|flac|ogg|opus|wav)$/i.test(
+        file.name,
+      ),
   };
 }
 
@@ -89,10 +107,18 @@ function waitForMetadata(torrent, timeoutMs = 60000) {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
       cleanup();
-      reject(torrentError("metadata_timeout", "Timed out waiting for torrent metadata (no peers?)"));
+      reject(
+        torrentError("metadata_timeout", "Timed out waiting for torrent metadata (no peers?)"),
+      );
     }, timeoutMs);
-    const onReady = () => { cleanup(); resolve(); };
-    const onError = (e) => { cleanup(); reject(torrentError("torrent_error", e?.message || String(e))); };
+    const onReady = () => {
+      cleanup();
+      resolve();
+    };
+    const onError = (e) => {
+      cleanup();
+      reject(torrentError("torrent_error", e?.message || String(e)));
+    };
     function cleanup() {
       clearTimeout(timer);
       torrent.removeListener("ready", onReady);
@@ -115,12 +141,20 @@ async function add(source) {
     torrent = c.add(source, { path: DIRS.torrents });
   } catch {
     // Дубликат или некорректный источник — пробуем получить уже добавленный.
-    try { torrent = c.get(source); } catch { /* и такого торрента нет — обработаем ниже */ }
+    try {
+      torrent = c.get(source);
+    } catch {
+      /* и такого торрента нет — обработаем ниже */
+    }
   }
   if (!torrent) throw torrentError("bad_source", "cannot add torrent (invalid magnet/.torrent)");
 
   await waitForMetadata(torrent);
-  logger.action("movies.torrent_added", { infoHash: torrent.infoHash, name: torrent.name, files: torrent.files.length });
+  logger.action("movies.torrent_added", {
+    infoHash: torrent.infoHash,
+    name: torrent.name,
+    files: torrent.files.length,
+  });
   return {
     infoHash: torrent.infoHash,
     name: torrent.name,
@@ -131,8 +165,12 @@ async function add(source) {
 
 /** Есть ли движок (для понятной ошибки на фронте). */
 function engineStatus() {
-  try { engine(); return { installed: true, client: !!client }; }
-  catch (e) { return { installed: false, error: e.message }; }
+  try {
+    engine();
+    return { installed: true, client: !!client };
+  } catch (e) {
+    return { installed: false, error: e.message };
+  }
 }
 
 /** Текущее состояние торрента (прогресс/скорость/пиры/файлы) или null. */
@@ -181,7 +219,9 @@ function streamInfo(infoHash, index) {
     // Выделяем куски только выбранного файла — остальное не тратит канал.
     torrent.deselect(0, torrent.pieces.length - 1, false);
     torrent.select(file._startPiece, file._endPiece, 0);
-  } catch { /* внутренние поля могут отличаться — не критично */ }
+  } catch {
+    /* внутренние поля могут отличаться — не критично */
+  }
   return { name: file.name, length: file.length, mime: mimeOf(file.name) };
 }
 
@@ -206,18 +246,39 @@ function remove(infoHash) {
     client.remove(String(infoHash), { destroyStore: false });
     logger.action("movies.torrent_removed", { infoHash: String(infoHash) });
     return { removed: true };
-  } catch { return { removed: false }; }
+  } catch {
+    return { removed: false };
+  }
 }
 
 /** Список активных торрентов. */
 function active() {
   if (!client) return [];
   return client.torrents.map((t) => ({
-    infoHash: t.infoHash, name: t.name, progress: t.progress || 0, peers: t.numPeers || 0,
+    infoHash: t.infoHash,
+    name: t.name,
+    progress: t.progress || 0,
+    peers: t.numPeers || 0,
   }));
 }
 
 module.exports = {
-  engineStatus, add, status, streamInfo, createReadStream, remove, active,
-  mimeOf, _reset: () => { if (client) { try { client.destroy(); } catch { /* ignore */ } client = null; } },
+  engineStatus,
+  add,
+  status,
+  streamInfo,
+  createReadStream,
+  remove,
+  active,
+  mimeOf,
+  _reset: () => {
+    if (client) {
+      try {
+        client.destroy();
+      } catch {
+        /* ignore */
+      }
+      client = null;
+    }
+  },
 };

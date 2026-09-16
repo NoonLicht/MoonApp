@@ -1,10 +1,33 @@
 ﻿import React, { useState, useEffect } from "react";
 import {
-  Archive, Download, Globe, Layers, Filter, Copy, Trash2, ShieldCheck, FileSearch,
-  Play, ExternalLink, Loader2, FolderOpen, Compass, Wifi,
+  Archive,
+  Download,
+  Globe,
+  Layers,
+  Filter,
+  Copy,
+  Trash2,
+  ShieldCheck,
+  FileSearch,
+  Play,
+  ExternalLink,
+  Loader2,
+  FolderOpen,
+  Compass,
+  Wifi,
 } from "lucide-react";
 import { useContextMenu, copyToClipboard } from "../components/ContextMenu";
-import { Btn, Glass, Badge, Select, SectionHead, ProgressBar, Field, Checkbox, EmptyHint } from "../components/ui";
+import {
+  Btn,
+  Glass,
+  Badge,
+  Select,
+  SectionHead,
+  ProgressBar,
+  Field,
+  Checkbox,
+  EmptyHint,
+} from "../components/ui";
 import { usePageActive, usePageBusy } from "../components/Toolbar";
 import { useI18n } from "../i18n";
 import { api } from "../api/client";
@@ -53,20 +76,28 @@ export default function ArchiverPage() {
 
   // Дефолты из настроек sitebak.* применяются при открытии страницы.
   useEffect(() => {
-    api.getSettings().then((s: any) => {
-      const c = s?.sitebak;
-      if (c) {
-        if (typeof c.maxConcurrent === "number") setConcurrency(c.maxConcurrent);
-        if (typeof c.crawlDelayMs === "number") setDelayMs(c.crawlDelayMs);
-        if (typeof c.userAgent === "string" && c.userAgent) setUserAgent(c.userAgent);
-        if (typeof c.mediaFormat === "string") setImageMode(c.mediaFormat);
-        if (typeof c.stripScripts === "boolean") setStripScripts(c.stripScripts);
-        if (typeof c.stripExif === "boolean") setStripExif(c.stripExif);
-        if (typeof c.blockAds === "boolean") setBlockAds(c.blockAds);
-        if (typeof c.maxPages === "number") setMaxPages(c.maxPages);
-      }
-    }).catch(() => { /* дефолты из кода */ });
-    api.archiveList().then(setArchives).catch(() => {});
+    api
+      .getSettings()
+      .then((s: any) => {
+        const c = s?.sitebak;
+        if (c) {
+          if (typeof c.maxConcurrent === "number") setConcurrency(c.maxConcurrent);
+          if (typeof c.crawlDelayMs === "number") setDelayMs(c.crawlDelayMs);
+          if (typeof c.userAgent === "string" && c.userAgent) setUserAgent(c.userAgent);
+          if (typeof c.mediaFormat === "string") setImageMode(c.mediaFormat);
+          if (typeof c.stripScripts === "boolean") setStripScripts(c.stripScripts);
+          if (typeof c.stripExif === "boolean") setStripExif(c.stripExif);
+          if (typeof c.blockAds === "boolean") setBlockAds(c.blockAds);
+          if (typeof c.maxPages === "number") setMaxPages(c.maxPages);
+        }
+      })
+      .catch(() => {
+        /* дефолты из кода */
+      });
+    api
+      .archiveList()
+      .then(setArchives)
+      .catch(() => {});
   }, []);
 
   /* ── опрос активного архивирования ──
@@ -85,13 +116,21 @@ export default function ArchiverPage() {
         setJob(s);
         if (s.done || s.stage === "error") {
           setJobId(null);
-          api.archiveList().then(setArchives).catch(() => {});
+          api
+            .archiveList()
+            .then(setArchives)
+            .catch(() => {});
         }
-      } catch { /* повтор на следующем тике */ }
+      } catch {
+        /* повтор на следующем тике */
+      }
     };
     const timer = window.setInterval(tick, isActive ? 1200 : 4000);
     if (isActive) void tick();
-    return () => { stopped = true; window.clearInterval(timer); };
+    return () => {
+      stopped = true;
+      window.clearInterval(timer);
+    };
   }, [jobId, isActive]);
 
   // Незавершённое архивирование — страницу нельзя выгружать из памяти (LRU).
@@ -101,17 +140,40 @@ export default function ArchiverPage() {
     if (!/^https?:\/\//i.test(url.trim())) return;
     try {
       const j = await api.archiveStart({
-        url: url.trim(), depth, domainScope: scope, maxPages, imageMode,
-        stripScripts, stripExif, blockAds, inlineAssets, delayMs, concurrency,
-        cookies, userAgent,
+        url: url.trim(),
+        depth,
+        domainScope: scope,
+        maxPages,
+        imageMode,
+        stripScripts,
+        stripExif,
+        blockAds,
+        inlineAssets,
+        delayMs,
+        concurrency,
+        cookies,
+        userAgent,
       });
-      setJob(j); setVerifyResult({}); setJobId(j.id);
+      setJob(j);
+      setVerifyResult({});
+      setJobId(j.id);
     } catch (e: any) {
-      setJob({ id: "", url, name: "", stage: "error", progress: 0, pages: 0, origSize: 0, bakSize: 0, error: String(e.message || e), done: false });
+      setJob({
+        id: "",
+        url,
+        name: "",
+        stage: "error",
+        progress: 0,
+        pages: 0,
+        origSize: 0,
+        bakSize: 0,
+        error: String(e.message || e),
+        done: false,
+      });
     }
   };
 
-  const fmtMB = (b?: number) => (!b && b !== 0) ? "—" : `${(b / 1024 / 1024).toFixed(1)} MB`;
+  const fmtMB = (b?: number) => (!b && b !== 0 ? "—" : `${(b / 1024 / 1024).toFixed(1)} MB`);
   const busy = !!job && !job.done && job.stage !== "error";
 
   // Проверка SHA-256 целостности архива (правый клик → Verify).
@@ -128,7 +190,8 @@ export default function ArchiverPage() {
   const chip = (on: boolean, toggle: () => void, Icon: React.ElementType, label: string) => (
     <button className={`option-item ${on ? "is-on" : ""}`} onClick={toggle}>
       <Checkbox checked={on} onClick={toggle} />
-      <Icon size={15} /><span>{label}</span>
+      <Icon size={15} />
+      <span>{label}</span>
     </button>
   );
 
@@ -137,15 +200,27 @@ export default function ArchiverPage() {
       <SectionHead eyebrow={t("arch.eyebrow")} title={t("arch.title")} />
 
       {/* --- Шаг 1: адрес страницы --- */}
-      <Glass className="arch-hero"
-        onContextMenu={(e) => menu.open(e, [
-          url.length > 0 && { label: t("ctx.copyLink"), icon: Copy, onClick: () => copyToClipboard(url) },
-          url.length > 0 && { label: t("ctx.clear"), icon: Trash2, onClick: () => setUrl("") },
-        ])}>
+      <Glass
+        className="arch-hero"
+        onContextMenu={(e) =>
+          menu.open(e, [
+            url.length > 0 && {
+              label: t("ctx.copyLink"),
+              icon: Copy,
+              onClick: () => copyToClipboard(url),
+            },
+            url.length > 0 && { label: t("ctx.clear"), icon: Trash2, onClick: () => setUrl("") },
+          ])
+        }
+      >
         <div className="arch-url">
           <Globe size={16} />
-          <input placeholder={t("arch.paste")} value={url}
-            onChange={(e) => setUrl(e.target.value)} onKeyDown={(e) => e.key === "Enter" && start()} />
+          <input
+            placeholder={t("arch.paste")}
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && start()}
+          />
           <Btn variant="primary" icon={busy ? Loader2 : Archive} onClick={start} disabled={busy}>
             {busy ? t("arch.archiving") : t("arch.savePage")}
           </Btn>
@@ -155,7 +230,9 @@ export default function ArchiverPage() {
       {/* --- Шаг 2: настройки — три адаптивные секции --- */}
       <div className="arch-sections">
         <Glass className="arch-card">
-          <div className="arch-card-head"><Compass size={15} /> {t("arch.sectionCrawl")}</div>
+          <div className="arch-card-head">
+            <Compass size={15} /> {t("arch.sectionCrawl")}
+          </div>
           <div className="arch-fields">
             <Field label={t("arch.depth")}>
               <Select value={depth} onChange={(e) => setDepth(e.target.value)} options={DEPTHS} />
@@ -164,47 +241,92 @@ export default function ArchiverPage() {
               <Select value={scope} onChange={(e) => setScope(e.target.value)} options={SCOPES} />
             </Field>
             <Field label={t("arch.maxPages")}>
-              <input className="text-input" type="number" min="1" max="5000" value={maxPages}
-                onChange={(e) => setMaxPages(parseInt(e.target.value) || 500)} />
+              <input
+                className="text-input"
+                type="number"
+                min="1"
+                max="5000"
+                value={maxPages}
+                onChange={(e) => setMaxPages(parseInt(e.target.value) || 500)}
+              />
             </Field>
             <Field label={t("arch.imageMode")}>
-              <Select value={imageMode} onChange={(e) => setImageMode(e.target.value)} options={IMG_MODES} />
+              <Select
+                value={imageMode}
+                onChange={(e) => setImageMode(e.target.value)}
+                options={IMG_MODES}
+              />
             </Field>
           </div>
         </Glass>
 
         {/* --- Контент и фильтры (strip/inline/block) --- */}
         <Glass className="arch-card">
-          <div className="arch-card-head"><Filter size={15} /> {t("arch.sectionContent")}</div>
+          <div className="arch-card-head">
+            <Filter size={15} /> {t("arch.sectionContent")}
+          </div>
           <div className="arch-chips">
-            {chip(stripScripts, () => setStripScripts(!stripScripts), Filter, t("arch.stripScripts"))}
+            {chip(
+              stripScripts,
+              () => setStripScripts(!stripScripts),
+              Filter,
+              t("arch.stripScripts"),
+            )}
             {chip(blockAds, () => setBlockAds(!blockAds), ShieldCheck, t("arch.blockAds"))}
-            {chip(inlineAssets, () => setInlineAssets(!inlineAssets), Layers, t("arch.inlineAssets"))}
+            {chip(
+              inlineAssets,
+              () => setInlineAssets(!inlineAssets),
+              Layers,
+              t("arch.inlineAssets"),
+            )}
             {chip(stripExif, () => setStripExif(!stripExif), FileSearch, t("arch.stripExif"))}
           </div>
         </Glass>
 
         {/* --- Блок 4: Сеть и вежливость --- */}
         <Glass className="arch-card">
-          <div className="arch-card-head"><Wifi size={15} /> {t("arch.sectionNetwork")}</div>
+          <div className="arch-card-head">
+            <Wifi size={15} /> {t("arch.sectionNetwork")}
+          </div>
           <div className="arch-fields">
             <Field label={t("arch.delay", { v: delayMs })}>
-              <input type="range" min="0" max="3000" step="100" value={delayMs}
-                onChange={(e) => setDelayMs(parseInt(e.target.value))} />
+              <input
+                type="range"
+                min="0"
+                max="3000"
+                step="100"
+                value={delayMs}
+                onChange={(e) => setDelayMs(parseInt(e.target.value))}
+              />
             </Field>
             <Field label={t("arch.concurrency", { v: concurrency })}>
-              <input type="range" min="1" max="8" step="1" value={concurrency}
-                onChange={(e) => setConcurrency(parseInt(e.target.value))} />
+              <input
+                type="range"
+                min="1"
+                max="8"
+                step="1"
+                value={concurrency}
+                onChange={(e) => setConcurrency(parseInt(e.target.value))}
+              />
             </Field>
             {/* Длинные строки (User-Agent, Cookie) занимают всю ширину карточки. */}
             <div className="arch-field-wide">
               <Field label={t("arch.userAgent")}>
-                <input className="text-input" value={userAgent} onChange={(e) => setUserAgent(e.target.value)} />
+                <input
+                  className="text-input"
+                  value={userAgent}
+                  onChange={(e) => setUserAgent(e.target.value)}
+                />
               </Field>
             </div>
             <div className="arch-field-wide">
               <Field label={t("arch.cookies")}>
-                <input className="text-input" value={cookies} onChange={(e) => setCookies(e.target.value)} placeholder="k=v; k2=v2" />
+                <input
+                  className="text-input"
+                  value={cookies}
+                  onChange={(e) => setCookies(e.target.value)}
+                  placeholder="k=v; k2=v2"
+                />
               </Field>
             </div>
           </div>
@@ -215,19 +337,25 @@ export default function ArchiverPage() {
       {busy && job && (
         <Glass className="arch-progress">
           <div className="arch-progress-head">
-            <span>{t(`arch.stage_${job.stage}`)} · {t("arch.pagesDone", { n: job.pages })}</span>
+            <span>
+              {t(`arch.stage_${job.stage}`)} · {t("arch.pagesDone", { n: job.pages })}
+            </span>
             <span>{job.progress}%</span>
           </div>
           <ProgressBar value={job.progress} />
         </Glass>
       )}
       {job?.stage === "error" && (
-        <div className="arch-error">{t("cmp.error")}: {job.error}</div>
+        <div className="arch-error">
+          {t("cmp.error")}: {job.error}
+        </div>
       )}
       {job?.done && job.stats && (
         <Glass className="arch-stats">
           <Badge tone="teal">{t("arch.pagesDone", { n: job.stats.pages })}</Badge>
-          <Badge tone="violet">{t("cmp.original")}: {fmtMB(job.stats.origSize)}</Badge>
+          <Badge tone="violet">
+            {t("cmp.original")}: {fmtMB(job.stats.origSize)}
+          </Badge>
           <Badge tone="amber">.sitebak: {fmtMB(job.stats.bakSize)}</Badge>
           <Badge tone="teal">−{job.stats.savedPct}%</Badge>
         </Glass>
@@ -240,40 +368,109 @@ export default function ArchiverPage() {
       </div>
       <div className="arch-archive-grid">
         {archives.map((a) => (
-          <Glass className="arch-archive" key={a.id}
-            onContextMenu={(e) => menu.open(e, [
-              { label: t("arch.openLive"), icon: ExternalLink, onClick: () => window.open(a.site, "_blank") },
-              { label: t("arch.previewOffline"), icon: Play, onClick: () => window.open(api.archivePreview(a.id), "_blank") },
-              { label: t("arch.verify"), icon: ShieldCheck, onClick: () => doVerify(a.id) },
-              { label: t("arch.extractAssets"), icon: FileSearch, onClick: () => api.archiveExtract(a.id).catch(() => {}) },
-              // М5: показать файл архива в проводнике.
-              { label: t("ctx.reveal"), icon: FolderOpen, onClick: async () => { try { const r = await api.archiveReveal(a.id); const br = (window as any).appBridge; if (br?.revealPath) await br.revealPath(r.path); else copyToClipboard(r.path); } catch { /* */ } } },
-              { separator: true },
-              { label: t("ctx.copyName"), icon: Copy, onClick: () => copyToClipboard(a.name) },
-              { label: t("ctx.copyLink"), icon: Copy, onClick: () => copyToClipboard(a.site) },
-              { separator: true },
-              { label: t("ctx.del"), icon: Trash2, danger: true, onClick: async () => { await api.archiveDelete(a.id); api.archiveList().then(setArchives).catch(() => {}); } },
-            ])}>
+          <Glass
+            className="arch-archive"
+            key={a.id}
+            onContextMenu={(e) =>
+              menu.open(e, [
+                {
+                  label: t("arch.openLive"),
+                  icon: ExternalLink,
+                  onClick: () => window.open(a.site, "_blank"),
+                },
+                {
+                  label: t("arch.previewOffline"),
+                  icon: Play,
+                  onClick: () => window.open(api.archivePreview(a.id), "_blank"),
+                },
+                { label: t("arch.verify"), icon: ShieldCheck, onClick: () => doVerify(a.id) },
+                {
+                  label: t("arch.extractAssets"),
+                  icon: FileSearch,
+                  onClick: () => api.archiveExtract(a.id).catch(() => {}),
+                },
+                // М5: показать файл архива в проводнике.
+                {
+                  label: t("ctx.reveal"),
+                  icon: FolderOpen,
+                  onClick: async () => {
+                    try {
+                      const r = await api.archiveReveal(a.id);
+                      const br = (window as any).appBridge;
+                      if (br?.revealPath) await br.revealPath(r.path);
+                      else copyToClipboard(r.path);
+                    } catch {
+                      /* */
+                    }
+                  },
+                },
+                { separator: true },
+                { label: t("ctx.copyName"), icon: Copy, onClick: () => copyToClipboard(a.name) },
+                { label: t("ctx.copyLink"), icon: Copy, onClick: () => copyToClipboard(a.site) },
+                { separator: true },
+                {
+                  label: t("ctx.del"),
+                  icon: Trash2,
+                  danger: true,
+                  onClick: async () => {
+                    await api.archiveDelete(a.id);
+                    api
+                      .archiveList()
+                      .then(setArchives)
+                      .catch(() => {});
+                  },
+                },
+              ])
+            }
+          >
             <div className="arch-archive-top">
-              <span className="arch-archive-icon"><Archive size={16} /></span>
+              <span className="arch-archive-icon">
+                <Archive size={16} />
+              </span>
               <div className="arch-archive-titles">
-                <div className="arch-archive-name" title={a.name}>{a.name}</div>
-                <button className="arch-archive-site" title={a.site}
-                  onClick={() => window.open(a.site, "_blank")}>{a.site}</button>
+                <div className="arch-archive-name" title={a.name}>
+                  {a.name}
+                </div>
+                <button
+                  className="arch-archive-site"
+                  title={a.site}
+                  onClick={() => window.open(a.site, "_blank")}
+                >
+                  {a.site}
+                </button>
               </div>
             </div>
             <div className="arch-archive-stats">
               <Badge tone="teal">{t("arch.pagesDone", { n: a.stats?.pages ?? 0 })}</Badge>
-              <Badge tone="violet">{fmtMB(a.stats?.origSize)} → {fmtMB(a.stats?.bakSize)}</Badge>
+              <Badge tone="violet">
+                {fmtMB(a.stats?.origSize)} → {fmtMB(a.stats?.bakSize)}
+              </Badge>
               {a.stats?.savedPct != null && <Badge tone="amber">−{a.stats.savedPct}%</Badge>}
-              {a.stats?.compression && <Badge tone="neutral" mono>{a.stats.compression.textAlgo}</Badge>}
+              {a.stats?.compression && (
+                <Badge tone="neutral" mono>
+                  {a.stats.compression.textAlgo}
+                </Badge>
+              )}
             </div>
-            <div className="muted-sm arch-archive-date">{new Date(a.createdAt).toLocaleString()}</div>
-            {verifyResult[a.id] && <div className="muted-sm arch-archive-verify">{verifyResult[a.id]}</div>}
+            <div className="muted-sm arch-archive-date">
+              {new Date(a.createdAt).toLocaleString()}
+            </div>
+            {verifyResult[a.id] && (
+              <div className="muted-sm arch-archive-verify">{verifyResult[a.id]}</div>
+            )}
             <div className="arch-archive-actions">
-              <Btn icon={ShieldCheck} onClick={() => doVerify(a.id)}>{t("arch.verify")}</Btn>
-              <Btn icon={Download} variant="secondary"
-                onClick={() => { window.location.href = api.archiveDownload(a.id); }}>{t("arch.download")}</Btn>
+              <Btn icon={ShieldCheck} onClick={() => doVerify(a.id)}>
+                {t("arch.verify")}
+              </Btn>
+              <Btn
+                icon={Download}
+                variant="secondary"
+                onClick={() => {
+                  window.location.href = api.archiveDownload(a.id);
+                }}
+              >
+                {t("arch.download")}
+              </Btn>
             </div>
           </Glass>
         ))}

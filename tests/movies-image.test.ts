@@ -30,9 +30,13 @@ const JPEG = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10]);
 /** CDN отвечает валидной картинкой. */
 function cdnOk() {
   cdn.mockReset();
-  cdn.mockImplementation(async () => new Response(JPEG, {
-    status: 200, headers: { "content-type": "image/jpeg" },
-  }));
+  cdn.mockImplementation(
+    async () =>
+      new Response(JPEG, {
+        status: 200,
+        headers: { "content-type": "image/jpeg" },
+      }),
+  );
 }
 
 /** Поднять приложение с роутером movies (как в server/index.js). */
@@ -73,7 +77,9 @@ describe("GET /api/movies/image", () => {
       expect(Buffer.compare(r.buf, JPEG)).toBe(0);
       // Ходили ровно на CDN TMDB и с нужным размером/путём.
       expect(cdn).toHaveBeenCalledTimes(1);
-      expect(String(cdn.mock.calls[0][0])).toBe("https://image.tmdb.org/t/p/w500/tUHzcIOt5miEdgDyV6PJdFNTp3N.jpg");
+      expect(String(cdn.mock.calls[0][0])).toBe(
+        "https://image.tmdb.org/t/p/w500/tUHzcIOt5miEdgDyV6PJdFNTp3N.jpg",
+      );
 
       // Повторный запрос — из LRU-кэша, в сеть не ходим.
       const again = await get("/?s=w500&p=%2FtUHzcIOt5miEdgDyV6PJdFNTp3N.jpg");
@@ -134,12 +140,12 @@ describe("GET /api/movies/image", () => {
     const { server, getJson } = await boot();
     try {
       const cases = [
-        "/?s=w500",                              // путь не передан
-        "/?s=w500&p=",                           // пустой путь
-        "/?s=w500&p=..%2F..%2Fsecret",           // выход из каталога
+        "/?s=w500", // путь не передан
+        "/?s=w500&p=", // пустой путь
+        "/?s=w500&p=..%2F..%2Fsecret", // выход из каталога
         "/?s=w500&p=http%3A%2F%2Fevil.com%2Fx.jpg", // абсолютный URL
-        "/?s=w500&p=%2F%2Fevil.com%2Fx.jpg",     // protocol-relative
-        "/?s=w500&p=%2Fa.jpg%3Fsize%3D999",      // свои query-параметры
+        "/?s=w500&p=%2F%2Fevil.com%2Fx.jpg", // protocol-relative
+        "/?s=w500&p=%2Fa.jpg%3Fsize%3D999", // свои query-параметры
       ];
       for (const q of cases) {
         const r = await getJson(q);
@@ -154,7 +160,9 @@ describe("GET /api/movies/image", () => {
 
   it("CDN недоступен → 502 image_unavailable", async () => {
     cdn.mockReset();
-    cdn.mockImplementation(async () => { throw new Error("ENETUNREACH"); });
+    cdn.mockImplementation(async () => {
+      throw new Error("ENETUNREACH");
+    });
     const { server, getJson } = await boot();
     try {
       const r = await getJson("/?s=w500&p=%2Fblocked-network.jpg");

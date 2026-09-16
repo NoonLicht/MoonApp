@@ -34,7 +34,9 @@ const als = new AsyncLocalStorage();
 
 /** Санитайз id страницы: только [a-z0-9_-], ≤32 символов. */
 function normalizePage(v) {
-  const s = String(v == null ? "" : v).trim().toLowerCase();
+  const s = String(v == null ? "" : v)
+    .trim()
+    .toLowerCase();
   if (!s) return "";
   return s.replace(/[^a-z0-9_-]/g, "").slice(0, 32);
 }
@@ -46,10 +48,10 @@ function normalizePage(v) {
  */
 function decidePageProxy(rule, coreActive, legacyActive) {
   const proxied = rule === null || rule === undefined ? true : !!rule;
-  if (!proxied) return "direct";      // явный bypass страницы
-  if (coreActive) return "core";      // приоритет — встроенное ядро sing-box
-  if (legacyActive) return "legacy";  // фолбэк на старый VLESS-прокси
-  return "direct";                    // проксировать некуда — идём напрямую
+  if (!proxied) return "direct"; // явный bypass страницы
+  if (coreActive) return "core"; // приоритет — встроенное ядро sing-box
+  if (legacyActive) return "legacy"; // фолбэк на старый VLESS-прокси
+  return "direct"; // проксировать некуда — идём напрямую
 }
 
 /** Решение для страницы + готовые URL прокси (или null). */
@@ -63,7 +65,8 @@ function resolveProxyForPage(page) {
 
   if (decision === "core") {
     return {
-      proxied: true, source: "core",
+      proxied: true,
+      source: "core",
       proxyUrl: `socks5://${SOCKS_HOST}:${core.socksPort}`,
       httpProxyUrl: `http://${SOCKS_HOST}:${core.httpPort}`,
     };
@@ -134,7 +137,9 @@ async function getAgentForPage(page) {
   try {
     const { SocksProxyAgent } = await import("socks-proxy-agent");
     return new SocksProxyAgent(decision.proxyUrl);
-  } catch { return null; }
+  } catch {
+    return null;
+  }
 }
 
 /** fetch-обёртка: добавляет dispatcher, если страница проксируется. */
@@ -145,8 +150,14 @@ function pageFetch(url, init = {}) {
 
 module.exports = {
   PAGE_HEADER,
-  normalizePage, decidePageProxy, resolveProxyForPage, proxyUrlForPage,
+  normalizePage,
+  decidePageProxy,
+  resolveProxyForPage,
+  proxyUrlForPage,
   perPageProxyMiddleware,
-  runWithPage, currentPage,
-  getUndiciDispatcherForPage, getAgentForPage, pageFetch,
+  runWithPage,
+  currentPage,
+  getUndiciDispatcherForPage,
+  getAgentForPage,
+  pageFetch,
 };

@@ -68,7 +68,9 @@ router.get("/engine/setup", async (req, res) => {
     // Детект GPU (nvidia-smi) кэширован в whisperEngine; ?gpu=0 — отдать кэш.
     if (req.query.gpu !== "0") await whisperEngine.detectGpu();
     res.json(whisperEngine.setupInfo());
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // Модель: action = select (по умолчанию) | download | remove
@@ -80,7 +82,9 @@ router.post("/engine/model", (req, res) => {
     else if (action === "remove") whisperEngine.removeModel(key);
     else whisperEngine.selectModel(key);
     res.json(whisperEngine.setupInfo());
-  } catch (e) { res.status(400).json({ error: e.message }); }
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
 });
 
 // Сборка движка: action = select (по умолчанию) | download
@@ -91,25 +95,37 @@ router.post("/engine/build", (req, res) => {
     if (action === "download") whisperEngine.installBuild(key);
     else whisperEngine.selectBuild(key || "auto");
     res.json(whisperEngine.setupInfo());
-  } catch (e) { res.status(400).json({ error: e.message }); }
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
 });
 
 // Устройство счёта: { mode: "auto" | "off", deviceId } (off = флаг -ng у CUDA)
 router.post("/engine/gpu", (req, res) => {
-  try { res.json(whisperEngine.setGpuMode(req.body?.mode, req.body?.deviceId)); }
-  catch (e) { res.status(400).json({ error: e.message }); }
+  try {
+    res.json(whisperEngine.setGpuMode(req.body?.mode, req.body?.deviceId));
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
 });
 
 // Ручной путь к whisper-cli.exe (пустая строка = вернуться к автопоиску сборок)
 router.post("/engine/bin", (req, res) => {
-  try { res.json(whisperEngine.setCustomBin(req.body?.path)); }
-  catch (e) { res.status(400).json({ error: e.message }); }
+  try {
+    res.json(whisperEngine.setCustomBin(req.body?.path));
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
 });
 
 // Отмена скачивания: флаг читает поток загрузки в whisperEngine.
 router.post("/engine/cancel", (req, res) => {
-  try { whisperEngine.cancelTask(); res.json(whisperEngine.setupInfo()); }
-  catch (e) { res.status(400).json({ error: e.message }); }
+  try {
+    whisperEngine.cancelTask();
+    res.json(whisperEngine.setupInfo());
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
 });
 
 /**
@@ -121,17 +137,25 @@ router.post("/engine/verify", async (req, res) => {
   try {
     await whisperEngine.verify();
     res.json(whisperEngine.setupInfo());
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 router.get("/sessions", (req, res) => res.json(require("../db").stmts.lectureAll.all()));
 
 router.post("/sessions", (req, res) => {
   try {
-    const s = lecture.createSession(req.body?.title, Number(req.body?.sampleRate) || 16000, req.body?.channels);
+    const s = lecture.createSession(
+      req.body?.title,
+      Number(req.body?.sampleRate) || 16000,
+      req.body?.channels,
+    );
     logger.action("lecture.api.create", { id: s.id });
     res.status(201).json(s);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // Приём PCM чанка. Фронт шлёт ~0.5 c 16 кГц моно (≈16 КБ) с Content-Type
@@ -142,7 +166,9 @@ router.post("/:id/ingest", rawParser(), (req, res) => {
     if (!req.body || !req.body.length) return res.status(400).json({ error: "empty_pcm" });
     // ?track=sys — дорожка системного звука (эфир лектора), mic — микрофон.
     res.json(lecture.ingest(Number(req.params.id), req.body, req.query.track));
-  } catch (e) { res.status(400).json({ error: e.message }); }
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
 });
 
 /* ------------------------- Аудиовход: микрофон, гейн, VAD ------------------------- */
@@ -150,8 +176,11 @@ router.post("/:id/ingest", rawParser(), (req, res) => {
 router.get("/audio", (req, res) => res.json(lecture.audioSettings()));
 
 router.post("/audio", (req, res) => {
-  try { res.json(lecture.setAudioSettings(req.body || {})); }
-  catch (e) { res.status(400).json({ error: e.message }); }
+  try {
+    res.json(lecture.setAudioSettings(req.body || {}));
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
 });
 
 /* ------------------------- ИИ-конспект: провайдер и режим запуска -------------------------
@@ -163,8 +192,11 @@ router.post("/audio", (req, res) => {
 router.get("/conspectus/settings", (req, res) => res.json(lecture.conspectusSettings()));
 
 router.post("/conspectus/settings", (req, res) => {
-  try { res.json(lecture.setConspectusSettings(req.body || {})); }
-  catch (e) { res.status(400).json({ error: e.message }); }
+  try {
+    res.json(lecture.setConspectusSettings(req.body || {}));
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
 });
 
 // Список провайдеров (id, ярлык, каталог моделей, hasKey).
@@ -172,8 +204,11 @@ router.get("/providers", (req, res) => res.json(lecture.conspectusProviders()));
 
 // Живой список моделей провайдера (при отсутствии сети — каталог провайдера).
 router.get("/providers/:id/models", async (req, res) => {
-  try { res.json(await lecture.providerModels(req.params.id, req.appPage)); }
-  catch (e) { res.status(400).json({ error: e.message }); }
+  try {
+    res.json(await lecture.providerModels(req.params.id, req.appPage));
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
 });
 
 /* ------------------------- Разделение говорящих (sherpa-onnx) -------------------------
@@ -188,20 +223,28 @@ router.post("/diarize/install", (req, res) => {
   try {
     const id = String(req.body?.id || "all");
     res.json(id === "all" ? diarize.installAllAsync() : diarize.installPackageAsync(id));
-  } catch (e) { res.status(400).json({ error: e.message }); }
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
 });
 
 router.post("/diarize/remove", (req, res) => {
-  try { res.json(diarize.removePackage(String(req.body?.id || ""))); }
-  catch (e) { res.status(400).json({ error: e.message }); }
+  try {
+    res.json(diarize.removePackage(String(req.body?.id || "")));
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
 });
 
 router.post("/diarize/cancel", (req, res) => res.json(diarize.cancelTask()));
 
 // Настройки: авто-разбор после записи, дорожка, порог, число говорящих.
 router.post("/diarize/settings", (req, res) => {
-  try { res.json(diarize.setDiarizeSettings(req.body || {})); }
-  catch (e) { res.status(400).json({ error: e.message }); }
+  try {
+    res.json(diarize.setDiarizeSettings(req.body || {}));
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
 });
 
 /**
@@ -210,8 +253,11 @@ router.post("/diarize/settings", (req, res) => {
  * прогресс читается из GET /:id (поле recheck).
  */
 router.post("/:id/recheck", (req, res) => {
-  try { res.json(lecture.startRecheck(Number(req.params.id), req.body || {})); }
-  catch (e) { res.status(400).json({ error: e.message }); }
+  try {
+    res.json(lecture.startRecheck(Number(req.params.id), req.body || {}));
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
 });
 
 router.get("/:id/recheck", (req, res) => res.json(lecture.recheckState(Number(req.params.id))));
@@ -226,7 +272,9 @@ router.post("/:id/diarize", (req, res) => {
     // «половину говорящих», поэтому просим сначала остановить запись.
     if (st.live) return res.status(400).json({ error: "session_live" });
     res.json(diarize.startDiarize(id, req.body || {}));
-  } catch (e) { res.status(400).json({ error: e.message }); }
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
 });
 
 router.get("/:id/diarize", (req, res) => res.json(diarize.diarizeState(Number(req.params.id))));
@@ -238,32 +286,49 @@ router.get("/:id", (req, res) => {
 });
 
 router.patch("/chunks/:chunkId", (req, res) => {
-  try { res.json(lecture.updateChunkText(Number(req.params.chunkId), req.body?.text)); }
-  catch (e) { res.status(400).json({ error: e.message }); }
+  try {
+    res.json(lecture.updateChunkText(Number(req.params.chunkId), req.body?.text));
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
 });
 
 // Заметки лекции (кнопка «Сохранить заметки»). Раньше такого роута не было, и
 // фронт сохранял заметки через маркер — текст заметок вообще не сохранялся.
 router.patch("/:id", (req, res) => {
   try {
-    if (typeof req.body?.notes !== "string") return res.status(400).json({ error: "notes_required" });
+    if (typeof req.body?.notes !== "string")
+      return res.status(400).json({ error: "notes_required" });
     res.json(lecture.setNotes(Number(req.params.id), req.body.notes));
-  } catch (e) { res.status(400).json({ error: e.message }); }
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
 });
 
 router.post("/:id/markers", (req, res) => {
-  try { res.status(201).json(lecture.addMarker(Number(req.params.id), Number(req.body?.atMs) || 0, req.body?.label)); }
-  catch (e) { res.status(400).json({ error: e.message }); }
+  try {
+    res
+      .status(201)
+      .json(lecture.addMarker(Number(req.params.id), Number(req.body?.atMs) || 0, req.body?.label));
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
 });
 
 router.post("/:id/stop", (req, res) => {
-  try { res.json(lecture.stopSession(Number(req.params.id))); }
-  catch (e) { res.status(400).json({ error: e.message }); }
+  try {
+    res.json(lecture.stopSession(Number(req.params.id)));
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
 });
 
 router.delete("/:id", (req, res) => {
-  try { res.json({ ok: lecture.deleteSession(Number(req.params.id)) }); }
-  catch (e) { res.status(400).json({ error: e.message }); }
+  try {
+    res.json({ ok: lecture.deleteSession(Number(req.params.id)) });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
 });
 
 router.get("/:id/export", (req, res) => {
@@ -275,13 +340,19 @@ router.get("/:id/export", (req, res) => {
       mic: String(req.query.mic || ""),
       sys: String(req.query.sys || ""),
     };
-    const out = lecture.exportContent(Number(req.params.id), String(req.query.format || "md"), labels);
+    const out = lecture.exportContent(
+      Number(req.params.id),
+      String(req.query.format || "md"),
+      labels,
+    );
     res.setHeader("Content-Type", `${out.mime}; charset=utf-8`);
     // Имя файла с русским названием лекции нельзя класть в заголовок «как есть»:
     // Node отвечает 400 (см. lecture.contentDisposition).
     res.setHeader("Content-Disposition", lecture.contentDisposition(out.name));
     res.send(out.body);
-  } catch (e) { res.status(400).json({ error: e.message }); }
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
 });
 
 router.get("/:id/audio", (req, res) => {
@@ -303,7 +374,9 @@ router.post("/:id/conspectus", async (req, res) => {
   try {
     // appPage нужен провайдеру чата (per-page proxy), как в /api/chat.
     res.json(await lecture.generateConspectus(Number(req.params.id), { appPage: req.appPage }));
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // Прогресс сборки конспекта: страница опрашивает его, пока идёт POST выше —

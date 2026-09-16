@@ -26,9 +26,22 @@ import logger from "./logger";
 
 /* ----------------------------- Публичные типы ---------------------------- */
 
-export interface TempSensor { id: string; name: string; hw: string; value: number | null }
-export interface FanSensor { name: string; hw: string; rpm: number | null }
-export interface ValueSensor { name: string; hw: string; value: number | null }
+export interface TempSensor {
+  id: string;
+  name: string;
+  hw: string;
+  value: number | null;
+}
+export interface FanSensor {
+  name: string;
+  hw: string;
+  rpm: number | null;
+}
+export interface ValueSensor {
+  name: string;
+  hw: string;
+  value: number | null;
+}
 export interface GpuInfo {
   name: string;
   utilizationPercent: number | null;
@@ -39,11 +52,20 @@ export interface GpuInfo {
   powerWatt: number | null;
 }
 export interface DiskInfo {
-  drive: string; label: string;
-  totalGb: number | null; freeGb: number | null;
-  readMBs: number | null; writeMBs: number | null;
+  drive: string;
+  label: string;
+  totalGb: number | null;
+  freeGb: number | null;
+  readMBs: number | null;
+  writeMBs: number | null;
 }
-export interface NetIfaceInfo { name: string; rxKBs: number | null; txKBs: number | null; ipv4: string[]; mac: string }
+export interface NetIfaceInfo {
+  name: string;
+  rxKBs: number | null;
+  txKBs: number | null;
+  ipv4: string[];
+  mac: string;
+}
 
 export interface SystemSnapshot {
   timestamp: string;
@@ -67,14 +89,26 @@ export interface SystemSnapshot {
   powers: ValueSensor[];
   clocks: ValueSensor[];
   /** Полный срез сенсоров по железу (для дерева датчиков HWiNFO-стиля). */
-  sensorsAll: { id: string; name: string; type: string; parent: string; hw: string; value: number | null }[];
+  sensorsAll: {
+    id: string;
+    name: string;
+    type: string;
+    parent: string;
+    hw: string;
+    value: number | null;
+  }[];
   hardware: { id: string; name: string; type: string }[];
   disks: DiskInfo[];
   network: NetIfaceInfo[];
   system: {
-    hostname: string; arch: string; platform: string;
-    osName: string; osVersion: string; osBuild: string;
-    uptimeSec: number; batteryPercent: number | null;
+    hostname: string;
+    arch: string;
+    platform: string;
+    osName: string;
+    osVersion: string;
+    osBuild: string;
+    uptimeSec: number;
+    batteryPercent: number | null;
   };
   sources: { wmi: boolean; lhm: boolean; nvidiaSmi: boolean };
 }
@@ -109,13 +143,20 @@ function execPs(script: string, timeoutMs = 10000): Promise<string> {
         // Windows PowerShell может отдать OEM/ANSI — если utf8 битый, перекодируем.
         if (text.includes("\uFFFD")) text = new TextDecoder("windows-1251").decode(buf);
         resolve(text);
-      }
+      },
     );
     // На Windows kill() дочернего процесса срабатывает не всегда, а при частом
     // опросе датчиков зависшие powershell.exe копились бы (утечка процессов и
     // памяти). Если процесс не закрылся к таймауту+запас — добиваем дерево по PID.
     const killTree = (): void => {
-      try { if (child.pid) exec(`taskkill /PID ${child.pid} /T /F`, { windowsHide: true }, () => { /* ignore */ }); } catch { /* ignore */ }
+      try {
+        if (child.pid)
+          exec(`taskkill /PID ${child.pid} /T /F`, { windowsHide: true }, () => {
+            /* ignore */
+          });
+      } catch {
+        /* ignore */
+      }
     };
     const killTimer = setTimeout(killTree, timeoutMs + 500);
     const clear = (): void => clearTimeout(killTimer);
@@ -132,12 +173,18 @@ function execPs(script: string, timeoutMs = 10000): Promise<string> {
  * из каждого запроса API и из медленного WMI-сбора — окна наезжали друг
  * на друга, значения дёргались, зависали и обновлялись в произвольные моменты.
  */
-interface CoreSample { idle: number; total: number }
+interface CoreSample {
+  idle: number;
+  total: number;
+}
 const SAMPLE_INTERVAL_MS = 250;
 const SAMPLE_WINDOW_MS = 200;
 const EMA_ALPHA = 0.45; // вклад нового замера в сглаженное значение
 
-let latestLoad: { totalPercent: number; perCorePercent: number[] } = { totalPercent: 0, perCorePercent: [] };
+let latestLoad: { totalPercent: number; perCorePercent: number[] } = {
+  totalPercent: 0,
+  perCorePercent: [],
+};
 let samplerStarted = false;
 
 function coreTimes(): CoreSample[] {
@@ -166,7 +213,9 @@ async function samplerLoop(): Promise<void> {
       });
       const rawTotal = dTotal > 0 ? Math.max(0, Math.min(100, 100 * (1 - dIdle / dTotal))) : 0;
       // EMA убирает дрожание между кадрами UI.
-      emaPer = rawPer.map((v, i) => (emaPer.length === rawPer.length ? emaPer[i] + EMA_ALPHA * (v - emaPer[i]) : v));
+      emaPer = rawPer.map((v, i) =>
+        emaPer.length === rawPer.length ? emaPer[i] + EMA_ALPHA * (v - emaPer[i]) : v,
+      );
       emaTotal = emaTotal + EMA_ALPHA * (rawTotal - emaTotal);
       latestLoad = {
         totalPercent: Math.round(emaTotal),
@@ -184,7 +233,6 @@ function ensureSampler(): void {
   void samplerLoop();
 }
 ensureSampler();
-
 
 /* --------------------------- Пакетный WMI-опрос --------------------------- */
 
@@ -208,9 +256,14 @@ function wmiScript(): string {
 }
 
 interface WmiBatch {
-  os?: Row; cpu?: Row; battery?: Row;
-  disks?: Row[] | Row; diskperf?: Row[] | Row; netperf?: Row[] | Row;
-  lhw?: Row[] | Row; lsen?: Row[] | Row;
+  os?: Row;
+  cpu?: Row;
+  battery?: Row;
+  disks?: Row[] | Row;
+  diskperf?: Row[] | Row;
+  netperf?: Row[] | Row;
+  lhw?: Row[] | Row;
+  lsen?: Row[] | Row;
 }
 
 async function queryWmi(): Promise<WmiBatch | null> {
@@ -236,7 +289,14 @@ interface LhmSensors {
   loads: { name: string; hw: string; percent: number | null }[];
   data: { name: string; hw: string; value: number | null }[];
   /** Плоский срез ВСЕХ сенсоров — для дерева датчиков на фронтенде. */
-  all: { id: string; name: string; type: string; parent: string; hw: string; value: number | null }[];
+  all: {
+    id: string;
+    name: string;
+    type: string;
+    parent: string;
+    hw: string;
+    value: number | null;
+  }[];
 }
 
 function parseLhm(lsen: Row[], lhw: Row[]): LhmSensors {
@@ -254,7 +314,17 @@ function parseLhm(lsen: Row[], lhw: Row[]): LhmSensors {
     return parent || "?";
   };
 
-  const out: LhmSensors = { temperatures: [], fans: [], voltages: [], currents: [], powers: [], clocks: [], loads: [], data: [], all: [] };
+  const out: LhmSensors = {
+    temperatures: [],
+    fans: [],
+    voltages: [],
+    currents: [],
+    powers: [],
+    clocks: [],
+    loads: [],
+    data: [],
+    all: [],
+  };
   const seenIds = new Set<string>();
   for (const s of lsen) {
     if (str(s.SensorType) === "__hwname__") continue; // служебная строка движка
@@ -290,7 +360,7 @@ function pickCpuTemp(temps: TempSensor[]): number | null {
     cpuTemps.find((t) => /tctl|tdie|ccdit/i.test(t.name)) ||
     cpuTemps.find((t) => /^core (\(max\)|avg|max)/i.test(t.name)) ||
     cpuTemps[0];
-  return preferred ? preferred.value : temps[0]?.value ?? null;
+  return preferred ? preferred.value : (temps[0]?.value ?? null);
 }
 
 function pickCpuPower(powers: ValueSensor[]): number | null {
@@ -318,8 +388,8 @@ async function queryAcpiTemps(): Promise<TempSensor[]> {
   try {
     const out = await execPs(
       "Get-CimInstance -Namespace root/wmi -ClassName MSAcpi_ThermalZoneTemperature " +
-      "| Select-Object InstanceName,CurrentTemperature | ConvertTo-Json -Compress",
-      5000
+        "| Select-Object InstanceName,CurrentTemperature | ConvertTo-Json -Compress",
+      5000,
     );
     const rows = toArray<Row>(JSON.parse(out || "[]"));
     const temps: TempSensor[] = [];
@@ -355,19 +425,30 @@ async function getCachedAcpiTemps(): Promise<TempSensor[]> {
   if (acpiCache && Date.now() - acpiAt < ACPI_TTL_MS) return acpiCache;
   if (acpiPending) return acpiPending;
   acpiPending = queryAcpiTemps()
-    .then((t) => { acpiCache = t; acpiAt = Date.now(); return t; })
-    .finally(() => { acpiPending = null; });
+    .then((t) => {
+      acpiCache = t;
+      acpiAt = Date.now();
+      return t;
+    })
+    .finally(() => {
+      acpiPending = null;
+    });
   return acpiPending;
 }
 
 /* ------------------------------- GPU: nvidia-smi -------------------------- */
 
 async function queryNvidiaGpus(): Promise<GpuInfo[] | null> {
-  const query = "name,temperature.gpu,utilization.gpu,memory.used,memory.total,fan.speed,power.draw";
+  const query =
+    "name,temperature.gpu,utilization.gpu,memory.used,memory.total,fan.speed,power.draw";
   try {
     const stdout = await new Promise<string>((resolve, reject) => {
-      execFile("nvidia-smi", ["--query-gpu=" + query, "--format=csv,noheader,nounits"],
-        { timeout: 5000, windowsHide: true }, (err, out) => (err ? reject(err) : resolve(out || "")));
+      execFile(
+        "nvidia-smi",
+        ["--query-gpu=" + query, "--format=csv,noheader,nounits"],
+        { timeout: 5000, windowsHide: true },
+        (err, out) => (err ? reject(err) : resolve(out || "")),
+      );
     });
     const gpus: GpuInfo[] = [];
     for (const line of stdout.split(/\r?\n/)) {
@@ -406,7 +487,8 @@ function gpuFromLhm(s: LhmSensors): GpuInfo[] {
       name: hw,
       utilizationPercent:
         s.loads.find((l) => l.hw === hw && /core/i.test(l.name))?.percent ??
-        s.loads.find((l) => l.hw === hw)?.percent ?? null,
+        s.loads.find((l) => l.hw === hw)?.percent ??
+        null,
       temperatureC: s.temperatures.find((t) => t.hw === hw)?.value ?? null,
       memoryUsedMb: toMb(memUsed?.value ?? null),
       memoryTotalMb: toMb(memTotal?.value ?? null),
@@ -432,7 +514,8 @@ function buildDisks(wmi: WmiBatch | null): DiskInfo[] {
   return toArray(wmi?.disks).map((d) => {
     const drive = str(d.DeviceID).toUpperCase();
     const perf = perfByDrive.get(drive);
-    const sizeB = num(d.Size), freeB = num(d.FreeSpace);
+    const sizeB = num(d.Size),
+      freeB = num(d.FreeSpace);
     return {
       drive,
       label: str(d.VolumeName) || drive,
@@ -458,12 +541,14 @@ function buildNetwork(wmi: WmiBatch | null): NetIfaceInfo[] {
         break;
       }
     }
-    const rx = num(n.BytesReceivedPersec), tx = num(n.BytesSentPersec);
+    const rx = num(n.BytesReceivedPersec),
+      tx = num(n.BytesSentPersec);
     return {
       name: wname,
       rxKBs: rx != null ? +(rx / 1024).toFixed(1) : null,
       txKBs: tx != null ? +(tx / 1024).toFixed(1) : null,
-      ipv4, mac,
+      ipv4,
+      mac,
     };
   });
 }
@@ -480,8 +565,14 @@ async function getCachedWmi() {
   // /api/monitor могли запустить два PowerShell-опроса параллельно.
   if (wmiPending) return wmiPending;
   wmiPending = queryWmi()
-    .then((r) => { wmiCache = r; wmiAt = Date.now(); return r; })
-    .finally(() => { wmiPending = null; });
+    .then((r) => {
+      wmiCache = r;
+      wmiAt = Date.now();
+      return r;
+    })
+    .finally(() => {
+      wmiPending = null;
+    });
   return wmiPending;
 }
 
@@ -494,8 +585,14 @@ async function getCachedNvidia() {
   if (nvCache && Date.now() - nvAt < NV_TTL_MS) return nvCache;
   if (nvPending) return nvPending;
   nvPending = queryNvidiaGpus()
-    .then((r) => { nvCache = r; nvAt = Date.now(); return r; })
-    .finally(() => { nvPending = null; });
+    .then((r) => {
+      nvCache = r;
+      nvAt = Date.now();
+      return r;
+    })
+    .finally(() => {
+      nvPending = null;
+    });
   return nvPending;
 }
 
@@ -510,7 +607,7 @@ async function collect(): Promise<SystemSnapshot> {
   const engineLhw = engine ? engine.lhw : [];
   const lhm = parseLhm(
     engine ? engine.lsen : toArray(wmi?.lsen),
-    engine ? engineLhw : toArray(wmi?.lhw)
+    engine ? engineLhw : toArray(wmi?.lhw),
   );
   const hardware: { id: string; name: string; type: string }[] =
     engine?.hwlist ??
@@ -541,7 +638,8 @@ async function collect(): Promise<SystemSnapshot> {
       clockMhz: pickCpuClock(lhm.clocks) ?? num(wmi?.cpu?.MaxClockSpeed),
     },
     memory: {
-      totalMb, usedMb,
+      totalMb,
+      usedMb,
       freeMb: Math.round(freeMem / 1024 ** 2),
       usedPercent: totalMb > 0 ? Math.round((100 * usedMb) / totalMb) : 0,
     },
@@ -566,7 +664,11 @@ async function collect(): Promise<SystemSnapshot> {
       uptimeSec: Math.round(os.uptime()),
       batteryPercent: batteryRaw ? num(batteryRaw.EstimatedChargeRemaining) : null,
     },
-    sources: { wmi: !!wmi, lhm: engine !== null || toArray(wmi?.lsen).length > 0, nvidiaSmi: !!nvGpus },
+    sources: {
+      wmi: !!wmi,
+      lhm: engine !== null || toArray(wmi?.lsen).length > 0,
+      nvidiaSmi: !!nvGpus,
+    },
   };
 }
 
@@ -661,12 +763,15 @@ const LHM_EXE = "LibreHardwareMonitor.exe";
 const VENDOR_DIR = path.join(__dirname, "..", "vendor", "lhm");
 const BIN_DIR = path.join(
   process.env.MOONAPP_STORAGE || path.join(__dirname, "..", "storage"),
-  "bin", "lhm"
+  "bin",
+  "lhm",
 );
 function resolveDllDir(): string {
   try {
     if (fs.existsSync(path.join(VENDOR_DIR, "LibreHardwareMonitorLib.dll"))) return VENDOR_DIR;
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
   return BIN_DIR;
 }
 const ENGINE_DLL = path.join(resolveDllDir(), "LibreHardwareMonitorLib.dll");
@@ -674,7 +779,11 @@ const ENGINE_DIR = BIN_DIR;
 const ENGINE_OUT = path.join(ENGINE_DIR, "sensors.json");
 
 function engineFilesPresent(): boolean {
-  try { return fs.existsSync(ENGINE_DLL); } catch { return false; }
+  try {
+    return fs.existsSync(ENGINE_DLL);
+  } catch {
+    return false;
+  }
 }
 
 /** Ищем установленный GUI-LHM в стандартных местах (альтернативный источник). */
@@ -686,13 +795,21 @@ function findLhmExe(): string | null {
   ].filter((r): r is string => !!r);
   for (const root of roots) {
     const candidate = path.join(root, "LibreHardwareMonitor", LHM_EXE);
-    try { if (fs.existsSync(candidate)) return candidate; } catch { /* ignore */ }
+    try {
+      if (fs.existsSync(candidate)) return candidate;
+    } catch {
+      /* ignore */
+    }
   }
   return null;
 }
 
 function engineOutputFresh(maxAgeMs = 10000): boolean {
-  try { return Date.now() - fs.statSync(ENGINE_OUT).mtimeMs < maxAgeMs; } catch { return false; }
+  try {
+    return Date.now() - fs.statSync(ENGINE_OUT).mtimeMs < maxAgeMs;
+  } catch {
+    return false;
+  }
 }
 
 /** Файл записан текущей версией схемы (со списком hardware)? */
@@ -700,7 +817,9 @@ function engineSchemaCurrent(): boolean {
   try {
     const raw = JSON.parse(fs.readFileSync(ENGINE_OUT, "utf8"));
     return raw && raw.v === 2;
-  } catch { return false; }
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -713,10 +832,12 @@ export async function downloadEngine(): Promise<{ ok: boolean; error?: string }>
   // Резолвим ассет через GitHub API: имена в релизах меняются.
   const apiRes = await fetch(
     "https://api.github.com/repos/LibreHardwareMonitor/LibreHardwareMonitor/releases/latest",
-    { headers: { "User-Agent": "MoonApp" }, signal: AbortSignal.timeout(20000) }
+    { headers: { "User-Agent": "MoonApp" }, signal: AbortSignal.timeout(20000) },
   );
   if (!apiRes.ok) return { ok: false, error: `GitHub API HTTP ${apiRes.status}` };
-  const meta = await apiRes.json() as { assets?: { name: string; browser_download_url: string }[] };
+  const meta = (await apiRes.json()) as {
+    assets?: { name: string; browser_download_url: string }[];
+  };
   const assets = meta.assets || [];
   const asset =
     assets.find((a) => a.name === "LibreHardwareMonitor.zip") ||
@@ -733,7 +854,7 @@ export async function downloadEngine(): Promise<{ ok: boolean; error?: string }>
     fs.writeFileSync(zipPath, Buffer.from(await res.arrayBuffer()));
     await execPs(
       `Expand-Archive -LiteralPath '${zipPath.replace(/'/g, "''")}' -DestinationPath '${tmpDir.replace(/'/g, "''")}' -Force`,
-      60000
+      60000,
     );
     // Копируем ВСЕ dll/sys из архива: у Lib есть компаньоны
     // (RAMSPDToolkit-NDD, DiskInfoToolkit и т.п.), без которых типы не грузятся.
@@ -748,18 +869,26 @@ export async function downloadEngine(): Promise<{ ok: boolean; error?: string }>
     };
     walk(tmpDir);
     for (const [name, src] of found) fs.copyFileSync(src, path.join(ENGINE_DIR, name));
-    if (!fs.existsSync(ENGINE_DLL)) throw new Error("LibreHardwareMonitorLib.dll not found in archive");
+    if (!fs.existsSync(ENGINE_DLL))
+      throw new Error("LibreHardwareMonitorLib.dll not found in archive");
     logger.info("monitor.lhm_download_ok", {});
     return { ok: true };
   } catch (e) {
     logger.warn("monitor.lhm_download_failed", { error: (e as Error).message });
     return { ok: false, error: (e as Error).message };
   } finally {
-    try { fs.rmSync(zipPath, { force: true }); } catch { /* ignore */ }
-    try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch { /* ignore */ }
+    try {
+      fs.rmSync(zipPath, { force: true });
+    } catch {
+      /* ignore */
+    }
+    try {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    } catch {
+      /* ignore */
+    }
   }
 }
-
 
 /**
  * Отвечает ли WMI-пространство root/LibreHardwareMonitor.
@@ -776,7 +905,7 @@ async function probeLhmWmi(): Promise<boolean> {
   try {
     const out = await execPs(
       "(Get-CimInstance -Namespace root/LibreHardwareMonitor -ClassName Sensor | Measure-Object).Count",
-      4000
+      4000,
     );
     const n = parseInt(out.trim(), 10);
     return Number.isFinite(n) && n > 0;
@@ -790,9 +919,15 @@ async function lhmWmiAlive(force = false): Promise<boolean> {
     if (lhmAliveAt && Date.now() - lhmAliveAt < LHM_ALIVE_TTL_MS) return lhmAliveCache;
     if (lhmAlivePending) return lhmAlivePending;
   }
-  const run = probeLhmWmi().then((v) => { lhmAliveCache = v; lhmAliveAt = Date.now(); return v; });
+  const run = probeLhmWmi().then((v) => {
+    lhmAliveCache = v;
+    lhmAliveAt = Date.now();
+    return v;
+  });
   if (force) return run;
-  lhmAlivePending = run.finally(() => { lhmAlivePending = null; });
+  lhmAlivePending = run.finally(() => {
+    lhmAlivePending = null;
+  });
   return lhmAlivePending;
 }
 
@@ -862,7 +997,9 @@ $json = '{"v":2,"ts":' + [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() + ',"
 }
 
 /** Запуск headless-движка (нужен UAC — загрузка драйвера WinRing0). */
-export async function startEngine(timeoutMs = 30000): Promise<{ ok: boolean; already?: boolean; error?: string }> {
+export async function startEngine(
+  timeoutMs = 30000,
+): Promise<{ ok: boolean; already?: boolean; error?: string }> {
   if (engineOutputFresh() && engineSchemaCurrent()) return { ok: true, already: true };
   if (!engineFilesPresent()) return { ok: false, error: "not_downloaded" };
 
@@ -873,7 +1010,11 @@ export async function startEngine(timeoutMs = 30000): Promise<{ ok: boolean; alr
     if (exeDir) {
       for (const f of ["WinRing0x64.sys", "WinRing0x64.dll"]) {
         const src = path.join(path.dirname(exeDir), f);
-        try { if (fs.existsSync(src)) fs.copyFileSync(src, path.join(ENGINE_DIR, f)); } catch { /* ignore */ }
+        try {
+          if (fs.existsSync(src)) fs.copyFileSync(src, path.join(ENGINE_DIR, f));
+        } catch {
+          /* ignore */
+        }
       }
     }
   }
@@ -889,8 +1030,11 @@ export async function startEngine(timeoutMs = 30000): Promise<{ ok: boolean; alr
     lhmPid = Number.isFinite(parsed) ? parsed : null;
     // PID на диск: чтобы остановить движок даже после перезапуска приложения.
     try {
-      if (lhmPid != null) fs.writeFileSync(path.join(ENGINE_DIR, "pid.txt"), String(lhmPid), "utf8");
-    } catch { /* ignore */ }
+      if (lhmPid != null)
+        fs.writeFileSync(path.join(ENGINE_DIR, "pid.txt"), String(lhmPid), "utf8");
+    } catch {
+      /* ignore */
+    }
   } catch {
     return { ok: false, error: "elevation_denied_or_failed" };
   }
@@ -911,12 +1055,16 @@ export async function startEngine(timeoutMs = 30000): Promise<{ ok: boolean; alr
  */
 let engineReadAt = 0;
 let engineReadCache: {
-  lsen: Row[]; lhw: Row[]; hwlist: { id: string; name: string; type: string }[];
+  lsen: Row[];
+  lhw: Row[];
+  hwlist: { id: string; name: string; type: string }[];
 } | null = null;
 const ENGINE_READ_TTL_MS = 350;
 
 function readEngineSensors(): {
-  lsen: Row[]; lhw: Row[]; hwlist: { id: string; name: string; type: string }[];
+  lsen: Row[];
+  lhw: Row[];
+  hwlist: { id: string; name: string; type: string }[];
 } | null {
   if (Date.now() - engineReadAt < ENGINE_READ_TTL_MS) return engineReadCache;
   engineReadAt = Date.now();
@@ -925,7 +1073,9 @@ function readEngineSensors(): {
 }
 
 function parseEngineSensors(): {
-  lsen: Row[]; lhw: Row[]; hwlist: { id: string; name: string; type: string }[];
+  lsen: Row[];
+  lhw: Row[];
+  hwlist: { id: string; name: string; type: string }[];
 } | null {
   if (!engineOutputFresh() || !engineSchemaCurrent()) return null;
   try {
@@ -935,7 +1085,13 @@ function parseEngineSensors(): {
     };
     const lsen: Row[] = [];
     for (const s of raw.sensors || []) {
-      lsen.push({ Identifier: s.id, Name: s.name, SensorType: s.type, Parent: s.parent, Value: s.value });
+      lsen.push({
+        Identifier: s.id,
+        Name: s.name,
+        SensorType: s.type,
+        Parent: s.parent,
+        Value: s.value,
+      });
     }
     const hwlist = (raw.hardware || []).map((h) => ({
       id: h.id,
@@ -955,14 +1111,21 @@ function sleep(ms: number): Promise<void> {
 
 /** Статус для UI: установлен? отвечает WMI? запущен нами? скачан ли движок? */
 export async function lhmStatus(): Promise<{
-  wmi: boolean; exePath: string | null; pid: number | null; bundled: boolean;
+  wmi: boolean;
+  exePath: string | null;
+  pid: number | null;
+  bundled: boolean;
 }> {
   const wmi = await lhmWmiAlive();
   return { wmi, exePath: findLhmExe(), pid: lhmPid, bundled: engineFilesPresent() };
 }
 
 /** Скачать движок с GitHub и сразу запустить. */
-export async function downloadAndStartEngine(): Promise<{ ok: boolean; already?: boolean; error?: string }> {
+export async function downloadAndStartEngine(): Promise<{
+  ok: boolean;
+  already?: boolean;
+  error?: string;
+}> {
   const dl = await downloadEngine();
   if (!dl.ok) return dl;
   return startEngine();
@@ -972,14 +1135,18 @@ export async function downloadAndStartEngine(): Promise<{ ok: boolean; already?:
  * Запуск LHM (нужны права администратора — появится UAC-запрос).
  * Окно скрываем; ждём появления WMI-пространства до timeoutMs.
  */
-export async function startLhm(timeoutMs = 25000): Promise<{ ok: boolean; already?: boolean; error?: string }> {
+export async function startLhm(
+  timeoutMs = 25000,
+): Promise<{ ok: boolean; already?: boolean; error?: string }> {
   if (await lhmWmiAlive(true)) return { ok: true, already: true };
 
   const exe = findLhmExe();
   if (!exe) return { ok: false, error: "not_installed" };
 
   // RunAs → UAC; WindowStyle Hidden — окно не будет мешать.
-  const script = "$p=Start-Process -FilePath '" + exe.replace(/'/g, "''") +
+  const script =
+    "$p=Start-Process -FilePath '" +
+    exe.replace(/'/g, "''") +
     "' -Verb RunAs -WindowStyle Hidden -PassThru; $p.Id";
   let pid: number | null = null;
   try {
@@ -1011,13 +1178,19 @@ export function stopLhm(): void {
     const saved = parseInt(fs.readFileSync(pidFile, "utf8").trim(), 10);
     if (Number.isFinite(saved) && !pids.includes(saved)) pids.push(saved);
     fs.rmSync(pidFile, { force: true });
-  } catch { /* нет файла — ок */ }
+  } catch {
+    /* нет файла — ок */
+  }
   for (const pid of pids) {
     try {
       // /T — вместе с дочерними процессами, /F — принудительно.
-      exec(`taskkill /PID ${pid} /T /F`, { windowsHide: true }, () => { /* ignore */ });
+      exec(`taskkill /PID ${pid} /T /F`, { windowsHide: true }, () => {
+        /* ignore */
+      });
       logger.info("monitor.lhm_stopped", { pid });
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }
 }
 
@@ -1042,9 +1215,3 @@ export function autoStartLhmIfConfigured(): void {
     }
   })();
 }
-
-
-
-
-
-

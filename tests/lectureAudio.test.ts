@@ -39,7 +39,8 @@ function speech(ms: number, freq = 180, amp = 0.25): Int16Array {
 function tone(ms: number, freq = 180, amp = 0.25): Int16Array {
   const n = Math.round((SR * ms) / 1000);
   const out = new Int16Array(n);
-  for (let i = 0; i < n; i++) out[i] = Math.round(Math.sin((2 * Math.PI * freq * i) / SR) * amp * 32767);
+  for (let i = 0; i < n; i++)
+    out[i] = Math.round(Math.sin((2 * Math.PI * freq * i) / SR) * amp * 32767);
   return out;
 }
 
@@ -90,7 +91,7 @@ describe("VAD — анти-шум (регресс «тишина/шум — от
 
   it("автоподстройка поднимает порог над шумом комнаты", () => {
     const vad = newVad();
-    vad.push(noise(4000, 0.02));   // «шумная» комната: RMS ≈ 0.0116 (−38.7 dBFS)
+    vad.push(noise(4000, 0.02)); // «шумная» комната: RMS ≈ 0.0116 (−38.7 dBFS)
     const m = vad.metrics();
     // Порог обязан быть ВЫШЕ шума (иначе шум снова станет речью), но ниже речи.
     expect(m.thresholdDb).toBeGreaterThan(m.noiseFloorDb);
@@ -101,7 +102,7 @@ describe("VAD — анти-шум (регресс «тишина/шум — от
     const vad = newVad();
     vad.push(noise(3000, 0.02));
     const before = vad.metrics().thresholdDb;
-    vad.push(silence(2000));       // цифровая тишина не должна обнулять шумовой пол
+    vad.push(silence(2000)); // цифровая тишина не должна обнулять шумовой пол
     const after = vad.metrics().thresholdDb;
     expect(after).toBeGreaterThan(before - 12);
     expect(after).toBeGreaterThan(-45);
@@ -140,7 +141,7 @@ describe("VAD — анти-шум (регресс «тишина/шум — от
    * начинаться со своей метки, а не с нуля (раньше шум приклеивался к фразе).
    */
   it("ровный шум громче настроечного порога поднимает автопорог и не открывает чанк", () => {
-    const vad = newVad({ rmsThreshold: 0.005 });   // порог ниже уровня комнаты
+    const vad = newVad({ rmsThreshold: 0.005 }); // порог ниже уровня комнаты
     const closed = [...vad.push(noise(3000, 0.02)), ...vad.push(silence(300))];
     expect(closed).toEqual([]);
     const m = vad.metrics();
@@ -152,7 +153,7 @@ describe("VAD — анти-шум (регресс «тишина/шум — от
   it("шум перед первой фразой не склеивается с речью (startMs начинается с речи)", () => {
     const vad = newVad({ rmsThreshold: 0.005 });
     const closed = [
-      ...vad.push(noise(3000, 0.02)),     // «шумная комната» с самого старта записи
+      ...vad.push(noise(3000, 0.02)), // «шумная комната» с самого старта записи
       ...vad.push(speech(3000, 200, 0.3)), // речь лектора
       ...vad.push(silence(900)),
     ];
@@ -209,11 +210,14 @@ describe("VAD — измерители (используются в диагно
   /** Регресс: без rmsStd величина modulation была NaN, и защита от стационарного шума не работала. */
   it("frameStats отдаёт rmsStd: по нему считается модуляция (речь vs ровный шум)", () => {
     const steady = frameStats([tone(30, 200), tone(30, 200), tone(30, 200), tone(30, 200)]);
-    expect(steady.rmsStd).toBeCloseTo(0, 5);          // ровный сигнал не «дышит»
+    expect(steady.rmsStd).toBeCloseTo(0, 5); // ровный сигнал не «дышит»
     // Разные фазы огибающей + тишина: уровни кадров расходятся — модуляция > 0.
     const phrase = speech(300, 200, 0.25);
     const mod = frameStats([
-      phrase.slice(0, 480), phrase.slice(1120, 1600), phrase.slice(2880, 3360), silence(30),
+      phrase.slice(0, 480),
+      phrase.slice(1120, 1600),
+      phrase.slice(2880, 3360),
+      silence(30),
     ]);
     expect(mod.rmsStd).toBeGreaterThan(0);
     expect(mod.rmsStd / mod.rmsAvg).toBeGreaterThan(0.1);
@@ -279,8 +283,14 @@ describe("Lecture — настройки аудио и пропуски VAD", ()
     const info = stmts.lectureInsert.run("тест", 16000, 1);
     const id = Number(info.lastInsertRowid);
     stmts.chunkInsertSkipped.run(id, 1, 1000, 4000, {
-      reason: "noise", rmsDb: -44.2, rmsPeakDb: -38.1, speechRatio: 0.2,
-      noiseDb: -52, thresholdDb: -46, zcr: 0.51, source: "mic",
+      reason: "noise",
+      rmsDb: -44.2,
+      rmsPeakDb: -38.1,
+      speechRatio: 0.2,
+      noiseDb: -52,
+      thresholdDb: -46,
+      zcr: 0.51,
+      source: "mic",
     });
     const rows = stmts.chunkFor.all(id);
     expect(rows).toHaveLength(1);

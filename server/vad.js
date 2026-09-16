@@ -70,14 +70,14 @@ class VadBufferManager {
     // Ровность отличает фон от речи: у речи всегда есть слоговая модуляция.
     // Порог 0.06 измерен на практике: белый шум комнаты даёт CV ≈ 0.02–0.03,
     // низкочастотный гул ≈ 0.05–0.10, а даже слабо модулированная речь — 0.13+.
-    this.steadyWindow = 8;          // ~240 мс
-    this.steadyCv = 0.06;           // разброс RMS, ниже которого отрезок ровный
-    this.steadyRunFrames = 8;       // как долго ровность должна держаться подряд
+    this.steadyWindow = 8; // ~240 мс
+    this.steadyCv = 0.06; // разброс RMS, ниже которого отрезок ровный
+    this.steadyRunFrames = 8; // как долго ровность должна держаться подряд
     this.steadyRun = 0;
     this.recentRms = [];
     this.coldGuard = clamp(opts.coldGuard ?? 3, 1, 10);
     this.coldMaxMs = clamp(opts.coldMaxMs ?? 1200, 0, 5000);
-    this.floorSeenAt = -1;          // кадр, на котором пол стал известен
+    this.floorSeenAt = -1; // кадр, на котором пол стал известен
     // Порог для оценки шумового пола: всё тише считаем цифровой тишиной.
     this.noiseEps = clamp(opts.noiseEps ?? 0.0006, 0.0001, 0.01);
     this.minSpeechRatio = clamp(opts.minSpeechRatio ?? 0.15, 0, 1);
@@ -85,7 +85,7 @@ class VadBufferManager {
     this.zcrLimit = clamp(opts.zcrLimit ?? 0.48, 0.2, 0.9);
     // Кольцо «тихих» кадров для оценки шумового пола (10-й процентиль).
     this.quietRms = [];
-    this.quietWindow = 400;         // ~12 c при кадре 30 мс
+    this.quietWindow = 400; // ~12 c при кадре 30 мс
     this.noiseFloor = 0;
     this.threshold = this.rmsThreshold;
     // Метрики текущего чанка считает frameStats() в момент закрытия: так они
@@ -101,17 +101,17 @@ class VadBufferManager {
 
     // Состояние буфера чанка
     // Дорожка чанка: pending (аудио) и chunkInfo (класс кадров) идут параллельно,
-// чтобы при закрытии можно было ОБРЕЗАТЬ края, где речи нет. Без этого шум в
-// начале (пока порог ещё не поднялся) приклеивался к речи и попадал в Whisper.
+    // чтобы при закрытии можно было ОБРЕЗАТЬ края, где речи нет. Без этого шум в
+    // начале (пока порог ещё не поднялся) приклеивался к речи и попадал в Whisper.
     this.chunkInfo = [];
-    this.pending = [];          // фреймы текущего чанка (Int16Array)
-    this.speechFrames = [];     // фреймы речи (без тишины) текущего чанка
-    this.chunkStartMs = 0;      // абсолютное время начала чанка
-    this.chunkSpeechMs = 0;     // суммарная длительность речи в чанке
+    this.pending = []; // фреймы текущего чанка (Int16Array)
+    this.speechFrames = []; // фреймы речи (без тишины) текущего чанка
+    this.chunkStartMs = 0; // абсолютное время начала чанка
+    this.chunkSpeechMs = 0; // суммарная длительность речи в чанке
     this.lastSpeechMs = 0;
-    this.silenceRunMs = 0;      // текущая серия тишины
+    this.silenceRunMs = 0; // текущая серия тишины
     this.consecutiveSpeech = 0; // фреймов речи подряд (анти-щелчок)
-    this.lastRms = [];          // окно RMS для поиска минимума (мягкий сплит)
+    this.lastRms = []; // окно RMS для поиска минимума (мягкий сплит)
 
     // Пре-ролл: кольцо последних кадров (аудио + их RMS). Именно эти кадры
     // уходят в начало нового чанка, поэтому таймкод startMs соответствует
@@ -120,14 +120,17 @@ class VadBufferManager {
     this.preRollFrames = Math.ceil(this.padMs / FRAME_MS);
     this.preRoll = [];
     this.preRollRms = [];
-    this.lastSpeechIdx = -1;    // индекс последнего кадра РЕЧИ в pending
+    this.lastSpeechIdx = -1; // индекс последнего кадра РЕЧИ в pending
 
-    this.offsetMs = 0;          // сколько входного аудио обработано
+    this.offsetMs = 0; // сколько входного аудио обработано
     this.stats = {
-      frames: 0, speechFrames: 0, rejected: 0, chunks: 0,
-      loudFrames: 0,            // кадры выше порога по энергии
-      noiseFrames: 0,           // из них отброшены как широкополосный шум (ZCR)
-      skippedMs: 0,             // суммарная длительность пропусков
+      frames: 0,
+      speechFrames: 0,
+      rejected: 0,
+      chunks: 0,
+      loudFrames: 0, // кадры выше порога по энергии
+      noiseFrames: 0, // из них отброшены как широкополосный шум (ZCR)
+      skippedMs: 0, // суммарная длительность пропусков
     };
   }
 
@@ -178,8 +181,12 @@ class VadBufferManager {
   _isSteady(rms) {
     const w = this.recentRms;
     if (w.length < 4) return false;
-    let sum = 0, sumSq = 0;
-    for (const v of w) { sum += v; sumSq += v * v; }
+    let sum = 0,
+      sumSq = 0;
+    for (const v of w) {
+      sum += v;
+      sumSq += v * v;
+    }
     const mean = sum / w.length;
     if (mean <= 0) return false;
     const sd = Math.sqrt(Math.max(0, sumSq / w.length - mean * mean));
@@ -199,7 +206,8 @@ class VadBufferManager {
     if (!this.adaptive) return this.threshold;
     const target = Math.min(this.noiseFloor * this.thresholdFactor, this.maxRms);
     const settled = this.noiseFloor > 0 && this.threshold >= target * 0.9;
-    const warming = this.stats.frames - Math.max(0, this.floorSeenAt) <= Math.round(this.coldMaxMs / FRAME_MS);
+    const warming =
+      this.stats.frames - Math.max(0, this.floorSeenAt) <= Math.round(this.coldMaxMs / FRAME_MS);
     if (settled || !warming) return this.threshold;
     return this.threshold * this.coldGuard;
   }
@@ -211,7 +219,10 @@ class VadBufferManager {
     if (durMs < 1000) return;
     this.stats.skippedMs += durMs;
     this.skipped.push({
-      startMs, endMs, durMs, reason,
+      startMs,
+      endMs,
+      durMs,
+      reason,
       rmsDb: m.rmsDb ?? dbOf(0),
       rmsPeakDb: m.rmsPeakDb ?? dbOf(0),
       noiseDb: m.noiseFloorDb ?? dbOf(this.noiseFloor),
@@ -287,9 +298,10 @@ class VadBufferManager {
     const outStart = trimmed && trimmed.frames.length ? trimmed.startMs : startMs;
     // endMs — конец речи, а не конец буфера: хвостовая тишина остаётся в
     // samples (нужна Whisper), но в таймкод субтитров не попадает.
-    const outEnd = trimmed && trimmed.frames.length
-      ? trimmed.endMs
-      : startMs + framesToMs(Math.max(1, this.lastSpeechIdx + 1));
+    const outEnd =
+      trimmed && trimmed.frames.length
+        ? trimmed.endMs
+        : startMs + framesToMs(Math.max(1, this.lastSpeechIdx + 1));
     const m = this._metricsOf(frames, speechMs, Math.max(1, outEnd - outStart));
     this._resetChunk();
     if (speechMs < 400 || !frames.length) return [];
@@ -300,10 +312,16 @@ class VadBufferManager {
       return [];
     }
     this.stats.chunks++;
-    return [{
-      startMs: outStart, endMs: outEnd, speechMs,
-      samples: padTail(concat(frames), this.sampleRate, this.padMs), reason: "", ...m,
-    }];
+    return [
+      {
+        startMs: outStart,
+        endMs: outEnd,
+        speechMs,
+        samples: padTail(concat(frames), this.sampleRate, this.padMs),
+        reason: "",
+        ...m,
+      },
+    ];
   }
 
   /** Кольцо пре-ролла: держим только последние preRollFrames кадров. */
@@ -338,9 +356,17 @@ class VadBufferManager {
 
     if (!this.pending.length) {
       // Чанк не открыт: ждём стабильную речь (2 фрейма подряд — отсев щелчков).
-      if (!canOpen) { this._pushPreRoll(frame, rms); this.offsetMs += FRAME_MS; return null; }
+      if (!canOpen) {
+        this._pushPreRoll(frame, rms);
+        this.offsetMs += FRAME_MS;
+        return null;
+      }
       this.consecutiveSpeech++;
-      if (this.consecutiveSpeech < 2) { this._pushPreRoll(frame, rms); this.offsetMs += FRAME_MS; return null; }
+      if (this.consecutiveSpeech < 2) {
+        this._pushPreRoll(frame, rms);
+        this.offsetMs += FRAME_MS;
+        return null;
+      }
       // Открываем чанк с реальным пре-роллом (кадры тишины перед речью).
       const pre = this.preRoll;
       const preRms = this.preRollRms;
@@ -408,7 +434,8 @@ class VadBufferManager {
   _findSoftSplitIndex() {
     const window = Math.min(this.lastRms.length, Math.ceil(2000 / FRAME_MS));
     const region = this.lastRms.slice(-window);
-    let bestIdx = -1, bestVal = Infinity;
+    let bestIdx = -1,
+      bestVal = Infinity;
     for (let i = 1; i < region.length - 1; i++) {
       if (region[i] < region[i - 1] && region[i] <= region[i + 1] && region[i] < bestVal) {
         bestVal = region[i];
@@ -446,7 +473,9 @@ class VadBufferManager {
       modulation: Math.round(modulation * 1000) / 1000,
       noiseFloorDb: dbOf(this.noiseFloor),
       thresholdDb: dbOf(this.threshold),
-      tonal, stationary, broadband,
+      tonal,
+      stationary,
+      broadband,
     };
   }
 
@@ -469,10 +498,20 @@ class VadBufferManager {
    */
   _trimEdges(frames, info, startMs) {
     if (!frames.length || !info.length) return null;
-    let first = -1, last = -1;
-    for (let i = 0; i < info.length; i++) if (info[i].speech) { first = i; break; }
-    for (let i = info.length - 1; i >= 0; i--) if (info[i].speech) { last = i; break; }
-    if (first < 0 || last < 0) return { frames: [], info: [], startMs, endMs: startMs, speechFrames: 0 };
+    let first = -1,
+      last = -1;
+    for (let i = 0; i < info.length; i++)
+      if (info[i].speech) {
+        first = i;
+        break;
+      }
+    for (let i = info.length - 1; i >= 0; i--)
+      if (info[i].speech) {
+        last = i;
+        break;
+      }
+    if (first < 0 || last < 0)
+      return { frames: [], info: [], startMs, endMs: startMs, speechFrames: 0 };
     const from = Math.max(0, first - this.preRollFrames);
     const kept = frames.slice(from, last + 1);
     const keptInfo = info.slice(from, last + 1);
@@ -494,9 +533,10 @@ class VadBufferManager {
     const outStart = trimmed && trimmed.frames.length ? trimmed.startMs : startMs;
     // endMs — конец РЕЧИ: хвостовая тишина (в samples она нужна Whisper)
     // не должна растягивать таймкод чанка в субтитрах и на таймлайне.
-    const outEnd = trimmed && trimmed.frames.length
-      ? trimmed.endMs
-      : startMs + framesToMs(Math.max(1, this.lastSpeechIdx + 1));
+    const outEnd =
+      trimmed && trimmed.frames.length
+        ? trimmed.endMs
+        : startMs + framesToMs(Math.max(1, this.lastSpeechIdx + 1));
     const m = this._metricsOf(frames, speechMs, Math.max(1, outEnd - outStart));
     this._resetChunk();
     const samples = concat(frames);
@@ -515,7 +555,14 @@ class VadBufferManager {
     this.stats.chunks++;
     // Пост-ролл: тишина в хвост (пре-ролл уже внутри pending). endMs остаётся
     // концом речи, поэтому таймкоды чанка не «разъезжаются» с аудио.
-    return { startMs: outStart, endMs: outEnd, speechMs, samples: padTail(samples, this.sampleRate, this.padMs), reason: "", ...m };
+    return {
+      startMs: outStart,
+      endMs: outEnd,
+      speechMs,
+      samples: padTail(samples, this.sampleRate, this.padMs),
+      reason: "",
+      ...m,
+    };
   }
 
   /** Жёсткий сплит pending на [0..cut) — закрытый чанк; хвост остаётся новым буфером. */
@@ -543,7 +590,12 @@ class VadBufferManager {
     this.silenceRunMs = 0;
     if (headSpeechMs < 300) {
       this.stats.rejected++;
-      this._pushSkipped(outStart, outEnd, this._rejectReason(m, outEnd - outStart) || "low_speech_ratio", m);
+      this._pushSkipped(
+        outStart,
+        outEnd,
+        this._rejectReason(m, outEnd - outStart) || "low_speech_ratio",
+        m,
+      );
       return null;
     }
     const headReason = this._rejectReason(m, endAll - startMs);
@@ -570,11 +622,16 @@ class VadBufferManager {
   }
 }
 
-function framesToMs(n) { return Math.round(n * FRAME_MS); }
+function framesToMs(n) {
+  return Math.round(n * FRAME_MS);
+}
 
 function rmsOf(frame) {
   let sum = 0;
-  for (let i = 0; i < frame.length; i++) { const v = frame[i] / 32768; sum += v * v; }
+  for (let i = 0; i < frame.length; i++) {
+    const v = frame[i] / 32768;
+    sum += v * v;
+  }
   return Math.sqrt(sum / frame.length);
 }
 
@@ -588,7 +645,8 @@ function rmsOf(frame) {
 function zcrOf(frame) {
   let crosses = 0;
   for (let i = 1; i < frame.length; i++) {
-    const a = frame[i - 1], b = frame[i];
+    const a = frame[i - 1],
+      b = frame[i];
     if ((a < 0 && b >= 0) || (a >= 0 && b < 0)) crosses++;
   }
   return frame.length > 1 ? crosses / (frame.length - 1) : 0;
@@ -606,7 +664,11 @@ function dbOf(rms) {
  */
 function frameStats(frames) {
   if (!frames.length) return { frames: 0, rmsAvg: 0, rmsPeak: 0, rmsStd: 0, zcrMean: 0, zcrStd: 0 };
-  let sum = 0, peak = 0, zSum = 0, zSq = 0, rSq = 0;
+  let sum = 0,
+    peak = 0,
+    zSum = 0,
+    zSq = 0,
+    rSq = 0;
   for (const f of frames) {
     const r = rmsOf(f);
     sum += r;
@@ -626,8 +688,12 @@ function frameStats(frames) {
   const zMean = zSum / n;
   const zVar = Math.max(0, zSq / n - zMean * zMean);
   return {
-    frames: n, rmsAvg: rMean, rmsPeak: peak, rmsStd: Math.sqrt(rVar),
-    zcrMean: zMean, zcrStd: Math.sqrt(zVar),
+    frames: n,
+    rmsAvg: rMean,
+    rmsPeak: peak,
+    rmsStd: Math.sqrt(rVar),
+    zcrMean: zMean,
+    zcrStd: Math.sqrt(zVar),
   };
 }
 
@@ -636,7 +702,10 @@ function concat(arrays) {
   for (const a of arrays) len += a.length;
   const out = new Int16Array(len);
   let off = 0;
-  for (const a of arrays) { out.set(a, off); off += a.length; }
+  for (const a of arrays) {
+    out.set(a, off);
+    off += a.length;
+  }
   return out;
 }
 
@@ -653,7 +722,8 @@ function padTail(samples, sampleRate, padMs) {
   return out;
 }
 
-function clamp(v, lo, hi) { return Math.min(hi, Math.max(lo, v)); }
+function clamp(v, lo, hi) {
+  return Math.min(hi, Math.max(lo, v));
+}
 
 module.exports = { VadBufferManager, FRAME_MS, rmsOf, zcrOf, dbOf, frameStats };
-

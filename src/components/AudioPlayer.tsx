@@ -55,8 +55,14 @@ export default function AudioPlayer({ src, compact = false, className = "" }: Au
   const toggle = () => {
     const a = ref.current;
     if (!a) return;
-    if (a.paused) a.play().then(() => setPlaying(true)).catch(() => setPlaying(false));
-    else { a.pause(); setPlaying(false); }
+    if (a.paused)
+      a.play()
+        .then(() => setPlaying(true))
+        .catch(() => setPlaying(false));
+    else {
+      a.pause();
+      setPlaying(false);
+    }
   };
 
   const seekTo = (sec: number) => {
@@ -88,31 +94,64 @@ export default function AudioPlayer({ src, compact = false, className = "" }: Au
         onTimeUpdate={(e) => setCur(e.currentTarget.currentTime)}
         onPlay={() => setPlaying(true)}
         onPause={() => setPlaying(false)}
-        onEnded={() => { setPlaying(false); setCur(0); }}
+        onEnded={() => {
+          setPlaying(false);
+          setCur(0);
+        }}
       />
 
-      <button type="button" className="ap-btn ap-play" disabled={!src}
-        title={playing ? t("player.pause") : t("player.play")} onClick={toggle}>
+      <button
+        type="button"
+        className="ap-btn ap-play"
+        disabled={!src}
+        title={playing ? t("player.pause") : t("player.play")}
+        onClick={toggle}
+      >
         {playing ? <Pause size={16} strokeWidth={2.4} /> : <Play size={16} strokeWidth={2.4} />}
       </button>
 
       {!compact && (
         <div className="ap-jumps">
-          <button type="button" className="ap-btn" disabled={!src} title={t("player.back10")} onClick={() => step(-10)}>
-            <RotateCcw size={15} strokeWidth={2} /><span className="ap-btn-num">10</span>
+          <button
+            type="button"
+            className="ap-btn"
+            disabled={!src}
+            title={t("player.back10")}
+            onClick={() => step(-10)}
+          >
+            <RotateCcw size={15} strokeWidth={2} />
+            <span className="ap-btn-num">10</span>
           </button>
-          <button type="button" className="ap-btn" disabled={!src} title={t("player.back5")} onClick={() => step(-5)}>
-            <RotateCcw size={15} strokeWidth={2} /><span className="ap-btn-num">5</span>
+          <button
+            type="button"
+            className="ap-btn"
+            disabled={!src}
+            title={t("player.back5")}
+            onClick={() => step(-5)}
+          >
+            <RotateCcw size={15} strokeWidth={2} />
+            <span className="ap-btn-num">5</span>
           </button>
         </div>
       )}
 
       <span className="ap-time">{fmtTime(cur)}</span>
 
-      <div className="ap-track" style={{ ["--ap-progress" as string]: `${pct}%` } as React.CSSProperties}>
-        <input type="range" className="ap-seek" min={0} max={dur || 0} step={1} value={cur}
-          disabled={!src || !dur} aria-label={t("player.seek")}
-          onChange={(e) => seekTo(Number(e.target.value))} />
+      <div
+        className="ap-track"
+        style={{ ["--ap-progress" as string]: `${pct}%` } as React.CSSProperties}
+      >
+        <input
+          type="range"
+          className="ap-seek"
+          min={0}
+          max={dur || 0}
+          step={1}
+          value={cur}
+          disabled={!src || !dur}
+          aria-label={t("player.seek")}
+          onChange={(e) => seekTo(Number(e.target.value))}
+        />
       </div>
 
       <span className="ap-time ap-time-total">{fmtTime(dur)}</span>
@@ -120,15 +159,30 @@ export default function AudioPlayer({ src, compact = false, className = "" }: Au
       {!compact && (
         <>
           <div className="ap-jumps">
-            <button type="button" className="ap-btn" disabled={!src} title={t("player.forward5")} onClick={() => step(5)}>
-              <RotateCw size={15} strokeWidth={2} /><span className="ap-btn-num">5</span>
+            <button
+              type="button"
+              className="ap-btn"
+              disabled={!src}
+              title={t("player.forward5")}
+              onClick={() => step(5)}
+            >
+              <RotateCw size={15} strokeWidth={2} />
+              <span className="ap-btn-num">5</span>
             </button>
-            <button type="button" className="ap-btn" disabled={!src} title={t("player.forward10")} onClick={() => step(10)}>
-              <RotateCw size={15} strokeWidth={2} /><span className="ap-btn-num">10</span>
+            <button
+              type="button"
+              className="ap-btn"
+              disabled={!src}
+              title={t("player.forward10")}
+              onClick={() => step(10)}
+            >
+              <RotateCw size={15} strokeWidth={2} />
+              <span className="ap-btn-num">10</span>
             </button>
           </div>
           <button type="button" className="ap-rate" title={t("player.speed")} onClick={cycleRate}>
-            <Gauge size={13} strokeWidth={2} />{rate}×
+            <Gauge size={13} strokeWidth={2} />
+            {rate}×
           </button>
         </>
       )}

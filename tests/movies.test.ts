@@ -18,7 +18,13 @@ async function dbStmts() {
 describe("movies — локальное хранилище", () => {
   it("watchlist: upsert → get → обновление статуса → delete", async () => {
     const s = await dbStmts();
-    s.mwUpsert.run("movie", 550, { title: "Fight Club", poster: "p.jpg", year: 1999, status: "plan", genres: "[]" });
+    s.mwUpsert.run("movie", 550, {
+      title: "Fight Club",
+      poster: "p.jpg",
+      year: 1999,
+      status: "plan",
+      genres: "[]",
+    });
     expect(s.mwGet.get("movie", 550).title).toBe("Fight Club");
     expect(s.mwGet.get("movie", 550).status).toBe("plan");
     // Повторный upsert обновляет ту же запись, а не создаёт новую.
@@ -43,8 +49,12 @@ describe("movies — локальное хранилище", () => {
   it("watch stats: одна запись на тайтл, msClear очищает", async () => {
     const s = await dbStmts();
     s.msUpsert.run("movie", 550, {
-      title: "Fight Club", runtime: 139, progress: 1, minutes: 139,
-      genres: JSON.stringify([{ name: "Drama" }]), cast: JSON.stringify([{ name: "Brad" }]),
+      title: "Fight Club",
+      runtime: 139,
+      progress: 1,
+      minutes: 139,
+      genres: JSON.stringify([{ name: "Drama" }]),
+      cast: JSON.stringify([{ name: "Brad" }]),
     });
     expect(s.msAll.all().length).toBe(1);
     s.msUpsert.run("movie", 550, { title: "Fight Club", runtime: 139, progress: 0.5, minutes: 70 });
@@ -95,18 +105,36 @@ describe("movies — HTTP API", () => {
       // «Просмотрено» сразу пишет и в список, и в статистику.
       const wl = await call("/watchlist", {
         method: "POST",
-        body: JSON.stringify({ kind: "movie", id: 550, title: "Fight Club", runtime: 139, status: "watched", genres: [{ name: "Drama" }] }),
+        body: JSON.stringify({
+          kind: "movie",
+          id: 550,
+          title: "Fight Club",
+          runtime: 139,
+          status: "watched",
+          genres: [{ name: "Drama" }],
+        }),
       });
       expect(wl.status).toBe(200);
       expect(wl.body.watchlist.status).toBe("watched");
 
-      const rate = await call("/rate", { method: "POST", body: JSON.stringify({ kind: "movie", id: 550, title: "Fight Club", rating: 9 }) });
+      const rate = await call("/rate", {
+        method: "POST",
+        body: JSON.stringify({ kind: "movie", id: 550, title: "Fight Club", rating: 9 }),
+      });
       expect(rate.body.rating.rating).toBe(9);
 
       // Отдельный тайтл с прогрессом (актёр попадёт в топ).
       await call("/watch", {
         method: "POST",
-        body: JSON.stringify({ kind: "movie", id: 551, title: "Other", runtime: 100, progress: 0.5, genres: ["Drama"], cast: [{ name: "Brad" }] }),
+        body: JSON.stringify({
+          kind: "movie",
+          id: 551,
+          title: "Other",
+          runtime: 100,
+          progress: 0.5,
+          genres: ["Drama"],
+          cast: [{ name: "Brad" }],
+        }),
       });
 
       const lib = await call("/library");
@@ -140,7 +168,10 @@ describe("movies — HTTP API", () => {
   it("torrent: add отклоняет мусор, чужой infoHash → no_torrent", async () => {
     const { server, call } = await boot();
     try {
-      const bad = await call("/torrent/add", { method: "POST", body: JSON.stringify({ magnet: "http://not-a-magnet" }) });
+      const bad = await call("/torrent/add", {
+        method: "POST",
+        body: JSON.stringify({ magnet: "http://not-a-magnet" }),
+      });
       expect(bad.status).toBe(400);
       expect(bad.body.code).toBe("bad_source");
 

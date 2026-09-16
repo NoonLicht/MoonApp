@@ -22,8 +22,12 @@ beforeAll(() => {
   process.env.MOONAPP_STORAGE = fs.mkdtempSync(path.join(os.tmpdir(), "moonapp-diarize-"));
 });
 
-function diarizeMod(): any { return req("../server/diarize"); }
-function lectureMod(): any { return req("../server/lecture"); }
+function diarizeMod(): any {
+  return req("../server/diarize");
+}
+function lectureMod(): any {
+  return req("../server/lecture");
+}
 
 describe("диаризация — разбор вывода sherpa", () => {
   it("читает сегменты «start -- end speaker_NN»", async () => {
@@ -47,7 +51,9 @@ describe("диаризация — разбор вывода sherpa", () => {
 
   it("игнорирует битые строки и нулевую длительность", async () => {
     const d = await diarizeMod();
-    const segs = d.parseSegments("speaker_00\n1.0 -- 1.0 speaker_00\nabc -- def speaker_1\n2.0 -- 3.5 speaker_2");
+    const segs = d.parseSegments(
+      "speaker_00\n1.0 -- 1.0 speaker_00\nabc -- def speaker_1\n2.0 -- 3.5 speaker_2",
+    );
     expect(segs).toEqual([{ start: 2.0, end: 3.5, speaker: 2 }]);
   });
 
@@ -63,7 +69,10 @@ describe("диаризация — привязка говорящих к чан
     const d = await diarizeMod();
     const chunks = [{ id: 1, start_ms: 0, end_ms: 10000 }];
     // Спикер 0 — 6 с, спикер 1 — 4 с: побеждает первый.
-    const segs = [{ start: 0, end: 6, speaker: 0 }, { start: 6, end: 10, speaker: 1 }];
+    const segs = [
+      { start: 0, end: 6, speaker: 0 },
+      { start: 6, end: 10, speaker: 1 },
+    ];
     const map = d.assignSpeakers(chunks, segs);
     expect(map.get(1).speaker).toBe(0);
     expect(map.get(1).ratio).toBeCloseTo(0.6, 5);
@@ -72,7 +81,10 @@ describe("диаризация — привязка говорящих к чан
   it("показывает сомнение (ratio), когда голоса поделили чанк почти поровну", async () => {
     const d = await diarizeMod();
     const chunks = [{ id: 7, start_ms: 0, end_ms: 10000 }];
-    const segs = [{ start: 0, end: 5, speaker: 2 }, { start: 5, end: 10, speaker: 3 }];
+    const segs = [
+      { start: 0, end: 5, speaker: 2 },
+      { start: 5, end: 10, speaker: 3 },
+    ];
     const map = d.assignSpeakers(chunks, segs);
     // ровно 50/50 — уверенности нет, экспорт и UI пометят это «?».
     expect(map.get(7).ratio).toBeCloseTo(0.5, 5);
@@ -81,19 +93,26 @@ describe("диаризация — привязка говорящих к чан
 
   it("чанк без пересечений со сегментами остаётся без говорящего", async () => {
     const d = await diarizeMod();
-    const map = d.assignSpeakers([{ id: 5, start_ms: 0, end_ms: 1000 }], [{ start: 2, end: 3, speaker: 0 }]);
+    const map = d.assignSpeakers(
+      [{ id: 5, start_ms: 0, end_ms: 1000 }],
+      [{ start: 2, end: 3, speaker: 0 }],
+    );
     expect(map.size).toBe(0);
   });
 
   it("сегменты вне чанка не влияют (границы учитываются точно)", async () => {
     const d = await diarizeMod();
     const chunks = [{ id: 1, start_ms: 10000, end_ms: 20000 }];
-    const segs = [{ start: 0, end: 9.9, speaker: 0 }, { start: 10.1, end: 19.9, speaker: 4 }];
+    const segs = [
+      { start: 0, end: 9.9, speaker: 0 },
+      { start: 10.1, end: 19.9, speaker: 4 },
+    ];
     const map = d.assignSpeakers(chunks, segs);
     expect(map.get(1).speaker).toBe(4);
     expect(map.get(1).ratio).toBe(1);
   });
-});describe("диаризация — настройки и состояние пакета", () => {
+});
+describe("диаризация — настройки и состояние пакета", () => {
   it("по умолчанию выключена (это минуты CPU, нельзя включать молча)", async () => {
     const d = await diarizeMod();
     const s = d.diarizeSettings();
@@ -105,8 +124,9 @@ describe("диаризация — привязка говорящих к чан
 
   it("сохраняет настройки и зажимает значения в границы", async () => {
     const d = await diarizeMod();
-    expect(d.setDiarizeSettings({ enabled: true, track: "mic", threshold: 0.65, speakers: 3 }))
-      .toMatchObject({ enabled: true, track: "mic", threshold: 0.65, speakers: 3 });
+    expect(
+      d.setDiarizeSettings({ enabled: true, track: "mic", threshold: 0.65, speakers: 3 }),
+    ).toMatchObject({ enabled: true, track: "mic", threshold: 0.65, speakers: 3 });
     // Вне границ — приводим к ближайшему допустимому.
     expect(d.setDiarizeSettings({ threshold: 5 }).threshold).toBe(0.9);
     expect(d.setDiarizeSettings({ speakers: 99 }).speakers).toBe(12);
@@ -144,11 +164,35 @@ describe("диаризация — подписи в экспорте", () => {
     const info = stmts.lectureInsert.run("Семинар", 16000, 1);
     const id = Number(info.lastInsertRowid);
     // Эфир: лектор (уверенно) и второй голос в эфире (сомнительно — 50/50).
-    stmts.chunkInsert.run(id, 1, 0, 5000, "sys_00001.wav", { status: "done", text: "Лектор объясняет", source: "sys", speaker: "sys_0", speakerRatio: 0.92 });
-    stmts.chunkInsert.run(id, 2, 5000, 9000, "sys_00002.wav", { status: "done", text: "Второй голос в эфире", source: "sys", speaker: "sys_1", speakerRatio: 0.5 });
+    stmts.chunkInsert.run(id, 1, 0, 5000, "sys_00001.wav", {
+      status: "done",
+      text: "Лектор объясняет",
+      source: "sys",
+      speaker: "sys_0",
+      speakerRatio: 0.92,
+    });
+    stmts.chunkInsert.run(id, 2, 5000, 9000, "sys_00002.wav", {
+      status: "done",
+      text: "Второй голос в эфире",
+      source: "sys",
+      speaker: "sys_1",
+      speakerRatio: 0.5,
+    });
     // Микрофон: двое студентов.
-    stmts.chunkInsert.run(id, 3, 9000, 13000, "chunk_00003.wav", { status: "done", text: "Первый студент", source: "mic", speaker: "mic_0", speakerRatio: 0.9 });
-    stmts.chunkInsert.run(id, 4, 13000, 17000, "chunk_00004.wav", { status: "done", text: "Второй студент", source: "mic", speaker: "mic_1", speakerRatio: 0.88 });
+    stmts.chunkInsert.run(id, 3, 9000, 13000, "chunk_00003.wav", {
+      status: "done",
+      text: "Первый студент",
+      source: "mic",
+      speaker: "mic_0",
+      speakerRatio: 0.9,
+    });
+    stmts.chunkInsert.run(id, 4, 13000, 17000, "chunk_00004.wav", {
+      status: "done",
+      text: "Второй студент",
+      source: "mic",
+      speaker: "mic_1",
+      speakerRatio: 0.88,
+    });
     return { lecture, id };
   }
 
@@ -167,7 +211,13 @@ describe("диаризация — подписи в экспорте", () => {
     const { stmts } = req("../server/db");
     const info = stmts.lectureInsert.run("Один голос", 16000, 1);
     const id = Number(info.lastInsertRowid);
-    stmts.chunkInsert.run(id, 1, 0, 5000, "sys_00001.wav", { status: "done", text: "Лектор", source: "sys", speaker: "sys_0", speakerRatio: 0.99 });
+    stmts.chunkInsert.run(id, 1, 0, 5000, "sys_00001.wav", {
+      status: "done",
+      text: "Лектор",
+      source: "sys",
+      speaker: "sys_0",
+      speakerRatio: 0.99,
+    });
     expect(d.speakerNames(id, { sys: "Лектор", mic: "Аудитория" })).toEqual({ sys_0: "Лектор" });
   });
 
@@ -186,7 +236,8 @@ describe("диаризация — подписи в экспорте", () => {
     expect(out.body).not.toContain("**Лектор");
     expect(out.body).toContain("Лектор объясняет");
   });
-});describe("диаризация — нормализация номеров кластеров (applySpeakers)", () => {
+});
+describe("диаризация — нормализация номеров кластеров (applySpeakers)", () => {
   /** Сессия с чанками микрофона — как после реальной записи. */
   async function sessionWithChunks() {
     const lecture = await lectureMod();
@@ -194,9 +245,21 @@ describe("диаризация — подписи в экспорте", () => {
     const info = stmts.lectureInsert.run("Нормализация", 16000, 1);
     const id = Number(info.lastInsertRowid);
     // Три чанка: 0-5 с, 5-10 с, 10-15 с (все дорожка микрофона).
-    stmts.chunkInsert.run(id, 1, 0, 5000, "chunk_00001.wav", { status: "done", text: "раз", source: "mic" });
-    stmts.chunkInsert.run(id, 2, 5000, 10000, "chunk_00002.wav", { status: "done", text: "два", source: "mic" });
-    stmts.chunkInsert.run(id, 3, 10000, 15000, "chunk_00003.wav", { status: "done", text: "три", source: "mic" });
+    stmts.chunkInsert.run(id, 1, 0, 5000, "chunk_00001.wav", {
+      status: "done",
+      text: "раз",
+      source: "mic",
+    });
+    stmts.chunkInsert.run(id, 2, 5000, 10000, "chunk_00002.wav", {
+      status: "done",
+      text: "два",
+      source: "mic",
+    });
+    stmts.chunkInsert.run(id, 3, 10000, 15000, "chunk_00003.wav", {
+      status: "done",
+      text: "три",
+      source: "mic",
+    });
     return { lecture, stmts, id };
   }
 
@@ -223,7 +286,11 @@ describe("диаризация — подписи в экспорте", () => {
   it("дорожки нумеруются независимо: эфир и микрофон не смешиваются", async () => {
     const d = await diarizeMod();
     const { stmts, id } = await sessionWithChunks();
-    stmts.chunkInsert.run(id, 4, 0, 5000, "sys_00004.wav", { status: "done", text: "лектор", source: "sys" });
+    stmts.chunkInsert.run(id, 4, 0, 5000, "sys_00004.wav", {
+      status: "done",
+      text: "лектор",
+      source: "sys",
+    });
     const speakers = d.applySpeakers(id, {
       mic: [{ start: 0, end: 15, speaker: 2 }],
       sys: [{ start: 0, end: 5, speaker: 9 }],
@@ -238,7 +305,10 @@ describe("диаризация — подписи в экспорте", () => {
     const d = await diarizeMod();
     const { stmts, id } = await sessionWithChunks();
     d.applySpeakers(id, {
-      mic: [{ start: 0, end: 3, speaker: 0 }, { start: 3, end: 5, speaker: 1 }],
+      mic: [
+        { start: 0, end: 3, speaker: 0 },
+        { start: 3, end: 5, speaker: 1 },
+      ],
     });
     const first = stmts.chunkFor.all(id).find((c: any) => c.start_ms === 0);
     // 3 с из 5 — 0.6: уверенно, «?» не появится.
