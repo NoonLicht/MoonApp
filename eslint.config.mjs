@@ -64,6 +64,7 @@ export default tseslint.config(
       "server/db.js",
       "server/logBundle.js",
       "server/myspace-vault.js",
+      "server/convertEngine.js",
     ],
   },
 

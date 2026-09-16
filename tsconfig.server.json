@@ -39,6 +39,7 @@
     "server/ts/ruNlp.ts",
     "server/ts/db.ts",
     "server/ts/logBundle.ts",
-    "server/ts/myspace-vault.ts"
+    "server/ts/myspace-vault.ts",
+    "server/ts/convertEngine.ts"
   ]
 }
