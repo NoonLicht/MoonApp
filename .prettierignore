@@ -1,0 +1,20 @@
+# Не форматируем то, что мы не пишем руками или что генерируется сборкой.
+node_modules
+dist
+package-lock.json
+
+# Вендорные бинарники/исходники внешних проектов.
+server/vendor
+server/engines
+
+# Рабочий каталог приложения (пользовательские данные).
+storage
+
+# Файлы, которые генерирует tsc из server/ts/*.ts (в git не хранятся).
+server/monitor.js
+server/monitor.js.map
+
+# Артефакты отчётов.
+coverage
+typecheck-out.txt
+vitest-out.txt

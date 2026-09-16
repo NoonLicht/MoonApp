@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Video, Download, AlertTriangle, RefreshCw, Check, Image, Subtitles, Terminal, ClipboardPaste, X, SlidersHorizontal } from "lucide-react";
 import { Glass, Btn, Badge, Select, SectionHead, EmptyHint, ProgressBar, Field } from "../components/ui";
-import { useContextMenu, copyToClipboard } from "../components/ContextMenu";
+import { useContextMenu } from "../components/ContextMenu";
 import ToolbarMenu from "../components/ToolbarMenu";
 import { usePageToolbar } from "../components/Toolbar";
 import { useI18n } from "../i18n";

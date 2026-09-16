@@ -524,9 +524,9 @@ export default function SettingsPage() {
   const g = s.general, ap = s.appearance, pf = s.performance, win = s.window;
   const chat = s.chat, store = s.store, conv = s.converter;
   // РќРѕРІС‹Рµ СЃРµРєС†РёРё РјРѕРіСѓС‚ РѕС‚СЃСѓС‚СЃС‚РІРѕРІР°С‚СЊ РІ СЃС‚Р°СЂС‹С… settings.json вЂ” РґР°С‘Рј С„РѕР»Р±СЌРєРё.
-  const video = s.video || {}, musicS = s.music || {}, books = s.books || {}, mysp = s.myspace || {};
+  const video = s.video || {}, musicS = s.music || {}, mysp = s.myspace || {};
   const moviesCfg = s.movies || {};
-  const media = s.media, voice = s.voice || {}, arch = s.archiver || {}, mon = s.monitor;
+  const media = s.media, voice = s.voice || {}, mon = s.monitor;
   const comp = s.compressor || {}, sb = s.sitebak || {};
   // Настройки лектория: часть живёт в панелях страницы лекций (модель, конспект,
   // говорящие), здесь — язык Whisper, промпт, потоки и тайминги VAD.

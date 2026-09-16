@@ -161,8 +161,6 @@ export default function GraphView({ data, onNodeClick, onClose }: Props) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     const dpr = window.devicePixelRatio || 1;
     if (dpr > 1) ctx.scale(dpr, dpr);
-    const cssW = canvas.width / dpr;
-    const cssH = canvas.height / dpr;
     ctx.translate(off.x, off.y);
     ctx.scale(sc, sc);
     ctx.strokeStyle = "rgba(255,255,255,0.22)";

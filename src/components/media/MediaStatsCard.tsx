@@ -1,4 +1,3 @@
-import React from "react";
 import { Clock, Film, Star, Check, Trash2 } from "lucide-react";
 import { Glass, Btn, EmptyHint } from "../ui";
 import { useI18n } from "../../i18n";

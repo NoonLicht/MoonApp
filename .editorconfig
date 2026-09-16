@@ -1,0 +1,16 @@
+# Единые правила форматирования для всех редакторов (VS Code, WebStorm и т.п.).
+# Prettier читает этот файл тоже, поэтому настройки не расходятся.
+root = true
+
+# В репозитории git настроен с core.autocrlf=true: в рабочей копии на Windows
+# файлы лежат с CRLF, в истории — с LF. Поэтому end_of_line = crlf.
+[*]
+charset = utf-8
+end_of_line = crlf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 2
+
+[*.md]
+trim_trailing_whitespace = false

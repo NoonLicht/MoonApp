@@ -15,7 +15,6 @@ import type {
   LhmStatus, MonitorSnapshot, ProviderInfo, ProxyStatus, VlessProfile,
   ProxyCoreStatus, ProxyNode, ProxySubscription, ProxyPageRule, ProxyLatency, ProxyInstallStatus, ProxyPingStatus,
   FlibustaBook, BookGenre, BooksFeedResult, BookDownloadResult,
-  GraphData, GraphNode, GraphEdge,
   MusicTrack, MusicSearchResult, MusicFormats, MusicDownloadStart, MusicJobStatus,
   VaultFile, VaultFileContent, VaultSearchResult, VaultTag, VaultBacklink,
   TaskItem, TaskCreatePayload,

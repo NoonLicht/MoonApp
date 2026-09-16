@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { api } from "../api/client";
 import type { TaskItem, TaskChecklistItem, TaskCreatePayload, TaskStatus, TaskPriority } from "../api/types";
 import {
-  Check, Plus, X, Clock, Calendar, Tag, Trash2, Play, Pause,
-  GripVertical, Filter, Search, List, Columns, CalendarDays,
-  Focus, Star, TrendingUp, ChevronDown, ChevronRight,
-  AlertCircle, ArrowUp, ArrowDown
+  Check, Plus, X, Calendar, Trash2, Play, Pause,
+  Search, List, Columns, CalendarDays,
+  Focus, Star, TrendingUp, ChevronRight,
+  AlertCircle, ArrowUp
 } from "lucide-react";
 
 /* ---------- types ---------- */
@@ -92,7 +92,6 @@ const TasksPanel: React.FC<TasksPanelProps> = ({ onOpenNote, vaultFiles }) => {
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [focusMode, setFocusMode] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [filterStatus, setFilterStatus] = useState<string>("");
   const [filterTag, setFilterTag] = useState<string>("");
   const [filterProject, setFilterProject] = useState<string>("");
   const [filterSmart, setFilterSmart] = useState<SmartFilter>("all");
@@ -111,7 +110,6 @@ const TasksPanel: React.FC<TasksPanelProps> = ({ onOpenNote, vaultFiles }) => {
   const [sortConfig, setSortConfig] = useState<SortConfig>({ key: "created_at", direction: "desc" });
   const [calendarMonth, setCalendarMonth] = useState(() => new Date().getMonth());
   const [calendarYear, setCalendarYear] = useState(() => new Date().getFullYear());
-  const [checkedDays, setCheckedDays] = useState<Set<string>>(new Set());
 /* ----- load tasks on mount ----- */
   useEffect(() => {
     api.tasksList().then(setTasks).catch(() => {});
@@ -158,10 +156,6 @@ const TasksPanel: React.FC<TasksPanelProps> = ({ onOpenNote, vaultFiles }) => {
       );
     }
 
-    if (filterStatus) {
-      list = list.filter(t => t.status === filterStatus);
-    }
-
     if (filterTag) {
       list = list.filter(t => t.tags?.includes(filterTag));
     }
@@ -200,7 +194,7 @@ const TasksPanel: React.FC<TasksPanelProps> = ({ onOpenNote, vaultFiles }) => {
     }
 
     return list;
-  }, [tasks, searchQuery, filterStatus, filterTag, filterProject, filterSmart, focusMode]);
+  }, [tasks, searchQuery, filterTag, filterProject, filterSmart, focusMode]);
 
   const sortedTasks = useMemo(() => {
     const list = [...filteredTasks];
@@ -587,7 +581,6 @@ const TasksPanel: React.FC<TasksPanelProps> = ({ onOpenNote, vaultFiles }) => {
   const saveDetail = useCallback(async () => {
     if (!selectedTask) return;
     try {
-      const tags = detailTags.split(",").map(s => s.trim()).filter(Boolean);
       const data: Partial<TaskItem> = {
         title: detailTitle,
         description: detailDescription,

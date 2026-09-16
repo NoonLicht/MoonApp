@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import {
-  Settings2, Send, Plus, Trash2, KeyRound, StopCircle,
-  Copy, Volume2, Paperclip, Mic, FileText, Square, Pencil, Pin, PinOff,
-  Download, Swords, Search, Code2, ChevronDown, Check, X, Sparkles,
+  Settings2, Send, Plus, Trash2,
+  Paperclip, Mic, FileText, Square, Pencil, Pin, PinOff,
+  Download, Swords, Search, Code2, ChevronDown, Check, X,
   PanelLeftClose, PanelLeftOpen, SlidersHorizontal,
 } from "lucide-react";
-import { Glass, Btn, IconBtn, Field, Select, EmptyHint } from "../components/ui";
+import { Glass, Btn, IconBtn, Field, Select } from "../components/ui";
 import ToolbarMenu from "../components/ToolbarMenu";
 import { usePageToolbar, usePageActive, usePageBusy } from "../components/Toolbar";
 import { useI18n } from "../i18n";
@@ -55,7 +55,6 @@ export default function AiChatPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
-  const [keyPrompt, setKeyPrompt] = useState<ProviderInfo | null>(null);
   const [models, setModels] = useState<string[]>([]);
   const [systemPrompt, setSystemPrompt] = useState(SYSTEM_PROMPT_PRESETS[0].prompt);
   const [sysPreset, setSysPreset] = useState(SYSTEM_PROMPT_PRESETS[0].name);
@@ -259,24 +258,11 @@ export default function AiChatPage() {
     else exportChatJson(activeConv, messages);
   };
 
-  /* ── ключи API ── */
-  const saveKey = async () => {
-    if (!keyPrompt) return;
-    try {
-      await api.saveKey(keyPrompt.id, input);
-      setKeyPrompt(null);
-      setInput("");
-      api.getProviders().then(setProviders).catch(() => {});
-    } catch (e) {
-      setMessages((m) => [...m, { role: "assistant", text: `⚠ ${(e as Error).message}` }]);
-    }
-  };
-
   /* ── отправка ── */
   const send = async (overrideText?: string) => {
     const txt = (overrideText ?? input).trim();
     if (!txt || sending || !activeId) return;
-    if (!provider?.configured) { setKeyPrompt(provider ?? null); return; }
+    if (!provider?.configured) return;
     const imgUrls = attachments.filter((a) => a.type === "image").map((a) => a.data);
     const textFiles = attachments.filter((a) => a.type === "text");
     const attachmentText = textFiles.length
@@ -336,7 +322,7 @@ export default function AiChatPage() {
   /* ── Arena: прогон вопроса через две модели (persist=false — ответы в базу не пишутся) ── */
   const runArena = async (questionText: string) => {
     if (!activeId || sending || !arena.a || !arena.b) return;
-    if (!provider?.configured) { setKeyPrompt(provider ?? null); return; }
+    if (!provider?.configured) return;
     setSending(true);
     setArena((a) => ({ ...a, aText: { text: "", done: false }, bText: { text: "", done: false } }));
     try {
@@ -385,7 +371,7 @@ export default function AiChatPage() {
   /* Прогон с явно заданными моделями (используется при авто-регенерации до установки стейта) */
   const runArenaWith = async (ma: string, mb: string, questionText: string) => {
     if (!activeId || sending || !ma || !mb) return;
-    if (!provider?.configured) { setKeyPrompt(provider ?? null); return; }
+    if (!provider?.configured) return;
     setSending(true);
     setArena((a) => ({ ...a, aText: { text: "", done: false }, bText: { text: "", done: false } }));
     try {

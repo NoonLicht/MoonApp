@@ -29,6 +29,11 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      # Юнит-тесты (vitest) — гейт перед сборкой релиза. Компиляция серверных
+      # TS-исходников уже выполнена шагом Typecheck (tsc -p tsconfig.server.json).
+      - name: Unit tests
+        run: npm test
+
       # Движки «из коробки»: yt-dlp.exe и sing-box.exe кладутся в server/vendor,
       # оттуда попадают в resources/app.asar.unpacked (build.asarUnpack).
       - name: Fetch bundled engine binaries

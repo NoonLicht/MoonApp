@@ -1,7 +1,7 @@
 import React from "react";
 import {
   MousePointer2, Hand, StickyNote, Type, Shapes, Spline, Frame,
-  ListTodo, PenLine, Smile, LayoutGrid, ChevronUp,
+  ListTodo, PenLine, Smile, LayoutGrid,
 } from "lucide-react";
 import type { CanvasTool, ShapeKind, ConnectorStyle, LineDash } from "./types";
 

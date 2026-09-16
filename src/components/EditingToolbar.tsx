@@ -3,14 +3,14 @@ import {
   Undo2, Redo2, Paintbrush, Eraser,
   Heading1, Heading2, Heading3,
   Bold, Italic, Strikethrough, Underline,
-  Highlighter, ClipboardPaste, Paperclip, Table2, CheckSquare,
-  Quote, MessageSquare, Code2, Link, Minus, FunctionSquare,
+  ClipboardPaste, Paperclip, Table2, CheckSquare,
+  Quote, MessageSquare, Code2, Link, Minus,
   List, ListOrdered, ListChecks, IndentIncrease, IndentDecrease,
   AlignLeft, AlignCenter, AlignRight, AlignJustify,
   Type, Pen, ChevronDown,
   Copy, Scissors, Clipboard, ClipboardList,
   WrapText, ArrowUpFromLine, ArrowDownToLine,
-  Hash, TextQuote, Braces, Sigma, Variable, FileText,
+  Hash, Braces, Sigma, Variable, FileText,
 } from "lucide-react";
 
 /* ─── Types ─── */

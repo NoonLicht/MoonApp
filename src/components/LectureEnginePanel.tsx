@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Cpu, Download, Trash2, X, RefreshCw, Check, AlertTriangle, Zap, FolderOpen, FileText,
 } from "lucide-react";

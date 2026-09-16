@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import {
-  Clapperboard, Search, RefreshCw, Film, Tv, LayoutGrid, ListVideo,
-  BarChart3, KeyRound, AlertTriangle, Settings2, Zap, Trash2, Save, ExternalLink,
+  Search, RefreshCw, Film, Tv, LayoutGrid, ListVideo,
+  BarChart3, KeyRound, AlertTriangle, Zap, Trash2, Save, ExternalLink,
 } from "lucide-react";
 import { Glass, Btn, Badge, SectionHead, EmptyHint, Field } from "../components/ui";
 import { usePageToolbar } from "../components/Toolbar";

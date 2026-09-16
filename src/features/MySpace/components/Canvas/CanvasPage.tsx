@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ReactFlow, ReactFlowProvider, Background, BackgroundVariant,
   useNodesState, useEdgesState, useReactFlow, type Node, type Edge, type Connection,
@@ -10,7 +10,7 @@ import { nodeTypes, edgeTypes } from "./nodes";
 import HolstHeader from "./HolstHeader";
 import HolstToolbar, { type LineProps } from "./HolstToolbar";
 import TemplatesModal from "./HolstTemplates";
-import { EMPTY_CONNECTOR, STICKY_COLORS, type CanvasTool, type ShapeKind } from "./types";
+import { STICKY_COLORS, type CanvasTool, type ShapeKind } from "./types";
 import { TEMPLATES } from "./templates";
 import "./canvas.css";
 import "@xyflow/react/dist/style.css";

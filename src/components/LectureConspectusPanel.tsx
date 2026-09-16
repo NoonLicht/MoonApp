@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Sparkles, X, RefreshCw, Check, AlertTriangle, Zap, Hand, ListChecks } from "lucide-react";
 import { Btn } from "./ui";
 import { useI18n } from "../i18n";

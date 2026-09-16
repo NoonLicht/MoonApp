@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { Star, Calendar, Film, Tv, RefreshCw, AlertTriangle, ChevronLeft, ChevronRight, ArrowRight } from "lucide-react";
 import { Glass, Btn, Badge, EmptyHint } from "../ui";
 import { useI18n } from "../../i18n";

@@ -125,8 +125,6 @@ export default function CompressorPage() {
     if (["nvenc", "qsv", "amf", "nvencc", "qsvencc", "vceencc"].includes(e.id)) return true;
     return e.codec === p.codec;
   });
-  const isEngineAvail = (id: string) => (!hw ? true : !!hw.methods[id]);
-
   // Скоростная шкала активного движка.
   const speedScale = (() => {
     if (["nvenc"].includes(p.engine)) return ["P1", "P2", "P3", "P4", "P5", "P6", "P7"];

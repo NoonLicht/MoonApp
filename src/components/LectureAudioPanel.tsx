@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { X, Mic, Volume2, RefreshCw, Waves, AlertTriangle, Check } from "lucide-react";
 import { Btn, Badge } from "./ui";
 import { useI18n } from "../i18n";

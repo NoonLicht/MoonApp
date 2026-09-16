@@ -1,5 +1,9 @@
 "use strict";
 
+// window/document живут внутри page.evaluate() — это код, который
+// Playwright выполняет в контексте страницы, а не в Node.
+/* global window, document */
+
 /**
  * Web Archive Engine: краулер + упаковщик офлайн-копий сайтов в .sitebak.
  *
@@ -269,6 +273,9 @@ function isTextAsset(ext) {
 
 async function runCrawl(job) {
   const o = job.opts;
+  // Параметры упаковки берём из настроек: раньше cfg был только в startCrawl,
+  // из-за чего стадия pack падала с ReferenceError.
+  const cfg = settings.get("sitebak") || {};
   const ua = o.userAgent || undefined;
   const workDir = path.join(DIRS.sitebak, job.id);
   fs.mkdirSync(workDir, { recursive: true });

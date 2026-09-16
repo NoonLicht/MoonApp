@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
-import { Repeat, Upload, Download, Check, AlertTriangle, RefreshCw, FileUp, Terminal } from "lucide-react";
+import { Repeat, Check, AlertTriangle, RefreshCw, FileUp, Terminal } from "lucide-react";
 import { Glass, Btn, Badge, Field, Select, SectionHead, EmptyHint, ProgressBar } from "../components/ui";
 import { useI18n } from "../i18n";
 import { api } from "../api/client";
 import type { ConvertTools, ConvertResult, ConvertInstallStatus } from "../api/types";
 
-type TFn = (key: string, params?: Record<string, unknown>) => string;
+
 
 const CAT_TONE: Record<string, string> = { video: "amber", audio: "violet", image: "teal" };
 

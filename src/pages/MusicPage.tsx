@@ -1,16 +1,16 @@
-import React, { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Music2, Download, Search, RefreshCw, AlertTriangle, Check,
   FileAudio, Disc3, Headphones, Copy, Link2, SlidersHorizontal,
 } from "lucide-react";
-import { Glass, Btn, Badge, Select, SectionHead, EmptyHint, ProgressBar, Field } from "../components/ui";
+import { Glass, Btn, Badge, Select, SectionHead, EmptyHint, Field } from "../components/ui";
 import { useContextMenu, copyToClipboard } from "../components/ContextMenu";
 import ToolbarMenu from "../components/ToolbarMenu";
 import { usePageToolbar } from "../components/Toolbar";
 import { useI18n } from "../i18n";
 import { api } from "../api/client";
 import MediaLoading from "../components/MediaLoading";
-import type { MusicTrack, MusicFormats, MusicJobStatus } from "../api/types";
+import type { MusicTrack, MusicFormats } from "../api/types";
 
 // Форматы/качества для выбора в тулбаре
 const QUALITY_OPTIONS = ["320 kbps", "256 kbps", "192 kbps", "128 kbps", "FLAC", "OPUS", "WAV", "AAC"];

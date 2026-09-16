@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useMemo } from "react";
+import { createContext, useContext, useMemo } from "react";
 import type { ReactNode } from "react";
 import en from "./i18n/en.json";
 import ru from "./i18n/ru.json";

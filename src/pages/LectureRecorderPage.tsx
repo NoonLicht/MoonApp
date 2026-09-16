@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Mic, Square, Download, Sparkles, Trash2, ChevronDown, Cpu, Radio, Save, Play, Pause, Settings2,
   Volume2, SearchCheck, AlertTriangle, Users,
@@ -6,7 +6,7 @@ import {
 import { api } from "../api/client";
 import type {
   LectureChunk, LectureCreateResult, LectureEngineStatus, LectureSession, LectureStatus,
-  LectureAudioSettings, LectureVadMetrics, LectureRecheckState, LectureConspectusState,
+  LectureAudioSettings, LectureConspectusState,
   LectureConspectusSettings, LectureDiarizeState,
 } from "../api/client";
 import { useI18n } from "../i18n";

@@ -1,4 +1,3 @@
-import React from "react";
 import { LayoutTemplate, X } from "lucide-react";
 import { TEMPLATES } from "./templates";
 

@@ -1,4 +1,3 @@
-import React from "react";
 import { Play, Zap, ExternalLink, Tv } from "lucide-react";
 import { Btn } from "../ui";
 import { useI18n } from "../../i18n";

@@ -1,7 +1,7 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
-  X, Star, Play, Bookmark, BookmarkCheck, Check, Eye, Clock, Calendar,
+  X, Star, Play, BookmarkCheck, Check, Eye, Clock, Calendar,
   AlertTriangle, Users, Image as ImageIcon, Film, Tv, Layers,
   ChevronLeft, ChevronRight, RotateCcw,
 } from "lucide-react";

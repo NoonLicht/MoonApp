@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Undo2, Redo2, LayoutTemplate, Download, ZoomIn, ZoomOut, Maximize2, Crosshair,
 } from "lucide-react";

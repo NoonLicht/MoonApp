@@ -773,7 +773,6 @@ function SensorSections({ data }: { data: MonitorSnapshot }) {
   }
 
   function getDriveName(key: string): string {
-    const hwId = key.replace(/^\//, "/");
     for (const [id, name] of driveNames) {
       if (id.includes(key.replace(/^\//, "")) || key.includes(id)) return name;
     }

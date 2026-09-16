@@ -1,0 +1,16 @@
+# Нормализация переводов строк для всех, кто клонирует репозиторий.
+# В истории git файлы хранятся с LF; рабочая копия — по правилам ОС.
+# Дополняет core.autocrlf=true, чтобы поведение было явным и одинаковым в CI.
+* text=auto
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.exe binary
+*.dll binary
+*.zip binary
+*.7z binary
+
+package-lock.json -diff linguist-generated

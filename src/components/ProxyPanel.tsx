@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Shield, Power, PowerOff, RefreshCw, X, Download, Clipboard, Activity, Plus, Trash2, Server, Undo2 } from "lucide-react";
 import { Btn, Field, ProgressBar } from "../components/ui";
 import { useI18n } from "../i18n";

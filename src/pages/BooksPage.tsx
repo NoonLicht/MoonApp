@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Search, BookOpen, Download, RefreshCw, Loader2, Star, AlertCircle, Copy, ChevronsDown } from "lucide-react";
 import { Glass, Btn, Badge, SectionHead, EmptyHint } from "../components/ui";
 import { useContextMenu, copyToClipboard } from "../components/ContextMenu";
@@ -115,10 +115,6 @@ export default function BooksPage() {
       : [...selectedGenres, href];
     setSelectedGenres(next);
     doLoad("new", 0, genreParam(next), titleQ, authorQ);
-  };
-  const clearGenres = () => {
-    setSelectedGenres([]);
-    doLoad("new", 0, "", titleQ, authorQ);
   };
 
   const handleDownload = async (bid: number, fmt: string) => {

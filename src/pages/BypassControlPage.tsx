@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Shield, ShieldOff, Play, Square, RefreshCw, CloudDownload, Terminal, FolderEdit, Star,
 } from "lucide-react";
