@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { IconBtn } from "./ui";
+import { IconBtn } from "@/components/ui";
 
 export interface ToolbarMenuProps {
   /** Иконка кнопки-триггера. */

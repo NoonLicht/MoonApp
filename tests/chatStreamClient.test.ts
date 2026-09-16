@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import fs from "fs";
 import path from "path";
-import { streamChatSend, streamArena } from "../src/api/client";
+import { streamChatSend, streamArena } from "@/api/client";
 
 /**
  * Единый приём SSE-потока в src/api/client.ts (postStream).

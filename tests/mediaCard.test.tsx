@@ -5,13 +5,13 @@ import fs from "fs";
 import os from "os";
 import path from "path";
 
-import { I18nProvider } from "../src/i18n";
-import MediaCard, { posterOf } from "../src/components/media/MediaCard";
-import type { MediaCardProps } from "../src/components/media/MediaCard";
-import type { MediaSummary } from "../src/api/types";
+import { I18nProvider } from "@/app/i18n";
+import MediaCard, { posterOf } from "@/pages/movies/parts/MediaCard";
+import type { MediaCardProps } from "@/pages/movies/parts/MediaCard";
+import type { MediaSummary } from "@/api/types";
 
 /**
- * Общая карточка тайтла TMDB (src/components/media/MediaCard.tsx).
+ * Общая карточка тайтла TMDB (src/pages/movies/parts/MediaCard.tsx).
  *
  * До фазы 1 разметку `mv-card` держали четыре места: локальный MediaCard в
  * каталоге, полный список подборки (MediaBrowse), «Похожие» в карточке тайтла
@@ -103,10 +103,10 @@ describe("MediaCard: бейджи и содержимое", () => {
 describe("контракт: общая разметка карточки вместо четырёх копий", () => {
   /** Кто рисует карточки тайтлов: каталог, подборка, «Похожие», поиск. */
   const consumers = [
-    "components/media/MediaCatalog.tsx",
-    "components/media/MediaBrowse.tsx",
-    "components/media/MediaDetailModal.tsx",
-    "pages/MoviesPage.tsx",
+    "pages/movies/parts/MediaCatalog.tsx",
+    "pages/movies/parts/MediaBrowse.tsx",
+    "pages/movies/parts/MediaDetailModal.tsx",
+    "pages/movies/MoviesPage.tsx",
   ];
 
   it("разметка mv-card-art живёт только в MediaCard", () => {
@@ -116,7 +116,9 @@ describe("контракт: общая разметка карточки вме�
       );
     }
     // В каталоге есть отдельная плитка «Все» — это не карточка тайтла.
-    expect(read("components/media/MediaCard.tsx")).toContain('className="mv-card-art tone-violet"');
+    expect(read("pages/movies/parts/MediaCard.tsx")).toContain(
+      'className="mv-card-art tone-violet"',
+    );
   });
 
   it("каждый список использует общий MediaCard, а не свой компонент", () => {
@@ -137,12 +139,12 @@ describe("контракт: общая разметка карточки вме�
 
   it("флаги включены там, где карточка раньше была подробнее", () => {
     // В подборке был рейтинг, в каталоге — плашка «Фильм»/«Сериал».
-    expect(read("components/media/MediaBrowse.tsx")).toContain("showScore");
-    expect(read("components/media/MediaCatalog.tsx")).toContain("showKind");
+    expect(read("pages/movies/parts/MediaBrowse.tsx")).toContain("showScore");
+    expect(read("pages/movies/parts/MediaCatalog.tsx")).toContain("showKind");
   });
 
   it("скелеты загрузки остались у списка, а не переехали в MediaCard", () => {
-    expect(read("components/media/MediaBrowse.tsx")).toContain("mv-card is-skeleton");
-    expect(read("components/media/MediaCard.tsx")).not.toContain("is-skeleton");
+    expect(read("pages/movies/parts/MediaBrowse.tsx")).toContain("mv-card is-skeleton");
+    expect(read("pages/movies/parts/MediaCard.tsx")).not.toContain("is-skeleton");
   });
 });

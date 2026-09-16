@@ -1,9 +1,16 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import path from "path";
 
 export default defineConfig({
   plugins: [react()],
   base: "./",
+  resolve: {
+    // Alias "@/..." -> src/ — единый способ импорта внутри фронтенда
+    // (те же paths в tsconfig.json). Доменные папки можно переносить
+    // без пересчёта количества "../".
+    alias: { "@": path.resolve(__dirname, "src") },
+  },
   build: {
     outDir: "dist",
     emptyOutDir: true,

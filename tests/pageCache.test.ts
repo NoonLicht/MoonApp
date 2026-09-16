@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { evictPages, touchPage, samePages, KEEP_ALIVE_DEFAULT_LIMIT } from "../src/utils/pageCache";
+import { evictPages, touchPage, samePages, KEEP_ALIVE_DEFAULT_LIMIT } from "@/lib/pageCache";
 
 type P = "a" | "b" | "c" | "d" | "e" | "f" | "g";
 

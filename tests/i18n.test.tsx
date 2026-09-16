@@ -1,7 +1,7 @@
 import React from "react";
 import { describe, it, expect } from "vitest";
 import { renderToString } from "react-dom/server";
-import { I18nProvider, useI18n, LANGS } from "../src/i18n";
+import { I18nProvider, useI18n, LANGS } from "@/app/i18n";
 
 function Probe() {
   const { t } = useI18n();

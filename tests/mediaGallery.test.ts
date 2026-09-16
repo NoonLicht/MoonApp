@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { stepIndex } from "../src/components/media/gallery";
+import { stepIndex } from "@/pages/movies/lib/gallery";
 
 /**
  * Перемотка галереи в лайтбоксе (кнопки «‹ ›» и стрелки клавиатуры):

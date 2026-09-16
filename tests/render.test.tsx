@@ -2,21 +2,21 @@ import { describe, it, expect } from "vitest";
 import React from "react";
 import { renderToString } from "react-dom/server";
 
-import App from "../src/App";
-import StorePage from "../src/pages/StorePage";
-import MyspacePage from "../src/pages/MyspacePage";
-import AiChatPage from "../src/pages/AiChatPage";
-import ConverterPage from "../src/pages/ConverterPage";
-import VideoPage from "../src/pages/VideoPage";
-import MusicPage from "../src/pages/MusicPage";
-import BooksPage from "../src/pages/BooksPage";
-import AudiobookTTSPage from "../src/pages/AudiobookTTSPage";
-import ArchiverPage from "../src/pages/ArchiverPage";
-import SettingsPage from "../src/pages/SettingsPage";
-import MonitorPage from "../src/pages/MonitorPage";
-import LectureRecorderPage from "../src/pages/LectureRecorderPage";
-import BypassControlPage from "../src/pages/BypassControlPage";
-import CompressorPage from "../src/pages/CompressorPage";
+import App from "@/app/App";
+import StorePage from "@/pages/store/StorePage";
+import MyspacePage from "@/pages/myspace/MyspacePage";
+import AiChatPage from "@/pages/ai-chat/AiChatPage";
+import ConverterPage from "@/pages/convert/ConverterPage";
+import VideoPage from "@/pages/video/VideoPage";
+import MusicPage from "@/pages/music/MusicPage";
+import BooksPage from "@/pages/books/BooksPage";
+import AudiobookTTSPage from "@/pages/voice/AudiobookTTSPage";
+import ArchiverPage from "@/pages/archiver/ArchiverPage";
+import SettingsPage from "@/pages/settings/SettingsPage";
+import MonitorPage from "@/pages/monitor/MonitorPage";
+import LectureRecorderPage from "@/pages/lecture/LectureRecorderPage";
+import BypassControlPage from "@/pages/bypass/BypassControlPage";
+import CompressorPage from "@/pages/compressor/CompressorPage";
 
 describe("render smoke (ловит runtime-краши рендера)", () => {
   it("App (Store по умолчанию) рендерится без ошибок", () => {

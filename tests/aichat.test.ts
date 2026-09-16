@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import hljs from "highlight.js";
-import { parseSegments, highlightCode } from "../src/pages/AiChat/chatUtils";
+import { parseSegments, highlightCode } from "@/pages/ai-chat/lib/chatUtils";
 
 /**
  * Аудит B16: во время стриминга история перепарсивалась на каждый токен.

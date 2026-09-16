@@ -65,8 +65,8 @@ import type {
   TorrentAddResult,
   TorrentStatus,
   SettingsImportResult,
-} from "./types";
-import { logEvent, getCurrentPage } from "../utils/telemetry";
+} from "@/api/types";
+import { logEvent, getCurrentPage } from "@/lib/telemetry";
 
 const BASE = ""; // тот же origin: фронт и API вместе (Vite-proxy или раздача Express)
 

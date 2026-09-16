@@ -23,7 +23,10 @@ import path from "path";
  * переносам ломала бы тест при каждом `npm run format`.
  */
 const root = path.resolve(__dirname, "..");
-const myspaceSrc = fs.readFileSync(path.join(root, "src", "pages", "MyspacePage.tsx"), "utf8");
+const myspaceSrc = fs.readFileSync(
+  path.join(root, "src", "pages", "myspace", "MyspacePage.tsx"),
+  "utf8",
+);
 const notesCss = fs.readFileSync(path.join(root, "src", "styles", "notes.css"), "utf8");
 
 /** Убирает все пробельные символы — сравнение перестаёт зависеть от форматирования. */
@@ -43,7 +46,7 @@ const jsx = squash(myspaceSrc);
 describe("Полноэкранный граф: слой и геометрия панели", () => {
   it("рендерится порталом в #overlay-root", () => {
     expect(jsx).toContain('import{createPortal}from"react-dom";');
-    expect(jsx).toContain('import{getOverlayRoot}from"../components/overlayHost";');
+    expect(jsx).toContain('import{getOverlayRoot}from"@/components/overlayHost";');
     expect(jsx).toContain("createPortal(");
     expect(jsx).toContain("getOverlayRoot()??document.body");
   });

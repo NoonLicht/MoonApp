@@ -7,8 +7,8 @@ import {
   mediaKey,
   mergePage,
   nextPage,
-} from "../src/components/media/browsePaging";
-import type { MediaSummary } from "../src/api/types";
+} from "@/pages/movies/lib/browsePaging";
+import type { MediaSummary } from "@/api/types";
 
 /** Минимальная карточка: для склейки страниц важен только kind+id. */
 function item(kind: MediaSummary["kind"], id: number): MediaSummary {

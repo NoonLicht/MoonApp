@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import React from "react";
 import { renderToString } from "react-dom/server";
 
-import AudiobookTTSPage from "../src/pages/AudiobookTTSPage";
+import AudiobookTTSPage from "@/pages/voice/AudiobookTTSPage";
 
 /** Достаём атрибуты всех <input type="range"> из SSR-разметки страницы. */
 function ranges(html: string): string[] {

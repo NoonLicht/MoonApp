@@ -5,7 +5,7 @@ import path from "path";
 /**
  * Единый источник типов API-клиента (src/api/client.ts).
  *
- * Регресс: в client.ts лежал блок `import type { ... } from "./types"` (67 имён),
+ * Регресс: в client.ts лежал блок `import type { ... } from "@/api/types"` (67 имён),
  * а сразу за ним — второй блок `export type { ... }` с теми же 57 именами. Список
  * приходилось править в двух местах, и они уже разошлись (10 имён были только в
  * импорте). Ни один потребитель этот реэкспорт не использовал: все берут типы
@@ -17,31 +17,31 @@ import path from "path";
  */
 const src = fs.readFileSync(path.resolve(__dirname, "..", "src", "api", "client.ts"), "utf8");
 const compressorPage = fs.readFileSync(
-  path.resolve(__dirname, "..", "src", "pages", "CompressorPage.tsx"),
+  path.resolve(__dirname, "..", "src", "pages", "compressor", "CompressorPage.tsx"),
   "utf8",
 );
 const audioPanel = fs.readFileSync(
-  path.resolve(__dirname, "..", "src", "components", "LectureAudioPanel.tsx"),
+  path.resolve(__dirname, "..", "src", "pages", "lecture", "parts", "LectureAudioPanel.tsx"),
   "utf8",
 );
 
-/** Имена из `import type { ... } from "./types";` */
+/** Имена из `import type { ... } from "@/api/types";` */
 function importedTypeNames(): string[] {
-  const match = src.match(/import type \{([\s\S]*?)\} from "\.\/types";/);
-  if (!match) throw new Error("в client.ts не найден импорт типов из ./types");
+  const match = src.match(/import type \{([\s\S]*?)\} from "@\/api\/types";/);
+  if (!match) throw new Error("в client.ts не найден импорт типов из @/api/types");
   return match[1]
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean);
 }
 
-/** Тело файла без самого импорта типов из ./types */
+/** Тело файла без самого импорта типов из @/api/types */
 function bodyWithoutTypeImport(): string {
-  return src.replace(/import type \{[\s\S]*?\} from "\.\/types";/, "");
+  return src.replace(/import type \{[\s\S]*?\} from "@\/api\/types";/, "");
 }
 
-describe("src/api/client.ts — типы берутся из ./types один раз", () => {
-  it("импортирует типы из ./types", () => {
+describe("src/api/client.ts — типы берутся из @/api/types один раз", () => {
+  it("импортирует типы из @/api/types", () => {
     expect(importedTypeNames().length).toBeGreaterThan(10);
   });
 

@@ -1,6 +1,6 @@
 import React from "react";
 import { Music2, Video } from "lucide-react";
-import { Glass, ProgressBar } from "./ui";
+import { Glass, ProgressBar } from "@/components/ui";
 
 /**
  * Единый блок загрузки для страниц «Видео» и «Музыка».

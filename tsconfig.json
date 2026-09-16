@@ -12,7 +12,12 @@
     "esModuleInterop": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "noEmit": true
+    "noEmit": true,
+    // Внутренние импорты фронтенда идут через alias "@/..." (см. resolve.alias
+    // в vite.config.js). Так файлы можно свободно переносить между папками,
+    // не пересчитывая "../../".
+    "baseUrl": ".",
+    "paths": { "@/*": ["src/*"] }
   },
   "include": ["src/**/*.ts", "src/**/*.tsx"]
 }

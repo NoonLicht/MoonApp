@@ -20,7 +20,7 @@ import path from "path";
  */
 const LANG_CODES = ["en", "ru", "es", "fr", "zh", "ar"];
 const settingsSrc = fs.readFileSync(
-  path.resolve(__dirname, "..", "src", "pages", "SettingsPage.tsx"),
+  path.resolve(__dirname, "..", "src", "pages", "settings", "SettingsPage.tsx"),
   "utf8",
 );
 const dicts = Object.fromEntries(

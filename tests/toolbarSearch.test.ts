@@ -2,9 +2,9 @@ import { describe, it, expect } from "vitest";
 import React from "react";
 import { renderToString } from "react-dom/server";
 
-import ToolbarSearch from "../src/components/ToolbarSearch";
-import { NARROW_TOOLBAR_QUERY, collapseToolbarSearch } from "../src/components/toolbarSearchMode";
-import { BREAKPOINTS } from "../src/utils/useMediaQuery";
+import ToolbarSearch from "@/components/ToolbarSearch";
+import { NARROW_TOOLBAR_QUERY, collapseToolbarSearch } from "@/components/toolbarSearchMode";
+import { BREAKPOINTS } from "@/lib/useMediaQuery";
 
 /**
  * Адаптив поиска в верхней панели управления: пока окно широкое — поле стоит

@@ -105,17 +105,17 @@ describe("контракт: единый модуль скачивания вм�
     // VideoPage, AudiobookTTSPage и ConverterPage остались с ручной сборкой
     // <a download> после первой унификации и переведены на общий хелпер.
     const pages = [
-      "SettingsPage.tsx",
-      "LectureRecorderPage.tsx",
-      "MusicPage.tsx",
-      "VideoPage.tsx",
-      "AudiobookTTSPage.tsx",
-      "ConverterPage.tsx",
+      "settings/SettingsPage.tsx",
+      "lecture/LectureRecorderPage.tsx",
+      "music/MusicPage.tsx",
+      "video/VideoPage.tsx",
+      "voice/AudiobookTTSPage.tsx",
+      "convert/ConverterPage.tsx",
     ];
     for (const name of pages) {
       const src = readFile("src", "pages", name);
       expect(src, `${name}: вернулась локальная копия`).not.toMatch(/function saveBlob\s*\(/);
-      expect(src, `${name}: нет импорта общего хелпера`).toContain('from "../utils/download"');
+      expect(src, `${name}: нет импорта общего хелпера`).toContain('from "@/lib/download"');
       // Ручная сборка <a download> — это и есть копия тела saveBlob.
       expect(src, `${name}: ручное скачивание вернулось`).not.toMatch(
         /document\.createElement\("a"\)/,
@@ -135,7 +135,7 @@ describe("контракт: единый модуль скачивания вм�
     walk(path.join(root, "src"));
     const owners = files.filter((f) => /export function saveBlob/.test(fs.readFileSync(f, "utf8")));
     expect(owners.map((f) => path.relative(root, f))).toEqual([
-      path.join("src", "utils", "download.ts"),
+      path.join("src", "lib", "download.ts"),
     ]);
   });
 

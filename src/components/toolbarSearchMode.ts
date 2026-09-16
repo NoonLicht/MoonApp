@@ -1,4 +1,4 @@
-import { BREAKPOINTS } from "../utils/useMediaQuery";
+import { BREAKPOINTS } from "@/lib/useMediaQuery";
 
 /**
  * Чистая логика сворачивания поиска в верхней панели.
@@ -7,7 +7,7 @@ import { BREAKPOINTS } from "../utils/useMediaQuery";
  * поведение можно было проверить тестом: в тестах нет ни DOM, ни matchMedia.
  *
  * Имя файла намеренно не совпадает с ToolbarSearch.tsx даже в регистре: на
- * Windows файловая система не различает регистр, и импорт "./toolbarSearch"
+ * Windows файловая система не различает регистр, и импорт "@/components/toolbarSearch"
  * разрешался в сам компонент (циклический импорт → пустой default export).
  */
 

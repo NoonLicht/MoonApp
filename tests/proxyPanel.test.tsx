@@ -5,8 +5,8 @@ import fs from "fs";
 import os from "os";
 import path from "path";
 
-import { I18nProvider } from "../src/i18n";
-import ProxyPanel from "../src/components/ProxyPanel";
+import { I18nProvider } from "@/app/i18n";
+import ProxyPanel from "@/pages/bypass/parts/ProxyPanel";
 
 beforeAll(() => {
   process.env.MOONAPP_STORAGE = fs.mkdtempSync(path.join(os.tmpdir(), "moonapp-pp-"));

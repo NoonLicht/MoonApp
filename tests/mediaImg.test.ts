@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { imgUrl, imgCssUrl } from "../src/components/media/mediaImg";
+import { imgUrl, imgCssUrl } from "@/pages/movies/lib/mediaImg";
 
 /**
  * Картинки TMDB должны уходить через прокси приложения (/api/movies/image):

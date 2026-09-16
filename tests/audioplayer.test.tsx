@@ -1,8 +1,8 @@
 import React from "react";
 import { describe, it, expect } from "vitest";
 import { renderToString } from "react-dom/server";
-import { I18nProvider } from "../src/i18n";
-import AudioPlayer from "../src/components/AudioPlayer";
+import { I18nProvider } from "@/app/i18n";
+import AudioPlayer from "@/pages/voice/parts/AudioPlayer";
 
 describe("AudioPlayer", () => {
   it("рендерится в SSR и содержит кнопки перемотки/скорости", () => {

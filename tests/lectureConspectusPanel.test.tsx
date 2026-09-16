@@ -2,14 +2,14 @@ import { describe, it, expect } from "vitest";
 import React from "react";
 import { renderToString } from "react-dom/server";
 
-import LectureConspectusPanel from "../src/components/LectureConspectusPanel";
-import { I18nProvider } from "../src/i18n";
-import en from "../src/i18n/en.json";
-import ru from "../src/i18n/ru.json";
-import es from "../src/i18n/es.json";
-import fr from "../src/i18n/fr.json";
-import zh from "../src/i18n/zh.json";
-import ar from "../src/i18n/ar.json";
+import LectureConspectusPanel from "@/pages/lecture/parts/LectureConspectusPanel";
+import { I18nProvider } from "@/app/i18n";
+import en from "@/i18n/en.json";
+import ru from "@/i18n/ru.json";
+import es from "@/i18n/es.json";
+import fr from "@/i18n/fr.json";
+import zh from "@/i18n/zh.json";
+import ar from "@/i18n/ar.json";
 
 /**
  * Блок «Нарезка расшифровки».

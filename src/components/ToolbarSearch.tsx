@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Search, X } from "lucide-react";
-import { IconBtn } from "./ui";
-import { useMediaQuery } from "../utils/useMediaQuery";
-import { NARROW_TOOLBAR_QUERY } from "./toolbarSearchMode";
+import { IconBtn } from "@/components/ui";
+import { useMediaQuery } from "@/lib/useMediaQuery";
+import { NARROW_TOOLBAR_QUERY } from "@/components/toolbarSearchMode";
 
 export interface ToolbarSearchProps {
   value: string;

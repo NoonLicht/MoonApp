@@ -3,7 +3,7 @@ import express from "express";
 import path from "path";
 import fs from "fs";
 import os from "os";
-import { imgUrl } from "../src/components/media/mediaImg";
+import { imgUrl } from "@/pages/movies/lib/mediaImg";
 
 /**
  * /api/movies/image — прокси картинок TMDB (server/routes/movies.js + server/tmdb.js).

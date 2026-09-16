@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { collectUiSettings, applyUiSettings } from "../src/utils/uiSettings";
+import { collectUiSettings, applyUiSettings } from "@/lib/uiSettings";
 
 /**
  * Локальные настройки страниц (localStorage) — часть экспорта/импорта настроек.

@@ -5,10 +5,10 @@ import fs from "fs";
 import os from "os";
 import path from "path";
 
-import { I18nProvider } from "../src/i18n";
-import SourcesList from "../src/components/media/SourcesList";
-import MediaBrowse from "../src/components/media/MediaBrowse";
-import type { MediaProvider, MediaProviders } from "../src/api/types";
+import { I18nProvider } from "@/app/i18n";
+import SourcesList from "@/pages/movies/parts/SourcesList";
+import MediaBrowse from "@/pages/movies/parts/MediaBrowse";
+import type { MediaProvider, MediaProviders } from "@/api/types";
 
 beforeAll(() => {
   process.env.MOONAPP_STORAGE = fs.mkdtempSync(path.join(os.tmpdir(), "moonapp-mediaui-"));

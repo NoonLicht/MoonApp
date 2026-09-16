@@ -2,14 +2,14 @@ import { describe, it, expect } from "vitest";
 import React from "react";
 import { renderToString } from "react-dom/server";
 
-import App from "../src/App";
-import { PAGES, startPageOptions } from "../src/navigation";
-import en from "../src/i18n/en.json";
-import ru from "../src/i18n/ru.json";
-import es from "../src/i18n/es.json";
-import fr from "../src/i18n/fr.json";
-import zh from "../src/i18n/zh.json";
-import ar from "../src/i18n/ar.json";
+import App from "@/app/App";
+import { PAGES, startPageOptions } from "@/app/navigation";
+import en from "@/i18n/en.json";
+import ru from "@/i18n/ru.json";
+import es from "@/i18n/es.json";
+import fr from "@/i18n/fr.json";
+import zh from "@/i18n/zh.json";
+import ar from "@/i18n/ar.json";
 
 /**
  * Страницы приложения описаны в одном месте (src/navigation.ts). Тест следит за
