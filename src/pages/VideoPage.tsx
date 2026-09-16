@@ -27,6 +27,7 @@ import ToolbarMenu from "../components/ToolbarMenu";
 import { usePageToolbar } from "../components/Toolbar";
 import { useI18n } from "../i18n";
 import { api } from "../api/client";
+import { saveBlob } from "../utils/download";
 import MediaLoading from "../components/MediaLoading";
 import type { VideoInfo, YtdlpInstallStatus } from "../api/types";
 
@@ -169,13 +170,8 @@ export default function VideoPage() {
   const dlFile = async (k: string) => {
     try {
       const { blob, name } = await api.downloadVideoFile(k);
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = name;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+      // Единый путь скачивания (src/utils/download.ts), см. MusicPage.
+      saveBlob(blob, name);
     } catch (e) {
       setSt("error");
       setErr((e as Error).message);

@@ -19,6 +19,7 @@ import ToolbarMenu from "../components/ToolbarMenu";
 import { usePageToolbar } from "../components/Toolbar";
 import { useI18n } from "../i18n";
 import { api } from "../api/client";
+import { saveBlob } from "../utils/download";
 import MediaLoading from "../components/MediaLoading";
 import type { MusicTrack, MusicFormats } from "../api/types";
 
@@ -190,13 +191,10 @@ export default function MusicPage() {
   const dlFile = async (key: string) => {
     try {
       const { blob, name } = await api.musicDownloadFile(key);
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = name;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+      // Единый путь скачивания (src/utils/download.ts): вручную собранный
+      // <a download> разъезжался с копиями на других страницах, в том числе по
+      // задержке отзыва blob-URL.
+      saveBlob(blob, name);
     } catch (e) {
       setDownloadState("error");
       setDownloadError((e as Error).message);

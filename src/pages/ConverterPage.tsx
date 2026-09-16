@@ -12,6 +12,7 @@ import {
 } from "../components/ui";
 import { useI18n } from "../i18n";
 import { api } from "../api/client";
+import { saveBlob } from "../utils/download";
 import type { ConvertTools, ConvertResult, ConvertInstallStatus } from "../api/types";
 
 const CAT_TONE: Record<string, string> = { video: "amber", audio: "violet", image: "teal" };
@@ -127,14 +128,8 @@ export default function ConverterPage() {
     if (!result) return;
     try {
       const { blob, name } = await api.downloadConvert(result.key);
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = name;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 4000);
+      // Единый путь скачивания (src/utils/download.ts), см. MusicPage.
+      saveBlob(blob, name);
     } catch (err) {
       setError((err as Error).message || String(err));
       setState("error");

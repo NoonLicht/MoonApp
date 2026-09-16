@@ -87,10 +87,25 @@ describe("контракт: единый модуль скачивания вм�
   });
 
   it("страницы не держат своих копий saveBlob", () => {
-    for (const name of ["SettingsPage.tsx", "LectureRecorderPage.tsx"]) {
+    // SettingsPage/LectureRecorderPage — исходные две копии (0.2.x); MusicPage,
+    // VideoPage, AudiobookTTSPage и ConverterPage остались с ручной сборкой
+    // <a download> после первой унификации и переведены на общий хелпер.
+    const pages = [
+      "SettingsPage.tsx",
+      "LectureRecorderPage.tsx",
+      "MusicPage.tsx",
+      "VideoPage.tsx",
+      "AudiobookTTSPage.tsx",
+      "ConverterPage.tsx",
+    ];
+    for (const name of pages) {
       const src = readFile("src", "pages", name);
       expect(src, `${name}: вернулась локальная копия`).not.toMatch(/function saveBlob\s*\(/);
       expect(src, `${name}: нет импорта общего хелпера`).toContain('from "../utils/download"');
+      // Ручная сборка <a download> — это и есть копия тела saveBlob.
+      expect(src, `${name}: ручное скачивание вернулось`).not.toMatch(
+        /document\.createElement\("a"\)/,
+      );
     }
   });
 

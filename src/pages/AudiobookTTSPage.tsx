@@ -39,6 +39,7 @@ import { useI18n } from "../i18n";
 import { useContextMenu, copyToClipboard } from "../components/ContextMenu";
 import { usePageBusy } from "../components/Toolbar";
 import { api } from "../api/client";
+import { saveBlob } from "../utils/download";
 import type {
   TtsProfile,
   TtsPreset,
@@ -634,10 +635,10 @@ export default function AudiobookTTSPage() {
     if (!job?.done) return;
     try {
       const { blob, name } = await api.ttsDownload(job.id);
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = name;
-      a.click();
+      // Единый путь скачивания (src/utils/download.ts): здесь копия была урезана
+      // до a.click() без appendChild — на части сборок Chromium такой клик
+      // игнорировался.
+      saveBlob(blob, name);
     } catch {
       /* уже показано в UI */
     }
