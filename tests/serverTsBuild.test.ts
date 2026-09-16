@@ -32,8 +32,9 @@ describe("перевод серверных модулей на TS", () => {
   it.each(sources)("для server/ts/%s.ts собран артефакт server/%s.js", (name) => {
     const artifact = path.join(root, "server", `${name}.js`);
     expect(fs.existsSync(artifact), `нет собранного ${artifact}`).toBe(true);
-    // Артефакт не пустой: tsc отдаёт exports.* только для непустых модулей.
-    expect(fs.readFileSync(artifact, "utf8")).toContain("exports.");
+    // Артефакт не пустой: обычные модули отдают `exports.*`, а модули с
+    // `export =` (CommonJS-совместимые, как logger) — `module.exports = ...`.
+    expect(fs.readFileSync(artifact, "utf8")).toMatch(/exports\.|module\.exports/);
   });
 
   it.each(sources)("артефакт server/%s.js не хранится в git", (name) => {

@@ -39,8 +39,9 @@ desktop.ini
 
 # ---------- Компилируемый JS из TypeScript-исходников ----------
 # server/ts/*.ts -> server/*.js (собирается через tsc; исходники в server/ts/)
-# ВАЖНО: .d.ts-декларации для JS-модулей (logger/settings) в репозитории:
-# без них typecheck в CI падает с TS2307 (Cannot find module './settings').
+# ВАЖНО: .d.ts-декларация для JS-модуля settings остаётся в репозитории:
+# без неё typecheck в CI падает с TS2307 (Cannot find module './settings').
+server/logger.js
 server/monitor.js
 server/jobStore.js
 server/fsUtil.js
