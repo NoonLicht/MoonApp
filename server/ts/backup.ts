@@ -33,9 +33,10 @@ export function createBackup(trigger = "manual"): string | null {
   try {
     // Persist дебаунсится — перед копированием сбрасываем буфер на диск.
     try {
-      // db — legacy .js и грузится лениво: бэкап не должен падать без него.
+      // db грузится лениво (require, а не import): бэкап не должен падать без него.
+      // typeof import(...) даёт типы из server/ts/db.ts без рантайм-загрузки модуля.
       // eslint-disable-next-line @typescript-eslint/no-require-imports
-      (require("./db") as { flush(): void }).flush();
+      (require("./db") as typeof import("./db")).flush();
     } catch {
       /* noop */
     }

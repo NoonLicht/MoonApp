@@ -12,14 +12,15 @@
  */
 import logger from "./logger";
 
+// db переведён на TS (server/ts/db.ts) — обычный импорт с типами.
+import { stmts } from "./db";
+
 /**
- * db.js и proxyCore.js ещё не переведены на TS, а импорт .js без объявлений
- * ломает strict-сборку. Поэтому здесь require с минимальным контрактом — как
- * в server/ts/config.ts для electron/storagePath. После их перевода на TS
- * строки заменятся обычными импортами.
+ * proxyCore.js ещё не переведён на TS, а импорт .js без объявлений ломает
+ * strict-сборку. Поэтому здесь require с минимальным контрактом — как
+ * в server/ts/config.ts для electron/storagePath. После его перевода на TS
+ * строка заменится обычным импортом.
  */
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const { stmts } = require("./db") as { stmts: Record<string, any> };
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const proxyCore = require("./proxyCore") as {
   fetchText(url: string): Promise<string>;
@@ -94,18 +95,21 @@ export async function refreshSubscription(
   id: number,
   { fetchText }: { fetchText?: (url: string) => Promise<string> } = {},
 ): Promise<RefreshResult> {
-  const sub: SubscriptionRow | undefined = stmts.psubGet.get(id);
+  // Стор (server/ts/db.ts) отдаёт строки как Row — доменных типов он не знает,
+  // поэтому схему строк объявляем здесь приведением.
+  const sub = stmts.psubGet.get(id) as SubscriptionRow | undefined;
   if (!sub) throw new Error("subscription_not_found");
   const doFetch = fetchText || proxyCore.fetchText;
 
   // Запоминаем выбор и «удалённые» узлы, чтобы восстановить состояние после
   // перезаписи: выбор не должен слетать, а скрытые узлы не должны всплывать.
-  const prevSelected: { config_json: string } | null =
-    stmts.pnodeForSub.all(id).find((n: { is_selected?: number }) => n.is_selected) || null;
+  const prevSelected =
+    (stmts.pnodeForSub.all(id).find((n) => !!n.is_selected) as
+      { config_json: string } | undefined) || null;
   const hiddenKeys = new Set(
     stmts.pnodeExcludedForSub
       .all(id)
-      .map((n: { config_json: string }) => nodeKeyFromJson(n.config_json))
+      .map((n) => nodeKeyFromJson(String(n.config_json)))
       .filter(Boolean),
   );
 
@@ -178,9 +182,7 @@ export async function syncDueSubscriptions({
   fetchText?: (url: string) => Promise<string>;
   nowMs?: number;
 } = {}): Promise<SyncOutcome[]> {
-  const subs: SubscriptionRow[] = stmts.psubAll
-    .all()
-    .filter((s: SubscriptionRow) => !!s.auto_update_enabled);
+  const subs = stmts.psubAll.all().filter((s) => !!s.auto_update_enabled) as SubscriptionRow[];
   const out: SyncOutcome[] = [];
   for (const s of subs) {
     if (!force && !isStale(s, maxAgeMs, nowMs)) continue;

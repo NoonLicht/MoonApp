@@ -13,14 +13,15 @@
  * командой `npm run compile:server`.
  */
 import logger from "./logger";
+// db переведён на TS (server/ts/db.ts), поэтому здесь обычный импорт с типами:
+// stmts не Record<string, any>, а конкретные методы с Row из стора.
+import { stmts } from "./db";
 
 /**
- * db.js и proxyCore.js ещё не переведены на TS: импорт .js без объявлений
- * ломает strict-сборку, поэтому здесь require с минимальным контрактом
- * (как в server/ts/config.ts). После их перевода — обычные импорты.
+ * proxyCore.js ещё не переведён на TS: импорт .js без объявлений ломает
+ * strict-сборку, поэтому здесь require с минимальным контрактом
+ * (как в server/ts/config.ts). После его перевода — обычный импорт.
  */
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const { stmts } = require("./db") as { stmts: Record<string, any> };
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const proxyCore = require("./proxyCore") as {
   pingNode(
@@ -147,7 +148,9 @@ export function selectNodes({
   ids?: Array<number | string> | null;
   onlyMissing?: boolean;
 } = {}): NodeRow[] {
-  let rows: NodeRow[] = stmts.pnodeAll.all().filter((n: NodeRow) => !n.is_excluded);
+  // Стор (server/ts/db.ts) отдаёт строки как Row — доменных типов он не знает,
+  // поэтому схему строки узла объявляем здесь приведением.
+  let rows = stmts.pnodeAll.all().filter((n) => !n.is_excluded) as NodeRow[];
   if (subId != null) rows = rows.filter((n) => n.sub_id === Number(subId));
   if (Array.isArray(ids)) {
     // Пустой массив = «ничего не выбрано» (а не «все узлы»): иначе случайная
