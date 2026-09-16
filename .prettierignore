@@ -31,6 +31,7 @@ server/proxyPing.js
 server/winget.js
 server/notes-fs.js
 server/torrent.js
+server/ruNlp.js
 
 # Артефакты отчётов.
 coverage

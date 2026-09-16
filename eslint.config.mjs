@@ -60,6 +60,7 @@ export default tseslint.config(
       "server/winget.js",
       "server/notes-fs.js",
       "server/torrent.js",
+      "server/ruNlp.js",
     ],
   },
 

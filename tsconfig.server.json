@@ -35,6 +35,7 @@
     "server/ts/proxyPing.ts",
     "server/ts/winget.ts",
     "server/ts/notes-fs.ts",
-    "server/ts/torrent.ts"
+    "server/ts/torrent.ts",
+    "server/ts/ruNlp.ts"
   ]
 }
