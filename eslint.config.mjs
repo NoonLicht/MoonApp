@@ -44,6 +44,7 @@ export default tseslint.config(
       "server/monitor.js",
       "server/jobStore.js",
       "server/fsUtil.js",
+      "server/download.js",
     ],
   },
 

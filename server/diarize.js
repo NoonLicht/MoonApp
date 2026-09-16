@@ -27,6 +27,7 @@ const { DIRS } = require("./config");
 const { stmts } = require("./db");
 const settings = require("./settings");
 const logger = require("./logger");
+const { downloadToFile } = require("./download");
 
 /* ------------------------- Пути ------------------------- */
 
@@ -65,23 +66,34 @@ const EXE_NAME = "sherpa-onnx-offline-speaker-diarization.exe";
  */
 const PACKAGES = [
   {
-    id: "bin", kind: "archive", sizeMb: 19,
+    id: "bin",
+    kind: "archive",
+    sizeMb: 19,
     url: `${REL}/sherpa-onnx-${TAG}-win-x64-shared-MD-Release-no-tts.tar.bz2`,
-    file: "sherpa-bin.tar.bz2", dir: BIN_DIR,
+    file: "sherpa-bin.tar.bz2",
+    dir: BIN_DIR,
   },
   {
-    id: "seg", kind: "archive", sizeMb: 7,
+    id: "seg",
+    kind: "archive",
+    sizeMb: 7,
     url: `https://github.com/k2-fsa/sherpa-onnx/releases/download/${SEG_TAG}/sherpa-onnx-pyannote-segmentation-3-0.tar.bz2`,
-    file: "sherpa-seg.tar.bz2", dir: SEG_DIR,
+    file: "sherpa-seg.tar.bz2",
+    dir: SEG_DIR,
   },
   {
-    id: "emb", kind: "file", sizeMb: 28,
+    id: "emb",
+    kind: "file",
+    sizeMb: 28,
     url: `https://github.com/k2-fsa/sherpa-onnx/releases/download/${EMB_TAG}/${EMB_FILE}`,
-    file: EMB_FILE, dir: EMB_DIR,
+    file: EMB_FILE,
+    dir: EMB_DIR,
   },
 ];
 
-function cfg() { return settings.get("lecture"); }
+function cfg() {
+  return settings.get("lecture");
+}
 
 /* ------------------------- Поиск установленного ------------------------- */
 
@@ -89,7 +101,11 @@ function cfg() { return settings.get("lecture"); }
 function findFile(dir, re, depth = 4) {
   if (depth < 0) return null;
   let list;
-  try { list = fs.readdirSync(dir, { withFileTypes: true }); } catch { return null; }
+  try {
+    list = fs.readdirSync(dir, { withFileTypes: true });
+  } catch {
+    return null;
+  }
   for (const e of list) {
     const p = path.join(dir, e.name);
     if (e.isDirectory()) {
@@ -100,8 +116,12 @@ function findFile(dir, re, depth = 4) {
   return null;
 }
 
-function binPath() { return findFile(BIN_DIR, new RegExp(`^${EXE_NAME}$`, "i")); }
-function segPath() { return findFile(SEG_DIR, /^model\.onnx$/i); }
+function binPath() {
+  return findFile(BIN_DIR, new RegExp(`^${EXE_NAME}$`, "i"));
+}
+function segPath() {
+  return findFile(SEG_DIR, /^model\.onnx$/i);
+}
 /** Отпечаток голоса: сначала ждём CAM++, иначе — любой .onnx в каталоге. */
 function embPath() {
   return findFile(EMB_DIR, new RegExp(`^${EMB_FILE}$`, "i")) || findFile(EMB_DIR, /\.onnx$/i);
@@ -109,20 +129,44 @@ function embPath() {
 
 /** Что установлено и можно ли запускать диаризацию. */
 function installed() {
-  const bin = binPath(), seg = segPath(), emb = embPath();
+  const bin = binPath(),
+    seg = segPath(),
+    emb = embPath();
   return { bin, seg, emb, ready: !!(bin && seg && emb) };
 }
 /* ------------------------- Задача установки (прогресс в UI) -------------------------
  * Одна задача за раз — как у движка распознавания (whisperEngine): иначе два
  * параллельных скачивания писали бы прогресс в одно место и «дёргали» полоску.
  */
-let task = { kind: null, state: "idle", id: null, progress: 0, phase: "", error: "", received: 0, total: 0, at: 0 };
+let task = {
+  kind: null,
+  state: "idle",
+  id: null,
+  progress: 0,
+  phase: "",
+  error: "",
+  received: 0,
+  total: 0,
+  at: 0,
+};
 let cancelFlag = false;
 
-function taskSnapshot() { return { ...task }; }
+function taskSnapshot() {
+  return { ...task };
+}
 
 function resetTask(kind, id) {
-  task = { kind, state: "working", id, progress: 0, phase: "download", error: "", received: 0, total: 0, at: Date.now() };
+  task = {
+    kind,
+    state: "working",
+    id,
+    progress: 0,
+    phase: "download",
+    error: "",
+    received: 0,
+    total: 0,
+    at: Date.now(),
+  };
 }
 
 function failTask(e) {
@@ -140,34 +184,18 @@ function cancelTask() {
   return taskSnapshot();
 }
 
-/** Скачивание с прогрессом. Диск пишем потоком: пакет ~40 МБ. */
+/** Скачивание с прогрессом (общий модуль server/ts/download.ts). */
 async function downloadTo(url, destFile, timeoutMs = 30 * 60 * 1000) {
-  fs.mkdirSync(path.dirname(destFile), { recursive: true });
-  const res = await fetch(url, {
-    redirect: "follow",
-    headers: { "User-Agent": "MoonApp/1.0 (+sherpa-onnx diarization)" },
-    signal: AbortSignal.timeout(timeoutMs),
+  return downloadToFile(url, destFile, {
+    userAgent: "MoonApp/1.0 (+sherpa-onnx diarization)",
+    timeoutMs,
+    shouldCancel: () => cancelFlag,
+    onProgress: ({ total, received }) => {
+      task.total = total;
+      task.received = received;
+      task.progress = total ? Math.min(100, Math.round((100 * received) / total)) : 0;
+    },
   });
-  if (!res.ok) throw new Error(`download_http_${res.status}`);
-  const total = Number(res.headers.get("content-length") || 0);
-  task.total = total;
-  const ws = fs.createWriteStream(destFile);
-  let got = 0;
-  try {
-    for await (const chunk of res.body) {
-      if (cancelFlag) throw new Error("cancelled");
-      const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
-      got += buf.length;
-      task.received = got;
-      task.progress = total ? Math.min(100, Math.round((100 * got) / total)) : 0;
-      if (!ws.write(buf)) await new Promise((r) => ws.once("drain", r));
-    }
-  } catch (e) {
-    try { ws.destroy(); fs.rmSync(destFile, { force: true }); } catch { /* ignore */ }
-    throw e;
-  }
-  await new Promise((resolve, reject) => ws.end((err) => (err ? reject(err) : resolve())));
-  return got;
 }
 
 /**
@@ -179,7 +207,9 @@ function extractTarBz2(archive, destDir) {
   return new Promise((resolve, reject) => {
     const proc = spawn("tar.exe", ["-xjf", archive, "-C", destDir], { windowsHide: true });
     let err = "";
-    proc.stderr.on("data", (d) => { err += d; });
+    proc.stderr.on("data", (d) => {
+      err += d;
+    });
     proc.on("error", () => reject(new Error("tar_missing")));
     proc.on("close", (code) => {
       // bsdtar пишет в stderr и при успехе (предупреждения о путях) — важен код.
@@ -215,7 +245,7 @@ async function installPackage(pkg) {
     failTask(e);
     throw e;
   }
-}/* ------------------------- Настройки и состояние ------------------------- */
+} /* ------------------------- Настройки и состояние ------------------------- */
 
 /** Настройки диаризации для панели (с границами, чтобы UI не выдумывал их сам). */
 function diarizeSettings() {
@@ -224,7 +254,9 @@ function diarizeSettings() {
     enabled: c.diarizeEnabled === true,
     threshold: Number(c.diarizeThreshold ?? 0.5),
     speakers: Number(c.diarizeSpeakers ?? -1),
-    track: ["auto", "sys", "mic"].includes(String(c.diarizeTrack)) ? String(c.diarizeTrack) : "auto",
+    track: ["auto", "sys", "mic"].includes(String(c.diarizeTrack))
+      ? String(c.diarizeTrack)
+      : "auto",
     limits: { threshold: [0.3, 0.9], speakers: [-1, 12] },
     installed: installed(),
     task: taskSnapshot(),
@@ -240,8 +272,10 @@ function setDiarizeSettings(patch = {}) {
   };
   const c = cfg();
   if (patch.enabled !== undefined) next.diarizeEnabled = !!patch.enabled;
-  if (patch.threshold !== undefined) next.diarizeThreshold = num(patch.threshold, 0.3, 0.9, Number(c.diarizeThreshold ?? 0.5));
-  if (patch.speakers !== undefined) next.diarizeSpeakers = Math.round(num(patch.speakers, -1, 12, -1));
+  if (patch.threshold !== undefined)
+    next.diarizeThreshold = num(patch.threshold, 0.3, 0.9, Number(c.diarizeThreshold ?? 0.5));
+  if (patch.speakers !== undefined)
+    next.diarizeSpeakers = Math.round(num(patch.speakers, -1, 12, -1));
   if (patch.track !== undefined) {
     const t = String(patch.track || "auto");
     if (!["auto", "sys", "mic"].includes(t)) throw new Error("diarize_track_unknown: " + t);
@@ -259,7 +293,9 @@ function setupInfo() {
     ready: inst.ready,
     engine: { bin: inst.bin, seg: inst.seg, emb: inst.emb, version: TAG, dir: SHERPA_DIR },
     packages: PACKAGES.map((p) => ({
-      id: p.id, sizeMb: p.sizeMb, dir: p.dir,
+      id: p.id,
+      sizeMb: p.sizeMb,
+      dir: p.dir,
       installed: p.id === "bin" ? !!inst.bin : p.id === "seg" ? !!inst.seg : !!inst.emb,
     })),
     task: taskSnapshot(),
@@ -279,7 +315,8 @@ function parseSegments(text) {
   for (const raw of String(text || "").split(/\r?\n/)) {
     const m = /^\s*([\d.]+)\s*--\s*([\d.]+)\s+speaker_(\d+)\s*$/.exec(raw);
     if (!m) continue;
-    const start = Number(m[1]), end = Number(m[2]);
+    const start = Number(m[1]),
+      end = Number(m[2]);
     if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) continue;
     out.push({ start, end, speaker: Number(m[3]) });
   }
@@ -305,13 +342,16 @@ function parseProgress(text) {
  */
 function assignSpeakers(chunks, segments) {
   const list = (chunks || []).map((c) => ({
-    id: c.id, start: Number(c.start_ms) || 0, end: Number(c.end_ms) || 0,
+    id: c.id,
+    start: Number(c.start_ms) || 0,
+    end: Number(c.end_ms) || 0,
   }));
   const stats = new Map(); // chunkId → Map(speaker → ms)
   for (const c of list) {
     const per = new Map();
     for (const s of segments || []) {
-      const sMs = s.start * 1000, eMs = s.end * 1000;
+      const sMs = s.start * 1000,
+        eMs = s.end * 1000;
       const overlap = Math.min(c.end, eMs) - Math.max(c.start, sMs);
       if (overlap <= 0) continue;
       per.set(s.speaker, (per.get(s.speaker) || 0) + overlap);
@@ -321,31 +361,46 @@ function assignSpeakers(chunks, segments) {
   const result = new Map();
   for (const [chunkId, per] of stats) {
     if (!per.size) continue;
-    let best = null, bestMs = 0, total = 0;
+    let best = null,
+      bestMs = 0,
+      total = 0;
     for (const [sp, ms] of per) {
       total += ms;
-      if (ms > bestMs) { best = sp; bestMs = ms; }
+      if (ms > bestMs) {
+        best = sp;
+        bestMs = ms;
+      }
     }
     // Уверенность: доля доминирующего говорящего. Ниже 55% — в чанке явно
     // звучали двое, и честнее показать «?», чем приписать реплику не тому.
     result.set(chunkId, { speaker: best, ratio: total ? bestMs / total : 0 });
   }
   return result;
-}/* ------------------------- Прогон ------------------------- */
+} /* ------------------------- Прогон ------------------------- */
 
 const runs = new Map(); // id → состояние прогона
 
 function diarizeState(id) {
-  return runs.get(id) || {
-    state: "idle", progress: 0, phase: "", error: "", tracks: [], speakers: 0, at: 0,
-  };
+  return (
+    runs.get(id) || {
+      state: "idle",
+      progress: 0,
+      phase: "",
+      error: "",
+      tracks: [],
+      speakers: 0,
+      at: 0,
+    }
+  );
 }
 
-function sessionDir(id) { return path.join(DIRS.lectures, String(id)); }
+function sessionDir(id) {
+  return path.join(DIRS.lectures, String(id));
+}
 
 /** Путь к fail-safe WAV дорожки (sys — эфир, mic — микрофон). */
 function rawTrackPath(lec, track) {
-  const name = track === "sys" ? "raw_sys.wav" : (lec.raw_file || "raw.wav");
+  const name = track === "sys" ? "raw_sys.wav" : lec.raw_file || "raw.wav";
   const p = path.join(sessionDir(lec.id), path.basename(name));
   return fs.existsSync(p) ? p : null;
 }
@@ -372,8 +427,11 @@ function runSherpa(exe, wav, onProgress) {
   ];
   return new Promise((resolve, reject) => {
     const proc = spawn(exe, args, { windowsHide: true });
-    let out = "", err = "";
-    proc.stdout.on("data", (d) => { out += d; });
+    let out = "",
+      err = "";
+    proc.stdout.on("data", (d) => {
+      out += d;
+    });
     proc.stderr.on("data", (d) => {
       err += d;
       const p = parseProgress(err.slice(-400));
@@ -410,7 +468,12 @@ function applySpeakers(id, perTrack) {
     const entries = [];
     for (const [chunkId, info] of map) {
       const chunk = mine.find((c) => c.id === chunkId);
-      entries.push({ chunkId, at: Number(chunk?.start_ms) || 0, raw: info.speaker, ratio: info.ratio });
+      entries.push({
+        chunkId,
+        at: Number(chunk?.start_ms) || 0,
+        raw: info.speaker,
+        ratio: info.ratio,
+      });
     }
     entries.sort((a, b) => a.at - b.at);
     const order = new Map(); // сырой номер sherpa → порядковый номер по времени
@@ -448,7 +511,9 @@ function startDiarize(id, opts = {}) {
   const c = cfg();
   const want = opts.track
     ? [String(opts.track)]
-    : (c.diarizeTrack === "auto" ? ["sys", "mic"] : [String(c.diarizeTrack || "sys")]);
+    : c.diarizeTrack === "auto"
+      ? ["sys", "mic"]
+      : [String(c.diarizeTrack || "sys")];
   const tracks = [];
   for (const t of want) {
     const p = rawTrackPath(lec, t);
@@ -457,8 +522,13 @@ function startDiarize(id, opts = {}) {
   if (!tracks.length) throw new Error("raw_audio_missing");
 
   const st = {
-    state: "working", progress: 0, phase: "diarize", error: "",
-    tracks: tracks.map((t) => t.track), speakers: 0, at: Date.now(),
+    state: "working",
+    progress: 0,
+    phase: "diarize",
+    error: "",
+    tracks: tracks.map((t) => t.track),
+    speakers: 0,
+    at: Date.now(),
   };
   runs.set(id, st);
   logger.action("diarize.start", { id, tracks: st.tracks });
@@ -485,7 +555,7 @@ function startDiarize(id, opts = {}) {
     }
   })();
   return diarizeState(id);
-}/* ------------------------- Подписи говорящих ------------------------- */
+} /* ------------------------- Подписи говорящих ------------------------- */
 
 /**
  * Человеческие подписи говорящих для UI и экспорта:
@@ -506,9 +576,7 @@ function speakerNames(id, labels = {}) {
   }
   const out = {};
   for (const [track, count] of counts) {
-    const base = track === "sys"
-      ? (labels.sys || "Lecturer")
-      : (labels.mic || "Audience");
+    const base = track === "sys" ? labels.sys || "Lecturer" : labels.mic || "Audience";
     for (let i = 0; i < count; i++) {
       out[`${track}_${i}`] = count > 1 ? `${base} ${i + 1}` : base;
     }
@@ -523,7 +591,9 @@ function installPackageAsync(id) {
   if (task.state === "working") throw new Error("busy");
   const pkg = PACKAGES.find((p) => p.id === id);
   if (!pkg) throw new Error("unknown_package");
-  void installPackage(pkg).catch(() => { /* состояние уже в task */ });
+  void installPackage(pkg).catch(() => {
+    /* состояние уже в task */
+  });
   return setupInfo();
 }
 
@@ -531,13 +601,17 @@ function installPackageAsync(id) {
 function installAllAsync() {
   if (task.state === "working") throw new Error("busy");
   const inst = installed();
-  const missing = PACKAGES.filter((p) => (
-    p.id === "bin" ? !inst.bin : p.id === "seg" ? !inst.seg : !inst.emb
-  ));
+  const missing = PACKAGES.filter((p) =>
+    p.id === "bin" ? !inst.bin : p.id === "seg" ? !inst.seg : !inst.emb,
+  );
   if (!missing.length) return setupInfo();
   void (async () => {
     for (const pkg of missing) {
-      try { await installPackage(pkg); } catch { return; /* task уже в error */ }
+      try {
+        await installPackage(pkg);
+      } catch {
+        return; /* task уже в error */
+      }
     }
   })();
   return setupInfo();
@@ -553,11 +627,22 @@ function removePackage(id) {
 }
 
 module.exports = {
-  setupInfo, diarizeSettings, setDiarizeSettings,
-  installPackageAsync, installAllAsync, removePackage, cancelTask,
-  startDiarize, diarizeState, speakerNames,
+  setupInfo,
+  diarizeSettings,
+  setDiarizeSettings,
+  installPackageAsync,
+  installAllAsync,
+  removePackage,
+  cancelTask,
+  startDiarize,
+  diarizeState,
+  speakerNames,
   // Чистые функции — покрыты тестами без сети и без бинарника.
-  parseSegments, parseProgress, assignSpeakers,
+  parseSegments,
+  parseProgress,
+  assignSpeakers,
   applySpeakers, // проверяется отдельно: нормализация номеров кластеров sherpa
-  installed, PACKAGES, SHERPA_DIR,
+  installed,
+  PACKAGES,
+  SHERPA_DIR,
 };

@@ -1,9 +1,34 @@
 ﻿import React, { useState, useEffect, useRef } from "react";
 import {
-  Settings2, Palette, Gauge, MonitorCog, MessageSquare,
-  Package, Repeat, Clapperboard, Mic2, Archive, Activity, Database,
-  ShieldCheck, Check, RotateCcw, Video, Music2, BookOpen, User,
-  ChevronDown, KeyRound, Save, RefreshCw, Download, FileDown, FolderOpen, ClipboardCopy, Upload, AudioLines,
+  Settings2,
+  Palette,
+  Gauge,
+  MonitorCog,
+  MessageSquare,
+  Package,
+  Repeat,
+  Clapperboard,
+  Mic2,
+  Archive,
+  Activity,
+  Database,
+  ShieldCheck,
+  Check,
+  RotateCcw,
+  Video,
+  Music2,
+  BookOpen,
+  User,
+  ChevronDown,
+  KeyRound,
+  Save,
+  RefreshCw,
+  Download,
+  FileDown,
+  FolderOpen,
+  ClipboardCopy,
+  Upload,
+  AudioLines,
 } from "lucide-react";
 import { Glass, Btn, Select, SectionHead, Badge, EmptyHint } from "../components/ui";
 import { copyToClipboard } from "../components/ContextMenu";
@@ -15,6 +40,7 @@ import { usePageToolbar } from "../components/Toolbar";
 import { useI18n, LANGS } from "../i18n";
 import { startPageOptions } from "../navigation";
 import { api } from "../api/client";
+import { saveBlob } from "../utils/download";
 
 /**
  * Сервисный словарь бейджей разделов: слово из настроек -> ключ перевода.
@@ -54,21 +80,6 @@ function setAt(obj: any, path: string, value: unknown): any {
 }
 
 /* ---------- Мелкие UI-элементы ---------- */
-/**
- * Сохранить полученный blob под именем файла. Именно blob, а не ссылка на
- * /api-роут: все роуты закрыты токеном (x-moonapp-token), который <a download>
- * передать не может — прямая ссылка вернула бы 401.
- */
-function saveBlob(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
 
 /**
  * Применить импортированные настройки, которые приложение меняет НА ЛЕТУ.
@@ -79,13 +90,20 @@ function saveBlob(blob: Blob, filename: string) {
 function applyLiveSettings(settings: unknown) {
   const s = settings as any;
   if (!s || typeof s !== "object") return;
-  window.dispatchEvent(new CustomEvent("app:theme", { detail: String(s.appearance?.theme || "dark") }));
+  window.dispatchEvent(
+    new CustomEvent("app:theme", { detail: String(s.appearance?.theme || "dark") }),
+  );
   const paths = [
     "general.language",
-    "performance.backgroundBlur", "performance.keepPagesAlive",
-    "performance.keepPagesLimit", "performance.unloadIdleMinutes",
-    "appearance.accent", "appearance.fontSize", "appearance.reduceMotion",
-    "appearance.density", "appearance.opaqueBackground",
+    "performance.backgroundBlur",
+    "performance.keepPagesAlive",
+    "performance.keepPagesLimit",
+    "performance.unloadIdleMinutes",
+    "appearance.accent",
+    "appearance.fontSize",
+    "appearance.reduceMotion",
+    "appearance.density",
+    "appearance.opaqueBackground",
   ];
   for (const path of paths) {
     const value = path.split(".").reduce<any>((a, k) => (a == null ? a : a[k]), s);
@@ -94,7 +112,15 @@ function applyLiveSettings(settings: unknown) {
   }
 }
 
-function Row({ label, hint, children }: { label: React.ReactNode; hint?: React.ReactNode; children: React.ReactNode }) {
+function Row({
+  label,
+  hint,
+  children,
+}: {
+  label: React.ReactNode;
+  hint?: React.ReactNode;
+  children: React.ReactNode;
+}) {
   return (
     <div className="set-row">
       <div className="set-info">
@@ -106,7 +132,17 @@ function Row({ label, hint, children }: { label: React.ReactNode; hint?: React.R
   );
 }
 
-function BoolRow({ label, hint, value, onChange }: { label: string; hint?: string; value: boolean; onChange: (v: boolean) => void }) {
+function BoolRow({
+  label,
+  hint,
+  value,
+  onChange,
+}: {
+  label: string;
+  hint?: string;
+  value: boolean;
+  onChange: (v: boolean) => void;
+}) {
   return (
     <Row label={label} hint={hint}>
       <button
@@ -122,7 +158,21 @@ function BoolRow({ label, hint, value, onChange }: { label: string; hint?: strin
   );
 }
 
-function NumberInput({ value, onChange, min, max, step, suffix }: { value: number | string; onChange: (v: number | "") => void; min?: number; max?: number; step?: number; suffix?: string }) {
+function NumberInput({
+  value,
+  onChange,
+  min,
+  max,
+  step,
+  suffix,
+}: {
+  value: number | string;
+  onChange: (v: number | "") => void;
+  min?: number;
+  max?: number;
+  step?: number;
+  suffix?: string;
+}) {
   return (
     <div className="num-ctrl">
       <input
@@ -139,7 +189,15 @@ function NumberInput({ value, onChange, min, max, step, suffix }: { value: numbe
   );
 }
 
-function TextInput({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
+function TextInput({
+  value,
+  onChange,
+  placeholder,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+}) {
   return (
     <input
       className="text-input"
@@ -151,7 +209,17 @@ function TextInput({ value, onChange, placeholder }: { value: string; onChange: 
 }
 
 /* ---------- Блок секции ---------- */
-function Section({ title, icon: Icon, badge, children }: { title: string; icon: React.ElementType; badge?: string; children: React.ReactNode }) {
+function Section({
+  title,
+  icon: Icon,
+  badge,
+  children,
+}: {
+  title: string;
+  icon: React.ElementType;
+  badge?: string;
+  children: React.ReactNode;
+}) {
   const { t } = useI18n();
   const badgeText = badge ? t(`badge.${BADGE_KEYS[badge] || badge}`) : null;
   const isFuture = badge === "future";
@@ -186,14 +254,21 @@ function Section({ title, icon: Icon, badge, children }: { title: string; icon: 
 function ApiKeysPanel() {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
-  const [providers, setProviders] = useState<{ id: string; label: string; configured: boolean; stub: boolean }[]>([]);
+  const [providers, setProviders] = useState<
+    { id: string; label: string; configured: boolean; stub: boolean }[]
+  >([]);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [savedId, setSavedId] = useState<string | null>(null);
 
   const refresh = () => {
-    api.getProviders().then((list: any) => setProviders(list || [])).catch(() => setProviders([]));
+    api
+      .getProviders()
+      .then((list: any) => setProviders(list || []))
+      .catch(() => setProviders([]));
   };
-  useEffect(() => { if (open) refresh(); }, [open]);
+  useEffect(() => {
+    if (open) refresh();
+  }, [open]);
 
   const save = async (id: string) => {
     const key = (drafts[id] || "").trim();
@@ -204,12 +279,19 @@ function ApiKeysPanel() {
       setSavedId(id);
       refresh();
       setTimeout(() => setSavedId(null), 1500);
-    } catch { /* ошибка сети — бейдж «configured» просто не обновится */ }
+    } catch {
+      /* ошибка сети — бейдж «configured» просто не обновится */
+    }
   };
 
   return (
     <div className="keys-panel">
-      <button type="button" className="keys-toggle" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
+      <button
+        type="button"
+        className="keys-toggle"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+      >
         <KeyRound size={14} />
         <span>{t("chat.keysSection")}</span>
         <ChevronDown size={14} className={`chev ${open ? "is-open" : ""}`} />
@@ -222,7 +304,9 @@ function ApiKeysPanel() {
             <div className="keys-row" key={p.id}>
               <div className="keys-name">
                 <span>{p.label}</span>
-                <Badge tone={p.configured ? "teal" : "neutral"} mono>{p.configured ? t("chat.keyConfigured") : t("chat.keyMissing")}</Badge>
+                <Badge tone={p.configured ? "teal" : "neutral"} mono>
+                  {p.configured ? t("chat.keyConfigured") : t("chat.keyMissing")}
+                </Badge>
               </div>
               <div className="keys-actions">
                 <input
@@ -261,7 +345,10 @@ function TmdbKeyRow() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    api.moviesStatus().then((st) => setConfigured(!!st.hasKey)).catch(() => setConfigured(null));
+    api
+      .moviesStatus()
+      .then((st) => setConfigured(!!st.hasKey))
+      .catch(() => setConfigured(null));
   }, []);
 
   const save = async () => {
@@ -272,7 +359,9 @@ function TmdbKeyRow() {
       await api.moviesSaveKey(key);
       setDraft("");
       setConfigured(true);
-    } finally { setSaving(false); }
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -305,7 +394,10 @@ export default function SettingsPage() {
   const [dirtyMap, setDirtyMap] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    api.getSettings().then(setS).catch(() => setError(t("settings.loadError") || "Не удалось загрузить настройки"));
+    api
+      .getSettings()
+      .then(setS)
+      .catch(() => setError(t("settings.loadError") || "Не удалось загрузить настройки"));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -319,8 +411,12 @@ export default function SettingsPage() {
 
   async function checkUpdatesNow() {
     const br = window.appBridge;
-    if (!br?.checkUpdates) { setUpdStatus(t("settings.updatesDevHint")); return; }
-    setUpdBusy("check"); setUpdStatus(t("settings.updatesChecking"));
+    if (!br?.checkUpdates) {
+      setUpdStatus(t("settings.updatesDevHint"));
+      return;
+    }
+    setUpdBusy("check");
+    setUpdStatus(t("settings.updatesChecking"));
     try {
       const r = await br.checkUpdates();
       if (!r.ok) setUpdStatus(t("settings.updatesError", { msg: r.reason || "" }));
@@ -335,8 +431,12 @@ export default function SettingsPage() {
 
   async function downloadUpdateNow() {
     const br = window.appBridge;
-    if (!br?.downloadUpdate) { setUpdStatus(t("settings.updatesDevHint")); return; }
-    setUpdBusy("download"); setUpdStatus(t("settings.updatesChecking"));
+    if (!br?.downloadUpdate) {
+      setUpdStatus(t("settings.updatesDevHint"));
+      return;
+    }
+    setUpdBusy("download");
+    setUpdStatus(t("settings.updatesChecking"));
     try {
       const r = await br.downloadUpdate();
       if (!r.ok) setUpdStatus(t("settings.updatesError", { msg: r.reason || "" }));
@@ -361,17 +461,21 @@ export default function SettingsPage() {
   const [diagCopied, setDiagCopied] = useState(false);
 
   async function collectLogs() {
-    setDiagBusy(true); setDiagCopied(false); setDiagStatus(t("settings.diagCollecting"));
+    setDiagBusy(true);
+    setDiagCopied(false);
+    setDiagStatus(t("settings.diagCollecting"));
     try {
       // Сначала отправляем снимок локальных настроек интерфейса (localStorage),
       // чтобы он попал в отчёт вместе с настройками страниц из settings.json.
       await snapshotUiSettings();
       const r = await api.collectLogs();
       setDiagFile(r.file);
-      setDiagStatus(t("settings.diagReady", {
-        events: r.events,
-        kb: Math.max(1, Math.round(r.size / 1024)),
-      }));
+      setDiagStatus(
+        t("settings.diagReady", {
+          events: r.events,
+          kb: Math.max(1, Math.round(r.size / 1024)),
+        }),
+      );
     } catch (e) {
       setDiagStatus(t("settings.diagError", { msg: (e as Error).message }));
     } finally {
@@ -397,14 +501,15 @@ export default function SettingsPage() {
    * ключи API. Данные (заметки, задачи, история чатов) не входят — для них есть
    * резервные копии в разделе «Автобэкап».
    */
-  const [ioSecrets, setIoSecrets] = useState(false);   // включать/принимать ключи API
+  const [ioSecrets, setIoSecrets] = useState(false); // включать/принимать ключи API
   const [ioBusy, setIoBusy] = useState<"export" | "import" | null>(null);
   const [ioStatus, setIoStatus] = useState("");
   const [ioTone, setIoTone] = useState<"ok" | "warn" | "err">("ok");
   const ioFileRef = useRef<HTMLInputElement>(null);
 
   async function exportSettings() {
-    setIoBusy("export"); setIoStatus("");
+    setIoBusy("export");
+    setIoStatus("");
     try {
       const { blob, name } = await api.settingsExport({
         includeSecrets: ioSecrets,
@@ -423,10 +528,15 @@ export default function SettingsPage() {
   }
 
   async function importSettingsFile(file: File) {
-    setIoBusy("import"); setIoStatus("");
+    setIoBusy("import");
+    setIoStatus("");
     try {
       let payload: unknown = null;
-      try { payload = JSON.parse(await file.text()); } catch { /* ниже — понятная ошибка */ }
+      try {
+        payload = JSON.parse(await file.text());
+      } catch {
+        /* ниже — понятная ошибка */
+      }
       if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
         throw new Error(t("settingsIO.ioBadFormat"));
       }
@@ -444,9 +554,15 @@ export default function SettingsPage() {
 
       const parts = [t("settingsIO.ioImportDone", { n: r.applied, keys: r.keysApplied })];
       if (r.skipped.length) {
-        parts.push(t("settingsIO.ioImportSkipped", { n: r.skipped.length, list: r.skipped.slice(0, 5).join(", ") }));
+        parts.push(
+          t("settingsIO.ioImportSkipped", {
+            n: r.skipped.length,
+            list: r.skipped.slice(0, 5).join(", "),
+          }),
+        );
       }
-      if (r.keysSkipped.length) parts.push(t("settingsIO.ioKeysSkipped", { n: r.keysSkipped.length }));
+      if (r.keysSkipped.length)
+        parts.push(t("settingsIO.ioKeysSkipped", { n: r.keysSkipped.length }));
       if (r.applied || r.keysApplied) parts.push(t("settingsIO.ioRestartHint"));
       setIoTone(r.skipped.length || r.keysSkipped.length ? "warn" : "ok");
       setIoStatus(parts.join(" "));
@@ -467,7 +583,7 @@ export default function SettingsPage() {
     <Badge tone="teal" mono>
       {dirtyMap.size ? t("settings.unsaved", { n: dirtyMap.size }) : t("settings.saved")}
     </Badge>,
-    [dirtyMap.size, t]
+    [dirtyMap.size, t],
   );
 
   async function persist(next: any, path: string) {
@@ -484,8 +600,14 @@ export default function SettingsPage() {
     try {
       await api.updateSettings(patch);
       setSaved(true);
-      window.dispatchEvent(new CustomEvent("app:setting", { detail: { path, value: getAt(next, path) } }));
-      setDirtyMap((d) => { const n = new Set(d); n.delete(path); return n; });
+      window.dispatchEvent(
+        new CustomEvent("app:setting", { detail: { path, value: getAt(next, path) } }),
+      );
+      setDirtyMap((d) => {
+        const n = new Set(d);
+        n.delete(path);
+        return n;
+      });
       setTimeout(() => setSaved(false), 1500);
     } catch (e) {
       setError((e as Error).message);
@@ -521,17 +643,28 @@ export default function SettingsPage() {
     );
   }
 
-  const g = s.general, ap = s.appearance, pf = s.performance, win = s.window;
-  const chat = s.chat, store = s.store, conv = s.converter;
+  const g = s.general,
+    ap = s.appearance,
+    pf = s.performance,
+    win = s.window;
+  const chat = s.chat,
+    store = s.store,
+    conv = s.converter;
   // Новые секции могут отсутствовать в старых settings.json — даём фолбэки.
-  const video = s.video || {}, musicS = s.music || {}, mysp = s.myspace || {};
+  const video = s.video || {},
+    musicS = s.music || {},
+    mysp = s.myspace || {};
   const moviesCfg = s.movies || {};
-  const media = s.media, voice = s.voice || {}, mon = s.monitor;
-  const comp = s.compressor || {}, sb = s.sitebak || {};
+  const media = s.media,
+    voice = s.voice || {},
+    mon = s.monitor;
+  const comp = s.compressor || {},
+    sb = s.sitebak || {};
   // Настройки лектория: часть живёт в панелях страницы лекций (модель, конспект,
   // говорящие), здесь — язык Whisper, промпт, потоки и тайминги VAD.
   const lec = s.lecture || {};
-  const backup = s.backup, adv = s.advanced;
+  const backup = s.backup,
+    adv = s.advanced;
 
   return (
     <div className="page page-settings">
@@ -546,7 +679,10 @@ export default function SettingsPage() {
       />
 
       {error && (
-        <Glass className="source-placeholder" style={{ borderColor: "var(--coral)", color: "var(--text-secondary)" }}>
+        <Glass
+          className="source-placeholder"
+          style={{ borderColor: "var(--coral)", color: "var(--text-secondary)" }}
+        >
           <span>{error}</span>
         </Glass>
       )}
@@ -572,9 +708,24 @@ export default function SettingsPage() {
               options={startPageOptions(t)}
             />
           </Row>
-          <BoolRow label={t("settings.autoLaunch")} hint={t("settings.autoLaunchHint")} value={g.autoLaunch} onChange={(v) => change("general.autoLaunch", v)} />
-          <BoolRow label={t("settings.minimizeToTray")} hint={t("settings.minimizeToTrayHint")} value={g.minimizeToTray} onChange={(v) => change("general.minimizeToTray", v)} />
-          <BoolRow label={t("settings.closeToTray")} hint={t("settings.closeToTrayHint")} value={!!g.closeToTray} onChange={(v) => change("general.closeToTray", v)} />
+          <BoolRow
+            label={t("settings.autoLaunch")}
+            hint={t("settings.autoLaunchHint")}
+            value={g.autoLaunch}
+            onChange={(v) => change("general.autoLaunch", v)}
+          />
+          <BoolRow
+            label={t("settings.minimizeToTray")}
+            hint={t("settings.minimizeToTrayHint")}
+            value={g.minimizeToTray}
+            onChange={(v) => change("general.minimizeToTray", v)}
+          />
+          <BoolRow
+            label={t("settings.closeToTray")}
+            hint={t("settings.closeToTrayHint")}
+            value={!!g.closeToTray}
+            onChange={(v) => change("general.closeToTray", v)}
+          />
         </Section>
 
         {/* ---- Обновления приложения (док: general.autoUpdate) ----
@@ -586,7 +737,11 @@ export default function SettingsPage() {
             <Badge tone="teal">{t("settings.updatesMandatory")}</Badge>
           </Row>
           <Row label={t("settings.updatesCheckLabel")} hint={t("settings.updatesCheckHint")}>
-            <Btn icon={updBusy === "check" ? RefreshCw : Check} onClick={checkUpdatesNow} disabled={updBusy !== null}>
+            <Btn
+              icon={updBusy === "check" ? RefreshCw : Check}
+              onClick={checkUpdatesNow}
+              disabled={updBusy !== null}
+            >
               {t("settings.updatesCheck")}
             </Btn>
           </Row>
@@ -600,13 +755,22 @@ export default function SettingsPage() {
               {t("settings.updatesDownload")}
             </Btn>
           </Row>
-          {updStatus && <div className="muted-sm" style={{ marginTop: -6 }}>{updStatus}</div>}
+          {updStatus && (
+            <div className="muted-sm" style={{ marginTop: -6 }}>
+              {updStatus}
+            </div>
+          )}
         </Section>
 
         {/* ---- Логи и диагностика: один файл со всеми событиями ---- */}
         <Section title={t("settings.diagTitle")} icon={FileDown} badge="active">
           <Row label={t("settings.diagLabel")} hint={t("settings.diagHint")}>
-            <Btn variant="primary" icon={diagBusy ? RefreshCw : FileDown} onClick={collectLogs} disabled={diagBusy}>
+            <Btn
+              variant="primary"
+              icon={diagBusy ? RefreshCw : FileDown}
+              onClick={collectLogs}
+              disabled={diagBusy}
+            >
               {diagBusy ? t("settings.diagCollecting") : t("settings.diagCollect")}
             </Btn>
           </Row>
@@ -616,13 +780,21 @@ export default function SettingsPage() {
                 <Btn icon={FolderOpen} onClick={revealLogs} title={t("settings.diagRevealTitle")}>
                   {t("settings.diagReveal")}
                 </Btn>
-                <Btn icon={ClipboardCopy} onClick={copyLogsPath} title={t("settings.diagCopyTitle")}>
+                <Btn
+                  icon={ClipboardCopy}
+                  onClick={copyLogsPath}
+                  title={t("settings.diagCopyTitle")}
+                >
                   {diagCopied ? t("settings.diagCopied") : t("settings.diagCopy")}
                 </Btn>
               </div>
             </Row>
           )}
-          {diagStatus && <div className="muted-sm" style={{ marginTop: -6 }}>{diagStatus}</div>}
+          {diagStatus && (
+            <div className="muted-sm" style={{ marginTop: -6 }}>
+              {diagStatus}
+            </div>
+          )}
         </Section>
 
         {/* ---- Внешний вид ---- */}
@@ -639,16 +811,40 @@ export default function SettingsPage() {
             />
           </Row>
           <Row label={t("settings.accent")} hint={t("settings.accentHint")}>
-            <Select value={ap.accent} onChange={(e) => change("appearance.accent", e.target.value)} options={["amber", "violet", "teal", "coral"]} />
+            <Select
+              value={ap.accent}
+              onChange={(e) => change("appearance.accent", e.target.value)}
+              options={["amber", "violet", "teal", "coral"]}
+            />
           </Row>
-          <BoolRow label={t("settings.reduceMotion")} hint={t("settings.reduceMotionHint")} value={ap.reduceMotion} onChange={(v) => change("appearance.reduceMotion", v)} />
+          <BoolRow
+            label={t("settings.reduceMotion")}
+            hint={t("settings.reduceMotionHint")}
+            value={ap.reduceMotion}
+            onChange={(v) => change("appearance.reduceMotion", v)}
+          />
           <Row label={t("settings.fontSize")} hint={t("settings.fontSizeHint")}>
-            <NumberInput value={ap.fontSize} onChange={(v) => change("appearance.fontSize", v)} min={11} max={20} suffix="px" />
+            <NumberInput
+              value={ap.fontSize}
+              onChange={(v) => change("appearance.fontSize", v)}
+              min={11}
+              max={20}
+              suffix="px"
+            />
           </Row>
           <Row label={t("settings.density")} hint={t("settings.densityHint")}>
-            <Select value={ap.density} onChange={(e) => change("appearance.density", e.target.value)} options={["comfortable", "compact"]} />
+            <Select
+              value={ap.density}
+              onChange={(e) => change("appearance.density", e.target.value)}
+              options={["comfortable", "compact"]}
+            />
           </Row>
-          <BoolRow label={t("settings.opaqueBg")} hint={t("settings.opaqueBgHint")} value={!!ap.opaqueBackground} onChange={(v) => change("appearance.opaqueBackground", v)} />
+          <BoolRow
+            label={t("settings.opaqueBg")}
+            hint={t("settings.opaqueBgHint")}
+            value={!!ap.opaqueBackground}
+            onChange={(v) => change("appearance.opaqueBackground", v)}
+          />
         </Section>
 
         {/* ---- Производительность ---- */}
@@ -685,7 +881,9 @@ export default function SettingsPage() {
             <NumberInput
               value={Number(pf.unloadIdleMinutes ?? 5)}
               onChange={(v) => change("performance.unloadIdleMinutes", v)}
-              min={0} max={120} suffix=" min"
+              min={0}
+              max={120}
+              suffix=" min"
             />
           </Row>
         </Section>
@@ -695,48 +893,132 @@ export default function SettingsPage() {
           <Row label={t("settings.width")} hint={t("settings.widthHint")}>
             {/* Нижняя граница — как MIN_WIN_WIDTH в electron/main.js:
                 меньше окно всё равно не станет. */}
-            <NumberInput value={win.width} onChange={(v) => change("window.width", v)} min={720} max={4000} />
+            <NumberInput
+              value={win.width}
+              onChange={(v) => change("window.width", v)}
+              min={720}
+              max={4000}
+            />
           </Row>
           <Row label={t("settings.height")} hint={t("settings.heightHint")}>
-            <NumberInput value={win.height} onChange={(v) => change("window.height", v)} min={520} max={3000} />
+            <NumberInput
+              value={win.height}
+              onChange={(v) => change("window.height", v)}
+              min={520}
+              max={3000}
+            />
           </Row>
-          <BoolRow label={t("settings.rememberSize")} hint={t("settings.rememberSizeHint")} value={win.rememberSize} onChange={(v) => change("window.rememberSize", v)} />
+          <BoolRow
+            label={t("settings.rememberSize")}
+            hint={t("settings.rememberSizeHint")}
+            value={win.rememberSize}
+            onChange={(v) => change("window.rememberSize", v)}
+          />
         </Section>
 
         <Section title={t("settings.storeSection")} icon={Package} badge="active">
           <Row label={t("storeSection.storeDir")} hint={t("storeSection.storeDirHint")}>
-            <TextInput value={store.downloadDir} onChange={(v) => change("store.downloadDir", v)} placeholder="C:\\Users\\You\\Downloads" />
+            <TextInput
+              value={store.downloadDir}
+              onChange={(v) => change("store.downloadDir", v)}
+              placeholder="C:\\Users\\You\\Downloads"
+            />
           </Row>
-          <BoolRow label={t("storeSection.storeAutoIndex")} hint={t("storeSection.storeAutoIndexHint")} value={store.wingetAutoIndex} onChange={(v) => change("store.wingetAutoIndex", v)} />
+          <BoolRow
+            label={t("storeSection.storeAutoIndex")}
+            hint={t("storeSection.storeAutoIndexHint")}
+            value={store.wingetAutoIndex}
+            onChange={(v) => change("store.wingetAutoIndex", v)}
+          />
           <Row label={t("storeSection.storePageSize")} hint={t("storeSection.storePageSizeHint")}>
-            <Select value={String(store.pageSize)} onChange={(e) => change("store.pageSize", Number(e.target.value))} options={["20", "40", "80"]} />
+            <Select
+              value={String(store.pageSize)}
+              onChange={(e) => change("store.pageSize", Number(e.target.value))}
+              options={["20", "40", "80"]}
+            />
           </Row>
         </Section>
 
         {/* ---- Конвертер (док: convert) ---- */}
         <Section title={t("settings.converter")} icon={Repeat} badge="active">
           <Row label={t("convSection.convFfmpeg")} hint={t("convSection.convFfmpegHint")}>
-            <TextInput value={conv.ffmpegPath} onChange={(v) => change("converter.ffmpegPath", v)} placeholder="ffmpeg" />
+            <TextInput
+              value={conv.ffmpegPath}
+              onChange={(v) => change("converter.ffmpegPath", v)}
+              placeholder="ffmpeg"
+            />
           </Row>
-          <BoolRow label={t("convSection.convAudio")} hint={t("convSection.convAudioHint")} value={conv.preserveAudio} onChange={(v) => change("converter.preserveAudio", v)} />
+          <BoolRow
+            label={t("convSection.convAudio")}
+            hint={t("convSection.convAudioHint")}
+            value={conv.preserveAudio}
+            onChange={(v) => change("converter.preserveAudio", v)}
+          />
         </Section>
 
         {/* ---- Сжатие видео (док: compressor) — дефолты матрицы энкодеров ---- */}
         <Section title={t("settings.compressor")} icon={Gauge} badge="active">
           <Row label={t("cmpSettings.cmpEngine")} hint={t("cmpSettings.cmpEngineHint")}>
-            <Select value={String(comp.engine ?? "auto")} onChange={(e) => change("compressor.engine", e.target.value)} options={["auto", "svtav1", "x265", "x264", "aom", "rav1e", "av1an", "nvenc", "qsv", "amf", "nvencc", "qsvencc", "vceencc"]} />
+            <Select
+              value={String(comp.engine ?? "auto")}
+              onChange={(e) => change("compressor.engine", e.target.value)}
+              options={[
+                "auto",
+                "svtav1",
+                "x265",
+                "x264",
+                "aom",
+                "rav1e",
+                "av1an",
+                "nvenc",
+                "qsv",
+                "amf",
+                "nvencc",
+                "qsvencc",
+                "vceencc",
+              ]}
+            />
           </Row>
           <Row label={t("cmpSettings.cmpCodec")} hint={t("cmpSettings.cmpCodecHint")}>
-            <Select value={String(comp.codec ?? "av1")} onChange={(e) => change("compressor.codec", e.target.value)} options={["av1", "hevc", "h264"]} />
+            <Select
+              value={String(comp.codec ?? "av1")}
+              onChange={(e) => change("compressor.codec", e.target.value)}
+              options={["av1", "hevc", "h264"]}
+            />
           </Row>
           <Row label={t("cmpSettings.cmpMode")} hint={t("cmpSettings.cmpModeHint")}>
-            <Select value={String(comp.qualityMode ?? "crf")} onChange={(e) => change("compressor.qualityMode", e.target.value)} options={["crf", "bitrate", "constrained"]} />
+            <Select
+              value={String(comp.qualityMode ?? "crf")}
+              onChange={(e) => change("compressor.qualityMode", e.target.value)}
+              options={["crf", "bitrate", "constrained"]}
+            />
           </Row>
-          <Row label={t("cmpSettings.cmpCrf", { v: comp.crf ?? 23 })} hint={t("cmpSettings.cmpCrfHint")}>
-            <input type="range" min="0" max="51" step="1" value={Number(comp.crf ?? 23)} onChange={(e) => change("compressor.crf", parseInt(e.target.value))} style={{ width: 180 }} />
+          <Row
+            label={t("cmpSettings.cmpCrf", { v: comp.crf ?? 23 })}
+            hint={t("cmpSettings.cmpCrfHint")}
+          >
+            <input
+              type="range"
+              min="0"
+              max="51"
+              step="1"
+              value={Number(comp.crf ?? 23)}
+              onChange={(e) => change("compressor.crf", parseInt(e.target.value))}
+              style={{ width: 180 }}
+            />
           </Row>
-          <BoolRow label={t("cmpSettings.cmpTenBit")} hint={t("cmpSettings.cmpTenBitHint")} value={comp.tenBit === true} onChange={(v) => change("compressor.tenBit", v)} />
-          <BoolRow label={t("cmpSettings.cmpCleanup")} hint={t("cmpSettings.cmpCleanupHint")} value={comp.cleanupTemp !== false} onChange={(v) => change("compressor.cleanupTemp", v)} />
+          <BoolRow
+            label={t("cmpSettings.cmpTenBit")}
+            hint={t("cmpSettings.cmpTenBitHint")}
+            value={comp.tenBit === true}
+            onChange={(v) => change("compressor.tenBit", v)}
+          />
+          <BoolRow
+            label={t("cmpSettings.cmpCleanup")}
+            hint={t("cmpSettings.cmpCleanupHint")}
+            value={comp.cleanupTemp !== false}
+            onChange={(v) => change("compressor.cleanupTemp", v)}
+          />
         </Section>
 
         {/* ---- Видео (док: video) — дефолты для новых загрузок yt-dlp ---- */}
@@ -747,16 +1029,32 @@ export default function SettingsPage() {
               onChange={(e) => change("video.defaultHeight", e.target.value)}
               options={[
                 { value: "best", label: t("videoSection.qualityBest") },
-                { value: "2160", label: "2160p" }, { value: "1440", label: "1440p" },
-                { value: "1080", label: "1080p" }, { value: "720", label: "720p" },
+                { value: "2160", label: "2160p" },
+                { value: "1440", label: "1440p" },
+                { value: "1080", label: "1080p" },
+                { value: "720", label: "720p" },
                 { value: "480", label: "480p" },
               ]}
             />
           </Row>
-          <BoolRow label={t("videoSection.videoEmbedThumb")} hint={t("videoSection.videoEmbedThumbHint")} value={video.embedThumbnail !== false} onChange={(v) => change("video.embedThumbnail", v)} />
-          <BoolRow label={t("videoSection.videoSubs")} hint={t("videoSection.videoSubsHint")} value={!!video.downloadSubs} onChange={(v) => change("video.downloadSubs", v)} />
+          <BoolRow
+            label={t("videoSection.videoEmbedThumb")}
+            hint={t("videoSection.videoEmbedThumbHint")}
+            value={video.embedThumbnail !== false}
+            onChange={(v) => change("video.embedThumbnail", v)}
+          />
+          <BoolRow
+            label={t("videoSection.videoSubs")}
+            hint={t("videoSection.videoSubsHint")}
+            value={!!video.downloadSubs}
+            onChange={(v) => change("video.downloadSubs", v)}
+          />
           <Row label={t("media.mediaYtdlp")} hint={t("media.mediaYtdlpHint")}>
-            <TextInput value={media.ytdlpPath} onChange={(v) => change("media.ytdlpPath", v)} placeholder="yt-dlp" />
+            <TextInput
+              value={media.ytdlpPath}
+              onChange={(v) => change("media.ytdlpPath", v)}
+              placeholder="yt-dlp"
+            />
           </Row>
         </Section>
 
@@ -766,7 +1064,16 @@ export default function SettingsPage() {
             <Select
               value={String(musicS.defaultQuality ?? "320 kbps")}
               onChange={(e) => change("music.defaultQuality", e.target.value)}
-              options={["320 kbps", "256 kbps", "192 kbps", "128 kbps", "FLAC", "OPUS", "WAV", "AAC"]}
+              options={[
+                "320 kbps",
+                "256 kbps",
+                "192 kbps",
+                "128 kbps",
+                "FLAC",
+                "OPUS",
+                "WAV",
+                "AAC",
+              ]}
             />
           </Row>
         </Section>
@@ -775,12 +1082,25 @@ export default function SettingsPage() {
         <Section title={t("nav.movies")} icon={Clapperboard} badge="active">
           <TmdbKeyRow />
           <Row label={t("moviesSettings.language")} hint={t("moviesSettings.languageHint")}>
-            <TextInput value={String(moviesCfg.language || "ru-RU")} onChange={(v) => change("movies.language", v)} placeholder="ru-RU" />
+            <TextInput
+              value={String(moviesCfg.language || "ru-RU")}
+              onChange={(v) => change("movies.language", v)}
+              placeholder="ru-RU"
+            />
           </Row>
           <Row label={t("moviesSettings.region")} hint={t("moviesSettings.regionHint")}>
-            <TextInput value={String(moviesCfg.region || "RU")} onChange={(v) => change("movies.region", v)} placeholder="RU" />
+            <TextInput
+              value={String(moviesCfg.region || "RU")}
+              onChange={(v) => change("movies.region", v)}
+              placeholder="RU"
+            />
           </Row>
-          <BoolRow label={t("moviesSettings.adult")} hint={t("moviesSettings.adultHint")} value={!!moviesCfg.showAdult} onChange={(v) => change("movies.showAdult", v)} />
+          <BoolRow
+            label={t("moviesSettings.adult")}
+            hint={t("moviesSettings.adultHint")}
+            value={!!moviesCfg.showAdult}
+            onChange={(v) => change("movies.showAdult", v)}
+          />
         </Section>
 
         <Section title={t("settings.books")} icon={BookOpen} badge="active">
@@ -791,31 +1111,72 @@ export default function SettingsPage() {
 
         {/* ---- Мониторинг (док: monitor) ---- */}
         <Section title={t("settings.monitor")} icon={Activity} badge="active">
-          <BoolRow label={t("monSettings.monAutoStart")} hint={t("monSettings.monAutoStartHint")} value={mon.autoStart} onChange={(v) => change("monitor.autoStart", v)} />
+          <BoolRow
+            label={t("monSettings.monAutoStart")}
+            hint={t("monSettings.monAutoStartHint")}
+            value={mon.autoStart}
+            onChange={(v) => change("monitor.autoStart", v)}
+          />
           <Row label={t("monSettings.monRefreshMs")} hint={t("monSettings.monIntervalHint")}>
-            <Select value={String(mon.refreshMs ?? 500)} onChange={(e) => change("monitor.refreshMs", Number(e.target.value))} options={[100, 200, 300, 500, 750, 1000].map((ms) => ({ value: String(ms), label: String(ms) }))} />
+            <Select
+              value={String(mon.refreshMs ?? 500)}
+              onChange={(e) => change("monitor.refreshMs", Number(e.target.value))}
+              options={[100, 200, 300, 500, 750, 1000].map((ms) => ({
+                value: String(ms),
+                label: String(ms),
+              }))}
+            />
           </Row>
-          <BoolRow label={t("monSettings.monLhmAuto")} hint={t("monSettings.monLhmAutoHint")} value={mon.lhmAutoStart !== false} onChange={(v) => change("monitor.lhmAutoStart", v)} />
+          <BoolRow
+            label={t("monSettings.monLhmAuto")}
+            hint={t("monSettings.monLhmAutoHint")}
+            value={mon.lhmAutoStart !== false}
+            onChange={(v) => change("monitor.lhmAutoStart", v)}
+          />
         </Section>
 
         {/* ---- My Space (док: myspace) ---- */}
         <Section title={t("settings.myspace")} icon={User} badge="active">
-          <BoolRow label={t("myspaceSection.myAutosave")} hint={t("myspaceSection.myAutosaveHint")} value={mysp.autosave !== false} onChange={(v) => change("myspace.autosave", v)} />
-          <BoolRow label={t("myspaceSection.mySpellcheck")} hint={t("myspaceSection.mySpellcheckHint")} value={!!mysp.spellcheck} onChange={(v) => change("myspace.spellcheck", v)} />
+          <BoolRow
+            label={t("myspaceSection.myAutosave")}
+            hint={t("myspaceSection.myAutosaveHint")}
+            value={mysp.autosave !== false}
+            onChange={(v) => change("myspace.autosave", v)}
+          />
+          <BoolRow
+            label={t("myspaceSection.mySpellcheck")}
+            hint={t("myspaceSection.mySpellcheckHint")}
+            value={!!mysp.spellcheck}
+            onChange={(v) => change("myspace.spellcheck", v)}
+          />
         </Section>
 
         {/* ---- Чат / ИИ (док: aichat) — со сворачиваемым подменю API-ключей ---- */}
         <Section title={t("settings.chat")} icon={MessageSquare} badge="active">
           <ApiKeysPanel />
           <Row label={t("chat.chatProvider")} hint={t("chat.chatProviderHint")}>
-            <Select value={chat.provider} onChange={(e) => change("chat.provider", e.target.value)} options={["openai", "anthropic", "gemini", "mistral", "deepseek", "ollama"]} />
+            <Select
+              value={chat.provider}
+              onChange={(e) => change("chat.provider", e.target.value)}
+              options={["openai", "anthropic", "gemini", "mistral", "deepseek", "ollama"]}
+            />
           </Row>
-          <Row label={t("chat.chatModel")} hint={t("chat.chatModelHint", { model: chat.model || "—" })}>
-            <TextInput value={chat.model} onChange={(v) => change("chat.model", v)} placeholder="gpt-4o-mini" />
+          <Row
+            label={t("chat.chatModel")}
+            hint={t("chat.chatModelHint", { model: chat.model || "—" })}
+          >
+            <TextInput
+              value={chat.model}
+              onChange={(v) => change("chat.model", v)}
+              placeholder="gpt-4o-mini"
+            />
           </Row>
           <Row label={t("chat.chatTemperature")} hint={t("chat.chatTemperatureHint")}>
             <input
-              type="range" min="0" max="1.5" step="0.1"
+              type="range"
+              min="0"
+              max="1.5"
+              step="0.1"
               value={chat.temperature}
               onChange={(e) => change("chat.temperature", parseFloat(e.target.value))}
               style={{ width: 180 }}
@@ -823,43 +1184,122 @@ export default function SettingsPage() {
             <span className="mono-val">{chat.temperature.toFixed(1)}</span>
           </Row>
           <Row label={t("chat.chatMaxTokens")} hint={t("chat.chatMaxTokensHint")}>
-            <NumberInput value={chat.maxTokens} onChange={(v) => change("chat.maxTokens", v)} min={64} max={8192} step={64} />
+            <NumberInput
+              value={chat.maxTokens}
+              onChange={(v) => change("chat.maxTokens", v)}
+              min={64}
+              max={8192}
+              step={64}
+            />
           </Row>
-          <BoolRow label={t("chat.chatStream")} hint={t("chat.chatStreamHint")} value={chat.stream} onChange={(v) => change("chat.stream", v)} />
+          <BoolRow
+            label={t("chat.chatStream")}
+            hint={t("chat.chatStreamHint")}
+            value={chat.stream}
+            onChange={(v) => change("chat.stream", v)}
+          />
           <Row label={t("chat.chatContext")} hint={t("chat.chatContextHint")}>
-            <NumberInput value={chat.contextMessages} onChange={(v) => change("chat.contextMessages", v)} min={4} max={100} suffix=" msg" />
+            <NumberInput
+              value={chat.contextMessages}
+              onChange={(v) => change("chat.contextMessages", v)}
+              min={4}
+              max={100}
+              suffix=" msg"
+            />
           </Row>
         </Section>
 
         {/* ---- Голос (док: voice) ---- */}
         <Section title={t("settings.voice")} icon={Mic2} badge="active">
           <Row label={t("voiceSettings.voiceEngine")} hint={t("voiceSettings.voiceEngineHint")}>
-            <Select value={voice.engine} onChange={(e) => change("voice.engine", e.target.value)} options={["local", "cloud"]} />
+            <Select
+              value={voice.engine}
+              onChange={(e) => change("voice.engine", e.target.value)}
+              options={["local", "cloud"]}
+            />
           </Row>
           <Row label={t("voiceSettings.voiceModel")} hint={t("voiceSettings.voiceModelHint")}>
-            <TextInput value={voice.model} onChange={(v) => change("voice.model", v)} placeholder={t("voiceSettings.voiceModelPlaceholder")} />
+            <TextInput
+              value={voice.model}
+              onChange={(v) => change("voice.model", v)}
+              placeholder={t("voiceSettings.voiceModelPlaceholder")}
+            />
           </Row>
           <Row label={t("voiceSettings.voiceLang")} hint={t("voiceSettings.voiceLangHint")}>
-            <Select value={voice.defaultLanguage} onChange={(e) => change("voice.defaultLanguage", e.target.value)} options={["English", "Russian", "Chinese", "Spanish", "French", "German", "Japanese"]} />
+            <Select
+              value={voice.defaultLanguage}
+              onChange={(e) => change("voice.defaultLanguage", e.target.value)}
+              options={["English", "Russian", "Chinese", "Spanish", "French", "German", "Japanese"]}
+            />
           </Row>
           {/* --- F5-TTS гиперпараметры (дефолты студии) --- */}
-          <Row label={t("voiceSettings.voiceExag", { v: Number(voice.exaggeration ?? 1).toFixed(2) })} hint={t("voiceSettings.voiceExagHint")}>
-            <input type="range" min="0.5" max="2" step="0.05" value={Number(voice.exaggeration ?? 1)} onChange={(e) => change("voice.exaggeration", parseFloat(e.target.value))} style={{ width: 180 }} />
+          <Row
+            label={t("voiceSettings.voiceExag", { v: Number(voice.exaggeration ?? 1).toFixed(2) })}
+            hint={t("voiceSettings.voiceExagHint")}
+          >
+            <input
+              type="range"
+              min="0.5"
+              max="2"
+              step="0.05"
+              value={Number(voice.exaggeration ?? 1)}
+              onChange={(e) => change("voice.exaggeration", parseFloat(e.target.value))}
+              style={{ width: 180 }}
+            />
           </Row>
-          <Row label={t("voiceSettings.voiceCfg", { v: Number(voice.cfgWeight ?? 2).toFixed(2) })} hint={t("voiceSettings.voiceCfgHint")}>
-            <input type="range" min="1.5" max="4.5" step="0.05" value={Number(voice.cfgWeight ?? 2)} onChange={(e) => change("voice.cfgWeight", parseFloat(e.target.value))} style={{ width: 180 }} />
+          <Row
+            label={t("voiceSettings.voiceCfg", { v: Number(voice.cfgWeight ?? 2).toFixed(2) })}
+            hint={t("voiceSettings.voiceCfgHint")}
+          >
+            <input
+              type="range"
+              min="1.5"
+              max="4.5"
+              step="0.05"
+              value={Number(voice.cfgWeight ?? 2)}
+              onChange={(e) => change("voice.cfgWeight", parseFloat(e.target.value))}
+              style={{ width: 180 }}
+            />
           </Row>
           <Row label={t("voiceSettings.voiceChunk")} hint={t("voiceSettings.voiceChunkHint")}>
-            <NumberInput value={Number(voice.chunkSize ?? 250)} onChange={(v) => change("voice.chunkSize", v)} min={100} max={400} step={10} suffix=" ch" />
+            <NumberInput
+              value={Number(voice.chunkSize ?? 250)}
+              onChange={(v) => change("voice.chunkSize", v)}
+              min={100}
+              max={400}
+              step={10}
+              suffix=" ch"
+            />
           </Row>
-          <Row label={t("voiceSettings.voicePrecision")} hint={t("voiceSettings.voicePrecisionHint")}>
-            <Select value={String(voice.precision ?? "fp16")} onChange={(e) => change("voice.precision", e.target.value)} options={["fp16", "fp32"]} />
+          <Row
+            label={t("voiceSettings.voicePrecision")}
+            hint={t("voiceSettings.voicePrecisionHint")}
+          >
+            <Select
+              value={String(voice.precision ?? "fp16")}
+              onChange={(e) => change("voice.precision", e.target.value)}
+              options={["fp16", "fp32"]}
+            />
           </Row>
           <Row label={t("voiceSettings.voiceVram")} hint={t("voiceSettings.voiceVramHint")}>
-            <NumberInput value={Number(voice.vramGb ?? 4.5)} onChange={(v) => change("voice.vramGb", v)} min={2} max={48} step={0.5} suffix=" GB" />
+            <NumberInput
+              value={Number(voice.vramGb ?? 4.5)}
+              onChange={(v) => change("voice.vramGb", v)}
+              min={2}
+              max={48}
+              step={0.5}
+              suffix=" GB"
+            />
           </Row>
           <Row label={t("voiceSettings.voiceLoudness")} hint={t("voiceSettings.voiceLoudnessHint")}>
-            <NumberInput value={Number(voice.loudnessTarget ?? -16)} onChange={(v) => change("voice.loudnessTarget", v)} min={-30} max={-8} step={1} suffix=" LUFS" />
+            <NumberInput
+              value={Number(voice.loudnessTarget ?? -16)}
+              onChange={(v) => change("voice.loudnessTarget", v)}
+              min={-30}
+              max={-8}
+              step={1}
+              suffix=" LUFS"
+            />
           </Row>
         </Section>
 
@@ -897,62 +1337,160 @@ export default function SettingsPage() {
             />
           </Row>
           <Row label={t("settings.lectureThreadsLabel")} hint={t("settings.lectureThreadsHint")}>
-            <NumberInput value={Number(lec.threads ?? 4)} onChange={(v) => change("lecture.threads", v)} min={1} max={32} />
+            <NumberInput
+              value={Number(lec.threads ?? 4)}
+              onChange={(v) => change("lecture.threads", v)}
+              min={1}
+              max={32}
+            />
           </Row>
           {/* Тайминги VAD читаются при создании ЗАПИСИ: применяются к следующей
               лекции, текущая пишется по прежним значениям. */}
-          <div className="muted-sm" style={{ marginTop: 4 }}>{t("settings.lectureVadHint")}</div>
-          <Row label={t("settings.lectureVadSilenceLabel")} hint={t("settings.lectureVadSilenceHint")}>
-            <NumberInput value={Number(lec.vadSilenceMs ?? 700)} onChange={(v) => change("lecture.vadSilenceMs", v)} min={300} max={1500} step={50} suffix=" ms" />
+          <div className="muted-sm" style={{ marginTop: 4 }}>
+            {t("settings.lectureVadHint")}
+          </div>
+          <Row
+            label={t("settings.lectureVadSilenceLabel")}
+            hint={t("settings.lectureVadSilenceHint")}
+          >
+            <NumberInput
+              value={Number(lec.vadSilenceMs ?? 700)}
+              onChange={(v) => change("lecture.vadSilenceMs", v)}
+              min={300}
+              max={1500}
+              step={50}
+              suffix=" ms"
+            />
           </Row>
           <Row label={t("settings.lectureVadMinLabel")} hint={t("settings.lectureVadMinHint")}>
-            <NumberInput value={Number(lec.vadMinChunkMs ?? 7000)} onChange={(v) => change("lecture.vadMinChunkMs", v)} min={3000} max={20000} step={500} suffix=" ms" />
+            <NumberInput
+              value={Number(lec.vadMinChunkMs ?? 7000)}
+              onChange={(v) => change("lecture.vadMinChunkMs", v)}
+              min={3000}
+              max={20000}
+              step={500}
+              suffix=" ms"
+            />
           </Row>
           <Row label={t("settings.lectureVadMaxLabel")} hint={t("settings.lectureVadMaxHint")}>
-            <NumberInput value={Number(lec.vadMaxChunkMs ?? 18000)} onChange={(v) => change("lecture.vadMaxChunkMs", v)} min={5000} max={40000} step={500} suffix=" ms" />
+            <NumberInput
+              value={Number(lec.vadMaxChunkMs ?? 18000)}
+              onChange={(v) => change("lecture.vadMaxChunkMs", v)}
+              min={5000}
+              max={40000}
+              step={500}
+              suffix=" ms"
+            />
           </Row>
           <Row label={t("settings.lectureVadForceLabel")} hint={t("settings.lectureVadForceHint")}>
-            <NumberInput value={Number(lec.vadForceSplitMs ?? 25000)} onChange={(v) => change("lecture.vadForceSplitMs", v)} min={10000} max={90000} step={1000} suffix=" ms" />
+            <NumberInput
+              value={Number(lec.vadForceSplitMs ?? 25000)}
+              onChange={(v) => change("lecture.vadForceSplitMs", v)}
+              min={10000}
+              max={90000}
+              step={1000}
+              suffix=" ms"
+            />
           </Row>
           <Row label={t("settings.lectureVadPadLabel")} hint={t("settings.lectureVadPadHint")}>
-            <NumberInput value={Number(lec.vadPadMs ?? 150)} onChange={(v) => change("lecture.vadPadMs", v)} min={0} max={500} step={10} suffix=" ms" />
+            <NumberInput
+              value={Number(lec.vadPadMs ?? 150)}
+              onChange={(v) => change("lecture.vadPadMs", v)}
+              min={0}
+              max={500}
+              step={10}
+              suffix=" ms"
+            />
           </Row>
         </Section>
 
         {/* ---- Web Archive / .sitebak (док: sitebak) — параметры краулера ---- */}
         <Section title={t("settings.sitebak")} icon={Archive} badge="active">
           <Row label={t("sbSettings.sbConcurrent")} hint={t("sbSettings.sbConcurrentHint")}>
-            <NumberInput value={Number(sb.maxConcurrent ?? 3)} onChange={(v) => change("sitebak.maxConcurrent", v)} min={1} max={8} />
+            <NumberInput
+              value={Number(sb.maxConcurrent ?? 3)}
+              onChange={(v) => change("sitebak.maxConcurrent", v)}
+              min={1}
+              max={8}
+            />
           </Row>
-          <Row label={t("sbSettings.sbDelay", { v: sb.crawlDelayMs ?? 500 })} hint={t("sbSettings.sbDelayHint")}>
-            <input type="range" min="0" max="3000" step="100" value={Number(sb.crawlDelayMs ?? 500)} onChange={(e) => change("sitebak.crawlDelayMs", parseInt(e.target.value))} style={{ width: 180 }} />
+          <Row
+            label={t("sbSettings.sbDelay", { v: sb.crawlDelayMs ?? 500 })}
+            hint={t("sbSettings.sbDelayHint")}
+          >
+            <input
+              type="range"
+              min="0"
+              max="3000"
+              step="100"
+              value={Number(sb.crawlDelayMs ?? 500)}
+              onChange={(e) => change("sitebak.crawlDelayMs", parseInt(e.target.value))}
+              style={{ width: 180 }}
+            />
           </Row>
           <Row label={t("sbSettings.sbUa")} hint={t("sbSettings.sbUaHint")}>
-            <TextInput value={sb.userAgent} onChange={(v) => change("sitebak.userAgent", v)} placeholder="Mozilla/5.0 …" />
+            <TextInput
+              value={sb.userAgent}
+              onChange={(v) => change("sitebak.userAgent", v)}
+              placeholder="Mozilla/5.0 …"
+            />
           </Row>
           <Row label={t("sbSettings.sbDict")} hint={t("sbSettings.sbDictHint")}>
-            <NumberInput value={Number(sb.zstdDictKb ?? 1024)} onChange={(v) => change("sitebak.zstdDictKb", v)} min={0} max={8192} step={256} suffix=" KB" />
+            <NumberInput
+              value={Number(sb.zstdDictKb ?? 1024)}
+              onChange={(v) => change("sitebak.zstdDictKb", v)}
+              min={0}
+              max={8192}
+              step={256}
+              suffix=" KB"
+            />
           </Row>
           <Row label={t("sbSettings.sbMedia")} hint={t("sbSettings.sbMediaHint")}>
-            <Select value={String(sb.mediaFormat ?? "webp")} onChange={(e) => change("sitebak.mediaFormat", e.target.value)} options={["original", "lossless", "webp", "avif"]} />
+            <Select
+              value={String(sb.mediaFormat ?? "webp")}
+              onChange={(e) => change("sitebak.mediaFormat", e.target.value)}
+              options={["original", "lossless", "webp", "avif"]}
+            />
           </Row>
           <Row label={t("sbSettings.sbMaxPages")} hint={t("sbSettings.sbMaxPagesHint")}>
-            <NumberInput value={Number(sb.maxPages ?? 500)} onChange={(v) => change("sitebak.maxPages", v)} min={10} max={5000} step={10} />
+            <NumberInput
+              value={Number(sb.maxPages ?? 500)}
+              onChange={(v) => change("sitebak.maxPages", v)}
+              min={10}
+              max={5000}
+              step={10}
+            />
           </Row>
         </Section>
 
         {/* ---- Автобэкап ---- */}
         <Section title={t("settings.backup")} icon={Database} badge="active">
-          <BoolRow label={t("backupSettings.backupEnable")} hint={t("backupSettings.backupEnableHint")} value={backup.auto} onChange={(v) => change("backup.auto", v)} />
-          <Row label={t("backupSettings.backupInterval")} hint={t("backupSettings.backupIntervalHint")}>
-            <NumberInput value={backup.intervalHours} onChange={(v) => change("backup.intervalHours", v)} min={1} max={720} suffix=" h" />
+          <BoolRow
+            label={t("backupSettings.backupEnable")}
+            hint={t("backupSettings.backupEnableHint")}
+            value={backup.auto}
+            onChange={(v) => change("backup.auto", v)}
+          />
+          <Row
+            label={t("backupSettings.backupInterval")}
+            hint={t("backupSettings.backupIntervalHint")}
+          >
+            <NumberInput
+              value={backup.intervalHours}
+              onChange={(v) => change("backup.intervalHours", v)}
+              min={1}
+              max={720}
+              suffix=" h"
+            />
           </Row>
         </Section>
 
         {/* Экспорт и импорт ВСЕХ настроек: секции settings.json для каждой страницы
             + локальные настройки интерфейса (localStorage) + по галочке ключи API. */}
         <Section title={t("settingsIO.ioSection")} icon={Download} badge="active">
-          <div className="muted-sm" style={{ marginBottom: 8 }}>{t("settingsIO.ioHint")}</div>
+          <div className="muted-sm" style={{ marginBottom: 8 }}>
+            {t("settingsIO.ioHint")}
+          </div>
           <BoolRow
             label={t("settingsIO.ioSecrets")}
             hint={t("settingsIO.ioSecretsHint")}
@@ -992,7 +1530,12 @@ export default function SettingsPage() {
               className="muted-sm"
               style={{
                 marginTop: -6,
-                color: ioTone === "err" ? "var(--coral)" : ioTone === "warn" ? "var(--amber)" : "var(--success)",
+                color:
+                  ioTone === "err"
+                    ? "var(--coral)"
+                    : ioTone === "warn"
+                      ? "var(--amber)"
+                      : "var(--success)",
               }}
             >
               {ioStatus}
@@ -1002,17 +1545,33 @@ export default function SettingsPage() {
 
         {/* ---- Продвинутое ---- */}
         <Section title={t("settings.advanced")} icon={ShieldCheck} badge="dev">
-          <BoolRow label={t("advanced.advancedTelemetry")} hint={t("advanced.advancedTelemetryHint")} value={adv.telemetry} onChange={(v) => change("advanced.telemetry", v)} />
+          <BoolRow
+            label={t("advanced.advancedTelemetry")}
+            hint={t("advanced.advancedTelemetryHint")}
+            value={adv.telemetry}
+            onChange={(v) => change("advanced.telemetry", v)}
+          />
           <Row label={t("advanced.advancedLogLevel")} hint={t("advanced.advancedLogLevelHint")}>
-            <Select value={adv.logLevel} onChange={(e) => change("advanced.logLevel", e.target.value)} options={["debug", "info", "warn", "error"]} />
+            <Select
+              value={adv.logLevel}
+              onChange={(e) => change("advanced.logLevel", e.target.value)}
+              options={["debug", "info", "warn", "error"]}
+            />
           </Row>
           <Row label={t("advanced.advancedMasterKey")} hint={t("advanced.advancedMasterKeyHint")}>
-            <TextInput value={adv.masterKey} onChange={(v) => change("advanced.masterKey", v)} placeholder={t("advanced.advancedMasterKeyPlaceholder")} />
+            <TextInput
+              value={adv.masterKey}
+              onChange={(v) => change("advanced.masterKey", v)}
+              placeholder={t("advanced.advancedMasterKeyPlaceholder")}
+            />
           </Row>
         </Section>
 
         {saved && (
-          <Glass className="source-placeholder" style={{ borderColor: "var(--teal)", color: "var(--text-secondary)" }}>
+          <Glass
+            className="source-placeholder"
+            style={{ borderColor: "var(--teal)", color: "var(--text-secondary)" }}
+          >
             <Check size={15} style={{ color: "var(--success)" }} />
             <span>{t("settings.savedMsg")}</span>
           </Glass>

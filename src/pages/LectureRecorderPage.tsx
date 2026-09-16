@@ -1,13 +1,34 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Mic, Square, Download, Sparkles, Trash2, ChevronDown, Cpu, Radio, Save, Play, Pause, Settings2,
-  Volume2, SearchCheck, AlertTriangle, Users,
+  Mic,
+  Square,
+  Download,
+  Sparkles,
+  Trash2,
+  ChevronDown,
+  Cpu,
+  Radio,
+  Save,
+  Play,
+  Pause,
+  Settings2,
+  Volume2,
+  SearchCheck,
+  AlertTriangle,
+  Users,
 } from "lucide-react";
 import { api } from "../api/client";
+import { saveBlob } from "../utils/download";
 import type {
-  LectureChunk, LectureCreateResult, LectureEngineStatus, LectureSession, LectureStatus,
-  LectureAudioSettings, LectureConspectusState,
-  LectureConspectusSettings, LectureDiarizeState,
+  LectureChunk,
+  LectureCreateResult,
+  LectureEngineStatus,
+  LectureSession,
+  LectureStatus,
+  LectureAudioSettings,
+  LectureConspectusState,
+  LectureConspectusSettings,
+  LectureDiarizeState,
 } from "../api/client";
 import { useI18n } from "../i18n";
 import type { TranslateFn } from "../i18n";
@@ -36,7 +57,9 @@ const SEND_INTERVAL_MS = 500;
 
 function fmtTs(ms: number): string {
   const s = Math.floor(ms / 1000);
-  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+  const h = Math.floor(s / 3600),
+    m = Math.floor((s % 3600) / 60),
+    sec = s % 60;
   return [h, m, sec].map((x) => String(x).padStart(2, "0")).join(":");
 }
 
@@ -62,13 +85,19 @@ function speakerBadge(c: LectureChunk): string {
 
 function chunkNote(t: TranslateFn, c: LectureChunk): string {
   const db = typeof c.rms_db === "number" ? t("lecture.diag.db", { db: c.rms_db }) : "";
-  const peak = typeof c.rms_peak_db === "number" ? t("lecture.diag.peak", { db: c.rms_peak_db }) : "";
+  const peak =
+    typeof c.rms_peak_db === "number" ? t("lecture.diag.peak", { db: c.rms_peak_db }) : "";
   switch (c.reason) {
-    case "noise": return t("lecture.diag.noise", { db: peak || db });
-    case "hum": return t("lecture.diag.hum", { db: peak || db });
-    case "noise_burst": return t("lecture.diag.noiseBurst", { db: peak || db });
-    case "low_speech_ratio": return t("lecture.diag.lowSpeech", { db: peak || db });
-    case "whisper_empty": return t("lecture.diag.whisperEmpty", { db: peak || db });
+    case "noise":
+      return t("lecture.diag.noise", { db: peak || db });
+    case "hum":
+      return t("lecture.diag.hum", { db: peak || db });
+    case "noise_burst":
+      return t("lecture.diag.noiseBurst", { db: peak || db });
+    case "low_speech_ratio":
+      return t("lecture.diag.lowSpeech", { db: peak || db });
+    case "whisper_empty":
+      return t("lecture.diag.whisperEmpty", { db: peak || db });
     default:
       break;
   }
@@ -78,37 +107,24 @@ function chunkNote(t: TranslateFn, c: LectureChunk): string {
 }
 
 /**
- * Сохранить уже полученный blob под именем. Именно blob, а не ссылка: все
- * /api-роуты закрыты токеном (x-moonapp-token), который <a download> передать
- * не может, поэтому прямая ссылка на /api/lecture/... отдавала 401.
- */
-function saveBlob(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
-
-/**
  * Ошибки бэкенда — это коды (session_not_found, whisper_not_installed, …), а
  * браузера — DOMException'ы. Показываем пользователю понятный текст, а не код.
  */
 function lectureError(t: TranslateFn, e: unknown): string {
   const msg = String((e as Error)?.message || e || "");
   if (/no_system_audio/.test(msg)) return t("lecture.errSystemAudio");
-  if (/NotAllowedError|PermissionDenied|permission denied|NotAllowed/i.test(msg)) return t("lecture.errMic");
+  if (/NotAllowedError|PermissionDenied|permission denied|NotAllowed/i.test(msg))
+    return t("lecture.errMic");
   if (/NotFoundError|Requested device|no_mic/i.test(msg)) return t("lecture.errNoMic");
   if (/session_not_found/.test(msg)) return t("lecture.errSession");
   if (/whisper_not_installed|whisper_model_missing/.test(msg)) return t("lecture.errWhisper");
   if (/no_transcript_yet/.test(msg)) return t("lecture.errNoTranscript");
   // Конспект идёт через провайдера чата: нет ключа/провайдера или модель не
   // найдена — это разные подсказки пользователю (сохранить ключ vs выбрать модель).
-  if (/conspectus_not_configured/.test(msg)) return t("lecture.errConspectusKey", { provider: msg.split(": ")[1] || "" });
-  if (/conspectus_provider_unknown/.test(msg)) return t("lecture.errConspectusProvider", { provider: msg.split(": ")[1] || "" });
+  if (/conspectus_not_configured/.test(msg))
+    return t("lecture.errConspectusKey", { provider: msg.split(": ")[1] || "" });
+  if (/conspectus_provider_unknown/.test(msg))
+    return t("lecture.errConspectusProvider", { provider: msg.split(": ")[1] || "" });
   if (/conspectus_model_missing/.test(msg)) return t("lecture.errConspectusModel");
   if (/conspectus_busy/.test(msg)) return t("lecture.errConspectusBusy");
   if (/conspectus_empty_response/.test(msg)) return t("lecture.errConspectusEmpty");
@@ -154,7 +170,10 @@ async function acquireMic(deviceId: string, agc: boolean): Promise<MediaStream> 
   } catch (e) {
     // Устройство могло отключиться между выбором и стартом — падать нельзя,
     // иначе лекция не начнётся вообще. Возвращаемся к системному дефолту.
-    if (deviceId && /NotFoundError|OverconstrainedError|NotReadableError/i.test(String((e as Error)?.message))) {
+    if (
+      deviceId &&
+      /NotFoundError|OverconstrainedError|NotReadableError/i.test(String((e as Error)?.message))
+    ) {
       delete base.deviceId;
       return navigator.mediaDevices.getUserMedia({ audio: base });
     }
@@ -176,7 +195,8 @@ async function acquireSystemAudio(): Promise<MediaStream> {
   await bridge?.setCaptureMode?.("loopback");
   try {
     const display = await navigator.mediaDevices.getDisplayMedia({
-      video: true, audio: true,
+      video: true,
+      audio: true,
     });
     const audioTracks = display.getAudioTracks();
     if (!audioTracks.length) {
@@ -213,11 +233,11 @@ export default function LectureRecorderPage() {
   const [conspectusNote, setConspectusNote] = useState("");
   const [showSessions, setShowSessions] = useState(false);
   const [playingChunk, setPlayingChunk] = useState(0); // id звучащего чанка (0 — тишина)
-  const [busy, setBusy] = useState("");                // "export:md" | "audio" — блокировка кнопок
+  const [busy, setBusy] = useState(""); // "export:md" | "audio" — блокировка кнопок
   const [showEngine, setShowEngine] = useState(false); // панель «Модель и ускорение»
-  const [showAudio, setShowAudio] = useState(false);   // панель «Аудио» (микрофон, гейн, VAD)
+  const [showAudio, setShowAudio] = useState(false); // панель «Аудио» (микрофон, гейн, VAD)
   const [showConspectus, setShowConspectus] = useState(false); // панель «ИИ-конспект»
-  const [showDiarize, setShowDiarize] = useState(false);       // панель «Говорящие»
+  const [showDiarize, setShowDiarize] = useState(false); // панель «Говорящие»
   // Настройки конспекта (провайдер, модель, режим запуска): нужны в шапке, чтобы
   // показать, что авто-конспект включён, а не «просто кнопка».
   const [conspectusCfg, setConspectusCfg] = useState<LectureConspectusSettings | null>(null);
@@ -232,7 +252,7 @@ export default function LectureRecorderPage() {
   const [notesStale, setNotesStale] = useState(false);
   const [audio, setAudio] = useState<LectureAudioSettings | null>(null);
   const [devices, setDevices] = useState<{ id: string; label: string }[]>([]);
-  const [levelDb, setLevelDb] = useState(-100);        // текущий уровень входа, dBFS
+  const [levelDb, setLevelDb] = useState(-100); // текущий уровень входа, dBFS
   const [calibrating, setCalibrating] = useState(false);
   const [recheckBusy, setRecheckBusy] = useState(false);
 
@@ -244,8 +264,12 @@ export default function LectureRecorderPage() {
   usePageBusy(recording || conspectusBusy || calibrating || recheckBusy);
 
   const audioRef = useRef<{
-    ctx: AudioContext; stream: MediaStream; processor: ScriptProcessorNode;
-    source: MediaStreamAudioSourceNode; gain: GainNode; track: "mic" | "sys";
+    ctx: AudioContext;
+    stream: MediaStream;
+    processor: ScriptProcessorNode;
+    source: MediaStreamAudioSourceNode;
+    gain: GainNode;
+    track: "mic" | "sys";
   } | null>(null);
   const resampleBuf = useRef<Float32Array[]>([]);
   const resampleLen = useRef(0);
@@ -256,24 +280,37 @@ export default function LectureRecorderPage() {
   // setState это давало 12 ре-рендеров страницы в секунду + перезапуск
   // requestAnimationFrame-цикла визуализатора на каждом из них.
   const levelRef = useRef(0);
-  const ingestFailRef = useRef(0);       // подряд неудачных отправок PCM
+  const ingestFailRef = useRef(0); // подряд неудачных отправок PCM
   const chunkAudioRef = useRef<HTMLAudioElement | null>(null);
-  const chunkUrlRef = useRef("");        // object URL звучащего чанка
+  const chunkUrlRef = useRef(""); // object URL звучащего чанка
 
   /* ---- Инициализация: движок + список сессий ---- */
   const refreshMeta = useCallback(() => {
-    api.lectureEngine().then(setEngine).catch(() => setEngine(null));
-    api.lectureSessions().then(setSessions).catch(() => setSessions([]));
+    api
+      .lectureEngine()
+      .then(setEngine)
+      .catch(() => setEngine(null));
+    api
+      .lectureSessions()
+      .then(setSessions)
+      .catch(() => setSessions([]));
   }, []);
 
-  useEffect(() => { refreshMeta(); }, [refreshMeta]);
+  useEffect(() => {
+    refreshMeta();
+  }, [refreshMeta]);
 
   /* ---- Аудиовход: настройки, список микрофонов, уровень входа ---- */
 
   const loadAudio = useCallback(() => {
-    api.lectureAudio().then(setAudio).catch(() => setAudio(null));
+    api
+      .lectureAudio()
+      .then(setAudio)
+      .catch(() => setAudio(null));
   }, []);
-  useEffect(() => { loadAudio(); }, [loadAudio]);
+  useEffect(() => {
+    loadAudio();
+  }, [loadAudio]);
 
   /**
    * Список микрофонов. ЯРЛЫКИ устройств Chromium отдаёт только после выдачи
@@ -290,19 +327,27 @@ export default function LectureRecorderPage() {
           probe.getTracks().forEach((tr) => tr.stop());
           list = await navigator.mediaDevices.enumerateDevices();
           inputs = list.filter((d) => d.kind === "audioinput");
-        } catch { /* без разрешения оставим системные подписи */ }
+        } catch {
+          /* без разрешения оставим системные подписи */
+        }
       }
-      setDevices(inputs.map((d, i) => ({
-        id: d.deviceId,
-        label: d.label || t("lecture.audio.micFallback", { n: i + 1 }),
-      })));
-    } catch { setDevices([]); }
+      setDevices(
+        inputs.map((d, i) => ({
+          id: d.deviceId,
+          label: d.label || t("lecture.audio.micFallback", { n: i + 1 }),
+        })),
+      );
+    } catch {
+      setDevices([]);
+    }
   }, [t]);
 
   useEffect(() => {
     void loadDevices();
     const md = navigator.mediaDevices;
-    const onChange = () => { void loadDevices(); };
+    const onChange = () => {
+      void loadDevices();
+    };
     md?.addEventListener?.("devicechange", onChange);
     return () => md?.removeEventListener?.("devicechange", onChange);
   }, [loadDevices]);
@@ -330,20 +375,31 @@ export default function LectureRecorderPage() {
     const text = String(raw || "");
     if (serverNotesRef.current === text) return;
     serverNotesRef.current = text;
-    if (notesDirtyRef.current) { setNotesStale(true); return; }
+    if (notesDirtyRef.current) {
+      setNotesStale(true);
+      return;
+    }
     setNotes(text);
     setNotesStale(false);
   }, []);
 
-  const refreshStatus = useCallback((id: number) => {
-    api.lectureStatus(id).then((st) => {
-      setStatus(st);
-      // Авто-конспект (или маркер) мог дописать заметки на сервере. Подтягиваем
-      // их, пока пользователь сам не начал править поле — иначе «Сохранить
-      // заметки» затирало бы только что собранный конспект.
-      applyServerNotes(st?.lecture?.notes);
-    }).catch(() => { /* сессия могла быть удалена */ });
-  }, [applyServerNotes]);
+  const refreshStatus = useCallback(
+    (id: number) => {
+      api
+        .lectureStatus(id)
+        .then((st) => {
+          setStatus(st);
+          // Авто-конспект (или маркер) мог дописать заметки на сервере. Подтягиваем
+          // их, пока пользователь сам не начал править поле — иначе «Сохранить
+          // заметки» затирало бы только что собранный конспект.
+          applyServerNotes(st?.lecture?.notes);
+        })
+        .catch(() => {
+          /* сессия могла быть удалена */
+        });
+    },
+    [applyServerNotes],
+  );
 
   /** Обновить данные открытой лекции (панели движка/аудио/говорящих → onChanged). */
   const refreshStatusAll = useCallback(() => {
@@ -361,9 +417,16 @@ export default function LectureRecorderPage() {
 
   /* ---- Настройки ИИ-конспекта: провайдер, модель, режим запуска ---- */
   const refreshConspectusCfg = useCallback(() => {
-    void api.lectureConspectusSettings().then(setConspectusCfg).catch(() => { /* панель покажет «нет данных» */ });
+    void api
+      .lectureConspectusSettings()
+      .then(setConspectusCfg)
+      .catch(() => {
+        /* панель покажет «нет данных» */
+      });
   }, []);
-  useEffect(() => { refreshConspectusCfg(); }, [refreshConspectusCfg]);
+  useEffect(() => {
+    refreshConspectusCfg();
+  }, [refreshConspectusCfg]);
 
   /* ---- Состояние конспекта: прогресс АВТО-сборки после остановки записи ----
    * Авто-конспект (smart/auto) запускается сервером без кнопки, поэтому UI обязан
@@ -374,33 +437,52 @@ export default function LectureRecorderPage() {
     const id = session.id;
     let alive = true;
     const tick = () => {
-      void api.lectureConspectusState(id).then((st) => {
-        if (!alive) return;
-        setConspectusSt(st);
-        if (st.state === "working") setConspectusNote(conspectusProgressText(t, st));
-        else setConspectusNote((prev) => (prev ? "" : prev));
-      }).catch(() => { /* состояние — необязательная роскошь */ });
+      void api
+        .lectureConspectusState(id)
+        .then((st) => {
+          if (!alive) return;
+          setConspectusSt(st);
+          if (st.state === "working") setConspectusNote(conspectusProgressText(t, st));
+          else setConspectusNote((prev) => (prev ? "" : prev));
+        })
+        .catch(() => {
+          /* состояние — необязательная роскошь */
+        });
     };
     tick();
     // Пока сборка идёт — опрашиваем часто, иначе редко (бейдж «устарел»).
     const timer = setInterval(tick, conspectusSt?.state === "working" ? 1200 : 5000);
-    return () => { alive = false; clearInterval(timer); };
+    return () => {
+      alive = false;
+      clearInterval(timer);
+    };
   }, [session, conspectusSt?.state, t]);
 
   /* ---- Состояние диаризации: прогресс фонового разбора говорящих ---- */
   useEffect(() => {
-    if (!session) { setDiarizeSt(null); return; }
+    if (!session) {
+      setDiarizeSt(null);
+      return;
+    }
     const id = session.id;
     let alive = true;
     const tick = () => {
-      void api.lectureDiarizeState(id)
-        .then((s) => { if (alive) setDiarizeSt(s); })
-        .catch(() => { /* состояние — необязательная роскошь */ });
+      void api
+        .lectureDiarizeState(id)
+        .then((s) => {
+          if (alive) setDiarizeSt(s);
+        })
+        .catch(() => {
+          /* состояние — необязательная роскошь */
+        });
     };
     tick();
     // Пока разбор идёт — опрашиваем часто (минуты CPU), иначе редко.
     const timer = setInterval(tick, diarizeSt?.state === "working" ? 1500 : 6000);
-    return () => { alive = false; clearInterval(timer); };
+    return () => {
+      alive = false;
+      clearInterval(timer);
+    };
   }, [session, diarizeSt?.state]);
 
   /* ---- Автоскролл телепромтера ---- */
@@ -410,16 +492,23 @@ export default function LectureRecorderPage() {
     }
   }, [status?.chunks.length]);
 
-
   /* ---- Запись ---- */
 
   /** Освободить микрофон/граф (без обращений к серверу). */
   const releaseAudio = useCallback(() => {
     const a = audioRef.current;
     if (a) {
-      try { a.processor.disconnect(); a.source.disconnect(); a.gain.disconnect(); } catch { /* ignore */ }
+      try {
+        a.processor.disconnect();
+        a.source.disconnect();
+        a.gain.disconnect();
+      } catch {
+        /* ignore */
+      }
       a.stream.getTracks().forEach((tr) => tr.stop());
-      void a.ctx.close().catch(() => { /* ignore */ });
+      void a.ctx.close().catch(() => {
+        /* ignore */
+      });
       audioRef.current = null;
     }
     levelRef.current = 0;
@@ -434,7 +523,9 @@ export default function LectureRecorderPage() {
       const st = await api.lectureStop(session.id);
       setStatus(st);
       refreshMeta();
-    } catch (e) { setError(lectureError(t, e)); }
+    } catch (e) {
+      setError(lectureError(t, e));
+    }
   }, [releaseAudio, refreshMeta, session, t]);
 
   const startRecording = useCallback(async () => {
@@ -479,12 +570,18 @@ export default function LectureRecorderPage() {
         if (resampleLen.current >= targetSamples) {
           const merged = new Float32Array(resampleLen.current);
           let off = 0;
-          for (const b of resampleBuf.current) { merged.set(b, off); off += b.length; }
+          for (const b of resampleBuf.current) {
+            merged.set(b, off);
+            off += b.length;
+          }
           resampleBuf.current = [];
           resampleLen.current = 0;
           const pcm = downsampleToInt16(merged, ctx.sampleRate, TARGET_RATE);
-          api.lectureIngest(sessionId, pcm.buffer as ArrayBuffer, track)
-            .then(() => { ingestFailRef.current = 0; })
+          api
+            .lectureIngest(sessionId, pcm.buffer as ArrayBuffer, track)
+            .then(() => {
+              ingestFailRef.current = 0;
+            })
             .catch(() => {
               // Связь с сервером потеряна: fail-safe WAV и VAD не пополняются.
               // После трёх неудач подряд останавливаем запись, чтобы не
@@ -497,9 +594,15 @@ export default function LectureRecorderPage() {
                 // статусе recording.
                 setError(t("lecture.errIngest"));
                 releaseAudio();
-                api.lectureStop(sessionId)
-                  .then((s) => { setStatus(s); refreshMeta(); })
-                  .catch(() => { /* сервер недоступен — сессию добьёт recoverInterrupted */ });
+                api
+                  .lectureStop(sessionId)
+                  .then((s) => {
+                    setStatus(s);
+                    refreshMeta();
+                  })
+                  .catch(() => {
+                    /* сервер недоступен — сессию добьёт recoverInterrupted */
+                  });
               }
             });
         }
@@ -525,26 +628,47 @@ export default function LectureRecorderPage() {
       setRecording(true);
     } catch (e) {
       setError(lectureError(t, e));
-      try { streamLocal?.getTracks().forEach((tr) => tr.stop()); } catch { /* ignore */ }
+      try {
+        streamLocal?.getTracks().forEach((tr) => tr.stop());
+      } catch {
+        /* ignore */
+      }
       // Сессия могла успеть создаться — финализируем её, иначе она навсегда
       // останется в архиве как «записывается».
-      if (created) { try { await api.lectureStop(created.id); refreshMeta(); } catch { /* ignore */ } }
+      if (created) {
+        try {
+          await api.lectureStop(created.id);
+          refreshMeta();
+        } catch {
+          /* ignore */
+        }
+      }
     }
   }, [refreshMeta, releaseAudio, systemAudio, t, title]);
 
   // Страховка на размонтирование (keep-alive выгрузка/перезапуск): не держим
   // микрофон и звук фрагмента.
-  useEffect(() => () => {
-    const a = audioRef.current;
-    if (a) {
-      try { a.processor.disconnect(); a.source.disconnect(); } catch { /* ignore */ }
-      a.stream.getTracks().forEach((tr) => tr.stop());
-      void a.ctx.close().catch(() => { /* ignore */ });
-      audioRef.current = null;
-    }
-    chunkAudioRef.current?.pause();
-    if (chunkUrlRef.current) URL.revokeObjectURL(chunkUrlRef.current);
-  }, []);
+  useEffect(
+    () => () => {
+      const a = audioRef.current;
+      if (a) {
+        try {
+          a.processor.disconnect();
+          a.source.disconnect();
+        } catch {
+          /* ignore */
+        }
+        a.stream.getTracks().forEach((tr) => tr.stop());
+        void a.ctx.close().catch(() => {
+          /* ignore */
+        });
+        audioRef.current = null;
+      }
+      chunkAudioRef.current?.pause();
+      if (chunkUrlRef.current) URL.revokeObjectURL(chunkUrlRef.current);
+    },
+    [],
+  );
   /* ---- Waveform-визуализатор ---- */
   useEffect(() => {
     if (!recording) return;
@@ -559,12 +683,16 @@ export default function LectureRecorderPage() {
       const canvas = canvasRef.current;
       const ctx2d = canvas?.getContext("2d");
       if (canvas && ctx2d) {
-        const w = canvas.width, h = canvas.height;
+        const w = canvas.width,
+          h = canvas.height;
         ctx2d.clearRect(0, 0, w, h);
         const bars = 48;
         const amp = Math.min(1, levelRef.current * 6);
         for (let i = 0; i < bars; i++) {
-          const bh = Math.max(2, amp * h * (0.4 + 0.6 * Math.abs(Math.sin(i * 1.7 + Date.now() / 400))));
+          const bh = Math.max(
+            2,
+            amp * h * (0.4 + 0.6 * Math.abs(Math.sin(i * 1.7 + Date.now() / 400))),
+          );
           ctx2d.fillStyle = amp > 0.03 ? accent : idle;
           ctx2d.fillRect((i * w) / bars + 2, h - bh, w / bars - 4, bh);
         }
@@ -575,18 +703,22 @@ export default function LectureRecorderPage() {
     return () => cancelAnimationFrame(raf);
   }, [recording]);
 
-
   /* ---- Действия ---- */
 
   /**
    * Сохранить настройки аудиовхода. Значения применяются к СЛЕДУЮЩЕЙ записи:
    * VAD-опции читаются в момент создания сессии (server/lecture.js).
    */
-  const saveAudio = useCallback(async (patch: Parameters<typeof api.lectureAudioSet>[0]) => {
-    try {
-      setAudio(await api.lectureAudioSet(patch));
-    } catch (e) { setError(lectureError(t, e)); }
-  }, [t]);
+  const saveAudio = useCallback(
+    async (patch: Parameters<typeof api.lectureAudioSet>[0]) => {
+      try {
+        setAudio(await api.lectureAudioSet(patch));
+      } catch (e) {
+        setError(lectureError(t, e));
+      }
+    },
+    [t],
+  );
 
   /**
    * Калибровка по тишине: 3 секунды меряем ФОН и ставим порог = фон × 3.
@@ -605,7 +737,9 @@ export default function LectureRecorderPage() {
       const proc = ctx.createScriptProcessor(2048, 1, 1);
       const mute = ctx.createGain();
       mute.gain.value = 0;
-      src.connect(proc); proc.connect(mute); mute.connect(ctx.destination);
+      src.connect(proc);
+      proc.connect(mute);
+      mute.connect(ctx.destination);
       const samples: number[] = [];
       proc.onaudioprocess = (ev) => {
         const input = ev.inputBuffer.getChannelData(0);
@@ -615,8 +749,16 @@ export default function LectureRecorderPage() {
       };
       await new Promise((r) => setTimeout(r, 3000));
       proc.onaudioprocess = null;
-      try { proc.disconnect(); src.disconnect(); mute.disconnect(); } catch { /* ignore */ }
-      await ctx.close().catch(() => { /* ignore */ });
+      try {
+        proc.disconnect();
+        src.disconnect();
+        mute.disconnect();
+      } catch {
+        /* ignore */
+      }
+      await ctx.close().catch(() => {
+        /* ignore */
+      });
       ctx = null;
       const sorted = samples.slice().sort((a, b) => a - b);
       const noise = sorted.length ? sorted[Math.floor(sorted.length * 0.1)] : 0;
@@ -626,8 +768,16 @@ export default function LectureRecorderPage() {
     } catch (e) {
       setError(lectureError(t, e));
     } finally {
-      try { stream?.getTracks().forEach((tr) => tr.stop()); } catch { /* ignore */ }
-      try { if (ctx) await ctx.close(); } catch { /* ignore */ }
+      try {
+        stream?.getTracks().forEach((tr) => tr.stop());
+      } catch {
+        /* ignore */
+      }
+      try {
+        if (ctx) await ctx.close();
+      } catch {
+        /* ignore */
+      }
       setCalibrating(false);
     }
   }, [audio, saveAudio, t]);
@@ -640,8 +790,11 @@ export default function LectureRecorderPage() {
     try {
       await api.lectureRecheck(session.id);
       refreshStatus(session.id);
-    } catch (e) { setError(lectureError(t, e)); }
-    finally { setRecheckBusy(false); }
+    } catch (e) {
+      setError(lectureError(t, e));
+    } finally {
+      setRecheckBusy(false);
+    }
   }, [refreshStatus, session, t]);
   const saveEdit = useCallback(async () => {
     if (!editing) return;
@@ -649,7 +802,9 @@ export default function LectureRecorderPage() {
       await api.lectureEditChunk(editing.chunkId, editing.text);
       setEditing(null);
       if (session) refreshStatus(session.id);
-    } catch (e) { setError(lectureError(t, e)); }
+    } catch (e) {
+      setError(lectureError(t, e));
+    }
   }, [editing, refreshStatus, session, t]);
 
   /** Сохранить заметки лекции (раньше кнопка добавляла маркер вместо сохранения). */
@@ -667,44 +822,64 @@ export default function LectureRecorderPage() {
       setNotesSaved(true);
       setTimeout(() => setNotesSaved(false), 1500);
       refreshStatus(session.id);
-    } catch (e) { setError(lectureError(t, e)); }
+    } catch (e) {
+      setError(lectureError(t, e));
+    }
   }, [notes, refreshStatus, session, t]);
 
   /** Прослушать фрагмент: WAV чанка тянем blob'ом (нужен токен) и играем. */
-  const playChunk = useCallback(async (c: LectureChunk) => {
-    const audio = chunkAudioRef.current;
-    if (playingChunk === c.id && audio) { audio.pause(); setPlayingChunk(0); return; }
-    setError("");
-    try {
-      const blob = await api.lectureChunkAudio(c.id);
-      if (chunkUrlRef.current) URL.revokeObjectURL(chunkUrlRef.current);
-      const url = URL.createObjectURL(blob);
-      chunkUrlRef.current = url;
-      if (!audio) { chunkAudioRef.current = new Audio(); }
-      const el = chunkAudioRef.current as HTMLAudioElement;
-      el.src = url;
-      el.onended = () => setPlayingChunk(0);
-      await el.play();
-      setPlayingChunk(c.id);
-    } catch (e) { setPlayingChunk(0); setError(lectureError(t, e)); }
-  }, [playingChunk, t]);
+  const playChunk = useCallback(
+    async (c: LectureChunk) => {
+      const audio = chunkAudioRef.current;
+      if (playingChunk === c.id && audio) {
+        audio.pause();
+        setPlayingChunk(0);
+        return;
+      }
+      setError("");
+      try {
+        const blob = await api.lectureChunkAudio(c.id);
+        if (chunkUrlRef.current) URL.revokeObjectURL(chunkUrlRef.current);
+        const url = URL.createObjectURL(blob);
+        chunkUrlRef.current = url;
+        if (!audio) {
+          chunkAudioRef.current = new Audio();
+        }
+        const el = chunkAudioRef.current as HTMLAudioElement;
+        el.src = url;
+        el.onended = () => setPlayingChunk(0);
+        await el.play();
+        setPlayingChunk(c.id);
+      } catch (e) {
+        setPlayingChunk(0);
+        setError(lectureError(t, e));
+      }
+    },
+    [playingChunk, t],
+  );
 
   /** Экспорт расшифровки (md/srt/vtt) — через fetch с токеном, см. saveBlob. */
-  const downloadExport = useCallback(async (format: "md" | "srt" | "vtt") => {
-    if (!session) return;
-    setBusy(`export:${format}`);
-    setError("");
-    try {
-      const { blob, name } = await api.lectureDownloadExport(session.id, format, {
-        // Двухдорожечная разметка: эфир (sys) — лектор, микрофон — аудитория.
-        // Подписи переводим на клиенте: сервер не знает языка интерфейса.
-        mic: t("lecture.audio.speaker.audience"),
-        sys: t("lecture.audio.speaker.lecturer"),
-      });
-      saveBlob(blob, name);
-    } catch (e) { setError(lectureError(t, e)); }
-    finally { setBusy(""); }
-  }, [session, t]);
+  const downloadExport = useCallback(
+    async (format: "md" | "srt" | "vtt") => {
+      if (!session) return;
+      setBusy(`export:${format}`);
+      setError("");
+      try {
+        const { blob, name } = await api.lectureDownloadExport(session.id, format, {
+          // Двухдорожечная разметка: эфир (sys) — лектор, микрофон — аудитория.
+          // Подписи переводим на клиенте: сервер не знает языка интерфейса.
+          mic: t("lecture.audio.speaker.audience"),
+          sys: t("lecture.audio.speaker.lecturer"),
+        });
+        saveBlob(blob, name);
+      } catch (e) {
+        setError(lectureError(t, e));
+      } finally {
+        setBusy("");
+      }
+    },
+    [session, t],
+  );
 
   /** Скачать fail-safe WAV всей лекции. */
   const downloadAudio = useCallback(async () => {
@@ -714,8 +889,11 @@ export default function LectureRecorderPage() {
     try {
       const { blob, name } = await api.lectureDownloadAudio(session.id);
       saveBlob(blob, name);
-    } catch (e) { setError(lectureError(t, e)); }
-    finally { setBusy(""); }
+    } catch (e) {
+      setError(lectureError(t, e));
+    } finally {
+      setBusy("");
+    }
   }, [session, t]);
 
   const runConspectus = useCallback(async () => {
@@ -727,10 +905,15 @@ export default function LectureRecorderPage() {
     // шипящим спиннером показываем РЕАЛЬНЫЙ прогресс (блоки 3/12, сведение).
     const id = session.id;
     const timer = setInterval(() => {
-      void api.lectureConspectusState(id).then((st) => {
-        if (st.state === "working") setConspectusNote(conspectusProgressText(t, st));
-        else setConspectusNote("");
-      }).catch(() => { /* прогресс — необязательная роскошь */ });
+      void api
+        .lectureConspectusState(id)
+        .then((st) => {
+          if (st.state === "working") setConspectusNote(conspectusProgressText(t, st));
+          else setConspectusNote("");
+        })
+        .catch(() => {
+          /* прогресс — необязательная роскошь */
+        });
     }, 1000);
     try {
       const r = await api.lectureConspectus(id);
@@ -739,11 +922,22 @@ export default function LectureRecorderPage() {
       // поэтому «Сохранить заметки» не затрёт результат, конфликт снят.
       notesDirtyRef.current = false;
       setNotesStale(false);
-      void api.lectureConspectusState(id).then(setConspectusSt).catch(() => { /* необязательно */ });
-      if (r.truncated) setConspectusNote(t("lecture.conspectusTruncated", { blocks: r.blocks, of: r.ofTotal }));
+      void api
+        .lectureConspectusState(id)
+        .then(setConspectusSt)
+        .catch(() => {
+          /* необязательно */
+        });
+      if (r.truncated)
+        setConspectusNote(t("lecture.conspectusTruncated", { blocks: r.blocks, of: r.ofTotal }));
       refreshStatus(id);
-    } catch (e) { setError(lectureError(t, e)); }
-    finally { clearInterval(timer); setConspectusNote(""); setConspectusBusy(false); }
+    } catch (e) {
+      setError(lectureError(t, e));
+    } finally {
+      clearInterval(timer);
+      setConspectusNote("");
+      setConspectusBusy(false);
+    }
   }, [refreshStatus, session, t]);
 
   /** Открыть прошлую сессию (просмотр/доделка экспорта). */
@@ -752,8 +946,11 @@ export default function LectureRecorderPage() {
     const st = await api.lectureStatus(id).catch(() => null);
     if (!st) return;
     setSession({
-      id, sampleRate: st.lecture.sample_rate, channels: st.lecture.channels,
-      vad: null as never, whisper: st.whisper,
+      id,
+      sampleRate: st.lecture.sample_rate,
+      channels: st.lecture.channels,
+      vad: null as never,
+      whisper: st.whisper,
     });
     setStatus(st);
     setNotes(st.lecture.notes || "");
@@ -762,30 +959,40 @@ export default function LectureRecorderPage() {
     serverNotesRef.current = st.lecture.notes || "";
     notesDirtyRef.current = false;
     setNotesStale(false);
-    void api.lectureConspectusState(id).then(setConspectusSt).catch(() => setConspectusSt(null));
+    void api
+      .lectureConspectusState(id)
+      .then(setConspectusSt)
+      .catch(() => setConspectusSt(null));
     setEditing(null);
     setShowSessions(false);
   }, []);
 
-  const deleteSession = useCallback(async (id: number) => {
-    // Если звучал фрагмент удаляемой лекции — глушим плеер.
-    if (playingChunk) {
-      chunkAudioRef.current?.pause();
-      setPlayingChunk(0);
-    }
-    try { await api.lectureDelete(id); } catch (e) { setError(lectureError(t, e)); return; }
-    if (session?.id === id) {
-      setSession(null);
-      setStatus(null);
-      setNotes("");
-      serverNotesRef.current = "";
-      notesDirtyRef.current = false;
-      setNotesStale(false);
-      setConspectusSt(null);
-    }
-    refreshMeta();
-  }, [playingChunk, refreshMeta, session, t]);
-
+  const deleteSession = useCallback(
+    async (id: number) => {
+      // Если звучал фрагмент удаляемой лекции — глушим плеер.
+      if (playingChunk) {
+        chunkAudioRef.current?.pause();
+        setPlayingChunk(0);
+      }
+      try {
+        await api.lectureDelete(id);
+      } catch (e) {
+        setError(lectureError(t, e));
+        return;
+      }
+      if (session?.id === id) {
+        setSession(null);
+        setStatus(null);
+        setNotes("");
+        serverNotesRef.current = "";
+        notesDirtyRef.current = false;
+        setNotesStale(false);
+        setConspectusSt(null);
+      }
+      refreshMeta();
+    },
+    [playingChunk, refreshMeta, session, t],
+  );
 
   /* ---- Рендер ---- */
   const chunks: LectureChunk[] = status?.chunks ?? [];
@@ -805,27 +1012,43 @@ export default function LectureRecorderPage() {
           <span className="lec-dim">{engine?.model ? engine.model.split(/[\\/]/).pop() : "—"}</span>
         </div>
         <div className="lec-actions">
-          {recording && <LevelMeter db={levelDb} thresholdDb={audio?.vad.thresholdDb ?? -42} t={t} />}
+          {recording && (
+            <LevelMeter db={levelDb} thresholdDb={audio?.vad.thresholdDb ?? -42} t={t} />
+          )}
           {/* Кнопки-иконки, без подписей: ряд больше не распирает шапку, поэтому
               последняя кнопка не уезжает за край узкого окна. Смысл кнопки —
               в title (подсказка) и aria-label (скринридер). */}
           <button
             className={`lec-btn ghost icon${showSessions ? " on" : ""}`}
             onClick={() => setShowSessions((v) => !v)}
-            title={t("lecture.archive")} aria-label={t("lecture.archive")}
-            aria-expanded={showSessions}>
+            title={t("lecture.archive")}
+            aria-label={t("lecture.archive")}
+            aria-expanded={showSessions}
+          >
             <ChevronDown size={16} />
           </button>
-          <button className="lec-btn ghost icon" onClick={() => setShowAudio(true)}
-            title={t("lecture.audio.btnHint")} aria-label={t("lecture.audio.btn")}>
+          <button
+            className="lec-btn ghost icon"
+            onClick={() => setShowAudio(true)}
+            title={t("lecture.audio.btnHint")}
+            aria-label={t("lecture.audio.btn")}
+          >
             <Volume2 size={16} />
           </button>
-          <button className="lec-btn ghost icon" onClick={() => setShowConspectus(true)}
-            title={t("lecture.conspectusPanel.btnHint")} aria-label={t("lecture.conspectusPanel.btn")}>
+          <button
+            className="lec-btn ghost icon"
+            onClick={() => setShowConspectus(true)}
+            title={t("lecture.conspectusPanel.btnHint")}
+            aria-label={t("lecture.conspectusPanel.btn")}
+          >
             <Sparkles size={16} />
           </button>
-          <button className="lec-btn ghost icon" onClick={() => setShowDiarize(true)}
-            title={t("lecture.diarizePanel.btnHint")} aria-label={t("lecture.diarizePanel.btn")}>
+          <button
+            className="lec-btn ghost icon"
+            onClick={() => setShowDiarize(true)}
+            title={t("lecture.diarizePanel.btnHint")}
+            aria-label={t("lecture.diarizePanel.btn")}
+          >
             <Users size={16} />
           </button>
           {/* Фоновый разбор говорящих: показываем только ход расчёта, иначе
@@ -837,8 +1060,12 @@ export default function LectureRecorderPage() {
               {t("lecture.diarizePanel.running")} {diarizeSt.progress}%
             </span>
           )}
-          <button className="lec-btn ghost icon" onClick={() => setShowEngine(true)}
-            title={t("lecture.setupBtnHint")} aria-label={t("lecture.setupBtn")}>
+          <button
+            className="lec-btn ghost icon"
+            onClick={() => setShowEngine(true)}
+            title={t("lecture.setupBtnHint")}
+            aria-label={t("lecture.setupBtn")}
+          >
             <Settings2 size={16} />
           </button>
         </div>
@@ -890,7 +1117,11 @@ export default function LectureRecorderPage() {
                   {s.started_at} · {fmtTs(s.duration_ms || 0)}
                 </span>
               </button>
-              <button className="icon-btn" title={t("common.delete")} onClick={() => void deleteSession(s.id)}>
+              <button
+                className="icon-btn"
+                title={t("common.delete")}
+                onClick={() => void deleteSession(s.id)}
+              >
                 <Trash2 size={14} />
               </button>
             </div>
@@ -907,8 +1138,12 @@ export default function LectureRecorderPage() {
           onChange={(e) => setTitle(e.target.value)}
         />
         <label className="lec-check">
-          <input type="checkbox" checked={systemAudio} disabled={recording}
-            onChange={(e) => setSystemAudio(e.target.checked)} />
+          <input
+            type="checkbox"
+            checked={systemAudio}
+            disabled={recording}
+            onChange={(e) => setSystemAudio(e.target.checked)}
+          />
           <Radio size={14} /> {t("lecture.systemAudio")}
         </label>
         {!recording ? (
@@ -921,24 +1156,40 @@ export default function LectureRecorderPage() {
           </button>
         )}
         {session && (
-          <button className="lec-btn ghost" disabled={!!busy || recheckBusy || recording}
-            onClick={() => void runRecheck()} title={t("lecture.recheck.hint")}>
+          <button
+            className="lec-btn ghost"
+            disabled={!!busy || recheckBusy || recording}
+            onClick={() => void runRecheck()}
+            title={t("lecture.recheck.hint")}
+          >
             <SearchCheck size={16} /> {t("lecture.recheck.btn")}
           </button>
         )}
-        
-        {recording && <span className="lec-rec-time">{fmtTs((status?.recordingSec || 0) * 1000)}</span>}
+
+        {recording && (
+          <span className="lec-rec-time">{fmtTs((status?.recordingSec || 0) * 1000)}</span>
+        )}
       </div>
 
       {error && <div className="lec-error">{error}</div>}
-      {status?.lastError && <div className="lec-error">{t("lecture.lastError")}: {status.lastError}</div>}
+      {status?.lastError && (
+        <div className="lec-error">
+          {t("lecture.lastError")}: {status.lastError}
+        </div>
+      )}
       {status?.live && (
         <div className="lec-live-strip">
           {t("lecture.queue", { n: status.queue })}
           {status.transcribing ? ` · ${t("lecture.transcribing")}` : ""}
-          {status.vadStats ? ` · ${t("lecture.vadStats", { speech: status.vadStats.speechFrames, frames: status.vadStats.frames })}` : ""}
-          {status.vad?.mic ? ` · ${t("lecture.audio.liveThreshold", { db: status.vad.mic.thresholdDb, noise: status.vad.mic.noiseFloorDb })}` : ""}
-          {status.vad?.mic?.stats?.skippedMs ? ` · ${t("lecture.audio.skipped", { sec: Math.round(status.vad.mic.stats.skippedMs / 1000) })}` : ""}
+          {status.vadStats
+            ? ` · ${t("lecture.vadStats", { speech: status.vadStats.speechFrames, frames: status.vadStats.frames })}`
+            : ""}
+          {status.vad?.mic
+            ? ` · ${t("lecture.audio.liveThreshold", { db: status.vad.mic.thresholdDb, noise: status.vad.mic.noiseFloorDb })}`
+            : ""}
+          {status.vad?.mic?.stats?.skippedMs
+            ? ` · ${t("lecture.audio.skipped", { sec: Math.round(status.vad.mic.stats.skippedMs / 1000) })}`
+            : ""}
         </div>
       )}
 
@@ -946,9 +1197,15 @@ export default function LectureRecorderPage() {
       {status?.recheck && status.recheck.state !== "idle" && (
         <div className="lec-live-strip">
           {status.recheck.state === "working"
-            ? t("lecture.recheck.working", { progress: status.recheck.progress, total: status.recheck.total })
+            ? t("lecture.recheck.working", {
+                progress: status.recheck.progress,
+                total: status.recheck.total,
+              })
             : status.recheck.state === "done"
-              ? t("lecture.recheck.done", { found: status.recheck.found, restored: status.recheck.restored })
+              ? t("lecture.recheck.done", {
+                  found: status.recheck.found,
+                  restored: status.recheck.restored,
+                })
               : t("lecture.recheck.error", { error: status.recheck.error })}
           {status.recheck.truncated ? ` · ${t("lecture.recheck.truncated")}` : ""}
         </div>
@@ -956,17 +1213,22 @@ export default function LectureRecorderPage() {
 
       {/* Сплит-скрин: телепромтер / конспект */}
       <div className="lec-split">
-        <div className="lec-feed" ref={feedRef}
+        <div
+          className="lec-feed"
+          ref={feedRef}
           onScroll={(e) => {
             const el = e.currentTarget;
             autoscroll.current = el.scrollHeight - el.scrollTop - el.clientHeight < 60;
-          }}>
-          {chunks.length === 0 && (
-            <div className="lec-empty">{t("lecture.emptyFeed")}</div>
-          )}
+          }}
+        >
+          {chunks.length === 0 && <div className="lec-empty">{t("lecture.emptyFeed")}</div>}
           {chunks.map((c) => (
             <div key={c.id} className={`lec-chunk st-${c.status}`}>
-              <button className="lec-ts" onClick={() => void playChunk(c)} title={t("lecture.playChunk")}>
+              <button
+                className="lec-ts"
+                onClick={() => void playChunk(c)}
+                title={t("lecture.playChunk")}
+              >
                 {playingChunk === c.id ? <Pause size={11} /> : <Play size={11} />}
                 {fmtTs(c.start_ms)}
               </button>
@@ -978,50 +1240,81 @@ export default function LectureRecorderPage() {
                     rows={3}
                   />
                   <div className="lec-edit-actions">
-                    <button className="lec-btn tiny" onClick={() => void saveEdit()}><Save size={12} /> {t("common.save")}</button>
-                    <button className="lec-btn tiny ghost" onClick={() => setEditing(null)}>{t("common.cancel")}</button>
+                    <button className="lec-btn tiny" onClick={() => void saveEdit()}>
+                      <Save size={12} /> {t("common.save")}
+                    </button>
+                    <button className="lec-btn tiny ghost" onClick={() => setEditing(null)}>
+                      {t("common.cancel")}
+                    </button>
                   </div>
                 </div>
               ) : (
-                <span className="lec-text" onDoubleClick={() => setEditing({ chunkId: c.id, text: c.text })} title={t("lecture.clickToEdit")}>
+                <span
+                  className="lec-text"
+                  onDoubleClick={() => setEditing({ chunkId: c.id, text: c.text })}
+                  title={t("lecture.clickToEdit")}
+                >
                   {/* ВАЖНО: причина и уровень показываются ЧЕСТНО. Раньше любая
                       пустая строка подписывалась «отброшено VAD», хотя это мог
                       быть и ответ Whisper, и шум на входе — разбираться было нечем. */}
-                  {c.text
-                    ? <>
-                        {c.source === "sys" && <span className="lec-src-sys" title={t("lecture.audio.srcSys")}>{t("lecture.audio.srcSysShort")} </span>}
-                        {!c.source || c.source === "mic" ? <span className="lec-src-mic" title={t("lecture.audio.srcMicShort")}>{t("lecture.audio.srcMicShort")} </span> : null}
-                        {c.source === "recheck" && <span className="lec-src-recheck" title={t("lecture.recheck.srcShort")}>↻ </span>}
-                        {/* Говорящий по диаризации (sherpa): «Аудитория 2» → №2. */}
-                        {!!speakerBadge(c) && (
-                          <span className="lec-src-spk" title={t("lecture.diarizePanel.speakerBadgeHint")}>
-                            {speakerBadge(c)}{" "}
-                          </span>
-                        )}
-                        {c.text}
-                      </>
-                    : c.status === "pending"
-                      ? <i className="lec-dim">…</i>
-                      : <i className="lec-dim">{chunkNote(t, c)}</i>}
+                  {c.text ? (
+                    <>
+                      {c.source === "sys" && (
+                        <span className="lec-src-sys" title={t("lecture.audio.srcSys")}>
+                          {t("lecture.audio.srcSysShort")}{" "}
+                        </span>
+                      )}
+                      {!c.source || c.source === "mic" ? (
+                        <span className="lec-src-mic" title={t("lecture.audio.srcMicShort")}>
+                          {t("lecture.audio.srcMicShort")}{" "}
+                        </span>
+                      ) : null}
+                      {c.source === "recheck" && (
+                        <span className="lec-src-recheck" title={t("lecture.recheck.srcShort")}>
+                          ↻{" "}
+                        </span>
+                      )}
+                      {/* Говорящий по диаризации (sherpa): «Аудитория 2» → №2. */}
+                      {!!speakerBadge(c) && (
+                        <span
+                          className="lec-src-spk"
+                          title={t("lecture.diarizePanel.speakerBadgeHint")}
+                        >
+                          {speakerBadge(c)}{" "}
+                        </span>
+                      )}
+                      {c.text}
+                    </>
+                  ) : c.status === "pending" ? (
+                    <i className="lec-dim">…</i>
+                  ) : (
+                    <i className="lec-dim">{chunkNote(t, c)}</i>
+                  )}
                 </span>
               )}
             </div>
           ))}
         </div>
 
-
         <div className="lec-notes">
           <div className="lec-notes-head">
             <strong>{t("lecture.notes")}</strong>
             <div className="lec-notes-actions">
-              <button className="lec-btn tiny" disabled={!session || conspectusBusy} onClick={() => void runConspectus()}>
-                <Sparkles size={12} /> {conspectusBusy ? t("lecture.conspectusBusy") : t("lecture.conspectus")}
+              <button
+                className="lec-btn tiny"
+                disabled={!session || conspectusBusy}
+                onClick={() => void runConspectus()}
+              >
+                <Sparkles size={12} />{" "}
+                {conspectusBusy ? t("lecture.conspectusBusy") : t("lecture.conspectus")}
               </button>
               {/* Режим запуска виден рядом с кнопкой: иначе непонятно, ждать ли
                   конспект автоматически или его надо собирать вручную. */}
               {conspectusCfg && conspectusCfg.trigger !== "manual" && (
-                <span className="lecs-dim lecs-hint"
-                  title={t(`lecture.conspectusPanel.triggerHint.${conspectusCfg.trigger}`)}>
+                <span
+                  className="lecs-dim lecs-hint"
+                  title={t(`lecture.conspectusPanel.triggerHint.${conspectusCfg.trigger}`)}
+                >
                   {t(`lecture.conspectusPanel.trigger.${conspectusCfg.trigger}`)}
                 </span>
               )}
@@ -1031,8 +1324,12 @@ export default function LectureRecorderPage() {
                 </span>
               )}
               {!!conspectusNote && <span className="lecs-dim lecs-hint">{conspectusNote}</span>}
-              <button className="icon-btn" title={t("lecture.saveNotes")} disabled={!session}
-                onClick={() => void saveNotes()}>
+              <button
+                className="icon-btn"
+                title={t("lecture.saveNotes")}
+                disabled={!session}
+                onClick={() => void saveNotes()}
+              >
                 <Save size={14} />
               </button>
               {notesSaved && <span className="lec-saved">{t("lecture.notesSaved")}</span>}
@@ -1044,11 +1341,14 @@ export default function LectureRecorderPage() {
             <div className="lecs-warn lec-notes-stale">
               <AlertTriangle size={13} />
               <span>{t("lecture.notesStale")}</span>
-              <button className="lec-btn tiny ghost" onClick={() => {
-                setNotes(serverNotesRef.current);
-                notesDirtyRef.current = false;
-                setNotesStale(false);
-              }}>
+              <button
+                className="lec-btn tiny ghost"
+                onClick={() => {
+                  setNotes(serverNotesRef.current);
+                  notesDirtyRef.current = false;
+                  setNotesStale(false);
+                }}
+              >
                 {t("lecture.notesStalePull")}
               </button>
               <button className="lec-btn tiny ghost" onClick={() => setNotesStale(false)}>
@@ -1070,13 +1370,21 @@ export default function LectureRecorderPage() {
           <div className="lec-exports">
             <span className="lec-dim">{t("lecture.export")}:</span>
             {(["md", "srt", "vtt"] as const).map((f) => (
-              <button key={f} className="lec-btn tiny ghost" disabled={!session || !!busy}
-                onClick={() => void downloadExport(f)}>
+              <button
+                key={f}
+                className="lec-btn tiny ghost"
+                disabled={!session || !!busy}
+                onClick={() => void downloadExport(f)}
+              >
                 <Download size={12} /> {f.toUpperCase()}
               </button>
             ))}
             {session && (
-              <button className="lec-btn tiny ghost" disabled={!!busy} onClick={() => void downloadAudio()}>
+              <button
+                className="lec-btn tiny ghost"
+                disabled={!!busy}
+                onClick={() => void downloadAudio()}
+              >
                 <Download size={12} /> WAV
               </button>
             )}
@@ -1086,4 +1394,3 @@ export default function LectureRecorderPage() {
     </div>
   );
 }
-

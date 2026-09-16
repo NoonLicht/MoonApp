@@ -8,6 +8,16 @@ const MIN = Number(process.argv[2]) || 8;
 const ROOTS = ["src", "server", "tests", "electron", "scripts"];
 const EXT = new Set([".js", ".ts", ".tsx", ".mjs", ".jsx"]);
 
+// Собранные артефакты (server/ts/x.ts -> server/x.js) — это не дубли кода, а его
+// копия от tsc. Выводим список динамически, чтобы новый переведённый модуль не
+// пришлось вписывать вручную (иначе он сразу «задублирует» свой же исходник).
+const tsDir = path.join(root, "server", "ts");
+const GENERATED = new Set(
+  (fs.existsSync(tsDir) ? fs.readdirSync(tsDir) : [])
+    .filter((f) => f.endsWith(".ts") && !f.endsWith(".d.ts"))
+    .map((f) => path.join("server", f.replace(/\.ts$/, ".js"))),
+);
+
 function walk(dir, out = []) {
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
     const p = path.join(dir, e.name);
@@ -30,7 +40,7 @@ const norm = (s) => s.replace(/\s+/g, " ").trim();
 
 const files = ROOTS.filter((r) => fs.existsSync(path.join(root, r))).flatMap((r) =>
   walk(path.join(root, r)),
-);
+).filter((f) => !GENERATED.has(path.relative(root, f)));
 const index = new Map(); // normalized line -> [{file, line}]
 for (const f of files) {
   const lines = fs.readFileSync(f, "utf8").split(/\r?\n/);
