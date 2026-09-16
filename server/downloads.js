@@ -4,6 +4,7 @@ const { spawn } = require("child_process");
 const { DIRS } = require("./config");
 const logger = require("./logger");
 const settings = require("./settings");
+const { downloadToFile, mb } = require("./download");
 
 // Каталог загрузок: пользовательская папка из настроек (store.downloadDir)
 // или дефолтная storage/downloads, если путь не задан/невалиден.
@@ -39,68 +40,32 @@ function fileNameFromUrl(url) {
 
 // Файл по url качается в каталог загрузок (настройки store.downloadDir или
 // storage/downloads) → { file, name, size }.
+//
+// Сам цикл загрузки живёт в общем server/ts/download.ts: он одинаков для store,
+// установщиков движков и моделей. Здесь остаётся только политика store —
+// проверка схемы, каталог назначения, лимит 2 ГБ и тексты ошибок для UI.
 async function download(url, destDir = resolveDestDir()) {
   const href = String(url).trim();
   if (!/^https?:\/\//i.test(href)) throw new Error("Допускаются только http/https ссылки");
 
-  const res = await fetch(href, {
-    redirect: "follow",
-    signal: AbortSignal.timeout(DOWNLOAD_TIMEOUT_MS),
-    headers: {
-      "User-Agent":
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
-      Accept: "*/*",
-      Referer: new URL(href).origin + "/",
+  // Имя зависит от адреса ПОСЛЕ редиректов (GitHub уводит релиз на
+  // objects.githubusercontent.com), поэтому путь считается внутри resolveDest.
+  let name = fileNameFromUrl(href);
+  const size = await downloadToFile(href, path.join(destDir, name), {
+    userAgent:
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+    headers: { Accept: "*/*", Referer: new URL(href).origin + "/" },
+    timeoutMs: DOWNLOAD_TIMEOUT_MS,
+    maxBytes: MAX_DOWNLOAD_BYTES,
+    resolveDest: (finalUrl) => {
+      name = fileNameFromUrl(finalUrl);
+      return path.join(destDir, name);
     },
+    httpErrorText: (status) => `HTTP ${status} при скачивании ${href}`,
+    tooLargeText: (bytes, max) => `Файл слишком большой (${mb(bytes)} MB), лимит ${mb(max)} MB`,
   });
-  if (!res.ok) throw new Error(`HTTP ${res.status} при скачивании ${href}`);
 
-  const name = fileNameFromUrl(res.url || href);
   const file = path.join(destDir, name);
-
-  // Content-Length сверяется ещё до записи в файл.
-  const declared = Number(res.headers.get("content-length") || 0);
-  if (declared > MAX_DOWNLOAD_BYTES) {
-    throw new Error(
-      `Файл слишком большой (${Math.round(declared / 1024 ** 2)} MB), лимит ${MAX_DOWNLOAD_BYTES / 1024 ** 2} MB`,
-    );
-  }
-
-  let received = 0;
-  const ws = fs.createWriteStream(file);
-  let tooBig = false;
-  // res.body у fetch — это веб-ReadableStream, у него нет .on/.pipe, поэтому for-await.
-  try {
-    for await (const chunk of res.body) {
-      const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
-      received += buf.length;
-      if (received > MAX_DOWNLOAD_BYTES) {
-        tooBig = true;
-        throw new Error("limit-exceeded"); // поток прерывается; очистка файла — ниже
-      }
-      if (!ws.write(buf)) await new Promise((r) => ws.once("drain", r));
-    }
-  } catch (e) {
-    // Частично скачанный файл удаляется.
-    try {
-      ws.destroy();
-      fs.rmSync(file, { force: true });
-    } catch {}
-    if (tooBig)
-      throw new Error(`Загрузка прервана: превышен лимит ${MAX_DOWNLOAD_BYTES / 1024 ** 2} MB`, {
-        cause: e,
-      });
-    if (e.message === "limit-exceeded")
-      throw new Error(`Загрузка прервана: превышен лимит ${MAX_DOWNLOAD_BYTES / 1024 ** 2} MB`, {
-        cause: e,
-      });
-    throw e;
-  }
-  await new Promise((resolve, reject) => {
-    ws.end((err) => (err ? reject(err) : resolve()));
-  });
-
-  const size = fs.statSync(file).size;
   logger.info("download.ok", { name, size });
   return { file, name, size };
 }

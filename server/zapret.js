@@ -21,6 +21,7 @@ const { stmts } = require("./db");
 const settings = require("./settings");
 const logger = require("./logger");
 const { runElevated } = require("./elevate");
+const { downloadToFile } = require("./download");
 
 const SERVICE_NAME = "zapret";
 const GAME_TCP_PORTS = "1024-65535";
@@ -592,26 +593,17 @@ function installEngine(opts = {}) {
         : await fetchLatestRelease(true);
       installState.tag = rel.tag;
 
-      // 3. Скачиваем zip с прогрессом.
+      // 3. Скачиваем zip с прогрессом (общий потоковый загрузчик).
       installState.phase = "download";
       fs.mkdirSync(tmpRoot, { recursive: true });
       const zipPath = path.join(tmpRoot, rel.zipName || "release.zip");
-      const res = await fetch(rel.zipUrl, {
-        redirect: "follow",
-        headers: { "User-Agent": "Mozilla/5.0" },
-        signal: AbortSignal.timeout(300000),
+      await downloadToFile(rel.zipUrl, zipPath, {
+        userAgent: "Mozilla/5.0",
+        timeoutMs: 300000,
+        onProgress: ({ total, received }) => {
+          installState.progress = total ? Math.min(100, Math.round((100 * received) / total)) : 0;
+        },
       });
-      if (!res.ok) throw new Error(`download_http_${res.status}`);
-      const declared = Number(res.headers.get("content-length") || 0);
-      let got = 0;
-      const ws = fs.createWriteStream(zipPath);
-      for await (const chunk of res.body) {
-        const b = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
-        got += b.length;
-        installState.progress = declared ? Math.min(100, Math.round((100 * got) / declared)) : 0;
-        if (!ws.write(b)) await new Promise((r) => ws.once("drain", r));
-      }
-      await new Promise((resolve, reject) => ws.end((err) => (err ? reject(err) : resolve())));
 
       // 4. Распаковка (релиз лежит во вложенной папке zapret-discord-youtube-<ver>/).
       installState.phase = "extract";

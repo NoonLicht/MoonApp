@@ -15,6 +15,7 @@ const path = require("path");
 const settings = require("./settings");
 const logger = require("./logger");
 const { DIRS } = require("./config");
+const { downloadToFile } = require("./download");
 
 /* ------------ Формат-каталог: что во что можно перегонять ------------ */
 
@@ -319,44 +320,19 @@ function installFfmpeg() {
     fs.mkdirSync(workDir, { recursive: true });
     fs.rmSync(srcDir, { recursive: true, force: true });
     try {
-      // --- Скачивание с прогрессом ---
+      // --- Скачивание с прогрессом (общий потоковый загрузчик) ---
       installState.phase = "download";
-      const res = await fetch(FFMPEG_URL, {
-        redirect: "follow",
-        headers: {
-          "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/126.0 Safari/537.36",
-          Accept: "*/*",
+      await downloadToFile(FFMPEG_URL, zipPath, {
+        userAgent:
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/126.0 Safari/537.36",
+        headers: { Accept: "*/*" },
+        maxBytes: FFMPEG_MAX_BYTES,
+        httpErrorText: (status) => `HTTP ${status} при скачивании FFmpeg`,
+        tooLargeText: () => "FFmpeg-архив подозрительно большой",
+        interruptedPrefix: "Загрузка прервана: ",
+        onProgress: ({ total, received }) => {
+          installState.progress = total ? Math.min(100, Math.round((100 * received) / total)) : 0;
         },
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status} при скачивании FFmpeg`);
-      const declared = Number(res.headers.get("content-length") || 0);
-      if (declared > FFMPEG_MAX_BYTES) throw new Error("FFmpeg-архив подозрительно большой");
-
-      let received = 0;
-      const ws = fs.createWriteStream(zipPath);
-      ws.on("error", () => {
-        /* ошибка записи обрабатывается ниже */
-      });
-      // res.body — это веб-ReadableStream (у fetch нет .on/.pipe), поэтому for-await.
-      try {
-        for await (const chunk of res.body) {
-          const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
-          received += buf.length;
-          installState.progress = declared
-            ? Math.min(100, Math.round((100 * received) / declared))
-            : 0;
-          if (!ws.write(buf)) await new Promise((r) => ws.once("drain", r));
-        }
-      } catch (e) {
-        try {
-          ws.destroy();
-          fs.rmSync(zipPath, { force: true });
-        } catch {}
-        throw new Error(`Загрузка прервана: ${e.message}`, { cause: e });
-      }
-      await new Promise((resolve, reject) => {
-        ws.end((err) => (err ? reject(err) : resolve()));
       });
 
       // --- Распаковка ---

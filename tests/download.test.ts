@@ -24,12 +24,26 @@ let server: http.Server;
 let baseUrl = "";
 
 /** Режимы тестового сервера: как он отвечает на запрос. */
-let mode: "ok" | "notfound" | "nolen" | "fail-mid" = "ok";
+let mode: "ok" | "notfound" | "nolen" | "fail-mid" | "redirect" = "ok";
 const BODY = Buffer.alloc(64 * 1024, 7);
+/** Заголовки последнего запроса: проверяем, что opts.headers доходят до сервера. */
+let lastHeaders: http.IncomingHttpHeaders = {};
 
 beforeAll(async () => {
   tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "moonapp-download-"));
   server = http.createServer((req2, res) => {
+    lastHeaders = req2.headers;
+    // Адрес после редиректа отдаёт тело как обычно — иначе редирект зациклился бы.
+    if (req2.url?.startsWith("/redirected/")) {
+      res.writeHead(200, { "content-length": String(BODY.length) });
+      res.end(BODY);
+      return;
+    }
+    if (mode === "redirect") {
+      res.writeHead(302, { location: "/redirected/release-1.2.3.bin" });
+      res.end();
+      return;
+    }
     if (mode === "notfound") {
       res.writeHead(404).end("нет");
       return;
@@ -201,5 +215,126 @@ describe("downloadToFile — потоковая запись, прогресс �
     const dest = path.join(tmpDir, "нет-такого-каталога", "deep", "file.bin");
     await download().downloadToFile(baseUrl, dest, { userAgent: "MoonApp/test" });
     expect(fs.existsSync(dest)).toBe(true);
+  });
+});
+
+/**
+ * Опции, из-за которых шесть копий цикла загрузки нельзя было свести к одной:
+ * лимит размера (у установщиков движков и store он свой), дополнительные
+ * заголовки (store добавляет Referer), путь от адреса после редиректов (GitHub
+ * уводит релиз на objects.githubusercontent.com) и тексты ошибок для UI.
+ */
+describe("downloadToFile — opts: лимит размера, заголовки, resolveDest, тексты", () => {
+  it("без maxBytes файл качается целиком (лимит по умолчанию не задан)", async () => {
+    mode = "ok";
+    const dest = path.join(tmpDir, "no-limit.bin");
+    const got = await download().downloadToFile(baseUrl, dest, { userAgent: "MoonApp/test" });
+    expect(got).toBe(BODY.length);
+  });
+
+  it("Content-Length больше лимита -> отказ до записи, файла нет", async () => {
+    mode = "ok";
+    const dest = path.join(tmpDir, "too-big.bin");
+    await expect(
+      download().downloadToFile(baseUrl, dest, { userAgent: "MoonApp/test", maxBytes: 10 }),
+    ).rejects.toThrowError(/больше допустимого размера/);
+    expect(fs.existsSync(dest)).toBe(false);
+  });
+
+  it("без Content-Length лимит ловится по факту, недокачанный файл удаляется", async () => {
+    mode = "nolen";
+    const dest = path.join(tmpDir, "too-big-stream.bin");
+    await expect(
+      download().downloadToFile(baseUrl, dest, { userAgent: "MoonApp/test", maxBytes: 100 }),
+    ).rejects.toThrowError(/больше допустимого размера/);
+    expect(fs.existsSync(dest)).toBe(false);
+  });
+
+  it("свой текст ошибки превышения лимита получает байты и сам лимит", async () => {
+    mode = "ok";
+    const seen: number[] = [];
+    // Лимит заведомо меньше тела: Content-Length больше -> отказ ещё до записи.
+    const limit = 1024;
+    await expect(
+      download().downloadToFile(baseUrl, path.join(tmpDir, "custom-limit.bin"), {
+        userAgent: "MoonApp/test",
+        maxBytes: limit,
+        tooLargeText: (bytes: number, max: number) => {
+          seen.push(bytes, max);
+          return `Файл слишком большой (${bytes} байт), лимит ${max} байт`;
+        },
+      }),
+    ).rejects.toThrowError(`Файл слишком большой (${BODY.length} байт), лимит ${limit} байт`);
+    expect(seen).toEqual([BODY.length, limit]);
+  });
+
+  it("httpErrorText заменяет download_http_<status>", async () => {
+    mode = "notfound";
+    await expect(
+      download().downloadToFile(baseUrl, path.join(tmpDir, "custom-http.bin"), {
+        userAgent: "MoonApp/test",
+        httpErrorText: (status: number) => `HTTP ${status} при скачивании FFmpeg`,
+      }),
+    ).rejects.toThrowError("HTTP 404 при скачивании FFmpeg");
+  });
+
+  it("interruptedPrefix добавляется к обрыву связи", async () => {
+    mode = "fail-mid";
+    await expect(
+      download().downloadToFile(baseUrl, path.join(tmpDir, "prefix.bin"), {
+        userAgent: "MoonApp/test",
+        interruptedPrefix: "Загрузка прервана: ",
+      }),
+    ).rejects.toThrowError(/^Загрузка прервана: /);
+  });
+
+  it("interruptedPrefix не переписывает свои ошибки (HTTP и отмену)", async () => {
+    mode = "notfound";
+    await expect(
+      download().downloadToFile(baseUrl, path.join(tmpDir, "prefix-http.bin"), {
+        userAgent: "MoonApp/test",
+        interruptedPrefix: "Загрузка прервана: ",
+      }),
+    ).rejects.toThrowError(/^download_http_404$/);
+
+    mode = "ok";
+    await expect(
+      download().downloadToFile(baseUrl, path.join(tmpDir, "prefix-cancel.bin"), {
+        userAgent: "MoonApp/test",
+        interruptedPrefix: "Загрузка прервана: ",
+        shouldCancel: () => true,
+      }),
+    ).rejects.toThrowError(/^cancelled$/);
+  });
+
+  it("opts.headers уходят на сервер вместе с User-Agent", async () => {
+    mode = "ok";
+    await download().downloadToFile(baseUrl, path.join(tmpDir, "headers.bin"), {
+      userAgent: "MoonApp/test",
+      headers: { Accept: "*/*", Referer: "http://127.0.0.1/" },
+    });
+    expect(lastHeaders["user-agent"]).toBe("MoonApp/test");
+    expect(lastHeaders["accept"]).toBe("*/*");
+    expect(lastHeaders["referer"]).toBe("http://127.0.0.1/");
+  });
+
+  it("resolveDest вычисляет путь по адресу ПОСЛЕ редиректов", async () => {
+    mode = "redirect";
+    const dest = path.join(tmpDir, "до-редиректа.bin");
+    const got = await download().downloadToFile(baseUrl, dest, {
+      userAgent: "MoonApp/test",
+      resolveDest: (finalUrl: string) =>
+        path.join(tmpDir, "из-url-" + path.basename(new URL(finalUrl).pathname)),
+    });
+    expect(got).toBe(BODY.length);
+    // Имя взято из адреса после редиректа, а не из исходной ссылки.
+    expect(fs.existsSync(path.join(tmpDir, "из-url-release-1.2.3.bin"))).toBe(true);
+    expect(fs.existsSync(dest)).toBe(false);
+  });
+
+  it("mb() округляет байты до мегабайт (для текстов ошибок о размере)", () => {
+    expect(download().mb(0)).toBe(0);
+    expect(download().mb(3 * 1024 ** 2)).toBe(3);
+    expect(download().mb(1536 * 1024)).toBe(2);
   });
 });

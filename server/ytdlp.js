@@ -18,6 +18,7 @@ const settings = require("./settings");
 const logger = require("./logger");
 const proxy = require("./proxy");
 const { DIRS } = require("./config");
+const { downloadToFile } = require("./download");
 
 // --- FFmpeg (нужен для слияния DASH) ---
 
@@ -473,37 +474,18 @@ function installYtDlp() {
   (async () => {
     try {
       installState.phase = "download";
-      const res = await fetch(YTDLP_URL, {
-        redirect: "follow",
-        headers: {
-          "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/126.0 Safari/537.36",
-          Accept: "*/*",
+      await downloadToFile(YTDLP_URL, dlFile, {
+        userAgent:
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/126.0 Safari/537.36",
+        headers: { Accept: "*/*" },
+        maxBytes: YTDLP_MAX_BYTES,
+        httpErrorText: (status) => `HTTP ${status}`,
+        tooLargeText: () => "yt-dlp подозрительно большой",
+        interruptedPrefix: "Загрузка прервана: ",
+        onProgress: ({ total, received }) => {
+          installState.progress = total ? Math.min(100, Math.round((100 * received) / total)) : 0;
         },
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const declared = Number(res.headers.get("content-length") || 0);
-      if (declared > YTDLP_MAX_BYTES) throw new Error("yt-dlp подозрительно большой");
-      let received = 0;
-      const ws = fs.createWriteStream(dlFile);
-      ws.on("error", () => {});
-      try {
-        for await (const chunk of res.body) {
-          const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
-          received += buf.length;
-          installState.progress = declared
-            ? Math.min(100, Math.round((100 * received) / declared))
-            : 0;
-          if (!ws.write(buf)) await new Promise((r) => ws.once("drain", r));
-        }
-      } catch (e) {
-        try {
-          ws.destroy();
-          fs.rmSync(dlFile, { force: true });
-        } catch {}
-        throw new Error(`Загрузка прервана: ${e.message}`, { cause: e });
-      }
-      await new Promise((resolve, reject) => ws.end((err) => (err ? reject(err) : resolve())));
       detectCache = null;
       installState = { state: "done", progress: 100, phase: "", error: "" };
       logger.info("ytdlp.install.done", { path: BUNDLED_BIN });
