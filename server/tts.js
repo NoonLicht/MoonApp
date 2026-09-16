@@ -27,6 +27,7 @@ const { DIRS } = require("../server/config");
 const { detectFfmpeg } = require("./convertEngine");
 const ruNlp = require("./ruNlp");
 const { createQueue, trimJobs } = require("./jobStore");
+const { removeOlderThan } = require("./fsUtil");
 
 const jobs = new Map();
 const JOB_LIMIT = 30;
@@ -37,25 +38,10 @@ const TTL_MS = 24 * 60 * 60 * 1000;
 const queue = createQueue("tts");
 
 /* ------------------------- TTL-чистка storage/tts ------------------------- */
+/* (server/ts/fsUtil.ts): profiles.json и presets.json — пользовательские
+   данные, их не трогаем; остальное — папки заданий старше суток. */
 
-function cleanupOld() {
-  try {
-    if (!fs.existsSync(DIRS.tts)) return;
-    for (const name of fs.readdirSync(DIRS.tts)) {
-      if (name === "profiles.json" || name === "presets.json") continue;
-      const p = path.join(DIRS.tts, name);
-      try {
-        const st = fs.statSync(p);
-        if (Date.now() - st.mtimeMs > TTL_MS) fs.rmSync(p, { recursive: true, force: true });
-      } catch {
-        /* занят — пропускаем */
-      }
-    }
-  } catch {
-    /* не критично */
-  }
-}
-cleanupOld();
+removeOlderThan({ dir: DIRS.tts, ttlMs: TTL_MS, keep: ["profiles.json", "presets.json"] });
 
 /* ------------------------- Железо: GPU / VRAM ------------------------- */
 

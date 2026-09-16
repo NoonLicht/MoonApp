@@ -16,6 +16,12 @@
  * Чем это било: заметки и лекции почти всегда названы по-русски, поэтому
  * удаление возвращало «успех», а .md файл оставался; при переименовании
  * (slug файла зависит от заголовка) копились дубли.
+ *
+ * Второе, зачем модуль: removeOlderThan — общая TTL-уборка каталогов-хранилищ.
+ * Она была скопирована в compressor.js, tts.js и sitebak.js (три почти
+ * идентичных цикла, отличались только каталогом и списком исключений).
+ * Уборка идёт через removePath, поэтому корректно переживает кириллические
+ * имена внутри временных папок — штатный rmSync здесь как раз и спотыкался.
  */
 import fs from "fs";
 import path from "path";
@@ -76,4 +82,45 @@ export function removePath(target: string): boolean {
     if (codeOf(e) === "ENOENT") return true;
   }
   return isDir ? removeDirTree(target) : removeSingle(target);
+}
+
+export interface TtlCleanupOptions {
+  /** Каталог-хранилище. Если его нет — уборка молча ничего не делает. */
+  dir: string;
+  /** Возраст (по mtime), после которого запись считается мусором. */
+  ttlMs: number;
+  /** Имена, которые трогать нельзя (например, profiles.json и presets.json). */
+  keep?: string[];
+  /** Текущее время: параметр нужен только тестам, в бою берётся Date.now(). */
+  now?: number;
+}
+
+/**
+ * Удаляет из каталога всё, что старше ttlMs (по времени последней модификации).
+ * @returns имена реально удалённых записей — удобно для логов и тестов
+ */
+export function removeOlderThan({
+  dir,
+  ttlMs,
+  keep = [],
+  now = Date.now(),
+}: TtlCleanupOptions): string[] {
+  const removed: string[] = [];
+  try {
+    if (!fs.existsSync(dir)) return removed;
+    const keepSet = new Set(keep);
+    for (const name of fs.readdirSync(dir)) {
+      if (keepSet.has(name)) continue;
+      const target = path.join(dir, name);
+      try {
+        if (now - fs.statSync(target).mtimeMs <= ttlMs) continue;
+        if (removePath(target)) removed.push(name);
+      } catch {
+        /* занят (антивирус/индексатор) — пропускаем */
+      }
+    }
+  } catch {
+    /* не критично: уборка не должна ломать запуск движка */
+  }
+  return removed;
 }

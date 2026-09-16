@@ -27,7 +27,7 @@ const { DIRS } = require("./config");
 const { detectFfmpeg } = require("./convertEngine");
 // Входной файл назван по исходному имени (кириллица сохраняется), а fs.rmSync
 // такие пути на Windows молча не удаляет — исходники копились бы в storage.
-const { removePath } = require("./fsUtil");
+const { removePath, removeOlderThan } = require("./fsUtil");
 const { createQueue, trimJobs } = require("./jobStore");
 
 // id -> job; завершённые остаются для скачивания, самые старые вытесняет trimJobs.
@@ -38,25 +38,11 @@ const TTL_MS = 24 * 60 * 60 * 1000;
 // --- Очередь: одно активное задание, остальные ждут (server/ts/jobStore.ts) ---
 const queue = createQueue("compressor");
 
-// --- TTL-чистка временных папок при загрузке модуля ---
-function cleanupOldFiles(dir) {
-  try {
-    if (!fs.existsSync(dir)) return;
-    for (const name of fs.readdirSync(dir)) {
-      const p = path.join(dir, name);
-      try {
-        if (Date.now() - fs.statSync(p).mtimeMs > TTL_MS)
-          fs.rmSync(p, { recursive: true, force: true });
-      } catch {
-        /* занят — пропускаем */
-      }
-    }
-  } catch {
-    /* не критично */
-  }
-}
-cleanupOldFiles(DIRS.compressorIn);
-cleanupOldFiles(DIRS.compressorOut);
+// --- TTL-чистка временных папок при загрузке модуля (server/ts/fsUtil.ts) ---
+// Папки заданий названы id (ASCII), но внутри лежат исходники с кириллицей:
+// имена — по исходному файлу, поэтому уборка идёт через removePath, а не rmSync.
+removeOlderThan({ dir: DIRS.compressorIn, ttlMs: TTL_MS });
+removeOlderThan({ dir: DIRS.compressorOut, ttlMs: TTL_MS });
 
 function probeDuration(ffprobe, file) {
   return new Promise((resolve) => {

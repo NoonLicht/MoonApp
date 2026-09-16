@@ -35,6 +35,7 @@ const logger = require("./logger");
 const { DIRS } = require("./config");
 const { detectFfmpeg } = require("./convertEngine");
 const { trimJobs } = require("./jobStore");
+const { removeOlderThan } = require("./fsUtil");
 
 const MAGIC = "SITEBAK1";
 const AD_HOSTS =
@@ -46,24 +47,7 @@ const TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 // С6: чистим распакованные копии старше 7 дней (сами .sitebak не трогаем —
 // это пользовательские данные). Ограничение Map заданий — trimJobs (jobStore).
-function cleanupOld() {
-  try {
-    const dir = DIRS.sitebakExtracted;
-    if (!fs.existsSync(dir)) return;
-    for (const name of fs.readdirSync(dir)) {
-      const p = path.join(dir, name);
-      try {
-        if (Date.now() - fs.statSync(p).mtimeMs > TTL_MS)
-          fs.rmSync(p, { recursive: true, force: true });
-      } catch {
-        /* занят — пропускаем */
-      }
-    }
-  } catch {
-    /* не критично */
-  }
-}
-cleanupOld();
+removeOlderThan({ dir: DIRS.sitebakExtracted, ttlMs: TTL_MS });
 
 // Опциональная нативная ZSTD-библиотека; если не установлена — Brotli из Node.
 let zstdLib = null;
