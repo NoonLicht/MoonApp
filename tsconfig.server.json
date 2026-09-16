@@ -21,6 +21,7 @@
     "server/ts/jobStore.ts",
     "server/ts/fsUtil.ts",
     "server/ts/download.ts",
-    "server/ts/setupTask.ts"
+    "server/ts/setupTask.ts",
+    "server/ts/frontmatter.ts"
   ]
 }

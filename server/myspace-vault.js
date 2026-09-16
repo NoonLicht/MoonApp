@@ -14,6 +14,7 @@ const logger = require("./logger");
 // Заметки пользователя почти всегда названы по-русски, а fs.rmSync такие файлы
 // на Windows молча не удаляет — см. комментарий в server/ts/fsUtil.ts.
 const { removePath } = require("./fsUtil");
+const { parseFrontmatter } = require("./frontmatter");
 
 const VAULT_DIR = path.join(DIRS.storage, "vault");
 const NOTEBOOK_DIR = path.join(VAULT_DIR, "notes");
@@ -72,28 +73,7 @@ function readFile(filePath) {
   if (!fullPath || !fs.existsSync(fullPath)) return null;
   const raw = fs.readFileSync(fullPath, "utf8");
   const meta = { path: filePath, name: path.basename(filePath), ext: path.extname(filePath) };
-  let content = raw;
-  let frontmatter = {};
-  if (raw.startsWith("---")) {
-    const endIdx = raw.indexOf("---", 3);
-    if (endIdx > 0) {
-      const fmBlock = raw.slice(3, endIdx).trim();
-      content = raw.slice(endIdx + 3).trimStart();
-      for (const line of fmBlock.split("\n")) {
-        const trimmed = line.trim();
-        const colonIdx = trimmed.indexOf(":");
-        if (colonIdx === -1) continue;
-        const key = trimmed.slice(0, colonIdx).trim();
-        let val = trimmed.slice(colonIdx + 1).trim();
-        if (
-          (val.startsWith('"') && val.endsWith('"')) ||
-          (val.startsWith("'") && val.endsWith("'"))
-        )
-          val = val.slice(1, -1);
-        frontmatter[key] = val;
-      }
-    }
-  }
+  const { frontmatter, content } = parseFrontmatter(raw);
   const tags = [...content.matchAll(/(?:^|\s)(#[a-zA-Zа-яА-Я0-9_/-]+)/g)].map((m) => m[1]);
   const wikiLinks = [...content.matchAll(/\[\[([^\]]+)\]\]/g)].map((m) => m[1]);
   return { ...meta, content, frontmatter, tags, wikiLinks };

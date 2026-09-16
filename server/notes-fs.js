@@ -16,6 +16,7 @@ const logger = require("./logger");
 // Удаление файлов с кириллическими именами: fs.rmSync на Windows этого молча
 // не делает, а заголовки заметок почти всегда русские (см. server/ts/fsUtil.ts).
 const { removePath } = require("./fsUtil");
+const { parseFrontmatter } = require("./frontmatter");
 
 const NOTES_DIR = path.join(DIRS.storage, "notes");
 let noteMap = new Map();
@@ -70,31 +71,18 @@ function parseNote(filePath) {
     created_at: "",
     updated_at: "",
   };
-  if (raw.startsWith("---")) {
-    const endIdx = raw.indexOf("---", 3);
-    if (endIdx > 0) {
-      const fmBlock = raw.slice(3, endIdx).trim();
-      note.content = raw.slice(endIdx + 3).trimStart();
-      for (const line of fmBlock.split("\n")) {
-        const trimmed = line.trim();
-        const colonIdx = trimmed.indexOf(":");
-        if (colonIdx === -1) continue;
-        const key = trimmed.slice(0, colonIdx).trim();
-        let val = trimmed.slice(colonIdx + 1).trim();
-        if (
-          (val.startsWith('"') && val.endsWith('"')) ||
-          (val.startsWith("'") && val.endsWith("'"))
-        )
-          val = val.slice(1, -1);
-        if (key === "title") note.title = val;
-        else if (key === "id") note.id = Number(val) || 0;
-        else if (key === "tags") note.tags = val;
-        else if (key === "folder") note.folder = val;
-        else if (key === "created_at") note.created_at = val;
-        else if (key === "updated_at") note.updated_at = val;
-      }
-      return note;
+  const { hasFrontmatter, frontmatter, content } = parseFrontmatter(raw);
+  if (hasFrontmatter) {
+    note.content = content;
+    for (const [key, val] of Object.entries(frontmatter)) {
+      if (key === "title") note.title = val;
+      else if (key === "id") note.id = Number(val) || 0;
+      else if (key === "tags") note.tags = val;
+      else if (key === "folder") note.folder = val;
+      else if (key === "created_at") note.created_at = val;
+      else if (key === "updated_at") note.updated_at = val;
     }
+    return note;
   }
   note.content = raw;
   const base = path.basename(filePath, ".md");
