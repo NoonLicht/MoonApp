@@ -11,7 +11,12 @@ const DEFAULTS = {
   general: {
     language: "ru",
     startPage: "store",      // открывается при запуске
-    autoUpdate: true,        // автообновление приложения (electron-updater)
+    // Автообновление (electron-updater). С 0.2.2 обновления ОБЯЗАТЕЛЬНЫ: проверка
+    // идёт при каждом запуске, скачанное обновление нельзя отложить (см.
+    // electron/main.js → showMandatoryUpdate). Ключ оставлен для совместимости
+    // settings.json и всегда приводится к true (миграция ниже); выключателя в UI нет.
+    autoUpdate: true,
+    autoUpdateMigrated: false, // разовая миграция 0.2.2: включить обновления у старых установок
     autoLaunch: false,       // автозапуск с Windows (electron/main.js → applyAutoLaunch)
     minimizeToTray: false,   // сворачивание прячет окно в трей (electron/main.js)
     closeToTray: false,      // закрытие окна сворачивает в трей вместо выхода
@@ -280,6 +285,17 @@ function load() {
     cache = deepMerge(DEFAULTS, raw);
   } catch {
     cache = JSON.parse(JSON.stringify(DEFAULTS));
+  }
+  // Разовая миграция (0.2.2): обновления стали обязательными — проверка идёт при
+  // каждом запуске, а скачанное обновление нельзя отложить («Позже» больше нет).
+  // Установки, где автообновление было выключено, включаем один раз: маркер
+  // autoUpdateMigrated остаётся в settings.json, повторно значение не правится.
+  if (cache?.general && cache.general.autoUpdateMigrated !== true) {
+    cache.general.autoUpdate = true;
+    cache.general.autoUpdateMigrated = true;
+    // Пишем сразу: иначе в settings.json осталось бы старое false до следующей
+    // записи настроек, и «Собрать логи» показывал бы расхождение с реальностью.
+    try { saveWithLock(); } catch { /* файл только для чтения — не критично */ }
   }
   // Разовая миграция (0.1.x): раньше запуск конфига всегда шёл процессом и
   // оставлял окно консоли в панели задач. Переводим сохранённые настройки на

@@ -758,9 +758,9 @@ declare global {
       close: () => void;
       // Открыть каталог установки приложения (кнопка в верхней панели).
       openAppDir?: () => Promise<{ ok: boolean; dir?: string; error?: string }>;
-      // Обновления приложения (работают только в packaged-сборке).
+      // Обновления приложения (работают только в packaged-сборке). С 0.2.2
+      // обновления обязательны: включение/выключение не предусмотрено.
       checkUpdates?: () => Promise<{ ok: boolean; available?: boolean; version?: string | null; reason?: string }>;
-      toggleAutoUpdate?: () => Promise<{ ok: boolean; enabled?: boolean; reason?: string }>;
       downloadUpdate?: () => Promise<{ ok: boolean; available?: boolean; version?: string | null; downloading?: boolean; reason?: string }>;
       /**
        * Режим захвата звука: "loopback" — системный звук (WASAPI через

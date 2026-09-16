@@ -3,7 +3,7 @@ import {
   Settings2, Palette, Gauge, MonitorCog, MessageSquare,
   Package, Repeat, Clapperboard, Mic2, Archive, Activity, Database,
   ShieldCheck, Check, RotateCcw, Video, Music2, BookOpen, User,
-  ChevronDown, KeyRound, Save, RefreshCw, Download, FileDown, FolderOpen, ClipboardCopy, Cpu, Sparkles, Users, Upload,
+  ChevronDown, KeyRound, Save, RefreshCw, Download, FileDown, FolderOpen, ClipboardCopy, Upload, AudioLines,
 } from "lucide-react";
 import { Glass, Btn, Select, SectionHead, Badge, EmptyHint } from "../components/ui";
 import { copyToClipboard } from "../components/ContextMenu";
@@ -15,9 +15,6 @@ import { usePageToolbar } from "../components/Toolbar";
 import { useI18n, LANGS } from "../i18n";
 import { startPageOptions } from "../navigation";
 import { api } from "../api/client";
-import LectureEnginePanel from "../components/LectureEnginePanel";
-import LectureConspectusPanel from "../components/LectureConspectusPanel";
-import LectureDiarizePanel from "../components/LectureDiarizePanel";
 
 /**
  * РЎРµСЂРІРёСЃРЅС‹Р№ СЃР»РѕРІР°СЂСЊ Р±РµР№РґР¶РµР№ СЂР°Р·РґРµР»РѕРІ: СЃР»РѕРІРѕ РёР· РЅР°СЃС‚СЂРѕРµРє -> РєР»СЋС‡ РїРµСЂРµРІРѕРґР°.
@@ -313,23 +310,22 @@ export default function SettingsPage() {
   }, []);
 
   // Обновления приложения (appBridge; работают только в packaged-сборке).
-  const [updEnabled, setUpdEnabled] = useState(true);
+  // С 0.2.2 обновления ОБЯЗАТЕЛЬНЫ: проверка запускается при каждом старте, файл
+  // скачивается сам, а установка предлагается диалогом, который нельзя закрыть не
+  // обновившись (electron/main.js → showMandatoryUpdate). Поэтому здесь нет
+  // выключателя — только ручная проверка и «скачать сейчас».
   const [updBusy, setUpdBusy] = useState<string | null>(null);
   const [updStatus, setUpdStatus] = useState("");
 
-  async function toggleUpdates() {
+  async function checkUpdatesNow() {
     const br = window.appBridge;
-    if (!br?.toggleAutoUpdate) { setUpdStatus(t("settings.updatesDevHint")); return; }
-    setUpdBusy("toggle"); setUpdStatus("");
+    if (!br?.checkUpdates) { setUpdStatus(t("settings.updatesDevHint")); return; }
+    setUpdBusy("check"); setUpdStatus(t("settings.updatesChecking"));
     try {
-      const r = await br.toggleAutoUpdate();
-      if (r.ok) {
-        setUpdEnabled(!!r.enabled);
-        setS((cur: any) => (cur ? setAt(cur, "general.autoUpdate", !!r.enabled) : cur));
-        setUpdStatus(r.enabled ? t("settings.updatesOnMsg") : t("settings.updatesOffMsg"));
-      } else {
-        setUpdStatus(t("settings.updatesDevHint"));
-      }
+      const r = await br.checkUpdates();
+      if (!r.ok) setUpdStatus(t("settings.updatesError", { msg: r.reason || "" }));
+      else if (!r.available) setUpdStatus(t("settings.updatesNone"));
+      else setUpdStatus(t("settings.updatesFound", { v: r.version || "" }));
     } catch (e) {
       setUpdStatus((e as Error).message);
     } finally {
@@ -345,6 +341,8 @@ export default function SettingsPage() {
       const r = await br.downloadUpdate();
       if (!r.ok) setUpdStatus(t("settings.updatesError", { msg: r.reason || "" }));
       else if (!r.available) setUpdStatus(t("settings.updatesNone"));
+      // downloading: false — файл уже скачан, показан обязательный диалог установки.
+      else if (!r.downloading) setUpdStatus(t("settings.updatesReady", { v: r.version || "" }));
       else setUpdStatus(t("settings.updatesDownloading", { v: r.version || "" }));
     } catch (e) {
       setUpdStatus((e as Error).message);
@@ -462,10 +460,8 @@ export default function SettingsPage() {
     }
   }
 
-  // Синхронизируем состояние кнопки обновлений с settings.json после загрузки.
-  useEffect(() => {
-    if (s) setUpdEnabled(s?.general?.autoUpdate !== false);
-  }, [s]);
+  // Синхронизируем состояние кнопок обновлений больше не нужно: выключателя нет,
+  // обновления обязательны (см. выше).
 
   usePageToolbar(
     <Badge tone="teal" mono>
@@ -532,6 +528,9 @@ export default function SettingsPage() {
   const moviesCfg = s.movies || {};
   const media = s.media, voice = s.voice || {}, arch = s.archiver || {}, mon = s.monitor;
   const comp = s.compressor || {}, sb = s.sitebak || {};
+  // Настройки лектория: часть живёт в панелях страницы лекций (модель, конспект,
+  // говорящие), здесь — язык Whisper, промпт, потоки и тайминги VAD.
+  const lec = s.lecture || {};
   const backup = s.backup, adv = s.advanced;
 
   return (
@@ -578,11 +577,17 @@ export default function SettingsPage() {
           <BoolRow label={t("settings.closeToTray")} hint={t("settings.closeToTrayHint")} value={!!g.closeToTray} onChange={(v) => change("general.closeToTray", v)} />
         </Section>
 
-        {/* ---- Обновления приложения (док: general.autoUpdate) ---- */}
+        {/* ---- Обновления приложения (док: general.autoUpdate) ----
+             Обновления обязательны: проверка при каждом старте и каждые 4 часа,
+             скачивание автоматическое, установка — через диалог, который нельзя
+             закрыть не обновившись. Выключателя нет по построению (0.2.2). ---- */}
         <Section title={t("settings.updatesTitle")} icon={RefreshCw} badge="active">
           <Row label={t("settings.updatesAutoLabel")} hint={t("settings.updatesAutoHint")}>
-            <Btn icon={updBusy === "toggle" ? RefreshCw : Check} onClick={toggleUpdates} disabled={updBusy !== null}>
-              {updEnabled ? t("settings.updatesDisable") : t("settings.updatesEnable")}
+            <Badge tone="teal">{t("settings.updatesMandatory")}</Badge>
+          </Row>
+          <Row label={t("settings.updatesCheckLabel")} hint={t("settings.updatesCheckHint")}>
+            <Btn icon={updBusy === "check" ? RefreshCw : Check} onClick={checkUpdatesNow} disabled={updBusy !== null}>
+              {t("settings.updatesCheck")}
             </Btn>
           </Row>
           <Row label={t("settings.updatesDownloadLabel")} hint={t("settings.updatesDownloadHint")}>
@@ -858,24 +863,60 @@ export default function SettingsPage() {
           </Row>
         </Section>
 
-        {/* ---- Lecture Recorder (док: lecture) — модель распознавания, сборка
-             движка (CPU/OpenBLAS/CUDA) и устройство счёта. Живёт и на странице
-             лекций (кнопка «Модель и ускорение»), здесь — та же панель inline. ---- */}
-        <Section title={t("lecture.setupBtn")} icon={Cpu} badge="active">
-          <LectureEnginePanel inline />
-        </Section>
-
-        {/* ---- ИИ-конспект: провайдер (по умолчанию DeepSeek), модель и режим
-             запуска (умный авто / всегда авто / вручную). Та же панель доступна
-             на странице лекций кнопкой «ИИ-конспект». ---- */}
-        <Section title={t("lecture.conspectusPanel.btn")} icon={Sparkles} badge="active">
-          <LectureConspectusPanel inline />
-        </Section>
-
-        {/* ---- Разделение говорящих (диаризация): пакет sherpa + порог/число
-             говорящих. На странице лекций та же панель — кнопкой «Говорящие». ---- */}
-        <Section title={t("lecture.diarizePanel.btn")} icon={Users} badge="active">
-          <LectureDiarizePanel inline />
+        {/* ---- Лекции: распознавание речи и нарезка чанков (док: lecture) ----
+             Здесь ТОЛЬКО то, чего нет на странице лектория: язык Whisper,
+             начальный промпт, потоки CPU и тайминги VAD-нарезки чанков.
+             Модель/ускорение, ИИ-конспект и говорящие намеренно НЕ дублируются —
+             они живут в панелях страницы лекций (кнопки «Модель и ускорение»,
+             «ИИ-конспект», «Говорящие»), где рядом стоит сам материал записи. ---- */}
+        <Section title={t("settings.lectureSttTitle")} icon={AudioLines} badge="active">
+          <Row label={t("settings.lectureLangLabel")} hint={t("settings.lectureLangHint")}>
+            <Select
+              value={String(lec.language || "ru")}
+              onChange={(e) => change("lecture.language", e.target.value)}
+              options={[
+                { value: "auto", label: t("settings.lectureLangAuto") },
+                { value: "ru", label: "Русский" },
+                { value: "en", label: "English" },
+                { value: "de", label: "Deutsch" },
+                { value: "fr", label: "Français" },
+                { value: "es", label: "Español" },
+                { value: "it", label: "Italiano" },
+                { value: "zh", label: "中文" },
+                { value: "ar", label: "العربية" },
+              ]}
+            />
+          </Row>
+          <Row label={t("settings.lecturePromptLabel")} hint={t("settings.lecturePromptHint")}>
+            {/* Промпт уходит в whisper.cpp как --prompt: термины из него модель
+                распознаёт заметно точнее (имена, формулы, предметная лексика). */}
+            <TextInput
+              value={String(lec.initialPrompt || "")}
+              onChange={(v) => change("lecture.initialPrompt", v)}
+              placeholder={t("settings.lecturePromptPlaceholder")}
+            />
+          </Row>
+          <Row label={t("settings.lectureThreadsLabel")} hint={t("settings.lectureThreadsHint")}>
+            <NumberInput value={Number(lec.threads ?? 4)} onChange={(v) => change("lecture.threads", v)} min={1} max={32} />
+          </Row>
+          {/* Тайминги VAD читаются при создании ЗАПИСИ: применяются к следующей
+              лекции, текущая пишется по прежним значениям. */}
+          <div className="muted-sm" style={{ marginTop: 4 }}>{t("settings.lectureVadHint")}</div>
+          <Row label={t("settings.lectureVadSilenceLabel")} hint={t("settings.lectureVadSilenceHint")}>
+            <NumberInput value={Number(lec.vadSilenceMs ?? 700)} onChange={(v) => change("lecture.vadSilenceMs", v)} min={300} max={1500} step={50} suffix=" ms" />
+          </Row>
+          <Row label={t("settings.lectureVadMinLabel")} hint={t("settings.lectureVadMinHint")}>
+            <NumberInput value={Number(lec.vadMinChunkMs ?? 7000)} onChange={(v) => change("lecture.vadMinChunkMs", v)} min={3000} max={20000} step={500} suffix=" ms" />
+          </Row>
+          <Row label={t("settings.lectureVadMaxLabel")} hint={t("settings.lectureVadMaxHint")}>
+            <NumberInput value={Number(lec.vadMaxChunkMs ?? 18000)} onChange={(v) => change("lecture.vadMaxChunkMs", v)} min={5000} max={40000} step={500} suffix=" ms" />
+          </Row>
+          <Row label={t("settings.lectureVadForceLabel")} hint={t("settings.lectureVadForceHint")}>
+            <NumberInput value={Number(lec.vadForceSplitMs ?? 25000)} onChange={(v) => change("lecture.vadForceSplitMs", v)} min={10000} max={90000} step={1000} suffix=" ms" />
+          </Row>
+          <Row label={t("settings.lectureVadPadLabel")} hint={t("settings.lectureVadPadHint")}>
+            <NumberInput value={Number(lec.vadPadMs ?? 150)} onChange={(v) => change("lecture.vadPadMs", v)} min={0} max={500} step={10} suffix=" ms" />
+          </Row>
         </Section>
 
         {/* ---- Web Archive / .sitebak (док: sitebak) — параметры краулера ---- */}

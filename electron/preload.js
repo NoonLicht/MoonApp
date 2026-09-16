@@ -27,9 +27,10 @@ contextBridge.exposeInMainWorld("appBridge", {
   // Режим захвата звука: "loopback" — системный звук (WASAPI), "default" — обычный.
   // Нужен странице лекций: без него getDisplayMedia отдаёт видео/камеру, а не звук системы.
   setCaptureMode: (mode) => ipcRenderer.invoke("rec:capture-mode", mode),
-  // Обновления приложения (работают только в packaged-сборке).
+  // Обновления приложения (работают только в packaged-сборке). Обновления
+  // обязательны (0.2.2): проверка идёт при старте и каждые 4 часа, установка —
+  // через обязательный диалог. Выключателя (updates:toggle) больше нет.
   checkUpdates: () => ipcRenderer.invoke("updates:check"),
-  toggleAutoUpdate: () => ipcRenderer.invoke("updates:toggle"),
   downloadUpdate: () => ipcRenderer.invoke("updates:download"),
   minimize: () => ipcRenderer.send("win:minimize"),
   toggleMaximize: () => ipcRenderer.send("win:toggle-maximize"),
