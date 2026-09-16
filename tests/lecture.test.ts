@@ -34,14 +34,6 @@ function speech(ms: number, freq = 440, amp = 0.35): Int16Array {
   return out;
 }
 
-/** Ровный тон без модуляции — для проверок «это НЕ речь» (гул, наводка, шум). */
-function tone(ms: number, freq = 440, amp = 0.35): Int16Array {
-  const n = Math.round((SR * ms) / 1000);
-  const out = new Int16Array(n);
-  for (let i = 0; i < n; i++) out[i] = Math.round(Math.sin((2 * Math.PI * freq * i) / SR) * amp * 32767);
-  return out;
-}
-
 function silence(ms: number): Int16Array {
   return new Int16Array(Math.round((SR * ms) / 1000));
 }

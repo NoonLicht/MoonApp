@@ -11,7 +11,6 @@
  */
 
 const express = require("express");
-const fs = require("fs");
 const ytdlp = require("../ytdlp");
 const logger = require("../logger");
 // yt-dlp переименовывает скачанное в название трека (часто кириллица), а fs.rmSync

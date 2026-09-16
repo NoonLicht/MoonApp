@@ -1,7 +1,6 @@
 const express = require("express");
 const path = require("path");
 const { stmts } = require("../db");
-const { DIRS } = require("../config");
 const { download, runInstaller } = require("../downloads");
 const logger = require("../logger");
 

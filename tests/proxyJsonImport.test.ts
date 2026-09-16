@@ -1,5 +1,4 @@
 import { describe, it, expect, beforeAll } from "vitest";
-import { createRequire } from "module";
 import fs from "fs";
 import os from "os";
 import path from "path";

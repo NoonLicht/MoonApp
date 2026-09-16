@@ -234,7 +234,7 @@ router.post("/pages", (req, res) => {
 /** Узел из БД → компактная запись для UI (без тяжёлого config_json). */
 function summarizeNode(row) {
   let parsed = null;
-  try { parsed = JSON.parse(row.config_json); } catch { parsed = null; }
+  try { parsed = JSON.parse(row.config_json); } catch { /* пустой/битый JSON — поля ниже останутся null */ }
   return {
     id: row.id,
     subId: row.sub_id,

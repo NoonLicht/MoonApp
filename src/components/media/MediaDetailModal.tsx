@@ -73,7 +73,7 @@ function runtimeText(min?: number | null, seasons?: number, episodes?: number): 
 }
 
 export default function MediaDetailModal({
-  kind, id, summary, onClose, onOpenTitle, onOpenPlayer, onChanged,
+  kind, id, onClose, onOpenTitle, onOpenPlayer, onChanged,
 }: MediaDetailModalProps) {
   const { t } = useI18n();
   // keep-alive: страница может быть скрыта, тогда модалку не показываем (портал

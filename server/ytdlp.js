@@ -404,7 +404,7 @@ function installYtDlp() {
           installState.progress = declared ? Math.min(100, Math.round((100 * received) / declared)) : 0;
           if (!ws.write(buf)) await new Promise((r) => ws.once("drain", r));
         }
-      } catch (e) { try { ws.destroy(); fs.rmSync(dlFile, { force: true }); } catch {} throw new Error(`Загрузка прервана: ${e.message}`); }
+      } catch (e) { try { ws.destroy(); fs.rmSync(dlFile, { force: true }); } catch {} throw new Error(`Загрузка прервана: ${e.message}`, { cause: e }); }
       await new Promise((resolve, reject) => ws.end((err) => (err ? reject(err) : resolve())));
       detectCache = null;
       installState = { state: "done", progress: 100, phase: "", error: "" };

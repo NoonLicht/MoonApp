@@ -17,8 +17,8 @@ import { startPageOptions } from "../navigation";
 import { api } from "../api/client";
 
 /**
- * РЎРµСЂРІРёСЃРЅС‹Р№ СЃР»РѕРІР°СЂСЊ Р±РµР№РґР¶РµР№ СЂР°Р·РґРµР»РѕРІ: СЃР»РѕРІРѕ РёР· РЅР°СЃС‚СЂРѕРµРє -> РєР»СЋС‡ РїРµСЂРµРІРѕРґР°.
- * РќСѓР¶РµРЅ, С‡С‚РѕР±С‹ Р±РµР№РґР¶Рё ("live", "future", вЂ¦) С‚РѕР¶Рµ Р»РѕРєР°Р»РёР·РѕРІР°Р»РёСЃСЊ.
+ * Сервисный словарь бейджей разделов: слово из настроек -> ключ перевода.
+ * Нужен, чтобы бейджи ("live", "future", …) тоже локализовались.
  */
 const BADGE_KEYS: Record<string, string> = {
   "saved auto": "savedAuto",
@@ -30,16 +30,16 @@ const BADGE_KEYS: Record<string, string> = {
 };
 
 /**
- * РўРѕС‡РµС‡РЅРѕРµ С‡С‚РµРЅРёРµ РІР»РѕР¶РµРЅРЅРѕРіРѕ Р·РЅР°С‡РµРЅРёСЏ РїРѕ РїСѓС‚Рё "a.b.c".
- * РСЃРїРѕР»СЊР·СѓРµС‚СЃСЏ, С‡С‚РѕР±С‹ РїР°С‚С‡РёС‚СЊ РЅР°СЃС‚СЂРѕР№РєРё (PATCH /settings) СѓР·РєРѕР№ РІРµС‚РєРѕР№.
+ * Точечное чтение вложенного значения по пути "a.b.c".
+ * Используется, чтобы патчить настройки (PATCH /settings) узкой веткой.
  */
 function getAt(obj: any, path: string): any {
   return path.split(".").reduce((a, k) => (a == null ? a : a[k]), obj);
 }
 
 /**
- * РРјРјСѓС‚Р°Р±РµР»СЊРЅРѕ РїРёС€РµС‚ Р·РЅР°С‡РµРЅРёРµ РїРѕ РїСѓС‚Рё "a.b.c" Рё РІРѕР·РІСЂР°С‰Р°РµС‚ РєРѕРїРёСЋ РѕР±СЉРµРєС‚Р°.
- * РўР°Рє РєРѕРјРїРѕРЅРµРЅС‚ РѕСЃС‚Р°С‘С‚СЃСЏ С‡РёСЃС‚С‹Рј: СЃС‚Р°СЂРѕРµ СЃРѕСЃС‚РѕСЏРЅРёРµ РЅРµ РјСѓС‚РёСЂСѓРµС‚СЃСЏ.
+ * Иммутабельно пишет значение по пути "a.b.c" и возвращает копию объекта.
+ * Так компонент остаётся чистым: старое состояние не мутируется.
  */
 function setAt(obj: any, path: string, value: unknown): any {
   const keys = path.split(".");
@@ -53,7 +53,7 @@ function setAt(obj: any, path: string, value: unknown): any {
   return clone;
 }
 
-/* ---------- РњРµР»РєРёРµ UI-СЌР»РµРјРµРЅС‚С‹ ---------- */
+/* ---------- Мелкие UI-элементы ---------- */
 /**
  * Сохранить полученный blob под именем файла. Именно blob, а не ссылка на
  * /api-роут: все роуты закрыты токеном (x-moonapp-token), который <a download>
@@ -150,7 +150,7 @@ function TextInput({ value, onChange, placeholder }: { value: string; onChange: 
   );
 }
 
-/* ---------- Р‘Р»РѕРє СЃРµРєС†РёРё ---------- */
+/* ---------- Блок секции ---------- */
 function Section({ title, icon: Icon, badge, children }: { title: string; icon: React.ElementType; badge?: string; children: React.ReactNode }) {
   const { t } = useI18n();
   const badgeText = badge ? t(`badge.${BADGE_KEYS[badge] || badge}`) : null;
@@ -164,7 +164,7 @@ function Section({ title, icon: Icon, badge, children }: { title: string; icon: 
         <span className="set-section-title">{title}</span>
         {badgeText && (
           <Badge tone={isFuture ? "coral" : "violet"} mono>
-            {isFuture ? `вљ  ${badgeText}` : badgeText}
+            {isFuture ? `⚠ ${badgeText}` : badgeText}
           </Badge>
         )}
       </div>
@@ -174,14 +174,14 @@ function Section({ title, icon: Icon, badge, children }: { title: string; icon: 
 }
 
 /**
- * РЎРІРѕСЂР°С‡РёРІР°РµРјРѕРµ РїРѕРґРјРµРЅСЋ В«API-РєР»СЋС‡РёВ» РІРЅСѓС‚СЂРё СЂР°Р·РґРµР»Р° AI Chat.
+ * Сворачиваемое подменю «API-ключи» внутри раздела AI Chat.
  *
- * РљР°Рє СЌС‚Рѕ СЂР°Р±РѕС‚Р°РµС‚:
- *  - СЃРїРёСЃРѕРє РїСЂРѕРІР°Р№РґРµСЂРѕРІ Р±РµСЂС‘С‚СЃСЏ СЃ GET /settings/providers (РІ РѕС‚РІРµС‚Рµ С‚РѕР»СЊРєРѕ
- *    С„Р»Р°Рі В«РЅР°СЃС‚СЂРѕРµРЅВ», СЃР°РјРё РєР»СЋС‡Рё РЅРёРєРѕРіРґР° РЅРµ РѕС‚РґР°СЋС‚СЃСЏ РєР»РёРµРЅС‚Сѓ);
- *  - РІРІРµРґС‘РЅРЅС‹Р№ РєР»СЋС‡ СѓС…РѕРґРёС‚ РѕРґРёРЅ СЂР°Р· POST-РѕРј РЅР° /settings/providers/:id/key;
- *  - РЅР° СЃРµСЂРІРµСЂРµ РєР»СЋС‡ С€РёС„СЂСѓРµС‚СЃСЏ (safeStorage/DPAPI РІРЅСѓС‚СЂРё Electron, РёРЅР°С‡Рµ
- *    AES-256-GCM СЃ РјР°СЃС‚РµСЂ-РєР»СЋС‡РѕРј) Рё С…СЂР°РЅРёС‚СЃСЏ РІ storage/secrets.json.
+ * Как это работает:
+ *  - список провайдеров берётся с GET /settings/providers (в ответе только
+ *    флаг «настроен», сами ключи никогда не отдаются клиенту);
+ *  - введённый ключ уходит один раз POST-ом на /settings/providers/:id/key;
+ *  - на сервере ключ шифруется (safeStorage/DPAPI внутри Electron, иначе
+ *    AES-256-GCM с мастер-ключом) и хранится в storage/secrets.json.
  */
 function ApiKeysPanel() {
   const { t } = useI18n();
@@ -204,7 +204,7 @@ function ApiKeysPanel() {
       setSavedId(id);
       refresh();
       setTimeout(() => setSavedId(null), 1500);
-    } catch { /* РѕС€РёР±РєР° СЃРµС‚Рё вЂ” Р±РµР№РґР¶ В«configuredВ» РїСЂРѕСЃС‚Рѕ РЅРµ РѕР±РЅРѕРІРёС‚СЃСЏ */ }
+    } catch { /* ошибка сети — бейдж «configured» просто не обновится */ }
   };
 
   return (
@@ -305,7 +305,7 @@ export default function SettingsPage() {
   const [dirtyMap, setDirtyMap] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    api.getSettings().then(setS).catch(() => setError(t("settings.loadError") || "РќРµ СѓРґР°Р»РѕСЃСЊ Р·Р°РіСЂСѓР·РёС‚СЊ РЅР°СЃС‚СЂРѕР№РєРё"));
+    api.getSettings().then(setS).catch(() => setError(t("settings.loadError") || "Не удалось загрузить настройки"));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -472,9 +472,9 @@ export default function SettingsPage() {
 
   async function persist(next: any, path: string) {
     setS(next);
-    // РЎРѕС…СЂР°РЅСЏРµС‚СЃСЏ С‚РѕР»СЊРєРѕ РёР·РјРµРЅС‘РЅРЅР°СЏ РІРµС‚РєР° (РІР»РѕР¶РµРЅРЅС‹Р№ patch), deep-merge РЅР° СЃРµСЂРІРµСЂРµ.
+    // Сохраняется только изменённая ветка (вложенный patch), deep-merge на сервере.
     const keys = path.split(".");
-    let patch: any = {};
+    const patch: any = {};
     let cur: any = patch;
     for (let i = 0; i < keys.length - 1; i++) {
       cur[keys[i]] = {};
@@ -494,7 +494,7 @@ export default function SettingsPage() {
   }
 
   function change(path: string, value: unknown) {
-    // РЎРїРµС†-РѕР±СЂР°Р±РѕС‚РєР° С‚РµРјС‹: СЃРёРЅС…СЂРѕРЅРёР·РёСЂСѓРµРј РѕСЃРЅРѕРІРЅРѕР№ App.
+    // Спец-обработка темы: синхронизируем основной App.
     if (path === "appearance.theme") {
       window.dispatchEvent(new CustomEvent("app:theme", { detail: value }));
     }
@@ -523,7 +523,7 @@ export default function SettingsPage() {
 
   const g = s.general, ap = s.appearance, pf = s.performance, win = s.window;
   const chat = s.chat, store = s.store, conv = s.converter;
-  // РќРѕРІС‹Рµ СЃРµРєС†РёРё РјРѕРіСѓС‚ РѕС‚СЃСѓС‚СЃС‚РІРѕРІР°С‚СЊ РІ СЃС‚Р°СЂС‹С… settings.json вЂ” РґР°С‘Рј С„РѕР»Р±СЌРєРё.
+  // Новые секции могут отсутствовать в старых settings.json — даём фолбэки.
   const video = s.video || {}, musicS = s.music || {}, mysp = s.myspace || {};
   const moviesCfg = s.movies || {};
   const media = s.media, voice = s.voice || {}, mon = s.monitor;
@@ -552,7 +552,7 @@ export default function SettingsPage() {
       )}
 
       <Glass className="settings-scroll-wrap">
-        {/* ---- Store / Р·Р°РіСЂСѓР·РєРё (РґРѕРє: store) ---- */}
+        {/* ---- Store / загрузки (док: store) ---- */}
         {/* ---- Общее (док: settings) ---- */}
         <Section title={t("settings.general")} icon={Settings2} badge="saved auto">
           <Row label={t("settings.language")} hint={t("settings.languageHint")}>
@@ -713,7 +713,7 @@ export default function SettingsPage() {
           </Row>
         </Section>
 
-        {/* ---- РљРѕРЅРІРµСЂС‚РµСЂ (РґРѕРє: convert) ---- */}
+        {/* ---- Конвертер (док: convert) ---- */}
         <Section title={t("settings.converter")} icon={Repeat} badge="active">
           <Row label={t("convSection.convFfmpeg")} hint={t("convSection.convFfmpegHint")}>
             <TextInput value={conv.ffmpegPath} onChange={(v) => change("converter.ffmpegPath", v)} placeholder="ffmpeg" />
@@ -739,7 +739,7 @@ export default function SettingsPage() {
           <BoolRow label={t("cmpSettings.cmpCleanup")} hint={t("cmpSettings.cmpCleanupHint")} value={comp.cleanupTemp !== false} onChange={(v) => change("compressor.cleanupTemp", v)} />
         </Section>
 
-        {/* ---- Р’РёРґРµРѕ (РґРѕРє: video) вЂ” РґРµС„РѕР»С‚С‹ РґР»СЏ РЅРѕРІС‹С… Р·Р°РіСЂСѓР·РѕРє yt-dlp ---- */}
+        {/* ---- Видео (док: video) — дефолты для новых загрузок yt-dlp ---- */}
         <Section title={t("settings.video")} icon={Video} badge="active">
           <Row label={t("videoSection.videoQuality")} hint={t("videoSection.videoQualityHint")}>
             <Select
@@ -760,7 +760,7 @@ export default function SettingsPage() {
           </Row>
         </Section>
 
-        {/* ---- РњСѓР·С‹РєР° (РґРѕРє: music) вЂ” РєР°С‡РµСЃС‚РІРѕ Р°СѓРґРёРѕ РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ ---- */}
+        {/* ---- Музыка (док: music) — качество аудио по умолчанию ---- */}
         <Section title={t("settings.musicSection")} icon={Music2} badge="active">
           <Row label={t("musicSection.musicQuality")} hint={t("musicSection.musicQualityHint")}>
             <Select
@@ -789,7 +789,7 @@ export default function SettingsPage() {
           </div>
         </Section>
 
-        {/* ---- РњРѕРЅРёС‚РѕСЂРёРЅРі (РґРѕРє: monitor) ---- */}
+        {/* ---- Мониторинг (док: monitor) ---- */}
         <Section title={t("settings.monitor")} icon={Activity} badge="active">
           <BoolRow label={t("monSettings.monAutoStart")} hint={t("monSettings.monAutoStartHint")} value={mon.autoStart} onChange={(v) => change("monitor.autoStart", v)} />
           <Row label={t("monSettings.monRefreshMs")} hint={t("monSettings.monIntervalHint")}>
@@ -798,19 +798,19 @@ export default function SettingsPage() {
           <BoolRow label={t("monSettings.monLhmAuto")} hint={t("monSettings.monLhmAutoHint")} value={mon.lhmAutoStart !== false} onChange={(v) => change("monitor.lhmAutoStart", v)} />
         </Section>
 
-        {/* ---- My Space (РґРѕРє: myspace) ---- */}
+        {/* ---- My Space (док: myspace) ---- */}
         <Section title={t("settings.myspace")} icon={User} badge="active">
           <BoolRow label={t("myspaceSection.myAutosave")} hint={t("myspaceSection.myAutosaveHint")} value={mysp.autosave !== false} onChange={(v) => change("myspace.autosave", v)} />
           <BoolRow label={t("myspaceSection.mySpellcheck")} hint={t("myspaceSection.mySpellcheckHint")} value={!!mysp.spellcheck} onChange={(v) => change("myspace.spellcheck", v)} />
         </Section>
 
-        {/* ---- Р§Р°С‚ / РР (РґРѕРє: aichat) вЂ” СЃРѕ СЃРІРѕСЂР°С‡РёРІР°РµРјС‹Рј РїРѕРґРјРµРЅСЋ API-РєР»СЋС‡РµР№ ---- */}
+        {/* ---- Чат / ИИ (док: aichat) — со сворачиваемым подменю API-ключей ---- */}
         <Section title={t("settings.chat")} icon={MessageSquare} badge="active">
           <ApiKeysPanel />
           <Row label={t("chat.chatProvider")} hint={t("chat.chatProviderHint")}>
             <Select value={chat.provider} onChange={(e) => change("chat.provider", e.target.value)} options={["openai", "anthropic", "gemini", "mistral", "deepseek", "ollama"]} />
           </Row>
-          <Row label={t("chat.chatModel")} hint={t("chat.chatModelHint", { model: chat.model || "вЂ”" })}>
+          <Row label={t("chat.chatModel")} hint={t("chat.chatModelHint", { model: chat.model || "—" })}>
             <TextInput value={chat.model} onChange={(v) => change("chat.model", v)} placeholder="gpt-4o-mini" />
           </Row>
           <Row label={t("chat.chatTemperature")} hint={t("chat.chatTemperatureHint")}>
@@ -831,7 +831,7 @@ export default function SettingsPage() {
           </Row>
         </Section>
 
-        {/* ---- Р“РѕР»РѕСЃ (РґРѕРє: voice) ---- */}
+        {/* ---- Голос (док: voice) ---- */}
         <Section title={t("settings.voice")} icon={Mic2} badge="active">
           <Row label={t("voiceSettings.voiceEngine")} hint={t("voiceSettings.voiceEngineHint")}>
             <Select value={voice.engine} onChange={(e) => change("voice.engine", e.target.value)} options={["local", "cloud"]} />
@@ -941,7 +941,7 @@ export default function SettingsPage() {
           </Row>
         </Section>
 
-        {/* ---- РђРІС‚РѕР±СЌРєР°Рї ---- */}
+        {/* ---- Автобэкап ---- */}
         <Section title={t("settings.backup")} icon={Database} badge="active">
           <BoolRow label={t("backupSettings.backupEnable")} hint={t("backupSettings.backupEnableHint")} value={backup.auto} onChange={(v) => change("backup.auto", v)} />
           <Row label={t("backupSettings.backupInterval")} hint={t("backupSettings.backupIntervalHint")}>
@@ -1000,7 +1000,7 @@ export default function SettingsPage() {
           )}
         </Section>
 
-        {/* ---- РџСЂРѕРґРІРёРЅСѓС‚РѕРµ ---- */}
+        {/* ---- Продвинутое ---- */}
         <Section title={t("settings.advanced")} icon={ShieldCheck} badge="dev">
           <BoolRow label={t("advanced.advancedTelemetry")} hint={t("advanced.advancedTelemetryHint")} value={adv.telemetry} onChange={(v) => change("advanced.telemetry", v)} />
           <Row label={t("advanced.advancedLogLevel")} hint={t("advanced.advancedLogLevelHint")}>

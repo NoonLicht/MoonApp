@@ -257,7 +257,7 @@ function MarkdownCardNode({ id, data, selected }: NodeProps) {
     setLoading(true);
     try {
       const f = await api.myspaceRead(d.path);
-      const preview = (f?.content || "").replace(/[#*`>\-\[\]]/g, "").slice(0, 420);
+      const preview = (f?.content || "").replace(/[#*`>\-[\]]/g, "").slice(0, 420);
       d.setData?.(id, { preview, loaded: true });
     } catch { d.setData?.(id, { preview: "⚠ Failed to load", loaded: true }); }
     setLoading(false);

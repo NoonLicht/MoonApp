@@ -29,7 +29,7 @@ function fileNameFromUrl(url) {
     const u = new URL(url);
     let base = path.basename(u.pathname);
     if (!base || base === "/") base = "download.bin";
-    return decodeURIComponent(base).replace(/[^\w.\-]+/g, "_");
+    return decodeURIComponent(base).replace(/[^\w.-]+/g, "_");
   } catch {
     return "download.bin";
   }
@@ -78,8 +78,8 @@ async function download(url, destDir = resolveDestDir()) {
   } catch (e) {
     // Частично скачанный файл удаляется.
     try { ws.destroy(); fs.rmSync(file, { force: true }); } catch {}
-    if (tooBig) throw new Error(`Загрузка прервана: превышен лимит ${MAX_DOWNLOAD_BYTES / 1024 ** 2} MB`);
-    if (e.message === "limit-exceeded") throw new Error(`Загрузка прервана: превышен лимит ${MAX_DOWNLOAD_BYTES / 1024 ** 2} MB`);
+    if (tooBig) throw new Error(`Загрузка прервана: превышен лимит ${MAX_DOWNLOAD_BYTES / 1024 ** 2} MB`, { cause: e });
+    if (e.message === "limit-exceeded") throw new Error(`Загрузка прервана: превышен лимит ${MAX_DOWNLOAD_BYTES / 1024 ** 2} MB`, { cause: e });
     throw e;
   }
   await new Promise((resolve, reject) => {
@@ -97,7 +97,7 @@ function runInstaller(absPath) {
   if (!ALLOWED_EXT.includes(ext)) throw new Error(`Неподдерживаемый тип файла: ${ext}`);
 
   let cmd;
-  let args = [];
+  let args;
   if (ext === ".msi" || ext === ".msix") {
     cmd = "msiexec";
     args = [ext === ".msi" ? "/i" : "/i", absPath];

@@ -229,9 +229,9 @@ function ColorPickerDropdown({
   );
 }
 /* ─── Dropdown wrapper ─── */
-function DropdownMenu({ trigger, children, open, onToggle, onClose, alignRight }: {
+function DropdownMenu({ trigger, children, open, onClose, alignRight }: {
   trigger: React.ReactNode; children: React.ReactNode;
-  open: boolean; onToggle: () => void; onClose: () => void; alignRight?: boolean;
+  open: boolean; onClose: () => void; alignRight?: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -320,7 +320,7 @@ export default function EditingToolbar({ onFormat, onUndo, onRedo, onAttach, isD
       <TBtn icon={Heading2} title="Heading 2" active={activeFormats.has("h2")} onClick={() => fmt("h2")} disabled={isDisabled} />
       <TBtn icon={Heading3} title="Heading 3" active={activeFormats.has("h3")} onClick={() => fmt("h3")} disabled={isDisabled} />
       <DropdownMenu
-        open={openDropdown === "heading"} onToggle={() => toggleDropdown("heading")} onClose={closeDropdown}
+        open={openDropdown === "heading"} onClose={closeDropdown}
         trigger={<DropdownBtn icon={Heading1} open={openDropdown === "heading"} onClick={() => toggleDropdown("heading")} title="More headings" />}
       >
         {(["h1","h4","h5","h6"] as const).map((h) => (
@@ -349,7 +349,7 @@ export default function EditingToolbar({ onFormat, onUndo, onRedo, onAttach, isD
         mode="bg"
       />
       <DropdownMenu
-        open={openDropdown === "paste"} onToggle={() => toggleDropdown("paste")} onClose={closeDropdown}
+        open={openDropdown === "paste"} onClose={closeDropdown}
         trigger={<DropdownBtn icon={ClipboardPaste} open={openDropdown === "paste"} onClick={() => toggleDropdown("paste")} title="Paste Special" />}
       >
         <DropdownItemBtn icon={Copy} label="Copy" value="copy" onClick={() => fmt("copy")} />
@@ -364,7 +364,7 @@ export default function EditingToolbar({ onFormat, onUndo, onRedo, onAttach, isD
       <TBtn icon={Table2} title="Insert Table" onClick={() => fmt("table")} disabled={isDisabled} />
       <TBtn icon={CheckSquare} title="Task List (- [ ])" active={activeFormats.has("task")} onClick={() => fmt("task")} disabled={isDisabled} />
       <DropdownMenu
-        open={openDropdown === "comment"} onToggle={() => toggleDropdown("comment")} onClose={closeDropdown}
+        open={openDropdown === "comment"} onClose={closeDropdown}
         trigger={<DropdownBtn icon={Quote} open={openDropdown === "comment"} onClick={() => toggleDropdown("comment")} title="Blockquote / Comment" />}
       >
         <DropdownItemBtn icon={Quote} label="Blockquote (> )" value="blockquote" onClick={() => fmt("blockquote")} />
@@ -374,7 +374,7 @@ export default function EditingToolbar({ onFormat, onUndo, onRedo, onAttach, isD
 
       {/* ── Advanced / Code Formatting ── */}
       <DropdownMenu
-        open={openDropdown === "advanced"} onToggle={() => toggleDropdown("advanced")} onClose={closeDropdown}
+        open={openDropdown === "advanced"} onClose={closeDropdown}
         trigger={<DropdownBtn icon={Code2} open={openDropdown === "advanced"} onClick={() => toggleDropdown("advanced")} title="Code / Advanced" />}
       >
         <DropdownItemBtn icon={ArrowUpFromLine} label="Superscript (^text^)" value="superscript" onClick={() => fmt("superscript")} />
@@ -391,7 +391,7 @@ export default function EditingToolbar({ onFormat, onUndo, onRedo, onAttach, isD
 
       {/* ── Lists ── */}
       <DropdownMenu
-        open={openDropdown === "lists"} onToggle={() => toggleDropdown("lists")} onClose={closeDropdown}
+        open={openDropdown === "lists"} onClose={closeDropdown}
         trigger={<DropdownBtn icon={List} open={openDropdown === "lists"} onClick={() => toggleDropdown("lists")} title="List Formatting" />}
       >
         <DropdownItemBtn icon={ListChecks} label="Todo List" value="task" onClick={() => fmt("task")} />
@@ -404,7 +404,7 @@ export default function EditingToolbar({ onFormat, onUndo, onRedo, onAttach, isD
 
       {/* ── Text Alignment ── */}
       <DropdownMenu
-        open={openDropdown === "align"} onToggle={() => toggleDropdown("align")} onClose={closeDropdown}
+        open={openDropdown === "align"} onClose={closeDropdown}
         trigger={<DropdownBtn icon={AlignLeft} open={openDropdown === "align"} onClick={() => toggleDropdown("align")} title="Text Alignment" />}
       >
         <DropdownItemBtn icon={AlignJustify} label="Justify" value="justify" onClick={() => fmt("justify")} />

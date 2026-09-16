@@ -5,7 +5,7 @@ name: Release
 on:
   push:
     tags:
-      - "v*"
+      - 'v*'
 
 permissions:
   contents: write # нужно для создания Release и загрузки артефактов
@@ -28,6 +28,15 @@ jobs:
 
       - name: Typecheck
         run: npm run typecheck
+
+      # Гейты качества: реальные ошибки линтера и испорченная кодировка
+      # (мойбейк) не должны попадать в релиз — оба скрипта возвращают код 1
+      # при находках. Стилистика — Prettier, он же проверяется форматом.
+      - name: Lint
+        run: npm run lint
+
+      - name: Mojibake scan
+        run: npm run scan:mojibake
 
       # Юнит-тесты (vitest) — гейт перед сборкой релиза. Компиляция серверных
       # TS-исходников уже выполнена шагом Typecheck (tsc -p tsconfig.server.json).

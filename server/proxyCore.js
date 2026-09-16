@@ -98,8 +98,8 @@ function b64decode(input) {
 /** host:port → { server, port }. Поддерживает [ipv6]:port. */
 function splitHostPort(hp) {
   const s = String(hp || "").trim();
-  let server = "";
-  let port = NaN;
+  let server;
+  let port;
   if (s.startsWith("[")) {
     const close = s.indexOf("]");
     if (close < 0) return { server: "", port: NaN };
@@ -274,9 +274,9 @@ function parseShadowsocks(uri) {
   const qIdx = withoutTag.indexOf("?");
   const core = qIdx >= 0 ? withoutTag.slice(0, qIdx) : withoutTag;
 
-  let method = "";
-  let password = "";
-  let hostport = "";
+  let method;
+  let password;
+  let hostport;
 
   if (core.includes("@")) {
     // ss://base64(method:password)@host:port  |  ss://method:password@host:port
@@ -1274,7 +1274,7 @@ function clearCorePid() {
 /** Прибить осиротевший процесс ядра от прошлого запуска приложения. */
 function killStaleCoreProcess() {
   let pid = 0;
-  try { pid = Number(fs.readFileSync(CORE_PID_FILE, "utf8").trim()); } catch { pid = 0; }
+  try { pid = Number(fs.readFileSync(CORE_PID_FILE, "utf8").trim()); } catch { /* файла нет — процесса тоже */ }
   if (pid > 0) {
     try {
       process.kill(pid, 0); // процесс ещё жив?

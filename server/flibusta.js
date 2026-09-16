@@ -126,7 +126,7 @@ function parseEntry(xml) {
   if (!bid) return null;
   const title = decodeEntities((inner(xml, "title") || "").trim());
   const author = inner(xml, "author")
-    ? decodeEntities((inner(xml, "author").match(/<name>([\s\S]*?)<\/name>/) || [, ""])[1].trim())
+    ? decodeEntities((inner(xml, "author").match(/<name>([\s\S]*?)<\/name>/) || ["", ""])[1].trim())
     : "";
   const genres = parseGenres(xml);
   const formats = parseFormats(xml);
@@ -220,8 +220,9 @@ async function aggregateFeed(basePath, page, size = 80) {
         xml = await fetchFeed(cursor);
       } catch (e) {
         if (attempt === 1) {
-          // Вторая попытка не удалась: отдаём частичный результат или бросаем
-          if (acc.length > 0) { cursor = null; break; }
+          // Вторая попытка не удалась: отдаём частичный результат — выходим из
+          // цикла (cursor здесь всё равно уже не будет использован).
+          if (acc.length > 0) break;
           throw e;
         }
         await new Promise((r) => setTimeout(r, 600));
@@ -324,18 +325,6 @@ async function popularBooks(page = 0, size = 80) {
   logger.warn("flibusta.popular_fallback", { error: lastError && lastError.message });
   const fb = await newBooks(p, size);
   return { ...fb, popularFallback: true };
-}
-
-/** Список жанров из /opds/newgenres: [{ title, href }]. */
-async function listGenresFlat() {
-  const key = "genres";
-  const cached = cacheGet(key);
-  if (cached) return cached;
-  const xml = await fetchFeed("/opds/newgenres");
-  const genres = parseNavEntries(xml);
-  const out = { genres };
-  cacheSet(key, out);
-  return out;
 }
 
 /**

@@ -74,7 +74,7 @@ export default function MyspacePage() {
               "- **Tag content** with #tags for easy organization\n" +
               "- **Search** across all your notes\n\n" +
               "## Features\n\n" +
-              "- \Code blocks\ with syntax highlighting\n" +
+              "- `Code blocks` with syntax highlighting\n" +
               "- Task lists: - [ ] todo, - [x] done\n" +
               "- Auto-save while you type\n" +
               "- Backlinks in the right panel\n" +
@@ -100,10 +100,10 @@ export default function MyspacePage() {
   }, []);
 
   const loadTree = () => { api.myspaceTree().then((t)=>{setTree(t);setExpAutoExpand(t);}).catch(()=>{}); };
-  const setExpAutoExpand = (nodes: VaultFile[], parentPath = "") => {
+  const setExpAutoExpand = (nodes: VaultFile[]) => {
     const toExpand = new Set<string>();
-    const walk = (list: VaultFile[], pp: string) => { for (const n of list) { if (n.type==="folder") { if (n.children && n.children.length > 0) { toExpand.add(n.path); walk(n.children, n.path); } } } };
-    walk(nodes, "");
+    const walk = (list: VaultFile[]) => { for (const n of list) { if (n.type==="folder") { if (n.children && n.children.length > 0) { toExpand.add(n.path); walk(n.children); } } } };
+    walk(nodes);
     setExp((prev)=>{const nxt=new Set(prev); toExpand.forEach(p=>nxt.add(p)); return nxt;});
   };
   const openFile = useCallback(async (p: string) => {
@@ -211,7 +211,7 @@ export default function MyspacePage() {
   };
   const deleteFolder = async (node: any) => {
     // Move all children notes to root first
-    const moveFiles = async (nodes: VaultFile[], parentPath: string) => {
+    const moveFiles = async (nodes: VaultFile[]) => {
       for (const n of nodes) {
         if (n.type==="note") {
           const destName = n.name;
@@ -222,12 +222,12 @@ export default function MyspacePage() {
           }
           try { await api.myspaceRename(n.path, destName); } catch (ex: any) { setError("Failed to move: "+ex.message); }
         } else if (n.type==="folder" && n.children) {
-          await moveFiles(n.children, n.path);
+          await moveFiles(n.children);
         }
       }
     };
     if (node.children) {
-      await moveFiles(node.children, node.path);
+      await moveFiles(node.children);
       await new Promise(r => setTimeout(r, 200)); // wait for moves
     }
     // Delete the now-empty folder
@@ -676,7 +676,7 @@ export default function MyspacePage() {
               else if (type==="link") { if (sel) wrap("[","](url)"); else insertAtCursor("[text](url)"); }
               else if (type==="textColor") wrap('<span style="color:'+(value||"#f0a63d")+'">',"</span>");
               else if (type==="clearFormatting") {
-                let s = sel.replace(/\*\*/g,"").replace(/^\*|\*$/g,"").replace(/~~/g,"").replace(/<\/?[^>]+>/g,"").replace(/`/g,"").replace(/\$/g,"").replace(/==/g,"").replace(/[\^~]/g,"").replace(/style="[^"]*"/g,"");
+                const s = sel.replace(/\*\*/g,"").replace(/^\*|\*$/g,"").replace(/~~/g,"").replace(/<\/?[^>]+>/g,"").replace(/`/g,"").replace(/\$/g,"").replace(/==/g,"").replace(/[\^~]/g,"").replace(/style="[^"]*"/g,"");
                 const nc = fullText.substring(0,start)+s+fullText.substring(end);
                 updContent(activeTab, nc);
                 restore(() => ta.setSelectionRange(start, start + s.length));

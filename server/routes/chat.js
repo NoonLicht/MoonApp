@@ -1,7 +1,7 @@
 const express = require("express");
-const { stmts, db } = require("../db");
+const { stmts } = require("../db");
 const settings = require("../settings");
-const { PROVIDERS, getProvider } = require("../providers");
+const { getProvider } = require("../providers");
 const { getSecret } = require("../security");
 const { runWithPage } = require("../middleware/perPageProxy");
 const logger = require("../logger");
@@ -205,9 +205,8 @@ router.post("/:id/arena", async (req, res) => {
 
   const runSide = (side, mdl) => (async () => {
     const startedAt = Date.now();
-    let full = "";
     try {
-      full = await runWithPage(req.appPage, () => provider.chat({
+      const full = await runWithPage(req.appPage, () => provider.chat({
         secret, model: mdl, messages: fullMessages,
         temperature: temperature ?? chatCfg.temperature ?? 0.7,
         maxTokens: maxTokens ?? chatCfg.maxTokens ?? 1024,

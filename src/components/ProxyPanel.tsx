@@ -53,7 +53,6 @@ export default function ProxyPanel({ onClose }: ProxyPanelProps) {
 
   useEffect(() => {
     void loadAll();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Пока идёт «пропинговать все» — опрашиваем прогресс; в конце перечитываем
@@ -68,7 +67,6 @@ export default function ProxyPanel({ onClose }: ProxyPanelProps) {
       } catch { /* временная ошибка — попробуем на следующем тике */ }
     }, 700);
     return () => clearInterval(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ping?.running]);
 
   // Глобальный прокси Chromium (картинки, внешние ресурсы). Локалхост Electron

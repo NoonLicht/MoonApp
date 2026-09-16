@@ -125,7 +125,7 @@ async function runQueue(rows, doPing, timeout) {
     if (PING.cancelRequested) break;
 
     let node = null;
-    try { node = JSON.parse(row.config_json); } catch { node = null; }
+    try { node = JSON.parse(row.config_json); } catch { /* битый config_json — остаётся null */ }
 
     PING.currentId = row.id;
     PING.currentName = row.name || (node && node.server) || "";

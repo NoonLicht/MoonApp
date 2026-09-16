@@ -28,7 +28,7 @@ function ensureDir() {
 function slugify(title) {
   return String(title || "untitled")
     .toLowerCase()
-    .replace(/[^a-zа-яё0-9_\-]/gi, "-")
+    .replace(/[^a-zа-яё0-9_-]/gi, "-")
     .replace(/-+/g, "-").replace(/^-|-$/g, "").slice(0, 80) || "note";
 }
 

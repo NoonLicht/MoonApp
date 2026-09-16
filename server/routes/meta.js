@@ -1,8 +1,6 @@
 const express = require("express");
-const { stmts } = require("../db");
 const monitor = require("../monitor");
 const logger = require("../logger");
-const proxy = require("../proxy");
 
 const router = express.Router();
 

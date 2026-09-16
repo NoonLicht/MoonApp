@@ -86,7 +86,7 @@ function formatTimer(sec: number): string {
 /* ================================================================
    COMPONENT
    ================================================================ */
-const TasksPanel: React.FC<TasksPanelProps> = ({ onOpenNote, vaultFiles }) => {
+const TasksPanel: React.FC<TasksPanelProps> = ({ onOpenNote }) => {
   /* ----- state ----- */
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [viewMode, setViewMode] = useState<ViewMode>("list");
@@ -289,7 +289,7 @@ const TasksPanel: React.FC<TasksPanelProps> = ({ onOpenNote, vaultFiles }) => {
   const updateProgress = useCallback((increment: number) => {
     try {
       const data = localStorage.getItem("tasks_progress");
-      let prog = data ? JSON.parse(data) : { streak: 0, weekly: [0, 0, 0, 0, 0, 0, 0], points: 0, lastDate: null };
+      const prog = data ? JSON.parse(data) : { streak: 0, weekly: [0, 0, 0, 0, 0, 0, 0], points: 0, lastDate: null };
 
       const today = new Date().toDateString();
       if (prog.lastDate !== today) {

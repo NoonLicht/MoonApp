@@ -43,7 +43,7 @@ function bakFile(id) {
 // К2: HTML из чужого сайта отдаётся ТОЛЬКО с вырезанными скриптами и жёстким
 // CSP (script-src 'none'). Даже если архив снимался с stripScripts=false,
 // превью не может стать вектором XSS против локального API (appBridge).
-function serveHtml(res, buf, id) {
+function serveHtml(res, buf) {
   const html = buf.toString("utf8")
     .replace(/<script[\s\S]*?<\/script>/gi, "")
     .replace(/ on[a-z]+\s*=\s*"[^"]*"/gi, "")
@@ -116,7 +116,7 @@ router.get("/:id/file", (req, res) => {
     const entry = entries.get(rel);
     if (!entry) return res.status(404).json({ error: "no_entry" });
     const ext = path.extname(rel).toLowerCase();
-    if (ext === ".html" || ext === ".htm") return serveHtml(res, entry.buf, req.params.id);
+    if (ext === ".html" || ext === ".htm") return serveHtml(res, entry.buf);
     res.setHeader("Content-Type", MIME[ext] || "application/octet-stream");
     res.send(entry.buf);
   } catch (e) {
@@ -135,7 +135,7 @@ router.get("/:id/raw/*", (req, res) => {
     const entry = entries.get(rel);
     if (!entry) return res.status(404).json({ error: "no_entry" });
     const ext = path.extname(rel).toLowerCase();
-    if (ext === ".html" || ext === ".htm") return serveHtml(res, entry.buf, req.params.id);
+    if (ext === ".html" || ext === ".htm") return serveHtml(res, entry.buf);
     res.setHeader("Content-Type", MIME[ext] || "application/octet-stream");
     res.send(entry.buf);
   } catch (e) {

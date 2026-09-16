@@ -44,11 +44,11 @@ function preprocess(text: string): string {
       continue;
     }
     // Math block $$...$$ FIRST (before inline math)
-    l = l.replace(/\$\$([^\$]+)\$\$/g, '<code class="md-math-block">$1</code>');
+    l = l.replace(/\$\$([^$]+)\$\$/g, '<code class="md-math-block">$1</code>');
     // Math inline $...$
-    l = l.replace(/\$([^\$]+)\$/g, '<code class="md-math">$1</code>');
+    l = l.replace(/\$([^$]+)\$/g, '<code class="md-math">$1</code>');
     // Superscript ^text^
-    l = l.replace(/\^([^\^]+)\^/g, "<sup>$1</sup>");
+    l = l.replace(/\^([^^]+)\^/g, "<sup>$1</sup>");
     // Subscript ~text~
     l = l.replace(/(?<!~)~([^~\s][^~]*[^~\s])~(?!~)/g, "<sub>$1</sub>");
     // Highlight ==text== -> <mark>text</mark>
@@ -57,7 +57,7 @@ function preprocess(text: string): string {
     l = l.replace(/\[\[([^\]]+)\]\]/g, (_, title) =>
       `<span class="md-wl" data-title="${title.replace(/"/g,"&quot;")}">${title}</span>`);
     // #tags
-    l = l.replace(/(^|\s)(#[a-zA-Zа-яА-Я0-9_\-\/]+)/g, (_, sp, tag) =>
+    l = l.replace(/(^|\s)(#[a-zA-Zа-яА-Я0-9_\-/]+)/g, (_, sp, tag) =>
       `${sp}<span class="md-tg" data-tag="${tag}">${tag}</span>`);
     out.push(l);
   }

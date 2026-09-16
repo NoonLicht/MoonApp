@@ -470,7 +470,11 @@ function CanvasInner() {
     const onKey = (e: KeyboardEvent) => {
       if (isTypingTarget(e.target)) return;
       const meta = e.ctrlKey || e.metaKey;
-      if (meta && e.key.toLowerCase() === "z") { e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
+      if (meta && e.key.toLowerCase() === "z") {
+        e.preventDefault();
+        if (e.shiftKey) redo(); else undo();
+        return;
+      }
       if (meta && e.key.toLowerCase() === "y") { e.preventDefault(); redo(); return; }
       if (meta) return;
       if (e.key === "Escape") { setSlash(null); setConnectMenu(null); setShowTemplates(false); return; }

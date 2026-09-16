@@ -151,7 +151,6 @@ async function cached(pathname, query = {}, opts = {}) {
 const POSTER_SIZE = "w500";
 const BACKDROP_SIZE = "w1280";
 const PROFILE_SIZE = "w185";
-const STILL_SIZE = "w300";
 
 function imageUrl(path, size = POSTER_SIZE) {
   return path ? `${IMG}/${size}${path}` : null;

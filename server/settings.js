@@ -314,8 +314,6 @@ function load() {
   return cache;
 }
 
-function save() { saveWithLock(); } // оставлено для совместимости экспорта
-
 function get(key) {
   const s = load();
   return key ? s[key] : s;

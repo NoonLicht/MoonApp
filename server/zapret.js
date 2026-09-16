@@ -13,7 +13,7 @@
 
 const fs = require("fs");
 const path = require("path");
-const { spawn, exec, execFileSync } = require("child_process");
+const { exec, execFileSync } = require("child_process");
 const https = require("https");
 const dgram = require("dgram");
 const { DIRS } = require("./config");
@@ -261,7 +261,7 @@ function vendorOrder(files) {
 function vendorBatIndex(targetFile) {
   const st = engineStatus();
   if (!st.found) return 0;
-  let files = [];
+  let files;
   try {
     files = fs.readdirSync(st.dir)
       .filter((f) => /\.bat$/i.test(f))

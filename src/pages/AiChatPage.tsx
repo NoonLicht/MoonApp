@@ -146,7 +146,6 @@ export default function AiChatPage() {
         }));
       }).catch(() => { /* настройки недоступны — остаётся localStorage */ });
     } catch { /* localStorage недоступен */ }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   /* ── модели провайдера (сервер тянет живой список + кэш 10 мин) ── */

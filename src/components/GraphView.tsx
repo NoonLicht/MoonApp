@@ -96,7 +96,6 @@ export default function GraphView({ data, onNodeClick, onClose }: Props) {
     };
     rafRef.current = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(rafRef.current);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function step() {
@@ -245,7 +244,7 @@ export default function GraphView({ data, onNodeClick, onClose }: Props) {
     }
   };
 
-  const handleMouseUp = (e: React.MouseEvent) => {
+  const handleMouseUp = (_e: React.MouseEvent) => {
     // A real click = no significant movement. Ignore click if panning/dragging happened.
     if (!movedRef.current && dragTarget.current) {
       const gn = dragTarget.current;

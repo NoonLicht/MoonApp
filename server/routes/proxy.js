@@ -2,7 +2,6 @@
 
 const express = require("express");
 const proxy = require("../proxy");
-const logger = require("../logger");
 
 const router = express.Router();
 

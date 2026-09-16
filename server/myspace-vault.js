@@ -25,10 +25,6 @@ function ensureDirs() {
   }
 }
 
-function now() {
-  return new Date().toISOString().replace("T", " ").slice(0, 19);
-}
-
 // Контейнмент путей (защита от path traversal): клиентский путь разрешается
 // внутри базовой папки. resolve + проверка префикса — любой "../../.." даёт
 // null, и операция отклоняется вместо выхода за пределы vault.
@@ -38,14 +34,6 @@ function safeJoin(baseDir, relPath) {
   const base = path.resolve(baseDir);
   if (full !== base && !full.startsWith(base + path.sep)) return null;
   return full;
-}
-
-
-function slugify(title) {
-  return String(title || "untitled")
-    .toLowerCase()
-    .replace(/[^a-zа-яё0-9_\-]/gi, "-")
-    .replace(/-+/g, "-").replace(/^-|-$/g, "").slice(0, 80) || "note";
 }
 
 function buildTree(dir, basePath = "") {
@@ -93,7 +81,7 @@ function readFile(filePath) {
       }
     }
   }
-  const tags = [...content.matchAll(/(?:^|\s)(#[a-zA-Zа-яА-Я0-9_\/\-]+)/g)].map(m => m[1]);
+  const tags = [...content.matchAll(/(?:^|\s)(#[a-zA-Zа-яА-Я0-9_/-]+)/g)].map(m => m[1]);
   const wikiLinks = [...content.matchAll(/\[\[([^\]]+)\]\]/g)].map(m => m[1]);
   return { ...meta, content, frontmatter, tags, wikiLinks };
 }
@@ -187,7 +175,7 @@ function getAllTags() {
       if (entry.isDirectory()) { walk(path.join(dir, entry.name)); }
       else if (entry.name.endsWith(".md")) {
         const raw = fs.readFileSync(path.join(dir, entry.name), "utf8");
-        const tags = [...raw.matchAll(/(?:^|\s)(#[a-zA-Zа-яА-Я0-9_\/\-]+)/g)].map(m => m[1]);
+        const tags = [...raw.matchAll(/(?:^|\s)(#[a-zA-Zа-яА-Я0-9_/-]+)/g)].map(m => m[1]);
         for (const tag of tags) tagMap.set(tag, (tagMap.get(tag) || 0) + 1);
       }
     }
@@ -270,7 +258,7 @@ function listHolsts() {
  */
 function readHolst(name) {
   ensureDirs();
-  const safeName = name.replace(/[^a-zA-Z0-9_\-]/g, "_");
+  const safeName = name.replace(/[^a-zA-Z0-9_-]/g, "_");
   const fullPath = path.join(HOLST_DIR, `${safeName}.holst`);
   if (!fs.existsSync(fullPath)) return null;
   const raw = fs.readFileSync(fullPath, "utf8");
@@ -287,7 +275,7 @@ function readHolst(name) {
  */
 function writeHolst(name, data) {
   ensureDirs();
-  const safeName = name.replace(/[^a-zA-Z0-9_\-]/g, "_");
+  const safeName = name.replace(/[^a-zA-Z0-9_-]/g, "_");
   const fullPath = path.join(HOLST_DIR, `${safeName}.holst`);
   const payload = {
     meta: {
@@ -306,7 +294,7 @@ function writeHolst(name, data) {
  */
 function deleteHolst(name) {
   ensureDirs();
-  const safeName = name.replace(/[^a-zA-Z0-9_\-]/g, "_");
+  const safeName = name.replace(/[^a-zA-Z0-9_-]/g, "_");
   const fullPath = path.join(HOLST_DIR, `${safeName}.holst`);
   if (!fs.existsSync(fullPath)) return { ok: false, error: "Not found" };
   fs.unlinkSync(fullPath);

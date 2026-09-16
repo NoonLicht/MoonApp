@@ -303,7 +303,7 @@ function installFfmpeg() {
         }
       } catch (e) {
         try { ws.destroy(); fs.rmSync(zipPath, { force: true }); } catch {}
-        throw new Error(`Загрузка прервана: ${e.message}`);
+        throw new Error(`Загрузка прервана: ${e.message}`, { cause: e });
       }
       await new Promise((resolve, reject) => {
         ws.end((err) => (err ? reject(err) : resolve()));

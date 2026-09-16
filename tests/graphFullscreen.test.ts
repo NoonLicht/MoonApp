@@ -56,7 +56,7 @@ describe("Полноэкранный граф: слой и геометрия п
   it("Esc закрывает оверлей слушателем окна", () => {
     expect(myspaceSrc).toContain('window.addEventListener("keydown", onKey)');
     expect(myspaceSrc, "вернулся нерабочий onKeyDown на div").not.toContain(
-      'onKeyDown={(e)=>{if(e.key==="Escape")setGraphFullscreen(false);}}'
+      'onKeyDown={(e)=>{if(e.key==="Escape")setGraphFullscreen(false);}}',
     );
   });
 });

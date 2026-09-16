@@ -115,7 +115,7 @@ async function add(source) {
     torrent = c.add(source, { path: DIRS.torrents });
   } catch {
     // Дубликат или некорректный источник — пробуем получить уже добавленный.
-    try { torrent = c.get(source); } catch { torrent = null; }
+    try { torrent = c.get(source); } catch { /* и такого торрента нет — обработаем ниже */ }
   }
   if (!torrent) throw torrentError("bad_source", "cannot add torrent (invalid magnet/.torrent)");
 
