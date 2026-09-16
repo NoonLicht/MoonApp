@@ -1,8 +1,33 @@
-const logger = require("./logger");
+/**
+ * Скрейпер каталога comss.ru для страницы «Магазин»: рубрики → приложения →
+ * прямые ссылки на установщики.
+ *
+ * Сайт отдаёт windows-1251, а внутри страниц есть и «зеркальные» ссылки на
+ * один и тот же файл — обе тонкости зашиты здесь, потому что без них каталог
+ * приходил бы кракозябрами, а ссылка вела бы не туда.
+ *
+ * TS-исходник, как server/ts/security.ts: компилируется в server/comss.js
+ * командой `npm run compile:server`, поэтому `require("./comss")` из обычных
+ * .js-модулей продолжает работать без изменений.
+ */
+import logger from "./logger";
 
 const BASE = "https://www.comss.ru";
 
-const CATEGORIES = [
+/** Рубрика каталога: код для list.php и подпись для UI. */
+export interface ComssCategory {
+  code: string;
+  label: string;
+}
+
+/** Найденное приложение: имя, прямая ссылка и название рубрики. */
+export interface ComssApp {
+  name: string;
+  url: string;
+  category: string;
+}
+
+export const CATEGORIES: ComssCategory[] = [
   { code: "antivirus", label: "Антивирусы для Windows" },
   { code: "utils", label: "Утилиты" },
   { code: "browsers", label: "Браузеры и интернет" },
@@ -36,7 +61,7 @@ const CATEGORIES = [
 const UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36";
 
-async function fetchText(url) {
+async function fetchText(url: string): Promise<string> {
   const res = await fetch(url, {
     redirect: "follow",
     headers: { "User-Agent": UA, Accept: "text/html,*/*", Referer: BASE + "/" },
@@ -49,11 +74,11 @@ async function fetchText(url) {
   return text;
 }
 
-// Рубрика: из html достаётся список {id, name}.
-function parseList(html) {
-  const out = [];
+/** Рубрика: из html достаётся список {id, name}. */
+export function parseList(html: string): { id: string; name: string }[] {
+  const out: { id: string; name: string }[] = [];
   const re = /page\.php\?id=(\d+)[^>]*>([^<]{2,80})</g;
-  let m;
+  let m: RegExpExecArray | null;
   while ((m = re.exec(html))) {
     const name = m[2].trim();
     if (name && name.toLowerCase() !== "новое на сайте") out.push({ id: m[1], name });
@@ -61,17 +86,17 @@ function parseList(html) {
   return out;
 }
 
-// Карточка: находится id страницы загрузки.
-function parseDownloadPageId(html) {
+/** Карточка: находится id страницы загрузки. */
+function parseDownloadPageId(html: string): string | null {
   const m = html.match(/download\/page\.php\?id=(\d+)/);
   return m ? m[1] : null;
 }
 
-// Страница загрузки: собираются прямые ссылки на файлы.
-function parseDirectUrls(html) {
-  const urls = [];
+/** Страница загрузки: одна прямая ссылка (сначала зеркало dl.comss.org). */
+export function parseDirectUrls(html: string): string | null {
+  const urls: string[] = [];
   const re = /https?:\/\/[^"' ]+?\.(?:exe|msi|zip|7z)/gi;
-  let m;
+  let m: RegExpExecArray | null;
   while ((m = re.exec(html))) {
     const u = m[0];
     if (!urls.includes(u)) urls.push(u);
@@ -85,21 +110,24 @@ function parseDirectUrls(html) {
   );
 }
 
-// Парсинг одной рубрики → [{name, url, category}].
-async function scrapeCategory(cat, limit = 0) {
-  const found = [];
+/**
+ * Парсинг одной рубрики → [{name, url, category}].
+ * limit ограничивает число карточек: «обновить каталог» не должно тянуть их сотни.
+ */
+export async function scrapeCategory(cat: ComssCategory, limit = 0): Promise<ComssApp[]> {
+  const found: ComssApp[] = [];
   const cap = limit > 0 ? limit : Infinity; // 0/без лимита = парсим все карточки страницы
-  let entries;
+  let entries: { id: string; name: string }[];
   try {
     const listHtml = await fetchText(`${BASE}/list.php?c=${cat.code}`);
     entries = parseList(listHtml);
   } catch (e) {
-    logger.warn("comss.list_error", { cat: cat.code, error: e.message });
+    logger.warn("comss.list_error", { cat: cat.code, error: (e as Error).message });
     return found;
   }
 
   // Дубли по имени внутри категории отсеиваются
-  const seen = new Set();
+  const seen = new Set<string>();
   for (const entry of entries.slice(0, cap)) {
     if (seen.has(entry.name.toLowerCase())) continue;
     seen.add(entry.name.toLowerCase());
@@ -111,15 +139,15 @@ async function scrapeCategory(cat, limit = 0) {
       const url = parseDirectUrls(dlHtml);
       if (url) found.push({ name: entry.name, url, category: cat.label });
     } catch (e) {
-      logger.warn("comss.app_error", { id: entry.id, error: e.message });
+      logger.warn("comss.app_error", { id: entry.id, error: (e as Error).message });
     }
   }
   return found;
 }
 
-// Парсинг сразу нескольких категорий.
-async function scrape(categories, limit = 20) {
-  const result = [];
+/** Парсинг сразу нескольких категорий. */
+export async function scrape(categories: ComssCategory[], limit = 20): Promise<ComssApp[]> {
+  const result: ComssApp[] = [];
   for (const cat of categories) {
     const items = await scrapeCategory(cat, limit);
     result.push(...items);
@@ -132,9 +160,21 @@ async function scrape(categories, limit = 20) {
   return result;
 }
 
-// То же самое, но с прогресом onProgress({done,total,current,items}) после каждой рубрики.
-async function scrapeWithProgress(categories, limit = 20, onProgress) {
-  const result = [];
+/** Прогресс скрейпа для UI: сколько рубрик пройдено и что уже найдено. */
+export interface ComssProgress {
+  done: number;
+  total: number;
+  current: string;
+  items: ComssApp[];
+}
+
+/** То же, но с прогрессом onProgress после каждой рубрики. */
+export async function scrapeWithProgress(
+  categories: ComssCategory[],
+  limit = 20,
+  onProgress?: (p: ComssProgress) => void,
+): Promise<ComssApp[]> {
+  const result: ComssApp[] = [];
   let done = 0;
   for (const cat of categories) {
     onProgress?.({ done, total: categories.length, current: cat.label, items: result.slice() });
@@ -149,12 +189,3 @@ async function scrapeWithProgress(categories, limit = 20, onProgress) {
   });
   return result;
 }
-
-module.exports = {
-  CATEGORIES,
-  scrape,
-  scrapeWithProgress,
-  scrapeCategory,
-  parseList,
-  parseDirectUrls,
-};

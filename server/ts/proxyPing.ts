@@ -1,5 +1,3 @@
-"use strict";
-
 /**
  * «Пропинговать все» — последовательный реальный пинг узлов подписок.
  *
@@ -10,16 +8,76 @@
  * Пингуем по одному узлу: каждый требует запуска sing-box, параллельный запуск
  * десятков процессов только мешает друг другу и греет машину.
  * Прогресс отдаётся в UI через getStatus() (HTTP-ответ возвращается сразу).
+ *
+ * TS-исходник, как server/ts/security.ts: компилируется в server/proxyPing.js
+ * командой `npm run compile:server`.
  */
+import logger from "./logger";
 
-const { stmts } = require("./db");
-const proxyCore = require("./proxyCore");
-const logger = require("./logger");
+/**
+ * db.js и proxyCore.js ещё не переведены на TS: импорт .js без объявлений
+ * ломает strict-сборку, поэтому здесь require с минимальным контрактом
+ * (как в server/ts/config.ts). После их перевода — обычные импорты.
+ */
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { stmts } = require("./db") as { stmts: Record<string, any> };
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const proxyCore = require("./proxyCore") as {
+  pingNode(
+    node: unknown,
+    opts: { timeout: number },
+  ): Promise<{ ok: boolean; ttfbMs: number | null; country: string | null; error?: string }>;
+};
 
 // Верхняя граница, чтобы случайно не запустить пинг на сотни узлов разом.
-const MAX_NODES = 200;
+export const MAX_NODES = 200;
 
-let PING = {
+/** Узел, отобранный для пинга (строки из БД). */
+export interface NodeRow {
+  id: number;
+  name?: string | null;
+  sub_id?: number | null;
+  is_excluded?: number | null;
+  ping_ms?: number | null;
+  country_code?: string | null;
+  config_json: string;
+}
+
+/** Результат одного пинга (в хвосте статуса для UI). */
+export interface PingResult {
+  id: number;
+  name: string;
+  ok: boolean;
+  ttfbMs: number | null;
+  error: string;
+}
+
+/** Состояние очереди пинга (поллится из UI). */
+export interface PingStatus {
+  running: boolean;
+  total: number;
+  done: number;
+  ok: number;
+  failed: number;
+  currentId: number | null;
+  currentName: string;
+  startedAt: number;
+  finishedAt: number;
+  error: string;
+  results: PingResult[];
+}
+
+/** Функция пинга одного узла (в тестах подменяется). */
+export type Pinger = (
+  node: unknown,
+  opts: { timeout: number },
+) => Promise<{ ok: boolean; ttfbMs: number | null; country: string | null; error?: string }>;
+
+interface InternalState extends PingStatus {
+  cancelRequested: boolean;
+}
+
+let PING: InternalState = {
   running: false,
   total: 0,
   done: 0,
@@ -34,10 +92,10 @@ let PING = {
   results: [],
 };
 
-let currentRun = null;
+let currentRun: Promise<PingStatus | void> | null = null;
 
 /** Текущее состояние пинга (для поллинга из UI). */
-function getStatus() {
+export function getStatus(): PingStatus {
   return {
     running: PING.running,
     total: PING.total,
@@ -55,17 +113,21 @@ function getStatus() {
 }
 
 /** true, если пинг сейчас идёт (повторный запуск игнорируется). */
-function isRunning() {
+export function isRunning(): boolean {
   return PING.running;
 }
 
-/** Дождаться окончания текущего прогона (для тестов и graceful shutdown). */
-function awaitCurrent() {
+/**
+ * Дождаться окончания текущего прогона (для тестов и graceful shutdown).
+ * При ошибке очереди прогон завершается без значения — вызывающих интересует
+ * факт завершения, а текст ошибки лежит в getStatus().error.
+ */
+export function awaitCurrent(): Promise<PingStatus | void> {
   return currentRun || Promise.resolve(getStatus());
 }
 
 /** Запросить остановку после текущего узла. */
-function cancel() {
+export function cancel(): PingStatus {
   if (!PING.running) return getStatus();
   PING.cancelRequested = true;
   return getStatus();
@@ -76,8 +138,16 @@ function cancel() {
  * subId — только узлы подписки; ids — конкретные узлы; onlyMissing — те, у кого
  * ещё нет результата. Скрытые (is_excluded) никогда не пингуем.
  */
-function selectNodes({ subId = null, ids = null, onlyMissing = false } = {}) {
-  let rows = stmts.pnodeAll.all().filter((n) => !n.is_excluded);
+export function selectNodes({
+  subId = null,
+  ids = null,
+  onlyMissing = false,
+}: {
+  subId?: number | null;
+  ids?: Array<number | string> | null;
+  onlyMissing?: boolean;
+} = {}): NodeRow[] {
+  let rows: NodeRow[] = stmts.pnodeAll.all().filter((n: NodeRow) => !n.is_excluded);
   if (subId != null) rows = rows.filter((n) => n.sub_id === Number(subId));
   if (Array.isArray(ids)) {
     // Пустой массив = «ничего не выбрано» (а не «все узлы»): иначе случайная
@@ -93,7 +163,19 @@ function selectNodes({ subId = null, ids = null, onlyMissing = false } = {}) {
  * Запустить пинг (в фоне). Возвращает стартовый статус сразу.
  * `pinger` инъектируется в тестах вместо реального proxyCore.pingNode.
  */
-function start({ subId = null, ids = null, onlyMissing = false, timeout = 6000, pinger } = {}) {
+export function start({
+  subId = null,
+  ids = null,
+  onlyMissing = false,
+  timeout = 6000,
+  pinger,
+}: {
+  subId?: number | null;
+  ids?: Array<number | string> | null;
+  onlyMissing?: boolean;
+  timeout?: number;
+  pinger?: Pinger;
+} = {}): PingStatus {
   if (PING.running) return getStatus();
 
   const rows = selectNodes({ subId, ids, onlyMissing });
@@ -116,11 +198,11 @@ function start({ subId = null, ids = null, onlyMissing = false, timeout = 6000, 
     return getStatus();
   }
 
-  const doPing = pinger || proxyCore.pingNode;
+  const doPing: Pinger = pinger || proxyCore.pingNode;
   currentRun = runQueue(rows, doPing, timeout)
     .catch((e) => {
-      PING = { ...PING, running: false, error: e.message, finishedAt: Date.now() };
-      logger.error("proxycore.ping.error", { error: e.message });
+      PING = { ...PING, running: false, error: (e as Error).message, finishedAt: Date.now() };
+      logger.error("proxycore.ping.error", { error: (e as Error).message });
     })
     .finally(() => {
       currentRun = null;
@@ -130,12 +212,12 @@ function start({ subId = null, ids = null, onlyMissing = false, timeout = 6000, 
 }
 
 /** Последовательный обход очереди с записью результата в БД. */
-async function runQueue(rows, doPing, timeout) {
+async function runQueue(rows: NodeRow[], doPing: Pinger, timeout: number): Promise<PingStatus> {
   logger.action("proxycore.ping.start", { total: rows.length });
   for (const row of rows) {
     if (PING.cancelRequested) break;
 
-    let node = null;
+    let node: { server?: string } | null = null;
     try {
       node = JSON.parse(row.config_json);
     } catch {
@@ -145,7 +227,7 @@ async function runQueue(rows, doPing, timeout) {
     PING.currentId = row.id;
     PING.currentName = row.name || (node && node.server) || "";
 
-    let res;
+    let res: { ok: boolean; ttfbMs: number | null; country: string | null; error?: string };
     if (!node) {
       res = { ok: false, ttfbMs: null, country: null, error: "bad_config" };
     } else {
@@ -180,5 +262,3 @@ async function runQueue(rows, doPing, timeout) {
   });
   return getStatus();
 }
-
-module.exports = { MAX_NODES, getStatus, isRunning, start, cancel, selectNodes, awaitCurrent };

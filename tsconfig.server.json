@@ -29,6 +29,10 @@
     "server/ts/security.ts",
     "server/ts/elevate.ts",
     "server/ts/backup.ts",
-    "server/ts/downloads.ts"
+    "server/ts/downloads.ts",
+    "server/ts/comss.ts",
+    "server/ts/proxySubscriptions.ts",
+    "server/ts/proxyPing.ts",
+    "server/ts/winget.ts"
   ]
 }

@@ -54,6 +54,10 @@ export default tseslint.config(
       "server/elevate.js",
       "server/backup.js",
       "server/downloads.js",
+      "server/comss.js",
+      "server/proxySubscriptions.js",
+      "server/proxyPing.js",
+      "server/winget.js",
     ],
   },
 

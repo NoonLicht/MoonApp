@@ -1,28 +1,66 @@
-const { execFile } = require("child_process");
-const fs = require("fs");
-const path = require("path");
-const { DIRS } = require("./config");
-const downloads = require("./downloads");
-const logger = require("./logger");
+/**
+ * winget: поиск пакетов, установка, скачивание установщика без установки и
+ * фоновый индексатор полного каталога (по буквам/цифрам).
+ *
+ * Тонкости, ради которых модуль существует отдельно: winget отдаёт Unicode
+ * (UTF-8 либо UTF-16LE — определяем по BOM и NUL-байтам), таблицу печатает
+ * «широкими» пробелами, а полного листинга не отдаёт вовсе — поэтому каталог
+ * собирается запросами и кэшируется в storage/winget_index.json.
+ *
+ * TS-исходник, как server/ts/downloads.ts: компилируется в server/winget.js
+ * командой `npm run compile:server`, поэтому `require("./winget")` из обычных
+ * .js-модулей продолжает работать без изменений.
+ */
+import { execFile } from "child_process";
+import fs from "fs";
+import path from "path";
+import config from "./config";
+import { resolveDestDir } from "./downloads";
+import logger from "./logger";
+
+const { DIRS } = config;
 
 const INDEX_FILE = path.join(DIRS.storage, "winget_index.json");
 const MAX_INDEX = 4000; // столько записей держится в каталоге, чтобы UI не тормозил
 
-function runWinget(args) {
+/** Строка каталога winget (совпадает с колонками его таблицы). */
+export interface WingetRow {
+  name: string;
+  id: string;
+  version: string;
+  source: string;
+}
+
+/** Запись стартового (курируемого) списка: та же строка + категория для UI. */
+export interface WingetSeedRow extends WingetRow {
+  category: string;
+}
+
+/** Состояние фонового индексатора каталога. */
+export interface WingetIndexState {
+  state: "none" | "indexing" | "ready";
+  done: number;
+  total: number;
+  current: string;
+}
+
+function runWinget(args: string[]): Promise<{ stdout: Buffer; code: number }> {
   return new Promise((resolve) => {
     execFile(
       "winget",
       args,
       { maxBuffer: 256 * 1024 * 1024, encoding: "buffer" },
       (err, stdout) => {
-        resolve({ stdout: stdout || Buffer.alloc(0), code: err ? err.code || 1 : 0 });
+        // err.code бывает и строкой (ENOENT), и числом — приводим к числу,
+        // сохраняя прежнее поведение: код ошибки или 1.
+        resolve({ stdout: stdout || Buffer.alloc(0), code: err ? (err.code as number) || 1 : 0 });
       },
     );
   });
 }
 
-// winget отдаёт Unicode — декодируется аккуратно (UTF-8 / UTF-16LE).
-function decode(buf) {
+/** winget отдаёт Unicode — декодируется аккуратно (UTF-8 / UTF-16LE). */
+function decode(buf: Buffer | Uint8Array | string): string {
   const b = Buffer.from(buf);
   if (b.length >= 2 && b[0] === 0xff && b[1] === 0xfe) return b.toString("utf16le");
   if (b.length > 0 && b.includes(0)) return b.toString("utf16le");
@@ -34,10 +72,10 @@ function decode(buf) {
  * Упор на надёжность: поиск идёт по токену-ИД (в нём есть точка), имя = текст до него,
  * версия = следующий токен, источник = последний. Переносы и «Совпадение» игнорируются.
  */
-function parseTable(out) {
+export function parseTable(out: Buffer | Uint8Array | string): WingetRow[] {
   const text = decode(out);
-  const rows = [];
-  const seen = new Set();
+  const rows: WingetRow[] = [];
+  const seen = new Set<string>();
   for (const raw of text.split(/\r?\n/)) {
     const toks = raw
       .replace(/\u0000/g, "")
@@ -60,8 +98,8 @@ function parseTable(out) {
   return rows;
 }
 
-// Живой поиск по winget.
-async function search(query) {
+/** Живой поиск по winget. */
+export async function search(query: string): Promise<WingetRow[]> {
   const { stdout } = await runWinget([
     "search",
     query,
@@ -76,7 +114,7 @@ async function search(query) {
  * Проблема: полный листинг winget CLI не отдаёт (нужен запрос), поэтому
  * стартовый список — популярные приложения; поиск расширяет его.
  */
-const SEED = [
+const SEED: [string, string, string][] = [
   ["Google Chrome", "Google.Chrome", "Browser"],
   ["Mozilla Firefox", "Mozilla.Firefox", "Browser"],
   ["Opera", "Opera.Opera", "Browser"],
@@ -129,7 +167,8 @@ const SEED = [
   ["Krita", "KDE.Krita", "Media"],
 ];
 
-function seed() {
+/** Стартовый список каталога: seed + пустые version/source как у живого поиска. */
+export function seed(): WingetSeedRow[] {
   return SEED.map(([name, id, category]) => ({
     name,
     id,
@@ -139,8 +178,8 @@ function seed() {
   }));
 }
 
-// Пакет ставится через winget (тихо).
-async function install(id) {
+/** Пакет ставится через winget (тихо). */
+export async function install(id: string): Promise<{ ok: boolean; id: string; tail: string }> {
   const { stdout, code } = await runWinget([
     "install",
     id,
@@ -153,10 +192,7 @@ async function install(id) {
   return { ok: code === 0, id, tail: decode(stdout).slice(-2000) };
 }
 
-// Установщик пакета скачивается в каталог загрузок БЕЗ установки.
-// `winget download` доступен с winget 1.6 (Win 10 22H2+/Win 11 обычно есть).
-// Возвращаем скачанный файл (если удалось однозначно определить) и каталог.
-function listDirSafe(dir) {
+function listDirSafe(dir: string): string[] {
   try {
     return fs.readdirSync(dir);
   } catch {
@@ -164,8 +200,21 @@ function listDirSafe(dir) {
   }
 }
 
-async function downloadPackage(id) {
-  const destDir = downloads.resolveDestDir();
+/** Результат скачивания установщика: файл может не определиться (file = null). */
+export interface WingetDownloadResult {
+  ok: boolean;
+  id: string;
+  file: string | null;
+  dir: string;
+  tail: string;
+}
+
+/**
+ * Установщик пакета скачивается в каталог загрузок БЕЗ установки.
+ * `winget download` доступен с winget 1.6 (Win 10 22H2+/Win 11 обычно есть).
+ */
+export async function downloadPackage(id: string): Promise<WingetDownloadResult> {
+  const destDir = resolveDestDir();
   fs.mkdirSync(destDir, { recursive: true });
   const before = new Set(listDirSafe(destDir));
   const { stdout, code } = await runWinget([
@@ -194,14 +243,16 @@ async function downloadPackage(id) {
 //  Полный каталог: фоновый индексатор по буквам/цифрам с кэшем
 /* ------------------------------------------------------------------ */
 
-let indexState = { state: "none", done: 0, total: 0, current: "" };
-let indexRun = null;
+let indexState: WingetIndexState = { state: "none", done: 0, total: 0, current: "" };
+let indexRun: Promise<WingetIndexState> | null = null;
 
-function indexStatus() {
+/** Статус индексатора + размер уже собранного кэша. */
+export function indexStatus(): WingetIndexState & { cached: number } {
   return { ...indexState, cached: readIndex()?.length || 0 };
 }
 
-function readIndex() {
+/** Кэш каталога (null, если файла нет или он битый). */
+export function readIndex(): WingetRow[] | null {
   try {
     return JSON.parse(fs.readFileSync(INDEX_FILE, "utf8"));
   } catch {
@@ -209,16 +260,16 @@ function readIndex() {
   }
 }
 
-// Запускается фоновая индексация (повторный вызов не дублирует).
-function startIndexing() {
+/** Запускается фоновая индексация (повторный вызов не дублирует). */
+export function startIndexing(): Promise<WingetIndexState> {
   if (indexRun) return indexRun;
-  const queries = [];
+  const queries: string[] = [];
   for (let i = 0; i < 26; i++) queries.push(String.fromCharCode(97 + i)); // a-z
   for (let i = 0; i < 10; i++) queries.push(String(i)); // 0-9
 
   indexState = { state: "indexing", done: 0, total: queries.length, current: "" };
-  const seen = new Set();
-  const all = [];
+  const seen = new Set<string>();
+  const all: WingetRow[] = [];
 
   indexRun = (async () => {
     for (const q of queries) {
@@ -247,14 +298,3 @@ function startIndexing() {
 
   return indexRun;
 }
-
-module.exports = {
-  search,
-  seed,
-  install,
-  downloadPackage,
-  parseTable,
-  indexStatus,
-  startIndexing,
-  readIndex,
-};
