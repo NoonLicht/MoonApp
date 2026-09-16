@@ -318,36 +318,6 @@ export default function AiChatPage() {
     setStreamingText("");
   };
 
-  /* ── Arena: прогон вопроса через две модели (persist=false — ответы в базу не пишутся) ── */
-  const runArena = async (questionText: string) => {
-    if (!activeId || sending || !arena.a || !arena.b) return;
-    if (!provider?.configured) return;
-    setSending(true);
-    setArena((a) => ({ ...a, aText: { text: "", done: false }, bText: { text: "", done: false } }));
-    try {
-      await streamArena(activeId, {
-        text: questionText, models: [arena.a, arena.b], persist: false,
-        temperature: chatCfg.temperature, maxTokens: chatCfg.maxTokens,
-        topP: chatCfg.topP, frequencyPenalty: chatCfg.frequencyPenalty,
-        presencePenalty: chatCfg.presencePenalty,
-        systemPrompt: systemPrompt || undefined,
-      }, (ev) => {
-        const key = ev.side === "a" ? "aText" : "bText";
-        if (ev.type === "token" && ev.side) {
-          setArena((a) => ({ ...a, [key]: { ...a[key], text: a[key].text + (ev.text || "") } }));
-        } else if (ev.type === "done" && ev.side) {
-          setArena((a) => ({ ...a, [key]: { text: ev.text || "", done: true } }));
-        } else if (ev.type === "error" && ev.side) {
-          setArena((a) => ({ ...a, [key]: { text: `⚠ ${ev.message}`, done: true } }));
-        }
-      });
-    } catch (e: any) {
-      setMessages((m) => [...m, { role: "assistant", text: `⚠ ${e.message}` }]);
-    } finally {
-      setSending(false);
-    }
-  };
-
   /* Включение Arena: если в чате уже есть последний вопрос — сразу прогоняем его (авто-регенерация) */
   const toggleArena = () => {
     if (arena.on) { setArena((a) => ({ ...a, on: false })); return; }
@@ -395,6 +365,14 @@ export default function AiChatPage() {
     } finally {
       setSending(false);
     }
+  };
+
+  /* ── Arena: прогон вопроса через две модели (persist=false — ответы в базу не пишутся) ──
+     Тонкая обёртка над runArenaWith: раньше это была вторая копия того же тела,
+     отличавшаяся только тем, что модели брались из стейта, а не из аргументов. */
+  const runArena = (questionText: string) => {
+    if (!arena.a || !arena.b) return;
+    return runArenaWith(arena.a, arena.b, questionText);
   };
 
   /* Выбор понравившегося ответа: сохраняем в чат и выходим из Arena */
