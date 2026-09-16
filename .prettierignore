@@ -37,6 +37,7 @@ server/logBundle.js
 server/myspace-vault.js
 server/convertEngine.js
 server/index.js
+server/bookParser.js
 
 # Артефакты отчётов.
 coverage

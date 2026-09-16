@@ -66,6 +66,7 @@ export default tseslint.config(
       "server/myspace-vault.js",
       "server/convertEngine.js",
       "server/index.js",
+      "server/bookParser.js",
     ],
   },
 
