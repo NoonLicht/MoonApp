@@ -530,6 +530,40 @@
 .graph-mode-btn.is-active{background:var(--violet-soft);border-color:var(--violet);color:var(--violet)}
 .graph-wrap{flex:1;min-height:0;position:relative;overflow:hidden}
 
+/* Полноэкранный граф (кнопка Expand/Fullscreen в панели графа).
+   Панель занимает ровно прямоугольник контентной области: правее рельса страниц,
+   ниже верхней панели, с тем же нижним отступом, что и .content-area (значения
+   берутся из переменных .app-shell в theme.css). Раньше оверлей центрировался по
+   окну (92vw × 78vh) — при вертикальном рельсе слева часть графа уходила под меню
+   страниц, а снизу оставалась пустая полоса от старого НИЖНЕГО меню.
+   Рендерится порталом в #overlay-root (см. src/components/overlayHost.ts):
+   внутри .content-area (z-index:1) собственный z-index не помогал перекрыть
+   рельс и тулбар (у них z-index:40). */
+.graph-fs-backdrop{
+  position:absolute; inset:0; z-index:60; pointer-events:auto;
+  background:rgba(4,6,12,0.62);
+  backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px);
+}
+.graph-fs-panel{
+  position:absolute;
+  top:var(--content-top); bottom:var(--content-bottom);
+  left:calc(var(--rail-gap) + var(--rail-w) + 12px); right:24px;
+  display:flex; flex-direction:column; overflow:hidden; border-radius:16px;
+}
+/* RTL (арабский): рельс зеркалится вправо — панель тоже. */
+.app-shell[dir="rtl"] .graph-fs-panel{
+  left:24px; right:calc(var(--rail-gap) + var(--rail-w) + 12px);
+}
+.graph-fs-header{
+  display:flex; align-items:center; justify-content:space-between; gap:10px;
+  padding:10px 16px; border-bottom:1px solid var(--glass-border); flex-shrink:0;
+}
+.graph-fs-search{
+  display:flex; align-items:center; gap:8px; padding:6px 16px;
+  border-bottom:1px solid var(--glass-border); flex-shrink:0;
+}
+.graph-fs-canvas{ flex:1; min-height:0; position:relative; }
+
 /* Graph settings panel */
 .graph-settings-toggle{
   position:absolute;bottom:8px;right:8px;z-index:10;

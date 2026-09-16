@@ -1,10 +1,9 @@
 ﻿import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { FileText, Folder, Plus, Search, Tags, Hash, PanelRightOpen,
-  PanelRightClose, PanelLeftOpen, PanelLeftClose, X, Link2, Type,  Bookmark, ChevronRight, ChevronDown, Globe, Trash2, Sparkles,
-  Eye, PenLine, Maximize2, Minimize2, Settings2, ZoomIn, ZoomOut, Palette } from "lucide-react";
+  PanelRightClose, PanelLeftOpen, PanelLeftClose, X, Link2, Type, ChevronRight, ChevronDown, Globe, Trash2,
+  Eye, PenLine, Maximize2 } from "lucide-react";
 import MarkdownRenderer from "../components/MarkdownRenderer";
-import { EmptyHint } from "../components/ui";
-import { usePageToolbar } from "../components/Toolbar";
+import { usePageToolbar, usePageActive } from "../components/Toolbar";
 import { useI18n } from "../i18n";
 import { api } from "../api/client";
 import type { VaultFile, VaultSearchResult, VaultTag, VaultBacklink, GraphData, GraphNode, GraphEdge } from "../api/types";
@@ -13,6 +12,8 @@ import GraphView from "../components/GraphView";
 import TasksPanel from "../components/TasksPanel";
 import CanvasPage from "../features/MySpace/components/Canvas/CanvasPage";
 import { useContextMenu } from "../components/ContextMenu";
+import { createPortal } from "react-dom";
+import { getOverlayRoot } from "../components/overlayHost";
 
 // rAF-хэндл синхронного скролла редактор/превью (см. syncScroll ниже).
 declare global {
@@ -185,7 +186,6 @@ export default function MyspacePage() {
 
   const createItem = async () => {
     if (!crName.trim()) return;
-    const base = ""; // root for now
     const p = crType==="note" ? crName.trim()+".md" : crName.trim();
     // Check duplicate
     const dup = (nodes: VaultFile[]): boolean => { for (const n of nodes) { if (n.path===p) return true; if (n.children && dup(n.children)) return true; } return false; };
@@ -259,6 +259,21 @@ export default function MyspacePage() {
   const [graphShowOrphans, setGraphShowOrphans] = useState(true);
   const [graphDepth, setGraphDepth] = useState(3);
   const [graphSearch, setGraphSearch] = useState("");
+
+  // Полноэкранный граф рендерится порталом, т.е. ВНЕ .page-host. Неактивные
+  // страницы прячутся правилом `.page-host:not(.is-active) *`, поэтому оверлей
+  // гейтим сами (как MediaDetailModal/PlayerModal): иначе он остался бы висеть
+  // поверх дока при переключении страницы.
+  const pageActive = usePageActive();
+  // Esc закрывает полноэкранный граф. Слушатель на window (как в
+  // MediaDetailModal/ContextMenu): оверлей рендерится порталом, поэтому
+  // onKeyDown на самом div никогда не срабатывал — фокус туда не попадал.
+  useEffect(() => {
+    if (!graphFullscreen) return undefined;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setGraphFullscreen(false); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [graphFullscreen]);
   // Build graph data from all files' [[wikiLinks]]
   const buildGraphData = useCallback((): GraphData => {
     const nodesMap = new Map<string, GraphNode>();
@@ -374,7 +389,6 @@ export default function MyspacePage() {
 
   const graphData = useMemo(buildGraphData, [openFiles, tree, activeTab, graphDepth, graphShowOrphans, graphSearch]);
   const [rightSplit, setRightSplit] = useState(55); // % for backlinks top section
-  const splitRef = useRef({ dragging: false, startY: 0, startPct: 55 });
   // Переименование заметки/папки из контекстного меню: спрашиваем имя,
   // строим новый путь в той же папке и обновляем открытые вкладки.
   const renameNode = async (node: VaultFile) => {
@@ -895,14 +909,15 @@ export default function MyspacePage() {
         <CanvasPage />
       </div>
     )}
-    {/* Fullscreen Graph Modal */}
-      {graphFullscreen && <div onClick={()=>setGraphFullscreen(false)}
-        style={{position:"fixed",inset:0,zIndex:9999,background:"rgba(0,0,0,0.6)",backdropFilter:"blur(8px)",display:"flex",alignItems:"center",justifyContent:"center"}}
-        onKeyDown={(e)=>{if(e.key==="Escape")setGraphFullscreen(false);}} tabIndex={0}
-      >
-        <div onClick={(e)=>e.stopPropagation()}
-          style={{width:"92vw",height:"78vh",background:"var(--surface-glass)",border:"1px solid var(--glass-border)",borderRadius:16,display:"flex",flexDirection:"column",overflow:"hidden",position:"relative"}}>
-          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 16px",borderBottom:"1px solid var(--glass-border)",flexShrink:0}}>
+    {/* Полноэкранный граф: портал в #overlay-root + панель по прямоугольнику
+        контентной области (.graph-fs-* в notes.css). Раньше оверлей жил внутри
+        .content-area (z-index:1) и центрировался по окну, из-за чего часть графа
+        уходила под вертикальный рельс страниц, а снизу оставалась пустая полоса
+        от старого нижнего меню. */}
+    {graphFullscreen && pageActive && createPortal(
+      <div className="graph-fs-backdrop" onClick={()=>setGraphFullscreen(false)}>
+        <div className="graph-fs-panel glass-solid" onClick={(e)=>e.stopPropagation()}>
+          <div className="graph-fs-header">
             <span style={{display:"flex",alignItems:"center",gap:8}}>
               <span style={{fontSize:15,fontWeight:600,color:"var(--text-primary)"}}>Graph View</span>
               <button onClick={()=>{setGraphDepth(5);setGraphShowOrphans(true);setGraphSearch("");}}
@@ -928,16 +943,18 @@ export default function MyspacePage() {
               </button>
             </div>
           </div>
-          <div style={{display:"flex",alignItems:"center",gap:8,padding:"6px 16px",borderBottom:"1px solid var(--glass-border)",flexShrink:0}}>
+          <div className="graph-fs-search">
             <Search size={14} style={{color:"var(--text-tertiary)",flexShrink:0}}/>
             <input placeholder="Search nodes..." value={graphSearch} onChange={e=>setGraphSearch(e.target.value)}
               style={{flex:1,padding:"4px 8px",border:"none",background:"transparent",outline:"none",color:"var(--text-primary)",fontSize:13}}/>
           </div>
-          <div style={{flex:1,minHeight:0,position:"relative"}}>
+          <div className="graph-fs-canvas">
             <GraphView data={graphData} onNodeClick={(node)=>{openFile(node.id);}} />
           </div>
         </div>
-      </div>}
+      </div>,
+      getOverlayRoot() ?? document.body
+    )}
     </div>);
 }
 
