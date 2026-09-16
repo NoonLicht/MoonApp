@@ -1,9 +1,62 @@
-const path = require("path");
-const fs = require("fs");
-const express = require("express");
-const config = require("./config");
-const logger = require("./logger");
+/**
+ * Точка входа HTTP-API: собирает express-приложение из роутов и поднимает его
+ * строго на loopback. Здесь же — токен-аутентификация, CSP, раздача собранного
+ * фронта (dist) и стартовые фоновые задачи (бэкапы, автосинк подписок, winget).
+ *
+ * TS-исходник, как server/ts/db.ts: компилируется в server/index.js командой
+ * `npm run compile:server`, поэтому `require("../server")` из electron/main.js
+ * и `node server/index.js` работают без изменений — экспорты createApp/startServer/db
+ * сохранены.
+ */
+import path from "path";
+import fs from "fs";
+import express from "express";
+import type http from "http";
+import config from "./config";
+import logger from "./logger";
+import { db, stmts } from "./db";
+import * as backups from "./backup";
+import settings from "./settings";
+import * as monitor from "./monitor";
+import * as winget from "./winget";
+import * as proxySubs from "./proxySubscriptions";
 
+/**
+ * Роуты и часть модулей ещё не переведены на TS: импорт .js без объявлений не
+ * проходит strict-сборку, поэтому здесь require с указанием ожидаемой формы
+ * (как в server/ts/config.ts). После их перевода строки заменятся обычными
+ * импортами, а тип роутера станет настоящим.
+ */
+/* eslint-disable @typescript-eslint/no-require-imports */
+const chatRouter = require("./routes/chat") as express.Router;
+const settingsRouter = require("./routes/settings") as express.Router;
+const backupRouter = require("./routes/backup") as express.Router;
+const metaRouter = require("./routes/meta") as express.Router;
+const catalogRouter = require("./routes/catalog") as express.Router;
+const appsRouter = require("./routes/apps") as express.Router;
+const convertRouter = require("./routes/convert") as express.Router;
+const videoRouter = require("./routes/video") as express.Router;
+const compressorRouter = require("./routes/compressor") as express.Router;
+const ttsRouter = require("./routes/tts") as express.Router;
+const archiveRouter = require("./routes/archive") as express.Router;
+const proxyRouter = require("./routes/proxy") as express.Router;
+const proxyCoreRouter = require("./routes/proxyCore") as express.Router;
+const booksRouter = require("./routes/books") as express.Router;
+const musicRouter = require("./routes/music") as express.Router;
+const moviesRouter = require("./routes/movies") as express.Router;
+const myspaceRouter = require("./routes/myspace") as express.Router;
+const myspaceTasksRouter = require("./routes/myspace-tasks") as express.Router;
+const lectureRouter = require("./routes/lecture") as express.Router;
+const zapretRouter = require("./routes/zapret") as express.Router;
+const perPageProxy = require("./middleware/perPageProxy") as {
+  perPageProxyMiddleware: express.RequestHandler;
+};
+const lecture = require("./lecture") as {
+  recoverInterrupted(): void;
+  backfillNotesFiles(): void;
+};
+const proxy = require("./proxy") as { stopProxy(): void };
+/* eslint-enable @typescript-eslint/no-require-imports */
 // Глобальные перехватчики процесса: необработанные исключения и отклонённые
 // промисы попадают в полный журнал (logs/audit.log), а значит — в файл,
 // который собирает кнопка «Собрать логи» в Настройках.
@@ -14,47 +67,18 @@ process.on("uncaughtException", (err) => {
   });
 });
 process.on("unhandledRejection", (reason) => {
+  const r = reason as { message?: unknown; stack?: unknown } | null;
   logger.error("process.unhandledRejection", {
-    message: String(reason?.message || reason).slice(0, 1000),
-    stack: String(reason?.stack || "").slice(0, 4000),
+    message: String(r?.message || reason).slice(0, 1000),
+    stack: String(r?.stack || "").slice(0, 4000),
   });
 });
-const { db, stmts } = require("./db");
-const backups = require("./backup");
-const settings = require("./settings");
-
-const chatRouter = require("./routes/chat");
-const settingsRouter = require("./routes/settings");
-const backupRouter = require("./routes/backup");
-const metaRouter = require("./routes/meta");
-const catalogRouter = require("./routes/catalog");
-const appsRouter = require("./routes/apps");
-const convertRouter = require("./routes/convert");
-const videoRouter = require("./routes/video");
-const compressorRouter = require("./routes/compressor");
-const ttsRouter = require("./routes/tts");
-const archiveRouter = require("./routes/archive");
-const proxyRouter = require("./routes/proxy");
-const proxyCoreRouter = require("./routes/proxyCore");
-const perPageProxy = require("./middleware/perPageProxy");
-const proxySubs = require("./proxySubscriptions");
-const booksRouter = require("./routes/books");
-const musicRouter = require("./routes/music");
-const moviesRouter = require("./routes/movies");
-const myspaceRouter = require("./routes/myspace");
-const myspaceTasksRouter = require("./routes/myspace-tasks");
-const lectureRouter = require("./routes/lecture");
-const lecture = require("./lecture");
-const zapretRouter = require("./routes/zapret");
-const monitor = require("./monitor");
-const winget = require("./winget");
-const proxy = require("./proxy");
 
 // Токен для локального API. Electron делает его при старте и кидает в preload
 // (additionalArguments), фронт подставляет в заголовок x-moonapp-token.
 // Без токена (dev, node server/index.js) сервер ничего не проверяет,
 // но слушает строго 127.0.0.1.
-let AUTH_TOKEN = null;
+let AUTH_TOKEN: string | null = null;
 
 /**
  * Пути /api, которые сознательно отдаются без токена: их грузит сам движок
@@ -63,7 +87,11 @@ let AUTH_TOKEN = null;
  */
 const RESOURCE_PATHS = ["/api/movies/image"];
 
-function authMiddleware(req, res, next) {
+function authMiddleware(
+  req: express.Request,
+  res: express.Response,
+  next: express.NextFunction,
+): void {
   if (!AUTH_TOKEN) return next();
   const protectedPath = req.path.startsWith("/api") || req.path.startsWith("/events");
   if (!protectedPath) return next(); // статика dist/ не секрет
@@ -78,15 +106,16 @@ function authMiddleware(req, res, next) {
     return next();
   }
   if (req.get("x-moonapp-token") !== AUTH_TOKEN) {
-    return res.status(401).json({ error: "unauthorized" });
+    res.status(401).json({ error: "unauthorized" });
+    return;
   }
   next();
 }
-
 // Стартовые книги (как раньше MOCK_BOOKS).
-function seedBooks() {
+function seedBooks(): void {
   if (stmts.bookAll.all().length > 0) return;
-  const books = [
+  // Кортеж (а не массив) — чтобы spread ниже соответствовал порядку колонок.
+  const books: [string, string, number, string, string, string][] = [
     [
       "The Quiet Algorithm",
       "N. Halvorsen",
@@ -131,8 +160,7 @@ function seedBooks() {
   for (const b of books) stmts.bookInsert.run(...b);
   logger.info("seed.books", { count: books.length });
 }
-
-function createApp() {
+function createApp(): express.Express {
   seedBooks();
   // Fail-safe лекций: сессии, оборванные падением приложения (status=recording,
   // но процесса записи нет), помечаем interrupted и чиним header raw.wav.
@@ -177,8 +205,7 @@ function createApp() {
   // Per-page проксирование: по заголовку X-App-Page размечаем req.appPage /
   // req.proxy / req.proxyUrl (см. server/middleware/perPageProxy.js).
   app.use(perPageProxy.perPageProxyMiddleware);
-
-  app.get("/api/health", (req, res) => res.json({ ok: true }));
+  app.get("/api/health", (_req, res) => res.json({ ok: true }));
   app.use("/api/chat", chatRouter);
   app.use("/api/settings", settingsRouter);
   app.use("/api/backup", backupRouter);
@@ -210,20 +237,21 @@ function createApp() {
     });
   }
 
-  // Глобальный ловец ошибок
-  // eslint-disable-next-line no-unused-vars
-  app.use((err, req, res, next) => {
-    logger.error("route.error", { path: req.path, error: err.message });
-    res.status(500).json({ error: err.message });
-  });
-
+  // Глобальный ловец ошибок: четыре аргумента обязательны — так express
+  // понимает, что это именно обработчик ошибок, а не обычный middleware.
+  app.use(
+    (err: Error, req: express.Request, res: express.Response, _next: express.NextFunction) => {
+      logger.error("route.error", { path: req.path, error: err.message });
+      res.status(500).json({ error: err.message });
+    },
+  );
   backups.startAuto();
 
   // Фоновое обновление подписок прокси (первичный проход + раз в 6 часов).
   try {
     proxySubs.startAutoSync();
   } catch (e) {
-    logger.warn("proxycore.autosync.failed", { error: e.message });
+    logger.warn("proxycore.autosync.failed", { error: (e as Error).message });
   }
 
   // LibreHardwareMonitor запускается сам, если это включено в настройках и он установлен.
@@ -233,7 +261,7 @@ function createApp() {
   // если локальный кэш ещё не собран (иначе UI показывает только курируемый seed).
   try {
     if (settings.get("store").wingetAutoIndex !== false && !(winget.indexStatus().cached > 0)) {
-      winget.startIndexing();
+      void winget.startIndexing();
     }
   } catch {
     /* индексация не критична для старта */
@@ -251,12 +279,13 @@ function createApp() {
   // После рестарта прокси всегда выключен (состояние «включён» в настройках не хранится).
   try {
     proxy.stopProxy();
-  } catch {}
+  } catch {
+    /* прокси не поднят — это нормальный случай */
+  }
 
   return app;
 }
-
-function startServer(port = config.PORT, opts = {}) {
+function startServer(port: number = config.PORT, opts: { token?: string } = {}): http.Server {
   AUTH_TOKEN = opts.token || process.env.MOONAPP_TOKEN || null;
   if (!AUTH_TOKEN) {
     logger.warn("server.no_token", { hint: "standalone/dev mode: API без аутентификации" });
@@ -281,4 +310,4 @@ if (require.main === module) {
   startServer();
 }
 
-module.exports = { createApp, startServer, db };
+export { createApp, startServer, db };

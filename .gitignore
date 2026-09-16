@@ -63,6 +63,7 @@ server/db.js
 server/logBundle.js
 server/myspace-vault.js
 server/convertEngine.js
+server/index.js
 
 bb.txt
 tc.txt
