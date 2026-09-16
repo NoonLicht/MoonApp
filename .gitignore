@@ -42,6 +42,7 @@ desktop.ini
 # ВАЖНО: .d.ts-декларации для JS-модулей (logger/settings) в репозитории:
 # без них typecheck в CI падает с TS2307 (Cannot find module './settings').
 server/monitor.js
+server/jobStore.js
 
 bb.txt
 tc.txt

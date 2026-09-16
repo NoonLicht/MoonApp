@@ -26,28 +26,15 @@ const logger = require("./logger");
 const { DIRS } = require("../server/config");
 const { detectFfmpeg } = require("./convertEngine");
 const ruNlp = require("./ruNlp");
+const { createQueue, trimJobs } = require("./jobStore");
 
 const jobs = new Map();
 const JOB_LIMIT = 30;
 const TTL_MS = 24 * 60 * 60 * 1000;
 
-/* ------------------------- Очередь (одно задание на GPU) ------------------------- */
+/* ------------- Очередь (одно задание на GPU): server/ts/jobStore.ts ------------ */
 
-let active = false;
-const pending = [];
-function enqueue(fn) {
-  pending.push(fn);
-  pump();
-}
-function pump() {
-  if (active || !pending.length) return;
-  active = true;
-  const fn = pending.shift();
-  Promise.resolve()
-    .then(fn)
-    .catch((e) => logger.error("tts.queue", { error: String(e) }))
-    .finally(() => { active = false; pump(); });
-}
+const queue = createQueue("tts");
 
 /* ------------------------- TTL-чистка storage/tts ------------------------- */
 
@@ -65,17 +52,6 @@ function cleanupOld() {
   } catch { /* не критично */ }
 }
 cleanupOld();
-
-function trimJobs() {
-  if (jobs.size <= JOB_LIMIT) return;
-  const removable = [...jobs.values()]
-    .filter((j) => j.done || j.stage === "error")
-    .sort((a, b) => a.createdAt - b.createdAt);
-  for (const j of removable) {
-    if (jobs.size <= JOB_LIMIT) break;
-    jobs.delete(j.id);
-  }
-}
 
 /* ------------------------- Железо: GPU / VRAM ------------------------- */
 
@@ -105,9 +81,11 @@ function detectHardware() {
     const child = spawn("nvidia-smi",
       ["--query-gpu=name,memory.total,memory.used,utilization.gpu,driver_version", "--format=csv,noheader,nounits"],
       { windowsHide: true });
-    let out = "", err = "";
+    let out = "";
     child.stdout.on("data", (d) => { out += String(d); });
-    child.stderr.on("data", (d) => { err += String(d); });
+    // stderr читаем и игнорируем: nvidia-smi шумит предупреждениями, но код
+    // возврата и stdout достаточно для решения «GPU есть / fallback».
+    child.stderr.on("data", () => { /* диагностика движка не нужна */ });
     child.on("error", () => { hwCache = hwFallback(); hwAt = Date.now(); resolve(hwCache); });
     child.on("close", (code) => {
       if (code !== 0 || !out.trim()) { hwCache = hwFallback(); hwAt = Date.now(); return resolve(hwCache); }
@@ -149,7 +127,7 @@ function saveProfiles(list) { fs.writeFileSync(PROFILES_FILE, JSON.stringify(lis
 
 function saveProfile(p) {
   const refFile = String(p.refFile || "").replace(/^.*[\\/]/, "");
-  if (refFile && !/^ref_[A-Za-z0-9._\-]+$/.test(refFile)) throw new Error("invalid refFile");
+  if (refFile && !/^ref_[A-Za-z0-9._-]+$/.test(refFile)) throw new Error("invalid refFile");
   if (refFile && !fs.existsSync(path.join(DIRS.tts, refFile))) throw new Error("refFile not found");
   const list = loadProfiles();
   const profile = {
@@ -248,7 +226,7 @@ function saveUserPreset(preset) {
 }
 
 function deleteUserPreset(id) {
-  let user = [];
+  let user;
   try { user = JSON.parse(fs.readFileSync(PRESETS_FILE, "utf8")); } catch { return false; }
   const next = user.filter((p) => p.id !== id);
   fs.writeFileSync(PRESETS_FILE, JSON.stringify(next, null, 2), "utf8");
@@ -319,7 +297,7 @@ function startJob(opts) {
   const cfg = settings.get("voice") || {};
   // С1: refFile — только имя ref_* внутри storage/tts (клиент не доверенный).
   const refFile = String(opts.refFile || "").replace(/^.*[\\/]/, "");
-  if (!/^ref_[A-Za-z0-9._\-]+$/.test(refFile)) throw new Error("invalid_reference");
+  if (!/^ref_[A-Za-z0-9._-]+$/.test(refFile)) throw new Error("invalid_reference");
   if (!fs.existsSync(path.join(DIRS.tts, refFile))) throw new Error("reference_not_found");
   const engine = opts.engine === "xtts" ? "xtts" : "f5";
 
@@ -371,8 +349,8 @@ function startJob(opts) {
     },
   };
   jobs.set(id, job);
-  trimJobs();
-  enqueue(() => runPipeline(job));
+  trimJobs(jobs, JOB_LIMIT);
+  queue.enqueue(() => runPipeline(job));
   return job;
 }
 

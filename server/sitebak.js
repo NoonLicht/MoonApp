@@ -34,6 +34,7 @@ const settings = require("./settings");
 const logger = require("./logger");
 const { DIRS } = require("./config");
 const { detectFfmpeg } = require("./convertEngine");
+const { trimJobs } = require("./jobStore");
 
 const MAGIC = "SITEBAK1";
 const AD_HOSTS = /doubleclick|googlesyndication|google-analytics|googletagmanager|adservice|adnxs|taboola|outbrain|criteo|facebook\.net|hotjar|mixpanel|segment\.io|scorecardresearch/i;
@@ -43,17 +44,7 @@ const JOB_LIMIT = 20;
 const TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 // С6: чистим распакованные копии старше 7 дней (сами .sitebak не трогаем —
-// это пользовательские данные) и ограничиваем Map заданий.
-function trimJobs() {
-  if (jobs.size <= JOB_LIMIT) return;
-  const removable = [...jobs.values()]
-    .filter((j) => j.done || j.stage === "error")
-    .sort((a, b) => a.createdAt - b.createdAt);
-  for (const j of removable) {
-    if (jobs.size <= JOB_LIMIT) break;
-    jobs.delete(j.id);
-  }
-}
+// это пользовательские данные). Ограничение Map заданий — trimJobs (jobStore).
 function cleanupOld() {
   try {
     const dir = DIRS.sitebakExtracted;
@@ -237,7 +228,7 @@ function startCrawl(opts) {
     },
   };
   jobs.set(id, job);
-  trimJobs();
+  trimJobs(jobs, JOB_LIMIT);
   // С5: краулы идут по одному (очередь), чтобы не плодить десятки браузеров.
   pending.push(() => runCrawl(job));
   pump();
@@ -415,7 +406,8 @@ async function runCrawl(job) {
     }
 
     // --- С2: перезапись URL в HTML/CSS на локальные пути превью ---
-    for (const [rel, f] of [...files]) {
+    // Снимок [...files] нужен осознанно: ниже из Map удаляются вшитые CSS.
+    for (const [_rel, f] of [...files]) {
       if (!f.text) continue;
       let text = f.buf.toString("utf8");
       text = rewriteRefs(text, job.id, urlMap);
@@ -505,7 +497,8 @@ function readManifest(raw) {
   try { return JSON.parse(manifestRaw.toString("utf8")); }
   catch { return JSON.parse(decompressText(manifestRaw, "brotli").toString("utf8")); }
 }
-function readHeader(raw, manifest) {
+// Смещение данных в архиве: 12 байт заголовка (magic + u32 длины манифеста).
+function readHeader(raw) {
   const mLen = raw.readUInt32LE(8);
   return 12 + mLen;
 }
@@ -562,7 +555,7 @@ function extractTo(file, id) {
   const { entries } = readBak(file);
   const dest = path.join(DIRS.sitebakExtracted, id);
   for (const [rel, e] of entries) {
-    const safe = path.normalize(rel).replace(/^(\.\.[\/\\])+/, "");
+    const safe = path.normalize(rel).replace(/^(\.\.[/\\])+/, "");
     const p = path.join(dest, safe);
     if (!p.startsWith(dest)) continue;
     fs.mkdirSync(path.dirname(p), { recursive: true });

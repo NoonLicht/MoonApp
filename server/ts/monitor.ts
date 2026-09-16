@@ -985,7 +985,8 @@ export async function startLhm(timeoutMs = 25000): Promise<{ ok: boolean; alread
   try {
     const out = await execPs(script, 30000);
     const parsed = parseInt(out.trim().split(/\r?\n/).pop() || "", 10);
-    pid = Number.isFinite(parsed) ? parsed : null;
+    // pid остаётся null, если PowerShell не вернул числовой Id.
+    if (Number.isFinite(parsed)) pid = parsed;
   } catch {
     return { ok: false, error: "elevation_denied_or_failed" };
   }

@@ -28,28 +28,15 @@ const { detectFfmpeg } = require("./convertEngine");
 // Входной файл назван по исходному имени (кириллица сохраняется), а fs.rmSync
 // такие пути на Windows молча не удаляет — исходники копились бы в storage.
 const { removePath } = require("./fsUtil");
+const { createQueue, trimJobs } = require("./jobStore");
 
-// id -> job; завершённые остаются для скачивания (см. trimJobs).
+// id -> job; завершённые остаются для скачивания, самые старые вытесняет trimJobs.
 const jobs = new Map();
 const JOB_LIMIT = 30;
 const TTL_MS = 24 * 60 * 60 * 1000;
 
-// --- Очередь: одно активное задание, остальные ждут ---
-let active = false;
-const pending = [];
-function enqueue(fn) {
-  pending.push(fn);
-  pump();
-}
-function pump() {
-  if (active || !pending.length) return;
-  active = true;
-  const fn = pending.shift();
-  Promise.resolve()
-    .then(fn)
-    .catch((e) => logger.error("compressor.queue", { error: String(e) }))
-    .finally(() => { active = false; pump(); });
-}
+// --- Очередь: одно активное задание, остальные ждут (server/ts/jobStore.ts) ---
+const queue = createQueue("compressor");
 
 // --- TTL-чистка временных папок при загрузке модуля ---
 function cleanupOldFiles(dir) {
@@ -65,18 +52,6 @@ function cleanupOldFiles(dir) {
 }
 cleanupOldFiles(DIRS.compressorIn);
 cleanupOldFiles(DIRS.compressorOut);
-
-// Ограничение Map: самые старые готовые/ошибочные задания удаляются первыми.
-function trimJobs() {
-  if (jobs.size <= JOB_LIMIT) return;
-  const removable = [...jobs.values()]
-    .filter((j) => j.done || j.stage === "error")
-    .sort((a, b) => a.createdAt - b.createdAt);
-  for (const j of removable) {
-    if (jobs.size <= JOB_LIMIT) break;
-    jobs.delete(j.id);
-  }
-}
 
 function probeDuration(ffprobe, file) {
   return new Promise((resolve) => {
@@ -333,8 +308,8 @@ function startJob(raw) {
     weightBase: 0, weightSpan: 1,
   };
   jobs.set(id, job);
-  trimJobs();
-  enqueue(() => runJob(job));
+  trimJobs(jobs, JOB_LIMIT);
+  queue.enqueue(() => runJob(job));
   return job;
 }
 

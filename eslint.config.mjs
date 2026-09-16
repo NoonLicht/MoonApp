@@ -12,7 +12,12 @@ import reactRefresh from "eslint-plugin-react-refresh";
 // поэтому any не запрещаем жёстко — только подсвечиваем.
 const unusedVars = [
   "error",
-  { argsIgnorePattern: "^_", varsIgnorePattern: "^_", caughtErrors: "none", ignoreRestSiblings: true },
+  {
+    argsIgnorePattern: "^_",
+    varsIgnorePattern: "^_",
+    caughtErrors: "none",
+    ignoreRestSiblings: true,
+  },
 ];
 
 // react-hooks v7 вместе с классическими правилами (rules-of-hooks,
@@ -35,8 +40,9 @@ export default tseslint.config(
       "storage/**",
       "server/vendor/**",
       "server/engines/**",
-      // Генерируется из server/ts/monitor.ts при `npm run compile:server`.
+      // Генерируются из server/ts/*.ts при `npm run compile:server`.
       "server/monitor.js",
+      "server/jobStore.js",
     ],
   },
 
@@ -55,7 +61,7 @@ export default tseslint.config(
       "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
       "@typescript-eslint/no-explicit-any": "warn",
       "@typescript-eslint/no-unused-vars": unusedVars,
-      "eqeqeq": ["error", "smart"],
+      eqeqeq: ["error", "smart"],
       "no-empty": ["error", { allowEmptyCatch: true }],
     },
   },
@@ -71,7 +77,7 @@ export default tseslint.config(
     },
     rules: {
       "no-unused-vars": unusedVars,
-      "eqeqeq": ["error", "smart"],
+      eqeqeq: ["error", "smart"],
       "no-empty": ["error", { allowEmptyCatch: true }],
       "no-console": "off",
       // Управляющие символы в регэкспах здесь осознанны: парсеры ANSI (\x1b),
@@ -95,6 +101,33 @@ export default tseslint.config(
       "no-empty": ["error", { allowEmptyCatch: true }],
       // Тесты импортируют серверные CommonJS-модули через createRequire.
       "@typescript-eslint/no-require-imports": "off",
+    },
+  },
+
+  // ── Серверные TS-исходники: server/ts/** (компилируются в server/*.js) ────
+  {
+    files: ["server/ts/**/*.ts"],
+    extends: [js.configs.recommended, ...tseslint.configs.recommended],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: "module",
+      globals: { ...globals.node },
+    },
+    rules: {
+      "@typescript-eslint/no-explicit-any": "warn",
+      "@typescript-eslint/no-unused-vars": unusedVars,
+      eqeqeq: ["error", "smart"],
+      "no-empty": ["error", { allowEmptyCatch: true }],
+      "no-console": "off",
+      "no-control-regex": "off",
+    },
+  },
+
+  // ── Декларации для ещё не переведённых .js-модулей: any здесь осознан ────
+  {
+    files: ["server/ts/**/*.d.ts"],
+    rules: {
+      "@typescript-eslint/no-explicit-any": "off",
     },
   },
 
