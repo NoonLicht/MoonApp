@@ -1,16 +1,26 @@
-const path = require("path");
-const fs = require("fs");
+/**
+ * Пути к данным приложения. Основной источник — process.env.MOONAPP_STORAGE:
+ * его выставляет electron/storagePath.js (в собранной сборке это storage\
+ * рядом с exe). Если переменной нет (сервер запущен напрямую/из тестов),
+ * спрашиваем тот же резолвер, чтобы путь НИКОГДА не оказался внутри
+ * app.asar (там запись невозможна), и лишь затем — dev-фолбэк storage/ рядом
+ * с исходниками.
+ *
+ * TS-исходник, как server/ts/logger.ts: компилируется в server/config.js
+ * командой `npm run compile:server`, поэтому require("./config") из ~30
+ * обычных .js-модулей работает без изменений. Модуль остаётся CommonJS
+ * (`export =`), потому что потребители делают `const { DIRS, FILES } = require("./config")`.
+ */
+import path from "path";
+import fs from "fs";
 
-// Пути к данным приложения. Основной источник — process.env.MOONAPP_STORAGE:
-// его выставляет electron/storagePath.js (в собранной сборке это storage\
-// рядом с exe). Если переменной нет (сервер запущен напрямую/из тестов),
-// спрашиваем тот же резолвер, чтобы путь НИКОГДА не оказался внутри
-// app.asar (там запись невозможна), и лишь затем — dev-фолбэк storage/ рядом
-// с исходниками.
-const STORAGE_DIR = (() => {
+const STORAGE_DIR = ((): string => {
   if (process.env.MOONAPP_STORAGE) return process.env.MOONAPP_STORAGE;
   try {
-    const resolved = require("../electron/storagePath").STORAGE_DIR;
+    // Путь указан «как из собранного server/config.js»: из server/ts/ tsc его
+    // разрешить не может, поэтому это обычный require с локальным типом.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const resolved = (require("../electron/storagePath") as { STORAGE_DIR?: string }).STORAGE_DIR;
     if (resolved) return resolved;
   } catch {
     /* не Electron-окружение (чистый Node/тесты) */
@@ -18,11 +28,11 @@ const STORAGE_DIR = (() => {
   return path.join(__dirname, "..", "storage");
 })();
 
-function ensureDir(p) {
+/** Создать каталог (если нужно) и вернуть его путь. */
+function ensureDir(p: string): string {
   if (!fs.existsSync(p)) fs.mkdirSync(p, { recursive: true });
   return p;
 }
-
 const DIRS = {
   storage: ensureDir(STORAGE_DIR),
   logs: ensureDir(path.join(STORAGE_DIR, "logs")),
@@ -64,7 +74,6 @@ const DIRS = {
   vaultHolts: ensureDir(path.join(STORAGE_DIR, "vault", "holts")),
   notes: ensureDir(path.join(STORAGE_DIR, "notes")),
 };
-
 const FILES = {
   data: path.join(DIRS.storage, "data.json"),
   settings: path.join(DIRS.storage, "settings.json"),
@@ -72,4 +81,7 @@ const FILES = {
   log: path.join(DIRS.logs, "app.log"),
 };
 
-module.exports = { DIRS, FILES, PORT: 4000 };
+/** Порт локального API-сервера. */
+const PORT = 4000;
+
+export = { DIRS, FILES, PORT };

@@ -41,6 +41,7 @@ desktop.ini
 # server/ts/*.ts -> server/*.js (собирается через tsc; исходники в server/ts/)
 # ВАЖНО: .d.ts-декларация для JS-модуля settings остаётся в репозитории:
 # без неё typecheck в CI падает с TS2307 (Cannot find module './settings').
+server/config.js
 server/logger.js
 server/monitor.js
 server/jobStore.js

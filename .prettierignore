@@ -11,6 +11,7 @@ server/engines
 storage
 
 # Файлы, которые генерирует tsc из server/ts/*.ts (в git не хранятся).
+server/config.js
 server/logger.js
 server/monitor.js
 server/monitor.js.map
