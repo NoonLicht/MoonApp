@@ -1,5 +1,3 @@
-"use strict";
-
 /**
  * Файловые операции с «хитростями Windows».
  *
@@ -19,25 +17,33 @@
  * удаление возвращало «успех», а .md файл оставался; при переименовании
  * (slug файла зависит от заголовка) копились дубли.
  */
+import fs from "fs";
+import path from "path";
 
-const fs = require("fs");
-const path = require("path");
+/** Код ошибки файловой системы (ENOENT/EBUSY/EACCES/EPERM). */
+function codeOf(e: unknown): string | undefined {
+  return typeof e === "object" && e !== null ? (e as { code?: string }).code : undefined;
+}
 
 /** Удалить один файл (или симлинк). true — путь исчез. */
-function removeSingle(target) {
+function removeSingle(target: string): boolean {
   try {
     fs.unlinkSync(target);
     return true;
   } catch (e) {
-    if (e.code === "ENOENT") return true; // уже нет — цель достигнута
+    if (codeOf(e) === "ENOENT") return true; // уже нет — цель достигнута
     // Дальше — файл под блокировкой (антивирус/индексатор) или нет прав.
   }
-  try { fs.rmSync(target, { force: true, maxRetries: 2 }); } catch { /* ignore */ }
+  try {
+    fs.rmSync(target, { force: true, maxRetries: 2 });
+  } catch {
+    /* ignore */
+  }
   return !fs.existsSync(target);
 }
 
 /** Рекурсивно удалить каталог, обходя дерево сами (см. комментарий выше). */
-function removeDirTree(dir) {
+function removeDirTree(dir: string): boolean {
   try {
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
       const full = path.join(dir, entry.name);
@@ -46,23 +52,28 @@ function removeDirTree(dir) {
     }
     fs.rmdirSync(dir);
   } catch (e) {
-    if (e.code === "ENOENT") return true;
+    if (codeOf(e) === "ENOENT") return true;
     // Права/занятость: ниже пробуем штатный рекурсивный rm.
   }
   if (!fs.existsSync(dir)) return true;
-  try { fs.rmSync(dir, { recursive: true, force: true, maxRetries: 2 }); } catch { /* ignore */ }
+  try {
+    fs.rmSync(dir, { recursive: true, force: true, maxRetries: 2 });
+  } catch {
+    /* ignore */
+  }
   return !fs.existsSync(dir);
 }
 
 /**
  * Удалить файл или каталог.
- * @returns {boolean} true — путь действительно исчез с диска (не «вызов прошёл»)
+ * @returns true — путь действительно исчез с диска (не «вызов прошёл»)
  */
-function removePath(target) {
+export function removePath(target: string): boolean {
   let isDir = false;
-  try { isDir = fs.lstatSync(target).isDirectory(); }
-  catch (e) { if (e.code === "ENOENT") return true; }
+  try {
+    isDir = fs.lstatSync(target).isDirectory();
+  } catch (e) {
+    if (codeOf(e) === "ENOENT") return true;
+  }
   return isDir ? removeDirTree(target) : removeSingle(target);
 }
-
-module.exports = { removePath };

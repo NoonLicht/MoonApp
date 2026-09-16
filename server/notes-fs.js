@@ -14,7 +14,7 @@ const path = require("path");
 const { DIRS } = require("./config");
 const logger = require("./logger");
 // Удаление файлов с кириллическими именами: fs.rmSync на Windows этого молча
-// не делает, а заголовки заметок почти всегда русские (см. server/fsUtil.js).
+// не делает, а заголовки заметок почти всегда русские (см. server/ts/fsUtil.ts).
 const { removePath } = require("./fsUtil");
 
 const NOTES_DIR = path.join(DIRS.storage, "notes");

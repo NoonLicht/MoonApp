@@ -43,6 +43,7 @@ desktop.ini
 # без них typecheck в CI падает с TS2307 (Cannot find module './settings').
 server/monitor.js
 server/jobStore.js
+server/fsUtil.js
 
 bb.txt
 tc.txt

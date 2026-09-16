@@ -5,7 +5,7 @@ import path from "path";
 import { createRequire } from "module";
 
 /**
- * Удаление путей с не-ASCII именами (server/fsUtil.js).
+ * Удаление путей с не-ASCII именами (server/ts/fsUtil.ts -> server/fsUtil.js).
  *
  * Регресс: на Windows fs.rmSync МОЛЧА не удаляет файл с кириллическим именем —
  * вызов проходит, файл остаётся. Из-за этого «удалил заметку» в MySpace и

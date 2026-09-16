@@ -12,7 +12,7 @@ const path = require("path");
 const { DIRS } = require("./config");
 const logger = require("./logger");
 // Заметки пользователя почти всегда названы по-русски, а fs.rmSync такие файлы
-// на Windows молча не удаляет — см. комментарий в server/fsUtil.js.
+// на Windows молча не удаляет — см. комментарий в server/ts/fsUtil.ts.
 const { removePath } = require("./fsUtil");
 
 const VAULT_DIR = path.join(DIRS.storage, "vault");
@@ -124,7 +124,7 @@ function deleteFile(filePath) {
     if (fs.existsSync(fullPath)) {
       // Именно removePath, а не fs.rmSync: на Windows rmSync молча не удаляет
       // файлы с кириллическими именами, поэтому «удалить заметку» возвращало
-      // успех, а .md оставался на диске (см. server/fsUtil.js).
+      // успех, а .md оставался на диске (см. server/ts/fsUtil.ts).
       if (!removePath(fullPath)) return { ok: false, error: "delete_failed" };
       return { ok: true };
     }

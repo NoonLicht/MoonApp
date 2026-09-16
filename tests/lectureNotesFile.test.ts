@@ -132,7 +132,7 @@ describe("Заметки лекции → .md файл в storage/notes", () => 
     // Файл удалили с диска вручную: следующая правка создаёт его заново с тем же
     // id (иначе лекция молча осталась бы без зеркала). Удаляем unlinkSync, а не
     // rmSync: на Windows rmSync не удаляет файлы с кириллическими именами (см.
-    // server/fsUtil.js) — иначе «ручное удаление» в тесте ничего бы не удаляло.
+    // server/ts/fsUtil.ts) — иначе «ручное удаление» в тесте ничего бы не удаляло.
     fs.unlinkSync(path.join(notesDir(), files[0]));
     expect(filesFor(noteId)).toHaveLength(0);
 
