@@ -61,6 +61,7 @@ server/torrent.js
 server/ruNlp.js
 server/db.js
 server/logBundle.js
+server/myspace-vault.js
 
 bb.txt
 tc.txt

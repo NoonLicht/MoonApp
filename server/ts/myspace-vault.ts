@@ -1,26 +1,89 @@
-"use strict";
-
 /**
  * Vault (MySpace) — файловое хранение заметок, папок и canvas.
  * Каждая заметка = .md файл в storage/vault/notes/
  * Canvas = .holst JSON-файлы в storage/vault/holts/
  * Поддержка YAML frontmatter, [[WikiLinks]], тегов.
+ *
+ * TS-исходник, как server/ts/notes-fs.ts: компилируется в server/myspace-vault.js
+ * командой `npm run compile:server`, поэтому `require("../myspace-vault")` из
+ * server/routes/myspace.js и тестов продолжает работать с теми же именами.
  */
-
-const fs = require("fs");
-const path = require("path");
-const { DIRS } = require("./config");
-const logger = require("./logger");
+import fs from "fs";
+import path from "path";
+import config from "./config";
+import logger from "./logger";
 // Заметки пользователя почти всегда названы по-русски, а fs.rmSync такие файлы
 // на Windows молча не удаляет — см. комментарий в server/ts/fsUtil.ts.
-const { removePath } = require("./fsUtil");
-const { parseFrontmatter } = require("./frontmatter");
+import { removePath } from "./fsUtil";
+import { parseFrontmatter } from "./frontmatter";
 
-const VAULT_DIR = path.join(DIRS.storage, "vault");
-const NOTEBOOK_DIR = path.join(VAULT_DIR, "notes");
-const HOLST_DIR = path.join(VAULT_DIR, "holts");
+const { DIRS } = config;
 
-function ensureDirs() {
+const VAULT_DIR = DIRS.vault;
+const NOTEBOOK_DIR = DIRS.vaultNotes;
+const HOLST_DIR = DIRS.vaultHolts;
+
+/** Узел дерева заметок: папка (с детьми) либо файл .md/.holst. */
+export interface VaultTreeItem {
+  name: string;
+  path: string;
+  type: "folder" | "note" | "holst";
+  ext?: string;
+  children?: VaultTreeItem[];
+}
+
+/** Заметка, отданная на фронт: мета + тело без frontmatter + извлечённые ссылки. */
+export interface VaultFileData {
+  path: string;
+  name: string;
+  ext: string;
+  content: string;
+  frontmatter: Record<string, string>;
+  tags: string[];
+  wikiLinks: string[];
+}
+
+/** Результат файловой операции. error заполняется только при ok: false. */
+export interface VaultOpResult {
+  ok: boolean;
+  error?: string;
+  path?: string;
+  newPath?: string;
+}
+
+export interface VaultSearchHit {
+  path: string;
+  name: string;
+  snippet: string;
+  matchStart: number;
+}
+
+export interface VaultTagCount {
+  tag: string;
+  count: number;
+}
+
+export interface VaultBacklink {
+  path: string;
+  name: string;
+  type: "linked" | "unlinked";
+  snippet: string;
+}
+
+export interface VaultOutlineHeader {
+  level: number;
+  text: string;
+  line: number;
+}
+
+export interface VaultHolstSummary {
+  name: string;
+  path: string;
+  updatedAt: string | null;
+  thumbnail: string | null;
+}
+
+function ensureDirs(): void {
   for (const d of [VAULT_DIR, NOTEBOOK_DIR, HOLST_DIR]) {
     if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true });
   }
@@ -29,7 +92,7 @@ function ensureDirs() {
 // Контейнмент путей (защита от path traversal): клиентский путь разрешается
 // внутри базовой папки. resolve + проверка префикса — любой "../../.." даёт
 // null, и операция отклоняется вместо выхода за пределы vault.
-function safeJoin(baseDir, relPath) {
+function safeJoin(baseDir: string, relPath: unknown): string | null {
   const rel = String(relPath || "")
     .replace(/\\/g, "/")
     .replace(/^\/+/, "");
@@ -38,10 +101,11 @@ function safeJoin(baseDir, relPath) {
   if (full !== base && !full.startsWith(base + path.sep)) return null;
   return full;
 }
-
-function buildTree(dir, basePath = "") {
-  const tree = [];
-  let entries;
+// Внутренний обход дерева (dir — произвольная папка); публичная точка входа
+// buildTree() ниже жёстко привязана к папке заметок, как в .js-версии модуля.
+function walkTree(dir: string, basePath = ""): VaultTreeItem[] {
+  const tree: VaultTreeItem[] = [];
+  let entries: fs.Dirent[];
   try {
     entries = fs.readdirSync(dir, { withFileTypes: true });
   } catch {
@@ -54,7 +118,7 @@ function buildTree(dir, basePath = "") {
         name: entry.name,
         path: relPath,
         type: "folder",
-        children: buildTree(path.join(dir, entry.name), relPath),
+        children: walkTree(path.join(dir, entry.name), relPath),
       });
     } else if (entry.name.endsWith(".md") || entry.name.endsWith(".holst")) {
       tree.push({
@@ -68,7 +132,7 @@ function buildTree(dir, basePath = "") {
   return tree;
 }
 
-function readFile(filePath) {
+function readFile(filePath: string): VaultFileData | null {
   const fullPath = safeJoin(NOTEBOOK_DIR, filePath);
   if (!fullPath || !fs.existsSync(fullPath)) return null;
   const raw = fs.readFileSync(fullPath, "utf8");
@@ -79,7 +143,11 @@ function readFile(filePath) {
   return { ...meta, content, frontmatter, tags, wikiLinks };
 }
 
-function writeFile(filePath, content, frontmatter = {}) {
+function writeFile(
+  filePath: string,
+  content: unknown,
+  frontmatter: Record<string, unknown> = {},
+): VaultOpResult {
   ensureDirs();
   const fullPath = safeJoin(NOTEBOOK_DIR, filePath);
   if (!fullPath) return { ok: false, error: "forbidden path" };
@@ -93,12 +161,12 @@ function writeFile(filePath, content, frontmatter = {}) {
     }
     md += "---\n\n";
   }
-  md += content || "";
+  md += String(content || "");
   fs.writeFileSync(fullPath, md, "utf8");
   return { path: filePath, ok: true };
 }
 
-function deleteFile(filePath) {
+function deleteFile(filePath: string): VaultOpResult {
   const fullPath = safeJoin(NOTEBOOK_DIR, filePath);
   if (!fullPath) return { ok: false, error: "forbidden path" };
   try {
@@ -111,11 +179,11 @@ function deleteFile(filePath) {
     }
     return { ok: false, error: "not found" };
   } catch (e) {
-    return { ok: false, error: e.message };
+    return { ok: false, error: (e as Error).message };
   }
 }
 
-function renameFile(oldPath, newPath) {
+function renameFile(oldPath: string, newPath: string): VaultOpResult {
   const oldFull = safeJoin(NOTEBOOK_DIR, oldPath);
   const newFull = safeJoin(NOTEBOOK_DIR, newPath);
   if (!oldFull || !newFull) return { ok: false, error: "forbidden path" };
@@ -125,29 +193,28 @@ function renameFile(oldPath, newPath) {
     fs.renameSync(oldFull, newFull);
     return { ok: true, newPath };
   } catch (e) {
-    return { ok: false, error: e.message };
+    return { ok: false, error: (e as Error).message };
   }
 }
 
-function createFolder(folderPath) {
+function createFolder(folderPath: string): VaultOpResult {
   const fullPath = safeJoin(NOTEBOOK_DIR, folderPath);
   if (!fullPath) return { ok: false, error: "forbidden path" };
   try {
     fs.mkdirSync(fullPath, { recursive: true });
     return { ok: true, path: folderPath };
   } catch (e) {
-    return { ok: false, error: e.message };
+    return { ok: false, error: (e as Error).message };
   }
 }
-
-function searchFiles(query) {
+function searchFiles(query: unknown): VaultSearchHit[] {
   const q = String(query || "")
     .toLowerCase()
     .trim();
   if (!q) return [];
-  const results = [];
-  function walk(dir, basePath) {
-    let entries;
+  const results: VaultSearchHit[] = [];
+  function walk(dir: string, basePath: string): void {
+    let entries: fs.Dirent[];
     try {
       entries = fs.readdirSync(dir, { withFileTypes: true });
     } catch {
@@ -177,10 +244,11 @@ function searchFiles(query) {
   walk(NOTEBOOK_DIR, "");
   return results;
 }
-function getAllTags() {
-  const tagMap = new Map();
-  function walk(dir) {
-    let entries;
+
+function getAllTags(): VaultTagCount[] {
+  const tagMap = new Map<string, number>();
+  function walk(dir: string): void {
+    let entries: fs.Dirent[];
     try {
       entries = fs.readdirSync(dir, { withFileTypes: true });
     } catch {
@@ -201,12 +269,11 @@ function getAllTags() {
     .map(([tag, count]) => ({ tag, count }))
     .sort((a, b) => b.count - a.count);
 }
-
-function getBacklinks(targetPath) {
+function getBacklinks(targetPath: string): VaultBacklink[] {
   const targetName = path.basename(targetPath, ".md");
-  const backlinks = [];
-  function walk(dir, basePath) {
-    let entries;
+  const backlinks: VaultBacklink[] = [];
+  function walk(dir: string, basePath: string): void {
+    let entries: fs.Dirent[];
     try {
       entries = fs.readdirSync(dir, { withFileTypes: true });
     } catch {
@@ -236,12 +303,12 @@ function getBacklinks(targetPath) {
       }
     }
   }
-  walk(NOTEBOOK_DIR);
+  walk(NOTEBOOK_DIR, "");
   return backlinks;
 }
 
-function getOutline(content) {
-  const headers = [];
+function getOutline(content: string): VaultOutlineHeader[] {
+  const headers: VaultOutlineHeader[] = [];
   const lines = content.split("\n");
   for (let i = 0; i < lines.length; i++) {
     const match = lines[i].match(/^(#{1,6})\s+(.+)$/);
@@ -252,12 +319,15 @@ function getOutline(content) {
 
 /* ======================== Holst / Canvas ======================== */
 
-/**
- * List all .holst files.
- */
-function listHolsts() {
+/** Имя .holst-файла: клиентское имя санитизируется до [a-zA-Z0-9_-]. */
+function holstName(name: string): string {
+  return name.replace(/[^a-zA-Z0-9_-]/g, "_");
+}
+
+/** Список canvas-файлов (битый JSON пропускается, а не роняет список). */
+function listHolsts(): VaultHolstSummary[] {
   ensureDirs();
-  const items = [];
+  const items: VaultHolstSummary[] = [];
   try {
     const entries = fs.readdirSync(HOLST_DIR, { withFileTypes: true });
     for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
@@ -282,30 +352,35 @@ function listHolsts() {
   }
   return items;
 }
+/** Прочитанный canvas: data === null, если JSON в файле битый. */
+export interface VaultHolstRead {
+  name: string;
+  data: unknown;
+  error?: string;
+}
 
-/**
- * Read a .holst file by name (without extension).
- */
-function readHolst(name) {
+/** Чтение .holst по имени (без расширения). */
+function readHolst(name: string): VaultHolstRead | null {
   ensureDirs();
-  const safeName = name.replace(/[^a-zA-Z0-9_-]/g, "_");
+  const safeName = holstName(name);
   const fullPath = path.join(HOLST_DIR, `${safeName}.holst`);
   if (!fs.existsSync(fullPath)) return null;
   const raw = fs.readFileSync(fullPath, "utf8");
   try {
     const data = JSON.parse(raw);
     return { name: safeName, data };
-  } catch (e) {
+  } catch {
     return { name: safeName, data: null, error: "Invalid JSON" };
   }
 }
 
 /**
- * Write a .holst file. Expects { name, data } where data is the full tldraw store snapshot.
+ * Запись .holst. Ожидает { name, data }, где data — полный снапшот tldraw.
+ * meta.updatedAt всегда перезаписывается сервером: по нему строится список canvas.
  */
-function writeHolst(name, data) {
+function writeHolst(name: string, data: Record<string, unknown>): VaultOpResult & { name: string } {
   ensureDirs();
-  const safeName = name.replace(/[^a-zA-Z0-9_-]/g, "_");
+  const safeName = holstName(name);
   const fullPath = path.join(HOLST_DIR, `${safeName}.holst`);
   const payload = {
     meta: {
@@ -320,11 +395,13 @@ function writeHolst(name, data) {
 }
 
 /**
- * Delete a .holst file.
+ * Удаление .holst. Здесь обычный fs.unlinkSync (а не removePath из fsUtil):
+ * имя перед записью санитизируется до [a-zA-Z0-9_-], кириллицы в пути быть
+ * не может — ради этого имя и приводится к ASCII.
  */
-function deleteHolst(name) {
+function deleteHolst(name: string): VaultOpResult {
   ensureDirs();
-  const safeName = name.replace(/[^a-zA-Z0-9_-]/g, "_");
+  const safeName = holstName(name);
   const fullPath = path.join(HOLST_DIR, `${safeName}.holst`);
   if (!fs.existsSync(fullPath)) return { ok: false, error: "Not found" };
   fs.unlinkSync(fullPath);
@@ -334,21 +411,25 @@ function deleteHolst(name) {
 
 ensureDirs();
 
-module.exports = {
-  buildTree: () => buildTree(NOTEBOOK_DIR),
-  readFile: (p) => readFile(p),
-  writeFile: (p, c, fm) => writeFile(p, c, fm),
-  deleteFile: (p) => deleteFile(p),
-  renameFile: (o, n) => renameFile(o, n),
-  createFolder: (p) => createFolder(p),
-  searchFiles: (q) => searchFiles(q),
-  getAllTags: () => getAllTags(),
-  getBacklinks: (p) => getBacklinks(p),
-  getOutline: (c) => getOutline(c),
-  listHolsts: () => listHolsts(),
-  readHolst: (n) => readHolst(n),
-  writeHolst: (n, d) => writeHolst(n, d),
-  deleteHolst: (n) => deleteHolst(n),
+/** Дерево заметок vault — публичная точка входа (dir фиксирован, как в .js). */
+export function buildTree(): VaultTreeItem[] {
+  return walkTree(NOTEBOOK_DIR);
+}
+
+export {
+  readFile,
+  writeFile,
+  deleteFile,
+  renameFile,
+  createFolder,
+  searchFiles,
+  getAllTags,
+  getBacklinks,
+  getOutline,
+  listHolsts,
+  readHolst,
+  writeHolst,
+  deleteHolst,
   VAULT_DIR,
   NOTEBOOK_DIR,
   HOLST_DIR,

@@ -38,6 +38,7 @@
     "server/ts/torrent.ts",
     "server/ts/ruNlp.ts",
     "server/ts/db.ts",
-    "server/ts/logBundle.ts"
+    "server/ts/logBundle.ts",
+    "server/ts/myspace-vault.ts"
   ]
 }

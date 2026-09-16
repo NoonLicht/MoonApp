@@ -63,6 +63,7 @@ export default tseslint.config(
       "server/ruNlp.js",
       "server/db.js",
       "server/logBundle.js",
+      "server/myspace-vault.js",
     ],
   },
 
