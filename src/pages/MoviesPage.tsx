@@ -1,7 +1,18 @@
 import React, { useCallback, useEffect, useState } from "react";
 import {
-  Search, RefreshCw, Film, Tv, LayoutGrid, ListVideo,
-  BarChart3, KeyRound, AlertTriangle, Zap, Trash2, Save, ExternalLink,
+  Search,
+  RefreshCw,
+  Film,
+  Tv,
+  LayoutGrid,
+  ListVideo,
+  BarChart3,
+  KeyRound,
+  AlertTriangle,
+  Zap,
+  Trash2,
+  Save,
+  ExternalLink,
 } from "lucide-react";
 import { Glass, Btn, Badge, SectionHead, EmptyHint, Field } from "../components/ui";
 import { usePageToolbar } from "../components/Toolbar";
@@ -11,11 +22,18 @@ import { api } from "../api/client";
 import MediaCatalog from "../components/media/MediaCatalog";
 import MediaBrowse from "../components/media/MediaBrowse";
 import MediaDetailModal from "../components/media/MediaDetailModal";
+import MediaCard from "../components/media/MediaCard";
 import PlayerModal from "../components/media/PlayerModal";
 import MediaStatsCard from "../components/media/MediaStatsCard";
 import { imgUrl } from "../components/media/mediaImg";
 import type {
-  MediaKind, MediaSummary, MediaStatus, MediaLibrary, MediaStats, MediaWatchlistEntry, MediaWatchStatus,
+  MediaKind,
+  MediaSummary,
+  MediaStatus,
+  MediaLibrary,
+  MediaStats,
+  MediaWatchlistEntry,
+  MediaWatchStatus,
 } from "../api/types";
 
 /**
@@ -33,7 +51,11 @@ import type {
 
 type ViewId = "catalog" | "library" | "stats";
 
-const STATUS_TONE: Record<MediaWatchStatus, string> = { plan: "teal", watching: "violet", watched: "amber" };
+const STATUS_TONE: Record<MediaWatchStatus, string> = {
+  plan: "teal",
+  watching: "violet",
+  watched: "amber",
+};
 
 export default function MoviesPage() {
   const { t } = useI18n();
@@ -47,7 +69,11 @@ export default function MoviesPage() {
   const [searchItems, setSearchItems] = useState<MediaSummary[]>([]);
   const [searched, setSearched] = useState(false);
 
-  const [detail, setDetail] = useState<{ kind: MediaKind; id: number; summary?: MediaSummary | null } | null>(null);
+  const [detail, setDetail] = useState<{
+    kind: MediaKind;
+    id: number;
+    summary?: MediaSummary | null;
+  } | null>(null);
   const [player, setPlayer] = useState<{ trailerKey: string | null } | null>(null);
   /** Открытая подборка «Все …» (null — обычный каталог каруселей). */
   const [browse, setBrowse] = useState<{ category: string; title: string } | null>(null);
@@ -58,30 +84,53 @@ export default function MoviesPage() {
 
   // Статус страницы (ключ TMDB + движок торрентов).
   const loadStatus = useCallback(() => {
-    api.moviesStatus().then(setStatus).catch(() => setStatus(null));
+    api
+      .moviesStatus()
+      .then(setStatus)
+      .catch(() => setStatus(null));
   }, []);
-  useEffect(() => { loadStatus(); }, [loadStatus]);
+  useEffect(() => {
+    loadStatus();
+  }, [loadStatus]);
 
   // Смена типа медиа (фильмы/сериалы) меняет набор подборок — закрываем открытый список.
-  useEffect(() => { setBrowse(null); }, [kind]);
+  useEffect(() => {
+    setBrowse(null);
+  }, [kind]);
 
   // Личная библиотека + агрегированная статистика.
   const loadLibrary = useCallback(() => {
-    api.moviesLibrary().then(setLibrary).catch(() => setLibrary(null));
-    api.moviesStats().then(setStats).catch(() => setStats(null));
+    api
+      .moviesLibrary()
+      .then(setLibrary)
+      .catch(() => setLibrary(null));
+    api
+      .moviesStats()
+      .then(setStats)
+      .catch(() => setStats(null));
   }, []);
-  useEffect(() => { loadLibrary(); }, [loadLibrary]);
+  useEffect(() => {
+    loadLibrary();
+  }, [loadLibrary]);
 
   const refreshAll = useCallback(async () => {
     setBusy(true);
-    try { await api.moviesRefresh(); } catch { /* кэш мог не очиститься — не критично */ }
+    try {
+      await api.moviesRefresh();
+    } catch {
+      /* кэш мог не очиститься — не критично */
+    }
     setReloadNonce((n) => n + 1);
     setBusy(false);
   }, []);
 
   const runSearch = useCallback(async () => {
     const q = query.trim();
-    if (!q) { setSearchItems([]); setSearched(false); return; }
+    if (!q) {
+      setSearchItems([]);
+      setSearched(false);
+      return;
+    }
     setBrowse(null); // поиск показываем поверх каталога, а не поверх открытой подборки
     setSearching(true);
     setSearched(true);
@@ -97,49 +146,90 @@ export default function MoviesPage() {
 
   const clearStats = useCallback(async () => {
     setBusy(true);
-    try { await api.moviesClearStats(); loadLibrary(); }
-    finally { setBusy(false); }
-  }, [loadLibrary]);
-
-  const changeWatchStatus = useCallback(async (entry: MediaWatchlistEntry, next: MediaWatchStatus) => {
-    setBusy(true);
     try {
-      await api.moviesSetWatchlist({
-        kind: entry.kind, id: entry.tmdb_id, title: entry.title,
-        poster: entry.poster, year: entry.year, runtime: entry.runtime,
-        genres: entry.genres, status: next,
-      });
+      await api.moviesClearStats();
       loadLibrary();
-    } finally { setBusy(false); }
+    } finally {
+      setBusy(false);
+    }
   }, [loadLibrary]);
 
-  const removeFromList = useCallback(async (entry: MediaWatchlistEntry) => {
-    setBusy(true);
-    try { await api.moviesRemoveWatchlist(entry.kind, entry.tmdb_id); loadLibrary(); }
-    finally { setBusy(false); }
-  }, [loadLibrary]);
+  const changeWatchStatus = useCallback(
+    async (entry: MediaWatchlistEntry, next: MediaWatchStatus) => {
+      setBusy(true);
+      try {
+        await api.moviesSetWatchlist({
+          kind: entry.kind,
+          id: entry.tmdb_id,
+          title: entry.title,
+          poster: entry.poster,
+          year: entry.year,
+          runtime: entry.runtime,
+          genres: entry.genres,
+          status: next,
+        });
+        loadLibrary();
+      } finally {
+        setBusy(false);
+      }
+    },
+    [loadLibrary],
+  );
+
+  const removeFromList = useCallback(
+    async (entry: MediaWatchlistEntry) => {
+      setBusy(true);
+      try {
+        await api.moviesRemoveWatchlist(entry.kind, entry.tmdb_id);
+        loadLibrary();
+      } finally {
+        setBusy(false);
+      }
+    },
+    [loadLibrary],
+  );
 
   usePageToolbar(
     <div className="mv-toolbar">
       {/* Тип медиа: фильмы / сериалы */}
       <div className="mv-seg">
-        <button className={kind === "movie" ? "is-active" : ""} onClick={() => setKind("movie")} title={t("movies.movies")}>
+        <button
+          className={kind === "movie" ? "is-active" : ""}
+          onClick={() => setKind("movie")}
+          title={t("movies.movies")}
+        >
           <Film size={14} /> <span className="mv-seg-label">{t("movies.movies")}</span>
         </button>
-        <button className={kind === "tv" ? "is-active" : ""} onClick={() => setKind("tv")} title={t("movies.series")}>
+        <button
+          className={kind === "tv" ? "is-active" : ""}
+          onClick={() => setKind("tv")}
+          title={t("movies.series")}
+        >
           <Tv size={14} /> <span className="mv-seg-label">{t("movies.series")}</span>
         </button>
       </div>
 
       {/* Разделы страницы */}
       <div className="mv-seg">
-        <button className={view === "catalog" ? "is-active" : ""} onClick={() => setView("catalog")} title={t("movies.tab_catalog")}>
+        <button
+          className={view === "catalog" ? "is-active" : ""}
+          onClick={() => setView("catalog")}
+          title={t("movies.tab_catalog")}
+        >
           <LayoutGrid size={14} />
         </button>
-        <button className={view === "library" ? "is-active" : ""} onClick={() => setView("library")} title={t("movies.tab_library")}>
+        <button
+          className={view === "library" ? "is-active" : ""}
+          onClick={() => setView("library")}
+          title={t("movies.tab_library")}
+        >
           <ListVideo size={14} />
         </button>
-        <button className={view === "stats" ? "is-active" : ""} onClick={() => setView("stats")} title={t("movies.tab_stats")}>
+        <button
+          className={view === "stats" ? "is-active" : ""}
+          onClick={() => setView("stats")}
+          title={t("movies.tab_stats")}
+        >
           <BarChart3 size={14} />
         </button>
       </div>
@@ -155,9 +245,14 @@ export default function MoviesPage() {
         onSubmit={() => void runSearch()}
       />
 
-      <Btn icon={RefreshCw} onClick={() => void refreshAll()} disabled={busy} title={t("movies.refresh")} />
+      <Btn
+        icon={RefreshCw}
+        onClick={() => void refreshAll()}
+        disabled={busy}
+        title={t("movies.refresh")}
+      />
     </div>,
-    [kind, view, query, busy]
+    [kind, view, query, busy],
   );
 
   // Ключа нет — показываем форму ввода (можно не уходить в Настройки).
@@ -166,7 +261,12 @@ export default function MoviesPage() {
       <div className="mv-page">
         <SectionHead eyebrow={t("nav.movies")} title={t("movies.title")} />
         <div className="mv-scroll">
-          <TmdbKeyGate onSaved={() => { loadStatus(); setReloadNonce((n) => n + 1); }} />
+          <TmdbKeyGate
+            onSaved={() => {
+              loadStatus();
+              setReloadNonce((n) => n + 1);
+            }}
+          />
         </div>
       </div>
     );
@@ -178,9 +278,11 @@ export default function MoviesPage() {
         eyebrow={t("nav.movies")}
         title={t("movies.title")}
         action={
-          status && !status.engine.installed
-            ? <Badge tone="coral" mono>{t("movies.torrentNoEngine")}</Badge>
-            : undefined
+          status && !status.engine.installed ? (
+            <Badge tone="coral" mono>
+              {t("movies.torrentNoEngine")}
+            </Badge>
+          ) : undefined
         }
       />
 
@@ -188,92 +290,120 @@ export default function MoviesPage() {
       <div className="mv-scroll">
         {/* Результаты поиска (показываются поверх каталога) */}
         {searched && (
-        <Glass className="mv-search-results">
-          <div className="mv-row-head">
-            <h3>{t("movies.searchResults", { q: query })}</h3>
-            <button className="mv-row-more" onClick={() => { setSearched(false); setSearchItems([]); }}>
-              {t("movies.clear")}
-            </button>
-          </div>
-          {searching && <div className="muted-sm">{t("movies.loading")}</div>}
-          {!searching && searchItems.length === 0 && <EmptyHint icon={Search} text={t("movies.noResults")} />}
-          <div className="mv-similar">
-            {searchItems.map((s) => (
-              <button key={`${s.kind}-${s.id}`} className="mv-card" onClick={() => setDetail({ kind: s.kind, id: s.id, summary: s })}>
-                <div className="mv-card-art tone-violet">
-                  {s.poster ? <img src={imgUrl(s.poster)} alt="" loading="lazy" /> : <Film size={20} strokeWidth={1.5} />}
-                </div>
-                <div className="mv-card-title">{s.title}</div>
-                <div className="mv-card-meta">{s.year || "—"}</div>
+          <Glass className="mv-search-results">
+            <div className="mv-row-head">
+              <h3>{t("movies.searchResults", { q: query })}</h3>
+              <button
+                className="mv-row-more"
+                onClick={() => {
+                  setSearched(false);
+                  setSearchItems([]);
+                }}
+              >
+                {t("movies.clear")}
               </button>
-            ))}
-          </div>
-        </Glass>
-      )}
-
-      {/* Каталог подборок TMDB либо полный список выбранной подборки («Все …») */}
-      {view === "catalog" && (
-        browse ? (
-          <MediaBrowse
-            kind={kind}
-            category={browse.category}
-            title={browse.title}
-            onBack={() => setBrowse(null)}
-            onSelect={(k, id, s) => setDetail({ kind: k, id, summary: s })}
-          />
-        ) : (
-          <MediaCatalog
-            kind={kind}
-            reloadNonce={reloadNonce}
-            onSelect={(k, id, s) => setDetail({ kind: k, id, summary: s })}
-            onSeeAll={(category, title) => setBrowse({ category, title })}
-          />
-        )
-      )}
-
-      {/* Мой список: watchlist + статусы */}
-      {view === "library" && (
-        <div className="mv-library">
-          {!library || library.watchlist.length === 0 ? (
-            <EmptyHint icon={ListVideo} text={t("movies.libraryEmpty")} />
-          ) : (
-            <div className="mv-library-grid">
-              {library.watchlist.map((e) => {
-                const rating = library.ratings.find((r) => r.kind === e.kind && r.tmdb_id === e.tmdb_id)?.rating || 0;
-                return (
-                  <Glass key={`${e.kind}-${e.tmdb_id}`} className="mv-lib-card">
-                    <button className="mv-lib-art" onClick={() => setDetail({ kind: e.kind, id: e.tmdb_id })}>
-                      {e.poster ? <img src={imgUrl(e.poster)} alt="" loading="lazy" /> : <Film size={22} strokeWidth={1.5} />}
-                    </button>
-                    <div className="mv-lib-info">
-                      <div className="mv-lib-title" title={e.title}>{e.title}</div>
-                      <div className="muted-sm">{e.year || "—"}{rating > 0 ? ` · ★ ${rating}` : ""}</div>
-                      <div className="mv-lib-status">
-                        {(["plan", "watching", "watched"] as MediaWatchStatus[]).map((st) => (
-                          <Badge
-                            key={st}
-                            tone={STATUS_TONE[st]}
-                            active={e.status === st}
-                            onClick={() => void changeWatchStatus(e, st)}
-                          >
-                            {t(`movies.status${st.charAt(0).toUpperCase()}${st.slice(1)}`)}
-                          </Badge>
-                        ))}
-                      </div>
-                      <div className="mv-lib-actions">
-                        <Btn icon={Zap} onClick={() => setPlayer({ trailerKey: null })}>{t("movies.openPlayer")}</Btn>
-                        <Btn icon={Trash2} onClick={() => void removeFromList(e)} disabled={busy} title={t("movies.removeFromList")} />
-                      </div>
-                    </div>
-                  </Glass>
-                );
-              })}
             </div>
-          )}
-        </div>
-      )}
-      {/* Личная статистика */}
-      {view === "stats" && <MediaStatsCard stats={stats} onClear={() => void clearStats()} busy={busy} />}
+            {searching && <div className="muted-sm">{t("movies.loading")}</div>}
+            {!searching && searchItems.length === 0 && (
+              <EmptyHint icon={Search} text={t("movies.noResults")} />
+            )}
+            <div className="mv-similar">
+              {searchItems.map((s) => (
+                <MediaCard
+                  key={`${s.kind}-${s.id}`}
+                  item={s}
+                  onSelect={(k, id, summary) => setDetail({ kind: k, id, summary })}
+                />
+              ))}
+            </div>
+          </Glass>
+        )}
+
+        {/* Каталог подборок TMDB либо полный список выбранной подборки («Все …») */}
+        {view === "catalog" &&
+          (browse ? (
+            <MediaBrowse
+              kind={kind}
+              category={browse.category}
+              title={browse.title}
+              onBack={() => setBrowse(null)}
+              onSelect={(k, id, s) => setDetail({ kind: k, id, summary: s })}
+            />
+          ) : (
+            <MediaCatalog
+              kind={kind}
+              reloadNonce={reloadNonce}
+              onSelect={(k, id, s) => setDetail({ kind: k, id, summary: s })}
+              onSeeAll={(category, title) => setBrowse({ category, title })}
+            />
+          ))}
+
+        {/* Мой список: watchlist + статусы */}
+        {view === "library" && (
+          <div className="mv-library">
+            {!library || library.watchlist.length === 0 ? (
+              <EmptyHint icon={ListVideo} text={t("movies.libraryEmpty")} />
+            ) : (
+              <div className="mv-library-grid">
+                {library.watchlist.map((e) => {
+                  const rating =
+                    library.ratings.find((r) => r.kind === e.kind && r.tmdb_id === e.tmdb_id)
+                      ?.rating || 0;
+                  return (
+                    <Glass key={`${e.kind}-${e.tmdb_id}`} className="mv-lib-card">
+                      <button
+                        className="mv-lib-art"
+                        onClick={() => setDetail({ kind: e.kind, id: e.tmdb_id })}
+                      >
+                        {e.poster ? (
+                          <img src={imgUrl(e.poster)} alt="" loading="lazy" />
+                        ) : (
+                          <Film size={22} strokeWidth={1.5} />
+                        )}
+                      </button>
+                      <div className="mv-lib-info">
+                        <div className="mv-lib-title" title={e.title}>
+                          {e.title}
+                        </div>
+                        <div className="muted-sm">
+                          {e.year || "—"}
+                          {rating > 0 ? ` · ★ ${rating}` : ""}
+                        </div>
+                        <div className="mv-lib-status">
+                          {(["plan", "watching", "watched"] as MediaWatchStatus[]).map((st) => (
+                            <Badge
+                              key={st}
+                              tone={STATUS_TONE[st]}
+                              active={e.status === st}
+                              onClick={() => void changeWatchStatus(e, st)}
+                            >
+                              {t(`movies.status${st.charAt(0).toUpperCase()}${st.slice(1)}`)}
+                            </Badge>
+                          ))}
+                        </div>
+                        <div className="mv-lib-actions">
+                          <Btn icon={Zap} onClick={() => setPlayer({ trailerKey: null })}>
+                            {t("movies.openPlayer")}
+                          </Btn>
+                          <Btn
+                            icon={Trash2}
+                            onClick={() => void removeFromList(e)}
+                            disabled={busy}
+                            title={t("movies.removeFromList")}
+                          />
+                        </div>
+                      </div>
+                    </Glass>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+        {/* Личная статистика */}
+        {view === "stats" && (
+          <MediaStatsCard stats={stats} onClear={() => void clearStats()} busy={busy} />
+        )}
       </div>
 
       {/* Детали тайтла */}
@@ -333,16 +463,32 @@ function TmdbKeyGate({ onSaved }: { onSaved: () => void }) {
             value={draft}
             placeholder="API Key / Read Access Token"
             onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") void save(); }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") void save();
+            }}
           />
-          <Btn variant="primary" icon={Save} disabled={saving || !draft.trim()} onClick={() => void save()}>
+          <Btn
+            variant="primary"
+            icon={Save}
+            disabled={saving || !draft.trim()}
+            onClick={() => void save()}
+          >
             {t("movies.keySave")}
           </Btn>
         </div>
       </Field>
-      {error && <div className="mv-error-inline"><AlertTriangle size={14} style={{ color: "var(--coral)" }} /> {error}</div>}
+      {error && (
+        <div className="mv-error-inline">
+          <AlertTriangle size={14} style={{ color: "var(--coral)" }} /> {error}
+        </div>
+      )}
       <div className="mv-key-links">
-        <a className="mv-providers-link" href="https://www.themoviedb.org/settings/api" target="_blank" rel="noreferrer noopener">
+        <a
+          className="mv-providers-link"
+          href="https://www.themoviedb.org/settings/api"
+          target="_blank"
+          rel="noreferrer noopener"
+        >
           <ExternalLink size={13} /> TMDB API
         </a>
         <span className="muted-sm">{t("movies.keyWhere")}</span>

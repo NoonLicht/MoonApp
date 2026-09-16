@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowLeft, Film, Star, RefreshCw, AlertTriangle, Loader2, Plus } from "lucide-react";
+import { ArrowLeft, Film, RefreshCw, AlertTriangle, Loader2, Plus } from "lucide-react";
 import { Glass, Btn, EmptyHint } from "../ui";
 import { useI18n } from "../../i18n";
 import { api } from "../../api/client";
-import { imgUrl } from "./mediaImg";
 import { mediaErrorText } from "./MediaCatalog";
+import MediaCard from "./MediaCard";
 import { canAutoLoad, formatCount, hasNextPage, mergePage, nextPage } from "./browsePaging";
 import type { MediaKind, MediaSummary } from "../../api/types";
 
@@ -37,7 +37,11 @@ export default function MediaBrowse({ kind, category, title, onBack, onSelect }:
   const [totalResults, setTotalResults] = useState(0);
   const [loading, setLoading] = useState(true);
   const [more, setMore] = useState(false);
-  const [error, setError] = useState<{ text: string; needsKey: boolean; needsProxy: boolean } | null>(null);
+  const [error, setError] = useState<{
+    text: string;
+    needsKey: boolean;
+    needsProxy: boolean;
+  } | null>(null);
   /** Маркер конца сетки: попав в область видимости, он запускает догрузку. */
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   /** Защита от параллельных догрузок (кнопка + автоподгрузка могут совпасть). */
@@ -53,7 +57,7 @@ export default function MediaBrowse({ kind, category, title, onBack, onSelect }:
       }
       return api.moviesList(kind, category, p);
     },
-    [kind, category]
+    [kind, category],
   );
 
   /**
@@ -72,10 +76,14 @@ export default function MediaBrowse({ kind, category, title, onBack, onSelect }:
           setTotalPages(r.totalPages || 1);
           setTotalResults(r.totalResults || r.items.length);
         })
-        .catch((e) => { if (alive()) setError(mediaErrorText(t, e)); })
-        .finally(() => { if (alive()) setLoading(false); });
+        .catch((e) => {
+          if (alive()) setError(mediaErrorText(t, e));
+        })
+        .finally(() => {
+          if (alive()) setLoading(false);
+        });
     },
-    [fetchPage, t]
+    [fetchPage, t],
   );
 
   // Смена подборки/типа — начинаем с первой страницы.
@@ -86,7 +94,9 @@ export default function MediaBrowse({ kind, category, title, onBack, onSelect }:
     setTotalPages(1);
     setTotalResults(0);
     void loadFirst(() => ok);
-    return () => { ok = false; };
+    return () => {
+      ok = false;
+    };
   }, [loadFirst]);
 
   /** Догрузить следующую страницу и дописать её к сетке. */
@@ -134,8 +144,10 @@ export default function MediaBrowse({ kind, category, title, onBack, onSelect }:
     if (typeof IntersectionObserver === "undefined") return; // старый Chromium — останется кнопка
     if (!canAutoLoad(items.length, page, totalPages)) return;
     const io = new IntersectionObserver(
-      (entries) => { if (entries.some((e) => e.isIntersecting)) void loadMore(); },
-      { rootMargin: "500px 0px" }
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) void loadMore();
+      },
+      { rootMargin: "500px 0px" },
     );
     io.observe(el);
     return () => io.disconnect();
@@ -151,7 +163,10 @@ export default function MediaBrowse({ kind, category, title, onBack, onSelect }:
         {items.length > 0 && (
           <span className="muted-sm">
             {totalResults > items.length
-              ? t("movies.browseProgress", { n: formatCount(items.length, lang), total: formatCount(totalResults, lang) })
+              ? t("movies.browseProgress", {
+                  n: formatCount(items.length, lang),
+                  total: formatCount(totalResults, lang),
+                })
               : t("movies.browseCount", { n: formatCount(items.length, lang) })}
           </span>
         )}
@@ -162,34 +177,24 @@ export default function MediaBrowse({ kind, category, title, onBack, onSelect }:
           <AlertTriangle size={20} style={{ color: "var(--coral)" }} />
           <div className="mv-error-text">{error.text}</div>
           {error.needsProxy && <div className="muted-sm">{t("movies.errProxyHint")}</div>}
-          <Btn icon={RefreshCw} onClick={retry}>{t("movies.retry")}</Btn>
+          <Btn icon={RefreshCw} onClick={retry}>
+            {t("movies.retry")}
+          </Btn>
         </Glass>
       )}
 
       {loading ? (
         <div className="mv-browse-grid">
-          {Array.from({ length: 12 }).map((_, i) => <div key={i} className="mv-card is-skeleton" />)}
+          {Array.from({ length: 12 }).map((_, i) => (
+            <div key={i} className="mv-card is-skeleton" />
+          ))}
         </div>
       ) : items.length === 0 && !error ? (
         <EmptyHint icon={Film} text={t("movies.empty")} />
       ) : (
         <div className="mv-browse-grid">
           {items.map((it) => (
-            <button
-              key={`${it.kind}-${it.id}`} className="mv-card"
-              onClick={() => onSelect(it.kind, it.id, it)} title={it.title}
-            >
-              <div className="mv-card-art tone-violet">
-                {it.poster || it.backdrop
-                  ? <img src={imgUrl(it.poster || it.backdrop)} alt="" loading="lazy" />
-                  : <Film size={22} strokeWidth={1.5} />}
-                {it.voteAverage > 0 && (
-                  <span className="mv-card-score"><Star size={11} strokeWidth={2.4} />{it.voteAverage.toFixed(1)}</span>
-                )}
-              </div>
-              <div className="mv-card-title">{it.title}</div>
-              <div className="mv-card-meta">{it.year || "—"}</div>
-            </button>
+            <MediaCard key={`${it.kind}-${it.id}`} item={it} onSelect={onSelect} showScore />
           ))}
         </div>
       )}
@@ -205,7 +210,9 @@ export default function MediaBrowse({ kind, category, title, onBack, onSelect }:
       )}
 
       {!loading && !hasMore && items.length > 0 && (
-        <div className="mv-browse-end">{t("movies.browseEnd", { total: formatCount(totalResults || items.length, lang) })}</div>
+        <div className="mv-browse-end">
+          {t("movies.browseEnd", { total: formatCount(totalResults || items.length, lang) })}
+        </div>
       )}
     </div>
   );

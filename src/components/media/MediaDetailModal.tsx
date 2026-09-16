@@ -1,9 +1,23 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
-  X, Star, Play, BookmarkCheck, Check, Eye, Clock, Calendar,
-  AlertTriangle, Users, Image as ImageIcon, Film, Tv, Layers,
-  ChevronLeft, ChevronRight, RotateCcw,
+  X,
+  Star,
+  Play,
+  BookmarkCheck,
+  Check,
+  Eye,
+  Clock,
+  Calendar,
+  AlertTriangle,
+  Users,
+  Image as ImageIcon,
+  Film,
+  Tv,
+  Layers,
+  ChevronLeft,
+  ChevronRight,
+  RotateCcw,
 } from "lucide-react";
 import { Glass, Btn, Badge, EmptyHint } from "../ui";
 import { usePageActive } from "../Toolbar";
@@ -12,10 +26,15 @@ import { useI18n } from "../../i18n";
 import { api } from "../../api/client";
 import SourcesList from "./SourcesList";
 import { mediaErrorText } from "./MediaCatalog";
+import MediaCard from "./MediaCard";
 import { imgUrl, imgCssUrl } from "./mediaImg";
 import { stepIndex } from "./gallery";
 import type {
-  MediaKind, MediaSummary, MediaDetails, MediaState, MediaWatchStatus,
+  MediaKind,
+  MediaSummary,
+  MediaDetails,
+  MediaState,
+  MediaWatchStatus,
 } from "../../api/types";
 
 /**
@@ -36,7 +55,7 @@ interface MediaDetailModalProps {
 }
 
 const TABS = ["overview", "cast", "gallery", "similar"] as const;
-type TabId = typeof TABS[number];
+type TabId = (typeof TABS)[number];
 
 /** Ряд звёзд 1–10 (клик — поставить оценку, повторный клик по той же — снять). */
 function StarRating({ value, onRate }: { value: number; onRate: (n: number) => void }) {
@@ -73,7 +92,12 @@ function runtimeText(min?: number | null, seasons?: number, episodes?: number): 
 }
 
 export default function MediaDetailModal({
-  kind, id, onClose, onOpenTitle, onOpenPlayer, onChanged,
+  kind,
+  id,
+  onClose,
+  onOpenTitle,
+  onOpenPlayer,
+  onChanged,
 }: MediaDetailModalProps) {
   const { t } = useI18n();
   // keep-alive: страница может быть скрыта, тогда модалку не показываем (портал
@@ -82,7 +106,11 @@ export default function MediaDetailModal({
   const [details, setDetails] = useState<MediaDetails | null>(null);
   const [personal, setPersonal] = useState<MediaState | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<{ text: string; needsKey: boolean; needsProxy: boolean } | null>(null);
+  const [error, setError] = useState<{
+    text: string;
+    needsKey: boolean;
+    needsProxy: boolean;
+  } | null>(null);
   const [tab, setTab] = useState<TabId>("overview");
   const [busy, setBusy] = useState(false);
   /** Индекс открытого фото в ленте галереи (null — лайтбокс закрыт). */
@@ -104,7 +132,11 @@ export default function MediaDetailModal({
       const d = await api.moviesDetails(kind, id);
       setDetails(d);
       // Личный статус грузим отдельно: его отсутствие не критично.
-      try { setPersonal(await api.moviesState(kind, id)); } catch { setPersonal(null); }
+      try {
+        setPersonal(await api.moviesState(kind, id));
+      } catch {
+        setPersonal(null);
+      }
     } catch (e) {
       setError(mediaErrorText(t, e));
     } finally {
@@ -113,12 +145,18 @@ export default function MediaDetailModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [kind, id]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   // Esc закрывает лайтбокс/модалку, ←/→ перелистывают фото в лайтбоксе.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") { if (lightbox != null) setLightbox(null); else onClose(); return; }
+      if (e.key === "Escape") {
+        if (lightbox != null) setLightbox(null);
+        else onClose();
+        return;
+      }
       if (lightbox == null) return;
       if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
         e.preventDefault();
@@ -135,14 +173,22 @@ export default function MediaDetailModal({
     setBusy(true);
     try {
       await api.moviesSetWatchlist({
-        kind: details.kind, id: details.id, title: details.title,
-        poster: details.poster || "", year: details.year, runtime: details.runtime,
-        genres: details.genres, status,
+        kind: details.kind,
+        id: details.id,
+        title: details.title,
+        poster: details.poster || "",
+        year: details.year,
+        runtime: details.runtime,
+        genres: details.genres,
+        status,
       });
       setPersonal(await api.moviesState(details.kind, details.id));
       onChanged();
-    } catch { /* ошибку сети покажет следующая загрузка */ }
-    finally { setBusy(false); }
+    } catch {
+      /* ошибку сети покажет следующая загрузка */
+    } finally {
+      setBusy(false);
+    }
   };
 
   const removeFromList = async () => {
@@ -152,7 +198,9 @@ export default function MediaDetailModal({
       await api.moviesRemoveWatchlist(details.kind, details.id);
       setPersonal(await api.moviesState(details.kind, details.id));
       onChanged();
-    } finally { setBusy(false); }
+    } finally {
+      setBusy(false);
+    }
   };
 
   /** Оценка 1–10 (0 — снять). */
@@ -163,7 +211,9 @@ export default function MediaDetailModal({
       await api.moviesRate({ kind: details.kind, id: details.id, title: details.title, rating: n });
       setPersonal(await api.moviesState(details.kind, details.id));
       onChanged();
-    } finally { setBusy(false); }
+    } finally {
+      setBusy(false);
+    }
   };
 
   /** Отметить «просмотрено» (попадёт в статистику часов/жанров/актёров). */
@@ -172,18 +222,29 @@ export default function MediaDetailModal({
     setBusy(true);
     try {
       await api.moviesWatch({
-        kind: details.kind, id: details.id, title: details.title,
-        genres: details.genres, cast: details.cast.map((c) => ({ name: c.name })),
-        runtime: details.runtime, progress: 1,
+        kind: details.kind,
+        id: details.id,
+        title: details.title,
+        genres: details.genres,
+        cast: details.cast.map((c) => ({ name: c.name })),
+        runtime: details.runtime,
+        progress: 1,
       });
       await api.moviesSetWatchlist({
-        kind: details.kind, id: details.id, title: details.title,
-        poster: details.poster || "", year: details.year, runtime: details.runtime,
-        genres: details.genres, status: "watched",
+        kind: details.kind,
+        id: details.id,
+        title: details.title,
+        poster: details.poster || "",
+        year: details.year,
+        runtime: details.runtime,
+        genres: details.genres,
+        status: "watched",
       });
       setPersonal(await api.moviesState(details.kind, details.id));
       onChanged();
-    } finally { setBusy(false); }
+    } finally {
+      setBusy(false);
+    }
   };
 
   const status = personal?.watchlist?.status || null;
@@ -195,7 +256,9 @@ export default function MediaDetailModal({
   return createPortal(
     <div className="mv-modal-backdrop" onClick={onClose}>
       <Glass className="mv-detail glass-solid" onClick={(e) => e.stopPropagation()}>
-        <button className="mv-close mv-close-abs" onClick={onClose} title={t("common.close")}><X size={16} /></button>
+        <button className="mv-close mv-close-abs" onClick={onClose} title={t("common.close")}>
+          <X size={16} />
+        </button>
 
         {loading && <div className="mv-detail-loading">{t("movies.loading")}</div>}
 
@@ -210,15 +273,25 @@ export default function MediaDetailModal({
         {details && !loading && (
           <>
             <div className="mv-detail-hero">
-              {details.backdrop && <div className="mv-hero-bg" style={{ backgroundImage: imgCssUrl(details.backdrop) }} />}
+              {details.backdrop && (
+                <div
+                  className="mv-hero-bg"
+                  style={{ backgroundImage: imgCssUrl(details.backdrop) }}
+                />
+              )}
               <div className="mv-hero-shade" />
               <div className="mv-detail-hero-body">
-                {details.poster
-                  ? <img className="mv-detail-poster" src={imgUrl(details.poster)} alt="" />
-                  : <div className="mv-detail-poster tone-violet"><KindIcon size={28} /></div>}
+                {details.poster ? (
+                  <img className="mv-detail-poster" src={imgUrl(details.poster)} alt="" />
+                ) : (
+                  <div className="mv-detail-poster tone-violet">
+                    <KindIcon size={28} />
+                  </div>
+                )}
                 <div className="mv-detail-info">
                   <div className="mv-hero-eyebrow">
-                    <KindIcon size={13} /> {details.kind === "tv" ? t("movies.series") : t("movies.movie")}
+                    <KindIcon size={13} />{" "}
+                    {details.kind === "tv" ? t("movies.series") : t("movies.movie")}
                   </div>
                   <h2 className="mv-hero-title">{details.title}</h2>
                   {details.originalTitle && details.originalTitle !== details.title && (
@@ -228,20 +301,38 @@ export default function MediaDetailModal({
 
                   <div className="mv-hero-meta">
                     {details.voteAverage > 0 && (
-                      <span><Star size={12} strokeWidth={2.4} /> {details.voteAverage.toFixed(1)} ({details.voteCount})</span>
+                      <span>
+                        <Star size={12} strokeWidth={2.4} /> {details.voteAverage.toFixed(1)} (
+                        {details.voteCount})
+                      </span>
                     )}
-                    {details.date && <span><Calendar size={12} /> {details.date}</span>}
-                    <span><Clock size={12} /> {runtimeText(details.runtime, details.seasons, details.episodes)}</span>
+                    {details.date && (
+                      <span>
+                        <Calendar size={12} /> {details.date}
+                      </span>
+                    )}
+                    <span>
+                      <Clock size={12} />{" "}
+                      {runtimeText(details.runtime, details.seasons, details.episodes)}
+                    </span>
                     {details.ageRating && <span className="mv-age">{details.ageRating}</span>}
                     {details.status && <Badge tone="neutral">{details.status}</Badge>}
                   </div>
 
                   {/* Действия: трейлер/плеер, список просмотра */}
                   <div className="mv-detail-actions">
-                    <Btn variant="primary" icon={Play} onClick={() => onOpenPlayer(details.trailer?.key || null)}>
+                    <Btn
+                      variant="primary"
+                      icon={Play}
+                      onClick={() => onOpenPlayer(details.trailer?.key || null)}
+                    >
                       {t("movies.watchTrailer")}
                     </Btn>
-                    <Btn icon={BookmarkCheck} onClick={() => void setStatus("plan")} disabled={busy}>
+                    <Btn
+                      icon={BookmarkCheck}
+                      onClick={() => void setStatus("plan")}
+                      disabled={busy}
+                    >
                       {t("movies.statusPlan")}
                     </Btn>
                     <Btn icon={Eye} onClick={() => void setStatus("watching")} disabled={busy}>
@@ -251,7 +342,9 @@ export default function MediaDetailModal({
                       {t("movies.statusWatched")}
                     </Btn>
                     {status && (
-                      <Btn icon={X} onClick={() => void removeFromList()} disabled={busy}>{t("movies.removeFromList")}</Btn>
+                      <Btn icon={X} onClick={() => void removeFromList()} disabled={busy}>
+                        {t("movies.removeFromList")}
+                      </Btn>
                     )}
                   </div>
 
@@ -276,7 +369,11 @@ export default function MediaDetailModal({
 
             <div className="mv-detail-tabs">
               {TABS.map((tb) => (
-                <button key={tb} className={tab === tb ? "is-active" : ""} onClick={() => setTab(tb)}>
+                <button
+                  key={tb}
+                  className={tab === tb ? "is-active" : ""}
+                  onClick={() => setTab(tb)}
+                >
                   {t(`movies.tab_${tb}`)}
                 </button>
               ))}
@@ -288,14 +385,38 @@ export default function MediaDetailModal({
                 <div className="mv-overview">
                   {details.overview && <p className="mv-overview-text">{details.overview}</p>}
                   <div className="mv-facts">
-                    <div><span>{t("movies.factStatus")}</span><b>{details.status || "—"}</b></div>
-                    <div><span>{t("movies.factRuntime")}</span><b>{runtimeText(details.runtime, details.seasons, details.episodes)}</b></div>
-                    <div><span>{t("movies.factAge")}</span><b>{details.ageRating || "—"}</b></div>
-                    <div><span>{t("movies.factGenres")}</span><b>{details.genres.map((g) => g.name).join(", ") || "—"}</b></div>
-                    <div><span>{t("movies.factCountry")}</span><b>{details.countries.join(", ") || "—"}</b></div>
-                    <div><span>{t("movies.factLang")}</span><b>{details.languages.join(", ") || "—"}</b></div>
-                    <div><span>{t("movies.factBudget")}</span><b>{money(details.budget)}</b></div>
-                    <div><span>{t("movies.factRevenue")}</span><b>{money(details.revenue)}</b></div>
+                    <div>
+                      <span>{t("movies.factStatus")}</span>
+                      <b>{details.status || "—"}</b>
+                    </div>
+                    <div>
+                      <span>{t("movies.factRuntime")}</span>
+                      <b>{runtimeText(details.runtime, details.seasons, details.episodes)}</b>
+                    </div>
+                    <div>
+                      <span>{t("movies.factAge")}</span>
+                      <b>{details.ageRating || "—"}</b>
+                    </div>
+                    <div>
+                      <span>{t("movies.factGenres")}</span>
+                      <b>{details.genres.map((g) => g.name).join(", ") || "—"}</b>
+                    </div>
+                    <div>
+                      <span>{t("movies.factCountry")}</span>
+                      <b>{details.countries.join(", ") || "—"}</b>
+                    </div>
+                    <div>
+                      <span>{t("movies.factLang")}</span>
+                      <b>{details.languages.join(", ") || "—"}</b>
+                    </div>
+                    <div>
+                      <span>{t("movies.factBudget")}</span>
+                      <b>{money(details.budget)}</b>
+                    </div>
+                    <div>
+                      <span>{t("movies.factRevenue")}</span>
+                      <b>{money(details.revenue)}</b>
+                    </div>
                   </div>
                 </div>
               )}
@@ -308,26 +429,34 @@ export default function MediaDetailModal({
                       {details.cast.map((c) => (
                         <div key={c.id} className="mv-person">
                           <div className="mv-person-photo">
-                            {c.profile ? <img src={imgUrl(c.profile)} alt="" loading="lazy" /> : <Users size={18} />}
+                            {c.profile ? (
+                              <img src={imgUrl(c.profile)} alt="" loading="lazy" />
+                            ) : (
+                              <Users size={18} />
+                            )}
                           </div>
                           <div className="mv-person-name">{c.name}</div>
                           <div className="muted-sm">{c.character}</div>
                         </div>
                       ))}
                     </div>
-                  ) : <EmptyHint icon={Users} text={t("movies.noCast")} />}
+                  ) : (
+                    <EmptyHint icon={Users} text={t("movies.noCast")} />
+                  )}
                   {details.crew.length > 0 && (
                     <div className="mv-crew">
                       {details.crew.map((c) => (
-                        <span key={`${c.id}-${c.job}`} className="mv-crew-item"><b>{c.job}</b> {c.name}</span>
+                        <span key={`${c.id}-${c.job}`} className="mv-crew-item">
+                          <b>{c.job}</b> {c.name}
+                        </span>
                       ))}
                     </div>
                   )}
                 </>
               )}
               {/* Галерея: кадры и постеры (клик — лайтбокс, ←/→ листают) */}
-              {tab === "gallery" && (
-                gallery.length > 0 ? (
+              {tab === "gallery" &&
+                (gallery.length > 0 ? (
                   <div className="mv-gallery">
                     {gallery.map((src, i) => (
                       <button key={i} className="mv-gallery-item" onClick={() => setLightbox(i)}>
@@ -335,27 +464,30 @@ export default function MediaDetailModal({
                       </button>
                     ))}
                   </div>
-                ) : <EmptyHint icon={ImageIcon} text={t("movies.noGallery")} />
-              )}
+                ) : (
+                  <EmptyHint icon={ImageIcon} text={t("movies.noGallery")} />
+                ))}
 
               {/* Похожие и рекомендованные */}
-              {tab === "similar" && (() => {
-                const list = details.recommendations.length ? details.recommendations : details.similar;
-                if (list.length === 0) return <EmptyHint icon={Layers} text={t("movies.noSimilar")} />;
-                return (
-                  <div className="mv-similar">
-                    {list.map((s) => (
-                      <button key={`${s.kind}-${s.id}`} className="mv-card" onClick={() => onOpenTitle(s.kind, s.id)}>
-                        <div className="mv-card-art tone-violet">
-                          {s.poster ? <img src={imgUrl(s.poster)} alt="" loading="lazy" /> : <Film size={20} strokeWidth={1.5} />}
-                        </div>
-                        <div className="mv-card-title">{s.title}</div>
-                        <div className="mv-card-meta">{s.year || "—"}</div>
-                      </button>
-                    ))}
-                  </div>
-                );
-              })()}
+              {tab === "similar" &&
+                (() => {
+                  const list = details.recommendations.length
+                    ? details.recommendations
+                    : details.similar;
+                  if (list.length === 0)
+                    return <EmptyHint icon={Layers} text={t("movies.noSimilar")} />;
+                  return (
+                    <div className="mv-similar">
+                      {list.map((s) => (
+                        <MediaCard
+                          key={`${s.kind}-${s.id}`}
+                          item={s}
+                          onSelect={(k, id) => onOpenTitle(k, id)}
+                        />
+                      ))}
+                    </div>
+                  );
+                })()}
             </div>
 
             {/* «Где легально смотреть» + трейлер/плеер */}
@@ -367,8 +499,7 @@ export default function MediaDetailModal({
             />
           </>
         )}
-
-        </Glass>
+      </Glass>
 
       {/* Лайтбокс — сосед карточки (не внутри .mv-detail): у .glass есть
           backdrop-filter, а он создаёт containing block для position:fixed,
@@ -376,12 +507,22 @@ export default function MediaDetailModal({
           Клики гасим (stopPropagation): иначе они всплывали до backdrop и
           закрывали саму карточку тайтла. */}
       {lightbox != null && gallery[lightbox] && (
-        <div className="mv-lightbox" onClick={(e) => { e.stopPropagation(); setLightbox(null); }}>
+        <div
+          className="mv-lightbox"
+          onClick={(e) => {
+            e.stopPropagation();
+            setLightbox(null);
+          }}
+        >
           {gallery.length > 1 && (
             <button
               className="mv-lightbox-btn is-prev"
-              onClick={(e) => { e.stopPropagation(); setLightbox((i) => stepIndex(i, -1, gallery.length)); }}
-              title={t("movies.prevImage")} aria-label={t("movies.prevImage")}
+              onClick={(e) => {
+                e.stopPropagation();
+                setLightbox((i) => stepIndex(i, -1, gallery.length));
+              }}
+              title={t("movies.prevImage")}
+              aria-label={t("movies.prevImage")}
             >
               <ChevronLeft size={22} />
             </button>
@@ -390,16 +531,22 @@ export default function MediaDetailModal({
           {gallery.length > 1 && (
             <button
               className="mv-lightbox-btn is-next"
-              onClick={(e) => { e.stopPropagation(); setLightbox((i) => stepIndex(i, 1, gallery.length)); }}
-              title={t("movies.nextImage")} aria-label={t("movies.nextImage")}
+              onClick={(e) => {
+                e.stopPropagation();
+                setLightbox((i) => stepIndex(i, 1, gallery.length));
+              }}
+              title={t("movies.nextImage")}
+              aria-label={t("movies.nextImage")}
             >
               <ChevronRight size={22} />
             </button>
           )}
-          <div className="mv-lightbox-count">{t("movies.photoOf", { i: lightbox + 1, n: gallery.length })}</div>
+          <div className="mv-lightbox-count">
+            {t("movies.photoOf", { i: lightbox + 1, n: gallery.length })}
+          </div>
         </div>
       )}
     </div>,
-    getOverlayRoot() ?? document.body
+    getOverlayRoot() ?? document.body,
   );
 }
