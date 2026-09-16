@@ -59,6 +59,7 @@ server/winget.js
 server/notes-fs.js
 server/torrent.js
 server/ruNlp.js
+server/db.js
 
 bb.txt
 tc.txt

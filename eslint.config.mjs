@@ -61,6 +61,7 @@ export default tseslint.config(
       "server/notes-fs.js",
       "server/torrent.js",
       "server/ruNlp.js",
+      "server/db.js",
     ],
   },
 
