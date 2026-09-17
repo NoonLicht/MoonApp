@@ -8,8 +8,8 @@
  * выполнить руками. Здесь это делается так же, как установка сборок whisper в
  * лекционном диктофоне (server/ts/whisperEngine.ts + server/routes/lecture.js):
  *
- *   • пользователь выбирает устройство — CUDA-сборка torch (RTX или карта без
- *     RT-ядер) либо CPU-сборка;
+ *   • пользователь выбирает устройство — CUDA-сборка torch (индекс cu128) либо
+ *     CPU-сборка;
  *   • сервер последовательно запускает pip нужными шагами и пишет прогресс в
  *     общее состояние задачи (server/ts/setupTask.ts), которое опрашивает UI;
  *   • отмена реально убивает процесс pip (на Windows — дерево целиком), иначе
@@ -38,21 +38,20 @@ import { pythonEnv, detectHardware, type PythonEnv } from "./tts";
 export type PyEngineId = "f5" | "xtts";
 /**
  * Куда ставим torch:
- *   cuda       — CUDA 13.2: актуальные RTX-карты (Turing/7.5 и новее);
- *   cudaLegacy — CUDA 12.6: карты БЕЗ RT-ядер (Maxwell/Pascal/Volta — GTX
- *                700/900/1000, TITAN X/V, Quadro K/M, Tesla K/M/P/V), для них
- *                сборка cu132 бесполезна: начиная с CUDA 12.8 ядра собираются
- *                только под sm_75+, и torch падает с «no kernel image is
- *                available». cu126 — последний индекс PyTorch с поддержкой
- *                sm_50…sm_70;
- *   cpu        — без видеокарты вовсе.
+ *   cuda — CUDA 12.8 (индекс cu128): карты NVIDIA от Turing/7.5 и новее;
+ *   cpu  — без видеокарты вовсе.
+ *
+ * Почему именно 12.8, а не «самый новый» индекс: в индексе cu132 пакета
+ * torchaudio НЕТ вообще — pip падает на шаге «torch» с «No matching
+ * distribution found for torchaudio». А torchaudio обязателен и XTTS, и F5.
+ * cu128 — последний индекс, где есть весь набор torch + torchvision +
+ * torchaudio под актуальные Python (2.11.0+cu128, cp313, win_amd64).
  */
-export type PyDevice = "cuda" | "cudaLegacy" | "cpu";
+export type PyDevice = "cuda" | "cpu";
 
 /** Индекс PyTorch для выбранного устройства. */
 const TORCH_INDEX: Record<PyDevice, string> = {
-  cuda: "https://download.pytorch.org/whl/cu132",
-  cudaLegacy: "https://download.pytorch.org/whl/cu126",
+  cuda: "https://download.pytorch.org/whl/cu128",
   cpu: "https://download.pytorch.org/whl/cpu",
 };
 
@@ -89,8 +88,7 @@ function installSteps(engine: PyEngineId, device: PyDevice): PyStep[] {
     {
       id: "torch",
       args: [...TORCH_PKGS, "--index-url", TORCH_INDEX[device]],
-      // Колёса torch с CUDA (13.2 и 12.6) весят одинаково — ~2.5 ГБ; разница
-      // только в наборе ядер под архитектуру карты (см. TORCH_INDEX).
+      // CUDA-сборка весит ~2.5 ГБ, CPU-сборка заметно легче (~200 МБ).
       approxMb: device === "cpu" ? 200 : 2500,
     },
     { id: "engine", args: [ENGINE_PKG[engine]], approxMb: engine === "f5" ? 120 : 30 },
@@ -495,7 +493,7 @@ export interface PyPlan {
 
 /** Полное состояние установщика (ответ GET /api/tts/env/install). */
 export interface PyInstallState {
-  /** Рекомендуемая сборка: RTX-карта → cuda, старая карта → cudaLegacy, иначе cpu. */
+  /** Рекомендуемая сборка: есть карта NVIDIA → cuda, иначе cpu. */
   recommended: PyDevice;
   /** Имя видеокарты (пусто, если NVIDIA нет). */
   gpuName: string;
@@ -512,32 +510,7 @@ export function engineOf(value: unknown): PyEngineId {
 
 /** Нормализация устройства из недоверенного ввода (роут). */
 export function deviceOf(value: unknown): PyDevice {
-  if (value === "cpu") return "cpu";
-  if (value === "cudaLegacy") return "cudaLegacy";
-  return "cuda";
-}
-
-/**
- * Карта старее Turing (7.5) — то есть без RT-ядер: Maxwell, Pascal, Volta.
- * Матчим по имени от nvidia-smi: «NVIDIA GeForce GTX 1060 6GB», «TITAN X (Pascal)»,
- * «Tesla V100-SXM2-16GB», «Quadro P2000».
- *
- * Зачем: сборки PyTorch под CUDA 12.8+ собраны только под sm_75+, поэтому на
- * такой карте torch «встанет», но первый же тензор упадёт с «CUDA error: no
- * kernel image is available for execution on the device». Поэтому для этих карт
- * сразу предлагаем индекс cu126 (см. TORCH_INDEX.cudaLegacy).
- *
- * Эвристика намеренно грубая: RTX/GTX 16xx (Turing) и новее под неё не попадают
- * («Quadro RTX 4000» не матчится — после quadro идёт R, а не буква/цифра старой
- * линейки), а если имя карты незнакомое — рекомендация остаётся обычной CUDA, и
- * пользователь всегда может выбрать вариант вручную.
- */
-const LEGACY_GPU_RE =
-  /(gtx\s*(?:4|5|6|7|8|9)\d{2}|gtx\s*10\d{2}|titan\s*(?:x|v|z|black)|quadro\s*(?:[kmp]\d|[1-9]\d{2,3}|gv\d)|tesla\s*[kmvp]|grid\s*[km])/i;
-
-/** Карта без RT-ядер (см. LEGACY_GPU_RE)? */
-export function isLegacyGpu(name: string): boolean {
-  return LEGACY_GPU_RE.test(String(name || ""));
+  return value === "cpu" ? "cpu" : "cuda";
 }
 
 /** Имя NVIDIA-карты (для подписи «ставим CUDA-сборку под <модель>»). */
@@ -550,7 +523,7 @@ async function gpuName(): Promise<string> {
   }
 }
 
-/** Сводка для UI: план на все три сборки + прогресс текущей установки. */
+/** Сводка для UI: план на обе сборки (cuda/cpu) + прогресс текущей установки. */
 export async function installState(
   engine: PyEngineId = currentEngine,
   device: PyDevice = currentDevice,
@@ -566,14 +539,20 @@ export async function installState(
     };
   };
   return {
-    // Карта есть — предлагаем CUDA-сборку, иначе CPU. Картам без RT-ядер
-    // (Maxwell/Pascal/Volta) — сразу cu126: сборка cu132 на них не запускается,
-    // и «по умолчанию» пользователь попал бы в ошибку «no kernel image».
-    // Выбор всё равно за пользователем: на слабой карте CPU иногда быстрее.
-    recommended: !name ? "cpu" : isLegacyGpu(name) ? "cudaLegacy" : "cuda",
+    // Карта есть — предлагаем CUDA-сборку, иначе CPU. Выбор всё равно за
+    // пользователем: на слабой карте CPU иногда быстрее.
+    //
+    // ВАЖНО про старые карты: сборки cu128 собраны только под sm_75+ (Turing и
+    // новее), поэтому на Maxwell/Pascal/Volta (GTX 700/900/1000, TITAN X/V,
+    // Quadro P/K, Tesla K/M/P) CUDA-сборка «встанет», но первый же тензор упадёт
+    // с «no kernel image is available for execution on the device». Отдельного
+    // индекса для них больше нет: в cu132 вообще отсутствует torchaudio — pip
+    // падал на шаге «torch» с «No matching distribution found for torchaudio».
+    // Такую карту видно в UI по имени (gpuName), и там же можно выбрать CPU-сборку.
+    recommended: name ? "cuda" : "cpu",
     gpuName: name,
     chosen: device,
-    plans: { cuda: plan("cuda"), cudaLegacy: plan("cudaLegacy"), cpu: plan("cpu") },
+    plans: { cuda: plan("cuda"), cpu: plan("cpu") },
     install: snapshot(),
   };
 }

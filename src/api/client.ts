@@ -247,8 +247,8 @@ export interface PyInstallSnapshot {
   log: string[];
 }
 /**
- * План установки для одной сборки torch: cuda (CUDA 13.2, RTX/Turing+),
- * cudaLegacy (CUDA 12.6, карты без RT-ядер) или cpu — см. server/ts/pyEnv.ts.
+ * План установки для одной сборки torch: cuda (индекс cu128) или cpu —
+ * см. server/ts/pyEnv.ts.
  */
 export interface PyPlan {
   device: string;
@@ -258,11 +258,11 @@ export interface PyPlan {
 }
 /** Ответ GET /api/tts/env/install: что будем качать и куда ставить. */
 export interface PyInstallState {
-  /** Рекомендуемая сборка по железу: cuda | cudaLegacy | cpu. */
+  /** Рекомендуемая сборка по железу: cuda (есть карта NVIDIA) | cpu. */
   recommended: string;
   gpuName: string;
   chosen: string;
-  /** Планы по всем трём сборкам (ключи: cuda, cudaLegacy, cpu). */
+  /** Планы по обеим сборкам (ключи: cuda, cpu). */
   plans: Record<string, PyPlan>;
   install: PyInstallSnapshot;
 }
@@ -792,7 +792,8 @@ export const api = {
   ttsEnvInstall: (engine: string, device: string, python?: string) =>
     req<PyInstallSnapshot>("POST", "/tts/env/install", { engine, device, python }),
   ttsEnvCancel: () => req<PyInstallSnapshot>("POST", "/tts/env/cancel", {}),
-  ttsEnvSetPython: (cmd: string) => req<{ ok: boolean; cmd: string }>("POST", "/tts/env/python", { cmd }),
+  ttsEnvSetPython: (cmd: string) =>
+    req<{ ok: boolean; cmd: string }>("POST", "/tts/env/python", { cmd }),
   ttsPresets: () => req<TtsPreset[]>("GET", "/tts/presets"),
   ttsSavePreset: (p: {
     name: string;
@@ -1049,8 +1050,7 @@ export const api = {
   // ИИ-оформление заметок: «оформить» (сырой текст сохраняется в
   // storage/vault/notes/.ai/<имя>.txt) и «регенерировать» (заново из исходника,
   // текст заметки заменяется целиком). См. server/ts/notesAi.ts.
-  myspaceAiFormat: (path: string) =>
-    req<NotesAiResult>("POST", "/myspace/ai/format", { path }),
+  myspaceAiFormat: (path: string) => req<NotesAiResult>("POST", "/myspace/ai/format", { path }),
   myspaceAiRegenerate: (path: string) =>
     req<NotesAiResult>("POST", "/myspace/ai/regenerate", { path }),
   // Провайдер и модель ИИ-оформления заметок: выбор сохраняется в настройках

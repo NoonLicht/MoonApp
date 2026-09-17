@@ -9,10 +9,9 @@ import { createRequire } from "module";
  * Установка Python-окружения озвучки (server/ts/pyEnv.ts + POST /api/tts/env/*).
  *
  * Что проверяем: «пользователю не надо ничего вводить в консоль» — приложение
- * само запускает pip нужной сборкой (CUDA 13.2 для RTX, CUDA 12.6 для карт без
- * RT-ядер, CPU), показывает прогресс и умеет отменять установку. pip подменён
- * заглушкой: тест не должен качать гигабайты;
- * python-проба тоже подменена (её ответ — JSON-строка).
+ * само запускает pip нужной сборкой (CUDA 12.8 или CPU), показывает прогресс и
+ * умеет отменять установку. pip подменён заглушкой: тест не должен качать
+ * гигабайты; python-проба тоже подменена (её ответ — JSON-строка).
  *
  * Проверяем и «цену ошибки»: сбой pip оставляет понятную ошибку шага, отмена
  * гасит процесс (на Windows — taskkill дерева), интерпретатор из установки
@@ -42,11 +41,6 @@ describe("Установка Python-окружения (/api/tts/env/*)", () => 
   /** Ручной режим: pip не закрывается сам, пока тест его не «завершит». */
   let manualPip: { child: any } | null = null;
   let pipCloseCode = 0;
-  /**
-   * Имя карты для nvidia-smi-заглушки. По умолчанию — RTX; тест про старые карты
-   * подменяет на GTX, чтобы проверить выбор сборки cu126 вместо cu132.
-   */
-  let gpuOverride: string | null = null;
 
   const api = async (route: string, init?: RequestInit) => {
     const res = await fetch(`${base}/api/tts${route}`, init);
@@ -105,7 +99,7 @@ describe("Установка Python-окружения (/api/tts/env/*)", () => 
       cached: false,
     });
     tts.detectHardware = async () => ({
-      gpu: { found: true, name: gpuOverride || "RTX 5060 Ti" },
+      gpu: { found: true, name: "RTX 5060 Ti" },
       cpu: { name: "CPU", cores: 8 },
       platform: "win32",
       optimal: {},
@@ -187,91 +181,50 @@ describe("Установка Python-окружения (/api/tts/env/*)", () => 
   it("команда pip собирается под выбранную сборку", () => {
     const cpu = pyEnv.pipCommand("f5", "cpu", "py");
     const cuda = pyEnv.pipCommand("xtts", "cuda", "py");
-    const legacy = pyEnv.pipCommand("f5", "cudaLegacy", "py");
     expect(cpu).toContain(
       "py -m pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu",
     );
     expect(cpu).toContain("py -m pip install f5-tts");
-    // Актуальный стабильный индекс (PyTorch 2.14): CUDA 13.2.
-    expect(cuda).toContain("https://download.pytorch.org/whl/cu132");
+    // Индекс CUDA 12.8: в cu132 пакета torchaudio нет вовсе, и pip падал на
+    // шаге «torch» с «No matching distribution found for torchaudio».
+    expect(cuda).toContain(
+      "py -m pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128",
+    );
     expect(cuda).toContain("py -m pip install TTS");
-    // Карты без RT-ядер (Maxwell/Pascal/Volta) получают CUDA 12.6: сборки на
-    // CUDA 12.8+ собраны только под sm_75+ и на таких картах не запускаются.
-    expect(legacy).toContain("https://download.pytorch.org/whl/cu126");
-    expect(legacy).not.toContain("cu132");
     // Монитор VRAM (pynvml) осмысленен только с видеокартой.
     expect(cuda).toContain("nvidia-ml-py");
-    expect(legacy).toContain("nvidia-ml-py");
     expect(cpu).not.toContain("nvidia-ml-py");
   });
 
-  it("устаревшие ссылки на cu121 не остались нигде", () => {
-    const legacy = pyEnv.pipCommand("f5", "cuda", "py");
-    expect(legacy).not.toContain("cu121");
+  it("чужих CUDA-индексов в командах нет (только cu128)", () => {
+    const cuda = pyEnv.pipCommand("f5", "cuda", "py");
+    for (const bad of ["cu121", "cu126", "cu132"]) expect(cuda).not.toContain(bad);
   });
 
   it("движок и устройство из запроса нормализуются (мусор → безопасные значения)", () => {
     expect(pyEnv.engineOf("xtts")).toBe("xtts");
     expect(pyEnv.engineOf("что-то")).toBe("f5");
     expect(pyEnv.deviceOf("cpu")).toBe("cpu");
-    expect(pyEnv.deviceOf("cudaLegacy")).toBe("cudaLegacy");
     expect(pyEnv.deviceOf("cuda")).toBe("cuda");
+    // Незнакомое значение (в т.ч. старый cudaLegacy) → обычная CUDA-сборка.
+    expect(pyEnv.deviceOf("cudaLegacy")).toBe("cuda");
     expect(pyEnv.deviceOf("../../etc/passwd")).toBe("cuda");
     expect(pyEnv.deviceOf(undefined)).toBe("cuda");
   });
 
-  it("карты без RT-ядер отличаются от RTX (иначе cu132 не запустится)", () => {
-    for (const legacy of [
-      "NVIDIA GeForce GTX 1060 6GB",
-      "NVIDIA GeForce GTX 970",
-      "NVIDIA GeForce GTX 750 Ti",
-      "TITAN X (Pascal)",
-      "TITAN V",
-      "Quadro P2000",
-      "Tesla V100-SXM2-16GB",
-    ]) {
-      expect(pyEnv.isLegacyGpu(legacy), legacy).toBe(true);
-    }
-    for (const modern of [
-      "NVIDIA GeForce RTX 5060 Ti",
-      "NVIDIA GeForce RTX 3060",
-      "NVIDIA GeForce GTX 1660 Ti", // 16xx — уже Turing (sm_75)
-      "Quadro RTX 4000",
-      "NVIDIA H100 PCIe",
-      "",
-    ]) {
-      expect(pyEnv.isLegacyGpu(modern), modern).toBe(false);
-    }
-  });
-
-  it("план установки отдаёт все три сборки и рекомендацию по железу", async () => {
+  it("план установки отдаёт обе сборки и рекомендацию по железу", async () => {
     const { status, body } = await api("/env/install?engine=f5&device=cpu");
     expect(status).toBe(200);
-    expect(body.recommended).toBe("cuda"); // nvidia-smi видит RTX 5060 Ti
+    expect(body.recommended).toBe("cuda"); // nvidia-smi видит карту
     expect(body.gpuName).toBe("RTX 5060 Ti");
     expect(body.chosen).toBe("cpu");
-    expect(Object.keys(body.plans).sort()).toEqual(["cpu", "cuda", "cudaLegacy"]);
+    expect(Object.keys(body.plans).sort()).toEqual(["cpu", "cuda"]);
     expect(body.plans.cpu.command).toContain("whl/cpu");
-    expect(body.plans.cuda.command).toContain("cu132");
-    expect(body.plans.cudaLegacy.command).toContain("cu126");
+    expect(body.plans.cuda.command).toContain("cu128");
     // CPU-сборка torch заметно легче — по этим числам UI показывает объём.
     expect(body.plans.cpu.approxMb).toBeLessThan(body.plans.cuda.approxMb);
-    expect(body.plans.cudaLegacy.approxMb).toBe(body.plans.cuda.approxMb);
     expect(body.plans.cuda.steps).toEqual(["torch", "engine", "monitor"]);
-    expect(body.plans.cudaLegacy.steps).toEqual(["torch", "engine", "monitor"]);
     expect(body.plans.cpu.steps).toEqual(["torch", "engine"]);
-  });
-
-  it("для старой карты рекомендация — сборка cu126, а не cu132", async () => {
-    // Та же машина, но nvidia-smi отдаёт GTX 1060 (Pascal, без RT-ядер).
-    gpuOverride = "NVIDIA GeForce GTX 1060 6GB";
-    try {
-      const { body } = await api("/env/install?engine=f5&device=cuda");
-      expect(body.recommended).toBe("cudaLegacy");
-      expect(body.plans[body.recommended].command).toContain("cu126");
-    } finally {
-      gpuOverride = null;
-    }
   });
 
   it("установка идёт шагами, прогресс и лог пишутся в состояние, интерпретатор сохраняется", async () => {

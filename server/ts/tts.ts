@@ -659,15 +659,15 @@ const ENGINE_REQUIRED: Record<TtsEngine, string[]> = {
 
 /**
  * Готовые команды установки отсутствующих модулей (подсказка в UI).
- * Индекс CUDA — cu132 (актуальный стабильный, PyTorch 2.14): сборки на CUDA 12.8+
- * требуют Turing/7.5+, поэтому для карт без RT-ядер здесь нужен cu126 — эта
- * разница разложена по вариантам в панели установки (server/ts/pyEnv.ts).
+ * Индекс — cu128: в cu132 пакета torchaudio нет вообще (pip падает на шаге
+ * «torch» с «No matching distribution found for torchaudio»), а он нужен и XTTS,
+ * и F5. Индекс берётся из того же места, что и в установщике (server/ts/pyEnv.ts).
  */
 const PIP_HINT: Record<string, string> = {
   torch:
-    "pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu132",
+    "pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128",
   torchaudio:
-    "pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu132",
+    "pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128",
   f5_tts: "pip install f5-tts",
   TTS: "pip install TTS",
   pynvml: "pip install nvidia-ml-py",

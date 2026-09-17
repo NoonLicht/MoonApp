@@ -4,7 +4,6 @@ import {
   Check,
   ChevronDown,
   ChevronUp,
-  CircuitBoard,
   Cpu,
   Download,
   RefreshCw,
@@ -26,8 +25,8 @@ import type { PyInstallSnapshot, PyInstallState, PyInterpreter, TtsPythonEnv } f
  * f5_tts/TTS), которые живут в отдельном интерпретаторе. Раньше приложение лишь
  * показывало, чего не хватает, и предлагало выполнить `pip install ...` руками в
  * консоли. Теперь всё ставится отсюда — как сборки whisper на странице лекций:
- * пользователь выбирает сборку torch (CUDA 13.2 для RTX, CUDA 12.6 для карт без
- * RT-ядер, CPU) и нажимает «Установить», прогресс и вывод pip видны на месте.
+ * пользователь выбирает сборку torch (CUDA 12.8 — cu128, либо CPU) и нажимает
+ * «Установить», прогресс и вывод pip видны на месте.
  *
  * Интерпретатор тоже не нужно вводить вручную: кнопка «Найти» перебирает `py -0p`,
  * PATH и стандартные каталоги, показывает версию и наличие модулей в каждом, а
@@ -35,15 +34,14 @@ import type { PyInstallSnapshot, PyInstallState, PyInterpreter, TtsPythonEnv } f
  */
 
 /** Сборка torch, которую ставим (см. server/ts/pyEnv.ts → PyDevice). */
-type PyDeviceId = "cuda" | "cudaLegacy" | "cpu";
+type PyDeviceId = "cuda" | "cpu";
 
 /**
- * Три варианта сборки в порядке показа. Иконка и суффикс ключа i18n
- * (ab.py.deviceCuda / deviceLegacy / deviceCpu и такие же …Hint).
+ * Варианты сборки в порядке показа. Иконка и суффикс ключа i18n
+ * (ab.py.deviceCuda / deviceCpu и такие же …Hint).
  */
 const DEVICES: Array<{ id: PyDeviceId; icon: React.ElementType; key: string }> = [
   { id: "cuda", icon: Zap, key: "Cuda" },
-  { id: "cudaLegacy", icon: CircuitBoard, key: "Legacy" },
   { id: "cpu", icon: Cpu, key: "Cpu" },
 ];
 
@@ -55,7 +53,7 @@ function humanMb(mb: number): string {
 
 /** Устройство из ответа сервера → известный вариант (см. deviceOf в pyEnv.ts). */
 function devOf(value: unknown): PyDeviceId {
-  return value === "cpu" ? "cpu" : value === "cudaLegacy" ? "cudaLegacy" : "cuda";
+  return value === "cpu" ? "cpu" : "cuda";
 }
 
 /** Ошибки установки/поиска → понятный текст (неизвестный код показываем как есть). */
@@ -120,8 +118,8 @@ export function PyEnvPanel({
         const r = await api.ttsEnvInstallInfo(engine, dev || device);
         setInfo(r);
         setSnap(r.install);
-        // Рекомендация сервера теперь из трёх вариантов (см. DEVICES): RTX → cuda,
-        // карта без RT-ядер → cudaLegacy, без карты → cpu.
+        // Рекомендация сервера — из двух вариантов (см. DEVICES): есть карта
+        // NVIDIA → cuda, карты нет → cpu.
         if (!picked.current) setDevice(devOf(r.recommended));
       } catch (e) {
         setNotice({ tone: "coral", text: errText(t, String((e as Error).message || e)) });
@@ -290,8 +288,8 @@ export function PyEnvPanel({
 
       {open && (
         <>
-          {/* Выбор сборки PyTorch: RTX (CUDA 13.2), карта без RT-ядер (CUDA 12.6)
-              или CPU — как сборки whisper в лекциях. */}
+          {/* Выбор сборки PyTorch: CUDA 12.8 (cu128) или CPU — как сборки
+              whisper в лекциях. */}
           <div className="ab-py-block">
             <div className="ab-py-block-label">{t("ab.py.device")}</div>
             <div className="ab-py-devices">

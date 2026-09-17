@@ -91,47 +91,42 @@ describe("панель Python: живая разметка (SSR)", () => {
   });
 
   it("карточки сборок собраны в две строки (голова + подпись)", () => {
-    // Три сборки: CUDA 13.2 (RTX), CUDA 12.6 (карты без RT-ядер) и CPU.
-    expect((html.match(/ab-py-dev-head/g) || []).length).toBe(3);
-    expect((html.match(/ab-py-dev-sub/g) || []).length).toBe(3);
+    // Две сборки: CUDA 12.8 (cu128) и CPU.
+    expect((html.match(/ab-py-dev-head/g) || []).length).toBe(2);
+    expect((html.match(/ab-py-dev-sub/g) || []).length).toBe(2);
     expect(html).not.toContain("ab-py-dev-meta");
     // Заголовок и пояснение панели больше не разнесены по двум строкам-абзацам.
     expect(html).toMatch(/ab-py-head-text[^>]*>.*field-label/);
   });
 
-  it("третья сборка — для карт без RT-ядер (ключи deviceLegacy/Hint)", () => {
+  it("сборок две: CUDA и CPU (ключа deviceLegacy больше нет)", () => {
     expect(html).toContain("ab.py.deviceCuda");
-    expect(html).toContain("ab.py.deviceLegacy");
-    expect(html).toContain("ab.py.deviceLegacyHint");
+    expect(html).toContain("ab.py.deviceCudaHint");
     expect(html).toContain("ab.py.deviceCpu");
+    expect(html).not.toContain("ab.py.deviceLegacy");
   });
 });
 
-describe("i18n: три сборки torch описаны во всех локалях", () => {
+describe("i18n: сборки torch описаны во всех локалях", () => {
   it.each(LANGS.map((l) => l.code))("%s: подписи и подсказки каждой сборки", (code) => {
     const dict = JSON.parse(fs.readFileSync(path.join(root, `src/i18n/${code}.json`), "utf8"));
-    for (const k of [
-      "deviceCuda",
-      "deviceCudaHint",
-      "deviceLegacy",
-      "deviceLegacyHint",
-      "deviceCpu",
-      "deviceCpuHint",
-    ]) {
+    for (const k of ["deviceCuda", "deviceCudaHint", "deviceCpu", "deviceCpuHint"]) {
       const text = dict.ab.py[k];
       expect(typeof text, `${code}.ab.py.${k}`).toBe("string");
       expect(text.length, `${code}.ab.py.${k}`).toBeGreaterThan(0);
     }
-    // Версии в подписях — те же индексы, что ставит сервер (cu132 / cu126):
-    // иначе пользователь скопирует «ручную» команду в консоли и промахнётся.
-    expect(dict.ab.py.deviceCuda, `${code}.deviceCuda`).toContain("13.2");
-    expect(dict.ab.py.deviceLegacy, `${code}.deviceLegacy`).toContain("12.6");
+    // Версия в подписи — тот же индекс, что ставит сервер (cu128): иначе
+    // пользователь скопирует «ручную» команду в консоли и промахнётся.
+    expect(dict.ab.py.deviceCuda, `${code}.deviceCuda`).toContain("12.8");
+    expect(dict.ab.py.deviceLegacy, `${code}.deviceLegacy`).toBeUndefined();
   });
 
-  it("в панели перечислены все три сборки (третья — для карт без RT-ядер)", () => {
+  it("в панели перечислены обе сборки (третьей с cudaLegacy нет)", () => {
     expect(panel).toContain("DEVICES.map");
-    expect(panel).toContain('id: "cudaLegacy"');
-    expect(panel).toContain("CircuitBoard");
+    expect(panel).toContain('id: "cuda"');
+    expect(panel).toContain('id: "cpu"');
+    expect(panel).not.toContain("cudaLegacy");
+    expect(panel).not.toContain("CircuitBoard");
   });
 });
 
