@@ -69,6 +69,7 @@ server/tmdb.js
 server/encoders.js
 server/vad.js
 server/diarize.js
+server/proxy.js
 
 bb.txt
 tc.txt

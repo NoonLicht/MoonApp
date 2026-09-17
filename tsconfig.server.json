@@ -5,8 +5,14 @@
   // При добавлении новых *.ts допишите их сюда.
   "compilerOptions": {
     "target": "ES2022",
-    "module": "CommonJS",
-    "moduleResolution": "Node",
+    // node16 (а не CommonJS+Node) нужен ради ESM-зависимостей: при module=CommonJS
+    // tsc превращает `await import("socks-proxy-agent")` в require(...), а пакет
+    // ESM-only (`"type": "module"`) — require на нём падает в рантайме. Под node16
+    // динамический импорт остаётся настоящим import(), и типы таких пакетов видны
+    // (их отдаёт "exports" в package.json). Вывод для .ts по-прежнему CommonJS:
+    // в package.json нет "type": "module".
+    "module": "node16",
+    "moduleResolution": "node16",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
@@ -46,6 +52,7 @@
     "server/ts/tmdb.ts",
     "server/ts/encoders.ts",
     "server/ts/vad.ts",
-    "server/ts/diarize.ts"
+    "server/ts/diarize.ts",
+    "server/ts/proxy.ts"
   ]
 }
