@@ -46,6 +46,7 @@ server/proxy.js
 server/ytdlp.js
 server/compressor.js
 server/whisperEngine.js
+server/sitebak.js
 
 # Артефакты отчётов.
 coverage
