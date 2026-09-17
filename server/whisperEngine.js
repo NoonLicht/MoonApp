@@ -792,6 +792,9 @@ function engineSummary() {
     gpu.blackwell
   )
     warnings.push("cuda_blackwell");
+  // Подсказка уже подводила эту модель: расшифровка идёт без неё. Показываем
+  // причину, иначе выключенная подсказка выглядит как «настройка игнорируется».
+  if (model && promptUnusable.has(String(model))) warnings.push("prompt_unusable");
   return {
     ready: !!(bin && model),
     bin: bin || null,
@@ -910,6 +913,35 @@ function initialPrompt() {
  */
 function needsPromptlessRetry(text, prompt) {
   return !String(text || "").trim() && String(prompt || "").trim().length > 0;
+}
+
+/**
+ * Модели, на которых подсказка распознавания уже дала пустой ответ.
+ *
+ * Зачем: повтор прогона без --prompt спасает результат, но стоит полной загрузки
+ * модели. Если прогон без подсказки прошёл успешно, дальше по этой модели
+ * подсказка не передаётся вовсе — иначе каждый чанк лекции оплачивался бы двумя
+ * запусками модели (на GPU +2–3 с, на CPU +10–20 с на чанк).
+ *
+ * Ключ — путь к файлу модели: поведение зависит именно от модели (large-v3-turbo
+ * с длинной русской подсказкой), а не от сборки движка (воспроизводится и на
+ * cuda124, и на blas). Флаг живёт до перезапуска процесса: если в новой версии
+ * whisper.cpp это исправят, ограничение снимет само.
+ */
+const promptUnusable = new Set();
+
+/** Запомнить, что на модели подсказка ломает распознавание. true — запомнили впервые. */
+function notePromptUnusable(modelPath) {
+  const key = modelPath ? String(modelPath) : "";
+  if (!key || promptUnusable.has(key)) return false;
+  promptUnusable.add(key);
+  logger.warn("whisperEngine.prompt_unusable", { model: path.basename(key) });
+  return true;
+}
+
+/** Подсказка на этой модели уже давала пустой ответ (прогон пойдёт без --prompt). */
+function promptUnusableFor(modelPath) {
+  return !!modelPath && promptUnusable.has(String(modelPath));
 }
 
 /** Небольшой WAV (PCM 16 кГц моно) для self-test — без внешних файлов. */
@@ -1085,6 +1117,8 @@ module.exports = {
   transcribeArgs,
   initialPrompt,
   needsPromptlessRetry,
+  notePromptUnusable,
+  promptUnusableFor,
   deviceArgs,
   deviceArgsFor,
   detectGpu,

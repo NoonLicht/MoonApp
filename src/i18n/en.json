@@ -1287,7 +1287,8 @@
       "hideLog": "Hide output",
       "warn": {
         "cuda_without_nvidia": "A CUDA build is active but no NVIDIA GPU was found — whisper falls back to the CPU (or fails to start).",
-        "cuda_blackwell": "For RTX 50xx (Blackwell) the official CUDA build targets CUDA 12.4 — some kernels are unsupported. Check it with “Test engine”."
+        "cuda_blackwell": "For RTX 50xx (Blackwell) the official CUDA build targets CUDA 12.4 — some kernels are unsupported. Check it with “Test engine”.",
+        "prompt_unusable": "The recognition hint returned nothing on this model — transcription continues without it."
       },
       "systemTitle": "Your PC",
       "systemLine": "{cpu} · {cores} cores / {threads} threads · {ram} GB RAM",

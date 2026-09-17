@@ -418,10 +418,19 @@ function readChunkResult(outBase, stdout = "") {
  * CPU-сборки/выключенной видеокарты, -dev N для выбора устройства).
  */
 async function transcribeFile(bin, model, wavPath, outBase, meta = {}, runner = runWhisper) {
-  const args = whisperEngine.transcribeArgs(model, wavPath, outBase);
+  // Если на этой модели подсказка уже выбила пустой ответ, дальше идём сразу без
+  // неё: повтор стоит полной загрузки модели, а чанков в лекции сотни.
+  const skipHint = whisperEngine.promptUnusableFor(model);
+  const args = whisperEngine.transcribeArgs(
+    model,
+    wavPath,
+    outBase,
+    skipHint ? { prompt: null } : {},
+  );
   const result = await runner(bin, args, outBase);
-  if (!whisperEngine.needsPromptlessRetry(result.text, whisperEngine.initialPrompt()))
-    return { ...result, promptless: false };
+  const hint = skipHint ? "" : whisperEngine.initialPrompt();
+  if (!whisperEngine.needsPromptlessRetry(result.text, hint))
+    return { ...result, promptless: skipHint };
   // ОТКАТ БЕЗ ПОДСКАЗКИ. large-v3-turbo на длинную русскую подсказку отвечает
   // пустым SRT: движок грузит модель и через пару секунд молча завершается, а
   // пользователь видит «нечего расшифровывать». Повтор без --prompt даёт текст.

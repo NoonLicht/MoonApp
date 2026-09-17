@@ -1290,7 +1290,8 @@
       "hideLog": "Ocultar salida",
       "warn": {
         "cuda_without_nvidia": "Hay una compilación CUDA activa pero no se encontró NVIDIA — whisper usará la CPU (o no arrancará).",
-        "cuda_blackwell": "Para RTX 50xx (Blackwell) la compilación CUDA oficial usa CUDA 12.4 — algunos núcleos no son compatibles. Compruébelo con «Probar el motor»."
+        "cuda_blackwell": "Para RTX 50xx (Blackwell) la compilación CUDA oficial usa CUDA 12.4 — algunos núcleos no son compatibles. Compruébelo con «Probar el motor».",
+        "prompt_unusable": "En este modelo la pista de reconocimiento no devolvió nada: la transcripción continúa sin ella."
       },
       "systemTitle": "Tu PC",
       "systemLine": "{cpu} · {cores} núcleos / {threads} hilos · {ram} GB de RAM",

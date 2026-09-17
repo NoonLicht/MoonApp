@@ -1138,7 +1138,7 @@ export interface LectureEngineStatus {
   gpu: "auto" | "off";
   deviceId: number;
   threads: number;
-  /** Предупреждения движка: cuda_without_nvidia, cuda_blackwell. */
+  /** Предупреждения движка: cuda_without_nvidia, cuda_blackwell, prompt_unusable. */
   warnings: string[];
 }
 

@@ -1290,7 +1290,8 @@
       "hideLog": "隐藏输出",
       "warn": {
         "cuda_without_nvidia": "已启用 CUDA 版本，但未找到 NVIDIA 显卡——whisper 会改用处理器（或无法启动）。",
-        "cuda_blackwell": "RTX 50xx（Blackwell）在官方 CUDA 版本中基于 CUDA 12.4——部分核心不受支持。请用“测试引擎”检查。"
+        "cuda_blackwell": "RTX 50xx（Blackwell）在官方 CUDA 版本中基于 CUDA 12.4——部分核心不受支持。请用“测试引擎”检查。",
+        "prompt_unusable": "该模型下识别提示词返回了空结果——转写将在不使用提示词的情况下继续。"
       },
       "systemTitle": "你的电脑",
       "systemLine": "{cpu} · {cores} 核 / {threads} 线程 · {ram} GB 内存",

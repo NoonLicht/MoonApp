@@ -1290,7 +1290,8 @@
       "hideLog": "Masquer la sortie",
       "warn": {
         "cuda_without_nvidia": "Une compilation CUDA est active mais aucun GPU NVIDIA n'a été détecté — whisper repassera sur le CPU (ou ne démarrera pas).",
-        "cuda_blackwell": "Pour les RTX 50xx (Blackwell), la compilation CUDA officielle cible CUDA 12.4 — certains noyaux ne sont pas pris en charge. Vérifiez avec « Tester le moteur »."
+        "cuda_blackwell": "Pour les RTX 50xx (Blackwell), la compilation CUDA officielle cible CUDA 12.4 — certains noyaux ne sont pas pris en charge. Vérifiez avec « Tester le moteur ».",
+        "prompt_unusable": "Sur ce modèle, l'indice de reconnaissance n'a rien renvoyé : la transcription se poursuit sans lui."
       },
       "systemTitle": "Votre PC",
       "systemLine": "{cpu} · {cores} cœurs / {threads} threads · {ram} Go de RAM",
