@@ -67,6 +67,7 @@ server/index.js
 server/bookParser.js
 server/tmdb.js
 server/encoders.js
+server/vad.js
 
 bb.txt
 tc.txt

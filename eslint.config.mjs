@@ -69,6 +69,7 @@ export default tseslint.config(
       "server/bookParser.js",
       "server/tmdb.js",
       "server/encoders.js",
+      "server/vad.js",
     ],
   },
 

@@ -44,6 +44,7 @@
     "server/ts/index.ts",
     "server/ts/bookParser.ts",
     "server/ts/tmdb.ts",
-    "server/ts/encoders.ts"
+    "server/ts/encoders.ts",
+    "server/ts/vad.ts"
   ]
 }
