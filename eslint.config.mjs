@@ -70,6 +70,7 @@ export default tseslint.config(
       "server/tmdb.js",
       "server/encoders.js",
       "server/vad.js",
+      "server/diarize.js",
     ],
   },
 

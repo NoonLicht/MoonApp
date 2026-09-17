@@ -17,8 +17,20 @@ import { createRequire } from "module";
  *     общего модуля.
  */
 const req = createRequire(import.meta.url);
-const readServer = (name: string): string =>
-  fs.readFileSync(new URL(`../server/${name}`, import.meta.url), "utf8");
+
+/**
+ * Исходник движка, а не собранный артефакт: перенесённые модули живут в server/ts
+ * и компилируются в server/*.js. В артефакте tsc переписывает вызовы
+ * (`(0, setupTask_1.createSetupTask)("diarize")`), поэтому контракт по тексту
+ * проверяем по исходнику — иначе проверка ловит форму вывода компилятора, а не код.
+ */
+const readSource = (name: string): string => {
+  const ts = new URL(`../server/ts/${name.replace(/\.js$/, ".ts")}`, import.meta.url);
+  return fs.readFileSync(
+    fs.existsSync(ts) ? ts : new URL(`../server/${name}`, import.meta.url),
+    "utf8",
+  );
+};
 
 beforeAll(() => {
   // logger берёт путь логов из config при require — уводим их во временный каталог.
@@ -183,8 +195,10 @@ describe("контракт: общая машина состояния вмес�
   const consumers = ["whisperEngine.js", "diarize.js"];
 
   it.each(consumers)("%s берёт состояние из server/setupTask", (name) => {
-    const src = readServer(name);
-    expect(src).toContain('require("./setupTask")');
+    const src = readSource(name);
+    expect(src, "нет импорта server/setupTask").toMatch(
+      /require\("\.\/setupTask"\)|from "\.\/setupTask"/,
+    );
     expect(src, "вернулась локальная копия машины состояния").not.toMatch(
       /function (resetTask|failTask|doneTask|cancelTask|taskSnapshot)\s*\(/,
     );
@@ -193,19 +207,19 @@ describe("контракт: общая машина состояния вмес�
   });
 
   it("каждый движок создаёт свою задачу (состояния не общие)", () => {
-    expect(readServer("whisperEngine.js")).toContain('createSetupTask("whisperEngine")');
-    expect(readServer("diarize.js")).toContain('createSetupTask("diarize")');
+    expect(readSource("whisperEngine.js")).toContain('createSetupTask("whisperEngine")');
+    expect(readSource("diarize.js")).toContain('createSetupTask("diarize")');
   });
 
   it("прямые записи в task.* остались (иначе фазы установки пропали бы)", () => {
     // Потребители пишут фазу и обнуляют прогресс на месте — контракт «живой ссылки».
-    expect(readServer("whisperEngine.js")).toMatch(/task\.phase = "/);
-    expect(readServer("diarize.js")).toMatch(/task\.phase = "/);
+    expect(readSource("whisperEngine.js")).toMatch(/task\.phase = "/);
+    expect(readSource("diarize.js")).toMatch(/task\.phase = "/);
   });
 
   it("формула процента не дублируется в движках", () => {
     for (const name of consumers) {
-      expect(readServer(name), `${name}: формула прогресса вернулась локально`).not.toMatch(
+      expect(readSource(name), `${name}: формула прогресса вернулась локально`).not.toMatch(
         /Math\.round\(\(100 \* received\) \/ total\)/,
       );
     }

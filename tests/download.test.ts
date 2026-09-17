@@ -19,6 +19,16 @@ const req = createRequire(import.meta.url);
 const root = path.resolve(__dirname, "..");
 const readFile = (...p: string[]) => fs.readFileSync(path.join(root, ...p), "utf8");
 
+/**
+ * Исходник движка: перенесённые на TS модули лежат в server/ts и собираются в
+ * server/*.js. В артефакте tsc переписывает импорт в `(0, download_1.downloadToFile)`,
+ * поэтому структурные проверки смотрим по исходнику (как и строка про download.ts ниже).
+ */
+const readEngineSource = (name: string): string => {
+  const ts = path.join(root, "server", "ts", name.replace(/\.js$/, ".ts"));
+  return readFile("server", fs.existsSync(ts) ? path.join("ts", path.basename(ts)) : name);
+};
+
 let tmpDir = "";
 let server: http.Server;
 let baseUrl = "";
@@ -86,8 +96,10 @@ function download(): any {
 describe("контракт: единый модуль скачивания вместо копий", () => {
   it("diarize.js и whisperEngine.js берут потоковую запись из server/download", () => {
     for (const name of ["diarize.js", "whisperEngine.js"]) {
-      const src = readFile("server", name);
-      expect(src, `${name}: нет require("./download")`).toContain('require("./download")');
+      const src = readEngineSource(name);
+      expect(src, `${name}: нет импорта server/download`).toMatch(
+        /require\("\.\/download"\)|from "\.\/download"/,
+      );
       expect(src, `${name}: вернулась своя потоковая запись`).not.toContain("createWriteStream");
       expect(src, `${name}: вернулась копия fetch-цикла`).not.toContain(
         "for await (const chunk of",
@@ -96,8 +108,8 @@ describe("контракт: единый модуль скачивания вм�
   });
 
   it("User-Agent остался разным у двух движков (sherpa и whisper.cpp)", () => {
-    expect(readFile("server", "diarize.js")).toContain("sherpa-onnx diarization");
-    expect(readFile("server", "whisperEngine.js")).toContain("whisper.cpp");
+    expect(readEngineSource("diarize.js")).toContain("sherpa-onnx diarization");
+    expect(readEngineSource("whisperEngine.js")).toContain("whisper.cpp");
   });
 
   it("страницы не держат своих копий saveBlob", () => {
