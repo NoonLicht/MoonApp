@@ -55,6 +55,7 @@
     "server/ts/diarize.ts",
     "server/ts/proxy.ts",
     "server/ts/ytdlp.ts",
-    "server/ts/compressor.ts"
+    "server/ts/compressor.ts",
+    "server/ts/whisperEngine.ts"
   ]
 }

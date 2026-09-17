@@ -45,6 +45,7 @@ server/diarize.js
 server/proxy.js
 server/ytdlp.js
 server/compressor.js
+server/whisperEngine.js
 
 # Артефакты отчётов.
 coverage

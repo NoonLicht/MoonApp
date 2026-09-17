@@ -1,5 +1,3 @@
-"use strict";
-
 /**
  * Менеджер движка whisper.cpp: сборки (CPU/BLAS/CUDA), модели и выбор устройства.
  *
@@ -18,16 +16,24 @@
  * ВАЖНО: официальные Windows-сборки whisper.cpp для x64 выходят только под
  * CUDA 11.8/12.4 (Vulkan x64 в релизах нет). Поэтому «видеокарта» здесь =
  * CUDA-сборка + NVIDIA GPU; для остальных карт движок остаётся на CPU.
+ *
+ * TS-исходник, как server/ts/diarize.ts: компилируется в server/whisperEngine.js
+ * командой `npm run compile:server`, поэтому `require("./whisperEngine")` из
+ * обычных .js-модулей (lecture.js, routes/lecture.js) работает без изменений.
  */
 
-const fs = require("fs");
-const path = require("path");
-const { spawn, execFile } = require("child_process");
-const { DIRS } = require("./config");
-const settings = require("./settings");
-const logger = require("./logger");
-const { downloadToFile } = require("./download");
-const { createSetupTask } = require("./setupTask");
+import fs from "fs";
+import path from "path";
+import os from "os";
+import { spawn, execFile } from "child_process";
+import config from "./config";
+import settings from "./settings";
+import logger from "./logger";
+import { downloadToFile } from "./download";
+import { createSetupTask } from "./setupTask";
+import type { SetupTaskState } from "./setupTask";
+
+const { DIRS } = config;
 
 /* ------------------------- Пути ------------------------- */
 
@@ -44,70 +50,246 @@ const MODEL_URL = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main";
 
 /* ------------------------- Каталоги ------------------------- */
 
+/** Модель до добавления URL скачивания. */
+interface ModelEntry {
+  id: string;
+  file: string;
+  sizeMb: number;
+  note: string;
+}
+
+/** Модель каталога: к записи добавлен URL на HuggingFace. */
+interface ModelCatalogEntry extends ModelEntry {
+  url: string;
+}
+
+/** Состояние модели для UI (modelsList/modelInfo). */
+interface ModelInfo {
+  id: string;
+  file: string;
+  sizeMb: number;
+  note: string;
+  url: string;
+  downloaded: boolean;
+  downloadedMb: number;
+}
+
 /**
  * Модели Whisper. `note` — ключ перевода lecture.setup.note.<note>,
  * `sizeMb` — ориентир для UI (реальный вес файла показывает downloadedMb).
  */
-const MODEL_CATALOG = [
-  { id: "tiny", file: "ggml-tiny.bin", sizeMb: 74, note: "fast" },
-  { id: "base", file: "ggml-base.bin", sizeMb: 141, note: "fast" },
-  { id: "small", file: "ggml-small.bin", sizeMb: 466, note: "balanced" },
-  { id: "medium-q5_0", file: "ggml-medium-q5_0.bin", sizeMb: 514, note: "quantized" },
-  { id: "medium", file: "ggml-medium.bin", sizeMb: 1463, note: "accurate" },
-  {
-    id: "large-v3-turbo-q5_0",
-    file: "ggml-large-v3-turbo-q5_0.bin",
-    sizeMb: 547,
-    note: "quantized",
-  },
-  { id: "large-v3-turbo", file: "ggml-large-v3-turbo.bin", sizeMb: 1549, note: "turbo" },
-  { id: "large-v3-q5_0", file: "ggml-large-v3-q5_0.bin", sizeMb: 1031, note: "quantized" },
-  { id: "large-v3", file: "ggml-large-v3.bin", sizeMb: 2952, note: "max" },
-].map((m) => ({ ...m, url: `${MODEL_URL}/${m.file}` }));
+const MODEL_CATALOG: ModelCatalogEntry[] = (
+  [
+    { id: "tiny", file: "ggml-tiny.bin", sizeMb: 74, note: "fast" },
+    { id: "base", file: "ggml-base.bin", sizeMb: 141, note: "fast" },
+    { id: "small", file: "ggml-small.bin", sizeMb: 466, note: "balanced" },
+    { id: "medium-q5_0", file: "ggml-medium-q5_0.bin", sizeMb: 514, note: "quantized" },
+    { id: "medium", file: "ggml-medium.bin", sizeMb: 1463, note: "accurate" },
+    {
+      id: "large-v3-turbo-q5_0",
+      file: "ggml-large-v3-turbo-q5_0.bin",
+      sizeMb: 547,
+      note: "quantized",
+    },
+    { id: "large-v3-turbo", file: "ggml-large-v3-turbo.bin", sizeMb: 1549, note: "turbo" },
+    { id: "large-v3-q5_0", file: "ggml-large-v3-q5_0.bin", sizeMb: 1031, note: "quantized" },
+    { id: "large-v3", file: "ggml-large-v3.bin", sizeMb: 2952, note: "max" },
+  ] as ModelEntry[]
+).map((m) => ({ ...m, url: `${MODEL_URL}/${m.file}` }));
+
+/** Сборка до добавления URL и каталога установки. */
+interface BuildEntry {
+  id: string;
+  zipName: string;
+  sizeMb: number;
+  gpu: boolean;
+  cuda?: string;
+  note: string;
+}
+
+/** Сборка каталога: URL архива и её каталог в storage/whisper/builds. */
+interface BuildCatalogEntry extends BuildEntry {
+  url: string;
+  dir: string;
+}
+
+/** Состояние сборки для UI (buildsList/buildInfo/activeBuild). */
+interface BuildInfo {
+  id: string;
+  note: string;
+  gpu: boolean;
+  cuda: string;
+  sizeMb: number | null;
+  installed: boolean;
+  dir: string;
+  bin: string | null;
+  backend: string | null;
+  /** Копия прямо в storage/whisper (её кладёт scripts/fetch-whisper.js). */
+  legacy?: boolean;
+  /** Сборка, выбранная пользователем по пути whisperBin. */
+  custom?: boolean;
+}
 
 /**
  * Сборки движка. `gpu: true` — в архиве есть CUDA-бэкенд (ggml-cuda.dll),
  * поэтому сборка умеет считать на NVIDIA. `legacy` — уже установленная копия
  * прямо в storage/whisper (её кладёт scripts/fetch-whisper.js), не качается.
  */
-const BUILD_CATALOG = [
-  { id: "cpu", zipName: "whisper-bin-x64.zip", sizeMb: 8, gpu: false, note: "cpu" },
-  { id: "blas", zipName: "whisper-blas-bin-x64.zip", sizeMb: 20, gpu: false, note: "blas" },
-  {
-    id: "cuda118",
-    zipName: "whisper-cublas-11.8.0-bin-x64.zip",
-    sizeMb: 260,
-    gpu: true,
-    cuda: "11.8",
-    note: "cuda",
-  },
-  {
-    id: "cuda124",
-    zipName: "whisper-cublas-12.4.0-bin-x64.zip",
-    sizeMb: 643,
-    gpu: true,
-    cuda: "12.4",
-    note: "cuda",
-  },
-].map((b) => ({ ...b, url: `${RELEASE_URL}/${b.zipName}`, dir: path.join(BUILDS_DIR, b.id) }));
+const BUILD_CATALOG: BuildCatalogEntry[] = (
+  [
+    { id: "cpu", zipName: "whisper-bin-x64.zip", sizeMb: 8, gpu: false, note: "cpu" },
+    { id: "blas", zipName: "whisper-blas-bin-x64.zip", sizeMb: 20, gpu: false, note: "blas" },
+    {
+      id: "cuda118",
+      zipName: "whisper-cublas-11.8.0-bin-x64.zip",
+      sizeMb: 260,
+      gpu: true,
+      cuda: "11.8",
+      note: "cuda",
+    },
+    {
+      id: "cuda124",
+      zipName: "whisper-cublas-12.4.0-bin-x64.zip",
+      sizeMb: 643,
+      gpu: true,
+      cuda: "12.4",
+      note: "cuda",
+    },
+  ] as BuildEntry[]
+).map((b) => ({ ...b, url: `${RELEASE_URL}/${b.zipName}`, dir: path.join(BUILDS_DIR, b.id) }));
 
 const EXE_NAMES = ["whisper-cli.exe", "main.exe"];
 
 /* ------------------------- Настройки ------------------------- */
 
-function cfg() {
-  return settings.get("lecture");
+/** Ключи настроек лекции, которые читает движок (settings.get("lecture")). */
+interface LectureCfg {
+  gpu?: unknown;
+  build?: unknown;
+  deviceId?: unknown;
+  model?: unknown;
+  modelId?: unknown;
+  whisperBin?: unknown;
+  prompt?: unknown;
+  threads?: unknown;
+  [key: string]: unknown;
+}
+
+/** Железо ПК для подсказок «лучше для вашего ПК» (detectSystem). */
+interface SystemInfo {
+  cpu: string;
+  cores: number;
+  threads: number;
+  ramMb: number;
+  platform: string;
+  arch: string;
+  gpuName: string;
+  gpuMemoryMb: number;
+  gpuVendor: string;
+  cuda: boolean;
+  blackwell: boolean;
+  detected: boolean;
+}
+
+/** Требования модели к памяти (modelNeeds). */
+interface ModelNeeds {
+  ramMb: number;
+  vramMb: number;
+}
+
+/** Подсказка «какая модель лучше для этого ПК» для UI. */
+interface ModelAdvice {
+  level: string;
+  reason: string;
+  gb: number;
+  best: boolean;
+}
+
+/** Подсказка «какая сборка лучше для этого ПК» для UI. */
+interface BuildAdvice {
+  level: string;
+  reason: string;
+  best: boolean;
+}
+
+/** Сводка «ваш ПК» для панели настроек. */
+interface SystemSummary {
+  cpu: string;
+  cores: number;
+  threads: number;
+  ramGb: number;
+  gpu: string;
+  gpuGb: number;
+  cuda: boolean;
+  blackwell: boolean;
+  detected: boolean;
+}
+
+/** Краткий статус движка (шапка страницы лекций + engine внутри setupInfo). */
+interface EngineSummary {
+  ready: boolean;
+  bin: string | null;
+  model: string | null;
+  modelId: string;
+  backend: string | null;
+  build: string | null;
+  buildDir: string | null;
+  buildCustom: boolean;
+  gpu: string;
+  deviceId: number;
+  language: unknown;
+  threads: number;
+  activeSession: boolean;
+  warnings: string[];
+}
+
+/** Итог self-test: какой бэкенд реально поднялся (verify). */
+interface VerifyResult {
+  ok: boolean;
+  at: number;
+  bin: string | null;
+  model: string | null;
+  modelId: string;
+  build: string | null;
+  backend: string | null;
+  gpuUsed: boolean;
+  computeCapability: string;
+  elapsedMs: number;
+  log: string;
+  error: string;
+}
+
+/** Полная информация панели настроек движка (setupInfo). */
+export interface SetupInfo {
+  engine: EngineSummary;
+  gpu: GpuInfo;
+  builds: (BuildInfo & { active: boolean; recommend: BuildAdvice })[];
+  models: (ModelInfo & { recommend: ModelAdvice })[];
+  system: SystemSummary;
+  task: SetupTaskState;
+  verify: VerifyResult | null;
+  tag: string;
+  dirs: { whisper: string; models: string; builds: string };
+}
+
+/** Опции прогона whisper-cli: prompt=null — флага --prompt в команде не будет. */
+interface TranscribeOptions {
+  prompt?: string | null;
+}
+
+function cfg(): LectureCfg {
+  return settings.get("lecture") as LectureCfg;
 }
 
 /** GPU выключён: и булевым значением (gpu: false), и строковым ("off"). */
-function gpuDisabled() {
+function gpuDisabled(): boolean {
   const v = cfg().gpu;
   return v === false || v === "off" || v === "cpu";
 }
 
 /* ------------------------- Сборки ------------------------- */
 
-function exeIn(dir) {
+function exeIn(dir: string): string | null {
   for (const name of EXE_NAMES) {
     const p = path.join(dir, name);
     if (fs.existsSync(p)) return p;
@@ -115,7 +297,7 @@ function exeIn(dir) {
   return null;
 }
 
-function dirHas(file) {
+function dirHas(file: string): boolean {
   try {
     return fs.existsSync(file);
   } catch {
@@ -124,14 +306,14 @@ function dirHas(file) {
 }
 
 /** Бэкенд сборки по её DLL (CUDA → Vulkan → OpenBLAS → чистый CPU). */
-function backendOf(dir) {
+function backendOf(dir: string): string {
   if (dirHas(path.join(dir, "ggml-cuda.dll"))) return "cuda";
   if (dirHas(path.join(dir, "ggml-vulkan.dll"))) return "vulkan";
   if (dirHas(path.join(dir, "ggml-blas.dll"))) return "blas";
   return "cpu";
 }
 
-function buildInfo(entry) {
+function buildInfo(entry: BuildCatalogEntry): BuildInfo {
   const bin = exeIn(entry.dir);
   return {
     id: entry.id,
@@ -147,7 +329,7 @@ function buildInfo(entry) {
 }
 
 /** Все сборки + «legacy»-копия в корне storage/whisper (если она есть). */
-function buildsList() {
+function buildsList(): BuildInfo[] {
   const list = BUILD_CATALOG.map(buildInfo);
   const legacyBin = exeIn(WHISPER_DIR);
   list.unshift({
@@ -165,7 +347,7 @@ function buildsList() {
   return list;
 }
 
-function findBuild(id) {
+function findBuild(id: string): BuildInfo | null {
   return buildsList().find((b) => b.id === id) || null;
 }
 
@@ -174,17 +356,18 @@ function findBuild(id) {
  * Порядок: явный путь → выбранная сборка → авто (CUDA, если GPU разрешена и
  * сборка установлена, иначе OpenBLAS/CPU/legacy).
  */
-function activeBuild() {
+function activeBuild(): BuildInfo | null {
   const c = cfg();
-  if (c.whisperBin && fs.existsSync(c.whisperBin)) {
-    const dir = path.dirname(c.whisperBin);
+  const explicitBin = String(c.whisperBin || "");
+  if (explicitBin && fs.existsSync(explicitBin)) {
+    const dir = path.dirname(explicitBin);
     return {
       id: "custom",
       note: "custom",
       gpu: dirHas(path.join(dir, "ggml-cuda.dll")),
       installed: true,
       dir,
-      bin: c.whisperBin,
+      bin: explicitBin,
       backend: backendOf(dir),
       custom: true,
       sizeMb: null,
@@ -217,14 +400,14 @@ function activeBuild() {
   return null;
 }
 
-function findBin() {
+function findBin(): string | null {
   const b = activeBuild();
   return b ? b.bin : null;
 }
 
 /* ------------------------- Модели ------------------------- */
 
-function modelInfo(entry) {
+function modelInfo(entry: ModelCatalogEntry): ModelInfo {
   const file = path.join(MODELS_DIR, entry.file);
   let size = 0;
   try {
@@ -247,7 +430,7 @@ function modelInfo(entry) {
   };
 }
 
-function modelsList() {
+function modelsList(): (ModelInfo & { active: boolean })[] {
   const active = findModel();
   return MODEL_CATALOG.map((m) => ({
     ...modelInfo(m),
@@ -261,9 +444,10 @@ function modelsList() {
  * любая ggml-*.bin в models/). Авто-приоритет намеренно «ноутбучный»: пока
  * пользователь не выбрал модель сам, движок не должен уходить в large.
  */
-function findModel() {
+function findModel(): string | null {
   const c = cfg();
-  if (c.model && fs.existsSync(c.model)) return c.model;
+  const explicit = String(c.model || "");
+  if (explicit && fs.existsSync(explicit)) return explicit;
   const byId = String(c.modelId || "");
   if (byId) {
     const entry = MODEL_CATALOG.find((m) => m.id === byId);
@@ -289,12 +473,34 @@ function findModel() {
 
 /* ------------------------- GPU ------------------------- */
 
-let gpuCache = null;
+/** Видеокарта, найденная детектом (nvidia-smi или WMI). */
+interface GpuDevice {
+  vendor: string;
+  name: string;
+  driver: string;
+  memoryMb: number;
+  cuda: boolean;
+}
+
+/** Результат детекта GPU (кэш на GPU_TTL_MS): то, что читает UI и deviceArgs. */
+interface GpuInfo {
+  devices: GpuDevice[];
+  cudaCapable: boolean;
+  name: string;
+  memoryMb: number;
+  driver: string;
+  cpu: string;
+  blackwell: boolean;
+  /** Детект ещё не выполнялся: setupInfo отдаёт заготовку до первого detectGpu. */
+  pending?: boolean;
+}
+
+let gpuCache: GpuInfo | null = null;
 let gpuAt = 0;
 const GPU_TTL_MS = 60_000;
 
-function runCmd(cmd, args, timeout = 4000) {
-  return new Promise((resolve) => {
+function runCmd(cmd: string, args: string[], timeout = 4000): Promise<string> {
+  return new Promise<string>((resolve) => {
     try {
       execFile(cmd, args, { timeout, windowsHide: true, maxBuffer: 1024 * 1024 }, (err, stdout) => {
         resolve(err ? "" : String(stdout || ""));
@@ -311,9 +517,9 @@ function runCmd(cmd, args, timeout = 4000) {
  * видит драйвер). Если nvidia-smi нет — сообщаем, какой адаптер стоит (WMI),
  * чтобы UI не писал сухое «GPU не найден» на AMD/Intel.
  */
-async function detectGpu() {
+async function detectGpu(): Promise<GpuInfo> {
   if (gpuCache && Date.now() - gpuAt < GPU_TTL_MS) return gpuCache;
-  const devices = [];
+  const devices: GpuDevice[] = [];
   const smi = await runCmd(
     "nvidia-smi",
     ["--query-gpu=name,driver_version,memory.total", "--format=csv,noheader"],
@@ -354,7 +560,7 @@ async function detectGpu() {
   const cuda = devices.find((d) => d.cuda) || null;
   const cpu = (() => {
     try {
-      return require("os").cpus()[0]?.model || "";
+      return os.cpus()[0]?.model || "";
     } catch {
       return "";
     }
@@ -377,7 +583,7 @@ async function detectGpu() {
 }
 
 /** Сброс кэша GPU (после ручного обновления в UI). */
-function resetGpuCache() {
+function resetGpuCache(): void {
   gpuCache = null;
   gpuAt = 0;
 }
@@ -388,8 +594,13 @@ function resetGpuCache() {
  *  • CUDA-сборка + GPU разрешена → (опционально) -dev N;
  *  • CUDA-сборка + GPU выключена → -ng (считать на CPU, не грузя карту).
  */
-function deviceArgsFor(build, gpu, gpuOff, deviceId) {
-  const args = [];
+function deviceArgsFor(
+  build: BuildInfo | null,
+  gpu: GpuInfo | null,
+  gpuOff: boolean,
+  deviceId: number,
+): string[] {
+  const args: string[] = [];
   if (!build) return args;
   const hasGpuBackend = build.backend === "cuda" || build.backend === "vulkan";
   if (!hasGpuBackend) return args;
@@ -404,7 +615,7 @@ function deviceArgsFor(build, gpu, gpuOff, deviceId) {
   return args;
 }
 
-function deviceArgs() {
+function deviceArgs(): string[] {
   return deviceArgsFor(activeBuild(), gpuCache, gpuDisabled(), Number(cfg().deviceId) || 0);
 }
 
@@ -422,13 +633,17 @@ function deviceArgs() {
 const setup = createSetupTask("whisperEngine");
 const task = setup.state;
 const taskSnapshot = () => setup.snapshot();
-const resetTask = (kind, id) => setup.reset(kind, id);
-const failTask = (e) => setup.fail(e);
-const doneTask = () => setup.done();
-const cancelTask = () => setup.cancel();
+const resetTask = (kind: string, id: string | null): void => setup.reset(kind, id);
+const failTask = (e: unknown): void => setup.fail(e);
+const doneTask = (): void => setup.done();
+const cancelTask = (): SetupTaskState => setup.cancel();
 
 /** Скачивание с прогрессом в task (общий модуль server/ts/download.ts). */
-async function downloadTo(url, destFile, timeoutMs = 30 * 60 * 1000) {
+async function downloadTo(
+  url: string,
+  destFile: string,
+  timeoutMs = 30 * 60 * 1000,
+): Promise<number> {
   return downloadToFile(url, destFile, {
     userAgent: "MoonApp/1.0 (+whisper.cpp)",
     timeoutMs,
@@ -438,7 +653,9 @@ async function downloadTo(url, destFile, timeoutMs = 30 * 60 * 1000) {
 }
 
 /** Распаковка zip во временную папку (adm-zip уже есть в зависимостях). */
-function extractZip(zipFile, destDir) {
+function extractZip(zipFile: string, destDir: string): void {
+  // JS-зависимость без импорта: тот же приём, что в server/ts/proxy.ts (#633).
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const AdmZip = require("adm-zip");
   fs.rmSync(destDir, { recursive: true, force: true });
   fs.mkdirSync(destDir, { recursive: true });
@@ -446,10 +663,10 @@ function extractZip(zipFile, destDir) {
 }
 
 /** Плоская раскладка exe/dll из распакованного архива в каталог сборки. */
-function copyFlat(srcDir, destDir) {
+function copyFlat(srcDir: string, destDir: string): number {
   fs.mkdirSync(destDir, { recursive: true });
   let copied = 0;
-  const walk = (dir, depth) => {
+  const walk = (dir: string, depth: number): void => {
     if (depth > 3) return;
     for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
       const from = path.join(dir, e.name);
@@ -473,7 +690,7 @@ function copyFlat(srcDir, destDir) {
 /* ------------------------- Установка модели ------------------------- */
 
 /** Скачать модель и сразу сделать её активной. */
-function downloadModel(id) {
+function downloadModel(id: string): SetupTaskState {
   if (task.state === "working") throw new Error("busy");
   const entry = MODEL_CATALOG.find((m) => m.id === id);
   if (!entry) throw new Error("unknown_model");
@@ -501,7 +718,7 @@ function downloadModel(id) {
   return taskSnapshot();
 }
 
-function removeModel(id) {
+function removeModel(id: string): SetupInfo {
   const entry = MODEL_CATALOG.find((m) => m.id === id);
   if (!entry) throw new Error("unknown_model");
   if (task.state === "working" && task.kind === "model" && task.id === id) throw new Error("busy");
@@ -513,13 +730,14 @@ function removeModel(id) {
   }
   const c = cfg();
   if (c.modelId === id) settings.set({ lecture: { modelId: "" } });
-  if (c.model && path.basename(c.model) === entry.file) settings.set({ lecture: { model: "" } });
+  if (c.model && path.basename(String(c.model)) === entry.file)
+    settings.set({ lecture: { model: "" } });
   logger.action("whisperEngine.model.removed", { id });
   return setupInfo();
 }
 
 /** Выбор модели: id из каталога либо "" (авто). */
-function selectModel(id) {
+function selectModel(id: string): SetupInfo {
   const wanted = String(id || "");
   if (wanted) {
     const entry = MODEL_CATALOG.find((m) => m.id === wanted);
@@ -539,7 +757,7 @@ function selectModel(id) {
  * Каждая сборка живёт в своём каталоге, поэтому переключение CPU↔CUDA — это
  * только смена настроек, без переустановки и без затирания файлов.
  */
-function installBuild(id) {
+function installBuild(id: string): SetupTaskState {
   if (task.state === "working") throw new Error("busy");
   const entry = BUILD_CATALOG.find((b) => b.id === id);
   if (!entry) throw new Error("unknown_build");
@@ -580,20 +798,18 @@ function installBuild(id) {
 }
 
 /** Выбор сборки: id из каталога или "auto" (CUDA при наличии → CPU/BLAS). */
-function selectBuild(id) {
+function selectBuild(id: string): SetupInfo {
   const wanted = String(id || "auto");
-  if (wanted !== "auto" && !findBuild(wanted)) throw new Error("unknown_build");
-  if (wanted !== "auto") {
-    const b = findBuild(wanted);
-    if (!b.installed) throw new Error("build_not_installed");
-  }
+  const chosen = wanted === "auto" ? null : findBuild(wanted);
+  if (wanted !== "auto" && !chosen) throw new Error("unknown_build");
+  if (chosen && !chosen.installed) throw new Error("build_not_installed");
   settings.set({ lecture: { build: wanted, whisperBin: "" } });
   logger.action("whisperEngine.build.selected", { id: wanted });
   return setupInfo();
 }
 
 /** Сменить каталог движка вручную (поле «путь к whisper-cli.exe»). */
-function setCustomBin(binPath) {
+function setCustomBin(binPath: string): SetupInfo {
   const p = String(binPath || "").trim();
   if (p && !fs.existsSync(p)) throw new Error("bin_not_found");
   settings.set({ lecture: { whisperBin: p } });
@@ -605,9 +821,9 @@ function setCustomBin(binPath) {
  * deviceId приходит из UI только когда карт несколько; undefined — не трогаем,
  * чтобы переключение «только CPU» не сбрасывало выбранную карту.
  */
-function setGpuMode(mode, deviceId) {
+function setGpuMode(mode: unknown, deviceId?: number | null): SetupInfo {
   const m = mode === false || mode === "off" || mode === "cpu" ? "off" : "auto";
-  const patch = { gpu: m };
+  const patch: { gpu: string; deviceId?: number } = { gpu: m };
   if (deviceId !== undefined && deviceId !== null)
     patch.deviceId = Math.max(0, Number(deviceId) || 0);
   settings.set({ lecture: patch });
@@ -626,8 +842,7 @@ function setGpuMode(mode, deviceId) {
  *
  * ВАЖНО: оценка не влияет на работу движка — только на подсказки в UI.
  */
-function detectSystem() {
-  const os = require("os");
+function detectSystem(): SystemInfo {
   const cpus = (() => {
     try {
       return os.cpus() || [];
@@ -668,7 +883,7 @@ function detectSystem() {
  * (Electron сам занимает около гигабайта, а на видеокарте рабочий стол держит
  * ~0.8 ГБ VRAM). Без запаса модель «влезает» по формуле и роняет систему в своп.
  */
-function modelNeeds(sizeMb) {
+function modelNeeds(sizeMb: number): ModelNeeds {
   return {
     ramMb: Math.round(sizeMb * 1.1 + 400 + 1500),
     vramMb: Math.round(sizeMb * 1.05 + 300 + 800),
@@ -682,7 +897,7 @@ function modelNeeds(sizeMb) {
  * медленнее реального времени — это и есть главная жалоба), затем проверка
  * памяти. На CUDA потолок выше: видеокарта держит large-v3-turbo спокойно.
  */
-function bestModelId(sys) {
+function bestModelId(sys: SystemInfo): string {
   if (sys.cuda && sys.gpuMemoryMb) {
     const vram = sys.gpuMemoryMb;
     if (vram >= 10000) return "large-v3";
@@ -696,10 +911,10 @@ function bestModelId(sys) {
 }
 
 /** Подсказка по модели: уровень + причина + требование по памяти. */
-function modelRecommend(entry, sys) {
+function modelRecommend(entry: ModelEntry, sys: SystemInfo): ModelAdvice {
   const need = modelNeeds(entry.sizeMb);
   const best = bestModelId(sys);
-  const level = (id) => MODEL_ORDER.indexOf(id);
+  const level = (id: string): number => MODEL_ORDER.indexOf(id);
   const haveVram = sys.cuda && sys.gpuMemoryMb > 0;
   const fits = haveVram ? sys.gpuMemoryMb >= need.vramMb : sys.ramMb >= need.ramMb;
   const needGb = Math.max(1, Math.round((haveVram ? need.vramMb : need.ramMb) / 1024));
@@ -739,7 +954,7 @@ const MODEL_ORDER = [
 ];
 
 /** Подсказка по сборке: CUDA — только при NVIDIA, иначе OpenBLAS на процессоре. */
-function buildRecommend(entry, sys) {
+function buildRecommend(entry: { id: string }, sys: SystemInfo): BuildAdvice {
   if (entry.id === "cuda118" || entry.id === "cuda124") {
     if (!sys.cuda) return { level: "unfit", reason: "no_gpu", best: false };
     return {
@@ -759,7 +974,7 @@ function buildRecommend(entry, sys) {
 }
 
 /** Сводка «ваш ПК» одной строкой для панели. */
-function systemSummary(sys) {
+function systemSummary(sys: SystemInfo): SystemSummary {
   return {
     cpu: sys.cpu,
     cores: sys.cores,
@@ -776,12 +991,12 @@ function systemSummary(sys) {
 /* ------------------------- Сводка для UI ------------------------- */
 
 /** Краткий статус движка (используется и в шапке страницы лекций). */
-function engineSummary() {
+function engineSummary(): EngineSummary {
   const bin = findBin();
   const model = findModel();
   const build = activeBuild();
   const gpu = gpuCache;
-  const warnings = [];
+  const warnings: string[] = [];
   if (build && normalizeBackend(build.backend) === "cuda" && gpu && !gpu.cudaCapable)
     warnings.push("cuda_without_nvidia");
   if (
@@ -800,7 +1015,7 @@ function engineSummary() {
     bin: bin || null,
     model: model || null,
     modelId: modelIdOf(model),
-    backend: bin ? build.backend : null,
+    backend: bin && build ? build.backend : null,
     build: build ? build.id : null,
     buildDir: build ? build.dir : null,
     buildCustom: !!(build && build.custom),
@@ -814,12 +1029,12 @@ function engineSummary() {
 }
 
 /** "blas" → "cpu+blas": в UI показываем понятные подписи. */
-function normalizeBackend(b) {
+function normalizeBackend(b: string | null | undefined): string {
   return b === "blas" ? "cpu+blas" : b || "cpu";
 }
 
 /** Полная информация для панели настроек движка. */
-function setupInfo() {
+function setupInfo(): SetupInfo {
   const build = activeBuild();
   // Подсказки «лучше для вашего ПК»: считаем один раз на ответ, чтобы панель
   // не пересчитывала их на клиенте и не расходилась с сервером.
@@ -853,8 +1068,8 @@ function setupInfo() {
 }
 
 /** Последний результат self-test (для UI). */
-let lastVerify = null;
-function verifyResult() {
+let lastVerify: VerifyResult | null = null;
+function verifyResult(): VerifyResult | null {
   return lastVerify;
 }
 
@@ -864,7 +1079,12 @@ function verifyResult() {
  * Аргументы whisper-cli — ОДНО место для транскрипции и self-test, чтобы тест
  * проверял ровно те флаги, которыми потом идёт расшифровка лекций.
  */
-function transcribeArgs(model, wavPath, outBase, opts = {}) {
+function transcribeArgs(
+  model: string,
+  wavPath: string,
+  outBase: string,
+  opts: TranscribeOptions = {},
+): string[] {
   const c = cfg();
   // opts.prompt: строка — подсказка (по умолчанию из настроек); null — флага
   // --prompt в команде НЕ будет. Второй вариант нужен откату в lecture.js:
@@ -878,7 +1098,7 @@ function transcribeArgs(model, wavPath, outBase, opts = {}) {
     "-f",
     wavPath,
     "-l",
-    c.language || "ru",
+    String(c.language || "ru"),
     "-np", // тихий вывод: только результат
     // ВНИМАНИЕ: без -nt. Флаг --no-timestamps применяется и к -osrt, и тогда
     // whisper пишет один сегмент с фиктивным временем (00:00:00 → 00:00:30),
@@ -897,7 +1117,7 @@ function transcribeArgs(model, wavPath, outBase, opts = {}) {
 }
 
 /** Текущая подсказка распознавания (то, что уйдёт в --prompt). */
-function initialPrompt() {
+function initialPrompt(): string {
   return String(cfg().initialPrompt || "");
 }
 
@@ -911,7 +1131,7 @@ function initialPrompt() {
  * Пользователь видел это как «включил GPU — модель мигнула и нечего
  * расшифровывать», поэтому при пустом ответе повторяем прогон без --prompt.
  */
-function needsPromptlessRetry(text, prompt) {
+function needsPromptlessRetry(text: unknown, prompt: unknown): boolean {
   return !String(text || "").trim() && String(prompt || "").trim().length > 0;
 }
 
@@ -928,10 +1148,10 @@ function needsPromptlessRetry(text, prompt) {
  * cuda124, и на blas). Флаг живёт до перезапуска процесса: если в новой версии
  * whisper.cpp это исправят, ограничение снимет само.
  */
-const promptUnusable = new Set();
+const promptUnusable = new Set<string>();
 
 /** Запомнить, что на модели подсказка ломает распознавание. true — запомнили впервые. */
-function notePromptUnusable(modelPath) {
+function notePromptUnusable(modelPath: unknown): boolean {
   const key = modelPath ? String(modelPath) : "";
   if (!key || promptUnusable.has(key)) return false;
   promptUnusable.add(key);
@@ -940,7 +1160,7 @@ function notePromptUnusable(modelPath) {
 }
 
 /** Подсказка на этой модели уже давала пустой ответ (прогон пойдёт без --prompt). */
-function promptUnusableFor(modelPath) {
+function promptUnusableFor(modelPath: unknown): boolean {
   return !!modelPath && promptUnusable.has(String(modelPath));
 }
 
@@ -979,11 +1199,12 @@ function makeTestWav(sampleRate = 16000, seconds = 1.5) {
  * sm_120. Тест показывает РЕАЛЬНЫЙ итог: поднялся ли CUDA, что ответил драйвер,
  * сколько заняло времени. Ошибки вида «no kernel image» видно сразу.
  */
-function verify() {
-  return new Promise((resolve) => {
+function verify(): Promise<VerifyResult> {
+  return new Promise<VerifyResult>((resolve) => {
     const bin = findBin();
     const model = findModel();
-    const buildId = activeBuild() ? activeBuild().id : null;
+    const active = activeBuild();
+    const buildId = active ? active.id : null;
     const base = {
       ok: false,
       at: Date.now(),
@@ -1000,7 +1221,7 @@ function verify() {
     };
     // lastVerify заполняется в ЛЮБОМ исходе (в том числе «движок не найден»):
     // панель настроек читает setup.verify, чтобы показать итог после перезагрузки.
-    const done = (result) => {
+    const done = (result: VerifyResult) => {
       lastVerify = result;
       resolve(result);
     };
@@ -1021,7 +1242,7 @@ function verify() {
           /* ignore */
         }
       }, 180000);
-      const finish = (code) => {
+      const finish = (code: number | null) => {
         clearTimeout(timer);
         try {
           fs.rmSync(wav, { force: true });
@@ -1076,7 +1297,7 @@ function verify() {
       });
       proc.on("close", (code) => finish(code));
     } catch (e) {
-      resolve({ ...base, error: String(e.message || e) });
+      resolve({ ...base, error: String((e as Error).message || e) });
     }
   });
 }
@@ -1086,7 +1307,7 @@ function dirs() {
   return { whisper: WHISPER_DIR, models: MODELS_DIR, builds: BUILDS_DIR };
 }
 
-module.exports = {
+export {
   WHISPER_TAG,
   MODEL_CATALOG,
   BUILD_CATALOG,
@@ -1133,7 +1354,7 @@ module.exports = {
 };
 
 /** id модели по её пути (UI подсвечивает активную строку). */
-function modelIdOf(modelPath) {
+function modelIdOf(modelPath: string | null | undefined): string {
   if (!modelPath) return "";
   const base = path.basename(modelPath);
   const entry = MODEL_CATALOG.find((m) => m.file === base);

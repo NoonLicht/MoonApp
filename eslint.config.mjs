@@ -74,6 +74,7 @@ export default tseslint.config(
       "server/proxy.js",
       "server/ytdlp.js",
       "server/compressor.js",
+      "server/whisperEngine.js",
     ],
   },
 
