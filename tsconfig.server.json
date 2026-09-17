@@ -54,6 +54,7 @@
     "server/ts/vad.ts",
     "server/ts/diarize.ts",
     "server/ts/proxy.ts",
-    "server/ts/ytdlp.ts"
+    "server/ts/ytdlp.ts",
+    "server/ts/compressor.ts"
   ]
 }

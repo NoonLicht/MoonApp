@@ -18,7 +18,22 @@ import { createRequire } from "module";
  *     снова разъедутся между движками).
  */
 const req = createRequire(import.meta.url);
-const readServer = (name: string): string =>
+/**
+ * Исходник движка, а не собранный артефакт: перенесённые на TS модули живут в
+ * server/ts и компилируются в server/*.js. В артефакте tsc переписывает вызовы
+ * (`(0, jobStore_1.createQueue)("compressor")`), поэтому контракт по тексту
+ * проверяем по исходнику — иначе проверка ловит форму вывода компилятора.
+ */
+const readServer = (name: string): string => {
+  const ts = new URL(`../server/ts/${name.replace(/\.js$/, ".ts")}`, import.meta.url);
+  return fs.readFileSync(
+    fs.existsSync(ts) ? ts : new URL(`../server/${name}`, import.meta.url),
+    "utf8",
+  );
+};
+
+/** Именно артефакт сборки, без подмены на исходник. */
+const readArtifact = (name: string): string =>
   fs.readFileSync(new URL(`../server/${name}`, import.meta.url), "utf8");
 
 beforeAll(() => {
@@ -154,7 +169,11 @@ describe("контракт: общий jobStore вместо трёх копий
   it("каждый движок берёт ограничение Map из общего модуля", () => {
     for (const name of consumers) {
       const src = readServer(name);
-      expect(src, `${name}: нет require("./jobStore")`).toContain('require("./jobStore")');
+      // Перенесённый на TS движок подключает модуль импортом, немигрированный —
+      // require-ом; проверяем сам факт зависимости, а не форму записи.
+      expect(src, `${name}: нет зависимости от ./jobStore`).toMatch(
+        /require\("\.\/jobStore"\)|from "\.\/jobStore"/,
+      );
       expect(src, `${name}: вернулась локальная копия trimJobs`).not.toMatch(
         /function trimJobs\s*\(/,
       );
@@ -180,7 +199,7 @@ describe("контракт: общий jobStore вместо трёх копий
   });
 
   it("артефакт сборки server/jobStore.js существует (npm run compile:server)", () => {
-    const compiled = readServer("jobStore.js");
+    const compiled = readArtifact("jobStore.js");
     expect(compiled).toContain("exports.trimJobs");
     expect(compiled).toContain("exports.createQueue");
   });
