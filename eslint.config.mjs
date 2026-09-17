@@ -76,6 +76,7 @@ export default tseslint.config(
       "server/compressor.js",
       "server/whisperEngine.js",
       "server/sitebak.js",
+      "server/tts.js",
     ],
   },
 

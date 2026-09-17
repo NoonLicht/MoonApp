@@ -57,6 +57,7 @@
     "server/ts/ytdlp.ts",
     "server/ts/compressor.ts",
     "server/ts/whisperEngine.ts",
-    "server/ts/sitebak.ts"
+    "server/ts/sitebak.ts",
+    "server/ts/tts.ts"
   ]
 }

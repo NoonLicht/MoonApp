@@ -74,6 +74,7 @@ server/ytdlp.js
 server/compressor.js
 server/whisperEngine.js
 server/sitebak.js
+server/tts.js
 
 bb.txt
 tc.txt
