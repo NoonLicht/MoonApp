@@ -239,6 +239,8 @@ export interface PyInstallTask {
 /** Снимок установки Python-окружения: шаги, текущий шаг и хвост вывода pip. */
 export interface PyInstallSnapshot {
   state: PyInstallTask;
+  /** Что делает задача: установка пакетов, удаление сборки torch или Python. */
+  mode: "install" | "uninstall" | "python";
   engine: string;
   device: string;
   python: string;
@@ -256,6 +258,21 @@ export interface PyPlan {
   command: string;
   steps: string[];
 }
+/** Портативный Python 3.11 внутри storage (кнопки «Скачать»/«Удалить»). */
+export interface PyPortable {
+  installed: boolean;
+  exe: string;
+  version: string;
+  /** Занято на диске вместе с поставленными пакетами (для подписи «Удалить»). */
+  sizeMb: number;
+  /** Объём архива, который надо скачать. */
+  zipMb: number;
+}
+/** Ответ POST /api/tts/env/python/remove: сколько места освободили. */
+export interface PyRemoved {
+  ok: boolean;
+  freedMb: number;
+}
 /** Ответ GET /api/tts/env/install: что будем качать и куда ставить. */
 export interface PyInstallState {
   /** Рекомендуемая сборка по железу: cuda (есть карта NVIDIA) | cpu. */
@@ -264,6 +281,10 @@ export interface PyInstallState {
   chosen: string;
   /** Планы по обеим сборкам (ключи: cuda, cpu). */
   plans: Record<string, PyPlan>;
+  /** Что с портативным Python 3.11. */
+  portable: PyPortable;
+  /** Версия текущего интерпретатора (по ней выбран пакет XTTS в командах). */
+  pythonVersion: string;
   install: PyInstallSnapshot;
 }
 /** Найденный интерпретатор Python и наличие в нём нужных модулей. */
@@ -792,6 +813,17 @@ export const api = {
   ttsEnvInstall: (engine: string, device: string, python?: string) =>
     req<PyInstallSnapshot>("POST", "/tts/env/install", { engine, device, python }),
   ttsEnvCancel: () => req<PyInstallSnapshot>("POST", "/tts/env/cancel", {}),
+  // Удаление сборки torch (`pip uninstall -y torch torchvision torchaudio`) — так
+  // освобождают ~2.5 ГБ CUDA-сборки, не трогая модели и профили голоса.
+  ttsEnvUninstall: (device: string, python?: string) =>
+    req<PyInstallSnapshot>("POST", "/tts/env/uninstall", { device, python }),
+  // Очистка лога: хвост вывода pip остаётся на экране и после ошибки (там
+  // причина), поэтому нужна кнопка «убрать, когда прочитано».
+  ttsEnvClearLog: () => req<PyInstallSnapshot>("POST", "/tts/env/log/clear", {}),
+  // Портативный Python 3.11 в storage: классический Coqui TTS не ставится на
+  // Python 3.12+, а на 3.11 работают оба движка (F5-TTS и Coqui).
+  ttsEnvInstallPython: () => req<PyInstallSnapshot>("POST", "/tts/env/python/install", {}),
+  ttsEnvRemovePython: () => req<PyRemoved>("POST", "/tts/env/python/remove", {}),
   ttsEnvSetPython: (cmd: string) =>
     req<{ ok: boolean; cmd: string }>("POST", "/tts/env/python", { cmd }),
   ttsPresets: () => req<TtsPreset[]>("GET", "/tts/presets"),

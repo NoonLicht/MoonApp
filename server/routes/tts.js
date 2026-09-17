@@ -9,7 +9,11 @@
  *  GET    /api/tts/env/install     — план установки: CUDA/CPU torch, объём, команды
  *  GET    /api/tts/env/interpreters— найденные интерпретаторы Python с модулями
  *  POST   /api/tts/env/install     — { engine, device } → pip-установка с прогрессом
+ *  POST   /api/tts/env/uninstall   — { device } → pip uninstall сборки torch
  *  POST   /api/tts/env/cancel      — отменить установку окружения
+ *  POST   /api/tts/env/log/clear   — очистить лог установки (в т.ч. хвост ошибки)
+ *  POST   /api/tts/env/python/install — скачать портативный Python 3.11 (storage)
+ *  POST   /api/tts/env/python/remove  — удалить портативный Python 3.11
  *  POST   /api/tts/env/python      — { cmd } → сохранить интерпретатор (voice.pythonCmd)
  *  GET    /api/tts/presets         — системные + пользовательские пресеты
  *  POST   /api/tts/presets         — сохранить пользовательский пресет
@@ -90,7 +94,9 @@ router.get("/env", async (req, res) => {
  */
 router.get("/env/install", async (req, res) => {
   try {
-    res.json(await pyEnv.installState(pyEnv.engineOf(req.query.engine), pyEnv.deviceOf(req.query.device)));
+    res.json(
+      await pyEnv.installState(pyEnv.engineOf(req.query.engine), pyEnv.deviceOf(req.query.device)),
+    );
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -132,6 +138,61 @@ router.post("/env/install", (req, res) => {
 /** Отмена установки окружения (процесс pip убивается вместе с дочерними). */
 router.post("/env/cancel", (req, res) => {
   res.json(pyEnv.cancel());
+});
+
+/**
+ * Удаление сборки torch ({ device: "cuda"|"cpu", python? }): `pip uninstall -y
+ * torch torchvision torchaudio`. Идёт тем же путём, что и установка (шаги, лог,
+ * прогресс, отмена) — иначе «Удалить» пришлось бы делать отдельным кодом.
+ */
+router.post("/env/uninstall", (req, res) => {
+  try {
+    const snap = pyEnv.uninstallTorch(
+      pyEnv.deviceOf(req.body?.device),
+      req.body?.python ? String(req.body.python) : undefined,
+    );
+    logger.action("tts.env.uninstall", { device: snap.device, python: snap.python });
+    res.status(201).json(snap);
+  } catch (e) {
+    // busy — идёт другая задача (установка/удаление): одна задача за раз.
+    res.status(400).json({ error: e.message });
+  }
+});
+
+/**
+ * Очистка лога установки. Нужна, потому что хвост вывода pip после ошибки
+ * остаётся на экране намеренно (там причина) — а когда он прочитан, должен быть
+ * способ его убрать, не перезапуская установку.
+ */
+router.post("/env/log/clear", (req, res) => {
+  res.json(pyEnv.clearLog());
+});
+
+/**
+ * Портативный Python 3.11 в storage приложения. Нужен для классического Coqui
+ * TTS: пакет `TTS` на Python 3.12+ не ставится вообще («from versions: none»),
+ * а на 3.11 работают и F5-TTS, и Coqui. Установка и удаление — файловые
+ * операции внутри storage: ни установщика, ни реестра, ни UAC.
+ */
+router.post("/env/python/install", (req, res) => {
+  try {
+    const snap = pyEnv.installPython();
+    logger.action("tts.env.python.install", { exe: snap.python });
+    res.status(201).json(snap);
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+/** Удаление портативного Python 3.11 вместе со всеми пакетами движков. */
+router.post("/env/python/remove", (req, res) => {
+  try {
+    const out = pyEnv.removePython();
+    logger.action("tts.env.python.remove", { freedMb: out.freedMb });
+    res.json(out);
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
 });
 
 /**

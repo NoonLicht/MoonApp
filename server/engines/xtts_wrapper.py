@@ -18,6 +18,15 @@ Coqui XTTS v2 engine sidecar (embedded, persistent).
 
 Как и у F5, устройство выбирается автоматически: CUDA есть — считаем на
 видеокарте, нет — на CPU (раньше здесь стоял жёсткий «cuda_not_available»).
+
+Про загрузку модели: проверенный порядок — сначала готовый синтезатор
+`TTS.api.TTS("tts_models/multilingual/multi-dataset/xtts_v2")`, он сам скачивает
+модель xtts_v2 (~1.8 ГБ) в кэш и загружает её; модель берётся из
+`api.synthesizer.tts_model` (coqui-tts) или `api.tts_model` (классический TTS).
+Прямой путь `XttsConfig()` + `init_from_config` + `load_checkpoint()` БЕЗ
+`checkpoint_dir` не работает ни там, ни там (внутри `os.path.join(None,
+"model.pth")`), поэтому он остался запасным — уже с каталогом модели от
+ModelManager.
 """
 import sys
 import json
@@ -25,29 +34,58 @@ import time
 import gc
 
 
+def _xtts_model(api):
+    """Инстанс XTTS из «готового синтезатора» — варианты API различаются.
+
+    coqui-tts (0.27): api.synthesizer.tts_model;
+    классический TTS (0.22): api — это сам Synthesizer, модель в api.tts_model;
+    отдельные сборки отдавали модель как api.to_model (свойство или метод).
+    """
+    for obj in (api, getattr(api, "synthesizer", None)):
+        model = getattr(obj, "tts_model", None) if obj is not None else None
+        if model is not None:
+            return model
+    alias = getattr(api, "to_model", None)
+    if alias is None:
+        raise RuntimeError("xtts_model_not_found")
+    if callable(alias) and not hasattr(alias, "inference_stream"):
+        return alias()
+    return alias
+
+
 class XttsEngine:
     def __init__(self, cfg):
         import torch
-        from TTS.tts.configs.xtts_config import XttsConfig
-        from TTS.tts.models.xtts import Xtts
         self.torch = torch
         # Устройство: CUDA при наличии, иначе CPU (без этого сайдкар падал
         # «cuda_not_available», и студия озвучки не работала без NVIDIA).
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.deviceId = "cuda:0" if self.device == "cuda" else "cpu"
-        cfgx = XttsConfig()
         known = {"en", "ru", "zh", "es", "fr", "de", "ja", "it", "pt", "pl", "tr", "nl", "cs", "ar", "hu", "ko", "hi"}
         self.languages = known
-        # Модель сама скачается в ~/.local/share/tts при первом init (встроенно).
+        # Модель сама скачается в кэш TTS (~1.8 ГБ) при первом init.
         try:
-            self.tts = Xtts.init_from_config(cfgx)
-            self.tts.load_checkpoint(
-                cfgx, use_deepspeed=False, eval=True
-            )
-        except Exception:
-            # старые версии API
+            # Путь 1 (проверенный на coqui-tts 0.27 и классическом TTS 0.22):
+            # готовый синтезатор скачивает xtts_v2 и загружает его сам.
             from TTS.api import TTS as CoquiTTS
-            self.tts = CoquiTTS("tts_models/multilingual/multi-dataset/xtts_v2").to_model
+
+            api = CoquiTTS("tts_models/multilingual/multi-dataset/xtts_v2", progress_bar=False)
+            self.tts = _xtts_model(api)
+        except Exception:
+            # Путь 2: скачать модель через ModelManager и загрузить её напрямую в
+            # Xtts. Нужен, если в сборке нет API-обёртки (init_from_config с
+            # пустым checkpoint_dir падал бы: os.path.join(None, "model.pth")).
+            from TTS.tts.configs.xtts_config import XttsConfig
+            from TTS.tts.models.xtts import Xtts
+            from TTS.utils.manage import ModelManager
+
+            model_dir, config_path, _ = ModelManager().download_model(
+                "tts_models/multilingual/multi-dataset/xtts_v2"
+            )
+            cfgx = XttsConfig()
+            cfgx.load_json(config_path)
+            self.tts = Xtts.init_from_config(cfgx)
+            self.tts.load_checkpoint(cfgx, checkpoint_dir=model_dir, use_deepspeed=False, eval=True)
         # Модель держим на выбранном устройстве (torch.nn.Module.to); если
         # конкретная сборка XTTS этого не умеет — оставляем как есть.
         try:

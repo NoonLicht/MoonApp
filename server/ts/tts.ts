@@ -662,6 +662,12 @@ const ENGINE_REQUIRED: Record<TtsEngine, string[]> = {
  * Индекс — cu128: в cu132 пакета torchaudio нет вообще (pip падает на шаге
  * «torch» с «No matching distribution found for torchaudio»), а он нужен и XTTS,
  * и F5. Индекс берётся из того же места, что и в установщике (server/ts/pyEnv.ts).
+ *
+ * Про XTTS: классический пакет `TTS` (coqui-ai) заморожен на 0.22.0 с
+ * Requires-Python `>=3.9,<3.12` — на Python 3.12+ pip не найдёт ни одной версии
+ * («from versions: none»), поэтому в подсказке стоит поддерживаемый форк
+ * `coqui-tts` (тот же модуль `TTS`, ставится на 3.10–3.14). Установщик окружения
+ * выбирает пакет по версии интерпретатора сам (см. enginePkg в server/ts/pyEnv.ts).
  */
 const PIP_HINT: Record<string, string> = {
   torch:
@@ -669,7 +675,7 @@ const PIP_HINT: Record<string, string> = {
   torchaudio:
     "pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128",
   f5_tts: "pip install f5-tts",
-  TTS: "pip install TTS",
+  TTS: "pip install coqui-tts",
   pynvml: "pip install nvidia-ml-py",
 };
 

@@ -24,9 +24,17 @@ python на каждый чанк, и позволяет держать VRAM-г�
 на CPU в FP32 (раньше в этом случае сайдкар падал «cuda_not_available» и студия
 озвучки была нерабочей на машинах без NVIDIA; установщик окружения в UI теперь
 честно предлагает сборку torch CPU или CUDA).
+
+ВНИМАНИЕ про версии f5-tts: имена аргументов у них разные. В актуальных сборках
+конструктор F5TTS не принимает `dtype` — вызов падал с
+«F5TTS.__init__() got an unexpected keyword argument 'dtype'», а в infer вместо
+`nfe` используется `nfe_step`. Поэтому аргументы не передаются «наугад»: их
+фильтрует inspect.signature (см. _kwargs_for), а точность модели выставляется
+напрямую, если конструктор её не понимает.
 """
 import os
 import sys
+import inspect
 import json
 import time
 import gc
@@ -36,6 +44,72 @@ def _load_f5():
     import torch
     from f5_tts.api import F5TTS
     return torch, F5TTS
+
+
+def _kwargs_for(fn, kwargs):
+    """Только те именованные аргументы, которые функция реально принимает.
+
+    Зачем: у сборок f5-tts разный API (dtype в конструкторе, nfe против nfe_step
+    в infer, необязательный exaggeration). Передавать лишнее нельзя — TypeError
+    убивает рендер целиком, а перебирать комбинации try/except по одному вызову
+    значит терять смысл ошибки, если она в другом аргументе.
+    """
+    try:
+        params = inspect.signature(fn).parameters
+    except (TypeError, ValueError):
+        return dict(kwargs)  # подпись недоступна — пусть функция решает сама
+    if any(p.kind == p.VAR_KEYWORD for p in params.values()):
+        return dict(kwargs)  # **kwargs — принимает всё
+    return {k: v for k, v in kwargs.items() if k in params}
+
+
+def _first_accepted(fn, names):
+    """Первое из имён, которое функция принимает (nfe / nfe_step / nfe_steps)."""
+    for name in names:
+        if name in _kwargs_for(fn, {name: None}):
+            return name
+    return ""
+
+
+def _save_wav(path, wav, sr):
+    """Записать результат в WAV.
+
+    Библиотека f5-tts отдаёт numpy-массив (внутри себя она пишет его же через
+    soundfile.write), а старые сборки могли вернуть тензор. Поэтому сначала
+    пробуем soundfile, а тензор отдаём torchaudio: torchaudio.save объявлен как
+    `src: torch.Tensor` и numpy-массив не принимает, из-за чего рендер доходил до
+    последней строки, чтобы упасть уже на записи файла.
+    """
+    try:
+        import soundfile as sf
+        sf.write(path, wav, sr)
+        return
+    except Exception:
+        pass
+    import torch
+    import torchaudio
+    data = wav if hasattr(wav, "dim") else torch.as_tensor(wav)
+    if data.dim() == 1:
+        data = data.unsqueeze(0)
+    torchaudio.save(path, data, sr)
+
+
+def _put_dtype(tts, dtype):
+    """Выставить точность модели, если конструктор её не принимает.
+
+    Старые сборки f5-tts знали dtype только в конструкторе; новые — не знают
+    вовсе, и точность задаётся приведением модели. Если и это не выйдет, работаем
+    на точности по умолчанию: это медленнее/тяжелее по VRAM, но рендер идёт.
+    """
+    for attr in ("ema_model", "model"):
+        model = getattr(tts, attr, None)
+        try:
+            if model is not None and hasattr(model, "to"):
+                model.to(dtype)
+                return True
+        except Exception:
+            pass
+    return False
 
 
 class F5Engine:
@@ -57,7 +131,17 @@ class F5Engine:
         dtype = t.float32 if self.device == "cpu" else dtype_map.get(
             cfg.get("precision", "float16"), t.float16
         )
-        self.tts = F5TTS(dtype=dtype)  # nfe задаётся на infer
+        # dtype передаём ТОЛЬКО если конструктор его принимает: в актуальных
+        # сборках f5-tts аргумента нет, и вызов падал с «F5TTS.__init__() got an
+        # unexpected keyword argument 'dtype'» (см. _kwargs_for).
+        ctor = _kwargs_for(F5TTS.__init__, {"dtype": dtype})
+        try:
+            self.tts = F5TTS(**ctor)  # nfe задаётся на infer
+        except TypeError:
+            # Подпись соврала (обёртки, декораторы) — работаем без параметров.
+            self.tts = F5TTS()
+        if "dtype" not in ctor:
+            _put_dtype(self.tts, dtype)
         self.cfg = cfg
         if self.device == "cuda":
             dev = t.cuda.current_device()
@@ -96,18 +180,23 @@ class F5Engine:
 
     def infer(self, req):
         t0 = time.time()
-        wav, sr, _ = self.tts.infer(
-            ref_file=req["ref"],
-            ref_text="",
-            gen_text=req["text"],
-            file_type="wav",
-            cfg_strength=float(req.get("cfg", 2.0)),
-            exaggeration=float(req.get("exaggeration", 1.0)),
-            nfe=int(req.get("nfe", 32)),
-            speed=float(self.cfg.get("speed", 1.0)),
-        )
-        import torchaudio
-        torchaudio.save(req["out"], wav, sr)
+        # Имена аргументов infer тоже различаются между сборками: nfe в старых,
+        # nfe_step в новых, exaggeration появился не сразу. Поэтому собираем
+        # «желаемое» и отдаём только то, что подпись метода принимает.
+        kwargs = {
+            "ref_file": req["ref"],
+            "ref_text": "",
+            "gen_text": req["text"],
+            "file_type": "wav",
+            "cfg_strength": float(req.get("cfg", 2.0)),
+            "exaggeration": float(req.get("exaggeration", 1.0)),
+            "speed": float(self.cfg.get("speed", 1.0)),
+        }
+        nfe_name = _first_accepted(self.tts.infer, ("nfe", "nfe_step", "nfe_steps"))
+        if nfe_name:
+            kwargs[nfe_name] = int(req.get("nfe", 32))
+        wav, sr, _ = self.tts.infer(**_kwargs_for(self.tts.infer, kwargs))
+        _save_wav(req["out"], wav, sr)
         # VRAM-гард: strict GC после каждого чанка (многокилограммовые рендеры
         # без него утекают в OOM на 8GB).
         gc.collect()

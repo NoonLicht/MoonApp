@@ -6,9 +6,11 @@ import {
   ChevronUp,
   Cpu,
   Download,
+  Eraser,
   RefreshCw,
   Search,
   Terminal,
+  Trash2,
   X,
   Zap,
 } from "lucide-react";
@@ -31,6 +33,15 @@ import type { PyInstallSnapshot, PyInstallState, PyInterpreter, TtsPythonEnv } f
  * Интерпретатор тоже не нужно вводить вручную: кнопка «Найти» перебирает `py -0p`,
  * PATH и стандартные каталоги, показывает версию и наличие модулей в каждом, а
  * выбранный сохраняется в настройках (voice.pythonCmd) — см. server/ts/pyEnv.ts.
+ *
+ * Ещё три вещи, без которых панель была бы «одноразовой»:
+ *   • «Скачать Python 3.11» — классический Coqui TTS (пакет `TTS`) не ставится на
+ *     Python 3.12+ вообще, а на 3.11 работают оба движка; ставится портативный
+ *     Python внутрь storage (ни установщика, ни реестра, ни UAC);
+ *   • «Удалить сборку torch» — `pip uninstall`, то есть те же ~2.5 ГБ, что качает
+ *     установка (без этого «переставить начисто» можно было только через консоль);
+ *   • «Очистить лог» — вывод pip после ошибки остаётся на экране намеренно (там
+ *     причина), значит должен быть способ его убрать.
  */
 
 /** Сборка torch, которую ставим (см. server/ts/pyEnv.ts → PyDevice). */
@@ -62,12 +73,29 @@ function errText(t: TranslateFn, raw: string): string {
   if (raw === "busy") return t("ab.py.errBusy");
   if (raw === "cancelled") return t("ab.py.errCancelled");
   if (raw === "empty_python") return t("ab.py.errEmptyPython");
+  if (raw === "getpip_failed") return t("ab.py.errGetPip");
+  if (raw.startsWith("unzip_failed")) return t("ab.py.errUnzip");
+  if (raw.startsWith("python_remove_failed")) return t("ab.py.errPythonRemove");
   if (raw.startsWith("pip_failed"))
     return t("ab.py.errPip", { step: raw.split(":")[1]?.trim() || "" });
   if (raw.startsWith("pip_spawn_failed")) return t("ab.py.errSpawn");
+  // downloadToFile отдаёт код вида download_http_403: чаще всего это прокси или
+  // отлуп CDN python.org, о чём честнее сказать словами.
+  if (raw.startsWith("download_http_"))
+    return t("ab.py.errPyDownload", { status: raw.replace("download_http_", "") });
   if (/ENOTFOUND|ETIMEDOUT|fetch failed|timeout|getaddrinfo/i.test(raw))
     return t("ab.py.errNetwork");
   return raw;
+}
+
+/**
+ * Текст «что готово» зависит от того, что делала задача: установка пакетов,
+ * удаление сборки torch или загрузка Python 3.11 (см. PyWork в pyEnv.ts).
+ */
+function doneText(t: TranslateFn, mode?: string): string {
+  if (mode === "uninstall") return t("ab.py.doneRemoveTorch");
+  if (mode === "python") return t("ab.py.donePython");
+  return t("ab.py.done");
 }
 
 /** Модули движка: что на месте, чего нет (бейджи со статусом). */
@@ -162,13 +190,13 @@ export function PyEnvPanel({
     const prev = lastState.current;
     lastState.current = st;
     if (prev === "working" && (st === "done" || st === "error")) {
-      if (st === "done") setNotice({ tone: "teal", text: t("ab.py.done") });
+      if (st === "done") setNotice({ tone: "teal", text: doneText(t, snap?.mode) });
       else setNotice({ tone: "coral", text: errText(t, snap?.state.error || "") });
       onChanged();
       void loadInfo();
       setBusy("");
     }
-  }, [snap?.state.state, snap?.state.error, t, onChanged, loadInfo]);
+  }, [snap?.state.state, snap?.state.error, snap?.mode, t, onChanged, loadInfo]);
 
   const startInstall = useCallback(async () => {
     setNotice(null);
@@ -181,6 +209,61 @@ export function PyEnvPanel({
       setNotice({ tone: "coral", text: errText(t, String((e as Error).message || e)) });
     }
   }, [engine, device, t]);
+
+  /** Удаление сборки torch: освобождает ~2.5 ГБ CUDA-сборки (pip uninstall). */
+  const uninstallTorch = useCallback(async () => {
+    setNotice(null);
+    setBusy("install");
+    try {
+      const s = await api.ttsEnvUninstall(device);
+      setSnap(s);
+    } catch (e) {
+      setBusy("");
+      setNotice({ tone: "coral", text: errText(t, String((e as Error).message || e)) });
+    }
+  }, [device, t]);
+
+  /** Скачать и распаковать портативный Python 3.11 внутрь storage приложения. */
+  const installPortable = useCallback(async () => {
+    setNotice(null);
+    setBusy("install");
+    try {
+      const s = await api.ttsEnvInstallPython();
+      setSnap(s);
+    } catch (e) {
+      setBusy("");
+      setNotice({ tone: "coral", text: errText(t, String((e as Error).message || e)) });
+    }
+  }, [t]);
+
+  /** Удалить портативный Python 3.11 (вместе с поставленными в него пакетами). */
+  const removePortable = useCallback(async () => {
+    setNotice(null);
+    setBusy("install");
+    try {
+      const out = await api.ttsEnvRemovePython();
+      setNotice({
+        tone: "teal",
+        text: t("ab.py.doneRemovePython", { size: humanMb(out.freedMb) }),
+      });
+      onChanged();
+      void loadInfo();
+    } catch (e) {
+      setNotice({ tone: "coral", text: errText(t, String((e as Error).message || e)) });
+    } finally {
+      setBusy("");
+    }
+  }, [t, onChanged, loadInfo]);
+
+  /** Убрать хвост вывода pip (после ошибки он остаётся на экране намеренно). */
+  const clearLog = useCallback(async () => {
+    try {
+      setSnap(await api.ttsEnvClearLog());
+      setNotice({ tone: "neutral", text: t("ab.py.logCleared") });
+    } catch (e) {
+      setNotice({ tone: "coral", text: errText(t, String((e as Error).message || e)) });
+    }
+  }, [t]);
 
   const cancelInstall = useCallback(async () => {
     try {
@@ -232,6 +315,17 @@ export function PyEnvPanel({
   const failed = snap?.state.state === "error";
   const missing = env?.ok ? (engine === "xtts" ? env.missingXtts : env.missingF5) || [] : [];
   const ready = !!env?.ok && missing.length === 0;
+  // Портативный Python 3.11 и наличие torch: по ним видно, каким кнопкам быть
+  // активными (удалять нечего — кнопка выключена, а не «молча ничего не делает»).
+  const portable = info?.portable;
+  const torchInstalled = !!env?.modules?.torch;
+  // Что делает текущая задача: по этому меняются подписи кнопок и «Готово» (см. doneText).
+  const mode = snap?.mode || "install";
+  const installLabel = working
+    ? mode === "uninstall"
+      ? t("ab.py.uninstalling")
+      : t("ab.py.installing")
+    : t("ab.py.install");
   // Панель раскрыта, когда окружение не готово. Ошибку установки показываем
   // всегда — иначе при свёрнутой панели причина снова «исчезнет».
   const open = expanded || !ready || failed;
@@ -361,9 +455,19 @@ export function PyEnvPanel({
                 <span className="muted-sm">
                   {t(`ab.py.phase.${snap?.step || "torch"}`)} · {snap?.state.progress || 0}%
                 </span>
-                <Btn variant="ghost" icon={X} onClick={() => void cancelInstall()}>
-                  {t("ab.py.cancel")}
-                </Btn>
+                <div className="ab-py-row">
+                  <Btn
+                    variant="ghost"
+                    icon={Eraser}
+                    onClick={() => void clearLog()}
+                    disabled={!logTail.length}
+                  >
+                    {t("ab.py.clearLog")}
+                  </Btn>
+                  <Btn variant="ghost" icon={X} onClick={() => void cancelInstall()}>
+                    {t("ab.py.cancel")}
+                  </Btn>
+                </div>
               </div>
               {!!logTail.length && <pre className="ab-py-log">{logTail.join("\n")}</pre>}
             </div>
@@ -371,13 +475,17 @@ export function PyEnvPanel({
 
           {/* Ошибка установки: хвост вывода pip остаётся на экране. Раньше лог
               рисовался только пока задача шла, поэтому «подробности в выводе
-              ниже» смотреть было негде — блок исчезал вместе с полоской. */}
+              ниже» смотреть было негде — блок исчезал вместе с полоской.
+              Кнопка «Очистить лог» убирает его, когда причина уже прочитана. */}
           {!working && failed && !!logTail.length && (
             <div className="ab-py-progress is-error">
               <div className="ab-py-progress-foot">
                 <span className="muted-sm">
                   {t(`ab.py.phase.${snap?.step || "torch"}`)} · {snap?.step || "torch"}
                 </span>
+                <Btn variant="ghost" icon={Eraser} onClick={() => void clearLog()}>
+                  {t("ab.py.clearLog")}
+                </Btn>
               </div>
               <pre className="ab-py-log">{logTail.join("\n")}</pre>
             </div>
@@ -390,7 +498,7 @@ export function PyEnvPanel({
               onClick={() => void startInstall()}
               disabled={!!busy || working || ready}
             >
-              {working ? t("ab.py.installing") : t("ab.py.install")}
+              {installLabel}
             </Btn>
             <Btn
               variant="ghost"
@@ -400,7 +508,52 @@ export function PyEnvPanel({
             >
               {t("ab.py.refresh")}
             </Btn>
+            {/* Удаление сборки torch: те самые гигабайты, что качает установка.
+                Раньше «переставить начисто» можно было только руками в консоли. */}
+            <Btn
+              variant="ghost"
+              icon={Trash2}
+              onClick={() => void uninstallTorch()}
+              disabled={!!busy || working || !torchInstalled}
+            >
+              {working && mode === "uninstall" ? t("ab.py.uninstalling") : t("ab.py.removeTorch")}
+            </Btn>
             {!!notice && <span className={`ab-py-notice tone-${notice.tone}`}>{notice.text}</span>}
+          </div>
+
+          {/* Python 3.11 — отдельный ряд: это про версию интерпретатора, а не про
+              сборку torch. Классический Coqui TTS (пакет `TTS`) не ставится на
+              Python 3.12+, поэтому у него своя кнопка и своя подсказка. */}
+          <div className="ab-py-actions">
+            {portable?.installed ? (
+              <>
+                <Btn
+                  variant="ghost"
+                  icon={Trash2}
+                  onClick={() => void removePortable()}
+                  disabled={!!busy || working}
+                >
+                  {t("ab.py.removePython", { size: humanMb(portable.sizeMb) })}
+                </Btn>
+                <span className="muted-sm">
+                  {t("ab.py.pythonReady", { version: portable.version || "3.11" })}
+                </span>
+              </>
+            ) : (
+              <>
+                <Btn
+                  variant="secondary"
+                  icon={Download}
+                  onClick={() => void installPortable()}
+                  disabled={!!busy || working}
+                >
+                  {working && mode === "python"
+                    ? t("ab.py.downloadingPython")
+                    : t("ab.py.getPython", { size: humanMb(portable?.zipMb || 0) })}
+                </Btn>
+                <span className="muted-sm">{t("ab.py.getPythonHint")}</span>
+              </>
+            )}
           </div>
 
           {/* Ручной путь остаётся для тех, кто предпочитает консоль, и как справка

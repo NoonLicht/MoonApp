@@ -190,7 +190,15 @@ describe("Установка Python-окружения (/api/tts/env/*)", () => 
     expect(cuda).toContain(
       "py -m pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128",
     );
-    expect(cuda).toContain("py -m pip install TTS");
+    expect(cuda).toContain("py -m pip install coqui-tts");
+    // Классический `TTS` (coqui-ai) заморожен на Python < 3.12 и публикуется
+    // только исходниками, а его setup.py требует numpy: без этого pip падает на
+    // «ModuleNotFoundError: No module named 'numpy'». Такой вариант остаётся лишь
+    // для Python 3.9 и старше — и собирается без изоляции (numpy уже стоит шагом
+    // «torch»).
+    const legacy = pyEnv.pipCommand("xtts", "cuda", "py", "3.9.13");
+    expect(legacy).toContain("py -m pip install TTS --no-build-isolation");
+    expect(legacy).not.toContain("coqui-tts");
     // Монитор VRAM (pynvml) осмысленен только с видеокартой.
     expect(cuda).toContain("nvidia-ml-py");
     expect(cpu).not.toContain("nvidia-ml-py");

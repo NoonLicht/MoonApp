@@ -20,9 +20,26 @@ F5-TTS wrapper: мост между приложением и библиотек
   После генерации вызывается torch.cuda.empty_cache() В ТОМ ЖЕ процессе —
   это реально освобождает VRAM между чанками (в отличие от запуска
   отдельного python -c, который видит чужой контекст CUDA).
+
+ВНИМАНИЕ: это старая (пофайловая) версия обёртки, приложение её не запускает —
+рабочий сайдкар живёт в server/engines/f5_wrapper.py. Правки держим
+синхронными, чтобы файл не выглядел «работающим», оставаясь сломанным: у
+актуальных сборок f5-tts конструктор не принимает dtype, а infer — nfe.
 """
+import inspect
 import os
 import sys
+
+
+def _kwargs_for(fn, kwargs):
+    """Только те именованные аргументы, которые функция реально принимает."""
+    try:
+        params = inspect.signature(fn).parameters
+    except (TypeError, ValueError):
+        return dict(kwargs)
+    if any(p.kind == p.VAR_KEYWORD for p in params.values()):
+        return dict(kwargs)
+    return {k: v for k, v in kwargs.items() if k in params}
 
 
 def main():
@@ -43,27 +60,33 @@ def main():
 
     dtype = torch.float16 if precision == "float16" else torch.float32
 
-    # F5TTS загружает модель один раз на процесс; dtype управляет точностью.
-    try:
-        tts = F5TTS(dtype=dtype, nfe=nfe)
-    except TypeError:
-        # старые версии API не принимают dtype/nfe в конструкторе
-        tts = F5TTS()
+    # dtype/nfe передаём только если конструктор их принимает: в актуальных
+    # сборках f5-tts их нет («unexpected keyword argument 'dtype'»), и рендер
+    # падал ещё до загрузки модели.
+    tts = F5TTS(**_kwargs_for(F5TTS.__init__, {"dtype": dtype, "nfe": nfe}))
 
+    # В infer шаги диффузии зовутся по-разному: nfe (старые) / nfe_step (новые).
+    nfe_name = "nfe" if _kwargs_for(tts.infer, {"nfe": None}) else "nfe_step"
     wav, sr, _ = tts.infer(
-        ref_file=ref,
-        ref_text="",          # транскрипция не задана — модель определит сама (zero-shot)
-        gen_text=text,
-        file_type="wav",
-        # exaggeration/cfg поддерживаются новыми версиями API; в старых
-        # игнорируются через filter_kwargs ниже.
-        exaggeration=exaggeration,
-        cfg_strength=cfg,
-        nfe=nfe,
+        **_kwargs_for(
+            tts.infer,
+            {
+                "ref_file": ref,
+                "ref_text": "",  # транскрипция не задана — модель определит сама (zero-shot)
+                "gen_text": text,
+                "file_type": "wav",
+                "exaggeration": exaggeration,
+                "cfg_strength": cfg,
+                nfe_name: nfe,
+            },
+        )
     )
 
-    import torchaudio
-    torchaudio.save(out, wav, sr)
+    # Библиотека отдаёт numpy-массив: torchaudio.save объявлен как src: Tensor и
+    # numpy не принимает, поэтому пишем через soundfile (как делает сама f5-tts).
+    import soundfile as sf
+
+    sf.write(out, wav, sr)
 
     # Освобождение VRAM после чанка (в этом же процессе — это работает).
     if torch.cuda.is_available():
