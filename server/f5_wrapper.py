@@ -55,6 +55,15 @@ def main():
         print("f5_wrapper: F5_REF / F5_TEXT / F5_OUT are required", file=sys.stderr)
         sys.exit(2)
 
+    # Шимы звукового стека ДО импорта f5_tts (ffmpeg приложения для pydub и
+    # torchaudio.load через soundfile) — иначе pydub падал с «[WinError 2]
+    # Не удается найти указанный файл». Модуль общий с рабочим сайдкаром:
+    # server/engines/py_audio.py.
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "engines"))
+    from py_audio import prepare as prepare_audio
+
+    prepare_audio(os.environ.get("F5_FFMPEG", ""))
+
     import torch
     from f5_tts.api import F5TTS
 

@@ -34,6 +34,19 @@ import inspect
 import time
 import gc
 
+# Общие шимы звукового стека: ffmpeg приложения для pydub и torchaudio.load через
+# soundfile, плюс возврат isin_mps_friendly для transformers 5 (иначе coqui-tts
+# падает уже на `import TTS.api`). Подробности — server/engines/py_audio.py.
+import os
+
+try:
+    from py_audio import prepare as prepare_audio
+    from py_audio import allow_coqui_tos as prepare_tos
+except ImportError:  # запуск не из каталога скрипта
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from py_audio import prepare as prepare_audio
+    from py_audio import allow_coqui_tos as prepare_tos
+
 
 def _accepts(fn, name):
     """Принимает ли функция параметр с таким именем (или **kwargs)."""
@@ -123,6 +136,14 @@ def _xtts_model(api):
 
 class XttsEngine:
     def __init__(self, cfg):
+        # Шимы ДО импорта TTS: возврат isin_mps_friendly (его нет в transformers 5,
+        # а TTS импортирует его на уровне модуля) и torchaudio.load через soundfile
+        # — torchaudio 2.9+ читает только через torchcodec, которому нужен
+        # полноценный FFmpeg (без него падает и референс, и любой WAV).
+        self.shims = prepare_audio(str(cfg.get("ffmpeg", "") or ""))
+        # Первое скачивание XTTS v2 иначе упирается в интерактивный вопрос про
+        # лицензию CPML (stdin сайдкара занят протоколом — вопрос некому показать).
+        self.shims["tos"] = prepare_tos()
         import torch
         self.torch = torch
         # Устройство: CUDA при наличии, иначе CPU (без этого сайдкар падал
@@ -269,7 +290,7 @@ def main():
             rtype = req.get("type")
             if rtype == "init":
                 eng = XttsEngine(req)
-                _emit({"type": "ready", "device": eng.deviceId, "vramGb": eng.vramTotal})
+                _emit({"type": "ready", "device": eng.deviceId, "vramGb": eng.vramTotal, "shims": eng.shims})
                 _emit({"type": "vram", **eng.vram()})
             elif rtype == "infer":
                 if eng is None:

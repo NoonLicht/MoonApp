@@ -1038,6 +1038,10 @@ async function runPipeline(job: TtsJob): Promise<void> {
     job.progress = 2;
 
     // init: модель в VRAM один раз на всё задание
+    // Путь к ffmpeg передаём сайдкару: f5-tts декодирует референс через pydub, а
+    // pydub запускает `ffmpeg` по имени (то есть ищет в PATH) — без этого рендер
+    // падал с «[WinError 2] Не удается найти указанный файл» на первом чанке.
+    const ff = await detectFfmpeg().catch(() => null);
     const ready = await sidecar.ask(
       {
         type: "init",
@@ -1047,6 +1051,7 @@ async function runPipeline(job: TtsJob): Promise<void> {
         speed: cfg.speed,
         vramBudgetGb: 4.5,
         gcEveryChunks: cfg.gcEveryChunks,
+        ffmpeg: ff?.ffmpeg || "",
       },
       600000,
     );

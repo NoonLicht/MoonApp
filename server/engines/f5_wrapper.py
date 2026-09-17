@@ -39,6 +39,15 @@ import json
 import time
 import gc
 
+# Общие шимы звукового стека (ffmpeg приложения для pydub и torchaudio.load через
+# soundfile) — лежат рядом, каталог скрипта всегда в sys.path. Подробности в
+# server/engines/py_audio.py: без них f5-tts падает с «[WinError 2]» на pydub.
+try:
+    from py_audio import prepare as prepare_audio
+except ImportError:  # запуск не из каталога скрипта (например, импорт как модуля)
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from py_audio import prepare as prepare_audio
+
 
 def _load_f5():
     import torch
@@ -127,6 +136,11 @@ def _put_dtype(tts, dtype):
 
 class F5Engine:
     def __init__(self, cfg):
+        # Шимы ДО импорта f5_tts: ffmpeg приложения для pydub (иначе
+        # «[WinError 2] Не удается найти указанный файл» на первом же чанке) и
+        # torchaudio.load через soundfile (torchcodec без FFmpeg не читает даже
+        # WAV). Путь к ffmpeg может прийти из настроек — используем его, если есть.
+        self.shims = prepare_audio(str(cfg.get("ffmpeg", "") or ""))
         self.torch, F5TTS = _load_f5()
         t = self.torch
         # Устройство: CUDA при наличии, иначе CPU. Это не «оптимизация», а
@@ -232,7 +246,7 @@ def main():
             rtype = req.get("type")
             if rtype == "init":
                 eng = F5Engine(req)
-                _emit({"type": "ready", "device": eng.deviceId, "vramGb": eng.vramTotal})
+                _emit({"type": "ready", "device": eng.deviceId, "vramGb": eng.vramTotal, "shims": eng.shims})
                 _emit({"type": "vram", **eng.vram()})
             elif rtype == "infer":
                 if eng is None:

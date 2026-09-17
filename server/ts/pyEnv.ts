@@ -82,6 +82,28 @@ const TORCH_INDEX: Record<PyDevice, string> = {
 const ENGINE_PKG: Record<PyEngineId, string> = { f5: "f5-tts", xtts: "TTS" };
 
 /**
+ * Верхняя граница по transformers — ставится вместе с пакетом движка.
+ *
+ * Почему это обязательно: в transformers 5.x из `transformers.pytorch_utils`
+ * убрали `isin_mps_friendly`, а его импортирует сам пакет TTS
+ * (`TTS/tts/layers/tortoise/autoregressive.py`) на уровне модуля — установка
+ * «движок + свежайший transformers» заканчивалась тем, что XTTS падал ещё на
+ * `import TTS.api`: «cannot import name 'isin_mps_friendly' from
+ * 'transformers.pytorch_utils'». Проверено по колёсам на PyPI: последняя ветка 4.x —
+ * 4.57.6, и `isin_mps_friendly` в ней есть (coqui-tts требует `transformers>=4.57`,
+ * так что граница `>=4.57,<5` разрешается без конфликтов). f5-tts тоже работает
+ * через transformers 4.x (его `transformers_stream_generator` написан под 4.x).
+ *
+ * Пины идут ОДНОЙ командой с пакетом движка: так pip сам опускает уже
+ * установленный 5.x до 4.57.6 (то же произойдёт при повторной установке у тех,
+ * кому pip успел поставить пятую ветку).
+ */
+const ENGINE_PIN: Record<PyEngineId, string[]> = {
+  f5: ["transformers<5"],
+  xtts: ["transformers<5"],
+};
+
+/**
  * Требуемые модули по движкам — те же правила, что в server/ts/tts.ts
  * (ENGINE_REQUIRED). Дублируются осознанно: здесь они нужны для интерпретаторов,
  * которых нет в настройках, а тянуть ради этого весь tts.ts нельзя.
@@ -159,9 +181,11 @@ function portableExe(): string {
  */
 function engineStep(engine: PyEngineId, pyVersion = ""): PyStep {
   const pkg = enginePkg(engine, pyVersion);
+  // Пин transformers и, для классического TTS, сборка без изоляции (см. ENGINE_PIN).
+  const base = pkg === ENGINE_PKG.xtts ? [pkg, "--no-build-isolation"] : [pkg];
   return {
     id: "engine",
-    args: pkg === ENGINE_PKG.xtts ? [pkg, "--no-build-isolation"] : [pkg],
+    args: [...base, ...ENGINE_PIN[engine]],
     approxMb: pkg === "f5-tts" ? 120 : 30,
   };
 }
