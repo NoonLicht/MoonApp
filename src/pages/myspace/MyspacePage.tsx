@@ -20,10 +20,14 @@ import {
   Eye,
   PenLine,
   Maximize2,
+  AlertTriangle,
+  Sparkles,
+  RefreshCw,
+  SlidersHorizontal,
 } from "lucide-react";
 import MarkdownRenderer from "@/pages/myspace/parts/MarkdownRenderer";
 import { usePageToolbar, usePageActive } from "@/components/Toolbar";
-import { useI18n } from "@/app/i18n";
+import { useI18n, type TranslateFn } from "@/app/i18n";
 import { api } from "@/api/client";
 import type {
   VaultFile,
@@ -33,7 +37,9 @@ import type {
   GraphData,
   GraphNode,
   GraphEdge,
+  NotesAiConfig,
 } from "@/api/types";
+import { parseModelNameError } from "@/lib/modelError";
 import EditingToolbar from "@/pages/myspace/parts/EditingToolbar";
 import GraphView from "@/pages/myspace/parts/GraphView";
 import TasksPanel from "@/pages/myspace/parts/TasksPanel";
@@ -79,6 +85,27 @@ const viewTabStyle = (active: boolean): React.CSSProperties => ({
   cursor: "pointer",
   transition: "all 0.15s",
 });
+
+/**
+ * Коды ошибок сервера (notes_ai_*) → подсказка на языке интерфейса.
+ * Как в панели лекций: «нет ключа», «нет модели» и «нет исходника» — разные
+ * советы пользователю, и одна общая строка здесь была бы бесполезной.
+ */
+function notesAiError(msg: string, t: TranslateFn) {
+  if (/notes_ai_not_configured/.test(msg))
+    return t("myspace.ai.errKey", { provider: msg.split(": ")[1] || "" });
+  if (/notes_ai_provider_unknown/.test(msg))
+    return t("myspace.ai.errProvider", { provider: msg.split(": ")[1] || "" });
+  if (/notes_ai_model_missing/.test(msg)) return t("myspace.ai.errModel");
+  if (/notes_ai_no_source/.test(msg)) return t("myspace.ai.errNoSource");
+  if (/notes_ai_empty_note/.test(msg)) return t("myspace.ai.errEmptyNote");
+  if (/notes_ai_too_long/.test(msg)) return t("myspace.ai.errTooLong");
+  if (/notes_ai_short_output/.test(msg)) return t("myspace.ai.errShortOutput");
+  if (/notes_ai_empty_response/.test(msg)) return t("myspace.ai.errEmpty");
+  if (/HTTP \d+/.test(msg)) return t("myspace.ai.errServer", { code: msg.replace(/^HTTP\s+/, "") });
+  return msg || t("myspace.ai.errGeneric");
+}
+
 export default function MyspacePage() {
   const { t } = useI18n();
   const menu = useContextMenu();
@@ -108,7 +135,29 @@ export default function MyspacePage() {
   const [saving, setSaving] = useState(false);
   const [previewMode, setPreviewMode] = useState<"edit" | "preview" | "split">("split");
   const [error, setError] = useState("");
+  // ИИ-оформление заметки: какая операция идёт сейчас ("" — ничего) и короткая
+  // плашка об успехе. Ошибки живут в общем `error` над редактором.
+  const [aiBusy, setAiBusy] = useState<"" | "format" | "regenerate">("");
+  const [aiNotice, setAiNotice] = useState("");
+  const aiNoticeTimer = useRef<any>(null);
+  // Выбор провайдера/модели для ИИ-оформления (всплывающее окно рядом с
+  // кнопками). Настройки живут на сервере (myspace.ai.*), поэтому выбор
+  // сохраняется и не спрашивается заново при следующем запуске.
+  const [aiCfgOpen, setAiCfgOpen] = useState(false);
+  const [aiCfg, setAiCfg] = useState<NotesAiConfig | null>(null);
+  const [aiModels, setAiModels] = useState<string[] | null>(null);
+  const [aiBusyCfg, setAiBusyCfg] = useState<"" | "models" | "save">("");
+  const [aiCfgError, setAiCfgError] = useState("");
+  // Имена моделей, которые сервис ПРИНИМАЕТ: приходят из текста ошибки, чтобы
+  // можно было поправить опечатку одним кликом (см. src/lib/modelError.ts).
+  const [modelChoices, setModelChoices] = useState<string[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
+  // Активная вкладка в ref: ответ ИИ приходит асинхронно, и если пользователь
+  // успел переключиться, текст чужой заметки в редактор попасть не должен.
+  const activeTabRef = useRef<string | null>(null);
+  useEffect(() => {
+    activeTabRef.current = activeTab;
+  }, [activeTab]);
   // Load tree + auto-create welcome note if vault empty
   useEffect(() => {
     loadTree();
@@ -269,6 +318,173 @@ export default function MyspacePage() {
     // Автосохранение можно выключить в настройках (раздел «My Space»):
     // тогда изменения сохраняются по Ctrl+S или при закрытии вкладки.
     if (msCfg.autosave) schedSave(p);
+  };
+
+  /**
+   * ИИ-оформление заметки.
+   *
+   * format — «Оформить»: сервер сохраняет текущий текст как исходник
+   *   (storage/vault/notes/.ai/<имя>.txt) и возвращает аккуратную версию.
+   * regenerate — «Регенерировать»: заново из сохранённого исходника, текст
+   *   заметки заменяется целиком (правки после «Оформить» будут перезаписаны).
+   *
+   * Файл пишет сервер, поэтому вкладку обновляем без автосохранения (modified:
+   * false) — иначе debounce-save записал бы старый текст поверх готового.
+   */
+  /** Конфигурация ИИ-оформления с сервера (провайдер, модель, список). */
+  const loadAiCfg = useCallback(async () => {
+    try {
+      const cfg = await api.myspaceAiConfig();
+      setAiCfg(cfg);
+      return cfg;
+    } catch (e: any) {
+      setAiCfgError(notesAiError(String(e?.message || ""), t));
+      return null;
+    }
+  }, [t]);
+
+  /** Живой список моделей провайдера (нет сети — каталог провайдера). */
+  const loadAiModels = useCallback(
+    async (providerId: string) => {
+      if (!providerId) {
+        setAiModels(null);
+        return;
+      }
+      setAiBusyCfg("models");
+      try {
+        const r = await api.myspaceAiModels(providerId);
+        setAiModels(r.models || []);
+        setAiCfgError("");
+      } catch (e: any) {
+        setAiModels(null);
+        setAiCfgError(notesAiError(String(e?.message || ""), t));
+      } finally {
+        setAiBusyCfg("");
+      }
+    },
+    [t],
+  );
+
+  /** Открыть окно выбора провайдера/модели и подтянуть актуальные данные. */
+  const openAiCfg = useCallback(async () => {
+    setAiCfgOpen(true);
+    setAiCfgError("");
+    const cfg = await loadAiCfg();
+    if (cfg?.providerId) void loadAiModels(cfg.providerId);
+  }, [loadAiCfg, loadAiModels]);
+
+  /** Сохранить выбор (частично): сервер пишет myspace.ai.provider/model. */
+  const saveAiCfg = useCallback(
+    async (patch: { providerId?: string; model?: string }) => {
+      setAiBusyCfg("save");
+      try {
+        const cfg = await api.myspaceAiSaveConfig(patch);
+        setAiCfg(cfg);
+        setAiCfgError("");
+        // Сменили провайдера — список моделей прежнего больше не актуален.
+        if (patch.providerId !== undefined) setAiModels(null);
+        return cfg;
+      } catch (e: any) {
+        setAiCfgError(notesAiError(String(e?.message || ""), t));
+        return null;
+      } finally {
+        setAiBusyCfg("");
+      }
+    },
+    [t],
+  );
+
+  /** Клик по чипсу с моделью из текста ошибки: сохраняем имя и закрываем окно. */
+  const pickModelChoice = useCallback(
+    async (model: string) => {
+      const saved = await saveAiCfg({ model });
+      if (!saved) return;
+      setModelChoices([]);
+      setError("");
+      setAiNotice(t("myspace.ai.modelSaved", { model }));
+    },
+    [saveAiCfg, t],
+  );
+
+  /**
+   * Список моделей для селекта: живой список провайдера, а если его получить не
+   * удалось — каталог из ответа. Текущая модель добавляется первой, чтобы селект
+   * не «терял» сохранённое значение.
+   */
+  const aiCfgModels = useMemo(() => {
+    const fromCatalog =
+      (aiCfg?.providers || []).find((p) => p.id === aiCfg?.providerId)?.models || [];
+    const list = aiModels && aiModels.length ? aiModels : fromCatalog;
+    const cur = aiCfg?.model || "";
+    return cur && !list.includes(cur) ? [cur, ...list] : list;
+  }, [aiModels, aiCfg]);
+
+  const runNotesAi = async (mode: "format" | "regenerate") => {
+    const target = activeTab;
+    if (!target || aiBusy) return;
+    const file = openFiles.find((f) => f.path === target);
+    if (!file) return;
+    setAiBusy(mode);
+    setAiNotice("");
+    try {
+      // «Оформить» работает с файлом на диске: сохраняем правки, иначе ИИ
+      // оформит предыдущую версию заметки.
+      if (mode === "format") await api.myspaceWrite(target, file.content, file.frontmatter);
+      const res =
+        mode === "format"
+          ? await api.myspaceAiFormat(target)
+          : await api.myspaceAiRegenerate(target);
+      // Отложенное автосохранение больше не нужно и опасно: сервер уже записал
+      // готовый текст, а таймер записал бы поверх него содержимое вкладки,
+      // снятое ДО запроса (в «format» оно уже сохранено явно, в «regenerate» —
+      // намеренно выброшено).
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+      // Заголовки (блок «Содержание») и обратные ссылки после ответа модели
+      // другие — подтягиваем их с диска, текст берём из ответа (он уже записан).
+      const fresh = await api.myspaceRead(target).catch(() => null);
+      setOpenFiles((prev) =>
+        prev.map((f) =>
+          f.path === target
+            ? {
+                ...f,
+                content: res.content,
+                outline: fresh?.outline ?? f.outline,
+                backlinks: fresh?.backlinks ?? f.backlinks,
+                modified: false,
+              }
+            : f,
+        ),
+      );
+      // В редактор — только если пользователь не переключился на другую заметку.
+      if (activeTabRef.current === target) setEdContent(res.content);
+      setError("");
+      setAiNotice(
+        t(res.regenerated ? "myspace.ai.regenerated" : "myspace.ai.formatted", {
+          model: res.model,
+          chars: res.chars,
+        }),
+      );
+      if (aiNoticeTimer.current) clearTimeout(aiNoticeTimer.current);
+      aiNoticeTimer.current = setTimeout(() => setAiNotice(""), 7000);
+      // Список тегов в правой панели мог измениться вместе с текстом.
+      api.myspaceTags().then(setTags).catch(() => {});
+    } catch (e: any) {
+      // Ошибка «сервис не принимает такую модель» (обычная опечатка в имени)
+      // приходила сырым JSON. Разбираем её: показываем понятный текст, чипсы с
+      // именами, которые сервис принимает, и открываем окно выбора модели.
+      const bad = parseModelNameError(String(e?.message || ""));
+      if (bad) {
+        const names = bad.names.length ? bad.names : aiModels || [];
+        setModelChoices(names);
+        setError(t("myspace.ai.errModelName", { model: bad.model || "—" }));
+        void openAiCfg();
+      } else {
+        setModelChoices([]);
+        setError(notesAiError(String(e?.message || ""), t));
+      }
+    } finally {
+      setAiBusy("");
+    }
   };
 
   // Ручное сохранение открытой вкладки по Ctrl+S (когда автосейв выключен).
@@ -1332,8 +1548,77 @@ export default function MyspacePage() {
                   {saving && (
                     <span style={{ fontSize: 11, color: "var(--text-tertiary)" }}>saving...</span>
                   )}
+                  {aiBusy && (
+                    <span style={{ fontSize: 11, color: "var(--amber)" }}>
+                      {t("myspace.ai.busy")}
+                    </span>
+                  )}
                   {activeFile && (
                     <>
+                      {/* ИИ-оформление заметки: «Оформить» (Sparkles) — аккуратный
+                          Markdown из текущего текста; «Регенерировать» (RefreshCw)
+                          — заново из сохранённого исходника, полная замена. */}
+                      <button
+                        onClick={() => runNotesAi("format")}
+                        disabled={!!aiBusy}
+                        title={t("myspace.ai.formatHint")}
+                        aria-label={t("myspace.ai.format")}
+                        style={{
+                          background: "transparent",
+                          border: "none",
+                          padding: 3,
+                          cursor: aiBusy ? "default" : "pointer",
+                          color: aiBusy === "format" ? "var(--amber)" : "var(--text-tertiary)",
+                          opacity: aiBusy && aiBusy !== "format" ? 0.4 : 1,
+                          display: "flex",
+                        }}
+                      >
+                        <Sparkles size={13} />
+                      </button>
+                      <button
+                        onClick={() => runNotesAi("regenerate")}
+                        disabled={!!aiBusy}
+                        title={t("myspace.ai.regenerateHint")}
+                        aria-label={t("myspace.ai.regenerate")}
+                        style={{
+                          background: "transparent",
+                          border: "none",
+                          padding: 3,
+                          cursor: aiBusy ? "default" : "pointer",
+                          color:
+                            aiBusy === "regenerate" ? "var(--amber)" : "var(--text-tertiary)",
+                          opacity: aiBusy && aiBusy !== "regenerate" ? 0.4 : 1,
+                          display: "flex",
+                        }}
+                      >
+                        <RefreshCw size={13} />
+                      </button>
+                      {/* Выбор провайдера и модели: раньше брался из настроек чата,
+                          и опечатка в имени модели всплывала сырым JSON сервиса.
+                          Выбор сохраняется (myspace.ai.*) — повторять не нужно. */}
+                      <button
+                        onClick={() => void openAiCfg()}
+                        title={t("myspace.ai.cfgHint")}
+                        aria-label={t("myspace.ai.cfg")}
+                        style={{
+                          background: aiCfgOpen ? "var(--track)" : "transparent",
+                          border: "none",
+                          padding: 3,
+                          cursor: "pointer",
+                          color: aiCfgOpen ? "var(--amber)" : "var(--text-tertiary)",
+                          display: "flex",
+                        }}
+                      >
+                        <SlidersHorizontal size={13} />
+                      </button>
+                      <span
+                        style={{
+                          width: 1,
+                          height: 14,
+                          background: "var(--glass-border)",
+                          margin: "0 2px",
+                        }}
+                      />
                       <button
                         onClick={() => setPreviewMode("edit")}
                         title="Edit"
@@ -1408,8 +1693,24 @@ export default function MyspacePage() {
                     {error}
                   </div>
                 )}
+                {aiNotice && !error && (
+                  <div
+                    style={{
+                      padding: "4px 12px",
+                      fontSize: 12,
+                      color: "var(--amber)",
+                      background: "var(--amber-soft)",
+                      borderBottom: "1px solid var(--glass-border)",
+                    }}
+                  >
+                    {aiNotice}
+                  </div>
+                )}
                 {activeTab && (
                   <EditingToolbar
+                    /* Пока ИИ оформляет заметку, инструменты выключены: иначе
+                       правки ушли бы в файл уже после ответа модели. */
+                    isDisabled={!!aiBusy}
                     onFormat={(type, value, selRange) => {
                       const ta = document.querySelector(".ms-edit-textarea") as HTMLTextAreaElement;
                       if (!ta) return;
@@ -1574,6 +1875,9 @@ export default function MyspacePage() {
                         onChange={(e) => updContent(activeTab, e.target.value)}
                         onScroll={() => syncScroll("edit")}
                         spellCheck={msCfg.spellcheck}
+                        /* Идёт ИИ-оформление: текст на диске перезапишет сервер,
+                           поэтому правки в это время запрещены (см. runNotesAi). */
+                        readOnly={!!aiBusy}
                         placeholder="Start writing... Use [[wiki-links]] and #tags"
                         style={{
                           ...txStyle,
@@ -2361,6 +2665,122 @@ export default function MyspacePage() {
           </div>,
           getOverlayRoot() ?? document.body,
         )}
+        {/* --- Окно выбора провайдера и модели для ИИ-оформления заметок.
+            Сохраняется сразу при выборе (myspace.ai.*), поэтому повторять
+            настройку в следующий раз не нужно. Открывается и по кнопке с
+            ползунками, и автоматически, если сервис отверг имя модели:
+            тогда ниже появляются чипсы с именами, которые он принимает. --- */}
+        {aiCfgOpen &&
+          createPortal(
+            <div className="ms-ai-overlay" onClick={() => setAiCfgOpen(false)}>
+              <div
+                className="ms-ai-modal"
+                role="dialog"
+                aria-label={t("myspace.ai.cfg")}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="ms-ai-modal-head">
+                  <div className="field-label">{t("myspace.ai.cfg")}</div>
+                  <button
+                    className="ms-ai-modal-close"
+                    onClick={() => setAiCfgOpen(false)}
+                    aria-label={t("common.close")}
+                    title={t("common.close")}
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+                <div className="ms-ai-modal-body">
+                  <label className="ms-ai-field">
+                    <span className="field-label">{t("myspace.ai.provider")}</span>
+                    <select
+                      value={aiCfg?.providerFromChat ? "" : aiCfg?.providerId || ""}
+                      disabled={aiBusyCfg === "save"}
+                      onChange={(e) => void saveAiCfg({ providerId: e.target.value })}
+                    >
+                      <option value="">
+                        {t("myspace.ai.providerChat", { provider: aiCfg?.chatProvider || "—" })}
+                      </option>
+                      {(aiCfg?.providers || []).map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.label}
+                          {p.hasKey ? "" : ` — ${t("myspace.ai.noKey")}`}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label className="ms-ai-field">
+                    <span className="field-label">{t("myspace.ai.model")}</span>
+                    <select
+                      value={aiCfg?.model || ""}
+                      disabled={aiBusyCfg === "save"}
+                      onChange={(e) => void saveAiCfg({ model: e.target.value })}
+                    >
+                      <option value="">{t("myspace.ai.modelAuto")}</option>
+                      {aiCfgModels.map((m) => (
+                        <option key={m} value={m}>
+                          {m}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <div className="ms-ai-modal-actions">
+                    <button
+                      type="button"
+                      className="btn btn-ghost"
+                      onClick={() => void loadAiModels(aiCfg?.providerId || "")}
+                      disabled={aiBusyCfg === "models" || !aiCfg?.providerId}
+                    >
+                      {aiBusyCfg === "models"
+                        ? t("myspace.ai.modelLoading")
+                        : t("myspace.ai.modelRefresh")}
+                    </button>
+                    <span className="muted-sm">
+                      {aiModels?.length
+                        ? t("myspace.ai.modelFound", { count: aiModels.length })
+                        : t("myspace.ai.modelHint")}
+                    </span>
+                  </div>
+
+                  {/* Чипсы: имена моделей из текста ошибки сервиса — выбор в один клик. */}
+                  {!!modelChoices.length && (
+                    <div className="ms-ai-chips">
+                      <span className="muted-sm">{t("myspace.ai.modelPick")}</span>
+                      <div className="ms-ai-chips-row">
+                        {modelChoices.map((m) => (
+                          <button
+                            key={m}
+                            className="ms-ai-chip"
+                            title={t("myspace.ai.modelUse", { model: m })}
+                            onClick={() => void pickModelChoice(m)}
+                          >
+                            {m}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {!!aiCfgError && <div className="ms-ai-modal-error">{aiCfgError}</div>}
+                  {aiCfg && !aiCfg.hasKey && (
+                    <div className="ms-ai-modal-warn">
+                      <AlertTriangle size={12} />
+                      <span>{t("myspace.ai.noKeyHint", { provider: aiCfg.providerId })}</span>
+                    </div>
+                  )}
+                </div>
+                <div className="ms-ai-modal-foot">
+                  <span className="muted-sm">{t("myspace.ai.savedAuto")}</span>
+                  <button className="btn btn-primary" onClick={() => setAiCfgOpen(false)}>
+                    {t("common.close")}
+                  </button>
+                </div>
+              </div>
+            </div>,
+            getOverlayRoot() ?? document.body,
+          )}
     </div>
   );
 }

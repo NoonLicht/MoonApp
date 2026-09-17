@@ -76,6 +76,16 @@ server/whisperEngine.js
 server/sitebak.js
 server/tts.js
 
+# Ключи, вшитые в сборку (генерируются scripts/gen-bundled-keys.mjs из секретов
+# CI перед упаковкой инсталлятора). В репозитории их быть не должно.
+server/bundled-keys.js
+# TG WS Proxy (MTProto→WebSocket для Telegram): TS-исходник server/ts/tgwsproxy.ts
+server/tgwsproxy.js
+# ИИ-оформление заметок: TS-исходник server/ts/notesAi.ts
+server/notesAi.js
+# Установка Python-окружения движков озвучки: TS-исходник server/ts/pyEnv.ts
+server/pyEnv.js
+
 bb.txt
 tc.txt
 *.txt

@@ -124,6 +124,29 @@ router.post("/:id/extract", (req, res) => {
 
 // Офлайн-превью: файл распаковывается на лету из .sitebak и отдаётся.
 // path строго валидируется (запрет traversal). HTML — через serveHtml (К2).
+//
+// Файл ищется не только по точному ключу: архивы, собранные до исправления карты
+// ссылок, ссылаются на .jpg, хотя картинка перекодирована в .webp — из-за этого
+// в превью были битые фото (см. findEntry).
+function findEntry(entries, rel) {
+  const direct = entries.get(rel);
+  if (direct) return { entry: direct, rel };
+  const stem = String(rel).replace(/\.[a-z0-9]+$/i, "").toLowerCase();
+  if (!stem) return null;
+  for (const [key, entry] of entries) {
+    if (key.replace(/\.[a-z0-9]+$/i, "").toLowerCase() === stem) return { entry, rel: key };
+  }
+  return null;
+}
+
+/** Отдать найденную запись: HTML — с вырезанными скриптами, остальное — по MIME. */
+function sendEntry(res, rel, entry) {
+  const ext = path.extname(rel).toLowerCase();
+  if (ext === ".html" || ext === ".htm") return serveHtml(res, entry.buf);
+  res.setHeader("Content-Type", MIME[ext] || "application/octet-stream");
+  res.send(entry.buf);
+}
+
 router.get("/:id/file", (req, res) => {
   const file = bakFile(req.params.id);
   if (!file) return res.status(404).json({ error: "not_found" });
@@ -133,12 +156,9 @@ router.get("/:id/file", (req, res) => {
       return res.status(400).json({ error: "bad_path" });
     }
     const { entries } = engine.readBak(file);
-    const entry = entries.get(rel);
-    if (!entry) return res.status(404).json({ error: "no_entry" });
-    const ext = path.extname(rel).toLowerCase();
-    if (ext === ".html" || ext === ".htm") return serveHtml(res, entry.buf);
-    res.setHeader("Content-Type", MIME[ext] || "application/octet-stream");
-    res.send(entry.buf);
+    const found = findEntry(entries, rel);
+    if (!found) return res.status(404).json({ error: "no_entry" });
+    sendEntry(res, found.rel, found.entry);
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -152,12 +172,82 @@ router.get("/:id/raw/*", (req, res) => {
     const rel = decodeURIComponent(req.params[0] || "");
     if (!rel || rel.includes("..")) return res.status(400).json({ error: "bad_path" });
     const { entries } = engine.readBak(file);
-    const entry = entries.get(rel);
-    if (!entry) return res.status(404).json({ error: "no_entry" });
-    const ext = path.extname(rel).toLowerCase();
-    if (ext === ".html" || ext === ".htm") return serveHtml(res, entry.buf);
-    res.setHeader("Content-Type", MIME[ext] || "application/octet-stream");
-    res.send(entry.buf);
+    const found = findEntry(entries, rel);
+    if (!found) return res.status(404).json({ error: "no_entry" });
+    sendEntry(res, found.rel, found.entry);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ==================== Встроенный просмотр архива ====================
+//
+// GET /api/archive/:id/pages — список страниц архива для открытия внутри
+// приложения: путь внутри .sitebak, заголовок <title> и (если сохранился)
+// исходный адрес. Сама страница отдаётся уже существующим /:id/file (или
+// /:id/raw/*, куда переписаны ссылки), поэтому iframe грузит её как обычный
+// документ: ссылки внутри архива ведут на те же локальные адреса, картинки —
+// на /raw/<файл>. Скрипты в HTML вырезаны, CSP жёсткий (serveHtml).
+
+/** HTML-сущности в заголовке: «&amp;» в <title> иначе виден как есть. */
+function decodeEntities(s) {
+  return String(s)
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&nbsp;/g, " ");
+}
+
+/** Заголовок страницы из HTML (длинные обрезаем — это подпись в списке). */
+function pageTitle(html, rel) {
+  const m = /<title[^>]*>([\s\S]{0,400}?)<\/title>/i.exec(html);
+  const title = m ? decodeEntities(m[1].replace(/\s+/g, " ").trim()) : "";
+  return (title || rel.replace(/\.html?$/i, "")).slice(0, 160);
+}
+
+/**
+ * Исходный адрес страницы (canonical / og:url). В самом архиве ссылки уже
+ * переписаны на локальные (/api/archive/...), поэтому такие значения
+ * отбрасываем — показывать «свой же» адрес бессмысленно.
+ */
+function pageUrl(html) {
+  const m =
+    /<link[^>]+rel=["']canonical["'][^>]*href=["']([^"']+)["']/i.exec(html) ||
+    /<meta[^>]+property=["']og:url["'][^>]*content=["']([^"']+)["']/i.exec(html) ||
+    /<link[^>]+href=["']([^"']+)["'][^>]*rel=["']canonical["']/i.exec(html);
+  const url = m ? decodeEntities(m[1]) : "";
+  return /^https?:\/\//i.test(url) ? url : "";
+}
+
+router.get("/:id/pages", (req, res) => {
+  const file = bakFile(req.params.id);
+  if (!file) return res.status(404).json({ error: "not_found" });
+  try {
+    const { manifest, entries } = engine.readBak(file);
+    const pages = [];
+    for (const [rel, entry] of entries) {
+      if (!entry.text || !/\.(html?|xhtml)$/i.test(rel)) continue;
+      const html = entry.buf.toString("utf8");
+      pages.push({
+        path: rel,
+        title: pageTitle(html, rel),
+        url: pageUrl(html),
+        size: entry.buf.length,
+      });
+      // Предохранитель: гигантский архив не должен отдавать бесконечный список.
+      if (pages.length >= 2000) break;
+    }
+    pages.sort((a, b) => a.title.localeCompare(b.title, "ru"));
+    logger.action("sitebak.pages", { id: req.params.id, pages: pages.length });
+    res.json({
+      id: req.params.id,
+      site: manifest.site || "",
+      name: manifest.name || "",
+      total: pages.length,
+      pages,
+    });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

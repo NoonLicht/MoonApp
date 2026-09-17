@@ -251,8 +251,16 @@ export default function MoviesPage() {
         disabled={busy}
         title={t("movies.refresh")}
       />
+
+      {/* Ключ вшит в сборку: говорим об этом явно — иначе непонятно, откуда
+          страница знает ключ, и что свой ключ всё ещё можно ввести (он важнее). */}
+      {status?.keySource === "bundled" && (
+        <span className="muted-sm" title={t("movies.keyBundledHint")}>
+          <KeyRound size={13} /> {t("movies.keyBundled")}
+        </span>
+      )}
     </div>,
-    [kind, view, query, busy],
+    [kind, view, query, busy, status?.keySource],
   );
 
   // Ключа нет — показываем форму ввода (можно не уходить в Настройки).

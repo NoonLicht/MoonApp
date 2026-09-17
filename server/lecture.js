@@ -1368,9 +1368,13 @@ function conspectusState(id) {
 /**
  * Собрать конспект лекции: блоки → черновые заметки → общий конспект.
  * Прогресс доступен на GET /:id/conspectus, пока идёт сборка.
+ *
+ * opts.replace = true — «Регенерировать» со страницы: конспект собирается заново
+ * из расшифровки и ПЕРЕЗАПИСЫВАЕТ заметки, а не дописывается в них. Так кнопка
+ * возвращает «чистый» конспект, если предыдущая сборка оказалась неудачной.
  */
 async function generateConspectus(id, opts = {}) {
-  const { appPage = null, target: injected = null } = opts;
+  const { appPage = null, target: injected = null, replace = false } = opts;
   const st = getStatus(id);
   if (!st) throw new Error("session_not_found");
   if (!st.chunks.some((c) => String(c.text || "").trim())) throw new Error("no_transcript_yet");
@@ -1445,8 +1449,16 @@ async function generateConspectus(id, opts = {}) {
     if (!markdown) throw new Error("conspectus_empty_response");
 
     const lec = stmts.lectureGet.get(id);
+    // replace — «Регенерировать»: заметки ПЕРЕЗАПИСЫВАЮТСЯ новым конспектом
+    // (маркеры «важного» и ручные пометки при этом теряются — кнопку нажали
+    // осознанно). Обычная сборка и авто-режим по-прежнему ДОПИСЫВАЮТ конспект,
+    // чтобы не затирать заметки, которые студент вёл по ходу лекции.
+    // Имя nextNotes, а не merged: merged выше — уже собранные черновые заметки.
+    const nextNotes = replace
+      ? markdown
+      : (lec?.notes ? lec.notes + "\n\n" : "") + markdown;
     stmts.lectureUpdate.run(id, {
-      notes: (lec?.notes ? lec.notes + "\n\n" : "") + markdown,
+      notes: nextNotes,
       // Метаданные авто-режима: когда собрали и по какой длине расшифровки.
       // Без них smart-режим не отличал бы «нового текста нет» от «лекция
       // дочитана» и платил бы за повторную сборку на каждый чанк.
@@ -1465,6 +1477,7 @@ async function generateConspectus(id, opts = {}) {
       chars: markdown.length,
       ms: Date.now() - started,
       truncated,
+      replaced: !!replace,
     });
     setJob({
       state: "done",
@@ -1480,6 +1493,7 @@ async function generateConspectus(id, opts = {}) {
       blocks: blocks.length,
       truncated,
       ofTotal: total,
+      replaced: !!replace,
     };
   } catch (e) {
     const msg = String(e?.message || e);

@@ -19,7 +19,9 @@ const express = require("express");
 const tmdb = require("../tmdb");
 const torrent = require("../torrent");
 const settings = require("../settings");
-const { setSecret, hasSecret } = require("../security");
+// hasSecret здесь больше не нужен: «есть ли ключ» решает сам tmdb (свой секрет
+// ИЛИ вшитый в сборку ключ) — см. tmdb.hasKey() в /status ниже.
+const { setSecret } = require("../security");
 const { stmts } = require("../db");
 const logger = require("../logger");
 
@@ -80,7 +82,10 @@ router.get("/status", (req, res) => {
     /* ignore */
   }
   res.json({
-    hasKey: hasSecret("tmdb"),
+    hasKey: tmdb.hasKey(),
+    // secret — ключ пользователя, bundled — вшитый в сборку, none — нет ключа:
+    // страница по этому полю объясняет, откуда взялся ключ и нужен ли свой.
+    keySource: tmdb.keySource(),
     engine: torrent.engineStatus(),
     settings: cfg,
   });

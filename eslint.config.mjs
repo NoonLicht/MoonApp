@@ -77,6 +77,12 @@ export default tseslint.config(
       "server/whisperEngine.js",
       "server/sitebak.js",
       "server/tts.js",
+      // ИИ-оформление заметок: server/ts/notesAi.ts (комментарий-запрет require
+      // из TS-исходника переезжает в артефакт, где правило не определено).
+      "server/notesAi.js",
+      // Установка Python-окружения озвучки: серверный TS-исходник server/ts/pyEnv.ts
+      // (тот же случай, что у notesAi.js: правило require-импорта не определено).
+      "server/pyEnv.js",
     ],
   },
 

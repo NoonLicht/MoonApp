@@ -35,7 +35,9 @@ import {
 } from "@/components/ui";
 import { ParamField } from "@/pages/voice/parts/ParamField";
 import AudioPlayer from "@/pages/voice/parts/AudioPlayer";
+import { PyEnvPanel } from "@/pages/voice/parts/PyEnvPanel";
 import { useI18n } from "@/app/i18n";
+import type { TranslateFn } from "@/app/i18n";
 import { useContextMenu, copyToClipboard } from "@/components/ContextMenu";
 import { usePageBusy } from "@/components/Toolbar";
 import { api } from "@/api/client";
@@ -48,6 +50,7 @@ import type {
   TtsBookChapter,
   TtsChunk,
   TtsJob,
+  TtsPythonEnv,
 } from "@/api/client";
 
 /**
@@ -223,6 +226,22 @@ function ProToggle({
   );
 }
 
+/**
+ * Текст ошибки рендера. Для ошибок Python-окружения показываем понятное
+ * объяснение вместо сырого «No module named 'torch'»: он не говорит ни что
+ * ставить, ни куда (torch должен стоять в том же интерпретаторе, что выбран в
+ * Настройках → «Голос»).
+ */
+function jobErrorText(t: TranslateFn, job: TtsJob): string {
+  const env = job.envError;
+  if (!env) return job.error;
+  if (env.code === "python_not_found") return t("ab.envNotFound", { cmd: env.cmd });
+  if (env.code === "python_env_missing")
+    return t("ab.envMissing", { modules: (env.missing || []).join(", ") });
+  if (env.code === "probe_failed") return t("ab.envProbeFailed", { detail: env.detail || "" });
+  return job.error;
+}
+
 export default function AudiobookTTSPage() {
   const { t } = useI18n();
   const menu = useContextMenu();
@@ -232,6 +251,19 @@ export default function AudiobookTTSPage() {
   const [presets, setPresets] = useState<TtsPreset[]>([]);
   const [profiles, setProfiles] = useState<TtsProfile[]>([]);
   const [presetName, setPresetName] = useState("");
+
+  // --- Python-окружение движка (torch / torchaudio / f5_tts / TTS) ---
+  // «Нет torch» раньше выяснялось только в самом конце — сообщением «Ошибка
+  // рендера: No module named 'torch'» после загрузки модели. Теперь окружение
+  // проверяется до старта, а ставится и переключается оно в панели PyEnvPanel
+  // (server/ts/pyEnv.ts) — консоль и ручной ввод пути python не нужны.
+  const [pyEnv, setPyEnv] = useState<TtsPythonEnv | null>(null);
+  const loadPyEnv = useCallback((force = false) => {
+    api
+      .ttsEnv(force)
+      .then(setPyEnv)
+      .catch(() => setPyEnv(null));
+  }, []);
 
   // --- Книга и структура ---
   const [book, setBook] = useState<TtsBook | null>(null);
@@ -297,6 +329,13 @@ export default function AudiobookTTSPage() {
   usePageBusy(busy);
   const optimal = hw?.optimal || {};
 
+  // --- Python-окружение ---
+  // Чего именно не хватает (torch / torchaudio / f5_tts / TTS), показывает сама
+  // панель окружения бейджами и подсказкой — здесь это не дублируем.
+  // Панель установки сообщает, что окружение обновилось (модули появились) —
+  // страница перечитывает окружение, минуя серверный кэш.
+  const onEnvChanged = useCallback(() => loadPyEnv(true), [loadPyEnv]);
+
   // Рабочая область: у каждой вкладки своё состояние сворачивания.
   const wsIsOpen = wsOpen[centerTab];
   const toggleWs = () => setWsOpen((o) => ({ ...o, [centerTab]: !o[centerTab] }));
@@ -350,7 +389,7 @@ export default function AudiobookTTSPage() {
       .catch(() => {});
   }, []);
 
-  // Стартовая загрузка: железо (VRAM/бейджи), пресеты, профили.
+  // Стартовая загрузка: железо (VRAM/бейджи), пресеты, профили, Python-окружение.
   useEffect(() => {
     api
       .ttsHardware()
@@ -364,10 +403,11 @@ export default function AudiobookTTSPage() {
       .ttsProfiles()
       .then(setProfiles)
       .catch(() => {});
+    loadPyEnv();
     return () => {
       if (pollRef.current) window.clearInterval(pollRef.current);
     };
-  }, [reloadPresets]);
+  }, [reloadPresets, loadPyEnv]);
 
   // Монитор VRAM/GPU живёт в шапке страницы, поэтому опрашивается всегда:
   // часто во время генерации, реже в простое (сервер кэширует nvidia-smi).
@@ -600,6 +640,10 @@ export default function AudiobookTTSPage() {
           const s = await api.ttsStatus(j.id);
           setJob(s);
           if (s.done || s.stage === "error") {
+            // Рендер упал из-за окружения (нет torch/f5_tts/TTS или не найден
+            // интерпретатор) — сразу перепроверяем окружение, чтобы баннер над
+            // панелью показал актуальную подсказку, а не устаревшую.
+            if (s.stage === "error" && s.envError) loadPyEnv(true);
             if (pollRef.current) {
               window.clearInterval(pollRef.current);
               pollRef.current = null;
@@ -1176,6 +1220,13 @@ export default function AudiobookTTSPage() {
             </div>
           </Glass>
 
+          {/* --- Python-окружение движка: панель установки (PyEnvPanel).
+              Раньше здесь была только подсказка с командой pip, которую нужно
+              было выполнять в консоли руками; теперь torch/f5-tts ставятся из
+              интерфейса (выбор CUDA/CPU, прогресс, отмена). Если модулей не
+              хватает — панель развёрнута, если всё на месте — свёрнута. --- */}
+          <PyEnvPanel engine={engine} env={pyEnv} onChanged={onEnvChanged} />
+
           {/* --- Плеер + генерация: одна строка. Плеер занимает всё свободное
               место (flex: 20), кнопка генерации компактная справа. --- */}
           <Glass className="ab-run-bar">
@@ -1224,6 +1275,8 @@ export default function AudiobookTTSPage() {
             >
               {busy ? t("ab.generating") : t("ab.generate")}
             </Btn>
+            {/* Окружение не готово: панель выше уже объясняет, что установить.
+                Здесь короткая памятка у самой кнопки — «почему не поедет». */}
             {onlyRange && rangeCount > 0 && (
               <span className="ab-tab-badge ab-tab-badge-amber">
                 {t("ab.rangeBadge", { from: batchFrom, to: batchTo })}
@@ -1242,7 +1295,24 @@ export default function AudiobookTTSPage() {
             )}
             {job?.stage === "error" && (
               <div className="ab-run-status muted-sm" style={{ color: "var(--coral)" }}>
-                {t("ab.renderError")}: {job.error}
+                {t("ab.renderError")}: {jobErrorText(t, job)}
+                {/* Команда установки — тут же, чтобы не искать её в настройках. */}
+                {!!job.envError?.installHint && (
+                  <pre
+                    style={{
+                      margin: "6px 0 0",
+                      padding: "6px 8px",
+                      background: "var(--track)",
+                      borderRadius: 4,
+                      fontSize: 11.5,
+                      whiteSpace: "pre-wrap",
+                      wordBreak: "break-all",
+                      color: "var(--text-secondary)",
+                    }}
+                  >
+                    {job.envError.installHint}
+                  </pre>
+                )}
               </div>
             )}
             {job?.done && (

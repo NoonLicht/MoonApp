@@ -9,9 +9,12 @@ import {
   Terminal,
   FolderEdit,
   Star,
+  Send,
+  Copy,
 } from "lucide-react";
 import { api } from "@/api/client";
 import type {
+  TgwsStatus,
   ZapretCheckLight,
   ZapretCheckState,
   ZapretEngine,
@@ -57,6 +60,19 @@ export default function BypassControlPage() {
   const [mode, setMode] = useState<"process" | "service">("service");
   const consoleRef = useRef<HTMLPreElement | null>(null);
 
+  // --- TG WS Proxy: локальный MTProto-прокси для Telegram Desktop ---
+  // Блок самодостаточный: скачать движок → запустить → показать ссылку
+  // tg://proxy для Telegram → остановить. Состояние целиком берём из /tgws.
+  const [tgws, setTgws] = useState<TgwsStatus | null>(null);
+  const [tgwsBusy, setTgwsBusy] = useState("");
+  const [tgwsError, setTgwsError] = useState("");
+  const [tgwsMsg, setTgwsMsg] = useState("");
+  // Черновики полей: уходят на сервер при запуске или явном сохранении.
+  const [tgwsPort, setTgwsPort] = useState(1443);
+  const [tgwsAuto, setTgwsAuto] = useState(false);
+  // Старт PyInstaller-бинаря занимает секунды — держим индикатор ожидания.
+  const [tgwsStarting, setTgwsStarting] = useState(false);
+
   /** Понятный текст ошибки по коду бэкенда. */
   const errorText = useCallback(
     (e: unknown): string => {
@@ -100,6 +116,78 @@ export default function BypassControlPage() {
     }
   }, [errorText]);
 
+  /* --------------------- TG WS Proxy: обработчики --------------------- */
+
+  /**
+   * Код ошибки блока → фраза локали.
+   * Ошибки приходят кодами (tgws_port_busy и т.п.): перевод живёт в UI, а не в
+   * серверных логах, иначе сервер пришлось бы учить шести языкам.
+   */
+  const tgwsErrorText = useCallback(
+    (e: unknown): string => {
+      const raw = String((e as Error)?.message || e);
+      if (/tgws_not_installed/.test(raw)) return t("bypass.tgws.errNotInstalled");
+      if (/tgws_port_busy/.test(raw)) return t("bypass.tgws.errPortBusy");
+      if (/tgws_not_listening|tgws_exited|tgws_spawn_failed/.test(raw))
+        return t("bypass.tgws.errNotListening");
+      if (/tgws_bad_secret/.test(raw)) return t("bypass.tgws.errSecret");
+      if (/tgws_bad_port/.test(raw)) return t("bypass.tgws.errPort");
+      if (/tgws_download_busy/.test(raw)) return t("bypass.tgws.errBusy");
+      if (/hash_mismatch|github_http|download_http/.test(raw))
+        return t("bypass.tgws.errDownload");
+      return raw;
+    },
+    [t],
+  );
+
+  const loadTgws = useCallback(async () => {
+    try {
+      const st = await api.tgwsStatus();
+      setTgws(st);
+      setTgwsPort(st.port);
+      setTgwsAuto(st.autoStart);
+    } catch (e) {
+      setTgwsError(String((e as Error)?.message || e));
+    }
+  }, []);
+
+  /** Обёртка операции блока: busy-метка, разбор ошибки, снятие «запускается». */
+  const doTgws = useCallback(
+    async (kind: string, fn: () => Promise<TgwsStatus>) => {
+      setTgwsBusy(kind);
+      setTgwsError("");
+      setTgwsMsg("");
+      try {
+        setTgws(await fn());
+      } catch (e) {
+        setTgwsError(tgwsErrorText(e));
+      } finally {
+        setTgwsBusy("");
+        setTgwsStarting(false);
+      }
+    },
+    [tgwsErrorText],
+  );
+
+  // Запуск ждёт готовности порта (секунды на распаковку бинаря), поэтому
+  // индикатор включаем ДО запроса, а не по его приходу.
+  const startTgws = useCallback(() => {
+    setTgwsStarting(true);
+    void doTgws("start", () => api.tgwsStart({ port: tgwsPort, autoStart: tgwsAuto }));
+  }, [doTgws, tgwsAuto, tgwsPort]);
+
+  const copyTgwsLink = useCallback(async () => {
+    if (!tgws?.link) return;
+    try {
+      await navigator.clipboard.writeText(tgws.link);
+      setTgwsMsg(t("bypass.tgws.copied"));
+      setTimeout(() => setTgwsMsg(""), 2500);
+    } catch {
+      // Буфер обмена может быть закрыт — показываем ссылку текстом.
+      setTgwsError(tgws.link);
+    }
+  }, [t, tgws?.link]);
+
   useEffect(() => {
     void refresh();
     void checkUpdates();
@@ -129,6 +217,19 @@ export default function BypassControlPage() {
    * они продолжаются и помечают страницу занятой (нельзя выгружать из памяти). */
   const isActive = usePageActive();
   usePageBusy(checkRunning || installState?.state === "working");
+
+  // TG WS Proxy: начальная загрузка блока — состояние движка и черновики полей.
+  useEffect(() => {
+    void loadTgws();
+  }, [loadTgws]);
+
+  /* Пока прокси работает, обновляем аптайм и хвост лога: порт и секрет не
+     меняются, поэтому опрос редкий (5 с) и дешёвый — чтение файлов на сервере. */
+  useEffect(() => {
+    if (!tgws?.running || !isActive) return;
+    const timer = setInterval(() => void loadTgws(), 5000);
+    return () => clearInterval(timer);
+  }, [tgws?.running, isActive, loadTgws]);
 
   // Живой статус движка (во время проверки vendor-скрипт сам глушит и поднимает winws).
   useEffect(() => {
@@ -378,6 +479,151 @@ export default function BypassControlPage() {
           </span>
         </div>
       )}
+
+      {/* TG WS Proxy — локальный MTProto-прокси для Telegram Desktop
+          (Flowseal/tg-ws-proxy). Отдельная карточка: у неё свой движок, свой
+          порт и свой секрет. Порядок для пользователя ровно такой: скачать →
+          запустить → скопировать ссылку tg://proxy в Telegram → остановить. */}
+      <section className="bp-card bp-tgws-card">
+        <h3>
+          <Send size={15} /> {t("bypass.tgws.title")}
+        </h3>
+
+        <div className="bp-engine-line">
+          <span className={`bp-chip ${tgws?.running ? "on" : "off"}`}>
+            {tgwsStarting || tgws?.starting
+              ? t("bypass.tgws.stateStarting")
+              : tgws?.running
+                ? t("bypass.tgws.stateRunning", { port: tgws?.port ?? 0 })
+                : t("bypass.tgws.stateStopped")}
+          </span>
+          <span className="bp-sep">·</span>
+          <span className="bp-dim">
+            {tgws?.installed
+              ? t("bypass.tgws.installed", { version: tgws?.version || "—" })
+              : t("bypass.tgws.notInstalled")}
+          </span>
+          {!!tgws?.running && (
+            <span className="bp-dim">
+              {t("bypass.tgws.uptime", { min: Math.floor((tgws.uptimeMs || 0) / 60000) })}
+            </span>
+          )}
+        </div>
+
+        <div className="bp-actions">
+          {!tgws?.installed ? (
+            <button
+              className="bp-btn"
+              disabled={!!tgwsBusy || tgws?.downloading}
+              onClick={() => void doTgws("install", () => api.tgwsInstall(true))}
+            >
+              <CloudDownload size={16} />{" "}
+              {tgws?.downloading
+                ? t("bypass.tgws.downloading", { percent: tgws.progress })
+                : t("bypass.tgws.download")}
+            </button>
+          ) : tgws?.running ? (
+            <button
+              className="bp-btn danger"
+              disabled={!!tgwsBusy}
+              onClick={() => void doTgws("stop", () => api.tgwsStop())}
+            >
+              <Square size={16} /> {t("bypass.tgws.stop")}
+            </button>
+          ) : (
+            <button className="bp-btn primary" disabled={!!tgwsBusy} onClick={startTgws}>
+              <Play size={16} /> {t("bypass.tgws.start")}
+            </button>
+          )}
+          <button
+            className="bp-btn ghost"
+            onClick={() => void loadTgws()}
+            title={t("bypass.tgws.refresh")}
+          >
+            <RefreshCw size={14} />
+          </button>
+        </div>
+
+        <div className="bp-tgws-fields">
+          <label className="bp-field">
+            <span>{t("bypass.tgws.port")}</span>
+            <input
+              type="number"
+              min={1024}
+              max={65535}
+              value={tgwsPort}
+              // На ходу порт менять нельзя: Telegram подключается по нему, и
+              // смена значения молча оборвала бы связь.
+              disabled={!!tgws?.running || tgwsStarting}
+              onChange={(e) => setTgwsPort(Number(e.target.value))}
+              title={t("bypass.tgws.portHint")}
+            />
+          </label>
+          <label className="bp-check" title={t("bypass.tgws.autoStartHint")}>
+            <input
+              type="checkbox"
+              checked={tgwsAuto}
+              disabled={!!tgws?.running || tgwsStarting}
+              onChange={(e) => {
+                setTgwsAuto(e.target.checked);
+                void api
+                  .tgwsSaveSettings({ autoStart: e.target.checked })
+                  .then(setTgws)
+                  .catch((err) => setTgwsError(tgwsErrorText(err)));
+              }}
+            />
+            {t("bypass.tgws.autoStart")}
+          </label>
+        </div>
+
+        {/* Секрет и ссылка. Секрет одинаковый на сервере и в Telegram, поэтому
+            показываем и копируем его целиком: это локальный прокси, чужих
+            секретов здесь нет, а без него подключение в Telegram не настроить. */}
+        {!!tgws?.secret && (
+          <div className="bp-tgws-link">
+            <span className="bp-dim">{t("bypass.tgws.secret")}</span>
+            <code>{tgws.secret}</code>
+            <button
+              className="bp-btn tiny"
+              onClick={() => void copyTgwsLink()}
+              title={t("bypass.tgws.copyLinkHint")}
+            >
+              <Copy size={12} /> {t("bypass.tgws.copyLink")}
+            </button>
+            <button
+              className="bp-btn tiny ghost"
+              disabled={!!tgws?.running}
+              title={t("bypass.tgws.newSecretHint")}
+              onClick={() => void doTgws("secret", () => api.tgwsRotateSecret())}
+            >
+              <RefreshCw size={12} /> {t("bypass.tgws.newSecret")}
+            </button>
+          </div>
+        )}
+
+        {!!tgws?.link && <div className="bp-tgws-uri">{tgws.link}</div>}
+
+        {!!tgwsMsg && <div className="bp-ok">{tgwsMsg}</div>}
+        {!!tgwsError && <div className="bp-error">{tgwsError}</div>}
+        {!!tgws?.portBusy && !tgws?.running && (
+          <div className="bp-warn">{t("bypass.tgws.errPortBusy")}</div>
+        )}
+
+        <div className="bp-note">
+          <Terminal size={14} />{" "}
+          <span>
+            {tgws?.installed ? t("bypass.tgws.hintReady") : t("bypass.tgws.hintInstall")}
+          </span>
+        </div>
+        <div className="bp-note bp-dim">{t("bypass.tgws.setupSteps")}</div>
+
+        <details className="bp-notes">
+          <summary>{t("bypass.tgws.log")}</summary>
+          <pre className="bp-console-body">
+            {(tgws?.log || []).slice(-60).join("\n") || t("bypass.tgws.logEmpty")}
+          </pre>
+        </details>
+      </section>
 
       {/* Движок: проверка обновлений + скачать/обновить релиз с GitHub */}
       <section className="bp-card bp-engine-card">

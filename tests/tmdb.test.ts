@@ -7,6 +7,10 @@ import os from "os";
 beforeAll(() => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "pa-tmdb-"));
   process.env.MOONAPP_STORAGE = tmp;
+  // Ключ, вшитый в сборку (server/bundled-keys.js), генерируется перед упаковкой
+  // инсталлятора и может лежать у разработчика. Тесты про «ключа нет» должны
+  // зависеть только от секретов, поэтому указываем несуществующий модуль.
+  process.env.MOONAPP_BUNDLED_KEYS = "moonapp-no-bundled-keys";
 });
 
 async function tmdb() {

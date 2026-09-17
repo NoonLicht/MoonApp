@@ -29,6 +29,7 @@ import {
   ClipboardCopy,
   Upload,
   AudioLines,
+  AlertTriangle,
 } from "lucide-react";
 import { Glass, Btn, Select, SectionHead, Badge, EmptyHint } from "@/components/ui";
 import { copyToClipboard } from "@/components/ContextMenu";
@@ -36,7 +37,6 @@ import { snapshotUiSettings } from "@/lib/telemetry";
 // Локальные настройки страниц (localStorage) — их нет в settings.json, поэтому
 // экспорт/импорт настроек переносит их отдельным блоком (см. ниже).
 import { collectUiSettings, applyUiSettings } from "@/lib/uiSettings";
-import { usePageToolbar } from "@/components/Toolbar";
 import { useI18n, LANGS } from "@/app/i18n";
 import { startPageOptions } from "@/app/navigation";
 import { api } from "@/api/client";
@@ -579,12 +579,9 @@ export default function SettingsPage() {
   // Синхронизируем состояние кнопок обновлений больше не нужно: выключателя нет,
   // обновления обязательны (см. выше).
 
-  usePageToolbar(
-    <Badge tone="teal" mono>
-      {dirtyMap.size ? t("settings.unsaved", { n: dirtyMap.size }) : t("settings.saved")}
-    </Badge>,
-    [dirtyMap.size, t],
-  );
+  // Бейдж «сохранено / не сохранено» из шапки убран: рядом с названием страницы
+  // он только занимал место, а факт записи виден всплывающей плашкой снизу
+  // (см. `saved` в конце рендера). Поэтому usePageToolbar здесь не вызывается.
 
   async function persist(next: any, path: string) {
     setS(next);
@@ -1301,6 +1298,17 @@ export default function SettingsPage() {
               suffix=" LUFS"
             />
           </Row>
+          {/* --- Интерпретатор Python для движков озвучки (F5-TTS / XTTS) ---
+              torch и f5-tts редко стоят в том python, что лежит в PATH: обычно
+              это venv/conda. Без этого поля рендер падал с «No module named
+              'torch'», и задать нужное окружение из интерфейса было нечем. --- */}
+          <Row label={t("voiceSettings.pythonCmd")} hint={t("voiceSettings.pythonCmdHint")}>
+            <TextInput
+              value={String(voice.pythonCmd ?? "python")}
+              onChange={(v) => change("voice.pythonCmd", v)}
+              placeholder="python"
+            />
+          </Row>
         </Section>
 
         {/* ---- Лекции: распознавание речи и нарезка чанков (док: lecture) ----
@@ -1574,6 +1582,20 @@ export default function SettingsPage() {
           >
             <Check size={15} style={{ color: "var(--success)" }} />
             <span>{t("settings.savedMsg")}</span>
+          </Glass>
+        )}
+
+        {/* Несохранённые ветки: сюда попадают только те правки, которые сервер НЕ
+            принял (успешные сразу убираются из набора, см. persist). Раньше это
+            же число показывалось бейджем в шапке страницы — он убран, потому что
+            рядом с названием страницы ничего не объяснял. */}
+        {dirtyMap.size > 0 && (
+          <Glass
+            className="source-placeholder"
+            style={{ borderColor: "var(--coral)", color: "var(--text-secondary)" }}
+          >
+            <AlertTriangle size={15} style={{ color: "var(--coral)" }} />
+            <span>{t("settings.unsaved", { n: dirtyMap.size })}</span>
           </Glass>
         )}
       </Glass>

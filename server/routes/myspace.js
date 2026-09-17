@@ -1,5 +1,8 @@
 const express = require("express");
 const vault = require("../myspace-vault");
+// ИИ-оформление заметок: провайдер чата + sidecar с «сырым» текстом
+// (server/ts/notesAi.ts → server/notesAi.js, см. npm run compile:server).
+const notesAi = require("../notesAi");
 const logger = require("../logger");
 
 const router = express.Router();
@@ -44,6 +47,10 @@ router.delete("/file", (req, res) => {
   try {
     const result = vault.deleteFile(req.query.path);
     if (!result.ok) return res.status(404).json(result);
+    // Заметки нет — её sidecar-исходник (.ai/<имя>.txt) тоже больше не нужен,
+    // иначе он остаётся мусором на диске и может быть подхвачен одноимённой
+    // новой заметкой.
+    notesAi.removeSource(req.query.path);
     logger.action("myspace.delete", { path: req.query.path });
     res.json(result);
   } catch (e) {
@@ -58,6 +65,9 @@ router.put("/rename", (req, res) => {
     if (!oldPath || !newPath)
       return res.status(400).json({ error: "oldPath and newPath required" });
     const result = vault.renameFile(oldPath, newPath);
+    // Исходник переезжает вместе с заметкой: «Регенерировать» должно работать и
+    // после переименования.
+    if (result && result.ok) notesAi.moveSource(oldPath, newPath);
     logger.action("myspace.rename", { oldPath, newPath });
     res.json(result);
   } catch (e) {
@@ -136,6 +146,90 @@ router.delete("/holst", (req, res) => {
     res.json(result);
   } catch (e) {
     res.status(500).json({ error: e.message });
+  }
+});
+
+// ==================== ИИ-оформление заметок ====================
+//
+// POST /api/myspace/ai/format     { path }  — оформить текущий текст заметки
+// POST /api/myspace/ai/regenerate { path }  — заново из сохранённого исходника
+//
+// Логика в server/notesAi.js: «оформить» сохраняет «сырой» текст в
+// storage/vault/notes/.ai/<имя>.txt и возвращает аккуратную версию, а
+// «регенерировать» собирает её заново из этого исходника и ПОЛНОСТЬЮ заменяет
+// текст заметки. Обе кнопки пишут файл здесь, а не в модуле: у заметки должен
+// сохраниться её frontmatter и одна точка логирования.
+
+/** Коды notes_ai_* — это подсказки пользователю (нет ключа/модели, нет исходника). */
+function aiStatus(message) {
+  return /notes_ai_(not_configured|provider_unknown|model_missing|no_source|empty_note|too_long|short_output)/.test(
+    String(message || ""),
+  )
+    ? 400
+    : 500;
+}
+
+async function runAiFormat(req, res, mode) {
+  const filePath = (req.body || {}).path;
+  if (!filePath) return res.status(400).json({ error: "path required" });
+  const file = vault.readFile(filePath);
+  if (!file) return res.status(404).json({ error: "not found" });
+  try {
+    const out = await notesAi.formatNote({
+      path: filePath,
+      content: file.content,
+      title: String(file.name || "").replace(/\.md$/, ""),
+      mode,
+      appPage: req.appPage,
+    });
+    // Пишем результат тем же способом, что и обычное сохранение (POST /file):
+    // frontmatter заметки остаётся нетронутым.
+    vault.writeFile(filePath, out.content, file.frontmatter || {});
+    logger.action("myspace.ai." + mode, {
+      path: filePath,
+      provider: out.provider,
+      model: out.model,
+      chars: out.chars,
+    });
+    res.json(out);
+  } catch (e) {
+    res.status(aiStatus(e.message)).json({ error: e.message });
+  }
+}
+
+router.post("/ai/format", (req, res) => runAiFormat(req, res, "format"));
+router.post("/ai/regenerate", (req, res) => runAiFormat(req, res, "regenerate"));
+
+// GET /api/myspace/ai/config   — выбранные провайдер/модель + список провайдеров
+// POST /api/myspace/ai/config  { providerId, model } — сохранить выбор (settings)
+// GET /api/myspace/ai/models?provider=id — живой список моделей провайдера
+//
+// Зачем: провайдер и модель для оформления заметок берутся из настроек чата, и
+// опечатка в имени модели (например «depseek-flash») всплывала сырым JSON от
+// сервиса. Теперь выбор делается списком в самой странице заметок и сохраняется
+// в myspace.ai.provider/model, поэтому повторять его каждый раз не нужно.
+
+router.get("/ai/config", (req, res) => {
+  try {
+    res.json(notesAi.aiConfig());
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.post("/ai/config", (req, res) => {
+  try {
+    res.json(notesAi.setAiConfig(req.body || {}));
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+router.get("/ai/models", async (req, res) => {
+  try {
+    res.json(await notesAi.providerModels(String(req.query.provider || ""), req.appPage));
+  } catch (e) {
+    res.status(400).json({ error: e.message });
   }
 });
 

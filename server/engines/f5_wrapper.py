@@ -15,10 +15,15 @@ python на каждый чанк, и позволяет держать VRAM-г�
   {"type":"shutdown"}
 
 Выход (каждая строка — JSON):
-  {"type":"ready","device":"cuda:0","vramGb":8.0}
+  {"type":"ready","device":"cuda:0","vramGb":8.0}   (или "device":"cpu")
   {"type":"vram","usedGb":4.2,"totalGb":8.0,"utilPct":68}
   {"type":"done","out":"...","sec":3.41}
   {"type":"error","message":"..."}
+
+Устройство выбирается автоматически: CUDA есть — считаем на видеокарте, нет —
+на CPU в FP32 (раньше в этом случае сайдкар падал «cuda_not_available» и студия
+озвучки была нерабочей на машинах без NVIDIA; установщик окружения в UI теперь
+честно предлагает сборку torch CPU или CUDA).
 """
 import os
 import sys
@@ -37,21 +42,39 @@ class F5Engine:
     def __init__(self, cfg):
         self.torch, F5TTS = _load_f5()
         t = self.torch
-        if not t.cuda.is_available():
-            raise RuntimeError("cuda_not_available")
+        # Устройство: CUDA при наличии, иначе CPU. Это не «оптимизация», а
+        # работоспособность: раньше без CUDA сайдкар сразу падал.
+        self.device = "cuda" if t.cuda.is_available() else "cpu"
+        self.deviceId = "cuda:0" if self.device == "cuda" else "cpu"
         # Precision: FP16/BF16 вдвое режут VRAM (8GB карта), FP32 — риск OOM.
+        # На CPU half-точность не ускоряет, а часть ядер её не поддерживает,
+        # поэтому там всегда FP32 (выбор пользователя игнорируем осознанно).
         dtype_map = {
             "float16": t.float16,
             "bfloat16": t.bfloat16,
             "float32": t.float32,
         }
-        dtype = dtype_map.get(cfg.get("precision", "float16"), t.float16)
+        dtype = t.float32 if self.device == "cpu" else dtype_map.get(
+            cfg.get("precision", "float16"), t.float16
+        )
         self.tts = F5TTS(dtype=dtype)  # nfe задаётся на infer
         self.cfg = cfg
-        dev = t.cuda.current_device()
-        props = t.cuda.get_device_properties(dev)
-        self.vramTotal = props.total_memory / (1024 ** 3)
+        if self.device == "cuda":
+            dev = t.cuda.current_device()
+            props = t.cuda.get_device_properties(dev)
+            self.vramTotal = props.total_memory / (1024 ** 3)
+        else:
+            self.vramTotal = 0.0
         return
+
+    def empty_cache(self):
+        """Сброс кэша VRAM — только когда реально считаем на видеокарте."""
+        if self.device != "cuda":
+            return
+        try:
+            self.torch.cuda.empty_cache()
+        except Exception:
+            pass
 
     def vram(self):
         t = self.torch
@@ -72,7 +95,6 @@ class F5Engine:
         return {"usedGb": round(used, 2), "totalGb": round(self.vramTotal, 2), "utilPct": util}
 
     def infer(self, req):
-        t = self.torch
         t0 = time.time()
         wav, sr, _ = self.tts.infer(
             ref_file=req["ref"],
@@ -89,7 +111,7 @@ class F5Engine:
         # VRAM-гард: strict GC после каждого чанка (многокилограммовые рендеры
         # без него утекают в OOM на 8GB).
         gc.collect()
-        t.cuda.empty_cache()
+        self.empty_cache()
         return round(time.time() - t0, 2)
 
 
@@ -108,7 +130,7 @@ def main():
             rtype = req.get("type")
             if rtype == "init":
                 eng = F5Engine(req)
-                _emit({"type": "ready", "device": "cuda:0", "vramGb": eng.vramTotal})
+                _emit({"type": "ready", "device": eng.deviceId, "vramGb": eng.vramTotal})
                 _emit({"type": "vram", **eng.vram()})
             elif rtype == "infer":
                 if eng is None:
@@ -123,10 +145,7 @@ def main():
         except Exception as e:
             _emit({"type": "error", "message": str(e)[:500]})
     if eng is not None:
-        try:
-            eng.torch.cuda.empty_cache()
-        except Exception:
-            pass
+        eng.empty_cache()
 
 
 def _emit(obj):

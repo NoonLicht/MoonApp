@@ -101,6 +101,15 @@ function safeJoin(baseDir: string, relPath: unknown): string | null {
   if (full !== base && !full.startsWith(base + path.sep)) return null;
   return full;
 }
+/**
+ * Служебные записи vault скрыты от проводника заметок: папка .ai с «сырыми»
+ * исходниками ИИ-оформления (server/ts/notesAi.ts) не должна висеть в дереве
+ * пустой папкой — .txt-исходники в дерево всё равно не попадают.
+ */
+function isHidden(name: string): boolean {
+  return name.startsWith(".");
+}
+
 // Внутренний обход дерева (dir — произвольная папка); публичная точка входа
 // buildTree() ниже жёстко привязана к папке заметок, как в .js-версии модуля.
 function walkTree(dir: string, basePath = ""): VaultTreeItem[] {
@@ -112,6 +121,7 @@ function walkTree(dir: string, basePath = ""): VaultTreeItem[] {
     return tree;
   }
   for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
+    if (isHidden(entry.name)) continue;
     const relPath = basePath ? basePath + "/" + entry.name : entry.name;
     if (entry.isDirectory()) {
       tree.push({
@@ -221,6 +231,7 @@ function searchFiles(query: unknown): VaultSearchHit[] {
       return;
     }
     for (const entry of entries) {
+      if (isHidden(entry.name)) continue;
       const relPath = basePath ? basePath + "/" + entry.name : entry.name;
       if (entry.isDirectory()) {
         walk(path.join(dir, entry.name), relPath);
@@ -255,6 +266,7 @@ function getAllTags(): VaultTagCount[] {
       return;
     }
     for (const entry of entries) {
+      if (isHidden(entry.name)) continue;
       if (entry.isDirectory()) {
         walk(path.join(dir, entry.name));
       } else if (entry.name.endsWith(".md")) {
@@ -280,6 +292,7 @@ function getBacklinks(targetPath: string): VaultBacklink[] {
       return;
     }
     for (const entry of entries) {
+      if (isHidden(entry.name)) continue;
       const relPath = basePath ? basePath + "/" + entry.name : entry.name;
       if (entry.isDirectory()) {
         walk(path.join(dir, entry.name), relPath);

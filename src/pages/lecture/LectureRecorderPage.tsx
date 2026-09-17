@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Mic,
   Square,
@@ -16,9 +16,12 @@ import {
   SearchCheck,
   AlertTriangle,
   Users,
+  RefreshCw,
 } from "lucide-react";
 import { api } from "@/api/client";
 import { saveBlob } from "@/lib/download";
+import { parseModelNameError } from "@/lib/modelError";
+import { Btn } from "@/components/ui";
 import type {
   LectureChunk,
   LectureCreateResult,
@@ -128,6 +131,17 @@ function lectureError(t: TranslateFn, e: unknown): string {
   if (/conspectus_model_missing/.test(msg)) return t("lecture.errConspectusModel");
   if (/conspectus_busy/.test(msg)) return t("lecture.errConspectusBusy");
   if (/conspectus_empty_response/.test(msg)) return t("lecture.errConspectusEmpty");
+  // Провайдер не знает такую модель (опечатка или переименование у вендора).
+  // Раньше пользователь видел сырой ответ шлюза вроде
+  // «api error 400: {"error":{"message":"The supported API model names are …"}}»,
+  // из которого не понять, что делать: теперь показываем имена, которые
+  // принимает сервис, а рядом есть кнопка их сохранения (см. баннер ошибки).
+  const modelErr = parseModelNameError(msg);
+  if (modelErr)
+    return t("lecture.errModelNames", {
+      model: modelErr.model || "—",
+      names: modelErr.names.join(", "),
+    });
   if (/HTTP \d+/.test(msg)) return t("lecture.errServer", { code: msg.replace(/^HTTP\s+/, "") });
   return msg || t("lecture.errGeneric");
 }
@@ -223,7 +237,21 @@ export default function LectureRecorderPage() {
   const [title, setTitle] = useState("");
   const [systemAudio, setSystemAudio] = useState(false);
   const [recording, setRecording] = useState(false);
+  // Пауза: микрофон освобождён, но СЕССИЯ на сервере продолжает жить — запись
+  // продолжится в ту же лекцию. Раньше «стоп + запись» всегда создавали новую
+  // лекцию, поэтому поставить паузу и вернуться к ней было нельзя.
+  const [paused, setPaused] = useState(false);
   const [error, setError] = useState("");
+  // «Модель сохранена» — короткая плашка: пользователь только что выбрал модель
+  // из подсказки чипсом и должен видеть, что выбор уже в настройках.
+  const [modelNotice, setModelNotice] = useState("");
+  /**
+   * Ошибка вида «сервис принимает такие-то модели» → показываем кнопку
+   * «Провайдер и модель» и чипсы с именами. Разбор берём из готового текста
+   * ошибки, а не из каждого catch: так подсказка появляется и для ошибок чата,
+   * и для конспекта, и для будущих вызовов модели.
+   */
+  const modelFix = useMemo(() => parseModelNameError(error), [error]);
   const [editing, setEditing] = useState<{ chunkId: number; text: string } | null>(null);
   const [notes, setNotes] = useState("");
   const [notesSaved, setNotesSaved] = useState(false);
@@ -261,7 +289,10 @@ export default function LectureRecorderPage() {
   const notesDirtyRef = useRef(false);
 
   // Запись лекции и разбор в конспект — задачи: страницу нельзя выгружать (keep-alive).
-  usePageBusy(recording || conspectusBusy || calibrating || recheckBusy);
+  // Пауза тоже «задача»: пока она активна, сессия живёт, и выгружать страницу
+  // (теряя её id) нельзя.
+  const recordingActive = recording || paused;
+  usePageBusy(recordingActive || conspectusBusy || calibrating || recheckBusy);
 
   const audioRef = useRef<{
     ctx: AudioContext;
@@ -428,6 +459,27 @@ export default function LectureRecorderPage() {
     refreshConspectusCfg();
   }, [refreshConspectusCfg]);
 
+  /**
+   * Сохранить модель из подсказки («сервис принимает: …»).
+   *
+   * Один клик = выбор сделан и записан в settings.json, поэтому повторять
+   * настройку в следующий раз не нужно (сервер хранит conspectusModel).
+   */
+  const applyModel = useCallback(
+    async (model: string) => {
+      try {
+        await api.lectureConspectusSetSettings({ model });
+        setError("");
+        setModelNotice(t("lecture.modelSaved", { model }));
+        refreshConspectusCfg();
+        if (session) refreshStatus(session.id);
+      } catch (e) {
+        setError(lectureError(t, e));
+      }
+    },
+    [t, refreshConspectusCfg, refreshStatus, session],
+  );
+
   /* ---- Состояние конспекта: прогресс АВТО-сборки после остановки записи ----
    * Авто-конспект (smart/auto) запускается сервером без кнопки, поэтому UI обязан
    * сам замечать, что сборка идёт — иначе «конспекта нет» и «конспект собирается»
@@ -518,6 +570,8 @@ export default function LectureRecorderPage() {
 
   const stopRecording = useCallback(async () => {
     releaseAudio();
+    // Стоп из паузы: прибор закрывается, поэтому снимаем и признак паузы.
+    setPaused(false);
     if (!session) return;
     try {
       const st = await api.lectureStop(session.id);
@@ -528,22 +582,17 @@ export default function LectureRecorderPage() {
     }
   }, [releaseAudio, refreshMeta, session, t]);
 
-  const startRecording = useCallback(async () => {
-    setError("");
-    let created: LectureCreateResult | null = null;
-    let streamLocal: MediaStream | null = null;
-    try {
-      // Порядок важен: сначала получаем аудио и только потом создаём сессию.
-      // Иначе отмена диалога «поделиться звуком» или отказ в доступе к
-      // микрофону оставляли на сервере вечную запись в статусе recording.
-      streamLocal = systemAudio
-        ? await acquireSystemAudio()
-        : await acquireMic(String(audio?.micDeviceId || ""), audio?.micAgc === true);
-      created = await api.lectureCreate(title || t("lecture.defaultTitle"));
-      const sessionId = created.id;
-
+  /**
+   * Подключить аудио-граф к УЖЕ существующей сессии.
+   *
+   * Вынесено из startRecording, чтобы «Пауза → Продолжить» возвращалось в ту же
+   * лекцию: раньше единственной кнопкой продолжения была «Начать запись», а она
+   * всегда создавала НОВУЮ сессию — поставленная пауза терялась.
+   */
+  const attachAudio = useCallback(
+    async (sessionId: number, stream: MediaStream) => {
       const ctx = new AudioContext();
-      const src = ctx.createMediaStreamSource(streamLocal);
+      const src = ctx.createMediaStreamSource(stream);
       const processor = ctx.createScriptProcessor(4096, 1, 1);
       // Гейн входа: тихий микрофон — главная причина «тишина/шум» в чанках.
       // Гейн применяем в графе ДО ScriptProcessor, чтобы на сервер уходил уже
@@ -594,6 +643,7 @@ export default function LectureRecorderPage() {
                 // статусе recording.
                 setError(t("lecture.errIngest"));
                 releaseAudio();
+                setPaused(false);
                 api
                   .lectureStop(sessionId)
                   .then((s) => {
@@ -614,7 +664,25 @@ export default function LectureRecorderPage() {
       processor.connect(mute);
       mute.connect(ctx.destination);
 
-      audioRef.current = { ctx, stream: streamLocal, processor, source: src, gain, track };
+      audioRef.current = { ctx, stream, processor, source: src, gain, track };
+    },
+    [audio, refreshMeta, releaseAudio, systemAudio, t],
+  );
+
+  /** Начать НОВУЮ лекцию: создать сессию на сервере и подключить аудио. */
+  const startRecording = useCallback(async () => {
+    setError("");
+    let created: LectureCreateResult | null = null;
+    let streamLocal: MediaStream | null = null;
+    try {
+      // Порядок важен: сначала получаем аудио и только потом создаём сессию.
+      // Иначе отмена диалога «поделиться звуком» или отказ в доступе к
+      // микрофону оставляли на сервере вечную запись в статусе recording.
+      streamLocal = systemAudio
+        ? await acquireSystemAudio()
+        : await acquireMic(String(audio?.micDeviceId || ""), audio?.micAgc === true);
+      created = await api.lectureCreate(title || t("lecture.defaultTitle"));
+      await attachAudio(created.id, streamLocal);
       setSession(created);
       setStatus(null);
       setNotes("");
@@ -625,6 +693,7 @@ export default function LectureRecorderPage() {
       setNotesStale(false);
       setConspectusSt(null);
       setEditing(null);
+      setPaused(false);
       setRecording(true);
     } catch (e) {
       setError(lectureError(t, e));
@@ -644,7 +713,39 @@ export default function LectureRecorderPage() {
         }
       }
     }
-  }, [refreshMeta, releaseAudio, systemAudio, t, title]);
+  }, [attachAudio, audio, refreshMeta, systemAudio, t, title]);
+
+  /**
+   * ПАУЗА: освобождаем микрофон («ушли на перерыв»), но сессию на сервере НЕ
+   * закрываем — raw.wav, VAD-очередь и заметки остаются той же лекцией, а
+   * «Продолжить» просто снова поднимает звук в тот же id.
+   */
+  const pauseRecording = useCallback(() => {
+    releaseAudio();
+    setPaused(true);
+  }, [releaseAudio]);
+
+  /** Продолжить запись в ТУ ЖЕ лекцию (та же сессия и тот же raw.wav). */
+  const resumeRecording = useCallback(async () => {
+    if (!session) return;
+    setError("");
+    let streamLocal: MediaStream | null = null;
+    try {
+      streamLocal = systemAudio
+        ? await acquireSystemAudio()
+        : await acquireMic(String(audio?.micDeviceId || ""), audio?.micAgc === true);
+      await attachAudio(session.id, streamLocal);
+      setPaused(false);
+      setRecording(true);
+    } catch (e) {
+      setError(lectureError(t, e));
+      try {
+        streamLocal?.getTracks().forEach((tr) => tr.stop());
+      } catch {
+        /* ignore */
+      }
+    }
+  }, [attachAudio, audio, session, systemAudio, t]);
 
   // Страховка на размонтирование (keep-alive выгрузка/перезапуск): не держим
   // микрофон и звук фрагмента.
@@ -896,49 +997,59 @@ export default function LectureRecorderPage() {
     }
   }, [session, t]);
 
-  const runConspectus = useCallback(async () => {
-    if (!session) return;
-    setConspectusBusy(true);
-    setError("");
-    setConspectusNote("");
-    // Конспект длинной лекции — это десятки запросов к модели, поэтому рядом с
-    // шипящим спиннером показываем РЕАЛЬНЫЙ прогресс (блоки 3/12, сведение).
-    const id = session.id;
-    const timer = setInterval(() => {
-      void api
-        .lectureConspectusState(id)
-        .then((st) => {
-          if (st.state === "working") setConspectusNote(conspectusProgressText(t, st));
-          else setConspectusNote("");
-        })
-        .catch(() => {
-          /* прогресс — необязательная роскошь */
-        });
-    }, 1000);
-    try {
-      const r = await api.lectureConspectus(id);
-      setNotes(r.markdown);
-      // Конспект сервер уже дописал в заметки, локальная копия его содержит —
-      // поэтому «Сохранить заметки» не затрёт результат, конфликт снят.
-      notesDirtyRef.current = false;
-      setNotesStale(false);
-      void api
-        .lectureConspectusState(id)
-        .then(setConspectusSt)
-        .catch(() => {
-          /* необязательно */
-        });
-      if (r.truncated)
-        setConspectusNote(t("lecture.conspectusTruncated", { blocks: r.blocks, of: r.ofTotal }));
-      refreshStatus(id);
-    } catch (e) {
-      setError(lectureError(t, e));
-    } finally {
-      clearInterval(timer);
+  /**
+   * Собрать ИИ-конспект из расшифровки.
+   * replace=true — «Регенерировать»: сервер ПЕРЕЗАПИШЕТ заметки новым конспектом
+   * вместо дописывания, поэтому локальную копию заменяем целиком (r.markdown).
+   */
+  const runConspectus = useCallback(
+    async (replace = false) => {
+      if (!session) return;
+      setConspectusBusy(true);
+      setError("");
       setConspectusNote("");
-      setConspectusBusy(false);
-    }
-  }, [refreshStatus, session, t]);
+      // Конспект длинной лекции — это десятки запросов к модели, поэтому рядом с
+      // шипящим спиннером показываем РЕАЛЬНЫЙ прогресс (блоки 3/12, сведение).
+      const id = session.id;
+      const timer = setInterval(() => {
+        void api
+          .lectureConspectusState(id)
+          .then((st) => {
+            if (st.state === "working") setConspectusNote(conspectusProgressText(t, st));
+            else setConspectusNote("");
+          })
+          .catch(() => {
+            /* прогресс — необязательная роскошь */
+          });
+      }, 1000);
+      try {
+        const r = await api.lectureConspectus(id, replace);
+        setNotes(r.markdown);
+        // Конспект сервер уже записал в заметки (дописал или перезаписал при
+        // replace), локальная копия его содержит — значит «Сохранить заметки»
+        // не затрёт результат, конфликт снят.
+        notesDirtyRef.current = false;
+        setNotesStale(false);
+        void api
+          .lectureConspectusState(id)
+          .then(setConspectusSt)
+          .catch(() => {
+            /* необязательно */
+          });
+        if (r.truncated)
+          setConspectusNote(t("lecture.conspectusTruncated", { blocks: r.blocks, of: r.ofTotal }));
+        else if (r.replaced) setConspectusNote(t("lecture.regenerated"));
+        refreshStatus(id);
+      } catch (e) {
+        setError(lectureError(t, e));
+      } finally {
+        clearInterval(timer);
+        setConspectusNote("");
+        setConspectusBusy(false);
+      }
+    },
+    [refreshStatus, session, t],
+  );
 
   /** Открыть прошлую сессию (просмотр/доделка экспорта). */
   const openSession = useCallback(async (id: number) => {
@@ -1012,7 +1123,7 @@ export default function LectureRecorderPage() {
           <span className="lec-dim">{engine?.model ? engine.model.split(/[\\/]/).pop() : "—"}</span>
         </div>
         <div className="lec-actions">
-          {recording && (
+          {recordingActive && (
             <LevelMeter db={levelDb} thresholdDb={audio?.vad.thresholdDb ?? -42} t={t} />
           )}
           {/* Кнопки-иконки, без подписей: ряд больше не распирает шапку, поэтому
@@ -1082,7 +1193,7 @@ export default function LectureRecorderPage() {
           devices={devices}
           levelDb={levelDb}
           metrics={status?.vad?.mic || null}
-          recording={recording}
+          recording={recordingActive}
           calibrating={calibrating}
           onSave={saveAudio}
           onCalibrate={calibrate}
@@ -1094,6 +1205,7 @@ export default function LectureRecorderPage() {
         <LectureConspectusPanel
           onClose={() => setShowConspectus(false)}
           onChanged={refreshConspectusCfg}
+          modelHints={modelFix}
         />
       )}
 
@@ -1134,31 +1246,55 @@ export default function LectureRecorderPage() {
           className="lec-title-input"
           placeholder={t("lecture.titlePlaceholder")}
           value={title}
-          disabled={recording}
+          disabled={recordingActive}
           onChange={(e) => setTitle(e.target.value)}
         />
         <label className="lec-check">
           <input
             type="checkbox"
             checked={systemAudio}
-            disabled={recording}
+            disabled={recordingActive}
             onChange={(e) => setSystemAudio(e.target.checked)}
           />
           <Radio size={14} /> {t("lecture.systemAudio")}
         </label>
-        {!recording ? (
+        {/* Три состояния записи: идёт / пауза / простой. На паузе сессия живёт,
+            поэтому пользователю нужны ОБЕ кнопки — «Продолжить» и «Стоп». */}
+        {paused ? (
+          <>
+            <button className="lec-btn primary" onClick={() => void resumeRecording()}>
+              <Play size={16} /> {t("lecture.resume")}
+            </button>
+            <button
+              className="lec-btn danger"
+              onClick={() => void stopRecording()}
+              title={t("lecture.stopHint")}
+            >
+              <Square size={16} /> {t("lecture.stop")}
+            </button>
+          </>
+        ) : recording ? (
+          <>
+            <button
+              className="lec-btn"
+              onClick={pauseRecording}
+              title={t("lecture.pauseHint")}
+            >
+              <Pause size={16} /> {t("lecture.pause")}
+            </button>
+            <button className="lec-btn danger" onClick={() => void stopRecording()}>
+              <Square size={16} /> {t("lecture.stop")}
+            </button>
+          </>
+        ) : (
           <button className="lec-btn primary" onClick={() => void startRecording()}>
             <Mic size={16} /> {t("lecture.start")}
-          </button>
-        ) : (
-          <button className="lec-btn danger" onClick={() => void stopRecording()}>
-            <Square size={16} /> {t("lecture.stop")}
           </button>
         )}
         {session && (
           <button
             className="lec-btn ghost"
-            disabled={!!busy || recheckBusy || recording}
+            disabled={!!busy || recheckBusy || recordingActive}
             onClick={() => void runRecheck()}
             title={t("lecture.recheck.hint")}
           >
@@ -1166,12 +1302,40 @@ export default function LectureRecorderPage() {
           </button>
         )}
 
-        {recording && (
-          <span className="lec-rec-time">{fmtTs((status?.recordingSec || 0) * 1000)}</span>
+        {recordingActive && (
+          <span className="lec-rec-time">
+            {paused ? `${t("lecture.paused")} · ` : ""}
+            {fmtTs((status?.recordingSec || 0) * 1000)}
+          </span>
         )}
       </div>
 
-      {error && <div className="lec-error">{error}</div>}
+      {error && (
+        <div className="lec-error">
+          <span>{error}</span>
+          {/* Модель не принята провайдером: рядом кнопка выбора «провайдер и
+              модель» (всплывающая панель) и чипсы имён, которые сервис реально
+              принимает. Клик по чипсу сразу сохраняет выбор в настройки. */}
+          {modelFix && (
+            <div className="lec-error-fix">
+              <Btn variant="ghost" icon={Sparkles} onClick={() => setShowConspectus(true)}>
+                {t("lecture.fixModel")}
+              </Btn>
+              {modelFix.names.map((name) => (
+                <button
+                  key={name}
+                  className="lec-model-chip"
+                  title={t("lecture.modelPick", { model: name })}
+                  onClick={() => void applyModel(name)}
+                >
+                  {name}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+      {!!modelNotice && <div className="lec-model-notice">{modelNotice}</div>}
       {status?.lastError && (
         <div className="lec-error">
           {t("lecture.lastError")}: {status.lastError}
@@ -1307,6 +1471,18 @@ export default function LectureRecorderPage() {
               >
                 <Sparkles size={12} />{" "}
                 {conspectusBusy ? t("lecture.conspectusBusy") : t("lecture.conspectus")}
+              </button>
+              {/* «Регенерировать»: тот же проход по расшифровке, но заметки
+                  ПЕРЕЗАПИСЫВАЮТСЯ новым конспектом. Нужна, когда предыдущая
+                  сборка вышла неудачной или в поле накопился мусор: обычная
+                  кнопка выше ДОПИСЫВАЕТ конспект к уже имеющемуся тексту. */}
+              <button
+                className="lec-btn tiny ghost"
+                disabled={!session || conspectusBusy}
+                title={t("lecture.regenerateHint")}
+                onClick={() => void runConspectus(true)}
+              >
+                <RefreshCw size={12} /> {t("lecture.regenerate")}
               </button>
               {/* Режим запуска виден рядом с кнопкой: иначе непонятно, ждать ли
                   конспект автоматически или его надо собирать вручную. */}

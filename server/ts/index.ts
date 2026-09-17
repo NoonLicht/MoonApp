@@ -20,6 +20,7 @@ import settings from "./settings";
 import * as monitor from "./monitor";
 import * as winget from "./winget";
 import * as proxySubs from "./proxySubscriptions";
+import * as tgws from "./tgwsproxy";
 
 /**
  * Роуты и часть модулей ещё не переведены на TS: импорт .js без объявлений не
@@ -48,6 +49,7 @@ const myspaceRouter = require("./routes/myspace") as express.Router;
 const myspaceTasksRouter = require("./routes/myspace-tasks") as express.Router;
 const lectureRouter = require("./routes/lecture") as express.Router;
 const zapretRouter = require("./routes/zapret") as express.Router;
+const tgwsRouter = require("./routes/tgws") as express.Router;
 const perPageProxy = require("./middleware/perPageProxy") as {
   perPageProxyMiddleware: express.RequestHandler;
 };
@@ -226,6 +228,7 @@ function createApp(): express.Express {
   app.use("/api/myspace/tasks", myspaceTasksRouter);
   app.use("/api/lecture", lectureRouter);
   app.use("/api/zapret", zapretRouter);
+  app.use("/api/tgws", tgwsRouter);
 
   // Раздача собранного фронта (dist), если он собран.
   const dist = path.join(__dirname, "..", "dist");
@@ -256,6 +259,11 @@ function createApp(): express.Express {
 
   // LibreHardwareMonitor запускается сам, если это включено в настройках и он установлен.
   monitor.autoStartLhmIfConfigured();
+
+  // tgws.autoStart: локальный MTProto-прокси для Telegram Desktop (страница
+  // Bypass). Поднимаем без ожидания — старт приложения не должен ждать чужой
+  // бинарь, а статус страница всё равно опрашивает сама.
+  void tgws.autoStart();
 
   // store.wingetAutoIndex: при старте один раз индексируем полный каталог winget,
   // если локальный кэш ещё не собран (иначе UI показывает только курируемый seed).

@@ -48,6 +48,14 @@ jobs:
       - name: Fetch bundled engine binaries
         run: npm run fetch:engines
 
+      # Ключ TMDB вшивается в сборку: страница «Фильмы» работает «из коробки»,
+      # а сам ключ в репозитории не лежит (server/bundled-keys.js в .gitignore).
+      # Секрет не задан — шаг просто ничего не вшивает, сборка не падает.
+      - name: Bundle API keys
+        env:
+          MOONAPP_TMDB_KEY: ${{ secrets.TMDB_API_KEY }}
+        run: npm run gen:keys
+
       - name: Build and publish
         env:
           # Встроенный токен — electron-builder публикует в текущий репозиторий.

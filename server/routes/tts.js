@@ -4,6 +4,13 @@
  * API аудиокнижной TTS-студии (F5-TTS + Coqui XTTS v2).
  *
  *  GET    /api/tts/hardware        — GPU/VRAM (nvidia-smi) + «Optimal for Your PC»
+ *  GET    /api/tts/env             — Python-окружение: интерпретатор + модули
+ *                                    (torch/torchaudio/f5_tts/TTS) + прогресс установки
+ *  GET    /api/tts/env/install     — план установки: CUDA/CPU torch, объём, команды
+ *  GET    /api/tts/env/interpreters— найденные интерпретаторы Python с модулями
+ *  POST   /api/tts/env/install     — { engine, device } → pip-установка с прогрессом
+ *  POST   /api/tts/env/cancel      — отменить установку окружения
+ *  POST   /api/tts/env/python      — { cmd } → сохранить интерпретатор (voice.pythonCmd)
  *  GET    /api/tts/presets         — системные + пользовательские пресеты
  *  POST   /api/tts/presets         — сохранить пользовательский пресет
  *  DELETE /api/tts/presets/:id     — удалить пользовательский пресет
@@ -24,6 +31,8 @@ const multer = require("multer");
 const fs = require("fs");
 const path = require("path");
 const engine = require("../tts");
+const pyEnv = require("../pyEnv");
+const settings = require("../settings");
 const { DIRS } = require("../config");
 const bookParser = require("../bookParser");
 const logger = require("../logger");
@@ -53,6 +62,92 @@ router.get("/hardware", async (req, res) => {
     res.json(await engine.detectHardware());
   } catch (e) {
     res.status(500).json({ error: e.message });
+  }
+});
+
+/**
+ * Python-окружение движка: какой интерпретатор выбран (voice.pythonCmd), его
+ * версия/путь и какие модули (torch/torchaudio/f5_tts/TTS) реально установлены.
+ * Страница «Голос» показывает это ДО запуска рендера — иначе первая же попытка
+ * заканчивалась «Ошибка рендера: No module named 'torch'».
+ * ?force=1 — перепроверить, минуя кэш (кнопка «Проверить снова»).
+ * В ответ дополнительно попадает прогресс установки окружения (pyEnv): страница
+ * опрашивает этот же эндпоинт, пока идёт pip install.
+ */
+router.get("/env", async (req, res) => {
+  try {
+    const env = await engine.pythonEnv(req.query.force === "1" || req.query.force === "true");
+    res.json({ ...env, install: pyEnv.installSnapshot() });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+/**
+ * План установки окружения: оба варианта torch (CUDA/CPU), объём загрузки,
+ * команды pip и рекомендуемое устройство по железу. Отдельный эндпоинт, потому
+ * что здесь опрашивается nvidia-smi (в /env он не нужен на каждый поллинг).
+ */
+router.get("/env/install", async (req, res) => {
+  try {
+    res.json(await pyEnv.installState(pyEnv.engineOf(req.query.engine), pyEnv.deviceOf(req.query.device)));
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+/**
+ * Все интерпретаторы на машине с их модулями. Заменяет ручной ввод пути python в
+ * Настройках: пользователь выбирает найденный вариант, и он сохраняется в
+ * voice.pythonCmd (POST /env/python).
+ */
+router.get("/env/interpreters", async (req, res) => {
+  try {
+    res.json({ list: await pyEnv.interpreters() });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+/** Запуск установки: { engine: "f5"|"xtts", device: "cuda"|"cpu", python? }. */
+router.post("/env/install", (req, res) => {
+  try {
+    const snap = pyEnv.install(
+      pyEnv.engineOf(req.body?.engine),
+      pyEnv.deviceOf(req.body?.device),
+      req.body?.python ? String(req.body.python) : undefined,
+    );
+    logger.action("tts.env.install", {
+      engine: snap.engine,
+      device: snap.device,
+      python: snap.python,
+    });
+    res.status(201).json(snap);
+  } catch (e) {
+    // busy — установка уже идёт; остальные тексты показываются как есть.
+    res.status(400).json({ error: e.message });
+  }
+});
+
+/** Отмена установки окружения (процесс pip убивается вместе с дочерними). */
+router.post("/env/cancel", (req, res) => {
+  res.json(pyEnv.cancel());
+});
+
+/**
+ * Выбор интерпретатора: сохраняем путь в voice.pythonCmd, чтобы сайдкар движка и
+ * проверка окружения смотрели в одно и то же место. Путь проверяется тем же
+ * способом, что и в UI: без него torch в venv «не находится».
+ */
+router.post("/env/python", (req, res) => {
+  try {
+    const cmd = String(req.body?.cmd || "").trim();
+    if (!cmd) return res.status(400).json({ error: "empty_python" });
+    settings.set({ voice: { pythonCmd: cmd.slice(0, 500) } });
+    logger.action("tts.env.python", { cmd });
+    res.json({ ok: true, cmd });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
   }
 });
 

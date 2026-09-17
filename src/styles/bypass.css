@@ -507,3 +507,71 @@
 .bp-console-line.warn {
   color: #fbbf24;
 }
+/* ─── TG WS Proxy (Flowseal/tg-ws-proxy) ───
+   Отдельная карточка на странице Bypass: локальный MTProto-прокси для Telegram
+   Desktop. Стили держим рядом с остальными bp-*, чтобы блок не расползался по
+   другим css-файлам страницы. */
+.bp-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.bp-tgws-fields {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.bp-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+}
+.bp-field input {
+  width: 110px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.14));
+  background: rgba(0, 0, 0, 0.25);
+  color: inherit;
+  font: inherit;
+}
+.bp-field input:disabled {
+  opacity: 0.55;
+}
+.bp-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  opacity: 0.9;
+}
+.bp-tgws-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 12.5px;
+}
+/* Секрет длиной 32 hex-символа: переносим, иначе он растягивает карточку. */
+.bp-tgws-link code {
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 11px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 6px;
+  padding: 2px 6px;
+  word-break: break-all;
+}
+.bp-tgws-uri {
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 10.5px;
+  line-height: 1.4;
+  opacity: 0.7;
+  word-break: break-all;
+}
+.bp-ok {
+  font-size: 12.5px;
+  color: #34d399;
+}

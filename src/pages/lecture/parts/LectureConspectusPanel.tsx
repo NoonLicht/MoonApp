@@ -5,6 +5,7 @@ import { useI18n } from "@/app/i18n";
 import type { TranslateFn } from "@/app/i18n";
 import { api } from "@/api/client";
 import type { LectureConspectusSettings, LectureConspectusTrigger } from "@/api/client";
+import type { ModelNameError } from "@/lib/modelError";
 
 /**
  * Панель «ИИ-конспект»: каким ИИ делать конспект лекции и когда его запускать.
@@ -51,10 +52,16 @@ export default function LectureConspectusPanel({
   onClose,
   inline = false,
   onChanged,
+  modelHints = null,
 }: {
   onClose?: () => void;
   inline?: boolean;
   onChanged?: () => void;
+  /**
+   * Разбор ошибки «провайдер не принимает модель» (см. src/lib/modelError.ts):
+   * показываем имена, которые сервис реально принимает, — одним кликом.
+   */
+  modelHints?: ModelNameError | null;
 }) {
   const { t } = useI18n();
   const [cfg, setCfg] = useState<LectureConspectusSettings | null>(null);
@@ -214,6 +221,24 @@ export default function LectureConspectusPanel({
 
   const active = cfg?.providers.find((p) => p.id === cfg.providerId);
   const noKey = !!cfg && !cfg.hasKey;
+  /**
+   * Сохранённая модель, которой НЕТ в живом списке провайдера: типичный случай —
+   * опечатка («depseek-flash» вместо «deepseek-flash»). Раньше такое значение
+   * просто показывалось первой опцией селекта (чтобы выбор «не исчезал»), и
+   * проблема маскировалась: конспект падал только при сборке, сырым ответом
+   * шлюза. Теперь панель сразу предупреждает и предлагает имена из списка.
+   */
+  const modelUnknown =
+    !!draft?.model && !!models?.length && !models.includes(draft.model.trim());
+  /** Чем заменить неверную модель: живой список провайдера или имена из ошибки. */
+  const modelChoices = modelUnknown
+    ? (models || []).slice(0, 8)
+    : (modelHints?.names || []).slice(0, 8);
+  const modelWarn = modelUnknown
+    ? t("lecture.conspectusPanel.modelUnknown", { model: draft?.model || "" })
+    : modelHints?.names?.length
+      ? t("lecture.conspectusPanel.modelRejected", { model: modelHints.model || "—" })
+      : "";
   const dirty = !!draft && !!cfg && JSON.stringify(draft) !== JSON.stringify(cfg);
   const body = (
     <div className={inline ? "lecs-inline-body" : "lecs-panel"}>
@@ -327,6 +352,29 @@ export default function LectureConspectusPanel({
             ? t("lecture.conspectusPanel.modelFound", { count: models.length })
             : t("lecture.conspectusPanel.modelHint")}
         </div>
+        {/* Неверная модель: что случилось и на что её заменить (один клик). */}
+        {!!modelWarn && (
+          <div className="lecs-warn lecs-model-warn">
+            <AlertTriangle size={13} />
+            <div className="lecs-model-warn-body">
+              <span>{modelWarn}</span>
+              {!!modelChoices.length && (
+                <span className="lec-model-chips">
+                  {modelChoices.map((m) => (
+                    <button
+                      key={m}
+                      className="lec-model-chip"
+                      title={t("lecture.modelPick", { model: m })}
+                      onClick={() => pickModel(m)}
+                    >
+                      {m}
+                    </button>
+                  ))}
+                </span>
+              )}
+            </div>
+          </div>
+        )}
       </div>
       {/* --- Умный порог: что считать «есть что конспектировать» --- */}
       {draft?.trigger === "smart" && (

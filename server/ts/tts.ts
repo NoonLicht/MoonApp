@@ -188,6 +188,22 @@ interface TtsPreset {
   createdAt?: number;
 }
 
+/**
+ * Диагностика Python-окружения для UI: сырое «No module named 'torch'» ничего
+ * не объясняет, поэтому задание несёт машинный код, интерпретатор и список
+ * ненайденных модулей — по ним страница «Голос» показывает понятный текст и
+ * готовую команду установки.
+ */
+interface TtsEnvError {
+  code: string;
+  cmd: string;
+  detail: string;
+  python: string;
+  executable: string;
+  missing: string[];
+  installHint: string;
+}
+
 /** Задание озвучки: чанки, параметры, прогресс и результат. */
 interface TtsJob {
   id: string;
@@ -205,6 +221,7 @@ interface TtsJob {
   items: TtsItem[];
   estimateTotalMs: number;
   opts: NormalizedParams;
+  envError?: TtsEnvError;
   [key: string]: unknown;
 }
 
@@ -528,6 +545,8 @@ class EngineSidecar {
   child: ChildProcess | null;
   buffer: string;
   waiters: Array<(msg: SidecarMessage) => void>;
+  /** Ошибка запуска интерпретатора (ENOENT и т.п.) — «залипает» до конца жизни. */
+  spawnError: string;
 
   constructor(engineName: unknown) {
     this.engine = engineName === "xtts" ? "xtts" : "f5";
@@ -539,15 +558,25 @@ class EngineSidecar {
     this.child = null;
     this.buffer = "";
     this.waiters = [];
+    this.spawnError = "";
   }
 
   _start(): this {
-    const python = String(settings.get("voice")?.pythonCmd || "python");
+    const python = pythonCmd();
     const child = spawn(python, [this.script], {
       windowsHide: true,
       stdio: ["pipe", "pipe", "pipe"],
     });
     this.child = child;
+    // spawn падает мгновенно (ENOENT: интерпретатор не найден по указанному в
+    // настройках пути). Без обработчика запрос висел до таймаута 10 минут, а
+    // поток stdin ронял процесс необработанным EPIPE.
+    child.on("error", (e) => {
+      this.spawnError = `python_spawn_failed: ${String((e as Error).message || e)}`;
+      const msg: SidecarMessage = { type: "error", message: this.spawnError };
+      const waiters = this.waiters.splice(0, this.waiters.length);
+      for (const w of waiters) w(msg);
+    });
     child.stdout?.setEncoding("utf8");
     child.stdout?.on("data", (d) => {
       this.buffer += String(d);
@@ -575,6 +604,9 @@ class EngineSidecar {
   ask(obj: Record<string, unknown>, timeoutMs = 3600000): Promise<SidecarMessage> {
     return new Promise<SidecarMessage>((resolve, reject) => {
       const stdin = this.child?.stdin;
+      // Ошибка запуска уже случилась (нет интерпретатора), либо процесс умер:
+      // отвечаем сразу, не ожидая таймаута.
+      if (this.spawnError) return reject(new Error(this.spawnError));
       if (!stdin || this.child?.exitCode != null) return reject(new Error("sidecar_dead"));
       const timer = setTimeout(() => {
         const i = this.waiters.indexOf(w);
@@ -604,6 +636,266 @@ class EngineSidecar {
       }
     }, 500);
   }
+}
+
+/* ------------------------- Python-окружение ------------------------- */
+
+/**
+ * Требуемые Python-модули для каждого движка:
+ *   f5   — torch + torchaudio + f5_tts (пакет `f5-tts`), pynvml опционален;
+ *   xtts — torch + torchaudio + TTS (Coqui).
+ *
+ * Зачем проверять заранее: приложение запускает сайдкар через `python` из PATH,
+ * но torch/f5_tts обычно стоят в ДРУГОМ окружении (venv, conda, `py -3.11`).
+ * Тогда рендер падал сырым «No module named 'torch'» уже внутри python, и в UI
+ * это выглядело как «Ошибка рендера: No module named 'torch'» без подсказки,
+ * что и куда ставить. Теперь окружение проверяется до запуска задания, а
+ * интерпретатор задаётся в настройках (voice.pythonCmd).
+ */
+const ENGINE_REQUIRED: Record<TtsEngine, string[]> = {
+  f5: ["torch", "torchaudio", "f5_tts"],
+  xtts: ["torch", "torchaudio", "TTS"],
+};
+
+/**
+ * Готовые команды установки отсутствующих модулей (подсказка в UI).
+ * Индекс CUDA — cu132 (актуальный стабильный, PyTorch 2.14): сборки на CUDA 12.8+
+ * требуют Turing/7.5+, поэтому для карт без RT-ядер здесь нужен cu126 — эта
+ * разница разложена по вариантам в панели установки (server/ts/pyEnv.ts).
+ */
+const PIP_HINT: Record<string, string> = {
+  torch:
+    "pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu132",
+  torchaudio:
+    "pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu132",
+  f5_tts: "pip install f5-tts",
+  TTS: "pip install TTS",
+  pynvml: "pip install nvidia-ml-py",
+};
+
+/** Результат проверки Python-окружения (уходит в UI через GET /api/tts/env). */
+export interface PythonEnv {
+  /** Интерпретатор ответил и модули перечислены. */
+  ok: boolean;
+  /** Код ошибки: "" | python_not_found | probe_failed. */
+  error: string;
+  /** Детали ошибки (текст от ОС/интерпретатора) — для логов и UI. */
+  detail: string;
+  cmd: string;
+  python: string;
+  executable: string;
+  modules: Record<string, boolean>;
+  /** Чего не хватает для F5-TTS. */
+  missingF5: string[];
+  /** Чего не хватает для Coqui XTTS v2. */
+  missingXtts: string[];
+  /** Команды установки для F5-TTS / XTTS (пустая строка — всё на месте). */
+  installF5: string;
+  installXtts: string;
+  checkedAt: number;
+  cached: boolean;
+}
+
+let envCache: PythonEnv | null = null;
+let envCacheCmd = "";
+const ENV_TTL_MS = 30000;
+
+/** Интерпретатор из настроек (пусто/мусор → "python" из PATH). */
+function pythonCmd(): string {
+  return String(settings.get("voice")?.pythonCmd || "python").trim() || "python";
+}
+
+/** Команда установки для списка отсутствующих модулей (без дублей). */
+function hintFor(missing: string[]): string {
+  return [...new Set(missing.map((m) => PIP_HINT[m]).filter(Boolean))].join("\n");
+}
+
+function engineMissing(env: PythonEnv, engine: TtsEngine): string[] {
+  return engine === "xtts" ? env.missingXtts : env.missingF5;
+}
+
+function envFail(cmd: string, error: string, detail: string): PythonEnv {
+  return {
+    ok: false,
+    error,
+    detail,
+    cmd,
+    python: "",
+    executable: "",
+    modules: {},
+    missingF5: [...ENGINE_REQUIRED.f5],
+    missingXtts: [...ENGINE_REQUIRED.xtts],
+    installF5: hintFor(ENGINE_REQUIRED.f5),
+    installXtts: hintFor(ENGINE_REQUIRED.xtts),
+    checkedAt: Date.now(),
+    cached: false,
+  };
+}
+
+/** JSON-ответ пробы окружения (server/engines/python_env.py). */
+interface ProbeResult {
+  python?: unknown;
+  executable?: unknown;
+  modules?: Record<string, unknown>;
+}
+
+/** Разбор JSON-строки пробы (server/engines/python_env.py). */
+function parseEnv(cmd: string, out: string, code: number | null, errTail: string): PythonEnv {
+  let data: ProbeResult | null = null;
+  for (const line of out.split(/\r?\n/)) {
+    const t = line.trim();
+    if (!t.startsWith("{")) continue;
+    try {
+      data = JSON.parse(t) as ProbeResult;
+    } catch {
+      /* не наш JSON — ищем дальше */
+    }
+  }
+  if (!data) return envFail(cmd, "probe_failed", errTail.trim() || `exit ${code}`);
+  const modules: Record<string, boolean> = {};
+  for (const [k, v] of Object.entries(data.modules || {})) modules[k] = v === true;
+  const miss = (need: string[]) => need.filter((m) => !modules[m]);
+  const missingF5 = miss(ENGINE_REQUIRED.f5);
+  const missingXtts = miss(ENGINE_REQUIRED.xtts);
+  return {
+    ok: true,
+    error: "",
+    detail: "",
+    cmd,
+    python: String(data.python || ""),
+    executable: String(data.executable || ""),
+    modules,
+    missingF5,
+    missingXtts,
+    installF5: hintFor(missingF5),
+    installXtts: hintFor(missingXtts),
+    checkedAt: Date.now(),
+    cached: false,
+  };
+}
+
+/**
+ * Проверка окружения: `<pythonCmd> server/engines/python_env.py` → JSON.
+ * find_spec внутри пробы не грузит torch (секунды экономии) и не занимает VRAM.
+ * Результат кэшируется на 30 секунд, чтобы поллинг UI не спавнил python зря.
+ */
+function pythonEnv(force = false): Promise<PythonEnv> {
+  const cmd = pythonCmd();
+  if (!force && envCache && envCacheCmd === cmd && Date.now() - envCache.checkedAt < ENV_TTL_MS) {
+    return Promise.resolve({ ...envCache, cached: true });
+  }
+  const script = path.join(__dirname, "engines", "python_env.py");
+  return new Promise<PythonEnv>((resolve) => {
+    let out = "";
+    let errTail = "";
+    let done = false;
+    const finish = (env: PythonEnv) => {
+      envCache = env;
+      envCacheCmd = cmd;
+      resolve(env);
+    };
+    const child = spawn(cmd, [script], { windowsHide: true });
+    const timer = setTimeout(() => {
+      if (done) return;
+      done = true;
+      try {
+        child.kill();
+      } catch {
+        /* ignore */
+      }
+      finish(envFail(cmd, "probe_failed", "timeout"));
+    }, 20000);
+    child.stdout?.on("data", (d) => {
+      out += String(d);
+    });
+    child.stderr?.on("data", (d) => {
+      errTail = (errTail + String(d)).slice(-500);
+    });
+    child.on("error", (e) => {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      finish(envFail(cmd, "python_not_found", String((e as Error).message || e)));
+    });
+    child.on("close", (code) => {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      finish(parseEnv(cmd, out, code, errTail));
+    });
+  });
+}
+
+/**
+ * Провалить задание ДО запуска сайдкара, если окружение не готово, и положить в
+ * job.envError машинную диагностику для UI. Без этого пользователь получал
+ * «No module named 'torch'» после многоминутного ожидания загрузки модели.
+ */
+async function assertPythonEnv(job: TtsJob): Promise<void> {
+  const env = await pythonEnv();
+  if (!env.ok) {
+    const code = String(env.error || "probe_failed").split(":")[0];
+    job.envError = {
+      code,
+      cmd: env.cmd,
+      detail: env.detail,
+      python: env.python,
+      executable: env.executable,
+      missing: engineMissing(env, job.engine),
+      installHint: job.engine === "xtts" ? env.installXtts : env.installF5,
+    };
+    throw new Error(code === "python_not_found" ? `python_not_found: ${env.cmd}` : code);
+  }
+  const missing = engineMissing(env, job.engine);
+  if (missing.length) {
+    job.envError = {
+      code: "python_env_missing",
+      cmd: env.cmd,
+      detail: "",
+      python: env.python,
+      executable: env.executable,
+      missing,
+      installHint: job.engine === "xtts" ? env.installXtts : env.installF5,
+    };
+    throw new Error(`python_env_missing: ${missing.join(",")}`);
+  }
+}
+
+/**
+ * Нормализация ошибок сайдкара: если python всё же упал внутри импорта
+ * («No module named 'x'»), превращаем текст в тот же код + подсказку. Это
+ * страховка на случаи, когда find_spec прошёл, а импорт упал (битые DLL/ABI).
+ */
+function envAwareError(job: TtsJob, msg: unknown): Error {
+  const text = String(msg || "");
+  // Интерпретатор вообще не запустился: путь из настроек неверный.
+  if (/python_spawn_failed/.test(text)) {
+    job.envError = {
+      code: "python_not_found",
+      cmd: pythonCmd(),
+      detail: text,
+      python: "",
+      executable: "",
+      missing: [],
+      installHint: "",
+    };
+    return new Error(`python_not_found: ${pythonCmd()}`);
+  }
+  const m = /No module named ['"]([^'"]+)['"]/.exec(text);
+  if (m) {
+    const mod = m[1].split(".")[0];
+    job.envError = {
+      code: "python_env_missing",
+      cmd: pythonCmd(),
+      detail: text,
+      python: "",
+      executable: "",
+      missing: [mod],
+      installHint: hintFor([mod]),
+    };
+    return new Error(`python_env_missing: ${mod}`);
+  }
+  return new Error(text);
 }
 
 /* ------------------------- Задание ------------------------- */
@@ -729,10 +1021,14 @@ function spawnFFmpeg(args: string[]): Promise<void> {
 async function runPipeline(job: TtsJob): Promise<void> {
   try {
     const cfg = job.opts;
+    job.stage = "model_load";
+    job.progress = 1;
+    // Предполётная проверка окружения ДО спавна движка: без неё пользователь
+    // ждал загрузку модели и получал «Ошибка рендера: No module named 'torch'».
+    await assertPythonEnv(job);
     const sidecar = new EngineSidecar(job.engine)._start();
     const chunkDir = path.join(DIRS.tts, job.id);
     fs.mkdirSync(chunkDir, { recursive: true });
-    job.stage = "model_load";
     job.progress = 2;
 
     // init: модель в VRAM один раз на всё задание
@@ -855,9 +1151,11 @@ async function runPipeline(job: TtsJob): Promise<void> {
     job.stage = "done";
     logger.info("tts.done", { id: job.id, chunks: job.items.length, size: job.outSize });
   } catch (e) {
-    job.error = String((e as Error).message || e);
+    // Ошибку сайдкара приводим к машинному коду: страница «Голос» показывает по
+    // job.envError понятный текст и команду установки вместо «No module named…».
+    job.error = envAwareError(job, (e as Error)?.message || e).message;
     job.stage = "error";
-    logger.error("tts.error", { id: job.id, error: job.error });
+    logger.error("tts.error", { id: job.id, error: job.error, env: job.envError || null });
   }
 }
 
@@ -968,6 +1266,7 @@ export {
   startJob,
   getJob,
   detectHardware,
+  pythonEnv,
   previewChunks,
   revealInExplorer,
   saveProfile,

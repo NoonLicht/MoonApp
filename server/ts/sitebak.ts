@@ -298,14 +298,47 @@ function harvestLinks(html: string, base: string): { links: string[]; assets: st
   return { links: [...links], assets: [...assets] };
 }
 
+// Экранирование спецсимволов регулярного выражения.
+function escapeRe(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+// Абсолютное и протокол-относительное написание ссылки: https://h/a.jpg и //h/a.jpg.
+function absVariants(url: string): string[] {
+  const noProto = url.replace(/^https?:/, "");
+  return noProto === url ? [url] : [url, noProto];
+}
+
+// Относительные написания: "/img/a.jpg", "img/a.jpg", "./img/a.jpg" (с query).
+// Нужны потому, что большинство сайтов ссылается на ресурсы именно так, и без
+// них офлайн-превью тянуло картинки/стили со своего адреса и получало 404.
+function relVariants(url: string): string[] {
+  try {
+    const u = new URL(url);
+    if (u.pathname.length < 2) return []; // "/" — сама страница, не ресурс
+    const rest = u.pathname.replace(/^\//, "");
+    return [...new Set([`${u.pathname}${u.search}`, `${rest}${u.search}`, `./${rest}${u.search}`])];
+  } catch {
+    return []; // не URL — сопоставлять нечего
+  }
+}
+
 // Перезапись путей в HTML/CSS на локальные ссылки превью (/raw/<rel>).
-// Меняем все вхождения известных URL (абсолютные и протокол-относительные).
 function rewriteRefs(text: string, id: string, urlMap: Map<string, string>): string {
   let out = text;
   for (const [url, rel] of urlMap) {
     const local = `/api/archive/${id}/raw/${rel}`;
-    const noProto = url.replace(/^https?:/, "");
-    out = out.split(url).join(local).split(noProto).join(local);
+    for (const cand of absVariants(url)) {
+      out = out.split(cand).join(local);
+    }
+    // Относительные ссылки заменяем только ВНУТРИ кавычек атрибутов и в CSS
+    // url(...) — так текст страницы не портится.
+    for (const cand of relVariants(url)) {
+      if (cand.length < 2) continue;
+      const esc = escapeRe(cand);
+      out = out.replace(new RegExp(`(["'])${esc}\\1`, "g"), (_m, q: string) => `${q}${local}${q}`);
+      out = out.replace(new RegExp(`url\\(\\s*${esc}\\s*\\)`, "g"), `url(${local})`);
+    }
   }
   return out;
 }
@@ -634,7 +667,12 @@ async function runCrawl(job: SitebakJob): Promise<void> {
         }
         if (res) {
           files.delete(rel);
-          files.set(rel.replace(/\.[a-z]+$/i, ".mp4"), { buf: res.buf, text: false });
+          const newRel = rel.replace(/\.[a-z]+$/i, ".mp4");
+          files.set(newRel, { buf: res.buf, text: false });
+          // Ссылки в HTML переписываются по urlMap (rewriteRefs) — в нём должен
+          // лежать НОВЫЙ ключ. Иначе превью ссылалось бы на .mkv, которого в
+          // архиве уже нет: картинки/видео показывались бы «битыми».
+          for (const [u, r] of urlMap) if (r === rel) urlMap.set(u, newRel);
         }
         continue;
       }
@@ -645,20 +683,25 @@ async function runCrawl(job: SitebakJob): Promise<void> {
         const tmp = path.join(workDir, "img_" + rel.replace(/[\\/:*?"<>|]/g, "_"));
         fs.writeFileSync(tmp, f.buf);
         // Перекодирование в WebP/AVIF удаляет EXIF; "original" — только EXIF.
-        const { buf } = await optimizeImage(tmp, o.imageMode, ffmpeg, o.stripExif);
+        // Расширение берём у самой функции: если ffmpeg недоступен, она вернула
+        // исходные байты, и переименовывать файл в .webp нельзя — иначе архив
+        // отдавал бы JPEG под MIME image/webp.
+        const { buf, ext } = await optimizeImage(tmp, o.imageMode, ffmpeg, o.stripExif);
         try {
           fs.rmSync(tmp, { force: true });
         } catch {
           /* ignore */
         }
-        const newExt =
-          o.imageMode === "original"
-            ? path.extname(rel)
-            : o.imageMode === "avif"
-              ? ".avif"
-              : ".webp";
+        const newExt = `.${String(ext || path.extname(rel).slice(1)).replace(/^\./, "") || "bin"}`;
+        const newRel = rel.replace(/\.[a-z]+$/i, newExt);
         files.delete(rel);
-        files.set(rel.replace(/\.[a-z]+$/i, newExt), { buf, text: false });
+        files.set(newRel, { buf, text: false });
+        // Ключ файла сменился (jpg → webp): в urlMap должен уехать именно он,
+        // иначе rewriteRefs оставил бы в HTML ссылку на несуществующий .jpg и
+        // все картинки в превью были бы битыми (реальная жалоба пользователя).
+        if (newRel !== rel) {
+          for (const [u, r] of urlMap) if (r === rel) urlMap.set(u, newRel);
+        }
       }
       if (f.text && o.stripScripts) {
         f.buf = Buffer.from(
@@ -669,26 +712,40 @@ async function runCrawl(job: SitebakJob): Promise<void> {
     }
 
     // --- С2: перезапись URL в HTML/CSS на локальные пути превью ---
+    // Порядок принципиален: сперва переписываем CSS (у них флажок text не
+    // выставлен, но ссылки внутри те же — url(/img/...) в фоне), затем вшиваем
+    // УЖЕ переписанный CSS в HTML и только потом переписываем сам HTML.
+    // Раньше вшивание шло после перезаписи HTML и потому не срабатывало:
+    // <link href> к тому моменту был уже локальным, а шаблон искал исходный
+    // адрес — в итоге правило inlineAssets не вшивало ничего, а вшитый (если бы
+    // он вшился) CSS уносил в страницу не переписанные url().
+    for (const [rel, f] of files) {
+      if (f.text || !/\.css$/i.test(rel)) continue;
+      f.buf = Buffer.from(rewriteRefs(f.buf.toString("utf8"), job.id, urlMap), "utf8");
+    }
     // Снимок [...files] нужен осознанно: ниже из Map удаляются вшитые CSS.
     for (const [_rel, f] of [...files]) {
       if (!f.text) continue;
       let text = f.buf.toString("utf8");
-      text = rewriteRefs(text, job.id, urlMap);
       // inlineAssets: css вшивается прямо в HTML вместо <link> (С4).
       if (o.inlineAssets) {
         for (const [url, arel] of urlMap) {
           const css = files.get(arel);
           if (!css || !/\.css$/i.test(arel)) continue;
-          const esc = url.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-          const linkRe = new RegExp(`<link[^>]*href=["']${esc}["'][^>]*>`, "gi");
-          if (linkRe.test(text)) {
-            const cssText = css.buf.toString("utf8").replace(/<\/style/gi, "<\\/style");
+          const cssText = css.buf.toString("utf8").replace(/<\/style/gi, "<\\/style");
+          // Ищем <link> по всем написаниям адреса: сайты пишут и абсолютный, и
+          // корневой "/css/site.css", и относительный "css/site.css".
+          for (const cand of [...absVariants(url), ...relVariants(url)]) {
+            if (cand.length < 2) continue;
+            const linkRe = new RegExp(`<link[^>]*href=["']${escapeRe(cand)}["'][^>]*>`, "gi");
+            if (!linkRe.test(text)) continue;
             text = text.replace(linkRe, `<style>${cssText}</style>`);
             files.delete(arel);
+            break;
           }
         }
       }
-      f.buf = Buffer.from(text, "utf8");
+      f.buf = Buffer.from(rewriteRefs(text, job.id, urlMap), "utf8");
     }
     try {
       fs.rmSync(workDir, { recursive: true, force: true });

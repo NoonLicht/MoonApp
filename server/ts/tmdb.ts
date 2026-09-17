@@ -6,8 +6,10 @@
  * плюс нормализацию «сырых» ответов TMDB в удобные для фронта структуры.
  *
  * Ключевые особенности:
- *  - КЛЮЧ — только из зашифрованных секретов (storage/secrets.json), не из
- *    настроек: см. security.getSecret("tmdb"). Поддерживаются оба формата TMDB:
+ *  - КЛЮЧ — сначала из зашифрованных секретов (storage/secrets.json), не из
+ *    настроек: см. security.getSecret("tmdb"). Если своего ключа нет — берётся
+ *    вшитый в сборку (server/bundled-keys.js от scripts/gen-bundled-keys.mjs),
+ *    чтобы страница работала «из коробки». Поддерживаются оба формата TMDB:
  *    API Key (v3, ?api_key=) и Read Access Token (v4, Authorization: Bearer).
  *  - ВСЕ внешние запросы идут через per-page прокси (runWithPage + pageFetch) —
  *    то есть уважают правило страницы «movies» (ProxyPanel → «страница → прокси»).
@@ -62,13 +64,59 @@ function tmdbError(code: string, message?: string): TmdbError {
   return e;
 }
 
+/**
+ * Ключи, вшитые в сборку (server/bundled-keys.js).
+ *
+ * Файл генерируется scripts/gen-bundled-keys.mjs из секретов CI перед упаковкой
+ * инсталлятора, поэтому у пользователя страница «Фильмы» работает «из коробки».
+ * В репозитории файла нет: require в try/catch — в dev-сборке ключ берётся
+ * только из секретов (storage/secrets.json), и это нормальный режим.
+ */
+interface BundledKeys {
+  tmdb?: string;
+}
+
+function bundledKey(name: keyof BundledKeys): string {
+  // Путь переопределяем через MOONAPP_BUNDLED_KEYS: тесты (и сборки с другим
+  // набором ключей) не должны зависеть от файла, сгенерированного рядом с server.
+  const target = process.env.MOONAPP_BUNDLED_KEYS || "./bundled-keys";
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const keys = require(target) as BundledKeys;
+    return String(keys?.[name] || "").trim();
+  } catch {
+    return ""; // файла нет — сборка без вшитых ключей
+  }
+}
+
+/** Источник ключа: свой секрет важнее вшитого — его всегда можно переопределить. */
+export type TmdbKeySource = "secret" | "bundled" | "none";
+
+function resolveKey(): { token: string; source: TmdbKeySource } {
+  let secret = "";
+  try {
+    secret = String(security.getSecret("tmdb") || "").trim();
+  } catch {
+    /* секреты могут быть недоступны в тестах */
+  }
+  if (secret) return { token: secret, source: "secret" };
+  const bundled = bundledKey("tmdb");
+  return bundled ? { token: bundled, source: "bundled" } : { token: "", source: "none" };
+}
+
+/** Действующий ключ TMDB: свой секрет → вшитый в сборку → пусто. */
+export function tmdbKey(): string {
+  return resolveKey().token;
+}
+
+/** Откуда взят ключ — для /status и диагностики в UI («ключ вшит в сборку»). */
+export function keySource(): TmdbKeySource {
+  return resolveKey().source;
+}
+
 /** Есть ли ключ TMDB (без обращения к сети). */
 export function hasKey(): boolean {
-  try {
-    return !!security.getSecret("tmdb");
-  } catch {
-    return false;
-  }
+  return !!tmdbKey();
 }
 
 /** v4 Read Access Token — длинный JWT (начинается с eyJ). Иначе — v3 API key. */
@@ -149,7 +197,7 @@ export async function fetchJson(
   query: Raw = {},
   { page = PAGE_ID, timeout = 20000 }: { page?: string; timeout?: number } = {},
 ): Promise<FetchJsonResult> {
-  const token = security.getSecret("tmdb");
+  const token = tmdbKey(); // свой секрет → вшитый в сборку ключ
   if (!token) throw tmdbError("no_api_key", "TMDB API key is not configured");
 
   const params = new URLSearchParams();

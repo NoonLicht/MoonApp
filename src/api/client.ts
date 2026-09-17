@@ -45,6 +45,8 @@ import type {
   VaultSearchResult,
   VaultTag,
   VaultBacklink,
+  NotesAiResult,
+  NotesAiConfig,
   TaskItem,
   TaskCreatePayload,
   HolstFileEntry,
@@ -187,7 +189,96 @@ export interface TtsJob {
   outFile?: string;
   vram?: { usedGb: number; totalGb: number; utilPct: number } | null;
   opts?: { format?: string; title?: string; author?: string };
+  /**
+   * Диагностика Python-окружения (когда рендер упал из-за отсутствующих
+   * модулей/интерпретатора): код, путь к python и список ненайденных модулей.
+   * По ней страница показывает понятный текст вместо «No module named 'torch'».
+   */
+  envError?: TtsEnvError;
   chunksPreview?: TtsChunk[];
+}
+/** Диагностика Python-окружения движка (см. server/ts/tts.ts → TtsEnvError). */
+export interface TtsEnvError {
+  code: string;
+  cmd: string;
+  detail: string;
+  python: string;
+  executable: string;
+  missing: string[];
+  installHint: string;
+}
+/** Состояние Python-окружения: GET /api/tts/env (см. server/ts/tts.ts). */
+export interface TtsPythonEnv {
+  ok: boolean;
+  error: string;
+  detail: string;
+  cmd: string;
+  python: string;
+  executable: string;
+  modules: Record<string, boolean>;
+  missingF5: string[];
+  missingXtts: string[];
+  installF5: string;
+  installXtts: string;
+  checkedAt: number;
+  cached: boolean;
+  /** Прогресс фоновой установки окружения (см. server/ts/pyEnv.ts). */
+  install?: PyInstallSnapshot;
+}
+/** Состояние задачи установки (общее с моделями распознавания: server/setupTask). */
+export interface PyInstallTask {
+  kind: string | null;
+  state: "idle" | "working" | "done" | "error";
+  id: string | null;
+  progress: number;
+  phase: string;
+  error: string;
+  received: number;
+  total: number;
+}
+/** Снимок установки Python-окружения: шаги, текущий шаг и хвост вывода pip. */
+export interface PyInstallSnapshot {
+  state: PyInstallTask;
+  engine: string;
+  device: string;
+  python: string;
+  steps: string[];
+  step: string;
+  log: string[];
+}
+/**
+ * План установки для одной сборки torch: cuda (CUDA 13.2, RTX/Turing+),
+ * cudaLegacy (CUDA 12.6, карты без RT-ядер) или cpu — см. server/ts/pyEnv.ts.
+ */
+export interface PyPlan {
+  device: string;
+  approxMb: number;
+  command: string;
+  steps: string[];
+}
+/** Ответ GET /api/tts/env/install: что будем качать и куда ставить. */
+export interface PyInstallState {
+  /** Рекомендуемая сборка по железу: cuda | cudaLegacy | cpu. */
+  recommended: string;
+  gpuName: string;
+  chosen: string;
+  /** Планы по всем трём сборкам (ключи: cuda, cudaLegacy, cpu). */
+  plans: Record<string, PyPlan>;
+  install: PyInstallSnapshot;
+}
+/** Найденный интерпретатор Python и наличие в нём нужных модулей. */
+export interface PyInterpreter {
+  cmd: string;
+  args: string[];
+  label: string;
+  ok: boolean;
+  error: string;
+  detail: string;
+  python: string;
+  executable: string;
+  modules: Record<string, boolean>;
+  missingF5: string[];
+  missingXtts: string[];
 }
 export interface SitebakJob {
   id: string;
@@ -215,6 +306,25 @@ export interface SitebakArchive {
   site: string;
   createdAt: number;
   stats?: SitebakJob["stats"];
+}
+/** Страница внутри архива .sitebak (для встроенного просмотра). */
+export interface ArchivePage {
+  /** Путь внутри архива (hash.html) — по нему отдаётся сама страница. */
+  path: string;
+  /** <title> страницы (или имя файла, если заголовка нет). */
+  title: string;
+  /** Исходный адрес (canonical/og:url), если сохранился. */
+  url: string;
+  /** Размер распакованного HTML в байтах. */
+  size: number;
+}
+/** Ответ GET /api/archive/:id/pages — список страниц архива. */
+export interface ArchivePagesResult {
+  id: string;
+  site: string;
+  name: string;
+  total: number;
+  pages: ArchivePage[];
 }
 
 function tokenHeaders(): Record<string, string> {
@@ -379,8 +489,10 @@ export const api = {
   // lectureChunkAudio — они тянут blob с токеном (см. ниже).
   lectureSetNotes: (id: number, notes: string) =>
     req<LectureSession>("PATCH", `/lecture/${id}`, { notes }),
-  lectureConspectus: (id: number) =>
-    req<LectureConspectusResult>("POST", `/lecture/${id}/conspectus`),
+  // replace=true — «Регенерировать»: конспект собирается заново из расшифровки и
+  // ПЕРЕЗАПИСЫВАЕТ заметки лекции (см. server/routes/lecture.js).
+  lectureConspectus: (id: number, replace = false) =>
+    req<LectureConspectusResult>("POST", `/lecture/${id}/conspectus`, { replace }),
   // Прогресс сборки конспекта: POST выше может идти минутами (десятки запросов
   // к модели), поэтому страница параллельно опрашивает состояние.
   lectureConspectusState: (id: number) =>
@@ -472,6 +584,17 @@ export const api = {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return res.blob();
   },
+
+  // TG WS Proxy (страница Bypass): локальный MTProto-прокси для Telegram.
+  // Статус несёт всё состояние блока — движок найден? запущен? порт/секрет/лог.
+  tgwsStatus: () => req<TgwsStatus>("GET", "/tgws/status"),
+  // force — перекачать бинарь, даже если файл уже есть (кнопка «Обновить»).
+  tgwsInstall: (force = false) => req<TgwsStatus>("POST", "/tgws/install", { force }),
+  // Патч настроек и запуск одной операцией: поля формы и кнопка рядом.
+  tgwsStart: (patch: TgwsSettingsPatch = {}) => req<TgwsStatus>("POST", "/tgws/start", patch),
+  tgwsStop: () => req<TgwsStatus>("POST", "/tgws/stop"),
+  tgwsSaveSettings: (patch: TgwsSettingsPatch) => req<TgwsStatus>("POST", "/tgws/settings", patch),
+  tgwsRotateSecret: () => req<TgwsStatus>("POST", "/tgws/secret"),
 
   // Zapret / DPI Bypass
   zapretEngine: () => req<ZapretEngine>("GET", "/zapret/engine"),
@@ -654,6 +777,22 @@ export const api = {
 
   // --- Аудиокнижная TTS-студия (F5-TTS / Coqui XTTS v2) ---
   ttsHardware: () => req<TtsHardware>("GET", "/tts/hardware"),
+  // Окружение Python: интерпретатор (voice.pythonCmd) и установленные модули.
+  // force=true — перепроверить, минуя серверный кэш (кнопка «Проверить снова»).
+  ttsEnv: (force = false) => req<TtsPythonEnv>("GET", `/tts/env${force ? "?force=1" : ""}`),
+  // Установка Python-окружения из интерфейса (см. server/ts/pyEnv.ts):
+  // план (CUDA/CPU) → установка с прогрессом → отмена. Ручной ввод pip-команд
+  // в консоли больше не нужен.
+  ttsEnvInstallInfo: (engine: string, device: string) =>
+    req<PyInstallState>(
+      "GET",
+      `/tts/env/install?engine=${encodeURIComponent(engine)}&device=${encodeURIComponent(device)}`,
+    ),
+  ttsEnvInterpreters: () => req<{ list: PyInterpreter[] }>("GET", "/tts/env/interpreters"),
+  ttsEnvInstall: (engine: string, device: string, python?: string) =>
+    req<PyInstallSnapshot>("POST", "/tts/env/install", { engine, device, python }),
+  ttsEnvCancel: () => req<PyInstallSnapshot>("POST", "/tts/env/cancel", {}),
+  ttsEnvSetPython: (cmd: string) => req<{ ok: boolean; cmd: string }>("POST", "/tts/env/python", { cmd }),
   ttsPresets: () => req<TtsPreset[]>("GET", "/tts/presets"),
   ttsSavePreset: (p: {
     name: string;
@@ -695,6 +834,9 @@ export const api = {
   archiveStart: (opts: Record<string, unknown>) => req<SitebakJob>("POST", "/archive/start", opts),
   archiveStatus: (id: string) => req<SitebakJob>("GET", `/archive/status/${id}`),
   archiveList: () => req<SitebakArchive[]>("GET", "/archive/list"),
+  // Встроенный просмотр архива: список страниц внутри .sitebak. Сама страница
+  // отдаётся archivePreview (в ней уже вырезаны скрипты и переписаны ссылки).
+  archivePages: (id: string) => req<ArchivePagesResult>("GET", `/archive/${id}/pages`),
   archiveDelete: (id: string) => req("DELETE", `/archive/${id}`),
   archiveVerify: (id: string) =>
     req<{ ok: number; bad: number; total: number; badPaths: string[] }>(
@@ -904,6 +1046,23 @@ export const api = {
   myspaceTags: () => req<VaultTag[]>("GET", "/myspace/tags"),
   myspaceBacklinks: (path: string) =>
     req<VaultBacklink[]>("GET", `/myspace/backlinks?path=${encodeURIComponent(path)}`),
+  // ИИ-оформление заметок: «оформить» (сырой текст сохраняется в
+  // storage/vault/notes/.ai/<имя>.txt) и «регенерировать» (заново из исходника,
+  // текст заметки заменяется целиком). См. server/ts/notesAi.ts.
+  myspaceAiFormat: (path: string) =>
+    req<NotesAiResult>("POST", "/myspace/ai/format", { path }),
+  myspaceAiRegenerate: (path: string) =>
+    req<NotesAiResult>("POST", "/myspace/ai/regenerate", { path }),
+  // Провайдер и модель ИИ-оформления заметок: выбор сохраняется в настройках
+  // (myspace.ai), поэтому задавать его заново в следующий раз не нужно.
+  myspaceAiConfig: () => req<NotesAiConfig>("GET", "/myspace/ai/config"),
+  myspaceAiSaveConfig: (patch: { providerId?: string; model?: string }) =>
+    req<NotesAiConfig>("POST", "/myspace/ai/config", patch),
+  myspaceAiModels: (provider: string) =>
+    req<{ provider: string; models: string[] }>(
+      "GET",
+      `/myspace/ai/models?provider=${encodeURIComponent(provider)}`,
+    ),
   // MySpace Canvas / Holst
   myspaceListHolsts: () => req<HolstFileEntry[]>("GET", "/myspace/holsts"),
   myspaceReadHolst: (name: string) =>
@@ -1335,6 +1494,8 @@ export interface LectureConspectusResult {
   blocks: number;
   truncated: boolean;
   ofTotal: number;
+  /** true — конспект собран «Регенерировать» и заметки перезаписаны целиком. */
+  replaced?: boolean;
 }
 
 /** Прогресс сборки конспекта (GET /lecture/:id/conspectus). */
@@ -1593,6 +1754,49 @@ export interface ZapretInstallState {
   engine: ZapretEngine;
   installed: string | null;
 }
+/**
+ * TG WS Proxy — локальный MTProto-прокси для Telegram Desktop
+ * (Flowseal/tg-ws-proxy). Состояние блока на странице Bypass.
+ */
+export interface TgwsStatus {
+  /** Бинарь найден (скачан в storage/tgwsproxy или вшит в сборку). */
+  installed: boolean;
+  exePath: string;
+  /** Версия скачанного релиза (пусто для вшитого бинаря). */
+  version: string;
+  running: boolean;
+  pid: number;
+  /** Процесс поднимается: PyInstaller распаковывается, порт ещё закрыт. */
+  starting: boolean;
+  host: string;
+  port: number;
+  /** Секрет прокси (32 hex без префикса dd) — вводят в Telegram Desktop. */
+  secret: string;
+  /** Ссылка tg://proxy… для авто-настройки Telegram. */
+  link: string;
+  /** Порт занят чужим процессом (или прежним запуском) — старт невозможен. */
+  portBusy: boolean;
+  uptimeMs: number;
+  /** Поднимать прокси при старте приложения (переключатель в блоке). */
+  autoStart: boolean;
+  downloading: boolean;
+  /** Прогресс скачивания движка, 0..100. */
+  progress: number;
+  /** Код последней ошибки (tgws_port_busy и т.п.) — UI переводит его сам. */
+  error: string;
+  log: string[];
+}
+
+/** Что можно менять в блоке (POST /tgws/settings и /tgws/start). */
+export interface TgwsSettingsPatch {
+  exePath?: string;
+  host?: string;
+  port?: number;
+  /** Пусто — сбросить: новый секрет сгенерируется при запуске. */
+  secret?: string;
+  autoStart?: boolean;
+}
+
 export interface ZapretStatus {
   active: boolean;
   process: { running: boolean; pid: number | null; memKb: number | null };

@@ -144,6 +144,51 @@ export interface VaultSearchResult {
   matchStart: number;
 }
 
+/**
+ * Результат ИИ-оформления заметки (POST /api/myspace/ai/format|regenerate).
+ * `content` — готовый Markdown, который уже записан в файл заметки.
+ */
+export interface NotesAiResult {
+  content: string;
+  provider: string;
+  model: string;
+  /** Символов в готовом тексте. */
+  chars: number;
+  /** Символов в исходнике, из которого собрано оформление. */
+  rawChars: number;
+  /** Сколько блоков ушло в модель (длинная заметка режется по строкам). */
+  blocks: number;
+  /** true — текст собран «Регенерировать» из сохранённого исходника. */
+  regenerated: boolean;
+}
+
+/** Провайдер для ИИ-оформления заметок (GET /api/myspace/ai/config). */
+export interface NotesAiProvider {
+  id: string;
+  label: string;
+  /** Каталог моделей провайдера (живой список уточняет /ai/models). */
+  models: string[];
+  /** Ключ провайдера сохранён в Настройках («Настройки → ИИ»). */
+  hasKey: boolean;
+}
+
+/**
+ * Выбранные провайдер и модель для ИИ-оформления заметок. Пустые myspace.ai.*
+ * означают «как в AI-чате» (providerFromChat = true) — так работало раньше.
+ */
+export interface NotesAiConfig {
+  providerId: string;
+  /** true — свой провайдер не выбран, используется chat.provider. */
+  providerFromChat: boolean;
+  /** Провайдер AI-чата (для подписи «как в чате: deepseek»). */
+  chatProvider: string;
+  /** Выбранная модель ("" — подобрать автоматически по каталогу). */
+  model: string;
+  /** Ключ текущего провайдера сохранён. */
+  hasKey: boolean;
+  providers: NotesAiProvider[];
+}
+
 export interface VaultTag {
   tag: string;
   count: number;
@@ -784,9 +829,16 @@ export interface MediaStats {
   monthly: { month: string; count: number }[];
 }
 
+/**
+ * Откуда взялся ключ TMDB: secret — пользователь ввёл свой, bundled — вшит в
+ * сборку приложения (работает «из коробки»), none — ключа нет вовсе.
+ */
+export type MediaKeySource = "secret" | "bundled" | "none";
+
 /** Статус страницы: есть ли ключ TMDB и движок торрентов. */
 export interface MediaStatus {
   hasKey: boolean;
+  keySource: MediaKeySource;
   engine: { installed: boolean; client?: boolean; error?: string };
   settings: { language?: string; region?: string; showAdult?: boolean; cacheMinutes?: number };
 }

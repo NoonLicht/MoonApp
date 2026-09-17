@@ -373,7 +373,14 @@ router.get("/chunks/:chunkId/audio", (req, res) => {
 router.post("/:id/conspectus", async (req, res) => {
   try {
     // appPage нужен провайдеру чата (per-page proxy), как в /api/chat.
-    res.json(await lecture.generateConspectus(Number(req.params.id), { appPage: req.appPage }));
+    // replace: true — кнопка «Регенерировать»: заметки перезаписываются заново
+    // собранным конспектом, а не дополняются (см. server/lecture.js).
+    res.json(
+      await lecture.generateConspectus(Number(req.params.id), {
+        appPage: req.appPage,
+        replace: req.body?.replace === true,
+      }),
+    );
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

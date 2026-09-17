@@ -1,4 +1,5 @@
-﻿import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect, useMemo } from "react";
+import { createPortal } from "react-dom";
 import {
   Archive,
   Download,
@@ -15,6 +16,9 @@ import {
   FolderOpen,
   Compass,
   Wifi,
+  Search,
+  X,
+  RefreshCw,
 } from "lucide-react";
 import { useContextMenu, copyToClipboard } from "@/components/ContextMenu";
 import {
@@ -29,9 +33,10 @@ import {
   EmptyHint,
 } from "@/components/ui";
 import { usePageActive, usePageBusy } from "@/components/Toolbar";
+import { getOverlayRoot } from "@/components/overlayHost";
 import { useI18n } from "@/app/i18n";
 import { api } from "@/api/client";
-import type { SitebakArchive, SitebakJob } from "@/api/client";
+import type { ArchivePage, SitebakArchive, SitebakJob } from "@/api/client";
 import "@/styles/arch.css";
 
 /**
@@ -74,6 +79,73 @@ export default function ArchiverPage() {
   const [archives, setArchives] = useState<SitebakArchive[]>([]);
   const [verifyResult, setVerifyResult] = useState<Record<string, string>>({});
 
+  // --- Встроенный просмотр архива ---
+  // Раньше готовый .sitebak можно было только скачать/распаковать и смотреть в
+  // браузере. Здесь страницы открываются прямо внутри приложения: слева список
+  // страниц (заголовки из <title>), справа сама страница во фрейме с локального
+  // API. Ссылки внутри архива переписаны на локальные адреса, поэтому переходы и
+  // картинки работают офлайн (см. server/routes/archive.js).
+  const [viewer, setViewer] = useState<{
+    id: string;
+    name: string;
+    site: string;
+    total: number;
+    pages: ArchivePage[];
+  } | null>(null);
+  const [viewerBusy, setViewerBusy] = useState("");
+  const [viewerError, setViewerError] = useState("");
+  const [viewerQuery, setViewerQuery] = useState("");
+  const [viewerPage, setViewerPage] = useState("");
+  // Кадр перезагружается принудительно: после клика по ссылке внутри архива
+  // неизвестно, куда он уехал, а кнопкой «Обновить» можно вернуться на страницу
+  // из списка.
+  const [frameKey, setFrameKey] = useState(0);
+
+  const viewerList = useMemo(() => {
+    const q = viewerQuery.trim().toLowerCase();
+    if (!viewer || !q) return viewer?.pages || [];
+    return viewer.pages.filter(
+      (p) =>
+        p.title.toLowerCase().includes(q) ||
+        p.path.toLowerCase().includes(q) ||
+        p.url.toLowerCase().includes(q),
+    );
+  }, [viewer, viewerQuery]);
+
+  /** Открыть архив в просмотрщике: подтягиваем список страниц. */
+  const openViewer = async (a: SitebakArchive) => {
+    setViewer({ id: a.id, name: a.name, site: a.site, total: 0, pages: [] });
+    setViewerPage("");
+    setViewerQuery("");
+    setViewerError("");
+    setViewerBusy(a.id);
+    try {
+      const r = await api.archivePages(a.id);
+      setViewer({ id: r.id, name: r.name || a.name, site: r.site, total: r.total, pages: r.pages });
+      setViewerPage(r.pages[0]?.path || "");
+      setFrameKey((k) => k + 1);
+    } catch (e: any) {
+      setViewerError(String(e?.message || e));
+    } finally {
+      setViewerBusy("");
+    }
+  };
+
+  // Уход со страницы закрывает просмотрщик: он рисуется порталом поверх всего
+  // приложения и иначе остался бы висеть над другой страницей (эффект по isActive).
+
+  // Esc закрывает окно просмотра — как в остальных модалках приложения. Клик по
+  // затемнению и крестик работают только пока у окна есть pointer-events (см.
+  // .arch-view-overlay в arch.css), поэтому клавиша — ещё одна страховка.
+  useEffect(() => {
+    if (!viewer) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setViewer(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [viewer]);
+
   // Дефолты из настроек sitebak.* применяются при открытии страницы.
   useEffect(() => {
     api
@@ -105,6 +177,12 @@ export default function ArchiverPage() {
    * интерфейс догоняет его сразу при возвращении. */
   const [jobId, setJobId] = useState<string | null>(null);
   const isActive = usePageActive();
+
+  // Уход со страницы закрывает просмотрщик архива: он рисуется порталом поверх
+  // всего приложения и иначе остался бы висеть над другой страницей.
+  useEffect(() => {
+    if (!isActive) setViewer(null);
+  }, [isActive]);
 
   useEffect(() => {
     if (!jobId) return undefined;
@@ -459,6 +537,14 @@ export default function ArchiverPage() {
               <div className="muted-sm arch-archive-verify">{verifyResult[a.id]}</div>
             )}
             <div className="arch-archive-actions">
+              <Btn
+                icon={FileSearch}
+                variant="secondary"
+                onClick={() => void openViewer(a)}
+                disabled={viewerBusy === a.id}
+              >
+                {viewerBusy === a.id ? t("arch.viewOpening") : t("arch.view")}
+              </Btn>
               <Btn icon={ShieldCheck} onClick={() => doVerify(a.id)}>
                 {t("arch.verify")}
               </Btn>
@@ -476,6 +562,115 @@ export default function ArchiverPage() {
         ))}
         {archives.length === 0 && <EmptyHint icon={Archive} text={t("arch.empty")} />}
       </div>
+
+      {/* --- Просмотр архива внутри приложения ---
+          Слева список страниц (заголовки из <title>), справа страница во фрейме с
+          локального API: ссылки внутри архива уже ведут на локальные адреса, так
+          что переходы и картинки работают без интернета. Скрипты вырезаны, фрейм
+          в песочнице без скриптов — чужая страница не может обратиться к API. --- */}
+      {viewer &&
+        createPortal(
+          <div className="arch-view-overlay" onClick={() => setViewer(null)}>
+            <div
+              className="arch-view"
+              role="dialog"
+              aria-label={t("arch.view")}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="arch-view-head">
+                <div className="arch-view-title">
+                  <Globe size={14} />
+                  <span className="arch-view-name" title={viewer.name}>
+                    {viewer.name}
+                  </span>
+                  {viewer.total > 0 && (
+                    <Badge tone="teal">{t("arch.pagesDone", { n: viewer.total })}</Badge>
+                  )}
+                </div>
+                <div className="arch-view-head-actions">
+                  {!!viewer.site && (
+                    <Btn
+                      icon={ExternalLink}
+                      variant="ghost"
+                      onClick={() => window.open(viewer.site, "_blank")}
+                    >
+                      {t("arch.viewSite")}
+                    </Btn>
+                  )}
+                  <Btn
+                    icon={RefreshCw}
+                    variant="ghost"
+                    onClick={() => setFrameKey((k) => k + 1)}
+                    disabled={!viewerPage}
+                  >
+                    {t("arch.viewReload")}
+                  </Btn>
+                  <button
+                    className="arch-view-close"
+                    onClick={() => setViewer(null)}
+                    aria-label={t("common.close")}
+                    title={t("common.close")}
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+              </div>
+              <div className="arch-view-body">
+                <div className="arch-view-side">
+                  <div className="arch-view-search">
+                    <Search size={13} />
+                    <input
+                      value={viewerQuery}
+                      onChange={(e) => setViewerQuery(e.target.value)}
+                      placeholder={t("arch.viewSearch")}
+                      spellCheck={false}
+                    />
+                  </div>
+                  <div className="arch-view-list">
+                    {viewerList.map((p) => (
+                      <button
+                        key={p.path}
+                        className={`arch-view-item ${viewerPage === p.path ? "is-active" : ""}`}
+                        onClick={() => {
+                          setViewerPage(p.path);
+                          setFrameKey((k) => k + 1);
+                        }}
+                        title={p.url || p.path}
+                      >
+                        <span className="arch-view-item-title">{p.title}</span>
+                        {!!p.url && <span className="arch-view-item-url">{p.url}</span>}
+                      </button>
+                    ))}
+                    {!!viewerBusy && <span className="muted-sm">{t("arch.viewOpening")}</span>}
+                    {!viewerBusy && !viewerList.length && (
+                      <span className="muted-sm">{t("arch.viewEmpty")}</span>
+                    )}
+                  </div>
+                </div>
+                <div className="arch-view-frame">
+                  {viewerError ? (
+                    <div className="arch-view-error">{viewerError}</div>
+                  ) : viewerPage ? (
+                    <iframe
+                      key={frameKey}
+                      className="arch-view-iframe"
+                      src={api.archivePreview(viewer.id, viewerPage)}
+                      title={viewer.name}
+                      /* Песочница без allow-scripts: чужая страница не выполнит
+                         код и не дотянется до appBridge; allow-same-origin нужен,
+                         чтобы doc-CSP `'self'` продолжал пускать свои же CSS и
+                         картинки из /api/archive/.../raw. */
+                      sandbox="allow-same-origin"
+                    />
+                  ) : (
+                    <div className="arch-view-error">{t("arch.viewNoPages")}</div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>,
+          getOverlayRoot() ?? document.body,
+        )}
     </div>
   );
 }

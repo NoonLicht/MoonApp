@@ -835,7 +835,6 @@
 .ab-left {
   position: sticky;
   top: 0;
-  max-height: calc(100vh - var(--vh-base) - 96px);
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
@@ -1179,6 +1178,16 @@
   flex-direction: column;
   gap: 12px;
 }
+/* Открытое состояние: строка сетки получает высоту содержимого. Без этого
+   `grid-template-rows: 0fr` выше остаётся в силе и раскрытие НЕ работает:
+   узел есть в DOM, но его высота равна нулю — «кнопка нажимается, а снизу
+   ничего не появляется». visibility здесь НЕ ставим: общий предок .page-host
+   (keep-alive) скрывает неактивные страницы через visibility:hidden, и
+   visibility:visible «протекал» бы содержимым на другие вкладки. */
+.ab-acc-collapse.is-open,
+.ab-pro-collapse.is-open {
+  grid-template-rows: 1fr;
+}
 /* Прячем закрытое состояние у внутреннего блока (см. комментарий к .ab-acc-collapse). */
 .ab-pro-collapse:not(.is-open) > .ab-pro-inner {
   visibility: hidden;
@@ -1195,6 +1204,224 @@
   flex-direction: column;
   gap: 6px;
   max-width: 300px;
+}
+
+/* --- Панель Python-окружения студии озвучки (.ab-py).
+   Установка torch/f5-tts из интерфейса: состояние модулей, выбор сборки
+   (CUDA/CPU), прогресс pip и хвост его вывода. Стили держим рядом с остальными
+   стилями страницы, чтобы панель не «выпадала» из общего вида. --- */
+.ab-py {
+  gap: 8px;
+  padding: 16px;
+}
+/* Шапка панели: заголовок капсом и пояснение идут ОДНОЙ строкой (пояснение
+   мелким текстом рядом), бейджи модулей — справа. Раньше пояснение занимало
+   отдельную строку на всю ширину панели и панель выглядела «простынёй». */
+.ab-py-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 10px;
+  flex-wrap: wrap;
+}
+.ab-py-head-text {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+  flex: 1 1 320px;
+  min-width: 0;
+}
+.ab-py-head-text .field-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.ab-py-modules {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.ab-py-modules .badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.ab-py-state {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.35;
+}
+.ab-py-state > svg {
+  flex: none;
+}
+.ab-py-state.is-ok {
+  color: #34d399;
+  background: rgba(52, 211, 153, 0.1);
+}
+.ab-py-state.is-warn {
+  color: var(--coral);
+  background: rgba(255, 107, 107, 0.1);
+}
+.ab-py-block {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.ab-py-block-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-tertiary);
+  padding: 5px 0 5px 0;
+}
+.ab-py-devices {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 6px;
+}
+/* Карточка сборки PyTorch. Было четыре «ступеньки» (иконка, название,
+   подсказка, объём с бейджем — каждое на своей строке) и карточки выглядели
+   криво; стало две строки: иконка + название + объём, ниже подсказка и бейдж. */
+.ab-py-dev {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: var(--track);
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease;
+}
+.ab-py-dev:hover {
+  background: var(--glass-strong);
+}
+.ab-py-dev.is-active {
+  border-color: var(--accent);
+  background: var(--glass-strong);
+}
+.ab-py-dev.is-active b {
+  color: var(--accent);
+}
+.ab-py-dev-head,
+.ab-py-dev-sub {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
+}
+.ab-py-dev-sub {
+  flex-wrap: wrap;
+}
+.ab-py-dev-head > svg {
+  flex: none;
+}
+.ab-py-dev-head b {
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+/* Объём загрузки прижат к правому краю строки: 1.5 GB у CUDA-сборки против
+   200 MB у CPU — цифры сравнимы с одного взгляда. */
+.ab-py-dev-size {
+  margin-left: auto;
+  padding-left: 6px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+
+.ab-py-dev .muted-sm {
+  font-size: 11px;
+}
+.ab-py-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ab-py-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ab-py-progress-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+/* Хвост вывода pip: моноширинный, со своей прокруткой — строки бывают длинными
+   (пути, имена колёс), и по ширине панели их ломать бессмысленно. */
+.ab-py-log {
+  margin: 0;
+  max-height: 132px;
+  overflow: auto;
+  padding: 8px;
+  border-radius: 8px;
+  background: var(--track);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-all;
+  color: var(--text-secondary);
+}
+/* Упавшая установка: тот же хвост вывода pip, но с коралловой рамкой — сразу
+   видно, что это причина ошибки (а не идущий прогресс), и читать её есть где. */
+.ab-py-progress.is-error .ab-py-log {
+  border: 1px solid var(--coral);
+  color: var(--text-primary);
+  max-height: 180px;
+}
+.ab-py-actions {
+  padding: 5px 0 5px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.ab-py-notice.tone-teal {
+  color: #34d399;
+}
+.ab-py-notice.tone-coral {
+  color: var(--coral);
+}
+.ab-py-notice.tone-amber {
+  color: var(--amber, #f59e0b);
+}
+.ab-py-notice.tone-neutral {
+  color: var(--text-secondary);
+}
+.ab-py-notice {
+  font-size: 12px;
+  line-height: 1.4;
+}
+.ab-py-manual summary {
+  cursor: pointer;
+}
+.ab-py-manual pre {
+  margin: 6px 0 0;
+  padding: 8px;
+  border-radius: 8px;
+  background: var(--track);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  white-space: pre-wrap;
+  word-break: break-all;
+  color: var(--text-secondary);
 }
 
 /* Единая строка «плеер + генерация»: плеер занимает всё свободное место
@@ -1308,6 +1535,12 @@
   display: flex;
   align-items: center;
   gap: 7px;
+}
+.ab-py-manual .muted-sm {
+  padding: 5px 0 5px 0;
+}
+.ab-py-block .muted-sm {
+  padding: 5px 0 5px 0;
 }
 .ab-express-toggle .muted-sm {
   cursor: pointer;
@@ -1439,5 +1672,20 @@
     min-height: 0;
     overflow: visible;
     padding-right: 0;
+  }
+}
+/* Узкое окно: карточки сборок PyTorch и интерпретатор со кнопкой «Найти»
+   встают в столбик — иначе подписи и объём загрузки сжимались в нечитаемую
+   «кашу» из переносов. */
+@media (max-width: 640px) {
+  .ab-py-devices {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .ab-py-row {
+    flex-wrap: wrap;
+  }
+  .ab-py-row .btn {
+    flex: 1 1 100%;
+    justify-content: center;
   }
 }

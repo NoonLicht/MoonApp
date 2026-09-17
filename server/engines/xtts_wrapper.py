@@ -14,7 +14,10 @@ Coqui XTTS v2 engine sidecar (embedded, persistent).
    "topK":50,"topP":0.85,"speed":1.0,"sentencePauseMs":400}
   {"type":"shutdown"}
 
-Выход: ready / vram / done / error — как у F5.
+Выход: ready / vram / done / error — как у F5 (device = "cuda:0" либо "cpu").
+
+Как и у F5, устройство выбирается автоматически: CUDA есть — считаем на
+видеокарте, нет — на CPU (раньше здесь стоял жёсткий «cuda_not_available»).
 """
 import sys
 import json
@@ -28,8 +31,10 @@ class XttsEngine:
         from TTS.tts.configs.xtts_config import XttsConfig
         from TTS.tts.models.xtts import Xtts
         self.torch = torch
-        if not torch.cuda.is_available():
-            raise RuntimeError("cuda_not_available")
+        # Устройство: CUDA при наличии, иначе CPU (без этого сайдкар падал
+        # «cuda_not_available», и студия озвучки не работала без NVIDIA).
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.deviceId = "cuda:0" if self.device == "cuda" else "cpu"
         cfgx = XttsConfig()
         known = {"en", "ru", "zh", "es", "fr", "de", "ja", "it", "pt", "pl", "tr", "nl", "cs", "ar", "hu", "ko", "hi"}
         self.languages = known
@@ -43,9 +48,27 @@ class XttsEngine:
             # старые версии API
             from TTS.api import TTS as CoquiTTS
             self.tts = CoquiTTS("tts_models/multilingual/multi-dataset/xtts_v2").to_model
-        self.vramTotal = torch.cuda.get_device_properties(0).total_memory / (1024 ** 3)
+        # Модель держим на выбранном устройстве (torch.nn.Module.to); если
+        # конкретная сборка XTTS этого не умеет — оставляем как есть.
+        try:
+            self.tts.to(self.device)
+        except Exception:
+            pass
+        if self.device == "cuda":
+            self.vramTotal = torch.cuda.get_device_properties(0).total_memory / (1024 ** 3)
+        else:
+            self.vramTotal = 0.0
         self.cfg = cfg
         return
+
+    def empty_cache(self):
+        """Сброс кэша VRAM — только когда реально считаем на видеокарте."""
+        if self.device != "cuda":
+            return
+        try:
+            self.torch.cuda.empty_cache()
+        except Exception:
+            pass
 
     def vram(self):
         t = self.torch
@@ -88,7 +111,7 @@ class XttsEngine:
                 wav_chunks.append(c)
                 sr = getattr(c, "sr", None) or 24000
                 # инкрементальный VRAM-гард внутри стрима
-                t.cuda.empty_cache()
+                self.empty_cache()
             wav = t.cat(wav_chunks, dim=0) if wav_chunks and hasattr(wav_chunks[0], "dim") else wav_chunks
             torchaudio.save(req["out"], wav, sr or 24000)
         except Exception:
@@ -99,7 +122,7 @@ class XttsEngine:
             data = wav[0] if isinstance(wav, tuple) else wav
             torchaudio.save(req["out"], t.tensor(data).unsqueeze(0), sr)
         gc.collect()
-        t.cuda.empty_cache()
+        self.empty_cache()
         return round(time.time() - t0, 2)
 
 
@@ -123,7 +146,7 @@ def main():
             rtype = req.get("type")
             if rtype == "init":
                 eng = XttsEngine(req)
-                _emit({"type": "ready", "device": "cuda:0", "vramGb": eng.vramTotal})
+                _emit({"type": "ready", "device": eng.deviceId, "vramGb": eng.vramTotal})
                 _emit({"type": "vram", **eng.vram()})
             elif rtype == "infer":
                 if eng is None:
@@ -138,10 +161,7 @@ def main():
         except Exception as e:
             _emit({"type": "error", "message": str(e)[:500]})
     if eng is not None:
-        try:
-            eng.torch.cuda.empty_cache()
-        except Exception:
-            pass
+        eng.empty_cache()
 
 
 if __name__ == "__main__":

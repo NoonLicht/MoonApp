@@ -619,7 +619,11 @@ async function createWindow() {
         "Content-Security-Policy": [
           "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; " +
             "img-src 'self' data: blob:; media-src 'self' data: blob:; font-src 'self' data:; " +
-            "connect-src 'self' ws://127.0.0.1:* http://127.0.0.1:*; object-src 'none'; frame-src 'none'; base-uri 'self'",
+            // frame-src 'self' нужен встроенному просмотру веб-архивов (.sitebak):
+            // страницы отдаёт локальный API, скрипты в них вырезаны, CSP документа
+            // — script-src 'none' (см. server/routes/archive.js → serveHtml).
+            // Внешние фреймы по-прежнему запрещены.
+            "connect-src 'self' ws://127.0.0.1:* http://127.0.0.1:*; object-src 'none'; frame-src 'self'; base-uri 'self'",
         ],
       },
     });
