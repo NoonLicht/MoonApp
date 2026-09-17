@@ -30,8 +30,76 @@ ModelManager.
 """
 import sys
 import json
+import inspect
 import time
 import gc
+
+
+def _accepts(fn, name):
+    """Принимает ли функция параметр с таким именем (или **kwargs)."""
+    try:
+        params = inspect.signature(fn).parameters
+    except (TypeError, ValueError):
+        return True  # подпись недоступна — пусть решает сама функция
+    if any(p.kind == p.VAR_KEYWORD for p in params.values()):
+        return True
+    return name in params
+
+
+def _has_param(fn, name):
+    """Есть ли у функции ЯВНЫЙ параметр с таким именем.
+
+    Именно «явный»: **kwargs принимает любое имя, но не значит, что третьим
+    позиционным аргументом функция ждёт путь к референсу, а не латенты.
+    """
+    try:
+        return name in inspect.signature(fn).parameters
+    except (TypeError, ValueError):
+        return True
+
+
+def _filter_kwargs(fn, kwargs):
+    """Оставить только те именованные аргументы, которые функция принимает.
+
+    Сборки XTTS отличаются набором параметров (speed появился позже, где-то нет
+    top_k), а лишний kwarg — это TypeError, который роняет рендер целиком.
+    """
+    return {k: v for k, v in kwargs.items() if _accepts(fn, k)}
+
+
+def _save_wav(path, wav, sr):
+    """Записать результат в WAV.
+
+    torchaudio.save в torchaudio 2.9+ работает только через torchcodec: у f5-tts
+    он в зависимостях, а у coqui-tts — нет, поэтому вызов падал с ImportError
+    ровно на сохранении готового звука. soundfile есть у обоих движков, поэтому
+    пишем через него, а тензор сначала снимаем на CPU.
+
+    Форму приводим к soundfile: модели отдают (channels, frames), а soundfile ждёт
+    (frames, channels) — без разворота тензор (1, N) записался бы как N каналов по
+    одному сэмплу (звук превращался в щелчок).
+    """
+    data = wav
+    if hasattr(data, "detach"):
+        data = data.detach().cpu().numpy()
+    import numpy as np
+
+    data = np.asarray(data)
+    if data.ndim == 2 and data.shape[0] < data.shape[1]:
+        data = data.T
+    data = np.squeeze(data)
+    try:
+        import soundfile as sf
+        sf.write(path, data, int(sr))
+        return
+    except Exception:
+        pass
+    import torch
+    import torchaudio
+    tensor = torch.as_tensor(data)
+    if tensor.dim() == 1:
+        tensor = tensor.unsqueeze(0)
+    torchaudio.save(path, tensor, int(sr))
 
 
 def _xtts_model(api):
@@ -127,6 +195,7 @@ class XttsEngine:
     def infer(self, req):
         t = self.torch
         t0 = time.time()
+        language = req.get("language", "ru")
         kwargs = {
             "temperature": float(req.get("temperature", 0.7)),
             "repetition_penalty": float(req.get("repetitionPenalty", 3.5)),
@@ -134,31 +203,47 @@ class XttsEngine:
             "top_p": float(req.get("topP", 0.85)),
             "speed": float(req.get("speed", 1.0)),
         }
+        # Латентов хватает и стриму, и полному инференсу — считаем их один раз:
+        # это самая дорогая часть после загрузки самой модели.
+        gpt_cond_latent, speaker_embedding = self.tts.get_conditioning_latents(
+            audio_path=[req["ref"]]
+        )
         try:
-            gpt_cond_latent, speaker_embedding = self.tts.get_conditioning_latents(
-                audio_path=[req["ref"]]
-            )
             chunks = self.tts.inference_stream(
-                req["text"], req.get("language", "ru"),
-                gpt_cond_latent, speaker_embedding,
-                **kwargs,
+                req["text"],
+                language,
+                gpt_cond_latent,
+                speaker_embedding,
+                **_filter_kwargs(self.tts.inference_stream, kwargs),
             )
-            import torchaudio
-            wav_chunks, sr = [], None
+            parts, sr = [], 24000
             for c in chunks:
-                wav_chunks.append(c)
-                sr = getattr(c, "sr", None) or 24000
+                parts.append(c)
+                sr = getattr(c, "sr", None) or sr
                 # инкрементальный VRAM-гард внутри стрима
                 self.empty_cache()
-            wav = t.cat(wav_chunks, dim=0) if wav_chunks and hasattr(wav_chunks[0], "dim") else wav_chunks
-            torchaudio.save(req["out"], wav, sr or 24000)
+            # Чанки стрима — тензоры формы (1, N): складывать их по нулевой оси
+            # нельзя (вышел бы «N каналов»), поэтому по последней.
+            wav = t.cat(parts, dim=-1) if parts and hasattr(parts[0], "dim") else parts
         except Exception:
-            # Фолбэк: полный (не стриминговый) инференс
-            import torchaudio
-            wav = self.tts.inference(req["text"], req.get("language", "ru"), req["ref"], **kwargs)
-            sr = wav[1] if isinstance(wav, tuple) else 24000
-            data = wav[0] if isinstance(wav, tuple) else wav
-            torchaudio.save(req["out"], t.tensor(data).unsqueeze(0), sr)
+            # Фолбэк: полный (не стриминговый) инференс. Сигнатуры у сборок тоже
+            # разные: новым нужны латенты, старым — путь к референсу.
+            inf = self.tts.inference
+            if _has_param(inf, "speaker_wav"):
+                wav = inf(req["text"], language, req["ref"], **_filter_kwargs(inf, kwargs))
+            else:
+                wav = inf(
+                    req["text"],
+                    language,
+                    gpt_cond_latent,
+                    speaker_embedding,
+                    **_filter_kwargs(inf, kwargs),
+                )
+            if isinstance(wav, tuple):
+                wav, sr = wav[0], wav[1]
+            else:
+                sr = 24000
+        _save_wav(req["out"], wav, sr)
         gc.collect()
         self.empty_cache()
         return round(time.time() - t0, 2)

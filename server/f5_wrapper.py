@@ -82,11 +82,17 @@ def main():
         )
     )
 
-    # Библиотека отдаёт numpy-массив: torchaudio.save объявлен как src: Tensor и
-    # numpy не принимает, поэтому пишем через soundfile (как делает сама f5-tts).
+    # Библиотека отдаёт numpy-массив (torchaudio.save с 2.9 требует torchcodec, а
+    # numpy-массив не принимает вовсе), поэтому пишем через soundfile — как делает
+    # сама f5-tts. Форму приводим к (frames,): иначе тензор (1, N) записался бы как
+    # N каналов по одному сэмплу.
+    import numpy as np
     import soundfile as sf
 
-    sf.write(out, wav, sr)
+    data = wav.detach().cpu().numpy() if hasattr(wav, "detach") else np.asarray(wav)
+    if data.ndim == 2 and data.shape[0] < data.shape[1]:
+        data = data.T
+    sf.write(out, np.squeeze(data), int(sr))
 
     # Освобождение VRAM после чанка (в этом же процессе — это работает).
     if torch.cuda.is_available():

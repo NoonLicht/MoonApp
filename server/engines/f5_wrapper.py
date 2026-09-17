@@ -77,21 +77,34 @@ def _save_wav(path, wav, sr):
     Библиотека f5-tts отдаёт numpy-массив (внутри себя она пишет его же через
     soundfile.write), а старые сборки могли вернуть тензор. Поэтому сначала
     пробуем soundfile, а тензор отдаём torchaudio: torchaudio.save объявлен как
-    `src: torch.Tensor` и numpy-массив не принимает, из-за чего рендер доходил до
-    последней строки, чтобы упасть уже на записи файла.
+    `src: torch.Tensor` (а с 2.9 ещё и требует torchcodec), и numpy-массив он не
+    принимает — из-за чего рендер доходил до последней строки, чтобы упасть уже на
+    записи файла.
+
+    Форму приводим к soundfile: тензор формы (1, N) без разворота записался бы как
+    N каналов по одному сэмплу (звук превращался бы в щелчок).
     """
+    data = wav
+    if hasattr(data, "detach"):
+        data = data.detach().cpu().numpy()
+    import numpy as np
+
+    data = np.asarray(data)
+    if data.ndim == 2 and data.shape[0] < data.shape[1]:
+        data = data.T
+    data = np.squeeze(data)
     try:
         import soundfile as sf
-        sf.write(path, wav, sr)
+        sf.write(path, data, int(sr))
         return
     except Exception:
         pass
     import torch
     import torchaudio
-    data = wav if hasattr(wav, "dim") else torch.as_tensor(wav)
-    if data.dim() == 1:
-        data = data.unsqueeze(0)
-    torchaudio.save(path, data, sr)
+    tensor = torch.as_tensor(data)
+    if tensor.dim() == 1:
+        tensor = tensor.unsqueeze(0)
+    torchaudio.save(path, tensor, int(sr))
 
 
 def _put_dtype(tts, dtype):
