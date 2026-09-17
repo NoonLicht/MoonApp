@@ -80,6 +80,79 @@ def _filter_kwargs(fn, kwargs):
     return {k: v for k, v in kwargs.items() if _accepts(fn, k)}
 
 
+KNOWN_LANGUAGES = {
+    "en",
+    "ru",
+    "zh-cn",
+    "es",
+    "fr",
+    "de",
+    "ja",
+    "it",
+    "pt",
+    "pl",
+    "tr",
+    "nl",
+    "cs",
+    "ar",
+    "hu",
+    "ko",
+    "hi",
+}
+
+
+def _lang_code(value):
+    """Язык → код XTTS: «Russian» → «ru», «Chinese» → «zh-cn».
+
+    Почему это нужно здесь, а не только в сервере: названия языков приходят из
+    интерфейса и уже сохранены в настройках (`voice.defaultLanguage`) и в голосовых
+    профилях. XTTS принимает только коды и падает с «Language 'Russian' is not
+    supported», поэтому переводим и в сайдкаре — на случай старого сохранённого
+    профиля или вызова обёртки из другого места.
+    """
+    raw = str(value or "").strip().lower()
+    if not raw:
+        return "ru"
+    names = {
+        "russian": "ru",
+        "русский": "ru",
+        "english": "en",
+        "английский": "en",
+        "chinese": "zh-cn",
+        "китайский": "zh-cn",
+        "zh": "zh-cn",
+        "spanish": "es",
+        "испанский": "es",
+        "french": "fr",
+        "французский": "fr",
+        "german": "de",
+        "немецкий": "de",
+        "japanese": "ja",
+        "японский": "ja",
+        "italian": "it",
+        "итальянский": "it",
+        "portuguese": "pt",
+        "португальский": "pt",
+        "polish": "pl",
+        "польский": "pl",
+        "turkish": "tr",
+        "турецкий": "tr",
+        "dutch": "nl",
+        "нидерландский": "nl",
+        "czech": "cs",
+        "чешский": "cs",
+        "arabic": "ar",
+        "арабский": "ar",
+        "hungarian": "hu",
+        "венгерский": "hu",
+        "korean": "ko",
+        "корейский": "ko",
+        "hindi": "hi",
+        "хинди": "hi",
+    }
+    return names.get(raw, raw)
+
+
 def _save_wav(path, wav, sr):
     """Записать результат в WAV.
 
@@ -150,8 +223,10 @@ class XttsEngine:
         # «cuda_not_available», и студия озвучки не работала без NVIDIA).
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.deviceId = "cuda:0" if self.device == "cuda" else "cpu"
-        known = {"en", "ru", "zh", "es", "fr", "de", "ja", "it", "pt", "pl", "tr", "nl", "cs", "ar", "hu", "ko", "hi"}
-        self.languages = known
+        # Набор языков уточняется по конфигу загруженной модели (у XTTS v2 китайский
+        # — именно `zh-cn`, а не `zh`): хардкод ниже — запасной вариант для сборок
+        # без конфига.
+        self.languages = KNOWN_LANGUAGES
         # Модель сама скачается в кэш TTS (~1.8 ГБ) при первом init.
         try:
             # Путь 1 (проверенный на coqui-tts 0.27 и классическом TTS 0.22):
@@ -185,6 +260,10 @@ class XttsEngine:
             self.vramTotal = torch.cuda.get_device_properties(0).total_memory / (1024 ** 3)
         else:
             self.vramTotal = 0.0
+        # Языки берём у самой модели: наборы у сборок XTTS различаются.
+        offer = getattr(getattr(self.tts, "config", None), "languages", None)
+        if offer:
+            self.languages = {str(x).lower() for x in offer}
         self.cfg = cfg
         return
 
@@ -216,7 +295,14 @@ class XttsEngine:
     def infer(self, req):
         t = self.torch
         t0 = time.time()
-        language = req.get("language", "ru")
+        language = _lang_code(req.get("language", "ru"))
+        # Набор языков у сборок отличается, поэтому проверяем по конфигу модели и
+        # отвечаем понятной ошибкой: у самого XTTS сообщение без списка доступных.
+        if self.languages and language not in self.languages:
+            raise ValueError(
+                "language_not_supported: '%s' (доступны: %s)"
+                % (language, ", ".join(sorted(self.languages)))
+            )
         kwargs = {
             "temperature": float(req.get("temperature", 0.7)),
             "repetition_penalty": float(req.get("repetitionPenalty", 3.5)),

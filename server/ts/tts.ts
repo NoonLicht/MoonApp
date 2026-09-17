@@ -544,7 +544,17 @@ class EngineSidecar {
   script: string;
   child: ChildProcess | null;
   buffer: string;
-  waiters: Array<(msg: SidecarMessage) => void>;
+  /** Ожидающие ответов запросы: у каждого свой набор типов-ответов. */
+  waiters: Array<{
+    types: string[];
+    resolve: (msg: SidecarMessage) => void;
+    timer: NodeJS.Timeout;
+  }>;
+  /**
+   * События вне запроса (телеметрия VRAM): движок шлёт их сам после каждого
+   * чанка — по ним задание обновляет счётчик видеопамяти.
+   */
+  onEvent: ((msg: SidecarMessage) => void) | null;
   /** Ошибка запуска интерпретатора (ENOENT и т.п.) — «залипает» до конца жизни. */
   spawnError: string;
 
@@ -558,6 +568,7 @@ class EngineSidecar {
     this.child = null;
     this.buffer = "";
     this.waiters = [];
+    this.onEvent = null;
     this.spawnError = "";
   }
 
@@ -575,7 +586,10 @@ class EngineSidecar {
       this.spawnError = `python_spawn_failed: ${String((e as Error).message || e)}`;
       const msg: SidecarMessage = { type: "error", message: this.spawnError };
       const waiters = this.waiters.splice(0, this.waiters.length);
-      for (const w of waiters) w(msg);
+      for (const w of waiters) {
+        clearTimeout(w.timer);
+        w.resolve(msg);
+      }
     });
     child.stdout?.setEncoding("utf8");
     child.stdout?.on("data", (d) => {
@@ -586,9 +600,7 @@ class EngineSidecar {
         this.buffer = this.buffer.slice(idx + 1);
         if (!line) continue;
         try {
-          const msg: SidecarMessage = JSON.parse(line);
-          const w = this.waiters.shift();
-          if (w) w(msg);
+          this._dispatch(JSON.parse(line));
         } catch {
           /* мусорная строка из stderr-мусора в stdout */
         }
@@ -600,41 +612,94 @@ class EngineSidecar {
     return this;
   }
 
-  // Отправить запрос и дождаться next-сообщения (с таймаутом).
-  ask(obj: Record<string, unknown>, timeoutMs = 3600000): Promise<SidecarMessage> {
+  /**
+   * Раздать пришедшее сообщение ОЖИДАЮЩЕМУ его запросу.
+   *
+   * Раньше ответом считалось просто «следующее сообщение», а оба движка после
+   * каждого инференса шлют ДВА сообщения (`vram` и `done`) — запросы разъезжались
+   * на одно сообщение, и конвейер считал чанк готовым, пока движок ещё считал
+   * следующий. На склейке это вылезало как «Error opening input file
+   * chunk_0002.wav: No such file or directory»: файла ещё не было.
+   *
+   * Поэтому ответ ищется по типу, «чужие» сообщения запросам не достаются, а
+   * телеметрия уходит в onEvent (монитор VRAM). Ошибка завершает любой запрос.
+   */
+  _dispatch(msg: SidecarMessage): void {
+    const type = String(msg.type || "");
+    const i = this.waiters.findIndex((w) => type === "error" || w.types.includes(type));
+    if (i >= 0) {
+      const w = this.waiters.splice(i, 1)[0];
+      clearTimeout(w.timer);
+      w.resolve(msg);
+      return;
+    }
+    this.onEvent?.(msg);
+  }
+
+  /**
+   * Отправить запрос и дождаться ответа нужного типа (`ready` для init, `done`
+   * для инференса; ошибка подходит всегда). Телеметрия `vram` ответом не
+   * считается — она приходит между ответами и уходит в onEvent.
+   */
+  ask(
+    obj: Record<string, unknown>,
+    expect: string | string[],
+    timeoutMs = 3600000,
+  ): Promise<SidecarMessage> {
+    const types = Array.isArray(expect) ? expect : [expect];
     return new Promise<SidecarMessage>((resolve, reject) => {
       const stdin = this.child?.stdin;
       // Ошибка запуска уже случилась (нет интерпретатора), либо процесс умер:
       // отвечаем сразу, не ожидая таймаута.
       if (this.spawnError) return reject(new Error(this.spawnError));
       if (!stdin || this.child?.exitCode != null) return reject(new Error("sidecar_dead"));
-      const timer = setTimeout(() => {
-        const i = this.waiters.indexOf(w);
-        if (i >= 0) this.waiters.splice(i, 1);
-        reject(new Error("sidecar_timeout"));
-      }, timeoutMs);
-      const w = (msg: SidecarMessage) => {
-        clearTimeout(timer);
-        resolve(msg);
+      const waiter = {
+        types,
+        resolve,
+        timer: setTimeout(() => {
+          const i = this.waiters.indexOf(waiter);
+          if (i >= 0) this.waiters.splice(i, 1);
+          reject(new Error("sidecar_timeout"));
+        }, timeoutMs),
       };
-      this.waiters.push(w);
+      this.waiters.push(waiter);
       stdin.write(JSON.stringify(obj) + "\n");
     });
   }
 
+  /**
+   * Закрыть сайдкар: сначала вежливо (shutdown — процесс освобождает VRAM и
+   * выходит сам), через 500 мс — принудительно и всем деревом процессов.
+   *
+   * Зачем добивать: python может не отреагировать (завис на загрузке модели или
+   * в недрах CUDA), и тогда он остаётся в памяти вместе с моделью в VRAM. После
+   * задания он не нужен никогда — ни при успехе, ни при ошибке.
+   */
   kill(): void {
+    if (!this.child || this.child.exitCode != null) return;
     try {
-      this.child?.stdin?.write(JSON.stringify({ type: "shutdown" }) + "\n");
+      this.child.stdin?.write(JSON.stringify({ type: "shutdown" }) + "\n");
     } catch {
       /* ignore */
     }
-    setTimeout(() => {
-      try {
-        this.child?.kill();
-      } catch {
-        /* ignore */
+    setTimeout(() => this.killHard(), 500);
+  }
+
+  /** Принудительное завершение процесса python вместе с деревом. */
+  killHard(): void {
+    const child = this.child;
+    if (!child || child.exitCode != null) return;
+    try {
+      // На Windows ребёнок python мог наплодить своих процессов (torch), поэтому
+      // снимаем дерево: тот же приём, что при отмене установки окружения.
+      if (process.platform === "win32" && child.pid) {
+        spawn("taskkill", ["/pid", String(child.pid), "/T", "/F"], { windowsHide: true });
+      } else {
+        child.kill("SIGKILL");
       }
-    }, 500);
+    } catch {
+      /* процесс мог уже завершиться */
+    }
   }
 }
 
@@ -912,6 +977,63 @@ const ENGINE_CHUNK_LIMIT = { f5: 380, xtts: 220 };
 const PRECISIONS = ["float16", "bfloat16", "float32", "int8"];
 const ATTENTIONS = ["sdpa", "flash", "eager"];
 const SOLVERS = ["euler", "midpoint", "rk4"];
+
+/**
+ * Язык для движка — всегда КОД, а не название.
+ *
+ * Интерфейс отдаёт человеческие названия («Russian», «Chinese»), и они же лежат в
+ * настройках (`voice.defaultLanguage`) и в голосовых профилях — то есть в задании
+ * язык приходит как есть. XTTS принимает только коды и падает с «Language
+ * 'Russian' is not supported». Переводим здесь, чтобы старые сохранённые значения
+ * заработали без правки пользователем; неизвестное значение отдаём как есть —
+ * внятную ошибку про язык тогда покажет движок.
+ *
+ * Коды — из набора XTTS v2 (в нём китайский именно `zh-cn`).
+ */
+const LANG_CODES: Record<string, string> = {
+  russian: "ru",
+  ru: "ru",
+  english: "en",
+  en: "en",
+  chinese: "zh-cn",
+  zh: "zh-cn",
+  "zh-cn": "zh-cn",
+  spanish: "es",
+  es: "es",
+  french: "fr",
+  fr: "fr",
+  german: "de",
+  de: "de",
+  japanese: "ja",
+  ja: "ja",
+  italian: "it",
+  it: "it",
+  portuguese: "pt",
+  pt: "pt",
+  polish: "pl",
+  pl: "pl",
+  turkish: "tr",
+  tr: "tr",
+  dutch: "nl",
+  nl: "nl",
+  czech: "cs",
+  cs: "cs",
+  arabic: "ar",
+  ar: "ar",
+  hungarian: "hu",
+  hu: "hu",
+  korean: "ko",
+  ko: "ko",
+  hindi: "hi",
+  hi: "hi",
+};
+
+/** «Russian» → «ru». Пустое значение — русский (как и по умолчанию в настройках). */
+export function langCode(value: unknown): string {
+  const raw = String(value ?? "").trim();
+  if (!raw) return "ru";
+  return LANG_CODES[raw.toLowerCase()] || raw.toLowerCase();
+}
 const FORMATS = ["mp3", "wav", "m4b"];
 
 function startJob(opts: TtsJobInput): TtsJob {
@@ -962,7 +1084,9 @@ function startJob(opts: TtsJobInput): TtsJob {
     ),
     opts: {
       refFile,
-      language: opts.language || cfg.defaultLanguage || "ru",
+      // Язык приводим к коду XTTS: интерфейс и сохранённые настройки хранят
+      // названия («Russian»), а движок понимает только коды (см. langCode).
+      language: langCode(opts.language || cfg.defaultLanguage),
       // Глобальные
       precision: PRECISIONS.includes(String(opts.precision)) ? String(opts.precision) : "float16",
       attention: ATTENTIONS.includes(String(opts.attention)) ? String(opts.attention) : "sdpa",
@@ -1025,6 +1149,9 @@ function spawnFFmpeg(args: string[]): Promise<void> {
 }
 
 async function runPipeline(job: TtsJob): Promise<void> {
+  // Сайдкар держим вне try: процесс python обязан завершиться и при ошибке —
+  // иначе он остаётся в памяти и держит модель в VRAM (см. finally).
+  let sidecar: EngineSidecar | null = null;
   try {
     const cfg = job.opts;
     job.stage = "model_load";
@@ -1032,7 +1159,11 @@ async function runPipeline(job: TtsJob): Promise<void> {
     // Предполётная проверка окружения ДО спавна движка: без неё пользователь
     // ждал загрузку модели и получал «Ошибка рендера: No module named 'torch'».
     await assertPythonEnv(job);
-    const sidecar = new EngineSidecar(job.engine)._start();
+    sidecar = new EngineSidecar(job.engine)._start();
+    // Монитор VRAM приходит отдельными сообщениями (не ответом на запрос).
+    sidecar.onEvent = (msg) => {
+      if (msg.type === "vram") job.vram = msg;
+    };
     const chunkDir = path.join(DIRS.tts, job.id);
     fs.mkdirSync(chunkDir, { recursive: true });
     job.progress = 2;
@@ -1053,6 +1184,7 @@ async function runPipeline(job: TtsJob): Promise<void> {
         gcEveryChunks: cfg.gcEveryChunks,
         ffmpeg: ff?.ffmpeg || "",
       },
+      "ready",
       600000,
     );
     if (ready.type === "error") throw new Error(ready.message);
@@ -1081,16 +1213,19 @@ async function runPipeline(job: TtsJob): Promise<void> {
           speed: cfg.speed,
           language: cfg.language,
         },
+        "done",
         600000,
       );
       if (msg.type === "error") throw new Error(msg.message);
       job.chunkIndex = i;
       job.progress = Math.round((85 * (i + 1)) / job.items.length);
-      if (msg.type === "vram") job.vram = msg;
       wavs.push({ wav, pauseMs: item.pauseMs || 0 });
     }
     if (!wavs.length) throw new Error("empty_result");
+    // Модель больше не нужна: закрываем python до склейки и мастеринга, чтобы он не
+    // держал VRAM во время работы ffmpeg.
     sidecar.kill();
+    sidecar = null;
 
     // --- Склейка: паузы (anullsrc) + кроссфейд между чанками ---
     job.stage = "stitch";
@@ -1167,6 +1302,11 @@ async function runPipeline(job: TtsJob): Promise<void> {
     job.error = envAwareError(job, (e as Error)?.message || e).message;
     job.stage = "error";
     logger.error("tts.error", { id: job.id, error: job.error, env: job.envError || null });
+  } finally {
+    // Процесс python снимаем ВСЕГДА: при ошибке он раньше оставался жить (модель
+    // висела в VRAM, а в диспетчере задач копился лишний python с torch/numpy).
+    // При успехе sidecar уже закрыт выше и здесь его нет.
+    if (sidecar) sidecar.kill();
   }
 }
 
