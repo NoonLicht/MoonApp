@@ -1131,7 +1131,6 @@
     "loudness": "Нормализация EBU R128",
     "speed": "Скорость речи",
     "format": "Формат экспорта",
-    "language": "Язык",
     "optimal": "Optimal",
     "optimalForVram": "Optimal для {gb} ГБ VRAM",
     "optimalNfe": "Optimal 32–48",

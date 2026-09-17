@@ -25,6 +25,12 @@ python на каждый чанк, и позволяет держать VRAM-г�
 озвучки была нерабочей на машинах без NVIDIA; установщик окружения в UI теперь
 честно предлагает сборку torch CPU или CUDA).
 
+Модель: по умолчанию русский дообученный чекпоинт (RU_MODEL ниже) — базовая
+F5TTS_v1_Base обучена только на английском и китайском и читает кириллицу
+своими фонемами (для русского текста это тарабарщина). Если русский чекпоинт
+скачать не удалось, работаем на базовой модели, а причину отдаём в `ready`
+(`modelError`) — приложение пишет её в лог.
+
 ВНИМАНИЕ про версии f5-tts: имена аргументов у них разные. В актуальных сборках
 конструктор F5TTS не принимает `dtype` — вызов падал с
 «F5TTS.__init__() got an unexpected keyword argument 'dtype'», а в infer вместо
@@ -36,6 +42,7 @@ import os
 import sys
 import inspect
 import json
+import re
 import time
 import gc
 
@@ -43,9 +50,11 @@ import gc
 # soundfile) — лежат рядом, каталог скрипта всегда в sys.path. Подробности в
 # server/engines/py_audio.py: без них f5-tts падает с «[WinError 2]» на pydub.
 try:
+    from py_audio import force_utf8
     from py_audio import prepare as prepare_audio
 except ImportError:  # запуск не из каталога скрипта (например, импорт как модуля)
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from py_audio import force_utf8
     from py_audio import prepare as prepare_audio
 
 
@@ -53,6 +62,65 @@ def _load_f5():
     import torch
     from f5_tts.api import F5TTS
     return torch, F5TTS
+
+
+# ---------------------------------------------------------------------------
+# Какая модель F5-TTS считается.
+#
+# Базовая `F5TTS_v1_Base` (SWivid/F5-TTS) обучена ТОЛЬКО на английском и
+# китайском: кириллицу она раскладывает своими фонемами, и русский текст звучит
+# как тарабарщина — не «акцент», а именно чужой язык. Поэтому по умолчанию берём
+# русский дообученный чекпоинт Misha24-10/F5-TTS_RUSSIAN (5 000 часов русской и
+# английской речи, 229 лайков, ~57k скачиваний в месяц).
+#
+# Варианты в репозитории: F5TTS_v1_Base (первая версия), F5TTS_v1_Base_accent_tune
+# (полная разметка ударений) и F5TTS_v1_Base_v2 (+16 эпох, мягкая фильтрация
+# записей с артефактами). Берём v2; файл `*_inference.safetensors` — это те же
+# веса, подготовленные для инференса (без состояния оптимизатора, 1.29 ГБ вместо
+# 5.4 ГБ у `model_last.pt`).
+#
+# Словарь (`vocab.txt`) у русского чекпоинта совпадает со штатным словарём
+# f5-tts построчно — передавать свой не нужно, размер и индексы символов те же.
+#
+# Лицензия русского чекпоинта — CC-BY-NC-4.0, то есть НЕкоммерческое
+# использование (у базовой F5-TTS лицензия тоже CC-BY-NC).
+#
+# Ударения: модель умеет их понимать, но ждёт «+» ПЕРЕД ударной гласной
+# («молок+о»), а наш русский NLP ставит знак ударения после гласной
+# («молоко́», U+0301). Перевод делает _stress_plus ниже.
+# ---------------------------------------------------------------------------
+RU_MODEL = {
+    "repo": "Misha24-10/F5-TTS_RUSSIAN",
+    "ckpt": "F5TTS_v1_Base_v2/model_last_inference.safetensors",
+    "name": "F5-TTS_RUSSIAN/F5TTS_v1_Base_v2",
+    "license": "cc-by-nc-4.0",
+}
+BASE_MODEL_NAME = "F5TTS_v1_Base (en+zh)"
+
+# Знак ударения после гласной: наш ruNlp.markStress ставит U+0301 (а иногда и
+# U+0300). Модель ждёт «+» перед гласной, поэтому знак заменяется на «+гласная».
+_ACUTE_AFTER_VOWEL = re.compile("([аеёиоуыэюяАЕЁИОУЫЭЮЯ])[\u0300\u0301]")
+
+
+def _stress_plus(text):
+    """«молоко́» → «молок+о»: формат ударений русского чекпоинта F5-TTS.
+
+    Делаем это только для русской модели: у базовой «+» — обычный символ словаря,
+    и он прозвучал бы как лишний звук посреди слова.
+    """
+    return _ACUTE_AFTER_VOWEL.sub(r"+\1", str(text or ""))
+
+
+def _ru_ckpt():
+    """Локальный путь к русскому чекпоинту (скачивает в кэш HF при первом запуске).
+
+    Качает сам huggingface_hub: и с прогрессом в stderr (его видно в логе
+    сайдкара), и с докачкой после обрыва. Ошибку не глотаем здесь — вызывающий
+    решает, работать ли на базовой модели (см. F5Engine.__init__).
+    """
+    from huggingface_hub import hf_hub_download
+
+    return hf_hub_download(repo_id=RU_MODEL["repo"], filename=RU_MODEL["ckpt"])
 
 
 def _kwargs_for(fn, kwargs):
@@ -158,15 +226,40 @@ class F5Engine:
         dtype = t.float32 if self.device == "cpu" else dtype_map.get(
             cfg.get("precision", "float16"), t.float16
         )
-        # dtype передаём ТОЛЬКО если конструктор его принимает: в актуальных
-        # сборках f5-tts аргумента нет, и вызов падал с «F5TTS.__init__() got an
-        # unexpected keyword argument 'dtype'» (см. _kwargs_for).
-        ctor = _kwargs_for(F5TTS.__init__, {"dtype": dtype})
+        # Русский чекпоинт (см. RU_MODEL): качается в кэш HF при первом запуске.
+        # Если не вышло (нет сети, нет места, репозиторий недоступен) — работаем на
+        # базовой модели и говорим об этом прямо: лучше английская дикция, чем
+        # отказ рендера. Флаг нужен ещё и потому, что «+» в тексте имеет смысл
+        # только для русской модели (см. _stress_plus).
+        self.ruModel = False
+        self.modelError = ""
+        ru_ckpt = ""
+        try:
+            ru_ckpt = _ru_ckpt()
+        except Exception as e:
+            self.modelError = str(e)[:300]
+        # dtype и ckpt_file передаём ТОЛЬКО если конструктор их принимает: в
+        # актуальных сборках f5-tts нет `dtype`, и вызов падал с
+        # «F5TTS.__init__() got an unexpected keyword argument 'dtype'».
+        ctor = _kwargs_for(F5TTS.__init__, {"dtype": dtype, "ckpt_file": ru_ckpt})
         try:
             self.tts = F5TTS(**ctor)  # nfe задаётся на infer
+            self.ruModel = bool(ru_ckpt) and "ckpt_file" in ctor
         except TypeError:
             # Подпись соврала (обёртки, декораторы) — работаем без параметров.
             self.tts = F5TTS()
+        except Exception as e:
+            if not ru_ckpt:
+                raise  # дело не в чекпоинте: базовую модель тоже не собрать
+            # Русский чекпоинт не приняли этой сборкой f5-tts — не оставляем
+            # пользователя без озвучки, но причину показываем в ready.
+            self.modelError = str(e)[:300]
+            self.tts = F5TTS(**_kwargs_for(F5TTS.__init__, {"dtype": dtype}))
+            self.ruModel = False
+        if self.ruModel:
+            self.modelName = RU_MODEL["name"]
+        else:
+            self.modelName = BASE_MODEL_NAME
         if "dtype" not in ctor:
             _put_dtype(self.tts, dtype)
         self.cfg = cfg
@@ -207,13 +300,18 @@ class F5Engine:
 
     def infer(self, req):
         t0 = time.time()
+        # Русская модель ударения понимает, но ждёт «+» перед ударной гласной
+        # («молок+о»), а тексты приходят со знаком ударения ПОСЛЕ гласной
+        # («молоко́») — см. _stress_plus. Для базовой модели перевод не делаем:
+        # там «+» просто лишний символ.
+        text = _stress_plus(req["text"]) if self.ruModel else req["text"]
         # Имена аргументов infer тоже различаются между сборками: nfe в старых,
         # nfe_step в новых, exaggeration появился не сразу. Поэтому собираем
         # «желаемое» и отдаём только то, что подпись метода принимает.
         kwargs = {
             "ref_file": req["ref"],
             "ref_text": "",
-            "gen_text": req["text"],
+            "gen_text": text,
             "file_type": "wav",
             "cfg_strength": float(req.get("cfg", 2.0)),
             "exaggeration": float(req.get("exaggeration", 1.0)),
@@ -232,6 +330,9 @@ class F5Engine:
 
 
 def main():
+    # Протокол — UTF-8 JSON-lines: без этого русский текст приезжает крякозябрами
+    # и движок озвучивает мусор (подробности в py_audio.force_utf8).
+    force_utf8()
     eng = None
     for line in sys.stdin:
         line = line.strip()
@@ -246,7 +347,21 @@ def main():
             rtype = req.get("type")
             if rtype == "init":
                 eng = F5Engine(req)
-                _emit({"type": "ready", "device": eng.deviceId, "vramGb": eng.vramTotal, "shims": eng.shims})
+                _emit(
+                    {
+                        "type": "ready",
+                        "device": eng.deviceId,
+                        "vramGb": eng.vramTotal,
+                        "shims": eng.shims,
+                        # Какая модель реально загружена (русский чекпоинт или
+                        # базовая en+zh) и почему не получилось взять русскую —
+                        # уходит в лог приложения (tts.model), чтобы это было
+                        # видно без чтения stderr движка.
+                        "model": eng.modelName,
+                        "modelError": eng.modelError or None,
+                        "modelLicense": RU_MODEL["license"] if eng.ruModel else None,
+                    }
+                )
                 _emit({"type": "vram", **eng.vram()})
             elif rtype == "infer":
                 if eng is None:

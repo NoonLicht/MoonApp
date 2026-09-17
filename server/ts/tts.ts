@@ -30,6 +30,17 @@ import * as ruNlp from "./ruNlp";
 import { createQueue, trimJobs } from "./jobStore";
 import { removeOlderThan } from "./fsUtil";
 
+/**
+ * Окружение для python-процессов приложения.
+ *
+ * stdout/stderr питона идут в UTF-8, а не в кодировке локали Windows (cp1251 на
+ * русской системе): иначе вывод на русском превращается в крякозябры в логе
+ * приложения, а JSON-протокол сайдкара ломается целиком (подробности —
+ * py_audio.force_utf8 и EngineSidecar._start).
+ */
+const PY_ENV = { ...process.env, PYTHONIOENCODING: "utf-8", PYTHONUTF8: "1" };
+
+/** Каталог storage приложения и его подкаталоги. */
 const { DIRS } = config;
 
 /* ------------------------------- Типы ------------------------------- */
@@ -77,7 +88,6 @@ interface VoiceProfileInput {
   name?: unknown;
   refFile?: unknown;
   engine?: unknown;
-  language?: unknown;
 }
 
 /** Профиль голоса: референсный wav + движок. */
@@ -86,7 +96,6 @@ interface VoiceProfile {
   name: string;
   refFile: string;
   engine: TtsEngine;
-  language?: string;
   createdAt: number;
 }
 
@@ -124,6 +133,7 @@ interface TtsItem {
 /** Нормализованные параметры задания: всё приведено к допустимым значениям. */
 interface NormalizedParams {
   refFile: string;
+  /** Всегда русский (TTS_LANGUAGE) — язык не выбирается и не настраивается. */
   language: string;
   precision: string;
   attention: string;
@@ -156,6 +166,11 @@ interface TtsJobInput extends TtsParamsInput {
   chunks?: unknown;
   refFile?: unknown;
   engine?: unknown;
+  /**
+   * Язык озвучки — принимается, но ИГНОРИРУЕТСЯ (движок всегда русский, см.
+   * TTS_LANGUAGE). Поле оставлено, чтобы старые сборки интерфейса и сохранённые
+   * профили (там лежали названия вроде «English») не ломали запуск задания.
+   */
   language?: unknown;
   title?: unknown;
   author?: unknown;
@@ -371,10 +386,8 @@ function saveProfile(p: VoiceProfileInput): VoiceProfile {
     name: String(p.name || "voice").slice(0, 60),
     refFile,
     engine: p.engine === "xtts" ? "xtts" : "f5",
-    language: p.language === undefined ? undefined : String(p.language).slice(0, 40),
     createdAt: Date.now(),
   };
-  if (!profile.language) delete profile.language;
   list.push(profile);
   saveProfiles(list);
   return profile;
@@ -577,6 +590,13 @@ class EngineSidecar {
     const child = spawn(python, [this.script], {
       windowsHide: true,
       stdio: ["pipe", "pipe", "pipe"],
+      // Протокол сайдкара — UTF-8, а python с присоединённым конвейером берёт
+      // кодировку из локали Windows (cp1251 на русской системе). Без этого
+      // русский текст книжки декодировался как крякозябры (196 «символов» вместо
+      // 108 — столько занимают его UTF-8 байты), и движок озвучивал мусор:
+      // «тарабарщина» вместо русского. Сам сайдкар делает то же самое
+      // (py_audio.force_utf8) — здесь страховка для сборок без reconfigure.
+      env: PY_ENV,
     });
     this.child = child;
     // spawn падает мгновенно (ENOENT: интерпретатор не найден по указанному в
@@ -865,7 +885,7 @@ function pythonEnv(force = false): Promise<PythonEnv> {
       envCacheCmd = cmd;
       resolve(env);
     };
-    const child = spawn(cmd, [script], { windowsHide: true });
+    const child = spawn(cmd, [script], { windowsHide: true, env: PY_ENV });
     const timer = setTimeout(() => {
       if (done) return;
       done = true;
@@ -1003,66 +1023,24 @@ const ATTENTIONS = ["sdpa", "flash", "eager"];
 const SOLVERS = ["euler", "midpoint", "rk4"];
 
 /**
- * Язык для движка — всегда КОД, а не название.
+ * Язык движка — зафиксирован, и это исправление, а не упрощение.
  *
- * Интерфейс отдаёт человеческие названия («Russian», «Chinese»), и они же лежат в
- * настройках (`voice.defaultLanguage`) и в голосовых профилях — то есть в задании
- * язык приходит как есть. XTTS принимает только коды и падает с «Language
- * 'Russian' is not supported». Переводим здесь, чтобы старые сохранённые значения
- * заработали без правки пользователем; неизвестное значение отдаём как есть —
- * внятную ошибку про язык тогда покажет движок.
+ * XTTS язык текста НЕ определяет: он читает кириллицу фонемами того языка,
+ * который ему передали. Пока язык выбирался в интерфейсе и лежал в настройках
+ * (`voice.defaultLanguage`, где по умолчанию стоял «English»), русская книга
+ * уезжала в модель как английская — в логе это
+ * «The text length exceeds the character limit of 250 for language 'en'», а на
+ * слух — тарабарщина вместо русского. Выбор языка убран из интерфейса, из
+ * настроек и из задания: движок в этом приложении всегда русский.
  *
- * Коды — из набора XTTS v2 (в нём китайский именно `zh-cn`).
+ * Поле `language` в задании принимается (старые сохранённые профили и пресеты
+ * его ещё присылают), но не используется — см. TtsJobInput.
  */
-const LANG_CODES: Record<string, string> = {
-  russian: "ru",
-  ru: "ru",
-  english: "en",
-  en: "en",
-  chinese: "zh-cn",
-  zh: "zh-cn",
-  "zh-cn": "zh-cn",
-  spanish: "es",
-  es: "es",
-  french: "fr",
-  fr: "fr",
-  german: "de",
-  de: "de",
-  japanese: "ja",
-  ja: "ja",
-  italian: "it",
-  it: "it",
-  portuguese: "pt",
-  pt: "pt",
-  polish: "pl",
-  pl: "pl",
-  turkish: "tr",
-  tr: "tr",
-  dutch: "nl",
-  nl: "nl",
-  czech: "cs",
-  cs: "cs",
-  arabic: "ar",
-  ar: "ar",
-  hungarian: "hu",
-  hu: "hu",
-  korean: "ko",
-  ko: "ko",
-  hindi: "hi",
-  hi: "hi",
-};
-
-/** «Russian» → «ru». Пустое значение — русский (как и по умолчанию в настройках). */
-export function langCode(value: unknown): string {
-  const raw = String(value ?? "").trim();
-  if (!raw) return "ru";
-  return LANG_CODES[raw.toLowerCase()] || raw.toLowerCase();
-}
+const TTS_LANGUAGE = "ru";
 const FORMATS = ["mp3", "wav", "m4b"];
 
 function startJob(opts: TtsJobInput): TtsJob {
   const id = crypto.randomBytes(6).toString("hex");
-  const cfg = settings.get("voice") || {};
   // С1: refFile — только имя ref_* внутри storage/tts (клиент не доверенный).
   const refFile = String(opts.refFile || "").replace(/^.*[\\/]/, "");
   if (!/^ref_[A-Za-z0-9._-]+$/.test(refFile)) throw new Error("invalid_reference");
@@ -1112,9 +1090,10 @@ function startJob(opts: TtsJobInput): TtsJob {
     ),
     opts: {
       refFile,
-      // Язык приводим к коду XTTS: интерфейс и сохранённые настройки хранят
-      // названия («Russian»), а движок понимает только коды (см. langCode).
-      language: langCode(opts.language || cfg.defaultLanguage),
+      // Движок считает русским всегда (см. TTS_LANGUAGE). Поле осталось в снимке
+      // задания, чтобы это было видно в логе и в /tts/<id>, но из интерфейса,
+      // настроек и профилей оно больше не берётся.
+      language: TTS_LANGUAGE,
       // Глобальные
       precision: PRECISIONS.includes(String(opts.precision)) ? String(opts.precision) : "float16",
       attention: ATTENTIONS.includes(String(opts.attention)) ? String(opts.attention) : "sdpa",
@@ -1201,6 +1180,10 @@ async function runPipeline(job: TtsJob): Promise<void> {
     // pydub запускает `ffmpeg` по имени (то есть ищет в PATH) — без этого рендер
     // падал с «[WinError 2] Не удается найти указанный файл» на первом чанке.
     const ff = await detectFfmpeg().catch(() => null);
+    // Таймаут init — 20 минут вместо 10: первый запуск F5 скачивает русский
+    // чекпоинт (~1.29 ГБ, см. RU_MODEL в server/engines/f5_wrapper.py), и на
+    // медленном канале десяти минут не хватало — задание падало по таймауту
+    // уже ПОСЛЕ скачивания, а сайдкар продолжал жить.
     const ready = await sidecar.ask(
       {
         type: "init",
@@ -1213,9 +1196,21 @@ async function runPipeline(job: TtsJob): Promise<void> {
         ffmpeg: ff?.ffmpeg || "",
       },
       "ready",
-      600000,
+      1200000,
     );
     if (ready.type === "error") throw new Error(ready.message);
+    // Какую модель реально загрузил движок. У F5 это русский дообученный
+    // чекпоинт (см. RU_MODEL в server/engines/f5_wrapper.py), но он мог не
+    // скачаться — тогда считается базовая (en+zh), и по логу это видно сразу,
+    // а не после прослушивания готовой книги.
+    if (ready.model) {
+      logger.info("tts.model", {
+        engine: job.engine,
+        model: ready.model,
+        error: ready.modelError || null,
+        license: ready.modelLicense || null,
+      });
+    }
 
     job.stage = "infer";
     const refPath = path.join(DIRS.tts, cfg.refFile);
@@ -1239,7 +1234,9 @@ async function runPipeline(job: TtsJob): Promise<void> {
           topK: cfg.topK,
           topP: cfg.topP,
           speed: cfg.speed,
-          language: cfg.language,
+          // Язык специально НЕ передаём: движок берёт его из своей константы
+          // (server/engines/xtts_wrapper.py → LANGUAGE). Раньше здесь уезжало
+          // значение из настроек, и русский текст считался английским.
         },
         "done",
         600000,

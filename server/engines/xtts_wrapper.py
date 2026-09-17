@@ -10,9 +10,12 @@ Coqui XTTS v2 engine sidecar (embedded, persistent).
   {"type":"init","precision":"float16|bfloat16|float32",
    "vramBudgetGb":4.5,"gcEveryChunks":1}
   {"type":"infer","ref":".../ref.wav","text":"...","out":".../chunk.wav",
-   "language":"ru","temperature":0.7,"repetitionPenalty":3.5,
+   "temperature":0.7,"repetitionPenalty":3.5,
    "topK":50,"topP":0.85,"speed":1.0,"sentencePauseMs":400}
   {"type":"shutdown"}
+
+Язык синтеза не передаётся: он зафиксирован константой LANGUAGE (см. ниже) —
+движок в этом приложении всегда читает русский.
 
 Выход: ready / vram / done / error — как у F5 (device = "cuda:0" либо "cpu").
 
@@ -42,12 +45,14 @@ import gc
 import os
 
 try:
-    from py_audio import prepare as prepare_audio
     from py_audio import allow_coqui_tos as prepare_tos
+    from py_audio import force_utf8
+    from py_audio import prepare as prepare_audio
 except ImportError:  # запуск не из каталога скрипта
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-    from py_audio import prepare as prepare_audio
     from py_audio import allow_coqui_tos as prepare_tos
+    from py_audio import force_utf8
+    from py_audio import prepare as prepare_audio
 
 
 def _accepts(fn, name):
@@ -82,77 +87,27 @@ def _filter_kwargs(fn, kwargs):
     return {k: v for k, v in kwargs.items() if _accepts(fn, k)}
 
 
-KNOWN_LANGUAGES = {
-    "en",
-    "ru",
-    "zh-cn",
-    "es",
-    "fr",
-    "de",
-    "ja",
-    "it",
-    "pt",
-    "pl",
-    "tr",
-    "nl",
-    "cs",
-    "ar",
-    "hu",
-    "ko",
-    "hi",
-}
+# Язык синтеза. Зафиксирован намертво, и это не «упрощение на будущее», а
+# исправление: XTTS НЕ определяет язык текста сам — он читает кириллицу фонемами
+# того языка, который ему передали в вызове. Пока язык брался из интерфейса и
+# настроек (`voice.defaultLanguage`), по умолчанию там стоял «English», и русский
+# текст уезжал в модель как английский: в логе это видно как
+# «The text length exceeds the character limit of 250 for language 'en'», а на
+# слух — как тарабарщина. Список языков убран и из интерфейса, и из задания:
+# движок в этом приложении всегда русский.
+LANGUAGE = "ru"
+
+# Знаки ударения XTTS не понимает: в его словаре комбинирующая акута (U+0301) —
+# неизвестный символ, и токенизатор вставляет <unk> ВНУТРЬ слова (проверено:
+# «замо́к» → [267, 3428, 3447, 1, 3384], где 1 — <unk>). Такой мусор в середине
+# слова слышен как щелчок/сбой. Ударения ставит русский NLP (server/ts/ruNlp.ts),
+# и они нужны русскому F5-TTS («+» перед гласной), а для XTTS их вырезаем.
+_COMBINING = re.compile("[\u0300-\u036f\u0483-\u0489]")
 
 
-def _lang_code(value):
-    """Язык → код XTTS: «Russian» → «ru», «Chinese» → «zh-cn».
-
-    Почему это нужно здесь, а не только в сервере: названия языков приходят из
-    интерфейса и уже сохранены в настройках (`voice.defaultLanguage`) и в голосовых
-    профилях. XTTS принимает только коды и падает с «Language 'Russian' is not
-    supported», поэтому переводим и в сайдкаре — на случай старого сохранённого
-    профиля или вызова обёртки из другого места.
-    """
-    raw = str(value or "").strip().lower()
-    if not raw:
-        return "ru"
-    names = {
-        "russian": "ru",
-        "русский": "ru",
-        "english": "en",
-        "английский": "en",
-        "chinese": "zh-cn",
-        "китайский": "zh-cn",
-        "zh": "zh-cn",
-        "spanish": "es",
-        "испанский": "es",
-        "french": "fr",
-        "французский": "fr",
-        "german": "de",
-        "немецкий": "de",
-        "japanese": "ja",
-        "японский": "ja",
-        "italian": "it",
-        "итальянский": "it",
-        "portuguese": "pt",
-        "португальский": "pt",
-        "polish": "pl",
-        "польский": "pl",
-        "turkish": "tr",
-        "турецкий": "tr",
-        "dutch": "nl",
-        "нидерландский": "nl",
-        "czech": "cs",
-        "чешский": "cs",
-        "arabic": "ar",
-        "арабский": "ar",
-        "hungarian": "hu",
-        "венгерский": "hu",
-        "korean": "ko",
-        "корейский": "ko",
-        "hindi": "hi",
-        "хинди": "hi",
-    }
-    return names.get(raw, raw)
+def drop_stress(text):
+    """Убрать знаки ударения и прочую комбинирующую диакритику из текста."""
+    return _COMBINING.sub("", str(text or ""))
 
 
 # ---------------------------------------------------------------------------
@@ -330,10 +285,9 @@ class XttsEngine:
         # «cuda_not_available», и студия озвучки не работала без NVIDIA).
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.deviceId = "cuda:0" if self.device == "cuda" else "cpu"
-        # Набор языков уточняется по конфигу загруженной модели (у XTTS v2 китайский
-        # — именно `zh-cn`, а не `zh`): хардкод ниже — запасной вариант для сборок
-        # без конфига.
-        self.languages = KNOWN_LANGUAGES
+        # Язык один (LANGUAGE) — список языков сборки больше не нужен, но
+        # проверка «он вообще поддерживается моделью» осталась ниже.
+        self.languages = {LANGUAGE}
         # Модель сама скачается в кэш TTS (~1.8 ГБ) при первом init.
         try:
             # Путь 1 (проверенный на coqui-tts 0.27 и классическом TTS 0.22):
@@ -367,10 +321,17 @@ class XttsEngine:
             self.vramTotal = torch.cuda.get_device_properties(0).total_memory / (1024 ** 3)
         else:
             self.vramTotal = 0.0
-        # Языки берём у самой модели: наборы у сборок XTTS различаются.
+        # Языки берём у самой модели: если в сборке нет русского, лучше сказать об
+        # этом сразу при загрузке, чем отдать пользователю тарабарщину после
+        # многочасового рендера (модель без `ru` читает кириллицу своими фонемами).
         offer = getattr(getattr(self.tts, "config", None), "languages", None)
         if offer:
             self.languages = {str(x).lower() for x in offer}
+            if LANGUAGE not in self.languages:
+                raise RuntimeError(
+                    "ru_not_supported: в сборке XTTS нет русского (доступны: %s)"
+                    % ", ".join(sorted(self.languages))
+                )
         self.cfg = cfg
         return
 
@@ -402,14 +363,12 @@ class XttsEngine:
     def infer(self, req):
         t = self.torch
         t0 = time.time()
-        language = _lang_code(req.get("language", "ru"))
-        # Набор языков у сборок отличается, поэтому проверяем по конфигу модели и
-        # отвечаем понятной ошибкой: у самого XTTS сообщение без списка доступных.
-        if self.languages and language not in self.languages:
-            raise ValueError(
-                "language_not_supported: '%s' (доступны: %s)"
-                % (language, ", ".join(sorted(self.languages)))
-            )
+        # Язык — константа, а не поле запроса: см. комментарий к LANGUAGE.
+        # Поле `language` из старых сборок сервера/профилей игнорируется осознанно —
+        # именно из-за него русский текст уходил в модель как английский.
+        language = LANGUAGE
+        # Ударения из текста вырезаем: XTTS их не умеет (см. drop_stress).
+        text = drop_stress(req["text"])
         kwargs = {
             "temperature": float(req.get("temperature", 0.7)),
             "repetition_penalty": float(req.get("repetitionPenalty", 3.5)),
@@ -422,7 +381,7 @@ class XttsEngine:
         gpt_cond_latent, speaker_embedding = self.tts.get_conditioning_latents(
             audio_path=[req["ref"]]
         )
-        pieces = self.text_pieces(req["text"], language)
+        pieces = self.text_pieces(text, language)
         if not pieces:
             raise ValueError("empty_text")
         pause_ms = int(req.get("sentencePauseMs", 0) or 0)
@@ -583,6 +542,9 @@ def _emit(obj):
 
 
 def main():
+    # Протокол — UTF-8 JSON-lines: без этого русский текст приезжает крякозябрами
+    # и движок озвучивает мусор (подробности в py_audio.force_utf8).
+    force_utf8()
     eng = None
     for line in sys.stdin:
         line = line.strip()

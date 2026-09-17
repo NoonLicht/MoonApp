@@ -250,19 +250,56 @@ const HOMOGRAPHS: Homograph[] = [
     stress: (before, after) =>
       /открыт|закрыт|ключ|двер/i.test(before + (after || "")) ? "замо́к" : "за́мок",
   },
-  { word: "мука", stress: (before) => (/пшен|ржа|тесто|хлеб/i.test(before) ? "мука́" : "му́ка") },
+  {
+    word: "мука",
+    // Контекст смотрим и до, и после слова: «мука из пшеницы» — тоже про продукт
+    // (раньше проверялось только слово ПЕРЕД, и такой текст получал ударение
+    // «му́ка» — про страдание).
+    stress: (before, after) =>
+      /пшен|ржа|тесто|хлеб|мучн|блин|пирог/i.test(before + (after || "")) ? "мука́" : "му́ка",
+  },
   { word: "белок", stress: () => "бело́к" },
   { word: "дорог", stress: () => "доро́г" },
 ];
 
-/** Расставить ударения в омографах (ошибочный выбор не ломает текст). */
+/** Сколько символов контекста по бокам слова отдаём правилу омографа. */
+const CONTEXT_CHARS = 24;
+
+/** Сохранить регистр слова: «Замок» → «Замо́к», «ЗАМОК» → «ЗАМО́К». */
+function matchCase(out: string, src: string): string {
+  if (!out) return out;
+  if (src === src.toUpperCase() && src !== src.toLowerCase()) return out.toUpperCase();
+  if (src[0] === src[0].toUpperCase() && src[0] !== src[0].toLowerCase()) {
+    return out[0].toUpperCase() + out.slice(1);
+  }
+  return out;
+}
+
+/**
+ * Расставить ударения в омографах (ошибочный выбор не ломает текст).
+ *
+ * Здесь было ДВЕ ошибки, из-за которых функция не делала ничего:
+ *
+ *   1. Границы слова. `\b` в JavaScript определяет границу только по ASCII
+ *      ([A-Za-z0-9_]), поэтому шаблон `\bзамок\b` не находил ни одного русского
+ *      слова — знак ударения не ставился НИКОГДА (это подтверждается прогоном:
+ *      на «Замок открыт ключом» текст возвращался без изменений). Границу задаём
+ *      явно: слева и справа от слова не должно быть буквы.
+ *
+ *   2. Съеденные соседи. Замена возвращала только само слово, а `(\S*)\s?` и
+ *      `(\S*)` по бокам входили в совпадение — «открыт замок» превратилось бы в
+ *      «замо́к». Теперь контекст нужен только для выбора варианта ударения,
+ *      а в тексте меняется исключительно слово.
+ */
 export function markStress(text: unknown): string {
   let t = String(text || "");
   for (const h of HOMOGRAPHS) {
-    const re = new RegExp(`(\\S*)\\s?\\b${h.word}\\b(\\S*)`, "giu");
-    t = t.replace(re, (m, before: string, after: string) => {
+    const re = new RegExp(`(?<![\\p{L}])${h.word}(?![\\p{L}])`, "giu");
+    t = t.replace(re, (m: string, offset: number, whole: string) => {
       try {
-        return h.stress(before || "", after || "");
+        const before = whole.slice(Math.max(0, offset - CONTEXT_CHARS), offset);
+        const after = whole.slice(offset + m.length, offset + m.length + CONTEXT_CHARS);
+        return matchCase(h.stress(before, after), m);
       } catch {
         return m;
       }

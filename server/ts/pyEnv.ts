@@ -57,6 +57,14 @@ import { downloadToFile } from "./download";
 import { createSetupTask, type SetupTaskState } from "./setupTask";
 import { pythonEnv, detectHardware, type PythonEnv } from "./tts";
 
+/**
+ * Окружение для python-процессов (pip, проба, распаковка): UTF-8 вместо
+ * кодировки локали Windows. Иначе русский вывод pip превращается в крякозябры в
+ * логе панели установки, а пути/сообщения об ошибке нечитаемы. Ту же переменную
+ * использует сайдкар озвучки (см. PY_ENV в server/ts/tts.ts).
+ */
+const PY_ENV = { ...process.env, PYTHONIOENCODING: "utf-8", PYTHONUTF8: "1" };
+
 /** Движок синтеза: F5-TTS или Coqui XTTS v2 (см. server/ts/tts.ts). */
 export type PyEngineId = "f5" | "xtts";
 /**
@@ -360,7 +368,7 @@ function runPip(python: string, step: PyStep, stepIndex: number): Promise<number
       ...(currentMode === "uninstall" ? [] : ["--progress-bar", "off"]),
       ...step.args,
     ];
-    child = spawn(python, args, { windowsHide: true });
+    child = spawn(python, args, { windowsHide: true, env: PY_ENV });
     let tail = "";
     let fraction = 0;
     const onData = (d: Buffer): void => {
@@ -604,7 +612,7 @@ function runScript(
   base: number,
 ): Promise<boolean> {
   return new Promise((resolve, reject) => {
-    child = spawn(python, args, { windowsHide: true });
+    child = spawn(python, args, { windowsHide: true, env: PY_ENV });
     let tail = "";
     let fraction = 0;
     const onData = (d: Buffer): void => {
@@ -802,7 +810,7 @@ function runText(cmd: string, args: string[], timeoutMs = 5000): Promise<string>
   return new Promise((resolve) => {
     let out = "";
     let done = false;
-    const proc = spawn(cmd, args, { windowsHide: true });
+    const proc = spawn(cmd, args, { windowsHide: true, env: PY_ENV });
     const timer = setTimeout(() => {
       if (done) return;
       done = true;
@@ -851,7 +859,7 @@ function probe(cmd: string, args: string[], label: string): Promise<PyInterprete
     let out = "";
     let errTail = "";
     let done = false;
-    const proc = spawn(cmd, [...args, script], { windowsHide: true });
+    const proc = spawn(cmd, [...args, script], { windowsHide: true, env: PY_ENV });
     // Проба не грузит модули (find_spec внутри python_env.py), поэтому 20 секунд
     // — с запасом даже на медленный диск.
     const timer = setTimeout(() => {

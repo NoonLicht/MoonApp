@@ -83,7 +83,6 @@ const DEFAULT_PARAMS: Params = {
   paragraphPauseMs: 1200,
   loudnessTarget: -16,
   format: "m4b",
-  language: "Russian",
   expandNumbers: true,
   yoficate: true,
   markStress: true,
@@ -91,7 +90,6 @@ const DEFAULT_PARAMS: Params = {
 };
 
 const ACCEPT = ".epub,.fb2,.zip,.pdf,.mobi,.azw3,.rtf,.txt,.md";
-const TTS_LANGS = ["Russian", "English", "Chinese", "Spanish", "French", "German", "Japanese"];
 
 /* -------------- Подкомпоненты Pro-панели (уровень модуля) --------------
    ВАЖНО: они объявлены здесь, а НЕ внутри страницы. Если объявить их внутри
@@ -501,7 +499,6 @@ export default function AudiobookTTSPage() {
         name: profileName || sampleName || "voice",
         refFile,
         engine,
-        language: params.language,
       });
       api
         .ttsProfiles()
@@ -516,7 +513,6 @@ export default function AudiobookTTSPage() {
     setProfileName(p.name);
     if (p.refFile) setRefFile(p.refFile);
     if (p.engine) setEngine(p.engine);
-    if (p.language) setP("language", p.language);
   };
 
   /* ------------------------- Пресеты ------------------------- */
@@ -1206,15 +1202,6 @@ export default function AudiobookTTSPage() {
                       ]}
                     />
                   </Accordion>
-                </div>
-
-                <div className="ab-pro-lang">
-                  <div className="field-label">{t("ab.language")}</div>
-                  <Select
-                    value={String(params.language)}
-                    onChange={(e) => setP("language", e.target.value)}
-                    options={TTS_LANGS}
-                  />
                 </div>
               </div>
             </div>

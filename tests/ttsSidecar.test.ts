@@ -8,11 +8,16 @@ import { createRequire } from "module";
 /**
  * Протокол сайдкара озвучки и язык движка (server/ts/tts.ts).
  *
- * Что здесь ловится — две ошибки, которые ломали рендер целиком:
+ * Что здесь ловится — три ошибки, которые ломали рендер целиком:
  *
- *   1. Язык. Интерфейс отдаёт названия («Russian», «Chinese»), они же лежат в
- *      настройках и голосовых профилях, а XTTS принимает только коды и падал с
- *      «Language 'Russian' is not supported». Проверяем перевод названий в коды.
+ *   1. Язык. Он был настраиваемым: выпадающий список в интерфейсе, ключ
+ *      `voice.defaultLanguage` в настройках (по умолчанию «English») и поле
+ *      `language` в голосовых профилях. XTTS язык текста не определяет — он
+ *      читает кириллицу фонемами того языка, который ему передали, поэтому
+ *      русская книга уезжала в модель как английская («character limit of 250
+ *      for language 'en'» в логе) и звучала тарабарщиной. Теперь язык зашит
+ *      (TTS_LANGUAGE) и не берётся ни из запроса, ни из настроек: тест требует,
+ *      чтобы даже `language: "English"` в задании давало «ru».
  *
  *   2. Ответ сайдкара. Движок после каждого инференса шлёт ДВА сообщения —
  *      телеметрию `vram` и результат `done`, — а конвейер считал ответом «следующее
@@ -37,6 +42,8 @@ describe("Протокол сайдкара озвучки (server/tts.js)", () 
   let storage = "";
   /** Все вызовы spawn: [cmd, ...args]. */
   let calls: string[][] = [];
+  /** Окружение, с которым запускали дочерние процессы (3-й аргумент spawn). */
+  let spawnEnv: Array<Record<string, string | undefined>> = [];
   /** Когда конвейер отправил каждый инференс (мс) — по ним видно рассинхрон. */
   let inferAt: number[] = [];
   /** Что отвечать на инференс: результат или ошибка. */
@@ -65,8 +72,9 @@ describe("Протокол сайдкара озвучки (server/tts.js)", () 
     tts = req("../server/tts");
 
     cp = require("child_process");
-    cp.spawn = (cmd: string, args: string[] = []) => {
+    cp.spawn = (cmd: string, args: string[] = [], opts: any = {}) => {
       calls.push([cmd, ...args]);
+      spawnEnv.push(opts?.env || {});
       const joined = args.join(" ");
       const child: any = new EventEmitter();
       child.pid = 2000 + calls.length;
@@ -131,7 +139,7 @@ describe("Протокол сайдкара озвучки (server/tts.js)", () 
                 emit({ type: "vram", usedGb: 2, totalGb: 8, utilPct: 40 }, 5);
                 emit(
                   inferReply === "error"
-                    ? { type: "error", message: "language_not_supported: 'klingon'" }
+                    ? { type: "error", message: "engine_boom: cuda out of memory" }
                     : { type: "done", out: msg.out, sec: INFER_MS / 1000 },
                   INFER_MS,
                 );
@@ -172,30 +180,43 @@ describe("Протокол сайдкара озвучки (server/tts.js)", () 
   beforeEach(() => {
     calls = [];
     inferAt = [];
+    spawnEnv = [];
     inferReply = "done";
-    settings.set({ voice: { pythonCmd: "python", format: "wav", language: "Russian" } });
+    settings.set({ voice: { pythonCmd: "python", format: "wav" } });
   });
 
-  it("язык интерфейса превращается в код XTTS", () => {
-    // Названия из выпадающего списка (и из уже сохранённых настроек).
-    expect(tts.langCode("Russian")).toBe("ru");
-    expect(tts.langCode("English")).toBe("en");
-    // У XTTS китайский именно zh-cn: с «zh» модель отвечает «не поддерживается».
-    expect(tts.langCode("Chinese")).toBe("zh-cn");
-    expect(tts.langCode("zh")).toBe("zh-cn");
-    // Код остаётся кодом, регистр не важен, пустое значение — русский.
-    expect(tts.langCode("RU")).toBe("ru");
-    expect(tts.langCode("")).toBe("ru");
-    expect(tts.langCode(undefined)).toBe("ru");
-    // Неизвестное отдаём как есть: ошибку про язык покажет сам движок.
-    expect(tts.langCode("Klingon")).toBe("klingon");
-  });
-
-  it("в задание язык попадает кодом, а не названием", async () => {
+  it("сайдкар запускается с UTF-8 окружением", async () => {
+    // Это половина исправления «тарабарщины»: python с присоединённым конвейером
+    // (stdio: pipe) читает stdin в кодировке локали Windows — cp1251 на русской
+    // системе. Русский текст книжки превращался в крякозябры ещё до модели:
+    // 108 символов становились 196 (столько занимают его UTF-8 байты, прочитанные
+    // как cp1251), движок честно озвучивал этот мусор, а на выходе была бессвязица
+    // вместо русского — при верном языке, верных параметрах и верной модели.
+    // Вторая половина — py_audio.force_utf8 внутри сайдкара (см. контракт ниже).
     const job = tts.startJob({
       engine: "xtts",
       refFile: "ref_test.mp3",
-      language: "Russian",
+      format: "wav",
+      title: "тест",
+      chunks: ["Привет."],
+    });
+    await waitJob(job.id);
+    const python = spawnEnv.find((e) => e.PYTHONIOENCODING);
+    expect(python, "спавн python с UTF-8 окружением").toBeTruthy();
+    expect(python!.PYTHONIOENCODING).toBe("utf-8");
+    expect(python!.PYTHONUTF8).toBe("1");
+  });
+
+  it("язык озвучки всегда русский, чем бы его ни задавали", async () => {
+    // Старые сборки интерфейса, сохранённые профили и настройки присылали
+    // НАЗВАНИЕ языка — и в настройках по умолчанию стояло «English». Именно из-за
+    // этого русская книга считалась английской моделью. Теперь поле принимается
+    // (чтобы старый клиент не ломал запуск), но ни на что не влияет.
+    settings.set({ voice: { defaultLanguage: "English", language: "English" } });
+    const job = tts.startJob({
+      engine: "xtts",
+      refFile: "ref_test.mp3",
+      language: "English",
       format: "wav",
       title: "тест",
       chunks: ["Привет."],
@@ -210,7 +231,6 @@ describe("Протокол сайдкара озвучки (server/tts.js)", () 
     const job = tts.startJob({
       engine: "f5",
       refFile: "ref_test.mp3",
-      language: "Russian",
       format: "wav",
       title: "тест",
       chunks: [
@@ -244,14 +264,14 @@ describe("Протокол сайдкара озвучки (server/tts.js)", () 
     const job = tts.startJob({
       engine: "xtts",
       refFile: "ref_test.mp3",
-      language: "Russian",
       format: "wav",
       title: "тест",
       chunks: [{ text: "Фраза, на которой движок падает." }],
     });
     const failed = await waitJob(job.id);
     expect(failed.stage).toBe("error");
-    expect(failed.error).toContain("language_not_supported");
+    // Текст ошибки движка доходит до задания без искажений.
+    expect(failed.error).toContain("engine_boom");
     expect(failed.done).toBe(false);
     // shutdown + через 500 мс taskkill по дереву процессов: процесс не остаётся.
     await new Promise((r) => setTimeout(r, 700));
@@ -273,7 +293,6 @@ describe("Протокол сайдкара озвучки (server/tts.js)", () 
     const job = tts.startJob({
       engine: "xtts",
       refFile: "ref_test.mp3",
-      language: "Russian",
       format: "wav",
       title: "тест",
       chunks: [{ text: long, pauseMs: 500 }],
@@ -285,4 +304,37 @@ describe("Протокол сайдкара озвучки (server/tts.js)", () 
     // Каждая часть действительно посчитана движком — ни одна не потерялась.
     expect(inferAt.length).toBe(job.chunksTotal);
   }, 30000);
+});
+
+/**
+ * Вторая половина исправления кодировки — внутри сайдкара.
+ *
+ * Node отдаёт протокол в UTF-8, а python с присоединённым конвейером читает stdin
+ * в кодировке локали (cp1251 на русской Windows). Поэтому сайдкар ОБЯЗАН сам
+ * переключить потоки до чтения протокола, иначе русский текст книги приезжает
+ * крякозябрами и движок озвучивает мусор (108 символов текста выглядели как 196).
+ * Проверяем именно контракт исходников: сам факт вызова и то, что он стоит ДО
+ * цикла чтения stdin — иначе тест прошёл бы при «мёртвом» вызове после протокола.
+ */
+describe("Кодировка протокола сайдкара (контракт server/engines)", () => {
+  const enginesDir = path.resolve(__dirname, "../server/engines");
+  const read = (f: string): string => fs.readFileSync(path.join(enginesDir, f), "utf8");
+
+  it("py_audio умеет переводить потоки в UTF-8", () => {
+    const src = read("py_audio.py");
+    expect(src).toContain("def force_utf8");
+    expect(src).toContain('reconfigure(encoding="utf-8"');
+  });
+
+  it("оба сайдкара вызывают force_utf8() до чтения stdin", () => {
+    for (const f of ["f5_wrapper.py", "xtts_wrapper.py"]) {
+      const src = read(f);
+      expect(src, `${f}: импорт force_utf8`).toContain("from py_audio import force_utf8");
+      const main = src.slice(src.indexOf("def main():"));
+      const call = main.indexOf("force_utf8()");
+      const loop = main.indexOf("for line in sys.stdin");
+      expect(call, `${f}: force_utf8() вызывается в main()`).toBeGreaterThan(0);
+      expect(call, `${f}: вызов стоит ДО чтения протокола`).toBeLessThan(loop);
+    }
+  });
 });

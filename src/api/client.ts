@@ -130,7 +130,6 @@ export interface TtsProfile {
   name: string;
   refFile?: string;
   engine?: "f5" | "xtts";
-  language?: string;
   createdAt: number;
 }
 export interface TtsPreset {

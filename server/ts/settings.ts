@@ -142,7 +142,12 @@ const DEFAULTS: SettingsTree = {
   voice: {
     engine: "local", // local | cloud
     model: "",
-    defaultLanguage: "English",
+    // Язык озвучки здесь больше НЕ хранится: движок всегда русский (TTS_LANGUAGE
+    // в server/ts/tts.ts, LANGUAGE в server/engines/xtts_wrapper.py). Ключ
+    // defaultLanguage (со значением «English» по умолчанию) убран — именно он
+    // подсовывал английский язык русскому тексту, и XTTS читал кириллицу
+    // английскими фонемами. Старое сохранённое значение просто отбрасывается
+    // (см. sanitizePatch в этом файле).
     // F5-TTS hyperparameters (дефолты для студии).
     exaggeration: 1.0, // 0.5–2.0 — выразительность/динамика
     cfgWeight: 2.0, // 1.5–4.5 — строгость сходства с референсом

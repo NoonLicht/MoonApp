@@ -48,6 +48,31 @@ def _script_dir():
     return os.path.dirname(os.path.abspath(__file__))
 
 
+def force_utf8():
+    """Перевести stdin/stdout/stderr сайдкара в UTF-8 — ДО чтения протокола.
+
+    Зачем это обязательно. Протокол сайдкара — JSON-строки в UTF-8, так их пишет
+    Node. Но python, запущенный с ПРИСОЕДИНЁННЫМ конвейером, берёт кодировку не
+    из протокола, а из локали Windows: на русской системе это cp1251
+    (`sys.stdin.encoding == 'cp1251'`, проверено). В итоге русский текст книжки
+    декодировался как крякозябры, и движок озвучивал уже МУСОР: проверка длины
+    видела 196 символов вместо 108 (столько занимают UTF-8 байты правильного
+    текста, прочитанные как cp1251), XTTS ругался «character limit of 182», а на
+    слух получалась «тарабарщина» вместо русского — при этом и язык, и параметры,
+    и модель были тут ни при чём.
+
+    reconfigure() есть с Python 3.7, но у старых сборок и у «завёрнутых» потоков
+    его может не быть — тогда работает только обходной путь в spawne
+    (PYTHONIOENCODING/PYTHONUTF8, см. EngineSidecar в server/ts/tts.ts).
+    """
+    for stream in (sys.stdin, sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
+    return getattr(sys.stdin, "encoding", "") or ""
+
+
 def find_ffmpeg(explicit=""):
     """Путь к ffmpeg: явный (из настроек сайдкара) → сборка приложения → PATH.
 

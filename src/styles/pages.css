@@ -1199,12 +1199,6 @@
   gap: 10px;
   align-items: start;
 }
-.ab-pro-lang {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  max-width: 300px;
-}
 
 /* --- Панель Python-окружения студии озвучки (.ab-py).
    Установка torch/f5-tts из интерфейса: состояние модулей, выбор сборки
