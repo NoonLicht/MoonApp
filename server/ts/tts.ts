@@ -973,6 +973,30 @@ function envAwareError(job: TtsJob, msg: unknown): Error {
 
 const ENGINE_CHUNK_LIMIT = { f5: 380, xtts: 220 };
 
+/**
+ * Разрезать чанк, который длиннее лимита движка, — готовые чанки тоже.
+ *
+ * В Batch Editor чанки объединяют и правят руками, поэтому «готовый» чанк может
+ * быть сколь угодно длинным: после «объединить» двух чанков по 380 символов
+ * задание падало посреди рендера с «❗ XTTS can only generate text with a maximum
+ * of 400 tokens» (у XTTS ~1.8 символа на токен, то есть ~690 символов русского —
+ * это и есть 400 токенов).
+ *
+ * Пауза остаётся у последней части: она относится к тишине ПОСЛЕ чанка, иначе
+ * пауза встала бы в середине фразы. Если резать нечем (нет ни точек, ни
+ * пробелов) — отдаём как есть: обёртка XTTS дорежет сама, а не упадёт.
+ */
+function splitLongItem(item: TtsItem, limit: number): TtsItem[] {
+  const text = String(item.text || "");
+  if (!text || text.length <= limit) return [item];
+  const parts = ruNlp.chunkText(text, limit);
+  if (parts.length < 2) return [item];
+  const out: TtsItem[] = parts.map((p) => ({ text: p.text, pauseMs: p.pauseMs }));
+  const last = out[out.length - 1];
+  if (item.pauseMs) last.pauseMs = item.pauseMs;
+  return out.filter((c) => c.text || c.pauseMs);
+}
+
 // Белые списки значений UI: всё, что не из списка, приводится к дефолту.
 const PRECISIONS = ["float16", "bfloat16", "float32", "int8"];
 const ATTENTIONS = ["sdpa", "flash", "eager"];
@@ -1059,6 +1083,10 @@ function startJob(opts: TtsJobInput): TtsJob {
           }),
           ENGINE_CHUNK_LIMIT[engine],
         );
+  // Лимит движка нужен и для готовых чанков: в UI их объединяют и правят руками,
+  // и после «объединить» длина легко перебирает лимит (у XTTS — 400 токенов на
+  // проход, см. splitLongItem). Режем тем же chunkText, что и автонарезку.
+  items = items.flatMap((c) => splitLongItem(c, ENGINE_CHUNK_LIMIT[engine]));
   items = items.slice(0, 4000);
   if (!items.length) throw new Error("empty_text");
 
@@ -1241,6 +1269,11 @@ async function runPipeline(job: TtsJob): Promise<void> {
     // --- EBU R128 мастеринг + финальный формат ---
     job.stage = "master";
     job.progress = 94;
+    // Частоту дискретизации задаём ЯВНО: фильтр loudnorm считает на 192 кГц и без
+    // `-ar` отдаёт этот же 192 кГц в кодировщик — WAV раздувался в 8 раз (25 с
+    // речи весили 9.7 МБ, а рендер в 6 минут — 33 МБ), AAC — в 4 раза. Оба движка
+    // (XTTS и F5) синтезируют на 24 кГц, поэтому WAV пишем в родной частоте, а
+    // m4b/mp3 — в стандартные 44.1 кГц.
     const loudnorm = `loudnorm=I=${cfg.loudnessTarget}:TP=-1.5:LRA=11`;
     const outFile = path.join(DIRS.tts, `audiobook_${job.id}.${cfg.format}`);
     const tags = ["-metadata", `title=${cfg.title}`, "-metadata", `artist=${cfg.author}`];
@@ -1251,6 +1284,8 @@ async function runPipeline(job: TtsJob): Promise<void> {
         stitched,
         "-af",
         loudnorm,
+        "-ar",
+        "24000",
         "-c:a",
         "pcm_s16le",
         ...tags,
@@ -1262,8 +1297,8 @@ async function runPipeline(job: TtsJob): Promise<void> {
       fs.writeFileSync(metaFile, buildFfmetadata(job), "utf8");
       const codec =
         cfg.format === "m4b"
-          ? ["-c:a", "aac", "-b:a", "128k"]
-          : ["-c:a", "libmp3lame", "-b:a", "192k", "-id3v2_version", "3"];
+          ? ["-c:a", "aac", "-b:a", "128k", "-ar", "44100"]
+          : ["-c:a", "libmp3lame", "-b:a", "192k", "-ar", "44100", "-id3v2_version", "3"];
       await spawnFFmpeg([
         "-y",
         "-i",

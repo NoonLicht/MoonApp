@@ -30,6 +30,8 @@ ModelManager.
 """
 import sys
 import json
+import re
+import logging
 import inspect
 import time
 import gc
@@ -151,6 +153,111 @@ def _lang_code(value):
         "хинди": "hi",
     }
     return names.get(raw, raw)
+
+
+# ---------------------------------------------------------------------------
+# Лимит текста за один проход.
+#
+# В начале inference/inference_stream стоит проверка
+#     assert text_tokens.shape[-1] < self.args.gpt_max_text_tokens   # 402 у v2
+# и проверяет она ВЕСЬ переданный текст: `enable_text_splitting` по умолчанию
+# выключен, поэтому внутри text = [text] (TTS/tts/models/xtts.py). То есть
+# длинный абзац падал посреди задания с «❗ XTTS can only generate text with a
+# maximum of 400 tokens», хотя XTTS умеет считать по частям.
+#
+# Поэтому режем текст сами — по границам предложений, затем по запятым, затем по
+# пробелам, а если разделителей нет вовсе (длинное слово, ссылка) — по символам —
+# и склеиваем звук с паузой sentencePauseMs, как конвейер делает между чанками.
+TOKEN_MARGIN = 22  # запас на служебные токены («[ru]», [SPACE]) и чистку текста
+
+# Символов на токен: русский ~1.8, английский ~1.5, а на цифрах и аббревиатурах
+# доходит до 1. Резервный путь — когда токенизатора под рукой нет.
+_FALLBACK_CHARS_PER_TOKEN = 1.6
+
+_SENT_SPLIT = re.compile(r"(?<=[.!?;…])\s+")
+_CLAUSE_SPLIT = re.compile(r"(?<=[,:—–])\s+")
+
+# Логгер самой библиотеки: `VoiceBpeTokenizer.encode` ругается «exceeds the
+# character limit ... might cause truncated audio» на текст ДЛИННЕЕ рекомендованного.
+# Мы именно такой текст и режем, поэтому на измерении шум глушим, а на реальном
+# синтезе (там куски уже короткие) он остаётся.
+_TTS_LOGGER = logging.getLogger("TTS")
+
+
+def _tokens(tk, text, language):
+    """Число токенов так, как его считает сам XTTS (без ложных предупреждений)."""
+    level = _TTS_LOGGER.level
+    try:
+        _TTS_LOGGER.setLevel(logging.ERROR)
+        return len(tk.encode(text, lang=language))
+    finally:
+        _TTS_LOGGER.setLevel(level)
+
+
+def _split_text(text, budget, count):
+    """Текст → куски, каждый из которых укладывается в budget токенов.
+
+    Порядок попыток: границы предложений → запятые и тире → пробелы → символы.
+    Атомы (предложения) режутся дальше теми же правилами, а затем ЖАДНО
+    упаковываются в куски: просто «резать по каждому пробелу» нельзя — «слово
+    слово слово» превратилось бы в куски по одному слову, и каждый стоил бы
+    отдельного прохода модели.
+    """
+    text = text.strip()
+    if not text:
+        return []
+    if count(text) <= budget:
+        return [text]
+    atoms = []
+    for split in (_SENT_SPLIT.split, _CLAUSE_SPLIT.split, str.split):
+        parts = [p.strip() for p in split(text) if p.strip()]
+        if len(parts) > 1:
+            atoms = parts
+            break
+    if not atoms:  # разделителей нет (длинное слово, ссылка) — режем по символам
+        return _split_by_chars(text, budget, count)
+    out, cur = [], ""
+    for atom in atoms:
+        for part in _split_text(atom, budget, count) if count(atom) > budget else [atom]:
+            cand = f"{cur} {part}" if cur else part
+            if cur and count(cand) > budget:
+                out.append(cur)
+                cur = part
+            else:
+                cur = cand
+            if count(cur) > budget:  # одиночный атом не влез — дорезаем по символам
+                out.extend(_split_by_chars(cur, budget, count))
+                cur = ""
+    if cur:
+        out.append(cur)
+    return out
+
+
+def _split_by_chars(text, budget, count):
+    """Кусок без разделителей: длину подбираем измерением (двоичный поиск).
+
+    Оценка «символов на токен» врёт на цифрах и аббревиатурах (там ~1 символ на
+    токен), и угаданный размер снова упёрся бы в тот же ассерт.
+    """
+    lo, hi, best = 1, len(text), 1
+    while lo <= hi:
+        mid = (lo + hi) // 2
+        if count(text[:mid]) <= budget:
+            best, lo = mid, mid + 1
+        else:
+            hi = mid - 1
+    return [text[:best]] + _split_text(text[best:], budget, count)
+
+
+def _flat(wav, torch):
+    """Одномерный тензор для склейки: движок отдаёт (1, N), список или numpy."""
+    if isinstance(wav, (list, tuple)):
+        import numpy as np
+
+        wav = torch.as_tensor(np.asarray(wav, dtype="float32"))
+    if hasattr(wav, "reshape"):
+        return wav.reshape(-1)
+    return torch.as_tensor(wav).reshape(-1)
 
 
 def _save_wav(path, wav, sr):
@@ -315,12 +422,136 @@ class XttsEngine:
         gpt_cond_latent, speaker_embedding = self.tts.get_conditioning_latents(
             audio_path=[req["ref"]]
         )
+        pieces = self.text_pieces(req["text"], language)
+        if not pieces:
+            raise ValueError("empty_text")
+        pause_ms = int(req.get("sentencePauseMs", 0) or 0)
+        seq, sr = [], 24000
+        for piece in pieces:
+            wav, sr = self.synth_split(
+                piece, language, gpt_cond_latent, speaker_embedding, kwargs, req["ref"]
+            )
+            # Между кусками одного чанка — та же пауза, что конвейер ставит между
+            # предложениями: иначе длинный текст звучит слитной скороговоркой.
+            if seq and pause_ms > 0:
+                seq.append(self.silence(seq[-1], sr, pause_ms))
+            seq.append(wav)
+            # VRAM-гард на каждый кусок: длинный текст теперь считается не одним
+            # проходом, и без сброса кэша на 8 ГБ куски складываются в OOM.
+            gc.collect()
+            self.empty_cache()
+        out = seq[0] if len(seq) == 1 else t.cat(seq, dim=-1)
+        _save_wav(req["out"], out, sr)
+        gc.collect()
+        self.empty_cache()
+        return round(time.time() - t0, 2)
+
+    def token_budget(self):
+        """Сколько токенов можно отдать XTTS за один проход.
+
+        Порог берём у самой модели (`gpt_max_text_tokens`, 402 у v2) и оставляем
+        запас: проверка внутри XTTS строгая (`<`), а чистка текста добавляет свои
+        токены уже после нашей оценки.
+        """
+        limit = getattr(getattr(self.tts, "args", None), "gpt_max_text_tokens", None)
+        try:
+            limit = int(limit or 402)
+        except (TypeError, ValueError):
+            limit = 402
+        return max(64, limit - TOKEN_MARGIN)
+
+    def text_pieces(self, text, language):
+        """Текст задания → куски, которые XTTS проглотит за один проход.
+
+        Ограничений два: жёсткое по токенам (иначе ассерт внутри XTTS) и
+        рекомендованное самой моделью по символам (`char_limits`: 182 для русского
+        — дальше начинают пропадать хвосты фраз). Токены считает тот же
+        токенизатор, что и модель, с кэшем на чанк: он же применяет чистку текста,
+        поэтому наша проверка совпадает с её собственной.
+        """
+        budget = self.token_budget()
+        text = str(text or "")
+        tk = getattr(self.tts, "tokenizer", None)
+        memo = {}
+        if tk is not None and hasattr(tk, "encode"):
+
+            def count(s):
+                if s not in memo:
+                    memo[s] = _tokens(tk, s, language)
+                return memo[s]
+
+        else:  # токенизатора нет — консервативная оценка по символам
+
+            def count(s):
+                return int(len(s) / _FALLBACK_CHARS_PER_TOKEN) + 1
+
+        char_limit = 0
+        try:
+            limits = getattr(tk, "char_limits", None) or {}
+            char_limit = int(limits.get(language.split("-")[0], 0) or 0)
+        except (TypeError, ValueError):
+            char_limit = 0
+        # Рекомендация библиотеки — не догма: у XTTS это предупреждение «может
+        # обрезать хвост», а не запрет. Поэтому даём запас, чтобы обычный чанк
+        # конвейера (220 символов у русского) оставался ОДНИМ проходом, а длинный
+        # текст из UI всё равно резался по-человечески.
+        if char_limit:
+            char_limit = int(char_limit * 1.25)
+        # Сначала по символам (качество, как у самой библиотеки), затем по токенам
+        # (жёсткий лимит): первый проход не сработает, если язык новый и в
+        # char_limits его ещё нет.
+        pre = _split_text(text, char_limit, len) if char_limit else [text]
+        pieces = []
+        for part in pre:
+            pieces.extend(_split_text(part, budget, count))
+        return [p for p in pieces if p.strip()]
+
+    def silence(self, like, sr, ms):
+        """Тишина между кусками — того же типа и на том же устройстве, что звук."""
+        n = max(1, int(sr * ms / 1000))
+        try:
+            return self.torch.zeros(n, dtype=like.dtype, device=like.device)
+        except Exception:
+            return self.torch.zeros(n)
+
+    def synth_split(self, text, language, latent, emb, kwargs, ref, depth=0):
+        """Синтез куска с самолечением по лимиту токенов.
+
+        Наша оценка длины может разойтись с моделью (сборки считают по-разному).
+        Тогда срабатывает тот же ассерт: вместо падения задания режем кусок
+        пополам и считаем по частям — редкий путь, но именно он превращает
+        «ошибку рендера» в готовый звук.
+        """
+        try:
+            return self.synth(text, language, latent, emb, kwargs, ref)
+        except Exception as e:
+            if depth >= 4 or "400 tokens" not in str(e) or len(text) < 32:
+                raise
+            mid = text.rfind(" ", 0, len(text) // 2)
+            if mid <= 0:
+                mid = len(text) // 2
+            half = [
+                text[:mid].strip(),
+                text[mid:].strip(),
+            ]
+            left, sr = self.synth_split(half[0], language, latent, emb, kwargs, ref, depth + 1)
+            right, _ = self.synth_split(half[1], language, latent, emb, kwargs, ref, depth + 1)
+            return self.torch.cat([left, right], dim=-1), sr
+
+    def synth(self, text, language, latent, emb, kwargs, ref):
+        """Один проход XTTS: стрим, а при неудаче — полный инференс.
+
+        Стрим отдаёт звук инкрементально, поэтому он основной; в старых сборках
+        его может не быть вовсе. Сигнатуры тоже разные: новым нужны латенты,
+        старым — путь к референсу.
+        """
+        t = self.torch
         try:
             chunks = self.tts.inference_stream(
-                req["text"],
+                text,
                 language,
-                gpt_cond_latent,
-                speaker_embedding,
+                latent,
+                emb,
                 **_filter_kwargs(self.tts.inference_stream, kwargs),
             )
             parts, sr = [], 24000
@@ -333,27 +564,17 @@ class XttsEngine:
             # нельзя (вышел бы «N каналов»), поэтому по последней.
             wav = t.cat(parts, dim=-1) if parts and hasattr(parts[0], "dim") else parts
         except Exception:
-            # Фолбэк: полный (не стриминговый) инференс. Сигнатуры у сборок тоже
-            # разные: новым нужны латенты, старым — путь к референсу.
+            # Фолбэк: полный (не стриминговый) инференс.
             inf = self.tts.inference
             if _has_param(inf, "speaker_wav"):
-                wav = inf(req["text"], language, req["ref"], **_filter_kwargs(inf, kwargs))
+                wav = inf(text, language, ref, **_filter_kwargs(inf, kwargs))
             else:
-                wav = inf(
-                    req["text"],
-                    language,
-                    gpt_cond_latent,
-                    speaker_embedding,
-                    **_filter_kwargs(inf, kwargs),
-                )
+                wav = inf(text, language, latent, emb, **_filter_kwargs(inf, kwargs))
             if isinstance(wav, tuple):
                 wav, sr = wav[0], wav[1]
             else:
                 sr = 24000
-        _save_wav(req["out"], wav, sr)
-        gc.collect()
-        self.empty_cache()
-        return round(time.time() - t0, 2)
+        return _flat(wav, t), sr
 
 
 def _emit(obj):

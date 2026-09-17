@@ -111,7 +111,7 @@ describe("Протокол сайдкара озвучки (server/tts.js)", () 
           write: (payload: string) => {
             for (const line of String(payload).split("\n")) {
               if (!line.trim()) continue;
-              let msg: any = {};
+              let msg: any;
               try {
                 msg = JSON.parse(line);
               } catch {
@@ -258,5 +258,31 @@ describe("Протокол сайдкара озвучки (server/tts.js)", () 
     const kill = calls.find((c) => c[0] === "taskkill");
     expect(kill, "taskkill по дереву процессов сайдкара").toBeTruthy();
     expect(kill!.includes("/F")).toBe(true);
+  }, 30000);
+
+  it("готовый чанк длиннее лимита движка режется по границам фраз", async () => {
+    // Сценарий из жизни: в Batch Editor два чанка «объединили», и рендер XTTS
+    // падал посреди задания с «❗ XTTS can only generate text with a maximum of
+    // 400 tokens». Лимит у XTTS — 400 токенов (~690 символов русского), а чанк из
+    // UI приходит готовым и раньше вообще не проверялся: LIMIT применялся только
+    // к автонарезке текста.
+    const phrase =
+      "Это проверка очень длинного текста для озвучки книги, и она должна " +
+      "проверить, что задание больше не падает на лимите токенов. ";
+    const long = phrase.repeat(6).trim(); // ~756 символов — больше лимита XTTS
+    const job = tts.startJob({
+      engine: "xtts",
+      refFile: "ref_test.mp3",
+      language: "Russian",
+      format: "wav",
+      title: "тест",
+      chunks: [{ text: long, pauseMs: 500 }],
+    });
+    // У XTTS лимит чанка 220 символов — длинный текст разложился на части.
+    expect(job.chunksTotal).toBeGreaterThan(1);
+    const done = await waitJob(job.id);
+    expect(done.stage, done.error).toBe("done");
+    // Каждая часть действительно посчитана движком — ни одна не потерялась.
+    expect(inferAt.length).toBe(job.chunksTotal);
   }, 30000);
 });
