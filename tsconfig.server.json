@@ -53,6 +53,7 @@
     "server/ts/encoders.ts",
     "server/ts/vad.ts",
     "server/ts/diarize.ts",
-    "server/ts/proxy.ts"
+    "server/ts/proxy.ts",
+    "server/ts/ytdlp.ts"
   ]
 }

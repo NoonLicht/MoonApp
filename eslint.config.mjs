@@ -72,6 +72,7 @@ export default tseslint.config(
       "server/vad.js",
       "server/diarize.js",
       "server/proxy.js",
+      "server/ytdlp.js",
     ],
   },
 
