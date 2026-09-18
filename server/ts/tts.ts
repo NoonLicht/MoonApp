@@ -250,9 +250,17 @@ const queue = createQueue("tts");
 
 /* ------------------------- TTL-чистка storage/tts ------------------------- */
 /* (server/ts/fsUtil.ts): profiles.json и presets.json — пользовательские
-   данные, их не трогаем; остальное — папки заданий старше суток. */
+   данные, их не трогаем; остальное — папки заданий старше суток.
+   ВАЖНО: `ruaccent` в списке исключений обязательно — это каталог моделей
+   RUAccent (server/engines/ru_accent.py), почти 700 МБ скачанных словарей и
+   нейросетей. Без исключения уборка снесла бы их через сутки после загрузки, и
+   следующее задание качало бы всё заново (или падало на недокачанном каталоге). */
 
-removeOlderThan({ dir: DIRS.tts, ttlMs: TTL_MS, keep: ["profiles.json", "presets.json"] });
+removeOlderThan({
+  dir: DIRS.tts,
+  ttlMs: TTL_MS,
+  keep: ["profiles.json", "presets.json", "ruaccent"],
+});
 
 /* ------------------------- Железо: GPU / VRAM ------------------------- */
 
@@ -552,9 +560,18 @@ function deleteUserPreset(id: string): boolean {
 /* ------------------------- Python-сайдкар ------------------------- */
 
 // Персистентный процесс движка: модель в VRAM один раз, чанки по конвейеру.
-class EngineSidecar {
-  engine: TtsEngine;
+/**
+ * Каркас python-сайдкара: JSON-строки через stdin/stdout.
+ *
+ * Вынесен отдельным классом, потому что по этому протоколу работают и движки
+ * озвучки (server/engines/f5_wrapper.py, xtts_wrapper.py), и рабочий процесс
+ * ударений (server/engines/ruaccent_worker.py): запуск python, чтение строк
+ * stdout, раздача ответов ожидающим запросам, снятие процесса вместе с деревом.
+ */
+class JsonSidecar {
   script: string;
+  /** Метка для логов (`tts.<tag>.stderr`): движок или рабочий процесс. */
+  tag: string;
   child: ChildProcess | null;
   buffer: string;
   /** Ожидающие ответов запросы: у каждого свой набор типов-ответов. */
@@ -571,13 +588,9 @@ class EngineSidecar {
   /** Ошибка запуска интерпретатора (ENOENT и т.п.) — «залипает» до конца жизни. */
   spawnError: string;
 
-  constructor(engineName: unknown) {
-    this.engine = engineName === "xtts" ? "xtts" : "f5";
-    this.script = path.join(
-      __dirname,
-      "engines",
-      this.engine === "f5" ? "f5_wrapper.py" : "xtts_wrapper.py",
-    );
+  constructor(script: string, tag: string) {
+    this.script = script;
+    this.tag = tag;
     this.child = null;
     this.buffer = "";
     this.waiters = [];
@@ -627,7 +640,7 @@ class EngineSidecar {
       }
     });
     child.stderr?.on("data", (d) =>
-      logger.info(`tts.${this.engine}.stderr`, { tail: String(d).slice(-400) }),
+      logger.info(`tts.${this.tag}.stderr`, { tail: String(d).slice(-400) }),
     );
     return this;
   }
@@ -723,6 +736,194 @@ class EngineSidecar {
   }
 }
 
+/** Сайдкар движка озвучки: F5-TTS либо Coqui XTTS v2. */
+class EngineSidecar extends JsonSidecar {
+  engine: TtsEngine;
+
+  constructor(engineName: unknown) {
+    const engine: TtsEngine = engineName === "xtts" ? "xtts" : "f5";
+    super(
+      path.join(__dirname, "engines", engine === "f5" ? "f5_wrapper.py" : "xtts_wrapper.py"),
+      engine,
+    );
+    this.engine = engine;
+  }
+}
+
+/* --------------------- Ударения по смыслу (RUAccent) --------------------- */
+
+/**
+ * Расстановка ударений и восстановление «ё» нейросетью RUAccent.
+ *
+ * Почему не в сайдкаре движка: onnxruntime на CPU и torch в одном процессе делят
+ * память, а рендер F5-TTS и так занимает несколько гигабайт. Плюс ударения нужны
+ * ДО инференса, одни и те же для любого движка — поэтому отдельный процесс
+ * (server/engines/ruaccent_worker.py) со своим жизненным циклом.
+ *
+ * Зачем вообще: свой словарь омографов знает четыре слова (server/ts/ruNlp.ts),
+ * и «звони́т», «догово́р», «жалюзи́» F5-TTS читал с неверным ударением. RUAccent
+ * решает омографы по контексту («М+ука из пшен+ицы и мук+а от б+оли») и отдаёт
+ * ударение в том самом формате «+» перед гласной, который ждёт русская модель
+ * F5.
+ *
+ * Шаг НЕОБЯЗАТЕЛЬНЫЙ: нет библиотеки, не скачались модели, оборвалась сеть —
+ * задание всё равно рендерится, только без ударений, а причина уходит в лог
+ * (tts.stress.error). Повторные попытки — не чаще раза в STRESS_RETRY_MS, иначе
+ * каждое задание сначала ждало бы таймаут недоступной сети.
+ */
+let stressWorker: JsonSidecar | null = null;
+let stressIdleTimer: NodeJS.Timeout | null = null;
+/** Модели загружены в процессе (по этому признаку решается, нужен ли load). */
+let stressLoaded = false;
+/** До этого времени пробовать снова бессмысленно (см. STRESS_RETRY_MS). */
+let stressRetryAt = 0;
+/** Почему ударения недоступны — уходит в лог и в snapshot задания. */
+let stressFailReason = "";
+
+/** Сколько текстов отправляем за одну просьбу: прогресс в UI и короткие строки. */
+const STRESS_BATCH = 200;
+/** Через сколько бездействия снимать процесс (модели держат память). */
+const STRESS_IDLE_MS = 10 * 60 * 1000;
+/** Пауза между попытками, когда RUAccent недоступен (нет библиотеки/моделей). */
+const STRESS_RETRY_MS = 10 * 60 * 1000;
+/** Модель омографов по умолчанию — как в server/engines/ru_accent.py. */
+const STRESS_MODEL_DEFAULT = "tiny2.1";
+/** Доступные модели омографов RUAccent (значение настройки — только из списка). */
+const STRESS_MODELS = [
+  "tiny",
+  "tiny2",
+  "tiny2.1",
+  "turbo",
+  "turbo2",
+  "turbo3",
+  "turbo3.1",
+  "big_poetry",
+];
+
+/** Настройки расстановки ударений (voice.stressModel / voice.stressLite). */
+function stressOptions(): { model: string; dict: boolean; tiny: boolean } {
+  const voice = (settings.get("voice") || {}) as Record<string, unknown>;
+  const want = String(voice.stressModel || "").trim();
+  // Лёгкий режим (tiny_mode) — по умолчанию: 847 МБ памяти вместо 3 ГБ, а по
+  // замерам ударения те же. Выключается настройкой voice.stressLite = false.
+  const tiny = voice.stressLite !== false;
+  return {
+    model: STRESS_MODELS.includes(want) ? want : STRESS_MODEL_DEFAULT,
+    tiny,
+    // В лёгком режиме RUAccent всё равно берёт нейросетевой словарь, поэтому
+    // большой (20 МБ) не просим: меньше памяти и без лишней распаковки.
+    dict: !tiny,
+  };
+}
+
+/** Рабочий процесс ударений: запускается при первом использовании. */
+function stressSidecar(): JsonSidecar {
+  if (stressIdleTimer) {
+    clearTimeout(stressIdleTimer);
+    stressIdleTimer = null;
+  }
+  if (!stressWorker) {
+    stressWorker = new JsonSidecar(
+      path.join(__dirname, "engines", "ruaccent_worker.py"),
+      "stress",
+    )._start();
+  }
+  return stressWorker;
+}
+
+/** Выгрузить модели и назначить снятие процесса по бездействию. */
+function stressRelease(sidecar: JsonSidecar, unload: boolean): void {
+  if (unload && stressLoaded) {
+    stressLoaded = false;
+    // Ответ не ждём: выгрузка — это gc в процессе, а рендер уже можно начинать.
+    sidecar.ask({ type: "unload" }, "unloaded", 30000).catch(() => {
+      /* процесс мог уже завершиться */
+    });
+  }
+  if (stressIdleTimer) clearTimeout(stressIdleTimer);
+  stressIdleTimer = setTimeout(stressStop, STRESS_IDLE_MS);
+  // Таймер не должен удерживать процесс приложения (и тесты) живыми.
+  stressIdleTimer.unref?.();
+}
+
+/** Снять процесс ударений (модели при этом освобождаются). */
+function stressStop(): void {
+  if (stressIdleTimer) {
+    clearTimeout(stressIdleTimer);
+    stressIdleTimer = null;
+  }
+  if (stressWorker) {
+    stressWorker.kill();
+    stressWorker = null;
+  }
+  stressLoaded = false;
+}
+
+/**
+ * Расставить ударения во всех чанках задания ДО рендера.
+ *
+ * Возвращает тексты по индексу чанка (та же длина, что job.items) либо null,
+ * если ударения недоступны: тогда рендер идёт на исходных текстах.
+ *
+ * Побочные эффекты для UI: job.stage = "stress" и прогресс 1..6 % — шаг заметный
+ * (первый раз качает модели, дальше секунды), и без него задание выглядело бы
+ * «зависшим» до самого инференса.
+ */
+async function accentItems(job: TtsJob): Promise<string[] | null> {
+  const texts = job.items.map((i) => String(i.text || ""));
+  if (!texts.some((t) => t.trim())) return null;
+  // Недавняя неудача: не тратим время задания на заведомо недоступный шаг.
+  if (Date.now() < stressRetryAt) return null;
+  const opts = stressOptions();
+  let sidecar: JsonSidecar | null = null;
+  try {
+    job.stage = "stress";
+    job.progress = 1;
+    sidecar = stressSidecar();
+    if (!stressLoaded) {
+      // Первая загрузка качает модели (сотни мегабайт) — таймаут щедрый, как у
+      // init движка; дальше модели живут в процессе между заданиями.
+      const ready = await sidecar.ask({ type: "load", ...opts }, "ready", 1800000);
+      if (ready.type === "error") throw new Error(ready.message);
+      stressLoaded = true;
+      logger.info("tts.stress.model", {
+        model: ready.model,
+        version: ready.version,
+        dict: ready.dict,
+        tiny: ready.tiny,
+        sec: ready.sec,
+        repaired: ready.repaired,
+      });
+    }
+    const out = texts.slice();
+    let marks = 0;
+    for (let i = 0; i < texts.length; i += STRESS_BATCH) {
+      const batch = texts.slice(i, i + STRESS_BATCH);
+      const res = await sidecar.ask({ type: "accent", texts: batch }, "accented", 600000);
+      if (res.type === "error") throw new Error(res.message);
+      const got = Array.isArray(res.texts) ? (res.texts as unknown[]) : [];
+      for (let k = 0; k < batch.length; k++) {
+        const text = got[k] === undefined ? batch[k] : String(got[k]);
+        marks += text.split("+").length - 1;
+        out[i + k] = text;
+      }
+      job.progress = 1 + Math.round((5 * Math.min(i + batch.length, texts.length)) / texts.length);
+    }
+    logger.info("tts.stress", { id: job.id, chunks: texts.length, marks: marks });
+    return out;
+  } catch (e) {
+    const reason = String((e as Error)?.message || e);
+    stressFailReason = reason;
+    stressRetryAt = Date.now() + STRESS_RETRY_MS;
+    logger.error("tts.stress.error", { id: job.id, error: reason, retryInMs: STRESS_RETRY_MS });
+    // Процесс мог зависнуть на импорте или закачке моделей — снимаем его целиком.
+    stressStop();
+    return null;
+  } finally {
+    if (sidecar && stressWorker === sidecar) stressRelease(sidecar, true);
+  }
+}
+
 /* ------------------------- Python-окружение ------------------------- */
 
 /**
@@ -761,6 +962,7 @@ const PIP_HINT: Record<string, string> = {
     "pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128",
   f5_tts: "pip install f5-tts",
   TTS: "pip install coqui-tts",
+  ruaccent: "pip install ruaccent",
   pynvml: "pip install nvidia-ml-py",
 };
 
@@ -1166,6 +1368,15 @@ async function runPipeline(job: TtsJob): Promise<void> {
     // Предполётная проверка окружения ДО спавна движка: без неё пользователь
     // ждал загрузку модели и получал «Ошибка рендера: No module named 'torch'».
     await assertPythonEnv(job);
+    // Ударения по смыслу (RUAccent) — ДО загрузки модели: шаг необязательный,
+    // при недоступности рендер идёт на исходных текстах (см. accentItems).
+    // `accented` выровнен по job.items, поэтому в цикле берётся по индексу.
+    const accented = cfg.markStress ? await accentItems(job) : null;
+    job.stress = {
+      requested: !!cfg.markStress,
+      applied: !!accented,
+      reason: accented ? "" : stressFailReason,
+    };
     sidecar = new EngineSidecar(job.engine)._start();
     // Монитор VRAM приходит отдельными сообщениями (не ответом на запрос).
     sidecar.onEvent = (msg) => {
@@ -1224,7 +1435,10 @@ async function runPipeline(job: TtsJob): Promise<void> {
         {
           type: "infer",
           ref: refPath,
-          text: item.text,
+          // Текст с расставленными ударениями («+» перед гласной). XTTS такие
+          // знаки не понимает и снимает их сам (drop_stress в xtts_wrapper.py),
+          // F5 отдаёт их русской модели как есть.
+          text: accented ? accented[i] : item.text,
           out: wav,
           cfg: cfg.cfg,
           nfe: cfg.nfe,

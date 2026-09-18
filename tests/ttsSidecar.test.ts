@@ -50,6 +50,18 @@ describe("Протокол сайдкара озвучки (server/tts.js)", () 
   let inferReply: "done" | "error" = "done";
   /** Задержка ответа: имитирует время счёта чанка. */
   const INFER_MS = 120;
+  /** Сколько раз запускали рабочий процесс ударений (ruaccent_worker.py). */
+  let stressSpawns = 0;
+  /** Запросы load к рабочему процессу ударений (модель и режим). */
+  let stressLoads: any[] = [];
+  /** Запросы accent: какие тексты уезжали на расстановку ударений. */
+  let stressRequests: any[] = [];
+  /** Запросы unload: модели должны выгружаться после задания. */
+  let stressUnloads = 0;
+  /** Что отвечает рабочий процесс ударений: модели или ошибка (нет ruaccent). */
+  let stressReply: "ready" | "error" = "ready";
+  /** Тексты, которые получил движок на инференс (проверяем формат ударений). */
+  let inferTexts: string[] = [];
 
   /** Ждать состояния задания (done/error) с таймаутом. */
   async function waitJob(id: string, ms = 8000): Promise<any> {
@@ -113,6 +125,51 @@ describe("Протокол сайдкара озвучки (server/tts.js)", () 
         setTimeout(() => child.emit("close", 0), 10);
         return child;
       }
+      if (joined.includes("ruaccent_worker.py")) {
+        // Заглушка рабочего процесса ударений: отвечает по протоколу, но моделей
+        // не грузит. «Ударения» помечаются плюсом перед гласной — ровно в том
+        // формате, который отдаёт настоящий RUAccent и ждёт русская модель F5.
+        stressSpawns++;
+        child.stdin = {
+          write: (payload: string) => {
+            for (const line of String(payload).split("\n")) {
+              if (!line.trim()) continue;
+              let msg: any;
+              try {
+                msg = JSON.parse(line);
+              } catch {
+                continue;
+              }
+              if (msg.type === "load") {
+                stressLoads.push(msg);
+                emit(
+                  stressReply === "error"
+                    ? { type: "error", message: "ruaccent_not_installed: No module named 'ruaccent'" }
+                    : { type: "ready", model: msg.model, version: "1.5.8.3", dict: msg.dict, tiny: msg.tiny, sec: 6.1 },
+                  5,
+                );
+              } else if (msg.type === "accent") {
+                stressRequests.push(msg);
+                emit(
+                  stressReply === "error"
+                    ? { type: "error", id: msg.id, message: "ruaccent_not_installed: no module" }
+                    : {
+                        type: "accented",
+                        id: msg.id,
+                        texts: (msg.texts as string[]).map((t) => t.replace(/[аеёиоуыэюя]/gi, (v) => "+" + v)),
+                      },
+                  5,
+                );
+              } else if (msg.type === "unload") {
+                stressUnloads++;
+                emit({ type: "unloaded" }, 5);
+              }
+              // shutdown игнорируется: проверяем принудительное снятие процесса.
+            }
+          },
+        };
+        return child;
+      }
       if (joined.includes("f5_wrapper.py") || joined.includes("xtts_wrapper.py")) {
         // Заглушка сайдкара: отвечает по протоколу, но ничего не считает.
         child.stdin = {
@@ -132,6 +189,7 @@ describe("Протокол сайдкара озвучки (server/tts.js)", () 
                 emit({ type: "vram", usedGb: 1, totalGb: 8, utilPct: 0 }, 10);
               } else if (msg.type === "infer") {
                 inferAt.push(Date.now());
+                inferTexts.push(String(msg.text || ""));
                 if (msg.out) {
                   fs.mkdirSync(path.dirname(String(msg.out)), { recursive: true });
                   fs.writeFileSync(String(msg.out), "RIFF");
@@ -182,6 +240,12 @@ describe("Протокол сайдкара озвучки (server/tts.js)", () 
     inferAt = [];
     spawnEnv = [];
     inferReply = "done";
+    stressSpawns = 0;
+    stressLoads = [];
+    stressRequests = [];
+    stressUnloads = 0;
+    stressReply = "ready";
+    inferTexts = [];
     settings.set({ voice: { pythonCmd: "python", format: "wav" } });
   });
 
@@ -304,6 +368,75 @@ describe("Протокол сайдкара озвучки (server/tts.js)", () 
     // Каждая часть действительно посчитана движком — ни одна не потерялась.
     expect(inferAt.length).toBe(job.chunksTotal);
   }, 30000);
+
+  /* ------------------ Ударения по смыслу (RUAccent) ------------------ */
+
+  /**
+   * Второй, необязательный шаг задания: расстановка ударений нейросетью RUAccent.
+   *
+   * Тумблер «Ударения» включает отдельный python-процесс
+   * (server/engines/ruaccent_worker.py), тексты уезжают в движок в формате «+»
+   * перед ударной гласной (его ждёт русская модель F5), модели выгружаются после
+   * задания, а недоступность RUAccent НЕ роняет рендер — озвучка идёт на исходных
+   * текстах. Причина в этом случае остаётся в задании (job.stress) и в логе.
+   */
+
+  /** Задание из одного чанка: рендер F5 с тумблером ударений или без. */
+  function runChunk(markStress: boolean) {
+    return tts.startJob({
+      engine: "f5",
+      refFile: "ref_test.mp3",
+      format: "wav",
+      title: "тест",
+      chunks: ["На двери висит замок."],
+      markStress,
+    });
+  }
+
+  it("с тумблером «Ударения» текст уезжает в движок в формате «+»", async () => {
+    const done = await waitJob(runChunk(true).id);
+    expect(done.stage, done.error).toBe("done");
+    expect(stressSpawns).toBe(1);
+    // Модель и режим берутся из настроек (voice.stressModel / voice.stressLite).
+    expect(stressLoads[0].model).toBe("tiny2.1");
+    expect(stressLoads[0].tiny).toBe(true);
+    // Ударения дошли до движка: «замок» → «з+амок».
+    expect(inferTexts[0]).toMatch(/\+[аеёиоуыэюя]/i);
+    // Модели выгружаются после задания: держать их в памяти незачем.
+    expect(stressUnloads).toBeGreaterThan(0);
+    expect(done.stress).toEqual({ requested: true, applied: true, reason: "" });
+  });
+
+  it("без тумблера рабочий процесс ударений не запускается вовсе", async () => {
+    const done = await waitJob(runChunk(false).id);
+    expect(done.stage, done.error).toBe("done");
+    expect(stressSpawns).toBe(0);
+    expect(inferTexts[0]).toBe("На двери висит замок.");
+    expect(done.stress).toEqual({ requested: false, applied: false, reason: "" });
+  });
+
+  it("RUAccent недоступен — рендер продолжается без ударений", async () => {
+    // Нет библиотеки: python отвечает ошибкой на load. Это НЕ ошибка рендера —
+    // озвучка идёт на исходных текстах, а причина попадает в задание и лог.
+    stressReply = "error";
+    const done = await waitJob(runChunk(true).id);
+    expect(done.stage, done.error).toBe("done");
+    expect(inferTexts[0]).toBe("На двери висит замок.");
+    expect(done.stress.applied).toBe(false);
+    expect(String(done.stress.reason)).toContain("ruaccent_not_installed");
+  });
+
+  it("после неудачи повторная попытка не раньше чем через STRESS_RETRY_MS", async () => {
+    stressReply = "error";
+    const first = await waitJob(runChunk(true).id);
+    expect(first.stress.applied).toBe(false);
+    const spawnsAfterFirst = stressSpawns;
+    // Второе задание не должно снова ждать недоступный процесс (пауза 10 минут):
+    // иначе каждое задание начиналось бы с таймаута недоступной сети.
+    const second = await waitJob(runChunk(true).id);
+    expect(second.stage, second.error).toBe("done");
+    expect(stressSpawns).toBe(spawnsAfterFirst);
+  });
 });
 
 /**

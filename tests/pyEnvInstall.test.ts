@@ -231,8 +231,10 @@ describe("Установка Python-окружения (/api/tts/env/*)", () => 
     expect(body.plans.cuda.command).toContain("cu128");
     // CPU-сборка torch заметно легче — по этим числам UI показывает объём.
     expect(body.plans.cpu.approxMb).toBeLessThan(body.plans.cuda.approxMb);
-    expect(body.plans.cuda.steps).toEqual(["torch", "engine", "monitor"]);
-    expect(body.plans.cpu.steps).toEqual(["torch", "engine"]);
+    // «stress» — установка RUAccent (расстановка ударений, server/engines/ru_accent.py):
+    // идёт вместе с движком, чтобы тумблер «Ударения» работал сразу.
+    expect(body.plans.cuda.steps).toEqual(["torch", "engine", "stress", "monitor"]);
+    expect(body.plans.cpu.steps).toEqual(["torch", "engine", "stress"]);
   });
 
   it("установка идёт шагами, прогресс и лог пишутся в состояние, интерпретатор сохраняется", async () => {
@@ -240,7 +242,7 @@ describe("Установка Python-окружения (/api/tts/env/*)", () => 
     const start = await post("/env/install", { engine: "f5", device: "cpu", python: py });
     expect(start.status).toBe(201);
     expect(start.body.state.state).toBe("working");
-    expect(start.body.steps).toEqual(["torch", "engine"]);
+    expect(start.body.steps).toEqual(["torch", "engine", "stress"]);
     expect(start.body.step).toBe("torch");
     expect(start.body.python).toBe(py);
 

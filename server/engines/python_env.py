@@ -22,7 +22,9 @@ import sys
 # Имена пакетов ровно как в import-инструкциях сайдкаров:
 #   f5_wrapper.py  -> torch, torchaudio, f5_tts (pynvml — опционально)
 #   xtts_wrapper.py-> torch, torchaudio, TTS
-MODULES = ["torch", "torchaudio", "f5_tts", "TTS", "pynvml"]
+#   ruaccent_worker.py -> ruaccent (расстановка ударений; тоже опционально —
+#   без него озвучка идёт без ударений, но с ним качество русской речи выше).
+MODULES = ["torch", "torchaudio", "f5_tts", "TTS", "pynvml", "ruaccent"]
 
 
 def probe(name):

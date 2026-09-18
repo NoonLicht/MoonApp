@@ -211,6 +211,11 @@ function installSteps(engine: PyEngineId, device: PyDevice, pyVersion = ""): PyS
       approxMb: device === "cpu" ? 200 : 2500,
     },
     engineStep(engine, pyVersion),
+    // Расстановка ударений по смыслу (RUAccent) — необязательная часть студии:
+    // ставится вместе с движком, чтобы тумблер «Ударения» работал сразу, без
+    // отдельной установки. Сам пакет маленький (onnxruntime + razdel, ~60 МБ);
+    // словари и нейросети RUAccent качает при первом задании в storage/tts/ruaccent.
+    { id: "stress", args: ["ruaccent"], approxMb: 60 },
     // Монитор VRAM (pynvml) осмысленен только с видеокартой NVIDIA.
     ...(device === "cpu" ? [] : [{ id: "monitor", args: ["nvidia-ml-py"], approxMb: 1 }]),
   ];
