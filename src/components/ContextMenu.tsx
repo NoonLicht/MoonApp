@@ -74,26 +74,51 @@ export function ContextMenuProvider({ children }: { children: React.ReactNode })
   }, []);
 
   // Глобальные обработчики закрытия — только пока меню открыто.
+  //
+  // Слушатели вешаются в CAPTURE-фазе: обычный `window.addEventListener("click")`
+  // не срабатывал, потому что модалки и карточки страниц активно глушат всплытие
+  // (`Glass onClick={(e) => e.stopPropagation()}`), и клик по ним не доходил до
+  // window — меню оставалось висеть поверх страницы.
   useEffect(() => {
     if (!st) return;
     const close = () => setSt(null);
+    // Клик ВНУТРИ меню закрывать нельзя: пункт сам закроет его в своём onClick,
+    // а преждевременное закрытие съело бы действие.
+    const outside = (e: Event) => {
+      const t = e.target as Node | null;
+      if (t && ref.current && ref.current.contains(t)) return;
+      setSt(null);
+    };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setSt(null);
     };
-    window.addEventListener("click", close);
-    window.addEventListener("contextmenu", close);
+    window.addEventListener("pointerdown", outside, true);
+    window.addEventListener("mousedown", outside, true);
+    window.addEventListener("click", outside, true);
+    window.addEventListener("contextmenu", outside, true);
     window.addEventListener("resize", close);
     window.addEventListener("blur", close);
     window.addEventListener("keydown", onKey);
     window.addEventListener("scroll", close, true);
     return () => {
-      window.removeEventListener("click", close);
-      window.removeEventListener("contextmenu", close);
+      window.removeEventListener("pointerdown", outside, true);
+      window.removeEventListener("mousedown", outside, true);
+      window.removeEventListener("click", outside, true);
+      window.removeEventListener("contextmenu", outside, true);
       window.removeEventListener("resize", close);
       window.removeEventListener("blur", close);
       window.removeEventListener("keydown", onKey);
       window.removeEventListener("scroll", close, true);
     };
+  }, [st !== null]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Пока меню открыто, с верхней панели снимается «регион перетаскивания» окна:
+  // Electron перехватывает мышь в drag-полосе (.titlebar-drag), из-за чего клик по
+  // верхнему меню не закрывал контекстное меню вообще.
+  useEffect(() => {
+    if (!st) return undefined;
+    document.body.classList.add("ctx-open");
+    return () => document.body.classList.remove("ctx-open");
   }, [st !== null]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Точный доводчик позиции: как только меню отрендерилось, знаем реальную
@@ -113,29 +138,44 @@ export function ContextMenuProvider({ children }: { children: React.ReactNode })
     <Ctx.Provider value={{ open }}>
       {children}
       {st && (
-        <div ref={ref} className="ctx-menu" style={{ left: st.x, top: st.y }} role="menu">
-          {st.items.map((it, i) =>
-            it.separator ? (
-              <div key={i} className="ctx-sep" />
-            ) : (
-              <button
-                key={i}
-                type="button"
-                role="menuitem"
-                disabled={it.disabled}
-                className={`ctx-menu-item${it.danger ? " is-danger" : ""}`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setSt(null);
-                  it.onClick?.();
-                }}
-              >
-                {it.icon && <it.icon size={14} strokeWidth={1.8} />}
-                <span>{it.label}</span>
-              </button>
-            ),
-          )}
-        </div>
+        <>
+          {/* Подложка на весь экран: любой клик вне меню закрывает его (левая,
+              правая кнопка, колесо не важно). Она выше остального интерфейса,
+              поэтому клик не уходит на элемент под меню — как и у системных меню.
+              Нажатие фиксируем уже на mousedown, чтобы закрытие было мгновенным. */}
+          <div
+            className="ctx-backdrop"
+            onMouseDown={() => setSt(null)}
+            onClick={() => setSt(null)}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              setSt(null);
+            }}
+          />
+          <div ref={ref} className="ctx-menu" style={{ left: st.x, top: st.y }} role="menu">
+            {st.items.map((it, i) =>
+              it.separator ? (
+                <div key={i} className="ctx-sep" />
+              ) : (
+                <button
+                  key={i}
+                  type="button"
+                  role="menuitem"
+                  disabled={it.disabled}
+                  className={`ctx-menu-item${it.danger ? " is-danger" : ""}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSt(null);
+                    it.onClick?.();
+                  }}
+                >
+                  {it.icon && <it.icon size={14} strokeWidth={1.8} />}
+                  <span>{it.label}</span>
+                </button>
+              ),
+            )}
+          </div>
+        </>
       )}
     </Ctx.Provider>
   );
