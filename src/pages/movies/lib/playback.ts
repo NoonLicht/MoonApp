@@ -113,10 +113,144 @@ export function clampSeek(
 }
 
 /**
+ * Как кадр вписывается в область плеера (кнопка «растянуть» в панели).
+ *
+ *  - fit     — вписать целиком (по размеру экрана): блок равен кадру, полей нет;
+ *  - cover   — заполнить/кадрировать: края обрезаются, пропорции сохранены;
+ *  - width   — растянуть по ширине (высота — по пропорциям кадра);
+ *  - height  — растянуть по высоте (ширина — по пропорциям кадра);
+ *  - stretch — растянуть в обе стороны без сохранения пропорций (искажение);
+ *  - smart   — умное растяжение: центр сохраняет пропорции, края «разъезжаются».
+ */
+export type FitMode = "fit" | "cover" | "width" | "height" | "stretch" | "smart";
+
+/** Порядок кнопки-переключателя: от «вписать целиком» к «умному растяжению». */
+export const FIT_MODES: readonly FitMode[] = [
+  "fit",
+  "cover",
+  "width",
+  "height",
+  "stretch",
+  "smart",
+];
+
+/** i18n-ключ подписи режима (movies.fit_fit, movies.fit_cover, …). */
+export function fitModeLabelKey(mode: FitMode): string {
+  return `movies.fit_${FIT_MODES.includes(mode) ? mode : "fit"}`;
+}
+
+/**
+ * object-fit для режима. Режимы «по ширине/высоте» размер задают сами (width/height
+ * в CSS), поэтому для них значение не важно — оставляем contain.
+ */
+export function fitObjectFit(mode: FitMode): "contain" | "cover" | "fill" {
+  if (mode === "cover") return "cover";
+  if (mode === "stretch" || mode === "smart") return "fill";
+  return "contain";
+}
+
+/**
+ * Размер блока плеера под режим. «Вписать» — блок в точности равен кадру (полей
+ * нет), остальные режимы занимают всю доступную область, а кадр вписывает сам
+ * <video> (object-fit / размеры из CSS), чтобы панель управления не «прыгала».
+ */
+export function fitBoxFor(
+  mode: FitMode,
+  o: { aspect: number; availWidth: number; availHeight: number },
+): { width: number; height: number } {
+  const w = Math.max(120, Number(o.availWidth) || 0);
+  const h = Math.max(90, Number(o.availHeight) || 0);
+  const ar = Number(o.aspect) > 0.1 ? Number(o.aspect) : 16 / 9;
+  if (mode === "fit") return fitVideoBox(ar, w, h);
+  return { width: Math.round(w), height: Math.round(h) };
+}
+
+/** Ступени зума (%) для кнопок быстрого выбора. */
+export const ZOOM_STEPS: readonly number[] = [100, 125, 150, 200, 300];
+export const ZOOM_MIN = 50;
+export const ZOOM_MAX = 400;
+
+/** Зум в процентах с клампом (мусор → 100%). */
+export function clampZoom(percent: unknown): number {
+  const n = Number(percent);
+  if (!Number.isFinite(n)) return 100;
+  return Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Math.round(n)));
+}
+
+/**
+ * Панорама (сдвиг увеличенного кадра), ограниченная границами блока: за пределы
+ * картинки не уезжаем, иначе на экране остался бы чёрный провал.
+ */
+export function clampPan(
+  pan: { x: number; y: number },
+  o: { width: number; height: number; zoomPercent: number },
+): { x: number; y: number } {
+  const z = clampZoom(o.zoomPercent) / 100;
+  const maxX = Math.max(0, ((Number(o.width) || 0) * (z - 1)) / 2);
+  const maxY = Math.max(0, ((Number(o.height) || 0) * (z - 1)) / 2);
+  const fb = (v: number, lim: number) => Math.min(lim, Math.max(-lim, Number(v) || 0));
+  return { x: fb(pan.x, maxX), y: fb(pan.y, maxY) };
+}
+
+/**
+ * Карта для «умного растяжения» (SVG-фильтр feDisplacementMap, см. VideoPlayer).
+ *
+ * Смысл: режим «растянуть» (object-fit: fill) тянет кадр равномерно и искажает
+ * его целиком. Умное растяжение возвращает пропорции в ЦЕНТРЕ, а края оставляет
+ * растянутыми. Технически это горизонтальный (или вертикальный) сдвиг, растущий к
+ * краям: экран → кадр отображается кусочно-линейно, в центре — 1:1 по высоте
+ * кадра, к краям сдвиг выходит на «нулевой» (кадр остаётся растянутым).
+ *
+ * Возвращает `{ href, scale }`: data-URI градиента (R-канал — сдвиг по X, G — по Y)
+ * и величину scale в пикселях (равна размеру кадра по оси сдвига). null — если
+ * растягивать нечего (пропорции уже совпали).
+ */
+export function smartStretchMap(o: {
+  aspect: number;
+  width: number;
+  height: number;
+}): { href: string; scale: number; axis: "x" | "y" } | null {
+  const ar = Number(o.aspect) > 0.1 ? Number(o.aspect) : 16 / 9;
+  const w = Math.max(1, Math.round(Number(o.width) || 0));
+  const h = Math.max(1, Math.round(Number(o.height) || 0));
+  if (w < 16 || h < 16) return null;
+  // Во сколько раз fill растянул кадр по каждой оси.
+  const sx = w / (h * ar);
+  const sy = 1 / sx;
+  const axis: "x" | "y" = sx > sy ? "x" : "y";
+  const factor = axis === "x" ? sx : sy;
+  if (!(factor > 1.02)) return null; // кадр уже близок к пропорциям области
+  const size = axis === "x" ? w : h;
+  const r = 1 / factor; // доля, где сохраняем пропорции (центр)
+  const a = (1 - r) / 2; // ширина каждой боковой зоны
+  const smooth = (t: number) => t * t * (3 - 2 * t);
+  const shift = (p: number) => {
+    if (p <= 0 || p >= 1) return 0;
+    if (p < a) return -a * smooth(p / a);
+    if (p > 1 - a) return a * smooth((1 - p) / a);
+    return -a + (p - a) * (1 / r - 1);
+  };
+  const N = 24;
+  const stops = Array.from({ length: N + 1 }, (_, i) => {
+    const p = i / N;
+    // 128 во «второй» канал — постоянная величина, чтобы сдвига по другой оси не было.
+    const v = Math.max(0, Math.min(255, Math.round(255 * (0.5 - shift(p)))));
+    const color = axis === "x" ? `rgb(${v},128,0)` : `rgb(128,${v},0)`;
+    return `<stop offset='${p.toFixed(4)}' stop-color='${color}'/>`;
+  }).join("");
+  const svg =
+    `<svg xmlns='http://www.w3.org/2000/svg' width='${axis === "x" ? N + 1 : 1}'` +
+    ` height='${axis === "x" ? 1 : N + 1}'>` +
+    `<defs><linearGradient id='g' x1='0' y1='0' x2='${axis === "x" ? 1 : 0}'` +
+    ` y2='${axis === "x" ? 0 : 1}'>${stops}</linearGradient></defs>` +
+    `<rect width='100%' height='100%' fill='url(#g)'/></svg>`;
+  return { href: `data:image/svg+xml,${encodeURIComponent(svg)}`, scale: size, axis };
+}
+/**
  * Размер кадра в окне: вписываем фильм целиком — по ширине И по высоте, без
  * обрезки. Если места мало по высоте, кадр занимает всю высоту, а ширина
  * считается по соотношению сторон (тогда по бокам не остаётся чёрных полей:
- * размер блока совпадает с размером кадра).
+ * размер блока совпадает с размером кадра). Используется режимом «вписать».
  */
 export function fitVideoBox(
   aspect: number,

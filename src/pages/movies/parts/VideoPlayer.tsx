@@ -8,6 +8,7 @@ import {
   RefreshCw,
   RotateCcw,
   RotateCw,
+  Scaling,
   Settings2,
   Subtitles,
   Volume2,
@@ -16,7 +17,19 @@ import {
 import { Select } from "@/components/ui";
 import { useI18n } from "@/app/i18n";
 import { fmtTime } from "@/pages/movies/lib/streamUrl";
-import { clampSeek, fitVideoBox } from "@/pages/movies/lib/playback";
+import {
+  clampPan,
+  clampSeek,
+  clampZoom,
+  FIT_MODES,
+  fitBoxFor,
+  fitModeLabelKey,
+  smartStretchMap,
+  ZOOM_MAX,
+  ZOOM_MIN,
+  ZOOM_STEPS,
+  type FitMode,
+} from "@/pages/movies/lib/playback";
 
 /**
  * Свой плеер страницы «Фильмы»: полный набор кнопок вместо нативных controls.
@@ -118,6 +131,15 @@ export default function VideoPlayer({
   const [playing, setPlaying] = useState(false);
   const [buffering, setBuffering] = useState(false);
   const [failed, setFailed] = useState(false);
+  /** Режим вписывания кадра: кнопка «растянуть» в панели плеера. */
+  const [fitMode, setFitMode] = useState<FitMode>("fit");
+  /** Зум в процентах (100 = как выбрано вписывание) и панорама увеличенного кадра. */
+  const [zoom, setZoom] = useState(100);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [showFit, setShowFit] = useState(false);
+  /** Перетаскивание кадра мышью: старт, сдвиг и признак «это был драг, а не клик». */
+  const dragRef = useRef<{ x: number; y: number; panX: number; panY: number } | null>(null);
+  const draggedRef = useRef(false);
   /** Длительность, которую сообщил сам <video> (для живого потока — отсутствует). */
   const [mediaDuration, setMediaDuration] = useState(0);
   const [current, setCurrent] = useState(0);
@@ -376,7 +398,8 @@ export default function VideoPlayer({
     const onKey = (e: KeyboardEvent) => {
       const el = e.target as HTMLElement | null;
       const tag = (el?.tagName || "").toLowerCase();
-      if (tag === "input" || tag === "textarea" || tag === "select" || el?.isContentEditable) return;
+      if (tag === "input" || tag === "textarea" || tag === "select" || el?.isContentEditable)
+        return;
       const k = e.key.toLowerCase();
       if (e.key === " " || k === "k") {
         e.preventDefault();
@@ -415,7 +438,7 @@ export default function VideoPlayer({
       const top = Math.max(0, host.getBoundingClientRect().top);
       // Резерв на панель управления, шкалу и подписи под плеером.
       const availHeight = Math.max(200, window.innerHeight - top - 190);
-      setBox(fitVideoBox(aspect, availWidth, availHeight));
+      setBox(fitBoxFor(fitMode, { aspect, availWidth, availHeight }));
     };
     measure();
     const ro =
@@ -428,7 +451,14 @@ export default function VideoPlayer({
       ro?.disconnect();
       window.removeEventListener("resize", measure);
     };
-  }, [aspect]);
+  }, [aspect, fitMode]);
+
+  // Зум уменьшили или блок изменился — панораму подрезаем к новым границам,
+  // иначе увеличенный кадр «уехал» бы и по краям остался чёрный провал.
+  useEffect(() => {
+    if (!box) return;
+    setPan((p) => clampPan(p, { width: box.width, height: box.height, zoomPercent: zoom }));
+  }, [box, zoom]);
 
   const totalKnown = filmSec;
   const shownTime = totalKnown ? Math.min(absTime, totalKnown) : absTime;
@@ -447,19 +477,89 @@ export default function VideoPlayer({
   /** Пока тянут ползунок — показываем его позицию, а не текущую секунду. */
   const sliderValue = scrub !== null ? scrub : shownTime;
 
-  /** Размер блока = размер кадра (считает fitVideoBox): ни обрезки, ни полей. */
+  /** Размер блока плеера: «вписать» — ровно по кадру, остальные режимы — вся область. */
   const boxStyle = !fullscreen && box ? { width: box.width, height: box.height } : undefined;
+  /**
+   * Зум и панорама кадра: переменные читает CSS (.mv-vp-video → transform),
+   * поэтому увеличение и сдвиг работают в любом режиме вписывания.
+   */
+  const fitVars = {
+    "--mv-vp-zoom": clampZoom(zoom) / 100,
+    "--mv-vp-pan-x": `${Math.round(pan.x)}px`,
+    "--mv-vp-pan-y": `${Math.round(pan.y)}px`,
+  } as React.CSSProperties;
+  /** Панорама осмысленна только на увеличенном кадре. */
+  const pannable = clampZoom(zoom) > 100;
+  /** Карта «умного растяжения»: нужна только в этом режиме и при известном блоке. */
+  const smartMap =
+    fitMode === "smart" && box
+      ? smartStretchMap({ aspect, width: box.width, height: box.height })
+      : null;
+
+  /** Панорама: тянем увеличенный кадр мышью (клик по кадру при этом не срабатывает). */
+  const onPanStart = (e: React.PointerEvent) => {
+    draggedRef.current = false;
+    if (!pannable || e.button !== 0) return;
+    dragRef.current = { x: e.clientX, y: e.clientY, panX: pan.x, panY: pan.y };
+  };
+  const onPanMove = (e: React.PointerEvent) => {
+    const d = dragRef.current;
+    if (!d || !box) return;
+    const dx = e.clientX - d.x;
+    const dy = e.clientY - d.y;
+    // Порог в 3 px: случайное дрожание мыши не считаем перетаскиванием.
+    if (!draggedRef.current && Math.abs(dx) + Math.abs(dy) < 3) return;
+    draggedRef.current = true;
+    setPan(
+      clampPan(
+        { x: d.panX + dx, y: d.panY + dy },
+        { width: box.width, height: box.height, zoomPercent: zoom },
+      ),
+    );
+  };
+  const onPanEnd = () => {
+    dragRef.current = null;
+  };
 
   return (
     <div
-      className={`mv-vp ${fullscreen ? "is-fs" : ""} ${uiVisible ? "" : "is-idle"}`}
+      className={`mv-vp fit-${fitMode} ${pannable ? "is-pannable" : ""} ${
+        fullscreen ? "is-fs" : ""
+      } ${uiVisible ? "" : "is-idle"}`}
       ref={wrapRef}
-      style={boxStyle}
+      style={{ ...boxStyle, ...fitVars }}
       onMouseMove={wake}
       onMouseLeave={() => {
+        onPanEnd();
         if (playing) setUiVisible(false);
       }}
+      onPointerDown={onPanStart}
+      onPointerMove={onPanMove}
+      onPointerUp={onPanEnd}
+      onPointerCancel={onPanEnd}
     >
+      {/* Фильтр «умного растяжения»: карта сдвига строится под текущий размер блока. */}
+      {smartMap && (
+        <svg className="mv-vp-smartdefs" aria-hidden="true">
+          <filter
+            id="mv-vp-smart"
+            x="0"
+            y="0"
+            width="100%"
+            height="100%"
+            colorInterpolationFilters="sRGB"
+          >
+            <feImage href={smartMap.href} preserveAspectRatio="none" result="map" />
+            <feDisplacementMap
+              in="SourceGraphic"
+              in2="map"
+              scale={smartMap.scale}
+              xChannelSelector="R"
+              yChannelSelector="G"
+            />
+          </filter>
+        </svg>
+      )}
       <video
         ref={videoRef}
         key={src}
@@ -467,7 +567,14 @@ export default function VideoPlayer({
         playsInline
         preload="metadata"
         className="mv-vp-video"
-        onClick={togglePlay}
+        onClick={() => {
+          // После перетаскивания кадра (панорама) клик не должен ставить паузу.
+          if (draggedRef.current) {
+            draggedRef.current = false;
+            return;
+          }
+          togglePlay();
+        }}
         onDoubleClick={toggleFullscreen}
       >
         {subtitles ? (
@@ -569,6 +676,13 @@ export default function VideoPlayer({
           ) : null}
 
           <button
+            className={`mv-vp-btn ${showFit ? "is-on" : ""}`}
+            onClick={() => setShowFit((s) => !s)}
+            title={t("movies.playerFit")}
+          >
+            <Scaling size={17} />
+          </button>
+          <button
             className={`mv-vp-btn ${showOpts ? "is-on" : ""}`}
             onClick={() => setShowOpts((s) => !s)}
             title={t("movies.playerSettings")}
@@ -627,6 +741,58 @@ export default function VideoPlayer({
                 />
               </label>
             )}
+            {/* Вписывание кадра и зум: от «вписать целиком» до «умного растяжения». */}
+            {showFit && (
+              <div className="mv-vp-opts mv-vp-fit">
+                <div className="mv-vp-fit-modes">
+                  {FIT_MODES.map((m) => (
+                    <button
+                      key={m}
+                      className={`mv-vp-fit-mode ${m === fitMode ? "is-active" : ""}`}
+                      onClick={() => setFitMode(m)}
+                      title={t(fitModeLabelKey(m))}
+                    >
+                      {t(fitModeLabelKey(m))}
+                    </button>
+                  ))}
+                </div>
+                <div className="mv-vp-fit-zoom">
+                  <span>{t("movies.playerZoom")}</span>
+                  {ZOOM_STEPS.map((z) => (
+                    <button
+                      key={z}
+                      className={`mv-vp-fit-zoom-btn ${z === clampZoom(zoom) ? "is-active" : ""}`}
+                      onClick={() => setZoom(z)}
+                    >
+                      {z}%
+                    </button>
+                  ))}
+                  <input
+                    className="mv-vp-fit-zoom-input"
+                    type="number"
+                    min={ZOOM_MIN}
+                    max={ZOOM_MAX}
+                    step={5}
+                    value={clampZoom(zoom)}
+                    onChange={(e) => setZoom(clampZoom(e.target.value))}
+                    title={t("movies.playerZoomCustom")}
+                  />
+                  <button
+                    className="mv-vp-fit-zoom-btn"
+                    onClick={() => {
+                      setZoom(100);
+                      setPan({ x: 0, y: 0 });
+                    }}
+                  >
+                    {t("movies.playerZoomReset")}
+                  </button>
+                </div>
+                {fitMode === "smart" && (
+                  <span className="mv-vp-fit-hint">{t("movies.fitSmartHint")}</span>
+                )}
+                {pannable && <span className="mv-vp-fit-hint">{t("movies.fitPanHint")}</span>}
+              </div>
+            )}
             {title && <span className="muted-sm mv-vp-title">{title}</span>}
           </div>
         )}
@@ -635,4 +801,3 @@ export default function VideoPlayer({
     </div>
   );
 }
-

@@ -1706,12 +1706,26 @@
   border-radius: 12px;
   overflow: hidden;
 }
+/* Кадр лежит поверх блока: положение и размер задаёт режим вписывания (fit-*),
+   а зум и панораму — переменные из компонента. position:absolute нужен, чтобы
+   кадр, вылезающий за блок (режимы «по ширине/высоте»), аккуратно обрезался, а
+   панель управления не «прыгала» при смене режима. */
 .mv-vp-video {
+  position: absolute;
+  top: 50%;
+  left: 50%;
   display: block;
-  /* Блок уже подогнан под соотношение сторон кадра — заполняем его целиком. */
-  width: 100%;
-  height: 100%;
   background: #000;
+  transform: translate(-50%, -50%) translate(var(--mv-vp-pan-x, 0px), var(--mv-vp-pan-y, 0px))
+    scale(var(--mv-vp-zoom, 1));
+  transform-origin: center center;
+}
+/* Панорама осмысленна только на увеличенном кадре — иначе двигать нечего. */
+.mv-vp.is-pannable {
+  cursor: grab;
+}
+.mv-vp.is-pannable:active {
+  cursor: grabbing;
 }
 .mv-vp.is-fs {
   width: 100vw !important;
@@ -1720,6 +1734,48 @@
 }
 .mv-vp.is-fs .mv-vp-video {
   object-fit: contain;
+}
+/* --- Режимы вписывания кадра (кнопка «растянуть» в панели плеера) --- */
+/* Вписать целиком (по умолчанию): блок уже равен кадру — заполняем без полей. */
+.mv-vp.fit-fit .mv-vp-video {
+  width: 100%;
+  height: 100%;
+}
+/* Заполнить/кадрировать: края обрезаются, пропорции сохранены. */
+.mv-vp.fit-cover .mv-vp-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+/* По ширине: ширина — по блоку, высота — по пропорциям кадра. */
+.mv-vp.fit-width .mv-vp-video {
+  width: 100%;
+  height: auto;
+}
+/* По высоте: высота — по блоку, ширина — по пропорциям кадра. */
+.mv-vp.fit-height .mv-vp-video {
+  height: 100%;
+  width: auto;
+}
+/* Растянуть: обе стороны по блоку, пропорции не сохраняются (искажение). */
+.mv-vp.fit-stretch .mv-vp-video {
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+}
+/* Умное растяжение: тот же fill, но фильтр возвращает пропорции в центре кадра. */
+.mv-vp.fit-smart .mv-vp-video {
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  filter: url(#mv-vp-smart);
+}
+/* Определения фильтра: сами не видны, нужны только как ссылка из filter: url(). */
+.mv-vp-smartdefs {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
 }
 .mv-vp-center {
   position: absolute;
@@ -1882,6 +1938,59 @@
   flex-wrap: wrap;
   gap: 14px;
   padding: 8px 4px 2px;
+}
+/* Панель «вписывание кадра + зум»: список режимов и ступени зума в столбик. */
+.mv-vp-fit {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+.mv-vp-fit-modes,
+.mv-vp-fit-zoom {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #fff;
+}
+.mv-vp-fit-mode,
+.mv-vp-fit-zoom-btn {
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 11.5px;
+  cursor: pointer;
+  transition:
+    background-color 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease;
+}
+.mv-vp-fit-mode:hover,
+.mv-vp-fit-zoom-btn:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+.mv-vp-fit-mode.is-active,
+.mv-vp-fit-zoom-btn.is-active {
+  background: var(--amber);
+  border-color: var(--amber);
+  color: #14141c;
+  font-weight: 600;
+}
+.mv-vp-fit-zoom-input {
+  width: 64px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  padding: 3px 6px;
+  font-size: 12px;
+}
+.mv-vp-fit-hint {
+  font-size: 11.5px;
+  color: rgba(255, 255, 255, 0.72);
 }
 .mv-vp-opt {
   display: flex;

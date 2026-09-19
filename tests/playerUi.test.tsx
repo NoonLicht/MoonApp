@@ -43,7 +43,11 @@ describe("VideoPlayer — свой плеер", () => {
       React.createElement(VideoPlayer, {
         src: "/s/0",
         badge: "Качается: 42% · 1.5 MB/s",
-        subtitles: { src: "/api/movies/torrent/subtitles/aaa/0?track=0", label: "Русские", lang: "ru" },
+        subtitles: {
+          src: "/api/movies/torrent/subtitles/aaa/0?track=0",
+          label: "Русские",
+          lang: "ru",
+        },
         actions: React.createElement("button", { id: "mv-stop" }, "Стоп"),
       }),
     );
@@ -128,7 +132,37 @@ describe("VideoPlayer — субтитры внутри настроек (стр
     expect(src).toContain("commitScrub");
     expect(src).toContain("onPointerUp={commitScrub}");
     expect(src).toContain("clampSeek(");
-    expect(src).toContain("fitVideoBox(");
+    // Размер блока считает fitBoxFor (режимы вписывания), сам fitVideoBox — внутри.
+    expect(src).toContain("fitBoxFor(");
+  });
+
+  /**
+   * Кнопка «растянуть»: режимы вписывания кадра и зум с панорамированием.
+   * Проверяем и разметку (кнопка + панель), и то, что режимы берутся из lib
+   * (список FIT_MODES), а не дублируются строками в компоненте.
+   */
+  it("есть кнопка вписывания кадра, режимы берутся из FIT_MODES, есть зум", () => {
+    const html = render(React.createElement(VideoPlayer, { src: "/s/0" }));
+    expect(html).toContain('title="Вписывание кадра и зум"');
+    expect(html).toContain("mv-vp fit-fit");
+    expect(src).toContain("FIT_MODES.map");
+    expect(src).toContain("fitModeLabelKey(m)");
+    expect(src).toContain("ZOOM_STEPS.map");
+    expect(src).toContain('t("movies.playerZoomCustom")');
+    expect(src).toContain('t("movies.playerZoomReset")');
+    // Зум и панорама — через CSS-переменные, кадр тянется мышью.
+    expect(src).toContain('"--mv-vp-zoom"');
+    expect(src).toContain('"--mv-vp-pan-x"');
+    expect(src).toContain("onPointerDown={onPanStart}");
+    expect(src).toContain("clampPan(");
+  });
+
+  /** «Умное растяжение» — SVG-фильтр: карта строится под текущий размер блока. */
+  it("для умного растяжения рисуется SVG-фильтр с feDisplacementMap", () => {
+    expect(src).toContain("smartStretchMap(");
+    expect(src).toContain('id="mv-vp-smart"');
+    expect(src).toContain("feDisplacementMap");
+    expect(src).toContain("smartMap.href");
   });
 });
 
