@@ -247,6 +247,17 @@
   padding: 4px 9px;
   font-size: 11px;
 }
+/* Кнопка-иконка без подписи среди «мелких» кнопок: габариты как у .lec-btn.tiny,
+   но квадрат — иначе иконка осталась бы вытянутым овалом с пустым местом под
+   отсутствующий текст. Три класса перебивают .lec-btn.icon (34×34) из шапки. */
+.lec-btn.tiny.icon {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  gap: 0;
+  justify-content: center;
+  border-radius: 8px;
+}
 
 .lec-viz {
   opacity: 0.3;

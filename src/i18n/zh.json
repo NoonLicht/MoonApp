@@ -1285,7 +1285,7 @@
     "clickToEdit": "双击编辑",
     "chunkEmpty": "静音/噪声——已被 VAD 丢弃",
     "lastError": "最近错误",
-    "notes": "笔记（兼容 Obsidian 的 Markdown）",
+    "notes": "笔记",
     "conspectus": "AI 概要",
     "conspectusBusy": "生成中…",
     "regenerate": "重新生成",

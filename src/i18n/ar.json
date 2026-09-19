@@ -1285,7 +1285,7 @@
     "clickToEdit": "انقر مرتين للتحرير",
     "chunkEmpty": "صمت/ضجيج — تم استبعاده بواسطة VAD",
     "lastError": "آخر خطأ",
-    "notes": "ملاحظات (Markdown متوافق مع Obsidian)",
+    "notes": "ملاحظات",
     "conspectus": "ملخص بالذكاء الاصطناعي",
     "conspectusBusy": "جارٍ التوليد…",
     "regenerate": "إعادة التوليد",

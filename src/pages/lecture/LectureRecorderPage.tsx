@@ -1275,11 +1275,7 @@ export default function LectureRecorderPage() {
           </>
         ) : recording ? (
           <>
-            <button
-              className="lec-btn"
-              onClick={pauseRecording}
-              title={t("lecture.pauseHint")}
-            >
+            <button className="lec-btn" onClick={pauseRecording} title={t("lecture.pauseHint")}>
               <Pause size={16} /> {t("lecture.pause")}
             </button>
             <button className="lec-btn danger" onClick={() => void stopRecording()}>
@@ -1475,14 +1471,17 @@ export default function LectureRecorderPage() {
               {/* «Регенерировать»: тот же проход по расшифровке, но заметки
                   ПЕРЕЗАПИСЫВАЮТСЯ новым конспектом. Нужна, когда предыдущая
                   сборка вышла неудачной или в поле накопился мусор: обычная
-                  кнопка выше ДОПИСЫВАЕТ конспект к уже имеющемуся тексту. */}
+                  кнопка выше ДОПИСЫВАЕТ конспект к уже имеющемуся тексту.
+                  Подпись убрана: ряд мелких кнопок распирал шапку панели, смысл
+                  остался в title (подсказка) и aria-label (скринридер). */}
               <button
-                className="lec-btn tiny ghost"
+                className="lec-btn tiny ghost icon"
                 disabled={!session || conspectusBusy}
                 title={t("lecture.regenerateHint")}
+                aria-label={t("lecture.regenerate")}
                 onClick={() => void runConspectus(true)}
               >
-                <RefreshCw size={12} /> {t("lecture.regenerate")}
+                <RefreshCw size={12} />
               </button>
               {/* Режим запуска виден рядом с кнопкой: иначе непонятно, ждать ли
                   конспект автоматически или его надо собирать вручную. */}

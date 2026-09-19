@@ -1422,7 +1422,7 @@
     "clickToEdit": "Double click to edit",
     "chunkEmpty": "silence/noise — dropped by VAD",
     "lastError": "Last error",
-    "notes": "Notes (Obsidian-compatible Markdown)",
+    "notes": "Notes",
     "conspectus": "AI conspectus",
     "conspectusBusy": "Generating…",
     "regenerate": "Regenerate",

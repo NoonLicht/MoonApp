@@ -1419,7 +1419,7 @@
     "clickToEdit": "Двойной клик — редактировать",
     "chunkEmpty": "тишина/шум — отброшено VAD",
     "lastError": "Последняя ошибка",
-    "notes": "Заметки (Obsidian-совместимый Markdown)",
+    "notes": "Заметки",
     "conspectus": "AI-конспект",
     "conspectusBusy": "Генерация…",
     "regenerate": "Регенерировать",

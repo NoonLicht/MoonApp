@@ -1285,7 +1285,7 @@
     "clickToEdit": "Doble clic para editar",
     "chunkEmpty": "silencio/ruido: descartado por el VAD",
     "lastError": "Último error",
-    "notes": "Notas (Markdown compatible con Obsidian)",
+    "notes": "Notas",
     "conspectus": "Resumen IA",
     "conspectusBusy": "Generando…",
     "regenerate": "Regenerar",
