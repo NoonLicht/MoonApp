@@ -24,7 +24,6 @@ import {
   FIT_MODES,
   fitBoxFor,
   fitModeLabelKey,
-  smartStretchMap,
   ZOOM_MAX,
   ZOOM_MIN,
   ZOOM_STEPS,
@@ -490,11 +489,6 @@ export default function VideoPlayer({
   } as React.CSSProperties;
   /** Панорама осмысленна только на увеличенном кадре. */
   const pannable = clampZoom(zoom) > 100;
-  /** Карта «умного растяжения»: нужна только в этом режиме и при известном блоке. */
-  const smartMap =
-    fitMode === "smart" && box
-      ? smartStretchMap({ aspect, width: box.width, height: box.height })
-      : null;
 
   /** Панорама: тянем увеличенный кадр мышью (клик по кадру при этом не срабатывает). */
   const onPanStart = (e: React.PointerEvent) => {
@@ -538,28 +532,6 @@ export default function VideoPlayer({
       onPointerUp={onPanEnd}
       onPointerCancel={onPanEnd}
     >
-      {/* Фильтр «умного растяжения»: карта сдвига строится под текущий размер блока. */}
-      {smartMap && (
-        <svg className="mv-vp-smartdefs" aria-hidden="true">
-          <filter
-            id="mv-vp-smart"
-            x="0"
-            y="0"
-            width="100%"
-            height="100%"
-            colorInterpolationFilters="sRGB"
-          >
-            <feImage href={smartMap.href} preserveAspectRatio="none" result="map" />
-            <feDisplacementMap
-              in="SourceGraphic"
-              in2="map"
-              scale={smartMap.scale}
-              xChannelSelector="R"
-              yChannelSelector="G"
-            />
-          </filter>
-        </svg>
-      )}
       <video
         ref={videoRef}
         key={src}
@@ -741,7 +713,7 @@ export default function VideoPlayer({
                 />
               </label>
             )}
-            {/* Вписывание кадра и зум: от «вписать целиком» до «умного растяжения». */}
+            {/* Вписывание кадра и зум: режимы — из FIT_MODES, ступени — из ZOOM_STEPS. */}
             {showFit && (
               <div className="mv-vp-opts mv-vp-fit">
                 <div className="mv-vp-fit-modes">
@@ -787,9 +759,6 @@ export default function VideoPlayer({
                     {t("movies.playerZoomReset")}
                   </button>
                 </div>
-                {fitMode === "smart" && (
-                  <span className="mv-vp-fit-hint">{t("movies.fitSmartHint")}</span>
-                )}
                 {pannable && <span className="mv-vp-fit-hint">{t("movies.fitPanHint")}</span>}
               </div>
             )}

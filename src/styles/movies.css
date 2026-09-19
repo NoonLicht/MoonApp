@@ -1735,7 +1735,7 @@
 .mv-vp.is-fs .mv-vp-video {
   object-fit: contain;
 }
-/* --- Режимы вписывания кадра (кнопка «растянуть» в панели плеера) --- */
+/* --- Режимы вписывания кадра (кнопка вписывания в панели плеера) --- */
 /* Вписать целиком (по умолчанию): блок уже равен кадру — заполняем без полей. */
 .mv-vp.fit-fit .mv-vp-video {
   width: 100%;
@@ -1756,26 +1756,6 @@
 .mv-vp.fit-height .mv-vp-video {
   height: 100%;
   width: auto;
-}
-/* Растянуть: обе стороны по блоку, пропорции не сохраняются (искажение). */
-.mv-vp.fit-stretch .mv-vp-video {
-  width: 100%;
-  height: 100%;
-  object-fit: fill;
-}
-/* Умное растяжение: тот же fill, но фильтр возвращает пропорции в центре кадра. */
-.mv-vp.fit-smart .mv-vp-video {
-  width: 100%;
-  height: 100%;
-  object-fit: fill;
-  filter: url(#mv-vp-smart);
-}
-/* Определения фильтра: сами не видны, нужны только как ссылка из filter: url(). */
-.mv-vp-smartdefs {
-  position: absolute;
-  width: 0;
-  height: 0;
-  overflow: hidden;
 }
 .mv-vp-center {
   position: absolute;

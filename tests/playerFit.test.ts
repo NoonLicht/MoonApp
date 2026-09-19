@@ -6,24 +6,24 @@ import {
   fitBoxFor,
   fitModeLabelKey,
   fitObjectFit,
-  smartStretchMap,
   ZOOM_MAX,
   ZOOM_MIN,
   ZOOM_STEPS,
 } from "@/pages/movies/lib/playback";
 
 /**
- * Вписывание кадра в плеере (кнопка «растянуть») и зум.
+ * Вписывание кадра в плеере (кнопка вписывания) и зум.
  *
  * Режимы — та же логика, что в CSS (.mv-vp.fit-*), поэтому проверяем в первую
  * очередь решение «какой размер блока и какой object-fit»: ошибка здесь видна
- * не как падение, а как чёрные полосы или искажённая картинка у пользователя.
+ * не как падение, а как чёрные полосы или обрезанные края у пользователя.
  */
 describe("плеер — режимы вписывания кадра", () => {
   it("список режимов и их подписи согласованы с локалями", () => {
-    expect(FIT_MODES).toEqual(["fit", "cover", "width", "height", "stretch", "smart"]);
+    // Кадр никогда не искажается: режимов «растянуть» и «умное растяжение» нет.
+    expect(FIT_MODES).toEqual(["fit", "cover", "width", "height"]);
     expect(fitModeLabelKey("cover")).toBe("movies.fit_cover");
-    expect(fitModeLabelKey("smart")).toBe("movies.fit_smart");
+    expect(fitModeLabelKey("height")).toBe("movies.fit_height");
     // Мусор не превращается в отсутствующий ключ.
     expect(fitModeLabelKey("нет" as never)).toBe("movies.fit_fit");
   });
@@ -35,18 +35,16 @@ describe("плеер — режимы вписывания кадра", () => {
     // 4:3 в широкой области — блок уже кадра: полей по бокам нет.
     expect(fitBoxFor("fit", { ...area, aspect: 4 / 3 })).toEqual({ width: 1200, height: 900 });
     // Остальные режимы живут во всей области, кадр вписывает сам <video>.
-    for (const m of ["cover", "width", "height", "stretch", "smart"] as const) {
+    for (const m of ["cover", "width", "height"] as const) {
       expect(fitBoxFor(m, area)).toEqual({ width: 1600, height: 900 });
     }
   });
 
-  it("object-fit по режиму: cover — обрезка, fill — искажение, иначе contain", () => {
+  it("object-fit по режиму: cover — обрезка, остальные — contain (без искажений)", () => {
     expect(fitObjectFit("fit")).toBe("contain");
     expect(fitObjectFit("width")).toBe("contain");
     expect(fitObjectFit("height")).toBe("contain");
     expect(fitObjectFit("cover")).toBe("cover");
-    expect(fitObjectFit("stretch")).toBe("fill");
-    expect(fitObjectFit("smart")).toBe("fill");
   });
 });
 
@@ -71,31 +69,5 @@ describe("плеер — зум и панорама", () => {
     });
     // Внутри границ значение сохраняется.
     expect(clampPan({ x: -120, y: 40 }, { ...box, zoomPercent: 200 })).toEqual({ x: -120, y: 40 });
-  });
-});
-
-describe("плеер — карта «умного растяжения»", () => {
-  it("для растянутого кадра строит карту сдвига нужного размера", () => {
-    // 4:3 в 16:9-области: fill растянул кадр по горизонтали.
-    const map = smartStretchMap({ aspect: 4 / 3, width: 1600, height: 900 });
-    expect(map).not.toBeNull();
-    expect(map?.axis).toBe("x");
-    expect(map?.scale).toBe(1600); // scale = размер по оси сдвига в пикселях
-    expect(map?.href.startsWith("data:image/svg+xml,")).toBe(true);
-    // В карте есть stop'ы градиента (R-канал задаёт сдвиг для feDisplacementMap).
-    expect(decodeURIComponent(String(map?.href))).toContain("stop-color='rgb(");
-  });
-
-  it("вертикально растянутый кадр сдвигается по Y (широкий фильм в узкой области)", () => {
-    // 2.35:1 в 16:9: fill растянул кадр по вертикали.
-    const map = smartStretchMap({ aspect: 2.35, width: 1600, height: 900 });
-    expect(map?.axis).toBe("y");
-    expect(map?.scale).toBe(900);
-  });
-
-  it("когда пропорции совпали, растягивать нечего — карты нет", () => {
-    expect(smartStretchMap({ aspect: 16 / 9, width: 1600, height: 900 })).toBeNull();
-    // Слишком маленький блок (до измерения) — тоже без карты.
-    expect(smartStretchMap({ aspect: 4 / 3, width: 4, height: 4 })).toBeNull();
   });
 });

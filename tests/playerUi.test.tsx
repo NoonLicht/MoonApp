@@ -157,12 +157,26 @@ describe("VideoPlayer — субтитры внутри настроек (стр
     expect(src).toContain("clampPan(");
   });
 
-  /** «Умное растяжение» — SVG-фильтр: карта строится под текущий размер блока. */
-  it("для умного растяжения рисуется SVG-фильтр с feDisplacementMap", () => {
-    expect(src).toContain("smartStretchMap(");
-    expect(src).toContain('id="mv-vp-smart"');
-    expect(src).toContain("feDisplacementMap");
-    expect(src).toContain("smartMap.href");
+  /**
+   * Режимы «растянуть (искажение)» и «умное растяжение» убраны: они искажали
+   * картинку, а «умный» ещё и требовал SVG-фильтра (feDisplacementMap) с картой
+   * сдвига — на 4K это заметно грузило CPU. Проверяем, что от них не осталось
+   * следов ни в компоненте, ни в разметке, ни в стилях.
+   */
+  it("режимов искажения и умного растяжения в плеере больше нет", () => {
+    expect(src).not.toContain("smartStretchMap");
+    expect(src).not.toContain("feDisplacementMap");
+    expect(src).not.toContain("mv-vp-smartdefs");
+    expect(src).not.toContain("fitSmartHint");
+    expect(src).not.toContain('"stretch"');
+    const css = fs.readFileSync(path.join(process.cwd(), "src/styles/movies.css"), "utf8");
+    expect(css).not.toContain(".mv-vp.fit-stretch");
+    expect(css).not.toContain(".mv-vp.fit-smart");
+    expect(css).not.toContain(".mv-vp-smartdefs");
+    // Оставшиеся четыре режима в стилях есть — разметка и CSS не разъехались.
+    for (const m of ["fit-fit", "fit-cover", "fit-width", "fit-height"]) {
+      expect(css).toContain(`.mv-vp.${m}`);
+    }
   });
 });
 
