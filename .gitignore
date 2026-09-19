@@ -1,6 +1,7 @@
 # ---------- Зависимости и сборка ----------
 node_modules/
 dist/
+release/
 build/*
 !build/icon.ico
 *.tsbuildinfo
@@ -85,6 +86,14 @@ server/tgwsproxy.js
 server/notesAi.js
 # Установка Python-окружения движков озвучки: TS-исходник server/ts/pyEnv.ts
 server/pyEnv.js
+# Форум-трекер (поиск раздач) и работа с дорожками плеера:
+# TS-исходники server/ts/{charset,trackerParse,trackerProviders,trackerScraper,mediaProbe}.ts
+server/charset.js
+server/trackerParse.js
+server/trackerProviders.js
+server/trackerScraper.js
+server/mediaProbe.js
+server/browserCookies.js
 
 bb.txt
 tc.txt

@@ -24,9 +24,18 @@ contextBridge.exposeInMainWorld("appBridge", {
   // Открыть каталог установки приложения (кнопка в верхней панели).
   openAppDir: () => ipcRenderer.invoke("shell:open-app-dir"),
   refreshTray: () => ipcRenderer.send("bypass:tray-refresh"),
+  // Автозапуск с Windows: применить настройку СРАЗУ (реестр Run правит main-процесс).
+  // Без этого галочка в «Настройках» работала бы только после перезапуска приложения.
+  // Ответ: { ok, openAtLogin, reason? } — reason: "dev" в не-собранной версии.
+  applyAutoLaunch: () => ipcRenderer.invoke("app:autolaunch"),
   // Встроенный прокси: применить ({ proxyRules: "socks5://127.0.0.1:10808" })
   // или снять (null) глобальный прокси Chromium (session.defaultSession).
   applyProxySession: (cfg) => ipcRenderer.invoke("proxy:apply-session", cfg),
+  // Окно входа на форум: открывает Chromium приложения на странице входа и, когда
+  // пользователь РЕАЛЬНО вошёл (в куках появился bb_data), возвращает куки сессии:
+  //   { ok, loggedIn, hasCf, names, cookieHeader, userAgent, reason }
+  // Нужно для Cloudflare-проверки (см. electron/main.js → tracker:login-window).
+  openTrackerLogin: (opts) => ipcRenderer.invoke("tracker:login-window", opts),
   // Режим захвата звука: "loopback" — системный звук (WASAPI), "default" — обычный.
   // Нужен странице лекций: без него getDisplayMedia отдаёт видео/камеру, а не звук системы.
   setCaptureMode: (mode) => ipcRenderer.invoke("rec:capture-mode", mode),

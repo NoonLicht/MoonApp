@@ -1,6 +1,6 @@
 {
   "nav": {
-    "movies": "电影与剧集",
+    "movies": "影院",
     "store": "商店",
     "convert": "转换",
     "video": "视频",
@@ -105,12 +105,20 @@
     "general": "通用",
     "appearance": "外观",
     "theme": "主题",
-    "themeHint": "深色、浅色或 OLED 主题（工具栏开关也有效）",
+    "themeHint": "深色、midnight、浅色、sand 或 OLED 主题（工具栏开关也有效）",
     "themeDark": "深色",
+    "themeMidnight": "Midnight（深蓝夜）",
     "themeLight": "浅色",
+    "themeSand": "Sand（暖浅色）",
     "themeOled": "OLED（纯黑）",
     "accent": "强调色",
     "accentHint": "界面强调色",
+    "accentAmber": "琥珀",
+    "accentViolet": "紫罗兰",
+    "accentTeal": "青色",
+    "accentCoral": "珊瑚",
+    "accentSky": "天蓝",
+    "accentRose": "玫瑰",
     "reduceMotion": "减少动画",
     "reduceMotionHint": "禁用动画和装饰性模糊团块",
     "fontSize": "字体大小",
@@ -780,7 +788,7 @@
     "seek": "播放位置"
   },
   "movies": {
-    "title": "电影与剧集",
+    "title": "电影",
     "movie": "电影",
     "movies": "电影",
     "series": "剧集",

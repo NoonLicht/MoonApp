@@ -108,7 +108,7 @@ describe("Настройки: экспорт и импорт (HTTP)", () => {
       kind: "moonapp-settings",
       appVersion: "0.2.0",
       settings: {
-        appearance: { theme: "light", fontSize: 18 },
+        appearance: { theme: "light", density: "compact" },
         chat: { temperature: 0.2 },
         notASection: { x: 1 }, // нет в DEFAULTS — неизвестная секция
         general: { language: 42 }, // чужой тип: ожидалась строка
@@ -117,7 +117,7 @@ describe("Настройки: экспорт и импорт (HTTP)", () => {
     });
     expect(r.status).toBe(200);
     expect(r.body.settings.appearance.theme).toBe("light");
-    expect(r.body.settings.appearance.fontSize).toBe(18);
+    expect(r.body.settings.appearance.density).toBe("compact");
     expect(r.body.settings.chat.temperature).toBe(0.2);
     expect(r.body.applied).toBeGreaterThan(0);
     expect(r.body.skipped).toContain("notASection");
@@ -129,8 +129,8 @@ describe("Настройки: экспорт и импорт (HTTP)", () => {
     // Настройки сохранены НА ДИСК (проверять только кэш недостаточно).
     const onDisk = JSON.parse(fs.readFileSync(path.join(storage, "settings.json"), "utf8"));
     expect(onDisk.appearance.theme).toBe("light");
-    expect(onDisk.appearance.fontSize).toBe(18);
-    expect(typeof onDisk.appearance.fontSize).toBe("number");
+    expect(onDisk.appearance.density).toBe("compact");
+    expect(onDisk.appearance.density).toBe("compact");
   });
 
   it("ключи API: без флага не трогаем, с флагом — только известные имена", async () => {

@@ -1,28 +1,59 @@
-﻿/* --- С„РѕСЂРј-РєРѕРЅС‚СЂРѕР»С‹ Рё РєРЅРѕРїРєРё --- */
+﻿/* --- Форм-контролы: селекты, поля, кнопки --- */
+/* Селекты: стиль один на всё приложение и берётся из токенов темы, поэтому
+   выглядит одинаково в dark / midnight / light / sand / OLED и с любым акцентом.
+   Стрелка нарисована фоном (appearance: none убирает нативную): раньше её не
+   было вовсе, и селект выглядел «обрезанным» (см. .select-caret ниже). */
 .select-wrap {
   position: relative;
   display: inline-flex;
+  align-items: center;
 }
 .select-wrap select {
   appearance: none;
   -webkit-appearance: none;
-  background: var(--track);
+  background-color: var(--track);
   border: 1px solid var(--glass-border);
   color: var(--text-primary);
-  border-radius: 999px;
-  padding: 6px 12px;
+  border-radius: 11px;
+  padding: 6px 30px 6px 12px;
   font-family: var(--font-body);
-  font-size: 12px;
+  font-size: 12.5px;
+  line-height: 1.25;
+  min-height: 30px;
   outline: none;
   cursor: pointer;
+  /* Каретка: два косых штриха из currentColor — сама подстраивается под тему. */
+  background-image:
+    linear-gradient(45deg, transparent 50%, currentColor 50%),
+    linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position:
+    calc(100% - 15px) calc(50% + 1px),
+    calc(100% - 10px) calc(50% + 1px);
+  background-size: 5px 5px;
+  background-repeat: no-repeat;
+  transition:
+    border-color 0.18s ease,
+    background-color 0.18s ease,
+    box-shadow 0.18s ease;
 }
-.select-wrap select:focus {
-  border-color: var(--violet);
+.select-wrap select:hover:not(:disabled) {
+  border-color: var(--amber);
+  background-color: var(--glass-strong);
 }
-.select-wrap select option {
+.select-wrap select:focus-visible {
+  border-color: var(--amber);
+  box-shadow: 0 0 0 3px var(--amber-soft);
+}
+.select-wrap select:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.select-wrap select option,
+select option {
   background-color: var(--surface-solid);
   color: var(--text-primary);
 }
+/* Резерв: если где-то понадобится своя иконка каретки вместо фоновой. */
 .select-caret {
   position: absolute;
   right: 9px;
@@ -1321,4 +1352,36 @@ select option {
 .ap-rate:hover {
   color: var(--text-primary);
   border-color: rgba(255, 255, 255, 0.3);
+}
+
+/* --- Общий слой модалок приложения ------------------------------------------
+   Геометрия одна на всё приложение: слой начинается ПОД верхней панелью
+   (--content-top) и карточка центрируется в оставшейся области. Так верхнее меню
+   остаётся видимым и кликабельным, а окно не «уезжает» под него.
+
+   Почему это важно именно для Electron: полоса верхней панели объявлена как
+   -webkit-app-region: drag (theme.css → .titlebar-drag), а drag-регион перехватывает
+   мышь даже у элементов, нарисованных поверх него. Окно, растянутое на inset: 0
+   (так было у просмотрщика архива), ставило кнопки своей шапки ровно в эту полосу —
+   и они «не нажимались». Модалки, живущие ниже --content-top, этой проблемы не имеют.
+
+   Сами страницы задают только z-index и «косметику» затемнения. */
+.app-modal-backdrop {
+  position: fixed;
+  top: var(--content-top);
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px 20px var(--content-bottom);
+  pointer-events: auto; /* #overlay-root выключен для кликов — модалка включает обратно */
+}
+/* Низкое окно: центрировать нечего — прижимаем карточку к верху, чтобы её шапка и
+   нижние кнопки оставались доступными. */
+@media (max-height: 640px) {
+  .app-modal-backdrop {
+    align-items: flex-start;
+  }
 }

@@ -49,7 +49,11 @@ interface MediaDetailModalProps {
   summary?: MediaSummary | null;
   onClose: () => void;
   onOpenTitle: (kind: MediaKind, id: number) => void;
-  onOpenPlayer: (trailerKey: string | null) => void;
+  /**
+   * Открыть плеер. Второй аргумент — название тайтла: вкладка «Поиск раздач»
+   * сразу ищет по нему (пользователю не нужно вводить название руками).
+   */
+  onOpenPlayer: (trailerKey: string | null, query?: string | null) => void;
   /** Уведомить страницу, что список/оценки/статистика изменились. */
   onChanged: () => void;
 }
@@ -254,7 +258,7 @@ export default function MediaDetailModal({
   if (!active) return null;
 
   return createPortal(
-    <div className="mv-modal-backdrop" onClick={onClose}>
+    <div className="app-modal-backdrop mv-modal-backdrop" onClick={onClose}>
       <Glass className="mv-detail glass-solid" onClick={(e) => e.stopPropagation()}>
         <button className="mv-close mv-close-abs" onClick={onClose} title={t("common.close")}>
           <X size={16} />
@@ -324,7 +328,7 @@ export default function MediaDetailModal({
                     <Btn
                       variant="primary"
                       icon={Play}
-                      onClick={() => onOpenPlayer(details.trailer?.key || null)}
+                      onClick={() => onOpenPlayer(details.trailer?.key || null, details.title)}
                     >
                       {t("movies.watchTrailer")}
                     </Btn>
@@ -494,8 +498,8 @@ export default function MediaDetailModal({
             <SourcesList
               providers={details.providers}
               hasTrailer={!!details.trailer}
-              onTrailer={() => onOpenPlayer(details.trailer?.key || null)}
-              onTorrent={() => onOpenPlayer(null)}
+              onTrailer={() => onOpenPlayer(details.trailer?.key || null, details.title)}
+              onTorrent={() => onOpenPlayer(null, details.title)}
             />
           </>
         )}

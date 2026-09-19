@@ -31,6 +31,7 @@ import {
   Field,
   Checkbox,
   EmptyHint,
+  IconBtn,
 } from "@/components/ui";
 import { usePageActive, usePageBusy } from "@/components/Toolbar";
 import { getOverlayRoot } from "@/components/overlayHost";
@@ -570,9 +571,9 @@ export default function ArchiverPage() {
           в песочнице без скриптов — чужая страница не может обратиться к API. --- */}
       {viewer &&
         createPortal(
-          <div className="arch-view-overlay" onClick={() => setViewer(null)}>
+          <div className="app-modal-backdrop arch-view-overlay" onClick={() => setViewer(null)}>
             <div
-              className="arch-view"
+              className="arch-view glass glass-solid"
               role="dialog"
               aria-label={t("arch.view")}
               onClick={(e) => e.stopPropagation()}
@@ -605,14 +606,12 @@ export default function ArchiverPage() {
                   >
                     {t("arch.viewReload")}
                   </Btn>
-                  <button
-                    className="arch-view-close"
+                  <IconBtn
+                    icon={X}
                     onClick={() => setViewer(null)}
                     aria-label={t("common.close")}
                     title={t("common.close")}
-                  >
-                    <X size={18} />
-                  </button>
+                  />
                 </div>
               </div>
               <div className="arch-view-body">

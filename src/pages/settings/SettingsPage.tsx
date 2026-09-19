@@ -3,10 +3,8 @@ import {
   Settings2,
   Palette,
   Gauge,
-  MonitorCog,
   MessageSquare,
   Package,
-  Repeat,
   Clapperboard,
   Mic2,
   Archive,
@@ -17,7 +15,6 @@ import {
   RotateCcw,
   Video,
   Music2,
-  BookOpen,
   User,
   ChevronDown,
   KeyRound,
@@ -41,19 +38,6 @@ import { useI18n, LANGS } from "@/app/i18n";
 import { startPageOptions } from "@/app/navigation";
 import { api } from "@/api/client";
 import { saveBlob } from "@/lib/download";
-
-/**
- * Сервисный словарь бейджей разделов: слово из настроек -> ключ перевода.
- * Нужен, чтобы бейджи ("live", "future", …) тоже локализовались.
- */
-const BADGE_KEYS: Record<string, string> = {
-  "saved auto": "savedAuto",
-  "recommended on": "recommended",
-  live: "live",
-  future: "future",
-  active: "active",
-  dev: "dev",
-};
 
 /**
  * Точечное чтение вложенного значения по пути "a.b.c".
@@ -100,7 +84,6 @@ function applyLiveSettings(settings: unknown) {
     "performance.keepPagesLimit",
     "performance.unloadIdleMinutes",
     "appearance.accent",
-    "appearance.fontSize",
     "appearance.reduceMotion",
     "appearance.density",
     "appearance.opaqueBackground",
@@ -212,17 +195,12 @@ function TextInput({
 function Section({
   title,
   icon: Icon,
-  badge,
   children,
 }: {
   title: string;
   icon: React.ElementType;
-  badge?: string;
   children: React.ReactNode;
 }) {
-  const { t } = useI18n();
-  const badgeText = badge ? t(`badge.${BADGE_KEYS[badge] || badge}`) : null;
-  const isFuture = badge === "future";
   return (
     <Glass className="set-section">
       <div className="set-section-head">
@@ -230,11 +208,6 @@ function Section({
           <Icon size={16} strokeWidth={2} />
         </span>
         <span className="set-section-title">{title}</span>
-        {badgeText && (
-          <Badge tone={isFuture ? "coral" : "violet"} mono>
-            {isFuture ? `⚠ ${badgeText}` : badgeText}
-          </Badge>
-        )}
       </div>
       <div className="set-section-body">{children}</div>
     </Glass>
@@ -642,18 +615,15 @@ export default function SettingsPage() {
 
   const g = s.general,
     ap = s.appearance,
-    pf = s.performance,
-    win = s.window;
+    pf = s.performance;
   const chat = s.chat,
-    store = s.store,
-    conv = s.converter;
+    store = s.store;
   // Новые секции могут отсутствовать в старых settings.json — даём фолбэки.
   const video = s.video || {},
     musicS = s.music || {},
     mysp = s.myspace || {};
   const moviesCfg = s.movies || {};
-  const media = s.media,
-    voice = s.voice || {},
+  const voice = s.voice || {},
     mon = s.monitor;
   const comp = s.compressor || {},
     sb = s.sitebak || {};
@@ -687,7 +657,7 @@ export default function SettingsPage() {
       <Glass className="settings-scroll-wrap">
         {/* ---- Store / загрузки (док: store) ---- */}
         {/* ---- Общее (док: settings) ---- */}
-        <Section title={t("settings.general")} icon={Settings2} badge="saved auto">
+        <Section title={t("settings.general")} icon={Settings2}>
           <Row label={t("settings.language")} hint={t("settings.languageHint")}>
             <Select
               value={g.language}
@@ -709,7 +679,13 @@ export default function SettingsPage() {
             label={t("settings.autoLaunch")}
             hint={t("settings.autoLaunchHint")}
             value={g.autoLaunch}
-            onChange={(v) => change("general.autoLaunch", v)}
+            onChange={(v) => {
+              void change("general.autoLaunch", v);
+              // Применяем сразу: реестр Windows (Run) правит main-процесс, поэтому
+              // без этого вызова настройка вступала в силу только после перезапуска
+              // приложения — см. electron/main.js → app:autolaunch.
+              void window.appBridge?.applyAutoLaunch?.();
+            }}
           />
           <BoolRow
             label={t("settings.minimizeToTray")}
@@ -729,7 +705,7 @@ export default function SettingsPage() {
              Обновления обязательны: проверка при каждом старте и каждые 4 часа,
              скачивание автоматическое, установка — через диалог, который нельзя
              закрыть не обновившись. Выключателя нет по построению (0.2.2). ---- */}
-        <Section title={t("settings.updatesTitle")} icon={RefreshCw} badge="active">
+        <Section title={t("settings.updatesTitle")} icon={RefreshCw}>
           <Row label={t("settings.updatesAutoLabel")} hint={t("settings.updatesAutoHint")}>
             <Badge tone="teal">{t("settings.updatesMandatory")}</Badge>
           </Row>
@@ -760,7 +736,7 @@ export default function SettingsPage() {
         </Section>
 
         {/* ---- Логи и диагностика: один файл со всеми событиями ---- */}
-        <Section title={t("settings.diagTitle")} icon={FileDown} badge="active">
+        <Section title={t("settings.diagTitle")} icon={FileDown}>
           <Row label={t("settings.diagLabel")} hint={t("settings.diagHint")}>
             <Btn
               variant="primary"
@@ -795,15 +771,17 @@ export default function SettingsPage() {
         </Section>
 
         {/* ---- Внешний вид ---- */}
-        <Section title={t("settings.appearance")} icon={Palette} badge="live">
+        <Section title={t("settings.appearance")} icon={Palette}>
           <Row label={t("settings.theme")} hint={t("settings.themeHint")}>
             <Select
               value={ap.theme}
               onChange={(e) => change("appearance.theme", e.target.value)}
               options={[
                 { value: "dark", label: t("settings.themeDark") },
+                { value: "midnight", label: t("settings.themeMidnight") },
                 { value: "oled", label: t("settings.themeOled") },
                 { value: "light", label: t("settings.themeLight") },
+                { value: "sand", label: t("settings.themeSand") },
               ]}
             />
           </Row>
@@ -811,7 +789,14 @@ export default function SettingsPage() {
             <Select
               value={ap.accent}
               onChange={(e) => change("appearance.accent", e.target.value)}
-              options={["amber", "violet", "teal", "coral"]}
+              options={[
+                { value: "amber", label: t("settings.accentAmber") },
+                { value: "violet", label: t("settings.accentViolet") },
+                { value: "teal", label: t("settings.accentTeal") },
+                { value: "coral", label: t("settings.accentCoral") },
+                { value: "sky", label: t("settings.accentSky") },
+                { value: "rose", label: t("settings.accentRose") },
+              ]}
             />
           </Row>
           <BoolRow
@@ -820,15 +805,6 @@ export default function SettingsPage() {
             value={ap.reduceMotion}
             onChange={(v) => change("appearance.reduceMotion", v)}
           />
-          <Row label={t("settings.fontSize")} hint={t("settings.fontSizeHint")}>
-            <NumberInput
-              value={ap.fontSize}
-              onChange={(v) => change("appearance.fontSize", v)}
-              min={11}
-              max={20}
-              suffix="px"
-            />
-          </Row>
           <Row label={t("settings.density")} hint={t("settings.densityHint")}>
             <Select
               value={ap.density}
@@ -845,7 +821,7 @@ export default function SettingsPage() {
         </Section>
 
         {/* ---- Производительность ---- */}
-        <Section title={t("settings.performance")} icon={Gauge} badge="recommended on">
+        <Section title={t("settings.performance")} icon={Gauge}>
           <BoolRow
             label={t("settings.hwAccel")}
             hint={t("settings.hwAccelHint")}
@@ -885,35 +861,7 @@ export default function SettingsPage() {
           </Row>
         </Section>
 
-        {/* ---- Окно ---- */}
-        <Section title={t("settings.window")} icon={MonitorCog} badge="active">
-          <Row label={t("settings.width")} hint={t("settings.widthHint")}>
-            {/* Нижняя граница — как MIN_WIN_WIDTH в electron/main.js:
-                меньше окно всё равно не станет. */}
-            <NumberInput
-              value={win.width}
-              onChange={(v) => change("window.width", v)}
-              min={720}
-              max={4000}
-            />
-          </Row>
-          <Row label={t("settings.height")} hint={t("settings.heightHint")}>
-            <NumberInput
-              value={win.height}
-              onChange={(v) => change("window.height", v)}
-              min={520}
-              max={3000}
-            />
-          </Row>
-          <BoolRow
-            label={t("settings.rememberSize")}
-            hint={t("settings.rememberSizeHint")}
-            value={win.rememberSize}
-            onChange={(v) => change("window.rememberSize", v)}
-          />
-        </Section>
-
-        <Section title={t("settings.storeSection")} icon={Package} badge="active">
+        <Section title={t("settings.storeSection")} icon={Package}>
           <Row label={t("storeSection.storeDir")} hint={t("storeSection.storeDirHint")}>
             <TextInput
               value={store.downloadDir}
@@ -936,25 +884,8 @@ export default function SettingsPage() {
           </Row>
         </Section>
 
-        {/* ---- Конвертер (док: convert) ---- */}
-        <Section title={t("settings.converter")} icon={Repeat} badge="active">
-          <Row label={t("convSection.convFfmpeg")} hint={t("convSection.convFfmpegHint")}>
-            <TextInput
-              value={conv.ffmpegPath}
-              onChange={(v) => change("converter.ffmpegPath", v)}
-              placeholder="ffmpeg"
-            />
-          </Row>
-          <BoolRow
-            label={t("convSection.convAudio")}
-            hint={t("convSection.convAudioHint")}
-            value={conv.preserveAudio}
-            onChange={(v) => change("converter.preserveAudio", v)}
-          />
-        </Section>
-
         {/* ---- Сжатие видео (док: compressor) — дефолты матрицы энкодеров ---- */}
-        <Section title={t("settings.compressor")} icon={Gauge} badge="active">
+        <Section title={t("settings.compressor")} icon={Gauge}>
           <Row label={t("cmpSettings.cmpEngine")} hint={t("cmpSettings.cmpEngineHint")}>
             <Select
               value={String(comp.engine ?? "auto")}
@@ -1019,7 +950,7 @@ export default function SettingsPage() {
         </Section>
 
         {/* ---- Видео (док: video) — дефолты для новых загрузок yt-dlp ---- */}
-        <Section title={t("settings.video")} icon={Video} badge="active">
+        <Section title={t("settings.video")} icon={Video}>
           <Row label={t("videoSection.videoQuality")} hint={t("videoSection.videoQualityHint")}>
             <Select
               value={String(video.defaultHeight ?? "best")}
@@ -1046,17 +977,10 @@ export default function SettingsPage() {
             value={!!video.downloadSubs}
             onChange={(v) => change("video.downloadSubs", v)}
           />
-          <Row label={t("media.mediaYtdlp")} hint={t("media.mediaYtdlpHint")}>
-            <TextInput
-              value={media.ytdlpPath}
-              onChange={(v) => change("media.ytdlpPath", v)}
-              placeholder="yt-dlp"
-            />
-          </Row>
         </Section>
 
         {/* ---- Музыка (док: music) — качество аудио по умолчанию ---- */}
-        <Section title={t("settings.musicSection")} icon={Music2} badge="active">
+        <Section title={t("settings.musicSection")} icon={Music2}>
           <Row label={t("musicSection.musicQuality")} hint={t("musicSection.musicQualityHint")}>
             <Select
               value={String(musicS.defaultQuality ?? "320 kbps")}
@@ -1076,7 +1000,7 @@ export default function SettingsPage() {
         </Section>
 
         {/* ---- Книги (док: books) ---- */}
-        <Section title={t("nav.movies")} icon={Clapperboard} badge="active">
+        <Section title={t("nav.movies")} icon={Clapperboard}>
           <TmdbKeyRow />
           <Row label={t("moviesSettings.language")} hint={t("moviesSettings.languageHint")}>
             <TextInput
@@ -1100,14 +1024,8 @@ export default function SettingsPage() {
           />
         </Section>
 
-        <Section title={t("settings.books")} icon={BookOpen} badge="active">
-          <div style={{ fontSize: 12.5, color: "var(--text-secondary)", lineHeight: 1.6 }}>
-            {t("booksSection.noSettings")}
-          </div>
-        </Section>
-
         {/* ---- Мониторинг (док: monitor) ---- */}
-        <Section title={t("settings.monitor")} icon={Activity} badge="active">
+        <Section title={t("settings.monitor")} icon={Activity}>
           <BoolRow
             label={t("monSettings.monAutoStart")}
             hint={t("monSettings.monAutoStartHint")}
@@ -1133,7 +1051,7 @@ export default function SettingsPage() {
         </Section>
 
         {/* ---- My Space (док: myspace) ---- */}
-        <Section title={t("settings.myspace")} icon={User} badge="active">
+        <Section title={t("settings.myspace")} icon={User}>
           <BoolRow
             label={t("myspaceSection.myAutosave")}
             hint={t("myspaceSection.myAutosaveHint")}
@@ -1149,46 +1067,8 @@ export default function SettingsPage() {
         </Section>
 
         {/* ---- Чат / ИИ (док: aichat) — со сворачиваемым подменю API-ключей ---- */}
-        <Section title={t("settings.chat")} icon={MessageSquare} badge="active">
+        <Section title={t("settings.chat")} icon={MessageSquare}>
           <ApiKeysPanel />
-          <Row label={t("chat.chatProvider")} hint={t("chat.chatProviderHint")}>
-            <Select
-              value={chat.provider}
-              onChange={(e) => change("chat.provider", e.target.value)}
-              options={["openai", "anthropic", "gemini", "mistral", "deepseek", "ollama"]}
-            />
-          </Row>
-          <Row
-            label={t("chat.chatModel")}
-            hint={t("chat.chatModelHint", { model: chat.model || "—" })}
-          >
-            <TextInput
-              value={chat.model}
-              onChange={(v) => change("chat.model", v)}
-              placeholder="gpt-4o-mini"
-            />
-          </Row>
-          <Row label={t("chat.chatTemperature")} hint={t("chat.chatTemperatureHint")}>
-            <input
-              type="range"
-              min="0"
-              max="1.5"
-              step="0.1"
-              value={chat.temperature}
-              onChange={(e) => change("chat.temperature", parseFloat(e.target.value))}
-              style={{ width: 180 }}
-            />
-            <span className="mono-val">{chat.temperature.toFixed(1)}</span>
-          </Row>
-          <Row label={t("chat.chatMaxTokens")} hint={t("chat.chatMaxTokensHint")}>
-            <NumberInput
-              value={chat.maxTokens}
-              onChange={(v) => change("chat.maxTokens", v)}
-              min={64}
-              max={8192}
-              step={64}
-            />
-          </Row>
           <BoolRow
             label={t("chat.chatStream")}
             hint={t("chat.chatStreamHint")}
@@ -1207,75 +1087,12 @@ export default function SettingsPage() {
         </Section>
 
         {/* ---- Голос (док: voice) ---- */}
-        <Section title={t("settings.voice")} icon={Mic2} badge="active">
-          <Row label={t("voiceSettings.voiceEngine")} hint={t("voiceSettings.voiceEngineHint")}>
-            <Select
-              value={voice.engine}
-              onChange={(e) => change("voice.engine", e.target.value)}
-              options={["local", "cloud"]}
-            />
-          </Row>
-          <Row label={t("voiceSettings.voiceModel")} hint={t("voiceSettings.voiceModelHint")}>
-            <TextInput
-              value={voice.model}
-              onChange={(v) => change("voice.model", v)}
-              placeholder={t("voiceSettings.voiceModelPlaceholder")}
-            />
-          </Row>
+        <Section title={t("settings.voice")} icon={Mic2}>
           <Row label={t("voiceSettings.voiceLang")} hint={t("voiceSettings.voiceLangHint")}>
             <Select
               value={voice.defaultLanguage}
               onChange={(e) => change("voice.defaultLanguage", e.target.value)}
               options={["English", "Russian", "Chinese", "Spanish", "French", "German", "Japanese"]}
-            />
-          </Row>
-          {/* --- F5-TTS гиперпараметры (дефолты студии) --- */}
-          <Row
-            label={t("voiceSettings.voiceExag", { v: Number(voice.exaggeration ?? 1).toFixed(2) })}
-            hint={t("voiceSettings.voiceExagHint")}
-          >
-            <input
-              type="range"
-              min="0.5"
-              max="2"
-              step="0.05"
-              value={Number(voice.exaggeration ?? 1)}
-              onChange={(e) => change("voice.exaggeration", parseFloat(e.target.value))}
-              style={{ width: 180 }}
-            />
-          </Row>
-          <Row
-            label={t("voiceSettings.voiceCfg", { v: Number(voice.cfgWeight ?? 2).toFixed(2) })}
-            hint={t("voiceSettings.voiceCfgHint")}
-          >
-            <input
-              type="range"
-              min="1.5"
-              max="4.5"
-              step="0.05"
-              value={Number(voice.cfgWeight ?? 2)}
-              onChange={(e) => change("voice.cfgWeight", parseFloat(e.target.value))}
-              style={{ width: 180 }}
-            />
-          </Row>
-          <Row label={t("voiceSettings.voiceChunk")} hint={t("voiceSettings.voiceChunkHint")}>
-            <NumberInput
-              value={Number(voice.chunkSize ?? 250)}
-              onChange={(v) => change("voice.chunkSize", v)}
-              min={100}
-              max={400}
-              step={10}
-              suffix=" ch"
-            />
-          </Row>
-          <Row
-            label={t("voiceSettings.voicePrecision")}
-            hint={t("voiceSettings.voicePrecisionHint")}
-          >
-            <Select
-              value={String(voice.precision ?? "fp16")}
-              onChange={(e) => change("voice.precision", e.target.value)}
-              options={["fp16", "fp32"]}
             />
           </Row>
           <Row label={t("voiceSettings.voiceVram")} hint={t("voiceSettings.voiceVramHint")}>
@@ -1317,7 +1134,7 @@ export default function SettingsPage() {
              Модель/ускорение, ИИ-конспект и говорящие намеренно НЕ дублируются —
              они живут в панелях страницы лекций (кнопки «Модель и ускорение»,
              «ИИ-конспект», «Говорящие»), где рядом стоит сам материал записи. ---- */}
-        <Section title={t("settings.lectureSttTitle")} icon={AudioLines} badge="active">
+        <Section title={t("settings.lectureSttTitle")} icon={AudioLines}>
           <Row label={t("settings.lectureLangLabel")} hint={t("settings.lectureLangHint")}>
             <Select
               value={String(lec.language || "ru")}
@@ -1352,68 +1169,10 @@ export default function SettingsPage() {
               max={32}
             />
           </Row>
-          {/* Тайминги VAD читаются при создании ЗАПИСИ: применяются к следующей
-              лекции, текущая пишется по прежним значениям. */}
-          <div className="muted-sm" style={{ marginTop: 4 }}>
-            {t("settings.lectureVadHint")}
-          </div>
-          <Row
-            label={t("settings.lectureVadSilenceLabel")}
-            hint={t("settings.lectureVadSilenceHint")}
-          >
-            <NumberInput
-              value={Number(lec.vadSilenceMs ?? 700)}
-              onChange={(v) => change("lecture.vadSilenceMs", v)}
-              min={300}
-              max={1500}
-              step={50}
-              suffix=" ms"
-            />
-          </Row>
-          <Row label={t("settings.lectureVadMinLabel")} hint={t("settings.lectureVadMinHint")}>
-            <NumberInput
-              value={Number(lec.vadMinChunkMs ?? 7000)}
-              onChange={(v) => change("lecture.vadMinChunkMs", v)}
-              min={3000}
-              max={20000}
-              step={500}
-              suffix=" ms"
-            />
-          </Row>
-          <Row label={t("settings.lectureVadMaxLabel")} hint={t("settings.lectureVadMaxHint")}>
-            <NumberInput
-              value={Number(lec.vadMaxChunkMs ?? 18000)}
-              onChange={(v) => change("lecture.vadMaxChunkMs", v)}
-              min={5000}
-              max={40000}
-              step={500}
-              suffix=" ms"
-            />
-          </Row>
-          <Row label={t("settings.lectureVadForceLabel")} hint={t("settings.lectureVadForceHint")}>
-            <NumberInput
-              value={Number(lec.vadForceSplitMs ?? 25000)}
-              onChange={(v) => change("lecture.vadForceSplitMs", v)}
-              min={10000}
-              max={90000}
-              step={1000}
-              suffix=" ms"
-            />
-          </Row>
-          <Row label={t("settings.lectureVadPadLabel")} hint={t("settings.lectureVadPadHint")}>
-            <NumberInput
-              value={Number(lec.vadPadMs ?? 150)}
-              onChange={(v) => change("lecture.vadPadMs", v)}
-              min={0}
-              max={500}
-              step={10}
-              suffix=" ms"
-            />
-          </Row>
         </Section>
 
         {/* ---- Web Archive / .sitebak (док: sitebak) — параметры краулера ---- */}
-        <Section title={t("settings.sitebak")} icon={Archive} badge="active">
+        <Section title={t("settings.sitebak")} icon={Archive}>
           <Row label={t("sbSettings.sbConcurrent")} hint={t("sbSettings.sbConcurrentHint")}>
             <NumberInput
               value={Number(sb.maxConcurrent ?? 3)}
@@ -1472,7 +1231,7 @@ export default function SettingsPage() {
         </Section>
 
         {/* ---- Автобэкап ---- */}
-        <Section title={t("settings.backup")} icon={Database} badge="active">
+        <Section title={t("settings.backup")} icon={Database}>
           <BoolRow
             label={t("backupSettings.backupEnable")}
             hint={t("backupSettings.backupEnableHint")}
@@ -1495,7 +1254,7 @@ export default function SettingsPage() {
 
         {/* Экспорт и импорт ВСЕХ настроек: секции settings.json для каждой страницы
             + локальные настройки интерфейса (localStorage) + по галочке ключи API. */}
-        <Section title={t("settingsIO.ioSection")} icon={Download} badge="active">
+        <Section title={t("settingsIO.ioSection")} icon={Download}>
           <div className="muted-sm" style={{ marginBottom: 8 }}>
             {t("settingsIO.ioHint")}
           </div>
@@ -1552,7 +1311,7 @@ export default function SettingsPage() {
         </Section>
 
         {/* ---- Продвинутое ---- */}
-        <Section title={t("settings.advanced")} icon={ShieldCheck} badge="dev">
+        <Section title={t("settings.advanced")} icon={ShieldCheck}>
           <BoolRow
             label={t("advanced.advancedTelemetry")}
             hint={t("advanced.advancedTelemetryHint")}

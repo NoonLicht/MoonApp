@@ -10,9 +10,11 @@ import {
   MemoryStick,
   Monitor,
   SlidersHorizontal,
+  Copy,
 } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { Glass, Select, SectionHead, Btn, Field } from "@/components/ui";
+import { useContextMenu, copyToClipboard } from "@/components/ContextMenu";
 import ToolbarMenu from "@/components/ToolbarMenu";
 import { usePageToolbar, usePageActive } from "@/components/Toolbar";
 import { useI18n } from "@/app/i18n";
@@ -922,11 +924,30 @@ function fmtSensor(s: AllSensor): string {
 }
 
 function ValueList({ rows }: { rows: { key: string; name: string; text: string }[] }) {
+  const { t } = useI18n();
+  const menu = useContextMenu();
   if (!rows.length) return null;
   return (
     <div className="mono-grid">
       {rows.map((r) => (
-        <div key={r.key} className="mono-row">
+        <div
+          key={r.key}
+          className="mono-row"
+          onContextMenu={(e) =>
+            menu.open(e, [
+              {
+                label: t("ctx.copyValue"),
+                icon: Copy,
+                onClick: () => void copyToClipboard(r.text),
+              },
+              {
+                label: t("ctx.copyName"),
+                icon: Copy,
+                onClick: () => void copyToClipboard(r.name),
+              },
+            ])
+          }
+        >
           <span className="mono-name" title={r.name}>
             {r.name}
           </span>

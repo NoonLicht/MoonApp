@@ -41,12 +41,20 @@ describe("окно просмотра архива: слой и клики", () 
     expect(jsx).toContain("getOverlayRoot()??document.body");
   });
 
-  it("у самого окна включены клики (иначе они уходят на страницу под ним)", () => {
-    const overlay = ruleBody(read("arch.css"), ".arch-view-overlay");
-    expect(overlay, "нет правила .arch-view-overlay в arch.css").not.toBe("");
-    expect(overlay).toContain("pointer-events:auto");
-    expect(overlay).toContain("position:fixed");
-    expect(overlay).toContain("inset:0");
+  it("слой модалок начинается ПОД верхней панелью и центрирует карточку", () => {
+    // Общая геометрия слоя живёт в ui.css (.app-modal-backdrop): окно не должно
+    // накрывать меню приложения, а его шапка — попадать в drag-полосу Electron
+    // (.top-toolbar.titlebar-drag), иначе кнопки шапки не получают клики.
+    const layer = ruleBody(read("ui.css"), ".app-modal-backdrop");
+    expect(layer, "нет правила .app-modal-backdrop в ui.css").not.toBe("");
+    expect(layer).toContain("position:fixed");
+    expect(layer).toContain("top:var(--content-top)");
+    expect(layer).toContain("align-items:center");
+    expect(layer).toContain("pointer-events:auto");
+    // И окно архива возвращает себе клики поверх «прозрачного» #overlay-root.
+    expect(ruleBody(read("arch.css"), ".arch-view-overlay")).toContain("pointer-events:auto");
+    // Шапка окна выведена из зоны перетаскивания окна приложения.
+    expect(ruleBody(read("arch.css"), ".arch-view-head")).toContain("-webkit-app-region:no-drag");
   });
 
   it("любой оверлей из #overlay-root включает pointer-events себе", () => {
@@ -69,10 +77,12 @@ describe("окно просмотра архива: слой и клики", () 
 
 describe("окно просмотра архива: закрытие и выбор страницы", () => {
   it("крестик и клик по затемнению закрывают окно", () => {
-    expect(jsx).toContain('<divclassName="arch-view-overlay"onClick={()=>setViewer(null)}>');
-    expect(jsx).toContain('className="arch-view-close"');
+    expect(jsx).toContain('<divclassName="app-modal-backdroparch-view-overlay"onClick={()=>setViewer(null)}>');
+    // Крестик — общая кнопка приложения (IconBtn): раньше это была своя кнопка в
+    // шапке окна, которая лежала в drag-полосе Electron и не получала кликов.
+    expect(jsx).toContain('<IconBtnicon={X}onClick={()=>setViewer(null)}');
     // Клик по самому окну не должен закрывать его (stopPropagation на .arch-view).
-    expect(jsx).toContain('className="arch-view"');
+    expect(jsx).toContain('className="arch-viewglassglass-solid"');
     expect(jsx).toContain("onClick={(e)=>e.stopPropagation()}");
   });
 

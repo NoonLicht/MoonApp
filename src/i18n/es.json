@@ -1,6 +1,6 @@
 {
   "nav": {
-    "movies": "Películas y series",
+    "movies": "Cine",
     "store": "Tienda",
     "convert": "Convertidor",
     "video": "Vídeo",
@@ -105,12 +105,20 @@
     "general": "General",
     "appearance": "Apariencia",
     "theme": "Tema",
-    "themeHint": "Tema oscuro, claro u OLED (el del panel también funciona)",
+    "themeHint": "Tema oscuro, midnight, claro, sand u OLED (el del panel también funciona)",
     "themeDark": "Oscuro",
+    "themeMidnight": "Midnight (azul profundo)",
     "themeLight": "Claro",
+    "themeSand": "Sand (claro cálido)",
     "themeOled": "OLED (negro puro)",
     "accent": "Color de acento",
     "accentHint": "Color de acento de la interfaz",
+    "accentAmber": "Ámbar",
+    "accentViolet": "Violeta",
+    "accentTeal": "Verde azulado",
+    "accentCoral": "Coral",
+    "accentSky": "Celeste",
+    "accentRose": "Rosa",
     "reduceMotion": "Reducir movimiento",
     "reduceMotionHint": "Desactivar animaciones y blobs de desenfoque decorativos",
     "fontSize": "Tamaño de letra",
@@ -780,7 +788,7 @@
     "seek": "Posición de reproducción"
   },
   "movies": {
-    "title": "Películas y series",
+    "title": "Películas",
     "movie": "Película",
     "movies": "Películas",
     "series": "Serie",

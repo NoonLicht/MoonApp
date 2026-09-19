@@ -1,5 +1,6 @@
-import { Film, Star } from "lucide-react";
+import { Copy, Film, Play, Star } from "lucide-react";
 import { useI18n } from "@/app/i18n";
+import { useContextMenu, copyToClipboard, type CtxItem } from "@/components/ContextMenu";
 import { imgUrl } from "@/pages/movies/lib/mediaImg";
 import type { MediaKind, MediaSummary } from "@/api/types";
 
@@ -32,6 +33,12 @@ export interface MediaCardProps {
   showScore?: boolean;
   /** Плашка типа тайтла («Фильм»/«Сериал»). */
   showKind?: boolean;
+  /**
+   * Доп. пункты контекстного меню (правая кнопка) — например «Открыть раздачу»
+   * или «В список просмотра» там, где родитель умеет это делать. Общие пункты
+   * (открыть, копировать название/оригинальное название) добавляются сами.
+   */
+  menuExtra?: (item: MediaSummary) => (CtxItem | false | null | undefined)[];
 }
 
 export default function MediaCard({
@@ -39,14 +46,35 @@ export default function MediaCard({
   onSelect,
   showScore = false,
   showKind = false,
+  menuExtra,
 }: MediaCardProps) {
   const { t } = useI18n();
+  const menu = useContextMenu();
   const img = posterOf(item);
   return (
     <button
       className="mv-card"
       onClick={() => onSelect(item.kind, item.id, item)}
       title={item.title}
+      onContextMenu={(e) =>
+        menu.open(e, [
+          { label: t("ctx.open"), icon: Play, onClick: () => onSelect(item.kind, item.id, item) },
+          { separator: true },
+          {
+            label: t("ctx.copyName"),
+            icon: Copy,
+            onClick: () => void copyToClipboard(item.title || ""),
+          },
+          item.originalTitle && item.originalTitle !== item.title
+            ? {
+                label: t("ctx.copyOriginal"),
+                icon: Copy,
+                onClick: () => void copyToClipboard(item.originalTitle),
+              }
+            : null,
+          ...(menuExtra ? menuExtra(item) : []),
+        ])
+      }
     >
       <div className="mv-card-art tone-violet">
         {img ? (

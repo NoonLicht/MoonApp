@@ -35,6 +35,9 @@ export default tseslint.config(
   {
     ignores: [
       "dist/**",
+      // Вывод electron-builder (build.directories.output). Внутри — распакованное
+      // приложение (win-unpacked): линтить там нечего, а сканирование тормозит.
+      "release/**",
       "node_modules/**",
       "coverage/**",
       "storage/**",
@@ -83,6 +86,16 @@ export default tseslint.config(
       // Установка Python-окружения озвучки: серверный TS-исходник server/ts/pyEnv.ts
       // (тот же случай, что у notesAi.js: правило require-импорта не определено).
       "server/pyEnv.js",
+      // Форум-трекер (поиск раздач) и дорожки плеера: TS-исходники
+      // server/ts/{charset,trackerParse,trackerScraper,mediaProbe}.ts — в
+      // trackerScraper.js тоже переезжает комментарий про require-импорт.
+      "server/charset.js",
+      "server/trackerParse.js",
+      "server/trackerScraper.js",
+      "server/mediaProbe.js",
+      // browserCookies.ts — та же причина: собранный .js несёт комментарий про
+      // require-импорт, которого в JS-конфиге ESLint нет.
+      "server/browserCookies.js",
     ],
   },
 

@@ -1,6 +1,6 @@
 {
   "nav": {
-    "movies": "Films et séries",
+    "movies": "Cinéma",
     "store": "Boutique",
     "convert": "Convertisseur",
     "video": "Vidéo",
@@ -105,12 +105,20 @@
     "general": "Général",
     "appearance": "Apparence",
     "theme": "Thème",
-    "themeHint": "Thème sombre, clair ou OLED (l'outil du panneau fonctionne aussi)",
+    "themeHint": "Thème sombre, midnight, clair, sand ou OLED (l'outil du panneau fonctionne aussi)",
     "themeDark": "Sombre",
+    "themeMidnight": "Midnight (bleu profond)",
     "themeLight": "Clair",
+    "themeSand": "Sand (clair chaud)",
     "themeOled": "OLED (noir pur)",
     "accent": "Couleur d'accent",
     "accentHint": "Couleur d'accent de l'interface",
+    "accentAmber": "Ambre",
+    "accentViolet": "Violet",
+    "accentTeal": "Turquoise",
+    "accentCoral": "Corail",
+    "accentSky": "Ciel",
+    "accentRose": "Rose",
     "reduceMotion": "Réduire les animations",
     "reduceMotionHint": "Désactiver animations et flous décoratifs",
     "fontSize": "Taille de police",
@@ -780,7 +788,7 @@
     "seek": "Position de lecture"
   },
   "movies": {
-    "title": "Films et séries",
+    "title": "Films",
     "movie": "Film",
     "movies": "Films",
     "series": "Série",

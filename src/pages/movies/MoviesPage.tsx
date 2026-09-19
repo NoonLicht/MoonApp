@@ -13,6 +13,7 @@ import {
   Trash2,
   Save,
   ExternalLink,
+  Download,
 } from "lucide-react";
 import { Glass, Btn, Badge, SectionHead, EmptyHint, Field } from "@/components/ui";
 import { usePageToolbar } from "@/components/Toolbar";
@@ -25,6 +26,7 @@ import MediaDetailModal from "@/pages/movies/parts/MediaDetailModal";
 import MediaCard from "@/pages/movies/parts/MediaCard";
 import PlayerModal from "@/pages/movies/parts/PlayerModal";
 import MediaStatsCard from "@/pages/movies/parts/MediaStatsCard";
+import DownloadsView from "@/pages/movies/parts/DownloadsView";
 import { imgUrl } from "@/pages/movies/lib/mediaImg";
 import type {
   MediaKind,
@@ -49,7 +51,7 @@ import type {
  * Если ключ TMDB не задан — показываем понятную подсказку со ссылкой в Настройки.
  */
 
-type ViewId = "catalog" | "library" | "stats";
+type ViewId = "catalog" | "library" | "stats" | "downloads";
 
 const STATUS_TONE: Record<MediaWatchStatus, string> = {
   plan: "teal",
@@ -74,7 +76,13 @@ export default function MoviesPage() {
     id: number;
     summary?: MediaSummary | null;
   } | null>(null);
-  const [player, setPlayer] = useState<{ trailerKey: string | null } | null>(null);
+  const [player, setPlayer] = useState<{
+    trailerKey: string | null;
+    /** Название тайтла — для автопоиска раздач на вкладке форума. */
+    query?: string | null;
+    /** Открыть конкретную загрузку из вкладки «Скачанные» (окно восстановится). */
+    download?: { infoHash: string; title?: string } | null;
+  } | null>(null);
   /** Открытая подборка «Все …» (null — обычный каталог каруселей). */
   const [browse, setBrowse] = useState<{ category: string; title: string } | null>(null);
 
@@ -232,6 +240,15 @@ export default function MoviesPage() {
         >
           <BarChart3 size={14} />
         </button>
+        {/* «Скачанные» — сразу справа от «Статистики»: там реестр загрузок плеера
+            (что качается, что остановлено, что уже скачано). */}
+        <button
+          className={view === "downloads" ? "is-active" : ""}
+          onClick={() => setView("downloads")}
+          title={t("movies.tab_downloads")}
+        >
+          <Download size={14} />
+        </button>
       </div>
 
       {/* Поиск по TMDB: в широкой панели — полем, ниже 1200px — под иконкой
@@ -264,7 +281,9 @@ export default function MoviesPage() {
   );
 
   // Ключа нет — показываем форму ввода (можно не уходить в Настройки).
-  if (status && !status.hasKey) {
+  // Вкладка «Скачанные» работает без TMDB: она показывает локальные загрузки,
+  // поэтому форму ключа там не навязываем.
+  if (status && !status.hasKey && view !== "downloads") {
     return (
       <div className="mv-page">
         <SectionHead eyebrow={t("nav.movies")} title={t("movies.title")} />
@@ -390,7 +409,7 @@ export default function MoviesPage() {
                           ))}
                         </div>
                         <div className="mv-lib-actions">
-                          <Btn icon={Zap} onClick={() => setPlayer({ trailerKey: null })}>
+                          <Btn icon={Zap} onClick={() => setPlayer({ trailerKey: null, query: null })}>
                             {t("movies.openPlayer")}
                           </Btn>
                           <Btn
@@ -412,6 +431,19 @@ export default function MoviesPage() {
         {view === "stats" && (
           <MediaStatsCard stats={stats} onClear={() => void clearStats()} busy={busy} />
         )}
+        {/* Скачанные: реестр загрузок торрент-плеера. Клик по раздаче открывает
+            плеер на ней же — окно восстанавливается, если его закрыли случайно. */}
+        {view === "downloads" && (
+          <DownloadsView
+            onPlay={(d) =>
+              setPlayer({
+                trailerKey: null,
+                query: d.title || d.name || null,
+                download: { infoHash: d.infoHash, title: d.title },
+              })
+            }
+          />
+        )}
       </div>
 
       {/* Детали тайтла */}
@@ -422,13 +454,20 @@ export default function MoviesPage() {
           summary={detail.summary}
           onClose={() => setDetail(null)}
           onOpenTitle={(k, id) => setDetail({ kind: k, id })}
-          onOpenPlayer={(tk) => setPlayer({ trailerKey: tk })}
+          onOpenPlayer={(tk, title) => setPlayer({ trailerKey: tk, query: title ?? null })}
           onChanged={loadLibrary}
         />
       )}
 
       {/* Плеер (трейлер/торрент) */}
-      {player && <PlayerModal trailerKey={player.trailerKey} onClose={() => setPlayer(null)} />}
+      {player && (
+        <PlayerModal
+          trailerKey={player.trailerKey}
+          query={player.query}
+          download={player.download ?? null}
+          onClose={() => setPlayer(null)}
+        />
+      )}
     </div>
   );
 }

@@ -189,6 +189,18 @@ function ffmpegEncoderSet(ffmpegPath: string): Promise<Set<string>> {
   });
 }
 
+/**
+ * Список энкодеров текущей сборки FFmpeg — «лёгкий» путь без детекции железа
+ * (только сам бинарь + кэш его `-encoders`). Нужен плееру: он выбирает рабочий
+ * H.264-энкодер для перекодирования на лету, а в части сборок libx264 отключён
+ * (`--disable-libx264`), поэтому жёсткое `-c:v libx264` роняло транскод.
+ */
+export async function ffmpegEncoders(): Promise<Set<string>> {
+  const ff = await detectFfmpeg();
+  if (!ff.found || !ff.ffmpeg) return new Set<string>();
+  return ffmpegEncoderSet(ff.ffmpeg);
+}
+
 /** Доступность методов сжатия на текущей машине (для UI и рекомендателя). */
 export interface HwMethods {
   svtav1: boolean;

@@ -18,6 +18,9 @@
 const express = require("express");
 const tmdb = require("../tmdb");
 const torrent = require("../torrent");
+const tracker = require("../trackerScraper");
+const mediaProbe = require("../mediaProbe");
+const config = require("../config");
 const settings = require("../settings");
 // hasSecret здесь больше не нужен: «есть ли ключ» решает сам tmdb (свой секрет
 // ИЛИ вшитый в сборку ключ) — см. tmdb.hasKey() в /status ниже.
@@ -30,24 +33,53 @@ const router = express.Router();
 /** Код ошибки → HTTP-статус (чтобы фронт мог показать понятный текст). */
 function statusForCode(code) {
   switch (code) {
+    // Ошибки входных данных: TMDB, форум-трекер, работа с дорожками.
     case "no_api_key":
     case "bad_api_key":
     case "bad_kind":
     case "bad_id":
     case "bad_source":
+    case "bad_query":
+    case "bad_release":
+    case "bad_track":
+    case "bad_file":
+    case "tracker_disabled":
+    case "no_credentials":
+    case "subtitle_unsupported":
       return 400;
     case "not_found":
     case "no_torrent":
+    case "no_media_files":
       return 404;
     case "rate_limited":
       return 429;
+    // 409, а не 401: 401 зарезервирован middleware токена, и фронт (api.req)
+    // обрабатывает его иначе.
+    case "login_failed":
+    case "captcha_required":
+    case "session_expired":
+      return 409;
+    // FFmpeg-сборка: нет движка, нет ffmpeg, а также сборка без H.264-энкодера —
+    // перекодирование невозможно. Это не «сбой потока», а отсутствие инструмента
+    // (см. mediaProbe.pickH264Encoder), поэтому ответ отдельный — 501.
     case "engine_missing":
+    case "ffmpeg_missing":
+    case "ffmpeg_encoder_missing":
       return 501;
+    // Внешний источник недоступен или не разобран: CDN картинок TMDB, форум,
+    // ffprobe на потоке торрента.
     case "image_unavailable":
-      return 502; // CDN картинок недоступен (нет сети/прокси) — фронт покажет заглушку
+    case "parse_failed":
+    case "network_error":
+    case "torrent_download_failed":
+    case "probe_failed":
+    case "subtitle_failed":
+      return 502;
     case "bad_size":
     case "bad_path":
       return 400;
+    case "cf_challenge":
+      return 502; // форум отдал проверку Cloudflare — нужен прокси/куки из браузера
     case "metadata_timeout":
       return 504;
     default:
@@ -55,11 +87,15 @@ function statusForCode(code) {
   }
 }
 
-/** Единый обработчик ошибок роутов: { error, code } + лог. */
+/** Единый обработчик ошибок роутов: { error, code, details } + лог. */
 function fail(res, e, ctx) {
   const code = e?.code || "error";
-  logger.error("movies." + (ctx || "request"), { error: e?.message, code });
-  res.status(statusForCode(code)).json({ error: e?.message || "error", code });
+  logger.error("movies." + (ctx || "request"), { error: e?.message, code, details: e?.details });
+  // details — диагностика внешнего источника (статус, размер, начало текста):
+  // без неё «разметка изменилась» невозможно ни объяснить, ни починить.
+  res
+    .status(statusForCode(code))
+    .json({ error: e?.message || "error", code, details: e?.details || null });
 }
 
 /** Обёртка async-роутов. */
@@ -422,6 +458,86 @@ router.get("/torrent/active", (req, res) => {
 });
 
 /**
+ * Вкладка «Скачанные»: реестр загрузок с живым прогрессом.
+ * keepDefault — состояние галочки «хранить после просмотра» для НОВЫХ загрузок
+ * (per-download флаг хранится в самом реестре).
+ */
+router.get("/torrent/downloads", (req, res) => {
+  res.json({ items: torrent.listDownloads(), keepDefault: torrent.keepFilesByDefault() });
+});
+
+/** Остановить загрузку (пауза): канал освобождается, скачанное остаётся на диске. */
+router.post("/torrent/stop", (req, res) => {
+  res.json(torrent.stopDownload(req.body?.infoHash));
+});
+
+/** Возобновить остановленную загрузку по сохранённому .torrent-метафайлу/magnet. */
+router.post(
+  "/torrent/resume",
+  wrap(async (req, res) => {
+    res.json(await torrent.resumeDownload(req.body?.infoHash));
+  }),
+);
+
+/**
+ * Галочка «хранить скачанный торрент после просмотра»:
+ *  - { infoHash, keep } — для конкретной раздачи (плеер и вкладка «Скачанные»);
+ *  - { saveDefault: true, keep } — общая настройка для новых загрузок. При
+ *    выключении сразу освобождаем место: завершённые раздачи, которые никто не
+ *    просил хранить, удаляются (purgeUnkept).
+ */
+router.post("/torrent/keep", (req, res) => {
+  try {
+    const keep = !!req.body?.keep;
+    if (req.body?.saveDefault) {
+      settings.set({ movies: { keepTorrentFiles: keep } });
+      logger.action("movies.torrent_keep_default", { keep });
+    }
+    const infoHash = String(req.body?.infoHash || "");
+    if (/^[a-f0-9]{40}$/i.test(infoHash)) torrent.setDownloadKept(infoHash, keep);
+    const purged = keep ? 0 : torrent.purgeUnkept();
+    res.json({ ok: true, keep, keepDefault: torrent.keepFilesByDefault(), purged });
+  } catch (e) {
+    fail(res, e, "torrent_keep");
+  }
+});
+
+/** Позиция просмотра: при следующем открытии продолжим с этой секунды. */
+router.post("/torrent/position", (req, res) => {
+  const infoHash = String(req.body?.infoHash || "");
+  if (!/^[a-f0-9]{40}$/i.test(infoHash)) {
+    return res.status(400).json({ error: "bad infoHash", code: "bad_source" });
+  }
+  torrent.setDownloadPosition(infoHash, req.body?.position);
+  res.json({ ok: true });
+});
+
+/**
+ * Убрать завершённые раздачи, которые пользователь решил не хранить
+ * (галочка «хранить после просмотра» выключена) — освобождаем место.
+ */
+router.post("/torrent/cleanup", (req, res) => {
+  const purged = torrent.purgeUnkept();
+  if (purged) logger.action("movies.torrent_cleanup", { purged });
+  res.json({ purged });
+});
+
+/**
+ * Состояние ffmpeg для плеера: путь, версия и признак «найден».
+ * force=1 — пересобрать кэш определения (кнопка «Проверить снова»: пользователь
+ * мог распаковать ffmpeg в storage уже после запуска приложения).
+ */
+router.get(
+  "/ffmpeg",
+  wrap(async (req, res) => {
+    const force = String(req.query.force || "") === "1";
+    const probe = await mediaProbe.probeStatus({ force });
+    const ff = await mediaProbe.ffmpegInfo({ force });
+    res.json({ ...probe, version: ff.version, searched: ff.searched });
+  }),
+);
+
+/**
  * Добавить торрент: { magnet } ИЛИ { torrent: "<base64 .torrent>" }.
  * Приложение не ищет торренты — источник передаёт сам пользователь.
  */
@@ -442,7 +558,14 @@ router.post(
     } else {
       return res.status(400).json({ error: "magnet or torrent required", code: "bad_source" });
     }
-    res.json(await torrent.add(source));
+    // Название фильма и magnet уходят в реестр «Скачанные»: по названию окно
+    // плеера восстанавливается, по magnet загрузка возобновляется после паузы.
+    res.json(
+      await torrent.add(source, {
+        title: String(req.body?.title || ""),
+        magnet: magnet || undefined,
+      }),
+    );
   }),
 );
 
@@ -466,8 +589,11 @@ router.get("/torrent/file/:infoHash/:index", (req, res) => {
  * качает именно нужные куски, поэтому старт почти мгновенный.
  */
 router.get("/torrent/stream/:infoHash/:index", (req, res) => {
-  const infoHash = req.params.infoHash;
-  const idx = Number(req.params.index);
+  // Строгая валидация: путь ресурсный (без токена), поэтому infoHash обязан быть
+  // 40 hex, а index — целым в пределах разумного.
+  const t = torrentTarget(req);
+  if (t.error) return res.status(400).json({ error: t.error, code: t.error });
+  const { infoHash, idx } = t;
   let info;
   try {
     info = torrent.streamInfo(infoHash, idx);
@@ -520,8 +646,555 @@ router.get("/torrent/stream/:infoHash/:index", (req, res) => {
   stream.pipe(res);
 });
 
+/**
+ * Удалить раздачу: останавливаем загрузку и (по умолчанию) стираем скачанные
+ * файлы. ?files=0 — «убрать из списка, файлы на диске оставить».
+ * removed=false для неизвестного infoHash — как и раньше, роут не «врёт».
+ */
 router.delete("/torrent/:infoHash", (req, res) => {
-  res.json(torrent.remove(req.params.infoHash));
+  const hash = String(req.params.infoHash || "").toLowerCase();
+  if (!/^[a-f0-9]{40}$/.test(hash)) {
+    return res.status(400).json({ error: "bad infoHash", code: "bad_source" });
+  }
+  const files = String(req.query.files ?? "1") !== "0";
+  const known = torrent.listDownloads().some((d) => d.infoHash === hash);
+  if (known) torrent.purgeDownload(hash, { files });
+  else torrent.remove(hash);
+  res.json({ removed: known, files: known ? files : false });
 });
+
+/* ==================== 5. Форум-трекер: поиск раздач ==================== */
+
+/**
+ * Статус трекера + готовность ffmpeg — одним запросом: вкладка «Поиск раздач»
+ * показывает их вместе (есть ли ключи, жива ли сессия, доступны ли дорожки).
+ * Пароль и куки наружу не отдаются — только факты «есть/нет».
+ */
+router.get(
+  "/tracker/status",
+  wrap(async (req, res) => {
+    const probe = await mediaProbe.probeStatus();
+    res.json({ ...tracker.trackerStatus(), ffmpeg: probe.ffmpeg, ffprobe: probe.ffprobe });
+  }),
+);
+
+/**
+ * Переключить трекер: body: { id: "rutracker" | "rutor" }.
+ *
+ * Настройки площадки применяются пресетом целиком (адреса, кодировка, способ
+ * поиска, движок разбора) — иначе после смены трекера остались бы пути прежнего.
+ * Логин/пароль остаются в секретах: их не трогаем.
+ */
+router.post("/tracker/preset", (req, res) => {
+  try {
+    const out = tracker.applyTrackerPreset(req.body?.id);
+    logger.action("movies.tracker_preset_applied", { id: out.id });
+    res.json({ ...out, status: tracker.trackerStatus() });
+  } catch (e) {
+    fail(res, e, "tracker_preset");
+  }
+});
+
+/**
+ * Настройки форума и (опционально) логин/пароль.
+ * body: { enabled, baseUrl, loginPath, searchPath, searchParam, encoding, …,
+ *         login, password }
+ * Логин и пароль сохраняются ТОЛЬКО в зашифрованные секреты (storage/secrets.json),
+ * поэтому в settings.json и в ответах API их нет.
+ */
+router.post("/tracker/config", (req, res) => {
+  try {
+    const b = req.body || {};
+    const patch = {};
+    for (const key of [
+      "enabled",
+      "engine",
+      "baseUrl",
+      "label",
+      "loginPath",
+      "searchPath",
+      "searchMethod",
+      "searchParam",
+      "topicPath",
+      "torrentPath",
+      "encoding",
+      "userAgent",
+      "minIntervalMs",
+      "timeoutMs",
+      "maxResults",
+      "requireDownloadable",
+    ]) {
+      if (b[key] !== undefined) patch[key] = b[key];
+    }
+    if (patch.baseUrl !== undefined) {
+      const url = String(patch.baseUrl || "").trim();
+      if (url && !/^https?:\/\//i.test(url)) {
+        return res
+          .status(400)
+          .json({ error: "baseUrl must start with http(s)://", code: "bad_query" });
+      }
+      patch.baseUrl = url.replace(/\/+$/, "");
+    }
+    if (Object.keys(patch).length) settings.set({ trackers: patch });
+
+    if (b.login || b.password) {
+      const current = tracker.trackerCredentials() || { login: "", password: "" };
+      const login = String(b.login || current.login).trim();
+      const password = String(b.password || current.password);
+      if (!login || !password) {
+        return res
+          .status(400)
+          .json({ error: "login and password required", code: "no_credentials" });
+      }
+      tracker.saveTrackerCredentials(login, password);
+      tracker.trackerLogout(); // сменили учётку — старая сессия больше не нужна
+    }
+
+    tracker.clearTrackerCache();
+    logger.action("movies.tracker_config_saved", { fields: Object.keys(patch) });
+    res.json({ ok: true, status: tracker.trackerStatus() });
+  } catch (e) {
+    fail(res, e, "tracker_config");
+  }
+});
+
+/** Принудительный вход: сбрасываем сессию и логинимся заново. */
+router.post(
+  "/tracker/login",
+  wrap(async (req, res) => {
+    tracker.trackerLogout();
+    const session = await tracker.trackerLogin();
+    res.json({ ok: true, sid: session.sid, cookies: Object.keys(session.cookies).length });
+  }),
+);
+
+/**
+ * Подхват куки прямо из браузера — основной путь для Cloudflare.
+ *
+ * Пользователь один раз входит на форум в своём браузере и жмёт кнопку: приложение
+ * читает базу куки браузера (Chrome/Edge/Brave/Opera/Yandex/Vivaldi/Firefox) и
+ * переносит их в свою сессию (IP+UA подбираются, чтобы cf_clearance подошёл).
+ * Ничего копировать руками не нужно.
+ */
+router.post(
+  "/tracker/cookies/from-browser",
+  wrap(async (_req, res) => {
+    const out = await tracker.importCookiesFromBrowsers();
+    tracker.clearTrackerCache();
+    res.json({ ...out, status: tracker.trackerStatus() });
+  }),
+);
+
+/**
+ * Проверка текущей сессии: GET страницы поиска с нашими куки. Возвращает
+ * диагностику (форум пустил / Cloudflare / форма входа) — кнопка «Проверить».
+ */
+router.get(
+  "/tracker/session",
+  wrap(async (_req, res) => {
+    res.json({ probe: await tracker.probeTrackerSessionAsync() });
+  }),
+);
+
+/**
+ * Импорт куки строкой вручную: body { cookies: "cf_clearance=…; bb_data=…" }.
+ * Оставлено как запасной путь (браузер не найден / нужен чужой профиль).
+ */
+router.post(
+  "/tracker/cookies",
+  wrap(async (req, res) => {
+    const out = tracker.importTrackerCookies(req.body?.cookies, req.body?.userAgent);
+    tracker.clearTrackerCache();
+    res.json({ ...out, status: tracker.trackerStatus() });
+  }),
+);
+
+router.post("/tracker/logout", (req, res) => {
+  const out = tracker.trackerLogout();
+  // Кэш поиска тоже сбрасываем: иначе следующий поиск отдал бы результат прошлой
+  // (уже закрытой) сессии из кэша, и «сброс входа» выглядел бы несработавшим.
+  tracker.clearTrackerCache();
+  res.json(out);
+});
+
+/** Сброс кэша результатов поиска (кнопка «Обновить»). */
+router.post("/tracker/refresh", (req, res) => {
+  tracker.clearTrackerCache();
+  logger.action("movies.tracker_cache_refresh");
+  res.json({ ok: true });
+});
+
+/**
+ * Поиск раздач: body { query, limit?, refresh? }.
+ * Ответ: { query, items[], total, cached, via } — отсортирован по сидам.
+ */
+router.post(
+  "/tracker/search",
+  wrap(async (req, res) => {
+    const limit = Number(req.body?.limit) || undefined;
+    res.json(
+      await tracker.searchTrackerReleases(req.body?.query, {
+        limit,
+        forceRefresh: !!req.body?.refresh,
+      }),
+    );
+  }),
+);
+
+/**
+ * Открыть раздачу: сервер сам скачивает .torrent своими сессионными куками
+ * (в браузер они не попадают) и возвращает список медиафайлов раздачи.
+ */
+router.post(
+  "/tracker/add",
+  wrap(async (req, res) => {
+    // Название фильма связывает раздачу с тайтлом: при повторном открытии фильма
+    // окно плеера восстановит эту загрузку (см. server/ts/torrent.ts → downloadForTitle).
+    res.json(await tracker.addTrackerRelease(req.body?.id, { title: req.body?.title }));
+  }),
+);
+
+/* ====== 6. Торрент-плеер: файлы раздачи, переключение файла, дорожки ====== */
+
+/**
+ * Валидация параметров ресурсных путей (stream/remux/subtitles): они не защищены
+ * токеном (браузер грузит их тегами <video>/<track> и заголовок передать не может),
+ * поэтому проверяем строго здесь: infoHash — 40 hex, index — целое в разумных
+ * пределах. Иначе сюда попадёт произвольный ввод, который уйдёт в ffmpeg.
+ */
+function torrentTarget(req) {
+  const infoHash = String(req.params.infoHash || "").toLowerCase();
+  if (!/^[a-f0-9]{40}$/.test(infoHash)) return { error: "bad_source" };
+  const idx = Number(req.params.index);
+  if (!Number.isInteger(idx) || idx < 0 || idx > 100000) return { error: "bad_file" };
+  return { infoHash, idx };
+}
+
+/** URL собственного Range-стрима — именно его читают ffprobe и ffmpeg. */
+function selfStreamUrl(req, infoHash, idx) {
+  const port = (req.socket && req.socket.localPort) || config.PORT;
+  return `http://127.0.0.1:${port}/api/movies/torrent/stream/${infoHash}/${idx}`;
+}
+
+/** Прочитать файл раздачи целиком (с ограничением) — для внешних .srt/.vtt. */
+function readTorrentFile(infoHash, index, maxBytes = 4 * 1024 * 1024) {
+  return new Promise((resolve, reject) => {
+    const stream = torrent.createReadStream(infoHash, index, {});
+    const chunks = [];
+    let size = 0;
+    stream.on("data", (c) => {
+      size += c.length;
+      if (size > maxBytes) {
+        try {
+          stream.destroy();
+        } catch {
+          /* ignore */
+        }
+        reject(Object.assign(new Error("subtitle file is too large"), { code: "bad_file" }));
+        return;
+      }
+      chunks.push(c);
+    });
+    stream.on("end", () => resolve(Buffer.concat(chunks)));
+    stream.on("error", (e) => reject(Object.assign(e, { code: (e && e.code) || "torrent_error" })));
+  });
+}
+
+/**
+ * Сценарий А: список медиафайлов раздачи (метаданные до полной загрузки).
+ * body: { magnet?, torrent? (base64), infoHash?, mediaOnly? }
+ */
+router.post(
+  "/torrent/files",
+  wrap(async (req, res) => {
+    const b = req.body || {};
+    let input = b.magnet || b.infoHash || "";
+    if (b.torrent) input = Buffer.from(String(b.torrent), "base64");
+    if (!input) {
+      return res
+        .status(400)
+        .json({ error: "magnet, torrent or infoHash required", code: "bad_source" });
+    }
+    res.json(
+      await torrent.getTorrentFileList(input, {
+        mediaOnly: b.mediaOnly !== false,
+        title: String(b.title || ""),
+      }),
+    );
+  }),
+);
+
+/** Переключение воспроизводимого файла раздачи (например, серии). */
+router.post("/torrent/select", (req, res) => {
+  try {
+    const infoHash = String(req.body?.infoHash || "");
+    if (!/^[a-f0-9]{40}$/i.test(infoHash)) {
+      return res.status(400).json({ error: "bad infoHash", code: "bad_source" });
+    }
+    res.json(torrent.selectTorrentFile(infoHash, req.body?.index));
+  } catch (e) {
+    fail(res, e, "torrent_select");
+  }
+});
+
+/**
+ * Сценарий Б: дорожки файла — аудио и субтитры через ffprobe плюс внешние
+ * .srt/.vtt из самой раздачи. Если ffprobe нет (код ffmpeg_missing), плеер
+ * продолжает играть обычным стримом — просто без выбора дорожек.
+ */
+router.get(
+  "/torrent/tracks/:infoHash/:index",
+  wrap(async (req, res) => {
+    const t = torrentTarget(req);
+    if (t.error) return res.status(400).json({ error: t.error, code: t.error });
+    const file = torrent.streamInfo(t.infoHash, t.idx); // бросит no_torrent/no_metadata/bad_file
+
+    const probe = await mediaProbe.probeMedia({
+      kind: "url",
+      url: selfStreamUrl(req, t.infoHash, t.idx),
+    });
+
+    let external;
+    try {
+      const st = torrent.status(t.infoHash);
+      external = mediaProbe.findSiblingSubs(st ? st.files : [], file.name).map((s) => ({
+        ...s,
+        index: -1,
+        streamIndex: -1,
+        isDefault: false,
+        forced: false,
+        external: true,
+      }));
+    } catch {
+      external = [];
+    }
+
+    res.json({
+      infoHash: t.infoHash,
+      index: t.idx,
+      file,
+      durationSec: probe.durationSec,
+      video: probe.video,
+      audio: probe.audio,
+      subtitles: [...probe.subtitles, ...(external || [])],
+      ffmpeg: probe.ffmpeg,
+      defaultAudio: mediaProbe.defaultAudioIndex(probe.audio),
+      // Как это играть: MKV/AC3 Chromium сам не читает, поэтому плеер должен
+      // знать заранее — прямой стрим или remux/перекодирование (см. playbackPlan).
+      plan: mediaProbe.playbackPlan({
+        name: file.name,
+        videoCodec: probe.video ? probe.video.codec : null,
+        audioCodecs: probe.audio.map((a) => a.codec),
+        ffmpeg: probe.ffmpeg,
+      }),
+    });
+  }),
+);
+
+/**
+ * Куда реально встанет перемотка (секунда старта потока).
+ *
+ * Плеер перематывает точным seek (`copy=0`): видео перекодируется, и `-ss` режет
+ * поток ровно по запрошенной секунде — тогда и картинка, и звук начинаются в ней.
+ * Здесь же он берёт эту секунду, чтобы шкала, субтитры и сохранённая позиция
+ * совпадали с тем, что на экране.
+ *
+ * Раньше этот роут искал ключевой кадр (для режима копирования): при `-c:v copy`
+ * ffmpeg начинает видео с ключевого кадра СТРОГО до `-ss`, а звук — ровно по нему,
+ * и они расходятся на длину GOP (замер: 2.294 с). Режим `copy=1` оставлен для
+ * совместимости: он по-прежнему возвращает выровненную секунду.
+ *
+ * query: at (секунды), copy=0 — точный seek (перекодирование). Ответ:
+ *        { requested, startSec, keyframe, exact }.
+ */
+router.get(
+  "/torrent/seek/:infoHash/:index",
+  wrap(async (req, res) => {
+    const t = torrentTarget(req);
+    if (t.error) return res.status(400).json({ error: t.error, code: t.error });
+    // Проверяем, что торрент добавлен и индекс в диапазоне (иначе no_torrent/bad_file).
+    torrent.streamInfo(t.infoHash, t.idx);
+
+    const at = Number(req.query.at);
+    const requested = Number.isFinite(at) && at >= 0 && at < 86400 ? at : 0;
+    // Начало фильма и точный seek (copy=0) — ключевой кадр ни при чём: секунда
+    // точная. `exact` сообщает это плееру, чтобы он не менял режим и не показывал
+    // предупреждение о сдвиге старта.
+    if (requested <= 0 || req.query.copy === "0") {
+      return res.json({ requested, startSec: requested, keyframe: false, exact: true });
+    }
+
+    const kf = await mediaProbe.keyframeBefore(
+      { kind: "url", url: selfStreamUrl(req, t.infoHash, t.idx) },
+      requested,
+    );
+    // Допуск KEYFRAME_EPS: кадр, который на пару миллисекунд позже запрошенной
+    // секунды, — это тот же старт (при -ss ffmpeg всё равно встанет на него).
+    // Строгое сравнение сваливало выравнивание на ПРЕДЫДУЩИЙ кадр — в логах это
+    // видно как «запрос 1174 с → поток начался с 1172.546», и картинка уезжала
+    // от звука почти на секунду.
+    const aligned = kf != null && kf <= requested + mediaProbe.KEYFRAME_EPS;
+    res.json({
+      requested,
+      startSec: aligned ? kf : requested,
+      keyframe: aligned,
+      // Точной секунда бывает только при перекодировании (copy=0): тогда поток
+      // стартует ровно с неё. Копирование же начинает видео с КЛЮЧЕВОГО кадра ДО
+      // запрошенной секунды, поэтому «точность» заявлять нельзя — exact=false.
+      exact: !aligned,
+    });
+  }),
+);
+
+/**
+ * Поток с выбранной аудиодорожкой: ffmpeg переупаковывает видео «на лету»
+ * (видео копируется, аудио → AAC) и отдаёт fragmented MP4, который <video>
+ * проигрывает сразу, без полной загрузки раздачи.
+ *
+ * Поток не seekable по природе: перемотка — это новый запрос с &start=<сек>,
+ * поэтому Accept-Ranges: none (иначе плеер попробует Range и получит кашу).
+ * query: audio (индекс дорожки), start (секунды), quality (kbps AAC),
+ *        video ("copy" | "h264" — перекодировать видео, если Chromium не читает кодек),
+ *        aligned=1 — секунда уже получена клиентом через /torrent/seek (сервер её не
+ *        пересчитывает). Перемотка (start>0) ВСЕГДА перекодирует видео: копирование
+ *        стартует с ключевого кадра ДО секунды реза и даёт рассинхрон на длину GOP.
+ */
+router.get(
+  "/torrent/remux/:infoHash/:index",
+  wrap(async (req, res) => {
+    const t = torrentTarget(req);
+    if (t.error) return res.status(400).json({ error: t.error, code: t.error });
+    let info;
+    try {
+      info = torrent.streamInfo(t.infoHash, t.idx);
+    } catch (e) {
+      return fail(res, e, "torrent_remux");
+    }
+
+    // Строгая валидация: эти значения уходят в аргументы ffmpeg.
+    const audio = Number(req.query.audio);
+    const start = Number(req.query.start);
+    const quality = Number(req.query.quality);
+    const audioIdx = Number.isInteger(audio) && audio >= 0 && audio < 64 ? audio : 0;
+    const startSec = Number.isFinite(start) && start >= 0 && start < 86400 ? start : 0;
+    const kbps = Number.isFinite(quality) && quality >= 64 && quality <= 512 ? quality : 192;
+    // Перемотка: копирование невозможно. ffmpeg начнёт видео с ключевого кадра ДО
+    // секунды реза, а звук обрежет ровно по ней — рассинхрон на длину GOP (замер на
+    // живой раздаче: 2.294 с). Поэтому с середины фильма видео перекодируется, и
+    // секунда старта честная. См. exactSeekVideoMode в mediaProbe.
+    const video = mediaProbe.exactSeekVideoMode(
+      startSec,
+      req.query.video === "h264" ? "h264" : "copy",
+    );
+    const srcUrl = selfStreamUrl(req, t.infoHash, t.idx);
+
+    /**
+     * Секунда старта честная: при перекодировании accurate seek режет ровно по `-ss`,
+     * а при копировании (осталось только для старта с нуля) реза нет вовсе. Именно
+     * поэтому ffprobe здесь больше не вызывается: раньше сервер «выравнивал» секунду
+     * сам и сдвигал старт (клиент 1173.673 → сервер 1172.546), а картинка уезжала от
+     * звука на длину GOP. Теперь и шкала, и звук начинаются ровно там, где просил плеер.
+     */
+    const fromSec = startSec;
+
+    const child = await mediaProbe.spawnRemux({
+      src: { kind: "url", url: srcUrl },
+      audio: audioIdx,
+      startSec: fromSec,
+      quality: kbps,
+      video,
+    });
+    if (!child.stdout) return res.status(500).json({ error: "ffmpeg stdout is not piped" });
+
+    res.status(200);
+    res.setHeader("Content-Type", "video/mp4");
+    res.setHeader("Cache-Control", "no-store");
+    res.setHeader("Accept-Ranges", "none");
+    // Диагностика: с какой секунды реально начали (плеер узнаёт её заранее).
+    res.setHeader("X-MoonApp-Start-Sec", String(fromSec));
+    child.stdout.pipe(res);
+
+    // Клиент закрыл плеер/перемотал — гасим ffmpeg, чтобы не жёг CPU впустую.
+    req.on("close", () => {
+      try {
+        child.kill();
+      } catch {
+        /* процесс уже завершился */
+      }
+    });
+    if (child.stderr) {
+      child.stderr.on("data", (d) => {
+        const msg = String(d).trim();
+        if (msg) logger.debug("movies.remux_stderr", { msg: msg.slice(-300) });
+      });
+    }
+    child.on("error", (e) => {
+      logger.error("movies.remux_error", { error: e && e.message, name: info.name });
+      try {
+        res.end();
+      } catch {
+        /* ответ уже закрыт */
+      }
+    });
+    child.on("close", (code) => {
+      if (code) logger.warn("movies.remux_exit", { code, name: info.name });
+      try {
+        res.end();
+      } catch {
+        /* ignore */
+      }
+    });
+    logger.action("movies.remux_start", {
+      infoHash: t.infoHash,
+      index: t.idx,
+      audio: audioIdx,
+      // requested и from совпадают всегда (точный seek) — поле оставлено намеренно:
+      // по нему в логах видно, с какой секунды реально стартовал поток.
+      requested: startSec,
+      from: fromSec,
+      aligned: req.query.aligned === "1",
+      // exact: перемотка перекодируется ради точного старта (см. exactSeekVideoMode).
+      exact: startSec > 0 && video === "h264",
+      video,
+    });
+  }),
+);
+
+/**
+ * Субтитры как WebVTT (Chromium понимает только этот формат):
+ *  - ?track=<N> — дорожка из контейнера (ffmpeg -map 0:s:N, включая ASS/SSA);
+ *  - ?file=<index> — файл .srt/.vtt из самой раздачи (читаем и конвертируем).
+ */
+router.get(
+  "/torrent/subtitles/:infoHash/:index",
+  wrap(async (req, res) => {
+    const t = torrentTarget(req);
+    if (t.error) return res.status(400).json({ error: t.error, code: t.error });
+    // Проверяем, что торрент добавлен и индекс в диапазоне: иначе непонятная
+    // ошибка ffmpeg вместо честного no_torrent/bad_file.
+    torrent.streamInfo(t.infoHash, t.idx);
+
+    const fileIdx = Number(req.query.file);
+    let text;
+    if (Number.isInteger(fileIdx) && fileIdx >= 0) {
+      const info = torrent.streamInfo(t.infoHash, fileIdx);
+      const buf = await readTorrentFile(t.infoHash, fileIdx);
+      text = mediaProbe.subtitleFileToVtt(buf, info.name);
+    } else {
+      const track = Number(req.query.track);
+      const trackIdx = Number.isInteger(track) && track >= 0 && track < 64 ? track : 0;
+      const out = await mediaProbe.extractSubtitleWebVtt({
+        src: { kind: "url", url: selfStreamUrl(req, t.infoHash, t.idx) },
+        index: trackIdx,
+        cacheKey: `${t.infoHash}-${t.idx}-t${trackIdx}`,
+      });
+      text = out.text;
+    }
+
+    res.setHeader("Content-Type", "text/vtt; charset=utf-8");
+    res.setHeader("Cache-Control", "no-store");
+    res.send(text);
+  }),
+);
 
 module.exports = router;

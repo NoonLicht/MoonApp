@@ -87,7 +87,16 @@ let AUTH_TOKEN: string | null = null;
  * (теги <img>/<video>), а не fetch с заголовками. Проверка безопасности —
  * внутри роутов (жёсткая валидация параметров).
  */
-const RESOURCE_PATHS = ["/api/movies/image"];
+const RESOURCE_PATHS = [
+  "/api/movies/image",
+  // Торрент-плеер: <video>/<track> не умеют передавать заголовок x-moonapp-token,
+  // поэтому эти пути не защищены токеном, а валидируются внутри роутов (infoHash —
+  // строго 40 hex, index/audio/track — целые в допустимом диапазоне, start — секунды).
+  // Без этой записи стрим торрента в собранной сборке получал 401.
+  "/api/movies/torrent/stream",
+  "/api/movies/torrent/remux",
+  "/api/movies/torrent/subtitles",
+];
 
 function authMiddleware(
   req: express.Request,

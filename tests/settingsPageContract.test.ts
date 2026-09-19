@@ -44,6 +44,9 @@ describe("Страница «Настройки»: состав разделов
   });
 
   it("содержит настройки лекций, которых нет на странице лектория", () => {
+    // Язык Whisper, подсказка и потоки CPU. Тайминги VAD (значения в ms) из
+    // настроек убраны: это внутренние параметры нарезки, дублирующие панель
+    // лектория, и держать их в двух местах смысла нет.
     const keys = [
       "lectureSttTitle",
       "lectureLangLabel",
@@ -54,26 +57,40 @@ describe("Страница «Настройки»: состав разделов
       "lecturePromptPlaceholder",
       "lectureThreadsLabel",
       "lectureThreadsHint",
-      "lectureVadHint",
-      "lectureVadSilenceLabel",
-      "lectureVadMinLabel",
-      "lectureVadMaxLabel",
-      "lectureVadForceLabel",
-      "lectureVadPadLabel",
     ];
     for (const k of keys) {
       expect(settingsSrc, `нет ссылки на settings.${k}`).toContain(`settings.${k}`);
     }
     // Пути настроек — те, что читает сервер (server/settings.js → lecture.*).
-    for (const p of [
-      "lecture.language",
-      "lecture.initialPrompt",
-      "lecture.threads",
-      "lecture.vadSilenceMs",
-      "lecture.vadPadMs",
-    ]) {
+    for (const p of ["lecture.language", "lecture.initialPrompt", "lecture.threads"]) {
       expect(settingsSrc, `нет изменения ${p}`).toContain(`"${p}"`);
     }
+    // VAD-тайминги в настройках больше не показываем.
+    expect(settingsSrc).not.toContain("lecture.vadSilenceMs");
+    expect(settingsSrc).not.toContain("lecture.vadPadMs");
+  });
+
+  it("не дублирует настройки, которые живут на своих страницах", () => {
+    // Эти блоки были дублями панелей соответствующих страниц (окно, конвертер,
+    // книги, дефолты чата и голоса, путь yt-dlp) и убраны из настроек.
+    for (const gone of [
+      '"window.width"',
+      '"converter.ffmpegPath"',
+      '"media.ytdlpPath"',
+      '"chat.provider"',
+      '"chat.temperature"',
+      '"chat.maxTokens"',
+      '"voice.engine"',
+      '"voice.exaggeration"',
+      '"appearance.fontSize"',
+      't("settings.books")',
+      't("settings.window")',
+      't("settings.converter")',
+    ]) {
+      expect(settingsSrc, `дубль вернулся в Настройки: ${gone}`).not.toContain(gone);
+    }
+    // Бейджи-плашки в шапках блоков тоже убраны (смысловые статусы остались).
+    expect(settingsSrc).not.toContain("BADGE_KEYS");
   });
 
   it("не даёт выключить обновления", () => {

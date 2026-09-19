@@ -72,7 +72,7 @@ jobs:
         with:
           name: installer
           path: |
-            dist/*.exe
-            dist/latest.yml
-            dist/*.blockmap
+            release/*.exe
+            release/latest.yml
+            release/*.blockmap
           if-no-files-found: ignore

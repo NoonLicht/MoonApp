@@ -42,6 +42,13 @@ const DIRS = {
   // Торрент-плеер (страница «Фильмы и Сериалы»): кэш скачанных кусков.
   // ВАЖНО: содержимое — пользовательский торрент, который он открыл сам.
   torrents: ensureDir(path.join(STORAGE_DIR, "torrents")),
+  // Метафайлы .torrent добавленных раздач: по ним загрузка возобновляется после
+  // остановки/перезапуска (см. server/ts/torrent.ts → resumeDownload).
+  torrentMeta: ensureDir(path.join(STORAGE_DIR, "torrents", "meta")),
+  // Извлечённые из видео субтитры (WebVTT) и служебные файлы плеера.
+  torrentSubs: ensureDir(path.join(STORAGE_DIR, "torrents", "subs")),
+  // Форум-трекер (поиск раздач): файлы сессий (куки bb_data/sid) и служебные данные.
+  trackers: ensureDir(path.join(STORAGE_DIR, "trackers")),
   // Конвертер: сюда падают временные файлы (in) и результаты (out).
   convert: ensureDir(path.join(STORAGE_DIR, "convert")),
   convertIn: ensureDir(path.join(STORAGE_DIR, "convert", "in")),

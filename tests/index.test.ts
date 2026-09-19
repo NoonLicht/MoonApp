@@ -91,6 +91,20 @@ describe("server/index — контракт входа", () => {
     const img = await fetch(`${base}/api/movies/image?size=w92&path=/poster.jpg`);
     expect(img.status).not.toBe(401);
 
+    // Ресурсные пути торрент-плеера: браузер грузит их тегами <video>/<track>,
+    // заголовок передать нельзя, поэтому токен не требуется (валидация внутри
+    // роутов). Регресс: стрим торрента раньше не был в allowlist и в собранной
+    // сборке отвечал 401 — плеер не играл.
+    const hash = "a".repeat(40);
+    for (const p of [
+      `/api/movies/torrent/stream/${hash}/0`,
+      `/api/movies/torrent/remux/${hash}/0`,
+      `/api/movies/torrent/subtitles/${hash}/0?track=0`,
+    ]) {
+      const res = await fetch(`${base}${p}`);
+      expect(res.status, p).not.toBe(401);
+    }
+
     // Не-/api путь (статика dist/, SPA-фолбэк) — не секрет, токен не нужен.
     const page = await fetch(`${base}/`);
     expect(page.status).not.toBe(401);

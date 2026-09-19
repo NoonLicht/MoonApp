@@ -707,15 +707,12 @@
    полосы тулбара (--content-top) — так карточка никогда не «уезжает» под меню.
    Сама модалка НЕ прокручивается целиком: скроллится только тело вкладки. */
 .mv-modal-backdrop {
-  position: fixed;
-  inset: 0;
+  /* Геометрия — в общем слое .app-modal-backdrop (ui.css): он начинается под
+     верхней панелью приложения, поэтому меню остаётся видимым, а карточка
+     центрируется в оставшейся области. Здесь только «косметика» затемнения. */
   z-index: 60;
   background: rgba(4, 6, 12, 0.62);
   backdrop-filter: blur(4px);
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  padding: var(--content-top) 20px var(--content-bottom);
   overflow: hidden;
   pointer-events: auto; /* .overlay-root выключен для кликов, модалка — включает */
 }
@@ -1138,7 +1135,9 @@
 
 .mv-player {
   position: relative;
-  width: min(1040px, 100%);
+  /* Шире, чем панели: видео масштабируется по ширине, поэтому место под кадр
+     важнее компактности окна. */
+  width: min(1240px, 100%);
   max-height: calc(100vh - var(--content-top) - var(--content-bottom));
   padding: 0;
   display: flex;
@@ -1484,4 +1483,520 @@
   .mv-card-all-sub {
     display: none;
   }
+}
+
+/* -------------- Форум-трекер: поиск раздач и дорожки файла -------------- */
+
+/* Панель поиска внутри плеера: прокручивается, как и торрент-панель. */
+.mv-tracker {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+  overflow: auto;
+  padding: 16px;
+}
+
+.mv-tracker-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+.mv-tracker-status span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.mv-tracker-status .is-ok {
+  color: var(--teal, #4fd1c5);
+}
+.mv-tracker-status .is-off {
+  color: var(--text-tertiary);
+}
+.mv-tracker-status .is-warn {
+  color: var(--amber, #f6ad55);
+}
+
+/* Логин/пароль форума: показываем, только пока их нет в секретах. */
+.mv-tracker-creds {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  background: var(--track);
+}
+.mv-tracker-hint {
+  flex: 1 1 100%;
+}
+.mv-tracker-count {
+  font-size: 11px;
+}
+
+/* Кнопки входа/проверки форума и подсказки по сессии. */
+.mv-tracker-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* Пояснение, когда окна входа нет (интерфейс открыт в браузере, а не в
+   приложении): пользователь должен понять, почему кнопки нет и что делать. */
+.mv-tracker-note {
+  display: flex;
+  flex: 1 1 100%;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px 10px;
+  border: 1px solid var(--coral);
+  border-radius: 10px;
+  background: var(--coral-soft);
+}
+.mv-tracker-note-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--coral);
+}
+/* Бейджи причин в списке проб: app-bound (v20) и «база занята». */
+.mv-tracker-badge {
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 6px;
+  border: 1px solid var(--glass-border);
+  background: var(--track);
+  font-size: 10px;
+  color: var(--text-tertiary);
+}
+.mv-tracker-keycookies {
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+
+/* Куки из браузера: нужны, когда форум закрыт Cloudflare-проверкой. */
+.mv-tracker-cookies {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.mv-tracker-cookies-form {
+  display: flex;
+  flex: 1 1 100%;
+  flex-direction: column;
+  gap: 6px;
+}
+.mv-tracker-cookies-input {
+  width: 100%;
+  min-height: 58px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  resize: vertical;
+}
+.mv-tracker-cookies-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* Список проверенных браузеров: объясняет, почему куки не подхватились
+   (Chrome 127+ с app-bound encryption — это ожидаемая причина). */
+.mv-tracker-probes {
+  flex: 1 1 100%;
+  font-size: 11px;
+}
+.mv-tracker-probes ul {
+  margin: 4px 0 0;
+  padding-left: 16px;
+}
+
+/* Ошибка с диагностикой: текст причины + «ответ форума» мелким шрифтом. */
+.mv-tracker-error {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.mv-tracker-details {
+  word-break: break-word;
+}
+
+.mv-tracker-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.mv-tracker-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 4px 12px;
+  padding: 8px 10px;
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  background: var(--track);
+}
+.mv-tracker-title {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 12.5px;
+  color: var(--text-primary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mv-tracker-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+.mv-tracker-size {
+  font-family: var(--font-mono);
+}
+.mv-tracker-seed {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--teal, #4fd1c5);
+  font-family: var(--font-mono);
+}
+.mv-tracker-meta-line {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Кнопка «Открыть» занимает вторую колонку обеих строк. */
+.mv-tracker-item .btn {
+  grid-row: 1 / span 2;
+  grid-column: 2;
+}
+
+/* Перемотка в remux-режиме (поток не поддерживает Range). */
+.mv-seek-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.mv-seek-row .text-input {
+  width: 84px;
+}
+.mv-track-hint {
+  align-self: center;
+}
+
+/* ===== Свой плеер (VideoPlayer): панель управления поверх видео =====
+   Видео всегда тёмное, поэтому текст/иконки панели белые — так плеер выглядит
+   одинаково в тёмной и светлой темах приложения. */
+
+.mv-vp {
+  position: relative;
+  /* Ширину и высоту задаёт компонент (fitVideoBox): блок в точности совпадает с
+     кадром, поэтому фильм влезает целиком и по бокам нет чёрных полей. */
+  margin: 0 auto;
+  background: #000;
+  border-radius: 12px;
+  overflow: hidden;
+}
+.mv-vp-video {
+  display: block;
+  /* Блок уже подогнан под соотношение сторон кадра — заполняем его целиком. */
+  width: 100%;
+  height: 100%;
+  background: #000;
+}
+.mv-vp.is-fs {
+  width: 100vw !important;
+  height: 100vh !important;
+  border-radius: 0;
+}
+.mv-vp.is-fs .mv-vp-video {
+  object-fit: contain;
+}
+.mv-vp-center {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 76px;
+  height: 76px;
+  border: none;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  background: rgba(10, 12, 18, 0.55);
+  cursor: pointer;
+}
+.mv-vp-center:hover {
+  background: rgba(10, 12, 18, 0.78);
+}
+.mv-vp-spinner {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.25);
+  border-top-color: #fff;
+  animation: mv-vp-spin 0.9s linear infinite;
+}
+@keyframes mv-vp-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.mv-vp-badge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  padding: 4px 9px;
+  border-radius: 999px;
+  font-size: 12px;
+  color: #fff;
+  background: rgba(10, 12, 18, 0.66);
+}
+.mv-vp-failed {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--coral);
+  background: rgba(0, 0, 0, 0.55);
+}
+/* «Пересоздать поток»: раньше текст ошибки отправлял нажимать «Продолжить»,
+   которой рядом не было — теперь кнопка на месте ошибки. */
+.mv-vp-retry {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border: 1px solid var(--glass-border);
+  border-radius: 9px;
+  background: var(--glass-strong);
+  color: var(--text-primary);
+  font-size: 12px;
+  cursor: pointer;
+}
+.mv-vp-retry:hover {
+  border-color: var(--teal);
+}
+.mv-vp-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 8px 12px 10px;
+  background: linear-gradient(to top, rgba(6, 8, 12, 0.94), rgba(6, 8, 12, 0.45) 60%, transparent);
+  transition: opacity 0.25s ease;
+}
+.mv-vp.is-idle .mv-vp-bar,
+.mv-vp.is-idle .mv-vp-center {
+  opacity: 0;
+  pointer-events: none;
+}
+.mv-vp-seek {
+  width: 100%;
+  height: 16px;
+  margin: 0;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+.mv-vp-seek::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(
+    to right,
+    var(--teal) 0 var(--mv-vp-pct, 0%),
+    rgba(255, 255, 255, 0.28) var(--mv-vp-pct, 0%) var(--mv-vp-buf, 0%),
+    rgba(255, 255, 255, 0.14) var(--mv-vp-buf, 0%) 100%
+  );
+}
+.mv-vp-seek::-webkit-slider-thumb {
+  appearance: none;
+  width: 13px;
+  height: 13px;
+  margin-top: -4.5px;
+  border: none;
+  border-radius: 50%;
+  background: #fff;
+}
+.mv-vp-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.mv-vp-btn {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: 8px;
+  color: #fff;
+  background: transparent;
+  cursor: pointer;
+}
+.mv-vp-btn:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+.mv-vp-btn.is-on {
+  color: var(--teal);
+  background: rgba(255, 255, 255, 0.12);
+}
+.mv-vp-time {
+  margin-left: 4px;
+  font-size: 12px;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+}
+.mv-vp-vol {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 6px;
+}
+.mv-vp-vol input {
+  width: 72px;
+}
+.mv-vp-spacer {
+  flex: 1;
+}
+.mv-vp-opts {
+  display: flex;
+  align-items: center;
+  /* Скорость, аудиодорожка и субтитры живут вместе и могут не влезть в одну
+     строку на узком окне — переносим, а не прячем. */
+  flex-wrap: wrap;
+  gap: 14px;
+  padding: 8px 4px 2px;
+}
+.mv-vp-opt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #fff;
+}
+.mv-vp-title {
+  max-width: 45%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: rgba(255, 255, 255, 0.72);
+}
+.mv-vp-pipnote {
+  position: absolute;
+  bottom: 10px;
+  left: 12px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* ===== Вкладка «Скачанные» ===== */
+
+.mv-downloads {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.mv-dl-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.mv-dl-keep {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+}
+.mv-dl-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+}
+.mv-dl-title {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  font-weight: 600;
+}
+.mv-dl-sub {
+  max-width: 60%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 400;
+}
+.mv-dl-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 12px;
+}
+.mv-dl-meta .is-live,
+.mv-dl-meta .is-ok,
+.mv-ffmpeg-note .is-ok {
+  color: var(--teal);
+}
+.mv-dl-progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.mv-dl-progress .progress-track {
+  flex: 1;
+}
+.mv-dl-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.mv-dl-notice {
+  margin: 2px 0;
+}
+
+/* Галочка «хранить скачанный торрент после просмотра». */
+.mv-keeprow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 4px 0;
+  font-size: 13px;
+}
+
+/* Строка состояния ffmpeg: путь/версия или куда положить бинарь. */
+.mv-ffmpeg-note {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 12px;
+}
+
+/* Фильтр по разрешению в поиске раздач. */
+.mv-res-filter {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  margin: 6px 0;
 }

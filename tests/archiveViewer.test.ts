@@ -268,6 +268,9 @@ describe("окно просмотра архива: клики и прокрут
     path.resolve(__dirname, "..", "src", "styles", "theme.css"),
     "utf8",
   );
+  // Геометрия модалок вынесена в общий слой .app-modal-backdrop (ui.css): он
+  // начинается ПОД верхней панелью приложения и центрирует карточку.
+  const uiCss = fs.readFileSync(path.resolve(__dirname, "..", "src", "styles", "ui.css"), "utf8");
   const page = fs.readFileSync(
     path.resolve(__dirname, "..", "src", "pages", "archiver", "ArchiverPage.tsx"),
     "utf8",
@@ -279,8 +282,14 @@ describe("окно просмотра архива: клики и прокрут
 
   it(".arch-view-overlay включает клики себе (иначе колесо крутит фон)", () => {
     const rule = /\.arch-view-overlay\s*\{([^}]*)\}/s.exec(css)?.[1] || "";
-    expect(rule).toMatch(/position:\s*fixed/);
     expect(rule).toMatch(/pointer-events:\s*auto/);
+    // Геометрию (fixed, отступ под верхней панелью, центрирование) задаёт общий
+    // слой модалок: окно архива больше не накрывает меню приложения.
+    const layer = /\.app-modal-backdrop\s*\{([^}]*)\}/s.exec(uiCss)?.[1] || "";
+    expect(layer).toMatch(/position:\s*fixed/);
+    expect(layer).toMatch(/pointer-events:\s*auto/);
+    expect(layer).toMatch(/top:\s*var\(--content-top\)/);
+    expect(layer).toMatch(/align-items:\s*center/);
   });
 
   it("окно монтируется порталом в #overlay-root и закрывается по Esc", () => {

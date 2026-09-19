@@ -49,8 +49,21 @@ import MoviesPage from "@/pages/movies/MoviesPage";
 // общий источник для дока приложения и списка «Стартовая страница» в настройках.
 
 // Порядок перебора тем кнопкой в тулбаре (см. toggleTheme ниже):
-// тёмная → OLED (чистый чёрный) → светлая → снова тёмная.
-const THEME_CYCLE = ["dark", "oled", "light"] as const;
+// тёмная → midnight → OLED (чистый чёрный) → светлая → sand → снова тёмная.
+// Кнопка листает все темы, а точный выбор — в настройках (appearance.theme).
+const THEME_CYCLE = ["dark", "midnight", "oled", "light", "sand"] as const;
+
+/**
+ * «Семейство» темы: точечные правки CSS написаны для light/dark (иконка кнопки
+ * темы, рамки и плейсхолдеры светлой темы). Новые темы наследуют семейство —
+ * sand получает светлые правки, midnight — тёмные. У OLED своё оформление
+ * (правила .theme-oled), поэтому семейство ему не добавляем: иначе кнопка темы
+ * показывала бы луну вместо иконки контраста.
+ */
+function themeFamily(theme: string): string {
+  if (theme === "oled") return "";
+  return theme === "light" || theme === "sand" ? "theme-light" : "theme-dark";
+}
 
 // Перечень страниц (порядок в доке + названия) — в src/navigation.ts.
 
@@ -94,7 +107,6 @@ interface ShellProps {
   setPageToolbar: (id: string, node: React.ReactNode | null) => void;
   blur: boolean;
   accent: string;
-  fontSize: number;
   reduceMotion: boolean;
   density: string;
   opaqueBg: boolean;
@@ -139,7 +151,6 @@ function Shell({
   setPageToolbar,
   blur,
   accent,
-  fontSize,
   reduceMotion,
   density,
   opaqueBg,
@@ -223,12 +234,13 @@ function Shell({
 
   // Классы/стили, управляемые разделом «Внешний вид»:
   //  - accent-* подменяет акцентный цвет (см. theme.css);
+  //  - themeFamily — семейство темы (светлое/тёмное) для точечных правок CSS;
   //  - reduce-motion отключает анимации и blur-блобы;
-  //  - density-compact уменьшает отступы списков;
-  //  - fontSize задаёт базовый размер шрифта.
+  //  - density-compact уменьшает отступы списков.
   const shellCls = [
     "app-shell",
     `theme-${theme}`,
+    themeFamily(theme),
     `accent-${accent}`,
     density === "compact" ? "density-compact" : "",
     reduceMotion ? "reduce-motion" : "",
@@ -241,7 +253,6 @@ function Shell({
   return (
     <div
       className={shellCls}
-      style={{ fontSize: `${fontSize}px` }}
       dir={lang === "ar" ? "rtl" : "ltr"}
     >
       <div className="mesh" aria-hidden="true">
@@ -365,7 +376,6 @@ export default function App() {
   const [lang, setLang] = useState("en");
   const [blur, setBlur] = useState(true);
   const [accent, setAccent] = useState("amber");
-  const [fontSize, setFontSize] = useState(14);
   const [reduceMotion, setReduceMotion] = useState(false);
   const [density, setDensity] = useState("comfortable");
   const [opaqueBg, setOpaqueBg] = useState(false);
@@ -414,9 +424,8 @@ export default function App() {
         setActive(PAGES.some((p) => p.id === startPage) ? (startPage as PageId) : "store");
         if (sc?.general?.language) setLang(sc.general.language);
         if (sc?.performance?.backgroundBlur != null) setBlur(!!sc.performance.backgroundBlur);
-        // Внешний вид: акцент, размер шрифта, анимации, плотность.
+        // Внешний вид: акцент, анимации, плотность, непрозрачный фон.
         if (sc?.appearance?.accent) setAccent(sc.appearance.accent);
-        if (sc?.appearance?.fontSize) setFontSize(Number(sc.appearance.fontSize) || 14);
         setReduceMotion(!!sc?.appearance?.reduceMotion);
         if (sc?.appearance?.density) setDensity(sc.appearance.density);
         setOpaqueBg(!!sc?.appearance?.opaqueBackground);
@@ -446,7 +455,6 @@ export default function App() {
       else if (path === "performance.unloadIdleMinutes")
         setUnloadIdleMinutes(Math.max(0, Number(value) || 0));
       else if (path === "appearance.accent") setAccent(String(value));
-      else if (path === "appearance.fontSize") setFontSize(Number(value) || 14);
       else if (path === "appearance.reduceMotion") setReduceMotion(!!value);
       else if (path === "appearance.density") setDensity(String(value));
       else if (path === "appearance.opaqueBackground") setOpaqueBg(!!value);
@@ -481,7 +489,6 @@ export default function App() {
           setPageToolbar={setPageToolbar}
           blur={blur}
           accent={accent}
-          fontSize={fontSize}
           reduceMotion={reduceMotion}
           density={density}
           opaqueBg={opaqueBg}

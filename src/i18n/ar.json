@@ -1,6 +1,6 @@
 {
   "nav": {
-    "movies": "الأفلام والمسلسلات",
+    "movies": "السينما",
     "store": "المتجر",
     "convert": "المحول",
     "video": "الفيديو",
@@ -105,12 +105,20 @@
     "general": "عام",
     "appearance": "المظهر",
     "theme": "المظهر",
-    "themeHint": "مظهر داكن أو فاتح أو OLED (مفتاح شريط الأدوات يعمل أيضاً)",
+    "themeHint": "مظهر داكن أو midnight أو فاتح أو sand أو OLED (مفتاح شريط الأدوات يعمل أيضاً)",
     "themeDark": "داكن",
+    "themeMidnight": "Midnight (أزرق عميق)",
     "themeLight": "فاتح",
+    "themeSand": "Sand (فاتح دافئ)",
     "themeOled": "OLED (أسود خالص)",
     "accent": "لون التمييز",
     "accentHint": "لون تمييز الواجهة",
+    "accentAmber": "كهرماني",
+    "accentViolet": "بنفسجي",
+    "accentTeal": "فيروزي",
+    "accentCoral": "مرجاني",
+    "accentSky": "سماوي",
+    "accentRose": "وردي",
     "reduceMotion": "تقليل الحركة",
     "reduceMotionHint": "تعطيل الحركات والضبابية الزخرفية",
     "fontSize": "حجم الخط",
@@ -780,7 +788,7 @@
     "seek": "موضع التشغيل"
   },
   "movies": {
-    "title": "الأفلام والمسلسلات",
+    "title": "الأفلام",
     "movie": "فيلم",
     "movies": "أفلام",
     "series": "مسلسل",

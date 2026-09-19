@@ -44,10 +44,9 @@ const DEFAULTS: SettingsTree = {
 
   // --- Внешний вид ---
   appearance: {
-    theme: "dark", // dark | light | oled (oled = абсолютно чёрный фон для OLED)
-    accent: "amber", // amber | violet | teal | coral
+    theme: "dark", // dark | midnight | light | sand | oled (oled = абсолютно чёрный фон)
+    accent: "amber", // amber | violet | teal | coral | sky | rose
     reduceMotion: false, // вырубать анимации/blur-блобы
-    fontSize: 14, // базовый размер шрифта
     density: "comfortable", // comfortable | compact
     opaqueBackground: false, // непрозрачный фон вместо полупрозрачного окна
   },
@@ -123,6 +122,39 @@ const DEFAULTS: SettingsTree = {
     region: "RU", // регион для «где смотреть» (watch/providers)
     showAdult: false, // включать фильмы 18+ в выдачу
     cacheMinutes: 720, // время жизни кэша метаданных TMDB, минут
+    // Галочка «хранить скачанный торрент после просмотра» (плеер и вкладка
+    // «Скачанные»): true — файлы остаются на диске, false — завершённые раздачи,
+    // которые никто не просил хранить, удаляются (освобождают место).
+    keepTorrentFiles: true,
+  },
+
+  // --- Форум-трекер: поиск раздач (rutracker.org и phpBB-совместимые движки) ---
+  // Адрес и параметры запросов живут здесь, чтобы движок можно было перенастроить
+  // на другой форум без правки кода. Логин/пароль тут НЕ хранятся: это секрет
+  // (storage/secrets.json, ключ "tracker", см. server/ts/trackerScraper.ts).
+  trackers: {
+    enabled: true, // показывать вкладку «Поиск раздач» в плеере
+    // Движок площадки: "rutracker" (phpBB, вход обязателен) | "rutor" (utf-8,
+    // поиск без входа). Переключение в UI применяет пресет целиком
+    // (server/ts/trackerProviders.ts → applyTrackerPreset).
+    // По умолчанию — rutor: он отвечает без Cloudflare, и вход для поиска не нужен.
+    engine: "rutor",
+    baseUrl: "https://rutor.info",
+    label: "RuTor",
+    loginPath: "/users.php", // страница входа (для поиска не требуется)
+    searchPath: "/search/0/0/000/0/{q}", // {q} — запрос подставляется в путь
+    searchMethod: "get", // post | get — как площадка принимает поиск
+    searchParam: "q", // имя поля строки поиска
+    topicPath: "/torrent/{id}",
+    torrentPath: "https://d.rutor.info/download/{id}", // .torrent-файл раздачи
+    encoding: "utf-8", // кодировка страниц и форм площадки
+    // User-Agent для запросов; пусто — встроенный браузерный. Нужен, когда
+    // cf_clearance из браузера привязан к конкретному UA.
+    userAgent: "",
+    minIntervalMs: 1200, // пауза между запросами к форуму (вежливость)
+    timeoutMs: 20000,
+    maxResults: 100, // максимум раздач в выдаче
+    requireDownloadable: true, // показывать только то, что можно открыть в плеере
   },
 
   // --- My Space: поведение заметок ---
@@ -346,8 +378,12 @@ let cache: SettingsTree | null = null;
 /** Настройки с диска, слитые с DEFAULTS. Читается один раз за процесс. */
 function load(): SettingsTree {
   if (cache) return cache;
+  // Файл ДО слияния с DEFAULTS: нужен миграциям, которые различают «ключа в файле
+  // нет» и «ключ есть со значением из DEFAULTS».
+  let fileTrackers: SettingsTree | null = null;
   try {
     const raw = JSON.parse(fs.readFileSync(FILES.settings, "utf8"));
+    fileTrackers = (raw && raw.trackers) || null;
     cache = deepMerge(DEFAULTS, raw);
   } catch {
     cache = JSON.parse(JSON.stringify(DEFAULTS));
@@ -388,6 +424,22 @@ function load(): SettingsTree {
       saveWithLock();
     } catch {
       /* файл только для чтения — не критично */
+    }
+  }
+  // Разовая миграция: трекер по умолчанию стал rutor (он отвечает без Cloudflare
+  // и не требует входа). У настроек, сохранённых ДО появления поля `engine`, движок
+  // определяем по адресу площадки: иначе пресет rutor (utf-8, поиск в пути, разбор
+  // tr.gai) применился бы к выдаче rutracker и поиск сломался бы на разметке.
+  const trackers = s.trackers as SettingsTree | undefined;
+  if (trackers && fileTrackers && fileTrackers.engine === undefined) {
+    const url = String(fileTrackers.baseUrl || trackers.baseUrl || "");
+    if (url && !/rutor\./i.test(url)) {
+      trackers.engine = "rutracker";
+      try {
+        saveWithLock();
+      } catch {
+        /* файл только для чтения — не критично */
+      }
     }
   }
   return s;

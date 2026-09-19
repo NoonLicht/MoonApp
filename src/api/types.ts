@@ -879,6 +879,299 @@ export interface TorrentStatus {
   files: TorrentFile[];
 }
 
+/**
+ * Загрузка торрента в реестре плеера (вкладка «Скачанные»).
+ * Живёт в БД, поэтому загрузки видны и после перезапуска приложения.
+ */
+export interface TorrentDownload {
+  infoHash: string;
+  name: string;
+  /** Название фильма/сериала: по нему окно плеера восстанавливается. */
+  title: string;
+  /** id раздачи на трекере (если открывали из поиска раздач). */
+  releaseId: string | null;
+  magnet: string | null;
+  source: "magnet" | "tracker" | "file";
+  length: number;
+  /** downloading — качается, paused — остановлено, done — загружено. */
+  state: "downloading" | "paused" | "done";
+  /** Галочка «хранить скачанный торрент после просмотра». */
+  kept: boolean;
+  /** Секунда, на которой остановился просмотр (продолжаем с неё). */
+  position: number;
+  addedAt: string;
+  updatedAt: string;
+  /** Раздача сейчас в движке: есть живой прогресс/скорость. */
+  active: boolean;
+  progress: number;
+  downloadSpeed: number;
+  peers: number;
+  downloaded: number;
+}
+
+/** Ответ реестра загрузок: список + общая галочка «хранить после просмотра». */
+export interface TorrentDownloadsResult {
+  items: TorrentDownload[];
+  keepDefault: boolean;
+}
+
+/** Готовность ffmpeg/ffprobe: выбор дорожек и переупаковка на лету. */
+export interface FfmpegStatus {
+  ffmpeg: boolean;
+  ffprobe: boolean;
+  path: string | null;
+  version: string | null;
+  /** Где искали бинарь — показываем, если не нашли (куда положить файл). */
+  searched: string[];
+}
+
+/* --- Форум-трекер: поиск раздач (rutracker.org и phpBB-совместимые) --- */
+
+/**
+ * Движок площадки (какой парсер и способ поиска использовать):
+ *  - "rutracker" — phpBB-форум: cp1251, POST-поиск по `nm`, выдача в таблице;
+ *  - "rutor" — rutor.info: utf-8, поиск частью пути `/search/0/0/000/0/<запрос>`,
+ *    вход не нужен, выдача в строках `tr.gai`/`tr.tum`.
+ */
+export type TrackerEngine = "rutracker" | "rutor";
+
+/** Трекер, доступный для переключения (список приходит в статусе). */
+export interface TrackerPreset {
+  id: string;
+  label: string;
+  baseUrl: string;
+  /** Нужен ли вход: у rutor поиск работает без логина. */
+  requiresLogin: boolean;
+}
+
+/** Метаданные, разобранные из названия раздачи. */
+export interface TrackerReleaseMeta {
+  resolution: string | null;
+  codec: string | null;
+  audio: string[];
+  releaseGroup: string | null;
+  source: string | null;
+  hdr: string | null;
+  year: number | null;
+  season: number | null;
+  episode: number | null;
+}
+
+export interface TrackerRelease {
+  id: string;
+  title: string;
+  size: string;
+  sizeBytes: number;
+  seeders: number;
+  leechers: number;
+  downloads: number;
+  topicUrl: string | null;
+  torrentUrl: string | null;
+  magnet: string | null;
+  meta: TrackerReleaseMeta;
+}
+
+export interface TrackerSearchResult {
+  query: string;
+  items: TrackerRelease[];
+  total: number;
+  cached: boolean;
+  via: "proxy" | "direct";
+}
+
+export interface TrackerStatus {
+  enabled: boolean;
+  configured: boolean;
+  hasCredentials: boolean;
+  label: string;
+  baseUrl: string;
+  /** Движок площадки: "rutracker" (phpBB, вход обязателен) | "rutor". */
+  engine: TrackerEngine;
+  /** Нужен ли вход для поиска: у rutor — нет (UI не просит логин). */
+  requiresLogin: boolean;
+  /** Доступные трекеры для переключателя. */
+  presets: TrackerPreset[];
+  /**
+   * Сессия форума: ok=true при РЕАЛЬНОМ входе (кука bb_data) у движков с входом,
+   * а у движков без входа (rutor) — «готово к поиску».
+   */
+  session: { ok: boolean; updatedAt: string | null };
+  /** Имена куки сессии (значения не раскрываются): видно, есть ли cf_clearance. */
+  cookieNames: string[];
+  lastError: { code: string; message: string; at: string } | null;
+  /**
+   * Окно входа (Chromium приложения). available=false вне Electron — тогда
+   * остаётся автоподхват куки из браузеров или ручная вставка.
+   */
+  chromium: { available: boolean; partition: string; loggedIn: boolean };
+  /** Страница входа: её открывает окно входа. */
+  loginUrl: string;
+  /** SOCKS-прокси поиска (null — напрямую): окно входа берёт тот же. */
+  proxyUrl: string | null;
+  /**
+   * UA для окна входа: пусто — приложение подставит обычный Chrome от версии своего
+   * Chromium (без «Electron/…» в отпечатке, иначе Cloudflare не пропускает).
+   */
+  userAgent: string;
+  /** Доступность ffmpeg/ffprobe (нужны для выбора дорожек и субтитров). */
+  ffmpeg?: boolean;
+  ffprobe?: boolean;
+}
+
+/**
+ * Диагностика ответа внешнего источника (форума): по ней видно, что именно
+ * пришло — Cloudflare-челлендж, форма входа или другая вёрстка.
+ */
+export interface TrackerErrorDetails {
+  status?: number;
+  bytes?: number;
+  url?: string;
+  snippet?: string;
+  authorized?: boolean;
+  loginForm?: boolean;
+  cloudflare?: boolean;
+  /**
+   * Каким транспортом уходил запрос: «chromium» — сетевой стек окна входа (тогда
+   * cf_clearance подходит), «fetch» — обычный запрос сервера (Cloudflare считает его
+   * ботом). Видно в диагностике ошибки.
+   */
+  transport?: string;
+  /** UA, которым представились форуму: cf_clearance привязан к паре «IP + UA». */
+  userAgent?: string;
+  /** Прокси страницы «Фильмы» (null — напрямую); окно входа берёт тот же. */
+  proxy?: string | null;
+  /** Имена куки нашей сессии форума. */
+  cookies?: string[];
+  /** Есть ли кука входа (bb_data) — без неё поиск уходит гостем. */
+  hasLogin?: boolean;
+}
+
+/**
+ * Что нашли в конкретном браузере/профиле при автоподхвате куки. Показывается
+ * пользователю, чтобы он понимал, кого именно надо открыть и войти на форум.
+ */
+export interface BrowserProbe {
+  id: string;
+  browser: string;
+  profile: string;
+  version: string;
+  cookies: number;
+  reason: string;
+  /** База куки занята запущенным браузером: нужно закрыть браузер и повторить. */
+  locked?: boolean;
+  /** Профиль шифрует куки app-bound (v20): читает только сам браузер. */
+  appBound?: boolean;
+}
+
+/** Патч настроек форума: логин/пароль уходят в секреты, не в settings.json. */
+export interface TrackerConfigPatch {
+  enabled?: boolean;
+  /** Движок площадки: обычно меняется через /tracker/preset, а не вручную. */
+  engine?: TrackerEngine;
+  baseUrl?: string;
+  label?: string;
+  loginPath?: string;
+  searchPath?: string;
+  searchMethod?: "get" | "post";
+  searchParam?: string;
+  topicPath?: string;
+  torrentPath?: string;
+  encoding?: string;
+  /** UA для запросов (важно, когда cf_clearance привязан к UA браузера). */
+  userAgent?: string;
+  minIntervalMs?: number;
+  timeoutMs?: number;
+  maxResults?: number;
+  requireDownloadable?: boolean;
+  login?: string;
+  password?: string;
+}
+
+/* --- Дорожки и субтитры файла раздачи (Сценарий Б) --- */
+
+export interface TorrentMediaFileList extends TorrentAddResult {
+  /** true — медиафайлов нет, показаны все файлы раздачи. */
+  noMedia: boolean;
+}
+
+export interface TorrentAudioTrack {
+  /** Относительный индекс (идёт в remux как ?audio=). */
+  index: number;
+  streamIndex: number;
+  language: string | null;
+  title: string | null;
+  label: string;
+  codec: string;
+  channels: number;
+  isDefault: boolean;
+  isOriginal: boolean;
+}
+
+export interface TorrentSubtitleTrack {
+  /** Для дорожек контейнера — относительный индекс, у внешних файлов будет -1. */
+  index: number;
+  streamIndex: number;
+  language: string | null;
+  title: string | null;
+  label: string;
+  codec: string;
+  isDefault: boolean;
+  forced: boolean;
+  /** Внешний файл .srt/.vtt из раздачи (читается через ?file=). */
+  external?: boolean;
+  fileIndex?: number;
+}
+
+/**
+ * Как файл раздачи воспроизводится в Chromium (решает бэкенд по ffprobe):
+ *  direct — <video> читает файл сам; remux — переупаковка в MP4 (видео копируется,
+ *  звук → AAC); transcode — видео тоже перекодируется; unsupported — нет FFmpeg.
+ */
+export type PlaybackMode = "direct" | "remux" | "transcode" | "unsupported";
+
+export interface TorrentPlaybackPlan {
+  mode: PlaybackMode;
+  /** true — видео копируется без потерь, false — перекодируется в H.264. */
+  videoCopy: boolean;
+  /** Причина выбора режима: native | container | audio_codec | codec | ffmpeg_missing. */
+  reason: string;
+}
+
+/**
+ * Куда реально встанет перемотка.
+ *
+ * При копировании видео (`copy=1`) сервер выравнивает старт по ключевому кадру —
+ * иначе видео и звук начинаются в разных точках. При точном seek (`copy=0`) видео
+ * перекодируется, `startSec` равна запрошенной секунде, и выравнивание не нужно.
+ */
+export interface TorrentSeekInfo {
+  /** Секунда, которую запросил плеер. */
+  requested: number;
+  /** Секунда, с которой реально начнётся поток (шкала и позиция берут её). */
+  startSec: number;
+  /** true — старт сдвинут к ключевому кадру раньше запрошенной секунды. */
+  keyframe: boolean;
+  /**
+   * true — секунда точная: поток начнёт ровно с неё (перекодирование), выравнивание
+   * по ключевому кадру не требуется. Плеер по этому признаку ставит `&aligned=1`.
+   */
+  exact: boolean;
+}
+
+export interface TorrentTrackList {
+  infoHash: string;
+  index: number;
+  file: { name: string; length: number; mime: string };
+  durationSec: number;
+  video: { codec: string; width: number; height: number; hdr: boolean } | null;
+  audio: TorrentAudioTrack[];
+  subtitles: TorrentSubtitleTrack[];
+  ffmpeg: boolean;
+  defaultAudio: number;
+  /** План воспроизведения (может отсутствовать у старого бэкенда). */
+  plan?: TorrentPlaybackPlan;
+}
+
 declare global {
   interface Window {
     appBridge?: {
@@ -890,6 +1183,15 @@ declare global {
       close: () => void;
       // Открыть каталог установки приложения (кнопка в верхней панели).
       openAppDir?: () => Promise<{ ok: boolean; dir?: string; error?: string }>;
+      /**
+       * Автозапуск с Windows: применить настройку сразу (реестр Run меняет
+       * main-процесс). reason: "dev" — в не-собранной версии автозапуск не ставим.
+       */
+      applyAutoLaunch?: () => Promise<{
+        ok: boolean;
+        openAtLogin?: boolean;
+        reason?: string;
+      }>;
       // Обновления приложения (работают только в packaged-сборке). С 0.2.2
       // обновления обязательны: включение/выключение не предусмотрено.
       checkUpdates?: () => Promise<{
@@ -914,6 +1216,30 @@ declare global {
       setCaptureMode?: (
         mode: "loopback" | "default",
       ) => Promise<{ ok: boolean; mode?: string; error?: string }>;
+      /**
+       * Окно входа на форум (Chromium приложения): открывается страница входа, и
+       * когда пользователь вошёл — возвращаются куки его сессии. Единственный путь
+       * сквозь Cloudflare-проверку: Chrome/Edge 127+ шифруют куки app-bound ключом,
+       * прочитать их снаружи нельзя (см. electron/main.js → tracker:login-window).
+       */
+      openTrackerLogin?: (opts: {
+        url: string;
+        proxyRules?: string | null;
+        /** UA окна: пусто — приложение берёт обычный Chrome своей версии. */
+        userAgent?: string;
+      }) => Promise<{
+        ok: boolean;
+        error?: string;
+        reason?: string;
+        loggedIn?: boolean;
+        /** Окно прошло проверку Cloudflare (в куках есть cf_clearance). */
+        hasCf?: boolean;
+        names?: string[];
+        cookieHeader?: string;
+        userAgent?: string;
+      }>;
+      /** Прокси Chromium: применить rules или снять (null). */
+      applyProxySession?: (cfg: { proxyRules: string } | null) => Promise<{ ok: boolean }>;
     };
   }
 }

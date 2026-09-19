@@ -95,25 +95,40 @@ function ffmpegCandidates(): string[] {
     if (!path.extname(explicit)) list.push(explicit + ".exe");
   }
   list.push(BUNDLED_BIN);
-  // Локальная установка «как скачалось»: storage/ffmpeg/<что угодно>/ffmpeg.exe.
-  try {
-    if (fs.existsSync(BIN_DIR)) {
-      for (const e of fs.readdirSync(BIN_DIR, { withFileTypes: true })) {
-        if (e.isDirectory()) {
-          const p = path.join(
-            BIN_DIR,
-            e.name,
-            process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg",
-          );
-          if (fs.existsSync(p)) list.push(p);
-        }
-      }
-    }
-  } catch {
-    /* не критично */
-  }
+  // Локальная установка «как скачалось»: storage/ffmpeg/**/ffmpeg.exe. Архив с
+  // gyan.dev распаковывается в ffmpeg-<версия>-essentials_build/bin/, поэтому
+  // ищем вглубь (до 3 уровней): иначе получается «FFmpeg лежит в storage, а
+  // приложение его не видит» — ровно тот случай, когда бинарь просто в подпапке.
+  list.push(...findBinsDeep(BIN_DIR));
   list.push("ffmpeg");
   return list;
+}
+
+/** Насколько вглубь storage/ffmpeg смотрим (сам архив и его распаковка). */
+const BIN_MAX_DEPTH = 3;
+
+/** Рекурсивный поиск ffmpeg внутри storage/ffmpeg (файл проверяет вызывающий). */
+function findBinsDeep(dir: string, depth = 0): string[] {
+  if (depth > BIN_MAX_DEPTH) return [];
+  const want = process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg";
+  const out: string[] = [];
+  let entries: fs.Dirent[];
+  try {
+    entries = fs.readdirSync(dir, { withFileTypes: true });
+  } catch {
+    return out;
+  }
+  for (const e of entries) {
+    const p = path.join(dir, e.name);
+    if (e.isDirectory()) out.push(...findBinsDeep(p, depth + 1));
+    else if (e.name.toLowerCase() === want.toLowerCase()) out.push(p);
+  }
+  return out;
+}
+
+/** Где именно искали ffmpeg: показываем в UI, если не нашли (куда класть бинарь). */
+export function ffmpegSearchPaths(): string[] {
+  return ffmpegCandidates();
 }
 
 // ffmpeg.exe/ffprobe.exe переносятся из распакованной папки в BIN_DIR.
@@ -154,29 +169,41 @@ let detectAt = 0;
 
 function runVersion(cmd: string): Promise<string | null> {
   return new Promise((resolve) => {
-    execFile(
-      cmd,
-      ["-version"],
-      { timeout: 8000, windowsHide: true, maxBuffer: 2 * 1024 * 1024 },
-      (err, stdout) => {
-        if (err) return resolve(null);
-        const line = String(stdout || "").split(/[\r\n]/)[0] || "";
-        const m = line.match(/ffmpeg version\s+([^\s]+)/i);
-        resolve((m && m[1]) || line.trim() || "unknown");
-      },
-    );
+    try {
+      execFile(
+        cmd,
+        ["-version"],
+        { timeout: 8000, windowsHide: true, maxBuffer: 2 * 1024 * 1024 },
+        (err, stdout) => {
+          if (err) return resolve(null);
+          const line = String(stdout || "").split(/[\r\n]/)[0] || "";
+          const m = line.match(/ffmpeg version\s+([^\s]+)/i);
+          resolve((m && m[1]) || line.trim() || "unknown");
+        },
+      );
+    } catch {
+      // Windows: файл лежит в storage/ffmpeg, но не является запускаемым (обрывок
+      // загрузки, пустая заглушка) — spawn бросает синхронно «spawn UNKNOWN».
+      // Такой кандидат просто пропускаем, а не роняем определение целиком.
+      resolve(null);
+    }
   });
 }
 
 // Проверка любого CLI-бинаря (ffmpeg/ffprobe) на работоспособность.
 function runVersionAny(cmd: string): Promise<string | null> {
   return new Promise((resolve) => {
-    execFile(
-      cmd,
-      ["-version"],
-      { timeout: 8000, windowsHide: true, maxBuffer: 2 * 1024 * 1024 },
-      (err, stdout) => resolve(err ? null : String(stdout || "").split(/[\r\n]/)[0] || "unknown"),
-    );
+    try {
+      execFile(
+        cmd,
+        ["-version"],
+        { timeout: 8000, windowsHide: true, maxBuffer: 2 * 1024 * 1024 },
+        (err, stdout) => resolve(err ? null : String(stdout || "").split(/[\r\n]/)[0] || "unknown"),
+      );
+    } catch {
+      // Та же ловушка Windows, что и в runVersion: битый файл → spawn бросает.
+      resolve(null);
+    }
   });
 }
 

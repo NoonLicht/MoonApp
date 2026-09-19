@@ -33,14 +33,23 @@ body {
   --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
   --font-body: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
-  --amber: #f0a63d;
-  --amber-soft: rgba(240, 166, 61, 0.16);
+  --amber-base: #f0a63d;
+  --amber-base-soft: rgba(240, 166, 61, 0.16);
+  /* --amber/--amber-soft — «основной» акцент интерфейса: его подменяют accent-* из
+     настроек (см. .app-shell.accent-* ниже), поэтому база вынесена отдельно. */
+  --amber: var(--amber-base);
+  --amber-soft: var(--amber-base-soft);
   --violet: #8b7bf0;
   --violet-soft: rgba(139, 123, 240, 0.16);
   --teal: #3fc7ab;
   --teal-soft: rgba(63, 199, 171, 0.16);
   --coral: #ea6b6b;
   --coral-soft: rgba(234, 107, 107, 0.16);
+  /* Дополнительные акценты (появляются в настройках как accent-sky / accent-rose). */
+  --sky: #4aa8ff;
+  --sky-soft: rgba(74, 168, 255, 0.16);
+  --rose: #f2789c;
+  --rose-soft: rgba(242, 120, 156, 0.16);
   --success: #3fc78a;
   position: relative;
   min-height: 100vh;
@@ -78,6 +87,43 @@ body {
   --text-secondary: #5b5b70;
   --text-tertiary: #8b8ba0;
   --shadow: 0 8px 30px rgba(30, 30, 60, 0.1);
+}
+/* --- Тема «midnight»: глубокая синяя ночь ---
+   От dark отличается не «светлотой», а тоном: фон уходит в насыщенный синий, а
+   поверхности подсвечены холодным оттенком. Семейство тёмное — в App.tsx у неё
+   дополнительно класс theme-dark, поэтому иконка кнопки темы и все тёмные
+   точечные правки работают как обычно. */
+.app-shell.theme-midnight {
+  --bg-base: #070b1a;
+  --bg-base-2: #0b1226;
+  --bg-alpha: rgba(7, 11, 26, 0.94);
+  --glass: rgba(120, 160, 255, 0.06);
+  --glass-strong: rgba(120, 160, 255, 0.1);
+  --glass-border: rgba(130, 170, 255, 0.14);
+  --track: rgba(130, 170, 255, 0.1);
+  --surface-solid: #0e1730;
+  --text-primary: #eaf1ff;
+  --text-secondary: #a8b6d6;
+  --text-tertiary: #6d7ba0;
+  --shadow: 0 10px 34px rgba(2, 6, 20, 0.55);
+}
+/* --- Тема «sand»: тёплая светлая («пергамент») ---
+   Мягкий светлый фон с тёплым подтоном вместо холодного белого: днём читается
+   спокойнее. Семейство светлое — в App.tsx добавляется класс theme-light, поэтому
+   наследуются все правки светлой темы (рамки, плейсхолдеры, поповеры). */
+.app-shell.theme-sand {
+  --bg-base: #f4efe6;
+  --bg-base-2: #ece5d8;
+  --bg-alpha: rgba(244, 239, 230, 0.95);
+  --glass: rgba(255, 255, 255, 0.55);
+  --glass-strong: rgba(255, 255, 255, 0.8);
+  --glass-border: rgba(72, 56, 34, 0.12);
+  --track: rgba(72, 56, 34, 0.08);
+  --surface-solid: #fbf7f0;
+  --text-primary: #2c2417;
+  --text-secondary: #6b5f4a;
+  --text-tertiary: #9a8c74;
+  --shadow: 0 8px 30px rgba(72, 56, 34, 0.14);
 }
 /* --- OLED-тема: абсолютно чёрный фон для OLED-панелей ---
    На OLED пиксель чистого чёрного (#000000) физически выключен — это максимум
@@ -599,7 +645,13 @@ body {
 }
 /* --- Внешний вид из настроек: акцент, анимации, плотность --- */
 /* accent-* подменяет «основной» акцентный цвет (--amber используется
-   в UI как главный), остальные переменные остаются доступны. */
+   в UI как главный), остальные переменные остаются доступны.
+   accent-amber — значение по умолчанию: блок есть явно, чтобы список акцентов в
+   CSS совпадал с селектом в настройках (см. tests/themeContract.test.ts). */
+.app-shell.accent-amber {
+  --amber: var(--amber-base);
+  --amber-soft: var(--amber-base-soft);
+}
 .app-shell.accent-violet {
   --amber: var(--violet);
   --amber-soft: var(--violet-soft);
@@ -611,6 +663,14 @@ body {
 .app-shell.accent-coral {
   --amber: var(--coral);
   --amber-soft: var(--coral-soft);
+}
+.app-shell.accent-sky {
+  --amber: var(--sky);
+  --amber-soft: var(--sky-soft);
+}
+.app-shell.accent-rose {
+  --amber: var(--rose);
+  --amber-soft: var(--rose-soft);
 }
 
 /* reduce-motion: гасим анимации, переходы и декоративные blur-блобы. */

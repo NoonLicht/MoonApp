@@ -257,6 +257,33 @@ const tables: Record<string, Table> = {
   ),
   // Кэш ответов TMDB (страницы каталога, детали, жанры), чтобы не дёргать API зря.
   media_meta_cache: new Table(["key", "json", "cached_at"], "-id"),
+  // Кэш поиска по форуму-трекеру (страница «Фильмы»): не долбим форум при каждом
+  // перерендере страницы. Ключ — адрес форума + строка поиска + лимит.
+  tracker_search_cache: new Table(["key", "json", "cached_at"], "-id"),
+
+  // ---- Торрент-плеер: реестр загрузок («Скачанные» на странице «Фильмы») ----
+  // Зачем таблица, а не память процесса: пользователь должен видеть загрузки и
+  // после перезапуска, а окно плеера — восстанавливаться, если его случайно
+  // закрыли. source: "magnet" | "tracker" | "file"; magnet/метафайл нужны для
+  // возобновления (resumeDownload); kept — «хранить файлы после просмотра»;
+  // position — секунда, на которой остановились (продолжаем с неё).
+  torrent_downloads: new Table(
+    [
+      "info_hash",
+      "name",
+      "title",
+      "release_id",
+      "magnet",
+      "source",
+      "length",
+      "state",
+      "kept",
+      "position",
+      "added_at",
+      "updated_at",
+    ],
+    "-updated_at",
+  ),
 };
 
 // Снимок объявленных колонок ДО load(): loadJSON перезаписывает cols данными из
@@ -909,6 +936,73 @@ export const stmts = {
       }),
   },
   mmcClear: { run: () => run(() => tables.media_meta_cache.deleteWhere(() => true)) },
+
+  // ---- Форум-трекер: кэш результатов поиска ----
+  tscGet: {
+    get: (key: Value) => {
+      const r = tables.tracker_search_cache.rows.find((x) => x.key === key);
+      return r ? { json: r.json, cached_at: r.cached_at } : null;
+    },
+  },
+  tscSet: {
+    run: (key: Value, json: Value) =>
+      run(() => {
+        const existing = tables.tracker_search_cache.rows.find((r) => r.key === key);
+        const stamp = now();
+        if (existing)
+          return tables.tracker_search_cache.updateWhere((r) => r.id === existing.id, {
+            json,
+            cached_at: stamp,
+          });
+        return tables.tracker_search_cache.insert([key, json, stamp]);
+      }),
+  },
+  tscClear: { run: () => run(() => tables.tracker_search_cache.deleteWhere(() => true)) },
+
+  // ---- Торрент-плеер: реестр загрузок (вкладка «Скачанные») ----
+  // Строки читаются по info_hash (он же идентификатор раздачи в webtorrent).
+  tdAll: { all: () => tables.torrent_downloads.all() },
+  tdGet: {
+    get: (infoHash: Value) => {
+      const r = tables.torrent_downloads.rows.find((x) => x.info_hash === String(infoHash));
+      return r ? { ...r } : null;
+    },
+  },
+  tdUpsert: {
+    run: (row: Record<string, Value>) =>
+      run(() => {
+        const existing = tables.torrent_downloads.rows.find(
+          (r) => r.info_hash === row.info_hash,
+        );
+        const stamp = now();
+        if (existing)
+          return tables.torrent_downloads.updateWhere((r) => r.id === existing.id, {
+            ...row,
+            updated_at: stamp,
+          });
+        // insert пишет колонки позиционно: собираем значения в порядке объявления,
+        // подставляя время для added_at/updated_at, если его не передали.
+        return tables.torrent_downloads.insert(
+          tables.torrent_downloads.cols.map((c) => {
+            if (c === "added_at" || c === "updated_at") return row[c] || stamp;
+            return row[c];
+          }),
+        );
+      }),
+  },
+  tdPatch: {
+    run: (infoHash: Value, fields: Patch) =>
+      run(() =>
+        tables.torrent_downloads.updateWhere((r) => r.info_hash === String(infoHash), {
+          ...fields,
+          updated_at: now(),
+        }),
+      ),
+  },
+  tdDelete: {
+    run: (infoHash: Value) =>
+      run(() => tables.torrent_downloads.deleteWhere((r) => r.info_hash === String(infoHash))),
+  },
 };
 export function exportSnapshot(): {
   tasks: Row[];

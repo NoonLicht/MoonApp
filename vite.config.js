@@ -31,11 +31,22 @@ export default defineConfig({
       // новый файл и пытается повесить на него fs.watch — Windows отдаёт EBUSY,
       // а Vite не перехватывает ошибку вотчера и падает целиком.
       // Глобы + регулярки — на случай разного поведения chokidar на Windows.
-      ignored: ["**/storage/**", "**/dist/**", "**/.git/**", /[\\/]storage[\\/]/, /[\\/]dist[\\/]/],
+      // release/ — вывод electron-builder (win-unpacked, инсталлятор): это не
+      // исходники, а сотни мегабайт; следить за ними незачем.
+      ignored: [
+        "**/storage/**",
+        "**/dist/**",
+        "**/release/**",
+        "**/.git/**",
+        /[\\/]storage[\\/]/,
+        /[\\/]dist[\\/]/,
+        /[\\/]release[\\/]/,
+      ],
     },
   },
   test: {
     // Не собираем чужие тесты из вендоренных проектов (ConvertX и т.п.)
-    exclude: ["**/node_modules/**", "**/dist/**", "server/vendor/**"],
+    // и то, что уже собрано (dist — Vite, release — electron-builder).
+    exclude: ["**/node_modules/**", "**/dist/**", "**/release/**", "server/vendor/**"],
   },
 });

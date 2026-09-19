@@ -106,4 +106,21 @@ describe("server/convertEngine — форма модуля и форматы", (
     fs.writeFileSync(path.join(binDir, "ffmpeg.exe"), "stub", "utf8");
     expect(engine.installStatus().installed).toBe(true);
   });
+
+  it("ищет ffmpeg и в подпапках storage/ffmpeg (архив распакован «как скачалось»)", async () => {
+    // Архив с gyan.dev распаковывается в ffmpeg-<версия>-essentials_build/bin/ —
+    // бинарь лежит на два уровня глубже, и раньше его не находили (в UI при этом
+    // было «FFmpeg не установлен», хотя файл лежал в storage).
+    const nested = path.join(storage, "ffmpeg", "ffmpeg-9.0-essentials_build", "bin");
+    fs.mkdirSync(nested, { recursive: true });
+    const stub = path.join(nested, "ffmpeg.exe");
+    fs.writeFileSync(stub, "stub", "utf8");
+
+    expect(engine.ffmpegSearchPaths()).toContain(stub);
+
+    // Заглушка не запускается → бинарь НЕ считается найденным: UI не должен врать.
+    process.env.PATH = "";
+    const ff = await engine.detectFfmpeg({ force: true });
+    expect(ff.found).toBe(false);
+  });
 });

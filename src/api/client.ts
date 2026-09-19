@@ -52,6 +52,7 @@ import type {
   HolstFileEntry,
   HolstReadResult,
   HolstWriteResult,
+  BrowserProbe,
   MediaKind,
   MediaDetails,
   MediaProviders,
@@ -66,6 +67,17 @@ import type {
   MediaStatus,
   TorrentAddResult,
   TorrentStatus,
+  TorrentFile,
+  TorrentMediaFileList,
+  TorrentTrackList,
+  TorrentSeekInfo,
+  TorrentDownloadsResult,
+  FfmpegStatus,
+  TrackerErrorDetails,
+  TrackerSearchResult,
+  TrackerStatus,
+  TrackerConfigPatch,
+  TrackerEngine,
   SettingsImportResult,
 } from "@/api/types";
 import { logEvent, getCurrentPage } from "@/lib/telemetry";
@@ -400,10 +412,13 @@ async function req<T = unknown>(method: string, url: string, body?: unknown): Pr
   if (!res.ok) {
     let msg = `HTTP ${res.status}`;
     let code: string | undefined;
+    let details: TrackerErrorDetails | null = null;
     try {
       const j = await res.json();
       msg = j.error || msg;
       code = j.code;
+      // details — диагностика внешнего источника (форум): статус, размер, сниппет.
+      details = (j.details as TrackerErrorDetails | null) || null;
     } catch {
       /* keep default */
     }
@@ -414,10 +429,17 @@ async function req<T = unknown>(method: string, url: string, body?: unknown): Pr
         status: res.status,
         ms: ts(),
         error: msg,
+        code,
+        details,
       });
-    const err = new Error(msg) as Error & { code?: string; status?: number };
+    const err = new Error(msg) as Error & {
+      code?: string;
+      status?: number;
+      details?: TrackerErrorDetails | null;
+    };
     err.code = code;
     err.status = res.status;
+    err.details = details;
     throw err;
   }
   if (url !== "/health")
@@ -1184,12 +1206,44 @@ export const api = {
       "GET",
       "/movies/torrent/active",
     ),
-  moviesTorrentAdd: (p: { magnet?: string; torrent?: string }) =>
+  /** Добавить раздачу. title — название фильма (для реестра «Скачанные»). */
+  moviesTorrentAdd: (p: { magnet?: string; torrent?: string; title?: string }) =>
     req<TorrentAddResult>("POST", "/movies/torrent/add", p),
   moviesTorrentStatus: (infoHash: string) =>
     req<TorrentStatus>("GET", `/movies/torrent/status/${encodeURIComponent(infoHash)}`),
-  moviesTorrentRemove: (infoHash: string) =>
-    req<{ removed: boolean }>("DELETE", `/movies/torrent/${encodeURIComponent(infoHash)}`),
+  /** Удалить раздачу: files=false — «убрать из списка, файлы оставить». */
+  moviesTorrentRemove: (infoHash: string, opts: { files?: boolean } = {}) =>
+    req<{ removed: boolean; files: boolean }>(
+      "DELETE",
+      `/movies/torrent/${encodeURIComponent(infoHash)}${opts.files === false ? "?files=0" : ""}`,
+    ),
+  /** Вкладка «Скачанные»: реестр загрузок + галочка по умолчанию. */
+  moviesTorrentDownloads: () =>
+    req<TorrentDownloadsResult>("GET", "/movies/torrent/downloads"),
+  /** Остановить загрузку (пауза): скачанное остаётся на диске. */
+  moviesTorrentStop: (infoHash: string) =>
+    req<{ stopped: boolean; state: string }>("POST", "/movies/torrent/stop", { infoHash }),
+  /** Возобновить остановленную загрузку по сохранённому .torrent/magnet. */
+  moviesTorrentResume: (infoHash: string) =>
+    req<TorrentAddResult>("POST", "/movies/torrent/resume", { infoHash }),
+  /**
+   * Галочка «хранить скачанный торрент после просмотра»: для одной раздачи
+   * (infoHash) и/или как значение по умолчанию для новых (saveDefault).
+   */
+  moviesTorrentKeep: (p: { infoHash?: string; keep: boolean; saveDefault?: boolean }) =>
+    req<{ ok: boolean; keep: boolean; keepDefault: boolean; purged: number }>(
+      "POST",
+      "/movies/torrent/keep",
+      p,
+    ),
+  /** Сохранить позицию просмотра (секунды) — продолжим с неё в следующий раз. */
+  moviesTorrentPosition: (infoHash: string, position: number) =>
+    req<{ ok: boolean }>("POST", "/movies/torrent/position", { infoHash, position }),
+  /** Убрать завершённые раздачи, которые решили не хранить (освободить место). */
+  moviesTorrentCleanup: () => req<{ purged: number }>("POST", "/movies/torrent/cleanup"),
+  /** ffmpeg для плеера: путь, версия и где искали; force — пересобрать кэш. */
+  moviesFfmpeg: (force = false) =>
+    req<FfmpegStatus>("GET", `/movies/ffmpeg${force ? "?force=1" : ""}`),
   moviesTorrentFile: (infoHash: string, index: number) =>
     req<{ name: string; length: number; mime: string }>(
       "GET",
@@ -1198,6 +1252,95 @@ export const api = {
   /** URL стрима для HTML5 <video> (Range поддерживается). */
   moviesTorrentStreamUrl: (infoHash: string, index: number) =>
     `/api/movies/torrent/stream/${encodeURIComponent(infoHash)}/${index}`,
+
+  // Сценарий А: файлы раздачи (серии) — метаданные до полной загрузки.
+  moviesTorrentFiles: (p: {
+    magnet?: string;
+    torrent?: string;
+    infoHash?: string;
+    mediaOnly?: boolean;
+  }) => req<TorrentMediaFileList>("POST", "/movies/torrent/files", p),
+  /** Переключить файл (серию): куски выбранного файла получают приоритет загрузки. */
+  moviesTorrentSelect: (infoHash: string, index: number) =>
+    req<TorrentFile>("POST", "/movies/torrent/select", { infoHash, index }),
+
+  // Сценарий Б: дорожки файла через ffprobe (аудио, субтитры, длительность).
+  moviesTorrentTracks: (infoHash: string, index: number) =>
+    req<TorrentTrackList>("GET", `/movies/torrent/tracks/${encodeURIComponent(infoHash)}/${index}`),
+  /**
+   * Честная секунда старта перемотки.
+   *
+   * Копирование (`copy=true`) отдаёт начало только с ключевого кадра, и звук после
+   * этого расходится с картинкой на длину GOP (живой замер: 2.294 с), поэтому плеер
+   * перематывает точным seek — `copy=false`: видео перекодируется, `startSec` равна
+   * запрошенной секунде, и шкала с субтитрами не врут.
+   */
+  moviesTorrentSeek: (infoHash: string, index: number, at: number, copy = true) =>
+    req<TorrentSeekInfo>(
+      "GET",
+      `/movies/torrent/seek/${encodeURIComponent(infoHash)}/${index}` +
+        `?at=${Math.max(0, Math.floor(Number(at) || 0))}&copy=${copy ? 1 : 0}`,
+    ),
+
+  /* --- Форум-трекер: поиск раздач (rutracker.org и phpBB-совместимые) --- */
+  moviesTrackerStatus: () =>
+    req<TrackerStatus & { ffmpeg: boolean; ffprobe: boolean }>("GET", "/movies/tracker/status"),
+  moviesTrackerConfig: (patch: TrackerConfigPatch) =>
+    req<{ ok: boolean; status: TrackerStatus }>("POST", "/movies/tracker/config", patch),
+  /**
+   * Переключить трекер (rutracker ↔ rutor): бэкенд применяет пресет площадки
+   * целиком — пути, кодировку, способ поиска и движок разбора выдачи.
+   */
+  moviesTrackerPreset: (id: string) =>
+    req<{ ok: boolean; id: string; engine: TrackerEngine; label: string; baseUrl: string; status: TrackerStatus }>(
+      "POST",
+      "/movies/tracker/preset",
+      { id },
+    ),
+  moviesTrackerLogin: () =>
+    req<{ ok: boolean; sid: string | null }>("POST", "/movies/tracker/login"),
+  moviesTrackerLogout: () => req<{ ok: boolean }>("POST", "/movies/tracker/logout"),
+  /**
+   * Импорт куки из браузера: приложение само читает базу куки установленных
+   * браузеров. Пользователь просто входит на форум в браузере и жмёт кнопку.
+   */
+  moviesTrackerCookiesFromBrowser: () =>
+    req<{
+      ok: boolean;
+      cookies: string[];
+      probes: BrowserProbe[];
+      source: { browser: string; profile: string; version: string } | null;
+      userAgent: string;
+      probe: TrackerErrorDetails;
+      session: { sid: string | null; updatedAt: string };
+      status: TrackerStatus;
+    }>("POST", "/movies/tracker/cookies/from-browser"),
+  /** Проверка текущей сессии форума (пустил / Cloudflare / форма входа). */
+  moviesTrackerSession: () =>
+    req<{ probe: TrackerErrorDetails }>("GET", "/movies/tracker/session"),
+  /**
+   * Импорт куки строкой вручную: «cf_clearance=…; bb_data=…». Запасной путь,
+   * когда браузер не найден или нужен профиль другого пользователя Windows.
+   */
+  moviesTrackerCookies: (cookies: string, userAgent?: string) =>
+    req<{
+      ok: boolean;
+      cookies: string[];
+      session: { sid: string | null; updatedAt: string };
+      status: TrackerStatus;
+    }>("POST", "/movies/tracker/cookies", { cookies, userAgent }),
+  moviesTrackerSearch: (query: string, opts: { limit?: number; refresh?: boolean } = {}) =>
+    req<TrackerSearchResult>("POST", "/movies/tracker/search", { query, ...opts }),
+  /**
+   * Открыть раздачу: .torrent скачивает бэкенд своими сессионными куками форума
+   * (в браузер они не попадают), а нам возвращается список файлов раздачи.
+   */
+  moviesTrackerAdd: (id: string, opts: { title?: string; magnet?: string } = {}) =>
+    req<TorrentMediaFileList & { release: { id: string; name: string } }>(
+      "POST",
+      "/movies/tracker/add",
+      { id, ...opts },
+    ),
 };
 
 /** Событие стрима чата. */

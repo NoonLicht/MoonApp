@@ -74,6 +74,10 @@
   "build": {
     "appId": "com.moonapp.app",
     "productName": "MoonApp",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
     "files": [
       "dist/**/*",
       "electron/**/*",
