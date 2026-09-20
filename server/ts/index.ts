@@ -38,6 +38,7 @@ const appsRouter = require("./routes/apps") as express.Router;
 const convertRouter = require("./routes/convert") as express.Router;
 const videoRouter = require("./routes/video") as express.Router;
 const compressorRouter = require("./routes/compressor") as express.Router;
+const upscaleRouter = require("./routes/upscale") as express.Router;
 const ttsRouter = require("./routes/tts") as express.Router;
 const archiveRouter = require("./routes/archive") as express.Router;
 const proxyRouter = require("./routes/proxy") as express.Router;
@@ -226,6 +227,7 @@ function createApp(): express.Express {
   app.use("/api/convert", convertRouter);
   app.use("/api/video", videoRouter);
   app.use("/api/compressor", compressorRouter);
+  app.use("/api/upscale", upscaleRouter);
   app.use("/api/tts", ttsRouter);
   app.use("/api/archive", archiveRouter);
   app.use("/api/proxy", proxyRouter);

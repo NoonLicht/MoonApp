@@ -62,6 +62,8 @@
     "server/ts/proxy.ts",
     "server/ts/ytdlp.ts",
     "server/ts/compressor.ts",
+    "server/ts/upscale.ts",
+    "server/ts/upscalePipeline.ts",
     "server/ts/whisperEngine.ts",
     "server/ts/sitebak.ts",
     "server/ts/tgwsproxy.ts",

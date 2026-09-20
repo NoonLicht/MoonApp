@@ -79,6 +79,15 @@ import type {
   TrackerConfigPatch,
   TrackerEngine,
   SettingsImportResult,
+  UpEstimate,
+  UpHardware,
+  UpJob,
+  UpModelsState,
+  UpManifestSync,
+  UpTrtStatus,
+  UpPreset,
+  UpPresets,
+  UpProbe,
 } from "@/api/types";
 import { logEvent, getCurrentPage } from "@/lib/telemetry";
 
@@ -445,6 +454,35 @@ async function req<T = unknown>(method: string, url: string, body?: unknown): Pr
   if (url !== "/health")
     logEvent("action", "api.ok", { method, path: url, status: res.status, ms: ts() });
   return (res.status === 204 ? null : await res.json()) as T;
+}
+
+/**
+ * GET-файл как blob (сравнение «до/после» и скачивание результата апскейла).
+ *
+ * Именно fetch с токеном, а не прямой <img src>/<a href>: все /api-роуты
+ * закрыты заголовком x-moonapp-token, который теги передать не могут
+ * (см. src/lib/download.ts). Полученный blob отдаём в URL.createObjectURL.
+ */
+async function blobGet(url: string): Promise<Blob> {
+  const res = await fetch(`${BASE}/api${url}`, {
+    headers: { ...tokenHeaders(), ...pageHeaders() },
+  });
+  if (!res.ok) {
+    let msg = `HTTP ${res.status}`;
+    try {
+      msg = (await res.json()).error || msg;
+    } catch {
+      /* keep default */
+    }
+    logEvent("error", "api.error", {
+      method: "GET(blob)",
+      path: url,
+      status: res.status,
+      error: msg,
+    });
+    throw new Error(msg);
+  }
+  return res.blob();
 }
 
 function toFormData(file: File, to: string): FormData {
@@ -816,6 +854,82 @@ export const api = {
     req<{ ok: boolean; custom: CompressorPreset[] }>("POST", "/compressor/presets", p),
   compressorDeletePreset: (name: string) =>
     req<{ ok: boolean }>("DELETE", `/compressor/presets/${encodeURIComponent(name)}`),
+
+  // --- Апскейл медиа: встроенный ONNX-рантайм, модели качаются по требованию ---
+  upscaleStart: (file: File, opts: Record<string, string | number | boolean>) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    for (const [k, v] of Object.entries(opts)) fd.append(k, String(v));
+    return multipart<UpJob>("/upscale", fd);
+  },
+  upscaleStatus: (id: string) => req<UpJob>("GET", `/upscale/${id}`),
+  upscaleDelete: (id: string) => req("DELETE", `/upscale/${id}`),
+  upscaleReveal: (id: string) => req<{ path: string }>("GET", `/upscale/${id}/reveal`),
+  /** Результат как blob: сравнение «до/после» и скачивание (токен в заголовке). */
+  upscaleBlob: (id: string, what: "download" | "preview") => blobGet(`/upscale/${id}/${what}`),
+  upscaleProbe: (file: File) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    return multipart<UpProbe>("/upscale/probe", fd);
+  },
+  /**
+   * Оценка задания до запуска: размеры, кадры, частота, ожидаемое время.
+   * Проба передаётся как есть (она уже получена через /probe) — файл не грузим.
+   */
+  upscaleEstimate: (params: Record<string, unknown>, probe: UpProbe) =>
+    req<UpEstimate>("POST", "/upscale/estimate", { params, probe }),
+  upscaleHardware: () => req<UpHardware>("GET", "/upscale/hardware"),
+  /**
+   * Мягкая остановка задания (кнопка «Стоп» рядом с прогрессом): движок
+   * завершается между кадрами, файл результата остаётся на месте.
+   */
+  upscaleCancel: (id: string) =>
+    req<{ ok: boolean; job: UpJob | null }>("POST", `/upscale/${encodeURIComponent(id)}/cancel`),
+  /**
+   * Пауза всей очереди: текущий файл замирает на том же кадре, следующие не
+   * стартуют (задание держит слот очереди), процессы и модели остаются живыми.
+   */
+  upscalePause: () => req<{ ok: boolean; paused: number; jobs: UpJob[] }>("POST", "/upscale/pause"),
+  /** Продолжить очередь с того кадра, где остановились. */
+  upscaleResume: () =>
+    req<{ ok: boolean; resumed: number; jobs: UpJob[] }>("POST", "/upscale/resume"),
+  /** Убрать исходники прошлых задач из storage/upscale/in (выбор нового файла). */
+  upscaleCleanInputs: () => req<{ ok: boolean; removed: number }>("POST", "/upscale/inputs/clean"),
+  upscaleModels: () => req<UpModelsState>("GET", "/upscale/models"),
+  /**
+   * «Обновить каталог»: стянуть свежий манифест моделей из GitHub (или свой
+   * адрес) — новым моделям обновление приложения не нужно.
+   */
+  upscaleSyncModels: (url?: string) =>
+    req<UpManifestSync>("POST", "/upscale/models/sync", url ? { url } : {}),
+  upscaleDownloadModel: (id: string) =>
+    req<{ ok: boolean; path: string; sizeMb: number }>("POST", "/upscale/models/download", { id }),
+  /** Пере-скачать модель (например, если файл повреждён): force = true. */
+  upscaleRedownloadModel: (id: string) =>
+    req<{ ok: boolean; path: string; sizeMb: number }>("POST", "/upscale/models/download", {
+      id,
+      force: true,
+    }),
+  /** Удалить файл модели с диска (каталог остаётся). */
+  upscaleRemoveModel: (id: string) =>
+    req<{ ok: boolean; removed: boolean }>("DELETE", `/upscale/models/${encodeURIComponent(id)}`),
+  /**
+   * Собрать движок TensorRT FP16 для модели (NVIDIA): ONNX Runtime компилирует
+   * граф под GPU и кладёт .engine в кэш. Для AMD/Intel/CPU не нужен — там
+   * работает обычный ONNX-путь.
+   */
+  upscaleBuildTrt: (id: string, tile?: number) =>
+    req<{
+      ok: boolean;
+      ms: number;
+      engines: { file: string; sizeMb: number }[];
+      trt?: UpTrtStatus;
+    }>("POST", `/upscale/models/${encodeURIComponent(id)}/trt`, { tile: tile || 0 }),
+  upscalePresets: () => req<UpPresets>("GET", "/upscale/presets"),
+  upscaleSavePreset: (p: { name: string } & Record<string, unknown>) =>
+    req<{ ok: boolean; custom: UpPreset[] }>("POST", "/upscale/presets", p),
+  upscaleDeletePreset: (name: string) =>
+    req<{ ok: boolean }>("DELETE", `/upscale/presets/${encodeURIComponent(name)}`),
 
   // --- Аудиокнижная TTS-студия (F5-TTS / Coqui XTTS v2) ---
   ttsHardware: () => req<TtsHardware>("GET", "/tts/hardware"),
@@ -1218,8 +1332,7 @@ export const api = {
       `/movies/torrent/${encodeURIComponent(infoHash)}${opts.files === false ? "?files=0" : ""}`,
     ),
   /** Вкладка «Скачанные»: реестр загрузок + галочка по умолчанию. */
-  moviesTorrentDownloads: () =>
-    req<TorrentDownloadsResult>("GET", "/movies/torrent/downloads"),
+  moviesTorrentDownloads: () => req<TorrentDownloadsResult>("GET", "/movies/torrent/downloads"),
   /** Остановить загрузку (пауза): скачанное остаётся на диске. */
   moviesTorrentStop: (infoHash: string) =>
     req<{ stopped: boolean; state: string }>("POST", "/movies/torrent/stop", { infoHash }),
@@ -1292,11 +1405,14 @@ export const api = {
    * целиком — пути, кодировку, способ поиска и движок разбора выдачи.
    */
   moviesTrackerPreset: (id: string) =>
-    req<{ ok: boolean; id: string; engine: TrackerEngine; label: string; baseUrl: string; status: TrackerStatus }>(
-      "POST",
-      "/movies/tracker/preset",
-      { id },
-    ),
+    req<{
+      ok: boolean;
+      id: string;
+      engine: TrackerEngine;
+      label: string;
+      baseUrl: string;
+      status: TrackerStatus;
+    }>("POST", "/movies/tracker/preset", { id }),
   moviesTrackerLogin: () =>
     req<{ ok: boolean; sid: string | null }>("POST", "/movies/tracker/login"),
   moviesTrackerLogout: () => req<{ ok: boolean }>("POST", "/movies/tracker/logout"),
@@ -1316,8 +1432,7 @@ export const api = {
       status: TrackerStatus;
     }>("POST", "/movies/tracker/cookies/from-browser"),
   /** Проверка текущей сессии форума (пустил / Cloudflare / форма входа). */
-  moviesTrackerSession: () =>
-    req<{ probe: TrackerErrorDetails }>("GET", "/movies/tracker/session"),
+  moviesTrackerSession: () => req<{ probe: TrackerErrorDetails }>("GET", "/movies/tracker/session"),
   /**
    * Импорт куки строкой вручную: «cf_clearance=…; bb_data=…». Запасной путь,
    * когда браузер не найден или нужен профиль другого пользователя Windows.

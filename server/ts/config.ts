@@ -56,6 +56,12 @@ const DIRS = {
   // Видеосжатие: исходники, промежуточные и готовые файлы.
   compressorIn: ensureDir(path.join(STORAGE_DIR, "compressor", "in")),
   compressorOut: ensureDir(path.join(STORAGE_DIR, "compressor", "out")),
+  // Апскейл медиа: исходники/результаты и ONNX-модели.
+  // Модели качаются по требованию (scripts/fetch-models.js) и живут вне asar:
+  // onnxruntime-node читает их с диска обычным путём.
+  upscaleIn: ensureDir(path.join(STORAGE_DIR, "upscale", "in")),
+  upscaleOut: ensureDir(path.join(STORAGE_DIR, "upscale", "out")),
+  upscaleModels: ensureDir(path.join(STORAGE_DIR, "models", "upscale")),
   // TTS: референсы голоса, чанки, готовые аудиокниги, профили.
   tts: ensureDir(path.join(STORAGE_DIR, "tts")),
   // Web Archive: рабочие папки краулера, распакованные архивы и .sitebak.

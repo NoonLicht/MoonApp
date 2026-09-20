@@ -406,3 +406,89 @@ describe("whisperEngine — подсказки «ваш ПК»", () => {
     expect(info.builds.filter((b: any) => b.recommend.best).length).toBeLessThanOrEqual(1);
   });
 });
+
+describe("whisperEngine — потоки CPU (0 = все)", () => {
+  // Корень проекта: читаем исходники, чтобы поймать расхождения между
+  // сервером (whisper/diarize/settings) и UI-полем настроек.
+  const root = path.resolve(__dirname, "..");
+
+  it("0 и пустое значение означают «все потоки процессора»", async () => {
+    // Раньше 0 незаметно превращался в 4 потока: на 16-поточном процессоре
+    // «авто» работало вчетверо медленнее, чем могло.
+    const e = await engine();
+    const all = e.cpuThreadCount();
+    expect(all).toBeGreaterThanOrEqual(1);
+    expect(e.resolveThreads(0)).toBe(all);
+    expect(e.resolveThreads(undefined)).toBe(all);
+    expect(e.resolveThreads("")).toBe(all);
+    expect(e.resolveThreads(-3)).toBe(all);
+    expect(e.resolveThreads("мусор")).toBe(all);
+  });
+
+  it("заданное число уважается (без прежнего потолка 16)", async () => {
+    const e = await engine();
+    expect(e.resolveThreads(1)).toBe(1);
+    expect(e.resolveThreads(8)).toBe(8);
+    expect(e.resolveThreads("12")).toBe(12);
+    expect(e.resolveThreads(32)).toBe(32);
+    // Верхняя граница — защита от опечатки, а не прежние 16.
+    expect(e.resolveThreads(9999)).toBe(256);
+  });
+
+  it("статус движка показывает фактическое число потоков", async () => {
+    const e = await engine();
+    // Панель лектория показывает это число как «потоки движка»: при 0 в
+    // настройках там должно быть реальное число логических потоков, а не «4».
+    const st = e.engineSummary();
+    expect(st.threads).toBeGreaterThanOrEqual(1);
+    expect(st.threads).toBeLessThanOrEqual(256);
+    expect(st.threads).toBe(e.cpuThreadCount());
+  });
+
+  it("и whisper, и диаризация берут одно и то же число потоков", () => {
+    // Обе подсистемы считают потоки одной функцией: иначе «все потоки» у
+    // распознавания и «четыре» у разделения говорящих расходились бы.
+    const whisper = fs.readFileSync(path.join(root, "server", "ts", "whisperEngine.ts"), "utf8");
+    expect(whisper).toMatch(/export function resolveThreads\(value: unknown\): number \{/);
+    expect(whisper).toContain("String(resolveThreads(c.threads))");
+    expect(whisper).not.toContain("Math.min(16, Number(c.threads) || 4)");
+    const diarize = fs.readFileSync(path.join(root, "server", "ts", "diarize.ts"), "utf8");
+    expect(diarize).toContain('import { resolveThreads } from "./whisperEngine";');
+    expect(diarize).toContain("const threads = resolveThreads(c.threads);");
+    expect(diarize).not.toContain("Math.min(16, Number(c.threads) || 4)");
+    // Настройки: дефолт 0 и никаких прежних «4».
+    const settings = fs.readFileSync(path.join(root, "server", "ts", "settings.ts"), "utf8");
+    expect(settings).toMatch(/language: "ru",[\s\S]{0,220}?threads: 0,/);
+  });
+
+  it("флаг -t уходит движку с числом потоков (0 = все)", async () => {
+    const e = await engine();
+    // Настройки в этом тесте пустые → дефолт threads: 0, то есть whisper
+    // получает реальное число логических потоков процессора.
+    const args = e.transcribeArgs("model.bin", "in.wav", "out", {});
+    const i = args.indexOf("-t");
+    expect(i).toBeGreaterThan(-1);
+    expect(Number(args[i + 1])).toBe(e.cpuThreadCount());
+    // Прежний потолок 16 больше не применяется: на 24-поточном CPU он бы резал.
+    expect(e.resolveThreads(24)).toBe(24);
+  });
+
+  it("в настройках UI поле допускает 0 и показывает число потоков процессора", () => {
+    const page = fs.readFileSync(
+      path.join(root, "src", "pages", "settings", "SettingsPage.tsx"),
+      "utf8",
+    );
+    expect(page).toContain("navigator.hardwareConcurrency");
+    expect(page).toContain('t("settings.lectureThreadsAll"');
+    expect(page).toMatch(/value=\{Number\(lec\.threads \?\? 0\)\}/);
+    expect(page).toMatch(/min=\{0\}/);
+    // Ключи есть во всех локалях.
+    for (const lang of ["ru", "en", "es", "fr", "zh", "ar"]) {
+      const json = JSON.parse(
+        fs.readFileSync(path.join(root, "src", "i18n", `${lang}.json`), "utf8"),
+      );
+      expect(typeof json.settings.lectureThreadsAll, lang).toBe("string");
+      expect(json.settings.lectureThreadsHint, lang).toMatch(/0|\u0660/);
+    }
+  });
+});

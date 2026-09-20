@@ -27,11 +27,13 @@ import "@/styles/notes.css";
 import "@/styles/lecture.css";
 import "@/styles/bypass.css";
 import "@/styles/movies.css";
+import "@/styles/upscale.css";
 
 // Страницы
 import StorePage from "@/pages/store/StorePage";
 import ConverterPage from "@/pages/convert/ConverterPage";
 import CompressorPage from "@/pages/compressor/CompressorPage";
+import UpscalePage from "@/pages/upscale/UpscalePage";
 import VideoPage from "@/pages/video/VideoPage";
 import MusicPage from "@/pages/music/MusicPage";
 import BooksPage from "@/pages/books/BooksPage";
@@ -71,6 +73,7 @@ const PAGE_COMPONENTS: Record<PageId, React.ComponentType> = {
   store: StorePage,
   convert: ConverterPage,
   compress: CompressorPage,
+  upscale: UpscalePage,
   video: VideoPage,
   movies: MoviesPage,
   music: MusicPage,

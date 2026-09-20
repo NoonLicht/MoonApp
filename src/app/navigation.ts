@@ -14,6 +14,7 @@ import {
   Shield,
   Archive,
   Settings2,
+  Sparkles,
 } from "lucide-react";
 import type { ElementType } from "react";
 import type { TranslateFn } from "@/app/i18n";
@@ -23,6 +24,7 @@ export type PageId =
   | "store"
   | "convert"
   | "compress"
+  | "upscale"
   | "video"
   | "movies"
   | "music"
@@ -57,6 +59,7 @@ export const PAGES: readonly PageMeta[] = [
   { id: "store", i18n: "nav.store", icon: Store },
   { id: "convert", i18n: "nav.convert", icon: Repeat },
   { id: "compress", i18n: "nav.compress", icon: Gauge },
+  { id: "upscale", i18n: "nav.upscale", icon: Sparkles },
   { id: "video", i18n: "nav.video", icon: Video },
   { id: "movies", i18n: "nav.movies", icon: Clapperboard },
   { id: "music", i18n: "nav.music", icon: Music2 },

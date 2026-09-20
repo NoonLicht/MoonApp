@@ -13,10 +13,13 @@
     "typecheck": "tsc --noEmit -p tsconfig.json && npm run compile:server",
     "start:server": "npm run compile:server && node server/index.js",
     "fetch:engines": "node scripts/fetch-engines.js",
-      "gen:keys": "node scripts/gen-bundled-keys.mjs",
+    "fetch:models": "node scripts/fetch-models.js",
+    "verify:model": "node scripts/verify-model.js",
+    "check:pack": "node scripts/check-pack.js",
+    "gen:keys": "node scripts/gen-bundled-keys.mjs",
     "fetch:whisper": "node scripts/fetch-whisper.js",
     "start": "npm run compile:server && npm run build:web && electron .",
-    "dist": "npm run compile:server && npm run build:web && npm run gen:keys && npm run fetch:engines && electron-builder --win && npm run rebuild:node",
+    "dist": "npm run compile:server && npm run build:web && npm run gen:keys && npm run fetch:engines && electron-builder --win && npm run check:pack && npm run rebuild:node",
     "rebuild:electron": "electron-rebuild -f -w better-sqlite3",
     "rebuild:node": "npm rebuild better-sqlite3",
     "test": "vitest run",
@@ -42,6 +45,7 @@
     "marked": "^18.0.11",
     "marked-highlight": "^2.2.4",
     "multer": "^2.2.0",
+    "onnxruntime-node": "^1.30.0",
     "pdf-parse": "^2.4.5",
     "socks-proxy-agent": "^10.1.0",
     "webtorrent": "^1.9.7"
@@ -98,7 +102,9 @@
       "server/vendor/ytdlp/**",
       "server/vendor/singbox/**",
       "server/vendor/proxy-core/**",
-      "server/engines/**"
+      "server/engines/**",
+      "node_modules/onnxruntime-node/**",
+      "node_modules/onnxruntime-common/**"
     ],
     "extraResources": [
       {

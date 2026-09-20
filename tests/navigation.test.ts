@@ -21,6 +21,7 @@ const ALL_IDS = [
   "store",
   "convert",
   "compress",
+  "upscale",
   "video",
   "movies",
   "music",

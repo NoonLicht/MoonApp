@@ -27,6 +27,7 @@ import {
   Upload,
   AudioLines,
   AlertTriangle,
+  Sparkles,
 } from "lucide-react";
 import { Glass, Btn, Select, SectionHead, Badge, EmptyHint } from "@/components/ui";
 import { copyToClipboard } from "@/components/ContextMenu";
@@ -365,6 +366,12 @@ export default function SettingsPage() {
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
   const [dirtyMap, setDirtyMap] = useState<Set<string>>(new Set());
+  /**
+   * Логические потоки процессора. 0 в поле «Потоки CPU» означает «все потоки»,
+   * поэтому рядом с полем показываем, сколько их всего. В Electron это же число
+   * видит и сервер (`os.cpus().length` в resolveThreads).
+   */
+  const cpuThreads = Math.max(0, Math.round(Number(navigator.hardwareConcurrency)) || 0);
 
   useEffect(() => {
     api
@@ -626,6 +633,7 @@ export default function SettingsPage() {
   const voice = s.voice || {},
     mon = s.monitor;
   const comp = s.compressor || {},
+    up = s.upscaler || {},
     sb = s.sitebak || {};
   // Настройки лектория: часть живёт в панелях страницы лекций (модель, конспект,
   // говорящие), здесь — язык Whisper, промпт, потоки и тайминги VAD.
@@ -949,6 +957,108 @@ export default function SettingsPage() {
           />
         </Section>
 
+        {/* ---- Апскейл медиа (док: upscale) — умолчания ONNX-движка ---- */}
+        <Section title={t("settings.upscale")} icon={Sparkles}>
+          <Row label={t("upSettings.model")} hint={t("upSettings.modelHint")}>
+            <TextInput
+              value={String(up.model ?? "realesr-general-x4v3")}
+              onChange={(v) => change("upscaler.model", v)}
+            />
+          </Row>
+          <Row label={t("upSettings.scale")} hint={t("upSettings.scaleHint")}>
+            <Select
+              value={String(up.scale ?? 4)}
+              onChange={(e) => change("upscaler.scale", Number(e.target.value))}
+              options={["2", "3", "4"]}
+            />
+          </Row>
+          <Row label={t("upSettings.format")} hint={t("upSettings.formatHint")}>
+            <Select
+              value={String(up.format ?? "png")}
+              onChange={(e) => change("upscaler.format", e.target.value)}
+              options={["png", "jpeg", "webp", "avif"]}
+            />
+          </Row>
+          <Row
+            label={t("upSettings.quality", { v: up.quality ?? 92 })}
+            hint={t("upSettings.qualityHint")}
+          >
+            <input
+              type="range"
+              min="1"
+              max="100"
+              step="1"
+              value={Number(up.quality ?? 92)}
+              onChange={(e) => change("upscaler.quality", parseInt(e.target.value))}
+              style={{ width: 180 }}
+            />
+          </Row>
+          <Row label={t("upSettings.tile")} hint={t("upSettings.tileHint")}>
+            <Select
+              value={String(up.tile ?? 0)}
+              onChange={(e) => change("upscaler.tile", Number(e.target.value))}
+              options={["0", "256", "512", "1024"]}
+            />
+          </Row>
+          <Row label={t("upSettings.provider")} hint={t("upSettings.providerHint")}>
+            <Select
+              value={String(up.provider ?? "auto")}
+              onChange={(e) => change("upscaler.provider", e.target.value)}
+              options={["auto", "cpu", "cuda", "dml"]}
+            />
+          </Row>
+          <Row
+            label={t("upSettings.sharpen", { v: up.sharpen ?? 0 })}
+            hint={t("upSettings.sharpenHint")}
+          >
+            <input
+              type="range"
+              min="0"
+              max="100"
+              step="5"
+              value={Number(up.sharpen ?? 0)}
+              onChange={(e) => change("upscaler.sharpen", parseInt(e.target.value))}
+              style={{ width: 180 }}
+            />
+          </Row>
+          <Row
+            label={t("upSettings.denoise", { v: up.denoise ?? 0 })}
+            hint={t("upSettings.denoiseHint")}
+          >
+            <input
+              type="range"
+              min="0"
+              max="100"
+              step="5"
+              value={Number(up.denoise ?? 0)}
+              onChange={(e) => change("upscaler.denoise", parseInt(e.target.value))}
+              style={{ width: 180 }}
+            />
+          </Row>
+          <Row label={t("upSettings.vcodec")} hint={t("upSettings.vcodecHint")}>
+            <Select
+              value={String(up.vcodec ?? "x264")}
+              onChange={(e) => change("upscaler.vcodec", e.target.value)}
+              options={["x264", "x265", "av1"]}
+            />
+          </Row>
+          <Row label={t("upSettings.vcrf", { v: up.vcrf ?? 20 })} hint={t("upSettings.vcrfHint")}>
+            <NumberInput
+              value={up.vcrf ?? 20}
+              min={0}
+              max={51}
+              onChange={(v) => change("upscaler.vcrf", v === "" ? 20 : v)}
+            />
+          </Row>
+          <Row label={t("upSettings.audio")} hint={t("upSettings.audioHint")}>
+            <Select
+              value={String(up.audioAction ?? "copy")}
+              onChange={(e) => change("upscaler.audioAction", e.target.value)}
+              options={["copy", "aac"]}
+            />
+          </Row>
+        </Section>
+
         {/* ---- Видео (док: video) — дефолты для новых загрузок yt-dlp ---- */}
         <Section title={t("settings.video")} icon={Video}>
           <Row label={t("videoSection.videoQuality")} hint={t("videoSection.videoQualityHint")}>
@@ -1161,12 +1271,19 @@ export default function SettingsPage() {
               placeholder={t("settings.lecturePromptPlaceholder")}
             />
           </Row>
-          <Row label={t("settings.lectureThreadsLabel")} hint={t("settings.lectureThreadsHint")}>
+          <Row
+            label={t("settings.lectureThreadsLabel")}
+            hint={`${t("settings.lectureThreadsHint")}${
+              cpuThreads > 0 ? ` ${t("settings.lectureThreadsAll", { n: cpuThreads })}` : ""
+            }`}
+          >
+            {/* 0 (по умолчанию) — все логические потоки процессора: сервер сам
+                подставит их число (см. resolveThreads в whisperEngine.ts). */}
             <NumberInput
-              value={Number(lec.threads ?? 4)}
+              value={Number(lec.threads ?? 0)}
               onChange={(v) => change("lecture.threads", v)}
-              min={1}
-              max={32}
+              min={0}
+              max={64}
             />
           </Row>
         </Section>

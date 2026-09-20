@@ -1243,3 +1243,328 @@ declare global {
     };
   }
 }
+
+/* ------------------------------- Апскейл медиа ------------------------------- */
+/*
+ * Страница «Апскейл медиа» работает на встроенном ONNX-рантайме
+ * (server/ts/upscale.ts → server/upscale.js). Типы ниже — контракт с
+ * POST/GET /api/upscale: их поля совпадают с серверным UpJob/UpParams.
+ */
+
+/** Модель ONNX из server/models.manifest.json + статус загрузки файла. */
+export interface UpModelInfo {
+  id: string;
+  label: string;
+  /** upscale — апскейлер, interp — интерполятор кадров: списки в UI не смешиваются. */
+  kind: "upscale" | "interp";
+  scale: number;
+  /** У интерполятора — во сколько раз больше кадров даёт пара. */
+  mult: number;
+  /** Максимум множителя плавности: у CAIN 2, у RIFE/IFRNet — до 4. */
+  multMax: number;
+  arch: string;
+  /** Схема входов интерполятора (у апскейлеров пусто). */
+  inputSig: string;
+  /**
+   * Сколько кадров модель принимает за один run (факт из каталога): 1 — жёстко
+   * один кадр за проход (пачка невозможна, настройка пачки в UI скрывается),
+   * 0 — неизвестно (движок пробует сам), больше 1 — верхний предел пачки.
+   * У интерполятора — сколько тайлов пары считается за один run.
+   */
+  batch: number;
+  /** Кратность сторон входа (1 — требования нет): движок выравнивает тайл (Real-CUGAN). */
+  align: number;
+  /** Рекомендованный провайдер модели ("" — как в настройках; "cpu" — не идёт на GPU). */
+  provider: string;
+  file: string;
+  sizeMb: number;
+  license: string;
+  url: string;
+  /** Путь на диске (storage/models/upscale/<file>). */
+  path: string;
+  available: boolean;
+  /** Категории для фильтра в панели моделей (photo/video/anime/fast/…). */
+  tags: string[];
+  /** Оптимальные настройки именно этой модели («Применить» в панели). */
+  rec: {
+    scale?: number;
+    tile?: number;
+    overlap?: number;
+    sharpen?: number;
+    denoise?: number;
+    interpMult?: number;
+    sceneCut?: number;
+  };
+  /** Измерено на реальном инференсе (мс, множитель) — для подсказки. */
+  measured: string;
+  /** sha256 из манифеста (пусто — хеш не задан, проверки при загрузке нет). */
+  sha256: string;
+  /** Что это за модель и для чего (короткое описание из манифеста). */
+  hint: string;
+  /** Прогресс текущей загрузки модели (null — не качается). */
+  downloading: { gotMb: number; totalMb: number; percent: number } | null;
+}
+
+/** Параметры задания апскейла (зеркало серверного normalizeParams). */
+export interface UpParams {
+  model: string;
+  /** Вторая модель для смешивания результатов (пусто = выключено). */
+  model2: string;
+  blendAmount: number;
+  scale: number;
+  targetW: number;
+  targetH: number;
+  tile: number;
+  overlap: number;
+  threads: number;
+  provider: string;
+  format: string;
+  quality: number;
+  sharpen: number;
+  denoise: number;
+  vcodec: string;
+  vcrf: number;
+  audioAction: string;
+  presetId: string;
+  /** off | ffmpeg (minterpolate) | model (ONNX RIFE/CAIN). */
+  interpMode: string;
+  /** id ONNX-интерполятора (kind="interp"); пусто — первый скачанный. */
+  interpModel: string;
+  /** Во сколько раз больше кадров: 2 | 3 | 4. */
+  interpMult: number;
+  /** mci (движение) | blend (смешивание) | dup (дубли). */
+  minterpolateMode: string;
+  /**
+   * Где считать вставки: decode — до апскейла (интерполятор по исходным кадрам,
+   * апскейлер получает в 2–4 раза больше кадров), encode — после апскейла.
+   * У minterpolate это сторона фильтра, у ONNX-модели — сторона движка.
+   */
+  minterpolateSide: string;
+  /** Порог смены сцены 0–100: выше — дубли вместо интерполяции. */
+  sceneCutThreshold: number;
+  /** Кадров за один вызов session.run (1 | 2 | 4). */
+  batchFrames: number;
+  /**
+   * Пачка ТАЙЛОВ интерполятора (вторая настройка пачки): сколько тайлов пары
+   * считать одним session.run (0 — «Авто»). 0/1 — по тайлу за раз.
+   */
+  interpBatch: number;
+  /** Обработать только первые N кадров видео (0 — весь файл). */
+  frameLimit: number;
+  /** Замедление результата: 1 — как есть, 0.5 — вдвое, 0.25 — вчетверо медленнее. */
+  slowMotion: number;
+  /**
+   * Считать кодирование и декодирование на видеокарте, если она есть
+   * (NVENC/QSV/AMF + аппаратный декодер). Выключено — всё делает CPU.
+   */
+  hwAccel: boolean;
+}
+
+/** Задание апскейла: UI опрашивает его состояние. */
+export interface UpJob extends UpParams {
+  id: string;
+  kind: "photo" | "video";
+  createdAt: number;
+  startedAt: number;
+  name: string;
+  size: number;
+  stage: "queued" | "analyze" | "upscale" | "encode" | "done" | "error" | "stopped";
+  progress: number;
+  etaSec: number | null;
+  done: boolean;
+  error: string;
+  outSize: number;
+  outWidth: number;
+  outHeight: number;
+  /** Расширение результата (png/jpg/webp/avif | mp4/mkv) — для имени файла. */
+  outExt: string;
+  engineUsed: string;
+  providerUsed: string;
+  /** Кодировщик результата: «NVENC» / «SVT-AV1» / «x264» (что реально сработало). */
+  encoderUsed: string;
+  /** Пачка кадров, с которой считали (для «Авто» — фактически подобранная). */
+  batchUsed: number;
+  /**
+   * Пачка ТАЙЛОВ интерполятора, с которой считали (0 — интерполяция выключена или
+   * модель принимает только один тайл за run).
+   */
+  interpBatchUsed: number;
+  /**
+   * Почему пачка не используется, если она выключена: "" — используется или не
+   * запрашивалась, "unsupported" — граф принимает один кадр, "mixed" — смешивание
+   * двух моделей, "nomodel" — без апскейла.
+   */
+  batchReason?: string;
+  /** Задание на паузе: кадры и процессы живут, обработка стоит. */
+  paused?: boolean;
+  framesDone: number;
+  framesTotal: number;
+  fps: number;
+  /** Частота кадров результата: бейдж «25 → 50 fps». */
+  fpsOut: number;
+  info: {
+    width?: number;
+    height?: number;
+    codec?: string;
+    fps?: number;
+    duration?: number;
+  };
+}
+
+/** Пресет апскейла: системный (id) или пользовательский (name + поля). */
+export interface UpPreset {
+  id?: string;
+  name?: string;
+  kind?: "photo" | "video";
+  model: string;
+  scale: number;
+  format?: string;
+  quality?: number;
+  tile?: number;
+  overlap?: number;
+  sharpen?: number;
+  denoise?: number;
+  provider?: string;
+  targetW?: number;
+  targetH?: number;
+  vcodec?: string;
+  vcrf?: number;
+  audioAction?: string;
+  /** Пресеты плавности (см. UpParams.interp*). */
+  interpMode?: string;
+  interpModel?: string;
+  interpMult?: number;
+  minterpolateMode?: string;
+  minterpolateSide?: string;
+  sceneCutThreshold?: number;
+  batchFrames?: number;
+  interpBatch?: number;
+  frameLimit?: number;
+  slowMotion?: number;
+}
+
+/** Состояние рантайма и железа для страницы апскейла. */
+export interface UpHardware {
+  runtime: boolean;
+  /** Детали рантайма: версия, путь и причина отказа — для диагностики. */
+  runtimeInfo?: UpRuntimeInfo;
+  ffmpeg: { found: boolean; path: string | null; version: string | null };
+  cpu: { name: string; coresPhysical: number; coresLogical: number };
+  /**
+   * План аппаратного ускорения: какой декодер и кодировщики реально доступны
+   * сборке ffmpeg («NVENC», «QSV», «x264»…). Пусто — считаем на CPU.
+   */
+  gpu?: { decode: string; x264: string; x265: string; av1: string; hardware: boolean };
+  models: UpModelInfo[];
+  /** Провайдеры ONNX Runtime в этой сборке (cpu/dml/cuda/tensorrt/webgpu). */
+  providers?: string[];
+  /** TensorRT: есть ли провайдер и что уже собрано (движки в кэше). */
+  trt?: UpTrtStatus;
+}
+
+/** Состояние TensorRT: провайдер в сборке + собранные движки (.engine). */
+export interface UpTrtStatus {
+  available: boolean;
+  /** Что вообще есть в рантайме — для подсказки «почему кнопка недоступна». */
+  backends: string[];
+  dir: string;
+  engines: { file: string; sizeMb: number; mtime: number }[];
+}
+
+/**
+ * Что нужно панели настроек от железа: план кодировщиков ffmpeg плюс
+ * провайдеры ONNX Runtime и состояние TensorRT (кнопка точности).
+ */
+export type UpGpuInfo = NonNullable<UpHardware["gpu"]> & {
+  providers?: string[];
+  trt?: UpTrtStatus;
+};
+
+/** Состояние ONNX-рантайма: где найден и почему не найден. */
+export interface UpRuntimeInfo {
+  available: boolean;
+  version: string;
+  path: string;
+  error: string;
+}
+
+/** Ответ GET /api/upscale/models. */
+/** Апскейл: состояние каталога моделей (GET /api/upscale/models). */
+export interface UpModelsState {
+  runtime: boolean;
+  dir: string;
+  models: UpModelInfo[];
+  /** Состояние загрузок по id: working/done/error (для полосы прогресса). */
+  downloads?: Record<string, { state: string; error: string }>;
+  /** Откуда взят каталог и когда обновлялся (для строки статуса в панели). */
+  manifest?: UpManifestInfo;
+  /** TensorRT: доступность провайдера и собранные движки. */
+  trt?: UpTrtStatus;
+}
+
+/**
+ * Источник каталога моделей: `remote` — манифест скачан кнопкой «Обновить
+ * каталог» (лежит в storage), `bundled` — вшитый в сборку (первый запуск/офлайн).
+ */
+export interface UpManifestInfo {
+  source: "remote" | "bundled";
+  path: string;
+  /** Основной адрес обновления (GitHub или свой из MOONAPP_MANIFEST_URL). */
+  url: string;
+  count: number;
+  /** Когда каталог скачивали (ISO) или "" для вшитого. */
+  updatedAt: string;
+}
+
+/** Результат POST /api/upscale/models/sync — что изменилось после обновления. */
+export interface UpManifestSync {
+  ok: boolean;
+  url: string;
+  count: number;
+  added: string[];
+  removed: string[];
+  changed: string[];
+  updatedAt: string;
+  manifest: UpManifestInfo;
+}
+
+/** Ответ POST /api/upscale/probe (тип медиа определяется по расширению). */
+export interface UpProbe {
+  kind: "photo" | "video";
+  width: number;
+  height: number;
+  fps: number;
+  /** Точная частота дробью (если ffprobe её дал) — для оценки и интерполяции. */
+  fpsNum?: number;
+  fpsDen?: number;
+  duration: number;
+  hasAudio: boolean;
+  hasSubs: boolean;
+  codec: string;
+  size: number;
+}
+
+/** Ответ POST /api/upscale/estimate: что получится и сколько это займёт. */
+export interface UpEstimate {
+  kind: "photo" | "video";
+  outWidth: number;
+  outHeight: number;
+  /** Кадров исходника (с учётом лимита) и кадров результата. */
+  inFrames: number;
+  outFrames: number;
+  fpsOut: number;
+  durationSec: number;
+  slowMotion: number;
+  totalMegapixels: number;
+  /** Ожидаемое время в секундах; null — на этой машине ещё не считали заданий. */
+  etaSec: number | null;
+  /** Предупреждения (ключи i18n up.est_*): нет модели/рантайма, слишком долго и т.п. */
+  warnings: string[];
+}
+
+/** Ответ GET /api/upscale/presets. */
+export interface UpPresets {
+  system: UpPreset[];
+  custom: UpPreset[];
+  defaults: Record<string, unknown>;
+}

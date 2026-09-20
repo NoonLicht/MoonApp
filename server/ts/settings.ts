@@ -229,6 +229,29 @@ const DEFAULTS: SettingsTree = {
     customPresets: "", // пользовательские пресеты (JSON-строка массива)
   },
 
+  // --- Апскейл медиа (ONNX-модели, см. server/upscale.js) ---
+  upscaler: {
+    model: "realesr-general-x4v3", // id модели из server/models.manifest.json
+    model2: "", // вторая модель для смешивания результатов (пусто = выключено)
+    blendAmount: 0, // 0–100: вес второй модели в смешивании
+    scale: 4, // 2 | 3 | 4 — множитель модели
+    targetW: 0, // 0 = без приведения к целевому размеру
+    targetH: 0,
+    tile: 0, // 0 = без тайлинга; иначе размер тайла в px (256/512 — экономия VRAM)
+    overlap: 16, // перекрытие тайлов для склейки без швов
+    threads: 0, // 0 = авто (по числу ядер CPU)
+    provider: "auto", // auto | cpu | cuda | dml
+    format: "png", // png | jpeg | webp | avif
+    quality: 92, // качество для jpeg/webp/avif
+    sharpen: 0, // 0–100: unsharp-маска после апскейла
+    denoise: 0, // 0–100: лёгкое подавление шума до апскейла
+    vcodec: "x264", // x264 | x265 | av1 — кодек результата видео
+    vcrf: 20, // качество видео (CRF)
+    audioAction: "copy", // copy | aac — что делать со звуковой дорожкой
+    cleanupTemp: true, // чистить выгруженные кадры после сборки
+    customPresets: "", // пользовательские пресеты (JSON-строка массива)
+  },
+
   // --- Web Archive / .sitebak ---
   sitebak: {
     maxConcurrent: 3, // параллельных вкладок/браузеров Playwright
@@ -265,7 +288,9 @@ const DEFAULTS: SettingsTree = {
     gpu: "auto", // auto — считать на NVIDIA (CUDA-сборка), off — всегда CPU
     deviceId: 0, // номер GPU для -dev (0 — первая видеокарта)
     language: "ru", // язык лекции для Whisper
-    threads: 4, // потоки CPU-фолбэка (OpenBLAS/AVX2)
+    // 0 = все логические потоки CPU (см. resolveThreads в whisperEngine.ts),
+    // положительное число — предел, заданный пользователем.
+    threads: 0,
     initialPrompt:
       "Лекция по высшей математике, интегралы, дифференциалы, матрица, вектор, асимптота, теорема, производная, предел, множество",
     vadSilenceMs: 700, // пауза для закрытия чанка (400..1200)

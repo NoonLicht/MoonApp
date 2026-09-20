@@ -878,6 +878,33 @@ function detectSystem(): SystemInfo {
 }
 
 /**
+ * Логические потоки процессора (минимум 1).
+ *
+ * `os.cpus().length` — то же число, что видит задача распознавания, поэтому именно
+ * его показываем в настройках как «всего потоков».
+ */
+export function cpuThreadCount(): number {
+  try {
+    return Math.max(1, (os.cpus() || []).length);
+  } catch {
+    return 1;
+  }
+}
+
+/**
+ * Сколько потоков отдать движку.
+ *
+ * 0 (значение по умолчанию) — **все** логические потоки процессора: раньше ноль
+ * незаметно превращался в 4, и «авто» оказывалось медленнее ручного значения.
+ * Положительное число — как задал пользователь.
+ */
+export function resolveThreads(value: unknown): number {
+  const v = Math.round(Number(value) || 0);
+  if (v > 0) return Math.min(v, 256);
+  return cpuThreadCount();
+}
+
+/**
  * Сколько памяти нужно модели, ЧТОБЫ БЫЛО КОМФОРТНО: вес файла + рабочий буфер
  * (KV-кэш, буферы слоёв) + запас на операционную систему и само приложение
  * (Electron сам занимает около гигабайта, а на видеокарте рабочий стол держит
@@ -1022,7 +1049,8 @@ function engineSummary(): EngineSummary {
     gpu: gpuDisabled() ? "off" : "auto",
     deviceId: Number(cfg().deviceId) || 0,
     language: cfg().language,
-    threads: Number(cfg().threads) || 4,
+    // Показываем фактическое число потоков: 0 в настройках означает «все».
+    threads: resolveThreads(cfg().threads),
     activeSession: false, // заполняет lecture.engineStatus (там известно про сессии)
     warnings,
   };
@@ -1104,7 +1132,7 @@ function transcribeArgs(
     // whisper пишет один сегмент с фиктивным временем (00:00:00 → 00:00:30),
     // т.е. тайминги сегментов теряются. Нам нужны валидные SRT-сегменты.
     "-t",
-    String(Math.max(1, Math.min(16, Number(c.threads) || 4))),
+    String(resolveThreads(c.threads)),
   ];
   if (prompt !== null) args.push("--prompt", String(prompt));
   args.push(
