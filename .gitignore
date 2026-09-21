@@ -74,6 +74,7 @@ server/proxy.js
 server/ytdlp.js
 server/compressor.js
 server/upscale.js
+server/upscale/
 server/upscalePipeline.js
 server/ortPack.js
 server/whisperEngine.js

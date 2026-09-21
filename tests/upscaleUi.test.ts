@@ -3,6 +3,7 @@ import fs from "fs";
 import os from "os";
 import path from "path";
 import { createRequire } from "module";
+import { readUpscaleSrc } from "./helpers/readUpscaleSrc";
 
 /**
  * Контракт страницы «Апскейл» в стиле страницы сжатия видео + зависимости
@@ -19,7 +20,8 @@ import { createRequire } from "module";
  */
 const req = createRequire(import.meta.url);
 const root = path.resolve(__dirname, "..");
-const read = (p: string) => fs.readFileSync(path.join(root, p), "utf8");
+const read = (p: string) =>
+  p === "server/ts/upscale.ts" ? readUpscaleSrc(root) : fs.readFileSync(path.join(root, p), "utf8");
 
 const page = read("src/pages/upscale/UpscalePage.tsx");
 const dashboard = read("src/pages/upscale/parts/UpscaleDashboard.tsx");

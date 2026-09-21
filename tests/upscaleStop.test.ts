@@ -5,6 +5,7 @@ import path from "path";
 import { createRequire } from "module";
 import { spawn } from "child_process";
 import type { ChildProcess } from "child_process";
+import { readUpscaleSrc } from "./helpers/readUpscaleSrc";
 
 /**
  * Стоп-кран, пачка и пауза: «Стоп» не должен ломать пачку, процессы должны
@@ -28,8 +29,7 @@ afterEach(() => {
   engine.clearSessions();
 });
 
-const engineSrc = (): string =>
-  fs.readFileSync(path.join(process.cwd(), "server", "ts", "upscale.ts"), "utf8");
+const engineSrc = (): string => readUpscaleSrc(process.cwd());
 
 describe("апскейл: повторная попытка пачки вместо залипания", () => {
   it("batchTries: сначала запрошенный размер, потом вдвое меньше", () => {

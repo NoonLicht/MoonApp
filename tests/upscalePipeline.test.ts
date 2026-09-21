@@ -3,6 +3,7 @@ import fs from "fs";
 import os from "os";
 import path from "path";
 import { createRequire } from "module";
+import { readUpscaleSrc } from "./helpers/readUpscaleSrc";
 
 /**
  * Кадровый план видео-конвейера апскейла без ffmpeg.
@@ -402,10 +403,7 @@ describe("остановка длинной пачки", () => {
   it("остановка видна и внутри ONNX: тайлы проверяют флаг задания", () => {
     // Пачка 16 кадров ×4K тоже считается секунды, поэтому флаг проверяется
     // между тайлами в самих функциях инференса — стоп почти мгновенный.
-    const engine = fs.readFileSync(
-      path.join(__dirname, "..", "server", "ts", "upscale.ts"),
-      "utf8",
-    );
+    const engine = readUpscaleSrc(path.join(__dirname, ".."));
     expect(/const stopped = \(\) => job\.stage === "stopped";/.test(engine)).toBe(true);
     expect(
       /upscaleRgbBatch\(\{[\s\S]{0,240}?shouldStop: stopped,/.test(engine),

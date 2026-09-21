@@ -3,6 +3,7 @@ import fs from "fs";
 import os from "os";
 import path from "path";
 import { createRequire } from "module";
+import { readUpscaleSrc } from "./helpers/readUpscaleSrc";
 
 /**
  * Правки страницы апскейла по просьбе владельца: зум колесом и полоса сравнения
@@ -14,7 +15,10 @@ import { createRequire } from "module";
  */
 const req = createRequire(import.meta.url);
 const root = path.resolve(__dirname, "..");
-const read = (rel: string): string => fs.readFileSync(path.join(root, rel), "utf8");
+const read = (rel: string): string =>
+  rel === "server/ts/upscale.ts"
+    ? readUpscaleSrc(root)
+    : fs.readFileSync(path.join(root, rel), "utf8");
 const LANG_CODES = ["ru", "en", "es", "fr", "zh", "ar"];
 
 let engine: any;

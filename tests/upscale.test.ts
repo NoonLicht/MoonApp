@@ -4,6 +4,7 @@ import fs from "fs";
 import os from "os";
 import path from "path";
 import { createRequire } from "module";
+import { readUpscaleSrc } from "./helpers/readUpscaleSrc";
 
 /**
  * Контракт страницы «Апскейл медиа» без реального инференса.
@@ -77,7 +78,7 @@ describe("апскейл: каталог моделей и правки мани
   it("каталог перечитывается по времени правки (без перезапуска сервера)", () => {
     // Правку манифеста (новые ссылки) должно быть видно сразу после сохранения,
     // а смена источника (скачанный → вшитый) — сама инвалидировать кэш.
-    const src = fs.readFileSync(path.join(root, "server", "ts", "upscale.ts"), "utf8");
+    const src = readUpscaleSrc(root);
     expect(src).toContain("mtimeMs");
     expect(src).toMatch(/manifestCache\?\.key === key/);
     expect(src).toContain("userManifestFile()");

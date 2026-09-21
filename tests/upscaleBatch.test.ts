@@ -3,6 +3,7 @@ import fs from "fs";
 import os from "os";
 import path from "path";
 import { createRequire } from "module";
+import { readUpscaleSrc } from "./helpers/readUpscaleSrc";
 
 /**
  * Пачки апскейла и интерполятора: кто их принимает, сколько кадров копится и как
@@ -251,7 +252,7 @@ describe("пайплайн: двойная буферизация очереди
   });
 
   it("runVideo не копит пачку, когда модель её не принимает", () => {
-    const src: string = fs.readFileSync(path.join(root, "server", "ts", "upscale.ts"), "utf8");
+    const src: string = readUpscaleSrc(root);
     // prettier переносит длинные условия — проверяем по частям.
     expect(src).toContain("const canBatch =");
     expect(src).toContain("modelCanBatch(modelForBatch)");
@@ -263,7 +264,7 @@ describe("пайплайн: двойная буферизация очереди
 
 describe("контракт UI: настройки пачки у моделей без пачки", () => {
   it("движок отдаёт batch в каталоге и не теряет его при sync", () => {
-    const src: string = fs.readFileSync(path.join(root, "server", "ts", "upscale.ts"), "utf8");
+    const src: string = readUpscaleSrc(root);
     expect(src).toMatch(/batch: modelBatchLimit\(m\),/);
     // Поле обязано переживать sync каталога с GitHub.
     expect(src).toMatch(/batch: numOpt\(m\.batch, 1, BATCH_MAX\),/);
@@ -331,7 +332,7 @@ describe("контракт UI: настройки пачки у моделей �
       "utf8",
     );
     expect(page).toMatch(/interpBatch: 0,/);
-    const src: string = fs.readFileSync(path.join(root, "server", "ts", "upscale.ts"), "utf8");
+    const src: string = readUpscaleSrc(root);
     expect(src).toMatch(/interpBatch: batchChoiceOf\(raw\.interpBatch\),/);
     expect(src).toMatch(/tileBatch: job\.interpBatchUsed \|\| 1,/);
   });

@@ -78,6 +78,7 @@ export default tseslint.config(
       "server/ytdlp.js",
       "server/compressor.js",
       "server/upscale.js",
+      "server/upscale/**/*.js",
       "server/upscalePipeline.js",
       "server/whisperEngine.js",
       "server/sitebak.js",
