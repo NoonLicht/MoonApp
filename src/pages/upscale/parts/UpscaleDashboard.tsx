@@ -16,11 +16,13 @@ import type {
   UpGpuInfo,
   UpJob,
   UpModelInfo,
+  UpPackState,
   UpParams,
   UpPreset,
   UpProbe,
 } from "@/api/types";
 import UpscaleProSettings from "@/pages/upscale/parts/UpscaleProSettings";
+import UpscaleModelPicker from "@/pages/upscale/parts/UpscaleModelPicker";
 import { fmtTime } from "@/pages/upscale/parts/formatTime";
 
 /**
@@ -60,6 +62,11 @@ export default function UpscaleDashboard({
   onPause,
   pausing,
   hw,
+  pack,
+  onPackInstall,
+  onPackCancel,
+  onPackRemove,
+  onPackCheck,
 }: {
   file: File | null;
   probe: UpProbe | null;
@@ -96,6 +103,13 @@ export default function UpscaleDashboard({
   pausing?: boolean;
   /** Что умеет сборка ffmpeg: подсказка про видеокарту в Pro-настройках. */
   hw?: UpGpuInfo;
+  /** GPU-пак: статус, прогресс и действия (Pro-настройки показывают строку пака). */
+  pack: UpPackState | null;
+  onPackInstall: (step: string) => void;
+  onPackCancel: () => void;
+  onPackRemove: () => void;
+  /** Тянет индекс сборок из репозитория («Проверить сборки»). */
+  onPackCheck: () => void;
 }) {
   const { t } = useI18n();
   /** Пакетный режим: параметры общие, файлов много. */
@@ -113,18 +127,6 @@ export default function UpscaleDashboard({
   const interpModels = models.filter((m) => m.kind === "interp");
 
   const presetLabel = (p: UpPreset) => (p.id ? t(`up.preset_${p.id}`) : String(p.name || ""));
-  // Первой — «Без апскейла»: тогда кадры идут как есть, а работает только
-  // плавность/перекодирование (полезно на 4K-источнике).
-  const modelOptions = [{ value: "none", label: t("up.modelNone") }].concat(
-    (upModels.length ? upModels : models).map((m) => ({
-      value: m.id,
-      // Пачка — прямо в списке: по ней видно, есть ли смысл в «пачке кадров»
-      // в Pro-настройках (у моделей с batch=1 поля пачки там нет вовсе).
-      label: `${m.label} (×${m.scale})${
-        m.batch === 1 ? ` · ${t("up.batchNone")}` : ""
-      }${m.available ? "" : ` · ${t("up.modelMissing")}`}`,
-    })),
-  );
   /** Выбран режим «без апскейла»: множитель разрешения не имеет смысла. */
   const noUpscale = params.model === "none";
   // Плавность: одно поле вместо трёх — режим и множитель вместе.
@@ -203,10 +205,12 @@ export default function UpscaleDashboard({
       {/* --- Быстрые поля: у фото и видео они разные --- */}
       <div className="up-fields">
         <Field label={t("up.model")}>
-          <Select
+          <UpscaleModelPicker
+            models={upModels}
             value={params.model}
-            onChange={(e) => onParams({ model: e.target.value, presetId: "" })}
-            options={modelOptions}
+            noneLabel={t("up.modelNone")}
+            onPick={(id) => onParams({ model: id, presetId: "" })}
+            onOpenCatalog={onOpenModels}
           />
         </Field>
         {noUpscale ? (
@@ -343,6 +347,11 @@ export default function UpscaleDashboard({
           batchUsed={job?.batchUsed || 0}
           interpBatchUsed={job?.interpBatchUsed || 0}
           batchReason={job?.batchReason || ""}
+          pack={pack}
+          onPackInstall={onPackInstall}
+          onPackCancel={onPackCancel}
+          onPackRemove={onPackRemove}
+          onPackCheck={onPackCheck}
         />
       ) : null}
 

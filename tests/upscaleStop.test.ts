@@ -201,8 +201,11 @@ describe("апскейл: процессы задания гасятся и не
     engine.trackJobProc(jobId, "encode", b);
     expect(engine.aliveJobProcs(jobId)).toBe(2);
     engine.killJobProcs(jobId);
-    expect(await waitClose(a)).toBe(true);
-    expect(await waitClose(b)).toBe(true);
+    // Ждём оба процесса ОДНОВРЕМЕННО: последовательное ожидание сужало окно второму
+    // и на загруженной машине давало ложный отказ (taskkill идёт через очередь).
+    const [closedA, closedB] = await Promise.all([waitClose(a, 10000), waitClose(b, 10000)]);
+    expect(closedA).toBe(true);
+    expect(closedB).toBe(true);
     expect(engine.aliveJobProcs(jobId)).toBe(0);
   });
 

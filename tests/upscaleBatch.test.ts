@@ -283,9 +283,10 @@ describe("контракт UI: настройки пачки у моделей �
     expect(pro).toContain('{canBatchFrames && batchReason !== "unsupported" ? (');
     expect(pro).toContain('t("up.batchSingle")');
     expect(pro).toContain("interpBatch: Number(e.target.value)");
-    // Список моделей помечает «без пачки»/«по тайлу».
+    // Список моделей помечает «без пачки»/«по тайлу». Селектор модели — теперь
+    // своя панель (UpscaleModelPicker): там же и пометка про пачку.
     const dash: string = fs.readFileSync(
-      path.join(root, "src", "pages", "upscale", "parts", "UpscaleDashboard.tsx"),
+      path.join(root, "src", "pages", "upscale", "parts", "UpscaleModelPicker.tsx"),
       "utf8",
     );
     expect(dash).toContain('t("up.batchNone")');

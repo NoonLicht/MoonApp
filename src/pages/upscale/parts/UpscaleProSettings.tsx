@@ -1,9 +1,23 @@
 import React, { useRef, useState } from "react";
 import { Download, Cpu, Gauge, Film, HelpCircle, SlidersHorizontal } from "lucide-react";
-import { Btn, Badge, Select } from "@/components/ui";
+import { Btn, Badge, ProgressBar, Select } from "@/components/ui";
 import { useI18n } from "@/app/i18n";
 import { BATCH_AUTO, BATCH_CHOICES, INTERP_BATCH_CHOICES } from "@/pages/upscale/parts/batchSizes";
-import type { UpGpuInfo, UpModelInfo, UpParams } from "@/api/types";
+import type { UpGpuInfo, UpModelInfo, UpPackState, UpParams } from "@/api/types";
+
+/** «466 МБ» / «1.5 ГБ» — размеры пака и счётчик скачанного. */
+function humanMb(mb: number): string {
+  if (!mb) return "—";
+  return mb >= 1024 ? `${(mb / 1024).toFixed(1)} GB` : `${Math.round(mb)} MB`;
+}
+
+/** Подпись состояния ступени пака: скачивание / распаковка / ошибка. */
+function packStateText(t: (k: string) => string, state: string): string {
+  if (state === "unpack") return t("up.packUnpack");
+  if (state === "error") return t("up.packFailed");
+  if (state === "done") return t("up.packDone");
+  return t("up.packDownload");
+}
 
 /**
  * Подсказка к настройке: всплывает по наведению (или по фокусу) на «?».
@@ -92,6 +106,11 @@ export default function UpscaleProSettings({
   batchUsed = 0,
   interpBatchUsed = 0,
   batchReason = "",
+  pack,
+  onPackInstall,
+  onPackCancel,
+  onPackRemove,
+  onPackCheck,
 }: {
   params: UpParams;
   onParams: (patch: Partial<UpParams>) => void;
@@ -116,6 +135,14 @@ export default function UpscaleProSettings({
    * обещало бы пачку, которой на деле нет.
    */
   batchReason?: string;
+  /** GPU-пак: что установлено, прогресс и список доступных сборок. */
+  pack: UpPackState | null;
+  /** Поставить ступень пака (cuda / tensorrt). */
+  onPackInstall: (step: string) => void;
+  onPackCancel: () => void;
+  onPackRemove: () => void;
+  /** Тянет индекс сборок из репозитория («Проверить сборки»). */
+  onPackCheck: () => void;
 }) {
   const { t } = useI18n();
   const isVideo = kind === "video";
@@ -125,6 +152,16 @@ export default function UpscaleProSettings({
         hw.decode ? `, ${hw.decode}` : ""
       }`
     : "";
+  /** GPU-пакет: с ним доступны CUDA/TensorRT, без него — обычный путь DirectML/CPU. */
+  const packText = hw?.pack?.installed
+    ? t("up.packOn", { v: hw.pack.provider || "CUDA" })
+    : t("up.packOff");
+  /** Ступень пака, которая ставится сейчас (для полосы прогресса). */
+  const packStep = pack?.busy ? pack.states[pack.busy] : null;
+  /** Что можно скачать: список приходит из индекса после «Проверить сборки». */
+  const packSteps = (pack?.index?.steps || []).filter(
+    (s) => !(pack?.installed && (s.id === "cuda" || pack.backends.includes("tensorrt"))),
+  );
 
   const scaleOptions = [
     { value: "2", label: "×2" },
@@ -279,6 +316,42 @@ export default function UpscaleProSettings({
             options={providerOptions}
             style={{ width: "min(150px, 100%)" }}
           />
+        </Row>
+        {/* GPU-пакет: отдельная сборка рантайма с CUDA/TensorRT. Ступени ставятся
+            по одной — первая даёт CUDA, вторая добавляет TensorRT. Без пака всё
+            работает на DirectML/CPU, поэтому состояние показываем честно. */}
+        <Row label={t("up.packTitle")} hint={t("up.packHint")}>
+          <div className="up-pack">
+            <span className="muted-sm up-pro-note">{packText}</span>
+            {pack?.restart ? (
+              <span className="muted-sm up-pro-note">{t("up.packRestart")}</span>
+            ) : null}
+            {pack?.busy ? (
+              <>
+                <ProgressBar value={packStep?.percent || 0} />
+                <span className="muted-sm up-pro-note">
+                  {packStateText(t, packStep?.state || "download")} ·{" "}
+                  {humanMb(packStep?.gotMb || 0)} / {humanMb(packStep?.totalMb || 0)}
+                </span>
+                <Btn onClick={onPackCancel}>{t("up.packCancel")}</Btn>
+              </>
+            ) : (
+              <div className="up-pack-actions">
+                {packSteps.map((s) => (
+                  <Btn key={s.id} onClick={() => onPackInstall(s.id)}>
+                    {t("up.packGet", { title: s.title, mb: humanMb(s.mb) })}
+                  </Btn>
+                ))}
+                <Btn onClick={onPackCheck}>{t("up.packCheck")}</Btn>
+                {pack?.installed ? (
+                  <Btn onClick={onPackRemove}>{t("up.packRemove", { mb: humanMb(pack.mb) })}</Btn>
+                ) : null}
+              </div>
+            )}
+            {/* Ошибку показываем как есть: это код вида pack_sha_mismatch — по нему
+                понятно, что именно пошло не так. */}
+            {pack?.error ? <span className="muted-sm up-pro-note">{pack.error}</span> : null}
+          </div>
         </Row>
         {/* Точность: у ONNX-модели она такая, как её выпустили, а вот TensorRT
             компилирует граф под GPU и умеет FP16 — это и есть «кнопка точности»

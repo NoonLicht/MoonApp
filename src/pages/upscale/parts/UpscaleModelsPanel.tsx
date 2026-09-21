@@ -8,6 +8,7 @@ import {
   Gauge,
   HardDriveDownload,
   RefreshCw,
+  Search,
   Sparkles,
   Trash2,
   X,
@@ -81,7 +82,11 @@ export default function UpscaleModelsPanel({
   onClose,
   trt,
   trtBusy,
+  trtNote,
+  trtProgress,
   onBuildTrt,
+  onBuildTrtAll,
+  onDropOnnx,
 }: {
   models: UpModelInfo[];
   params: UpParams;
@@ -97,7 +102,18 @@ export default function UpscaleModelsPanel({
   trt: UpTrtStatus | null;
   /** Ид модели, для которой сейчас собирается движок TensorRT ("" — ничего). */
   trtBusy: string;
+  /**
+   * Что сказал сервер про последнюю сборку движка: «собран … за 9,6 с» или
+   * «уже был в кэше». Без этого повторный клик выглядел как «ничего не произошло».
+   */
+  trtNote: string;
+  /** «Пересобрать все модели»: сколько движков уже собрано в этой серии (null — не идёт). */
+  trtProgress: { done: number; total: number } | null;
   onBuildTrt: (id: string, tile?: number) => void;
+  /** Собрать движки для всех скачанных апскейлеров (по одному, с прогрессом). */
+  onBuildTrtAll: () => void;
+  /** «Освободить ONNX»: у модели есть движок, файл графа можно убрать с диска. */
+  onDropOnnx: (id: string) => void;
   onDownload: (id: string, force: boolean) => void;
   onRemove: (id: string) => void;
   /**
@@ -123,6 +139,12 @@ export default function UpscaleModelsPanel({
   const { t } = useI18n();
   const [tag, setTag] = useState<string>("");
   const [err, setErr] = useState("");
+  /** Поиск по названию/идентификатору/архитектуре — каталог уже большой. */
+  const [q, setQ] = useState("");
+  /** Фильтр по кратности: 0 — любая. */
+  const [scale, setScale] = useState(0);
+  /** Состояние модели: готовность файла, либо «есть движок TensorRT». */
+  const [state, setState] = useState<"" | "ready" | "missing" | "trt">("");
   /** TensorRT есть в сборке — только тогда показываем кнопку сборки движка. */
   const trtAvailable = !!trt?.available;
 
@@ -161,7 +183,31 @@ export default function UpscaleModelsPanel({
     return c;
   }, [models]);
   const tags = TAG_ORDER.filter((tg) => counts[tg]);
-  const list = tag ? models.filter((m) => m.tags.includes(tag)) : models;
+  /** Кратности в каталоге — по ним и фильтруем (×2/×3/×4 у апскейлеров). */
+  const scales = useMemo(
+    () =>
+      [...new Set(models.filter((m) => m.kind !== "interp").map((m) => m.scale))].sort(
+        (a, b) => a - b,
+      ),
+    [models],
+  );
+  const list = useMemo(() => {
+    const needle = q.trim().toLowerCase();
+    return models.filter((m) => {
+      if (tag && !m.tags.includes(tag)) return false;
+      if (scale && m.scale !== scale) return false;
+      if (state === "ready" && !m.available) return false;
+      if (state === "missing" && m.available) return false;
+      if (state === "trt" && !m.trtEngine) return false;
+      if (!needle) return true;
+      return (
+        m.label.toLowerCase().includes(needle) ||
+        m.id.toLowerCase().includes(needle) ||
+        m.arch.toLowerCase().includes(needle) ||
+        String(m.scale) === needle
+      );
+    });
+  }, [models, tag, scale, state, q]);
   const downloaded = models.filter((m) => m.available).length;
   const totalMb = models.filter((m) => m.available).reduce((s, m) => s + m.sizeMb, 0);
   /** Активна ли модель в текущих параметрах (для бейджа «выбрана»). */
@@ -224,6 +270,21 @@ export default function UpscaleModelsPanel({
             >
               {syncing ? t("up.mdlSyncing") : t("up.mdlSync")}
             </Btn>
+            {trtAvailable ? (
+              <Btn
+                icon={Zap}
+                disabled={bulking || !!trtBusy || !!trtProgress}
+                onClick={() => {
+                  setErr("");
+                  onBuildTrtAll();
+                }}
+                title={t("up.mdlTrtAllHint")}
+              >
+                {trtProgress
+                  ? t("up.mdlBulkDone", { done: trtProgress.done, total: trtProgress.total })
+                  : t("up.mdlTrtAll")}
+              </Btn>
+            ) : null}
             <Btn icon={HardDriveDownload} onClick={onOpenDir} title={t("up.mdlFolder")}>
               {t("up.mdlFolder")}
             </Btn>
@@ -276,6 +337,7 @@ export default function UpscaleModelsPanel({
             {trtAvailable
               ? `${t("up.mdlTrtDone")} · ${trt?.engines.length ?? 0}`
               : t("up.mdlTrtMissing")}
+            {trtNote ? <span className="up-mdl-trt-note"> · {trtNote}</span> : null}
           </div>
         ) : null}
         {err ? (
@@ -286,9 +348,55 @@ export default function UpscaleModelsPanel({
         ) : null}
 
         <div className="up-mdl-tags">
+          <span className="up-pick-search up-mdl-search">
+            <Search size={13} />
+            <input
+              className="text-input"
+              value={q}
+              placeholder={t("up.pickSearch")}
+              onChange={(e) => setQ(e.target.value)}
+            />
+          </span>
           <Badge tone={tag ? "neutral" : "violet"} active={!tag} onClick={() => setTag("")}>
             {t("up.mdlAll")}
           </Badge>
+          <span className="up-pick-sep" />
+          <Badge tone="neutral" active={scale === 0} onClick={() => setScale(0)}>
+            {t("up.mdlAnyScale")}
+          </Badge>
+          {scales.map((s) => (
+            <Badge
+              key={s}
+              tone="teal"
+              active={scale === s}
+              onClick={() => setScale(scale === s ? 0 : s)}
+            >
+              ×{s}
+            </Badge>
+          ))}
+          <span className="up-pick-sep" />
+          <Badge
+            tone="amber"
+            active={state === "ready"}
+            onClick={() => setState(state === "ready" ? "" : "ready")}
+          >
+            {t("up.mdlStateReady")}
+          </Badge>
+          <Badge
+            tone="neutral"
+            active={state === "missing"}
+            onClick={() => setState(state === "missing" ? "" : "missing")}
+          >
+            {t("up.mdlStateMissing")}
+          </Badge>
+          <Badge
+            tone="violet"
+            active={state === "trt"}
+            onClick={() => setState(state === "trt" ? "" : "trt")}
+          >
+            <Zap size={11} /> {t("up.mdlStateTrt")}
+          </Badge>
+          <span className="up-pick-sep" />
           {tags.map((tg) => (
             <Badge
               key={tg}
@@ -300,7 +408,7 @@ export default function UpscaleModelsPanel({
             </Badge>
           ))}
           <span className="muted-sm up-mdl-dir" title={dir}>
-            {dir}
+            {t("up.pickFound", { n: list.length, total: models.length })} · {dir}
           </span>
         </div>
 
@@ -317,6 +425,15 @@ export default function UpscaleModelsPanel({
                       {m.kind === "interp" ? `${t("up.kindInterp")} ×${m.mult}` : `×${m.scale}`}
                     </Badge>
                     {inUse(m) ? <Badge tone="amber">{t("up.mdlInUse")}</Badge> : null}
+                    {/* Тензорная версия — цветной значок: движок собран, модель
+                        считается «переведённой в TensorRT» (ONNX можно убрать). */}
+                    {m.trtEngine ? (
+                      <span title={`${t("up.mdlTrtHas")} · ${m.trtEngine}`}>
+                        <Badge tone="violet">
+                          <Zap size={11} /> {t("up.mdlTrtBadge")}
+                        </Badge>
+                      </span>
+                    ) : null}
                     {/* Провайдер модели: часть графов (Anime4K) не идёт на DirectML —
                         каталог рекомендует CPU, движок ставит его первым. */}
                     {m.provider ? (
@@ -346,7 +463,9 @@ export default function UpscaleModelsPanel({
                         </Badge>
                       </span>
                     ) : null}
-                    {m.available ? (
+                    {m.trtEngine && !m.onnxOnDisk ? (
+                      <Badge tone="teal">{t("up.mdlOnnxDropped")}</Badge>
+                    ) : m.available ? (
                       <Badge tone="teal">{t("up.modelReady")}</Badge>
                     ) : m.url ? (
                       <Badge tone="neutral">{t("up.mdlNotDownloaded")}</Badge>
@@ -431,17 +550,33 @@ export default function UpscaleModelsPanel({
                           {t("up.mdlRedownload")}
                         </Btn>
                       ) : null}
-                      {trtAvailable && m.kind === "upscale" ? (
+                      {trtAvailable && m.kind === "upscale" && !m.trtEngine ? (
                         <Btn
                           icon={Zap}
-                          disabled={!!busy || !!bulking || !!trtBusy}
+                          disabled={!!busy || !!bulking || !!trtBusy || !!trtProgress}
                           onClick={() => {
                             setErr("");
                             onBuildTrt(m.id, m.rec.tile);
                           }}
                           title={t("up.mdlTrtHint")}
                         >
-                          {trtBusy ? t("up.mdlTrtBusy") : t("up.mdlTrtBuild")}
+                          {trtBusy === m.id ? t("up.mdlTrtBusy") : t("up.mdlTrtBuild")}
+                        </Btn>
+                      ) : null}
+                      {/* Тензорная версия: движок собран, отдельная кнопка «пересобрать»
+                          больше не нужна (её место — общая «Пересобрать все модели»),
+                          зато видно, что ONNX можно не держать на диске. */}
+                      {m.trtEngine && m.onnxOnDisk ? (
+                        <Btn
+                          icon={HardDriveDownload}
+                          disabled={isBusy}
+                          onClick={() => {
+                            setErr("");
+                            onDropOnnx(m.id);
+                          }}
+                          title={`${t("up.mdlOnnxDropHint")} · ${m.trtEngine}`}
+                        >
+                          {t("up.mdlOnnxDrop")}
                         </Btn>
                       ) : null}
                       <Btn

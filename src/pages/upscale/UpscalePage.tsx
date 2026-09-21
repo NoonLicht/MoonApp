@@ -24,6 +24,7 @@ import type {
   UpJob,
   UpModelInfo,
   UpModelsState,
+  UpPackState,
   UpParams,
   UpPreset,
   UpProbe,
@@ -122,7 +123,13 @@ export default function UpscalePage() {
   const [modelBusy, setModelBusy] = useState("");
   /** Сборка движка TensorRT для модели (может идти минутами). */
   const [trtBusy, setTrtBusy] = useState("");
+  /** Ответ сервера на последнюю сборку движка: «собран» / «уже был в кэше». */
+  const [trtNote, setTrtNote] = useState("");
+  /** «Пересобрать все модели»: прогресс серии сборок (null — серия не идёт). */
+  const [trtProgress, setTrtProgress] = useState<{ done: number; total: number } | null>(null);
   const [modelsState, setModelsState] = useState<UpModelsState | null>(null);
+  /** GPU-пак: что установлено, прогресс установки и (по запросу) индекс сборок. */
+  const [pack, setPack] = useState<UpPackState | null>(null);
   /** Идёт обновление каталога моделей из GitHub (кнопка в панели моделей). */
   const [manifestBusy, setManifestBusy] = useState(false);
   const [modelsOpen, setModelsOpen] = useState(false);
@@ -184,6 +191,28 @@ export default function UpscalePage() {
   useEffect(() => {
     void loadModels();
   }, [loadModels]);
+
+  /**
+   * GPU-пак: без индекса это просто «что установлено», с индексом — ещё и список
+   * доступных сборок. В сеть без просьбы пользователя не ходим: индекс тянется
+   * кнопкой «Проверить сборки».
+   */
+  const loadPack = useCallback(async (withIndex = false) => {
+    try {
+      setPack(await api.upscalePack({ index: withIndex }));
+    } catch {
+      setPack(null);
+    }
+  }, []);
+  useEffect(() => {
+    void loadPack();
+  }, [loadPack]);
+  // Пока ступень ставится (скачивание + распаковка) — опрашиваем прогресс.
+  useEffect(() => {
+    if (!pack?.busy) return undefined;
+    const timer = window.setInterval(() => void loadPack(), 1200);
+    return () => window.clearInterval(timer);
+  }, [pack?.busy, loadPack]);
   const downloading = useMemo(
     () => (modelsState?.models || []).some((m) => m.downloading),
     [modelsState],
@@ -661,8 +690,16 @@ export default function UpscalePage() {
   const buildTrt = async (id: string, tile?: number) => {
     setTrtBusy(id);
     try {
-      await api.upscaleBuildTrt(id, tile);
+      const r = await api.upscaleBuildTrt(id, tile);
       setDefect("");
+      // Сервер различает «собрал движок» и «движок уже был в кэше»: без этой
+      // строки повторный клик выглядел как «ничего не произошло».
+      const sec = (r.ms / 1000).toFixed(1);
+      setTrtNote(
+        r.reused
+          ? t("up.mdlTrtReused", { sec, file: r.engine || "—" })
+          : t("up.mdlTrtBuilt", { sec, file: r.engine || "—", size: String(r.engineMb) }),
+      );
       await Promise.all([
         loadModels(),
         api
@@ -670,6 +707,61 @@ export default function UpscalePage() {
           .then(setHw)
           .catch(() => {}),
       ]);
+    } catch (e) {
+      setDefect(String((e as Error).message || e));
+    } finally {
+      setTrtBusy("");
+    }
+  };
+
+  const buildTrtAll = async () => {
+    const targets = (modelsState?.models || []).filter((m) => m.kind !== "interp" && m.available);
+    if (!targets.length) return;
+    setTrtProgress({ done: 0, total: targets.length });
+    let built = 0;
+    let freed = 0;
+    try {
+      for (let i = 0; i < targets.length; i++) {
+        const m = targets[i];
+        setTrtBusy(m.id);
+        try {
+          const r = await api.upscaleBuildTrt(m.id, m.rec.tile);
+          if (!r.reused) built++;
+          freed += r.onnxFreedMb || 0;
+        } catch (e) {
+          // Одна модель не собралась — серию не бросаем, покажем причину в конце.
+          setDefect(`${m.label}: ${String((e as Error).message || e)}`);
+        }
+        setTrtProgress({ done: i + 1, total: targets.length });
+      }
+      setTrtNote(
+        t("up.mdlTrtAllDone", {
+          total: targets.length,
+          built,
+          mb: freed,
+        }),
+      );
+      await Promise.all([
+        loadModels(),
+        api
+          .upscaleHardware()
+          .then(setHw)
+          .catch(() => {}),
+      ]);
+    } finally {
+      setTrtBusy("");
+      setTrtProgress(null);
+    }
+  };
+
+  /** «Освободить ONNX»: движок на месте, файл графа убираем (докачается сам). */
+  const dropOnnx = async (id: string) => {
+    setTrtBusy(id);
+    try {
+      const r = await api.upscaleDropOnnx(id);
+      setDefect("");
+      setTrtNote(t("up.mdlOnnxDroppedNote", { mb: r.freedMb }));
+      if (r.models) setModelsState((prev) => (prev ? { ...prev, models: r.models } : prev));
     } catch (e) {
       setDefect(String((e as Error).message || e));
     } finally {
@@ -692,6 +784,41 @@ export default function UpscalePage() {
       setDefect(String((e as Error).message || e));
     } finally {
       setModelBusy("");
+    }
+  };
+
+  /**
+   * GPU-пак: поставить ступень (cuda или tensorrt). Загрузка идёт на сервере в
+   * фоне (архив до 1,5 ГБ), поэтому здесь только запуск и перечитывание статуса —
+   * прогресс приходит опросом, пока `busy` не опустеет.
+   */
+  const packInstall = async (step: string, src: { file?: string; url?: string } = {}) => {
+    setDefect("");
+    try {
+      await api.upscalePackInstall(step, src);
+      await loadPack();
+    } catch (e) {
+      setDefect(String((e as Error).message || e));
+    }
+  };
+
+  /** Отмена установки: недокачанный архив убирает загрузчик. */
+  const packCancel = async () => {
+    try {
+      await api.upscalePackCancel();
+      await loadPack();
+    } catch (e) {
+      setDefect(String((e as Error).message || e));
+    }
+  };
+
+  /** Удалить пак с диска: диск освобождается, рантайм вернётся к DirectML/CPU. */
+  const packRemove = async () => {
+    try {
+      await api.upscalePackRemove();
+      await Promise.all([loadPack(), loadHardware()]);
+    } catch (e) {
+      setDefect(String((e as Error).message || e));
     }
   };
 
@@ -1054,7 +1181,16 @@ export default function UpscalePage() {
               stopping={stopping}
               onPause={(next) => void togglePause(next)}
               pausing={pausing}
-              hw={hw?.gpu ? { ...hw.gpu, providers: hw.providers, trt: hw.trt } : undefined}
+              pack={pack}
+              onPackInstall={(step) => void packInstall(step)}
+              onPackCancel={() => void packCancel()}
+              onPackRemove={() => void packRemove()}
+              onPackCheck={() => void loadPack(true)}
+              hw={
+                hw?.gpu
+                  ? { ...hw.gpu, providers: hw.providers, trt: hw.trt, pack: hw.pack }
+                  : undefined
+              }
             />
           </Glass>
         </div>
@@ -1073,7 +1209,11 @@ export default function UpscalePage() {
           manifest={modelsState?.manifest}
           trt={modelsState?.trt || hw?.trt || null}
           trtBusy={trtBusy}
+          trtNote={trtNote}
+          trtProgress={trtProgress}
           onBuildTrt={(id, tile) => void buildTrt(id, tile)}
+          onBuildTrtAll={() => void buildTrtAll()}
+          onDropOnnx={(id) => void dropOnnx(id)}
           syncing={manifestBusy}
           bulk={bulkModels}
           onSync={syncModels}

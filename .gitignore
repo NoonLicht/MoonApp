@@ -75,6 +75,7 @@ server/ytdlp.js
 server/compressor.js
 server/upscale.js
 server/upscalePipeline.js
+server/ortPack.js
 server/whisperEngine.js
 server/sitebak.js
 server/tts.js
@@ -113,3 +114,6 @@ server/vendor/convertx/
 # yt-dlp.exe / sing-box.exe в репозиторий НЕ коммитим (крупные): их скачивает
 # `npm run fetch:engines` при сборке инсталлятора (в т.ч. в CI).
 # См. scripts/fetch-engines.js.
+
+# ---------- Локальные SDK для сборки GPU-паков (несколько ГБ, не коммитим) ----------
+TensorRT-*/

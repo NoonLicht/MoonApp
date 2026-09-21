@@ -83,7 +83,10 @@ import type {
   UpHardware,
   UpJob,
   UpModelsState,
+  UpModelInfo,
   UpManifestSync,
+  UpPackState,
+  UpTrtBuild,
   UpTrtStatus,
   UpPreset,
   UpPresets,
@@ -918,13 +921,49 @@ export const api = {
    * граф под GPU и кладёт .engine в кэш. Для AMD/Intel/CPU не нужен — там
    * работает обычный ONNX-путь.
    */
+  /**
+   * Сколько заняла сборка (мс). При повторном клике это уже не сборка, а загрузка
+   * готового движка из кэша — отсюда флаг `reused`.
+   */
   upscaleBuildTrt: (id: string, tile?: number) =>
-    req<{
-      ok: boolean;
-      ms: number;
-      engines: { file: string; sizeMb: number }[];
-      trt?: UpTrtStatus;
-    }>("POST", `/upscale/models/${encodeURIComponent(id)}/trt`, { tile: tile || 0 }),
+    req<UpTrtBuild & { trt?: UpTrtStatus }>(
+      "POST",
+      `/upscale/models/${encodeURIComponent(id)}/trt`,
+      {
+        tile: tile || 0,
+      },
+    ),
+  /** «Освободить ONNX»: движок есть, файл модели убираем с диска (докачается сам). */
+  upscaleDropOnnx: (id: string) =>
+    req<{ ok: boolean; freedMb: number; models: UpModelInfo[] }>(
+      "POST",
+      `/upscale/models/${encodeURIComponent(id)}/onnx/delete`,
+    ),
+  /**
+   * GPU-пак (CUDA/TensorRT): статус, прогресс установки и — по требованию — индекс
+   * доступных архивов. Ставится ступенями: первая даёт CUDA, вторая — TensorRT.
+   */
+  upscalePack: (o: { index?: boolean; url?: string } = {}) => {
+    const q = new URLSearchParams();
+    if (o.index) q.set("index", "1");
+    if (o.url) q.set("url", o.url);
+    const qs = q.toString();
+    return req<UpPackState>("GET", `/upscale/gpu-pack${qs ? `?${qs}` : ""}`);
+  },
+  /** Поставить ступень пака: загрузка идёт в фоне, прогресс — через upscalePack. */
+  upscalePackInstall: (step: string, o: { url?: string; file?: string; sha256?: string } = {}) =>
+    req<{ started: boolean; step: string; file: string; mb: number }>(
+      "POST",
+      "/upscale/gpu-pack/install",
+      {
+        step,
+        ...o,
+      },
+    ),
+  /** Отменить установку: недокачанный архив убирается автоматически. */
+  upscalePackCancel: () => req<{ ok: boolean }>("POST", "/upscale/gpu-pack/cancel"),
+  /** Удалить пак (рантайм вернётся к DirectML/CPU); занятые файлы отпустит перезапуск. */
+  upscalePackRemove: () => req<{ ok: boolean; mb: number }>("DELETE", "/upscale/gpu-pack"),
   upscalePresets: () => req<UpPresets>("GET", "/upscale/presets"),
   upscaleSavePreset: (p: { name: string } & Record<string, unknown>) =>
     req<{ ok: boolean; custom: UpPreset[] }>("POST", "/upscale/presets", p),

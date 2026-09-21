@@ -21,6 +21,17 @@ beforeAll(() => {
 
 const manifest = (): any => JSON.parse(fs.readFileSync("server/models.manifest.json", "utf8"));
 
+/**
+ * Рантайм с заданным набором провайдеров: тесты не должны зависеть от того,
+ * установлен ли на машине GPU-пак (иначе список провайдеров фильтруется по-разному).
+ */
+const fakeRuntime = (names: string[]): any => ({
+  Tensor: class {},
+  InferenceSession: { create: async () => ({}) },
+  env: { versions: { common: "test" } },
+  listSupportedBackends: () => names.map((name) => ({ name })),
+});
+
 describe("выравнивание входа модели (align)", () => {
   it("alignUp округляет вверх до кратного, modelAlign чистит мусор", () => {
     expect(engine.alignUp(91, 2)).toBe(92);
@@ -82,18 +93,169 @@ describe("выравнивание входа модели (align)", () => {
   });
 });
 
+describe("фиксированный профиль TensorRT", () => {
+  /** Сессия-заглушка: запоминает размеры входа, отдаёт увеличенную в scale плоскость. */
+  const fakeSession = (calls: number[][], scale: number, provider: string) => ({
+    inputNames: ["input"],
+    outputNames: ["output"],
+    async run(feeds: Record<string, { dims: readonly number[] }>) {
+      const t = feeds.input;
+      calls.push([...t.dims]);
+      const data = new Float32Array(scale * scale * t.dims[2] * t.dims[3] * 3).fill(0.5);
+      return {
+        output: { dims: [1, 3, t.dims[2] * scale, t.dims[3] * scale], data, dispose() {} },
+      };
+    },
+    provider,
+  });
+
+  it("опции провайдера TensorRT названы так, как ждёт ORT", () => {
+    const o = engine.trtOptions({ id: "m", tile: 512 }, 0, "C:/tmp/trt", 4);
+    const ep = o.executionProviders[0];
+    expect(ep.name).toBe("tensorrt");
+    // Имена ключей — контракт с ORT: опечатка рушит сессию целиком
+    // («Unknown provider option»). Именно так и было с trt_opt_profile_shapes.
+    for (const k of [
+      "trt_fp16_enable",
+      "trt_engine_cache_enable",
+      "trt_engine_cache_path",
+      "trt_timing_cache_enable",
+      "trt_timing_cache_path",
+      "trt_builder_optimization_level",
+      "trt_max_workspace_size",
+      "trt_profile_min_shapes",
+      "trt_profile_opt_shapes",
+      "trt_profile_max_shapes",
+    ]) {
+      expect(ep[k], k).toBeDefined();
+    }
+    expect(ep["trt_opt_profile_shapes"]).toBeUndefined();
+    // Профиль: тайл фиксирован (512 от модели), пачка — от 1 до 4.
+    expect(ep.trt_profile_min_shapes).toBe("input:1x3x512x512");
+    expect(ep.trt_profile_opt_shapes).toBe("input:4x3x512x512");
+    expect(ep.trt_profile_max_shapes).toBe("input:4x3x512x512");
+    // В опциях сессии этих ключей быть не должно: там их никто не читает.
+    expect(o.trt_fp16_enable).toBeUndefined();
+  });
+
+  it("модель без движка не отдаёт ONNX: ручное удаление запрещено", () => {
+    // «Освободить ONNX» имеет смысл только когда движок собран: иначе модель
+    // станет недоступной (ORT читает граф при создании сессии).
+    const anyModel = engine.listModels().find((m) => m.kind === "upscale");
+    expect(anyModel).toBeTruthy();
+    const reg = engine.trtRegistry();
+    const hasEngine =
+      !!reg[`${anyModel!.id}|${engine.trtProfileSize({ id: anyModel!.id, tile: 512 }, 512)}`];
+    if (!hasEngine) {
+      expect(() => engine.removeOnnx(anyModel!.id)).toThrow(/trt_engine_missing/);
+    } else {
+      // Движок есть — удаление разрешено, но проверяем только контракт (файл
+      // в тестах трогать нельзя: он нужен остальным прогонам).
+      expect(typeof engine.removeOnnx).toBe("function");
+    }
+    // Каталог сообщает, лежит ли граф на диске: панель по этому полю показывает
+    // «ONNX убран · движок на месте» вместо «не скачана».
+    expect(typeof anyModel!.onnxOnDisk).toBe("boolean");
+  });
+
+  it("реестр движков связывает модель с файлом и помнит профиль", () => {
+    const reg = engine.trtRegistry();
+    expect(typeof reg).toBe("object");
+    // Ключ — «модель|профиль», значение — «512/<модель>/…engine»: из имени файла
+    // движка (хеш графа) ни модель, ни размер тайла не вычитать.
+    for (const [key, file] of Object.entries(reg)) {
+      expect(key).toContain("|");
+      expect(String(file)).toMatch(/^\d+\/[^/]+\/.+/);
+    }
+    expect(typeof engine.trtEngineFor("realesr-compact-x4")).toBe("string");
+    // Собранные движки лежат в подпапках профиля и модели: общая папка ломала TRT
+    // при смене тайла и привязывала к модели чужой движок.
+    for (const e of engine.trtEngines()) expect(e.file).toMatch(/^\d+\/[^/]+\/.+/);
+  });
+
+  it("размер профиля берётся от тайла, но не меньше 64; пачка ограничена сверху", () => {
+    expect(engine.trtProfileSize({ id: "m", tile: 512 }, 0)).toBe(512);
+    expect(engine.trtProfileSize({ id: "m" }, 256)).toBe(256);
+    // Слишком мелкий тайл TRT не любит: движок собираем от 64.
+    expect(engine.trtProfileSize({ id: "m" }, 16)).toBe(64);
+    expect(engine.TRT_BATCH_MAX).toBe(8);
+  });
+
+  it("с TensorRT тайлы добиваются до профиля, а в результат идёт реальный кадр", async () => {
+    const calls: number[][] = [];
+    const scale = 2;
+    const session = fakeSession(calls, scale, "tensorrt");
+    const ort = {
+      Tensor: class {
+        constructor(
+          public type: string,
+          public data: Float32Array,
+          public dims: number[],
+        ) {}
+      },
+      InferenceSession: { create: async () => session },
+    };
+    const w = 91;
+    const h = 63;
+    const out = await engine.upscaleRgb({
+      src: Buffer.alloc(w * h * 3, 120),
+      w,
+      h,
+      p: { model: "trt-tile", tile: 0, overlap: 0, threads: 0, provider: "tensorrt" },
+      deps: {
+        ort,
+        ready: { session, provider: "tensorrt", bgr: false, scale },
+        // Профиль считается от тайла модели: 64 — значит, каждый тайл уйдёт 64×64.
+        model: { id: "trt-tile", file: "x.onnx", scale, tile: 64, align: 2 },
+      },
+    });
+    // Кадр шире тайла → тайлов несколько, и все одного размера (никаких «не тех» форм).
+    expect(calls.length).toBeGreaterThan(1);
+    for (const c of calls) expect(c).toEqual([1, 3, 64, 64]);
+    // А на выходе — ровно ×2 от исходного кадра, без «запаса» от добивки.
+    expect([out.width, out.height]).toEqual([w * scale, h * scale]);
+  });
+});
+
 describe("провайдер модели", () => {
   it("рекомендация каталога идёт первой, но явный выбор настроек не отменяется", () => {
-    const m = { id: "anime4k-x3-l", provider: "cpu" };
-    // «auto» — сначала рекомендация модели (DML его роняет).
-    expect(engine.providerOrder("auto", m)[0]).toBe("cpu");
-    expect(engine.providerOrder("dml", m)).toEqual(["cpu", "dml"]);
-    // Явный CPU остаётся единственным: других попыток не делаем.
-    expect(engine.providerOrder("cpu", m)).toEqual(["cpu"]);
-    // Модель без рекомендации — обычный список.
-    expect(engine.providerOrder("auto", { id: "m" })).toEqual(["cuda", "dml", "cpu"]);
-    // TensorRT идёт со своими падениями на CUDA/CPU.
-    expect(engine.providerOrder("tensorrt", { id: "m" })).toEqual(["tensorrt", "cuda", "cpu"]);
+    // Провайдеры как в обычной сборке: без подмены результат зависел бы от
+    // установленного на машине GPU-пака.
+    engine.setOrtForTests(fakeRuntime(["cpu", "dml", "cuda", "tensorrt"]));
+    try {
+      const m = { id: "anime4k-x3-l", provider: "cpu" };
+      // «auto» — сначала рекомендация модели (DML его роняет).
+      expect(engine.providerOrder("auto", m)[0]).toBe("cpu");
+      expect(engine.providerOrder("dml", m)).toEqual(["cpu", "dml"]);
+      // Явный CPU остаётся единственным: других попыток не делаем.
+      expect(engine.providerOrder("cpu", m)).toEqual(["cpu"]);
+      // Модель без рекомендации — обычный список.
+      expect(engine.providerOrder("auto", { id: "m" })).toEqual(["cuda", "dml", "cpu"]);
+      // TensorRT идёт со своими падениями на CUDA/CPU.
+      expect(engine.providerOrder("tensorrt", { id: "m" })).toEqual(["tensorrt", "cuda", "cpu"]);
+    } finally {
+      engine.setOrtForTests(null);
+    }
+  });
+
+  it("в список провайдеров не попадает то, чего нет в рантайме", () => {
+    // Стоковый npm-модуль: cuda/tensorrt не пробуем — они сразу упали бы.
+    engine.setOrtForTests(fakeRuntime(["cpu", "dml", "webgpu"]));
+    try {
+      expect(engine.providerOrder("auto", { id: "m" })).toEqual(["dml", "cpu"]);
+      expect(engine.providerOrder("cuda", { id: "m" })).toEqual(["cpu"]);
+    } finally {
+      engine.setOrtForTests(null);
+    }
+    // GPU-пак: есть CUDA/TensorRT, но нет DirectML — лишнего в списке нет.
+    engine.setOrtForTests(fakeRuntime(["cpu", "cuda", "tensorrt"]));
+    try {
+      expect(engine.providerOrder("auto", { id: "m" })).toEqual(["cuda", "cpu"]);
+      expect(engine.providerOrder("dml", { id: "m" })).toEqual(["cpu"]);
+      expect(engine.providerOrder("tensorrt", { id: "m" })).toEqual(["tensorrt", "cuda", "cpu"]);
+    } finally {
+      engine.setOrtForTests(null);
+    }
   });
 
   it("tensorType понимает и массив метаданных, и словарь", () => {
@@ -206,6 +368,36 @@ describe("каталог: новые модели, пресеты, TensorRT", ()
     } finally {
       fs.rmSync(userManifest, { force: true });
       fs.rmSync(path.join(dir, "trt-probe.onnx"), { force: true });
+    }
+  });
+});
+
+describe("GPU-пак (CUDA/TensorRT)", () => {
+  it("в чистом storage пака нет — движок работает на стоковом модуле", () => {
+    const st = engine.packStatus();
+    expect(st.installed).toBe(false);
+    expect(st.binding).toBe("");
+    // Каталог пака привязан к платформе: сборка под win32-x64 не годится другим.
+    expect(st.dir).toContain(path.join("ort-gpu", `${process.platform}-${process.arch}`));
+  });
+
+  it("пак виден по своему биндингу и pack.json", () => {
+    const storage = process.env.MOONAPP_STORAGE as string;
+    const dir = path.join(storage, "ort-gpu", `${process.platform}-${process.arch}`);
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, "onnxruntime_binding.node"), "заглушка");
+    fs.writeFileSync(
+      path.join(dir, "pack.json"),
+      JSON.stringify({ provider: "cuda+tensorrt", version: "1.30.0" }),
+    );
+    try {
+      const st = engine.packStatus();
+      expect(st.installed).toBe(true);
+      expect(st.binding.endsWith("onnxruntime_binding.node")).toBe(true);
+      expect(st.provider).toBe("cuda+tensorrt");
+      expect(st.version).toBe("1.30.0");
+    } finally {
+      fs.rmSync(path.join(storage, "ort-gpu"), { recursive: true, force: true });
     }
   });
 });

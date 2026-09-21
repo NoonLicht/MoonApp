@@ -136,7 +136,9 @@ describe("апскейл: настройки зависят от типа мед
     // а в Pro-панели осталась короткая сводка со входом в каталог.
     const panel = read("src/pages/upscale/parts/UpscaleModelsPanel.tsx");
     expect(panel).toContain("const TAG_ORDER");
-    expect(panel).toMatch(/models\.filter\(\(m\) => m\.tags\.includes\(tag\)\)/);
+    // Фильтр по категориям теперь один общий (теги + кратность + состояние),
+    // поэтому проверяем именно тег внутри него.
+    expect(panel).toMatch(/if \(tag && !m\.tags\.includes\(tag\)\) return false;/);
     expect(panel).toContain('t("up.mdlOpen")'.replace("mdlOpen", "mdlAll"));
     expect(proSettings).toContain('t("up.mdlOpen")');
     expect(proSettings).toContain("onOpenModels");
@@ -208,18 +210,25 @@ describe("апскейл: новые ручки фазы 3 (пакеты, лим
 
     // Явный RAM-бюджет: так тест не зависит от свободной памяти машины.
     const base = { w: 1920, h: 1080, scale: 4, tile: 256, modelMb: 65, ramBudgetMb: 8192 };
-    // Потолок «Авто» — 64: пачка больше не ускоряет тайловый инференс, но держит кадры.
-    expect(engine.AUTO_BATCH_MAX).toBe(64);
+    // Потолок «Авто» — 8: замеры показали, что пачка 8 быстрее пачки 2 на ~12%,
+    // а больше профиль TensorRT всё равно не примет (TRT_BATCH_MAX) — на CUDA/CPU
+    // ручную пачку по-прежнему можно ставить вплоть до потолка модели.
+    expect(engine.AUTO_BATCH_MAX).toBe(8);
     // Запаса памяти хватает — «Авто» берёт потолок.
-    expect(engine.autoBatchFrames({ ...base, freeMb: 8000 })).toBe(64);
+    expect(engine.autoBatchFrames({ ...base, freeMb: 8000 })).toBe(8);
     // Нет данных о видеокарте (CPU/встроенная графика) — считаем по памяти кадров.
-    expect(engine.autoBatchFrames({ ...base, freeMb: 0 })).toBe(64);
-    // Кадр целиком (тайла нет) и скромная видеопамять — пачка заметно меньше.
-    expect(engine.autoBatchFrames({ ...base, tile: 0, freeMb: 1200 })).toBeLessThan(64);
+    expect(engine.autoBatchFrames({ ...base, freeMb: 0 })).toBe(8);
+    // Кадр целиком (тайла нет) требует много памяти на кадр, но выше потолка не
+    // поднимается: при свободной видеопамяти пачка та же, при тесной — не больше.
+    const roomy = engine.autoBatchFrames({ ...base, tile: 0, freeMb: 8000 });
+    const tight = engine.autoBatchFrames({ ...base, tile: 0, freeMb: 1200 });
+    expect(roomy).toBeLessThanOrEqual(engine.AUTO_BATCH_MAX);
+    expect(tight).toBeLessThanOrEqual(roomy);
+    expect(tight).toBeGreaterThanOrEqual(1);
     // Мало RAM — тоже ограничитель, даже при свободной видеопамяти.
     expect(
       engine.autoBatchFrames({ ...base, tile: 0, freeMb: 8000, ramBudgetMb: 1024 }),
-    ).toBeLessThan(64);
+    ).toBeLessThanOrEqual(roomy);
     // Видеопамяти не хватает даже под модель и резерв — считаем по одному кадру.
     expect(engine.autoBatchFrames({ ...base, tile: 0, freeMb: 700 })).toBe(1);
     // Бюджет RAM всегда в разумных пределах, даже если машина загружена.
@@ -311,9 +320,11 @@ describe("апскейл: новые ручки фазы 3 (пакеты, лим
     expect(read("server/ts/upscalePipeline.ts")).toMatch(
       /const frame: ProcessedFrame = opts\.processFrame\s*\n\s*\? await opts\.processFrame/,
     );
-    // UI: пункт в списке моделей и пояснение вместо множителя.
+    // UI: пункт в списке моделей и пояснение вместо множителя. Сам список — уже
+    // не системный select, а панель UpscaleModelPicker: «без апскейла» передаётся
+    // ей подписью noneLabel.
     const dash = read("src/pages/upscale/parts/UpscaleDashboard.tsx");
-    expect(dash).toContain('{ value: "none", label: t("up.modelNone") }');
+    expect(dash).toContain("noneLabel={t(\"up.modelNone\")}");
     expect(dash).toContain('const noUpscale = params.model === "none";');
     expect(read("src/pages/upscale/parts/UpscaleProSettings.tsx")).toContain(
       't("up.modelNoneNote")',

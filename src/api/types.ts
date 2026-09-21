@@ -1276,6 +1276,11 @@ export interface UpModelInfo {
   align: number;
   /** Рекомендованный провайдер модели ("" — как в настройках; "cpu" — не идёт на GPU). */
   provider: string;
+  /**
+   * Собранный движок TensorRT этой модели («512/…engine», пусто — не собран):
+   * имя файла движка — хеш графа, поэтому связь держит реестр на сервере.
+   */
+  trtEngine: string;
   file: string;
   sizeMb: number;
   license: string;
@@ -1283,6 +1288,8 @@ export interface UpModelInfo {
   /** Путь на диске (storage/models/upscale/<file>). */
   path: string;
   available: boolean;
+  /** Файл ONNX лежит на диске (false у «тензорных»: ONNX убран, движок на месте). */
+  onnxOnDisk: boolean;
   /** Категории для фильтра в панели моделей (photo/video/anime/fast/…). */
   tags: string[];
   /** Оптимальные настройки именно этой модели («Применить» в панели). */
@@ -1460,6 +1467,8 @@ export interface UpHardware {
   providers?: string[];
   /** TensorRT: есть ли провайдер и что уже собрано (движки в кэше). */
   trt?: UpTrtStatus;
+  /** GPU-пакет (CUDA/TensorRT): установлен ли и что в нём собрано. */
+  pack?: UpPackStatus;
 }
 
 /** Состояние TensorRT: провайдер в сборке + собранные движки (.engine). */
@@ -1472,13 +1481,102 @@ export interface UpTrtStatus {
 }
 
 /**
+ * Что вернула сборка движка: без этого ответа кнопка «Собрать движок» выглядела
+ * как «ничего не произошло» — повторный клик мгновенно грузит готовый движок из
+ * кэша, а счётчик файлов не меняется.
+ */
+export interface UpTrtBuild {
+  ok: boolean;
+  /** Сколько заняла операция (мс). */
+  ms: number;
+  /** Размер входа, под который собран движок (он же — размер тайла). */
+  profile: number;
+  /** Новые файлы движка: пусто — движок уже был в кэше. */
+  engines: { file: string; sizeMb: number }[];
+  /** Движок взят из кэша, а не собран сейчас. */
+  reused: boolean;
+  /** Файл движка этой модели («512/…engine»). */
+  engine: string;
+  engineMb: number;
+  /** Сколько движков собрано всего. */
+  total: number;
+  /** Сколько МБ освободило удаление ONNX (0 — файл оставлен или уже удалён). */
+  onnxFreedMb: number;
+}
+
+/**
  * Что нужно панели настроек от железа: план кодировщиков ffmpeg плюс
  * провайдеры ONNX Runtime и состояние TensorRT (кнопка точности).
  */
 export type UpGpuInfo = NonNullable<UpHardware["gpu"]> & {
   providers?: string[];
   trt?: UpTrtStatus;
+  pack?: UpPackStatus;
 };
+
+/**
+ * GPU-пакет: своя сборка ONNX-рантайма с провайдерами CUDA/TensorRT (качается
+ * отдельно, кладётся в storage). Без него работает обычный путь DirectML/CPU.
+ */
+export interface UpPackStatus {
+  installed: boolean;
+  /** Куда ставится пак: storage/ort-gpu/<платформа-архитектура>. */
+  dir: string;
+  /** Путь к своему биндингу (пусто, если пака нет). */
+  binding: string;
+  /** Что собрано: например «cuda+tensorrt». */
+  provider: string;
+  /** Версия ONNX Runtime в паке. */
+  version: string;
+}
+
+/** Ступень пака из индекса: что именно качается. */
+export interface UpPackStep {
+  id: string;
+  /** Подпись кнопки: «CUDA», «TensorRT». */
+  title: string;
+  file: string;
+  mb: number;
+  url: string;
+  sha256?: string;
+}
+
+/** Индекс паков из репозитория MoonApp-Ort-GPU (или своего зеркала). */
+export interface UpPackIndex {
+  version: string;
+  ort: string;
+  cuda: string;
+  tensorrt?: string;
+  /** Что нужно от железа: показываем до скачивания. */
+  requires?: string;
+  steps: UpPackStep[];
+}
+
+/** Прогресс одной ступени (для полосы загрузки в настройках). */
+export interface UpPackProgress {
+  step: string;
+  /** download | unpack | done | error. */
+  state: string;
+  percent: number;
+  gotMb: number;
+  totalMb: number;
+  error: string;
+}
+
+/** Ответ GET /api/upscale/gpu-pack: установленное, прогресс и индекс. */
+export interface UpPackState extends UpPackStatus {
+  /** Сколько места занимает установленный пак (МБ). */
+  mb: number;
+  /** Какая ступень ставится прямо сейчас (пусто — ничего). */
+  busy: string;
+  states: Record<string, UpPackProgress>;
+  /** Провайдеры рантайма, в котором мы работаем сейчас. */
+  backends: string[];
+  /** Пак поставлен, но заработает только после перезапуска приложения. */
+  restart: boolean;
+  index: UpPackIndex | null;
+  error: string;
+}
 
 /** Состояние ONNX-рантайма: где найден и почему не найден. */
 export interface UpRuntimeInfo {
@@ -1486,6 +1584,8 @@ export interface UpRuntimeInfo {
   version: string;
   path: string;
   error: string;
+  /** Непусто — подключён свой биндинг из GPU-пака (CUDA/TensorRT), а не npm-модуль. */
+  pack?: string;
 }
 
 /** Ответ GET /api/upscale/models. */

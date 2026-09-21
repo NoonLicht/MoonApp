@@ -7,6 +7,10 @@
  *  POST   /api/upscale/models/download — скачать модель из манифеста
  *  POST   /api/upscale/models/sync     — обновить каталог (манифест из GitHub)
  *  DELETE /api/upscale/models/:id      — удалить скачанный файл модели
+ *  GET    /api/upscale/gpu-pack        — GPU-пак (CUDA/TensorRT): статус и прогресс
+ *  POST   /api/upscale/gpu-pack/install — поставить ступень пака (фоновая загрузка)
+ *  POST   /api/upscale/gpu-pack/cancel — отменить установку
+ *  DELETE /api/upscale/gpu-pack        — удалить пак (вернуться на DirectML/CPU)
  *  GET    /api/upscale/hardware        — рантайм, ffmpeg, CPU, доступные модели
  *  GET    /api/upscale/presets         — системные + пользовательские пресеты
  *  POST   /api/upscale/presets         — сохранить пользовательский пресет
@@ -33,6 +37,7 @@ const fs = require("fs");
 const os = require("os");
 const path = require("path");
 const engine = require("../upscale");
+const gpuPack = require("../ortPack");
 const settings = require("../settings");
 const { DIRS } = require("../config");
 const logger = require("../logger");
@@ -88,6 +93,7 @@ router.get("/models", (req, res) => {
     manifest: engine.manifestInfo(),
     // TensorRT: есть ли провайдер в сборке и что уже собрано (панель моделей).
     trt: engine.trtStatus(),
+    pack: engine.packStatus(),
   });
 });
 
@@ -109,6 +115,20 @@ router.post("/models/:id/trt", async (req, res) => {
 });
 
 /**
+ * «Освободить ONNX»: движок собран, поэтому сам файл модели можно убрать с диска.
+ * Граф понадобится ORT только при старте сессии — движок скачает его сам, а
+ * .engine подхватится из кэша. 400 — движка нет или модель негде взять заново.
+ */
+router.post("/models/:id/onnx/delete", (req, res) => {
+  try {
+    const r = engine.removeOnnx(req.params.id);
+    res.json({ ...r, models: engine.listModels() });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+/**
  * «Обновить каталог»: свежий манифест моделей из GitHub вместо ожидания
  * обновления приложения. Тело { url } — свой адрес (иначе из движка).
  * Ошибка не ломает уже работающий каталог: подмена только после проверки файла.
@@ -120,6 +140,92 @@ router.post("/models/sync", async (req, res) => {
   } catch (e) {
     // 502: источник (GitHub/зеркало) не отдал каталог — это не ошибка запроса.
     res.status(502).json({ error: e.message });
+  }
+});
+
+// --- GPU-пак: отдельный рантайм с CUDA/TensorRT ---
+
+/**
+ * Состояние пака: что установлено, сколько занимает диск, прогресс установки и
+ * нужен ли перезапуск. Индекс паков (что можно скачать) тянется только по
+ * `?index=1` — страница не должна ждать сеть при каждом открытии.
+ */
+router.get("/gpu-pack", async (req, res) => {
+  const info = engine.packStatus();
+  const runtime = engine.runtimeStatus();
+  const out = {
+    ...info,
+    mb: gpuPack.packSizeMb(),
+    busy: gpuPack.packBusy(),
+    states: gpuPack.packStates(),
+    backends: engine.supportedBackends(),
+    // Пак поставлен, но процесс ещё работает на прежнем рантайме: нужен перезапуск.
+    restart: !!info.installed && runtime.pack !== info.binding,
+    index: null,
+    error: "",
+  };
+  if (req.query.index === "1" || req.query.url) {
+    try {
+      out.index = await gpuPack.fetchIndex(req.query.url ? String(req.query.url) : undefined);
+    } catch (e) {
+      out.error = e.message;
+    }
+  }
+  res.json(out);
+});
+
+/**
+ * Установка ступени. Скачивание идёт в фоне (архив до 1,5 ГБ), поэтому отвечаем
+ * сразу «started», а прогресс UI читает из GET /gpu-pack. Можно указать свой
+ * адрес индекса (`url`) или локальный архив (`file`) — для зеркал и офлайна.
+ */
+router.post("/gpu-pack/install", async (req, res) => {
+  const body = req.body || {};
+  const stepId = String(body.step || "cuda");
+  const url = String(body.url || "");
+  const file = String(body.file || "");
+  try {
+    if (gpuPack.packBusy()) {
+      res.status(409).json({ error: "pack_busy", busy: gpuPack.packBusy() });
+      return;
+    }
+    let step;
+    if (file) {
+      step = {
+        id: stepId,
+        title: stepId,
+        file: path.basename(file),
+        mb: 0,
+        url: path.resolve(file),
+        sha256: String(body.sha256 || "").toLowerCase(),
+      };
+    } else {
+      const index = await gpuPack.fetchIndex(url || gpuPack.indexUrl());
+      step = index.steps.find((s) => s.id === stepId);
+      if (!step) throw new Error("pack_step_unknown");
+    }
+    // Успех и ошибку видно через состояния: запрос не держим минутами.
+    void gpuPack.installStep(step).catch(() => {});
+    res.json({ started: true, step: step.id, file: step.file, mb: step.mb });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+/** Отмена установки: недокачанный архив убирает сам загрузчик. */
+router.post("/gpu-pack/cancel", (req, res) => {
+  res.json(gpuPack.cancelPackInstall());
+});
+
+/** Удаление пака: диск освобождается, рантайм возвращается к DirectML/CPU. */
+router.delete("/gpu-pack", (req, res) => {
+  try {
+    const r = gpuPack.removePack();
+    engine.clearSessions();
+    res.json({ ...r, pack: engine.packStatus() });
+  } catch (e) {
+    // Файлы держит текущий процесс (пак уже используется) — нужен перезапуск.
+    res.status(409).json({ error: "pack_locked", detail: e.message });
   }
 });
 
@@ -177,6 +283,7 @@ router.get("/hardware", async (req, res) => {
       // которого нет, а «собрать движок» — только когда провайдер есть.
       providers: engine.supportedBackends(),
       trt: engine.trtStatus(),
+      pack: engine.packStatus(),
     });
   } catch (e) {
     res.status(500).json({ error: e.message });

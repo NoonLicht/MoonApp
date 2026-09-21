@@ -601,6 +601,174 @@
   color: var(--text);
 }
 
+/* ---------------- Селектор модели (вместо системного select) ---------------- */
+.up-pick {
+  position: relative;
+  min-width: 0;
+}
+.up-pick-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 9px;
+  border-radius: 9px;
+  border: 1px solid var(--line);
+  background: var(--bg-soft, rgba(255, 255, 255, 0.03));
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+.up-pick-btn.is-open {
+  border-color: var(--accent);
+}
+.up-pick-cur {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.up-pick-cur-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.up-pick-pop {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: min(70vh, 520px);
+  padding: 10px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--panel, #1a1b20);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
+}
+.up-pick-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.up-pick-search {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+  padding: 0 8px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.02);
+}
+.up-pick-search .text-input {
+  border: 0;
+  background: transparent;
+  width: 100%;
+  min-width: 0;
+  padding: 6px 0;
+}
+.up-pick-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+}
+.up-pick-sep {
+  width: 1px;
+  height: 16px;
+  background: var(--line);
+}
+.up-pick-list {
+  /* Две колонки на широкой панели: строки моделей короткие, и в одну колонку
+     список из полусотни моделей приходится листать заметно дольше. */
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 5px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+.up-pick-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  padding: 6px 8px;
+  border-radius: 9px;
+  border: 1px solid transparent;
+  background: rgba(255, 255, 255, 0.025);
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  min-width: 0;
+}
+.up-pick-row:hover {
+  border-color: var(--line);
+}
+.up-pick-row.is-cur {
+  border-color: var(--accent);
+}
+.up-pick-row-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+.up-pick-row-badges {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+.up-pick-meas {
+  font-size: 11px;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+.up-pick-row-tags {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.up-pick-tag {
+  font-size: 10.5px;
+  color: var(--text-dim);
+}
+.up-pick-empty {
+  grid-column: 1 / -1;
+}
+.up-pick-foot {
+  display: flex;
+  justify-content: flex-end;
+}
+.up-pick-catalog {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+}
+.up-mdl-search {
+  flex: 0 1 240px;
+}
+
 /* ---------------- Адаптив ---------------- */
 /* Порог тот же, что у страницы сжатия (.cmp-grid @media 980px): обе страницы
    переходят в одну колонку одновременно, поэтому «правое окно» ведёт себя
@@ -693,6 +861,14 @@
 }
 /* Список прокручивается: карточек много, панель не должна расти бесконечно. */
 .up-mdl-list {
+  /* Две колонки, когда окно не узкое: карточек в каталоге уже десятки, а
+     строки короткие — в одну колонку список листается вдвое дольше. */
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+  gap: 8px;
+  align-content: start;
+  overflow-y: auto;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -803,8 +979,34 @@
   gap: 6px;
 }
 
+/* Ответ на сборку движка TensorRT: «собран за 9,6 с» / «уже был в кэше». */
+.up-mdl-trt-note {
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
 /* Точность в Pro: справа от подписи, как остальные контролы строки. */
 .up-pro-note {
   color: var(--text-dim);
   text-align: right;
+}
+
+/*
+ * GPU-пакет в Pro: статус, полоса загрузки и кнопки ступеней. Колонка прижата
+ * вправо — как остальные контролы строк, а кнопки переносятся на новую строку,
+ * если панель узкая.
+ */
+.up-pack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  min-width: min(220px, 100%);
+}
+
+.up-pack-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
 }

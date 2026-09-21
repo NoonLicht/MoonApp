@@ -13,7 +13,11 @@
       "tile": 256,
       "url": "https://huggingface.co/Heliosoph/realesrgan-onnx/resolve/main/realesr-general-x4v3.onnx",
       "sha256": "09b757accd747d7e423c1d352b3e8f23e77cc5742d04bae958d4eb8082b76fa4",
-      "tags": ["video", "photo", "fast"],
+      "tags": [
+        "video",
+        "photo",
+        "fast"
+      ],
       "rec": {
         "scale": 2,
         "tile": 384,
@@ -35,7 +39,10 @@
       "tile": 192,
       "url": "https://huggingface.co/Kim2091/UltraSharpV2/resolve/main/4x-UltraSharpV2_fp32_op17.onnx",
       "sha256": "6c0201e3403745f39a9aa5273c50ed084cf6c4af5a71a4654c30252cf19bf0a5",
-      "tags": ["photo", "detail"],
+      "tags": [
+        "photo",
+        "detail"
+      ],
       "rec": {
         "scale": 2,
         "tile": 192,
@@ -57,7 +64,11 @@
       "tile": 256,
       "url": "https://huggingface.co/Kim2091/UltraSharpV2/resolve/main/4x-UltraSharpV2_Lite_fp32_op17.onnx",
       "sha256": "ba692ad6c7b59bdebbaa9951c9ef5295a6d69e7444f1c46824c3cafdaab067a8",
-      "tags": ["photo", "video", "fast"],
+      "tags": [
+        "photo",
+        "video",
+        "fast"
+      ],
       "rec": {
         "scale": 2,
         "tile": 384,
@@ -79,7 +90,10 @@
       "tile": 192,
       "url": "https://huggingface.co/huggingworld/onnx-image-models/resolve/main/4x-UltraSharp-fp32-opset17.onnx",
       "sha256": "c83e0bf4fe1051ec7f2330614aa2edef0ad589d59c718934897a93459b180dd1",
-      "tags": ["photo", "detail"],
+      "tags": [
+        "photo",
+        "detail"
+      ],
       "rec": {
         "scale": 2,
         "tile": 192,
@@ -102,7 +116,11 @@
       "tile": 256,
       "url": "https://huggingface.co/RekluzLabs/realesrgan_anime6b.onnx/resolve/main/realesrgan_anime6b.onnx",
       "sha256": "45bd54934aeabe8df744c8fdacb9e8846c9b55cb4e60c499db77405d1625a667",
-      "tags": ["anime", "photo", "fast"],
+      "tags": [
+        "anime",
+        "photo",
+        "fast"
+      ],
       "rec": {
         "scale": 2,
         "tile": 320,
@@ -124,7 +142,10 @@
       "tile": 128,
       "url": "https://huggingface.co/Phips/4xRealWebPhoto_v4_dat2/resolve/main/4xRealWebPhoto_v4_fp32_opset17.onnx",
       "sha256": "a9a3a9099e0108b793556ed9cf2123a61a727bbc611dd8d93475f7144596589e",
-      "tags": ["photo", "restore"],
+      "tags": [
+        "photo",
+        "restore"
+      ],
       "rec": {
         "scale": 2,
         "tile": 128,
@@ -146,7 +167,10 @@
       "tile": 128,
       "url": "https://huggingface.co/Phips/HEART/resolve/main/onnx/heart_4x_otf_v2_fp32_op17.onnx",
       "sha256": "2b0d73b363b5ec5fd0dbccb538d74c90c1ff344e4b1dde7c8fd0ec4ad5badb8f",
-      "tags": ["photo", "detail"],
+      "tags": [
+        "photo",
+        "detail"
+      ],
       "rec": {
         "scale": 2,
         "tile": 128,
@@ -168,7 +192,11 @@
       "tile": 192,
       "url": "https://huggingface.co/Phips/NERVE/resolve/main/onnx/4x_NERVE_1x3xHxW_fp32_op20.onnx",
       "sha256": "eeecdc430db756f36096b110ee275d860feab6b5c036a7c94e55c82d2d01b616",
-      "tags": ["photo", "video", "restore"],
+      "tags": [
+        "photo",
+        "video",
+        "restore"
+      ],
       "rec": {
         "scale": 2,
         "tile": 192,
@@ -193,7 +221,11 @@
       "overlap": 16,
       "url": "https://huggingface.co/huggingworld/onnx-image-models/resolve/main/realesr-general-wdn-x4v3.onnx",
       "sha256": "5073c57599850fe59320473ab5e07a91ac7de3af916ef44d5eef2218c7d0b33a",
-      "tags": ["video", "photo", "fast"],
+      "tags": [
+        "video",
+        "photo",
+        "fast"
+      ],
       "rec": {
         "scale": 2,
         "tile": 384,
@@ -215,7 +247,10 @@
       "tile": 256,
       "url": "https://huggingface.co/FuryTMP/RealESR_Gx4_fp16/resolve/main/RealESR_Gx4_fp16.onnx",
       "sha256": "3b55a4d0ce37e1812d5306911890cd0b1f174a4adcb7bdd4ed6a6f6318b14be1",
-      "tags": ["video", "fast"],
+      "tags": [
+        "video",
+        "fast"
+      ],
       "rec": {
         "scale": 2,
         "tile": 384,
@@ -238,7 +273,10 @@
       "batch": 1,
       "url": "https://huggingface.co/SceneWorks/real-esrgan-onnx/resolve/main/real_esrgan_x2.onnx",
       "sha256": "7115ba92e8a1bfa63d68558ef006ef3d91273a068d321b1439f8bb1c9179002c",
-      "tags": ["video", "photo"],
+      "tags": [
+        "video",
+        "photo"
+      ],
       "rec": {
         "scale": 2,
         "tile": 256,
@@ -261,7 +299,9 @@
       "batch": 1,
       "url": "https://huggingface.co/huggingworld/onnx-image-models/resolve/main/RealESRGAN_x4plus.onnx",
       "sha256": "cd0ec097469c94c903e6f74d4f43f545683250ec0a54bc0c2ab1ff4c6364d8da",
-      "tags": ["photo"],
+      "tags": [
+        "photo"
+      ],
       "rec": {
         "scale": 2,
         "tile": 192,
@@ -285,7 +325,10 @@
       "tile": 192,
       "url": "https://huggingface.co/huggingworld/onnx-image-models/resolve/main/4xPurePhoto-RealPLSKR.onnx",
       "sha256": "c03da555c9c7ff58425fb9e6f812b7c23c40e06efc31c13145fab78e44b8aad8",
-      "tags": ["photo", "restore"],
+      "tags": [
+        "photo",
+        "restore"
+      ],
       "rec": {
         "scale": 2,
         "tile": 192,
@@ -309,7 +352,11 @@
       "tile": 384,
       "url": "https://huggingface.co/huggingworld/onnx-image-models/resolve/main/4xPurePhoto-Span.onnx",
       "sha256": "9fb885d13aa928ac4d28b6b9bd25d0ffafb3c149c52d64889c49222553b6ccb1",
-      "tags": ["photo", "video", "fast"],
+      "tags": [
+        "photo",
+        "video",
+        "fast"
+      ],
       "rec": {
         "scale": 2,
         "tile": 384,
@@ -333,7 +380,11 @@
       "tile": 512,
       "url": "https://huggingface.co/huggingworld/onnx-image-models/resolve/main/4x-ClearRealityV1-fp32-opset17.onnx",
       "sha256": "bbce9d5a653281cfae07788d620bd4ec45712709bdf6349a06a893159efd97ce",
-      "tags": ["photo", "video", "fast"],
+      "tags": [
+        "photo",
+        "video",
+        "fast"
+      ],
       "rec": {
         "scale": 2,
         "tile": 512,
@@ -357,7 +408,10 @@
       "tile": 128,
       "url": "https://huggingface.co/huggingworld/onnx-image-models/resolve/main/4xNomos8kDAT.onnx",
       "sha256": "e5c10de92a14544764ca4e4dc0269f7de3cd2e4975b1d149ad687fd195eb9de1",
-      "tags": ["photo", "restore"],
+      "tags": [
+        "photo",
+        "restore"
+      ],
       "rec": {
         "scale": 2,
         "tile": 128,
@@ -381,7 +435,10 @@
       "tile": 256,
       "url": "https://huggingface.co/Kim2091/AnimeSharp/resolve/main/ONNX/4x-AnimeSharp-fp32-opset16.onnx",
       "sha256": "da3c917439487e0c5b897aae776ce82759dabe8b68a00b0a1fdf5af2f90cc5eb",
-      "tags": ["anime", "detail"],
+      "tags": [
+        "anime",
+        "detail"
+      ],
       "rec": {
         "scale": 4,
         "tile": 256,
@@ -404,7 +461,10 @@
       "tile": 320,
       "url": "https://huggingface.co/huggingworld/onnx-image-models/resolve/main/upscayl-digital-art-4x.onnx",
       "sha256": "fbd5eb7b091326ba4b29f217ef1f064a5598bd2b264617d77d5647a9445702d7",
-      "tags": ["anime", "photo"],
+      "tags": [
+        "anime",
+        "photo"
+      ],
       "rec": {
         "scale": 2,
         "tile": 320,
@@ -428,7 +488,10 @@
       "tile": 256,
       "url": "https://huggingface.co/FuryTMP/RealESR_Gx4_fp16/resolve/main/RealESR_Gx4_fp16.onnx",
       "sha256": "3b55a4d0ce37e1812d5306911890cd0b1f174a4adcb7bdd4ed6a6f6318b14be1",
-      "tags": ["photo", "fast"],
+      "tags": [
+        "photo",
+        "fast"
+      ],
       "rec": {
         "scale": 2,
         "tile": 320,
@@ -455,7 +518,10 @@
       "batch": 1,
       "url": "https://huggingface.co/yuvraj108c/rife-onnx/resolve/main/rife49_ensemble_True_scale_1_sim.onnx",
       "sha256": "76e4cef9ab42fa7dd4e8f6e4aba47462051e3faa969e4bca6479784fbab0ac6f",
-      "tags": ["interp", "video"],
+      "tags": [
+        "interp",
+        "video"
+      ],
       "rec": {
         "interpMult": 2,
         "sceneCut": 12
@@ -479,7 +545,10 @@
       "batch": 1,
       "url": "https://huggingface.co/yuvraj108c/rife-onnx/resolve/main/rife48_ensemble_True_scale_1_sim.onnx",
       "sha256": "f8e26561a89fe7c49796edd52bac6199c9206ee7ac368d0e2d2e183a18b853dd",
-      "tags": ["interp", "video"],
+      "tags": [
+        "interp",
+        "video"
+      ],
       "rec": {
         "interpMult": 2,
         "sceneCut": 12
@@ -503,7 +572,10 @@
       "batch": 1,
       "url": "https://huggingface.co/yuvraj108c/rife-onnx/resolve/main/rife47_ensemble_True_scale_1_sim.onnx",
       "sha256": "0a3a52814d07d919b8336c6b66677baaeeec517bdd4ac4f6852d4bf2680ebb5a",
-      "tags": ["interp", "video"],
+      "tags": [
+        "interp",
+        "video"
+      ],
       "rec": {
         "interpMult": 2,
         "sceneCut": 12
@@ -528,7 +600,10 @@
       "batch": 1,
       "url": "https://github.com/NoonLicht/MoonApp-CAIN-ONNX/releases/download/v1/cain.onnx",
       "sha256": "354a8699ae0ffebfe283208b3d9af450b3d761adf4c8109df94c8a84c026f8d2",
-      "tags": ["interp", "video"],
+      "tags": [
+        "interp",
+        "video"
+      ],
       "rec": {
         "interpMult": 2,
         "sceneCut": 12
@@ -553,7 +628,10 @@
       "batch": 1,
       "url": "https://github.com/NoonLicht/MoonApp-IFRNet-ONNX/raw/main/ifrnet-gopro.onnx",
       "sha256": "cd299d3c4b79f1c26acac0716589a45e58d075779e0d18fbedd225730c836dec",
-      "tags": ["interp", "video"],
+      "tags": [
+        "interp",
+        "video"
+      ],
       "rec": {
         "interpMult": 2,
         "sceneCut": 12
@@ -578,7 +656,10 @@
       "batch": 1,
       "url": "https://github.com/NoonLicht/MoonApp-IFRNet-ONNX/raw/main/ifrnet-vimeo.onnx",
       "sha256": "2de41daa38d8432997fcb2e747d2fb5b4b8a5c01b9f6edd7066b225c4eab0955",
-      "tags": ["interp", "video"],
+      "tags": [
+        "interp",
+        "video"
+      ],
       "rec": {
         "interpMult": 2,
         "sceneCut": 12
@@ -595,7 +676,11 @@
       "license": "MIT",
       "tile": 512,
       "overlap": 16,
-      "tags": ["anime", "video", "fast"],
+      "tags": [
+        "anime",
+        "video",
+        "fast"
+      ],
       "rec": {
         "scale": 2,
         "tile": 512,
@@ -620,7 +705,11 @@
       "license": "BSD-3-Clause",
       "tile": 512,
       "overlap": 16,
-      "tags": ["video", "fast", "anime"],
+      "tags": [
+        "video",
+        "fast",
+        "anime"
+      ],
       "rec": {
         "scale": 4,
         "tile": 512,
@@ -645,7 +734,11 @@
       "license": "MIT",
       "tile": 512,
       "overlap": 16,
-      "tags": ["anime", "restore", "fast"],
+      "tags": [
+        "anime",
+        "restore",
+        "fast"
+      ],
       "rec": {
         "scale": 2,
         "tile": 512,
@@ -670,7 +763,10 @@
       "license": "MIT",
       "tile": 512,
       "overlap": 16,
-      "tags": ["anime", "photo"],
+      "tags": [
+        "anime",
+        "photo"
+      ],
       "rec": {
         "scale": 3,
         "tile": 512,
@@ -695,7 +791,11 @@
       "license": "MIT",
       "tile": 512,
       "overlap": 16,
-      "tags": ["anime", "photo", "detail"],
+      "tags": [
+        "anime",
+        "photo",
+        "detail"
+      ],
       "rec": {
         "scale": 4,
         "tile": 512,
@@ -709,6 +809,1050 @@
       "sha256": "b89a839a1bc638daeceaf172c4c418175364f7a07fad4ed45670c6be996b52a0",
       "bgr": false,
       "_measured": "302 мс на 64px, входы input, выход 1x3x256x256 ⇒ ×4.000, вход 220/125/20 → rgb 228/126/17 | bgr 222/125/17"
+    },
+    {
+      "id": "span2",
+      "label": "SPAN ×2 (быстрая)",
+      "kind": "upscale",
+      "scale": 2,
+      "arch": "span",
+      "file": "2x-spanx2-ch48.onnx",
+      "sizeMb": 2,
+      "license": "CC-BY-4.0",
+      "url": "https://huggingface.co/huggingworld/onnx-image-models/resolve/main/2x-spanx2-ch48.onnx",
+      "sha256": "7856a5386629b8e46cbf8a75b3446ed1ba20338c91d92d2ec961b0414b8d2d3a",
+      "tags": [
+        "fast",
+        "video",
+        "anime"
+      ],
+      "batch": 1,
+      "bgr": false,
+      "_measured": "61 мс на 64px, входы image, выход 1x3x128x128 ⇒ ×2.000, вход 220/125/20 → rgb 221/125/26 | bgr 220/125/27",
+      "rec": {
+        "tile": 256,
+        "overlap": 16,
+        "denoise": 0,
+        "sharpen": 0
+      }
+    },
+    {
+      "id": "esrgan-slim2",
+      "label": "ESRGAN Slim ×4",
+      "kind": "upscale",
+      "scale": 4,
+      "arch": "esrgan",
+      "file": "upscalerjs-esrgan-slim-x2.onnx",
+      "sizeMb": 1,
+      "license": "CC-BY-4.0",
+      "url": "https://huggingface.co/huggingworld/onnx-image-models/resolve/main/upscalerjs-esrgan-slim-x2.onnx",
+      "sha256": "cbc92c5eb76d1dc280b30ab00c1966d63820015ae580f5b6871428f2fd12cb70",
+      "tags": [
+        "fast",
+        "video",
+        "anime"
+      ],
+      "bgr": false,
+      "_measured": "64 мс на 64px, входы LR, выход 1x128x128x3 ⇒ ×0.047, вход 220/125/20 → rgb 91/0/0 | bgr 0/0/91",
+      "rec": {
+        "tile": 256,
+        "overlap": 16,
+        "denoise": 0,
+        "sharpen": 0
+      }
+    },
+    {
+      "id": "esrgan-med2",
+      "label": "ESRGAN Medium ×4",
+      "kind": "upscale",
+      "scale": 4,
+      "arch": "esrgan",
+      "file": "upscalerjs-esrgan-medium-x2.onnx",
+      "sizeMb": 3,
+      "license": "CC-BY-4.0",
+      "url": "https://huggingface.co/huggingworld/onnx-image-models/resolve/main/upscalerjs-esrgan-medium-x2.onnx",
+      "sha256": "3014ad9c289aa88bfe22167bd4cf8b6b9a6369ae0832ef95a89d1a9f35b8726e",
+      "tags": [
+        "video",
+        "photo"
+      ],
+      "bgr": true,
+      "_measured": "196 мс на 64px, входы LR, выход 1x128x128x3 ⇒ ×0.047, вход 220/125/20 → rgb 91/0/0 | bgr 0/0/92",
+      "rec": {
+        "tile": 256,
+        "overlap": 16,
+        "denoise": 0,
+        "sharpen": 0
+      }
+    },
+    {
+      "id": "esrgan-thick2",
+      "label": "ESRGAN Thick ×4",
+      "kind": "upscale",
+      "scale": 4,
+      "arch": "esrgan",
+      "file": "upscalerjs-esrgan-thick-x2.onnx",
+      "sizeMb": 28,
+      "license": "CC-BY-4.0",
+      "url": "https://huggingface.co/huggingworld/onnx-image-models/resolve/main/upscalerjs-esrgan-thick-x2.onnx",
+      "sha256": "9a14e3d41e7e3c44a28af5dee58ad693080f8ec4af4fb1e52328191374063bab",
+      "tags": [
+        "photo",
+        "detail"
+      ],
+      "bgr": true,
+      "_measured": "883 мс на 64px, входы LR_input, выход 1x128x128x3 ⇒ ×0.047, вход 220/125/20 → rgb 91/0/0 | bgr 0/0/92",
+      "rec": {
+        "tile": 256,
+        "overlap": 16,
+        "denoise": 0,
+        "sharpen": 0
+      }
+    },
+    {
+      "id": "esrgan-legacy2",
+      "label": "ESRGAN Legacy ×4",
+      "kind": "upscale",
+      "scale": 4,
+      "arch": "esrgan",
+      "file": "upscalerjs-esrgan-legacy-div2k-x2.onnx",
+      "sizeMb": 10,
+      "license": "CC-BY-4.0",
+      "url": "https://huggingface.co/huggingworld/onnx-image-models/resolve/main/upscalerjs-esrgan-legacy-div2k-x2.onnx",
+      "sha256": "ee7b35c438c19abce623a1f555d709930341a27ec5f3e8c2036707528129f6b3",
+      "tags": [
+        "photo"
+      ],
+      "bgr": true,
+      "_measured": "342 мс на 64px, входы LR, выход 1x128x128x3 ⇒ ×0.047, вход 220/125/20 → rgb 93/0/0 | bgr 0/0/94",
+      "rec": {
+        "tile": 256,
+        "overlap": 16,
+        "denoise": 0,
+        "sharpen": 0
+      }
+    },
+    {
+      "id": "swinir-s2",
+      "label": "SwinIR-S ×2",
+      "kind": "upscale",
+      "scale": 2,
+      "arch": "swinir",
+      "file": "002_lightweightSR_DIV2K_s64w8_SwinIR-S_x2.onnx",
+      "sizeMb": 8,
+      "license": "CC-BY-4.0",
+      "url": "https://huggingface.co/huggingworld/onnx-image-models/resolve/main/002_lightweightSR_DIV2K_s64w8_SwinIR-S_x2.onnx",
+      "sha256": "33706e22f983dfe2a16d10482392a957b22e342d106adf1a7886ef161903540a",
+      "tags": [
+        "photo",
+        "detail"
+      ],
+      "batch": 1,
+      "align": 4,
+      "bgr": false,
+      "_measured": "150 мс на 64px, входы image, выход 1x3x128x128 ⇒ ×2.000, вход 220/125/20 → rgb 221/125/29 | bgr 220/125/29",
+      "rec": {
+        "tile": 256,
+        "overlap": 16,
+        "denoise": 0,
+        "sharpen": 0
+      }
+    },
+    {
+      "id": "heart2",
+      "label": "HEART ×2",
+      "kind": "upscale",
+      "scale": 2,
+      "arch": "heart",
+      "file": "heart_2x_fp32_op17.onnx",
+      "sizeMb": 68,
+      "license": "CC-BY-4.0",
+      "url": "https://huggingface.co/Phips/HEART/resolve/main/onnx/heart_2x_fp32_op17.onnx",
+      "sha256": "08ee34f60303ac086c9b50012fdc3d261086d907756640623035cec1b6030102",
+      "tags": [
+        "photo",
+        "detail"
+      ],
+      "bgr": false,
+      "_measured": "11026 мс на 64px, входы input, выход 1x3x128x128 ⇒ ×2.000, вход 220/125/20 → rgb 222/130/29 | bgr 220/125/28",
+      "rec": {
+        "tile": 256,
+        "overlap": 16,
+        "denoise": 0,
+        "sharpen": 0
+      }
+    },
+    {
+      "id": "nerve2",
+      "label": "NERVE ×2",
+      "kind": "upscale",
+      "scale": 2,
+      "arch": "nerve",
+      "file": "2x_NERVE_1x3xHxW_fp32_op20.onnx",
+      "sizeMb": 7,
+      "license": "CC-BY-4.0",
+      "url": "https://huggingface.co/Phips/NERVE/resolve/main/onnx/2x_NERVE_1x3xHxW_fp32_op20.onnx",
+      "sha256": "a499bc54cb9d442a94f63fab201de61c72b32bf88bab6dffffbd5abbb43cb5f7",
+      "tags": [
+        "photo",
+        "detail"
+      ],
+      "batch": 1,
+      "bgr": false,
+      "_measured": "251 мс на 64px, входы x, выход 1x3x128x128 ⇒ ×2.000, вход 220/125/20 → rgb 229/134/31 | bgr 230/137/26",
+      "rec": {
+        "tile": 256,
+        "overlap": 16,
+        "denoise": 0,
+        "sharpen": 0
+      }
+    },
+    {
+      "id": "x2plus",
+      "label": "Real-ESRGAN x2plus",
+      "kind": "upscale",
+      "scale": 2,
+      "arch": "esrgan",
+      "file": "2x-realesrgan-x2plus.onnx",
+      "sizeMb": 64,
+      "license": "CC-BY-4.0",
+      "url": "https://huggingface.co/huggingworld/onnx-image-models/resolve/main/2x-realesrgan-x2plus.onnx",
+      "sha256": "c4c0b7430ebb554f3939a720f9e8445fdeca3d15edb69979c7ace39b997f3483",
+      "tags": [
+        "photo",
+        "fast"
+      ],
+      "batch": 1,
+      "align": 2,
+      "bgr": false,
+      "_measured": "301 мс на 64px, входы image, выход 1x3x128x128 ⇒ ×2.000, вход 220/125/20 → rgb 220/123/17 | bgr 223/123/12",
+      "rec": {
+        "tile": 256,
+        "overlap": 16,
+        "denoise": 0,
+        "sharpen": 0
+      }
+    },
+    {
+      "id": "dat2",
+      "label": "DAT-2 ×2",
+      "kind": "upscale",
+      "scale": 2,
+      "arch": "dat",
+      "file": "DAT_2_x2.onnx",
+      "sizeMb": 55,
+      "license": "CC-BY-4.0",
+      "url": "https://huggingface.co/huggingworld/onnx-image-models/resolve/main/DAT_2_x2.onnx",
+      "sha256": "aaadac88a0e4f4a18353691846e6222c4f031d852715e3444f53dd4dcca58c39",
+      "tags": [
+        "photo",
+        "detail"
+      ],
+      "batch": 1,
+      "align": 4,
+      "bgr": false,
+      "_measured": "1338 мс на 64px, входы image, выход 1x3x128x128 ⇒ ×2.000, вход 220/125/20 → rgb 220/125/28 | bgr 220/125/28",
+      "rec": {
+        "tile": 256,
+        "overlap": 16,
+        "denoise": 0,
+        "sharpen": 0
+      }
+    },
+    {
+      "id": "swinir-s3",
+      "label": "SwinIR-S ×3",
+      "kind": "upscale",
+      "scale": 3,
+      "arch": "swinir",
+      "file": "002_lightweightSR_DIV2K_s64w8_SwinIR-S_x3.onnx",
+      "sizeMb": 8,
+      "license": "CC-BY-4.0",
+      "url": "https://huggingface.co/huggingworld/onnx-image-models/resolve/main/002_lightweightSR_DIV2K_s64w8_SwinIR-S_x3.onnx",
+      "sha256": "78eb9907ad65a540afc712fe66ef61c7592fa62b0330d2b71e491d8877d01e28",
+      "tags": [
+        "photo",
+        "detail"
+      ],
+      "batch": 1,
+      "align": 4,
+      "bgr": false,
+      "_measured": "153 мс на 64px, входы image, выход 1x3x192x192 ⇒ ×3.000, вход 220/125/20 → rgb 220/125/27 | bgr 220/125/29",
+      "rec": {
+        "tile": 256,
+        "overlap": 16,
+        "denoise": 0,
+        "sharpen": 0
+      }
+    },
+    {
+      "id": "esrgan-slim3",
+      "label": "ESRGAN Slim ×4",
+      "kind": "upscale",
+      "scale": 4,
+      "arch": "esrgan",
+      "file": "upscalerjs-esrgan-slim-x3.onnx",
+      "sizeMb": 1,
+      "license": "CC-BY-4.0",
+      "url": "https://huggingface.co/huggingworld/onnx-image-models/resolve/main/upscalerjs-esrgan-slim-x3.onnx",
+      "sha256": "0d97f213419f2aeb4afe4e626e52dde51aabb122f1cc4424d4184a056c762665",
+      "tags": [
+        "fast",
+        "video",
+        "anime"
+      ],
+      "bgr": true,
+      "_measured": "70 мс на 64px, входы LR, выход 1x192x192x3 ⇒ ×0.047, вход 220/125/20 → rgb 120/86/0 | bgr 0/86/121",
+      "rec": {
+        "tile": 256,
+        "overlap": 16,
+        "denoise": 0,
+        "sharpen": 0
+      }
+    },
+    {
+      "id": "esrgan-med3",
+      "label": "ESRGAN Medium ×4",
+      "kind": "upscale",
+      "scale": 4,
+      "arch": "esrgan",
+      "file": "upscalerjs-esrgan-medium-x3.onnx",
+      "sizeMb": 3,
+      "license": "CC-BY-4.0",
+      "url": "https://huggingface.co/huggingworld/onnx-image-models/resolve/main/upscalerjs-esrgan-medium-x3.onnx",
+      "sha256": "36beef715ee08f3c146e50618b55f791081b672d779aa5634ab5d665ac558197",
+      "tags": [
+        "video",
+        "photo"
+      ],
+      "bgr": false,
+      "_measured": "136 мс на 64px, входы LR, выход 1x192x192x3 ⇒ ×0.047, вход 220/125/20 → rgb 121/87/0 | bgr 0/86/120",
+      "rec": {
+        "tile": 256,
+        "overlap": 16,
+        "denoise": 0,
+        "sharpen": 0
+      }
+    },
+    {
+      "id": "esrgan-thick3",
+      "label": "ESRGAN Thick ×4",
+      "kind": "upscale",
+      "scale": 4,
+      "arch": "esrgan",
+      "file": "upscalerjs-esrgan-thick-x3.onnx",
+      "sizeMb": 28,
+      "license": "CC-BY-4.0",
+      "url": "https://huggingface.co/huggingworld/onnx-image-models/resolve/main/upscalerjs-esrgan-thick-x3.onnx",
+      "sha256": "cce4e955adc12d9d4661230f5bc7e22b864b42be9770df4feb243ea9dc5db3e2",
+      "tags": [
+        "photo",
+        "detail"
+      ],
+      "bgr": false,
+      "_measured": "1017 мс на 64px, входы LR_input, выход 1x192x192x3 ⇒ ×0.047, вход 220/125/20 → rgb 119/86/0 | bgr 0/85/119",
+      "rec": {
+        "tile": 256,
+        "overlap": 16,
+        "denoise": 0,
+        "sharpen": 0
+      }
+    },
+    {
+      "id": "esrgan-legacy3",
+      "label": "ESRGAN Legacy ×4",
+      "kind": "upscale",
+      "scale": 4,
+      "arch": "esrgan",
+      "file": "upscalerjs-esrgan-legacy-div2k-x3.onnx",
+      "sizeMb": 10,
+      "license": "CC-BY-4.0",
+      "url": "https://huggingface.co/huggingworld/onnx-image-models/resolve/main/upscalerjs-esrgan-legacy-div2k-x3.onnx",
+      "sha256": "fa216df3d4a6ac55340bc9d05a27aea1ca5f89cc2420d6dc9470e46be7fd44c0",
+      "tags": [
+        "photo"
+      ],
+      "bgr": false,
+      "_measured": "349 мс на 64px, входы LR, выход 1x192x192x3 ⇒ ×0.047, вход 220/125/20 → rgb 120/87/0 | bgr 0/84/116",
+      "rec": {
+        "tile": 256,
+        "overlap": 16,
+        "denoise": 0,
+        "sharpen": 0
+      }
+    },
+    {
+      "id": "remacri",
+      "label": "4x Foolhardy Remacri",
+      "kind": "upscale",
+      "scale": 4,
+      "arch": "esrgan",
+      "file": "4x_foolhardy_Remacri.onnx",
+      "sizeMb": 64,
+      "license": "CC-BY-4.0",
+      "url": "https://huggingface.co/huggingworld/onnx-image-models/resolve/main/4x_foolhardy_Remacri.onnx",
+      "sha256": "77a7cc6dc7eede28424c2ca2b3bc67aa5c0d8ce31379245e0e4ff91c10ebe49b",
+      "tags": [
+        "photo",
+        "detail"
+      ],
+      "batch": 1,
+      "bgr": false,
+      "_measured": "1491 мс на 64px, входы image, выход 1x3x256x256 ⇒ ×4.000, вход 220/125/20 → rgb 218/127/26 | bgr 219/126/28",
+      "rec": {
+        "tile": 256,
+        "overlap": 16,
+        "denoise": 0,
+        "sharpen": 0
+      }
+    },
+    {
+      "id": "nmkd-siax",
+      "label": "NMKD Siax 200k",
+      "kind": "upscale",
+      "scale": 4,
+      "arch": "esrgan",
+      "file": "4x_NMKD-Siax_200k.onnx",
+      "sizeMb": 64,
+      "license": "CC-BY-4.0",
+      "url": "https://huggingface.co/huggingworld/onnx-image-models/resolve/main/4x_NMKD-Siax_200k.onnx",
+      "sha256": "ef23e2889916c6d15896a2eb836c6a3f93232eabe777db5cd0b880595a8f85c1",
+      "tags": [
+        "photo",
+        "detail"
+      ],
+      "batch": 1,
+      "bgr": false,
+      "_measured": "1522 мс на 64px, входы image, выход 1x3x256x256 ⇒ ×4.000, вход 220/125/20 → rgb 222/127/18 | bgr 220/126/23",
+      "rec": {
+        "tile": 256,
+        "overlap": 16,
+        "denoise": 0,
+        "sharpen": 0
+      }
+    },
+    {
+      "id": "nmkd-ss-sp",
+      "label": "NMKD Superscale SP",
+      "kind": "upscale",
+      "scale": 4,
+      "arch": "esrgan",
+      "file": "4x_NMKD-Superscale-SP_178000_G.onnx",
+      "sizeMb": 64,
+      "license": "CC-BY-4.0",
+      "url": "https://huggingface.co/huggingworld/onnx-image-models/resolve/main/4x_NMKD-Superscale-SP_178000_G.onnx",
+      "sha256": "5fedb5801c4a4b2bf77637e09b5d3098b97c94624b05a85d3a4af82c92b98742",
+      "tags": [
+        "photo",
+        "detail"
+      ],
+      "batch": 1,
+      "bgr": false,
+      "_measured": "1425 мс на 64px, входы image, выход 1x3x256x256 ⇒ ×4.000, вход 220/125/20 → rgb 221/132/26 | bgr 226/127/32",
+      "rec": {
+        "tile": 256,
+        "overlap": 16,
+        "denoise": 0,
+        "sharpen": 0
+      }
+    },
+    {
+      "id": "rybu",
+      "label": "4x Rybu",
+      "kind": "upscale",
+      "scale": 4,
+      "arch": "esrgan",
+      "file": "4x-Rybu.onnx",
+      "sizeMb": 2,
+      "license": "CC-BY-4.0",
+      "url": "https://huggingface.co/huggingworld/onnx-image-models/resolve/main/4x-Rybu.onnx",
+      "sha256": "9558b6820fae07e856716892036869364df5c7f2f9777e3593062284774b85d5",
+      "tags": [
+        "photo",
+        "anime"
+      ],
+      "batch": 1,
+      "bgr": false,
+      "_measured": "86 мс на 64px, входы image, выход 1x3x256x256 ⇒ ×4.000, вход 220/125/20 → rgb 219/110/17 | bgr 218/123/25",
+      "rec": {
+        "tile": 256,
+        "overlap": 16,
+        "denoise": 0,
+        "sharpen": 0
+      }
+    },
+    {
+      "id": "dctlsa",
+      "label": "4x DCTLSA",
+      "kind": "upscale",
+      "scale": 4,
+      "arch": "dctlsa",
+      "file": "4x_dctlsa_pretrained.onnx",
+      "sizeMb": 5,
+      "license": "CC-BY-4.0",
+      "url": "https://huggingface.co/huggingworld/onnx-image-models/resolve/main/4x_dctlsa_pretrained.onnx",
+      "sha256": "ed6345f32deed0f18f5fd3f63fe3149937df1b7c7511e0da130cc29f88375018",
+      "tags": [
+        "photo",
+        "detail"
+      ],
+      "batch": 1,
+      "align": 4,
+      "bgr": false,
+      "_measured": "248 мс на 64px, входы image, выход 1x3x256x256 ⇒ ×4.000, вход 220/125/20 → rgb 255/253/200 | bgr 161/83/16",
+      "rec": {
+        "tile": 256,
+        "overlap": 16,
+        "denoise": 0,
+        "sharpen": 0
+      }
+    },
+    {
+      "id": "fuzzybox",
+      "label": "4x FuzzyBox",
+      "kind": "upscale",
+      "scale": 4,
+      "arch": "esrgan",
+      "file": "4x_FuzzyBox.onnx",
+      "sizeMb": 64,
+      "license": "CC-BY-4.0",
+      "url": "https://huggingface.co/huggingworld/onnx-image-models/resolve/main/4x_FuzzyBox.onnx",
+      "sha256": "8f60ae277eee29936e571f07e91fa62691df50519792ba92ea912a7875a19a81",
+      "tags": [
+        "photo"
+      ],
+      "batch": 1,
+      "bgr": false,
+      "_measured": "1431 мс на 64px, входы image, выход 1x3x256x256 ⇒ ×4.000, вход 220/125/20 → rgb 219/125/24 | bgr 220/125/23",
+      "rec": {
+        "tile": 256,
+        "overlap": 16,
+        "denoise": 0,
+        "sharpen": 0
+      }
+    },
+    {
+      "id": "uniscale-sharp",
+      "label": "UniScale V2 Sharp",
+      "kind": "upscale",
+      "scale": 4,
+      "arch": "uniscale",
+      "file": "4x-UniScaleV2_Sharp.onnx",
+      "sizeMb": 64,
+      "license": "CC-BY-4.0",
+      "url": "https://huggingface.co/huggingworld/onnx-image-models/resolve/main/4x-UniScaleV2_Sharp.onnx",
+      "sha256": "4e3352a92bbf9881ac53564eceee492041ec49dcd022e9e18491c5a44662bfc1",
+      "tags": [
+        "photo",
+        "detail"
+      ],
+      "bgr": false,
+      "_measured": "2141 мс на 64px, входы data, выход 1x3x256x256 ⇒ ×4.000, вход 220/125/20 → rgb 197/114/8 | bgr 210/114/10",
+      "rec": {
+        "tile": 256,
+        "overlap": 16,
+        "denoise": 0,
+        "sharpen": 0
+      }
+    },
+    {
+      "id": "uniscale-soft",
+      "label": "UniScale V2 Soft",
+      "kind": "upscale",
+      "scale": 4,
+      "arch": "uniscale",
+      "file": "4x-UniScaleV2_Soft.onnx",
+      "sizeMb": 64,
+      "license": "CC-BY-4.0",
+      "url": "https://huggingface.co/huggingworld/onnx-image-models/resolve/main/4x-UniScaleV2_Soft.onnx",
+      "sha256": "d3d87fe39264a110e4d68fcc74754abd5737230dcda177f6345dfb644d92596e",
+      "tags": [
+        "photo",
+        "anime"
+      ],
+      "bgr": false,
+      "_measured": "2302 мс на 64px, входы data, выход 1x3x256x256 ⇒ ×4.000, вход 220/125/20 → rgb 227/131/18 | bgr 223/128/28",
+      "rec": {
+        "tile": 256,
+        "overlap": 16,
+        "denoise": 0,
+        "sharpen": 0
+      }
+    },
+    {
+      "id": "uniscale-mod",
+      "label": "UniScale V2 Moderate",
+      "kind": "upscale",
+      "scale": 4,
+      "arch": "uniscale",
+      "file": "4x-UniScaleV2_Moderate.onnx",
+      "sizeMb": 64,
+      "license": "CC-BY-4.0",
+      "url": "https://huggingface.co/huggingworld/onnx-image-models/resolve/main/4x-UniScaleV2_Moderate.onnx",
+      "sha256": "19e2c42c00f5294fd1dd8ced0569b781bf47542ea58765968ba8c8fc3167e1a4",
+      "tags": [
+        "photo",
+        "video"
+      ],
+      "bgr": false,
+      "_measured": "2108 мс на 64px, входы data, выход 1x3x256x256 ⇒ ×4.000, вход 220/125/20 → rgb 221/129/19 | bgr 220/123/24",
+      "rec": {
+        "tile": 256,
+        "overlap": 16,
+        "denoise": 0,
+        "sharpen": 0
+      }
+    },
+    {
+      "id": "uniscale-rest",
+      "label": "UniScale Restore",
+      "kind": "upscale",
+      "scale": 4,
+      "arch": "uniscale",
+      "file": "4x-UniScale_Restore.onnx",
+      "sizeMb": 64,
+      "license": "CC-BY-4.0",
+      "url": "https://huggingface.co/huggingworld/onnx-image-models/resolve/main/4x-UniScale_Restore.onnx",
+      "sha256": "c0338dcf8bf6005948bd289173386caa3c3c11cf1377dec4e1efb84a3b9dc36f",
+      "tags": [
+        "photo",
+        "restore"
+      ],
+      "bgr": false,
+      "_measured": "2123 мс на 64px, входы data, выход 1x3x256x256 ⇒ ×4.000, вход 220/125/20 → rgb 229/112/1 | bgr 237/115/27",
+      "rec": {
+        "tile": 256,
+        "overlap": 16,
+        "denoise": 0,
+        "sharpen": 0
+      }
+    },
+    {
+      "id": "clear-soft",
+      "label": "ClearReality Soft",
+      "kind": "upscale",
+      "scale": 4,
+      "arch": "compact",
+      "file": "4x-ClearRealityV1_Soft-fp32-opset17.onnx",
+      "sizeMb": 2,
+      "license": "CC-BY-4.0",
+      "url": "https://huggingface.co/huggingworld/onnx-image-models/resolve/main/4x-ClearRealityV1_Soft-fp32-opset17.onnx",
+      "sha256": "2cc924f6ff7ad908e03ea4efcea45aeaa6380a7859ccfccbf253192566dabb36",
+      "tags": [
+        "photo",
+        "anime"
+      ],
+      "bgr": false,
+      "_measured": "93 мс на 64px, входы input, выход 1x3x256x256 ⇒ ×4.000, вход 220/125/20 → rgb 212/118/26 | bgr 212/126/25",
+      "rec": {
+        "tile": 256,
+        "overlap": 16,
+        "denoise": 0,
+        "sharpen": 0
+      }
+    },
+    {
+      "id": "swinir-s4",
+      "label": "SwinIR-S ×4",
+      "kind": "upscale",
+      "scale": 4,
+      "arch": "swinir",
+      "file": "002_lightweightSR_DIV2K_s64w8_SwinIR-S_x4.onnx",
+      "sizeMb": 8,
+      "license": "CC-BY-4.0",
+      "url": "https://huggingface.co/huggingworld/onnx-image-models/resolve/main/002_lightweightSR_DIV2K_s64w8_SwinIR-S_x4.onnx",
+      "sha256": "052d17a1ba08fa625f64305c9bf7e9ea5cf738e8fcd3a4e0b8160bce1c4ee7c2",
+      "tags": [
+        "photo",
+        "detail"
+      ],
+      "batch": 1,
+      "align": 4,
+      "bgr": false,
+      "_measured": "140 мс на 64px, входы image, выход 1x3x256x256 ⇒ ×4.000, вход 220/125/20 → rgb 221/125/26 | bgr 221/123/27",
+      "rec": {
+        "tile": 256,
+        "overlap": 16,
+        "denoise": 0,
+        "sharpen": 0
+      }
+    },
+    {
+      "id": "upscayl-lite",
+      "label": "Upscayl Lite",
+      "kind": "upscale",
+      "scale": 4,
+      "arch": "esrgan",
+      "file": "upscayl-lite-4x.onnx",
+      "sizeMb": 5,
+      "license": "CC-BY-4.0",
+      "url": "https://huggingface.co/huggingworld/onnx-image-models/resolve/main/upscayl-lite-4x.onnx",
+      "sha256": "b5c3a495c002ed4828d96fbe2f31ab7542d3738298a2f2aac6dd181d514cd30f",
+      "tags": [
+        "fast",
+        "photo"
+      ],
+      "batch": 1,
+      "bgr": false,
+      "_measured": "123 мс на 64px, входы image, выход 1x3x256x256 ⇒ ×4.000, вход 220/125/20 → rgb 224/125/22 | bgr 220/124/17",
+      "rec": {
+        "tile": 256,
+        "overlap": 16,
+        "denoise": 0,
+        "sharpen": 0
+      }
+    },
+    {
+      "id": "upscayl-std",
+      "label": "Upscayl Standard",
+      "kind": "upscale",
+      "scale": 4,
+      "arch": "esrgan",
+      "file": "upscayl-standard-4x.onnx",
+      "sizeMb": 64,
+      "license": "CC-BY-4.0",
+      "url": "https://huggingface.co/huggingworld/onnx-image-models/resolve/main/upscayl-standard-4x.onnx",
+      "sha256": "2e550660e671f69d656ff0d3af3d55b52afcdc59d0977aa15392507deaed9c36",
+      "tags": [
+        "photo",
+        "video"
+      ],
+      "batch": 1,
+      "bgr": false,
+      "_measured": "1772 мс на 64px, входы image, выход 1x3x256x256 ⇒ ×4.000, вход 220/125/20 → rgb 221/126/9 | bgr 224/126/17",
+      "rec": {
+        "tile": 256,
+        "overlap": 16,
+        "denoise": 0,
+        "sharpen": 0
+      }
+    },
+    {
+      "id": "upscayl-hifi",
+      "label": "Upscayl High Fidelity",
+      "kind": "upscale",
+      "scale": 4,
+      "arch": "esrgan",
+      "file": "upscayl-high-fidelity-4x.onnx",
+      "sizeMb": 64,
+      "license": "CC-BY-4.0",
+      "url": "https://huggingface.co/huggingworld/onnx-image-models/resolve/main/upscayl-high-fidelity-4x.onnx",
+      "sha256": "d6a2a43a991e83449c7c858cc87080fe09a18d19f5f1d086798a23ba3ed879dd",
+      "tags": [
+        "photo",
+        "detail"
+      ],
+      "batch": 1,
+      "bgr": false,
+      "_measured": "2940 мс на 64px, входы image, выход 1x3x256x256 ⇒ ×4.000, вход 220/125/20 → rgb 219/125/29 | bgr 218/123/20",
+      "rec": {
+        "tile": 256,
+        "overlap": 16,
+        "denoise": 0,
+        "sharpen": 0
+      }
+    },
+    {
+      "id": "upscayl-umix",
+      "label": "Upscayl UltraMix",
+      "kind": "upscale",
+      "scale": 4,
+      "arch": "esrgan",
+      "file": "upscayl-ultramix-balanced-4x.onnx",
+      "sizeMb": 64,
+      "license": "CC-BY-4.0",
+      "url": "https://huggingface.co/huggingworld/onnx-image-models/resolve/main/upscayl-ultramix-balanced-4x.onnx",
+      "sha256": "f66b99d696739e25969dc40f1c027d2e9d025a209e75ca1aa312fb3b56820a12",
+      "tags": [
+        "photo",
+        "anime"
+      ],
+      "batch": 1,
+      "bgr": false,
+      "_measured": "1452 мс на 64px, входы image, выход 1x3x256x256 ⇒ ×4.000, вход 220/125/20 → rgb 222/126/24 | bgr 221/127/26",
+      "rec": {
+        "tile": 256,
+        "overlap": 16,
+        "denoise": 0,
+        "sharpen": 0
+      }
+    },
+    {
+      "id": "upscayl-remacri",
+      "label": "Upscayl Remacri",
+      "kind": "upscale",
+      "scale": 4,
+      "arch": "esrgan",
+      "file": "upscayl-remacri-4x.onnx",
+      "sizeMb": 64,
+      "license": "CC-BY-4.0",
+      "url": "https://huggingface.co/huggingworld/onnx-image-models/resolve/main/upscayl-remacri-4x.onnx",
+      "sha256": "09dd5b3426096067b212d11d69921762ff5b08b8987aa449ded3e026a259c6d9",
+      "tags": [
+        "photo",
+        "detail"
+      ],
+      "batch": 1,
+      "bgr": false,
+      "_measured": "1815 мс на 64px, входы image, выход 1x3x256x256 ⇒ ×4.000, вход 220/125/20 → rgb 218/127/26 | bgr 219/126/28",
+      "rec": {
+        "tile": 256,
+        "overlap": 16,
+        "denoise": 0,
+        "sharpen": 0
+      }
+    },
+    {
+      "id": "upscayl-usharp",
+      "label": "Upscayl UltraSharp",
+      "kind": "upscale",
+      "scale": 4,
+      "arch": "esrgan",
+      "file": "upscayl-ultrasharp-4x.onnx",
+      "sizeMb": 64,
+      "license": "CC-BY-4.0",
+      "url": "https://huggingface.co/huggingworld/onnx-image-models/resolve/main/upscayl-ultrasharp-4x.onnx",
+      "sha256": "ce644ea0c08e8b37c81ade5bbf1034f47ca5173c8171682a226d085409a319a1",
+      "tags": [
+        "photo",
+        "anime"
+      ],
+      "batch": 1,
+      "bgr": false,
+      "_measured": "1483 мс на 64px, входы image, выход 1x3x256x256 ⇒ ×4.000, вход 220/125/20 → rgb 223/122/18 | bgr 221/126/19",
+      "rec": {
+        "tile": 256,
+        "overlap": 16,
+        "denoise": 0,
+        "sharpen": 0
+      }
+    },
+    {
+      "id": "nerve-otf",
+      "label": "NERVE OTF Fidelity",
+      "kind": "upscale",
+      "scale": 4,
+      "arch": "nerve",
+      "file": "4x_NERVE_OTF_fidelity_1x3xHxW_fp32_op20.onnx",
+      "sizeMb": 7,
+      "license": "CC-BY-4.0",
+      "url": "https://huggingface.co/Phips/NERVE/resolve/main/onnx/4x_NERVE_OTF_fidelity_1x3xHxW_fp32_op20.onnx",
+      "sha256": "510308a2f49a1abf1ef1f9a57fd76e6c946f993231f3dc2b3d67d6c95be4c4db",
+      "tags": [
+        "photo",
+        "restore"
+      ],
+      "batch": 1,
+      "bgr": false,
+      "_measured": "327 мс на 64px, входы x, выход 1x3x256x256 ⇒ ×4.000, вход 220/125/20 → rgb 220/127/17 | bgr 224/125/19",
+      "rec": {
+        "tile": 256,
+        "overlap": 16,
+        "denoise": 0,
+        "sharpen": 0
+      }
+    },
+    {
+      "id": "heart-pretrain",
+      "label": "HEART ×4 pretrain",
+      "kind": "upscale",
+      "scale": 4,
+      "arch": "heart",
+      "file": "heart_4x_pretrain_fp32_op17.onnx",
+      "sizeMb": 69,
+      "license": "CC-BY-4.0",
+      "url": "https://huggingface.co/Phips/HEART/resolve/main/onnx/heart_4x_pretrain_fp32_op17.onnx",
+      "sha256": "c3b58cce1b18ba65c602f8937df40da75dfe1dbd208d661f48eb85f8380c4369",
+      "tags": [
+        "photo",
+        "video"
+      ],
+      "bgr": false,
+      "_measured": "12355 мс на 64px, входы input, выход 1x3x256x256 ⇒ ×4.000, вход 220/125/20 → rgb 221/124/14 | bgr 221/125/18",
+      "rec": {
+        "tile": 256,
+        "overlap": 16,
+        "denoise": 0,
+        "sharpen": 0
+      }
+    },
+    {
+      "id": "rplksr-1x",
+      "label": "RPLKSR ×1 (детали)",
+      "kind": "upscale",
+      "scale": 1,
+      "arch": "rplksr",
+      "file": "1x-SuperScale_RPLKSR_S.onnx",
+      "sizeMb": 9,
+      "license": "CC-BY-4.0",
+      "url": "https://huggingface.co/huggingworld/onnx-image-models/resolve/main/1x-SuperScale_RPLKSR_S.onnx",
+      "sha256": "90c43e0a3642da19e5ed84f5e621c72fa80eb62b11373996e85693a3b4c4ec85",
+      "tags": [
+        "restore",
+        "photo"
+      ],
+      "batch": 1,
+      "bgr": false,
+      "_measured": "290 мс на 64px, входы image, выход 1x3x64x64 ⇒ ×1.000, вход 220/125/20 → rgb 218/124/21 | bgr 219/123/18",
+      "rec": {
+        "tile": 256,
+        "overlap": 16,
+        "denoise": 0,
+        "sharpen": 0
+      }
+    },
+    {
+      "id": "span-1x",
+      "label": "SPAN ×1 (детали)",
+      "kind": "upscale",
+      "scale": 1,
+      "arch": "span",
+      "file": "1x-SuperScale_SPAN.onnx",
+      "sizeMb": 2,
+      "license": "CC-BY-4.0",
+      "url": "https://huggingface.co/huggingworld/onnx-image-models/resolve/main/1x-SuperScale_SPAN.onnx",
+      "sha256": "8aa72ec6913e7255f96cecc37eec05d078be82a63ced271c0fa532108f1d4a2d",
+      "tags": [
+        "restore",
+        "photo"
+      ],
+      "batch": 1,
+      "bgr": false,
+      "_measured": "56 мс на 64px, входы image, выход 1x3x64x64 ⇒ ×1.000, вход 220/125/20 → rgb 215/123/23 | bgr 220/125/25",
+      "rec": {
+        "tile": 256,
+        "overlap": 16,
+        "denoise": 0,
+        "sharpen": 0
+      }
+    },
+    {
+      "id": "dejpg-1x",
+      "label": "DeJpeg ×1",
+      "kind": "upscale",
+      "scale": 1,
+      "arch": "dejpeg",
+      "file": "1x-Kim2091-DeJpeg-v0.onnx",
+      "sizeMb": 9,
+      "license": "CC-BY-4.0",
+      "url": "https://huggingface.co/huggingworld/onnx-image-models/resolve/main/1x-Kim2091-DeJpeg-v0.onnx",
+      "sha256": "e83f0d7b18079a395ac01847ff0825fc1a9d2bce632c25c9fe4c8389fe83632d",
+      "tags": [
+        "restore",
+        "photo"
+      ],
+      "batch": 1,
+      "bgr": false,
+      "_measured": "217 мс на 64px, входы image, выход 1x3x64x64 ⇒ ×1.000, вход 220/125/20 → rgb 221/125/19 | bgr 221/125/16",
+      "rec": {
+        "tile": 256,
+        "overlap": 16,
+        "denoise": 0,
+        "sharpen": 0
+      }
+    },
+    {
+      "id": "desharpen-1x",
+      "label": "DeSharpen ×1",
+      "kind": "upscale",
+      "scale": 1,
+      "arch": "sharpen",
+      "file": "1x_DeSharpen.onnx",
+      "sizeMb": 64,
+      "license": "CC-BY-4.0",
+      "url": "https://huggingface.co/huggingworld/onnx-image-models/resolve/main/1x_DeSharpen.onnx",
+      "sha256": "cc4fd6fb0ff3b7836d3e721e4d1df964644f78b5d4ca75d4640d4cc596e7e72a",
+      "tags": [
+        "restore",
+        "photo"
+      ],
+      "batch": 1,
+      "bgr": false,
+      "_measured": "1416 мс на 64px, входы image, выход 1x3x64x64 ⇒ ×1.000, вход 220/125/20 → rgb 220/126/21 | bgr 222/127/20",
+      "rec": {
+        "tile": 256,
+        "overlap": 16,
+        "denoise": 0,
+        "sharpen": 0
+      }
+    },
+    {
+      "id": "anime-sharp-v3-2x",
+      "label": "AnimeSharp V3 ×2",
+      "kind": "upscale",
+      "scale": 2,
+      "arch": "esrgan",
+      "file": "2x-AnimeSharpV3-fp32.onnx",
+      "sizeMb": 64,
+      "license": "CC-BY-4.0",
+      "url": "https://huggingface.co/Kim2091/AnimeSharpV3/resolve/main/2x-AnimeSharpV3-fp32.onnx",
+      "sha256": "2f54305f5b629594de4670efba4e738841a647fee2c1272a54bac328cf072c49",
+      "tags": [
+        "anime",
+        "photo",
+        "detail"
+      ],
+      "align": 2,
+      "bgr": false,
+      "_measured": "513 мс на 64px, входы input, выход 1x3x128x128 ⇒ ×2.000, вход 220/125/20 → rgb 219/125/21 | bgr 222/126/26",
+      "rec": {
+        "tile": 256,
+        "overlap": 16,
+        "denoise": 0,
+        "sharpen": 0
+      }
+    },
+    {
+      "id": "swin2sr-c2",
+      "label": "Swin2SR classical ×2",
+      "kind": "upscale",
+      "scale": 2,
+      "arch": "swin2sr",
+      "file": "model.onnx",
+      "sizeMb": 52,
+      "license": "CC-BY-4.0",
+      "url": "https://huggingface.co/Xenova/swin2SR-classical-sr-x2-64/resolve/main/onnx/model.onnx",
+      "sha256": "6dde3fe2440543ccae7c40d175609f83c18aeaa3d8456745c4329ef97ae744bd",
+      "tags": [
+        "photo",
+        "detail",
+        "restore"
+      ],
+      "align": 4,
+      "bgr": false,
+      "_measured": "3257 мс на 64px, входы pixel_values, выход 1x3x128x128 ⇒ ×2.000, вход 220/125/20 → rgb 221/126/27 | bgr 220/125/29",
+      "rec": {
+        "tile": 256,
+        "overlap": 16,
+        "denoise": 0,
+        "sharpen": 0
+      }
+    },
+    {
+      "id": "swin2sr-r4",
+      "label": "Swin2SR realworld ×4",
+      "kind": "upscale",
+      "scale": 4,
+      "arch": "swin2sr",
+      "file": "model_fp16.onnx",
+      "sizeMb": 27,
+      "license": "CC-BY-4.0",
+      "url": "https://huggingface.co/onnx-community/swin2SR-realworld-sr-x4-64-bsrgan-psnr-ONNX/resolve/main/onnx/model_fp16.onnx",
+      "sha256": "27f44e78252218ab1be4e5f7e8711d92278dc1591c21c48fd63ec667264a760a",
+      "tags": [
+        "photo",
+        "restore",
+        "detail"
+      ],
+      "align": 4,
+      "bgr": false,
+      "_measured": "3440 мс на 64px, входы pixel_values, выход 1x3x256x256 ⇒ ×4.000, вход 220/125/20 → rgb 224/126/7 | bgr 227/125/11",
+      "rec": {
+        "tile": 256,
+        "overlap": 16,
+        "denoise": 0,
+        "sharpen": 0
+      }
     }
   ]
 }

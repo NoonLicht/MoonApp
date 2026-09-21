@@ -725,7 +725,10 @@ describe("upscale: каталог моделей и системные прес�
       expect(["upscale", "interp"], m.id).toContain(m.kind);
       // Множитель апскейла есть у апскейлеров; у интерполяторов — число кадров
       // пары, поэтому проверяем соответственно виду модели.
-      if (m.kind === "upscale") expect([2, 3, 4], m.id).toContain(m.scale);
+      // Множитель апскейла есть у апскейлеров; у интерполяторов — число кадров
+      // пары, поэтому проверяем соответственно виду модели. ×1 — модели
+      // восстановления (dejpeg/denoise/detail): они не меняют размер кадра.
+      if (m.kind === "upscale") expect([1, 2, 3, 4], m.id).toContain(m.scale);
       expect(typeof m.available).toBe("boolean");
       expect(typeof m.path).toBe("string");
     }

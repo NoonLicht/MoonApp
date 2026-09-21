@@ -248,12 +248,20 @@ export interface UpModelInfo {
   align: number;
   /** Рекомендованный провайдер модели ("" — как в настройках). */
   provider: string;
+  /**
+   * Собранный движок TensorRT этой модели («512/…engine», пусто — не собран).
+   * Имена файлов движков — хеши графа, поэтому связь «модель → движок» ведём
+   * реестром (`.trt\registry.json`), а не по именам файлов.
+   */
+  trtEngine: string;
   file: string;
   sizeMb: number;
   license: string;
   url: string;
   path: string;
   available: boolean;
+  /** Файл ONNX лежит на диске (false у «тензорных» моделей: ONNX убран, движок есть). */
+  onnxOnDisk: boolean;
   /** Категории модели (photo/video/anime/fast/detail/restore/heavy/interp). */
   tags: string[];
   /** Рекомендуемые настройки этой модели: тайл, перекрытие, резкость, шум. */
@@ -693,6 +701,7 @@ function findModel(id: string): ManifestModel | null {
 export function listModels(): UpModelInfo[] {
   return loadManifest().map((m) => {
     const p = path.join(DIRS.upscaleModels, m.file);
+    const onnxOnDisk = fs.existsSync(p);
     return {
       id: m.id,
       label: m.label,
@@ -710,12 +719,16 @@ export function listModels(): UpModelInfo[] {
       batch: modelBatchLimit(m),
       align: modelAlign(m),
       provider: String(m.provider || ""),
+      trtEngine: trtEngineFor(m.id),
       file: m.file,
       sizeMb: m.sizeMb,
       license: m.license,
       url: m.url,
       path: p,
-      available: fs.existsSync(p),
+      // «Готова к работе»: файл на диске или собранный движок TensorRT (ONNX
+      // после сборки убирается, а граф движок докачает сам при первом запуске).
+      available: onnxOnDisk || !!trtEngineFor(m.id),
+      onnxOnDisk,
       tags: (m.tags || []).map(String),
       rec: m.rec || {},
       measured: String(m._measured || ""),
@@ -756,6 +769,9 @@ export function removeModel(id: string): { ok: boolean; removed: boolean } {
   if (!m) throw new Error("model_unknown");
   const p = path.join(DIRS.upscaleModels, m.file);
   clearSessions();
+  // Вместе с моделью уходят её движки: иначе они занимали бы место и попадали
+  // в реестр как «движок есть» у удалённой модели.
+  dropEngines(id);
   const removed = fs.existsSync(p);
   if (removed) fs.rmSync(p, { force: true });
   // Модель, установленная из архива (Qualcomm), состоит из нескольких файлов:
@@ -864,6 +880,119 @@ let ortTriedAt = 0;
 const ORT_RETRY_MS = 5000;
 
 /**
+ * GPU-пак: своя сборка onnxruntime-node с провайдерами CUDA/TensorRT.
+ *
+ * Зачем: npm-модуль собран только с cpu/dml/webgpu, а провайдерные DLL есть лишь
+ * в CUDA-сборке ONNX Runtime. Пак кладётся в storage (в asar писать нельзя) и
+ * подключается двумя вещами:
+ *   1) подменой нативного биндинга (перехват require внутри onnxruntime-node);
+ *   2) каталогом пака в DLL-поиске Windows — иначе провайдер CUDA не найдёт свои
+ *      cudart/cublas/cuDNN рядом с собой.
+ * Стоковый модуль остаётся на месте: нет пака — работает как раньше (DML/CPU).
+ */
+export function packDir(): string {
+  return path.join(DIRS.storage, "ort-gpu", `${process.platform}-${process.arch}`);
+}
+
+/** Путь к своему биндингу в паке (пустая строка, если пака нет). */
+export function packBinding(): string {
+  const p = path.join(packDir(), "onnxruntime_binding.node");
+  return fs.existsSync(p) ? p : "";
+}
+
+/**
+ * Работать стоковым рантаймом npm-модуля, не подключая биндинг пака.
+ *
+ * Зачем: нативный биндинг в процессе один, и наш пак подменяет стоковый — вместе
+ * они не поднимаются. Провайдеры `dml`/`webgpu` есть только в стоковом модуле,
+ * поэтому для замера и диагностики нужен способ явно попросить стоковый рантайм
+ * (переменная `MOONAPP_ORT_STOCK=1`).
+ */
+export function ortStockForced(): boolean {
+  const v = String(process.env.MOONAPP_ORT_STOCK || "")
+    .trim()
+    .toLowerCase();
+  return !!v && v !== "0" && v !== "false";
+}
+
+/** Что за пак установлен: путь, версия движка и что в нём собрано. */
+export function packStatus(): {
+  installed: boolean;
+  dir: string;
+  binding: string;
+  provider: string;
+  version: string;
+} {
+  const binding = packBinding();
+  const meta = path.join(packDir(), "pack.json");
+  let info: { provider?: string; version?: string } = {};
+  if (binding && fs.existsSync(meta)) {
+    try {
+      info = JSON.parse(fs.readFileSync(meta, "utf8")) as { provider?: string; version?: string };
+    } catch {
+      info = {};
+    }
+  }
+  return {
+    installed: !!binding,
+    dir: packDir(),
+    binding,
+    provider: String(info.provider || ""),
+    version: String(info.version || ""),
+  };
+}
+
+/** Добавить каталог пака в DLL-поиск процесса (по одному разу на каталог). */
+function ensurePackDllPath(dir: string): void {
+  const parts = String(process.env.PATH || "").split(path.delimiter);
+  if (!parts.includes(dir)) process.env.PATH = [dir, ...parts].join(path.delimiter);
+}
+
+/** Биндинг пака, который реально подключён (для статуса) и признак готового перехвата. */
+let packInUse = "";
+let packHookInstalled = false;
+
+/**
+ * Подключить биндинг из пака вместо npm-модуля.
+ *
+ * Механика: `onnxruntime-node` делает
+ * `require("../bin/napi-v6/<platform>/<arch>/onnxruntime_binding.node")` — путь
+ * жёстко зашит в его же коде. Поэтому перехватываем `Module._load` и на этот
+ * запрос отдаём уже загруженный модуль из пака. Перехват ставится один раз.
+ */
+function installPackBinding(): boolean {
+  if (ortStockForced()) return false;
+  const binding = packBinding();
+  if (!binding) return false;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const native = require(binding) as unknown;
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const mod = require("module") as {
+      _load: (request: string, parent: unknown, isMain: boolean) => unknown;
+    };
+    if (!packHookInstalled) {
+      const orig = mod._load.bind(mod);
+      mod._load = (request: string, parent: unknown, isMain: boolean) => {
+        if (typeof request === "string" && request.endsWith("onnxruntime_binding.node"))
+          return native;
+        return orig(request, parent, isMain);
+      };
+      packHookInstalled = true;
+    }
+    ensurePackDllPath(packDir());
+    packInUse = binding;
+    logger.info("upscale.pack_binding", { binding });
+    return true;
+  } catch (e) {
+    // Битый пак не залипаем: причина уходит в статус, работаем стоковым модулем.
+    ortError = String((e as Error).message || e).slice(0, 300);
+    logger.warn("upscale.pack_binding_failed", { error: ortError });
+    return false;
+  }
+}
+
+/**
  * Где искать рантайм. Обычный require находит модуль в dev-режиме, но в
  * установленной сборке зависимости лежат рядом с app.asar (asarUnpack), поэтому
  * проверяем и `resources/app.asar.unpacked`, и текущую папку приложения.
@@ -895,6 +1024,8 @@ function loadOrt(force = false): OrtModule | null {
   if (ortCache && !force) return ortCache;
   if (!force && ortCache === null && Date.now() - ortTriedAt < ORT_RETRY_MS) return null;
   ortTriedAt = Date.now();
+  // GPU-пак (CUDA/TensorRT) приоритетнее npm-модуля: там своя сборка биндинга.
+  installPackBinding();
   for (const candidate of ortCandidates()) {
     try {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -902,9 +1033,10 @@ function loadOrt(force = false): OrtModule | null {
       ortCache = mod;
       ortError = "";
       try {
-        ortPath = require.resolve(candidate);
+        // С установленным паком реально загружен его биндинг, а не модуль из node_modules.
+        ortPath = packInUse || require.resolve(candidate);
       } catch {
-        ortPath = candidate;
+        ortPath = packInUse || candidate;
       }
       logger.info("upscale.ort_loaded", {
         version: mod?.env?.versions?.common || "",
@@ -921,6 +1053,9 @@ function loadOrt(force = false): OrtModule | null {
 }
 
 export function runtimeAvailable(): boolean {
+  // Пак уже на диске — рантайм будет доступен после перезапуска, даже если в этом
+  // процессе ONNX ещё не загружался (загружать его ради ответа не нужно).
+  if (!ortStockForced() && packBinding()) return true;
   return !!loadOrt();
 }
 
@@ -939,13 +1074,31 @@ export function runtimeStatus(): {
   version: string;
   path: string;
   error: string;
+  pack: string;
 } {
-  const mod = loadOrt(true);
+  // ВАЖНО: с установленным паком не загружаем рантайм — иначе его DLL захватываются
+  // процессом, и пак нельзя ни обновить, ни удалить до перезапуска приложения.
+  // Без пака (стоковый модуль) загрузка безопасна и нужна для честного статуса.
+  const binding = packBinding();
+  let mod: OrtModule | null = ortForTests || ortCache || null;
+  if (!mod && !binding) mod = loadOrt();
+  if (!mod && binding) {
+    const info = packStatus();
+    return {
+      available: true,
+      version: info.version,
+      path: binding,
+      error: "",
+      pack: binding,
+    };
+  }
   return {
     available: !!mod,
     version: String(mod?.env?.versions?.common || ""),
     path: ortPath,
     error: mod ? "" : ortError,
+    // Непустая строка — включён свой биндинг из GPU-пака (CUDA/TensorRT).
+    pack: packInUse,
   };
 }
 
@@ -969,65 +1122,264 @@ function providerList(pref: string): string[] {
 export function providerOrder(pref: string, m?: ManifestModel | null): string[] {
   const base = providerList(pref);
   const own = String(m?.provider || "");
-  if (!own || !base.includes(own)) return base;
-  return [own, ...base.filter((p) => p !== own)];
+  const order = !own || !base.includes(own) ? base : [own, ...base.filter((p) => p !== own)];
+  // Чего нет в рантайме — не пробуем: со стоковым модулем нет cuda/tensorrt, а с
+  // GPU-паком нет dml. Иначе первый же session попадал бы в ошибку «нет провайдера».
+  const have = new Set(supportedBackends());
+  if (!have.size) return order;
+  const filtered = order.filter((p) => p === "cpu" || have.has(p));
+  return filtered.length ? filtered : ["cpu"];
 }
 
 /** Провайдеры, реально собранные в этот рантайм (`cpu`, `dml`, `cuda`, `tensorrt`…). */
 export function supportedBackends(): string[] {
+  // Пак на диске, но рантайм в этом процессе ещё не загружен: список берём из
+  // файлов пака. Так страница не «захватывает DLL ради подписи» — иначе пак нельзя
+  // будет обновить или удалить без перезапуска приложения.
+  const binding = ortStockForced() ? "" : packBinding();
+  if (binding && !ortCache) return packBackends(binding);
   const ort = loadOrt() as OrtModule | null;
   try {
-    const list = ort?.listSupportedBackends?.() || [];
-    return list.map((b) => String(b?.name || "")).filter(Boolean);
+    const list = (ort?.listSupportedBackends?.() || [])
+      .map((b) => String(b?.name || ""))
+      .filter(Boolean);
+    // Список в биндинге — «время сборки»: он не знает, скачал ли пользователь
+    // вторую ступень пака. Проверяем файлы: без библиотек TRT провайдер всё равно
+    // не поднимется, и обещать его в UI неправильно.
+    if (!packInUse) return list;
+    const dir = packDir();
+    return list.filter((p) => {
+      if (p === "cuda") return fs.existsSync(path.join(dir, "onnxruntime_providers_cuda.dll"));
+      if (p === "tensorrt")
+        return (
+          fs.existsSync(path.join(dir, "onnxruntime_providers_tensorrt.dll")) &&
+          fs.existsSync(path.join(dir, "nvinfer_10.dll"))
+        );
+      return true;
+    });
   } catch {
     return [];
   }
 }
 
-/** Папка кэша движков TensorRT: ORT складывает туда собранные .engine. */
-function trtDir(): string {
-  return path.join(DIRS.upscaleModels, ".trt");
-}
-
-/** Собранные движки TensorRT (файлы, которые ORT создал при сборке). */
-export function trtEngines(): { file: string; sizeMb: number; mtime: number }[] {
-  const dir = trtDir();
-  if (!fs.existsSync(dir)) return [];
-  return fs
-    .readdirSync(dir)
-    .filter((f) => f.endsWith(".engine"))
-    .map((f) => {
-      const st = fs.statSync(path.join(dir, f));
-      return { file: f, sizeMb: +(st.size / 1048576).toFixed(1), mtime: st.mtimeMs };
-    })
-    .sort((a, b) => b.mtime - a.mtime);
+/**
+ * Провайдеры пака по его файлам: CPU есть всегда, CUDA — если лежит провайдер CUDA,
+ * TensorRT — только со второй ступенью (провайдер + nvinfer_10).
+ */
+function packBackends(binding: string): string[] {
+  const dir = path.dirname(binding);
+  const out = ["cpu"];
+  if (fs.existsSync(path.join(dir, "onnxruntime_providers_cuda.dll"))) out.push("cuda");
+  if (
+    fs.existsSync(path.join(dir, "onnxruntime_providers_tensorrt.dll")) &&
+    fs.existsSync(path.join(dir, "nvinfer_10.dll"))
+  ) {
+    out.push("tensorrt");
+  }
+  return out;
 }
 
 /**
- * Опции сессии для TensorRT: включённый fp16 и кэш движка на диске.
+ * Папка кэша движков TensorRT: `.trt\<профиль>\<модель>`.
  *
- * Сборка движка — минуты (TRT компилирует граф под конкретную GPU), зато потом
- * он грузится из кэша. Если известен размер тайла модели, задаём профиль формы —
- * иначе TRT пересобирал бы движок под каждый новый размер входа.
+ * Зачем два уровня. Профиль: движок помнит размеры входа, поэтому общий кэш на все
+ * тайлы ломался с «Static dimension mismatch» при смене тайла. Модель: имена файлов
+ * движков — хеши графа, и в общей папке профиля «самый свежий файл» мог оказаться
+ * движком совсем другой модели, а реестр привязывал его не туда.
  */
-function trtOptions(m: ManifestModel, tile: number, dir: string): Record<string, unknown> {
-  const shape = (h: number, w: number) => `input:1x3x${h}x${w}`;
-  const size = Math.max(64, Math.round(tile || m.tile || 512));
+function trtDir(size = 0, modelId = ""): string {
+  const root = path.join(DIRS.upscaleModels, ".trt");
+  const parts = [root];
+  if (size > 0) parts.push(String(size));
+  // Ид модели приходит из каталога (только [a-zA-Z0-9._-]) — как папка безопасен.
+  if (modelId) parts.push(modelId.replace(/[^a-zA-Z0-9._-]/g, "_"));
+  const dir = path.join(...parts);
+  // Каталог создаём сами: в несуществующий путь ORT молча не пишет кэш, и тогда
+  // каждое новое окно приложения пересобирает движок заново (это минуты).
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  return dir;
+}
+
+/** Собранные движки TensorRT: `.trt\<профиль>\<модель>\*.engine` (рекурсивно). */
+export function trtEngines(): { file: string; sizeMb: number; mtime: number }[] {
+  const root = path.join(DIRS.upscaleModels, ".trt");
+  if (!fs.existsSync(root)) return [];
+  const out: { file: string; sizeMb: number; mtime: number }[] = [];
+  /** Обход в глубину: путь от `.trt` попадает в имя («512/модель/…engine»). */
+  const walk = (dir: string, prefix: string[]): void => {
+    for (const ent of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, ent.name);
+      if (ent.isDirectory()) {
+        walk(full, [...prefix, ent.name]);
+        continue;
+      }
+      if (!ent.name.endsWith(".engine")) continue;
+      const st = fs.statSync(full);
+      out.push({
+        file: [...prefix, ent.name].join("/"),
+        sizeMb: +(st.size / 1048576).toFixed(1),
+        mtime: st.mtimeMs,
+      });
+    }
+  };
+  walk(root, []);
+  return out.sort((a, b) => b.mtime - a.mtime);
+}
+
+/**
+ * Реестр движков: какой модели и какому профилю принадлежит файл движка.
+ *
+ * Имена файлов движков — хеши графа, поэтому «есть ли движок у этой модели» из имён
+ * не вычитать. Реестр пишется при сборке кнопкой и при первом TRT-прогоне модели,
+ * а панель моделей показывает по нему галочку «движок готов».
+ */
+function trtRegistryPath(): string {
+  return path.join(DIRS.upscaleModels, ".trt", "registry.json");
+}
+
+/** Записи реестра: ключ `${модель}|${профиль}` → путь движка внутри `.trt`. */
+export function trtRegistry(): Record<string, string> {
+  try {
+    const p = trtRegistryPath();
+    if (!fs.existsSync(p)) return {};
+    const raw = JSON.parse(fs.readFileSync(p, "utf8")) as unknown;
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+    const out: Record<string, string> = {};
+    for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+      if (typeof v === "string" && v) out[k] = v;
+    }
+    return out;
+  } catch (e) {
+    logger.warn("upscale.trt_registry_read", { error: String((e as Error).message).slice(0, 160) });
+    return {};
+  }
+}
+
+/** Дописать движок в реестр (имя файла — как в `trtEngines`: «512/…engine»). */
+function trtRegistryAdd(modelId: string, profile: number, file: string): void {
+  if (!file) return;
+  const all = trtRegistry();
+  const key = `${modelId}|${profile}`;
+  if (all[key] === file) return;
+  all[key] = file;
+  try {
+    const p = trtRegistryPath();
+    fs.mkdirSync(path.dirname(p), { recursive: true });
+    fs.writeFileSync(p, JSON.stringify(all, null, 1));
+  } catch (e) {
+    logger.warn("upscale.trt_registry_write", {
+      error: String((e as Error).message).slice(0, 160),
+    });
+  }
+}
+
+/** Файл движка модели: для профиля (`profile > 0`) или любой собранный. */
+export function trtEngineFor(modelId: string, profile = 0): string {
+  const all = trtRegistry();
+  if (profile > 0) return all[`${modelId}|${profile}`] || "";
+  const hit = Object.keys(all).find((k) => k.startsWith(`${modelId}|`));
+  return hit ? all[hit] : "";
+}
+
+/**
+ * Запомнить движок, который ORT собрал в этой папке профиля.
+ *
+ * Нужно и кнопке «Собрать движок», и обычному прогону: движок мог появиться при
+ * первом задании, и панель моделей должна это показать.
+ */
+function registerTrtEngine(modelId: string, profile: number, dir: string): string {
+  try {
+    const files = fs
+      .readdirSync(dir)
+      .filter((f) => f.endsWith(".engine"))
+      .map((f) => ({ f, m: fs.statSync(path.join(dir, f)).mtimeMs }))
+      .sort((a, b) => b.m - a.m);
+    if (!files.length) return "";
+    // Папка принадлежит одной модели, поэтому самый свежий файл здесь — её движок.
+    const file = `${profile}/${modelId}/${files[0].f}`;
+    trtRegistryAdd(modelId, profile, file);
+    return file;
+  } catch (e) {
+    logger.warn("upscale.trt_engine_scan", { error: String((e as Error).message).slice(0, 160) });
+    return "";
+  }
+}
+
+/**
+ * Максимальная пачка в профиле TensorRT: движок собирается под диапазон 1..этого
+ * значения. Большую пачку TRT не примет — пришлось бы пересобирать движок (минуты),
+ * поэтому «сколько кадров за проход» подрезаем (см. upscaleVideoJob).
+ */
+/**
+ * Потолок пачки в профиле TensorRT: движок собирается под диапазон 1..N.
+ *
+ * Почему 8: из замеров — пачка 8 быстрее пачки 2 на ~12%, а дальше растут только
+ * буферы кадров в памяти. Переопределяется переменной окружения `MOONAPP_TRT_BATCH_MAX`
+ * (замеру она нужна, чтобы честно снять пачку 16 — под неё движок собирается заново).
+ */
+export const TRT_BATCH_MAX = Math.min(
+  128,
+  Math.max(1, Math.round(Number(process.env.MOONAPP_TRT_BATCH_MAX) || 0) || 8),
+);
+
+/**
+ * Размер входа, под который собирается профиль TensorRT (и он же — размер тайла).
+ *
+ * Почему одно число: профиль у TRT статический (min = max), поэтому любой «не
+ * такой» размер входа означает пересборку движка или отказ. Считаем размер от
+ * тайла модели/настроек, а кадр режем на тайлы ровно этого размера и добираем
+ * крайние тайлы повтором края — тогда движок собирается один раз на всё видео.
+ */
+export function trtProfileSize(m: ManifestModel | null | undefined, tile: number): number {
+  return Math.max(64, Math.round(tile || m?.tile || 512));
+}
+
+/**
+ * Опции сессии для TensorRT: fp16, кэш движка/таймингов и профиль формы.
+ *
+ * Профиль: пространственные размеры жёстко равны `trtProfileSize` (так движок не
+ * пересобирается), а пачка — диапазон 1..`batchMax`, потому что последняя пачка
+ * видео всегда короче полной.
+ *
+ * Экспортируется ради теста: имена ключей — часть контракта с ORT, и опечатка в них
+ * (например `trt_opt_profile_shapes` вместо `trt_profile_opt_shapes`) роняет сессию
+ * целиком с «Unknown provider option».
+ */
+export function trtOptions(
+  m: ManifestModel,
+  tile: number,
+  dir: string,
+  batchMax = TRT_BATCH_MAX,
+): Record<string, unknown> {
+  const size = trtProfileSize(m, tile);
+  const shape = (n: number) => `input:${n}x3x${size}x${size}`;
+  const maxN = Math.max(1, Math.round(batchMax) || 1);
+  // ВАЖНО: опции провайдера передаются В ОБЪЕКТЕ провайдера — так их читает
+  // биндинг (`ParseExecutionProviders`) и наш патч опций TRT. В опциях сессии они
+  // игнорируются, и TRT молча работает на умолчаниях (без fp16 и без кэша).
   return {
-    executionProviders: ["tensorrt"],
+    executionProviders: [
+      {
+        name: "tensorrt",
+        trt_fp16_enable: true,
+        trt_engine_cache_enable: true,
+        trt_engine_cache_path: dir,
+        trt_timing_cache_enable: true,
+        trt_timing_cache_path: dir,
+        trt_builder_optimization_level: 3,
+        trt_max_workspace_size: 4 * 1024 * 1024 * 1024,
+        // Один профиль: тайл фиксирован, пачка — от 1 до maxN. Имя ключа —
+        // ровно как в ORT (`trt_profile_opt_shapes`), иначе провайдер отвергнет
+        // ВСЕ опции с «Unknown provider option».
+        trt_profile_min_shapes: shape(1),
+        trt_profile_opt_shapes: shape(maxN),
+        trt_profile_max_shapes: shape(maxN),
+      },
+    ],
     graphOptimizationLevel: "all",
-    logSeverityLevel: 3,
-    trt_fp16_enable: true,
-    trt_engine_cache_enable: true,
-    trt_engine_cache_path: dir,
-    trt_timing_cache_enable: true,
-    trt_timing_cache_path: dir,
-    trt_builder_optimization_level: 3,
-    trt_max_workspace_size: 4 * 1024 * 1024 * 1024,
-    // Один профиль на типовой тайл: min = max, чтобы TRT не пересобирал движок.
-    trt_profile_min_shapes: shape(size, size),
-    trt_opt_profile_shapes: shape(size, size),
-    trt_profile_max_shapes: shape(size, size),
+    // Уровень логов ORT: по умолчанию только ошибки, MOONAPP_TRT_LOG=1 включает info
+    // (нужно, когда смотрим, подхватился ли кэш движка).
+    logSeverityLevel: Number(process.env.MOONAPP_TRT_LOG || 3),
   };
 }
 
@@ -1057,10 +1409,99 @@ export function trtStatus(): TrtStatus {
  * дальнейшие запуски с провайдером `tensorrt` грузят его мгновенно. Для AMD,
  * Intel и CPU ничего не нужно — работает обычный ONNX-путь.
  */
+export interface TrtBuildResult {
+  ok: boolean;
+  ms: number;
+  /** Размер входа, под который собран движок (он же — размер тайла). */
+  profile: number;
+  /** Новые файлы движка: пусто — движок уже лежал в кэше и был просто загружен. */
+  engines: { file: string; sizeMb: number }[];
+  /** Движок не собирался заново, а взят из кэша (первый заход был мгновенным). */
+  reused: boolean;
+  /** Файл движка этой модели («512/модель/…engine») — для сообщения в панели. */
+  engine: string;
+  engineMb: number;
+  /** Сколько движков собрано всего (по всем моделям и профилям). */
+  total: number;
+  /** Сколько МБ освободило удаление ONNX (0 — файл оставлен или уже удалён). */
+  onnxFreedMb: number;
+}
+
+/**
+ * Потолок размера ONNX, который убираем после сборки движка. Крупные модели
+ * (CAIN, 164 МБ) оставляем: их докачка при следующем запуске была бы заметной.
+ */
+const TRT_DROP_ONNX_MAX_MB = 64;
+
+/**
+ * Убрать ONNX, оставив собранный движок TensorRT.
+ *
+ * Движок TensorRT — скомпилированный под GPU план графа, но ONNX Runtime читает
+ * сам граф при создании сессии, поэтому «совсем без ONNX» модель жить не может.
+ * Зато файл можно не держать на диске: как только движок собран, ONNX удаляется
+ * (освобождает место), а при следующем запуске движок скачивает его сам
+ * (см. getSession) — граф тот же, поэтому кэш движка переиспользуется.
+ */
+function dropOnnx(id: string): number {
+  const m = findModel(id);
+  if (!m || !m.url) return 0;
+  const p = path.join(DIRS.upscaleModels, m.file);
+  if (!fs.existsSync(p)) return 0;
+  const freed = Math.round(fs.statSync(p).size / 1048576);
+  // Файл держит только загруженная сессия: убираем её и пробуем удалить.
+  clearSessions();
+  try {
+    fs.rmSync(p, { force: true });
+  } catch (e) {
+    logger.warn("upscale.onnx_in_use", { id, error: String((e as Error).message).slice(0, 160) });
+    return 0;
+  }
+  logger.action("upscale.onnx_dropped", { id, freedMb: freed, engine: trtEngineFor(id) });
+  return freed;
+}
+
+/** Ручное «освободить ONNX»: только когда движок собран и модель есть откуда взять. */
+export function removeOnnx(id: string): { ok: boolean; freedMb: number } {
+  const m = findModel(id);
+  if (!m) throw new Error("model_unknown");
+  if (!trtEngineFor(id)) throw new Error("trt_engine_missing");
+  if (!m.url) throw new Error("model_no_url");
+  return { ok: true, freedMb: dropOnnx(id) };
+}
+
+/** Убрать движки модели (при её удалении): файлы + записи реестра. */
+function dropEngines(id: string): void {
+  const root = path.join(DIRS.upscaleModels, ".trt");
+  const entries = Object.keys(trtRegistry()).filter((k) => k.startsWith(`${id}|`));
+  const files = trtEngines()
+    .filter((e) => e.file.split("/")[1] === id)
+    .map((e) => e.file);
+  for (const rel of files) fs.rmSync(path.join(root, ...rel.split("/")), { force: true });
+  if (entries.length) {
+    const all = trtRegistry();
+    for (const k of entries) delete all[k];
+    try {
+      fs.writeFileSync(trtRegistryPath(), JSON.stringify(all, null, 1));
+    } catch (e) {
+      logger.warn("upscale.trt_registry_write", { error: String((e as Error).message).slice(0, 160) });
+    }
+  }
+  // Пустые папки моделей после себя не оставляем.
+  try {
+    for (const seg of fs.readdirSync(root, { withFileTypes: true })) {
+      if (!seg.isDirectory()) continue;
+      const sub = path.join(root, seg.name, id);
+      if (fs.existsSync(sub) && fs.readdirSync(sub).length === 0) fs.rmdirSync(sub);
+    }
+  } catch (e) {
+    logger.warn("upscale.trt_prune", { error: String((e as Error).message).slice(0, 160) });
+  }
+}
+
 export async function buildTrtEngine(
   id: string,
   o: { tile?: number } = {},
-): Promise<{ ok: boolean; ms: number; engines: { file: string; sizeMb: number }[] }> {
+): Promise<TrtBuildResult> {
   const ort = loadOrt();
   if (!ort) throw new Error("runtime_missing");
   const m = findModel(id);
@@ -1070,21 +1511,43 @@ export async function buildTrtEngine(
   const backends = supportedBackends();
   if (!backends.includes("tensorrt")) throw new Error("trt_unavailable");
 
-  const dir = trtDir();
-  fs.mkdirSync(dir, { recursive: true });
+  const profile = trtProfileSize(m, o.tile || 0);
+  const dir = trtDir(profile, id);
   const before = new Set(trtEngines().map((e) => e.file));
   const t0 = Date.now();
+  // Первый заход по этому профилю компилирует граф (минуты), повторный — просто
+  // грузит готовый движок из кэша за доли секунды. Отсюда reused в ответе.
   const session = await ort.InferenceSession.create(file, trtOptions(m, o.tile || 0, dir));
   const ms = Date.now() - t0;
   const fresh = trtEngines().filter((e) => !before.has(e.file));
+  const engine = registerTrtEngine(id, profile, dir);
+  const engineMb = trtEngines().find((e) => e.file === engine)?.sizeMb || 0;
   // Сессия нужна была только для сборки: движок уже на диске.
   await session.release?.().catch(() => undefined);
+  // Модель стала «тензорной»: движок собран, ONNX на диске больше не нужен —
+  // освобождаем место (крупные модели оставляем, их докачка была бы долгой).
+  const onnxFreedMb =
+    engine && m.url && m.sizeMb <= TRT_DROP_ONNX_MAX_MB ? dropOnnx(id) : 0;
+  const total = trtEngines().length;
   logger.action("upscale.trt_built", {
     model: id,
+    profile,
     ms,
+    reused: fresh.length === 0,
+    onnxFreedMb,
     engines: fresh.map((e) => e.file),
   });
-  return { ok: true, ms, engines: fresh.map((e) => ({ file: e.file, sizeMb: e.sizeMb })) };
+  return {
+    ok: true,
+    ms,
+    profile,
+    engines: fresh.map((e) => ({ file: e.file, sizeMb: e.sizeMb })),
+    reused: fresh.length === 0,
+    engine,
+    engineMb,
+    total,
+    onnxFreedMb,
+  };
 }
 
 interface ReadySession {
@@ -1230,18 +1693,39 @@ function wrapHalfSession(ort: OrtModule, session: OrtSession): OrtSession {
   };
 }
 
-function getSession(modelId: string, pref: string, threads: number): Promise<ReadySession> {
-  const key = `${modelId}|${pref}|${threads}`;
+/** Размер профиля TensorRT для этого запроса (0 — первый провайдер не TensorRT). */
+function trtProfileFor(pref: string, modelId: string, tile: number): number {
+  const m = findModel(modelId);
+  return providerOrder(pref, m)[0] === "tensorrt" ? trtProfileSize(m, tile) : 0;
+}
+
+function getSession(
+  modelId: string,
+  pref: string,
+  threads: number,
+  tile = 0,
+): Promise<ReadySession> {
+  // У TensorRT вход задан жёстким профилем, поэтому сессии с разными тайлами
+  // несовместимы («Static dimension mismatch»): профиль — часть ключа кэша.
+  const profile = trtProfileFor(pref, modelId, tile);
+  const key = `${modelId}|${pref}|${threads}|${profile}`;
   const cached = sessions.get(key);
   if (cached) return cached;
 
   const task = (async (): Promise<ReadySession> => {
     const ort = loadOrt();
     if (!ort) throw new Error("runtime_missing");
-    const m = findModel(modelId);
-    if (!m) throw new Error("model_unknown");
-    const file = path.join(DIRS.upscaleModels, m.file);
+  const m = findModel(modelId);
+  if (!m) throw new Error("model_unknown");
+  const file = path.join(DIRS.upscaleModels, m.file);
+  if (!fs.existsSync(file)) {
+    // Модель «тензорная»: ONNX убран после сборки движка (место), но граф нужен
+    // ORT для старта сессии — качаем его сами, движок после этого берётся из кэша.
+    if (!m.url) throw new Error("model_missing");
+    logger.info("upscale.model_refetch", { model: modelId });
+    await downloadModel(modelId, { force: true });
     if (!fs.existsSync(file)) throw new Error("model_missing");
+  }
 
     let lastErr: unknown = null;
     for (const provider of providerOrder(pref, m)) {
@@ -1257,7 +1741,7 @@ function getSession(modelId: string, pref: string, threads: number): Promise<Rea
           ...(threads > 0 ? { intraOpNumThreads: threads } : {}),
           // TensorRT собирает движок под GPU и кэширует его на диске: те же
           // опции, что и при сборке кнопкой, иначе кэш не переиспользуется.
-          ...(provider === "tensorrt" ? trtOptions(m, m.tile || 0, trtDir()) : {}),
+          ...(provider === "tensorrt" ? trtOptions(m, tile, trtDir(profile, modelId)) : {}),
         });
         const ready: ReadySession = (() => {
           const inType = tensorType(session.inputMetadata, session.inputNames[0]);
@@ -1275,6 +1759,9 @@ function getSession(modelId: string, pref: string, threads: number): Promise<Rea
         })();
         loaded.set(key, ready);
         logger.info("upscale.session", { model: modelId, provider });
+        // Движок мог появиться именно сейчас (первый прогон): отмечаем в реестре,
+        // чтобы панель моделей показала «движок готов».
+        if (provider === "tensorrt") registerTrtEngine(modelId, profile, trtDir(profile, modelId));
         return ready;
       } catch (e) {
         // Аппаратный провайдер может быть недоступен на этой машине — идём дальше.
@@ -1444,10 +1931,11 @@ const GPU_RESERVE_MB = 512;
 /** Потолок пачки: больше 128 кадров смысла нет, а очередь кадров растёт. */
 export const BATCH_MAX = 128;
 /**
- * Потолок «Авто»-пачки: пачка больше не ускоряет тайловый инференс, но держит
- * буферы кадров. 64 — предел разумного: упирается в память раньше, чем сюда.
+ * Потолок «Авто»-пачки. 8 — из замеров: пачка 8 быстрее пачки 2 на ~12%, а больше
+ * профиль TensorRT не примет без пересборки движка (TRT_BATCH_MAX = 8). Дальше
+ * растут только буферы кадров в памяти, скорость не меняется.
  */
-export const AUTO_BATCH_MAX = 64;
+export const AUTO_BATCH_MAX = 8;
 
 /**
  * Сколько пачек кадров одновременно живёт в памяти: одна считается на GPU, вторая
@@ -2650,7 +3138,7 @@ export async function upscaleRgb(o: {
   const model = o.deps?.model || findModel(o.p.model);
   if (!model) throw new Error("model_unknown");
 
-  const ready = o.deps?.ready || (await getSession(o.p.model, o.p.provider, o.p.threads));
+  const ready = o.deps?.ready || (await getSession(o.p.model, o.p.provider, o.p.threads, o.p.tile));
   const scale = ready.scale || model.scale || 4;
   const outW = o.w * scale;
   const outH = o.h * scale;
@@ -2658,19 +3146,22 @@ export async function upscaleRgb(o: {
 
   let second: ReadySession | null = null;
   if (o.p.model2 && o.p.blendAmount > 0) {
-    second = await getSession(o.p.model2, o.p.provider, o.p.threads);
+    second = await getSession(o.p.model2, o.p.provider, o.p.threads, o.p.tile);
   }
 
   const dst = new Uint8Array(outW * outH * 3);
-  const rects = tileRects(o.w, o.h, o.p.tile || model.tile || 0, o.p.overlap);
+  // TensorRT держит вход в жёстком профиле: тайл фиксируем, а крайние тайлы
+  // добираем повтором края (normTilePad) и обрезаем при вклейке (blendTile).
+  const trtSize = ready.provider === "tensorrt" ? trtProfileSize(model, o.p.tile) : 0;
+  const rects = tileRects(o.w, o.h, trtSize || o.p.tile || model.tile || 0, o.p.overlap);
   const align = modelAlign(model);
   let done = 0;
 
   for (const r of rects) {
     if (o.shouldStop?.()) throw new Error("stopped");
     // Часть графов принимает только выровненный размер (CUGAN: чётные стороны).
-    const aw = alignUp(r.w, align);
-    const ah = alignUp(r.h, align);
+    const aw = trtSize || alignUp(r.w, align);
+    const ah = trtSize || alignUp(r.h, align);
     const input = normTilePad(o.src, o.w, r.x, r.y, r.w, r.h, aw, ah, ready.bgr);
     let data = await runSession(ort, ready, input, aw, ah);
     if (second) {
@@ -2797,7 +3288,7 @@ export async function upscaleRgbBatch(o: {
   const n = o.frames.length;
   if (n < 2) throw new Error("batch_too_small");
 
-  const ready = o.deps?.ready || (await getSession(o.p.model, o.p.provider, o.p.threads));
+  const ready = o.deps?.ready || (await getSession(o.p.model, o.p.provider, o.p.threads, o.p.tile));
   const scale = ready.scale || model.scale || 4;
   const outW = o.w * scale;
   const outH = o.h * scale;
@@ -2805,14 +3296,16 @@ export async function upscaleRgbBatch(o: {
 
   const outPlane = outW * outH;
   const outs = o.frames.map(() => new Uint8Array(outPlane * 3));
-  const rects = tileRects(o.w, o.h, o.p.tile || model.tile || 0, o.p.overlap);
+  // Та же логика, что и для одиночного кадра: у TensorRT вход фиксирован профилем.
+  const trtSize = ready.provider === "tensorrt" ? trtProfileSize(model, o.p.tile) : 0;
+  const rects = tileRects(o.w, o.h, trtSize || o.p.tile || model.tile || 0, o.p.overlap);
   const align = modelAlign(model);
   let done = 0;
 
   for (const r of rects) {
     if (o.shouldStop?.()) throw new Error("stopped");
-    const aw = alignUp(r.w, align);
-    const ah = alignUp(r.h, align);
+    const aw = trtSize || alignUp(r.w, align);
+    const ah = trtSize || alignUp(r.h, align);
     const inPlane = aw * ah;
     const stack = new Float32Array(n * 3 * inPlane);
     for (let k = 0; k < n; k++) {
@@ -3299,6 +3792,14 @@ async function runVideo(job: UpJob, ffmpeg: string, ffprobe: string): Promise<vo
         scale: modelScale,
       });
     }
+  }
+
+  // Профиль TensorRT держит пачку в диапазоне 1..TRT_BATCH_MAX: больше — движок
+  // придётся пересобирать (это минуты), поэтому пачку подрезаем и говорим об этом.
+  if (providerOrder(job.provider, modelForBatch)[0] === "tensorrt" && batchFrames > TRT_BATCH_MAX) {
+    logger.info("upscale.batch_trt_clamped", { requested: batchFrames, used: TRT_BATCH_MAX });
+    batchFrames = TRT_BATCH_MAX;
+    job.batchUsed = batchFrames;
   }
 
   const wantBatch = batchFrames > 1 && canBatch;
