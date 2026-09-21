@@ -1323,6 +1323,17 @@ async function pingNode(node, opts = {}) {
       : await pickPingPorts();
   const { socksPort, httpPort } = ports;
   const tStart = Date.now();
+
+  // Быстрый фильтр: если TCP до сервера узла не открывается, sing-box всё равно
+  // не подключится. Не тратим секунды на запуск (и даже на поиск) движка ради
+  // заведомо мёртвого узла — поэтому эта проверка идёт ДО detectEngine().
+  if (tcpCheck) {
+    const up = await canConnectTo(node.server, node.port, Math.min(2500, timeout));
+    pingDebug("tcp", { ms: Date.now() - tStart, up });
+    if (!up)
+      return { ok: false, state: "blocked", ttfbMs: null, country: null, error: "unreachable" };
+  }
+
   const engine = await detectEngine();
   if (!engine.found)
     return { ok: false, state: "blocked", ttfbMs: null, country: null, error: "engine_missing" };
@@ -1338,15 +1349,6 @@ async function pingNode(node, opts = {}) {
       country: null,
       error: `unsupported_transport:${node.network || node.protocol}`,
     };
-  }
-
-  // Быстрый фильтр: если TCP до сервера узла не открывается, sing-box всё равно
-  // не подключится. Не тратим секунды на запуск ядра ради заведомо мёртвого узла.
-  if (tcpCheck) {
-    const up = await canConnectTo(node.server, node.port, Math.min(2500, timeout));
-    pingDebug("tcp", { ms: Date.now() - tStart, up });
-    if (!up)
-      return { ok: false, state: "blocked", ttfbMs: null, country: null, error: "unreachable" };
   }
 
   const cfg = buildSingBoxConfig(node, { socksPort, httpPort });
