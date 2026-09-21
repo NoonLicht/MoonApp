@@ -13,21 +13,29 @@ import { createRequire } from "module";
  * extOf/tools/convert/installStatus): форму модуля для require(), разбор форматов
  * и поведение без установленного FFmpeg — оно не должно «притворяться успехом».
  * Реальный запуск FFmpeg здесь не нужен: PATH на время проверки пустой, поэтому
- * поиск бинаря заведомо не находит ничего.
+ * поиск бинаря заведомо не находит ничего. server/vendor/ffmpeg (комплект
+ * инсталлятора, см. scripts/fetch-engines.js) на время этих тестов тоже
+ * отводится в сторону — иначе на машине разработчика, где движки уже
+ * скачаны, «без FFmpeg» переставало быть правдой.
  */
 const req = createRequire(import.meta.url);
 
 let engine: any;
 let storage: string;
 const realPath = process.env.PATH;
+const VENDOR_FFMPEG_DIR = path.join(__dirname, "..", "server", "vendor", "ffmpeg");
+const VENDOR_FFMPEG_HIDDEN = `${VENDOR_FFMPEG_DIR}.hidden-for-tests`;
+const vendorWasPresent = fs.existsSync(VENDOR_FFMPEG_DIR);
 
 beforeAll(() => {
+  if (vendorWasPresent) fs.renameSync(VENDOR_FFMPEG_DIR, VENDOR_FFMPEG_HIDDEN);
   storage = fs.mkdtempSync(path.join(os.tmpdir(), "pa-convert-"));
   process.env.MOONAPP_STORAGE = storage;
   engine = req("../server/convertEngine");
 });
 
 afterAll(() => {
+  if (vendorWasPresent) fs.renameSync(VENDOR_FFMPEG_HIDDEN, VENDOR_FFMPEG_DIR);
   if (realPath === undefined) delete process.env.PATH;
   else process.env.PATH = realPath;
 });

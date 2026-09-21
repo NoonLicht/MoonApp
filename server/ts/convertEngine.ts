@@ -80,12 +80,17 @@ export function categoryOf(name: unknown): ConvertCategory | null {
 // Сюда приложение само ставит FFmpeg (см. installFfmpeg ниже).
 const BIN_DIR = path.join(DIRS.storage, "ffmpeg");
 const BUNDLED_BIN = path.join(BIN_DIR, "ffmpeg.exe");
+// Бинарь из комплекта инсталлятора: server/vendor/ffmpeg/ffmpeg.exe (кладёт
+// scripts/fetch-engines.js, см. build.asarUnpack) — тот же приём, что у
+// yt-dlp/sing-box: ffmpeg работает «из коробки», без скачивания из UI.
+const VENDOR_BIN = config.vendorPath("ffmpeg", "ffmpeg.exe");
 // Официальный стабильный release (essentials) с gyan.dev — он редиректит на GitHub.
 const FFMPEG_URL = "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip";
 const FFMPEG_MAX_BYTES = 300 * 1024 * 1024; // запас по размеру архива (~130 МБ)
 
 // Где ищется ffmpeg: явный путь из настроек, локальный бинарь (в т.ч. в
-// подпапках storage/ffmpeg — пользователь мог положить архив целиком), PATH.
+// подпапках storage/ffmpeg — пользователь мог положить архив целиком), комплект
+// инсталлятора, PATH.
 function ffmpegCandidates(): string[] {
   const cfg = (settings.get("converter") || {}) as { ffmpegPath?: string };
   const explicit = String(cfg.ffmpegPath || "").trim();
@@ -100,6 +105,7 @@ function ffmpegCandidates(): string[] {
   // ищем вглубь (до 3 уровней): иначе получается «FFmpeg лежит в storage, а
   // приложение его не видит» — ровно тот случай, когда бинарь просто в подпапке.
   list.push(...findBinsDeep(BIN_DIR));
+  list.push(VENDOR_BIN);
   list.push("ffmpeg");
   return list;
 }
@@ -350,7 +356,7 @@ let installState: InstallState = { state: "idle", progress: 0, phase: "", error:
 
 /** Состояние + факт, что локальный бинарь уже лежит. */
 export function installStatus(): InstallState & { installed: boolean } {
-  return { ...installState, installed: fs.existsSync(BUNDLED_BIN) };
+  return { ...installState, installed: fs.existsSync(BUNDLED_BIN) || fs.existsSync(VENDOR_BIN) };
 }
 
 function unpackWithTar(zipPath: string, destDir: string): Promise<void> {

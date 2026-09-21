@@ -208,7 +208,7 @@ const BIN_DIR = path.join(DIRS.storage, "ytdlp");
 const BUNDLED_BIN = path.join(BIN_DIR, "yt-dlp.exe");
 // Бинарь из комплекта инсталлятора: server/vendor/ytdlp/yt-dlp.exe
 // (в собранной сборке — app.asar.unpacked, см. build.asarUnpack).
-const VENDOR_BIN = path.join(__dirname, "vendor", "ytdlp", "yt-dlp.exe");
+const VENDOR_BIN = config.vendorPath("ytdlp", "yt-dlp.exe");
 // Официальный портативный exe (PyInstaller), на машине не нужен Python.
 const YTDLP_URL = "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe";
 const YTDLP_MAX_BYTES = 300 * 1024 * 1024;

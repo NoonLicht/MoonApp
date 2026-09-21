@@ -110,6 +110,7 @@
       "server/vendor/ytdlp/**",
       "server/vendor/singbox/**",
       "server/vendor/proxy-core/**",
+      "server/vendor/ffmpeg/**",
       "server/engines/**",
       "node_modules/onnxruntime-node/**",
       "node_modules/onnxruntime-common/**"

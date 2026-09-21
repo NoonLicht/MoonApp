@@ -98,4 +98,18 @@ const FILES = {
 /** Порт локального API-сервера. */
 const PORT = 4000;
 
-export = { DIRS, FILES, PORT };
+/**
+ * Путь к бинарю в server/vendor/<...>, который кладётся в комплект инсталлятора
+ * (build.asarUnpack — см. package.json). Обычный path.join(__dirname, "vendor", ...)
+ * внутри упакованной сборки возвращает путь ВНУТРИ app.asar — для fs-чтения это
+ * не проблема (Electron сам подставляет .unpacked), но child_process.spawn(),
+ * в отличие от execFile, asar не разворачивает и падает с ENOENT на живом файле.
+ * https://www.electronjs.org/docs/latest/tutorial/asar-archives
+ */
+function vendorPath(...segments: string[]): string {
+  const p = path.join(__dirname, "vendor", ...segments);
+  const marker = `${path.sep}app.asar${path.sep}`;
+  return p.includes(marker) ? p.replace(marker, `${path.sep}app.asar.unpacked${path.sep}`) : p;
+}
+
+export = { DIRS, FILES, PORT, vendorPath };

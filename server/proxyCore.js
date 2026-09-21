@@ -19,7 +19,8 @@
 const { spawn, execFileSync } = require("child_process");
 const fs = require("fs");
 const path = require("path");
-const { DIRS } = require("./config");
+const config = require("./config");
+const { DIRS } = config;
 const logger = require("./logger");
 
 // --- Константы движка ---
@@ -37,12 +38,12 @@ const PROXY_HOST = "127.0.0.1";
 // extraResources-пути `resources/bin/proxy-core/`, `resources/bin/singbox/`.
 const CORE_DIR = path.join(DIRS.storage, "proxyCore");
 const BUNDLED_BIN = path.join(CORE_DIR, "sing-box.exe");
-const VENDOR_BIN = path.join(__dirname, "vendor", "proxy-core", "sing-box.exe");
+const VENDOR_BIN = config.vendorPath("proxy-core", "sing-box.exe");
 // Легаси-точки: sing-box из комплекта инсталлятора (его кладёт
 // scripts/fetch-engines.js) и то, что успела скачать старая панель «Прокси».
 // Ядро ОБЯЗАНО их видеть: иначе на свежей сборке UI пишет «движок не найден»
 // при том, что sing-box физически лежит рядом.
-const VENDOR_LEGACY_BIN = path.join(__dirname, "vendor", "singbox", "sing-box.exe");
+const VENDOR_LEGACY_BIN = config.vendorPath("singbox", "sing-box.exe");
 const BUNDLED_LEGACY_BIN = path.join(DIRS.storage, "singbox", "sing-box.exe");
 
 /** Кандидаты из resources/ (собранный Electron-инсталлятор). */

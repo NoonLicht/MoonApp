@@ -916,10 +916,12 @@ input[type="range"] {
   max-width: min(320px, 86vw);
   padding: 10px;
   border-radius: 12px;
-  background: var(--glass-strong);
+  /* Непрозрачный фон, а не --glass-strong (4.5-10% альфа в тёмных темах):
+     поповер выбора провайдера/модели висит над лентой чата — пёстрым фоном
+     из пузырей и блоков кода, поэтому лёгкое «стекло» там выглядело почти
+     прозрачным и мешало читать список моделей. */
+  background: var(--surface-solid);
   border: 1px solid var(--glass-border);
-  backdrop-filter: blur(22px);
-  -webkit-backdrop-filter: blur(22px);
   box-shadow: var(--shadow);
   display: flex;
   flex-direction: column;

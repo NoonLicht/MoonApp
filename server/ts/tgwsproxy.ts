@@ -224,8 +224,8 @@ function exeCandidates(cfg = tgwsCfg()): string[] {
   const list: string[] = [];
   if (cfg.exePath) list.push(cfg.exePath);
   list.push(path.join(HOME, EXE_NAME));
-  list.push(path.join(__dirname, "vendor", "tgwsproxy", EXE_NAME));
-  list.push(path.join(__dirname, "vendor", "tgwsproxy", assetName()));
+  list.push(config.vendorPath("tgwsproxy", EXE_NAME));
+  list.push(config.vendorPath("tgwsproxy", assetName()));
   return list;
 }
 
