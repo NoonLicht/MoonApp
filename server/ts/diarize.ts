@@ -476,10 +476,10 @@ function rawTrackPath(lec: Row, track: string): string | null {
 function runSherpa(
   exe: string,
   wav: string,
+  threads: number,
   onProgress?: (p: number) => void,
 ): Promise<{ segments: DiarizeSegment[] }> {
   const c = cfg();
-  const threads = resolveThreads(c.threads);
   const clusters = Number(c.diarizeSpeakers ?? -1);
   const args = [
     `--segmentation.pyannote-model=${segPath()}`,
@@ -606,16 +606,36 @@ function startDiarize(id: number, opts: { track?: unknown } = {}): DiarizeRunSta
 
   void (async () => {
     try {
+      // Дорожки независимы (свой spawn, свои args) — считаем их параллельно.
+      // Потоки делим поровну, иначе resolveThreads(c.threads) («все ядра») даст
+      // каждому процессу полный пул и они начнут конкурировать за CPU.
+      const c = cfg();
+      const threads = resolveThreads(c.threads);
+      const threadsPerTrack =
+        tracks.length > 1 ? Math.max(1, Math.floor(threads / tracks.length)) : threads;
+
+      const perTrackProgress: Record<string, number> = {};
+      for (const t of tracks) perTrackProgress[t.track] = 0;
+      const updatePhaseProgress = () => {
+        st.phase = tracks.map((t) => t.track).join("+");
+        const vals = Object.values(perTrackProgress);
+        st.progress = Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
+      };
+      updatePhaseProgress();
+
+      const results = await Promise.all(
+        tracks.map(async (t) => {
+          const { segments } = await runSherpa(bin, t.path, threadsPerTrack, (p) => {
+            perTrackProgress[t.track] = p;
+            updatePhaseProgress();
+          });
+          perTrackProgress[t.track] = 100;
+          updatePhaseProgress();
+          return { track: t.track, segments };
+        }),
+      );
       const perTrack: Record<string, DiarizeSegment[]> = {};
-      for (let i = 0; i < tracks.length; i++) {
-        const t = tracks[i];
-        st.phase = t.track; // какая дорожка считается прямо сейчас
-        const { segments } = await runSherpa(bin, t.path, (p) => {
-          st.progress = Math.round(((i + p / 100) / tracks.length) * 100);
-        });
-        perTrack[t.track] = segments;
-        st.progress = Math.round(((i + 1) / tracks.length) * 100);
-      }
+      for (const r of results) perTrack[r.track] = r.segments;
       st.speakers = applySpeakers(id, perTrack);
       st.state = "done";
       logger.action("diarize.done", { id, speakers: st.speakers, tracks: st.tracks });
