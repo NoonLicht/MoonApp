@@ -1,5 +1,16 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Sparkles, X, RefreshCw, Check, AlertTriangle, Zap, Hand, ListChecks } from "lucide-react";
+import {
+  Sparkles,
+  X,
+  RefreshCw,
+  Check,
+  AlertTriangle,
+  Zap,
+  Hand,
+  ListChecks,
+  Save,
+  Trash2,
+} from "lucide-react";
 import { Btn } from "@/components/ui";
 import { useI18n } from "@/app/i18n";
 import type { TranslateFn } from "@/app/i18n";
@@ -70,6 +81,8 @@ export default function LectureConspectusPanel({
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
+  const [presetLabel, setPresetLabel] = useState("");
+  const [presetBusy, setPresetBusy] = useState(false);
 
   const apply = useCallback((next: LectureConspectusSettings) => {
     setCfg(next);
@@ -180,6 +193,51 @@ export default function LectureConspectusPanel({
     [saveField],
   );
 
+  const pickPreset = useCallback(
+    (presetId: string) => {
+      // Выбор пресета — это отказ от своего текста: иначе он бы «побеждал» пресет
+      // молча (см. resolveConspectusSystemPrompt в server/lecture.js).
+      setDraft((d) => (d ? { ...d, presetId, systemPrompt: "" } : d));
+      void saveField({ presetId, systemPrompt: "" });
+    },
+    [saveField],
+  );
+
+  const saveAsPreset = useCallback(async () => {
+    const label = presetLabel.trim();
+    const systemPrompt = (draft?.systemPrompt || "").trim();
+    if (!label || !systemPrompt) return;
+    setPresetBusy(true);
+    setError("");
+    try {
+      const presets = await api.lectureConspectusSavePreset({ label, systemPrompt });
+      const created = presets[presets.length - 1];
+      setCfg((c) => (c ? { ...c, presets } : c));
+      if (created) pickPreset(created.id);
+      setPresetLabel("");
+      flashSaved();
+    } catch (e) {
+      setError(errorText(t, String((e as Error)?.message || e)));
+    }
+    setPresetBusy(false);
+  }, [presetLabel, draft?.systemPrompt, pickPreset, flashSaved, t]);
+
+  const deletePreset = useCallback(
+    async (id: string) => {
+      setPresetBusy(true);
+      setError("");
+      try {
+        const presets = await api.lectureConspectusDeletePreset(id);
+        setCfg((c) => (c ? { ...c, presets } : c));
+        if (draft?.presetId === id) pickPreset("general");
+      } catch (e) {
+        setError(errorText(t, String((e as Error)?.message || e)));
+      }
+      setPresetBusy(false);
+    },
+    [draft, pickPreset, t],
+  );
+
   /**
    * Опции селекта модели: живой список провайдера + сохранённая модель.
    * Сохранённой модели может не быть в списке (кастомное имя или список ещё не
@@ -205,6 +263,9 @@ export default function LectureConspectusPanel({
           chunkChars: draft.chunkChars,
           overlapChars: draft.overlapChars,
           maxChunks: draft.maxChunks,
+          systemPrompt: draft.systemPrompt,
+          presetId: draft.presetId,
+          maxTokens: draft.maxTokens,
         }),
       );
       setSaved(true);
@@ -375,6 +436,92 @@ export default function LectureConspectusPanel({
             </div>
           </div>
         )}
+      </div>
+      {/* --- Системный промпт: пресет по предмету или свой текст --- */}
+      <div className="lecs-block">
+        <div className="lecs-block-label">{t("lecture.conspectusPanel.prompt")}</div>
+        <div className="leca-field">
+          <span className="leca-pair grow">
+            <span className="lecs-dim leca-label">{t("lecture.conspectusPanel.preset")}</span>
+            <select
+              className="lecs-select leca-select"
+              value={draft?.systemPrompt ? "" : draft?.presetId || "general"}
+              disabled={!draft || busy === "field"}
+              aria-label={t("lecture.conspectusPanel.preset")}
+              onChange={(e) => pickPreset(e.target.value)}
+            >
+              {(cfg?.presets || []).map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.label}
+                </option>
+              ))}
+              {!!draft?.systemPrompt && (
+                <option value="">{t("lecture.conspectusPanel.presetCustom")}</option>
+              )}
+            </select>
+          </span>
+          {!!draft?.presetId &&
+            !draft.systemPrompt &&
+            !cfg?.presets.find((p) => p.id === draft.presetId)?.builtin && (
+              <Btn
+                variant="secondary"
+                icon={Trash2}
+                onClick={() => void deletePreset(draft.presetId)}
+                disabled={presetBusy}
+              >
+                {t("lecture.conspectusPanel.presetDeleteBtn")}
+              </Btn>
+            )}
+        </div>
+        <div className="lecs-dim lecs-hint">{t("lecture.conspectusPanel.presetHint")}</div>
+        <textarea
+          className="lecs-input leca-textarea"
+          rows={3}
+          placeholder={t("lecture.conspectusPanel.systemPromptPlaceholder")}
+          value={draft?.systemPrompt ?? ""}
+          disabled={!draft}
+          onChange={(e) => setDraft((d) => (d ? { ...d, systemPrompt: e.target.value } : d))}
+          onBlur={() => draft && saveField({ systemPrompt: draft.systemPrompt })}
+        />
+        {!!draft?.systemPrompt?.trim() && (
+          <div className="leca-field">
+            <input
+              className="lecs-input leca-preset-name"
+              type="text"
+              placeholder={t("lecture.conspectusPanel.presetNewLabelPlaceholder")}
+              aria-label={t("lecture.conspectusPanel.presetNewLabel")}
+              value={presetLabel}
+              onChange={(e) => setPresetLabel(e.target.value)}
+            />
+            <Btn
+              variant="secondary"
+              icon={Save}
+              onClick={() => void saveAsPreset()}
+              disabled={presetBusy || !presetLabel.trim()}
+            >
+              {t("lecture.conspectusPanel.presetSaveBtn")}
+            </Btn>
+          </div>
+        )}
+        <div className="leca-field">
+          <span className="leca-pair">
+            <span className="lecs-dim leca-label">{t("lecture.conspectusPanel.maxTokens")}</span>
+            <input
+              className="lecs-input leca-num"
+              type="number"
+              min={256}
+              max={16000}
+              step={250}
+              aria-label={t("lecture.conspectusPanel.maxTokens")}
+              value={draft?.maxTokens ?? 3000}
+              onChange={(e) =>
+                setDraft((d) => (d ? { ...d, maxTokens: Number(e.target.value) || 3000 } : d))
+              }
+            />
+          </span>
+          <span className="lecs-dim leca-unit">{t("lecture.conspectusPanel.maxTokensUnit")}</span>
+        </div>
+        <div className="lecs-dim lecs-hint">{t("lecture.conspectusPanel.maxTokensHint")}</div>
       </div>
       {/* --- Умный порог: что считать «есть что конспектировать» --- */}
       {draft?.trigger === "smart" && (

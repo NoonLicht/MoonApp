@@ -26,7 +26,9 @@
  *  POST   /api/lecture/:id/conspectus      — AI-конспект (чанками, провайдер чата)
  *  GET    /api/lecture/:id/conspectus      — прогресс сборки конспекта
  *  GET    /api/lecture/conspectus/settings — режим запуска (smart/auto/manual) + провайдер
- *  POST   /api/lecture/conspectus/settings — { providerId, model, trigger, autoMinChars, … }
+ *  POST   /api/lecture/conspectus/settings — { providerId, model, trigger, autoMinChars, systemPrompt, presetId, maxTokens, … }
+ *  POST   /api/lecture/conspectus/presets  — сохранить свой пресет { id?, label, systemPrompt }
+ *  DELETE /api/lecture/conspectus/presets/:id — удалить свой пресет
  *  GET    /api/lecture/providers           — провайдеры конспекта: id, ярлык, hasKey
  *  GET    /api/lecture/providers/:id/models — живой список моделей провайдера
  *  GET    /api/lecture/diarize/setup       — пакет диаризации: установлено / задача
@@ -197,6 +199,19 @@ router.post("/conspectus/settings", (req, res) => {
   } catch (e) {
     res.status(400).json({ error: e.message });
   }
+});
+
+// Пресеты системного промпта (встроенные + свои) для панели «ИИ-конспект».
+router.post("/conspectus/presets", (req, res) => {
+  try {
+    res.json(lecture.saveConspectusPreset(req.body || {}));
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+router.delete("/conspectus/presets/:id", (req, res) => {
+  res.json(lecture.deleteConspectusPreset(req.params.id));
 });
 
 // Список провайдеров (id, ярлык, каталог моделей, hasKey).

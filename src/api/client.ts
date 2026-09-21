@@ -593,7 +593,14 @@ export const api = {
     chunkChars?: number;
     overlapChars?: number;
     maxChunks?: number;
+    systemPrompt?: string;
+    presetId?: string;
+    maxTokens?: number;
   }) => req<LectureConspectusSettings>("POST", "/lecture/conspectus/settings", patch),
+  lectureConspectusSavePreset: (patch: { id?: string; label: string; systemPrompt: string }) =>
+    req<LectureConspectusPreset[]>("POST", "/lecture/conspectus/presets", patch),
+  lectureConspectusDeletePreset: (id: string) =>
+    req<LectureConspectusPreset[]>("DELETE", `/lecture/conspectus/presets/${encodeURIComponent(id)}`),
   lectureProviders: () => req<LectureProviderInfo[]>("GET", "/lecture/providers"),
   lectureProviderModels: (id: string) =>
     req<{ provider: string; models: string[] }>(
@@ -1940,6 +1947,14 @@ export interface LectureProviderInfo {
   hasKey: boolean;
 }
 
+/** Пресет системного промпта конспекта (встроенный или свой). */
+export interface LectureConspectusPreset {
+  id: string;
+  label: string;
+  systemPrompt: string;
+  builtin?: boolean;
+}
+
 /** Настройки ИИ-конспекта (GET/POST /lecture/conspectus/settings). */
 export interface LectureConspectusSettings {
   providerId: string;
@@ -1953,6 +1968,11 @@ export interface LectureConspectusSettings {
   chunkChars: number;
   overlapChars: number;
   maxChunks: number;
+  /** Свой системный промпт; пусто — используется пресет presetId. */
+  systemPrompt: string;
+  presetId: string;
+  maxTokens: number;
+  presets: LectureConspectusPreset[];
   triggerOptions: LectureConspectusTrigger[];
   providers: LectureProviderInfo[];
 }

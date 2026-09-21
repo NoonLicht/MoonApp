@@ -340,6 +340,9 @@ const DEFAULTS: SettingsTree = {
     conspectusChunkChars: 6000, // символов расшифровки в одном запросе к модели
     conspectusOverlapChars: 600, // «шов»: сколько символов предыдущего блока передаём как контекст
     conspectusMaxChunks: 60, // предохранитель: не больше N блоков за прогон
+    conspectusSystemPrompt: "", // свой системный промпт; пусто — берём пресет conspectusPresetId
+    conspectusPresetId: "general", // id пресета из server/lecture.js CONSPECTUS_BUILTIN_PRESETS (+ свои)
+    conspectusMaxTokens: 3000, // лимит токенов ответа модели за один запрос
     outputDir: "", // экспорт .md/.srt/.vtt (пусто = хранить в storage/lectures)
   },
 

@@ -17,7 +17,8 @@
 const fs = require("fs");
 const path = require("path");
 const { spawn } = require("child_process");
-const { DIRS } = require("./config");
+const config = require("./config");
+const { DIRS } = config;
 const { stmts } = require("./db");
 const settings = require("./settings");
 const logger = require("./logger");
@@ -1154,6 +1155,118 @@ const MERGE_PROMPT = `Ты — академический ассистент. Н
 === ЗАМЕТКИ ===
 `;
 
+/** Системный промпт по умолчанию (используется, если не выбран пресет и нет своего текста). */
+const DEFAULT_CONSPECTUS_SYSTEM_PROMPT =
+  "Ты помогаешь студенту с конспектами лекций. Пиши по-русски, только по тексту.";
+
+/**
+ * Встроенные пресеты системного промпта под учебные предметы. Пользователь может
+ * выбрать один из них или задать свой текст (свой текст всегда в приоритете).
+ */
+const CONSPECTUS_BUILTIN_PRESETS = [
+  { id: "general", label: "Общий", builtin: true, systemPrompt: DEFAULT_CONSPECTUS_SYSTEM_PROMPT },
+  {
+    id: "economics",
+    label: "Экономика",
+    builtin: true,
+    systemPrompt:
+      "Ты помогаешь студенту-экономисту с конспектом лекции. Пиши по-русски, только по тексту. " +
+      "Выделяй экономические термины, формулы, показатели и определения, сохраняй числовые примеры и графики словами.",
+  },
+  {
+    id: "management",
+    label: "Менеджмент",
+    builtin: true,
+    systemPrompt:
+      "Ты помогаешь студенту-менеджеру с конспектом лекции. Пиши по-русски, только по тексту. " +
+      "Выделяй управленческие модели, термины, кейсы и практические выводы.",
+  },
+  {
+    id: "math",
+    label: "Математика",
+    builtin: true,
+    systemPrompt:
+      "Ты помогаешь студенту с конспектом лекции по математике. Пиши по-русски, только по тексту. " +
+      "Сохраняй формулы, определения, теоремы и доказательства как можно точнее, в понятной текстовой нотации.",
+  },
+  {
+    id: "programming",
+    label: "Программирование",
+    builtin: true,
+    systemPrompt:
+      "Ты помогаешь студенту с конспектом лекции по программированию. Пиши по-русски, только по тексту. " +
+      "Сохраняй код, названия структур данных, алгоритмов и терминов как есть.",
+  },
+  {
+    id: "law",
+    label: "Право",
+    builtin: true,
+    systemPrompt:
+      "Ты помогаешь студенту-юристу с конспектом лекции. Пиши по-русски, только по тексту. " +
+      "Сохраняй ссылки на статьи законов, термины и формулировки максимально точно.",
+  },
+  {
+    id: "history",
+    label: "История",
+    builtin: true,
+    systemPrompt:
+      "Ты помогаешь студенту-историку с конспектом лекции. Пиши по-русски, только по тексту. " +
+      "Сохраняй даты, имена, события и причинно-следственные связи.",
+  },
+];
+
+// Пользовательские пресеты хранятся отдельным JSON-файлом (не в settings.json —
+// там patch фильтруется белым списком типов number/string/boolean и не пропускает
+// массивы объектов, см. server/ts/settings.ts sanitizePatch).
+function readCustomPresets() {
+  try {
+    const raw = JSON.parse(fs.readFileSync(config.FILES.conspectusPresets, "utf8"));
+    return Array.isArray(raw) ? raw : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeCustomPresets(list) {
+  fs.writeFileSync(config.FILES.conspectusPresets, JSON.stringify(list, null, 2), "utf8");
+}
+
+/** Все пресеты для панели: встроенные + пользовательские. */
+function conspectusPresets() {
+  return [...CONSPECTUS_BUILTIN_PRESETS, ...readCustomPresets()];
+}
+
+/** Сохранить (создать/обновить) пользовательский пресет. */
+function saveConspectusPreset(patch = {}) {
+  const label = String(patch.label || "").trim().slice(0, 60);
+  const systemPrompt = String(patch.systemPrompt || "").trim().slice(0, 4000);
+  if (!label || !systemPrompt) throw new Error("conspectus_preset_invalid");
+  const list = readCustomPresets();
+  const id =
+    patch.id && list.some((p) => p.id === patch.id)
+      ? patch.id
+      : `custom_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+  const next = [...list.filter((p) => p.id !== id), { id, label, systemPrompt, builtin: false }];
+  writeCustomPresets(next);
+  logger.action("lecture.conspectus.preset_save", { id, label });
+  return conspectusPresets();
+}
+
+/** Удалить пользовательский пресет (встроенные удалить нельзя). */
+function deleteConspectusPreset(id) {
+  const next = readCustomPresets().filter((p) => p.id !== id);
+  writeCustomPresets(next);
+  logger.action("lecture.conspectus.preset_delete", { id });
+  return conspectusPresets();
+}
+
+/** Эффективный системный промпт: свой текст → выбранный пресет → дефолт. */
+function resolveConspectusSystemPrompt(c) {
+  if (c.systemPrompt) return c.systemPrompt;
+  const preset = conspectusPresets().find((p) => p.id === c.presetId);
+  return preset ? preset.systemPrompt : DEFAULT_CONSPECTUS_SYSTEM_PROMPT;
+}
+
 /** Настройки конспекта: провайдер и модель берём из настроек чата, если не заданы. */
 function conspectusCfg() {
   const c = cfg();
@@ -1172,6 +1285,13 @@ function conspectusCfg() {
     chunkChars: Math.max(1500, Math.min(20000, Number(c.conspectusChunkChars) || 6000)),
     overlapChars: Math.max(0, Math.min(2000, Number(c.conspectusOverlapChars) || 600)),
     maxChunks: Math.max(1, Math.min(300, Number(c.conspectusMaxChunks) || 60)),
+    // Свой системный промпт (пусто — используется пресет или дефолт).
+    systemPrompt: String(c.conspectusSystemPrompt || "").trim(),
+    // Выбранный пресет (id из conspectusPresets()); игнорируется, если задан systemPrompt.
+    presetId: String(c.conspectusPresetId || "general"),
+    // Лимит токенов ответа модели на каждый запрос (влияет и на объём «размышлений»
+    // у reasoning-моделей — см. resolveConspectusSystemPrompt/askModel).
+    maxTokens: Math.max(256, Math.min(16000, Number(c.conspectusMaxTokens) || 3000)),
     temperature: 0.3,
   };
 }
@@ -1205,7 +1325,7 @@ async function conspectusTarget(appPage) {
     model = list.find((m) => /chat|turbo|flash|mini|small|lite/i.test(m)) || list[0] || "";
   }
   if (!model) throw new Error("conspectus_model_missing: " + provider.id);
-  return { provider, secret, model, cfg: c };
+  return { provider, secret, model, cfg: { ...c, systemPrompt: resolveConspectusSystemPrompt(c) } };
 }
 
 /* --- Настройки конспекта и выбор провайдера (панель «ИИ-конспект») --- */
@@ -1239,6 +1359,10 @@ function conspectusSettings() {
     chunkChars: c.chunkChars,
     overlapChars: c.overlapChars,
     maxChunks: c.maxChunks,
+    systemPrompt: c.systemPrompt, // свой текст (пусто — используется пресет)
+    presetId: c.presetId,
+    maxTokens: c.maxTokens,
+    presets: conspectusPresets(),
     triggerOptions: ["smart", "auto", "manual"],
     providers: conspectusProviders(),
   };
@@ -1277,6 +1401,11 @@ function setConspectusSettings(patch = {}) {
     next.conspectusOverlapChars = Math.round(num(patch.overlapChars, 0, 2000, 0));
   if (patch.maxChunks !== undefined)
     next.conspectusMaxChunks = Math.round(num(patch.maxChunks, 1, 300, 60));
+  if (patch.systemPrompt !== undefined)
+    next.conspectusSystemPrompt = String(patch.systemPrompt || "").trim().slice(0, 4000);
+  if (patch.presetId !== undefined) next.conspectusPresetId = String(patch.presetId || "general").slice(0, 64);
+  if (patch.maxTokens !== undefined)
+    next.conspectusMaxTokens = Math.round(num(patch.maxTokens, 256, 16000, 3000));
   if (Object.keys(next).length) settings.set({ lecture: next });
   logger.action("lecture.conspectus.settings", next);
   return conspectusSettings();
@@ -1433,12 +1562,12 @@ async function askModel(target, prompt, appPage, maxTokens) {
       messages: [
         {
           role: "system",
-          text: "Ты помогаешь студенту с конспектами лекций. Пиши по-русски, только по тексту.",
+          text: target.cfg.systemPrompt || DEFAULT_CONSPECTUS_SYSTEM_PROMPT,
         },
         { role: "user", text: prompt },
       ],
       temperature: target.cfg.temperature,
-      maxTokens: maxTokens || 3000,
+      maxTokens: maxTokens || target.cfg.maxTokens || 3000,
       stream: true,
     }),
   );
@@ -1900,6 +2029,9 @@ module.exports = {
   conspectusSettings,
   setConspectusSettings,
   conspectusProviders,
+  conspectusPresets,
+  saveConspectusPreset,
+  deleteConspectusPreset,
   providerModels,
   maybeAutoConspectus,
   transcriptWeight,
