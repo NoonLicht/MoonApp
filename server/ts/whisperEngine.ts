@@ -25,7 +25,8 @@
 import fs from "fs";
 import path from "path";
 import os from "os";
-import { spawn, execFile } from "child_process";
+import net from "net";
+import { spawn, execFile, type ChildProcess } from "child_process";
 import config from "./config";
 import settings from "./settings";
 import logger from "./logger";
@@ -159,6 +160,7 @@ const BUILD_CATALOG: BuildCatalogEntry[] = (
 ).map((b) => ({ ...b, url: `${RELEASE_URL}/${b.zipName}`, dir: path.join(BUILDS_DIR, b.id) }));
 
 const EXE_NAMES = ["whisper-cli.exe", "main.exe"];
+const SERVER_EXE_NAME = "whisper-server.exe";
 
 /* ------------------------- Настройки ------------------------- */
 
@@ -403,6 +405,23 @@ function activeBuild(): BuildInfo | null {
 function findBin(): string | null {
   const b = activeBuild();
   return b ? b.bin : null;
+}
+
+/**
+ * whisper-server.exe рядом с активным whisper-cli.exe (та же сборка/backend).
+ * Архивы whisper.cpp (whisper-bin-x64.zip и BLAS/CUDA-варианты того же релиза)
+ * несут оба exe в одном Release/, поэтому просто смотрим в каталог активной сборки.
+ */
+function findServerBin(): string | null {
+  const b = activeBuild();
+  if (!b || !b.dir) return null;
+  const p = path.join(b.dir, SERVER_EXE_NAME);
+  return fs.existsSync(p) ? p : null;
+}
+
+/** Есть ли собранный whisper-server.exe для активного backend'а. */
+function whisperServerAvailable(): boolean {
+  return !!findServerBin();
 }
 
 /* ------------------------- Модели ------------------------- */
@@ -1335,6 +1354,166 @@ function dirs() {
   return { whisper: WHISPER_DIR, models: MODELS_DIR, builds: BUILDS_DIR };
 }
 
+/* ------------------------- Резидентный whisper-server ------------------------- */
+
+/**
+ * Экспериментальный режим: вместо перезапуска whisper-cli.exe на КАЖДЫЙ чанк
+ * (загрузка модели — секунды на CPU, заметно и на GPU) поднимаем ОДИН процесс
+ * whisper-server.exe на всю сессию приложения, держащий модель резидентно, и
+ * шлём чанки через HTTP POST /inference. Синглтон: одна лекция за раз всё равно
+ * транскрибируется последовательно (server/lecture.js — очередь с мьютексом
+ * s.transcribing), поэтому одного резидента достаточно и на несколько сессий.
+ *
+ * Безопасность: это ОПЦИОНАЛЬНЫЙ путь. Если сборка не несёт whisper-server.exe
+ * (whisperServerAvailable() === false), настройка выключена, сервер не поднялся
+ * или отвечает ошибкой — server/lecture.js откатывается на обычный spawn
+ * whisper-cli.exe (см. runWhisper там же). CLI-путь этим модулем не меняется.
+ */
+
+/** Хэндл поднятого резидента: порт и процесс, чтобы говорить с ним по HTTP. */
+interface WhisperServerHandle {
+  proc: ChildProcess;
+  port: number;
+  modelPath: string;
+  bin: string;
+}
+
+let serverHandle: WhisperServerHandle | null = null;
+/** Промис текущего старта — чтобы параллельные вызовы не плодили два процесса. */
+let starting: Promise<WhisperServerHandle> | null = null;
+
+/** Свободный TCP-порт на 127.0.0.1 (спрашиваем ОС: bind на 0, читаем и закрываем). */
+function findFreePort(): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const srv = net.createServer();
+    srv.unref();
+    srv.on("error", reject);
+    srv.listen(0, "127.0.0.1", () => {
+      const addr = srv.address();
+      const port = typeof addr === "object" && addr ? addr.port : 0;
+      srv.close(() => (port ? resolve(port) : reject(new Error("no_port"))));
+    });
+  });
+}
+
+/** Ждём, пока сервер начнёт принимать TCP-соединения на своём порту. */
+function waitForPort(port: number, timeoutMs: number): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  return new Promise((resolve, reject) => {
+    const attempt = () => {
+      const sock = net.connect({ host: "127.0.0.1", port, timeout: 800 }, () => {
+        sock.destroy();
+        resolve();
+      });
+      sock.on("error", () => {
+        sock.destroy();
+        if (Date.now() > deadline) return reject(new Error("whisper_server_timeout"));
+        setTimeout(attempt, 300);
+      });
+      sock.on("timeout", () => {
+        sock.destroy();
+        if (Date.now() > deadline) return reject(new Error("whisper_server_timeout"));
+        setTimeout(attempt, 300);
+      });
+    };
+    attempt();
+  });
+}
+
+/** Завершить процесс-резидент (тот же приём, что в server/ts/tts.ts: taskkill /T /F). */
+function killHandle(h: WhisperServerHandle): void {
+  try {
+    if (h.proc.exitCode != null) return;
+    if (process.platform === "win32" && h.proc.pid) {
+      spawn("taskkill", ["/pid", String(h.proc.pid), "/T", "/F"], { windowsHide: true });
+    } else {
+      h.proc.kill("SIGKILL");
+    }
+  } catch {
+    /* процесс мог уже завершиться */
+  }
+}
+
+/**
+ * Поднять (или переиспользовать) резидентный whisper-server.
+ * threads/device-флаги — та же логика, что у CLI (resolveThreads/deviceArgsFor),
+ * поэтому GPU/CPU-поведение резидента не расходится с обычным прогоном.
+ */
+async function startWhisperServer(modelPath: string): Promise<WhisperServerHandle> {
+  if (serverHandle && serverHandle.modelPath === modelPath && serverHandle.proc.exitCode == null)
+    return serverHandle;
+  if (starting) return starting;
+  const bin = findServerBin();
+  if (!bin) throw new Error("whisper_server_not_installed");
+  starting = (async () => {
+    // Старый резидент (другая модель или упавший процесс) — гасим перед стартом.
+    if (serverHandle) {
+      killHandle(serverHandle);
+      serverHandle = null;
+    }
+    const port = await findFreePort();
+    const c = cfg();
+    const args = [
+      "-m",
+      modelPath,
+      "--host",
+      "127.0.0.1",
+      "--port",
+      String(port),
+      "-t",
+      String(resolveThreads(c.threads)),
+      ...deviceArgs(),
+    ];
+    const proc = spawn(bin, args, { windowsHide: true, cwd: path.dirname(bin) });
+    proc.stdout?.on("data", () => {
+      /* лог резидента не копим: это долгоживущий процесс, а не self-test */
+    });
+    proc.stderr?.on("data", () => {});
+    proc.on("exit", (code) => {
+      logger.info("whisperEngine.server.exit", { code });
+      if (serverHandle && serverHandle.proc === proc) serverHandle = null;
+    });
+    try {
+      await waitForPort(port, 20000);
+    } catch (e) {
+      killHandle({ proc, port, modelPath, bin });
+      throw e;
+    }
+    const handle: WhisperServerHandle = { proc, port, modelPath, bin };
+    serverHandle = handle;
+    logger.action("whisperEngine.server.started", { port, model: path.basename(modelPath) });
+    return handle;
+  })();
+  try {
+    return await starting;
+  } finally {
+    starting = null;
+  }
+}
+
+/** Погасить резидент (используется при рестарте после сбоя и при выходе из приложения). */
+function stopWhisperServer(): void {
+  if (serverHandle) {
+    killHandle(serverHandle);
+    serverHandle = null;
+  }
+}
+
+/** Текущий хэндл резидента, если он поднят (для lecture.js — какой порт слать). */
+function currentWhisperServer(): WhisperServerHandle | null {
+  return serverHandle && serverHandle.proc.exitCode == null ? serverHandle : null;
+}
+
+// Резидент — долгоживущий процесс вне очереди чанков: без этого хука он пережил
+// бы закрытие приложения (тот же приём, что в server/ts/tgwsproxy.ts).
+process.on("exit", () => {
+  try {
+    stopWhisperServer();
+  } catch {
+    /* на выходе разбираться уже не с чем */
+  }
+});
+
 export {
   WHISPER_TAG,
   MODEL_CATALOG,
@@ -1379,6 +1558,11 @@ export {
   modelRecommend,
   buildRecommend,
   systemSummary,
+  findServerBin,
+  whisperServerAvailable,
+  startWhisperServer,
+  stopWhisperServer,
+  currentWhisperServer,
 };
 
 /** id модели по её пути (UI подсвечивает активную строку). */

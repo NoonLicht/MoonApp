@@ -408,6 +408,100 @@ function readChunkResult(outBase, stdout = "") {
 }
 
 /**
+ * HTTP-клиент резидентного whisper-server.exe: POST /inference с multipart
+ * (file=WAV, response_format=srt, опционально language/prompt). Используем
+ * глобальные fetch/FormData/Blob — есть в Node без зависимостей начиная с
+ * версии, на которой собран проект (в package.json запрещённые движки не
+ * заданы, а Electron/Node здесь современные).
+ */
+async function httpInference(port, wavPath, opts = {}) {
+  const buf = fs.readFileSync(wavPath);
+  const form = new FormData();
+  form.append("file", new Blob([buf], { type: "audio/wav" }), path.basename(wavPath));
+  form.append("response_format", "srt");
+  if (opts.language) form.append("language", String(opts.language));
+  if (opts.prompt) form.append("prompt", String(opts.prompt));
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 120000);
+  let res;
+  try {
+    res = await fetch(`http://127.0.0.1:${port}/inference`, {
+      method: "POST",
+      body: form,
+      signal: controller.signal,
+    });
+  } catch (e) {
+    throw new Error(`whisper_server_request_failed: ${String(e.message || e)}`, { cause: e });
+  } finally {
+    clearTimeout(timer);
+  }
+  if (!res.ok) throw new Error(`whisper_server_http_${res.status}`);
+  const body = await res.text();
+  return resultFromSrtText(body);
+}
+
+/** Разбор ответа резидента (SRT-текст, не файл) — та же логика, что readChunkResult. */
+function resultFromSrtText(srtText) {
+  let segments = [];
+  let text = "";
+  try {
+    segments = parseSrt(srtText);
+    text = segments
+      .map((x) => x.text)
+      .join(" ")
+      .trim();
+  } catch {
+    /* ignore */
+  }
+  if (!text) text = String(srtText || "").replace(/\s+/g, " ").trim();
+  text = sanitizeText(text);
+  segments = segments.map((x) => ({ ...x, text: sanitizeText(x.text) })).filter((x) => x.text);
+  return { text, segments };
+}
+
+/**
+ * Прогон чанка через резидентный whisper-server (модель уже в памяти).
+ * Тот же откат без --prompt, что и в CLI-пути. Если сервер не отвечает —
+ * ОДНА попытка перезапуска, иначе исключение уходит наверх, и transcribeFile
+ * откатывается на обычный whisper-cli для этого чанка (очередь не рвётся).
+ */
+async function transcribeViaServer(model, wavPath, meta, skipHint) {
+  const lc = settings.get("lecture");
+  const language = String(lc.language || "ru");
+  const hint = skipHint ? "" : whisperEngine.initialPrompt();
+
+  const request = async (withPrompt) => {
+    const handle = await whisperEngine.startWhisperServer(model);
+    return httpInference(handle.port, wavPath, { language, prompt: withPrompt ? hint : "" });
+  };
+
+  let result;
+  try {
+    result = await request(!!hint);
+  } catch (e) {
+    // Сервер мог упасть между чанками (или это первый запрос после сбоя) —
+    // одна попытка перезапустить и повторить именно этот чанк.
+    logger.warn("lecture.chunk.resident_restart", {
+      id: meta.id ?? null,
+      file: meta.file ?? path.basename(wavPath),
+      error: String(e.message || e),
+    });
+    whisperEngine.stopWhisperServer();
+    result = await request(!!hint);
+  }
+
+  if (!whisperEngine.needsPromptlessRetry(result.text, hint))
+    return { ...result, promptless: skipHint };
+  logger.info("lecture.chunk.retry_no_prompt", {
+    id: meta.id ?? null,
+    file: meta.file ?? path.basename(wavPath),
+    source: meta.source ?? null,
+  });
+  result = await request(false);
+  return { ...result, promptless: true };
+}
+
+/**
  * Прогон чанка с откатом: сначала штатно (с подсказкой из настроек), а если
  * движок не нашёл текст — ещё раз БЕЗ --prompt (см. whisperEngine.
  * needsPromptlessRetry). Возвращает { text, segments, promptless }.
@@ -416,11 +510,31 @@ function readChunkResult(outBase, stdout = "") {
  * проверяется тестом с подставным runner (без реального whisper-cli).
  * Аргументы собирает whisperEngine.transcribeArgs — там же флаги GPU (-ng для
  * CPU-сборки/выключенной видеокарты, -dev N для выбора устройства).
+ *
+ * Резидентный whisper-server — ОПЦИОНАЛЬНЫЙ путь (настройка useResidentWhisper +
+ * whisperEngine.whisperServerAvailable()): если он выключен, недоступен или упал
+ * даже после перезапуска — этот чанк уходит по обычному CLI-пути ниже, очередь
+ * не останавливается и поведение идентично тому, что было до этой функции.
  */
 async function transcribeFile(bin, model, wavPath, outBase, meta = {}, runner = runWhisper) {
   // Если на этой модели подсказка уже выбила пустой ответ, дальше идём сразу без
   // неё: повтор стоит полной загрузки модели, а чанков в лекции сотни.
   const skipHint = whisperEngine.promptUnusableFor(model);
+
+  const lc = settings.get("lecture");
+  if (lc.useResidentWhisper === true && whisperEngine.whisperServerAvailable()) {
+    try {
+      return await transcribeViaServer(model, wavPath, meta, skipHint);
+    } catch (e) {
+      logger.warn("lecture.chunk.resident_fallback_cli", {
+        id: meta.id ?? null,
+        file: meta.file ?? path.basename(wavPath),
+        error: String(e.message || e),
+      });
+      // падаем в обычный CLI-путь ниже для этого конкретного чанка
+    }
+  }
+
   const args = whisperEngine.transcribeArgs(
     model,
     wavPath,
@@ -1802,4 +1916,9 @@ module.exports = {
   transcribeFile,
   runWhisper,
   readChunkResult,
+  // Резидентный whisper-server (экспериментальный путь, флаг useResidentWhisper):
+  // экспортированы для юнит-теста выбора HTTP vs CLI без реального сервера.
+  transcribeViaServer,
+  httpInference,
+  resultFromSrtText,
 };

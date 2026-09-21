@@ -284,6 +284,11 @@ const DEFAULTS: SettingsTree = {
     whisperBin: "", // путь к whisper-cli/main.exe (пусто = автопоиск)
     model: "", // путь к ggml-модели (пусто = автопоиск models/ggml-*.bin)
     build: "auto", // auto | legacy | cpu | blas | cuda118 | cuda124 — сборка движка
+    // Экспериментально: резидентный whisper-server.exe вместо перезапуска
+    // whisper-cli.exe на каждый чанк (модель держится в памяти между чанками).
+    // По умолчанию выключено — включается только если пользователь захотел
+    // попробовать; при любой проблеме код сам откатывается на CLI (см. lecture.js).
+    useResidentWhisper: false,
     modelId: "", // выбранная модель из каталога (пусто = авто: small → base → tiny)
     gpu: "auto", // auto — считать на NVIDIA (CUDA-сборка), off — всегда CPU
     deviceId: 0, // номер GPU для -dev (0 — первая видеокарта)
