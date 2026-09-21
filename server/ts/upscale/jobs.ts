@@ -287,6 +287,9 @@ async function runVideo(job: UpJob, ffmpeg: string, ffprobe: string): Promise<vo
       mixed: !!(job.model2 && job.blendAmount > 0),
     });
   } else if (job.batchFrames === AUTO_BATCH) {
+    // Реальный провайдер (не просто предпочтение пользователя) — от него
+    // зависит потолок «Авто»-пачки: см. autoBatchCeilingFor.
+    const batchProvider = providerOrder(job.provider, modelForBatch)[0];
     batchFrames = autoBatchFrames({
       w: mp.width,
       h: mp.height,
@@ -297,6 +300,7 @@ async function runVideo(job: UpJob, ffmpeg: string, ffprobe: string): Promise<vo
       ramBudgetMb: ramMb,
       maxBatch,
       queueBatches: QUEUE_BATCHES,
+      provider: batchProvider,
     });
     job.batchUsed = batchFrames;
     logger.info("upscale.batch_auto", {
@@ -307,6 +311,7 @@ async function runVideo(job: UpJob, ffmpeg: string, ffprobe: string): Promise<vo
       w: mp.width,
       h: mp.height,
       scale: modelScale,
+      provider: batchProvider,
     });
   } else {
     batchFrames = batchFramesFor(job.batchFrames, mp.width, mp.height, modelScale, {

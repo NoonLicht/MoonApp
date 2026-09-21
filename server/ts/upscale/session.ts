@@ -178,6 +178,15 @@ export function getSession(
           // только ошибки, чтобы журнал сервера не тонул в чужом выводе.
           logSeverityLevel: 3,
           ...(threads > 0 ? { intraOpNumThreads: threads } : {}),
+          // На CPU граф ещё и распараллеливается между независимыми узлами
+          // (executionMode: "parallel"), а не только внутри одного узла
+          // (intraOpNumThreads): interOpNumThreads — тот же threads, отдельного
+          // бюджета потоков под межузловой параллелизм не заводим. На GPU-
+          // провайдерах (cuda/tensorrt/dml) не трогаем: там «parallel» может
+          // не дать выигрыша или конфликтовать с планировщиком провайдера.
+          ...(provider === "cpu" && threads > 0
+            ? { executionMode: "parallel" as const, interOpNumThreads: threads }
+            : {}),
           // TensorRT собирает движок под GPU и кэширует его на диске: те же
           // опции, что и при сборке кнопкой, иначе кэш не переиспользуется.
           ...(provider === "tensorrt" ? trtOptions(m, tile, trtDir(profile, modelId)) : {}),

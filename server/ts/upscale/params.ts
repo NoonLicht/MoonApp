@@ -8,6 +8,7 @@ import { clamp, toBool } from "./util";
 import { findModel, interpMult, listModels, modelKind } from "./manifest";
 import { getCurrentJobId, trackProc } from "./procTracking";
 import { targetDims } from "./bench";
+import { TRT_BATCH_MAX } from "./trt";
 
 export const NO_UPSCALE = "none";
 
@@ -132,6 +133,20 @@ export const BATCH_MAX = 128;
  * растут только буферы кадров в памяти, скорость не меняется.
  */
 export const AUTO_BATCH_MAX = 8;
+/**
+ * Потолок «Авто»-пачки в зависимости от провайдера. TensorRT — тот же
+ * TRT_BATCH_MAX, что и профиль движка (больше он всё равно не примет, см.
+ * клэмп ниже по коду). На CUDA/DML/CPU профиля нет — потолок можно поднять
+ * заметно выше, не больше чем вдвое от прежнего значения (8 → 16), чтобы не
+ * спровоцировать OOM на GPU со скромной видеопамятью (byVram/byRam всё равно
+ * урезают дальше по факту свободной памяти). Без провайдера (обратная
+ * совместимость старых вызовов/тестов) — прежний AUTO_BATCH_MAX.
+ */
+export function autoBatchCeilingFor(provider?: string): number {
+  if (!provider) return AUTO_BATCH_MAX;
+  if (provider === "tensorrt") return TRT_BATCH_MAX;
+  return 16;
+}
 
 /**
  * Сколько пачек кадров одновременно живёт в памяти: одна считается на GPU, вторая
@@ -166,6 +181,11 @@ export function autoBatchFrames(o: {
   maxBatch?: number;
   /** Сколько пачек живёт одновременно (двойная буферизация — QUEUE_BATCHES). */
   queueBatches?: number;
+  /**
+   * Провайдер инференса (cpu/cuda/dml/tensorrt) — определяет потолок «Авто»
+   * (см. autoBatchCeilingFor). Не задан — прежнее поведение (AUTO_BATCH_MAX).
+   */
+  provider?: string;
 }): number {
   const px = Math.max(1, o.w) * Math.max(1, o.h);
   const s = Math.max(1, Math.round(o.scale) || 1);
@@ -179,9 +199,10 @@ export function autoBatchFrames(o: {
   const queue = Math.max(1, Math.round(o.queueBatches || QUEUE_BATCHES));
   const ramPerFrame = (px * 3 * (s2 + queue)) / (1024 * 1024);
   const ramBudget = o.ramBudgetMb && o.ramBudgetMb > 0 ? o.ramBudgetMb : ramBudgetMb();
+  const autoCeiling = autoBatchCeilingFor(o.provider);
   const ceiling = Math.min(
-    AUTO_BATCH_MAX,
-    o.maxBatch && o.maxBatch > 1 ? Math.min(o.maxBatch, BATCH_MAX) : AUTO_BATCH_MAX,
+    autoCeiling,
+    o.maxBatch && o.maxBatch > 1 ? Math.min(o.maxBatch, BATCH_MAX) : autoCeiling,
   );
   const byVram = o.freeMb > 0 ? Math.floor(vramBudget / Math.max(0.01, vramPerFrame)) : ceiling;
   const byRam = Math.floor(ramBudget / Math.max(0.01, ramPerFrame));
