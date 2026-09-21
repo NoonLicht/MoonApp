@@ -16,8 +16,15 @@ import {
 } from "lucide-react";
 import { Glass, Btn, Badge, ProgressBar } from "@/components/ui";
 import { useI18n } from "@/app/i18n";
-import type { UpManifestInfo, UpModelInfo, UpParams, UpTrtStatus } from "@/api/types";
-import { fmtDateTime } from "@/pages/upscale/parts/formatTime";
+import type {
+  UpBenchEntry,
+  UpBenchState,
+  UpManifestInfo,
+  UpModelInfo,
+  UpParams,
+  UpTrtStatus,
+} from "@/api/types";
+import { fmtDateTime, fmtDateTimeMs } from "@/pages/upscale/parts/formatTime";
 
 /**
  * Панель «Модели ONNX» — отдельный каталог со скачиванием, как «Модель и
@@ -38,7 +45,17 @@ function humanMb(mb: number): string {
   return mb >= 1024 ? `${(mb / 1024).toFixed(1)} GB` : `${Math.round(mb)} MB`;
 }
 
-/** Ошибка бэкенда → понятный текст (неизвестный код показываем как есть). */
+/** Подпись провайдера в замере: у TensorRT в интерфейсе короткое «TRT». */
+function provLabel(p: string): string {
+  const v = String(p || "").toLowerCase();
+  if (v === "tensorrt") return "TRT";
+  if (v === "cuda" || v === "dml" || v === "cpu") return v.toUpperCase();
+  return v ? v.toUpperCase() : "—";
+}
+
+/**
+ * Ошибка бэкенда → понятный текст (неизвестный код показываем как есть).
+ */
 function errorText(t: (k: string, v?: Record<string, unknown>) => string, raw: string): string {
   if (!raw) return "";
   const known = [
@@ -48,6 +65,8 @@ function errorText(t: (k: string, v?: Record<string, unknown>) => string, raw: s
     "sha256_mismatch",
     "no_body",
     "runtime_missing",
+    // Замеры: GPU занят другим замером (кнопки блокируются, но клик бывает).
+    "bench_busy",
     // Обновление каталога из GitHub (POST /api/upscale/models/sync).
     "manifest_fetch",
     "manifest_invalid",
@@ -87,6 +106,13 @@ export default function UpscaleModelsPanel({
   onBuildTrt,
   onBuildTrtAll,
   onDropOnnx,
+  bench,
+  benchBusy,
+  benchProgress,
+  onBench,
+  onBenchAll,
+  onBenchStop,
+  onBenchClear,
 }: {
   models: UpModelInfo[];
   params: UpParams;
@@ -114,6 +140,21 @@ export default function UpscaleModelsPanel({
   onBuildTrtAll: () => void;
   /** «Освободить ONNX»: у модели есть движок, файл графа можно убрать с диска. */
   onDropOnnx: (id: string) => void;
+  /**
+   * Замеры скорости: считаются на этой машине, поэтому у каждого пользователя
+   * свои. Показываются в карточках моделей — в селекторе на странице их нет.
+   */
+  bench: UpBenchState | null;
+  /** Ид модели, которая замеряется сейчас ("" — ничего). */
+  benchBusy: string;
+  /** Серия «Замерить все модели»: сколько уже прошло (null — не идёт). */
+  benchProgress: { done: number; total: number } | null;
+  onBench: (id: string) => void;
+  onBenchAll: () => void;
+  /** Прервать серию замеров (между моделями — текущая досчитывается). */
+  onBenchStop: () => void;
+  /** «Забыть замеры»: файл замеров удаляется целиком (сменилось железо). */
+  onBenchClear: () => void;
   onDownload: (id: string, force: boolean) => void;
   onRemove: (id: string) => void;
   /**
@@ -222,6 +263,12 @@ export default function UpscaleModelsPanel({
   const removable = models.filter((m) => m.available && !inUse(m)).length;
   /** Пакетная операция идёт — блокируем и одиночные кнопки, и обе массовые. */
   const bulking = !!bulk;
+  /** Идёт замер (одиночный или серия): GPU занят, кнопки замеров блокируем. */
+  const benchRunning = !!benchProgress || !!benchBusy;
+  /** Сколько замеров сохранено — по ним показываем «Забыть замеры». */
+  const benchCount = Object.values(bench?.results || {}).reduce((s, rows) => s + rows.length, 0);
+  /** Что вообще можно замерить: файл на диске или готовый движок TensorRT. */
+  const benchable = models.filter((m) => m.available || m.trtEngine).length;
 
   return (
     <div className="modal-overlay up-mdl-overlay" onClick={onClose}>
@@ -288,6 +335,38 @@ export default function UpscaleModelsPanel({
             <Btn icon={HardDriveDownload} onClick={onOpenDir} title={t("up.mdlFolder")}>
               {t("up.mdlFolder")}
             </Btn>
+            {/* Замеры скорости: кнопка на всю серию + «забыть» уже измеренное.
+                Считаются на этой машине, поэтому цифры свои у каждого. */}
+            <Btn
+              icon={Gauge}
+              disabled={bulking || benchRunning || benchable === 0 || !runtime}
+              onClick={() => {
+                setErr("");
+                onBenchAll();
+              }}
+              title={t("up.mdlBenchAllHint")}
+            >
+              {benchProgress
+                ? t("up.mdlBenchDone", { done: benchProgress.done, total: benchProgress.total })
+                : t("up.mdlBenchAll")}
+            </Btn>
+            {benchProgress ? (
+              <Btn icon={X} onClick={onBenchStop} title={t("up.mdlBenchStopHint")}>
+                {t("up.mdlBenchStop")}
+              </Btn>
+            ) : null}
+            {benchCount > 0 && !benchRunning ? (
+              <Btn
+                icon={Trash2}
+                onClick={() => {
+                  setErr("");
+                  onBenchClear();
+                }}
+                title={t("up.mdlBenchClearHint")}
+              >
+                {t("up.mdlBenchClear", { n: benchCount })}
+              </Btn>
+            ) : null}
             <button className="up-icon-x" onClick={onClose}>
               <X size={16} />
             </button>
@@ -416,6 +495,10 @@ export default function UpscaleModelsPanel({
           {list.map((m) => {
             const dl = m.downloading;
             const isBusy = busy === m.id || !!dl || bulking;
+            /** Замеры этой модели с этой машины: свой на каждый провайдер и тайл. */
+            const rows: UpBenchEntry[] = bench?.results?.[m.id] || [];
+            /** Предел пачки из замера: 0 — не проверяли, 1 — граф ждёт один кадр. */
+            const measuredBatch = rows.reduce((s, r) => Math.max(s, r.batchMax || 0), 0);
             return (
               <div key={m.id} className={`up-mdl-row${m.available ? " is-ready" : ""}`}>
                 <div className="up-mdl-main">
@@ -448,13 +531,21 @@ export default function UpscaleModelsPanel({
                       </span>
                     ) : null}
                     {/* Пачка: у апскейлеров — кадров за проход, у интерполяторов — тайлов.
-                        «1» — граф ждёт ровно один, поэтому настройки пачки в Pro нет. */}
+                        «1» — граф ждёт ровно один, поэтому настройки пачки в Pro нет.
+                        Если каталог предел не знает, его выясняет замер этой машины —
+                        тогда в значке стоит факт, а не «?». */}
                     {m.batch === 1 ? (
                       <Badge tone="coral">{t("up.mdlBatchFixed")}</Badge>
                     ) : m.batch > 1 ? (
                       <Badge tone="teal">{t("up.mdlBatchMax", { n: m.batch })}</Badge>
+                    ) : measuredBatch > 1 ? (
+                      <Badge tone="teal">{t("up.mdlBatchMeasured", { n: measuredBatch })}</Badge>
+                    ) : measuredBatch === 1 ? (
+                      <Badge tone="coral">{t("up.mdlBatchFixed")}</Badge>
                     ) : (
-                      <Badge tone="neutral">{t("up.mdlBatchUnknown")}</Badge>
+                      <span title={t("up.mdlBatchAutoHint")}>
+                        <Badge tone="neutral">{t("up.mdlBatchAuto")}</Badge>
+                      </span>
                     )}
                     {m.sha256 ? (
                       <span title={`sha256 ${m.sha256}`}>
@@ -501,6 +592,39 @@ export default function UpscaleModelsPanel({
                     </span>
                   </div>
                   {m.hint ? <div className="muted-sm up-mdl-hint">{m.hint}</div> : null}
+                  {/* Замеры скорости: цифры этой машины (кнопка «Замер» рядом).
+                      Полный кадр 848×480 не гоняем — считаем тайл и оцениваем кадр. */}
+                  {rows.length ? (
+                    <div className="muted-sm up-mdl-bench">
+                      <Gauge size={12} />
+                      {rows.map((b) => (
+                        <span
+                          key={`${b.provider}-${b.tile}`}
+                          className="up-mdl-bench-item"
+                          /* Предел пачки — тоже факт замера: в подсказке он рядом с
+                             остальными цифрами, а в значке модели выше. */
+                          title={`${t("up.mdlBenchTip", {
+                            tiles: b.tiles,
+                            runs: b.runs,
+                            date: fmtDateTimeMs(b.when),
+                          })}${
+                            b.batchMax
+                              ? ` · ${t(b.batchMax === 1 ? "up.mdlBatchFixed" : "up.mdlBatchMax", {
+                                  n: b.batchMax,
+                                })}`
+                              : ""
+                          }`}
+                        >
+                          {t("up.mdlBenchRow", {
+                            provider: provLabel(b.provider),
+                            tile: b.tile,
+                            ms: b.ms,
+                            fps: b.fps,
+                          })}
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
                   {dl ? (
                     <div className="up-mdl-progress">
                       <ProgressBar value={dl.percent} />
@@ -561,6 +685,21 @@ export default function UpscaleModelsPanel({
                           title={t("up.mdlTrtHint")}
                         >
                           {trtBusy === m.id ? t("up.mdlTrtBusy") : t("up.mdlTrtBuild")}
+                        </Btn>
+                      ) : null}
+                      {/* Замер скорости именно этой модели на этой машине: цифры
+                          сохраняются локально и видны строкой в карточке. */}
+                      {m.kind === "upscale" ? (
+                        <Btn
+                          icon={Gauge}
+                          disabled={!!busy || !!bulking || benchRunning}
+                          onClick={() => {
+                            setErr("");
+                            onBench(m.id);
+                          }}
+                          title={t("up.mdlBenchHint")}
+                        >
+                          {benchBusy === m.id ? t("up.mdlBenchBusy") : t("up.mdlBench")}
                         </Btn>
                       ) : null}
                       {/* Тензорная версия: движок собран, отдельная кнопка «пересобрать»

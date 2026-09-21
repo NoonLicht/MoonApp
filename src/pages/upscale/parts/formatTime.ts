@@ -18,3 +18,11 @@ export function fmtDateTime(iso: string): string {
   const d = new Date(iso);
   return Number.isNaN(d.getTime()) ? "" : d.toLocaleString();
 }
+
+/**
+ * Мс эпохи → та же подпись даты. Замеры хранят время числом (когда считали
+ * скорость модели), поэтому рядом с `fmtDateTime` нужен и этот вариант.
+ */
+export function fmtDateTimeMs(ms: number): string {
+  return ms > 0 ? fmtDateTime(new Date(ms).toISOString()) : "";
+}

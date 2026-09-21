@@ -19,6 +19,7 @@ import { useI18n } from "@/app/i18n";
 import { useContextMenu, copyToClipboard } from "@/components/ContextMenu";
 import { api } from "@/api/client";
 import type {
+  UpBenchState,
   UpEstimate,
   UpHardware,
   UpJob,
@@ -128,6 +129,18 @@ export default function UpscalePage() {
   /** «Пересобрать все модели»: прогресс серии сборок (null — серия не идёт). */
   const [trtProgress, setTrtProgress] = useState<{ done: number; total: number } | null>(null);
   const [modelsState, setModelsState] = useState<UpModelsState | null>(null);
+  /**
+   * Замеры скорости моделей: считаются на этой машине (видеокарта, драйвер,
+   * собранный движок) и лежат в storage — у каждого пользователя свои цифры.
+   * Показываются в окне каталога моделей, в селекторе их нет.
+   */
+  const [bench, setBench] = useState<UpBenchState | null>(null);
+  /** Ид модели, которая замеряется сейчас ("" — ничего не идёт). */
+  const [benchBusy, setBenchBusy] = useState("");
+  /** Серия «Замерить все модели»: сколько прошло (null — серия не идёт). */
+  const [benchProgress, setBenchProgress] = useState<{ done: number; total: number } | null>(null);
+  /** Просьба прервать серию (текущая модель досчитывается, дальше — стоп). */
+  const benchStop = useRef(false);
   /** GPU-пак: что установлено, прогресс установки и (по запросу) индекс сборок. */
   const [pack, setPack] = useState<UpPackState | null>(null);
   /** Идёт обновление каталога моделей из GitHub (кнопка в панели моделей). */
@@ -191,6 +204,18 @@ export default function UpscalePage() {
   useEffect(() => {
     void loadModels();
   }, [loadModels]);
+
+  /** Замеры читаем один раз при входе: они меняются только по кнопкам в каталоге. */
+  const loadBench = useCallback(async () => {
+    try {
+      setBench(await api.upscaleBench());
+    } catch {
+      setBench(null);
+    }
+  }, []);
+  useEffect(() => {
+    void loadBench();
+  }, [loadBench]);
 
   /**
    * GPU-пак: без индекса это просто «что установлено», с индексом — ещё и список
@@ -754,6 +779,65 @@ export default function UpscalePage() {
     }
   };
 
+  /**
+   * «Замер» модели: сервер считает один её тайл несколько раз и сохраняет лучшее
+   * время. Цифры у каждой машины свои — видеокарта, драйвер, собранный движок,
+   * поэтому они и лежат локально, а в каталоге видны строкой в карточке.
+   */
+  const benchModel = async (id: string) => {
+    setBenchBusy(id);
+    try {
+      const r = await api.upscaleBenchModel(id);
+      setDefect("");
+      setBench({ results: r.results, frame: r.frame, runs: r.runs });
+    } catch (e) {
+      setDefect(String((e as Error).message || e));
+    } finally {
+      setBenchBusy("");
+    }
+  };
+
+  /**
+   * «Замерить все модели»: по одной, с прогрессом — как серия сборок движков.
+   * Порядок и кнопка «Остановить» те же: серия не должна занимать GPU навсегда.
+   */
+  const benchAll = async () => {
+    const targets = (modelsState?.models || []).filter(
+      (m) => m.kind !== "interp" && (m.available || m.trtEngine),
+    );
+    if (!targets.length) return;
+    benchStop.current = false;
+    setBenchProgress({ done: 0, total: targets.length });
+    try {
+      for (let i = 0; i < targets.length; i++) {
+        if (benchStop.current) break;
+        const m = targets[i];
+        setBenchBusy(m.id);
+        try {
+          const r = await api.upscaleBenchModel(m.id, { tile: m.rec.tile });
+          setBench({ results: r.results, frame: r.frame, runs: r.runs });
+        } catch (e) {
+          // Одна модель не замерилась — серию не бросаем, причину покажем.
+          setDefect(`${m.label}: ${String((e as Error).message || e)}`);
+        }
+        setBenchProgress({ done: i + 1, total: targets.length });
+      }
+    } finally {
+      setBenchBusy("");
+      setBenchProgress(null);
+    }
+  };
+
+  /** «Забыть замеры»: файл замеров удаляется целиком (сменилось железо). */
+  const benchClear = async () => {
+    try {
+      const r = await api.upscaleBenchClear();
+      setBench({ results: r.results, frame: r.frame, runs: r.runs });
+    } catch (e) {
+      setDefect(String((e as Error).message || e));
+    }
+  };
+
   /** «Освободить ONNX»: движок на месте, файл графа убираем (докачается сам). */
   const dropOnnx = async (id: string) => {
     setTrtBusy(id);
@@ -1214,6 +1298,15 @@ export default function UpscalePage() {
           onBuildTrt={(id, tile) => void buildTrt(id, tile)}
           onBuildTrtAll={() => void buildTrtAll()}
           onDropOnnx={(id) => void dropOnnx(id)}
+          bench={bench}
+          benchBusy={benchBusy}
+          benchProgress={benchProgress}
+          onBench={(id) => void benchModel(id)}
+          onBenchAll={() => void benchAll()}
+          onBenchStop={() => {
+            benchStop.current = true;
+          }}
+          onBenchClear={() => void benchClear()}
           syncing={manifestBusy}
           bulk={bulkModels}
           onSync={syncModels}

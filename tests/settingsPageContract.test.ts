@@ -82,6 +82,9 @@ describe("Страница «Настройки»: состав разделов
       '"chat.maxTokens"',
       '"voice.engine"',
       '"voice.exaggeration"',
+      // Язык озвучки: ключ убран на сервере (движок всегда русский), а селект в
+      // настройках остался — правки молча отбрасывал sanitizePatch. Удалён.
+      '"voice.defaultLanguage"',
       '"appearance.fontSize"',
       't("settings.books")',
       't("settings.window")',

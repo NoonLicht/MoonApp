@@ -1198,13 +1198,6 @@ export default function SettingsPage() {
 
         {/* ---- Голос (док: voice) ---- */}
         <Section title={t("settings.voice")} icon={Mic2}>
-          <Row label={t("voiceSettings.voiceLang")} hint={t("voiceSettings.voiceLangHint")}>
-            <Select
-              value={voice.defaultLanguage}
-              onChange={(e) => change("voice.defaultLanguage", e.target.value)}
-              options={["English", "Russian", "Chinese", "Spanish", "French", "German", "Japanese"]}
-            />
-          </Row>
           <Row label={t("voiceSettings.voiceVram")} hint={t("voiceSettings.voiceVramHint")}>
             <NumberInput
               value={Number(voice.vramGb ?? 4.5)}

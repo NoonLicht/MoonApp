@@ -124,6 +124,57 @@ describe("апскейл: зум, полоса сравнения, пакет и
     expect(css).toMatch(/\.up-tip \{[\s\S]*?position: fixed/);
   });
 
+  it("селектор модели компактный: строка списка — одно название", () => {
+    const css = read("src/styles/upscale.css");
+    // Строка списка — flex-строка с названием на всю ширину, а не «карточка» в
+    // три этажа со значками, тегами и замером: список должен читаться как меню.
+    expect(css).toMatch(/\.up-pick-row \{[\s\S]*?flex-direction: row/);
+    expect(css).toMatch(/\.up-pick-row \{[\s\S]*?min-height: 24px/);
+    expect(css).toMatch(/\.up-pick-row-name \{[\s\S]*?flex: 1 1 auto/);
+    // Значки в селекторе — иконки без подписей; не скачана — приглушённое имя.
+    expect(css).toMatch(/\.up-pick-mark \{[\s\S]*?display: inline-flex/);
+    expect(css).toMatch(/\.up-pick-mark\.is-warn/);
+    expect(css).toMatch(/\.up-pick-row\.is-missing \.up-pick-row-name \{[\s\S]*?opacity: 0\.55/);
+    // Две колонки включаются раньше, фильтры — компактные.
+    expect(css).toMatch(/\.up-pick-list \{[\s\S]*?minmax\(260px, 1fr\)/);
+    expect(css).toMatch(/\.up-pick-filters \.badge \{[\s\S]*?font-size: 10\.5px/);
+    // Поле модели растягивается на свободное место: триггер длиннее, а список
+    // получает ширину под две колонки.
+    expect(css).toMatch(/\.up-fields \.field:has\(> \.up-pick\) \{[\s\S]*?flex: 1 1 300px/);
+    // В самом списке подробностей больше нет — они ушли в подсказку и в каталог.
+    const picker = read("src/pages/upscale/parts/UpscaleModelPicker.tsx");
+    expect(picker).toContain("up-pick-row-name");
+    expect(picker).not.toContain("up-pick-row-badges");
+    expect(picker).not.toContain("up-pick-meas");
+    // Фильтр на месте: без него модель из семидесяти не найти.
+    expect(picker).toContain("up-pick-filters");
+    expect(picker).toContain('t("up.pickSearch")');
+  });
+
+  it("строку пресетов можно свернуть", () => {
+    const dash = read("src/pages/upscale/parts/UpscaleDashboard.tsx");
+    const css = read("src/styles/upscale.css");
+    expect(dash).toContain("presetsOpen");
+    expect(dash).toContain('className={`up-fold${presetsOpen ? " is-open" : ""}`}');
+    expect(dash).toContain('t("up.presetsCollapse")');
+    expect(dash).toContain('t("up.presetsExpand")');
+    // Свёрнутая строка показывает активный пресет, а не пустоту.
+    expect(dash).toMatch(/activePreset \? presetLabel\(activePreset\)/);
+    expect(css).toMatch(/\.up-fold\.is-open svg \{[\s\S]*?transform: rotate\(90deg\)/);
+  });
+
+  it("высота контролов в настройках одна: поле, кнопка и селектор не «пляшут»", () => {
+    const css = read("src/styles/upscale.css");
+    // Общий токен высоты на странице; значение совпадает с селектом из ui.css.
+    expect(css).toMatch(/\.up-page \{[\s\S]*?--ctl-h: 30px/);
+    // Одной высоты: поле ввода, кнопка, фильтр-переключатель и селектор модели.
+    expect(css).toMatch(/\.up-fields \.text-input,[\s\S]{0,400}?height: var\(--ctl-h, 30px\)/);
+    expect(css).toMatch(/\.up-pro-ctl > \.btn,[\s\S]{0,400}?height: var\(--ctl-h, 30px\)/);
+    expect(css).toMatch(/\.up-mdl-head \.btn,[\s\S]{0,200}?height: var\(--ctl-h, 30px\)/);
+    // Сам селектор модели — той же высоты, что селект рядом с ним.
+    expect(css).toMatch(/\.up-pick-btn \{[\s\S]*?height: var\(--ctl-h, 30px\)/);
+  });
+
   it("окно каталога моделей не заезжает на панель управления", () => {
     const css = read("src/styles/upscale.css");
     /** Тело правила CSS по селектору — так проверки не зависят от порядка свойств. */

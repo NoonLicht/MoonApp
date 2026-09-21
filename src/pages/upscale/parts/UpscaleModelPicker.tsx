@@ -1,31 +1,17 @@
-import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
-import { Check, ChevronDown, Download, Search, Sparkles, Zap } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Check, ChevronDown, Download, Search, Zap } from "lucide-react";
 import { Badge } from "@/components/ui";
 import { useI18n } from "@/app/i18n";
 import type { UpModelInfo } from "@/api/types";
 
 /**
- * Значок «только для показа»: `Badge` — это `<button>`, а вкладывать кнопку в
- * кнопку (строка выбора — тоже кнопка) нельзя. Классы те же, что у `Badge`.
- */
-function Chip({ tone, children, mono }: { tone: string; children: ReactNode; mono?: boolean }) {
-  return (
-    <span
-      className={`badge tone-${tone}`}
-      style={mono ? { fontFamily: "var(--font-mono)" } : undefined}
-    >
-      {children}
-    </span>
-  );
-}
-
-/**
  * Селектор модели апскейла вместо системного `<select>`.
  *
- * Системный список показывал только название: по нему нельзя было понять, скачана
- * ли модель, под какую кратность она обучена и — главное — собрана ли под неё
- * тензорная (TensorRT) версия. Здесь это видно сразу, плюс есть поиск и фильтры,
- * а строки идут в две колонки, когда панель широкая.
+ * Список — только названия: он читается как обычное меню и не «разъезжается» от
+ * значков. Все подробности модели (скачана ли, размер, лицензия, архитектура,
+ * собранный движок и — главное — замеры скорости на этой машине) живут в окне
+ * каталога моделей: там их и получают кнопкой «Замерить все модели».
+ * Поиск и фильтры остаются здесь: выбрать модель из семидесяти иначе неудобно.
  */
 export default function UpscaleModelPicker({
   models,
@@ -110,17 +96,18 @@ export default function UpscaleModelPicker({
           ) : current ? (
             <>
               <span className="up-pick-cur-name">{current.label}</span>
-              <Chip tone="neutral" mono>
-                ×{current.scale || current.mult}
-              </Chip>
+              {/* Значки в самом селекторе — мелкие иконки без подписей: строка
+                  стоит рядом с селектом кратности и не должна его перевешивать. */}
               {current.trtEngine ? (
-                <span title={trtTitle(current)}>
-                  <Chip tone="violet">
-                    <Zap size={11} /> TRT
-                  </Chip>
+                <span className="up-pick-mark" title={trtTitle(current)}>
+                  <Zap size={12} />
                 </span>
               ) : null}
-              {!current.available ? <Chip tone="coral">{t("up.mdlNotDownloaded")}</Chip> : null}
+              {!current.available ? (
+                <span className="up-pick-mark is-warn" title={t("up.mdlNotDownloaded")}>
+                  <Download size={12} />
+                </span>
+              ) : null}
             </>
           ) : (
             <span className="up-pick-cur-name">{t("up.pickNone")}</span>
@@ -190,60 +177,25 @@ export default function UpscaleModelPicker({
                   {value === "none" ? <Check size={13} /> : null}
                   {noneLabel}
                 </span>
-                <span className="up-pick-row-badges">
-                  <Chip tone="neutral" mono>
-                    ×1
-                  </Chip>
-                </span>
-                <span className="up-pick-row-tags" />
               </button>
             ) : null}
             {list.map((m) => (
               <button
                 key={m.id}
                 type="button"
-                className={`up-pick-row${m.id === value ? " is-cur" : ""}`}
+                className={`up-pick-row${m.id === value ? " is-cur" : ""}${
+                  m.available ? "" : " is-missing"
+                }`}
                 onClick={() => {
                   onPick(m.id);
                   setOpen(false);
                 }}
-                title={`${m.id} · ${m.arch}`}
+                /* Подробности — в подсказке: список остаётся списком названий. */
+                title={m.available ? `${m.id} · ${m.arch}` : t("up.mdlNotDownloaded")}
               >
                 <span className="up-pick-row-name">
-                  {m.id === value ? (
-                    <Check size={13} />
-                  ) : m.kind === "interp" ? (
-                    <Sparkles size={13} />
-                  ) : null}
+                  {m.id === value ? <Check size={13} /> : null}
                   {m.label}
-                </span>
-                <span className="up-pick-row-badges">
-                  <Chip tone="neutral" mono>
-                    ×{m.scale}
-                  </Chip>
-                  {m.trtEngine ? (
-                    <span title={trtTitle(m)}>
-                      <Chip tone="violet">
-                        <Zap size={11} /> TRT
-                      </Chip>
-                    </span>
-                  ) : null}
-                  {!m.available ? (
-                    <span title={t("up.mdlNotDownloaded")}>
-                      <Download size={12} />
-                    </span>
-                  ) : null}
-                  {m.measured ? <span className="up-pick-meas">{m.measured}</span> : null}
-                </span>
-                <span className="up-pick-row-tags">
-                  {/* «без пачки» — граф ждёт ровно один кадр: в Pro-настройках
-                      поля пачки для такой модели не показываются. */}
-                  {m.batch === 1 ? <span className="up-pick-tag">{t("up.batchNone")}</span> : null}
-                  {m.tags.map((tg) => (
-                    <span key={tg} className="up-pick-tag">
-                      {t(`up.tag_${tg}`)}
-                    </span>
-                  ))}
                 </span>
               </button>
             ))}

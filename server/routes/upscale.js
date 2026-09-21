@@ -8,6 +8,9 @@
  *  POST   /api/upscale/models/sync     — обновить каталог (манифест из GitHub)
  *  DELETE /api/upscale/models/:id      — удалить скачанный файл модели
  *  GET    /api/upscale/gpu-pack        — GPU-пак (CUDA/TensorRT): статус и прогресс
+ *  GET    /api/upscale/bench           — замеры скорости моделей (локальные)
+ *  POST   /api/upscale/bench           — замерить одну модель { model, provider?, tile? }
+ *  POST   /api/upscale/bench/clear     — забыть замеры
  *  POST   /api/upscale/gpu-pack/install — поставить ступень пака (фоновая загрузка)
  *  POST   /api/upscale/gpu-pack/cancel — отменить установку
  *  DELETE /api/upscale/gpu-pack        — удалить пак (вернуться на DirectML/CPU)
@@ -250,6 +253,45 @@ router.delete("/models/:id", (req, res) => {
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
+});
+
+// --- Замеры скорости моделей: локальные данные пользователя ---
+// Скорость зависит от машины (видеокарта, драйвер, собранный движок), поэтому
+// замеры живут на этом компьютере (storage/upscale-bench.json), а не в каталоге:
+// у каждого пользователя свои цифры. Кнопки — в окне каталога моделей.
+router.get("/bench", (req, res) => {
+  res.json({
+    results: engine.benchResults(),
+    frame: engine.BENCH_FRAME,
+    runs: engine.BENCH_RUNS,
+  });
+});
+
+/** Замер одной модели — синхронно (панель показывает «идёт замер» на кнопке). */
+router.post("/bench", async (req, res) => {
+  const b = req.body || {};
+  try {
+    const r = await engine.benchModel(String(b.model || ""), {
+      provider: b.provider,
+      tile: b.tile,
+      runs: b.runs,
+    });
+    res.json(r);
+  } catch (e) {
+    // 409 — замер уже идёт (GPU занят), 400 — не та модель/нет рантайма.
+    const code =
+      e.message === "bench_busy"
+        ? 409
+        : e.message === "model_unknown" || e.message === "runtime_missing"
+          ? 400
+          : 500;
+    res.status(code).json({ error: e.message });
+  }
+});
+
+/** «Забыть замеры»: список чистый, старые цифры не путают (сменилось железо). */
+router.post("/bench/clear", (req, res) => {
+  res.json({ ...engine.clearBench(), results: {} });
 });
 
 // --- Железо: рантайм + ffmpeg + CPU (для подсказок в UI) ---

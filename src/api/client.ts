@@ -82,6 +82,8 @@ import type {
   UpEstimate,
   UpHardware,
   UpJob,
+  UpBenchSingle,
+  UpBenchState,
   UpModelsState,
   UpModelInfo,
   UpManifestSync,
@@ -939,6 +941,20 @@ export const api = {
       "POST",
       `/upscale/models/${encodeURIComponent(id)}/onnx/delete`,
     ),
+  /**
+   * Замеры скорости моделей: считаются на этой машине (см. UpBenchState), поэтому
+   * список свой у каждого пользователя. Панель моделей показывает их в карточках.
+   */
+  upscaleBench: () => req<UpBenchState>("GET", "/upscale/bench"),
+  /** Замерить одну модель: сервер считает один её тайл несколько раз. */
+  upscaleBenchModel: (id: string, o: { provider?: string; tile?: number; runs?: number } = {}) =>
+    req<UpBenchSingle>("POST", "/upscale/bench", {
+      model: id,
+      provider: o.provider || "",
+      tile: o.tile || 0,
+      runs: o.runs || 0,
+    }),
+  upscaleBenchClear: () => req<UpBenchState>("POST", "/upscale/bench/clear"),
   /**
    * GPU-пак (CUDA/TensorRT): статус, прогресс установки и — по требованию — индекс
    * доступных архивов. Ставится ступенями: первая даёт CUDA, вторая — TensorRT.

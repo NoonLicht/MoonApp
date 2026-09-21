@@ -1,4 +1,6 @@
-﻿import {
+﻿import { useState } from "react";
+import {
+  ChevronRight,
   Download,
   FileVideo,
   Image as ImageIcon,
@@ -127,6 +129,13 @@ export default function UpscaleDashboard({
   const interpModels = models.filter((m) => m.kind === "interp");
 
   const presetLabel = (p: UpPreset) => (p.id ? t(`up.preset_${p.id}`) : String(p.name || ""));
+  /** Пресеты можно свернуть: они занимают строку, даже когда режим подобран вручную. */
+  const [presetsOpen, setPresetsOpen] = useState(true);
+  /** Активный пресет своего типа — его видно и в свёрнутой строке. */
+  const activePreset =
+    kindPresets.find((pr) => pr.id === params.presetId) ||
+    kindCustom.find((pr) => String(pr.name) === params.presetId) ||
+    null;
   /** Выбран режим «без апскейла»: множитель разрешения не имеет смысла. */
   const noUpscale = params.model === "none";
   // Плавность: одно поле вместо трёх — режим и множитель вместе.
@@ -137,45 +146,64 @@ export default function UpscaleDashboard({
     <>
       {/* --- Пресеты выбранного типа медиа --- */}
       <div className="up-row-inline">
+        {/* Свернуть/развернуть строку пресетов: свёрнутая показывает только
+            активный пресет, а место в панели остаётся настройкам. */}
+        <button
+          type="button"
+          className={`up-fold${presetsOpen ? " is-open" : ""}`}
+          onClick={() => setPresetsOpen((v) => !v)}
+          aria-expanded={presetsOpen}
+          title={presetsOpen ? t("up.presetsCollapse") : t("up.presetsExpand")}
+        >
+          <ChevronRight size={14} />
+        </button>
         <span className="field-label">{t("up.presets")}</span>
         <Badge tone="neutral">
           {isVideo ? <FileVideo size={12} /> : <ImageIcon size={12} />}
           {isVideo ? t("up.video") : t("up.photo")}
         </Badge>
-        {kindPresets.map((pr) => (
-          <Badge
-            key={pr.id}
-            tone="violet"
-            active={params.presetId === pr.id}
-            onClick={() => onPreset(pr)}
-          >
-            {presetLabel(pr)}
-          </Badge>
-        ))}
-        {kindCustom.map((pr) => (
-          <span
-            key={pr.name}
-            title={t("up.deletePreset")}
-            onContextMenu={(e) => {
-              e.preventDefault();
-              onDeletePreset(String(pr.name));
-            }}
-          >
-            <Badge
-              tone="teal"
-              active={params.presetId === String(pr.name)}
-              onClick={() => onPreset(pr)}
-            >
-              {presetLabel(pr)}
-            </Badge>
+        {presetsOpen ? (
+          <>
+            {kindPresets.map((pr) => (
+              <Badge
+                key={pr.id}
+                tone="violet"
+                active={params.presetId === pr.id}
+                onClick={() => onPreset(pr)}
+              >
+                {presetLabel(pr)}
+              </Badge>
+            ))}
+            {kindCustom.map((pr) => (
+              <span
+                key={pr.name}
+                title={t("up.deletePreset")}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  onDeletePreset(String(pr.name));
+                }}
+              >
+                <Badge
+                  tone="teal"
+                  active={params.presetId === String(pr.name)}
+                  onClick={() => onPreset(pr)}
+                >
+                  {presetLabel(pr)}
+                </Badge>
+              </span>
+            ))}
+            {kindPresets.length === 0 && kindCustom.length === 0 ? (
+              <span className="muted-sm">{t("up.noPresets")}</span>
+            ) : null}
+            <Btn icon={Save} onClick={onSavePreset} disabled={!file}>
+              {t("up.savePreset")}
+            </Btn>
+          </>
+        ) : (
+          <span className="muted-sm">
+            {activePreset ? presetLabel(activePreset) : t("up.noPresets")}
           </span>
-        ))}
-        {kindPresets.length === 0 && kindCustom.length === 0 ? (
-          <span className="muted-sm">{t("up.noPresets")}</span>
-        ) : null}
-        <Btn icon={Save} onClick={onSavePreset} disabled={!file}>
-          {t("up.savePreset")}
-        </Btn>
+        )}
       </div>
 
       {/* --- Режим: Express / Pro (как на странице сжатия видео) --- */}
