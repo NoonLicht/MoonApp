@@ -105,8 +105,13 @@ function authMiddleware(
   next: express.NextFunction,
 ): void {
   if (!AUTH_TOKEN) return next();
-  const protectedPath = req.path.startsWith("/api") || req.path.startsWith("/events");
-  if (!protectedPath) return next(); // статика dist/ не секрет
+  // Раньше статика dist/ (в т.ч. SPA-фолбэк index.html) отдавалась без проверки —
+  // любой процесс, узнавший порт (он теперь ещё и случайный, см. findFreePort в
+  // electron/main.js), мог просто открыть http://127.0.0.1:<port> в обычном
+  // браузере и получить интерфейс приложения. Токен теперь нужен на ВСЕХ путях;
+  // Electron-окно получает его не через <script>, а через session.webRequest
+  // (electron/main.js → onBeforeSendHeaders), поэтому само приложение работает
+  // как раньше, а сторонний браузер получает 401 на любой URL.
   // Ресурсные URL отдаются браузеру как <img src>/<video src>, поэтому заголовок
   // x-moonapp-token передать нельзя. Такие пути валидируются по allowlist сами
   // (пример: /api/movies/image — только image.tmdb.org, size из списка, path /file.jpg).

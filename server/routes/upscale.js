@@ -39,6 +39,7 @@ const multer = require("multer");
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
+const { fork } = require("child_process");
 const engine = require("../upscale");
 const gpuPack = require("../ortPack");
 const settings = require("../settings");
@@ -105,10 +106,55 @@ router.get("/models", (req, res) => {
  * .engine в кэш. Для AMD/Intel/CPU этот пункт не нужен — там работает
  * обычный ONNX-путь (провайдеры dml/cpu).
  */
+/**
+ * Сборка движка запускается в отдельном процессе (server/upscale/trtWorker.js),
+ * а не прямо здесь: нативный код TensorRT на части связок драйвер/карта/модель
+ * либо валит биндинг onnxruntime-node насмерть (segfault, try/catch тут бессилен),
+ * либо надолго занимает GPU и Windows сбрасывает драйвер (TDR) — раньше это
+ * убивало весь процесс Electron. В своём процессе падает только он, а роут
+ * отвечает понятной ошибкой.
+ */
+function buildTrtEngineIsolated(id, tile) {
+  return new Promise((resolve, reject) => {
+    const child = fork(path.join(__dirname, "..", "upscale", "trtWorker.js"), [], {
+      // Наследуем PATH (нужен паку CUDA/TensorRT — см. server/upscale/runtime.js)
+      // и MOONAPP_STORAGE, чтобы воркер писал .trt-кэш в ту же папку, что и основной процесс.
+      env: process.env,
+      silent: false,
+    });
+    let settled = false;
+    const finish = (err, result) => {
+      if (settled) return;
+      settled = true;
+      child.removeAllListeners();
+      try {
+        child.kill();
+      } catch {
+        /* процесс уже завершился */
+      }
+      if (err) reject(err);
+      else resolve(result);
+    };
+    child.once("message", (msg) => {
+      if (!msg) return;
+      if (msg.ok) finish(null, msg.result);
+      else finish(new Error(msg.error || "trt_build_failed"));
+    });
+    child.once("error", (e) => finish(e));
+    child.once("exit", (code, signal) => {
+      if (settled) return;
+      // Дошли сюда без message — процесс убит сигналом (segfault/TDR-краш GPU),
+      // а не штатно завершился ошибкой JS.
+      finish(new Error(signal ? `trt_worker_crashed (${signal})` : `trt_worker_exit_${code}`));
+    });
+    child.send({ id, tile });
+  });
+}
+
 router.post("/models/:id/trt", async (req, res) => {
   try {
     const tile = Number((req.body || {}).tile) || 0;
-    const r = await engine.buildTrtEngine(req.params.id, { tile });
+    const r = await buildTrtEngineIsolated(req.params.id, tile);
     res.json({ ...r, trt: engine.trtStatus() });
   } catch (e) {
     // 400 — «нельзя собрать на этой машине» (нет провайдера), 500 — сбой сборки.

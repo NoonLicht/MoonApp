@@ -116,7 +116,11 @@ for (const lvl of ["warn", "error"]) {
   };
 }
 
-function findFreePort(start = 4000, maxTry = 100) {
+// Порт больше не статичный 4000: он предсказуем (любой процесс мог просто
+// постучаться в 127.0.0.1:4000), а токен сам по себе статику не защищал (см.
+// authMiddleware в server/ts/index.ts). Стартуем поиск со случайного порта в
+// диапазоне 20000-59999 и, как раньше, идём вверх, пока не найдём свободный.
+function findFreePort(start = 20000 + Math.floor(Math.random() * 40000), maxTry = 100) {
   return new Promise((resolve, reject) => {
     let port = start;
     const tryListen = (p, attempt) => {
@@ -544,7 +548,7 @@ async function createWindow() {
     tokenFile = null;
   }
 
-  const port = await findFreePort(4000);
+  const port = await findFreePort();
   startServer(port, { token });
   // Скрапер форума ходит на rutracker сетевым стеком ЭТОЙ сессии: настоящие
   // TLS/HTTP2-отпечатки и те же куки, что прошли Cloudflare в окне входа
@@ -624,6 +628,20 @@ async function createWindow() {
       sandbox: false,
     },
   });
+
+  // Токен теперь нужен и для статики/навигации (server/ts/index.ts →
+  // authMiddleware), а не только для fetch() из renderer. Сам renderer не может
+  // проставить заголовок на запрос загрузки страницы (win.loadURL) или её
+  // подресурсов (JS/CSS), поэтому подставляем его здесь, на уровне сессии —
+  // любой сторонний браузер, открывший http://127.0.0.1:<port> напрямую,
+  // этот перехватчик не затрагивает и получит 401.
+  win.webContents.session.webRequest.onBeforeSendHeaders(
+    { urls: [`http://127.0.0.1:${port}/*`] },
+    (details, cb) => {
+      details.requestHeaders["x-moonapp-token"] = token;
+      cb({ requestHeaders: details.requestHeaders });
+    },
+  );
 
   // CSP: даже если чужой HTML/Markdown пробьёт санитайзер — инлайн-скрипты
   // и внешние загрузки запрещены. Собственный бандл — 'self'.

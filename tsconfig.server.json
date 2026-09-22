@@ -69,6 +69,7 @@
     "server/ts/upscale/manifest.ts",
     "server/ts/upscale/runtime.ts",
     "server/ts/upscale/trt.ts",
+    "server/ts/upscale/trtWorker.ts",
     "server/ts/upscale/session.ts",
     "server/ts/upscale/params.ts",
     "server/ts/upscale/inference.ts",

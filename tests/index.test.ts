@@ -68,7 +68,7 @@ describe("server/index — контракт входа", () => {
     stop(srv);
   });
 
-  it("с токеном: /api закрыт, ресурсные пути и статика отдаются без заголовка", async () => {
+  it("с токеном: /api закрыт, ресурсные пути открыты, а статика/SPA-фолбэк требуют токен", async () => {
     const srv = server.startServer(0, { token: "s3cret" });
     const port = await portOf(srv);
     const base = `http://127.0.0.1:${port}`;
@@ -105,9 +105,14 @@ describe("server/index — контракт входа", () => {
       expect(res.status, p).not.toBe(401);
     }
 
-    // Не-/api путь (статика dist/, SPA-фолбэк) — не секрет, токен не нужен.
-    const page = await fetch(`${base}/`);
-    expect(page.status).not.toBe(401);
+    // Не-/api путь (статика dist/, SPA-фолбэк): любой процесс, узнавший порт,
+    // раньше мог открыть его в обычном браузере и получить интерфейс приложения
+    // без токена. Теперь без заголовка — 401 (Electron-окно подставляет его само
+    // через session.webRequest, см. electron/main.js).
+    const pageNoHeader = await fetch(`${base}/`);
+    expect(pageNoHeader.status).toBe(401);
+    const pageWithHeader = await fetch(`${base}/`, hdr);
+    expect(pageWithHeader.status).not.toBe(401);
     stop(srv);
   });
 
