@@ -15,7 +15,8 @@
     "compress": "Compresser",
     "lecture": "Cours",
     "bypass": "Contournement",
-    "upscale": "Upscale"
+    "upscale": "Upscale",
+    "tools": "Outils"
   },
   "common": {
     "saved": "enregistré",
@@ -291,6 +292,38 @@
     "fNotes": "Note",
     "saveForLater": "Enregistrer l'article pour plus tard (télécharge le texte dans une note)",
     "openArticle": "Ouvrir l'article enregistré"
+  },
+  "tools": {
+    "eyebrow": "Multi-outil",
+    "title": "Outils",
+    "tab_json": "JSON",
+    "tab_diff": "Diff",
+    "tab_regex": "Regex",
+    "tab_encode": "Base64/Hash",
+    "tab_uuid": "UUID",
+    "tab_base": "Bases numériques",
+    "tab_units": "Unités et calculatrice",
+    "jsonPlaceholder": "Collez du JSON…",
+    "jsonFormat": "Formater",
+    "jsonMinify": "Minifier",
+    "diffA": "Texte A",
+    "diffB": "Texte B",
+    "diffGo": "Comparer",
+    "regexPattern": "Expression régulière",
+    "regexText": "Texte à tester",
+    "regexMatches": "Correspondances : {n}",
+    "encodePlaceholder": "Entrez du texte…",
+    "encodeRun": "Calculer",
+    "encodeB64Decode": "Décoder Base64",
+    "uuidGenerate": "Générer",
+    "baseInvalid": "Nombre invalide pour cette base",
+    "unitCat_length": "Longueur",
+    "unitCat_weight": "Poids",
+    "unitCat_temp": "Température",
+    "unitValue": "Valeur",
+    "unitFrom": "De",
+    "unitTo": "Vers",
+    "calculator": "Calculatrice"
   },
   "passwordVault": {
     "title": "Gestionnaire de mots de passe",

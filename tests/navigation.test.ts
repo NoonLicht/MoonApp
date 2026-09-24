@@ -32,6 +32,7 @@ const ALL_IDS = [
   "voice",
   "lecture",
   "bypass",
+  "tools",
   "archive",
   "settings",
 ];

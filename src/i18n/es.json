@@ -15,7 +15,8 @@
     "compress": "Comprimir",
     "lecture": "Clases",
     "bypass": "Bloqueos",
-    "upscale": "Escalado"
+    "upscale": "Escalado",
+    "tools": "Herramientas"
   },
   "common": {
     "saved": "guardado",
@@ -291,6 +292,38 @@
     "fNotes": "Nota",
     "saveForLater": "Guardar artículo para leer después (descarga el texto a una nota)",
     "openArticle": "Abrir artículo guardado"
+  },
+  "tools": {
+    "eyebrow": "Multiherramienta",
+    "title": "Herramientas",
+    "tab_json": "JSON",
+    "tab_diff": "Diff",
+    "tab_regex": "Regex",
+    "tab_encode": "Base64/Hash",
+    "tab_uuid": "UUID",
+    "tab_base": "Bases numéricas",
+    "tab_units": "Unidades y calculadora",
+    "jsonPlaceholder": "Pega JSON…",
+    "jsonFormat": "Formatear",
+    "jsonMinify": "Minificar",
+    "diffA": "Texto A",
+    "diffB": "Texto B",
+    "diffGo": "Comparar",
+    "regexPattern": "Expresión regular",
+    "regexText": "Texto a probar",
+    "regexMatches": "Coincidencias: {n}",
+    "encodePlaceholder": "Introduce texto…",
+    "encodeRun": "Calcular",
+    "encodeB64Decode": "Decodificar Base64",
+    "uuidGenerate": "Generar",
+    "baseInvalid": "Número inválido para esta base",
+    "unitCat_length": "Longitud",
+    "unitCat_weight": "Peso",
+    "unitCat_temp": "Temperatura",
+    "unitValue": "Valor",
+    "unitFrom": "De",
+    "unitTo": "A",
+    "calculator": "Calculadora"
   },
   "passwordVault": {
     "title": "Gestor de contraseñas",

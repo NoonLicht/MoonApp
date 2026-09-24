@@ -15,7 +15,8 @@
     "compress": "Сжатие",
     "lecture": "Лекторий",
     "bypass": "Обход блокировок",
-    "upscale": "Апскейл"
+    "upscale": "Апскейл",
+    "tools": "Инструменты"
   },
   "common": {
     "saved": "сохранено",
@@ -291,6 +292,38 @@
     "fNotes": "Заметка",
     "saveForLater": "Сохранить статью для чтения (скачает текст в заметку)",
     "openArticle": "Открыть сохранённую статью"
+  },
+  "tools": {
+    "eyebrow": "Мультитул",
+    "title": "Инструменты",
+    "tab_json": "JSON",
+    "tab_diff": "Diff",
+    "tab_regex": "Regex",
+    "tab_encode": "Base64/Hash",
+    "tab_uuid": "UUID",
+    "tab_base": "Системы счисления",
+    "tab_units": "Единицы и калькулятор",
+    "jsonPlaceholder": "Вставьте JSON…",
+    "jsonFormat": "Форматировать",
+    "jsonMinify": "Минифицировать",
+    "diffA": "Текст A",
+    "diffB": "Текст B",
+    "diffGo": "Сравнить",
+    "regexPattern": "Регулярное выражение",
+    "regexText": "Текст для проверки",
+    "regexMatches": "Совпадений: {n}",
+    "encodePlaceholder": "Введите текст…",
+    "encodeRun": "Вычислить",
+    "encodeB64Decode": "Decode Base64",
+    "uuidGenerate": "Сгенерировать",
+    "baseInvalid": "Некорректное число для этой системы счисления",
+    "unitCat_length": "Длина",
+    "unitCat_weight": "Вес",
+    "unitCat_temp": "Температура",
+    "unitValue": "Значение",
+    "unitFrom": "Из",
+    "unitTo": "В",
+    "calculator": "Калькулятор"
   },
   "passwordVault": {
     "title": "Менеджер паролей",

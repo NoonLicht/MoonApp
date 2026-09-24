@@ -15,6 +15,7 @@ import {
   Archive,
   Settings2,
   Sparkles,
+  Wrench,
 } from "lucide-react";
 import type { ElementType } from "react";
 import type { TranslateFn } from "@/app/i18n";
@@ -36,7 +37,8 @@ export type PageId =
   | "settings"
   | "myspace"
   | "lecture"
-  | "bypass";
+  | "bypass"
+  | "tools";
 
 export interface PageMeta {
   id: PageId;
@@ -70,6 +72,7 @@ export const PAGES: readonly PageMeta[] = [
   { id: "voice", i18n: "nav.voice", icon: Mic2 },
   { id: "lecture", i18n: "nav.lecture", icon: GraduationCap },
   { id: "bypass", i18n: "nav.bypass", icon: Shield },
+  { id: "tools", i18n: "nav.tools", icon: Wrench },
   { id: "archive", i18n: "nav.archive", icon: Archive },
   { id: "settings", i18n: "nav.settings", icon: Settings2 },
 ];

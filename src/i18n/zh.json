@@ -15,7 +15,8 @@
     "compress": "压缩",
     "lecture": "讲座",
     "bypass": "绕过限制",
-    "upscale": "放大"
+    "upscale": "放大",
+    "tools": "工具"
   },
   "common": {
     "saved": "已保存",
@@ -291,6 +292,38 @@
     "fNotes": "备注",
     "saveForLater": "保存文章稍后阅读(将正文下载为笔记)",
     "openArticle": "打开已保存的文章"
+  },
+  "tools": {
+    "eyebrow": "多功能工具",
+    "title": "工具",
+    "tab_json": "JSON",
+    "tab_diff": "对比",
+    "tab_regex": "正则表达式",
+    "tab_encode": "Base64/哈希",
+    "tab_uuid": "UUID",
+    "tab_base": "进制转换",
+    "tab_units": "单位与计算器",
+    "jsonPlaceholder": "粘贴 JSON…",
+    "jsonFormat": "格式化",
+    "jsonMinify": "压缩",
+    "diffA": "文本 A",
+    "diffB": "文本 B",
+    "diffGo": "比较",
+    "regexPattern": "正则表达式",
+    "regexText": "待测试文本",
+    "regexMatches": "匹配数:{n}",
+    "encodePlaceholder": "输入文本…",
+    "encodeRun": "计算",
+    "encodeB64Decode": "解码 Base64",
+    "uuidGenerate": "生成",
+    "baseInvalid": "该进制下的数字无效",
+    "unitCat_length": "长度",
+    "unitCat_weight": "重量",
+    "unitCat_temp": "温度",
+    "unitValue": "数值",
+    "unitFrom": "从",
+    "unitTo": "到",
+    "calculator": "计算器"
   },
   "passwordVault": {
     "title": "密码管理器",

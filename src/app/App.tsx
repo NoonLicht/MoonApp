@@ -57,6 +57,7 @@ import MyspacePage from "@/pages/myspace/MyspacePage";
 import LectureRecorderPage from "@/pages/lecture/LectureRecorderPage";
 import BypassControlPage from "@/pages/bypass/BypassControlPage";
 import MoviesPage from "@/pages/movies/MoviesPage";
+import ToolsPage from "@/pages/tools/ToolsPage";
 
 // Идентификаторы страниц и их перечень (PAGES) живут в src/navigation.ts —
 // общий источник для дока приложения и списка «Стартовая страница» в настройках.
@@ -95,6 +96,7 @@ const PAGE_COMPONENTS: Record<PageId, React.ComponentType> = {
   voice: AudiobookTTSPage,
   lecture: LectureRecorderPage,
   bypass: BypassControlPage,
+  tools: ToolsPage,
   archive: ArchiverPage,
   settings: SettingsPage,
 };

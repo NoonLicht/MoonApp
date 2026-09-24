@@ -15,7 +15,8 @@
     "compress": "ضغط",
     "lecture": "المحاضرات",
     "bypass": "تجاوز الحظر",
-    "upscale": "تكبير"
+    "upscale": "تكبير",
+    "tools": "الأدوات"
   },
   "common": {
     "saved": "تم الحفظ",
@@ -291,6 +292,38 @@
     "fNotes": "ملاحظة",
     "saveForLater": "حفظ المقال للقراءة لاحقًا (يُنزّل النص إلى ملاحظة)",
     "openArticle": "فتح المقال المحفوظ"
+  },
+  "tools": {
+    "eyebrow": "أداة متعددة",
+    "title": "الأدوات",
+    "tab_json": "JSON",
+    "tab_diff": "المقارنة",
+    "tab_regex": "تعبير نمطي",
+    "tab_encode": "Base64/تجزئة",
+    "tab_uuid": "UUID",
+    "tab_base": "أنظمة العد",
+    "tab_units": "الوحدات والآلة الحاسبة",
+    "jsonPlaceholder": "الصق JSON…",
+    "jsonFormat": "تنسيق",
+    "jsonMinify": "تصغير",
+    "diffA": "النص A",
+    "diffB": "النص B",
+    "diffGo": "قارن",
+    "regexPattern": "تعبير نمطي",
+    "regexText": "نص للاختبار",
+    "regexMatches": "التطابقات: {n}",
+    "encodePlaceholder": "أدخل نصًا…",
+    "encodeRun": "احسب",
+    "encodeB64Decode": "فك ترميز Base64",
+    "uuidGenerate": "توليد",
+    "baseInvalid": "رقم غير صالح لهذا النظام",
+    "unitCat_length": "الطول",
+    "unitCat_weight": "الوزن",
+    "unitCat_temp": "درجة الحرارة",
+    "unitValue": "القيمة",
+    "unitFrom": "من",
+    "unitTo": "إلى",
+    "calculator": "الآلة الحاسبة"
   },
   "passwordVault": {
     "title": "مدير كلمات المرور",
