@@ -11,7 +11,13 @@ import {
   Star,
   Send,
   Copy,
+  Network,
+  Route,
+  ScanLine,
+  Globe,
+  Wifi,
 } from "lucide-react";
+import { Glass, Btn, Badge, SectionHead } from "@/components/ui";
 import { api } from "@/api/client";
 import type {
   TgwsStatus,
@@ -872,6 +878,8 @@ export default function BypassControlPage() {
           </div>
         </section>
       </div>
+
+      <NetworkToolsPanel />
     </div>
   );
 }
@@ -905,4 +913,158 @@ function consoleLineClass(line: string): string {
   if (/UNSUP|Timeout|\[WARN\]|\[MISSING\]/i.test(line)) return "warn";
   if (/HTTP:OK|:OK\b|\[OK\]|exit 0|Results saved/i.test(line)) return "ok";
   return "";
+}
+
+/**
+ * Сетевые утилиты: ping/traceroute/сканер портов/публичный IP/Wi-Fi-мониторинг
+ * (server/ts/netTools.ts). Kill-switch сознательно не реализован — см. финальный
+ * отчёт: правка системного firewall без возможности живого теста слишком рискованна.
+ */
+function NetworkToolsPanel() {
+  const { t } = useI18n();
+  const [tab, setTab] = useState<"ping" | "trace" | "scan" | "ip" | "wifi">("ping");
+  const [host, setHost] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [output, setOutput] = useState("");
+  const [portFrom, setPortFrom] = useState("1");
+  const [portTo, setPortTo] = useState("1024");
+  const [scanResults, setScanResults] = useState<{ port: number; open: boolean }[] | null>(null);
+  const [publicIp, setPublicIp] = useState<string | null>(null);
+  const [error, setError] = useState("");
+
+  const run = async () => {
+    setError("");
+    setOutput("");
+    setScanResults(null);
+    setBusy(true);
+    try {
+      if (tab === "ping") {
+        const r = await api.netPing(host);
+        setOutput(r.output);
+      } else if (tab === "trace") {
+        const r = await api.netTraceroute(host);
+        setOutput(r.output);
+      } else if (tab === "scan") {
+        const r = await api.netPortScan(host, Number(portFrom), Number(portTo));
+        setScanResults(r.results.filter((x) => x.open));
+      } else if (tab === "ip") {
+        const r = await api.netPublicIp();
+        setPublicIp(r.ip);
+      } else if (tab === "wifi") {
+        const [nets, cur] = await Promise.all([api.netWifiNetworks(), api.netWifiCurrent()]);
+        setOutput(`${cur.output}\n\n${"=".repeat(40)}\n\n${nets.output}`);
+      }
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const needsHost = tab === "ping" || tab === "trace" || tab === "scan";
+
+  return (
+    <div style={{ marginTop: 16 }}>
+      <SectionHead eyebrow={t("bypass.netEyebrow")} title={t("bypass.netTitle")} />
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", margin: "8px 0" }}>
+        {(
+          [
+            ["ping", Network],
+            ["trace", Route],
+            ["scan", ScanLine],
+            ["ip", Globe],
+            ["wifi", Wifi],
+          ] as const
+        ).map(([id, Icon]) => (
+          <Badge key={id} tone={tab === id ? "amber" : "neutral"} onClick={() => setTab(id)}>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+              <Icon size={12} />
+              {t(`bypass.netTab_${id}`)}
+            </span>
+          </Badge>
+        ))}
+      </div>
+
+      <Glass style={{ flexDirection: "column", alignItems: "stretch", gap: 8, padding: 12 }}>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {needsHost && (
+            <input
+              className="text-input"
+              style={{ width: 220 }}
+              placeholder={t("bypass.netHostPlaceholder")}
+              value={host}
+              onChange={(e) => setHost(e.target.value)}
+            />
+          )}
+          {tab === "scan" && (
+            <>
+              <input
+                className="text-input"
+                style={{ width: 80 }}
+                value={portFrom}
+                onChange={(e) => setPortFrom(e.target.value)}
+              />
+              <span className="muted-sm" style={{ alignSelf: "center" }}>
+                –
+              </span>
+              <input
+                className="text-input"
+                style={{ width: 80 }}
+                value={portTo}
+                onChange={(e) => setPortTo(e.target.value)}
+              />
+            </>
+          )}
+          <Btn
+            variant="primary"
+            icon={busy ? RefreshCw : Network}
+            disabled={busy || (needsHost && !host.trim())}
+            onClick={() => void run()}
+          >
+            {busy ? t("bypass.netRunning") : t("bypass.netRun")}
+          </Btn>
+        </div>
+
+        {error && <div style={{ color: "var(--coral)" }}>{error}</div>}
+
+        {publicIp && tab === "ip" && (
+          <div style={{ fontFamily: "var(--font-mono)", fontSize: 16 }}>{publicIp}</div>
+        )}
+
+        {scanResults && tab === "scan" && (
+          <div>
+            {scanResults.length === 0 ? (
+              <div className="muted-sm">{t("bypass.netNoOpenPorts")}</div>
+            ) : (
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                {scanResults.map((r) => (
+                  <Badge key={r.port} tone="teal" mono>
+                    {r.port}
+                  </Badge>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {output && (
+          <pre
+            style={{
+              fontFamily: "var(--font-mono)",
+              fontSize: 12,
+              whiteSpace: "pre-wrap",
+              maxHeight: 320,
+              overflow: "auto",
+              margin: 0,
+            }}
+          >
+            {output}
+          </pre>
+        )}
+      </Glass>
+      <div className="muted-sm" style={{ marginTop: 6 }}>
+        {t("bypass.netKillSwitchHint")}
+      </div>
+    </div>
+  );
 }

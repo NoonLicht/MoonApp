@@ -1851,6 +1851,18 @@
     "fixModel": "Исправить модель"
   },
   "bypass": {
+    "netEyebrow": "Диагностика сети",
+    "netTitle": "Сетевые утилиты",
+    "netTab_ping": "Ping",
+    "netTab_trace": "Traceroute",
+    "netTab_scan": "Сканер портов",
+    "netTab_ip": "Мой IP",
+    "netTab_wifi": "Wi-Fi",
+    "netHostPlaceholder": "Хост или IP",
+    "netRun": "Выполнить",
+    "netRunning": "Выполняется…",
+    "netNoOpenPorts": "Открытых портов не найдено",
+    "netKillSwitchHint": "Kill-switch (блокировка трафика при обрыве VPN/прокси) в этой сборке не реализован — правка системного firewall без возможности проверить вживую слишком рискованна для автономного запуска.",
     "tgws": {
       "title": "TG WS Proxy — Telegram через WebSocket",
       "stateRunning": "работает · порт {port}",

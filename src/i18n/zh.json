@@ -1714,6 +1714,18 @@
     "fixModel": "修正模型"
   },
   "bypass": {
+    "netEyebrow": "网络诊断",
+    "netTitle": "网络工具",
+    "netTab_ping": "Ping",
+    "netTab_trace": "路由跟踪",
+    "netTab_scan": "端口扫描",
+    "netTab_ip": "我的 IP",
+    "netTab_wifi": "Wi-Fi",
+    "netHostPlaceholder": "主机或 IP",
+    "netRun": "运行",
+    "netRunning": "运行中…",
+    "netNoOpenPorts": "未发现开放端口",
+    "netKillSwitchHint": "此版本未实现 kill-switch(VPN/代理断开时阻断流量)— 在无法现场测试的情况下自动修改系统防火墙风险过高。",
     "tgws": {
       "title": "TG WS Proxy — 通过 WebSocket 连接 Telegram",
       "stateRunning": "运行中 · 端口 {port}",

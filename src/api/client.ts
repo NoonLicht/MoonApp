@@ -1408,6 +1408,24 @@ export const api = {
   gamesSaveRestore: (id: string, file: string) =>
     req<{ ok: boolean; error?: string }>("POST", `/games/${id}/save/restore`, { file }),
 
+  // --- Сетевые утилиты (страница Bypass) ---
+  netPing: (host: string) =>
+    req<{ ok: boolean; output: string }>("GET", `/nettools/ping?host=${encodeURIComponent(host)}`),
+  netTraceroute: (host: string) =>
+    req<{ ok: boolean; output: string }>(
+      "GET",
+      `/nettools/traceroute?host=${encodeURIComponent(host)}`,
+    ),
+  netPortScan: (host: string, from: number, to: number) =>
+    req<{ host: string; results: { port: number; open: boolean }[] }>(
+      "GET",
+      `/nettools/portscan?host=${encodeURIComponent(host)}&from=${from}&to=${to}`,
+    ),
+  netPublicIp: () => req<{ ip: string }>("GET", "/nettools/publicip"),
+  netWifiNetworks: () =>
+    req<{ ok: boolean; output: string }>("GET", "/nettools/wifi/networks"),
+  netWifiCurrent: () => req<{ ok: boolean; output: string }>("GET", "/nettools/wifi/current"),
+
   // --- Анализатор диска (WinDirStat) ---
   diskScanRoots: () => req<{ roots: string[] }>("GET", "/diskscan/roots"),
   diskScanStart: (path: string) => req<{ id: string }>("POST", "/diskscan/start", { path }),

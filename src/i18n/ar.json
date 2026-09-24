@@ -1714,6 +1714,18 @@
     "fixModel": "إصلاح النموذج"
   },
   "bypass": {
+    "netEyebrow": "تشخيص الشبكة",
+    "netTitle": "أدوات الشبكة",
+    "netTab_ping": "Ping",
+    "netTab_trace": "تتبع المسار",
+    "netTab_scan": "ماسح المنافذ",
+    "netTab_ip": "عنوان IP الخاص بي",
+    "netTab_wifi": "Wi-Fi",
+    "netHostPlaceholder": "المضيف أو IP",
+    "netRun": "تشغيل",
+    "netRunning": "جارٍ التشغيل…",
+    "netNoOpenPorts": "لم يتم العثور على منافذ مفتوحة",
+    "netKillSwitchHint": "لم يتم تنفيذ خاصية Kill-switch (حجب حركة المرور عند انقطاع VPN/الوكيل) في هذا الإصدار — تعديل جدار حماية النظام تلقائيًا دون إمكانية الاختبار الحي أمر محفوف بالمخاطر.",
     "tgws": {
       "title": "TG WS Proxy — تيليجرام عبر WebSocket",
       "stateRunning": "يعمل · المنفذ {port}",

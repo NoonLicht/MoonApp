@@ -1714,6 +1714,18 @@
     "fixModel": "Corregir modelo"
   },
   "bypass": {
+    "netEyebrow": "Diagnóstico de red",
+    "netTitle": "Utilidades de red",
+    "netTab_ping": "Ping",
+    "netTab_trace": "Traceroute",
+    "netTab_scan": "Escáner de puertos",
+    "netTab_ip": "Mi IP",
+    "netTab_wifi": "Wi-Fi",
+    "netHostPlaceholder": "Host o IP",
+    "netRun": "Ejecutar",
+    "netRunning": "Ejecutando…",
+    "netNoOpenPorts": "No se encontraron puertos abiertos",
+    "netKillSwitchHint": "El kill-switch (bloquear el tráfico si cae la VPN/proxy) no está implementado en esta versión — cambiar el firewall del sistema de forma autónoma, sin poder probarlo en vivo, es demasiado arriesgado.",
     "tgws": {
       "title": "TG WS Proxy — Telegram por WebSocket",
       "stateRunning": "en marcha · puerto {port}",

@@ -1714,6 +1714,18 @@
     "fixModel": "Corriger le modèle"
   },
   "bypass": {
+    "netEyebrow": "Diagnostic réseau",
+    "netTitle": "Utilitaires réseau",
+    "netTab_ping": "Ping",
+    "netTab_trace": "Traceroute",
+    "netTab_scan": "Scanner de ports",
+    "netTab_ip": "Mon IP",
+    "netTab_wifi": "Wi-Fi",
+    "netHostPlaceholder": "Hôte ou IP",
+    "netRun": "Exécuter",
+    "netRunning": "En cours…",
+    "netNoOpenPorts": "Aucun port ouvert trouvé",
+    "netKillSwitchHint": "Le kill-switch (bloquer le trafic en cas de coupure du VPN/proxy) n'est pas implémenté dans cette version — modifier le pare-feu système de façon autonome, sans pouvoir le tester en direct, est trop risqué.",
     "tgws": {
       "title": "TG WS Proxy — Telegram via WebSocket",
       "stateRunning": "actif · port {port}",
