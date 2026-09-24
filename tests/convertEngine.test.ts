@@ -75,9 +75,9 @@ describe("server/convertEngine — форма модуля и форматы", (
     expect(engine.categoryOf("")).toBeNull();
   });
 
-  it("в каталоге три категории, и gif есть и на входе видео, и на выходе", () => {
+  it("в каталоге четыре категории, и gif есть и на входе видео, и на выходе", () => {
     const ids = engine.CATEGORIES.map((c: { id: string }) => c.id);
-    expect(ids).toEqual(["video", "audio", "image"]);
+    expect(ids).toEqual(["video", "audio", "image", "subtitle"]);
     const video = engine.CATEGORIES.find((c: { id: string }) => c.id === "video");
     expect(video.inputs).toContain("gif");
     expect(video.outputs).toContain("gif");
@@ -92,7 +92,7 @@ describe("server/convertEngine — форма модуля и форматы", (
     process.env.PATH = "";
     const t = await engine.tools();
     expect(t.ready).toBe(false);
-    expect(t.categories).toHaveLength(3);
+    expect(t.categories).toHaveLength(4);
   });
 
   it("convert() без FFmpeg падает с 'ffmpeg not found', а не создаёт пустой файл", async () => {

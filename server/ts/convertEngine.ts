@@ -43,22 +43,64 @@ export const CATEGORIES: ConvertCategory[] = [
       "wmv",
       "m4v",
       "ts",
+      "mts",
+      "m2ts",
       "mpeg",
       "mpg",
       "gif",
       "3gp",
+      "ogv",
+      "vob",
     ],
-    outputs: ["mp4", "webm", "mkv", "avi", "mov", "gif"],
+    outputs: ["mp4", "webm", "mkv", "avi", "mov", "gif", "flv", "wmv", "m4v", "mpg", "ogv"],
   },
   {
     id: "audio",
-    inputs: ["mp3", "wav", "flac", "ogg", "opus", "m4a", "aac", "wma", "m4b", "aiff", "aif"],
-    outputs: ["mp3", "wav", "flac", "ogg", "opus", "m4a"],
+    inputs: [
+      "mp3",
+      "wav",
+      "flac",
+      "ogg",
+      "opus",
+      "m4a",
+      "aac",
+      "wma",
+      "m4b",
+      "aiff",
+      "aif",
+      "ac3",
+      "amr",
+      "caf",
+      "mp2",
+      "wv",
+      "ape",
+    ],
+    outputs: ["mp3", "wav", "flac", "ogg", "opus", "m4a", "aac", "wma", "ac3"],
   },
   {
     id: "image",
-    inputs: ["png", "jpg", "jpeg", "webp", "gif", "bmp", "tiff", "tif"],
-    outputs: ["png", "jpg", "webp", "gif", "bmp", "tiff"],
+    inputs: [
+      "png",
+      "jpg",
+      "jpeg",
+      "webp",
+      "gif",
+      "bmp",
+      "tiff",
+      "tif",
+      "avif",
+      "ico",
+      "heic",
+      "heif",
+      "pnm",
+      "tga",
+    ],
+    outputs: ["png", "jpg", "webp", "gif", "bmp", "tiff", "avif", "ico"],
+  },
+  {
+    id: "subtitle",
+    inputs: ["srt", "vtt", "ass", "ssa", "sub"],
+    outputs: ["srt", "vtt", "ass"],
   },
 ];
 /** Расширение файла без точки, в нижнем регистре. */
@@ -275,34 +317,97 @@ export async function tools(): Promise<ConvertTools> {
 
 // --- Собственно FFmpeg ---
 
-// Доп. аргументы кодека/качества под целевой формат.
-function codecArgs(to: string): string[] {
+// Доп. аргументы кодека/качества под целевой формат. Раньше почти все
+// контейнеры отдавались без явного видеокодека и CRF — ffmpeg брал дефолт
+// контейнера (часто низкий битрейт «на глаз»), а gif шёл вообще без палитры
+// (256 фиксированных цветов «мультика» → грязная картинка и раздутый файл).
+// Здесь задаём разумные CRF/битрейты и, для gif, честный two-pass palette.
+function buildArgs(to: string): string[] {
   switch (to) {
+    // --- видео: CRF под libx264/vp9, чтобы качество не зависело от дефолтов контейнера ---
+    case "mp4":
+    case "m4v":
+    case "mov":
+      return ["-c:v", "libx264", "-preset", "medium", "-crf", "20", "-c:a", "aac", "-b:a", "192k"];
+    case "mkv":
+      return ["-c:v", "libx264", "-preset", "medium", "-crf", "20", "-c:a", "aac", "-b:a", "192k"];
+    case "avi":
+      return ["-c:v", "mpeg4", "-qscale:v", "3", "-c:a", "libmp3lame", "-q:a", "3"];
+    case "flv":
+      return ["-c:v", "flv", "-qscale:v", "4", "-c:a", "libmp3lame", "-q:a", "4"];
+    case "wmv":
+      return ["-c:v", "wmv2", "-qscale:v", "4", "-c:a", "wmav2"];
+    case "webm":
+      return ["-c:v", "libvpx-vp9", "-crf", "32", "-b:v", "0", "-c:a", "libopus"];
+    case "mpg":
+      return ["-c:v", "mpeg2video", "-qscale:v", "4", "-c:a", "mp2"];
+    case "ogv":
+      return ["-c:v", "libtheora", "-qscale:v", "6", "-c:a", "libvorbis"];
+    case "gif":
+      // Палитра из самого клипа даёт кратно лучшую картинку/размер, чем
+      // дефолтный фиксированный gif-кодек ffmpeg.
+      return [
+        "-filter_complex",
+        "[0:v] fps=15,scale=480:-1:flags=lanczos,split [a][b];[a] palettegen=stats_mode=diff [p];[b][p] paletteuse=dither=bayer",
+      ];
+
+    // --- аудио ---
     case "mp3":
       return ["-c:a", "libmp3lame", "-q:a", "2"];
     case "m4a":
     case "aac":
-      return ["-c:a", "aac"];
+      return ["-c:a", "aac", "-b:a", "256k"];
     case "ogg":
-      return ["-c:a", "libvorbis"];
+      return ["-c:a", "libvorbis", "-q:a", "6"];
     case "opus":
-      return ["-c:a", "libopus"];
-    case "webm":
-      return ["-c:v", "libvpx", "-c:a", "libvorbis"];
-    case "gif":
-      return ["-f", "gif"];
+      return ["-c:a", "libopus", "-b:a", "160k"];
+    case "wma":
+      return ["-c:a", "wmav2", "-b:a", "192k"];
+    case "ac3":
+      return ["-c:a", "ac3", "-b:a", "192k"];
+    case "wav":
+      return ["-c:a", "pcm_s16le"];
+    case "flac":
+      return ["-c:a", "flac"];
+
+    // --- изображения ---
+    case "jpg":
+      return ["-qscale:v", "2"];
+    case "webp":
+      return ["-qscale:v", "80"];
+    case "avif":
+      return ["-c:v", "libaom-av1", "-still-picture", "1", "-crf", "24"];
+
+    // --- субтитры ---
+    case "srt":
+    case "vtt":
+    case "ass":
+      return [];
+
     default:
       return [];
   }
 }
 
+// Большие видео (2 ГБ — верхняя граница загрузки) кодируются существенно
+// дольше, чем прежние 15 минут таймаута; масштабируем от размера входа.
+function timeoutForInput(inputPath: string): number {
+  const base = 20 * 60 * 1000;
+  try {
+    const mb = fs.statSync(inputPath).size / (1024 * 1024);
+    return Math.min(base + mb * 6000, 90 * 60 * 1000); // до 90 минут на самые крупные файлы
+  } catch {
+    return base;
+  }
+}
+
 function runFfmpeg(bin: string, inputPath: string, outPath: string, to: string): Promise<void> {
-  const args = ["-hide_banner", "-y", "-i", inputPath, ...codecArgs(to), outPath];
+  const args = ["-hide_banner", "-y", "-i", inputPath, ...buildArgs(to), outPath];
   return new Promise((resolve, reject) => {
     execFile(
       bin,
       args,
-      { timeout: 15 * 60 * 1000, maxBuffer: 8 * 1024 * 1024, windowsHide: true },
+      { timeout: timeoutForInput(inputPath), maxBuffer: 8 * 1024 * 1024, windowsHide: true },
       (err, stdout, stderr) => {
         if (err) {
           const tail = String(stderr || stdout)
