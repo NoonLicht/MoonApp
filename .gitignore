@@ -62,6 +62,7 @@ server/pdfTools.js
 server/games.js
 server/netTools.js
 server/notesGit.js
+server/appTimeTracker.js
 server/elevate.js
 server/backup.js
 server/downloads.js

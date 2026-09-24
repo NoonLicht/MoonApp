@@ -29,6 +29,8 @@ import type {
   SaveVersion,
   NotesGitConfig,
   NotesGitSyncResult,
+  AppTimeToday,
+  AppTimeHistoryDay,
   VideoInfo,
   VideoDownloadResult,
   VideoJobStatus,
@@ -1439,6 +1441,14 @@ export const api = {
   netWifiNetworks: () =>
     req<{ ok: boolean; output: string }>("GET", "/nettools/wifi/networks"),
   netWifiCurrent: () => req<{ ok: boolean; output: string }>("GET", "/nettools/wifi/current"),
+
+  // --- Трекер времени за приложениями ---
+  appTrackerStart: () => req<{ ok: boolean; error?: string }>("POST", "/apptracker/start"),
+  appTrackerStop: () => req<{ ok: boolean }>("POST", "/apptracker/stop"),
+  appTrackerStatus: () => req<{ tracking: boolean }>("GET", "/apptracker/status"),
+  appTrackerToday: () => req<AppTimeToday>("GET", "/apptracker/today"),
+  appTrackerHistory: (days: number) =>
+    req<AppTimeHistoryDay[]>("GET", `/apptracker/history?days=${days}`),
 
   // --- Анализатор диска (WinDirStat) ---
   diskScanRoots: () => req<{ roots: string[] }>("GET", "/diskscan/roots"),

@@ -59,6 +59,7 @@ const pdfRouter = require("./routes/pdf") as express.Router;
 const gamesRouter = require("./routes/games") as express.Router;
 const netToolsRouter = require("./routes/netTools") as express.Router;
 const notesGitRouter = require("./routes/notesGit") as express.Router;
+const appTimeTrackerRouter = require("./routes/appTimeTracker") as express.Router;
 const perPageProxy = require("./middleware/perPageProxy") as {
   perPageProxyMiddleware: express.RequestHandler;
 };
@@ -261,6 +262,7 @@ function createApp(): express.Express {
   app.use("/api/games", gamesRouter);
   app.use("/api/nettools", netToolsRouter);
   app.use("/api/notesgit", notesGitRouter);
+  app.use("/api/apptracker", appTimeTrackerRouter);
 
   // Раздача собранного фронта (dist), если он собран.
   const dist = path.join(__dirname, "..", "dist");

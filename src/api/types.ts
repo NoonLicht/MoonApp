@@ -450,6 +450,18 @@ export interface NotesGitSyncResult {
   pushed?: boolean;
 }
 
+/* --------------------- Трекер времени за приложениями ------------------------ */
+
+export interface AppTimeToday {
+  date: string;
+  apps: { name: string; seconds: number }[];
+}
+
+export interface AppTimeHistoryDay {
+  date: string;
+  totalSeconds: number;
+}
+
 /* -------------------------------- Видео ------------------------------------ */
 
 /** Метаданные и доступные форматы с URL (GET /api/video/info). */
