@@ -667,6 +667,7 @@
     "viewNoPages": "The archive has no HTML pages"
   },
   "myspace": {
+    "livePreview": "Live line-by-line preview (Obsidian-style)",
     "ai": {
       "format": "Format",
       "formatHint": "AI: turn the note into tidy Markdown (the current text becomes the source)",

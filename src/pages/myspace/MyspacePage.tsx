@@ -26,6 +26,7 @@ import {
   SlidersHorizontal,
 } from "lucide-react";
 import MarkdownRenderer from "@/pages/myspace/parts/MarkdownRenderer";
+import CodeMirrorLiveEditor from "@/pages/myspace/parts/CodeMirrorLiveEditor";
 import { usePageToolbar, usePageActive } from "@/components/Toolbar";
 import { useI18n, type TranslateFn } from "@/app/i18n";
 import { api } from "@/api/client";
@@ -133,7 +134,7 @@ export default function MyspacePage() {
   const [edContent, setEdContent] = useState("");
   const saveTimer = useRef<any>(null);
   const [saving, setSaving] = useState(false);
-  const [previewMode, setPreviewMode] = useState<"edit" | "preview" | "split">("split");
+  const [previewMode, setPreviewMode] = useState<"edit" | "preview" | "split" | "live">("split");
   const [error, setError] = useState("");
   // ИИ-оформление заметки: какая операция идёт сейчас ("" — ничего) и короткая
   // плашка об успехе. Ошибки живут в общем `error` над редактором.
@@ -1665,6 +1666,20 @@ export default function MyspacePage() {
                       >
                         <Eye size={12} />
                       </button>
+                      <button
+                        onClick={() => setPreviewMode("live")}
+                        title={t("myspace.livePreview")}
+                        style={{
+                          background: previewMode === "live" ? "var(--track)" : "transparent",
+                          border: "none",
+                          padding: "3px 5px",
+                          borderRadius: 4,
+                          cursor: "pointer",
+                          color: previewMode === "live" ? "var(--amber)" : "var(--text-tertiary)",
+                        }}
+                      >
+                        <Sparkles size={12} />
+                      </button>
                     </>
                   )}
                   <button
@@ -1709,7 +1724,7 @@ export default function MyspacePage() {
                     {aiNotice}
                   </div>
                 )}
-                {activeTab && (
+                {activeTab && previewMode !== "live" && (
                   <EditingToolbar
                     /* Пока ИИ оформляет заметку, инструменты выключены: иначе
                        правки ушли бы в файл уже после ответа модели. */
@@ -1945,6 +1960,57 @@ export default function MyspacePage() {
                         />
                       </div>
                     );
+                    if (previewMode === "live")
+                      return (
+                        <CodeMirrorLiveEditor
+                          key={activeTab}
+                          content={edContent}
+                          onChange={(v: string) => updContent(activeTab, v)}
+                          spellCheck={msCfg.spellcheck}
+                          readOnly={!!aiBusy}
+                          placeholder="Start writing... Use [[wiki-links]] and #tags"
+                          onWikiLink={(title: string) => {
+                            const findNote = (
+                              nodes: VaultFile[],
+                              ttl: string,
+                            ): VaultFile | null => {
+                              for (const n of nodes) {
+                                if (
+                                  n.type === "note" &&
+                                  (n.name.replace(/\.md$/, "").toLowerCase() ===
+                                    ttl.toLowerCase() ||
+                                    n.name === ttl + ".md")
+                                )
+                                  return n;
+                                if (n.children) {
+                                  const r: VaultFile | null = findNote(n.children, ttl);
+                                  if (r) return r;
+                                }
+                              }
+                              return null;
+                            };
+                            const t2 = findNote(tree, title);
+                            const fn = t2
+                              ? t2.path
+                              : title.replace(/[/\\?%*:|"<>]/g, "_") + ".md";
+                            openFile(fn);
+                          }}
+                          onTagClick={(tag: string) => {
+                            setLeftTab("search");
+                            setSq(tag);
+                          }}
+                          onToggleCheckbox={(lineIndex: number) => {
+                            const lines = edContent.split("\n");
+                            if (lineIndex >= lines.length) return;
+                            const l = lines[lineIndex];
+                            const m = l.match(/^(\s*(?:[-*+]\s+)?\[)([ xX])(\]\s*.*)/);
+                            if (!m) return;
+                            const newChar = m[2] === "x" || m[2] === "X" ? " " : "x";
+                            lines[lineIndex] = m[1] + newChar + m[3];
+                            updContent(activeTab, lines.join("\n"));
+                          }}
+                        />
+                      );
                     if (previewMode === "preview") return previewPane;
                     if (previewMode === "split")
                       return (
