@@ -2,6 +2,7 @@
 node_modules/
 dist/
 release/
+release-build/
 build/*
 !build/icon.ico
 # NSIS-хук: сохраняет пользовательские данные (storage) при обновлении и
