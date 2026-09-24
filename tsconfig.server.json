@@ -34,6 +34,7 @@
     "server/ts/frontmatter.ts",
     "server/ts/security.ts",
     "server/ts/passwordVault.ts",
+    "server/ts/diskScan.ts",
     "server/ts/elevate.ts",
     "server/ts/backup.ts",
     "server/ts/downloads.ts",

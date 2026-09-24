@@ -55,6 +55,7 @@ server/download.js
 server/setupTask.js
 server/security.js
 server/passwordVault.js
+server/diskScan.js
 server/elevate.js
 server/backup.js
 server/downloads.js

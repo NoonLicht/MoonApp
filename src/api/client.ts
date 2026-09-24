@@ -19,6 +19,8 @@ import type {
   PasswordEntry,
   PasswordEntryFull,
   PasswordEntryInput,
+  DiskNode,
+  DiskScanStatus,
   VideoInfo,
   VideoDownloadResult,
   VideoJobStatus,
@@ -1332,6 +1334,13 @@ export const api = {
     symbols?: boolean;
     upper?: boolean;
   }) => req<{ password: string }>("POST", "/passwords/generate", opts),
+
+  // --- Анализатор диска (WinDirStat) ---
+  diskScanRoots: () => req<{ roots: string[] }>("GET", "/diskscan/roots"),
+  diskScanStart: (path: string) => req<{ id: string }>("POST", "/diskscan/start", { path }),
+  diskScanStatus: (id: string) => req<DiskScanStatus>("GET", `/diskscan/status/${id}`),
+  diskScanResult: (id: string) => req<DiskNode>("GET", `/diskscan/result/${id}`),
+  diskScanCancel: (id: string) => req<{ ok: boolean }>("POST", `/diskscan/cancel/${id}`),
 
   // --- Фильмы и сериалы: каталог TMDB, библиотека, торрент-плеер ---
   moviesStatus: () => req<MediaStatus>("GET", "/movies/status"),

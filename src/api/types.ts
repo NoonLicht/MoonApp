@@ -350,6 +350,25 @@ export interface PasswordEntryInput {
   tags?: string[];
 }
 
+/* ------------------------- Анализатор диска (WinDirStat) -------------------- */
+
+export interface DiskNode {
+  name: string;
+  path: string;
+  size: number;
+  isDir: boolean;
+  fileCount: number;
+  children?: DiskNode[];
+}
+
+export interface DiskScanStatus {
+  id: string;
+  root: string;
+  stage: "scanning" | "done" | "error" | "cancelled";
+  scannedEntries: number;
+  error: string | null;
+}
+
 /* -------------------------------- Видео ------------------------------------ */
 
 /** Метаданные и доступные форматы с URL (GET /api/video/info). */

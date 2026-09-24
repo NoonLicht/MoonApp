@@ -11,15 +11,19 @@ import {
   Monitor,
   SlidersHorizontal,
   Copy,
+  FolderSearch,
+  StopCircle,
+  RefreshCw,
+  ChevronLeft,
 } from "lucide-react";
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
-import { Glass, Select, SectionHead, Btn, Field } from "@/components/ui";
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, Treemap } from "recharts";
+import { Glass, Select, SectionHead, Btn, Field, Badge, EmptyHint } from "@/components/ui";
 import { useContextMenu, copyToClipboard } from "@/components/ContextMenu";
 import ToolbarMenu from "@/components/ToolbarMenu";
 import { usePageToolbar, usePageActive } from "@/components/Toolbar";
 import { useI18n } from "@/app/i18n";
 import { api } from "@/api/client";
-import type { LhmStatus, MonitorSnapshot } from "@/api/types";
+import type { LhmStatus, MonitorSnapshot, DiskNode, DiskScanStatus } from "@/api/types";
 
 const INTERVAL_OPTIONS = [100, 200, 300, 500, 750, 1000];
 const HIST_MAX = 60;
@@ -224,6 +228,7 @@ export default function MonitorPage() {
           view={view}
           onLhmChanged={() => setPollNonce((x) => x + 1)}
         />
+        <DiskScanPanel />
       </div>
     </div>
   );
@@ -1194,5 +1199,253 @@ function SensorSections({ data }: { data: MonitorSnapshot }) {
         </Glass>
       ))}
     </>
+  );
+}
+
+function fmtBytes(n: number): string {
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 ** 2) return `${(n / 1024).toFixed(1)} KB`;
+  if (n < 1024 ** 3) return `${(n / 1024 ** 2).toFixed(1)} MB`;
+  return `${(n / 1024 ** 3).toFixed(2)} GB`;
+}
+
+const TREEMAP_COLORS = [
+  "var(--amber)",
+  "var(--violet, #8b7bf0)",
+  "var(--teal, #3fc7ab)",
+  "var(--coral, #ea6b6b)",
+];
+
+function DiskTreemapTooltip({
+  active,
+  payload,
+}: {
+  active?: boolean;
+  payload?: { payload: DiskNode }[];
+}) {
+  if (!active || !payload?.length) return null;
+  const node = payload[0].payload;
+  return (
+    <div className="chart-tooltip">
+      <div>{node.name}</div>
+      <div className="muted-sm">
+        {fmtBytes(node.size)} · {node.fileCount} файлов
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Анализатор занятого места на диске (аналог WinDirStat): выбор корня →
+ * фоновое сканирование (server/ts/diskScan.ts, попадает в общий Task Manager
+ * как engine "diskscan") → treemap с drill-down по клику на плитку.
+ */
+function DiskScanPanel() {
+  const { t } = useI18n();
+  const [roots, setRoots] = useState<string[]>([]);
+  const [customPath, setCustomPath] = useState("");
+  const [jobId, setJobId] = useState<string | null>(null);
+  const [status, setStatus] = useState<DiskScanStatus | null>(null);
+  const [pathStack, setPathStack] = useState<DiskNode[]>([]);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    api
+      .diskScanRoots()
+      .then((r) => setRoots(r.roots))
+      .catch(() => setRoots([]));
+  }, []);
+
+  useEffect(() => {
+    if (!jobId) return undefined;
+    let stopped = false;
+    const poll = async () => {
+      try {
+        const st = await api.diskScanStatus(jobId);
+        if (stopped) return;
+        setStatus(st);
+        if (st.stage === "done") {
+          const result = await api.diskScanResult(jobId);
+          if (!stopped) {
+            setPathStack([result]);
+          }
+        } else if (st.stage === "error") {
+          setError(st.error || "Ошибка сканирования");
+        }
+      } catch (e) {
+        if (!stopped) setError((e as Error).message);
+      }
+    };
+    void poll();
+    const timer = setInterval(() => {
+      if (status?.stage === "scanning" || !status) void poll();
+    }, 1000);
+    return () => {
+      stopped = true;
+      clearInterval(timer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jobId]);
+
+  const start = async (root: string) => {
+    setError("");
+    setPathStack([]);
+    setStatus(null);
+    try {
+      const { id } = await api.diskScanStart(root);
+      setJobId(id);
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  };
+
+  const cancel = async () => {
+    if (jobId) await api.diskScanCancel(jobId);
+    setJobId(null);
+  };
+
+  const current = pathStack[pathStack.length - 1] || null;
+  const treemapData = current?.children?.filter((c) => c.size > 0) || [];
+
+  return (
+    <Glass className="chart-panel">
+      <SubHead>{t("monitor.diskScan")}</SubHead>
+      <div className="muted-sm" style={{ marginBottom: 8 }}>
+        {t("monitor.diskScanHint")}
+      </div>
+
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
+        {roots.map((r) => (
+          <Btn
+            key={r}
+            icon={HardDrive}
+            onClick={() => void start(r)}
+            disabled={status?.stage === "scanning"}
+          >
+            {r}
+          </Btn>
+        ))}
+        <input
+          className="text-input"
+          style={{ width: 220 }}
+          placeholder={t("monitor.diskScanCustomPath")}
+          value={customPath}
+          onChange={(e) => setCustomPath(e.target.value)}
+        />
+        <Btn
+          icon={FolderSearch}
+          disabled={!customPath.trim() || status?.stage === "scanning"}
+          onClick={() => void start(customPath.trim())}
+        >
+          {t("monitor.diskScanStart")}
+        </Btn>
+        {status?.stage === "scanning" && (
+          <Btn icon={StopCircle} onClick={() => void cancel()}>
+            {t("monitor.diskScanCancel")}
+          </Btn>
+        )}
+      </div>
+
+      {status?.stage === "scanning" && (
+        <div className="muted-sm" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <RefreshCw size={14} className="spin" />
+          {t("monitor.diskScanProgress", { n: status.scannedEntries })}
+        </div>
+      )}
+
+      {error && (
+        <div className="muted-sm" style={{ color: "var(--coral)" }}>
+          {error}
+        </div>
+      )}
+
+      {current && (
+        <>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "8px 0" }}>
+            {pathStack.length > 1 && (
+              <button
+                type="button"
+                className="icon-btn"
+                onClick={() => setPathStack((s) => s.slice(0, -1))}
+                title={t("monitor.diskScanUp")}
+              >
+                <ChevronLeft size={15} />
+              </button>
+            )}
+            <Badge tone="teal" mono>
+              {fmtBytes(current.size)}
+            </Badge>
+            <span className="muted-sm">{current.path || current.name}</span>
+          </div>
+
+          {treemapData.length === 0 ? (
+            <EmptyHint icon={HardDrive} text={t("monitor.diskScanEmptyDir")} />
+          ) : (
+            <ResponsiveContainer width="100%" height={420}>
+              <Treemap
+                data={treemapData}
+                dataKey="size"
+                nameKey="name"
+                stroke="var(--glass-border)"
+                // recharts типизирует `content` как готовый ReactElement, а не как
+                // функцию-рендерер (хотя рантайм принимает именно функцию) — как и
+                // в остальных примерах recharts, тип обходится приведением ниже.
+                content={
+                  ((props: {
+                    x: number;
+                    y: number;
+                    width: number;
+                    height: number;
+                    index: number;
+                    payload: DiskNode;
+                  }) => {
+                    const { x, y, width, height, index, payload } = props;
+                    const node: DiskNode = payload;
+                    if (width < 2 || height < 2) return <g />;
+                    const color = TREEMAP_COLORS[index % TREEMAP_COLORS.length];
+                    const showLabel = width > 50 && height > 24;
+                    return (
+                      <g
+                        onClick={() => {
+                          if (node.isDir && node.children) setPathStack((s) => [...s, node]);
+                        }}
+                        style={{ cursor: node.isDir && node.children ? "pointer" : "default" }}
+                      >
+                        <rect
+                          x={x}
+                          y={y}
+                          width={width}
+                          height={height}
+                          style={{
+                            fill: color,
+                            fillOpacity: node.isDir ? 0.55 : 0.35,
+                            stroke: "var(--glass-border)",
+                          }}
+                        />
+                        {showLabel && (
+                          <text
+                            x={x + 6}
+                            y={y + 16}
+                            fontSize={11}
+                            fill="var(--text-primary)"
+                            style={{ pointerEvents: "none" }}
+                          >
+                            {node.name.length > 24 ? node.name.slice(0, 24) + "…" : node.name}
+                          </text>
+                        )}
+                      </g>
+                    );
+                    // recharts требует тип ReactElement для `content`, но реально
+                    // вызывает как функцию-рендерер — приведение типа безопасно.
+                  }) as unknown as React.ReactElement
+                }
+              >
+                <Tooltip content={<DiskTreemapTooltip />} />
+              </Treemap>
+            </ResponsiveContainer>
+          )}
+        </>
+      )}
+    </Glass>
   );
 }
