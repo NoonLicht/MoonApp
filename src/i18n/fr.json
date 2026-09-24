@@ -282,6 +282,25 @@
     "ioImportConfirm": "Importer les paramètres de « {name} » ? Les paramètres actuels seront remplacés.",
     "ioRestartHint": "Certains paramètres système (démarrage auto, taille de la fenêtre, accélération) s'appliquent après redémarrage."
   },
+  "gitSync": {
+    "title": "Synchronisation Git",
+    "hint": "Synchronise les notes et le canvas (storage/vault) via un dépôt git sur GitHub/GitLab/auto-hébergé. Les favoris ne sont pas encore inclus — fichier séparé. Pas de fusion automatique : en cas de conflit, la synchronisation s'arrête et demande une résolution manuelle.",
+    "fRemoteUrl": "URL du dépôt (https://...)",
+    "fBranch": "Branche",
+    "fAuthorName": "Nom de l'auteur des commits",
+    "fAuthorEmail": "E-mail de l'auteur des commits",
+    "fToken": "Jeton d'accès (Personal Access Token)",
+    "fTokenSet": "Jeton déjà enregistré — laissez vide pour le conserver",
+    "save": "Enregistrer les réglages",
+    "tokenSet": "Jeton défini",
+    "dirty": "Fichiers non synchronisés : {n}",
+    "clean": "Tout est synchronisé",
+    "lastSync": "Dernière synchronisation : {when}",
+    "syncNow": "Synchroniser",
+    "syncing": "Synchronisation…",
+    "syncOk": "Terminé",
+    "conflictHint": "L'historique a divergé — aucune fusion automatique n'est effectuée. La synchronisation n'a pas touché vos fichiers locaux. Résolvez le conflit manuellement (par ex. avec git dans le dossier storage/vault) puis resynchronisez."
+  },
   "bookmarks": {
     "title": "Favoris",
     "add": "Ajouter un favori",
@@ -780,6 +799,7 @@
   "myspace": {
     "livePreview": "Aperçu en direct ligne par ligne (style Obsidian)",
     "bookmarksTab": "Favoris",
+    "syncTab": "Synchronisation",
     "ai": {
       "format": "Mettre en forme",
       "formatHint": "IA : transformer la note en Markdown soigné (le texte actuel devient la source)",

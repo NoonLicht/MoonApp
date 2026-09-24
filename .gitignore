@@ -61,6 +61,7 @@ server/musicPlaylists.js
 server/pdfTools.js
 server/games.js
 server/netTools.js
+server/notesGit.js
 server/elevate.js
 server/backup.js
 server/downloads.js

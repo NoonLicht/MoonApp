@@ -430,6 +430,26 @@ export interface SaveVersion {
   size: number;
 }
 
+/* --------------------- Git-синхронизация заметок/canvas --------------------- */
+
+export interface NotesGitConfig {
+  remoteUrl: string;
+  branch: string;
+  authorName: string;
+  authorEmail: string;
+  lastSyncAt: number | null;
+  hasToken: boolean;
+}
+
+export interface NotesGitSyncResult {
+  ok: boolean;
+  error?: string;
+  conflict?: boolean;
+  committed?: boolean;
+  pulled?: boolean;
+  pushed?: boolean;
+}
+
 /* -------------------------------- Видео ------------------------------------ */
 
 /** Метаданные и доступные форматы с URL (GET /api/video/info). */

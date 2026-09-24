@@ -40,6 +40,7 @@
     "server/ts/pdfTools.ts",
     "server/ts/games.ts",
     "server/ts/netTools.ts",
+    "server/ts/notesGit.ts",
     "server/ts/elevate.ts",
     "server/ts/backup.ts",
     "server/ts/downloads.ts",

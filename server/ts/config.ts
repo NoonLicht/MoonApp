@@ -98,6 +98,7 @@ const FILES = {
   bookmarks: path.join(DIRS.storage, "bookmarks.json"),
   musicPlaylists: path.join(DIRS.storage, "music-playlists.json"),
   gamesLibrary: path.join(DIRS.games, "library.json"),
+  notesGitConfig: path.join(DIRS.storage, "notes-git.json"),
   conspectusPresets: path.join(DIRS.storage, "conspectus_presets.json"),
   log: path.join(DIRS.logs, "app.log"),
 };

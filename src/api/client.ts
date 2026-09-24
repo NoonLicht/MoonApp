@@ -27,6 +27,8 @@ import type {
   GameEntry,
   GameInput,
   SaveVersion,
+  NotesGitConfig,
+  NotesGitSyncResult,
   VideoInfo,
   VideoDownloadResult,
   VideoJobStatus,
@@ -1392,6 +1394,18 @@ export const api = {
     }
     return res.json() as Promise<{ text: string; pages: number }>;
   },
+
+  // --- Git-синхронизация заметок/canvas ---
+  notesGitConfig: () => req<NotesGitConfig>("GET", "/notesgit/config"),
+  notesGitSetConfig: (payload: {
+    remoteUrl?: string;
+    branch?: string;
+    authorName?: string;
+    authorEmail?: string;
+    token?: string;
+  }) => req<NotesGitConfig>("POST", "/notesgit/config", payload),
+  notesGitStatus: () => req<{ dirty: boolean; files: number }>("GET", "/notesgit/status"),
+  notesGitSync: () => req<NotesGitSyncResult>("POST", "/notesgit/sync"),
 
   // --- Игры (лаунчер) ---
   gamesList: () => req<GameEntry[]>("GET", "/games"),

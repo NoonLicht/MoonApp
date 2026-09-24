@@ -282,6 +282,25 @@
     "ioImportConfirm": "Import settings from \"{name}\"? Current settings will be replaced.",
     "ioRestartHint": "Some system options (auto-start, window size, hardware acceleration) apply after restarting the app."
   },
+  "gitSync": {
+    "title": "Git sync",
+    "hint": "Sync notes and canvas (storage/vault) via a git repository on GitHub/GitLab/self-hosted. Bookmarks are not included yet — separate file. No auto-merge: on conflict, sync stops and asks you to resolve it manually.",
+    "fRemoteUrl": "Repository URL (https://...)",
+    "fBranch": "Branch",
+    "fAuthorName": "Commit author name",
+    "fAuthorEmail": "Commit author e-mail",
+    "fToken": "Access token (Personal Access Token)",
+    "fTokenSet": "Token already saved — leave blank to keep it",
+    "save": "Save settings",
+    "tokenSet": "Token set",
+    "dirty": "Unsynced files: {n}",
+    "clean": "Everything is synced",
+    "lastSync": "Last sync: {when}",
+    "syncNow": "Sync now",
+    "syncing": "Syncing…",
+    "syncOk": "Done",
+    "conflictHint": "History has diverged — no automatic merge is performed. Sync did not touch your local files. Resolve the conflict manually (e.g. with plain git in the storage/vault folder) and sync again."
+  },
   "bookmarks": {
     "title": "Bookmarks",
     "add": "Add bookmark",
@@ -778,6 +797,7 @@
   "myspace": {
     "livePreview": "Live line-by-line preview (Obsidian-style)",
     "bookmarksTab": "Bookmarks",
+    "syncTab": "Sync",
     "ai": {
       "format": "Format",
       "formatHint": "AI: turn the note into tidy Markdown (the current text becomes the source)",

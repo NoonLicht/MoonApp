@@ -282,6 +282,25 @@
     "ioImportConfirm": "¿Importar los ajustes de «{name}»? Los ajustes actuales se reemplazarán.",
     "ioRestartHint": "Algunos ajustes del sistema (inicio automático, tamaño de ventana, aceleración) se aplican tras reiniciar la aplicación."
   },
+  "gitSync": {
+    "title": "Sincronización Git",
+    "hint": "Sincroniza notas y canvas (storage/vault) mediante un repositorio git en GitHub/GitLab/autoalojado. Los marcadores aún no están incluidos — es un archivo aparte. Sin fusión automática: ante un conflicto, la sincronización se detiene y pide resolverlo manualmente.",
+    "fRemoteUrl": "URL del repositorio (https://...)",
+    "fBranch": "Rama",
+    "fAuthorName": "Nombre del autor de los commits",
+    "fAuthorEmail": "E-mail del autor de los commits",
+    "fToken": "Token de acceso (Personal Access Token)",
+    "fTokenSet": "Token ya guardado — déjalo vacío para no cambiarlo",
+    "save": "Guardar ajustes",
+    "tokenSet": "Token configurado",
+    "dirty": "Archivos sin sincronizar: {n}",
+    "clean": "Todo sincronizado",
+    "lastSync": "Última sincronización: {when}",
+    "syncNow": "Sincronizar ahora",
+    "syncing": "Sincronizando…",
+    "syncOk": "Listo",
+    "conflictHint": "El historial ha divergido — no se realiza fusión automática. La sincronización no tocó tus archivos locales. Resuelve el conflicto manualmente (p. ej. con git normal en la carpeta storage/vault) y sincroniza de nuevo."
+  },
   "bookmarks": {
     "title": "Marcadores",
     "add": "Añadir marcador",
@@ -780,6 +799,7 @@
   "myspace": {
     "livePreview": "Vista previa en vivo línea a línea (estilo Obsidian)",
     "bookmarksTab": "Marcadores",
+    "syncTab": "Sincronización",
     "ai": {
       "format": "Formatear",
       "formatHint": "IA: convertir la nota en Markdown cuidado (el texto actual pasa a ser la fuente)",

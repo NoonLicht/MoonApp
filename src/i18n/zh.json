@@ -282,6 +282,25 @@
     "ioImportConfirm": "从“{name}”导入设置？当前设置将被替换。",
     "ioRestartHint": "部分系统设置（自动启动、窗口大小、硬件加速）将在重启应用后生效。"
   },
+  "gitSync": {
+    "title": "Git 同步",
+    "hint": "通过 GitHub/GitLab/自托管的 git 仓库同步笔记和画布(storage/vault)。书签暂不包含在同步范围内 — 是单独的文件。不进行自动合并:发生冲突时同步会停止并要求手动解决。",
+    "fRemoteUrl": "仓库 URL(https://...)",
+    "fBranch": "分支",
+    "fAuthorName": "提交作者姓名",
+    "fAuthorEmail": "提交作者邮箱",
+    "fToken": "访问令牌(Personal Access Token)",
+    "fTokenSet": "令牌已保存 — 留空以保持不变",
+    "save": "保存设置",
+    "tokenSet": "已设置令牌",
+    "dirty": "未同步文件:{n}",
+    "clean": "全部已同步",
+    "lastSync": "上次同步:{when}",
+    "syncNow": "立即同步",
+    "syncing": "同步中…",
+    "syncOk": "完成",
+    "conflictHint": "历史记录已分叉 — 不会自动合并。同步未改动你的本地文件。请手动解决冲突(例如在 storage/vault 文件夹中使用普通 git)后再次同步。"
+  },
   "bookmarks": {
     "title": "书签",
     "add": "添加书签",
@@ -780,6 +799,7 @@
   "myspace": {
     "livePreview": "逐行实时预览(Obsidian 风格)",
     "bookmarksTab": "书签",
+    "syncTab": "同步",
     "ai": {
       "format": "排版",
       "formatHint": "AI：将笔记整理为整洁的 Markdown（当前文本将成为原文）",

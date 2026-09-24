@@ -28,6 +28,7 @@ import {
 import MarkdownRenderer from "@/pages/myspace/parts/MarkdownRenderer";
 import CodeMirrorLiveEditor from "@/pages/myspace/parts/CodeMirrorLiveEditor";
 import BookmarksView from "@/pages/myspace/parts/BookmarksView";
+import GitSyncView from "@/pages/myspace/parts/GitSyncView";
 import { usePageToolbar, usePageActive } from "@/components/Toolbar";
 import { useI18n, type TranslateFn } from "@/app/i18n";
 import { api } from "@/api/client";
@@ -116,9 +117,9 @@ export default function MyspacePage() {
 
   const [leftOpen, setLeftOpen] = useState(true);
   const [rightOpen, setRightOpen] = useState(true);
-  const [myspaceView, setMyspaceView] = useState<"notes" | "tasks" | "canvas" | "bookmarks">(
-    "notes",
-  );
+  const [myspaceView, setMyspaceView] = useState<
+    "notes" | "tasks" | "canvas" | "bookmarks" | "sync"
+  >("notes");
   const [leftTab, setLeftTab] = useState<Side>("explorer");
   const [rightTab, setRightTab] = useState<Right>("backlinks");
   const [leftW, setLeftW] = useState(260);
@@ -1081,6 +1082,12 @@ export default function MyspacePage() {
           style={viewTabStyle(myspaceView === "bookmarks")}
         >
           🔖 {t("myspace.bookmarksTab")}
+        </button>
+        <button
+          onClick={() => setMyspaceView("sync")}
+          style={viewTabStyle(myspaceView === "sync")}
+        >
+          🔄 {t("myspace.syncTab")}
         </button>
       </div>
       {myspaceView === "notes" && (
@@ -2628,6 +2635,12 @@ export default function MyspacePage() {
               void openFile(p);
             }}
           />
+        </div>
+      )}
+      {/* ─── SYNC VIEW ─── */}
+      {myspaceView === "sync" && (
+        <div style={{ display: "flex", flex: 1, minHeight: 0, overflow: "hidden" }}>
+          <GitSyncView />
         </div>
       )}
       {/* Полноэкранный граф: портал в #overlay-root + панель по прямоугольнику
