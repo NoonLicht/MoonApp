@@ -649,6 +649,9 @@
     "paste": "Enter a track or artist name",
     "find": "Search",
     "empty": "Start searching above to find tracks",
+    "playlistSaveHint": "Save the current search as a playlist",
+    "playlistName": "Playlist name",
+    "playlistSave": "Save",
     "download": "Download"
   },
   "arch": {

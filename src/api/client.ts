@@ -23,6 +23,7 @@ import type {
   DiskScanStatus,
   Bookmark,
   BookmarkInput,
+  MusicPlaylist,
   VideoInfo,
   VideoDownloadResult,
   VideoJobStatus,
@@ -1271,6 +1272,10 @@ export const api = {
     });
   },
   musicFormats: () => req<MusicFormats>("GET", "/music/formats"),
+  musicPlaylists: () => req<MusicPlaylist[]>("GET", "/music/playlists"),
+  musicPlaylistSave: (name: string, query: string) =>
+    req<MusicPlaylist>("POST", "/music/playlists", { name, query }),
+  musicPlaylistDelete: (id: string) => req<{ ok: boolean }>("DELETE", `/music/playlists/${id}`),
   // Логирование действий пользователя на бэкенде
   // MySpace / Vault
   myspaceTree: () => req<VaultFile[]>("GET", "/myspace/tree"),

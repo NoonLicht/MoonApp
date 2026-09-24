@@ -392,6 +392,15 @@ export interface BookmarkInput {
   saveForLater?: boolean;
 }
 
+/* ------------------------ Музыка: сохранённые запросы ----------------------- */
+
+export interface MusicPlaylist {
+  id: string;
+  name: string;
+  query: string;
+  createdAt: number;
+}
+
 /* -------------------------------- Видео ------------------------------------ */
 
 /** Метаданные и доступные форматы с URL (GET /api/video/info). */

@@ -13,11 +13,44 @@
 const express = require("express");
 const ytdlp = require("../ytdlp");
 const logger = require("../logger");
+const playlists = require("../musicPlaylists");
 // yt-dlp переименовывает скачанное в название трека (часто кириллица), а fs.rmSync
 // такие пути на Windows молча не удаляет — файлы оставались бы в storage.
 const { removePath } = require("../fsUtil");
 
 const router = express.Router();
+
+/**
+ * "Умные плейлисты" — сохранённые поисковые запросы (см. server/ts/musicPlaylists.ts
+ * за объяснением, почему не полноценная библиотека).
+ */
+router.get("/playlists", (req, res) => {
+  try {
+    res.json(playlists.list());
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.post("/playlists", (req, res) => {
+  try {
+    const { name, query } = req.body || {};
+    if (!query) return res.status(400).json({ error: "missing_query" });
+    res.status(201).json(playlists.create(name, query));
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.delete("/playlists/:id", (req, res) => {
+  try {
+    const ok = playlists.remove(req.params.id);
+    if (!ok) return res.status(404).json({ error: "not_found" });
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
 
 /**
  * GET /api/music/search?q=...

@@ -12,6 +12,10 @@ import {
   Copy,
   Link2,
   SlidersHorizontal,
+  ListMusic,
+  Plus,
+  X,
+  Trash2,
 } from "lucide-react";
 import { Glass, Btn, Badge, Select, SectionHead, EmptyHint, Field } from "@/components/ui";
 import { useContextMenu, copyToClipboard } from "@/components/ContextMenu";
@@ -21,7 +25,7 @@ import { useI18n } from "@/app/i18n";
 import { api } from "@/api/client";
 import { saveBlob } from "@/lib/download";
 import MediaLoading from "@/components/MediaLoading";
-import type { MusicTrack, MusicFormats } from "@/api/types";
+import type { MusicTrack, MusicFormats, MusicPlaylist } from "@/api/types";
 
 // Форматы/качества для выбора в тулбаре
 const QUALITY_OPTIONS = [
@@ -96,6 +100,41 @@ export default function MusicPage() {
   }, []);
   const [fmtInfo, setFmtInfo] = useState<MusicFormats | null>(null);
 
+  // "Умные" сохранённые поисковые запросы — см. server/ts/musicPlaylists.ts:
+  // у страницы нет постоянной локальной библиотеки (файлы одноразовые и уходят
+  // в Downloads), поэтому плейлист здесь — именованный повторно выполняемый поиск.
+  const [playlists, setPlaylists] = useState<MusicPlaylist[]>([]);
+  const [showSavePlaylist, setShowSavePlaylist] = useState(false);
+  const [playlistName, setPlaylistName] = useState("");
+
+  const loadPlaylists = () => {
+    api
+      .musicPlaylists()
+      .then(setPlaylists)
+      .catch(() => setPlaylists([]));
+  };
+  useEffect(() => {
+    loadPlaylists();
+  }, []);
+
+  const savePlaylist = async () => {
+    if (!query.trim()) return;
+    await api.musicPlaylistSave(playlistName.trim() || query.trim(), query.trim());
+    setPlaylistName("");
+    setShowSavePlaylist(false);
+    loadPlaylists();
+  };
+
+  const runPlaylist = (p: MusicPlaylist) => {
+    setQuery(p.query);
+    void doSearch(p.query);
+  };
+
+  const removePlaylist = async (id: string) => {
+    await api.musicPlaylistDelete(id);
+    loadPlaylists();
+  };
+
   usePageToolbar(
     <ToolbarMenu icon={SlidersHorizontal} title={t("common.quality")} align="right" label={quality}>
       <Field label={t("common.quality")}>
@@ -141,21 +180,26 @@ export default function MusicPage() {
     return () => clearInterval(timer);
   }, [downloadJobId]);
 
-  // Поиск
-  const doSearch = useCallback(async () => {
-    if (!query.trim()) return;
-    setSearchState("searching");
-    setSearchError("");
-    setSelectedTrack(null);
-    try {
-      const result = await api.musicSearch(query.trim());
-      setTracks(result.tracks || []);
-      setSearchState(result.tracks?.length ? "done" : "done");
-    } catch (e) {
-      setSearchState("error");
-      setSearchError((e as Error).message);
-    }
-  }, [query]);
+  // Поиск (q необязателен — по умолчанию берётся текущий query из поля ввода;
+  // явный аргумент нужен для повтора сохранённого плейлиста без гонки состояния).
+  const doSearch = useCallback(
+    async (q?: string) => {
+      const term = (q ?? query).trim();
+      if (!term) return;
+      setSearchState("searching");
+      setSearchError("");
+      setSelectedTrack(null);
+      try {
+        const result = await api.musicSearch(term);
+        setTracks(result.tracks || []);
+        setSearchState(result.tracks?.length ? "done" : "done");
+      } catch (e) {
+        setSearchState("error");
+        setSearchError((e as Error).message);
+      }
+    },
+    [query],
+  );
 
   // Выбор трека
   const selectTrack = (track: MusicTrack) => {
@@ -228,7 +272,7 @@ export default function MusicPage() {
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && doSearch()}
         />
-        <Btn variant="primary" onClick={doSearch} disabled={searchState === "searching"}>
+        <Btn variant="primary" onClick={() => void doSearch()} disabled={searchState === "searching"}>
           {searchState === "searching" ? (
             <>
               <RefreshCw size={14} className="spin" /> {t("common.loading")}
@@ -240,6 +284,63 @@ export default function MusicPage() {
           )}
         </Btn>
       </Glass>
+
+      {/* "Умные" плейлисты — сохранённые поисковые запросы */}
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", margin: "8px 0" }}>
+        {playlists.map((p) => (
+          <Badge key={p.id} tone="violet" mono onClick={() => runPlaylist(p)}>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+              <ListMusic size={11} />
+              {p.name}
+              <span
+                role="button"
+                title={t("ctx.remove")}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  void removePlaylist(p.id);
+                }}
+                style={{ display: "inline-flex", marginLeft: 2 }}
+              >
+                <Trash2 size={11} />
+              </span>
+            </span>
+          </Badge>
+        ))}
+        {showSavePlaylist ? (
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+            <input
+              className="text-input"
+              style={{ width: 160 }}
+              placeholder={t("music.playlistName")}
+              value={playlistName}
+              onChange={(e) => setPlaylistName(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && void savePlaylist()}
+            />
+            <Btn icon={Check} onClick={() => void savePlaylist()}>
+              {t("music.playlistSave")}
+            </Btn>
+            <button
+              type="button"
+              className="icon-btn"
+              onClick={() => setShowSavePlaylist(false)}
+              title={t("ctx.clear")}
+            >
+              <X size={14} />
+            </button>
+          </span>
+        ) : (
+          query.trim() && (
+            <button
+              type="button"
+              className="icon-btn"
+              title={t("music.playlistSaveHint")}
+              onClick={() => setShowSavePlaylist(true)}
+            >
+              <Plus size={14} />
+            </button>
+          )
+        )}
+      </div>
 
       {/* Результаты поиска */}
       {searchState === "searching" && (

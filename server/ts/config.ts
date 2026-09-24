@@ -93,6 +93,7 @@ const FILES = {
   secrets: path.join(DIRS.storage, "secrets.json"),
   passwordVault: path.join(DIRS.storage, "password-vault.json"),
   bookmarks: path.join(DIRS.storage, "bookmarks.json"),
+  musicPlaylists: path.join(DIRS.storage, "music-playlists.json"),
   conspectusPresets: path.join(DIRS.storage, "conspectus_presets.json"),
   log: path.join(DIRS.logs, "app.log"),
 };
