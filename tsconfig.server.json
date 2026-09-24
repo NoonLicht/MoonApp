@@ -35,6 +35,7 @@
     "server/ts/security.ts",
     "server/ts/passwordVault.ts",
     "server/ts/diskScan.ts",
+    "server/ts/bookmarks.ts",
     "server/ts/elevate.ts",
     "server/ts/backup.ts",
     "server/ts/downloads.ts",

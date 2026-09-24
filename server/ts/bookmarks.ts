@@ -1,0 +1,172 @@
+/**
+ * Закладки: storage/bookmarks.json. Опционально при сохранении можно
+ * "отложить на чтение" (read-later) — сервер сам скачивает страницу,
+ * грубо вычищает HTML в читаемый markdown-текст и кладёт как заметку в
+ * Vault (папка "Read Later"), переиспользуя server/ts/myspace-vault.ts —
+ * тот же движок, что и обычные заметки MySpace.
+ */
+import crypto from "crypto";
+import fs from "fs";
+import config from "./config";
+import logger from "./logger";
+import { writeFile as vaultWriteFile } from "./myspace-vault";
+
+const { FILES } = config;
+
+export interface Bookmark {
+  id: string;
+  title: string;
+  url: string;
+  notes: string;
+  tags: string[];
+  folder: string;
+  createdAt: number;
+  updatedAt: number;
+  articleNotePath: string | null;
+}
+
+function readAll(): Bookmark[] {
+  try {
+    const raw = JSON.parse(fs.readFileSync(FILES.bookmarks, "utf8"));
+    return Array.isArray(raw) ? raw : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeAll(items: Bookmark[]): void {
+  fs.writeFileSync(FILES.bookmarks, JSON.stringify(items, null, 2), "utf8");
+}
+
+export function list(): Bookmark[] {
+  return readAll().sort((a, b) => b.createdAt - a.createdAt);
+}
+
+/** Грубая очистка HTML → читаемый текст. Без jsdom/readability (нет в зависимостях) —
+ *  достаточно для read-later "сохранить черновик текста", не претендует на идеальный парсинг. */
+function htmlToPlainText(html: string): string {
+  let s = html;
+  s = s.replace(/<script[\s\S]*?<\/script>/gi, "");
+  s = s.replace(/<style[\s\S]*?<\/style>/gi, "");
+  s = s.replace(/<!--[\s\S]*?-->/g, "");
+  // Блочные теги → перевод строки, чтобы текст не слипался в один абзац.
+  s = s.replace(/<\/(p|div|h[1-6]|li|br|section|article|tr)>/gi, "\n");
+  s = s.replace(/<br\s*\/?>/gi, "\n");
+  s = s.replace(/<[^>]+>/g, "");
+  s = s
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'");
+  s = s.replace(/[ \t]+/g, " ");
+  s = s.replace(/\n{3,}/g, "\n\n");
+  return s.trim();
+}
+
+function extractTitle(html: string, fallback: string): string {
+  const m = html.match(/<title[^>]*>([^<]*)<\/title>/i);
+  return m ? m[1].trim() || fallback : fallback;
+}
+
+async function fetchArticle(url: string): Promise<{ title: string; text: string }> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
+  try {
+    const res = await fetch(url, {
+      signal: controller.signal,
+      headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) MoonApp/1.0" },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const html = await res.text();
+    return { title: extractTitle(html, url), text: htmlToPlainText(html) };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+function slugifyForFilename(s: string): string {
+  return (
+    s
+      .replace(/[/\\?%*:|"<>]/g, "_")
+      .trim()
+      .slice(0, 80) || "article"
+  );
+}
+
+export async function create(input: {
+  title?: string;
+  url: string;
+  notes?: string;
+  tags?: string[];
+  folder?: string;
+  saveForLater?: boolean;
+}): Promise<Bookmark> {
+  const now = Date.now();
+  let title = String(input.title || "").trim();
+  let articleNotePath: string | null = null;
+
+  if (input.saveForLater) {
+    try {
+      const article = await fetchArticle(input.url);
+      if (!title) title = article.title;
+      const fileName = `Read Later/${slugifyForFilename(title)}.md`;
+      const body = `# ${title}\n\nИсточник: ${input.url}\nСохранено: ${new Date(now).toLocaleString("ru-RU")}\n\n---\n\n${article.text}`;
+      vaultWriteFile(fileName, body, { source: input.url, savedAt: now });
+      articleNotePath = fileName;
+    } catch (e) {
+      logger.error("bookmarks.save_article_failed", { url: input.url, error: (e as Error).message });
+      // Не роняем создание закладки целиком — просто без сохранённой статьи.
+    }
+  }
+
+  if (!title) title = input.url;
+
+  const entry: Bookmark = {
+    id: crypto.randomUUID(),
+    title,
+    url: input.url,
+    notes: String(input.notes || ""),
+    tags: Array.isArray(input.tags) ? input.tags.map(String) : [],
+    folder: String(input.folder || ""),
+    createdAt: now,
+    updatedAt: now,
+    articleNotePath,
+  };
+  const all = readAll();
+  all.push(entry);
+  writeAll(all);
+  logger.info("bookmarks.create", { id: entry.id, saveForLater: !!input.saveForLater });
+  return entry;
+}
+
+export function update(
+  id: string,
+  input: Partial<{ title: string; notes: string; tags: string[]; folder: string }>,
+): Bookmark | null {
+  const all = readAll();
+  const idx = all.findIndex((x) => x.id === id);
+  if (idx === -1) return null;
+  const cur = all[idx];
+  const next: Bookmark = {
+    ...cur,
+    title: input.title !== undefined ? String(input.title) : cur.title,
+    notes: input.notes !== undefined ? String(input.notes) : cur.notes,
+    tags: input.tags !== undefined ? input.tags.map(String) : cur.tags,
+    folder: input.folder !== undefined ? String(input.folder) : cur.folder,
+    updatedAt: Date.now(),
+  };
+  all[idx] = next;
+  writeAll(all);
+  return next;
+}
+
+export function remove(id: string): boolean {
+  const all = readAll();
+  const next = all.filter((x) => x.id !== id);
+  if (next.length === all.length) return false;
+  writeAll(next);
+  logger.info("bookmarks.remove", { id });
+  return true;
+}

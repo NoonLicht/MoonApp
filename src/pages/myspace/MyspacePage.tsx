@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import MarkdownRenderer from "@/pages/myspace/parts/MarkdownRenderer";
 import CodeMirrorLiveEditor from "@/pages/myspace/parts/CodeMirrorLiveEditor";
+import BookmarksView from "@/pages/myspace/parts/BookmarksView";
 import { usePageToolbar, usePageActive } from "@/components/Toolbar";
 import { useI18n, type TranslateFn } from "@/app/i18n";
 import { api } from "@/api/client";
@@ -115,7 +116,9 @@ export default function MyspacePage() {
 
   const [leftOpen, setLeftOpen] = useState(true);
   const [rightOpen, setRightOpen] = useState(true);
-  const [myspaceView, setMyspaceView] = useState<"notes" | "tasks" | "canvas">("notes");
+  const [myspaceView, setMyspaceView] = useState<"notes" | "tasks" | "canvas" | "bookmarks">(
+    "notes",
+  );
   const [leftTab, setLeftTab] = useState<Side>("explorer");
   const [rightTab, setRightTab] = useState<Right>("backlinks");
   const [leftW, setLeftW] = useState(260);
@@ -1072,6 +1075,12 @@ export default function MyspacePage() {
           style={viewTabStyle(myspaceView === "canvas")}
         >
           🎨 Canvas
+        </button>
+        <button
+          onClick={() => setMyspaceView("bookmarks")}
+          style={viewTabStyle(myspaceView === "bookmarks")}
+        >
+          🔖 {t("myspace.bookmarksTab")}
         </button>
       </div>
       {myspaceView === "notes" && (
@@ -2608,6 +2617,17 @@ export default function MyspacePage() {
       {myspaceView === "canvas" && (
         <div style={{ display: "flex", flex: 1, minHeight: 0, overflow: "hidden" }}>
           <CanvasPage />
+        </div>
+      )}
+      {/* ─── BOOKMARKS VIEW ─── */}
+      {myspaceView === "bookmarks" && (
+        <div style={{ display: "flex", flex: 1, minHeight: 0, overflow: "hidden" }}>
+          <BookmarksView
+            onOpenNote={(p) => {
+              setMyspaceView("notes");
+              void openFile(p);
+            }}
+          />
         </div>
       )}
       {/* Полноэкранный граф: портал в #overlay-root + панель по прямоугольнику

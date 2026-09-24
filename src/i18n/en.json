@@ -280,6 +280,18 @@
     "ioImportConfirm": "Import settings from \"{name}\"? Current settings will be replaced.",
     "ioRestartHint": "Some system options (auto-start, window size, hardware acceleration) apply after restarting the app."
   },
+  "bookmarks": {
+    "title": "Bookmarks",
+    "add": "Add bookmark",
+    "saving": "Saving…",
+    "empty": "No bookmarks yet",
+    "fUrl": "Link (URL)",
+    "fTitle": "Title (optional)",
+    "fTags": "Comma-separated tags",
+    "fNotes": "Note",
+    "saveForLater": "Save article for later (downloads text into a note)",
+    "openArticle": "Open saved article"
+  },
   "passwordVault": {
     "title": "Password manager",
     "hint": "Separate encrypted store for logins/passwords (not related to the API keys above). Passwords are hidden by default.",
@@ -692,6 +704,7 @@
   },
   "myspace": {
     "livePreview": "Live line-by-line preview (Obsidian-style)",
+    "bookmarksTab": "Bookmarks",
     "ai": {
       "format": "Format",
       "formatHint": "AI: turn the note into tidy Markdown (the current text becomes the source)",

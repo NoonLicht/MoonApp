@@ -280,6 +280,18 @@
     "ioImportConfirm": "从“{name}”导入设置？当前设置将被替换。",
     "ioRestartHint": "部分系统设置（自动启动、窗口大小、硬件加速）将在重启应用后生效。"
   },
+  "bookmarks": {
+    "title": "书签",
+    "add": "添加书签",
+    "saving": "保存中…",
+    "empty": "暂无书签",
+    "fUrl": "链接(URL)",
+    "fTitle": "标题(可选)",
+    "fTags": "标签,用逗号分隔",
+    "fNotes": "备注",
+    "saveForLater": "保存文章稍后阅读(将正文下载为笔记)",
+    "openArticle": "打开已保存的文章"
+  },
   "passwordVault": {
     "title": "密码管理器",
     "hint": "独立的加密登录名/密码存储(与上方的 API 密钥无关)。密码默认隐藏。",
@@ -693,6 +705,8 @@
     "viewNoPages": "该归档中没有 HTML 页面"
   },
   "myspace": {
+    "livePreview": "逐行实时预览(Obsidian 风格)",
+    "bookmarksTab": "书签",
     "ai": {
       "format": "排版",
       "formatHint": "AI：将笔记整理为整洁的 Markdown（当前文本将成为原文）",

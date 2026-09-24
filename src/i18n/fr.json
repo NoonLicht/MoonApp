@@ -280,6 +280,18 @@
     "ioImportConfirm": "Importer les paramètres de « {name} » ? Les paramètres actuels seront remplacés.",
     "ioRestartHint": "Certains paramètres système (démarrage auto, taille de la fenêtre, accélération) s'appliquent après redémarrage."
   },
+  "bookmarks": {
+    "title": "Favoris",
+    "add": "Ajouter un favori",
+    "saving": "Enregistrement…",
+    "empty": "Aucun favori pour l'instant",
+    "fUrl": "Lien (URL)",
+    "fTitle": "Titre (facultatif)",
+    "fTags": "Tags séparés par des virgules",
+    "fNotes": "Note",
+    "saveForLater": "Enregistrer l'article pour plus tard (télécharge le texte dans une note)",
+    "openArticle": "Ouvrir l'article enregistré"
+  },
   "passwordVault": {
     "title": "Gestionnaire de mots de passe",
     "hint": "Stockage chiffré séparé pour identifiants/mots de passe (sans rapport avec les clés API ci-dessus). Les mots de passe sont masqués par défaut.",
@@ -693,6 +705,8 @@
     "viewNoPages": "L'archive ne contient aucune page HTML"
   },
   "myspace": {
+    "livePreview": "Aperçu en direct ligne par ligne (style Obsidian)",
+    "bookmarksTab": "Favoris",
     "ai": {
       "format": "Mettre en forme",
       "formatHint": "IA : transformer la note en Markdown soigné (le texte actuel devient la source)",

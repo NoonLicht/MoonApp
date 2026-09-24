@@ -21,6 +21,8 @@ import type {
   PasswordEntryInput,
   DiskNode,
   DiskScanStatus,
+  Bookmark,
+  BookmarkInput,
   VideoInfo,
   VideoDownloadResult,
   VideoJobStatus,
@@ -1341,6 +1343,13 @@ export const api = {
   diskScanStatus: (id: string) => req<DiskScanStatus>("GET", `/diskscan/status/${id}`),
   diskScanResult: (id: string) => req<DiskNode>("GET", `/diskscan/result/${id}`),
   diskScanCancel: (id: string) => req<{ ok: boolean }>("POST", `/diskscan/cancel/${id}`),
+
+  // --- Закладки ---
+  bookmarksList: () => req<Bookmark[]>("GET", "/bookmarks"),
+  bookmarksCreate: (payload: BookmarkInput) => req<Bookmark>("POST", "/bookmarks", payload),
+  bookmarksUpdate: (id: string, payload: Partial<BookmarkInput>) =>
+    req<Bookmark>("PUT", `/bookmarks/${id}`, payload),
+  bookmarksDelete: (id: string) => req<{ ok: boolean }>("DELETE", `/bookmarks/${id}`),
 
   // --- Фильмы и сериалы: каталог TMDB, библиотека, торрент-плеер ---
   moviesStatus: () => req<MediaStatus>("GET", "/movies/status"),

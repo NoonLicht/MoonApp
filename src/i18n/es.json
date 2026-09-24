@@ -280,6 +280,18 @@
     "ioImportConfirm": "¿Importar los ajustes de «{name}»? Los ajustes actuales se reemplazarán.",
     "ioRestartHint": "Algunos ajustes del sistema (inicio automático, tamaño de ventana, aceleración) se aplican tras reiniciar la aplicación."
   },
+  "bookmarks": {
+    "title": "Marcadores",
+    "add": "Añadir marcador",
+    "saving": "Guardando…",
+    "empty": "Todavía no hay marcadores",
+    "fUrl": "Enlace (URL)",
+    "fTitle": "Título (opcional)",
+    "fTags": "Etiquetas separadas por comas",
+    "fNotes": "Nota",
+    "saveForLater": "Guardar artículo para leer después (descarga el texto a una nota)",
+    "openArticle": "Abrir artículo guardado"
+  },
   "passwordVault": {
     "title": "Gestor de contraseñas",
     "hint": "Almacén cifrado independiente de logins/contraseñas (no relacionado con las claves de API de arriba). Las contraseñas están ocultas por defecto.",
@@ -693,6 +705,8 @@
     "viewNoPages": "El archivo no tiene páginas HTML"
   },
   "myspace": {
+    "livePreview": "Vista previa en vivo línea a línea (estilo Obsidian)",
+    "bookmarksTab": "Marcadores",
     "ai": {
       "format": "Formatear",
       "formatHint": "IA: convertir la nota en Markdown cuidado (el texto actual pasa a ser la fuente)",

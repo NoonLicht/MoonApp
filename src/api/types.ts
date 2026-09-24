@@ -369,6 +369,29 @@ export interface DiskScanStatus {
   error: string | null;
 }
 
+/* --------------------------------- Закладки --------------------------------- */
+
+export interface Bookmark {
+  id: string;
+  title: string;
+  url: string;
+  notes: string;
+  tags: string[];
+  folder: string;
+  createdAt: number;
+  updatedAt: number;
+  articleNotePath: string | null;
+}
+
+export interface BookmarkInput {
+  title?: string;
+  url: string;
+  notes?: string;
+  tags?: string[];
+  folder?: string;
+  saveForLater?: boolean;
+}
+
 /* -------------------------------- Видео ------------------------------------ */
 
 /** Метаданные и доступные форматы с URL (GET /api/video/info). */
