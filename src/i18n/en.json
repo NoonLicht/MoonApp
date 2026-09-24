@@ -20,7 +20,7 @@
   "common": {
     "saved": "saved",
     "clear": "Clear",
-    "openAppDir": "Open application folder",
+    "openAppDir": "Open application data folder",
     "minimize": "Minimize",
     "maximize": "Maximize",
     "close": "Close",
@@ -532,6 +532,7 @@
     "title": "Proxy",
     "connected": "Connected",
     "disconnected": "Disconnected",
+    "httpInboundDown": "SOCKS port is open, but the proxy's HTTP port didn't come up — sites like TMDB bypass the proxy. Restart the proxy.",
     "vlessLink": "VLESS link",
     "ping": "Ping",
     "country": "Country",
@@ -1076,6 +1077,7 @@
     "copyLink": "Copy link",
     "copyId": "Copy ID",
     "remove": "Remove",
+    "clear": "Clear",
     "rename": "Rename",
     "pin": "Pin",
     "unpin": "Unpin",
@@ -1343,6 +1345,7 @@
       "device": "PyTorch build",
       "deviceCuda": "CUDA 12.8 (NVIDIA)",
       "deviceCudaHint": "Fast: NVIDIA cards from GTX 16xx / RTX 20xx",
+      "deviceCudaSeparate": "This is a separate PyTorch runtime (pip, CUDA 12.8) — physically different files from Upscale's GPU pack (ONNX Runtime/TensorRT, CUDA 12.9) or the CUDA build of whisper in Lecture (CUDA 11.8/12.4). They can't be merged: three different engines, three different CUDA versions. Downloaded once on first use.",
       "deviceCpu": "CPU (no graphics card)",
       "deviceCpuHint": "Slower, but works without NVIDIA",
       "recommended": "Recommended",
@@ -1627,7 +1630,7 @@
       "download": "Download",
       "downloading": "Downloading…",
       "buildsTitle": "Engine build",
-      "buildsHint": "The CUDA build enables GPU computing; OpenBLAS is noticeably faster on the CPU than the plain build.",
+      "buildsHint": "The CUDA build enables GPU computing; OpenBLAS is noticeably faster on the CPU than the plain build. Whisper's CUDA build (11.8/12.4) is a separate runtime, not the same as CUDA in Voice (12.8) or Upscale's GPU pack (12.9); they can't be merged, three different engines.",
       "autoBuild": "Auto",
       "build": {
         "legacy": "Installed (CPU)",
@@ -2212,7 +2215,7 @@
     "pickOnlyTrt": "Has engine",
     "pickCatalog": "Model catalog…",
     "packTitle": "GPU pack",
-    "packHint": "A custom ONNX runtime build with CUDA/TensorRT for NVIDIA GPUs: downloaded separately, the regular DirectML/CPU path works without it.",
+    "packHint": "A custom ONNX runtime build with CUDA/TensorRT for NVIDIA GPUs: downloaded separately, the regular DirectML/CPU path works without it. This is an independent pack (CUDA 12.9) — not the same as the PyTorch build in Voice (CUDA 12.8) or whisper's CUDA build in Lecture (CUDA 11.8/12.4); they can't be merged, three different engines.",
     "packOn": "Installed ({v})",
     "packOff": "Not installed — DirectML/CPU is used",
     "packCheck": "Check builds",
@@ -2252,5 +2255,24 @@
     "vcrfHint": "0–51, lower is better",
     "audio": "Audio action",
     "audioHint": "copy — keep the original track, aac — re-encode"
+  },
+  "taskmgr": {
+    "eyebrow": "Background tasks",
+    "title": "Task Manager",
+    "empty": "Nothing is running right now",
+    "active": "Active",
+    "recent": "Recent",
+    "cancel": "Stop",
+    "pause": "Pause",
+    "resume": "Resume",
+    "done": "Done",
+    "engine": {
+      "compressor": "Video compression",
+      "convert": "Conversion",
+      "upscale": "Upscale",
+      "tts": "Voice",
+      "lecture": "Lecture",
+      "archive": "Web archive"
+    }
   }
 }

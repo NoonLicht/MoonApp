@@ -93,6 +93,7 @@ import type {
   UpPreset,
   UpPresets,
   UpProbe,
+  TmTask,
 } from "@/api/types";
 import { logEvent, getCurrentPage } from "@/lib/telemetry";
 
@@ -600,7 +601,10 @@ export const api = {
   lectureConspectusSavePreset: (patch: { id?: string; label: string; systemPrompt: string }) =>
     req<LectureConspectusPreset[]>("POST", "/lecture/conspectus/presets", patch),
   lectureConspectusDeletePreset: (id: string) =>
-    req<LectureConspectusPreset[]>("DELETE", `/lecture/conspectus/presets/${encodeURIComponent(id)}`),
+    req<LectureConspectusPreset[]>(
+      "DELETE",
+      `/lecture/conspectus/presets/${encodeURIComponent(id)}`,
+    ),
   lectureProviders: () => req<LectureProviderInfo[]>("GET", "/lecture/providers"),
   lectureProviderModels: (id: string) =>
     req<{ provider: string; models: string[] }>(
@@ -1518,6 +1522,18 @@ export const api = {
       "/movies/tracker/add",
       { id, ...opts },
     ),
+
+  // --- Диспетчер фоновых задач (компрессия/апскейл/озвучка/лекции/архив) ---
+  // Названы bgTasks*, а не tasks* — это имя уже занято тудушками MySpace выше
+  // (api.tasksList/тип TaskItem — заметки-задачи, не имеют отношения к фоновым
+  // job'ам движков).
+  bgTasksList: () => req<{ tasks: TmTask[] }>("GET", "/tasks"),
+  bgTasksCancel: (engine: string, id: string) =>
+    req<{ ok: boolean }>("POST", `/tasks/${engine}/${encodeURIComponent(id)}/cancel`),
+  bgTasksPause: (engine: string, id: string) =>
+    req<{ ok: boolean }>("POST", `/tasks/${engine}/${encodeURIComponent(id)}/pause`),
+  bgTasksResume: (engine: string, id: string) =>
+    req<{ ok: boolean }>("POST", `/tasks/${engine}/${encodeURIComponent(id)}/resume`),
 };
 
 /** Событие стрима чата. */

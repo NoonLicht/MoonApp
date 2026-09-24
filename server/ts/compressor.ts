@@ -114,6 +114,10 @@ export interface CompressorJob extends CompressorParams {
   weightSpan: number;
   /** Реальный ffmpeg-кодек, которым закодировано (последний кандидат). */
   ffEnc?: string;
+  /** PID активного ffmpeg/rigaya-процесса — для cancelJob (Диспетчер задач). */
+  pid?: number | null;
+  /** Пользователь запросил отмену — runProc проверяет перед стартом каждого прохода. */
+  cancelRequested?: boolean;
 }
 
 /** Формат и кодек исходника (probeVideoInfo). */
@@ -209,14 +213,19 @@ function probeVideoInfo(ffprobe: string, file: string): Promise<VideoInfo> {
 }
 
 // Запуск процесса (ffmpeg/rigaya/av1an) с парсингом прогресса.
+// job передаётся для трекинга pid (Диспетчер фоновых задач/cancelJob умеют
+// прервать активную кодировку — раньше отменить job было нельзя вообще).
 function runProc(
+  job: CompressorJob,
   cmd: string,
   args: string[],
   onProgress: ProgressFn,
   totalSec: number,
 ): Promise<void> {
   return new Promise<void>((resolve, reject) => {
+    if (job.cancelRequested) return reject(new Error("cancelled"));
     const child = spawn(cmd, args, { windowsHide: true });
+    job.pid = child.pid ?? null;
     let errTail = "";
     child.stderr.on("data", (d) => {
       const s = String(d);
@@ -228,11 +237,13 @@ function runProc(
       emitProgress(s, onProgress, totalSec);
     });
     child.on("error", reject);
-    child.on("close", (code) =>
-      code === 0
+    child.on("close", (code) => {
+      job.pid = null;
+      if (job.cancelRequested) return reject(new Error("cancelled"));
+      return code === 0
         ? resolve()
-        : reject(new Error(`${path.basename(String(cmd))} exit ${code}: ${errTail.slice(-300)}`)),
-    );
+        : reject(new Error(`${path.basename(String(cmd))} exit ${code}: ${errTail.slice(-300)}`));
+    });
   });
 }
 
@@ -644,10 +655,16 @@ async function runJob(job: CompressorJob): Promise<void> {
       fallbacks: job.fallbacks,
     });
   } catch (e) {
-    job.error = String((e as Error).message || e);
-    job.stage = "error";
-    logger.error("compressor.error", { id: job.id, error: job.error });
+    if (job.cancelRequested) {
+      job.error = "cancelled";
+      job.stage = "stopped";
+    } else {
+      job.error = String((e as Error).message || e);
+      job.stage = "error";
+      logger.error("compressor.error", { id: job.id, error: job.error });
+    }
   } finally {
+    job.pid = null;
     try {
       removePath(job.inputPath);
     } catch {
@@ -684,7 +701,7 @@ async function encodeWithMethod(
     // Оркестратор: параллелит SVT-AV1 по сценам. Фейл → следующий кандидат.
     const exe = String(hw.externals.av1an);
     const args = av1anArgs(job, { outFile });
-    await runProc(exe, args, onProg, job.durationSec);
+    await runProc(job, exe, args, onProg, job.durationSec);
     return quoteCmd(exe, args);
   }
   if (method === "rav1e" && !hw.ffmpegEncoders.includes("librav1e")) {
@@ -700,7 +717,7 @@ async function encodeWithMethod(
       "--speed",
       String(clamp(parseInt(job.speed, 10) || 6, 0, 10)),
     ];
-    await runProc(exe, args, onProg, job.durationSec);
+    await runProc(job, exe, args, onProg, job.durationSec);
     const mux = [
       "-y",
       "-i",
@@ -716,7 +733,7 @@ async function encodeWithMethod(
       "-shortest",
       outFile,
     ];
-    await runProc(ffmpeg, mux, null, 0);
+    await runProc(job, ffmpeg, mux, null, 0);
     try {
       fs.rmSync(ivf, { force: true });
     } catch {
@@ -727,7 +744,7 @@ async function encodeWithMethod(
   if (method === "nvencc" || method === "qsvencc" || method === "vceencc") {
     const exe = String(hw.externals[method]);
     const args = rigayaArgs(job, { outFile });
-    await runProc(exe, args, onProg, job.durationSec);
+    await runProc(job, exe, args, onProg, job.durationSec);
     return quoteCmd(exe, args);
   }
   // ffmpeg-методы: svtav1/x265/x264/aom/nvenc/qsv/amf
@@ -742,6 +759,7 @@ async function encodeWithMethod(
         setStage(job, "encode", 0.05, 0.45);
         const p1 = ffmpegArgs(job, ffEnc, { pass: 1 });
         await runProc(
+          job,
           ffmpeg,
           [...p1.slice(0, -3), "-passlogfile", ctx.passLog, ...p1.slice(-3)],
           onProg,
@@ -750,11 +768,11 @@ async function encodeWithMethod(
         setStage(job, "encode", 0.5, 0.5);
         const p2 = ffmpegArgs(job, ffEnc, { pass: 2, outFile });
         const p2full = [...p2.slice(0, -1), "-passlogfile", ctx.passLog, p2[p2.length - 1]];
-        await runProc(ffmpeg, p2full, onProg, job.durationSec);
+        await runProc(job, ffmpeg, p2full, onProg, job.durationSec);
         return quoteCmd(ffmpeg, p2full);
       }
       const args = ffmpegArgs(job, ffEnc, { outFile });
-      await runProc(ffmpeg, args, onProg, job.durationSec);
+      await runProc(job, ffmpeg, args, onProg, job.durationSec);
       job.ffEnc = ffEnc;
       return quoteCmd(ffmpeg, args);
     } catch (e) {
@@ -778,13 +796,64 @@ function getJob(id: string): CompressorJob | null {
   return jobs.get(id) || null;
 }
 
+/**
+ * Отменить активное задание: раньше отменить компрессию было нельзя вообще
+ * (см. AUDIT_REPORT.md, раздел 10) — единственный способ был закрыть
+ * приложение целиком. Помечаем job и убиваем текущий ffmpeg-процесс, если он
+ * уже запущен; если ещё не запущен (между попытками методов) — runProc не
+ * стартует следующий (проверка cancelRequested в начале функции).
+ */
+function cancelJob(id: string): boolean {
+  const job = jobs.get(id);
+  if (!job || job.done) return false;
+  job.cancelRequested = true;
+  if (job.pid) {
+    try {
+      if (process.platform === "win32") spawn("taskkill", ["/PID", String(job.pid), "/T", "/F"]);
+      else process.kill(job.pid, "SIGKILL");
+    } catch {
+      /* процесс мог уже завершиться сам */
+    }
+  }
+  logger.action("compressor.cancelled", { id });
+  return true;
+}
+
 export {
   jobs,
   startJob,
   getJob,
+  cancelJob,
   SYSTEM_PRESETS,
   normalizeParams,
   engineCandidates,
   probeDuration,
   probeVideoInfo,
 };
+
+// --- Диспетчер фоновых задач (server/ts/taskRegistry.ts) ---
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const taskRegistry = require("./taskRegistry") as typeof import("./taskRegistry");
+taskRegistry.registerProvider({
+  engine: "compressor",
+  list: () =>
+    [...jobs.values()].map((j) => {
+      // j.done остаётся false при stage "error"/"stopped" (это НЕ "успех") —
+      // для Task Manager важно только "активна ли задача ещё".
+      const finished = j.done || j.stage === "error" || j.stage === "stopped";
+      return {
+        id: j.id,
+        engine: "compressor",
+        label: j.name,
+        stage: j.stage,
+        progress: Math.round(j.progress || 0),
+        createdAt: j.createdAt,
+        done: finished,
+        error: j.error || null,
+        canCancel: !finished,
+        canPause: false,
+        paused: false,
+      };
+    }),
+  cancel: (id) => cancelJob(id),
+});

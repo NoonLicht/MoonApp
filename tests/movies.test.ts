@@ -8,6 +8,11 @@ import os from "os";
 beforeAll(() => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "pa-movies-"));
   process.env.MOONAPP_STORAGE = tmp;
+  // TMDB всегда есть ключ "из коробки" — жёсткий запасной ключ в server/ts/tmdb.ts,
+  // не только server/bundled-keys.js (см. HARDCODED_TMDB_KEY). Тест ниже нарочно
+  // проверяет ветку "ключа нет вообще", поэтому явно отключаем вшитый ключ тем же
+  // способом, что tmdb.test.ts.
+  process.env.MOONAPP_BUNDLED_KEYS = "moonapp-no-bundled-keys";
 });
 
 /** stmts из server/db после установки MOONAPP_STORAGE. */
@@ -320,7 +325,7 @@ describe("movies — форум-трекер и дорожки (валидаци
       server.close();
     }
   });
-it("tracker/preset: переключает площадку целиком, неизвестный id → 400", async () => {
+  it("tracker/preset: переключает площадку целиком, неизвестный id → 400", async () => {
     const { server, call } = await bootTracker();
     try {
       const bad = await call("/tracker/preset", {

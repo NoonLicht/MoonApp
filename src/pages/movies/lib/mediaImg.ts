@@ -24,8 +24,8 @@ export function imgUrl(url?: string | null): string {
   if (!url) return "";
   if (ALREADY_PROXIED.test(url)) return url;
   const m = TMDB_IMG.exec(url);
-  if (!m) return url;
-  return `/api/movies/image?s=${encodeURIComponent(m[1])}&p=${encodeURIComponent(m[2])}`;
+  if (m) return `/api/movies/image?s=${encodeURIComponent(m[1])}&p=${encodeURIComponent(m[2])}`;
+  return url;
 }
 
 /** То же, но строкой CSS для инлайнового background-image. */

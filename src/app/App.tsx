@@ -1,5 +1,15 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { Sun, Moon, Contrast, Minus, Square, X, Shield, FolderOpen } from "lucide-react";
+import {
+  Sun,
+  Moon,
+  Contrast,
+  Minus,
+  Square,
+  X,
+  Shield,
+  FolderOpen,
+  ListChecks,
+} from "lucide-react";
 import { I18nProvider, useI18n } from "@/app/i18n";
 import { ContextMenuProvider } from "@/components/ContextMenu";
 import { ToolbarContext, PageHostContext, PageBusyContext } from "@/components/Toolbar";
@@ -12,6 +22,7 @@ import {
 } from "@/lib/pageCache";
 import { initTelemetry, setCurrentPage } from "@/lib/telemetry";
 import ProxyPanel from "@/pages/bypass/parts/ProxyPanel";
+import TaskManagerPanel from "@/components/TaskManagerPanel";
 import { api } from "@/api/client";
 import { PAGES } from "@/app/navigation";
 import type { PageId } from "@/app/navigation";
@@ -115,6 +126,8 @@ interface ShellProps {
   opaqueBg: boolean;
   proxyPanelVisible: boolean;
   setProxyPanelVisible: React.Dispatch<React.SetStateAction<boolean>>;
+  taskManagerVisible: boolean;
+  setTaskManagerVisible: React.Dispatch<React.SetStateAction<boolean>>;
   keepPagesAlive: boolean;
   keepPagesLimit: number;
   unloadIdleMinutes: number;
@@ -159,6 +172,8 @@ function Shell({
   opaqueBg,
   proxyPanelVisible,
   setProxyPanelVisible,
+  taskManagerVisible,
+  setTaskManagerVisible,
   keepPagesAlive,
   keepPagesLimit,
   unloadIdleMinutes,
@@ -254,10 +269,7 @@ function Shell({
     .join(" ");
 
   return (
-    <div
-      className={shellCls}
-      dir={lang === "ar" ? "rtl" : "ltr"}
-    >
+    <div className={shellCls} dir={lang === "ar" ? "rtl" : "ltr"}>
       <div className="mesh" aria-hidden="true">
         <span className="blob blob-a" />
         <span className="blob blob-b" />
@@ -266,7 +278,19 @@ function Shell({
       <PageBusyContext.Provider value={reportBusy}>
         <ToolbarContext.Provider value={setPageToolbar}>
           <header className="top-toolbar titlebar-drag">
-            <div className="tb-side-left" aria-hidden="true" />
+            <div className="tb-side-left">
+              {/* Диспетчер фоновых задач: единый список job'ов всех движков
+                  (компрессия/апскейл/озвучка/лекции/архив) с отменой/паузой —
+                  см. src/components/TaskManagerPanel.tsx. */}
+              <button
+                className="task-mgr-toggle no-drag"
+                onClick={() => setTaskManagerVisible((v) => !v)}
+                title={t("taskmgr.title")}
+                aria-label={t("taskmgr.title")}
+              >
+                <ListChecks size={15} />
+              </button>
+            </div>
             <div className="tb-center">
               <div className="tb-title">
                 <MetaIcon size={15} strokeWidth={2.2} />
@@ -275,7 +299,10 @@ function Shell({
               <div className="tb-dynamic">{toolbarNode}</div>
             </div>
             <div className="tb-side-right">
-              {/* Открыть папку, где установлено приложение (см. electron/main.js → shell:open-app-dir). */}
+              {/* Открыть папку с данными приложения: там лежит storage (настройки,
+                  секреты, скачанные паки и модели). В собранной версии это
+                  %APPDATA%\MoonApp, в dev — корень проекта (см. electron/main.js →
+                  shell:open-app-dir → родитель STORAGE_DIR). */}
               <button
                 className="app-dir-toggle no-drag"
                 onClick={() => window.appBridge?.openAppDir?.()}
@@ -327,6 +354,7 @@ function Shell({
           </header>
 
           {proxyPanelVisible && <ProxyPanel onClose={() => setProxyPanelVisible(false)} />}
+          {taskManagerVisible && <TaskManagerPanel onClose={() => setTaskManagerVisible(false)} />}
 
           {/* Стопка живых страниц: активная видима, остальные скрыты, но сохраняют
             состояние (прогресс задач, ввод, позицию скролла). */}
@@ -384,6 +412,7 @@ export default function App() {
   const [opaqueBg, setOpaqueBg] = useState(false);
   const [toolbarNodes, setToolbarNodes] = useState<Record<string, React.ReactNode>>({});
   const [proxyPanelVisible, setProxyPanelVisible] = useState(false);
+  const [taskManagerVisible, setTaskManagerVisible] = useState(false);
   // keep-alive: держать ли страницы смонтированными и как ограничивать память.
   const [keepPagesAlive, setKeepPagesAlive] = useState(true);
   const [keepPagesLimit, setKeepPagesLimit] = useState(KEEP_ALIVE_DEFAULT_LIMIT);
@@ -497,6 +526,8 @@ export default function App() {
           opaqueBg={opaqueBg}
           proxyPanelVisible={proxyPanelVisible}
           setProxyPanelVisible={setProxyPanelVisible}
+          taskManagerVisible={taskManagerVisible}
+          setTaskManagerVisible={setTaskManagerVisible}
           keepPagesAlive={keepPagesAlive}
           keepPagesLimit={keepPagesLimit}
           unloadIdleMinutes={unloadIdleMinutes}

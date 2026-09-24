@@ -20,7 +20,7 @@
   "common": {
     "saved": "guardado",
     "clear": "Borrar",
-    "openAppDir": "Abrir la carpeta de la aplicación",
+    "openAppDir": "Abrir la carpeta de datos de la aplicación",
     "minimize": "Minimizar",
     "maximize": "Maximizar",
     "close": "Cerrar",

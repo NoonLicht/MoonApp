@@ -27,10 +27,23 @@ function applyHardwareAcceleration() {
     const raw = JSON.parse(fs.readFileSync(path.join(STORAGE_DIR, "settings.json"), "utf8"));
     if (raw?.performance?.hardwareAcceleration === false) {
       app.disableHardwareAcceleration();
+      return;
     }
   } catch {
-    // Настроек нет — остаётся дефолт.
+    // Настроек нет — остаётся дефолт (ускорение включено).
   }
+  // По умолчанию Chromium сверяет GPU/драйвер со своим внутренним
+  // блок-листом и на некоторых связках (особенно ноутбуки с гибридной
+  // графикой, старые/нестандартные драйверы) молча откатывается на
+  // программный рендер — окно выглядит нормально, но нагрузка на GPU при
+  // скролле/анимациях не растёт вообще, а частота кадров не разгоняется
+  // выше ~60 даже на 120/180-герцовых мониторах. ignore-gpu-blocklist
+  // заставляет Chromium использовать GPU-композитинг несмотря на блок-лист;
+  // enable-gpu-rasterization/zero-copy — снижают CPU-часть конвейера отрисовки,
+  // чтобы композитор реально успевал за высокой частотой обновления.
+  app.commandLine.appendSwitch("ignore-gpu-blocklist");
+  app.commandLine.appendSwitch("enable-gpu-rasterization");
+  app.commandLine.appendSwitch("enable-zero-copy");
 }
 applyHardwareAcceleration();
 
@@ -912,6 +925,17 @@ app.whenReady().then(() => {
 
 app.on("before-quit", () => {
   quitting = true;
+  // Остановить всё активное (компрессия/апскейл/озвучка/веб-архив) одним
+  // вызовом — раньше при резком закрытии приложения дочерние процессы
+  // (ffmpeg/python с TTS-моделью/whisper) могли оставаться висеть в фоне,
+  // потому что ничего их централизованно не гасило (см. AUDIT_REPORT.md,
+  // раздел 7). Server и Electron main — один и тот же Node-процесс
+  // (см. require("../server") выше), поэтому вызов прямой и синхронный.
+  try {
+    require("../server/taskRegistry").killAllActive();
+  } catch {
+    /* сервер мог ещё не подняться — до старта убивать нечего */
+  }
   try {
     if (tokenFile) fs.rmSync(tokenFile, { force: true });
   } catch {
@@ -919,17 +943,21 @@ app.on("before-quit", () => {
   }
 });
 
-// Открыть каталог, в котором установлено приложение (кнопка в верхней панели,
-// слева от кнопки прокси). В собранной версии — папка рядом с exe, в dev — корень проекта.
+// Открыть папку, в которой лежат данные приложения (storage). Кнопка в верхней
+// панели: раньше она открывала каталог установки, что путало — после переезда
+// данных в %APPDATA% пользователь искал настройки/паки именно там.
+// Открываем РОДИТЕЛЯ storage: в собранной версии это %APPDATA%\MoonApp
+// (userData, где лежат storage/, куки Chromium и служебные файлы), в dev —
+// корень проекта.
 ipcMain.handle("app:autolaunch", () => applyAutoLaunch());
 
 ipcMain.handle("shell:open-app-dir", () => {
   try {
     const { shell } = require("electron");
-    const dir = app.isPackaged ? path.dirname(app.getPath("exe")) : path.join(__dirname, "..");
+    const dir = path.dirname(STORAGE_DIR);
     void shell.openPath(dir);
-    mlog("action", "shell.open_app_dir", { dir });
-    return { ok: true, dir };
+    mlog("action", "shell.open_app_dir", { dir, storage: STORAGE_DIR });
+    return { ok: true, dir, storageDir: STORAGE_DIR };
   } catch (e) {
     mlog("error", "shell.open_app_dir_failed", { error: e?.message || String(e) });
     return { ok: false, error: e?.message || String(e) };
@@ -1029,7 +1057,6 @@ async function trackerCookies(ses, origin) {
     return !d || d === host || d.endsWith("." + host) || host.endsWith("." + d);
   });
 }
-
 
 ipcMain.handle("tracker:login-window", async (_e, opts) => {
   const url = String((opts && opts.url) || "");

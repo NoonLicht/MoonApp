@@ -308,9 +308,9 @@ function ApiKeysPanel() {
 }
 
 /**
- * Строка API-ключа TMDB в разделе «Фильмы и Сериалы».
- * Ключ уходит один раз POST-ом, на сервере шифруется (storage/secrets.json);
- * статус «задан/не задан» берётся с бэкенда (GET /api/movies/status).
+ * Строка API-ключа TMDB в разделе «Фильмы и Сериалы». Ключ уходит один раз
+ * POST-ом, на сервере шифруется (storage/secrets.json); статус «задан/не задан»
+ * берётся из GET /api/movies/status (hasKey/keySource).
  */
 function TmdbKeyRow() {
   const { t } = useI18n();
@@ -339,7 +339,7 @@ function TmdbKeyRow() {
   };
 
   return (
-    <Row label={t("moviesSettings.keyLabel")} hint={t("moviesSettings.keyHint")}>
+    <Row label={`${t("moviesSettings.keyLabel")} (TMDB)`} hint={t("moviesSettings.keyHint")}>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <Badge tone={configured ? "teal" : "neutral"} mono>
           {configured ? t("moviesSettings.keyConfigured") : t("moviesSettings.keyMissing")}

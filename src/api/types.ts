@@ -514,6 +514,11 @@ export interface ProxyCoreStatus {
   error: string;
   socksPort: number;
   httpPort: number;
+  // Раздельная готовность инбаундов: SOCKS нужен yt-dlp/агенту, HTTP — TMDB/LLM
+  // и другому fetch-трафику. running=true означает "готовы оба"; если готов
+  // только один — see server/proxyCore.js waitCoreReady().
+  socksReady?: boolean;
+  httpReady?: boolean;
   node: {
     protocol: string;
     tag: string;
@@ -840,7 +845,12 @@ export interface MediaStatus {
   hasKey: boolean;
   keySource: MediaKeySource;
   engine: { installed: boolean; client?: boolean; error?: string };
-  settings: { language?: string; region?: string; showAdult?: boolean; cacheMinutes?: number };
+  settings: {
+    language?: string;
+    region?: string;
+    showAdult?: boolean;
+    cacheMinutes?: number;
+  };
 }
 
 /* --- Торрент-плеер (источник задаёт пользователь: magnet/.torrent) --- */
@@ -1713,4 +1723,22 @@ export interface UpPresets {
   system: UpPreset[];
   custom: UpPreset[];
   defaults: Record<string, unknown>;
+}
+
+/* ------------------- Диспетчер фоновых задач (server/ts/taskRegistry.ts) ------------------- */
+
+/** Задача любого движка (компрессия/апскейл/озвучка/лекции/архив) в едином виде. */
+export interface TmTask {
+  id: string;
+  engine: string;
+  label: string;
+  stage: string;
+  /** 0..100, либо -1, если прогресс неизвестен (напр. живая запись лекции). */
+  progress: number;
+  createdAt: number;
+  done: boolean;
+  error?: string | null;
+  canCancel: boolean;
+  canPause: boolean;
+  paused: boolean;
 }

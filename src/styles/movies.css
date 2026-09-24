@@ -55,6 +55,13 @@
   flex: 0 0 auto;
 }
 
+.mv-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 .mv-seg button {
   display: inline-flex;
   align-items: center;

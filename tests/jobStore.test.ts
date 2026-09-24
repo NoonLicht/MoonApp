@@ -56,9 +56,23 @@ function makeJobs(list: Job[]): Map<string, Job> {
   return new Map(list.map((j) => [j.id, j]));
 }
 
-const done = (id: string, createdAt: number): Job => ({ id, done: true, createdAt });
-const failed = (id: string, createdAt: number): Job => ({ id, stage: "error", createdAt });
-const running = (id: string, createdAt: number): Job => ({ id, stage: "encode", createdAt });
+// Смещение от текущего времени: trimJobs с 2026-09 считает незавершённые
+// задания старше 24ч "зависшими" и вытесняет их наравне с готовыми/упавшими
+// (см. STALE_JOB_MS в server/ts/jobStore.ts) — абсолютные createdAt=1,2,3…
+// (1970 год) раньше это не задевало, а теперь попадали бы под "зависшее".
+// База — реальное "сейчас", числа-аргументы ниже остаются просто порядком.
+const NOW_BASE = Date.now();
+const done = (id: string, createdAt: number): Job => ({ id, done: true, createdAt: NOW_BASE + createdAt });
+const failed = (id: string, createdAt: number): Job => ({
+  id,
+  stage: "error",
+  createdAt: NOW_BASE + createdAt,
+});
+const running = (id: string, createdAt: number): Job => ({
+  id,
+  stage: "encode",
+  createdAt: NOW_BASE + createdAt,
+});
 
 describe("trimJobs — ограничение хранилища заданий", () => {
   it("ничего не делает, пока заданий не больше лимита", () => {
@@ -105,6 +119,22 @@ describe("trimJobs — ограничение хранилища заданий"
     jobStore().trimJobs(jobs, 4);
     expect(jobs.size).toBe(4);
     expect([...jobs.keys()].sort()).toEqual(["j6", "j7", "j8", "j9"]);
+  });
+
+  it("вытесняет незавершённое задание, зависшее дольше 24ч (иначе Map растёт бесконечно)", () => {
+    const stale: Job = { id: "stuck", stage: "encode", createdAt: NOW_BASE - 25 * 60 * 60 * 1000 };
+    const fresh = running("fresh", 1);
+    const jobs = makeJobs([stale, fresh]);
+    // Лимит специально ниже размера, чтобы сработала ветка вытеснения.
+    jobStore().trimJobs(jobs, 1);
+    expect(jobs.has("stuck")).toBe(false);
+    expect(jobs.has("fresh")).toBe(true);
+  });
+
+  it("не трогает незавершённое задание младше 24ч, даже сверх лимита", () => {
+    const jobs = makeJobs([running("r1", 1), running("r2", 2)]);
+    jobStore().trimJobs(jobs, 1);
+    expect(jobs.size).toBe(2);
   });
 });
 

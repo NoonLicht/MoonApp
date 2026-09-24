@@ -59,6 +59,10 @@ describe("Встроенный просмотр архива (/api/archive/:id/*
   beforeAll(async () => {
     storage = fs.mkdtempSync(path.join(os.tmpdir(), "moonapp-archview-"));
     process.env.MOONAPP_STORAGE = storage;
+    // Этот тест намеренно архивирует локальную фикстуру на 127.0.0.1 — не
+    // реальный SSRF, а проверка самого краулера (см. isBlockedHost в
+    // server/ts/sitebak.ts и tests/sitebakSsrf.test.ts, где защита проверяется).
+    process.env.MOONAPP_ALLOW_LOCAL_CRAWL = "1";
 
     // Локальный «сайт»: главная со ссылкой на вторую страницу и картинкой.
     const page1 =
@@ -139,6 +143,7 @@ describe("Встроенный просмотр архива (/api/archive/:id/*
   });
 
   afterAll(() => {
+    delete process.env.MOONAPP_ALLOW_LOCAL_CRAWL;
     try {
       srv?.close();
       site?.close();

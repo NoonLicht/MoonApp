@@ -53,4 +53,44 @@ describe("perPageProxy — решение (чистая логика)", () => {
     expect(full).toHaveProperty("proxied");
     expect(full).toHaveProperty("source");
   });
+  describe("perPageProxy — fetch без прокси", () => {
+    it("pageFetch без активного движка зовёт обычный fetch и не подменяет init", async () => {
+      const m = await mw();
+      const calls: Array<{ url: unknown; init: RequestInit | undefined }> = [];
+      const orig = globalThis.fetch;
+      globalThis.fetch = (async (url: unknown, init?: RequestInit) => {
+        calls.push({ url, init });
+        return new Response("{}", { status: 200 });
+      }) as typeof globalThis.fetch;
+      try {
+        const res = await m.pageFetch("https://example.com/x", { headers: { a: "b" } });
+        expect(res.status).toBe(200);
+        expect(calls).toHaveLength(1);
+        expect(calls[0].url).toBe("https://example.com/x");
+        expect(calls[0].init?.headers).toEqual({ a: "b" });
+        // dispatcher добавляется ТОЛЬКО когда страница реально проксируется.
+        expect(calls[0].init && "dispatcher" in calls[0].init).toBe(false);
+      } finally {
+        globalThis.fetch = orig;
+      }
+    });
+
+    it("getUndiciDispatcherForPage без движка не бросает", async () => {
+      const m = await mw();
+      expect(() => m.getUndiciDispatcherForPage("movies")).not.toThrow();
+    });
+  });
+
+  describe("perPageProxy — контракт упаковки", () => {
+    it("undici объявлен в dependencies (иначе в сборке проксирование молча выключится)", () => {
+      // Регресс на реальный дефект: undici был только транзитивной devDependency
+      // (@electron/rebuild → node-gyp), electron-builder его в app.asar не клал.
+      // В dev-режиме запросы шли через прокси, в установленном приложении —
+      // напрямую под DPI-блокировку: «прокси подключён, а страница фильмов пустая».
+      const pkg = JSON.parse(
+        fs.readFileSync(path.resolve(__dirname, "..", "package.json"), "utf8"),
+      );
+      expect(pkg.dependencies?.undici, "undici должен быть в dependencies").toBeTruthy();
+    });
+  });
 });

@@ -103,6 +103,8 @@ interface SitebakJob {
   stats: Record<string, unknown>;
   createdAt: number;
   opts: CrawlOptions;
+  /** Пользователь запросил остановку — цикл обхода страниц проверяет между пачками. */
+  cancelled?: boolean;
 }
 
 /** Запись внутри архива: buf — содержимое (сжатое или как есть), text — «сжимать». */
@@ -230,7 +232,44 @@ function normalizeUrl(u: string): string | null {
   }
 }
 
-// Подходит ли ссылка под правила обхода (домен/поддомен/путь).
+/**
+ * SSRF-защита: краулер ходит по ссылкам СО СТРАНИЦЫ (не только по URL,
+ * который ввёл пользователь) — злонамеренная/скомпрометированная страница
+ * может подсунуть ссылку на localhost/внутреннюю сеть, и приложение (сервер
+ * слушает только 127.0.0.1, но сам он и есть "внутренняя сеть" для своих
+ * же API, плюс роутер/NAS/принтер и другие устройства в LAN пользователя)
+ * сходит туда от имени пользователя. Проверка по буквальному хосту/IP —
+ * НЕ защищает от DNS rebinding (домен, который резолвится в приватный IP
+ * только ПОСЛЕ первой проверки), это осознанный компромисс: полная защита
+ * требует кастомного DNS-резолвера на каждый fetch, что явно избыточно для
+ * desktop-приложения одного пользователя.
+ */
+const BLOCKED_HOSTNAMES = new Set(["localhost", "0.0.0.0", "::1", "metadata.google.internal"]);
+export function isBlockedHost(hostname: string): boolean {
+  // Тесты поднимают одноразовые фикстуры на 127.0.0.1 и специально
+  // архивируют их — это не реальный SSRF, а проверка самого краулера.
+  // Оверрайд только по явной переменной окружения, по умолчанию блокировка
+  // работает как обычно (тот же паттерн, что MOONAPP_BUNDLED_KEYS в tmdb.ts).
+  if (process.env.MOONAPP_ALLOW_LOCAL_CRAWL === "1") return false;
+  const h = hostname.toLowerCase().replace(/^\[|\]$/g, "");
+  if (BLOCKED_HOSTNAMES.has(h)) return true;
+  // IPv4 loopback/private/link-local (включая 169.254.169.254 — облачные метаданные).
+  const ipv4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(h);
+  if (ipv4) {
+    const [a, b] = [Number(ipv4[1]), Number(ipv4[2])];
+    if (a === 127 || a === 10 || a === 0) return true;
+    if (a === 169 && b === 254) return true;
+    if (a === 192 && b === 168) return true;
+    if (a === 172 && b >= 16 && b <= 31) return true;
+    return false;
+  }
+  // IPv6 loopback/private/link-local.
+  if (h === "::1" || h.startsWith("fe80:") || h.startsWith("fc") || h.startsWith("fd")) return true;
+  return false;
+}
+
+// Подходит ли ссылка под правила обхода (домен/поддомен/путь) и не ведёт ли
+// она во внутреннюю сеть (см. isBlockedHost выше).
 function inScope(candidate: string, base: string, opts: { domainScope?: string }): boolean {
   try {
     const a = new URL(candidate);
@@ -245,6 +284,7 @@ function inScope(candidate: string, base: string, opts: { domainScope?: string }
       return false;
     if (scope !== "path" && !(sameHost || isSub)) return false;
     if (!/^https?:$/.test(a.protocol)) return false;
+    if (isBlockedHost(a.hostname)) return false;
     return true;
   } catch {
     return false;
@@ -472,6 +512,20 @@ function getJob(id: string): SitebakJob | null {
   return jobs.get(id) || null;
 }
 
+/**
+ * Остановить активный краул: раньше это было нельзя вообще (см.
+ * AUDIT_REPORT.md, раздел 10) — только ждать естественного завершения или
+ * закрывать приложение. Уже посещённые страницы упаковываются в частичный
+ * .sitebak (см. проверку job.cancelled в цикле обхода выше).
+ */
+function cancelJob(id: string): boolean {
+  const job = jobs.get(id);
+  if (!job || job.done) return false;
+  job.cancelled = true;
+  logger.action("sitebak.cancelled", { id });
+  return true;
+}
+
 // Очередь заданий (С5): одно активное задание на модуль.
 let active = false;
 const pending: Array<() => unknown> = [];
@@ -574,6 +628,12 @@ async function runCrawl(job: SitebakJob): Promise<void> {
     };
 
     while (queue.length && visited.size < o.maxPages) {
+      // Остановка по запросу пользователя (Диспетчер фоновых задач): проверяем
+      // между пачками — раньше краул нельзя было прервать вообще, только
+      // ждать естественного завершения или закрывать приложение целиком.
+      // Уже посещённые страницы всё равно упаковываются в валидный .sitebak
+      // ниже (частичный архив полезнее, чем полная потеря прогресса).
+      if (job.cancelled) break;
       const batch = queue.splice(0, o.concurrency);
       const results = await Promise.allSettled(
         batch.map(async (item) => {
@@ -955,6 +1015,7 @@ function deleteArchive(id: string): boolean {
 export {
   startCrawl,
   getJob,
+  cancelJob,
   jobs,
   MAGIC,
   readBak,
@@ -963,3 +1024,30 @@ export {
   loadArchiveList,
   deleteArchive,
 };
+
+// --- Диспетчер фоновых задач (server/ts/taskRegistry.ts) ---
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const taskRegistry = require("./taskRegistry") as typeof import("./taskRegistry");
+taskRegistry.registerProvider({
+  engine: "archive",
+  list: () =>
+    [...jobs.values()].map((j) => {
+      // j.done остаётся false при stage "error" (не выставляется в catch) —
+      // для Task Manager важно только "активна ли задача ещё".
+      const finished = j.done || j.stage === "error";
+      return {
+        id: j.id,
+        engine: "archive",
+        label: j.name || j.url,
+        stage: j.stage,
+        progress: Math.round(j.progress || 0),
+        createdAt: j.createdAt,
+        done: finished,
+        error: j.error || null,
+        canCancel: !finished,
+        canPause: false,
+        paused: false,
+      };
+    }),
+  cancel: (id) => cancelJob(id),
+});

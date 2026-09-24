@@ -106,26 +106,72 @@ function currentPage() {
 /* --------------------------- Клиенты внешней сети ------------------------ */
 
 // ProxyAgent из undici кэшируем по URL (создание не бесплатно).
-let undiciCache = { url: null, agent: null, failed: false };
+let undiciCache = { url: null, agent: null };
 
 /**
- * undici-диспетчер для нативного fetch/SDK (LLM-провайдеры).
+ * Ленивая загрузка ProxyAgent из undici.
+ *
+ * ПОЧЕМУ ЭТО КРИТИЧНО И ПОЧЕМУ ТУТ ОТДЕЛЬНАЯ ФУНКЦИЯ: раньше `undici` был только
+ * транзитивной зависимостью devDependency (@electron/rebuild → node-gyp → undici),
+ * и в собранное приложение electron-builder его не клал (в dev-дереве он есть, в
+ * app.asar — нет). Тогда `require("undici")` бросал MODULE_NOT_FOUND, catch
+ * помечал прокси «сломанным» навсегда — и ВСЕ запросы страниц (TMDB, LLM,
+ * форум) уходили напрямую, то есть под блокировку. Снаружи это выглядело ровно
+ * как «в VS Code всё работает, а в установленном приложении страница фильмов
+ * пустая и пишет network_error», хотя прокси был подключён и пинговался.
+ *
+ * Теперь undici объявлен в dependencies package.json (и проверяется в
+ * scripts/check-pack.js), а здесь результат загрузки запоминается, и о
+ * недоступности модуля пишется ОДНА понятная строка в журнал вместо серии
+ * необъяснимых network_error.
+ *
+ * → класс ProxyAgent, либо null (модуля нет/не загрузился).
+ */
+let proxyAgentClass; // undefined — ещё не пробовали, null — недоступен
+let undiciWarned = false;
+
+function loadProxyAgent() {
+  if (proxyAgentClass !== undefined) return proxyAgentClass;
+  try {
+    const mod = require("undici");
+    proxyAgentClass = mod && mod.ProxyAgent ? mod.ProxyAgent : null;
+  } catch {
+    proxyAgentClass = null;
+  }
+  if (!proxyAgentClass && !undiciWarned) {
+    undiciWarned = true;
+    // Диагностика в журнал, а не в тишину: именно отсутствие этого модуля в
+    // упакованной сборке давало «fetch failed» на всех страницах, ходящих в сеть.
+    try {
+      require("../logger").warn("proxy.undici_missing", {
+        hint: "undici должен быть в dependencies package.json, иначе сборка ходит мимо прокси",
+      });
+    } catch {
+      /* журнал недоступен (тесты/ранняя инициализация) — не роняем приложение */
+    }
+  }
+  return proxyAgentClass;
+}
+
+/**
+ * undici-диспетчер для нативного fetch/SDK (LLM-провайдеры, TMDB, форум).
  * undici 6 умеет только HTTP-прокси → используем HTTP-inbound ядра (10809),
  * который туннелирует https через CONNECT. null — если прокси не нужен/нет undici.
  */
 function getUndiciDispatcherForPage(page) {
   const decision = resolveProxyForPage(page || currentPage());
   if (!decision.proxied || !decision.httpProxyUrl) return null;
-  if (undiciCache.failed) return null;
   if (undiciCache.url === decision.httpProxyUrl && undiciCache.agent) return undiciCache.agent;
+  const ProxyAgent = loadProxyAgent();
+  // Модуля нет — предупреждение уже в журнале (loadProxyAgent); запрос пойдёт
+  // напрямую, но это больше не «немой» сбой: причина видна в логах.
+  if (!ProxyAgent) return null;
   try {
-    const { ProxyAgent } = require("undici");
     const agent = new ProxyAgent(decision.httpProxyUrl);
-    undiciCache = { url: decision.httpProxyUrl, agent, failed: false };
+    undiciCache = { url: decision.httpProxyUrl, agent };
     return agent;
   } catch {
-    // undici недоступен — не роняем приложение, просто ходим напрямую.
-    undiciCache = { url: null, agent: null, failed: true };
+    // Некорректный URL прокси (или сломанный агент) — ходим напрямую.
     return null;
   }
 }

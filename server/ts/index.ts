@@ -51,6 +51,7 @@ const myspaceTasksRouter = require("./routes/myspace-tasks") as express.Router;
 const lectureRouter = require("./routes/lecture") as express.Router;
 const zapretRouter = require("./routes/zapret") as express.Router;
 const tgwsRouter = require("./routes/tgws") as express.Router;
+const tasksRouter = require("./routes/tasks") as express.Router;
 const perPageProxy = require("./middleware/perPageProxy") as {
   perPageProxyMiddleware: express.RequestHandler;
 };
@@ -245,6 +246,7 @@ function createApp(): express.Express {
   app.use("/api/lecture", lectureRouter);
   app.use("/api/zapret", zapretRouter);
   app.use("/api/tgws", tgwsRouter);
+  app.use("/api/tasks", tasksRouter);
 
   // Раздача собранного фронта (dist), если он собран.
   const dist = path.join(__dirname, "..", "dist");

@@ -20,7 +20,7 @@
   "common": {
     "saved": "تم الحفظ",
     "clear": "مسح",
-    "openAppDir": "فتح مجلد التطبيق",
+    "openAppDir": "فتح مجلد بيانات التطبيق",
     "minimize": "تصغير",
     "maximize": "تكبير",
     "close": "إغلاق",

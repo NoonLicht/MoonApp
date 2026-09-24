@@ -20,7 +20,7 @@
   "common": {
     "saved": "enregistré",
     "clear": "Effacer",
-    "openAppDir": "Ouvrir le dossier de l'application",
+    "openAppDir": "Ouvrir le dossier de données de l'application",
     "minimize": "Réduire",
     "maximize": "Agrandir",
     "close": "Fermer",

@@ -1,5 +1,15 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
-import { Repeat, Check, AlertTriangle, RefreshCw, FileUp, Terminal } from "lucide-react";
+import {
+  Repeat,
+  Check,
+  AlertTriangle,
+  RefreshCw,
+  FileUp,
+  Terminal,
+  Copy,
+  Download,
+  X,
+} from "lucide-react";
 import {
   Glass,
   Btn,
@@ -11,6 +21,7 @@ import {
   ProgressBar,
 } from "@/components/ui";
 import { useI18n } from "@/app/i18n";
+import { useContextMenu, copyToClipboard } from "@/components/ContextMenu";
 import { api } from "@/api/client";
 import { saveBlob } from "@/lib/download";
 import type { ConvertTools, ConvertResult, ConvertInstallStatus } from "@/api/types";
@@ -32,6 +43,7 @@ function fmtSize(n: number | null | undefined): string {
  */
 export default function ConverterPage() {
   const { t } = useI18n();
+  const menu = useContextMenu();
 
   const [tools, setTools] = useState<ConvertTools | null>(null);
   const [file, setFile] = useState<File | null>(null);
@@ -218,7 +230,21 @@ export default function ConverterPage() {
       </div>
 
       {file && category && (
-        <Glass className="media-preview">
+        <Glass
+          className="media-preview"
+          onContextMenu={(e) =>
+            menu.open(e, [
+              { label: t("ctx.copyName"), icon: Copy, onClick: () => copyToClipboard(file.name) },
+              result && {
+                label: t("conv.download"),
+                icon: Download,
+                onClick: () => void download(),
+              },
+              { separator: true },
+              { label: t("ctx.clear"), icon: X, danger: true, onClick: () => pickFile(null) },
+            ])
+          }
+        >
           <div className={`media-thumb tone-${CAT_TONE[category.id] || "violet"}`}>
             <Repeat size={26} strokeWidth={1.5} />
           </div>

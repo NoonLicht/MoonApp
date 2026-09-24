@@ -188,9 +188,21 @@ router.get("/:id/preview", (req, res) => {
   res.sendFile(job.outFile);
 });
 
+// Отменить активное задание (Диспетчер фоновых задач — server/ts/taskRegistry.ts).
+// Раньше остановить кодирование было нельзя вообще: единственный способ —
+// закрыть всё приложение (см. AUDIT_REPORT.md, раздел 10).
+router.post("/:id/cancel", (req, res) => {
+  const ok = engine.cancelJob(req.params.id);
+  if (!ok) return res.status(404).json({ error: "not_found_or_done" });
+  res.json({ ok: true });
+});
+
 router.delete("/:id", (req, res) => {
   const job = engine.getJob(req.params.id);
   if (!job) return res.status(404).json({ error: "not_found" });
+  // Задание ещё активно — сперва останавливаем процесс, иначе удаление файлов
+  // из-под пишущего ffmpeg на Windows может молча не сработать (файл занят).
+  if (!job.done) engine.cancelJob(req.params.id);
   try {
     if (job.outFile) removePath(job.outFile);
   } catch {

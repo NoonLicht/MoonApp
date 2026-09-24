@@ -775,3 +775,34 @@ export function getJob(id: string): UpJob | null {
  */
 
 export { jobs };
+
+// --- Диспетчер фоновых задач (server/ts/taskRegistry.ts) ---
+// Апскейл уже умеет всё, что нужно провайдеру (cancelJob/pauseJob/resumeJob),
+// поэтому адаптер — только перевод формы UpJob в нормализованный TmTask.
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const taskRegistry = require("../taskRegistry") as typeof import("../taskRegistry");
+taskRegistry.registerProvider({
+  engine: "upscale",
+  list: () =>
+    [...jobs.values()].map((j) => {
+      // j.done бывает false и при stage "error"/"stopped" (см. cancelJob выше) —
+      // для Task Manager это всё равно "задача больше не активна".
+      const finished = j.done || j.stage === "error" || j.stage === "stopped";
+      return {
+        id: j.id,
+        engine: "upscale",
+        label: j.name,
+        stage: j.paused ? "paused" : j.stage,
+        progress: Math.round(j.progress || 0),
+        createdAt: j.createdAt,
+        done: finished,
+        error: j.error || null,
+        canCancel: !finished,
+        canPause: !finished,
+        paused: j.paused,
+      };
+    }),
+  cancel: (id) => cancelJob(id),
+  pause: (id) => pauseJob(id),
+  resume: (id) => resumeJob(id),
+});

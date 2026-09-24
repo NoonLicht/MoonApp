@@ -76,17 +76,36 @@ interface BundledKeys {
   tmdb?: string;
 }
 
+/**
+ * Жёсткий запасной ключ TMDB — на случай, если server/bundled-keys.js не попал
+ * в сборку (например, релиз собирался без секрета TMDB_API_KEY в CI). Раньше
+ * страница «Фильмы» в упакованном инсталляторе оставалась без ключа «из
+ * коробки» именно поэтому: локально (npm run dev/VSCode) рядом лежал файл
+ * server/bundled-keys.js от прошлого локального запуска gen:keys, а в
+ * официальной сборке — нет, и getSecret/bundledKey возвращали пусто.
+ * Это ключ уровня "общий доступ для всех пользователей приложения" — не
+ * персональный секрет; пользовательский ключ (storage/secrets.json) всё равно
+ * имеет приоритет, см. resolveKey().
+ */
+const HARDCODED_TMDB_KEY = "b7f977ab2c5375d2fe543585bb360c6c";
+
 function bundledKey(name: keyof BundledKeys): string {
   // Путь переопределяем через MOONAPP_BUNDLED_KEYS: тесты (и сборки с другим
   // набором ключей) не должны зависеть от файла, сгенерированного рядом с server.
+  // Явный override (переменная задана) отключает жёсткий запасной ключ ниже —
+  // так тесты могут детерминированно проверить сценарий "ключа вообще нет".
+  const overridden = !!process.env.MOONAPP_BUNDLED_KEYS;
   const target = process.env.MOONAPP_BUNDLED_KEYS || "./bundled-keys";
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const keys = require(target) as BundledKeys;
-    return String(keys?.[name] || "").trim();
+    const fromFile = String(keys?.[name] || "").trim();
+    if (fromFile) return fromFile;
   } catch {
-    return ""; // файла нет — сборка без вшитых ключей
+    /* файла нет — падаем на жёсткий запасной ключ ниже (если не overridden) */
   }
+  if (!overridden && name === "tmdb") return HARDCODED_TMDB_KEY;
+  return "";
 }
 
 /** Источник ключа: свой секрет важнее вшитого — его всегда можно переопределить. */

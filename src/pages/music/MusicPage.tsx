@@ -380,7 +380,24 @@ export default function MusicPage() {
                   <Check size={16} /> {t("video.saved")}
                 </div>
                 {jobFiles.map((f) => (
-                  <div key={f.key} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <div
+                    key={f.key}
+                    style={{ display: "flex", alignItems: "center", gap: 8 }}
+                    onContextMenu={(e) =>
+                      menu.open(e, [
+                        {
+                          label: t("ctx.copyName"),
+                          icon: Copy,
+                          onClick: () => copyToClipboard(f.name),
+                        },
+                        {
+                          label: t("music.download"),
+                          icon: Download,
+                          onClick: () => dlFile(f.key),
+                        },
+                      ])
+                    }
+                  >
                     <FileAudio size={16} className="muted-sm" />
                     <span className="muted-sm">
                       {f.name} · {fmtSize(f.size)}

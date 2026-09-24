@@ -78,6 +78,18 @@ function serveHtml(res, buf) {
 router.post("/start", (req, res) => {
   const url = String(req.body?.url || "").trim();
   if (!/^https?:\/\//i.test(url)) return res.status(400).json({ error: "invalid_url" });
+  // SSRF: без этой проверки краулер (следуя редиректам и ссылкам со страницы)
+  // мог быть направлен на localhost/внутреннюю сеть пользователя — см.
+  // isBlockedHost в server/ts/sitebak.ts (там же — проверка КАЖДОЙ найденной
+  // ссылки в inScope, эта проверка — только для стартового URL).
+  try {
+    const host = new URL(url).hostname;
+    if (engine.isBlockedHost(host)) {
+      return res.status(400).json({ error: "blocked_host", code: "blocked_host" });
+    }
+  } catch {
+    return res.status(400).json({ error: "invalid_url" });
+  }
   const job = engine.startCrawl(req.body || {});
   logger.action("sitebak.start", { id: job.id, url });
   const { opts, ...rest } = job;
@@ -89,6 +101,14 @@ router.get("/status/:id", (req, res) => {
   if (!job) return res.status(404).json({ error: "not_found" });
   const { opts, ...rest } = job;
   res.json(rest);
+});
+
+// Остановить активный краул (Диспетчер фоновых задач). Уже посещённые
+// страницы упаковываются в частичный .sitebak, а не пропадают.
+router.post("/:id/cancel", (req, res) => {
+  const ok = engine.cancelJob(req.params.id);
+  if (!ok) return res.status(404).json({ error: "not_found_or_done" });
+  res.json({ ok: true });
 });
 
 router.get("/list", (req, res) => res.json(engine.loadArchiveList()));

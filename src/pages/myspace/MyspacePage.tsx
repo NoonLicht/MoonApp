@@ -1422,25 +1422,6 @@ export default function MyspacePage() {
           )}
           {/* CENTER EDITOR */}
           <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
-            {!leftOpen && (
-              <button
-                onClick={() => setLeftOpen(true)}
-                style={{
-                  position: "absolute",
-                  left: 4,
-                  top: 60,
-                  zIndex: 10,
-                  background: "var(--surface-glass)",
-                  border: "1px solid var(--glass-border)",
-                  borderRadius: 6,
-                  padding: 4,
-                  cursor: "pointer",
-                  color: "var(--text-tertiary)",
-                }}
-              >
-                <PanelLeftOpen size={13} />
-              </button>
-            )}
             <div
               style={{
                 flex: 1,
@@ -1465,6 +1446,28 @@ export default function MyspacePage() {
                   minHeight: 28,
                 }}
               >
+                {/* Свернуть/развернуть левую панель — постоянная кнопка у левого
+                    края шапки редактора, симметрично кнопке правой панели у
+                    правого края (см. ниже, PanelRightOpen/Close). Раньше кнопка
+                    появлялась только при свёрнутой панели и была абсолютно
+                    спозиционирована (top: 60) без position: relative на предке —
+                    из-за этого "улетала" при сворачивании. */}
+                <button
+                  onClick={() => setLeftOpen(!leftOpen)}
+                  title={leftOpen ? "Collapse sidebar" : "Expand sidebar"}
+                  style={{
+                    background: "transparent",
+                    border: "none",
+                    padding: 3,
+                    cursor: "pointer",
+                    color: "var(--text-tertiary)",
+                    display: "flex",
+                    marginRight: 4,
+                    flexShrink: 0,
+                  }}
+                >
+                  {leftOpen ? <PanelLeftClose size={13} /> : <PanelLeftOpen size={13} />}
+                </button>
                 <div
                   style={{
                     flex: 1,

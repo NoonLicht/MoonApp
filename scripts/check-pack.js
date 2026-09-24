@@ -117,6 +117,40 @@ try {
       : `✗ ${text}`,
   );
   if (!text.startsWith("ONNX OK")) process.exit(1);
+  // --- Прокси-тракт сборки: наличие undici внутри app.asar ---------------------
+  // Зачем отдельная проверка: запросы страниц во внешнюю сеть (TMDB для «Фильмов»,
+  // LLM для чата/заметок, форум) идут через локальный HTTP-inbound sing-box, а
+  // подставить прокси в нативный fetch умеет только ProxyAgent из undici. Пока
+  // undici был лишь транзитивной devDependency (@electron/rebuild → node-gyp),
+  // electron-builder его в сборку не клал: в VS Code страница фильмов работала, а
+  // в установленном приложении все запросы молча уходили напрямую (под DPI-блокировку)
+  // и падали network_error — при подключённом и пингующемся прокси.
+  // Проверяем ТЕМ ЖЕ путём, каким его грузит приложение: require из app.asar.
+  const undiciPath = path.join(unpacked, "resources", "app.asar", "node_modules", "undici");
+  const undiciScript =
+    `try{const u=require(${JSON.stringify(undiciPath)});` +
+    `console.log("UNDICI " + (u && u.ProxyAgent ? "OK" : "NO_AGENT"));}` +
+    `catch(e){console.log("UNDICI FAIL " + e.message);}`;
+  try {
+    const out = execFileSync(exePath, ["-e", undiciScript], {
+      env: { ...process.env, ELECTRON_RUN_AS_NODE: "1", MOONAPP_STORAGE: tmpStorage },
+      encoding: "utf8",
+      timeout: 60000,
+    });
+    const text = String(out).trim();
+    if (text === "UNDICI OK") {
+      console.log("✓ undici с ProxyAgent на месте — страницы могут ходить через прокси");
+    } else {
+      console.error(`✗ ${text}`);
+      console.error(
+        "  проверьте package.json: undici должен быть в dependencies (иначе сборка ходит мимо прокси).",
+      );
+      process.exit(1);
+    }
+  } catch (e) {
+    console.log(`не удалось проверить undici из app.asar: ${e.message}`);
+  }
+
   const cat = /CATALOG (\S+) (\d+) (\S*)/.exec(text);
   if (!cat || Number(cat[2]) < 1) {
     console.error(`✗ каталог моделей в сборке пуст: ${text.split("\n").pop()}`);

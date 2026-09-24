@@ -4,6 +4,9 @@ dist/
 release/
 build/*
 !build/icon.ico
+# NSIS-хук: сохраняет пользовательские данные (storage) при обновлении и
+# переустановке приложения — подключён через build.nsis.include.
+!build/installer.nsh
 *.tsbuildinfo
 .vite/
 
@@ -67,6 +70,7 @@ server/convertEngine.js
 server/index.js
 server/bookParser.js
 server/tmdb.js
+server/taskRegistry.js
 server/encoders.js
 server/vad.js
 server/diarize.js

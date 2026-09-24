@@ -132,14 +132,14 @@ router.post("/key", (req, res) => {
     const key = String(req.body?.key || "").trim();
     if (!key) return res.status(400).json({ error: "missing key", code: "no_api_key" });
     setSecret("tmdb", key);
-    logger.action("movies.tmdb_key_saved");
+    logger.action("movies.api_key_saved", { provider: "tmdb" });
     res.json({ ok: true, hasKey: true });
   } catch (e) {
     fail(res, e, "key");
   }
 });
 
-/** Сбросить кэш метаданных TMDB. */
+/** Сбросить кэш метаданных каталога TMDB. */
 router.post("/refresh", (req, res) => {
   tmdb.clearCache();
   logger.action("movies.cache_refresh");

@@ -320,6 +320,15 @@ router.get("/:id", (req, res) => {
   res.json(rest);
 });
 
+// Отменить активную генерацию (Диспетчер фоновых задач). Раньше остановить
+// рендер было нельзя вообще — только закрыть приложение целиком, оставляя
+// процесс python с моделью висеть в VRAM (см. AUDIT_REPORT.md, раздел 10).
+router.post("/:id/cancel", (req, res) => {
+  const ok = engine.cancelJob(req.params.id);
+  if (!ok) return res.status(404).json({ error: "not_found_or_done" });
+  res.json({ ok: true });
+});
+
 router.get("/:id/download", (req, res) => {
   const job = engine.getJob(req.params.id);
   if (!job?.done || !job.outFile || !fs.existsSync(job.outFile))

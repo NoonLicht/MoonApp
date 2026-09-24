@@ -352,6 +352,25 @@ body {
 }
 .tb-side-left {
   min-width: 0;
+  display: flex;
+  align-items: center;
+}
+/* Кнопка Диспетчера фоновых задач — левый конец верхней панели, симметрично
+   кнопкам справа (папка приложения/прокси/тема). См. TaskManagerPanel.tsx. */
+.task-mgr-toggle {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-tertiary);
+  display: flex;
+  align-items: center;
+  padding: 6px;
+  flex-shrink: 0;
+  border-radius: 8px;
+}
+.task-mgr-toggle:hover {
+  color: var(--text-primary);
+  background: var(--track);
 }
 /* Центр — панель конкретной страницы. min-width:0 и «сжимаемые» дети не дают
    грид-колонке вырасти на max-content и налезть на кнопки окна в узком окне. */

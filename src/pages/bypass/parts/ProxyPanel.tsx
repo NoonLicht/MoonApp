@@ -424,6 +424,15 @@ export default function ProxyPanel({ onClose }: ProxyPanelProps) {
 
         {!!error && <div className="proxy-error">{error}</div>}
 
+        {/* running=true у ядра означает "готовы оба порта", но если бэкенд всё же
+            вернул частичную готовность (socksReady без httpReady) — TMDB и другой
+            HTTP-трафик страниц реально идут МИМО прокси, хотя индикатор сверху
+            зелёный. Раньше это никак не показывалось — отсюда «прокси подключён,
+            но страница фильмов не работает». */}
+        {isOk && core?.httpReady === false && (
+          <div className="proxy-error">{t("proxy.httpInboundDown")}</div>
+        )}
+
         {/* Движок не установлен */}
         {engineKnown && !installed && (
           <div className="proxy-install-section">

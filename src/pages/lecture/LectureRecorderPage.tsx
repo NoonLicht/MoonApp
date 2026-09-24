@@ -17,7 +17,10 @@ import {
   AlertTriangle,
   Users,
   RefreshCw,
+  Copy,
+  FolderOpen,
 } from "lucide-react";
+import { useContextMenu, copyToClipboard } from "@/components/ContextMenu";
 import { api } from "@/api/client";
 import { saveBlob } from "@/lib/download";
 import { parseModelNameError } from "@/lib/modelError";
@@ -229,6 +232,7 @@ async function acquireSystemAudio(): Promise<MediaStream> {
 
 export default function LectureRecorderPage() {
   const { t } = useI18n();
+  const menu = useContextMenu();
 
   const [engine, setEngine] = useState<LectureEngineStatus | null>(null);
   const [sessions, setSessions] = useState<LectureSession[]>([]);
@@ -1221,7 +1225,27 @@ export default function LectureRecorderPage() {
         <div className="lec-sessions">
           {sessions.length === 0 && <div className="lec-dim">{t("lecture.noSessions")}</div>}
           {sessions.map((s) => (
-            <div key={s.id} className="lec-session-row">
+            <div
+              key={s.id}
+              className="lec-session-row"
+              onContextMenu={(e) =>
+                menu.open(e, [
+                  { label: t("ctx.open"), icon: FolderOpen, onClick: () => void openSession(s.id) },
+                  {
+                    label: t("ctx.copyName"),
+                    icon: Copy,
+                    onClick: () => copyToClipboard(s.title),
+                  },
+                  { separator: true },
+                  {
+                    label: t("common.delete"),
+                    icon: Trash2,
+                    danger: true,
+                    onClick: () => void deleteSession(s.id),
+                  },
+                ])
+              }
+            >
               <button className="lec-session-open" onClick={() => void openSession(s.id)}>
                 <span className="lec-session-title">{s.title}</span>
                 <span className="lec-dim">
@@ -1383,7 +1407,26 @@ export default function LectureRecorderPage() {
         >
           {chunks.length === 0 && <div className="lec-empty">{t("lecture.emptyFeed")}</div>}
           {chunks.map((c) => (
-            <div key={c.id} className={`lec-chunk st-${c.status}`}>
+            <div
+              key={c.id}
+              className={`lec-chunk st-${c.status}`}
+              onContextMenu={(e) =>
+                menu.open(e, [
+                  { label: t("ctx.copy"), icon: Copy, onClick: () => copyToClipboard(c.text) },
+                  {
+                    label: t("lecture.clickToEdit"),
+                    icon: Save,
+                    disabled: !c.text,
+                    onClick: () => setEditing({ chunkId: c.id, text: c.text }),
+                  },
+                  {
+                    label: t("lecture.playChunk"),
+                    icon: Play,
+                    onClick: () => void playChunk(c),
+                  },
+                ])
+              }
+            >
               <button
                 className="lec-ts"
                 onClick={() => void playChunk(c)}

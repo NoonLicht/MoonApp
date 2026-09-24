@@ -917,6 +917,8 @@ let CORE = {
   node: null,
   socksPort: DEFAULT_SOCKS_PORT,
   httpPort: DEFAULT_HTTP_PORT,
+  socksReady: false,
+  httpReady: false,
   error: "",
   childPid: null,
 };
@@ -929,6 +931,11 @@ function getCoreStatus() {
     error: CORE.error,
     socksPort: CORE.socksPort,
     httpPort: CORE.httpPort,
+    // Раздельная готовность: SOCKS нужен yt-dlp/агенту, HTTP — TMDB/LLM/fetch.
+    // running=true означает "готовы оба", но UI может показать точнее, что
+    // именно сломалось, если когда-нибудь один из портов не поднимется.
+    socksReady: CORE.socksReady,
+    httpReady: CORE.httpReady,
     node: CORE.node
       ? {
           protocol: CORE.node.protocol,
@@ -1081,20 +1088,25 @@ async function startCore(input, opts = {}) {
   logger.info("proxyCore.start", { protocol: node.protocol, pid: child.pid });
   writeCorePid(child.pid);
 
-  // Ждём реального старта, чтобы ответ API отражал правду, а не «спавнится».
-  const ready = await waitCoreReady(child, socksPort, 8000);
+  // Ждём реального старта ОБОИХ inbound'ов, чтобы ответ API отражал правду,
+  // а не «спавнится» и не «только SOCKS поднялся».
+  const ready = await waitCoreReady(child, socksPort, httpPort, 8000);
   if (ready.ok) {
-    CORE = { ...CORE, running: true, enabled: true, error: "" };
-    logger.info("proxyCore.ready", { pid: child.pid, socksPort, ms: 0 });
+    CORE = { ...CORE, running: true, enabled: true, error: "", socksReady: true, httpReady: true };
+    logger.info("proxyCore.ready", { pid: child.pid, socksPort, httpPort, ms: 0 });
   } else if (CORE.child === child) {
     CORE = {
       ...CORE,
       running: false,
       enabled: false,
+      socksReady: ready.socksReady,
+      httpReady: ready.httpReady,
       error:
         ready.reason === "exited"
           ? logTail.trim().slice(-300) || `sing-box exited with code ${child.exitCode}`
-          : "core_start_timeout",
+          : !ready.httpReady && ready.socksReady
+            ? "core_http_inbound_timeout"
+            : "core_start_timeout",
     };
     if (child.exitCode == null) await stopChild(child);
     logger.warn("proxyCore.notReady", { reason: ready.reason, log: logTail.slice(-300) });
@@ -1269,21 +1281,31 @@ function canConnectTo(host, port, timeoutMs = 2500) {
 }
 
 /**
- * Ждём готовности ядра: пока не откроется SOCKS-порт.
+ * Ждём готовности ядра: пока не откроются ОБА порта — SOCKS и HTTP.
  *
  * Почему не по логам: при `log.level = "warn"` sing-box не пишет вообще ничего,
  * поэтому определять запуск по тексту stderr нельзя — именно из-за этого ядро
  * работало, а приложение показывало «ничего не произошло». Открытый порт —
  * объективный признак, он же снимает путаницу «ошибка поиска inbound» = «старт».
+ *
+ * Раньше проверялся только SOCKS-порт: если HTTP-inbound не поднимался (гонка
+ * порта, второй листенер заблокирован антивирусом и т.п.), UI всё равно
+ * показывал «прокси подключён», а TMDB и другие HTTP-запросы (они идут через
+ * HTTP-inbound, см. middleware/perPageProxy.js) реально шли в обход прокси —
+ * отсюда «прокси вроде подключён, но страница фильмов не работает».
  */
-async function waitCoreReady(child, socksPort, timeoutMs) {
+async function waitCoreReady(child, socksPort, httpPort, timeoutMs) {
   const deadline = Date.now() + timeoutMs;
+  let socksReady = false;
+  let httpReady = false;
   while (Date.now() < deadline) {
-    if (child.exitCode != null) return { ok: false, reason: "exited" };
-    if (await isPortOpen(socksPort)) return { ok: true, reason: "" };
+    if (child.exitCode != null) return { ok: false, reason: "exited", socksReady, httpReady };
+    if (!socksReady) socksReady = await isPortOpen(socksPort);
+    if (!httpReady) httpReady = await isPortOpen(httpPort);
+    if (socksReady && httpReady) return { ok: true, reason: "", socksReady, httpReady };
     await sleep(100);
   }
-  return { ok: false, reason: "timeout" };
+  return { ok: false, reason: "timeout", socksReady, httpReady };
 }
 
 /** Дождаться освобождения порта (после гашения прошлого процесса). */

@@ -56,3 +56,6 @@ server/tts.js
 coverage
 typecheck-out.txt
 vitest-out.txt
+
+# NSIS-хук инсталлятора: формат .nsh prettier не разбирает (см. build.nsis.include).
+build/installer.nsh

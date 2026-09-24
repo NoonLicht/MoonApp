@@ -268,16 +268,8 @@ export default function MoviesPage() {
         disabled={busy}
         title={t("movies.refresh")}
       />
-
-      {/* Ключ вшит в сборку: говорим об этом явно — иначе непонятно, откуда
-          страница знает ключ, и что свой ключ всё ещё можно ввести (он важнее). */}
-      {status?.keySource === "bundled" && (
-        <span className="muted-sm" title={t("movies.keyBundledHint")}>
-          <KeyRound size={13} /> {t("movies.keyBundled")}
-        </span>
-      )}
     </div>,
-    [kind, view, query, busy, status?.keySource],
+    [kind, view, query, busy],
   );
 
   // Ключа нет — показываем форму ввода (можно не уходить в Настройки).
@@ -305,11 +297,13 @@ export default function MoviesPage() {
         eyebrow={t("nav.movies")}
         title={t("movies.title")}
         action={
-          status && !status.engine.installed ? (
-            <Badge tone="coral" mono>
-              {t("movies.torrentNoEngine")}
-            </Badge>
-          ) : undefined
+          <div className="mv-header-actions">
+            {status && !status.engine.installed && (
+              <Badge tone="coral" mono>
+                {t("movies.torrentNoEngine")}
+              </Badge>
+            )}
+          </div>
         }
       />
 
@@ -409,7 +403,10 @@ export default function MoviesPage() {
                           ))}
                         </div>
                         <div className="mv-lib-actions">
-                          <Btn icon={Zap} onClick={() => setPlayer({ trailerKey: null, query: null })}>
+                          <Btn
+                            icon={Zap}
+                            onClick={() => setPlayer({ trailerKey: null, query: null })}
+                          >
                             {t("movies.openPlayer")}
                           </Btn>
                           <Btn

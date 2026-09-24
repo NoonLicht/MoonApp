@@ -419,6 +419,13 @@ export function PyEnvPanel({
             <div className="muted-sm">
               {info?.gpuName ? t("ab.py.gpu", { name: info.gpuName }) : t("ab.py.gpuNone")}
             </div>
+            {/* Частый вопрос: «это же то же самое, что CUDA-пак в Апскейле/Лектории,
+                зачем качать снова?» — нет, это физически разные файлы (см. текст). */}
+            {device === "cuda" && (
+              <div className="muted-sm" style={{ marginTop: 4 }}>
+                {t("ab.py.deviceCudaSeparate")}
+              </div>
+            )}
           </div>
 
           {/* Интерпретатор: искать путь к python вручную больше не нужно — модули

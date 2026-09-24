@@ -237,6 +237,10 @@ interface TtsJob {
   estimateTotalMs: number;
   opts: NormalizedParams;
   envError?: TtsEnvError;
+  /** Пользователь запросил отмену — цикл рендера чанков проверяет между итерациями. */
+  cancelRequested?: boolean;
+  /** Активный сайдкар движка — для killHard() из cancelJob (Диспетчер задач). */
+  _sidecar?: { killHard(): void } | null;
   [key: string]: unknown;
 }
 
@@ -642,6 +646,20 @@ class JsonSidecar {
     child.stderr?.on("data", (d) =>
       logger.info(`tts.${this.tag}.stderr`, { tail: String(d).slice(-400) }),
     );
+    // Процесс мог умереть, пока запрос ждал ответа (убит через killHard() при
+    // отмене задания, упал сам, OOM и т.п.) — БЕЗ этого обработчика ask()
+    // просто висел до своего таймаута (до 10 минут на infer), и отмена задания
+    // выглядела так, будто ничего не произошло: killHard() убивал процесс, но
+    // сама Promise-цепочка рендера чанка не знала об этом и продолжала ждать.
+    child.on("close", () => {
+      if (this.child !== child) return; // это старый child, уже заменён новым _start()
+      const waiters = this.waiters.splice(0, this.waiters.length);
+      const msg: SidecarMessage = { type: "error", message: "sidecar_closed" };
+      for (const w of waiters) {
+        clearTimeout(w.timer);
+        w.resolve(msg);
+      }
+    });
     return this;
   }
 
@@ -1336,6 +1354,21 @@ function getJob(id: string): TtsJob | null {
   return jobs.get(id) || null;
 }
 
+/**
+ * Отменить активное задание озвучки: раньше отменить рендер было нельзя
+ * вообще (см. AUDIT_REPORT.md, раздел 10) — единственный способ остановить
+ * долгую генерацию был закрыть приложение целиком (и процесс python с
+ * моделью в VRAM оставался висеть в фоне).
+ */
+function cancelJob(id: string): boolean {
+  const job = jobs.get(id);
+  if (!job || job.done) return false;
+  job.cancelRequested = true;
+  job._sidecar?.killHard();
+  logger.action("tts.cancelled", { id });
+  return true;
+}
+
 /* ------------------------- Пайплайн ------------------------- */
 
 function spawnFFmpeg(args: string[]): Promise<void> {
@@ -1378,6 +1411,7 @@ async function runPipeline(job: TtsJob): Promise<void> {
       reason: accented ? "" : stressFailReason,
     };
     sidecar = new EngineSidecar(job.engine)._start();
+    job._sidecar = sidecar;
     // Монитор VRAM приходит отдельными сообщениями (не ответом на запрос).
     sidecar.onEvent = (msg) => {
       if (msg.type === "vram") job.vram = msg;
@@ -1428,6 +1462,7 @@ async function runPipeline(job: TtsJob): Promise<void> {
     const wavs: Array<{ wav: string; pauseMs: number }> = [];
 
     for (let i = 0; i < job.items.length; i++) {
+      if (job.cancelRequested) throw new Error("cancelled");
       const item = job.items[i];
       if (item.pauseMs && !item.text) continue; // чистая пауза — на этапе склейки
       const wav = path.join(chunkDir, `chunk_${String(wavs.length).padStart(4, "0")}.wav`);
@@ -1543,16 +1578,22 @@ async function runPipeline(job: TtsJob): Promise<void> {
     job.stage = "done";
     logger.info("tts.done", { id: job.id, chunks: job.items.length, size: job.outSize });
   } catch (e) {
-    // Ошибку сайдкара приводим к машинному коду: страница «Голос» показывает по
-    // job.envError понятный текст и команду установки вместо «No module named…».
-    job.error = envAwareError(job, (e as Error)?.message || e).message;
-    job.stage = "error";
-    logger.error("tts.error", { id: job.id, error: job.error, env: job.envError || null });
+    if (job.cancelRequested) {
+      job.error = "cancelled";
+      job.stage = "stopped";
+    } else {
+      // Ошибку сайдкара приводим к машинному коду: страница «Голос» показывает по
+      // job.envError понятный текст и команду установки вместо «No module named…».
+      job.error = envAwareError(job, (e as Error)?.message || e).message;
+      job.stage = "error";
+      logger.error("tts.error", { id: job.id, error: job.error, env: job.envError || null });
+    }
   } finally {
     // Процесс python снимаем ВСЕГДА: при ошибке он раньше оставался жить (модель
     // висела в VRAM, а в диспетчере задач копился лишний python с torch/numpy).
     // При успехе sidecar уже закрыт выше и здесь его нет.
     if (sidecar) sidecar.kill();
+    job._sidecar = null;
   }
 }
 
@@ -1660,8 +1701,10 @@ function revealInExplorer(filePath: unknown): boolean {
 }
 
 export {
+  jobs,
   startJob,
   getJob,
+  cancelJob,
   detectHardware,
   pythonEnv,
   previewChunks,
@@ -1673,3 +1716,30 @@ export {
   saveUserPreset,
   deleteUserPreset,
 };
+
+// --- Диспетчер фоновых задач (server/ts/taskRegistry.ts) ---
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const taskRegistry = require("./taskRegistry") as typeof import("./taskRegistry");
+taskRegistry.registerProvider({
+  engine: "tts",
+  list: () =>
+    [...jobs.values()].map((j) => {
+      // j.done остаётся false при stage "error"/"stopped" (это НЕ "успех") —
+      // для Task Manager важно только "активна ли задача ещё".
+      const finished = j.done || j.stage === "error" || j.stage === "stopped";
+      return {
+        id: j.id,
+        engine: "tts",
+        label: j.opts?.title || j.id,
+        stage: j.stage,
+        progress: Math.round(j.progress || 0),
+        createdAt: j.createdAt,
+        done: finished,
+        error: j.error || null,
+        canCancel: !finished,
+        canPause: false,
+        paused: false,
+      };
+    }),
+  cancel: (id) => cancelJob(id),
+});

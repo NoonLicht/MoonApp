@@ -2054,3 +2054,39 @@ module.exports = {
   httpInference,
   resultFromSrtText,
 };
+
+// --- Диспетчер фоновых задач (server/ts/taskRegistry.ts) ---
+// Лекция — не Map-задание с прогрессом 0..100, а живая сессия записи (её
+// пользователь останавливает сам, когда закончил говорить), поэтому прогресс
+// здесь не показываем (-1 — "неизвестен"), но видимость в общем списке и
+// возможность остановить (та же stopSession, что кнопка «Стоп» на странице)
+// добавить стоило: раньше активная запись не была видна нигде, кроме своей
+// вкладки, и не входила в централизованное завершение при закрытии приложения.
+try {
+  const taskRegistry = require("./taskRegistry");
+  taskRegistry.registerProvider({
+    engine: "lecture",
+    list: () =>
+      [...sessions.values()].map((s) => ({
+        id: String(s.id),
+        engine: "lecture",
+        label: `Лекция #${s.id}`,
+        stage: s.stopping ? "stopping" : "recording",
+        progress: -1,
+        createdAt: s.startedAt,
+        done: false,
+        error: s.lastError || null,
+        canCancel: !s.stopping,
+        canPause: false,
+        paused: false,
+      })),
+    cancel: (id) => {
+      const numId = Number(id);
+      if (!sessions.has(numId)) return false;
+      stopSession(numId);
+      return true;
+    },
+  });
+} catch {
+  /* taskRegistry ещё не собран (dev до первой компиляции) — не критично */
+}

@@ -1,7 +1,7 @@
 {
   "name": "moonapp",
   "productName": "MoonApp",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "MoonApp — desktop utility panel (Electron + React + Vite + Node backend)",
   "author": "NoonLicht",
   "type": "commonjs",
@@ -56,6 +56,7 @@
     "onnxruntime-node": "^1.30.0",
     "pdf-parse": "^2.4.5",
     "socks-proxy-agent": "^10.1.0",
+    "undici": "^6.28.1",
     "webtorrent": "^1.9.7"
   },
   "devDependencies": {
@@ -143,6 +144,7 @@
       "perMachine": false,
       "allowToChangeInstallationDirectory": true,
       "deleteAppDataOnUninstall": false,
+      "include": "build/installer.nsh",
       "artifactName": "MoonApp-Setup-${version}.${ext}"
     }
   }

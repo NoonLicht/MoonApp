@@ -764,6 +764,56 @@ select option {
   font-family: var(--font-mono);
 }
 
+/* Диспетчер фоновых задач (src/components/TaskManagerPanel.tsx) — переиспользует
+   .proxy-panel-overlay/.proxy-panel/.proxy-panel-header и т.п. (тот же попап-стиль). */
+.task-mgr-section + .task-mgr-section {
+  margin-top: 4px;
+}
+.task-mgr-section-title {
+  font-size: 10px;
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-tertiary);
+  margin-bottom: 6px;
+}
+.task-mgr-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--track);
+  border: 1px solid var(--glass-border);
+  margin-bottom: 8px;
+}
+.task-mgr-row.is-done {
+  opacity: 0.72;
+}
+.task-mgr-row-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.task-mgr-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12.5px;
+  color: var(--text-primary);
+}
+.task-mgr-row-actions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+.task-mgr-err {
+  color: var(--coral);
+}
+
 /* Поле VLESS */
 .proxy-vlink,
 .proxy-link {

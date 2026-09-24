@@ -20,7 +20,7 @@
   "common": {
     "saved": "已保存",
     "clear": "清除",
-    "openAppDir": "打开应用所在文件夹",
+    "openAppDir": "打开应用数据文件夹",
     "minimize": "最小化",
     "maximize": "最大化",
     "close": "关闭",
