@@ -319,6 +319,174 @@ export default function ConverterPage() {
       )}
 
       {!file && <EmptyHint icon={Repeat} text={t("conv.empty")} />}
+
+      <PdfToolkit />
     </div>
+  );
+}
+
+/**
+ * PDF-тулкит: слияние/разбиение (pdf-lib) и извлечение текстового слоя
+ * (pdf-parse) — server/ts/pdfTools.ts. Независим от FFmpeg-конвертера выше:
+ * своя мини-форма на каждую операцию. OCR намеренно не реализован (нет
+ * OCR-зависимости в проекте) — честно помечен как недоступный, а не заглушка.
+ */
+function PdfToolkit() {
+  const { t } = useI18n();
+  const [mergeFiles, setMergeFiles] = useState<File[]>([]);
+  const [mergeBusy, setMergeBusy] = useState(false);
+  const [mergeError, setMergeError] = useState("");
+
+  const [splitFile, setSplitFile] = useState<File | null>(null);
+  const [ranges, setRanges] = useState("");
+  const [splitBusy, setSplitBusy] = useState(false);
+  const [splitError, setSplitError] = useState("");
+
+  const [textFile, setTextFile] = useState<File | null>(null);
+  const [textBusy, setTextBusy] = useState(false);
+  const [textError, setTextError] = useState("");
+  const [extractedText, setExtractedText] = useState<string | null>(null);
+
+  const doMerge = async () => {
+    if (mergeFiles.length < 2) return;
+    setMergeBusy(true);
+    setMergeError("");
+    try {
+      const blob = await api.pdfMerge(mergeFiles);
+      saveBlob(blob, "merged.pdf");
+    } catch (e) {
+      setMergeError((e as Error).message);
+    } finally {
+      setMergeBusy(false);
+    }
+  };
+
+  const doSplit = async () => {
+    if (!splitFile || !ranges.trim()) return;
+    setSplitBusy(true);
+    setSplitError("");
+    try {
+      const blob = await api.pdfSplit(splitFile, ranges.trim());
+      saveBlob(blob, "split.zip");
+    } catch (e) {
+      setSplitError((e as Error).message);
+    } finally {
+      setSplitBusy(false);
+    }
+  };
+
+  const doExtract = async () => {
+    if (!textFile) return;
+    setTextBusy(true);
+    setTextError("");
+    setExtractedText(null);
+    try {
+      const result = await api.pdfExtractText(textFile);
+      setExtractedText(result.text);
+    } catch (e) {
+      setTextError((e as Error).message);
+    } finally {
+      setTextBusy(false);
+    }
+  };
+
+  const downloadText = () => {
+    if (extractedText == null) return;
+    const blob = new Blob([extractedText], { type: "text/plain;charset=utf-8" });
+    saveBlob(blob, (textFile?.name.replace(/\.pdf$/i, "") || "text") + ".txt");
+  };
+
+  return (
+    <>
+      <SectionHead eyebrow={t("conv.pdfEyebrow")} title={t("conv.pdfTitle")} />
+
+      {/* --- Слияние --- */}
+      <Glass className="media-preview" style={{ flexDirection: "column", alignItems: "stretch", gap: 8 }}>
+        <div className="media-title">{t("conv.pdfMerge")}</div>
+        <input
+          type="file"
+          accept="application/pdf"
+          multiple
+          onChange={(e) => setMergeFiles(Array.from(e.target.files || []))}
+        />
+        {mergeFiles.length > 0 && (
+          <div className="muted-sm">{t("conv.pdfFilesChosen", { n: mergeFiles.length })}</div>
+        )}
+        <Btn
+          variant="primary"
+          icon={mergeBusy ? RefreshCw : FileUp}
+          disabled={mergeFiles.length < 2 || mergeBusy}
+          onClick={() => void doMerge()}
+          style={{ width: 220 }}
+        >
+          {mergeBusy ? t("conv.pdfWorking") : t("conv.pdfMergeGo")}
+        </Btn>
+        {mergeError && <div style={{ color: "var(--coral)" }}>{mergeError}</div>}
+      </Glass>
+
+      {/* --- Разбиение --- */}
+      <Glass className="media-preview" style={{ flexDirection: "column", alignItems: "stretch", gap: 8 }}>
+        <div className="media-title">{t("conv.pdfSplit")}</div>
+        <input
+          type="file"
+          accept="application/pdf"
+          onChange={(e) => setSplitFile(e.target.files?.[0] || null)}
+        />
+        <input
+          className="text-input"
+          placeholder={t("conv.pdfRangesPlaceholder")}
+          value={ranges}
+          onChange={(e) => setRanges(e.target.value)}
+        />
+        <Btn
+          variant="primary"
+          icon={splitBusy ? RefreshCw : FileUp}
+          disabled={!splitFile || !ranges.trim() || splitBusy}
+          onClick={() => void doSplit()}
+          style={{ width: 220 }}
+        >
+          {splitBusy ? t("conv.pdfWorking") : t("conv.pdfSplitGo")}
+        </Btn>
+        {splitError && <div style={{ color: "var(--coral)" }}>{splitError}</div>}
+      </Glass>
+
+      {/* --- Извлечение текста --- */}
+      <Glass className="media-preview" style={{ flexDirection: "column", alignItems: "stretch", gap: 8 }}>
+        <div className="media-title">{t("conv.pdfExtractText")}</div>
+        <input
+          type="file"
+          accept="application/pdf"
+          onChange={(e) => {
+            setTextFile(e.target.files?.[0] || null);
+            setExtractedText(null);
+          }}
+        />
+        <Btn
+          variant="primary"
+          icon={textBusy ? RefreshCw : FileUp}
+          disabled={!textFile || textBusy}
+          onClick={() => void doExtract()}
+          style={{ width: 220 }}
+        >
+          {textBusy ? t("conv.pdfWorking") : t("conv.pdfExtractGo")}
+        </Btn>
+        {textError && <div style={{ color: "var(--coral)" }}>{textError}</div>}
+        {extractedText != null && (
+          <>
+            <textarea
+              className="text-input"
+              readOnly
+              rows={8}
+              value={extractedText || t("conv.pdfNoTextLayer")}
+            />
+            <Btn icon={Download} onClick={downloadText} style={{ width: 200 }}>
+              {t("conv.pdfDownloadText")}
+            </Btn>
+          </>
+        )}
+      </Glass>
+
+      <div className="muted-sm">{t("conv.pdfOcrHint")}</div>
+    </>
   );
 }

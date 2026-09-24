@@ -58,6 +58,7 @@ server/passwordVault.js
 server/diskScan.js
 server/bookmarks.js
 server/musicPlaylists.js
+server/pdfTools.js
 server/elevate.js
 server/backup.js
 server/downloads.js

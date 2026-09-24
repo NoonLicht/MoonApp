@@ -1342,6 +1342,54 @@ export const api = {
     upper?: boolean;
   }) => req<{ password: string }>("POST", "/passwords/generate", opts),
 
+  // --- PDF-тулкит ---
+  pdfMerge: async (files: File[]) => {
+    const fd = new FormData();
+    for (const f of files) fd.append("files", f);
+    const t = window.appBridge?.getToken?.();
+    const res = await fetch(`${BASE}/api/pdf/merge`, {
+      method: "POST",
+      headers: { ...(t ? { "x-moonapp-token": t } : {}), ...pageHeaders() },
+      body: fd,
+    });
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}));
+      throw new Error(j.error || `HTTP ${res.status}`);
+    }
+    return res.blob();
+  },
+  pdfSplit: async (file: File, ranges: string) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    fd.append("ranges", ranges);
+    const t = window.appBridge?.getToken?.();
+    const res = await fetch(`${BASE}/api/pdf/split`, {
+      method: "POST",
+      headers: { ...(t ? { "x-moonapp-token": t } : {}), ...pageHeaders() },
+      body: fd,
+    });
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}));
+      throw new Error(j.error || `HTTP ${res.status}`);
+    }
+    return res.blob();
+  },
+  pdfExtractText: async (file: File) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    const t = window.appBridge?.getToken?.();
+    const res = await fetch(`${BASE}/api/pdf/extract-text`, {
+      method: "POST",
+      headers: { ...(t ? { "x-moonapp-token": t } : {}), ...pageHeaders() },
+      body: fd,
+    });
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}));
+      throw new Error(j.error || `HTTP ${res.status}`);
+    }
+    return res.json() as Promise<{ text: string; pages: number }>;
+  },
+
   // --- Анализатор диска (WinDirStat) ---
   diskScanRoots: () => req<{ roots: string[] }>("GET", "/diskscan/roots"),
   diskScanStart: (path: string) => req<{ id: string }>("POST", "/diskscan/start", { path }),

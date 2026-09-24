@@ -37,6 +37,7 @@
     "server/ts/diskScan.ts",
     "server/ts/bookmarks.ts",
     "server/ts/musicPlaylists.ts",
+    "server/ts/pdfTools.ts",
     "server/ts/elevate.ts",
     "server/ts/backup.ts",
     "server/ts/downloads.ts",
