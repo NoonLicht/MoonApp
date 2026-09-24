@@ -1349,6 +1349,67 @@ export const api = {
     upper?: boolean;
   }) => req<{ password: string }>("POST", "/passwords/generate", opts),
 
+  // --- Редактор изображений (кроп/ресайз/водяной знак, через ffmpeg) ---
+  imageCrop: async (file: File, box: { x: number; y: number; w: number; h: number }) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    fd.append("x", String(box.x));
+    fd.append("y", String(box.y));
+    fd.append("w", String(box.w));
+    fd.append("h", String(box.h));
+    const t = window.appBridge?.getToken?.();
+    const res = await fetch(`${BASE}/api/imageedit/crop`, {
+      method: "POST",
+      headers: { ...(t ? { "x-moonapp-token": t } : {}), ...pageHeaders() },
+      body: fd,
+    });
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}));
+      throw new Error(j.error || `HTTP ${res.status}`);
+    }
+    return res.blob();
+  },
+  imageResize: async (file: File, size: { w: number; h: number }) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    fd.append("w", String(size.w));
+    fd.append("h", String(size.h));
+    const t = window.appBridge?.getToken?.();
+    const res = await fetch(`${BASE}/api/imageedit/resize`, {
+      method: "POST",
+      headers: { ...(t ? { "x-moonapp-token": t } : {}), ...pageHeaders() },
+      body: fd,
+    });
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}));
+      throw new Error(j.error || `HTTP ${res.status}`);
+    }
+    return res.blob();
+  },
+  imageWatermark: async (
+    file: File,
+    watermarkFile: File,
+    position: string,
+    opacity: number,
+  ) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    fd.append("watermark", watermarkFile);
+    fd.append("position", position);
+    fd.append("opacity", String(opacity));
+    const t = window.appBridge?.getToken?.();
+    const res = await fetch(`${BASE}/api/imageedit/watermark`, {
+      method: "POST",
+      headers: { ...(t ? { "x-moonapp-token": t } : {}), ...pageHeaders() },
+      body: fd,
+    });
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}));
+      throw new Error(j.error || `HTTP ${res.status}`);
+    }
+    return res.blob();
+  },
+
   // --- PDF-тулкит ---
   pdfMerge: async (files: File[]) => {
     const fd = new FormData();

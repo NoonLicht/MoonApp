@@ -42,6 +42,7 @@
     "server/ts/netTools.ts",
     "server/ts/notesGit.ts",
     "server/ts/appTimeTracker.ts",
+    "server/ts/imageEditor.ts",
     "server/ts/elevate.ts",
     "server/ts/backup.ts",
     "server/ts/downloads.ts",

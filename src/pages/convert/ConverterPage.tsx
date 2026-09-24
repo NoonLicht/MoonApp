@@ -320,8 +320,209 @@ export default function ConverterPage() {
 
       {!file && <EmptyHint icon={Repeat} text={t("conv.empty")} />}
 
+      <ImageEditorToolkit />
       <PdfToolkit />
     </div>
+  );
+}
+
+/**
+ * Редактор изображений (кроп/ресайз/водяной знак) — через ffmpeg
+ * (server/ts/imageEditor.ts), без нового пакета обработки изображений.
+ */
+function ImageEditorToolkit() {
+  const { t } = useI18n();
+
+  const [cropFile, setCropFile] = useState<File | null>(null);
+  const [box, setBox] = useState({ x: "0", y: "0", w: "0", h: "0" });
+  const [cropBusy, setCropBusy] = useState(false);
+  const [cropError, setCropError] = useState("");
+
+  const [resizeFile, setResizeFile] = useState<File | null>(null);
+  const [size, setSize] = useState({ w: "", h: "" });
+  const [resizeBusy, setResizeBusy] = useState(false);
+  const [resizeError, setResizeError] = useState("");
+
+  const [wmFile, setWmFile] = useState<File | null>(null);
+  const [wmMark, setWmMark] = useState<File | null>(null);
+  const [wmPosition, setWmPosition] = useState("bottom-right");
+  const [wmOpacity, setWmOpacity] = useState("0.6");
+  const [wmBusy, setWmBusy] = useState(false);
+  const [wmError, setWmError] = useState("");
+
+  const doCrop = async () => {
+    if (!cropFile) return;
+    setCropBusy(true);
+    setCropError("");
+    try {
+      const blob = await api.imageCrop(cropFile, {
+        x: parseInt(box.x, 10) || 0,
+        y: parseInt(box.y, 10) || 0,
+        w: parseInt(box.w, 10) || 0,
+        h: parseInt(box.h, 10) || 0,
+      });
+      saveBlob(blob, `cropped_${cropFile.name}`);
+    } catch (e) {
+      setCropError((e as Error).message);
+    } finally {
+      setCropBusy(false);
+    }
+  };
+
+  const doResize = async () => {
+    if (!resizeFile) return;
+    setResizeBusy(true);
+    setResizeError("");
+    try {
+      const blob = await api.imageResize(resizeFile, {
+        w: parseInt(size.w, 10) || 0,
+        h: parseInt(size.h, 10) || 0,
+      });
+      saveBlob(blob, `resized_${resizeFile.name}`);
+    } catch (e) {
+      setResizeError((e as Error).message);
+    } finally {
+      setResizeBusy(false);
+    }
+  };
+
+  const doWatermark = async () => {
+    if (!wmFile || !wmMark) return;
+    setWmBusy(true);
+    setWmError("");
+    try {
+      const blob = await api.imageWatermark(
+        wmFile,
+        wmMark,
+        wmPosition,
+        parseFloat(wmOpacity) || 0.6,
+      );
+      saveBlob(blob, `watermarked_${wmFile.name}`);
+    } catch (e) {
+      setWmError((e as Error).message);
+    } finally {
+      setWmBusy(false);
+    }
+  };
+
+  return (
+    <>
+      <SectionHead eyebrow={t("conv.imgEyebrow")} title={t("conv.imgTitle")} />
+
+      {/* --- Кроп --- */}
+      <Glass className="media-preview" style={{ flexDirection: "column", alignItems: "stretch", gap: 8 }}>
+        <div className="media-title">{t("conv.imgCrop")}</div>
+        <input
+          type="file"
+          accept="image/*"
+          onChange={(e) => setCropFile(e.target.files?.[0] || null)}
+        />
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {(["x", "y", "w", "h"] as const).map((k) => (
+            <input
+              key={k}
+              className="text-input"
+              style={{ width: 90 }}
+              placeholder={k.toUpperCase()}
+              value={box[k]}
+              onChange={(e) => setBox((b) => ({ ...b, [k]: e.target.value }))}
+            />
+          ))}
+        </div>
+        <Btn
+          variant="primary"
+          icon={cropBusy ? RefreshCw : FileUp}
+          disabled={!cropFile || cropBusy}
+          onClick={() => void doCrop()}
+          style={{ width: 200 }}
+        >
+          {cropBusy ? t("conv.pdfWorking") : t("conv.imgCropGo")}
+        </Btn>
+        {cropError && <div style={{ color: "var(--coral)" }}>{cropError}</div>}
+      </Glass>
+
+      {/* --- Ресайз --- */}
+      <Glass className="media-preview" style={{ flexDirection: "column", alignItems: "stretch", gap: 8 }}>
+        <div className="media-title">{t("conv.imgResize")}</div>
+        <input
+          type="file"
+          accept="image/*"
+          onChange={(e) => setResizeFile(e.target.files?.[0] || null)}
+        />
+        <div style={{ display: "flex", gap: 8 }}>
+          <input
+            className="text-input"
+            style={{ width: 100 }}
+            placeholder={t("conv.imgWidth")}
+            value={size.w}
+            onChange={(e) => setSize((s) => ({ ...s, w: e.target.value }))}
+          />
+          <input
+            className="text-input"
+            style={{ width: 100 }}
+            placeholder={t("conv.imgHeight")}
+            value={size.h}
+            onChange={(e) => setSize((s) => ({ ...s, h: e.target.value }))}
+          />
+        </div>
+        <Btn
+          variant="primary"
+          icon={resizeBusy ? RefreshCw : FileUp}
+          disabled={!resizeFile || resizeBusy}
+          onClick={() => void doResize()}
+          style={{ width: 200 }}
+        >
+          {resizeBusy ? t("conv.pdfWorking") : t("conv.imgResizeGo")}
+        </Btn>
+        {resizeError && <div style={{ color: "var(--coral)" }}>{resizeError}</div>}
+      </Glass>
+
+      {/* --- Водяной знак --- */}
+      <Glass className="media-preview" style={{ flexDirection: "column", alignItems: "stretch", gap: 8 }}>
+        <div className="media-title">{t("conv.imgWatermark")}</div>
+        <input
+          type="file"
+          accept="image/*"
+          onChange={(e) => setWmFile(e.target.files?.[0] || null)}
+        />
+        <div className="muted-sm">{t("conv.imgWatermarkFile")}</div>
+        <input
+          type="file"
+          accept="image/*"
+          onChange={(e) => setWmMark(e.target.files?.[0] || null)}
+        />
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <Select
+            value={wmPosition}
+            onChange={(e) => setWmPosition(e.target.value)}
+            options={[
+              { value: "top-left", label: t("conv.imgPosTopLeft") },
+              { value: "top-right", label: t("conv.imgPosTopRight") },
+              { value: "bottom-left", label: t("conv.imgPosBottomLeft") },
+              { value: "bottom-right", label: t("conv.imgPosBottomRight") },
+              { value: "center", label: t("conv.imgPosCenter") },
+            ]}
+          />
+          <input
+            className="text-input"
+            style={{ width: 90 }}
+            placeholder={t("conv.imgOpacity")}
+            value={wmOpacity}
+            onChange={(e) => setWmOpacity(e.target.value)}
+          />
+        </div>
+        <Btn
+          variant="primary"
+          icon={wmBusy ? RefreshCw : FileUp}
+          disabled={!wmFile || !wmMark || wmBusy}
+          onClick={() => void doWatermark()}
+          style={{ width: 200 }}
+        >
+          {wmBusy ? t("conv.pdfWorking") : t("conv.imgWatermarkGo")}
+        </Btn>
+        {wmError && <div style={{ color: "var(--coral)" }}>{wmError}</div>}
+      </Glass>
+    </>
   );
 }
 

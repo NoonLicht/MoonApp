@@ -63,6 +63,7 @@ server/games.js
 server/netTools.js
 server/notesGit.js
 server/appTimeTracker.js
+server/imageEditor.js
 server/elevate.js
 server/backup.js
 server/downloads.js
