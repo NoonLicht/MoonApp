@@ -16,6 +16,9 @@ import type {
   ConvertTools,
   ConvertResult,
   ConvertInstallStatus,
+  PasswordEntry,
+  PasswordEntryFull,
+  PasswordEntryInput,
   VideoInfo,
   VideoDownloadResult,
   VideoJobStatus,
@@ -1314,6 +1317,21 @@ export const api = {
   tasksDelete: (id: string) => req<{ ok: boolean }>("DELETE", `/myspace/tasks/${id}`),
   tasksTimer: (id: string, action: "start" | "pause") =>
     req<TaskItem>("POST", `/myspace/tasks/${id}/timer`, { action }),
+
+  // --- Менеджер паролей ---
+  passwordsList: () => req<PasswordEntry[]>("GET", "/passwords"),
+  passwordsReveal: (id: string) => req<PasswordEntryFull>("GET", `/passwords/${id}/reveal`),
+  passwordsCreate: (payload: PasswordEntryInput) =>
+    req<PasswordEntry>("POST", "/passwords", payload),
+  passwordsUpdate: (id: string, payload: Partial<PasswordEntryInput>) =>
+    req<PasswordEntry>("PUT", `/passwords/${id}`, payload),
+  passwordsDelete: (id: string) => req<{ ok: boolean }>("DELETE", `/passwords/${id}`),
+  passwordsGenerate: (opts: {
+    length?: number;
+    digits?: boolean;
+    symbols?: boolean;
+    upper?: boolean;
+  }) => req<{ password: string }>("POST", "/passwords/generate", opts),
 
   // --- Фильмы и сериалы: каталог TMDB, библиотека, торрент-плеер ---
   moviesStatus: () => req<MediaStatus>("GET", "/movies/status"),

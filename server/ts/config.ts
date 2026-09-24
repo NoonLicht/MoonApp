@@ -91,6 +91,7 @@ const FILES = {
   data: path.join(DIRS.storage, "data.json"),
   settings: path.join(DIRS.storage, "settings.json"),
   secrets: path.join(DIRS.storage, "secrets.json"),
+  passwordVault: path.join(DIRS.storage, "password-vault.json"),
   conspectusPresets: path.join(DIRS.storage, "conspectus_presets.json"),
   log: path.join(DIRS.logs, "app.log"),
 };

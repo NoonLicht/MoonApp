@@ -54,6 +54,7 @@ server/frontmatter.js
 server/download.js
 server/setupTask.js
 server/security.js
+server/passwordVault.js
 server/elevate.js
 server/backup.js
 server/downloads.js

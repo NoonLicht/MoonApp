@@ -324,6 +324,32 @@ export interface ConvertInstallStatus {
   installed: boolean; // ffmpeg.exe уже лежит в storage/ffmpeg/
 }
 
+/* --------------------------- Менеджер паролей ------------------------------- */
+
+export interface PasswordEntry {
+  id: string;
+  title: string;
+  username: string;
+  url: string;
+  notes: string;
+  tags: string[];
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface PasswordEntryFull extends PasswordEntry {
+  password: string;
+}
+
+export interface PasswordEntryInput {
+  title: string;
+  username?: string;
+  password: string;
+  url?: string;
+  notes?: string;
+  tags?: string[];
+}
+
 /* -------------------------------- Видео ------------------------------------ */
 
 /** Метаданные и доступные форматы с URL (GET /api/video/info). */

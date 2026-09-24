@@ -280,6 +280,22 @@
     "ioImportConfirm": "Importer les paramètres de « {name} » ? Les paramètres actuels seront remplacés.",
     "ioRestartHint": "Certains paramètres système (démarrage auto, taille de la fenêtre, accélération) s'appliquent après redémarrage."
   },
+  "passwordVault": {
+    "title": "Gestionnaire de mots de passe",
+    "hint": "Stockage chiffré séparé pour identifiants/mots de passe (sans rapport avec les clés API ci-dessus). Les mots de passe sont masqués par défaut.",
+    "loading": "Chargement…",
+    "empty": "Aucune entrée pour l'instant",
+    "add": "Ajouter une entrée",
+    "save": "Enregistrer",
+    "show": "Afficher le mot de passe",
+    "hide": "Masquer le mot de passe",
+    "copy": "Copier le mot de passe",
+    "generate": "Générer un mot de passe",
+    "fTitle": "Titre (ex. « E-mail »)",
+    "fUsername": "Identifiant / e-mail",
+    "fPassword": "Mot de passe",
+    "fUrl": "Site (facultatif)"
+  },
   "advanced": {
     "advancedTelemetry": "Télémétrie",
     "advancedTelemetryHint": "Envoyer des statistiques anonymes d'utilisation",

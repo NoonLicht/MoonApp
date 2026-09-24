@@ -280,6 +280,22 @@
     "ioImportConfirm": "Import settings from \"{name}\"? Current settings will be replaced.",
     "ioRestartHint": "Some system options (auto-start, window size, hardware acceleration) apply after restarting the app."
   },
+  "passwordVault": {
+    "title": "Password manager",
+    "hint": "Separate encrypted store for logins/passwords (not related to the API keys above). Passwords are hidden by default.",
+    "loading": "Loading…",
+    "empty": "No entries yet",
+    "add": "Add entry",
+    "save": "Save",
+    "show": "Show password",
+    "hide": "Hide password",
+    "copy": "Copy password",
+    "generate": "Generate password",
+    "fTitle": "Title (e.g. \"Email\")",
+    "fUsername": "Username / e-mail",
+    "fPassword": "Password",
+    "fUrl": "Site (optional)"
+  },
   "advanced": {
     "advancedTelemetry": "Telemetry",
     "advancedTelemetryHint": "Send anonymous usage statistics",

@@ -73,7 +73,7 @@ function aesDecrypt(token: string): string {
   );
 }
 
-function encryptSecret(plain: string): string {
+export function encryptSecret(plain: string): string {
   const ss = getElectronSafeStorage();
   if (ss && ss.isEncryptionAvailable()) {
     return "__ss__" + ss.encryptString(plain).toString("base64");

@@ -33,6 +33,7 @@
     "server/ts/setupTask.ts",
     "server/ts/frontmatter.ts",
     "server/ts/security.ts",
+    "server/ts/passwordVault.ts",
     "server/ts/elevate.ts",
     "server/ts/backup.ts",
     "server/ts/downloads.ts",

@@ -280,6 +280,22 @@
     "ioImportConfirm": "从“{name}”导入设置？当前设置将被替换。",
     "ioRestartHint": "部分系统设置（自动启动、窗口大小、硬件加速）将在重启应用后生效。"
   },
+  "passwordVault": {
+    "title": "密码管理器",
+    "hint": "独立的加密登录名/密码存储(与上方的 API 密钥无关)。密码默认隐藏。",
+    "loading": "加载中…",
+    "empty": "暂无条目",
+    "add": "添加条目",
+    "save": "保存",
+    "show": "显示密码",
+    "hide": "隐藏密码",
+    "copy": "复制密码",
+    "generate": "生成密码",
+    "fTitle": "标题(例如“邮箱”)",
+    "fUsername": "用户名 / 邮箱",
+    "fPassword": "密码",
+    "fUrl": "网站(可选)"
+  },
   "advanced": {
     "advancedTelemetry": "遥测",
     "advancedTelemetryHint": "发送匿名使用统计",

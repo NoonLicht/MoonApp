@@ -280,6 +280,22 @@
     "ioImportConfirm": "¿Importar los ajustes de «{name}»? Los ajustes actuales se reemplazarán.",
     "ioRestartHint": "Algunos ajustes del sistema (inicio automático, tamaño de ventana, aceleración) se aplican tras reiniciar la aplicación."
   },
+  "passwordVault": {
+    "title": "Gestor de contraseñas",
+    "hint": "Almacén cifrado independiente de logins/contraseñas (no relacionado con las claves de API de arriba). Las contraseñas están ocultas por defecto.",
+    "loading": "Cargando…",
+    "empty": "Todavía no hay entradas",
+    "add": "Añadir entrada",
+    "save": "Guardar",
+    "show": "Mostrar contraseña",
+    "hide": "Ocultar contraseña",
+    "copy": "Copiar contraseña",
+    "generate": "Generar contraseña",
+    "fTitle": "Título (p. ej. «Correo»)",
+    "fUsername": "Usuario / e-mail",
+    "fPassword": "Contraseña",
+    "fUrl": "Sitio (opcional)"
+  },
   "advanced": {
     "advancedTelemetry": "Telemetría",
     "advancedTelemetryHint": "Enviar estadísticas anónimas de uso",
