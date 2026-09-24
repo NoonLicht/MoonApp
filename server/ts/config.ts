@@ -86,6 +86,9 @@ const DIRS = {
   vaultNotes: ensureDir(path.join(STORAGE_DIR, "vault", "notes")),
   vaultHolts: ensureDir(path.join(STORAGE_DIR, "vault", "holts")),
   notes: ensureDir(path.join(STORAGE_DIR, "notes")),
+  // Games launcher: библиотека игр/приложений + версионные бэкапы сохранений.
+  games: ensureDir(path.join(STORAGE_DIR, "games")),
+  gameSaves: ensureDir(path.join(STORAGE_DIR, "games", "saves")),
 };
 const FILES = {
   data: path.join(DIRS.storage, "data.json"),
@@ -94,6 +97,7 @@ const FILES = {
   passwordVault: path.join(DIRS.storage, "password-vault.json"),
   bookmarks: path.join(DIRS.storage, "bookmarks.json"),
   musicPlaylists: path.join(DIRS.storage, "music-playlists.json"),
+  gamesLibrary: path.join(DIRS.games, "library.json"),
   conspectusPresets: path.join(DIRS.storage, "conspectus_presets.json"),
   log: path.join(DIRS.logs, "app.log"),
 };

@@ -16,7 +16,8 @@
     "lecture": "Cours",
     "bypass": "Contournement",
     "upscale": "Upscale",
-    "tools": "Outils"
+    "tools": "Outils",
+    "games": "Jeux"
   },
   "common": {
     "saved": "enregistré",
@@ -292,6 +293,28 @@
     "fNotes": "Note",
     "saveForLater": "Enregistrer l'article pour plus tard (télécharge le texte dans une note)",
     "openArticle": "Ouvrir l'article enregistré"
+  },
+  "games": {
+    "eyebrow": "Lanceur",
+    "title": "Jeux",
+    "add": "Ajouter",
+    "save": "Enregistrer",
+    "empty": "Bibliothèque vide — ajoutez un jeu manuellement ou lancez l'analyse automatique",
+    "autoScan": "Analyse auto (Steam/Epic)",
+    "scanning": "Analyse…",
+    "scanResult": "Ajoutés : {added} (Steam : {steam}, Epic : {epic})",
+    "launch": "Lancer",
+    "saveManager": "Gestionnaire de sauvegardes",
+    "saveManagerFor": "Sauvegardes : {name}",
+    "backupNow": "Sauvegarder maintenant",
+    "noVersions": "Aucune sauvegarde pour l'instant",
+    "restore": "Restaurer",
+    "fName": "Nom",
+    "fExePath": "Chemin du .exe",
+    "fDescription": "Description",
+    "fSavePath": "Dossier de sauvegarde (facultatif)",
+    "fIcon": "Icône",
+    "fBackground": "Fond"
   },
   "tools": {
     "eyebrow": "Multi-outil",

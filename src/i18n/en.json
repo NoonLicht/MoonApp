@@ -16,7 +16,8 @@
     "lecture": "Lecture",
     "bypass": "Bypass",
     "upscale": "Upscale",
-    "tools": "Tools"
+    "tools": "Tools",
+    "games": "Games"
   },
   "common": {
     "saved": "saved",
@@ -292,6 +293,28 @@
     "fNotes": "Note",
     "saveForLater": "Save article for later (downloads text into a note)",
     "openArticle": "Open saved article"
+  },
+  "games": {
+    "eyebrow": "Launcher",
+    "title": "Games",
+    "add": "Add",
+    "save": "Save",
+    "empty": "Library is empty — add a game manually or run auto-scan",
+    "autoScan": "Auto-scan (Steam/Epic)",
+    "scanning": "Scanning…",
+    "scanResult": "Added: {added} (Steam: {steam}, Epic: {epic})",
+    "launch": "Launch",
+    "saveManager": "Save manager",
+    "saveManagerFor": "Saves: {name}",
+    "backupNow": "Back up now",
+    "noVersions": "No backups yet",
+    "restore": "Restore",
+    "fName": "Name",
+    "fExePath": "Path to .exe",
+    "fDescription": "Description",
+    "fSavePath": "Save folder path (optional)",
+    "fIcon": "Icon",
+    "fBackground": "Background"
   },
   "tools": {
     "eyebrow": "Multitool",

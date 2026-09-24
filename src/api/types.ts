@@ -401,6 +401,35 @@ export interface MusicPlaylist {
   createdAt: number;
 }
 
+/* ----------------------------- Игры (лаунчер) ------------------------------- */
+
+export interface GameEntry {
+  id: string;
+  name: string;
+  exePath: string;
+  description: string;
+  iconDataUrl: string | null;
+  backgroundDataUrl: string | null;
+  savePath: string | null;
+  source: "manual" | "steam" | "epic";
+  createdAt: number;
+}
+
+export interface GameInput {
+  name: string;
+  exePath: string;
+  description?: string;
+  iconDataUrl?: string | null;
+  backgroundDataUrl?: string | null;
+  savePath?: string | null;
+}
+
+export interface SaveVersion {
+  file: string;
+  createdAt: number;
+  size: number;
+}
+
 /* -------------------------------- Видео ------------------------------------ */
 
 /** Метаданные и доступные форматы с URL (GET /api/video/info). */

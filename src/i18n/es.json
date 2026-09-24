@@ -16,7 +16,8 @@
     "lecture": "Clases",
     "bypass": "Bloqueos",
     "upscale": "Escalado",
-    "tools": "Herramientas"
+    "tools": "Herramientas",
+    "games": "Juegos"
   },
   "common": {
     "saved": "guardado",
@@ -292,6 +293,28 @@
     "fNotes": "Nota",
     "saveForLater": "Guardar artículo para leer después (descarga el texto a una nota)",
     "openArticle": "Abrir artículo guardado"
+  },
+  "games": {
+    "eyebrow": "Lanzador",
+    "title": "Juegos",
+    "add": "Añadir",
+    "save": "Guardar",
+    "empty": "La biblioteca está vacía — añade un juego manualmente o ejecuta el autoescaneo",
+    "autoScan": "Autoescaneo (Steam/Epic)",
+    "scanning": "Escaneando…",
+    "scanResult": "Añadidos: {added} (Steam: {steam}, Epic: {epic})",
+    "launch": "Iniciar",
+    "saveManager": "Gestor de partidas guardadas",
+    "saveManagerFor": "Partidas: {name}",
+    "backupNow": "Copiar ahora",
+    "noVersions": "Todavía no hay copias",
+    "restore": "Restaurar",
+    "fName": "Nombre",
+    "fExePath": "Ruta al .exe",
+    "fDescription": "Descripción",
+    "fSavePath": "Ruta de la carpeta de partidas (opcional)",
+    "fIcon": "Icono",
+    "fBackground": "Fondo"
   },
   "tools": {
     "eyebrow": "Multiherramienta",

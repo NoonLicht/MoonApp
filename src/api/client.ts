@@ -24,6 +24,9 @@ import type {
   Bookmark,
   BookmarkInput,
   MusicPlaylist,
+  GameEntry,
+  GameInput,
+  SaveVersion,
   VideoInfo,
   VideoDownloadResult,
   VideoJobStatus,
@@ -1389,6 +1392,21 @@ export const api = {
     }
     return res.json() as Promise<{ text: string; pages: number }>;
   },
+
+  // --- Игры (лаунчер) ---
+  gamesList: () => req<GameEntry[]>("GET", "/games"),
+  gamesCreate: (payload: GameInput) => req<GameEntry>("POST", "/games", payload),
+  gamesUpdate: (id: string, payload: Partial<GameInput>) =>
+    req<GameEntry>("PUT", `/games/${id}`, payload),
+  gamesDelete: (id: string) => req<{ ok: boolean }>("DELETE", `/games/${id}`),
+  gamesLaunch: (id: string) => req<{ ok: boolean; error?: string }>("POST", `/games/${id}/launch`),
+  gamesAutoScan: () =>
+    req<{ added: number; scanned: { steam: number; epic: number } }>("POST", "/games/autoscan"),
+  gamesSaveBackup: (id: string) =>
+    req<{ ok: boolean; error?: string; file?: string }>("POST", `/games/${id}/save/backup`),
+  gamesSaveVersions: (id: string) => req<SaveVersion[]>("GET", `/games/${id}/save/versions`),
+  gamesSaveRestore: (id: string, file: string) =>
+    req<{ ok: boolean; error?: string }>("POST", `/games/${id}/save/restore`, { file }),
 
   // --- Анализатор диска (WinDirStat) ---
   diskScanRoots: () => req<{ roots: string[] }>("GET", "/diskscan/roots"),

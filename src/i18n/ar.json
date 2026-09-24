@@ -16,7 +16,8 @@
     "lecture": "المحاضرات",
     "bypass": "تجاوز الحظر",
     "upscale": "تكبير",
-    "tools": "الأدوات"
+    "tools": "الأدوات",
+    "games": "الألعاب"
   },
   "common": {
     "saved": "تم الحفظ",
@@ -292,6 +293,28 @@
     "fNotes": "ملاحظة",
     "saveForLater": "حفظ المقال للقراءة لاحقًا (يُنزّل النص إلى ملاحظة)",
     "openArticle": "فتح المقال المحفوظ"
+  },
+  "games": {
+    "eyebrow": "مشغّل الألعاب",
+    "title": "الألعاب",
+    "add": "إضافة",
+    "save": "حفظ",
+    "empty": "المكتبة فارغة — أضف لعبة يدويًا أو شغّل الفحص التلقائي",
+    "autoScan": "فحص تلقائي (Steam/Epic)",
+    "scanning": "جارٍ الفحص…",
+    "scanResult": "أُضيف: {added} (Steam: {steam}، Epic: {epic})",
+    "launch": "تشغيل",
+    "saveManager": "مدير الحفظ",
+    "saveManagerFor": "حفظ: {name}",
+    "backupNow": "نسخ احتياطي الآن",
+    "noVersions": "لا توجد نسخ احتياطية بعد",
+    "restore": "استعادة",
+    "fName": "الاسم",
+    "fExePath": "مسار الملف التنفيذي .exe",
+    "fDescription": "الوصف",
+    "fSavePath": "مسار مجلد الحفظ (اختياري)",
+    "fIcon": "الأيقونة",
+    "fBackground": "الخلفية"
   },
   "tools": {
     "eyebrow": "أداة متعددة",

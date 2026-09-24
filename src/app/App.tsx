@@ -58,6 +58,7 @@ import LectureRecorderPage from "@/pages/lecture/LectureRecorderPage";
 import BypassControlPage from "@/pages/bypass/BypassControlPage";
 import MoviesPage from "@/pages/movies/MoviesPage";
 import ToolsPage from "@/pages/tools/ToolsPage";
+import GamesPage from "@/pages/games/GamesPage";
 
 // Идентификаторы страниц и их перечень (PAGES) живут в src/navigation.ts —
 // общий источник для дока приложения и списка «Стартовая страница» в настройках.
@@ -97,6 +98,7 @@ const PAGE_COMPONENTS: Record<PageId, React.ComponentType> = {
   lecture: LectureRecorderPage,
   bypass: BypassControlPage,
   tools: ToolsPage,
+  games: GamesPage,
   archive: ArchiverPage,
   settings: SettingsPage,
 };

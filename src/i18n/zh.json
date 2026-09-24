@@ -16,7 +16,8 @@
     "lecture": "讲座",
     "bypass": "绕过限制",
     "upscale": "放大",
-    "tools": "工具"
+    "tools": "工具",
+    "games": "游戏"
   },
   "common": {
     "saved": "已保存",
@@ -292,6 +293,28 @@
     "fNotes": "备注",
     "saveForLater": "保存文章稍后阅读(将正文下载为笔记)",
     "openArticle": "打开已保存的文章"
+  },
+  "games": {
+    "eyebrow": "启动器",
+    "title": "游戏",
+    "add": "添加",
+    "save": "保存",
+    "empty": "库为空 — 手动添加游戏或运行自动扫描",
+    "autoScan": "自动扫描(Steam/Epic)",
+    "scanning": "扫描中…",
+    "scanResult": "新增:{added}(Steam:{steam},Epic:{epic})",
+    "launch": "启动",
+    "saveManager": "存档管理",
+    "saveManagerFor": "存档:{name}",
+    "backupNow": "立即备份",
+    "noVersions": "暂无备份",
+    "restore": "恢复",
+    "fName": "名称",
+    "fExePath": ".exe 路径",
+    "fDescription": "描述",
+    "fSavePath": "存档文件夹路径(可选)",
+    "fIcon": "图标",
+    "fBackground": "背景"
   },
   "tools": {
     "eyebrow": "多功能工具",

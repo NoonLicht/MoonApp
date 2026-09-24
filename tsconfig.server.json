@@ -38,6 +38,7 @@
     "server/ts/bookmarks.ts",
     "server/ts/musicPlaylists.ts",
     "server/ts/pdfTools.ts",
+    "server/ts/games.ts",
     "server/ts/elevate.ts",
     "server/ts/backup.ts",
     "server/ts/downloads.ts",
