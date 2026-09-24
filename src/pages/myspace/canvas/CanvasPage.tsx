@@ -53,7 +53,28 @@ const defaultSize: Record<string, { width: number; height: number }> = {
   md: { width: 190, height: 150 },
   matrix: { width: 460, height: 330 },
   sticker: { width: 48, height: 48 },
+  image: { width: 320, height: 200 },
 };
+
+/** Файл → data URL (для вставленных/перетащенных изображений — храним прямо в .holst JSON). */
+function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+/** Натуральный размер картинки по data URL, чтобы новый узел не растягивал/сплющивал вставленный скриншот. */
+function imageNaturalSize(src: string): Promise<{ w: number; h: number }> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => resolve({ w: img.naturalWidth || 320, h: img.naturalHeight || 200 });
+    img.onerror = () => resolve({ w: 320, h: 200 });
+    img.src = src;
+  });
+}
 
 /* ───────────────────────── inner canvas ───────────────────────── */
 
@@ -492,13 +513,31 @@ function CanvasInner() {
     [slash, addNode, setData, pushHistory],
   );
 
-  /* ── drop .md from MySpace sidebar ── */
+  /* ── drop .md from MySpace sidebar, либо файл изображения (скриншот) с диска ── */
   const onDrop = useCallback(
     (event: React.DragEvent) => {
       event.preventDefault();
+      const flow = screenToFlowPosition({ x: event.clientX, y: event.clientY });
+
+      const imageFile = [...event.dataTransfer.files].find((f) => f.type.startsWith("image/"));
+      if (imageFile) {
+        void (async () => {
+          const src = await fileToDataUrl(imageFile);
+          const { w, h } = await imageNaturalSize(src);
+          pushHistory();
+          const scale = Math.min(1, 480 / w);
+          addNode(
+            "image",
+            flow,
+            { src, w, h },
+            { style: { width: Math.round(w * scale), height: Math.round(h * scale) } },
+          );
+        })();
+        return;
+      }
+
       const mdPath = event.dataTransfer.getData("text/plain");
       if (!mdPath || !mdPath.toLowerCase().endsWith(".md")) return;
-      const flow = screenToFlowPosition({ x: event.clientX, y: event.clientY });
       pushHistory();
       addNode("md", flow, {
         path: mdPath,
@@ -509,6 +548,43 @@ function CanvasInner() {
     },
     [screenToFlowPosition, addNode, setData, pushHistory],
   );
+
+  /* ── вставка скриншота/картинки из буфера обмена (Ctrl+V) — "экранные заметки":
+     сделал снимок (например через будущую страницу Скриншотов или штатный
+     инструмент Windows), вставил на холст, обвёл/подписал уже существующими
+     инструментами (Pen/стикеры/текст) ── */
+  useEffect(() => {
+    const onPaste = (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      const imageItem = [...items].find((it) => it.type.startsWith("image/"));
+      if (!imageItem) return;
+      const file = imageItem.getAsFile();
+      if (!file) return;
+      e.preventDefault();
+      void (async () => {
+        const src = await fileToDataUrl(file);
+        const { w, h } = await imageNaturalSize(src);
+        const wrap = wrapRef.current;
+        const center = wrap
+          ? screenToFlowPosition({
+              x: wrap.getBoundingClientRect().left + wrap.clientWidth / 2,
+              y: wrap.getBoundingClientRect().top + wrap.clientHeight / 2,
+            })
+          : { x: 0, y: 0 };
+        pushHistory();
+        const scale = Math.min(1, 480 / w);
+        addNode(
+          "image",
+          { x: center.x - (w * scale) / 2, y: center.y - (h * scale) / 2 },
+          { src, w, h },
+          { style: { width: Math.round(w * scale), height: Math.round(h * scale) } },
+        );
+      })();
+    };
+    document.addEventListener("paste", onPaste);
+    return () => document.removeEventListener("paste", onPaste);
+  }, [screenToFlowPosition, addNode, pushHistory]);
 
   const onDragOver = useCallback((event: React.DragEvent) => {
     if (event.dataTransfer.types.includes("text/plain")) {

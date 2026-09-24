@@ -69,6 +69,12 @@ export interface StrokeData {
 export interface StickerData {
   emoji: string;
 }
+/** Вставленный скриншот/картинка (paste из буфера или drag&drop файла) — src как data URL. */
+export interface ImageData {
+  src: string;
+  w: number;
+  h: number;
+}
 
 export interface ConnectorData {
   style: ConnectorStyle;

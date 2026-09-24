@@ -533,6 +533,23 @@ function StrokeNode({ data, selected }: NodeProps) {
   );
 }
 
+/* Image (pasted screenshot / dropped file) ----------------------------------------------- */
+
+function ImageNode({ data }: NodeProps) {
+  const d = data as { src: string };
+  return (
+    <div className="holst-node holst-image" style={{ padding: 0, overflow: "hidden" }}>
+      <img
+        src={d.src}
+        alt=""
+        draggable={false}
+        style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }}
+      />
+      <NodeHandles color="#3fc7ab" />
+    </div>
+  );
+}
+
 export const nodeTypes = {
   sticky: memo(StickyNoteNode),
   text: memo(TextNode),
@@ -543,6 +560,7 @@ export const nodeTypes = {
   matrix: memo(MatrixNode),
   sticker: memo(StickerNode),
   stroke: memo(StrokeNode),
+  image: memo(ImageNode),
 };
 
 /* Connector edge -------------------------------------------------------------------------- */

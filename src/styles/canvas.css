@@ -609,6 +609,15 @@
   filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.35));
 }
 
+/* Image (pasted screenshot / dropped file) */
+.holst-image {
+  width: 100%;
+  height: 100%;
+  border-radius: 6px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
 /* Stroke (pen) */
 .holst-stroke-node {
   width: 100%;
