@@ -15,36 +15,88 @@ beforeAll(() => {
   engine = req("../server/budget");
 });
 
+// RUB-операции не снимают курс (см. комментарий у create() в budget.ts),
+// поэтому реальная сеть здесь не нужна — эти тесты работают офлайн.
+async function reachesCbr(): Promise<boolean> {
+  try {
+    const controller = new AbortController();
+    const t = setTimeout(() => controller.abort(), 4000);
+    const res = await fetch("https://www.cbr-xml-daily.ru/daily_json.js", { signal: controller.signal });
+    clearTimeout(t);
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+const cbrReachable = await reachesCbr();
+
 describe("server/budget — CRUD операций", () => {
-  it("create/list/remove работают, некорректная сумма отклоняется", () => {
-    const tx = engine.create({ type: "expense", amount: 100, category: "Еда", date: "2026-09-10" });
+  it("create/list/remove работают, некорректная сумма отклоняется", async () => {
+    const tx = await engine.create({ type: "expense", amount: 100, category: "Еда", date: "2026-09-10" });
     expect(tx.id).toBeTruthy();
+    expect(tx.currency).toBe("RUB");
     expect(engine.list()).toHaveLength(1);
 
-    expect(() => engine.create({ type: "expense", amount: -5, category: "Еда" })).toThrow("invalid_amount");
-    expect(() => engine.create({ type: "expense", amount: NaN, category: "Еда" })).toThrow("invalid_amount");
+    await expect(engine.create({ type: "expense", amount: -5, category: "Еда" })).rejects.toThrow(
+      "invalid_amount",
+    );
+    await expect(engine.create({ type: "expense", amount: NaN, category: "Еда" })).rejects.toThrow(
+      "invalid_amount",
+    );
 
     expect(engine.remove(tx.id)).toBe(true);
     expect(engine.remove(tx.id)).toBe(false);
     expect(engine.list()).toHaveLength(0);
   });
 
-  it("create без даты подставляет сегодняшнюю в формате YYYY-MM-DD", () => {
-    const tx = engine.create({ type: "income", amount: 500, category: "Зарплата" });
+  it("create без даты подставляет сегодняшнюю в формате YYYY-MM-DD", async () => {
+    const tx = await engine.create({ type: "income", amount: 500, category: "Зарплата" });
     expect(tx.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     engine.remove(tx.id);
   });
+
+  it("convertAmount: та же валюта — без конвертации; RUB↔RUB не требует снимка курса", async () => {
+    const tx = await engine.create({ type: "expense", amount: 100, category: "Еда" });
+    expect(engine.convertAmount(tx, "RUB")).toBe(100);
+    engine.remove(tx.id);
+  });
+
+  it("convertAmount: рублёвая операция без снимка курса не конвертируется в другую валюту", async () => {
+    const tx = await engine.create({ type: "expense", amount: 100, category: "Еда" });
+    expect(tx.rates).toBeNull();
+    expect(engine.convertAmount(tx, "USD")).toBeNull();
+    engine.remove(tx.id);
+  });
+
+  it.runIf(cbrReachable)(
+    "операция в валюте снимает реальный курс ЦБ РФ и конвертируется в RUB",
+    async () => {
+      const tx = await engine.create({
+        type: "expense",
+        amount: 10,
+        category: "Другое",
+        currency: "USD",
+      });
+      expect(tx.currency).toBe("USD");
+      expect(tx.rates).not.toBeNull();
+      expect(tx.rates!.USD).toBeGreaterThan(1); // доллар точно дороже рубля
+      const inRub = engine.convertAmount(tx, "RUB");
+      expect(inRub).toBeCloseTo(10 * tx.rates!.USD, 5);
+      engine.remove(tx.id);
+    },
+    15000,
+  );
 });
 
 describe("server/budget — помесячная агрегация", () => {
-  it("monthlySummary группирует по месяцу и категории, считает доходы/расходы раздельно", () => {
+  it("monthlySummary группирует по месяцу и категории, считает доходы/расходы раздельно", async () => {
     const now = new Date();
     const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 
-    engine.create({ type: "expense", amount: 100, category: "Еда", date: `${thisMonth}-05` });
-    engine.create({ type: "expense", amount: 50, category: "Еда", date: `${thisMonth}-06` });
-    engine.create({ type: "expense", amount: 30, category: "Транспорт", date: `${thisMonth}-07` });
-    engine.create({ type: "income", amount: 1000, category: "Зарплата", date: `${thisMonth}-01` });
+    await engine.create({ type: "expense", amount: 100, category: "Еда", date: `${thisMonth}-05` });
+    await engine.create({ type: "expense", amount: 50, category: "Еда", date: `${thisMonth}-06` });
+    await engine.create({ type: "expense", amount: 30, category: "Транспорт", date: `${thisMonth}-07` });
+    await engine.create({ type: "income", amount: 1000, category: "Зарплата", date: `${thisMonth}-01` });
 
     const summary = engine.monthlySummary(3);
     expect(summary).toHaveLength(3);
@@ -54,6 +106,7 @@ describe("server/budget — помесячная агрегация", () => {
     expect(current.expense).toBe(180);
     expect(current.byCategory["Еда"]).toBe(150);
     expect(current.byCategory["Транспорт"]).toBe(30);
+    expect(current.unconverted).toBe(0);
   });
 });
 

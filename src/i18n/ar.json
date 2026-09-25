@@ -394,7 +394,9 @@
     "empty": "أضف أول عملية — دخل أو مصروف",
     "import": "استيراد CSV",
     "importing": "جارٍ الاستيراد…",
-    "importResult": "تم استيراد: {imported}، تم تخطي: {skipped}"
+    "importResult": "تم استيراد: {imported}، تم تخطي: {skipped}",
+    "unconvertedHint": "{n} عملية لا يمكن عرضها بهذه العملة — لم يتم تسجيل سعر الصرف عند إضافتها",
+    "noRate": "لا يوجد سعر صرف"
   },
   "quickNotes": {
     "eyebrow": "ملاحظات سريعة",

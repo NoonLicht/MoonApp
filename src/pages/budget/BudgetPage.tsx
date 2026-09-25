@@ -26,15 +26,17 @@ interface FormState {
   category: string;
   note: string;
   date: string;
+  currency: string;
 }
 
-function emptyForm(categories: BudgetCategories | null): FormState {
+function emptyForm(categories: BudgetCategories | null, currency: string): FormState {
   return {
     type: "expense",
     amount: "",
     category: categories?.expense[0] || "",
     note: "",
     date: new Date().toISOString().slice(0, 10),
+    currency,
   };
 }
 
@@ -43,21 +45,29 @@ export default function BudgetPage() {
   const [items, setItems] = useState<Transaction[]>([]);
   const [summary, setSummary] = useState<MonthSummary[]>([]);
   const [categories, setCategories] = useState<BudgetCategories | null>(null);
+  const [currencies, setCurrencies] = useState<string[]>(["RUB"]);
+  const [displayCurrency, setDisplayCurrency] = useState("RUB");
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState<FormState>(emptyForm(null));
+  const [form, setForm] = useState<FormState>(emptyForm(null, "RUB"));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [importing, setImporting] = useState(false);
   const [importMsg, setImportMsg] = useState("");
 
-  const load = () => {
+  const load = (currency = displayCurrency) => {
     setLoading(true);
-    Promise.all([api.budgetList(), api.budgetSummary(6), api.budgetCategories()])
-      .then(([tx, sum, cats]) => {
+    Promise.all([
+      api.budgetList(currency),
+      api.budgetSummary(6, currency),
+      api.budgetCategories(),
+      api.budgetCurrencies(),
+    ])
+      .then(([tx, sum, cats, currList]) => {
         setItems(tx);
         setSummary(sum);
         setCategories(cats);
+        setCurrencies(currList);
         setForm((f) => (f.category ? f : { ...f, category: cats.expense[0] || "" }));
       })
       .catch(() => {
@@ -69,14 +79,25 @@ export default function BudgetPage() {
 
   useEffect(() => {
     load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const currentMonth = summary[summary.length - 1];
   const totals = useMemo(() => {
-    const income = items.reduce((s, x) => (x.type === "income" ? s + x.amount : s), 0);
-    const expense = items.reduce((s, x) => (x.type === "expense" ? s + x.amount : s), 0);
-    return { income, expense, balance: income - expense };
-  }, [items]);
+    let income = 0;
+    let expense = 0;
+    let unconverted = 0;
+    for (const x of items) {
+      const amount = x.displayAmount ?? (x.currency === displayCurrency ? x.amount : null);
+      if (amount === null) {
+        unconverted++;
+        continue;
+      }
+      if (x.type === "income") income += amount;
+      else expense += amount;
+    }
+    return { income, expense, balance: income - expense, unconverted };
+  }, [items, displayCurrency]);
 
   const categoryBreakdown = useMemo(() => {
     if (!currentMonth) return [];
@@ -97,8 +118,9 @@ export default function BudgetPage() {
         category: form.category,
         note: form.note.trim(),
         date: form.date,
+        currency: form.currency,
       });
-      setForm(emptyForm(categories));
+      setForm(emptyForm(categories, displayCurrency));
       setShowForm(false);
       load();
     } catch (e) {
@@ -136,7 +158,16 @@ export default function BudgetPage() {
         eyebrow={t("budget.eyebrow")}
         title={t("budget.title")}
         action={
-          <div style={{ display: "flex", gap: 8 }}>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <Select
+              value={displayCurrency}
+              onChange={(e) => {
+                const c = e.target.value;
+                setDisplayCurrency(c);
+                load(c);
+              }}
+              options={currencies.map((c) => ({ value: c, label: c }))}
+            />
             <label className="btn" style={{ cursor: importing ? "default" : "pointer" }}>
               <Upload size={14} />
               {importing ? t("budget.importing") : t("budget.import")}
@@ -166,24 +197,36 @@ export default function BudgetPage() {
           <TrendingUp size={16} style={{ color: "var(--teal)" }} />
           <div>
             <div className="muted-sm">{t("budget.totalIncome")}</div>
-            <div className="budget-total-value">{fmtMoney(totals.income)}</div>
+            <div className="budget-total-value">
+              {fmtMoney(totals.income)} {displayCurrency}
+            </div>
           </div>
         </Glass>
         <Glass className="budget-total-card">
           <TrendingDown size={16} style={{ color: "var(--coral)" }} />
           <div>
             <div className="muted-sm">{t("budget.totalExpense")}</div>
-            <div className="budget-total-value">{fmtMoney(totals.expense)}</div>
+            <div className="budget-total-value">
+              {fmtMoney(totals.expense)} {displayCurrency}
+            </div>
           </div>
         </Glass>
         <Glass className="budget-total-card">
           <Wallet size={16} style={{ color: "var(--amber)" }} />
           <div>
             <div className="muted-sm">{t("budget.balance")}</div>
-            <div className="budget-total-value">{fmtMoney(totals.balance)}</div>
+            <div className="budget-total-value">
+              {fmtMoney(totals.balance)} {displayCurrency}
+            </div>
           </div>
         </Glass>
       </div>
+
+      {totals.unconverted > 0 && (
+        <div className="muted-sm" style={{ color: "var(--coral)" }}>
+          {t("budget.unconvertedHint", { n: totals.unconverted })}
+        </div>
+      )}
 
       {error && (
         <Glass className="source-placeholder" style={{ borderColor: "var(--coral)" }}>
@@ -212,14 +255,22 @@ export default function BudgetPage() {
               {t("budget.income")}
             </Btn>
           </div>
-          <input
-            className="text-input"
-            type="number"
-            step="0.01"
-            placeholder={t("budget.fAmount")}
-            value={form.amount}
-            onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))}
-          />
+          <div style={{ display: "flex", gap: 8 }}>
+            <input
+              className="text-input"
+              style={{ flex: 1 }}
+              type="number"
+              step="0.01"
+              placeholder={t("budget.fAmount")}
+              value={form.amount}
+              onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))}
+            />
+            <Select
+              value={form.currency}
+              onChange={(e) => setForm((f) => ({ ...f, currency: e.target.value }))}
+              options={currencies.map((c) => ({ value: c, label: c }))}
+            />
+          </div>
           <Select
             value={form.category}
             onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
@@ -312,10 +363,18 @@ export default function BudgetPage() {
               style={{
                 fontWeight: 600,
                 color: x.type === "income" ? "var(--teal)" : "var(--coral)",
+                textAlign: "right",
               }}
             >
               {x.type === "income" ? "+" : "−"}
-              {fmtMoney(x.amount)}
+              {fmtMoney(x.amount)} {x.currency}
+              {x.currency !== displayCurrency && (
+                <div className="muted-sm" style={{ fontWeight: 400 }}>
+                  {x.displayAmount != null
+                    ? `≈ ${fmtMoney(x.displayAmount)} ${displayCurrency}`
+                    : t("budget.noRate")}
+                </div>
+              )}
             </span>
             <button type="button" className="icon-btn" onClick={() => void remove(x.id)}>
               <Trash2 size={14} />

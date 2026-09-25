@@ -495,6 +495,12 @@ export interface Transaction {
   note: string;
   date: string;
   createdAt: number;
+  /** Валюта операции (ISO-код ЦБ РФ, напр. "RUB"/"USD"/"EUR"). */
+  currency: string;
+  /** Курсы к рублю на дату операции (снимок на момент добавления), null — не снят. */
+  rates: Record<string, number> | null;
+  /** Присутствует только когда /transactions запрошен с ?currency=; null — конвертация недоступна. */
+  displayAmount?: number | null;
 }
 
 export interface TransactionInput {
@@ -503,6 +509,7 @@ export interface TransactionInput {
   category: string;
   note?: string;
   date?: string;
+  currency?: string;
 }
 
 export interface MonthSummary {
@@ -510,6 +517,8 @@ export interface MonthSummary {
   income: number;
   expense: number;
   byCategory: Record<string, number>;
+  /** Сколько операций не удалось сконвертировать в запрошенную валюту отображения. */
+  unconverted: number;
 }
 
 export interface BudgetCategories {

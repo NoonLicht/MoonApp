@@ -8,6 +8,9 @@ import crypto from "crypto";
 import fs from "fs";
 import config from "./config";
 import logger from "./logger";
+import { getRatesToRub, KNOWN_CURRENCIES } from "./fx";
+
+export { KNOWN_CURRENCIES };
 
 const { FILES } = config;
 
@@ -21,6 +24,16 @@ export interface Transaction {
   note: string;
   date: string; // YYYY-MM-DD
   createdAt: number;
+  /** Валюта, в которой реально введена операция (ISO-код ЦБ РФ). */
+  currency: string;
+  /**
+   * Курсы к рублю на дату операции (снимок на момент добавления — см.
+   * server/ts/fx.ts), чтобы конвертация в любую валюту отображения позже
+   * использовала курс именно на дату операции, а не текущий. null — курс
+   * получить не удалось (нет сети при добавлении); сумма тогда показывается
+   * только в исходной валюте.
+   */
+  rates: Record<string, number> | null;
 }
 
 export const DEFAULT_CATEGORIES = {
@@ -51,8 +64,12 @@ interface TxInput {
   category: string;
   note?: string;
   date?: string;
+  currency?: string;
 }
 
+/** Собирает транзакцию без курса (используется CSV-импортом — историю по
+ * банковской выписке в любом случае не сконвертировать день-в-день без
+ * сотен запросов, поэтому импорт всегда считается рублёвым). */
 function buildTx(input: TxInput): Transaction {
   const amount = Number(input.amount);
   if (!Number.isFinite(amount) || amount <= 0) throw new Error("invalid_amount");
@@ -64,16 +81,48 @@ function buildTx(input: TxInput): Transaction {
     note: String(input.note || ""),
     date: /^\d{4}-\d{2}-\d{2}$/.test(input.date || "") ? input.date! : new Date().toISOString().slice(0, 10),
     createdAt: Date.now(),
+    currency: String(input.currency || "RUB").toUpperCase(),
+    rates: null,
   };
 }
 
-export function create(input: TxInput): Transaction {
+/**
+ * Создаёт операцию. Для операций НЕ в рублях сразу снимает курс на дату
+ * операции (нужен, чтобы потом честно конвертировать в другую валюту
+ * отображения курсом именно на тот день, а не текущим). Для рублёвых
+ * операций курс не снимается — это самый частый случай, и требовать сеть
+ * на каждый "хлеб за 60 рублей" было бы неоправданно; расплата за это:
+ * рублёвую операцию, добавленную без снимка, нельзя показать в валюте,
+ * отличной от рубля (convertAmount вернёт null — см. ниже), только в RUB.
+ * Если сети нет при добавлении операции в валюте — операция всё равно
+ * создаётся, просто без снимка курса (rates остаётся null).
+ */
+export async function create(input: TxInput): Promise<Transaction> {
   const tx = buildTx(input);
+  if (tx.currency !== "RUB") {
+    tx.rates = await getRatesToRub(tx.date);
+  }
   const all = readAll();
   all.push(tx);
   writeAll(all);
-  logger.info("budget.create", { id: tx.id, type: tx.type, amount: tx.amount });
+  logger.info("budget.create", { id: tx.id, type: tx.type, amount: tx.amount, currency: tx.currency });
   return tx;
+}
+
+/**
+ * Сумма операции в валюте отображения `displayCurrency`. Использует снятый
+ * при создании операции курс (rates), а не текущий — так операция за прошлый
+ * месяц не "плывёт" при изменении курса сегодня. Возвращает null, если
+ * конвертация невозможна (курс не был снят и валюта операции ≠ displayCurrency).
+ */
+export function convertAmount(tx: Transaction, displayCurrency: string): number | null {
+  const target = displayCurrency.toUpperCase();
+  if (tx.currency === target) return tx.amount;
+  if (!tx.rates) return null;
+  const rateFrom = tx.rates[tx.currency];
+  const rateTo = tx.rates[target];
+  if (!rateFrom || !rateTo) return null;
+  return (tx.amount * rateFrom) / rateTo;
 }
 
 export function remove(id: string): boolean {
@@ -89,10 +138,14 @@ export interface MonthSummary {
   income: number;
   expense: number;
   byCategory: Record<string, number>; // только расходы, для пирога
+  /** Сколько операций не удалось сконвертировать в displayCurrency (нет снимка курса). */
+  unconverted: number;
 }
 
-/** Агрегация по месяцам за последние N месяцев (включая текущий), от старых к новым. */
-export function monthlySummary(months = 6): MonthSummary[] {
+/** Агрегация по месяцам за последние N месяцев (включая текущий), от старых к новым.
+ * displayCurrency — валюта отображения; суммы конвертируются per-transaction
+ * курсом, снятым на дату каждой операции (см. convertAmount). */
+export function monthlySummary(months = 6, displayCurrency = "RUB"): MonthSummary[] {
   const all = readAll();
   const now = new Date();
   const keys: string[] = [];
@@ -101,16 +154,21 @@ export function monthlySummary(months = 6): MonthSummary[] {
     keys.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
   }
   const byMonth = new Map<string, MonthSummary>(
-    keys.map((k) => [k, { month: k, income: 0, expense: 0, byCategory: {} }]),
+    keys.map((k) => [k, { month: k, income: 0, expense: 0, byCategory: {}, unconverted: 0 }]),
   );
   for (const tx of all) {
     const key = tx.date.slice(0, 7);
     const bucket = byMonth.get(key);
     if (!bucket) continue;
-    if (tx.type === "income") bucket.income += tx.amount;
+    const amount = convertAmount(tx, displayCurrency);
+    if (amount === null) {
+      bucket.unconverted++;
+      continue;
+    }
+    if (tx.type === "income") bucket.income += amount;
     else {
-      bucket.expense += tx.amount;
-      bucket.byCategory[tx.category] = (bucket.byCategory[tx.category] || 0) + tx.amount;
+      bucket.expense += amount;
+      bucket.byCategory[tx.category] = (bucket.byCategory[tx.category] || 0) + amount;
     }
   }
   return keys.map((k) => byMonth.get(k)!);

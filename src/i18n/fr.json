@@ -394,7 +394,9 @@
     "empty": "Ajoutez votre première opération — revenu ou dépense",
     "import": "Importer CSV",
     "importing": "Importation…",
-    "importResult": "Importées : {imported}, ignorées : {skipped}"
+    "importResult": "Importées : {imported}, ignorées : {skipped}",
+    "unconvertedHint": "{n} opérations ne peuvent pas être affichées dans cette devise — le taux n'a pas été capturé lors de leur ajout",
+    "noRate": "pas de taux"
   },
   "quickNotes": {
     "eyebrow": "Notes rapides",

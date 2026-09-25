@@ -66,6 +66,7 @@ server/appTimeTracker.js
 server/imageEditor.js
 server/automation.js
 server/budget.js
+server/fx.js
 server/quickNotes.js
 server/killSwitch.js
 server/ocr.js

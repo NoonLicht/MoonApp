@@ -394,7 +394,9 @@
     "empty": "Añade tu primera operación — ingreso o gasto",
     "import": "Importar CSV",
     "importing": "Importando…",
-    "importResult": "Importados: {imported}, omitidos: {skipped}"
+    "importResult": "Importados: {imported}, omitidos: {skipped}",
+    "unconvertedHint": "{n} operaciones no se pueden mostrar en esta moneda — no se registró el tipo de cambio al añadirlas",
+    "noRate": "sin tipo de cambio"
   },
   "quickNotes": {
     "eyebrow": "Notas rápidas",

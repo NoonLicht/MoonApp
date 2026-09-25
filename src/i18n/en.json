@@ -394,7 +394,9 @@
     "empty": "Add your first transaction — income or expense",
     "import": "Import CSV",
     "importing": "Importing…",
-    "importResult": "Imported: {imported}, skipped: {skipped}"
+    "importResult": "Imported: {imported}, skipped: {skipped}",
+    "unconvertedHint": "{n} transactions can't be shown in this currency — no rate was captured when they were added",
+    "noRate": "no rate"
   },
   "quickNotes": {
     "eyebrow": "Quick notes",

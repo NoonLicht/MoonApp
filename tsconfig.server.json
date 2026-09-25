@@ -45,6 +45,7 @@
     "server/ts/imageEditor.ts",
     "server/ts/automation.ts",
     "server/ts/budget.ts",
+    "server/ts/fx.ts",
     "server/ts/quickNotes.ts",
     "server/ts/killSwitch.ts",
     "server/ts/ocr.ts",
