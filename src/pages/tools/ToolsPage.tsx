@@ -1073,22 +1073,22 @@ export default function ToolsPage() {
         <div className="tools-flow-col">
           {rendered.map((row, ri) => {
             const prevRow = rendered[ri - 1];
-            const sameSourceAsPrev = !!prevRow && prevRow.cells[0]?.sourceRow === row.cells[0]?.sourceRow;
             return (
               <Fragment key={ri}>
-                {ri > 0 &&
-                  (sameSourceAsPrev ? (
-                    <div className="tools-row-gap" />
-                  ) : (
-                    <div
-                      className="tools-divider is-y"
-                      // Граница принадлежит ряду НАД ней (prevRow) — тянуть её вниз должно расти
-                      // именно верхний ряд (row.cells[0] — это уже ряд ПОД границей, не над ней).
-                      onPointerDown={(e) => onRowDividerDown(prevRow.cells[0].sourceRow, e)}
-                      onPointerMove={onRowDividerMove}
-                      onPointerUp={onRowDividerUp}
-                    />
-                  ))}
+                {ri > 0 && prevRow && (
+                  <div
+                    className="tools-divider is-y"
+                    // Граница принадлежит ряду НАД ней (prevRow) — тянуть её вниз должно расти
+                    // именно верхний ряд (row.cells[0] — это уже ряд ПОД границей, не над ней).
+                    // Работает одинаково и между разными исходными рядами, и между визуальными
+                    // строками, на которые один ряд распался из-за переноса по ширине — во
+                    // втором случае у них общая высота, так что перетягивание просто меняет её
+                    // сразу для обеих строк (это и ожидаемо, они один логический блок).
+                    onPointerDown={(e) => onRowDividerDown(prevRow.cells[0].sourceRow, e)}
+                    onPointerMove={onRowDividerMove}
+                    onPointerUp={onRowDividerUp}
+                  />
+                )}
                 <div className="tools-flow-row" style={{ height: row.height }}>
                   {row.cells.map((c, ci) => {
                     const tool = byId[c.toolId];
