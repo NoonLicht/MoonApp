@@ -737,6 +737,10 @@ const HEIGHTS_KEY = "moonapp.tools.templateRowHeights";
 interface TemplateCell {
   toolId: ToolId;
   grow: number;
+  /** Минимальная ширина в % от ряда — если из-за неё блоки не помещаются
+   * все в одну линию (как json/diff/regex по 50% каждый — втроём не
+   * влезут), ряд переносит лишние блоки на следующую строку внутри себя. */
+  minPct?: number;
 }
 interface TemplateRow {
   key: string;
@@ -749,18 +753,21 @@ const WIDE_TEMPLATE: TemplateRow[] = [
   {
     key: "big",
     defaultHeight: SIZE_H.large,
+    // Минимум 50% ширины каждому — втроём они не влезают в одну линию
+    // (3×50% = 150%), поэтому третий блок переносится на вторую строку
+    // внутри этого же ряда (см. рендер: ряды с minPct сами flex-wrap).
     cells: [
-      { toolId: "json", grow: 1 },
-      { toolId: "diff", grow: 1 },
-      { toolId: "regex", grow: 1 },
+      { toolId: "json", grow: 1, minPct: 50 },
+      { toolId: "diff", grow: 1, minPct: 50 },
+      { toolId: "regex", grow: 1, minPct: 50 },
     ],
   },
   {
     key: "rest",
     defaultHeight: SIZE_H.medium,
     cells: [
-      { toolId: "base", grow: 2 },
-      { toolId: "encode", grow: 1 },
+      { toolId: "encode", grow: 2 },
+      { toolId: "base", grow: 1 },
       { toolId: "uuid", grow: 1 },
       { toolId: "units", grow: 1 },
     ],
@@ -778,8 +785,8 @@ const NARROW_TEMPLATE: TemplateRow[] = [
   { key: "json", defaultHeight: SIZE_H.large, cells: [{ toolId: "json", grow: 1 }] },
   { key: "diff", defaultHeight: SIZE_H.large, cells: [{ toolId: "diff", grow: 1 }] },
   { key: "regex", defaultHeight: SIZE_H.large, cells: [{ toolId: "regex", grow: 1 }] },
-  { key: "base", defaultHeight: SIZE_H.medium, cells: [{ toolId: "base", grow: 1 }] },
-  { key: "encode", defaultHeight: SIZE_H.small, cells: [{ toolId: "encode", grow: 1 }] },
+  { key: "encode", defaultHeight: SIZE_H.medium, cells: [{ toolId: "encode", grow: 1 }] },
+  { key: "base", defaultHeight: SIZE_H.small, cells: [{ toolId: "base", grow: 1 }] },
   { key: "uuid", defaultHeight: SIZE_H.small, cells: [{ toolId: "uuid", grow: 1 }] },
   { key: "units", defaultHeight: SIZE_H.small, cells: [{ toolId: "units", grow: 1 }] },
 ];
@@ -883,33 +890,63 @@ export default function ToolsPage() {
           {template.map((row, ri) => {
             const heightKey = `${tier}:${row.key}`;
             const height = heights[heightKey] ?? row.defaultHeight;
+            const prevRow = template[ri - 1];
             return (
               <div key={row.key}>
-                {ri > 0 && (
+                {ri > 0 && prevRow && (
                   <div
                     className="tools-divider is-y"
-                    onPointerDown={(e) => onRowDividerDown(heightKey, row.defaultHeight, e)}
+                    // Граница принадлежит ряду НАД ней (prevRow) — тянуть её вниз должно
+                    // растить именно верхний ряд, а не текущий (row — это ряд ПОД границей).
+                    onPointerDown={(e) =>
+                      onRowDividerDown(`${tier}:${prevRow.key}`, prevRow.defaultHeight, e)
+                    }
                     onPointerMove={onRowDividerMove}
                     onPointerUp={onRowDividerUp}
                   />
                 )}
-                <div className="tools-flow-row" style={{ height }}>
-                  {row.cells.map((c) => {
-                    const tool = byId[c.toolId];
-                    const Icon = tool.icon;
-                    return (
-                      <div key={c.toolId} className="tools-block" style={{ flexGrow: c.grow, flexBasis: 0 }}>
-                        <div className="tools-widget-head">
-                          <Icon size={14} />
-                          <span>{t(`tools.tab_${c.toolId}`)}</span>
-                        </div>
-                        <div className="tools-widget-body">
-                          <tool.Component />
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                {(() => {
+                  const hasMinPct = row.cells.some((c) => c.minPct);
+                  return (
+                    <div
+                      className="tools-flow-row"
+                      style={hasMinPct ? { flexWrap: "wrap" } : { height }}
+                    >
+                      {row.cells.map((c) => {
+                        const tool = byId[c.toolId];
+                        const Icon = tool.icon;
+                        return (
+                          <div
+                            key={c.toolId}
+                            className="tools-block"
+                            style={
+                              c.minPct
+                                ? {
+                                    flexGrow: c.grow,
+                                    // Минус половина gap (.tools-flow-row { gap: 14px }) — иначе
+                                    // два блока по 50% плюс зазор между ними уже не влезают в
+                                    // одну строку, и третий "лишний" блок переносится на новую
+                                    // строку, даже когда места для двоих хватает впритык.
+                                    flexBasis: `calc(${c.minPct}% - 7px)`,
+                                    minWidth: `calc(${c.minPct}% - 7px)`,
+                                    height,
+                                  }
+                                : { flexGrow: c.grow, flexBasis: 0 }
+                            }
+                          >
+                            <div className="tools-widget-head">
+                              <Icon size={14} />
+                              <span>{t(`tools.tab_${c.toolId}`)}</span>
+                            </div>
+                            <div className="tools-widget-body">
+                              <tool.Component />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
               </div>
             );
           })}
