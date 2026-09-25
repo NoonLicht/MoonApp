@@ -53,3 +53,59 @@ describe("server/pdfTools — merge/split/extractText на реальных PDF"
     expect(typeof result.text).toBe("string");
   });
 });
+
+describe("server/pdfTools — rotate/organize/watermark/pageNumbers/imagesToPdf", () => {
+  it("rotatePdf выставляет угол поворота на всех страницах", async () => {
+    const src = await makePdf(3);
+    const out = await pdfTools.rotatePdf(src, 90);
+    const doc = await PDFDocument.load(out);
+    for (const page of doc.getPages()) expect(page.getRotation().angle).toBe(90);
+  });
+
+  it("rotatePdf складывает поворот с уже существующим (270 после 90 -> 0)", async () => {
+    const once = await pdfTools.rotatePdf(await makePdf(1), 90);
+    const twice = await pdfTools.rotatePdf(once, 270);
+    const doc = await PDFDocument.load(twice);
+    expect(doc.getPages()[0].getRotation().angle).toBe(0);
+  });
+
+  it("organizePdf переставляет и удаляет страницы по 1-based списку", async () => {
+    const src = await PDFDocument.create();
+    for (const [w] of [[100], [200], [300]] as const) src.addPage([w, 50]);
+    const buf = Buffer.from(await src.save());
+    const out = await pdfTools.organizePdf(buf, [3, 1]);
+    const doc = await PDFDocument.load(out);
+    expect(doc.getPageCount()).toBe(2);
+    expect(doc.getPages()[0].getWidth()).toBe(300);
+    expect(doc.getPages()[1].getWidth()).toBe(100);
+  });
+
+  it("organizePdf с пустым списком кидает понятную ошибку", async () => {
+    await expect(pdfTools.organizePdf(await makePdf(2), [50])).rejects.toThrow("empty_order");
+  });
+
+  it("watermarkPdf и addPageNumbers не ломают документ и сохраняют число страниц", async () => {
+    const src = await makePdf(2);
+    const wm = await pdfTools.watermarkPdf(src, "DRAFT", { opacity: 0.3 });
+    const wmDoc = await PDFDocument.load(wm);
+    expect(wmDoc.getPageCount()).toBe(2);
+
+    const numbered = await pdfTools.addPageNumbers(src, { startAt: 5 });
+    const numDoc = await PDFDocument.load(numbered);
+    expect(numDoc.getPageCount()).toBe(2);
+  });
+
+  it("imagesToPdf собирает PDF из PNG с одной страницей на картинку", async () => {
+    // Минимальный валидный 1x1 PNG.
+    const png = Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
+      "base64",
+    );
+    const out = await pdfTools.imagesToPdf([
+      { buf: png, mime: "image/png" },
+      { buf: png, mime: "image/png" },
+    ]);
+    const doc = await PDFDocument.load(out);
+    expect(doc.getPageCount()).toBe(2);
+  });
+});

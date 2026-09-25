@@ -1,13 +1,14 @@
 /**
- * PDF-тулкит: слияние, разбиение по диапазонам страниц, извлечение текста.
- * merge/split — через pdf-lib (запись PDF), извлечение текста — через
- * pdf-parse (уже зависимость проекта, используется в server/ts/bookParser.ts
- * для книг). OCR сюда сознательно не входит: нет OCR-библиотеки/нативного
- * биндинга в зависимостях, тащить его за одну ночь без возможности
- * протестировать — слишком рискованно, поэтому OCR явно не реализован
- * (см. UI-подсказку на фронте), а не притворяется рабочим.
+ * PDF-тулкит: слияние, разбиение, поворот, организация (переупорядочивание/
+ * удаление страниц), водяной знак, номера страниц, сборка PDF из изображений,
+ * извлечение текста. Всё через pdf-lib (запись PDF) + pdf-parse (уже
+ * зависимость проекта, используется в server/ts/bookParser.ts для книг).
+ * OCR, конвертация в/из Word/PowerPoint/Excel, PDF→JPG (растеризация страниц),
+ * подпись и пароль-защита сознательно не реализованы: нет
+ * OCR-библиотеки/рендерера офисных форматов/шифрования PDF в зависимостях —
+ * см. UI-подсказку на фронте, честно помечено недоступным, а не заглушкой.
  */
-import { PDFDocument } from "pdf-lib";
+import { PDFDocument, StandardFonts, degrees, rgb } from "pdf-lib";
 import AdmZip from "adm-zip";
 import logger from "./logger";
 
@@ -79,6 +80,102 @@ export async function splitPdf(
   if (idx === 0) throw new Error("no_valid_ranges");
   logger.info("pdfTools.split", { totalPages: total, parts: idx });
   return { zip: zip.toBuffer(), fileCount: idx };
+}
+
+/** Поворачивает все страницы PDF на заданный угол (90/180/270 по часовой). */
+export async function rotatePdf(buf: Buffer, angle: number): Promise<Buffer> {
+  const doc = await PDFDocument.load(buf);
+  const norm = ((Math.round(angle / 90) * 90) % 360 + 360) % 360;
+  for (const page of doc.getPages()) {
+    page.setRotation(degrees((page.getRotation().angle + norm) % 360));
+  }
+  const bytes = await doc.save();
+  logger.info("pdfTools.rotate", { angle: norm, pages: doc.getPageCount() });
+  return Buffer.from(bytes);
+}
+
+/** Переупорядочивает и/или удаляет страницы: order — 1-based индексы в новом
+ * порядке (страницы, которых нет в списке, удаляются), например "3,1,2". */
+export async function organizePdf(buf: Buffer, order: number[]): Promise<Buffer> {
+  const src = await PDFDocument.load(buf);
+  const total = src.getPageCount();
+  const indices = order.filter((n) => n >= 1 && n <= total).map((n) => n - 1);
+  if (indices.length === 0) throw new Error("empty_order");
+  const out = await PDFDocument.create();
+  const copied = await out.copyPages(src, indices);
+  for (const p of copied) out.addPage(p);
+  const bytes = await out.save();
+  logger.info("pdfTools.organize", { totalPages: total, resultPages: out.getPageCount() });
+  return Buffer.from(bytes);
+}
+
+/** Диагональный текстовый водяной знак на каждой странице. */
+export async function watermarkPdf(
+  buf: Buffer,
+  text: string,
+  opts: { opacity?: number; fontSize?: number } = {},
+): Promise<Buffer> {
+  const doc = await PDFDocument.load(buf);
+  const font = await doc.embedFont(StandardFonts.HelveticaBold);
+  const opacity = Math.min(1, Math.max(0.05, opts.opacity ?? 0.25));
+  const fontSize = opts.fontSize ?? 48;
+  const textWidth = font.widthOfTextAtSize(text, fontSize);
+  for (const page of doc.getPages()) {
+    const { width, height } = page.getSize();
+    page.drawText(text, {
+      x: width / 2 - textWidth / 2,
+      y: height / 2,
+      size: fontSize,
+      font,
+      color: rgb(0.5, 0.5, 0.5),
+      opacity,
+      rotate: degrees(45),
+    });
+  }
+  const bytes = await doc.save();
+  logger.info("pdfTools.watermark", { pages: doc.getPageCount() });
+  return Buffer.from(bytes);
+}
+
+/** Номера страниц внизу по центру каждой страницы. */
+export async function addPageNumbers(
+  buf: Buffer,
+  opts: { startAt?: number } = {},
+): Promise<Buffer> {
+  const doc = await PDFDocument.load(buf);
+  const font = await doc.embedFont(StandardFonts.Helvetica);
+  const start = opts.startAt ?? 1;
+  const pages = doc.getPages();
+  pages.forEach((page, i) => {
+    const label = String(start + i);
+    const { width } = page.getSize();
+    const textWidth = font.widthOfTextAtSize(label, 11);
+    page.drawText(label, {
+      x: width / 2 - textWidth / 2,
+      y: 20,
+      size: 11,
+      font,
+      color: rgb(0.35, 0.35, 0.35),
+    });
+  });
+  const bytes = await doc.save();
+  logger.info("pdfTools.pageNumbers", { pages: doc.getPageCount() });
+  return Buffer.from(bytes);
+}
+
+/** Собирает PDF из изображений (JPG/PNG), одна картинка — одна страница
+ * подогнанного под неё размера. */
+export async function imagesToPdf(files: { buf: Buffer; mime: string }[]): Promise<Buffer> {
+  const doc = await PDFDocument.create();
+  for (const f of files) {
+    const isPng = /png/i.test(f.mime);
+    const img = isPng ? await doc.embedPng(f.buf) : await doc.embedJpg(f.buf);
+    const page = doc.addPage([img.width, img.height]);
+    page.drawImage(img, { x: 0, y: 0, width: img.width, height: img.height });
+  }
+  const bytes = await doc.save();
+  logger.info("pdfTools.imagesToPdf", { images: files.length });
+  return Buffer.from(bytes);
 }
 
 /** Извлекает текстовый слой PDF. Отсканированные PDF без текстового слоя дадут пустую строку — это не OCR. */

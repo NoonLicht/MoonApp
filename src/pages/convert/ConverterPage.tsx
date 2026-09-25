@@ -381,6 +381,31 @@ function PdfToolkit() {
   const [textError, setTextError] = useState("");
   const [extractedText, setExtractedText] = useState<string | null>(null);
 
+  const [rotateFile, setRotateFile] = useState<File | null>(null);
+  const [angle, setAngle] = useState("90");
+  const [rotateBusy, setRotateBusy] = useState(false);
+  const [rotateError, setRotateError] = useState("");
+
+  const [organizeFile, setOrganizeFile] = useState<File | null>(null);
+  const [order, setOrder] = useState("");
+  const [organizeBusy, setOrganizeBusy] = useState(false);
+  const [organizeError, setOrganizeError] = useState("");
+
+  const [wmFile, setWmFile] = useState<File | null>(null);
+  const [wmText, setWmText] = useState("");
+  const [wmOpacity, setWmOpacity] = useState(0.25);
+  const [wmBusy, setWmBusy] = useState(false);
+  const [wmError, setWmError] = useState("");
+
+  const [numFile, setNumFile] = useState<File | null>(null);
+  const [startAt, setStartAt] = useState("1");
+  const [numBusy, setNumBusy] = useState(false);
+  const [numError, setNumError] = useState("");
+
+  const [imgFiles, setImgFiles] = useState<File[]>([]);
+  const [imgBusy, setImgBusy] = useState(false);
+  const [imgError, setImgError] = useState("");
+
   const doMerge = async () => {
     if (mergeFiles.length < 2) return;
     setMergeBusy(true);
@@ -428,6 +453,76 @@ function PdfToolkit() {
     if (extractedText == null) return;
     const blob = new Blob([extractedText], { type: "text/plain;charset=utf-8" });
     saveBlob(blob, (textFile?.name.replace(/\.pdf$/i, "") || "text") + ".txt");
+  };
+
+  const doRotate = async () => {
+    if (!rotateFile) return;
+    setRotateBusy(true);
+    setRotateError("");
+    try {
+      const blob = await api.pdfRotate(rotateFile, parseInt(angle, 10));
+      saveBlob(blob, "rotated.pdf");
+    } catch (e) {
+      setRotateError((e as Error).message);
+    } finally {
+      setRotateBusy(false);
+    }
+  };
+
+  const doOrganize = async () => {
+    if (!organizeFile || !order.trim()) return;
+    setOrganizeBusy(true);
+    setOrganizeError("");
+    try {
+      const blob = await api.pdfOrganize(organizeFile, order.trim());
+      saveBlob(blob, "organized.pdf");
+    } catch (e) {
+      setOrganizeError((e as Error).message);
+    } finally {
+      setOrganizeBusy(false);
+    }
+  };
+
+  const doWatermark = async () => {
+    if (!wmFile || !wmText.trim()) return;
+    setWmBusy(true);
+    setWmError("");
+    try {
+      const blob = await api.pdfWatermark(wmFile, wmText.trim(), wmOpacity);
+      saveBlob(blob, "watermarked.pdf");
+    } catch (e) {
+      setWmError((e as Error).message);
+    } finally {
+      setWmBusy(false);
+    }
+  };
+
+  const doPageNumbers = async () => {
+    if (!numFile) return;
+    setNumBusy(true);
+    setNumError("");
+    try {
+      const blob = await api.pdfPageNumbers(numFile, parseInt(startAt, 10) || 1);
+      saveBlob(blob, "numbered.pdf");
+    } catch (e) {
+      setNumError((e as Error).message);
+    } finally {
+      setNumBusy(false);
+    }
+  };
+
+  const doImagesToPdf = async () => {
+    if (imgFiles.length === 0) return;
+    setImgBusy(true);
+    setImgError("");
+    try {
+      const blob = await api.pdfImagesToPdf(imgFiles);
+      saveBlob(blob, "images.pdf");
+    } catch (e) {
+      setImgError((e as Error).message);
+    } finally {
+      setImgBusy(false);
+    }
   };
 
   return (
@@ -523,8 +618,153 @@ function PdfToolkit() {
         )}
       </Glass>
 
+      {/* --- Поворот --- */}
+      <Glass className="media-preview" style={{ flexDirection: "column", alignItems: "stretch", gap: 8 }}>
+        <div className="media-title">{t("conv.pdfRotate")}</div>
+        <FilePickButton
+          accept="application/pdf"
+          label={t("automation.browse")}
+          onPick={(files) => setRotateFile(files[0])}
+        />
+        {rotateFile && <div className="muted-sm">{rotateFile.name}</div>}
+        <Select
+          value={angle}
+          onChange={(e) => setAngle(e.target.value)}
+          options={["90", "180", "270"].map((a) => ({ value: a, label: `${a}°` }))}
+        />
+        <Btn
+          variant="primary"
+          icon={rotateBusy ? RefreshCw : FileUp}
+          disabled={!rotateFile || rotateBusy}
+          onClick={() => void doRotate()}
+          style={{ width: 220 }}
+        >
+          {rotateBusy ? t("conv.pdfWorking") : t("conv.pdfRotateGo")}
+        </Btn>
+        {rotateError && <div style={{ color: "var(--coral)" }}>{rotateError}</div>}
+      </Glass>
+
+      {/* --- Организация страниц --- */}
+      <Glass className="media-preview" style={{ flexDirection: "column", alignItems: "stretch", gap: 8 }}>
+        <div className="media-title">{t("conv.pdfOrganize")}</div>
+        <FilePickButton
+          accept="application/pdf"
+          label={t("automation.browse")}
+          onPick={(files) => setOrganizeFile(files[0])}
+        />
+        {organizeFile && <div className="muted-sm">{organizeFile.name}</div>}
+        <input
+          className="text-input"
+          placeholder={t("conv.pdfOrderPlaceholder")}
+          value={order}
+          onChange={(e) => setOrder(e.target.value)}
+        />
+        <div className="muted-sm">{t("conv.pdfOrderHint")}</div>
+        <Btn
+          variant="primary"
+          icon={organizeBusy ? RefreshCw : FileUp}
+          disabled={!organizeFile || !order.trim() || organizeBusy}
+          onClick={() => void doOrganize()}
+          style={{ width: 220 }}
+        >
+          {organizeBusy ? t("conv.pdfWorking") : t("conv.pdfOrganizeGo")}
+        </Btn>
+        {organizeError && <div style={{ color: "var(--coral)" }}>{organizeError}</div>}
+      </Glass>
+
+      {/* --- Водяной знак --- */}
+      <Glass className="media-preview" style={{ flexDirection: "column", alignItems: "stretch", gap: 8 }}>
+        <div className="media-title">{t("conv.pdfWatermark")}</div>
+        <FilePickButton
+          accept="application/pdf"
+          label={t("automation.browse")}
+          onPick={(files) => setWmFile(files[0])}
+        />
+        {wmFile && <div className="muted-sm">{wmFile.name}</div>}
+        <input
+          className="text-input"
+          placeholder={t("conv.pdfWatermarkText")}
+          value={wmText}
+          onChange={(e) => setWmText(e.target.value)}
+        />
+        <Field label={t("conv.pdfWatermarkOpacity", { pct: Math.round(wmOpacity * 100) })}>
+          <input
+            type="range"
+            min={0.05}
+            max={0.8}
+            step={0.05}
+            value={wmOpacity}
+            onChange={(e) => setWmOpacity(parseFloat(e.target.value))}
+          />
+        </Field>
+        <Btn
+          variant="primary"
+          icon={wmBusy ? RefreshCw : FileUp}
+          disabled={!wmFile || !wmText.trim() || wmBusy}
+          onClick={() => void doWatermark()}
+          style={{ width: 220 }}
+        >
+          {wmBusy ? t("conv.pdfWorking") : t("conv.pdfWatermarkGo")}
+        </Btn>
+        {wmError && <div style={{ color: "var(--coral)" }}>{wmError}</div>}
+      </Glass>
+
+      {/* --- Номера страниц --- */}
+      <Glass className="media-preview" style={{ flexDirection: "column", alignItems: "stretch", gap: 8 }}>
+        <div className="media-title">{t("conv.pdfPageNumbers")}</div>
+        <FilePickButton
+          accept="application/pdf"
+          label={t("automation.browse")}
+          onPick={(files) => setNumFile(files[0])}
+        />
+        {numFile && <div className="muted-sm">{numFile.name}</div>}
+        <input
+          className="text-input"
+          type="number"
+          min={1}
+          placeholder={t("conv.pdfStartAt")}
+          value={startAt}
+          onChange={(e) => setStartAt(e.target.value)}
+        />
+        <Btn
+          variant="primary"
+          icon={numBusy ? RefreshCw : FileUp}
+          disabled={!numFile || numBusy}
+          onClick={() => void doPageNumbers()}
+          style={{ width: 220 }}
+        >
+          {numBusy ? t("conv.pdfWorking") : t("conv.pdfPageNumbersGo")}
+        </Btn>
+        {numError && <div style={{ color: "var(--coral)" }}>{numError}</div>}
+      </Glass>
+
+      {/* --- JPG/PNG в PDF --- */}
+      <Glass className="media-preview" style={{ flexDirection: "column", alignItems: "stretch", gap: 8 }}>
+        <div className="media-title">{t("conv.pdfImagesToPdf")}</div>
+        <FilePickButton
+          accept="image/jpeg,image/png"
+          multiple
+          label={t("automation.browse")}
+          onPick={(files) => setImgFiles(Array.from(files))}
+        />
+        {imgFiles.length > 0 && (
+          <div className="muted-sm">{t("conv.pdfFilesChosen", { n: imgFiles.length })}</div>
+        )}
+        <Btn
+          variant="primary"
+          icon={imgBusy ? RefreshCw : FileUp}
+          disabled={imgFiles.length === 0 || imgBusy}
+          onClick={() => void doImagesToPdf()}
+          style={{ width: 220 }}
+        >
+          {imgBusy ? t("conv.pdfWorking") : t("conv.pdfImagesToPdfGo")}
+        </Btn>
+        {imgError && <div style={{ color: "var(--coral)" }}>{imgError}</div>}
+      </Glass>
+
       </div>
       <div className="muted-sm">{t("conv.pdfOcrHint")}</div>
+      <div className="muted-sm">{t("conv.pdfMoreHint")}</div>
     </>
   );
 }

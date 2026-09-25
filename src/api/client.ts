@@ -564,6 +564,26 @@ async function multipart<T = unknown>(url: string, formData: FormData): Promise<
   return res.json() as T;
 }
 
+/** POST multipart с одним "file" + текстовыми полями → Blob (PDF-тулкит). */
+async function pdfBlobPost(
+  url: string,
+  fields: { file: File; [key: string]: File | string },
+): Promise<Blob> {
+  const fd = new FormData();
+  for (const [k, v] of Object.entries(fields)) fd.append(k, v);
+  const t = window.appBridge?.getToken?.();
+  const res = await fetch(`${BASE}${url}`, {
+    method: "POST",
+    headers: { ...(t ? { "x-moonapp-token": t } : {}), ...pageHeaders() },
+    body: fd,
+  });
+  if (!res.ok) {
+    const j = await res.json().catch(() => ({}));
+    throw new Error(j.error || `HTTP ${res.status}`);
+  }
+  return res.blob();
+}
+
 export const api = {
   // Health
   health: () => req<{ ok: boolean }>("GET", "/health"),
@@ -1429,6 +1449,27 @@ export const api = {
       throw new Error(j.error || `HTTP ${res.status}`);
     }
     return res.json() as Promise<{ text: string; pages: number }>;
+  },
+  pdfRotate: async (file: File, angle: number) => pdfBlobPost("/api/pdf/rotate", { file, angle: String(angle) }),
+  pdfOrganize: async (file: File, order: string) => pdfBlobPost("/api/pdf/organize", { file, order }),
+  pdfWatermark: async (file: File, text: string, opacity: number) =>
+    pdfBlobPost("/api/pdf/watermark", { file, text, opacity: String(opacity) }),
+  pdfPageNumbers: async (file: File, startAt: number) =>
+    pdfBlobPost("/api/pdf/page-numbers", { file, startAt: String(startAt) }),
+  pdfImagesToPdf: async (files: File[]) => {
+    const fd = new FormData();
+    for (const f of files) fd.append("files", f);
+    const t = window.appBridge?.getToken?.();
+    const res = await fetch(`${BASE}/api/pdf/images-to-pdf`, {
+      method: "POST",
+      headers: { ...(t ? { "x-moonapp-token": t } : {}), ...pageHeaders() },
+      body: fd,
+    });
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}));
+      throw new Error(j.error || `HTTP ${res.status}`);
+    }
+    return res.blob();
   },
 
   // --- Git-синхронизация заметок/canvas ---
