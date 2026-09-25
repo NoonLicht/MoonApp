@@ -462,6 +462,40 @@ export interface ScheduledTaskInput {
   time?: string;
 }
 
+/* -------------------------------- Бюджет ------------------------------------- */
+
+export type TxType = "income" | "expense";
+
+export interface Transaction {
+  id: string;
+  type: TxType;
+  amount: number;
+  category: string;
+  note: string;
+  date: string;
+  createdAt: number;
+}
+
+export interface TransactionInput {
+  type: TxType;
+  amount: number;
+  category: string;
+  note?: string;
+  date?: string;
+}
+
+export interface MonthSummary {
+  month: string;
+  income: number;
+  expense: number;
+  byCategory: Record<string, number>;
+}
+
+export interface BudgetCategories {
+  income: string[];
+  expense: string[];
+}
+
 /* --------------------- Git-синхронизация заметок/canvas --------------------- */
 
 export interface NotesGitConfig {

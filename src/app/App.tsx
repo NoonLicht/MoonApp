@@ -38,6 +38,7 @@ import "@/styles/notes.css";
 import "@/styles/lecture.css";
 import "@/styles/bypass.css";
 import "@/styles/automation.css";
+import "@/styles/budget.css";
 import "@/styles/movies.css";
 import "@/styles/upscale.css";
 
@@ -62,6 +63,7 @@ import ToolsPage from "@/pages/tools/ToolsPage";
 import GamesPage from "@/pages/games/GamesPage";
 import ScreenshotsPage from "@/pages/screenshots/ScreenshotsPage";
 import AutomationPage from "@/pages/automation/AutomationPage";
+import BudgetPage from "@/pages/budget/BudgetPage";
 
 // Идентификаторы страниц и их перечень (PAGES) живут в src/navigation.ts —
 // общий источник для дока приложения и списка «Стартовая страница» в настройках.
@@ -104,6 +106,7 @@ const PAGE_COMPONENTS: Record<PageId, React.ComponentType> = {
   games: GamesPage,
   screenshots: ScreenshotsPage,
   automation: AutomationPage,
+  budget: BudgetPage,
   archive: ArchiverPage,
   settings: SettingsPage,
 };

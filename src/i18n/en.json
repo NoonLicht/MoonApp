@@ -19,7 +19,8 @@
     "tools": "Tools",
     "games": "Games",
     "screenshots": "Screenshots",
-    "automation": "Automation"
+    "automation": "Automation",
+    "budget": "Budget"
   },
   "common": {
     "saved": "saved",
@@ -350,6 +351,25 @@
     "scheduleOnStart": "At system startup",
     "nextRun": "Next run",
     "emptyTasks": "No scheduled tasks yet (\\MoonApp\\ folder)"
+  },
+  "budget": {
+    "eyebrow": "Finance",
+    "title": "Budget",
+    "add": "Add transaction",
+    "totalIncome": "Total income",
+    "totalExpense": "Total expense",
+    "balance": "Balance",
+    "expense": "Expense",
+    "income": "Income",
+    "fAmount": "Amount",
+    "fNote": "Note (optional)",
+    "save": "Save",
+    "chartEyebrow": "Trend",
+    "chartTitle": "By month",
+    "categoryBreakdown": "This month's expenses by category",
+    "listEyebrow": "History",
+    "listTitle": "Transactions",
+    "empty": "Add your first transaction — income or expense"
   },
   "games": {
     "eyebrow": "Launcher",

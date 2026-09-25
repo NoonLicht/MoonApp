@@ -19,7 +19,8 @@
     "tools": "Herramientas",
     "games": "Juegos",
     "screenshots": "Capturas",
-    "automation": "Automatización"
+    "automation": "Automatización",
+    "budget": "Presupuesto"
   },
   "common": {
     "saved": "guardado",
@@ -350,6 +351,25 @@
     "scheduleOnStart": "Al iniciar el sistema",
     "nextRun": "Próxima ejecución",
     "emptyTasks": "Aún no hay tareas programadas (carpeta \\MoonApp\\)"
+  },
+  "budget": {
+    "eyebrow": "Finanzas",
+    "title": "Presupuesto",
+    "add": "Añadir operación",
+    "totalIncome": "Ingresos totales",
+    "totalExpense": "Gastos totales",
+    "balance": "Balance",
+    "expense": "Gasto",
+    "income": "Ingreso",
+    "fAmount": "Importe",
+    "fNote": "Nota (opcional)",
+    "save": "Guardar",
+    "chartEyebrow": "Evolución",
+    "chartTitle": "Por mes",
+    "categoryBreakdown": "Gastos de este mes por categoría",
+    "listEyebrow": "Historial",
+    "listTitle": "Operaciones",
+    "empty": "Añade tu primera operación — ingreso o gasto"
   },
   "games": {
     "eyebrow": "Lanzador",

@@ -99,6 +99,7 @@ const FILES = {
   musicPlaylists: path.join(DIRS.storage, "music-playlists.json"),
   gamesLibrary: path.join(DIRS.games, "library.json"),
   automationLaunchers: path.join(DIRS.storage, "automation-launchers.json"),
+  budgetTransactions: path.join(DIRS.storage, "budget-transactions.json"),
   notesGitConfig: path.join(DIRS.storage, "notes-git.json"),
   appTimeTracker: path.join(DIRS.storage, "app-time-tracker.json"),
   conspectusPresets: path.join(DIRS.storage, "conspectus_presets.json"),

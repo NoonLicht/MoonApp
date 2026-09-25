@@ -65,6 +65,7 @@ server/notesGit.js
 server/appTimeTracker.js
 server/imageEditor.js
 server/automation.js
+server/budget.js
 server/elevate.js
 server/backup.js
 server/downloads.js

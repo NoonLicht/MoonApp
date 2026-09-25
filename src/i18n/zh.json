@@ -19,7 +19,8 @@
     "tools": "工具",
     "games": "游戏",
     "screenshots": "截图",
-    "automation": "自动化"
+    "automation": "自动化",
+    "budget": "预算"
   },
   "common": {
     "saved": "已保存",
@@ -350,6 +351,25 @@
     "scheduleOnStart": "系统启动时",
     "nextRun": "下次运行",
     "emptyTasks": "暂无计划任务(\\MoonApp\\ 文件夹)"
+  },
+  "budget": {
+    "eyebrow": "财务",
+    "title": "预算",
+    "add": "添加记录",
+    "totalIncome": "总收入",
+    "totalExpense": "总支出",
+    "balance": "结余",
+    "expense": "支出",
+    "income": "收入",
+    "fAmount": "金额",
+    "fNote": "备注(可选)",
+    "save": "保存",
+    "chartEyebrow": "趋势",
+    "chartTitle": "按月统计",
+    "categoryBreakdown": "本月各类别支出",
+    "listEyebrow": "历史记录",
+    "listTitle": "交易记录",
+    "empty": "添加第一笔收入或支出记录"
   },
   "games": {
     "eyebrow": "启动器",

@@ -19,7 +19,8 @@
     "tools": "Инструменты",
     "games": "Игры",
     "screenshots": "Скриншоты",
-    "automation": "Автоматизация"
+    "automation": "Автоматизация",
+    "budget": "Бюджет"
   },
   "common": {
     "saved": "сохранено",
@@ -350,6 +351,25 @@
     "scheduleOnStart": "При запуске системы",
     "nextRun": "Следующий запуск",
     "emptyTasks": "Заданий планировщика пока нет (папка \\MoonApp\\)"
+  },
+  "budget": {
+    "eyebrow": "Финансы",
+    "title": "Бюджет",
+    "add": "Добавить операцию",
+    "totalIncome": "Доходы (всего)",
+    "totalExpense": "Расходы (всего)",
+    "balance": "Баланс",
+    "expense": "Расход",
+    "income": "Доход",
+    "fAmount": "Сумма",
+    "fNote": "Заметка (необязательно)",
+    "save": "Сохранить",
+    "chartEyebrow": "Динамика",
+    "chartTitle": "По месяцам",
+    "categoryBreakdown": "Расходы по категориям в этом месяце",
+    "listEyebrow": "История",
+    "listTitle": "Операции",
+    "empty": "Добавьте первую операцию — доход или расход"
   },
   "games": {
     "eyebrow": "Лаунчер",

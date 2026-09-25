@@ -31,6 +31,10 @@ import type {
   LauncherInput,
   ScheduledTask,
   ScheduledTaskInput,
+  Transaction,
+  TransactionInput,
+  MonthSummary,
+  BudgetCategories,
   NotesGitConfig,
   NotesGitSyncResult,
   AppTimeToday,
@@ -1503,6 +1507,13 @@ export const api = {
     req<{ ok: boolean; error?: string }>("DELETE", `/automation/tasks/${encodeURIComponent(name)}`),
   automationRunTask: (name: string) =>
     req<{ ok: boolean; error?: string }>("POST", `/automation/tasks/${encodeURIComponent(name)}/run`),
+
+  // --- Бюджет/финансы ---
+  budgetList: () => req<Transaction[]>("GET", "/budget/transactions"),
+  budgetCreate: (payload: TransactionInput) => req<Transaction>("POST", "/budget/transactions", payload),
+  budgetDelete: (id: string) => req<{ ok: boolean }>("DELETE", `/budget/transactions/${id}`),
+  budgetSummary: (months = 6) => req<MonthSummary[]>("GET", `/budget/summary?months=${months}`),
+  budgetCategories: () => req<BudgetCategories>("GET", "/budget/categories"),
 
   // --- Сетевые утилиты (страница Bypass) ---
   netPing: (host: string) =>

@@ -19,7 +19,8 @@
     "tools": "الأدوات",
     "games": "الألعاب",
     "screenshots": "لقطات الشاشة",
-    "automation": "الأتمتة"
+    "automation": "الأتمتة",
+    "budget": "الميزانية"
   },
   "common": {
     "saved": "تم الحفظ",
@@ -350,6 +351,25 @@
     "scheduleOnStart": "عند بدء تشغيل النظام",
     "nextRun": "التشغيل التالي",
     "emptyTasks": "لا توجد مهام مجدولة بعد (مجلد \\MoonApp\\)"
+  },
+  "budget": {
+    "eyebrow": "المالية",
+    "title": "الميزانية",
+    "add": "إضافة عملية",
+    "totalIncome": "إجمالي الدخل",
+    "totalExpense": "إجمالي المصروفات",
+    "balance": "الرصيد",
+    "expense": "مصروف",
+    "income": "دخل",
+    "fAmount": "المبلغ",
+    "fNote": "ملاحظة (اختياري)",
+    "save": "حفظ",
+    "chartEyebrow": "الاتجاه",
+    "chartTitle": "حسب الشهر",
+    "categoryBreakdown": "مصروفات هذا الشهر حسب الفئة",
+    "listEyebrow": "السجل",
+    "listTitle": "العمليات",
+    "empty": "أضف أول عملية — دخل أو مصروف"
   },
   "games": {
     "eyebrow": "مشغّل الألعاب",
