@@ -104,6 +104,39 @@ function authCallback() {
   return () => ({ username: "moonapp", password: token });
 }
 
+export interface ConnectionTestResult {
+  ok: boolean;
+  /** Список веток удалённого репозитория (короткое подтверждение реального доступа). */
+  branches?: string[];
+  /** true — репозиторий отдал ссылки БЕЗ токена (для приватного это невозможно,
+   * значит либо репозиторий публичный, либо сервер даже не проверял токен). */
+  usedAuth: boolean;
+  error?: string;
+}
+
+/**
+ * Проверка доступа к удалённому репозиторию БЕЗ затрагивания рабочей копии —
+ * git.getRemoteInfo запрашивает только список ref'ов (тот же запрос, что
+ * `git ls-remote`), ничего не клонирует и не пишет на диск. Кнопка "Проверить
+ * подключение" в UI использует именно это — реальное подтверждение, что URL +
+ * токен действительно дают доступ к приватному репозиторию, а не просто что
+ * поля формы не пустые.
+ */
+export async function testConnection(): Promise<ConnectionTestResult> {
+  const cfg = readConfig();
+  if (!cfg.remoteUrl) return { ok: false, usedAuth: false, error: "no_remote_url" };
+  const onAuth = authCallback();
+  try {
+    const info = await git.getRemoteInfo({ http, url: cfg.remoteUrl, onAuth });
+    const branches = Object.keys(info.refs?.heads || {}).slice(0, 20);
+    logger.info("notesGit.testConnection.ok", { url: cfg.remoteUrl, branches: branches.length });
+    return { ok: true, branches, usedAuth: !!onAuth };
+  } catch (e) {
+    logger.warn("notesGit.testConnection.failed", { url: cfg.remoteUrl, error: (e as Error).message });
+    return { ok: false, usedAuth: !!onAuth, error: (e as Error).message };
+  }
+}
+
 /** Добавляет все изменённые файлы (statusMatrix) и коммитит, если есть что коммитить. */
 async function stageAllAndCommit(message: string): Promise<{ committed: boolean; oid?: string }> {
   const matrix = await git.statusMatrix({ fs, dir: REPO_DIR });

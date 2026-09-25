@@ -41,6 +41,7 @@ import type {
   QuickNote,
   NotesGitConfig,
   NotesGitSyncResult,
+  NotesGitTestResult,
   AppTimeToday,
   AppTimeHistoryDay,
   VideoInfo,
@@ -1501,6 +1502,7 @@ export const api = {
   }) => req<NotesGitConfig>("POST", "/notesgit/config", payload),
   notesGitStatus: () => req<{ dirty: boolean; files: number }>("GET", "/notesgit/status"),
   notesGitSync: () => req<NotesGitSyncResult>("POST", "/notesgit/sync"),
+  notesGitTest: () => req<NotesGitTestResult>("POST", "/notesgit/test"),
 
   // --- Игры (лаунчер) ---
   gamesList: () => req<GameEntry[]>("GET", "/games"),

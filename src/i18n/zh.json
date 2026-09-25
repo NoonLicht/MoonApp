@@ -304,7 +304,16 @@
     "syncNow": "立即同步",
     "syncing": "同步中…",
     "syncOk": "完成",
-    "conflictHint": "历史记录已分叉 — 不会自动合并。同步未改动你的本地文件。请手动解决冲突(例如在 storage/vault 文件夹中使用普通 git)后再次同步。"
+    "conflictHint": "历史记录已分叉 — 不会自动合并。同步未改动你的本地文件。请手动解决冲突(例如在 storage/vault 文件夹中使用普通 git)后再次同步。",
+    "sectionRepo": "仓库",
+    "sectionPrivate": "私有仓库",
+    "sectionSync": "同步",
+    "privateHint": "完全支持：填写私有仓库地址，并提供具有 repo（GitHub）或 api（GitLab）权限的个人访问令牌 (PAT) — 同步方式与公开仓库完全一致。",
+    "fTokenPlaceholder": "ghp_… / glpat-…",
+    "testConnection": "测试连接",
+    "testing": "测试中…",
+    "testOkPrivate": "已通过令牌确认连接 — 私有仓库访问正常（{n} 个分支）",
+    "testOkPublic": "仓库无需令牌即可响应 — 可能是公开仓库（{n} 个分支）"
   },
   "bookmarks": {
     "title": "书签",

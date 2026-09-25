@@ -304,7 +304,16 @@
     "syncNow": "Sync now",
     "syncing": "Syncing…",
     "syncOk": "Done",
-    "conflictHint": "History has diverged — no automatic merge is performed. Sync did not touch your local files. Resolve the conflict manually (e.g. with plain git in the storage/vault folder) and sync again."
+    "conflictHint": "History has diverged — no automatic merge is performed. Sync did not touch your local files. Resolve the conflict manually (e.g. with plain git in the storage/vault folder) and sync again.",
+    "sectionRepo": "Repository",
+    "sectionPrivate": "Private repository",
+    "sectionSync": "Sync",
+    "privateHint": "Fully supported: point at a private repository and provide a personal access token (PAT) with repo (GitHub) or api (GitLab) scope — sync works exactly like with a public one.",
+    "fTokenPlaceholder": "ghp_… / glpat-…",
+    "testConnection": "Test connection",
+    "testing": "Testing…",
+    "testOkPrivate": "Connection confirmed with the token — private repo access works ({n} branches)",
+    "testOkPublic": "The repo responded without a token — likely public ({n} branches)"
   },
   "bookmarks": {
     "title": "Bookmarks",

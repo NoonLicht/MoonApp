@@ -7,6 +7,7 @@
  *  POST /api/notesgit/config   — { remoteUrl?, branch?, authorName?, authorEmail?, token? }
  *  GET  /api/notesgit/status   — { dirty, files }
  *  POST /api/notesgit/sync     — commit+pull(ff-only)+push
+ *  POST /api/notesgit/test     — проверить доступ к удалённому репозиторию (git ls-remote, без записи на диск)
  */
 
 const express = require("express");
@@ -33,6 +34,14 @@ router.post("/config", (req, res) => {
 router.get("/status", async (req, res) => {
   try {
     res.json(await notesGit.status());
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.post("/test", async (req, res) => {
+  try {
+    res.json(await notesGit.testConnection());
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

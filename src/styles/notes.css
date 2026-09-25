@@ -1680,3 +1680,29 @@
   padding: 10px 14px;
   border-top: 1px solid var(--glass-border);
 }
+
+/* --- Git-синхронизация заметок (GitSyncView) --- */
+.git-sync-card {
+  max-width: 560px;
+}
+.git-sync-section-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.git-sync-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.git-sync-testresult {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}

@@ -304,7 +304,16 @@
     "syncNow": "Synchroniser",
     "syncing": "Synchronisation…",
     "syncOk": "Terminé",
-    "conflictHint": "L'historique a divergé — aucune fusion automatique n'est effectuée. La synchronisation n'a pas touché vos fichiers locaux. Résolvez le conflit manuellement (par ex. avec git dans le dossier storage/vault) puis resynchronisez."
+    "conflictHint": "L'historique a divergé — aucune fusion automatique n'est effectuée. La synchronisation n'a pas touché vos fichiers locaux. Résolvez le conflit manuellement (par ex. avec git dans le dossier storage/vault) puis resynchronisez.",
+    "sectionRepo": "Dépôt",
+    "sectionPrivate": "Dépôt privé",
+    "sectionSync": "Synchronisation",
+    "privateHint": "Entièrement pris en charge : indiquez un dépôt privé et un jeton d'accès personnel (PAT) avec la portée repo (GitHub) ou api (GitLab) — la synchronisation fonctionne comme avec un dépôt public.",
+    "fTokenPlaceholder": "ghp_… / glpat-…",
+    "testConnection": "Tester la connexion",
+    "testing": "Test en cours…",
+    "testOkPrivate": "Connexion confirmée avec le jeton — l'accès au dépôt privé fonctionne ({n} branches)",
+    "testOkPublic": "Le dépôt a répondu sans jeton — probablement public ({n} branches)"
   },
   "bookmarks": {
     "title": "Favoris",

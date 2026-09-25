@@ -574,6 +574,13 @@ export interface NotesGitSyncResult {
   pushed?: boolean;
 }
 
+export interface NotesGitTestResult {
+  ok: boolean;
+  branches?: string[];
+  usedAuth: boolean;
+  error?: string;
+}
+
 /* --------------------- Трекер времени за приложениями ------------------------ */
 
 export interface AppTimeToday {

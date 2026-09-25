@@ -304,7 +304,16 @@
     "syncNow": "Sincronizar ahora",
     "syncing": "Sincronizando…",
     "syncOk": "Listo",
-    "conflictHint": "El historial ha divergido — no se realiza fusión automática. La sincronización no tocó tus archivos locales. Resuelve el conflicto manualmente (p. ej. con git normal en la carpeta storage/vault) y sincroniza de nuevo."
+    "conflictHint": "El historial ha divergido — no se realiza fusión automática. La sincronización no tocó tus archivos locales. Resuelve el conflicto manualmente (p. ej. con git normal en la carpeta storage/vault) y sincroniza de nuevo.",
+    "sectionRepo": "Repositorio",
+    "sectionPrivate": "Repositorio privado",
+    "sectionSync": "Sincronización",
+    "privateHint": "Totalmente compatible: indica un repositorio privado y un token de acceso personal (PAT) con permiso repo (GitHub) o api (GitLab) — la sincronización funciona igual que con uno público.",
+    "fTokenPlaceholder": "ghp_… / glpat-…",
+    "testConnection": "Probar conexión",
+    "testing": "Probando…",
+    "testOkPrivate": "Conexión confirmada con el token — el acceso al repositorio privado funciona ({n} ramas)",
+    "testOkPublic": "El repositorio respondió sin token — probablemente sea público ({n} ramas)"
   },
   "bookmarks": {
     "title": "Marcadores",

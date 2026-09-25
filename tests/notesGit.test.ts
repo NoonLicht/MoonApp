@@ -19,6 +19,18 @@ import { createRequire } from "module";
  */
 const req = createRequire(import.meta.url);
 
+async function reachesGithub(): Promise<boolean> {
+  try {
+    const controller = new AbortController();
+    const t = setTimeout(() => controller.abort(), 5000);
+    const res = await fetch("https://github.com", { signal: controller.signal });
+    clearTimeout(t);
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 let storage: string;
 let engine: typeof import("../server/notesGit");
 
@@ -27,6 +39,11 @@ beforeAll(() => {
   process.env.MOONAPP_STORAGE = storage;
   engine = req("../server/notesGit");
 });
+
+// it.runIf() читает условие на этапе СБОРА тестов, до выполнения beforeAll —
+// поэтому асинхронная проверка сети должна быть top-level await, а не внутри
+// хука (см. аналогичный приём в tests/budget.test.ts).
+const githubReachable = await reachesGithub();
 
 describe("server/notesGit — конфигурация (без сети)", () => {
   it("getConfig отдаёт дефолты, пока ничего не настроено", () => {
@@ -67,6 +84,39 @@ describe("server/notesGit — status() создаёт репозиторий п�
     expect(st.dirty).toBe(false);
     expect(fs.existsSync(path.join(storage, "vault", ".git"))).toBe(true);
   });
+});
+
+describe("server/notesGit — testConnection() (проверка приватного/публичного репозитория)", () => {
+  it("без remoteUrl отказывает честной ошибкой, без сети", async () => {
+    const s = fs.mkdtempSync(path.join(os.tmpdir(), "pa-notesgit-test-"));
+    process.env.MOONAPP_STORAGE = s;
+    for (const key of Object.keys(require.cache)) {
+      if (key.includes(path.join("server"))) delete require.cache[key];
+    }
+    const fresh: typeof import("../server/notesGit") = req("../server/notesGit");
+    const r = await fresh.testConnection();
+    expect(r.ok).toBe(false);
+    expect(r.error).toBe("no_remote_url");
+    expect(r.usedAuth).toBe(false);
+  });
+
+  it.runIf(githubReachable)(
+    "реальный публичный репозиторий на GitHub — ok:true, usedAuth:false, список веток",
+    async () => {
+      const s = fs.mkdtempSync(path.join(os.tmpdir(), "pa-notesgit-test2-"));
+      process.env.MOONAPP_STORAGE = s;
+      for (const key of Object.keys(require.cache)) {
+        if (key.includes(path.join("server"))) delete require.cache[key];
+      }
+      const fresh: typeof import("../server/notesGit") = req("../server/notesGit");
+      fresh.setConfig({ remoteUrl: "https://github.com/octocat/Hello-World.git" });
+      const r = await fresh.testConnection();
+      expect(r.ok).toBe(true);
+      expect(r.usedAuth).toBe(false);
+      expect(r.branches?.length).toBeGreaterThan(0);
+    },
+    20000,
+  );
 });
 
 describe("server/notesGit — sync() без remoteUrl честно отказывает", () => {
