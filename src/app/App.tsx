@@ -64,6 +64,7 @@ import GamesPage from "@/pages/games/GamesPage";
 import ScreenshotsPage from "@/pages/screenshots/ScreenshotsPage";
 import AutomationPage from "@/pages/automation/AutomationPage";
 import BudgetPage from "@/pages/budget/BudgetPage";
+import QuickNotesPage from "@/pages/quicknotes/QuickNotesPage";
 
 // Идентификаторы страниц и их перечень (PAGES) живут в src/navigation.ts —
 // общий источник для дока приложения и списка «Стартовая страница» в настройках.
@@ -107,6 +108,7 @@ const PAGE_COMPONENTS: Record<PageId, React.ComponentType> = {
   screenshots: ScreenshotsPage,
   automation: AutomationPage,
   budget: BudgetPage,
+  quicknotes: QuickNotesPage,
   archive: ArchiverPage,
   settings: SettingsPage,
 };

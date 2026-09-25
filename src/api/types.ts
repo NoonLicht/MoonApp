@@ -502,6 +502,16 @@ export interface BudgetImportResult {
   errors: string[];
 }
 
+/* --------------------------- Быстрые голосовые заметки ---------------------- */
+
+export interface QuickNote {
+  id: string;
+  text: string;
+  audioFile: string | null;
+  durationSec: number | null;
+  createdAt: number;
+}
+
 /* --------------------- Git-синхронизация заметок/canvas --------------------- */
 
 export interface NotesGitConfig {

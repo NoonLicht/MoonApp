@@ -89,6 +89,10 @@ const DIRS = {
   // Games launcher: библиотека игр/приложений + версионные бэкапы сохранений.
   games: ensureDir(path.join(STORAGE_DIR, "games")),
   gameSaves: ensureDir(path.join(STORAGE_DIR, "games", "saves")),
+  // Быстрые голосовые заметки: короткие записи + их расшифровки (не путать
+  // с полноценными лекциями в DIRS.lectures).
+  quickNotes: ensureDir(path.join(STORAGE_DIR, "quicknotes")),
+  quickNotesTmp: ensureDir(path.join(STORAGE_DIR, "quicknotes", "tmp")),
 };
 const FILES = {
   data: path.join(DIRS.storage, "data.json"),
@@ -100,6 +104,7 @@ const FILES = {
   gamesLibrary: path.join(DIRS.games, "library.json"),
   automationLaunchers: path.join(DIRS.storage, "automation-launchers.json"),
   budgetTransactions: path.join(DIRS.storage, "budget-transactions.json"),
+  quickNotesIndex: path.join(DIRS.quickNotes, "index.json"),
   notesGitConfig: path.join(DIRS.storage, "notes-git.json"),
   appTimeTracker: path.join(DIRS.storage, "app-time-tracker.json"),
   conspectusPresets: path.join(DIRS.storage, "conspectus_presets.json"),

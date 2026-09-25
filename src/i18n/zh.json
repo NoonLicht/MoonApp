@@ -20,7 +20,8 @@
     "games": "游戏",
     "screenshots": "截图",
     "automation": "自动化",
-    "budget": "预算"
+    "budget": "预算",
+    "quicknotes": "语音笔记"
   },
   "common": {
     "saved": "已保存",
@@ -376,6 +377,17 @@
     "import": "导入 CSV",
     "importing": "正在导入…",
     "importResult": "已导入:{imported},已跳过:{skipped}"
+  },
+  "quickNotes": {
+    "eyebrow": "快速笔记",
+    "title": "语音笔记",
+    "hint": "说出你的想法,即可得到文字。使用与「课堂录音」页面相同的识别引擎——如果那里尚未安装 whisper 模型,这里会给出明确的错误提示。",
+    "record": "开始录音",
+    "stop": "停止",
+    "processing": "识别中…",
+    "keepAudio": "保留音频",
+    "empty": "录制你的第一条语音笔记",
+    "emptyText": "(识别文本为空)"
   },
   "games": {
     "eyebrow": "启动器",

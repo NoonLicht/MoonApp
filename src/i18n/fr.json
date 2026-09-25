@@ -20,7 +20,8 @@
     "games": "Jeux",
     "screenshots": "Captures d'écran",
     "automation": "Automatisation",
-    "budget": "Budget"
+    "budget": "Budget",
+    "quicknotes": "Notes vocales"
   },
   "common": {
     "saved": "enregistré",
@@ -376,6 +377,17 @@
     "import": "Importer CSV",
     "importing": "Importation…",
     "importResult": "Importées : {imported}, ignorées : {skipped}"
+  },
+  "quickNotes": {
+    "eyebrow": "Notes rapides",
+    "title": "Notes vocales",
+    "hint": "Dites votre idée à voix haute, obtenez le texte. Utilise le même moteur de reconnaissance que la page « Lecture » — si le modèle whisper n'y est pas installé, une erreur claire vous y renverra.",
+    "record": "Enregistrer",
+    "stop": "Arrêter",
+    "processing": "Transcription…",
+    "keepAudio": "Conserver l'audio",
+    "empty": "Enregistrez votre première note vocale",
+    "emptyText": "(le texte transcrit est vide)"
   },
   "games": {
     "eyebrow": "Lanceur",

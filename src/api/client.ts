@@ -36,6 +36,7 @@ import type {
   MonthSummary,
   BudgetCategories,
   BudgetImportResult,
+  QuickNote,
   NotesGitConfig,
   NotesGitSyncResult,
   AppTimeToday,
@@ -1516,6 +1517,17 @@ export const api = {
   budgetSummary: (months = 6) => req<MonthSummary[]>("GET", `/budget/summary?months=${months}`),
   budgetCategories: () => req<BudgetCategories>("GET", "/budget/categories"),
   budgetImportCsv: (csv: string) => req<BudgetImportResult>("POST", "/budget/import", { csv }),
+
+  // --- Быстрые голосовые заметки ---
+  quickNotesList: () => req<QuickNote[]>("GET", "/quicknotes"),
+  quickNotesCreate: (file: File, keepAudio: boolean) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    fd.append("keepAudio", String(keepAudio));
+    return multipart<QuickNote>("/quicknotes", fd);
+  },
+  quickNotesDelete: (id: string) => req<{ ok: boolean }>("DELETE", `/quicknotes/${id}`),
+  quickNotesAudioUrl: (id: string) => `${BASE}/api/quicknotes/${id}/audio`,
 
   // --- Сетевые утилиты (страница Bypass) ---
   netPing: (host: string) =>

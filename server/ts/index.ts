@@ -63,6 +63,7 @@ const appTimeTrackerRouter = require("./routes/appTimeTracker") as express.Route
 const imageEditorRouter = require("./routes/imageEditor") as express.Router;
 const automationRouter = require("./routes/automation") as express.Router;
 const budgetRouter = require("./routes/budget") as express.Router;
+const quickNotesRouter = require("./routes/quickNotes") as express.Router;
 const perPageProxy = require("./middleware/perPageProxy") as {
   perPageProxyMiddleware: express.RequestHandler;
 };
@@ -269,6 +270,7 @@ function createApp(): express.Express {
   app.use("/api/imageedit", imageEditorRouter);
   app.use("/api/automation", automationRouter);
   app.use("/api/budget", budgetRouter);
+  app.use("/api/quicknotes", quickNotesRouter);
 
   // Раздача собранного фронта (dist), если он собран.
   const dist = path.join(__dirname, "..", "dist");

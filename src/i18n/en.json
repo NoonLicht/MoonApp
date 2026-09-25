@@ -20,7 +20,8 @@
     "games": "Games",
     "screenshots": "Screenshots",
     "automation": "Automation",
-    "budget": "Budget"
+    "budget": "Budget",
+    "quicknotes": "Voice notes"
   },
   "common": {
     "saved": "saved",
@@ -376,6 +377,17 @@
     "import": "Import CSV",
     "importing": "Importing…",
     "importResult": "Imported: {imported}, skipped: {skipped}"
+  },
+  "quickNotes": {
+    "eyebrow": "Quick notes",
+    "title": "Voice notes",
+    "hint": "Say the idea out loud, get the text. Uses the same recognition engine as the \"Lecture\" page — if the whisper model isn't installed there, you'll get a clear error pointing you there.",
+    "record": "Record",
+    "stop": "Stop",
+    "processing": "Transcribing…",
+    "keepAudio": "Keep audio",
+    "empty": "Record your first voice note",
+    "emptyText": "(transcribed text is empty)"
   },
   "games": {
     "eyebrow": "Launcher",
