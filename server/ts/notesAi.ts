@@ -374,13 +374,14 @@ async function askModel(
   prompt: string,
   appPage: unknown,
   maxTokens: number,
+  systemPrompt: string = SYSTEM_PROMPT,
 ): Promise<string> {
   const text = await runWithPage(appPage, () =>
     target.provider.chat({
       secret: target.secret,
       model: target.model,
       messages: [
-        { role: "system", text: SYSTEM_PROMPT },
+        { role: "system", text: systemPrompt },
         { role: "user", text: prompt },
       ],
       temperature: TEMPERATURE,
@@ -467,4 +468,54 @@ export async function formatNote(opts: NotesAiFormatOptions): Promise<NotesAiRes
     blocks: blocks.length,
     regenerated: mode === "regenerate",
   };
+}
+
+const QUICK_NOTE_SYSTEM_PROMPT =
+  "Ты — редактор личных заметок. Приводишь расшифровку устной голосовой " +
+  "заметки к аккуратному структурированному Markdown, не меняя смысл и не " +
+  "выбрасывая факты.";
+
+function buildQuickNotePrompt(text: string): string {
+  return `Ниже — расшифровка короткой устной голосовой заметки (whisper мог допустить
+опечатки/пунктуационные ошибки — поправь их по смыслу). Преобрази её в
+аккуратный структурированный Markdown:
+- вынеси заголовок (## Заголовок) по смыслу заметки;
+- если в заметке несколько мыслей/пунктов — оформи как список;
+- если есть даты/имена/числа — сохрани их точно, ничего не выдумывай;
+- убери слова-паразиты и повторы устной речи, но не меняй смысл.
+
+Верни ТОЛЬКО готовый Markdown, без пояснений и без обрамляющих \`\`\`.
+=== РАСШИФРОВКА ===
+${text}`;
+}
+
+/**
+ * Структурировать расшифровку голосовой заметки в Markdown — облегчённая версия
+ * formatNote() без привязки к файлу в vault (у быстрых заметок своё хранилище,
+ * storage/quicknotes/index.json, sidecar-исходник им не нужен).
+ */
+export async function structureQuickNote(
+  text: string,
+  appPage?: unknown,
+): Promise<{ content: string; provider: string; model: string }> {
+  const raw = String(text || "").trim();
+  if (!raw) throw new Error("notes_ai_empty_note");
+  const blocks = splitForFormat(raw);
+  if (blocks.length > MAX_CHUNKS) throw new Error("notes_ai_too_long: " + raw.length);
+  const target = await aiTarget(appPage);
+  const parts: string[] = [];
+  for (const block of blocks) {
+    const answer = await askModel(
+      target,
+      buildQuickNotePrompt(block),
+      appPage,
+      maxTokensFor(block.length),
+      QUICK_NOTE_SYSTEM_PROMPT,
+    );
+    const clean = cleanupAnswer(answer);
+    if (!clean) throw new Error("notes_ai_empty_response");
+    parts.push(clean);
+  }
+  logger.action("quicknotes.ai.structure", { provider: target.provider.id, model: target.model, rawChars: raw.length });
+  return { content: parts.join("\n\n").trim(), provider: target.provider.id, model: target.model };
 }

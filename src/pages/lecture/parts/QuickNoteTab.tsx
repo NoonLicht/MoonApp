@@ -1,25 +1,38 @@
 import { useEffect, useRef, useState } from "react";
-import { Mic, Square, Trash2, Copy, AlertTriangle, Clock } from "lucide-react";
-import { Glass, Btn, Badge, EmptyHint, SectionHead, Checkbox } from "@/components/ui";
+import { Mic, Square, Pause, Play, Trash2, Copy, AlertTriangle, Clock, Sparkles } from "lucide-react";
+import { Glass, Btn, Badge, EmptyHint, Checkbox } from "@/components/ui";
 import { useI18n } from "@/app/i18n";
 import { api } from "@/api/client";
 import type { QuickNote } from "@/api/types";
 
+interface Props {
+  /** Готов ли движок распознавания (та же секция настроек, что у вкладки "Лекция"). */
+  engineReady: boolean;
+}
+
 /**
- * Быстрые голосовые заметки: «наговорил идею → получил текст» одной кнопкой,
- * без полноценной сессии лекции. Использует тот же движок распознавания
- * (whisper.cpp), что и страница «Лекторий» — если модель там не установлена,
- * сервер вернёт честную ошибку с указанием, куда зайти и что поставить.
+ * Быстрые голосовые заметки — вкладка на странице «Лекторий» (раньше была
+ * отдельной страницей). Настройки распознавания — общие с лекцией: тот же
+ * whisper-движок/модель (server/ts/quickNotes.ts переиспользует
+ * whisperEngine.findBin/findModel — единая точка настройки, см. шапку
+ * страницы "Лекция" с engine.ready/engine.model).
+ *
+ * Расшифровка запускается только ПОСЛЕ полной остановки записи (а не по
+ * кускам, как в лекции с VAD-чанками) — так и было раньше, здесь только
+ * добавлена пауза/возобновление записи через нативные MediaRecorder.pause()/
+ * resume() (без пересоздания потока/рекордера — пауза не рвёт запись на
+ * несколько файлов).
  */
-export default function QuickNotesPage() {
+export default function QuickNoteTab({ engineReady }: Props) {
   const { t } = useI18n();
   const [notes, setNotes] = useState<QuickNote[]>([]);
   const [loading, setLoading] = useState(true);
-  const [recording, setRecording] = useState(false);
+  const [recState, setRecState] = useState<"idle" | "recording" | "paused">("idle");
   const [processing, setProcessing] = useState(false);
   const [recSeconds, setRecSeconds] = useState(0);
   const [keepAudio, setKeepAudio] = useState(false);
   const [error, setError] = useState("");
+  const [structuringId, setStructuringId] = useState<string | null>(null);
 
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -59,7 +72,7 @@ export default function QuickNotesPage() {
       };
       rec.start();
       recorderRef.current = rec;
-      setRecording(true);
+      setRecState("recording");
       setRecSeconds(0);
       timerRef.current = setInterval(() => setRecSeconds((s) => s + 1), 1000);
     } catch (e) {
@@ -67,9 +80,21 @@ export default function QuickNotesPage() {
     }
   };
 
+  const pauseRecording = () => {
+    recorderRef.current?.pause();
+    setRecState("paused");
+    if (timerRef.current) clearInterval(timerRef.current);
+  };
+
+  const resumeRecording = () => {
+    recorderRef.current?.resume();
+    setRecState("recording");
+    timerRef.current = setInterval(() => setRecSeconds((s) => s + 1), 1000);
+  };
+
   const stopRecording = () => {
     recorderRef.current?.stop();
-    setRecording(false);
+    setRecState("idle");
     if (timerRef.current) clearInterval(timerRef.current);
   };
 
@@ -101,6 +126,19 @@ export default function QuickNotesPage() {
     }
   };
 
+  const structure = async (id: string) => {
+    setStructuringId(id);
+    setError("");
+    try {
+      const updated = await api.quickNotesStructure(id);
+      setNotes((prev) => prev.map((n) => (n.id === id ? updated : n)));
+    } catch (e) {
+      setError((e as Error).message || String(e));
+    } finally {
+      setStructuringId(null);
+    }
+  };
+
   const fmtTime = (s: number) => {
     const m = Math.floor(s / 60);
     const sec = s % 60;
@@ -108,25 +146,46 @@ export default function QuickNotesPage() {
   };
 
   return (
-    <div className="page">
-      <SectionHead eyebrow={t("quickNotes.eyebrow")} title={t("quickNotes.title")} />
+    <div className="lec-quicknote-tab">
+      {!engineReady && (
+        <Glass className="source-placeholder" style={{ borderColor: "var(--coral)", marginBottom: 10 }}>
+          <AlertTriangle size={16} style={{ color: "var(--coral)" }} />
+          <span>{t("quickNotes.engineMissingHint")}</span>
+        </Glass>
+      )}
       <div className="muted-sm" style={{ marginBottom: 10 }}>
         {t("quickNotes.hint")}
       </div>
 
       <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", marginBottom: 12 }}>
-        {!recording ? (
+        {recState === "idle" && (
           <Btn variant="primary" icon={Mic} disabled={processing} onClick={() => void startRecording()}>
             {processing ? t("quickNotes.processing") : t("quickNotes.record")}
           </Btn>
-        ) : (
-          <Btn icon={Square} onClick={stopRecording} style={{ borderColor: "var(--coral)" }}>
-            {t("quickNotes.stop")} · {fmtTime(recSeconds)}
-          </Btn>
         )}
-        {recording && (
-          <Badge tone="coral" mono>
-            ● REC
+        {recState === "recording" && (
+          <>
+            <Btn icon={Pause} onClick={pauseRecording}>
+              {t("quickNotes.pause")} · {fmtTime(recSeconds)}
+            </Btn>
+            <Btn icon={Square} onClick={stopRecording} style={{ borderColor: "var(--coral)" }}>
+              {t("quickNotes.stop")}
+            </Btn>
+          </>
+        )}
+        {recState === "paused" && (
+          <>
+            <Btn icon={Play} onClick={resumeRecording}>
+              {t("quickNotes.resume")} · {fmtTime(recSeconds)}
+            </Btn>
+            <Btn icon={Square} onClick={stopRecording} style={{ borderColor: "var(--coral)" }}>
+              {t("quickNotes.stop")}
+            </Btn>
+          </>
+        )}
+        {recState !== "idle" && (
+          <Badge tone={recState === "recording" ? "coral" : "neutral"} mono>
+            {recState === "recording" ? "● REC" : "❚❚ " + t("quickNotes.paused")}
           </Badge>
         )}
         <label
@@ -146,7 +205,7 @@ export default function QuickNotesPage() {
       )}
 
       {loading && <div className="muted-sm">{t("passwordVault.loading")}</div>}
-      {!loading && notes.length === 0 && !recording && (
+      {!loading && notes.length === 0 && recState === "idle" && (
         <EmptyHint icon={Mic} text={t("quickNotes.empty")} />
       )}
 
@@ -160,7 +219,16 @@ export default function QuickNotesPage() {
                 {n.durationSec != null ? ` · ${n.durationSec.toFixed(1)} s` : ""}
               </span>
               <div style={{ display: "flex", gap: 6 }}>
-                <button type="button" className="icon-btn" onClick={() => void copyText(n.text)}>
+                <button
+                  type="button"
+                  className="icon-btn"
+                  title={t("quickNotes.structure")}
+                  disabled={structuringId === n.id || !n.text.trim()}
+                  onClick={() => void structure(n.id)}
+                >
+                  <Sparkles size={14} className={structuringId === n.id ? "spin" : ""} />
+                </button>
+                <button type="button" className="icon-btn" onClick={() => void copyText(n.structuredText || n.text)}>
                   <Copy size={14} />
                 </button>
                 <button type="button" className="icon-btn" onClick={() => void remove(n.id)}>
@@ -169,6 +237,14 @@ export default function QuickNotesPage() {
               </div>
             </div>
             <div style={{ whiteSpace: "pre-wrap" }}>{n.text || t("quickNotes.emptyText")}</div>
+            {n.structuredText && (
+              <div className="lec-quicknote-structured">
+                <div className="muted-sm" style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                  <Sparkles size={11} /> {t("quickNotes.structuredLabel")}
+                </div>
+                <div style={{ whiteSpace: "pre-wrap" }}>{n.structuredText}</div>
+              </div>
+            )}
             {n.audioFile && (
               <audio controls src={api.quickNotesAudioUrl(n.id)} style={{ width: "100%" }} />
             )}

@@ -37,7 +37,6 @@ const ALL_IDS = [
   "screenshots",
   "automation",
   "budget",
-  "quicknotes",
   "archive",
   "settings",
 ];

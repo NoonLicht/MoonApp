@@ -1556,6 +1556,7 @@ export const api = {
   },
   quickNotesDelete: (id: string) => req<{ ok: boolean }>("DELETE", `/quicknotes/${id}`),
   quickNotesAudioUrl: (id: string) => `${BASE}/api/quicknotes/${id}/audio`,
+  quickNotesStructure: (id: string) => req<QuickNote>("POST", `/quicknotes/${id}/structure`),
 
   // --- Сетевые утилиты (страница Bypass) ---
   netPing: (host: string) =>

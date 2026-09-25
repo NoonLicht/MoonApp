@@ -7,6 +7,7 @@
  *  POST   /api/quicknotes                — multipart file (audio) + keepAudio → расшифровка
  *  DELETE /api/quicknotes/:id             — удалить заметку (+ аудио, если хранилось)
  *  GET    /api/quicknotes/:id/audio       — скачать сохранённое аудио заметки
+ *  POST   /api/quicknotes/:id/structure   — оформить расшифровку в Markdown через ИИ
  */
 
 const express = require("express");
@@ -15,6 +16,7 @@ const path = require("path");
 const crypto = require("crypto");
 const { DIRS } = require("../config");
 const quickNotes = require("../quickNotes");
+const notesAi = require("../notesAi");
 const { removePath } = require("../fsUtil");
 
 const router = express.Router();
@@ -62,6 +64,19 @@ router.delete("/:id", (req, res) => {
     const ok = quickNotes.remove(req.params.id);
     if (!ok) return res.status(404).json({ error: "not_found" });
     res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.post("/:id/structure", async (req, res) => {
+  try {
+    const note = quickNotes.list().find((n) => n.id === req.params.id);
+    if (!note) return res.status(404).json({ error: "not_found" });
+    if (!note.text.trim()) return res.status(400).json({ error: "empty_text" });
+    const result = await notesAi.structureQuickNote(note.text, req.appPage);
+    const updated = quickNotes.setStructuredText(note.id, result.content);
+    res.json(updated);
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

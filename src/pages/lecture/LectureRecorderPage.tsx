@@ -43,6 +43,7 @@ import LectureEnginePanel from "@/pages/lecture/parts/LectureEnginePanel";
 import LectureAudioPanel, { LevelMeter } from "@/pages/lecture/parts/LectureAudioPanel";
 import LectureConspectusPanel from "@/pages/lecture/parts/LectureConspectusPanel";
 import LectureDiarizePanel from "@/pages/lecture/parts/LectureDiarizePanel";
+import QuickNoteTab from "@/pages/lecture/parts/QuickNoteTab";
 
 /**
  * Lecture Recorder — реалтайм-запись лекции и академический speech-to-text.
@@ -233,6 +234,11 @@ async function acquireSystemAudio(): Promise<MediaStream> {
 export default function LectureRecorderPage() {
   const { t } = useI18n();
   const menu = useContextMenu();
+
+  // Вкладка страницы: полноценная сессия лекции или быстрая голосовая заметка
+  // (перенесена сюда со своей отдельной страницы — настройки движка распознавания
+  // общие, это та же секция ниже "engine"/whisper, второй настройки не заводим).
+  const [pageTab, setPageTab] = useState<"lecture" | "quick">("lecture");
 
   const [engine, setEngine] = useState<LectureEngineStatus | null>(null);
   const [sessions, setSessions] = useState<LectureSession[]>([]);
@@ -1114,6 +1120,25 @@ export default function LectureRecorderPage() {
 
   return (
     <div className="page lec-page">
+      <div className="lec-tabbar">
+        <button
+          type="button"
+          className={`lec-tabbtn${pageTab === "lecture" ? " is-active" : ""}`}
+          onClick={() => setPageTab("lecture")}
+        >
+          {t("lecture.tabLecture")}
+        </button>
+        <button
+          type="button"
+          className={`lec-tabbtn${pageTab === "quick" ? " is-active" : ""}`}
+          onClick={() => setPageTab("quick")}
+        >
+          {t("lecture.tabQuickNote")}
+        </button>
+      </div>
+      {pageTab === "quick" && <QuickNoteTab engineReady={!!engine?.ready} />}
+      {pageTab === "lecture" && (
+      <>
       {/* Шапка: статус движка + контролы */}
       <div className="lec-header">
         <div className="lec-engine">
@@ -1609,6 +1634,8 @@ export default function LectureRecorderPage() {
           </div>
         </div>
       </div>
+      </>
+      )}
     </div>
   );
 }

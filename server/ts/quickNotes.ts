@@ -45,6 +45,8 @@ export interface QuickNote {
   audioFile: string | null;
   durationSec: number | null;
   createdAt: number;
+  /** Текст, оформленный ИИ в Markdown по кнопке "Структурировать" (null — не оформлялась). */
+  structuredText: string | null;
 }
 
 function readAll(): QuickNote[] {
@@ -62,6 +64,16 @@ function writeAll(items: QuickNote[]): void {
 
 export function list(): QuickNote[] {
   return readAll().sort((a, b) => b.createdAt - a.createdAt);
+}
+
+/** Сохраняет результат ИИ-структурирования (кнопка "Структурировать в Markdown"). */
+export function setStructuredText(id: string, structuredText: string): QuickNote | null {
+  const all = readAll();
+  const idx = all.findIndex((n) => n.id === id);
+  if (idx === -1) return null;
+  all[idx] = { ...all[idx], structuredText };
+  writeAll(all);
+  return all[idx];
 }
 
 export function remove(id: string): boolean {
@@ -132,6 +144,7 @@ export async function transcribeAndSave(input: TranscribeInput): Promise<QuickNo
       audioFile,
       durationSec,
       createdAt: Date.now(),
+      structuredText: null,
     };
     const all = readAll();
     all.unshift(note);

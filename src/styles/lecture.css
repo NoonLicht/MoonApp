@@ -34,6 +34,42 @@
   border-radius: 12px;
 }
 
+/* Переключатель вкладок страницы: "Лекция" / "Быстрая заметка". */
+.lec-tabbar {
+  display: flex;
+  gap: 6px;
+  padding: 4px;
+  margin-bottom: 8px;
+}
+.lec-tabbtn {
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-tertiary);
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s;
+}
+.lec-tabbtn:hover {
+  background: var(--track);
+  color: var(--text-primary);
+}
+.lec-tabbtn.is-active {
+  background: var(--amber-soft);
+  border-color: rgba(240, 166, 61, 0.35);
+  color: var(--amber);
+  font-weight: 600;
+}
+.lec-quicknote-tab {
+  padding: 4px;
+}
+.lec-quicknote-structured {
+  border-top: 1px dashed var(--glass-border);
+  padding-top: 6px;
+  margin-top: 2px;
+}
+
 /* Шапка страницы: слева инфо о движке, справа ряд кнопок.
    ВАЖНО про ширину: раньше ни шапка, ни ряд кнопок не переносились, а .page
    обрезает переполнение — на узком окне (≈850px) ряд кнопок уезжал за правый

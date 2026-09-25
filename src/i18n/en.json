@@ -20,8 +20,7 @@
     "games": "Games",
     "screenshots": "Screenshots",
     "automation": "Automation",
-    "budget": "Budget",
-    "quicknotes": "Voice notes"
+    "budget": "Budget"
   },
   "common": {
     "saved": "saved",
@@ -407,7 +406,13 @@
     "processing": "Transcribing…",
     "keepAudio": "Keep audio",
     "empty": "Record your first voice note",
-    "emptyText": "(transcribed text is empty)"
+    "emptyText": "(transcribed text is empty)",
+    "pause": "Pause",
+    "resume": "Resume",
+    "paused": "Paused",
+    "structure": "Structure into Markdown",
+    "structuredLabel": "AI-structured:",
+    "engineMissingHint": "The recognition engine isn't set up — open the \"Lecture\" tab above and install whisper (same setting used here)."
   },
   "palette": {
     "placeholder": "Start typing a command name…",
@@ -1992,7 +1997,9 @@
       "srcShort": "found by gap check"
     },
     "modelSaved": "Model saved: {model}",
-    "fixModel": "Fix model"
+    "fixModel": "Fix model",
+    "tabLecture": "Lecture",
+    "tabQuickNote": "Quick note"
   },
   "bypass": {
     "netEyebrow": "Network diagnostics",

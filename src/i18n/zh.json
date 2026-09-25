@@ -20,8 +20,7 @@
     "games": "游戏",
     "screenshots": "截图",
     "automation": "自动化",
-    "budget": "预算",
-    "quicknotes": "语音笔记"
+    "budget": "预算"
   },
   "common": {
     "saved": "已保存",
@@ -407,7 +406,13 @@
     "processing": "识别中…",
     "keepAudio": "保留音频",
     "empty": "录制你的第一条语音笔记",
-    "emptyText": "(识别文本为空)"
+    "emptyText": "(识别文本为空)",
+    "pause": "暂停",
+    "resume": "继续",
+    "paused": "已暂停",
+    "structure": "整理为 Markdown",
+    "structuredLabel": "AI 整理版：",
+    "engineMissingHint": "识别引擎尚未配置 — 打开上方「课程」标签页安装 whisper（与此处共用同一设置）。"
   },
   "palette": {
     "placeholder": "输入命令名称…",
@@ -1856,7 +1861,9 @@
       "srcShort": "由遗漏检查找到"
     },
     "modelSaved": "已保存模型：{model}",
-    "fixModel": "修正模型"
+    "fixModel": "修正模型",
+    "tabLecture": "课程",
+    "tabQuickNote": "快速笔记"
   },
   "bypass": {
     "netEyebrow": "网络诊断",

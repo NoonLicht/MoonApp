@@ -53,6 +53,10 @@ describe("server/quickNotes — CRUD и конвейер распознаван�
     expect(engine.remove("no-such-id")).toBe(false);
   });
 
+  it("setStructuredText сохраняет и находит оформленный ИИ текст, null для несуществующей заметки", () => {
+    expect(engine.setStructuredText("no-such-id", "## x")).toBeNull();
+  });
+
   it.runIf(!!ffmpegBin && !whisperReady)(
     "честная ошибка whisper_not_installed, когда движок распознавания не настроен",
     async () => {
@@ -76,6 +80,10 @@ describe("server/quickNotes — CRUD и конвейер распознаван�
       const list = engine.list();
       expect(list.some((n) => n.id === note.id)).toBe(true);
       expect(fs.existsSync(path.join(storage, "quicknotes", note.audioFile!))).toBe(true);
+
+      const updated = engine.setStructuredText(note.id, "## Оформлено\n\nтекст");
+      expect(updated?.structuredText).toBe("## Оформлено\n\nтекст");
+      expect(engine.list().find((n) => n.id === note.id)?.structuredText).toBe("## Оформлено\n\nтекст");
 
       expect(engine.remove(note.id)).toBe(true);
       expect(engine.list().some((n) => n.id === note.id)).toBe(false);

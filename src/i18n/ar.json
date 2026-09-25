@@ -20,8 +20,7 @@
     "games": "الألعاب",
     "screenshots": "لقطات الشاشة",
     "automation": "الأتمتة",
-    "budget": "الميزانية",
-    "quicknotes": "ملاحظات صوتية"
+    "budget": "الميزانية"
   },
   "common": {
     "saved": "تم الحفظ",
@@ -407,7 +406,13 @@
     "processing": "جارٍ التفريغ…",
     "keepAudio": "الاحتفاظ بالصوت",
     "empty": "سجّل أول ملاحظة صوتية",
-    "emptyText": "(النص المفرّغ فارغ)"
+    "emptyText": "(النص المفرّغ فارغ)",
+    "pause": "إيقاف مؤقت",
+    "resume": "استئناف",
+    "paused": "متوقف مؤقتًا",
+    "structure": "تنظيم إلى Markdown",
+    "structuredLabel": "نظّمه الذكاء الاصطناعي:",
+    "engineMissingHint": "محرك التعرف على الصوت غير مُعد — افتح تبويب «المحاضرة» أعلاه وثبّت whisper (نفس الإعداد المستخدم هنا)."
   },
   "palette": {
     "placeholder": "ابدأ بكتابة اسم أمر…",
@@ -1856,7 +1861,9 @@
       "srcShort": "وُجد أثناء فحص الفجوات"
     },
     "modelSaved": "تم حفظ النموذج: {model}",
-    "fixModel": "إصلاح النموذج"
+    "fixModel": "إصلاح النموذج",
+    "tabLecture": "المحاضرة",
+    "tabQuickNote": "ملاحظة سريعة"
   },
   "bypass": {
     "netEyebrow": "تشخيص الشبكة",

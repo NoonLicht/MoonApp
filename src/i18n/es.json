@@ -20,8 +20,7 @@
     "games": "Juegos",
     "screenshots": "Capturas",
     "automation": "Automatización",
-    "budget": "Presupuesto",
-    "quicknotes": "Notas de voz"
+    "budget": "Presupuesto"
   },
   "common": {
     "saved": "guardado",
@@ -407,7 +406,13 @@
     "processing": "Transcribiendo…",
     "keepAudio": "Guardar audio",
     "empty": "Graba tu primera nota de voz",
-    "emptyText": "(el texto transcrito está vacío)"
+    "emptyText": "(el texto transcrito está vacío)",
+    "pause": "Pausa",
+    "resume": "Reanudar",
+    "paused": "En pausa",
+    "structure": "Estructurar en Markdown",
+    "structuredLabel": "Estructurado por IA:",
+    "engineMissingHint": "El motor de reconocimiento no está configurado — abre la pestaña «Clase» de arriba e instala whisper (misma configuración usada aquí)."
   },
   "palette": {
     "placeholder": "Empieza a escribir el nombre de un comando…",
@@ -1856,7 +1861,9 @@
       "srcShort": "encontrado al revisar huecos"
     },
     "modelSaved": "Modelo guardado: {model}",
-    "fixModel": "Corregir modelo"
+    "fixModel": "Corregir modelo",
+    "tabLecture": "Clase",
+    "tabQuickNote": "Nota rápida"
   },
   "bypass": {
     "netEyebrow": "Diagnóstico de red",

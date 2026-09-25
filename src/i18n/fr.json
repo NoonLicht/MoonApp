@@ -20,8 +20,7 @@
     "games": "Jeux",
     "screenshots": "Captures d'écran",
     "automation": "Automatisation",
-    "budget": "Budget",
-    "quicknotes": "Notes vocales"
+    "budget": "Budget"
   },
   "common": {
     "saved": "enregistré",
@@ -407,7 +406,13 @@
     "processing": "Transcription…",
     "keepAudio": "Conserver l'audio",
     "empty": "Enregistrez votre première note vocale",
-    "emptyText": "(le texte transcrit est vide)"
+    "emptyText": "(le texte transcrit est vide)",
+    "pause": "Pause",
+    "resume": "Reprendre",
+    "paused": "En pause",
+    "structure": "Structurer en Markdown",
+    "structuredLabel": "Structuré par l'IA :",
+    "engineMissingHint": "Le moteur de reconnaissance n'est pas configuré — ouvrez l'onglet « Cours » ci-dessus et installez whisper (même réglage utilisé ici)."
   },
   "palette": {
     "placeholder": "Commencez à taper le nom d'une commande…",
@@ -1856,7 +1861,9 @@
       "srcShort": "trouvé lors de la vérification"
     },
     "modelSaved": "Modèle enregistré : {model}",
-    "fixModel": "Corriger le modèle"
+    "fixModel": "Corriger le modèle",
+    "tabLecture": "Cours",
+    "tabQuickNote": "Note rapide"
   },
   "bypass": {
     "netEyebrow": "Diagnostic réseau",

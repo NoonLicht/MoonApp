@@ -97,6 +97,7 @@ describe("server/notesAi — форма модуля и sidecar-исходник
         "sourceInfo",
         "sourcePath",
         "splitForFormat",
+        "structureQuickNote",
         "writeSource",
       ].sort(),
     );

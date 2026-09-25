@@ -547,6 +547,7 @@ export interface QuickNote {
   audioFile: string | null;
   durationSec: number | null;
   createdAt: number;
+  structuredText: string | null;
 }
 
 /* --------------------- Git-синхронизация заметок/canvas --------------------- */
