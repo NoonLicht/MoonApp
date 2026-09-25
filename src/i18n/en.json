@@ -360,7 +360,14 @@
     "scheduleOnLogon": "At logon",
     "scheduleOnStart": "At system startup",
     "nextRun": "Next run",
-    "emptyTasks": "No scheduled tasks yet (\\MoonApp\\ folder)"
+    "emptyTasks": "No scheduled tasks yet (\\MoonApp\\ folder)",
+    "browse": "Browse…",
+    "filterExe": "Programs and scripts",
+    "filterAll": "All files",
+    "helpTitle": "How this works",
+    "helpLaunchers": "A launcher is a shortcut to a program/script: a name + path to an .exe (or .bat/.ps1) + optional command-line arguments. The \"Run\" button launches it immediately.",
+    "helpHotkey": "Alt+Space anywhere on the system opens the command palette — find a launcher by name and run it without opening this app.",
+    "helpTasks": "A task reuses a launcher but runs it on a schedule via the built-in Windows Task Scheduler (daily at a set time, hourly, at logon, or at system start) — no need to keep this screen open."
   },
   "budget": {
     "eyebrow": "Finance",
@@ -1330,7 +1337,6 @@
     "newFolder": "New folder",
     "select": "Select",
     "paste": "Paste and go",
-    "clear": "Clear",
     "exportMd": "Export as Markdown",
     "delFolder": "Delete folder",
     "copyAuthor": "Copy author",

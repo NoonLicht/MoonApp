@@ -360,7 +360,14 @@
     "scheduleOnLogon": "登录时",
     "scheduleOnStart": "系统启动时",
     "nextRun": "下次运行",
-    "emptyTasks": "暂无计划任务(\\MoonApp\\ 文件夹)"
+    "emptyTasks": "暂无计划任务(\\MoonApp\\ 文件夹)",
+    "browse": "浏览…",
+    "filterExe": "程序和脚本",
+    "filterAll": "所有文件",
+    "helpTitle": "工作原理",
+    "helpLaunchers": "启动项是指向程序/脚本的快捷方式：名称 + .exe(或 .bat/.ps1)路径 + 可选命令行参数。点击「运行」立即启动它。",
+    "helpHotkey": "在系统任意位置按 Alt+Space 可打开命令面板 — 按名称快速查找启动项并运行，无需打开本应用。",
+    "helpTasks": "任务复用某个启动项，但通过 Windows 自带的任务计划程序按计划运行(每天固定时间、每小时、登录时或开机时) — 无需保持此页面打开。"
   },
   "budget": {
     "eyebrow": "财务",

@@ -1,5 +1,18 @@
 import { useEffect, useState } from "react";
-import { Zap, Plus, Play, Trash2, X, Save, Clock, AlertTriangle, CalendarClock } from "lucide-react";
+import {
+  Zap,
+  Plus,
+  Play,
+  Trash2,
+  X,
+  Save,
+  Clock,
+  AlertTriangle,
+  CalendarClock,
+  FolderOpen,
+  Info,
+  Keyboard,
+} from "lucide-react";
 import { Glass, Btn, Badge, EmptyHint, SectionHead, Select } from "@/components/ui";
 import { useI18n } from "@/app/i18n";
 import { api } from "@/api/client";
@@ -62,6 +75,16 @@ export default function AutomationPage() {
     loadLaunchers();
     loadTasks();
   }, []);
+
+  const browseExePath = async () => {
+    const r = await window.appBridge?.pickFile?.({
+      filters: [
+        { name: t("automation.filterExe"), extensions: ["exe", "bat", "cmd", "ps1"] },
+        { name: t("automation.filterAll"), extensions: ["*"] },
+      ],
+    });
+    if (r?.ok && r.path) setLauncherForm((f) => ({ ...f, exePath: r.path! }));
+  };
 
   const saveLauncher = async () => {
     if (!launcherForm.name.trim() || !launcherForm.exePath.trim()) return;
@@ -137,6 +160,21 @@ export default function AutomationPage() {
         }
       />
 
+      <Glass
+        className="media-preview"
+        style={{ flexDirection: "column", alignItems: "stretch", gap: 8, fontSize: 13 }}
+      >
+        <div style={{ display: "flex", gap: 8, alignItems: "center", fontWeight: 600 }}>
+          <Info size={15} />
+          {t("automation.helpTitle")}
+        </div>
+        <div className="muted-sm">{t("automation.helpLaunchers")}</div>
+        <div className="muted-sm" style={{ display: "flex", gap: 6, alignItems: "center" }}>
+          <Keyboard size={13} /> {t("automation.helpHotkey")}
+        </div>
+        <div className="muted-sm">{t("automation.helpTasks")}</div>
+      </Glass>
+
       {runError && (
         <Glass className="source-placeholder" style={{ borderColor: "var(--coral)" }}>
           <AlertTriangle size={16} style={{ color: "var(--coral)" }} />
@@ -152,12 +190,18 @@ export default function AutomationPage() {
             value={launcherForm.name}
             onChange={(e) => setLauncherForm((f) => ({ ...f, name: e.target.value }))}
           />
-          <input
-            className="text-input"
-            placeholder={t("automation.fExePath")}
-            value={launcherForm.exePath}
-            onChange={(e) => setLauncherForm((f) => ({ ...f, exePath: e.target.value }))}
-          />
+          <div style={{ display: "flex", gap: 8 }}>
+            <input
+              className="text-input"
+              style={{ flex: 1 }}
+              placeholder={t("automation.fExePath")}
+              value={launcherForm.exePath}
+              onChange={(e) => setLauncherForm((f) => ({ ...f, exePath: e.target.value }))}
+            />
+            <Btn icon={FolderOpen} onClick={() => void browseExePath()}>
+              {t("automation.browse")}
+            </Btn>
+          </div>
           <input
             className="text-input"
             placeholder={t("automation.fArgs")}

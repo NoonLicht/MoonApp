@@ -360,7 +360,14 @@
     "scheduleOnLogon": "À la connexion",
     "scheduleOnStart": "Au démarrage du système",
     "nextRun": "Prochaine exécution",
-    "emptyTasks": "Aucune tâche planifiée pour l'instant (dossier \\MoonApp\\)"
+    "emptyTasks": "Aucune tâche planifiée pour l'instant (dossier \\MoonApp\\)",
+    "browse": "Parcourir…",
+    "filterExe": "Programmes et scripts",
+    "filterAll": "Tous les fichiers",
+    "helpTitle": "Comment ça marche",
+    "helpLaunchers": "Un lanceur est un raccourci vers un programme/script : nom + chemin vers un .exe (ou .bat/.ps1) + arguments de ligne de commande facultatifs. Le bouton « Lancer » l'exécute immédiatement.",
+    "helpHotkey": "Alt+Espace n'importe où dans le système ouvre la palette de commandes — trouvez un lanceur par son nom et exécutez-le sans ouvrir cette app.",
+    "helpTasks": "Une tâche réutilise un lanceur mais l'exécute selon une planification via le Planificateur de tâches Windows (quotidien à une heure fixe, toutes les heures, à la connexion ou au démarrage) — sans avoir à garder cet écran ouvert."
   },
   "budget": {
     "eyebrow": "Finances",

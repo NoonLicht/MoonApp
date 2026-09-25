@@ -1443,6 +1443,10 @@ declare global {
       openAppDir?: () => Promise<{ ok: boolean; dir?: string; error?: string }>;
       // Открыть внешнюю http(s)-ссылку в системном браузере (клик по ссылке в заметках).
       openExternal?: (url: string) => Promise<{ ok: boolean; error?: string }>;
+      // Нативный диалог выбора файла (кнопка "Обзор..." у полей путей).
+      pickFile?: (opts?: {
+        filters?: { name: string; extensions: string[] }[];
+      }) => Promise<{ ok: boolean; path?: string; canceled?: boolean; error?: string }>;
       /**
        * Автозапуск с Windows: применить настройку сразу (реестр Run меняет
        * main-процесс). reason: "dev" — в не-собранной версии автозапуск не ставим.

@@ -360,7 +360,14 @@
     "scheduleOnLogon": "Al iniciar sesión",
     "scheduleOnStart": "Al iniciar el sistema",
     "nextRun": "Próxima ejecución",
-    "emptyTasks": "Aún no hay tareas programadas (carpeta \\MoonApp\\)"
+    "emptyTasks": "Aún no hay tareas programadas (carpeta \\MoonApp\\)",
+    "browse": "Examinar…",
+    "filterExe": "Programas y scripts",
+    "filterAll": "Todos los archivos",
+    "helpTitle": "Cómo funciona",
+    "helpLaunchers": "Un lanzador es un acceso directo a un programa/script: nombre + ruta a un .exe (o .bat/.ps1) + argumentos opcionales de línea de comandos. El botón «Ejecutar» lo inicia de inmediato.",
+    "helpHotkey": "Alt+Space en cualquier lugar del sistema abre la paleta de comandos — busca un lanzador por nombre y ejecútalo sin abrir esta app.",
+    "helpTasks": "Una tarea reutiliza un lanzador pero lo ejecuta según un horario mediante el Programador de tareas de Windows (diario a una hora fija, cada hora, al iniciar sesión o al arrancar el sistema) — sin necesidad de mantener esta pantalla abierta."
   },
   "budget": {
     "eyebrow": "Finanzas",

@@ -987,6 +987,24 @@ ipcMain.handle("app:refresh-hotkey", () => {
   return { ok: true };
 });
 
+// Выбрать файл через нативный диалог проводника — используется кнопкой
+// "Обзор..." (страница Автоматизация: путь к программе/скрипту, и другие
+// поля выбора локального файла).
+ipcMain.handle("dialog:pick-file", async (_e, opts) => {
+  try {
+    const { dialog } = require("electron");
+    const filters = Array.isArray(opts?.filters) ? opts.filters : undefined;
+    const res = await dialog.showOpenDialog({
+      properties: ["openFile"],
+      filters,
+    });
+    if (res.canceled || !res.filePaths.length) return { ok: false, canceled: true };
+    return { ok: true, path: res.filePaths[0] };
+  } catch (e) {
+    return { ok: false, error: e?.message || String(e) };
+  }
+});
+
 // Открыть внешнюю ссылку (http/https) в системном браузере по умолчанию —
 // используется кликабельными ссылками в заметках/закладках.
 ipcMain.handle("shell:open-external", (_e, url) => {
