@@ -67,6 +67,7 @@
     "pdf-lib": "^1.17.1",
     "pdf-parse": "^2.4.5",
     "socks-proxy-agent": "^10.1.0",
+    "tesseract.js": "^7.0.0",
     "undici": "^6.28.1",
     "webtorrent": "^1.9.7"
   },

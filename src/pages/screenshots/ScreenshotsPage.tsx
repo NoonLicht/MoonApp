@@ -10,10 +10,12 @@ import {
   Pencil,
   ArrowUpRight,
   Blend,
+  ScanText,
 } from "lucide-react";
 import { Glass, Btn, SectionHead, EmptyHint, Badge } from "@/components/ui";
 import { useI18n } from "@/app/i18n";
 import { saveBlob } from "@/lib/download";
+import { api } from "@/api/client";
 
 type AnnotateTool = "pen" | "arrow" | "blur";
 
@@ -227,6 +229,35 @@ export default function ScreenshotsPage() {
     });
   };
 
+  // --- OCR: распознать текст со скриншота в буфер обмена ---
+  const [ocrBusy, setOcrBusy] = useState(false);
+  const [ocrText, setOcrText] = useState<string | null>(null);
+
+  const runOcr = () => {
+    const c = canvasRef.current;
+    if (!c) return;
+    setOcrBusy(true);
+    setOcrText(null);
+    setError("");
+    c.toBlob(async (blob) => {
+      if (!blob) {
+        setOcrBusy(false);
+        return;
+      }
+      try {
+        const r = await api.ocrRecognize(blob);
+        setOcrText(r.text.trim());
+        if (r.text.trim()) {
+          await navigator.clipboard.writeText(r.text.trim()).catch(() => {});
+        }
+      } catch (e) {
+        setError((e as Error).message);
+      } finally {
+        setOcrBusy(false);
+      }
+    });
+  };
+
   // --- Запись экрана ---
   const [recording, setRecording] = useState(false);
   const [recSeconds, setRecSeconds] = useState(0);
@@ -345,8 +376,23 @@ export default function ScreenshotsPage() {
             <Btn icon={Download} onClick={downloadShot}>
               {t("screenshots.download")}
             </Btn>
+            <Btn icon={ScanText} disabled={ocrBusy} onClick={runOcr}>
+              {ocrBusy ? t("screenshots.ocrBusy") : t("screenshots.ocr")}
+            </Btn>
           </div>
           <div className="muted-sm">{t("screenshots.annotateHint")}</div>
+          {ocrText !== null && (
+            <Glass style={{ flexDirection: "column", alignItems: "stretch", gap: 6, padding: 10 }}>
+              <div className="muted-sm">
+                {ocrText ? t("screenshots.ocrCopied") : t("screenshots.ocrEmpty")}
+              </div>
+              {ocrText && (
+                <div style={{ whiteSpace: "pre-wrap", fontFamily: "var(--font-mono)", fontSize: 13 }}>
+                  {ocrText}
+                </div>
+              )}
+            </Glass>
+          )}
           <div style={{ overflow: "auto", maxHeight: "60vh" }}>
             <canvas
               ref={canvasRef}

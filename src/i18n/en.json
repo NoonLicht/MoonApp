@@ -333,6 +333,10 @@
     "toolPen": "Marker",
     "toolArrow": "Arrow",
     "toolBlur": "Blur",
+    "ocr": "Recognize text",
+    "ocrBusy": "Recognizing…",
+    "ocrCopied": "Text recognized and copied to clipboard:",
+    "ocrEmpty": "No text recognized (empty result)",
     "empty": "Take a screenshot or start screen recording"
   },
   "automation": {

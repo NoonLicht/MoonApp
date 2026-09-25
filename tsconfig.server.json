@@ -47,6 +47,7 @@
     "server/ts/budget.ts",
     "server/ts/quickNotes.ts",
     "server/ts/killSwitch.ts",
+    "server/ts/ocr.ts",
     "server/ts/elevate.ts",
     "server/ts/backup.ts",
     "server/ts/downloads.ts",

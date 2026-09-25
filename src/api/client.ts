@@ -1560,6 +1560,13 @@ export const api = {
   killSwitchArm: () => req<{ ok: boolean }>("POST", "/killswitch/arm"),
   killSwitchDisarm: () => req<{ ok: boolean; error?: string }>("POST", "/killswitch/disarm"),
 
+  // --- OCR ---
+  ocrRecognize: (file: File | Blob) => {
+    const fd = new FormData();
+    fd.append("file", file, "ocr.png");
+    return multipart<{ text: string; confidence: number }>("/ocr/recognize", fd);
+  },
+
   // --- Трекер времени за приложениями ---
   appTrackerStart: () => req<{ ok: boolean; error?: string }>("POST", "/apptracker/start"),
   appTrackerStop: () => req<{ ok: boolean }>("POST", "/apptracker/stop"),

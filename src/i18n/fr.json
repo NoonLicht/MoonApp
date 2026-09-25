@@ -333,6 +333,10 @@
     "toolPen": "Marqueur",
     "toolArrow": "Flèche",
     "toolBlur": "Flou",
+    "ocr": "Reconnaître le texte",
+    "ocrBusy": "Reconnaissance…",
+    "ocrCopied": "Texte reconnu et copié dans le presse-papiers :",
+    "ocrEmpty": "Aucun texte reconnu (résultat vide)",
     "empty": "Prenez une capture ou démarrez l'enregistrement d'écran"
   },
   "automation": {

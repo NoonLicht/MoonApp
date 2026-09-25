@@ -65,6 +65,7 @@ const automationRouter = require("./routes/automation") as express.Router;
 const budgetRouter = require("./routes/budget") as express.Router;
 const quickNotesRouter = require("./routes/quickNotes") as express.Router;
 const killSwitchRouter = require("./routes/killSwitch") as express.Router;
+const ocrRouter = require("./routes/ocr") as express.Router;
 const perPageProxy = require("./middleware/perPageProxy") as {
   perPageProxyMiddleware: express.RequestHandler;
 };
@@ -273,6 +274,7 @@ function createApp(): express.Express {
   app.use("/api/budget", budgetRouter);
   app.use("/api/quicknotes", quickNotesRouter);
   app.use("/api/killswitch", killSwitchRouter);
+  app.use("/api/ocr", ocrRouter);
 
   // Раздача собранного фронта (dist), если он собран.
   const dist = path.join(__dirname, "..", "dist");

@@ -68,6 +68,7 @@ server/automation.js
 server/budget.js
 server/quickNotes.js
 server/killSwitch.js
+server/ocr.js
 server/elevate.js
 server/backup.js
 server/downloads.js

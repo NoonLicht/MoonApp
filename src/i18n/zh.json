@@ -333,6 +333,10 @@
     "toolPen": "标记笔",
     "toolArrow": "箭头",
     "toolBlur": "模糊",
+    "ocr": "识别文字",
+    "ocrBusy": "识别中…",
+    "ocrCopied": "已识别文字并复制到剪贴板:",
+    "ocrEmpty": "未识别到文字(结果为空)",
     "empty": "截图或开始屏幕录制"
   },
   "automation": {

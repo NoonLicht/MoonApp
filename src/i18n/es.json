@@ -333,6 +333,10 @@
     "toolPen": "Marcador",
     "toolArrow": "Flecha",
     "toolBlur": "Desenfoque",
+    "ocr": "Reconocer texto",
+    "ocrBusy": "Reconociendo…",
+    "ocrCopied": "Texto reconocido y copiado al portapapeles:",
+    "ocrEmpty": "No se reconoció texto (resultado vacío)",
     "empty": "Haz una captura o inicia la grabación de pantalla"
   },
   "automation": {

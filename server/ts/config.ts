@@ -93,6 +93,8 @@ const DIRS = {
   // с полноценными лекциями в DIRS.lectures).
   quickNotes: ensureDir(path.join(STORAGE_DIR, "quicknotes")),
   quickNotesTmp: ensureDir(path.join(STORAGE_DIR, "quicknotes", "tmp")),
+  // OCR: кэш скачанных языковых моделей tesseract.js (rus/eng .traineddata).
+  ocr: ensureDir(path.join(STORAGE_DIR, "ocr")),
 };
 const FILES = {
   data: path.join(DIRS.storage, "data.json"),
