@@ -444,6 +444,7 @@
     "encodePlaceholder": "输入文本…",
     "encodeRun": "计算",
     "encodeB64Decode": "解码 Base64",
+    "encodeB64Invalid": "无效的 Base64 字符串",
     "uuidGenerate": "生成",
     "baseInvalid": "该进制下的数字无效",
     "unitCat_length": "长度",

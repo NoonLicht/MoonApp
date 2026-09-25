@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { EditorState, RangeSetBuilder, type Extension } from "@codemirror/state";
+import { EditorState, RangeSetBuilder, type Extension, type Text } from "@codemirror/state";
 import {
   EditorView,
   Decoration,
@@ -11,8 +11,12 @@ import {
 } from "@codemirror/view";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { markdown } from "@codemirror/lang-markdown";
+import { languages } from "@codemirror/language-data";
+import { GFM } from "@lezer/markdown";
 import { syntaxHighlighting, HighlightStyle } from "@codemirror/language";
 import { tags as t } from "@lezer/highlight";
+import { marked } from "marked";
+import { sanitizeHtml } from "@/lib/sanitize";
 
 interface Props {
   content: string;
@@ -48,6 +52,113 @@ class CheckboxWidget extends WidgetType {
   }
 }
 
+/* ─── Виджет картинки: заменяет "![alt](src)" превью-изображением ─── */
+class ImageWidget extends WidgetType {
+  constructor(
+    readonly src: string,
+    readonly alt: string,
+  ) {
+    super();
+  }
+  eq(other: ImageWidget) {
+    return other.src === this.src && other.alt === this.alt;
+  }
+  toDOM() {
+    const img = document.createElement("img");
+    img.className = "cm-live-image";
+    img.src = this.src;
+    img.alt = this.alt;
+    img.loading = "lazy";
+    img.onerror = () => {
+      img.classList.add("is-broken");
+    };
+    return img;
+  }
+  ignoreEvent() {
+    return false;
+  }
+}
+
+/* ─── Виджет горизонтальной линии: заменяет "---"/"***"/"___" строкой-разделителем ─── */
+class HrWidget extends WidgetType {
+  eq() {
+    return true;
+  }
+  toDOM() {
+    const div = document.createElement("div");
+    div.className = "cm-live-hr";
+    return div;
+  }
+  ignoreEvent() {
+    return false;
+  }
+}
+
+/* ─── Виджет отрендеренной GFM-таблицы: показываем настоящую <table>, пока
+   курсор не внутри блока таблицы (тогда видно сырой markdown для правки) ─── */
+class TableWidget extends WidgetType {
+  constructor(readonly html: string) {
+    super();
+  }
+  eq(other: TableWidget) {
+    return other.html === this.html;
+  }
+  toDOM() {
+    const div = document.createElement("div");
+    div.className = "cm-live-table";
+    div.innerHTML = sanitizeHtml(this.html);
+    return div;
+  }
+  ignoreEvent() {
+    return false;
+  }
+}
+
+function isTableSeparatorLine(s: string): boolean {
+  const v = s.trim();
+  if (!v.includes("-") || !v.includes("|")) return false;
+  return /^\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)+\|?$/.test(v);
+}
+
+interface TableBlock {
+  from: number;
+  to: number;
+  fromLine: number;
+  toLine: number;
+  source: string;
+}
+
+function findTableBlocks(doc: Text): TableBlock[] {
+  const blocks: TableBlock[] = [];
+  let ln = 1;
+  while (ln <= doc.lines) {
+    const line = doc.line(ln);
+    const next = ln + 1 <= doc.lines ? doc.line(ln + 1) : null;
+    if (line.text.includes("|") && next && isTableSeparatorLine(next.text)) {
+      const startLn = ln;
+      let endLn = ln + 1;
+      while (endLn + 1 <= doc.lines) {
+        const peek = doc.line(endLn + 1);
+        if (!peek.text.trim() || !peek.text.includes("|")) break;
+        endLn++;
+      }
+      const fromLine = doc.line(startLn);
+      const toLine = doc.line(endLn);
+      blocks.push({
+        from: fromLine.from,
+        to: toLine.to,
+        fromLine: startLn,
+        toLine: endLn,
+        source: doc.sliceString(fromLine.from, toLine.to),
+      });
+      ln = endLn + 1;
+      continue;
+    }
+    ln++;
+  }
+  return blocks;
+}
+
 /* ─── Разметка подсветки code fence / markdown-токенов CodeMirror'а под палитру приложения ─── */
 const liveHighlight = HighlightStyle.define([
   { tag: t.heading1, fontSize: "1.5em", fontWeight: "700", color: "var(--text-primary)" },
@@ -75,7 +186,7 @@ const liveHighlight = HighlightStyle.define([
    символов (**, #, ` и т.п.), как в Obsidian. Простой построчный regex,
    а не полный AST — быстрее и достаточно для практики. ─── */
 const INLINE_RE =
-  /(\*\*([^*\n]+)\*\*)|(__([^_\n]+)__)|(\*([^*\n]+)\*)|(`([^`\n]+)`)|(~~([^~\n]+)~~)|(==([^=\n]+)==)|(\[\[([^\]\n]+)\]\])|(#[a-zA-Zа-яА-Я0-9_\-/]+)/g;
+  /(\*\*([^*\n]+)\*\*)|(__([^_\n]+)__)|(\*([^*\n]+)\*)|(`([^`\n]+)`)|(~~([^~\n]+)~~)|(==([^=\n]+)==)|(\[\[([^\]\n]+)\]\])|(!\[([^\]\n]*)\]\(([^)\n]+)\))|(\[([^\]\n]+)\]\(([^)\n]+)\))|(#[a-zA-Zа-яА-Я0-9_\-/]+)/g;
 
 function buildLiveDecorations(
   view: EditorView,
@@ -84,16 +195,51 @@ function buildLiveDecorations(
   const builder = new RangeSetBuilder<Decoration>();
   const activeLine = view.state.doc.lineAt(view.state.selection.main.head).number;
   let inFence = false;
+  const tableBlocks = findTableBlocks(view.state.doc);
 
   for (let ln = 1; ln <= view.state.doc.lines; ln++) {
     const line = view.state.doc.line(ln);
     const text = line.text;
-    const isFenceMark = /^\s*```/.test(text);
+
+    const tb = tableBlocks.find((b) => b.fromLine === ln);
+    if (tb && (activeLine < tb.fromLine || activeLine > tb.toLine)) {
+      let html = "";
+      try {
+        html = marked.parse(tb.source) as string;
+      } catch {
+        // оставляем html пустым — ниже упадём обратно на сырой текст блока
+      }
+      if (html) {
+        builder.add(tb.from, tb.to, Decoration.replace({ widget: new TableWidget(html), block: true }));
+        ln = tb.toLine;
+        continue;
+      }
+    }
+
+    const isFenceMark = /^\s*(```+|~~~+)/.test(text);
     if (isFenceMark) {
+      const opening = !inFence;
       inFence = !inFence;
+      builder.add(
+        line.from,
+        line.from,
+        Decoration.line({ attributes: { class: opening ? "cm-live-fence-open" : "cm-live-fence-close" } }),
+      );
       continue;
     }
-    if (inFence) continue;
+    if (inFence) {
+      builder.add(line.from, line.from, Decoration.line({ attributes: { class: "cm-live-fence-line" } }));
+      continue;
+    }
+
+    // Горизонтальная линия "---"/"***"/"___"
+    if (/^\s*(?:-{3,}|\*{3,}|_{3,})\s*$/.test(text) && text.trim().length >= 3) {
+      if (ln !== activeLine) {
+        builder.add(line.from, line.to, Decoration.replace({ widget: new HrWidget() }));
+        continue;
+      }
+    }
+
     if (ln === activeLine) continue; // активная строка — сырой текст без маскировки
 
     let bodyFrom = line.from;
@@ -182,8 +328,20 @@ function buildLiveDecorations(
         );
         builder.add(to - 2, to, Decoration.replace({}));
       } else if (m[15]) {
+        // ![alt](src)
+        builder.add(from, to, Decoration.replace({ widget: new ImageWidget(m[17], m[16] || "") }));
+      } else if (m[18]) {
+        // [text](url)
+        builder.add(from, from + 1, Decoration.replace({}));
+        builder.add(
+          from + 1,
+          from + 1 + m[19].length,
+          Decoration.mark({ class: "cm-live-link", attributes: { "data-href": m[20] } }),
+        );
+        builder.add(from + 1 + m[19].length, to, Decoration.replace({}));
+      } else if (m[21]) {
         // #tag
-        builder.add(from, to, Decoration.mark({ class: "cm-live-tag", attributes: { "data-tag": m[15] } }));
+        builder.add(from, to, Decoration.mark({ class: "cm-live-tag", attributes: { "data-tag": m[21] } }));
       }
     }
   }
@@ -274,6 +432,75 @@ export default function CodeMirrorLiveEditor({
           color: "var(--amber)",
           cursor: "pointer",
         },
+        ".cm-live-link": {
+          color: "var(--amber)",
+          cursor: "pointer",
+          textDecoration: "underline",
+        },
+        ".cm-live-image": {
+          display: "block",
+          maxWidth: "100%",
+          maxHeight: "420px",
+          borderRadius: "8px",
+          border: "1px solid var(--glass-border)",
+          margin: "4px 0",
+        },
+        ".cm-live-image.is-broken": {
+          display: "inline-block",
+          minWidth: "120px",
+          minHeight: "28px",
+          background: "var(--track, rgba(255,255,255,0.06))",
+        },
+        ".cm-live-hr": {
+          height: "1px",
+          background: "var(--glass-border)",
+          margin: "14px 0",
+        },
+        ".cm-live-fence-open": {
+          background: "var(--track, rgba(255,255,255,0.05))",
+          borderTop: "1px solid var(--glass-border)",
+          borderLeft: "1px solid var(--glass-border)",
+          borderRight: "1px solid var(--glass-border)",
+          borderTopLeftRadius: "8px",
+          borderTopRightRadius: "8px",
+          color: "var(--text-tertiary)",
+          fontFamily: "var(--font-mono)",
+          fontSize: "12px",
+          paddingTop: "4px",
+        },
+        ".cm-live-fence-close": {
+          background: "var(--track, rgba(255,255,255,0.05))",
+          borderBottom: "1px solid var(--glass-border)",
+          borderLeft: "1px solid var(--glass-border)",
+          borderRight: "1px solid var(--glass-border)",
+          borderBottomLeftRadius: "8px",
+          borderBottomRightRadius: "8px",
+          paddingBottom: "4px",
+        },
+        ".cm-live-fence-line": {
+          background: "var(--track, rgba(255,255,255,0.05))",
+          borderLeft: "1px solid var(--glass-border)",
+          borderRight: "1px solid var(--glass-border)",
+          fontFamily: "var(--font-mono)",
+        },
+        ".cm-live-table": {
+          margin: "8px 0",
+        },
+        ".cm-live-table table": {
+          width: "100%",
+          borderCollapse: "collapse",
+          border: "1px solid var(--glass-border)",
+          fontSize: "13px",
+        },
+        ".cm-live-table th, .cm-live-table td": {
+          border: "1px solid var(--glass-border)",
+          padding: "6px 10px",
+          textAlign: "left",
+        },
+        ".cm-live-table th": {
+          background: "var(--track, rgba(255,255,255,0.06))",
+          fontWeight: "600",
+        },
         ".cm-live-list-marker": { color: "var(--text-tertiary)" },
         ".cm-live-quote-marker": { color: "var(--text-tertiary)" },
         ".cm-live-checkbox": {
@@ -329,6 +556,19 @@ export default function CodeMirrorLiveEditor({
             return true;
           }
         }
+        const link = target.closest(".cm-live-link") as HTMLElement | null;
+        if (link) {
+          const href = link.getAttribute("data-href");
+          if (href) {
+            e.preventDefault();
+            if (/^https?:\/\//i.test(href) && window.appBridge?.openExternal) {
+              void window.appBridge.openExternal(href);
+            } else if (/^https?:\/\//i.test(href)) {
+              window.open(href, "_blank", "noopener");
+            }
+            return true;
+          }
+        }
         return false;
       },
     });
@@ -336,7 +576,7 @@ export default function CodeMirrorLiveEditor({
     const extensions: Extension[] = [
       history(),
       keymap.of([...defaultKeymap, ...historyKeymap]),
-      markdown(),
+      markdown({ codeLanguages: languages, extensions: [GFM] }),
       syntaxHighlighting(liveHighlight),
       livePreviewPlugin(onToggleCheckbox),
       clickHandler,
@@ -367,17 +607,35 @@ export default function CodeMirrorLiveEditor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [readOnly]);
 
-  // Внешнее изменение контента (например, ИИ переписал заметку) — применяем
-  // как замену документа, если оно отличается от последнего значения, которое
-  // сами же отправили через onChange (иначе будет эхо/скачки курсора).
+  // Внешнее изменение контента (например, ИИ переписал заметку, или галочка
+  // была переключена кликом по виджету) — применяем как замену документа,
+  // если оно отличается от последнего значения, которое сами же отправили
+  // через onChange (иначе будет эхо/скачки курсора). Патчим только реально
+  // изменившийся кусок (общий префикс/суффикс не трогаем) — иначе полная
+  // замена документа сбрасывает scrollTop и курсор к началу редактора.
   useEffect(() => {
     const view = viewRef.current;
     if (!view) return;
     if (content === lastEmitted.current) return;
+    const prev = view.state.doc.toString();
     lastEmitted.current = content;
+    if (content === prev) return;
+
+    let start = 0;
+    const maxStart = Math.min(prev.length, content.length);
+    while (start < maxStart && prev[start] === content[start]) start++;
+    let endPrev = prev.length;
+    let endNext = content.length;
+    while (endPrev > start && endNext > start && prev[endPrev - 1] === content[endNext - 1]) {
+      endPrev--;
+      endNext--;
+    }
+
+    const scrollTop = view.scrollDOM.scrollTop;
     view.dispatch({
-      changes: { from: 0, to: view.state.doc.length, insert: content },
+      changes: { from: start, to: endPrev, insert: content.slice(start, endNext) },
     });
+    view.scrollDOM.scrollTop = scrollTop;
   }, [content]);
 
   return <div ref={hostRef} className="ms-live-editor-cm" style={{ flex: 1, minHeight: 0, overflow: "hidden" }} />;

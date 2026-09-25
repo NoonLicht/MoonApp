@@ -1441,6 +1441,8 @@ declare global {
       close: () => void;
       // Открыть каталог установки приложения (кнопка в верхней панели).
       openAppDir?: () => Promise<{ ok: boolean; dir?: string; error?: string }>;
+      // Открыть внешнюю http(s)-ссылку в системном браузере (клик по ссылке в заметках).
+      openExternal?: (url: string) => Promise<{ ok: boolean; error?: string }>;
       /**
        * Автозапуск с Windows: применить настройку сразу (реестр Run меняет
        * main-процесс). reason: "dev" — в не-собранной версии автозапуск не ставим.

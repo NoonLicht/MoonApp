@@ -21,6 +21,7 @@ contextBridge.exposeInMainWorld("appBridge", {
   // Токен подставляется в заголовок x-moonapp-token (см. src/api/client.ts).
   getToken: () => readToken(),
   revealPath: (p) => ipcRenderer.invoke("shell:reveal", p),
+  openExternal: (url) => ipcRenderer.invoke("shell:open-external", url),
   // Открыть каталог установки приложения (кнопка в верхней панели).
   openAppDir: () => ipcRenderer.invoke("shell:open-app-dir"),
   refreshTray: () => ipcRenderer.send("bypass:tray-refresh"),

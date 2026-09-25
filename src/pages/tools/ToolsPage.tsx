@@ -277,10 +277,15 @@ function EncodeTool() {
 
   const decodeB64 = () => {
     try {
-      setB64((s) => ({ ...s, dec: decodeURIComponent(escape(atob(input))) }));
+      const cleaned = input.trim().replace(/\s+/g, "");
+      if (!cleaned || !/^[A-Za-z0-9+/]*={0,2}$/.test(cleaned)) {
+        throw new Error(t("tools.encodeB64Invalid"));
+      }
+      setB64((s) => ({ ...s, dec: decodeURIComponent(escape(atob(cleaned))) }));
       setError("");
     } catch (e) {
-      setError((e as Error).message);
+      setB64((s) => ({ ...s, dec: "" }));
+      setError(e instanceof Error ? e.message : String(e));
     }
   };
 

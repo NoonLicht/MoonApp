@@ -444,6 +444,7 @@
     "encodePlaceholder": "Введите текст…",
     "encodeRun": "Вычислить",
     "encodeB64Decode": "Decode Base64",
+    "encodeB64Invalid": "Некорректная строка Base64",
     "uuidGenerate": "Сгенерировать",
     "baseInvalid": "Некорректное число для этой системы счисления",
     "unitCat_length": "Длина",

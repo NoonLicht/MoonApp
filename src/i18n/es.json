@@ -444,6 +444,7 @@
     "encodePlaceholder": "Introduce texto…",
     "encodeRun": "Calcular",
     "encodeB64Decode": "Decodificar Base64",
+    "encodeB64Invalid": "Cadena Base64 no válida",
     "uuidGenerate": "Generar",
     "baseInvalid": "Número inválido para esta base",
     "unitCat_length": "Longitud",

@@ -13,6 +13,7 @@ import {
 import { I18nProvider, useI18n } from "@/app/i18n";
 import { ContextMenuProvider } from "@/components/ContextMenu";
 import CommandPalette from "@/components/CommandPalette";
+import ErrorBoundary from "@/components/ErrorBoundary";
 import { ToolbarContext, PageHostContext, PageBusyContext } from "@/components/Toolbar";
 import {
   evictPages,
@@ -377,7 +378,7 @@ function Shell({
             <div className="pages-stack">
               {stack.map((id) => (
                 <PageHost key={id} id={id} active={id === safeActive}>
-                  {React.createElement(MEMO_PAGE_COMPONENTS[id])}
+                  <ErrorBoundary label={id}>{React.createElement(MEMO_PAGE_COMPONENTS[id])}</ErrorBoundary>
                 </PageHost>
               ))}
             </div>

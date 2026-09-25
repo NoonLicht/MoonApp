@@ -29,49 +29,85 @@ interface Props {
   onToggleCheckbox?: (lineIndex: number) => void;
 }
 
+// Применяет наши кастомные inline-замены (wikilinks, теги, math, highlight...)
+// к одной строке. Вызывается только для строк вне code fence.
+function processInline(l: string, lineIndex: number): string {
+  const cb = l.match(/^(\s*(?:[-*+]\s+)?)\[([ xX])\]\s*(.*)/);
+  if (cb) {
+    const checked = cb[2].toLowerCase() === "x";
+    return (
+      `<span class="md-cb-row" data-line="${lineIndex}">` +
+      `<span class="md-cb${checked ? " md-cb-checked" : ""}">${checked ? "✓" : ""}</span>` +
+      `<span>${cb[3]}</span></span>`
+    );
+  }
+  // Math block $$...$$ FIRST (before inline math)
+  l = l.replace(/\$\$([^$]+)\$\$/g, '<code class="md-math-block">$1</code>');
+  // Math inline $...$
+  l = l.replace(/\$([^$]+)\$/g, '<code class="md-math">$1</code>');
+  // Superscript ^text^
+  l = l.replace(/\^([^^]+)\^/g, "<sup>$1</sup>");
+  // Subscript ~text~
+  l = l.replace(/(?<!~)~([^~\s][^~]*[^~\s])~(?!~)/g, "<sub>$1</sub>");
+  // Highlight ==text== -> <mark>text</mark>
+  l = l.replace(/==([^=]+)==/g, "<mark>$1</mark>");
+  // WikiLinks [[...]]
+  l = l.replace(
+    /\[\[([^\]]+)\]\]/g,
+    (_, title) => `<span class="md-wl" data-title="${title.replace(/"/g, "&quot;")}">${title}</span>`,
+  );
+  // #tags (не трогаем markdown-заголовки "# Title" в начале строки)
+  l = l.replace(
+    /(^|\s)(#[a-zA-Zа-яА-Я0-9_\-/]+)/g,
+    (m, sp, tag, offset) => {
+      if (offset === 0 && /^#{1,6}\s/.test(l)) return m;
+      return `${sp}<span class="md-tg" data-tag="${tag}">${tag}</span>`;
+    },
+  );
+  return l;
+}
+
 // Pre-process markdown content: convert interactive elements to HTML spans
-// before marked parse them away
+// before marked parses them, skipping fenced code blocks and inline code so
+// the code content itself is never mangled by our custom regexes.
 function preprocess(text: string): string {
   const lines = text.split("\n");
   const out: string[] = [];
+  let inFence = false;
+  let fenceMarker = "";
   for (let i = 0; i < lines.length; i++) {
-    let l = lines[i];
-    if (l.trimStart().startsWith("```")) {
-      out.push(l);
+    const raw = lines[i];
+    const fenceMatch = raw.trimStart().match(/^(```+|~~~+)/);
+    if (fenceMatch) {
+      if (!inFence) {
+        inFence = true;
+        fenceMarker = fenceMatch[1][0];
+      } else if (fenceMatch[1][0] === fenceMarker) {
+        inFence = false;
+      }
+      out.push(raw);
       continue;
     }
-    const cb = l.match(/^(\s*(?:[-*+]\s+)?)\[([ xX])\]\s*(.*)/);
-    if (cb) {
-      const checked = cb[2].toLowerCase() === "x";
+    if (inFence) {
+      out.push(raw);
+      continue;
+    }
+    // Checkbox lines and headings are handled whole-line; everything else
+    // gets inline processing that skips spans wrapped in inline `code`.
+    if (/^(\s*(?:[-*+]\s+)?)\[([ xX])\]\s*(.*)/.test(raw) || /^\s{0,3}#{1,6}\s/.test(raw)) {
+      out.push(processInline(raw, i));
+      continue;
+    }
+    if (raw.includes("`")) {
+      const segments = raw.split(/(`[^`]*`)/g);
       out.push(
-        `<span class="md-cb-row" data-line="${i}">` +
-          `<span class="md-cb${checked ? " md-cb-checked" : ""}">${checked ? "✓" : ""}</span>` +
-          `<span>${cb[3]}</span></span>`,
+        segments
+          .map((seg) => (seg.startsWith("`") && seg.endsWith("`") && seg.length > 1 ? seg : processInline(seg, i)))
+          .join(""),
       );
       continue;
     }
-    // Math block $$...$$ FIRST (before inline math)
-    l = l.replace(/\$\$([^$]+)\$\$/g, '<code class="md-math-block">$1</code>');
-    // Math inline $...$
-    l = l.replace(/\$([^$]+)\$/g, '<code class="md-math">$1</code>');
-    // Superscript ^text^
-    l = l.replace(/\^([^^]+)\^/g, "<sup>$1</sup>");
-    // Subscript ~text~
-    l = l.replace(/(?<!~)~([^~\s][^~]*[^~\s])~(?!~)/g, "<sub>$1</sub>");
-    // Highlight ==text== -> <mark>text</mark>
-    l = l.replace(/==([^=]+)==/g, "<mark>$1</mark>");
-    // WikiLinks [[...]]
-    l = l.replace(
-      /\[\[([^\]]+)\]\]/g,
-      (_, title) =>
-        `<span class="md-wl" data-title="${title.replace(/"/g, "&quot;")}">${title}</span>`,
-    );
-    // #tags
-    l = l.replace(
-      /(^|\s)(#[a-zA-Zа-яА-Я0-9_\-/]+)/g,
-      (_, sp, tag) => `${sp}<span class="md-tg" data-tag="${tag}">${tag}</span>`,
-    );
-    out.push(l);
+    out.push(processInline(raw, i));
   }
   return out.join("\n");
 }

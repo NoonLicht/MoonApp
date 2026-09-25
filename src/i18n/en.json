@@ -444,6 +444,7 @@
     "encodePlaceholder": "Enter text…",
     "encodeRun": "Compute",
     "encodeB64Decode": "Decode Base64",
+    "encodeB64Invalid": "Invalid Base64 string",
     "uuidGenerate": "Generate",
     "baseInvalid": "Invalid number for this base",
     "unitCat_length": "Length",

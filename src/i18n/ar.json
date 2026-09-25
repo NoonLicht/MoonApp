@@ -444,6 +444,7 @@
     "encodePlaceholder": "أدخل نصًا…",
     "encodeRun": "احسب",
     "encodeB64Decode": "فك ترميز Base64",
+    "encodeB64Invalid": "سلسلة Base64 غير صالحة",
     "uuidGenerate": "توليد",
     "baseInvalid": "رقم غير صالح لهذا النظام",
     "unitCat_length": "الطول",

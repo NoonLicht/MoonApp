@@ -987,6 +987,20 @@ ipcMain.handle("app:refresh-hotkey", () => {
   return { ok: true };
 });
 
+// Открыть внешнюю ссылку (http/https) в системном браузере по умолчанию —
+// используется кликабельными ссылками в заметках/закладках.
+ipcMain.handle("shell:open-external", (_e, url) => {
+  try {
+    const { shell } = require("electron");
+    const u = String(url || "");
+    if (!/^https?:\/\//i.test(u)) return { ok: false, error: "unsupported protocol" };
+    void shell.openExternal(u);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e?.message || String(e) };
+  }
+});
+
 ipcMain.handle("shell:open-app-dir", () => {
   try {
     const { shell } = require("electron");
