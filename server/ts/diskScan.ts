@@ -17,9 +17,17 @@
  *  - Список отдельных файлов внутри конкретной папки считается лениво, по
  *    клику на такой бакет (см. listFiles ниже) — это мгновенно, потому что
  *    сканируется одна папка, а не всё поддерево.
- *  - Обход директорий идёт конкурентно (а не строго по одной папке за раз)
- *    через общий семафор на число одновременных fs-вызовов на job — это и
- *    даёт основной прирост скорости на SSD.
+ *  - Обход директорий идёт через очередь задач и пул воркеров ФИКСИРОВАННОГО
+ *    размера (WORKER_POOL), а НЕ через рекурсивный Promise.all по всем
+ *    подпапкам сразу. Наивная рекурсия (walk() вызывает walk() на всех детей
+ *    через Promise.all) заводит один JS-промис на КАЖДУЮ директорию дерева
+ *    одновременно — на диске с сотнями тысяч папок это сотни тысяч подвешенных
+ *    асинхронных вызовов в памяти разом, даже если сами fs-syscall'ы
+ *    throttled семафором. Именно это и вызывало зависание/неограниченный
+ *    рост памяти на реальных дисках (а не на node_modules, где папок мало).
+ *    Очередь + пул воркеров держат в памяти пропорционально WORKER_POOL
+ *    активных обходов плюс лёгкие (десятки байт) объекты-задачи в очереди —
+ *    это и даёт стабильную память и скорость, близкую к WinDirStat.
  */
 import fs from "fs";
 import path from "path";
@@ -55,39 +63,20 @@ interface Job {
   visited: Set<string>;
 }
 
-/** Максимальная глубина рекурсии — дополнительная защита на случай, если
+/** Максимальная глубина дерева — дополнительная защита на случай, если
  *  проверка visited почему-то не сработает (например ino недоступен на сетевом диске). */
 const MAX_DEPTH = 60;
-/** Сколько fs-вызовов (readdir/lstat/stat) одновременно в полёте на один job —
- *  общий предохранитель скорости/нагрузки для ВСЕГО обхода, а не только
- *  файлов одной директории, как было раньше. */
-const FS_CONCURRENCY = 64;
+/** Сколько директорий обходится ОДНОВРЕМЕННО (readdir/lstat/своя пачка файлов) —
+ *  главный предохранитель памяти: сколько бы миллионов папок ни было в очереди,
+ *  активных обходов в моменте не больше этого числа. */
+const WORKER_POOL = 48;
+/** Сколько файлов ОДНОЙ директории стятся параллельно внутри одного воркера. */
+const FILE_STAT_CONCURRENCY = 8;
 /** Сколько узлов держим в children одной папки перед сворачиванием в "…ещё N" —
  *  защищает от папок с тысячами прямых подпапок (например node_modules). */
 const MAX_CHILDREN_PER_NODE = 60;
 /** Сколько файлов отдаём за один ленивый запрос listFiles(). */
 const LIST_FILES_MAX = 2000;
-
-class Semaphore {
-  private available: number;
-  private readonly queue: Array<() => void> = [];
-  constructor(max: number) {
-    this.available = max;
-  }
-  async run<T>(fn: () => Promise<T>): Promise<T> {
-    if (this.available <= 0) {
-      await new Promise<void>((resolve) => this.queue.push(resolve));
-    }
-    this.available--;
-    try {
-      return await fn();
-    } finally {
-      this.available++;
-      const next = this.queue.shift();
-      if (next) next();
-    }
-  }
-}
 
 async function mapLimit<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
   const results: R[] = new Array(items.length);
@@ -121,89 +110,164 @@ function collapseChildren(children: DiskNode[]): DiskNode[] {
   return kept;
 }
 
-function emptyNode(dir: string): DiskNode {
-  return { name: path.basename(dir) || dir, path: dir, size: 0, isDir: true, fileCount: 0 };
+interface ScanTask {
+  dir: string;
+  depth: number;
+  node: DiskNode;
+  parent: ScanTask | null;
+  pendingChildren: number;
 }
 
-async function walk(dir: string, job: Job, sem: Semaphore, depth: number): Promise<DiskNode> {
-  if (job.cancelled || depth >= MAX_DEPTH) return emptyNode(dir);
+/**
+ * Обходит поддерево `root`, используя очередь задач вместо рекурсивного
+ * Promise.all — см. пояснение вверху файла. Каждая задача обрабатывает ровно
+ * одну директорию (свой readdir + lstat + свои файлы), а подпапки кладёт в
+ * общую очередь как НОВЫЕ задачи, а не рекурсивные вызовы. Родитель
+ * завершается (finish), когда завершились все его дети — по счётчику
+ * pendingChildren, без дополнительных промисов на ожидание.
+ */
+async function scanTree(root: string, job: Job): Promise<DiskNode> {
+  return new Promise<DiskNode>((resolvePromise) => {
+    const queue: ScanTask[] = [];
+    let active = 0;
+    let settled = false;
 
-  // lstat, а не доверие entry.isSymbolicLink() из readdir: directory junction
-  // (reparse point) на Windows не всегда помечается как symlink в Dirent, но
-  // всегда виден через lstat().isSymbolicLink(). Без этой проверки обход
-  // зацикливается на связках вроде "C:\Documents and Settings" → "C:\Users".
-  let st: fs.Stats;
-  try {
-    st = await sem.run(() => fs.promises.lstat(dir));
-  } catch {
-    return emptyNode(dir);
-  }
-  if (st.isSymbolicLink()) return emptyNode(dir);
-  const key = `${st.dev}:${st.ino}`;
-  if (st.ino !== 0) {
-    if (job.visited.has(key)) return emptyNode(dir);
-    job.visited.add(key);
-  }
-
-  let entries: fs.Dirent[];
-  try {
-    entries = await sem.run(() => fs.promises.readdir(dir, { withFileTypes: true }));
-  } catch {
-    return emptyNode(dir);
-  }
-
-  const dirEntries = entries.filter((e) => !e.isSymbolicLink() && e.isDirectory());
-  const fileEntries = entries.filter((e) => !e.isSymbolicLink() && e.isFile());
-
-  job.scannedEntries += entries.length;
-  await new Promise((r) => setImmediate(r));
-
-  const subResults = job.cancelled
-    ? []
-    : await Promise.all(dirEntries.map((e) => walk(path.join(dir, e.name), job, sem, depth + 1)));
-
-  const children: DiskNode[] = [];
-  let dirsSize = 0;
-  let dirsFiles = 0;
-  for (const sub of subResults) {
-    children.push(sub);
-    dirsSize += sub.size;
-    dirsFiles += sub.fileCount;
-  }
-
-  // Файлы папки не превращаются в отдельные узлы — только суммарный размер +
-  // один узел-бакет. Индивидуальный список считается лениво через listFiles().
-  let ownFilesSize = 0;
-  if (!job.cancelled && fileEntries.length > 0) {
-    await mapLimit(fileEntries, FS_CONCURRENCY, async (e) => {
-      if (job.cancelled) return;
-      try {
-        const fst = await sem.run(() => fs.promises.stat(path.join(dir, e.name)));
-        ownFilesSize += fst.size;
-      } catch {
-        /* файл исчез/недоступен — пропускаем */
+    function finish(task: ScanTask) {
+      task.node.children = collapseChildren(task.node.children || []);
+      const parent = task.parent;
+      if (parent) {
+        parent.node.children = parent.node.children || [];
+        parent.node.children.push(task.node);
+        parent.node.size += task.node.size;
+        parent.node.fileCount += task.node.fileCount;
+        parent.pendingChildren--;
+        if (parent.pendingChildren === 0) finish(parent);
+      } else if (!settled) {
+        settled = true;
+        resolvePromise(task.node);
       }
-    });
-  }
-  if (fileEntries.length > 0) {
-    children.push({
-      name: `Файлы (${fileEntries.length})`,
-      path: dir,
-      size: ownFilesSize,
-      isDir: false,
-      fileCount: fileEntries.length,
-      isFilesBucket: true,
-    });
-  }
+    }
 
-  return {
-    name: path.basename(dir) || dir,
-    path: dir,
-    size: dirsSize + ownFilesSize,
-    isDir: true,
-    fileCount: dirsFiles + fileEntries.length,
-    children: collapseChildren(children),
-  };
+    async function process(task: ScanTask) {
+      active++;
+      try {
+        if (job.cancelled || task.depth >= MAX_DEPTH) {
+          task.pendingChildren = 0;
+          finish(task);
+          return;
+        }
+
+        // lstat, а не доверие entry.isSymbolicLink() из readdir: directory
+        // junction (reparse point) на Windows не всегда помечается как
+        // symlink в Dirent, но всегда виден через lstat().isSymbolicLink().
+        // Без этой проверки обход зацикливается на связках вроде
+        // "C:\Documents and Settings" → "C:\Users".
+        let st: fs.Stats;
+        try {
+          st = await fs.promises.lstat(task.dir);
+        } catch {
+          task.pendingChildren = 0;
+          finish(task);
+          return;
+        }
+        if (st.isSymbolicLink()) {
+          task.pendingChildren = 0;
+          finish(task);
+          return;
+        }
+        const key = `${st.dev}:${st.ino}`;
+        if (st.ino !== 0) {
+          if (job.visited.has(key)) {
+            task.pendingChildren = 0;
+            finish(task);
+            return;
+          }
+          job.visited.add(key);
+        }
+
+        let entries: fs.Dirent[];
+        try {
+          entries = await fs.promises.readdir(task.dir, { withFileTypes: true });
+        } catch {
+          task.pendingChildren = 0;
+          finish(task);
+          return;
+        }
+
+        const dirEntries = entries.filter((e) => !e.isSymbolicLink() && e.isDirectory());
+        const fileEntries = entries.filter((e) => !e.isSymbolicLink() && e.isFile());
+        job.scannedEntries += entries.length;
+
+        // Файлы папки не превращаются в отдельные узлы — только суммарный
+        // размер + один узел-бакет. Индивидуальный список считается лениво
+        // через listFiles().
+        let ownFilesSize = 0;
+        if (fileEntries.length > 0 && !job.cancelled) {
+          await mapLimit(fileEntries, FILE_STAT_CONCURRENCY, async (e) => {
+            if (job.cancelled) return;
+            try {
+              const fst = await fs.promises.stat(path.join(task.dir, e.name));
+              ownFilesSize += fst.size;
+            } catch {
+              /* файл исчез/недоступен — пропускаем */
+            }
+          });
+          task.node.children = task.node.children || [];
+          task.node.children.push({
+            name: `Файлы (${fileEntries.length})`,
+            path: task.dir,
+            size: ownFilesSize,
+            isDir: false,
+            fileCount: fileEntries.length,
+            isFilesBucket: true,
+          });
+        }
+        task.node.size += ownFilesSize;
+        task.node.fileCount += fileEntries.length;
+
+        if (dirEntries.length === 0 || job.cancelled) {
+          task.pendingChildren = 0;
+          finish(task);
+          return;
+        }
+
+        task.pendingChildren = dirEntries.length;
+        for (const e of dirEntries) {
+          const childDir = path.join(task.dir, e.name);
+          enqueue({
+            dir: childDir,
+            depth: task.depth + 1,
+            node: { name: e.name, path: childDir, size: 0, isDir: true, fileCount: 0, children: [] },
+            parent: task,
+            pendingChildren: 0,
+          });
+        }
+      } finally {
+        active--;
+        pump();
+      }
+    }
+
+    function pump() {
+      while (active < WORKER_POOL && queue.length > 0) {
+        const t = queue.shift();
+        if (t) void process(t);
+      }
+    }
+
+    function enqueue(task: ScanTask) {
+      queue.push(task);
+      pump();
+    }
+
+    enqueue({
+      dir: root,
+      depth: 0,
+      node: { name: path.basename(root) || root, path: root, size: 0, isDir: true, fileCount: 0, children: [] },
+      parent: null,
+      pendingChildren: 0,
+    });
+  });
 }
 
 /** Ленивый список файлов ОДНОЙ папки (без рекурсии) — вызывается по клику на
@@ -216,12 +280,11 @@ export async function listFiles(dirPath: string): Promise<DiskNode[]> {
     return [];
   }
   const fileEntries = entries.filter((e) => e.isFile() && !e.isSymbolicLink());
-  const sem = new Semaphore(FS_CONCURRENCY);
-  const results = await mapLimit(fileEntries, FS_CONCURRENCY, async (e): Promise<DiskNode> => {
+  const results = await mapLimit(fileEntries, WORKER_POOL, async (e): Promise<DiskNode> => {
     const full = path.join(dirPath, e.name);
     let size = 0;
     try {
-      size = (await sem.run(() => fs.promises.stat(full))).size;
+      size = (await fs.promises.stat(full)).size;
     } catch {
       /* файл исчез/недоступен — оставляем 0 */
     }
@@ -251,10 +314,9 @@ export function startScan(root: string): { id: string } {
   };
   jobs.set(id, job);
 
-  const sem = new Semaphore(FS_CONCURRENCY);
   void (async () => {
     try {
-      const result = await walk(root, job, sem, 0);
+      const result = await scanTree(root, job);
       if (job.cancelled) {
         job.stage = "cancelled";
       } else {
