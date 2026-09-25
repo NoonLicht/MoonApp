@@ -1500,28 +1500,29 @@ select option {
   padding: 0 1px;
 }
 
-/* --- Страница «Инструменты»: свободная адаптивная сетка блоков ---
-   Обычный flex-wrap поток: каждый блок — фиксированного пиксельного
-   width/height, браузер сам переносит его на новую строку, если он не
-   помещается в оставшуюся ширину ряда — это и есть нативная адаптация при
-   изменении ширины страницы, без ручного вычисления геометрии. Высота
-   потока ничем не ограничена (сумма строк растёт как угодно), .tools-flow
-   сам прокручивается, если не помещается в видимую область. */
-.tools-flow {
+/* --- Страница «Инструменты»: сетка без пустот с адаптивным переносом ---
+   .tools-flow-scroll — видимая прокручиваемая область. .tools-flow-col —
+   колонка рядов (display:flex; flex-direction:column), высота ничем не
+   ограничена. Каждый .tools-flow-row — display:flex ряд фиксированной
+   высоты, где .tools-block растягивается по flex-grow и заполняет ряд без
+   остатка (без ручного round() — этим занимается браузер). */
+.tools-flow-scroll {
   flex: 1;
   min-height: 0;
   overflow: auto;
-  display: flex;
-  flex-wrap: wrap;
-  align-content: flex-start;
-  gap: 14px;
-  padding-bottom: 8px;
 }
-.tools-block {
-  position: relative;
+.tools-flow-col {
   display: flex;
   flex-direction: column;
-  flex: 0 0 auto;
+}
+.tools-flow-row {
+  display: flex;
+  width: 100%;
+  flex-shrink: 0;
+}
+.tools-block {
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
   background: var(--glass);
   border: 1px solid var(--glass-border);
@@ -1539,40 +1540,50 @@ select option {
 .tools-block.is-drop-after {
   box-shadow: inset -3px 0 0 var(--amber);
 }
-/* Хваты изменения размера по всем 4 краям (не только угол) — прозрачные
-   полосы поверх содержимого блока, курсор подсказывает направление. */
-.tb-resize {
-  position: absolute;
-  z-index: 3;
+/* Граница между блоками (внутри ряда — тянем ширину, между рядами — тянем
+   высоту) и промежуток между визуальными строками, перенесёнными из одного
+   исходного ряда (не тянется — у них общая высота). */
+.tools-row-gap {
+  flex-shrink: 0;
+  height: 10px;
+}
+.tools-divider {
+  flex-shrink: 0;
+  background: transparent;
   touch-action: none;
+  position: relative;
 }
-.tb-resize-n {
-  top: 0;
-  left: 8px;
-  right: 8px;
-  height: 6px;
-  cursor: ns-resize;
+.tools-divider.is-x {
+  width: 10px;
+  cursor: col-resize;
 }
-.tb-resize-s {
-  bottom: 0;
-  left: 8px;
-  right: 8px;
-  height: 6px;
-  cursor: ns-resize;
+.tools-divider.is-y {
+  width: 100%;
+  height: 10px;
+  cursor: row-resize;
 }
-.tb-resize-e {
+.tools-divider::after {
+  content: "";
+  position: absolute;
+  background: var(--glass-border);
+  border-radius: 2px;
+  transition: background 0.1s;
+}
+.tools-divider.is-x::after {
+  left: 4px;
   top: 8px;
   bottom: 8px;
-  right: 0;
-  width: 6px;
-  cursor: ew-resize;
+  width: 2px;
 }
-.tb-resize-w {
-  top: 8px;
-  bottom: 8px;
-  left: 0;
-  width: 6px;
-  cursor: ew-resize;
+.tools-divider.is-y::after {
+  top: 4px;
+  left: 8px;
+  right: 8px;
+  height: 2px;
+}
+.tools-divider:hover::after,
+.tools-divider:active::after {
+  background: var(--amber);
 }
 .tools-widget-head {
   display: flex;
