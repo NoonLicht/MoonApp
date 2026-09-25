@@ -1500,67 +1500,79 @@ select option {
   padding: 0 1px;
 }
 
-/* --- Страница «Инструменты»: свободная сетка — ряды с независимой высотой,
-   внутри ряда — ячейки, делящие его ширину (см. ToolsPage.tsx). Высота
-   сетки НИЧЕМ не ограничена: это просто сумма высот рядов, растёт как
-   угодно, .tools-tile-scroll её прокручивает. Ширина ряда честно
-   ограничена шириной страницы — ячейки внутри него делят её пропорционально. */
-.tools-tile-scroll {
+/* --- Страница «Инструменты»: свободная адаптивная сетка блоков ---
+   Обычный flex-wrap поток: каждый блок — фиксированного пиксельного
+   width/height, браузер сам переносит его на новую строку, если он не
+   помещается в оставшуюся ширину ряда — это и есть нативная адаптация при
+   изменении ширины страницы, без ручного вычисления геометрии. Высота
+   потока ничем не ограничена (сумма строк растёт как угодно), .tools-flow
+   сам прокручивается, если не помещается в видимую область. */
+.tools-flow {
   flex: 1;
   min-height: 0;
   overflow: auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  gap: 14px;
+  padding-bottom: 8px;
 }
-.tools-tile-container {
+.tools-block {
   position: relative;
-}
-.tools-tile-row {
-  position: relative;
-  width: 100%;
-}
-.tools-tile {
-  position: absolute;
   display: flex;
   flex-direction: column;
+  flex: 0 0 auto;
   overflow: hidden;
   background: var(--glass);
   border: 1px solid var(--glass-border);
   border-radius: 14px;
-  transition: opacity 0.1s, border-color 0.1s;
+  transition: opacity 0.1s, border-color 0.1s, box-shadow 0.1s;
 }
-.tools-tile.is-dragging {
+.tools-block.is-dragging {
   opacity: 0.35;
 }
-/* Граница между двумя соседними блоками — единственный способ поменять их
-   размер. Хит-зона (8px) шире видимой линии, чтобы за неё было удобно
-   попасть курсором, не задевая сам контент блока. */
-.tools-divider {
+/* Индикатор точки вставки при перетаскивании — тонкая полоса у левого или
+   правого края блока-цели, под которую встанет перетаскиваемый блок. */
+.tools-block.is-drop-before {
+  box-shadow: inset 3px 0 0 var(--amber);
+}
+.tools-block.is-drop-after {
+  box-shadow: inset -3px 0 0 var(--amber);
+}
+/* Хваты изменения размера по всем 4 краям (не только угол) — прозрачные
+   полосы поверх содержимого блока, курсор подсказывает направление. */
+.tb-resize {
   position: absolute;
-  z-index: 2;
-  background: transparent;
+  z-index: 3;
   touch-action: none;
 }
-.tools-divider::after {
-  content: "";
-  position: absolute;
-  background: var(--glass-border);
-  border-radius: 2px;
-  transition: background 0.1s;
-}
-.tools-divider.is-x::after {
-  left: 3px;
-  top: 8px;
-  bottom: 8px;
-  width: 2px;
-}
-.tools-divider.is-y::after {
-  top: 3px;
+.tb-resize-n {
+  top: 0;
   left: 8px;
   right: 8px;
-  height: 2px;
+  height: 6px;
+  cursor: ns-resize;
 }
-.tools-divider:hover::after,
-.tools-divider:active::after {
-  background: var(--amber);
+.tb-resize-s {
+  bottom: 0;
+  left: 8px;
+  right: 8px;
+  height: 6px;
+  cursor: ns-resize;
+}
+.tb-resize-e {
+  top: 8px;
+  bottom: 8px;
+  right: 0;
+  width: 6px;
+  cursor: ew-resize;
+}
+.tb-resize-w {
+  top: 8px;
+  bottom: 8px;
+  left: 0;
+  width: 6px;
+  cursor: ew-resize;
 }
 .tools-widget-head {
   display: flex;
