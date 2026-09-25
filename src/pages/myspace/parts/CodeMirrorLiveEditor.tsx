@@ -1,12 +1,10 @@
 import { useEffect, useRef } from "react";
-import { EditorState, RangeSetBuilder, type Extension, type Text } from "@codemirror/state";
+import { EditorState, StateField, RangeSetBuilder, type Extension, type Text } from "@codemirror/state";
 import {
   EditorView,
   Decoration,
   type DecorationSet,
   WidgetType,
-  ViewPlugin,
-  type ViewUpdate,
   keymap,
 } from "@codemirror/view";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
@@ -15,8 +13,6 @@ import { languages } from "@codemirror/language-data";
 import { GFM } from "@lezer/markdown";
 import { syntaxHighlighting, HighlightStyle } from "@codemirror/language";
 import { tags as t } from "@lezer/highlight";
-import { marked } from "marked";
-import { sanitizeHtml } from "@/lib/sanitize";
 
 interface Props {
   content: string;
@@ -97,23 +93,146 @@ class HrWidget extends WidgetType {
   }
 }
 
-/* ─── Виджет отрендеренной GFM-таблицы: показываем настоящую <table>, пока
-   курсор не внутри блока таблицы (тогда видно сырой markdown для правки) ─── */
+/* ─── Разбор/сборка GFM-таблицы в/из markdown-исходника (простая построчная
+   модель ячеек, без экранирования "|" внутри ячеек — как и обычный GFM). ─── */
+function parseTableSource(source: string): { rows: string[][]; align: ("l" | "c" | "r")[] } {
+  const lines = source.split("\n").filter((l) => l.trim().length > 0);
+  const splitRow = (l: string) =>
+    l
+      .trim()
+      .replace(/^\|/, "")
+      .replace(/\|$/, "")
+      .split("|")
+      .map((c) => c.trim());
+  const header = lines[0] ? splitRow(lines[0]) : [""];
+  const alignRow = lines[1] ? splitRow(lines[1]) : [];
+  const align: ("l" | "c" | "r")[] = header.map((_, i) => {
+    const a = (alignRow[i] || "").trim();
+    if (/^:-+:$/.test(a)) return "c";
+    if (/^-+:$/.test(a)) return "r";
+    return "l";
+  });
+  const body = lines.slice(2).map((l) => splitRow(l));
+  return { rows: [header, ...body], align };
+}
+
+function buildTableSource(rows: string[][], align: ("l" | "c" | "r")[]): string {
+  const esc = (s: string) => s.replace(/\|/g, "\\|").replace(/\n/g, " ");
+  const fmtRow = (r: string[]) => `| ${r.map(esc).join(" | ")} |`;
+  const sepCell = (a: "l" | "c" | "r") => (a === "c" ? ":---:" : a === "r" ? "---:" : "---");
+  const header = rows[0] || [""];
+  const sep = `| ${header.map((_, i) => sepCell(align[i] || "l")).join(" | ")} |`;
+  const body = rows.slice(1).map(fmtRow);
+  return [fmtRow(header), sep, ...body].join("\n");
+}
+
+/* ─── Виджет редактируемой GFM-таблицы: настоящая <table> с contenteditable
+   ячейками и кнопками добавления/удаления строк и столбцов, показывается
+   пока курсор не внутри блока таблицы (тогда виден сырой markdown для правки
+   текстом). Правки в ячейках/структуре сразу переписывают markdown-источник
+   этого блока через applyEdit. ─── */
 class TableWidget extends WidgetType {
-  constructor(readonly html: string) {
+  constructor(
+    readonly source: string,
+    readonly blockFrom: number,
+    readonly blockTo: number,
+    readonly applyEdit: (from: number, to: number, text: string) => void,
+  ) {
     super();
   }
   eq(other: TableWidget) {
-    return other.html === this.html;
+    return other.source === this.source && other.blockFrom === this.blockFrom && other.blockTo === this.blockTo;
   }
   toDOM() {
-    const div = document.createElement("div");
-    div.className = "cm-live-table";
-    div.innerHTML = sanitizeHtml(this.html);
-    return div;
+    const { rows, align } = parseTableSource(this.source);
+    const wrap = document.createElement("div");
+    wrap.className = "cm-live-table";
+
+    const commit = (nextRows: string[][], nextAlign: ("l" | "c" | "r")[]) => {
+      const md = buildTableSource(nextRows, nextAlign);
+      this.applyEdit(this.blockFrom, this.blockTo, md + "\n");
+    };
+
+    const table = document.createElement("table");
+    table.className = "cm-live-table-el";
+
+    const renderRow = (cells: string[], isHeader: boolean, rowIdx: number) => {
+      const tr = document.createElement("tr");
+      cells.forEach((cellText, colIdx) => {
+        const cell = document.createElement(isHeader ? "th" : "td");
+        cell.contentEditable = "true";
+        cell.textContent = cellText;
+        cell.style.textAlign = align[colIdx] === "c" ? "center" : align[colIdx] === "r" ? "right" : "left";
+        cell.addEventListener("blur", () => {
+          const next = rows.map((r) => r.slice());
+          next[rowIdx][colIdx] = (cell.textContent || "").trim();
+          commit(next, align);
+        });
+        cell.addEventListener("keydown", (e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            cell.blur();
+          }
+        });
+        tr.appendChild(cell);
+      });
+      const actions = document.createElement("td");
+      actions.className = "cm-live-table-rowactions";
+      actions.contentEditable = "false";
+      if (!isHeader) {
+        const del = document.createElement("button");
+        del.type = "button";
+        del.className = "cm-live-table-btn";
+        del.textContent = "−";
+        del.title = "Удалить строку";
+        del.addEventListener("mousedown", (e) => {
+          e.preventDefault();
+          const next = rows.filter((_, i) => i !== rowIdx);
+          if (next.length < 2) return;
+          commit(next, align);
+        });
+        actions.appendChild(del);
+      }
+      tr.appendChild(actions);
+      return tr;
+    };
+
+    rows.forEach((r, i) => table.appendChild(renderRow(r, i === 0, i)));
+    wrap.appendChild(table);
+
+    const toolbar = document.createElement("div");
+    toolbar.className = "cm-live-table-toolbar";
+
+    const addRow = document.createElement("button");
+    addRow.type = "button";
+    addRow.className = "cm-live-table-btn";
+    addRow.textContent = "+ строка";
+    addRow.addEventListener("mousedown", (e) => {
+      e.preventDefault();
+      const cols = rows[0]?.length || 1;
+      commit([...rows, Array(cols).fill("")], align);
+    });
+
+    const addCol = document.createElement("button");
+    addCol.type = "button";
+    addCol.className = "cm-live-table-btn";
+    addCol.textContent = "+ столбец";
+    addCol.addEventListener("mousedown", (e) => {
+      e.preventDefault();
+      commit(
+        rows.map((r) => [...r, ""]),
+        [...align, "l"],
+      );
+    });
+
+    toolbar.appendChild(addRow);
+    toolbar.appendChild(addCol);
+    wrap.appendChild(toolbar);
+
+    return wrap;
   }
-  ignoreEvent() {
-    return false;
+  ignoreEvent(e: Event) {
+    return e.type !== "mousedown";
   }
 }
 
@@ -200,31 +319,28 @@ const INLINE_RE =
   /(\*\*([^*\n]+)\*\*)|(__([^_\n]+)__)|(\*([^*\n]+)\*)|(`([^`\n]+)`)|(~~([^~\n]+)~~)|(==([^=\n]+)==)|(\[\[([^\]\n]+)\]\])|(!\[([^\]\n]*)\]\(([^)\n]+)\))|(\[([^\]\n]+)\]\(([^)\n]+)\))|(#[a-zA-Zа-яА-Я0-9_\-/]+)/g;
 
 function buildLiveDecorations(
-  view: EditorView,
-  onToggleCheckbox?: (i: number) => void,
+  state: EditorState,
+  onToggleCheckbox: ((i: number) => void) | undefined,
+  applyEdit: (from: number, to: number, text: string) => void,
 ): DecorationSet {
   const builder = new RangeSetBuilder<Decoration>();
-  const activeLine = view.state.doc.lineAt(view.state.selection.main.head).number;
+  const activeLine = state.doc.lineAt(state.selection.main.head).number;
   let inFence = false;
-  const tableBlocks = findTableBlocks(view.state.doc);
+  const tableBlocks = findTableBlocks(state.doc);
 
-  for (let ln = 1; ln <= view.state.doc.lines; ln++) {
-    const line = view.state.doc.line(ln);
+  for (let ln = 1; ln <= state.doc.lines; ln++) {
+    const line = state.doc.line(ln);
     const text = line.text;
 
     const tb = tableBlocks.find((b) => b.fromLine === ln);
     if (tb && (activeLine < tb.fromLine || activeLine > tb.toLine)) {
-      let html = "";
-      try {
-        html = marked.parse(tb.source) as string;
-      } catch {
-        // оставляем html пустым — ниже упадём обратно на сырой текст блока
-      }
-      if (html) {
-        builder.add(tb.from, tb.blockTo, Decoration.replace({ widget: new TableWidget(html), block: true }));
-        ln = tb.toLine;
-        continue;
-      }
+      builder.add(
+        tb.from,
+        tb.blockTo,
+        Decoration.replace({ widget: new TableWidget(tb.source, tb.from, tb.blockTo, applyEdit), block: true }),
+      );
+      ln = tb.toLine;
+      continue;
     }
 
     const isFenceMark = /^\s*(```+|~~~+)/.test(text);
@@ -361,21 +477,26 @@ function buildLiveDecorations(
   return builder.finish();
 }
 
-function livePreviewPlugin(onToggleCheckbox?: (i: number) => void) {
-  return ViewPlugin.fromClass(
-    class {
-      decorations: DecorationSet;
-      constructor(view: EditorView) {
-        this.decorations = buildLiveDecorations(view, onToggleCheckbox);
-      }
-      update(u: ViewUpdate) {
-        if (u.docChanged || u.selectionSet || u.viewportChanged) {
-          this.decorations = buildLiveDecorations(u.view, onToggleCheckbox);
-        }
-      }
+/* ─── StateField вместо ViewPlugin: CodeMirror 6 требует, чтобы декорации,
+   содержащие блочные (block: true) виджеты/замены — как TableWidget —
+   предоставлялись именно полем состояния, а не плагином вида, иначе падает
+   с "Block decorations may not be specified via plugins". ─── */
+function livePreviewField(
+  onToggleCheckbox: ((i: number) => void) | undefined,
+  applyEdit: (from: number, to: number, text: string) => void,
+) {
+  return StateField.define<DecorationSet>({
+    create(state) {
+      return buildLiveDecorations(state, onToggleCheckbox, applyEdit);
     },
-    { decorations: (v) => v.decorations },
-  );
+    update(deco, tr) {
+      if (tr.docChanged || tr.selection) {
+        return buildLiveDecorations(tr.state, onToggleCheckbox, applyEdit);
+      }
+      return deco.map(tr.changes);
+    },
+    provide: (f) => EditorView.decorations.from(f),
+  });
 }
 
 /**
@@ -513,6 +634,27 @@ export default function CodeMirrorLiveEditor({
           background: "var(--track, rgba(255,255,255,0.06))",
           fontWeight: "600",
         },
+        ".cm-live-table-rowactions": {
+          border: "none !important",
+          padding: "0 4px !important",
+          width: "1%",
+          whiteSpace: "nowrap",
+        },
+        ".cm-live-table-toolbar": {
+          display: "flex",
+          gap: "6px",
+          marginTop: "6px",
+        },
+        ".cm-live-table-btn": {
+          font: "inherit",
+          fontSize: "12px",
+          color: "var(--text-secondary)",
+          background: "var(--track, rgba(255,255,255,0.06))",
+          border: "1px solid var(--glass-border)",
+          borderRadius: "6px",
+          padding: "2px 8px",
+          cursor: "pointer",
+        },
         ".cm-live-list-marker": { color: "var(--text-tertiary)" },
         ".cm-live-quote-marker": { color: "var(--text-tertiary)" },
         ".cm-live-checkbox": {
@@ -614,12 +756,16 @@ export default function CodeMirrorLiveEditor({
       },
     });
 
+    const applyTableEdit = (from: number, to: number, text: string) => {
+      viewRef.current?.dispatch({ changes: { from, to, insert: text } });
+    };
+
     const extensions: Extension[] = [
       history(),
       keymap.of([...defaultKeymap, ...historyKeymap]),
       markdown({ codeLanguages: languages, extensions: [GFM] }),
       syntaxHighlighting(liveHighlight),
-      livePreviewPlugin(onToggleCheckbox),
+      livePreviewField(onToggleCheckbox, applyTableEdit),
       clickHandler,
       theme,
       EditorView.lineWrapping,
