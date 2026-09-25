@@ -497,7 +497,9 @@
     "flagMultiline": "m — ^ 和 $ 匹配每行边界，而非整段文本",
     "flagDotAll": "s — \".\" 也匹配换行符",
     "flagUnicode": "u — 完整 Unicode 支持（表情符号、代理对）",
-    "flagSticky": "y — 只从当前位置开始匹配，不向前跳过"
+    "flagSticky": "y — 只从当前位置开始匹配，不向前跳过",
+    "randomize": "随机布局",
+    "resetLayout": "重置"
   },
   "passwordVault": {
     "title": "密码管理器",

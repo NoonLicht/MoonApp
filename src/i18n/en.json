@@ -497,7 +497,9 @@
     "flagMultiline": "m — ^ and $ match at each line boundary, not just the whole text",
     "flagDotAll": "s — \".\" also matches line breaks",
     "flagUnicode": "u — full Unicode support (emoji, surrogate pairs)",
-    "flagSticky": "y — match only starting at the current position, no skipping ahead"
+    "flagSticky": "y — match only starting at the current position, no skipping ahead",
+    "randomize": "Randomize",
+    "resetLayout": "Reset"
   },
   "passwordVault": {
     "title": "Password manager",

@@ -497,7 +497,9 @@
     "flagMultiline": "m — ^ y $ coinciden en cada límite de línea, no solo en todo el texto",
     "flagDotAll": "s — el punto \".\" también coincide con saltos de línea",
     "flagUnicode": "u — soporte completo de Unicode (emojis, pares suplentes)",
-    "flagSticky": "y — busca solo desde la posición actual, sin saltar hacia adelante"
+    "flagSticky": "y — busca solo desde la posición actual, sin saltar hacia adelante",
+    "randomize": "Aleatorio",
+    "resetLayout": "Restablecer"
   },
   "passwordVault": {
     "title": "Gestor de contraseñas",

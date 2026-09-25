@@ -497,7 +497,9 @@
     "flagMultiline": "m — ^ et $ correspondent à chaque limite de ligne, pas seulement au texte entier",
     "flagDotAll": "s — le point \".\" correspond aussi aux retours à la ligne",
     "flagUnicode": "u — prise en charge complète d'Unicode (emoji, paires supplémentaires)",
-    "flagSticky": "y — recherche uniquement à partir de la position actuelle, sans avancer"
+    "flagSticky": "y — recherche uniquement à partir de la position actuelle, sans avancer",
+    "randomize": "Aléatoire",
+    "resetLayout": "Réinitialiser"
   },
   "passwordVault": {
     "title": "Gestionnaire de mots de passe",
