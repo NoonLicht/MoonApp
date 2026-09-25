@@ -24,6 +24,7 @@ import type {
   Bookmark,
   BookmarkInput,
   MusicPlaylist,
+  PlaylistTrackInput,
   GameEntry,
   GameInput,
   SaveVersion,
@@ -1290,9 +1291,12 @@ export const api = {
   },
   musicFormats: () => req<MusicFormats>("GET", "/music/formats"),
   musicPlaylists: () => req<MusicPlaylist[]>("GET", "/music/playlists"),
-  musicPlaylistSave: (name: string, query: string) =>
-    req<MusicPlaylist>("POST", "/music/playlists", { name, query }),
+  musicPlaylistCreate: (name: string) => req<MusicPlaylist>("POST", "/music/playlists", { name }),
   musicPlaylistDelete: (id: string) => req<{ ok: boolean }>("DELETE", `/music/playlists/${id}`),
+  musicPlaylistAddTrack: (playlistId: string, track: PlaylistTrackInput) =>
+    req<MusicPlaylist>("POST", `/music/playlists/${playlistId}/tracks`, track),
+  musicPlaylistRemoveTrack: (playlistId: string, trackId: string) =>
+    req<MusicPlaylist>("DELETE", `/music/playlists/${playlistId}/tracks/${trackId}`),
   // Логирование действий пользователя на бэкенде
   // MySpace / Vault
   myspaceTree: () => req<VaultFile[]>("GET", "/myspace/tree"),

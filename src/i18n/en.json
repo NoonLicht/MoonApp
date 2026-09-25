@@ -837,9 +837,11 @@
     "paste": "Enter a track or artist name",
     "find": "Search",
     "empty": "Start searching above to find tracks",
-    "playlistSaveHint": "Save the current search as a playlist",
+    "playlistNewHint": "Create a new playlist",
     "playlistName": "Playlist name",
-    "playlistSave": "Save",
+    "playlistSave": "Create",
+    "playlistEmpty": "This playlist has no tracks yet — add some from search results (right-click a track)",
+    "addToPlaylist": "Add to playlist",
     "download": "Download"
   },
   "arch": {

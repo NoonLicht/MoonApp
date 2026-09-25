@@ -392,13 +392,34 @@ export interface BookmarkInput {
   saveForLater?: boolean;
 }
 
-/* ------------------------ Музыка: сохранённые запросы ----------------------- */
+/* -------------------------------- Музыка: плейлисты -------------------------- */
+
+export interface PlaylistTrack {
+  id: string;
+  title: string;
+  artist: string;
+  webpageUrl: string;
+  duration: number | null;
+  durationString: string;
+  thumbnail: string | null;
+  addedAt: number;
+}
 
 export interface MusicPlaylist {
   id: string;
   name: string;
-  query: string;
+  tracks: PlaylistTrack[];
   createdAt: number;
+}
+
+export interface PlaylistTrackInput {
+  id?: string;
+  title: string;
+  artist?: string;
+  webpageUrl: string;
+  duration?: number | null;
+  durationString?: string;
+  thumbnail?: string | null;
 }
 
 /* ----------------------------- Игры (лаунчер) ------------------------------- */

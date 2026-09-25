@@ -3,11 +3,16 @@
 /**
  * API загрузки аудио/музыки.
  *
- *  GET    /api/music/search?q=...         — поиск треков (через yt-dlp ytsearch:)
- *  POST   /api/music/download             — { url, format?, quality? } → { id }
- *  GET    /api/music/status/:id           — прогресс/готовность джобы
- *  GET    /api/music/download/:key        — скачать готовый файл (один раз)
- *  GET    /api/music/formats              — список поддерживаемых форматов/качеств
+ *  GET    /api/music/search?q=...                  — поиск треков (через yt-dlp ytsearch:)
+ *  POST   /api/music/download                      — { url, format?, quality? } → { id }
+ *  GET    /api/music/status/:id                    — прогресс/готовность джобы
+ *  GET    /api/music/download/:key                 — скачать готовый файл (один раз)
+ *  GET    /api/music/formats                       — список поддерживаемых форматов/качеств
+ *  GET    /api/music/playlists                     — список плейлистов
+ *  POST   /api/music/playlists                     — { name } → создать плейлист
+ *  DELETE /api/music/playlists/:id                  — удалить плейлист
+ *  POST   /api/music/playlists/:id/tracks           — { track } → добавить трек
+ *  DELETE /api/music/playlists/:id/tracks/:trackId   — убрать трек из плейлиста
  */
 
 const express = require("express");
@@ -21,8 +26,8 @@ const { removePath } = require("../fsUtil");
 const router = express.Router();
 
 /**
- * "Умные плейлисты" — сохранённые поисковые запросы (см. server/ts/musicPlaylists.ts
- * за объяснением, почему не полноценная библиотека).
+ * Плейлисты — списки конкретных треков (метаданные + webpageUrl для повторного
+ * скачивания), см. server/ts/musicPlaylists.ts.
  */
 router.get("/playlists", (req, res) => {
   try {
@@ -34,9 +39,9 @@ router.get("/playlists", (req, res) => {
 
 router.post("/playlists", (req, res) => {
   try {
-    const { name, query } = req.body || {};
-    if (!query) return res.status(400).json({ error: "missing_query" });
-    res.status(201).json(playlists.create(name, query));
+    const { name } = req.body || {};
+    if (!name) return res.status(400).json({ error: "missing_name" });
+    res.status(201).json(playlists.create(name));
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -47,6 +52,26 @@ router.delete("/playlists/:id", (req, res) => {
     const ok = playlists.remove(req.params.id);
     if (!ok) return res.status(404).json({ error: "not_found" });
     res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.post("/playlists/:id/tracks", (req, res) => {
+  try {
+    const pl = playlists.addTrack(req.params.id, req.body || {});
+    if (!pl) return res.status(404).json({ error: "not_found" });
+    res.status(201).json(pl);
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+router.delete("/playlists/:id/tracks/:trackId", (req, res) => {
+  try {
+    const pl = playlists.removeTrack(req.params.id, req.params.trackId);
+    if (!pl) return res.status(404).json({ error: "not_found" });
+    res.json(pl);
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

@@ -100,39 +100,69 @@ export default function MusicPage() {
   }, []);
   const [fmtInfo, setFmtInfo] = useState<MusicFormats | null>(null);
 
-  // "Умные" сохранённые поисковые запросы — см. server/ts/musicPlaylists.ts:
-  // у страницы нет постоянной локальной библиотеки (файлы одноразовые и уходят
-  // в Downloads), поэтому плейлист здесь — именованный повторно выполняемый поиск.
+  // Плейлисты — списки конкретных треков (см. server/ts/musicPlaylists.ts):
+  // трек хранится как метаданные + webpageUrl, скачивается заново по клику
+  // тем же путём, что и обычный поиск → выбор → скачивание.
   const [playlists, setPlaylists] = useState<MusicPlaylist[]>([]);
-  const [showSavePlaylist, setShowSavePlaylist] = useState(false);
+  const [showNewPlaylist, setShowNewPlaylist] = useState(false);
   const [playlistName, setPlaylistName] = useState("");
+  const [viewingPlaylist, setViewingPlaylist] = useState<MusicPlaylist | null>(null);
 
   const loadPlaylists = () => {
     api
       .musicPlaylists()
-      .then(setPlaylists)
+      .then((list) => {
+        setPlaylists(list);
+        setViewingPlaylist((cur) => (cur ? list.find((p) => p.id === cur.id) || null : cur));
+      })
       .catch(() => setPlaylists([]));
   };
   useEffect(() => {
     loadPlaylists();
   }, []);
 
-  const savePlaylist = async () => {
-    if (!query.trim()) return;
-    await api.musicPlaylistSave(playlistName.trim() || query.trim(), query.trim());
+  const createPlaylist = async () => {
+    if (!playlistName.trim()) return;
+    await api.musicPlaylistCreate(playlistName.trim());
     setPlaylistName("");
-    setShowSavePlaylist(false);
+    setShowNewPlaylist(false);
     loadPlaylists();
-  };
-
-  const runPlaylist = (p: MusicPlaylist) => {
-    setQuery(p.query);
-    void doSearch(p.query);
   };
 
   const removePlaylist = async (id: string) => {
     await api.musicPlaylistDelete(id);
+    if (viewingPlaylist?.id === id) setViewingPlaylist(null);
     loadPlaylists();
+  };
+
+  const addTrackToPlaylist = async (playlistId: string, track: MusicTrack) => {
+    await api.musicPlaylistAddTrack(playlistId, {
+      id: track.id,
+      title: track.title,
+      artist: track.artist,
+      webpageUrl: track.webpageUrl,
+      duration: track.duration,
+      durationString: track.durationString,
+      thumbnail: track.thumbnail,
+    });
+    loadPlaylists();
+  };
+
+  const removeTrackFromPlaylist = async (playlistId: string, trackId: string) => {
+    await api.musicPlaylistRemoveTrack(playlistId, trackId);
+    loadPlaylists();
+  };
+
+  const playPlaylistTrack = (pt: MusicPlaylist["tracks"][number]) => {
+    selectTrack({
+      id: pt.id,
+      title: pt.title,
+      artist: pt.artist,
+      webpageUrl: pt.webpageUrl,
+      duration: pt.duration,
+      durationString: pt.durationString,
+      thumbnail: pt.thumbnail,
+    });
   };
 
   usePageToolbar(
@@ -285,13 +315,18 @@ export default function MusicPage() {
         </Btn>
       </Glass>
 
-      {/* "Умные" плейлисты — сохранённые поисковые запросы */}
+      {/* Плейлисты — списки конкретных треков */}
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", margin: "8px 0" }}>
         {playlists.map((p) => (
-          <Badge key={p.id} tone="violet" mono onClick={() => runPlaylist(p)}>
+          <Badge
+            key={p.id}
+            tone={viewingPlaylist?.id === p.id ? "amber" : "violet"}
+            mono
+            onClick={() => setViewingPlaylist((cur) => (cur?.id === p.id ? null : p))}
+          >
             <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
               <ListMusic size={11} />
-              {p.name}
+              {p.name} ({p.tracks.length})
               <span
                 role="button"
                 title={t("ctx.remove")}
@@ -306,7 +341,7 @@ export default function MusicPage() {
             </span>
           </Badge>
         ))}
-        {showSavePlaylist ? (
+        {showNewPlaylist ? (
           <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
             <input
               className="text-input"
@@ -314,52 +349,87 @@ export default function MusicPage() {
               placeholder={t("music.playlistName")}
               value={playlistName}
               onChange={(e) => setPlaylistName(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && void savePlaylist()}
+              onKeyDown={(e) => e.key === "Enter" && void createPlaylist()}
             />
-            <Btn icon={Check} onClick={() => void savePlaylist()}>
+            <Btn icon={Check} onClick={() => void createPlaylist()}>
               {t("music.playlistSave")}
             </Btn>
             <button
               type="button"
               className="icon-btn"
-              onClick={() => setShowSavePlaylist(false)}
+              onClick={() => setShowNewPlaylist(false)}
               title={t("ctx.clear")}
             >
               <X size={14} />
             </button>
           </span>
         ) : (
-          query.trim() && (
-            <button
-              type="button"
-              className="icon-btn"
-              title={t("music.playlistSaveHint")}
-              onClick={() => setShowSavePlaylist(true)}
-            >
-              <Plus size={14} />
-            </button>
-          )
+          <button
+            type="button"
+            className="icon-btn"
+            title={t("music.playlistNewHint")}
+            onClick={() => setShowNewPlaylist(true)}
+          >
+            <Plus size={14} />
+          </button>
         )}
       </div>
 
+      {/* Просмотр треков выбранного плейлиста */}
+      {viewingPlaylist && (
+        <div className="music-results" style={{ marginBottom: 12 }}>
+          {viewingPlaylist.tracks.length === 0 && (
+            <div className="muted-sm">{t("music.playlistEmpty")}</div>
+          )}
+          {viewingPlaylist.tracks.map((pt) => (
+            <Glass key={pt.id} className="music-track-row" onClick={() => playPlaylistTrack(pt)} style={{ cursor: "pointer" }}>
+              <div className="music-track-thumb">
+                {pt.thumbnail ? (
+                  <img src={pt.thumbnail} alt="" style={{ width: 48, height: 48, objectFit: "cover", borderRadius: 8 }} />
+                ) : (
+                  <Disc3 size={24} strokeWidth={1.5} />
+                )}
+              </div>
+              <div className="music-track-info">
+                <div className="music-track-title">{pt.title}</div>
+                <div className="muted-sm">
+                  {pt.artist} · {fmtDuration(pt.duration)}
+                </div>
+              </div>
+              <button
+                type="button"
+                className="icon-btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  void removeTrackFromPlaylist(viewingPlaylist.id, pt.id);
+                }}
+                title={t("ctx.remove")}
+              >
+                <Trash2 size={14} />
+              </button>
+            </Glass>
+          ))}
+        </div>
+      )}
+
       {/* Результаты поиска */}
-      {searchState === "searching" && (
+      {!viewingPlaylist && searchState === "searching" && (
         <MediaLoading kind="music" label={t("common.loading")} indeterminate />
       )}
 
-      {searchState === "error" && searchError && (
+      {!viewingPlaylist && searchState === "error" && searchError && (
         <Glass className="source-placeholder" style={{ borderColor: "var(--coral)" }}>
           <AlertTriangle size={16} style={{ color: "var(--coral)" }} />
           <span>{errText(searchError)}</span>
         </Glass>
       )}
 
-      {searchState === "done" && tracks.length === 0 && !selectedTrack && (
+      {!viewingPlaylist && searchState === "done" && tracks.length === 0 && !selectedTrack && (
         <EmptyHint icon={Music2} text={t("music.empty")} />
       )}
 
       {/* Список результатов */}
-      {searchState === "done" && tracks.length > 0 && !selectedTrack && (
+      {!viewingPlaylist && searchState === "done" && tracks.length > 0 && !selectedTrack && (
         <div className="music-results">
           {tracks.map((track) => (
             <Glass
@@ -381,6 +451,16 @@ export default function MusicPage() {
                     icon: Link2,
                     onClick: () => copyToClipboard(track.webpageUrl || ""),
                   },
+                  ...(playlists.length > 0
+                    ? [
+                        { separator: true } as const,
+                        ...playlists.map((p) => ({
+                          label: `${t("music.addToPlaylist")}: ${p.name}`,
+                          icon: ListMusic,
+                          onClick: () => void addTrackToPlaylist(p.id, track),
+                        })),
+                      ]
+                    : []),
                 ])
               }
             >
