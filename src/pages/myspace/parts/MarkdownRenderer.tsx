@@ -70,11 +70,15 @@ function processInline(l: string, lineIndex: number): string {
 // Pre-process markdown content: convert interactive elements to HTML spans
 // before marked parses them, skipping fenced code blocks and inline code so
 // the code content itself is never mangled by our custom regexes.
+// Строка похожа на разделитель GFM-таблицы: | --- | :--- | ---: |
+const TABLE_SEP_RE = /^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?\s*$/;
+
 function preprocess(text: string): string {
   const lines = text.split("\n");
   const out: string[] = [];
   let inFence = false;
   let fenceMarker = "";
+  let inTable = false;
   for (let i = 0; i < lines.length; i++) {
     const raw = lines[i];
     const fenceMatch = raw.trimStart().match(/^(```+|~~~+)/);
@@ -89,6 +93,21 @@ function preprocess(text: string): string {
       continue;
     }
     if (inFence) {
+      out.push(raw);
+      continue;
+    }
+    // Строки таблиц пропускаем как есть: наши inline-регэкспы (sup/sub через
+    // ^ и ~, math через $) ломают содержимое ячеек и marked перестаёт
+    // распознавать GFM-таблицу, обрывая рендер остального документа.
+    if (inTable) {
+      if (raw.trim() === "" || !raw.includes("|")) {
+        inTable = false;
+      } else {
+        out.push(raw);
+        continue;
+      }
+    } else if (raw.includes("|") && i + 1 < lines.length && TABLE_SEP_RE.test(lines[i + 1])) {
+      inTable = true;
       out.push(raw);
       continue;
     }

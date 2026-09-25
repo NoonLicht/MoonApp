@@ -42,7 +42,6 @@
     "server/ts/netTools.ts",
     "server/ts/notesGit.ts",
     "server/ts/appTimeTracker.ts",
-    "server/ts/imageEditor.ts",
     "server/ts/automation.ts",
     "server/ts/budget.ts",
     "server/ts/fx.ts",

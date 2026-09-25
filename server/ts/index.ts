@@ -60,7 +60,6 @@ const gamesRouter = require("./routes/games") as express.Router;
 const netToolsRouter = require("./routes/netTools") as express.Router;
 const notesGitRouter = require("./routes/notesGit") as express.Router;
 const appTimeTrackerRouter = require("./routes/appTimeTracker") as express.Router;
-const imageEditorRouter = require("./routes/imageEditor") as express.Router;
 const automationRouter = require("./routes/automation") as express.Router;
 const budgetRouter = require("./routes/budget") as express.Router;
 const quickNotesRouter = require("./routes/quickNotes") as express.Router;
@@ -269,7 +268,6 @@ function createApp(): express.Express {
   app.use("/api/nettools", netToolsRouter);
   app.use("/api/notesgit", notesGitRouter);
   app.use("/api/apptracker", appTimeTrackerRouter);
-  app.use("/api/imageedit", imageEditorRouter);
   app.use("/api/automation", automationRouter);
   app.use("/api/budget", budgetRouter);
   app.use("/api/quicknotes", quickNotesRouter);

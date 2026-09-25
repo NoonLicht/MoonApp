@@ -1437,49 +1437,6 @@ select option {
 }
 
 /* --- Редактор изображений: визуальный кроп/ресайз (ConverterPage) --- */
-.img-edit-canvas-wrap {
-  position: relative;
-  display: inline-block;
-  max-width: 100%;
-  cursor: crosshair;
-  user-select: none;
-  border-radius: 10px;
-  overflow: hidden;
-  border: 1px solid var(--glass-border);
-}
-.img-edit-preview {
-  display: block;
-  max-width: 100%;
-  max-height: 360px;
-  width: auto;
-  height: auto;
-  user-select: none;
-  pointer-events: none;
-}
-.img-edit-crop-rect {
-  position: absolute;
-  border: 2px solid var(--amber);
-  background: rgba(255, 184, 92, 0.15);
-  pointer-events: none;
-}
-.img-edit-resize-preview {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  align-items: flex-start;
-}
-.img-edit-resize-preview img {
-  max-width: 100%;
-  max-height: 220px;
-  border-radius: 10px;
-  border: 1px solid var(--glass-border);
-}
-.img-edit-toolkit-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 14px;
-  align-items: start;
-}
 .pdf-toolkit-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));

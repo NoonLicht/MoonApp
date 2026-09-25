@@ -443,6 +443,48 @@
 .md-renderer p {
   margin: 0;
 }
+/* Списки */
+.md-renderer ul,
+.md-renderer ol {
+  margin: 0;
+  padding-left: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.md-renderer ul {
+  list-style: none;
+}
+.md-renderer ul > li {
+  position: relative;
+}
+.md-renderer ul > li::before {
+  content: "";
+  position: absolute;
+  left: -16px;
+  top: 0.65em;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--teal);
+}
+.md-renderer ol {
+  list-style: decimal;
+}
+.md-renderer ol > li::marker {
+  color: var(--teal);
+  font-weight: 600;
+}
+.md-renderer li {
+  line-height: 1.6;
+}
+.md-renderer li > ul,
+.md-renderer li > ol {
+  margin-top: 4px;
+}
+.md-renderer li p {
+  display: inline;
+}
 .md-h {
   margin: 8px 0 4px;
   font-family: var(--font-display);

@@ -63,7 +63,6 @@ server/games.js
 server/netTools.js
 server/notesGit.js
 server/appTimeTracker.js
-server/imageEditor.js
 server/automation.js
 server/budget.js
 server/fx.js
