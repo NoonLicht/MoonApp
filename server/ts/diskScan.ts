@@ -29,6 +29,32 @@ interface Job {
   result: DiskNode | null;
   cancelled: boolean;
   createdAt: number;
+  /** Идентификаторы (dev:ino) уже посещённых директорий — защита от бесконечной
+   *  рекурсии через junction/reparse-точки Windows (например "C:\Documents and
+   *  Settings" → "C:\Users" или "C:\ProgramData" → "...\All Users"), которые
+   *  readdir(withFileTypes) не всегда помечает как isSymbolicLink(). */
+  visited: Set<string>;
+}
+
+/** Максимальная глубина рекурсии — дополнительная защита на случай, если
+ *  проверка visited почему-то не сработает (например ino недоступен на сетевом диске). */
+const MAX_DEPTH = 60;
+/** Сколько stat-запросов на файлы делаем параллельно в одной директории — иначе
+ *  полностью последовательные await на каждый файл делают скан огромного диска
+ *  нестерпимо медленным. */
+const STAT_CONCURRENCY = 16;
+
+async function mapLimit<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let i = 0;
+  async function worker() {
+    while (i < items.length) {
+      const idx = i++;
+      results[idx] = await fn(items[idx]);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  return results;
 }
 
 const jobs = new Map<string, Job>();
@@ -53,9 +79,27 @@ function collapseChildren(children: DiskNode[]): DiskNode[] {
   return kept;
 }
 
-async function walk(dir: string, job: Job): Promise<DiskNode> {
+async function walk(dir: string, job: Job, depth = 0): Promise<DiskNode> {
   const name = path.basename(dir) || dir;
   if (job.cancelled) return { name, path: dir, size: 0, isDir: true, fileCount: 0 };
+  if (depth >= MAX_DEPTH) return { name, path: dir, size: 0, isDir: true, fileCount: 0 };
+
+  // lstat, а не доверие entry.isSymbolicLink() из readdir: на Windows
+  // directory junction (reparse point) не всегда помечается как symlink в
+  // Dirent, но всегда виден через lstat().isSymbolicLink(). Без этой
+  // проверки обход зацикливается на связках вроде "C:\Documents and
+  // Settings" → "C:\Users" и никогда не завершается.
+  try {
+    const st = await fs.promises.lstat(dir);
+    if (st.isSymbolicLink()) return { name, path: dir, size: 0, isDir: true, fileCount: 0 };
+    const key = `${st.dev}:${st.ino}`;
+    if (st.ino !== 0 && job.visited.has(key)) {
+      return { name, path: dir, size: 0, isDir: true, fileCount: 0 };
+    }
+    if (st.ino !== 0) job.visited.add(key);
+  } catch {
+    return { name, path: dir, size: 0, isDir: true, fileCount: 0 };
+  }
 
   let entries: fs.Dirent[];
   try {
@@ -68,32 +112,35 @@ async function walk(dir: string, job: Job): Promise<DiskNode> {
   let totalSize = 0;
   let totalFiles = 0;
 
-  for (const entry of entries) {
+  const dirEntries = entries.filter((e) => !e.isSymbolicLink() && e.isDirectory());
+  const fileEntries = entries.filter((e) => !e.isSymbolicLink() && e.isFile());
+
+  for (const entry of dirEntries) {
     if (job.cancelled) break;
     const full = path.join(dir, entry.name);
     job.scannedEntries++;
-    // Каждые ~200 записей отдаём event loop — иначе сканирование крупного
-    // диска блокирует остальные запросы к серверу (единый Node-процесс).
     if (job.scannedEntries % 200 === 0) await new Promise((r) => setImmediate(r));
-
-    if (entry.isSymbolicLink()) continue; // не ходим по симлинкам — риск циклов
-    if (entry.isDirectory()) {
-      const sub = await walk(full, job);
-      children.push(sub);
-      totalSize += sub.size;
-      totalFiles += sub.fileCount;
-    } else if (entry.isFile()) {
-      let size = 0;
-      try {
-        size = (await fs.promises.stat(full)).size;
-      } catch {
-        continue;
-      }
-      children.push({ name: entry.name, path: full, size, isDir: false, fileCount: 1 });
-      totalSize += size;
-      totalFiles += 1;
-    }
+    const sub = await walk(full, job, depth + 1);
+    children.push(sub);
+    totalSize += sub.size;
+    totalFiles += sub.fileCount;
   }
+
+  await mapLimit(fileEntries, STAT_CONCURRENCY, async (entry) => {
+    if (job.cancelled) return;
+    const full = path.join(dir, entry.name);
+    job.scannedEntries++;
+    if (job.scannedEntries % 200 === 0) await new Promise((r) => setImmediate(r));
+    let size: number;
+    try {
+      size = (await fs.promises.stat(full)).size;
+    } catch {
+      return;
+    }
+    children.push({ name: entry.name, path: full, size, isDir: false, fileCount: 1 });
+    totalSize += size;
+    totalFiles += 1;
+  });
 
   return {
     name,
@@ -116,6 +163,7 @@ export function startScan(root: string): { id: string } {
     result: null,
     cancelled: false,
     createdAt: Date.now(),
+    visited: new Set<string>(),
   };
   jobs.set(id, job);
 
