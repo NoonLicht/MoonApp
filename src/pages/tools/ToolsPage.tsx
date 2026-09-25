@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Braces,
   GitCompare,
@@ -9,8 +9,6 @@ import {
   Calculator,
   Copy,
   AlertTriangle,
-  GripVertical,
-  Shuffle,
   RotateCcw,
 } from "lucide-react";
 import { Glass, Btn, SectionHead, Field, Select, Badge } from "@/components/ui";
@@ -704,65 +702,23 @@ function UnitsTool() {
 
 
 
-/* ───────────────────────── Page: сетка без пустот с адаптивным переносом ─────────────────────────
+
+/* ───────────────────────── Page: несколько фиксированных шаблонов по ширине ─────────────────────────
  *
- * Четвёртая итерация. Прошлые попытки либо считали геометрию вручную в px
- * (накапливалась ошибка округления, обрезался край), либо ушли в
- * flex-wrap с фиксированными размерами блоков — а это оставляло пустой
- * "воздух" сзади последней в строке карточки и не давало блокам тянуться,
- * чтобы заполнить всё доступное место.
+ * Пять предыдущих попыток свободно редактируемой сетки (drag-reorder,
+ * drag-resize ширины/высоты, авторазбиение по ширине) упирались в новые
+ * баги на каждой итерации — вся эта гибкость плохо стыковалась друг с
+ * другом. Вместо неё — несколько заранее собранных шаблонов раскладки,
+ * которые переключаются по ширине страницы (как брейкпоинты), без
+ * перетаскивания и реордера блоков. Единственное, что остаётся
+ * редактируемым — высота каждой строки шаблона (тянем границу вниз/вверх),
+ * это по-прежнему сохраняется в localStorage отдельно для каждого
+ * шаблона/строки.
  *
- * Здесь — обычная CSS flexbox-раскладка БЕЗ ручных вычислений позиций:
- *   - хранится список РЯДОВ, у каждого своя высота (px) и список ЯЧЕЕК с
- *     относительным весом (grow — не обязан суммироваться в 1, это именно
- *     CSS flex-grow: браузер сам распределяет пиксели без остатка);
- *   - ряд рендерится как display:flex — ячейки с flex-grow заполняют всю
- *     ширину ряда без остатка и без ручного round() (сам источник прежнего
- *     обрезания края);
- *   - если ряд не помещается в видимую ширину (ячеек больше, чем
- *     влезает по MIN_CELL_W), он на лету "переносится": лишние ячейки
- *     показываются следующей визуальной строкой — ровно то самое
- *     "адаптивно подстраивается при сужении", которого не хватало раньше;
- *   - перетягивание нижней границы ряда меняет только высоту ЭТОГО ряда
- *     (всё, что ниже, просто опускается — сумма высот растёт, ничем не
- *     ограничена, .tools-flow-scroll прокручивает лишнее);
- *   - перетягивание границы между ячейками меняет их grow — сосед
- *     сжимается/растягивается, заполняя ряд без остатка;
- *   - перетаскивание заголовка блока — это ПЕРЕМЕЩЕНИЕ ячейки в любое
- *     место (а не обмен местами): наведение на левую/правую половину
- *     блока-цели показывает, куда он встанет, drop раздвигает соседей.
+ * Размер блока по условию: JSON/diff/regex — большие, base64 — средний,
+ * остальные (encode/uuid/units) — маленькие. Это задаёт высоту по
+ * умолчанию (SIZE_H) для строки, где инструмент — главный/единственный.
  */
-
-interface CellSpec {
-  toolId: ToolId;
-  grow: number;
-}
-interface RowSpec {
-  height: number;
-  cells: CellSpec[];
-}
-
-const LAYOUT_KEY = "moonapp.tools.rows";
-const MIN_CELL_W = 260;
-const MIN_ROW_H = 160;
-const DIVIDER_PX = 10;
-
-/** Минимальная ширина блока по инструменту (px) — используется и переносом
- * строк, и клэмпом при перетягивании границы между ячейками. У JSON/diff/
- * regex многострочные текстовые поля бок о бок — им нужно заметно больше
- * места, поэтому при ширине окна меньше ~1050px (2×520 + разделитель) они
- * переносятся по одному в строке, а не жмутся по 2-3 в ряд. Остальным
- * инструментам хватает ~340px — при той же ширине окна их помещается не
- * больше двух подряд (3×340 + 2 разделителя = 1040 > ~1000px). */
-const MIN_CELL_W_BY_TOOL: Record<ToolId, number> = {
-  json: 520,
-  diff: 520,
-  regex: 520,
-  encode: 340,
-  uuid: 340,
-  base: 340,
-  units: 340,
-};
 
 const TOOLS: { id: ToolId; icon: React.ElementType; Component: React.ComponentType }[] = [
   { id: "json", icon: Braces, Component: JsonTool },
@@ -773,168 +729,93 @@ const TOOLS: { id: ToolId; icon: React.ElementType; Component: React.ComponentTy
   { id: "base", icon: Binary, Component: BaseTool },
   { id: "units", icon: Calculator, Component: UnitsTool },
 ];
-const TOOL_IDS = TOOLS.map((x) => x.id);
 
-function cell(toolId: ToolId, grow = 1): CellSpec {
-  return { toolId, grow };
+const SIZE_H = { large: 460, medium: 340, small: 260 };
+const MIN_ROW_H = 160;
+const HEIGHTS_KEY = "moonapp.tools.templateRowHeights";
+
+interface TemplateCell {
+  toolId: ToolId;
+  grow: number;
+}
+interface TemplateRow {
+  key: string;
+  defaultHeight: number;
+  cells: TemplateCell[];
+}
+type Tier = "wide" | "medium" | "narrow";
+
+const WIDE_TEMPLATE: TemplateRow[] = [
+  {
+    key: "big",
+    defaultHeight: SIZE_H.large,
+    cells: [
+      { toolId: "json", grow: 1 },
+      { toolId: "diff", grow: 1 },
+      { toolId: "regex", grow: 1 },
+    ],
+  },
+  {
+    key: "rest",
+    defaultHeight: SIZE_H.medium,
+    cells: [
+      { toolId: "base", grow: 2 },
+      { toolId: "encode", grow: 1 },
+      { toolId: "uuid", grow: 1 },
+      { toolId: "units", grow: 1 },
+    ],
+  },
+];
+
+const MEDIUM_TEMPLATE: TemplateRow[] = [
+  { key: "r1", defaultHeight: SIZE_H.large, cells: [{ toolId: "json", grow: 1 }, { toolId: "diff", grow: 1 }] },
+  { key: "r2", defaultHeight: SIZE_H.large, cells: [{ toolId: "regex", grow: 1 }, { toolId: "base", grow: 1 }] },
+  { key: "r3", defaultHeight: SIZE_H.small, cells: [{ toolId: "encode", grow: 1 }, { toolId: "uuid", grow: 1 }] },
+  { key: "r4", defaultHeight: SIZE_H.small, cells: [{ toolId: "units", grow: 1 }] },
+];
+
+const NARROW_TEMPLATE: TemplateRow[] = [
+  { key: "json", defaultHeight: SIZE_H.large, cells: [{ toolId: "json", grow: 1 }] },
+  { key: "diff", defaultHeight: SIZE_H.large, cells: [{ toolId: "diff", grow: 1 }] },
+  { key: "regex", defaultHeight: SIZE_H.large, cells: [{ toolId: "regex", grow: 1 }] },
+  { key: "base", defaultHeight: SIZE_H.medium, cells: [{ toolId: "base", grow: 1 }] },
+  { key: "encode", defaultHeight: SIZE_H.small, cells: [{ toolId: "encode", grow: 1 }] },
+  { key: "uuid", defaultHeight: SIZE_H.small, cells: [{ toolId: "uuid", grow: 1 }] },
+  { key: "units", defaultHeight: SIZE_H.small, cells: [{ toolId: "units", grow: 1 }] },
+];
+
+function tierFor(width: number): Tier {
+  if (width >= 1400) return "wide";
+  if (width >= 900) return "medium";
+  return "narrow";
+}
+function templateFor(tier: Tier): TemplateRow[] {
+  if (tier === "wide") return WIDE_TEMPLATE;
+  if (tier === "medium") return MEDIUM_TEMPLATE;
+  return NARROW_TEMPLATE;
 }
 
-/** Дефолт: инструменты с многострочными текстовыми полями — в отдельном
- * высоком верхнем ряду, остальные — пониже. */
-function buildDefaultRows(ids: ToolId[]): RowSpec[] {
-  const big = ids.slice(0, 3);
-  const small = ids.slice(3);
-  const rows: RowSpec[] = [];
-  if (big.length) rows.push({ height: 460, cells: big.map((id) => cell(id)) });
-  if (small.length) rows.push({ height: 320, cells: small.map((id) => cell(id)) });
-  return rows.length ? rows : [{ height: 400, cells: ids.map((id) => cell(id)) }];
-}
-
-function buildRandomRows(ids: ToolId[]): RowSpec[] {
-  const shuffled = [...ids];
-  for (let i = shuffled.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-  }
-  const rows: RowSpec[] = [];
-  let i = 0;
-  while (i < shuffled.length) {
-    const remaining = shuffled.length - i;
-    const take = Math.min(remaining, 1 + Math.floor(Math.random() * Math.min(3, remaining)));
-    const chunk = shuffled.slice(i, i + take);
-    i += take;
-    rows.push({
-      height: Math.round(280 + Math.random() * 260),
-      cells: chunk.map((id) => cell(id, 0.6 + Math.random() * 0.8)),
-    });
-  }
-  return rows;
-}
-
-function collectToolIds(rows: RowSpec[]): ToolId[] {
-  return rows.flatMap((r) => r.cells.map((c) => c.toolId));
-}
-
-function isValidRows(x: unknown): x is RowSpec[] {
-  if (!Array.isArray(x) || x.length === 0) return false;
-  return x.every((row) => {
-    if (!row || typeof row !== "object") return false;
-    const r = row as Record<string, unknown>;
-    if (typeof r.height !== "number" || !Array.isArray(r.cells) || r.cells.length === 0) return false;
-    return (r.cells as unknown[]).every((c) => {
-      if (!c || typeof c !== "object") return false;
-      const cc = c as Record<string, unknown>;
-      return typeof cc.toolId === "string" && typeof cc.grow === "number";
-    });
-  });
-}
-
-function loadRows(): RowSpec[] {
+function loadHeights(): Record<string, number> {
   try {
-    const raw: unknown = JSON.parse(localStorage.getItem(LAYOUT_KEY) || "null");
-    if (isValidRows(raw)) {
-      const got = [...collectToolIds(raw)].sort().join(",");
-      const expect = [...TOOL_IDS].sort().join(",");
-      if (got === expect) return raw;
-    }
+    const raw = JSON.parse(localStorage.getItem(HEIGHTS_KEY) || "{}");
+    return raw && typeof raw === "object" ? raw : {};
   } catch {
-    /* используем дефолт */
+    return {};
   }
-  return buildDefaultRows(TOOL_IDS);
-}
-
-interface RenderCell extends CellSpec {
-  sourceRow: number;
-  sourceIdx: number;
-}
-interface RenderRow {
-  height: number;
-  cells: RenderCell[];
-}
-
-/** Разворачивает хранимые ряды в визуальные: греедный перенос по РЕАЛЬНОЙ
- * минимальной ширине каждой конкретной ячейки (MIN_CELL_W_BY_TOOL), а не по
- * общему числу ячеек на строку — JSON/diff/regex гораздо "тяжелее" мелких
- * инструментов, поэтому при одинаковой узкой ширине окна крупные блоки
- * переносятся по одному, а мелкие всё ещё держат по два в ряд. Лишние
- * ячейки уходят на следующую визуальную строку той же высоты — та самая
- * адаптация к ширине без единой формулы позиционирования (дальше всё
- * делает CSS flexbox). */
-function reflowRows(rows: RowSpec[], viewportW: number): RenderRow[] {
-  const out: RenderRow[] = [];
-  rows.forEach((row, ri) => {
-    let chunk: RenderCell[] = [];
-    let chunkWidth = 0;
-    row.cells.forEach((c, i) => {
-      const w = MIN_CELL_W_BY_TOOL[c.toolId] ?? MIN_CELL_W;
-      const nextWidth = chunk.length === 0 ? w : chunkWidth + DIVIDER_PX + w;
-      if (chunk.length > 0 && nextWidth > viewportW) {
-        out.push({ height: row.height, cells: chunk });
-        chunk = [];
-      }
-      chunk.push({ ...c, sourceRow: ri, sourceIdx: i });
-      chunkWidth = chunk.length === 1 ? w : nextWidth;
-    });
-    if (chunk.length > 0) out.push({ height: row.height, cells: chunk });
-  });
-  return out;
-}
-
-/** Перемещает ячейку (не меняет местами!) из одной позиции в другую —
- * соседи раздвигаются. Если исходный ряд опустел, он удаляется. */
-function moveCell(
-  rows: RowSpec[],
-  from: { row: number; idx: number },
-  to: { row: number; idx: number; side: "before" | "after" },
-): RowSpec[] {
-  const next = rows.map((r) => ({ ...r, cells: [...r.cells] }));
-  const moved = next[from.row].cells[from.idx];
-  if (!moved) return rows;
-  next[from.row].cells.splice(from.idx, 1);
-
-  const targetRow = to.row;
-  let targetIdx = to.idx;
-  // Если целевая ячейка была В ТОМ ЖЕ ряду и находилась ПОСЛЕ вырезанной,
-  // её индекс уже сдвинулся на -1 из-за splice выше.
-  if (targetRow === from.row && targetIdx > from.idx) targetIdx -= 1;
-  if (to.side === "after") targetIdx += 1;
-
-  next[targetRow].cells.splice(targetIdx, 0, moved);
-  return next.filter((r) => r.cells.length > 0);
-}
-
-type DropSide = "before" | "after";
-interface DropTarget {
-  row: number;
-  idx: number;
-  side: DropSide;
 }
 
 interface RowDragInfo {
-  rowIndex: number;
+  heightKey: string;
   startY: number;
   startHeight: number;
-}
-interface ColDragInfo {
-  rowIndex: number;
-  cellIndex: number;
-  startX: number;
-  rowWidthPx: number;
-  growA: number;
-  growB: number;
-  minWA: number;
-  minWB: number;
 }
 
 export default function ToolsPage() {
   const { t } = useI18n();
-  const [rows, setRows] = useState<RowSpec[]>(() => loadRows());
   const [viewportW, setViewportW] = useState(0);
-  const [draggedFrom, setDraggedFrom] = useState<{ row: number; idx: number } | null>(null);
-  const [dropTarget, setDropTarget] = useState<DropTarget | null>(null);
+  const [heights, setHeights] = useState<Record<string, number>>(() => loadHeights());
   const scrollRef = useRef<HTMLDivElement>(null);
   const rowDragRef = useRef<RowDragInfo | null>(null);
-  const colDragRef = useRef<ColDragInfo | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -947,23 +828,24 @@ export default function ToolsPage() {
 
   useEffect(() => {
     if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => localStorage.setItem(LAYOUT_KEY, JSON.stringify(rows)), 300);
+    saveTimer.current = setTimeout(() => localStorage.setItem(HEIGHTS_KEY, JSON.stringify(heights)), 300);
     return () => {
       if (saveTimer.current) clearTimeout(saveTimer.current);
     };
-  }, [rows]);
+  }, [heights]);
 
-  const rendered = useMemo(() => reflowRows(rows, viewportW), [rows, viewportW]);
+  const tier = tierFor(viewportW);
+  const template = templateFor(tier);
 
-  const onRowDividerDown = (rowIndex: number, e: React.PointerEvent) => {
+  const onRowDividerDown = (heightKey: string, defaultHeight: number, e: React.PointerEvent) => {
     e.currentTarget.setPointerCapture(e.pointerId);
-    rowDragRef.current = { rowIndex, startY: e.clientY, startHeight: rows[rowIndex].height };
+    rowDragRef.current = { heightKey, startY: e.clientY, startHeight: heights[heightKey] ?? defaultHeight };
   };
   const onRowDividerMove = (e: React.PointerEvent) => {
     const d = rowDragRef.current;
     if (!d) return;
     const next = Math.max(MIN_ROW_H, d.startHeight + (e.clientY - d.startY));
-    setRows((prev) => prev.map((r, i) => (i === d.rowIndex ? { ...r, height: next } : r)));
+    setHeights((prev) => ({ ...prev, [d.heightKey]: next }));
   };
   const onRowDividerUp = (e: React.PointerEvent) => {
     try {
@@ -972,74 +854,6 @@ export default function ToolsPage() {
       /* уже отпущено */
     }
     rowDragRef.current = null;
-  };
-
-  const onColDividerDown = (rowIndex: number, cellIndex: number, rowWidthPx: number, clientX: number) => {
-    const row = rows[rowIndex];
-    colDragRef.current = {
-      rowIndex,
-      cellIndex,
-      startX: clientX,
-      rowWidthPx,
-      growA: row.cells[cellIndex].grow,
-      growB: row.cells[cellIndex + 1].grow,
-      minWA: MIN_CELL_W_BY_TOOL[row.cells[cellIndex].toolId] ?? MIN_CELL_W,
-      minWB: MIN_CELL_W_BY_TOOL[row.cells[cellIndex + 1].toolId] ?? MIN_CELL_W,
-    };
-  };
-  const onColDividerMove = (e: React.PointerEvent) => {
-    const d = colDragRef.current;
-    if (!d) return;
-    const sum = d.growA + d.growB;
-    const deltaGrow = ((e.clientX - d.startX) / d.rowWidthPx) * sum;
-    const minGrowA = sum * (d.minWA / d.rowWidthPx);
-    const minGrowB = sum * (d.minWB / d.rowWidthPx);
-    const a = Math.min(sum - minGrowB, Math.max(minGrowA, d.growA + deltaGrow));
-    const b = sum - a;
-    setRows((prev) =>
-      prev.map((r, ri) =>
-        ri !== d.rowIndex
-          ? r
-          : {
-              ...r,
-              cells: r.cells.map((c, ci) =>
-                ci === d.cellIndex ? { ...c, grow: a } : ci === d.cellIndex + 1 ? { ...c, grow: b } : c,
-              ),
-            },
-      ),
-    );
-  };
-  const onColDividerUp = (e: React.PointerEvent) => {
-    try {
-      e.currentTarget.releasePointerCapture(e.pointerId);
-    } catch {
-      /* уже отпущено */
-    }
-    colDragRef.current = null;
-  };
-
-  const onCellDragStart = (rowIndex: number, cellIndex: number) => setDraggedFrom({ row: rowIndex, idx: cellIndex });
-  const onCellDragEnd = () => {
-    setDraggedFrom(null);
-    setDropTarget(null);
-  };
-  const onCellDragOver = (rowIndex: number, cellIndex: number) => (e: React.DragEvent) => {
-    e.preventDefault();
-    if (!draggedFrom || (draggedFrom.row === rowIndex && draggedFrom.idx === cellIndex)) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const side: DropSide = e.clientX - rect.left < rect.width / 2 ? "before" : "after";
-    setDropTarget((prev) =>
-      prev && prev.row === rowIndex && prev.idx === cellIndex && prev.side === side
-        ? prev
-        : { row: rowIndex, idx: cellIndex, side },
-    );
-  };
-  const onCellDrop = (rowIndex: number, cellIndex: number) => {
-    if (draggedFrom && dropTarget && dropTarget.row === rowIndex && dropTarget.idx === cellIndex) {
-      setRows((prev) => moveCell(prev, draggedFrom, { row: rowIndex, idx: cellIndex, side: dropTarget.side }));
-    }
-    setDraggedFrom(null);
-    setDropTarget(null);
   };
 
   const byId = useMemo(
@@ -1056,14 +870,9 @@ export default function ToolsPage() {
         eyebrow={t("tools.eyebrow")}
         title={t("tools.title")}
         action={
-          <div style={{ display: "flex", gap: 8 }}>
-            <Btn icon={Shuffle} onClick={() => setRows(buildRandomRows(TOOL_IDS))}>
-              {t("tools.randomize")}
-            </Btn>
-            <Btn icon={RotateCcw} onClick={() => setRows(buildDefaultRows(TOOL_IDS))}>
-              {t("tools.resetLayout")}
-            </Btn>
-          </div>
+          <Btn icon={RotateCcw} onClick={() => setHeights({})}>
+            {t("tools.resetLayout")}
+          </Btn>
         }
       />
       <div className="muted-sm" style={{ margin: "4px 0 10px" }}>
@@ -1071,81 +880,37 @@ export default function ToolsPage() {
       </div>
       <div ref={scrollRef} className="tools-flow-scroll">
         <div className="tools-flow-col">
-          {rendered.map((row, ri) => {
-            const prevRow = rendered[ri - 1];
+          {template.map((row, ri) => {
+            const heightKey = `${tier}:${row.key}`;
+            const height = heights[heightKey] ?? row.defaultHeight;
             return (
-              <Fragment key={ri}>
-                {ri > 0 && prevRow && (
+              <div key={row.key}>
+                {ri > 0 && (
                   <div
                     className="tools-divider is-y"
-                    // Граница принадлежит ряду НАД ней (prevRow) — тянуть её вниз должно расти
-                    // именно верхний ряд (row.cells[0] — это уже ряд ПОД границей, не над ней).
-                    // Работает одинаково и между разными исходными рядами, и между визуальными
-                    // строками, на которые один ряд распался из-за переноса по ширине — во
-                    // втором случае у них общая высота, так что перетягивание просто меняет её
-                    // сразу для обеих строк (это и ожидаемо, они один логический блок).
-                    onPointerDown={(e) => onRowDividerDown(prevRow.cells[0].sourceRow, e)}
+                    onPointerDown={(e) => onRowDividerDown(heightKey, row.defaultHeight, e)}
                     onPointerMove={onRowDividerMove}
                     onPointerUp={onRowDividerUp}
                   />
                 )}
-                <div className="tools-flow-row" style={{ height: row.height }}>
-                  {row.cells.map((c, ci) => {
+                <div className="tools-flow-row" style={{ height }}>
+                  {row.cells.map((c) => {
                     const tool = byId[c.toolId];
                     const Icon = tool.icon;
-                    const dropSide: DropSide | null =
-                      dropTarget && dropTarget.row === c.sourceRow && dropTarget.idx === c.sourceIdx
-                        ? dropTarget.side
-                        : null;
-                    const dragKey = draggedFrom && draggedFrom.row === c.sourceRow && draggedFrom.idx === c.sourceIdx;
                     return (
-                      <Fragment key={`${c.sourceRow}-${c.sourceIdx}`}>
-                        <div
-                          className={`tools-block${dragKey ? " is-dragging" : ""}${
-                            dropSide ? ` is-drop-${dropSide}` : ""
-                          }`}
-                          style={{
-                            flexGrow: c.grow,
-                            flexBasis: 0,
-                            minWidth: MIN_CELL_W_BY_TOOL[c.toolId] ?? MIN_CELL_W,
-                          }}
-                          onDragOver={onCellDragOver(c.sourceRow, c.sourceIdx)}
-                          onDrop={(e) => {
-                            e.preventDefault();
-                            onCellDrop(c.sourceRow, c.sourceIdx);
-                          }}
-                        >
-                          <div
-                            className="tools-widget-head"
-                            draggable
-                            onDragStart={() => onCellDragStart(c.sourceRow, c.sourceIdx)}
-                            onDragEnd={onCellDragEnd}
-                          >
-                            <GripVertical size={13} className="tools-widget-grip" />
-                            <Icon size={14} />
-                            <span>{t(`tools.tab_${c.toolId}`)}</span>
-                          </div>
-                          <div className="tools-widget-body">
-                            <tool.Component />
-                          </div>
+                      <div key={c.toolId} className="tools-block" style={{ flexGrow: c.grow, flexBasis: 0 }}>
+                        <div className="tools-widget-head">
+                          <Icon size={14} />
+                          <span>{t(`tools.tab_${c.toolId}`)}</span>
                         </div>
-                        {ci < row.cells.length - 1 && (
-                          <div
-                            className="tools-divider is-x"
-                            onPointerDown={(e) => {
-                              e.currentTarget.setPointerCapture(e.pointerId);
-                              const rowEl = e.currentTarget.parentElement as HTMLElement;
-                              onColDividerDown(c.sourceRow, c.sourceIdx, rowEl.clientWidth, e.clientX);
-                            }}
-                            onPointerMove={onColDividerMove}
-                            onPointerUp={onColDividerUp}
-                          />
-                        )}
-                      </Fragment>
+                        <div className="tools-widget-body">
+                          <tool.Component />
+                        </div>
+                      </div>
                     );
                   })}
                 </div>
-              </Fragment>
+              </div>
             );
           })}
         </div>

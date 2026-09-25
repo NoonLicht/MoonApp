@@ -1500,12 +1500,13 @@ select option {
   padding: 0 1px;
 }
 
-/* --- Страница «Инструменты»: сетка без пустот с адаптивным переносом ---
+/* --- Страница «Инструменты»: фиксированные шаблоны по ширине ---
    .tools-flow-scroll — видимая прокручиваемая область. .tools-flow-col —
-   колонка рядов (display:flex; flex-direction:column), высота ничем не
-   ограничена. Каждый .tools-flow-row — display:flex ряд фиксированной
+   колонка строк шаблона (display:flex; flex-direction:column), высота
+   ничем не ограничена. Каждая .tools-flow-row — display:flex ряд заданной
    высоты, где .tools-block растягивается по flex-grow и заполняет ряд без
-   остатка (без ручного round() — этим занимается браузер). */
+   остатка. Единственное редактируемое — высота ряда, через .tools-divider
+   между строками. */
 .tools-flow-scroll {
   flex: 1;
   min-height: 0;
@@ -1519,6 +1520,7 @@ select option {
   display: flex;
   width: 100%;
   flex-shrink: 0;
+  gap: 14px;
 }
 .tools-block {
   display: flex;
@@ -1527,56 +1529,29 @@ select option {
   background: var(--glass);
   border: 1px solid var(--glass-border);
   border-radius: 14px;
-  transition: opacity 0.1s, border-color 0.1s, box-shadow 0.1s;
 }
-.tools-block.is-dragging {
-  opacity: 0.35;
-}
-/* Индикатор точки вставки при перетаскивании — тонкая полоса у левого или
-   правого края блока-цели, под которую встанет перетаскиваемый блок. */
-.tools-block.is-drop-before {
-  box-shadow: inset 3px 0 0 var(--amber);
-}
-.tools-block.is-drop-after {
-  box-shadow: inset -3px 0 0 var(--amber);
-}
-/* Граница между блоками — внутри ряда тянем ширину, между рядами (в том
-   числе между визуальными строками, на которые один ряд распался из-за
-   переноса по ширине) тянем высоту. Разделитель есть и работает ВЕЗДЕ —
-   никаких нетаскаемых "заглушек". */
+/* Граница между строками шаблона — тянем, высота ряда меняется, а всё, что
+   ниже, просто опускается (сумма высот растёт, .tools-flow-scroll
+   прокручивает лишнее). */
 .tools-divider {
   flex-shrink: 0;
+  width: 100%;
+  height: 10px;
   background: transparent;
   touch-action: none;
   position: relative;
-}
-.tools-divider.is-x {
-  width: 10px;
-  cursor: col-resize;
-}
-.tools-divider.is-y {
-  width: 100%;
-  height: 10px;
   cursor: row-resize;
 }
 .tools-divider::after {
   content: "";
   position: absolute;
-  background: var(--glass-border);
-  border-radius: 2px;
-  transition: background 0.1s;
-}
-.tools-divider.is-x::after {
-  left: 4px;
-  top: 8px;
-  bottom: 8px;
-  width: 2px;
-}
-.tools-divider.is-y::after {
   top: 4px;
   left: 8px;
   right: 8px;
   height: 2px;
+  background: var(--glass-border);
+  border-radius: 2px;
+  transition: background 0.1s;
 }
 .tools-divider:hover::after,
 .tools-divider:active::after {
@@ -1591,16 +1566,8 @@ select option {
   font-size: 12.5px;
   font-weight: 600;
   color: var(--text-secondary);
-  cursor: grab;
   flex-shrink: 0;
   user-select: none;
-}
-.tools-widget-head:active {
-  cursor: grabbing;
-}
-.tools-widget-grip {
-  color: var(--text-tertiary);
-  flex-shrink: 0;
 }
 .tools-widget-body {
   flex: 1;
