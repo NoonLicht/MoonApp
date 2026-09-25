@@ -881,6 +881,82 @@ export default function BypassControlPage() {
       </div>
 
       <NetworkToolsPanel />
+      <KillSwitchPanel />
+    </div>
+  );
+}
+
+/**
+ * Kill-switch: см. server/ts/killSwitch.ts за полным объяснением ограничений
+ * (снятие блокировки — только вручную, состояние не переживает перезапуск
+ * приложения). Каждое включение/выключение реально трогает системный
+ * firewall и требует подтверждения UAC.
+ */
+function KillSwitchPanel() {
+  const { t } = useI18n();
+  const [status, setStatus] = useState<{
+    armed: boolean;
+    blocking: boolean;
+    proxyRunning: boolean;
+    error: string;
+  } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  const refresh = useCallback(() => {
+    api
+      .killSwitchStatus()
+      .then(setStatus)
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    refresh();
+    const id = setInterval(refresh, 5000);
+    return () => clearInterval(id);
+  }, [refresh]);
+
+  const toggle = async () => {
+    setBusy(true);
+    setError("");
+    try {
+      if (status?.armed) {
+        const r = await api.killSwitchDisarm();
+        if (!r.ok) setError(r.error || "error");
+      } else {
+        await api.killSwitchArm();
+      }
+      refresh();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div style={{ marginTop: 16 }}>
+      <SectionHead eyebrow={t("bypass.ksEyebrow")} title={t("bypass.ksTitle")} />
+      <Glass style={{ flexDirection: "column", alignItems: "stretch", gap: 8, padding: 12 }}>
+        <div className="muted-sm">{t("bypass.ksHint")}</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+          <Btn
+            variant={status?.armed ? "primary" : "default"}
+            icon={status?.blocking ? ShieldOff : Shield}
+            disabled={busy || !status}
+            onClick={() => void toggle()}
+            style={status?.blocking ? { borderColor: "var(--coral)" } : undefined}
+          >
+            {status?.armed ? t("bypass.ksDisarm") : t("bypass.ksArm")}
+          </Btn>
+          {status?.armed && (
+            <Badge tone={status.blocking ? "coral" : "teal"} mono>
+              {status.blocking ? t("bypass.ksBlocking") : t("bypass.ksArmedIdle")}
+            </Badge>
+          )}
+        </div>
+        {error && <div style={{ color: "var(--coral)" }}>{error}</div>}
+      </Glass>
     </div>
   );
 }
@@ -917,9 +993,8 @@ function consoleLineClass(line: string): string {
 }
 
 /**
- * Сетевые утилиты: ping/traceroute/сканер портов/публичный IP/Wi-Fi-мониторинг
- * (server/ts/netTools.ts). Kill-switch сознательно не реализован — см. финальный
- * отчёт: правка системного firewall без возможности живого теста слишком рискованна.
+ * Сетевые утилиты: ping/traceroute/сканер портов/публичный IP/Wi-Fi-мониторинг/
+ * спидтест (server/ts/netTools.ts). Kill-switch — см. KillSwitchPanel ниже.
  */
 function NetworkToolsPanel() {
   const { t } = useI18n();
@@ -1084,9 +1159,6 @@ function NetworkToolsPanel() {
           </pre>
         )}
       </Glass>
-      <div className="muted-sm" style={{ marginTop: 6 }}>
-        {t("bypass.netKillSwitchHint")}
-      </div>
     </div>
   );
 }

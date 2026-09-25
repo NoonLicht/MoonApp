@@ -37,6 +37,7 @@ import type {
   MonthSummary,
   BudgetCategories,
   BudgetImportResult,
+  KillSwitchStatus,
   QuickNote,
   NotesGitConfig,
   NotesGitSyncResult,
@@ -1555,6 +1556,9 @@ export const api = {
       "GET",
       "/nettools/speedtest",
     ),
+  killSwitchStatus: () => req<KillSwitchStatus>("GET", "/killswitch/status"),
+  killSwitchArm: () => req<{ ok: boolean }>("POST", "/killswitch/arm"),
+  killSwitchDisarm: () => req<{ ok: boolean; error?: string }>("POST", "/killswitch/disarm"),
 
   // --- Трекер времени за приложениями ---
   appTrackerStart: () => req<{ ok: boolean; error?: string }>("POST", "/apptracker/start"),

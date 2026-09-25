@@ -517,6 +517,13 @@ export interface BudgetCategories {
   expense: string[];
 }
 
+export interface KillSwitchStatus {
+  armed: boolean;
+  blocking: boolean;
+  proxyRunning: boolean;
+  error: string;
+}
+
 export interface BudgetImportResult {
   imported: number;
   skipped: number;

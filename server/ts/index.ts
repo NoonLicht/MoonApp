@@ -64,6 +64,7 @@ const imageEditorRouter = require("./routes/imageEditor") as express.Router;
 const automationRouter = require("./routes/automation") as express.Router;
 const budgetRouter = require("./routes/budget") as express.Router;
 const quickNotesRouter = require("./routes/quickNotes") as express.Router;
+const killSwitchRouter = require("./routes/killSwitch") as express.Router;
 const perPageProxy = require("./middleware/perPageProxy") as {
   perPageProxyMiddleware: express.RequestHandler;
 };
@@ -271,6 +272,7 @@ function createApp(): express.Express {
   app.use("/api/automation", automationRouter);
   app.use("/api/budget", budgetRouter);
   app.use("/api/quicknotes", quickNotesRouter);
+  app.use("/api/killswitch", killSwitchRouter);
 
   // Раздача собранного фронта (dist), если он собран.
   const dist = path.join(__dirname, "..", "dist");
@@ -347,6 +349,10 @@ function startServer(port: number = config.PORT, opts: { token?: string } = {}):
   const server = app.listen(port, "127.0.0.1", () => {
     logger.info("server.start", { port, auth: !!AUTH_TOKEN });
     console.log(`[server] listening on http://127.0.0.1:${port}`);
+    // Снимает правило блокировки kill-switch, если оно осталось от
+    // предыдущего (аварийно завершённого) запуска — см. killSwitch.ts.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    void (require("./killSwitch") as { startupCleanup(): Promise<void> }).startupCleanup();
   });
   server.on("error", (e) => {
     logger.error("server.error", { error: e.message });
