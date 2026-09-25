@@ -737,10 +737,6 @@ const HEIGHTS_KEY = "moonapp.tools.templateRowHeights";
 interface TemplateCell {
   toolId: ToolId;
   grow: number;
-  /** Минимальная ширина в % от ряда — если из-за неё блоки не помещаются
-   * все в одну линию (как json/diff/regex по 50% каждый — втроём не
-   * влезут), ряд переносит лишние блоки на следующую строку внутри себя. */
-  minPct?: number;
 }
 interface TemplateRow {
   key: string;
@@ -750,18 +746,12 @@ interface TemplateRow {
 type Tier = "wide" | "medium" | "narrow";
 
 const WIDE_TEMPLATE: TemplateRow[] = [
-  {
-    key: "big",
-    defaultHeight: SIZE_H.large,
-    // Минимум 50% ширины каждому — втроём они не влезают в одну линию
-    // (3×50% = 150%), поэтому третий блок переносится на вторую строку
-    // внутри этого же ряда (см. рендер: ряды с minPct сами flex-wrap).
-    cells: [
-      { toolId: "json", grow: 1, minPct: 50 },
-      { toolId: "diff", grow: 1, minPct: 50 },
-      { toolId: "regex", grow: 1, minPct: 50 },
-    ],
-  },
+  // json/diff — по 50% каждому (2 ячейки с одинаковым grow ровно и делят
+  // ряд пополам). Regex — отдельным рядом НИЖЕ, а не в одной строке с
+  // json/diff: так между ним и json/diff появляется своя граница-разделитель,
+  // и высоту json/diff можно тянуть независимо от regex.
+  { key: "top", defaultHeight: SIZE_H.large, cells: [{ toolId: "json", grow: 1 }, { toolId: "diff", grow: 1 }] },
+  { key: "regex", defaultHeight: SIZE_H.large, cells: [{ toolId: "regex", grow: 1 }] },
   {
     key: "rest",
     defaultHeight: SIZE_H.medium,
@@ -905,48 +895,23 @@ export default function ToolsPage() {
                     onPointerUp={onRowDividerUp}
                   />
                 )}
-                {(() => {
-                  const hasMinPct = row.cells.some((c) => c.minPct);
-                  return (
-                    <div
-                      className="tools-flow-row"
-                      style={hasMinPct ? { flexWrap: "wrap" } : { height }}
-                    >
-                      {row.cells.map((c) => {
-                        const tool = byId[c.toolId];
-                        const Icon = tool.icon;
-                        return (
-                          <div
-                            key={c.toolId}
-                            className="tools-block"
-                            style={
-                              c.minPct
-                                ? {
-                                    flexGrow: c.grow,
-                                    // Минус половина gap (.tools-flow-row { gap: 14px }) — иначе
-                                    // два блока по 50% плюс зазор между ними уже не влезают в
-                                    // одну строку, и третий "лишний" блок переносится на новую
-                                    // строку, даже когда места для двоих хватает впритык.
-                                    flexBasis: `calc(${c.minPct}% - 7px)`,
-                                    minWidth: `calc(${c.minPct}% - 7px)`,
-                                    height,
-                                  }
-                                : { flexGrow: c.grow, flexBasis: 0 }
-                            }
-                          >
-                            <div className="tools-widget-head">
-                              <Icon size={14} />
-                              <span>{t(`tools.tab_${c.toolId}`)}</span>
-                            </div>
-                            <div className="tools-widget-body">
-                              <tool.Component />
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  );
-                })()}
+                <div className="tools-flow-row" style={{ height }}>
+                  {row.cells.map((c) => {
+                    const tool = byId[c.toolId];
+                    const Icon = tool.icon;
+                    return (
+                      <div key={c.toolId} className="tools-block" style={{ flexGrow: c.grow, flexBasis: 0 }}>
+                        <div className="tools-widget-head">
+                          <Icon size={14} />
+                          <span>{t(`tools.tab_${c.toolId}`)}</span>
+                        </div>
+                        <div className="tools-widget-body">
+                          <tool.Component />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             );
           })}
