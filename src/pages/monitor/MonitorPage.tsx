@@ -17,8 +17,12 @@ import {
   ChevronLeft,
   Timer,
   Play,
+  FolderOpen,
+  TerminalSquare,
+  Archive,
+  Trash2,
 } from "lucide-react";
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, Treemap } from "recharts";
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { Glass, Select, SectionHead, Btn, Field, Badge, EmptyHint } from "@/components/ui";
 import { useContextMenu, copyToClipboard } from "@/components/ContextMenu";
 import ToolbarMenu from "@/components/ToolbarMenu";
@@ -1228,21 +1232,158 @@ const TREEMAP_COLORS = [
   "var(--coral, #ea6b6b)",
 ];
 
-function DiskTreemapTooltip({
-  active,
-  payload,
+interface Rect {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+/**
+ * Классический squarified-treemap (Bruls/Huizing/van Wijk): раскладывает
+ * элементы по площади так, чтобы прямоугольники оставались близки к квадрату
+ * (не превращались в тонкие полоски). Реализация на голых <div>, без
+ * recharts — на реальных дисках Treemap из recharts либо не рендерился
+ * вовсе, либо конкретно на этих данных ломался необъяснимо; собственная
+ * реализация полностью под контролем и не зависит от внутренней магии
+ * библиотеки.
+ */
+function squarify(items: DiskNode[], x: number, y: number, w: number, h: number): (DiskNode & Rect)[] {
+  const total = items.reduce((s, i) => s + i.size, 0);
+  if (total <= 0 || items.length === 0 || w <= 0 || h <= 0) return [];
+  const scale = (w * h) / total;
+  const scaled = items.map((i) => ({ ...i, area: Math.max(i.size * scale, 0.01) }));
+
+  const worstRatio = (row: { area: number }[], rowArea: number, side: number): number => {
+    const rowLen = rowArea / side;
+    let max = -Infinity;
+    for (const it of row) {
+      const itemLen = it.area / rowLen;
+      const ratio = Math.max(itemLen / rowLen, rowLen / itemLen);
+      if (ratio > max) max = ratio;
+    }
+    return max;
+  };
+
+  const result: (DiskNode & Rect)[] = [];
+  let remaining = scaled;
+  let rx = x;
+  let ry = y;
+  let rw = w;
+  let rh = h;
+
+  while (remaining.length > 0 && rw > 0 && rh > 0) {
+    const horizontal = rw >= rh;
+    const side = horizontal ? rh : rw;
+    let row: typeof remaining = [];
+    let rowArea = 0;
+    let bestWorst = Infinity;
+    for (let i = 0; i < remaining.length; i++) {
+      const testRow = [...row, remaining[i]];
+      const testArea = rowArea + remaining[i].area;
+      const worst = worstRatio(testRow, testArea, side);
+      if (worst <= bestWorst) {
+        row = testRow;
+        rowArea = testArea;
+        bestWorst = worst;
+      } else break;
+    }
+    const rowLen = rowArea / side;
+    let offset = 0;
+    for (const it of row) {
+      const itemLen = it.area / rowLen;
+      if (horizontal) {
+        result.push({ ...it, x: rx, y: ry + offset, w: rowLen, h: itemLen });
+      } else {
+        result.push({ ...it, x: rx + offset, y: ry, w: itemLen, h: rowLen });
+      }
+      offset += itemLen;
+    }
+    remaining = remaining.slice(row.length);
+    if (horizontal) {
+      rx += rowLen;
+      rw -= rowLen;
+    } else {
+      ry += rowLen;
+      rh -= rowLen;
+    }
+  }
+  return result;
+}
+
+/** Собственный treemap на <div>-ах (см. squarify выше) вместо recharts. */
+function DiskTreemap({
+  nodes,
+  onOpenDir,
+  onOpenBucket,
+  onMenu,
 }: {
-  active?: boolean;
-  payload?: { payload: DiskNode }[];
+  nodes: DiskNode[];
+  onOpenDir: (n: DiskNode) => void;
+  onOpenBucket: (n: DiskNode) => void;
+  onMenu: (n: DiskNode, e: React.MouseEvent) => void;
 }) {
-  if (!active || !payload?.length) return null;
-  const node = payload[0].payload;
+  const ref = useRef<HTMLDivElement>(null);
+  const [box, setBox] = useState({ w: 0, h: 420 });
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return undefined;
+    const ro = new ResizeObserver(([entry]) =>
+      setBox({ w: entry.contentRect.width, h: entry.contentRect.height }),
+    );
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const rects = useMemo(
+    () => squarify(nodes, 0, 0, box.w, box.h),
+    [nodes, box.w, box.h],
+  );
+
   return (
-    <div className="chart-tooltip">
-      <div>{node.name}</div>
-      <div className="muted-sm">
-        {fmtBytes(node.size)} · {node.fileCount} файлов
-      </div>
+    <div ref={ref} style={{ position: "relative", width: "100%", height: 420, overflow: "hidden" }}>
+      {rects.map((r, i) => {
+        const clickable = (r.isDir && (r.hasChildren || r.fileCount > 0)) || r.isFilesBucket;
+        const showLabel = r.w > 50 && r.h > 22;
+        return (
+          <div
+            key={`${r.path}|${r.name}|${i}`}
+            title={`${r.name} — ${fmtBytes(r.size)}${r.fileCount ? ` · ${r.fileCount} файлов` : ""}`}
+            onClick={() => {
+              if (r.isFilesBucket) onOpenBucket(r);
+              else if (r.isDir) onOpenDir(r);
+            }}
+            onContextMenu={(e) => {
+              if (r.path) onMenu(r, e);
+            }}
+            style={{
+              position: "absolute",
+              left: r.x,
+              top: r.y,
+              width: Math.max(0, r.w - 2),
+              height: Math.max(0, r.h - 2),
+              background: TREEMAP_COLORS[i % TREEMAP_COLORS.length],
+              opacity: r.isDir ? 0.55 : 0.4,
+              border: "1px solid var(--glass-border)",
+              borderRadius: 4,
+              boxSizing: "border-box",
+              overflow: "hidden",
+              padding: "4px 6px",
+              cursor: clickable ? "pointer" : "default",
+              color: "var(--text-primary)",
+              fontSize: 11,
+            }}
+          >
+            {showLabel && (
+              <>
+                <div style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.name}</div>
+                {r.h > 36 && <div className="muted-sm">{fmtBytes(r.size)}</div>}
+              </>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -1250,7 +1391,11 @@ function DiskTreemapTooltip({
 /**
  * Анализатор занятого места на диске (аналог WinDirStat): выбор корня →
  * фоновое сканирование (server/ts/diskScan.ts, попадает в общий Task Manager
- * как engine "diskscan") → treemap с drill-down по клику на плитку.
+ * как engine "diskscan") → собственный treemap (DiskTreemap выше) с
+ * drill-down по клику; каждый уровень дерева подгружается лениво с сервера
+ * (api.diskScanResult(jobId, path)) — полное дерево на клиент целиком не
+ * скачивается, только уже развёрнутые по пути уровни, поэтому даже на
+ * полном диске в памяти рендерера не оседают десятки МБ JSON.
  */
 function DiskScanPanel() {
   const { t } = useI18n();
@@ -1260,21 +1405,108 @@ function DiskScanPanel() {
   const [status, setStatus] = useState<DiskScanStatus | null>(null);
   const [pathStack, setPathStack] = useState<DiskNode[]>([]);
   const [error, setError] = useState("");
-  const [filesLoading, setFilesLoading] = useState(false);
+  const [info, setInfo] = useState("");
+  const [levelLoading, setLevelLoading] = useState(false);
+  const menu = useContextMenu();
+
+  // Клик по папке — подгружаем ОДИН уровень (сама папка + её прямые дети, без
+  // внуков) лениво с сервера вместо того, чтобы держать всё дерево на клиенте
+  // сразу (см. api.diskScanResult / server/ts/diskScan.ts:getNode).
+  const openDir = async (node: DiskNode) => {
+    if (!jobId) return;
+    setLevelLoading(true);
+    try {
+      const level = await api.diskScanResult(jobId, node.path);
+      setPathStack((s) => [...s, level]);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setLevelLoading(false);
+    }
+  };
 
   // Клик по бакету "Файлы (N)" — реальный список файлов этой ОДНОЙ папки
   // считается лениво на сервере (см. server/ts/diskScan.ts:listFiles), а не
   // хранится заранее в дереве, поэтому запрашиваем его только сейчас.
   const openFilesBucket = async (bucket: DiskNode) => {
-    setFilesLoading(true);
+    setLevelLoading(true);
     try {
       const { files } = await api.diskScanFiles(bucket.path);
       setPathStack((s) => [...s, { ...bucket, children: files }]);
     } catch (e) {
       setError((e as Error).message);
     } finally {
-      setFilesLoading(false);
+      setLevelLoading(false);
     }
+  };
+
+  // Убрать плитку из текущего уровня после успешного действия (удаление) —
+  // без повторного похода на сервер за всем уровнем заново.
+  const removeFromCurrentLevel = (nodePath: string) => {
+    setPathStack((s) => {
+      const stack = [...s];
+      const top = stack[stack.length - 1];
+      if (top?.children) {
+        stack[stack.length - 1] = { ...top, children: top.children.filter((c) => c.path !== nodePath) };
+      }
+      return stack;
+    });
+  };
+
+  const handleDelete = async (node: DiskNode) => {
+    if (!window.confirm(t("monitor.diskScanDeleteConfirm", { name: node.name }))) return;
+    try {
+      await api.diskScanDelete(node.path, node.isDir);
+      removeFromCurrentLevel(node.path);
+      setInfo(t("monitor.diskScanDeleteDone", { name: node.name }));
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  };
+
+  const handleCompress = async (node: DiskNode) => {
+    try {
+      const { dest } = await api.diskScanCompress(node.path);
+      setInfo(t("monitor.diskScanCompressStarted", { name: dest }));
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  };
+
+  const openMenuFor = (node: DiskNode, e: React.MouseEvent) => {
+    // Псевдо-узлы ("…ещё N элементов", бакет "Файлы (N)") не соответствуют
+    // одному реальному пути на диске — действия над ними не имеют смысла.
+    if (node.isFilesBucket) return;
+    menu.open(e, [
+      {
+        label: t("monitor.diskScanCopyPath"),
+        icon: Copy,
+        onClick: () => void copyToClipboard(node.path),
+      },
+      {
+        label: t("monitor.diskScanReveal"),
+        icon: FolderOpen,
+        onClick: () => void api.diskScanReveal(node.path).catch((e) => setError((e as Error).message)),
+      },
+      {
+        label: t("monitor.diskScanOpenConsole"),
+        icon: TerminalSquare,
+        onClick: () =>
+          void api.diskScanConsole(node.path, node.isDir).catch((e) => setError((e as Error).message)),
+      },
+      {
+        label: t("monitor.diskScanCompress"),
+        icon: Archive,
+        onClick: () => void handleCompress(node),
+      },
+      { separator: true },
+      {
+        label: node.isDir ? t("monitor.diskScanDeleteDir") : t("monitor.diskScanDeleteFile"),
+        icon: Trash2,
+        danger: true,
+        onClick: () => void handleDelete(node),
+      },
+    ]);
   };
 
   useEffect(() => {
@@ -1399,7 +1631,13 @@ function DiskScanPanel() {
         </div>
       )}
 
-      {filesLoading && (
+      {info && (
+        <div className="muted-sm" style={{ color: "var(--teal, #3fc7ab)" }}>
+          {info}
+        </div>
+      )}
+
+      {levelLoading && (
         <div className="muted-sm" style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <RefreshCw size={14} className="spin" />
           {t("monitor.diskScanFilesLoading")}
@@ -1428,73 +1666,7 @@ function DiskScanPanel() {
           {treemapData.length === 0 ? (
             <EmptyHint icon={HardDrive} text={t("monitor.diskScanEmptyDir")} />
           ) : (
-            <ResponsiveContainer width="100%" height={420}>
-              <Treemap
-                data={treemapData}
-                dataKey="size"
-                nameKey="name"
-                stroke="var(--glass-border)"
-                // recharts типизирует `content` как готовый ReactElement, а не как
-                // функцию-рендерер (хотя рантайм принимает именно функцию) — как и
-                // в остальных примерах recharts, тип обходится приведением ниже.
-                content={
-                  ((props: {
-                    x: number;
-                    y: number;
-                    width: number;
-                    height: number;
-                    index: number;
-                    payload: DiskNode;
-                  }) => {
-                    const { x, y, width, height, index, payload } = props;
-                    const node: DiskNode | undefined = payload;
-                    // recharts помимо реальных узлов рендерит и служебный корневой
-                    // прямоугольник без payload — раньше это падало с "Cannot read
-                    // properties of undefined (reading 'isDir')".
-                    if (!node || width < 2 || height < 2) return <g />;
-                    const color = TREEMAP_COLORS[index % TREEMAP_COLORS.length];
-                    const showLabel = width > 50 && height > 24;
-                    const clickable = (node.isDir && !!node.children) || node.isFilesBucket;
-                    return (
-                      <g
-                        onClick={() => {
-                          if (node.isFilesBucket) void openFilesBucket(node);
-                          else if (node.isDir && node.children) setPathStack((s) => [...s, node]);
-                        }}
-                        style={{ cursor: clickable ? "pointer" : "default" }}
-                      >
-                        <rect
-                          x={x}
-                          y={y}
-                          width={width}
-                          height={height}
-                          style={{
-                            fill: color,
-                            fillOpacity: node.isDir ? 0.55 : 0.35,
-                            stroke: "var(--glass-border)",
-                          }}
-                        />
-                        {showLabel && (
-                          <text
-                            x={x + 6}
-                            y={y + 16}
-                            fontSize={11}
-                            fill="var(--text-primary)"
-                            style={{ pointerEvents: "none" }}
-                          >
-                            {node.name.length > 24 ? node.name.slice(0, 24) + "…" : node.name}
-                          </text>
-                        )}
-                      </g>
-                    );
-                    // recharts требует тип ReactElement для `content`, но реально
-                    // вызывает как функцию-рендерер — приведение типа безопасно.
-                  }) as unknown as React.ReactElement
-                }
-              >
-                <Tooltip content={<DiskTreemapTooltip />} />
-              </Treemap>
-            </ResponsiveContainer>
+            <DiskTreemap nodes={treemapData} onOpenDir={(n) => void openDir(n)} onOpenBucket={(n) => void openFilesBucket(n)} onMenu={openMenuFor} />
           )}
         </>
       )}

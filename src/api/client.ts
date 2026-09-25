@@ -1610,10 +1610,19 @@ export const api = {
   diskScanRoots: () => req<{ roots: string[] }>("GET", "/diskscan/roots"),
   diskScanStart: (path: string) => req<{ id: string }>("POST", "/diskscan/start", { path }),
   diskScanStatus: (id: string) => req<DiskScanStatus>("GET", `/diskscan/status/${id}`),
-  diskScanResult: (id: string) => req<DiskNode>("GET", `/diskscan/result/${id}`),
+  // Без path — корень; с path — один уровень поддерева (узел + прямые дети,
+  // без внуков), см. пояснение в server/ts/diskScan.ts:getNode.
+  diskScanResult: (id: string, path?: string) =>
+    req<DiskNode>("GET", `/diskscan/result/${id}${path ? `?path=${encodeURIComponent(path)}` : ""}`),
   diskScanCancel: (id: string) => req<{ ok: boolean }>("POST", `/diskscan/cancel/${id}`),
   diskScanFiles: (path: string) =>
     req<{ files: DiskNode[] }>("GET", `/diskscan/files?path=${encodeURIComponent(path)}`),
+  diskScanReveal: (path: string) => req<{ ok: boolean }>("POST", "/diskscan/reveal", { path }),
+  diskScanConsole: (path: string, isDir: boolean) =>
+    req<{ ok: boolean }>("POST", "/diskscan/console", { path, isDir }),
+  diskScanDelete: (path: string, isDir: boolean) =>
+    req<{ ok: boolean }>("POST", "/diskscan/delete", { path, isDir }),
+  diskScanCompress: (path: string) => req<{ ok: boolean; dest: string }>("POST", "/diskscan/compress", { path }),
 
   // --- Закладки ---
   bookmarksList: () => req<Bookmark[]>("GET", "/bookmarks"),

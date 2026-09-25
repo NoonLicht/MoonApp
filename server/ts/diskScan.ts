@@ -32,6 +32,7 @@
 import fs from "fs";
 import path from "path";
 import crypto from "crypto";
+import { spawn } from "child_process";
 import logger from "./logger";
 import { registerProvider, type TmTask } from "./taskRegistry";
 
@@ -45,6 +46,9 @@ export interface DiskNode {
   /** Узел — агрегат обычных файлов папки, а не сама папка/файл; клик по
    *  нему должен лениво запросить listFiles() вместо использования children. */
   isFilesBucket?: boolean;
+  /** Только в "плоской" выдаче getNode(): есть ли у ЭТОГО ребёнка свои
+   *  дети на сервере (можно ли углубиться кликом), без их пересылки. */
+  hasChildren?: boolean;
 }
 
 interface Job {
@@ -268,6 +272,126 @@ async function scanTree(root: string, job: Job): Promise<DiskNode> {
       pendingChildren: 0,
     });
   });
+}
+
+function shallowNode(node: DiskNode): DiskNode {
+  return {
+    name: node.name,
+    path: node.path,
+    size: node.size,
+    isDir: node.isDir,
+    fileCount: node.fileCount,
+    isFilesBucket: node.isFilesBucket,
+    children: node.children?.map((c) => ({
+      name: c.name,
+      path: c.path,
+      size: c.size,
+      isDir: c.isDir,
+      fileCount: c.fileCount,
+      isFilesBucket: c.isFilesBucket,
+      hasChildren: !!(c.children && c.children.length > 0),
+    })),
+  };
+}
+
+function findNodeByPath(node: DiskNode, targetPath: string): DiskNode | null {
+  if (node.path === targetPath) return node;
+  if (!node.children) return null;
+  for (const c of node.children) {
+    const found = findNodeByPath(c, targetPath);
+    if (found) return found;
+  }
+  return null;
+}
+
+/**
+ * Отдаёт ОДИН уровень дерева (сам узел + его прямые дети, без вложенных
+ * внуков), а не всё поддерево целиком. Полное дерево (job.result) держится
+ * только в памяти сервера. Раньше фронт получал сразу всё поддерево на
+ * каждый клик — при полном скане диска это десятки МБ вложенного JSON,
+ * которые оседали в памяти рендерера Electron и удерживались там, вызывая
+ * периодические паузы сборщика мусора (заметные как секундная задержка при
+ * наведении на любую кнопку во всём приложении, не только на этой странице).
+ */
+export function getNode(jobId: string, targetPath: string): DiskNode | null {
+  const job = jobs.get(jobId);
+  if (!job || !job.result) return null;
+  const found = targetPath ? findNodeByPath(job.result, targetPath) : job.result;
+  return found ? shallowNode(found) : null;
+}
+
+function psQuote(p: string): string {
+  return p.replace(/'/g, "''");
+}
+
+function runPowerShell(script: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const child = spawn("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command", script], {
+      windowsHide: true,
+    });
+    let stderr = "";
+    child.stderr.on("data", (d) => (stderr += String(d)));
+    child.on("error", reject);
+    child.on("close", (code) => (code === 0 ? resolve() : reject(new Error(stderr.trim() || `exit ${code}`))));
+  });
+}
+
+/** Открыть проводник с выделенным файлом/папкой. */
+export function revealInExplorer(p: string): void {
+  if (process.platform === "win32") {
+    spawn("explorer", ["/select,", p], { windowsHide: true, detached: true, stdio: "ignore" }).unref();
+  } else if (process.platform === "darwin") {
+    spawn("open", ["-R", p], { detached: true, stdio: "ignore" }).unref();
+  } else {
+    spawn("xdg-open", [path.dirname(p)], { detached: true, stdio: "ignore" }).unref();
+  }
+}
+
+/** Открыть терминал с рабочей директорией на этом пути (для файла — на его папке). */
+export function openConsole(p: string, isDir: boolean): void {
+  const dir = isDir ? p : path.dirname(p);
+  if (process.platform === "win32") {
+    spawn("cmd.exe", ["/c", "start", "", "cmd.exe"], {
+      cwd: dir,
+      detached: true,
+      stdio: "ignore",
+    }).unref();
+  } else if (process.platform === "darwin") {
+    spawn("open", ["-a", "Terminal", dir], { detached: true, stdio: "ignore" }).unref();
+  } else {
+    spawn("x-terminal-emulator", [], { cwd: dir, detached: true, stdio: "ignore" }).unref();
+  }
+}
+
+/** Удаление в корзину (не насовсем) — на Windows через .NET FileSystem API,
+ *  восстановимо из корзины, как обычное удаление в проводнике. */
+export async function deleteToTrash(p: string, isDir: boolean): Promise<void> {
+  if (process.platform !== "win32") {
+    await fs.promises.rm(p, { recursive: true, force: true });
+    return;
+  }
+  const method = isDir ? "DeleteDirectory" : "DeleteFile";
+  const script =
+    `Add-Type -AssemblyName Microsoft.VisualBasic; ` +
+    `[Microsoft.VisualBasic.FileIO.FileSystem]::${method}('${psQuote(p)}', 'OnlyErrorDialogs', 'SendToRecycleBin')`;
+  await runPowerShell(script);
+}
+
+/** Сжатие в .zip рядом с исходником — запускается в фоне (fire-and-forget),
+ *  чтобы не держать HTTP-запрос открытым на время архивации большой папки. */
+export function compressPath(p: string): string {
+  const dest = `${p.replace(/[\\/]+$/, "")}.zip`;
+  if (process.platform === "win32") {
+    const script = `Compress-Archive -LiteralPath '${psQuote(p)}' -DestinationPath '${psQuote(dest)}' -Force`;
+    spawn("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command", script], {
+      windowsHide: true,
+      detached: true,
+      stdio: "ignore",
+    }).unref();
+  } else {
+    spawn("zip", ["-r", dest, p], { detached: true, stdio: "ignore" }).unref();
+  }
+  return dest;
 }
 
 /** Ленивый список файлов ОДНОЙ папки (без рекурсии) — вызывается по клику на

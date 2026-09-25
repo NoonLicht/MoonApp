@@ -362,6 +362,9 @@ export interface DiskNode {
   /** Узел — агрегат обычных файлов папки; клик должен лениво запросить
    *  diskScanFiles(node.path) вместо использования children. */
   isFilesBucket?: boolean;
+  /** Только в "плоской" выдаче diskScanResult(): есть ли у ребёнка свои
+   *  дети на сервере (можно ли углубиться кликом через diskScanResult(id, path)). */
+  hasChildren?: boolean;
 }
 
 export interface DiskScanStatus {
