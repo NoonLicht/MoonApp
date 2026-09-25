@@ -85,8 +85,11 @@ describe("server/bookmarks — режим чтения и постфактум-�
     server.close();
   });
 
-  it("readNow скачивает и очищает страницу, не сохраняя её", async () => {
-    const article = await engine.readNow(baseUrl);
+  it("fetchArticle скачивает и очищает страницу (без сохранения)", async () => {
+    // ИИ-ключ в тестовом storage не настроен — cleanupArticleText внутри
+    // fetchArticle падает и тихо откатывается на сырой HTML→текст вырез
+    // (см. try/catch в fetchArticle), поэтому проверяем именно его поведение.
+    const article = await engine.fetchArticle(baseUrl);
     expect(article.title).toBe("Test Article");
     expect(article.text).toContain("Заголовок");
     expect(article.text).toContain("Первый абзац.");

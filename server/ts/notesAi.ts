@@ -470,6 +470,68 @@ export async function formatNote(opts: NotesAiFormatOptions): Promise<NotesAiRes
   };
 }
 
+const ARTICLE_CLEANUP_SYSTEM_PROMPT =
+  "Ты — редактор, который готовит извлечённый со страницы текст статьи для чтения. " +
+  "Удаляешь мусор (меню, рекламу, подписи на кнопки, cookie-баннеры, ссылки " +
+  "\"читайте также\", подвал сайта, повторяющиеся заголовки навигации), но " +
+  "НЕ меняешь и не сокращаешь сам текст статьи.";
+
+function buildArticleCleanupPrompt(text: string, title: string, part: number, total: number): string {
+  const where =
+    total > 1
+      ? `Ниже ФРАГМЕНТ ${part} из ${total} извлечённого текста статьи «${title || "без названия"}» (это кусок одной статьи, продолжение — в следующем фрагменте).`
+      : `Ниже текст статьи «${title || "без названия"}», извлечённый со страницы автоматически.`;
+  return `${where}
+Он мог зацепить постороннее: меню сайта, рекламные блоки, призывы подписаться,
+плашки cookie/согласий, блоки "похожие статьи"/"читайте также", подвал сайта,
+кнопки "поделиться". Убери ВСЁ, что не относится к самой статье.
+Сам текст статьи оставь ПОЛНОСТЬЮ, дословно — не сокращай, не пересказывай,
+не меняй формулировки, не добавляй ничего от себя.
+
+Верни ТОЛЬКО очищенный текст статьи, без пояснений.
+=== ТЕКСТ ===
+${text}`;
+}
+
+/**
+ * Прогоняет извлечённый текст статьи через ту же модель, что и оформление
+ * заметок — убирает меню/рекламу/мусор навигации, которые остались после
+ * грубого HTML→текст парсера (server/ts/bookmarks.ts). Если ключ ИИ не
+ * настроен или запрос упал — бросает ошибку, вызывающий код обязан тихо
+ * откатиться на исходный текст (сохранение статьи не должно падать из-за
+ * недоступности ИИ).
+ */
+export async function cleanupArticleText(
+  text: string,
+  title: string,
+  appPage?: unknown,
+): Promise<string> {
+  const raw = String(text || "").trim();
+  if (!raw) return raw;
+  const blocks = splitForFormat(raw);
+  if (blocks.length > MAX_CHUNKS) return raw; // статья слишком длинная — не рискуем, отдаём как есть
+  const target = await aiTarget(appPage);
+  const parts: string[] = [];
+  for (let i = 0; i < blocks.length; i++) {
+    const answer = await askModel(
+      target,
+      buildArticleCleanupPrompt(blocks[i], title, i + 1, blocks.length),
+      appPage,
+      maxTokensFor(blocks[i].length),
+      ARTICLE_CLEANUP_SYSTEM_PROMPT,
+    );
+    const clean = cleanupAnswer(answer);
+    if (!clean) throw new Error("notes_ai_empty_response");
+    parts.push(clean);
+  }
+  const content = parts.join("\n\n").trim();
+  // Та же защита от "потери текста", что у formatNote: если модель вернула
+  // заметно меньше половины — она что-то выкинула сверх мусора, лучше отдать
+  // исходный вырез, чем статью с дырами.
+  if (content.length < raw.length * MIN_KEEP_RATIO) return raw;
+  return content;
+}
+
 const QUICK_NOTE_SYSTEM_PROMPT =
   "Ты — редактор личных заметок. Приводишь расшифровку устной голосовой " +
   "заметки к аккуратному структурированному Markdown, не меняя смысл и не " +

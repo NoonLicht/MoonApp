@@ -10,6 +10,7 @@ import fs from "fs";
 import config from "./config";
 import logger from "./logger";
 import { writeFile as vaultWriteFile } from "./myspace-vault";
+import { cleanupArticleText } from "./notesAi";
 
 const { FILES } = config;
 
@@ -116,9 +117,14 @@ function extractTitle(html: string, fallback: string): string {
   return m ? m[1].trim() || fallback : fallback;
 }
 
-async function fetchArticle(url: string): Promise<{ title: string; text: string }> {
+/** Экспортируется в основном ради тестируемости (см. tests/bookmarks.test.ts) —
+ * прямого HTTP-эндпоинта у неё больше нет, читаемый текст добывается только
+ * при saveForLater/saveArticleFor. */
+export async function fetchArticle(url: string): Promise<{ title: string; text: string }> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 15000);
+  let title: string;
+  let text: string;
   try {
     const res = await fetch(url, {
       signal: controller.signal,
@@ -126,10 +132,22 @@ async function fetchArticle(url: string): Promise<{ title: string; text: string 
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const html = await res.text();
-    return { title: extractTitle(html, url), text: htmlToPlainText(html) };
+    title = extractTitle(html, url);
+    text = htmlToPlainText(html);
   } finally {
     clearTimeout(timeout);
   }
+  // Грубый HTML→текст парсер выше цепляет остатки меню/рекламы/cookie-баннеров
+  // мимо тегов nav/header/footer. Прогоняем через тот же ИИ-провайдер, что и
+  // оформление заметок (ключ уже настроен в приложении, myspace-ai/AI-чат) —
+  // убирает мусор, сам текст статьи не трогает. Если ИИ не настроен или упал —
+  // тихо остаёмся с сырым вырезом, сохранение статьи не должно из-за этого падать.
+  try {
+    text = await cleanupArticleText(text, title, null);
+  } catch (e) {
+    logger.warn("bookmarks.ai_cleanup_failed", { url, error: (e as Error).message });
+  }
+  return { title, text };
 }
 
 function slugifyForFilename(s: string): string {

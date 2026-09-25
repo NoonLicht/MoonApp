@@ -88,6 +88,7 @@ describe("server/notesAi — форма модуля и sidecar-исходник
         "aiConfig",
         "aiProviders",
         "cleanupAnswer",
+        "cleanupArticleText",
         "formatNote",
         "moveSource",
         "providerModels",

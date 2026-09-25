@@ -62,6 +62,11 @@ const PORTALED = [
     css: "src/styles/movies.css",
     cls: "mv-modal-backdrop",
   },
+  {
+    src: "src/pages/myspace/parts/BookmarksView.tsx",
+    css: "src/styles/arch.css",
+    cls: "arch-view-overlay",
+  },
 ];
 
 describe("портальные окна: клики не проходят сквозь окно", () => {
