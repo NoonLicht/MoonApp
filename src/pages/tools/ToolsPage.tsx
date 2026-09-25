@@ -701,25 +701,48 @@ function UnitsTool() {
   );
 }
 
-/* ───────────────────────── Page: плиточная сетка (BSP-тайлинг) ─────────────────────────
+
+/* ───────────────────────── Page: свободная сетка (ряды × ячейки) ─────────────────────────
  *
- * Раньше сетка была CSS Grid'ом с dense-packing: карточки "плавали" — их
- * реальные границы не совпадали с занимаемыми клетками, соседи наезжали друг
- * на друга, а resize:both за уголок мог утащить карточку за пределы
- * контейнера без возможности вернуть обратно (у самого uголка не было
- * верхней/левой границы, которую можно было бы потянуть назад).
+ * Раньше сетка была деревом бинарных разбиений (BSP) на ФИКСИРОВАННОЙ
+ * площади: контейнер имел явную высоту, и перетягивание любой границы
+ * перераспределяло место между двумя соседями внутри этой же высоты — то
+ * есть "растянуть один блок" неизбежно означало "сжать другой", а общая
+ * высота сетки никогда не могла вырасти больше окна. Это именно то, на что
+ * пожаловался пользователь: блоки всегда выглядели тесно, а тайлинг был
+ * прижат к высоте окна.
  *
- * Теперь это честный тайлинг как в оконных менеджерах (i3/BSP): дерево
- * бинарных разбиений прямоугольника — каждый узел либо инструмент (лист),
- * либо разбиение родительского прямоугольника на две части по горизонтали
- * ("x") или вертикали ("y") с заданным соотношением. Такое разбиение
- * математически не может оставить пустот или наложений — сумма долей двух
- * половин всегда равна родительскому прямоугольнику. Тянуть можно только
- * саму границу между двумя соседними блоками (боковую/верхнюю/нижнюю) —
- * она двигает ровно эту пару, все остальные блоки остаются на месте.
- * Порядок инструментов меняется перетаскиванием заголовка одного блока на
- * заголовок другого — блоки меняются местами, а не "плавают" поверх сетки.
+ * Новая модель — стопка РЯДОВ, каждый со своей независимой высотой (в px,
+ * никак не связанной с высотой соседних рядов), и внутри каждого ряда —
+ * ЯЧЕЙКИ, поделившие его ширину в заданных пропорциях. Общая высота сетки —
+ * это просто сумма высот рядов, поэтому:
+ *   - тайлинг ничем не ограничен по высоте — сумма рядов растёт как угодно,
+ *     а .tools-tile-scroll просто прокручивает то, что не влезло;
+ *   - перетягивание нижней границы ряда меняет ТОЛЬКО высоту этого ряда —
+ *     соседние ряды не сжимаются, они просто опускаются ниже (сумма высот
+ *     выросла, а не была перераспределена);
+ *   - перетягивание границы МЕЖДУ ячейками внутри ряда по-прежнему меняет
+ *     пропорцию их ширины (ширина реально ограничена шириной страницы —
+ *     тут "растянуть один — сжать другой" ожидаемо и уместно).
+ * Порядок инструментов меняется перетаскиванием заголовка одной ячейки на
+ * другую — они меняются местами в любых двух рядах.
  */
+
+interface Cell {
+  toolId: ToolId;
+  width: number; // доля ширины ряда, ячейки одного ряда суммарно дают 1
+}
+interface Row {
+  height: number; // px, независимо от других рядов
+  cells: Cell[];
+}
+type Layout = Row[];
+
+const LAYOUT_KEY = "moonapp.tools.layout";
+const MIN_CELL_W = 220;
+const MIN_ROW_H = 160;
+const DIVIDER_PX = 8;
+const GAP = 8;
 
 const TOOLS: { id: ToolId; icon: React.ElementType; Component: React.ComponentType }[] = [
   { id: "json", icon: Braces, Component: JsonTool },
@@ -732,91 +755,69 @@ const TOOLS: { id: ToolId; icon: React.ElementType; Component: React.ComponentTy
 ];
 const TOOL_IDS = TOOLS.map((x) => x.id);
 
-const TREE_KEY = "moonapp.tools.tileTree";
-const MIN_TILE_PX = 200;
-const GAP = 8;
-const DIVIDER_PX = 8;
-
-type Dir = "x" | "y"; // x — бок о бок (делим ширину), y — друг под другом (делим высоту)
-type TilePath = ("a" | "b")[];
-interface LeafNode {
-  type: "leaf";
-  toolId: ToolId;
-}
-interface SplitNode {
-  type: "split";
-  dir: Dir;
-  ratio: number; // доля блока "a" от родителя, 0..1
-  a: TileTree;
-  b: TileTree;
-}
-type TileTree = LeafNode | SplitNode;
-type Rect = { x: number; y: number; w: number; h: number };
-
-function leaf(toolId: ToolId): LeafNode {
-  return { type: "leaf", toolId };
-}
-function makeSplit(dir: Dir, ratio: number, a: TileTree, b: TileTree): SplitNode {
-  return { type: "split", dir, ratio, a, b };
-}
-
-/** Дефолтное дерево: сбалансированное рекурсивное разбиение пополам,
- * чередуя направление — визуально получается что-то вроде равномерной
- * сетки, но остаётся честным тайлингом при любом числе инструментов
- * (в том числе если список TOOLS в будущем изменится). */
-function buildDefaultTree(ids: ToolId[]): TileTree {
-  function rec(list: ToolId[], dir: Dir): TileTree {
-    if (list.length === 1) return leaf(list[0]);
-    const mid = Math.ceil(list.length / 2);
-    const a = list.slice(0, mid);
-    const b = list.slice(mid);
-    const nextDir: Dir = dir === "x" ? "y" : "x";
-    return makeSplit(dir, a.length / list.length, rec(a, nextDir), rec(b, nextDir));
+/** Дефолтная раскладка: инструментам с многострочными текстовыми полями
+ * (JSON/diff/regex) — отдельный высокий верхний ряд, остальным — более
+ * низкий нижний ряд из четырёх ячеек поменьше. */
+function buildDefaultLayout(ids: ToolId[]): Layout {
+  const big = ids.slice(0, 3);
+  const small = ids.slice(3);
+  const rows: Layout = [];
+  if (big.length > 0) {
+    rows.push({ height: 460, cells: big.map((id) => ({ toolId: id, width: 1 / big.length })) });
   }
-  return rec(ids, "y");
+  if (small.length > 0) {
+    rows.push({ height: 320, cells: small.map((id) => ({ toolId: id, width: 1 / small.length })) });
+  }
+  return rows.length > 0 ? rows : [{ height: 400, cells: ids.map((id) => ({ toolId: id, width: 1 / ids.length })) }];
 }
 
-/** Случайное дерево — перетасованный порядок инструментов и случайные
- * направления/соотношения разбиений (в разумных пределах 0.3–0.7). */
-function buildRandomTree(ids: ToolId[]): TileTree {
+/** Случайная раскладка: перетасованный порядок, случайное число рядов и
+ * случайное распределение ячеек/ширин/высот в разумных пределах. */
+function buildRandomLayout(ids: ToolId[]): Layout {
   const shuffled = [...ids];
   for (let i = shuffled.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
   }
-  function rec(list: ToolId[]): TileTree {
-    if (list.length === 1) return leaf(list[0]);
-    const cut = 1 + Math.floor(Math.random() * (list.length - 1));
-    const dir: Dir = Math.random() < 0.5 ? "x" : "y";
-    const ratio = 0.3 + Math.random() * 0.4;
-    return makeSplit(dir, ratio, rec(list.slice(0, cut)), rec(list.slice(cut)));
+  const rows: Layout = [];
+  let i = 0;
+  while (i < shuffled.length) {
+    const remaining = shuffled.length - i;
+    const take = Math.min(remaining, 1 + Math.floor(Math.random() * Math.min(3, remaining)));
+    const chunk = shuffled.slice(i, i + take);
+    i += take;
+    const weights = chunk.map(() => 0.6 + Math.random() * 0.8);
+    const sum = weights.reduce((a, b) => a + b, 0);
+    rows.push({
+      height: Math.round(280 + Math.random() * 260),
+      cells: chunk.map((id, idx) => ({ toolId: id, width: weights[idx] / sum })),
+    });
   }
-  return rec(shuffled);
+  return rows;
 }
 
-function collectToolIds(tree: TileTree): ToolId[] {
-  return tree.type === "leaf" ? [tree.toolId] : [...collectToolIds(tree.a), ...collectToolIds(tree.b)];
+function collectToolIds(layout: Layout): ToolId[] {
+  return layout.flatMap((r) => r.cells.map((c) => c.toolId));
 }
 
-function isValidTree(x: unknown): x is TileTree {
-  if (!x || typeof x !== "object") return false;
-  const n = x as Record<string, unknown>;
-  if (n.type === "leaf") return typeof n.toolId === "string";
-  if (n.type === "split") {
-    return (
-      (n.dir === "x" || n.dir === "y") &&
-      typeof n.ratio === "number" &&
-      isValidTree(n.a) &&
-      isValidTree(n.b)
-    );
-  }
-  return false;
+function isValidLayout(x: unknown): x is Layout {
+  if (!Array.isArray(x) || x.length === 0) return false;
+  return x.every((row) => {
+    if (!row || typeof row !== "object") return false;
+    const r = row as Record<string, unknown>;
+    if (typeof r.height !== "number" || !Array.isArray(r.cells) || r.cells.length === 0) return false;
+    return (r.cells as unknown[]).every((c) => {
+      if (!c || typeof c !== "object") return false;
+      const cell = c as Record<string, unknown>;
+      return typeof cell.toolId === "string" && typeof cell.width === "number";
+    });
+  });
 }
 
-function loadTree(): TileTree {
+function loadLayout(): Layout {
   try {
-    const raw: unknown = JSON.parse(localStorage.getItem(TREE_KEY) || "null");
-    if (isValidTree(raw)) {
+    const raw: unknown = JSON.parse(localStorage.getItem(LAYOUT_KEY) || "null");
+    if (isValidLayout(raw)) {
       const got = [...collectToolIds(raw)].sort().join(",");
       const expect = [...TOOL_IDS].sort().join(",");
       if (got === expect) return raw;
@@ -824,281 +825,235 @@ function loadTree(): TileTree {
   } catch {
     /* используем дефолт */
   }
-  return buildDefaultTree(TOOL_IDS);
+  return buildDefaultLayout(TOOL_IDS);
 }
 
-function updateRatioAtPath(tree: TileTree, path: TilePath, ratio: number): TileTree {
-  if (tree.type !== "split") return tree;
-  if (path.length === 0) return { ...tree, ratio };
-  const [head, ...rest] = path;
-  return head === "a"
-    ? { ...tree, a: updateRatioAtPath(tree.a, rest, ratio) }
-    : { ...tree, b: updateRatioAtPath(tree.b, rest, ratio) };
+interface RowDragInfo {
+  rowIndex: number;
+  startY: number;
+  startHeight: number;
+}
+interface CellDragInfo {
+  rowIndex: number;
+  cellIndex: number;
+  startX: number;
+  rowWidthPx: number;
+  widthA: number;
+  widthB: number;
+}
+interface SwapSource {
+  rowIndex: number;
+  cellIndex: number;
 }
 
-function getToolAtPath(tree: TileTree, path: TilePath): ToolId | null {
-  let n = tree;
-  for (const step of path) {
-    if (n.type !== "split") return null;
-    n = step === "a" ? n.a : n.b;
-  }
-  return n.type === "leaf" ? n.toolId : null;
-}
-
-/** Минимально необходимый размер поддерева вдоль оси `dir` (px). Для листа —
- * MIN_TILE_PX. Для разбиения вдоль ТОЙ ЖЕ оси размеры складываются (плюс
- * разделитель), для разбиения поперёк — берём максимум (обе половины
- * растягиваются на всю доступную длину по этой оси). Используется, чтобы
- * контейнер и каждый узел дерева всегда получали ХОТЯ БЫ этот размер —
- * иначе при нехватке места (узкое окно/короткая страница) соседние блоки
- * налезали друг на друга, потому что каждый разделитель клэмпился к плоскому
- * MIN_TILE_PX независимо от того, сколько блоков реально лежит в поддереве. */
-function minRequiredSize(tree: TileTree, dir: Dir): number {
-  if (tree.type === "leaf") return MIN_TILE_PX;
-  const a = minRequiredSize(tree.a, dir);
-  const b = minRequiredSize(tree.b, dir);
-  return tree.dir === dir ? a + b + DIVIDER_PX : Math.max(a, b);
-}
-
-function setToolAtPath(tree: TileTree, path: TilePath, toolId: ToolId): TileTree {
-  if (path.length === 0) return tree.type === "leaf" ? { type: "leaf", toolId } : tree;
-  if (tree.type !== "split") return tree;
-  const [head, ...rest] = path;
-  return head === "a"
-    ? { ...tree, a: setToolAtPath(tree.a, rest, toolId) }
-    : { ...tree, b: setToolAtPath(tree.b, rest, toolId) };
-}
-
-interface DragRatioInfo {
-  path: TilePath;
-  dir: Dir;
-  rect: Rect;
-  minA: number;
-  minB: number;
-}
-
-function TileNode({
-  node,
-  path,
-  rect,
+function TilesRow({
+  row,
+  rowIndex,
+  widthPx,
   toolsById,
   draggedKey,
-  onLeafDragStart,
-  onLeafDrop,
-  onLeafDragEnd,
-  onDividerDown,
-  onDividerMove,
-  onDividerUp,
+  onCellDragStart,
+  onCellDrop,
+  onCellDragEnd,
+  onColDividerDown,
+  onColDividerMove,
+  onColDividerUp,
 }: {
-  node: TileTree;
-  path: TilePath;
-  rect: Rect;
+  row: Row;
+  rowIndex: number;
+  widthPx: number;
   toolsById: Record<ToolId, { icon: React.ElementType; Component: React.ComponentType }>;
   draggedKey: string | null;
-  onLeafDragStart: (path: TilePath) => void;
-  onLeafDrop: (path: TilePath) => void;
-  onLeafDragEnd: () => void;
-  onDividerDown: (path: TilePath, dir: Dir, rect: Rect, minA: number, minB: number) => void;
-  onDividerMove: (e: React.PointerEvent) => void;
-  onDividerUp: (e: React.PointerEvent) => void;
+  onCellDragStart: (rowIndex: number, cellIndex: number) => void;
+  onCellDrop: (rowIndex: number, cellIndex: number) => void;
+  onCellDragEnd: () => void;
+  onColDividerDown: (rowIndex: number, cellIndex: number, rowWidthPx: number, clientX: number) => void;
+  onColDividerMove: (e: React.PointerEvent) => void;
+  onColDividerUp: (e: React.PointerEvent) => void;
 }) {
   const { t } = useI18n();
-  const pathKey = path.join("") || "root";
-
-  if (node.type === "leaf") {
-    const tool = toolsById[node.toolId];
+  let x = 0;
+  const parts: React.ReactNode[] = [];
+  row.cells.forEach((cell, cellIndex) => {
+    const cellW = Math.round(widthPx * cell.width) - (cellIndex < row.cells.length - 1 ? DIVIDER_PX / 2 : 0);
+    const tool = toolsById[cell.toolId];
     const Icon = tool.icon;
+    const key = `${rowIndex}-${cellIndex}`;
     const inset = GAP / 2;
-    return (
+    parts.push(
       <div
-        className={`tools-tile${draggedKey === pathKey ? " is-dragging" : ""}`}
-        style={{
-          left: rect.x + inset,
-          top: rect.y + inset,
-          width: Math.max(0, rect.w - GAP),
-          height: Math.max(0, rect.h - GAP),
-        }}
+        key={`cell-${key}`}
+        className={`tools-tile${draggedKey === key ? " is-dragging" : ""}`}
+        style={{ left: x + inset, top: inset, width: Math.max(0, cellW - GAP), height: Math.max(0, row.height - GAP) }}
         onDragOver={(e) => e.preventDefault()}
         onDrop={(e) => {
           e.preventDefault();
-          onLeafDrop(path);
+          onCellDrop(rowIndex, cellIndex);
         }}
       >
         <div
           className="tools-widget-head"
           draggable
-          onDragStart={() => onLeafDragStart(path)}
-          onDragEnd={onLeafDragEnd}
+          onDragStart={() => onCellDragStart(rowIndex, cellIndex)}
+          onDragEnd={onCellDragEnd}
         >
           <GripVertical size={13} className="tools-widget-grip" />
           <Icon size={14} />
-          <span>{t(`tools.tab_${node.toolId}`)}</span>
+          <span>{t(`tools.tab_${cell.toolId}`)}</span>
         </div>
         <div className="tools-widget-body">
           <tool.Component />
         </div>
-      </div>
+      </div>,
     );
-  }
-
-  const isX = node.dir === "x";
-  const dim = isX ? rect.w : rect.h;
-  const minA = minRequiredSize(node.a, node.dir);
-  const minB = minRequiredSize(node.b, node.dir);
-  // Клэмпим по СТРУКТУРНОМУ минимуму каждой половины (а не плоскому
-  // MIN_TILE_PX) — иначе сторона, в которой лежит несколько вложенных
-  // блоков, могла бы получить места меньше, чем нужно её собственному
-  // поддереву, и блоки внутри неё наехали бы друг на друга.
-  let aSize = Math.round(dim * node.ratio);
-  aSize = Math.max(minA, Math.min(dim - minB - DIVIDER_PX, aSize));
-  const bSize = Math.max(minB, dim - aSize - DIVIDER_PX);
-  const rectA: Rect = isX
-    ? { x: rect.x, y: rect.y, w: aSize, h: rect.h }
-    : { x: rect.x, y: rect.y, w: rect.w, h: aSize };
-  const rectB: Rect = isX
-    ? { x: rect.x + aSize + DIVIDER_PX, y: rect.y, w: bSize, h: rect.h }
-    : { x: rect.x, y: rect.y + aSize + DIVIDER_PX, w: rect.w, h: bSize };
-  const dividerStyle: React.CSSProperties = isX
-    ? { left: rect.x + aSize, top: rect.y, width: DIVIDER_PX, height: rect.h, cursor: "col-resize" }
-    : { left: rect.x, top: rect.y + aSize, width: rect.w, height: DIVIDER_PX, cursor: "row-resize" };
-
+    x += cellW;
+    if (cellIndex < row.cells.length - 1) {
+      const dividerX = x;
+      parts.push(
+        <div
+          key={`div-${key}`}
+          className="tools-divider is-x"
+          style={{ left: dividerX, top: 0, width: DIVIDER_PX, height: row.height, cursor: "col-resize" }}
+          onPointerDown={(e) => {
+            e.currentTarget.setPointerCapture(e.pointerId);
+            onColDividerDown(rowIndex, cellIndex, widthPx, e.clientX);
+          }}
+          onPointerMove={onColDividerMove}
+          onPointerUp={onColDividerUp}
+        />,
+      );
+      x += DIVIDER_PX;
+    }
+  });
   return (
-    <>
-      <TileNode
-        node={node.a}
-        path={[...path, "a"]}
-        rect={rectA}
-        toolsById={toolsById}
-        draggedKey={draggedKey}
-        onLeafDragStart={onLeafDragStart}
-        onLeafDrop={onLeafDrop}
-        onLeafDragEnd={onLeafDragEnd}
-        onDividerDown={onDividerDown}
-        onDividerMove={onDividerMove}
-        onDividerUp={onDividerUp}
-      />
-      <div
-        className={`tools-divider ${isX ? "is-x" : "is-y"}`}
-        style={dividerStyle}
-        onPointerDown={(e) => {
-          e.currentTarget.setPointerCapture(e.pointerId);
-          onDividerDown(path, node.dir, rect, minA, minB);
-        }}
-        onPointerMove={onDividerMove}
-        onPointerUp={onDividerUp}
-      />
-      <TileNode
-        node={node.b}
-        path={[...path, "b"]}
-        rect={rectB}
-        toolsById={toolsById}
-        draggedKey={draggedKey}
-        onLeafDragStart={onLeafDragStart}
-        onLeafDrop={onLeafDrop}
-        onLeafDragEnd={onLeafDragEnd}
-        onDividerDown={onDividerDown}
-        onDividerMove={onDividerMove}
-        onDividerUp={onDividerUp}
-      />
-    </>
+    <div className="tools-tile-row" style={{ height: row.height }}>
+      {parts}
+    </div>
   );
 }
 
 export default function ToolsPage() {
   const { t } = useI18n();
-  const [tree, setTree] = useState<TileTree>(() => loadTree());
-  const [viewport, setViewport] = useState({ w: 0, h: 0 });
+  const [layout, setLayout] = useState<Layout>(() => loadLayout());
+  const [viewportW, setViewportW] = useState(0);
   const [draggedKey, setDraggedKey] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const draggedPathRef = useRef<TilePath | null>(null);
-  const dragRatioRef = useRef<DragRatioInfo | null>(null);
+  const swapSourceRef = useRef<SwapSource | null>(null);
+  const rowDragRef = useRef<RowDragInfo | null>(null);
+  const colDragRef = useRef<CellDragInfo | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Наблюдаем за ВИДИМОЙ областью прокрутки, а не за самим контентом сетки —
-  // высота/ширина контента вычисляется от дерева (minRequiredSize) и может
-  // быть больше видимой области, тогда прокрутка внутри .tools-tile-scroll
-  // (а не сжатие блоков ниже их минимального размера) берёт на себя остаток.
+  // Наблюдаем только за ШИРИНОЙ видимой области — она реально ограничена
+  // страницей, поэтому ячейки внутри ряда честно делят её. Высота НИЧЕМ не
+  // ограничивается: сумма высот рядов может быть сколь угодно больше
+  // видимой области, .tools-tile-scroll её просто прокручивает.
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
-    const ro = new ResizeObserver(([entry]) => {
-      const { width, height } = entry.contentRect;
-      setViewport({ w: Math.round(width), h: Math.round(height) });
-    });
+    const ro = new ResizeObserver(([entry]) => setViewportW(Math.round(entry.contentRect.width)));
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
 
-  // Размер контента сетки: не меньше видимой области (чтобы дерево
-  // растягивалось на всё доступное место), но и не меньше структурного
-  // минимума дерева (чтобы при нехватке места появлялась прокрутка, а не
-  // наложение блоков друг на друга).
-  const content = useMemo(
-    () => ({
-      w: Math.max(viewport.w, minRequiredSize(tree, "x")),
-      h: Math.max(viewport.h, minRequiredSize(tree, "y")),
-    }),
-    [viewport, tree],
-  );
-
   useEffect(() => {
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
-      localStorage.setItem(TREE_KEY, JSON.stringify(tree));
+      localStorage.setItem(LAYOUT_KEY, JSON.stringify(layout));
     }, 300);
     return () => {
       if (saveTimer.current) clearTimeout(saveTimer.current);
     };
-  }, [tree]);
+  }, [layout]);
 
-  const onLeafDragStart = (path: TilePath) => {
-    draggedPathRef.current = path;
-    setDraggedKey(path.join("") || "root");
+  const onCellDragStart = (rowIndex: number, cellIndex: number) => {
+    swapSourceRef.current = { rowIndex, cellIndex };
+    setDraggedKey(`${rowIndex}-${cellIndex}`);
   };
-  const onLeafDragEnd = () => {
-    draggedPathRef.current = null;
+  const onCellDragEnd = () => {
+    swapSourceRef.current = null;
     setDraggedKey(null);
   };
-  const onLeafDrop = (path: TilePath) => {
-    const from = draggedPathRef.current;
-    draggedPathRef.current = null;
+  const onCellDrop = (rowIndex: number, cellIndex: number) => {
+    const from = swapSourceRef.current;
+    swapSourceRef.current = null;
     setDraggedKey(null);
     if (!from) return;
-    const fromKey = from.join("") || "root";
-    const toKey = path.join("") || "root";
-    if (fromKey === toKey) return;
-    setTree((prev) => {
-      const toolA = getToolAtPath(prev, from);
-      const toolB = getToolAtPath(prev, path);
-      if (toolA == null || toolB == null) return prev;
-      return setToolAtPath(setToolAtPath(prev, from, toolB), path, toolA);
+    if (from.rowIndex === rowIndex && from.cellIndex === cellIndex) return;
+    setLayout((prev) => {
+      const next = prev.map((r) => ({ ...r, cells: [...r.cells] }));
+      const a = next[from.rowIndex].cells[from.cellIndex];
+      const b = next[rowIndex].cells[cellIndex];
+      if (!a || !b) return prev;
+      next[from.rowIndex].cells[from.cellIndex] = { ...a, toolId: b.toolId };
+      next[rowIndex].cells[cellIndex] = { ...b, toolId: a.toolId };
+      return next;
     });
   };
 
-  const onDividerDown = (path: TilePath, dir: Dir, rect: Rect, minA: number, minB: number) => {
-    dragRatioRef.current = { path, dir, rect, minA, minB };
+  // --- Граница между рядами: тянем — меняется ВЫСОТА ТОЛЬКО ЭТОГО ряда,
+  // остальные ряды просто опускаются/поднимаются вместе с общей суммой. ---
+  const onRowDividerDown = (rowIndex: number, e: React.PointerEvent) => {
+    e.currentTarget.setPointerCapture(e.pointerId);
+    rowDragRef.current = { rowIndex, startY: e.clientY, startHeight: layout[rowIndex].height };
   };
-  const onDividerMove = (e: React.PointerEvent) => {
-    const d = dragRatioRef.current;
+  const onRowDividerMove = (e: React.PointerEvent) => {
+    const d = rowDragRef.current;
     if (!d) return;
-    const pos = d.dir === "x" ? e.clientX - d.rect.x : e.clientY - d.rect.y;
-    const dim = d.dir === "x" ? d.rect.w : d.rect.h;
-    if (dim <= 0) return;
-    // Клэмп по структурному минимуму каждой стороны — тот же расчёт, что и
-    // при рендере (minRequiredSize), иначе можно было бы утащить границу
-    // так, что вложенные блоки внутри одной из половин налезли бы друг на
-    // друга.
-    const aSize = Math.min(dim - d.minB - DIVIDER_PX, Math.max(d.minA, pos));
-    const ratio = aSize / dim;
-    setTree((prev) => updateRatioAtPath(prev, d.path, ratio));
+    const next = Math.max(MIN_ROW_H, d.startHeight + (e.clientY - d.startY));
+    setLayout((prev) => prev.map((r, i) => (i === d.rowIndex ? { ...r, height: next } : r)));
   };
-  const onDividerUp = (e: React.PointerEvent) => {
+  const onRowDividerUp = (e: React.PointerEvent) => {
     try {
       e.currentTarget.releasePointerCapture(e.pointerId);
     } catch {
-      /* уже отпущено/недоступно */
+      /* уже отпущено */
     }
-    dragRatioRef.current = null;
+    rowDragRef.current = null;
+  };
+
+  // --- Граница между ячейками внутри ряда: тянем — доля ширины
+  // перераспределяется между двумя соседними ячейками (ширина ряда сама по
+  // себе ограничена шириной страницы — тут это ожидаемо). ---
+  const onColDividerDown = (rowIndex: number, cellIndex: number, rowWidthPx: number, clientX: number) => {
+    const row = layout[rowIndex];
+    colDragRef.current = {
+      rowIndex,
+      cellIndex,
+      startX: clientX,
+      rowWidthPx,
+      widthA: row.cells[cellIndex].width,
+      widthB: row.cells[cellIndex + 1].width,
+    };
+  };
+  const onColDividerMove = (e: React.PointerEvent) => {
+    const d = colDragRef.current;
+    if (!d) return;
+    const deltaRatio = (e.clientX - d.startX) / d.rowWidthPx;
+    const minRatio = MIN_CELL_W / d.rowWidthPx;
+    const sum = d.widthA + d.widthB;
+    let a = d.widthA + deltaRatio;
+    a = Math.min(sum - minRatio, Math.max(minRatio, a));
+    const b = sum - a;
+    setLayout((prev) =>
+      prev.map((r, ri) =>
+        ri !== d.rowIndex
+          ? r
+          : {
+              ...r,
+              cells: r.cells.map((c, ci) =>
+                ci === d.cellIndex ? { ...c, width: a } : ci === d.cellIndex + 1 ? { ...c, width: b } : c,
+              ),
+            },
+      ),
+    );
+  };
+  const onColDividerUp = (e: React.PointerEvent) => {
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch {
+      /* уже отпущено */
+    }
+    colDragRef.current = null;
   };
 
   const byId = useMemo(
@@ -1109,6 +1064,17 @@ export default function ToolsPage() {
     [],
   );
 
+  const rowTops = useMemo(() => {
+    const tops: number[] = [];
+    let acc = 0;
+    for (const r of layout) {
+      tops.push(acc);
+      acc += r.height + DIVIDER_PX;
+    }
+    return tops;
+  }, [layout]);
+  const totalHeight = layout.reduce((sum, r) => sum + r.height, 0) + (layout.length - 1) * DIVIDER_PX;
+
   return (
     <div className="page">
       <SectionHead
@@ -1116,10 +1082,10 @@ export default function ToolsPage() {
         title={t("tools.title")}
         action={
           <div style={{ display: "flex", gap: 8 }}>
-            <Btn icon={Shuffle} onClick={() => setTree(buildRandomTree(TOOL_IDS))}>
+            <Btn icon={Shuffle} onClick={() => setLayout(buildRandomLayout(TOOL_IDS))}>
               {t("tools.randomize")}
             </Btn>
-            <Btn icon={RotateCcw} onClick={() => setTree(buildDefaultTree(TOOL_IDS))}>
+            <Btn icon={RotateCcw} onClick={() => setLayout(buildDefaultLayout(TOOL_IDS))}>
               {t("tools.resetLayout")}
             </Btn>
           </div>
@@ -1129,21 +1095,37 @@ export default function ToolsPage() {
         {t("tools.gridHint")}
       </div>
       <div ref={scrollRef} className="tools-tile-scroll">
-        {content.w > 0 && content.h > 0 && (
-          <div className="tools-tile-container" style={{ width: content.w, height: content.h }}>
-            <TileNode
-              node={tree}
-              path={[]}
-              rect={{ x: 0, y: 0, w: content.w, h: content.h }}
-              toolsById={byId}
-              draggedKey={draggedKey}
-              onLeafDragStart={onLeafDragStart}
-              onLeafDrop={onLeafDrop}
-              onLeafDragEnd={onLeafDragEnd}
-              onDividerDown={onDividerDown}
-              onDividerMove={onDividerMove}
-              onDividerUp={onDividerUp}
-            />
+        {viewportW > 0 && (
+          <div className="tools-tile-container" style={{ width: viewportW, height: totalHeight }}>
+            {layout.map((row, rowIndex) => (
+              <div
+                key={rowIndex}
+                style={{ position: "absolute", left: 0, top: rowTops[rowIndex], width: viewportW }}
+              >
+                <TilesRow
+                  row={row}
+                  rowIndex={rowIndex}
+                  widthPx={viewportW}
+                  toolsById={byId}
+                  draggedKey={draggedKey}
+                  onCellDragStart={onCellDragStart}
+                  onCellDrop={onCellDrop}
+                  onCellDragEnd={onCellDragEnd}
+                  onColDividerDown={onColDividerDown}
+                  onColDividerMove={onColDividerMove}
+                  onColDividerUp={onColDividerUp}
+                />
+                {rowIndex < layout.length - 1 && (
+                  <div
+                    className="tools-divider is-y"
+                    style={{ left: 0, top: row.height, width: viewportW, height: DIVIDER_PX, cursor: "row-resize" }}
+                    onPointerDown={(e) => onRowDividerDown(rowIndex, e)}
+                    onPointerMove={onRowDividerMove}
+                    onPointerUp={onRowDividerUp}
+                  />
+                )}
+              </div>
+            ))}
           </div>
         )}
       </div>
