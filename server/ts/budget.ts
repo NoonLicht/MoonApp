@@ -45,16 +45,18 @@ export function list(): Transaction[] {
   return readAll().sort((a, b) => b.date.localeCompare(a.date) || b.createdAt - a.createdAt);
 }
 
-export function create(input: {
+interface TxInput {
   type: TxType;
-  amount: number;
+  amount: number | string;
   category: string;
   note?: string;
   date?: string;
-}): Transaction {
+}
+
+function buildTx(input: TxInput): Transaction {
   const amount = Number(input.amount);
   if (!Number.isFinite(amount) || amount <= 0) throw new Error("invalid_amount");
-  const tx: Transaction = {
+  return {
     id: crypto.randomUUID(),
     type: input.type === "income" ? "income" : "expense",
     amount,
@@ -63,6 +65,10 @@ export function create(input: {
     date: /^\d{4}-\d{2}-\d{2}$/.test(input.date || "") ? input.date! : new Date().toISOString().slice(0, 10),
     createdAt: Date.now(),
   };
+}
+
+export function create(input: TxInput): Transaction {
+  const tx = buildTx(input);
   const all = readAll();
   all.push(tx);
   writeAll(all);
@@ -108,4 +114,106 @@ export function monthlySummary(months = 6): MonthSummary[] {
     }
   }
   return keys.map((k) => byMonth.get(k)!);
+}
+
+/* --------------------------- CSV-импорт выписки --------------------------- */
+
+/** Разбор одной CSV-строки с поддержкой "..." и экранированных "" внутри кавычек. */
+function parseCsvLine(line: string, delimiter: string): string[] {
+  const out: string[] = [];
+  let cur = "";
+  let inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === '"') {
+      if (inQ && line[i + 1] === '"') {
+        cur += '"';
+        i++;
+      } else inQ = !inQ;
+    } else if (c === delimiter && !inQ) {
+      out.push(cur.trim());
+      cur = "";
+    } else cur += c;
+  }
+  out.push(cur.trim());
+  return out;
+}
+
+/** Приводит дату в разных распространённых форматах к YYYY-MM-DD. */
+function normalizeDate(raw: string): string | null {
+  const s = raw.trim();
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+  // DD.MM.YYYY или DD/MM/YYYY — типичный формат банковских выписок.
+  const m = s.match(/^(\d{1,2})[./](\d{1,2})[./](\d{4})/);
+  if (m) {
+    const [, d, mo, y] = m;
+    return `${y}-${mo.padStart(2, "0")}-${d.padStart(2, "0")}`;
+  }
+  return null;
+}
+
+export interface ImportResult {
+  imported: number;
+  skipped: number;
+  errors: string[];
+}
+
+/**
+ * Импорт операций из CSV. Понимает как «родной» формат (date,type,category,
+ * amount,note — экспорт из этого же приложения), так и типичную банковскую
+ * выписку (date,description,amount), где amount со знаком: отрицательный —
+ * расход, положительный — доход. Разделитель — запятая или точка с запятой,
+ * определяется по первой строке. Битые строки пропускаются, а не валят весь
+ * импорт — CSV из банков часто содержит служебные/итоговые строки.
+ */
+export function importCsv(csvText: string): ImportResult {
+  const lines = csvText.split(/\r?\n/).filter((l) => l.trim().length > 0);
+  if (lines.length < 2) return { imported: 0, skipped: 0, errors: ["empty_file"] };
+
+  const delimiter = lines[0].includes(";") && !lines[0].includes(",") ? ";" : ",";
+  const header = parseCsvLine(lines[0], delimiter).map((h) => h.toLowerCase());
+
+  const idx = {
+    date: header.findIndex((h) => /date|дата/.test(h)),
+    type: header.findIndex((h) => /^type$|тип/.test(h)),
+    amount: header.findIndex((h) => /amount|sum|сумма/.test(h)),
+    category: header.findIndex((h) => /categor|категор/.test(h)),
+    note: header.findIndex((h) => /note|desc|назначен|заметк|описан/.test(h)),
+  };
+  if (idx.amount === -1) return { imported: 0, skipped: 0, errors: ["no_amount_column"] };
+
+  const errors: string[] = [];
+  const toImport: Transaction[] = [];
+  for (let i = 1; i < lines.length; i++) {
+    const cols = parseCsvLine(lines[i], delimiter);
+    try {
+      const rawAmount = (cols[idx.amount] || "").replace(/\s/g, "").replace(",", ".");
+      const num = parseFloat(rawAmount);
+      if (!Number.isFinite(num) || num === 0) throw new Error("bad_amount");
+
+      const type: TxType = idx.type !== -1 ? (/income|доход/i.test(cols[idx.type] || "") ? "income" : "expense") : num >= 0 ? "income" : "expense";
+      const date = idx.date !== -1 ? normalizeDate(cols[idx.date] || "") : new Date().toISOString().slice(0, 10);
+      if (!date) throw new Error("bad_date");
+
+      toImport.push(
+        buildTx({
+          type,
+          amount: Math.abs(num),
+          category: idx.category !== -1 ? cols[idx.category] || "Импорт" : "Импорт",
+          note: idx.note !== -1 ? cols[idx.note] || "" : "",
+          date,
+        }),
+      );
+    } catch {
+      errors.push(`line_${i + 1}`);
+    }
+  }
+
+  if (toImport.length > 0) {
+    const all = readAll();
+    all.push(...toImport);
+    writeAll(all);
+  }
+  logger.info("budget.importCsv", { imported: toImport.length, skipped: errors.length });
+  return { imported: toImport.length, skipped: errors.length, errors: errors.slice(0, 20) };
 }

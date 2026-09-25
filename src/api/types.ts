@@ -496,6 +496,12 @@ export interface BudgetCategories {
   expense: string[];
 }
 
+export interface BudgetImportResult {
+  imported: number;
+  skipped: number;
+  errors: string[];
+}
+
 /* --------------------- Git-синхронизация заметок/canvas --------------------- */
 
 export interface NotesGitConfig {

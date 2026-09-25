@@ -35,6 +35,7 @@ import type {
   TransactionInput,
   MonthSummary,
   BudgetCategories,
+  BudgetImportResult,
   NotesGitConfig,
   NotesGitSyncResult,
   AppTimeToday,
@@ -1514,6 +1515,7 @@ export const api = {
   budgetDelete: (id: string) => req<{ ok: boolean }>("DELETE", `/budget/transactions/${id}`),
   budgetSummary: (months = 6) => req<MonthSummary[]>("GET", `/budget/summary?months=${months}`),
   budgetCategories: () => req<BudgetCategories>("GET", "/budget/categories"),
+  budgetImportCsv: (csv: string) => req<BudgetImportResult>("POST", "/budget/import", { csv }),
 
   // --- Сетевые утилиты (страница Bypass) ---
   netPing: (host: string) =>

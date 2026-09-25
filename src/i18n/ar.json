@@ -369,7 +369,10 @@
     "categoryBreakdown": "مصروفات هذا الشهر حسب الفئة",
     "listEyebrow": "السجل",
     "listTitle": "العمليات",
-    "empty": "أضف أول عملية — دخل أو مصروف"
+    "empty": "أضف أول عملية — دخل أو مصروف",
+    "import": "استيراد CSV",
+    "importing": "جارٍ الاستيراد…",
+    "importResult": "تم استيراد: {imported}، تم تخطي: {skipped}"
   },
   "games": {
     "eyebrow": "مشغّل الألعاب",

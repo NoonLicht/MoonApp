@@ -369,7 +369,10 @@
     "categoryBreakdown": "This month's expenses by category",
     "listEyebrow": "History",
     "listTitle": "Transactions",
-    "empty": "Add your first transaction — income or expense"
+    "empty": "Add your first transaction — income or expense",
+    "import": "Import CSV",
+    "importing": "Importing…",
+    "importResult": "Imported: {imported}, skipped: {skipped}"
   },
   "games": {
     "eyebrow": "Launcher",

@@ -369,7 +369,10 @@
     "categoryBreakdown": "本月各类别支出",
     "listEyebrow": "历史记录",
     "listTitle": "交易记录",
-    "empty": "添加第一笔收入或支出记录"
+    "empty": "添加第一笔收入或支出记录",
+    "import": "导入 CSV",
+    "importing": "正在导入…",
+    "importResult": "已导入:{imported},已跳过:{skipped}"
   },
   "games": {
     "eyebrow": "启动器",

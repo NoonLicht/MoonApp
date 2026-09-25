@@ -369,7 +369,10 @@
     "categoryBreakdown": "Gastos de este mes por categoría",
     "listEyebrow": "Historial",
     "listTitle": "Operaciones",
-    "empty": "Añade tu primera operación — ingreso o gasto"
+    "empty": "Añade tu primera operación — ingreso o gasto",
+    "import": "Importar CSV",
+    "importing": "Importando…",
+    "importResult": "Importados: {imported}, omitidos: {skipped}"
   },
   "games": {
     "eyebrow": "Lanzador",

@@ -56,3 +56,41 @@ describe("server/budget — помесячная агрегация", () => {
     expect(current.byCategory["Транспорт"]).toBe(30);
   });
 });
+
+describe("server/budget — CSV-импорт", () => {
+  it("родной формат (date,type,category,amount,note) импортируется, битые строки пропускаются", () => {
+    const before = engine.list().length;
+    const csv =
+      "date,type,category,amount,note\n" +
+      "2026-09-01,income,Зарплата,1000,ЗП сентябрь\n" +
+      "2026-09-05,expense,Еда,50,Пятёрочка\n" +
+      "broken,line,,notanumber,x\n";
+    const r = engine.importCsv(csv);
+    expect(r.imported).toBe(2);
+    expect(r.skipped).toBe(1);
+    expect(engine.list().length).toBe(before + 2);
+  });
+
+  it("банковский формат (Date;Description;Amount со знаком) распознаётся, разделитель ; и дата DD.MM.YYYY", () => {
+    const before = engine.list().length;
+    const csv = "Date;Description;Amount\n01.09.2026;Salary;+2000\n03.09.2026;Grocery store;-45.50\n";
+    const r = engine.importCsv(csv);
+    expect(r.imported).toBe(2);
+    expect(r.skipped).toBe(0);
+
+    const all = engine.list();
+    const salary = all.find((x) => x.note === "Salary");
+    const grocery = all.find((x) => x.note === "Grocery store");
+    expect(salary?.type).toBe("income");
+    expect(salary?.amount).toBe(2000);
+    expect(salary?.date).toBe("2026-09-01");
+    expect(grocery?.type).toBe("expense");
+    expect(grocery?.amount).toBe(45.5);
+    expect(engine.list().length).toBe(before + 2);
+  });
+
+  it("пустой файл и файл без колонки суммы отклоняются с понятной ошибкой", () => {
+    expect(engine.importCsv("").errors).toContain("empty_file");
+    expect(engine.importCsv("foo,bar\n1,2\n").errors).toContain("no_amount_column");
+  });
+});

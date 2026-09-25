@@ -8,6 +8,7 @@
  *  DELETE /api/budget/transactions/:id         — удалить операцию
  *  GET    /api/budget/summary?months=6         — помесячная агрегация
  *  GET    /api/budget/categories                — категории по умолчанию
+ *  POST   /api/budget/import                     — импорт CSV { csv: string }
  */
 
 const express = require("express");
@@ -53,6 +54,16 @@ router.get("/summary", (req, res) => {
 
 router.get("/categories", (req, res) => {
   res.json(budget.DEFAULT_CATEGORIES);
+});
+
+router.post("/import", (req, res) => {
+  try {
+    const csv = (req.body && req.body.csv) || "";
+    if (!csv) return res.status(400).json({ error: "missing_csv" });
+    res.json(budget.importCsv(csv));
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 module.exports = router;

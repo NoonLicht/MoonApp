@@ -369,7 +369,10 @@
     "categoryBreakdown": "Dépenses de ce mois par catégorie",
     "listEyebrow": "Historique",
     "listTitle": "Opérations",
-    "empty": "Ajoutez votre première opération — revenu ou dépense"
+    "empty": "Ajoutez votre première opération — revenu ou dépense",
+    "import": "Importer CSV",
+    "importing": "Importation…",
+    "importResult": "Importées : {imported}, ignorées : {skipped}"
   },
   "games": {
     "eyebrow": "Lanceur",

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Wallet, Plus, Trash2, X, Save, TrendingUp, TrendingDown, AlertTriangle } from "lucide-react";
+import { Wallet, Plus, Trash2, X, Save, TrendingUp, TrendingDown, AlertTriangle, Upload } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { Glass, Btn, Badge, EmptyHint, SectionHead, Select } from "@/components/ui";
 import { useI18n } from "@/app/i18n";
@@ -48,6 +48,8 @@ export default function BudgetPage() {
   const [form, setForm] = useState<FormState>(emptyForm(null));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [importing, setImporting] = useState(false);
+  const [importMsg, setImportMsg] = useState("");
 
   const load = () => {
     setLoading(true);
@@ -111,6 +113,21 @@ export default function BudgetPage() {
     load();
   };
 
+  const importCsv = async (file: File) => {
+    setImporting(true);
+    setImportMsg("");
+    try {
+      const text = await file.text();
+      const r = await api.budgetImportCsv(text);
+      setImportMsg(t("budget.importResult", { imported: r.imported, skipped: r.skipped }));
+      load();
+    } catch (e) {
+      setImportMsg((e as Error).message);
+    } finally {
+      setImporting(false);
+    }
+  };
+
   const categoryOptions = form.type === "income" ? categories?.income : categories?.expense;
 
   return (
@@ -119,11 +136,30 @@ export default function BudgetPage() {
         eyebrow={t("budget.eyebrow")}
         title={t("budget.title")}
         action={
-          <Btn variant="primary" icon={Plus} onClick={() => setShowForm(true)}>
-            {t("budget.add")}
-          </Btn>
+          <div style={{ display: "flex", gap: 8 }}>
+            <label className="btn" style={{ cursor: importing ? "default" : "pointer" }}>
+              <Upload size={14} />
+              {importing ? t("budget.importing") : t("budget.import")}
+              <input
+                type="file"
+                accept=".csv,text/csv"
+                hidden
+                disabled={importing}
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) void importCsv(f);
+                  e.target.value = "";
+                }}
+              />
+            </label>
+            <Btn variant="primary" icon={Plus} onClick={() => setShowForm(true)}>
+              {t("budget.add")}
+            </Btn>
+          </div>
         }
       />
+
+      {importMsg && <div className="muted-sm">{importMsg}</div>}
 
       <div className="budget-totals">
         <Glass className="budget-total-card">
