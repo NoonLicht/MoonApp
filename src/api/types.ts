@@ -1362,7 +1362,7 @@ declare global {
        * звук выбранного источника, а не звук системы (см. страницу лекций).
        */
       setCaptureMode?: (
-        mode: "loopback" | "default",
+        mode: "loopback" | "screen" | "default",
       ) => Promise<{ ok: boolean; mode?: string; error?: string }>;
       /**
        * Окно входа на форум (Chromium приложения): открывается страница входа, и

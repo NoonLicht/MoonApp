@@ -17,7 +17,8 @@
     "bypass": "Bypass",
     "upscale": "Upscale",
     "tools": "Tools",
-    "games": "Games"
+    "games": "Games",
+    "screenshots": "Screenshots"
   },
   "common": {
     "saved": "saved",
@@ -312,6 +313,19 @@
     "fNotes": "Note",
     "saveForLater": "Save article for later (downloads text into a note)",
     "openArticle": "Open saved article"
+  },
+  "screenshots": {
+    "eyebrow": "Screenshots & recording",
+    "title": "Screenshots / screen recording",
+    "hint": "Captured via getDisplayMedia (no ffmpeg). Limitation: picking a specific screen/window is not implemented — always captures the first monitor found.",
+    "take": "Take screenshot",
+    "recStart": "Start recording",
+    "recStop": "Stop",
+    "undo": "Undo stroke",
+    "copy": "Copy",
+    "download": "Download",
+    "annotateHint": "Draw directly on the screenshot (simple marker). For full annotations (stickers/shapes/text) — Ctrl+V into the MySpace canvas.",
+    "empty": "Take a screenshot or start screen recording"
   },
   "games": {
     "eyebrow": "Launcher",

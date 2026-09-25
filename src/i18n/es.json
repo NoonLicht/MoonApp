@@ -17,7 +17,8 @@
     "bypass": "Bloqueos",
     "upscale": "Escalado",
     "tools": "Herramientas",
-    "games": "Juegos"
+    "games": "Juegos",
+    "screenshots": "Capturas"
   },
   "common": {
     "saved": "guardado",
@@ -312,6 +313,19 @@
     "fNotes": "Nota",
     "saveForLater": "Guardar artículo para leer después (descarga el texto a una nota)",
     "openArticle": "Abrir artículo guardado"
+  },
+  "screenshots": {
+    "eyebrow": "Capturas y grabación",
+    "title": "Capturas / grabación de pantalla",
+    "hint": "Captura vía getDisplayMedia (sin ffmpeg). Limitación: no está implementada la selección de pantalla/ventana concreta — siempre captura el primer monitor encontrado.",
+    "take": "Hacer captura",
+    "recStart": "Empezar grabación",
+    "recStop": "Detener",
+    "undo": "Deshacer trazo",
+    "copy": "Copiar",
+    "download": "Descargar",
+    "annotateHint": "Dibuja directamente sobre la captura (marcador simple). Para anotaciones completas (stickers/formas/texto) — Ctrl+V en el canvas de MySpace.",
+    "empty": "Haz una captura o inicia la grabación de pantalla"
   },
   "games": {
     "eyebrow": "Lanzador",

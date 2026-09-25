@@ -17,7 +17,8 @@
     "bypass": "绕过限制",
     "upscale": "放大",
     "tools": "工具",
-    "games": "游戏"
+    "games": "游戏",
+    "screenshots": "截图"
   },
   "common": {
     "saved": "已保存",
@@ -312,6 +313,19 @@
     "fNotes": "备注",
     "saveForLater": "保存文章稍后阅读(将正文下载为笔记)",
     "openArticle": "打开已保存的文章"
+  },
+  "screenshots": {
+    "eyebrow": "截图与录制",
+    "title": "截图 / 屏幕录制",
+    "hint": "通过 getDisplayMedia 捕获(不使用 ffmpeg)。限制:未实现选择具体屏幕/窗口 — 始终捕获找到的第一个显示器。",
+    "take": "截图",
+    "recStart": "开始录制",
+    "recStop": "停止",
+    "undo": "撤销笔画",
+    "copy": "复制",
+    "download": "下载",
+    "annotateHint": "直接在截图上绘制(简单标记笔)。如需完整标注(贴纸/形状/文字)— 在 MySpace 画布中按 Ctrl+V。",
+    "empty": "截图或开始屏幕录制"
   },
   "games": {
     "eyebrow": "启动器",

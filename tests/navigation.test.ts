@@ -34,6 +34,7 @@ const ALL_IDS = [
   "bypass",
   "tools",
   "games",
+  "screenshots",
   "archive",
   "settings",
 ];

@@ -1279,11 +1279,55 @@ function removeLoopbackHandler() {
   captureModeActive = false;
 }
 
-// Режим захвата: "loopback" — системный звук, "default" — обычное поведение.
+/**
+ * Видео-захват экрана без loopback-звука — для страницы Скриншотов/записи
+ * экрана. Тот же приём, что и installLoopbackHandler (обработчик ставится
+ * лениво по запросу страницы и снимается сразу после), только без
+ * audio:"loopback" — страница пишет либо тишину, либо (опционально)
+ * микрофон отдельным getUserMedia-треком на своей стороне.
+ * ОГРАНИЧЕНИЕ v1: всегда отдаётся первый найденный экран (sources[0]) —
+ * полноценный выбор экрана/окна через UI не реализован ночью, честно
+ * задокументировано в UI страницы.
+ */
+function installScreenHandler() {
+  if (captureModeActive) return;
+  captureModeActive = true;
+  installMediaPermissions();
+  try {
+    session.defaultSession.setDisplayMediaRequestHandler(
+      async (request, callback) => {
+        try {
+          const { desktopCapturer } = require("electron");
+          const sources = await desktopCapturer.getSources({ types: ["screen"] });
+          if (!sources.length) {
+            callback({});
+            return;
+          }
+          callback({ video: sources[0] });
+        } catch (e) {
+          mlog("error", "capture.screen_failed", { error: e?.message || String(e) });
+          callback({});
+        }
+      },
+      { useSystemPicker: false },
+    );
+  } catch (e) {
+    captureModeActive = false;
+    mlog("error", "capture.handler_unavailable", { error: e?.message || String(e) });
+  }
+}
+
+// Режим захвата: "loopback" — системный звук (лекции), "screen" — видео экрана
+// без звука (скриншоты/запись), "default" — снять обработчик.
 ipcMain.handle("rec:capture-mode", (_e, mode) => {
-  if (String(mode) === "loopback") {
+  const m = String(mode);
+  if (m === "loopback") {
     installLoopbackHandler();
     return { ok: true, mode: "loopback" };
+  }
+  if (m === "screen") {
+    installScreenHandler();
+    return { ok: true, mode: "screen" };
   }
   removeLoopbackHandler();
   return { ok: true, mode: "default" };

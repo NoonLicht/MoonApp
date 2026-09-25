@@ -17,7 +17,8 @@
     "bypass": "Contournement",
     "upscale": "Upscale",
     "tools": "Outils",
-    "games": "Jeux"
+    "games": "Jeux",
+    "screenshots": "Captures d'écran"
   },
   "common": {
     "saved": "enregistré",
@@ -312,6 +313,19 @@
     "fNotes": "Note",
     "saveForLater": "Enregistrer l'article pour plus tard (télécharge le texte dans une note)",
     "openArticle": "Ouvrir l'article enregistré"
+  },
+  "screenshots": {
+    "eyebrow": "Captures et enregistrement",
+    "title": "Captures d'écran / enregistrement",
+    "hint": "Capture via getDisplayMedia (sans ffmpeg). Limitation : le choix d'un écran/fenêtre précis n'est pas implémenté — capture toujours le premier moniteur trouvé.",
+    "take": "Prendre une capture",
+    "recStart": "Démarrer l'enregistrement",
+    "recStop": "Arrêter",
+    "undo": "Annuler le trait",
+    "copy": "Copier",
+    "download": "Télécharger",
+    "annotateHint": "Dessinez directement sur la capture (marqueur simple). Pour des annotations complètes (stickers/formes/texte) — Ctrl+V dans le canvas MySpace.",
+    "empty": "Prenez une capture ou démarrez l'enregistrement d'écran"
   },
   "games": {
     "eyebrow": "Lanceur",

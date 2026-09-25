@@ -59,6 +59,7 @@ import BypassControlPage from "@/pages/bypass/BypassControlPage";
 import MoviesPage from "@/pages/movies/MoviesPage";
 import ToolsPage from "@/pages/tools/ToolsPage";
 import GamesPage from "@/pages/games/GamesPage";
+import ScreenshotsPage from "@/pages/screenshots/ScreenshotsPage";
 
 // Идентификаторы страниц и их перечень (PAGES) живут в src/navigation.ts —
 // общий источник для дока приложения и списка «Стартовая страница» в настройках.
@@ -99,6 +100,7 @@ const PAGE_COMPONENTS: Record<PageId, React.ComponentType> = {
   bypass: BypassControlPage,
   tools: ToolsPage,
   games: GamesPage,
+  screenshots: ScreenshotsPage,
   archive: ArchiverPage,
   settings: SettingsPage,
 };
