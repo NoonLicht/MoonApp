@@ -118,3 +118,45 @@ export async function wifiCurrent(): Promise<{ ok: boolean; output: string }> {
   const { out, err } = await execAsync("netsh wlan show interfaces", 10000);
   return { ok: !err, output: out || err };
 }
+
+export interface SpeedTestResult {
+  ok: boolean;
+  mbps?: number;
+  bytes?: number;
+  ms?: number;
+  error?: string;
+}
+
+/**
+ * Упрощённый спидтест скачивания: качаем известное число байт с публичного
+ * echo-эндпоинта Cloudflare (тот же класс операции, что и publicIp() — нужен
+ * внешний сервис, но без API-ключа и без сторонних SDK) и считаем throughput.
+ * Проходит через текущий системный/прокси-стек приложения как обычный fetch —
+ * поэтому честно показывает именно ту скорость, которую видит остальной трафик.
+ */
+export async function speedTest(bytes = 25_000_000): Promise<SpeedTestResult> {
+  const size = Math.max(1_000_000, Math.min(100_000_000, Math.floor(bytes)));
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 30000);
+  const started = Date.now();
+  try {
+    const res = await fetch(`https://speed.cloudflare.com/__down?bytes=${size}`, {
+      signal: controller.signal,
+    });
+    if (!res.ok || !res.body) return { ok: false, error: `HTTP ${res.status}` };
+    let received = 0;
+    const reader = res.body.getReader();
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      received += value?.byteLength || 0;
+    }
+    const ms = Date.now() - started;
+    const mbps = ms > 0 ? (received * 8) / 1_000_000 / (ms / 1000) : 0;
+    return { ok: true, mbps: Math.round(mbps * 10) / 10, bytes: received, ms };
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
+  } finally {
+    clearTimeout(timeout);
+  }
+}

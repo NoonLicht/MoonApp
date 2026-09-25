@@ -33,4 +33,11 @@ describe("server/netTools — валидация и сканер портов", 
     const ifaces = engine.localInterfaces();
     expect(typeof ifaces).toBe("object");
   });
+
+  it("speedTest реально качает данные и считает throughput (живой запрос к сети)", async () => {
+    const r = await engine.speedTest(3_000_000);
+    expect(r.ok).toBe(true);
+    expect(r.mbps).toBeGreaterThan(0);
+    expect(r.bytes).toBeGreaterThan(0);
+  }, 20000);
 });

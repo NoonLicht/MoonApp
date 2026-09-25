@@ -1532,6 +1532,11 @@ export const api = {
   netWifiNetworks: () =>
     req<{ ok: boolean; output: string }>("GET", "/nettools/wifi/networks"),
   netWifiCurrent: () => req<{ ok: boolean; output: string }>("GET", "/nettools/wifi/current"),
+  netSpeedTest: () =>
+    req<{ ok: boolean; mbps?: number; bytes?: number; ms?: number; error?: string }>(
+      "GET",
+      "/nettools/speedtest",
+    ),
 
   // --- Трекер времени за приложениями ---
   appTrackerStart: () => req<{ ok: boolean; error?: string }>("POST", "/apptracker/start"),

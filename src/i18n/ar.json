@@ -1822,6 +1822,7 @@
     "netTab_scan": "ماسح المنافذ",
     "netTab_ip": "عنوان IP الخاص بي",
     "netTab_wifi": "Wi-Fi",
+    "netTab_speed": "اختبار السرعة",
     "netHostPlaceholder": "المضيف أو IP",
     "netRun": "تشغيل",
     "netRunning": "جارٍ التشغيل…",

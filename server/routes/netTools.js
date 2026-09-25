@@ -10,6 +10,7 @@
  *  GET  /api/nettools/interfaces
  *  GET  /api/nettools/wifi/networks
  *  GET  /api/nettools/wifi/current
+ *  GET  /api/nettools/speedtest?bytes=25000000
  */
 
 const express = require("express");
@@ -70,6 +71,15 @@ router.get("/wifi/networks", async (req, res) => {
 router.get("/wifi/current", async (req, res) => {
   try {
     res.json(await net.wifiCurrent());
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.get("/speedtest", async (req, res) => {
+  try {
+    const bytes = parseInt(String(req.query.bytes || "25000000"), 10);
+    res.json(await net.speedTest(bytes));
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

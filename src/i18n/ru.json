@@ -1959,6 +1959,7 @@
     "netTab_scan": "Сканер портов",
     "netTab_ip": "Мой IP",
     "netTab_wifi": "Wi-Fi",
+    "netTab_speed": "Спидтест",
     "netHostPlaceholder": "Хост или IP",
     "netRun": "Выполнить",
     "netRunning": "Выполняется…",

@@ -1822,6 +1822,7 @@
     "netTab_scan": "Escáner de puertos",
     "netTab_ip": "Mi IP",
     "netTab_wifi": "Wi-Fi",
+    "netTab_speed": "Test de velocidad",
     "netHostPlaceholder": "Host o IP",
     "netRun": "Ejecutar",
     "netRunning": "Ejecutando…",

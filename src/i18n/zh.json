@@ -1822,6 +1822,7 @@
     "netTab_scan": "端口扫描",
     "netTab_ip": "我的 IP",
     "netTab_wifi": "Wi-Fi",
+    "netTab_speed": "测速",
     "netHostPlaceholder": "主机或 IP",
     "netRun": "运行",
     "netRunning": "运行中…",

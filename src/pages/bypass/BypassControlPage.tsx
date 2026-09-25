@@ -16,6 +16,7 @@ import {
   ScanLine,
   Globe,
   Wifi,
+  Gauge,
 } from "lucide-react";
 import { Glass, Btn, Badge, SectionHead } from "@/components/ui";
 import { api } from "@/api/client";
@@ -922,7 +923,7 @@ function consoleLineClass(line: string): string {
  */
 function NetworkToolsPanel() {
   const { t } = useI18n();
-  const [tab, setTab] = useState<"ping" | "trace" | "scan" | "ip" | "wifi">("ping");
+  const [tab, setTab] = useState<"ping" | "trace" | "scan" | "ip" | "wifi" | "speed">("ping");
   const [host, setHost] = useState("");
   const [busy, setBusy] = useState(false);
   const [output, setOutput] = useState("");
@@ -930,15 +931,24 @@ function NetworkToolsPanel() {
   const [portTo, setPortTo] = useState("1024");
   const [scanResults, setScanResults] = useState<{ port: number; open: boolean }[] | null>(null);
   const [publicIp, setPublicIp] = useState<string | null>(null);
+  const [speedResult, setSpeedResult] = useState<{ mbps: number; bytes: number; ms: number } | null>(null);
   const [error, setError] = useState("");
 
   const run = async () => {
     setError("");
     setOutput("");
     setScanResults(null);
+    setSpeedResult(null);
     setBusy(true);
     try {
-      if (tab === "ping") {
+      if (tab === "speed") {
+        const r = await api.netSpeedTest();
+        if (!r.ok || r.mbps === undefined) {
+          setError(r.error || "speedtest_failed");
+        } else {
+          setSpeedResult({ mbps: r.mbps, bytes: r.bytes || 0, ms: r.ms || 0 });
+        }
+      } else if (tab === "ping") {
         const r = await api.netPing(host);
         setOutput(r.output);
       } else if (tab === "trace") {
@@ -974,6 +984,7 @@ function NetworkToolsPanel() {
             ["scan", ScanLine],
             ["ip", Globe],
             ["wifi", Wifi],
+            ["speed", Gauge],
           ] as const
         ).map(([id, Icon]) => (
           <Badge key={id} tone={tab === id ? "amber" : "neutral"} onClick={() => setTab(id)}>
@@ -1029,6 +1040,17 @@ function NetworkToolsPanel() {
 
         {publicIp && tab === "ip" && (
           <div style={{ fontFamily: "var(--font-mono)", fontSize: 16 }}>{publicIp}</div>
+        )}
+
+        {speedResult && tab === "speed" && (
+          <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+            <span style={{ fontFamily: "var(--font-mono)", fontSize: 24, fontWeight: 700 }}>
+              {speedResult.mbps}
+            </span>
+            <span className="muted-sm">
+              Mbps · {(speedResult.bytes / 1_000_000).toFixed(1)} MB / {(speedResult.ms / 1000).toFixed(1)} s
+            </span>
+          </div>
         )}
 
         {scanResults && tab === "scan" && (
