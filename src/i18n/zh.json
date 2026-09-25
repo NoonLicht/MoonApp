@@ -110,6 +110,8 @@
     "minimizeToTrayHint": "隐藏到系统托盘而不是任务栏",
     "closeToTray": "关闭到托盘",
     "closeToTrayHint": "关闭窗口时收起到托盘而不是退出",
+    "commandPaletteHotkey": "全局快捷键 Alt+Space",
+    "commandPaletteHotkeyHint": "在系统任意位置打开命令面板以快速启动(与「自动化」页面相同的卡片)",
     "general": "通用",
     "appearance": "外观",
     "theme": "主题",
@@ -388,6 +390,11 @@
     "keepAudio": "保留音频",
     "empty": "录制你的第一条语音笔记",
     "emptyText": "(识别文本为空)"
+  },
+  "palette": {
+    "placeholder": "输入命令名称…",
+    "empty": "没有启动项 — 请在「自动化」页面添加",
+    "noMatch": "未找到匹配项"
   },
   "games": {
     "eyebrow": "启动器",

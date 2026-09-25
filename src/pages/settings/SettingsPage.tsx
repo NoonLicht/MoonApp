@@ -906,6 +906,18 @@ export default function SettingsPage() {
             value={!!g.closeToTray}
             onChange={(v) => change("general.closeToTray", v)}
           />
+          <BoolRow
+            label={t("settings.commandPaletteHotkey")}
+            hint={t("settings.commandPaletteHotkeyHint")}
+            value={g.commandPaletteHotkey !== false}
+            onChange={(v) => {
+              void change("general.commandPaletteHotkey", v);
+              // Применяем сразу: регистрация/снятие Alt+Space делает
+              // main-процесс, иначе настройка сработала бы только после
+              // перезапуска приложения — см. electron/main.js → app:refresh-hotkey.
+              void window.appBridge?.refreshHotkey?.();
+            }}
+          />
         </Section>
 
         {/* ---- Обновления приложения (док: general.autoUpdate) ----

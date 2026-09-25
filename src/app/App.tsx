@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { I18nProvider, useI18n } from "@/app/i18n";
 import { ContextMenuProvider } from "@/components/ContextMenu";
+import CommandPalette from "@/components/CommandPalette";
 import { ToolbarContext, PageHostContext, PageBusyContext } from "@/components/Toolbar";
 import {
   evictPages,
@@ -546,6 +547,7 @@ export default function App() {
           keepPagesLimit={keepPagesLimit}
           unloadIdleMinutes={unloadIdleMinutes}
         />
+        <CommandPalette />
       </ContextMenuProvider>
     </I18nProvider>
   );

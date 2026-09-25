@@ -1,4 +1,4 @@
-const { app, BrowserWindow, safeStorage, ipcMain, session } = require("electron");
+const { app, BrowserWindow, safeStorage, ipcMain, session, globalShortcut } = require("electron");
 const net = require("net");
 const http = require("http");
 const crypto = require("crypto");
@@ -233,6 +233,33 @@ function applyAutoLaunch() {
     return { ok: true, openAtLogin: want };
   } catch (e) {
     return { ok: false, reason: e?.message || String(e), openAtLogin: false };
+  }
+}
+
+// --- Глобальный хоткей: командная палитра (Alt+Space) ---
+// Показывает главное окно и просит renderer открыть оверлей-палитру поверх
+// текущей страницы (см. src/components/CommandPalette.tsx) — работает даже
+// если окно свёрнуто/в трее, ровно как Raycast/PowerToys Run. Настройка
+// general.commandPaletteHotkey (по умолчанию включено) — выключатель в
+// Settings, регистрируется/снимается заново при каждом старте.
+const COMMAND_PALETTE_ACCELERATOR = "Alt+Space";
+
+function registerCommandPaletteHotkey() {
+  try {
+    globalShortcut.unregister(COMMAND_PALETTE_ACCELERATOR);
+  } catch {
+    /* не было зарегистрировано — не критично */
+  }
+  const enabled = readSettings()?.general?.commandPaletteHotkey !== false;
+  if (!enabled) return;
+  try {
+    const ok = globalShortcut.register(COMMAND_PALETTE_ACCELERATOR, () => {
+      showWindow();
+      win?.webContents.send("app:open-palette");
+    });
+    if (!ok) mlog("warn", "hotkey.register_failed", { accelerator: COMMAND_PALETTE_ACCELERATOR });
+  } catch (e) {
+    mlog("error", "hotkey.register_error", { error: e?.message || String(e) });
   }
 }
 
@@ -916,6 +943,7 @@ app.whenReady().then(() => {
   mlog("info", "app.storage", { dir: STORAGE_DIR, packaged: app.isPackaged });
   // general.autoLaunch: синхронизируем автозапуск с настройками при каждом старте.
   applyAutoLaunch();
+  registerCommandPaletteHotkey();
   createWindow();
   // Проверка обновлений — после создания окна, чтобы не задерживать старт, но
   // достаточно рано: с 0.2.2 обновления обязательны, и диалог установки должен
@@ -950,6 +978,14 @@ app.on("before-quit", () => {
 // (userData, где лежат storage/, куки Chromium и служебные файлы), в dev —
 // корень проекта.
 ipcMain.handle("app:autolaunch", () => applyAutoLaunch());
+// Настройка general.commandPaletteHotkey меняется через обычный API настроек
+// (settings.json), поэтому main-процессу нужно просто перечитать её и
+// перерегистрировать/снять хоткей — вызывается со страницы настроек сразу
+// после сохранения, без перезапуска приложения.
+ipcMain.handle("app:refresh-hotkey", () => {
+  registerCommandPaletteHotkey();
+  return { ok: true };
+});
 
 ipcMain.handle("shell:open-app-dir", () => {
   try {
@@ -1372,6 +1408,7 @@ app.on("will-quit", () => {
   } catch {
     /* пофиг */
   }
+  globalShortcut.unregisterAll();
 });
 
 app.on("activate", () => {

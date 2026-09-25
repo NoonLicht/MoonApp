@@ -1474,6 +1474,10 @@ declare global {
       setCaptureMode?: (
         mode: "loopback" | "screen" | "default",
       ) => Promise<{ ok: boolean; mode?: string; error?: string }>;
+      /** Перечитать general.commandPaletteHotkey и перерегистрировать/снять Alt+Space. */
+      refreshHotkey?: () => Promise<{ ok: boolean }>;
+      /** Подписка на "Alt+Space нажат где угодно в ОС" — возвращает функцию отписки. */
+      onOpenPalette?: (cb: () => void) => () => void;
       /**
        * Окно входа на форум (Chromium приложения): открывается страница входа, и
        * когда пользователь вошёл — возвращаются куки его сессии. Единственный путь

@@ -110,6 +110,8 @@
     "minimizeToTrayHint": "Hide to system tray instead of the taskbar",
     "closeToTray": "Close to tray",
     "closeToTrayHint": "Closing the window collapses to tray instead of quitting",
+    "commandPaletteHotkey": "Global Alt+Space hotkey",
+    "commandPaletteHotkeyHint": "Opens a command palette for quick launching (the same cards as the \"Automation\" page) from anywhere in the system",
     "general": "General",
     "appearance": "Appearance",
     "theme": "Theme",
@@ -388,6 +390,11 @@
     "keepAudio": "Keep audio",
     "empty": "Record your first voice note",
     "emptyText": "(transcribed text is empty)"
+  },
+  "palette": {
+    "placeholder": "Start typing a command name…",
+    "empty": "No launchers — add some on the \"Automation\" page",
+    "noMatch": "Nothing found"
   },
   "games": {
     "eyebrow": "Launcher",

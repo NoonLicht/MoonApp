@@ -47,4 +47,17 @@ contextBridge.exposeInMainWorld("appBridge", {
   minimize: () => ipcRenderer.send("win:minimize"),
   toggleMaximize: () => ipcRenderer.send("win:toggle-maximize"),
   close: () => ipcRenderer.send("win:close"),
+  // Глобальный хоткей Alt+Space (командная палитра): вызывается со страницы
+  // настроек сразу после смены general.commandPaletteHotkey — main-процесс
+  // перечитывает settings.json и перерегистрирует/снимает шорткат без
+  // перезапуска приложения.
+  refreshHotkey: () => ipcRenderer.invoke("app:refresh-hotkey"),
+  // Подписка на событие "открыть палитру" (Alt+Space нажат где угодно в ОС).
+  // Возвращает функцию отписки — вызывающий код обязан её сохранить и дёрнуть
+  // на unmount, иначе на каждый ремонт компонента копится ещё один слушатель.
+  onOpenPalette: (cb) => {
+    const listener = () => cb();
+    ipcRenderer.on("app:open-palette", listener);
+    return () => ipcRenderer.removeListener("app:open-palette", listener);
+  },
 });

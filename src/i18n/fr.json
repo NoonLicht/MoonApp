@@ -110,6 +110,8 @@
     "minimizeToTrayHint": "Masquer dans la barre d'état au lieu de la barre des tâches",
     "closeToTray": "Fermer dans la barre d'état",
     "closeToTrayHint": "La fermeture réduit dans la barre d'état au lieu de quitter",
+    "commandPaletteHotkey": "Raccourci global Alt+Espace",
+    "commandPaletteHotkeyHint": "Ouvre une palette de commandes pour un lancement rapide (les mêmes cartes que sur « Automatisation ») depuis n'importe où dans le système",
     "general": "Général",
     "appearance": "Apparence",
     "theme": "Thème",
@@ -388,6 +390,11 @@
     "keepAudio": "Conserver l'audio",
     "empty": "Enregistrez votre première note vocale",
     "emptyText": "(le texte transcrit est vide)"
+  },
+  "palette": {
+    "placeholder": "Commencez à taper le nom d'une commande…",
+    "empty": "Aucun lanceur — ajoutez-en depuis la page « Automatisation »",
+    "noMatch": "Rien trouvé"
   },
   "games": {
     "eyebrow": "Lanceur",

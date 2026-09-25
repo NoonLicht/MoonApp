@@ -110,6 +110,8 @@
     "minimizeToTrayHint": "Ocultar a la bandeja del sistema en vez de la barra de tareas",
     "closeToTray": "Cerrar a la bandeja",
     "closeToTrayHint": "Al cerrar se minimiza a la bandeja en vez de salir",
+    "commandPaletteHotkey": "Atajo global Alt+Space",
+    "commandPaletteHotkeyHint": "Abre una paleta de comandos para lanzar rápido (las mismas tarjetas que en «Automatización») desde cualquier parte del sistema",
     "general": "General",
     "appearance": "Apariencia",
     "theme": "Tema",
@@ -388,6 +390,11 @@
     "keepAudio": "Guardar audio",
     "empty": "Graba tu primera nota de voz",
     "emptyText": "(el texto transcrito está vacío)"
+  },
+  "palette": {
+    "placeholder": "Empieza a escribir el nombre de un comando…",
+    "empty": "Sin lanzadores — añade alguno en la página «Automatización»",
+    "noMatch": "No se encontró nada"
   },
   "games": {
     "eyebrow": "Lanzador",
