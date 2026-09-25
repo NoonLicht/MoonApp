@@ -662,6 +662,7 @@
     "diskScanCancel": "Detener",
     "diskScanUp": "Subir un nivel",
     "diskScanEmptyDir": "La carpeta está vacía",
+    "diskScanFilesLoading": "Cargando lista de archivos…",
     "diskScanProgress": "Elementos escaneados: {n}…",
     "appTracker": "Tiempo por aplicación",
     "appTrackerHint": "Consulta la ventana activa cada 5 segundos, localmente, sin enviar nada a ningún sitio. La superposición de FPS sobre juegos no está implementada — requiere inyección de DLL en el proceso del juego (como MSI Afterburner/RTSS), una técnica de bajo nivel aparte de la arquitectura de una app Electron.",

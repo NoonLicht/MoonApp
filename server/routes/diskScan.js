@@ -8,6 +8,7 @@
  *  GET  /api/diskscan/status/:id     — { stage, scannedEntries, error }
  *  GET  /api/diskscan/result/:id     — готовое дерево (DiskNode) или 404, пока не готово
  *  POST /api/diskscan/cancel/:id     — остановить сканирование
+ *  GET  /api/diskscan/files          — { path } → список файлов одной папки (лениво, без рекурсии)
  */
 
 const express = require("express");
@@ -54,6 +55,16 @@ router.get("/result/:id", (req, res) => {
 
 router.post("/cancel/:id", (req, res) => {
   res.json({ ok: diskScan.cancelJob(req.params.id) });
+});
+
+router.get("/files", async (req, res) => {
+  try {
+    const p = String(req.query.path || "").trim();
+    if (!p) return res.status(400).json({ error: "missing_path" });
+    res.json({ files: await diskScan.listFiles(p) });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 module.exports = router;

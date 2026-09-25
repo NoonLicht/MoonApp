@@ -1612,6 +1612,8 @@ export const api = {
   diskScanStatus: (id: string) => req<DiskScanStatus>("GET", `/diskscan/status/${id}`),
   diskScanResult: (id: string) => req<DiskNode>("GET", `/diskscan/result/${id}`),
   diskScanCancel: (id: string) => req<{ ok: boolean }>("POST", `/diskscan/cancel/${id}`),
+  diskScanFiles: (path: string) =>
+    req<{ files: DiskNode[] }>("GET", `/diskscan/files?path=${encodeURIComponent(path)}`),
 
   // --- Закладки ---
   bookmarksList: () => req<Bookmark[]>("GET", "/bookmarks"),

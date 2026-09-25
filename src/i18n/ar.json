@@ -662,6 +662,7 @@
     "diskScanCancel": "إيقاف",
     "diskScanUp": "مستوى أعلى",
     "diskScanEmptyDir": "المجلد فارغ",
+    "diskScanFilesLoading": "جارٍ تحميل قائمة الملفات…",
     "diskScanProgress": "العناصر التي تم فحصها: {n}…",
     "appTracker": "وقت استخدام التطبيقات",
     "appTrackerHint": "يفحص النافذة النشطة كل 5 ثوانٍ، محليًا، دون إرسال أي شيء لأي مكان. طبقة عرض FPS فوق الألعاب غير مُنفَّذة — تتطلب حقن DLL في عملية اللعبة (مثل MSI Afterburner/RTSS)، وهي تقنية منخفضة المستوى منفصلة عن بنية تطبيق Electron.",

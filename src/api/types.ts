@@ -359,6 +359,9 @@ export interface DiskNode {
   isDir: boolean;
   fileCount: number;
   children?: DiskNode[];
+  /** Узел — агрегат обычных файлов папки; клик должен лениво запросить
+   *  diskScanFiles(node.path) вместо использования children. */
+  isFilesBucket?: boolean;
 }
 
 export interface DiskScanStatus {

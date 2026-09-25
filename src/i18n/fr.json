@@ -662,6 +662,7 @@
     "diskScanCancel": "Arrêter",
     "diskScanUp": "Niveau supérieur",
     "diskScanEmptyDir": "Le dossier est vide",
+    "diskScanFilesLoading": "Chargement de la liste des fichiers…",
     "diskScanProgress": "Éléments analysés : {n}…",
     "appTracker": "Temps par application",
     "appTrackerHint": "Interroge la fenêtre active toutes les 5 secondes, localement, rien n'est envoyé nulle part. La surimpression FPS sur les jeux n'est pas implémentée — elle nécessite une injection de DLL dans le processus du jeu (comme MSI Afterburner/RTSS), une technique bas niveau hors de l'architecture d'une app Electron.",

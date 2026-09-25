@@ -662,6 +662,7 @@
     "diskScanCancel": "停止",
     "diskScanUp": "上一级",
     "diskScanEmptyDir": "文件夹为空",
+    "diskScanFilesLoading": "正在加载文件列表…",
     "diskScanProgress": "已扫描条目:{n}…",
     "appTracker": "应用使用时长",
     "appTrackerHint": "每 5 秒本地查询一次当前活动窗口,不会发送到任何地方。未实现游戏内 FPS 叠加层 — 该功能需要向游戏进程注入 DLL(类似 MSI Afterburner/RTSS),属于 Electron 应用架构之外的独立底层技术。",

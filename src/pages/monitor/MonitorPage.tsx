@@ -1260,6 +1260,22 @@ function DiskScanPanel() {
   const [status, setStatus] = useState<DiskScanStatus | null>(null);
   const [pathStack, setPathStack] = useState<DiskNode[]>([]);
   const [error, setError] = useState("");
+  const [filesLoading, setFilesLoading] = useState(false);
+
+  // Клик по бакету "Файлы (N)" — реальный список файлов этой ОДНОЙ папки
+  // считается лениво на сервере (см. server/ts/diskScan.ts:listFiles), а не
+  // хранится заранее в дереве, поэтому запрашиваем его только сейчас.
+  const openFilesBucket = async (bucket: DiskNode) => {
+    setFilesLoading(true);
+    try {
+      const { files } = await api.diskScanFiles(bucket.path);
+      setPathStack((s) => [...s, { ...bucket, children: files }]);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setFilesLoading(false);
+    }
+  };
 
   useEffect(() => {
     api
@@ -1383,6 +1399,13 @@ function DiskScanPanel() {
         </div>
       )}
 
+      {filesLoading && (
+        <div className="muted-sm" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <RefreshCw size={14} className="spin" />
+          {t("monitor.diskScanFilesLoading")}
+        </div>
+      )}
+
       {current && (
         <>
           <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "8px 0" }}>
@@ -1431,12 +1454,14 @@ function DiskScanPanel() {
                     if (!node || width < 2 || height < 2) return <g />;
                     const color = TREEMAP_COLORS[index % TREEMAP_COLORS.length];
                     const showLabel = width > 50 && height > 24;
+                    const clickable = (node.isDir && !!node.children) || node.isFilesBucket;
                     return (
                       <g
                         onClick={() => {
-                          if (node.isDir && node.children) setPathStack((s) => [...s, node]);
+                          if (node.isFilesBucket) void openFilesBucket(node);
+                          else if (node.isDir && node.children) setPathStack((s) => [...s, node]);
                         }}
-                        style={{ cursor: node.isDir && node.children ? "pointer" : "default" }}
+                        style={{ cursor: clickable ? "pointer" : "default" }}
                       >
                         <rect
                           x={x}

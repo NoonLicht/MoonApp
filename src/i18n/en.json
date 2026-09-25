@@ -662,6 +662,7 @@
     "diskScanCancel": "Stop",
     "diskScanUp": "Up one level",
     "diskScanEmptyDir": "Folder is empty",
+    "diskScanFilesLoading": "Loading file list…",
     "diskScanProgress": "Scanned entries: {n}…",
     "appTracker": "App time tracker",
     "appTrackerHint": "Polls the active window every 5 seconds, locally, nothing is sent anywhere. FPS overlay over games is not implemented — it needs DLL injection into the game process (like MSI Afterburner/RTSS), a separate low-level technique outside an Electron app's architecture.",
