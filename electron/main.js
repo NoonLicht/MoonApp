@@ -1005,6 +1005,19 @@ ipcMain.handle("dialog:pick-file", async (_e, opts) => {
   }
 });
 
+// Выбрать папку через нативный диалог проводника — используется кнопкой
+// "Обзор..." у полей путей к папкам (например, папка сохранений игры).
+ipcMain.handle("dialog:pick-folder", async () => {
+  try {
+    const { dialog } = require("electron");
+    const res = await dialog.showOpenDialog({ properties: ["openDirectory"] });
+    if (res.canceled || !res.filePaths.length) return { ok: false, canceled: true };
+    return { ok: true, path: res.filePaths[0] };
+  } catch (e) {
+    return { ok: false, error: e?.message || String(e) };
+  }
+});
+
 // Открыть внешнюю ссылку (http/https) в системном браузере по умолчанию —
 // используется кликабельными ссылками в заметках/закладках.
 ipcMain.handle("shell:open-external", (_e, url) => {

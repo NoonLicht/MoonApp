@@ -439,7 +439,9 @@
     "fDescription": "Descripción",
     "fSavePath": "Ruta de la carpeta de partidas (opcional)",
     "fIcon": "Icono",
-    "fBackground": "Fondo"
+    "fBackground": "Fondo",
+    "changePath": "Cambiar carpeta",
+    "noSavePathHint": "No se ha indicado una carpeta de partidas guardadas — sin ella no hay nada que respaldar. Indícala para activar el gestor de partidas guardadas de este juego."
   },
   "tools": {
     "eyebrow": "Multiherramienta",

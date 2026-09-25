@@ -431,8 +431,12 @@ export interface GameEntry {
   description: string;
   iconDataUrl: string | null;
   backgroundDataUrl: string | null;
+  /** Обложка со Steam CDN (только для source="steam") — предпочтительнее backgroundDataUrl. */
+  backgroundUrl: string | null;
   savePath: string | null;
   source: "manual" | "steam" | "epic";
+  /** Steam AppID (только для source="steam") — нужен для запуска через steam://rungameid. */
+  appId: string | null;
   createdAt: number;
 }
 
@@ -1457,6 +1461,8 @@ declare global {
       pickFile?: (opts?: {
         filters?: { name: string; extensions: string[] }[];
       }) => Promise<{ ok: boolean; path?: string; canceled?: boolean; error?: string }>;
+      // Нативный диалог выбора папки (кнопка "Обзор..." у полей путей к папкам).
+      pickFolder?: () => Promise<{ ok: boolean; path?: string; canceled?: boolean; error?: string }>;
       /**
        * Автозапуск с Windows: применить настройку сразу (реестр Run меняет
        * main-процесс). reason: "dev" — в не-собранной версии автозапуск не ставим.

@@ -439,7 +439,9 @@
     "fDescription": "Description",
     "fSavePath": "Save folder path (optional)",
     "fIcon": "Icon",
-    "fBackground": "Background"
+    "fBackground": "Background",
+    "changePath": "Change folder",
+    "noSavePathHint": "No save folder set — nothing to back up without it. Set one to enable the save manager for this game."
   },
   "tools": {
     "eyebrow": "Multitool",

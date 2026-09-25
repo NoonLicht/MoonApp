@@ -10,6 +10,7 @@ import {
   X,
   ImagePlus,
   AlertTriangle,
+  FolderOpen,
 } from "lucide-react";
 import { Glass, Btn, Badge, EmptyHint, SectionHead } from "@/components/ui";
 import { useContextMenu } from "@/components/ContextMenu";
@@ -158,6 +159,15 @@ export default function GamesPage() {
     }
   };
 
+  const setSavePathFor = async () => {
+    if (!savesFor) return;
+    const r = await window.appBridge?.pickFolder?.();
+    if (!r?.ok || !r.path) return;
+    const updated = await api.gamesUpdate(savesFor.id, { savePath: r.path });
+    setSavesFor(updated);
+    setItems((prev) => prev.map((g) => (g.id === updated.id ? updated : g)));
+  };
+
   return (
     <div className="page">
       <SectionHead
@@ -191,12 +201,26 @@ export default function GamesPage() {
             value={form.name}
             onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
           />
-          <input
-            className="text-input"
-            placeholder={t("games.fExePath")}
-            value={form.exePath}
-            onChange={(e) => setForm((f) => ({ ...f, exePath: e.target.value }))}
-          />
+          <div style={{ display: "flex", gap: 8 }}>
+            <input
+              className="text-input"
+              style={{ flex: 1 }}
+              placeholder={t("games.fExePath")}
+              value={form.exePath}
+              onChange={(e) => setForm((f) => ({ ...f, exePath: e.target.value }))}
+            />
+            <Btn
+              icon={FolderOpen}
+              onClick={async () => {
+                const r = await window.appBridge?.pickFile?.({
+                  filters: [{ name: t("automation.filterExe"), extensions: ["exe"] }],
+                });
+                if (r?.ok && r.path) setForm((f) => ({ ...f, exePath: r.path! }));
+              }}
+            >
+              {t("automation.browse")}
+            </Btn>
+          </div>
           <textarea
             className="text-input"
             rows={2}
@@ -204,12 +228,24 @@ export default function GamesPage() {
             value={form.description}
             onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
           />
-          <input
-            className="text-input"
-            placeholder={t("games.fSavePath")}
-            value={form.savePath}
-            onChange={(e) => setForm((f) => ({ ...f, savePath: e.target.value }))}
-          />
+          <div style={{ display: "flex", gap: 8 }}>
+            <input
+              className="text-input"
+              style={{ flex: 1 }}
+              placeholder={t("games.fSavePath")}
+              value={form.savePath}
+              onChange={(e) => setForm((f) => ({ ...f, savePath: e.target.value }))}
+            />
+            <Btn
+              icon={FolderOpen}
+              onClick={async () => {
+                const r = await window.appBridge?.pickFolder?.();
+                if (r?.ok && r.path) setForm((f) => ({ ...f, savePath: r.path! }));
+              }}
+            >
+              {t("automation.browse")}
+            </Btn>
+          </div>
           <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
             <label className="muted-sm" style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
               <ImagePlus size={14} />
@@ -278,7 +314,7 @@ export default function GamesPage() {
             onContextMenu={(e) =>
               menu.open(e, [
                 { label: t("games.launch"), icon: Play, onClick: () => void doLaunch(g) },
-                !!g.savePath && {
+                {
                   label: t("games.saveManager"),
                   icon: History,
                   onClick: () => void openSaves(g),
@@ -294,9 +330,11 @@ export default function GamesPage() {
               position: "relative",
               height: 140,
               border: "1px solid var(--glass-border)",
-              backgroundImage: g.backgroundDataUrl
-                ? `url(${g.backgroundDataUrl})`
-                : fallbackGradient(g.name),
+              backgroundImage: g.backgroundUrl
+                ? `url(${g.backgroundUrl})`
+                : g.backgroundDataUrl
+                  ? `url(${g.backgroundDataUrl})`
+                  : fallbackGradient(g.name),
               backgroundSize: "cover",
               backgroundPosition: "center",
               display: "flex",
@@ -360,11 +398,32 @@ export default function GamesPage() {
                 <X size={16} />
               </button>
             </div>
-            <Btn icon={Save} disabled={savesBusy} onClick={() => void doBackup()}>
-              {t("games.backupNow")}
-            </Btn>
+            {savesFor.savePath ? (
+              <>
+                <div className="muted-sm" style={{ wordBreak: "break-all" }}>
+                  {savesFor.savePath}
+                </div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <Btn icon={Save} disabled={savesBusy} onClick={() => void doBackup()}>
+                    {t("games.backupNow")}
+                  </Btn>
+                  <Btn icon={FolderOpen} disabled={savesBusy} onClick={() => void setSavePathFor()}>
+                    {t("games.changePath")}
+                  </Btn>
+                </div>
+              </>
+            ) : (
+              <Glass className="source-placeholder" style={{ flexDirection: "column", gap: 8 }}>
+                <span className="muted-sm">{t("games.noSavePathHint")}</span>
+                <Btn icon={FolderOpen} onClick={() => void setSavePathFor()}>
+                  {t("automation.browse")}
+                </Btn>
+              </Glass>
+            )}
             <div style={{ overflow: "auto", flex: 1 }}>
-              {versions.length === 0 && <div className="muted-sm">{t("games.noVersions")}</div>}
+              {savesFor.savePath && versions.length === 0 && (
+                <div className="muted-sm">{t("games.noVersions")}</div>
+              )}
               {versions.map((v) => (
                 <div
                   key={v.file}

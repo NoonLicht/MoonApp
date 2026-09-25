@@ -439,7 +439,9 @@
     "fDescription": "Description",
     "fSavePath": "Dossier de sauvegarde (facultatif)",
     "fIcon": "Icône",
-    "fBackground": "Fond"
+    "fBackground": "Fond",
+    "changePath": "Changer de dossier",
+    "noSavePathHint": "Aucun dossier de sauvegardes défini — rien à sauvegarder sans cela. Définissez-en un pour activer le gestionnaire de sauvegardes de ce jeu."
   },
   "tools": {
     "eyebrow": "Multi-outil",

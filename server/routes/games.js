@@ -27,13 +27,12 @@ router.get("/", (req, res) => {
   }
 });
 
-router.post("/", (req, res) => {
+router.post("/", async (req, res) => {
   try {
     const { name, exePath, description, iconDataUrl, backgroundDataUrl, savePath } = req.body || {};
     if (!exePath) return res.status(400).json({ error: "missing_exePath" });
-    res
-      .status(201)
-      .json(games.create({ name, exePath, description, iconDataUrl, backgroundDataUrl, savePath }));
+    const entry = await games.create({ name, exePath, description, iconDataUrl, backgroundDataUrl, savePath });
+    res.status(201).json(entry);
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

@@ -16,10 +16,11 @@ beforeAll(() => {
 });
 
 describe("server/games — CRUD библиотеки", () => {
-  it("create/list/update/remove работают", () => {
-    const created = engine.create({ name: "Test Game", exePath: "C:\\games\\test\\test.exe" });
+  it("create/list/update/remove работают", async () => {
+    const created = await engine.create({ name: "Test Game", exePath: "C:\\games\\test\\test.exe" });
     expect(created.id).toBeTruthy();
     expect(created.source).toBe("manual");
+    expect(created.appId).toBeNull();
 
     const list1 = engine.list();
     expect(list1).toHaveLength(1);
@@ -31,9 +32,21 @@ describe("server/games — CRUD библиотеки", () => {
     expect(engine.list()).toHaveLength(0);
   });
 
-  it("launch несуществующей записи/файла честно сообщает об ошибке", () => {
+  it.runIf(fs.existsSync("C:\\Windows\\System32\\notepad.exe"))(
+    "create достаёт встроенную иконку .exe через PowerShell/System.Drawing (реальный exe)",
+    async () => {
+      const created = await engine.create({
+        name: "Notepad",
+        exePath: "C:\\Windows\\System32\\notepad.exe",
+      });
+      expect(created.iconDataUrl).toMatch(/^data:image\/png;base64,/);
+    },
+    15000,
+  );
+
+  it("launch несуществующей записи/файла честно сообщает об ошибке", async () => {
     expect(engine.launch("no-such-id").ok).toBe(false);
-    const created = engine.create({ name: "Ghost", exePath: "C:\\nowhere\\ghost.exe" });
+    const created = await engine.create({ name: "Ghost", exePath: "C:\\nowhere\\ghost.exe" });
     const r = engine.launch(created.id);
     expect(r.ok).toBe(false);
     expect(r.error).toBe("exe_not_found");
@@ -41,11 +54,11 @@ describe("server/games — CRUD библиотеки", () => {
 });
 
 describe("server/games — версионный бэкап сохранений", () => {
-  it("backupSave/listSaveVersions/restoreSave делают полный цикл на реальных файлах", () => {
+  it("backupSave/listSaveVersions/restoreSave делают полный цикл на реальных файлах", async () => {
     const saveDir = fs.mkdtempSync(path.join(os.tmpdir(), "pa-games-save-"));
     fs.writeFileSync(path.join(saveDir, "slot1.dat"), "hello");
 
-    const game = engine.create({ name: "SaveTest", exePath: "C:\\x\\x.exe", savePath: saveDir });
+    const game = await engine.create({ name: "SaveTest", exePath: "C:\\x\\x.exe", savePath: saveDir });
     const backup = engine.backupSave(game.id);
     expect(backup.ok).toBe(true);
     expect(backup.file).toBeTruthy();
@@ -60,8 +73,8 @@ describe("server/games — версионный бэкап сохранений"
     expect(fs.readFileSync(path.join(saveDir, "slot1.dat"), "utf8")).toBe("hello");
   });
 
-  it("backupSave без savePath у записи честно отдаёт ошибку", () => {
-    const game = engine.create({ name: "NoSave", exePath: "C:\\x\\x.exe" });
+  it("backupSave без savePath у записи честно отдаёт ошибку", async () => {
+    const game = await engine.create({ name: "NoSave", exePath: "C:\\x\\x.exe" });
     const r = engine.backupSave(game.id);
     expect(r.ok).toBe(false);
     expect(r.error).toBe("no_save_path");
