@@ -21,6 +21,9 @@ import {
   TerminalSquare,
   Archive,
   Trash2,
+  Folder,
+  File as FileIcon,
+  Files,
 } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { Glass, Select, SectionHead, Btn, Field, Badge, EmptyHint } from "@/components/ui";
@@ -33,6 +36,7 @@ import type {
   LhmStatus,
   MonitorSnapshot,
   DiskNode,
+  DiskExtStat,
   DiskScanStatus,
   AppTimeToday,
 } from "@/api/types";
@@ -1225,94 +1229,15 @@ function fmtBytes(n: number): string {
   return `${(n / 1024 ** 3).toFixed(2)} GB`;
 }
 
-const TREEMAP_COLORS = [
-  "var(--amber)",
-  "var(--violet, #8b7bf0)",
-  "var(--teal, #3fc7ab)",
-  "var(--coral, #ea6b6b)",
-];
-
-interface Rect {
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-}
-
 /**
- * Классический squarified-treemap (Bruls/Huizing/van Wijk): раскладывает
- * элементы по площади так, чтобы прямоугольники оставались близки к квадрату
- * (не превращались в тонкие полоски). Реализация на голых <div>, без
- * recharts — на реальных дисках Treemap из recharts либо не рендерился
- * вовсе, либо конкретно на этих данных ломался необъяснимо; собственная
- * реализация полностью под контролем и не зависит от внутренней магии
- * библиотеки.
+ * Список папок/файлов текущего уровня — иконка, имя, полоска относительного
+ * веса (% от самого тяжёлого элемента уровня) и размер справа, как в
+ * обычном проводнике/WinDirStat-списке. Пришли к этому виду вместо
+ * treemap-квадратиков (recharts на реальных данных диска либо не
+ * рендерился, либо ломался необъяснимо, а свой squarify-treemap на
+ * практике читался хуже обычного списка).
  */
-function squarify(items: DiskNode[], x: number, y: number, w: number, h: number): (DiskNode & Rect)[] {
-  const total = items.reduce((s, i) => s + i.size, 0);
-  if (total <= 0 || items.length === 0 || w <= 0 || h <= 0) return [];
-  const scale = (w * h) / total;
-  const scaled = items.map((i) => ({ ...i, area: Math.max(i.size * scale, 0.01) }));
-
-  const worstRatio = (row: { area: number }[], rowArea: number, side: number): number => {
-    const rowLen = rowArea / side;
-    let max = -Infinity;
-    for (const it of row) {
-      const itemLen = it.area / rowLen;
-      const ratio = Math.max(itemLen / rowLen, rowLen / itemLen);
-      if (ratio > max) max = ratio;
-    }
-    return max;
-  };
-
-  const result: (DiskNode & Rect)[] = [];
-  let remaining = scaled;
-  let rx = x;
-  let ry = y;
-  let rw = w;
-  let rh = h;
-
-  while (remaining.length > 0 && rw > 0 && rh > 0) {
-    const horizontal = rw >= rh;
-    const side = horizontal ? rh : rw;
-    let row: typeof remaining = [];
-    let rowArea = 0;
-    let bestWorst = Infinity;
-    for (let i = 0; i < remaining.length; i++) {
-      const testRow = [...row, remaining[i]];
-      const testArea = rowArea + remaining[i].area;
-      const worst = worstRatio(testRow, testArea, side);
-      if (worst <= bestWorst) {
-        row = testRow;
-        rowArea = testArea;
-        bestWorst = worst;
-      } else break;
-    }
-    const rowLen = rowArea / side;
-    let offset = 0;
-    for (const it of row) {
-      const itemLen = it.area / rowLen;
-      if (horizontal) {
-        result.push({ ...it, x: rx, y: ry + offset, w: rowLen, h: itemLen });
-      } else {
-        result.push({ ...it, x: rx + offset, y: ry, w: itemLen, h: rowLen });
-      }
-      offset += itemLen;
-    }
-    remaining = remaining.slice(row.length);
-    if (horizontal) {
-      rx += rowLen;
-      rw -= rowLen;
-    } else {
-      ry += rowLen;
-      rh -= rowLen;
-    }
-  }
-  return result;
-}
-
-/** Собственный treemap на <div>-ах (см. squarify выше) вместо recharts. */
-function DiskTreemap({
+function DiskList({
   nodes,
   onOpenDir,
   onOpenBucket,
@@ -1323,64 +1248,34 @@ function DiskTreemap({
   onOpenBucket: (n: DiskNode) => void;
   onMenu: (n: DiskNode, e: React.MouseEvent) => void;
 }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [box, setBox] = useState({ w: 0, h: 420 });
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return undefined;
-    const ro = new ResizeObserver(([entry]) =>
-      setBox({ w: entry.contentRect.width, h: entry.contentRect.height }),
-    );
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
-
-  const rects = useMemo(
-    () => squarify(nodes, 0, 0, box.w, box.h),
-    [nodes, box.w, box.h],
-  );
-
+  const maxSize = Math.max(1, ...nodes.map((n) => n.size));
   return (
-    <div ref={ref} style={{ position: "relative", width: "100%", height: 420, overflow: "hidden" }}>
-      {rects.map((r, i) => {
-        const clickable = (r.isDir && (r.hasChildren || r.fileCount > 0)) || r.isFilesBucket;
-        const showLabel = r.w > 50 && r.h > 22;
+    <div className="disk-list">
+      {nodes.map((n, i) => {
+        const clickable = (n.isDir && (n.hasChildren || n.fileCount > 0)) || n.isFilesBucket;
+        const pct = Math.max(1.5, (n.size / maxSize) * 100);
+        const Icon = n.isFilesBucket ? Files : n.isDir ? Folder : FileIcon;
         return (
           <div
-            key={`${r.path}|${r.name}|${i}`}
-            title={`${r.name} — ${fmtBytes(r.size)}${r.fileCount ? ` · ${r.fileCount} файлов` : ""}`}
+            key={`${n.path}|${n.name}|${i}`}
+            className="disk-list-row"
+            title={n.path || n.name}
             onClick={() => {
-              if (r.isFilesBucket) onOpenBucket(r);
-              else if (r.isDir) onOpenDir(r);
+              if (n.isFilesBucket) onOpenBucket(n);
+              else if (n.isDir) onOpenDir(n);
             }}
             onContextMenu={(e) => {
-              if (r.path) onMenu(r, e);
+              if (n.path) onMenu(n, e);
             }}
-            style={{
-              position: "absolute",
-              left: r.x,
-              top: r.y,
-              width: Math.max(0, r.w - 2),
-              height: Math.max(0, r.h - 2),
-              background: TREEMAP_COLORS[i % TREEMAP_COLORS.length],
-              opacity: r.isDir ? 0.55 : 0.4,
-              border: "1px solid var(--glass-border)",
-              borderRadius: 4,
-              boxSizing: "border-box",
-              overflow: "hidden",
-              padding: "4px 6px",
-              cursor: clickable ? "pointer" : "default",
-              color: "var(--text-primary)",
-              fontSize: 11,
-            }}
+            style={{ cursor: clickable ? "pointer" : "default" }}
           >
-            {showLabel && (
-              <>
-                <div style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.name}</div>
-                {r.h > 36 && <div className="muted-sm">{fmtBytes(r.size)}</div>}
-              </>
-            )}
+            <div className="disk-list-bar" style={{ width: `${pct}%` }} />
+            <Icon size={14} className="disk-list-icon" />
+            <span className="disk-list-name">{n.name}</span>
+            <span className="disk-list-meta muted-sm mono-val">
+              {n.fileCount > 1 ? `${n.fileCount} · ` : ""}
+              {fmtBytes(n.size)}
+            </span>
           </div>
         );
       })}
@@ -1388,14 +1283,50 @@ function DiskTreemap({
   );
 }
 
+/** Правая панель — разбивка ВСЕГО скана по расширениям файлов: .mp4, .zip
+ *  и т.д. с суммарным весом и числом файлов. Клик — самые тяжёлые файлы
+ *  этого расширения (см. api.diskScanExtFiles). */
+function DiskExtPanel({
+  exts,
+  selected,
+  onSelect,
+}: {
+  exts: DiskExtStat[];
+  selected: string | null;
+  onSelect: (ext: string) => void;
+}) {
+  const { t } = useI18n();
+  const maxSize = Math.max(1, ...exts.map((e) => e.size));
+  if (exts.length === 0) return <EmptyHint icon={HardDrive} text={t("monitor.diskScanEmptyDir")} />;
+  return (
+    <div className="disk-list">
+      {exts.map((e) => (
+        <div
+          key={e.ext}
+          className={`disk-list-row${selected === e.ext ? " is-active" : ""}`}
+          onClick={() => onSelect(e.ext)}
+          style={{ cursor: "pointer" }}
+        >
+          <div className="disk-list-bar" style={{ width: `${Math.max(1.5, (e.size / maxSize) * 100)}%` }} />
+          <span className="disk-list-name">.{e.ext || t("monitor.diskScanNoExt")}</span>
+          <span className="disk-list-meta muted-sm mono-val">
+            {e.count} · {fmtBytes(e.size)}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /**
  * Анализатор занятого места на диске (аналог WinDirStat): выбор корня →
  * фоновое сканирование (server/ts/diskScan.ts, попадает в общий Task Manager
- * как engine "diskscan") → собственный treemap (DiskTreemap выше) с
- * drill-down по клику; каждый уровень дерева подгружается лениво с сервера
- * (api.diskScanResult(jobId, path)) — полное дерево на клиент целиком не
- * скачивается, только уже развёрнутые по пути уровни, поэтому даже на
- * полном диске в памяти рендерера не оседают десятки МБ JSON.
+ * как engine "diskscan") → список папок/файлов (DiskList выше) с drill-down
+ * по клику плюс панель расширений (DiskExtPanel) справа. Каждый уровень
+ * дерева подгружается лениво с сервера (api.diskScanResult(jobId, path)) —
+ * полное дерево на клиент целиком не скачивается, только уже развёрнутые по
+ * пути уровни, поэтому даже на полном диске в памяти рендерера не оседают
+ * десятки МБ JSON.
  */
 function DiskScanPanel() {
   const { t } = useI18n();
@@ -1407,6 +1338,9 @@ function DiskScanPanel() {
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
   const [levelLoading, setLevelLoading] = useState(false);
+  const [exts, setExts] = useState<DiskExtStat[]>([]);
+  const [extSelected, setExtSelected] = useState<string | null>(null);
+  const [extFiles, setExtFiles] = useState<DiskNode[]>([]);
   const menu = useContextMenu();
 
   // Клик по папке — подгружаем ОДИН уровень (сама папка + её прямые дети, без
@@ -1440,8 +1374,8 @@ function DiskScanPanel() {
     }
   };
 
-  // Убрать плитку из текущего уровня после успешного действия (удаление) —
-  // без повторного похода на сервер за всем уровнем заново.
+  // Убрать плитку из текущего уровня (или из списка файлов расширения) после
+  // успешного действия (удаление) — без повторного похода на сервер.
   const removeFromCurrentLevel = (nodePath: string) => {
     setPathStack((s) => {
       const stack = [...s];
@@ -1451,6 +1385,28 @@ function DiskScanPanel() {
       }
       return stack;
     });
+    setExtFiles((files) => files.filter((f) => f.path !== nodePath));
+  };
+
+  // Панель расширений (справа) — клик выбирает/снимает выбор и лениво тянет
+  // самые тяжёлые файлы этого расширения (см. server/ts/diskScan.ts:getExtFiles).
+  const selectExt = async (ext: string) => {
+    if (!jobId) return;
+    if (extSelected === ext) {
+      setExtSelected(null);
+      setExtFiles([]);
+      return;
+    }
+    setExtSelected(ext);
+    setLevelLoading(true);
+    try {
+      const { files } = await api.diskScanExtFiles(jobId, ext);
+      setExtFiles(files);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setLevelLoading(false);
+    }
   };
 
   const handleDelete = async (node: DiskNode) => {
@@ -1536,8 +1492,11 @@ function DiskScanPanel() {
         setStatus(st);
         if (st.stage === "done") {
           clearInterval(timer);
-          const result = await api.diskScanResult(jobId);
-          if (!stopped) setPathStack([result]);
+          const [result, extRes] = await Promise.all([api.diskScanResult(jobId), api.diskScanExts(jobId)]);
+          if (!stopped) {
+            setPathStack([result]);
+            setExts(extRes.exts);
+          }
         } else if (st.stage === "error" || st.stage === "cancelled") {
           clearInterval(timer);
           if (st.stage === "error") setError(st.error || "Ошибка сканирования");
@@ -1557,8 +1516,12 @@ function DiskScanPanel() {
 
   const start = async (root: string) => {
     setError("");
+    setInfo("");
     setPathStack([]);
     setStatus(null);
+    setExts([]);
+    setExtSelected(null);
+    setExtFiles([]);
     try {
       const { id } = await api.diskScanStart(root);
       setJobId(id);
@@ -1577,7 +1540,7 @@ function DiskScanPanel() {
   };
 
   const current = pathStack[pathStack.length - 1] || null;
-  const treemapData = current?.children?.filter((c) => c.size > 0) || [];
+  const listData = current?.children?.filter((c) => c.size > 0) || [];
 
   return (
     <Glass className="chart-panel">
@@ -1645,30 +1608,90 @@ function DiskScanPanel() {
       )}
 
       {current && (
-        <>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "8px 0" }}>
-            {pathStack.length > 1 && (
-              <button
-                type="button"
-                className="icon-btn"
-                onClick={() => setPathStack((s) => s.slice(0, -1))}
-                title={t("monitor.diskScanUp")}
-              >
-                <ChevronLeft size={15} />
-              </button>
+        <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
+          <div style={{ flex: "2 1 0", minWidth: 0 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "8px 0" }}>
+              {extSelected ? (
+                <button
+                  type="button"
+                  className="icon-btn"
+                  onClick={() => {
+                    setExtSelected(null);
+                    setExtFiles([]);
+                  }}
+                  title={t("monitor.diskScanUp")}
+                >
+                  <ChevronLeft size={15} />
+                </button>
+              ) : (
+                pathStack.length > 1 && (
+                  <button
+                    type="button"
+                    className="icon-btn"
+                    onClick={() => setPathStack((s) => s.slice(0, -1))}
+                    title={t("monitor.diskScanUp")}
+                  >
+                    <ChevronLeft size={15} />
+                  </button>
+                )
+              )}
+              {extSelected ? (
+                <>
+                  <Badge tone="amber" mono>
+                    .{extSelected || t("monitor.diskScanNoExt")}
+                  </Badge>
+                  <span className="muted-sm">{t("monitor.diskScanExtFilesTitle")}</span>
+                </>
+              ) : (
+                <>
+                  <Badge tone="teal" mono>
+                    {fmtBytes(current.size)}
+                  </Badge>
+                  <span className="muted-sm">{current.path || current.name}</span>
+                </>
+              )}
+            </div>
+
+            {extSelected ? (
+              extFiles.length === 0 ? (
+                <EmptyHint icon={HardDrive} text={t("monitor.diskScanEmptyDir")} />
+              ) : (
+                <div className="disk-list-scroll">
+                  <DiskList
+                    nodes={extFiles}
+                    onOpenDir={() => {
+                      /* файлы расширения — папок среди них не бывает */
+                    }}
+                    onOpenBucket={() => {
+                      /* бакетов среди файлов расширения не бывает */
+                    }}
+                    onMenu={openMenuFor}
+                  />
+                </div>
+              )
+            ) : listData.length === 0 ? (
+              <EmptyHint icon={HardDrive} text={t("monitor.diskScanEmptyDir")} />
+            ) : (
+              <div className="disk-list-scroll">
+                <DiskList
+                  nodes={listData}
+                  onOpenDir={(n) => void openDir(n)}
+                  onOpenBucket={(n) => void openFilesBucket(n)}
+                  onMenu={openMenuFor}
+                />
+              </div>
             )}
-            <Badge tone="teal" mono>
-              {fmtBytes(current.size)}
-            </Badge>
-            <span className="muted-sm">{current.path || current.name}</span>
           </div>
 
-          {treemapData.length === 0 ? (
-            <EmptyHint icon={HardDrive} text={t("monitor.diskScanEmptyDir")} />
-          ) : (
-            <DiskTreemap nodes={treemapData} onOpenDir={(n) => void openDir(n)} onOpenBucket={(n) => void openFilesBucket(n)} onMenu={openMenuFor} />
-          )}
-        </>
+          <div style={{ flex: "1 1 0", minWidth: 220, maxWidth: 320 }}>
+            <div className="muted-sm" style={{ margin: "8px 0" }}>
+              {t("monitor.diskScanExtTitle")}
+            </div>
+            <div className="disk-list-scroll">
+              <DiskExtPanel exts={exts} selected={extSelected} onSelect={(ext) => void selectExt(ext)} />
+            </div>
+          </div>
+        </div>
       )}
     </Glass>
   );

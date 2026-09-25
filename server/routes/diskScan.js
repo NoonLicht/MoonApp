@@ -14,6 +14,8 @@
  *  POST /api/diskscan/console        — { path, isDir } → открыть терминал в этой папке
  *  POST /api/diskscan/delete         — { path, isDir } → удалить в корзину
  *  POST /api/diskscan/compress       — { path } → запустить сжатие в .zip рядом (в фоне)
+ *  GET  /api/diskscan/exts/:id       — разбивка ВСЕГО скана по расширениям файлов
+ *  GET  /api/diskscan/exts/:id/files — { ext } → самые тяжёлые файлы этого расширения
  */
 
 const express = require("express");
@@ -116,6 +118,22 @@ router.post("/compress", (req, res) => {
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
+});
+
+router.get("/exts/:id", (req, res) => {
+  const job = diskScan.getJob(req.params.id);
+  if (!job) return res.status(404).json({ error: "not_found" });
+  if (job.stage !== "done") return res.status(409).json({ error: "not_ready", stage: job.stage });
+  res.json({ exts: diskScan.getExtStats(req.params.id) });
+});
+
+router.get("/exts/:id/files", (req, res) => {
+  const job = diskScan.getJob(req.params.id);
+  if (!job) return res.status(404).json({ error: "not_found" });
+  const ext = String(req.query.ext ?? "");
+  const files = diskScan.getExtFiles(req.params.id, ext);
+  if (files === null) return res.status(404).json({ error: "not_found" });
+  res.json({ files });
 });
 
 module.exports = router;

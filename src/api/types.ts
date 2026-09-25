@@ -367,6 +367,12 @@ export interface DiskNode {
   hasChildren?: boolean;
 }
 
+export interface DiskExtStat {
+  ext: string;
+  size: number;
+  count: number;
+}
+
 export interface DiskScanStatus {
   id: string;
   root: string;

@@ -45,6 +45,68 @@
   transition: color 0.3s ease;
 }
 
+/* Анализатор диска (MonitorPage/DiskScanPanel): список папок/файлов и
+   панель расширений — обычные строки с полоской относительного веса вместо
+   treemap-квадратиков (читаются лучше на реальных данных). */
+.disk-list-scroll {
+  max-height: 420px;
+  overflow: auto;
+  border-radius: 10px;
+  border: 1px solid var(--glass-border);
+}
+.disk-list {
+  display: flex;
+  flex-direction: column;
+}
+.disk-list-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--glass-border);
+  overflow: hidden;
+}
+.disk-list-row:last-child {
+  border-bottom: none;
+}
+.disk-list-row:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+.disk-list-row.is-active {
+  background: var(--amber-soft, rgba(245, 166, 35, 0.12));
+}
+.disk-list-bar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  background: var(--amber-soft, rgba(245, 166, 35, 0.14));
+  z-index: 0;
+}
+.disk-list-icon {
+  position: relative;
+  z-index: 1;
+  flex-shrink: 0;
+  color: var(--text-secondary);
+}
+.disk-list-name {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+}
+.disk-list-meta {
+  position: relative;
+  z-index: 1;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
 /* Высоту больше не считаем от 100vh — область контента уже flex-колонка
    (.content-area → .content-frame), поэтому страница занимает её целиком. */
 /* Внутренний скролл содержимого страницы: .page сам не скроллится

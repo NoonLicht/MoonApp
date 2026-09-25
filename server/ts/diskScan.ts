@@ -65,6 +65,19 @@ interface Job {
    *  Settings" → "C:\Users" или "C:\ProgramData" → "...\All Users"), которые
    *  readdir(withFileTypes) не всегда помечает как isSymbolicLink(). */
   visited: Set<string>;
+  /** Агрегат по расширениям файлов ВСЕГО скана (не только текущей папки) —
+   *  считается по ходу обхода (мы и так уже делаем stat() на каждый файл),
+   *  без отдельного прохода. Память ограничена числом РАЗНЫХ расширений
+   *  (обычно десятки-сотни), а не числом файлов. */
+  extStats: Map<string, ExtBucket>;
+}
+
+interface ExtBucket {
+  size: number;
+  count: number;
+  /** TOP_PER_EXT самых больших файлов этого расширения — достаточно, чтобы
+   *  показать "самые тяжёлые .mp4" по клику, без хранения всех файлов. */
+  top: { name: string; path: string; size: number }[];
 }
 
 /** Максимальная глубина дерева — дополнительная защита на случай, если
@@ -81,6 +94,34 @@ const FILE_STAT_CONCURRENCY = 8;
 const MAX_CHILDREN_PER_NODE = 60;
 /** Сколько файлов отдаём за один ленивый запрос listFiles(). */
 const LIST_FILES_MAX = 2000;
+/** Сколько самых больших файлов держим в памяти НА КАЖДОЕ расширение. */
+const TOP_PER_EXT = 30;
+
+function extOf(name: string): string {
+  const idx = name.lastIndexOf(".");
+  // idx<=0: нет точки, либо точка в начале (dotfile вроде ".gitignore") —
+  // считаем файлом без расширения, а не расширением "gitignore".
+  if (idx <= 0) return "";
+  return name.slice(idx + 1).toLowerCase();
+}
+
+function recordExt(job: Job, name: string, size: number, fullPath: string) {
+  const ext = extOf(name);
+  let bucket = job.extStats.get(ext);
+  if (!bucket) {
+    bucket = { size: 0, count: 0, top: [] };
+    job.extStats.set(ext, bucket);
+  }
+  bucket.size += size;
+  bucket.count++;
+  if (bucket.top.length < TOP_PER_EXT) {
+    bucket.top.push({ name, path: fullPath, size });
+    bucket.top.sort((a, b) => b.size - a.size);
+  } else if (size > bucket.top[bucket.top.length - 1].size) {
+    bucket.top[bucket.top.length - 1] = { name, path: fullPath, size };
+    bucket.top.sort((a, b) => b.size - a.size);
+  }
+}
 
 async function mapLimit<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
   const results: R[] = new Array(items.length);
@@ -209,9 +250,11 @@ async function scanTree(root: string, job: Job): Promise<DiskNode> {
         if (fileEntries.length > 0 && !job.cancelled) {
           await mapLimit(fileEntries, FILE_STAT_CONCURRENCY, async (e) => {
             if (job.cancelled) return;
+            const full = path.join(task.dir, e.name);
             try {
-              const fst = await fs.promises.stat(path.join(task.dir, e.name));
+              const fst = await fs.promises.stat(full);
               ownFilesSize += fst.size;
+              recordExt(job, e.name, fst.size, full);
             } catch {
               /* файл исчез/недоступен — пропускаем */
             }
@@ -318,6 +361,33 @@ export function getNode(jobId: string, targetPath: string): DiskNode | null {
   if (!job || !job.result) return null;
   const found = targetPath ? findNodeByPath(job.result, targetPath) : job.result;
   return found ? shallowNode(found) : null;
+}
+
+export interface ExtStat {
+  ext: string;
+  size: number;
+  count: number;
+}
+
+/** Разбивка ВСЕГО скана по расширениям файлов (не только текущей папки),
+ *  отсортированная по убыванию суммарного размера. */
+export function getExtStats(jobId: string): ExtStat[] | null {
+  const job = jobs.get(jobId);
+  if (!job) return null;
+  const out: ExtStat[] = [];
+  for (const [ext, b] of job.extStats) out.push({ ext, size: b.size, count: b.count });
+  out.sort((a, b) => b.size - a.size);
+  return out;
+}
+
+/** Самые тяжёлые файлы конкретного расширения (см. TOP_PER_EXT) — узлы в
+ *  форме DiskNode, чтобы переиспользовать те же компоненты списка/меню на фронте. */
+export function getExtFiles(jobId: string, ext: string): DiskNode[] | null {
+  const job = jobs.get(jobId);
+  if (!job) return null;
+  const bucket = job.extStats.get(ext);
+  if (!bucket) return [];
+  return bucket.top.map((f) => ({ name: f.name, path: f.path, size: f.size, isDir: false, fileCount: 1 }));
 }
 
 function psQuote(p: string): string {
@@ -435,6 +505,7 @@ export function startScan(root: string): { id: string } {
     cancelled: false,
     createdAt: Date.now(),
     visited: new Set<string>(),
+    extStats: new Map<string, ExtBucket>(),
   };
   jobs.set(id, job);
 

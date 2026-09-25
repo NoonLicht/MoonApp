@@ -20,6 +20,7 @@ import type {
   PasswordEntryFull,
   PasswordEntryInput,
   DiskNode,
+  DiskExtStat,
   DiskScanStatus,
   Bookmark,
   BookmarkInput,
@@ -1623,6 +1624,9 @@ export const api = {
   diskScanDelete: (path: string, isDir: boolean) =>
     req<{ ok: boolean }>("POST", "/diskscan/delete", { path, isDir }),
   diskScanCompress: (path: string) => req<{ ok: boolean; dest: string }>("POST", "/diskscan/compress", { path }),
+  diskScanExts: (id: string) => req<{ exts: DiskExtStat[] }>("GET", `/diskscan/exts/${id}`),
+  diskScanExtFiles: (id: string, ext: string) =>
+    req<{ files: DiskNode[] }>("GET", `/diskscan/exts/${id}/files?ext=${encodeURIComponent(ext)}`),
 
   // --- Закладки ---
   bookmarksList: () => req<Bookmark[]>("GET", "/bookmarks"),
