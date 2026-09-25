@@ -317,7 +317,16 @@ function sanitizeInfo(info: RawInfo): VideoInfo {
   };
 }
 
-function runJson(bin: string, url: string, proxyUrl?: string | null): Promise<string> {
+/** Транзиентные сетевые/TLS-сбои (обрыв соединения, битый TLS-рекорд от
+ * нестабильной сети/VPN и т.п.) — имеет смысл повторить попытку, в отличие
+ * от смысловых ошибок вроде "Unsupported URL" или "Video unavailable". */
+function isTransientNetworkError(msg: string): boolean {
+  return /SSL|DECRYPTION_FAILED|bad record mac|ECONNRESET|ETIMEDOUT|ECONNREFUSED|socket hang up|Connection reset|Temporary failure/i.test(
+    msg,
+  );
+}
+
+function runJsonOnce(bin: string, url: string, proxyUrl?: string | null): Promise<string> {
   return new Promise<string>((resolve, reject) => {
     const args = [
       "-J",
@@ -342,6 +351,28 @@ function runJson(bin: string, url: string, proxyUrl?: string | null): Promise<st
       },
     );
   });
+}
+
+/** До 2 повторов с паузой при транзиентных сетевых/TLS-сбоях (например
+ * SSL: DECRYPTION_FAILED_OR_BAD_RECORD_MAC на нестабильном соединении) —
+ * такие ошибки обычно проходят со второй попытки, без вмешательства юзера. */
+async function runJson(bin: string, url: string, proxyUrl?: string | null): Promise<string> {
+  const attempts = 3;
+  let lastErr: Error | null = null;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await runJsonOnce(bin, url, proxyUrl);
+    } catch (e) {
+      lastErr = e as Error;
+      if (i < attempts - 1 && isTransientNetworkError(lastErr.message)) {
+        logger.warn("ytdlp.runJson.retry", { attempt: i + 1, error: lastErr.message });
+        await new Promise((r) => setTimeout(r, 1000 * (i + 1)));
+        continue;
+      }
+      throw lastErr;
+    }
+  }
+  throw lastErr || new Error("yt-dlp failed");
 }
 
 /**
