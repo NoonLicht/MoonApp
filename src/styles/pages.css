@@ -47,6 +47,19 @@
 
 /* Высоту больше не считаем от 100vh — область контента уже flex-колонка
    (.content-area → .content-frame), поэтому страница занимает её целиком. */
+/* Внутренний скролл содержимого страницы: .page сам не скроллится
+   (overflow:hidden в theme.css), но некоторые страницы (конвертер с
+   редактором изображений/PDF-тулкитом и т.п.) выше видимой высоты. */
+.page-scroll-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 4px;
+}
 .page-fill {
   flex: 1;
   min-height: 0;

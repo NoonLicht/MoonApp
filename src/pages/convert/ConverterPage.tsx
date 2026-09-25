@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import {
   Repeat,
   Check,
@@ -9,6 +9,10 @@ import {
   Copy,
   Download,
   X,
+  Crop as CropIcon,
+  Maximize2,
+  Link2,
+  Unlink,
 } from "lucide-react";
 import {
   Glass,
@@ -19,6 +23,7 @@ import {
   SectionHead,
   EmptyHint,
   ProgressBar,
+  Checkbox,
 } from "@/components/ui";
 import { useI18n } from "@/app/i18n";
 import { useContextMenu, copyToClipboard } from "@/components/ContextMenu";
@@ -152,6 +157,7 @@ export default function ConverterPage() {
     <div className="page">
       <SectionHead eyebrow={t("conv.eyebrow")} title={t("conv.title")} />
 
+      <div className="page-scroll-body">
       {tools && !ffmpegFound && (
         <Glass
           className="source-placeholder"
@@ -322,206 +328,304 @@ export default function ConverterPage() {
 
       <ImageEditorToolkit />
       <PdfToolkit />
+      </div>
     </div>
   );
 }
 
-/**
- * Редактор изображений (кроп/ресайз/водяной знак) — через ffmpeg
- * (server/ts/imageEditor.ts), без нового пакета обработки изображений.
- */
-function ImageEditorToolkit() {
+interface CropRect {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+/** Визуальный выбор области обрезки: тащим прямоугольник прямо по превью
+ * картинки, координаты сразу пересчитываются в реальные пиксели файла. */
+function CropTool() {
   const { t } = useI18n();
+  const [file, setFile] = useState<File | null>(null);
+  const [url, setUrl] = useState<string | null>(null);
+  const [natural, setNatural] = useState({ w: 0, h: 0 });
+  const [rect, setRect] = useState<CropRect | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const imgRef = useRef<HTMLImageElement>(null);
+  const dragStart = useRef<{ x: number; y: number } | null>(null);
 
-  const [cropFile, setCropFile] = useState<File | null>(null);
-  const [box, setBox] = useState({ x: "0", y: "0", w: "0", h: "0" });
-  const [cropBusy, setCropBusy] = useState(false);
-  const [cropError, setCropError] = useState("");
+  useEffect(() => {
+    if (!file) {
+      setUrl(null);
+      return;
+    }
+    const u = URL.createObjectURL(file);
+    setUrl(u);
+    setRect(null);
+    return () => URL.revokeObjectURL(u);
+  }, [file]);
 
-  const [resizeFile, setResizeFile] = useState<File | null>(null);
-  const [size, setSize] = useState({ w: "", h: "" });
-  const [resizeBusy, setResizeBusy] = useState(false);
-  const [resizeError, setResizeError] = useState("");
+  const toImagePoint = (e: React.MouseEvent) => {
+    const img = imgRef.current;
+    if (!img) return null;
+    const b = img.getBoundingClientRect();
+    const scaleX = natural.w / b.width;
+    const scaleY = natural.h / b.height;
+    const x = Math.max(0, Math.min(natural.w, (e.clientX - b.left) * scaleX));
+    const y = Math.max(0, Math.min(natural.h, (e.clientY - b.top) * scaleY));
+    return { x, y };
+  };
 
-  const [wmFile, setWmFile] = useState<File | null>(null);
-  const [wmMark, setWmMark] = useState<File | null>(null);
-  const [wmPosition, setWmPosition] = useState("bottom-right");
-  const [wmOpacity, setWmOpacity] = useState("0.6");
-  const [wmBusy, setWmBusy] = useState(false);
-  const [wmError, setWmError] = useState("");
+  const onDown = (e: React.MouseEvent) => {
+    const p = toImagePoint(e);
+    if (!p) return;
+    dragStart.current = p;
+    setRect({ x: p.x, y: p.y, w: 0, h: 0 });
+  };
+  const onMove = (e: React.MouseEvent) => {
+    if (!dragStart.current) return;
+    const p = toImagePoint(e);
+    if (!p) return;
+    const s = dragStart.current;
+    setRect({
+      x: Math.round(Math.min(s.x, p.x)),
+      y: Math.round(Math.min(s.y, p.y)),
+      w: Math.round(Math.abs(p.x - s.x)),
+      h: Math.round(Math.abs(p.y - s.y)),
+    });
+  };
+  const onUp = () => {
+    dragStart.current = null;
+  };
 
   const doCrop = async () => {
-    if (!cropFile) return;
-    setCropBusy(true);
-    setCropError("");
+    if (!file || !rect || rect.w < 2 || rect.h < 2) return;
+    setBusy(true);
+    setError("");
     try {
-      const blob = await api.imageCrop(cropFile, {
-        x: parseInt(box.x, 10) || 0,
-        y: parseInt(box.y, 10) || 0,
-        w: parseInt(box.w, 10) || 0,
-        h: parseInt(box.h, 10) || 0,
-      });
-      saveBlob(blob, `cropped_${cropFile.name}`);
+      const blob = await api.imageCrop(file, rect);
+      saveBlob(blob, `cropped_${file.name}`);
     } catch (e) {
-      setCropError((e as Error).message);
+      setError((e as Error).message);
     } finally {
-      setCropBusy(false);
+      setBusy(false);
     }
   };
 
+  // Проценты вместо пикселей — не нужно читать getBoundingClientRect() во
+  // время рендера (ref.current меняется только в событиях/эффектах), и
+  // рамка сама остаётся на месте при ресайзе окна без лишних измерений.
+  const displayRect = useMemo(() => {
+    if (!rect || !natural.w || !natural.h) return null;
+    return {
+      left: `${(rect.x / natural.w) * 100}%`,
+      top: `${(rect.y / natural.h) * 100}%`,
+      width: `${(rect.w / natural.w) * 100}%`,
+      height: `${(rect.h / natural.h) * 100}%`,
+    };
+  }, [rect, natural]);
+
+  return (
+    <Glass className="media-preview" style={{ flexDirection: "column", alignItems: "stretch", gap: 10 }}>
+      <div className="media-title" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <CropIcon size={16} />
+        {t("conv.imgCrop")}
+      </div>
+      <div className="muted-sm">{t("conv.imgCropHint")}</div>
+      <input
+        type="file"
+        accept="image/*"
+        onChange={(e) => setFile(e.target.files?.[0] || null)}
+      />
+      {url && (
+        <div
+          className="img-edit-canvas-wrap"
+          onMouseDown={onDown}
+          onMouseMove={onMove}
+          onMouseUp={onUp}
+          onMouseLeave={onUp}
+        >
+          <img
+            ref={imgRef}
+            src={url}
+            alt=""
+            draggable={false}
+            className="img-edit-preview"
+            onLoad={(e) => {
+              const im = e.currentTarget;
+              setNatural({ w: im.naturalWidth, h: im.naturalHeight });
+            }}
+          />
+          {displayRect && (
+            <div
+              className="img-edit-crop-rect"
+              style={{
+                left: displayRect.left,
+                top: displayRect.top,
+                width: displayRect.width,
+                height: displayRect.height,
+              }}
+            />
+          )}
+        </div>
+      )}
+      {rect && rect.w > 1 && rect.h > 1 && (
+        <div className="muted-sm">
+          {t("conv.imgCropSize", { w: rect.w, h: rect.h })}
+        </div>
+      )}
+      <Btn
+        variant="primary"
+        icon={busy ? RefreshCw : FileUp}
+        disabled={!file || !rect || rect.w < 2 || rect.h < 2 || busy}
+        onClick={() => void doCrop()}
+        style={{ width: 220 }}
+      >
+        {busy ? t("conv.pdfWorking") : t("conv.imgCropGo")}
+      </Btn>
+      {error && <div style={{ color: "var(--coral)" }}>{error}</div>}
+    </Glass>
+  );
+}
+
+/** Ресайз с превью, показом текущих/новых размеров и опциональной блокировкой
+ * соотношения сторон. */
+function ResizeTool() {
+  const { t } = useI18n();
+  const [file, setFile] = useState<File | null>(null);
+  const [url, setUrl] = useState<string | null>(null);
+  const [natural, setNatural] = useState({ w: 0, h: 0 });
+  const [size, setSize] = useState({ w: "", h: "" });
+  const [lockRatio, setLockRatio] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!file) {
+      setUrl(null);
+      return;
+    }
+    const u = URL.createObjectURL(file);
+    setUrl(u);
+    setSize({ w: "", h: "" });
+    return () => URL.revokeObjectURL(u);
+  }, [file]);
+
+  const onWidthChange = useCallback(
+    (v: string) => {
+      setSize((s) => {
+        if (lockRatio && natural.w && natural.h && v) {
+          const w = parseInt(v, 10) || 0;
+          const h = Math.round((w * natural.h) / natural.w);
+          return { w: v, h: String(h) };
+        }
+        return { ...s, w: v };
+      });
+    },
+    [lockRatio, natural],
+  );
+  const onHeightChange = useCallback(
+    (v: string) => {
+      setSize((s) => {
+        if (lockRatio && natural.w && natural.h && v) {
+          const h = parseInt(v, 10) || 0;
+          const w = Math.round((h * natural.w) / natural.h);
+          return { w: String(w), h: v };
+        }
+        return { ...s, h: v };
+      });
+    },
+    [lockRatio, natural],
+  );
+
   const doResize = async () => {
-    if (!resizeFile) return;
-    setResizeBusy(true);
-    setResizeError("");
+    if (!file) return;
+    setBusy(true);
+    setError("");
     try {
-      const blob = await api.imageResize(resizeFile, {
+      const blob = await api.imageResize(file, {
         w: parseInt(size.w, 10) || 0,
         h: parseInt(size.h, 10) || 0,
       });
-      saveBlob(blob, `resized_${resizeFile.name}`);
+      saveBlob(blob, `resized_${file.name}`);
     } catch (e) {
-      setResizeError((e as Error).message);
+      setError((e as Error).message);
     } finally {
-      setResizeBusy(false);
-    }
-  };
-
-  const doWatermark = async () => {
-    if (!wmFile || !wmMark) return;
-    setWmBusy(true);
-    setWmError("");
-    try {
-      const blob = await api.imageWatermark(
-        wmFile,
-        wmMark,
-        wmPosition,
-        parseFloat(wmOpacity) || 0.6,
-      );
-      saveBlob(blob, `watermarked_${wmFile.name}`);
-    } catch (e) {
-      setWmError((e as Error).message);
-    } finally {
-      setWmBusy(false);
+      setBusy(false);
     }
   };
 
   return (
+    <Glass className="media-preview" style={{ flexDirection: "column", alignItems: "stretch", gap: 10 }}>
+      <div className="media-title" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <Maximize2 size={16} />
+        {t("conv.imgResize")}
+      </div>
+      <input type="file" accept="image/*" onChange={(e) => setFile(e.target.files?.[0] || null)} />
+      {url && (
+        <div className="img-edit-resize-preview">
+          <img
+            src={url}
+            alt=""
+            onLoad={(e) => {
+              const im = e.currentTarget;
+              setNatural({ w: im.naturalWidth, h: im.naturalHeight });
+            }}
+          />
+          {natural.w > 0 && (
+            <div className="muted-sm">
+              {t("conv.imgCurrentSize", { w: natural.w, h: natural.h })}
+            </div>
+          )}
+        </div>
+      )}
+      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+        <input
+          className="text-input"
+          style={{ width: 100 }}
+          type="number"
+          placeholder={t("conv.imgWidth")}
+          value={size.w}
+          onChange={(e) => onWidthChange(e.target.value)}
+        />
+        {lockRatio ? <Link2 size={14} /> : <Unlink size={14} />}
+        <input
+          className="text-input"
+          style={{ width: 100 }}
+          type="number"
+          placeholder={t("conv.imgHeight")}
+          value={size.h}
+          onChange={(e) => onHeightChange(e.target.value)}
+        />
+        <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
+          <Checkbox checked={lockRatio} onClick={() => setLockRatio((v) => !v)} />
+          <span className="muted-sm">{t("conv.imgLockRatio")}</span>
+        </label>
+      </div>
+      <Btn
+        variant="primary"
+        icon={busy ? RefreshCw : FileUp}
+        disabled={!file || !size.w || !size.h || busy}
+        onClick={() => void doResize()}
+        style={{ width: 220 }}
+      >
+        {busy ? t("conv.pdfWorking") : t("conv.imgResizeGo")}
+      </Btn>
+      {error && <div style={{ color: "var(--coral)" }}>{error}</div>}
+    </Glass>
+  );
+}
+
+/**
+ * Редактор изображений (кроп/ресайз) — через ffmpeg (server/ts/imageEditor.ts),
+ * без нового пакета обработки изображений.
+ */
+function ImageEditorToolkit() {
+  const { t } = useI18n();
+  return (
     <>
       <SectionHead eyebrow={t("conv.imgEyebrow")} title={t("conv.imgTitle")} />
-
-      {/* --- Кроп --- */}
-      <Glass className="media-preview" style={{ flexDirection: "column", alignItems: "stretch", gap: 8 }}>
-        <div className="media-title">{t("conv.imgCrop")}</div>
-        <input
-          type="file"
-          accept="image/*"
-          onChange={(e) => setCropFile(e.target.files?.[0] || null)}
-        />
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          {(["x", "y", "w", "h"] as const).map((k) => (
-            <input
-              key={k}
-              className="text-input"
-              style={{ width: 90 }}
-              placeholder={k.toUpperCase()}
-              value={box[k]}
-              onChange={(e) => setBox((b) => ({ ...b, [k]: e.target.value }))}
-            />
-          ))}
-        </div>
-        <Btn
-          variant="primary"
-          icon={cropBusy ? RefreshCw : FileUp}
-          disabled={!cropFile || cropBusy}
-          onClick={() => void doCrop()}
-          style={{ width: 200 }}
-        >
-          {cropBusy ? t("conv.pdfWorking") : t("conv.imgCropGo")}
-        </Btn>
-        {cropError && <div style={{ color: "var(--coral)" }}>{cropError}</div>}
-      </Glass>
-
-      {/* --- Ресайз --- */}
-      <Glass className="media-preview" style={{ flexDirection: "column", alignItems: "stretch", gap: 8 }}>
-        <div className="media-title">{t("conv.imgResize")}</div>
-        <input
-          type="file"
-          accept="image/*"
-          onChange={(e) => setResizeFile(e.target.files?.[0] || null)}
-        />
-        <div style={{ display: "flex", gap: 8 }}>
-          <input
-            className="text-input"
-            style={{ width: 100 }}
-            placeholder={t("conv.imgWidth")}
-            value={size.w}
-            onChange={(e) => setSize((s) => ({ ...s, w: e.target.value }))}
-          />
-          <input
-            className="text-input"
-            style={{ width: 100 }}
-            placeholder={t("conv.imgHeight")}
-            value={size.h}
-            onChange={(e) => setSize((s) => ({ ...s, h: e.target.value }))}
-          />
-        </div>
-        <Btn
-          variant="primary"
-          icon={resizeBusy ? RefreshCw : FileUp}
-          disabled={!resizeFile || resizeBusy}
-          onClick={() => void doResize()}
-          style={{ width: 200 }}
-        >
-          {resizeBusy ? t("conv.pdfWorking") : t("conv.imgResizeGo")}
-        </Btn>
-        {resizeError && <div style={{ color: "var(--coral)" }}>{resizeError}</div>}
-      </Glass>
-
-      {/* --- Водяной знак --- */}
-      <Glass className="media-preview" style={{ flexDirection: "column", alignItems: "stretch", gap: 8 }}>
-        <div className="media-title">{t("conv.imgWatermark")}</div>
-        <input
-          type="file"
-          accept="image/*"
-          onChange={(e) => setWmFile(e.target.files?.[0] || null)}
-        />
-        <div className="muted-sm">{t("conv.imgWatermarkFile")}</div>
-        <input
-          type="file"
-          accept="image/*"
-          onChange={(e) => setWmMark(e.target.files?.[0] || null)}
-        />
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <Select
-            value={wmPosition}
-            onChange={(e) => setWmPosition(e.target.value)}
-            options={[
-              { value: "top-left", label: t("conv.imgPosTopLeft") },
-              { value: "top-right", label: t("conv.imgPosTopRight") },
-              { value: "bottom-left", label: t("conv.imgPosBottomLeft") },
-              { value: "bottom-right", label: t("conv.imgPosBottomRight") },
-              { value: "center", label: t("conv.imgPosCenter") },
-            ]}
-          />
-          <input
-            className="text-input"
-            style={{ width: 90 }}
-            placeholder={t("conv.imgOpacity")}
-            value={wmOpacity}
-            onChange={(e) => setWmOpacity(e.target.value)}
-          />
-        </div>
-        <Btn
-          variant="primary"
-          icon={wmBusy ? RefreshCw : FileUp}
-          disabled={!wmFile || !wmMark || wmBusy}
-          onClick={() => void doWatermark()}
-          style={{ width: 200 }}
-        >
-          {wmBusy ? t("conv.pdfWorking") : t("conv.imgWatermarkGo")}
-        </Btn>
-        {wmError && <div style={{ color: "var(--coral)" }}>{wmError}</div>}
-      </Glass>
+      <CropTool />
+      <ResizeTool />
     </>
   );
 }
