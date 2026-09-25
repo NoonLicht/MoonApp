@@ -252,10 +252,11 @@ function RegexTool() {
             key={flag}
             className="muted-sm"
             title={t(labelKey)}
-            style={{ display: "flex", alignItems: "center", gap: 4, cursor: "pointer" }}
+            style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}
           >
             <input type="checkbox" checked={flagSet.has(flag)} onChange={() => toggleFlag(flag)} />
             <code>{flag}</code>
+            <span>— {t(labelKey)}</span>
           </label>
         ))}
       </div>
@@ -712,7 +713,29 @@ const TOOLS: { id: ToolId; icon: React.ElementType; Component: React.ComponentTy
 const TOOL_IDS = TOOLS.map((x) => x.id);
 
 const ORDER_KEY = "moonapp.tools.widgetOrder";
-const SIZE_KEY = "moonapp.tools.widgetSizes";
+const SIZE_KEY = "moonapp.tools.widgetSpans";
+
+/* Квант сетки в пикселях — приблизительный (реальная ширина колонки "плывёт"
+   вместе с шириной страницы через minmax(260px,1fr)), но для перевода
+   "пользователь растянул на N px" в "N клеток" точность в пару колонок не
+   критична — dense-packing сам аккуратно доукладывает соседей. */
+const GRID_COL_PX = 274; // ширина колонки (260) + gap (14)
+const GRID_ROW_PX = 22 + 14; // grid-auto-rows (22) + gap (14)
+
+type Span = { c: number; r: number };
+
+/** Дефолтные размеры в клетках сетки: инструментам с полями многострочного
+ * текста (JSON, diff, regex) даём заметно больше места сразу — раньше все
+ * виджеты рождались одинаковой мелкой фиксированной величины. */
+const DEFAULT_SPANS: Record<ToolId, Span> = {
+  json: { c: 2, r: 11 },
+  diff: { c: 2, r: 10 },
+  regex: { c: 2, r: 10 },
+  encode: { c: 1, r: 9 },
+  uuid: { c: 1, r: 7 },
+  base: { c: 1, r: 8 },
+  units: { c: 1, r: 9 },
+};
 
 function loadOrder(): ToolId[] {
   try {
@@ -725,7 +748,7 @@ function loadOrder(): ToolId[] {
   }
 }
 
-function loadSizes(): Partial<Record<ToolId, { w: number; h: number }>> {
+function loadSpans(): Partial<Record<ToolId, Span>> {
   try {
     return JSON.parse(localStorage.getItem(SIZE_KEY) || "{}");
   } catch {
@@ -741,7 +764,7 @@ function ToolWidget({
   id,
   icon: Icon,
   Component,
-  size,
+  span,
   dragging,
   onDragStart,
   onDragOver,
@@ -752,36 +775,49 @@ function ToolWidget({
   id: ToolId;
   icon: React.ElementType;
   Component: React.ComponentType;
-  size?: { w: number; h: number };
+  span: Span;
   dragging: boolean;
   onDragStart: () => void;
   onDragOver: (e: React.DragEvent) => void;
   onDrop: () => void;
   onDragEnd: () => void;
-  onResize: (size: { w: number; h: number }) => void;
+  onResize: (span: Span) => void;
 }) {
   const { t } = useI18n();
   const ref = useRef<HTMLDivElement>(null);
+  // Первое срабатывание ResizeObserver сообщает "естественный" размер сразу
+  // после монтирования (до того, как пользователь хоть раз потянул за
+  // уголок) — его нужно игнорировать, иначе дефолтный span тут же
+  // перезаписывается фактическим пиксельным размером и виджет "спрыгивает".
+  const skippedFirst = useRef(false);
 
   useEffect(() => {
+    skippedFirst.current = false;
     const el = ref.current;
     if (!el) return;
     const ro = new ResizeObserver(([entry]) => {
+      if (!skippedFirst.current) {
+        skippedFirst.current = true;
+        return;
+      }
       const { width, height } = entry.contentRect;
-      onResize({ w: Math.round(width), h: Math.round(height) });
+      onResize({
+        c: Math.max(1, Math.round(width / GRID_COL_PX)),
+        r: Math.max(4, Math.round(height / GRID_ROW_PX)),
+      });
     });
     ro.observe(el);
     return () => ro.disconnect();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [id]);
 
   return (
     <div
       ref={ref}
       className={`tools-widget${dragging ? " is-dragging" : ""}`}
       style={{
-        width: size?.w,
-        height: size?.h,
+        gridColumn: `span ${span.c}`,
+        gridRow: `span ${span.r}`,
       }}
       onDragOver={onDragOver}
       onDrop={onDrop}
@@ -801,9 +837,9 @@ function ToolWidget({
 export default function ToolsPage() {
   const { t } = useI18n();
   const [order, setOrder] = useState<ToolId[]>(() => loadOrder());
-  const [sizes, setSizes] = useState<Partial<Record<ToolId, { w: number; h: number }>>>(() => loadSizes());
+  const [spans, setSpans] = useState<Partial<Record<ToolId, Span>>>(() => loadSpans());
   const [draggedId, setDraggedId] = useState<ToolId | null>(null);
-  const sizeSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const spanSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     localStorage.setItem(ORDER_KEY, JSON.stringify(order));
@@ -819,11 +855,11 @@ export default function ToolsPage() {
     });
   };
 
-  const persistSize = (id: ToolId, size: { w: number; h: number }) => {
-    setSizes((prev) => {
-      const next = { ...prev, [id]: size };
-      if (sizeSaveTimer.current) clearTimeout(sizeSaveTimer.current);
-      sizeSaveTimer.current = setTimeout(() => {
+  const persistSpan = (id: ToolId, span: Span) => {
+    setSpans((prev) => {
+      const next = { ...prev, [id]: span };
+      if (spanSaveTimer.current) clearTimeout(spanSaveTimer.current);
+      spanSaveTimer.current = setTimeout(() => {
         localStorage.setItem(SIZE_KEY, JSON.stringify(next));
       }, 300);
       return next;
@@ -848,7 +884,7 @@ export default function ToolsPage() {
                 id={id}
                 icon={tool.icon}
                 Component={tool.Component}
-                size={sizes[id]}
+                span={spans[id] || DEFAULT_SPANS[id]}
                 dragging={draggedId === id}
                 onDragStart={() => setDraggedId(id)}
                 onDragOver={(e) => {
@@ -857,7 +893,7 @@ export default function ToolsPage() {
                 }}
                 onDrop={() => setDraggedId(null)}
                 onDragEnd={() => setDraggedId(null)}
-                onResize={(size) => persistSize(id, size)}
+                onResize={(span) => persistSpan(id, span)}
               />
             );
           })}
