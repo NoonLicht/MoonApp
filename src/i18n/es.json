@@ -317,7 +317,12 @@
     "fTags": "Etiquetas separadas por comas",
     "fNotes": "Nota",
     "saveForLater": "Guardar artículo para leer después (descarga el texto a una nota)",
-    "openArticle": "Abrir artículo guardado"
+    "openArticle": "Abrir artículo guardado",
+    "fTagsHint": "Añade una etiqueta y pulsa Enter…",
+    "tagExamples": "Ejemplos:",
+    "readerMode": "Modo lectura",
+    "readerLoading": "Cargando el texto limpio de la página…",
+    "downloadClean": "Descargar sin anuncios"
   },
   "screenshots": {
     "eyebrow": "Capturas y grabación",

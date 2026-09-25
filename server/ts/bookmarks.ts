@@ -162,6 +162,31 @@ export function update(
   return next;
 }
 
+/** Режим чтения "на лету": статья без сохранения в закладки/заметки — для
+ * кнопки "Режим чтения", которая просто показывает чистый текст сейчас. */
+export async function readNow(url: string): Promise<{ title: string; text: string }> {
+  return fetchArticle(url);
+}
+
+/** Сохранить статью существующей закладки постфактум (кнопка "Скачать без
+ * рекламы" на уже созданной закладке, которую сохранили без saveForLater). */
+export async function saveArticleFor(id: string): Promise<Bookmark | null> {
+  const all = readAll();
+  const idx = all.findIndex((x) => x.id === id);
+  if (idx === -1) return null;
+  const b = all[idx];
+  const article = await fetchArticle(b.url);
+  const title = b.title || article.title;
+  const fileName = `Read Later/${slugifyForFilename(title)}.md`;
+  const body = `# ${title}\n\nИсточник: ${b.url}\nСохранено: ${new Date().toLocaleString("ru-RU")}\n\n---\n\n${article.text}`;
+  vaultWriteFile(fileName, body, { source: b.url, savedAt: Date.now() });
+  const next: Bookmark = { ...b, articleNotePath: fileName, updatedAt: Date.now() };
+  all[idx] = next;
+  writeAll(all);
+  logger.info("bookmarks.save_article_later", { id });
+  return next;
+}
+
 export function remove(id: string): boolean {
   const all = readAll();
   const next = all.filter((x) => x.id !== id);

@@ -317,7 +317,12 @@
     "fTags": "标签,用逗号分隔",
     "fNotes": "备注",
     "saveForLater": "保存文章稍后阅读(将正文下载为笔记)",
-    "openArticle": "打开已保存的文章"
+    "openArticle": "打开已保存的文章",
+    "fTagsHint": "添加标签后按 Enter…",
+    "tagExamples": "示例：",
+    "readerMode": "阅读模式",
+    "readerLoading": "正在加载纯净网页文本…",
+    "downloadClean": "下载无广告版本"
   },
   "screenshots": {
     "eyebrow": "截图与录制",

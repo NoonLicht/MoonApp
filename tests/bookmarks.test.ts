@@ -1,7 +1,9 @@
-import { describe, it, expect, beforeAll } from "vitest";
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import fs from "fs";
 import os from "os";
 import path from "path";
+import http from "http";
+import type { AddressInfo } from "net";
 import { createRequire } from "module";
 
 /**
@@ -52,5 +54,54 @@ describe("server/bookmarks — CRUD без read-later", () => {
   it("update/remove несуществующей записи возвращает null/false", () => {
     expect(engine.update("no-such-id", { title: "x" })).toBeNull();
     expect(engine.remove("no-such-id")).toBe(false);
+  });
+});
+
+describe("server/bookmarks — режим чтения и постфактум-сохранение статьи (реальный HTTP)", () => {
+  let server: http.Server;
+  let baseUrl: string;
+
+  beforeAll(async () => {
+    server = http.createServer((req, res) => {
+      res.setHeader("Content-Type", "text/html; charset=utf-8");
+      res.end(
+        "<html><head><title>Test Article</title></head><body>" +
+          "<script>should be stripped</script>" +
+          "<h1>Заголовок</h1><p>Первый абзац.</p><p>Второй абзац.</p>" +
+          "</body></html>",
+      );
+    });
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    const addr = server.address() as AddressInfo;
+    baseUrl = `http://127.0.0.1:${addr.port}/`;
+  });
+
+  afterAll(() => {
+    server.close();
+  });
+
+  it("readNow скачивает и очищает страницу, не сохраняя её", async () => {
+    const article = await engine.readNow(baseUrl);
+    expect(article.title).toBe("Test Article");
+    expect(article.text).toContain("Заголовок");
+    expect(article.text).toContain("Первый абзац.");
+    expect(article.text).not.toContain("should be stripped");
+    // ничего не должно появиться в списке закладок/заметок
+    expect(engine.list().find((b) => b.url === baseUrl)).toBeUndefined();
+  });
+
+  it("saveArticleFor сохраняет статью для уже существующей закладки", async () => {
+    const created = await engine.create({ url: baseUrl, title: "My Article" });
+    expect(created.articleNotePath).toBeNull();
+
+    const updated = await engine.saveArticleFor(created.id);
+    expect(updated?.articleNotePath).toBe("Read Later/My Article.md");
+
+    const onDisk = engine.list().find((b) => b.id === created.id);
+    expect(onDisk?.articleNotePath).toBe("Read Later/My Article.md");
+  });
+
+  it("saveArticleFor для несуществующего id возвращает null", async () => {
+    expect(await engine.saveArticleFor("no-such-id")).toBeNull();
   });
 });

@@ -1,13 +1,187 @@
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Trash2, ExternalLink, FileText, Tag, BookOpen, X } from "lucide-react";
+import {
+  Plus,
+  Trash2,
+  ExternalLink,
+  FileText,
+  Tag,
+  BookOpen,
+  X,
+  Download,
+  Glasses,
+  RefreshCw,
+} from "lucide-react";
 import { Glass, Btn, Badge, EmptyHint, SectionHead } from "@/components/ui";
 import { useI18n } from "@/app/i18n";
 import { api } from "@/api/client";
+import { saveBlob } from "@/lib/download";
 import type { Bookmark } from "@/api/types";
 
 interface Props {
   /** Открыть сохранённую статью (read-later) как заметку в Notes view. */
   onOpenNote: (path: string) => void;
+}
+
+const EXAMPLE_TAGS = ["статья", "видео", "туториал", "работа", "идея", "почитать"];
+
+/** Тег-редактор: чипы вместо строки через запятую + клик по примерам/уже
+ * существующим тегам сразу добавляет тег. */
+function TagEditor({
+  value,
+  onChange,
+  suggestions,
+}: {
+  value: string[];
+  onChange: (tags: string[]) => void;
+  suggestions: string[];
+}) {
+  const { t } = useI18n();
+  const [draft, setDraft] = useState("");
+
+  const addTag = (raw: string) => {
+    const tg = raw.trim().replace(/^#/, "");
+    if (!tg || value.includes(tg)) return;
+    onChange([...value, tg]);
+  };
+  const removeTag = (tg: string) => onChange(value.filter((x) => x !== tg));
+
+  const pool = useMemo(
+    () => [...new Set([...suggestions, ...EXAMPLE_TAGS])].filter((tg) => !value.includes(tg)).slice(0, 10),
+    [suggestions, value],
+  );
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+        {value.map((tg) => (
+          <Badge key={tg} tone="amber" mono onClick={() => removeTag(tg)}>
+            #{tg} <X size={10} style={{ marginLeft: 3, verticalAlign: -1 }} />
+          </Badge>
+        ))}
+        <input
+          className="text-input"
+          style={{ flex: 1, minWidth: 120 }}
+          placeholder={t("bookmarks.fTagsHint")}
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === ",") {
+              e.preventDefault();
+              addTag(draft);
+              setDraft("");
+            } else if (e.key === "Backspace" && !draft && value.length) {
+              removeTag(value[value.length - 1]);
+            }
+          }}
+        />
+      </div>
+      {pool.length > 0 && (
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          <span className="muted-sm">{t("bookmarks.tagExamples")}</span>
+          {pool.map((tg) => (
+            <Badge key={tg} tone="neutral" mono onClick={() => addTag(tg)}>
+              +#{tg}
+            </Badge>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Оверлей "Режим чтения": грузит чистый текст статьи на лету (без
+ * сохранения) и позволяет скачать его файлом .md. */
+function ReaderOverlay({ url, onClose }: { url: string; onClose: () => void }) {
+  const { t } = useI18n();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [article, setArticle] = useState<{ title: string; text: string } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError("");
+    api
+      .bookmarksReadNow(url)
+      .then((a) => {
+        if (!cancelled) setArticle(a);
+      })
+      .catch((e) => {
+        if (!cancelled) setError((e as Error).message);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [url]);
+
+  const download = () => {
+    if (!article) return;
+    const blob = new Blob([`# ${article.title}\n\nИсточник: ${url}\n\n---\n\n${article.text}`], {
+      type: "text/markdown",
+    });
+    saveBlob(blob, `${article.title.replace(/[/\\?%*:|"<>]/g, "_").slice(0, 80) || "article"}.md`);
+  };
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 2000,
+        background: "rgba(0,0,0,0.55)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 24,
+      }}
+      onClick={onClose}
+    >
+      <Glass
+        style={{
+          flexDirection: "column",
+          alignItems: "stretch",
+          gap: 12,
+          padding: 20,
+          maxWidth: 640,
+          width: "100%",
+          maxHeight: "80vh",
+          overflow: "hidden",
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 600, minWidth: 0 }}>
+            <Glasses size={16} />
+            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {article?.title || t("bookmarks.readerMode")}
+            </span>
+          </div>
+          <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+            {article && (
+              <button type="button" className="icon-btn" title={t("bookmarks.downloadClean")} onClick={download}>
+                <Download size={15} />
+              </button>
+            )}
+            <button type="button" className="icon-btn" title={t("ctx.clear")} onClick={onClose}>
+              <X size={15} />
+            </button>
+          </div>
+        </div>
+        <div style={{ overflow: "auto", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>
+          {loading && (
+            <div className="muted-sm" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <RefreshCw size={14} className="spin" /> {t("bookmarks.readerLoading")}
+            </div>
+          )}
+          {error && <div style={{ color: "var(--coral)" }}>{error}</div>}
+          {!loading && !error && article?.text}
+        </div>
+      </Glass>
+    </div>
+  );
 }
 
 /**
@@ -22,7 +196,16 @@ export default function BookmarksView({ onOpenNote }: Props) {
   const [tagFilter, setTagFilter] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ url: "", title: "", notes: "", tags: "", saveForLater: false });
+  const [form, setForm] = useState<{
+    url: string;
+    title: string;
+    notes: string;
+    tags: string[];
+    saveForLater: boolean;
+  }>({ url: "", title: "", notes: "", tags: [], saveForLater: false });
+  const [readerUrl, setReaderUrl] = useState<string | null>(null);
+  const [savingArticleId, setSavingArticleId] = useState<string | null>(null);
+  const [error, setError] = useState("");
 
   const load = () => {
     setLoading(true);
@@ -55,13 +238,10 @@ export default function BookmarksView({ onOpenNote }: Props) {
         url: form.url.trim(),
         title: form.title.trim() || undefined,
         notes: form.notes.trim(),
-        tags: form.tags
-          .split(",")
-          .map((s) => s.trim())
-          .filter(Boolean),
+        tags: form.tags,
         saveForLater: form.saveForLater,
       });
-      setForm({ url: "", title: "", notes: "", tags: "", saveForLater: false });
+      setForm({ url: "", title: "", notes: "", tags: [], saveForLater: false });
       setShowForm(false);
       load();
     } finally {
@@ -72,6 +252,18 @@ export default function BookmarksView({ onOpenNote }: Props) {
   const remove = async (id: string) => {
     await api.bookmarksDelete(id);
     load();
+  };
+
+  const saveArticleNow = async (id: string) => {
+    setSavingArticleId(id);
+    try {
+      await api.bookmarksSaveArticle(id);
+      load();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setSavingArticleId(null);
+    }
   };
 
   return (
@@ -106,11 +298,10 @@ export default function BookmarksView({ onOpenNote }: Props) {
               value={form.title}
               onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
             />
-            <input
-              className="text-input"
-              placeholder={t("bookmarks.fTags")}
+            <TagEditor
               value={form.tags}
-              onChange={(e) => setForm((f) => ({ ...f, tags: e.target.value }))}
+              onChange={(tags) => setForm((f) => ({ ...f, tags }))}
+              suggestions={allTags}
             />
             <textarea
               className="text-input"
@@ -152,6 +343,11 @@ export default function BookmarksView({ onOpenNote }: Props) {
         </Btn>
       )}
 
+      {error && (
+        <Glass className="source-placeholder" style={{ borderColor: "var(--coral)", marginBottom: 8 }}>
+          <span style={{ color: "var(--coral)" }}>{error}</span>
+        </Glass>
+      )}
       {loading && <div className="muted-sm">{t("passwordVault.loading")}</div>}
       {!loading && filtered.length === 0 && <EmptyHint icon={Tag} text={t("bookmarks.empty")} />}
 
@@ -191,7 +387,15 @@ export default function BookmarksView({ onOpenNote }: Props) {
                 )}
               </div>
               <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
-                {b.articleNotePath && (
+                <button
+                  type="button"
+                  className="icon-btn"
+                  title={t("bookmarks.readerMode")}
+                  onClick={() => setReaderUrl(b.url)}
+                >
+                  <Glasses size={15} />
+                </button>
+                {b.articleNotePath ? (
                   <button
                     type="button"
                     className="icon-btn"
@@ -199,6 +403,20 @@ export default function BookmarksView({ onOpenNote }: Props) {
                     onClick={() => onOpenNote(b.articleNotePath as string)}
                   >
                     <FileText size={15} />
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="icon-btn"
+                    title={t("bookmarks.downloadClean")}
+                    disabled={savingArticleId === b.id}
+                    onClick={() => void saveArticleNow(b.id)}
+                  >
+                    {savingArticleId === b.id ? (
+                      <RefreshCw size={15} className="spin" />
+                    ) : (
+                      <Download size={15} />
+                    )}
                   </button>
                 )}
                 <button
@@ -214,6 +432,7 @@ export default function BookmarksView({ onOpenNote }: Props) {
           </Glass>
         ))}
       </div>
+      {readerUrl && <ReaderOverlay url={readerUrl} onClose={() => setReaderUrl(null)} />}
     </div>
   );
 }

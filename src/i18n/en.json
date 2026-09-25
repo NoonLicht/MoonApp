@@ -317,7 +317,12 @@
     "fTags": "Comma-separated tags",
     "fNotes": "Note",
     "saveForLater": "Save article for later (downloads text into a note)",
-    "openArticle": "Open saved article"
+    "openArticle": "Open saved article",
+    "fTagsHint": "Add a tag and press Enter…",
+    "tagExamples": "Examples:",
+    "readerMode": "Reader mode",
+    "readerLoading": "Loading the clean page text…",
+    "downloadClean": "Download without ads"
   },
   "screenshots": {
     "eyebrow": "Screenshots & recording",

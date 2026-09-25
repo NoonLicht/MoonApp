@@ -317,7 +317,12 @@
     "fTags": "Tags séparés par des virgules",
     "fNotes": "Note",
     "saveForLater": "Enregistrer l'article pour plus tard (télécharge le texte dans une note)",
-    "openArticle": "Ouvrir l'article enregistré"
+    "openArticle": "Ouvrir l'article enregistré",
+    "fTagsHint": "Ajoutez un tag et appuyez sur Entrée…",
+    "tagExamples": "Exemples :",
+    "readerMode": "Mode lecture",
+    "readerLoading": "Chargement du texte épuré de la page…",
+    "downloadClean": "Télécharger sans publicités"
   },
   "screenshots": {
     "eyebrow": "Captures et enregistrement",

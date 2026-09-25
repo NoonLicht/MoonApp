@@ -317,7 +317,12 @@
     "fTags": "وسوم مفصولة بفواصل",
     "fNotes": "ملاحظة",
     "saveForLater": "حفظ المقال للقراءة لاحقًا (يُنزّل النص إلى ملاحظة)",
-    "openArticle": "فتح المقال المحفوظ"
+    "openArticle": "فتح المقال المحفوظ",
+    "fTagsHint": "أضف وسمًا واضغط Enter…",
+    "tagExamples": "أمثلة:",
+    "readerMode": "وضع القراءة",
+    "readerLoading": "جارٍ تحميل نص الصفحة النظيف…",
+    "downloadClean": "تنزيل بدون إعلانات"
   },
   "screenshots": {
     "eyebrow": "لقطات الشاشة والتسجيل",
