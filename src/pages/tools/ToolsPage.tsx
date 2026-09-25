@@ -845,6 +845,21 @@ function getToolAtPath(tree: TileTree, path: TilePath): ToolId | null {
   return n.type === "leaf" ? n.toolId : null;
 }
 
+/** Минимально необходимый размер поддерева вдоль оси `dir` (px). Для листа —
+ * MIN_TILE_PX. Для разбиения вдоль ТОЙ ЖЕ оси размеры складываются (плюс
+ * разделитель), для разбиения поперёк — берём максимум (обе половины
+ * растягиваются на всю доступную длину по этой оси). Используется, чтобы
+ * контейнер и каждый узел дерева всегда получали ХОТЯ БЫ этот размер —
+ * иначе при нехватке места (узкое окно/короткая страница) соседние блоки
+ * налезали друг на друга, потому что каждый разделитель клэмпился к плоскому
+ * MIN_TILE_PX независимо от того, сколько блоков реально лежит в поддереве. */
+function minRequiredSize(tree: TileTree, dir: Dir): number {
+  if (tree.type === "leaf") return MIN_TILE_PX;
+  const a = minRequiredSize(tree.a, dir);
+  const b = minRequiredSize(tree.b, dir);
+  return tree.dir === dir ? a + b + DIVIDER_PX : Math.max(a, b);
+}
+
 function setToolAtPath(tree: TileTree, path: TilePath, toolId: ToolId): TileTree {
   if (path.length === 0) return tree.type === "leaf" ? { type: "leaf", toolId } : tree;
   if (tree.type !== "split") return tree;
@@ -858,6 +873,8 @@ interface DragRatioInfo {
   path: TilePath;
   dir: Dir;
   rect: Rect;
+  minA: number;
+  minB: number;
 }
 
 function TileNode({
@@ -881,7 +898,7 @@ function TileNode({
   onLeafDragStart: (path: TilePath) => void;
   onLeafDrop: (path: TilePath) => void;
   onLeafDragEnd: () => void;
-  onDividerDown: (path: TilePath, dir: Dir, rect: Rect) => void;
+  onDividerDown: (path: TilePath, dir: Dir, rect: Rect, minA: number, minB: number) => void;
   onDividerMove: (e: React.PointerEvent) => void;
   onDividerUp: (e: React.PointerEvent) => void;
 }) {
@@ -926,8 +943,15 @@ function TileNode({
 
   const isX = node.dir === "x";
   const dim = isX ? rect.w : rect.h;
-  const aSize = Math.max(MIN_TILE_PX, Math.round(dim * node.ratio));
-  const bSize = Math.max(MIN_TILE_PX, dim - aSize - DIVIDER_PX);
+  const minA = minRequiredSize(node.a, node.dir);
+  const minB = minRequiredSize(node.b, node.dir);
+  // Клэмпим по СТРУКТУРНОМУ минимуму каждой половины (а не плоскому
+  // MIN_TILE_PX) — иначе сторона, в которой лежит несколько вложенных
+  // блоков, могла бы получить места меньше, чем нужно её собственному
+  // поддереву, и блоки внутри неё наехали бы друг на друга.
+  let aSize = Math.round(dim * node.ratio);
+  aSize = Math.max(minA, Math.min(dim - minB - DIVIDER_PX, aSize));
+  const bSize = Math.max(minB, dim - aSize - DIVIDER_PX);
   const rectA: Rect = isX
     ? { x: rect.x, y: rect.y, w: aSize, h: rect.h }
     : { x: rect.x, y: rect.y, w: rect.w, h: aSize };
@@ -958,7 +982,7 @@ function TileNode({
         style={dividerStyle}
         onPointerDown={(e) => {
           e.currentTarget.setPointerCapture(e.pointerId);
-          onDividerDown(path, node.dir, rect);
+          onDividerDown(path, node.dir, rect, minA, minB);
         }}
         onPointerMove={onDividerMove}
         onPointerUp={onDividerUp}
@@ -983,23 +1007,39 @@ function TileNode({
 export default function ToolsPage() {
   const { t } = useI18n();
   const [tree, setTree] = useState<TileTree>(() => loadTree());
-  const [size, setSize] = useState({ w: 0, h: 0 });
+  const [viewport, setViewport] = useState({ w: 0, h: 0 });
   const [draggedKey, setDraggedKey] = useState<string | null>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const draggedPathRef = useRef<TilePath | null>(null);
   const dragRatioRef = useRef<DragRatioInfo | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Наблюдаем за ВИДИМОЙ областью прокрутки, а не за самим контентом сетки —
+  // высота/ширина контента вычисляется от дерева (minRequiredSize) и может
+  // быть больше видимой области, тогда прокрутка внутри .tools-tile-scroll
+  // (а не сжатие блоков ниже их минимального размера) берёт на себя остаток.
   useEffect(() => {
-    const el = containerRef.current;
+    const el = scrollRef.current;
     if (!el) return;
     const ro = new ResizeObserver(([entry]) => {
       const { width, height } = entry.contentRect;
-      setSize({ w: Math.round(width), h: Math.round(height) });
+      setViewport({ w: Math.round(width), h: Math.round(height) });
     });
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
+
+  // Размер контента сетки: не меньше видимой области (чтобы дерево
+  // растягивалось на всё доступное место), но и не меньше структурного
+  // минимума дерева (чтобы при нехватке места появлялась прокрутка, а не
+  // наложение блоков друг на друга).
+  const content = useMemo(
+    () => ({
+      w: Math.max(viewport.w, minRequiredSize(tree, "x")),
+      h: Math.max(viewport.h, minRequiredSize(tree, "y")),
+    }),
+    [viewport, tree],
+  );
 
   useEffect(() => {
     if (saveTimer.current) clearTimeout(saveTimer.current);
@@ -1035,8 +1075,8 @@ export default function ToolsPage() {
     });
   };
 
-  const onDividerDown = (path: TilePath, dir: Dir, rect: Rect) => {
-    dragRatioRef.current = { path, dir, rect };
+  const onDividerDown = (path: TilePath, dir: Dir, rect: Rect, minA: number, minB: number) => {
+    dragRatioRef.current = { path, dir, rect, minA, minB };
   };
   const onDividerMove = (e: React.PointerEvent) => {
     const d = dragRatioRef.current;
@@ -1044,8 +1084,12 @@ export default function ToolsPage() {
     const pos = d.dir === "x" ? e.clientX - d.rect.x : e.clientY - d.rect.y;
     const dim = d.dir === "x" ? d.rect.w : d.rect.h;
     if (dim <= 0) return;
-    const minR = Math.min(0.45, MIN_TILE_PX / dim);
-    const ratio = Math.min(1 - minR, Math.max(minR, pos / dim));
+    // Клэмп по структурному минимуму каждой стороны — тот же расчёт, что и
+    // при рендере (minRequiredSize), иначе можно было бы утащить границу
+    // так, что вложенные блоки внутри одной из половин налезли бы друг на
+    // друга.
+    const aSize = Math.min(dim - d.minB - DIVIDER_PX, Math.max(d.minA, pos));
+    const ratio = aSize / dim;
     setTree((prev) => updateRatioAtPath(prev, d.path, ratio));
   };
   const onDividerUp = (e: React.PointerEvent) => {
@@ -1084,21 +1128,23 @@ export default function ToolsPage() {
       <div className="muted-sm" style={{ margin: "4px 0 10px" }}>
         {t("tools.gridHint")}
       </div>
-      <div ref={containerRef} className="tools-tile-container">
-        {size.w > 0 && size.h > 0 && (
-          <TileNode
-            node={tree}
-            path={[]}
-            rect={{ x: 0, y: 0, w: size.w, h: size.h }}
-            toolsById={byId}
-            draggedKey={draggedKey}
-            onLeafDragStart={onLeafDragStart}
-            onLeafDrop={onLeafDrop}
-            onLeafDragEnd={onLeafDragEnd}
-            onDividerDown={onDividerDown}
-            onDividerMove={onDividerMove}
-            onDividerUp={onDividerUp}
-          />
+      <div ref={scrollRef} className="tools-tile-scroll">
+        {content.w > 0 && content.h > 0 && (
+          <div className="tools-tile-container" style={{ width: content.w, height: content.h }}>
+            <TileNode
+              node={tree}
+              path={[]}
+              rect={{ x: 0, y: 0, w: content.w, h: content.h }}
+              toolsById={byId}
+              draggedKey={draggedKey}
+              onLeafDragStart={onLeafDragStart}
+              onLeafDrop={onLeafDrop}
+              onLeafDragEnd={onLeafDragEnd}
+              onDividerDown={onDividerDown}
+              onDividerMove={onDividerMove}
+              onDividerUp={onDividerUp}
+            />
+          </div>
         )}
       </div>
     </div>
