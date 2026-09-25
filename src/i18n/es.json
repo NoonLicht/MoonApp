@@ -326,7 +326,10 @@
     "undo": "Deshacer trazo",
     "copy": "Copiar",
     "download": "Descargar",
-    "annotateHint": "Dibuja directamente sobre la captura (marcador simple). Para anotaciones completas (stickers/formas/texto) — Ctrl+V en el canvas de MySpace.",
+    "annotateHint": "Marcador — dibuja directamente sobre la captura. Flecha y desenfoque — pulsa y arrastra. Para anotaciones completas (stickers/formas/texto) — Ctrl+V en el canvas de MySpace.",
+    "toolPen": "Marcador",
+    "toolArrow": "Flecha",
+    "toolBlur": "Desenfoque",
     "empty": "Haz una captura o inicia la grabación de pantalla"
   },
   "automation": {

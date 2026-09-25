@@ -326,7 +326,10 @@
     "undo": "Annuler le trait",
     "copy": "Copier",
     "download": "Télécharger",
-    "annotateHint": "Dessinez directement sur la capture (marqueur simple). Pour des annotations complètes (stickers/formes/texte) — Ctrl+V dans le canvas MySpace.",
+    "annotateHint": "Marqueur — dessinez directement sur la capture. Flèche et flou — appuyez et glissez. Pour des annotations complètes (stickers/formes/texte) — Ctrl+V dans le canvas MySpace.",
+    "toolPen": "Marqueur",
+    "toolArrow": "Flèche",
+    "toolBlur": "Flou",
     "empty": "Prenez une capture ou démarrez l'enregistrement d'écran"
   },
   "automation": {

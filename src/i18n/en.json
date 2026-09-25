@@ -326,7 +326,10 @@
     "undo": "Undo stroke",
     "copy": "Copy",
     "download": "Download",
-    "annotateHint": "Draw directly on the screenshot (simple marker). For full annotations (stickers/shapes/text) — Ctrl+V into the MySpace canvas.",
+    "annotateHint": "Marker — draw directly on the screenshot. Arrow and blur — press and drag. For full annotations (stickers/shapes/text) — Ctrl+V into the MySpace canvas.",
+    "toolPen": "Marker",
+    "toolArrow": "Arrow",
+    "toolBlur": "Blur",
     "empty": "Take a screenshot or start screen recording"
   },
   "automation": {

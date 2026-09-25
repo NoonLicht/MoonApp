@@ -326,7 +326,10 @@
     "undo": "撤销笔画",
     "copy": "复制",
     "download": "下载",
-    "annotateHint": "直接在截图上绘制(简单标记笔)。如需完整标注(贴纸/形状/文字)— 在 MySpace 画布中按 Ctrl+V。",
+    "annotateHint": "标记笔 — 直接在截图上绘制。箭头和模糊 — 按住并拖动。如需完整标注(贴纸/形状/文字)— 在 MySpace 画布中按 Ctrl+V。",
+    "toolPen": "标记笔",
+    "toolArrow": "箭头",
+    "toolBlur": "模糊",
     "empty": "截图或开始屏幕录制"
   },
   "automation": {
