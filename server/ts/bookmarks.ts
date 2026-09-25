@@ -23,6 +23,9 @@ export interface Bookmark {
   createdAt: number;
   updatedAt: number;
   articleNotePath: string | null;
+  /** id уже готового архива .sitebak для быстрого повторного "Режима чтения"
+   * без повторного обхода страницы (см. server/ts/sitebak.ts). */
+  readerArchiveId: string | null;
 }
 
 function readAll(): Bookmark[] {
@@ -176,6 +179,7 @@ export async function create(input: {
     createdAt: now,
     updatedAt: now,
     articleNotePath,
+    readerArchiveId: null,
   };
   const all = readAll();
   all.push(entry);
@@ -200,6 +204,18 @@ export function update(
     folder: input.folder !== undefined ? String(input.folder) : cur.folder,
     updatedAt: Date.now(),
   };
+  all[idx] = next;
+  writeAll(all);
+  return next;
+}
+
+/** Запоминает id готового .sitebak-архива для этой закладки — при повторном
+ * открытии "Режима чтения" не гонять обход страницы заново. */
+export function setReaderArchive(id: string, archiveId: string): Bookmark | null {
+  const all = readAll();
+  const idx = all.findIndex((x) => x.id === id);
+  if (idx === -1) return null;
+  const next: Bookmark = { ...all[idx], readerArchiveId: archiveId };
   all[idx] = next;
   writeAll(all);
   return next;

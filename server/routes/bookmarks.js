@@ -8,6 +8,7 @@
  *  PUT    /api/bookmarks/:id         — обновить { title?, notes?, tags?, folder? }
  *  DELETE /api/bookmarks/:id         — удалить
  *  POST   /api/bookmarks/:id/save-article — сохранить статью постфактум (Read Later)
+ *  POST   /api/bookmarks/:id/reader-archive { archiveId } — запомнить id готового .sitebak
  */
 
 const express = require("express");
@@ -37,6 +38,18 @@ router.post("/", async (req, res) => {
 router.post("/:id/save-article", async (req, res) => {
   try {
     const entry = await bookmarks.saveArticleFor(req.params.id);
+    if (!entry) return res.status(404).json({ error: "not_found" });
+    res.json(entry);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.post("/:id/reader-archive", (req, res) => {
+  try {
+    const archiveId = String((req.body && req.body.archiveId) || "");
+    if (!archiveId) return res.status(400).json({ error: "missing_archive_id" });
+    const entry = bookmarks.setReaderArchive(req.params.id, archiveId);
     if (!entry) return res.status(404).json({ error: "not_found" });
     res.json(entry);
   } catch (e) {

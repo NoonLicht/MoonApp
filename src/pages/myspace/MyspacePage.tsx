@@ -717,6 +717,21 @@ export default function MyspacePage() {
   // гейтим сами (как MediaDetailModal/PlayerModal): иначе он остался бы висеть
   // поверх дока при переключении страницы.
   const pageActive = usePageActive();
+  // Дерево Vault раньше обновлялось только после действий САМОГО приложения
+  // (создать/удалить/переименовать) — если закинуть файл в папку заметок
+  // снаружи (проводник), он не появлялся, пока не перезайти на страницу.
+  // Лёгкий поллинг раз в 5с, пока страница активна — тот же паттерн, что и
+  // у остальных списков в приложении (ArchiverPage и т.п.).
+  useEffect(() => {
+    if (!pageActive) return undefined;
+    const timer = window.setInterval(() => {
+      api
+        .myspaceTree()
+        .then(setTree)
+        .catch(() => {});
+    }, 5000);
+    return () => window.clearInterval(timer);
+  }, [pageActive]);
   // Esc закрывает полноэкранный граф. Слушатель на window (как в
   // MediaDetailModal/ContextMenu): оверлей рендерится порталом, поэтому
   // onKeyDown на самом div никогда не срабатывал — фокус туда не попадал.
@@ -2108,6 +2123,16 @@ export default function MyspacePage() {
                             const newChar = m[2] === "x" || m[2] === "X" ? " " : "x";
                             lines[lineIndex] = m[1] + newChar + m[3];
                             updContent(activeTab, lines.join("\n"));
+                          }}
+                          onPasteImage={async (blob: Blob) => {
+                            try {
+                              const ext = blob.type.split("/")[1] || "png";
+                              const { url } = await api.myspaceUploadAsset(blob, `clipboard.${ext}`);
+                              return `![image](${url})`;
+                            } catch (e) {
+                              setAttachError((e as Error).message);
+                              return null;
+                            }
                           }}
                         />
                       );

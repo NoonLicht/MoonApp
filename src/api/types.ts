@@ -393,6 +393,7 @@ export interface Bookmark {
   createdAt: number;
   updatedAt: number;
   articleNotePath: string | null;
+  readerArchiveId: string | null;
 }
 
 export interface BookmarkInput {

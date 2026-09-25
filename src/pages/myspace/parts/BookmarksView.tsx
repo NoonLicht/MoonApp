@@ -102,47 +102,90 @@ function TagEditor({
  * это чинит "нет картинок" и убирает самодельный HTML→текст парсер, который
  * терял вёрстку, которую сохраняет Chrome Reading Mode.
  */
-function ReaderOverlay({ url, onClose }: { url: string; onClose: () => void }) {
+function ReaderOverlay({
+  bookmark,
+  onClose,
+  onArchived,
+}: {
+  bookmark: Bookmark;
+  onClose: () => void;
+  onArchived: (archiveId: string) => void;
+}) {
   const { t } = useI18n();
+  const { url } = bookmark;
   const [job, setJob] = useState<SitebakJob | null>(null);
   const [jobId, setJobId] = useState<string | null>(null);
   const [pagePath, setPagePath] = useState("");
   const [error, setError] = useState("");
+  const [archiveId, setArchiveId] = useState<string | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-    setError("");
-    setJob(null);
-    setPagePath("");
+  const crawl = () => {
     api
       .archiveStart({
         url,
         depth: 0,
         domainScope: "path",
-        maxPages: 1,
+        maxPages: 3,
         imageMode: "original",
         stripScripts: true,
         stripExif: false,
         blockAds: true,
         inlineAssets: true,
         delayMs: 0,
-        concurrency: 1,
+        concurrency: 2,
         cookies: "",
         userAgent: "",
       })
       .then((j) => {
-        if (cancelled) return;
         setJob(j);
         setJobId(j.id);
       })
-      .catch((e) => {
-        if (!cancelled) setError((e as Error).message);
-      });
+      .catch((e) => setError((e as Error).message));
+  };
+
+  // Уже архивировали эту закладку раньше (readerArchiveId) — не гоняем обход
+  // страницы заново, а сразу пробуем открыть готовый .sitebak. Если он с тех
+  // пор удалён на странице "Архиватор" — тихо откатываемся на новый обход.
+  useEffect(() => {
+    let cancelled = false;
+    setError("");
+    setJob(null);
+    setPagePath("");
+    setArchiveId(null);
+    if (bookmark.readerArchiveId) {
+      api
+        .archivePages(bookmark.readerArchiveId)
+        .then((pages) => {
+          if (cancelled) return;
+          const path = pages.pages[0]?.path || "";
+          if (!path) throw new Error("empty");
+          setArchiveId(bookmark.readerArchiveId as string);
+          setPagePath(path);
+          setJob({
+            id: bookmark.readerArchiveId as string,
+            url,
+            name: pages.name || url,
+            stage: "done",
+            progress: 100,
+            pages: pages.total,
+            origSize: 0,
+            bakSize: 0,
+            error: "",
+            done: true,
+          });
+        })
+        .catch(() => {
+          if (!cancelled) crawl();
+        });
+    } else {
+      crawl();
+    }
     return () => {
       cancelled = true;
       setJobId(null);
     };
-  }, [url]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [url, bookmark.readerArchiveId]);
 
   useEffect(() => {
     if (!jobId) return undefined;
@@ -161,7 +204,9 @@ function ReaderOverlay({ url, onClose }: { url: string; onClose: () => void }) {
           const pages = await api.archivePages(s.id);
           if (stopped) return;
           setPagePath(pages.pages[0]?.path || "");
+          setArchiveId(s.id);
           setJobId(null);
+          onArchived(s.id);
         }
       } catch {
         /* повтор на следующем тике */
@@ -173,6 +218,7 @@ function ReaderOverlay({ url, onClose }: { url: string; onClose: () => void }) {
       stopped = true;
       window.clearInterval(timer);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [jobId, t]);
 
   const ready = !!job?.done && !!pagePath;
@@ -191,20 +237,20 @@ function ReaderOverlay({ url, onClose }: { url: string; onClose: () => void }) {
             )}
           </div>
           <div className="arch-view-head-actions">
-            {ready && job && (
+            {ready && archiveId && (
               <>
                 <button
                   type="button"
                   className="icon-btn"
                   title={t("bookmarks.readerOpenTab")}
-                  onClick={() => window.open(api.archivePreview(job.id, pagePath), "_blank")}
+                  onClick={() => window.open(api.archivePreview(archiveId, pagePath), "_blank")}
                 >
                   <ExternalLink size={15} />
                 </button>
                 <a
                   className="icon-btn"
                   title={t("bookmarks.readerDownloadBak")}
-                  href={api.archiveDownload(job.id)}
+                  href={api.archiveDownload(archiveId)}
                   download
                 >
                   <Archive size={15} />
@@ -228,7 +274,7 @@ function ReaderOverlay({ url, onClose }: { url: string; onClose: () => void }) {
             ) : (
               <iframe
                 className="arch-view-iframe"
-                src={api.archivePreview(job!.id, pagePath)}
+                src={api.archivePreview(archiveId as string, pagePath)}
                 title={job?.name || url}
                 sandbox="allow-same-origin"
               />
@@ -260,7 +306,7 @@ export default function BookmarksView({ onOpenNote }: Props) {
     tags: string[];
     saveForLater: boolean;
   }>({ url: "", title: "", notes: "", tags: [], saveForLater: false });
-  const [readerUrl, setReaderUrl] = useState<string | null>(null);
+  const [readerBookmark, setReaderBookmark] = useState<Bookmark | null>(null);
   const [savingArticleId, setSavingArticleId] = useState<string | null>(null);
   const [error, setError] = useState("");
 
@@ -321,6 +367,34 @@ export default function BookmarksView({ onOpenNote }: Props) {
     } finally {
       setSavingArticleId(null);
     }
+  };
+
+  /** Открыть сохранённую статью — если файл в Vault с тех пор удалили
+   * (Could not open file: not found), тихо пересоздаём его и открываем заново
+   * вместо голой ошибки. */
+  const openArticle = async (b: Bookmark) => {
+    if (!b.articleNotePath) return;
+    try {
+      const d = await api.myspaceRead(b.articleNotePath);
+      if (!d) throw new Error("not_found");
+      onOpenNote(b.articleNotePath);
+    } catch {
+      setSavingArticleId(b.id);
+      try {
+        const updated = await api.bookmarksSaveArticle(b.id);
+        load();
+        if (updated.articleNotePath) onOpenNote(updated.articleNotePath);
+      } catch (e) {
+        setError((e as Error).message);
+      } finally {
+        setSavingArticleId(null);
+      }
+    }
+  };
+
+  const handleArchived = (id: string, archiveId: string) => {
+    setItems((prev) => prev.map((b) => (b.id === id ? { ...b, readerArchiveId: archiveId } : b)));
+    void api.bookmarksSetReaderArchive(id, archiveId).catch(() => {});
   };
 
   return (
@@ -448,7 +522,7 @@ export default function BookmarksView({ onOpenNote }: Props) {
                   type="button"
                   className="icon-btn"
                   title={t("bookmarks.readerMode")}
-                  onClick={() => setReaderUrl(b.url)}
+                  onClick={() => setReaderBookmark(b)}
                 >
                   <Glasses size={15} />
                 </button>
@@ -457,9 +531,14 @@ export default function BookmarksView({ onOpenNote }: Props) {
                     type="button"
                     className="icon-btn"
                     title={t("bookmarks.openArticle")}
-                    onClick={() => onOpenNote(b.articleNotePath as string)}
+                    disabled={savingArticleId === b.id}
+                    onClick={() => void openArticle(b)}
                   >
-                    <FileText size={15} />
+                    {savingArticleId === b.id ? (
+                      <RefreshCw size={15} className="spin" />
+                    ) : (
+                      <FileText size={15} />
+                    )}
                   </button>
                 ) : (
                   <button
@@ -489,7 +568,13 @@ export default function BookmarksView({ onOpenNote }: Props) {
           </Glass>
         ))}
       </div>
-      {readerUrl && <ReaderOverlay url={readerUrl} onClose={() => setReaderUrl(null)} />}
+      {readerBookmark && (
+        <ReaderOverlay
+          bookmark={readerBookmark}
+          onClose={() => setReaderBookmark(null)}
+          onArchived={(archiveId) => handleArchived(readerBookmark.id, archiveId)}
+        />
+      )}
     </div>
   );
 }

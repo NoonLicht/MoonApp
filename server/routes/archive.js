@@ -65,7 +65,14 @@ function serveHtml(res, buf) {
     .toString("utf8")
     .replace(/<script[\s\S]*?<\/script>/gi, "")
     .replace(/ on[a-z]+\s*=\s*"[^"]*"/gi, "")
-    .replace(/ on[a-z]+\s*=\s*'[^']*'/gi, "");
+    .replace(/ on[a-z]+\s*=\s*'[^']*'/gi, "")
+    // Исходный сайт мог нести свой <meta http-equiv="Content-Security-Policy">
+    // (частый случай на новостных/CMS-страницах) — он продолжает действовать
+    // и внутри офлайн-копии, вместе с нашим заголовком CSP браузер применяет
+    // ПЕРЕСЕЧЕНИЕ обеих политик. Если у исходного style-src нет
+    // 'unsafe-inline', наши вшитые <style> (inlineAssets) блокируются
+    // молча — страница выглядит "без стилей". Вырезаем донорский CSP.
+    .replace(/<meta[^>]+http-equiv=["']content-security-policy["'][^>]*>/gi, "");
   res.setHeader(
     "Content-Security-Policy",
     "default-src 'self'; script-src 'none'; style-src 'self' 'unsafe-inline'; " +

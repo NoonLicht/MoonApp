@@ -1615,6 +1615,8 @@ export const api = {
     req<Bookmark>("PUT", `/bookmarks/${id}`, payload),
   bookmarksDelete: (id: string) => req<{ ok: boolean }>("DELETE", `/bookmarks/${id}`),
   bookmarksSaveArticle: (id: string) => req<Bookmark>("POST", `/bookmarks/${id}/save-article`),
+  bookmarksSetReaderArchive: (id: string, archiveId: string) =>
+    req<Bookmark>("POST", `/bookmarks/${id}/reader-archive`, { archiveId }),
 
   // --- Фильмы и сериалы: каталог TMDB, библиотека, торрент-плеер ---
   moviesStatus: () => req<MediaStatus>("GET", "/movies/status"),

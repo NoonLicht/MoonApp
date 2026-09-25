@@ -27,6 +27,9 @@ interface Props {
   onWikiLink?: (title: string) => void;
   onTagClick?: (tag: string) => void;
   onToggleCheckbox?: (lineIndex: number) => void;
+  /** Ctrl+V со скриншотом/картинкой в буфере: грузит blob и отдаёт markdown
+   * ("![alt](url)") для вставки прямо в позицию курсора. null — не картинка/ошибка. */
+  onPasteImage?: (blob: Blob) => Promise<string | null>;
 }
 
 /* ─── Виджет чекбокса: заменяет "[ ] "/"[x] " кликабельной галочкой ─── */
@@ -123,6 +126,12 @@ function isTableSeparatorLine(s: string): boolean {
 interface TableBlock {
   from: number;
   to: number;
+  /** Граница ЗАМЕНЯЮЩЕЙ block-декорации — CodeMirror требует, чтобы блочный
+   * Decoration.replace начинался и заканчивался на границе строки (включая её
+   * перевод строки), иначе разметка ниже виджета уезжает/схлопывается. Если
+   * таблица — последние строки документа, естественной границы следующей
+   * строки нет, тогда берём конец документа. */
+  blockTo: number;
   fromLine: number;
   toLine: number;
   source: string;
@@ -144,9 +153,11 @@ function findTableBlocks(doc: Text): TableBlock[] {
       }
       const fromLine = doc.line(startLn);
       const toLine = doc.line(endLn);
+      const blockTo = endLn + 1 <= doc.lines ? doc.line(endLn + 1).from : doc.length;
       blocks.push({
         from: fromLine.from,
         to: toLine.to,
+        blockTo,
         fromLine: startLn,
         toLine: endLn,
         source: doc.sliceString(fromLine.from, toLine.to),
@@ -210,7 +221,7 @@ function buildLiveDecorations(
         // оставляем html пустым — ниже упадём обратно на сырой текст блока
       }
       if (html) {
-        builder.add(tb.from, tb.to, Decoration.replace({ widget: new TableWidget(html), block: true }));
+        builder.add(tb.from, tb.blockTo, Decoration.replace({ widget: new TableWidget(html), block: true }));
         ln = tb.toLine;
         continue;
       }
@@ -382,15 +393,16 @@ export default function CodeMirrorLiveEditor({
   onWikiLink,
   onTagClick,
   onToggleCheckbox,
+  onPasteImage,
 }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const lastEmitted = useRef(content);
-  const callbacksRef = useRef({ onWikiLink, onTagClick, onToggleCheckbox });
+  const callbacksRef = useRef({ onWikiLink, onTagClick, onToggleCheckbox, onPasteImage });
 
   useEffect(() => {
-    callbacksRef.current = { onWikiLink, onTagClick, onToggleCheckbox };
-  }, [onWikiLink, onTagClick, onToggleCheckbox]);
+    callbacksRef.current = { onWikiLink, onTagClick, onToggleCheckbox, onPasteImage };
+  }, [onWikiLink, onTagClick, onToggleCheckbox, onPasteImage]);
 
   useEffect(() => {
     if (!hostRef.current) return;
@@ -570,6 +582,35 @@ export default function CodeMirrorLiveEditor({
           }
         }
         return false;
+      },
+      paste(e, view) {
+        if (!callbacksRef.current.onPasteImage) return false;
+        const items = e.clipboardData?.items;
+        if (!items) return false;
+        let imageItem: DataTransferItem | null = null;
+        for (const it of items) {
+          if (it.kind === "file" && it.type.startsWith("image/")) {
+            imageItem = it;
+            break;
+          }
+        }
+        if (!imageItem) return false;
+        e.preventDefault();
+        const blob = imageItem.getAsFile();
+        if (!blob) return true;
+        const insertAt = view.state.selection.main.from;
+        const insertTo = view.state.selection.main.to;
+        callbacksRef.current
+          .onPasteImage(blob)
+          .then((md) => {
+            if (!md) return;
+            view.dispatch({
+              changes: { from: insertAt, to: insertTo, insert: md },
+              selection: { anchor: insertAt + md.length },
+            });
+          })
+          .catch(() => {});
+        return true;
       },
     });
 
