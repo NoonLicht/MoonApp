@@ -329,7 +329,11 @@
     "fTagsHint": "Ajoutez un tag et appuyez sur Entrée…",
     "tagExamples": "Exemples :",
     "readerMode": "Mode lecture",
-    "readerLoading": "Chargement du texte épuré de la page…",
+    "readerLoading": "Téléchargement de la page…",
+    "readerReady": "Prêt",
+    "readerOpenTab": "Ouvrir dans un nouvel onglet",
+    "readerDownloadBak": "Télécharger la copie hors ligne (.sitebak)",
+    "readerError": "Échec du téléchargement de la page",
     "downloadClean": "Télécharger sans publicités"
   },
   "screenshots": {

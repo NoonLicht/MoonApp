@@ -329,7 +329,11 @@
     "fTagsHint": "Add a tag and press Enter…",
     "tagExamples": "Examples:",
     "readerMode": "Reader mode",
-    "readerLoading": "Loading the clean page text…",
+    "readerLoading": "Downloading the page…",
+    "readerReady": "Ready",
+    "readerOpenTab": "Open in a new tab",
+    "readerDownloadBak": "Download offline copy (.sitebak)",
+    "readerError": "Failed to download the page",
     "downloadClean": "Download without ads"
   },
   "screenshots": {

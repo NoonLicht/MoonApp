@@ -329,7 +329,11 @@
     "fTagsHint": "أضف وسمًا واضغط Enter…",
     "tagExamples": "أمثلة:",
     "readerMode": "وضع القراءة",
-    "readerLoading": "جارٍ تحميل نص الصفحة النظيف…",
+    "readerLoading": "جارٍ تنزيل الصفحة…",
+    "readerReady": "جاهز",
+    "readerOpenTab": "فتح في تبويب جديد",
+    "readerDownloadBak": "تنزيل نسخة غير متصلة (.sitebak)",
+    "readerError": "تعذّر تنزيل الصفحة",
     "downloadClean": "تنزيل بدون إعلانات"
   },
   "screenshots": {

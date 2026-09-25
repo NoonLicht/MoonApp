@@ -1573,8 +1573,6 @@ export const api = {
   bookmarksUpdate: (id: string, payload: Partial<BookmarkInput>) =>
     req<Bookmark>("PUT", `/bookmarks/${id}`, payload),
   bookmarksDelete: (id: string) => req<{ ok: boolean }>("DELETE", `/bookmarks/${id}`),
-  bookmarksReadNow: (url: string) =>
-    req<{ title: string; text: string }>("GET", `/bookmarks/reader?url=${encodeURIComponent(url)}`),
   bookmarksSaveArticle: (id: string) => req<Bookmark>("POST", `/bookmarks/${id}/save-article`),
 
   // --- Фильмы и сериалы: каталог TMDB, библиотека, торрент-плеер ---

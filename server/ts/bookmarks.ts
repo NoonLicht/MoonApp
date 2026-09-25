@@ -205,12 +205,6 @@ export function update(
   return next;
 }
 
-/** Режим чтения "на лету": статья без сохранения в закладки/заметки — для
- * кнопки "Режим чтения", которая просто показывает чистый текст сейчас. */
-export async function readNow(url: string): Promise<{ title: string; text: string }> {
-  return fetchArticle(url);
-}
-
 /** Сохранить статью существующей закладки постфактум (кнопка "Скачать без
  * рекламы" на уже созданной закладке, которую сохранили без saveForLater). */
 export async function saveArticleFor(id: string): Promise<Bookmark | null> {

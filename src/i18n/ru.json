@@ -329,7 +329,11 @@
     "fTagsHint": "Добавить тег и Enter…",
     "tagExamples": "Примеры:",
     "readerMode": "Режим чтения",
-    "readerLoading": "Загружаю чистый текст страницы…",
+    "readerLoading": "Скачиваю страницу…",
+    "readerReady": "Готово",
+    "readerOpenTab": "Открыть в новой вкладке",
+    "readerDownloadBak": "Скачать офлайн-копию (.sitebak)",
+    "readerError": "Не удалось скачать страницу",
     "downloadClean": "Скачать без рекламы"
   },
   "screenshots": {

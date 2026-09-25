@@ -329,7 +329,11 @@
     "fTagsHint": "添加标签后按 Enter…",
     "tagExamples": "示例：",
     "readerMode": "阅读模式",
-    "readerLoading": "正在加载纯净网页文本…",
+    "readerLoading": "正在下载网页…",
+    "readerReady": "已完成",
+    "readerOpenTab": "在新标签页中打开",
+    "readerDownloadBak": "下载离线副本 (.sitebak)",
+    "readerError": "网页下载失败",
     "downloadClean": "下载无广告版本"
   },
   "screenshots": {

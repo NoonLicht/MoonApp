@@ -11,12 +11,15 @@ import {
   Download,
   Glasses,
   RefreshCw,
+  Archive,
 } from "lucide-react";
 import { Glass, Btn, Badge, EmptyHint, SectionHead } from "@/components/ui";
+import { getOverlayRoot } from "@/components/overlayHost";
 import { useI18n } from "@/app/i18n";
 import { api } from "@/api/client";
-import { saveBlob } from "@/lib/download";
+import type { SitebakJob } from "@/api/client";
 import type { Bookmark } from "@/api/types";
+import "@/styles/arch.css";
 
 interface Props {
   /** Открыть сохранённую статью (read-later) как заметку в Notes view. */
@@ -90,88 +93,151 @@ function TagEditor({
   );
 }
 
-/** Оверлей "Режим чтения": грузит чистый текст статьи на лету (без
- * сохранения) и позволяет скачать его файлом .md. */
+/**
+ * Оверлей "Режим чтения": вместо грубой вырезки текста на лету страница
+ * реально скачивается через существующий архиватор (server/ts/sitebak.ts,
+ * та же движка, что и на странице "Архиватор") — depth: 0, только эта
+ * страница, с картинками (inlineAssets) и вырезанными скриптами/рекламой.
+ * Результат показывается во фрейме, как во встроенном просмотрщике архивов —
+ * это чинит "нет картинок" и убирает самодельный HTML→текст парсер, который
+ * терял вёрстку, которую сохраняет Chrome Reading Mode.
+ */
 function ReaderOverlay({ url, onClose }: { url: string; onClose: () => void }) {
   const { t } = useI18n();
-  const [loading, setLoading] = useState(true);
+  const [job, setJob] = useState<SitebakJob | null>(null);
+  const [jobId, setJobId] = useState<string | null>(null);
+  const [pagePath, setPagePath] = useState("");
   const [error, setError] = useState("");
-  const [article, setArticle] = useState<{ title: string; text: string } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
     setError("");
+    setJob(null);
+    setPagePath("");
     api
-      .bookmarksReadNow(url)
-      .then((a) => {
-        if (!cancelled) setArticle(a);
+      .archiveStart({
+        url,
+        depth: 0,
+        domainScope: "path",
+        maxPages: 1,
+        imageMode: "original",
+        stripScripts: true,
+        stripExif: false,
+        blockAds: true,
+        inlineAssets: true,
+        delayMs: 0,
+        concurrency: 1,
+        cookies: "",
+        userAgent: "",
+      })
+      .then((j) => {
+        if (cancelled) return;
+        setJob(j);
+        setJobId(j.id);
       })
       .catch((e) => {
         if (!cancelled) setError((e as Error).message);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
       });
     return () => {
       cancelled = true;
+      setJobId(null);
     };
   }, [url]);
 
-  const download = () => {
-    if (!article) return;
-    const blob = new Blob([`# ${article.title}\n\nИсточник: ${url}\n\n---\n\n${article.text}`], {
-      type: "text/markdown",
-    });
-    saveBlob(blob, `${article.title.replace(/[/\\?%*:|"<>]/g, "_").slice(0, 80) || "article"}.md`);
-  };
+  useEffect(() => {
+    if (!jobId) return undefined;
+    let stopped = false;
+    const tick = async () => {
+      try {
+        const s = await api.archiveStatus(jobId);
+        if (stopped) return;
+        setJob(s);
+        if (s.stage === "error") {
+          setError(s.error || t("bookmarks.readerError"));
+          setJobId(null);
+          return;
+        }
+        if (s.done) {
+          const pages = await api.archivePages(s.id);
+          if (stopped) return;
+          setPagePath(pages.pages[0]?.path || "");
+          setJobId(null);
+        }
+      } catch {
+        /* повтор на следующем тике */
+      }
+    };
+    const timer = window.setInterval(tick, 900);
+    void tick();
+    return () => {
+      stopped = true;
+      window.clearInterval(timer);
+    };
+  }, [jobId, t]);
+
+  const ready = !!job?.done && !!pagePath;
 
   return createPortal(
-    <div className="app-modal-backdrop" style={{ zIndex: 2000, background: "rgba(0,0,0,0.55)" }} onClick={onClose}>
-      <Glass
-        className="glass-solid"
-        style={{
-          flexDirection: "column",
-          alignItems: "stretch",
-          gap: 12,
-          padding: 20,
-          maxWidth: 680,
-          width: "100%",
-          maxHeight: "100%",
-          overflow: "hidden",
-        }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 600, minWidth: 0 }}>
+    <div className="app-modal-backdrop arch-view-overlay" onClick={onClose}>
+      <Glass className="arch-view glass-solid" onClick={(e) => e.stopPropagation()}>
+        <div className="arch-view-head">
+          <div className="arch-view-title">
             <Glasses size={16} />
-            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {article?.title || t("bookmarks.readerMode")}
-            </span>
-          </div>
-          <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
-            {article && (
-              <button type="button" className="icon-btn" title={t("bookmarks.downloadClean")} onClick={download}>
-                <Download size={15} />
-              </button>
+            <span className="arch-view-name">{job?.name || url}</span>
+            {job && !error && (
+              <Badge tone="neutral" mono>
+                {job.done ? t("bookmarks.readerReady") : t(`arch.stage_${job.stage}`)}
+              </Badge>
             )}
-            <button type="button" className="icon-btn" title={t("ctx.clear")} onClick={onClose}>
-              <X size={15} />
+          </div>
+          <div className="arch-view-head-actions">
+            {ready && job && (
+              <>
+                <button
+                  type="button"
+                  className="icon-btn"
+                  title={t("bookmarks.readerOpenTab")}
+                  onClick={() => window.open(api.archivePreview(job.id, pagePath), "_blank")}
+                >
+                  <ExternalLink size={15} />
+                </button>
+                <a
+                  className="icon-btn"
+                  title={t("bookmarks.readerDownloadBak")}
+                  href={api.archiveDownload(job.id)}
+                  download
+                >
+                  <Archive size={15} />
+                </a>
+              </>
+            )}
+            <button type="button" className="arch-view-close" onClick={onClose}>
+              <X size={16} />
             </button>
           </div>
         </div>
-        <div style={{ overflow: "auto", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>
-          {loading && (
-            <div className="muted-sm" style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <RefreshCw size={14} className="spin" /> {t("bookmarks.readerLoading")}
-            </div>
-          )}
-          {error && <div style={{ color: "var(--coral)" }}>{error}</div>}
-          {!loading && !error && article?.text}
+        <div className="arch-view-body" style={{ gridTemplateColumns: "1fr" }}>
+          <div className="arch-view-frame">
+            {error ? (
+              <div className="arch-view-error">{error}</div>
+            ) : !ready ? (
+              <div className="muted-sm" style={{ margin: "auto", display: "flex", alignItems: "center", gap: 8 }}>
+                <RefreshCw size={14} className="spin" />
+                {job ? t(`arch.stage_${job.stage}`) : t("bookmarks.readerLoading")}
+              </div>
+            ) : (
+              <iframe
+                className="arch-view-iframe"
+                src={api.archivePreview(job!.id, pagePath)}
+                title={job?.name || url}
+                sandbox="allow-same-origin"
+              />
+            )}
+          </div>
         </div>
       </Glass>
     </div>,
-    document.body,
+    getOverlayRoot() ?? document.body,
   );
 }
 

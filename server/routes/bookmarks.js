@@ -7,7 +7,6 @@
  *  POST   /api/bookmarks             — создать { title?, url, notes?, tags?, folder?, saveForLater? }
  *  PUT    /api/bookmarks/:id         — обновить { title?, notes?, tags?, folder? }
  *  DELETE /api/bookmarks/:id         — удалить
- *  GET    /api/bookmarks/reader?url= — режим чтения "на лету" (без сохранения)
  *  POST   /api/bookmarks/:id/save-article — сохранить статью постфактум (Read Later)
  */
 
@@ -30,18 +29,6 @@ router.post("/", async (req, res) => {
     if (!url) return res.status(400).json({ error: "missing_url" });
     const entry = await bookmarks.create({ title, url, notes, tags, folder, saveForLater });
     res.status(201).json(entry);
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
-// ВНИМАНИЕ: должен идти раньше "/:id", иначе Express примет "reader" за id.
-router.get("/reader", async (req, res) => {
-  try {
-    const url = String(req.query.url || "");
-    if (!/^https?:\/\//i.test(url)) return res.status(400).json({ error: "bad_url" });
-    const article = await bookmarks.readNow(url);
-    res.json(article);
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
