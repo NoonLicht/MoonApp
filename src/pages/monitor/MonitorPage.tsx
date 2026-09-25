@@ -920,17 +920,20 @@ function fmtSensor(s: AllSensor): string {
   if (t === "load") return `${Math.round(v)}%`;
   if (t === "data" || t === "smalldata") {
     if (/life|spare|activity|warning|failure|error/.test(n)) return `${Math.round(v)}%`;
-    if (/rate|throughput|speed|io\b/.test(n)) {
-      return v >= 1048576 ? `${(v / 1048576).toFixed(2)} MB/s` : `${v.toFixed(1)} KB/s`;
-    }
-    if (/\/ram|gpu/.test(s.parent)) return `${v.toFixed(2)} GB`;
+    // LibreHardwareMonitor уже отдаёт скорости чтения/записи диска в МБ/с,
+    // а не в сырых байтах/сек — пересчитывать (делить на 1048576) было
+    // ошибкой, из-за которой значения вроде 5.2 МБ/с показывались как
+    // "5.2 KB/s".
+    if (/rate|throughput|speed|io\b/.test(n)) return `${v.toFixed(2)} MB/s`;
+    // Аналогично — объём диска (Total/Free/Used Space) LHM отдаёт сразу в
+    // ГБ, а не в байтах, поэтому "960.19" — это уже гигабайты, а не байты.
+    if (/space|capacity/.test(n) || /\/ram|gpu/.test(s.parent)) return `${v.toFixed(2)} GB`;
     if (v >= 1073741824) return `${(v / 1073741824).toFixed(2)} GB`;
     if (v >= 1048576) return `${(v / 1048576).toFixed(1)} MB`;
     if (v >= 1024) return `${(v / 1024).toFixed(0)} KB`;
     return `${v} B`;
   }
-  if (t === "throughput")
-    return v >= 1048576 ? `${(v / 1048576).toFixed(2)} MB/s` : `${v.toFixed(1)} KB/s`;
+  if (t === "throughput") return `${v.toFixed(2)} MB/s`;
   if (t === "level") return `${Math.round(v)}%`;
   if (t === "factor") return v >= 1000 ? `${(v / 1000).toFixed(1)} K` : `${Math.round(v)}`;
   if (t === "control") return `${Math.round(v)}%`;
@@ -1413,8 +1416,11 @@ function DiskScanPanel() {
                     payload: DiskNode;
                   }) => {
                     const { x, y, width, height, index, payload } = props;
-                    const node: DiskNode = payload;
-                    if (width < 2 || height < 2) return <g />;
+                    const node: DiskNode | undefined = payload;
+                    // recharts помимо реальных узлов рендерит и служебный корневой
+                    // прямоугольник без payload — раньше это падало с "Cannot read
+                    // properties of undefined (reading 'isDir')".
+                    if (!node || width < 2 || height < 2) return <g />;
                     const color = TREEMAP_COLORS[index % TREEMAP_COLORS.length];
                     const showLabel = width > 50 && height > 24;
                     return (
