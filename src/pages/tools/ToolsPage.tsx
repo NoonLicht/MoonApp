@@ -747,6 +747,23 @@ const MIN_CELL_W = 260;
 const MIN_ROW_H = 160;
 const DIVIDER_PX = 10;
 
+/** Минимальная ширина блока по инструменту (px) — используется и переносом
+ * строк, и клэмпом при перетягивании границы между ячейками. У JSON/diff/
+ * regex многострочные текстовые поля бок о бок — им нужно заметно больше
+ * места, поэтому при ширине окна меньше ~1050px (2×520 + разделитель) они
+ * переносятся по одному в строке, а не жмутся по 2-3 в ряд. Остальным
+ * инструментам хватает ~340px — при той же ширине окна их помещается не
+ * больше двух подряд (3×340 + 2 разделителя = 1040 > ~1000px). */
+const MIN_CELL_W_BY_TOOL: Record<ToolId, number> = {
+  json: 520,
+  diff: 520,
+  regex: 520,
+  encode: 340,
+  uuid: 340,
+  base: 340,
+  units: 340,
+};
+
 const TOOLS: { id: ToolId; icon: React.ElementType; Component: React.ComponentType }[] = [
   { id: "json", icon: Braces, Component: JsonTool },
   { id: "diff", icon: GitCompare, Component: DiffTool },
@@ -835,19 +852,30 @@ interface RenderRow {
   cells: RenderCell[];
 }
 
-/** Разворачивает хранимые ряды в визуальные: если в ряду больше ячеек, чем
- * влезает по MIN_CELL_W при текущей ширине, лишние уходят на следующую
- * визуальную строку той же высоты — та самая адаптация к ширине без единой
- * ручной формулы позиционирования (дальше всё делает CSS flexbox). */
-function reflowRows(rows: RowSpec[], maxPerRow: number): RenderRow[] {
+/** Разворачивает хранимые ряды в визуальные: греедный перенос по РЕАЛЬНОЙ
+ * минимальной ширине каждой конкретной ячейки (MIN_CELL_W_BY_TOOL), а не по
+ * общему числу ячеек на строку — JSON/diff/regex гораздо "тяжелее" мелких
+ * инструментов, поэтому при одинаковой узкой ширине окна крупные блоки
+ * переносятся по одному, а мелкие всё ещё держат по два в ряд. Лишние
+ * ячейки уходят на следующую визуальную строку той же высоты — та самая
+ * адаптация к ширине без единой формулы позиционирования (дальше всё
+ * делает CSS flexbox). */
+function reflowRows(rows: RowSpec[], viewportW: number): RenderRow[] {
   const out: RenderRow[] = [];
   rows.forEach((row, ri) => {
-    for (let i = 0; i < row.cells.length; i += maxPerRow) {
-      out.push({
-        height: row.height,
-        cells: row.cells.slice(i, i + maxPerRow).map((c, local) => ({ ...c, sourceRow: ri, sourceIdx: i + local })),
-      });
-    }
+    let chunk: RenderCell[] = [];
+    let chunkWidth = 0;
+    row.cells.forEach((c, i) => {
+      const w = MIN_CELL_W_BY_TOOL[c.toolId] ?? MIN_CELL_W;
+      const nextWidth = chunk.length === 0 ? w : chunkWidth + DIVIDER_PX + w;
+      if (chunk.length > 0 && nextWidth > viewportW) {
+        out.push({ height: row.height, cells: chunk });
+        chunk = [];
+      }
+      chunk.push({ ...c, sourceRow: ri, sourceIdx: i });
+      chunkWidth = chunk.length === 1 ? w : nextWidth;
+    });
+    if (chunk.length > 0) out.push({ height: row.height, cells: chunk });
   });
   return out;
 }
@@ -894,6 +922,8 @@ interface ColDragInfo {
   rowWidthPx: number;
   growA: number;
   growB: number;
+  minWA: number;
+  minWB: number;
 }
 
 export default function ToolsPage() {
@@ -923,8 +953,7 @@ export default function ToolsPage() {
     };
   }, [rows]);
 
-  const maxPerRow = Math.max(1, Math.floor((viewportW + DIVIDER_PX) / (MIN_CELL_W + DIVIDER_PX)));
-  const rendered = useMemo(() => reflowRows(rows, maxPerRow), [rows, maxPerRow]);
+  const rendered = useMemo(() => reflowRows(rows, viewportW), [rows, viewportW]);
 
   const onRowDividerDown = (rowIndex: number, e: React.PointerEvent) => {
     e.currentTarget.setPointerCapture(e.pointerId);
@@ -954,6 +983,8 @@ export default function ToolsPage() {
       rowWidthPx,
       growA: row.cells[cellIndex].grow,
       growB: row.cells[cellIndex + 1].grow,
+      minWA: MIN_CELL_W_BY_TOOL[row.cells[cellIndex].toolId] ?? MIN_CELL_W,
+      minWB: MIN_CELL_W_BY_TOOL[row.cells[cellIndex + 1].toolId] ?? MIN_CELL_W,
     };
   };
   const onColDividerMove = (e: React.PointerEvent) => {
@@ -961,8 +992,9 @@ export default function ToolsPage() {
     if (!d) return;
     const sum = d.growA + d.growB;
     const deltaGrow = ((e.clientX - d.startX) / d.rowWidthPx) * sum;
-    const minG = sum * (MIN_CELL_W / d.rowWidthPx);
-    const a = Math.min(sum - minG, Math.max(minG, d.growA + deltaGrow));
+    const minGrowA = sum * (d.minWA / d.rowWidthPx);
+    const minGrowB = sum * (d.minWB / d.rowWidthPx);
+    const a = Math.min(sum - minGrowB, Math.max(minGrowA, d.growA + deltaGrow));
     const b = sum - a;
     setRows((prev) =>
       prev.map((r, ri) =>
@@ -1050,7 +1082,9 @@ export default function ToolsPage() {
                   ) : (
                     <div
                       className="tools-divider is-y"
-                      onPointerDown={(e) => onRowDividerDown(row.cells[0].sourceRow, e)}
+                      // Граница принадлежит ряду НАД ней (prevRow) — тянуть её вниз должно расти
+                      // именно верхний ряд (row.cells[0] — это уже ряд ПОД границей, не над ней).
+                      onPointerDown={(e) => onRowDividerDown(prevRow.cells[0].sourceRow, e)}
                       onPointerMove={onRowDividerMove}
                       onPointerUp={onRowDividerUp}
                     />
@@ -1070,7 +1104,11 @@ export default function ToolsPage() {
                           className={`tools-block${dragKey ? " is-dragging" : ""}${
                             dropSide ? ` is-drop-${dropSide}` : ""
                           }`}
-                          style={{ flexGrow: c.grow, flexBasis: 0, minWidth: MIN_CELL_W }}
+                          style={{
+                            flexGrow: c.grow,
+                            flexBasis: 0,
+                            minWidth: MIN_CELL_W_BY_TOOL[c.toolId] ?? MIN_CELL_W,
+                          }}
                           onDragOver={onCellDragOver(c.sourceRow, c.sourceIdx)}
                           onDrop={(e) => {
                             e.preventDefault();
