@@ -404,7 +404,12 @@
     "importing": "جارٍ الاستيراد…",
     "importResult": "تم استيراد: {imported}، تم تخطي: {skipped}",
     "unconvertedHint": "{n} عملية لا يمكن عرضها بهذه العملة — لم يتم تسجيل سعر الصرف عند إضافتها",
-    "noRate": "لا يوجد سعر صرف"
+    "noRate": "لا يوجد سعر صرف",
+    "period": {
+      "day": "يوم",
+      "week": "أسبوع",
+      "month": "شهر"
+    }
   },
   "quickNotes": {
     "eyebrow": "ملاحظات سريعة",

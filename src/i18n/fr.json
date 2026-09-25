@@ -404,7 +404,12 @@
     "importing": "Importation…",
     "importResult": "Importées : {imported}, ignorées : {skipped}",
     "unconvertedHint": "{n} opérations ne peuvent pas être affichées dans cette devise — le taux n'a pas été capturé lors de leur ajout",
-    "noRate": "pas de taux"
+    "noRate": "pas de taux",
+    "period": {
+      "day": "Jour",
+      "week": "Semaine",
+      "month": "Mois"
+    }
   },
   "quickNotes": {
     "eyebrow": "Notes rapides",

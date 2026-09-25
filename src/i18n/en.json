@@ -404,7 +404,12 @@
     "importing": "Importing…",
     "importResult": "Imported: {imported}, skipped: {skipped}",
     "unconvertedHint": "{n} transactions can't be shown in this currency — no rate was captured when they were added",
-    "noRate": "no rate"
+    "noRate": "no rate",
+    "period": {
+      "day": "Day",
+      "week": "Week",
+      "month": "Month"
+    }
   },
   "quickNotes": {
     "eyebrow": "Quick notes",

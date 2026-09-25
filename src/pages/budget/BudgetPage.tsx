@@ -47,6 +47,7 @@ export default function BudgetPage() {
   const [categories, setCategories] = useState<BudgetCategories | null>(null);
   const [currencies, setCurrencies] = useState<string[]>(["RUB"]);
   const [displayCurrency, setDisplayCurrency] = useState("RUB");
+  const [period, setPeriod] = useState<"day" | "week" | "month">("month");
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<FormState>(emptyForm(null, "RUB"));
@@ -55,11 +56,13 @@ export default function BudgetPage() {
   const [importing, setImporting] = useState(false);
   const [importMsg, setImportMsg] = useState("");
 
-  const load = (currency = displayCurrency) => {
+  const periodCount: Record<"day" | "week" | "month", number> = { day: 14, week: 8, month: 6 };
+
+  const load = (currency = displayCurrency, gran = period) => {
     setLoading(true);
     Promise.all([
       api.budgetList(currency),
-      api.budgetSummary(6, currency),
+      api.budgetSummary(gran, periodCount[gran], currency),
       api.budgetCategories(),
       api.budgetCurrencies(),
     ])
@@ -304,7 +307,26 @@ export default function BudgetPage() {
         </Glass>
       )}
 
-      <SectionHead eyebrow={t("budget.chartEyebrow")} title={t("budget.chartTitle")} />
+      <SectionHead
+        eyebrow={t("budget.chartEyebrow")}
+        title={t("budget.chartTitle")}
+        action={
+          <div style={{ display: "flex", gap: 4 }}>
+            {(["day", "week", "month"] as const).map((p) => (
+              <Btn
+                key={p}
+                variant={period === p ? "primary" : "secondary"}
+                onClick={() => {
+                  setPeriod(p);
+                  load(displayCurrency, p);
+                }}
+              >
+                {t(`budget.period.${p}`)}
+              </Btn>
+            ))}
+          </div>
+        }
+      />
       {summary.length > 0 && (
         <Glass style={{ padding: 12 }}>
           <ResponsiveContainer width="100%" height={260}>
@@ -317,6 +339,7 @@ export default function BudgetPage() {
                   border: "1px solid var(--glass-border)",
                   borderRadius: 8,
                 }}
+                formatter={(value: number) => [`${fmtMoney(value)} ${displayCurrency}`, undefined]}
               />
               <Legend />
               <Bar dataKey="income" name={t("budget.income")} fill="var(--teal)" radius={[4, 4, 0, 0]} />

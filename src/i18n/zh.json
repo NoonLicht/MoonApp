@@ -404,7 +404,12 @@
     "importing": "正在导入…",
     "importResult": "已导入:{imported},已跳过:{skipped}",
     "unconvertedHint": "{n} 笔交易无法以此货币显示 — 添加时未记录汇率",
-    "noRate": "无汇率"
+    "noRate": "无汇率",
+    "period": {
+      "day": "日",
+      "week": "周",
+      "month": "月"
+    }
   },
   "quickNotes": {
     "eyebrow": "快速笔记",

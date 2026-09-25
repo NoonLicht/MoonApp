@@ -6,7 +6,7 @@
  *  GET    /api/budget/transactions              — список операций
  *  POST   /api/budget/transactions               — добавить операцию { ..., currency? }
  *  DELETE /api/budget/transactions/:id            — удалить операцию
- *  GET    /api/budget/summary?months=6&currency=  — помесячная агрегация в валюте currency
+ *  GET    /api/budget/summary?period=month&count=6&currency=  — агрегация по дням/неделям/месяцам в валюте currency
  *  GET    /api/budget/categories                   — категории по умолчанию
  *  GET    /api/budget/currencies                   — список поддерживаемых валют
  *  POST   /api/budget/import                        — импорт CSV { csv: string }
@@ -50,9 +50,10 @@ router.delete("/transactions/:id", (req, res) => {
 
 router.get("/summary", (req, res) => {
   try {
-    const months = Math.max(1, Math.min(24, parseInt(req.query.months, 10) || 6));
+    const period = ["day", "week", "month"].includes(req.query.period) ? req.query.period : "month";
+    const count = Math.max(1, Math.min(90, parseInt(req.query.count ?? req.query.months, 10) || 6));
     const currency = String(req.query.currency || "RUB").toUpperCase();
-    res.json(budget.monthlySummary(months, currency));
+    res.json(budget.periodSummary(period, count, currency));
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

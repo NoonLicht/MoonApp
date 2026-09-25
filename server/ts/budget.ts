@@ -134,7 +134,7 @@ export function remove(id: string): boolean {
 }
 
 export interface MonthSummary {
-  month: string; // YYYY-MM
+  month: string; // ключ периода: YYYY-MM-DD (day), YYYY-Www (week) или YYYY-MM (month)
   income: number;
   expense: number;
   byCategory: Record<string, number>; // только расходы, для пирога
@@ -142,23 +142,84 @@ export interface MonthSummary {
   unconverted: number;
 }
 
-/** Агрегация по месяцам за последние N месяцев (включая текущий), от старых к новым.
- * displayCurrency — валюта отображения; суммы конвертируются per-transaction
- * курсом, снятым на дату каждой операции (см. convertAmount). */
-export function monthlySummary(months = 6, displayCurrency = "RUB"): MonthSummary[] {
-  const all = readAll();
+export type SummaryGranularity = "day" | "week" | "month";
+
+function round2(x: number): number {
+  return Math.round(x * 100) / 100;
+}
+
+function mondayOf(d: Date): Date {
+  const day = d.getDay() || 7; // вс=0 -> 7
+  const m = new Date(d);
+  m.setDate(d.getDate() - day + 1);
+  m.setHours(0, 0, 0, 0);
+  return m;
+}
+
+function isoWeekKey(d: Date): string {
+  // YYYY-Www по ISO-8601 (неделя начинается с понедельника, первая неделя года —
+  // та, что содержит первый четверг года).
+  const target = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const dayNr = (target.getDay() + 6) % 7;
+  target.setDate(target.getDate() - dayNr + 3);
+  const firstThursday = target.getTime();
+  target.setMonth(0, 1);
+  if (target.getDay() !== 4) target.setMonth(0, 1 + ((4 - target.getDay() + 7) % 7));
+  const week = 1 + Math.round((firstThursday - target.getTime()) / (7 * 24 * 3600 * 1000));
+  return `${new Date(d.getFullYear(), d.getMonth(), d.getDate()).getFullYear()}-W${String(week).padStart(2, "0")}`;
+}
+
+function periodKeyOf(date: string, granularity: SummaryGranularity): string {
+  const d = new Date(date + "T00:00:00");
+  if (granularity === "day") return date;
+  if (granularity === "week") return isoWeekKey(d);
+  return date.slice(0, 7);
+}
+
+/** Ключи последних N периодов (включая текущий), от старых к новым. */
+function buildKeys(granularity: SummaryGranularity, count: number): string[] {
   const now = new Date();
   const keys: string[] = [];
-  for (let i = months - 1; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    keys.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+  if (granularity === "day") {
+    for (let i = count - 1; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(now.getDate() - i);
+      keys.push(d.toISOString().slice(0, 10));
+    }
+  } else if (granularity === "week") {
+    const thisMonday = mondayOf(now);
+    for (let i = count - 1; i >= 0; i--) {
+      const d = new Date(thisMonday);
+      d.setDate(thisMonday.getDate() - i * 7);
+      keys.push(isoWeekKey(d));
+    }
+  } else {
+    for (let i = count - 1; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      keys.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+    }
   }
-  const byMonth = new Map<string, MonthSummary>(
+  return keys;
+}
+
+/** Агрегация операций за последние `count` периодов заданной гранулярности
+ * (включая текущий), от старых к новым. displayCurrency — валюта отображения;
+ * суммы конвертируются per-transaction курсом, снятым на дату каждой
+ * операции (см. convertAmount), и округляются до сотых — иначе сумма после
+ * конвертации по курсу ЦБ тянет за собой десяток знаков после запятой. */
+export function periodSummary(
+  granularity: SummaryGranularity,
+  count: number,
+  displayCurrency = "RUB",
+): MonthSummary[] {
+  const all = readAll();
+  const keys = buildKeys(granularity, count);
+  const byKey = new Map<string, MonthSummary>(
     keys.map((k) => [k, { month: k, income: 0, expense: 0, byCategory: {}, unconverted: 0 }]),
   );
   for (const tx of all) {
-    const key = tx.date.slice(0, 7);
-    const bucket = byMonth.get(key);
+    const key = periodKeyOf(tx.date, granularity);
+    const bucket = byKey.get(key);
     if (!bucket) continue;
     const amount = convertAmount(tx, displayCurrency);
     if (amount === null) {
@@ -171,7 +232,17 @@ export function monthlySummary(months = 6, displayCurrency = "RUB"): MonthSummar
       bucket.byCategory[tx.category] = (bucket.byCategory[tx.category] || 0) + amount;
     }
   }
-  return keys.map((k) => byMonth.get(k)!);
+  return keys.map((k) => {
+    const b = byKey.get(k)!;
+    const byCategory: Record<string, number> = {};
+    for (const [cat, v] of Object.entries(b.byCategory)) byCategory[cat] = round2(v);
+    return { ...b, income: round2(b.income), expense: round2(b.expense), byCategory };
+  });
+}
+
+/** Обратная совместимость: помесячная агрегация. */
+export function monthlySummary(months = 6, displayCurrency = "RUB"): MonthSummary[] {
+  return periodSummary("month", months, displayCurrency);
 }
 
 /* --------------------------- CSV-импорт выписки --------------------------- */

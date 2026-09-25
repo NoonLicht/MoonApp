@@ -404,7 +404,12 @@
     "importing": "Importando…",
     "importResult": "Importados: {imported}, omitidos: {skipped}",
     "unconvertedHint": "{n} operaciones no se pueden mostrar en esta moneda — no se registró el tipo de cambio al añadirlas",
-    "noRate": "sin tipo de cambio"
+    "noRate": "sin tipo de cambio",
+    "period": {
+      "day": "Día",
+      "week": "Semana",
+      "month": "Mes"
+    }
   },
   "quickNotes": {
     "eyebrow": "Notas rápidas",

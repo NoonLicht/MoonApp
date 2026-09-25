@@ -108,6 +108,35 @@ describe("server/budget — помесячная агрегация", () => {
     expect(current.byCategory["Транспорт"]).toBe(30);
     expect(current.unconverted).toBe(0);
   });
+
+  it("periodSummary(day) группирует по дню и округляет суммы до сотых", async () => {
+    const today = new Date().toISOString().slice(0, 10);
+    await engine.create({ type: "expense", amount: 10.005, category: "Еда", date: today });
+    await engine.create({ type: "expense", amount: 20.004, category: "Еда", date: today });
+
+    const days = engine.periodSummary("day", 5);
+    expect(days).toHaveLength(5);
+    const bucket = days[days.length - 1];
+    expect(bucket.month).toBe(today);
+    // 10.005 округляется к 10.01(банковское округление JS), 20.004 -> 20; сумма = 30.0x —
+    // главное, что итог не тянет длинный хвост знаков после запятой.
+    expect(bucket.expense.toString().replace(/^\d+\./, "").length).toBeLessThanOrEqual(2);
+  });
+
+  it("periodSummary(week) группирует по ISO-неделе", async () => {
+    const monday = new Date();
+    const day = monday.getDay() || 7;
+    monday.setDate(monday.getDate() - day + 1);
+    const mondayStr = monday.toISOString().slice(0, 10);
+
+    await engine.create({ type: "income", amount: 500, category: "Подработка", date: mondayStr });
+
+    const weeks = engine.periodSummary("week", 4);
+    expect(weeks).toHaveLength(4);
+    const bucket = weeks[weeks.length - 1];
+    expect(bucket.month).toMatch(/^\d{4}-W\d{2}$/);
+    expect(bucket.income).toBeGreaterThanOrEqual(500);
+  });
 });
 
 describe("server/budget — CSV-импорт", () => {

@@ -296,7 +296,7 @@ function buildOptimal(gpuName: string, totalMb: number): OptimalParams {
     speed: 1.0,
     solver: "euler",
     isNvidia,
-    vram,
+    vram: round1(vram),
   };
 }
 

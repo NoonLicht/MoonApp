@@ -1542,8 +1542,8 @@ export const api = {
     ),
   budgetCreate: (payload: TransactionInput) => req<Transaction>("POST", "/budget/transactions", payload),
   budgetDelete: (id: string) => req<{ ok: boolean }>("DELETE", `/budget/transactions/${id}`),
-  budgetSummary: (months = 6, currency = "RUB") =>
-    req<MonthSummary[]>("GET", `/budget/summary?months=${months}&currency=${currency}`),
+  budgetSummary: (period: "day" | "week" | "month" = "month", count = 6, currency = "RUB") =>
+    req<MonthSummary[]>("GET", `/budget/summary?period=${period}&count=${count}&currency=${currency}`),
   budgetCategories: () => req<BudgetCategories>("GET", "/budget/categories"),
   budgetCurrencies: () => req<string[]>("GET", "/budget/currencies"),
   budgetImportCsv: (csv: string) => req<BudgetImportResult>("POST", "/budget/import", { csv }),
