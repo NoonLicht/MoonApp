@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Braces,
   GitCompare,
@@ -9,6 +9,7 @@ import {
   Calculator,
   Copy,
   AlertTriangle,
+  GripVertical,
 } from "lucide-react";
 import { Glass, Btn, SectionHead, Field, Select, Badge } from "@/components/ui";
 import { copyToClipboard } from "@/components/ContextMenu";
@@ -181,11 +182,35 @@ function DiffTool() {
 
 /* ───────────────────────── Regex ───────────────────────── */
 
+const REGEX_FLAGS: { flag: string; labelKey: string }[] = [
+  { flag: "g", labelKey: "tools.flagGlobal" },
+  { flag: "i", labelKey: "tools.flagIgnoreCase" },
+  { flag: "m", labelKey: "tools.flagMultiline" },
+  { flag: "s", labelKey: "tools.flagDotAll" },
+  { flag: "u", labelKey: "tools.flagUnicode" },
+  { flag: "y", labelKey: "tools.flagSticky" },
+];
+
+/** Экранирует HTML, оставляя только <mark> вокруг совпадений — без dangerouslySetInnerHTML
+ * поверх чужого regex-ввода в остальном тексте. */
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
 function RegexTool() {
   const { t } = useI18n();
   const [pattern, setPattern] = useState("");
-  const [flags, setFlags] = useState("g");
+  const [flagSet, setFlagSet] = useState<Set<string>>(new Set(["g"]));
   const [text, setText] = useState("");
+
+  const flags = [...flagSet].join("");
+  const toggleFlag = (f: string) =>
+    setFlagSet((prev) => {
+      const next = new Set(prev);
+      if (next.has(f)) next.delete(f);
+      else next.add(f);
+      return next;
+    });
 
   const { matches, error } = useMemo(() => {
     if (!pattern) return { matches: [] as RegExpMatchArray[], error: "" };
@@ -197,23 +222,42 @@ function RegexTool() {
     }
   }, [pattern, flags, text]);
 
+  const highlightedHtml = useMemo(() => {
+    if (!matches.length) return escapeHtml(text);
+    let out = "";
+    let last = 0;
+    for (const m of matches) {
+      const start = m.index ?? 0;
+      const end = start + m[0].length;
+      if (end <= last) continue; // защита от нулевой длины/наложений
+      out += escapeHtml(text.slice(last, start));
+      out += `<mark>${escapeHtml(text.slice(start, end))}</mark>`;
+      last = end;
+    }
+    out += escapeHtml(text.slice(last));
+    return out;
+  }, [matches, text]);
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8, flex: 1, minHeight: 0 }}>
-      <div style={{ display: "flex", gap: 8 }}>
-        <input
-          className="text-input"
-          style={{ flex: 1 }}
-          placeholder={t("tools.regexPattern")}
-          value={pattern}
-          onChange={(e) => setPattern(e.target.value)}
-        />
-        <input
-          className="text-input"
-          style={{ width: 80 }}
-          placeholder="flags"
-          value={flags}
-          onChange={(e) => setFlags(e.target.value)}
-        />
+      <input
+        className="text-input"
+        placeholder={t("tools.regexPattern")}
+        value={pattern}
+        onChange={(e) => setPattern(e.target.value)}
+      />
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+        {REGEX_FLAGS.map(({ flag, labelKey }) => (
+          <label
+            key={flag}
+            className="muted-sm"
+            title={t(labelKey)}
+            style={{ display: "flex", alignItems: "center", gap: 4, cursor: "pointer" }}
+          >
+            <input type="checkbox" checked={flagSet.has(flag)} onChange={() => toggleFlag(flag)} />
+            <code>{flag}</code>
+          </label>
+        ))}
       </div>
       {error && (
         <div style={{ color: "var(--coral)", display: "flex", gap: 6, alignItems: "center" }}>
@@ -222,13 +266,30 @@ function RegexTool() {
       )}
       <textarea
         className="text-input"
-        style={{ flex: 1, fontFamily: "var(--font-mono)", resize: "none" }}
+        style={{ flex: 1, fontFamily: "var(--font-mono)", resize: "none", minHeight: 60 }}
         placeholder={t("tools.regexText")}
         value={text}
         onChange={(e) => setText(e.target.value)}
       />
       <div className="muted-sm">{t("tools.regexMatches", { n: matches.length })}</div>
-      <div style={{ maxHeight: 160, overflow: "auto", fontFamily: "var(--font-mono)", fontSize: 12.5 }}>
+      {text && (
+        <div
+          className="regex-highlight-preview"
+          style={{
+            flex: 1,
+            minHeight: 60,
+            maxHeight: 160,
+            overflow: "auto",
+            fontFamily: "var(--font-mono)",
+            fontSize: 12.5,
+            whiteSpace: "pre-wrap",
+            wordBreak: "break-word",
+            padding: 8,
+          }}
+          dangerouslySetInnerHTML={{ __html: highlightedHtml }}
+        />
+      )}
+      <div style={{ maxHeight: 120, overflow: "auto", fontFamily: "var(--font-mono)", fontSize: 12.5 }}>
         {matches.map((m, i) => (
           <div key={i}>
             [{i}] "{m[0]}" {m.length > 1 ? `→ groups: ${JSON.stringify(m.slice(1))}` : ""}
@@ -339,29 +400,57 @@ function UuidTool() {
   const gen = () => setIds(Array.from({ length: count }, () => crypto.randomUUID()));
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
         <input
           className="text-input"
           type="number"
-          style={{ width: 90 }}
+          style={{ width: 64 }}
           min={1}
           max={100}
           value={count}
           onChange={(e) => setCount(Math.min(100, Math.max(1, Number(e.target.value) || 1)))}
         />
-        <Btn icon={Fingerprint} onClick={gen}>
+        <Btn icon={Fingerprint} onClick={gen} style={{ flex: 1 }}>
           {t("tools.uuidGenerate")}
         </Btn>
         {ids.length > 0 && (
-          <Btn icon={Copy} onClick={() => copyToClipboard(ids.join("\n"))}>
-            {t("ctx.copyName")}
-          </Btn>
+          <button
+            type="button"
+            className="icon-btn"
+            title={t("ctx.copyName")}
+            onClick={() => copyToClipboard(ids.join("\n"))}
+          >
+            <Copy size={14} />
+          </button>
         )}
       </div>
-      <div style={{ fontFamily: "var(--font-mono)", fontSize: 13 }}>
+      <div
+        style={{
+          fontFamily: "var(--font-mono)",
+          fontSize: 12,
+          maxHeight: 140,
+          overflow: "auto",
+          display: "flex",
+          flexDirection: "column",
+          gap: 2,
+        }}
+      >
         {ids.map((id) => (
-          <div key={id}>{id}</div>
+          <div
+            key={id}
+            style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 6 }}
+          >
+            <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{id}</span>
+            <button
+              type="button"
+              className="icon-btn"
+              style={{ width: 20, height: 20, flexShrink: 0 }}
+              onClick={() => copyToClipboard(id)}
+            >
+              <Copy size={11} />
+            </button>
+          </div>
         ))}
       </div>
     </div>
@@ -400,25 +489,39 @@ function BaseTool() {
   };
 
   const field = (label: string, value: string, radix: number, onChange: (v: string) => void) => (
-    <Field label={label}>
+    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      <span className="muted-sm" style={{ width: 34, flexShrink: 0, fontFamily: "var(--font-mono)" }}>
+        {label}
+      </span>
       <input
         className="text-input"
+        style={{ flex: 1, fontFamily: "var(--font-mono)" }}
         value={value}
         onChange={(e) => {
           onChange(e.target.value);
           update(e.target.value, radix);
         }}
       />
-    </Field>
+      {value && (
+        <button
+          type="button"
+          className="icon-btn"
+          style={{ width: 22, height: 22, flexShrink: 0 }}
+          onClick={() => copyToClipboard(value)}
+        >
+          <Copy size={12} />
+        </button>
+      )}
+    </div>
   );
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 10, maxWidth: 360 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
       {field("DEC", dec, 10, setDec)}
       {field("HEX", hex, 16, setHex)}
       {field("OCT", oct, 8, setOct)}
       {field("BIN", bin, 2, setBin)}
-      {error && <div style={{ color: "var(--coral)" }}>{error}</div>}
+      {error && <div style={{ color: "var(--coral)", fontSize: 12 }}>{error}</div>}
     </div>
   );
 }
@@ -542,9 +645,14 @@ function UnitsTool() {
             </Badge>
           ))}
         </div>
-        <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
+        <div style={{ display: "flex", gap: 8, alignItems: "flex-end", flexWrap: "wrap" }}>
           <Field label={t("tools.unitValue")}>
-            <input className="text-input" value={value} onChange={(e) => setValue(e.target.value)} />
+            <input
+              className="text-input"
+              style={{ width: 100 }}
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+            />
           </Field>
           <Field label={t("tools.unitFrom")}>
             <Select
@@ -568,7 +676,7 @@ function UnitsTool() {
         <div className="set-label" style={{ marginBottom: 6 }}>
           {t("tools.calculator")}
         </div>
-        <div style={{ display: "flex", gap: 8 }}>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <input
             className="text-input"
             style={{ flex: 1, fontFamily: "var(--font-mono)" }}
@@ -590,58 +698,171 @@ function UnitsTool() {
   );
 }
 
-/* ───────────────────────── Page ───────────────────────── */
+/* ───────────────────────── Page: адаптивная сетка виджетов ───────────────────────── */
 
-const TOOLS: { id: ToolId; icon: React.ElementType }[] = [
-  { id: "json", icon: Braces },
-  { id: "diff", icon: GitCompare },
-  { id: "regex", icon: Regex },
-  { id: "encode", icon: Hash },
-  { id: "uuid", icon: Fingerprint },
-  { id: "base", icon: Binary },
-  { id: "units", icon: Calculator },
+const TOOLS: { id: ToolId; icon: React.ElementType; Component: React.ComponentType }[] = [
+  { id: "json", icon: Braces, Component: JsonTool },
+  { id: "diff", icon: GitCompare, Component: DiffTool },
+  { id: "regex", icon: Regex, Component: RegexTool },
+  { id: "encode", icon: Hash, Component: EncodeTool },
+  { id: "uuid", icon: Fingerprint, Component: UuidTool },
+  { id: "base", icon: Binary, Component: BaseTool },
+  { id: "units", icon: Calculator, Component: UnitsTool },
 ];
+const TOOL_IDS = TOOLS.map((x) => x.id);
+
+const ORDER_KEY = "moonapp.tools.widgetOrder";
+const SIZE_KEY = "moonapp.tools.widgetSizes";
+
+function loadOrder(): ToolId[] {
+  try {
+    const raw = JSON.parse(localStorage.getItem(ORDER_KEY) || "[]") as string[];
+    const valid = raw.filter((id): id is ToolId => TOOL_IDS.includes(id as ToolId));
+    const missing = TOOL_IDS.filter((id) => !valid.includes(id));
+    return [...valid, ...missing];
+  } catch {
+    return TOOL_IDS;
+  }
+}
+
+function loadSizes(): Partial<Record<ToolId, { w: number; h: number }>> {
+  try {
+    return JSON.parse(localStorage.getItem(SIZE_KEY) || "{}");
+  } catch {
+    return {};
+  }
+}
+
+/** Виджет-карточка: заголовок с ручкой перетаскивания (реордер сеткой,
+ * HTML5 drag&drop — без новой библиотеки) + нативный resize:both для
+ * изменения размера (браузер сам рисует уголок-хват, размер сохраняется
+ * в localStorage через ResizeObserver). */
+function ToolWidget({
+  id,
+  icon: Icon,
+  Component,
+  size,
+  dragging,
+  onDragStart,
+  onDragOver,
+  onDrop,
+  onDragEnd,
+  onResize,
+}: {
+  id: ToolId;
+  icon: React.ElementType;
+  Component: React.ComponentType;
+  size?: { w: number; h: number };
+  dragging: boolean;
+  onDragStart: () => void;
+  onDragOver: (e: React.DragEvent) => void;
+  onDrop: () => void;
+  onDragEnd: () => void;
+  onResize: (size: { w: number; h: number }) => void;
+}) {
+  const { t } = useI18n();
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([entry]) => {
+      const { width, height } = entry.contentRect;
+      onResize({ w: Math.round(width), h: Math.round(height) });
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return (
+    <div
+      ref={ref}
+      className={`tools-widget${dragging ? " is-dragging" : ""}`}
+      style={{
+        width: size?.w,
+        height: size?.h,
+      }}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
+    >
+      <div className="tools-widget-head" draggable onDragStart={onDragStart} onDragEnd={onDragEnd}>
+        <GripVertical size={13} className="tools-widget-grip" />
+        <Icon size={14} />
+        <span>{t(`tools.tab_${id}`)}</span>
+      </div>
+      <div className="tools-widget-body">
+        <Component />
+      </div>
+    </div>
+  );
+}
 
 export default function ToolsPage() {
   const { t } = useI18n();
-  const [active, setActive] = useState<ToolId>("json");
+  const [order, setOrder] = useState<ToolId[]>(() => loadOrder());
+  const [sizes, setSizes] = useState<Partial<Record<ToolId, { w: number; h: number }>>>(() => loadSizes());
+  const [draggedId, setDraggedId] = useState<ToolId | null>(null);
+  const sizeSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    localStorage.setItem(ORDER_KEY, JSON.stringify(order));
+  }, [order]);
+
+  const reorder = (targetId: ToolId) => {
+    if (!draggedId || draggedId === targetId) return;
+    setOrder((prev) => {
+      const next = prev.filter((id) => id !== draggedId);
+      const idx = next.indexOf(targetId);
+      next.splice(idx, 0, draggedId);
+      return next;
+    });
+  };
+
+  const persistSize = (id: ToolId, size: { w: number; h: number }) => {
+    setSizes((prev) => {
+      const next = { ...prev, [id]: size };
+      if (sizeSaveTimer.current) clearTimeout(sizeSaveTimer.current);
+      sizeSaveTimer.current = setTimeout(() => {
+        localStorage.setItem(SIZE_KEY, JSON.stringify(next));
+      }, 300);
+      return next;
+    });
+  };
+
+  const byId = useMemo(() => Object.fromEntries(TOOLS.map((x) => [x.id, x])), []);
 
   return (
-    <div className="page" style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
+    <div className="page">
       <SectionHead eyebrow={t("tools.eyebrow")} title={t("tools.title")} />
-      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", margin: "8px 0" }}>
-        {TOOLS.map(({ id, icon: Icon }) => (
-          <button
-            key={id}
-            onClick={() => setActive(id)}
-            className={active === id ? "is-active" : ""}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-              padding: "6px 12px",
-              borderRadius: 8,
-              border: "1px solid var(--glass-border)",
-              background: active === id ? "var(--track)" : "transparent",
-              color: active === id ? "var(--text-primary)" : "var(--text-tertiary)",
-              cursor: "pointer",
-            }}
-          >
-            <Icon size={14} />
-            {t(`tools.tab_${id}`)}
-          </button>
-        ))}
+      <div className="muted-sm" style={{ margin: "4px 0 10px" }}>
+        {t("tools.gridHint")}
       </div>
-
-      <Glass style={{ flex: 1, minHeight: 0, padding: 16, display: "flex" }}>
-        {active === "json" && <JsonTool />}
-        {active === "diff" && <DiffTool />}
-        {active === "regex" && <RegexTool />}
-        {active === "encode" && <EncodeTool />}
-        {active === "uuid" && <UuidTool />}
-        {active === "base" && <BaseTool />}
-        {active === "units" && <UnitsTool />}
-      </Glass>
+      <div className="tools-grid-scroll">
+        <div className="tools-grid">
+          {order.map((id) => {
+            const tool = byId[id];
+            return (
+              <ToolWidget
+                key={id}
+                id={id}
+                icon={tool.icon}
+                Component={tool.Component}
+                size={sizes[id]}
+                dragging={draggedId === id}
+                onDragStart={() => setDraggedId(id)}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  reorder(id);
+                }}
+                onDrop={() => setDraggedId(null)}
+                onDragEnd={() => setDraggedId(null)}
+                onResize={(size) => persistSize(id, size)}
+              />
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }

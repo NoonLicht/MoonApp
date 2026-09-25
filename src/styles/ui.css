@@ -1474,3 +1474,76 @@ select option {
   border-radius: 10px;
   border: 1px solid var(--glass-border);
 }
+
+/* --- Инструменты: подсветка совпадений regex --- */
+.regex-highlight-preview {
+  background: var(--track, rgba(255,255,255,0.04));
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+}
+.regex-highlight-preview mark {
+  background: var(--amber-soft);
+  color: var(--amber);
+  border-radius: 2px;
+  padding: 0 1px;
+}
+
+/* --- Страница «Инструменты»: адаптивная сетка виджетов (drag reorder + resize) --- */
+.tools-grid-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding-bottom: 8px;
+}
+.tools-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  align-items: flex-start;
+}
+.tools-widget {
+  display: flex;
+  flex-direction: column;
+  width: 340px;
+  height: 320px;
+  min-width: 260px;
+  min-height: 180px;
+  max-width: 100%;
+  resize: both;
+  overflow: hidden;
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: 14px;
+  transition: opacity 0.1s, border-color 0.1s;
+}
+.tools-widget.is-dragging {
+  opacity: 0.4;
+}
+.tools-widget-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--glass-border);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: grab;
+  flex-shrink: 0;
+  user-select: none;
+}
+.tools-widget-head:active {
+  cursor: grabbing;
+}
+.tools-widget-grip {
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+}
+.tools-widget-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+}

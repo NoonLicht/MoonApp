@@ -483,7 +483,14 @@
     "unitValue": "Value",
     "unitFrom": "From",
     "unitTo": "To",
-    "calculator": "Calculator"
+    "calculator": "Calculator",
+    "gridHint": "Drag a widget by its header to reorder it, and drag its bottom-right corner to resize — order and sizes are remembered.",
+    "flagGlobal": "g — global search (all matches, not just the first)",
+    "flagIgnoreCase": "i — case-insensitive",
+    "flagMultiline": "m — ^ and $ match at each line boundary, not just the whole text",
+    "flagDotAll": "s — \".\" also matches line breaks",
+    "flagUnicode": "u — full Unicode support (emoji, surrogate pairs)",
+    "flagSticky": "y — match only starting at the current position, no skipping ahead"
   },
   "passwordVault": {
     "title": "Password manager",

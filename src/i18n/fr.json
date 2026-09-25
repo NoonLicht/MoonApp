@@ -483,7 +483,14 @@
     "unitValue": "Valeur",
     "unitFrom": "De",
     "unitTo": "Vers",
-    "calculator": "Calculatrice"
+    "calculator": "Calculatrice",
+    "gridHint": "Faites glisser un widget par son en-tête pour le réorganiser, et son coin inférieur droit pour le redimensionner — l'ordre et les tailles sont mémorisés.",
+    "flagGlobal": "g — recherche globale (toutes les correspondances, pas seulement la première)",
+    "flagIgnoreCase": "i — insensible à la casse",
+    "flagMultiline": "m — ^ et $ correspondent à chaque limite de ligne, pas seulement au texte entier",
+    "flagDotAll": "s — le point \".\" correspond aussi aux retours à la ligne",
+    "flagUnicode": "u — prise en charge complète d'Unicode (emoji, paires supplémentaires)",
+    "flagSticky": "y — recherche uniquement à partir de la position actuelle, sans avancer"
   },
   "passwordVault": {
     "title": "Gestionnaire de mots de passe",

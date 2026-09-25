@@ -483,7 +483,14 @@
     "unitValue": "Valor",
     "unitFrom": "De",
     "unitTo": "A",
-    "calculator": "Calculadora"
+    "calculator": "Calculadora",
+    "gridHint": "Arrastra un widget por su cabecera para reordenarlo, y arrastra su esquina inferior derecha para cambiar el tamaño — el orden y los tamaños se recuerdan.",
+    "flagGlobal": "g — búsqueda global (todas las coincidencias, no solo la primera)",
+    "flagIgnoreCase": "i — sin distinguir mayúsculas/minúsculas",
+    "flagMultiline": "m — ^ y $ coinciden en cada límite de línea, no solo en todo el texto",
+    "flagDotAll": "s — el punto \".\" también coincide con saltos de línea",
+    "flagUnicode": "u — soporte completo de Unicode (emojis, pares suplentes)",
+    "flagSticky": "y — busca solo desde la posición actual, sin saltar hacia adelante"
   },
   "passwordVault": {
     "title": "Gestor de contraseñas",
