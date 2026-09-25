@@ -67,7 +67,12 @@ describe("server/bookmarks — режим чтения и постфактум-�
       res.end(
         "<html><head><title>Test Article</title></head><body>" +
           "<script>should be stripped</script>" +
+          "<nav><ul><li>Главная</li><li>Новости</li><li>О сайте</li></ul></nav>" +
+          "<header><div>18+</div><div>MWC 2018</div></header>" +
+          "<article>" +
           "<h1>Заголовок</h1><p>Первый абзац.</p><p>Второй абзац.</p>" +
+          "</article>" +
+          "<footer><div>© 1997—2026</div><div>Контакты</div></footer>" +
           "</body></html>",
       );
     });
@@ -86,6 +91,10 @@ describe("server/bookmarks — режим чтения и постфактум-�
     expect(article.text).toContain("Заголовок");
     expect(article.text).toContain("Первый абзац.");
     expect(article.text).not.toContain("should be stripped");
+    // Меню/шапка/подвал должны быть отброшены — берём только текст статьи.
+    expect(article.text).not.toContain("Главная");
+    expect(article.text).not.toContain("MWC 2018");
+    expect(article.text).not.toContain("Контакты");
     // ничего не должно появиться в списке закладок/заметок
     expect(engine.list().find((b) => b.url === baseUrl)).toBeUndefined();
   });

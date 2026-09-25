@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   Plus,
   Trash2,
@@ -125,29 +126,18 @@ function ReaderOverlay({ url, onClose }: { url: string; onClose: () => void }) {
     saveBlob(blob, `${article.title.replace(/[/\\?%*:|"<>]/g, "_").slice(0, 80) || "article"}.md`);
   };
 
-  return (
-    <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 2000,
-        background: "rgba(0,0,0,0.55)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 24,
-      }}
-      onClick={onClose}
-    >
+  return createPortal(
+    <div className="app-modal-backdrop" style={{ zIndex: 2000, background: "rgba(0,0,0,0.55)" }} onClick={onClose}>
       <Glass
+        className="glass-solid"
         style={{
           flexDirection: "column",
           alignItems: "stretch",
           gap: 12,
           padding: 20,
-          maxWidth: 640,
+          maxWidth: 680,
           width: "100%",
-          maxHeight: "80vh",
+          maxHeight: "100%",
           overflow: "hidden",
         }}
         onClick={(e) => e.stopPropagation()}
@@ -180,7 +170,8 @@ function ReaderOverlay({ url, onClose }: { url: string; onClose: () => void }) {
           {!loading && !error && article?.text}
         </div>
       </Glass>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

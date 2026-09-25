@@ -42,27 +42,70 @@ export function list(): Bookmark[] {
   return readAll().sort((a, b) => b.createdAt - a.createdAt);
 }
 
-/** Грубая очистка HTML → читаемый текст. Без jsdom/readability (нет в зависимостях) —
- *  достаточно для read-later "сохранить черновик текста", не претендует на идеальный парсинг. */
-function htmlToPlainText(html: string): string {
-  let s = html;
-  s = s.replace(/<script[\s\S]*?<\/script>/gi, "");
-  s = s.replace(/<style[\s\S]*?<\/style>/gi, "");
-  s = s.replace(/<!--[\s\S]*?-->/g, "");
-  // Блочные теги → перевод строки, чтобы текст не слипался в один абзац.
-  s = s.replace(/<\/(p|div|h[1-6]|li|br|section|article|tr)>/gi, "\n");
-  s = s.replace(/<br\s*\/?>/gi, "\n");
-  s = s.replace(/<[^>]+>/g, "");
-  s = s
+function decodeEntities(s: string): string {
+  return s
     .replace(/&nbsp;/g, " ")
+    .replace(/&laquo;/g, "«")
+    .replace(/&raquo;/g, "»")
+    .replace(/&mdash;/g, "—")
+    .replace(/&ndash;/g, "–")
+    .replace(/&hellip;/g, "…")
     .replace(/&amp;/g, "&")
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")
     .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'");
-  s = s.replace(/[ \t]+/g, " ");
-  s = s.replace(/\n{3,}/g, "\n\n");
-  return s.trim();
+    .replace(/&#39;/g, "'")
+    .replace(/&#(\d+);/g, (_m, d) => String.fromCharCode(Number(d)));
+}
+
+function stripInlineTags(s: string): string {
+  return decodeEntities(s.replace(/<[^>]+>/g, " "))
+    .replace(/[ \t]+/g, " ")
+    .trim();
+}
+
+/** Читаемое извлечение текста статьи без jsdom/readability (нет в зависимостях):
+ *  сперва выкидываем заведомо служебные блоки (nav/header/footer/меню/скрипты/стили),
+ *  затем берём ТОЛЬКО содержимое смысловых текстовых тегов (h1-h6/p/li/blockquote) —
+ *  это само по себе отсеивает вёрстку меню, баннеров и подвала сайта, которая
+ *  обычно лежит вне этих тегов (в голых <div>/<a>/<span>). */
+function htmlToPlainText(html: string): string {
+  let s = html;
+  s = s.replace(/<script[\s\S]*?<\/script>/gi, "");
+  s = s.replace(/<style[\s\S]*?<\/style>/gi, "");
+  s = s.replace(/<noscript[\s\S]*?<\/noscript>/gi, "");
+  s = s.replace(/<svg[\s\S]*?<\/svg>/gi, "");
+  s = s.replace(/<iframe[\s\S]*?<\/iframe>/gi, "");
+  s = s.replace(/<!--[\s\S]*?-->/g, "");
+  s = s.replace(/<(nav|header|footer|aside|form|button)\b[\s\S]*?<\/\1>/gi, "");
+
+  // Приоритет: если есть <article>, берём только его — почти всегда это и есть
+  // основной текст материала без сайдбаров/рекомендаций.
+  const articleMatch = s.match(/<article\b[\s\S]*?<\/article>/i);
+  if (articleMatch) s = articleMatch[0];
+
+  const blocks: string[] = [];
+  const re = /<(h[1-6]|p|li|blockquote)\b[^>]*>([\s\S]*?)<\/\1>/gi;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(s))) {
+    const tag = m[1].toLowerCase();
+    const text = stripInlineTags(m[2]);
+    if (!text || text.length < 2) continue;
+    // Отсекаем однословные пункты меню/тегов-ссылок, которые случайно попали в <li>.
+    if (tag === "li" && text.split(/\s+/).length === 1 && text.length < 20) continue;
+    blocks.push(/^h[1-6]$/.test(tag) ? `## ${text}` : text);
+  }
+
+  if (blocks.length < 2) {
+    // Фоллбэк на случай нетипичной вёрстки без p/li — старое грубое поведение.
+    let plain = s.replace(/<\/(p|div|h[1-6]|li|br|section|article|tr)>/gi, "\n");
+    plain = plain.replace(/<br\s*\/?>/gi, "\n");
+    plain = decodeEntities(plain.replace(/<[^>]+>/g, ""));
+    plain = plain.replace(/[ \t]+/g, " ").replace(/\n{3,}/g, "\n\n");
+    return plain.trim();
+  }
+
+  return blocks.join("\n\n").trim();
 }
 
 function extractTitle(html: string, fallback: string): string {
