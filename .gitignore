@@ -82,6 +82,7 @@ server/ruNlp.js
 server/db.js
 server/logBundle.js
 server/myspace-vault.js
+server/vaultAssets.js
 server/convertEngine.js
 server/index.js
 server/bookParser.js

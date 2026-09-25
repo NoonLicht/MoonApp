@@ -1314,6 +1314,23 @@ export const api = {
   myspaceTags: () => req<VaultTag[]>("GET", "/myspace/tags"),
   myspaceBacklinks: (path: string) =>
     req<VaultBacklink[]>("GET", `/myspace/backlinks?path=${encodeURIComponent(path)}`),
+  // Вставка картинки в заметку (файл/буфер обмена) — грузим на сервер, получаем
+  // id и вставляем ![...](url) со ссылкой на /api/myspace/assets/:id.
+  myspaceUploadAsset: async (file: File | Blob, filename?: string): Promise<{ id: string; url: string }> => {
+    const fd = new FormData();
+    fd.append("file", file, filename || "image.png");
+    const t = window.appBridge?.getToken?.();
+    const res = await fetch(`${BASE}/api/myspace/assets`, {
+      method: "POST",
+      headers: { ...(t ? { "x-moonapp-token": t } : {}), ...pageHeaders() },
+      body: fd,
+    });
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}));
+      throw new Error(j.error || `HTTP ${res.status}`);
+    }
+    return res.json();
+  },
   // ИИ-оформление заметок: «оформить» (сырой текст сохраняется в
   // storage/vault/notes/.ai/<имя>.txt) и «регенерировать» (заново из исходника,
   // текст заметки заменяется целиком). См. server/ts/notesAi.ts.

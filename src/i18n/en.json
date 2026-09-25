@@ -1022,7 +1022,10 @@
     "save": "Save",
     "cancel": "Cancel",
     "collapse": "Collapse",
-    "expand": "Expand"
+    "expand": "Expand",
+    "imageUrlPrompt": "Image URL:",
+    "clipboardUnsupported": "This browser can't read the clipboard",
+    "clipboardNoImage": "No image found in the clipboard"
   },
   "player": {
     "play": "Play",

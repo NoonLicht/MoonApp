@@ -1024,7 +1024,10 @@
     "save": "Enregistrer",
     "cancel": "Annuler",
     "collapse": "Réduire",
-    "expand": "Agrandir"
+    "expand": "Agrandir",
+    "imageUrlPrompt": "URL de l'image :",
+    "clipboardUnsupported": "Ce navigateur ne peut pas lire le presse-papiers",
+    "clipboardNoImage": "Aucune image trouvée dans le presse-papiers"
   },
   "player": {
     "play": "Lecture",

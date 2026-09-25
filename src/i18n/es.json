@@ -1024,7 +1024,10 @@
     "save": "Guardar",
     "cancel": "Cancelar",
     "collapse": "Colapsar",
-    "expand": "Expandir"
+    "expand": "Expandir",
+    "imageUrlPrompt": "URL de la imagen:",
+    "clipboardUnsupported": "Este navegador no puede leer el portapapeles",
+    "clipboardNoImage": "No se encontró ninguna imagen en el portapapeles"
   },
   "player": {
     "play": "Reproducir",

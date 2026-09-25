@@ -1022,7 +1022,10 @@
     "save": "Сохранить",
     "cancel": "Отмена",
     "collapse": "Свернуть",
-    "expand": "Развернуть"
+    "expand": "Развернуть",
+    "imageUrlPrompt": "Ссылка на картинку (URL):",
+    "clipboardUnsupported": "Браузер не поддерживает чтение буфера обмена",
+    "clipboardNoImage": "В буфере обмена нет картинки"
   },
   "player": {
     "play": "Играть",

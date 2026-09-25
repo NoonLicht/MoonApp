@@ -44,6 +44,9 @@ import {
   Sigma,
   Variable,
   FileText,
+  Image as ImageIcon,
+  ClipboardType,
+  Link2,
 } from "lucide-react";
 
 /* ─── Types ─── */
@@ -55,7 +58,7 @@ export interface EditingToolbarProps {
   ) => void;
   onUndo?: () => void;
   onRedo?: () => void;
-  onAttach?: () => void;
+  onAttach?: (kind: "file" | "clipboard" | "url") => void;
   isDisabled?: boolean;
 }
 
@@ -673,13 +676,46 @@ export default function EditingToolbar({
       </DropdownMenu>
       <Sep />
       {/* ── Insert: Attach / Table / Checkbox / Comment ── */}
-      <TBtn
-        icon={Paperclip}
-        title="Attach File"
-        onClick={() => onAttach?.()}
-        disabled={isDisabled}
-        size={14}
-      />
+      <DropdownMenu
+        open={openDropdown === "attach"}
+        onClose={closeDropdown}
+        trigger={
+          <DropdownBtn
+            icon={Paperclip}
+            open={openDropdown === "attach"}
+            onClick={() => !isDisabled && toggleDropdown("attach")}
+            title="Insert Image"
+          />
+        }
+      >
+        <DropdownItemBtn
+          icon={ImageIcon}
+          label="Image from File"
+          value="file"
+          onClick={() => {
+            onAttach?.("file");
+            closeDropdown();
+          }}
+        />
+        <DropdownItemBtn
+          icon={ClipboardType}
+          label="Image from Clipboard"
+          value="clipboard"
+          onClick={() => {
+            onAttach?.("clipboard");
+            closeDropdown();
+          }}
+        />
+        <DropdownItemBtn
+          icon={Link2}
+          label="Image from URL"
+          value="url"
+          onClick={() => {
+            onAttach?.("url");
+            closeDropdown();
+          }}
+        />
+      </DropdownMenu>
       <TBtn icon={Table2} title="Insert Table" onClick={() => fmt("table")} disabled={isDisabled} />
       <TBtn
         icon={CheckSquare}

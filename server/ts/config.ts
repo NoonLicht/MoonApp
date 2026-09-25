@@ -85,6 +85,9 @@ const DIRS = {
   vault: ensureDir(path.join(STORAGE_DIR, "vault")),
   vaultNotes: ensureDir(path.join(STORAGE_DIR, "vault", "notes")),
   vaultHolts: ensureDir(path.join(STORAGE_DIR, "vault", "holts")),
+  // Картинки, вставленные в заметки (файл/буфер обмена) — вставка ![alt](url)
+  // ссылается на /api/myspace-vault/assets/:id, отдающий файл отсюда.
+  vaultAssets: ensureDir(path.join(STORAGE_DIR, "vault", "assets")),
   notes: ensureDir(path.join(STORAGE_DIR, "notes")),
   // Games launcher: библиотека игр/приложений + версионные бэкапы сохранений.
   games: ensureDir(path.join(STORAGE_DIR, "games")),

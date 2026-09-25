@@ -1024,7 +1024,10 @@
     "save": "保存",
     "cancel": "取消",
     "collapse": "折叠",
-    "expand": "展开"
+    "expand": "展开",
+    "imageUrlPrompt": "图片链接（URL）：",
+    "clipboardUnsupported": "此浏览器不支持读取剪贴板",
+    "clipboardNoImage": "剪贴板中没有图片"
   },
   "player": {
     "play": "播放",

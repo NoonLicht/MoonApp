@@ -157,6 +157,12 @@ export default function MyspacePage() {
   // можно было поправить опечатку одним кликом (см. src/lib/modelError.ts).
   const [modelChoices, setModelChoices] = useState<string[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
+  // Вставка картинки в заметку (кнопка "Вложить" в тулбаре): скрытый файловый
+  // инпут открывается программно, insertPos запоминает позицию курсора на
+  // момент клика (после закрытия системного диалога фокус/selection теряются).
+  const imageFileInputRef = useRef<HTMLInputElement>(null);
+  const attachInsertPos = useRef<{ start: number; end: number } | null>(null);
+  const [attachError, setAttachError] = useState("");
   // Активная вкладка в ref: ответ ИИ приходит асинхронно, и если пользователь
   // успел переключиться, текст чужой заметки в редактор попасть не должен.
   const activeTabRef = useRef<string | null>(null);
@@ -324,6 +330,53 @@ export default function MyspacePage() {
     // тогда изменения сохраняются по Ctrl+S или при закрытии вкладки.
     if (msCfg.autosave) schedSave(p);
   };
+
+  /** Вставляет ![alt](url) в позицию, запомненную в момент клика по кнопке
+   * "Вложить" (fallback — конец текста, если курсор не был захвачен). */
+  const insertImageMarkdown = useCallback(
+    (url: string, alt: string) => {
+      if (!activeTab) return;
+      const pos = attachInsertPos.current || { start: edContent.length, end: edContent.length };
+      const md = `![${alt}](${url})`;
+      const nc = edContent.substring(0, pos.start) + md + edContent.substring(pos.end);
+      updContent(activeTab, nc);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [activeTab, edContent],
+  );
+
+  const uploadAndInsertImage = useCallback(
+    async (blob: Blob, filename: string) => {
+      try {
+        const { url } = await api.myspaceUploadAsset(blob, filename);
+        insertImageMarkdown(url, filename.replace(/\.[a-z0-9]+$/i, "") || "image");
+      } catch (e) {
+        setAttachError((e as Error).message);
+      }
+    },
+    [insertImageMarkdown],
+  );
+
+  const attachFromClipboard = useCallback(async () => {
+    try {
+      if (!navigator.clipboard?.read) {
+        setAttachError(t("myspace.clipboardUnsupported"));
+        return;
+      }
+      const items = await navigator.clipboard.read();
+      for (const item of items) {
+        const imgType = item.types.find((ty) => ty.startsWith("image/"));
+        if (imgType) {
+          const blob = await item.getType(imgType);
+          await uploadAndInsertImage(blob, `clipboard.${imgType.split("/")[1] || "png"}`);
+          return;
+        }
+      }
+      setAttachError(t("myspace.clipboardNoImage"));
+    } catch (e) {
+      setAttachError((e as Error).message);
+    }
+  }, [uploadAndInsertImage, t]);
 
   /**
    * ИИ-оформление заметки.
@@ -1862,16 +1915,47 @@ export default function MyspacePage() {
                     }}
                     onUndo={() => document.execCommand("undo")}
                     onRedo={() => document.execCommand("redo")}
-                    onAttach={() => {
+                    onAttach={(kind) => {
+                      setAttachError("");
                       const ta = document.querySelector(".ms-edit-textarea") as HTMLTextAreaElement;
-                      const start = ta?.selectionStart ?? 0,
-                        end = ta?.selectionEnd ?? 0;
-                      const sel = edContent.substring(start, end);
-                      const wrapped = "![" + (sel || "image") + "](path/to/file)";
-                      const nc = edContent.substring(0, start) + wrapped + edContent.substring(end);
-                      updContent(activeTab, nc);
+                      attachInsertPos.current = {
+                        start: ta?.selectionStart ?? edContent.length,
+                        end: ta?.selectionEnd ?? edContent.length,
+                      };
+                      if (kind === "file") {
+                        imageFileInputRef.current?.click();
+                      } else if (kind === "url") {
+                        const url = window.prompt(t("myspace.imageUrlPrompt"));
+                        if (url && url.trim()) insertImageMarkdown(url.trim(), "image");
+                      } else if (kind === "clipboard") {
+                        void attachFromClipboard();
+                      }
                     }}
                   />
+                )}
+                <input
+                  ref={imageFileInputRef}
+                  type="file"
+                  accept="image/*"
+                  hidden
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    e.target.value = "";
+                    if (f) void uploadAndInsertImage(f, f.name);
+                  }}
+                />
+                {attachError && (
+                  <div
+                    style={{
+                      padding: "4px 12px",
+                      fontSize: 12,
+                      color: "var(--coral)",
+                      background: "var(--coral-soft)",
+                      borderBottom: "1px solid var(--glass-border)",
+                    }}
+                  >
+                    {attachError}
+                  </div>
                 )}
                 {activeTab &&
                   (() => {

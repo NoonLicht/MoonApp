@@ -1024,7 +1024,10 @@
     "save": "حفظ",
     "cancel": "إلغاء",
     "collapse": "طي",
-    "expand": "توسيع"
+    "expand": "توسيع",
+    "imageUrlPrompt": "رابط الصورة:",
+    "clipboardUnsupported": "هذا المتصفح لا يدعم قراءة الحافظة",
+    "clipboardNoImage": "لا توجد صورة في الحافظة"
   },
   "player": {
     "play": "تشغيل",

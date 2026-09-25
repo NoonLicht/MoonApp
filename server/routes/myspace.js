@@ -1,11 +1,39 @@
 const express = require("express");
+const multer = require("multer");
 const vault = require("../myspace-vault");
 // ИИ-оформление заметок: провайдер чата + sidecar с «сырым» текстом
 // (server/ts/notesAi.ts → server/notesAi.js, см. npm run compile:server).
 const notesAi = require("../notesAi");
 const logger = require("../logger");
+const vaultAssets = require("../vaultAssets");
 
 const router = express.Router();
+
+// Картинки, вставленные в заметку (кнопка "Вложить" в тулбаре: файл/буфер
+// обмена). Храним в памяти — файлы маленькие (превью-картинки), пишем сами.
+const assetUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
+
+// POST /api/myspace/assets — multipart "file" → { id, url }
+router.post("/assets", assetUpload.single("file"), (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: "file required" });
+    const { id } = vaultAssets.saveAsset(req.file.buffer, req.file.originalname || "", req.file.mimetype);
+    res.json({ id, url: `/api/myspace/assets/${id}` });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/myspace/assets/:id — отдаёт сохранённую картинку. Токен для <img src>
+// добавляется Electron'ом через session.webRequest.onBeforeSendHeaders на все
+// запросы к 127.0.0.1:<port> (см. electron/main.js), поэтому спецаллоулист не нужен.
+router.get("/assets/:id", (req, res) => {
+  const found = vaultAssets.findAsset(String(req.params.id || ""));
+  if (!found) return res.status(404).end();
+  res.setHeader("Content-Type", found.mime);
+  res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+  res.sendFile(found.path);
+});
 
 // GET /api/myspace/tree — file tree
 router.get("/tree", (req, res) => {
