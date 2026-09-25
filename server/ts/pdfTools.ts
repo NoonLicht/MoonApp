@@ -163,6 +163,35 @@ export async function addPageNumbers(
   return Buffer.from(bytes);
 }
 
+/**
+ * Визуальная подпись: рисует изображение подписи (PNG/JPG, обычно с прозрачным
+ * фоном) поверх выбранной страницы. Это НЕ криптографическая ЭЦП (для неё
+ * нужна PKI-инфраструктура сертификатов, которой в приложении нет) — как и у
+ * большинства бытовых "подписать PDF" инструментов, это способ визуально
+ * проштамповать документ своей подписью/автографом.
+ */
+export async function signPdf(
+  buf: Buffer,
+  sig: { buf: Buffer; mime: string },
+  opts: { page?: number; x?: number; y?: number; width?: number } = {},
+): Promise<Buffer> {
+  const doc = await PDFDocument.load(buf);
+  const pages = doc.getPages();
+  const pageIndex = Math.min(pages.length - 1, Math.max(0, (opts.page ?? pages.length) - 1));
+  const page = pages[pageIndex];
+  const isPng = /png/i.test(sig.mime);
+  const img = isPng ? await doc.embedPng(sig.buf) : await doc.embedJpg(sig.buf);
+  const width = opts.width ?? 160;
+  const height = width * (img.height / img.width);
+  const { width: pw, height: ph } = page.getSize();
+  const x = opts.x ?? pw - width - 40;
+  const y = opts.y ?? 40;
+  page.drawImage(img, { x, y: Math.min(Math.max(0, y), ph - height), width, height });
+  const bytes = await doc.save();
+  logger.info("pdfTools.sign", { page: pageIndex + 1 });
+  return Buffer.from(bytes);
+}
+
 /** Собирает PDF из изображений (JPG/PNG), одна картинка — одна страница
  * подогнанного под неё размера. */
 export async function imagesToPdf(files: { buf: Buffer; mime: string }[]): Promise<Buffer> {

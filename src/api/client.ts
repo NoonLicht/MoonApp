@@ -1471,6 +1471,83 @@ export const api = {
     }
     return res.blob();
   },
+  pdfSign: async (file: File, signature: File, opts: { page?: number; width?: number } = {}) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    fd.append("signature", signature);
+    if (opts.page != null) fd.append("page", String(opts.page));
+    if (opts.width != null) fd.append("width", String(opts.width));
+    const t = window.appBridge?.getToken?.();
+    const res = await fetch(`${BASE}/api/pdf/sign`, {
+      method: "POST",
+      headers: { ...(t ? { "x-moonapp-token": t } : {}), ...pageHeaders() },
+      body: fd,
+    });
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}));
+      throw new Error(j.error || `HTTP ${res.status}`);
+    }
+    return res.blob();
+  },
+  pdfProtectStatus: () => req<{ found: boolean; path: string | null }>("GET", "/pdf/protect/status"),
+  pdfProtect: async (file: File, password: string) => pdfBlobPost("/api/pdf/protect", { file, password }),
+  pdfUnlock: async (file: File, password: string) => pdfBlobPost("/api/pdf/unlock", { file, password }),
+  pdfToJpg: async (file: File, dpi = 200) => pdfBlobPost("/api/pdf/to-jpg", { file, dpi: String(dpi) }),
+  pdfOcrStatus: () =>
+    req<{ python: string; fitz: boolean; paddleocr: boolean; gpu: boolean; gpuChecked: boolean }>(
+      "GET",
+      "/pdf/ocr/status",
+    ),
+  pdfOcrInstallStatus: () =>
+    req<{ state: string; progress: number; phase: string; error: string; fitz: boolean; paddleocr: boolean; gpu: boolean }>(
+      "GET",
+      "/pdf/ocr/install",
+    ),
+  pdfOcrInstall: (withOcr: boolean, device: "cpu" | "gpu" | "auto" = "auto") =>
+    req<{ state: string; progress: number; phase: string; error: string }>("POST", "/pdf/ocr/install", {
+      withOcr,
+      device,
+    }),
+  pdfOcr: async (file: File, opts: { dpi?: number; lang?: string; device?: "cpu" | "gpu" } = {}) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    if (opts.dpi != null) fd.append("dpi", String(opts.dpi));
+    if (opts.lang) fd.append("lang", opts.lang);
+    if (opts.device) fd.append("device", opts.device);
+    const t = window.appBridge?.getToken?.();
+    const res = await fetch(`${BASE}/api/pdf/ocr`, {
+      method: "POST",
+      headers: { ...(t ? { "x-moonapp-token": t } : {}), ...pageHeaders() },
+      body: fd,
+    });
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}));
+      throw new Error(j.error || `HTTP ${res.status}`);
+    }
+    return res.json() as Promise<{ text: string; pages: number }>;
+  },
+
+  // --- Word/PowerPoint/Excel ⇄ PDF (LibreOffice headless) ---
+  officeStatus: () => req<{ found: boolean; path: string | null; version: string | null }>("GET", "/office/status"),
+  officeConvert: async (file: File, to: string) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    fd.append("to", to);
+    const t = window.appBridge?.getToken?.();
+    const res = await fetch(`${BASE}/api/office/convert`, {
+      method: "POST",
+      headers: { ...(t ? { "x-moonapp-token": t } : {}), ...pageHeaders() },
+      body: fd,
+    });
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}));
+      throw new Error(j.error || `HTTP ${res.status}`);
+    }
+    const blob = await res.blob();
+    const cd = res.headers.get("Content-Disposition") || "";
+    const m = /filename="([^"]+)"/.exec(cd);
+    return { blob, name: m ? m[1] : `converted.${to}` };
+  },
 
   // --- Git-синхронизация заметок/canvas ---
   notesGitConfig: () => req<NotesGitConfig>("GET", "/notesgit/config"),

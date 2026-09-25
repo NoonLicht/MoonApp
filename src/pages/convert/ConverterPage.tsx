@@ -323,6 +323,7 @@ export default function ConverterPage() {
       {!file && <EmptyHint icon={Repeat} text={t("conv.empty")} />}
 
       <PdfToolkit />
+      <OfficeToolkit />
       </div>
     </div>
   );
@@ -405,6 +406,40 @@ function PdfToolkit() {
   const [imgFiles, setImgFiles] = useState<File[]>([]);
   const [imgBusy, setImgBusy] = useState(false);
   const [imgError, setImgError] = useState("");
+
+  const [signFile, setSignFile] = useState<File | null>(null);
+  const [sigImage, setSigImage] = useState<File | null>(null);
+  const [signBusy, setSignBusy] = useState(false);
+  const [signError, setSignError] = useState("");
+
+  const [protFile, setProtFile] = useState<File | null>(null);
+  const [protPassword, setProtPassword] = useState("");
+  const [protBusy, setProtBusy] = useState(false);
+  const [protError, setProtError] = useState("");
+  const [qpdfFound, setQpdfFound] = useState<boolean | null>(null);
+
+  const [unlFile, setUnlFile] = useState<File | null>(null);
+  const [unlPassword, setUnlPassword] = useState("");
+  const [unlBusy, setUnlBusy] = useState(false);
+  const [unlError, setUnlError] = useState("");
+
+  const [jpgFile, setJpgFile] = useState<File | null>(null);
+  const [jpgBusy, setJpgBusy] = useState(false);
+  const [jpgError, setJpgError] = useState("");
+
+  const [ocrFile, setOcrFile] = useState<File | null>(null);
+  const [ocrBusy, setOcrBusy] = useState(false);
+  const [ocrError, setOcrError] = useState("");
+  const [ocrText, setOcrText] = useState<string | null>(null);
+  const [ocrReady, setOcrReady] = useState<{ fitz: boolean; paddleocr: boolean; gpu: boolean } | null>(null);
+  const [ocrInstall, setOcrInstall] = useState<{ state: string; progress: number; phase: string; error: string } | null>(
+    null,
+  );
+
+  useEffect(() => {
+    api.pdfProtectStatus().then((s) => setQpdfFound(s.found)).catch(() => setQpdfFound(false));
+    api.pdfOcrStatus().then(setOcrReady).catch(() => {});
+  }, []);
 
   const doMerge = async () => {
     if (mergeFiles.length < 2) return;
@@ -524,6 +559,98 @@ function PdfToolkit() {
       setImgBusy(false);
     }
   };
+
+  const doSign = async () => {
+    if (!signFile || !sigImage) return;
+    setSignBusy(true);
+    setSignError("");
+    try {
+      const blob = await api.pdfSign(signFile, sigImage);
+      saveBlob(blob, "signed.pdf");
+    } catch (e) {
+      setSignError((e as Error).message);
+    } finally {
+      setSignBusy(false);
+    }
+  };
+
+  const doProtect = async () => {
+    if (!protFile || !protPassword) return;
+    setProtBusy(true);
+    setProtError("");
+    try {
+      const blob = await api.pdfProtect(protFile, protPassword);
+      saveBlob(blob, "protected.pdf");
+    } catch (e) {
+      setProtError((e as Error).message);
+    } finally {
+      setProtBusy(false);
+    }
+  };
+
+  const doUnlock = async () => {
+    if (!unlFile || !unlPassword) return;
+    setUnlBusy(true);
+    setUnlError("");
+    try {
+      const blob = await api.pdfUnlock(unlFile, unlPassword);
+      saveBlob(blob, "unlocked.pdf");
+    } catch (e) {
+      setUnlError((e as Error).message);
+    } finally {
+      setUnlBusy(false);
+    }
+  };
+
+  const doToJpg = async () => {
+    if (!jpgFile) return;
+    setJpgBusy(true);
+    setJpgError("");
+    try {
+      const blob = await api.pdfToJpg(jpgFile);
+      saveBlob(blob, "pages.zip");
+    } catch (e) {
+      setJpgError((e as Error).message);
+    } finally {
+      setJpgBusy(false);
+    }
+  };
+
+  const doOcr = async () => {
+    if (!ocrFile) return;
+    setOcrBusy(true);
+    setOcrError("");
+    setOcrText(null);
+    try {
+      const result = await api.pdfOcr(ocrFile);
+      setOcrText(result.text);
+    } catch (e) {
+      setOcrError((e as Error).message);
+    } finally {
+      setOcrBusy(false);
+    }
+  };
+
+  const startOcrInstall = async () => {
+    const st = await api.pdfOcrInstall(true, "auto");
+    setOcrInstall(st);
+  };
+
+  useEffect(() => {
+    if (!ocrInstall || ocrInstall.state !== "working") return undefined;
+    const timer = window.setInterval(() => {
+      api
+        .pdfOcrInstallStatus()
+        .then((s) => {
+          setOcrInstall(s);
+          if (s.state === "done") {
+            api.pdfOcrStatus().then(setOcrReady).catch(() => {});
+          }
+        })
+        .catch(() => {});
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [ocrInstall]);
 
   return (
     <>
@@ -762,9 +889,244 @@ function PdfToolkit() {
         {imgError && <div style={{ color: "var(--coral)" }}>{imgError}</div>}
       </Glass>
 
+      {/* --- PDF в JPG/PNG --- */}
+      <Glass className="media-preview" style={{ flexDirection: "column", alignItems: "stretch", gap: 8 }}>
+        <div className="media-title">{t("conv.pdfToJpg")}</div>
+        <FilePickButton
+          accept="application/pdf"
+          label={t("automation.browse")}
+          onPick={(files) => setJpgFile(files[0])}
+        />
+        {jpgFile && <div className="muted-sm">{jpgFile.name}</div>}
+        <div className="muted-sm">{t("conv.pdfToJpgHint")}</div>
+        <Btn
+          variant="primary"
+          icon={jpgBusy ? RefreshCw : FileUp}
+          disabled={!jpgFile || jpgBusy}
+          onClick={() => void doToJpg()}
+          style={{ width: 220 }}
+        >
+          {jpgBusy ? t("conv.pdfWorking") : t("conv.pdfToJpgGo")}
+        </Btn>
+        {jpgError && <div style={{ color: "var(--coral)" }}>{jpgError}</div>}
+      </Glass>
+
+      {/* --- Подписать PDF (визуально) --- */}
+      <Glass className="media-preview" style={{ flexDirection: "column", alignItems: "stretch", gap: 8 }}>
+        <div className="media-title">{t("conv.pdfSign")}</div>
+        <div className="muted-sm">{t("conv.pdfSignHint")}</div>
+        <FilePickButton
+          accept="application/pdf"
+          label={t("conv.pdfSignPickPdf")}
+          onPick={(files) => setSignFile(files[0])}
+        />
+        {signFile && <div className="muted-sm">{signFile.name}</div>}
+        <FilePickButton
+          accept="image/png,image/jpeg"
+          label={t("conv.pdfSignPickImage")}
+          onPick={(files) => setSigImage(files[0])}
+        />
+        {sigImage && <div className="muted-sm">{sigImage.name}</div>}
+        <Btn
+          variant="primary"
+          icon={signBusy ? RefreshCw : FileUp}
+          disabled={!signFile || !sigImage || signBusy}
+          onClick={() => void doSign()}
+          style={{ width: 220 }}
+        >
+          {signBusy ? t("conv.pdfWorking") : t("conv.pdfSignGo")}
+        </Btn>
+        {signError && <div style={{ color: "var(--coral)" }}>{signError}</div>}
+      </Glass>
+
+      {/* --- Защита паролем --- */}
+      <Glass className="media-preview" style={{ flexDirection: "column", alignItems: "stretch", gap: 8 }}>
+        <div className="media-title">{t("conv.pdfProtect")}</div>
+        {qpdfFound === false && <div className="muted-sm">{t("conv.pdfQpdfMissing")}</div>}
+        <FilePickButton
+          accept="application/pdf"
+          label={t("automation.browse")}
+          onPick={(files) => setProtFile(files[0])}
+        />
+        {protFile && <div className="muted-sm">{protFile.name}</div>}
+        <input
+          className="text-input"
+          type="password"
+          placeholder={t("conv.pdfPassword")}
+          value={protPassword}
+          onChange={(e) => setProtPassword(e.target.value)}
+        />
+        <Btn
+          variant="primary"
+          icon={protBusy ? RefreshCw : FileUp}
+          disabled={!protFile || !protPassword || protBusy || qpdfFound === false}
+          onClick={() => void doProtect()}
+          style={{ width: 220 }}
+        >
+          {protBusy ? t("conv.pdfWorking") : t("conv.pdfProtectGo")}
+        </Btn>
+        {protError && <div style={{ color: "var(--coral)" }}>{protError}</div>}
+      </Glass>
+
+      {/* --- Снять пароль --- */}
+      <Glass className="media-preview" style={{ flexDirection: "column", alignItems: "stretch", gap: 8 }}>
+        <div className="media-title">{t("conv.pdfUnlock")}</div>
+        {qpdfFound === false && <div className="muted-sm">{t("conv.pdfQpdfMissing")}</div>}
+        <FilePickButton
+          accept="application/pdf"
+          label={t("automation.browse")}
+          onPick={(files) => setUnlFile(files[0])}
+        />
+        {unlFile && <div className="muted-sm">{unlFile.name}</div>}
+        <input
+          className="text-input"
+          type="password"
+          placeholder={t("conv.pdfPassword")}
+          value={unlPassword}
+          onChange={(e) => setUnlPassword(e.target.value)}
+        />
+        <Btn
+          variant="primary"
+          icon={unlBusy ? RefreshCw : FileUp}
+          disabled={!unlFile || !unlPassword || unlBusy || qpdfFound === false}
+          onClick={() => void doUnlock()}
+          style={{ width: 220 }}
+        >
+          {unlBusy ? t("conv.pdfWorking") : t("conv.pdfUnlockGo")}
+        </Btn>
+        {unlError && <div style={{ color: "var(--coral)" }}>{unlError}</div>}
+      </Glass>
+
+      {/* --- OCR (PaddleOCR, CPU/GPU) --- */}
+      <Glass className="media-preview" style={{ flexDirection: "column", alignItems: "stretch", gap: 8 }}>
+        <div className="media-title">{t("conv.pdfOcr")}</div>
+        {ocrReady && !ocrReady.paddleocr ? (
+          <>
+            <div className="muted-sm">
+              {t(ocrReady.gpu ? "conv.pdfOcrNeedInstallGpu" : "conv.pdfOcrNeedInstallCpu")}
+            </div>
+            <Btn
+              icon={ocrInstall?.state === "working" ? RefreshCw : Download}
+              disabled={ocrInstall?.state === "working"}
+              onClick={() => void startOcrInstall()}
+              style={{ width: 240 }}
+            >
+              {ocrInstall?.state === "working"
+                ? t("conv.pdfOcrInstalling", { phase: ocrInstall.phase })
+                : t("conv.pdfOcrInstallGo")}
+            </Btn>
+            {ocrInstall?.state === "working" && <ProgressBar value={ocrInstall.progress} />}
+            {ocrInstall?.state === "error" && (
+              <div style={{ color: "var(--coral)" }}>{ocrInstall.error}</div>
+            )}
+          </>
+        ) : (
+          <>
+            <FilePickButton
+              accept="application/pdf"
+              label={t("automation.browse")}
+              onPick={(files) => {
+                setOcrFile(files[0]);
+                setOcrText(null);
+              }}
+            />
+            {ocrFile && <div className="muted-sm">{ocrFile.name}</div>}
+            <Btn
+              variant="primary"
+              icon={ocrBusy ? RefreshCw : FileUp}
+              disabled={!ocrFile || ocrBusy}
+              onClick={() => void doOcr()}
+              style={{ width: 220 }}
+            >
+              {ocrBusy ? t("conv.pdfOcrRunning") : t("conv.pdfOcrGo")}
+            </Btn>
+            {ocrError && <div style={{ color: "var(--coral)" }}>{ocrError}</div>}
+            {ocrText != null && (
+              <>
+                <textarea className="text-input" readOnly rows={8} value={ocrText || t("conv.pdfNoTextLayer")} />
+                <Btn
+                  icon={Download}
+                  onClick={() => {
+                    const blob = new Blob([ocrText], { type: "text/plain;charset=utf-8" });
+                    saveBlob(blob, (ocrFile?.name.replace(/\.pdf$/i, "") || "ocr") + ".txt");
+                  }}
+                  style={{ width: 200 }}
+                >
+                  {t("conv.pdfDownloadText")}
+                </Btn>
+              </>
+            )}
+          </>
+        )}
+      </Glass>
+
       </div>
-      <div className="muted-sm">{t("conv.pdfOcrHint")}</div>
       <div className="muted-sm">{t("conv.pdfMoreHint")}</div>
+    </>
+  );
+}
+
+/**
+ * Word/PowerPoint/Excel ⇄ PDF — через LibreOffice headless
+ * (server/ts/officeConvert.ts). Движок ищется локально, как ffmpeg; не найден
+ * — понятная ошибка с подсказкой, куда поставить (без тихой автозагрузки
+ * 300-мегабайтного инсталлятора).
+ */
+function OfficeToolkit() {
+  const { t } = useI18n();
+  const [file, setFile] = useState<File | null>(null);
+  const [target, setTarget] = useState("pdf");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [found, setFound] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    api.officeStatus().then((s) => setFound(s.found)).catch(() => setFound(false));
+  }, []);
+
+  const convert = async () => {
+    if (!file) return;
+    setBusy(true);
+    setError("");
+    try {
+      const { blob, name } = await api.officeConvert(file, target);
+      saveBlob(blob, name);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const targets = ["pdf", "docx", "pptx", "xlsx", "odt", "odp", "ods"];
+
+  return (
+    <>
+      <SectionHead eyebrow={t("conv.officeEyebrow")} title={t("conv.officeTitle")} />
+      {found === false && <div className="muted-sm">{t("conv.officeMissing")}</div>}
+      <Glass className="media-preview" style={{ flexDirection: "column", alignItems: "stretch", gap: 8, maxWidth: 360 }}>
+        <FilePickButton
+          accept=".doc,.docx,.ppt,.pptx,.xls,.xlsx,.odt,.odp,.ods,.pdf"
+          label={t("automation.browse")}
+          onPick={(files) => setFile(files[0])}
+        />
+        {file && <div className="muted-sm">{file.name}</div>}
+        <Select
+          value={target}
+          onChange={(e) => setTarget(e.target.value)}
+          options={targets.map((tg) => ({ value: tg, label: tg.toUpperCase() }))}
+        />
+        <Btn
+          variant="primary"
+          icon={busy ? RefreshCw : FileUp}
+          disabled={!file || busy || found === false}
+          onClick={() => void convert()}
+          style={{ width: 220 }}
+        >
+          {busy ? t("conv.pdfWorking") : t("conv.officeConvertGo")}
+        </Btn>
+        {error && <div style={{ color: "var(--coral)" }}>{error}</div>}
+      </Glass>
     </>
   );
 }

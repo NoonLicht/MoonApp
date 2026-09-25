@@ -11,11 +11,26 @@
  *  POST /api/pdf/watermark     — multipart file + text + opacity? → PDF-файл
  *  POST /api/pdf/page-numbers  — multipart file + startAt? → PDF-файл
  *  POST /api/pdf/images-to-pdf — multipart files[] (JPG/PNG) → PDF-файл
+ *  POST /api/pdf/sign          — multipart file + signature (image) + page?/x?/y?/width? → PDF-файл
+ *  POST /api/pdf/protect       — multipart file + password → PDF-файл (qpdf, 404 если не найден)
+ *  POST /api/pdf/unlock        — multipart file + password → PDF-файл (qpdf)
+ *  GET  /api/pdf/protect/status — { found, path } — есть ли qpdf
+ *  POST /api/pdf/to-jpg        — multipart file + dpi? → zip PNG-страниц (PyMuPDF)
+ *  GET  /api/pdf/ocr/status    — { python, fitz, paddleocr, gpu }
+ *  POST /api/pdf/ocr/install   — { withOcr, device } → запуск тихой установки
+ *  GET  /api/pdf/ocr/install   — прогресс установки
+ *  POST /api/pdf/ocr           — multipart file + dpi?/lang?/device? → { text, pages }
  */
 
 const express = require("express");
 const multer = require("multer");
+const fs = require("fs");
+const os = require("os");
+const path = require("path");
+const AdmZip = require("adm-zip");
 const pdfTools = require("../pdfTools");
+const ocrEngine = require("../ocrEngine");
+const pdfProtect = require("../pdfProtect");
 
 const router = express.Router();
 const MAX_BYTES = 200 * 1024 * 1024; // 200 МБ на файл — с запасом для PDF
@@ -127,6 +142,130 @@ router.post("/images-to-pdf", upload.array("files", 100), async (req, res) => {
     res.send(out);
   } catch (e) {
     res.status(500).json({ error: e.message });
+  }
+});
+
+router.post("/sign", upload.fields([{ name: "file", maxCount: 1 }, { name: "signature", maxCount: 1 }]), async (req, res) => {
+  try {
+    const file = req.files && req.files.file && req.files.file[0];
+    const sig = req.files && req.files.signature && req.files.signature[0];
+    if (!file || !sig) return res.status(400).json({ error: "missing_file_or_signature" });
+    const b = req.body || {};
+    const out = await pdfTools.signPdf(file.buffer, { buf: sig.buffer, mime: sig.mimetype }, {
+      page: b.page ? parseInt(b.page, 10) : undefined,
+      x: b.x ? parseFloat(b.x) : undefined,
+      y: b.y ? parseFloat(b.y) : undefined,
+      width: b.width ? parseFloat(b.width) : undefined,
+    });
+    res.set("Content-Type", "application/pdf");
+    res.set("Content-Disposition", 'attachment; filename="signed.pdf"');
+    res.send(out);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.get("/protect/status", async (_req, res) => {
+  try {
+    res.json(await pdfProtect.detectQpdf());
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.post("/protect", upload.single("file"), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: "missing_file" });
+    const password = String((req.body && req.body.password) || "");
+    const out = await pdfProtect.protectPdf(req.file.buffer, password);
+    res.set("Content-Type", "application/pdf");
+    res.set("Content-Disposition", 'attachment; filename="protected.pdf"');
+    res.send(out);
+  } catch (e) {
+    const status = e.message === "qpdf_missing" ? 404 : e.message === "missing_password" ? 400 : 500;
+    res.status(status).json({ error: e.message });
+  }
+});
+
+router.post("/unlock", upload.single("file"), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: "missing_file" });
+    const password = String((req.body && req.body.password) || "");
+    const out = await pdfProtect.unlockPdf(req.file.buffer, password);
+    res.set("Content-Type", "application/pdf");
+    res.set("Content-Disposition", 'attachment; filename="unlocked.pdf"');
+    res.send(out);
+  } catch (e) {
+    const status = e.message === "qpdf_missing" ? 404 : 500;
+    res.status(status).json({ error: e.message });
+  }
+});
+
+router.post("/to-jpg", upload.single("file"), async (req, res) => {
+  let tmpPath = null;
+  try {
+    if (!req.file) return res.status(400).json({ error: "missing_file" });
+    const dpi = parseInt((req.body && req.body.dpi) || "200", 10);
+    tmpPath = path.join(os.tmpdir(), `pdf2jpg-${Date.now()}-${Math.random().toString(36).slice(2)}.pdf`);
+    fs.writeFileSync(tmpPath, req.file.buffer);
+    const pages = await ocrEngine.rasterizePdf(tmpPath, dpi);
+    const zip = new AdmZip();
+    pages.forEach((p, i) => zip.addLocalFile(p, "", `page_${i + 1}.png`));
+    res.set("Content-Type", "application/zip");
+    res.set("Content-Disposition", 'attachment; filename="pages.zip"');
+    res.send(zip.toBuffer());
+    for (const p of pages) fs.rm(path.dirname(p), { recursive: true, force: true }, () => {});
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  } finally {
+    if (tmpPath) fs.rm(tmpPath, { force: true }, () => {});
+  }
+});
+
+router.get("/ocr/status", async (_req, res) => {
+  try {
+    res.json(await ocrEngine.status());
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.get("/ocr/install", async (_req, res) => {
+  try {
+    res.json(await ocrEngine.installStatusFull());
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.post("/ocr/install", (req, res) => {
+  try {
+    const b = req.body || {};
+    const st = ocrEngine.install(!!b.withOcr, b.device || "auto");
+    res.json(st);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.post("/ocr", upload.single("file"), async (req, res) => {
+  let tmpPath = null;
+  try {
+    if (!req.file) return res.status(400).json({ error: "missing_file" });
+    const b = req.body || {};
+    tmpPath = path.join(os.tmpdir(), `pdfocr-${Date.now()}-${Math.random().toString(36).slice(2)}.pdf`);
+    fs.writeFileSync(tmpPath, req.file.buffer);
+    const result = await ocrEngine.ocrPdf(tmpPath, {
+      dpi: b.dpi ? parseInt(b.dpi, 10) : undefined,
+      lang: b.lang || undefined,
+      device: b.device || undefined,
+    });
+    const text = result.pages.map((p) => p.text).join("\n\n").trim();
+    res.json({ text, pages: result.pages.length });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  } finally {
+    if (tmpPath) fs.rm(tmpPath, { force: true }, () => {});
   }
 });
 

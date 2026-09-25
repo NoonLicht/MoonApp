@@ -59,6 +59,9 @@ server/diskScan.js
 server/bookmarks.js
 server/musicPlaylists.js
 server/pdfTools.js
+server/ocrEngine.js
+server/officeConvert.js
+server/pdfProtect.js
 server/games.js
 server/netTools.js
 server/notesGit.js
