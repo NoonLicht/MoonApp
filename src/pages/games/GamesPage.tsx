@@ -11,6 +11,7 @@ import {
   ImagePlus,
   AlertTriangle,
   FolderOpen,
+  Search,
 } from "lucide-react";
 import { Glass, Btn, Badge, EmptyHint, SectionHead } from "@/components/ui";
 import { useContextMenu } from "@/components/ContextMenu";
@@ -166,6 +167,21 @@ export default function GamesPage() {
     const updated = await api.gamesUpdate(savesFor.id, { savePath: r.path });
     setSavesFor(updated);
     setItems((prev) => prev.map((g) => (g.id === updated.id ? updated : g)));
+  };
+
+  const [findingSave, setFindingSave] = useState(false);
+  const findSaveFor = async () => {
+    if (!savesFor) return;
+    setFindingSave(true);
+    try {
+      const r = await api.gamesSaveFindPath(savesFor.id);
+      if (r.found && r.entry) {
+        setSavesFor(r.entry);
+        setItems((prev) => prev.map((g) => (g.id === r.entry!.id ? r.entry! : g)));
+      }
+    } finally {
+      setFindingSave(false);
+    }
   };
 
   return (
@@ -389,6 +405,7 @@ export default function GamesPage() {
           onClick={() => setSavesFor(null)}
         >
           <Glass
+            className="glass-solid"
             style={{ width: 420, maxHeight: "70vh", padding: 16, flexDirection: "column", gap: 10 }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -403,21 +420,29 @@ export default function GamesPage() {
                 <div className="muted-sm" style={{ wordBreak: "break-all" }}>
                   {savesFor.savePath}
                 </div>
-                <div style={{ display: "flex", gap: 8 }}>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                   <Btn icon={Save} disabled={savesBusy} onClick={() => void doBackup()}>
                     {t("games.backupNow")}
                   </Btn>
                   <Btn icon={FolderOpen} disabled={savesBusy} onClick={() => void setSavePathFor()}>
                     {t("games.changePath")}
                   </Btn>
+                  <Btn icon={findingSave ? RefreshCw : Search} disabled={findingSave} onClick={() => void findSaveFor()}>
+                    {t("games.findSavePath")}
+                  </Btn>
                 </div>
               </>
             ) : (
               <Glass className="source-placeholder" style={{ flexDirection: "column", gap: 8 }}>
                 <span className="muted-sm">{t("games.noSavePathHint")}</span>
-                <Btn icon={FolderOpen} onClick={() => void setSavePathFor()}>
-                  {t("automation.browse")}
-                </Btn>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  <Btn icon={findingSave ? RefreshCw : Search} disabled={findingSave} onClick={() => void findSaveFor()}>
+                    {findingSave ? t("games.findingSavePath") : t("games.findSavePath")}
+                  </Btn>
+                  <Btn icon={FolderOpen} onClick={() => void setSavePathFor()}>
+                    {t("automation.browse")}
+                  </Btn>
+                </div>
               </Glass>
             )}
             <div style={{ overflow: "auto", flex: 1 }}>

@@ -455,7 +455,9 @@
     "fIcon": "Icono",
     "fBackground": "Fondo",
     "changePath": "Cambiar carpeta",
-    "noSavePathHint": "No se ha indicado una carpeta de partidas guardadas — sin ella no hay nada que respaldar. Indícala para activar el gestor de partidas guardadas de este juego."
+    "noSavePathHint": "No se ha indicado una carpeta de partidas guardadas — sin ella no hay nada que respaldar. Indícala para activar el gestor de partidas guardadas de este juego.",
+    "findSavePath": "Buscar automático",
+    "findingSavePath": "Buscando…"
   },
   "tools": {
     "eyebrow": "Multiherramienta",

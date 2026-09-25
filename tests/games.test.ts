@@ -15,6 +15,31 @@ beforeAll(() => {
   engine = req("../server/games");
 });
 
+describe("server/games — автопоиск папки сохранений (нечёткое совпадение)", () => {
+  it("находит папку, даже если её имя отличается от названия игры (без пробелов/пунктуации)", () => {
+    const fakeHome = fs.mkdtempSync(path.join(os.tmpdir(), "pa-games-home-"));
+    const myGames = path.join(fakeHome, "Documents", "My Games");
+    fs.mkdirSync(path.join(myGames, "SuperGameRemastered"), { recursive: true });
+
+    const found = engine.guessSavePath("Super Game: Remastered", fakeHome);
+    expect(found).toBe(path.join(myGames, "SuperGameRemastered"));
+  });
+
+  it("предпочитает точное совпадение имени папки нечёткому", () => {
+    const fakeHome = fs.mkdtempSync(path.join(os.tmpdir(), "pa-games-home2-"));
+    fs.mkdirSync(path.join(fakeHome, "Documents", "My Games", "Exact Name"), { recursive: true });
+    fs.mkdirSync(path.join(fakeHome, "Documents", "Exact Name Extended"), { recursive: true });
+
+    const found = engine.guessSavePath("Exact Name", fakeHome);
+    expect(found).toBe(path.join(fakeHome, "Documents", "My Games", "Exact Name"));
+  });
+
+  it("возвращает null, если ничего похожего не найдено", () => {
+    const fakeHome = fs.mkdtempSync(path.join(os.tmpdir(), "pa-games-home3-"));
+    expect(engine.guessSavePath("Совершенно Неизвестная Игра XYZ 12345", fakeHome)).toBeNull();
+  });
+});
+
 describe("server/games — CRUD библиотеки", () => {
   it("create/list/update/remove работают", async () => {
     const created = await engine.create({ name: "Test Game", exePath: "C:\\games\\test\\test.exe" });

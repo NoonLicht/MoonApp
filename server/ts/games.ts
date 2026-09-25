@@ -181,27 +181,74 @@ $bmp.Save('${tmpPng.replace(/'/g, "''")}', [System.Drawing.Imaging.ImageFormat]:
   });
 }
 
+function normalizeForMatch(s: string): string {
+  return s.toLowerCase().replace(/[^a-z0-9а-я]/gi, "");
+}
+
+/** Ищет среди подпапок `parent` ту, чьё имя похоже на gameName (точное совпадение,
+ * либо название игры/папки — подстрока другого без учёта регистра/пунктуации —
+ * так находятся папки вида "TheGame" для игры "The Game: Remastered" и наоборот). */
+function findFuzzyMatch(parent: string, gameName: string): string | null {
+  let entries: string[];
+  try {
+    entries = fs.readdirSync(parent);
+  } catch {
+    return null;
+  }
+  const target = normalizeForMatch(gameName);
+  if (!target) return null;
+  let best: string | null = null;
+  let bestScore = 0;
+  for (const name of entries) {
+    const full = path.join(parent, name);
+    try {
+      if (!fs.statSync(full).isDirectory()) continue;
+    } catch {
+      continue;
+    }
+    const norm = normalizeForMatch(name);
+    if (!norm) continue;
+    let score = 0;
+    if (norm === target) score = 3;
+    else if (norm.includes(target) || target.includes(norm)) {
+      score = Math.min(norm.length, target.length) / Math.max(norm.length, target.length) >= 0.5 ? 2 : 0;
+    }
+    if (score > bestScore) {
+      bestScore = score;
+      best = full;
+    }
+  }
+  return best;
+}
+
 /**
  * Best-effort угадывание папки сохранений по самым частым конвенциям Windows-игр.
  * Ничего не гарантирует (тысячи игр — тысячи схем), поэтому используется только
  * как подсказка при автосборе библиотеки — пользователь всегда может поправить
- * путь вручную. Возвращает первую реально существующую папку.
+ * путь вручную. Сначала пробует точное имя папки, затем нечёткий поиск по
+ * содержимому типовых родительских директорий (на случай "TheGame" вместо
+ * "The Game", издательских подпапок и т.п.).
  */
-function guessSavePath(gameName: string): string | null {
-  const home = os.homedir();
-  const candidates = [
-    path.join(home, "Saved Games", gameName),
-    path.join(home, "Documents", "My Games", gameName),
-    path.join(home, "Documents", gameName),
-    path.join(process.env.APPDATA || path.join(home, "AppData", "Roaming"), gameName),
-    path.join(process.env.LOCALAPPDATA || path.join(home, "AppData", "Local"), gameName),
+export function guessSavePath(gameName: string, homeOverride?: string): string | null {
+  const home = homeOverride || os.homedir();
+  const parents = [
+    path.join(home, "Saved Games"),
+    path.join(home, "Documents", "My Games"),
+    path.join(home, "Documents"),
+    process.env.APPDATA || path.join(home, "AppData", "Roaming"),
+    process.env.LOCALAPPDATA || path.join(home, "AppData", "Local"),
   ];
-  for (const c of candidates) {
+  for (const parent of parents) {
+    const exact = path.join(parent, gameName);
     try {
-      if (fs.existsSync(c) && fs.statSync(c).isDirectory()) return c;
+      if (fs.existsSync(exact) && fs.statSync(exact).isDirectory()) return exact;
     } catch {
       /* skip */
     }
+  }
+  for (const parent of parents) {
+    const fuzzy = findFuzzyMatch(parent, gameName);
+    if (fuzzy) return fuzzy;
   }
   return null;
 }

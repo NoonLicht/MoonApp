@@ -12,6 +12,7 @@
  *  POST   /api/games/:id/save/backup    — сделать версионный бэкап сохранений
  *  GET    /api/games/:id/save/versions  — список версий бэкапа
  *  POST   /api/games/:id/save/restore   — восстановить версию { file }
+ *  POST   /api/games/:id/save/find-path — автопоиск папки сохранений по имени игры
  */
 
 const express = require("express");
@@ -95,6 +96,20 @@ router.post("/:id/save/restore", (req, res) => {
     const file = (req.body && req.body.file) || "";
     if (!file) return res.status(400).json({ error: "missing_file" });
     res.json(games.restoreSave(req.params.id, file));
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.post("/:id/save/find-path", (req, res) => {
+  try {
+    const list = games.list();
+    const entry = list.find((g) => g.id === req.params.id);
+    if (!entry) return res.status(404).json({ error: "not_found" });
+    const found = games.guessSavePath(entry.name);
+    if (!found) return res.json({ found: false, savePath: null });
+    const updated = games.update(entry.id, { savePath: found });
+    res.json({ found: true, savePath: found, entry: updated });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

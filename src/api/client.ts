@@ -1518,6 +1518,11 @@ export const api = {
   gamesSaveVersions: (id: string) => req<SaveVersion[]>("GET", `/games/${id}/save/versions`),
   gamesSaveRestore: (id: string, file: string) =>
     req<{ ok: boolean; error?: string }>("POST", `/games/${id}/save/restore`, { file }),
+  gamesSaveFindPath: (id: string) =>
+    req<{ found: boolean; savePath: string | null; entry?: GameEntry }>(
+      "POST",
+      `/games/${id}/save/find-path`,
+    ),
 
   // --- Автоматизация (быстрый лаунчер + планировщик заданий) ---
   automationLaunchers: () => req<LauncherEntry[]>("GET", "/automation/launchers"),

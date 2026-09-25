@@ -455,7 +455,9 @@
     "fIcon": "Icône",
     "fBackground": "Fond",
     "changePath": "Changer de dossier",
-    "noSavePathHint": "Aucun dossier de sauvegardes défini — rien à sauvegarder sans cela. Définissez-en un pour activer le gestionnaire de sauvegardes de ce jeu."
+    "noSavePathHint": "Aucun dossier de sauvegardes défini — rien à sauvegarder sans cela. Définissez-en un pour activer le gestionnaire de sauvegardes de ce jeu.",
+    "findSavePath": "Recherche auto",
+    "findingSavePath": "Recherche…"
   },
   "tools": {
     "eyebrow": "Multi-outil",
