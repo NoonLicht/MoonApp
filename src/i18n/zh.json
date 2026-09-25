@@ -879,7 +879,10 @@
     "imgCropHint": "选择图片后直接在预览图上拖拽选区 — 裁剪将应用于所选矩形区域。",
     "imgCropSize": "选区：{w}×{h} px",
     "imgCurrentSize": "当前尺寸：{w}×{h} px",
-    "imgLockRatio": "保持比例"
+    "imgLockRatio": "保持比例",
+    "imgCropEdit": "编辑区域",
+    "imgCropModalTitle": "选择裁剪区域",
+    "imgCropApply": "完成"
   },
   "music": {
     "title": "音乐下载",

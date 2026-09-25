@@ -880,7 +880,10 @@
     "imgCropHint": "Pick an image and drag a selection right on the preview — the crop is applied to the selected rectangle.",
     "imgCropSize": "Selection: {w}×{h} px",
     "imgCurrentSize": "Current size: {w}×{h} px",
-    "imgLockRatio": "Keep aspect ratio"
+    "imgLockRatio": "Keep aspect ratio",
+    "imgCropEdit": "Edit area",
+    "imgCropModalTitle": "Select crop area",
+    "imgCropApply": "Done"
   },
   "music": {
     "title": "Music downloader",

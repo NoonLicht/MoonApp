@@ -879,7 +879,10 @@
     "imgCropHint": "Choisissez une image et faites glisser une sélection sur l'aperçu — le recadrage s'applique au rectangle sélectionné.",
     "imgCropSize": "Sélection : {w}×{h} px",
     "imgCurrentSize": "Taille actuelle : {w}×{h} px",
-    "imgLockRatio": "Conserver les proportions"
+    "imgLockRatio": "Conserver les proportions",
+    "imgCropEdit": "Modifier la zone",
+    "imgCropModalTitle": "Choisir la zone de recadrage",
+    "imgCropApply": "Terminé"
   },
   "music": {
     "title": "Téléchargement de musique",

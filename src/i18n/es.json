@@ -879,7 +879,10 @@
     "imgCropHint": "Elige una imagen y arrastra una selección sobre la vista previa — el recorte se aplica al rectángulo seleccionado.",
     "imgCropSize": "Selección: {w}×{h} px",
     "imgCurrentSize": "Tamaño actual: {w}×{h} px",
-    "imgLockRatio": "Mantener proporción"
+    "imgLockRatio": "Mantener proporción",
+    "imgCropEdit": "Editar área",
+    "imgCropModalTitle": "Elegir área de recorte",
+    "imgCropApply": "Listo"
   },
   "music": {
     "title": "Descarga de música",

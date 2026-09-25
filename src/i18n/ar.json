@@ -879,7 +879,10 @@
     "imgCropHint": "اختر صورة واسحب تحديدًا مباشرة على المعاينة — سيتم تطبيق القص على المستطيل المحدد.",
     "imgCropSize": "التحديد: {w}×{h} px",
     "imgCurrentSize": "الحجم الحالي: {w}×{h} px",
-    "imgLockRatio": "الحفاظ على النسبة"
+    "imgLockRatio": "الحفاظ على النسبة",
+    "imgCropEdit": "تعديل المنطقة",
+    "imgCropModalTitle": "اختيار منطقة القص",
+    "imgCropApply": "تم"
   },
   "music": {
     "title": "تنزيل الموسيقى",

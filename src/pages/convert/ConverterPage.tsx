@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { createPortal } from "react-dom";
 import {
   Repeat,
   Check,
@@ -13,6 +14,8 @@ import {
   Maximize2,
   Link2,
   Unlink,
+  Upload,
+  Pencil,
 } from "lucide-react";
 import {
   Glass,
@@ -340,6 +343,37 @@ interface CropRect {
   h: number;
 }
 
+/** Стилизованная кнопка выбора файла — обёртка над голым <input type=file>,
+ * которого до этого не было видно среди остального UI приложения. */
+function FilePickButton({
+  accept,
+  multiple,
+  label,
+  onPick,
+}: {
+  accept?: string;
+  multiple?: boolean;
+  label: string;
+  onPick: (files: FileList) => void;
+}) {
+  return (
+    <label className="btn btn-secondary" style={{ cursor: "pointer", width: "fit-content" }}>
+      <Upload size={14} />
+      {label}
+      <input
+        type="file"
+        accept={accept}
+        multiple={multiple}
+        hidden
+        onChange={(e) => {
+          if (e.target.files && e.target.files.length > 0) onPick(e.target.files);
+          e.target.value = "";
+        }}
+      />
+    </label>
+  );
+}
+
 /** Визуальный выбор области обрезки: тащим прямоугольник прямо по превью
  * картинки, координаты сразу пересчитываются в реальные пиксели файла. */
 function CropTool() {
@@ -348,6 +382,7 @@ function CropTool() {
   const [url, setUrl] = useState<string | null>(null);
   const [natural, setNatural] = useState({ w: 0, h: 0 });
   const [rect, setRect] = useState<CropRect | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const imgRef = useRef<HTMLImageElement>(null);
@@ -361,6 +396,7 @@ function CropTool() {
     const u = URL.createObjectURL(file);
     setUrl(u);
     setRect(null);
+    setModalOpen(true);
     return () => URL.revokeObjectURL(u);
   }, [file]);
 
@@ -424,6 +460,39 @@ function CropTool() {
     };
   }, [rect, natural]);
 
+  const cropArea = (
+    <div
+      className="img-edit-canvas-wrap"
+      onMouseDown={onDown}
+      onMouseMove={onMove}
+      onMouseUp={onUp}
+      onMouseLeave={onUp}
+    >
+      <img
+        ref={imgRef}
+        src={url || ""}
+        alt=""
+        draggable={false}
+        className="img-edit-preview"
+        onLoad={(e) => {
+          const im = e.currentTarget;
+          setNatural({ w: im.naturalWidth, h: im.naturalHeight });
+        }}
+      />
+      {displayRect && (
+        <div
+          className="img-edit-crop-rect"
+          style={{
+            left: displayRect.left,
+            top: displayRect.top,
+            width: displayRect.width,
+            height: displayRect.height,
+          }}
+        />
+      )}
+    </div>
+  );
+
   return (
     <Glass className="media-preview" style={{ flexDirection: "column", alignItems: "stretch", gap: 10 }}>
       <div className="media-title" style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -431,58 +500,70 @@ function CropTool() {
         {t("conv.imgCrop")}
       </div>
       <div className="muted-sm">{t("conv.imgCropHint")}</div>
-      <input
-        type="file"
-        accept="image/*"
-        onChange={(e) => setFile(e.target.files?.[0] || null)}
-      />
-      {url && (
-        <div
-          className="img-edit-canvas-wrap"
-          onMouseDown={onDown}
-          onMouseMove={onMove}
-          onMouseUp={onUp}
-          onMouseLeave={onUp}
-        >
-          <img
-            ref={imgRef}
-            src={url}
-            alt=""
-            draggable={false}
-            className="img-edit-preview"
-            onLoad={(e) => {
-              const im = e.currentTarget;
-              setNatural({ w: im.naturalWidth, h: im.naturalHeight });
-            }}
-          />
-          {displayRect && (
-            <div
-              className="img-edit-crop-rect"
-              style={{
-                left: displayRect.left,
-                top: displayRect.top,
-                width: displayRect.width,
-                height: displayRect.height,
-              }}
-            />
+      <FilePickButton accept="image/*" label={t("automation.browse")} onPick={(files) => setFile(files[0])} />
+      {file && !modalOpen && (
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          <span className="muted-sm">{file.name}</span>
+          {rect && rect.w > 1 && rect.h > 1 && (
+            <Badge tone="teal">{t("conv.imgCropSize", { w: rect.w, h: rect.h })}</Badge>
           )}
+          <Btn icon={Pencil} onClick={() => setModalOpen(true)}>
+            {t("conv.imgCropEdit")}
+          </Btn>
+          <Btn
+            variant="primary"
+            icon={busy ? RefreshCw : FileUp}
+            disabled={!rect || rect.w < 2 || rect.h < 2 || busy}
+            onClick={() => void doCrop()}
+          >
+            {busy ? t("conv.pdfWorking") : t("conv.imgCropGo")}
+          </Btn>
         </div>
       )}
-      {rect && rect.w > 1 && rect.h > 1 && (
-        <div className="muted-sm">
-          {t("conv.imgCropSize", { w: rect.w, h: rect.h })}
-        </div>
-      )}
-      <Btn
-        variant="primary"
-        icon={busy ? RefreshCw : FileUp}
-        disabled={!file || !rect || rect.w < 2 || rect.h < 2 || busy}
-        onClick={() => void doCrop()}
-        style={{ width: 220 }}
-      >
-        {busy ? t("conv.pdfWorking") : t("conv.imgCropGo")}
-      </Btn>
       {error && <div style={{ color: "var(--coral)" }}>{error}</div>}
+
+      {modalOpen &&
+        url &&
+        createPortal(
+          <div className="app-modal-backdrop" style={{ zIndex: 2000 }} onClick={() => setModalOpen(false)}>
+            <Glass
+              className="glass-solid"
+              style={{
+                flexDirection: "column",
+                alignItems: "stretch",
+                gap: 10,
+                padding: 16,
+                maxWidth: 720,
+                width: "100%",
+                maxHeight: "100%",
+                overflow: "auto",
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div className="media-title">{t("conv.imgCropModalTitle")}</div>
+                <button type="button" className="icon-btn" onClick={() => setModalOpen(false)}>
+                  <X size={16} />
+                </button>
+              </div>
+              <div className="muted-sm">{t("conv.imgCropHint")}</div>
+              {cropArea}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span className="muted-sm">
+                  {rect && rect.w > 1 && rect.h > 1 ? t("conv.imgCropSize", { w: rect.w, h: rect.h }) : ""}
+                </span>
+                <Btn
+                  variant="primary"
+                  disabled={!rect || rect.w < 2 || rect.h < 2}
+                  onClick={() => setModalOpen(false)}
+                >
+                  {t("conv.imgCropApply")}
+                </Btn>
+              </div>
+            </Glass>
+          </div>,
+          document.body,
+        )}
     </Glass>
   );
 }
@@ -560,7 +641,7 @@ function ResizeTool() {
         <Maximize2 size={16} />
         {t("conv.imgResize")}
       </div>
-      <input type="file" accept="image/*" onChange={(e) => setFile(e.target.files?.[0] || null)} />
+      <FilePickButton accept="image/*" label={t("automation.browse")} onPick={(files) => setFile(files[0])} />
       {url && (
         <div className="img-edit-resize-preview">
           <img
@@ -624,8 +705,10 @@ function ImageEditorToolkit() {
   return (
     <>
       <SectionHead eyebrow={t("conv.imgEyebrow")} title={t("conv.imgTitle")} />
-      <CropTool />
-      <ResizeTool />
+      <div className="img-edit-toolkit-grid">
+        <CropTool />
+        <ResizeTool />
+      </div>
     </>
   );
 }
@@ -704,15 +787,16 @@ function PdfToolkit() {
   return (
     <>
       <SectionHead eyebrow={t("conv.pdfEyebrow")} title={t("conv.pdfTitle")} />
+      <div className="pdf-toolkit-grid">
 
       {/* --- Слияние --- */}
       <Glass className="media-preview" style={{ flexDirection: "column", alignItems: "stretch", gap: 8 }}>
         <div className="media-title">{t("conv.pdfMerge")}</div>
-        <input
-          type="file"
+        <FilePickButton
           accept="application/pdf"
           multiple
-          onChange={(e) => setMergeFiles(Array.from(e.target.files || []))}
+          label={t("automation.browse")}
+          onPick={(files) => setMergeFiles(Array.from(files))}
         />
         {mergeFiles.length > 0 && (
           <div className="muted-sm">{t("conv.pdfFilesChosen", { n: mergeFiles.length })}</div>
@@ -732,11 +816,12 @@ function PdfToolkit() {
       {/* --- Разбиение --- */}
       <Glass className="media-preview" style={{ flexDirection: "column", alignItems: "stretch", gap: 8 }}>
         <div className="media-title">{t("conv.pdfSplit")}</div>
-        <input
-          type="file"
+        <FilePickButton
           accept="application/pdf"
-          onChange={(e) => setSplitFile(e.target.files?.[0] || null)}
+          label={t("automation.browse")}
+          onPick={(files) => setSplitFile(files[0])}
         />
+        {splitFile && <div className="muted-sm">{splitFile.name}</div>}
         <input
           className="text-input"
           placeholder={t("conv.pdfRangesPlaceholder")}
@@ -758,14 +843,15 @@ function PdfToolkit() {
       {/* --- Извлечение текста --- */}
       <Glass className="media-preview" style={{ flexDirection: "column", alignItems: "stretch", gap: 8 }}>
         <div className="media-title">{t("conv.pdfExtractText")}</div>
-        <input
-          type="file"
+        <FilePickButton
           accept="application/pdf"
-          onChange={(e) => {
-            setTextFile(e.target.files?.[0] || null);
+          label={t("automation.browse")}
+          onPick={(files) => {
+            setTextFile(files[0]);
             setExtractedText(null);
           }}
         />
+        {textFile && <div className="muted-sm">{textFile.name}</div>}
         <Btn
           variant="primary"
           icon={textBusy ? RefreshCw : FileUp}
@@ -791,6 +877,7 @@ function PdfToolkit() {
         )}
       </Glass>
 
+      </div>
       <div className="muted-sm">{t("conv.pdfOcrHint")}</div>
     </>
   );
