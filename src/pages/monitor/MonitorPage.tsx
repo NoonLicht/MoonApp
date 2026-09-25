@@ -1310,7 +1310,11 @@ function DiskScanPanel() {
 
   const cancel = async () => {
     if (jobId) await api.diskScanCancel(jobId);
+    // Сбрасываем jobId и status вместе: иначе последний опрошенный статус
+    // (ещё "scanning") остаётся висеть в state после остановки поллинга,
+    // и кнопки запуска нового скана остаются задизейблены навсегда.
     setJobId(null);
+    setStatus(null);
   };
 
   const current = pathStack[pathStack.length - 1] || null;
