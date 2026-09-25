@@ -18,6 +18,7 @@ import {
   Wrench,
   Gamepad2,
   Camera,
+  Zap,
 } from "lucide-react";
 import type { ElementType } from "react";
 import type { TranslateFn } from "@/app/i18n";
@@ -42,7 +43,8 @@ export type PageId =
   | "bypass"
   | "tools"
   | "games"
-  | "screenshots";
+  | "screenshots"
+  | "automation";
 
 export interface PageMeta {
   id: PageId;
@@ -79,6 +81,7 @@ export const PAGES: readonly PageMeta[] = [
   { id: "tools", i18n: "nav.tools", icon: Wrench },
   { id: "games", i18n: "nav.games", icon: Gamepad2 },
   { id: "screenshots", i18n: "nav.screenshots", icon: Camera },
+  { id: "automation", i18n: "nav.automation", icon: Zap },
   { id: "archive", i18n: "nav.archive", icon: Archive },
   { id: "settings", i18n: "nav.settings", icon: Settings2 },
 ];

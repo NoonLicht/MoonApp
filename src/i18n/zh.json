@@ -18,7 +18,8 @@
     "upscale": "放大",
     "tools": "工具",
     "games": "游戏",
-    "screenshots": "截图"
+    "screenshots": "截图",
+    "automation": "自动化"
   },
   "common": {
     "saved": "已保存",
@@ -326,6 +327,29 @@
     "download": "下载",
     "annotateHint": "直接在截图上绘制(简单标记笔)。如需完整标注(贴纸/形状/文字)— 在 MySpace 画布中按 Ctrl+V。",
     "empty": "截图或开始屏幕录制"
+  },
+  "automation": {
+    "eyebrow": "自动化",
+    "title": "快速启动器与计划任务",
+    "addLauncher": "添加启动项",
+    "fName": "名称",
+    "fExePath": "程序/脚本路径",
+    "fArgs": "参数(可选)",
+    "save": "保存",
+    "run": "运行",
+    "emptyLaunchers": "添加一个程序或脚本以便快速启动",
+    "tasksEyebrow": "Windows 任务计划程序",
+    "tasksTitle": "计划任务",
+    "addTask": "添加任务",
+    "needLauncherForTask": "请先添加至少一个启动项 — 任务将按计划运行它",
+    "fTaskName": "任务名称",
+    "pickLauncher": "选择启动项",
+    "scheduleDaily": "每天",
+    "scheduleHourly": "每小时",
+    "scheduleOnLogon": "登录时",
+    "scheduleOnStart": "系统启动时",
+    "nextRun": "下次运行",
+    "emptyTasks": "暂无计划任务(\\MoonApp\\ 文件夹)"
   },
   "games": {
     "eyebrow": "启动器",

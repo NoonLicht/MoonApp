@@ -18,7 +18,8 @@
     "upscale": "Upscale",
     "tools": "Tools",
     "games": "Games",
-    "screenshots": "Screenshots"
+    "screenshots": "Screenshots",
+    "automation": "Automation"
   },
   "common": {
     "saved": "saved",
@@ -326,6 +327,29 @@
     "download": "Download",
     "annotateHint": "Draw directly on the screenshot (simple marker). For full annotations (stickers/shapes/text) — Ctrl+V into the MySpace canvas.",
     "empty": "Take a screenshot or start screen recording"
+  },
+  "automation": {
+    "eyebrow": "Automation",
+    "title": "Quick launcher and scheduler",
+    "addLauncher": "Add launcher",
+    "fName": "Name",
+    "fExePath": "Path to program/script",
+    "fArgs": "Arguments (optional)",
+    "save": "Save",
+    "run": "Run",
+    "emptyLaunchers": "Add a program or script for quick launching",
+    "tasksEyebrow": "Windows Task Scheduler",
+    "tasksTitle": "Scheduled tasks",
+    "addTask": "Add task",
+    "needLauncherForTask": "Add at least one launcher first — a task runs it on a schedule",
+    "fTaskName": "Task name",
+    "pickLauncher": "Choose a launcher",
+    "scheduleDaily": "Daily",
+    "scheduleHourly": "Every hour",
+    "scheduleOnLogon": "At logon",
+    "scheduleOnStart": "At system startup",
+    "nextRun": "Next run",
+    "emptyTasks": "No scheduled tasks yet (\\MoonApp\\ folder)"
   },
   "games": {
     "eyebrow": "Launcher",

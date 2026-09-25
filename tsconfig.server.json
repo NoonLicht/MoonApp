@@ -43,6 +43,7 @@
     "server/ts/notesGit.ts",
     "server/ts/appTimeTracker.ts",
     "server/ts/imageEditor.ts",
+    "server/ts/automation.ts",
     "server/ts/elevate.ts",
     "server/ts/backup.ts",
     "server/ts/downloads.ts",

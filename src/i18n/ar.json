@@ -18,7 +18,8 @@
     "upscale": "تكبير",
     "tools": "الأدوات",
     "games": "الألعاب",
-    "screenshots": "لقطات الشاشة"
+    "screenshots": "لقطات الشاشة",
+    "automation": "الأتمتة"
   },
   "common": {
     "saved": "تم الحفظ",
@@ -326,6 +327,29 @@
     "download": "تنزيل",
     "annotateHint": "ارسم مباشرة على اللقطة (قلم بسيط). للتعليقات الكاملة (ملصقات/أشكال/نص) — استخدم Ctrl+V في لوحة MySpace.",
     "empty": "التقط لقطة أو ابدأ تسجيل الشاشة"
+  },
+  "automation": {
+    "eyebrow": "الأتمتة",
+    "title": "التشغيل السريع والمجدول",
+    "addLauncher": "إضافة عنصر تشغيل",
+    "fName": "الاسم",
+    "fExePath": "مسار البرنامج/السكربت",
+    "fArgs": "المعاملات (اختياري)",
+    "save": "حفظ",
+    "run": "تشغيل",
+    "emptyLaunchers": "أضف برنامجًا أو سكربتًا للتشغيل السريع",
+    "tasksEyebrow": "مجدول مهام Windows",
+    "tasksTitle": "المهام المجدولة",
+    "addTask": "إضافة مهمة",
+    "needLauncherForTask": "أضف أولاً عنصر تشغيل واحدًا على الأقل — ستقوم المهمة بتشغيله حسب الجدول",
+    "fTaskName": "اسم المهمة",
+    "pickLauncher": "اختر عنصر تشغيل",
+    "scheduleDaily": "يوميًا",
+    "scheduleHourly": "كل ساعة",
+    "scheduleOnLogon": "عند تسجيل الدخول",
+    "scheduleOnStart": "عند بدء تشغيل النظام",
+    "nextRun": "التشغيل التالي",
+    "emptyTasks": "لا توجد مهام مجدولة بعد (مجلد \\MoonApp\\)"
   },
   "games": {
     "eyebrow": "مشغّل الألعاب",

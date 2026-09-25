@@ -64,6 +64,7 @@ server/netTools.js
 server/notesGit.js
 server/appTimeTracker.js
 server/imageEditor.js
+server/automation.js
 server/elevate.js
 server/backup.js
 server/downloads.js

@@ -27,6 +27,10 @@ import type {
   GameEntry,
   GameInput,
   SaveVersion,
+  LauncherEntry,
+  LauncherInput,
+  ScheduledTask,
+  ScheduledTaskInput,
   NotesGitConfig,
   NotesGitSyncResult,
   AppTimeToday,
@@ -1484,6 +1488,21 @@ export const api = {
   gamesSaveVersions: (id: string) => req<SaveVersion[]>("GET", `/games/${id}/save/versions`),
   gamesSaveRestore: (id: string, file: string) =>
     req<{ ok: boolean; error?: string }>("POST", `/games/${id}/save/restore`, { file }),
+
+  // --- Автоматизация (быстрый лаунчер + планировщик заданий) ---
+  automationLaunchers: () => req<LauncherEntry[]>("GET", "/automation/launchers"),
+  automationCreateLauncher: (payload: LauncherInput) =>
+    req<LauncherEntry>("POST", "/automation/launchers", payload),
+  automationDeleteLauncher: (id: string) => req<{ ok: boolean }>("DELETE", `/automation/launchers/${id}`),
+  automationRunLauncher: (id: string) =>
+    req<{ ok: boolean; error?: string }>("POST", `/automation/launchers/${id}/run`),
+  automationTasks: () => req<ScheduledTask[]>("GET", "/automation/tasks"),
+  automationCreateTask: (payload: ScheduledTaskInput) =>
+    req<{ ok: boolean; error?: string }>("POST", "/automation/tasks", payload),
+  automationDeleteTask: (name: string) =>
+    req<{ ok: boolean; error?: string }>("DELETE", `/automation/tasks/${encodeURIComponent(name)}`),
+  automationRunTask: (name: string) =>
+    req<{ ok: boolean; error?: string }>("POST", `/automation/tasks/${encodeURIComponent(name)}/run`),
 
   // --- Сетевые утилиты (страница Bypass) ---
   netPing: (host: string) =>

@@ -430,6 +430,38 @@ export interface SaveVersion {
   size: number;
 }
 
+/* ------------------------------ Автоматизация -------------------------------- */
+
+export interface LauncherEntry {
+  id: string;
+  name: string;
+  exePath: string;
+  args: string;
+  createdAt: number;
+}
+
+export interface LauncherInput {
+  name: string;
+  exePath: string;
+  args?: string;
+}
+
+export type ScheduleKind = "DAILY" | "HOURLY" | "ONLOGON" | "ONSTART";
+
+export interface ScheduledTask {
+  name: string;
+  status: string;
+  nextRun: string;
+  schedule: string;
+}
+
+export interface ScheduledTaskInput {
+  name: string;
+  launcherId: string;
+  schedule: ScheduleKind;
+  time?: string;
+}
+
 /* --------------------- Git-синхронизация заметок/canvas --------------------- */
 
 export interface NotesGitConfig {

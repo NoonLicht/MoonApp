@@ -18,7 +18,8 @@
     "upscale": "Upscale",
     "tools": "Outils",
     "games": "Jeux",
-    "screenshots": "Captures d'écran"
+    "screenshots": "Captures d'écran",
+    "automation": "Automatisation"
   },
   "common": {
     "saved": "enregistré",
@@ -326,6 +327,29 @@
     "download": "Télécharger",
     "annotateHint": "Dessinez directement sur la capture (marqueur simple). Pour des annotations complètes (stickers/formes/texte) — Ctrl+V dans le canvas MySpace.",
     "empty": "Prenez une capture ou démarrez l'enregistrement d'écran"
+  },
+  "automation": {
+    "eyebrow": "Automatisation",
+    "title": "Lanceur rapide et planificateur",
+    "addLauncher": "Ajouter un lanceur",
+    "fName": "Nom",
+    "fExePath": "Chemin du programme/script",
+    "fArgs": "Arguments (optionnel)",
+    "save": "Enregistrer",
+    "run": "Lancer",
+    "emptyLaunchers": "Ajoutez un programme ou un script à lancer rapidement",
+    "tasksEyebrow": "Planificateur de tâches Windows",
+    "tasksTitle": "Tâches planifiées",
+    "addTask": "Ajouter une tâche",
+    "needLauncherForTask": "Ajoutez d'abord au moins un lanceur — la tâche l'exécute selon la planification",
+    "fTaskName": "Nom de la tâche",
+    "pickLauncher": "Choisissez un lanceur",
+    "scheduleDaily": "Quotidien",
+    "scheduleHourly": "Chaque heure",
+    "scheduleOnLogon": "À la connexion",
+    "scheduleOnStart": "Au démarrage du système",
+    "nextRun": "Prochaine exécution",
+    "emptyTasks": "Aucune tâche planifiée pour l'instant (dossier \\MoonApp\\)"
   },
   "games": {
     "eyebrow": "Lanceur",

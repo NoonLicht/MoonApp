@@ -18,7 +18,8 @@
     "upscale": "Escalado",
     "tools": "Herramientas",
     "games": "Juegos",
-    "screenshots": "Capturas"
+    "screenshots": "Capturas",
+    "automation": "Automatización"
   },
   "common": {
     "saved": "guardado",
@@ -326,6 +327,29 @@
     "download": "Descargar",
     "annotateHint": "Dibuja directamente sobre la captura (marcador simple). Para anotaciones completas (stickers/formas/texto) — Ctrl+V en el canvas de MySpace.",
     "empty": "Haz una captura o inicia la grabación de pantalla"
+  },
+  "automation": {
+    "eyebrow": "Automatización",
+    "title": "Lanzador rápido y planificador",
+    "addLauncher": "Añadir lanzador",
+    "fName": "Nombre",
+    "fExePath": "Ruta al programa/script",
+    "fArgs": "Argumentos (opcional)",
+    "save": "Guardar",
+    "run": "Ejecutar",
+    "emptyLaunchers": "Añade un programa o script para lanzarlo rápidamente",
+    "tasksEyebrow": "Programador de tareas de Windows",
+    "tasksTitle": "Tareas programadas",
+    "addTask": "Añadir tarea",
+    "needLauncherForTask": "Añade primero al menos un lanzador — la tarea lo ejecuta según el horario",
+    "fTaskName": "Nombre de la tarea",
+    "pickLauncher": "Elige un lanzador",
+    "scheduleDaily": "Diariamente",
+    "scheduleHourly": "Cada hora",
+    "scheduleOnLogon": "Al iniciar sesión",
+    "scheduleOnStart": "Al iniciar el sistema",
+    "nextRun": "Próxima ejecución",
+    "emptyTasks": "Aún no hay tareas programadas (carpeta \\MoonApp\\)"
   },
   "games": {
     "eyebrow": "Lanzador",
