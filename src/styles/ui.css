@@ -1542,10 +1542,24 @@ select option {
 }
 /* Граница между блоками (внутри ряда — тянем ширину, между рядами — тянем
    высоту) и промежуток между визуальными строками, перенесёнными из одного
-   исходного ряда (не тянется — у них общая высота). */
+   исходного ряда (не тянется — у них общая высота, но линия всё равно
+   видна — разделители должны быть везде, а не только там, где можно
+   тащить). */
 .tools-row-gap {
+  position: relative;
   flex-shrink: 0;
+  width: 100%;
   height: 10px;
+}
+.tools-row-gap::after {
+  content: "";
+  position: absolute;
+  top: 4px;
+  left: 8px;
+  right: 8px;
+  height: 2px;
+  background: var(--glass-border);
+  border-radius: 2px;
 }
 .tools-divider {
   flex-shrink: 0;
