@@ -1271,32 +1271,40 @@ function DiskScanPanel() {
   useEffect(() => {
     if (!jobId) return undefined;
     let stopped = false;
+    // poll сам останавливает интервал по достижении финальной стадии —
+    // раньше условие в setInterval сверялось с `status` из замыкания
+    // эффекта (навсегда равным null, потому что эффект перезапускается
+    // только по jobId), из-за чего опрос и повторное скачивание всего
+    // результата продолжались раз в секунду бесконечно даже после
+    // завершения скана — отсюда неконтролируемый рост памяти и зависание
+    // после готового результата. `poll` ссылается на `timer` из
+    // замыкания — это безопасно, т.к. само тело функции выполняется
+    // асинхронно (после await), к этому моменту `timer` уже проинициализирован
+    // ниже по коду.
     const poll = async () => {
       try {
         const st = await api.diskScanStatus(jobId);
         if (stopped) return;
         setStatus(st);
         if (st.stage === "done") {
+          clearInterval(timer);
           const result = await api.diskScanResult(jobId);
-          if (!stopped) {
-            setPathStack([result]);
-          }
-        } else if (st.stage === "error") {
-          setError(st.error || "Ошибка сканирования");
+          if (!stopped) setPathStack([result]);
+        } else if (st.stage === "error" || st.stage === "cancelled") {
+          clearInterval(timer);
+          if (st.stage === "error") setError(st.error || "Ошибка сканирования");
         }
       } catch (e) {
+        clearInterval(timer);
         if (!stopped) setError((e as Error).message);
       }
     };
     void poll();
-    const timer = setInterval(() => {
-      if (status?.stage === "scanning" || !status) void poll();
-    }, 1000);
+    const timer = setInterval(() => void poll(), 1000);
     return () => {
       stopped = true;
       clearInterval(timer);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [jobId]);
 
   const start = async (root: string) => {
