@@ -1136,10 +1136,9 @@ export default function LectureRecorderPage() {
           {t("lecture.tabQuickNote")}
         </button>
       </div>
-      {pageTab === "quick" && <QuickNoteTab engineReady={!!engine?.ready} />}
-      {pageTab === "lecture" && (
-      <>
-      {/* Шапка: статус движка + контролы */}
+      {/* Шапка: статус движка + контролы. Общая для обеих вкладок — настройки
+          движка распознавания (кнопка Settings2) одни и те же и для Лектория,
+          и для Быстрых заметок, поэтому шапка не дублируется под каждую вкладку. */}
       <div className="lec-header">
         <div className="lec-engine">
           <Cpu size={16} />
@@ -1152,53 +1151,58 @@ export default function LectureRecorderPage() {
           <span className="lec-dim">{engine?.model ? engine.model.split(/[\\/]/).pop() : "—"}</span>
         </div>
         <div className="lec-actions">
-          {recordingActive && (
+          {pageTab === "lecture" && recordingActive && (
             <LevelMeter db={levelDb} thresholdDb={audio?.vad.thresholdDb ?? -42} t={t} />
           )}
           {/* Кнопки-иконки, без подписей: ряд больше не распирает шапку, поэтому
               последняя кнопка не уезжает за край узкого окна. Смысл кнопки —
-              в title (подсказка) и aria-label (скринридер). */}
-          <button
-            className={`lec-btn ghost icon${showSessions ? " on" : ""}`}
-            onClick={() => setShowSessions((v) => !v)}
-            title={t("lecture.archive")}
-            aria-label={t("lecture.archive")}
-            aria-expanded={showSessions}
-          >
-            <ChevronDown size={16} />
-          </button>
-          <button
-            className="lec-btn ghost icon"
-            onClick={() => setShowAudio(true)}
-            title={t("lecture.audio.btnHint")}
-            aria-label={t("lecture.audio.btn")}
-          >
-            <Volume2 size={16} />
-          </button>
-          <button
-            className="lec-btn ghost icon"
-            onClick={() => setShowConspectus(true)}
-            title={t("lecture.conspectusPanel.btnHint")}
-            aria-label={t("lecture.conspectusPanel.btn")}
-          >
-            <Sparkles size={16} />
-          </button>
-          <button
-            className="lec-btn ghost icon"
-            onClick={() => setShowDiarize(true)}
-            title={t("lecture.diarizePanel.btnHint")}
-            aria-label={t("lecture.diarizePanel.btn")}
-          >
-            <Users size={16} />
-          </button>
-          {/* Фоновый разбор говорящих: показываем только ход расчёта, иначе
-              «ничего не происходит» и «идёт расчёт» выглядят одинаково.
-              Сколько говорящих нашлось, рядом с кнопкой не пишем — это видно
-              в самой панели «Говорящие». */}
-          {diarizeSt?.state === "working" && (
-            <span className="lecs-dim lecs-hint">
-              {t("lecture.diarizePanel.running")} {diarizeSt.progress}%
-            </span>
+              в title (подсказка) и aria-label (скринридер). Часть кнопок имеет
+              смысл только на вкладке «Лекторий». */}
+          {pageTab === "lecture" && (
+            <>
+              <button
+                className={`lec-btn ghost icon${showSessions ? " on" : ""}`}
+                onClick={() => setShowSessions((v) => !v)}
+                title={t("lecture.archive")}
+                aria-label={t("lecture.archive")}
+                aria-expanded={showSessions}
+              >
+                <ChevronDown size={16} />
+              </button>
+              <button
+                className="lec-btn ghost icon"
+                onClick={() => setShowAudio(true)}
+                title={t("lecture.audio.btnHint")}
+                aria-label={t("lecture.audio.btn")}
+              >
+                <Volume2 size={16} />
+              </button>
+              <button
+                className="lec-btn ghost icon"
+                onClick={() => setShowConspectus(true)}
+                title={t("lecture.conspectusPanel.btnHint")}
+                aria-label={t("lecture.conspectusPanel.btn")}
+              >
+                <Sparkles size={16} />
+              </button>
+              <button
+                className="lec-btn ghost icon"
+                onClick={() => setShowDiarize(true)}
+                title={t("lecture.diarizePanel.btnHint")}
+                aria-label={t("lecture.diarizePanel.btn")}
+              >
+                <Users size={16} />
+              </button>
+              {/* Фоновый разбор говорящих: показываем только ход расчёта, иначе
+                  «ничего не происходит» и «идёт расчёт» выглядят одинаково.
+                  Сколько говорящих нашлось, рядом с кнопкой не пишем — это видно
+                  в самой панели «Говорящие». */}
+              {diarizeSt?.state === "working" && (
+                <span className="lecs-dim lecs-hint">
+                  {t("lecture.diarizePanel.running")} {diarizeSt.progress}%
+                </span>
+              )}
+            </>
           )}
           <button
             className="lec-btn ghost icon"
@@ -1215,6 +1219,9 @@ export default function LectureRecorderPage() {
         <LectureEnginePanel onClose={() => setShowEngine(false)} onChanged={refreshMeta} />
       )}
 
+      {pageTab === "quick" && <QuickNoteTab engineReady={!!engine?.ready} />}
+      {pageTab === "lecture" && (
+      <>
       {showAudio && (
         <LectureAudioPanel
           onClose={() => setShowAudio(false)}
