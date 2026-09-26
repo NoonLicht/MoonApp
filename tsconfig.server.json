@@ -98,6 +98,7 @@
     "server/ts/upscale/jobs.ts",
     "server/ts/upscalePipeline.ts",
     "server/ts/ortPack.ts",
+    "server/ts/zipRange.ts",
     "server/ts/whisperEngine.ts",
     "server/ts/sitebak.ts",
     "server/ts/tgwsproxy.ts",

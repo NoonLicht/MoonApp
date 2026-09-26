@@ -558,6 +558,7 @@ const LoadChart = memo(function LoadChart({ points }: { points: HistPoint[] }) {
               fontSize: 12,
             }}
             labelFormatter={() => ""}
+            formatter={(value: number) => Math.round(value)}
           />
           <Area
             type="natural"
@@ -942,6 +943,11 @@ function fmtSensor(s: AllSensor): string {
   if (t === "clock") return `${Math.round(v)} MHz`;
   if (t === "fan") return `${Math.round(v)} RPM`;
   if (t === "load") return `${Math.round(v)}%`;
+  // Write Rate/Read Rate (диск) и GPU PCIe Rx/Tx — в гигабитах в секунду
+  // (принятая единица для скоростей передачи), а не мегабайтах: та же величина
+  // от LHM (МБ/с), переведённая ×8/1000. Проверяем ДО ветвления по типу —
+  // у разных версий LHM это то "data"/"smalldata", то "throughput".
+  if (/^write rate$|^read rate$|pcie rx|pcie tx/.test(n)) return `${((v * 8) / 1000).toFixed(2)} Gbit/s`;
   if (t === "data" || t === "smalldata") {
     if (/life|spare|activity|warning|failure|error/.test(n)) return `${Math.round(v)}%`;
     // LibreHardwareMonitor уже отдаёт скорости чтения/записи диска в МБ/с,

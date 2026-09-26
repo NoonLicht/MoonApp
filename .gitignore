@@ -2,6 +2,7 @@
 node_modules/
 dist/
 release/
+release2/
 release-build/
 build/*
 !build/icon.ico
@@ -101,6 +102,7 @@ server/upscale.js
 server/upscale/
 server/upscalePipeline.js
 server/ortPack.js
+server/zipRange.js
 server/whisperEngine.js
 server/sitebak.js
 server/tts.js
