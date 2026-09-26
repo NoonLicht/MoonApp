@@ -39,9 +39,12 @@ contextBridge.exposeInMainWorld("appBridge", {
   //   { ok, loggedIn, hasCf, names, cookieHeader, userAgent, reason }
   // Нужно для Cloudflare-проверки (см. electron/main.js → tracker:login-window).
   openTrackerLogin: (opts) => ipcRenderer.invoke("tracker:login-window", opts),
-  // Режим захвата звука: "loopback" — системный звук (WASAPI), "default" — обычный.
+  // Режим захвата звука: "loopback" — системный звук (WASAPI), "screen" — видео
+  // экрана/окна (sourceId — id из listCaptureSources), "default" — обычный.
   // Нужен странице лекций: без него getDisplayMedia отдаёт видео/камеру, а не звук системы.
-  setCaptureMode: (mode) => ipcRenderer.invoke("rec:capture-mode", mode),
+  setCaptureMode: (mode, sourceId) => ipcRenderer.invoke("rec:capture-mode", mode, sourceId),
+  // Список экранов/окон (с превью) для выбора источника захвата (страница «Скриншоты»).
+  listCaptureSources: () => ipcRenderer.invoke("capture:list-sources"),
   // Обновления приложения (работают только в packaged-сборке). Обновления
   // обязательны (0.2.2): проверка идёт при старте и каждые 4 часа, установка —
   // через обязательный диалог. Выключателя (updates:toggle) больше нет.

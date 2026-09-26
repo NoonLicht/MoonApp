@@ -98,6 +98,8 @@ const DIRS = {
   quickNotesTmp: ensureDir(path.join(STORAGE_DIR, "quicknotes", "tmp")),
   // OCR: кэш скачанных языковых моделей tesseract.js (rus/eng .traineddata).
   ocr: ensureDir(path.join(STORAGE_DIR, "ocr")),
+  // Скриншоты и записи экрана: единая библиотека медиа страницы «Скриншоты».
+  screenshots: ensureDir(path.join(STORAGE_DIR, "screenshots")),
 };
 const FILES = {
   data: path.join(DIRS.storage, "data.json"),
@@ -106,6 +108,7 @@ const FILES = {
   passwordVault: path.join(DIRS.storage, "password-vault.json"),
   bookmarks: path.join(DIRS.storage, "bookmarks.json"),
   musicPlaylists: path.join(DIRS.storage, "music-playlists.json"),
+  screenshotsIndex: path.join(DIRS.screenshots, "index.json"),
   gamesLibrary: path.join(DIRS.games, "library.json"),
   automationLaunchers: path.join(DIRS.storage, "automation-launchers.json"),
   budgetTransactions: path.join(DIRS.storage, "budget-transactions.json"),

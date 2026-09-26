@@ -43,6 +43,7 @@ import "@/styles/automation.css";
 import "@/styles/budget.css";
 import "@/styles/movies.css";
 import "@/styles/upscale.css";
+import "@/styles/screenshots.css";
 
 // Страницы
 import StorePage from "@/pages/store/StorePage";

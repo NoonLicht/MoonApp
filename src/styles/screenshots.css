@@ -1,0 +1,99 @@
+/* Страница «Скриншоты»: библиотека скриншотов+записей и модалка просмотра. */
+
+.ss-lib-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.ss-lib-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ss-lib-thumb {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--glass-border);
+  background: var(--bg-base-2);
+  padding: 0;
+  cursor: pointer;
+}
+
+.ss-lib-thumb img,
+.ss-lib-thumb video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.ss-lib-play {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.28);
+}
+
+.ss-lib-badge {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.65);
+  color: #fff;
+  font-size: 11px;
+  font-family: var(--font-mono);
+}
+
+.ss-lib-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ss-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  padding: 24px;
+}
+
+.ss-modal-box {
+  background: var(--bg-base-2);
+  border: 1px solid var(--glass-border);
+  border-radius: 14px;
+  padding: 12px;
+  max-width: 92vw;
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ss-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.ss-modal-img {
+  max-width: 88vw;
+  max-height: 80vh;
+  object-fit: contain;
+  border-radius: 8px;
+}

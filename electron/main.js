@@ -1370,6 +1370,10 @@ function removeLoopbackHandler() {
  * полноценный выбор экрана/окна через UI не реализован ночью, честно
  * задокументировано в UI страницы.
  */
+// Конкретный источник (монитор/окно), выбранный пользователем на странице
+// «Скриншоты» перед вызовом getDisplayMedia — иначе всегда брался бы sources[0].
+let pendingSourceId = null;
+
 function installScreenHandler() {
   if (captureModeActive) return;
   captureModeActive = true;
@@ -1379,12 +1383,13 @@ function installScreenHandler() {
       async (request, callback) => {
         try {
           const { desktopCapturer } = require("electron");
-          const sources = await desktopCapturer.getSources({ types: ["screen"] });
+          const sources = await desktopCapturer.getSources({ types: ["screen", "window"] });
           if (!sources.length) {
             callback({});
             return;
           }
-          callback({ video: sources[0] });
+          const picked = (pendingSourceId && sources.find((s) => s.id === pendingSourceId)) || sources[0];
+          callback({ video: picked });
         } catch (e) {
           mlog("error", "capture.screen_failed", { error: e?.message || String(e) });
           callback({});
@@ -1398,10 +1403,33 @@ function installScreenHandler() {
   }
 }
 
+// Список экранов/окон для выбора источника захвата (страница «Скриншоты»).
+// thumbnailSize даёт превью прямо в desktopCapturer, без отдельного захвата кадра.
+ipcMain.handle("capture:list-sources", async () => {
+  try {
+    const { desktopCapturer } = require("electron");
+    const sources = await desktopCapturer.getSources({
+      types: ["screen", "window"],
+      thumbnailSize: { width: 320, height: 180 },
+    });
+    return sources.map((s) => ({
+      id: s.id,
+      name: s.name,
+      kind: s.id.startsWith("screen:") ? "screen" : "window",
+      thumbnail: s.thumbnail && !s.thumbnail.isEmpty() ? s.thumbnail.toDataURL() : null,
+    }));
+  } catch (e) {
+    mlog("error", "capture.list_sources_failed", { error: e?.message || String(e) });
+    return [];
+  }
+});
+
 // Режим захвата: "loopback" — системный звук (лекции), "screen" — видео экрана
 // без звука (скриншоты/запись), "default" — снять обработчик.
-ipcMain.handle("rec:capture-mode", (_e, mode) => {
+// sourceId — id из capture:list-sources (desktopCapturer), выбранный на странице.
+ipcMain.handle("rec:capture-mode", (_e, mode, sourceId) => {
   const m = String(mode);
+  pendingSourceId = sourceId || null;
   if (m === "loopback") {
     installLoopbackHandler();
     return { ok: true, mode: "loopback" };

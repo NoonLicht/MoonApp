@@ -104,6 +104,7 @@ server/upscalePipeline.js
 server/ortPack.js
 server/zipRange.js
 server/whisperEngine.js
+server/screenshots.js
 server/sitebak.js
 server/tts.js
 

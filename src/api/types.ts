@@ -543,6 +543,18 @@ export interface BudgetCategories {
   expense: string[];
 }
 
+export interface ScreenshotItem {
+  id: string;
+  type: "image" | "video";
+  file: string;
+  createdAt: number;
+  width?: number;
+  height?: number;
+  durationSec?: number;
+  sizeBytes: number;
+  mime: string;
+}
+
 export interface KillSwitchStatus {
   armed: boolean;
   blocking: boolean;
@@ -1515,7 +1527,12 @@ declare global {
        */
       setCaptureMode?: (
         mode: "loopback" | "screen" | "default",
+        sourceId?: string | null,
       ) => Promise<{ ok: boolean; mode?: string; error?: string }>;
+      /** Список экранов/окон с превью для выбора источника захвата (страница «Скриншоты»). */
+      listCaptureSources?: () => Promise<
+        { id: string; name: string; kind: "screen" | "window"; thumbnail: string | null }[]
+      >;
       /** Перечитать general.commandPaletteHotkey и перерегистрировать/снять Alt+Space. */
       refreshHotkey?: () => Promise<{ ok: boolean }>;
       /** Подписка на "Alt+Space нажат где угодно в ОС" — возвращает функцию отписки. */

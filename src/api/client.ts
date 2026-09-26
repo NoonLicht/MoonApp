@@ -39,6 +39,7 @@ import type {
   BudgetCategories,
   BudgetImportResult,
   KillSwitchStatus,
+  ScreenshotItem,
   QuickNote,
   NotesGitConfig,
   NotesGitSyncResult,
@@ -1655,6 +1656,29 @@ export const api = {
     fd.append("file", file, "ocr.png");
     return multipart<{ text: string; confidence: number }>("/ocr/recognize", fd);
   },
+
+  // --- Библиотека скриншотов и записей экрана ---
+  screenshotsList: () => req<ScreenshotItem[]>("GET", "/screenshots"),
+  screenshotsSaveImage: (blob: Blob, meta: { width?: number; height?: number }) => {
+    const fd = new FormData();
+    fd.append("file", blob, "shot.png");
+    if (meta.width) fd.append("width", String(meta.width));
+    if (meta.height) fd.append("height", String(meta.height));
+    return multipart<ScreenshotItem>("/screenshots/image", fd);
+  },
+  screenshotsSaveVideo: (
+    blob: Blob,
+    meta: { width?: number; height?: number; durationSec?: number },
+  ) => {
+    const fd = new FormData();
+    fd.append("file", blob, "rec.webm");
+    if (meta.width) fd.append("width", String(meta.width));
+    if (meta.height) fd.append("height", String(meta.height));
+    if (meta.durationSec) fd.append("durationSec", String(Math.round(meta.durationSec)));
+    return multipart<ScreenshotItem>("/screenshots/video", fd);
+  },
+  screenshotsDelete: (id: string) => req<{ ok: boolean }>("DELETE", `/screenshots/${id}`),
+  screenshotFileUrl: (id: string) => `${BASE}/api/screenshots/file/${id}`,
 
   // --- Трекер времени за приложениями ---
   appTrackerStart: () => req<{ ok: boolean; error?: string }>("POST", "/apptracker/start"),
