@@ -122,8 +122,38 @@ export default function MyspacePage() {
   >("notes");
   const [leftTab, setLeftTab] = useState<Side>("explorer");
   const [rightTab, setRightTab] = useState<Right>("backlinks");
-  const [leftW, setLeftW] = useState(260);
+  // Левая панель по умолчанию максимально узкая — пользователь не должен
+  // постоянно зажимать разделитель, чтобы её сузить.
+  const [leftW, setLeftW] = useState(180);
   const [rightW, setRightW] = useState(280);
+  // Адаптивность колонок notes-раскладки: считаем ширину именно строки
+  // (flex-контейнера с левой/правой панелью), а не окна — страница может быть
+  // уже видового порта (боковая навигация приложения). Ниже 1150px правая
+  // панель схлопывается и открывается уже поверх контента, ниже 850px то же
+  // происходит и с левой; клик по остальной части страницы сворачивает её
+  // обратно (см. backdrop ниже).
+  const notesRowRef = useRef<HTMLDivElement | null>(null);
+  const [notesRowW, setNotesRowW] = useState(0);
+  useEffect(() => {
+    const el = notesRowRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver((entries) => {
+      const w = entries[0]?.contentRect.width || 0;
+      setNotesRowW(w);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  const narrowRight = notesRowW > 0 && notesRowW < 1150;
+  const narrowLeft = notesRowW > 0 && notesRowW < 850;
+  // Срабатывает только в момент пересечения порога — не мешает пользователю
+  // открыть панель как оверлей и держать её открытой, пока ширина не изменится.
+  useEffect(() => {
+    if (narrowRight) setRightOpen(false);
+  }, [narrowRight]);
+  useEffect(() => {
+    if (narrowLeft) setLeftOpen(false);
+  }, [narrowLeft]);
   const [tree, setTree] = useState<VaultFile[]>([]);
   const [exp, setExp] = useState<Set<string>>(new Set());
   const [selPath, setSelPath] = useState<string | null>(null);
@@ -694,7 +724,7 @@ export default function MyspacePage() {
     const r = { s, sx: e.clientX, sw: s === "l" ? leftW : rightW };
     const mv = (ev: MouseEvent) => {
       const d = ev.clientX - r.sx;
-      if (r.s === "l") setLeftW(Math.max(180, Math.min(400, r.sw + d)));
+      if (r.s === "l") setLeftW(Math.max(160, Math.min(400, r.sw + d)));
       else setRightW(Math.max(200, Math.min(500, r.sw - d)));
     };
     const up = () => {
@@ -1165,13 +1195,28 @@ export default function MyspacePage() {
         </button>
       </div>
       {myspaceView === "notes" && (
-        <div style={{ display: "flex", flex: 1, minHeight: 0, overflow: "hidden" }}>
+        <div
+          ref={notesRowRef}
+          style={{ display: "flex", flex: 1, minHeight: 0, overflow: "hidden", position: "relative" }}
+        >
+          {/* Оверлейные панели на узкой ширине рисуются поверх контента — клик
+              по остальной странице их сворачивает. */}
+          {((narrowLeft && leftOpen) || (narrowRight && rightOpen)) && (
+            <div
+              onClick={() => {
+                if (narrowLeft) setLeftOpen(false);
+                if (narrowRight) setRightOpen(false);
+              }}
+              style={{ position: "absolute", inset: 0, zIndex: 30 }}
+            />
+          )}
           {/* LEFT SIDEBAR */}
           {leftOpen && (
             <div
+              onClick={(e) => narrowLeft && e.stopPropagation()}
               style={{
                 width: leftW,
-                minWidth: 180,
+                minWidth: 160,
                 display: "flex",
                 flexDirection: "column",
                 background: "var(--surface-glass)",
@@ -1179,7 +1224,12 @@ export default function MyspacePage() {
                 borderRadius: 12,
                 margin: "4px 0 4px 4px",
                 backdropFilter: "blur(8px)",
-                position: "relative",
+                position: narrowLeft ? "absolute" : "relative",
+                left: narrowLeft ? 0 : undefined,
+                top: narrowLeft ? 0 : undefined,
+                bottom: narrowLeft ? 0 : undefined,
+                zIndex: narrowLeft ? 31 : undefined,
+                boxShadow: narrowLeft ? "var(--shadow)" : undefined,
                 flexShrink: 0,
               }}
             >
@@ -2176,6 +2226,7 @@ export default function MyspacePage() {
           {/* RIGHT SIDEBAR */}
           {rightOpen && (
             <div
+              onClick={(e) => narrowRight && e.stopPropagation()}
               style={{
                 width: rightW,
                 minWidth: 200,
@@ -2186,7 +2237,12 @@ export default function MyspacePage() {
                 borderRadius: 12,
                 margin: "4px 4px 4px 0",
                 backdropFilter: "blur(8px)",
-                position: "relative",
+                position: narrowRight ? "absolute" : "relative",
+                right: narrowRight ? 0 : undefined,
+                top: narrowRight ? 0 : undefined,
+                bottom: narrowRight ? 0 : undefined,
+                zIndex: narrowRight ? 31 : undefined,
+                boxShadow: narrowRight ? "var(--shadow)" : undefined,
                 flexShrink: 0,
               }}
             >

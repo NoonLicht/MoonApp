@@ -937,7 +937,15 @@ function KillSwitchPanel() {
   return (
     <div style={{ marginTop: 16 }}>
       <SectionHead eyebrow={t("bypass.ksEyebrow")} title={t("bypass.ksTitle")} />
-      <Glass style={{ flexDirection: "column", alignItems: "stretch", gap: 8, padding: 12 }}>
+      <Glass
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "stretch",
+          gap: 12,
+          padding: 14,
+        }}
+      >
         <div className="muted-sm">{t("bypass.ksHint")}</div>
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
           <Btn
@@ -1071,7 +1079,15 @@ function NetworkToolsPanel() {
         ))}
       </div>
 
-      <Glass style={{ flexDirection: "column", alignItems: "stretch", gap: 8, padding: 12 }}>
+      <Glass
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "stretch",
+          gap: 12,
+          padding: 14,
+        }}
+      >
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           {needsHost && (
             <input

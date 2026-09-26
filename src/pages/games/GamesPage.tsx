@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Gamepad2,
   Plus,
@@ -169,6 +169,26 @@ export default function GamesPage() {
     setItems((prev) => prev.map((g) => (g.id === updated.id ? updated : g)));
   };
 
+  // Импорт фона по правому клику: карточка не хранит собственный <input type=file>
+  // (их было бы N штук) — один скрытый инпут переиспользуется для той карточки,
+  // чей id лежит в pendingBgId.
+  const bgFileInputRef = useRef<HTMLInputElement | null>(null);
+  const [pendingBgId, setPendingBgId] = useState<string | null>(null);
+  const importBackground = (g: GameEntry) => {
+    setPendingBgId(g.id);
+    bgFileInputRef.current?.click();
+  };
+  const onBgFileChosen = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    e.target.value = "";
+    const id = pendingBgId;
+    setPendingBgId(null);
+    if (!f || !id) return;
+    const dataUrl = await fileToDataUrl(f);
+    const updated = await api.gamesUpdate(id, { backgroundDataUrl: dataUrl });
+    setItems((prev) => prev.map((g) => (g.id === updated.id ? updated : g)));
+  };
+
   const [findingSave, setFindingSave] = useState(false);
   const findSaveFor = async () => {
     if (!savesFor) return;
@@ -266,21 +286,6 @@ export default function GamesPage() {
           <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
             <label className="muted-sm" style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
               <ImagePlus size={14} />
-              {t("games.fIcon")}
-              <input
-                type="file"
-                accept="image/*"
-                hidden
-                onChange={async (e) => {
-                  const f = e.target.files?.[0];
-                  if (!f) return;
-                  const dataUrl = await fileToDataUrl(f);
-                  setForm((s) => ({ ...s, iconDataUrl: dataUrl }));
-                }}
-              />
-            </label>
-            <label className="muted-sm" style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
-              <ImagePlus size={14} />
               {t("games.fBackground")}
               <input
                 type="file"
@@ -335,6 +340,11 @@ export default function GamesPage() {
                   label: t("games.saveManager"),
                   icon: History,
                   onClick: () => void openSaves(g),
+                },
+                {
+                  label: t("games.importBackground"),
+                  icon: ImagePlus,
+                  onClick: () => importBackground(g),
                 },
                 { separator: true },
                 { label: t("ctx.remove"), icon: Trash2, danger: true, onClick: () => void remove(g.id) },
@@ -391,6 +401,14 @@ export default function GamesPage() {
         ))}
       </div>
       </div>
+
+      <input
+        type="file"
+        accept="image/*"
+        hidden
+        ref={bgFileInputRef}
+        onChange={(e) => void onBgFileChosen(e)}
+      />
 
       {/* Менеджер сохранений — модалка поверх страницы, простая, без порталов (страница не скроллит под ней). */}
       {savesFor && (

@@ -488,6 +488,7 @@
     "fSavePath": "存档文件夹路径(可选)",
     "fIcon": "图标",
     "fBackground": "背景",
+    "importBackground": "导入背景",
     "changePath": "更改文件夹",
     "noSavePathHint": "尚未设置存档文件夹 — 没有它就无法备份。请设置一个以启用此游戏的存档管理器。",
     "findSavePath": "自动查找",

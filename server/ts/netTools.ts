@@ -128,35 +128,66 @@ export interface SpeedTestResult {
 }
 
 /**
- * Упрощённый спидтест скачивания: качаем известное число байт с публичного
- * echo-эндпоинта Cloudflare (тот же класс операции, что и publicIp() — нужен
- * внешний сервис, но без API-ключа и без сторонних SDK) и считаем throughput.
- * Проходит через текущий системный/прокси-стек приложения как обычный fetch —
- * поэтому честно показывает именно ту скорость, которую видит остальной трафик.
+ * Спидтест скачивания с публичного echo-эндпоинта Cloudflare (тот же класс
+ * операции, что и publicIp() — нужен внешний сервис, но без API-ключа и без
+ * сторонних SDK). Проходит через текущий системный/прокси-стек приложения как
+ * обычный fetch — поэтому честно показывает именно ту скорость, которую видит
+ * остальной трафик.
+ *
+ * Один короткий запрос на 25 МБ систематически завышал результат (лишние
+ * 1.5–2.5×): за доли секунды успевает отработать только быстрый разгон TCP
+ * (slow start) и «горячий» краевой сервер CDN — устойчивая, реальная скорость
+ * канала на таком окне не видна. Поэтому теперь тест держит несколько
+ * параллельных соединений и крутит их не меньше MIN_DURATION_MS, суммируя
+ * реально принятые байты по всем потокам и считая throughput по общему
+ * прошедшему времени — это и есть «средняя устойчивая скорость», а не пиковая.
  */
-export async function speedTest(bytes = 25_000_000): Promise<SpeedTestResult> {
-  const size = Math.max(1_000_000, Math.min(100_000_000, Math.floor(bytes)));
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 30000);
-  const started = Date.now();
-  try {
-    const res = await fetch(`https://speed.cloudflare.com/__down?bytes=${size}`, {
-      signal: controller.signal,
+const SPEEDTEST_STREAMS = 4;
+const SPEEDTEST_MIN_MS = 8000;
+const SPEEDTEST_MAX_MS = 15000;
+const SPEEDTEST_CHUNK_BYTES = 25_000_000;
+
+async function speedTestStream(
+  signal: AbortSignal,
+  deadline: number,
+): Promise<{ bytes: number }> {
+  let total = 0;
+  while (Date.now() < deadline) {
+    const res = await fetch(`https://speed.cloudflare.com/__down?bytes=${SPEEDTEST_CHUNK_BYTES}`, {
+      signal,
     });
-    if (!res.ok || !res.body) return { ok: false, error: `HTTP ${res.status}` };
-    let received = 0;
+    if (!res.ok || !res.body) break;
     const reader = res.body.getReader();
     for (;;) {
       const { done, value } = await reader.read();
       if (done) break;
-      received += value?.byteLength || 0;
+      total += value?.byteLength || 0;
+      if (Date.now() >= deadline) {
+        await reader.cancel().catch(() => {});
+        break;
+      }
     }
+  }
+  return { bytes: total };
+}
+
+export async function speedTest(): Promise<SpeedTestResult> {
+  const controller = new AbortController();
+  const hardTimeout = setTimeout(() => controller.abort(), SPEEDTEST_MAX_MS + 8000);
+  const started = Date.now();
+  const deadline = started + SPEEDTEST_MIN_MS;
+  try {
+    const results = await Promise.all(
+      Array.from({ length: SPEEDTEST_STREAMS }, () => speedTestStream(controller.signal, deadline)),
+    );
     const ms = Date.now() - started;
+    const received = results.reduce((sum, r) => sum + r.bytes, 0);
+    if (received === 0) return { ok: false, error: "speedtest_failed" };
     const mbps = ms > 0 ? (received * 8) / 1_000_000 / (ms / 1000) : 0;
     return { ok: true, mbps: Math.round(mbps * 10) / 10, bytes: received, ms };
   } catch (e) {
     return { ok: false, error: (e as Error).message };
   } finally {
-    clearTimeout(timeout);
+    clearTimeout(hardTimeout);
   }
 }
