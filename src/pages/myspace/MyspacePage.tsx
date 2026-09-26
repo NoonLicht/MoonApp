@@ -24,9 +24,7 @@ import {
   Sparkles,
   RefreshCw,
   SlidersHorizontal,
-  AlignLeft,
 } from "lucide-react";
-import { AiFeatureToggle } from "@/components/AiFeatureToggle";
 import MarkdownRenderer from "@/pages/myspace/parts/MarkdownRenderer";
 import CodeMirrorLiveEditor from "@/pages/myspace/parts/CodeMirrorLiveEditor";
 import BookmarksView from "@/pages/myspace/parts/BookmarksView";
@@ -175,8 +173,6 @@ export default function MyspacePage() {
   // ИИ-оформление заметки: какая операция идёт сейчас ("" — ничего) и короткая
   // плашка об успехе. Ошибки живут в общем `error` над редактором.
   const [aiBusy, setAiBusy] = useState<"" | "format" | "regenerate">("");
-  const [summaryText, setSummaryText] = useState("");
-  const [summaryBusy, setSummaryBusy] = useState(false);
   const [aiNotice, setAiNotice] = useState("");
   const aiNoticeTimer = useRef<any>(null);
   // Выбор провайдера/модели для ИИ-оформления (всплывающее окно рядом с
@@ -510,20 +506,6 @@ export default function MyspacePage() {
     const cur = aiCfg?.model || "";
     return cur && !list.includes(cur) ? [cur, ...list] : list;
   }, [aiModels, aiCfg]);
-
-  const summarizeNote = async () => {
-    if (!edContent.trim() || summaryBusy) return;
-    setSummaryBusy(true);
-    setSummaryText("");
-    try {
-      const r = await api.aiNotesSummarize(edContent);
-      setSummaryText(r.text);
-    } catch {
-      setSummaryText(t("myspace.ai.summarizeFailed"));
-    } finally {
-      setSummaryBusy(false);
-    }
-  };
 
   const runNotesAi = async (mode: "format" | "regenerate") => {
     const target = activeTab;
@@ -1755,26 +1737,6 @@ export default function MyspacePage() {
                       >
                         <RefreshCw size={13} />
                       </button>
-                      {/* «Резюме» — короткая суммаризация текущего текста заметки,
-                          отдельная фича (server/ts/aiRuntime.ts, feature "notes"):
-                          свой тумблер API/Локально/Выкл, не смешивается с
-                          провайдером «Оформить»/«Регенерировать» выше. */}
-                      <button
-                        onClick={() => void summarizeNote()}
-                        disabled={summaryBusy}
-                        title={t("myspace.ai.summarizeHint")}
-                        aria-label={t("myspace.ai.summarize")}
-                        style={{
-                          background: "transparent",
-                          border: "none",
-                          padding: 3,
-                          cursor: summaryBusy ? "default" : "pointer",
-                          color: summaryBusy ? "var(--amber)" : "var(--text-tertiary)",
-                          display: "flex",
-                        }}
-                      >
-                        <AlignLeft size={13} />
-                      </button>
                       {/* Выбор провайдера и модели: раньше брался из настроек чата,
                           и опечатка в имени модели всплывала сырым JSON сервиса.
                           Выбор сохраняется (myspace.ai.*) — повторять не нужно. */}
@@ -2064,30 +2026,6 @@ export default function MyspacePage() {
                     }}
                   >
                     {attachError}
-                  </div>
-                )}
-                {(summaryBusy || summaryText) && (
-                  <div
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: 6,
-                      padding: "8px 12px",
-                      fontSize: 12,
-                      borderBottom: "1px solid var(--glass-border)",
-                      background: "var(--glass)",
-                    }}
-                  >
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                      <AiFeatureToggle feature="notes" />
-                      <button
-                        onClick={() => setSummaryText("")}
-                        style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-tertiary)" }}
-                      >
-                        <X size={13} />
-                      </button>
-                    </div>
-                    <span>{summaryBusy ? t("myspace.ai.summarizing") : summaryText}</span>
                   </div>
                 )}
                 {activeTab &&

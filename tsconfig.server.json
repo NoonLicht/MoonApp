@@ -104,7 +104,6 @@
     "server/ts/sitebak.ts",
     "server/ts/tgwsproxy.ts",
     "server/ts/notesAi.ts",
-    "server/ts/aiRuntime.ts",
     "server/ts/pyEnv.ts",
     "server/ts/tts.ts"
   ]

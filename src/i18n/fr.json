@@ -443,9 +443,7 @@
       "day": "Jour",
       "week": "Semaine",
       "month": "Mois"
-    },
-    "aiCatBtn": "IA : catégorie",
-    "aiCatBusy": "Réflexion..."
+    }
   },
   "quickNotes": {
     "eyebrow": "Notes rapides",
@@ -497,10 +495,7 @@
     "changePath": "Changer de dossier",
     "noSavePathHint": "Aucun dossier de sauvegardes défini — rien à sauvegarder sans cela. Définissez-en un pour activer le gestionnaire de sauvegardes de ce jeu.",
     "findSavePath": "Recherche auto",
-    "findingSavePath": "Recherche…",
-    "aiDescribe": "IA : décrire",
-    "aiDescribing": "Rédaction...",
-    "aiDescribeHint": "Générer une courte description à partir du nom"
+    "findingSavePath": "Recherche…"
   },
   "tools": {
     "eyebrow": "Multi-outil",
@@ -696,14 +691,7 @@
     "expandGenres": "Afficher tous les genres",
     "collapseGenres": "Réduire les genres",
     "searchGenre": "Filtrer les genres…",
-    "removeGenre": "cliquer pour retirer",
-    "aiRecBtn": "Quoi lire ?",
-    "aiRecBusy": "Analyse...",
-    "aiRecOff": "Les recommandations IA sont désactivées — activez-les ci-dessus",
-    "aiRecNotReady": "IA non prête : clé DeepSeek manquante ou modèle local non chargé",
-    "aiRecEmpty": "Ajoutez d'abord quelques livres aux favoris ou signets",
-    "aiRecNotFound": "Le modèle a suggéré un livre, mais il est introuvable sur Flibusta",
-    "aiRecFailed": "Impossible d'obtenir une recommandation"
+    "removeGenre": "cliquer pour retirer"
   },
   "monitor": {
     "title": "Moniteur",
@@ -798,10 +786,7 @@
     "embedHint": "Le service ConvertX intégré démarre automatiquement à la première utilisation.",
     "embedMissing": "Le runtime du convertisseur est absent de cette installation.",
     "embedStart": "Démarrer le convertisseur",
-    "formatsNote": "Les formats multimédias nécessitent ffmpeg dans le PATH. Documents/livres : outils correspondants requis (pandoc, Calibre, LibreOffice…).",
-    "aiExplain": "Expliquer",
-    "aiExplaining": "Analyse...",
-    "aiExplainFailed": "Impossible d'obtenir une explication"
+    "formatsNote": "Les formats multimédias nécessitent ffmpeg dans le PATH. Documents/livres : outils correspondants requis (pandoc, Calibre, LibreOffice…)."
   },
   "voice": {
     "title": "Clonage de voix",
@@ -978,10 +963,7 @@
     "noSupport": "Ce format de fichier n'est pas encore pris en charge",
     "install": "Installer FFmpeg",
     "installing": "Installation de FFmpeg…",
-    "downloading": "Téléchargement de FFmpeg… {p}%",
-    "aiSuggestBtn": "IA : suggérer un format",
-    "aiSuggestBusy": "Réflexion...",
-    "aiSuggestFailed": "Impossible d'obtenir une suggestion"
+    "downloading": "Téléchargement de FFmpeg… {p}%"
   },
   "music": {
     "title": "Téléchargement de musique",
@@ -1088,11 +1070,7 @@
       "modelUse": "Utiliser « {model} »",
       "modelSaved": "Modèle enregistré : {model}",
       "errModelName": "Le service refuse le modèle « {model} ». Choisissez-en un dans la liste.",
-      "savedAuto": "Le choix est enregistré automatiquement",
-      "summarize": "Résumé",
-      "summarizeHint": "IA : résumé bref de la note actuelle (API DeepSeek ou modèle local — voir le sélecteur)",
-      "summarizing": "Résumé en cours...",
-      "summarizeFailed": "Impossible d'obtenir un résumé"
+      "savedAuto": "Le choix est enregistré automatiquement"
     },
     "title": "Mon Espace",
     "notes": "Notes",
@@ -1281,14 +1259,7 @@
     "prevImage": "Précédent",
     "nextImage": "Suivant",
     "photoOf": "{i} / {n}",
-    "providersMore": "+{n} de plus",
-    "aiRecBtn": "Quoi regarder ?",
-    "aiRecBusy": "Analyse...",
-    "aiRecOff": "Les recommandations IA sont désactivées — activez-les ci-dessus",
-    "aiRecNotReady": "IA non prête : clé DeepSeek manquante ou modèle local non chargé",
-    "aiRecEmpty": "Notez ou ajoutez d'abord quelques titres à votre liste",
-    "aiRecNotFound": "Le modèle a suggéré un titre, mais il est introuvable sur TMDB",
-    "aiRecFailed": "Impossible d'obtenir une recommandation"
+    "providersMore": "+{n} de plus"
   },
   "moviesSettings": {
     "language": "Langue des métadonnées",
@@ -2489,17 +2460,5 @@
     "vcrfHint": "0–51, plus bas = mieux",
     "audio": "Action audio",
     "audioHint": "copy — garder la piste, aac — réencoder"
-  },
-  "ai": {
-    "toggleLabel": "IA",
-    "modeApi": "API",
-    "modeLocal": "Local",
-    "modeOff": "Désactivé",
-    "activate": "Activer",
-    "ready": "Prêt",
-    "downloading": "Téléchargement",
-    "notInstalled": "non téléchargé",
-    "willDownload": "sera téléchargé ~{mb} Mo",
-    "noApiKeyHint": "Clé DeepSeek manquante — ajoutez-la dans Paramètres (Chat IA)"
   }
 }

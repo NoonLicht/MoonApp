@@ -62,7 +62,6 @@ const notesGitRouter = require("./routes/notesGit") as express.Router;
 const appTimeTrackerRouter = require("./routes/appTimeTracker") as express.Router;
 const automationRouter = require("./routes/automation") as express.Router;
 const budgetRouter = require("./routes/budget") as express.Router;
-const aiRouter = require("./routes/ai") as express.Router;
 const quickNotesRouter = require("./routes/quickNotes") as express.Router;
 const killSwitchRouter = require("./routes/killSwitch") as express.Router;
 const ocrRouter = require("./routes/ocr") as express.Router;
@@ -279,7 +278,6 @@ function createApp(): express.Express {
   app.use("/api/apptracker", appTimeTrackerRouter);
   app.use("/api/automation", automationRouter);
   app.use("/api/budget", budgetRouter);
-  app.use("/api/ai", aiRouter);
   app.use("/api/quicknotes", quickNotesRouter);
   app.use("/api/killswitch", killSwitchRouter);
   app.use("/api/ocr", ocrRouter);

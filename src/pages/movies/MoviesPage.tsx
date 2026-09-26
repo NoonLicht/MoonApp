@@ -14,10 +14,8 @@ import {
   Save,
   ExternalLink,
   Download,
-  Sparkles,
 } from "lucide-react";
 import { Glass, Btn, Badge, SectionHead, EmptyHint, Field } from "@/components/ui";
-import { AiFeatureToggle } from "@/components/AiFeatureToggle";
 import { usePageToolbar } from "@/components/Toolbar";
 import ToolbarSearch from "@/components/ToolbarSearch";
 import { useI18n } from "@/app/i18n";
@@ -91,34 +89,6 @@ export default function MoviesPage() {
   const [library, setLibrary] = useState<MediaLibrary | null>(null);
   const [stats, setStats] = useState<MediaStats | null>(null);
   const [busy, setBusy] = useState(false);
-  const [recBusy, setRecBusy] = useState(false);
-  const [recError, setRecError] = useState("");
-
-  /** «Что посмотреть» — отправляет список просмотренного+оценок на анализ и
-   *  открывает найденную карточку в обычной модалке деталей (как по клику). */
-  const recommendMovie = useCallback(async () => {
-    setRecBusy(true);
-    setRecError("");
-    try {
-      const r = await api.aiMoviesRecommend();
-      setDetail({ kind: r.movie.kind, id: r.movie.id, summary: r.movie });
-    } catch (e: any) {
-      const code = e?.message || "";
-      setRecError(
-        code === "ai_feature_off"
-          ? t("movies.aiRecOff")
-          : code === "ai_no_api_key" || code === "ai_no_local_model"
-            ? t("movies.aiRecNotReady")
-            : code === "empty_library"
-              ? t("movies.aiRecEmpty")
-              : code === "not_found_in_tmdb"
-                ? t("movies.aiRecNotFound")
-                : t("movies.aiRecFailed"),
-      );
-    } finally {
-      setRecBusy(false);
-    }
-  }, [t]);
 
   // Статус страницы (ключ TMDB + движок торрентов).
   const loadStatus = useCallback(() => {
@@ -328,10 +298,6 @@ export default function MoviesPage() {
         title={t("movies.title")}
         action={
           <div className="mv-header-actions">
-            <AiFeatureToggle feature="movies" />
-            <Btn variant="secondary" icon={Sparkles} onClick={recommendMovie} disabled={recBusy}>
-              {recBusy ? t("movies.aiRecBusy") : t("movies.aiRecBtn")}
-            </Btn>
             {status && !status.engine.installed && (
               <Badge tone="coral" mono>
                 {t("movies.torrentNoEngine")}
@@ -340,14 +306,6 @@ export default function MoviesPage() {
           </div>
         }
       />
-      {recError && (
-        <div className="ai-rec-error">
-          {recError}
-          <button type="button" onClick={() => setRecError("")}>
-            ×
-          </button>
-        </div>
-      )}
 
       {/* Содержимое вкладки: скроллится только эта область, заголовок остаётся */}
       <div className="mv-scroll">

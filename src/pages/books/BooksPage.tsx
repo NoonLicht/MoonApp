@@ -9,10 +9,8 @@ import {
   AlertCircle,
   Copy,
   ChevronsDown,
-  Sparkles,
 } from "lucide-react";
 import { Glass, Btn, Badge, SectionHead, EmptyHint } from "@/components/ui";
-import { AiFeatureToggle } from "@/components/AiFeatureToggle";
 import { useContextMenu, copyToClipboard } from "@/components/ContextMenu";
 import { usePageToolbar } from "@/components/Toolbar";
 import { useI18n } from "@/app/i18n";
@@ -76,8 +74,6 @@ export default function BooksPage() {
   const [genreQ, setGenreQ] = useState("");
   const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
   const [selectedBook, setSelectedBook] = useState<FlibustaBook | null>(null);
-  const [recBusy, setRecBusy] = useState(false);
-  const [recError, setRecError] = useState("");
   const reqId = useRef(0);
 
   const doLoad = useCallback(
@@ -202,53 +198,9 @@ export default function BooksPage() {
   );
 
   const flagOf = (b: FlibustaBook) => flags[b.bid] || { fav: !!b.fav, bm: !!b.bm };
-
-  const recommendBook = useCallback(async () => {
-    setRecBusy(true);
-    setRecError("");
-    try {
-      const r = await api.aiBooksRecommend();
-      setSelectedBook(r.book);
-    } catch (e: any) {
-      const code = e?.message || "";
-      setRecError(
-        code === "ai_feature_off"
-          ? t("books.aiRecOff")
-          : code === "ai_no_api_key" || code === "ai_no_local_model"
-            ? t("books.aiRecNotReady")
-            : code === "empty_library"
-              ? t("books.aiRecEmpty")
-              : code === "not_found"
-                ? t("books.aiRecNotFound")
-                : t("books.aiRecFailed"),
-      );
-    } finally {
-      setRecBusy(false);
-    }
-  }, [t]);
-
   return (
     <div className="page-fill">
-      <SectionHead
-        eyebrow={t("books.opdsHint")}
-        title={t("books.title")}
-        action={
-          <div className="bk-header-actions">
-            <AiFeatureToggle feature="books" />
-            <Btn variant="secondary" icon={Sparkles} onClick={recommendBook} disabled={recBusy}>
-              {recBusy ? t("books.aiRecBusy") : t("books.aiRecBtn")}
-            </Btn>
-          </div>
-        }
-      />
-      {recError && (
-        <div className="ai-rec-error">
-          {recError}
-          <button type="button" onClick={() => setRecError("")}>
-            ×
-          </button>
-        </div>
-      )}
+      <SectionHead eyebrow={t("books.opdsHint")} title={t("books.title")} />
 
       {/* Вкладки: новинки / популярное / избранное / закладки */}
       <div style={{ display: "flex", gap: 6, marginBottom: 10, flexWrap: "wrap" }}>

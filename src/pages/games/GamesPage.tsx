@@ -14,10 +14,8 @@ import {
   Search,
   Images,
   ImageOff,
-  Sparkles,
 } from "lucide-react";
 import { Glass, Btn, Badge, EmptyHint, SectionHead } from "@/components/ui";
-import { AiFeatureToggle } from "@/components/AiFeatureToggle";
 import { useContextMenu } from "@/components/ContextMenu";
 import { useI18n } from "@/app/i18n";
 import { api } from "@/api/client";
@@ -72,20 +70,6 @@ export default function GamesPage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
-  const [descBusy, setDescBusy] = useState(false);
-
-  const aiDescribe = async () => {
-    if (!form.name.trim()) return;
-    setDescBusy(true);
-    try {
-      const r = await api.aiGamesDescribe(form.name.trim());
-      setForm((f) => ({ ...f, description: r.text }));
-    } catch {
-      /* тумблер/подсказки об ошибке — уже видно в AiFeatureToggle рядом */
-    } finally {
-      setDescBusy(false);
-    }
-  };
   const [saving, setSaving] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [scanMsg, setScanMsg] = useState("");
@@ -247,7 +231,6 @@ export default function GamesPage() {
             <Btn variant="primary" icon={Plus} onClick={() => setShowForm(true)}>
               {t("games.add")}
             </Btn>
-            <AiFeatureToggle feature="games" />
           </div>
         }
       />
@@ -289,24 +272,13 @@ export default function GamesPage() {
               {t("automation.browse")}
             </Btn>
           </div>
-          <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
-            <textarea
-              className="text-input"
-              style={{ flex: 1 }}
-              rows={2}
-              placeholder={t("games.fDescription")}
-              value={form.description}
-              onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-            />
-            <Btn
-              icon={Sparkles}
-              onClick={aiDescribe}
-              disabled={descBusy || !form.name.trim()}
-              title={t("games.aiDescribeHint")}
-            >
-              {descBusy ? t("games.aiDescribing") : t("games.aiDescribe")}
-            </Btn>
-          </div>
+          <textarea
+            className="text-input"
+            rows={2}
+            placeholder={t("games.fDescription")}
+            value={form.description}
+            onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+          />
           <div style={{ display: "flex", gap: 8 }}>
             <input
               className="text-input"

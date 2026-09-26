@@ -1,19 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import {
-  Wallet,
-  Plus,
-  Trash2,
-  X,
-  Save,
-  TrendingUp,
-  TrendingDown,
-  AlertTriangle,
-  Upload,
-  Sparkles,
-} from "lucide-react";
+import { Wallet, Plus, Trash2, X, Save, TrendingUp, TrendingDown, AlertTriangle, Upload } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { Glass, Btn, Badge, EmptyHint, SectionHead, Select } from "@/components/ui";
-import { AiFeatureToggle } from "@/components/AiFeatureToggle";
 import { useI18n } from "@/app/i18n";
 import { api } from "@/api/client";
 import type { Transaction, TxType, BudgetCategories, MonthSummary } from "@/api/types";
@@ -67,22 +55,6 @@ export default function BudgetPage() {
   const [error, setError] = useState("");
   const [importing, setImporting] = useState(false);
   const [importMsg, setImportMsg] = useState("");
-  const [catBusy, setCatBusy] = useState(false);
-
-  const aiCategorize = async () => {
-    if (!form.note.trim()) return;
-    setCatBusy(true);
-    try {
-      const all = [...(categories?.expense || []), ...(categories?.income || [])];
-      const r = await api.aiBudgetCategorize(form.note.trim(), all);
-      const suggested = r.text.trim();
-      if (suggested) setForm((f) => ({ ...f, category: suggested }));
-    } catch {
-      /* тумблер рядом покажет причину отказа */
-    } finally {
-      setCatBusy(false);
-    }
-  };
 
   const periodCount: Record<"day" | "week" | "month", number> = { day: 14, week: 8, month: 6 };
 
@@ -217,7 +189,6 @@ export default function BudgetPage() {
             <Btn variant="primary" icon={Plus} onClick={() => setShowForm(true)}>
               {t("budget.add")}
             </Btn>
-            <AiFeatureToggle feature="budget" />
           </div>
         }
       />
@@ -303,28 +274,22 @@ export default function BudgetPage() {
               options={currencies.map((c) => ({ value: c, label: c }))}
             />
           </div>
-          <input
-            className="text-input"
-            placeholder={t("budget.fNote")}
-            value={form.note}
-            onChange={(e) => setForm((f) => ({ ...f, note: e.target.value }))}
+          <Select
+            value={form.category}
+            onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
+            options={(categoryOptions || []).map((c) => ({ value: c, label: c }))}
           />
-          <div style={{ display: "flex", gap: 8 }}>
-            <Select
-              value={form.category}
-              onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
-              options={(categoryOptions || []).map((c) => ({ value: c, label: c }))}
-              style={{ flex: 1 }}
-            />
-            <Btn icon={Sparkles} onClick={aiCategorize} disabled={catBusy || !form.note.trim()}>
-              {catBusy ? t("budget.aiCatBusy") : t("budget.aiCatBtn")}
-            </Btn>
-          </div>
           <input
             className="text-input"
             type="date"
             value={form.date}
             onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
+          />
+          <input
+            className="text-input"
+            placeholder={t("budget.fNote")}
+            value={form.note}
+            onChange={(e) => setForm((f) => ({ ...f, note: e.target.value }))}
           />
           <div style={{ display: "flex", gap: 8 }}>
             <Btn

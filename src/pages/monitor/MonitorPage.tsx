@@ -24,11 +24,9 @@ import {
   Folder,
   File as FileIcon,
   Files,
-  Sparkles,
 } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { Glass, Select, SectionHead, Btn, Field, Badge, EmptyHint } from "@/components/ui";
-import { AiFeatureToggle } from "@/components/AiFeatureToggle";
 import { useContextMenu, copyToClipboard } from "@/components/ContextMenu";
 import ToolbarMenu from "@/components/ToolbarMenu";
 import { usePageToolbar, usePageActive } from "@/components/Toolbar";
@@ -281,32 +279,6 @@ function MonitorBody({
   }
 
   const hasLhm = data.sources.lhm;
-  const [explainText, setExplainText] = useState("");
-  const [explainBusy, setExplainBusy] = useState(false);
-
-  const explainSnapshot = async () => {
-    setExplainBusy(true);
-    setExplainText("");
-    try {
-      const snapshot =
-        `CPU: ${data.cpu.loadTotalPercent}% (${data.cpu.coresLogical} потоков)` +
-        `${data.cpuTemp != null ? `, темп. ${Math.round(data.cpuTemp)}°C` : ""}\n` +
-        `Память: ${data.memory.usedPercent}% (${data.memory.usedMb}/${data.memory.totalMb} МБ)\n` +
-        `Диски: ${data.disks
-          .map((d) =>
-            d.totalGb
-              ? `${d.drive} ${Math.round((1 - (d.freeGb || 0) / d.totalGb) * 100)}% занято`
-              : d.drive,
-          )
-          .join("; ")}`;
-      const r = await api.aiMonitorExplain(snapshot);
-      setExplainText(r.text);
-    } catch {
-      setExplainText(t("monitor.aiExplainFailed"));
-    } finally {
-      setExplainBusy(false);
-    }
-  };
 
   return (
     <>
@@ -314,26 +286,14 @@ function MonitorBody({
         eyebrow={t("monitor.eyebrow")}
         title={t("monitor.title")}
         action={
-          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-            <AiFeatureToggle feature="monitor" />
-            <Btn variant="secondary" icon={Sparkles} onClick={explainSnapshot} disabled={explainBusy}>
-              {explainBusy ? t("monitor.aiExplaining") : t("monitor.aiExplain")}
-            </Btn>
-            <span
-              className="badge tone-teal mono"
-              title={`WMI: ${data.sources.wmi} · LHM: ${hasLhm} · nvidia-smi: ${data.sources.nvidiaSmi}`}
-            >
-              {data.system.hostname}
-            </span>
-          </div>
+          <span
+            className="badge tone-teal mono"
+            title={`WMI: ${data.sources.wmi} · LHM: ${hasLhm} · nvidia-smi: ${data.sources.nvidiaSmi}`}
+          >
+            {data.system.hostname}
+          </span>
         }
       />
-      {explainText && (
-        <Glass className="source-placeholder" style={{ alignItems: "flex-start" }}>
-          <Sparkles size={16} style={{ flexShrink: 0, marginTop: 2 }} />
-          <span>{explainText}</span>
-        </Glass>
-      )}
 
       <div className="metric-row">
         <MetricCard

@@ -100,9 +100,6 @@ const DIRS = {
   ocr: ensureDir(path.join(STORAGE_DIR, "ocr")),
   // Скриншоты и записи экрана: единая библиотека медиа страницы «Скриншоты».
   screenshots: ensureDir(path.join(STORAGE_DIR, "screenshots")),
-  // Локальные ONNX-модели для ИИ-функций (DeepSeek — основной режим, это —
-  // офлайн-режим): кэш @huggingface/transformers, качается по требованию.
-  aiModels: ensureDir(path.join(STORAGE_DIR, "ai-models")),
 };
 const FILES = {
   data: path.join(DIRS.storage, "data.json"),
@@ -119,7 +116,6 @@ const FILES = {
   notesGitConfig: path.join(DIRS.storage, "notes-git.json"),
   appTimeTracker: path.join(DIRS.storage, "app-time-tracker.json"),
   conspectusPresets: path.join(DIRS.storage, "conspectus_presets.json"),
-  aiSettings: path.join(DIRS.storage, "ai-settings.json"),
   log: path.join(DIRS.logs, "app.log"),
 };
 

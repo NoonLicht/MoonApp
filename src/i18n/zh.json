@@ -443,9 +443,7 @@
       "day": "日",
       "week": "周",
       "month": "月"
-    },
-    "aiCatBtn": "AI 分类",
-    "aiCatBusy": "思考中..."
+    }
   },
   "quickNotes": {
     "eyebrow": "快速笔记",
@@ -497,10 +495,7 @@
     "changePath": "更改文件夹",
     "noSavePathHint": "尚未设置存档文件夹 — 没有它就无法备份。请设置一个以启用此游戏的存档管理器。",
     "findSavePath": "自动查找",
-    "findingSavePath": "正在搜索…",
-    "aiDescribe": "AI 描述",
-    "aiDescribing": "生成中...",
-    "aiDescribeHint": "根据名称生成简短描述"
+    "findingSavePath": "正在搜索…"
   },
   "tools": {
     "eyebrow": "多功能工具",
@@ -696,14 +691,7 @@
     "expandGenres": "展开全部分类",
     "collapseGenres": "收起分类",
     "searchGenre": "筛选分类…",
-    "removeGenre": "点击移除",
-    "aiRecBtn": "读点什么?",
-    "aiRecBusy": "分析中...",
-    "aiRecOff": "AI 推荐已关闭 — 请在上方开关中启用",
-    "aiRecNotReady": "AI 未就绪：缺少 DeepSeek 密钥或本地模型未加载",
-    "aiRecEmpty": "请先将几本书加入收藏或书签",
-    "aiRecNotFound": "模型给出了书名，但在 Flibusta 中未找到",
-    "aiRecFailed": "获取推荐失败"
+    "removeGenre": "点击移除"
   },
   "monitor": {
     "title": "监控",
@@ -798,10 +786,7 @@
     "embedHint": "内置的 ConvertX 服务会在首次使用时自动启动。",
     "embedMissing": "此安装缺少转换器运行时。",
     "embedStart": "启动转换器",
-    "formatsNote": "媒体格式需要 PATH 中有 ffmpeg。文档/电子书需要相应工具（pandoc、Calibre、LibreOffice…）。",
-    "aiExplain": "解释",
-    "aiExplaining": "分析中...",
-    "aiExplainFailed": "无法获取解释"
+    "formatsNote": "媒体格式需要 PATH 中有 ffmpeg。文档/电子书需要相应工具（pandoc、Calibre、LibreOffice…）。"
   },
   "voice": {
     "title": "语音克隆",
@@ -978,10 +963,7 @@
     "noSupport": "暂不支持此文件格式",
     "install": "安装 FFmpeg",
     "installing": "正在安装 FFmpeg…",
-    "downloading": "正在下载 FFmpeg… {p}%",
-    "aiSuggestBtn": "AI：建议格式",
-    "aiSuggestBusy": "思考中...",
-    "aiSuggestFailed": "无法获取建议"
+    "downloading": "正在下载 FFmpeg… {p}%"
   },
   "music": {
     "title": "音乐下载",
@@ -1088,11 +1070,7 @@
       "modelUse": "使用“{model}”",
       "modelSaved": "模型已保存：{model}",
       "errModelName": "服务不接受模型“{model}”。请从列表中选择。",
-      "savedAuto": "选择会自动保存",
-      "summarize": "摘要",
-      "summarizeHint": "AI：当前笔记的简短摘要（DeepSeek API 或本地模型 — 见开关）",
-      "summarizing": "正在生成摘要...",
-      "summarizeFailed": "无法获取摘要"
+      "savedAuto": "选择会自动保存"
     },
     "title": "我的空间",
     "notes": "笔记",
@@ -1281,14 +1259,7 @@
     "prevImage": "上一张",
     "nextImage": "下一张",
     "photoOf": "{i} / {n}",
-    "providersMore": "另有 {n} 个",
-    "aiRecBtn": "看点什么?",
-    "aiRecBusy": "分析中...",
-    "aiRecOff": "AI 推荐已关闭 — 请在上方开关中启用",
-    "aiRecNotReady": "AI 未就绪：缺少 DeepSeek 密钥或本地模型未加载",
-    "aiRecEmpty": "请先给列表中的几部影片评分或添加",
-    "aiRecNotFound": "模型给出了片名，但在 TMDB 中未找到",
-    "aiRecFailed": "获取推荐失败"
+    "providersMore": "另有 {n} 个"
   },
   "moviesSettings": {
     "language": "元数据语言",
@@ -2489,17 +2460,5 @@
     "vcrfHint": "0–51，越低越好",
     "audio": "音频处理",
     "audioHint": "copy — 保留原轨，aac — 重新编码"
-  },
-  "ai": {
-    "toggleLabel": "AI",
-    "modeApi": "API",
-    "modeLocal": "本地",
-    "modeOff": "关闭",
-    "activate": "启动",
-    "ready": "就绪",
-    "downloading": "下载中",
-    "notInstalled": "未下载",
-    "willDownload": "将下载约 {mb} MB",
-    "noApiKeyHint": "缺少 DeepSeek 密钥 — 请在设置(AI聊天)中添加"
   }
 }

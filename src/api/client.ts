@@ -9,14 +9,6 @@
  *  - streamChatSend/streamArena читают SSE-стрим через fetch + ReadableStream.
  */
 import type {
-  AiSettingsMap,
-  AiFeatureId,
-  AiFeatureSetting,
-  AiLocalModelInfo,
-  AiLocalModelStatus,
-  MovieRecommendResult,
-  BookRecommendResult,
-  AiSimpleResult,
   AppItem,
   BackupInfo,
   ChatMessage,
@@ -1576,30 +1568,6 @@ export const api = {
   notesGitLog: (limit = 50) => req<NotesGitLogEntry[]>("GET", `/notesgit/log?limit=${limit}`),
   notesGitDiff: (oid: string) => req<NotesGitDiffResult>("GET", `/notesgit/diff/${oid}`),
   notesGitRestore: (oid: string) => req<NotesGitRestoreResult>("POST", "/notesgit/restore", { oid }),
-
-  // --- ИИ-функции удобства (DeepSeek API / локальная ONNX-модель / выкл) ---
-  aiSettings: () =>
-    req<{ features: AiSettingsMap; hasApiKey: boolean }>("GET", "/ai/settings"),
-  aiSetFeature: (feature: AiFeatureId, patch: Partial<AiFeatureSetting>) =>
-    req<{ ok: boolean; setting: AiFeatureSetting }>("PUT", `/ai/settings/${feature}`, patch),
-  aiLocalModels: () => req<{ models: AiLocalModelInfo[] }>("GET", "/ai/local-models"),
-  aiLoadLocalModel: (id: string) =>
-    req<{ ok: boolean; status: AiLocalModelStatus }>("POST", `/ai/local-models/${id}/load`),
-  aiLocalModelStatus: (id: string) =>
-    req<AiLocalModelStatus>("GET", `/ai/local-models/${id}/status`),
-  aiDeleteLocalModel: (id: string) => req<{ ok: boolean }>("DELETE", `/ai/local-models/${id}`),
-  aiMoviesRecommend: () => req<MovieRecommendResult>("POST", "/ai/movies/recommend"),
-  aiBooksRecommend: () => req<BookRecommendResult>("POST", "/ai/books/recommend"),
-  aiGamesDescribe: (name: string) =>
-    req<AiSimpleResult>("POST", "/ai/games/describe", { name }),
-  aiMonitorExplain: (snapshot: string) =>
-    req<AiSimpleResult>("POST", "/ai/monitor/explain", { snapshot }),
-  aiBudgetCategorize: (description: string, categories: string[]) =>
-    req<AiSimpleResult>("POST", "/ai/budget/categorize", { description, categories }),
-  aiConvertSuggest: (fileName: string, kind?: string) =>
-    req<AiSimpleResult>("POST", "/ai/convert/suggest", { fileName, kind }),
-  aiNotesSummarize: (text: string) =>
-    req<AiSimpleResult>("POST", "/ai/notes/summarize", { text }),
 
   // --- Игры (лаунчер) ---
   gamesList: () => req<GameEntry[]>("GET", "/games"),

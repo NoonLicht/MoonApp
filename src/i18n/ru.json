@@ -443,9 +443,7 @@
       "day": "День",
       "week": "Неделя",
       "month": "Месяц"
-    },
-    "aiCatBtn": "AI-категория",
-    "aiCatBusy": "Думаю..."
+    }
   },
   "quickNotes": {
     "eyebrow": "Быстрые заметки",
@@ -497,10 +495,7 @@
     "changePath": "Сменить папку",
     "noSavePathHint": "Папка сохранений не указана — без неё бэкап делать нечего. Укажите её, чтобы включить менеджер сохранений для этой игры.",
     "findSavePath": "Автопоиск",
-    "findingSavePath": "Ищем…",
-    "aiDescribe": "AI-описание",
-    "aiDescribing": "Пишу...",
-    "aiDescribeHint": "Сгенерировать короткое описание по названию"
+    "findingSavePath": "Ищем…"
   },
   "tools": {
     "eyebrow": "Мультитул",
@@ -696,14 +691,7 @@
     "expandGenres": "Показать все жанры",
     "collapseGenres": "Свернуть жанры",
     "searchGenre": "Фильтр жанров…",
-    "removeGenre": "нажмите, чтобы убрать",
-    "aiRecBtn": "Что почитать?",
-    "aiRecBusy": "Анализирую...",
-    "aiRecOff": "ИИ-рекомендации выключены — включите в переключателе выше",
-    "aiRecNotReady": "ИИ не готов: нет ключа DeepSeek или не запущена локальная модель",
-    "aiRecEmpty": "Сначала добавьте пару книг в избранное или закладки",
-    "aiRecNotFound": "Модель посоветовала книгу, но она не нашлась на Flibusta",
-    "aiRecFailed": "Не удалось получить рекомендацию"
+    "removeGenre": "нажмите, чтобы убрать"
   },
   "monitor": {
     "title": "Мониторинг",
@@ -798,10 +786,7 @@
     "speeds": "Пропускная способность",
     "levels": "Состояние",
     "controls": "Вентиляторы",
-    "data": "Данные",
-    "aiExplain": "Объяснить",
-    "aiExplaining": "Анализирую...",
-    "aiExplainFailed": "Не удалось получить объяснение"
+    "data": "Данные"
   },
   "voice": {
     "title": "Клонирование голоса",
@@ -979,10 +964,7 @@
     "noSupport": "Этот формат файла пока не поддерживается",
     "install": "Установить FFmpeg",
     "installing": "Установка FFmpeg…",
-    "downloading": "Скачивание FFmpeg… {p}%",
-    "aiSuggestBtn": "AI: подсказать формат",
-    "aiSuggestBusy": "Думаю...",
-    "aiSuggestFailed": "Не удалось получить подсказку"
+    "downloading": "Скачивание FFmpeg… {p}%"
   },
   "music": {
     "title": "Загрузка музыки",
@@ -1086,11 +1068,7 @@
       "modelUse": "Использовать «{model}»",
       "modelSaved": "Модель сохранена: {model}",
       "errModelName": "Сервис не принимает модель «{model}». Выберите модель из списка.",
-      "savedAuto": "Выбор сохраняется автоматически",
-      "summarize": "Резюме",
-      "summarizeHint": "ИИ: краткое резюме текущей заметки (DeepSeek API или локальная модель — см. переключатель)",
-      "summarizing": "Суммирую...",
-      "summarizeFailed": "Не удалось получить резюме"
+      "savedAuto": "Выбор сохраняется автоматически"
     },
     "title": "Моё пространство",
     "notes": "Заметки",
@@ -1413,14 +1391,7 @@
     "trackerPreset_rutracker": "RuTracker (нужен вход)",
     "trackerPreset_rutor": "RuTor (без входа)",
     "trackerPresetSwitched": "Трекер переключён",
-    "trackerNoLoginNeeded": "Этому трекеру вход не нужен: поиск и .torrent доступны анонимно",
-    "aiRecBtn": "Что посмотреть?",
-    "aiRecBusy": "Анализирую...",
-    "aiRecOff": "ИИ-рекомендации выключены — включите в переключателе выше",
-    "aiRecNotReady": "ИИ не готов: нет ключа DeepSeek или не запущена локальная модель",
-    "aiRecEmpty": "Сначала оцените или добавьте в список хотя бы пару фильмов",
-    "aiRecNotFound": "Модель посоветовала тайтл, но он не нашёлся в TMDB",
-    "aiRecFailed": "Не удалось получить рекомендацию"
+    "trackerNoLoginNeeded": "Этому трекеру вход не нужен: поиск и .torrent доступны анонимно"
   },
   "moviesSettings": {
     "language": "Язык метаданных",
@@ -2697,17 +2668,5 @@
       "lecture": "Лекция",
       "archive": "Веб-архив"
     }
-  },
-  "ai": {
-    "toggleLabel": "ИИ",
-    "modeApi": "API",
-    "modeLocal": "Локально",
-    "modeOff": "Выкл",
-    "activate": "Запустить",
-    "ready": "Готово",
-    "downloading": "Загрузка",
-    "notInstalled": "не скачана",
-    "willDownload": "будет скачано ~{mb} МБ",
-    "noApiKeyHint": "Нет ключа DeepSeek — добавьте его в Настройках (ИИ-чат)"
   }
 }

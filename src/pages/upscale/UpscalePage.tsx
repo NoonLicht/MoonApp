@@ -14,7 +14,6 @@ import {
   X,
 } from "lucide-react";
 import { Glass, Btn, Badge, SectionHead } from "@/components/ui";
-import { AiFeatureToggle } from "@/components/AiFeatureToggle";
 import { usePageActive, usePageBusy } from "@/components/Toolbar";
 import { useI18n } from "@/app/i18n";
 import { useContextMenu, copyToClipboard } from "@/components/ContextMenu";
@@ -1030,11 +1029,7 @@ export default function UpscalePage() {
 
   return (
     <div className="page up-page">
-      <SectionHead
-        eyebrow={t("up.eyebrow")}
-        title={t("up.title")}
-        action={<AiFeatureToggle feature="convert" />}
-      />
+      <SectionHead eyebrow={t("up.eyebrow")} title={t("up.title")} />
 
       <div className="up-grid">
         {/* --- Левая колонка: исходник и результат --- */}
