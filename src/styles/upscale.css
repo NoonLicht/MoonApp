@@ -1,15 +1,19 @@
 /* Страница «Апскейл медиа»: та же сетка и те же карточки, что у страницы
    сжатия видео (.cmp-grid/.cmp-left/.cmp-right/.cmp-fill/.cmp-card):
-   слева — исходник и результат, справа — карточка настроек, которая
-   прокручивается сама. */
-
+   слева — исходник и результат, справа — карточка настроек.
+   Раньше левая и правая колонки скроллились каждая по себе (высота ряда была
+   жёстко зажата под высоту окна) — окно с превью из-за этого могло показывать
+   картинку не целиком, а урезанной, с отдельным скроллом внутри своей карточки.
+   Теперь высота ряда считается по содержимому, а прокручивается страница
+   целиком (.up-page — overflow-y: auto), как единый скролл. */
 .up-page {
   display: flex;
   flex-direction: column;
   gap: 14px;
   flex: 1;
   min-height: 0;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
   /* Одна высота у всего, что стоит в ряду настроек: селект, поле ввода, кнопка,
      селектор модели. Значение то же, что у селекта в ui.css (min-height: 30px),
      поэтому контролы в одном ряду совпадают по высоте и ряд не «рвётся». */
@@ -29,7 +33,7 @@
 }
 .up-alert-warn {
   border-color: rgba(234, 179, 8, 0.35);
-  color: var(--text);
+  color: var(--text-primary);
 }
 /* Предупреждение в две строки: заголовок с кнопкой + причина отказа. */
 .up-alert-stack {
@@ -69,11 +73,8 @@
   /* Ширина правой колонки — ровно как на странице сжатия (.cmp-grid):
      minmax(360px, 440px), поэтому панель настроек не «худее» соседней страницы. */
   grid-template-columns: minmax(0, 1fr) minmax(360px, 440px);
-  grid-template-rows: minmax(0, 1fr);
   gap: 14px;
-  align-items: stretch;
-  min-height: 0;
-  flex: 1;
+  align-items: start;
 }
 .up-left,
 .up-right,
@@ -83,35 +84,17 @@
   gap: 10px;
   min-width: 0;
 }
-/* Колонки сжимаются и прокручиваются каждая по себе: у левой — медиа,
-   у правой — настройки (включая развёрнутые Pro). */
-.up-left,
-.up-right {
-  min-height: 0;
-}
 .up-left {
   align-self: stretch;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  padding-right: 2px;
-}
-.up-right {
-  overflow: hidden;
 }
 .up-side {
   gap: 10px;
 }
-/* Прокручиваемое содержимое правой колонки: карточка как .cmp-fill —
-   прокручивается сама, поэтому развёрнутые Pro-настройки не уезжают за экран. */
+/* Карточка настроек: как .cmp-fill на странице сжатия, но без собственного
+   скролла — колонки больше не зажаты в высоту окна (см. .up-page/.up-grid
+   выше), поэтому развёрнутые Pro-настройки просто удлиняют страницу, а не
+   уезжают в свой отдельный скролл-бокс. */
 .up-fill {
-  /* Карточка настроек растягивается до нижней границы колонки (flex: 1 1 auto),
-     а не заканчивается там, где кончился текст: пустого места под ней нет.
-     Настройки длиннее колонки — прокручиваются внутри карточки (min-height: 0 +
-     overflow-y: auto), поэтому развёрнутые Pro-настройки не уезжают за экран. */
-  /* flex: 1 1 auto; */
-  min-height: 0;
-  overflow-y: auto;
-  overscroll-behavior: contain;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -471,7 +454,7 @@
 }
 .up-pro-label {
   font-size: 12.5px;
-  color: var(--text);
+  color: var(--text-primary);
   min-width: 0;
 }
 /* Описание настройки — во всплывающей подсказке, а не текстом под подписью:
@@ -617,7 +600,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 12.5px;
-  color: var(--text);
+  color: var(--text-primary);
 }
 .up-batch-state {
   display: inline-flex;
@@ -669,7 +652,7 @@
 }
 .up-model-name > span:first-child {
   font-size: 12.5px;
-  color: var(--text);
+  color: var(--text-primary);
 }
 
 /* ---------------- Селектор модели (вместо системного select) ---------------- */
@@ -689,16 +672,16 @@
   box-sizing: border-box;
   padding: 0 9px;
   border-radius: 9px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--glass-border);
   background: var(--bg-soft, rgba(255, 255, 255, 0.03));
-  color: var(--text);
+  color: var(--text-primary);
   cursor: pointer;
   font: inherit;
   font-size: 12.5px;
   text-align: left;
 }
 .up-pick-btn.is-open {
-  border-color: var(--accent);
+  border-color: var(--amber);
 }
 .up-pick-cur {
   display: flex;
@@ -742,8 +725,8 @@
   max-height: min(50vh, 340px);
   padding: 8px;
   border-radius: 10px;
-  border: 1px solid var(--line);
-  background: var(--panel, #1a1b20);
+  border: 1px solid var(--glass-border);
+  background: var(--surface-solid);
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
 }
 .up-pick-head {
@@ -760,7 +743,7 @@
   height: 28px;
   padding: 0 7px;
   border-radius: 7px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--glass-border);
   background: rgba(255, 255, 255, 0.02);
 }
 .up-pick-search .text-input {
@@ -787,7 +770,7 @@
 .up-pick-sep {
   width: 1px;
   height: 14px;
-  background: var(--line);
+  background: var(--glass-border);
 }
 .up-pick-list {
   display: flex;
@@ -808,7 +791,7 @@
   border-radius: 7px;
   border: 1px solid transparent;
   background: rgba(255, 255, 255, 0.025);
-  color: var(--text);
+  color: var(--text-primary);
   cursor: pointer;
   font: inherit;
   text-align: left;
@@ -816,10 +799,10 @@
   overflow: hidden;
 }
 .up-pick-row:hover {
-  border-color: var(--line);
+  border-color: var(--glass-border);
 }
 .up-pick-row.is-cur {
-  border-color: var(--accent);
+  border-color: var(--amber);
 }
 /* Не скачана: имя приглушено — видно без значков, что модель ещё качать. */
 .up-pick-row.is-missing .up-pick-row-name {
@@ -848,9 +831,9 @@
   height: 26px;
   padding: 0 10px;
   border-radius: 8px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--glass-border);
   background: rgba(255, 255, 255, 0.03);
-  color: var(--text);
+  color: var(--text-primary);
   cursor: pointer;
   font: inherit;
   font-size: 11.5px;
@@ -862,7 +845,8 @@
 /* ---------------- Адаптив ---------------- */
 /* Порог тот же, что у страницы сжатия (.cmp-grid @media 980px): обе страницы
    переходят в одну колонку одновременно, поэтому «правое окно» ведёт себя
-   одинаково. */
+   одинаково. Обе колонки уже без фиксированной высоты (см. .up-grid выше),
+   поэтому здесь достаточно просто сложить их одна под другой. */
 @media (max-width: 980px) {
   .up-grid {
     grid-template-columns: minmax(0, 1fr);

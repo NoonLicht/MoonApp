@@ -10,6 +10,13 @@ import path from "path";
  * Растягивает её `flex: 1 1 auto` (basis auto — не «схлопывается» в одноколоночной
  * раскладке), а длинные настройки остаются внутри карточки за счёт
  * `min-height: 0` + `overflow-y: auto`.
+ *
+ * На странице апскейла это позже стало проблемой: колонки были зажаты в
+ * высоту окна и каждая скроллилась сама по себе — окно предпросмотра могло
+ * показывать картинку не целиком. Там сетка/колонки/карточка настроек больше
+ * не растягиваются и не скроллятся отдельно — прокручивается вся страница
+ * (см. `.up-page { overflow-y: auto }`). Страница сжатия (.cmp-*) не менялась
+ * и сохраняет старое поведение.
  */
 const root = process.cwd();
 const read = (p: string): string => fs.readFileSync(path.join(root, p), "utf8");
@@ -17,24 +24,18 @@ const up: string = read("src/styles/upscale.css");
 const cmp: string = read("src/styles/pages.css");
 
 describe("правая карточка настроек тянется до низа", () => {
-  it("апскейл: .up-fill растягивается и прокручивается сам", () => {
-    expect(up).toMatch(/\.up-fill\s*\{[^}]*flex:\s*1 1 auto/s);
-    expect(up).toMatch(/\.up-fill\s*\{[^}]*min-height:\s*0/s);
-    expect(up).toMatch(/\.up-fill\s*\{[^}]*overflow-y:\s*auto/s);
-    // Высоту даёт колонка: она во всю строку сетки и сама не прокручивается.
-    expect(up).toMatch(/\.up-right\s*\{[^}]*overflow:\s*hidden/s);
+  it("апскейл: страница скроллится целиком, колонки не зажаты в высоту окна", () => {
+    expect(up).toMatch(/\.up-page\s*\{[^}]*overflow-y:\s*auto/s);
+    expect(up).not.toMatch(/\.up-fill\s*\{[^}]*overflow-y:\s*auto/s);
+    expect(up).not.toMatch(/\.up-right\s*\{[^}]*overflow:\s*hidden/s);
+    expect(up).not.toMatch(/\.up-grid\s*\{[^}]*flex:\s*1/s);
   });
 
-  it("сжатие: .cmp-fill растягивается так же", () => {
+  it("сжатие: .cmp-fill растягивается и прокручивается сам (не менялось)", () => {
     expect(cmp).toMatch(/\.cmp-fill\s*\{[^}]*flex:\s*1 1 auto/s);
     expect(cmp).toMatch(/\.cmp-fill\s*\{[^}]*min-height:\s*0/s);
     expect(cmp).toMatch(/\.cmp-fill\s*\{[^}]*overflow-y:\s*auto/s);
     expect(cmp).toMatch(/\.cmp-right\s*\{[^}]*overflow:\s*hidden/s);
-  });
-
-  it("сетки обеих страниц отдают строке всю высоту страницы", () => {
-    expect(up).toMatch(/\.up-grid\s*\{[^}]*flex:\s*1/s);
-    expect(up).toMatch(/\.up-grid\s*\{[^}]*min-height:\s*0/s);
     expect(cmp).toMatch(/\.cmp-grid\s*\{[^}]*flex:\s*1/s);
     expect(cmp).toMatch(/\.cmp-grid\s*\{[^}]*min-height:\s*0/s);
   });
