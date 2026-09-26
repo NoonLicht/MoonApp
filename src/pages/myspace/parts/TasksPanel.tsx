@@ -36,6 +36,15 @@ import {
  */
 type NaturalDateMatch = { phrase: string; date: Date; hasTime: boolean };
 
+/** "YYYY-MM-DD" по локальным компонентам даты — toISOString() тут не годится:
+ *  он конвертирует в UTC, и полночь по местному времени в часовых поясах
+ *  восточнее UTC (например Москва) откатывается на предыдущий день. */
+function formatLocalDateOnly(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
+    d.getDate(),
+  ).padStart(2, "0")}`;
+}
+
 const REL_DAY_WORDS: { words: string[]; days: number }[] = [
   { words: ["day after tomorrow", "послезавтра", "pasado mañana", "après-demain", "后天", "بعد غد"], days: 2 },
   { words: ["tomorrow", "завтра", "mañana", "demain", "明天", "غدا", "غداً"], days: 1 },
@@ -60,17 +69,48 @@ const RU_NEXT_PREFIX = [
   "следующая",
   "следующая",
 ];
+/* "в/во + винительный падеж" — "в среду", "во вторник", "в пятницу". */
+const RU_ACCUSATIVE = [
+  "в воскресенье",
+  "в понедельник",
+  "во вторник",
+  "в среду",
+  "в четверг",
+  "в пятницу",
+  "в субботу",
+];
 
-/** Все варианты фраз "следующий понедельник" и т.п. по языкам, отсортированные
- *  от самых длинных к самым коротким (чтобы не перепутать префикс с целой фразой). */
+/** Все варианты фраз "следующий понедельник"/"в среду"/голых названий дней
+ *  недели по языкам, отсортированные от самых длинных к самым коротким (чтобы
+ *  не перепутать префикс с целой фразой). Голое название (без "следующий")
+ *  тоже считается ближайшим будущим этим днём недели. */
 function buildWeekdayPhrases(): { phrase: string; day: number }[] {
   const out: { phrase: string; day: number }[] = [];
-  WEEKDAY_NAMES.en.forEach((w, i) => out.push({ phrase: `next ${w}`, day: i }));
-  WEEKDAY_NAMES.ru.forEach((w, i) => out.push({ phrase: `${RU_NEXT_PREFIX[i]} ${w}`, day: i }));
-  WEEKDAY_NAMES.es.forEach((w, i) => out.push({ phrase: `próximo ${w}`, day: i }));
-  WEEKDAY_NAMES.fr.forEach((w, i) => out.push({ phrase: `${w} prochain`, day: i }));
-  WEEKDAY_NAMES.zh.forEach((w, i) => out.push({ phrase: `下${w}`, day: i }));
-  WEEKDAY_NAMES.ar.forEach((w, i) => out.push({ phrase: `${w} القادم`, day: i }));
+  WEEKDAY_NAMES.en.forEach((w, i) => {
+    out.push({ phrase: `next ${w}`, day: i });
+    out.push({ phrase: w, day: i });
+  });
+  WEEKDAY_NAMES.ru.forEach((w, i) => {
+    out.push({ phrase: `${RU_NEXT_PREFIX[i]} ${w}`, day: i });
+    out.push({ phrase: RU_ACCUSATIVE[i], day: i });
+    out.push({ phrase: w, day: i });
+  });
+  WEEKDAY_NAMES.es.forEach((w, i) => {
+    out.push({ phrase: `próximo ${w}`, day: i });
+    out.push({ phrase: w, day: i });
+  });
+  WEEKDAY_NAMES.fr.forEach((w, i) => {
+    out.push({ phrase: `${w} prochain`, day: i });
+    out.push({ phrase: w, day: i });
+  });
+  WEEKDAY_NAMES.zh.forEach((w, i) => {
+    out.push({ phrase: `下${w}`, day: i });
+    out.push({ phrase: w, day: i });
+  });
+  WEEKDAY_NAMES.ar.forEach((w, i) => {
+    out.push({ phrase: `${w} القادم`, day: i });
+    out.push({ phrase: w, day: i });
+  });
   return out.sort((a, b) => b.phrase.length - a.phrase.length);
 }
 const WEEKDAY_PHRASES = buildWeekdayPhrases();
@@ -81,9 +121,10 @@ const REL_PHRASES = REL_DAY_WORDS.flatMap((g) => g.words.map((w) => ({ phrase: w
 /** Время: "15:00", "15.00", "3pm", "3 pm". */
 const TIME_RE = /\b([01]?\d|2[0-3])[:.]([0-5]\d)\b|\b(1[0-2]|0?[1-9])\s?(am|pm)\b/i;
 /** Время без минут с локализованным предлогом: "в 15", "at 15", "a las 15",
- *  "à 15h", "15点", "الساعة 15". */
+ *  "à 15h", "15点", "الساعة 15". \b не годится — для кириллицы/арабского оно
+ *  не является "словесным" символом, поэтому границу считаем по пробелам. */
 const TIME_HOUR_ONLY_RE =
-  /\b(?:в|at|a las|à|الساعة)\s?([01]?\d|2[0-3])\s?h?\b|\b([01]?\d|2[0-3])\s?点/i;
+  /(?:^|\s)(?:в|at|a las|à|الساعة)\s?([01]?\d|2[0-3])\s?h?(?=\s|$)|(?:^|\s)([01]?\d|2[0-3])\s?点/i;
 
 function parseNaturalDate(text: string): NaturalDateMatch | null {
   const lower = text.toLowerCase();
@@ -522,7 +563,7 @@ const TasksPanel: React.FC<TasksPanelProps> = ({ onOpenNote }) => {
 
       const natural = parseNaturalDate(title);
       if (natural) {
-        dueDate = natural.hasTime ? natural.date.toISOString() : natural.date.toISOString().split("T")[0];
+        dueDate = natural.hasTime ? natural.date.toISOString() : formatLocalDateOnly(natural.date);
         title = title.replace(natural.phrase, "").trim();
       }
 
@@ -2204,7 +2245,8 @@ const TasksPanel: React.FC<TasksPanelProps> = ({ onOpenNote }) => {
      ================================================================ */
   function renderCalendarView() {
     const daysInMonth = new Date(calendarYear, calendarMonth + 1, 0).getDate();
-    const firstDayOfWeek = new Date(calendarYear, calendarMonth, 1).getDay();
+    /* Неделя начинается с понедельника: getDay() даёт 0=вс..6=сб, сдвигаем на пн=0. */
+    const firstDayOfWeek = (new Date(calendarYear, calendarMonth, 1).getDay() + 6) % 7;
     const monthNames = [
       "January",
       "February",
@@ -2242,7 +2284,7 @@ const TasksPanel: React.FC<TasksPanelProps> = ({ onOpenNote }) => {
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 2 }}>
-          {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
+          {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
             <div
               key={d}
               style={{
