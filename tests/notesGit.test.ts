@@ -132,3 +132,100 @@ describe("server/notesGit — sync() без remoteUrl честно отказы�
     expect(r.error).toBe("remote_not_set");
   });
 });
+
+describe("server/notesGit — история, дифф и откат (панель «как на GitHub»)", () => {
+  function freshEngine(): typeof import("../server/notesGit") {
+    const s = fs.mkdtempSync(path.join(os.tmpdir(), "pa-notesgit-hist-"));
+    process.env.MOONAPP_STORAGE = s;
+    for (const key of Object.keys(require.cache)) {
+      if (key.includes(path.join("server"))) delete require.cache[key];
+    }
+    return req("../server/notesGit");
+  }
+
+  it("log() пуст, пока нет ни одного коммита", async () => {
+    const fresh = freshEngine();
+    await fresh.status(); // инициализирует пустой репозиторий
+    expect(await fresh.log()).toEqual([]);
+  });
+
+  it("diffCommit() строит корректный дифф двух версий файла, restoreToCommit() честно возвращает старую версию", async () => {
+    const fresh = freshEngine();
+    const vault = path.join(process.env.MOONAPP_STORAGE!, "vault");
+    await fresh.status(); // .git появляется
+
+    const git = req("isomorphic-git");
+    const fsNode = req("fs") as typeof fs;
+    fsNode.mkdirSync(path.join(vault, "notes"), { recursive: true });
+    const notePath = path.join(vault, "notes", "a.md");
+
+    fsNode.writeFileSync(notePath, "первая версия\n");
+    await git.add({ fs: fsNode, dir: vault, filepath: "notes/a.md" });
+    const oid1 = await git.commit({
+      fs: fsNode,
+      dir: vault,
+      message: "v1",
+      author: { name: "T", email: "t@t" },
+    });
+
+    fsNode.writeFileSync(notePath, "первая версия\nвторая строка\n");
+    await git.add({ fs: fsNode, dir: vault, filepath: "notes/a.md" });
+    const oid2 = await git.commit({
+      fs: fsNode,
+      dir: vault,
+      message: "v2",
+      author: { name: "T", email: "t@t" },
+    });
+
+    const entries = await fresh.log();
+    expect(entries.map((e) => e.oid)).toEqual([oid2, oid1]);
+    expect(entries[0].message).toBe("v2");
+
+    const diff = await fresh.diffCommit(oid2);
+    expect(diff.files).toHaveLength(1);
+    expect(diff.files[0].path).toBe("notes/a.md");
+    expect(diff.files[0].status).toBe("modified");
+    expect(diff.files[0].oldText).toBe("первая версия\n");
+    expect(diff.files[0].newText).toBe("первая версия\nвторая строка\n");
+
+    const diffRoot = await fresh.diffCommit(oid1);
+    expect(diffRoot.files[0].status).toBe("added");
+    expect(diffRoot.files[0].oldText).toBeNull();
+
+    const restore = await fresh.restoreToCommit(oid1);
+    expect(restore.ok).toBe(true);
+    expect(fsNode.readFileSync(notePath, "utf8")).toBe("первая версия\n");
+  });
+
+  it("restoreToCommit() удаляет файлы, которых не было в целевом коммите", async () => {
+    const fresh = freshEngine();
+    const vault = path.join(process.env.MOONAPP_STORAGE!, "vault");
+    await fresh.status();
+
+    const git = req("isomorphic-git");
+    const fsNode = req("fs") as typeof fs;
+    fsNode.mkdirSync(path.join(vault, "notes"), { recursive: true });
+    fsNode.writeFileSync(path.join(vault, "notes", "keep.md"), "keep\n");
+    await git.add({ fs: fsNode, dir: vault, filepath: "notes/keep.md" });
+    const oid1 = await git.commit({
+      fs: fsNode,
+      dir: vault,
+      message: "only keep.md",
+      author: { name: "T", email: "t@t" },
+    });
+
+    fsNode.writeFileSync(path.join(vault, "notes", "extra.md"), "extra\n");
+    await git.add({ fs: fsNode, dir: vault, filepath: "notes/extra.md" });
+    await git.commit({
+      fs: fsNode,
+      dir: vault,
+      message: "add extra.md",
+      author: { name: "T", email: "t@t" },
+    });
+    expect(fsNode.existsSync(path.join(vault, "notes", "extra.md"))).toBe(true);
+
+    await fresh.restoreToCommit(oid1);
+    expect(fsNode.existsSync(path.join(vault, "notes", "extra.md"))).toBe(false);
+    expect(fsNode.existsSync(path.join(vault, "notes", "keep.md"))).toBe(true);
+  });
+});

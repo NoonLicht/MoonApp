@@ -1724,8 +1724,30 @@
 }
 
 /* --- Git-синхронизация заметок (GitSyncView) --- */
+.git-sync-layout {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+.git-sync-col-left {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1 1 380px;
+  max-width: 460px;
+}
+.git-sync-col-right {
+  display: flex;
+  flex-direction: column;
+  flex: 2 1 420px;
+  min-width: 340px;
+}
 .git-sync-card {
   max-width: 560px;
+}
+.git-sync-col-left .git-sync-card {
+  max-width: none;
 }
 .git-sync-section-title {
   display: flex;
@@ -1747,4 +1769,115 @@
   align-items: center;
   gap: 6px;
   font-size: 13px;
+}
+
+/* --- Правая панель: история коммитов + дифф + откат --- */
+.git-sync-history {
+  max-width: none;
+}
+.git-sync-commit-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 220px;
+  overflow: auto;
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  padding: 4px;
+}
+.git-sync-commit-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+  padding: 6px 8px;
+  border-radius: 7px;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+.git-sync-commit-item:hover {
+  background: var(--track, rgba(255, 255, 255, 0.04));
+}
+.git-sync-commit-item.is-active {
+  background: var(--amber-soft);
+}
+.git-sync-commit-msg {
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.git-sync-diff-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-top: 1px solid var(--glass-border);
+  padding-top: 8px;
+}
+.git-sync-diff-toolbar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.git-sync-diff-files {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 420px;
+  overflow: auto;
+}
+.git-sync-diff-file {
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.git-sync-diff-file-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 6px 8px;
+  background: var(--track, rgba(255, 255, 255, 0.03));
+  border: none;
+  color: var(--text-primary);
+  font-size: 12.5px;
+  cursor: pointer;
+  text-align: left;
+}
+.git-sync-diff-file-path {
+  font-family: var(--font-mono);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.git-sync-diff-lines {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  max-height: 260px;
+  overflow: auto;
+}
+.git-sync-diff-line {
+  display: flex;
+  gap: 6px;
+  padding: 0 8px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.git-sync-diff-line.is-add {
+  color: var(--success);
+  background: rgba(63, 199, 171, 0.08);
+}
+.git-sync-diff-line.is-del {
+  color: var(--coral);
+  background: rgba(234, 107, 107, 0.08);
+}
+.git-sync-diff-line.is-same {
+  color: var(--text-secondary);
+}
+.git-sync-diff-mark {
+  flex-shrink: 0;
+  opacity: 0.7;
 }

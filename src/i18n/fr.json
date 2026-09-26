@@ -313,7 +313,20 @@
     "testConnection": "Tester la connexion",
     "testing": "Test en cours…",
     "testOkPrivate": "Connexion confirmée avec le jeton — l'accès au dépôt privé fonctionne ({n} branches)",
-    "testOkPublic": "Le dépôt a répondu sans jeton — probablement public ({n} branches)"
+    "testOkPublic": "Le dépôt a répondu sans jeton — probablement public ({n} branches)",
+    "sectionHistory": "Historique et modifications",
+    "refreshHistory": "Actualiser l'historique",
+    "multiDeviceHint": "Plusieurs appareils : sur l'un, écrivez et cliquez sur « Synchroniser » — les fichiers partent vers le dépôt ; sur l'autre, « Synchroniser » récupère d'abord les changements de l'autre appareil, puis envoie les vôtres. Ici : l'historique des commits, le diff de chacun et la restauration de n'importe quelle version.",
+    "historyLoading": "Chargement de l'historique…",
+    "historyEmpty": "Aucun commit pour l'instant — synchronisez au moins une fois.",
+    "mergeCommit": "fusion",
+    "restoreThis": "Restaurer cette version",
+    "restoring": "Restauration…",
+    "restoreConfirm": "Les fichiers de storage/vault seront remplacés par le contenu de ce commit. L'historique n'est pas réécrit — ensuite, cliquez sur « Synchroniser » pour envoyer la version restaurée comme nouveau commit. Continuer ?",
+    "restoreDone": "{n} fichiers restaurés. Cliquez sur « Synchroniser » pour l'envoyer comme nouvelle version.",
+    "diffLoading": "Calcul des modifications…",
+    "diffEmpty": "Aucune modification textuelle dans ce commit",
+    "binaryFile": "Fichier binaire — diff ligne à ligne indisponible"
   },
   "bookmarks": {
     "title": "Favoris",

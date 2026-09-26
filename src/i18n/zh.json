@@ -313,7 +313,20 @@
     "testConnection": "测试连接",
     "testing": "测试中…",
     "testOkPrivate": "已通过令牌确认连接 — 私有仓库访问正常（{n} 个分支）",
-    "testOkPublic": "仓库无需令牌即可响应 — 可能是公开仓库（{n} 个分支）"
+    "testOkPublic": "仓库无需令牌即可响应 — 可能是公开仓库（{n} 个分支）",
+    "sectionHistory": "历史与更改",
+    "refreshHistory": "刷新历史",
+    "multiDeviceHint": "多设备协作：在一台设备上编写并点击「同步」— 文件会推送到仓库；在另一台设备上点击「同步」会先拉取对方的更改，再推送自己的。这里显示提交历史、每次的差异，以及恢复到任意版本。",
+    "historyLoading": "正在加载历史…",
+    "historyEmpty": "暂无提交 — 请先同步一次。",
+    "mergeCommit": "合并",
+    "restoreThis": "恢复此版本",
+    "restoring": "正在恢复…",
+    "restoreConfirm": "storage/vault 中的文件将被替换为此提交的内容。历史记录不会被重写 — 之后请点击「同步」，将恢复的版本作为新提交发送。是否继续？",
+    "restoreDone": "已恢复 {n} 个文件。点击「同步」将其作为新版本发送。",
+    "diffLoading": "正在计算更改…",
+    "diffEmpty": "此提交没有文本更改",
+    "binaryFile": "二进制文件 — 无法逐行比较"
   },
   "bookmarks": {
     "title": "书签",

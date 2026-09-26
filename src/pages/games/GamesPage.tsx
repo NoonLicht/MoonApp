@@ -201,6 +201,7 @@ export default function GamesPage() {
         }
       />
 
+      <div className="page-scroll-body">
       {scanMsg && <div className="muted-sm">{scanMsg}</div>}
       {launchError && (
         <Glass className="source-placeholder" style={{ borderColor: "var(--coral)" }}>
@@ -388,6 +389,7 @@ export default function GamesPage() {
             </div>
           </div>
         ))}
+      </div>
       </div>
 
       {/* Менеджер сохранений — модалка поверх страницы, простая, без порталов (страница не скроллит под ней). */}

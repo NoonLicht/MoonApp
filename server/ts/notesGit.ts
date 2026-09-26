@@ -289,3 +289,144 @@ export async function status(): Promise<{ dirty: boolean; files: number }> {
   const dirtyFiles = matrix.filter(([, head, workdir, stage]) => !(head === workdir && workdir === stage));
   return { dirty: dirtyFiles.length > 0, files: dirtyFiles.length };
 }
+
+export interface LogEntry {
+  oid: string;
+  message: string;
+  author: string;
+  timestamp: number;
+  isMerge: boolean;
+}
+
+/** История коммитов (правая панель UI, «как на GitHub») — только чтение,
+ * ничего не трогает на диске. */
+export async function log(limit = 50): Promise<LogEntry[]> {
+  await ensureRepo();
+  try {
+    const commits = await git.log({ fs, dir: REPO_DIR, depth: limit });
+    return commits.map((c) => ({
+      oid: c.oid,
+      message: c.commit.message.trim(),
+      author: c.commit.author.name,
+      timestamp: c.commit.author.timestamp * 1000,
+      isMerge: (c.commit.parent || []).length > 1,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+/** Множество файлов (blob-путей) в дереве коммита. */
+async function listTreeFiles(oid: string): Promise<Set<string>> {
+  const files = new Set<string>();
+  await git.walk({
+    fs,
+    dir: REPO_DIR,
+    trees: [git.TREE({ ref: oid })],
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    map: async (filepath: string, [entry]: any[]) => {
+      if (!entry) return;
+      if ((await entry.type()) === "blob") files.add(filepath);
+    },
+  });
+  return files;
+}
+
+/** Текст файла в указанном коммите, либо null, если файла там нет или он
+ * не текстовый (не пытаемся диффать бинарники построчно). */
+async function readTextAt(oid: string, filepath: string): Promise<string | null> {
+  try {
+    const { blob } = await git.readBlob({ fs, dir: REPO_DIR, oid, filepath });
+    const buf = Buffer.from(blob);
+    // Грубая проверка на бинарник: нулевой байт в первых 8000 байтах (тот же
+    // эвристический порог, что использует сам git).
+    if (buf.subarray(0, 8000).includes(0)) return null;
+    return buf.toString("utf8");
+  } catch {
+    return null;
+  }
+}
+
+export interface DiffFileEntry {
+  path: string;
+  status: "added" | "modified" | "deleted";
+  oldText: string | null;
+  newText: string | null;
+  binary: boolean;
+}
+
+export interface DiffResult {
+  oid: string;
+  message: string;
+  files: DiffFileEntry[];
+}
+
+/** Постраничный дифф одного коммита относительно первого родителя (для root-
+ * коммита — относительно пустого дерева). Возвращает старый/новый текст
+ * каждого изменённого файла — построчный дифф (LCS) считает фронт, тем же
+ * алгоритмом, что и Diff-инструмент на странице Tools. */
+export async function diffCommit(oid: string): Promise<DiffResult> {
+  await ensureRepo();
+  const commits = await git.log({ fs, dir: REPO_DIR, depth: 1, ref: oid });
+  const commit = commits[0];
+  if (!commit) throw new Error("commit_not_found");
+  const parentOid = commit.commit.parent?.[0] || null;
+
+  const newFiles = await listTreeFiles(oid);
+  const oldFiles = parentOid ? await listTreeFiles(parentOid) : new Set<string>();
+  const allPaths = new Set([...newFiles, ...oldFiles]);
+
+  const files: DiffFileEntry[] = [];
+  for (const p of allPaths) {
+    const inNew = newFiles.has(p);
+    const inOld = oldFiles.has(p);
+    const status: DiffFileEntry["status"] = !inOld ? "added" : !inNew ? "deleted" : "modified";
+    const newText = inNew ? await readTextAt(oid, p) : null;
+    const oldText = inOld && parentOid ? await readTextAt(parentOid, p) : null;
+    if (status === "modified" && oldText === newText) continue; // разный режим файла, тот же текст
+    const binary = (inNew && newText === null) || (inOld && oldText === null);
+    files.push({ path: p, status, oldText, newText, binary });
+  }
+  files.sort((a, b) => a.path.localeCompare(b.path));
+  return { oid, message: commit.commit.message.trim(), files };
+}
+
+/**
+ * «Откатиться»: переносит файлы vault в состояние указанного коммита —
+ * НЕ трогая историю (никакого force-push/reset --hard над публичной веткой).
+ * Работает как git revert по смыслу, а не git reset: перезаписывает рабочую
+ * копию, а закоммитить и отправить результат — обычный «Синхронизировать»,
+ * который пользователь жмёт сам. Это специально безопасно для сценария
+ * "несколько устройств": никогда не переписывает уже отправленную историю.
+ */
+export async function restoreToCommit(oid: string): Promise<{ ok: boolean; files: number }> {
+  await ensureRepo();
+  const targetFiles = await listTreeFiles(oid);
+  let currentFiles: Set<string>;
+  try {
+    currentFiles = await listTreeFiles("HEAD");
+  } catch {
+    currentFiles = new Set();
+  }
+
+  let changed = 0;
+  for (const p of targetFiles) {
+    const { blob } = await git.readBlob({ fs, dir: REPO_DIR, oid, filepath: p });
+    const dest = path.join(REPO_DIR, p);
+    fs.mkdirSync(path.dirname(dest), { recursive: true });
+    fs.writeFileSync(dest, Buffer.from(blob));
+    changed++;
+  }
+  for (const p of currentFiles) {
+    if (!targetFiles.has(p)) {
+      try {
+        fs.unlinkSync(path.join(REPO_DIR, p));
+        changed++;
+      } catch {
+        /* уже нет на диске */
+      }
+    }
+  }
+  logger.action("notesGit.restore", { oid, files: changed });
+  return { ok: true, files: changed };
+}

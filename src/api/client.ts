@@ -44,6 +44,9 @@ import type {
   NotesGitConfig,
   NotesGitSyncResult,
   NotesGitTestResult,
+  NotesGitLogEntry,
+  NotesGitDiffResult,
+  NotesGitRestoreResult,
   AppTimeToday,
   AppTimeHistoryDay,
   VideoInfo,
@@ -1562,6 +1565,9 @@ export const api = {
   notesGitStatus: () => req<{ dirty: boolean; files: number }>("GET", "/notesgit/status"),
   notesGitSync: () => req<NotesGitSyncResult>("POST", "/notesgit/sync"),
   notesGitTest: () => req<NotesGitTestResult>("POST", "/notesgit/test"),
+  notesGitLog: (limit = 50) => req<NotesGitLogEntry[]>("GET", `/notesgit/log?limit=${limit}`),
+  notesGitDiff: (oid: string) => req<NotesGitDiffResult>("GET", `/notesgit/diff/${oid}`),
+  notesGitRestore: (oid: string) => req<NotesGitRestoreResult>("POST", "/notesgit/restore", { oid }),
 
   // --- Игры (лаунчер) ---
   gamesList: () => req<GameEntry[]>("GET", "/games"),

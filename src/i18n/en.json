@@ -313,7 +313,20 @@
     "testConnection": "Test connection",
     "testing": "Testing…",
     "testOkPrivate": "Connection confirmed with the token — private repo access works ({n} branches)",
-    "testOkPublic": "The repo responded without a token — likely public ({n} branches)"
+    "testOkPublic": "The repo responded without a token — likely public ({n} branches)",
+    "sectionHistory": "History & changes",
+    "refreshHistory": "Refresh history",
+    "multiDeviceHint": "Multi-device workflow: on one device write and press \"Sync\" — files go to the repo; on another, \"Sync\" first pulls the other device's changes, then pushes yours. Here — the commit history, each one's diff, and restoring any version.",
+    "historyLoading": "Loading history…",
+    "historyEmpty": "No commits yet — sync at least once.",
+    "mergeCommit": "merge",
+    "restoreThis": "Restore this version",
+    "restoring": "Restoring…",
+    "restoreConfirm": "Files in storage/vault will be replaced with this commit's content. History is not rewritten — afterwards press \"Sync\" to send the restored version as a new commit. Continue?",
+    "restoreDone": "Restored {n} files. Press \"Sync\" to send this as a new version.",
+    "diffLoading": "Computing changes…",
+    "diffEmpty": "No text changes in this commit",
+    "binaryFile": "Binary file — line diff unavailable"
   },
   "bookmarks": {
     "title": "Bookmarks",

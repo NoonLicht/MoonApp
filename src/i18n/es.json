@@ -313,7 +313,20 @@
     "testConnection": "Probar conexión",
     "testing": "Probando…",
     "testOkPrivate": "Conexión confirmada con el token — el acceso al repositorio privado funciona ({n} ramas)",
-    "testOkPublic": "El repositorio respondió sin token — probablemente sea público ({n} ramas)"
+    "testOkPublic": "El repositorio respondió sin token — probablemente sea público ({n} ramas)",
+    "sectionHistory": "Historial y cambios",
+    "refreshHistory": "Actualizar historial",
+    "multiDeviceHint": "Varios dispositivos: en uno escribe y pulsa «Sincronizar» — los archivos van al repositorio; en otro, «Sincronizar» primero trae los cambios del otro dispositivo y luego envía los tuyos. Aquí: el historial de commits, el diff de cada uno y restaurar cualquier versión.",
+    "historyLoading": "Cargando historial…",
+    "historyEmpty": "Todavía no hay commits — sincroniza al menos una vez.",
+    "mergeCommit": "fusión",
+    "restoreThis": "Restaurar esta versión",
+    "restoring": "Restaurando…",
+    "restoreConfirm": "Los archivos en storage/vault se reemplazarán por el contenido de este commit. El historial no se reescribe — después pulsa «Sincronizar» para enviar la versión restaurada como un nuevo commit. ¿Continuar?",
+    "restoreDone": "Restaurados {n} archivos. Pulsa «Sincronizar» para enviarlo como una nueva versión.",
+    "diffLoading": "Calculando cambios…",
+    "diffEmpty": "Sin cambios de texto en este commit",
+    "binaryFile": "Archivo binario — diff por líneas no disponible"
   },
   "bookmarks": {
     "title": "Marcadores",

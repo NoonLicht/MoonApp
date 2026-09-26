@@ -606,6 +606,33 @@ export interface NotesGitTestResult {
   error?: string;
 }
 
+export interface NotesGitLogEntry {
+  oid: string;
+  message: string;
+  author: string;
+  timestamp: number;
+  isMerge: boolean;
+}
+
+export interface NotesGitDiffFile {
+  path: string;
+  status: "added" | "modified" | "deleted";
+  oldText: string | null;
+  newText: string | null;
+  binary: boolean;
+}
+
+export interface NotesGitDiffResult {
+  oid: string;
+  message: string;
+  files: NotesGitDiffFile[];
+}
+
+export interface NotesGitRestoreResult {
+  ok: boolean;
+  files: number;
+}
+
 /* --------------------- Трекер времени за приложениями ------------------------ */
 
 export interface AppTimeToday {
