@@ -483,6 +483,10 @@
   "tools": {
     "eyebrow": "أداة متعددة",
     "title": "الأدوات",
+    "curlTitle": "curl ← كود",
+    "curlHint": "الصق أمر curl — يُبنى الكود باللغة المختارة فورًا (curlconverter، نفس محرك curlconverter.com).",
+    "curlLanguage": "اللغة",
+    "curlConverting": "جارٍ التحويل…",
     "tab_json": "JSON",
     "tab_diff": "المقارنة",
     "tab_regex": "تعبير نمطي",

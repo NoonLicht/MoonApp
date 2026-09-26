@@ -483,6 +483,10 @@
   "tools": {
     "eyebrow": "Multi-outil",
     "title": "Outils",
+    "curlTitle": "curl → code",
+    "curlHint": "Collez une commande curl — le code dans le langage choisi se génère aussitôt (curlconverter, comme sur curlconverter.com).",
+    "curlLanguage": "Langage",
+    "curlConverting": "Conversion…",
     "tab_json": "JSON",
     "tab_diff": "Diff",
     "tab_regex": "Regex",

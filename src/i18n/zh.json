@@ -483,6 +483,10 @@
   "tools": {
     "eyebrow": "多功能工具",
     "title": "工具",
+    "curlTitle": "curl → 代码",
+    "curlHint": "粘贴 curl 命令 — 立即生成所选语言的代码(curlconverter,与 curlconverter.com 相同)。",
+    "curlLanguage": "语言",
+    "curlConverting": "转换中…",
     "tab_json": "JSON",
     "tab_diff": "对比",
     "tab_regex": "正则表达式",

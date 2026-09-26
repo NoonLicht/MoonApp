@@ -483,6 +483,10 @@
   "tools": {
     "eyebrow": "Мультитул",
     "title": "Инструменты",
+    "curlTitle": "curl → код",
+    "curlHint": "Вставьте команду curl — код на выбранном языке соберётся сразу (curlconverter, как на curlconverter.com).",
+    "curlLanguage": "Язык",
+    "curlConverting": "Преобразуем…",
     "tab_json": "JSON",
     "tab_diff": "Diff",
     "tab_regex": "Regex",

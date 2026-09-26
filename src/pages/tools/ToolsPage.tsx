@@ -10,10 +10,134 @@ import {
   Copy,
   AlertTriangle,
   RotateCcw,
+  Terminal,
 } from "lucide-react";
 import { Glass, Btn, SectionHead, Field, Select, Badge } from "@/components/ui";
 import { copyToClipboard } from "@/components/ContextMenu";
 import { useI18n } from "@/app/i18n";
+import { api } from "@/api/client";
+import type { CurlConvertTarget } from "@/api/types";
+
+/* ───────────────────────── curl → код (curlconverter) ───────────────────────── */
+
+const DEFAULT_CURL = `curl -X POST https://api.example.com/users \\
+  -H "Content-Type: application/json" \\
+  -H "Authorization: Bearer TOKEN" \\
+  -d '{"name": "Ada", "role": "engineer"}'`;
+
+/**
+ * Полноценная интеграция curlconverter (https://github.com/curlconverter/curlconverter,
+ * тот же движок, что у curlconverter.com) — разбор идёт на сервере (у
+ * библиотеки нативная tree-sitter-зависимость), здесь только форма и вывод.
+ */
+function CurlConverterBlock() {
+  const { t } = useI18n();
+  const [targets, setTargets] = useState<CurlConvertTarget[]>([]);
+  const [target, setTarget] = useState("python");
+  const [command, setCommand] = useState(DEFAULT_CURL);
+  const [code, setCode] = useState("");
+  const [warnings, setWarnings] = useState<string[]>([]);
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const debRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    api
+      .curlConvertTargets()
+      .then(setTargets)
+      .catch(() => setTargets([]));
+  }, []);
+
+  const run = useMemo(
+    () => (cmd: string, tgt: string) => {
+      if (!cmd.trim() || !tgt) return;
+      setBusy(true);
+      setError("");
+      api
+        .curlConvert(cmd, tgt)
+        .then((r) => {
+          setCode(r.code);
+          setWarnings(r.warnings);
+        })
+        .catch((e: Error) => {
+          setError(e.message);
+          setCode("");
+          setWarnings([]);
+        })
+        .finally(() => setBusy(false));
+    },
+    [],
+  );
+
+  // Живое преобразование с debounce — как только перестали печатать/менять язык.
+  useEffect(() => {
+    if (debRef.current) clearTimeout(debRef.current);
+    debRef.current = setTimeout(() => run(command, target), 350);
+    return () => {
+      if (debRef.current) clearTimeout(debRef.current);
+    };
+  }, [command, target, run]);
+
+  return (
+    <Glass
+      className="curlconv-block"
+      style={{ flexDirection: "column", alignItems: "stretch", gap: 10, marginBottom: 14 }}
+    >
+      <div className="tools-widget-head">
+        <Terminal size={16} />
+        <span>{t("tools.curlTitle")}</span>
+      </div>
+      <div className="muted-sm">{t("tools.curlHint")}</div>
+      <div className="curlconv-row">
+        <textarea
+          className="text-input"
+          style={{ flex: 1, fontFamily: "var(--font-mono)", resize: "vertical", minHeight: 200 }}
+          spellCheck={false}
+          placeholder="curl ..."
+          value={command}
+          onChange={(e) => setCommand(e.target.value)}
+        />
+        <div style={{ display: "flex", flexDirection: "column", flex: 1, gap: 8, minHeight: 0 }}>
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+            <Field label={t("tools.curlLanguage")} w={240}>
+              <Select
+                value={target}
+                onChange={(e) => setTarget(e.target.value)}
+                options={targets.map((tg) => ({ value: tg.id, label: tg.label }))}
+              />
+            </Field>
+            {code && (
+              <Btn icon={Copy} onClick={() => copyToClipboard(code)}>
+                {t("ctx.copyName")}
+              </Btn>
+            )}
+            {busy && <Badge tone="neutral">{t("tools.curlConverting")}</Badge>}
+          </div>
+          {error && (
+            <div style={{ color: "var(--coral)", display: "flex", gap: 6, alignItems: "center" }}>
+              <AlertTriangle size={14} /> {error}
+            </div>
+          )}
+          <textarea
+            className="text-input"
+            readOnly
+            style={{ flex: 1, fontFamily: "var(--font-mono)", resize: "vertical", minHeight: 160 }}
+            value={code}
+          />
+          {warnings.length > 0 && (
+            <div className="curlconv-warnings">
+              {warnings.map((w, i) => (
+                <div key={i} className="muted-sm">
+                  ⚠ {w}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </Glass>
+  );
+}
 
 type ToolId = "json" | "diff" | "regex" | "encode" | "uuid" | "base" | "units";
 
@@ -872,6 +996,7 @@ export default function ToolsPage() {
           </Btn>
         }
       />
+      <CurlConverterBlock />
       <div className="muted-sm" style={{ margin: "4px 0 10px" }}>
         {t("tools.gridHint")}
       </div>

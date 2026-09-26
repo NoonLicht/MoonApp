@@ -10,6 +10,20 @@ import {
   Download,
   X,
   Upload,
+  Combine,
+  Scissors,
+  FileText,
+  RotateCw,
+  ListOrdered,
+  Droplet,
+  Hash,
+  ImagePlus,
+  FileImage,
+  PenLine,
+  Lock,
+  LockOpen,
+  ScanText,
+  FileCog,
 } from "lucide-react";
 import {
   Glass,
@@ -360,6 +374,68 @@ function FilePickButton({
   );
 }
 
+/** Модальное окно одного инструмента (PDF/Office): маленькая плитка на гриде
+ * открывает именно её — вместо экрана из полутора десятков всегда развёрнутых
+ * блоков сразу. Логика операций (состояние, запросы) не меняется — меняется
+ * только то, где рисуется её форма. */
+function ToolModal({
+  open,
+  onClose,
+  title,
+  children,
+}: {
+  open: boolean;
+  onClose: () => void;
+  title: string;
+  children: React.ReactNode;
+}) {
+  if (!open) return null;
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <Glass
+        className="modal-panel"
+        onClick={(e: React.MouseEvent) => e.stopPropagation()}
+        style={{ flexDirection: "column", alignItems: "stretch", gap: 10 }}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div className="media-title">{title}</div>
+          <button
+            onClick={onClose}
+            style={{
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              color: "var(--text-tertiary)",
+              display: "flex",
+            }}
+          >
+            <X size={16} />
+          </button>
+        </div>
+        {children}
+      </Glass>
+    </div>
+  );
+}
+
+/** Плитка инструмента: маленький кликабельный блок с иконкой и названием. */
+function ToolTile({
+  icon: Icon,
+  label,
+  onClick,
+}: {
+  icon: React.ElementType;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button type="button" className="tool-tile" onClick={onClick}>
+      <Icon size={20} />
+      <span>{label}</span>
+    </button>
+  );
+}
+
 /**
  * PDF-тулкит: слияние/разбиение (pdf-lib) и извлечение текстового слоя
  * (pdf-parse) — server/ts/pdfTools.ts. Независим от FFmpeg-конвертера выше:
@@ -368,6 +444,7 @@ function FilePickButton({
  */
 function PdfToolkit() {
   const { t } = useI18n();
+  const [openTool, setOpenTool] = useState<string | null>(null);
   const [mergeFiles, setMergeFiles] = useState<File[]>([]);
   const [mergeBusy, setMergeBusy] = useState(false);
   const [mergeError, setMergeError] = useState("");
@@ -655,11 +732,25 @@ function PdfToolkit() {
   return (
     <>
       <SectionHead eyebrow={t("conv.pdfEyebrow")} title={t("conv.pdfTitle")} />
-      <div className="pdf-toolkit-grid">
+      <div className="tool-tile-grid">
+        <ToolTile icon={Combine} label={t("conv.pdfMerge")} onClick={() => setOpenTool("merge")} />
+        <ToolTile icon={Scissors} label={t("conv.pdfSplit")} onClick={() => setOpenTool("split")} />
+        <ToolTile icon={FileText} label={t("conv.pdfExtractText")} onClick={() => setOpenTool("extract")} />
+        <ToolTile icon={RotateCw} label={t("conv.pdfRotate")} onClick={() => setOpenTool("rotate")} />
+        <ToolTile icon={ListOrdered} label={t("conv.pdfOrganize")} onClick={() => setOpenTool("organize")} />
+        <ToolTile icon={Droplet} label={t("conv.pdfWatermark")} onClick={() => setOpenTool("watermark")} />
+        <ToolTile icon={Hash} label={t("conv.pdfPageNumbers")} onClick={() => setOpenTool("pagenum")} />
+        <ToolTile icon={ImagePlus} label={t("conv.pdfImagesToPdf")} onClick={() => setOpenTool("img2pdf")} />
+        <ToolTile icon={FileImage} label={t("conv.pdfToJpg")} onClick={() => setOpenTool("pdf2jpg")} />
+        <ToolTile icon={PenLine} label={t("conv.pdfSign")} onClick={() => setOpenTool("sign")} />
+        <ToolTile icon={Lock} label={t("conv.pdfProtect")} onClick={() => setOpenTool("protect")} />
+        <ToolTile icon={LockOpen} label={t("conv.pdfUnlock")} onClick={() => setOpenTool("unlock")} />
+        <ToolTile icon={ScanText} label={t("conv.pdfOcr")} onClick={() => setOpenTool("ocr")} />
+      </div>
+      <div className="muted-sm">{t("conv.pdfMoreHint")}</div>
 
       {/* --- Слияние --- */}
-      <Glass className="media-preview" style={{ flexDirection: "column", alignItems: "stretch", gap: 8 }}>
-        <div className="media-title">{t("conv.pdfMerge")}</div>
+      <ToolModal open={openTool === "merge"} onClose={() => setOpenTool(null)} title={t("conv.pdfMerge")}>
         <FilePickButton
           accept="application/pdf"
           multiple
@@ -679,11 +770,10 @@ function PdfToolkit() {
           {mergeBusy ? t("conv.pdfWorking") : t("conv.pdfMergeGo")}
         </Btn>
         {mergeError && <div style={{ color: "var(--coral)" }}>{mergeError}</div>}
-      </Glass>
+      </ToolModal>
 
       {/* --- Разбиение --- */}
-      <Glass className="media-preview" style={{ flexDirection: "column", alignItems: "stretch", gap: 8 }}>
-        <div className="media-title">{t("conv.pdfSplit")}</div>
+      <ToolModal open={openTool === "split"} onClose={() => setOpenTool(null)} title={t("conv.pdfSplit")}>
         <FilePickButton
           accept="application/pdf"
           label={t("automation.browse")}
@@ -706,11 +796,10 @@ function PdfToolkit() {
           {splitBusy ? t("conv.pdfWorking") : t("conv.pdfSplitGo")}
         </Btn>
         {splitError && <div style={{ color: "var(--coral)" }}>{splitError}</div>}
-      </Glass>
+      </ToolModal>
 
       {/* --- Извлечение текста --- */}
-      <Glass className="media-preview" style={{ flexDirection: "column", alignItems: "stretch", gap: 8 }}>
-        <div className="media-title">{t("conv.pdfExtractText")}</div>
+      <ToolModal open={openTool === "extract"} onClose={() => setOpenTool(null)} title={t("conv.pdfExtractText")}>
         <FilePickButton
           accept="application/pdf"
           label={t("automation.browse")}
@@ -743,11 +832,10 @@ function PdfToolkit() {
             </Btn>
           </>
         )}
-      </Glass>
+      </ToolModal>
 
       {/* --- Поворот --- */}
-      <Glass className="media-preview" style={{ flexDirection: "column", alignItems: "stretch", gap: 8 }}>
-        <div className="media-title">{t("conv.pdfRotate")}</div>
+      <ToolModal open={openTool === "rotate"} onClose={() => setOpenTool(null)} title={t("conv.pdfRotate")}>
         <FilePickButton
           accept="application/pdf"
           label={t("automation.browse")}
@@ -769,11 +857,10 @@ function PdfToolkit() {
           {rotateBusy ? t("conv.pdfWorking") : t("conv.pdfRotateGo")}
         </Btn>
         {rotateError && <div style={{ color: "var(--coral)" }}>{rotateError}</div>}
-      </Glass>
+      </ToolModal>
 
       {/* --- Организация страниц --- */}
-      <Glass className="media-preview" style={{ flexDirection: "column", alignItems: "stretch", gap: 8 }}>
-        <div className="media-title">{t("conv.pdfOrganize")}</div>
+      <ToolModal open={openTool === "organize"} onClose={() => setOpenTool(null)} title={t("conv.pdfOrganize")}>
         <FilePickButton
           accept="application/pdf"
           label={t("automation.browse")}
@@ -797,11 +884,10 @@ function PdfToolkit() {
           {organizeBusy ? t("conv.pdfWorking") : t("conv.pdfOrganizeGo")}
         </Btn>
         {organizeError && <div style={{ color: "var(--coral)" }}>{organizeError}</div>}
-      </Glass>
+      </ToolModal>
 
       {/* --- Водяной знак --- */}
-      <Glass className="media-preview" style={{ flexDirection: "column", alignItems: "stretch", gap: 8 }}>
-        <div className="media-title">{t("conv.pdfWatermark")}</div>
+      <ToolModal open={openTool === "watermark"} onClose={() => setOpenTool(null)} title={t("conv.pdfWatermark")}>
         <FilePickButton
           accept="application/pdf"
           label={t("automation.browse")}
@@ -834,11 +920,10 @@ function PdfToolkit() {
           {wmBusy ? t("conv.pdfWorking") : t("conv.pdfWatermarkGo")}
         </Btn>
         {wmError && <div style={{ color: "var(--coral)" }}>{wmError}</div>}
-      </Glass>
+      </ToolModal>
 
       {/* --- Номера страниц --- */}
-      <Glass className="media-preview" style={{ flexDirection: "column", alignItems: "stretch", gap: 8 }}>
-        <div className="media-title">{t("conv.pdfPageNumbers")}</div>
+      <ToolModal open={openTool === "pagenum"} onClose={() => setOpenTool(null)} title={t("conv.pdfPageNumbers")}>
         <FilePickButton
           accept="application/pdf"
           label={t("automation.browse")}
@@ -863,11 +948,10 @@ function PdfToolkit() {
           {numBusy ? t("conv.pdfWorking") : t("conv.pdfPageNumbersGo")}
         </Btn>
         {numError && <div style={{ color: "var(--coral)" }}>{numError}</div>}
-      </Glass>
+      </ToolModal>
 
       {/* --- JPG/PNG в PDF --- */}
-      <Glass className="media-preview" style={{ flexDirection: "column", alignItems: "stretch", gap: 8 }}>
-        <div className="media-title">{t("conv.pdfImagesToPdf")}</div>
+      <ToolModal open={openTool === "img2pdf"} onClose={() => setOpenTool(null)} title={t("conv.pdfImagesToPdf")}>
         <FilePickButton
           accept="image/jpeg,image/png"
           multiple
@@ -887,11 +971,10 @@ function PdfToolkit() {
           {imgBusy ? t("conv.pdfWorking") : t("conv.pdfImagesToPdfGo")}
         </Btn>
         {imgError && <div style={{ color: "var(--coral)" }}>{imgError}</div>}
-      </Glass>
+      </ToolModal>
 
       {/* --- PDF в JPG/PNG --- */}
-      <Glass className="media-preview" style={{ flexDirection: "column", alignItems: "stretch", gap: 8 }}>
-        <div className="media-title">{t("conv.pdfToJpg")}</div>
+      <ToolModal open={openTool === "pdf2jpg"} onClose={() => setOpenTool(null)} title={t("conv.pdfToJpg")}>
         <FilePickButton
           accept="application/pdf"
           label={t("automation.browse")}
@@ -909,11 +992,10 @@ function PdfToolkit() {
           {jpgBusy ? t("conv.pdfWorking") : t("conv.pdfToJpgGo")}
         </Btn>
         {jpgError && <div style={{ color: "var(--coral)" }}>{jpgError}</div>}
-      </Glass>
+      </ToolModal>
 
       {/* --- Подписать PDF (визуально) --- */}
-      <Glass className="media-preview" style={{ flexDirection: "column", alignItems: "stretch", gap: 8 }}>
-        <div className="media-title">{t("conv.pdfSign")}</div>
+      <ToolModal open={openTool === "sign"} onClose={() => setOpenTool(null)} title={t("conv.pdfSign")}>
         <div className="muted-sm">{t("conv.pdfSignHint")}</div>
         <FilePickButton
           accept="application/pdf"
@@ -937,11 +1019,10 @@ function PdfToolkit() {
           {signBusy ? t("conv.pdfWorking") : t("conv.pdfSignGo")}
         </Btn>
         {signError && <div style={{ color: "var(--coral)" }}>{signError}</div>}
-      </Glass>
+      </ToolModal>
 
       {/* --- Защита паролем --- */}
-      <Glass className="media-preview" style={{ flexDirection: "column", alignItems: "stretch", gap: 8 }}>
-        <div className="media-title">{t("conv.pdfProtect")}</div>
+      <ToolModal open={openTool === "protect"} onClose={() => setOpenTool(null)} title={t("conv.pdfProtect")}>
         {qpdfFound === false && <div className="muted-sm">{t("conv.pdfQpdfMissing")}</div>}
         <FilePickButton
           accept="application/pdf"
@@ -966,11 +1047,10 @@ function PdfToolkit() {
           {protBusy ? t("conv.pdfWorking") : t("conv.pdfProtectGo")}
         </Btn>
         {protError && <div style={{ color: "var(--coral)" }}>{protError}</div>}
-      </Glass>
+      </ToolModal>
 
       {/* --- Снять пароль --- */}
-      <Glass className="media-preview" style={{ flexDirection: "column", alignItems: "stretch", gap: 8 }}>
-        <div className="media-title">{t("conv.pdfUnlock")}</div>
+      <ToolModal open={openTool === "unlock"} onClose={() => setOpenTool(null)} title={t("conv.pdfUnlock")}>
         {qpdfFound === false && <div className="muted-sm">{t("conv.pdfQpdfMissing")}</div>}
         <FilePickButton
           accept="application/pdf"
@@ -995,11 +1075,10 @@ function PdfToolkit() {
           {unlBusy ? t("conv.pdfWorking") : t("conv.pdfUnlockGo")}
         </Btn>
         {unlError && <div style={{ color: "var(--coral)" }}>{unlError}</div>}
-      </Glass>
+      </ToolModal>
 
       {/* --- OCR (PaddleOCR, CPU/GPU) --- */}
-      <Glass className="media-preview" style={{ flexDirection: "column", alignItems: "stretch", gap: 8 }}>
-        <div className="media-title">{t("conv.pdfOcr")}</div>
+      <ToolModal open={openTool === "ocr"} onClose={() => setOpenTool(null)} title={t("conv.pdfOcr")}>
         {ocrReady && !ocrReady.paddleocr ? (
           <>
             <div className="muted-sm">
@@ -1058,10 +1137,7 @@ function PdfToolkit() {
             )}
           </>
         )}
-      </Glass>
-
-      </div>
-      <div className="muted-sm">{t("conv.pdfMoreHint")}</div>
+      </ToolModal>
     </>
   );
 }
@@ -1074,6 +1150,7 @@ function PdfToolkit() {
  */
 function OfficeToolkit() {
   const { t } = useI18n();
+  const [open, setOpen] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [target, setTarget] = useState("pdf");
   const [busy, setBusy] = useState(false);
@@ -1104,7 +1181,11 @@ function OfficeToolkit() {
     <>
       <SectionHead eyebrow={t("conv.officeEyebrow")} title={t("conv.officeTitle")} />
       {found === false && <div className="muted-sm">{t("conv.officeMissing")}</div>}
-      <Glass className="media-preview" style={{ flexDirection: "column", alignItems: "stretch", gap: 8, maxWidth: 360 }}>
+      <div className="tool-tile-grid">
+        <ToolTile icon={FileCog} label={t("conv.officeTitle")} onClick={() => setOpen(true)} />
+      </div>
+
+      <ToolModal open={open} onClose={() => setOpen(false)} title={t("conv.officeTitle")}>
         <FilePickButton
           accept=".doc,.docx,.ppt,.pptx,.xls,.xlsx,.odt,.odp,.ods,.pdf"
           label={t("automation.browse")}
@@ -1126,7 +1207,7 @@ function OfficeToolkit() {
           {busy ? t("conv.pdfWorking") : t("conv.officeConvertGo")}
         </Btn>
         {error && <div style={{ color: "var(--coral)" }}>{error}</div>}
-      </Glass>
+      </ToolModal>
     </>
   );
 }
