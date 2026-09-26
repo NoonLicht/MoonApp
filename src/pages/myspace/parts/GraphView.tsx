@@ -110,25 +110,35 @@ export default function GraphView({ data, onNodeClick, onClose }: Props) {
     return () => ro.disconnect();
   }, []);
 
-  // (Re)initialize node positions when graph data or size changes.
-  // Use a hash of data to avoid resetting on every render
+  // (Re)initialize node positions when graph data or size changes. Реально
+  // новым/изменившимся узлам даём стартовую позицию, а уже существующие —
+  // берём из текущей симуляции как есть, иначе периодическое обновление
+  // data (например, тот же список файлов, но новый объект-ссылка) дёргает
+  // и переставляет весь граф заново, хотя состав узлов не поменялся.
   useEffect(() => {
     const cx = dims.w / 2,
       cy = dims.h / 2;
     const spread = Math.max(Math.min(cx, cy) * 0.35, 40);
-    const ns: SimNode[] = data.nodes.map((n, i) => ({
-      id: n.id,
-      type: n.type,
-      x: cx + (i % 2 === 0 ? 1 : -1) * (((i + 1) * 23) % spread),
-      y: cy + (i % 3 === 0 ? 1 : -1) * (((i + 1) * 19) % spread),
-      vx: (Math.random() - 0.5) * 1.5,
-      vy: (Math.random() - 0.5) * 1.5,
-      pinned: false,
-      done: n.done,
-    }));
+    const prevById = new Map(simRef.current.map((n) => [n.id, n]));
+    const ns: SimNode[] = data.nodes.map((n, i) => {
+      const prev = prevById.get(n.id);
+      if (prev) return { ...prev, type: n.type, done: n.done };
+      return {
+        id: n.id,
+        type: n.type,
+        x: cx + (i % 2 === 0 ? 1 : -1) * (((i + 1) * 23) % spread),
+        y: cy + (i % 3 === 0 ? 1 : -1) * (((i + 1) * 19) % spread),
+        vx: (Math.random() - 0.5) * 1.5,
+        vy: (Math.random() - 0.5) * 1.5,
+        pinned: false,
+        done: n.done,
+      };
+    });
+    const changed =
+      ns.length !== simRef.current.length || ns.some((n, i) => n.id !== simRef.current[i]?.id);
     simRef.current = ns;
     edgeRef.current = data.edges.map((e) => ({ source: e.source, target: e.target }));
-    runningRef.current = true;
+    if (changed) runningRef.current = true;
   }, [data, dims]);
   // SINGLE persistent animation loop — created once, never re-created on re-render.
   useEffect(() => {

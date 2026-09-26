@@ -137,6 +137,11 @@ class TableWidget extends WidgetType {
     readonly blockFrom: number,
     readonly blockTo: number,
     readonly applyEdit: (from: number, to: number, text: string) => void,
+    /** Ширины столбцов в px, ключ — blockFrom (позиция начала блока таблицы
+     * в документе) — переживает пересоздание DOM-виджета при любой правке
+     * содержимого ячеек/структуры, поэтому ширина остаётся зафиксированной
+     * после изменения, а не сбрасывается на авто. */
+    readonly widthsMap: Map<number, number[]>,
   ) {
     super();
   }
@@ -145,6 +150,12 @@ class TableWidget extends WidgetType {
   }
   toDOM() {
     const { rows, align } = parseTableSource(this.source);
+    const cols = rows[0]?.length || 1;
+    let widths = this.widthsMap.get(this.blockFrom);
+    if (!widths || widths.length !== cols) {
+      widths = Array.from({ length: cols }, () => 160);
+      this.widthsMap.set(this.blockFrom, widths);
+    }
     const wrap = document.createElement("div");
     wrap.className = "cm-live-table";
 
@@ -155,6 +166,21 @@ class TableWidget extends WidgetType {
 
     const table = document.createElement("table");
     table.className = "cm-live-table-el";
+
+    // table-layout: fixed + <col> с жёсткой шириной — без этого столбец
+    // растягивался под печатаемый текст в ячейке, что и было проблемой.
+    const colEls: HTMLTableColElement[] = [];
+    const colgroup = document.createElement("colgroup");
+    widths.forEach((w) => {
+      const col = document.createElement("col");
+      col.style.width = w + "px";
+      colEls.push(col);
+      colgroup.appendChild(col);
+    });
+    const actionsCol = document.createElement("col");
+    actionsCol.style.width = "26px";
+    colgroup.appendChild(actionsCol);
+    table.appendChild(colgroup);
 
     const renderRow = (cells: string[], isHeader: boolean, rowIdx: number) => {
       const tr = document.createElement("tr");
@@ -174,6 +200,32 @@ class TableWidget extends WidgetType {
             cell.blur();
           }
         });
+        // Перетаскиваемый разделитель — только в шапке, тянет ширину своего
+        // столбца; правки живут в widthsMap, никакого commit() в документ не
+        // требуется (ширина — оформление, не часть GFM-синтаксиса).
+        if (isHeader && colIdx < colEls.length) {
+          const resizer = document.createElement("span");
+          resizer.className = "cm-live-table-resizer";
+          resizer.contentEditable = "false";
+          resizer.addEventListener("mousedown", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const startX = e.clientX;
+            const startWidth = widths![colIdx];
+            const onMove = (ev: MouseEvent) => {
+              const w = Math.max(50, startWidth + (ev.clientX - startX));
+              widths![colIdx] = w;
+              colEls[colIdx].style.width = w + "px";
+            };
+            const onUp = () => {
+              window.removeEventListener("mousemove", onMove);
+              window.removeEventListener("mouseup", onUp);
+            };
+            window.addEventListener("mousemove", onMove);
+            window.addEventListener("mouseup", onUp);
+          });
+          cell.appendChild(resizer);
+        }
         tr.appendChild(cell);
       });
       const actions = document.createElement("td");
@@ -327,6 +379,7 @@ function buildLiveDecorations(
   state: EditorState,
   onToggleCheckbox: ((i: number) => void) | undefined,
   applyEdit: (from: number, to: number, text: string) => void,
+  tableWidths: Map<number, number[]>,
 ): DecorationSet {
   const builder = new RangeSetBuilder<Decoration>();
   const activeLine = state.doc.lineAt(state.selection.main.head).number;
@@ -342,7 +395,10 @@ function buildLiveDecorations(
       builder.add(
         tb.from,
         tb.blockTo,
-        Decoration.replace({ widget: new TableWidget(tb.source, tb.from, tb.blockTo, applyEdit), block: true }),
+        Decoration.replace({
+          widget: new TableWidget(tb.source, tb.from, tb.blockTo, applyEdit, tableWidths),
+          block: true,
+        }),
       );
       ln = tb.toLine;
       continue;
@@ -489,14 +545,15 @@ function buildLiveDecorations(
 function livePreviewField(
   onToggleCheckbox: ((i: number) => void) | undefined,
   applyEdit: (from: number, to: number, text: string) => void,
+  tableWidths: Map<number, number[]>,
 ) {
   return StateField.define<DecorationSet>({
     create(state) {
-      return buildLiveDecorations(state, onToggleCheckbox, applyEdit);
+      return buildLiveDecorations(state, onToggleCheckbox, applyEdit, tableWidths);
     },
     update(deco, tr) {
       if (tr.docChanged || tr.selection) {
-        return buildLiveDecorations(tr.state, onToggleCheckbox, applyEdit);
+        return buildLiveDecorations(tr.state, onToggleCheckbox, applyEdit, tableWidths);
       }
       return deco.map(tr.changes);
     },
@@ -524,6 +581,7 @@ export default function CodeMirrorLiveEditor({
   const hostRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const lastEmitted = useRef(content);
+  const tableWidthsRef = useRef<Map<number, number[]>>(new Map());
   const callbacksRef = useRef({ onWikiLink, onTagClick, onToggleCheckbox, onPasteImage });
 
   useEffect(() => {
@@ -623,9 +681,12 @@ export default function CodeMirrorLiveEditor({
         },
         ".cm-live-table": {
           margin: "8px 0",
+          overflowX: "auto",
         },
         ".cm-live-table table": {
-          width: "100%",
+          // table-layout: fixed — ширина столбцов задаётся только через
+          // <col>, а не "плывёт" под набираемый в ячейке текст.
+          tableLayout: "fixed",
           borderCollapse: "collapse",
           border: "1px solid var(--glass-border)",
           fontSize: "13px",
@@ -634,10 +695,26 @@ export default function CodeMirrorLiveEditor({
           border: "1px solid var(--glass-border)",
           padding: "6px 10px",
           textAlign: "left",
+          overflowWrap: "break-word",
+          wordBreak: "break-word",
+          position: "relative",
         },
         ".cm-live-table th": {
           background: "var(--track, rgba(255,255,255,0.06))",
           fontWeight: "600",
+        },
+        ".cm-live-table-resizer": {
+          position: "absolute",
+          top: "0",
+          right: "-3px",
+          width: "6px",
+          height: "100%",
+          cursor: "col-resize",
+          userSelect: "none",
+          zIndex: "1",
+        },
+        ".cm-live-table-resizer:hover": {
+          background: "var(--amber-soft)",
         },
         ".cm-live-table-rowactions": {
           border: "none !important",
@@ -770,7 +847,7 @@ export default function CodeMirrorLiveEditor({
       keymap.of([...defaultKeymap, ...historyKeymap]),
       markdown({ codeLanguages: languages, extensions: [GFM] }),
       syntaxHighlighting(liveHighlight),
-      livePreviewField(onToggleCheckbox, applyTableEdit),
+      livePreviewField(onToggleCheckbox, applyTableEdit, tableWidthsRef.current),
       clickHandler,
       theme,
       EditorView.lineWrapping,

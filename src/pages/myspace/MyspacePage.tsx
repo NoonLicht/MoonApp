@@ -727,7 +727,13 @@ export default function MyspacePage() {
     const timer = window.setInterval(() => {
       api
         .myspaceTree()
-        .then(setTree)
+        .then((t) => {
+          // Не подменяем ссылку на tree, если содержимое не изменилось —
+          // иначе graphData (useMemo от tree) пересчитывается заново каждые
+          // 5с, GraphView получает новый объект data и дёргает физическую
+          // симуляцию заново (узлы прыгают), хотя реально ничего не менялось.
+          setTree((prev) => (JSON.stringify(prev) === JSON.stringify(t) ? prev : t));
+        })
         .catch(() => {});
     }, 5000);
     return () => window.clearInterval(timer);
