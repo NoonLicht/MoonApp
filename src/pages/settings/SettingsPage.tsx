@@ -907,6 +907,12 @@ export default function SettingsPage() {
             onChange={(v) => change("general.closeToTray", v)}
           />
           <BoolRow
+            label={t("settings.showWelcome")}
+            hint={t("settings.showWelcomeHint")}
+            value={g.showWelcome !== false}
+            onChange={(v) => change("general.showWelcome", v)}
+          />
+          <BoolRow
             label={t("settings.commandPaletteHotkey")}
             hint={t("settings.commandPaletteHotkeyHint")}
             value={g.commandPaletteHotkey !== false}

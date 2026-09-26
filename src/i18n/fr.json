@@ -170,7 +170,9 @@
     "myspace": "My Space",
     "compressor": "Compression vidéo",
     "sitebak": "Web Archive (.sitebak)",
-    "upscale": "Upscale des médias"
+    "upscale": "Upscale des médias",
+    "showWelcome": "Écran de bienvenue",
+    "showWelcomeHint": "Afficher l'écran de présentation des fonctions au démarrage"
   },
   "chat": {
     "chatProvider": "Fournisseur par défaut",
@@ -2460,5 +2462,28 @@
     "vcrfHint": "0–51, plus bas = mieux",
     "audio": "Action audio",
     "audioHint": "copy — garder la piste, aac — réencoder"
+  },
+  "welcome": {
+    "title": "Bienvenue sur MoonApp",
+    "subtitle": "Un panneau d'utilitaires personnel : médias, contournement de censure, surveillance, notes et bien plus — tout en local, dans une seule app.",
+    "close": "Fermer",
+    "dontShow": "Ne plus afficher",
+    "start": "Commencer",
+    "f_convert": "Convertir et compresser",
+    "f_convert_hint": "Vidéo, audio, images — FFmpeg local",
+    "f_movies": "Films et séries",
+    "f_movies_hint": "Catalogue, notes, lecteur torrent intégré",
+    "f_upscale": "Upscaling vidéo",
+    "f_upscale_hint": "Modèles ONNX locaux, accélération GPU",
+    "f_lecture": "Enregistreur de cours",
+    "f_lecture_hint": "Enregistrement, transcription, notes IA",
+    "f_bypass": "Contournement de censure",
+    "f_bypass_hint": "Zapret + proxy local avec abonnements",
+    "f_myspace": "Mon espace",
+    "f_myspace_hint": "Tâches, notes, canevas, base de connaissances",
+    "f_games": "Jeux",
+    "f_games_hint": "Lanceur, bibliothèque auto, sauvegardes",
+    "f_vault": "Gestionnaire de mots de passe",
+    "f_vault_hint": "Stockage local chiffré"
   }
 }

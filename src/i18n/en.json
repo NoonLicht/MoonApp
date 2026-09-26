@@ -170,7 +170,9 @@
     "myspace": "My Space",
     "compressor": "Video Compression",
     "sitebak": "Web Archive (.sitebak)",
-    "upscale": "Media upscale"
+    "upscale": "Media upscale",
+    "showWelcome": "Welcome screen",
+    "showWelcomeHint": "Show the features overview screen on every launch"
   },
   "chat": {
     "chatProvider": "Default provider",
@@ -2668,5 +2670,28 @@
       "lecture": "Lecture",
       "archive": "Web archive"
     }
+  },
+  "welcome": {
+    "title": "Welcome to MoonApp",
+    "subtitle": "A personal utility hub: media, censorship bypass, monitoring, notes and more — all local, in one app.",
+    "close": "Close",
+    "dontShow": "Don't show again",
+    "start": "Get started",
+    "f_convert": "Convert & compress",
+    "f_convert_hint": "Video, audio, images — local FFmpeg",
+    "f_movies": "Movies & TV",
+    "f_movies_hint": "Catalog, ratings, built-in torrent player",
+    "f_upscale": "Video upscaling",
+    "f_upscale_hint": "Local ONNX models, GPU acceleration",
+    "f_lecture": "Lecture recorder",
+    "f_lecture_hint": "Recording, transcription, AI notes",
+    "f_bypass": "Censorship bypass",
+    "f_bypass_hint": "Zapret + local proxy with subscriptions",
+    "f_myspace": "MySpace",
+    "f_myspace_hint": "Tasks, notes, canvas, knowledge base",
+    "f_games": "Games",
+    "f_games_hint": "Launcher, auto-scan library, save backups",
+    "f_vault": "Password manager",
+    "f_vault_hint": "Encrypted local storage"
   }
 }

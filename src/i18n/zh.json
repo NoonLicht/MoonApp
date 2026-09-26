@@ -170,7 +170,9 @@
     "myspace": "我的空间",
     "compressor": "视频压缩",
     "sitebak": "Web Archive (.sitebak)",
-    "upscale": "媒体放大"
+    "upscale": "媒体放大",
+    "showWelcome": "欢迎屏幕",
+    "showWelcomeHint": "每次启动时显示功能概览屏幕"
   },
   "chat": {
     "chatProvider": "默认提供商",
@@ -2460,5 +2462,28 @@
     "vcrfHint": "0–51，越低越好",
     "audio": "音频处理",
     "audioHint": "copy — 保留原轨，aac — 重新编码"
+  },
+  "welcome": {
+    "title": "欢迎使用 MoonApp",
+    "subtitle": "个人工具面板：媒体、翻墙、硬件监控、笔记等等 — 全部本地运行，集于一身。",
+    "close": "关闭",
+    "dontShow": "不再显示",
+    "start": "开始使用",
+    "f_convert": "转换与压缩",
+    "f_convert_hint": "视频、音频、图片 — 本地 FFmpeg",
+    "f_movies": "电影与剧集",
+    "f_movies_hint": "目录、评分、内置种子播放器",
+    "f_upscale": "视频超分辨率",
+    "f_upscale_hint": "本地 ONNX 模型，GPU 加速",
+    "f_lecture": "课堂录音",
+    "f_lecture_hint": "录音、转写、AI 笔记",
+    "f_bypass": "翻墙",
+    "f_bypass_hint": "Zapret + 本地代理及订阅",
+    "f_myspace": "我的空间",
+    "f_myspace_hint": "任务、笔记、画布、知识库",
+    "f_games": "游戏",
+    "f_games_hint": "启动器、自动扫描库、存档备份",
+    "f_vault": "密码管理器",
+    "f_vault_hint": "加密本地存储"
   }
 }

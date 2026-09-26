@@ -72,6 +72,11 @@ const PORTALED = [
     css: "src/styles/upscale.css",
     cls: "up-pick-pop",
   },
+  {
+    src: "src/components/WelcomeModal.tsx",
+    css: "src/styles/ui.css",
+    cls: "app-modal-backdrop",
+  },
 ];
 
 describe("портальные окна: клики не проходят сквозь окно", () => {

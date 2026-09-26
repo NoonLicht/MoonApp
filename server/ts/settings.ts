@@ -40,6 +40,7 @@ const DEFAULTS: SettingsTree = {
     autoLaunch: false, // автозапуск с Windows (electron/main.js → applyAutoLaunch)
     minimizeToTray: false, // сворачивание прячет окно в трей (electron/main.js)
     closeToTray: false, // закрытие окна сворачивает в трей вместо выхода
+    showWelcome: true, // приветственное окно при запуске (src/components/WelcomeModal.tsx)
   },
 
   // --- Внешний вид ---
