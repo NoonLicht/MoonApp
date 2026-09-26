@@ -65,9 +65,16 @@ export default function UpscaleModelPicker({
   }, [open]);
 
   // Позиция попапа считается от кнопки в экранных координатах (портал в
-  // #overlay-root — вне скроллящихся/обрезающих родителей вроде .up-fill),
-  // раскрывается вверх и пересчитывается при скролле/резайзе, пока открыт.
-  const [pos, setPos] = useState<{ left: number; bottom: number; width: number } | null>(null);
+  // #overlay-root — вне скроллящихся/обрезающих родителей вроде .up-fill) и
+  // пересчитывается при скролле/резайзе, пока открыт. Направление зависит от
+  // ширины окна: узко (<=980) — вверх (иначе список упирается в низ экрана),
+  // широко — вниз, как у обычного выпадающего списка.
+  const [pos, setPos] = useState<{
+    left: number;
+    top?: number;
+    bottom?: number;
+    width: number;
+  } | null>(null);
   useLayoutEffect(() => {
     if (!open) return;
     const recalc = () => {
@@ -78,7 +85,11 @@ export default function UpscaleModelPicker({
       // с небольшим минимумом на совсем узких полях; не шире окна.
       const width = Math.max(Math.min(r.width, window.innerWidth - 16), 220);
       const left = Math.max(8, Math.min(r.left, window.innerWidth - width - 8));
-      setPos({ left, bottom: window.innerHeight - r.top + 5, width });
+      if (window.innerWidth > 980) {
+        setPos({ left, top: r.bottom + 5, width });
+      } else {
+        setPos({ left, bottom: window.innerHeight - r.top + 5, width });
+      }
     };
     recalc();
     window.addEventListener("resize", recalc);
@@ -154,7 +165,7 @@ export default function UpscaleModelPicker({
             <div
               className="up-pick-pop"
               ref={popRef}
-              style={{ left: pos.left, bottom: pos.bottom, width: pos.width }}
+              style={{ left: pos.left, top: pos.top, bottom: pos.bottom, width: pos.width }}
             >
           <div className="up-pick-head">
             <span className="up-pick-search">
