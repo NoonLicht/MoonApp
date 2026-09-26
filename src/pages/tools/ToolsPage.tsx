@@ -105,7 +105,7 @@ function CurlConverterBlock() {
   return (
     <Glass
       className="curlconv-block"
-      style={{ flexDirection: "column", alignItems: "stretch", gap: 10, flex: 1, minHeight: 0 }}
+      style={{ display: "flex", flexDirection: "column", alignItems: "stretch", gap: 10, flex: 1, minHeight: 0 }}
     >
       <div className="tools-widget-head">
         <Terminal size={16} />
@@ -1131,12 +1131,17 @@ export default function ToolsPage() {
           </Btn>
         }
       />
-      <div style={{ height: curlHeight, display: "flex", flexDirection: "column", minHeight: 0 }}>
-        <CurlConverterBlock />
-      </div>
-      <div className="tools-divider is-y" onPointerDown={onCurlDividerDown} onPointerMove={onCurlDividerMove} onPointerUp={onCurlDividerUp} />
       <div ref={scrollRef} className="tools-flow-scroll">
         <div className="tools-flow-col">
+          <div style={{ height: curlHeight, display: "flex", flexDirection: "column", minHeight: 0, flexShrink: 0 }}>
+            <CurlConverterBlock />
+          </div>
+          <div
+            className="tools-divider is-y"
+            onPointerDown={onCurlDividerDown}
+            onPointerMove={onCurlDividerMove}
+            onPointerUp={onCurlDividerUp}
+          />
           {template.map((row, ri) => {
             const heightKey = `${tier}:${row.key}`;
             const height = heights[heightKey] ?? row.defaultHeight;
