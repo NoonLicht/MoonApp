@@ -1391,7 +1391,14 @@
     "trackerPreset_rutracker": "RuTracker (sign-in required)",
     "trackerPreset_rutor": "RuTor (no sign-in)",
     "trackerPresetSwitched": "Tracker switched",
-    "trackerNoLoginNeeded": "This tracker needs no sign-in: search and .torrent files work anonymously"
+    "trackerNoLoginNeeded": "This tracker needs no sign-in: search and .torrent files work anonymously",
+    "aiRecBtn": "What to watch?",
+    "aiRecBusy": "Analyzing...",
+    "aiRecOff": "AI recommendations are off — enable them in the toggle above",
+    "aiRecNotReady": "AI not ready: no DeepSeek key or local model not loaded",
+    "aiRecEmpty": "Rate or add a few titles to your list first",
+    "aiRecNotFound": "The model suggested a title, but it wasn't found on TMDB",
+    "aiRecFailed": "Couldn't get a recommendation"
   },
   "moviesSettings": {
     "language": "Metadata language",
@@ -2668,5 +2675,17 @@
       "lecture": "Lecture",
       "archive": "Web archive"
     }
+  },
+  "ai": {
+    "toggleLabel": "AI",
+    "modeApi": "API",
+    "modeLocal": "Local",
+    "modeOff": "Off",
+    "activate": "Activate",
+    "ready": "Ready",
+    "downloading": "Downloading",
+    "notInstalled": "not downloaded",
+    "willDownload": "will download ~{mb} MB",
+    "noApiKeyHint": "No DeepSeek key — add it in Settings (AI Chat)"
   }
 }

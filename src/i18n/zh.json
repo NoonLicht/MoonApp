@@ -1259,7 +1259,14 @@
     "prevImage": "上一张",
     "nextImage": "下一张",
     "photoOf": "{i} / {n}",
-    "providersMore": "另有 {n} 个"
+    "providersMore": "另有 {n} 个",
+    "aiRecBtn": "看点什么?",
+    "aiRecBusy": "分析中...",
+    "aiRecOff": "AI 推荐已关闭 — 请在上方开关中启用",
+    "aiRecNotReady": "AI 未就绪：缺少 DeepSeek 密钥或本地模型未加载",
+    "aiRecEmpty": "请先给列表中的几部影片评分或添加",
+    "aiRecNotFound": "模型给出了片名，但在 TMDB 中未找到",
+    "aiRecFailed": "获取推荐失败"
   },
   "moviesSettings": {
     "language": "元数据语言",
@@ -2460,5 +2467,17 @@
     "vcrfHint": "0–51，越低越好",
     "audio": "音频处理",
     "audioHint": "copy — 保留原轨，aac — 重新编码"
+  },
+  "ai": {
+    "toggleLabel": "AI",
+    "modeApi": "API",
+    "modeLocal": "本地",
+    "modeOff": "关闭",
+    "activate": "启动",
+    "ready": "就绪",
+    "downloading": "下载中",
+    "notInstalled": "未下载",
+    "willDownload": "将下载约 {mb} MB",
+    "noApiKeyHint": "缺少 DeepSeek 密钥 — 请在设置(AI聊天)中添加"
   }
 }

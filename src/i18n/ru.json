@@ -1391,7 +1391,14 @@
     "trackerPreset_rutracker": "RuTracker (нужен вход)",
     "trackerPreset_rutor": "RuTor (без входа)",
     "trackerPresetSwitched": "Трекер переключён",
-    "trackerNoLoginNeeded": "Этому трекеру вход не нужен: поиск и .torrent доступны анонимно"
+    "trackerNoLoginNeeded": "Этому трекеру вход не нужен: поиск и .torrent доступны анонимно",
+    "aiRecBtn": "Что посмотреть?",
+    "aiRecBusy": "Анализирую...",
+    "aiRecOff": "ИИ-рекомендации выключены — включите в переключателе выше",
+    "aiRecNotReady": "ИИ не готов: нет ключа DeepSeek или не запущена локальная модель",
+    "aiRecEmpty": "Сначала оцените или добавьте в список хотя бы пару фильмов",
+    "aiRecNotFound": "Модель посоветовала тайтл, но он не нашёлся в TMDB",
+    "aiRecFailed": "Не удалось получить рекомендацию"
   },
   "moviesSettings": {
     "language": "Язык метаданных",
@@ -2668,5 +2675,17 @@
       "lecture": "Лекция",
       "archive": "Веб-архив"
     }
+  },
+  "ai": {
+    "toggleLabel": "ИИ",
+    "modeApi": "API",
+    "modeLocal": "Локально",
+    "modeOff": "Выкл",
+    "activate": "Запустить",
+    "ready": "Готово",
+    "downloading": "Загрузка",
+    "notInstalled": "не скачана",
+    "willDownload": "будет скачано ~{mb} МБ",
+    "noApiKeyHint": "Нет ключа DeepSeek — добавьте его в Настройках (ИИ-чат)"
   }
 }

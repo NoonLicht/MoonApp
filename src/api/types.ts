@@ -2085,3 +2085,46 @@ export interface TmTask {
   canPause: boolean;
   paused: boolean;
 }
+
+/* ------------------- ИИ-функции удобства (server/ts/aiRuntime.ts) ------------------- */
+
+export type AiMode = "api" | "local" | "off";
+export type AiFeatureId =
+  | "notes"
+  | "chat"
+  | "lecture"
+  | "games"
+  | "convert"
+  | "monitor"
+  | "budget"
+  | "movies"
+  | "books";
+
+export interface AiFeatureSetting {
+  mode: AiMode;
+  localModel?: string;
+}
+export type AiSettingsMap = Record<AiFeatureId, AiFeatureSetting>;
+
+export interface AiLocalModelStatus {
+  state: "idle" | "downloading" | "loading" | "ready" | "error";
+  progress?: number;
+  error?: string;
+}
+export interface AiLocalModelInfo {
+  id: string;
+  label: string;
+  repo: string;
+  approxSizeMb: number;
+  hint: string;
+  installed: boolean;
+  status: AiLocalModelStatus;
+}
+
+export interface MovieRecommendResult {
+  ok: boolean;
+  title: string;
+  mode: AiMode;
+  model: string;
+  movie: MediaSummary;
+}

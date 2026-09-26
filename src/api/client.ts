@@ -9,6 +9,12 @@
  *  - streamChatSend/streamArena читают SSE-стрим через fetch + ReadableStream.
  */
 import type {
+  AiSettingsMap,
+  AiFeatureId,
+  AiFeatureSetting,
+  AiLocalModelInfo,
+  AiLocalModelStatus,
+  MovieRecommendResult,
   AppItem,
   BackupInfo,
   ChatMessage,
@@ -1568,6 +1574,19 @@ export const api = {
   notesGitLog: (limit = 50) => req<NotesGitLogEntry[]>("GET", `/notesgit/log?limit=${limit}`),
   notesGitDiff: (oid: string) => req<NotesGitDiffResult>("GET", `/notesgit/diff/${oid}`),
   notesGitRestore: (oid: string) => req<NotesGitRestoreResult>("POST", "/notesgit/restore", { oid }),
+
+  // --- ИИ-функции удобства (DeepSeek API / локальная ONNX-модель / выкл) ---
+  aiSettings: () =>
+    req<{ features: AiSettingsMap; hasApiKey: boolean }>("GET", "/ai/settings"),
+  aiSetFeature: (feature: AiFeatureId, patch: Partial<AiFeatureSetting>) =>
+    req<{ ok: boolean; setting: AiFeatureSetting }>("PUT", `/ai/settings/${feature}`, patch),
+  aiLocalModels: () => req<{ models: AiLocalModelInfo[] }>("GET", "/ai/local-models"),
+  aiLoadLocalModel: (id: string) =>
+    req<{ ok: boolean; status: AiLocalModelStatus }>("POST", `/ai/local-models/${id}/load`),
+  aiLocalModelStatus: (id: string) =>
+    req<AiLocalModelStatus>("GET", `/ai/local-models/${id}/status`),
+  aiDeleteLocalModel: (id: string) => req<{ ok: boolean }>("DELETE", `/ai/local-models/${id}`),
+  aiMoviesRecommend: () => req<MovieRecommendResult>("POST", "/ai/movies/recommend"),
 
   // --- Игры (лаунчер) ---
   gamesList: () => req<GameEntry[]>("GET", "/games"),

@@ -1259,7 +1259,14 @@
     "prevImage": "Précédent",
     "nextImage": "Suivant",
     "photoOf": "{i} / {n}",
-    "providersMore": "+{n} de plus"
+    "providersMore": "+{n} de plus",
+    "aiRecBtn": "Quoi regarder ?",
+    "aiRecBusy": "Analyse...",
+    "aiRecOff": "Les recommandations IA sont désactivées — activez-les ci-dessus",
+    "aiRecNotReady": "IA non prête : clé DeepSeek manquante ou modèle local non chargé",
+    "aiRecEmpty": "Notez ou ajoutez d'abord quelques titres à votre liste",
+    "aiRecNotFound": "Le modèle a suggéré un titre, mais il est introuvable sur TMDB",
+    "aiRecFailed": "Impossible d'obtenir une recommandation"
   },
   "moviesSettings": {
     "language": "Langue des métadonnées",
@@ -2460,5 +2467,17 @@
     "vcrfHint": "0–51, plus bas = mieux",
     "audio": "Action audio",
     "audioHint": "copy — garder la piste, aac — réencoder"
+  },
+  "ai": {
+    "toggleLabel": "IA",
+    "modeApi": "API",
+    "modeLocal": "Local",
+    "modeOff": "Désactivé",
+    "activate": "Activer",
+    "ready": "Prêt",
+    "downloading": "Téléchargement",
+    "notInstalled": "non téléchargé",
+    "willDownload": "sera téléchargé ~{mb} Mo",
+    "noApiKeyHint": "Clé DeepSeek manquante — ajoutez-la dans Paramètres (Chat IA)"
   }
 }

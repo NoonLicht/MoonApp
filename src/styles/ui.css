@@ -1606,3 +1606,57 @@ select option {
   border-top: 1px dashed var(--glass-border);
   padding-top: 6px;
 }
+
+/* Переключатель ИИ-функции (DeepSeek API / локальная ONNX-модель / выкл) —
+   переиспользуется на всех страницах с ИИ-удобствами (src/components/AiFeatureToggle.tsx). */
+.ai-toggle {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+}
+.ai-toggle-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+.ai-toggle-modes {
+  display: flex;
+  gap: 4px;
+}
+.ai-toggle-activate {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  padding: 5px 10px;
+}
+.ai-toggle-activate .spin {
+  animation: ai-toggle-spin 1s linear infinite;
+}
+@keyframes ai-toggle-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.ai-toggle-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+.ai-toggle-hint.is-warn {
+  color: var(--coral);
+}
+.ai-toggle .progress-track {
+  width: 90px;
+}

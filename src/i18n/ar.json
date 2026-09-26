@@ -1259,7 +1259,14 @@
     "prevImage": "السابق",
     "nextImage": "التالي",
     "photoOf": "{i} / {n}",
-    "providersMore": "+{n} أخرى"
+    "providersMore": "+{n} أخرى",
+    "aiRecBtn": "ماذا أشاهد؟",
+    "aiRecBusy": "جارٍ التحليل...",
+    "aiRecOff": "توصيات الذكاء الاصطناعي متوقفة — فعّلها أعلاه",
+    "aiRecNotReady": "الذكاء الاصطناعي غير جاهز: لا يوجد مفتاح DeepSeek أو النموذج المحلي غير محمّل",
+    "aiRecEmpty": "قيّم أو أضف بضعة عناوين إلى قائمتك أولاً",
+    "aiRecNotFound": "اقترح النموذج عنوانًا لكنه غير موجود في TMDB",
+    "aiRecFailed": "تعذّر الحصول على توصية"
   },
   "moviesSettings": {
     "language": "لغة البيانات الوصفية",
@@ -2460,5 +2467,17 @@
     "vcrfHint": "0–51، الأقل أفضل",
     "audio": "إجراء الصوت",
     "audioHint": "copy — إبقاء المسار، aac — إعادة ترميز"
+  },
+  "ai": {
+    "toggleLabel": "الذكاء الاصطناعي",
+    "modeApi": "API",
+    "modeLocal": "محلي",
+    "modeOff": "إيقاف",
+    "activate": "تشغيل",
+    "ready": "جاهز",
+    "downloading": "جارٍ التنزيل",
+    "notInstalled": "غير مثبت",
+    "willDownload": "سيتم تنزيل ~{mb} ميجابايت",
+    "noApiKeyHint": "لا يوجد مفتاح DeepSeek — أضفه في الإعدادات (محادثة الذكاء الاصطناعي)"
   }
 }
