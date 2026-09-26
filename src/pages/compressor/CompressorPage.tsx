@@ -13,6 +13,7 @@ import {
   SlidersHorizontal,
 } from "lucide-react";
 import { Glass, Btn, Badge, Select, SectionHead, ProgressBar } from "@/components/ui";
+import { AiFeatureToggle } from "@/components/AiFeatureToggle";
 import { usePageActive, usePageBusy } from "@/components/Toolbar";
 import { useI18n } from "@/app/i18n";
 import { useContextMenu, copyToClipboard } from "@/components/ContextMenu";
@@ -378,7 +379,11 @@ export default function CompressorPage() {
 
   return (
     <div className="page cmp-page">
-      <SectionHead eyebrow={t("cmp.eyebrow")} title={t("cmp.title")} />
+      <SectionHead
+        eyebrow={t("cmp.eyebrow")}
+        title={t("cmp.title")}
+        action={<AiFeatureToggle feature="convert" />}
+      />
 
       <div className="cmp-grid">
         {/* --- Левая колонка: видео --- */}

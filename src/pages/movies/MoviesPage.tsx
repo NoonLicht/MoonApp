@@ -341,7 +341,7 @@ export default function MoviesPage() {
         }
       />
       {recError && (
-        <div className="mv-ai-rec-error">
+        <div className="ai-rec-error">
           {recError}
           <button type="button" onClick={() => setRecError("")}>
             ×

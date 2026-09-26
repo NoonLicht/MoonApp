@@ -17,6 +17,7 @@ const ai = require("../aiRuntime");
 const security = require("../security");
 const { stmts } = require("../db");
 const tmdb = require("../tmdb");
+const flibusta = require("../flibusta");
 const logger = require("../logger");
 
 const router = express.Router();
@@ -118,6 +119,142 @@ router.post("/movies/recommend", async (req, res) => {
     if (msg === "ai_no_local_model") return res.status(400).json({ error: "ai_no_local_model" });
     res.status(500).json({ error: "recommend_failed", detail: msg });
   }
+});
+
+/**
+ * Рекомендация книги по избранному/закладкам (Flibusta) — тот же приём, что и
+ * с фильмами: модель предлагает название+автора, дальше ищем в самой Flibusta,
+ * чтобы открыть настоящую карточку, а не просто текст.
+ */
+router.post("/books/recommend", async (req, res) => {
+  try {
+    const fav = flibusta.myBooks("fav");
+    const bm = flibusta.myBooks("bm");
+    const seen = new Set();
+    const lines = [];
+    for (const b of [...fav, ...bm]) {
+      if (seen.has(b.bid)) continue;
+      seen.add(b.bid);
+      lines.push(`${b.title} — ${b.author}${b.genres?.length ? ` (${b.genres.join(", ")})` : ""}`);
+    }
+    if (lines.length === 0) return res.status(400).json({ error: "empty_library" });
+
+    const system =
+      "Ты — рекомендательная система книг. Тебе дают список книг из избранного/" +
+      "закладок пользователя. Проанализируй вкус (жанры, авторы, тон) и посоветуй " +
+      "ОДНУ конкретную книгу, которой нет в списке. Ответь СТРОГО в формате " +
+      '"Название — Автор", без кавычек, пояснений и нумерации — одна строка.';
+    const user = `Избранное:\n${lines.slice(0, 200).join("\n")}`;
+
+    const result = await ai.runFeature("books", { system, user, maxTokens: 60 });
+    const raw = result.text.trim().split("\n")[0].replace(/^["'«»]+|["'«»]+$/g, "").trim();
+    if (!raw) return res.status(502).json({ error: "empty_response" });
+    const [titlePart, authorPart] = raw.split("—").map((s) => (s || "").trim());
+
+    const found = await flibusta.searchBooks({ q: titlePart || raw, authorQ: authorPart || "", size: 10 });
+    const match = found.books?.[0] || null;
+    if (!match) return res.status(404).json({ error: "not_found", title: raw });
+    res.json({ ok: true, title: raw, mode: result.mode, model: result.model, book: match });
+  } catch (e) {
+    logger.warn("ai.books.recommend failed", { err: String(e.message || e) });
+    const msg = String(e.message || e);
+    if (["ai_feature_off", "ai_no_api_key", "ai_no_local_model"].includes(msg)) {
+      return res.status(400).json({ error: msg });
+    }
+    res.status(500).json({ error: "recommend_failed", detail: msg });
+  }
+});
+
+/** Обёртка над runFeature для простых одноразовых текстовых действий:
+ *  описание игры, объяснение снапшота монитора, категоризация транзакции,
+ *  подсказка настроек конвертации, суммаризация заметки. Промпты (system)
+ *  собираются на бэкенде — со страницы приходят только сырые данные. */
+async function runSimple(res, feature, system, user, maxTokens) {
+  try {
+    const result = await ai.runFeature(feature, { system, user, maxTokens: maxTokens || 300 });
+    res.json({ ok: true, text: result.text.trim(), mode: result.mode, model: result.model });
+  } catch (e) {
+    const msg = String(e.message || e);
+    if (["ai_feature_off", "ai_no_api_key", "ai_no_local_model"].includes(msg)) {
+      return res.status(400).json({ error: msg });
+    }
+    logger.warn(`ai.${feature} failed`, { err: msg });
+    res.status(500).json({ error: "ai_failed", detail: msg });
+  }
+}
+
+router.post("/games/describe", (req, res) => {
+  const name = String(req.body?.name || "").trim();
+  if (!name) return res.status(400).json({ error: "bad_name" });
+  runSimple(
+    res,
+    "games",
+    "Ты помогаешь заполнить карточку игры/приложения в личном лаунчере. По названию " +
+      "исполняемого файла или игры дай короткое (1-2 предложения) описание на русском: " +
+      "жанр/суть приложения. Если не уверен, что это за программа — честно скажи " +
+      '"неизвестное приложение" и не выдумывай подробности. Только текст описания, без кавычек.',
+    `Название: ${name}`,
+    120,
+  );
+});
+
+router.post("/monitor/explain", (req, res) => {
+  const snapshot = String(req.body?.snapshot || "").trim();
+  if (!snapshot) return res.status(400).json({ error: "bad_snapshot" });
+  runSimple(
+    res,
+    "monitor",
+    "Ты помогаешь понять показания системного монитора (CPU/GPU/память/диски) простыми " +
+      "словами на русском. Тебе дают текущие цифры — коротко (2-4 предложения) скажи, " +
+      "есть ли повод для беспокойства и что именно нагружено, без общих советов вида " +
+      '"обратитесь к специалисту". Если всё в норме — так и скажи одной фразой.',
+    snapshot,
+    250,
+  );
+});
+
+router.post("/budget/categorize", (req, res) => {
+  const description = String(req.body?.description || "").trim();
+  const categories = Array.isArray(req.body?.categories) ? req.body.categories : [];
+  if (!description) return res.status(400).json({ error: "bad_description" });
+  runSimple(
+    res,
+    "budget",
+    "Ты категоризируешь банковскую транзакцию личного бюджета. Тебе дают описание " +
+      "операции и список уже существующих категорий пользователя. Ответь СТРОГО одним " +
+      "названием категории — выбери подходящую из списка, а если ни одна не подходит, " +
+      "предложи новую короткую (1-2 слова) категорию на русском. Только название, без пояснений.",
+    `Описание операции: ${description}\nСуществующие категории: ${categories.join(", ") || "нет"}`,
+    30,
+  );
+});
+
+router.post("/convert/suggest", (req, res) => {
+  const fileName = String(req.body?.fileName || "").trim();
+  const kind = String(req.body?.kind || "").trim();
+  if (!fileName) return res.status(400).json({ error: "bad_file_name" });
+  runSimple(
+    res,
+    "convert",
+    "Ты советуешь настройки конвертации медиафайла. По имени файла и типу контента " +
+      "(видео/аудио/изображение) дай короткую (2-3 предложения) рекомендацию на русском: " +
+      "какой формат/кодек и качество разумны для такого контента. Без общих фраз, по делу.",
+    `Файл: ${fileName}${kind ? `\nТип: ${kind}` : ""}`,
+    200,
+  );
+});
+
+router.post("/notes/summarize", (req, res) => {
+  const text = String(req.body?.text || "").trim();
+  if (!text) return res.status(400).json({ error: "bad_text" });
+  runSimple(
+    res,
+    "notes",
+    "Ты суммируешь заметку пользователя в 2-4 коротких предложениях на русском — " +
+      "только суть, без вступлений вида «в этой заметке говорится».",
+    text.slice(0, 8000),
+    250,
+  );
 });
 
 module.exports = router;

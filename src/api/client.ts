@@ -15,6 +15,8 @@ import type {
   AiLocalModelInfo,
   AiLocalModelStatus,
   MovieRecommendResult,
+  BookRecommendResult,
+  AiSimpleResult,
   AppItem,
   BackupInfo,
   ChatMessage,
@@ -1587,6 +1589,17 @@ export const api = {
     req<AiLocalModelStatus>("GET", `/ai/local-models/${id}/status`),
   aiDeleteLocalModel: (id: string) => req<{ ok: boolean }>("DELETE", `/ai/local-models/${id}`),
   aiMoviesRecommend: () => req<MovieRecommendResult>("POST", "/ai/movies/recommend"),
+  aiBooksRecommend: () => req<BookRecommendResult>("POST", "/ai/books/recommend"),
+  aiGamesDescribe: (name: string) =>
+    req<AiSimpleResult>("POST", "/ai/games/describe", { name }),
+  aiMonitorExplain: (snapshot: string) =>
+    req<AiSimpleResult>("POST", "/ai/monitor/explain", { snapshot }),
+  aiBudgetCategorize: (description: string, categories: string[]) =>
+    req<AiSimpleResult>("POST", "/ai/budget/categorize", { description, categories }),
+  aiConvertSuggest: (fileName: string, kind?: string) =>
+    req<AiSimpleResult>("POST", "/ai/convert/suggest", { fileName, kind }),
+  aiNotesSummarize: (text: string) =>
+    req<AiSimpleResult>("POST", "/ai/notes/summarize", { text }),
 
   // --- Игры (лаунчер) ---
   gamesList: () => req<GameEntry[]>("GET", "/games"),

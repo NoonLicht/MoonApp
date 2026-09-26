@@ -2128,3 +2128,18 @@ export interface MovieRecommendResult {
   model: string;
   movie: MediaSummary;
 }
+
+export interface AiSimpleResult {
+  ok: boolean;
+  text: string;
+  mode: AiMode;
+  model: string;
+}
+
+export interface BookRecommendResult {
+  ok: boolean;
+  title: string;
+  mode: AiMode;
+  model: string;
+  book: FlibustaBook;
+}

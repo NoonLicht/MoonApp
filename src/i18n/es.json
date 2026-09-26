@@ -443,7 +443,9 @@
       "day": "Día",
       "week": "Semana",
       "month": "Mes"
-    }
+    },
+    "aiCatBtn": "IA: categoría",
+    "aiCatBusy": "Pensando..."
   },
   "quickNotes": {
     "eyebrow": "Notas rápidas",
@@ -495,7 +497,10 @@
     "changePath": "Cambiar carpeta",
     "noSavePathHint": "No se ha indicado una carpeta de partidas guardadas — sin ella no hay nada que respaldar. Indícala para activar el gestor de partidas guardadas de este juego.",
     "findSavePath": "Buscar automático",
-    "findingSavePath": "Buscando…"
+    "findingSavePath": "Buscando…",
+    "aiDescribe": "IA: describir",
+    "aiDescribing": "Escribiendo...",
+    "aiDescribeHint": "Generar una descripción breve a partir del nombre"
   },
   "tools": {
     "eyebrow": "Multiherramienta",
@@ -691,7 +696,14 @@
     "expandGenres": "Mostrar todos los géneros",
     "collapseGenres": "Contraer géneros",
     "searchGenre": "Filtrar géneros…",
-    "removeGenre": "clic para quitar"
+    "removeGenre": "clic para quitar",
+    "aiRecBtn": "¿Qué leer?",
+    "aiRecBusy": "Analizando...",
+    "aiRecOff": "Las recomendaciones de IA están apagadas — actívalas arriba",
+    "aiRecNotReady": "IA no lista: falta la clave DeepSeek o el modelo local no está cargado",
+    "aiRecEmpty": "Añade primero algunos libros a favoritos o marcadores",
+    "aiRecNotFound": "El modelo sugirió un libro, pero no se encontró en Flibusta",
+    "aiRecFailed": "No se pudo obtener una recomendación"
   },
   "monitor": {
     "title": "Monitor",
@@ -786,7 +798,10 @@
     "embedHint": "El servicio ConvertX integrado se inicia automáticamente al primer uso.",
     "embedMissing": "El runtime del conversor falta en esta instalación.",
     "embedStart": "Iniciar conversor",
-    "formatsNote": "Los formatos multimedia requieren ffmpeg en PATH. Documentos/libros necesitan las herramientas correspondientes (pandoc, Calibre, LibreOffice…)."
+    "formatsNote": "Los formatos multimedia requieren ffmpeg en PATH. Documentos/libros necesitan las herramientas correspondientes (pandoc, Calibre, LibreOffice…).",
+    "aiExplain": "Explicar",
+    "aiExplaining": "Analizando...",
+    "aiExplainFailed": "No se pudo obtener una explicación"
   },
   "voice": {
     "title": "Clonación de voz",
@@ -963,7 +978,10 @@
     "noSupport": "Este formato de archivo todavía no es compatible",
     "install": "Instalar FFmpeg",
     "installing": "Instalando FFmpeg…",
-    "downloading": "Descargando FFmpeg… {p}%"
+    "downloading": "Descargando FFmpeg… {p}%",
+    "aiSuggestBtn": "IA: sugerir formato",
+    "aiSuggestBusy": "Pensando...",
+    "aiSuggestFailed": "No se pudo obtener una sugerencia"
   },
   "music": {
     "title": "Descarga de música",
@@ -1070,7 +1088,11 @@
       "modelUse": "Usar «{model}»",
       "modelSaved": "Modelo guardado: {model}",
       "errModelName": "El servicio no acepta el modelo «{model}». Elige uno de la lista.",
-      "savedAuto": "La elección se guarda automáticamente"
+      "savedAuto": "La elección se guarda automáticamente",
+      "summarize": "Resumen",
+      "summarizeHint": "IA: resumen breve de la nota actual (API DeepSeek o modelo local — ver interruptor)",
+      "summarizing": "Resumiendo...",
+      "summarizeFailed": "No se pudo obtener un resumen"
     },
     "title": "Mi Espacio",
     "notes": "Notas",

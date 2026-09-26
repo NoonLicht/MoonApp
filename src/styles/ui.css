@@ -1660,3 +1660,33 @@ select option {
 .ai-toggle .progress-track {
   width: 90px;
 }
+
+.bk-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* Ошибка ИИ-рекомендации (Movies/Books «Что посмотреть/почитать?») — общий стиль. */
+.ai-rec-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 0 8px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: var(--glass);
+  border: 1px solid var(--coral);
+  color: var(--coral);
+  font-size: 12px;
+}
+.ai-rec-error button {
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1;
+}

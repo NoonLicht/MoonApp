@@ -443,7 +443,9 @@
       "day": "日",
       "week": "周",
       "month": "月"
-    }
+    },
+    "aiCatBtn": "AI 分类",
+    "aiCatBusy": "思考中..."
   },
   "quickNotes": {
     "eyebrow": "快速笔记",
@@ -495,7 +497,10 @@
     "changePath": "更改文件夹",
     "noSavePathHint": "尚未设置存档文件夹 — 没有它就无法备份。请设置一个以启用此游戏的存档管理器。",
     "findSavePath": "自动查找",
-    "findingSavePath": "正在搜索…"
+    "findingSavePath": "正在搜索…",
+    "aiDescribe": "AI 描述",
+    "aiDescribing": "生成中...",
+    "aiDescribeHint": "根据名称生成简短描述"
   },
   "tools": {
     "eyebrow": "多功能工具",
@@ -691,7 +696,14 @@
     "expandGenres": "展开全部分类",
     "collapseGenres": "收起分类",
     "searchGenre": "筛选分类…",
-    "removeGenre": "点击移除"
+    "removeGenre": "点击移除",
+    "aiRecBtn": "读点什么?",
+    "aiRecBusy": "分析中...",
+    "aiRecOff": "AI 推荐已关闭 — 请在上方开关中启用",
+    "aiRecNotReady": "AI 未就绪：缺少 DeepSeek 密钥或本地模型未加载",
+    "aiRecEmpty": "请先将几本书加入收藏或书签",
+    "aiRecNotFound": "模型给出了书名，但在 Flibusta 中未找到",
+    "aiRecFailed": "获取推荐失败"
   },
   "monitor": {
     "title": "监控",
@@ -786,7 +798,10 @@
     "embedHint": "内置的 ConvertX 服务会在首次使用时自动启动。",
     "embedMissing": "此安装缺少转换器运行时。",
     "embedStart": "启动转换器",
-    "formatsNote": "媒体格式需要 PATH 中有 ffmpeg。文档/电子书需要相应工具（pandoc、Calibre、LibreOffice…）。"
+    "formatsNote": "媒体格式需要 PATH 中有 ffmpeg。文档/电子书需要相应工具（pandoc、Calibre、LibreOffice…）。",
+    "aiExplain": "解释",
+    "aiExplaining": "分析中...",
+    "aiExplainFailed": "无法获取解释"
   },
   "voice": {
     "title": "语音克隆",
@@ -963,7 +978,10 @@
     "noSupport": "暂不支持此文件格式",
     "install": "安装 FFmpeg",
     "installing": "正在安装 FFmpeg…",
-    "downloading": "正在下载 FFmpeg… {p}%"
+    "downloading": "正在下载 FFmpeg… {p}%",
+    "aiSuggestBtn": "AI：建议格式",
+    "aiSuggestBusy": "思考中...",
+    "aiSuggestFailed": "无法获取建议"
   },
   "music": {
     "title": "音乐下载",
@@ -1070,7 +1088,11 @@
       "modelUse": "使用“{model}”",
       "modelSaved": "模型已保存：{model}",
       "errModelName": "服务不接受模型“{model}”。请从列表中选择。",
-      "savedAuto": "选择会自动保存"
+      "savedAuto": "选择会自动保存",
+      "summarize": "摘要",
+      "summarizeHint": "AI：当前笔记的简短摘要（DeepSeek API 或本地模型 — 见开关）",
+      "summarizing": "正在生成摘要...",
+      "summarizeFailed": "无法获取摘要"
     },
     "title": "我的空间",
     "notes": "笔记",

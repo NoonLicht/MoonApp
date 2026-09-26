@@ -443,7 +443,9 @@
       "day": "Day",
       "week": "Week",
       "month": "Month"
-    }
+    },
+    "aiCatBtn": "AI category",
+    "aiCatBusy": "Thinking..."
   },
   "quickNotes": {
     "eyebrow": "Quick notes",
@@ -495,7 +497,10 @@
     "changePath": "Change folder",
     "noSavePathHint": "No save folder set — nothing to back up without it. Set one to enable the save manager for this game.",
     "findSavePath": "Auto-find",
-    "findingSavePath": "Searching…"
+    "findingSavePath": "Searching…",
+    "aiDescribe": "AI describe",
+    "aiDescribing": "Writing...",
+    "aiDescribeHint": "Generate a short description from the name"
   },
   "tools": {
     "eyebrow": "Multitool",
@@ -691,7 +696,14 @@
     "expandGenres": "Show all genres",
     "collapseGenres": "Collapse genres",
     "searchGenre": "Filter genres…",
-    "removeGenre": "click to remove"
+    "removeGenre": "click to remove",
+    "aiRecBtn": "What to read?",
+    "aiRecBusy": "Analyzing...",
+    "aiRecOff": "AI recommendations are off — enable them in the toggle above",
+    "aiRecNotReady": "AI not ready: no DeepSeek key or local model not loaded",
+    "aiRecEmpty": "Add a few books to favorites or bookmarks first",
+    "aiRecNotFound": "The model suggested a book, but it wasn't found on Flibusta",
+    "aiRecFailed": "Couldn't get a recommendation"
   },
   "monitor": {
     "title": "Monitoring",
@@ -786,7 +798,10 @@
     "speeds": "Transfer speeds",
     "levels": "Levels",
     "controls": "Controls",
-    "data": "Data"
+    "data": "Data",
+    "aiExplain": "Explain",
+    "aiExplaining": "Analyzing...",
+    "aiExplainFailed": "Couldn't get an explanation"
   },
   "voice": {
     "title": "Audio cloning",
@@ -964,7 +979,10 @@
     "noSupport": "This file format isn't supported yet",
     "install": "Install FFmpeg",
     "installing": "Installing FFmpeg…",
-    "downloading": "Downloading FFmpeg… {p}%"
+    "downloading": "Downloading FFmpeg… {p}%",
+    "aiSuggestBtn": "AI: suggest format",
+    "aiSuggestBusy": "Thinking...",
+    "aiSuggestFailed": "Couldn't get a suggestion"
   },
   "music": {
     "title": "Music downloader",
@@ -1068,7 +1086,11 @@
       "modelUse": "Use “{model}”",
       "modelSaved": "Model saved: {model}",
       "errModelName": "The service does not accept the model “{model}”. Pick one from the list.",
-      "savedAuto": "Your choice is saved automatically"
+      "savedAuto": "Your choice is saved automatically",
+      "summarize": "Summary",
+      "summarizeHint": "AI: quick summary of the current note (DeepSeek API or local model — see toggle)",
+      "summarizing": "Summarizing...",
+      "summarizeFailed": "Couldn't get a summary"
     },
     "title": "My Space",
     "notes": "Notes",

@@ -24,6 +24,7 @@ import {
   LockOpen,
   ScanText,
   FileCog,
+  Sparkles,
 } from "lucide-react";
 import {
   Glass,
@@ -35,6 +36,7 @@ import {
   EmptyHint,
   ProgressBar,
 } from "@/components/ui";
+import { AiFeatureToggle } from "@/components/AiFeatureToggle";
 import { useI18n } from "@/app/i18n";
 import { useContextMenu, copyToClipboard } from "@/components/ContextMenu";
 import { api } from "@/api/client";
@@ -68,6 +70,22 @@ export default function ConverterPage() {
   const [result, setResult] = useState<ConvertResult | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [install, setInstall] = useState<ConvertInstallStatus | null>(null);
+  const [suggestText, setSuggestText] = useState("");
+  const [suggestBusy, setSuggestBusy] = useState(false);
+
+  const aiSuggest = async () => {
+    if (!file) return;
+    setSuggestBusy(true);
+    setSuggestText("");
+    try {
+      const r = await api.aiConvertSuggest(file.name, file.type || category?.id);
+      setSuggestText(r.text);
+    } catch {
+      setSuggestText(t("conv.aiSuggestFailed"));
+    } finally {
+      setSuggestBusy(false);
+    }
+  };
 
   // Статус FFmpeg + каталог форматов с бэкенда.
   useEffect(() => {
@@ -165,7 +183,11 @@ export default function ConverterPage() {
 
   return (
     <div className="page">
-      <SectionHead eyebrow={t("conv.eyebrow")} title={t("conv.title")} />
+      <SectionHead
+        eyebrow={t("conv.eyebrow")}
+        title={t("conv.title")}
+        action={<AiFeatureToggle feature="convert" />}
+      />
 
       <div className="page-scroll-body">
       {tools && !ffmpegFound && (
@@ -281,7 +303,11 @@ export default function ConverterPage() {
                   options={category.outputs.map((o) => ({ value: o, label: o.toUpperCase() }))}
                 />
               </Field>
+              <Btn icon={Sparkles} onClick={aiSuggest} disabled={suggestBusy}>
+                {suggestBusy ? t("conv.aiSuggestBusy") : t("conv.aiSuggestBtn")}
+              </Btn>
             </div>
+            {suggestText && <div className="muted-sm">{suggestText}</div>}
 
             {state === "working" && (
               <div className="muted-sm" style={{ display: "flex", alignItems: "center", gap: 8 }}>

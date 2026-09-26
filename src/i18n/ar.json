@@ -443,7 +443,9 @@
       "day": "يوم",
       "week": "أسبوع",
       "month": "شهر"
-    }
+    },
+    "aiCatBtn": "فئة بالذكاء الاصطناعي",
+    "aiCatBusy": "جارٍ التفكير..."
   },
   "quickNotes": {
     "eyebrow": "ملاحظات سريعة",
@@ -495,7 +497,10 @@
     "changePath": "تغيير المجلد",
     "noSavePathHint": "لم يتم تحديد مجلد الحفظ — لا يوجد شيء للنسخ الاحتياطي بدونه. حدده لتفعيل مدير الحفظ لهذه اللعبة.",
     "findSavePath": "بحث تلقائي",
-    "findingSavePath": "جارٍ البحث…"
+    "findingSavePath": "جارٍ البحث…",
+    "aiDescribe": "وصف بالذكاء الاصطناعي",
+    "aiDescribing": "جارٍ الكتابة...",
+    "aiDescribeHint": "إنشاء وصف قصير من الاسم"
   },
   "tools": {
     "eyebrow": "أداة متعددة",
@@ -691,7 +696,14 @@
     "expandGenres": "عرض كل الفئات",
     "collapseGenres": "طي الفئات",
     "searchGenre": "تصفية الفئات…",
-    "removeGenre": "انقر للإزالة"
+    "removeGenre": "انقر للإزالة",
+    "aiRecBtn": "ماذا أقرأ؟",
+    "aiRecBusy": "جارٍ التحليل...",
+    "aiRecOff": "توصيات الذكاء الاصطناعي متوقفة — فعّلها أعلاه",
+    "aiRecNotReady": "الذكاء الاصطناعي غير جاهز: لا يوجد مفتاح DeepSeek أو النموذج المحلي غير محمّل",
+    "aiRecEmpty": "أضف بضعة كتب إلى المفضلة أو الإشارات المرجعية أولاً",
+    "aiRecNotFound": "اقترح النموذج كتابًا لكنه غير موجود في Flibusta",
+    "aiRecFailed": "تعذّر الحصول على توصية"
   },
   "monitor": {
     "title": "المراقبة",
@@ -786,7 +798,10 @@
     "embedHint": "تشتغل خدمة ConvertX المدمجة تلقائياً عند أول استخدام.",
     "embedMissing": "بيئة تشغيل المحوّل غير موجودة في هذا التثبيت.",
     "embedStart": "بدء المحوّل",
-    "formatsNote": "تتطلب صيغ الوسائط وجود ffmpeg في PATH. المستندات/الكتب تحتاج الأدوات المناسبة (pandoc وCalibre وLibreOffice…)."
+    "formatsNote": "تتطلب صيغ الوسائط وجود ffmpeg في PATH. المستندات/الكتب تحتاج الأدوات المناسبة (pandoc وCalibre وLibreOffice…).",
+    "aiExplain": "اشرح",
+    "aiExplaining": "جارٍ التحليل...",
+    "aiExplainFailed": "تعذّر الحصول على شرح"
   },
   "voice": {
     "title": "استنساخ الصوت",
@@ -963,7 +978,10 @@
     "noSupport": "تنسيق الملف هذا غير مدعوم بعد",
     "install": "تثبيت FFmpeg",
     "installing": "جارٍ تثبيت FFmpeg…",
-    "downloading": "جارٍ تنزيل FFmpeg… {p}%"
+    "downloading": "جارٍ تنزيل FFmpeg… {p}%",
+    "aiSuggestBtn": "الذكاء الاصطناعي: اقترح صيغة",
+    "aiSuggestBusy": "جارٍ التفكير...",
+    "aiSuggestFailed": "تعذّر الحصول على اقتراح"
   },
   "music": {
     "title": "تنزيل الموسيقى",
@@ -1070,7 +1088,11 @@
       "modelUse": "استخدم «{model}»",
       "modelSaved": "تم حفظ الطراز: {model}",
       "errModelName": "الخدمة لا تقبل الطراز «{model}». اختر طرازًا من القائمة.",
-      "savedAuto": "يُحفظ الاختيار تلقائيًا"
+      "savedAuto": "يُحفظ الاختيار تلقائيًا",
+      "summarize": "ملخص",
+      "summarizeHint": "الذكاء الاصطناعي: ملخص موجز للملاحظة الحالية (DeepSeek API أو نموذج محلي — انظر المفتاح)",
+      "summarizing": "جارٍ التلخيص...",
+      "summarizeFailed": "تعذّر الحصول على ملخص"
     },
     "title": "مساحتي",
     "notes": "ملاحظات",
