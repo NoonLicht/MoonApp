@@ -516,7 +516,6 @@
     "unitFrom": "从",
     "unitTo": "到",
     "calculator": "计算器",
-    "gridHint": "拖动小部件标题栏可调整顺序，拖动右下角可调整大小 — 顺序和大小会被记住。",
     "flagGlobal": "g — 全局搜索（所有匹配项，而非仅第一个）",
     "flagIgnoreCase": "i — 忽略大小写",
     "flagMultiline": "m — ^ 和 $ 匹配每行边界，而非整段文本",

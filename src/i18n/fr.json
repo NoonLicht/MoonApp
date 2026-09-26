@@ -516,7 +516,6 @@
     "unitFrom": "De",
     "unitTo": "Vers",
     "calculator": "Calculatrice",
-    "gridHint": "Faites glisser un widget par son en-tête pour le réorganiser, et son coin inférieur droit pour le redimensionner — l'ordre et les tailles sont mémorisés.",
     "flagGlobal": "g — recherche globale (toutes les correspondances, pas seulement la première)",
     "flagIgnoreCase": "i — insensible à la casse",
     "flagMultiline": "m — ^ et $ correspondent à chaque limite de ligne, pas seulement au texte entier",

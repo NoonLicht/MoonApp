@@ -1512,7 +1512,6 @@ select option {
   display: flex;
   width: 100%;
   flex-shrink: 0;
-  gap: 14px;
 }
 .tools-block {
   display: flex;
@@ -1549,6 +1548,23 @@ select option {
 .tools-divider:active::after {
   background: var(--amber);
 }
+/* Граница между виджетами В ОДНОМ ряду — та же полоска, повёрнутая на 90°:
+   тянет flex-grow соседних виджетов (один растёт настолько же, насколько
+   уменьшается другой), не трогая остальные ячейки ряда. */
+.tools-divider.is-x {
+  width: 10px;
+  height: auto;
+  align-self: stretch;
+  cursor: col-resize;
+}
+.tools-divider.is-x::after {
+  top: 8px;
+  bottom: 8px;
+  left: 4px;
+  right: auto;
+  width: 2px;
+  height: auto;
+}
 .tools-widget-head {
   display: flex;
   align-items: center;
@@ -1578,10 +1594,13 @@ select option {
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
+  flex: 1;
+  min-height: 0;
 }
 .curlconv-row > * {
   flex: 1;
   min-width: 280px;
+  min-height: 0;
 }
 .curlconv-warnings {
   border-top: 1px dashed var(--glass-border);

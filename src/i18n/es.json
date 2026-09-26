@@ -516,7 +516,6 @@
     "unitFrom": "De",
     "unitTo": "A",
     "calculator": "Calculadora",
-    "gridHint": "Arrastra un widget por su cabecera para reordenarlo, y arrastra su esquina inferior derecha para cambiar el tamaño — el orden y los tamaños se recuerdan.",
     "flagGlobal": "g — búsqueda global (todas las coincidencias, no solo la primera)",
     "flagIgnoreCase": "i — sin distinguir mayúsculas/minúsculas",
     "flagMultiline": "m — ^ y $ coinciden en cada límite de línea, no solo en todo el texto",

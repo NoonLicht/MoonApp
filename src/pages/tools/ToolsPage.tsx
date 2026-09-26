@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import {
   Braces,
   GitCompare,
@@ -105,7 +105,7 @@ function CurlConverterBlock() {
   return (
     <Glass
       className="curlconv-block"
-      style={{ flexDirection: "column", alignItems: "stretch", gap: 10, marginBottom: 14 }}
+      style={{ flexDirection: "column", alignItems: "stretch", gap: 10, flex: 1, minHeight: 0 }}
     >
       <div className="tools-widget-head">
         <Terminal size={16} />
@@ -115,7 +115,7 @@ function CurlConverterBlock() {
       <div className="curlconv-row">
         <textarea
           className="text-input"
-          style={{ flex: 1, fontFamily: "var(--font-mono)", resize: "vertical", minHeight: 200 }}
+          style={{ flex: 1, fontFamily: "var(--font-mono)", resize: "none", minHeight: 0 }}
           spellCheck={false}
           placeholder="curl ..."
           value={command}
@@ -145,7 +145,7 @@ function CurlConverterBlock() {
           <textarea
             className="text-input"
             readOnly
-            style={{ flex: 1, fontFamily: "var(--font-mono)", resize: "vertical", minHeight: 160 }}
+            style={{ flex: 1, fontFamily: "var(--font-mono)", resize: "none", minHeight: 0 }}
             value={code}
           />
           {warnings.length > 0 && (
@@ -940,12 +940,27 @@ function templateFor(tier: Tier): TemplateRow[] {
   return NARROW_TEMPLATE;
 }
 
-function loadHeights(): Record<string, number> {
+const WIDTHS_KEY = "moonapp.tools.templateColGrow";
+const CURL_HEIGHT_KEY = "moonapp.tools.curlHeight";
+const DEFAULT_CURL_HEIGHT = 420;
+const MIN_CURL_HEIGHT = 220;
+const MIN_GROW = 0.2;
+
+function loadRecord(key: string): Record<string, number> {
   try {
-    const raw = JSON.parse(localStorage.getItem(HEIGHTS_KEY) || "{}");
+    const raw = JSON.parse(localStorage.getItem(key) || "{}");
     return raw && typeof raw === "object" ? raw : {};
   } catch {
     return {};
+  }
+}
+
+function loadNumber(key: string, fallback: number): number {
+  try {
+    const n = Number(localStorage.getItem(key));
+    return Number.isFinite(n) && n > 0 ? n : fallback;
+  } catch {
+    return fallback;
   }
 }
 
@@ -955,12 +970,31 @@ interface RowDragInfo {
   startHeight: number;
 }
 
+interface ColDragInfo {
+  leftKey: string;
+  rightKey: string;
+  startX: number;
+  startLeft: number;
+  startRight: number;
+  totalGrow: number;
+  rowWidthPx: number;
+}
+
+interface CurlDragInfo {
+  startY: number;
+  startHeight: number;
+}
+
 export default function ToolsPage() {
   const { t } = useI18n();
   const [viewportW, setViewportW] = useState(0);
-  const [heights, setHeights] = useState<Record<string, number>>(() => loadHeights());
+  const [heights, setHeights] = useState<Record<string, number>>(() => loadRecord(HEIGHTS_KEY));
+  const [widths, setWidths] = useState<Record<string, number>>(() => loadRecord(WIDTHS_KEY));
+  const [curlHeight, setCurlHeight] = useState(() => loadNumber(CURL_HEIGHT_KEY, DEFAULT_CURL_HEIGHT));
   const scrollRef = useRef<HTMLDivElement>(null);
   const rowDragRef = useRef<RowDragInfo | null>(null);
+  const colDragRef = useRef<ColDragInfo | null>(null);
+  const curlDragRef = useRef<CurlDragInfo | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -973,11 +1007,15 @@ export default function ToolsPage() {
 
   useEffect(() => {
     if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => localStorage.setItem(HEIGHTS_KEY, JSON.stringify(heights)), 300);
+    saveTimer.current = setTimeout(() => {
+      localStorage.setItem(HEIGHTS_KEY, JSON.stringify(heights));
+      localStorage.setItem(WIDTHS_KEY, JSON.stringify(widths));
+      localStorage.setItem(CURL_HEIGHT_KEY, String(curlHeight));
+    }, 300);
     return () => {
       if (saveTimer.current) clearTimeout(saveTimer.current);
     };
-  }, [heights]);
+  }, [heights, widths, curlHeight]);
 
   const tier = tierFor(viewportW);
   const template = templateFor(tier);
@@ -1001,6 +1039,72 @@ export default function ToolsPage() {
     rowDragRef.current = null;
   };
 
+  /** Граница между двумя соседними виджетами в ряду: тянем — их flex-grow
+   * меняется на противоход (один растёт ровно настолько, насколько уменьшается
+   * другой), остальные виджеты ряда остаются как были. */
+  const onColDividerDown = (
+    leftKey: string,
+    rightKey: string,
+    leftGrow: number,
+    rightGrow: number,
+    totalGrow: number,
+    e: React.PointerEvent,
+  ) => {
+    e.currentTarget.setPointerCapture(e.pointerId);
+    const rowEl = e.currentTarget.parentElement as HTMLElement | null;
+    colDragRef.current = {
+      leftKey,
+      rightKey,
+      startX: e.clientX,
+      startLeft: leftGrow,
+      startRight: rightGrow,
+      totalGrow,
+      rowWidthPx: rowEl?.clientWidth || 800,
+    };
+  };
+  const onColDividerMove = (e: React.PointerEvent) => {
+    const d = colDragRef.current;
+    if (!d) return;
+    const deltaGrow = ((e.clientX - d.startX) / d.rowWidthPx) * d.totalGrow;
+    let nextLeft = d.startLeft + deltaGrow;
+    let nextRight = d.startRight - deltaGrow;
+    if (nextLeft < MIN_GROW) {
+      nextRight -= MIN_GROW - nextLeft;
+      nextLeft = MIN_GROW;
+    }
+    if (nextRight < MIN_GROW) {
+      nextLeft -= MIN_GROW - nextRight;
+      nextRight = MIN_GROW;
+    }
+    setWidths((prev) => ({ ...prev, [d.leftKey]: nextLeft, [d.rightKey]: nextRight }));
+  };
+  const onColDividerUp = (e: React.PointerEvent) => {
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch {
+      /* уже отпущено */
+    }
+    colDragRef.current = null;
+  };
+
+  const onCurlDividerDown = (e: React.PointerEvent) => {
+    e.currentTarget.setPointerCapture(e.pointerId);
+    curlDragRef.current = { startY: e.clientY, startHeight: curlHeight };
+  };
+  const onCurlDividerMove = (e: React.PointerEvent) => {
+    const d = curlDragRef.current;
+    if (!d) return;
+    setCurlHeight(Math.max(MIN_CURL_HEIGHT, d.startHeight + (e.clientY - d.startY)));
+  };
+  const onCurlDividerUp = (e: React.PointerEvent) => {
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch {
+      /* уже отпущено */
+    }
+    curlDragRef.current = null;
+  };
+
   const byId = useMemo(
     () => Object.fromEntries(TOOLS.map((x) => [x.id, x])) as unknown as Record<
       ToolId,
@@ -1015,21 +1119,30 @@ export default function ToolsPage() {
         eyebrow={t("tools.eyebrow")}
         title={t("tools.title")}
         action={
-          <Btn icon={RotateCcw} onClick={() => setHeights({})}>
+          <Btn
+            icon={RotateCcw}
+            onClick={() => {
+              setHeights({});
+              setWidths({});
+              setCurlHeight(DEFAULT_CURL_HEIGHT);
+            }}
+          >
             {t("tools.resetLayout")}
           </Btn>
         }
       />
-      <CurlConverterBlock />
-      <div className="muted-sm" style={{ margin: "4px 0 10px" }}>
-        {t("tools.gridHint")}
+      <div style={{ height: curlHeight, display: "flex", flexDirection: "column", minHeight: 0 }}>
+        <CurlConverterBlock />
       </div>
+      <div className="tools-divider is-y" onPointerDown={onCurlDividerDown} onPointerMove={onCurlDividerMove} onPointerUp={onCurlDividerUp} />
       <div ref={scrollRef} className="tools-flow-scroll">
         <div className="tools-flow-col">
           {template.map((row, ri) => {
             const heightKey = `${tier}:${row.key}`;
             const height = heights[heightKey] ?? row.defaultHeight;
             const prevRow = template[ri - 1];
+            const rowGrows = row.cells.map((c) => widths[`${tier}:${row.key}:${c.toolId}`] ?? c.grow);
+            const totalGrow = rowGrows.reduce((a, b) => a + b, 0);
             return (
               <div key={row.key}>
                 {ri > 0 && prevRow && (
@@ -1045,19 +1158,41 @@ export default function ToolsPage() {
                   />
                 )}
                 <div className="tools-flow-row" style={{ height }}>
-                  {row.cells.map((c) => {
+                  {row.cells.map((c, ci) => {
                     const tool = byId[c.toolId];
                     const Icon = tool.icon;
+                    const cellKey = `${tier}:${row.key}:${c.toolId}`;
+                    const grow = rowGrows[ci];
+                    const prevCell = row.cells[ci - 1];
                     return (
-                      <div key={c.toolId} className="tools-block" style={{ flexGrow: c.grow, flexBasis: 0 }}>
-                        <div className="tools-widget-head">
-                          <Icon size={14} />
-                          <span>{t(`tools.tab_${c.toolId}`)}</span>
+                      <Fragment key={c.toolId}>
+                        {ci > 0 && prevCell && (
+                          <div
+                            className="tools-divider is-x"
+                            onPointerDown={(e) =>
+                              onColDividerDown(
+                                `${tier}:${row.key}:${prevCell.toolId}`,
+                                cellKey,
+                                rowGrows[ci - 1],
+                                grow,
+                                totalGrow,
+                                e,
+                              )
+                            }
+                            onPointerMove={onColDividerMove}
+                            onPointerUp={onColDividerUp}
+                          />
+                        )}
+                        <div className="tools-block" style={{ flexGrow: grow, flexBasis: 0 }}>
+                          <div className="tools-widget-head">
+                            <Icon size={14} />
+                            <span>{t(`tools.tab_${c.toolId}`)}</span>
+                          </div>
+                          <div className="tools-widget-body">
+                            <tool.Component />
+                          </div>
                         </div>
-                        <div className="tools-widget-body">
-                          <tool.Component />
-                        </div>
-                      </div>
+                      </Fragment>
                     );
                   })}
                 </div>
