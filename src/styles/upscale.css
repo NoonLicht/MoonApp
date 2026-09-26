@@ -725,13 +725,18 @@
 /* Раскрывается ВВЕРХ от кнопки, а не вниз: селектор стоит в первом ряду
    быстрых полей, и при раскрытии вниз список моделей упирался в нижнюю
    границу карточки — приходилось прокручивать саму карточку, а не список.
-   Открытие вверх не зависит от ширины страницы (не медиа-условие). */
+   Открытие вверх не зависит от ширины страницы (не медиа-условие).
+   position: fixed + портал в #overlay-root (см. UpscaleModelPicker.tsx):
+   родитель — .up-fill с overflow-y:auto, который обрезал попап при абсолютном
+   позиционировании внутри своего потока; координаты left/bottom/width
+   считаются от кнопки в экранных координатах и приходят инлайн-стилем. */
 .up-pick-pop {
-  position: absolute;
-  z-index: 40;
-  bottom: calc(100% + 5px);
-  left: 0;
-  right: 0;
+  position: fixed;
+  z-index: 400;
+  /* Портал уходит в #overlay-root, а у хоста pointer-events:none (см.
+     overlayPointerEvents.test.ts) — без явного auto клики проходили бы
+     сквозь попап на страницу под ним. */
+  pointer-events: auto;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -786,10 +791,10 @@
   background: var(--line);
 }
 .up-pick-list {
-  /* Две колонки на широкой панели: строки моделей короткие, и в одну колонку
-     список из полусотни моделей приходится листать заметно дольше. */
+  /* Всегда два столбца: строки моделей короткие, и в одну колонку список
+     из полусотни моделей приходится листать заметно дольше. */
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  grid-template-columns: repeat(2, 1fr);
   gap: 4px;
   overflow-y: auto;
   padding-right: 2px;
@@ -835,7 +840,8 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.up-pick-empty {
+.up-pick-empty,
+.up-pick-row-none {
   grid-column: 1 / -1;
 }
 .up-pick-foot {

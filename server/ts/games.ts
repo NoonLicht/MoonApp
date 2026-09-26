@@ -20,9 +20,12 @@ export interface GameEntry {
   exePath: string;
   description: string;
   iconDataUrl: string | null;
+  /** Свой фон, импортированный вручную — хранится наравне с backgroundUrl, показ переключается useCustomBg. */
   backgroundDataUrl: string | null;
   /** Обложка со Steam CDN (header.jpg) — не грузим на диск, просто ссылка. */
   backgroundUrl: string | null;
+  /** true — карточка показывает backgroundDataUrl, false — backgroundUrl (если есть оба). */
+  useCustomBg: boolean;
   savePath: string | null;
   source: "manual" | "steam" | "epic";
   /** Steam AppID — есть только у source="steam", нужен для запуска через steam://rungameid (без предупреждения "нестандартные параметры запуска") и для обложки с CDN. */
@@ -70,6 +73,7 @@ export async function create(input: {
     iconDataUrl,
     backgroundDataUrl: input.backgroundDataUrl || null,
     backgroundUrl: null,
+    useCustomBg: !!input.backgroundDataUrl,
     savePath: input.savePath || null,
     source: "manual",
     appId: null,
@@ -447,6 +451,7 @@ async function scanSteam(): Promise<GameEntry[]> {
         // Идёт через свой прокси (server/routes/games.js → /cover/:appId):
         // CSP img-src 'self' не пускает <img> напрямую на cdn.cloudflare.steamstatic.com.
         backgroundUrl: `/api/games/cover/${manifest.appId}`,
+        useCustomBg: false,
         savePath: guessSavePath(manifest.name),
         source: "steam",
         appId: manifest.appId,
@@ -491,6 +496,7 @@ async function scanEpic(): Promise<GameEntry[]> {
         iconDataUrl: await extractExeIcon(exePath).catch(() => null),
         backgroundDataUrl: null,
         backgroundUrl: null,
+        useCustomBg: false,
         savePath: guessSavePath(name),
         source: "epic",
         appId: null,

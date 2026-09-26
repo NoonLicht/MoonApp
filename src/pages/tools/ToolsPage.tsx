@@ -569,6 +569,31 @@ function UuidTool() {
 
 /* ───────────────────────── Number base converter ───────────────────────── */
 
+/**
+ * Парсит строку в указанной системе счисления в BigInt (без ограничения
+ * на количество разрядов). `parseInt`/`Number` теряют точность уже на числах
+ * больше 2^53 — длинная строка из единиц в двоичной системе тихо превращалась
+ * в float и «плыла» при обратном переводе. Разбор вручную, разряд за разрядом.
+ */
+function parseBigIntRadix(value: string, radix: number): bigint | null {
+  let s = value.trim();
+  if (!s) return null;
+  let negative = false;
+  if (s[0] === "-" || s[0] === "+") {
+    negative = s[0] === "-";
+    s = s.slice(1);
+  }
+  if (!s) return null;
+  const big = BigInt(radix);
+  let result = 0n;
+  for (const ch of s.toLowerCase()) {
+    const digit = "0123456789abcdefghijklmnopqrstuvwxyz".indexOf(ch);
+    if (digit < 0 || digit >= radix) return null;
+    result = result * big + BigInt(digit);
+  }
+  return negative ? -result : result;
+}
+
 function BaseTool() {
   const { t } = useI18n();
   const [dec, setDec] = useState("");
@@ -587,8 +612,8 @@ function BaseTool() {
       setBin("");
       return;
     }
-    const n = parseInt(clean, radix);
-    if (!Number.isFinite(n) || Number.isNaN(n)) {
+    const n = parseBigIntRadix(clean, radix);
+    if (n === null) {
       setError(t("tools.baseInvalid"));
       return;
     }

@@ -2793,13 +2793,13 @@ export default function MyspacePage() {
       )}
       {/* ─── CANVAS VIEW ─── */}
       {myspaceView === "canvas" && (
-        <div style={{ display: "flex", flex: 1, minHeight: 0, overflow: "hidden" }}>
+        <div style={{ display: "flex", flex: 1, minHeight: 0, overflow: "hidden", margin: "8px 12px" }}>
           <CanvasPage />
         </div>
       )}
       {/* ─── BOOKMARKS VIEW ─── */}
       {myspaceView === "bookmarks" && (
-        <div style={{ display: "flex", flex: 1, minHeight: 0, overflow: "hidden" }}>
+        <div style={{ display: "flex", flex: 1, minHeight: 0, overflow: "hidden", margin: "8px 12px" }}>
           <BookmarksView
             onOpenNote={(p) => {
               setMyspaceView("notes");
@@ -2810,7 +2810,7 @@ export default function MyspacePage() {
       )}
       {/* ─── SYNC VIEW ─── */}
       {myspaceView === "sync" && (
-        <div style={{ display: "flex", flex: 1, minHeight: 0, overflow: "hidden" }}>
+        <div style={{ display: "flex", flex: 1, minHeight: 0, overflow: "hidden", margin: "8px 12px" }}>
           <GitSyncView />
         </div>
       )}

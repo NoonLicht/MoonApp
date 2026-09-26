@@ -447,6 +447,8 @@ export interface GameEntry {
   backgroundDataUrl: string | null;
   /** Обложка со Steam/Epic CDN (проставляется при автосканировании). */
   backgroundUrl: string | null;
+  /** true — карточка показывает backgroundDataUrl, false — backgroundUrl (если есть оба). */
+  useCustomBg: boolean;
   savePath: string | null;
   source: "manual" | "steam" | "epic";
   /** Steam AppID (только для source="steam") — нужен для запуска через steam://rungameid. */
@@ -461,6 +463,7 @@ export interface GameInput {
   iconDataUrl?: string | null;
   backgroundDataUrl?: string | null;
   backgroundUrl?: string | null;
+  useCustomBg?: boolean;
   savePath?: string | null;
 }
 

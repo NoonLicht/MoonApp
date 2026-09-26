@@ -67,6 +67,11 @@ const PORTALED = [
     css: "src/styles/arch.css",
     cls: "arch-view-overlay",
   },
+  {
+    src: "src/pages/upscale/parts/UpscaleModelPicker.tsx",
+    css: "src/styles/upscale.css",
+    cls: "up-pick-pop",
+  },
 ];
 
 describe("портальные окна: клики не проходят сквозь окно", () => {

@@ -1,7 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Check, ChevronDown, Download, Search, Zap } from "lucide-react";
 import { Badge } from "@/components/ui";
 import { useI18n } from "@/app/i18n";
+import { getOverlayRoot } from "@/components/overlayHost";
 import type { UpModelInfo } from "@/api/types";
 
 /**
@@ -38,12 +40,18 @@ export default function UpscaleModelPicker({
   const [onlyReady, setOnlyReady] = useState(false);
   const [onlyTrt, setOnlyTrt] = useState(false);
   const rootRef = useRef<HTMLDivElement | null>(null);
+  const popRef = useRef<HTMLDivElement | null>(null);
 
   // Клик мимо панели и Esc закрывают список — как у обычного выпадающего меню.
+  // Попап рендерится порталом (см. ниже), поэтому он вне поддерева rootRef —
+  // клик внутри него тоже проверяем отдельно, иначе он считался бы «мимо».
   useEffect(() => {
     if (!open) return;
     const onDown = (e: MouseEvent) => {
-      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false);
+      const t = e.target as Node;
+      if (rootRef.current?.contains(t)) return;
+      if (popRef.current?.contains(t)) return;
+      setOpen(false);
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setOpen(false);
@@ -53,6 +61,32 @@ export default function UpscaleModelPicker({
     return () => {
       document.removeEventListener("mousedown", onDown);
       document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  // Позиция попапа считается от кнопки в экранных координатах (портал в
+  // #overlay-root — вне скроллящихся/обрезающих родителей вроде .up-fill),
+  // раскрывается вверх и пересчитывается при скролле/резайзе, пока открыт.
+  const [pos, setPos] = useState<{ left: number; bottom: number; width: number } | null>(null);
+  useLayoutEffect(() => {
+    if (!open) return;
+    const recalc = () => {
+      const el = rootRef.current;
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      // Сетка в два столбца требует больше места, чем узкое поле в строке
+      // быстрых настроек — расширяем попап, но не шире окна, и подвигаем
+      // влево, если иначе он вылезет за правый край.
+      const width = Math.max(r.width, Math.min(520, window.innerWidth - 16));
+      const left = Math.max(8, Math.min(r.left, window.innerWidth - width - 8));
+      setPos({ left, bottom: window.innerHeight - r.top + 5, width });
+    };
+    recalc();
+    window.addEventListener("resize", recalc);
+    window.addEventListener("scroll", recalc, true);
+    return () => {
+      window.removeEventListener("resize", recalc);
+      window.removeEventListener("scroll", recalc, true);
     };
   }, [open]);
 
@@ -116,8 +150,13 @@ export default function UpscaleModelPicker({
         <ChevronDown size={14} />
       </button>
 
-      {open ? (
-        <div className="up-pick-pop">
+      {open && pos && getOverlayRoot()
+        ? createPortal(
+            <div
+              className="up-pick-pop"
+              ref={popRef}
+              style={{ left: pos.left, bottom: pos.bottom, width: pos.width }}
+            >
           <div className="up-pick-head">
             <span className="up-pick-search">
               <Search size={13} />
@@ -167,7 +206,7 @@ export default function UpscaleModelPicker({
             {noneLabel ? (
               <button
                 type="button"
-                className={`up-pick-row${value === "none" ? " is-cur" : ""}`}
+                className={`up-pick-row up-pick-row-none${value === "none" ? " is-cur" : ""}`}
                 onClick={() => {
                   onPick("none");
                   setOpen(false);
@@ -216,8 +255,10 @@ export default function UpscaleModelPicker({
               <Download size={13} /> {t("up.pickCatalog")}
             </button>
           </div>
-        </div>
-      ) : null}
+            </div>,
+            getOverlayRoot()!,
+          )
+        : null}
     </div>
   );
 }

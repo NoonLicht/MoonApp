@@ -140,7 +140,7 @@ describe("апскейл: зум, полоса сравнения, пакет и
     expect(css).toMatch(/\.up-pick-mark\.is-warn/);
     expect(css).toMatch(/\.up-pick-row\.is-missing \.up-pick-row-name \{[\s\S]*?opacity: 0\.55/);
     // Две колонки включаются раньше, фильтры — компактные.
-    expect(css).toMatch(/\.up-pick-list \{[\s\S]*?minmax\(260px, 1fr\)/);
+    expect(css).toMatch(/\.up-pick-list \{[\s\S]*?repeat\(2, 1fr\)/);
     expect(css).toMatch(/\.up-pick-filters \.badge \{[\s\S]*?font-size: 10\.5px/);
     // Поле модели растягивается на свободное место: триггер длиннее, а список
     // получает ширину под две колонки.

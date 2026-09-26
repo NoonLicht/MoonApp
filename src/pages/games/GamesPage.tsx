@@ -12,6 +12,8 @@ import {
   AlertTriangle,
   FolderOpen,
   Search,
+  Images,
+  ImageOff,
 } from "lucide-react";
 import { Glass, Btn, Badge, EmptyHint, SectionHead } from "@/components/ui";
 import { useContextMenu } from "@/components/ContextMenu";
@@ -185,11 +187,20 @@ export default function GamesPage() {
     setPendingBgId(null);
     if (!f || !id) return;
     const dataUrl = await fileToDataUrl(f);
-    // У Steam/Epic-записей backgroundUrl (обложка со стора) непустой и в рендере
-    // карточки имел приоритет над backgroundDataUrl — свой фон молча игнорировался.
-    // Явно сбрасываем его, чтобы выбранная картинка реально стала фоном.
-    const updated = await api.gamesUpdate(id, { backgroundDataUrl: dataUrl, backgroundUrl: null });
+    // Обложка со Steam/Epic (backgroundUrl) не трогается — храним оба фона и
+    // переключаемся между ними флагом useCustomBg (см. контекстное меню).
+    const updated = await api.gamesUpdate(id, { backgroundDataUrl: dataUrl, useCustomBg: true });
     setItems((prev) => prev.map((g) => (g.id === updated.id ? updated : g)));
+  };
+
+  const toggleBgSource = async (g: GameEntry) => {
+    const updated = await api.gamesUpdate(g.id, { useCustomBg: !g.useCustomBg });
+    setItems((prev) => prev.map((x) => (x.id === updated.id ? updated : x)));
+  };
+
+  const deleteCustomBg = async (g: GameEntry) => {
+    const updated = await api.gamesUpdate(g.id, { backgroundDataUrl: null, useCustomBg: false });
+    setItems((prev) => prev.map((x) => (x.id === updated.id ? updated : x)));
   };
 
   const [findingSave, setFindingSave] = useState(false);
@@ -349,6 +360,26 @@ export default function GamesPage() {
                   icon: ImagePlus,
                   onClick: () => importBackground(g),
                 },
+                ...(g.backgroundDataUrl && g.backgroundUrl
+                  ? [
+                      {
+                        label: g.useCustomBg
+                          ? t("games.useStoreBg")
+                          : t("games.useCustomBg"),
+                        icon: Images,
+                        onClick: () => void toggleBgSource(g),
+                      },
+                    ]
+                  : []),
+                ...(g.backgroundDataUrl
+                  ? [
+                      {
+                        label: t("games.deleteCustomBg"),
+                        icon: ImageOff,
+                        onClick: () => void deleteCustomBg(g),
+                      },
+                    ]
+                  : []),
                 { separator: true },
                 { label: t("ctx.remove"), icon: Trash2, danger: true, onClick: () => void remove(g.id) },
               ])
@@ -360,8 +391,9 @@ export default function GamesPage() {
               position: "relative",
               height: 140,
               border: "1px solid var(--glass-border)",
-              // Свой фон (импортированный вручную) важнее автообложки со Steam/Epic.
-              backgroundImage: g.backgroundDataUrl
+              // useCustomBg переключает между своим фоном и обложкой Steam/Epic,
+              // когда есть оба (см. контекстное меню); иначе — что есть.
+              backgroundImage: (g.useCustomBg && g.backgroundDataUrl) || (!g.backgroundUrl && g.backgroundDataUrl)
                 ? `url(${g.backgroundDataUrl})`
                 : g.backgroundUrl
                   ? `url(${g.backgroundUrl})`
