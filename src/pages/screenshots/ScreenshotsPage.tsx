@@ -189,7 +189,7 @@ function AreaPicker({
   const displayScale = imgRef.current ? imgRef.current.getBoundingClientRect().width / natural.w : 1;
 
   return (
-    <Glass style={{ flexDirection: "column", alignItems: "stretch", gap: 10, padding: 12 }}>
+    <Glass style={{ display: "flex", flexDirection: "column", alignItems: "stretch", gap: 10, padding: 12 }}>
       <div className="muted-sm">{confirmLabel}</div>
       <div style={{ position: "relative", display: "inline-block", maxWidth: "100%" }}>
         <img
@@ -711,7 +711,9 @@ export default function ScreenshotsPage() {
       </div>
 
       <div className="page-scroll-body">
-        <Glass style={{ flexDirection: "column", alignItems: "stretch", gap: 10, padding: 12 }}>
+        <Glass
+          style={{ display: "flex", flexDirection: "column", alignItems: "stretch", gap: 14, padding: 12 }}
+        >
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-end" }}>
             <Field label={t("screenshots.source")} w={260}>
               <Select value={sourceId} onChange={(e) => setSourceId(e.target.value)} options={sourceOptions} />
@@ -814,7 +816,9 @@ export default function ScreenshotsPage() {
         )}
 
         {shot && (
-          <Glass style={{ flexDirection: "column", alignItems: "stretch", gap: 8, padding: 12 }}>
+          <Glass
+            style={{ display: "flex", flexDirection: "column", alignItems: "stretch", gap: 10, padding: 12 }}
+          >
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               {(
                 [
@@ -852,7 +856,9 @@ export default function ScreenshotsPage() {
             </div>
             <div className="muted-sm">{t("screenshots.annotateHint")}</div>
             {ocrText !== null && (
-              <Glass style={{ flexDirection: "column", alignItems: "stretch", gap: 6, padding: 10 }}>
+              <Glass
+                style={{ display: "flex", flexDirection: "column", alignItems: "stretch", gap: 6, padding: 10 }}
+              >
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <div className="muted-sm">
                     {ocrText ? t("screenshots.ocrCopied") : t("screenshots.ocrEmpty")}
