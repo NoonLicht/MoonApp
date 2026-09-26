@@ -27,6 +27,107 @@ import {
   ArrowUp,
 } from "lucide-react";
 
+/* ---------- multilingual natural-date parsing ----------
+ * Быстрый quick-add понимал "today/tomorrow" только на английском (плюс пара
+ * русских слов захардкожена отдельно и не совпадала с regex создания задачи).
+ * Ниже — единый разбор относительных дат/дней недели/времени на всех языках
+ * приложения (en/ru/es/fr/zh/ar), используемый и для чипов-подсказок, и для
+ * реального создания задачи.
+ */
+type NaturalDateMatch = { phrase: string; date: Date; hasTime: boolean };
+
+const REL_DAY_WORDS: { words: string[]; days: number }[] = [
+  { words: ["day after tomorrow", "послезавтра", "pasado mañana", "après-demain", "后天", "بعد غد"], days: 2 },
+  { words: ["tomorrow", "завтра", "mañana", "demain", "明天", "غدا", "غداً"], days: 1 },
+  { words: ["today", "сегодня", "hoy", "aujourd'hui", "今天", "اليوم"], days: 0 },
+];
+
+const WEEKDAY_NAMES: Record<string, string[]> = {
+  en: ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"],
+  ru: ["воскресенье", "понедельник", "вторник", "среда", "четверг", "пятница", "суббота"],
+  es: ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"],
+  fr: ["dimanche", "lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi"],
+  zh: ["星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"],
+  ar: ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"],
+};
+/* "следующий/следующая/следующее" согласуется по роду с днём недели. */
+const RU_NEXT_PREFIX = [
+  "следующее",
+  "следующий",
+  "следующий",
+  "следующая",
+  "следующий",
+  "следующая",
+  "следующая",
+];
+
+/** Все варианты фраз "следующий понедельник" и т.п. по языкам, отсортированные
+ *  от самых длинных к самым коротким (чтобы не перепутать префикс с целой фразой). */
+function buildWeekdayPhrases(): { phrase: string; day: number }[] {
+  const out: { phrase: string; day: number }[] = [];
+  WEEKDAY_NAMES.en.forEach((w, i) => out.push({ phrase: `next ${w}`, day: i }));
+  WEEKDAY_NAMES.ru.forEach((w, i) => out.push({ phrase: `${RU_NEXT_PREFIX[i]} ${w}`, day: i }));
+  WEEKDAY_NAMES.es.forEach((w, i) => out.push({ phrase: `próximo ${w}`, day: i }));
+  WEEKDAY_NAMES.fr.forEach((w, i) => out.push({ phrase: `${w} prochain`, day: i }));
+  WEEKDAY_NAMES.zh.forEach((w, i) => out.push({ phrase: `下${w}`, day: i }));
+  WEEKDAY_NAMES.ar.forEach((w, i) => out.push({ phrase: `${w} القادم`, day: i }));
+  return out.sort((a, b) => b.phrase.length - a.phrase.length);
+}
+const WEEKDAY_PHRASES = buildWeekdayPhrases();
+const REL_PHRASES = REL_DAY_WORDS.flatMap((g) => g.words.map((w) => ({ phrase: w, days: g.days }))).sort(
+  (a, b) => b.phrase.length - a.phrase.length,
+);
+
+/** Время: "15:00", "15.00", "3pm", "3 pm". */
+const TIME_RE = /\b([01]?\d|2[0-3])[:.]([0-5]\d)\b|\b(1[0-2]|0?[1-9])\s?(am|pm)\b/i;
+
+function parseNaturalDate(text: string): NaturalDateMatch | null {
+  const lower = text.toLowerCase();
+  let dateHit: { phrase: string; base: Date } | null = null;
+
+  for (const { phrase, days } of REL_PHRASES) {
+    const idx = lower.indexOf(phrase);
+    if (idx >= 0) {
+      const d = new Date();
+      d.setDate(d.getDate() + days);
+      dateHit = { phrase: text.slice(idx, idx + phrase.length), base: d };
+      break;
+    }
+  }
+  if (!dateHit) {
+    for (const { phrase, day } of WEEKDAY_PHRASES) {
+      const idx = lower.indexOf(phrase);
+      if (idx >= 0) {
+        const d = new Date();
+        const currentDay = d.getDay();
+        let diff = day - currentDay;
+        if (diff <= 0) diff += 7;
+        d.setDate(d.getDate() + diff);
+        dateHit = { phrase: text.slice(idx, idx + phrase.length), base: d };
+        break;
+      }
+    }
+  }
+  if (!dateHit) return null;
+
+  let hasTime = false;
+  const timeM = lower.match(TIME_RE);
+  if (timeM) {
+    hasTime = true;
+    if (timeM[1] !== undefined) {
+      dateHit.base.setHours(parseInt(timeM[1], 10), parseInt(timeM[2], 10), 0, 0);
+    } else {
+      let h = parseInt(timeM[3], 10) % 12;
+      if (timeM[4].toLowerCase() === "pm") h += 12;
+      dateHit.base.setHours(h, 0, 0, 0);
+    }
+  } else {
+    dateHit.base.setHours(0, 0, 0, 0);
+  }
+
+  return { phrase: dateHit.phrase, date: dateHit.base, hasTime };
+}
+
 /* ---------- types ---------- */
 interface TasksPanelProps {
   onOpenNote?: (path: string) => void;
@@ -321,12 +422,18 @@ const TasksPanel: React.FC<TasksPanelProps> = ({ onOpenNote }) => {
         else if (v === "низкий") chips.push({ type: "priority", value: "low" });
         else chips.push({ type: "priority", value: v });
       });
-    const relMatch = text.match(
-      /\b(today|tomorrow|next monday|next tuesday|next wednesday|next thursday|next friday|next saturday|next sunday|сегодня|завтра|следующий понедельник|следующий вторник|следующая среда|следующий четверг|следующая пятница|следующая суббота|следующее воскресенье)\b/gi,
-    );
-    if (relMatch) relMatch.forEach((m) => chips.push({ type: "date", value: m.toLowerCase() }));
-    const timeMatch = text.match(/\b(\d{1,2}:\d{2})\b/g);
-    if (timeMatch) timeMatch.forEach((m) => chips.push({ type: "time", value: m }));
+    const natural = parseNaturalDate(text);
+    if (natural) {
+      chips.push({ type: "date", value: natural.phrase.toLowerCase() });
+      if (natural.hasTime) {
+        chips.push({
+          type: "time",
+          value: `${String(natural.date.getHours()).padStart(2, "0")}:${String(
+            natural.date.getMinutes(),
+          ).padStart(2, "0")}`,
+        });
+      }
+    }
     const projMatch = text.match(/\+(project|folder):(\w[\w-]*)/gi);
     if (projMatch)
       projMatch.forEach((m) => {
@@ -402,35 +509,10 @@ const TasksPanel: React.FC<TasksPanelProps> = ({ onOpenNote }) => {
         title = title.replace(/#(\w[\w-]*)/g, "").trim();
       }
 
-      const relMatch = title.match(
-        /\b(today|tomorrow|next monday|next tuesday|next wednesday|next thursday|next friday|next saturday|next sunday)\b/gi,
-      );
-      if (relMatch) {
-        const rel = relMatch[0].toLowerCase();
-        const d = new Date();
-        if (rel === "today" || rel === "сегодня") {
-          /* keep today */
-        } else if (rel === "tomorrow" || rel === "завтра") d.setDate(d.getDate() + 1);
-        else {
-          const days = [
-            "sunday",
-            "monday",
-            "tuesday",
-            "wednesday",
-            "thursday",
-            "friday",
-            "saturday",
-          ];
-          const targetDay = days.indexOf(rel.replace("next ", ""));
-          if (targetDay >= 0) {
-            const currentDay = d.getDay();
-            let diff = targetDay - currentDay;
-            if (diff <= 0) diff += 7;
-            d.setDate(d.getDate() + diff);
-          }
-        }
-        dueDate = d.toISOString().split("T")[0];
-        title = title.replace(relMatch[0], "").trim();
+      const natural = parseNaturalDate(title);
+      if (natural) {
+        dueDate = natural.hasTime ? natural.date.toISOString() : natural.date.toISOString().split("T")[0];
+        title = title.replace(natural.phrase, "").trim();
       }
 
       const payload: TaskCreatePayload = {
