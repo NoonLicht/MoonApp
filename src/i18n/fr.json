@@ -2466,7 +2466,6 @@
   "welcome": {
     "title": "Bienvenue sur MoonApp",
     "subtitle": "Un panneau d'utilitaires personnel : médias, contournement de censure, surveillance, notes et bien plus — tout en local, dans une seule app.",
-    "close": "Fermer",
     "dontShow": "Ne plus afficher",
     "start": "Commencer",
     "f_convert": "Convertir et compresser",
@@ -2484,6 +2483,22 @@
     "f_games": "Jeux",
     "f_games_hint": "Lanceur, bibliothèque auto, sauvegardes",
     "f_vault": "Gestionnaire de mots de passe",
-    "f_vault_hint": "Stockage local chiffré"
+    "f_vault_hint": "Stockage local chiffré",
+    "f_budget": "Budget",
+    "f_budget_hint": "Revenus/dépenses par catégorie, graphiques",
+    "f_automation": "Automatisation",
+    "f_automation_hint": "Lanceur rapide + tâches planifiées",
+    "f_screenshots": "Captures et enregistrement",
+    "f_screenshots_hint": "Bibliothèque avec aperçu et lecteur",
+    "f_archive": "Archive web",
+    "f_archive_hint": "Copies hors ligne de sites en un clic",
+    "f_tools": "Outils",
+    "f_tools_hint": "JSON, regex, base64, hachages, UUID",
+    "f_books": "Livres",
+    "f_books_hint": "Catalogues OPDS, favoris, signets",
+    "f_music": "Musique",
+    "f_music_hint": "Lecteur et téléchargements yt-dlp",
+    "f_aichat": "Chat IA",
+    "f_aichat_hint": "Modèles locaux via Ollama"
   }
 }

@@ -2466,7 +2466,6 @@
   "welcome": {
     "title": "欢迎使用 MoonApp",
     "subtitle": "个人工具面板：媒体、翻墙、硬件监控、笔记等等 — 全部本地运行，集于一身。",
-    "close": "关闭",
     "dontShow": "不再显示",
     "start": "开始使用",
     "f_convert": "转换与压缩",
@@ -2484,6 +2483,22 @@
     "f_games": "游戏",
     "f_games_hint": "启动器、自动扫描库、存档备份",
     "f_vault": "密码管理器",
-    "f_vault_hint": "加密本地存储"
+    "f_vault_hint": "加密本地存储",
+    "f_budget": "预算",
+    "f_budget_hint": "按类别的收支、图表",
+    "f_automation": "自动化",
+    "f_automation_hint": "快速启动器 + 计划任务",
+    "f_screenshots": "截图与录屏",
+    "f_screenshots_hint": "带预览和播放器的媒体库",
+    "f_archive": "网页存档",
+    "f_archive_hint": "一键离线保存网站",
+    "f_tools": "工具",
+    "f_tools_hint": "JSON、正则、base64、哈希、UUID",
+    "f_books": "图书",
+    "f_books_hint": "OPDS 目录、收藏、书签",
+    "f_music": "音乐",
+    "f_music_hint": "播放器与 yt-dlp 下载",
+    "f_aichat": "AI 聊天",
+    "f_aichat_hint": "通过 Ollama 使用本地模型"
   }
 }

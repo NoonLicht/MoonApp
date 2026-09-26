@@ -9,7 +9,14 @@ import {
   FolderKanban,
   Gamepad2,
   KeyRound,
-  X,
+  Wallet,
+  Zap,
+  Camera,
+  Archive,
+  Wrench,
+  BookOpen,
+  Music,
+  MessageSquare,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui";
 import { getOverlayRoot } from "@/components/overlayHost";
@@ -45,6 +52,14 @@ const HIGHLIGHTS = [
   { icon: FolderKanban, key: "myspace" },
   { icon: Gamepad2, key: "games" },
   { icon: KeyRound, key: "vault" },
+  { icon: Wallet, key: "budget" },
+  { icon: Zap, key: "automation" },
+  { icon: Camera, key: "screenshots" },
+  { icon: Archive, key: "archive" },
+  { icon: Wrench, key: "tools" },
+  { icon: BookOpen, key: "books" },
+  { icon: Music, key: "music" },
+  { icon: MessageSquare, key: "aichat" },
 ] as const;
 
 /**
@@ -77,10 +92,13 @@ export default function WelcomeModal() {
   if (!root) return null;
 
   return createPortal(
-    <div className="welcome-page">
-      {/* Декоративный фон: плавающие цветные пятна + искры, во всю страницу
-          (кроме тулбара — welcome-page начинается ниже него, как обычный
-          .app-modal-backdrop). pointer-events: none — не мешает контенту. */}
+    <>
+      {/* Декоративный фон: плавающие цветные пятна + искры на ВЕСЬ экран,
+          включая полосу тулбара — иначе на границе content-top виден жёсткий
+          переход с обычного фона на анимированный. Тулбар полупрозрачный
+          (--glass-strong), поэтому пятна проступают сквозь него так же, как
+          обычный фоновый mesh приложения. pointer-events: none — тулбар
+          остаётся кликабельным (клики проходят сквозь этот слой). */}
       <div className="welcome-fx" aria-hidden="true">
         <span className="welcome-blob welcome-blob-1" />
         <span className="welcome-blob welcome-blob-2" />
@@ -100,42 +118,40 @@ export default function WelcomeModal() {
         ))}
       </div>
 
-      <button type="button" className="welcome-close" onClick={close} aria-label={t("welcome.close")}>
-        <X size={16} />
-      </button>
+      <div className="welcome-page">
+        <div className="welcome-content">
+          <div className="welcome-head">
+            <img src={logoUrl} alt="MoonApp" className="welcome-logo" />
+            <h1>{t("welcome.title")}</h1>
+            <p>{t("welcome.subtitle")}</p>
+          </div>
 
-      <div className="welcome-content">
-        <div className="welcome-head">
-          <img src={logoUrl} alt="MoonApp" className="welcome-logo" />
-          <h1>{t("welcome.title")}</h1>
-          <p>{t("welcome.subtitle")}</p>
-        </div>
-
-        <div className="welcome-grid">
-          {HIGHLIGHTS.map(({ icon: Icon, key }) => (
-            <div className="welcome-item" key={key}>
-              <span className="welcome-item-icon">
-                <Icon size={18} strokeWidth={1.8} />
-              </span>
-              <div>
-                <div className="welcome-item-title">{t(`welcome.f_${key}`)}</div>
-                <div className="welcome-item-text">{t(`welcome.f_${key}_hint`)}</div>
+          <div className="welcome-grid">
+            {HIGHLIGHTS.map(({ icon: Icon, key }) => (
+              <div className="welcome-item" key={key}>
+                <span className="welcome-item-icon">
+                  <Icon size={18} strokeWidth={1.8} />
+                </span>
+                <div>
+                  <div className="welcome-item-title">{t(`welcome.f_${key}`)}</div>
+                  <div className="welcome-item-text">{t(`welcome.f_${key}_hint`)}</div>
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
 
-        <div className="welcome-foot">
-          <label className="welcome-check">
-            <Checkbox checked={dontShow} onClick={() => setDontShow((v) => !v)} />
-            {t("welcome.dontShow")}
-          </label>
-          <button type="button" className="btn btn-primary welcome-start" onClick={close}>
-            {t("welcome.start")}
-          </button>
+          <div className="welcome-foot">
+            <label className="welcome-check">
+              <Checkbox checked={dontShow} onClick={() => setDontShow((v) => !v)} />
+              {t("welcome.dontShow")}
+            </label>
+            <button type="button" className="btn btn-primary welcome-start" onClick={close}>
+              {t("welcome.start")}
+            </button>
+          </div>
         </div>
       </div>
-    </div>,
+    </>,
     root,
   );
 }

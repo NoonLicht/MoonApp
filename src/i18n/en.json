@@ -2674,7 +2674,6 @@
   "welcome": {
     "title": "Welcome to MoonApp",
     "subtitle": "A personal utility hub: media, censorship bypass, monitoring, notes and more — all local, in one app.",
-    "close": "Close",
     "dontShow": "Don't show again",
     "start": "Get started",
     "f_convert": "Convert & compress",
@@ -2692,6 +2691,22 @@
     "f_games": "Games",
     "f_games_hint": "Launcher, auto-scan library, save backups",
     "f_vault": "Password manager",
-    "f_vault_hint": "Encrypted local storage"
+    "f_vault_hint": "Encrypted local storage",
+    "f_budget": "Budget",
+    "f_budget_hint": "Income/expenses by category, charts",
+    "f_automation": "Automation",
+    "f_automation_hint": "Quick launcher + scheduled tasks",
+    "f_screenshots": "Screenshots & recording",
+    "f_screenshots_hint": "Library with previews and player",
+    "f_archive": "Web archive",
+    "f_archive_hint": "Offline site copies, one click",
+    "f_tools": "Tools",
+    "f_tools_hint": "JSON, regex, base64, hashes, UUID",
+    "f_books": "Books",
+    "f_books_hint": "OPDS catalogs, favorites, bookmarks",
+    "f_music": "Music",
+    "f_music_hint": "Player and yt-dlp downloads",
+    "f_aichat": "AI chat",
+    "f_aichat_hint": "Local models via Ollama"
   }
 }
