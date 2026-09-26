@@ -513,10 +513,20 @@ const CORE_COLORS = Array.from({ length: 32 }, (_, i) => `hsl(${(i * 47 + 20) % 
 
 /** График суммарной загрузки CPU/GPU (для вида «Всего»). */
 const LoadChart = memo(function LoadChart({ points }: { points: HistPoint[] }) {
-  const rows = useMemo(
-    () => points.map((p, idx) => ({ t: idx, cpu: p.cpu, gpu: p.gpu })),
-    [points],
-  );
+  // Сырые замеры (опрос каждые 500мс) дают рваную, дёрганую линию — сглаживаем
+  // экспоненциальным скользящим средним только для отрисовки графика (сами
+  // точные мгновенные значения по-прежнему хранятся в points/histRef и
+  // используются как есть в плитках ядер и т.п.).
+  const rows = useMemo(() => {
+    const alpha = 0.35;
+    let ecpu: number | null = null;
+    let egpu: number | null = null;
+    return points.map((p, idx) => {
+      ecpu = ecpu == null ? p.cpu : ecpu + alpha * (p.cpu - ecpu);
+      egpu = egpu == null ? p.gpu : egpu + alpha * (p.gpu - egpu);
+      return { t: idx, cpu: ecpu, gpu: egpu };
+    });
+  }, [points]);
   return (
     <Glass className="chart-panel">
       <div className="field-label" style={{ marginBottom: 8 }}>
@@ -550,24 +560,30 @@ const LoadChart = memo(function LoadChart({ points }: { points: HistPoint[] }) {
             labelFormatter={() => ""}
           />
           <Area
-            type="monotone"
+            type="natural"
             dataKey="cpu"
             stroke="var(--amber)"
-            strokeWidth={2}
+            strokeWidth={2.5}
+            strokeLinecap="round"
+            strokeLinejoin="round"
             fill="url(#cpuGrad)"
             name="CPU %"
             isAnimationActive={false}
             dot={false}
+            activeDot={{ r: 3 }}
           />
           <Area
-            type="monotone"
+            type="natural"
             dataKey="gpu"
             stroke="var(--violet)"
-            strokeWidth={2}
+            strokeWidth={2.5}
+            strokeLinecap="round"
+            strokeLinejoin="round"
             fill="url(#gpuGrad)"
             name="GPU %"
             isAnimationActive={false}
             dot={false}
+            activeDot={{ r: 3 }}
           />
         </AreaChart>
       </ResponsiveContainer>
