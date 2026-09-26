@@ -395,7 +395,9 @@ function timeoutForInput(inputPath: string): number {
   const base = 20 * 60 * 1000;
   try {
     const mb = fs.statSync(inputPath).size / (1024 * 1024);
-    return Math.min(base + mb * 6000, 90 * 60 * 1000); // до 90 минут на самые крупные файлы
+    // child_process timeout требует целое число мс — mb дробный (размер файла
+    // не кратен ровно мегабайту), без округления падало с "timeout out of range".
+    return Math.round(Math.min(base + mb * 6000, 90 * 60 * 1000)); // до 90 минут на самые крупные файлы
   } catch {
     return base;
   }
