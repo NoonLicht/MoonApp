@@ -185,7 +185,10 @@ export default function GamesPage() {
     setPendingBgId(null);
     if (!f || !id) return;
     const dataUrl = await fileToDataUrl(f);
-    const updated = await api.gamesUpdate(id, { backgroundDataUrl: dataUrl });
+    // У Steam/Epic-записей backgroundUrl (обложка со стора) непустой и в рендере
+    // карточки имел приоритет над backgroundDataUrl — свой фон молча игнорировался.
+    // Явно сбрасываем его, чтобы выбранная картинка реально стала фоном.
+    const updated = await api.gamesUpdate(id, { backgroundDataUrl: dataUrl, backgroundUrl: null });
     setItems((prev) => prev.map((g) => (g.id === updated.id ? updated : g)));
   };
 
@@ -357,10 +360,11 @@ export default function GamesPage() {
               position: "relative",
               height: 140,
               border: "1px solid var(--glass-border)",
-              backgroundImage: g.backgroundUrl
-                ? `url(${g.backgroundUrl})`
-                : g.backgroundDataUrl
-                  ? `url(${g.backgroundDataUrl})`
+              // Свой фон (импортированный вручную) важнее автообложки со Steam/Epic.
+              backgroundImage: g.backgroundDataUrl
+                ? `url(${g.backgroundDataUrl})`
+                : g.backgroundUrl
+                  ? `url(${g.backgroundUrl})`
                   : fallbackGradient(g.name),
               backgroundSize: "cover",
               backgroundPosition: "center",

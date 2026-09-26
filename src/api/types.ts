@@ -443,8 +443,9 @@ export interface GameEntry {
   exePath: string;
   description: string;
   iconDataUrl: string | null;
+  /** Свой фон (импортирован вручную) — приоритетнее backgroundUrl. */
   backgroundDataUrl: string | null;
-  /** Обложка со Steam CDN (только для source="steam") — предпочтительнее backgroundDataUrl. */
+  /** Обложка со Steam/Epic CDN (проставляется при автосканировании). */
   backgroundUrl: string | null;
   savePath: string | null;
   source: "manual" | "steam" | "epic";
@@ -459,6 +460,7 @@ export interface GameInput {
   description?: string;
   iconDataUrl?: string | null;
   backgroundDataUrl?: string | null;
+  backgroundUrl?: string | null;
   savePath?: string | null;
 }
 
