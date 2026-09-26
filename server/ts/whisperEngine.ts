@@ -33,6 +33,8 @@ import logger from "./logger";
 import { downloadToFile } from "./download";
 import { createSetupTask } from "./setupTask";
 import type { SetupTaskState } from "./setupTask";
+import { listRemoteZipEntries, fetchRemoteZipEntry, type RemoteZipEntry } from "./zipRange";
+import { packDir as ortGpuPackDir } from "./ortPack";
 
 const { DIRS } = config;
 
@@ -657,6 +659,8 @@ const failTask = (e: unknown): void => setup.fail(e);
 const doneTask = (): void => setup.done();
 const cancelTask = (): SetupTaskState => setup.cancel();
 
+const WHISPER_UA = "MoonApp/1.0 (+whisper.cpp)";
+
 /** Скачивание с прогрессом в task (общий модуль server/ts/download.ts). */
 async function downloadTo(
   url: string,
@@ -664,7 +668,7 @@ async function downloadTo(
   timeoutMs = 30 * 60 * 1000,
 ): Promise<number> {
   return downloadToFile(url, destFile, {
-    userAgent: "MoonApp/1.0 (+whisper.cpp)",
+    userAgent: WHISPER_UA,
     timeoutMs,
     shouldCancel: () => setup.shouldCancel(),
     onProgress: ({ total, received }) => setup.setDownloadProgress(received, total),
@@ -704,6 +708,121 @@ function copyFlat(srcDir: string, destDir: string): number {
   };
   walk(srcDir, 0);
   return copied;
+}
+
+/* --------------- Переиспользование CUDA-библиотек с апскейла --------------- */
+
+/**
+ * CUDA-сборка whisper.cpp (~260–650 МБ) почти целиком состоит из библиотек
+ * рантайма NVIDIA (cublasLt64_12.dll — сам по себе больше половины архива),
+ * а не кода самого whisper.cpp. Ровно такие же по ИМЕНИ DLL (совпадают
+ * побайтово-по-контракту ABI: cudart/cublas/nvrtc не меняют имя файла между
+ * минорными версиями CUDA 12.x, см. scripts/fetch-cuda-libs.js) уже могли
+ * быть скачаны для GPU-пака апскейла (server/ts/ortPack.ts, CUDA 12.9).
+ * Если так — эти файлы переиспользуются, а из архива whisper.cpp по HTTP
+ * Range докачиваются только его СОБСТВЕННЫЕ маленькие exe/dll.
+ *
+ * Список специально ограничен файлами, чья ABI CUDA гарантирует обратную
+ * совместимость внутри мажорной версии (12.x) — cuDNN и nvblas сюда
+ * намеренно не входят: whisper.cpp их не использует (нет в архиве) или их
+ * имя зависит от минорной версии.
+ */
+const SHARED_CUDA_DLLS = ["cudart64_12.dll", "cublas64_12.dll", "cublasLt64_12.dll", "nvrtc64_120_0.dll"];
+
+/** Уже скачанные для апскейла CUDA-библиотеки, которые можно переиспользовать: имя(lower) → путь. */
+function sharedCudaSources(): Map<string, string> {
+  const map = new Map<string, string>();
+  let dir = "";
+  try {
+    dir = ortGpuPackDir();
+  } catch {
+    return map;
+  }
+  for (const name of SHARED_CUDA_DLLS) {
+    const p = path.join(dir, name);
+    if (fs.existsSync(p)) map.set(name.toLowerCase(), p);
+  }
+  return map;
+}
+
+/**
+ * Пробует собрать CUDA-сборку без полной закачки: свои exe/dll — по HTTP
+ * Range из архива, крупные NVIDIA-библиотеки — переиспользуются с апскейла.
+ * Возвращает false при ЛЮБОЙ проблеме (Range не поддерживается, self-test не
+ * прошёл и т.п.) — вызывающий код в этом случае откатывается на обычную
+ * полную закачку архива, ничего не потеряв.
+ */
+async function tryInstallBuildShared(entry: BuildCatalogEntry): Promise<boolean> {
+  const shared = sharedCudaSources();
+  if (!shared.size) return false; // нечего переиспользовать — не тратим время на попытку
+
+  let candidateDir = "";
+  try {
+    const zipEntries = await listRemoteZipEntries(entry.url, WHISPER_UA);
+    const wanted = zipEntries.filter((e) => /\.(exe|dll|bin)$/i.test(e.name));
+    if (!wanted.length) throw new Error("zip_no_relevant_entries");
+
+    candidateDir = path.join(TMP_DIR, `build_shared_${entry.id}_${Date.now()}`);
+    fs.mkdirSync(candidateDir, { recursive: true });
+
+    let reusedBytes = 0;
+    let fetchedBytes = 0;
+    const totalToFetch = wanted.reduce(
+      (s, x) => s + (shared.has(path.basename(x.name).toLowerCase()) ? 0 : x.compSize),
+      0,
+    );
+    for (const e of wanted) {
+      if (setup.shouldCancel()) throw new Error("cancelled");
+      const base = path.basename(e.name);
+      const sharedPath = shared.get(base.toLowerCase());
+      const dest = path.join(candidateDir, base);
+      if (sharedPath) {
+        try {
+          fs.linkSync(sharedPath, dest); // хардлинк — мгновенно, без копии на диске
+        } catch {
+          fs.copyFileSync(sharedPath, dest); // разные тома — обычная копия
+        }
+        reusedBytes += e.size;
+      } else {
+        const buf: Buffer = await fetchRemoteZipEntry(entry.url, e, WHISPER_UA);
+        fs.writeFileSync(dest, buf);
+        fetchedBytes += buf.length;
+      }
+      setup.setDownloadProgress(fetchedBytes, totalToFetch);
+    }
+
+    if (!exeIn(candidateDir)) throw new Error("build_no_exe");
+
+    // Self-test: реальный прогон на CUDA, а не просто «файлы на месте» —
+    // ровно та же проверка (по логу движка), что и обычный verify().
+    const probe = await probeBuildAt(candidateDir);
+    if (!probe.ok) throw new Error(`probe_failed:${probe.log.slice(-200)}`);
+
+    fs.rmSync(entry.dir, { recursive: true, force: true });
+    fs.mkdirSync(path.dirname(entry.dir), { recursive: true });
+    fs.renameSync(candidateDir, entry.dir);
+    candidateDir = "";
+    logger.action("whisperEngine.build.installed_shared", {
+      id: entry.id,
+      reusedMb: Math.round(reusedBytes / 1048576),
+      fetchedMb: Math.round(fetchedBytes / 1048576),
+    });
+    return true;
+  } catch (e) {
+    logger.warn("whisperEngine.build.shared_reuse_skipped", {
+      id: entry.id,
+      reason: (e as Error).message,
+    });
+    return false;
+  } finally {
+    if (candidateDir) {
+      try {
+        fs.rmSync(candidateDir, { recursive: true, force: true });
+      } catch {
+        /* ignore */
+      }
+    }
+  }
 }
 
 /* ------------------------- Установка модели ------------------------- */
@@ -784,6 +903,14 @@ function installBuild(id: string): SetupTaskState {
   (async () => {
     let tmp = "";
     try {
+      // CUDA-сборки: сперва пробуем переиспользовать уже скачанные для
+      // апскейла CUDA-библиотеки вместо полной закачки (см. tryInstallBuildShared).
+      // Любая проблема — тихий откат на обычную закачку ниже, без исключения.
+      if (entry.cuda && (await tryInstallBuildShared(entry))) {
+        settings.set({ lecture: { build: entry.id, whisperBin: "" } });
+        doneTask();
+        return;
+      }
       const zipFile = path.join(DL_DIR, entry.zipName);
       await downloadTo(entry.url, zipFile);
       task.phase = "extract";
@@ -1236,6 +1363,82 @@ function makeTestWav(sampleRate = 16000, seconds = 1.5) {
   header.write("data", 36);
   header.writeUInt32LE(data.length, 40);
   return Buffer.concat([header, data]);
+}
+
+/**
+ * Лёгкий self-test ПРОИЗВОЛЬНОГО каталога сборки (не обязательно активной) —
+ * используется tryInstallBuildShared, чтобы проверить сборку с подменёнными
+ * на чужие CUDA-библиотеками РЕАЛЬНЫМ прогоном, прежде чем принять её вместо
+ * отката на полную закачку. В отличие от verify() ниже, не трогает
+ * activeBuild()/настройки — тестирует именно `dir`, форсируя CUDA-флаги.
+ * Если модели ещё нет — вернёт ok:false (вызывающий код это трактует как
+ * «не смогли проверить» и тоже откатывается на полную закачку, не рискуя).
+ */
+function probeBuildAt(dir: string, timeoutMs = 60000): Promise<{ ok: boolean; log: string }> {
+  return new Promise((resolve) => {
+    const bin = exeIn(dir);
+    const model = findModel();
+    if (!bin || !model) return resolve({ ok: false, log: "no_bin_or_model" });
+    try {
+      fs.mkdirSync(TMP_DIR, { recursive: true });
+      const wav = path.join(TMP_DIR, `probe_${Date.now()}.wav`);
+      fs.writeFileSync(wav, makeTestWav());
+      const outBase = wav.replace(/\.wav$/i, "");
+      const forcedGpuBuild = { backend: "cuda" } as unknown as BuildInfo;
+      const args = [
+        "-m",
+        model,
+        "-f",
+        wav,
+        "-l",
+        "ru",
+        "-np",
+        "-t",
+        String(resolveThreads(cfg().threads)),
+        ...deviceArgsFor(forcedGpuBuild, gpuCache, false, 0),
+        "-of",
+        outBase,
+        "-osrt",
+      ];
+      const proc = spawn(bin, args, { windowsHide: true, cwd: dir });
+      let log = "";
+      const timer = setTimeout(() => {
+        try {
+          proc.kill();
+        } catch {
+          /* ignore */
+        }
+      }, timeoutMs);
+      const finish = (code: number | null) => {
+        clearTimeout(timer);
+        try {
+          fs.rmSync(wav, { force: true });
+          fs.rmSync(outBase + ".srt", { force: true });
+        } catch {
+          /* ignore */
+        }
+        const cudaLoaded = /loaded CUDA backend|ggml_cuda_init|CUDA\d/i.test(log);
+        const errLine = /no kernel image|CUDA error|out of memory|error loading model|failed to (?:load|initialize)[^\n]*/i.exec(
+          log,
+        );
+        const ranOk = code === 0 || /\bmain: processing\b|whisper_print_timings/i.test(log);
+        resolve({ ok: cudaLoaded && ranOk && !errLine, log: log.slice(-2000) });
+      };
+      proc.stdout.on("data", (d) => {
+        log += d.toString("utf8");
+      });
+      proc.stderr.on("data", (d) => {
+        log += d.toString("utf8");
+      });
+      proc.on("error", (e) => {
+        clearTimeout(timer);
+        resolve({ ok: false, log: String(e.message || e) });
+      });
+      proc.on("close", (code) => finish(code));
+    } catch (e) {
+      resolve({ ok: false, log: String((e as Error).message || e) });
+    }
+  });
 }
 
 /**
