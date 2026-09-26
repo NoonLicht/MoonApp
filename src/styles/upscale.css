@@ -740,7 +740,7 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
-  max-height: min(70vh, 460px);
+  max-height: min(50vh, 340px);
   padding: 8px;
   border-radius: 10px;
   border: 1px solid var(--line);
@@ -791,11 +791,9 @@
   background: var(--line);
 }
 .up-pick-list {
-  /* Всегда два столбца: строки моделей короткие, и в одну колонку список
-     из полусотни моделей приходится листать заметно дольше. */
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
   overflow-y: auto;
   padding-right: 2px;
 }
@@ -839,10 +837,6 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-.up-pick-empty,
-.up-pick-row-none {
-  grid-column: 1 / -1;
 }
 .up-pick-foot {
   display: flex;

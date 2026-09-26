@@ -74,10 +74,9 @@ export default function UpscaleModelPicker({
       const el = rootRef.current;
       if (!el) return;
       const r = el.getBoundingClientRect();
-      // Сетка в два столбца требует больше места, чем узкое поле в строке
-      // быстрых настроек — расширяем попап, но не шире окна, и подвигаем
-      // влево, если иначе он вылезет за правый край.
-      const width = Math.max(r.width, Math.min(520, window.innerWidth - 16));
+      // Ширина как у самого поля (список — один столбец, растягивать незачем),
+      // с небольшим минимумом на совсем узких полях; не шире окна.
+      const width = Math.max(Math.min(r.width, window.innerWidth - 16), 220);
       const left = Math.max(8, Math.min(r.left, window.innerWidth - width - 8));
       setPos({ left, bottom: window.innerHeight - r.top + 5, width });
     };
