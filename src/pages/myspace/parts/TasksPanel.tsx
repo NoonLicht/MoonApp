@@ -80,6 +80,10 @@ const REL_PHRASES = REL_DAY_WORDS.flatMap((g) => g.words.map((w) => ({ phrase: w
 
 /** Время: "15:00", "15.00", "3pm", "3 pm". */
 const TIME_RE = /\b([01]?\d|2[0-3])[:.]([0-5]\d)\b|\b(1[0-2]|0?[1-9])\s?(am|pm)\b/i;
+/** Время без минут с локализованным предлогом: "в 15", "at 15", "a las 15",
+ *  "à 15h", "15点", "الساعة 15". */
+const TIME_HOUR_ONLY_RE =
+  /\b(?:в|at|a las|à|الساعة)\s?([01]?\d|2[0-3])\s?h?\b|\b([01]?\d|2[0-3])\s?点/i;
 
 function parseNaturalDate(text: string): NaturalDateMatch | null {
   const lower = text.toLowerCase();
@@ -122,7 +126,14 @@ function parseNaturalDate(text: string): NaturalDateMatch | null {
       dateHit.base.setHours(h, 0, 0, 0);
     }
   } else {
-    dateHit.base.setHours(0, 0, 0, 0);
+    const hourM = lower.match(TIME_HOUR_ONLY_RE);
+    if (hourM) {
+      hasTime = true;
+      const h = parseInt(hourM[1] ?? hourM[2], 10);
+      dateHit.base.setHours(h, 0, 0, 0);
+    } else {
+      dateHit.base.setHours(0, 0, 0, 0);
+    }
   }
 
   return { phrase: dateHit.phrase, date: dateHit.base, hasTime };
