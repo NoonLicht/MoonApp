@@ -19,7 +19,7 @@ import {
   MessageSquare,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui";
-import { getOverlayRoot } from "@/components/overlayHost";
+import { getOverlayRoot, getUnderToolbarRoot } from "@/components/overlayHost";
 import { useI18n } from "@/app/i18n";
 import { api } from "@/api/client";
 import logoUrl from "@/assets/app-logo.ico?url";
@@ -89,69 +89,75 @@ export default function WelcomeModal() {
 
   if (!open) return null;
   const root = getOverlayRoot();
+  const bgRoot = getUnderToolbarRoot();
   if (!root) return null;
 
-  return createPortal(
+  return (
     <>
-      {/* Декоративный фон: плавающие цветные пятна + искры на ВЕСЬ экран,
-          включая полосу тулбара — иначе на границе content-top виден жёсткий
-          переход с обычного фона на анимированный. Тулбар полупрозрачный
-          (--glass-strong), поэтому пятна проступают сквозь него так же, как
-          обычный фоновый mesh приложения. pointer-events: none — тулбар
-          остаётся кликабельным (клики проходят сквозь этот слой). */}
-      <div className="welcome-fx" aria-hidden="true">
-        <span className="welcome-blob welcome-blob-1" />
-        <span className="welcome-blob welcome-blob-2" />
-        <span className="welcome-blob welcome-blob-3" />
-        {SPARKS.map((s, i) => (
-          <span
-            key={i}
-            className="welcome-spark"
-            style={{
-              top: s.top,
-              left: s.left,
-              width: s.size,
-              height: s.size,
-              animationDelay: s.delay,
-            }}
-          />
-        ))}
-      </div>
-
-      <div className="welcome-page">
-        <div className="welcome-content">
-          <div className="welcome-head">
-            <img src={logoUrl} alt="MoonApp" className="welcome-logo" />
-            <h1>{t("welcome.title")}</h1>
-            <p>{t("welcome.subtitle")}</p>
-          </div>
-
-          <div className="welcome-grid">
-            {HIGHLIGHTS.map(({ icon: Icon, key }) => (
-              <div className="welcome-item" key={key}>
-                <span className="welcome-item-icon">
-                  <Icon size={18} strokeWidth={1.8} />
-                </span>
-                <div>
-                  <div className="welcome-item-title">{t(`welcome.f_${key}`)}</div>
-                  <div className="welcome-item-text">{t(`welcome.f_${key}_hint`)}</div>
-                </div>
-              </div>
+      {/* Декоративный фон — отдельный портал ПОД тулбаром (z-index:35, между
+          .content-area и .top-toolbar:40), а не в #overlay-root (z-index:1000,
+          выше тулбара — тот бы просто скрылся под фоном). Тулбар остаётся на
+          виду и кликабельным, а его полупрозрачный фон пропускает сквозь себя
+          пятна снизу — так же, как обычный фоновый mesh приложения. */}
+      {bgRoot &&
+        createPortal(
+          <div className="welcome-fx" aria-hidden="true">
+            <span className="welcome-blob welcome-blob-1" />
+            <span className="welcome-blob welcome-blob-2" />
+            <span className="welcome-blob welcome-blob-3" />
+            {SPARKS.map((s, i) => (
+              <span
+                key={i}
+                className="welcome-spark"
+                style={{
+                  top: s.top,
+                  left: s.left,
+                  width: s.size,
+                  height: s.size,
+                  animationDelay: s.delay,
+                }}
+              />
             ))}
-          </div>
+          </div>,
+          bgRoot,
+        )}
 
-          <div className="welcome-foot">
-            <label className="welcome-check">
-              <Checkbox checked={dontShow} onClick={() => setDontShow((v) => !v)} />
-              {t("welcome.dontShow")}
-            </label>
-            <button type="button" className="btn btn-primary welcome-start" onClick={close}>
-              {t("welcome.start")}
-            </button>
+      {createPortal(
+        <div className="welcome-page">
+          <div className="welcome-content">
+            <div className="welcome-head">
+              <img src={logoUrl} alt="MoonApp" className="welcome-logo" />
+              <h1>{t("welcome.title")}</h1>
+              <p>{t("welcome.subtitle")}</p>
+            </div>
+
+            <div className="welcome-grid">
+              {HIGHLIGHTS.map(({ icon: Icon, key }) => (
+                <div className="welcome-item" key={key}>
+                  <span className="welcome-item-icon">
+                    <Icon size={18} strokeWidth={1.8} />
+                  </span>
+                  <div>
+                    <div className="welcome-item-title">{t(`welcome.f_${key}`)}</div>
+                    <div className="welcome-item-text">{t(`welcome.f_${key}_hint`)}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="welcome-foot">
+              <label className="welcome-check">
+                <Checkbox checked={dontShow} onClick={() => setDontShow((v) => !v)} />
+                {t("welcome.dontShow")}
+              </label>
+              <button type="button" className="btn btn-primary welcome-start" onClick={close}>
+                {t("welcome.start")}
+              </button>
+            </div>
           </div>
-        </div>
-      </div>
-    </>,
-    root,
+        </div>,
+        root,
+      )}
+    </>
   );
 }

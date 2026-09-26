@@ -14,3 +14,17 @@ export function getOverlayRoot(): HTMLElement | null {
   if (typeof document === "undefined") return null;
   return document.getElementById(OVERLAY_ROOT_ID);
 }
+
+/**
+ * Узел ПОД тулбаром (см. App.tsx → <div id="under-toolbar-root" />): z-index
+ * между `.content-area` (1) и `.top-toolbar` (40). Нужен для полноэкранных
+ * декоративных фонов — они должны быть видны сквозь полупрозрачный тулбар
+ * (как обычный фоновый mesh приложения), но не перекрывать его собой, как
+ * перекрыл бы #overlay-root (тот стоит на z-index:1000, выше тулбара).
+ */
+export const UNDER_TOOLBAR_ROOT_ID = "under-toolbar-root";
+
+export function getUnderToolbarRoot(): HTMLElement | null {
+  if (typeof document === "undefined") return null;
+  return document.getElementById(UNDER_TOOLBAR_ROOT_ID);
+}

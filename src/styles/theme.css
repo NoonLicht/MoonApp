@@ -804,6 +804,16 @@ body.ctx-open .titlebar-drag {
   z-index: 1000;
   pointer-events: none;
 }
+
+/* Узел ПОД тулбаром (z-index между .content-area:1 и .top-toolbar:40) — для
+   полноэкранных декоративных фонов, которым нужно проступать сквозь
+   полупрозрачный тулбар, а не перекрывать его (см. overlayHost.ts). */
+.under-toolbar-root {
+  position: fixed;
+  inset: 0;
+  z-index: 35;
+  pointer-events: none;
+}
 .modal-overlay {
   position: fixed;
   inset: 0;

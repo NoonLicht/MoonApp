@@ -293,6 +293,11 @@ function Shell({
 
       <PageBusyContext.Provider value={reportBusy}>
         <ToolbarContext.Provider value={setPageToolbar}>
+          {/* Слой ПОД тулбаром (z-index между .content-area и .top-toolbar) —
+              для полноэкранных фонов-анимаций (см. src/components/WelcomeModal.tsx),
+              которым нужно быть виден и сквозь полупрозрачный тулбар, но не
+              перекрывать его сами кнопки — см. src/components/overlayHost.ts. */}
+          <div id="under-toolbar-root" className="under-toolbar-root" />
           <header
             className="top-toolbar titlebar-drag"
             onMouseDown={(e) => {
