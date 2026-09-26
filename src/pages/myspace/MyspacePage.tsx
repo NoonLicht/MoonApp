@@ -138,7 +138,7 @@ export default function MyspacePage() {
   const [edContent, setEdContent] = useState("");
   const saveTimer = useRef<any>(null);
   const [saving, setSaving] = useState(false);
-  const [previewMode, setPreviewMode] = useState<"edit" | "preview" | "split" | "live">("split");
+  const [previewMode, setPreviewMode] = useState<"edit" | "preview" | "split" | "live">("live");
   const [error, setError] = useState("");
   // ИИ-оформление заметки: какая операция идёт сейчас ("" — ничего) и короткая
   // плашка об успехе. Ошибки живут в общем `error` над редактором.
@@ -316,7 +316,7 @@ export default function MyspacePage() {
           setOpenFiles((prev) => prev.map((x) => (x.path === p ? { ...x, modified: false } : x)));
         }
         setSaving(false);
-      }, 800);
+      }, 250);
     },
     [openFiles],
   );

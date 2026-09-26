@@ -1440,8 +1440,13 @@ select option {
 .pdf-toolkit-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-auto-rows: 1fr;
   gap: 14px;
-  align-items: start;
+  align-items: stretch;
+}
+.pdf-toolkit-grid > .media-preview {
+  height: 100%;
+  box-sizing: border-box;
 }
 
 /* --- Инструменты: подсветка совпадений regex --- */

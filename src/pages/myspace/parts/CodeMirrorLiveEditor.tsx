@@ -231,8 +231,13 @@ class TableWidget extends WidgetType {
 
     return wrap;
   }
-  ignoreEvent(e: Event) {
-    return e.type !== "mousedown";
+  ignoreEvent() {
+    // Таблица — полностью самостоятельный DOM-остров (contenteditable-ячейки
+    // + свои кнопки): если пустить mousedown в CodeMirror, он переносит
+    // курсор редактора внутрь строк таблицы, из-за чего activeLine попадает
+    // в диапазон блока и виджет тут же подменяется сырым markdown вместо
+    // того, чтобы дать просто кликнуть и печатать в ячейке.
+    return true;
   }
 }
 
