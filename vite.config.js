@@ -14,6 +14,11 @@ export default defineConfig({
   build: {
     outDir: "dist",
     emptyOutDir: true,
+    // Приложение всегда работает в собственном Electron/Chromium — старые
+    // браузеры не нужны. esnext нужен конкретно из-за curlconverter
+    // (web-tree-sitter грузит WASM через top-level await), иначе esbuild
+    // отказывается собирать бандл под дефолтный список legacy-таргетов.
+    target: "esnext",
   },
   server: {
     port: 5173,

@@ -40,8 +40,6 @@ import type {
   BudgetImportResult,
   KillSwitchStatus,
   ScreenshotItem,
-  CurlConvertTarget,
-  CurlConvertResult,
   QuickNote,
   NotesGitConfig,
   NotesGitSyncResult,
@@ -1681,11 +1679,6 @@ export const api = {
   },
   screenshotsDelete: (id: string) => req<{ ok: boolean }>("DELETE", `/screenshots/${id}`),
   screenshotFileUrl: (id: string) => `${BASE}/api/screenshots/file/${id}`,
-
-  // --- curl → код (curlconverter) ---
-  curlConvertTargets: () => req<CurlConvertTarget[]>("GET", "/curlconvert/targets"),
-  curlConvert: (command: string, target: string) =>
-    req<CurlConvertResult>("POST", "/curlconvert", { command, target }),
 
   // --- Трекер времени за приложениями ---
   appTrackerStart: () => req<{ ok: boolean; error?: string }>("POST", "/apptracker/start"),

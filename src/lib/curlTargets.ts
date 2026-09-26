@@ -1,19 +1,13 @@
-/**
- * curl → код на любом языке: полноценная интеграция библиотеки curlconverter
- * (https://github.com/curlconverter/curlconverter, тот же движок, что у
- * curlconverter.com), а не переписанный с нуля клон. Разбор curl-команды
- * (tree-sitter-bash) — вещь с кучей граничных случаев (кавычки, $'...',
- * многострочные `\`, конвейеры), поэтому переиспользуем готовую библиотеку
- * целиком, без урезания. Выполняется на сервере (Node): у curlconverter
- * нативная зависимость tree-sitter, которую нельзя собрать в браузерный бандл
- * без отдельной WASM-сборки — серверный вызов проще и даёт тот же результат.
- */
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const curlconverter = require("curlconverter") as Record<string, (s: string) => [string, string[]]>;
+/** id → имя функции toXWarn(command) => [code, warnings] в библиотеке
+ * curlconverter (см. src/pages/tools/ToolsPage.tsx). Список соответствует
+ * набору целевых языков на самом curlconverter.com. */
+export interface CurlTarget {
+  id: string;
+  label: string;
+  fn: string;
+}
 
-/** id → имя функции toXWarn(command) => [code, warnings] в библиотеке. Список
- * соответствует набору целевых языков на самом curlconverter.com. */
-export const TARGETS: { id: string; label: string; fn: string }[] = [
+export const CURL_TARGETS: CurlTarget[] = [
   { id: "ansible", label: "Ansible", fn: "toAnsibleWarn" },
   { id: "browser", label: "Browser (fetch)", fn: "toBrowserWarn" },
   { id: "c", label: "C (libcurl)", fn: "toCWarn" },
@@ -62,19 +56,3 @@ export const TARGETS: { id: string; label: string; fn: string }[] = [
   { id: "swift", label: "Swift", fn: "toSwiftWarn" },
   { id: "wget", label: "Wget", fn: "toWgetWarn" },
 ];
-
-const TARGET_MAP = new Map(TARGETS.map((t) => [t.id, t.fn]));
-
-export interface ConvertResult {
-  code: string;
-  warnings: string[];
-}
-
-export function convert(command: string, target: string): ConvertResult {
-  const fnName = TARGET_MAP.get(target);
-  if (!fnName) throw new Error(`unknown_target:${target}`);
-  const fn = curlconverter[fnName];
-  if (typeof fn !== "function") throw new Error(`unsupported_target:${target}`);
-  const [code, warnings] = fn(command);
-  return { code, warnings: (warnings || []).map((w) => (Array.isArray(w) ? w.join(": ") : String(w))) };
-}

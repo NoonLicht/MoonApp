@@ -15,8 +15,7 @@ import {
 import { Glass, Btn, SectionHead, Field, Select, Badge } from "@/components/ui";
 import { copyToClipboard } from "@/components/ContextMenu";
 import { useI18n } from "@/app/i18n";
-import { api } from "@/api/client";
-import type { CurlConvertTarget } from "@/api/types";
+import { CURL_TARGETS } from "@/lib/curlTargets";
 
 /* ───────────────────────── curl → код (curlconverter) ───────────────────────── */
 
@@ -25,58 +24,83 @@ const DEFAULT_CURL = `curl -X POST https://api.example.com/users \\
   -H "Authorization: Bearer TOKEN" \\
   -d '{"name": "Ada", "role": "engineer"}'`;
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type CurlConverterModule = Record<string, (cmd: string) => [string, (string | string[])[]]>;
+let curlconverterPromise: Promise<CurlConverterModule> | null = null;
+/** Библиотека грузится и парсится один раз на всё приложение (WASM-инициализация
+ * не бесплатна), а не при каждом открытии страницы/блока. */
+function loadCurlconverter(): Promise<CurlConverterModule> {
+  if (!curlconverterPromise) {
+    // Динамический import — WASM-инициализация парсера асинхронна (top-level await
+    // внутри пакета), рано её нельзя дёрнуть синхронно при загрузке модуля страницы.
+    curlconverterPromise = import("curlconverter") as unknown as Promise<CurlConverterModule>;
+  }
+  return curlconverterPromise;
+}
+
 /**
  * Полноценная интеграция curlconverter (https://github.com/curlconverter/curlconverter,
- * тот же движок, что у curlconverter.com) — разбор идёт на сервере (у
- * библиотеки нативная tree-sitter-зависимость), здесь только форма и вывод.
+ * тот же движок, что у curlconverter.com) — работает ПОЛНОСТЬЮ локально в
+ * браузерном движке приложения (WASM-сборка tree-sitter-bash, без Node), без
+ * единого сетевого запроса и без бэкенда: команда curl никогда не покидает
+ * страницу, преобразование работает и без интернета.
  */
 function CurlConverterBlock() {
   const { t } = useI18n();
-  const [targets, setTargets] = useState<CurlConvertTarget[]>([]);
   const [target, setTarget] = useState("python");
   const [command, setCommand] = useState(DEFAULT_CURL);
   const [code, setCode] = useState("");
   const [warnings, setWarnings] = useState<string[]>([]);
   const [error, setError] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [ready, setReady] = useState(false);
   const debRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    api
-      .curlConvertTargets()
-      .then(setTargets)
-      .catch(() => setTargets([]));
+    let alive = true;
+    loadCurlconverter()
+      .then(() => {
+        if (alive) setReady(true);
+      })
+      .catch((e: Error) => {
+        if (alive) setError(e.message);
+      });
+    return () => {
+      alive = false;
+    };
   }, []);
 
   const run = useMemo(
     () => (cmd: string, tgt: string) => {
       if (!cmd.trim() || !tgt) return;
-      setBusy(true);
-      setError("");
-      api
-        .curlConvert(cmd, tgt)
-        .then((r) => {
-          setCode(r.code);
-          setWarnings(r.warnings);
+      const targetDef = CURL_TARGETS.find((x) => x.id === tgt);
+      if (!targetDef) return;
+      loadCurlconverter()
+        .then((mod) => {
+          const fn = mod[targetDef.fn];
+          if (typeof fn !== "function") throw new Error(`unsupported_target:${tgt}`);
+          const [outCode, outWarnings] = fn(cmd);
+          setCode(outCode);
+          setWarnings((outWarnings || []).map((w) => (Array.isArray(w) ? w.join(": ") : String(w))));
+          setError("");
         })
         .catch((e: Error) => {
           setError(e.message);
           setCode("");
           setWarnings([]);
-        })
-        .finally(() => setBusy(false));
+        });
     },
     [],
   );
 
   // Живое преобразование с debounce — как только перестали печатать/менять язык.
   useEffect(() => {
+    if (!ready) return undefined;
     if (debRef.current) clearTimeout(debRef.current);
     debRef.current = setTimeout(() => run(command, target), 350);
     return () => {
       if (debRef.current) clearTimeout(debRef.current);
     };
-  }, [command, target, run]);
+  }, [command, target, run, ready]);
 
   return (
     <Glass
@@ -103,7 +127,7 @@ function CurlConverterBlock() {
               <Select
                 value={target}
                 onChange={(e) => setTarget(e.target.value)}
-                options={targets.map((tg) => ({ value: tg.id, label: tg.label }))}
+                options={CURL_TARGETS.map((tg) => ({ value: tg.id, label: tg.label }))}
               />
             </Field>
             {code && (
@@ -111,7 +135,7 @@ function CurlConverterBlock() {
                 {t("ctx.copyName")}
               </Btn>
             )}
-            {busy && <Badge tone="neutral">{t("tools.curlConverting")}</Badge>}
+            {!ready && !error && <Badge tone="neutral">{t("tools.curlConverting")}</Badge>}
           </div>
           {error && (
             <div style={{ color: "var(--coral)", display: "flex", gap: 6, alignItems: "center" }}>

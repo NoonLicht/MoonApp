@@ -66,7 +66,6 @@ const quickNotesRouter = require("./routes/quickNotes") as express.Router;
 const killSwitchRouter = require("./routes/killSwitch") as express.Router;
 const ocrRouter = require("./routes/ocr") as express.Router;
 const screenshotsRouter = require("./routes/screenshots") as express.Router;
-const curlConvertRouter = require("./routes/curlConvert") as express.Router;
 const officeRouter = require("./routes/office") as express.Router;
 const perPageProxy = require("./middleware/perPageProxy") as {
   perPageProxyMiddleware: express.RequestHandler;
@@ -283,7 +282,6 @@ function createApp(): express.Express {
   app.use("/api/killswitch", killSwitchRouter);
   app.use("/api/ocr", ocrRouter);
   app.use("/api/screenshots", screenshotsRouter);
-  app.use("/api/curlconvert", curlConvertRouter);
   app.use("/api/office", officeRouter);
 
   // Раздача собранного фронта (dist), если он собран.

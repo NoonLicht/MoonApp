@@ -105,7 +105,6 @@ server/ortPack.js
 server/zipRange.js
 server/whisperEngine.js
 server/screenshots.js
-server/curlConvert.js
 server/sitebak.js
 server/tts.js
 

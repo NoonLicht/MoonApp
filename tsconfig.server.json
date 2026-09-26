@@ -101,7 +101,6 @@
     "server/ts/zipRange.ts",
     "server/ts/whisperEngine.ts",
     "server/ts/screenshots.ts",
-    "server/ts/curlConvert.ts",
     "server/ts/sitebak.ts",
     "server/ts/tgwsproxy.ts",
     "server/ts/notesAi.ts",

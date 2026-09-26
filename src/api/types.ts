@@ -543,16 +543,6 @@ export interface BudgetCategories {
   expense: string[];
 }
 
-export interface CurlConvertTarget {
-  id: string;
-  label: string;
-}
-
-export interface CurlConvertResult {
-  code: string;
-  warnings: string[];
-}
-
 export interface ScreenshotItem {
   id: string;
   type: "image" | "video";
