@@ -293,7 +293,18 @@ function Shell({
 
       <PageBusyContext.Provider value={reportBusy}>
         <ToolbarContext.Provider value={setPageToolbar}>
-          <header className="top-toolbar titlebar-drag">
+          <header
+            className="top-toolbar titlebar-drag"
+            onMouseDown={(e) => {
+              // Только левая кнопка и только сам drag-регион (не кнопки внутри
+              // тулбара — у них класс no-drag, но JS-событие всё равно бы
+              // всплыло сюда). Дальше main-процесс сам решает, разворачено ли
+              // окно — если нет, ничего не делает.
+              if (e.button !== 0) return;
+              if ((e.target as HTMLElement).closest(".no-drag")) return;
+              window.appBridge?.dragRestore?.({ x: e.screenX, y: e.screenY });
+            }}
+          >
             <div className="tb-side-left">
               {/* Диспетчер фоновых задач: единый список job'ов всех движков
                   (компрессия/апскейл/озвучка/лекции/архив) с отменой/паузой —

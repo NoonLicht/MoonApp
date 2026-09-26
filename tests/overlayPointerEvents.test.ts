@@ -75,7 +75,7 @@ const PORTALED = [
   {
     src: "src/components/WelcomeModal.tsx",
     css: "src/styles/ui.css",
-    cls: "app-modal-backdrop",
+    cls: "welcome-page",
   },
 ];
 

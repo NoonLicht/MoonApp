@@ -1517,6 +1517,10 @@ declare global {
       minimize: () => void;
       toggleMaximize: () => void;
       close: () => void;
+      // Перетаскивание развёрнутого окна за тулбар должно сначала вернуть его к
+      // обычному размеру (как в нативном заголовке Windows) — см. App.tsx onMouseDown
+      // на .titlebar-drag и electron/main.js → "win:drag-restore".
+      dragRestore?: (pos: { x: number; y: number }) => void;
       // Открыть каталог установки приложения (кнопка в верхней панели).
       openAppDir?: () => Promise<{ ok: boolean; dir?: string; error?: string }>;
       // Открыть внешнюю http(s)-ссылку в системном браузере (клик по ссылке в заметках).

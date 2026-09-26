@@ -11,10 +11,30 @@ import {
   KeyRound,
   X,
 } from "lucide-react";
-import { Glass, Checkbox } from "@/components/ui";
+import { Checkbox } from "@/components/ui";
 import { getOverlayRoot } from "@/components/overlayHost";
 import { useI18n } from "@/app/i18n";
 import { api } from "@/api/client";
+import logoUrl from "@/assets/app-logo.ico?url";
+
+/** Позиции искр фиксированы (не Math.random на каждый рендер — иначе они бы
+ *  «прыгали» при любом ре-рендере компонента, например при клике на чекбокс). */
+const SPARKS = [
+  { top: "8%", left: "12%", delay: "0s", size: 3 },
+  { top: "18%", left: "78%", delay: "0.6s", size: 4 },
+  { top: "62%", left: "6%", delay: "1.1s", size: 3 },
+  { top: "82%", left: "88%", delay: "0.3s", size: 4 },
+  { top: "30%", left: "48%", delay: "1.6s", size: 2 },
+  { top: "70%", left: "60%", delay: "2.1s", size: 3 },
+  { top: "12%", left: "34%", delay: "0.9s", size: 2 },
+  { top: "50%", left: "90%", delay: "1.4s", size: 3 },
+  { top: "88%", left: "22%", delay: "0.2s", size: 3 },
+  { top: "40%", left: "8%", delay: "1.9s", size: 2 },
+  { top: "5%", left: "60%", delay: "2.4s", size: 3 },
+  { top: "58%", left: "35%", delay: "0.5s", size: 2 },
+  { top: "76%", left: "45%", delay: "1.2s", size: 4 },
+  { top: "24%", left: "94%", delay: "1.8s", size: 2 },
+];
 
 const HIGHLIGHTS = [
   { icon: Film, key: "convert" },
@@ -57,14 +77,36 @@ export default function WelcomeModal() {
   if (!root) return null;
 
   return createPortal(
-    <div className="app-modal-backdrop welcome-backdrop" onClick={close}>
-      <Glass className="welcome-card glass-solid" onClick={(e) => e.stopPropagation()}>
-        <button type="button" className="welcome-close" onClick={close} aria-label={t("welcome.close")}>
-          <X size={16} />
-        </button>
+    <div className="welcome-page">
+      {/* Декоративный фон: плавающие цветные пятна + искры, во всю страницу
+          (кроме тулбара — welcome-page начинается ниже него, как обычный
+          .app-modal-backdrop). pointer-events: none — не мешает контенту. */}
+      <div className="welcome-fx" aria-hidden="true">
+        <span className="welcome-blob welcome-blob-1" />
+        <span className="welcome-blob welcome-blob-2" />
+        <span className="welcome-blob welcome-blob-3" />
+        {SPARKS.map((s, i) => (
+          <span
+            key={i}
+            className="welcome-spark"
+            style={{
+              top: s.top,
+              left: s.left,
+              width: s.size,
+              height: s.size,
+              animationDelay: s.delay,
+            }}
+          />
+        ))}
+      </div>
 
+      <button type="button" className="welcome-close" onClick={close} aria-label={t("welcome.close")}>
+        <X size={16} />
+      </button>
+
+      <div className="welcome-content">
         <div className="welcome-head">
-          <div className="welcome-logo">M</div>
+          <img src={logoUrl} alt="MoonApp" className="welcome-logo" />
           <h1>{t("welcome.title")}</h1>
           <p>{t("welcome.subtitle")}</p>
         </div>
@@ -92,7 +134,7 @@ export default function WelcomeModal() {
             {t("welcome.start")}
           </button>
         </div>
-      </Glass>
+      </div>
     </div>,
     root,
   );

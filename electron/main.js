@@ -572,6 +572,29 @@ function registerWindowControls() {
     else win.maximize();
   });
   ipcMain.on("win:close", () => win?.close());
+
+  // Перетаскивание развёрнутого окна за тулбар: у окна нет системной рамки
+  // (frame: false), поэтому родное поведение Windows «тянешь заголовок
+  // развёрнутого окна — оно сжимается до обычного размера под курсором» не
+  // работает само по себе — см. известное ограничение Electron для
+  // -webkit-app-region: drag (electron/electron#16385). Рендерер шлёт экранные
+  // координаты курсора на mousedown по тулбару; если окно развёрнуто — сжимаем
+  // его до предыдущего размера и подставляем позицию так, чтобы курсор остался
+  // на том же относительном месте по ширине — дальше нативный drag (уже
+  // начатый тем же mousedown) продолжает двигать уже нормальное окно.
+  ipcMain.on("win:drag-restore", (_e, pos) => {
+    if (!win || !win.isMaximized()) return;
+    const maxBounds = win.getBounds();
+    win.unmaximize();
+    const restored = win.getBounds();
+    const x = Number(pos?.x);
+    const y = Number(pos?.y);
+    if (!Number.isFinite(x) || !Number.isFinite(y) || maxBounds.width <= 0) return;
+    const ratio = (x - maxBounds.x) / maxBounds.width;
+    const newX = Math.round(x - ratio * restored.width);
+    const newY = Math.max(0, Math.round(y - 10));
+    win.setBounds({ x: newX, y: newY, width: restored.width, height: restored.height });
+  });
 }
 
 async function createWindow() {

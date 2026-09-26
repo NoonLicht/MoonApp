@@ -1436,26 +1436,148 @@ select option {
   }
 }
 
-/* --- Приветственное окно при запуске (src/components/WelcomeModal.tsx) --- */
-.welcome-card {
+/* --- Приветственное окно при запуске (src/components/WelcomeModal.tsx) ---
+   На всю страницу, не отдельная карточка: fixed на весь экран, но НАЧИНАЕТСЯ
+   ниже верхнего тулбара (var(--content-top), тот же отступ, что и у обычных
+   .app-modal-backdrop) — тулбар остаётся кликабельным поверх приветствия. */
+.welcome-page {
+  position: fixed;
+  top: var(--content-top);
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 50;
+  overflow: hidden;
+  pointer-events: auto; /* #overlay-root выключен для кликов — окно включает обратно */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 20px calc(var(--content-bottom) + 24px);
+  background: linear-gradient(160deg, var(--bg-base), var(--bg-base-2));
+  animation: welcome-page-in 0.3s ease-out;
+}
+@keyframes welcome-page-in {
+  from {
+    opacity: 0;
+  }
+}
+
+/* Декоративный фон: плавающие цветные пятна + искры, во всю доступную область
+   позади карточки. pointer-events: none — не мешает ни клику по фону
+   (закрытие), ни самой карточке. */
+.welcome-fx {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 0;
+}
+.welcome-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(50px);
+  opacity: 0.35;
+  will-change: transform;
+}
+.welcome-blob-1 {
+  width: 360px;
+  height: 360px;
+  top: -80px;
+  left: -60px;
+  background: var(--amber);
+  animation: welcome-drift-1 22s ease-in-out infinite alternate;
+}
+.welcome-blob-2 {
+  width: 300px;
+  height: 300px;
+  bottom: -60px;
+  right: -40px;
+  background: var(--violet);
+  animation: welcome-drift-2 26s ease-in-out infinite alternate;
+}
+.welcome-blob-3 {
+  width: 240px;
+  height: 240px;
+  bottom: 10%;
+  left: 8%;
+  background: var(--teal);
+  animation: welcome-drift-3 19s ease-in-out infinite alternate;
+}
+@keyframes welcome-drift-1 {
+  from {
+    transform: translate(0, 0) scale(1);
+  }
+  to {
+    transform: translate(60px, 50px) scale(1.15);
+  }
+}
+@keyframes welcome-drift-2 {
+  from {
+    transform: translate(0, 0) scale(1);
+  }
+  to {
+    transform: translate(-50px, -40px) scale(1.1);
+  }
+}
+@keyframes welcome-drift-3 {
+  from {
+    transform: translate(0, 0) scale(1);
+  }
+  to {
+    transform: translate(40px, -30px) scale(1.2);
+  }
+}
+.welcome-spark {
+  position: absolute;
+  border-radius: 50%;
+  background: var(--amber);
+  box-shadow: 0 0 6px 1px var(--amber);
+  animation: welcome-twinkle 3.4s ease-in-out infinite;
+}
+@keyframes welcome-twinkle {
+  0%,
+  100% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scale(1);
+  }
+}
+
+.welcome-content {
   position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
-  gap: 18px;
-  width: min(640px, 100%);
+  gap: 22px;
+  width: min(680px, 100%);
   max-height: 100%;
   overflow-y: auto;
-  padding: 28px 32px 22px;
+  padding: 8px 4px;
+  animation: welcome-content-in 0.4s 0.05s cubic-bezier(0.2, 0.8, 0.3, 1) backwards;
+}
+@keyframes welcome-content-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 .welcome-close {
   position: absolute;
-  top: 12px;
-  right: 12px;
+  top: 16px;
+  right: 20px;
+  z-index: 2;
   background: transparent;
   border: none;
   color: var(--text-tertiary);
   cursor: pointer;
-  padding: 6px;
+  padding: 8px;
   border-radius: 8px;
   display: flex;
 }
@@ -1471,18 +1593,22 @@ select option {
   gap: 6px;
 }
 .welcome-logo {
-  width: 56px;
-  height: 56px;
-  border-radius: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 26px;
-  font-weight: 700;
-  color: #fff;
-  background: linear-gradient(135deg, var(--amber), var(--violet));
-  box-shadow: var(--shadow);
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 14px rgba(0, 0, 0, 0.35));
   margin-bottom: 4px;
+  animation: welcome-logo-in 0.5s 0.1s cubic-bezier(0.2, 0.8, 0.3, 1) backwards;
+}
+@keyframes welcome-logo-in {
+  from {
+    opacity: 0;
+    transform: scale(0.7) rotate(-8deg);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) rotate(0);
+  }
 }
 .welcome-head h1 {
   margin: 0;
@@ -1506,8 +1632,8 @@ select option {
   .welcome-grid {
     grid-template-columns: 1fr;
   }
-  .welcome-card {
-    padding: 22px 18px 18px;
+  .welcome-page {
+    padding: 20px 14px;
   }
 }
 .welcome-item {

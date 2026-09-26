@@ -53,6 +53,7 @@ contextBridge.exposeInMainWorld("appBridge", {
   minimize: () => ipcRenderer.send("win:minimize"),
   toggleMaximize: () => ipcRenderer.send("win:toggle-maximize"),
   close: () => ipcRenderer.send("win:close"),
+  dragRestore: (pos) => ipcRenderer.send("win:drag-restore", pos),
   // Глобальный хоткей Alt+Space (командная палитра): вызывается со страницы
   // настроек сразу после смены general.commandPaletteHotkey — main-процесс
   // перечитывает settings.json и перерегистрирует/снимает шорткат без
