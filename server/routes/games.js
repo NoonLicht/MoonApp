@@ -13,12 +13,36 @@
  *  GET    /api/games/:id/save/versions  — список версий бэкапа
  *  POST   /api/games/:id/save/restore   — восстановить версию { file }
  *  POST   /api/games/:id/save/find-path — автопоиск папки сохранений по имени игры
+ *  GET    /api/games/cover/:appId       — прокси обложки Steam (CSP img-src 'self')
  */
 
 const express = require("express");
 const games = require("../games");
 
 const router = express.Router();
+
+/**
+ * Прокси обложки Steam: <img src="https://cdn.cloudflare.steamstatic.com/...">
+ * грузился бы Chromium напрямую и падал под CSP img-src 'self' (тот же приём,
+ * что и /api/movies/image для постеров TMDB). Без токена — <img> не умеет
+ * слать заголовки; безопасность — appId строго цифры, хост всегда steamstatic.
+ */
+router.get("/cover/:appId", async (req, res) => {
+  const appId = String(req.params.appId || "");
+  if (!/^\d+$/.test(appId)) return res.status(400).json({ error: "bad_app_id" });
+  try {
+    const upstream = await fetch(
+      `https://cdn.cloudflare.steamstatic.com/steam/apps/${appId}/header.jpg`,
+    );
+    if (!upstream.ok) return res.status(upstream.status).end();
+    res.setHeader("Content-Type", upstream.headers.get("content-type") || "image/jpeg");
+    res.setHeader("Cache-Control", "public, max-age=604800, immutable");
+    const buf = Buffer.from(await upstream.arrayBuffer());
+    res.end(buf);
+  } catch (e) {
+    res.status(502).json({ error: e.message });
+  }
+});
 
 router.get("/", (req, res) => {
   try {

@@ -65,6 +65,7 @@ const budgetRouter = require("./routes/budget") as express.Router;
 const quickNotesRouter = require("./routes/quickNotes") as express.Router;
 const killSwitchRouter = require("./routes/killSwitch") as express.Router;
 const ocrRouter = require("./routes/ocr") as express.Router;
+const screenshotsRouter = require("./routes/screenshots") as express.Router;
 const officeRouter = require("./routes/office") as express.Router;
 const perPageProxy = require("./middleware/perPageProxy") as {
   perPageProxyMiddleware: express.RequestHandler;
@@ -112,6 +113,12 @@ const RESOURCE_PATHS = [
   "/api/movies/torrent/stream",
   "/api/movies/torrent/remux",
   "/api/movies/torrent/subtitles",
+  // Библиотека скриншотов/записей: <img>/<video src> тоже не могут передать
+  // заголовок токена. Путь валидируется поиском по id в закрытой библиотеке.
+  "/api/screenshots/file",
+  // Обложки Steam (прокси cdn.cloudflare.steamstatic.com) — appId валидируется
+  // внутри роута (только цифры), см. server/routes/games.js.
+  "/api/games/cover",
 ];
 
 function authMiddleware(
@@ -274,6 +281,7 @@ function createApp(): express.Express {
   app.use("/api/quicknotes", quickNotesRouter);
   app.use("/api/killswitch", killSwitchRouter);
   app.use("/api/ocr", ocrRouter);
+  app.use("/api/screenshots", screenshotsRouter);
   app.use("/api/office", officeRouter);
 
   // Раздача собранного фронта (dist), если он собран.

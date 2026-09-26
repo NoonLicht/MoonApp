@@ -438,11 +438,15 @@ async function scanSteam(): Promise<GameEntry[]> {
         name: manifest.name,
         exePath,
         description: "",
-        iconDataUrl: null,
+        // Иконка exe — запасной вариант карточки, пока грузится обложка
+        // (а на некоторых играх exe без ресурсов иконки — тогда просто нет).
+        iconDataUrl: fs.existsSync(exePath) ? await extractExeIcon(exePath).catch(() => null) : null,
         backgroundDataUrl: null,
         // Официальная обложка магазина Steam — надёжнее и красивее, чем
         // извлекать иконку из exe, и не требует скачивания на диск.
-        backgroundUrl: `https://cdn.cloudflare.steamstatic.com/steam/apps/${manifest.appId}/header.jpg`,
+        // Идёт через свой прокси (server/routes/games.js → /cover/:appId):
+        // CSP img-src 'self' не пускает <img> напрямую на cdn.cloudflare.steamstatic.com.
+        backgroundUrl: `/api/games/cover/${manifest.appId}`,
         savePath: guessSavePath(manifest.name),
         source: "steam",
         appId: manifest.appId,
