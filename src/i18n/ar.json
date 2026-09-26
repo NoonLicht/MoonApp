@@ -1544,6 +1544,9 @@
       "deviceCudaHint": "سريع: بطاقات NVIDIA من GTX 16xx / RTX 20xx",
       "deviceCpu": "CPU (بدون بطاقة رسوميات)",
       "deviceCpuHint": "أبطأ لكنه يعمل بدون NVIDIA",
+      "deviceCudaSeparate": "هذا وقت تشغيل PyTorch مستقل (pip، CUDA 12.8) — ملفات مختلفة فعليًا عن حزمة GPU الخاصة بالتكبير (ONNX Runtime/TensorRT، CUDA 12.9) أو نسخة CUDA من whisper في المحاضرة (CUDA 11.8/12.4). لا يمكن دمجها: ثلاثة محركات مختلفة، وثلاث إصدارات CUDA مختلفة. يُنزَّل مرة واحدة عند أول استخدام.",
+      "upscaleCudaFound": "الحالة: حزمة GPU الخاصة بالتكبير مثبَّتة بالفعل (هذا التنزيل ما زال ضروريًا — أوقات تشغيل مختلفة)",
+      "upscaleCudaMissing": "الحالة: حزمة GPU الخاصة بالتكبير غير مثبَّتة بعد",
       "recommended": "موصى به",
       "gpu": "تم العثور على بطاقة رسوميات: {name}",
       "gpuNone": "لم يتم العثور على بطاقة NVIDIA — يكفي إصدار CPU",
@@ -1843,6 +1846,8 @@
       },
       "installed": "مثبَّت",
       "notInstalled": "غير مثبَّت",
+      "sharedCudaFound": "حزمة GPU الخاصة بالتكبير مثبَّتة بالفعل — سيكون هذا التنزيل أصغر بكثير (يُعاد استخدام مكتبات CUDA)",
+      "sharedCudaMissing": "لم يتم العثور على حزمة GPU الخاصة بالتكبير — سيتم تنزيل الأرشيف كاملاً",
       "downloadingModel": "جارٍ تنزيل الطراز",
       "downloadingBuild": "جارٍ تنزيل إصدار المحرّك",
       "phase": {

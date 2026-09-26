@@ -112,7 +112,18 @@ export default function LectureEnginePanel({
   const [error, setError] = useState("");
   const [binDraft, setBinDraft] = useState<string | null>(null);
   const [showLog, setShowLog] = useState(false);
+  // Статус GPU-пака Апскейла (CUDA 12.9): если он уже стоит, CUDA-сборка
+  // whisper скачается СИЛЬНО меньше — переиспользует его библиотеки вместо
+  // повторной закачки (см. server/ts/whisperEngine.ts::tryInstallBuildShared).
+  const [upscaleCuda, setUpscaleCuda] = useState<boolean | null>(null);
   const alive = useRef(true);
+
+  useEffect(() => {
+    api
+      .upscalePack()
+      .then((s) => setUpscaleCuda(!!s.installed))
+      .catch(() => setUpscaleCuda(null));
+  }, []);
 
   const apply = useCallback((s: LectureEngineSetup) => {
     if (!alive.current) return;
@@ -491,6 +502,13 @@ export default function LectureEnginePanel({
                     {b.installed ? t("lecture.setup.installed") : t("lecture.setup.notInstalled")}
                     {b.active ? ` · ${t("lecture.setup.active")}` : ""}
                   </div>
+                  {b.gpu && !b.installed && upscaleCuda != null && (
+                    <div className="muted-sm">
+                      {upscaleCuda
+                        ? t("lecture.setup.sharedCudaFound")
+                        : t("lecture.setup.sharedCudaMissing")}
+                    </div>
+                  )}
                   <FitHint fit={b.recommend} t={t} />
                 </div>
                 <div className="lecs-row-actions">

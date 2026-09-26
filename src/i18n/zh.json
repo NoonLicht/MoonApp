@@ -1544,6 +1544,9 @@
       "deviceCudaHint": "速度快：GTX 16xx / RTX 20xx 及更新的 NVIDIA 显卡",
       "deviceCpu": "CPU（无显卡）",
       "deviceCpuHint": "较慢，但无需 NVIDIA 显卡",
+      "deviceCudaSeparate": "这是独立的 PyTorch 运行时（pip，CUDA 12.8）——与放大功能的 GPU 包（ONNX Runtime/TensorRT，CUDA 12.9）或录音转写中 whisper 的 CUDA 版本（CUDA 11.8/12.4）是物理上不同的文件。三者无法合并：三个不同引擎，三个不同 CUDA 版本，首次使用时下载一次。",
+      "upscaleCudaFound": "状态：放大功能的 GPU 包已安装（这次下载仍然需要——运行时不同）",
+      "upscaleCudaMissing": "状态：放大功能的 GPU 包尚未安装",
       "recommended": "推荐",
       "gpu": "检测到显卡：{name}",
       "gpuNone": "未检测到 NVIDIA 显卡，可使用 CPU 版本",
@@ -1843,6 +1846,8 @@
       },
       "installed": "已安装",
       "notInstalled": "未安装",
+      "sharedCudaFound": "放大功能的 GPU 包已安装——本次下载会小得多（CUDA 库将被复用）",
+      "sharedCudaMissing": "未找到放大功能的 GPU 包——将下载完整压缩包",
       "downloadingModel": "正在下载模型",
       "downloadingBuild": "正在下载引擎版本",
       "phase": {

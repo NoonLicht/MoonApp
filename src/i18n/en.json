@@ -1678,6 +1678,8 @@
       "deviceCuda": "CUDA 12.8 (NVIDIA)",
       "deviceCudaHint": "Fast: NVIDIA cards from GTX 16xx / RTX 20xx",
       "deviceCudaSeparate": "This is a separate PyTorch runtime (pip, CUDA 12.8) — physically different files from Upscale's GPU pack (ONNX Runtime/TensorRT, CUDA 12.9) or the CUDA build of whisper in Lecture (CUDA 11.8/12.4). They can't be merged: three different engines, three different CUDA versions. Downloaded once on first use.",
+      "upscaleCudaFound": "Status: Upscale's GPU pack is already installed (this download is still needed — different runtimes)",
+      "upscaleCudaMissing": "Status: Upscale's GPU pack is not installed yet",
       "deviceCpu": "CPU (no graphics card)",
       "deviceCpuHint": "Slower, but works without NVIDIA",
       "recommended": "Recommended",
@@ -1979,6 +1981,8 @@
       },
       "installed": "installed",
       "notInstalled": "not installed",
+      "sharedCudaFound": "Upscale's GPU pack is already installed — this download will be much smaller (CUDA libraries are reused)",
+      "sharedCudaMissing": "Upscale's GPU pack was not found — the full archive will be downloaded",
       "downloadingModel": "Downloading model",
       "downloadingBuild": "Downloading engine build",
       "phase": {

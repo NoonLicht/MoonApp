@@ -1678,6 +1678,8 @@
       "deviceCuda": "CUDA 12.8 (NVIDIA)",
       "deviceCudaHint": "Быстро: карты NVIDIA от GTX 16xx / RTX 20xx",
       "deviceCudaSeparate": "Это отдельный рантайм под PyTorch (pip, CUDA 12.8) — физически другие файлы, чем GPU-пак «Апскейла» (ONNX Runtime/TensorRT, CUDA 12.9) или CUDA-сборка whisper в «Лектории» (CUDA 11.8/12.4). Объединить нельзя: три разных движка, три разных версии CUDA, скачивается один раз при первом запуске.",
+      "upscaleCudaFound": "Статус: GPU-пак Апскейла уже установлен (эта закачка всё равно нужна — рантаймы разные)",
+      "upscaleCudaMissing": "Статус: GPU-пак Апскейла ещё не установлен",
       "deviceCpu": "CPU (без видеокарты)",
       "deviceCpuHint": "Медленнее, но работает без NVIDIA",
       "recommended": "Рекомендуется",
@@ -1979,6 +1981,8 @@
       },
       "installed": "установлена",
       "notInstalled": "не установлена",
+      "sharedCudaFound": "GPU-пак Апскейла уже установлен — скачается заметно меньше (библиотеки CUDA переиспользуются)",
+      "sharedCudaMissing": "GPU-пак Апскейла не найден — скачается архив целиком",
       "downloadingModel": "Скачиваем модель",
       "downloadingBuild": "Скачиваем сборку движка",
       "phase": {

@@ -139,6 +139,17 @@ export function PyEnvPanel({
   const [expanded, setExpanded] = useState(false);
   // Устройство пользователь выбирает сам; до этого берём рекомендацию сервера.
   const picked = useRef(false);
+  // Статус GPU-пака Апскейла — чисто информационно (см. deviceCudaSeparate
+  // ниже): PyTorch грузит свою CUDA 12.8 из pip-колеса, переиспользовать
+  // пак Апскейла (ONNX Runtime, CUDA 12.9) технически нельзя, но пользователю
+  // полезно видеть, что там уже скачано, прежде чем качать это ещё раз.
+  const [upscaleCuda, setUpscaleCuda] = useState<boolean | null>(null);
+  useEffect(() => {
+    api
+      .upscalePack()
+      .then((s) => setUpscaleCuda(!!s.installed))
+      .catch(() => setUpscaleCuda(null));
+  }, []);
 
   const loadInfo = useCallback(
     async (dev?: PyDeviceId) => {
@@ -424,6 +435,11 @@ export function PyEnvPanel({
             {device === "cuda" && (
               <div className="muted-sm" style={{ marginTop: 4 }}>
                 {t("ab.py.deviceCudaSeparate")}
+              </div>
+            )}
+            {device === "cuda" && upscaleCuda != null && (
+              <div className="muted-sm" style={{ marginTop: 2 }}>
+                {upscaleCuda ? t("ab.py.upscaleCudaFound") : t("ab.py.upscaleCudaMissing")}
               </div>
             )}
           </div>
