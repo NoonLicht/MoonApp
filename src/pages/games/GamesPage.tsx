@@ -406,10 +406,24 @@ export default function GamesPage() {
         >
           <Glass
             className="glass-solid"
-            style={{ width: 420, maxHeight: "70vh", padding: 16, flexDirection: "column", gap: 10 }}
+            style={{
+              display: "flex",
+              width: 420,
+              maxHeight: "70vh",
+              padding: 16,
+              flexDirection: "column",
+              gap: 14,
+            }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: 4,
+              }}
+            >
               <div className="media-title">{t("games.saveManagerFor", { name: savesFor.name })}</div>
               <button type="button" className="icon-btn" onClick={() => setSavesFor(null)}>
                 <X size={16} />
