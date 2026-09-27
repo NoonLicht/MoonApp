@@ -373,7 +373,6 @@
     "empty": "Prenez une capture ou démarrez l'enregistrement d'écran",
     "source": "Source",
     "sourceAuto": "Auto (premier moniteur)",
-    "sourceRefresh": "Actualiser les sources",
     "kindScreen": "Écran",
     "kindWindow": "Fenêtre",
     "areaToggle": "Sélectionner une zone",
@@ -394,7 +393,6 @@
     "audioBoth": "Microphone + système",
     "micDevice": "Microphone",
     "micDeviceAuto": "Auto (par défaut)",
-    "micDeviceRefresh": "Actualiser la liste des microphones",
     "micDeviceFallback": "Microphone",
     "autoCapture": "Sauvegarde auto depuis le presse-papiers"
   },

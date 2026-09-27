@@ -12,7 +12,6 @@ import {
   Blend,
   ScanText,
   X,
-  RefreshCw,
   Crop,
   Trash2,
   Play,
@@ -850,22 +849,21 @@ export default function ScreenshotsPage() {
           style={{ display: "flex", flexDirection: "column", alignItems: "stretch", gap: 14, padding: 12 }}
         >
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-end" }}>
-            {/* Поле и кнопка обновления списка — в одной нерастягиваемой группе,
-                чтобы при переносе строк (flexWrap) они не разъезжались друг от
-                друга дальше по ряду. */}
-            <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
-              <Field label={t("screenshots.source")} w={260}>
-                <Select value={sourceId} onChange={(e) => setSourceId(e.target.value)} options={sourceOptions} />
-              </Field>
-              <IconBtn icon={RefreshCw} title={t("screenshots.sourceRefresh")} onClick={() => void loadSources()} />
-            </div>
-            <Badge tone={areaMode ? "amber" : "neutral"} onClick={() => setAreaMode((v) => !v)}>
+            <Field label={t("screenshots.source")} w={260}>
+              <Select
+                value={sourceId}
+                onChange={(e) => setSourceId(e.target.value)}
+                options={sourceOptions}
+                onMouseDown={() => void loadSources()}
+              />
+            </Field>
+            <Badge tone="amber" active={areaMode} onClick={() => setAreaMode((v) => !v)}>
               <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
                 <Crop size={12} />
                 {t("screenshots.areaToggle")}
               </span>
             </Badge>
-            <Badge tone={autoCaptureClipboard ? "amber" : "neutral"} onClick={toggleAutoCapture}>
+            <Badge tone="amber" active={autoCaptureClipboard} onClick={toggleAutoCapture}>
               <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
                 <ImageIcon size={12} />
                 {t("screenshots.autoCapture")}
@@ -925,23 +923,17 @@ export default function ScreenshotsPage() {
               />
             </Field>
             {(audioSource === "mic" || audioSource === "both") && (
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 4 }}>
-                <Field label={t("screenshots.micDevice")} w={190}>
-                  <Select
-                    value={micDeviceId}
-                    onChange={(e) => setMicDeviceId(e.target.value)}
-                    options={[
-                      { value: "", label: t("screenshots.micDeviceAuto") },
-                      ...micDevices.map((d) => ({ value: d.deviceId, label: d.label })),
-                    ]}
-                  />
-                </Field>
-                <IconBtn
-                  icon={RefreshCw}
-                  title={t("screenshots.micDeviceRefresh")}
-                  onClick={() => void loadMicDevices()}
+              <Field label={t("screenshots.micDevice")} w={190}>
+                <Select
+                  value={micDeviceId}
+                  onChange={(e) => setMicDeviceId(e.target.value)}
+                  options={[
+                    { value: "", label: t("screenshots.micDeviceAuto") },
+                    ...micDevices.map((d) => ({ value: d.deviceId, label: d.label })),
+                  ]}
+                  onMouseDown={() => void loadMicDevices()}
                 />
-              </div>
+              </Field>
             )}
           </div>
 

@@ -373,7 +373,6 @@
     "empty": "Haz una captura o inicia la grabación de pantalla",
     "source": "Fuente",
     "sourceAuto": "Auto (primer monitor)",
-    "sourceRefresh": "Actualizar fuentes",
     "kindScreen": "Pantalla",
     "kindWindow": "Ventana",
     "areaToggle": "Seleccionar área",
@@ -394,7 +393,6 @@
     "audioBoth": "Micrófono + sistema",
     "micDevice": "Micrófono",
     "micDeviceAuto": "Auto (predeterminado)",
-    "micDeviceRefresh": "Actualizar lista de micrófonos",
     "micDeviceFallback": "Micrófono",
     "autoCapture": "Autoguardar desde portapapeles"
   },

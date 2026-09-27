@@ -373,7 +373,6 @@
     "empty": "截图或开始屏幕录制",
     "source": "来源",
     "sourceAuto": "自动(第一个显示器)",
-    "sourceRefresh": "刷新来源列表",
     "kindScreen": "屏幕",
     "kindWindow": "窗口",
     "areaToggle": "选择区域",
@@ -394,7 +393,6 @@
     "audioBoth": "麦克风 + 系统",
     "micDevice": "麦克风",
     "micDeviceAuto": "自动（默认）",
-    "micDeviceRefresh": "刷新麦克风列表",
     "micDeviceFallback": "麦克风",
     "autoCapture": "从剪贴板自动保存"
   },

@@ -373,7 +373,6 @@
     "empty": "التقط لقطة أو ابدأ تسجيل الشاشة",
     "source": "المصدر",
     "sourceAuto": "تلقائي (أول شاشة)",
-    "sourceRefresh": "تحديث قائمة المصادر",
     "kindScreen": "شاشة",
     "kindWindow": "نافذة",
     "areaToggle": "تحديد منطقة",
@@ -394,7 +393,6 @@
     "audioBoth": "الميكروفون + النظام",
     "micDevice": "الميكروفون",
     "micDeviceAuto": "تلقائي (افتراضي)",
-    "micDeviceRefresh": "تحديث قائمة الميكروفونات",
     "micDeviceFallback": "ميكروفون",
     "autoCapture": "الحفظ التلقائي من الحافظة"
   },

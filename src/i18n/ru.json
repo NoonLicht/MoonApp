@@ -373,7 +373,6 @@
     "empty": "Сделайте скриншот или начните запись экрана",
     "source": "Источник",
     "sourceAuto": "Авто (первый монитор)",
-    "sourceRefresh": "Обновить список источников",
     "kindScreen": "Экран",
     "kindWindow": "Окно",
     "areaToggle": "Выбрать область",
@@ -394,7 +393,6 @@
     "audioBoth": "Микрофон + система",
     "micDevice": "Микрофон",
     "micDeviceAuto": "Авто (по умолчанию)",
-    "micDeviceRefresh": "Обновить список микрофонов",
     "micDeviceFallback": "Микрофон",
     "autoCapture": "Автосохранение из буфера"
   },

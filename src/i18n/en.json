@@ -373,7 +373,6 @@
     "empty": "Take a screenshot or start screen recording",
     "source": "Source",
     "sourceAuto": "Auto (first monitor)",
-    "sourceRefresh": "Refresh source list",
     "kindScreen": "Screen",
     "kindWindow": "Window",
     "areaToggle": "Select area",
@@ -394,7 +393,6 @@
     "audioBoth": "Microphone + system",
     "micDevice": "Microphone",
     "micDeviceAuto": "Auto (default)",
-    "micDeviceRefresh": "Refresh microphone list",
     "micDeviceFallback": "Microphone",
     "autoCapture": "Auto-save from clipboard"
   },

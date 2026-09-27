@@ -77,18 +77,22 @@ export function Select({
   onChange,
   options,
   style,
+  onMouseDown,
 }: {
   value: string;
   onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
   options: (string | SelectOption)[];
   style?: React.CSSProperties;
+  /** Обновить список ПЕРЕД открытием (устройства/источники захвата и т.п.) —
+   *  вместо отдельной кнопки "обновить" рядом с полем. */
+  onMouseDown?: () => void;
 }) {
   const list: SelectOption[] = (options || []).map((o) =>
     typeof o === "object" && o != null ? o : { value: o, label: o },
   );
   return (
     <div className="select-wrap" style={style}>
-      <select value={value} onChange={onChange}>
+      <select value={value} onChange={onChange} onMouseDown={onMouseDown}>
         {list.map((o) => (
           <option key={o.value} value={o.value}>
             {o.label}
