@@ -386,7 +386,16 @@
     "cropFull": "Prendre en entier",
     "recAreaConfirm": "Enregistrer la sélection",
     "library": "Bibliothèque de captures et enregistrements",
-    "libOpen": "Ouvrir"
+    "libOpen": "Ouvrir",
+    "audioSource": "Audio",
+    "audioNone": "Sans audio",
+    "audioMic": "Microphone",
+    "audioSystem": "Audio système",
+    "audioBoth": "Microphone + système",
+    "micDevice": "Microphone",
+    "micDeviceAuto": "Auto (par défaut)",
+    "micDeviceRefresh": "Actualiser la liste des microphones",
+    "micDeviceFallback": "Microphone"
   },
   "automation": {
     "eyebrow": "Automatisation",
@@ -497,7 +506,11 @@
     "changePath": "Changer de dossier",
     "noSavePathHint": "Aucun dossier de sauvegardes défini — rien à sauvegarder sans cela. Définissez-en un pour activer le gestionnaire de sauvegardes de ce jeu.",
     "findSavePath": "Recherche auto",
-    "findingSavePath": "Recherche…"
+    "findingSavePath": "Recherche…",
+    "filterAll": "Tous",
+    "filterManual": "Manuels",
+    "filterSteam": "Steam",
+    "filterEpic": "Epic"
   },
   "tools": {
     "eyebrow": "Multi-outil",

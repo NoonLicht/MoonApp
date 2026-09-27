@@ -86,9 +86,13 @@ export default function WelcomeModal({
         if (s?.general?.showWelcome !== false) {
           setOpen(true);
           onOpenChange?.(true);
+        } else {
+          // Показывать не нужно — сразу сообщаем родителю, чтобы он
+          // размонтировал этот компонент (App.tsx → welcomeMounted).
+          onOpenChange?.(false);
         }
       })
-      .catch(() => {});
+      .catch(() => onOpenChange?.(false));
     // onOpenChange стабилен (setState из App.tsx) — эффект должен сработать
     // только один раз при монтировании.
     // eslint-disable-next-line react-hooks/exhaustive-deps

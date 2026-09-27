@@ -556,6 +556,28 @@ select option {
   padding: 4px 10px;
   font-family: var(--font-mono);
 }
+/* Переключатель фильтра сеткой карточек (см. src/pages/games/GamesPage.tsx). */
+.chip-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: 999px;
+  padding: 5px 12px;
+  cursor: pointer;
+}
+.chip-toggle:hover {
+  color: var(--text-primary);
+  border-color: var(--glass-strong);
+}
+.chip-toggle.is-active {
+  color: var(--text-primary);
+  background: var(--amber-soft);
+  border-color: var(--amber);
+}
 
 /* --- адаптация фильтров под светлую тему --- */
 .theme-light .select-wrap select {
@@ -1460,6 +1482,12 @@ select option {
 }
 .app-shell.welcome-open .bottom-dock {
   visibility: hidden;
+}
+/* Кнопка диспетчера фоновых задач ни к чему на экране приветствия — там ещё
+   нечего показывать в очереди задач, а сама кнопка выглядит лишней рядом с
+   "Привет!". */
+.app-shell.welcome-open .task-mgr-toggle {
+  display: none;
 }
 @keyframes welcome-page-in {
   from {

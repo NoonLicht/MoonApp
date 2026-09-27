@@ -386,7 +386,16 @@
     "cropFull": "取整个画面",
     "recAreaConfirm": "按选区开始录制",
     "library": "截图与录制库",
-    "libOpen": "打开"
+    "libOpen": "打开",
+    "audioSource": "音频",
+    "audioNone": "无音频",
+    "audioMic": "麦克风",
+    "audioSystem": "系统声音",
+    "audioBoth": "麦克风 + 系统",
+    "micDevice": "麦克风",
+    "micDeviceAuto": "自动（默认）",
+    "micDeviceRefresh": "刷新麦克风列表",
+    "micDeviceFallback": "麦克风"
   },
   "automation": {
     "eyebrow": "自动化",
@@ -497,7 +506,11 @@
     "changePath": "更改文件夹",
     "noSavePathHint": "尚未设置存档文件夹 — 没有它就无法备份。请设置一个以启用此游戏的存档管理器。",
     "findSavePath": "自动查找",
-    "findingSavePath": "正在搜索…"
+    "findingSavePath": "正在搜索…",
+    "filterAll": "全部",
+    "filterManual": "手动添加",
+    "filterSteam": "Steam",
+    "filterEpic": "Epic"
   },
   "tools": {
     "eyebrow": "多功能工具",

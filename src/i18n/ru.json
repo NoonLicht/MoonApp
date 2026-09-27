@@ -386,7 +386,16 @@
     "cropFull": "Взять целиком",
     "recAreaConfirm": "Начать запись по выделению",
     "library": "Библиотека скриншотов и записей",
-    "libOpen": "Открыть"
+    "libOpen": "Открыть",
+    "audioSource": "Звук",
+    "audioNone": "Без звука",
+    "audioMic": "Микрофон",
+    "audioSystem": "Системный звук",
+    "audioBoth": "Микрофон + система",
+    "micDevice": "Микрофон",
+    "micDeviceAuto": "Авто (по умолчанию)",
+    "micDeviceRefresh": "Обновить список микрофонов",
+    "micDeviceFallback": "Микрофон"
   },
   "automation": {
     "eyebrow": "Автоматизация",
@@ -497,7 +506,11 @@
     "changePath": "Сменить папку",
     "noSavePathHint": "Папка сохранений не указана — без неё бэкап делать нечего. Укажите её, чтобы включить менеджер сохранений для этой игры.",
     "findSavePath": "Автопоиск",
-    "findingSavePath": "Ищем…"
+    "findingSavePath": "Ищем…",
+    "filterAll": "Все",
+    "filterManual": "Свои",
+    "filterSteam": "Steam",
+    "filterEpic": "Epic"
   },
   "tools": {
     "eyebrow": "Мультитул",

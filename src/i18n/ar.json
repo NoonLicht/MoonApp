@@ -386,7 +386,16 @@
     "cropFull": "أخذ الإطار كاملاً",
     "recAreaConfirm": "بدء التسجيل حسب التحديد",
     "library": "مكتبة اللقطات والتسجيلات",
-    "libOpen": "فتح"
+    "libOpen": "فتح",
+    "audioSource": "الصوت",
+    "audioNone": "بدون صوت",
+    "audioMic": "الميكروفون",
+    "audioSystem": "صوت النظام",
+    "audioBoth": "الميكروفون + النظام",
+    "micDevice": "الميكروفون",
+    "micDeviceAuto": "تلقائي (افتراضي)",
+    "micDeviceRefresh": "تحديث قائمة الميكروفونات",
+    "micDeviceFallback": "ميكروفون"
   },
   "automation": {
     "eyebrow": "الأتمتة",
@@ -497,7 +506,11 @@
     "changePath": "تغيير المجلد",
     "noSavePathHint": "لم يتم تحديد مجلد الحفظ — لا يوجد شيء للنسخ الاحتياطي بدونه. حدده لتفعيل مدير الحفظ لهذه اللعبة.",
     "findSavePath": "بحث تلقائي",
-    "findingSavePath": "جارٍ البحث…"
+    "findingSavePath": "جارٍ البحث…",
+    "filterAll": "الكل",
+    "filterManual": "يدوي",
+    "filterSteam": "Steam",
+    "filterEpic": "Epic"
   },
   "tools": {
     "eyebrow": "أداة متعددة",

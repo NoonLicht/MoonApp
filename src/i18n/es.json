@@ -386,7 +386,16 @@
     "cropFull": "Tomar completo",
     "recAreaConfirm": "Grabar la selección",
     "library": "Biblioteca de capturas y grabaciones",
-    "libOpen": "Abrir"
+    "libOpen": "Abrir",
+    "audioSource": "Audio",
+    "audioNone": "Sin audio",
+    "audioMic": "Micrófono",
+    "audioSystem": "Audio del sistema",
+    "audioBoth": "Micrófono + sistema",
+    "micDevice": "Micrófono",
+    "micDeviceAuto": "Auto (predeterminado)",
+    "micDeviceRefresh": "Actualizar lista de micrófonos",
+    "micDeviceFallback": "Micrófono"
   },
   "automation": {
     "eyebrow": "Automatización",
@@ -497,7 +506,11 @@
     "changePath": "Cambiar carpeta",
     "noSavePathHint": "No se ha indicado una carpeta de partidas guardadas — sin ella no hay nada que respaldar. Indícala para activar el gestor de partidas guardadas de este juego.",
     "findSavePath": "Buscar automático",
-    "findingSavePath": "Buscando…"
+    "findingSavePath": "Buscando…",
+    "filterAll": "Todos",
+    "filterManual": "Manuales",
+    "filterSteam": "Steam",
+    "filterEpic": "Epic"
   },
   "tools": {
     "eyebrow": "Multiherramienta",

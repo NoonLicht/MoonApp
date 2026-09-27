@@ -456,6 +456,7 @@ export default function App() {
   const [keepPagesLimit, setKeepPagesLimit] = useState(KEEP_ALIVE_DEFAULT_LIMIT);
   const [unloadIdleMinutes, setUnloadIdleMinutes] = useState(KEEP_ALIVE_DEFAULT_IDLE_MIN);
   const [welcomeOpen, setWelcomeOpen] = useState(false);
+  const [welcomeMounted, setWelcomeMounted] = useState(true);
 
   // Слот тулбара: пишем по ключу страницы. null — удалить слот (страница выгружена).
   const setPageToolbar = useCallback((id: string, node: React.ReactNode | null) => {
@@ -551,6 +552,18 @@ export default function App() {
     <I18nProvider lang={lang}>
       {/* Провайдер на всё приложение: одно глобальное контекстное меню. */}
       <ContextMenuProvider>
+        {/* Первой — чтобы её эффект (запрос настроек, решение показывать ли
+            экран) стартовал раньше остальных и приветствие не мигало поверх
+            уже отрисованной страницы. После закрытия сразу размонтируется
+            (welcomeMounted=false) — не держим 16 карточек фич в памяти. */}
+        {welcomeMounted && (
+          <WelcomeModal
+            onOpenChange={(o) => {
+              setWelcomeOpen(o);
+              if (!o) setWelcomeMounted(false);
+            }}
+          />
+        )}
         <Shell
           active={active}
           setActive={setActive}
@@ -573,7 +586,6 @@ export default function App() {
           welcomeOpen={welcomeOpen}
         />
         <CommandPalette />
-        <WelcomeModal onOpenChange={setWelcomeOpen} />
       </ContextMenuProvider>
     </I18nProvider>
   );
