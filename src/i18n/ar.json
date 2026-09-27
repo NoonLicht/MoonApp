@@ -396,8 +396,7 @@
     "micDeviceAuto": "تلقائي (افتراضي)",
     "micDeviceRefresh": "تحديث قائمة الميكروفونات",
     "micDeviceFallback": "ميكروفون",
-    "autoCapture": "الحفظ التلقائي من الحافظة",
-    "autoCaptureHint": "لا يقوم PrintScreen و Win+Shift+S بحفظ ملف من تلقاء نفسهما — فقط يضعان الصورة في الحافظة. أثناء التفعيل، يراقب التطبيق الحافظة ويحفظها هنا أيضاً. القيد: أي صورة أخرى منسوخة (مثلاً من المتصفح) ستنتهي هنا أيضاً."
+    "autoCapture": "الحفظ التلقائي من الحافظة"
   },
   "automation": {
     "eyebrow": "الأتمتة",
@@ -512,7 +511,10 @@
     "filterAll": "الكل",
     "filterManual": "يدوي",
     "filterSteam": "Steam",
-    "filterEpic": "Epic"
+    "filterEpic": "Epic",
+    "tileSize_s": "بلاطات صغيرة",
+    "tileSize_m": "بلاطات متوسطة",
+    "tileSize_l": "بلاطات كبيرة"
   },
   "tools": {
     "eyebrow": "أداة متعددة",

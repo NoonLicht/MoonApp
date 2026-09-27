@@ -396,8 +396,7 @@
     "micDeviceAuto": "Auto (par défaut)",
     "micDeviceRefresh": "Actualiser la liste des microphones",
     "micDeviceFallback": "Microphone",
-    "autoCapture": "Sauvegarde auto depuis le presse-papiers",
-    "autoCaptureHint": "PrintScreen et Win+Shift+S n'enregistrent pas de fichier seuls — ils mettent juste l'image dans le presse-papiers. Tant que c'est activé, l'appli surveille le presse-papiers et les enregistre ici aussi. Limite : toute autre image copiée (ex. depuis un navigateur) finira ici aussi."
+    "autoCapture": "Sauvegarde auto depuis le presse-papiers"
   },
   "automation": {
     "eyebrow": "Automatisation",
@@ -512,7 +511,10 @@
     "filterAll": "Tous",
     "filterManual": "Manuels",
     "filterSteam": "Steam",
-    "filterEpic": "Epic"
+    "filterEpic": "Epic",
+    "tileSize_s": "Petites tuiles",
+    "tileSize_m": "Tuiles moyennes",
+    "tileSize_l": "Grandes tuiles"
   },
   "tools": {
     "eyebrow": "Multi-outil",

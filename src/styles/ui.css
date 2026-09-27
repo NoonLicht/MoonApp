@@ -578,14 +578,14 @@ select option {
   background: var(--amber-soft);
   border-color: var(--amber);
 }
-/* Сетка карточек игр (src/pages/games/GamesPage.tsx) — clamp() вместо
-   фиксированного minmax(220px,…): ширина плитки плавно растёт вместе с
-   окном (а не только меняется число колонок скачком на auto-fill), а
-   aspect-ratio вместо фиксированной height держит одинаковые пропорции
-   на любом размере. */
+/* Сетка карточек игр (src/pages/games/GamesPage.tsx) — --games-tile-min
+   задаёт минимальную ширину плитки (переключатель S/M/L над сеткой, хранится
+   в localStorage), auto-fill сам досчитывает число колонок под ширину окна;
+   aspect-ratio вместо фиксированной height держит пропорции на любом размере. */
 .games-grid {
+  --games-tile-min: 210px;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(clamp(160px, 16vw, 280px), 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(var(--games-tile-min), 1fr));
   gap: 14px;
   margin-top: 10px;
 }

@@ -396,8 +396,7 @@
     "micDeviceAuto": "Auto (predeterminado)",
     "micDeviceRefresh": "Actualizar lista de micrófonos",
     "micDeviceFallback": "Micrófono",
-    "autoCapture": "Autoguardar desde portapapeles",
-    "autoCaptureHint": "PrintScreen y Win+Shift+S no guardan un archivo por sí solos — solo ponen la imagen en el portapapeles. Mientras esté activado, la app vigila el portapapeles y también las guarda aquí. Limitación: cualquier otra imagen copiada (p. ej. desde el navegador) también acabará aquí."
+    "autoCapture": "Autoguardar desde portapapeles"
   },
   "automation": {
     "eyebrow": "Automatización",
@@ -512,7 +511,10 @@
     "filterAll": "Todos",
     "filterManual": "Manuales",
     "filterSteam": "Steam",
-    "filterEpic": "Epic"
+    "filterEpic": "Epic",
+    "tileSize_s": "Mosaicos pequeños",
+    "tileSize_m": "Mosaicos medianos",
+    "tileSize_l": "Mosaicos grandes"
   },
   "tools": {
     "eyebrow": "Multiherramienta",

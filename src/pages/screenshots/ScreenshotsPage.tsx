@@ -850,10 +850,15 @@ export default function ScreenshotsPage() {
           style={{ display: "flex", flexDirection: "column", alignItems: "stretch", gap: 14, padding: 12 }}
         >
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-end" }}>
-            <Field label={t("screenshots.source")} w={260}>
-              <Select value={sourceId} onChange={(e) => setSourceId(e.target.value)} options={sourceOptions} />
-            </Field>
-            <IconBtn icon={RefreshCw} title={t("screenshots.sourceRefresh")} onClick={() => void loadSources()} />
+            {/* Поле и кнопка обновления списка — в одной нерастягиваемой группе,
+                чтобы при переносе строк (flexWrap) они не разъезжались друг от
+                друга дальше по ряду. */}
+            <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+              <Field label={t("screenshots.source")} w={260}>
+                <Select value={sourceId} onChange={(e) => setSourceId(e.target.value)} options={sourceOptions} />
+              </Field>
+              <IconBtn icon={RefreshCw} title={t("screenshots.sourceRefresh")} onClick={() => void loadSources()} />
+            </div>
             <Badge tone={areaMode ? "amber" : "neutral"} onClick={() => setAreaMode((v) => !v)}>
               <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
                 <Crop size={12} />
@@ -867,7 +872,6 @@ export default function ScreenshotsPage() {
               </span>
             </Badge>
           </div>
-          <div className="muted-sm">{t("screenshots.autoCaptureHint")}</div>
 
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-end" }}>
             <Field label={t("screenshots.resolution")} w={150}>
@@ -922,7 +926,7 @@ export default function ScreenshotsPage() {
             </Field>
             {(audioSource === "mic" || audioSource === "both") && (
               <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 4 }}>
-                <Field label={t("screenshots.micDevice")} w={220}>
+                <Field label={t("screenshots.micDevice")} w={190}>
                   <Select
                     value={micDeviceId}
                     onChange={(e) => setMicDeviceId(e.target.value)}

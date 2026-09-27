@@ -14,6 +14,7 @@ import {
   Search,
   Images,
   ImageOff,
+  LayoutGrid,
 } from "lucide-react";
 import { Glass, Btn, Badge, EmptyHint, SectionHead } from "@/components/ui";
 import { useContextMenu } from "@/components/ContextMenu";
@@ -54,6 +55,11 @@ interface FormState {
   backgroundDataUrl: string | null;
 }
 
+/** Минимальная ширина плитки для каждого размера — подставляется в
+ *  --games-tile-min (см. .games-grid в src/styles/ui.css), auto-fill сам
+ *  досчитывает число колонок под текущую ширину окна. */
+const TILE_MIN_PX: Record<"s" | "m" | "l", number> = { s: 140, m: 210, l: 300 };
+
 const EMPTY_FORM: FormState = {
   name: "",
   exePath: "",
@@ -70,6 +76,23 @@ export default function GamesPage() {
   // Фильтр сетки: показывать все карточки или только из одного источника
   // (ручные / Steam / Epic) — удобно, когда автосбор натащил сотню игр.
   const [sourceFilter, setSourceFilter] = useState<"all" | "manual" | "steam" | "epic">("all");
+  // Размер плиток — локальная настройка интерфейса (как прогресс/пресеты
+  // других страниц, см. src/lib/uiSettings.ts), не привязана к устройству/окну.
+  const [tileSize, setTileSize] = useState<"s" | "m" | "l">(() => {
+    try {
+      const saved = localStorage.getItem("games.tileSize");
+      return saved === "s" || saved === "l" ? saved : "m";
+    } catch {
+      return "m";
+    }
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem("games.tileSize", tileSize);
+    } catch {
+      /* квота переполнена — не критично, просто не запомнится */
+    }
+  }, [tileSize]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
@@ -359,10 +382,22 @@ export default function GamesPage() {
                 {label} <Badge tone="neutral" mono>{count}</Badge>
               </button>
             ))}
+          <span style={{ flex: 1 }} />
+          {(["s", "m", "l"] as const).map((sz) => (
+            <button
+              key={sz}
+              type="button"
+              className={`chip-toggle${tileSize === sz ? " is-active" : ""}`}
+              title={t(`games.tileSize_${sz}`)}
+              onClick={() => setTileSize(sz)}
+            >
+              <LayoutGrid size={sz === "s" ? 12 : sz === "m" ? 14 : 16} />
+            </button>
+          ))}
         </div>
       )}
 
-      <div className="games-grid">
+      <div className="games-grid" style={{ ["--games-tile-min" as string]: `${TILE_MIN_PX[tileSize]}px` }}>
         {items.filter((g) => sourceFilter === "all" || g.source === sourceFilter).map((g) => (
           <div
             key={g.id}
