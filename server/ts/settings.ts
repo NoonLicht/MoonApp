@@ -274,6 +274,16 @@ const DEFAULTS: SettingsTree = {
     lhmAutoStart: true, // автозапуск LibreHardwareMonitor для сенсоров
   },
 
+  // --- Скриншоты / запись экрана ---
+  screenshots: {
+    // PrintScreen и Win+Shift+S не пишут файл на диск — только кладут картинку
+    // в буфер обмена. electron/main.js следит за буфером (см. startClipboardWatch)
+    // и при появлении новой картинки сохраняет её в общую библиотеку скриншотов.
+    // Ограничение: отличить "это скриншот" от "любая скопированная картинка"
+    // по буферу нечем — выключатель здесь именно на этот случай.
+    autoCaptureClipboard: true,
+  },
+
   // --- Автобэкап ---
   backup: {
     auto: true,

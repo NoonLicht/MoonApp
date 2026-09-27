@@ -395,7 +395,9 @@
     "micDevice": "Microphone",
     "micDeviceAuto": "Auto (par défaut)",
     "micDeviceRefresh": "Actualiser la liste des microphones",
-    "micDeviceFallback": "Microphone"
+    "micDeviceFallback": "Microphone",
+    "autoCapture": "Sauvegarde auto depuis le presse-papiers",
+    "autoCaptureHint": "PrintScreen et Win+Shift+S n'enregistrent pas de fichier seuls — ils mettent juste l'image dans le presse-papiers. Tant que c'est activé, l'appli surveille le presse-papiers et les enregistre ici aussi. Limite : toute autre image copiée (ex. depuis un navigateur) finira ici aussi."
   },
   "automation": {
     "eyebrow": "Automatisation",

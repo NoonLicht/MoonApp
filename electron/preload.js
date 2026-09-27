@@ -45,6 +45,11 @@ contextBridge.exposeInMainWorld("appBridge", {
   setCaptureMode: (mode, sourceId) => ipcRenderer.invoke("rec:capture-mode", mode, sourceId),
   // Список экранов/окон (с превью) для выбора источника захвата (страница «Скриншоты»).
   listCaptureSources: () => ipcRenderer.invoke("capture:list-sources"),
+  // Вызывается сразу после того, как страница сама записала картинку в буфер
+  // обмена (кнопка «Скопировать») — иначе вотчер буфера (автосохранение
+  // PrintScreen/Win+Shift+S в библиотеку) принял бы её за новый внешний
+  // скриншот и задвоил бы библиотеку тем же кадром.
+  clipboardMarkSeen: () => ipcRenderer.invoke("clipboard:mark-seen"),
   // Обновления приложения (работают только в packaged-сборке). Обновления
   // обязательны (0.2.2): проверка идёт при старте и каждые 4 часа, установка —
   // через обязательный диалог. Выключателя (updates:toggle) больше нет.

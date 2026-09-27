@@ -1569,6 +1569,8 @@ declare global {
       listCaptureSources?: () => Promise<
         { id: string; name: string; kind: "screen" | "window"; thumbnail: string | null }[]
       >;
+      /** После записи скриншота в буфер обмена — не дать вотчеру принять её за внешнюю. */
+      clipboardMarkSeen?: () => Promise<{ ok: boolean }>;
       /** Перечитать general.commandPaletteHotkey и перерегистрировать/снять Alt+Space. */
       refreshHotkey?: () => Promise<{ ok: boolean }>;
       /** Подписка на "Alt+Space нажат где угодно в ОС" — возвращает функцию отписки. */

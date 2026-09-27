@@ -395,7 +395,9 @@
     "micDevice": "麦克风",
     "micDeviceAuto": "自动（默认）",
     "micDeviceRefresh": "刷新麦克风列表",
-    "micDeviceFallback": "麦克风"
+    "micDeviceFallback": "麦克风",
+    "autoCapture": "从剪贴板自动保存",
+    "autoCaptureHint": "PrintScreen 和 Win+Shift+S 本身不会保存文件，只会把图片放进剪贴板。启用后，应用会监视剪贴板并把它们也保存到这里。限制：剪贴板无法区分来源，其他任何复制的图片（例如来自浏览器）也会一并保存。"
   },
   "automation": {
     "eyebrow": "自动化",

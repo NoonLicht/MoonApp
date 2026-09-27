@@ -469,6 +469,10 @@ export default function ScreenshotsPage() {
       if (!blob) return;
       try {
         await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+        // Иначе вотчер буфера (автосохранение PrintScreen/Win+Shift+S, см.
+        // electron/main.js → startClipboardWatch) принял бы эту же картинку
+        // за новую внешнюю и задвоил бы библиотеку тем же кадром.
+        void window.appBridge?.clipboardMarkSeen?.();
       } catch (e) {
         setError((e as Error).message);
       }
@@ -797,9 +801,32 @@ export default function ScreenshotsPage() {
   // --- Библиотека скриншотов и записей ---
   const [library, setLibrary] = useState<ScreenshotItem[]>([]);
   const [viewing, setViewing] = useState<ScreenshotItem | null>(null);
-  useEffect(() => {
+  const reloadLibrary = useCallback(() => {
     api.screenshotsList().then(setLibrary).catch(() => {});
   }, []);
+  useEffect(() => {
+    reloadLibrary();
+    // Скриншоты через PrintScreen/Win+Shift+S попадают в библиотеку в фоне
+    // (electron/main.js следит за буфером обмена) — страница про них узнает
+    // только перечитав список. Момент возврата в приложение — самый вероятный,
+    // когда такой скриншот только что появился.
+    window.addEventListener("focus", reloadLibrary);
+    return () => window.removeEventListener("focus", reloadLibrary);
+  }, [reloadLibrary]);
+
+  // --- Автосохранение скриншотов из буфера обмена (PrintScreen/Win+Shift+S) ---
+  const [autoCaptureClipboard, setAutoCaptureClipboard] = useState(true);
+  useEffect(() => {
+    api
+      .getSettings()
+      .then((s: any) => setAutoCaptureClipboard(s?.screenshots?.autoCaptureClipboard !== false))
+      .catch(() => {});
+  }, []);
+  const toggleAutoCapture = () => {
+    const next = !autoCaptureClipboard;
+    setAutoCaptureClipboard(next);
+    api.updateSettings({ screenshots: { autoCaptureClipboard: next } }).catch(() => {});
+  };
 
   const removeItem = async (id: string) => {
     setLibrary((prev) => prev.filter((it) => it.id !== id));
@@ -833,7 +860,14 @@ export default function ScreenshotsPage() {
                 {t("screenshots.areaToggle")}
               </span>
             </Badge>
+            <Badge tone={autoCaptureClipboard ? "amber" : "neutral"} onClick={toggleAutoCapture}>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                <ImageIcon size={12} />
+                {t("screenshots.autoCapture")}
+              </span>
+            </Badge>
           </div>
+          <div className="muted-sm">{t("screenshots.autoCaptureHint")}</div>
 
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-end" }}>
             <Field label={t("screenshots.resolution")} w={150}>

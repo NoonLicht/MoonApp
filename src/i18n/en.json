@@ -395,7 +395,9 @@
     "micDevice": "Microphone",
     "micDeviceAuto": "Auto (default)",
     "micDeviceRefresh": "Refresh microphone list",
-    "micDeviceFallback": "Microphone"
+    "micDeviceFallback": "Microphone",
+    "autoCapture": "Auto-save from clipboard",
+    "autoCaptureHint": "PrintScreen and Win+Shift+S don't save a file by themselves — they only put the image on the clipboard. While enabled, the app watches the clipboard and saves them here too. Limitation: any other copied image (e.g. from a browser) will end up here as well — the clipboard doesn't tell sources apart."
   },
   "automation": {
     "eyebrow": "Automation",
