@@ -1466,6 +1466,12 @@ select option {
   bottom: 0;
   z-index: 50;
   overflow: hidden;
+  /* Рельс страниц слева (.bottom-dock) — z-index:40, выше слоя welcome-fx
+     (35), но сам .welcome-page живёт в #overlay-root (эффективно 1000) —
+     значит перекрывает рельс своим фоном. Тулбара это не касается: страница
+     начинается ниже него (top:var(--content-top)), так что тулбар остаётся
+     виден и кликабелен как и раньше. */
+  background: linear-gradient(160deg, var(--bg-base), var(--bg-base-2));
   pointer-events: auto; /* #overlay-root выключен для кликов — окно включает обратно */
   display: flex;
   align-items: center;
