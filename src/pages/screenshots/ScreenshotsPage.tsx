@@ -528,6 +528,37 @@ export default function ScreenshotsPage() {
     }
   }, [supportedCodecs, codec]);
 
+  // --- Аудио записи: микрофон / системный звук / оба одновременно ---
+  // Микрофон подхватывается автоматически (micDeviceId="" → устройство по
+  // умолчанию), но список ниже даёт выбрать конкретное. Системный звук идёт
+  // через WASAPI-loopback (electron/main.js), как на странице «Лекторий».
+  const [audioSource, setAudioSource] = useState<"none" | "mic" | "system" | "both">("mic");
+  const [micDeviceId, setMicDeviceId] = useState("");
+  const [micDevices, setMicDevices] = useState<{ deviceId: string; label: string }[]>([]);
+  const loadMicDevices = useCallback(async () => {
+    try {
+      // Разрешение нужно один раз, иначе enumerateDevices() отдаёт пустые label
+      // и микрофоны нельзя отличить друг от друга в списке.
+      const tmp = await navigator.mediaDevices.getUserMedia({ audio: true });
+      tmp.getTracks().forEach((tr) => tr.stop());
+    } catch {
+      /* доступ не дали — список всё равно попробуем получить, просто без названий */
+    }
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      setMicDevices(
+        devices
+          .filter((d) => d.kind === "audioinput")
+          .map((d, i) => ({ deviceId: d.deviceId, label: d.label || `${t("screenshots.micDeviceFallback")} ${i + 1}` })),
+      );
+    } catch {
+      setMicDevices([]);
+    }
+  }, [t]);
+  useEffect(() => {
+    void loadMicDevices();
+  }, [loadMicDevices]);
+
   // --- Запись экрана ---
   const [recording, setRecording] = useState(false);
   const [recSeconds, setRecSeconds] = useState(0);
@@ -541,6 +572,40 @@ export default function ScreenshotsPage() {
   const recDimsRef = useRef({ w: 0, h: 0 });
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pendingStreamRef = useRef<MediaStream | null>(null);
+  // Итоговый аудиотрек записи (микрофон, системный звук, или их микс — см.
+  // startRecording) — присоединяется к видеопотоку/канвасу в startRecordingOnStream.
+  const pendingAudioTrackRef = useRef<MediaStreamTrack | null>(null);
+  const micTrackRef = useRef<MediaStreamTrack | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+
+  /** Микрофон отдельным getUserMedia — системный звук уже приходит вместе с
+   *  видео (getDisplayMedia audio:"loopback"), микрофон так не получить. */
+  const acquireMicTrack = async (): Promise<MediaStreamTrack | null> => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: micDeviceId ? { deviceId: { exact: micDeviceId } } : true,
+      });
+      const track = stream.getAudioTracks()[0] || null;
+      micTrackRef.current = track;
+      return track;
+    } catch (e) {
+      setError((e as Error).message || String(e));
+      return null;
+    }
+  };
+
+  /** Один источник — трек как есть; два — сводятся через Web Audio API в один
+   *  трек (MediaRecorder использует только первый аудиотрек потока, так что
+   *  просто добавить оба трека в стрим недостаточно). */
+  const mixAudioTracks = (tracks: MediaStreamTrack[]): MediaStreamTrack | null => {
+    if (tracks.length === 0) return null;
+    if (tracks.length === 1) return tracks[0];
+    const ctx = new AudioContext();
+    audioCtxRef.current = ctx;
+    const dest = ctx.createMediaStreamDestination();
+    for (const tr of tracks) ctx.createMediaStreamSource(new MediaStream([tr])).connect(dest);
+    return dest.stream.getAudioTracks()[0] || null;
+  };
 
   const pickMime = () => {
     const c = supportedCodecs.find((x) => x.id === codec) || supportedCodecs[0];
@@ -583,10 +648,16 @@ export default function ScreenshotsPage() {
     const settings = track?.getSettings?.() || {};
     const srcW = Number(settings.width) || 1920;
     const srcH = Number(settings.height) || 1080;
+    const audioTrack = pendingAudioTrackRef.current;
 
     if (!cropRect) {
       streamRef.current = stream;
-      beginRecorder(stream, srcW, srcH);
+      // Без обрезки область — пишем видеотрек напрямую (без канваса и цикла
+      // requestAnimationFrame), это заметно легче для CPU/GPU: MediaRecorder
+      // сам умеет аппаратное кодирование готового потока, а перерисовка через
+      // canvas такой возможности лишает (см. ветку с cropRect ниже).
+      const finalStream = audioTrack ? new MediaStream([track, audioTrack]) : stream;
+      beginRecorder(finalStream, srcW, srcH);
       return;
     }
 
@@ -609,6 +680,7 @@ export default function ScreenshotsPage() {
       };
       draw();
       const cStream = canvas.captureStream(fps);
+      if (audioTrack) cStream.addTrack(audioTrack);
       canvasStreamRef.current = cStream;
       beginRecorder(cStream, canvas.width, canvas.height);
     });
@@ -617,12 +689,31 @@ export default function ScreenshotsPage() {
   const startRecording = async () => {
     setError("");
     try {
-      await window.appBridge?.setCaptureMode?.("screen", sourceId || null);
+      const needSystemAudio = audioSource === "system" || audioSource === "both";
+      const needMic = audioSource === "mic" || audioSource === "both";
+
+      await window.appBridge?.setCaptureMode?.(needSystemAudio ? "screenAudio" : "screen", sourceId || null);
       const res = RESOLUTIONS.find((r) => r.value === resolution);
       const videoConstraints: MediaTrackConstraints =
         res && res.w ? { width: { ideal: res.w }, height: { ideal: res.h }, frameRate: { ideal: fps } } : { frameRate: { ideal: fps } };
-      const stream = await navigator.mediaDevices.getDisplayMedia({ video: videoConstraints });
+      const stream = await navigator.mediaDevices.getDisplayMedia({
+        video: videoConstraints,
+        audio: needSystemAudio,
+      });
       await window.appBridge?.setCaptureMode?.("default");
+
+      // Аудио собираем ДО предпросмотра области — иначе пришлось бы просить
+      // микрофон повторно после подтверждения прямоугольника.
+      const tracks: MediaStreamTrack[] = [];
+      if (needSystemAudio) {
+        const sysTrack = stream.getAudioTracks()[0];
+        if (sysTrack) tracks.push(sysTrack);
+      }
+      if (needMic) {
+        const micTrack = await acquireMicTrack();
+        if (micTrack) tracks.push(micTrack);
+      }
+      pendingAudioTrackRef.current = mixAudioTracks(tracks);
 
       if (areaMode) {
         // Предпросмотр первого кадра для выбора области — сама запись стартует
@@ -658,7 +749,21 @@ export default function ScreenshotsPage() {
   const cancelRecordArea = () => {
     pendingStreamRef.current?.getTracks().forEach((tr) => tr.stop());
     pendingStreamRef.current = null;
+    stopAudioCapture();
     setRecAreaPreview(null);
+  };
+
+  /** Останавливает микрофон и закрывает AudioContext микса — вызывается и при
+   *  обычной остановке записи, и при отмене выбора области (запись так и не
+   *  началась, но микрофон уже был запрошен в startRecording). */
+  const stopAudioCapture = () => {
+    micTrackRef.current?.stop();
+    micTrackRef.current = null;
+    if (audioCtxRef.current) {
+      void audioCtxRef.current.close();
+      audioCtxRef.current = null;
+    }
+    pendingAudioTrackRef.current = null;
   };
 
   const stopRecording = () => {
@@ -673,6 +778,7 @@ export default function ScreenshotsPage() {
     hiddenVideoRef.current = null;
     streamRef.current?.getTracks().forEach((tr) => tr.stop());
     streamRef.current = null;
+    stopAudioCapture();
     void window.appBridge?.setCaptureMode?.("default");
   };
 
@@ -682,6 +788,8 @@ export default function ScreenshotsPage() {
       if (canvasLoopRef.current) cancelAnimationFrame(canvasLoopRef.current);
       streamRef.current?.getTracks().forEach((tr) => tr.stop());
       canvasStreamRef.current?.getTracks().forEach((tr) => tr.stop());
+      micTrackRef.current?.stop();
+      if (audioCtxRef.current) void audioCtxRef.current.close();
     },
     [],
   );
@@ -763,6 +871,34 @@ export default function ScreenshotsPage() {
                 }
               />
             </Field>
+          </div>
+
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-end" }}>
+            <Field label={t("screenshots.audioSource")} w={190}>
+              <Select
+                value={audioSource}
+                onChange={(e) => setAudioSource(e.target.value as typeof audioSource)}
+                options={[
+                  { value: "none", label: t("screenshots.audioNone") },
+                  { value: "mic", label: t("screenshots.audioMic") },
+                  { value: "system", label: t("screenshots.audioSystem") },
+                  { value: "both", label: t("screenshots.audioBoth") },
+                ]}
+              />
+            </Field>
+            {(audioSource === "mic" || audioSource === "both") && (
+              <Field label={t("screenshots.micDevice")} w={220}>
+                <Select
+                  value={micDeviceId}
+                  onChange={(e) => setMicDeviceId(e.target.value)}
+                  options={[
+                    { value: "", label: t("screenshots.micDeviceAuto") },
+                    ...micDevices.map((d) => ({ value: d.deviceId, label: d.label })),
+                  ]}
+                />
+              </Field>
+            )}
+            <IconBtn icon={RefreshCw} title={t("screenshots.micDeviceRefresh")} onClick={() => void loadMicDevices()} />
           </div>
 
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>

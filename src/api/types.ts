@@ -1562,7 +1562,7 @@ declare global {
        * звук выбранного источника, а не звук системы (см. страницу лекций).
        */
       setCaptureMode?: (
-        mode: "loopback" | "screen" | "default",
+        mode: "loopback" | "screen" | "screenAudio" | "default",
         sourceId?: string | null,
       ) => Promise<{ ok: boolean; mode?: string; error?: string }>;
       /** Список экранов/окон с превью для выбора источника захвата (страница «Скриншоты»). */

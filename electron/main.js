@@ -1426,6 +1426,43 @@ function installScreenHandler() {
   }
 }
 
+/**
+ * Видео экрана + системный звук ОДНОВРЕМЕННО (страница «Скриншоты» → запись с
+ * захватом аудио "система"/"оба источника") — в отличие от installLoopbackHandler
+ * (тот отдаёт audio:"loopback" вообще БЕЗ видео, страница сама останавливает
+ * video-трек — это годится только для лектория, где видео не нужно). Здесь
+ * возвращается выбранный источник видео (см. installScreenHandler) ВМЕСТЕ с
+ * audio:"loopback" в одном потоке.
+ */
+function installScreenWithAudioHandler() {
+  if (captureModeActive) return;
+  captureModeActive = true;
+  installMediaPermissions();
+  try {
+    session.defaultSession.setDisplayMediaRequestHandler(
+      async (request, callback) => {
+        try {
+          const { desktopCapturer } = require("electron");
+          const sources = await desktopCapturer.getSources({ types: ["screen", "window"] });
+          if (!sources.length) {
+            callback({});
+            return;
+          }
+          const picked = (pendingSourceId && sources.find((s) => s.id === pendingSourceId)) || sources[0];
+          callback({ video: picked, audio: "loopback" });
+        } catch (e) {
+          mlog("error", "capture.screen_audio_failed", { error: e?.message || String(e) });
+          callback({});
+        }
+      },
+      { useSystemPicker: false },
+    );
+  } catch (e) {
+    captureModeActive = false;
+    mlog("error", "capture.handler_unavailable", { error: e?.message || String(e) });
+  }
+}
+
 // Список экранов/окон для выбора источника захвата (страница «Скриншоты»).
 // thumbnailSize даёт превью прямо в desktopCapturer, без отдельного захвата кадра.
 ipcMain.handle("capture:list-sources", async () => {
@@ -1460,6 +1497,10 @@ ipcMain.handle("rec:capture-mode", (_e, mode, sourceId) => {
   if (m === "screen") {
     installScreenHandler();
     return { ok: true, mode: "screen" };
+  }
+  if (m === "screenAudio") {
+    installScreenWithAudioHandler();
+    return { ok: true, mode: "screenAudio" };
   }
   removeLoopbackHandler();
   return { ok: true, mode: "default" };
