@@ -1453,6 +1453,15 @@ select option {
   background: linear-gradient(160deg, var(--bg-base), var(--bg-base-2));
   animation: welcome-page-in 0.3s ease-out;
 }
+/* Тот же фон+анимация повторно, но локально внутри .welcome-page (первым
+   ребёнком, за welcome-content) — .welcome-fx в #under-toolbar-root не
+   перекрывает рельс страниц (.bottom-dock, z-index:40 > 35 слоя фона), а
+   .welcome-page живёт в #overlay-root (эффективно z-index:1000) и перекроет.
+   Без этого дубля анимация пропадала бы в области контента страницы. */
+.welcome-fx-inline {
+  position: absolute;
+  z-index: 0;
+}
 @keyframes welcome-page-in {
   from {
     opacity: 0;
@@ -1466,12 +1475,6 @@ select option {
   bottom: 0;
   z-index: 50;
   overflow: hidden;
-  /* Рельс страниц слева (.bottom-dock) — z-index:40, выше слоя welcome-fx
-     (35), но сам .welcome-page живёт в #overlay-root (эффективно 1000) —
-     значит перекрывает рельс своим фоном. Тулбара это не касается: страница
-     начинается ниже него (top:var(--content-top)), так что тулбар остаётся
-     виден и кликабелен как и раньше. */
-  background: linear-gradient(160deg, var(--bg-base), var(--bg-base-2));
   pointer-events: auto; /* #overlay-root выключен для кликов — окно включает обратно */
   display: flex;
   align-items: center;

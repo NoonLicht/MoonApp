@@ -124,6 +124,24 @@ export default function WelcomeModal() {
 
       {createPortal(
         <div className="welcome-page">
+          <div className="welcome-fx welcome-fx-inline" aria-hidden="true">
+            <span className="welcome-blob welcome-blob-1" />
+            <span className="welcome-blob welcome-blob-2" />
+            <span className="welcome-blob welcome-blob-3" />
+            {SPARKS.map((s, i) => (
+              <span
+                key={i}
+                className="welcome-spark"
+                style={{
+                  top: s.top,
+                  left: s.left,
+                  width: s.size,
+                  height: s.size,
+                  animationDelay: s.delay,
+                }}
+              />
+            ))}
+          </div>
           <div className="welcome-content">
             <div className="welcome-head">
               <img src={logoUrl} alt="MoonApp" className="welcome-logo" />
