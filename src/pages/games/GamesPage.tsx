@@ -362,17 +362,11 @@ export default function GamesPage() {
         </div>
       )}
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
-          gap: 14,
-          marginTop: 10,
-        }}
-      >
+      <div className="games-grid">
         {items.filter((g) => sourceFilter === "all" || g.source === sourceFilter).map((g) => (
           <div
             key={g.id}
+            className="games-card"
             onClick={() => void doLaunch(g)}
             onContextMenu={(e) =>
               menu.open(e, [
@@ -412,12 +406,6 @@ export default function GamesPage() {
               ])
             }
             style={{
-              borderRadius: 14,
-              overflow: "hidden",
-              cursor: "pointer",
-              position: "relative",
-              height: 140,
-              border: "1px solid var(--glass-border)",
               // useCustomBg переключает между своим фоном и обложкой Steam/Epic,
               // когда есть оба (см. контекстное меню); иначе — что есть.
               backgroundImage: (g.useCustomBg && g.backgroundDataUrl) || (!g.backgroundUrl && g.backgroundDataUrl)

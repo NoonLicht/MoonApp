@@ -887,18 +887,24 @@ export default function ScreenshotsPage() {
               />
             </Field>
             {(audioSource === "mic" || audioSource === "both") && (
-              <Field label={t("screenshots.micDevice")} w={220}>
-                <Select
-                  value={micDeviceId}
-                  onChange={(e) => setMicDeviceId(e.target.value)}
-                  options={[
-                    { value: "", label: t("screenshots.micDeviceAuto") },
-                    ...micDevices.map((d) => ({ value: d.deviceId, label: d.label })),
-                  ]}
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 4 }}>
+                <Field label={t("screenshots.micDevice")} w={220}>
+                  <Select
+                    value={micDeviceId}
+                    onChange={(e) => setMicDeviceId(e.target.value)}
+                    options={[
+                      { value: "", label: t("screenshots.micDeviceAuto") },
+                      ...micDevices.map((d) => ({ value: d.deviceId, label: d.label })),
+                    ]}
+                  />
+                </Field>
+                <IconBtn
+                  icon={RefreshCw}
+                  title={t("screenshots.micDeviceRefresh")}
+                  onClick={() => void loadMicDevices()}
                 />
-              </Field>
+              </div>
             )}
-            <IconBtn icon={RefreshCw} title={t("screenshots.micDeviceRefresh")} onClick={() => void loadMicDevices()} />
           </div>
 
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>

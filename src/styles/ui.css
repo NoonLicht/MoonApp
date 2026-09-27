@@ -578,6 +578,25 @@ select option {
   background: var(--amber-soft);
   border-color: var(--amber);
 }
+/* Сетка карточек игр (src/pages/games/GamesPage.tsx) — clamp() вместо
+   фиксированного minmax(220px,…): ширина плитки плавно растёт вместе с
+   окном (а не только меняется число колонок скачком на auto-fill), а
+   aspect-ratio вместо фиксированной height держит одинаковые пропорции
+   на любом размере. */
+.games-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(clamp(160px, 16vw, 280px), 1fr));
+  gap: 14px;
+  margin-top: 10px;
+}
+.games-card {
+  border-radius: 14px;
+  overflow: hidden;
+  cursor: pointer;
+  position: relative;
+  aspect-ratio: 16 / 10;
+  border: 1px solid var(--glass-border);
+}
 
 /* --- адаптация фильтров под светлую тему --- */
 .theme-light .select-wrap select {
