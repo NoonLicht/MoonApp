@@ -1450,7 +1450,13 @@ select option {
   z-index: 45;
   pointer-events: none; /* тулбар должен остаться кликабельным сквозь этот слой */
   overflow: hidden;
+  /* background-attachment:fixed — градиент считается от вьюпорта, а не от
+     бокса конкретного элемента: без этого два слоя (этот, во весь экран, и
+     .welcome-fx-inline, который стартует ниже, от границы тулбара) рисовали
+     бы каждый свой градиент «с нуля» от своего верхнего края — на стыке был
+     бы виден разрыв цвета ровно по границе тулбара. */
   background: linear-gradient(160deg, var(--bg-base), var(--bg-base-2));
+  background-attachment: fixed;
   animation: welcome-page-in 0.3s ease-out;
 }
 /* Тот же фон+анимация повторно, но локально внутри .welcome-page (первым
