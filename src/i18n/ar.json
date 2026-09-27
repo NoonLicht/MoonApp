@@ -2499,6 +2499,7 @@
     "f_music": "موسيقى",
     "f_music_hint": "مشغّل وتنزيلات عبر yt-dlp",
     "f_aichat": "دردشة الذكاء الاصطناعي",
-    "f_aichat_hint": "نماذج محلية عبر Ollama"
+    "f_aichat_hint": "نماذج محلية عبر Ollama",
+    "toolbarTitle": "مرحباً!"
   }
 }

@@ -9,6 +9,7 @@ import {
   Shield,
   FolderOpen,
   ListChecks,
+  Sparkles,
 } from "lucide-react";
 import { I18nProvider, useI18n } from "@/app/i18n";
 import { ContextMenuProvider } from "@/components/ContextMenu";
@@ -147,6 +148,9 @@ interface ShellProps {
   keepPagesAlive: boolean;
   keepPagesLimit: number;
   unloadIdleMinutes: number;
+  /** Открыт ли стартовый экран приветствия — тулбар показывает "Привет!"
+   *  вместо названия страницы, а рельс страниц прячется (см. WelcomeModal). */
+  welcomeOpen: boolean;
 }
 
 /**
@@ -193,6 +197,7 @@ function Shell({
   keepPagesAlive,
   keepPagesLimit,
   unloadIdleMinutes,
+  welcomeOpen,
 }: ShellProps) {
   const { t, lang } = useI18n();
   // Если активная страница была удалена или сохранена в настройках устаревшая
@@ -201,8 +206,8 @@ function Shell({
     ? active
     : ((PAGES[0]?.id as PageId) ?? "store");
   const activeMeta = PAGES.find((p) => p.id === safeActive)!;
-  const MetaIcon = activeMeta.icon;
-  const metaTitle = t(activeMeta.i18n);
+  const MetaIcon = welcomeOpen ? Sparkles : activeMeta.icon;
+  const metaTitle = welcomeOpen ? t("welcome.toolbarTitle") : t(activeMeta.i18n);
   const toolbarNode = toolbarNodes[safeActive] ?? null;
 
   /* ── keep-alive ──
@@ -280,6 +285,7 @@ function Shell({
     reduceMotion ? "reduce-motion" : "",
     opaqueBg ? "opaque-bg" : "",
     blur ? "" : "no-blur",
+    welcomeOpen ? "welcome-open" : "",
   ]
     .filter(Boolean)
     .join(" ");
@@ -449,6 +455,7 @@ export default function App() {
   const [keepPagesAlive, setKeepPagesAlive] = useState(true);
   const [keepPagesLimit, setKeepPagesLimit] = useState(KEEP_ALIVE_DEFAULT_LIMIT);
   const [unloadIdleMinutes, setUnloadIdleMinutes] = useState(KEEP_ALIVE_DEFAULT_IDLE_MIN);
+  const [welcomeOpen, setWelcomeOpen] = useState(false);
 
   // Слот тулбара: пишем по ключу страницы. null — удалить слот (страница выгружена).
   const setPageToolbar = useCallback((id: string, node: React.ReactNode | null) => {
@@ -563,9 +570,10 @@ export default function App() {
           keepPagesAlive={keepPagesAlive}
           keepPagesLimit={keepPagesLimit}
           unloadIdleMinutes={unloadIdleMinutes}
+          welcomeOpen={welcomeOpen}
         />
         <CommandPalette />
-        <WelcomeModal />
+        <WelcomeModal onOpenChange={setWelcomeOpen} />
       </ContextMenuProvider>
     </I18nProvider>
   );

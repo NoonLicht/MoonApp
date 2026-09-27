@@ -2499,6 +2499,7 @@
     "f_music": "音乐",
     "f_music_hint": "播放器与 yt-dlp 下载",
     "f_aichat": "AI 聊天",
-    "f_aichat_hint": "通过 Ollama 使用本地模型"
+    "f_aichat_hint": "通过 Ollama 使用本地模型",
+    "toolbarTitle": "你好！"
   }
 }

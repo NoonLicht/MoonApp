@@ -2499,6 +2499,7 @@
     "f_music": "Musique",
     "f_music_hint": "Lecteur et téléchargements yt-dlp",
     "f_aichat": "Chat IA",
-    "f_aichat_hint": "Modèles locaux via Ollama"
+    "f_aichat_hint": "Modèles locaux via Ollama",
+    "toolbarTitle": "Salut !"
   }
 }

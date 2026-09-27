@@ -2490,6 +2490,7 @@
     "f_music": "Música",
     "f_music_hint": "Reproductor y descargas con yt-dlp",
     "f_aichat": "Chat IA",
-    "f_aichat_hint": "Modelos locales vía Ollama"
+    "f_aichat_hint": "Modelos locales vía Ollama",
+    "toolbarTitle": "¡Hola!"
   }
 }

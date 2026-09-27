@@ -68,7 +68,13 @@ const HIGHLIGHTS = [
  * галочкой здесь же или тумблером в Настройках → Общее (general.showWelcome),
  * оба пишут в один и тот же ключ, так что они всегда синхронны.
  */
-export default function WelcomeModal() {
+export default function WelcomeModal({
+  onOpenChange,
+}: {
+  /** App.tsx подменяет заголовок тулбара на "Привет!" и прячет рельс
+   *  страниц (.welcome-open), пока приветствие открыто. */
+  onOpenChange?: (open: boolean) => void;
+}) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [dontShow, setDontShow] = useState(false);
@@ -77,13 +83,20 @@ export default function WelcomeModal() {
     api
       .getSettings()
       .then((s: any) => {
-        if (s?.general?.showWelcome !== false) setOpen(true);
+        if (s?.general?.showWelcome !== false) {
+          setOpen(true);
+          onOpenChange?.(true);
+        }
       })
       .catch(() => {});
+    // onOpenChange стабилен (setState из App.tsx) — эффект должен сработать
+    // только один раз при монтировании.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const close = () => {
     setOpen(false);
+    onOpenChange?.(false);
     if (dontShow) api.updateSettings({ general: { showWelcome: false } }).catch(() => {});
   };
 
@@ -98,7 +111,12 @@ export default function WelcomeModal() {
           .content-area и .top-toolbar:40), а не в #overlay-root (z-index:1000,
           выше тулбара — тот бы просто скрылся под фоном). Тулбар остаётся на
           виду и кликабельным, а его полупрозрачный фон пропускает сквозь себя
-          пятна снизу — так же, как обычный фоновый mesh приложения. */}
+          пятна снизу — так же, как обычный фоновый mesh приложения. Один
+          слой на весь экран (а не два, как раньше) — иначе на стыке с
+          .welcome-page был виден шов, где два независимых градиента и два
+          набора пятен стыковались не в тех же координатах. Рельс страниц
+          слева прячется отдельно, классом .welcome-open на app-shell (см.
+          App.tsx), поэтому дублировать фон ради его перекрытия не нужно. */}
       {bgRoot &&
         createPortal(
           <div className="welcome-fx" aria-hidden="true">
@@ -124,24 +142,6 @@ export default function WelcomeModal() {
 
       {createPortal(
         <div className="welcome-page">
-          <div className="welcome-fx welcome-fx-inline" aria-hidden="true">
-            <span className="welcome-blob welcome-blob-1" />
-            <span className="welcome-blob welcome-blob-2" />
-            <span className="welcome-blob welcome-blob-3" />
-            {SPARKS.map((s, i) => (
-              <span
-                key={i}
-                className="welcome-spark"
-                style={{
-                  top: s.top,
-                  left: s.left,
-                  width: s.size,
-                  height: s.size,
-                  animationDelay: s.delay,
-                }}
-              />
-            ))}
-          </div>
           <div className="welcome-content">
             <div className="welcome-head">
               <img src={logoUrl} alt="MoonApp" className="welcome-logo" />

@@ -2707,6 +2707,7 @@
     "f_music": "Музыка",
     "f_music_hint": "Плеер и загрузка через yt-dlp",
     "f_aichat": "ИИ-чат",
-    "f_aichat_hint": "Локальные модели через Ollama"
+    "f_aichat_hint": "Локальные модели через Ollama",
+    "toolbarTitle": "Привет!"
   }
 }

@@ -2707,6 +2707,7 @@
     "f_music": "Music",
     "f_music_hint": "Player and yt-dlp downloads",
     "f_aichat": "AI chat",
-    "f_aichat_hint": "Local models via Ollama"
+    "f_aichat_hint": "Local models via Ollama",
+    "toolbarTitle": "Hi there!"
   }
 }
