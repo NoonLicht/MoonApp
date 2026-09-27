@@ -942,7 +942,7 @@
     "pdfOcrInstalling": "Instalando: {phase}…",
     "officeEyebrow": "Formatos de oficina",
     "officeTitle": "Word / PowerPoint / Excel ⇄ PDF",
-    "officeMissing": "No se encontró LibreOffice en este equipo — instálalo (libreoffice.org) y vuelve a intentarlo.",
+    "officeMissing": "No se encontró ni MS Office ni LibreOffice — instale uno de los dos.",
     "officeConvertGo": "Convertir",
     "pdfRotate": "Girar PDF",
     "pdfRotateGo": "Girar",
@@ -980,7 +980,12 @@
     "noSupport": "Este formato de archivo todavía no es compatible",
     "install": "Instalar FFmpeg",
     "installing": "Instalando FFmpeg…",
-    "downloading": "Descargando FFmpeg… {p}%"
+    "downloading": "Descargando FFmpeg… {p}%",
+    "officeUsesMsOffice": "Se usa el MS Office ya instalado — LibreOffice no es necesario.",
+    "officeInstall": "Instalar LibreOffice",
+    "officeInstalling": "Instalando…",
+    "officeInstallDone": "Listo — ya se puede convertir.",
+    "officeInstallFailed": "La instalación automática falló — instálelo manualmente desde libreoffice.org."
   },
   "music": {
     "title": "Descarga de música",

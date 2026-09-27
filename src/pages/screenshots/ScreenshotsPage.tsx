@@ -38,6 +38,10 @@ interface CaptureSource {
   name: string;
   kind: "screen" | "window";
   thumbnail: string | null;
+  /** Реальное разрешение монитора (физические пиксели) — только для экранов,
+   *  см. electron/main.js → capture:list-sources. */
+  width?: number;
+  height?: number;
 }
 
 interface Rect {
@@ -311,6 +315,16 @@ export default function ScreenshotsPage() {
     ],
     [sources, t],
   );
+
+  // Реальное разрешение выбранного монитора — для списка масштабов записи
+  // ниже (см. SCALES/resolutionOptions). У "авто" (sourceId==="") оно
+  // неизвестно заранее (getDisplayMedia сам решит, какой экран отдать), у
+  // окна (kind:"window") desktopCapturer его не даёт вовсе — тогда список
+  // остаётся в процентах, честно, без выдуманных чисел.
+  const selectedSourceRes = useMemo(() => {
+    const s = sources.find((x) => x.id === sourceId);
+    return s?.width && s?.height ? { w: s.width, h: s.height } : null;
+  }, [sources, sourceId]);
 
   // --- Скриншот + аннотации ---
   const [shot, setShot] = useState<string | null>(null); // data URL исходного кадра
@@ -922,13 +936,20 @@ export default function ScreenshotsPage() {
           </div>
 
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-end" }}>
-            <Field label={t("screenshots.resolution")} w={150}>
+            <Field label={t("screenshots.resolution")} w={170}>
               <Select
                 value={resolution}
                 onChange={(e) => setResolution(e.target.value)}
                 options={SCALES.map((s) => ({
                   value: s.value,
-                  label: s.value === "100" ? t("screenshots.resolutionSource") : `${s.value}%`,
+                  label:
+                    s.value === "100"
+                      ? selectedSourceRes
+                        ? `${selectedSourceRes.w}×${selectedSourceRes.h}`
+                        : t("screenshots.resolutionSource")
+                      : selectedSourceRes
+                        ? `${Math.round(selectedSourceRes.w * s.pct)}×${Math.round(selectedSourceRes.h * s.pct)}`
+                        : `${s.value}%`,
                 }))}
               />
             </Field>

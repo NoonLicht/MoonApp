@@ -1,13 +1,17 @@
 /**
- * Word/PowerPoint/Excel ⇄ PDF через LibreOffice headless (`soffice --headless
- * --convert-to`) — тот же принцип, что у ffmpeg/git в этом приложении: движок
- * ищется локально (PATH + стандартные каталоги установки), ничего не
- * подделывается заглушкой. LibreOffice не тянем автоматически (инсталлятор
- * ~300 МБ, тихая установка под Windows не так надёжна, как zip-архив ffmpeg) —
- * если не найден, отдаём понятную ошибку с путём, куда его поставить (как
- * "FFmpeg не найден" в конвертере).
+ * Word/PowerPoint/Excel ⇄ PDF — ДВА возможных движка:
+ *  1) уже установленный MS Office (COM-автоматизация через PowerShell,
+ *     New-Object -ComObject Word.Application/Excel.Application/PowerPoint.Application)
+ *     — если у пользователя и так стоит Office, ничего докачивать не нужно;
+ *  2) LibreOffice headless (`soffice --headless --convert-to`) — если MS
+ *     Office не найден. LibreOffice не тянем автоматически (инсталлятор
+ *     ~300 МБ, тихая установка под Windows не так надёжна, как zip-архив
+ *     ffmpeg) — на странице конвертера вместо этого кнопка «Установить»
+ *     через встроенный winget (см. server/ts/winget.ts, id LibreOffice.LibreOffice),
+ *     как в «Магазине приложений».
+ * Движки ищутся локально, ничего не подделывается заглушкой.
  */
-import { execFile } from "child_process";
+import { execFile, spawn } from "child_process";
 import fs from "fs";
 import path from "path";
 import os from "os";
@@ -17,6 +21,145 @@ import logger from "./logger";
 import settings from "./settings";
 
 const { DIRS } = config;
+
+/** COM ProgID → расширения, которые этот компонент Office умеет открывать. */
+const MSOFFICE_APPS = {
+  word: { progId: "Word.Application", exts: ["doc", "docx", "rtf", "odt"] },
+  excel: { progId: "Excel.Application", exts: ["xls", "xlsx", "csv", "ods"] },
+  powerpoint: { progId: "PowerPoint.Application", exts: ["ppt", "pptx", "odp"] },
+};
+
+let msDetectCache: Record<string, boolean> | null = null;
+let msDetectAt = 0;
+
+/** Пробует создать и сразу закрыть COM-объект — это и есть проверка, что
+ *  соответствующий компонент Office установлен и зарегистрирован. */
+function probeComObject(progId: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    if (process.platform !== "win32") return resolve(false);
+    const script = `
+try {
+  $o = New-Object -ComObject ${progId}
+  $o.Quit()
+  [System.Runtime.Interopservices.Marshal]::ReleaseComObject($o) | Out-Null
+  Write-Output "OK"
+} catch {
+  Write-Output "FAIL"
+}
+`;
+    execFile(
+      "powershell.exe",
+      ["-NoProfile", "-NonInteractive", "-Command", script],
+      { timeout: 15000, windowsHide: true },
+      (err, stdout) => resolve(!err && /OK/.test(String(stdout || ""))),
+    );
+  });
+}
+
+/** Кэш на 30с — сама проверка не бесплатна (реально дёргает COM). */
+export async function detectMsOffice({
+  force = false,
+}: { force?: boolean } = {}): Promise<{ word: boolean; excel: boolean; powerpoint: boolean; any: boolean }> {
+  const now = Date.now();
+  if (!force && msDetectCache && now - msDetectAt < 30000) {
+    const c = msDetectCache;
+    return { word: c.word, excel: c.excel, powerpoint: c.powerpoint, any: c.word || c.excel || c.powerpoint };
+  }
+  const [word, excel, powerpoint] = await Promise.all([
+    probeComObject(MSOFFICE_APPS.word.progId),
+    probeComObject(MSOFFICE_APPS.excel.progId),
+    probeComObject(MSOFFICE_APPS.powerpoint.progId),
+  ]);
+  msDetectCache = { word, excel, powerpoint };
+  msDetectAt = now;
+  return { word, excel, powerpoint, any: word || excel || powerpoint };
+}
+
+/** Какой компонент Office открывает данное расширение (null — ни один). */
+function msOfficeAppFor(ext: string): keyof typeof MSOFFICE_APPS | null {
+  for (const [app, info] of Object.entries(MSOFFICE_APPS)) {
+    if (info.exts.includes(ext)) return app as keyof typeof MSOFFICE_APPS;
+  }
+  return null;
+}
+
+/**
+ * Конвертация в PDF через COM-автоматизацию установленного MS Office.
+ * ТОЛЬКО в PDF — обратное (PDF → docx/xlsx/pptx) через Office автоматизацию
+ * не поддерживается надёжно, для этого направления используется LibreOffice.
+ *
+ * PowerPoint не умеет полностью скрытую автоматизацию (Visible=false у него
+ * ненадёжен на части версий) — окно презентации может на мгновение мелькнуть,
+ * это ограничение самого PowerPoint, не костыль этого кода.
+ */
+async function convertViaMsOffice(
+  srcPath: string,
+  outPath: string,
+  app: keyof typeof MSOFFICE_APPS,
+): Promise<void> {
+  const src = srcPath.replace(/'/g, "''");
+  const out = outPath.replace(/'/g, "''");
+  const scripts: Record<keyof typeof MSOFFICE_APPS, string> = {
+    word: `
+$w = New-Object -ComObject Word.Application
+$w.Visible = $false
+try {
+  $doc = $w.Documents.Open('${src}', $false, $true)
+  $doc.SaveAs([ref]'${out}', [ref] 17)
+  $doc.Close([ref] $false)
+} finally {
+  $w.Quit()
+}
+`,
+    excel: `
+$x = New-Object -ComObject Excel.Application
+$x.Visible = $false
+$x.DisplayAlerts = $false
+try {
+  $wb = $x.Workbooks.Open('${src}')
+  $wb.ExportAsFixedFormat(0, '${out}')
+  $wb.Close($false)
+} finally {
+  $x.Quit()
+}
+`,
+    powerpoint: `
+$p = New-Object -ComObject PowerPoint.Application
+try {
+  $pres = $p.Presentations.Open('${src}', $true, $false, $false)
+  $pres.SaveAs('${out}', 32)
+  $pres.Close()
+} finally {
+  $p.Quit()
+}
+`,
+  };
+  await new Promise<void>((resolve, reject) => {
+    const child = spawn(
+      "powershell.exe",
+      ["-NoProfile", "-NonInteractive", "-Command", scripts[app]],
+      { windowsHide: true },
+    );
+    let stderr = "";
+    child.stderr?.on("data", (d) => {
+      stderr += String(d);
+    });
+    const killer = setTimeout(() => {
+      child.kill();
+      reject(new Error("msoffice_timeout"));
+    }, 90000);
+    child.on("error", (e) => {
+      clearTimeout(killer);
+      reject(e);
+    });
+    child.on("close", (code) => {
+      clearTimeout(killer);
+      if (code === 0) resolve();
+      else reject(new Error(`msoffice_failed: ${stderr.slice(-500)}`));
+    });
+  });
+  if (!fs.existsSync(outPath)) throw new Error("msoffice_no_output");
+}
 
 /** office-формат → аргумент --convert-to LibreOffice. */
 const EXT_TO_FILTER: Record<string, string> = {
@@ -97,6 +240,17 @@ export function officeSearchPaths(): string[] {
   return sofficeCandidates();
 }
 
+/** Общий статус обоих движков — страница конвертера решает, что показать
+ *  (кнопку "Установить LibreOffice" или просто работающий конвертер). */
+export async function officeEngineStatus(): Promise<{
+  libre: OfficeInfo;
+  msoffice: { word: boolean; excel: boolean; powerpoint: boolean; any: boolean };
+  found: boolean;
+}> {
+  const [libre, msoffice] = await Promise.all([detectOffice(), detectMsOffice()]);
+  return { libre, msoffice, found: libre.found || msoffice.any };
+}
+
 /**
  * Конвертирует один файл через LibreOffice headless в изолированный профиль
  * (-env:UserInstallation) — иначе параллельные конвертации толкаются за один
@@ -106,24 +260,47 @@ export async function convertOffice(
   buf: Buffer,
   origName: string,
   toExt: string,
-): Promise<{ buf: Buffer; name: string }> {
+): Promise<{ buf: Buffer; name: string; engine: "msoffice" | "libreoffice" }> {
   const target = String(toExt || "").toLowerCase().replace(/^\./, "");
   const filter = EXT_TO_FILTER[target];
   if (!filter) throw new Error(`unsupported_target: ${target}`);
 
-  const office = await detectOffice();
-  if (!office.found || !office.path) throw new Error("office_engine_missing");
-
+  const srcExt = (path.extname(origName) || "").replace(/^\./, "").toLowerCase();
   const jobId = crypto.randomBytes(6).toString("hex");
   const workDir = path.join(DIRS.tmp, `office-${jobId}`);
-  const profileDir = path.join(workDir, "profile");
-  fs.mkdirSync(profileDir, { recursive: true });
-
-  const srcExt = path.extname(origName) || ".bin";
-  const srcPath = path.join(workDir, `input${srcExt}`);
+  fs.mkdirSync(workDir, { recursive: true });
+  const srcPath = path.join(workDir, `input.${srcExt || "bin"}`);
   fs.writeFileSync(srcPath, buf);
+  const baseName = path.basename(origName, path.extname(origName));
 
   try {
+    // MS Office (COМ) — только для конвертации В pdf, и только если у
+    // пользователя уже есть нужный компонент (Word/Excel/PowerPoint).
+    // Обратное направление (pdf → docx/xlsx/pptx) и остальные пары форматов
+    // всегда идут через LibreOffice — если не найден ни один движок, вот тут
+    // и всплывает понятная ошибка с указанием, чего не хватает.
+    if (filter === "pdf") {
+      const app = msOfficeAppFor(srcExt);
+      if (app) {
+        const ms = await detectMsOffice();
+        if (ms[app]) {
+          const outPath = path.join(workDir, "input.pdf");
+          await convertViaMsOffice(srcPath, outPath, app);
+          const outBuf = fs.readFileSync(outPath);
+          logger.info("office.convert", { from: srcExt, to: filter, size: outBuf.length, engine: "msoffice" });
+          return { buf: outBuf, name: `${baseName}.pdf`, engine: "msoffice" };
+        }
+      }
+    }
+
+    const office = await detectOffice();
+    // Сюда попадаем и когда MS Office вовсе не установлен, и когда установлен,
+    // но не для этой пары форматов (например, обратное pdf → docx) — в обоих
+    // случаях без LibreOffice конвертация невозможна.
+    if (!office.found || !office.path) throw new Error("office_engine_missing");
+
+    const profileDir = path.join(workDir, "profile");
+    fs.mkdirSync(profileDir, { recursive: true });
     await new Promise<void>((resolve, reject) => {
       const args = [
         `-env:UserInstallation=file:///${profileDir.replace(/\\/g, "/")}`,
@@ -146,13 +323,11 @@ export async function convertOffice(
       );
     });
 
-    const outName = `input.${filter}`;
-    const outPath = path.join(workDir, outName);
+    const outPath = path.join(workDir, `input.${filter}`);
     if (!fs.existsSync(outPath)) throw new Error("office_no_output");
     const outBuf = fs.readFileSync(outPath);
-    const baseName = path.basename(origName, srcExt);
-    logger.info("office.convert", { from: srcExt, to: filter, size: outBuf.length });
-    return { buf: outBuf, name: `${baseName}.${filter}` };
+    logger.info("office.convert", { from: srcExt, to: filter, size: outBuf.length, engine: "libreoffice" });
+    return { buf: outBuf, name: `${baseName}.${filter}`, engine: "libreoffice" };
   } finally {
     fs.rmSync(workDir, { recursive: true, force: true });
   }

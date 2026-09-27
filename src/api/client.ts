@@ -1531,8 +1531,13 @@ export const api = {
     return res.json() as Promise<{ text: string; pages: number }>;
   },
 
-  // --- Word/PowerPoint/Excel ⇄ PDF (LibreOffice headless) ---
-  officeStatus: () => req<{ found: boolean; path: string | null; version: string | null }>("GET", "/office/status"),
+  // --- Word/PowerPoint/Excel ⇄ PDF (MS Office COM, если есть, иначе LibreOffice) ---
+  officeStatus: () =>
+    req<{
+      found: boolean;
+      libre: { found: boolean; path: string | null; version: string | null };
+      msoffice: { word: boolean; excel: boolean; powerpoint: boolean; any: boolean };
+    }>("GET", "/office/status"),
   officeConvert: async (file: File, to: string) => {
     const fd = new FormData();
     fd.append("file", file);

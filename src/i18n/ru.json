@@ -943,7 +943,7 @@
     "pdfOcrInstalling": "Установка: {phase}…",
     "officeEyebrow": "Офисные форматы",
     "officeTitle": "Word / PowerPoint / Excel ⇄ PDF",
-    "officeMissing": "LibreOffice не найден на компьютере — поставьте его (libreoffice.org) и повторите.",
+    "officeMissing": "Ни MS Office, ни LibreOffice не найдены — установите один из них.",
     "officeConvertGo": "Конвертировать",
     "pdfRotate": "Повернуть PDF",
     "pdfRotateGo": "Повернуть",
@@ -981,7 +981,12 @@
     "noSupport": "Этот формат файла пока не поддерживается",
     "install": "Установить FFmpeg",
     "installing": "Установка FFmpeg…",
-    "downloading": "Скачивание FFmpeg… {p}%"
+    "downloading": "Скачивание FFmpeg… {p}%",
+    "officeUsesMsOffice": "Используется уже установленный MS Office — LibreOffice не нужен.",
+    "officeInstall": "Установить LibreOffice",
+    "officeInstalling": "Устанавливаем…",
+    "officeInstallDone": "Готово — можно конвертировать.",
+    "officeInstallFailed": "Не удалось установить автоматически — поставьте вручную с libreoffice.org."
   },
   "music": {
     "title": "Загрузка музыки",

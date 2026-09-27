@@ -1469,17 +1469,39 @@ function installScreenWithAudioHandler() {
 // thumbnailSize даёт превью прямо в desktopCapturer, без отдельного захвата кадра.
 ipcMain.handle("capture:list-sources", async () => {
   try {
-    const { desktopCapturer } = require("electron");
+    const { desktopCapturer, screen } = require("electron");
     const sources = await desktopCapturer.getSources({
       types: ["screen", "window"],
       thumbnailSize: { width: 320, height: 180 },
     });
-    return sources.map((s) => ({
-      id: s.id,
-      name: s.name,
-      kind: s.id.startsWith("screen:") ? "screen" : "window",
-      thumbnail: s.thumbnail && !s.thumbnail.isEmpty() ? s.thumbnail.toDataURL() : null,
-    }));
+    // Реальное разрешение монитора — по display_id сопоставляем с
+    // screen.getAllDisplays() (у desktopCapturer только превью 320x180, а
+    // страница «Скриншоты» строит список разрешений записи ПОД разрешение
+    // конкретного выбранного монитора — у ультраширокого 21:9 и вертикального
+    // 9:16 оно совсем не 16:9, поэтому фиксированный список плашек не подходит).
+    // size — в DIP, умножаем на scaleFactor, чтобы получить физические пиксели
+    // (то, что реально придёт из getDisplayMedia).
+    const displays = screen.getAllDisplays();
+    return sources.map((s) => {
+      const kind = s.id.startsWith("screen:") ? "screen" : "window";
+      let width;
+      let height;
+      if (kind === "screen" && s.display_id) {
+        const d = displays.find((x) => String(x.id) === String(s.display_id));
+        if (d) {
+          width = Math.round(d.size.width * d.scaleFactor);
+          height = Math.round(d.size.height * d.scaleFactor);
+        }
+      }
+      return {
+        id: s.id,
+        name: s.name,
+        kind,
+        thumbnail: s.thumbnail && !s.thumbnail.isEmpty() ? s.thumbnail.toDataURL() : null,
+        width,
+        height,
+      };
+    });
   } catch (e) {
     mlog("error", "capture.list_sources_failed", { error: e?.message || String(e) });
     return [];

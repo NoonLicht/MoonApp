@@ -1143,10 +1143,11 @@ function PdfToolkit() {
 }
 
 /**
- * Word/PowerPoint/Excel ⇄ PDF — через LibreOffice headless
- * (server/ts/officeConvert.ts). Движок ищется локально, как ffmpeg; не найден
- * — понятная ошибка с подсказкой, куда поставить (без тихой автозагрузки
- * 300-мегабайтного инсталлятора).
+ * Word/PowerPoint/Excel ⇄ PDF — два возможных движка (server/ts/officeConvert.ts):
+ * уже установленный MS Office (COM-автоматизация, если найден нужный
+ * компонент) или LibreOffice headless. Если нет ни того ни другого — кнопка
+ * ставит LibreOffice через встроенный winget (тот же движок, что у «Магазина
+ * приложений»), без ручного скачивания 300-мегабайтного инсталлятора.
  */
 function OfficeToolkit() {
   const { t } = useI18n();
@@ -1156,10 +1157,34 @@ function OfficeToolkit() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [found, setFound] = useState<boolean | null>(null);
+  const [usesMsOffice, setUsesMsOffice] = useState(false);
+  const [installing, setInstalling] = useState(false);
+  const [installMsg, setInstallMsg] = useState("");
 
-  useEffect(() => {
-    api.officeStatus().then((s) => setFound(s.found)).catch(() => setFound(false));
-  }, []);
+  const loadStatus = () => {
+    api
+      .officeStatus()
+      .then((s) => {
+        setFound(s.found);
+        setUsesMsOffice(s.msoffice.any);
+      })
+      .catch(() => setFound(false));
+  };
+  useEffect(loadStatus, []);
+
+  const installLibre = async () => {
+    setInstalling(true);
+    setInstallMsg(t("conv.officeInstalling"));
+    try {
+      const r = (await api.installApp("winget:LibreOffice.LibreOffice")) as { ok: boolean };
+      setInstallMsg(r.ok ? t("conv.officeInstallDone") : t("conv.officeInstallFailed"));
+      loadStatus();
+    } catch (e) {
+      setInstallMsg((e as Error).message);
+    } finally {
+      setInstalling(false);
+    }
+  };
 
   const convert = async () => {
     if (!file) return;
@@ -1180,7 +1205,20 @@ function OfficeToolkit() {
   return (
     <>
       <SectionHead eyebrow={t("conv.officeEyebrow")} title={t("conv.officeTitle")} />
-      {found === false && <div className="muted-sm">{t("conv.officeMissing")}</div>}
+      {found === true && usesMsOffice && <div className="muted-sm">{t("conv.officeUsesMsOffice")}</div>}
+      {found === false && (
+        <div className="muted-sm" style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-start" }}>
+          <span>{t("conv.officeMissing")}</span>
+          <Btn
+            icon={installing ? RefreshCw : Download}
+            disabled={installing}
+            onClick={() => void installLibre()}
+          >
+            {installing ? t("conv.officeInstalling") : t("conv.officeInstall")}
+          </Btn>
+          {installMsg && !installing && <span>{installMsg}</span>}
+        </div>
+      )}
       <div className="tool-tile-grid">
         <ToolTile icon={FileCog} label={t("conv.officeTitle")} onClick={() => setOpen(true)} />
       </div>

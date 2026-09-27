@@ -942,7 +942,7 @@
     "pdfOcrInstalling": "正在安装：{phase}…",
     "officeEyebrow": "办公格式",
     "officeTitle": "Word / PowerPoint / Excel ⇄ PDF",
-    "officeMissing": "未在本机找到 LibreOffice — 请安装（libreoffice.org）后重试。",
+    "officeMissing": "未找到 MS Office 或 LibreOffice — 请安装其中之一。",
     "officeConvertGo": "转换",
     "pdfRotate": "旋转 PDF",
     "pdfRotateGo": "旋转",
@@ -980,7 +980,12 @@
     "noSupport": "暂不支持此文件格式",
     "install": "安装 FFmpeg",
     "installing": "正在安装 FFmpeg…",
-    "downloading": "正在下载 FFmpeg… {p}%"
+    "downloading": "正在下载 FFmpeg… {p}%",
+    "officeUsesMsOffice": "正在使用已安装的 MS Office —— 不需要 LibreOffice。",
+    "officeInstall": "安装 LibreOffice",
+    "officeInstalling": "正在安装…",
+    "officeInstallDone": "完成 —— 可以转换了。",
+    "officeInstallFailed": "自动安装失败 —— 请从 libreoffice.org 手动安装。"
   },
   "music": {
     "title": "音乐下载",

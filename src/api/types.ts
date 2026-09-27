@@ -1565,9 +1565,19 @@ declare global {
         mode: "loopback" | "screen" | "screenAudio" | "default",
         sourceId?: string | null,
       ) => Promise<{ ok: boolean; mode?: string; error?: string }>;
-      /** Список экранов/окон с превью для выбора источника захвата (страница «Скриншоты»). */
+      /** Список экранов/окон с превью для выбора источника захвата (страница «Скриншоты»).
+       *  width/height — реальное разрешение монитора в физических пикселях
+       *  (только для kind:"screen", по display_id сопоставлено с
+       *  screen.getAllDisplays() — см. electron/main.js). */
       listCaptureSources?: () => Promise<
-        { id: string; name: string; kind: "screen" | "window"; thumbnail: string | null }[]
+        {
+          id: string;
+          name: string;
+          kind: "screen" | "window";
+          thumbnail: string | null;
+          width?: number;
+          height?: number;
+        }[]
       >;
       /** После записи скриншота в буфер обмена — не дать вотчеру принять её за внешнюю. */
       clipboardMarkSeen?: () => Promise<{ ok: boolean }>;

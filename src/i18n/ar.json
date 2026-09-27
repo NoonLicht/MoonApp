@@ -942,7 +942,7 @@
     "pdfOcrInstalling": "جارٍ التثبيت: {phase}…",
     "officeEyebrow": "صيغ المكاتب",
     "officeTitle": "Word / PowerPoint / Excel ⇄ PDF",
-    "officeMissing": "لم يُعثر على LibreOffice على هذا الجهاز — ثبّته (libreoffice.org) وأعد المحاولة.",
+    "officeMissing": "لم يتم العثور على MS Office أو LibreOffice — ثبّت أحدهما.",
     "officeConvertGo": "تحويل",
     "pdfRotate": "تدوير PDF",
     "pdfRotateGo": "تدوير",
@@ -980,7 +980,12 @@
     "noSupport": "تنسيق الملف هذا غير مدعوم بعد",
     "install": "تثبيت FFmpeg",
     "installing": "جارٍ تثبيت FFmpeg…",
-    "downloading": "جارٍ تنزيل FFmpeg… {p}%"
+    "downloading": "جارٍ تنزيل FFmpeg… {p}%",
+    "officeUsesMsOffice": "يُستخدم MS Office المثبت مسبقاً — لا حاجة إلى LibreOffice.",
+    "officeInstall": "تثبيت LibreOffice",
+    "officeInstalling": "جارٍ التثبيت…",
+    "officeInstallDone": "تم — يمكن التحويل الآن.",
+    "officeInstallFailed": "فشل التثبيت التلقائي — ثبّته يدوياً من libreoffice.org."
   },
   "music": {
     "title": "تنزيل الموسيقى",

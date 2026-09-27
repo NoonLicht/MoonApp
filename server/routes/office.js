@@ -18,7 +18,7 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX
 
 router.get("/status", async (_req, res) => {
   try {
-    res.json(await officeConvert.detectOffice());
+    res.json(await officeConvert.officeEngineStatus());
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
