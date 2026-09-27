@@ -56,17 +56,24 @@ router.post("/image", upload.single("file"), (req, res) => {
   }
 });
 
-router.post("/video", upload.single("file"), (req, res) => {
+router.post("/video", upload.single("file"), async (req, res) => {
   const cleanup = () => req.file && removePath(req.file.path);
   try {
     if (!req.file) return res.status(400).json({ error: "missing_file" });
-    const item = screenshots.saveFromTemp(req.file.path, {
+    // Перегоняем webm из MediaRecorder в mp4 (H.264+AAC, правильная длина в
+    // контейнере) — см. screenshots.finalizeRecording. Без ffmpeg отдаст файл
+    // как есть (webm), честно, без притворного расширения.
+    const bitrateMbps = numOrUndef(req.body?.bitrateMbps) || 8;
+    const final = await screenshots.finalizeRecording(req.file.path, bitrateMbps);
+    const item = screenshots.saveFromTemp(final.path, {
       type: "video",
-      ext: "webm",
-      mime: "video/webm",
+      ext: final.ext,
+      mime: final.mime,
       width: numOrUndef(req.body?.width),
       height: numOrUndef(req.body?.height),
-      durationSec: numOrUndef(req.body?.durationSec),
+      // ffprobe (реальный duration mp4) важнее клиентского таймера страницы —
+      // тот считался в JS и мог разойтись с фактом (см. finalizeRecording).
+      durationSec: final.durationSec || numOrUndef(req.body?.durationSec),
     });
     res.status(201).json(item);
   } catch (e) {

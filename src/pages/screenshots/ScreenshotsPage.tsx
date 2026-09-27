@@ -1,4 +1,5 @@
 import { useRef, useState, useEffect, useCallback, useMemo } from "react";
+import { createPortal } from "react-dom";
 import {
   Camera,
   Video,
@@ -18,6 +19,7 @@ import {
   Image as ImageIcon,
 } from "lucide-react";
 import { Glass, Btn, IconBtn, Field, Select, SectionHead, EmptyHint, Badge } from "@/components/ui";
+import { getOverlayRoot } from "@/components/overlayHost";
 import { useI18n } from "@/app/i18n";
 import { saveBlob } from "@/lib/download";
 import { api } from "@/api/client";
@@ -45,12 +47,16 @@ interface Rect {
   h: number;
 }
 
-const RESOLUTIONS = [
-  { value: "source", w: 0, h: 0 },
-  { value: "2560x1440", w: 2560, h: 1440 },
-  { value: "1920x1080", w: 1920, h: 1080 },
-  { value: "1280x720", w: 1280, h: 720 },
-  { value: "854x480", w: 854, h: 480 },
+// Масштаб ОТ РЕАЛЬНОГО разрешения выбранного монитора (не фиксированные
+// 1920x1080 и т.п.) — мониторы бывают разных пропорций (16:9, ультраширокий
+// 21:9, вертикальный 9:16), и фиксированный список "под 16:9" на них просто
+// не подходит. Само разрешение источника узнаётся уже ПОСЛЕ getDisplayMedia
+// (см. startRecording → track.getSettings()), проценты применяются к нему.
+const SCALES = [
+  { value: "100", pct: 1 },
+  { value: "75", pct: 0.75 },
+  { value: "50", pct: 0.5 },
+  { value: "25", pct: 0.25 },
 ] as const;
 
 const FPS_OPTIONS = [15, 24, 30, 60];
@@ -190,7 +196,12 @@ function AreaPicker({
   return (
     <Glass style={{ display: "flex", flexDirection: "column", alignItems: "stretch", gap: 10, padding: 12 }}>
       <div className="muted-sm">{confirmLabel}</div>
-      <div style={{ position: "relative", display: "inline-block", maxWidth: "100%" }}>
+      {/* Ширина всегда = ширине контейнера, высота свободная (не сжимается
+          отдельным maxHeight на самой картинке) — для широких мониторов этого
+          достаточно, чтобы уместиться; для вертикальных (портретных, 9:16)
+          картинка при ширине контейнера получается выше окна — тогда скроллит
+          именно эта обёртка, а не сжимает превью до нечитаемого размера. */}
+      <div style={{ position: "relative", maxHeight: "65vh", overflowY: "auto" }}>
         <img
           ref={imgRef}
           src={src}
@@ -199,7 +210,7 @@ function AreaPicker({
             const el = e.currentTarget;
             setNatural({ w: el.naturalWidth || 1, h: el.naturalHeight || 1 });
           }}
-          style={{ maxWidth: "100%", maxHeight: "60vh", display: "block", cursor: "crosshair" }}
+          style={{ width: "100%", height: "auto", display: "block", cursor: "crosshair" }}
           onPointerDown={onDown}
           onPointerMove={onMove}
           onPointerUp={onUp}
@@ -514,7 +525,7 @@ export default function ScreenshotsPage() {
   };
 
   // --- Настройки записи ---
-  const [resolution, setResolution] = useState<string>("source");
+  const [resolution, setResolution] = useState<string>("100");
   const [fps, setFps] = useState(30);
   const [bitrateMbps, setBitrateMbps] = useState(8);
   const supportedCodecs = useMemo(
@@ -565,6 +576,11 @@ export default function ScreenshotsPage() {
   // --- Запись экрана ---
   const [recording, setRecording] = useState(false);
   const [recSeconds, setRecSeconds] = useState(0);
+  // rec.onstop — замыкание, созданное ДО начала записи (в beginRecorder),
+  // поэтому читать из него состояние recSeconds напрямую нельзя — оно там
+  // навсегда останется тем, каким было в момент вызова beginRecorder (обычно
+  // 0). Ref обновляется тем же таймером и всегда актуален на момент остановки.
+  const recSecondsRef = useRef(0);
   const [recAreaPreview, setRecAreaPreview] = useState<string | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -621,29 +637,47 @@ export default function ScreenshotsPage() {
     const rec = new MediaRecorder(stream, {
       mimeType: pickMime(),
       videoBitsPerSecond: Math.round(bitrateMbps * 1_000_000),
+      // Раньше не задавался вовсе (браузерный дефолт для голоса — заметно
+      // ниже) — отсюда "звук отвратительный". 192 kbps хватает и для музыки,
+      // и для системного звука.
+      audioBitsPerSecond: 192_000,
     });
     rec.ondataavailable = (e) => {
       if (e.data.size > 0) chunksRef.current.push(e.data);
     };
     rec.onstop = async () => {
-      const blob = new Blob(chunksRef.current, { type: "video/webm" });
-      saveBlob(blob, `recording_${Date.now()}.webm`);
+      const raw = new Blob(chunksRef.current, { type: "video/webm" });
       try {
-        const item = await api.screenshotsSaveVideo(blob, {
+        // Сервер перегоняет webm в mp4 через ffmpeg (server/screenshots.js →
+        // finalizeRecording) — правильная длительность в контейнере и формат,
+        // который проигрывается везде. durationSec отсюда — только запасной
+        // вариант на случай, если ffmpeg не найден (см. finalizeRecording).
+        const item = await api.screenshotsSaveVideo(raw, {
           width: recDimsRef.current.w,
           height: recDimsRef.current.h,
-          durationSec: recSeconds,
+          durationSec: recSecondsRef.current,
+          bitrateMbps,
         });
         setLibrary((prev) => [item, ...prev]);
-      } catch {
-        /* не блокируем UX записи, если библиотека недоступна */
+        const resp = await fetch(api.screenshotFileUrl(item.id));
+        const outBlob = await resp.blob();
+        const ext = item.file.split(".").pop() || "webm";
+        saveBlob(outBlob, `recording_${Date.now()}.${ext}`);
+      } catch (e) {
+        // Библиотека/перекодирование не удались — хотя бы не теряем саму запись.
+        saveBlob(raw, `recording_${Date.now()}.webm`);
+        setError((e as Error).message || String(e));
       }
     };
     rec.start(1000);
     recorderRef.current = rec;
     setRecording(true);
     setRecSeconds(0);
-    timerRef.current = setInterval(() => setRecSeconds((s) => s + 1), 1000);
+    recSecondsRef.current = 0;
+    timerRef.current = setInterval(() => {
+      recSecondsRef.current += 1;
+      setRecSeconds(recSecondsRef.current);
+    }, 1000);
   };
 
   const startRecordingOnStream = (stream: MediaStream, cropRect: Rect | null) => {
@@ -696,14 +730,30 @@ export default function ScreenshotsPage() {
       const needMic = audioSource === "mic" || audioSource === "both";
 
       await window.appBridge?.setCaptureMode?.(needSystemAudio ? "screenAudio" : "screen", sourceId || null);
-      const res = RESOLUTIONS.find((r) => r.value === resolution);
-      const videoConstraints: MediaTrackConstraints =
-        res && res.w ? { width: { ideal: res.w }, height: { ideal: res.h }, frameRate: { ideal: fps } } : { frameRate: { ideal: fps } };
+      // Без width/height-ограничений — получаем РЕАЛЬНОЕ разрешение выбранного
+      // монитора (какое бы оно ни было: 16:9/21:9/9:16), масштаб применяется
+      // отдельно ниже через applyConstraints, когда оно уже известно.
       const stream = await navigator.mediaDevices.getDisplayMedia({
-        video: videoConstraints,
+        video: { frameRate: { ideal: fps } },
         audio: needSystemAudio,
       });
       await window.appBridge?.setCaptureMode?.("default");
+
+      const scale = SCALES.find((s) => s.value === resolution)?.pct ?? 1;
+      if (scale < 1) {
+        const vTrack = stream.getVideoTracks()[0];
+        const native = vTrack?.getSettings?.() || {};
+        const nativeW = Number(native.width) || 1920;
+        const nativeH = Number(native.height) || 1080;
+        try {
+          await vTrack?.applyConstraints({
+            width: Math.round(nativeW * scale),
+            height: Math.round(nativeH * scale),
+          });
+        } catch {
+          /* не критично — просто пишем в нативном разрешении источника */
+        }
+      }
 
       // Аудио собираем ДО предпросмотра области — иначе пришлось бы просить
       // микрофон повторно после подтверждения прямоугольника.
@@ -876,9 +926,9 @@ export default function ScreenshotsPage() {
               <Select
                 value={resolution}
                 onChange={(e) => setResolution(e.target.value)}
-                options={RESOLUTIONS.map((r) => ({
-                  value: r.value,
-                  label: r.value === "source" ? t("screenshots.resolutionSource") : r.value,
+                options={SCALES.map((s) => ({
+                  value: s.value,
+                  label: s.value === "100" ? t("screenshots.resolutionSource") : `${s.value}%`,
                 }))}
               />
             </Field>
@@ -1104,23 +1154,33 @@ export default function ScreenshotsPage() {
         )}
       </div>
 
-      {viewing && (
-        <div className="ss-modal-overlay" onClick={() => setViewing(null)}>
-          <div className="ss-modal-box" onClick={(e) => e.stopPropagation()}>
-            <div className="ss-modal-head">
-              <span className="muted-sm">
-                {new Date(viewing.createdAt).toLocaleString()} · {fmtBytes(viewing.sizeBytes)}
-              </span>
-              <IconBtn icon={X} title={t("common.close")} onClick={() => setViewing(null)} />
+      {/* Портал в #overlay-root — иначе модалка живёт внутри .content-area
+          (z-index:1) и рельс переключения страниц (.bottom-dock, z-index:40 в
+          .app-shell) перекрывает её целиком, как бы высоко ни был выставлен
+          z-index здесь (свой стек не сравнить с чужим снаружи), см.
+          src/components/overlayHost.ts. */}
+      {viewing &&
+        getOverlayRoot() &&
+        createPortal(
+          <div className="ss-modal-overlay" onClick={() => setViewing(null)}>
+            <div className="ss-modal-box" onClick={(e) => e.stopPropagation()}>
+              <div className="ss-modal-head">
+                <span className="muted-sm">
+                  {new Date(viewing.createdAt).toLocaleString()} · {fmtBytes(viewing.sizeBytes)}
+                </span>
+                <IconBtn icon={X} title={t("common.close")} onClick={() => setViewing(null)} />
+              </div>
+              {viewing.type === "image" ? (
+                <img src={api.screenshotFileUrl(viewing.id)} alt="" className="ss-modal-img" />
+              ) : (
+                <div className="ss-modal-video">
+                  <VideoPlayer src={api.screenshotFileUrl(viewing.id)} duration={viewing.durationSec || null} />
+                </div>
+              )}
             </div>
-            {viewing.type === "image" ? (
-              <img src={api.screenshotFileUrl(viewing.id)} alt="" className="ss-modal-img" />
-            ) : (
-              <VideoPlayer src={api.screenshotFileUrl(viewing.id)} duration={viewing.durationSec || null} />
-            )}
-          </div>
-        </div>
-      )}
+          </div>,
+          getOverlayRoot()!,
+        )}
     </div>
   );
 }

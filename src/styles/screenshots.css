@@ -70,6 +70,9 @@
   justify-content: center;
   z-index: 200;
   padding: 24px;
+  /* Портал в #overlay-root (pointer-events:none по умолчанию) — включаем
+     обратно для самой модалки. */
+  pointer-events: auto;
 }
 
 .ss-modal-box {
@@ -96,4 +99,15 @@
   max-height: 80vh;
   object-fit: contain;
   border-radius: 8px;
+}
+
+/* Плеер сам подгоняет свой размер под РОДИТЕЛЯ (см. VideoPlayer.tsx →
+   fitBoxFor(parentElement.clientWidth/Height)) — без явного размера у этой
+   обёртки родитель сам не имеет фиксированных границ (.ss-modal-box сжимается
+   по контенту), и плеер мог вылезать за пределы модального окна. Те же
+   габариты, что у .ss-modal-img, чтобы фото и видео открывались одного
+   ощутимого размера. */
+.ss-modal-video {
+  width: min(88vw, 1100px);
+  height: min(78vh, 640px);
 }

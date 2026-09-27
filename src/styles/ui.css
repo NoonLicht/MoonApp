@@ -154,6 +154,11 @@ select option {
   color: var(--text-secondary);
   cursor: default;
   font-family: var(--font-body);
+  /* Не сжиматься в переносящемся ряду вместе с соседними полями — иначе на
+     узком окне бейдж и Field теснили друг друга внахлёст вместо переноса
+     на новую строку. */
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 .badge.is-clickable {
   cursor: pointer;

@@ -77,6 +77,11 @@ const PORTALED = [
     css: "src/styles/ui.css",
     cls: "welcome-page",
   },
+  {
+    src: "src/pages/screenshots/ScreenshotsPage.tsx",
+    css: "src/styles/screenshots.css",
+    cls: "ss-modal-overlay",
+  },
 ];
 
 describe("портальные окна: клики не проходят сквозь окно", () => {

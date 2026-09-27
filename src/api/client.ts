@@ -1674,13 +1674,14 @@ export const api = {
   },
   screenshotsSaveVideo: (
     blob: Blob,
-    meta: { width?: number; height?: number; durationSec?: number },
+    meta: { width?: number; height?: number; durationSec?: number; bitrateMbps?: number },
   ) => {
     const fd = new FormData();
     fd.append("file", blob, "rec.webm");
     if (meta.width) fd.append("width", String(meta.width));
     if (meta.height) fd.append("height", String(meta.height));
     if (meta.durationSec) fd.append("durationSec", String(Math.round(meta.durationSec)));
+    if (meta.bitrateMbps) fd.append("bitrateMbps", String(meta.bitrateMbps));
     return multipart<ScreenshotItem>("/screenshots/video", fd);
   },
   screenshotsDelete: (id: string) => req<{ ok: boolean }>("DELETE", `/screenshots/${id}`),
