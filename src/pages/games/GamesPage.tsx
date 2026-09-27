@@ -67,6 +67,9 @@ export default function GamesPage() {
   const { t } = useI18n();
   const menu = useContextMenu();
   const [items, setItems] = useState<GameEntry[]>([]);
+  // Фильтр сетки: показывать все карточки или только из одного источника
+  // (ручные / Steam / Epic) — удобно, когда автосбор натащил сотню игр.
+  const [sourceFilter, setSourceFilter] = useState<"all" | "manual" | "steam" | "epic">("all");
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
@@ -335,6 +338,30 @@ export default function GamesPage() {
         <EmptyHint icon={Gamepad2} text={t("games.empty")} />
       )}
 
+      {!loading && items.length > 0 && (
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 4 }}>
+          {(
+            [
+              ["all", t("games.filterAll"), items.length],
+              ["manual", t("games.filterManual"), items.filter((g) => g.source === "manual").length],
+              ["steam", t("games.filterSteam"), items.filter((g) => g.source === "steam").length],
+              ["epic", t("games.filterEpic"), items.filter((g) => g.source === "epic").length],
+            ] as const
+          )
+            .filter(([key, , count]) => key === "all" || count > 0)
+            .map(([key, label, count]) => (
+              <button
+                key={key}
+                type="button"
+                className={`chip-toggle${sourceFilter === key ? " is-active" : ""}`}
+                onClick={() => setSourceFilter(key)}
+              >
+                {label} <Badge tone="neutral" mono>{count}</Badge>
+              </button>
+            ))}
+        </div>
+      )}
+
       <div
         style={{
           display: "grid",
@@ -343,7 +370,7 @@ export default function GamesPage() {
           marginTop: 10,
         }}
       >
-        {items.map((g) => (
+        {items.filter((g) => sourceFilter === "all" || g.source === sourceFilter).map((g) => (
           <div
             key={g.id}
             onClick={() => void doLaunch(g)}
