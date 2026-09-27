@@ -11,6 +11,7 @@ import fs from "fs";
 import path from "path";
 import config from "./config";
 import { detectFfmpeg } from "./convertEngine";
+import { ffmpegEncoders } from "./encoders";
 import logger from "./logger";
 
 const { DIRS, FILES } = config;
@@ -40,25 +41,38 @@ function probeDuration(ffprobeBin: string, file: string): Promise<number> {
  *    VP9/AV1 + Opus.
  * ffmpeg не найден — просто отдаём исходный webm как есть (честно, без
  * притворного mp4-расширения на нерабочем файле).
+ *
+ * Энкодер видео — аппаратный (h264_nvenc/h264_qsv/h264_amf), если он есть в
+ * сборке ffmpeg, иначе программный libx264. Это ровно то место, где раньше
+ * был единственный (и самый тяжёлый) всплеск нагрузки на CPU после записи —
+ * libx264 гонит один поток CPU почти на 100% на всё время перекодирования;
+ * аппаратный энкодер делает то же на видеочипе, почти не трогая CPU.
  */
-export async function finalizeRecording(
-  tmpWebmPath: string,
-  bitrateMbps: number,
-): Promise<{ path: string; ext: string; mime: string; durationSec: number }> {
-  const info = await detectFfmpeg();
-  if (!info.found || !info.ffmpeg) {
-    return { path: tmpWebmPath, ext: "webm", mime: "video/webm", durationSec: 0 };
+async function pickVideoEncoder(): Promise<string> {
+  try {
+    const set = await ffmpegEncoders();
+    for (const enc of ["h264_nvenc", "h264_qsv", "h264_amf"]) {
+      if (set.has(enc)) return enc;
+    }
+  } catch {
+    /* определение не удалось — используем программный энкодер */
   }
-  const outPath = tmpWebmPath.replace(/\.webm$/i, "") + ".mp4";
-  await new Promise<void>((resolve, reject) => {
+  return "libx264";
+}
+
+/** Один прогон ffmpeg с конкретным видеоэнкодером. */
+function runEncode(ffmpegBin: string, src: string, out: string, encoder: string, bitrateMbps: number): Promise<void> {
+  return new Promise((resolve, reject) => {
     const args = [
       "-y",
       "-i",
-      tmpWebmPath,
+      src,
       "-c:v",
-      "libx264",
-      "-preset",
-      "veryfast",
+      encoder,
+      // -preset — опция только программных энкодеров x264/x265; у аппаратных
+      // (nvenc/qsv/amf) свои имена пресетов, которые тут не задаются —
+      // дефолт достаточно быстрый и с этим битрейтом не в приоритете.
+      ...(encoder === "libx264" ? ["-preset", "veryfast"] : []),
       "-b:v",
       `${Math.max(1, Math.round(bitrateMbps || 8))}M`,
       "-pix_fmt",
@@ -67,9 +81,9 @@ export async function finalizeRecording(
       "aac",
       "-b:a",
       "192k",
-      outPath,
+      out,
     ];
-    const child = spawn(info.ffmpeg as string, args, { windowsHide: true });
+    const child = spawn(ffmpegBin, args, { windowsHide: true });
     let stderr = "";
     child.stderr?.on("data", (d) => {
       stderr += String(d);
@@ -78,12 +92,37 @@ export async function finalizeRecording(
     child.on("error", reject);
     child.on("close", (code) => {
       if (code === 0) resolve();
-      else reject(new Error(`ffmpeg exited with code ${code}: ${stderr.slice(-1000)}`));
+      else reject(new Error(`ffmpeg (${encoder}) exited with code ${code}: ${stderr.slice(-1000)}`));
     });
   });
+}
+
+export async function finalizeRecording(
+  tmpWebmPath: string,
+  bitrateMbps: number,
+): Promise<{ path: string; ext: string; mime: string; durationSec: number; encoder: string }> {
+  const info = await detectFfmpeg();
+  if (!info.found || !info.ffmpeg) {
+    return { path: tmpWebmPath, ext: "webm", mime: "video/webm", durationSec: 0, encoder: "" };
+  }
+  const outPath = tmpWebmPath.replace(/\.webm$/i, "") + ".mp4";
+  let encoder = await pickVideoEncoder();
+  try {
+    await runEncode(info.ffmpeg, tmpWebmPath, outPath, encoder, bitrateMbps);
+  } catch (e) {
+    // Энкодер числился в списке скомпилированных (ffmpeg -encoders), но
+    // реально недоступен в рантайме (нет GPU этого вендора, старый драйвер,
+    // занят другим процессом) — не проваливаем всю запись, а один раз
+    // откатываемся на программный libx264, который работает всегда.
+    if (encoder === "libx264") throw e;
+    logger.info("screenshots.finalize.hw_fallback", { failedEncoder: encoder, error: (e as Error).message });
+    encoder = "libx264";
+    await runEncode(info.ffmpeg, tmpWebmPath, outPath, encoder, bitrateMbps);
+  }
   fs.rmSync(tmpWebmPath, { force: true });
   const durationSec = info.ffprobe ? await probeDuration(info.ffprobe, outPath) : 0;
-  return { path: outPath, ext: "mp4", mime: "video/mp4", durationSec };
+  logger.info("screenshots.finalize", { encoder, durationSec });
+  return { path: outPath, ext: "mp4", mime: "video/mp4", durationSec, encoder };
 }
 
 export interface MediaItem {

@@ -725,11 +725,21 @@ export default function ScreenshotsPage() {
       canvas.width = Math.max(1, Math.round(cropRect.w));
       canvas.height = Math.max(1, Math.round(cropRect.h));
       const ctx = canvas.getContext("2d");
-      const draw = () => {
-        if (ctx) ctx.drawImage(video, cropRect.x, cropRect.y, cropRect.w, cropRect.h, 0, 0, canvas.width, canvas.height);
+      // requestAnimationFrame сам по себе идёт с частотой обновления монитора
+      // (например, 144 Гц), а не с выбранным FPS записи — без троттлинга
+      // canvas перерисовывался бы в разы чаще, чем реально уходит в запись
+      // (captureStream(fps) всё равно берёт только нужные кадры, лишняя
+      // отрисовка — чистая трата CPU/GPU). Рисуем не чаще, чем 1000/fps мс.
+      const minFrameMs = 1000 / Math.max(1, fps);
+      let lastDrawAt = 0;
+      const draw = (ts: number) => {
+        if (ts - lastDrawAt >= minFrameMs) {
+          lastDrawAt = ts;
+          if (ctx) ctx.drawImage(video, cropRect.x, cropRect.y, cropRect.w, cropRect.h, 0, 0, canvas.width, canvas.height);
+        }
         canvasLoopRef.current = requestAnimationFrame(draw);
       };
-      draw();
+      canvasLoopRef.current = requestAnimationFrame(draw);
       const cStream = canvas.captureStream(fps);
       if (audioTrack) cStream.addTrack(audioTrack);
       canvasStreamRef.current = cStream;
