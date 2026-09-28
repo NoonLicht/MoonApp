@@ -1299,7 +1299,8 @@
     "progressBeforeFirst": "Avant l’épisode 1",
     "seasonN": "Saison {n}",
     "episodeN": "Épisode {n}",
-    "seasonEpisodeShort": "S{s} · É{e}"
+    "seasonEpisodeShort": "S{s} · É{e}",
+    "seasonShortN": "S{n}"
   },
   "moviesSettings": {
     "language": "Langue des métadonnées",

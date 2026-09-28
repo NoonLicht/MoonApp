@@ -883,22 +883,59 @@
   flex-wrap: wrap;
   margin-top: 4px;
 }
-/* Прогресс по сериям (только сериалы) — src/pages/movies/parts/MediaDetailModal.tsx */
-.mv-detail-progress {
+/* Прогресс по сериям (только сериалы) — src/pages/movies/parts/MediaDetailModal.tsx.
+   Сезоны — чипы (.chip-toggle, тот же класс, что у фильтра игр), серии —
+   компактные кружки, клик закрашивает "до сюда включительно". */
+.mv-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+.mv-progress-head {
   display: flex;
   align-items: center;
   gap: 8px;
-  flex-wrap: wrap;
-  margin-top: 4px;
 }
-.mv-progress-select {
-  background-color: var(--track);
+.mv-progress-seasons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.mv-progress-seasons .chip-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.mv-progress-dots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.mv-progress-dot {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
   border: 1px solid var(--glass-border);
+  background: var(--glass);
+  color: var(--text-tertiary);
+  font-size: 11px;
+  font-family: var(--font-mono);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background-color 0.12s, color 0.12s, border-color 0.12s;
+}
+.mv-progress-dot:hover:not(:disabled) {
+  border-color: var(--amber);
   color: var(--text-primary);
-  border-radius: 11px;
-  padding: 6px 10px;
-  font-family: var(--font-body);
-  font-size: 12.5px;
+}
+.mv-progress-dot.is-watched {
+  background: linear-gradient(135deg, var(--amber), #d98a26);
+  border-color: var(--amber);
+  color: #241605;
 }
 
 /* Звёзды 1–10 */

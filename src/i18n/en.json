@@ -1431,7 +1431,8 @@
     "progressBeforeFirst": "Before episode 1",
     "seasonN": "Season {n}",
     "episodeN": "Episode {n}",
-    "seasonEpisodeShort": "S{s} · E{e}"
+    "seasonEpisodeShort": "S{s} · E{e}",
+    "seasonShortN": "S{n}"
   },
   "moviesSettings": {
     "language": "Metadata language",

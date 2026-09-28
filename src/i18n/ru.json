@@ -1431,7 +1431,8 @@
     "progressBeforeFirst": "До первой серии",
     "seasonN": "Сезон {n}",
     "episodeN": "Серия {n}",
-    "seasonEpisodeShort": "С{s} · Э{e}"
+    "seasonEpisodeShort": "С{s} · Э{e}",
+    "seasonShortN": "С{n}"
   },
   "moviesSettings": {
     "language": "Язык метаданных",

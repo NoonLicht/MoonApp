@@ -1299,7 +1299,8 @@
     "progressBeforeFirst": "قبل الحلقة الأولى",
     "seasonN": "الموسم {n}",
     "episodeN": "الحلقة {n}",
-    "seasonEpisodeShort": "م{s} · ح{e}"
+    "seasonEpisodeShort": "م{s} · ح{e}",
+    "seasonShortN": "م{n}"
   },
   "moviesSettings": {
     "language": "لغة البيانات الوصفية",

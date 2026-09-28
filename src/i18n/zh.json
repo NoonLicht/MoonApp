@@ -1299,7 +1299,8 @@
     "progressBeforeFirst": "第一集之前",
     "seasonN": "第 {n} 季",
     "episodeN": "第 {n} 集",
-    "seasonEpisodeShort": "S{s} · E{e}"
+    "seasonEpisodeShort": "S{s} · E{e}",
+    "seasonShortN": "第{n}季"
   },
   "moviesSettings": {
     "language": "元数据语言",

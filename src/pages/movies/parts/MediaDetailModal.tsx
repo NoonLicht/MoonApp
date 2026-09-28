@@ -310,9 +310,14 @@ export default function MediaDetailModal({
   const [prSeason, setPrSeason] = useState(0);
   const [prEpisode, setPrEpisode] = useState(0);
   const [prBusy, setPrBusy] = useState(false);
+  // Какой сезон сейчас развёрнут кружками — не обязательно тот, где остановился
+  // просмотр (можно открыть другой сезон и подправить прогресс не по порядку).
+  const [viewSeason, setViewSeason] = useState(1);
   useEffect(() => {
-    setPrSeason(personal?.watchlist?.watched_season || 0);
+    const s = personal?.watchlist?.watched_season || 0;
+    setPrSeason(s);
     setPrEpisode(personal?.watchlist?.watched_episode || 0);
+    setViewSeason(s > 0 ? s : 1);
   }, [personal]);
 
   const saveProgress = async (season: number, episode: number) => {
@@ -523,58 +528,74 @@ export default function MediaDetailModal({
                     )}
                   </div>
 
-                  {/* Прогресс по сериям — только у сериалов. episodeCount берём
-                      из seasonList выбранного сезона (у каждого сезона своё
-                      число серий, не общее по сериалу). Опциональная цепочка
-                      на seasonList — сервер кэширует ответы TMDB (media_meta_cache),
-                      и записи, закэшированные до появления этого поля, всё
-                      ещё могут отдавать details без seasonList. */}
+                  {/* Прогресс по сериям — только у сериалов, кружками (компактно,
+                      кликом отмечаются просмотренные). episodeCount — по
+                      КОНКРЕТНОМУ сезону (seasonList из TMDB), не общее число
+                      серий по сериалу. Опциональная цепочка на seasonList —
+                      сервер кэширует сырой ответ TMDB, а старый закэшированный
+                      процесс сервера (до перезапуска) может ещё не знать про
+                      это поле в ответе API. */}
                   {details.kind === "tv" && (details.seasonList?.length ?? 0) > 0 && (
-                    <div className="mv-detail-progress">
-                      <span className="muted-sm">{t("movies.watchProgress")}</span>
-                      <select
-                        className="mv-progress-select"
-                        value={prSeason}
-                        disabled={prBusy}
-                        onChange={(e) => {
-                          const s = Number(e.target.value);
-                          setPrSeason(s);
-                          setPrEpisode(0);
-                          void saveProgress(s, 0);
-                        }}
-                      >
-                        <option value={0}>{t("movies.progressNotStarted")}</option>
+                    <div className="mv-progress">
+                      <div className="mv-progress-head">
+                        <span className="muted-sm">{t("movies.watchProgress")}</span>
+                        {prSeason > 0 && (
+                          <span className="muted-sm">
+                            {t("movies.seasonEpisodeShort", { s: prSeason, e: prEpisode })}
+                          </span>
+                        )}
+                      </div>
+                      <div className="mv-progress-seasons">
                         {(details.seasonList ?? []).map((s) => (
-                          <option key={s.number} value={s.number}>
-                            {t("movies.seasonN", { n: s.number })}
-                          </option>
+                          <button
+                            key={s.number}
+                            type="button"
+                            className={`chip-toggle ${viewSeason === s.number ? "is-active" : ""}`}
+                            onClick={() => setViewSeason(s.number)}
+                          >
+                            {t("movies.seasonShortN", { n: s.number })}
+                            {(s.number < prSeason || (s.number === prSeason && prEpisode >= s.episodeCount)) &&
+                              s.episodeCount > 0 && <Check size={11} />}
+                          </button>
                         ))}
-                      </select>
-                      {prSeason > 0 && (
-                        <select
-                          className="mv-progress-select"
-                          value={prEpisode}
-                          disabled={prBusy}
-                          onChange={(e) => {
-                            const ep = Number(e.target.value);
-                            setPrEpisode(ep);
-                            void saveProgress(prSeason, ep);
-                          }}
-                        >
-                          {Array.from(
-                            {
-                              length:
-                                ((details.seasonList ?? []).find((s) => s.number === prSeason)
-                                  ?.episodeCount || 0) + 1,
-                            },
-                            (_, ep) => (
-                              <option key={ep} value={ep}>
-                                {ep === 0 ? t("movies.progressBeforeFirst") : t("movies.episodeN", { n: ep })}
-                              </option>
-                            ),
-                          )}
-                        </select>
-                      )}
+                      </div>
+                      <div className="mv-progress-dots">
+                        {Array.from(
+                          {
+                            length:
+                              (details.seasonList ?? []).find((s) => s.number === viewSeason)
+                                ?.episodeCount || 0,
+                          },
+                          (_, i) => i + 1,
+                        ).map((ep) => {
+                          const watched =
+                            viewSeason < prSeason || (viewSeason === prSeason && ep <= prEpisode);
+                          return (
+                            <button
+                              key={ep}
+                              type="button"
+                              className={`mv-progress-dot ${watched ? "is-watched" : ""}`}
+                              disabled={prBusy}
+                              title={t("movies.episodeN", { n: ep })}
+                              onClick={() => {
+                                // Клик по последней закрашенной серии текущего
+                                // сезона — снять именно её (отступить на одну
+                                // назад), иначе — закрасить всё до неё включительно.
+                                if (viewSeason === prSeason && ep === prEpisode) {
+                                  setPrEpisode(ep - 1);
+                                  void saveProgress(viewSeason, ep - 1);
+                                } else {
+                                  setPrSeason(viewSeason);
+                                  setPrEpisode(ep);
+                                  void saveProgress(viewSeason, ep);
+                                }
+                              }}
+                            >
+                              {ep}
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
                   )}
                 </div>
