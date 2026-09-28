@@ -573,7 +573,13 @@
     "fTitle": "Title (e.g. \"Email\")",
     "fUsername": "Username / e-mail",
     "fPassword": "Password",
-    "fUrl": "Site (optional)"
+    "fUrl": "Site (optional)",
+    "genOptions": "Generator settings",
+    "genLength": "Length",
+    "genLower": "a-z",
+    "genUpper": "A-Z",
+    "genDigits": "0-9",
+    "genSymbols": "#$%"
   },
   "advanced": {
     "advancedTelemetry": "Telemetry",

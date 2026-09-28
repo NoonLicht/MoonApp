@@ -138,12 +138,17 @@ export function generatePassword(opts: {
   digits?: boolean;
   symbols?: boolean;
   upper?: boolean;
+  lower?: boolean;
 }): string {
   const length = Math.min(128, Math.max(4, opts.length || 20));
-  let charset = "abcdefghijklmnopqrstuvwxyz";
+  let charset = "";
+  if (opts.lower !== false) charset += "abcdefghijklmnopqrstuvwxyz";
   if (opts.upper !== false) charset += "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
   if (opts.digits !== false) charset += "0123456789";
   if (opts.symbols) charset += "!@#$%^&*()-_=+[]{}";
+  // Все регистры/цифры/символы выключены — генерировать не из чего, но
+  // молча падать на пустой charset (деление на 0 в modulo) нельзя.
+  if (!charset) charset = "abcdefghijklmnopqrstuvwxyz";
   const bytes = crypto.randomBytes(length);
   let out = "";
   for (let i = 0; i < length; i++) out += charset[bytes[i] % charset.length];

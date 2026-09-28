@@ -60,6 +60,31 @@
 .set-row:last-child {
   border-bottom: none;
 }
+
+/* Панель настроек генератора пароля (src/pages/settings/SettingsPage.tsx →
+   PasswordVaultSection) — длина ползунком + переключатели наборов символов. */
+.pv-gen-opts {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 10px;
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+}
+.pv-gen-len {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.pv-gen-len input[type="range"] {
+  width: 100%;
+}
+.pv-gen-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
 .set-info {
   flex: 1;
   min-width: 0;

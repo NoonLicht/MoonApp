@@ -573,7 +573,13 @@
     "fTitle": "标题(例如“邮箱”)",
     "fUsername": "用户名 / 邮箱",
     "fPassword": "密码",
-    "fUrl": "网站(可选)"
+    "fUrl": "网站(可选)",
+    "genOptions": "生成器设置",
+    "genLength": "长度",
+    "genLower": "a-z",
+    "genUpper": "A-Z",
+    "genDigits": "0-9",
+    "genSymbols": "#$%"
   },
   "advanced": {
     "advancedTelemetry": "遥测",

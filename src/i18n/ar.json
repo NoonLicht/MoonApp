@@ -573,7 +573,13 @@
     "fTitle": "العنوان (مثال: «البريد»)",
     "fUsername": "اسم المستخدم / البريد الإلكتروني",
     "fPassword": "كلمة المرور",
-    "fUrl": "الموقع (اختياري)"
+    "fUrl": "الموقع (اختياري)",
+    "genOptions": "إعدادات المولّد",
+    "genLength": "الطول",
+    "genLower": "a-z",
+    "genUpper": "A-Z",
+    "genDigits": "0-9",
+    "genSymbols": "#$%"
   },
   "advanced": {
     "advancedTelemetry": "التتبع",

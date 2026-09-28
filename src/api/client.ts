@@ -1407,6 +1407,7 @@ export const api = {
     digits?: boolean;
     symbols?: boolean;
     upper?: boolean;
+    lower?: boolean;
   }) => req<{ password: string }>("POST", "/passwords/generate", opts),
 
   // --- PDF-тулкит ---

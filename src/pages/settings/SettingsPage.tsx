@@ -374,6 +374,30 @@ function TmdbKeyRow() {
  * странице. Пароли по умолчанию скрыты: расшифровка конкретной записи запрашивается
  * с сервера только по клику "показать"/"копировать" (GET /api/passwords/:id/reveal).
  */
+/** Настройки генератора пароля — не секрет, обычная настройка интерфейса,
+ *  поэтому localStorage (см. src/lib/uiSettings.ts), а не БД/сервер: чтобы
+ *  выбор регистров/длины запоминался между сессиями без похода на бэкенд. */
+interface GenOpts {
+  length: number;
+  lower: boolean;
+  upper: boolean;
+  digits: boolean;
+  symbols: boolean;
+}
+const GEN_OPTS_KEY = "passwordVault.genOpts";
+const DEFAULT_GEN_OPTS: GenOpts = { length: 20, lower: true, upper: true, digits: true, symbols: true };
+
+function loadGenOpts(): GenOpts {
+  try {
+    const raw = localStorage.getItem(GEN_OPTS_KEY);
+    if (!raw) return DEFAULT_GEN_OPTS;
+    const parsed = JSON.parse(raw);
+    return { ...DEFAULT_GEN_OPTS, ...parsed };
+  } catch {
+    return DEFAULT_GEN_OPTS;
+  }
+}
+
 function PasswordVaultSection() {
   const { t } = useI18n();
   const [items, setItems] = useState<PasswordEntry[]>([]);
@@ -382,6 +406,25 @@ function PasswordVaultSection() {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ title: "", username: "", password: "", url: "", notes: "" });
   const [saving, setSaving] = useState(false);
+  const [genOpts, setGenOpts] = useState<GenOpts>(loadGenOpts);
+  const [genOpen, setGenOpen] = useState(false);
+
+  const updateGenOpts = (patch: Partial<GenOpts>) => {
+    setGenOpts((prev) => {
+      // Хотя бы один набор символов должен остаться включённым — иначе
+      // генератору не из чего собирать пароль (сервер на этот случай молча
+      // откатывается на строчные буквы, но в UI лучше не давать выключить
+      // всё до конца).
+      const next = { ...prev, ...patch };
+      if (!next.lower && !next.upper && !next.digits && !next.symbols) return prev;
+      try {
+        localStorage.setItem(GEN_OPTS_KEY, JSON.stringify(next));
+      } catch {
+        /* квота переполнена — не критично, просто не запомнится */
+      }
+      return next;
+    });
+  };
 
   const load = () => {
     setLoading(true);
@@ -434,7 +477,7 @@ function PasswordVaultSection() {
 
   const generate = async () => {
     try {
-      const { password } = await api.passwordsGenerate({ length: 20, digits: true, symbols: true });
+      const { password } = await api.passwordsGenerate(genOpts);
       setForm((f) => ({ ...f, password }));
     } catch {
       /* ignore */
@@ -531,7 +574,48 @@ function PasswordVaultSection() {
               onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
             />
             <Btn icon={Dices} onClick={() => void generate()} title={t("passwordVault.generate")} />
+            <Btn
+              icon={Settings2}
+              onClick={() => setGenOpen((v) => !v)}
+              title={t("passwordVault.genOptions")}
+            />
           </div>
+
+          {genOpen && (
+            <div className="pv-gen-opts">
+              <div className="pv-gen-len">
+                <span className="muted-sm">
+                  {t("passwordVault.genLength")}: {genOpts.length}
+                </span>
+                <input
+                  type="range"
+                  min={4}
+                  max={64}
+                  value={genOpts.length}
+                  onChange={(e) => updateGenOpts({ length: Number(e.target.value) })}
+                />
+              </div>
+              <div className="pv-gen-toggles">
+                {(
+                  [
+                    ["lower", t("passwordVault.genLower")],
+                    ["upper", t("passwordVault.genUpper")],
+                    ["digits", t("passwordVault.genDigits")],
+                    ["symbols", t("passwordVault.genSymbols")],
+                  ] as const
+                ).map(([key, label]) => (
+                  <Badge
+                    key={key}
+                    tone="amber"
+                    active={genOpts[key]}
+                    onClick={() => updateGenOpts({ [key]: !genOpts[key] })}
+                  >
+                    {label}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
           <input
             className="text-input"
             placeholder={t("passwordVault.fUrl")}

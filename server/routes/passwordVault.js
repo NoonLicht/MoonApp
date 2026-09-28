@@ -8,7 +8,7 @@
  *  POST   /api/passwords              — создать запись
  *  PUT    /api/passwords/:id          — обновить запись
  *  DELETE /api/passwords/:id          — удалить запись
- *  POST   /api/passwords/generate     — сгенерировать пароль { length, digits, symbols, upper }
+ *  POST   /api/passwords/generate     — сгенерировать пароль { length, digits, symbols, upper, lower }
  */
 
 const express = require("express");
@@ -66,8 +66,8 @@ router.delete("/:id", (req, res) => {
 
 router.post("/generate", (req, res) => {
   try {
-    const { length, digits, symbols, upper } = req.body || {};
-    res.json({ password: vault.generatePassword({ length, digits, symbols, upper }) });
+    const { length, digits, symbols, upper, lower } = req.body || {};
+    res.json({ password: vault.generatePassword({ length, digits, symbols, upper, lower }) });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

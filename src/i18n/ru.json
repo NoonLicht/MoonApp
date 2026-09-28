@@ -573,7 +573,13 @@
     "fTitle": "Название (напр. «Почта»)",
     "fUsername": "Логин / e-mail",
     "fPassword": "Пароль",
-    "fUrl": "Сайт (необязательно)"
+    "fUrl": "Сайт (необязательно)",
+    "genOptions": "Настройки генератора",
+    "genLength": "Длина",
+    "genLower": "a-z",
+    "genUpper": "A-Z",
+    "genDigits": "0-9",
+    "genSymbols": "#$%"
   },
   "advanced": {
     "advancedTelemetry": "Телеметрия",

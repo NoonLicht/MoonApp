@@ -573,7 +573,13 @@
     "fTitle": "Título (p. ej. «Correo»)",
     "fUsername": "Usuario / e-mail",
     "fPassword": "Contraseña",
-    "fUrl": "Sitio (opcional)"
+    "fUrl": "Sitio (opcional)",
+    "genOptions": "Ajustes del generador",
+    "genLength": "Longitud",
+    "genLower": "a-z",
+    "genUpper": "A-Z",
+    "genDigits": "0-9",
+    "genSymbols": "#$%"
   },
   "advanced": {
     "advancedTelemetry": "Telemetría",
