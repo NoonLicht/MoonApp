@@ -525,8 +525,11 @@ export default function MediaDetailModal({
 
                   {/* Прогресс по сериям — только у сериалов. episodeCount берём
                       из seasonList выбранного сезона (у каждого сезона своё
-                      число серий, не общее по сериалу). */}
-                  {details.kind === "tv" && details.seasonList.length > 0 && (
+                      число серий, не общее по сериалу). Опциональная цепочка
+                      на seasonList — сервер кэширует ответы TMDB (media_meta_cache),
+                      и записи, закэшированные до появления этого поля, всё
+                      ещё могут отдавать details без seasonList. */}
+                  {details.kind === "tv" && (details.seasonList?.length ?? 0) > 0 && (
                     <div className="mv-detail-progress">
                       <span className="muted-sm">{t("movies.watchProgress")}</span>
                       <select
@@ -541,7 +544,7 @@ export default function MediaDetailModal({
                         }}
                       >
                         <option value={0}>{t("movies.progressNotStarted")}</option>
-                        {details.seasonList.map((s) => (
+                        {(details.seasonList ?? []).map((s) => (
                           <option key={s.number} value={s.number}>
                             {t("movies.seasonN", { n: s.number })}
                           </option>
@@ -561,7 +564,7 @@ export default function MediaDetailModal({
                           {Array.from(
                             {
                               length:
-                                (details.seasonList.find((s) => s.number === prSeason)
+                                ((details.seasonList ?? []).find((s) => s.number === prSeason)
                                   ?.episodeCount || 0) + 1,
                             },
                             (_, ep) => (
