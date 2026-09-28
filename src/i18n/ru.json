@@ -1413,7 +1413,19 @@
     "trackerPreset_rutracker": "RuTracker (нужен вход)",
     "trackerPreset_rutor": "RuTor (без входа)",
     "trackerPresetSwitched": "Трекер переключён",
-    "trackerNoLoginNeeded": "Этому трекеру вход не нужен: поиск и .torrent доступны анонимно"
+    "trackerNoLoginNeeded": "Этому трекеру вход не нужен: поиск и .torrent доступны анонимно",
+    "tab_bookmarks": "Закладки",
+    "bookmarksAdd": "В закладки",
+    "bookmarksAddedCount": "В закладках ({n})",
+    "bookmarksEmpty": "Папок пока нет — создайте ниже.",
+    "bookmarksNewPlaceholder": "Название новой папки",
+    "bookmarksCreate": "Создать",
+    "bookmarksTabEmpty": "Закладок пока нет — создайте первую папку выше и добавляйте в неё фильмы/сериалы прямо из карточки тайтла.",
+    "bookmarksListEmpty": "В этой папке пока пусто.",
+    "bookmarksRename": "Переименовать",
+    "bookmarksDeleteList": "Удалить папку",
+    "bookmarksDeleteConfirm": "Удалить папку «{name}» вместе со всем её содержимым?",
+    "bookmarksRemoveItem": "Убрать из папки"
   },
   "moviesSettings": {
     "language": "Язык метаданных",

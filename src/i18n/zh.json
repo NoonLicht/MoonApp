@@ -1281,7 +1281,19 @@
     "prevImage": "上一张",
     "nextImage": "下一张",
     "photoOf": "{i} / {n}",
-    "providersMore": "另有 {n} 个"
+    "providersMore": "另有 {n} 个",
+    "tab_bookmarks": "收藏夹",
+    "bookmarksAdd": "加入收藏夹",
+    "bookmarksAddedCount": "已在收藏夹中 ({n})",
+    "bookmarksEmpty": "还没有文件夹 — 在下方创建一个。",
+    "bookmarksNewPlaceholder": "新文件夹名称",
+    "bookmarksCreate": "创建",
+    "bookmarksTabEmpty": "还没有收藏 — 先在上方创建第一个文件夹，再直接从影片详情卡片添加电影/剧集。",
+    "bookmarksListEmpty": "这个文件夹还是空的。",
+    "bookmarksRename": "重命名",
+    "bookmarksDeleteList": "删除文件夹",
+    "bookmarksDeleteConfirm": "删除文件夹「{name}」及其全部内容？",
+    "bookmarksRemoveItem": "从文件夹中移除"
   },
   "moviesSettings": {
     "language": "元数据语言",

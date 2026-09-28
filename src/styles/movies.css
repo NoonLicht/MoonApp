@@ -805,6 +805,77 @@
   gap: 6px;
   margin-top: 2px;
 }
+/* Кнопка "В закладки" + попап со списком папок (src/pages/movies/parts/MediaDetailModal.tsx) */
+.mv-bookmark-wrap {
+  position: relative;
+  display: inline-flex;
+}
+.mv-bookmark-pop {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  min-width: 220px;
+  max-height: 260px;
+  overflow-y: auto;
+}
+.mv-bookmark-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-primary);
+  cursor: pointer;
+  padding: 3px 0;
+}
+.mv-bookmark-new {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px solid var(--glass-border);
+}
+.mv-bookmark-new .text-input {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Вкладка «Закладки» на странице (src/pages/movies/MoviesPage.tsx) — в
+   отличие от попапа в модалке тайтла, здесь список папок целиком. */
+.mv-bookmarks-view {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.mv-bookmarks-new-row {
+  display: flex;
+  gap: 8px;
+  max-width: 420px;
+}
+.mv-bookmarks-new-row .text-input {
+  flex: 1;
+  min-width: 0;
+}
+.mv-bookmark-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+}
+.mv-bookmark-rename {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+}
+.mv-bookmark-rename .text-input {
+  flex: 1;
+  min-width: 0;
+}
 .mv-detail-rating {
   display: flex;
   align-items: center;

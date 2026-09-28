@@ -1145,6 +1145,30 @@ export interface MediaLibrary {
   stats: MediaWatchEntry[];
 }
 
+/** Своя папка закладок (в отличие от watchlist их можно завести сколько угодно). */
+export interface MediaBookmarkList {
+  id: number;
+  name: string;
+  created_at: number;
+}
+
+/** Тайтл внутри папки закладок — один тайтл может быть сразу в нескольких. */
+export interface MediaBookmarkItem {
+  id: number;
+  list_id: number;
+  kind: MediaKind;
+  tmdb_id: number;
+  title: string;
+  poster: string;
+  year: number | null;
+  added_at: number;
+}
+
+export interface MediaBookmarks {
+  lists: MediaBookmarkList[];
+  items: MediaBookmarkItem[];
+}
+
 /** Агрегированная статистика просмотров. */
 export interface MediaStats {
   totalTitles: number;

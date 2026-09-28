@@ -1281,7 +1281,19 @@
     "prevImage": "Précédent",
     "nextImage": "Suivant",
     "photoOf": "{i} / {n}",
-    "providersMore": "+{n} de plus"
+    "providersMore": "+{n} de plus",
+    "tab_bookmarks": "Favoris",
+    "bookmarksAdd": "Ajouter aux favoris",
+    "bookmarksAddedCount": "Dans les favoris ({n})",
+    "bookmarksEmpty": "Aucun dossier pour l’instant — créez-en un ci-dessous.",
+    "bookmarksNewPlaceholder": "Nom du nouveau dossier",
+    "bookmarksCreate": "Créer",
+    "bookmarksTabEmpty": "Aucun favori pour l’instant — créez votre premier dossier ci-dessus et ajoutez des films/séries directement depuis la fiche du titre.",
+    "bookmarksListEmpty": "Ce dossier est vide.",
+    "bookmarksRename": "Renommer",
+    "bookmarksDeleteList": "Supprimer le dossier",
+    "bookmarksDeleteConfirm": "Supprimer le dossier « {name} » avec tout son contenu ?",
+    "bookmarksRemoveItem": "Retirer du dossier"
   },
   "moviesSettings": {
     "language": "Langue des métadonnées",

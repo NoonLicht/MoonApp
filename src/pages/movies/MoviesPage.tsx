@@ -14,8 +14,13 @@ import {
   Save,
   ExternalLink,
   Download,
+  Bookmark,
+  Plus,
+  Pencil,
+  Check as CheckIcon,
+  X as XIcon,
 } from "lucide-react";
-import { Glass, Btn, Badge, SectionHead, EmptyHint, Field } from "@/components/ui";
+import { Glass, Btn, Badge, SectionHead, EmptyHint, Field, IconBtn } from "@/components/ui";
 import { usePageToolbar } from "@/components/Toolbar";
 import ToolbarSearch from "@/components/ToolbarSearch";
 import { useI18n } from "@/app/i18n";
@@ -36,6 +41,7 @@ import type {
   MediaStats,
   MediaWatchlistEntry,
   MediaWatchStatus,
+  MediaBookmarks,
 } from "@/api/types";
 
 /**
@@ -51,7 +57,7 @@ import type {
  * Если ключ TMDB не задан — показываем понятную подсказку со ссылкой в Настройки.
  */
 
-type ViewId = "catalog" | "library" | "stats" | "downloads";
+type ViewId = "catalog" | "library" | "bookmarks" | "stats" | "downloads";
 
 const STATUS_TONE: Record<MediaWatchStatus, string> = {
   plan: "teal",
@@ -89,6 +95,75 @@ export default function MoviesPage() {
   const [library, setLibrary] = useState<MediaLibrary | null>(null);
   const [stats, setStats] = useState<MediaStats | null>(null);
   const [busy, setBusy] = useState(false);
+
+  // Свои закладки (папки) — можно завести сколько угодно, в отличие от
+  // watchlist (один статус на тайтл на всё приложение).
+  const [bookmarks, setBookmarks] = useState<MediaBookmarks | null>(null);
+  const [bmNewName, setBmNewName] = useState("");
+  const [bmRenaming, setBmRenaming] = useState<number | null>(null);
+  const [bmRenameValue, setBmRenameValue] = useState("");
+  const loadBookmarks = useCallback(() => {
+    api
+      .moviesBookmarks()
+      .then(setBookmarks)
+      .catch(() => setBookmarks(null));
+  }, []);
+  useEffect(() => {
+    loadBookmarks();
+  }, [loadBookmarks]);
+
+  const createBookmarkList = useCallback(async () => {
+    const name = bmNewName.trim();
+    if (!name) return;
+    setBusy(true);
+    try {
+      await api.moviesBookmarkCreate(name);
+      setBmNewName("");
+      loadBookmarks();
+    } finally {
+      setBusy(false);
+    }
+  }, [bmNewName, loadBookmarks]);
+
+  const deleteBookmarkList = useCallback(
+    async (id: number, name: string) => {
+      if (!window.confirm(t("movies.bookmarksDeleteConfirm", { name }))) return;
+      setBusy(true);
+      try {
+        await api.moviesBookmarkDelete(id);
+        loadBookmarks();
+      } finally {
+        setBusy(false);
+      }
+    },
+    [loadBookmarks, t],
+  );
+
+  const renameBookmarkList = useCallback(async () => {
+    const name = bmRenameValue.trim();
+    if (!name || bmRenaming == null) return;
+    setBusy(true);
+    try {
+      await api.moviesBookmarkRename(bmRenaming, name);
+      setBmRenaming(null);
+      loadBookmarks();
+    } finally {
+      setBusy(false);
+    }
+  }, [bmRenaming, bmRenameValue, loadBookmarks]);
+
+  const removeBookmarkItem = useCallback(
+    async (listId: number, kind2: MediaKind, tmdbId: number) => {
+      setBusy(true);
+      try {
+        await api.moviesBookmarkRemoveItem(listId, kind2, tmdbId);
+        loadBookmarks();
+      } finally {
+        setBusy(false);
+      }
+    },
+    [loadBookmarks],
+  );
 
   // Статус страницы (ключ TMDB + движок торрентов).
   const loadStatus = useCallback(() => {
@@ -232,6 +307,13 @@ export default function MoviesPage() {
           title={t("movies.tab_library")}
         >
           <ListVideo size={14} />
+        </button>
+        <button
+          className={view === "bookmarks" ? "is-active" : ""}
+          onClick={() => setView("bookmarks")}
+          title={t("movies.tab_bookmarks")}
+        >
+          <Bookmark size={14} />
         </button>
         <button
           className={view === "stats" ? "is-active" : ""}
@@ -421,6 +503,114 @@ export default function MoviesPage() {
                   );
                 })}
               </div>
+            )}
+          </div>
+        )}
+        {/* Свои закладки: любое число именованных папок, тайтл может быть
+            сразу в нескольких (в отличие от «Мой список» — там один статус
+            на тайтл на всё приложение). */}
+        {view === "bookmarks" && (
+          <div className="mv-bookmarks-view">
+            <div className="mv-bookmarks-new-row">
+              <input
+                className="text-input"
+                placeholder={t("movies.bookmarksNewPlaceholder")}
+                value={bmNewName}
+                onChange={(e) => setBmNewName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") void createBookmarkList();
+                }}
+              />
+              <Btn
+                variant="primary"
+                icon={Plus}
+                disabled={busy || !bmNewName.trim()}
+                onClick={() => void createBookmarkList()}
+              >
+                {t("movies.bookmarksCreate")}
+              </Btn>
+            </div>
+
+            {!bookmarks || bookmarks.lists.length === 0 ? (
+              <EmptyHint icon={Bookmark} text={t("movies.bookmarksTabEmpty")} />
+            ) : (
+              bookmarks.lists.map((l) => {
+                const items = bookmarks.items.filter((it) => it.list_id === l.id);
+                return (
+                  <Glass key={l.id} className="mv-bookmark-list">
+                    <div className="mv-row-head">
+                      {bmRenaming === l.id ? (
+                        <div className="mv-bookmark-rename">
+                          <input
+                            className="text-input"
+                            autoFocus
+                            value={bmRenameValue}
+                            onChange={(e) => setBmRenameValue(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") void renameBookmarkList();
+                              if (e.key === "Escape") setBmRenaming(null);
+                            }}
+                          />
+                          <IconBtn icon={CheckIcon} title={t("common.save")} onClick={() => void renameBookmarkList()} />
+                          <IconBtn icon={XIcon} title={t("common.cancel")} onClick={() => setBmRenaming(null)} />
+                        </div>
+                      ) : (
+                        <h3>
+                          {l.name} <span className="muted-sm">({items.length})</span>
+                        </h3>
+                      )}
+                      <div style={{ display: "flex", gap: 4 }}>
+                        <IconBtn
+                          icon={Pencil}
+                          title={t("movies.bookmarksRename")}
+                          onClick={() => {
+                            setBmRenaming(l.id);
+                            setBmRenameValue(l.name);
+                          }}
+                        />
+                        <IconBtn
+                          icon={Trash2}
+                          title={t("movies.bookmarksDeleteList")}
+                          onClick={() => void deleteBookmarkList(l.id, l.name)}
+                        />
+                      </div>
+                    </div>
+                    {items.length === 0 ? (
+                      <div className="muted-sm">{t("movies.bookmarksListEmpty")}</div>
+                    ) : (
+                      <div className="mv-library-grid">
+                        {items.map((it) => (
+                          <Glass key={`${it.kind}-${it.tmdb_id}`} className="mv-lib-card">
+                            <button
+                              className="mv-lib-art"
+                              onClick={() => setDetail({ kind: it.kind, id: it.tmdb_id })}
+                            >
+                              {it.poster ? (
+                                <img src={imgUrl(it.poster)} alt="" loading="lazy" />
+                              ) : (
+                                <Film size={22} strokeWidth={1.5} />
+                              )}
+                            </button>
+                            <div className="mv-lib-info">
+                              <div className="mv-lib-title" title={it.title}>
+                                {it.title}
+                              </div>
+                              <div className="muted-sm">{it.year || "—"}</div>
+                              <div className="mv-lib-actions">
+                                <IconBtn
+                                  icon={XIcon}
+                                  title={t("movies.bookmarksRemoveItem")}
+                                  onClick={() => void removeBookmarkItem(l.id, it.kind, it.tmdb_id)}
+                                />
+                              </div>
+                            </div>
+                          </Glass>
+                        ))}
+                      </div>
+                    )}
+                  </Glass>
+                );
+              })
             )}
           </div>
         )}

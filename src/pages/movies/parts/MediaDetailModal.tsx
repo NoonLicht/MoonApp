@@ -18,8 +18,10 @@ import {
   ChevronLeft,
   ChevronRight,
   RotateCcw,
+  Bookmark,
+  Plus,
 } from "lucide-react";
-import { Glass, Btn, Badge, EmptyHint } from "@/components/ui";
+import { Glass, Btn, Badge, EmptyHint, IconBtn } from "@/components/ui";
 import { usePageActive } from "@/components/Toolbar";
 import { getOverlayRoot } from "@/components/overlayHost";
 import { useI18n } from "@/app/i18n";
@@ -35,6 +37,7 @@ import type {
   MediaDetails,
   MediaState,
   MediaWatchStatus,
+  MediaBookmarkList,
 } from "@/api/types";
 
 /**
@@ -255,6 +258,77 @@ export default function MediaDetailModal({
   const myRating = personal?.rating?.rating || 0;
   const KindIcon = (details?.kind || kind) === "tv" ? Tv : Film;
 
+  // --- Свои закладки (папки) — можно завести сколько угодно, в отличие от
+  //     watchlist (один статус на тайтл на всё приложение). ---
+  const [bmOpen, setBmOpen] = useState(false);
+  const [bmLists, setBmLists] = useState<MediaBookmarkList[]>([]);
+  const [bmMemberIds, setBmMemberIds] = useState<number[]>([]);
+  const [bmNewName, setBmNewName] = useState("");
+  const [bmBusy, setBmBusy] = useState(false);
+
+  const openBookmarkPopover = async () => {
+    if (!details) return;
+    setBmOpen((v) => !v);
+    if (bmOpen) return; // уже открыт — просто закрываем, данные не нужны
+    try {
+      const [all, state] = await Promise.all([
+        api.moviesBookmarks(),
+        api.moviesBookmarkState(details.kind, details.id),
+      ]);
+      setBmLists(all.lists);
+      setBmMemberIds(state.lists);
+    } catch {
+      setBmLists([]);
+      setBmMemberIds([]);
+    }
+  };
+
+  const toggleBookmarkList = async (listId: number) => {
+    if (!details) return;
+    setBmBusy(true);
+    try {
+      const member = bmMemberIds.includes(listId);
+      if (member) {
+        await api.moviesBookmarkRemoveItem(listId, details.kind, details.id);
+        setBmMemberIds((ids) => ids.filter((x) => x !== listId));
+      } else {
+        await api.moviesBookmarkAddItem(listId, {
+          kind: details.kind,
+          id: details.id,
+          title: details.title,
+          poster: details.poster || "",
+          year: details.year,
+        });
+        setBmMemberIds((ids) => [...ids, listId]);
+      }
+    } finally {
+      setBmBusy(false);
+    }
+  };
+
+  const createBookmarkList = async () => {
+    const name = bmNewName.trim();
+    if (!name || !details) return;
+    setBmBusy(true);
+    try {
+      const r = await api.moviesBookmarkCreate(name);
+      setBmLists((prev) => [r.list, ...prev]);
+      setBmNewName("");
+      // Новая папка — сразу с текущим тайтлом внутри, иначе пришлось бы
+      // создавать папку и потом отдельным кликом добавлять в неё же.
+      await api.moviesBookmarkAddItem(r.list.id, {
+        kind: details.kind,
+        id: details.id,
+        title: details.title,
+        poster: details.poster || "",
+        year: details.year,
+      });
+      setBmMemberIds((ids) => [...ids, r.list.id]);
+    } finally {
+      setBmBusy(false);
+    }
+  };
+
   if (!active) return null;
 
   return createPortal(
@@ -350,6 +424,53 @@ export default function MediaDetailModal({
                         {t("movies.removeFromList")}
                       </Btn>
                     )}
+                    <div className="mv-bookmark-wrap">
+                      <Btn
+                        variant={bmMemberIds.length > 0 ? "primary" : "ghost"}
+                        icon={Bookmark}
+                        onClick={() => void openBookmarkPopover()}
+                        disabled={bmBusy}
+                      >
+                        {bmMemberIds.length > 0
+                          ? t("movies.bookmarksAddedCount", { n: bmMemberIds.length })
+                          : t("movies.bookmarksAdd")}
+                      </Btn>
+                      {bmOpen && (
+                        <Glass className="mv-bookmark-pop" onClick={(e) => e.stopPropagation()}>
+                          {bmLists.length === 0 && (
+                            <div className="muted-sm">{t("movies.bookmarksEmpty")}</div>
+                          )}
+                          {bmLists.map((l) => (
+                            <label key={l.id} className="mv-bookmark-row">
+                              <input
+                                type="checkbox"
+                                checked={bmMemberIds.includes(l.id)}
+                                disabled={bmBusy}
+                                onChange={() => void toggleBookmarkList(l.id)}
+                              />
+                              <span>{l.name}</span>
+                            </label>
+                          ))}
+                          <div className="mv-bookmark-new">
+                            <input
+                              className="text-input"
+                              placeholder={t("movies.bookmarksNewPlaceholder")}
+                              value={bmNewName}
+                              onChange={(e) => setBmNewName(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") void createBookmarkList();
+                              }}
+                            />
+                            <IconBtn
+                              icon={Plus}
+                              title={t("movies.bookmarksCreate")}
+                              disabled={bmBusy || !bmNewName.trim()}
+                              onClick={() => void createBookmarkList()}
+                            />
+                          </div>
+                        </Glass>
+                      )}
+                    </div>
                   </div>
 
                   {/* Личная оценка 1–10 + сброс случайной оценки */}

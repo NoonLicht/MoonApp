@@ -1281,7 +1281,19 @@
     "prevImage": "Anterior",
     "nextImage": "Siguiente",
     "photoOf": "{i} / {n}",
-    "providersMore": "+{n} más"
+    "providersMore": "+{n} más",
+    "tab_bookmarks": "Marcadores",
+    "bookmarksAdd": "A marcadores",
+    "bookmarksAddedCount": "En marcadores ({n})",
+    "bookmarksEmpty": "Aún no hay carpetas — cree una abajo.",
+    "bookmarksNewPlaceholder": "Nombre de la nueva carpeta",
+    "bookmarksCreate": "Crear",
+    "bookmarksTabEmpty": "Aún no hay marcadores — cree su primera carpeta arriba y añada películas/series desde la ficha del título.",
+    "bookmarksListEmpty": "Esta carpeta está vacía.",
+    "bookmarksRename": "Renombrar",
+    "bookmarksDeleteList": "Eliminar carpeta",
+    "bookmarksDeleteConfirm": "¿Eliminar la carpeta «{name}» junto con todo su contenido?",
+    "bookmarksRemoveItem": "Quitar de la carpeta"
   },
   "moviesSettings": {
     "language": "Idioma de metadatos",

@@ -1413,7 +1413,19 @@
     "trackerPreset_rutracker": "RuTracker (sign-in required)",
     "trackerPreset_rutor": "RuTor (no sign-in)",
     "trackerPresetSwitched": "Tracker switched",
-    "trackerNoLoginNeeded": "This tracker needs no sign-in: search and .torrent files work anonymously"
+    "trackerNoLoginNeeded": "This tracker needs no sign-in: search and .torrent files work anonymously",
+    "tab_bookmarks": "Bookmarks",
+    "bookmarksAdd": "Add to bookmarks",
+    "bookmarksAddedCount": "In bookmarks ({n})",
+    "bookmarksEmpty": "No folders yet — create one below.",
+    "bookmarksNewPlaceholder": "New folder name",
+    "bookmarksCreate": "Create",
+    "bookmarksTabEmpty": "No bookmarks yet — create your first folder above and add movies/shows right from the title card.",
+    "bookmarksListEmpty": "This folder is empty.",
+    "bookmarksRename": "Rename",
+    "bookmarksDeleteList": "Delete folder",
+    "bookmarksDeleteConfirm": "Delete folder «{name}» along with everything in it?",
+    "bookmarksRemoveItem": "Remove from folder"
   },
   "moviesSettings": {
     "language": "Metadata language",

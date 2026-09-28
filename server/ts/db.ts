@@ -248,6 +248,16 @@ const tables: Record<string, Table> = {
   ),
   // Личная оценка 1–10 (одна запись на тайтл).
   media_ratings: new Table(["kind", "tmdb_id", "title", "rating", "updated_at"], "-updated_at"),
+  // Свои закладки (папки) — в отличие от watchlist (один статус на тайтл на
+  // ВСЁ приложение), здесь пользователь сам заводит любое число именованных
+  // списков ("Пересмотреть", "Посоветовать другу" и т.п.), и один тайтл может
+  // быть сразу в нескольких. bookmark_lists — сами папки, bookmark_items —
+  // связь папка↔тайтл (list_id ссылается на id из bookmark_lists).
+  media_bookmark_lists: new Table(["name", "created_at"], "-created_at"),
+  media_bookmark_items: new Table(
+    ["list_id", "kind", "tmdb_id", "title", "poster", "year", "added_at"],
+    "-added_at",
+  ),
   // Статистика просмотров: каждая запись — факт просмотра/прогресс тайтла.
   // genres/cast — JSON-строки массивов (жанры и главные актёры из TMDB),
   // minutes — потраченные минуты (runtime × доля прогресса), для «часов просмотра».
@@ -863,6 +873,70 @@ export const stmts = {
       run(() =>
         tables.media_ratings.deleteWhere((r) => r.kind === kind && r.tmdb_id === Number(tmdb_id)),
       ),
+  },
+  // ---- Фильмы и сериалы: свои закладки (папки) ----
+  mbListAll: { all: () => tables.media_bookmark_lists.all() },
+  mbListCreate: {
+    run: (name: Value) => run(() => tables.media_bookmark_lists.insert([name, now()])),
+  },
+  mbListRename: {
+    run: (id: Value, name: Value) =>
+      run(() => tables.media_bookmark_lists.updateWhere((r) => r.id === Number(id), { name })),
+  },
+  mbListDelete: {
+    run: (id: Value) =>
+      run(() => {
+        tables.media_bookmark_lists.delete(Number(id));
+        tables.media_bookmark_items.deleteWhere((r) => r.list_id === Number(id));
+      }),
+  },
+  /** Все элементы всех папок сразу — страница сама группирует по list_id
+   *  (папок обычно немного, отдельный запрос на каждую не нужен). */
+  mbItemAll: { all: () => tables.media_bookmark_items.all() },
+  mbItemAllFor: {
+    all: (list_id: Value) =>
+      tables.media_bookmark_items.rows.filter((r) => r.list_id === Number(list_id)),
+  },
+  mbItemHas: {
+    get: (list_id: Value, kind: Value, tmdb_id: Value) =>
+      tables.media_bookmark_items.rows.find(
+        (r) => r.list_id === Number(list_id) && r.kind === kind && r.tmdb_id === Number(tmdb_id),
+      ) || null,
+  },
+  mbItemAdd: {
+    run: (list_id: Value, kind: Value, tmdb_id: Value, patch: Value) =>
+      run(() => {
+        const lid = Number(list_id);
+        const tid = Number(tmdb_id);
+        const existing = tables.media_bookmark_items.rows.find(
+          (r) => r.list_id === lid && r.kind === kind && r.tmdb_id === tid,
+        );
+        if (existing) return { changes: 0 };
+        return tables.media_bookmark_items.insert([
+          lid,
+          kind,
+          tid,
+          patch.title || "",
+          patch.poster || "",
+          patch.year || null,
+          now(),
+        ]);
+      }),
+  },
+  mbItemRemove: {
+    run: (list_id: Value, kind: Value, tmdb_id: Value) =>
+      run(() =>
+        tables.media_bookmark_items.deleteWhere(
+          (r) => r.list_id === Number(list_id) && r.kind === kind && r.tmdb_id === Number(tmdb_id),
+        ),
+      ),
+  },
+  /** В каких папках лежит тайтл (для модалки — список id папок с галочками). */
+  mbListsFor: {
+    all: (kind: Value, tmdb_id: Value) =>
+      tables.media_bookmark_items.rows
+        .filter((r) => r.kind === kind && r.tmdb_id === Number(tmdb_id))
+        .map((r) => r.list_id),
   },
   // ---- Фильмы и сериалы: статистика просмотров ----
   msAll: { all: () => tables.media_watch_stats.all() },

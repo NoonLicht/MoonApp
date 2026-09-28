@@ -96,6 +96,8 @@ import type {
   MediaRatingEntry,
   MediaState,
   MediaLibrary,
+  MediaBookmarks,
+  MediaBookmarkList,
   MediaStats,
   MediaStatus,
   TorrentAddResult,
@@ -1778,6 +1780,21 @@ export const api = {
   }) => req<{ ok: boolean; watchlist: MediaWatchlistEntry }>("POST", "/movies/watchlist", p),
   moviesRemoveWatchlist: (kind: MediaKind, id: number) =>
     req<{ ok: boolean }>("DELETE", `/movies/watchlist/${kind}/${id}`),
+  // --- Свои закладки (папки) — в отличие от watchlist их можно завести сколько угодно ---
+  moviesBookmarks: () => req<MediaBookmarks>("GET", "/movies/bookmarks"),
+  moviesBookmarkCreate: (name: string) =>
+    req<{ ok: boolean; list: MediaBookmarkList }>("POST", "/movies/bookmarks", { name }),
+  moviesBookmarkRename: (id: number, name: string) =>
+    req<{ ok: boolean }>("PATCH", `/movies/bookmarks/${id}`, { name }),
+  moviesBookmarkDelete: (id: number) => req<{ ok: boolean }>("DELETE", `/movies/bookmarks/${id}`),
+  moviesBookmarkAddItem: (
+    listId: number,
+    p: { kind: MediaKind; id: number; title: string; poster?: string; year?: number | null },
+  ) => req<{ ok: boolean }>("POST", `/movies/bookmarks/${listId}/items`, p),
+  moviesBookmarkRemoveItem: (listId: number, kind: MediaKind, id: number) =>
+    req<{ ok: boolean }>("DELETE", `/movies/bookmarks/${listId}/items/${kind}/${id}`),
+  moviesBookmarkState: (kind: MediaKind, id: number) =>
+    req<{ lists: number[] }>("GET", `/movies/bookmarks/state/${kind}/${id}`),
   moviesRate: (p: { kind: MediaKind; id: number; title?: string; rating: number }) =>
     req<{ ok: boolean; rating: MediaRatingEntry | null }>("POST", "/movies/rate", p),
   moviesWatch: (p: {

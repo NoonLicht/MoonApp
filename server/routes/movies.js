@@ -323,6 +323,87 @@ router.delete("/watchlist/:kind/:id", (req, res) => {
   }
 });
 
+/**
+ * Свои закладки (папки) — в отличие от watchlist (один статус на тайтл на
+ * всё приложение) пользователь заводит любое число именованных списков, и
+ * один тайтл может лежать сразу в нескольких.
+ *
+ *  GET    /bookmarks                    — все папки + все элементы разом
+ *  POST   /bookmarks                    — создать папку { name }
+ *  PATCH  /bookmarks/:id                — переименовать { name }
+ *  DELETE /bookmarks/:id                — удалить папку (и все её элементы)
+ *  POST   /bookmarks/:id/items          — добавить тайтл { kind, id, title, poster, year }
+ *  DELETE /bookmarks/:id/items/:kind/:tmdbId — убрать тайтл из папки
+ *  GET    /bookmarks/state/:kind/:id    — в каких папках (id) лежит тайтл
+ */
+router.get("/bookmarks", (req, res) => {
+  res.json({ lists: stmts.mbListAll.all(), items: stmts.mbItemAll.all() });
+});
+
+router.post("/bookmarks", (req, res) => {
+  try {
+    const name = String(req.body?.name || "").trim().slice(0, 200);
+    if (!name) return res.status(400).json({ error: "bad name", code: "bad_name" });
+    const info = stmts.mbListCreate.run(name);
+    logger.action("movies.bookmarks.create", { id: info.lastInsertRowid, name });
+    res.status(201).json({ ok: true, list: { id: info.lastInsertRowid, name, created_at: Date.now() } });
+  } catch (e) {
+    fail(res, e, "bookmarks_create");
+  }
+});
+
+router.patch("/bookmarks/:id", (req, res) => {
+  try {
+    const name = String(req.body?.name || "").trim().slice(0, 200);
+    if (!name) return res.status(400).json({ error: "bad name", code: "bad_name" });
+    stmts.mbListRename.run(req.params.id, name);
+    logger.action("movies.bookmarks.rename", { id: req.params.id, name });
+    res.json({ ok: true });
+  } catch (e) {
+    fail(res, e, "bookmarks_rename");
+  }
+});
+
+router.delete("/bookmarks/:id", (req, res) => {
+  try {
+    stmts.mbListDelete.run(req.params.id);
+    logger.action("movies.bookmarks.delete", { id: req.params.id });
+    res.json({ ok: true });
+  } catch (e) {
+    fail(res, e, "bookmarks_delete");
+  }
+});
+
+router.post("/bookmarks/:id/items", (req, res) => {
+  try {
+    const kind = tmdb.normKind(req.body?.kind);
+    const id = Number(req.body?.id);
+    if (!Number.isFinite(id) || id <= 0)
+      return res.status(400).json({ error: "bad id", code: "bad_id" });
+    stmts.mbItemAdd.run(req.params.id, kind, id, {
+      title: String(req.body?.title || ""),
+      poster: String(req.body?.poster || ""),
+      year: req.body?.year != null ? Number(req.body.year) : null,
+    });
+    res.status(201).json({ ok: true });
+  } catch (e) {
+    fail(res, e, "bookmarks_add_item");
+  }
+});
+
+router.delete("/bookmarks/:id/items/:kind/:tmdbId", (req, res) => {
+  try {
+    stmts.mbItemRemove.run(req.params.id, tmdb.normKind(req.params.kind), Number(req.params.tmdbId));
+    res.json({ ok: true });
+  } catch (e) {
+    fail(res, e, "bookmarks_remove_item");
+  }
+});
+
+router.get("/bookmarks/state/:kind/:id", (req, res) => {
+  res.json({ lists: stmts.mbListsFor.all(tmdb.normKind(req.params.kind), Number(req.params.id)) });
+});
+
 /** Оценка 1–10. rating = 0 → снять оценку. */
 router.post("/rate", (req, res) => {
   try {

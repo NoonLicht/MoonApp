@@ -1281,7 +1281,19 @@
     "prevImage": "السابق",
     "nextImage": "التالي",
     "photoOf": "{i} / {n}",
-    "providersMore": "+{n} أخرى"
+    "providersMore": "+{n} أخرى",
+    "tab_bookmarks": "العلامات المرجعية",
+    "bookmarksAdd": "إضافة إلى العلامات المرجعية",
+    "bookmarksAddedCount": "ضمن العلامات المرجعية ({n})",
+    "bookmarksEmpty": "لا توجد مجلدات بعد — أنشئ واحداً أدناه.",
+    "bookmarksNewPlaceholder": "اسم المجلد الجديد",
+    "bookmarksCreate": "إنشاء",
+    "bookmarksTabEmpty": "لا توجد علامات مرجعية بعد — أنشئ أول مجلد أعلاه وأضف الأفلام/المسلسلات مباشرة من بطاقة العنوان.",
+    "bookmarksListEmpty": "هذا المجلد فارغ حالياً.",
+    "bookmarksRename": "إعادة تسمية",
+    "bookmarksDeleteList": "حذف المجلد",
+    "bookmarksDeleteConfirm": "حذف المجلد «{name}» مع كل محتوياته؟",
+    "bookmarksRemoveItem": "إزالة من المجلد"
   },
   "moviesSettings": {
     "language": "لغة البيانات الوصفية",
