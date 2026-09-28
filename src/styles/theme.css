@@ -358,32 +358,56 @@ body {
 }
 /* Сводка железа (src/components/SystemStatsBar.tsx) — температура CPU/GPU,
    занятая ОЗУ/видеопамять, справа от кнопки диспетчера задач. Живёт глобально
-   в тулбаре (не на странице «Мониторинг»), поэтому цифры мельче и без
-   лишнего декора — просто фон-панели не перегружать. */
+   в тулбаре (не на странице «Мониторинг»), поэтому предельно компактно —
+   маленькие цветные "чипы" вместо подписей, влезают и в узкое окно (именно
+   там полезнее всего увидеть проблему сразу, не листая до «Мониторинга»). */
 .sys-stats {
   display: flex;
   align-items: center;
-  gap: 12px;
-  font-size: 11px;
-  font-family: var(--font-mono);
-  color: var(--text-tertiary);
-  flex-shrink: 1;
-  min-width: 0;
-  overflow: hidden;
-  white-space: nowrap;
+  gap: 4px;
+  flex-shrink: 0;
 }
-.sys-stats-group {
+.sys-chip {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 3px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  line-height: 1.3;
+  white-space: nowrap;
+  border: 1px solid transparent;
 }
-.sys-stats-group svg {
+.sys-chip svg {
   flex-shrink: 0;
-  opacity: 0.7;
 }
-@media (max-width: 900px) {
+/* Цвет = severity (норма/предупреждение/критично), тот же язык, что у Badge
+   tone teal/amber/coral по всему приложению — критичное видно сразу, без
+   чтения цифр. */
+.sys-chip.sev-ok {
+  color: var(--teal);
+  background: var(--teal-soft);
+  border-color: rgba(63, 199, 171, 0.3);
+}
+.sys-chip.sev-warn {
+  color: var(--amber);
+  background: var(--amber-soft);
+  border-color: rgba(240, 166, 61, 0.35);
+}
+.sys-chip.sev-crit {
+  color: var(--coral);
+  background: var(--coral-soft);
+  border-color: rgba(234, 107, 107, 0.4);
+}
+@media (max-width: 640px) {
   .sys-stats {
-    display: none;
+    gap: 3px;
+  }
+  .sys-chip {
+    padding: 2px 5px;
+    font-size: 10px;
   }
 }
 /* Кнопка Диспетчера фоновых задач — левый конец верхней панели, симметрично
