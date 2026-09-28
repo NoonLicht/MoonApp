@@ -445,19 +445,27 @@ export default function MediaDetailModal({
                     >
                       {t("movies.watchTrailer")}
                     </Btn>
-                    <Btn
+                    <IconBtn
                       icon={BookmarkCheck}
+                      active={status === "plan"}
                       onClick={() => void setStatus("plan")}
                       disabled={busy}
-                    >
-                      {t("movies.statusPlan")}
-                    </Btn>
-                    <Btn icon={Eye} onClick={() => void setStatus("watching")} disabled={busy}>
-                      {t("movies.statusWatching")}
-                    </Btn>
-                    <Btn icon={Check} onClick={() => void markWatched()} disabled={busy}>
-                      {t("movies.statusWatched")}
-                    </Btn>
+                      title={t("movies.statusPlan")}
+                    />
+                    <IconBtn
+                      icon={Eye}
+                      active={status === "watching"}
+                      onClick={() => void setStatus("watching")}
+                      disabled={busy}
+                      title={t("movies.statusWatching")}
+                    />
+                    <IconBtn
+                      icon={Check}
+                      active={status === "watched"}
+                      onClick={() => void markWatched()}
+                      disabled={busy}
+                      title={t("movies.statusWatched")}
+                    />
                     {status && (
                       <Btn icon={X} onClick={() => void removeFromList()} disabled={busy}>
                         {t("movies.removeFromList")}
