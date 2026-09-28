@@ -9,7 +9,7 @@ import crypto from "crypto";
 import fs from "fs";
 import config from "./config";
 import logger from "./logger";
-import { encryptSecret, decryptSecret } from "./security";
+import { encryptSecret, decryptSecret, reencryptIfLegacy } from "./security";
 
 const { FILES } = config;
 
@@ -43,6 +43,29 @@ function readAll(): StoredEntry[] {
 
 function writeAll(entries: StoredEntry[]): void {
   fs.writeFileSync(FILES.passwordVault, JSON.stringify(entries, null, 2), "utf8");
+}
+
+/**
+ * Разовая (идемпотентная) миграция паролей, зашифрованных старым
+ * захардкоженным резервным ключом (см. security.ts →
+ * LEGACY_DEV_KEY_DO_NOT_USE_FOR_ENCRYPTION — тот литерал виден в открытом
+ * репозитории на GitHub) на текущий безопасный ключ. Вызывается из
+ * server/ts/index.ts при старте.
+ */
+export function migrateLegacyEncryption(): number {
+  const all = readAll();
+  let changed = 0;
+  for (const e of all) {
+    const next = reencryptIfLegacy(e.passwordEnc);
+    if (next == null) continue;
+    e.passwordEnc = next;
+    changed++;
+  }
+  if (changed) {
+    writeAll(all);
+    logger.info("passwordVault.migrate_legacy_encryption", { changed });
+  }
+  return changed;
 }
 
 /** Список без паролей — для отображения таблицы. */

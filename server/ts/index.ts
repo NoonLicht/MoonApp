@@ -18,6 +18,8 @@ import { db, stmts } from "./db";
 import * as backups from "./backup";
 import settings from "./settings";
 import * as monitor from "./monitor";
+import * as security from "./security";
+import * as passwordVault from "./passwordVault";
 import * as winget from "./winget";
 import * as proxySubs from "./proxySubscriptions";
 import * as tgws from "./tgwsproxy";
@@ -313,6 +315,22 @@ function createApp(): express.Express {
 
   // LibreHardwareMonitor запускается сам, если это включено в настройках и он установлен.
   monitor.autoStartLhmIfConfigured();
+
+  // Разовая (идемпотентная) миграция секретов/паролей со старого захардкоженного
+  // резервного AES-ключа (был виден в открытом репозитории на GitHub) на
+  // текущий случайный/safeStorage — см. security.ts → migrateLegacySecrets,
+  // passwordVault.ts → migrateLegacyEncryption. Дёшево гонять на каждом
+  // старте: уже мигрированные записи просто не расшифровываются старым
+  // ключом и пропускаются.
+  try {
+    const migratedSecrets = security.migrateLegacySecrets();
+    const migratedPasswords = passwordVault.migrateLegacyEncryption();
+    if (migratedSecrets || migratedPasswords) {
+      logger.info("security.migration_done", { migratedSecrets, migratedPasswords });
+    }
+  } catch (e) {
+    logger.warn("security.migration_failed", { error: (e as Error).message });
+  }
 
   // tgws.autoStart: локальный MTProto-прокси для Telegram Desktop (страница
   // Bypass). Поднимаем без ожидания — старт приложения не должен ждать чужой

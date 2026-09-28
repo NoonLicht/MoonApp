@@ -35,21 +35,42 @@ function getElectronSafeStorage(): SafeStorageLike | null {
   }
 }
 
+// ВНИМАНИЕ: раньше здесь был захардкоженный литерал "dev-master-key-not-for-prod"
+// как постоянный резервный ключ (не только dev-заглушка на случай отсутствия
+// settings) — а исходники публичны на GitHub, то есть любой мог им
+// расшифровать чужой storage/secrets.json или password-vault.json, если
+// приложение когда-либо шифровало данные не через safeStorage (Electron/DPAPI),
+// а этим AES-резервом (standalone-запуск, тесты, ранний старт). Теперь это
+// используется ТОЛЬКО для миграции уже существующих данных на новый случайный
+// ключ (см. reencryptIfLegacy/migrateLegacySecrets ниже) — для шифрования
+// новых данных больше не применяется никогда.
+const LEGACY_DEV_KEY_DO_NOT_USE_FOR_ENCRYPTION = "dev-master-key-not-for-prod";
+
 function getMasterKey(): Buffer {
-  // Приоритет: env-переменная → мастер-ключ из настроек (advanced.masterKey) →
-  // dev-ключ (только для standalone-запуска без Electron, небезопасно!).
+  // Приоритет: env-переменная → мастер-ключ из настроек (advanced.masterKey,
+  // при первом обращении генерируется случайно и сохраняется — см. ниже).
   const fromEnv = process.env.MOONAPP_MASTER_KEY;
   if (fromEnv) return crypto.createHash("sha256").update(fromEnv).digest();
   try {
     // Динамический require: на раннем старте settings может быть не готов.
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const settings = require("./settings") as { get(key: string): any };
-    const fromSettings = String(settings.get("advanced").masterKey || "").trim();
-    if (fromSettings) return crypto.createHash("sha256").update(fromSettings).digest();
+    const settings = require("./settings") as { get(key: string): any; set(patch: any): any };
+    const adv = settings.get("advanced") || {};
+    let key = String(adv.masterKey || "").trim();
+    if (!key) {
+      // Первое обращение без заданного ключа (standalone-запуск без Electron/
+      // safeStorage) — генерируем случайный и сохраняем НАВСЕГДА в settings.json,
+      // а не берём предсказуемый литерал из открытого кода.
+      key = crypto.randomBytes(32).toString("hex");
+      settings.set({ advanced: { masterKey: key } });
+    }
+    return crypto.createHash("sha256").update(key).digest();
   } catch {
-    /* settings может быть недоступен на раннем старте — идём в dev-ключ */
+    /* settings совсем недоступен (сверхранний старт) — временный резерв ниже,
+       НЕ постоянное состояние: как только settings поднимется, следующий же
+       вызов сгенерирует и сохранит настоящий случайный ключ. */
   }
-  return crypto.createHash("sha256").update("dev-master-key-not-for-prod").digest();
+  return crypto.createHash("sha256").update(LEGACY_DEV_KEY_DO_NOT_USE_FOR_ENCRYPTION).digest();
 }
 
 const ALGO = "aes-256-gcm";
@@ -89,6 +110,58 @@ export function decryptSecret(token: unknown): string {
   }
   if (token.startsWith("__aes__")) return aesDecrypt(token.slice(7));
   throw new Error("unknown secret format");
+}
+
+/** Расшифровка СТАРЫМ захардкоженным ключом — только для миграции ниже,
+ *  никогда для обычного decryptSecret. */
+function legacyAesDecrypt(token: string): string | null {
+  try {
+    const key = crypto.createHash("sha256").update(LEGACY_DEV_KEY_DO_NOT_USE_FOR_ENCRYPTION).digest();
+    const [ivB, tagB, dataB] = token.split(".");
+    const decipher = crypto.createDecipheriv(ALGO, key, Buffer.from(ivB, "base64"));
+    decipher.setAuthTag(Buffer.from(tagB, "base64"));
+    return Buffer.concat([decipher.update(Buffer.from(dataB, "base64")), decipher.final()]).toString(
+      "utf8",
+    );
+  } catch {
+    return null; // не тот ключ (уже перешифровано/safeStorage) — не легаси, пропускаем
+  }
+}
+
+/**
+ * Если токен зашифрован СТАРЫМ захардкоженным резервным ключом — расшифровывает
+ * им и перешифровывает текущим (случайным/safeStorage) путём. Иначе — null
+ * (нечего мигрировать, уже безопасно). Используется и для secrets.json
+ * (migrateLegacySecrets ниже), и для password-vault.json
+ * (server/ts/passwordVault.ts → migrateLegacyEncryption).
+ */
+export function reencryptIfLegacy(token: string): string | null {
+  if (!token.startsWith("__aes__")) return null;
+  const plain = legacyAesDecrypt(token.slice(7));
+  if (plain == null) return null;
+  return encryptSecret(plain);
+}
+
+/**
+ * Разовая (по факту — идемпотентная, безопасно гонять при каждом старте)
+ * миграция секретов провайдеров/TMDB со старого захардкоженного ключа
+ * (см. LEGACY_DEV_KEY_DO_NOT_USE_FOR_ENCRYPTION) на текущий. Вызывается из
+ * server/ts/index.ts при старте.
+ */
+export function migrateLegacySecrets(): number {
+  const all = readSecrets();
+  let changed = 0;
+  for (const name of Object.keys(all)) {
+    const next = reencryptIfLegacy(all[name]);
+    if (next == null) continue;
+    all[name] = next;
+    changed++;
+  }
+  if (changed) {
+    writeSecrets(all);
+    logger.info("security.migrate_legacy_secrets", { changed });
+  }
+  return changed;
 }
 
 // secrets.json — тут зашифрованные ключи API: { providerName: "<encrypted>", ... }
