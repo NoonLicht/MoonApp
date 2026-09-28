@@ -27,6 +27,7 @@ import { initTelemetry, setCurrentPage } from "@/lib/telemetry";
 import ProxyPanel from "@/pages/bypass/parts/ProxyPanel";
 import TaskManagerPanel from "@/components/TaskManagerPanel";
 import WelcomeModal from "@/components/WelcomeModal";
+import SystemStatsBar from "@/components/SystemStatsBar";
 import { api } from "@/api/client";
 import { PAGES } from "@/app/navigation";
 import type { PageId } from "@/app/navigation";
@@ -328,6 +329,7 @@ function Shell({
               >
                 <ListChecks size={15} />
               </button>
+              <SystemStatsBar />
             </div>
             <div className="tb-center">
               <div className="tb-title">

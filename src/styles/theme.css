@@ -354,6 +354,37 @@ body {
   min-width: 0;
   display: flex;
   align-items: center;
+  gap: 10px;
+}
+/* Сводка железа (src/components/SystemStatsBar.tsx) — температура CPU/GPU,
+   занятая ОЗУ/видеопамять, справа от кнопки диспетчера задач. Живёт глобально
+   в тулбаре (не на странице «Мониторинг»), поэтому цифры мельче и без
+   лишнего декора — просто фон-панели не перегружать. */
+.sys-stats {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--text-tertiary);
+  flex-shrink: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.sys-stats-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.sys-stats-group svg {
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+@media (max-width: 900px) {
+  .sys-stats {
+    display: none;
+  }
 }
 /* Кнопка Диспетчера фоновых задач — левый конец верхней панели, симметрично
    кнопкам справа (папка приложения/прокси/тема). См. TaskManagerPanel.tsx. */
