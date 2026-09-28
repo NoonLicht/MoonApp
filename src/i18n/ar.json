@@ -1183,7 +1183,7 @@
     "seek": "موضع التشغيل"
   },
   "movies": {
-    "title": "الأفلام",
+    "title": "الكتالوج",
     "movie": "فيلم",
     "movies": "أفلام",
     "series": "مسلسل",
@@ -1300,7 +1300,9 @@
     "seasonN": "الموسم {n}",
     "episodeN": "الحلقة {n}",
     "seasonEpisodeShort": "م{s} · ح{e}",
-    "seasonShortN": "م{n}"
+    "seasonShortN": "م{n}",
+    "filterAll": "الكل",
+    "bookmarksAddToList": "إلى «{name}»"
   },
   "moviesSettings": {
     "language": "لغة البيانات الوصفية",

@@ -141,7 +141,6 @@
   inset: 0;
   background-size: cover;
   background-position: center 25%;
-  transform: scale(1.03);
 }
 .mv-hero-shade {
   position: absolute;
@@ -508,7 +507,7 @@
 }
 .mv-library-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
   gap: 12px;
 }
 .mv-lib-card {
@@ -517,9 +516,12 @@
   padding: 12px;
   align-items: flex-start;
 }
+/* Ширина считается ОТ высоты через aspect-ratio (не фиксированная 76px) —
+   постер всегда виден целиком (object-fit:contain), не обрезается по бокам. */
 .mv-lib-art {
-  width: 76px;
-  height: 112px;
+  height: 132px;
+  width: auto;
+  aspect-ratio: 2 / 3;
   flex: 0 0 auto;
   border-radius: 10px;
   overflow: hidden;
@@ -535,7 +537,7 @@
 .mv-lib-art img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
 }
 .mv-lib-info {
   display: flex;
@@ -949,7 +951,10 @@
   justify-content: center;
   cursor: pointer;
   flex-shrink: 0;
-  transition: background-color 0.12s, color 0.12s, border-color 0.12s;
+  transition:
+    background-color 0.12s,
+    color 0.12s,
+    border-color 0.12s;
 }
 .mv-progress-dot:hover:not(:disabled) {
   border-color: var(--amber);

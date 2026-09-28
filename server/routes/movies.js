@@ -305,7 +305,10 @@ router.post("/watchlist", (req, res) => {
     if (req.body?.watchedEpisode != null)
       patch.watched_episode = Math.max(0, Math.round(Number(req.body.watchedEpisode)) || 0);
     stmts.mwUpsert.run(kind, id, patch);
-    // «Просмотрено» — сразу фиксируем факт просмотра в статистике.
+    // «Просмотрено» — сразу фиксируем факт просмотра в статистике. Обратное:
+    // статус УБРАЛИ с "просмотрено" (перевели обратно в "смотрю"/"в планах") —
+    // запись статистики (часы/жанры/актёры) нужно снять, иначе тайтл навсегда
+    // остаётся "просмотренным" в статистике, даже когда в списке это уже не так.
     if (status === "watched") {
       stmts.msUpsert.run(kind, id, {
         title: String(req.body?.title || ""),
@@ -313,6 +316,8 @@ router.post("/watchlist", (req, res) => {
         runtime: req.body?.runtime != null ? Number(req.body.runtime) : null,
         progress: 1,
       });
+    } else {
+      stmts.msDelete.run(kind, id);
     }
     logger.action("movies.watchlist_set", { kind, id, status });
     res.json({ ok: true, watchlist: stmts.mwGet.get(kind, id) });

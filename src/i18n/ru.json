@@ -1181,7 +1181,7 @@
     "seek": "Позиция воспроизведения"
   },
   "movies": {
-    "title": "Фильмы",
+    "title": "Каталог",
     "movie": "Фильм",
     "movies": "Фильмы",
     "series": "Сериал",
@@ -1432,7 +1432,9 @@
     "seasonN": "Сезон {n}",
     "episodeN": "Серия {n}",
     "seasonEpisodeShort": "С{s} · Э{e}",
-    "seasonShortN": "С{n}"
+    "seasonShortN": "С{n}",
+    "filterAll": "Все",
+    "bookmarksAddToList": "В «{name}»"
   },
   "moviesSettings": {
     "language": "Язык метаданных",

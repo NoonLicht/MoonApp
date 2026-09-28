@@ -15,6 +15,7 @@ import { useI18n } from "@/app/i18n";
 import { api } from "@/api/client";
 import { imgCssUrl } from "@/pages/movies/lib/mediaImg";
 import MediaCard from "@/pages/movies/parts/MediaCard";
+import type { MediaCardProps } from "@/pages/movies/parts/MediaCard";
 import type { MediaKind, MediaSummary, MediaListResult, MediaGenre } from "@/api/types";
 
 /**
@@ -30,6 +31,8 @@ interface MediaCatalogProps {
   reloadNonce: number;
   /** Открыть полный список подборки (плитка «Все» в конце карусели). */
   onSeeAll?: (category: string, title: string) => void;
+  /** Доп. пункты контекстного меню карточки (правая кнопка) — см. MediaCard. */
+  menuExtra?: MediaCardProps["menuExtra"];
 }
 
 /** Одна карточка тайтла в карусели (общая разметка — components/media/MediaCard). */
@@ -68,6 +71,7 @@ function MediaRow({
   onSelect,
   onSeeAll,
   category,
+  menuExtra,
 }: {
   title: string;
   items: MediaSummary[];
@@ -76,6 +80,7 @@ function MediaRow({
   onSeeAll?: (category: string, title: string) => void;
   /** Идентификатор подборки для плитки «Все» (popular, top_rated, genre:28…). */
   category?: string;
+  menuExtra?: MediaCardProps["menuExtra"];
 }) {
   const { t } = useI18n();
   const railRef = useRef<HTMLDivElement | null>(null);
@@ -153,6 +158,7 @@ function MediaRow({
               onSelect={onSelect}
               showScore
               showKind
+              menuExtra={menuExtra}
             />
           ))}
         {!loading && onSeeAll && category && items.length > 0 && (
@@ -182,7 +188,13 @@ export function mediaErrorText(
   };
 }
 
-export default function MediaCatalog({ kind, onSelect, reloadNonce, onSeeAll }: MediaCatalogProps) {
+export default function MediaCatalog({
+  kind,
+  onSelect,
+  reloadNonce,
+  onSeeAll,
+  menuExtra,
+}: MediaCatalogProps) {
   const { t } = useI18n();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<{
@@ -337,6 +349,7 @@ export default function MediaCatalog({ kind, onSelect, reloadNonce, onSeeAll }: 
           onSelect={onSelect}
           category={`genre:${genre}`}
           onSeeAll={onSeeAll}
+          menuExtra={menuExtra}
         />
       ) : (
         <>
@@ -347,6 +360,7 @@ export default function MediaCatalog({ kind, onSelect, reloadNonce, onSeeAll }: 
             onSelect={onSelect}
             category="trending"
             onSeeAll={onSeeAll}
+            menuExtra={menuExtra}
           />
           <MediaRow
             title={t("movies.popular")}
@@ -355,6 +369,7 @@ export default function MediaCatalog({ kind, onSelect, reloadNonce, onSeeAll }: 
             onSelect={onSelect}
             category="popular"
             onSeeAll={onSeeAll}
+            menuExtra={menuExtra}
           />
           <MediaRow
             title={t("movies.topRated")}
@@ -363,6 +378,7 @@ export default function MediaCatalog({ kind, onSelect, reloadNonce, onSeeAll }: 
             onSelect={onSelect}
             category="top_rated"
             onSeeAll={onSeeAll}
+            menuExtra={menuExtra}
           />
           <MediaRow
             title={upcomingTitle}
@@ -371,6 +387,7 @@ export default function MediaCatalog({ kind, onSelect, reloadNonce, onSeeAll }: 
             onSelect={onSelect}
             category={upcomingCategory}
             onSeeAll={onSeeAll}
+            menuExtra={menuExtra}
           />
         </>
       )}

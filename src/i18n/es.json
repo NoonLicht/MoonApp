@@ -1183,7 +1183,7 @@
     "seek": "Posición de reproducción"
   },
   "movies": {
-    "title": "Películas",
+    "title": "Catálogo",
     "movie": "Película",
     "movies": "Películas",
     "series": "Serie",
@@ -1300,7 +1300,9 @@
     "seasonN": "Temporada {n}",
     "episodeN": "Episodio {n}",
     "seasonEpisodeShort": "T{s} · E{e}",
-    "seasonShortN": "T{n}"
+    "seasonShortN": "T{n}",
+    "filterAll": "Todos",
+    "bookmarksAddToList": "A «{name}»"
   },
   "moviesSettings": {
     "language": "Idioma de metadatos",

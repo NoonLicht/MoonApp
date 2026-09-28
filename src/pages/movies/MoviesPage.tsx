@@ -70,6 +70,7 @@ export default function MoviesPage() {
   const [status, setStatus] = useState<MediaStatus | null>(null);
   const [kind, setKind] = useState<MediaKind>("movie");
   const [view, setView] = useState<ViewId>("catalog");
+  const [libFilter, setLibFilter] = useState<MediaWatchStatus | "all">("all");
   const [reloadNonce, setReloadNonce] = useState(0);
 
   const [query, setQuery] = useState("");
@@ -272,8 +273,102 @@ export default function MoviesPage() {
     [loadLibrary],
   );
 
+  /**
+   * Доп. пункты контекстного меню карточки тайтла (правая кнопка) — статус
+   * просмотра и добавление в закладки прямо из каталога/карусели/поиска, без
+   * открытия карточки тайтла. Меню плоское (без подменю), поэтому пункты
+   * закладок собираются из уже загруженного bookmarks.lists (обновляется той
+   * же loadBookmarks, что и вкладка «Закладки»).
+   */
+  const cardMenuExtra = useCallback(
+    (item: MediaSummary) => [
+      { separator: true },
+      {
+        label: t("movies.statusPlan"),
+        icon: Bookmark,
+        onClick: () =>
+          void api
+            .moviesSetWatchlist({ kind: item.kind, id: item.id, title: item.title, status: "plan" })
+            .then(loadLibrary),
+      },
+      {
+        label: t("movies.statusWatching"),
+        icon: ListVideo,
+        onClick: () =>
+          void api
+            .moviesSetWatchlist({
+              kind: item.kind,
+              id: item.id,
+              title: item.title,
+              status: "watching",
+            })
+            .then(loadLibrary),
+      },
+      {
+        label: t("movies.statusWatched"),
+        icon: CheckIcon,
+        onClick: () =>
+          void api
+            .moviesSetWatchlist({
+              kind: item.kind,
+              id: item.id,
+              title: item.title,
+              status: "watched",
+            })
+            .then(loadLibrary),
+      },
+      { separator: true },
+      ...(bookmarks?.lists || []).map((l) => ({
+        label: t("movies.bookmarksAddToList", { name: l.name }),
+        icon: Bookmark,
+        onClick: () =>
+          void api
+            .moviesBookmarkAddItem(l.id, {
+              kind: item.kind,
+              id: item.id,
+              title: item.title,
+              poster: item.poster || "",
+              year: item.year,
+            })
+            .then(loadBookmarks),
+      })),
+      {
+        label: t("movies.bookmarksCreate"),
+        icon: Plus,
+        onClick: () => {
+          const name = window.prompt(t("movies.bookmarksNewPlaceholder"));
+          if (!name?.trim()) return;
+          void api
+            .moviesBookmarkCreate(name.trim())
+            .then((r) =>
+              api.moviesBookmarkAddItem(r.list.id, {
+                kind: item.kind,
+                id: item.id,
+                title: item.title,
+                poster: item.poster || "",
+                year: item.year,
+              }),
+            )
+            .then(loadBookmarks);
+        },
+      },
+    ],
+    [t, bookmarks, loadLibrary, loadBookmarks],
+  );
+
   usePageToolbar(
     <div className="mv-toolbar">
+      {/* Обновить — левее всего остального в тулбаре страницы (в самой левой
+          части экрана живёт только глобальная кнопка диспетчера задач —
+          App.tsx, tb-side-left; тулбар страницы рендерится в соседней,
+          центральной зоне, tb-dynamic, и левее самого себя сдвинуться не
+          может — это ближайшая к ней позиция). */}
+      <Btn
+        icon={RefreshCw}
+        onClick={() => void refreshAll()}
+        disabled={busy}
+        title={t("movies.refresh")}
+      />
       {/* Тип медиа: фильмы / сериалы */}
       <div className="mv-seg">
         <button
@@ -343,13 +438,6 @@ export default function MoviesPage() {
         clearTitle={t("movies.clear")}
         onSubmit={() => void runSearch()}
       />
-
-      <Btn
-        icon={RefreshCw}
-        onClick={() => void refreshAll()}
-        disabled={busy}
-        title={t("movies.refresh")}
-      />
     </div>,
     [kind, view, query, busy],
   );
@@ -416,6 +504,7 @@ export default function MoviesPage() {
                   key={`${s.kind}-${s.id}`}
                   item={s}
                   onSelect={(k, id, summary) => setDetail({ kind: k, id, summary })}
+                  menuExtra={cardMenuExtra}
                 />
               ))}
             </div>
@@ -431,6 +520,7 @@ export default function MoviesPage() {
               title={browse.title}
               onBack={() => setBrowse(null)}
               onSelect={(k, id, s) => setDetail({ kind: k, id, summary: s })}
+              menuExtra={cardMenuExtra}
             />
           ) : (
             <MediaCatalog
@@ -438,17 +528,49 @@ export default function MoviesPage() {
               reloadNonce={reloadNonce}
               onSelect={(k, id, s) => setDetail({ kind: k, id, summary: s })}
               onSeeAll={(category, title) => setBrowse({ category, title })}
+              menuExtra={cardMenuExtra}
             />
           ))}
 
         {/* Мой список: watchlist + статусы */}
         {view === "library" && (
           <div className="mv-library">
+            {library && library.watchlist.length > 0 && (
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                {(
+                  [
+                    ["all", t("movies.filterAll"), library.watchlist.length],
+                    ...(["plan", "watching", "watched"] as MediaWatchStatus[]).map(
+                      (st) =>
+                        [
+                          st,
+                          t(`movies.status${st.charAt(0).toUpperCase()}${st.slice(1)}`),
+                          library.watchlist.filter((e) => e.status === st).length,
+                        ] as const,
+                    ),
+                  ] as const
+                )
+                  .filter(([key, , count]) => key === "all" || count > 0)
+                  .map(([key, label, count]) => (
+                    <button
+                      key={key}
+                      type="button"
+                      className={`chip-toggle${libFilter === key ? " is-active" : ""}`}
+                      onClick={() => setLibFilter(key)}
+                    >
+                      {label} <Badge tone="neutral" mono>{count}</Badge>
+                    </button>
+                  ))}
+              </div>
+            )}
+
             {!library || library.watchlist.length === 0 ? (
               <EmptyHint icon={ListVideo} text={t("movies.libraryEmpty")} />
             ) : (
               <div className="mv-library-grid">
-                {library.watchlist.map((e) => {
+                {library.watchlist
+                  .filter((e) => libFilter === "all" || e.status === libFilter)
+                  .map((e) => {
                   const rating =
                     library.ratings.find((r) => r.kind === e.kind && r.tmdb_id === e.tmdb_id)
                       ?.rating || 0;
@@ -645,7 +767,10 @@ export default function MoviesPage() {
           onClose={() => setDetail(null)}
           onOpenTitle={(k, id) => setDetail({ kind: k, id })}
           onOpenPlayer={(tk, title) => setPlayer({ trailerKey: tk, query: title ?? null })}
-          onChanged={loadLibrary}
+          onChanged={() => {
+            loadLibrary();
+            loadBookmarks();
+          }}
         />
       )}
 

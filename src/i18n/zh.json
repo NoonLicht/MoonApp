@@ -1183,7 +1183,7 @@
     "seek": "播放位置"
   },
   "movies": {
-    "title": "电影",
+    "title": "目录",
     "movie": "电影",
     "movies": "电影",
     "series": "剧集",
@@ -1300,7 +1300,9 @@
     "seasonN": "第 {n} 季",
     "episodeN": "第 {n} 集",
     "seasonEpisodeShort": "S{s} · E{e}",
-    "seasonShortN": "第{n}季"
+    "seasonShortN": "第{n}季",
+    "filterAll": "全部",
+    "bookmarksAddToList": "加入「{name}」"
   },
   "moviesSettings": {
     "language": "元数据语言",

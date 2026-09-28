@@ -1181,7 +1181,7 @@
     "seek": "Playback position"
   },
   "movies": {
-    "title": "Movies",
+    "title": "Catalog",
     "movie": "Movie",
     "movies": "Movies",
     "series": "TV Series",
@@ -1432,7 +1432,9 @@
     "seasonN": "Season {n}",
     "episodeN": "Episode {n}",
     "seasonEpisodeShort": "S{s} · E{e}",
-    "seasonShortN": "S{n}"
+    "seasonShortN": "S{n}",
+    "filterAll": "All",
+    "bookmarksAddToList": "To \"{name}\""
   },
   "moviesSettings": {
     "language": "Metadata language",

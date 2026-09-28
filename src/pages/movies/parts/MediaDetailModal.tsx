@@ -301,6 +301,9 @@ export default function MediaDetailModal({
         });
         setBmMemberIds((ids) => [...ids, listId]);
       }
+      // Иначе вкладка «Закладки» на странице не видела изменений, пока сама
+      // заново не смонтируется — она грузит список один раз при открытии.
+      onChanged();
     } finally {
       setBmBusy(false);
     }
@@ -363,6 +366,7 @@ export default function MediaDetailModal({
         year: details.year,
       });
       setBmMemberIds((ids) => [...ids, r.list.id]);
+      onChanged();
     } finally {
       setBmBusy(false);
     }

@@ -5,6 +5,7 @@ import { useI18n } from "@/app/i18n";
 import { api } from "@/api/client";
 import { mediaErrorText } from "@/pages/movies/parts/MediaCatalog";
 import MediaCard from "@/pages/movies/parts/MediaCard";
+import type { MediaCardProps } from "@/pages/movies/parts/MediaCard";
 import {
   canAutoLoad,
   formatCount,
@@ -33,9 +34,18 @@ interface MediaBrowseProps {
   title: string;
   onBack: () => void;
   onSelect: (kind: MediaKind, id: number, summary?: MediaSummary) => void;
+  /** Доп. пункты контекстного меню карточки (правая кнопка) — см. MediaCard. */
+  menuExtra?: MediaCardProps["menuExtra"];
 }
 
-export default function MediaBrowse({ kind, category, title, onBack, onSelect }: MediaBrowseProps) {
+export default function MediaBrowse({
+  kind,
+  category,
+  title,
+  onBack,
+  onSelect,
+  menuExtra,
+}: MediaBrowseProps) {
   const { t, lang } = useI18n();
   const [items, setItems] = useState<MediaSummary[]>([]);
   const [page, setPage] = useState(1);
@@ -200,7 +210,13 @@ export default function MediaBrowse({ kind, category, title, onBack, onSelect }:
       ) : (
         <div className="mv-browse-grid">
           {items.map((it) => (
-            <MediaCard key={`${it.kind}-${it.id}`} item={it} onSelect={onSelect} showScore />
+            <MediaCard
+              key={`${it.kind}-${it.id}`}
+              item={it}
+              onSelect={onSelect}
+              showScore
+              menuExtra={menuExtra}
+            />
           ))}
         </div>
       )}
