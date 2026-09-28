@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import {
   Search,
-  RefreshCw,
   Film,
   Tv,
   LayoutGrid,
@@ -197,17 +196,6 @@ export default function MoviesPage() {
     loadLibrary();
   }, [loadLibrary]);
 
-  const refreshAll = useCallback(async () => {
-    setBusy(true);
-    try {
-      await api.moviesRefresh();
-    } catch {
-      /* кэш мог не очиститься — не критично */
-    }
-    setReloadNonce((n) => n + 1);
-    setBusy(false);
-  }, []);
-
   const runSearch = useCallback(async () => {
     const q = query.trim();
     if (!q) {
@@ -358,17 +346,6 @@ export default function MoviesPage() {
 
   usePageToolbar(
     <div className="mv-toolbar">
-      {/* Обновить — левее всего остального в тулбаре страницы (в самой левой
-          части экрана живёт только глобальная кнопка диспетчера задач —
-          App.tsx, tb-side-left; тулбар страницы рендерится в соседней,
-          центральной зоне, tb-dynamic, и левее самого себя сдвинуться не
-          может — это ближайшая к ней позиция). */}
-      <Btn
-        icon={RefreshCw}
-        onClick={() => void refreshAll()}
-        disabled={busy}
-        title={t("movies.refresh")}
-      />
       {/* Тип медиа: фильмы / сериалы */}
       <div className="mv-seg">
         <button
