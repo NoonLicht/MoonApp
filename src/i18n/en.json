@@ -1425,7 +1425,13 @@
     "bookmarksRename": "Rename",
     "bookmarksDeleteList": "Delete folder",
     "bookmarksDeleteConfirm": "Delete folder «{name}» along with everything in it?",
-    "bookmarksRemoveItem": "Remove from folder"
+    "bookmarksRemoveItem": "Remove from folder",
+    "watchProgress": "Watch progress",
+    "progressNotStarted": "Not started",
+    "progressBeforeFirst": "Before episode 1",
+    "seasonN": "Season {n}",
+    "episodeN": "Episode {n}",
+    "seasonEpisodeShort": "S{s} · E{e}"
   },
   "moviesSettings": {
     "language": "Metadata language",

@@ -1293,7 +1293,13 @@
     "bookmarksRename": "إعادة تسمية",
     "bookmarksDeleteList": "حذف المجلد",
     "bookmarksDeleteConfirm": "حذف المجلد «{name}» مع كل محتوياته؟",
-    "bookmarksRemoveItem": "إزالة من المجلد"
+    "bookmarksRemoveItem": "إزالة من المجلد",
+    "watchProgress": "تقدّم المشاهدة",
+    "progressNotStarted": "لم يبدأ",
+    "progressBeforeFirst": "قبل الحلقة الأولى",
+    "seasonN": "الموسم {n}",
+    "episodeN": "الحلقة {n}",
+    "seasonEpisodeShort": "م{s} · ح{e}"
   },
   "moviesSettings": {
     "language": "لغة البيانات الوصفية",

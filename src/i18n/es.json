@@ -1293,7 +1293,13 @@
     "bookmarksRename": "Renombrar",
     "bookmarksDeleteList": "Eliminar carpeta",
     "bookmarksDeleteConfirm": "¿Eliminar la carpeta «{name}» junto con todo su contenido?",
-    "bookmarksRemoveItem": "Quitar de la carpeta"
+    "bookmarksRemoveItem": "Quitar de la carpeta",
+    "watchProgress": "Progreso de visionado",
+    "progressNotStarted": "Sin empezar",
+    "progressBeforeFirst": "Antes del episodio 1",
+    "seasonN": "Temporada {n}",
+    "episodeN": "Episodio {n}",
+    "seasonEpisodeShort": "T{s} · E{e}"
   },
   "moviesSettings": {
     "language": "Idioma de metadatos",

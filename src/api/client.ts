@@ -1777,6 +1777,9 @@ export const api = {
     runtime?: number | null;
     genres?: (string | MediaGenre)[];
     status: MediaWatchStatus;
+    /** Прогресс по сериалу — необязательно, не передан = не трогать сохранённое. */
+    watchedSeason?: number;
+    watchedEpisode?: number;
   }) => req<{ ok: boolean; watchlist: MediaWatchlistEntry }>("POST", "/movies/watchlist", p),
   moviesRemoveWatchlist: (kind: MediaKind, id: number) =>
     req<{ ok: boolean }>("DELETE", `/movies/watchlist/${kind}/${id}`),

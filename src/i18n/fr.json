@@ -1293,7 +1293,13 @@
     "bookmarksRename": "Renommer",
     "bookmarksDeleteList": "Supprimer le dossier",
     "bookmarksDeleteConfirm": "Supprimer le dossier « {name} » avec tout son contenu ?",
-    "bookmarksRemoveItem": "Retirer du dossier"
+    "bookmarksRemoveItem": "Retirer du dossier",
+    "watchProgress": "Progression",
+    "progressNotStarted": "Pas commencé",
+    "progressBeforeFirst": "Avant l’épisode 1",
+    "seasonN": "Saison {n}",
+    "episodeN": "Épisode {n}",
+    "seasonEpisodeShort": "S{s} · É{e}"
   },
   "moviesSettings": {
     "language": "Langue des métadonnées",

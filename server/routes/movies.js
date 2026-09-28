@@ -290,14 +290,21 @@ router.post("/watchlist", (req, res) => {
     if (!Number.isFinite(id) || id <= 0)
       return res.status(400).json({ error: "bad id", code: "bad_id" });
     const status = STATUSES.includes(req.body?.status) ? req.body.status : "plan";
-    stmts.mwUpsert.run(kind, id, {
+    const patch = {
       title: String(req.body?.title || ""),
       poster: String(req.body?.poster || ""),
       year: req.body?.year != null ? Number(req.body.year) : null,
       runtime: req.body?.runtime != null ? Number(req.body.runtime) : null,
       genres: JSON.stringify(Array.isArray(req.body?.genres) ? req.body.genres : []),
       status,
-    });
+    };
+    // Прогресс по сезонам/сериям (только сериалы) — необязательный: если не
+    // передан, существующее значение не трогаем (patch просто без этих ключей).
+    if (req.body?.watchedSeason != null)
+      patch.watched_season = Math.max(0, Math.round(Number(req.body.watchedSeason)) || 0);
+    if (req.body?.watchedEpisode != null)
+      patch.watched_episode = Math.max(0, Math.round(Number(req.body.watchedEpisode)) || 0);
+    stmts.mwUpsert.run(kind, id, patch);
     // «Просмотрено» — сразу фиксируем факт просмотра в статистике.
     if (status === "watched") {
       stmts.msUpsert.run(kind, id, {

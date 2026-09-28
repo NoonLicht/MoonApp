@@ -471,6 +471,9 @@ export default function MoviesPage() {
                         <div className="muted-sm">
                           {e.year || "—"}
                           {rating > 0 ? ` · ★ ${rating}` : ""}
+                          {e.kind === "tv" && e.watched_season > 0
+                            ? ` · ${t("movies.seasonEpisodeShort", { s: e.watched_season, e: e.watched_episode })}`
+                            : ""}
                         </div>
                         <div className="mv-lib-status">
                           {(["plan", "watching", "watched"] as MediaWatchStatus[]).map((st) => (

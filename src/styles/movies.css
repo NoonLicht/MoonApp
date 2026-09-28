@@ -883,6 +883,23 @@
   flex-wrap: wrap;
   margin-top: 4px;
 }
+/* Прогресс по сериям (только сериалы) — src/pages/movies/parts/MediaDetailModal.tsx */
+.mv-detail-progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+.mv-progress-select {
+  background-color: var(--track);
+  border: 1px solid var(--glass-border);
+  color: var(--text-primary);
+  border-radius: 11px;
+  padding: 6px 10px;
+  font-family: var(--font-body);
+  font-size: 12.5px;
+}
 
 /* Звёзды 1–10 */
 .mv-stars {

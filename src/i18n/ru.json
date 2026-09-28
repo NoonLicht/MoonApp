@@ -1425,7 +1425,13 @@
     "bookmarksRename": "Переименовать",
     "bookmarksDeleteList": "Удалить папку",
     "bookmarksDeleteConfirm": "Удалить папку «{name}» вместе со всем её содержимым?",
-    "bookmarksRemoveItem": "Убрать из папки"
+    "bookmarksRemoveItem": "Убрать из папки",
+    "watchProgress": "Прогресс просмотра",
+    "progressNotStarted": "Не начато",
+    "progressBeforeFirst": "До первой серии",
+    "seasonN": "Сезон {n}",
+    "episodeN": "Серия {n}",
+    "seasonEpisodeShort": "С{s} · Э{e}"
   },
   "moviesSettings": {
     "language": "Язык метаданных",

@@ -1293,7 +1293,13 @@
     "bookmarksRename": "重命名",
     "bookmarksDeleteList": "删除文件夹",
     "bookmarksDeleteConfirm": "删除文件夹「{name}」及其全部内容？",
-    "bookmarksRemoveItem": "从文件夹中移除"
+    "bookmarksRemoveItem": "从文件夹中移除",
+    "watchProgress": "观看进度",
+    "progressNotStarted": "尚未开始",
+    "progressBeforeFirst": "第一集之前",
+    "seasonN": "第 {n} 季",
+    "episodeN": "第 {n} 集",
+    "seasonEpisodeShort": "S{s} · E{e}"
   },
   "moviesSettings": {
     "language": "元数据语言",

@@ -306,6 +306,40 @@ export default function MediaDetailModal({
     }
   };
 
+  // --- Прогресс просмотра сериала: сезон/серия, на которой остановился ---
+  const [prSeason, setPrSeason] = useState(0);
+  const [prEpisode, setPrEpisode] = useState(0);
+  const [prBusy, setPrBusy] = useState(false);
+  useEffect(() => {
+    setPrSeason(personal?.watchlist?.watched_season || 0);
+    setPrEpisode(personal?.watchlist?.watched_episode || 0);
+  }, [personal]);
+
+  const saveProgress = async (season: number, episode: number) => {
+    if (!details) return;
+    setPrBusy(true);
+    try {
+      await api.moviesSetWatchlist({
+        kind: details.kind,
+        id: details.id,
+        title: details.title,
+        poster: details.poster || "",
+        year: details.year,
+        runtime: details.runtime,
+        genres: details.genres,
+        // Прогресс без статуса означал бы "не в списке" — если тайтла ещё
+        // нет в списке, отметка серии сама переводит его в "смотрю".
+        status: personal?.watchlist?.status || "watching",
+        watchedSeason: season,
+        watchedEpisode: episode,
+      });
+      setPersonal(await api.moviesState(details.kind, details.id));
+      onChanged();
+    } finally {
+      setPrBusy(false);
+    }
+  };
+
   const createBookmarkList = async () => {
     const name = bmNewName.trim();
     if (!name || !details) return;
@@ -436,7 +470,7 @@ export default function MediaDetailModal({
                           : t("movies.bookmarksAdd")}
                       </Btn>
                       {bmOpen && (
-                        <Glass className="mv-bookmark-pop" onClick={(e) => e.stopPropagation()}>
+                        <Glass className="mv-bookmark-pop glass-solid" onClick={(e) => e.stopPropagation()}>
                           {bmLists.length === 0 && (
                             <div className="muted-sm">{t("movies.bookmarksEmpty")}</div>
                           )}
@@ -488,6 +522,58 @@ export default function MediaDetailModal({
                       </button>
                     )}
                   </div>
+
+                  {/* Прогресс по сериям — только у сериалов. episodeCount берём
+                      из seasonList выбранного сезона (у каждого сезона своё
+                      число серий, не общее по сериалу). */}
+                  {details.kind === "tv" && details.seasonList.length > 0 && (
+                    <div className="mv-detail-progress">
+                      <span className="muted-sm">{t("movies.watchProgress")}</span>
+                      <select
+                        className="mv-progress-select"
+                        value={prSeason}
+                        disabled={prBusy}
+                        onChange={(e) => {
+                          const s = Number(e.target.value);
+                          setPrSeason(s);
+                          setPrEpisode(0);
+                          void saveProgress(s, 0);
+                        }}
+                      >
+                        <option value={0}>{t("movies.progressNotStarted")}</option>
+                        {details.seasonList.map((s) => (
+                          <option key={s.number} value={s.number}>
+                            {t("movies.seasonN", { n: s.number })}
+                          </option>
+                        ))}
+                      </select>
+                      {prSeason > 0 && (
+                        <select
+                          className="mv-progress-select"
+                          value={prEpisode}
+                          disabled={prBusy}
+                          onChange={(e) => {
+                            const ep = Number(e.target.value);
+                            setPrEpisode(ep);
+                            void saveProgress(prSeason, ep);
+                          }}
+                        >
+                          {Array.from(
+                            {
+                              length:
+                                (details.seasonList.find((s) => s.number === prSeason)
+                                  ?.episodeCount || 0) + 1,
+                            },
+                            (_, ep) => (
+                              <option key={ep} value={ep}>
+                                {ep === 0 ? t("movies.progressBeforeFirst") : t("movies.episodeN", { n: ep })}
+                              </option>
+                            ),
+                          )}
+                        </select>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

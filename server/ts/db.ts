@@ -243,6 +243,10 @@ const tables: Record<string, Table> = {
       "genres",
       "added_at",
       "updated_at",
+      // Прогресс просмотра сериала (kind="tv"): номер сезона/серии, на которой
+      // остановился. 0 — не отмечено (у фильмов всегда 0, поле не используется).
+      "watched_season",
+      "watched_episode",
     ],
     "-updated_at",
   ),
@@ -838,6 +842,8 @@ export const stmts = {
           patch.genres || "[]",
           now(),
           now(),
+          patch.watched_season || 0,
+          patch.watched_episode || 0,
         ]);
       }),
   },

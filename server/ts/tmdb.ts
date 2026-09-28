@@ -620,6 +620,20 @@ export function toDetails(kind: "movie" | "tv", raw: Raw, region: string) {
     runtime: isTv ? raw?.episode_run_time?.[0] || null : raw?.runtime || null,
     seasons: isTv ? Number(raw?.number_of_seasons) || 0 : 0,
     episodes: isTv ? Number(raw?.number_of_episodes) || 0 : 0,
+    // Количество серий В КАЖДОМ сезоне — нужно, чтобы отметка "просмотрено
+    // до сезона X, серии Y" ограничивала выбор серии реальным числом серий
+    // именно этого сезона, а не общим количеством по всему сериалу. Сезон 0
+    // (спецвыпуски) пропускаем — он не считается в number_of_seasons TMDB.
+    seasonList: isTv
+      ? (raw?.seasons || [])
+          .filter((s: Raw) => Number(s.season_number) > 0)
+          .sort((a: Raw, b: Raw) => Number(a.season_number) - Number(b.season_number))
+          .map((s: Raw) => ({
+            number: Number(s.season_number),
+            episodeCount: Number(s.episode_count) || 0,
+            name: s.name || "",
+          }))
+      : [],
     budget: isTv ? 0 : Number(raw?.budget) || 0,
     revenue: isTv ? 0 : Number(raw?.revenue) || 0,
     genres: (raw?.genres || []).map((g: Raw) => ({ id: g.id, name: g.name })),

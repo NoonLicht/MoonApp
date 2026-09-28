@@ -1064,6 +1064,9 @@ export interface MediaDetails extends MediaSummary {
   runtime: number | null;
   seasons: number;
   episodes: number;
+  /** Число серий в каждом сезоне (сериалы) — для ограничения выбора серии
+   *  реальным числом именно этого сезона, а не общим по сериалу. */
+  seasonList: { number: number; episodeCount: number; name: string }[];
   budget: number;
   revenue: number;
   genres: MediaGenre[];
@@ -1107,6 +1110,10 @@ export interface MediaWatchlistEntry {
   genres: (string | MediaGenre)[];
   added_at: string;
   updated_at: string;
+  /** Прогресс просмотра сериала — номер сезона/серии, на которой остановился
+   *  (0/0 — не отмечено). У фильмов всегда 0. */
+  watched_season: number;
+  watched_episode: number;
 }
 
 /** Личная оценка 1–10. */
