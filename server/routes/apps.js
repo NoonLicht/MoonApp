@@ -1,9 +1,22 @@
 const express = require("express");
 const { stmts } = require("../db");
 const { download, runInstaller } = require("../downloads");
-const winget = require("../winget");
 const comss = require("../comss");
 const logger = require("../logger");
+
+/**
+ * На Windows — winget (server/winget.js). На Linux — server/appStoreLinux.js
+ * (Flatpak/Flathub, с фолбэком на snap) — тот же контракт (seed/search/
+ * install/downloadPackage/indexStatus/readIndex/startIndexing), поэтому весь
+ * остальной код этого файла ниже не знает о платформе вообще. Переменная
+ * называется `winget` по историческим причинам (внутренний префикс ключей
+ * избранного "winget:<id>" завязан на это имя и не переименован специально,
+ * чтобы не потерять уже сохранённые пользователем избранные — это просто
+ * namespace-тег ключа, на функциональность Linux-варианта не влияет).
+ * PKG_SOURCE_LABEL — то, что реально показывается в UI (winget vs flatpak/snap).
+ */
+const winget = process.platform === "win32" ? require("../winget") : require("../appStoreLinux");
+const PKG_SOURCE_LABEL = process.platform === "win32" ? "winget" : "flatpak";
 
 const router = express.Router();
 
@@ -25,8 +38,8 @@ function getItems() {
   const wingetApps = wingetPackages().map((p) => ({
     key: `winget:${p.id}`,
     name: p.name,
-    category: p.category || "winget",
-    source: "winget",
+    category: p.category || PKG_SOURCE_LABEL,
+    source: PKG_SOURCE_LABEL,
     wingetId: p.id,
     version: p.version,
     favorite: favs.has(`winget:${p.id}`),
@@ -68,7 +81,7 @@ router.post("/install", async (req, res) => {
     if (key.startsWith("winget:")) {
       const id = key.slice(7);
       const r = await winget.install(id);
-      res.json({ ok: r.ok, method: "winget", id, tail: r.tail });
+      res.json({ ok: r.ok, method: PKG_SOURCE_LABEL, id, tail: r.tail });
       return;
     }
     if (key.startsWith("catalog:")) {
@@ -94,8 +107,8 @@ router.post("/download", async (req, res) => {
     if (key.startsWith("winget:")) {
       const id = key.slice(7);
       const r = await winget.downloadPackage(id);
-      if (!r.ok) return res.status(500).json({ error: "winget download failed", tail: r.tail });
-      res.json({ ok: true, method: "winget", id, file: r.file, dir: r.dir });
+      if (!r.ok) return res.status(500).json({ error: `${PKG_SOURCE_LABEL} download failed`, tail: r.tail });
+      res.json({ ok: true, method: PKG_SOURCE_LABEL, id, file: r.file, dir: r.dir });
       return;
     }
     if (key.startsWith("catalog:")) {
@@ -123,8 +136,8 @@ router.get("/winget/search", async (req, res) => {
       found.map((p) => ({
         key: `winget:${p.id}`,
         name: p.name,
-        category: "winget",
-        source: "winget",
+        category: PKG_SOURCE_LABEL,
+        source: PKG_SOURCE_LABEL,
         wingetId: p.id,
         version: p.version,
         favorite: favs.has(`winget:${p.id}`),

@@ -65,7 +65,7 @@ export interface PageMeta {
  * страница автоматически появляется и в настройках
  * (см. tests/navigation.test.ts).
  */
-export const PAGES: readonly PageMeta[] = [
+const ALL_PAGES: readonly PageMeta[] = [
   { id: "store", i18n: "nav.store", icon: Store },
   { id: "convert", i18n: "nav.convert", icon: Repeat },
   { id: "compress", i18n: "nav.compress", icon: Gauge },
@@ -88,6 +88,21 @@ export const PAGES: readonly PageMeta[] = [
   { id: "archive", i18n: "nav.archive", icon: Archive },
   { id: "settings", i18n: "nav.settings", icon: Settings2 },
 ];
+
+/**
+ * Страница «Игры» (лаунчер Steam/Epic + запуск .exe) не имеет смысла на
+ * Linux: запуск произвольных .exe без Wine/Proton невозможен, а обнаружение
+ * библиотеки сейчас построено на Windows-путях/реестре. Серверные роуты
+ * (server/ts/games.ts) намеренно не тронуты — скрываем только с фронтенда,
+ * чтобы не показывать нерабочую страницу. window.appBridge.platform — то же
+ * process.platform, что видит main-процесс (см. electron/preload.js).
+ */
+const HIDDEN_ON_LINUX: ReadonlySet<PageId> = new Set(["games"]);
+
+export const PAGES: readonly PageMeta[] =
+  typeof window !== "undefined" && window.appBridge?.platform && window.appBridge.platform !== "win32"
+    ? ALL_PAGES.filter((p) => !HIDDEN_ON_LINUX.has(p.id))
+    : ALL_PAGES;
 
 /**
  * Варианты для селекта «Стартовая страница» в настройках: id страницы +

@@ -1682,7 +1682,15 @@ export const api = {
   },
   screenshotsSaveVideo: (
     blob: Blob,
-    meta: { width?: number; height?: number; durationSec?: number; bitrateMbps?: number },
+    meta: {
+      width?: number;
+      height?: number;
+      durationSec?: number;
+      bitrateMbps?: number;
+      /** Путь к резервному WAV системного звука на Linux (см. audioCaptureLinux.ts)
+       *  — файл уже лежит на диске этой же машины, не загружается заново. */
+      extraAudioPath?: string | null;
+    },
   ) => {
     const fd = new FormData();
     fd.append("file", blob, "rec.webm");
@@ -1690,6 +1698,7 @@ export const api = {
     if (meta.height) fd.append("height", String(meta.height));
     if (meta.durationSec) fd.append("durationSec", String(Math.round(meta.durationSec)));
     if (meta.bitrateMbps) fd.append("bitrateMbps", String(meta.bitrateMbps));
+    if (meta.extraAudioPath) fd.append("extraAudioPath", meta.extraAudioPath);
     return multipart<ScreenshotItem>("/screenshots/video", fd);
   },
   screenshotsDelete: (id: string) => req<{ ok: boolean }>("DELETE", `/screenshots/${id}`),

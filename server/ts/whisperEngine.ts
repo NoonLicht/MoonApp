@@ -578,6 +578,31 @@ async function detectGpu(): Promise<GpuInfo> {
       });
     }
   }
+  // Linux-аналог WMI-фолбэка выше: nvidia-smi уже отработал первым (если карта
+  // NVIDIA — CPU-сборка whisper.cpp сюда обычно не заходит), это чисто для того,
+  // чтобы UI показал имя AMD/Intel адаптера вместо сухого «GPU не найден».
+  if (!devices.length && process.platform === "linux") {
+    const lspci = await runCmd("lspci", ["-nn"], 3000);
+    for (const line of lspci.split(/\r?\n/)) {
+      if (!/VGA compatible controller|3D controller|Display controller/i.test(line)) continue;
+      const name = line.replace(/^[0-9a-f:.]+\s+/i, "").trim();
+      if (!name) continue;
+      const nvidia = /nvidia|geforce|rtx|gtx|quadro/i.test(name);
+      devices.push({
+        vendor: nvidia
+          ? "nvidia"
+          : /amd|radeon/i.test(name)
+            ? "amd"
+            : /intel/i.test(name)
+              ? "intel"
+              : "unknown",
+        name,
+        driver: "",
+        memoryMb: 0,
+        cuda: nvidia,
+      });
+    }
+  }
   const cuda = devices.find((d) => d.cuda) || null;
   const cpu = (() => {
     try {

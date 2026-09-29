@@ -149,10 +149,11 @@ async function getSocksAgent(): Promise<typeof SocksProxyAgent> {
 // --- Константы ---
 
 const BIN_DIR = path.join(DIRS.storage, "singbox");
-const BUNDLED_BIN = path.join(BIN_DIR, "sing-box.exe");
-// Бинарь из комплекта инсталлятора: server/vendor/singbox/sing-box.exe
-// (в собранной сборке — app.asar.unpacked, см. build.asarUnpack).
-const VENDOR_BIN = config.vendorPath("singbox", "sing-box.exe");
+const BUNDLED_BIN = path.join(BIN_DIR, config.binName("sing-box"));
+// Бинарь из комплекта инсталлятора: server/vendor/singbox/sing-box.exe на Windows,
+// server/vendor/singbox/linux/sing-box на Linux/macOS (в собранной сборке —
+// app.asar.unpacked, см. build.asarUnpack).
+const VENDOR_BIN = config.vendorBin("singbox", "sing-box");
 const SB_VER = "1.11.0";
 const SB_URL = `https://github.com/SagerNet/sing-box/releases/download/v${SB_VER}/sing-box-${SB_VER}-windows-amd64.zip`;
 const DEF_PORT = 10808;

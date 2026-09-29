@@ -240,13 +240,23 @@ export function runtimeStatus(): {
   };
 }
 
-/** Порядок провайдеров: cuda → dml (DirectML) → cpu, с откатом на CPU. */
+/**
+ * Порядок провайдеров: cuda → dml (DirectML) → cpu, с откатом на CPU.
+ *
+ * DirectML — обёртка над DirectX 12, существует только на Windows; на Linux
+ * этот провайдер даже не собран в onnxruntime-node, поэтому он и так отсеялся
+ * бы дальше через supportedBackends()/have в providerOrder(). Явный платформенный
+ * guard здесь — чтобы не полагаться только на это неявное совпадение (например,
+ * если пользователь перенёс settings.json со старой Windows-машины, где стоит
+ * pref === "dml").
+ */
 function providerList(pref: string): string[] {
+  const isWindows = process.platform === "win32";
   if (pref === "cpu") return ["cpu"];
   if (pref === "cuda") return ["cuda", "cpu"];
-  if (pref === "dml") return ["dml", "cpu"];
+  if (pref === "dml") return isWindows ? ["dml", "cpu"] : ["cuda", "cpu"];
   if (pref === "tensorrt") return ["tensorrt", "cuda", "cpu"];
-  return ["cuda", "dml", "cpu"];
+  return isWindows ? ["cuda", "dml", "cpu"] : ["cuda", "cpu"];
 }
 
 /**

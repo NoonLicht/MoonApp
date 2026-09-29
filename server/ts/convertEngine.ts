@@ -121,11 +121,16 @@ export function categoryOf(name: unknown): ConvertCategory | null {
 
 // Сюда приложение само ставит FFmpeg (см. installFfmpeg ниже).
 const BIN_DIR = path.join(DIRS.storage, "ffmpeg");
-const BUNDLED_BIN = path.join(BIN_DIR, "ffmpeg.exe");
-// Бинарь из комплекта инсталлятора: server/vendor/ffmpeg/ffmpeg.exe (кладёт
-// scripts/fetch-engines.js, см. build.asarUnpack) — тот же приём, что у
+const FFMPEG_BIN_NAME = process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg";
+const BUNDLED_BIN = path.join(BIN_DIR, FFMPEG_BIN_NAME);
+// Бинарь из комплекта инсталлятора: server/vendor/ffmpeg/ffmpeg.exe на Windows
+// (кладёт scripts/fetch-engines.js, см. build.asarUnpack) — тот же приём, что у
 // yt-dlp/sing-box: ffmpeg работает «из коробки», без скачивания из UI.
-const VENDOR_BIN = config.vendorPath("ffmpeg", "ffmpeg.exe");
+// На Linux используется тот же резолвер, что и у sing-box/yt-dlp: сначала
+// storage_linux/ffmpeg/ffmpeg (статическая сборка с johnvansickle.com,
+// положена туда при подготовке Linux-порта), и лишь потом старое расположение
+// server/vendor/ffmpeg/linux/ffmpeg для обратной совместимости.
+const VENDOR_BIN = config.vendorBin("ffmpeg", "ffmpeg");
 // Официальный стабильный release (essentials) с gyan.dev — он редиректит на GitHub.
 const FFMPEG_URL = "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip";
 const FFMPEG_MAX_BYTES = 300 * 1024 * 1024; // запас по размеру архива (~130 МБ)

@@ -12,10 +12,29 @@
 
 const express = require("express");
 const fs = require("fs");
+const os = require("os");
+const path = require("path");
 const multer = require("multer");
 const { DIRS } = require("../config");
 const { removePath } = require("../fsUtil");
 const screenshots = require("../screenshots");
+
+/**
+ * Путь к резервному WAV системного звука на Linux (см. audioCaptureLinux.ts +
+ * ScreenshotsPage.tsx) — сервер и Electron-рендерер работают в одном
+ * приложении на одной машине, поэтому путь просто передаётся строкой, а не
+ * загружается файлом. Ограничиваем именем/каталогом, которые сама же
+ * audioCaptureLinux.ts и генерирует, чтобы поле из тела запроса не превратилось
+ * в чтение произвольного файла с диска.
+ */
+function safeExtraAudioPath(raw) {
+  if (typeof raw !== "string" || !raw) return null;
+  const resolved = path.resolve(raw);
+  const tmp = path.resolve(os.tmpdir());
+  if (!resolved.startsWith(tmp + path.sep)) return null;
+  if (!/^moonapp-sysaudio-\d+\.wav$/i.test(path.basename(resolved))) return null;
+  return fs.existsSync(resolved) ? resolved : null;
+}
 
 const router = express.Router();
 const MAX_BYTES = 2 * 1024 * 1024 * 1024;
@@ -64,7 +83,8 @@ router.post("/video", upload.single("file"), async (req, res) => {
     // контейнере) — см. screenshots.finalizeRecording. Без ffmpeg отдаст файл
     // как есть (webm), честно, без притворного расширения.
     const bitrateMbps = numOrUndef(req.body?.bitrateMbps) || 8;
-    const final = await screenshots.finalizeRecording(req.file.path, bitrateMbps);
+    const extraAudioPath = safeExtraAudioPath(req.body?.extraAudioPath);
+    const final = await screenshots.finalizeRecording(req.file.path, bitrateMbps, extraAudioPath);
     const item = screenshots.saveFromTemp(final.path, {
       type: "video",
       ext: final.ext,

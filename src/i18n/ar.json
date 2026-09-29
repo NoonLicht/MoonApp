@@ -949,6 +949,7 @@
     "officeEyebrow": "صيغ المكاتب",
     "officeTitle": "Word / PowerPoint / Excel ⇄ PDF",
     "officeMissing": "لم يتم العثور على MS Office أو LibreOffice — ثبّت أحدهما.",
+    "officeMissingLinuxHint": "لم يتم العثور على LibreOffice — ثبّته عبر مدير الحزم الخاص بتوزيعتك (مثل apt install libreoffice) ثم أعد الفحص.",
     "officeConvertGo": "تحويل",
     "pdfRotate": "تدوير PDF",
     "pdfRotateGo": "تدوير",

@@ -10,8 +10,10 @@ import fs from "fs";
 import readline from "readline";
 import config from "./config";
 import logger from "./logger";
+import { startLinux, stopLinux, statusLinux } from "./appTimeTrackerLinux";
 
 const { FILES } = config;
+const IS_WINDOWS = process.platform === "win32";
 
 const SAMPLE_SECONDS = 5;
 
@@ -71,7 +73,7 @@ function recordSample(appName: string): void {
 
 export function start(): { ok: boolean; error?: string } {
   if (tracking) return { ok: true };
-  if (process.platform !== "win32") return { ok: false, error: "windows_only" };
+  if (!IS_WINDOWS) return startLinux();
   try {
     child = spawn("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command", PS_SCRIPT], {
       windowsHide: true,
@@ -96,6 +98,7 @@ export function start(): { ok: boolean; error?: string } {
 }
 
 export function stop(): { ok: boolean } {
+  if (!IS_WINDOWS) return stopLinux();
   if (child) {
     child.kill();
     child = null;
@@ -105,7 +108,8 @@ export function stop(): { ok: boolean } {
   return { ok: true };
 }
 
-export function status(): { tracking: boolean } {
+export function status(): { tracking: boolean; error?: string } {
+  if (!IS_WINDOWS) return statusLinux();
   return { tracking };
 }
 

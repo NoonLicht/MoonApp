@@ -45,6 +45,10 @@ contextBridge.exposeInMainWorld("appBridge", {
   setCaptureMode: (mode, sourceId) => ipcRenderer.invoke("rec:capture-mode", mode, sourceId),
   // Список экранов/окон (с превью) для выбора источника захвата (страница «Скриншоты»).
   listCaptureSources: () => ipcRenderer.invoke("capture:list-sources"),
+  // Резервный захват системного звука на Linux (PulseAudio/PipeWire parec/pw-record),
+  // на случай если portal-путь Chromium не дал звука. На Windows — no-op.
+  startLinuxSystemAudioFallback: () => ipcRenderer.invoke("audio:linux-fallback-start"),
+  stopLinuxSystemAudioFallback: () => ipcRenderer.invoke("audio:linux-fallback-stop"),
   // Вызывается сразу после того, как страница сама записала картинку в буфер
   // обмена (кнопка «Скопировать») — иначе вотчер буфера (автосохранение
   // PrintScreen/Win+Shift+S в библиотеку) принял бы её за новый внешний

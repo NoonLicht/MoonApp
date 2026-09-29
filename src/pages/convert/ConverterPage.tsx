@@ -1206,7 +1206,7 @@ function OfficeToolkit() {
     <>
       <SectionHead eyebrow={t("conv.officeEyebrow")} title={t("conv.officeTitle")} />
       {found === true && usesMsOffice && <div className="muted-sm">{t("conv.officeUsesMsOffice")}</div>}
-      {found === false && (
+      {found === false && window.appBridge?.platform === "win32" && (
         <div className="muted-sm" style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-start" }}>
           <span>{t("conv.officeMissing")}</span>
           <Btn
@@ -1218,6 +1218,13 @@ function OfficeToolkit() {
           </Btn>
           {installMsg && !installing && <span>{installMsg}</span>}
         </div>
+      )}
+      {/* На Linux одной кнопкой не ставим: нет единообразных прав на sudo apt install
+          без интерактивного пароля (в отличие от winget на Windows, работающего без
+          такого запроса) — пользователь ставит LibreOffice штатным менеджером пакетов
+          своего дистрибутива, обычно он уже предустановлен. */}
+      {found === false && window.appBridge?.platform !== "win32" && (
+        <div className="muted-sm">{t("conv.officeMissingLinuxHint")}</div>
       )}
       <div className="tool-tile-grid">
         <ToolTile icon={FileCog} label={t("conv.officeTitle")} onClick={() => setOpen(true)} />

@@ -1640,6 +1640,17 @@ declare global {
       }>;
       /** Прокси Chromium: применить rules или снять (null). */
       applyProxySession?: (cfg: { proxyRules: string } | null) => Promise<{ ok: boolean }>;
+      /**
+       * Резервный захват системного звука на Linux через PulseAudio/PipeWire
+       * (server/ts/audioCaptureLinux.ts) — на случай если xdg-desktop-portal не
+       * дал звук вместе с getDisplayMedia на конкретном композиторе. Страница
+       * «Скриншоты» запускает start ДО начала видеозаписи и вызывает stop сразу
+       * после её остановки — путь к WAV передаётся в screenshotsSaveVideo, сервер
+       * сам муксирует его в mp4 (см. finalizeRecording). На Windows оба метода
+       * существуют, но не делают ничего (там звук уже идёт через WASAPI loopback).
+       */
+      startLinuxSystemAudioFallback?: () => Promise<{ ok: boolean; error?: string }>;
+      stopLinuxSystemAudioFallback?: () => Promise<{ ok: boolean; path?: string | null; error?: string }>;
     };
   }
 }

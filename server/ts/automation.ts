@@ -18,9 +18,16 @@ import fs from "fs";
 import path from "path";
 import config from "./config";
 import logger from "./logger";
+import {
+  createScheduledTaskLinux,
+  deleteScheduledTaskLinux,
+  listScheduledTasksLinux,
+  runScheduledTaskNowLinux,
+} from "./automationLinux";
 
 const { FILES } = config;
 const TASK_FOLDER = "\\MoonApp\\";
+const IS_WINDOWS = process.platform === "win32";
 
 export interface LauncherEntry {
   id: string;
@@ -138,6 +145,7 @@ function parseCsvLine(line: string): string[] {
 
 /** Список заданий планировщика, только из папки \MoonApp\. */
 export async function listScheduledTasks(): Promise<ScheduledTask[]> {
+  if (!IS_WINDOWS) return listScheduledTasksLinux();
   const { ok, stdout } = await execFileAsync("schtasks", ["/query", "/fo", "CSV", "/nh"]);
   if (!ok) return [];
   const out: ScheduledTask[] = [];
@@ -165,6 +173,8 @@ export async function createScheduledTask(input: {
   const safeName = String(input.name || "").trim().replace(/[\\/:*?"<>|]/g, "_");
   if (!safeName) return { ok: false, error: "missing_name" };
 
+  if (!IS_WINDOWS) return createScheduledTaskLinux(safeName, safeName, launcher, input.schedule, input.time);
+
   const tr = launcher.args ? `"${launcher.exePath}" ${launcher.args}` : `"${launcher.exePath}"`;
   const tn = TASK_FOLDER + safeName;
   const args = ["/create", "/tn", tn, "/tr", tr, "/sc", input.schedule, "/f"];
@@ -179,6 +189,7 @@ export async function createScheduledTask(input: {
 }
 
 export async function deleteScheduledTask(name: string): Promise<{ ok: boolean; error?: string }> {
+  if (!IS_WINDOWS) return deleteScheduledTaskLinux(name);
   const tn = TASK_FOLDER + name;
   const { ok, stderr } = await execFileAsync("schtasks", ["/delete", "/tn", tn, "/f"]);
   if (!ok) return { ok: false, error: stderr || "schtasks_failed" };
@@ -187,6 +198,7 @@ export async function deleteScheduledTask(name: string): Promise<{ ok: boolean; 
 }
 
 export async function runScheduledTaskNow(name: string): Promise<{ ok: boolean; error?: string }> {
+  if (!IS_WINDOWS) return runScheduledTaskNowLinux(name);
   const tn = TASK_FOLDER + name;
   const { ok, stderr } = await execFileAsync("schtasks", ["/run", "/tn", tn]);
   if (!ok) return { ok: false, error: stderr || "schtasks_failed" };

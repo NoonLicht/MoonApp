@@ -205,12 +205,18 @@ async function detectFfmpeg(): Promise<FfmpegBin> {
 // --- Бинарь yt-dlp ---
 
 const BIN_DIR = path.join(DIRS.storage, "ytdlp");
-const BUNDLED_BIN = path.join(BIN_DIR, "yt-dlp.exe");
-// Бинарь из комплекта инсталлятора: server/vendor/ytdlp/yt-dlp.exe
-// (в собранной сборке — app.asar.unpacked, см. build.asarUnpack).
-const VENDOR_BIN = config.vendorPath("ytdlp", "yt-dlp.exe");
+const BUNDLED_BIN = path.join(BIN_DIR, config.binName("yt-dlp"));
+// Бинарь из комплекта инсталлятора: server/vendor/ytdlp/yt-dlp.exe на Windows,
+// server/vendor/ytdlp/linux/yt-dlp на Linux/macOS (официальный standalone-бинарь
+// yt-dlp_linux, переименованный в yt-dlp — кладётся туда вручную, в репозитории
+// сейчас только Windows-версия). В собранной сборке — app.asar.unpacked, см.
+// build.asarUnpack.
+const VENDOR_BIN = config.vendorBin("ytdlp", "yt-dlp");
 // Официальный портативный exe (PyInstaller), на машине не нужен Python.
+// Актуально только для Windows: на Linux аналогичный автозагрузчик должен
+// скачивать yt-dlp_linux с того же релиза (см. ytdlpCandidates ниже).
 const YTDLP_URL = "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe";
+const YTDLP_URL_LINUX = "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux";
 const YTDLP_MAX_BYTES = 300 * 1024 * 1024;
 
 let detectCache: YtdlpBin | null = null;
@@ -639,12 +645,13 @@ function installStatus(): InstallStatus {
 function installYtDlp(): InstallState {
   if (installState.state === "working") return installState;
   installState = { state: "working", progress: 0, phase: "download", error: "" };
-  const dlFile = path.join(BIN_DIR, "yt-dlp.exe");
+  const dlFile = path.join(BIN_DIR, config.binName("yt-dlp"));
+  const dlUrl = process.platform === "win32" ? YTDLP_URL : YTDLP_URL_LINUX;
   fs.mkdirSync(BIN_DIR, { recursive: true });
   (async () => {
     try {
       installState.phase = "download";
-      await downloadToFile(YTDLP_URL, dlFile, {
+      await downloadToFile(dlUrl, dlFile, {
         userAgent:
           "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/126.0 Safari/537.36",
         headers: { Accept: "*/*" },
@@ -656,6 +663,13 @@ function installYtDlp(): InstallState {
           installState.progress = total ? Math.min(100, Math.round((100 * received) / total)) : 0;
         },
       });
+      if (process.platform !== "win32") {
+        try {
+          fs.chmodSync(dlFile, 0o755);
+        } catch {
+          /* некритично: если система не поддерживает chmod — spawn всё равно попробует */
+        }
+      }
       detectCache = null;
       installState = { state: "done", progress: 100, phase: "", error: "" };
       logger.info("ytdlp.install.done", { path: BUNDLED_BIN });

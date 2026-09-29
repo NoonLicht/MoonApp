@@ -654,6 +654,18 @@ function runScript(
  */
 export function installPython(): PyInstallSnapshot {
   if (task.state === "working") throw new Error("busy");
+  // Портативная embeddable-сборка (python-3.11.9-embed-amd64.zip) существует
+  // только для Windows — на Linux/macOS у python.org нет аналогичного
+  // «распакуй-и-готово» архива. На этих платформах пользователь должен
+  // поставить Python 3.10/3.11 штатным пакетным менеджером (apt/dnf/pyenv) и
+  // указать его в voice.pythonCmd — сообщаем об этом явно, а не тихо пишем
+  // нерабочие файлы.
+  if (process.platform !== "win32") {
+    throw new Error(
+      "portable_python_windows_only: на этой ОС используйте системный Python 3.10/3.11 " +
+        "(apt/dnf/pyenv) и укажите его в настройках голоса — портативная сборка есть только для Windows",
+    );
+  }
   const dir = portableDir();
   const exe = portableExe();
   startTask("python", exe, portableSteps(), "python311");

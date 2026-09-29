@@ -23,6 +23,15 @@ import os from "os";
 import path from "path";
 import settings from "./settings";
 import logger from "./logger";
+import {
+  getSnapshotLinux,
+  lhmStatusLinux,
+  startLhmLinux,
+  downloadAndStartEngineLinux,
+  stopLhmLinux,
+} from "./monitor.linux";
+
+const IS_WINDOWS = process.platform === "win32";
 
 /* ----------------------------- Публичные типы ---------------------------- */
 
@@ -739,6 +748,7 @@ function computeFast(base: SystemSnapshot): SystemSnapshot {
 
 /** Мгновенный снимок: свежая нагрузка CPU/RAM + кэшированные сенсоры. */
 export function getSnapshot(_legacyMinAgeMs = 900): Promise<SystemSnapshot> {
+  if (!IS_WINDOWS) return getSnapshotLinux();
   ensureSlowLoop();
   if (slowCache && Date.now() - slowAt < 15000) return Promise.resolve(computeFast(slowCache));
   // Первый вызов после старта процесса — единственный раз ждём первичный сбор.
@@ -1116,6 +1126,7 @@ export async function lhmStatus(): Promise<{
   pid: number | null;
   bundled: boolean;
 }> {
+  if (!IS_WINDOWS) return lhmStatusLinux();
   const wmi = await lhmWmiAlive();
   return { wmi, exePath: findLhmExe(), pid: lhmPid, bundled: engineFilesPresent() };
 }
@@ -1126,6 +1137,7 @@ export async function downloadAndStartEngine(): Promise<{
   already?: boolean;
   error?: string;
 }> {
+  if (!IS_WINDOWS) return downloadAndStartEngineLinux();
   const dl = await downloadEngine();
   if (!dl.ok) return dl;
   return startEngine();
@@ -1138,6 +1150,7 @@ export async function downloadAndStartEngine(): Promise<{
 export async function startLhm(
   timeoutMs = 25000,
 ): Promise<{ ok: boolean; already?: boolean; error?: string }> {
+  if (!IS_WINDOWS) return startLhmLinux();
   if (await lhmWmiAlive(true)) return { ok: true, already: true };
 
   const exe = findLhmExe();
@@ -1169,6 +1182,7 @@ export async function startLhm(
 
 /** Остановить запущенный нами LHM (вызывается при выходе из приложения). */
 export function stopLhm(): void {
+  if (!IS_WINDOWS) return stopLhmLinux();
   const pids: number[] = [];
   if (lhmPid != null) pids.push(lhmPid);
   lhmPid = null;
@@ -1199,6 +1213,7 @@ export function stopLhm(): void {
  * установлен и ещё не отвечает — поднимаем его в фоне.
  */
 export function autoStartLhmIfConfigured(): void {
+  if (!IS_WINDOWS) return; // Linux: сенсоры читаются напрямую (lm-sensors/nvidia-smi), автозапуска не требуется
   void (async () => {
     try {
       const cfg = settings.get("monitor") || {};

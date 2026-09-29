@@ -949,6 +949,7 @@
     "officeEyebrow": "办公格式",
     "officeTitle": "Word / PowerPoint / Excel ⇄ PDF",
     "officeMissing": "未找到 MS Office 或 LibreOffice — 请安装其中之一。",
+    "officeMissingLinuxHint": "未找到 LibreOffice — 请通过您发行版的包管理器安装（例如 apt install libreoffice），然后重新检查。",
     "officeConvertGo": "转换",
     "pdfRotate": "旋转 PDF",
     "pdfRotateGo": "旋转",

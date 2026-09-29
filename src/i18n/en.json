@@ -950,6 +950,7 @@
     "officeEyebrow": "Office formats",
     "officeTitle": "Word / PowerPoint / Excel ⇄ PDF",
     "officeMissing": "Neither MS Office nor LibreOffice found — install one of them.",
+    "officeMissingLinuxHint": "LibreOffice not found — install it via your distribution's package manager (e.g. apt install libreoffice) and check again.",
     "officeConvertGo": "Convert",
     "pdfRotate": "Rotate PDF",
     "pdfRotateGo": "Rotate",

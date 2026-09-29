@@ -205,26 +205,43 @@ function ensureSecret(cfg: TgwsCfg): string {
 
 /* ------------------------- Поиск и установка ------------------------- */
 
-/** Имя ассета релиза под текущую архитектуру Windows. */
+/** Имя ассета релиза под текущую платформу/архитектуру. */
 function assetName(): string {
+  if (process.platform !== "win32") {
+    // Имя ассета релиза TgWsProxy под Linux (по аналогии с Windows-сборками) —
+    // нужно проверить точное имя на странице релизов при первой Linux-сборке,
+    // в репозитории сейчас нет ни бинаря, ни подтверждённого имени ассета.
+    // Подтверждено по релизу v1.10.4 (github.com/Flowseal/tg-ws-proxy/releases):
+    // единственный linux-ассет — TgWsProxy_linux_amd64, arm64-сборки нет.
+    return "TgWsProxy_linux_amd64";
+  }
   // ARM64-сборки есть только для Windows 10+; x64 — основной вариант.
   return process.arch === "arm64" ? "TgWsProxy_windows_arm64.exe" : "TgWsProxy_windows.exe";
 }
 
 /** Имя файла, под которым бинарь лежит у нас (для всех архитектур одно). */
-const EXE_NAME = "TgWsProxy.exe";
+const EXE_NAME = config.binName("TgWsProxy");
 
 /**
  * Кандидаты на движок, в порядке приоритета:
  *  1) путь из настроек (пользователь может указать свой бинарь);
  *  2) скачанный нами в storage/tgwsproxy;
- *  3) вшитый в сборку server/vendor/tgwsproxy (next to compiled tgwsproxy.js).
+ *  3) вшитый в сборку server/vendor/tgwsproxy (Windows — рядом с движком,
+ *     Linux/macOS — в подпапке server/vendor/tgwsproxy/linux, кладётся туда вручную).
  */
 function exeCandidates(cfg = tgwsCfg()): string[] {
   const list: string[] = [];
   if (cfg.exePath) list.push(cfg.exePath);
   list.push(path.join(HOME, EXE_NAME));
-  list.push(config.vendorPath("tgwsproxy", EXE_NAME));
+  if (process.platform === "win32") {
+    list.push(config.vendorPath("tgwsproxy", EXE_NAME));
+  } else {
+    // storage_linux/tgwsproxy/<реальное имя ассета релиза> — см. assetName().
+    // __dirname здесь — server/ (как в config.ts), а не DIRS.storage: та в
+    // собранном приложении указывает на папку рядом с exe, а не на репозиторий.
+    list.push(path.join(__dirname, "..", "storage_linux", "tgwsproxy", assetName()));
+    list.push(config.vendorPath("tgwsproxy", "linux", EXE_NAME));
+  }
   list.push(config.vendorPath("tgwsproxy", assetName()));
   return list;
 }

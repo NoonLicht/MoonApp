@@ -36,24 +36,28 @@ const PROXY_HOST = "127.0.0.1";
 
 // Пользовательский каталог движка (вне asar), вендор-комплект инсталлятора и
 // extraResources-пути `resources/bin/proxy-core/`, `resources/bin/singbox/`.
+// На Linux/macOS движок без .exe: config.binName/config.vendorBin сами
+// подбирают правильное расширение и подпапку (vendor/<engine>/linux/sing-box
+// на не-Windows — эту сборку нужно положить туда вручную перед первой Linux-сборкой).
+const SINGBOX_BIN_NAME = config.binName("sing-box");
 const CORE_DIR = path.join(DIRS.storage, "proxyCore");
-const BUNDLED_BIN = path.join(CORE_DIR, "sing-box.exe");
-const VENDOR_BIN = config.vendorPath("proxy-core", "sing-box.exe");
+const BUNDLED_BIN = path.join(CORE_DIR, SINGBOX_BIN_NAME);
+const VENDOR_BIN = config.vendorBin("proxy-core", "sing-box");
 // Легаси-точки: sing-box из комплекта инсталлятора (его кладёт
 // scripts/fetch-engines.js) и то, что успела скачать старая панель «Прокси».
 // Ядро ОБЯЗАНО их видеть: иначе на свежей сборке UI пишет «движок не найден»
 // при том, что sing-box физически лежит рядом.
-const VENDOR_LEGACY_BIN = config.vendorPath("singbox", "sing-box.exe");
-const BUNDLED_LEGACY_BIN = path.join(DIRS.storage, "singbox", "sing-box.exe");
+const VENDOR_LEGACY_BIN = config.vendorBin("singbox", "sing-box");
+const BUNDLED_LEGACY_BIN = path.join(DIRS.storage, "singbox", SINGBOX_BIN_NAME);
 
 /** Кандидаты из resources/ (собранный Electron-инсталлятор). */
 function resourcesBins() {
   const out = [];
   try {
     if (process.resourcesPath) {
-      out.push(path.join(process.resourcesPath, "bin", "proxy-core", "sing-box.exe"));
-      out.push(path.join(process.resourcesPath, "bin", "singbox", "sing-box.exe"));
-      out.push(path.join(process.resourcesPath, "singbox", "sing-box.exe"));
+      out.push(path.join(process.resourcesPath, "bin", "proxy-core", SINGBOX_BIN_NAME));
+      out.push(path.join(process.resourcesPath, "bin", "singbox", SINGBOX_BIN_NAME));
+      out.push(path.join(process.resourcesPath, "singbox", SINGBOX_BIN_NAME));
     }
   } catch {
     /* не Electron — resourcesPath отсутствует */

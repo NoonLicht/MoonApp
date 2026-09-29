@@ -949,6 +949,7 @@
     "officeEyebrow": "Formatos de oficina",
     "officeTitle": "Word / PowerPoint / Excel ⇄ PDF",
     "officeMissing": "No se encontró ni MS Office ni LibreOffice — instale uno de los dos.",
+    "officeMissingLinuxHint": "LibreOffice no encontrado — instálelo con el gestor de paquetes de su distribución (por ejemplo apt install libreoffice) y vuelva a comprobar.",
     "officeConvertGo": "Convertir",
     "pdfRotate": "Girar PDF",
     "pdfRotateGo": "Girar",

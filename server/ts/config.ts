@@ -136,4 +136,44 @@ function vendorPath(...segments: string[]): string {
   return p.includes(marker) ? p.replace(marker, `${path.sep}app.asar.unpacked${path.sep}`) : p;
 }
 
-export = { DIRS, FILES, PORT, vendorPath };
+/** Имя бинарника с учётом платформы: на Windows добавляет .exe, на Linux/macOS — нет. */
+function binName(base: string): string {
+  return process.platform === "win32" ? `${base}.exe` : base;
+}
+
+/**
+ * Папка storage_linux/ в корне репозитория: сюда разработчик вручную кладёт
+ * скачанные с GitHub Releases Linux-сборки движков (sing-box, yt-dlp, ffmpeg,
+ * tg-ws-proxy) перед сборкой AppImage/deb — она не архивируется в app.asar и
+ * попадает в комплект через extraResources (см. package.json → build.linux).
+ * Имя подпапки внутри storage_linux не всегда совпадает с именем "engine" из
+ * vendorBin (историческое расхождение: sing-box зовут то "singbox", то
+ * "proxy-core"), поэтому алиасы сведены в одну таблицу.
+ */
+const STORAGE_LINUX_DIR = path.join(__dirname, "..", "storage_linux");
+const STORAGE_LINUX_ALIASES: Record<string, string> = {
+  singbox: "proxyCore",
+  "proxy-core": "proxyCore",
+  ytdlp: "ytdlp",
+  ffmpeg: "ffmpeg",
+  tgwsproxy: "tgwsproxy",
+  zapret: "zapret",
+};
+
+/**
+ * Путь к движку, зависящий от платформы: на Windows — как раньше, прямо в
+ * папке движка комплекта инсталлятора (vendor/<engine>/<base>.exe). На
+ * Linux/macOS сперва смотрим в storage_linux/<alias>/<base> (без расширения)
+ * — это то место, куда фактически положены скачанные бинарники (см. выше), и
+ * только если файла там нет — старое расположение vendor/<engine>/linux/<base>
+ * (для обратной совместимости с более ранними инструкциями).
+ */
+function vendorBin(engine: string, base: string): string {
+  if (process.platform === "win32") return vendorPath(engine, `${base}.exe`);
+  const alias = STORAGE_LINUX_ALIASES[engine] || engine;
+  const fromStorageLinux = path.join(STORAGE_LINUX_DIR, alias, base);
+  if (fs.existsSync(fromStorageLinux)) return fromStorageLinux;
+  return vendorPath(engine, "linux", base);
+}
+
+export = { DIRS, FILES, PORT, vendorPath, binName, vendorBin };

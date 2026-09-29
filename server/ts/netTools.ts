@@ -33,14 +33,24 @@ function sanitizeHost(host: string): string {
 
 export async function ping(host: string): Promise<{ ok: boolean; output: string }> {
   const h = sanitizeHost(host);
-  const { out, err } = await execAsync(`ping -n 4 ${h}`, 12000);
+  // Windows: `ping -n 4`, ответ содержит "TTL=". Linux: `ping -c 4 -W 2`,
+  // ответ содержит строчный "ttl=" — команда и признак успеха разные у обеих ОС.
+  const cmd = process.platform === "win32" ? `ping -n 4 ${h}` : `ping -c 4 -W 2 ${h}`;
+  const { out, err } = await execAsync(cmd, 12000);
   const output = out || err;
-  return { ok: !err && /TTL=/i.test(output), output };
+  return { ok: !err && /ttl=/i.test(output), output };
 }
 
 export async function traceroute(host: string): Promise<{ ok: boolean; output: string }> {
   const h = sanitizeHost(host);
-  const { out, err } = await execAsync(`tracert -d -h 20 -w 800 ${h}`, 25000);
+  // Windows: tracert (тайминг -w в мс, ip-only -d). Linux: системный traceroute
+  // (или traceroute6 для IPv6) — та же смысловая опция таймаута задаётся
+  // в секундах через -w, ip-only через -n, число хопов через -m.
+  const cmd =
+    process.platform === "win32"
+      ? `tracert -d -h 20 -w 800 ${h}`
+      : `traceroute -n -m 20 -w 2 ${h}`;
+  const { out, err } = await execAsync(cmd, 25000);
   return { ok: !err, output: out || err };
 }
 
@@ -110,12 +120,25 @@ export function localInterfaces(): Record<string, os.NetworkInterfaceInfo[]> {
 }
 
 export async function wifiNetworks(): Promise<{ ok: boolean; output: string }> {
-  const { out, err } = await execAsync("netsh wlan show networks mode=bssid", 10000);
+  // Windows: netsh wlan (встроен всегда). Linux: nmcli — часть NetworkManager,
+  // который стоит по умолчанию на большинстве десктопных дистрибутивов
+  // (Ubuntu, Fedora, Mint и т.п.), но не гарантирован на всех (например
+  // на системах с systemd-networkd/iwd вместо NetworkManager nmcli не будет —
+  // тогда команда просто вернёт ошибку exec, и UI честно покажет "не удалось").
+  const cmd =
+    process.platform === "win32"
+      ? "netsh wlan show networks mode=bssid"
+      : "nmcli -t -f SSID,SIGNAL,SECURITY dev wifi list";
+  const { out, err } = await execAsync(cmd, 10000);
   return { ok: !err, output: out || err };
 }
 
 export async function wifiCurrent(): Promise<{ ok: boolean; output: string }> {
-  const { out, err } = await execAsync("netsh wlan show interfaces", 10000);
+  const cmd =
+    process.platform === "win32"
+      ? "netsh wlan show interfaces"
+      : "nmcli -t -f DEVICE,TYPE,STATE,CONNECTION dev status";
+  const { out, err } = await execAsync(cmd, 10000);
   return { ok: !err, output: out || err };
 }
 

@@ -28,6 +28,7 @@
     "fetch:whisper": "node scripts/fetch-whisper.js",
     "start": "npm run compile:server && npm run build:web && electron .",
     "dist": "npm run compile:server && npm run build:web && npm run gen:keys && npm run fetch:engines && electron-builder --win && npm run check:pack && npm run rebuild:node",
+    "dist:linux": "npm run compile:server && npm run build:web && npm run gen:keys && electron-builder --linux && npm run rebuild:node",
     "rebuild:electron": "electron-rebuild -f -w better-sqlite3",
     "rebuild:node": "npm rebuild better-sqlite3",
     "test": "vitest run",
@@ -118,7 +119,8 @@
       "!**/secrets.json",
       "!**/data.json",
       "!**/logs/**",
-      "!**/*.log"
+      "!**/*.log",
+      "storage_linux/**"
     ],
     "asarUnpack": [
       "server/vendor/lhm/**",
@@ -128,7 +130,8 @@
       "server/vendor/ffmpeg/**",
       "server/engines/**",
       "node_modules/onnxruntime-node/**",
-      "node_modules/onnxruntime-common/**"
+      "node_modules/onnxruntime-common/**",
+      "storage_linux/**"
     ],
     "extraResources": [
       {
@@ -160,6 +163,31 @@
       "deleteAppDataOnUninstall": false,
       "include": "build/installer.nsh",
       "artifactName": "MoonApp-Setup-${version}.${ext}"
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": ["x64"]
+        },
+        {
+          "target": "deb",
+          "arch": ["x64"]
+        },
+        {
+          "target": "rpm",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "build/icon.png",
+      "category": "Utility",
+      "artifactName": "MoonApp-${version}.${ext}"
+    },
+    "deb": {
+      "depends": ["libsecret-1-0"]
+    },
+    "rpm": {
+      "depends": ["libsecret"]
     }
   }
 }

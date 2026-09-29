@@ -1305,7 +1305,13 @@ export default function SettingsPage() {
             <Select
               value={String(up.provider ?? "auto")}
               onChange={(e) => change("upscaler.provider", e.target.value)}
-              options={["auto", "cpu", "cuda", "dml"]}
+              // DirectML — только Windows (обёртка над DirectX 12); на Linux доступен
+              // только CUDA (NVIDIA) из GPU-провайдеров, остальное — CPU.
+              options={
+                window.appBridge?.platform === "win32"
+                  ? ["auto", "cpu", "cuda", "dml"]
+                  : ["auto", "cpu", "cuda"]
+              }
             />
           </Row>
           <Row

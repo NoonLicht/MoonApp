@@ -28,10 +28,36 @@
  */
 
 const express = require("express");
-const zapret = require("../zapret");
 const settings = require("../settings");
 const { stmts } = require("../db");
 const logger = require("../logger");
+
+/**
+ * На Windows это движок winws.exe/WinDivert (server/zapret.js) с полным
+ * набором фич: профили/домены в БД, диагностика, auto-tune, служба, editор
+ * списков. На Linux — server/zapretLinux.ts (nfqws + nftables/iptables),
+ * который сейчас покрывает только базовый контур (engine/strategies/
+ * payloads/status/start/stop) — тот же контракт для этих методов, поэтому
+ * роуты ниже не знают о платформе вообще. Для методов, которых в
+ * zapretLinux ещё нет, Proxy возвращает функцию, кидающую понятную ошибку —
+ * существующий try/catch в каждом роуте превращает её в HTTP-ответ с
+ * {error: "not_implemented_on_linux"} вместо падения процесса.
+ */
+const zapret =
+  process.platform === "win32"
+    ? require("../zapret")
+    : new Proxy(require("../zapretLinux"), {
+        get(target, prop) {
+          if (prop in target) return target[prop];
+          return () => {
+            throw new Error(
+              `not_implemented_on_linux: zapret.${String(prop)}() портирован только частично ` +
+                "(engine/strategies/payloads/status/start/stop) — профили, домены, диагностика, " +
+                "auto-tune, служба и редактор списков на Linux пока недоступны",
+            );
+          };
+        },
+      });
 
 const router = express.Router();
 

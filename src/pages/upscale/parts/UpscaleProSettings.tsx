@@ -174,7 +174,12 @@ export default function UpscaleProSettings({
     { value: "512", label: "512" },
     { value: "1024", label: "1024" },
   ];
-  const providerOptions = ["auto", "cpu", "cuda", "dml"].concat(
+  // DirectML — обёртка над DirectX 12, существует только на Windows; на Linux
+  // из GPU-провайдеров есть только CUDA (для NVIDIA), остальным приходится
+  // считать на CPU. window.appBridge.platform — то же значение process.platform,
+  // что видит main-процесс (см. electron/preload.js).
+  const isWindows = window.appBridge?.platform === "win32";
+  const providerOptions = (isWindows ? ["auto", "cpu", "cuda", "dml"] : ["auto", "cpu", "cuda"]).concat(
     // TensorRT предлагаем только там, где провайдер реально собран в рантайм.
     hw?.trt?.available ? ["tensorrt"] : [],
   );

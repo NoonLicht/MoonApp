@@ -17,6 +17,10 @@ build/*
 
 # ---------- Данные приложения (меняются локально) ----------
 storage/
+# Linux-бинарники движков (ffmpeg/sing-box/yt-dlp/nfqws/zapret) — крупные
+# (сотни МБ), скачиваются вручную/через npm run fetch:engines-linux, в
+# репозиторий не коммитим, аналогично Windows-движкам выше.
+storage_linux/
 secrets.json
 settings.json
 data.json
@@ -125,6 +129,18 @@ server/trackerProviders.js
 server/trackerScraper.js
 server/mediaProbe.js
 server/browserCookies.js
+# Linux-модули: TS-исходники server/ts/{appStoreLinux,appTimeTrackerLinux,
+# audioCaptureLinux,automationLinux,killSwitchLinux,killSwitchWin,
+# monitor.linux,zapretLinux}.ts
+server/appStoreLinux.js
+server/browserCookiesLinux.js
+server/appTimeTrackerLinux.js
+server/audioCaptureLinux.js
+server/automationLinux.js
+server/killSwitchLinux.js
+server/killSwitchWin.js
+server/monitor.linux.js
+server/zapretLinux.js
 
 bb.txt
 tc.txt

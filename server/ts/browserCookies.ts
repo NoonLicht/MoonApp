@@ -25,6 +25,12 @@ import os from "os";
 import path from "path";
 import crypto from "crypto";
 import { execFileSync } from "child_process";
+import {
+  chromiumRootsLinux,
+  firefoxProfilesLinux,
+  chromiumKeyLinux,
+  decryptChromiumValueLinux,
+} from "./browserCookiesLinux";
 
 /** Одна найденная кука (значение уже расшифровано). */
 export interface BrowserCookie {
@@ -103,6 +109,7 @@ const CHROMIUM_ROOTS: { id: string; name: string; rel: string; base: "local" | "
 
 /** Корни Chromium-браузеров, которые реально есть на машине. */
 export function chromiumRoots(env: NodeJS.ProcessEnv = process.env): BrowserRoot[] {
+  if (process.platform !== "win32") return chromiumRootsLinux(env);
   const local = env.LOCALAPPDATA || "";
   const roaming = env.APPDATA || "";
   const out: BrowserRoot[] = [];
@@ -387,7 +394,10 @@ export function readChromiumCookies(opts: {
   key: Buffer | null;
   dpapi: (input: Buffer) => Buffer;
   now?: number;
+  /** Переопределение шага расшифровки (используется Linux-веткой — другой шифр). */
+  decrypt?: typeof decryptChromiumValue;
 }): { cookies: BrowserCookie[]; failed: number; appBound: number } {
+  const decrypt = opts.decrypt || decryptChromiumValue;
   const file = cookiePathsIn(opts.profileDir)[0];
   if (!file) throw new Error("нет файла куки");
   const rows = readSqlite<{
@@ -417,7 +427,7 @@ export function readChromiumCookies(opts: {
       }
       // Домен передаём в расшифровку: в куки Chromium шифрует `SHA256(host_key) +
       // value`, и без снятия префикса значение уходило бы на форум испорченным.
-      const dec = decryptChromiumValue(blob, opts.key, opts.dpapi, r.host_key);
+      const dec = decrypt(blob, opts.key, opts.dpapi, r.host_key);
       if (dec == null) {
         failed++;
         continue;
@@ -432,6 +442,7 @@ export function readChromiumCookies(opts: {
 
 /** Профили Firefox (там куки лежат открытым текстом). */
 export function firefoxProfiles(env: NodeJS.ProcessEnv = process.env): string[] {
+  if (process.platform !== "win32") return firefoxProfilesLinux(env);
   const base = path.join(env.APPDATA || "", "Mozilla", "Firefox", "Profiles");
   try {
     return fs
@@ -501,8 +512,17 @@ export function collectBrowserCookies(
   const probes: BrowserProbe[] = [];
   const found: { probe: BrowserProbe; cookies: BrowserCookie[] }[] = [];
 
+  const isLinux = process.platform !== "win32";
   for (const root of roots) {
-    const { key, reason, appBound } = chromiumKey(root.dir, dpapi);
+    // На Linux ключ не хранится DPAPI-обёрнутым в Local State — он берётся из
+    // системного keyring (или "peanuts", если keyring недоступен), поэтому
+    // chromiumKey() (Windows-логика) здесь не подходит вовсе.
+    const { key, reason, appBound } = isLinux
+      ? { ...chromiumKeyLinux(root.id), reason: "", appBound: false }
+      : chromiumKey(root.dir, dpapi);
+    const linuxDecrypt: typeof decryptChromiumValue | undefined = isLinux
+      ? (blob, k, _dpapi, hostKey) => decryptChromiumValueLinux(blob, k as Buffer, hostKey)
+      : undefined;
     const profiles = chromiumProfiles(root.dir);
     const version = chromiumVersion(root.dir);
     if (!profiles.length) {
@@ -520,7 +540,14 @@ export function collectBrowserCookies(
     for (const profileDir of profiles) {
       const profile = profileDir === root.dir ? "root" : path.basename(profileDir);
       try {
-        const r = readChromiumCookies({ profileDir, host, key, dpapi, now: opts.now });
+        const r = readChromiumCookies({
+          profileDir,
+          host,
+          key,
+          dpapi,
+          now: opts.now,
+          decrypt: linuxDecrypt,
+        });
         if (!r.cookies.length) {
           probes.push({
             id: root.id,

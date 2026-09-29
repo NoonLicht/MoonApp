@@ -215,8 +215,10 @@ function patchSettings(patch) {
   }
 }
 
-// --- Автозапуск с Windows ---
-// app.setLoginItemSettings — штатный механизм (реестр Run). Вызывается на старте,
+// --- Автозапуск при входе в систему ---
+// app.setLoginItemSettings — штатный кроссплатформенный механизм Electron:
+// на Windows пишет ключ в реестр Run, на Linux создаёт .desktop-файл в
+// ~/.config/autostart/, на macOS — Login Item. Вызывается на старте,
 // при закрытии/сворачивании окна и СРАЗУ при переключении галочки в настройках
 // (renderer → appBridge.applyAutoLaunch → ipcMain "app:autolaunch"). Без последнего
 // шага настройка вступала в силу только после перезапуска приложения.
@@ -260,6 +262,82 @@ function registerCommandPaletteHotkey() {
     if (!ok) mlog("warn", "hotkey.register_failed", { accelerator: COMMAND_PALETTE_ACCELERATOR });
   } catch (e) {
     mlog("error", "hotkey.register_error", { error: e?.message || String(e) });
+  }
+}
+
+// --- Глобальный хоткей: собственный захват скриншота (актуально для Linux) ---
+// На Windows скриншоты автосохраняются через мониторинг буфера обмена после
+// системного PrintScreen/Win+Shift+S (см. startClipboardWatch ниже) — это
+// работает и на Linux (Electron clipboard — кроссплатформенный API), НО там
+// нет гарантии, что у пользователя вообще есть системный снипинг-инструмент,
+// кладущий картинку в буфер. Поэтому на Linux дополнительно регистрируем свой
+// хоткей, который сам захватывает экран через desktopCapturer и сохраняет
+// результат прямо в библиотеку — без зависимости от внешнего snip-инструмента.
+// На Windows эта функция не обязательна (клавиша PrintScreen уже занята
+// системным шорткатом), поэтому регистрируется только на Linux.
+const OWN_SCREENSHOT_ACCELERATOR = "PrintScreen";
+
+function registerOwnScreenshotHotkey() {
+  if (process.platform !== "linux") return;
+  try {
+    globalShortcut.unregister(OWN_SCREENSHOT_ACCELERATOR);
+  } catch {
+    /* не было зарегистрировано — не критично */
+  }
+  const enabled = readSettings()?.screenshots?.ownHotkeyCapture !== false;
+  if (!enabled) return;
+  try {
+    const ok = globalShortcut.register(OWN_SCREENSHOT_ACCELERATOR, () => {
+      void captureOwnScreenshot();
+    });
+    if (!ok) {
+      // На части DE PrintScreen уже занят системным снипинг-инструментом —
+      // регистрация тогда просто не срабатывает; сообщаем в лог и оставляем
+      // подсказку пользователю сменить комбинацию через настройки (см.
+      // ownHotkeyCaptureAccelerator, если задан).
+      mlog("warn", "hotkey.own_screenshot_register_failed", {
+        accelerator: OWN_SCREENSHOT_ACCELERATOR,
+        hint: "PrintScreen possibly reserved by desktop environment's own screenshot tool",
+      });
+    }
+  } catch (e) {
+    mlog("error", "hotkey.own_screenshot_register_error", { error: e?.message || String(e) });
+  }
+}
+
+/** Захват всего первого экрана через desktopCapturer и сохранение в библиотеку скриншотов. */
+async function captureOwnScreenshot() {
+  try {
+    const { desktopCapturer, screen: electronScreen } = require("electron");
+    const primary = electronScreen.getPrimaryDisplay();
+    const scale = primary.scaleFactor || 1;
+    const thumbnailSize = {
+      width: Math.round(primary.size.width * scale),
+      height: Math.round(primary.size.height * scale),
+    };
+    const sources = await desktopCapturer.getSources({ types: ["screen"], thumbnailSize });
+    const source = sources[0];
+    if (!source || source.thumbnail.isEmpty()) {
+      mlog("warn", "screenshot.own_capture_empty", {});
+      return;
+    }
+    const buf = source.thumbnail.toPNG();
+    const tmpPath = path.join(
+      require("../server/config").DIRS.tmp,
+      `own-${Date.now()}-${crypto.randomBytes(4).toString("hex")}.png`,
+    );
+    fs.writeFileSync(tmpPath, buf);
+    const size = source.thumbnail.getSize();
+    require("../server/screenshots").saveFromTemp(tmpPath, {
+      type: "image",
+      ext: "png",
+      mime: "image/png",
+      width: size.width,
+      height: size.height,
+    });
+    mlog("info", "screenshot.own_capture_saved", { width: size.width, height: size.height });
+  } catch (e) {
+    mlog("error", "screenshot.own_capture_failed", { error: e?.message || String(e) });
   }
 }
 
@@ -967,6 +1045,7 @@ app.whenReady().then(() => {
   // general.autoLaunch: синхронизируем автозапуск с настройками при каждом старте.
   applyAutoLaunch();
   registerCommandPaletteHotkey();
+  registerOwnScreenshotHotkey();
   createWindow();
   startClipboardWatch();
   // Проверка обновлений — после создания окна, чтобы не задерживать старт, но
@@ -1009,6 +1088,7 @@ ipcMain.handle("app:autolaunch", () => applyAutoLaunch());
 // после сохранения, без перезапуска приложения.
 ipcMain.handle("app:refresh-hotkey", () => {
   registerCommandPaletteHotkey();
+  registerOwnScreenshotHotkey();
   return { ok: true };
 });
 
@@ -1343,6 +1423,20 @@ ipcMain.handle("proxy:apply-session", async (_e, cfg) => {
  */
 let captureModeActive = false;
 
+/**
+ * "loopback" — специальная строка Electron, реализующая захват системного
+ * звука через WASAPI на Windows. На Linux этой строки не существует: Chromium
+ * там умеет системный звук ТОЛЬКО через xdg-desktop-portal + PipeWire, и
+ * получает его через обычный `audio: true` (портал сам покажет пользователю
+ * системный чекбокс "поделиться звуком", если композитор его поддерживает —
+ * GNOME/KDE на свежих версиях умеют, часть лёгких WM — нет). Если звук
+ * недоступен на конкретной машине, трек аудио будет просто отсутствовать —
+ * страница уже это обрабатывает (см. acquireSystemAudio) без падения записи.
+ */
+function systemAudioRequestValue() {
+  return process.platform === "win32" ? "loopback" : true;
+}
+
 function installLoopbackHandler() {
   if (captureModeActive) return;
   captureModeActive = true;
@@ -1359,7 +1453,7 @@ function installLoopbackHandler() {
           }
           // audio: "loopback" — системный звук; видео нужно только как «носитель»
           // (страница сразу останавливает video-треки, см. acquireSystemAudio).
-          callback({ video: sources[0], audio: "loopback" });
+          callback({ video: sources[0], audio: systemAudioRequestValue() });
         } catch (e) {
           mlog("error", "capture.loopback_failed", { error: e?.message || String(e) });
           callback({});
@@ -1451,7 +1545,7 @@ function installScreenWithAudioHandler() {
             return;
           }
           const picked = (pendingSourceId && sources.find((s) => s.id === pendingSourceId)) || sources[0];
-          callback({ video: picked, audio: "loopback" });
+          callback({ video: picked, audio: systemAudioRequestValue() });
         } catch (e) {
           mlog("error", "capture.screen_audio_failed", { error: e?.message || String(e) });
           callback({});
@@ -1528,6 +1622,36 @@ ipcMain.handle("rec:capture-mode", (_e, mode, sourceId) => {
   }
   removeLoopbackHandler();
   return { ok: true, mode: "default" };
+});
+
+/**
+ * Резервный захват системного звука на Linux через PulseAudio/PipeWire
+ * (server/audioCaptureLinux.js), на случай если portal-путь Chromium
+ * (audio:true в systemAudioRequestValue) не дал звука на конкретной машине.
+ * Страница записи вызывает start ПЕРЕД началом видеозахвата и stop сразу
+ * после его остановки, затем муксирует полученный WAV с видео через ffmpeg
+ * (тот же конвейер, что и в screenshots.js). На Windows эти хэндлеры не
+ * нужны (там звук уже идёт через WASAPI loopback) — но регистрируются
+ * безусловно и просто возвращают "not_applicable_on_windows", чтобы страница
+ * могла звать их одинаково на любой ОС без platform-веток на своей стороне.
+ */
+ipcMain.handle("audio:linux-fallback-start", async () => {
+  if (process.platform === "win32") return { ok: false, error: "not_applicable_on_windows" };
+  try {
+    return await require("../server/audioCaptureLinux").startSystemAudioCapture();
+  } catch (e) {
+    return { ok: false, error: e?.message || String(e) };
+  }
+});
+
+ipcMain.handle("audio:linux-fallback-stop", async () => {
+  if (process.platform === "win32") return { ok: true, path: null };
+  try {
+    const p = await require("../server/audioCaptureLinux").stopSystemAudioCapture();
+    return { ok: true, path: p };
+  } catch (e) {
+    return { ok: false, error: e?.message || String(e) };
+  }
 });
 
 /* ------------------- Автосохранение скриншотов из буфера обмена -------------------

@@ -950,6 +950,7 @@
     "officeEyebrow": "Офисные форматы",
     "officeTitle": "Word / PowerPoint / Excel ⇄ PDF",
     "officeMissing": "Ни MS Office, ни LibreOffice не найдены — установите один из них.",
+    "officeMissingLinuxHint": "LibreOffice не найден — установите его через менеджер пакетов вашего дистрибутива (например apt install libreoffice) и перезапустите проверку.",
     "officeConvertGo": "Конвертировать",
     "pdfRotate": "Повернуть PDF",
     "pdfRotateGo": "Повернуть",

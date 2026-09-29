@@ -610,6 +610,13 @@ export default function ScreenshotsPage() {
   const pendingAudioTrackRef = useRef<MediaStreamTrack | null>(null);
   const micTrackRef = useRef<MediaStreamTrack | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
+  // На Linux Chromium может не дать системный звук через xdg-desktop-portal
+  // (композитор без поддержки share-audio, PulseAudio без нужного портала) —
+  // в этом случае стрим из getDisplayMedia приходит вовсе без аудиотрека, и
+  // мы запускаем резервный захват через PulseAudio/PipeWire monitor-источник
+  // (см. window.appBridge.startLinuxSystemAudioFallback). Флаг решает, нужно
+  // ли при остановке записи забирать WAV и передавать его на муксинг.
+  const linuxAudioFallbackActiveRef = useRef(false);
 
   /** Микрофон отдельным getUserMedia — системный звук уже приходит вместе с
    *  видео (getDisplayMedia audio:"loopback"), микрофон так не получить. */
@@ -661,6 +668,19 @@ export default function ScreenshotsPage() {
     };
     rec.onstop = async () => {
       const raw = new Blob(chunksRef.current, { type: "video/webm" });
+      // Резервный аудиозахват (см. linuxAudioFallbackActiveRef) пишет свой WAV
+      // независимо от MediaRecorder — забираем его путь ПЕРЕД загрузкой видео,
+      // чтобы сервер мог смуксировать обе дорожки за один прогон ffmpeg.
+      let extraAudioPath: string | null = null;
+      if (linuxAudioFallbackActiveRef.current) {
+        linuxAudioFallbackActiveRef.current = false;
+        try {
+          const r = await window.appBridge?.stopLinuxSystemAudioFallback?.();
+          extraAudioPath = r?.path || null;
+        } catch {
+          /* резервный захват не запускался/уже остановлен — просто без звука */
+        }
+      }
       try {
         // Сервер перегоняет webm в mp4 через ffmpeg (server/screenshots.js →
         // finalizeRecording) — правильная длительность в контейнере и формат,
@@ -671,6 +691,7 @@ export default function ScreenshotsPage() {
           height: recDimsRef.current.h,
           durationSec: recSecondsRef.current,
           bitrateMbps,
+          extraAudioPath,
         });
         setLibrary((prev) => [item, ...prev]);
         const resp = await fetch(api.screenshotFileUrl(item.id));
@@ -784,7 +805,19 @@ export default function ScreenshotsPage() {
       const tracks: MediaStreamTrack[] = [];
       if (needSystemAudio) {
         const sysTrack = stream.getAudioTracks()[0];
-        if (sysTrack) tracks.push(sysTrack);
+        if (sysTrack) {
+          tracks.push(sysTrack);
+        } else if (window.appBridge?.platform !== "win32") {
+          // Chromium/xdg-desktop-portal не приложил звук к видеопотоку —
+          // пробуем резервный захват через PulseAudio/PipeWire (Linux). На
+          // Windows этой ветки не бывает: там audio:"loopback" либо даёт
+          // трек, либо система реально не поддерживает WASAPI loopback (что
+          // само по себе означало бы более серьёзную проблему, чем этот код
+          // может исправить).
+          const r = await window.appBridge?.startLinuxSystemAudioFallback?.();
+          if (r?.ok) linuxAudioFallbackActiveRef.current = true;
+          else if (r?.error) setError(r.error);
+        }
       }
       if (needMic) {
         const micTrack = await acquireMicTrack();
@@ -809,6 +842,10 @@ export default function ScreenshotsPage() {
       }
       startRecordingOnStream(stream, null);
     } catch (e) {
+      if (linuxAudioFallbackActiveRef.current) {
+        linuxAudioFallbackActiveRef.current = false;
+        void window.appBridge?.stopLinuxSystemAudioFallback?.();
+      }
       await window.appBridge?.setCaptureMode?.("default").catch(() => {});
       setError((e as Error).message || String(e));
     }
@@ -827,6 +864,10 @@ export default function ScreenshotsPage() {
     pendingStreamRef.current?.getTracks().forEach((tr) => tr.stop());
     pendingStreamRef.current = null;
     stopAudioCapture();
+    if (linuxAudioFallbackActiveRef.current) {
+      linuxAudioFallbackActiveRef.current = false;
+      void window.appBridge?.stopLinuxSystemAudioFallback?.();
+    }
     setRecAreaPreview(null);
   };
 

@@ -74,6 +74,17 @@ async function detectGpus(): Promise<GpuInfo[]> {
       gpus.push({ vendor: gpuVendor(name), name, tier: classifyGpu(name) });
     }
   }
+  if (!gpus.length && process.platform === "linux") {
+    // lspci: список PCI-устройств класса VGA/3D — аналог WMI-перечисления на Linux.
+    // Пакет pciutils обычно уже стоит в дистрибутивах, но не гарантированно —
+    // при отсутствии lspci run() просто вернёт "" и приложение уйдёт в CPU-режим.
+    const lspci = await run("lspci", ["-nn"], 3000);
+    for (const line of lspci.split(/\r?\n/)) {
+      if (!/VGA compatible controller|3D controller|Display controller/i.test(line)) continue;
+      const name = line.replace(/^[0-9a-f:.]+\s+/i, "").trim();
+      if (name) gpus.push({ vendor: gpuVendor(name), name, tier: classifyGpu(name) });
+    }
+  }
   return gpus;
 }
 

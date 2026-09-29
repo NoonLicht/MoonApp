@@ -60,13 +60,32 @@ async function pickVideoEncoder(): Promise<string> {
   return "libx264";
 }
 
-/** Один прогон ffmpeg с конкретным видеоэнкодером. */
-function runEncode(ffmpegBin: string, src: string, out: string, encoder: string, bitrateMbps: number): Promise<void> {
+/**
+ * Один прогон ffmpeg с конкретным видеоэнкодером. extraAudioPath — резервная
+ * WAV-дорожка системного звука на Linux (см. audioCaptureLinux.ts): нужна
+ * только когда Chromium/xdg-desktop-portal не смог сам приложить системный
+ * звук к видеопотоку (в этом случае в исходном webm аудиодорожки вообще нет
+ * — см. ScreenshotsPage.tsx, где fallback запускается лишь при отсутствии
+ * системного аудиотрека сразу после getDisplayMedia). Если передана — второй
+ * вход добавляется отдельным -i, видео берём из первого, звук из второго
+ * (-map 0:v:0 -map 1:a:0), -shortest обрезает по более короткому источнику
+ * (WAV-запись стартует/останавливается почти синхронно с видео, но не
+ * гарантированно кадр-в-кадр).
+ */
+function runEncode(
+  ffmpegBin: string,
+  src: string,
+  out: string,
+  encoder: string,
+  bitrateMbps: number,
+  extraAudioPath?: string | null,
+): Promise<void> {
   return new Promise((resolve, reject) => {
     const args = [
       "-y",
       "-i",
       src,
+      ...(extraAudioPath ? ["-i", extraAudioPath] : []),
       "-c:v",
       encoder,
       // -preset — опция только программных энкодеров x264/x265; у аппаратных
@@ -77,6 +96,7 @@ function runEncode(ffmpegBin: string, src: string, out: string, encoder: string,
       `${Math.max(1, Math.round(bitrateMbps || 8))}M`,
       "-pix_fmt",
       "yuv420p",
+      ...(extraAudioPath ? ["-map", "0:v:0", "-map", "1:a:0", "-shortest"] : []),
       "-c:a",
       "aac",
       "-b:a",
@@ -100,15 +120,23 @@ function runEncode(ffmpegBin: string, src: string, out: string, encoder: string,
 export async function finalizeRecording(
   tmpWebmPath: string,
   bitrateMbps: number,
+  extraAudioPath?: string | null,
 ): Promise<{ path: string; ext: string; mime: string; durationSec: number; encoder: string }> {
   const info = await detectFfmpeg();
   if (!info.found || !info.ffmpeg) {
+    if (extraAudioPath) {
+      try {
+        fs.rmSync(extraAudioPath, { force: true });
+      } catch {
+        /* временный wav, не критично */
+      }
+    }
     return { path: tmpWebmPath, ext: "webm", mime: "video/webm", durationSec: 0, encoder: "" };
   }
   const outPath = tmpWebmPath.replace(/\.webm$/i, "") + ".mp4";
   let encoder = await pickVideoEncoder();
   try {
-    await runEncode(info.ffmpeg, tmpWebmPath, outPath, encoder, bitrateMbps);
+    await runEncode(info.ffmpeg, tmpWebmPath, outPath, encoder, bitrateMbps, extraAudioPath);
   } catch (e) {
     // Энкодер числился в списке скомпилированных (ffmpeg -encoders), но
     // реально недоступен в рантайме (нет GPU этого вендора, старый драйвер,
@@ -117,9 +145,16 @@ export async function finalizeRecording(
     if (encoder === "libx264") throw e;
     logger.info("screenshots.finalize.hw_fallback", { failedEncoder: encoder, error: (e as Error).message });
     encoder = "libx264";
-    await runEncode(info.ffmpeg, tmpWebmPath, outPath, encoder, bitrateMbps);
+    await runEncode(info.ffmpeg, tmpWebmPath, outPath, encoder, bitrateMbps, extraAudioPath);
   }
   fs.rmSync(tmpWebmPath, { force: true });
+  if (extraAudioPath) {
+    try {
+      fs.rmSync(extraAudioPath, { force: true });
+    } catch {
+      /* временный wav, не критично */
+    }
+  }
   const durationSec = info.ffprobe ? await probeDuration(info.ffprobe, outPath) : 0;
   logger.info("screenshots.finalize", { encoder, durationSec });
   return { path: outPath, ext: "mp4", mime: "video/mp4", durationSec, encoder };
