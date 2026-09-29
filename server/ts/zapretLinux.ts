@@ -127,9 +127,28 @@ function nfqwsArchDir(): string {
  * вернёт true и для каталога, spawn() же на каталоге упадёт с EACCES/ENOENT
  * по факту запуска. Ищем конкретный исполняемый файл внутри этого дерева.
  */
+/** Ищет `nfqws` прямо в PATH (например на NixOS, где его удобнее поставить
+ * отдельным Nix-пакетом/деривацией, чем распаковывать релиз вручную). */
+function nfqwsInSystemPath(): string | null {
+  const dirs = (process.env.PATH || "").split(path.delimiter).filter(Boolean);
+  for (const dir of dirs) {
+    const candidate = path.join(dir, "nfqws");
+    try {
+      if (fs.statSync(candidate).isFile()) return candidate;
+    } catch {
+      /* нет в этой директории PATH — пробуем следующую */
+    }
+  }
+  return null;
+}
+
 function nfqwsPath(): string {
   const st = findEngineDir();
   const candidates = [
+    // Системный PATH — приоритетнее ручной раскладки: если nfqws уже
+    // поставлен пакетным менеджером (Nix-деривация, apt и т.п.), он обычно
+    // и настроен/пропатчен под систему лучше, чем то, что положили вручную.
+    nfqwsInSystemPath(),
     // Официальная раскладка релиза bol-van/zapret v72.x (архив распакован
     // прямо в storage_linux/zapret/, поэтому nfqws/ — подпапка zapret/).
     st ? path.join(st, "nfqws", "binaries", nfqwsArchDir(), "nfqws") : null,

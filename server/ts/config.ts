@@ -161,15 +161,55 @@ const STORAGE_LINUX_ALIASES: Record<string, string> = {
 };
 
 /**
+ * Ищет исполняемый файл `base` в PATH (аналог `which`/`command -v`), без
+ * обращения к shell. Нужен для NixOS и других систем, где движки ставятся
+ * системным пакетным менеджером (Nix-деривация, apt, dnf...) и живут в
+ * произвольном /nix/store/.../bin, а не там, куда их кладёт наш инсталлятор.
+ * На Windows не используется (там движки всегда идут в комплекте).
+ */
+function findInPath(base: string): string | null {
+  const dirs = (process.env.PATH || "").split(path.delimiter).filter(Boolean);
+  for (const dir of dirs) {
+    const candidate = path.join(dir, base);
+    try {
+      const st = fs.statSync(candidate);
+      if (st.isFile()) return candidate;
+    } catch {
+      /* нет файла в этой директории PATH — пробуем следующую */
+    }
+  }
+  return null;
+}
+
+/**
  * Путь к движку, зависящий от платформы: на Windows — как раньше, прямо в
  * папке движка комплекта инсталлятора (vendor/<engine>/<base>.exe). На
- * Linux/macOS сперва смотрим в storage_linux/<alias>/<base> (без расширения)
- * — это то место, куда фактически положены скачанные бинарники (см. выше), и
- * только если файла там нет — старое расположение vendor/<engine>/linux/<base>
- * (для обратной совместимости с более ранними инструкциями).
+ * Linux/macOS порядок поиска:
+ *   1. системный PATH (`ffmpeg`/`yt-dlp`/`sing-box`/`tgwsproxy` из
+ *      /nix/store, apt, dnf и т.п. — уже пропатчен под текущую систему,
+ *      предпочтителен на NixOS);
+ *   2. storage_linux/<alias>/<base> — бинарник, который разработчик/пользователь
+ *      положил вручную (см. комментарий к STORAGE_LINUX_DIR выше);
+ *   3. vendor/<engine>/linux/<base> — старое расположение, для обратной
+ *      совместимости с более ранними инструкциями.
+ * PATH_ENGINE_NAMES переводит внутренние алиасы в реальные имена системных
+ * пакетов/команд (например движок "proxyCore" в PATH называется "sing-box",
+ * а не "proxyCore").
  */
+const PATH_ENGINE_NAMES: Record<string, string> = {
+  proxyCore: "sing-box",
+  singbox: "sing-box",
+  "proxy-core": "sing-box",
+  ytdlp: "yt-dlp",
+  ffmpeg: "ffmpeg",
+  tgwsproxy: "tgwsproxy",
+};
+
 function vendorBin(engine: string, base: string): string {
   if (process.platform === "win32") return vendorPath(engine, `${base}.exe`);
+  const pathName = PATH_ENGINE_NAMES[engine] || base;
+  const fromSystemPath = findInPath(pathName);
+  if (fromSystemPath) return fromSystemPath;
   const alias = STORAGE_LINUX_ALIASES[engine] || engine;
   const fromStorageLinux = path.join(STORAGE_LINUX_DIR, alias, base);
   if (fs.existsSync(fromStorageLinux)) return fromStorageLinux;
