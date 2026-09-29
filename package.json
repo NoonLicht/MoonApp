@@ -3,7 +3,7 @@
   "productName": "MoonApp",
   "version": "0.4.0",
   "description": "MoonApp — desktop utility panel (Electron + React + Vite + Node backend)",
-  "author": "NoonLicht <alexmaker716@gmail.com>",
+  "author": "NoonLicht <moontoon1337@yandex.ru>",
   "type": "commonjs",
   "main": "electron/main.js",
   "scripts": {
