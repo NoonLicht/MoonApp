@@ -1,9 +1,16 @@
-const { app, BrowserWindow, safeStorage, ipcMain, session, globalShortcut } = require("electron");
+const { app, BrowserWindow, ipcMain, session, globalShortcut } = require("electron");
 const net = require("net");
 const http = require("http");
 const crypto = require("crypto");
 const path = require("path");
 const fs = require("fs");
+// Имя приложения — ДО require("./storagePath"): storagePath спрашивает
+// app.getPath("userData"), а без явного setName() Electron берёт "name" из
+// package.json ("moonapp", маленькими буквами) вместо "MoonApp". На Windows
+// незаметно (ФС регистронезависима), но на Linux (~/.config/...) это была бы
+// уже другая, «неправильная» по регистру папка. app.setName() можно звать
+// сразу после require("electron"), app.whenReady() для этого не нужен.
+app.setName("MoonApp");
 // Вычисляем путь к storage ДО require("../server"): модуль выставляет
 // process.env.MOONAPP_STORAGE, который читают server/config.js и monitor.
 const { STORAGE_DIR } = require("./storagePath");
@@ -1034,7 +1041,6 @@ ipcMain.handle("updates:download", async () => {
 app.whenReady().then(() => {
   if (!gotSingleInstanceLock) return;
   registerWindowControls();
-  if (safeStorage) app.setName("MoonApp");
   mlog("info", "app.start", {
     version: app.getVersion(),
     packaged: app.isPackaged,
