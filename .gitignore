@@ -6,6 +6,9 @@ release2/
 release-build/
 build/*
 !build/icon.ico
+!build/icon.png
+!build/icons/
+!build/icons/*
 # NSIS-хук: сохраняет пользовательские данные (storage) при обновлении и
 # переустановке приложения — подключён через build.nsis.include.
 !build/installer.nsh
