@@ -176,10 +176,6 @@
         {
           "target": "deb",
           "arch": ["x64"]
-        },
-        {
-          "target": "rpm",
-          "arch": ["x64"]
         }
       ],
       "icon": "build/icons",
@@ -188,9 +184,6 @@
     },
     "deb": {
       "depends": ["libsecret-1-0"]
-    },
-    "rpm": {
-      "depends": ["libsecret"]
     }
   }
 }
