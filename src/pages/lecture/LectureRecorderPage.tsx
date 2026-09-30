@@ -1529,6 +1529,30 @@ export default function LectureRecorderPage() {
               )}
             </div>
           ))}
+          {/* Потоковая расшифровка (бета): черновик незакрытого сегмента, пока
+              пользователь ещё говорит — исчезает/заменяется финальным чанком,
+              как только VAD закроет паузой (см. status.draft в lecture.js). */}
+          {status?.live &&
+            (["mic", "sys"] as const).map((src) =>
+              status.draft?.[src] ? (
+                <div key={`draft-${src}`} className="lec-chunk lec-chunk-draft">
+                  <span className="lec-ts lec-ts-draft">
+                    {src === "sys" ? (
+                      <span className="lec-src-sys" title={t("lecture.audio.srcSys")}>
+                        {t("lecture.audio.srcSysShort")}
+                      </span>
+                    ) : (
+                      <span className="lec-src-mic" title={t("lecture.audio.srcMicShort")}>
+                        {t("lecture.audio.srcMicShort")}
+                      </span>
+                    )}
+                  </span>
+                  <span className="lec-text lec-text-draft" title={t("lecture.audio.streamingDraftHint")}>
+                    {status.draft[src]}
+                  </span>
+                </div>
+              ) : null,
+            )}
         </div>
 
         <div className="lec-notes">

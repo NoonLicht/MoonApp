@@ -427,6 +427,28 @@
   cursor: text;
   color: var(--text-primary);
 }
+/* Потоковая расшифровка (бета): черновик незакрытого сегмента — визуально
+   приглушённый и курсивный, чтобы не путаться с уже подтверждённым текстом. */
+.lec-chunk-draft {
+  border-bottom-style: solid;
+  opacity: 0.85;
+}
+.lec-ts-draft {
+  background: transparent;
+  border-style: dashed;
+  border-color: var(--glass-border);
+  color: var(--text-dim, var(--text-secondary));
+  cursor: default;
+}
+.lec-text-draft {
+  font-style: italic;
+  color: var(--text-secondary);
+  cursor: default;
+}
+.lec-text-draft::after {
+  content: " …";
+  opacity: 0.6;
+}
 .lec-edit {
   flex: 1;
 }

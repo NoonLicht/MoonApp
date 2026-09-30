@@ -145,6 +145,12 @@ function createSession(title, sampleRate, channels) {
   };
   sessions.set(id, s);
   ensureTrack(s, "mic");
+  // Потоковая расшифровка (бета, см. pumpDraft): таймер живёт всегда, но при
+  // выключенной настройке дальше первой проверки cfg().streaming не идёт —
+  // никакого лишнего прогона Whisper, если фича не включена.
+  s.draft = { mic: "", sys: "" };
+  s.draftBusy = { mic: false, sys: false };
+  s.draftTimer = setInterval(() => pumpDraft(id), DRAFT_INTERVAL_MS);
   const rawFile = path.join(dir, "raw.wav");
   stmts.lectureUpdate.run(id, { raw_file: path.basename(rawFile) });
   logger.action("lecture.session.start", { id, sampleRate: sr, channels: ch });
@@ -261,9 +267,19 @@ function nextIdx(id) {
   return (chunks.length ? Math.max(...chunks.map((c) => Number(c.idx) || 0)) : 0) + 1;
 }
 
+/** Состояние сессии больше не нужно: снять и таймер чернового прогона, и саму запись. */
+function endSession(id) {
+  const s = sessions.get(id);
+  if (s && s.draftTimer) clearInterval(s.draftTimer);
+  sessions.delete(id);
+}
+
 function enqueueChunk(id, chunk, source = "mic") {
   const s = sessions.get(id);
   if (!s) return;
+  // Сегмент реально закрылся — черновик по этому источнику устарел (его текст
+  // «переехал» в обычный чанк ниже), стираем, чтобы UI не показывал дубль.
+  if (s.draft) s.draft[source] = "";
   const dir = sessionDir(id);
   const w = s.tracks.get(source) || s.tracks.get("mic");
   const idx = nextIdx(id);
@@ -302,7 +318,7 @@ function pumpQueue(id) {
     // состояние сессии. Раньше stopSession удаляла его сразу, и последние
     // чанки лекции оставались «pending» навсегда (некому было их читать).
     if (s.stopping) {
-      sessions.delete(id);
+      endSession(id);
       // Умный авто-конспект: расшифровка дочитана, и если режим запуска это
       // разрешает — собираем конспект без нажатия кнопки (см. maybeAutoConspectus).
       maybeAutoConspectus(id);
@@ -327,7 +343,7 @@ function pumpQueue(id) {
       s.transcribing = false;
       if (s.queue.length) pumpQueue(id);
       else if (s.stopping) {
-        sessions.delete(id);
+        endSession(id);
         // Последний чанк дочитан — тот же «умный» авто-конспект, что и выше.
         maybeAutoConspectus(id);
         maybeAutoDiarize(id);
@@ -466,7 +482,7 @@ function resultFromSrtText(srtText) {
  * ОДНА попытка перезапуска, иначе исключение уходит наверх, и transcribeFile
  * откатывается на обычный whisper-cli для этого чанка (очередь не рвётся).
  */
-async function transcribeViaServer(model, wavPath, meta, skipHint) {
+async function transcribeViaServer(model, wavPath, meta, skipHint, allowRetry = true) {
   const lc = settings.get("lecture");
   const language = String(lc.language || "ru");
   const hint = skipHint ? "" : whisperEngine.initialPrompt();
@@ -491,7 +507,7 @@ async function transcribeViaServer(model, wavPath, meta, skipHint) {
     result = await request(!!hint);
   }
 
-  if (!whisperEngine.needsPromptlessRetry(result.text, hint))
+  if (!allowRetry || !whisperEngine.needsPromptlessRetry(result.text, hint))
     return { ...result, promptless: skipHint };
   logger.info("lecture.chunk.retry_no_prompt", {
     id: meta.id ?? null,
@@ -516,8 +532,23 @@ async function transcribeViaServer(model, wavPath, meta, skipHint) {
  * whisperEngine.whisperServerAvailable()): если он выключен, недоступен или упал
  * даже после перезапуска — этот чанк уходит по обычному CLI-пути ниже, очередь
  * не останавливается и поведение идентично тому, что было до этой функции.
+ *
+ * allowRetry=false (черновой прогон streaming-режима, см. draftTranscribe):
+ * откат без --prompt намеренно пропускается — черновик и так пересчитывается
+ * каждые DRAFT_INTERVAL_MS, второй полный прогон модели на каждый тик удвоил
+ * бы нагрузку CPU/GPU ради текста, который через пару секунд всё равно
+ * перезапишется свежим тиком (а на закрытии сегмента финальный чанк идёт
+ * с allowRetry=true как раньше).
  */
-async function transcribeFile(bin, model, wavPath, outBase, meta = {}, runner = runWhisper) {
+async function transcribeFile(
+  bin,
+  model,
+  wavPath,
+  outBase,
+  meta = {},
+  runner = runWhisper,
+  allowRetry = true,
+) {
   // Если на этой модели подсказка уже выбила пустой ответ, дальше идём сразу без
   // неё: повтор стоит полной загрузки модели, а чанков в лекции сотни.
   const skipHint = whisperEngine.promptUnusableFor(model);
@@ -525,7 +556,7 @@ async function transcribeFile(bin, model, wavPath, outBase, meta = {}, runner = 
   const lc = settings.get("lecture");
   if (lc.useResidentWhisper === true && whisperEngine.whisperServerAvailable()) {
     try {
-      return await transcribeViaServer(model, wavPath, meta, skipHint);
+      return await transcribeViaServer(model, wavPath, meta, skipHint, allowRetry);
     } catch (e) {
       logger.warn("lecture.chunk.resident_fallback_cli", {
         id: meta.id ?? null,
@@ -544,7 +575,7 @@ async function transcribeFile(bin, model, wavPath, outBase, meta = {}, runner = 
   );
   const result = await runner(bin, args, outBase);
   const hint = skipHint ? "" : whisperEngine.initialPrompt();
-  if (!whisperEngine.needsPromptlessRetry(result.text, hint))
+  if (!allowRetry || !whisperEngine.needsPromptlessRetry(result.text, hint))
     return { ...result, promptless: skipHint };
   // ОТКАТ БЕЗ ПОДСКАЗКИ. large-v3-turbo на длинную русскую подсказку отвечает
   // пустым SRT: движок грузит модель и через пару секунд молча завершается, а
@@ -586,6 +617,66 @@ async function transcribeChunk(id, item) {
   }
   logger.info("lecture.chunk.done", { id, file: item.file, chars: result.text.length });
   return result;
+}
+
+/* ------------------------- Потоковая расшифровка (бета) ------------------------- */
+
+const DRAFT_INTERVAL_MS = 2200; // как часто пробуем черновой прогон незакрытого сегмента
+
+/**
+ * Черновой прогон незакрытого сегмента речи (пока пользователь не сделал паузу).
+ * Опционально: включается настройкой lecture.streaming (по умолчанию выключено,
+ * см. server/ts/settings.ts) — при выключенной настройке дальше первой строки
+ * (дешёвый cfg()) функция не идёт, лишнего whisper-прогона нет.
+ *
+ * Черновик НЕ пишется в БД — это чисто оперативная строка в статусе сессии
+ * (getStatus → draft.mic/draft.sys), которую фронт рисует курсивом и стирает
+ * сама, как только придёт финальный чанк (см. enqueueChunk — он чистит
+ * s.draft[source] в момент закрытия сегмента).
+ */
+function pumpDraft(id) {
+  const s = sessions.get(id);
+  if (!s || s.stopping) return;
+  if (cfg().streaming !== true) return;
+  for (const [key, t] of s.tracks) {
+    if (s.draftBusy[key]) continue; // прошлый черновой прогон этого источника ещё не завершился
+    const peek = t.vad.peek();
+    if (!peek) {
+      // Открытого сегмента нет (тишина/пауза) — прежний черновик неактуален.
+      if (s.draft[key]) s.draft[key] = "";
+      continue;
+    }
+    s.draftBusy[key] = true;
+    draftTranscribe(id, key, peek.samples, t.sampleRate)
+      .then((text) => {
+        const cur = sessions.get(id);
+        if (cur) cur.draft[key] = text;
+      })
+      .catch(() => {
+        /* черновик — best effort: ошибка здесь не должна ронять запись */
+      })
+      .finally(() => {
+        const cur = sessions.get(id);
+        if (cur) cur.draftBusy[key] = false;
+      });
+  }
+}
+
+/**
+ * Один черновой прогон: тот же движок (резидент/CLI), что и финальные чанки —
+ * transcribeFile сама выбирает путь и делает откат без --prompt при пустом
+ * ответе. Разница только в том, что результат никуда не пишется в БД.
+ */
+async function draftTranscribe(id, track, samples, sampleRate) {
+  const bin = whisperEngine.findBin();
+  const model = whisperEngine.findModel();
+  if (!bin || !model) return "";
+  const file = `_draft_${track}.wav`;
+  const wavPath = path.join(sessionDir(id), file);
+  fs.writeFileSync(wavPath, toWav(samples, sampleRate, 1));
+  const outBase = wavPath.replace(/\.wav$/i, "");
+  const result = await transcribeFile(bin, model, wavPath, outBase, { id, file, source: track });
+  return result.text || "";
 }
 
 /** Вырезание галлюцинаций и схлопывание зацикленных повторов. */
@@ -690,6 +781,9 @@ function getStatus(id) {
     vad: s ? vadLiveMetrics(s) : null,
     recheck: recheckState(id),
     lastError: s ? s.lastError : "",
+    // Потоковая расшифровка (бета): черновой текст незакрытого сегмента по
+    // дорожкам (mic/sys). null, пока сессия не идёт; "" — сегмент закрыт/тишина.
+    draft: s ? s.draft : null,
     whisper: engineStatus(),
   };
 }
@@ -888,7 +982,7 @@ function deleteSession(id) {
   removeNotesFile(lec);
   // Удаление — явный форс: очередь транскрибации нам больше не нужна,
   // поэтому состояние сессии снимаем принудительно (pumpQueue ждал бы её конца).
-  sessions.delete(id);
+  endSession(id);
   stmts.lectureDelete.run(id);
   try {
     fs.rmSync(sessionDir(id), { recursive: true, force: true });
@@ -1120,22 +1214,56 @@ function contentDisposition(name) {
  * теряются, а метки времени удерживают хронологию лекции.
  */
 
-const CHUNK_PROMPT = `Ты — академический ассистент. Ниже ФРАГМЕНТ расшифровки университетской лекции.
-Выпиши по нему ЧЕРНОВЫЕ ЗАМЕТКИ на русском (без вступлений и выводов):
+const CHUNK_PROMPT = `Ты — академический ассистент. Ниже ФРАГМЕНТ автоматической расшифровки
+университетской лекции (сделана распознаванием речи, а не человеком — в тексте
+неизбежны ошибки распознавания: перепутанные созвучные слова, искажённые
+термины/имена/названия, случайно слипшиеся или разорванные слова, неверные
+числа и т.п.).
+
+Сначала определи по смыслу фрагмента, о какой предметной области идёт речь
+(математика, право, экономика, программирование, история и т.д.) — дальше
+опирайся на эту область, чтобы понять, какое слово подразумевалось на самом
+деле, а не просто повторяй то, что услышал движок распознавания.
+
+Твоя задача — ИСПРАВЛЯТЬ ошибки распознавания по смыслу и контексту, а не
+механически переносить их в заметки:
+- если слово явно искажено (созвучный термин из другой области, «каша» из
+  слогов, перепутанное окончание) — восстанови то, что реально имелось в виду,
+  и пиши уже исправленный вариант;
+- формулы, определения и числа, которые распознавание могло исказить
+  (перепутанные цифры, потерянные знаки), восстанавливай по внутренней логике
+  темы, если это очевидно из контекста;
+- если восстановить смысл невозможно (фрагмент слишком испорчен) — пропусти
+  это место, а не выдумывай произвольную замену.
+
+Дальше выпиши по фрагменту ЧЕРНОВЫЕ ЗАМЕТКИ на русском (без вступлений и
+выводов), уже в исправленном виде:
 - определения всех терминов, которые встречаются в тексте;
 - теоремы, формулы (в LaTeX $...$), правила и условия их применимости;
 - примеры и задачи вместе с решением;
 - числовые факты, даты, имена;
 - 2-3 вопроса по этому фрагменту, которые могут спросить на экзамене.
 
-Пиши только то, что есть в тексте. Ничего не выдумывай. Если фрагмент —
-продолжение предыдущей мысли, так и укажи («продолжение: ...»).
+Не добавляй факты и темы, которых во фрагменте вообще не было — исправлять
+искажённое слово можно и нужно, придумывать целиком новое содержание нельзя.
+Если фрагмент — продолжение предыдущей мысли, так и укажи («продолжение: ...»).
 === ФРАГМЕНТ ===
 `;
 
 const MERGE_PROMPT = `Ты — академический ассистент. Ниже ЧЕРНОВЫЕ ЗАМЕТКИ по всей лекции,
-собранные по фрагментам в хронологическом порядке.
+собранные по фрагментам в хронологическом порядке (заметки уже прошли черновую
+чистку от ошибок распознавания речи, но между фрагментами могли остаться
+нестыковки в написании одного и того же термина/имени — приведи их к единому
+варианту по смыслу, если очевидно, что это одно и то же).
+
+Сначала сам определи тему и предметную область лекции по содержанию заметок
+(не спрашивай пользователя и не проси уточнить — просто пойми это из текста)
+и адаптируй терминологию и акценты конспекта под эту область.
+
 Собери из них один аккуратный конспект на русском в Markdown ровно в таком виде:
+
+## Тема лекции
+(одна строка: предметная область и конкретная тема, определённые тобой по содержанию)
 
 ## Обзор
 (2-4 абзаца: о чём лекция, логика изложения)
@@ -1151,13 +1279,35 @@ const MERGE_PROMPT = `Ты — академический ассистент. Н
 1. (вопрос) — (краткий ожидаемый ответ)
 
 Убери повторы и «черновые» пометки, сохрани порядок разделов лекции.
-Не добавляй факты, которых нет в заметках.
+Не добавляй факты, которых не подразумевают заметки — но при этом не тяни
+дословно явные огрехи распознавания речи (перепутанные слова, обрывки), если
+по смыслу заметок понятно, что имелось в виду; в таком случае пиши исправленный
+вариант.
 === ЗАМЕТКИ ===
 `;
 
 /** Системный промпт по умолчанию (используется, если не выбран пресет и нет своего текста). */
 const DEFAULT_CONSPECTUS_SYSTEM_PROMPT =
-  "Ты помогаешь студенту с конспектами лекций. Пиши по-русски, только по тексту.";
+  "Ты помогаешь студенту с конспектами лекций. Текст лекции получен автоматическим " +
+  "распознаванием речи и содержит ошибки распознавания (перепутанные созвучные слова, " +
+  "искажённые термины и имена). Сначала сам определи предметную область и тему лекции по " +
+  "содержанию, дальше используй это понимание, чтобы по контексту восстанавливать слова, " +
+  "которые распознавание исказило, и писать в конспекте уже исправленный, осмысленный " +
+  "вариант — а не дословно повторять ошибки транскрипции. Не выдумывай факты, которых не " +
+  "было в тексте: исправлять искажённое слово можно, придумывать новое содержание нельзя. " +
+  "Пиши по-русски.";
+
+/**
+ * Общая приписка про ошибки распознавания речи — добавляется к каждому
+ * предметному пресету ниже. Раньше пресеты требовали «только по тексту», из-за
+ * чего модель дословно переносила в конспект явные ошибки whisper (перепутанные
+ * созвучные слова, искажённые термины) вместо того, чтобы поправить их по
+ * контексту своей предметной области (см. DEFAULT_CONSPECTUS_SYSTEM_PROMPT).
+ */
+const ASR_FIX_HINT =
+  "Текст лекции получен автоматическим распознаванием речи и содержит ошибки " +
+  "распознавания — по контексту предмета исправляй искажённые термины/имена, а не " +
+  "переноси их в конспект дословно. Не выдумывай факты, которых не было в тексте.";
 
 /**
  * Встроенные пресеты системного промпта под учебные предметы. Пользователь может
@@ -1170,7 +1320,7 @@ const CONSPECTUS_BUILTIN_PRESETS = [
     label: "Экономика",
     builtin: true,
     systemPrompt:
-      "Ты помогаешь студенту-экономисту с конспектом лекции. Пиши по-русски, только по тексту. " +
+      `Ты помогаешь студенту-экономисту с конспектом лекции. Пиши по-русски. ${ASR_FIX_HINT} ` +
       "Выделяй экономические термины, формулы, показатели и определения, сохраняй числовые примеры и графики словами.",
   },
   {
@@ -1178,7 +1328,7 @@ const CONSPECTUS_BUILTIN_PRESETS = [
     label: "Менеджмент",
     builtin: true,
     systemPrompt:
-      "Ты помогаешь студенту-менеджеру с конспектом лекции. Пиши по-русски, только по тексту. " +
+      `Ты помогаешь студенту-менеджеру с конспектом лекции. Пиши по-русски. ${ASR_FIX_HINT} ` +
       "Выделяй управленческие модели, термины, кейсы и практические выводы.",
   },
   {
@@ -1186,7 +1336,7 @@ const CONSPECTUS_BUILTIN_PRESETS = [
     label: "Математика",
     builtin: true,
     systemPrompt:
-      "Ты помогаешь студенту с конспектом лекции по математике. Пиши по-русски, только по тексту. " +
+      `Ты помогаешь студенту с конспектом лекции по математике. Пиши по-русски. ${ASR_FIX_HINT} ` +
       "Сохраняй формулы, определения, теоремы и доказательства как можно точнее, в понятной текстовой нотации.",
   },
   {
@@ -1194,7 +1344,7 @@ const CONSPECTUS_BUILTIN_PRESETS = [
     label: "Программирование",
     builtin: true,
     systemPrompt:
-      "Ты помогаешь студенту с конспектом лекции по программированию. Пиши по-русски, только по тексту. " +
+      `Ты помогаешь студенту с конспектом лекции по программированию. Пиши по-русски. ${ASR_FIX_HINT} ` +
       "Сохраняй код, названия структур данных, алгоритмов и терминов как есть.",
   },
   {
@@ -1202,7 +1352,7 @@ const CONSPECTUS_BUILTIN_PRESETS = [
     label: "Право",
     builtin: true,
     systemPrompt:
-      "Ты помогаешь студенту-юристу с конспектом лекции. Пиши по-русски, только по тексту. " +
+      `Ты помогаешь студенту-юристу с конспектом лекции. Пиши по-русски. ${ASR_FIX_HINT} ` +
       "Сохраняй ссылки на статьи законов, термины и формулировки максимально точно.",
   },
   {
@@ -1210,7 +1360,7 @@ const CONSPECTUS_BUILTIN_PRESETS = [
     label: "История",
     builtin: true,
     systemPrompt:
-      "Ты помогаешь студенту-историку с конспектом лекции. Пиши по-русски, только по тексту. " +
+      `Ты помогаешь студенту-историку с конспектом лекции. Пиши по-русски. ${ASR_FIX_HINT} ` +
       "Сохраняй даты, имена, события и причинно-следственные связи.",
   },
 ];
@@ -1938,6 +2088,8 @@ function audioSettings() {
     micDeviceId: String(c.micDeviceId || ""),
     micGain: Number(c.micGain ?? 1),
     micAgc: c.micAgc === true,
+    // Потоковая расшифровка (бета): черновой текст по ходу фразы, до паузы (см. pumpDraft).
+    streaming: c.streaming === true,
     vad: {
       rmsThreshold: thr,
       thresholdDb: Math.round(20 * Math.log10(thr) * 10) / 10,
@@ -1973,6 +2125,7 @@ function setAudioSettings(patch = {}) {
   if (patch.micGain !== undefined)
     next.micGain = num(patch.micGain, 0.5, 4, Number(c.micGain ?? 1));
   if (patch.micAgc !== undefined) next.micAgc = !!patch.micAgc;
+  if (patch.streaming !== undefined) next.streaming = !!patch.streaming;
   const v = patch.vad || {};
   if (v.rmsThreshold !== undefined)
     next.vadRmsThreshold = num(v.rmsThreshold, 0.0005, 0.2, Number(c.vadRmsThreshold));

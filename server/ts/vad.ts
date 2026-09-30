@@ -451,6 +451,22 @@ export class VadBufferManager {
     return this.push(pcm);
   }
 
+  /**
+   * Черновой снимок НЕЗАКРЫТОГО чанка (для потокового режима расшифровки):
+   * возвращает уже накопленное аудио речи как есть, НЕ закрывая чанк и НЕ
+   * трогая состояние детектора (в отличие от flush()/_closeChunk()) — запись
+   * продолжается как обычно, а это лишь «подсмотреть, что там сейчас».
+   * null — открытого чанка нет или речи в нём пока меньше 300 мс (не о чем
+   * гонять Whisper).
+   */
+  peek(): { samples: Int16Array; speechMs: number } | null {
+    if (!this.pending.length || this.chunkSpeechMs < 300) return null;
+    const trimmed = this._trimEdges(this.pending, this.chunkInfo, this.chunkStartMs);
+    const frames = trimmed && trimmed.frames.length ? trimmed.frames : this.pending;
+    if (!frames.length) return null;
+    return { samples: concat(frames), speechMs: this.chunkSpeechMs };
+  }
+
   /** Хвост при остановке записи: вернуть недозакрытый чанк, если там была речь. */
   flush(): VadChunk[] {
     const startMs = this.chunkStartMs;

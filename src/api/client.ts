@@ -2444,6 +2444,8 @@ export interface LectureAudioSettings {
   micDeviceId: string;
   micGain: number;
   micAgc: boolean;
+  /** Потоковая расшифровка (бета): черновой текст сегмента до паузы (см. LectureStatus.draft). */
+  streaming: boolean;
   vad: {
     rmsThreshold: number;
     thresholdDb: number;
@@ -2471,7 +2473,7 @@ export interface LectureAudioSettings {
  * раньше этот же список жил ещё и inline-типом в LectureAudioPanel.
  */
 export type LectureAudioPatch = Partial<
-  Pick<LectureAudioSettings, "micDeviceId" | "micGain" | "micAgc">
+  Pick<LectureAudioSettings, "micDeviceId" | "micGain" | "micAgc" | "streaming">
 > & {
   vad?: Partial<
     Pick<
@@ -2493,6 +2495,12 @@ export interface LectureStatus {
   vad?: Record<string, LectureVadMetrics> | null;
   recheck?: LectureRecheckState;
   lastError: string;
+  /**
+   * Потоковая расшифровка (бета): черновой текст незакрытого сегмента по
+   * дорожкам (mic/sys) — появляется до паузы и заменяется финальным чанком,
+   * когда VAD его закроет. null — сессия не идёт; "" — сегмент закрыт/тишина.
+   */
+  draft?: { mic: string; sys: string } | null;
   whisper: LectureEngineStatus;
 }
 export interface LectureCreateResult {

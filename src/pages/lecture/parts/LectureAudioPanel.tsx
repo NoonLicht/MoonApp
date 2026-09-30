@@ -176,6 +176,20 @@ export default function LectureAudioPanel({
         </div>
       </div>
 
+      {/* --- Потоковая расшифровка (бета) --- */}
+      <div className="lecs-block">
+        <div className="lecs-block-label">{t("lecture.audio.streamingTitle")}</div>
+        <label className="lec-check">
+          <input
+            type="checkbox"
+            checked={draft?.streaming === true}
+            onChange={(e) => void onSave({ streaming: e.target.checked })}
+          />
+          {t("lecture.audio.streamingToggle")}
+        </label>
+        <div className="lecs-dim lecs-hint">{t("lecture.audio.streamingHint")}</div>
+      </div>
+
       {/* --- Порог VAD --- */}
       <div className="lecs-block">
         <div className="lecs-block-label">{t("lecture.audio.vadTitle")}</div>
