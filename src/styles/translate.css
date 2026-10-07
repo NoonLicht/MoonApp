@@ -44,7 +44,7 @@
 }
 .tr-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 10px;
   margin-top: 10px;
 }
@@ -142,5 +142,51 @@
   }
   .tr-fill {
     min-height: 520px;
+  }
+}
+
+/* Панель изображения: языки делят ряд поровну, кнопки переносятся на свой ряд, только когда не хватает места. */
+.tr-langs > .tr-lang {
+  flex: 1 1 160px;
+  min-width: 0;
+}
+.tr-lang .select-wrap {
+  display: flex;
+  width: 100%;
+}
+.tr-lang .select-wrap select {
+  width: 100%;
+  min-width: 0;
+  text-overflow: ellipsis;
+}
+.tr-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-left: auto;
+  justify-content: flex-end;
+}
+/* Подсказки под панелью: отступы со всех сторон, чтобы текст не липнул к краям. */
+.tr-hint {
+  margin: 8px 4px 4px;
+  line-height: 1.45;
+}
+
+/* Панель модели: селекты сжимаются вместе с колонкой, а в узком окне идут друг под другом. */
+.tr-grid .field {
+  min-width: 0;
+}
+.tr-grid .select-wrap {
+  display: flex;
+  width: 100%;
+}
+.tr-grid .select-wrap select {
+  width: 100%;
+  min-width: 0;
+  text-overflow: ellipsis;
+}
+@media (max-width: 1000px) {
+  .tr-grid {
+    grid-template-columns: minmax(0, 1fr);
   }
 }

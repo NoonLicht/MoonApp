@@ -29,5 +29,9 @@ export default function LangSelect({
       .sort((a, b) => a.label.localeCompare(b.label, lang));
     return auto ? [{ value: "auto", label: t("translate.auto") }, ...list] : list;
   }, [codes, lang, auto, t]);
-  return <Select value={value} onChange={(e) => onChange(e.target.value)} options={options} />;
+  return (
+    <div className="tr-lang">
+      <Select value={value} onChange={(e) => onChange(e.target.value)} options={options} />
+    </div>
+  );
 }

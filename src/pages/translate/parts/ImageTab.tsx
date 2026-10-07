@@ -225,51 +225,52 @@ export default function ImageTab({
           onChange={(tgt) => set({ tgt })}
           codes={status.languages}
         />
-        <div style={{ flex: 1 }} />
-        <Btn icon={ClipboardPaste} onClick={() => void pasteBtn()}>
-          {t("translate.pasteImage")}
-        </Btn>
-        <Btn icon={ImageIcon} onClick={() => input.current?.click()}>
-          {t("translate.pickImage")}
-        </Btn>
-        <input
-          ref={input}
-          type="file"
-          accept="image/*"
-          hidden
-          onChange={(e) => pick(e.target.files?.[0])}
-        />
-        {running ? (
-          <Btn icon={Square} onClick={cancel}>
-            {t("translate.cancel")}
+        <div className="tr-actions">
+          <Btn icon={ClipboardPaste} onClick={() => void pasteBtn()}>
+            {t("translate.pasteImage")}
           </Btn>
-        ) : (
-          <Btn
-            variant="primary"
-            icon={Languages}
-            disabled={!ready || !file || !ocrOk}
-            onClick={() =>
-              file &&
-              void start(() =>
-                api.trFile(
-                  file,
-                  {
-                    src: settings.src,
-                    tgt: settings.tgt,
-                    provider: settings.provider,
-                    variant: settings.variant,
-                  },
-                  "image",
-                ),
-              )
-            }
-          >
-            {t("translate.run")}
+          <Btn icon={ImageIcon} onClick={() => input.current?.click()}>
+            {t("translate.pickImage")}
           </Btn>
-        )}
+          <input
+            ref={input}
+            type="file"
+            accept="image/*"
+            hidden
+            onChange={(e) => pick(e.target.files?.[0])}
+          />
+          {running ? (
+            <Btn icon={Square} onClick={cancel}>
+              {t("translate.cancel")}
+            </Btn>
+          ) : (
+            <Btn
+              variant="primary"
+              icon={Languages}
+              disabled={!ready || !file || !ocrOk}
+              onClick={() =>
+                file &&
+                void start(() =>
+                  api.trFile(
+                    file,
+                    {
+                      src: settings.src,
+                      tgt: settings.tgt,
+                      provider: settings.provider,
+                      variant: settings.variant,
+                    },
+                    "image",
+                  ),
+                )
+              }
+            >
+              {t("translate.run")}
+            </Btn>
+          )}
+        </div>
       </div>
-      {!ocrOk && <div className="muted-sm">{t("translate.ocrUnsupported")}</div>}
-      <div className="muted-sm" style={{ marginTop: 6 }}>
+      {!ocrOk && <div className="muted-sm tr-hint">{t("translate.ocrUnsupported")}</div>}
+      <div className="muted-sm tr-hint">
         {settings.src === "auto" ? t("translate.imageAutoHint") : t("translate.imageHint")}
       </div>
       {url ? (
