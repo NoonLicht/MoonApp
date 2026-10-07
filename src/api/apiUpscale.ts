@@ -60,7 +60,14 @@ export const upscaleApi = {
     req<{ ok: boolean; resumed: number; jobs: UpJob[] }>("POST", "/upscale/resume"),
   /** Убрать исходники прошлых задач из storage/upscale/in (выбор нового файла). */
   upscaleCleanInputs: () => req<{ ok: boolean; removed: number }>("POST", "/upscale/inputs/clean"),
-  upscaleModels: () => req<UpModelsState>("GET", "/upscale/models"),
+  upscaleModels: async (): Promise<UpModelsState> => {
+    const s = await req<UpModelsState & { ncnn?: UpModelsState["models"] }>(
+      "GET",
+      "/upscale/models",
+    );
+    // Модели бэкенда ncnn-Vulkan живут в общем списке рядом с ONNX.
+    return s.ncnn?.length ? { ...s, models: [...s.models, ...s.ncnn] } : s;
+  },
   /**
    * «Обновить каталог»: стянуть свежий манифест моделей из GitHub (или свой
    * адрес) — новым моделям обновление приложения не нужно.

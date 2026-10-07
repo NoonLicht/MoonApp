@@ -5,6 +5,7 @@ import zlib from "zlib";
 import config from "../config";
 import logger from "../logger";
 import { MAX_INTERP_MULT } from "../upscalePipeline";
+import { exePath, installBundle, isNcnn, ncnnModels, removeBundle } from "./ncnn";
 import type {
   ManifestCache,
   ManifestInfo,
@@ -343,6 +344,11 @@ export function listModels(): UpModelInfo[] {
   });
 }
 
+/** Виртуальные модели бэкенда ncnn-Vulkan (отдельным полем ответа: не смешиваются с манифестом). */
+export function ncnnCatalog(): UpModelInfo[] {
+  return ncnnModels().map((m) => ({ ...m, downloading: downloadProgress(m.id) }));
+}
+
 /** Прогресс текущей загрузки (null — модель не качается прямо сейчас). */
 function downloadProgress(id: string): UpModelInfo["downloading"] {
   const st = downloads.get(id);
@@ -369,6 +375,10 @@ export function downloadStates(): Record<string, { state: string; error: string 
  * ONNX держал бы дескриптор и файл не удалился на Windows).
  */
 export function removeModel(id: string): { ok: boolean; removed: boolean } {
+  if (isNcnn(id)) {
+    removeBundle();
+    return { ok: true, removed: true };
+  }
   const m = findModel(id);
   if (!m) throw new Error("model_unknown");
   const p = path.join(DIRS.upscaleModels, m.file);
@@ -507,6 +517,22 @@ export async function downloadModel(
   id: string,
   opts: { force?: boolean } = {},
 ): Promise<{ ok: boolean; path: string; sizeMb: number }> {
+  if (isNcnn(id)) {
+    if (!ncnnModels().some((m) => m.id === id)) throw new Error("model_unknown");
+    if (downloads.get(id)?.state === "working") throw new Error("download_busy");
+    if (exePath() && !opts.force) return { ok: true, path: "", sizeMb: 0 };
+    const st = { got: 0, total: 0, state: "working", error: "" };
+    downloads.set(id, st);
+    try {
+      await installBundle(st);
+      st.state = "done";
+      return { ok: true, path: "", sizeMb: Math.round(st.got / 1048576) };
+    } catch (e) {
+      st.state = "error";
+      st.error = String((e as Error).message || e).slice(0, 200);
+      throw e;
+    }
+  }
   const m = findModel(id);
   if (!m) throw new Error("model_unknown");
   if (!m.url) throw new Error("model_no_url");
@@ -608,4 +634,3 @@ export async function downloadModel(
     throw e;
   }
 }
-

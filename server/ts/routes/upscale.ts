@@ -91,6 +91,8 @@ router.get("/models", (req, res) => {
     runtimeInfo: engine.runtimeStatus(),
     dir: DIRS.upscaleModels,
     models: engine.listModels(),
+    // Бэкенд ncnn-Vulkan: клиент добавляет эти модели в общий список.
+    ncnn: engine.ncnnCatalog(),
     downloads: engine.downloadStates(),
     // Откуда каталог: скачанный из GitHub (remote) или вшитый в сборку.
     manifest: engine.manifestInfo(),

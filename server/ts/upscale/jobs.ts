@@ -19,6 +19,7 @@ import {
 import type { MediaProbe, ProcessedFrame, VideoCodec } from "../upscalePipeline";
 import type { InterpSig, ManifestModel, RawUpParams, UpJob } from "./types";
 import { findModel, interpMultMax, upscaleModels } from "./manifest";
+import { isNcnn, ncnnName, runNcnn } from "./ncnn";
 import { providerOrder, runtimeAvailable } from "./runtime";
 import { TRT_BATCH_MAX } from "./trt";
 import { clearSessions, getSession } from "./session";
@@ -54,12 +55,7 @@ import {
   upscaleRgbBatch,
 } from "./inference";
 import { recordThroughput, targetDims } from "./bench";
-import {
-  killJobProcs,
-  setCurrentJobId,
-  sweepJobProcs,
-  trackProc,
-} from "./procTracking";
+import { killJobProcs, setCurrentJobId, sweepJobProcs, trackProc } from "./procTracking";
 
 const { DIRS } = config;
 
@@ -83,6 +79,33 @@ const queue = createQueue("upscale");
 removeOlderThan({ dir: DIRS.upscaleIn, ttlMs: TTL_MS });
 removeOlderThan({ dir: DIRS.upscaleOut, ttlMs: TTL_MS });
 
+/** Фото через ncnn-Vulkan: файл → PNG от realesrgan-ncnn-vulkan → RGB для общего кодирования. */
+async function upscaleNcnn(
+  job: UpJob,
+  ffmpeg: string,
+  ffprobe: string,
+): Promise<{ data: Uint8Array; width: number; height: number; provider: string }> {
+  const tmp = path.join(DIRS.upscaleOut, `${job.id}_ncnn.png`);
+  try {
+    await runNcnn({
+      input: job.inputPath,
+      output: tmp,
+      name: ncnnName(job.model),
+      scale: job.scale,
+      onProgress: (frac) => {
+        job.progress = Math.min(92, 5 + Math.round(frac * 87));
+      },
+      shouldStop: () => job.stage === "stopped",
+    });
+    const out = await probeMedia(ffprobe, tmp);
+    if (!(out.width > 0) || !(out.height > 0)) throw new Error("ncnn_bad_output");
+    const data = await decodeRgb(ffmpeg, tmp, out.width, out.height, job.denoise);
+    return { data, width: out.width, height: out.height, provider: "ncnn-vulkan" };
+  } finally {
+    fs.rmSync(tmp, { force: true });
+  }
+}
+
 async function runPhoto(job: UpJob, ffmpeg: string, ffprobe: string): Promise<void> {
   job.stage = "analyze";
   const info = await probeMedia(ffprobe, job.inputPath);
@@ -93,22 +116,27 @@ async function runPhoto(job: UpJob, ffmpeg: string, ffprobe: string): Promise<vo
   job.outExt = job.format === "jpeg" ? "jpg" : job.format;
 
   job.stage = "upscale";
-  const src = await decodeRgb(ffmpeg, job.inputPath, info.width, info.height, job.denoise);
+  const viaNcnn = isNcnn(job.model);
+  const src = viaNcnn
+    ? Buffer.alloc(0)
+    : await decodeRgb(ffmpeg, job.inputPath, info.width, info.height, job.denoise);
   // «Без апскейла» для фото: перекодирование (и масштаб ffmpeg, если задан размер).
   const noUpscale = isNoUpscale(job.model);
-  const r = noUpscale
-    ? { data: src, width: info.width, height: info.height, provider: "" }
-    : await upscaleRgb({
-        src,
-        w: info.width,
-        h: info.height,
-        p: job,
-        onTile: (frac) => {
-          job.progress = Math.min(92, 5 + Math.round(frac * 87));
-        },
-        // Фото тоже можно остановить: тайлов много, проверка дешёвая.
-        shouldStop: () => job.stage === "stopped",
-      });
+  const r = viaNcnn
+    ? await upscaleNcnn(job, ffmpeg, ffprobe)
+    : noUpscale
+      ? { data: src, width: info.width, height: info.height, provider: "" }
+      : await upscaleRgb({
+          src,
+          w: info.width,
+          h: info.height,
+          p: job,
+          onTile: (frac) => {
+            job.progress = Math.min(92, 5 + Math.round(frac * 87));
+          },
+          // Фото тоже можно остановить: тайлов много, проверка дешёвая.
+          shouldStop: () => job.stage === "stopped",
+        });
   job.providerUsed = r.provider;
 
   job.stage = "encode";
@@ -539,7 +567,9 @@ async function runJob(job: UpJob): Promise<void> {
     job.startedAt = Date.now();
     const ff = await detectFfmpeg();
     if (!ff.found || !ff.ffmpeg || !ff.ffprobe) throw new Error("ffmpeg_missing");
-    if (!runtimeAvailable()) throw new Error("runtime_missing");
+    const viaNcnn = isNcnn(job.model);
+    if (viaNcnn && job.kind !== "photo") throw new Error("ncnn_photo_only");
+    if (!viaNcnn && !runtimeAvailable()) throw new Error("runtime_missing");
     if (job.kind === "photo") await runPhoto(job, ff.ffmpeg, ff.ffprobe);
     else await runVideo(job, ff.ffmpeg, ff.ffprobe);
 
