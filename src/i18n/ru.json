@@ -1823,7 +1823,9 @@
       "errNetwork": "Нет доступа к серверу пакетов: проверьте интернет или прокси"
     },
     "yoficate": "Ёфикация",
-    "markStress": "Ударения (RUAccent)"
+    "markStress": "Ударения (RUAccent)",
+    "llamaDesc": "Встроенный llama.cpp: русский, клонирование голоса, любая видеокарта (Vulkan).",
+    "noPython": "без Python"
   },
   "lecture": {
     "defaultTitle": "Лекция",
@@ -4195,7 +4197,8 @@
       "translategemma-4b-q6k": "TranslateGemma 4B · Q6_K (точнее)",
       "translategemma-4b-q8": "TranslateGemma 4B · Q8_0 (максимум качества)",
       "gemma3-4b-q4km": "Gemma 3 4B · Q4_K_M (чат)",
-      "qwen3-4b-q4km": "Qwen3 4B Instruct · Q4_K_M (чат)"
+      "qwen3-4b-q4km": "Qwen3 4B Instruct · Q4_K_M (чат)",
+      "qwen3tts-q4km": "Qwen3-TTS 1.7B · Q4_K_M + mmproj (озвучка)"
     }
   }
 }

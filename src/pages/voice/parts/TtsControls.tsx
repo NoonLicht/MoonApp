@@ -15,7 +15,7 @@ import type { TtsJob } from "@/api/client";
  * VRAM-монитором в реальном времени и M4B/MP3-экспортом с главами.
  */
 
-export type EngineId = "f5" | "xtts";
+export type EngineId = "f5" | "xtts" | "llama";
 export type Params = Record<string, any>;
 
 export const DEFAULT_PARAMS: Params = {

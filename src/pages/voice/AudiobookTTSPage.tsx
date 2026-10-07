@@ -25,6 +25,7 @@ import {
   EmptyHint,
 } from "@/components/ui";
 import {
+  Cpu,
   Wand2,
   Copy,
   Trash2,
@@ -49,6 +50,7 @@ import {
 } from "lucide-react";
 import AudioPlayer from "@/pages/voice/parts/AudioPlayer";
 import { PyEnvPanel } from "@/pages/voice/parts/PyEnvPanel";
+import LlamaPanel from "@/components/LlamaPanel";
 import {
   ACCEPT,
   Accordion,
@@ -555,7 +557,13 @@ export default function AudiobookTTSPage() {
               ] as any)
             }
           >
-            {p.engine === "f5" ? <Zap size={13} /> : <Heart size={13} />}
+            {p.engine === "f5" ? (
+              <Zap size={13} />
+            ) : p.engine === "llama" ? (
+              <Cpu size={13} />
+            ) : (
+              <Heart size={13} />
+            )}
             <span className="ab-preset-name">{p.name}</span>
             {p.builtin && <Badge tone="teal">SYS</Badge>}
           </Glass>
@@ -716,7 +724,9 @@ export default function AudiobookTTSPage() {
                   >
                     <Heart size={13} />
                     <span className="task-text">{p.name}</span>
-                    <span className="muted-sm">{p.engine === "xtts" ? "XTTS" : "F5"}</span>
+                    <span className="muted-sm">
+                      {p.engine === "xtts" ? "XTTS" : p.engine === "llama" ? "llama.cpp" : "F5"}
+                    </span>
                     <IconBtn
                       icon={Trash2}
                       size={12}
@@ -761,6 +771,18 @@ export default function AudiobookTTSPage() {
                 <b>Coqui XTTS v2</b>
                 <span className="muted-sm">{t("ab.xttsDesc")}</span>
                 <span className="ab-tab-badge ab-tab-badge-amber">~4.5 GB · {t("ab.fiction")}</span>
+              </div>
+              <div
+                className={`ab-engine ${engine === "llama" ? "is-active" : ""}`}
+                role="button"
+                tabIndex={0}
+                onClick={() => setEngine("llama")}
+                onKeyDown={(e) => e.key === "Enter" && setEngine("llama")}
+              >
+                <Cpu size={15} />
+                <b>llama.cpp · Qwen3-TTS</b>
+                <span className="muted-sm">{t("ab.llamaDesc")}</span>
+                <span className="ab-tab-badge">~1.5 GB · {t("ab.noPython")}</span>
               </div>
             </div>
           </Glass>
@@ -1033,7 +1055,13 @@ export default function AudiobookTTSPage() {
               было выполнять в консоли руками; теперь torch/f5-tts ставятся из
               интерфейса (выбор CUDA/CPU, прогресс, отмена). Если модулей не
               хватает — панель развёрнута, если всё на месте — свёрнута. --- */}
-          <PyEnvPanel engine={engine} env={pyEnv} onChanged={onEnvChanged} />
+          {engine === "llama" ? (
+            <Glass style={{ padding: 14 }}>
+              <LlamaPanel kind="tts" />
+            </Glass>
+          ) : (
+            <PyEnvPanel engine={engine} env={pyEnv} onChanged={onEnvChanged} />
+          )}
 
           {/* --- Плеер + генерация: одна строка. Плеер занимает всё свободное
               место (flex: 20), кнопка генерации компактная справа. --- */}
@@ -1196,7 +1224,7 @@ export default function AudiobookTTSPage() {
                         {chunks.length > 0
                           ? t("ab.chunkHint", {
                               n: chunks.length,
-                              limit: engine === "xtts" ? 220 : 380,
+                              limit: engine === "xtts" ? 220 : engine === "llama" ? 300 : 380,
                             })
                           : t("ab.batchEmpty")}
                       </span>

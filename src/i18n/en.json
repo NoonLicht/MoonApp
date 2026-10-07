@@ -1823,7 +1823,9 @@
       "errNetwork": "Package server is unreachable: check your internet or proxy"
     },
     "yoficate": "Yofication (ё → е)",
-    "markStress": "Stress marks (RUAccent)"
+    "markStress": "Stress marks (RUAccent)",
+    "llamaDesc": "Built-in llama.cpp: Russian, voice cloning, any GPU (Vulkan).",
+    "noPython": "no Python"
   },
   "lecture": {
     "defaultTitle": "Lecture",
@@ -4195,7 +4197,8 @@
       "translategemma-4b-q6k": "TranslateGemma 4B · Q6_K (more accurate)",
       "translategemma-4b-q8": "TranslateGemma 4B · Q8_0 (best quality)",
       "gemma3-4b-q4km": "Gemma 3 4B · Q4_K_M (chat)",
-      "qwen3-4b-q4km": "Qwen3 4B Instruct · Q4_K_M (chat)"
+      "qwen3-4b-q4km": "Qwen3 4B Instruct · Q4_K_M (chat)",
+      "qwen3tts-q4km": "Qwen3-TTS 1.7B · Q4_K_M + mmproj (speech)"
     }
   }
 }

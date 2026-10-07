@@ -60,14 +60,14 @@ export interface TtsProfile {
   id: string;
   name: string;
   refFile?: string;
-  engine?: "f5" | "xtts";
+  engine?: "f5" | "xtts" | "llama";
   createdAt: number;
 }
 export interface TtsPreset {
   id: string;
   name: string;
   builtin?: boolean;
-  engine: "f5" | "xtts";
+  engine: "f5" | "xtts" | "llama";
   params: Record<string, unknown>;
   refFile?: string;
   createdAt?: number;

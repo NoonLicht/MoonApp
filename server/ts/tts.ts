@@ -29,6 +29,7 @@ import { detectFfmpeg } from "./convertEngine";
 import * as ruNlp from "./ruNlp";
 import { createQueue, trimJobs } from "./jobStore";
 import { removeOlderThan } from "./fsUtil";
+import { synth as llamaSynth, ttsProblem as llamaProblem } from "./llamacpp/tts";
 
 /**
  * Окружение для python-процессов приложения.
@@ -45,8 +46,11 @@ const { DIRS } = config;
 
 /* ------------------------------- Типы ------------------------------- */
 
-/** Движок синтеза: F5-TTS или Coqui XTTS v2. */
-type TtsEngine = "f5" | "xtts";
+/** Движок синтеза: F5-TTS, Coqui XTTS v2 или встроенный llama.cpp (Qwen3-TTS). */
+type TtsEngine = "f5" | "xtts" | "llama";
+
+/** Движок из тела запроса; неизвестное значение — F5. */
+const normEngine = (e: unknown): TtsEngine => (e === "xtts" || e === "llama" ? e : "f5");
 
 /** Рекомендации под конкретный GPU для бейджей «Optimal for Your PC». */
 interface OptimalParams {
@@ -241,6 +245,8 @@ interface TtsJob {
   cancelRequested?: boolean;
   /** Активный сайдкар движка — для killHard() из cancelJob (Диспетчер задач). */
   _sidecar?: { killHard(): void } | null;
+  /** Отмена синтеза через llama.cpp (процесс llama-tts). */
+  _abort?: AbortController | null;
   [key: string]: unknown;
 }
 
@@ -397,7 +403,7 @@ function saveProfile(p: VoiceProfileInput): VoiceProfile {
     id: crypto.randomBytes(4).toString("hex"),
     name: String(p.name || "voice").slice(0, 60),
     refFile,
-    engine: p.engine === "xtts" ? "xtts" : "f5",
+    engine: normEngine(p.engine),
     createdAt: Date.now(),
   };
   list.push(profile);
@@ -538,7 +544,7 @@ function saveUserPreset(preset: TtsPresetInput): TtsPreset {
   const item: TtsPreset = {
     id: crypto.randomBytes(4).toString("hex"),
     name: String(preset.name || "preset").slice(0, 80),
-    engine: preset.engine === "xtts" ? "xtts" : "f5",
+    engine: normEngine(preset.engine),
     params: (preset.params || {}) as TtsParamsInput,
     refFile: String(preset.refFile || "").replace(/^.*[\\/]/, ""),
     builtin: false,
@@ -756,10 +762,10 @@ class JsonSidecar {
 
 /** Сайдкар движка озвучки: F5-TTS либо Coqui XTTS v2. */
 class EngineSidecar extends JsonSidecar {
-  engine: TtsEngine;
+  engine: "f5" | "xtts";
 
   constructor(engineName: unknown) {
-    const engine: TtsEngine = engineName === "xtts" ? "xtts" : "f5";
+    const engine: "f5" | "xtts" = engineName === "xtts" ? "xtts" : "f5";
     super(
       path.join(__dirname, "engines", engine === "f5" ? "f5_wrapper.py" : "xtts_wrapper.py"),
       engine,
@@ -959,6 +965,7 @@ async function accentItems(job: TtsJob): Promise<string[] | null> {
 const ENGINE_REQUIRED: Record<TtsEngine, string[]> = {
   f5: ["torch", "torchaudio", "f5_tts"],
   xtts: ["torch", "torchaudio", "TTS"],
+  llama: [], // встроенный llama.cpp обходится без Python
 };
 
 /**
@@ -1211,7 +1218,7 @@ function envAwareError(job: TtsJob, msg: unknown): Error {
 
 /* ------------------------- Задание ------------------------- */
 
-const ENGINE_CHUNK_LIMIT = { f5: 380, xtts: 220 };
+const ENGINE_CHUNK_LIMIT = { f5: 380, xtts: 220, llama: 300 };
 
 /**
  * Разрезать чанк, который длиннее лимита движка, — готовые чанки тоже.
@@ -1265,7 +1272,7 @@ function startJob(opts: TtsJobInput): TtsJob {
   const refFile = String(opts.refFile || "").replace(/^.*[\\/]/, "");
   if (!/^ref_[A-Za-z0-9._-]+$/.test(refFile)) throw new Error("invalid_reference");
   if (!fs.existsSync(path.join(DIRS.tts, refFile))) throw new Error("reference_not_found");
-  const engine = opts.engine === "xtts" ? "xtts" : "f5";
+  const engine = normEngine(opts.engine);
 
   // Чанки приходят готовыми из Batch Editor UI; если их нет — режем на сервере.
   let items: TtsItem[] =
@@ -1365,6 +1372,7 @@ function cancelJob(id: string): boolean {
   if (!job || job.done) return false;
   job.cancelRequested = true;
   job._sidecar?.killHard();
+  job._abort?.abort();
   logger.action("tts.cancelled", { id });
   return true;
 }
@@ -1400,22 +1408,33 @@ async function runPipeline(job: TtsJob): Promise<void> {
     job.progress = 1;
     // Предполётная проверка окружения ДО спавна движка: без неё пользователь
     // ждал загрузку модели и получал «Ошибка рендера: No module named 'torch'».
-    await assertPythonEnv(job);
+    const useLlama = job.engine === "llama";
+    if (useLlama) {
+      // Встроенный llama.cpp: Python не нужен, нужны сборка и модель Qwen3-TTS.
+      const problem = llamaProblem();
+      if (problem) throw new Error(problem);
+    } else {
+      await assertPythonEnv(job);
+    }
     // Ударения по смыслу (RUAccent) — ДО загрузки модели: шаг необязательный,
     // при недоступности рендер идёт на исходных текстах (см. accentItems).
     // `accented` выровнен по job.items, поэтому в цикле берётся по индексу.
-    const accented = cfg.markStress ? await accentItems(job) : null;
+    const accented = cfg.markStress && !useLlama ? await accentItems(job) : null;
     job.stress = {
       requested: !!cfg.markStress,
       applied: !!accented,
       reason: accented ? "" : stressFailReason,
     };
-    sidecar = new EngineSidecar(job.engine)._start();
-    job._sidecar = sidecar;
-    // Монитор VRAM приходит отдельными сообщениями (не ответом на запрос).
-    sidecar.onEvent = (msg) => {
-      if (msg.type === "vram") job.vram = msg;
-    };
+    if (!useLlama) {
+      sidecar = new EngineSidecar(job.engine)._start();
+      job._sidecar = sidecar;
+      // Монитор VRAM приходит отдельными сообщениями (не ответом на запрос).
+      sidecar.onEvent = (msg) => {
+        if (msg.type === "vram") job.vram = msg;
+      };
+    } else {
+      job._abort = new AbortController();
+    }
     const chunkDir = path.join(DIRS.tts, job.id);
     fs.mkdirSync(chunkDir, { recursive: true });
     job.progress = 2;
@@ -1425,36 +1444,38 @@ async function runPipeline(job: TtsJob): Promise<void> {
     // pydub запускает `ffmpeg` по имени (то есть ищет в PATH) — без этого рендер
     // падал с «[WinError 2] Не удается найти указанный файл» на первом чанке.
     const ff = await detectFfmpeg().catch(() => null);
-    // Таймаут init — 20 минут вместо 10: первый запуск F5 скачивает русский
-    // чекпоинт (~1.29 ГБ, см. RU_MODEL в server/engines/f5_wrapper.py), и на
-    // медленном канале десяти минут не хватало — задание падало по таймауту
-    // уже ПОСЛЕ скачивания, а сайдкар продолжал жить.
-    const ready = await sidecar.ask(
-      {
-        type: "init",
-        precision: cfg.precision,
-        attention: cfg.attention,
-        solver: cfg.solver,
-        speed: cfg.speed,
-        vramBudgetGb: 4.5,
-        gcEveryChunks: cfg.gcEveryChunks,
-        ffmpeg: ff?.ffmpeg || "",
-      },
-      "ready",
-      1200000,
-    );
-    if (ready.type === "error") throw new Error(ready.message);
-    // Какую модель реально загрузил движок. У F5 это русский дообученный
-    // чекпоинт (см. RU_MODEL в server/engines/f5_wrapper.py), но он мог не
-    // скачаться — тогда считается базовая (en+zh), и по логу это видно сразу,
-    // а не после прослушивания готовой книги.
-    if (ready.model) {
-      logger.info("tts.model", {
-        engine: job.engine,
-        model: ready.model,
-        error: ready.modelError || null,
-        license: ready.modelLicense || null,
-      });
+    if (sidecar) {
+      // Таймаут init — 20 минут вместо 10: первый запуск F5 скачивает русский
+      // чекпоинт (~1.29 ГБ, см. RU_MODEL в server/engines/f5_wrapper.py), и на
+      // медленном канале десяти минут не хватало — задание падало по таймауту
+      // уже ПОСЛЕ скачивания, а сайдкар продолжал жить.
+      const ready = await sidecar.ask(
+        {
+          type: "init",
+          precision: cfg.precision,
+          attention: cfg.attention,
+          solver: cfg.solver,
+          speed: cfg.speed,
+          vramBudgetGb: 4.5,
+          gcEveryChunks: cfg.gcEveryChunks,
+          ffmpeg: ff?.ffmpeg || "",
+        },
+        "ready",
+        1200000,
+      );
+      if (ready.type === "error") throw new Error(ready.message);
+      // Какую модель реально загрузил движок. У F5 это русский дообученный
+      // чекпоинт (см. RU_MODEL в server/engines/f5_wrapper.py), но он мог не
+      // скачаться — тогда считается базовая (en+zh), и по логу это видно сразу,
+      // а не после прослушивания готовой книги.
+      if (ready.model) {
+        logger.info("tts.model", {
+          engine: job.engine,
+          model: ready.model,
+          error: ready.modelError || null,
+          license: ready.modelLicense || null,
+        });
+      }
     }
 
     job.stage = "infer";
@@ -1466,6 +1487,20 @@ async function runPipeline(job: TtsJob): Promise<void> {
       const item = job.items[i];
       if (item.pauseMs && !item.text) continue; // чистая пауза — на этапе склейки
       const wav = path.join(chunkDir, `chunk_${String(wavs.length).padStart(4, "0")}.wav`);
+      if (useLlama) {
+        // Ударения («+») не нужны: Qwen3-TTS ставит их сам, а знак «+» прочитал бы вслух.
+        await llamaSynth({
+          text: (item.text ?? "").replace(/\+/g, ""),
+          ref: refPath,
+          out: wav,
+          signal: job._abort?.signal,
+        });
+        job.chunkIndex = i;
+        job.progress = Math.round((85 * (i + 1)) / job.items.length);
+        wavs.push({ wav, pauseMs: item.pauseMs || 0 });
+        continue;
+      }
+      if (!sidecar) throw new Error("sidecar_dead");
       const msg = await sidecar.ask(
         {
           type: "infer",
@@ -1498,7 +1533,7 @@ async function runPipeline(job: TtsJob): Promise<void> {
     if (!wavs.length) throw new Error("empty_result");
     // Модель больше не нужна: закрываем python до склейки и мастеринга, чтобы он не
     // держал VRAM во время работы ffmpeg.
-    sidecar.kill();
+    sidecar?.kill();
     sidecar = null;
 
     // --- Склейка: паузы (anullsrc) + кроссфейд между чанками ---
@@ -1678,7 +1713,7 @@ function previewChunks(
   engine: unknown,
   nlpOpts?: ruNlp.NormalizeOptions,
 ): ruNlp.Chunk[] {
-  const e = engine === "xtts" ? "xtts" : "f5";
+  const e = normEngine(engine);
   const normalized = ruNlp.normalize(text, nlpOpts || {});
   return ruNlp.chunkText(normalized, ENGINE_CHUNK_LIMIT[e]);
 }

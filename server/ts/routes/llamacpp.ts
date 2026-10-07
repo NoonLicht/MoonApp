@@ -22,6 +22,7 @@ import {
   setup,
   stopServer,
 } from "../llamacpp/engine";
+import { ttsProblem } from "../llamacpp/tts";
 import {
   CATALOG,
   cancelDownload,
@@ -49,6 +50,7 @@ router.get("/status", (_req, res) => {
     models: installed(),
     download: downloadState(),
     server: serverInfo(),
+    ttsProblem: ttsProblem(),
   });
 });
 
