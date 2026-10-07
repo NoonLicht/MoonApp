@@ -367,6 +367,7 @@ router.get("/hardware", async (req, res) => {
       },
       gpu,
       models: engine.listModels(),
+      ncnn: engine.ncnnCatalog(),
       // Провайдеры ONNX Runtime в этой сборке (cpu/dml/cuda/tensorrt…) и TensorRT:
       // список провайдеров нужен панели настроек, чтобы не обещать ускорение,
       // которого нет, а «собрать движок» — только когда провайдер есть.

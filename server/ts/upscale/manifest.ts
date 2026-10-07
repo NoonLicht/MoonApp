@@ -519,7 +519,9 @@ export async function downloadModel(
 ): Promise<{ ok: boolean; path: string; sizeMb: number }> {
   if (isNcnn(id)) {
     if (!ncnnModels().some((m) => m.id === id)) throw new Error("model_unknown");
-    if (downloads.get(id)?.state === "working") throw new Error("download_busy");
+    // Бандл один на все модели ncnn: параллельно его не ставим («скачать всё» зовёт по разу на модель).
+    for (const [k, v] of downloads)
+      if (isNcnn(k) && v.state === "working") throw new Error("download_busy");
     if (exePath() && !opts.force) return { ok: true, path: "", sizeMb: 0 };
     const st = { got: 0, total: 0, state: "working", error: "" };
     downloads.set(id, st);

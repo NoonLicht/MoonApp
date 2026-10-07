@@ -43,7 +43,11 @@ export const upscaleApi = {
    */
   upscaleEstimate: (params: Record<string, unknown>, probe: UpProbe) =>
     req<UpEstimate>("POST", "/upscale/estimate", { params, probe }),
-  upscaleHardware: () => req<UpHardware>("GET", "/upscale/hardware"),
+  upscaleHardware: async (): Promise<UpHardware> => {
+    const h = await req<UpHardware & { ncnn?: UpHardware["models"] }>("GET", "/upscale/hardware");
+    // Страница берёт список моделей отсюда: добавляем модели бэкенда ncnn-Vulkan.
+    return h.ncnn?.length ? { ...h, models: [...h.models, ...h.ncnn] } : h;
+  },
   /**
    * Мягкая остановка задания (кнопка «Стоп» рядом с прогрессом): движок
    * завершается между кадрами, файл результата остаётся на месте.
