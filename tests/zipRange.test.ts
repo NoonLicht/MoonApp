@@ -11,7 +11,9 @@ import { createRequire } from "module";
  * так же, как это реально устроено у GitHub Releases (проверено вручную).
  */
 const req = createRequire(import.meta.url);
-const { listRemoteZipEntries, fetchRemoteZipEntry } = req("../server/zipRange.js") as typeof import("../server/ts/zipRange");
+const { listRemoteZipEntries, fetchRemoteZipEntry } = req(
+  "../server/zipRange.js",
+) as typeof import("../server/ts/zipRange");
 
 function crc32(buf: Buffer): number {
   let c: number;
@@ -96,7 +98,7 @@ const ZIP = buildZip(FILES);
 
 let server: http.Server;
 let baseUrl = "";
-let rangeRequestsSeen: string[] = [];
+const rangeRequestsSeen: string[] = [];
 
 beforeAll(async () => {
   server = http.createServer((httpReq, res) => {
@@ -169,15 +171,17 @@ describe("zipRange — частичное чтение ZIP по HTTP Range", () 
     await new Promise<void>((resolve) => noRangeServer.listen(0, "127.0.0.1", resolve));
     const addr = noRangeServer.address();
     const port = typeof addr === "object" && addr ? addr.port : 0;
-    await expect(listRemoteZipEntries(`http://127.0.0.1:${port}/x.zip`, "test-agent")).rejects.toThrow(
-      /no_range_support/,
-    );
+    await expect(
+      listRemoteZipEntries(`http://127.0.0.1:${port}/x.zip`, "test-agent"),
+    ).rejects.toThrow(/no_range_support/);
     noRangeServer.close();
   });
 
   it("повреждённая запись (неверный CRC) — исключение, а не тихий мусор", async () => {
     const entries = await listRemoteZipEntries(baseUrl, "test-agent");
     const bad = { ...entries[0], crc32: entries[0].crc32 ^ 0xffffffff };
-    await expect(fetchRemoteZipEntry(baseUrl, bad, "test-agent")).rejects.toThrow(/zip_crc_mismatch/);
+    await expect(fetchRemoteZipEntry(baseUrl, bad, "test-agent")).rejects.toThrow(
+      /zip_crc_mismatch/,
+    );
   });
 });

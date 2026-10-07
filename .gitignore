@@ -164,3 +164,43 @@ server/vendor/convertx/
 
 # ---------- Локальные SDK для сборки GPU-паков (несколько ГБ, не коммитим) ----------
 TensorRT-*/
+
+# ---------- Компилируемый JS из бывших .js-модулей (исходники — server/ts/**) ----------
+server/routes/
+server/providers/
+server/middleware/
+server/flibusta.js
+server/lecture.js
+server/proxyCore.js
+server/zapret.js
+server/express.js
+
+# ---------- Компилируемый JS из electron/ts и scripts/ts ----------
+electron/main.js
+electron/preload.js
+electron/storagePath.js
+electron/serverApi.js
+scripts/*.js
+scripts/*.mjs
+server/lectureAsr.js
+server/lectureExport.js
+server/lectureConspectus.js
+server/lectureRecheck.js
+server/zapretStrategies.js
+server/zapretInstall.js
+server/zapretDiagnostics.js
+server/zapretCheck.js
+server/zapretLists.js
+server/proxyUri.js
+server/proxyConfig.js
+server/proxyEngine.js
+server/proxyProbe.js
+electron/mainAppName.js
+electron/mainCore.js
+electron/mainHotkeys.js
+electron/mainTray.js
+electron/mainUpdates.js
+electron/mainIpc.js
+electron/mainTracker.js
+electron/mainCapture.js
+electron/mainClipboard.js

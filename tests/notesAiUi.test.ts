@@ -22,7 +22,8 @@ import ar from "@/i18n/ar.json";
 const root = path.resolve(__dirname, "..");
 const read = (rel: string): string => fs.readFileSync(path.join(root, rel), "utf8");
 
-const pageSrc = read("src/pages/myspace/MyspacePage.tsx");
+const pageSrc =
+  read("src/pages/myspace/MyspacePage.tsx") + read("src/pages/myspace/parts/MyspaceHelpers.ts");
 const moduleSrc = read("server/ts/notesAi.ts");
 const routeSrc = read("server/routes/myspace.js");
 
@@ -31,9 +32,7 @@ const LANGS = Object.keys(DICTS);
 
 /** Коды notes_ai_*, которые модуль реально бросает (без упоминаний в текстах). */
 function thrownCodes(): string[] {
-  return [
-    ...new Set([...moduleSrc.matchAll(/new Error\("(notes_ai_[a-z_]+)/g)].map((m) => m[1])),
-  ];
+  return [...new Set([...moduleSrc.matchAll(/new Error\("(notes_ai_[a-z_]+)/g)].map((m) => m[1]))];
 }
 
 /** Коды notes_ai_*, которые роут переводит в 400 (список в aiStatus). */
@@ -68,7 +67,7 @@ describe("ИИ-оформление заметок — коды ошибок д�
       expect(pageSrc, code).toContain(code);
       // И у кода есть свой ключ подсказки — общая строка «не получилось» тут
       // не годится: пользователю нужен конкретный шаг (ключ, модель, исходник).
-      const key = pageSrc.match(new RegExp(code + "[\\s\\S]{0,120}?t\\(\"([a-zA-Z.]+)\""));
+      const key = pageSrc.match(new RegExp(code + '[\\s\\S]{0,120}?t\\("([a-zA-Z.]+)"'));
       expect(key?.[1], code).toMatch(/^myspace\.ai\./);
     }
   });

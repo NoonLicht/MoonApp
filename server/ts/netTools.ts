@@ -6,14 +6,20 @@
  * автономно, без возможности протестировать на живой машине ночью, слишком
  * рискованны (см. итоговый отчёт).
  */
-import { exec } from "child_process";
+import { execFile } from "child_process";
 import net from "net";
 import os from "os";
 
-function execAsync(cmd: string, timeoutMs = 15000): Promise<{ out: string; err: string }> {
+/** Запуск команды без shell: аргументы идут массивом, подстановка в строку невозможна. */
+function execAsync(
+  file: string,
+  args: string[],
+  timeoutMs = 15000,
+): Promise<{ out: string; err: string }> {
   return new Promise((resolve) => {
-    exec(
-      cmd,
+    execFile(
+      file,
+      args,
       { windowsHide: true, timeout: timeoutMs, maxBuffer: 4 * 1024 * 1024 },
       (error, stdout, stderr) => {
         resolve({ out: String(stdout || ""), err: error ? String(stderr || error.message) : "" });
@@ -35,8 +41,8 @@ export async function ping(host: string): Promise<{ ok: boolean; output: string 
   const h = sanitizeHost(host);
   // Windows: `ping -n 4`, ответ содержит "TTL=". Linux: `ping -c 4 -W 2`,
   // ответ содержит строчный "ttl=" — команда и признак успеха разные у обеих ОС.
-  const cmd = process.platform === "win32" ? `ping -n 4 ${h}` : `ping -c 4 -W 2 ${h}`;
-  const { out, err } = await execAsync(cmd, 12000);
+  const args = process.platform === "win32" ? ["-n", "4", h] : ["-c", "4", "-W", "2", h];
+  const { out, err } = await execAsync("ping", args, 12000);
   const output = out || err;
   return { ok: !err && /ttl=/i.test(output), output };
 }
@@ -46,11 +52,11 @@ export async function traceroute(host: string): Promise<{ ok: boolean; output: s
   // Windows: tracert (тайминг -w в мс, ip-only -d). Linux: системный traceroute
   // (или traceroute6 для IPv6) — та же смысловая опция таймаута задаётся
   // в секундах через -w, ip-only через -n, число хопов через -m.
-  const cmd =
+  const [file, args] =
     process.platform === "win32"
-      ? `tracert -d -h 20 -w 800 ${h}`
-      : `traceroute -n -m 20 -w 2 ${h}`;
-  const { out, err } = await execAsync(cmd, 25000);
+      ? ["tracert", ["-d", "-h", "20", "-w", "800", h]]
+      : ["traceroute", ["-n", "-m", "20", "-w", "2", h]];
+  const { out, err } = await execAsync(file as string, args as string[], 25000);
   return { ok: !err, output: out || err };
 }
 
@@ -125,20 +131,20 @@ export async function wifiNetworks(): Promise<{ ok: boolean; output: string }> {
   // (Ubuntu, Fedora, Mint и т.п.), но не гарантирован на всех (например
   // на системах с systemd-networkd/iwd вместо NetworkManager nmcli не будет —
   // тогда команда просто вернёт ошибку exec, и UI честно покажет "не удалось").
-  const cmd =
+  const [file, args] =
     process.platform === "win32"
-      ? "netsh wlan show networks mode=bssid"
-      : "nmcli -t -f SSID,SIGNAL,SECURITY dev wifi list";
-  const { out, err } = await execAsync(cmd, 10000);
+      ? ["netsh", ["wlan", "show", "networks", "mode=bssid"]]
+      : ["nmcli", ["-t", "-f", "SSID,SIGNAL,SECURITY", "dev", "wifi", "list"]];
+  const { out, err } = await execAsync(file as string, args as string[], 10000);
   return { ok: !err, output: out || err };
 }
 
 export async function wifiCurrent(): Promise<{ ok: boolean; output: string }> {
-  const cmd =
+  const [file, args] =
     process.platform === "win32"
-      ? "netsh wlan show interfaces"
-      : "nmcli -t -f DEVICE,TYPE,STATE,CONNECTION dev status";
-  const { out, err } = await execAsync(cmd, 10000);
+      ? ["netsh", ["wlan", "show", "interfaces"]]
+      : ["nmcli", ["-t", "-f", "DEVICE,TYPE,STATE,CONNECTION", "dev", "status"]];
+  const { out, err } = await execAsync(file as string, args as string[], 10000);
   return { ok: !err, output: out || err };
 }
 
@@ -170,10 +176,7 @@ const SPEEDTEST_MIN_MS = 8000;
 const SPEEDTEST_MAX_MS = 15000;
 const SPEEDTEST_CHUNK_BYTES = 25_000_000;
 
-async function speedTestStream(
-  signal: AbortSignal,
-  deadline: number,
-): Promise<{ bytes: number }> {
+async function speedTestStream(signal: AbortSignal, deadline: number): Promise<{ bytes: number }> {
   let total = 0;
   while (Date.now() < deadline) {
     const res = await fetch(`https://speed.cloudflare.com/__down?bytes=${SPEEDTEST_CHUNK_BYTES}`, {

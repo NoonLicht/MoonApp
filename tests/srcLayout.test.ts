@@ -106,7 +106,7 @@ describe("alias @/ — единый способ импорта фронтенд
   it("alias объявлен и в tsconfig, и в vite (иначе сборка и типы разойдутся)", () => {
     const tsconfig = read(path.join(root, "tsconfig.json"));
     expect(tsconfig).toMatch(/"paths"\s*:\s*\{\s*"@\/\*"/);
-    expect(read(path.join(root, "vite.config.js"))).toMatch(/alias:\s*\{\s*"@":/);
+    expect(read(path.join(root, "vite.config.ts"))).toMatch(/alias:\s*\{\s*"@":/);
   });
 
   it("index.html грузит точку входа из src/app", () => {

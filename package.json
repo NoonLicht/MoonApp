@@ -13,32 +13,35 @@
     "dev": "vite",
     "build:web": "vite build",
     "compile:server": "tsc -p tsconfig.server.json",
-    "typecheck": "tsc --noEmit -p tsconfig.json && npm run compile:server",
-    "start:server": "npm run compile:server && node server/index.js",
-    "fetch:engines": "node scripts/fetch-engines.js",
-    "fetch:models": "node scripts/fetch-models.js",
-    "verify:model": "node scripts/verify-model.js",
-    "bench:models": "node scripts/bench-models.js",
-    "bench:cuda": "node scripts/bench-models.js --providers cuda",
-    "bench:trt": "node scripts/bench-models.js --providers tensorrt",
-    "bench:dml": "node scripts/bench-models.js --providers dml",
-    "bench:all": "node scripts/bench-models.js --providers cuda,tensorrt,dml,cpu",
-    "build:ort-gpu": "node scripts/build-ort-gpu-binding.js",
-    "build:gpu-pack": "node scripts/build-gpu-pack.js",
-    "fetch:cuda": "node scripts/fetch-cuda-libs.js",
-    "check:pack": "node scripts/check-pack.js",
-    "gen:keys": "node scripts/gen-bundled-keys.mjs",
-    "fetch:whisper": "node scripts/fetch-whisper.js",
-    "start": "npm run compile:server && npm run build:web && electron .",
-    "dist": "npm run compile:server && npm run build:web && npm run gen:keys && npm run fetch:engines && electron-builder --win && npm run check:pack && npm run rebuild:node",
-    "dist:linux": "npm run compile:server && npm run build:web && npm run gen:keys && electron-builder --linux && npm run rebuild:node",
+    "compile:electron": "tsc -p tsconfig.electron.json",
+    "compile:scripts": "tsc -p tsconfig.scripts.json",
+    "compile": "npm run compile:server && npm run compile:electron && npm run compile:scripts",
+    "typecheck": "tsc --noEmit -p tsconfig.json && npm run compile",
+    "start:server": "npm run compile && node server/index.js",
+    "fetch:engines": "npm run compile:scripts && node scripts/fetch-engines.js",
+    "fetch:models": "npm run compile:scripts && node scripts/fetch-models.js",
+    "verify:model": "npm run compile:scripts && node scripts/verify-model.js",
+    "bench:models": "npm run compile:scripts && node scripts/bench-models.js",
+    "bench:cuda": "npm run compile:scripts && node scripts/bench-models.js --providers cuda",
+    "bench:trt": "npm run compile:scripts && node scripts/bench-models.js --providers tensorrt",
+    "bench:dml": "npm run compile:scripts && node scripts/bench-models.js --providers dml",
+    "bench:all": "npm run compile:scripts && node scripts/bench-models.js --providers cuda,tensorrt,dml,cpu",
+    "build:ort-gpu": "npm run compile:scripts && node scripts/build-ort-gpu-binding.js",
+    "build:gpu-pack": "npm run compile:scripts && node scripts/build-gpu-pack.js",
+    "fetch:cuda": "npm run compile:scripts && node scripts/fetch-cuda-libs.js",
+    "check:pack": "npm run compile:scripts && node scripts/check-pack.js",
+    "gen:keys": "npm run compile:scripts && node scripts/gen-bundled-keys.mjs",
+    "fetch:whisper": "npm run compile:scripts && node scripts/fetch-whisper.js",
+    "start": "npm run compile && npm run build:web && electron .",
+    "dist": "npm run compile && npm run build:web && npm run gen:keys && npm run fetch:engines && electron-builder --win && npm run check:pack && npm run rebuild:node",
+    "dist:linux": "npm run compile && npm run build:web && npm run gen:keys && electron-builder --linux && npm run rebuild:node",
     "rebuild:electron": "electron-rebuild -f -w better-sqlite3",
     "rebuild:node": "npm rebuild better-sqlite3",
     "test": "vitest run",
-    "pretest": "npm run compile:server",
+    "pretest": "npm run compile",
     "test:watch": "vitest",
     "lint": "eslint .",
-    "scan:mojibake": "node scripts/mojibakeScan.mjs",
+    "scan:mojibake": "npm run compile:scripts && node scripts/mojibakeScan.mjs",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
@@ -80,8 +83,11 @@
   "devDependencies": {
     "@electron/rebuild": "^4.2.0",
     "@eslint/js": "^10.0.1",
+    "@types/adm-zip": "^0.5.8",
+    "@types/better-sqlite3": "^9.6.0",
     "@types/dagre": "^0.7.54",
     "@types/express": "^4.17.25",
+    "@types/multer": "^2.3.0",
     "@types/node": "^22.20.1",
     "@types/react": "^18.3.31",
     "@types/react-dom": "^18.3.7",
@@ -92,6 +98,7 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.7",
     "globals": "^17.12.0",
+    "jiti": "^2.7.0",
     "lucide-react": "^0.417.0",
     "prettier": "^3.9.7",
     "react": "^18.3.1",
@@ -117,6 +124,7 @@
       "!server/vendor/bun/**",
       "!server/vendor/convertx/**",
       "!server/ts/**",
+      "!electron/ts/**",
       "!storage/**",
       "!**/settings.json",
       "!**/secrets.json",
@@ -171,11 +179,15 @@
       "target": [
         {
           "target": "AppImage",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         },
         {
           "target": "deb",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "icon": "build/icons",
@@ -183,7 +195,9 @@
       "artifactName": "MoonApp-${version}.${ext}"
     },
     "deb": {
-      "depends": ["libsecret-1-0"]
+      "depends": [
+        "libsecret-1-0"
+      ]
     }
   }
 }

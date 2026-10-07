@@ -1,7 +1,13 @@
 import { execFile, spawn } from "child_process";
 import os from "os";
 import path from "path";
-import { MAX_INTERP_MULT, ffmpegCaps, crfMax, pickHwaccel, pickVideoEncoder } from "../upscalePipeline";
+import {
+  MAX_INTERP_MULT,
+  ffmpegCaps,
+  crfMax,
+  pickHwaccel,
+  pickVideoEncoder,
+} from "../upscalePipeline";
 import type { VideoCodec } from "../upscalePipeline";
 import type { RawUpParams, UpParams, UpPreset } from "./types";
 import { clamp, toBool } from "./util";

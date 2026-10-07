@@ -33,7 +33,7 @@ import logger from "./logger";
 import { downloadToFile } from "./download";
 import { createSetupTask } from "./setupTask";
 import type { SetupTaskState } from "./setupTask";
-import { listRemoteZipEntries, fetchRemoteZipEntry, type RemoteZipEntry } from "./zipRange";
+import { listRemoteZipEntries, fetchRemoteZipEntry } from "./zipRange";
 import { packDir as ortGpuPackDir } from "./ortPack";
 
 const { DIRS } = config;
@@ -752,12 +752,17 @@ function copyFlat(srcDir: string, destDir: string): number {
  * намеренно не входят: whisper.cpp их не использует (нет в архиве) или их
  * имя зависит от минорной версии.
  */
-const SHARED_CUDA_DLLS = ["cudart64_12.dll", "cublas64_12.dll", "cublasLt64_12.dll", "nvrtc64_120_0.dll"];
+const SHARED_CUDA_DLLS = [
+  "cudart64_12.dll",
+  "cublas64_12.dll",
+  "cublasLt64_12.dll",
+  "nvrtc64_120_0.dll",
+];
 
 /** Уже скачанные для апскейла CUDA-библиотеки, которые можно переиспользовать: имя(lower) → путь. */
 function sharedCudaSources(): Map<string, string> {
   const map = new Map<string, string>();
-  let dir = "";
+  let dir: string;
   try {
     dir = ortGpuPackDir();
   } catch {
@@ -1443,9 +1448,10 @@ function probeBuildAt(dir: string, timeoutMs = 60000): Promise<{ ok: boolean; lo
           /* ignore */
         }
         const cudaLoaded = /loaded CUDA backend|ggml_cuda_init|CUDA\d/i.test(log);
-        const errLine = /no kernel image|CUDA error|out of memory|error loading model|failed to (?:load|initialize)[^\n]*/i.exec(
-          log,
-        );
+        const errLine =
+          /no kernel image|CUDA error|out of memory|error loading model|failed to (?:load|initialize)[^\n]*/i.exec(
+            log,
+          );
         const ranOk = code === 0 || /\bmain: processing\b|whisper_print_timings/i.test(log);
         resolve({ ok: cudaLoaded && ranOk && !errLine, log: log.slice(-2000) });
       };

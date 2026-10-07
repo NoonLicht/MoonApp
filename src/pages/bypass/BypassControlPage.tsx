@@ -140,8 +140,7 @@ export default function BypassControlPage() {
       if (/tgws_bad_secret/.test(raw)) return t("bypass.tgws.errSecret");
       if (/tgws_bad_port/.test(raw)) return t("bypass.tgws.errPort");
       if (/tgws_download_busy/.test(raw)) return t("bypass.tgws.errBusy");
-      if (/hash_mismatch|github_http|download_http/.test(raw))
-        return t("bypass.tgws.errDownload");
+      if (/hash_mismatch|github_http|download_http/.test(raw)) return t("bypass.tgws.errDownload");
       return raw;
     },
     [t],
@@ -618,9 +617,7 @@ export default function BypassControlPage() {
 
         <div className="bp-note">
           <Terminal size={14} />{" "}
-          <span>
-            {tgws?.installed ? t("bypass.tgws.hintReady") : t("bypass.tgws.hintInstall")}
-          </span>
+          <span>{tgws?.installed ? t("bypass.tgws.hintReady") : t("bypass.tgws.hintInstall")}</span>
         </div>
         <div className="bp-note bp-dim">{t("bypass.tgws.setupSteps")}</div>
 
@@ -1014,7 +1011,11 @@ function NetworkToolsPanel() {
   const [portTo, setPortTo] = useState("1024");
   const [scanResults, setScanResults] = useState<{ port: number; open: boolean }[] | null>(null);
   const [publicIp, setPublicIp] = useState<string | null>(null);
-  const [speedResult, setSpeedResult] = useState<{ mbps: number; bytes: number; ms: number } | null>(null);
+  const [speedResult, setSpeedResult] = useState<{
+    mbps: number;
+    bytes: number;
+    ms: number;
+  } | null>(null);
   const [error, setError] = useState("");
 
   const run = async () => {
@@ -1070,7 +1071,12 @@ function NetworkToolsPanel() {
             ["speed", Gauge],
           ] as const
         ).map(([id, Icon]) => (
-          <Badge key={id} tone={tab === id ? "amber" : "neutral"} onClick={() => setTab(id)}>
+          <Badge
+            key={id}
+            tone={tab === id ? "amber" : "neutral"}
+            active={tab === id}
+            onClick={() => setTab(id)}
+          >
             <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
               <Icon size={12} />
               {t(`bypass.netTab_${id}`)}
@@ -1139,7 +1145,8 @@ function NetworkToolsPanel() {
               {speedResult.mbps}
             </span>
             <span className="muted-sm">
-              Mbps · {(speedResult.bytes / 1_000_000).toFixed(1)} MB / {(speedResult.ms / 1000).toFixed(1)} s
+              Mbps · {(speedResult.bytes / 1_000_000).toFixed(1)} MB /{" "}
+              {(speedResult.ms / 1000).toFixed(1)} s
             </span>
           </div>
         )}

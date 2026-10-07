@@ -318,7 +318,6 @@ export async function add(source: unknown, opts: AddOptions = {}): Promise<Torre
   return info;
 }
 
-
 /* ====== Реестр загрузок: «Скачанные», пауза, возобновление, удаление ====== */
 
 /**
@@ -444,7 +443,9 @@ export function listDownloads(): TorrentDownload[] {
 
 /** Загрузка по названию тайтла — чтобы окно плеера восстановилось при повторном клике. */
 export function downloadForTitle(title: unknown): TorrentDownload | null {
-  const want = String(title || "").trim().toLowerCase();
+  const want = String(title || "")
+    .trim()
+    .toLowerCase();
   if (!want) return null;
   return listDownloads().find((d) => d.title.trim().toLowerCase() === want) || null;
 }

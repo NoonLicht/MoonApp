@@ -16,6 +16,14 @@ import path from "path";
  * тест даёт понятное сообщение и не требует полной сборки).
  */
 const src = fs.readFileSync(path.resolve(__dirname, "..", "src", "api", "client.ts"), "utf8");
+// Типы и методы клиента разнесены по src/api/*.ts: для проверок «объявлено один раз»
+// смотрим на все модули клиента вместе (types.ts — общий каталог типов — не входит).
+const apiDir = path.resolve(__dirname, "..", "src", "api");
+const apiSrc = fs
+  .readdirSync(apiDir)
+  .filter((f) => f.endsWith(".ts") && f !== "types.ts")
+  .map((f) => fs.readFileSync(path.join(apiDir, f), "utf8"))
+  .join("\n");
 const compressorPage = fs.readFileSync(
   path.resolve(__dirname, "..", "src", "pages", "compressor", "CompressorPage.tsx"),
   "utf8",
@@ -49,7 +57,7 @@ describe("src/api/client.ts — типы берутся из @/api/types оди�
     // `export type { ... };` без `from` — это реэкспорт уже импортированных имён,
     // то есть дубль списка. Объявления вида `export type Foo = ...` разрешены.
     expect(src, "вернулся дублирующий блок export type { ... }").not.toMatch(
-      /export type \{[\s\S]*?\};/,
+      /export type \{[^}]*\};/,
     );
   });
 
@@ -92,9 +100,9 @@ describe("Локальные копии общих типов не возвра�
   });
 
   it("client.ts: патч аудионастроек объявлен один раз и используется в API", () => {
-    const declared = src.match(/type LectureAudioPatch/g) ?? [];
+    const declared = apiSrc.match(/type LectureAudioPatch/g) ?? [];
     expect(declared.length, "LectureAudioPatch должен быть объявлен ровно один раз").toBe(1);
-    expect(src, "lectureAudioSet должен использовать LectureAudioPatch").toMatch(
+    expect(apiSrc, "lectureAudioSet должен использовать LectureAudioPatch").toMatch(
       /lectureAudioSet: \(patch: LectureAudioPatch\)/,
     );
   });

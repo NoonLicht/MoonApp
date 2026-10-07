@@ -38,7 +38,7 @@ jobs:
       - name: Mojibake scan
         run: npm run scan:mojibake
 
-      # Юнит-тесты (vitest) — гейт перед сборкой релиза. Компиляция серверных
+      # Юнит-тесты (vitest) — гейт перед сборкой релиза. Компиляция серверных и Electron-
       # TS-исходников уже выполнена шагом Typecheck (tsc -p tsconfig.server.json).
       - name: Unit tests
         run: npm test
@@ -62,7 +62,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         # electron-builder вызывается напрямую: `npm run dist -- --publish always`
         # передал бы аргументы в конец всей цепочки скрипта, а не в publisher.
-        run: npm run compile:server && npm run build:web && npx electron-builder --win --publish always
+        run: npm run compile && npm run build:web && npx electron-builder --win --publish always
 
       # Инсталлятор + latest.yml + .blockmap попадают в Release автоматически.
       # Если шаг publish упал, артефакты всё равно можно скачать из Actions.

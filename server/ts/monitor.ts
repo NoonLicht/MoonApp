@@ -17,7 +17,7 @@
  *
  * Дорогие вызовы кэшируются (мин. интервал + дедупликация одновременных запросов).
  */
-import { execFile, exec } from "child_process";
+import { execFile } from "child_process";
 import fs from "fs";
 import os from "os";
 import path from "path";
@@ -160,9 +160,14 @@ function execPs(script: string, timeoutMs = 10000): Promise<string> {
     const killTree = (): void => {
       try {
         if (child.pid)
-          exec(`taskkill /PID ${child.pid} /T /F`, { windowsHide: true }, () => {
-            /* ignore */
-          });
+          execFile(
+            "taskkill",
+            ["/PID", String(child.pid), "/T", "/F"],
+            { windowsHide: true },
+            () => {
+              /* ignore */
+            },
+          );
       } catch {
         /* ignore */
       }
@@ -1198,7 +1203,7 @@ export function stopLhm(): void {
   for (const pid of pids) {
     try {
       // /T — вместе с дочерними процессами, /F — принудительно.
-      exec(`taskkill /PID ${pid} /T /F`, { windowsHide: true }, () => {
+      execFile("taskkill", ["/PID", String(pid), "/T", "/F"], { windowsHide: true }, () => {
         /* ignore */
       });
       logger.info("monitor.lhm_stopped", { pid });

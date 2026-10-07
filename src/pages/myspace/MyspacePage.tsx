@@ -1,113 +1,62 @@
-﻿import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import {
-  FileText,
-  Folder,
-  Plus,
-  Search,
-  Tags,
-  Hash,
-  PanelRightOpen,
-  PanelRightClose,
-  PanelLeftOpen,
-  PanelLeftClose,
-  X,
-  Link2,
-  Type,
-  ChevronRight,
-  ChevronDown,
-  Globe,
-  Trash2,
-  Eye,
-  PenLine,
-  Maximize2,
-  AlertTriangle,
-  Sparkles,
-  RefreshCw,
-  SlidersHorizontal,
-} from "lucide-react";
-import MarkdownRenderer from "@/pages/myspace/parts/MarkdownRenderer";
-import CodeMirrorLiveEditor from "@/pages/myspace/parts/CodeMirrorLiveEditor";
-import BookmarksView from "@/pages/myspace/parts/BookmarksView";
-import GitSyncView from "@/pages/myspace/parts/GitSyncView";
+import { useI18n } from "@/app/i18n";
+import { useContextMenu } from "@/components/ContextMenu";
 import { usePageToolbar, usePageActive } from "@/components/Toolbar";
-import { useI18n, type TranslateFn } from "@/app/i18n";
-import { api } from "@/api/client";
+import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import type {
   VaultFile,
   VaultSearchResult,
   VaultTag,
-  VaultBacklink,
+  NotesAiConfig,
   GraphData,
   GraphNode,
   GraphEdge,
-  NotesAiConfig,
 } from "@/api/types";
+import { api } from "@/api/client";
 import { parseModelNameError } from "@/lib/modelError";
+import {
+  ChevronDown,
+  FileText,
+  PenLine,
+  Trash2,
+  ChevronRight,
+  Folder,
+  Search,
+  Tags,
+  PanelLeftClose,
+  Plus,
+  X,
+  Hash,
+  PanelLeftOpen,
+  Sparkles,
+  RefreshCw,
+  SlidersHorizontal,
+  PanelRightOpen,
+  Eye,
+  PanelRightClose,
+  Link2,
+  Type,
+  Globe,
+  Maximize2,
+  AlertTriangle,
+} from "lucide-react";
 import EditingToolbar from "@/pages/myspace/parts/EditingToolbar";
+import MarkdownRenderer from "@/pages/myspace/parts/MarkdownRenderer";
+import CodeMirrorLiveEditor from "@/pages/myspace/parts/CodeMirrorLiveEditor";
 import GraphView from "@/pages/myspace/parts/GraphView";
 import TasksPanel from "@/pages/myspace/parts/TasksPanel";
 import CanvasPage from "@/pages/myspace/canvas/CanvasPage";
-import { useContextMenu } from "@/components/ContextMenu";
+import BookmarksView from "@/pages/myspace/parts/BookmarksView";
+import GitSyncView from "@/pages/myspace/parts/GitSyncView";
 import { createPortal } from "react-dom";
 import { getOverlayRoot } from "@/components/overlayHost";
-
-// rAF-хэндл синхронного скролла редактор/превью (см. syncScroll ниже).
-declare global {
-  interface Window {
-    _msSyncRaf?: number;
-  }
-}
-
-type Side = "explorer" | "search" | "tags";
-type Right = "backlinks" | "outline" | "graph";
-interface OFile {
-  path: string;
-  name: string;
-  content: string;
-  frontmatter: Record<string, string>;
-  outline: { level: number; text: string; line: number }[];
-  backlinks: VaultBacklink[];
-  modified: boolean;
-}
-function dirname(p: string) {
-  const a = p.replace(/\\/g, "/").split("/");
-  a.pop();
-  return a.join("/");
-}
-const viewTabStyle = (active: boolean): React.CSSProperties => ({
-  display: "flex",
-  alignItems: "center",
-  gap: 6,
-  padding: "6px 14px",
-  borderRadius: 8,
-  fontSize: 12,
-  fontWeight: active ? 600 : 400,
-  background: active ? "var(--glass)" : "transparent",
-  border: "1px solid var(--glass-border)",
-  color: active ? "var(--text-primary)" : "var(--text-secondary)",
-  cursor: "pointer",
-  transition: "all 0.15s",
-});
-
-/**
- * Коды ошибок сервера (notes_ai_*) → подсказка на языке интерфейса.
- * Как в панели лекций: «нет ключа», «нет модели» и «нет исходника» — разные
- * советы пользователю, и одна общая строка здесь была бы бесполезной.
- */
-function notesAiError(msg: string, t: TranslateFn) {
-  if (/notes_ai_not_configured/.test(msg))
-    return t("myspace.ai.errKey", { provider: msg.split(": ")[1] || "" });
-  if (/notes_ai_provider_unknown/.test(msg))
-    return t("myspace.ai.errProvider", { provider: msg.split(": ")[1] || "" });
-  if (/notes_ai_model_missing/.test(msg)) return t("myspace.ai.errModel");
-  if (/notes_ai_no_source/.test(msg)) return t("myspace.ai.errNoSource");
-  if (/notes_ai_empty_note/.test(msg)) return t("myspace.ai.errEmptyNote");
-  if (/notes_ai_too_long/.test(msg)) return t("myspace.ai.errTooLong");
-  if (/notes_ai_short_output/.test(msg)) return t("myspace.ai.errShortOutput");
-  if (/notes_ai_empty_response/.test(msg)) return t("myspace.ai.errEmpty");
-  if (/HTTP \d+/.test(msg)) return t("myspace.ai.errServer", { code: msg.replace(/^HTTP\s+/, "") });
-  return msg || t("myspace.ai.errGeneric");
-}
+import {
+  dirname,
+  notesAiError,
+  viewTabStyle,
+  type OFile,
+  type Right,
+  type Side,
+} from "@/pages/myspace/parts/MyspaceHelpers";
 
 export default function MyspacePage() {
   const { t } = useI18n();
@@ -555,7 +504,10 @@ export default function MyspacePage() {
       if (aiNoticeTimer.current) clearTimeout(aiNoticeTimer.current);
       aiNoticeTimer.current = setTimeout(() => setAiNotice(""), 7000);
       // Список тегов в правой панели мог измениться вместе с текстом.
-      api.myspaceTags().then(setTags).catch(() => {});
+      api
+        .myspaceTags()
+        .then(setTags)
+        .catch(() => {});
     } catch (e: any) {
       // Ошибка «сервис не принимает такую модель» (обычная опечатка в имени)
       // приходила сырым JSON. Разбираем её: показываем понятный текст, чипсы с
@@ -1187,17 +1139,20 @@ export default function MyspacePage() {
         >
           🔖 {t("myspace.bookmarksTab")}
         </button>
-        <button
-          onClick={() => setMyspaceView("sync")}
-          style={viewTabStyle(myspaceView === "sync")}
-        >
+        <button onClick={() => setMyspaceView("sync")} style={viewTabStyle(myspaceView === "sync")}>
           🔄 {t("myspace.syncTab")}
         </button>
       </div>
       {myspaceView === "notes" && (
         <div
           ref={notesRowRef}
-          style={{ display: "flex", flex: 1, minHeight: 0, overflow: "hidden", position: "relative" }}
+          style={{
+            display: "flex",
+            flex: 1,
+            minHeight: 0,
+            overflow: "hidden",
+            position: "relative",
+          }}
         >
           {/* Оверлейные панели на узкой ширине рисуются поверх контента — клик
               по остальной странице их сворачивает. */}
@@ -1729,8 +1684,7 @@ export default function MyspacePage() {
                           border: "none",
                           padding: 3,
                           cursor: aiBusy ? "default" : "pointer",
-                          color:
-                            aiBusy === "regenerate" ? "var(--amber)" : "var(--text-tertiary)",
+                          color: aiBusy === "regenerate" ? "var(--amber)" : "var(--text-tertiary)",
                           opacity: aiBusy && aiBusy !== "regenerate" ? 0.4 : 1,
                           display: "flex",
                         }}
@@ -2161,9 +2115,7 @@ export default function MyspacePage() {
                               return null;
                             };
                             const t2 = findNote(tree, title);
-                            const fn = t2
-                              ? t2.path
-                              : title.replace(/[/\\?%*:|"<>]/g, "_") + ".md";
+                            const fn = t2 ? t2.path : title.replace(/[/\\?%*:|"<>]/g, "_") + ".md";
                             openFile(fn);
                           }}
                           onTagClick={(tag: string) => {
@@ -2183,7 +2135,10 @@ export default function MyspacePage() {
                           onPasteImage={async (blob: Blob) => {
                             try {
                               const ext = blob.type.split("/")[1] || "png";
-                              const { url } = await api.myspaceUploadAsset(blob, `clipboard.${ext}`);
+                              const { url } = await api.myspaceUploadAsset(
+                                blob,
+                                `clipboard.${ext}`,
+                              );
                               return `![image](${url})`;
                             } catch (e) {
                               setAttachError((e as Error).message);
@@ -2793,13 +2748,17 @@ export default function MyspacePage() {
       )}
       {/* ─── CANVAS VIEW ─── */}
       {myspaceView === "canvas" && (
-        <div style={{ display: "flex", flex: 1, minHeight: 0, overflow: "hidden", margin: "8px 12px" }}>
+        <div
+          style={{ display: "flex", flex: 1, minHeight: 0, overflow: "hidden", margin: "8px 12px" }}
+        >
           <CanvasPage />
         </div>
       )}
       {/* ─── BOOKMARKS VIEW ─── */}
       {myspaceView === "bookmarks" && (
-        <div style={{ display: "flex", flex: 1, minHeight: 0, overflow: "hidden", margin: "8px 12px" }}>
+        <div
+          style={{ display: "flex", flex: 1, minHeight: 0, overflow: "hidden", margin: "8px 12px" }}
+        >
           <BookmarksView
             onOpenNote={(p) => {
               setMyspaceView("notes");
@@ -2810,7 +2769,9 @@ export default function MyspacePage() {
       )}
       {/* ─── SYNC VIEW ─── */}
       {myspaceView === "sync" && (
-        <div style={{ display: "flex", flex: 1, minHeight: 0, overflow: "hidden", margin: "8px 12px" }}>
+        <div
+          style={{ display: "flex", flex: 1, minHeight: 0, overflow: "hidden", margin: "8px 12px" }}
+        >
           <GitSyncView />
         </div>
       )}
@@ -2938,122 +2899,122 @@ export default function MyspacePage() {
           </div>,
           getOverlayRoot() ?? document.body,
         )}
-        {/* --- Окно выбора провайдера и модели для ИИ-оформления заметок.
+      {/* --- Окно выбора провайдера и модели для ИИ-оформления заметок.
             Сохраняется сразу при выборе (myspace.ai.*), поэтому повторять
             настройку в следующий раз не нужно. Открывается и по кнопке с
             ползунками, и автоматически, если сервис отверг имя модели:
             тогда ниже появляются чипсы с именами, которые он принимает. --- */}
-        {aiCfgOpen &&
-          createPortal(
-            <div className="ms-ai-overlay" onClick={() => setAiCfgOpen(false)}>
-              <div
-                className="ms-ai-modal"
-                role="dialog"
-                aria-label={t("myspace.ai.cfg")}
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div className="ms-ai-modal-head">
-                  <div className="field-label">{t("myspace.ai.cfg")}</div>
-                  <button
-                    className="ms-ai-modal-close"
-                    onClick={() => setAiCfgOpen(false)}
-                    aria-label={t("common.close")}
-                    title={t("common.close")}
-                  >
-                    <X size={16} />
-                  </button>
-                </div>
-                <div className="ms-ai-modal-body">
-                  <label className="ms-ai-field">
-                    <span className="field-label">{t("myspace.ai.provider")}</span>
-                    <select
-                      value={aiCfg?.providerFromChat ? "" : aiCfg?.providerId || ""}
-                      disabled={aiBusyCfg === "save"}
-                      onChange={(e) => void saveAiCfg({ providerId: e.target.value })}
-                    >
-                      <option value="">
-                        {t("myspace.ai.providerChat", { provider: aiCfg?.chatProvider || "—" })}
-                      </option>
-                      {(aiCfg?.providers || []).map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.label}
-                          {p.hasKey ? "" : ` — ${t("myspace.ai.noKey")}`}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-
-                  <label className="ms-ai-field">
-                    <span className="field-label">{t("myspace.ai.model")}</span>
-                    <select
-                      value={aiCfg?.model || ""}
-                      disabled={aiBusyCfg === "save"}
-                      onChange={(e) => void saveAiCfg({ model: e.target.value })}
-                    >
-                      <option value="">{t("myspace.ai.modelAuto")}</option>
-                      {aiCfgModels.map((m) => (
-                        <option key={m} value={m}>
-                          {m}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-
-                  <div className="ms-ai-modal-actions">
-                    <button
-                      type="button"
-                      className="btn btn-ghost"
-                      onClick={() => void loadAiModels(aiCfg?.providerId || "")}
-                      disabled={aiBusyCfg === "models" || !aiCfg?.providerId}
-                    >
-                      {aiBusyCfg === "models"
-                        ? t("myspace.ai.modelLoading")
-                        : t("myspace.ai.modelRefresh")}
-                    </button>
-                    <span className="muted-sm">
-                      {aiModels?.length
-                        ? t("myspace.ai.modelFound", { count: aiModels.length })
-                        : t("myspace.ai.modelHint")}
-                    </span>
-                  </div>
-
-                  {/* Чипсы: имена моделей из текста ошибки сервиса — выбор в один клик. */}
-                  {!!modelChoices.length && (
-                    <div className="ms-ai-chips">
-                      <span className="muted-sm">{t("myspace.ai.modelPick")}</span>
-                      <div className="ms-ai-chips-row">
-                        {modelChoices.map((m) => (
-                          <button
-                            key={m}
-                            className="ms-ai-chip"
-                            title={t("myspace.ai.modelUse", { model: m })}
-                            onClick={() => void pickModelChoice(m)}
-                          >
-                            {m}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {!!aiCfgError && <div className="ms-ai-modal-error">{aiCfgError}</div>}
-                  {aiCfg && !aiCfg.hasKey && (
-                    <div className="ms-ai-modal-warn">
-                      <AlertTriangle size={12} />
-                      <span>{t("myspace.ai.noKeyHint", { provider: aiCfg.providerId })}</span>
-                    </div>
-                  )}
-                </div>
-                <div className="ms-ai-modal-foot">
-                  <span className="muted-sm">{t("myspace.ai.savedAuto")}</span>
-                  <button className="btn btn-primary" onClick={() => setAiCfgOpen(false)}>
-                    {t("common.close")}
-                  </button>
-                </div>
+      {aiCfgOpen &&
+        createPortal(
+          <div className="ms-ai-overlay" onClick={() => setAiCfgOpen(false)}>
+            <div
+              className="ms-ai-modal"
+              role="dialog"
+              aria-label={t("myspace.ai.cfg")}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="ms-ai-modal-head">
+                <div className="field-label">{t("myspace.ai.cfg")}</div>
+                <button
+                  className="ms-ai-modal-close"
+                  onClick={() => setAiCfgOpen(false)}
+                  aria-label={t("common.close")}
+                  title={t("common.close")}
+                >
+                  <X size={16} />
+                </button>
               </div>
-            </div>,
-            getOverlayRoot() ?? document.body,
-          )}
+              <div className="ms-ai-modal-body">
+                <label className="ms-ai-field">
+                  <span className="field-label">{t("myspace.ai.provider")}</span>
+                  <select
+                    value={aiCfg?.providerFromChat ? "" : aiCfg?.providerId || ""}
+                    disabled={aiBusyCfg === "save"}
+                    onChange={(e) => void saveAiCfg({ providerId: e.target.value })}
+                  >
+                    <option value="">
+                      {t("myspace.ai.providerChat", { provider: aiCfg?.chatProvider || "—" })}
+                    </option>
+                    {(aiCfg?.providers || []).map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.label}
+                        {p.hasKey ? "" : ` — ${t("myspace.ai.noKey")}`}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="ms-ai-field">
+                  <span className="field-label">{t("myspace.ai.model")}</span>
+                  <select
+                    value={aiCfg?.model || ""}
+                    disabled={aiBusyCfg === "save"}
+                    onChange={(e) => void saveAiCfg({ model: e.target.value })}
+                  >
+                    <option value="">{t("myspace.ai.modelAuto")}</option>
+                    {aiCfgModels.map((m) => (
+                      <option key={m} value={m}>
+                        {m}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <div className="ms-ai-modal-actions">
+                  <button
+                    type="button"
+                    className="btn btn-ghost"
+                    onClick={() => void loadAiModels(aiCfg?.providerId || "")}
+                    disabled={aiBusyCfg === "models" || !aiCfg?.providerId}
+                  >
+                    {aiBusyCfg === "models"
+                      ? t("myspace.ai.modelLoading")
+                      : t("myspace.ai.modelRefresh")}
+                  </button>
+                  <span className="muted-sm">
+                    {aiModels?.length
+                      ? t("myspace.ai.modelFound", { count: aiModels.length })
+                      : t("myspace.ai.modelHint")}
+                  </span>
+                </div>
+
+                {/* Чипсы: имена моделей из текста ошибки сервиса — выбор в один клик. */}
+                {!!modelChoices.length && (
+                  <div className="ms-ai-chips">
+                    <span className="muted-sm">{t("myspace.ai.modelPick")}</span>
+                    <div className="ms-ai-chips-row">
+                      {modelChoices.map((m) => (
+                        <button
+                          key={m}
+                          className="ms-ai-chip"
+                          title={t("myspace.ai.modelUse", { model: m })}
+                          onClick={() => void pickModelChoice(m)}
+                        >
+                          {m}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {!!aiCfgError && <div className="ms-ai-modal-error">{aiCfgError}</div>}
+                {aiCfg && !aiCfg.hasKey && (
+                  <div className="ms-ai-modal-warn">
+                    <AlertTriangle size={12} />
+                    <span>{t("myspace.ai.noKeyHint", { provider: aiCfg.providerId })}</span>
+                  </div>
+                )}
+              </div>
+              <div className="ms-ai-modal-foot">
+                <span className="muted-sm">{t("myspace.ai.savedAuto")}</span>
+                <button className="btn btn-primary" onClick={() => setAiCfgOpen(false)}>
+                  {t("common.close")}
+                </button>
+              </div>
+            </div>
+          </div>,
+          getOverlayRoot() ?? document.body,
+        )}
     </div>
   );
 }

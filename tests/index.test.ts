@@ -68,7 +68,7 @@ describe("server/index — контракт входа", () => {
     stop(srv);
   });
 
-  it("с токеном: /api закрыт, ресурсные пути открыты, а статика/SPA-фолбэк требуют токен", async () => {
+  it("с токеном: закрыто всё (включая ресурсные пути и статику/SPA-фолбэк)", async () => {
     const srv = server.startServer(0, { token: "s3cret" });
     const port = await portOf(srv);
     const base = `http://127.0.0.1:${port}`;
@@ -86,23 +86,24 @@ describe("server/index — контракт входа", () => {
     const ok = await fetch(`${base}/api/health`, hdr);
     expect(ok.status).toBe(200);
 
-    // Ресурсный путь: браузер грузит его тегом <img>, заголовок передать нельзя,
-    // поэтому токен не требуется (валидация — внутри роута movies).
-    const img = await fetch(`${base}/api/movies/image?size=w92&path=/poster.jpg`);
-    expect(img.status).not.toBe(401);
-
-    // Ресурсные пути торрент-плеера: браузер грузит их тегами <video>/<track>,
-    // заголовок передать нельзя, поэтому токен не требуется (валидация внутри
-    // роутов). Регресс: стрим торрента раньше не был в allowlist и в собранной
-    // сборке отвечал 401 — плеер не играл.
+    // Ресурсных исключений нет: теги <img>/<video>/<track> окна приложения тоже
+    // получают токен через session.webRequest (electron/ts/main.ts), поэтому без
+    // заголовка эти пути закрыты так же, как остальной API, а с ним — доступны
+    // (валидация параметров остаётся внутри роутов).
     const hash = "a".repeat(40);
-    for (const p of [
+    const resourcePaths = [
+      "/api/movies/image?size=w92&path=/poster.jpg",
+      "/api/screenshots/file/none",
+      "/api/games/cover/1",
       `/api/movies/torrent/stream/${hash}/0`,
       `/api/movies/torrent/remux/${hash}/0`,
       `/api/movies/torrent/subtitles/${hash}/0?track=0`,
-    ]) {
-      const res = await fetch(`${base}${p}`);
-      expect(res.status, p).not.toBe(401);
+    ];
+    for (const p of resourcePaths) {
+      const anon = await fetch(`${base}${p}`);
+      expect(anon.status, p).toBe(401);
+      const authed = await fetch(`${base}${p}`, hdr);
+      expect(authed.status, p).not.toBe(401);
     }
 
     // Не-/api путь (статика dist/, SPA-фолбэк): любой процесс, узнавший порт,

@@ -113,11 +113,7 @@ export interface TrackerErrorDetails {
   hasLogin?: boolean;
 }
 
-function trackerError(
-  code: string,
-  message?: string,
-  details?: TrackerErrorDetails,
-): TrackerError {
+function trackerError(code: string, message?: string, details?: TrackerErrorDetails): TrackerError {
   const e = new Error(message || code) as TrackerError;
   e.code = code;
   if (details) e.details = details;
@@ -257,7 +253,12 @@ export function trackerCfg(): TrackerCfg {
     label: str(raw.label, preset.label),
     loginPath: str(raw.loginPath, preset.loginPath),
     searchPath: str(raw.searchPath, preset.searchPath),
-    searchMethod: raw.searchMethod === "get" ? "get" : raw.searchMethod === "post" ? "post" : preset.searchMethod,
+    searchMethod:
+      raw.searchMethod === "get"
+        ? "get"
+        : raw.searchMethod === "post"
+          ? "post"
+          : preset.searchMethod,
     searchParam: str(raw.searchParam, preset.searchParam),
     topicPath: str(raw.topicPath, preset.topicPath),
     torrentPath: str(raw.torrentPath, preset.torrentPath),
@@ -632,7 +633,10 @@ export async function importCookiesFromBrowsers(opts?: {
       const next = trackerCfg();
       next.userAgent = userAgent;
       settings.set({ trackers: next });
-      logger.action("movies.tracker_ua_from_browser", { browser: source.browser, version: source.version });
+      logger.action("movies.tracker_ua_from_browser", {
+        browser: source.browser,
+        version: source.version,
+      });
     }
   }
 
@@ -1551,7 +1555,11 @@ export function applyTrackerPreset(id: unknown): {
     },
   });
   clearTrackerCache(); // выдача другого трекера — кэш недействителен
-  logger.action("movies.tracker_preset", { id: preset.id, engine: preset.engine, url: preset.baseUrl });
+  logger.action("movies.tracker_preset", {
+    id: preset.id,
+    engine: preset.engine,
+    url: preset.baseUrl,
+  });
   return {
     ok: true,
     id: preset.id,

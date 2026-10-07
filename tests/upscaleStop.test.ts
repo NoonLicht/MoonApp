@@ -283,7 +283,9 @@ describe("апскейл: процессы задания гасятся и не
       );
       expect(page).toContain("api.upscalePause()");
       expect(page).toContain("api.upscaleResume()");
-      const client = fs.readFileSync(path.join(process.cwd(), "src", "api", "client.ts"), "utf8");
+      const client =
+        fs.readFileSync(path.join(process.cwd(), "src", "api", "client.ts"), "utf8") +
+        fs.readFileSync(path.join(process.cwd(), "src", "api", "apiUpscale.ts"), "utf8");
       // Prettier может перенести `req<...>` на следующую строку — проверяем вызовы.
       expect(client).toMatch(/upscalePause: \(\) =>\s*\n?\s*req</);
       expect(client).toMatch(/upscaleResume: \(\) =>\s*\n?\s*req</);

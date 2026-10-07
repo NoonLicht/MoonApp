@@ -153,7 +153,16 @@ function nfqwsPath(): string {
     // прямо в storage_linux/zapret/, поэтому nfqws/ — подпапка zapret/).
     st ? path.join(st, "nfqws", "binaries", nfqwsArchDir(), "nfqws") : null,
     path.join(DIRS.zapret, "nfqws", "binaries", nfqwsArchDir(), "nfqws"),
-    path.join(__dirname, "..", "storage_linux", "zapret", "nfqws", "binaries", nfqwsArchDir(), "nfqws"),
+    path.join(
+      __dirname,
+      "..",
+      "storage_linux",
+      "zapret",
+      "nfqws",
+      "binaries",
+      nfqwsArchDir(),
+      "nfqws",
+    ),
     // На случай, если пользователь положит уже собранный бинарь напрямую
     // (пакет дистрибутива вида `zapret-nfqws`, без всего дерева релиза).
     config.vendorBin("zapret", "nfqws"),
@@ -232,50 +241,229 @@ export function listPayloads(): Array<{ name: string; path: string; sizeKb: numb
  * выбор трафика на Linux всегда делает iptables/nftables, а не сам nfqws).
  */
 const KNOWN_NFQWS_FLAGS = new Set([
-  "--allow-unsupported-windows", "--autottl", "--bind", "--bind-addr", "--bind-fix4", "--bind-fix6",
-  "--bind-iface", "--bind-iface4", "--bind-iface6", "--bind-linklocal", "--bind-wait", "--bind-wait-ifup",
-  "--bind-wait-ip", "--bind-wait-ip-linklocal", "--bind-wait-only", "--clamp-mss-to-pmtu", "--comment",
-  "--config", "--connbytes", "--connbytes-dir", "--connbytes-mode", "--connect-bind-addr", "--ctmask",
-  "--ctrack-disable", "--ctrack-timeouts", "--ctstate", "--daemon", "--data-binary", "--debug",
-  "--debug-level", "--depth", "--disorder", "--dns-make-query", "--dns-parse-query", "--domcase",
-  "--dpi-desync", "--dpi-desync-any-protocol", "--dpi-desync-autottl", "--dpi-desync-autottl6",
-  "--dpi-desync-badack-increment", "--dpi-desync-badseq-increment", "--dpi-desync-cutoff",
-  "--dpi-desync-fake-dht", "--dpi-desync-fake-discord", "--dpi-desync-fake-http", "--dpi-desync-fake-quic",
-  "--dpi-desync-fake-stun", "--dpi-desync-fake-syndata", "--dpi-desync-fake-tcp-mod",
-  "--dpi-desync-fake-tls", "--dpi-desync-fake-tls-mod", "--dpi-desync-fake-unknown",
-  "--dpi-desync-fake-unknown-udp", "--dpi-desync-fake-wireguard", "--dpi-desync-fake-xxx",
-  "--dpi-desync-fakedsplit-mod", "--dpi-desync-fakedsplit-pattern", "--dpi-desync-fooling",
-  "--dpi-desync-fwmark", "--dpi-desync-hostfakesplit-midhost", "--dpi-desync-hostfakesplit-mod",
-  "--dpi-desync-ipfrag-pos-tcp", "--dpi-desync-ipfrag-pos-udp", "--dpi-desync-repeats",
-  "--dpi-desync-retrans", "--dpi-desync-skip-nosni", "--dpi-desync-split-http-req",
-  "--dpi-desync-split-pos", "--dpi-desync-split-seqovl", "--dpi-desync-split-seqovl-pattern",
-  "--dpi-desync-split-tls", "--dpi-desync-start", "--dpi-desync-tcp-flags", "--dpi-desync-tcp-flags-set",
-  "--dpi-desync-tcp-flags-unset", "--dpi-desync-ts-increment", "--dpi-desync-ttl", "--dpi-desync-ttl6",
-  "--dpi-desync-udplen-increment", "--dpi-desync-udplen-pattern", "--dport", "--dports", "--dry-run",
-  "--dscp", "--dup", "--dup-autottl", "--dup-autottl6", "--dup-badack-increment", "--dup-badseq-increment",
-  "--dup-cutoff", "--dup-fooling", "--dup-ip-id", "--dup-replace", "--dup-start", "--dup-tcp-flags",
-  "--dup-tcp-flags-set", "--dup-tcp-flags-unset", "--dup-ts-increment", "--dup-ttl", "--dup-ttl6",
-  "--eagain", "--eagain-delay", "--enable-pf", "--exec", "--family", "--filter-l3", "--filter-l7",
-  "--filter-ssid", "--filter-tcp", "--filter-udp", "--fix-seg", "--force-overwrite", "--gid", "--hostcase",
-  "--hostdot", "--hostlist", "--hostlist-auto", "--hostlist-auto-debug", "--hostlist-auto-fail-threshold",
-  "--hostlist-auto-fail-time", "--hostlist-auto-retrans-threshold", "--hostlist-domains",
-  "--hostlist-exclude", "--hostlist-exclude-domains", "--hostnospace", "--hostpad", "--hostspell",
-  "--hosttab", "--import", "--ip-id", "--ipcache-hostname", "--ipcache-lifetime", "--ipset",
-  "--ipset-exclude", "--ipset-exclude-ip", "--ipset-ip", "--local-rcvbuf", "--local-sndbuf",
-  "--local-tcp-user-timeout", "--log-failed", "--log-resolved", "--mark", "--match-set",
-  "--max-orphan-time", "--maxconn", "--maxfiles", "--methodeol", "--methodspace", "--mss", "--new",
-  "--nfmask", "--nlm-filter", "--nlm-list", "--no-resolve", "--no-verify", "--nosplice", "--on-port",
-  "--oob", "--oob-data", "--orig", "--orig-autottl", "--orig-autottl6", "--orig-mod-cutoff",
-  "--orig-mod-start", "--orig-tcp-flags", "--orig-tcp-flags-set", "--orig-tcp-flags-unset", "--orig-ttl",
-  "--orig-ttl6", "--pidfile", "--port", "--prefix-length", "--qnum", "--queue-bypass", "--queue-num",
-  "--remote-rcvbuf", "--remote-sndbuf", "--remote-tcp-user-timeout", "--resolve-threads",
-  "--resolver-threads", "--restore-mark", "--set", "--set-dscp", "--set-mark", "--site", "--skip",
-  "--skip-nodelay", "--socks", "--socks5", "--socks5-hostname", "--split-any-protocol",
-  "--split-http-req", "--split-pos", "--split-tls", "--sport", "--sports", "--ssid-filter", "--stats",
-  "--strip-debug", "--synack-split", "--tamper-cutoff", "--tamper-start", "--tcp-flags", "--threads",
-  "--tlsrec", "--tlsrec-pos", "--to", "--to-destination", "--to-port", "--tproxy-mark", "--uid",
-  "--uid-owner", "--unixeol", "--unregister", "--user", "--v4-threshold", "--v6-threshold", "--verbose",
-  "--version", "--wsize", "--wssize", "--wssize-cutoff", "--wssize-forced-cutoff",
+  "--allow-unsupported-windows",
+  "--autottl",
+  "--bind",
+  "--bind-addr",
+  "--bind-fix4",
+  "--bind-fix6",
+  "--bind-iface",
+  "--bind-iface4",
+  "--bind-iface6",
+  "--bind-linklocal",
+  "--bind-wait",
+  "--bind-wait-ifup",
+  "--bind-wait-ip",
+  "--bind-wait-ip-linklocal",
+  "--bind-wait-only",
+  "--clamp-mss-to-pmtu",
+  "--comment",
+  "--config",
+  "--connbytes",
+  "--connbytes-dir",
+  "--connbytes-mode",
+  "--connect-bind-addr",
+  "--ctmask",
+  "--ctrack-disable",
+  "--ctrack-timeouts",
+  "--ctstate",
+  "--daemon",
+  "--data-binary",
+  "--debug",
+  "--debug-level",
+  "--depth",
+  "--disorder",
+  "--dns-make-query",
+  "--dns-parse-query",
+  "--domcase",
+  "--dpi-desync",
+  "--dpi-desync-any-protocol",
+  "--dpi-desync-autottl",
+  "--dpi-desync-autottl6",
+  "--dpi-desync-badack-increment",
+  "--dpi-desync-badseq-increment",
+  "--dpi-desync-cutoff",
+  "--dpi-desync-fake-dht",
+  "--dpi-desync-fake-discord",
+  "--dpi-desync-fake-http",
+  "--dpi-desync-fake-quic",
+  "--dpi-desync-fake-stun",
+  "--dpi-desync-fake-syndata",
+  "--dpi-desync-fake-tcp-mod",
+  "--dpi-desync-fake-tls",
+  "--dpi-desync-fake-tls-mod",
+  "--dpi-desync-fake-unknown",
+  "--dpi-desync-fake-unknown-udp",
+  "--dpi-desync-fake-wireguard",
+  "--dpi-desync-fake-xxx",
+  "--dpi-desync-fakedsplit-mod",
+  "--dpi-desync-fakedsplit-pattern",
+  "--dpi-desync-fooling",
+  "--dpi-desync-fwmark",
+  "--dpi-desync-hostfakesplit-midhost",
+  "--dpi-desync-hostfakesplit-mod",
+  "--dpi-desync-ipfrag-pos-tcp",
+  "--dpi-desync-ipfrag-pos-udp",
+  "--dpi-desync-repeats",
+  "--dpi-desync-retrans",
+  "--dpi-desync-skip-nosni",
+  "--dpi-desync-split-http-req",
+  "--dpi-desync-split-pos",
+  "--dpi-desync-split-seqovl",
+  "--dpi-desync-split-seqovl-pattern",
+  "--dpi-desync-split-tls",
+  "--dpi-desync-start",
+  "--dpi-desync-tcp-flags",
+  "--dpi-desync-tcp-flags-set",
+  "--dpi-desync-tcp-flags-unset",
+  "--dpi-desync-ts-increment",
+  "--dpi-desync-ttl",
+  "--dpi-desync-ttl6",
+  "--dpi-desync-udplen-increment",
+  "--dpi-desync-udplen-pattern",
+  "--dport",
+  "--dports",
+  "--dry-run",
+  "--dscp",
+  "--dup",
+  "--dup-autottl",
+  "--dup-autottl6",
+  "--dup-badack-increment",
+  "--dup-badseq-increment",
+  "--dup-cutoff",
+  "--dup-fooling",
+  "--dup-ip-id",
+  "--dup-replace",
+  "--dup-start",
+  "--dup-tcp-flags",
+  "--dup-tcp-flags-set",
+  "--dup-tcp-flags-unset",
+  "--dup-ts-increment",
+  "--dup-ttl",
+  "--dup-ttl6",
+  "--eagain",
+  "--eagain-delay",
+  "--enable-pf",
+  "--exec",
+  "--family",
+  "--filter-l3",
+  "--filter-l7",
+  "--filter-ssid",
+  "--filter-tcp",
+  "--filter-udp",
+  "--fix-seg",
+  "--force-overwrite",
+  "--gid",
+  "--hostcase",
+  "--hostdot",
+  "--hostlist",
+  "--hostlist-auto",
+  "--hostlist-auto-debug",
+  "--hostlist-auto-fail-threshold",
+  "--hostlist-auto-fail-time",
+  "--hostlist-auto-retrans-threshold",
+  "--hostlist-domains",
+  "--hostlist-exclude",
+  "--hostlist-exclude-domains",
+  "--hostnospace",
+  "--hostpad",
+  "--hostspell",
+  "--hosttab",
+  "--import",
+  "--ip-id",
+  "--ipcache-hostname",
+  "--ipcache-lifetime",
+  "--ipset",
+  "--ipset-exclude",
+  "--ipset-exclude-ip",
+  "--ipset-ip",
+  "--local-rcvbuf",
+  "--local-sndbuf",
+  "--local-tcp-user-timeout",
+  "--log-failed",
+  "--log-resolved",
+  "--mark",
+  "--match-set",
+  "--max-orphan-time",
+  "--maxconn",
+  "--maxfiles",
+  "--methodeol",
+  "--methodspace",
+  "--mss",
+  "--new",
+  "--nfmask",
+  "--nlm-filter",
+  "--nlm-list",
+  "--no-resolve",
+  "--no-verify",
+  "--nosplice",
+  "--on-port",
+  "--oob",
+  "--oob-data",
+  "--orig",
+  "--orig-autottl",
+  "--orig-autottl6",
+  "--orig-mod-cutoff",
+  "--orig-mod-start",
+  "--orig-tcp-flags",
+  "--orig-tcp-flags-set",
+  "--orig-tcp-flags-unset",
+  "--orig-ttl",
+  "--orig-ttl6",
+  "--pidfile",
+  "--port",
+  "--prefix-length",
+  "--qnum",
+  "--queue-bypass",
+  "--queue-num",
+  "--remote-rcvbuf",
+  "--remote-sndbuf",
+  "--remote-tcp-user-timeout",
+  "--resolve-threads",
+  "--resolver-threads",
+  "--restore-mark",
+  "--set",
+  "--set-dscp",
+  "--set-mark",
+  "--site",
+  "--skip",
+  "--skip-nodelay",
+  "--socks",
+  "--socks5",
+  "--socks5-hostname",
+  "--split-any-protocol",
+  "--split-http-req",
+  "--split-pos",
+  "--split-tls",
+  "--sport",
+  "--sports",
+  "--ssid-filter",
+  "--stats",
+  "--strip-debug",
+  "--synack-split",
+  "--tamper-cutoff",
+  "--tamper-start",
+  "--tcp-flags",
+  "--threads",
+  "--tlsrec",
+  "--tlsrec-pos",
+  "--to",
+  "--to-destination",
+  "--to-port",
+  "--tproxy-mark",
+  "--uid",
+  "--uid-owner",
+  "--unixeol",
+  "--unregister",
+  "--user",
+  "--v4-threshold",
+  "--v6-threshold",
+  "--verbose",
+  "--version",
+  "--wsize",
+  "--wssize",
+  "--wssize-cutoff",
+  "--wssize-forced-cutoff",
 ]);
 
 /** Имя флага без значения: "--dpi-desync=fake,split2" → "--dpi-desync". */
@@ -355,10 +543,17 @@ const NFT_TABLE = "moonapp_zapret";
 const IPT_CHAIN = "MOONAPP_ZAPRET";
 const QNUM = 200;
 
-function execFileAsync(cmd: string, args: string[]): Promise<{ ok: boolean; stdout: string; stderr: string }> {
+function execFileAsync(
+  cmd: string,
+  args: string[],
+): Promise<{ ok: boolean; stdout: string; stderr: string }> {
   return new Promise((resolve) => {
     execFile(cmd, args, { timeout: 8000 }, (err, stdout, stderr) => {
-      resolve({ ok: !err, stdout: String(stdout || ""), stderr: String(stderr || err?.message || "") });
+      resolve({
+        ok: !err,
+        stdout: String(stdout || ""),
+        stderr: String(stderr || err?.message || ""),
+      });
     });
   });
 }
@@ -368,18 +563,33 @@ async function hasNft(): Promise<boolean> {
 }
 
 /** См. killSwitchLinux.ts — тот же приём элевации через pkexec (Polkit). */
-async function runPrivileged(cmd: string, args: string[]): Promise<{ ok: boolean; error?: string }> {
+async function runPrivileged(
+  cmd: string,
+  args: string[],
+): Promise<{ ok: boolean; error?: string }> {
   const r = await execFileAsync("pkexec", [cmd, ...args]);
   if (!r.ok) return { ok: false, error: r.stderr || "elevation_failed" };
   return { ok: true };
 }
 
 /** Заводит правило NFQUEUE на нужные TCP/UDP-порты (OUTPUT — исходящий трафик). */
-async function installQueueRule(tcpPorts: string, udpPorts: string): Promise<{ ok: boolean; error?: string }> {
+async function installQueueRule(
+  tcpPorts: string,
+  udpPorts: string,
+): Promise<{ ok: boolean; error?: string }> {
   if (await hasNft()) {
-    const rules = [`add table inet ${NFT_TABLE}`, `add chain inet ${NFT_TABLE} output { type filter hook output priority 0 ; policy accept ; }`];
-    if (tcpPorts) rules.push(`add rule inet ${NFT_TABLE} output tcp dport { ${tcpPorts} } queue num ${QNUM} bypass`);
-    if (udpPorts) rules.push(`add rule inet ${NFT_TABLE} output udp dport { ${udpPorts} } queue num ${QNUM} bypass`);
+    const rules = [
+      `add table inet ${NFT_TABLE}`,
+      `add chain inet ${NFT_TABLE} output { type filter hook output priority 0 ; policy accept ; }`,
+    ];
+    if (tcpPorts)
+      rules.push(
+        `add rule inet ${NFT_TABLE} output tcp dport { ${tcpPorts} } queue num ${QNUM} bypass`,
+      );
+    if (udpPorts)
+      rules.push(
+        `add rule inet ${NFT_TABLE} output udp dport { ${udpPorts} } queue num ${QNUM} bypass`,
+      );
     const { writeFileSync, unlinkSync } = await import("fs");
     const os = await import("os");
     const tmp = path.join(os.tmpdir(), `moonapp-zapret-${Date.now()}.nft`);
@@ -399,13 +609,37 @@ async function installQueueRule(tcpPorts: string, udpPorts: string): Promise<{ o
   await runPrivileged("iptables", ["-I", "OUTPUT", "-j", IPT_CHAIN]);
   if (tcpPorts) {
     const r = await runPrivileged("iptables", [
-      "-A", IPT_CHAIN, "-p", "tcp", "-m", "multiport", "--dports", tcpPorts, "-j", "NFQUEUE", "--queue-num", String(QNUM), "--queue-bypass",
+      "-A",
+      IPT_CHAIN,
+      "-p",
+      "tcp",
+      "-m",
+      "multiport",
+      "--dports",
+      tcpPorts,
+      "-j",
+      "NFQUEUE",
+      "--queue-num",
+      String(QNUM),
+      "--queue-bypass",
     ]);
     if (!r.ok) return r;
   }
   if (udpPorts) {
     const r = await runPrivileged("iptables", [
-      "-A", IPT_CHAIN, "-p", "udp", "-m", "multiport", "--dports", udpPorts, "-j", "NFQUEUE", "--queue-num", String(QNUM), "--queue-bypass",
+      "-A",
+      IPT_CHAIN,
+      "-p",
+      "udp",
+      "-m",
+      "multiport",
+      "--dports",
+      udpPorts,
+      "-j",
+      "NFQUEUE",
+      "--queue-num",
+      String(QNUM),
+      "--queue-bypass",
     ]);
     if (!r.ok) return r;
   }
@@ -424,7 +658,7 @@ async function removeQueueRule(): Promise<void> {
 
 let activeProcess: ChildProcess | null = null;
 let activeStrategyId: string | null = null;
-let lastError = "";
+const lastError = "";
 const lastLog: string[] = [];
 
 function logLine(line: string): void {
@@ -648,7 +882,10 @@ export async function checkUpdate(): Promise<{
   return out;
 }
 
-export function installStatus(): typeof installState & { engine: EngineStatus; installed: string | null } {
+export function installStatus(): typeof installState & {
+  engine: EngineStatus;
+  installed: string | null;
+} {
   return { ...installState, engine: engineStatus(), installed: localVersion().tag };
 }
 
@@ -657,7 +894,11 @@ export function installStatus(): typeof installState & { engine: EngineStatus; i
  * — они не запускаются на Linux в принципе, копировать их бессмысленно и
  * вредно, т.к. затирали бы место, где ожидается nfqws). */
 function isWantedTopLevel(name: string): boolean {
-  return /^general.*\.bat$/i.test(name) || name.toLowerCase() === "lists" || name.toLowerCase() === "utils";
+  return (
+    /^general.*\.bat$/i.test(name) ||
+    name.toLowerCase() === "lists" ||
+    name.toLowerCase() === "utils"
+  );
 }
 
 /** В bin/ из релиза берём только *.bin (fake-payload'ы) — .dll/.exe/.sys/.tgz отбрасываем. */
@@ -716,7 +957,14 @@ function probePayloadDir(root: string): string | null {
  */
 export function installEngine(opts: { tag?: string } = {}): typeof installState {
   if (installState.state === "working") return installState;
-  installState = { state: "working", progress: 0, phase: "resolve", error: "", tag: opts.tag || null, at: Date.now() };
+  installState = {
+    state: "working",
+    progress: 0,
+    phase: "resolve",
+    error: "",
+    tag: opts.tag || null,
+    at: Date.now(),
+  };
   const target = updateTargetDir();
   const tmpRoot = path.join(require("os").tmpdir(), `moonapp_zapret_dl_${Date.now()}`);
   (async () => {
@@ -811,11 +1059,22 @@ export function installEngine(opts: { tag?: string } = {}): typeof installState 
 
       fs.writeFileSync(
         path.join(target, VERSION_FILE),
-        JSON.stringify({ tag: rel.tag, installedAt: new Date().toISOString(), source: GITHUB_REPO }, null, 2),
+        JSON.stringify(
+          { tag: rel.tag, installedAt: new Date().toISOString(), source: GITHUB_REPO },
+          null,
+          2,
+        ),
         "utf8",
       );
 
-      installState = { state: "done", progress: 100, phase: "", error: "", tag: rel.tag, at: Date.now() };
+      installState = {
+        state: "done",
+        progress: 100,
+        phase: "",
+        error: "",
+        tag: rel.tag,
+        at: Date.now(),
+      };
       logger.action("zapretLinux.install.done", { tag: rel.tag, dir: target });
     } catch (e) {
       installState = {

@@ -328,7 +328,9 @@ describe("замер: где живёт в интерфейсе", () => {
     expect(routes).toContain('router.post("/bench/clear"');
     // 409 — «замер уже идёт»: панель показывает понятный текст, а не код.
     expect(routes).toContain('e.message === "bench_busy"');
-    const client = fs.readFileSync("src/api/client.ts", "utf8");
+    const client =
+      fs.readFileSync("src/api/client.ts", "utf8") +
+      fs.readFileSync("src/api/apiUpscale.ts", "utf8");
     expect(client).toContain("upscaleBenchModel:");
     expect(client).toContain('"/upscale/bench/clear"');
   });

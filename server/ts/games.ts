@@ -3,7 +3,7 @@
  * клику, менеджер сохранений (версионный zip-бэкап по указанному пути) и
  * автосбор библиотеки из Steam/Epic.
  */
-import { spawn, exec, execFile } from "child_process";
+import { spawn, execFile } from "child_process";
 import crypto from "crypto";
 import fs from "fs";
 import os from "os";
@@ -120,6 +120,8 @@ export function launch(id: string): { ok: boolean; error?: string } {
   if (!entry) return { ok: false, error: "not_found" };
 
   if (entry.source === "steam" && entry.appId) {
+    // appId приходит из library.json на диске: в протокольный URL пускаем только цифры.
+    if (!/^d+$/.test(String(entry.appId))) return { ok: false, error: "invalid_app_id" };
     try {
       // "start" — встроенная команда cmd, не отдельный бинарь; без неё
       // Windows не понимает протокол steam:// как исполняемый файл.
@@ -159,7 +161,10 @@ export function launch(id: string): { ok: boolean; error?: string } {
  */
 function extractExeIcon(exePath: string): Promise<string | null> {
   return new Promise((resolve) => {
-    const tmpPng = path.join(os.tmpdir(), `moonapp-icon-${crypto.randomBytes(6).toString("hex")}.png`);
+    const tmpPng = path.join(
+      os.tmpdir(),
+      `moonapp-icon-${crypto.randomBytes(6).toString("hex")}.png`,
+    );
     const script = `
 Add-Type -AssemblyName System.Drawing
 $icon = [System.Drawing.Icon]::ExtractAssociatedIcon('${exePath.replace(/'/g, "''")}')
@@ -215,7 +220,8 @@ function findFuzzyMatch(parent: string, gameName: string): string | null {
     let score = 0;
     if (norm === target) score = 3;
     else if (norm.includes(target) || target.includes(norm)) {
-      score = Math.min(norm.length, target.length) / Math.max(norm.length, target.length) >= 0.5 ? 2 : 0;
+      score =
+        Math.min(norm.length, target.length) / Math.max(norm.length, target.length) >= 0.5 ? 2 : 0;
     }
     if (score > bestScore) {
       bestScore = score;
@@ -328,9 +334,9 @@ export function restoreSave(gameId: string, file: string): { ok: boolean; error?
 
 /* --- Автосбор библиотеки: Steam + Epic (best-effort, Windows) --- */
 
-function execAsync(cmd: string): Promise<string> {
+function execAsync(file: string, args: string[]): Promise<string> {
   return new Promise((resolve) => {
-    exec(cmd, { windowsHide: true, timeout: 8000 }, (err, stdout) => {
+    execFile(file, args, { windowsHide: true, timeout: 8000 }, (err, stdout) => {
       resolve(err ? "" : String(stdout || ""));
     });
   });
@@ -343,7 +349,7 @@ async function findSteamRoot(): Promise<string | null> {
   }
   // Резервный путь — чтение реестра (только чтение, тот же приём, что и для
   // остального автообнаружения в проекте через child_process).
-  const out = await execAsync('reg query "HKCU\\Software\\Valve\\Steam" /v SteamPath');
+  const out = await execAsync("reg", ["query", "HKCU\\Software\\Valve\\Steam", "/v", "SteamPath"]);
   const m = out.match(/SteamPath\s+REG_SZ\s+(.+)/i);
   if (m) {
     const p = m[1].trim().replace(/\//g, "\\");
@@ -444,7 +450,9 @@ async function scanSteam(): Promise<GameEntry[]> {
         description: "",
         // Иконка exe — запасной вариант карточки, пока грузится обложка
         // (а на некоторых играх exe без ресурсов иконки — тогда просто нет).
-        iconDataUrl: fs.existsSync(exePath) ? await extractExeIcon(exePath).catch(() => null) : null,
+        iconDataUrl: fs.existsSync(exePath)
+          ? await extractExeIcon(exePath).catch(() => null)
+          : null,
         backgroundDataUrl: null,
         // Официальная обложка магазина Steam — надёжнее и красивее, чем
         // извлекать иконку из exe, и не требует скачивания на диск.
@@ -512,7 +520,10 @@ async function scanEpic(): Promise<GameEntry[]> {
 /** Сканирует Steam+Epic и добавляет в библиотеку только новые записи (по appId
  * для Steam — exePath там лишь best-effort и может отличаться между сканами;
  * по exePath для остальных источников). */
-export async function autoScan(): Promise<{ added: number; scanned: { steam: number; epic: number } }> {
+export async function autoScan(): Promise<{
+  added: number;
+  scanned: { steam: number; epic: number };
+}> {
   const [steam, epic] = await Promise.all([scanSteam(), scanEpic()]);
   const all = readLibrary();
   const knownAppIds = new Set(all.filter((x) => x.appId).map((x) => x.appId));

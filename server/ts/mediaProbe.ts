@@ -342,9 +342,9 @@ export async function probeStatus({
  * «Где искали» нужен, когда бинаря нет: пользователь сразу видит, в какую папку
  * его положить (storage/ffmpeg), а не догадывается.
  */
-export async function ffmpegInfo({
-  force = false,
-}: { force?: boolean } = {}): Promise<FfmpegStatus & { version: string | null; searched: string[] }> {
+export async function ffmpegInfo({ force = false }: { force?: boolean } = {}): Promise<
+  FfmpegStatus & { version: string | null; searched: string[] }
+> {
   try {
     const ff = await detectFfmpeg({ force });
     return {
@@ -600,9 +600,7 @@ export async function keyframeBefore(
   // Берём только то, что попало в запрошенное окно: если ffprobe из-за неточного
   // seek по HTTP сообщил кадры из другого места, выравниваться по ним нельзя —
   // иначе плеер прыгнет назад на десятки секунд.
-  const times = parseKeyframeTimes(res.stdout).filter(
-    (t) => t >= from - 1 && t <= target + 0.5,
-  );
+  const times = parseKeyframeTimes(res.stdout).filter((t) => t >= from - 1 && t <= target + 0.5);
   if (!times.length) return null;
   // Дополняем прежние наблюдения: следующий seek в том же районе будет мгновенным.
   const merged = [...new Set([...(hit?.times || []), ...times])].sort((a, b) => a - b);
@@ -670,7 +668,9 @@ const COPY_VIDEO = new Set(["h264", "avc1", "vp8", "vp9", "av1"]);
 
 /** Расширение имени в нижнем регистре ("" — расширения нет или это папка). */
 export function extOfName(name: unknown): string {
-  const s = String(name == null ? "" : name).trim().toLowerCase();
+  const s = String(name == null ? "" : name)
+    .trim()
+    .toLowerCase();
   const dot = s.lastIndexOf(".");
   const slash = Math.max(s.lastIndexOf("/"), s.lastIndexOf("\\"));
   return dot > slash ? s.slice(dot + 1) : "";
@@ -695,7 +695,11 @@ export function playbackPlan(
     .trim()
     .toLowerCase();
   const audio = (o.audioCodecs || [])
-    .map((c) => String(c || "").trim().toLowerCase())
+    .map((c) =>
+      String(c || "")
+        .trim()
+        .toLowerCase(),
+    )
     .filter(Boolean);
   const nativeContainer = DIRECT_EXTS.has(ext);
   const nativeVideo = DIRECT_VIDEO.has(video);
@@ -824,8 +828,7 @@ export const H264_ENCODER_PRIORITY = [
 
 /** Первый доступный в сборке H.264-энкодер (null — перекодировать нечем). */
 export function pickH264Encoder(available: Iterable<string> | null | undefined): string | null {
-  const set =
-    available instanceof Set ? available : new Set<string>((available as string[]) || []);
+  const set = available instanceof Set ? available : new Set<string>((available as string[]) || []);
   for (const e of H264_ENCODER_PRIORITY) if (set.has(e)) return e;
   return null;
 }
@@ -876,10 +879,7 @@ export function h264EncoderArgs(encoder: string): string[] {
  * синхрон не ломается), а при перемотке — перекодируется: accurate seek отбрасывает
  * кадры до запрошенной секунды, и обе дорожки стартуют ровно в одной точке.
  */
-export function exactSeekVideoMode(
-  startSec: number,
-  requested: "copy" | "h264",
-): "copy" | "h264" {
+export function exactSeekVideoMode(startSec: number, requested: "copy" | "h264"): "copy" | "h264" {
   const start = Number(startSec);
   if (Number.isFinite(start) && start > 0) return "h264";
   return requested === "h264" ? "h264" : "copy";

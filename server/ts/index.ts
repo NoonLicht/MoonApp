@@ -9,6 +9,7 @@
  * сохранены.
  */
 import path from "path";
+import crypto from "crypto";
 import fs from "fs";
 import express from "express";
 import type http from "http";
@@ -24,60 +25,47 @@ import * as winget from "./winget";
 import * as proxySubs from "./proxySubscriptions";
 import * as tgws from "./tgwsproxy";
 
-/**
- * Роуты и часть модулей ещё не переведены на TS: импорт .js без объявлений не
- * проходит strict-сборку, поэтому здесь require с указанием ожидаемой формы
- * (как в server/ts/config.ts). После их перевода строки заменятся обычными
- * импортами, а тип роутера станет настоящим.
- */
-/* eslint-disable @typescript-eslint/no-require-imports */
-const chatRouter = require("./routes/chat") as express.Router;
-const settingsRouter = require("./routes/settings") as express.Router;
-const backupRouter = require("./routes/backup") as express.Router;
-const metaRouter = require("./routes/meta") as express.Router;
-const catalogRouter = require("./routes/catalog") as express.Router;
-const appsRouter = require("./routes/apps") as express.Router;
-const convertRouter = require("./routes/convert") as express.Router;
-const videoRouter = require("./routes/video") as express.Router;
-const compressorRouter = require("./routes/compressor") as express.Router;
-const upscaleRouter = require("./routes/upscale") as express.Router;
-const ttsRouter = require("./routes/tts") as express.Router;
-const archiveRouter = require("./routes/archive") as express.Router;
-const proxyRouter = require("./routes/proxy") as express.Router;
-const proxyCoreRouter = require("./routes/proxyCore") as express.Router;
-const booksRouter = require("./routes/books") as express.Router;
-const musicRouter = require("./routes/music") as express.Router;
-const moviesRouter = require("./routes/movies") as express.Router;
-const myspaceRouter = require("./routes/myspace") as express.Router;
-const myspaceTasksRouter = require("./routes/myspace-tasks") as express.Router;
-const lectureRouter = require("./routes/lecture") as express.Router;
-const zapretRouter = require("./routes/zapret") as express.Router;
-const tgwsRouter = require("./routes/tgws") as express.Router;
-const tasksRouter = require("./routes/tasks") as express.Router;
-const passwordVaultRouter = require("./routes/passwordVault") as express.Router;
-const diskScanRouter = require("./routes/diskScan") as express.Router;
-const bookmarksRouter = require("./routes/bookmarks") as express.Router;
-const pdfRouter = require("./routes/pdf") as express.Router;
-const gamesRouter = require("./routes/games") as express.Router;
-const netToolsRouter = require("./routes/netTools") as express.Router;
-const notesGitRouter = require("./routes/notesGit") as express.Router;
-const appTimeTrackerRouter = require("./routes/appTimeTracker") as express.Router;
-const automationRouter = require("./routes/automation") as express.Router;
-const budgetRouter = require("./routes/budget") as express.Router;
-const quickNotesRouter = require("./routes/quickNotes") as express.Router;
-const killSwitchRouter = require("./routes/killSwitch") as express.Router;
-const ocrRouter = require("./routes/ocr") as express.Router;
-const screenshotsRouter = require("./routes/screenshots") as express.Router;
-const officeRouter = require("./routes/office") as express.Router;
-const perPageProxy = require("./middleware/perPageProxy") as {
-  perPageProxyMiddleware: express.RequestHandler;
-};
-const lecture = require("./lecture") as {
-  recoverInterrupted(): void;
-  backfillNotesFiles(): void;
-};
-const proxy = require("./proxy") as { stopProxy(): void };
-/* eslint-enable @typescript-eslint/no-require-imports */
+import chatRouter from "./routes/chat";
+import settingsRouter from "./routes/settings";
+import backupRouter from "./routes/backup";
+import metaRouter from "./routes/meta";
+import catalogRouter from "./routes/catalog";
+import appsRouter from "./routes/apps";
+import convertRouter from "./routes/convert";
+import videoRouter from "./routes/video";
+import compressorRouter from "./routes/compressor";
+import upscaleRouter from "./routes/upscale";
+import ttsRouter from "./routes/tts";
+import archiveRouter from "./routes/archive";
+import proxyRouter from "./routes/proxy";
+import proxyCoreRouter from "./routes/proxyCore";
+import booksRouter from "./routes/books";
+import musicRouter from "./routes/music";
+import moviesRouter from "./routes/movies";
+import myspaceRouter from "./routes/myspace";
+import myspaceTasksRouter from "./routes/myspace-tasks";
+import lectureRouter from "./routes/lecture";
+import zapretRouter from "./routes/zapret";
+import tgwsRouter from "./routes/tgws";
+import tasksRouter from "./routes/tasks";
+import passwordVaultRouter from "./routes/passwordVault";
+import diskScanRouter from "./routes/diskScan";
+import bookmarksRouter from "./routes/bookmarks";
+import pdfRouter from "./routes/pdf";
+import gamesRouter from "./routes/games";
+import netToolsRouter from "./routes/netTools";
+import notesGitRouter from "./routes/notesGit";
+import appTimeTrackerRouter from "./routes/appTimeTracker";
+import automationRouter from "./routes/automation";
+import budgetRouter from "./routes/budget";
+import quickNotesRouter from "./routes/quickNotes";
+import killSwitchRouter from "./routes/killSwitch";
+import ocrRouter from "./routes/ocr";
+import screenshotsRouter from "./routes/screenshots";
+import officeRouter from "./routes/office";
+import * as perPageProxy from "./middleware/perPageProxy";
+import * as lecture from "./lecture";
+import * as proxy from "./proxy";
 // Глобальные перехватчики процесса: необработанные исключения и отклонённые
 // промисы попадают в полный журнал (logs/audit.log), а значит — в файл,
 // который собирает кнопка «Собрать логи» в Настройках.
@@ -95,33 +83,22 @@ process.on("unhandledRejection", (reason) => {
   });
 });
 
-// Токен для локального API. Electron делает его при старте и кидает в preload
-// (additionalArguments), фронт подставляет в заголовок x-moonapp-token.
+// Токен для локального API. Electron делает его при старте и отдаёт в preload
+// через ipcRenderer.sendSync (app:get-token), фронт подставляет в заголовок x-moonapp-token.
 // Без токена (dev, node server/index.js) сервер ничего не проверяет,
 // но слушает строго 127.0.0.1.
 let AUTH_TOKEN: string | null = null;
 
 /**
- * Пути /api, которые сознательно отдаются без токена: их грузит сам движок
- * (теги <img>/<video>), а не fetch с заголовками. Проверка безопасности —
- * внутри роутов (жёсткая валидация параметров).
+ * Сравнение токена за постоянное время: обычный `!==` выдаёт длину общего
+ * префикса через тайминг ответа.
  */
-const RESOURCE_PATHS = [
-  "/api/movies/image",
-  // Торрент-плеер: <video>/<track> не умеют передавать заголовок x-moonapp-token,
-  // поэтому эти пути не защищены токеном, а валидируются внутри роутов (infoHash —
-  // строго 40 hex, index/audio/track — целые в допустимом диапазоне, start — секунды).
-  // Без этой записи стрим торрента в собранной сборке получал 401.
-  "/api/movies/torrent/stream",
-  "/api/movies/torrent/remux",
-  "/api/movies/torrent/subtitles",
-  // Библиотека скриншотов/записей: <img>/<video src> тоже не могут передать
-  // заголовок токена. Путь валидируется поиском по id в закрытой библиотеке.
-  "/api/screenshots/file",
-  // Обложки Steam (прокси cdn.cloudflare.steamstatic.com) — appId валидируется
-  // внутри роута (только цифры), см. server/routes/games.js.
-  "/api/games/cover",
-];
+function tokenMatches(given: string | undefined): boolean {
+  if (!AUTH_TOKEN || typeof given !== "string") return false;
+  const a = crypto.createHash("sha256").update(given).digest();
+  const b = crypto.createHash("sha256").update(AUTH_TOKEN).digest();
+  return crypto.timingSafeEqual(a, b);
+}
 
 function authMiddleware(
   req: express.Request,
@@ -136,17 +113,10 @@ function authMiddleware(
   // Electron-окно получает его не через <script>, а через session.webRequest
   // (electron/main.js → onBeforeSendHeaders), поэтому само приложение работает
   // как раньше, а сторонний браузер получает 401 на любой URL.
-  // Ресурсные URL отдаются браузеру как <img src>/<video src>, поэтому заголовок
-  // x-moonapp-token передать нельзя. Такие пути валидируются по allowlist сами
-  // (пример: /api/movies/image — только image.tmdb.org, size из списка, path /file.jpg).
-  if (
-    RESOURCE_PATHS.some(
-      (p) => req.path === p || req.path.startsWith(p + "/") || req.path.startsWith(p + "?"),
-    )
-  ) {
-    return next();
-  }
-  if (req.get("x-moonapp-token") !== AUTH_TOKEN) {
+  // Ресурсных исключений нет: <img>/<video>/<track> окна приложения тоже идут
+  // через session.webRequest.onBeforeSendHeaders (electron/ts/main.ts), поэтому
+  // заголовок подставляется и им. Без токена не отдаётся ничего.
+  if (!tokenMatches(req.get("x-moonapp-token"))) {
     res.status(401).json({ error: "unauthorized" });
     return;
   }
@@ -367,6 +337,12 @@ function createApp(): express.Express {
 }
 function startServer(port: number = config.PORT, opts: { token?: string } = {}): http.Server {
   AUTH_TOKEN = opts.token || process.env.MOONAPP_TOKEN || null;
+  // В Electron токен обязателен: без него любой локальный процесс получил бы
+  // доступ к API (запуск файлов, ключи, установка ПО). Без Electron (dev,
+  // node server/index.js) допускается открытый режим на loopback.
+  if (!AUTH_TOKEN && process.versions.electron) {
+    throw new Error("server.token_required: API-токен не передан");
+  }
   if (!AUTH_TOKEN) {
     logger.warn("server.no_token", { hint: "standalone/dev mode: API без аутентификации" });
   }

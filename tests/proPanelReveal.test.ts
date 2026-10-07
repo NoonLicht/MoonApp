@@ -15,7 +15,9 @@ import path from "path";
  */
 const root = process.cwd();
 const css = fs.readFileSync(path.join(root, "src/styles/pages.css"), "utf8");
-const page = fs.readFileSync(path.join(root, "src/pages/voice/AudiobookTTSPage.tsx"), "utf8");
+const page =
+  fs.readFileSync(path.join(root, "src/pages/voice/AudiobookTTSPage.tsx"), "utf8") +
+  fs.readFileSync(path.join(root, "src/pages/voice/parts/TtsControls.tsx"), "utf8");
 
 describe("pages.css: раскрытие Pro-настроек и аккордеонов", () => {
   it("у открытого состояния задана высота строки 1fr", () => {

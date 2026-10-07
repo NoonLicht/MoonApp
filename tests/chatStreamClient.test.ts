@@ -122,7 +122,7 @@ describe("postStream: общий разбор SSE для чата и арены"
 
 describe("контракт: разбор SSE живёт в одном месте", () => {
   const clientSrc = fs.readFileSync(
-    path.resolve(__dirname, "..", "src", "api", "client.ts"),
+    path.resolve(__dirname, "..", "src", "api", "apiStream.ts"),
     "utf8",
   );
 

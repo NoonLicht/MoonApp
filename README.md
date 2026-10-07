@@ -75,9 +75,14 @@ npm start                  # сборка web-части + запуск прил
 |---|---|
 | `npm run dev` | Только Vite dev-сервер (фронт на `:5173`, API проксируется на `:4000`) |
 | `npm run start:server` | Только Express-сервер без UI (`:4000`) |
-| `npm run typecheck` | Проверка типов (фронт + серверные TS-исходники) |
+| `npm run compile` | Сборка TS-исходников: `server/ts → server`, `electron/ts → electron`, `scripts/ts → scripts` (артефакты в git не хранятся) |
+| `npm run typecheck` | Проверка типов (фронт) + компиляция server/electron/scripts |
 | `npm test` | Тесты (Vitest) |
 | `npm run dist` | Сборка NSIS-инсталлятора в `release/` |
+
+## Структура исходников
+
+Весь код — TypeScript. Серверная часть живёт в `server/ts/`, процессы Electron — в `electron/ts/`, служебные скрипты — в `scripts/ts/`; фронтенд — в `src/`. Перед запуском/тестами `npm run compile` собирает их в соседние `*.js` (они в `.gitignore`), поэтому `package.json → main`, `node server/index.js` и `require("../server")` работают как раньше.
 
 ## Технологии
 
@@ -90,7 +95,8 @@ Electron 31 · React 18 · TypeScript · Vite · Express · SQLite (better-sqlit
 
 ## Безопасность
 
-- Локальный API слушает только `127.0.0.1`, каждый запрос требует сессионный токен.
+- Локальный API слушает только `127.0.0.1`, каждый запрос (включая ресурсы `<img>`/`<video>`) требует сессионный токен; токен сравнивается за постоянное время и передаётся в окно через IPC, а не через argv/файл.
+- Окно приложения работает в песочнице Chromium (`sandbox: true`), внешние процессы запускаются через `execFile` без shell.
 - Жёсткий CSP в Electron-окне: инлайн-скрипты и внешние загрузки запрещены.
 - Секреты шифруются через Electron safeStorage (DPAPI) с фолбэком на AES-256-GCM.
 
