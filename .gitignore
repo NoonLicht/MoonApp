@@ -204,3 +204,14 @@ electron/mainIpc.js
 electron/mainTracker.js
 electron/mainCapture.js
 electron/mainClipboard.js
+server/tuningTypes.js
+server/tuningCatalog.js
+server/tuningEngine.js
+server/tuningTools.js
+server/privacyTypes.js
+server/privacyCatalog.js
+server/privacyEngine.js
+server/winutilData.js
+server/winutilCatalog.js
+server/winutilTools.js
+server/linutil.js

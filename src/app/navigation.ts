@@ -20,6 +20,7 @@ import {
   Camera,
   Zap,
   Wallet,
+  SlidersHorizontal,
 } from "lucide-react";
 import type { ElementType } from "react";
 import type { TranslateFn } from "@/app/i18n";
@@ -46,7 +47,8 @@ export type PageId =
   | "games"
   | "screenshots"
   | "automation"
-  | "budget";
+  | "budget"
+  | "tuning";
 
 export interface PageMeta {
   id: PageId;
@@ -81,6 +83,7 @@ const ALL_PAGES: readonly PageMeta[] = [
   { id: "lecture", i18n: "nav.lecture", icon: GraduationCap },
   { id: "bypass", i18n: "nav.bypass", icon: Shield },
   { id: "tools", i18n: "nav.tools", icon: Wrench },
+  { id: "tuning", i18n: "nav.tuning", icon: SlidersHorizontal },
   { id: "games", i18n: "nav.games", icon: Gamepad2 },
   { id: "screenshots", i18n: "nav.screenshots", icon: Camera },
   { id: "automation", i18n: "nav.automation", icon: Zap },
@@ -98,11 +101,17 @@ const ALL_PAGES: readonly PageMeta[] = [
  * process.platform, что видит main-процесс (см. electron/preload.js).
  */
 const HIDDEN_ON_LINUX: ReadonlySet<PageId> = new Set(["games"]);
+/** «Тюнинг ПК» есть на Windows (твики) и Linux (linutil + приватность); на macOS — нет. */
+const HIDDEN_ON_OTHER: ReadonlySet<PageId> = new Set(["games", "tuning"]);
+
+const PLATFORM = typeof window !== "undefined" ? window.appBridge?.platform : undefined;
 
 export const PAGES: readonly PageMeta[] =
-  typeof window !== "undefined" && window.appBridge?.platform && window.appBridge.platform !== "win32"
-    ? ALL_PAGES.filter((p) => !HIDDEN_ON_LINUX.has(p.id))
-    : ALL_PAGES;
+  !PLATFORM || PLATFORM === "win32"
+    ? ALL_PAGES
+    : ALL_PAGES.filter(
+        (p) => !(PLATFORM === "linux" ? HIDDEN_ON_LINUX : HIDDEN_ON_OTHER).has(p.id),
+      );
 
 /**
  * Варианты для селекта «Стартовая страница» в настройках: id страницы +

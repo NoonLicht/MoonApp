@@ -47,6 +47,9 @@ import { ttsApi } from "@/api/apiTts";
 import { myspaceApi } from "@/api/apiMyspace";
 import { filesApi } from "@/api/apiFiles";
 import { systemApi } from "@/api/apiSystem";
+import { tuningApi } from "@/api/apiTuning";
+import { privacyApi } from "@/api/apiPrivacy";
+import { linutilApi } from "@/api/apiLinutil";
 
 export type {
   CompressorJob,
@@ -106,6 +109,34 @@ export type {
   LectureCreateResult,
 } from "@/api/apiTypesLecture";
 export { rawPost } from "@/api/apiHttp";
+export type {
+  TuningTabId,
+  TuningRisk,
+  TweakState,
+  TweakMeta,
+  TweakStatus,
+  TuningOverview,
+  TuningResult,
+  TuningBatchResult,
+  TuningBackup,
+  WuMeta,
+  WuFeatureRow,
+  WuApp,
+  UsbController,
+  DriverRow,
+  ProcRow,
+  BiosFacts,
+  BenchRun,
+} from "@/api/apiTuning";
+export type {
+  PrivacyCategory,
+  PrivacyItem,
+  PrivacyHistoryEntry,
+  PrivacyOverview,
+  WipeOutcome,
+  WipeResult,
+} from "@/api/apiPrivacy";
+export type { LinutilOverview, LinutilTab, LinutilNode } from "@/api/apiLinutil";
 export type {
   ZapretEngine,
   ZapretStrategy,
@@ -284,4 +315,7 @@ export const api = {
   ...myspaceApi,
   ...filesApi,
   ...systemApi,
+  ...tuningApi,
+  ...privacyApi,
+  ...linutilApi,
 };

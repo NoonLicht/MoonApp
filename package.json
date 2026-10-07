@@ -135,6 +135,7 @@
     ],
     "asarUnpack": [
       "server/vendor/lhm/**",
+      "server/vendor/linutil/**",
       "server/vendor/ytdlp/**",
       "server/vendor/singbox/**",
       "server/vendor/proxy-core/**",

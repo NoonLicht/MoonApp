@@ -20,7 +20,8 @@
     "games": "游戏",
     "screenshots": "截图",
     "automation": "自动化",
-    "budget": "预算"
+    "budget": "预算",
+    "tuning": "PC 调优"
   },
   "common": {
     "saved": "已保存",
@@ -2553,5 +2554,11 @@
     "f_aichat": "AI 聊天",
     "f_aichat_hint": "通过 Ollama 使用本地模型",
     "toolbarTitle": "你好！"
+  },
+  "tuning": {
+    "title": "PC 调优"
+  },
+  "privacy": {
+    "panicTitle": "隐私"
   }
 }

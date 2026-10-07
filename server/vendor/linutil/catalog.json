@@ -1,0 +1,1612 @@
+{
+ "tabs": [
+  {
+   "id": "applications-setup",
+   "name": "Applications Setup",
+   "groups": [
+    {
+     "name": "Communication Apps",
+     "children": [
+      {
+       "name": "Discord",
+       "desc": "Discord is a versatile communication platform for gamers and communities, offering voice, video, and text chat features.",
+       "script": "communication-apps/discord-setup.sh",
+       "id": "applications-setup/communication-apps/discord-setup.sh",
+       "tasks": "I"
+      },
+      {
+       "name": "Jitsi",
+       "desc": "Jitsi Meet is an open-source video conferencing tool that allows users to host and join secure meetings directly from their web browsers without the need for downloads.",
+       "script": "communication-apps/jitsi-setup.sh",
+       "id": "applications-setup/communication-apps/jitsi-setup.sh",
+       "tasks": "I"
+      },
+      {
+       "name": "Signal",
+       "desc": "Signal is a privacy-focused messaging app that provides end-to-end encryption for secure text, voice, and video communication.",
+       "script": "communication-apps/signal-setup.sh",
+       "id": "applications-setup/communication-apps/signal-setup.sh",
+       "tasks": "I"
+      },
+      {
+       "name": "Slack",
+       "desc": "Slack is a collaboration platform designed for team communication, featuring channels, direct messaging, file sharing, and integrations with various productivity tools.",
+       "script": "communication-apps/slack-setup.sh",
+       "id": "applications-setup/communication-apps/slack-setup.sh",
+       "tasks": "I"
+      },
+      {
+       "name": "Telegram",
+       "desc": "Telegram is a cloud-based messaging app known for its speed and security, offering features like group chats, channels, and end-to-end encrypted calls.",
+       "script": "communication-apps/telegram-setup.sh",
+       "id": "applications-setup/communication-apps/telegram-setup.sh",
+       "tasks": "I"
+      },
+      {
+       "name": "Thunderbird",
+       "desc": "Thunderbird is a free, open-source email client that offers powerful features like customizable email management, a built-in calendar, and extensive add-ons for enhanced functionality.",
+       "script": "communication-apps/thunderbird-setup.sh",
+       "id": "applications-setup/communication-apps/thunderbird-setup.sh",
+       "tasks": "I"
+      },
+      {
+       "name": "ZapZap",
+       "desc": "ZapZap is an open source whatsapp desktop client for Linux users developed by rafatosta.",
+       "script": "communication-apps/zapzap-setup.sh",
+       "id": "applications-setup/communication-apps/zapzap-setup.sh",
+       "tasks": "I"
+      },
+      {
+       "name": "Zoom",
+       "desc": "Zoom is a widely-used video conferencing platform that allows users to host virtual meetings, webinars, and online collaboration with features like screen sharing and recording.",
+       "script": "communication-apps/zoom-setup.sh",
+       "id": "applications-setup/communication-apps/zoom-setup.sh",
+       "tasks": "I"
+      }
+     ]
+    },
+    {
+     "name": "Design Tools",
+     "children": [
+      {
+       "name": "Ardour",
+       "desc": "Ardour is a free and open-source digital audio workstation and hard disk recorder.",
+       "script": "design-tools/ardour.sh",
+       "id": "applications-setup/design-tools/ardour.sh",
+       "tasks": "I"
+      },
+      {
+       "name": "Audacity",
+       "desc": "Audacity is a free and open-source digital audio editor and recording application software.",
+       "script": "design-tools/audacity.sh",
+       "id": "applications-setup/design-tools/audacity.sh",
+       "tasks": "I"
+      },
+      {
+       "name": "Blender",
+       "desc": "Blender is a free and open-source 3D computer graphics software tool set.",
+       "script": "design-tools/blender.sh",
+       "id": "applications-setup/design-tools/blender.sh",
+       "tasks": "I"
+      },
+      {
+       "name": "Darktable",
+       "desc": "Darktable is a free and open-source photography application and raw developer.",
+       "script": "design-tools/darktable.sh",
+       "id": "applications-setup/design-tools/darktable.sh",
+       "tasks": "I"
+      },
+      {
+       "name": "GNU Image Manipulation Program (GIMP)",
+       "desc": "GIMP is a free and open-source raster graphics editor. It is commonly used for photo retouching, image editing, free-hand drawing, and converting between different image file formats.",
+       "script": "design-tools/gimp.sh",
+       "id": "applications-setup/design-tools/gimp.sh",
+       "tasks": "I"
+      },
+      {
+       "name": "Handbrake",
+       "desc": "HandBrake is a free and open-source transcoder for digital video files.",
+       "script": "design-tools/handbrake.sh",
+       "id": "applications-setup/design-tools/handbrake.sh",
+       "tasks": "I"
+      },
+      {
+       "name": "Inkscape",
+       "desc": "Inkscape is a free and open-source software vector graphics editor.",
+       "script": "design-tools/inkscape.sh",
+       "id": "applications-setup/design-tools/inkscape.sh",
+       "tasks": "I"
+      },
+      {
+       "name": "Krita",
+       "desc": "Krita is a free and open-source raster graphics editor designed primarily for digital art and 2D animation.",
+       "script": "design-tools/krita.sh",
+       "id": "applications-setup/design-tools/krita.sh",
+       "tasks": "I"
+      },
+      {
+       "name": "MyPaint",
+       "desc": "MyPaint is a free and open-source raster graphics editor for digital painting.",
+       "script": "design-tools/mypaint.sh",
+       "id": "applications-setup/design-tools/mypaint.sh",
+       "tasks": "I"
+      },
+      {
+       "name": "Natron",
+       "desc": "Natron is a powerful, free, and open-source VFX compositing application geared towards digital post-production work.",
+       "script": "design-tools/natron.sh",
+       "id": "applications-setup/design-tools/natron.sh",
+       "tasks": "I"
+      },
+      {
+       "name": "OBS Studio",
+       "desc": "OBS Studio is a free and open-source, cross-platform screencasting and live streaming software application.",
+       "script": "design-tools/obs-studio.sh",
+       "id": "applications-setup/design-tools/obs-studio.sh",
+       "tasks": "I"
+      },
+      {
+       "name": "Olive",
+       "desc": "Olive is a free and open-source cross-platform non-linear video editing application.",
+       "script": "design-tools/olive.sh",
+       "id": "applications-setup/design-tools/olive.sh",
+       "tasks": "I"
+      },
+      {
+       "name": "OpenShot",
+       "desc": "OpenShot Video Editor is a free and open-source video editor.",
+       "script": "design-tools/openshot.sh",
+       "id": "applications-setup/design-tools/openshot.sh",
+       "tasks": "I"
+      },
+      {
+       "name": "Pinta",
+       "desc": "Pinta is an open-source, cross-platform bitmap image drawing and editing program inspired by Paint.NET.",
+       "script": "design-tools/pinta.sh",
+       "id": "applications-setup/design-tools/pinta.sh",
+       "tasks": "I"
+      },
+      {
+       "name": "Scribus",
+       "desc": "Scribus is free and open-source desktop publishing software available for most desktop operating systems.",
+       "script": "design-tools/scribus.sh",
+       "id": "applications-setup/design-tools/scribus.sh",
+       "tasks": "I"
+      },
+      {
+       "name": "Synfig Studio",
+       "desc": "Synfig Studio is a free and open-source vector-based 2D animation software.",
+       "script": "design-tools/synfigstudio.sh",
+       "id": "applications-setup/design-tools/synfigstudio.sh",
+       "tasks": "I"
+      },
+      {
+       "name": "Tenacity",
+       "desc": "Tenacity is an easy-to-use, cross-platform multi-track audio editor/recorder.",
+       "script": "design-tools/tenacity.sh",
+       "id": "applications-setup/design-tools/tenacity.sh",
+       "tasks": "I"
+      }
+     ]
+    },
+    {
+     "name": "Developer Tools",
+     "children": [
+      {
+       "name": "Cursor",
+       "desc": "Next-generation AI-powered code editor built on VS Code, designed for enhanced productivity with integrated AI assistance.",
+       "script": "developer-tools/cursor.sh",
+       "id": "applications-setup/developer-tools/cursor.sh",
+       "tasks": "I"
+      },
+      {
+       "name": "Github Desktop",
+       "desc": "GitHub Desktop is a user-friendly application that simplifies the process of managing Git repositories and interacting with GitHub, providing a graphical interface for tasks like committing, branching, and syncing changes.",
+       "script": "developer-tools/githubdesktop.sh",
+       "id": "applications-setup/developer-tools/githubdesktop.sh",
+       "tasks": "I"
+      },
+      {
+       "name": "JetBrains Toolbox",
+       "desc": "JetBrains Toolbox is a collection of tools and an app that help developers work with JetBrains products.",
+       "script": "developer-tools/jetbrains-toolbox.sh",
+       "id": "applications-setup/developer-tools/jetbrains-toolbox.sh",
+       "tasks": "I"
+      },
+      {
+       "name": "Meld",
+       "desc": "Meld is a visual diff and merge tool that helps compare files, directories, and version-controlled projects.",
+       "script": "developer-tools/meld.sh",
+       "id": "applications-setup/developer-tools/meld.sh",
+       "tasks": "I FI"
+      },
+      {
+       "name": "Neovim",
+       "desc": "Neovim is a refactor, and sometimes redactor, in the tradition of Vim.\nIt is not a rewrite but a continuation and extension of Vim.\nThis command configures neovim from CTT's neovim configuration.\nhttps://github.com/ChrisTitusTech/neovim",
+       "script": "developer-tools/neovim.sh",
+       "id": "applications-setup/developer-tools/neovim.sh",
+       "tasks": "I FM"
+      },
+      {
+       "name": "Ngrok",
+       "desc": "Ngrok is a tool that creates secure, temporary tunnels to expose local servers to the internet for testing and development.",
+       "script": "developer-tools/ngrok.sh",
+       "id": "applications-setup/developer-tools/ngrok.sh",
+       "tasks": "I"
+      },
+      {
+       "name": "Sublime Text",
+       "desc": "Sublime Text is a fast, lightweight, and customizable text editor known for its simplicity, powerful features, and wide range of plugins for various programming languages.",
+       "script": "developer-tools/sublime.sh",
+       "id": "applications-setup/developer-tools/sublime.sh",
+       "tasks": "I"
+      },
+      {
+       "name": "VS Code",
+       "desc": "Visual Studio Code (VS Code) is a lightweight, open-source code editor with built-in support for debugging, version control, and extensions for various programming languages and frameworks.",
+       "script": "developer-tools/vscode.sh",
+       "id": "applications-setup/developer-tools/vscode.sh",
+       "tasks": "I"
+      },
+      {
+       "name": "VS Codium",
+       "desc": "VSCodium is a free, open-source version of Visual Studio Code (VS Code) that removes Microsoft-specific telemetry and branding.",
+       "script": "developer-tools/vscodium.sh",
+       "id": "applications-setup/developer-tools/vscodium.sh",
+       "tasks": "I"
+      },
+      {
+       "name": "Zed",
+       "desc": "Zed is a next-generation code editor written in rust, designed for high-performance collaboration with humans and AI.",
+       "script": "developer-tools/zed.sh",
+       "id": "applications-setup/developer-tools/zed.sh",
+       "tasks": "I"
+      }
+     ]
+    },
+    {
+     "name": "Office Suites",
+     "children": [
+      {
+       "name": "FreeOffice",
+       "script": "office-suites/freeoffice.sh",
+       "id": "applications-setup/office-suites/freeoffice.sh",
+       "tasks": "I"
+      },
+      {
+       "name": "LibreOffice",
+       "script": "office-suites/libreoffice.sh",
+       "id": "applications-setup/office-suites/libreoffice.sh",
+       "tasks": "I"
+      },
+      {
+       "name": "OnlyOffice",
+       "script": "office-suites/onlyoffice.sh",
+       "id": "applications-setup/office-suites/onlyoffice.sh",
+       "tasks": "I"
+      },
+      {
+       "name": "WPS Office",
+       "script": "office-suites/wpsoffice.sh",
+       "id": "applications-setup/office-suites/wpsoffice.sh",
+       "tasks": "I"
+      }
+     ]
+    },
+    {
+     "name": "PDF Suites",
+     "children": [
+      {
+       "name": "Evince",
+       "script": "pdf-suites/evince.sh",
+       "id": "applications-setup/pdf-suites/evince.sh",
+       "tasks": "I"
+      },
+      {
+       "name": "Okular",
+       "script": "pdf-suites/okular.sh",
+       "id": "applications-setup/pdf-suites/okular.sh",
+       "tasks": "I"
+      },
+      {
+       "name": "PDF Studio",
+       "script": "pdf-suites/pdfstudio.sh",
+       "id": "applications-setup/pdf-suites/pdfstudio.sh",
+       "tasks": "I"
+      },
+      {
+       "name": "PDF Studio Viewer",
+       "script": "pdf-suites/pdfstudioviewer.sh",
+       "id": "applications-setup/pdf-suites/pdfstudioviewer.sh"
+      }
+     ]
+    },
+    {
+     "name": "Web Browsers",
+     "children": [
+      {
+       "name": "Brave",
+       "desc": "Brave is a free and open-source web browser developed by Brave Software, Inc. based on the Chromium web browser.",
+       "script": "browsers/brave.sh",
+       "id": "applications-setup/browsers/brave.sh",
+       "tasks": "I"
+      },
+      {
+       "name": "Brave Origin",
+       "desc": "Brave Origin is a minimalist version of Brave that strips out optional features like VPN, crypto wallet, Rewards, and Leo AI, keeping only core privacy protections and ad blocking.",
+       "script": "browsers/brave-origin.sh",
+       "id": "applications-setup/browsers/brave-origin.sh",
+       "tasks": "I"
+      },
+      {
+       "name": "Chromium",
+       "desc": "Chromium is an open-source web browser project started by Google, to provide the source code for the proprietary Google Chrome browser.",
+       "script": "browsers/chromium.sh",
+       "id": "applications-setup/browsers/chromium.sh",
+       "tasks": "I"
+      },
+      {
+       "name": "Google Chrome",
+       "desc": "Google Chrome is a fast, secure, and free web browser, built for the modern web.",
+       "script": "browsers/google-chrome.sh",
+       "id": "applications-setup/browsers/google-chrome.sh",
+       "tasks": "I"
+      },
+      {
+       "name": "LibreWolf",
+       "desc": "LibreWolf is a fork of Firefox, focused on privacy, security, and freedom.",
+       "script": "browsers/librewolf.sh",
+       "id": "applications-setup/browsers/librewolf.sh",
+       "tasks": "I"
+      },
+      {
+       "name": "Lynx",
+       "desc": "Lynx is a highly configurable text-based web browser for use on cursor-addressable character cell terminals.",
+       "script": "browsers/lynx.sh",
+       "id": "applications-setup/browsers/lynx.sh",
+       "tasks": "I"
+      },
+      {
+       "name": "Mozilla Firefox",
+       "desc": "Mozilla Firefox is a free and open-source web browser developed by the Mozilla Foundation.",
+       "script": "browsers/firefox.sh",
+       "id": "applications-setup/browsers/firefox.sh",
+       "tasks": "I"
+      },
+      {
+       "name": "Thorium",
+       "desc": "Thorium is a Chromium-based browser focused on privacy and performance.",
+       "script": "browsers/thorium.sh",
+       "id": "applications-setup/browsers/thorium.sh",
+       "tasks": "I"
+      },
+      {
+       "name": "Tor Browser",
+       "desc": "Tor Browser is a free and open-source firefox-based web browser designed for anonymity and censorship circumvention.",
+       "script": "browsers/tor-browser.sh",
+       "id": "applications-setup/browsers/tor-browser.sh",
+       "tasks": "I"
+      },
+      {
+       "name": "Vivaldi",
+       "desc": "Vivaldi is a freeware, cross-platform web browser developed by Vivaldi Technologies.",
+       "script": "browsers/vivaldi.sh",
+       "id": "applications-setup/browsers/vivaldi.sh",
+       "tasks": "I"
+      },
+      {
+       "name": "waterfox",
+       "desc": "Waterfox is the privacy-focused web browser engineered to give you speed, control, and peace of mind on the internet.",
+       "script": "browsers/waterfox.sh",
+       "id": "applications-setup/browsers/waterfox.sh",
+       "tasks": "FI"
+      },
+      {
+       "name": "Zen Browser",
+       "desc": "Zen Browser is a privacy-focused web browser designed for enhanced security and a seamless browsing experience.",
+       "script": "browsers/zen-browser.sh",
+       "id": "applications-setup/browsers/zen-browser.sh",
+       "tasks": "I"
+      },
+      {
+       "name": "Helium Browser",
+       "desc": "Helium Browser is a free, privacy-focused and open-source chromium-based browser designed for enhanced security and a seamless browsing experience.",
+       "script": "browsers/helium-browser.sh",
+       "id": "applications-setup/browsers/helium-browser.sh",
+       "tasks": "I"
+      }
+     ]
+    },
+    {
+     "name": "Alacritty",
+     "desc": "Alacritty is a modern terminal emulator that comes with sensible defaults, but allows for extensive configuration. By integrating with other applications, rather than reimplementing their functionality, it manages to provide a flexible set of features with high performance. The supported platforms currently consist of BSD, Linux, macOS and Windows. This command installs and configures alacritty terminal emulator.",
+     "script": "alacritty-setup.sh",
+     "id": "applications-setup/alacritty-setup.sh",
+     "tasks": "I FM"
+    },
+    {
+     "name": "Android Debloater",
+     "desc": "Universal Android Debloater (UAD) is a tool designed to help users remove bloatware and unnecessary pre-installed applications from Android devices, enhancing performance and user experience.",
+     "script": "android-debloat.sh",
+     "id": "applications-setup/android-debloat.sh",
+     "tasks": "I"
+    },
+    {
+     "name": "Bash Prompt",
+     "desc": "The .bashrc file is a script that runs every time a new terminal session is started in Unix-like operating systems. It is used to configure the shell session, set up aliases, define functions, and more, making the terminal easier to use and more powerful. This command configures the key sections and functionalities defined in the .bashrc file from CTT's mybash repository. https://github.com/ChrisTitusTech/mybash",
+     "script": "mybash-setup.sh",
+     "id": "applications-setup/mybash-setup.sh",
+     "tasks": "I FM"
+    },
+    {
+     "name": "Dank Shell",
+     "desc": "DankMaterialShell is a complete desktop shell for niri, Hyprland, MangoWC, Sway, labwc, Scroll, Miracle WM, and other Wayland compositors. It replaces waybar, swaylock, swayidle, mako, fuzzel, polkit, and everything else you'd normally stitch together to make a desktop",
+     "script": "dank-shell.sh",
+     "id": "applications-setup/dank-shell.sh",
+     "tasks": "I FM"
+    },
+    {
+     "name": "Docker",
+     "desc": "Docker is an open platform that uses OS-level virtualization to deliver software in packages called containers.",
+     "script": "docker-setup.sh",
+     "id": "applications-setup/docker-setup.sh",
+     "tasks": "I SS"
+    },
+    {
+     "name": "Fastfetch",
+     "desc": "Fastfetch is a neofetch-like tool for fetching system information and displaying it prettily. It is written mainly in C, with performance and customizability in mind. This command installs fastfetch and configures from CTT's mybash repository. https://github.com/ChrisTitusTech/mybash",
+     "script": "fastfetch-setup.sh",
+     "id": "applications-setup/fastfetch-setup.sh",
+     "tasks": "I FM"
+    },
+    {
+     "name": "Flatpak / Flathub",
+     "desc": "Flatpak is a universal application sandbox for Linux that uses isolated packages from Flathub to prevent conflicts and system alterations, while alleviating dependency concerns. This command installs Flatpak and adds the Flathub repository",
+     "script": "setup-flatpak.sh",
+     "id": "applications-setup/setup-flatpak.sh",
+     "tasks": "I"
+    },
+    {
+     "name": "Ghostty",
+     "desc": "Ghostty is a terminal emulator that has embedded web technologies, allowing for a highly customizable and visually appealing terminal experience.",
+     "script": "ghostty-setup.sh",
+     "id": "applications-setup/ghostty-setup.sh",
+     "tasks": "I FM"
+    },
+    {
+     "name": "Grub Theme",
+     "desc": "Installs ChrisTitusTech's Top 5 Bootloader Themes script to allow for easy customization of GRUB.",
+     "script": "grub-theme.sh",
+     "id": "applications-setup/grub-theme.sh",
+     "tasks": "PFM"
+    },
+    {
+     "name": "Kitty",
+     "desc": "kitty is a free and open-source GPU-accelerated terminal emulator for Linux, macOS, and some BSD distributions, focused on performance and features. kitty is written in a mix of C and Python programming languages. This command installs and configures kitty.",
+     "script": "kitty-setup.sh",
+     "id": "applications-setup/kitty-setup.sh",
+     "tasks": "I FM"
+    },
+    {
+     "name": "Linutil Installer",
+     "desc": "Installs a distro-specific Linutil package locally.",
+     "script": "linutil-installer.sh",
+     "id": "applications-setup/linutil-installer.sh",
+     "tasks": "I",
+     "pre": [
+      {
+       "matches": false,
+       "kind": "command_exists",
+       "values": [
+        "linutil"
+       ]
+      }
+     ]
+    },
+    {
+     "name": "Linutil Updater",
+     "desc": "Updates your local Linutil crate installation.",
+     "script": "linutil-updater.sh",
+     "id": "applications-setup/linutil-updater.sh",
+     "tasks": "I",
+     "pre": [
+      {
+       "matches": true,
+       "kind": "command_exists",
+       "values": [
+        "linutil"
+       ]
+      }
+     ]
+    },
+    {
+     "name": "Noctalia Shell",
+     "desc": "Noctalia is a native Wayland desktop shell for people who want a polished, configurable Linux desktop without stitching together a separate bar, launcher, notification daemon, lock screen, wallpaper tool, and settings UI.",
+     "script": "noctalia-shell.sh",
+     "id": "applications-setup/noctalia-shell.sh",
+     "tasks": "I FM"
+    },
+    {
+     "name": "Podman",
+     "desc": "Podman is a daemon-less open platform that uses OS-level virtualization to deliver software in packages called containers.",
+     "script": "podman-setup.sh",
+     "id": "applications-setup/podman-setup.sh",
+     "tasks": "I SS"
+    },
+    {
+     "name": "Podman-compose",
+     "desc": "Podman Compose is a tool for defining and running multi-container applications using Podman.",
+     "script": "podman-compose-setup.sh",
+     "id": "applications-setup/podman-compose-setup.sh",
+     "tasks": "I SS"
+    },
+    {
+     "name": "Rofi",
+     "desc": "Rofi is a window switcher, run dialog, ssh-launcher and dmenu replacement that started as a clone of simpleswitcher, written by Sean Pringle and later expanded by Dave Davenport. This command installs and configures rofi with configuration from CTT's DWM repo. https://github.com/ChrisTitusTech/dwm-titus",
+     "script": "rofi-setup.sh",
+     "id": "applications-setup/rofi-setup.sh",
+     "tasks": "I FM"
+    },
+    {
+     "name": "Shelly",
+     "desc": "Shelly is a modern, visual, and intuitive interface for your Arch Linux system. Not just a wrapper, but a native ground-up experience.",
+     "script": "shelly-setup.sh",
+     "id": "applications-setup/shelly-setup.sh",
+     "tasks": "I SS",
+     "pre": [
+      {
+       "matches": true,
+       "kind": "command_exists",
+       "values": [
+        "pacman"
+       ]
+      }
+     ]
+    },
+    {
+     "name": "ZSH Prompt",
+     "desc": "The Z shell is a Unix shell that can be used as an interactive login shell and as a command interpreter for shell scripting. Zsh is an extended Bourne shell with many improvements, including some features of Bash, ksh, and tcsh. This command installs ZSH prompt and provides basic configuration.",
+     "script": "zsh-setup.sh",
+     "id": "applications-setup/zsh-setup.sh",
+     "tasks": "I FM"
+    }
+   ]
+  },
+  {
+   "id": "gaming",
+   "name": "Gaming",
+   "groups": [
+    {
+     "name": "Emulators",
+     "children": [
+      {
+       "name": "Multi-System Emulators",
+       "children": [
+        {
+         "name": "RetroArch Game Emulator",
+         "desc": "Frontend for emulators, game engines and media players. NO Games or Bios' are included",
+         "script": "emulators/retroarch.sh",
+         "id": "gaming/emulators/retroarch.sh",
+         "tasks": "FM"
+        }
+       ]
+      },
+      {
+       "name": "Nintendo Emulators",
+       "children": [
+        {
+         "name": "bsnes",
+         "desc": "Super Nintendo Emulator. NO Games are included",
+         "script": "emulators/nintendo/bsnes.sh",
+         "id": "gaming/emulators/nintendo/bsnes.sh",
+         "tasks": "FM"
+        },
+        {
+         "name": "Dolphin Emulator",
+         "desc": "GameCube and Wii Emulator. NO Games are included",
+         "script": "emulators/nintendo/dolphin-emu.sh",
+         "id": "gaming/emulators/nintendo/dolphin-emu.sh",
+         "tasks": "FM"
+        },
+        {
+         "name": "Gopher 64",
+         "desc": "N64 Emulator. NO Games are included",
+         "script": "emulators/nintendo/gopher64.sh",
+         "id": "gaming/emulators/nintendo/gopher64.sh",
+         "tasks": "FM"
+        },
+        {
+         "name": "MelonDS",
+         "desc": "Nintendo DS and DSi Emulator. NO Games are included",
+         "script": "emulators/nintendo/melonds.sh",
+         "id": "gaming/emulators/nintendo/melonds.sh",
+         "tasks": "FM"
+        },
+        {
+         "name": "mGBA",
+         "desc": "Nintendo Game Boy Advance Emulator. NO Games are included",
+         "script": "emulators/nintendo/mgba.sh",
+         "id": "gaming/emulators/nintendo/mgba.sh",
+         "tasks": "FM"
+        },
+        {
+         "name": "Mupen 64 Plus",
+         "desc": "N64 Emulator. NO Games are included",
+         "script": "emulators/nintendo/mupen64plus.sh",
+         "id": "gaming/emulators/nintendo/mupen64plus.sh",
+         "tasks": "FM"
+        },
+        {
+         "name": "Ryujinx",
+         "desc": "Nintendo Switch emulator. NO Games are included",
+         "script": "emulators/nintendo/ryujinx.sh",
+         "id": "gaming/emulators/nintendo/ryujinx.sh",
+         "tasks": "FM"
+        },
+        {
+         "name": "snes9x",
+         "desc": "Super Nintendo Emulator. NO Games are included",
+         "script": "emulators/nintendo/snes9x.sh",
+         "id": "gaming/emulators/nintendo/snes9x.sh",
+         "tasks": "FM"
+        }
+       ]
+      },
+      {
+       "name": "PlayStation Emulators",
+       "children": [
+        {
+         "name": "PCSX2",
+         "desc": "A Playstation 2 emulator. NO Games or Bios' are included",
+         "script": "emulators/playstation/pcsx2.sh",
+         "id": "gaming/emulators/playstation/pcsx2.sh",
+         "tasks": "FM"
+        },
+        {
+         "name": "Play!",
+         "desc": "An Experimental Playstation 2 emulator. NO Games or Bios' are included",
+         "script": "emulators/playstation/play-emu.sh",
+         "id": "gaming/emulators/playstation/play-emu.sh",
+         "tasks": "FM"
+        },
+        {
+         "name": "RPCS3",
+         "desc": "A Playstation 3 emulator. NO Games or Bios' are included",
+         "script": "emulators/playstation/rpcs3.sh",
+         "id": "gaming/emulators/playstation/rpcs3.sh",
+         "tasks": "FM"
+        }
+       ]
+      },
+      {
+       "name": "Sega Emulators",
+       "children": [
+        {
+         "name": "Blastem",
+         "desc": "A Genesis emulator. NO Games are included",
+         "script": "emulators/sega/blastem.sh",
+         "id": "gaming/emulators/sega/blastem.sh",
+         "tasks": "FM"
+        },
+        {
+         "name": "Flycast",
+         "desc": "A Dreamcast emulator. NO Games are included",
+         "script": "emulators/sega/flycast.sh",
+         "id": "gaming/emulators/sega/flycast.sh",
+         "tasks": "FM"
+        },
+        {
+         "name": "Kronos",
+         "desc": "A Sega Saturn emulator. NO Games are included",
+         "script": "emulators/sega/kronos.sh",
+         "id": "gaming/emulators/sega/kronos.sh",
+         "tasks": "FM"
+        }
+       ]
+      },
+      {
+       "name": "Xbox Emulators",
+       "children": [
+        {
+         "name": "XEMU",
+         "desc": "An Original Xbox emulator. NO Games or Bios' are included",
+         "script": "emulators/xbox/xemu.sh",
+         "id": "gaming/emulators/xbox/xemu.sh",
+         "tasks": "FM"
+        },
+        {
+         "name": "Xenia",
+         "desc": "An Experimental Xbox 360 emulator. NO Games or Bios' are included",
+         "script": "emulators/xbox/xenia.sh",
+         "id": "gaming/emulators/xbox/xenia.sh",
+         "tasks": "FM"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "name": "Game Launchers",
+     "children": [
+      {
+       "name": "Heroic",
+       "desc": "Manage Heroic launcher installation with Install, Uninstall, or Abort actions.",
+       "script": "heroic-launcher.sh",
+       "id": "gaming/heroic-launcher.sh",
+       "tasks": "FI"
+      },
+      {
+       "name": "Lutris",
+       "desc": "Manage Lutris launcher installation with Install, Uninstall, or Abort actions.",
+       "script": "lutris-launcher.sh",
+       "id": "gaming/lutris-launcher.sh",
+       "tasks": "FI"
+      },
+      {
+       "name": "RetroArch",
+       "desc": "Manage RetroArch launcher installation with Install, Uninstall, or Abort actions.",
+       "script": "retroarch-launcher.sh",
+       "id": "gaming/retroarch-launcher.sh",
+       "tasks": "FI"
+      },
+      {
+       "name": "Steam",
+       "desc": "Manage Steam launcher installation with Install, Uninstall, or Abort actions.",
+       "script": "steam-launcher.sh",
+       "id": "gaming/steam-launcher.sh",
+       "tasks": "FI"
+      }
+     ]
+    },
+    {
+     "name": "Tools and Setups",
+     "children": [
+      {
+       "name": "Auto CPU Frequency",
+       "desc": "Automatic CPU speed & power optimizer.\nhttps://github.com/AdnanHodzic/auto-cpufreq",
+       "script": "../applications-setup/auto-cpufreq.sh",
+       "id": "gaming/../applications-setup/auto-cpufreq.sh",
+       "tasks": "I SS"
+      },
+      {
+       "name": "Auto Mount Drive",
+       "desc": "This utility is designed to help with automating the process of mounting a drive on to your system.",
+       "script": "../utils/auto-mount.sh",
+       "id": "gaming/../utils/auto-mount.sh",
+       "tasks": "PFM"
+      },
+      {
+       "name": "Bottles",
+       "desc": "Bottles allows Windows software, like applications and games, to run on Linux. Bottles also provides tools to categorize, organize and optimize your applications.",
+       "script": "../applications-setup/bottles-setup.sh",
+       "id": "gaming/../applications-setup/bottles-setup.sh",
+       "tasks": "FI"
+      },
+      {
+       "name": "Gaming Dependencies",
+       "desc": "Installs gaming runtime dependencies across distributions. Steam and Lutris are managed separately from Game Launchers.",
+       "script": "../system-setup/gaming-setup.sh",
+       "id": "gaming/../system-setup/gaming-setup.sh",
+       "tasks": "I"
+      },
+      {
+       "name": "General GPU Drivers",
+       "desc": "Auto-detects your GPU and installs a recommended driver stack for your distro, with NixOS guidance.",
+       "script": "../system-setup/gpu-driver.sh",
+       "id": "gaming/../system-setup/gpu-driver.sh",
+       "tasks": "I"
+      },
+      {
+       "name": "Nvidia Drivers & Hardware Acceleration",
+       "desc": "Opens the Arch-specific NVIDIA installer (kept under System Setup / Arch).",
+       "script": "../system-setup/arch/nvidia-drivers.sh",
+       "id": "gaming/../system-setup/arch/nvidia-drivers.sh",
+       "tasks": "I"
+      },
+      {
+       "name": "ProtonPlus",
+       "desc": "Manage ProtonPlus installation with native packages first and Flatpak fallback.",
+       "script": "protonplus.sh",
+       "id": "gaming/protonplus.sh",
+       "tasks": "FI"
+      },
+      {
+       "name": "ProtonUp-Qt",
+       "desc": "Manage ProtonUp-Qt installation with native packages first and Flatpak fallback.",
+       "script": "protonup-qt.sh",
+       "id": "gaming/protonup-qt.sh",
+       "tasks": "FI"
+      },
+      {
+       "name": "Waydroid",
+       "desc": "Waydroid is an emulator that allows you to run Android apps and games on Linux.",
+       "script": "../applications-setup/waydroid-setup.sh",
+       "id": "gaming/../applications-setup/waydroid-setup.sh",
+       "tasks": "I SS",
+       "pre": [
+        {
+         "matches": true,
+         "kind": "env",
+         "arg": "XDG_SESSION_TYPE",
+         "values": [
+          "wayland",
+          "Wayland"
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "name": "Arc Raiders Titus Mods",
+     "desc": "Applies optimized game configuration files from ChrisTitusTech/arc-raiders. Sets Engine.ini to read-only to prevent the game from overwriting the settings, disables motion blur, and enables VRR optimizations.",
+     "script": "arc-raiders-mod.sh",
+     "id": "gaming/arc-raiders-mod.sh",
+     "tasks": "FM"
+    },
+    {
+     "name": "Diablo II Resurrected Loot Filter",
+     "desc": "Installs a loot filter for Diablo II Resurrected from ChrisTitusTech/d2r-loot-filter. Highlights high runes and other valuable items. Works on Battle.net and single player. After install, add launch option: -mod lootfilter -txt",
+     "script": "diablo2-titus-mod.sh",
+     "id": "gaming/diablo2-titus-mod.sh",
+     "tasks": "FM"
+    },
+    {
+     "name": "EverQuest Legends MIDI Fix",
+     "desc": "Configures native Lutris to start a stable FluidSynth MIDI device, maps Wine to it, and loads the SC-55 SoundCanvas bank for EverQuest Legends music. Downloads a verified 177 MiB SoundFont and preserves the original Lutris and Wine registry configuration.",
+     "script": "eq-legends-midi.sh",
+     "id": "gaming/eq-legends-midi.sh",
+     "tasks": "I MP FM",
+     "pre": [
+      {
+       "matches": true,
+       "kind": "command_exists",
+       "values": [
+        "curl",
+        "flock",
+        "lutris",
+        "mkfifo",
+        "pgrep",
+        "ps",
+        "python3",
+        "sha256sum",
+        "stat"
+       ]
+      },
+      {
+       "matches": false,
+       "kind": "command_exists",
+       "values": [
+        "apk"
+       ]
+      }
+     ]
+    },
+    {
+     "name": "Fallout 76 INI and Mods",
+     "desc": "Installs a custom Fallout76Custom.ini and mods from ChrisTitusTech/fallout76-configs via Steam. Improves performance and stability with quality of life tweaks.",
+     "script": "fallout76-titus-mod.sh",
+     "id": "gaming/fallout76-titus-mod.sh",
+     "tasks": "FM"
+    },
+    {
+     "name": "Starfield Titus INI and Mods",
+     "desc": "Installs custom Starfield mods from ChrisTitusTech/starfield-config via steam.",
+     "script": "starfield-titus-mod.sh",
+     "id": "gaming/starfield-titus-mod.sh",
+     "tasks": "FM"
+    }
+   ]
+  },
+  {
+   "id": "security",
+   "name": "Security",
+   "groups": [
+    {
+     "name": "FirewallD Firewall Baselines (CTT)",
+     "desc": "Configure FirewallD with CTT's recommended baseline rules for improved system security. For more information visit: https://christitus.com/linux-security-mistakes",
+     "script": "firewalld-baselines.sh",
+     "id": "security/firewalld-baselines.sh",
+     "tasks": "I SS",
+     "pre": [
+      {
+       "matches": true,
+       "kind": "command_exists",
+       "values": [
+        "firewall-cmd"
+       ]
+      }
+     ]
+    },
+    {
+     "name": "Lynis Security Audit",
+     "desc": "Install Lynis when needed, run an elevated system security audit with live results, then optionally remove Lynis.",
+     "script": "lynis-audit.sh",
+     "id": "security/lynis-audit.sh",
+     "tasks": "I MP RP"
+    },
+    {
+     "name": "UFW Firewall Baselines (CTT)",
+     "desc": "Developed to ease iptables firewall configuration, UFW provides a user friendly way to create an IPv4 or IPv6 host-based firewall. This command installs UFW and configures UFW based on CTT's recommended rules. For more information visit: https://christitus.com/linux-security-mistakes",
+     "script": "ufw-baselines.sh",
+     "id": "security/ufw-baselines.sh",
+     "tasks": "I SS",
+     "pre": [
+      {
+       "matches": false,
+       "kind": "command_exists",
+       "values": [
+        "firewall-cmd"
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "system-setup",
+   "name": "System Setup",
+   "groups": [
+    {
+     "name": "Alpine",
+     "pre": [
+      {
+       "matches": true,
+       "kind": "command_exists",
+       "values": [
+        "apk"
+       ]
+      }
+     ],
+     "children": [
+      {
+       "name": "Alpine Update",
+       "desc": "Upgrades Alpine Linux to either latest stable or edge repositories",
+       "script": "alpine/alpine-upgrade.sh",
+       "id": "system-setup/alpine/alpine-upgrade.sh",
+       "tasks": "P MP"
+      }
+     ]
+    },
+    {
+     "name": "Arch",
+     "pre": [
+      {
+       "matches": true,
+       "kind": "command_exists",
+       "values": [
+        "pacman"
+       ]
+      }
+     ],
+     "children": [
+      {
+       "name": "Arch Server Setup",
+       "desc": "This command installs a minimal arch server setup under 5 minutes.",
+       "script": "arch/server-setup.sh",
+       "id": "system-setup/arch/server-setup.sh",
+       "tasks": "SI D"
+      },
+      {
+       "name": "DWM-Titus",
+       "desc": "DWM is a dynamic window manager for X.\nIt manages windows in tiled, monocle and floating layouts.\nAll of the layouts can be applied dynamically, optimising the environment for the application in use and the task performed.\nThis command installs and configures DWM and a desktop manager.\nThe list of patches applied can be found in CTT's DWM repository\nhttps://github.com/ChrisTitusTech/dwm-titus",
+       "script": "arch/dwmtitus-setup.sh",
+       "id": "system-setup/arch/dwmtitus-setup.sh",
+       "tasks": "I PFM SS"
+      },
+      {
+       "name": "Hyprland JaKooLit",
+       "desc": "Install JaKooLit's Hyprland configuration",
+       "script": "arch/hyprland-kool.sh",
+       "id": "system-setup/arch/hyprland-kool.sh",
+       "tasks": "I MP"
+      },
+      {
+       "name": "Install CachyOS Repository and Kernel",
+       "desc": "To deliver a performance-optimized distribution, CachyOS recompiles Arch Linux packages specifically for the x86-64-v3, x86-64-v4, and Zen4+ architectures.",
+       "script": "arch/cachyos-repos.sh",
+       "id": "system-setup/arch/cachyos-repos.sh",
+       "tasks": "I"
+      },
+      {
+       "name": "Install Chaotic-AUR Repository",
+       "desc": "Chaotic-AUR provides prebuilt binaries for popular AUR packages, saving compilation time. To know more visit: https://aur.chaotic.cx/",
+       "script": "arch/chaotic-aur-setup.sh",
+       "id": "system-setup/arch/chaotic-aur-setup.sh",
+       "tasks": "I"
+      },
+      {
+       "name": "Linux Neptune for SteamDeck",
+       "desc": "Valve's fork of Linux Kernel for the SteamDeck",
+       "script": "arch/linux-neptune.sh",
+       "id": "system-setup/arch/linux-neptune.sh",
+       "tasks": "I PFM K",
+       "pre": [
+        {
+         "matches": true,
+         "kind": "file",
+         "arg": "/sys/devices/virtual/dmi/id/board_vendor",
+         "values": [
+          "Valve"
+         ]
+        }
+       ]
+      },
+      {
+       "name": "Nvidia Drivers & Hardware Acceleration",
+       "desc": "This script installs and configures nvidia drivers with Hardware Acceleration.",
+       "script": "arch/nvidia-drivers.sh",
+       "id": "system-setup/arch/nvidia-drivers.sh",
+       "tasks": "I FM SS"
+      },
+      {
+       "name": "Omarchy Rice by DHH",
+       "desc": "Simplified Hyprland configuration by DHH the ruby on rails dude.",
+       "script": "arch/omarchy.sh",
+       "id": "system-setup/arch/omarchy.sh",
+       "tasks": "I MP"
+      },
+      {
+       "name": "Pacman Config",
+       "desc": "Enables Color, ILoveCandy, ParallelDownloads, VerbosePkgLists, multilib in pacman.conf and sets MAKEFLAGS in makepkg.conf.",
+       "script": "arch/pacman-config.sh",
+       "id": "system-setup/arch/pacman-config.sh",
+       "tasks": "PFM"
+      },
+      {
+       "name": "Paru AUR Helper",
+       "desc": "Paru is your standard pacman wrapping AUR helper with lots of features and minimal interaction. To know more about AUR helpers visit: https://wiki.archlinux.org/title/AUR_helpers",
+       "script": "arch/paru-setup.sh",
+       "id": "system-setup/arch/paru-setup.sh",
+       "tasks": "I"
+      },
+      {
+       "name": "Snapper Snapshots",
+       "desc": "Sets up Snapper with hourly Btrfs snapshots, snap-pac hooks, and GRUB boot menu entries.",
+       "script": "arch/snapshot-setup.sh",
+       "id": "system-setup/arch/snapshot-setup.sh",
+       "tasks": "I PFM SS",
+       "pre": [
+        {
+         "matches": true,
+         "kind": "command_exists",
+         "values": [
+          "btrfs"
+         ]
+        }
+       ]
+      },
+      {
+       "name": "System Maintenance",
+       "desc": "Enables paccache.timer, removes orphan packages, and cleans system journals.",
+       "script": "arch/system-maintenance.sh",
+       "id": "system-setup/arch/system-maintenance.sh",
+       "tasks": "PFM RP"
+      },
+      {
+       "name": "Virtualization",
+       "desc": "QEMU, Libvirt, Virt-Manager installation and configuration.",
+       "script": "arch/virtualization.sh",
+       "id": "system-setup/arch/virtualization.sh",
+       "tasks": "FM I SS RP"
+      },
+      {
+       "name": "Yay AUR Helper",
+       "desc": "Yet Another Yogurt - An AUR Helper Written in Go. To know more about AUR helpers visit: https://wiki.archlinux.org/title/AUR_helpers",
+       "script": "arch/yay-setup.sh",
+       "id": "system-setup/arch/yay-setup.sh",
+       "tasks": "I"
+      }
+     ]
+    },
+    {
+     "name": "Debian",
+     "pre": [
+      {
+       "matches": true,
+       "kind": "file",
+       "arg": "/etc/os-release",
+       "values": [
+        "ID=debian"
+       ]
+      }
+     ],
+     "children": [
+      {
+       "name": "Hyprland JaKooLit",
+       "desc": "Install JaKooLit's Hyprland configuration",
+       "script": "debian/hyprland-kool-deb.sh",
+       "id": "system-setup/debian/hyprland-kool-deb.sh",
+       "tasks": "I MP"
+      }
+     ]
+    },
+    {
+     "name": "Desktop Environment Setup",
+     "children": [
+      {
+       "name": "Install Desktop Environment",
+       "desc": "This script allows you to install various desktop environments (GNOME, KDE, XFCE, Cinnamon, MATE, Budgie, LXQt, LXDE) and window managers (i3, Sway, DWM, Awesome, BSPWM, Openbox, Fluxbox) using your distro's package manager. The script provides an interactive menu to select your preferred desktop environment or window manager, and handles the installation process automatically.",
+       "script": "desktop-environments.sh",
+       "id": "system-setup/desktop-environments.sh",
+       "tasks": "I"
+      },
+      {
+       "name": "Uninstall Desktop Environment",
+       "desc": "This script allows you to uninstall desktop environments and window managers that were previously installed. It provides an interactive menu to select which desktop environment or window manager to remove, and handles the uninstallation process automatically.",
+       "script": "desktop-environments-uninstall.sh",
+       "id": "system-setup/desktop-environments-uninstall.sh",
+       "tasks": "RP"
+      }
+     ]
+    },
+    {
+     "name": "Fedora",
+     "pre": [
+      {
+       "matches": true,
+       "kind": "command_exists",
+       "values": [
+        "dnf"
+       ]
+      },
+      {
+       "matches": true,
+       "kind": "command_exists",
+       "values": [
+        "btrfs"
+       ]
+      }
+     ],
+     "children": [
+      {
+       "name": "Btrfs Assistant, Snapper Config, grub-btrfs",
+       "desc": "Installs Btrfs Assistant, Snapper, dnf snapper plugin and takes the first root(/) and /home snapshots. Enables snapper-timeline and snapper-cleanup services. Installs Grub-Btrfs. Notice: To perform a system recovery via grub-btrfs, perform a restore operation with Btrfs Assistant GUI after booting into the snapshot. Notice: If you used the default Fedora disk partitioning during OS installation, the /boot configured as an separate EXT4 partition. Therefore, it cannot be included in root snapshots. Backup separately.",
+       "script": "fedora/fedora-btrfs-assistant.sh",
+       "id": "system-setup/fedora/fedora-btrfs-assistant.sh",
+       "tasks": "I PFM SS"
+      },
+      {
+       "name": "Configure DNF",
+       "desc": "Optimizes DNF for parallel downloads",
+       "script": "fedora/configure-dnf.sh",
+       "id": "system-setup/fedora/configure-dnf.sh",
+       "tasks": "PFM"
+      },
+      {
+       "name": "Hyprland JaKooLit",
+       "desc": "Install JaKooLit's Hyprland configuration",
+       "script": "fedora/hyprland-kool-fed.sh",
+       "id": "system-setup/fedora/hyprland-kool-fed.sh",
+       "tasks": "I MP"
+      },
+      {
+       "name": "Multimedia Codecs",
+       "desc": "This script is designed to install multimedia codecs, and to ensure RPM Fusion repositories are installed.",
+       "script": "fedora/multimedia-codecs.sh",
+       "id": "system-setup/fedora/multimedia-codecs.sh",
+       "tasks": "I"
+      },
+      {
+       "name": "Nvidia Proprietary Drivers",
+       "desc": "This script is designed to download the proprietary NVIDIA drivers in Fedora.",
+       "script": "fedora/nvidia-proprietary-driver-setup.sh",
+       "id": "system-setup/fedora/nvidia-proprietary-driver-setup.sh",
+       "tasks": "I"
+      },
+      {
+       "name": "RPM Fusion",
+       "desc": "RPM Fusion provides software that the Fedora Project or Red Hat doesn't want to ship. That software is provided as precompiled RPMs for all current Fedora versions and current Red Hat Enterprise Linux or clones versions; you can use the RPM Fusion repositories with tools like yum and PackageKit. For more information visit: https://rpmfusion.org/",
+       "script": "fedora/rpm-fusion-setup.sh",
+       "id": "system-setup/fedora/rpm-fusion-setup.sh",
+       "tasks": "MP"
+      },
+      {
+       "name": "Upgrade to a New Fedora Release",
+       "desc": "Upgrades system to the next Fedora release",
+       "script": "fedora/fedora-upgrade.sh",
+       "id": "system-setup/fedora/fedora-upgrade.sh",
+       "tasks": "MP"
+      },
+      {
+       "name": "Virtualization",
+       "desc": "Enables Virtualization through dnf",
+       "script": "fedora/virtualization.sh",
+       "id": "system-setup/fedora/virtualization.sh",
+       "tasks": "I"
+      }
+     ]
+    },
+    {
+     "name": "Ubuntu",
+     "pre": [
+      {
+       "matches": true,
+       "kind": "file",
+       "arg": "/etc/os-release",
+       "values": [
+        "ID=ubuntu"
+       ]
+      },
+      {
+       "matches": true,
+       "kind": "file",
+       "arg": "/etc/os-release",
+       "values": [
+        "VERSION_ID=\"24.04\""
+       ]
+      }
+     ],
+     "children": [
+      {
+       "name": "Hyprland JaKooLit",
+       "desc": "Install JaKooLit's Hyprland configuration",
+       "script": "ubuntu/hyprland-kool-ubuntu24.sh",
+       "id": "system-setup/ubuntu/hyprland-kool-ubuntu24.sh",
+       "tasks": "I MP"
+      }
+     ]
+    },
+    {
+     "name": "Build Prerequisites",
+     "desc": "This script is designed to handle the installation of various software dependencies across different Linux distributions",
+     "script": "compile-setup.sh",
+     "id": "system-setup/compile-setup.sh",
+     "tasks": "I"
+    },
+    {
+     "name": "Enable SSD TRIM",
+     "desc": "Enable weekly SSD TRIM through systemd's fstrim.timer and run an initial trim. This is the recommended alternative to mounting with the continuous discard option. For more information visit: https://wiki.archlinux.org/title/Solid_state_drive#TRIM",
+     "script": "fstrim-setup.sh",
+     "id": "system-setup/fstrim-setup.sh",
+     "tasks": "D I SS",
+     "pre": [
+      {
+       "matches": true,
+       "kind": "command_exists",
+       "values": [
+        "systemctl"
+       ]
+      }
+     ]
+    },
+    {
+     "name": "Full System Cleanup",
+     "desc": "This script is designed to remove unnecessary packages, clean old cache files, remove temporary files, and to empty the trash.",
+     "script": "system-cleanup.sh",
+     "id": "system-setup/system-cleanup.sh",
+     "tasks": "RP PFM"
+    },
+    {
+     "name": "Full System Update",
+     "desc": "This command updates your system to the latest packages available for your distro",
+     "script": "system-update.sh",
+     "id": "system-setup/system-update.sh",
+     "tasks": "PFM"
+    },
+    {
+     "name": "Full System Update (Topgrade)",
+     "desc": "This command uses topgrade to update your system packages, configs, and more from various sources",
+     "script": "system-update-topgrade.sh",
+     "id": "system-setup/system-update-topgrade.sh",
+     "tasks": "PFM"
+    },
+    {
+     "name": "Global Theme",
+     "desc": "This script is designed to handle the installation and configuration of global theming",
+     "script": "global-theme.sh",
+     "id": "system-setup/global-theme.sh",
+     "tasks": "I PFM"
+    },
+    {
+     "name": "PipeWire Audio",
+     "desc": "Installs PipeWire with WirePlumber session manager for audio (replaces PulseAudio).",
+     "script": "pipewire-setup.sh",
+     "id": "system-setup/pipewire-setup.sh",
+     "tasks": "I"
+    },
+    {
+     "name": "Remove Snaps",
+     "desc": "This script is designed to remove snap",
+     "script": "remove-snaps.sh",
+     "id": "system-setup/remove-snaps.sh",
+     "tasks": "RP"
+    },
+    {
+     "name": "TTY Fonts",
+     "desc": "This Script will set the default TTY font to Terminus size 32 Bold",
+     "script": "terminus-tty.sh",
+     "id": "system-setup/terminus-tty.sh",
+     "tasks": "I PFM"
+    },
+    {
+     "name": "Zram Swap",
+     "desc": "Configures compressed RAM swap via zram-generator with zstd algorithm.",
+     "script": "zram-setup.sh",
+     "id": "system-setup/zram-setup.sh",
+     "tasks": "PFM"
+    }
+   ]
+  },
+  {
+   "id": "utils",
+   "name": "Utilities",
+   "groups": [
+    {
+     "name": "Monitor Control",
+     "pre": [
+      {
+       "matches": true,
+       "kind": "env",
+       "arg": "XDG_SESSION_TYPE",
+       "values": [
+        "x11",
+        "X11",
+        "xorg",
+        "Xorg",
+        "tty"
+       ]
+      },
+      {
+       "matches": true,
+       "kind": "env",
+       "arg": "DISPLAY",
+       "values": [
+        ":0",
+        ":1",
+        ":2",
+        ":3",
+        ":4",
+        ":5",
+        ":6",
+        ":7",
+        ":8",
+        ":9"
+       ]
+      }
+     ],
+     "children": [
+      {
+       "name": "Auto Detect Displays",
+       "desc": "This script is designed to detect and apply recommended configuration for monitors connected with your system",
+       "script": "monitor-control/auto_detect_displays.sh",
+       "id": "utils/monitor-control/auto_detect_displays.sh"
+      },
+      {
+       "name": "Change Orientation",
+       "desc": "This script is designed to change the orientation of monitors in your system",
+       "script": "monitor-control/change_orientation.sh",
+       "id": "utils/monitor-control/change_orientation.sh"
+      },
+      {
+       "name": "Disable Monitor",
+       "desc": "This script is designed to disable a monitor in your system",
+       "script": "monitor-control/disable_monitor.sh",
+       "id": "utils/monitor-control/disable_monitor.sh"
+      },
+      {
+       "name": "Duplicate Displays",
+       "desc": "This script is designed to duplicate display among multi-monitor setup in your system",
+       "script": "monitor-control/duplicate_displays.sh",
+       "id": "utils/monitor-control/duplicate_displays.sh"
+      },
+      {
+       "name": "Enable Monitor",
+       "desc": "This script is designed to enable a monitor in your system",
+       "script": "monitor-control/enable_monitor.sh",
+       "id": "utils/monitor-control/enable_monitor.sh"
+      },
+      {
+       "name": "Extend Displays",
+       "desc": "This script is designed to extend display among multi-monitor setup in your system",
+       "script": "monitor-control/extend_displays.sh",
+       "id": "utils/monitor-control/extend_displays.sh"
+      },
+      {
+       "name": "Manage Arrangement",
+       "desc": "This script is designed to arrange monitors in multi-monitor setup in your system",
+       "script": "monitor-control/manage_arrangement.sh",
+       "id": "utils/monitor-control/manage_arrangement.sh"
+      },
+      {
+       "name": "Reset Scaling",
+       "desc": "This script is designed to reset scaling of a monitor in your system",
+       "script": "monitor-control/reset_scaling.sh",
+       "id": "utils/monitor-control/reset_scaling.sh"
+      },
+      {
+       "name": "Scale Monitors",
+       "desc": "This script is designed to change the scaling of monitors in your system",
+       "script": "monitor-control/scale_monitor.sh",
+       "id": "utils/monitor-control/scale_monitor.sh"
+      },
+      {
+       "name": "Set Brightness",
+       "desc": "This script is designed to change the Brightness of monitors connected to your system",
+       "script": "monitor-control/set_brightness.sh",
+       "id": "utils/monitor-control/set_brightness.sh"
+      },
+      {
+       "name": "Set Primary Monitor",
+       "desc": "This script is designed to set a Primary monitor in your system",
+       "script": "monitor-control/set_primary_monitor.sh",
+       "id": "utils/monitor-control/set_primary_monitor.sh"
+      },
+      {
+       "name": "Set Resolution",
+       "desc": "This script is designed to change the resolution of monitors connected to your system",
+       "script": "monitor-control/set_resolutions.sh",
+       "id": "utils/monitor-control/set_resolutions.sh"
+      }
+     ]
+    },
+    {
+     "name": "Printers",
+     "children": [
+      {
+       "name": "CUPS",
+       "desc": "This script will install the CUPS system, required for most printer drivers on Linux.",
+       "script": "printers/install-cups.sh",
+       "id": "utils/printers/install-cups.sh",
+       "tasks": "I"
+      },
+      {
+       "name": "Epson printer drivers",
+       "desc": "This script will install the Epson printer drivers.",
+       "script": "printers/install-epson-printer-drivers.sh",
+       "id": "utils/printers/install-epson-printer-drivers.sh",
+       "tasks": "I"
+      },
+      {
+       "name": "HP printer drivers",
+       "desc": "This script will install HP printer drivers.",
+       "script": "printers/install-hp-printer-drivers.sh",
+       "id": "utils/printers/install-hp-printer-drivers.sh",
+       "tasks": "I"
+      }
+     ]
+    },
+    {
+     "name": "User Account Manager",
+     "children": [
+      {
+       "name": "Add User",
+       "script": "user-account-manager/add_user.sh",
+       "id": "utils/user-account-manager/add_user.sh"
+      },
+      {
+       "name": "Add User To Groups",
+       "script": "user-account-manager/add_to_group.sh",
+       "id": "utils/user-account-manager/add_to_group.sh"
+      },
+      {
+       "name": "Change Password",
+       "script": "user-account-manager/change_password.sh",
+       "id": "utils/user-account-manager/change_password.sh"
+      },
+      {
+       "name": "Delete User",
+       "script": "user-account-manager/delete_user.sh",
+       "id": "utils/user-account-manager/delete_user.sh"
+      },
+      {
+       "name": "Remove User From Groups",
+       "script": "user-account-manager/remove_from_group.sh",
+       "id": "utils/user-account-manager/remove_from_group.sh"
+      }
+     ]
+    },
+    {
+     "name": "Auto Login",
+     "script": "auto-login.sh",
+     "id": "utils/auto-login.sh",
+     "tasks": "DE setup"
+    },
+    {
+     "name": "Bluetooth Manager",
+     "desc": "This utility is designed to manage bluetooth in your system",
+     "script": "bluetooth-control.sh",
+     "id": "utils/bluetooth-control.sh",
+     "tasks": "I SS"
+    },
+    {
+     "name": "Bootable USB Creator",
+     "script": "create-bootable-usb.sh",
+     "id": "utils/create-bootable-usb.sh",
+     "tasks": "D"
+    },
+    {
+     "name": "Crypto tool",
+     "script": "encrypt_decrypt_tool.sh",
+     "id": "utils/encrypt_decrypt_tool.sh",
+     "tasks": "I FM"
+    },
+    {
+     "name": "Locale Setup",
+     "desc": "This allows the user to set their locale",
+     "script": "locale-setup.sh",
+     "id": "utils/locale-setup.sh",
+     "tasks": "FM",
+     "pre": [
+      {
+       "matches": true,
+       "kind": "command_exists",
+       "values": [
+        "locale-gen"
+       ]
+      }
+     ]
+    },
+    {
+     "name": "Numlock on Startup",
+     "desc": "This utility is designed to enable Num Lock at boot, rather than within desktop environments like KDE or GNOME",
+     "script": "numlock.sh",
+     "id": "utils/numlock.sh",
+     "tasks": "PFM SS"
+    },
+    {
+     "name": "Ollama",
+     "desc": "This utility is designed to manage ollama in your system",
+     "script": "ollama.sh",
+     "id": "utils/ollama.sh",
+     "tasks": "I SS"
+    },
+    {
+     "name": "Ramalama",
+     "desc": "This utility is designed to manage ramalama in your system",
+     "script": "ramalama.sh",
+     "id": "utils/ramalama.sh",
+     "tasks": "I SS"
+    },
+    {
+     "name": "Service Manager",
+     "desc": "This utility is designed to manage services in your system",
+     "script": "service-control.sh",
+     "id": "utils/service-control.sh",
+     "tasks": "I PFM SS"
+    },
+    {
+     "name": "SSH Commands",
+     "script": "ssh.sh",
+     "id": "utils/ssh.sh",
+     "tasks": "I FM SS"
+    },
+    {
+     "name": "SSH Samba",
+     "script": "samba-ssh-setup.sh",
+     "id": "utils/samba-ssh-setup.sh",
+     "tasks": "I SS PFM"
+    },
+    {
+     "name": "Timeshift Backup",
+     "script": "timeshift.sh",
+     "id": "utils/timeshift.sh",
+     "tasks": "I",
+     "pre": [
+      {
+       "matches": false,
+       "kind": "command_exists",
+       "values": [
+        "dnf"
+       ]
+      }
+     ]
+    },
+    {
+     "name": "US Locale Setup",
+     "desc": "This fixes US UTF-8 Locale and Folder listings",
+     "script": "locale-us-setup.sh",
+     "id": "utils/locale-us-setup.sh",
+     "tasks": "FM"
+    },
+    {
+     "name": "WiFi Manager",
+     "desc": "This utility is designed to manage wifi in your system",
+     "script": "wifi-control.sh",
+     "id": "utils/wifi-control.sh",
+     "tasks": "I SS"
+    }
+   ]
+  }
+ ]
+}

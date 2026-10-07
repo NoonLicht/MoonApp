@@ -1,0 +1,3115 @@
+/* eslint-disable */
+// Автогенерация из ChrisTitusTech/winutil (лицензия MIT, © Chris Titus Tech).
+// Данные и скрипты перенесены как есть; обёртка — server/ts/winutilCatalog.ts.
+export interface WuReg { key: string; name: string; type: "REG_DWORD" | "REG_SZ" | "REG_QWORD" | "REG_EXPAND_SZ"; value: string | number; def?: string | number }
+export interface WuSvc { name: string; start: string; orig: string }
+export interface WuTweak { id: string; src: string; tab: "wu-essential" | "wu-advanced" | "wu-prefs"; reg: WuReg[]; svc: WuSvc[]; inv?: string; undo?: string }
+export interface WuFeature { id: string; feature: string[]; inv?: string }
+export interface WuDns { name: string; primary?: string; secondary?: string; primary6?: string; secondary6?: string; doh?: string; secondaryDoh?: string; dohOnly?: boolean }
+export interface WuAppx { id: string; pkg: string; store?: string; cat: string }
+export interface WuApp { id: string; name: string; cat: string; winget?: string; desc?: string }
+export const WU_TWEAKS: WuTweak[] = [
+ {
+  "id": "wu-activity",
+  "src": "WPFTweaksActivity",
+  "tab": "wu-essential",
+  "reg": [
+   {
+    "key": "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\System",
+    "name": "EnableActivityFeed",
+    "type": "REG_DWORD",
+    "value": 1
+   },
+   {
+    "key": "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\System",
+    "name": "PublishUserActivities",
+    "type": "REG_DWORD",
+    "value": 0
+   },
+   {
+    "key": "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\System",
+    "name": "UploadUserActivities",
+    "type": "REG_DWORD",
+    "value": 0
+   }
+  ],
+  "svc": []
+ },
+ {
+  "id": "wu-hiber",
+  "src": "WPFTweaksHiber",
+  "tab": "wu-essential",
+  "reg": [
+   {
+    "key": "HKLM\\System\\CurrentControlSet\\Control\\Session Manager\\Power",
+    "name": "HibernateEnabled",
+    "type": "REG_DWORD",
+    "value": 0,
+    "def": 1
+   },
+   {
+    "key": "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\FlyoutMenuSettings",
+    "name": "ShowHibernateOption",
+    "type": "REG_DWORD",
+    "value": 0,
+    "def": 1
+   }
+  ],
+  "svc": [],
+  "inv": "powercfg.exe /hibernate off",
+  "undo": "powercfg.exe /hibernate on"
+ },
+ {
+  "id": "wu-widget",
+  "src": "WPFTweaksWidget",
+  "tab": "wu-essential",
+  "reg": [],
+  "svc": [],
+  "inv": "# Sometimes if you dont stop the Widgets process the removal may fail\n\n      Get-Process *Widget* | Stop-Process\n      Get-AppxPackage Microsoft.WidgetsPlatformRuntime -AllUsers | Remove-AppxPackage -AllUsers\n      Get-AppxPackage MicrosoftWindows.Client.WebExperience -AllUsers | Remove-AppxPackage -AllUsers\n\n      Invoke-WinUtilExplorerUpdate -action \"restart\"\n      Write-Host \"Removed widgets\""
+ },
+ {
+  "id": "wu-revert-start-menu",
+  "src": "WPFTweaksRevertStartMenu",
+  "tab": "wu-essential",
+  "reg": [
+   {
+    "key": "HKLM\\SYSTEM\\ControlSet001\\Control\\FeatureManagement\\Overrides\\8\\3036241548",
+    "name": "EnabledState",
+    "type": "REG_DWORD",
+    "value": 1
+   }
+  ],
+  "svc": []
+ },
+ {
+  "id": "wu-disable-store-search",
+  "src": "WPFTweaksDisableStoreSearch",
+  "tab": "wu-essential",
+  "reg": [],
+  "svc": [],
+  "inv": "icacls \"$Env:LocalAppData\\Packages\\Microsoft.WindowsStore_8wekyb3d8bbwe\\LocalState\\store.db\" /deny *S-1-1-0:F",
+  "undo": "icacls \"$Env:LocalAppData\\Packages\\Microsoft.WindowsStore_8wekyb3d8bbwe\\LocalState\\store.db\" /grant *S-1-1-0:F"
+ },
+ {
+  "id": "wu-location",
+  "src": "WPFTweaksLocation",
+  "tab": "wu-essential",
+  "reg": [
+   {
+    "key": "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\CapabilityAccessManager\\ConsentStore\\location",
+    "name": "Value",
+    "type": "REG_SZ",
+    "value": "Deny",
+    "def": "Allow"
+   },
+   {
+    "key": "HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Sensor\\Overrides\\{BFA794E4-F964-4FDB-90F6-51056BFE4B44}",
+    "name": "SensorPermissionState",
+    "type": "REG_DWORD",
+    "value": 0,
+    "def": 1
+   },
+   {
+    "key": "HKLM\\SYSTEM\\Maps",
+    "name": "AutoUpdateEnabled",
+    "type": "REG_DWORD",
+    "value": 0,
+    "def": 1
+   }
+  ],
+  "svc": [
+   {
+    "name": "lfsvc",
+    "start": "Disabled",
+    "orig": "Manual"
+   }
+  ]
+ },
+ {
+  "id": "wu-services",
+  "src": "WPFTweaksServices",
+  "tab": "wu-essential",
+  "reg": [],
+  "svc": [
+   {
+    "name": "CscService",
+    "start": "Disabled",
+    "orig": "Manual"
+   },
+   {
+    "name": "DiagTrack",
+    "start": "Disabled",
+    "orig": "Automatic"
+   },
+   {
+    "name": "MapsBroker",
+    "start": "Manual",
+    "orig": "Automatic"
+   },
+   {
+    "name": "StorSvc",
+    "start": "Manual",
+    "orig": "Automatic"
+   },
+   {
+    "name": "SharedAccess",
+    "start": "Disabled",
+    "orig": "Automatic"
+   }
+  ],
+  "inv": "$Memory = (Get-CimInstance Win32_PhysicalMemory | Measure-Object Capacity -Sum).Sum / 1KB\n      Set-ItemProperty -Path \"HKLM:\\SYSTEM\\CurrentControlSet\\Control\" -Name SvcHostSplitThresholdInKB -Value $Memory"
+ },
+ {
+  "id": "wu-brave-debloat",
+  "src": "WPFTweaksBraveDebloat",
+  "tab": "wu-advanced",
+  "reg": [
+   {
+    "key": "HKLM\\SOFTWARE\\Policies\\BraveSoftware\\Brave",
+    "name": "BraveRewardsDisabled",
+    "type": "REG_DWORD",
+    "value": 1
+   },
+   {
+    "key": "HKLM\\SOFTWARE\\Policies\\BraveSoftware\\Brave",
+    "name": "BraveWalletDisabled",
+    "type": "REG_DWORD",
+    "value": 1
+   },
+   {
+    "key": "HKLM\\SOFTWARE\\Policies\\BraveSoftware\\Brave",
+    "name": "BraveVPNDisabled",
+    "type": "REG_DWORD",
+    "value": 1
+   },
+   {
+    "key": "HKLM\\SOFTWARE\\Policies\\BraveSoftware\\Brave",
+    "name": "BraveAIChatEnabled",
+    "type": "REG_DWORD",
+    "value": 0
+   },
+   {
+    "key": "HKLM\\SOFTWARE\\Policies\\BraveSoftware\\Brave",
+    "name": "BraveStatsPingEnabled",
+    "type": "REG_DWORD",
+    "value": 0
+   },
+   {
+    "key": "HKLM\\SOFTWARE\\Policies\\BraveSoftware\\Brave",
+    "name": "BraveNewsDisabled",
+    "type": "REG_DWORD",
+    "value": 1
+   },
+   {
+    "key": "HKLM\\SOFTWARE\\Policies\\BraveSoftware\\Brave",
+    "name": "BraveTalkDisabled",
+    "type": "REG_DWORD",
+    "value": 1
+   },
+   {
+    "key": "HKLM\\SOFTWARE\\Policies\\BraveSoftware\\Brave",
+    "name": "TorDisabled",
+    "type": "REG_DWORD",
+    "value": 1
+   },
+   {
+    "key": "HKLM\\SOFTWARE\\Policies\\BraveSoftware\\Brave",
+    "name": "BraveP3AEnabled",
+    "type": "REG_DWORD",
+    "value": 0
+   },
+   {
+    "key": "HKLM\\SOFTWARE\\Policies\\BraveSoftware\\Brave",
+    "name": "UrlKeyedAnonymizedDataCollectionEnabled",
+    "type": "REG_DWORD",
+    "value": 0
+   },
+   {
+    "key": "HKLM\\SOFTWARE\\Policies\\BraveSoftware\\Brave",
+    "name": "SafeBrowsingExtendedReportingEnabled",
+    "type": "REG_DWORD",
+    "value": 0
+   },
+   {
+    "key": "HKLM\\SOFTWARE\\Policies\\BraveSoftware\\Brave",
+    "name": "MetricsReportingEnabled",
+    "type": "REG_DWORD",
+    "value": 0
+   }
+  ],
+  "svc": []
+ },
+ {
+  "id": "wu-disable-warning-for-unsigned-rdp",
+  "src": "WPFTweaksDisableWarningForUnsignedRdp",
+  "tab": "wu-advanced",
+  "reg": [
+   {
+    "key": "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\Terminal Services\\Client",
+    "name": "RedirectionWarningDialogVersion",
+    "type": "REG_DWORD",
+    "value": 1
+   },
+   {
+    "key": "HKCU\\SOFTWARE\\Microsoft\\Terminal Server Client",
+    "name": "RdpLaunchConsentAccepted",
+    "type": "REG_DWORD",
+    "value": 1
+   }
+  ],
+  "svc": []
+ },
+ {
+  "id": "wu-edge-debloat",
+  "src": "WPFTweaksEdgeDebloat",
+  "tab": "wu-advanced",
+  "reg": [
+   {
+    "key": "HKLM\\SOFTWARE\\Policies\\Microsoft\\EdgeUpdate",
+    "name": "CreateDesktopShortcutDefault",
+    "type": "REG_DWORD",
+    "value": 0
+   },
+   {
+    "key": "HKLM\\SOFTWARE\\Policies\\Microsoft\\Edge",
+    "name": "PersonalizationReportingEnabled",
+    "type": "REG_DWORD",
+    "value": 0
+   },
+   {
+    "key": "HKLM\\SOFTWARE\\Policies\\Microsoft\\Edge\\ExtensionInstallBlocklist",
+    "name": "1",
+    "type": "REG_SZ",
+    "value": "ofefcgjbeghpigppfmkologfjadafddi"
+   },
+   {
+    "key": "HKLM\\SOFTWARE\\Policies\\Microsoft\\Edge",
+    "name": "ShowRecommendationsEnabled",
+    "type": "REG_DWORD",
+    "value": 0
+   },
+   {
+    "key": "HKLM\\SOFTWARE\\Policies\\Microsoft\\Edge",
+    "name": "HideFirstRunExperience",
+    "type": "REG_DWORD",
+    "value": 1
+   },
+   {
+    "key": "HKLM\\SOFTWARE\\Policies\\Microsoft\\Edge",
+    "name": "UserFeedbackAllowed",
+    "type": "REG_DWORD",
+    "value": 0
+   },
+   {
+    "key": "HKLM\\SOFTWARE\\Policies\\Microsoft\\Edge",
+    "name": "ConfigureDoNotTrack",
+    "type": "REG_DWORD",
+    "value": 1
+   },
+   {
+    "key": "HKLM\\SOFTWARE\\Policies\\Microsoft\\Edge",
+    "name": "AlternateErrorPagesEnabled",
+    "type": "REG_DWORD",
+    "value": 0
+   },
+   {
+    "key": "HKLM\\SOFTWARE\\Policies\\Microsoft\\Edge",
+    "name": "EdgeCollectionsEnabled",
+    "type": "REG_DWORD",
+    "value": 0
+   },
+   {
+    "key": "HKLM\\SOFTWARE\\Policies\\Microsoft\\Edge",
+    "name": "EdgeShoppingAssistantEnabled",
+    "type": "REG_DWORD",
+    "value": 0
+   },
+   {
+    "key": "HKLM\\SOFTWARE\\Policies\\Microsoft\\Edge",
+    "name": "MicrosoftEdgeInsiderPromotionEnabled",
+    "type": "REG_DWORD",
+    "value": 0
+   },
+   {
+    "key": "HKLM\\SOFTWARE\\Policies\\Microsoft\\Edge",
+    "name": "ShowMicrosoftRewards",
+    "type": "REG_DWORD",
+    "value": 0
+   },
+   {
+    "key": "HKLM\\SOFTWARE\\Policies\\Microsoft\\Edge",
+    "name": "WebWidgetAllowed",
+    "type": "REG_DWORD",
+    "value": 0
+   },
+   {
+    "key": "HKLM\\SOFTWARE\\Policies\\Microsoft\\Edge",
+    "name": "DiagnosticData",
+    "type": "REG_DWORD",
+    "value": 0
+   },
+   {
+    "key": "HKLM\\SOFTWARE\\Policies\\Microsoft\\Edge",
+    "name": "EdgeAssetDeliveryServiceEnabled",
+    "type": "REG_DWORD",
+    "value": 0
+   },
+   {
+    "key": "HKLM\\SOFTWARE\\Policies\\Microsoft\\Edge",
+    "name": "WalletDonationEnabled",
+    "type": "REG_DWORD",
+    "value": 0
+   },
+   {
+    "key": "HKLM\\SOFTWARE\\Policies\\Microsoft\\Edge",
+    "name": "DefaultBrowserSettingsCampaignEnabled",
+    "type": "REG_DWORD",
+    "value": 0
+   }
+  ],
+  "svc": []
+ },
+ {
+  "id": "wu-consumer-features",
+  "src": "WPFTweaksConsumerFeatures",
+  "tab": "wu-essential",
+  "reg": [
+   {
+    "key": "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\CloudContent",
+    "name": "DisableWindowsConsumerFeatures",
+    "type": "REG_DWORD",
+    "value": 1
+   }
+  ],
+  "svc": []
+ },
+ {
+  "id": "wu-telemetry",
+  "src": "WPFTweaksTelemetry",
+  "tab": "wu-essential",
+  "reg": [
+   {
+    "key": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\AdvertisingInfo",
+    "name": "Enabled",
+    "type": "REG_DWORD",
+    "value": 0
+   },
+   {
+    "key": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Privacy",
+    "name": "TailoredExperiencesWithDiagnosticDataEnabled",
+    "type": "REG_DWORD",
+    "value": 0
+   },
+   {
+    "key": "HKCU\\Software\\Microsoft\\Speech_OneCore\\Settings\\OnlineSpeechPrivacy",
+    "name": "HasAccepted",
+    "type": "REG_DWORD",
+    "value": 0
+   },
+   {
+    "key": "HKCU\\Software\\Microsoft\\Input\\TIPC",
+    "name": "Enabled",
+    "type": "REG_DWORD",
+    "value": 0
+   },
+   {
+    "key": "HKCU\\Software\\Microsoft\\InputPersonalization",
+    "name": "RestrictImplicitInkCollection",
+    "type": "REG_DWORD",
+    "value": 1
+   },
+   {
+    "key": "HKCU\\Software\\Microsoft\\InputPersonalization",
+    "name": "RestrictImplicitTextCollection",
+    "type": "REG_DWORD",
+    "value": 1
+   },
+   {
+    "key": "HKCU\\Software\\Microsoft\\InputPersonalization\\TrainedDataStore",
+    "name": "HarvestContacts",
+    "type": "REG_DWORD",
+    "value": 0
+   },
+   {
+    "key": "HKCU\\Software\\Microsoft\\Personalization\\Settings",
+    "name": "AcceptedPrivacyPolicy",
+    "type": "REG_DWORD",
+    "value": 0
+   },
+   {
+    "key": "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\DataCollection",
+    "name": "AllowTelemetry",
+    "type": "REG_DWORD",
+    "value": 0
+   },
+   {
+    "key": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced",
+    "name": "Start_TrackProgs",
+    "type": "REG_DWORD",
+    "value": 0
+   },
+   {
+    "key": "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\System",
+    "name": "PublishUserActivities",
+    "type": "REG_DWORD",
+    "value": 0
+   },
+   {
+    "key": "HKCU\\Software\\Microsoft\\Siuf\\Rules",
+    "name": "NumberOfSIUFInPeriod",
+    "type": "REG_DWORD",
+    "value": 0
+   }
+  ],
+  "svc": [],
+  "inv": "# Disable Defender Auto Sample Submission\n      Set-MpPreference -SubmitSamplesConsent 2\n\n      # Disable (Connected User Experiences and Telemetry) Service\n      Set-Service -Name diagtrack -StartupType Disabled\n\n      # Disable (Windows Error Reporting Manager) Service\n      Set-Service -Name wermgr -StartupType Disabled\n\n      # Disable PowerShell 7 telemetry\n      [Environment]::SetEnvironmentVariable('POWERSHELL_TELEMETRY_OPTOUT', '1', 'Machine')\n\n      Remove-ItemProperty -Path \"HKCU:\\Software\\Microsoft\\Siuf\\Rules\" -Name PeriodInNanoSeconds",
+  "undo": "# Enable Defender Auto Sample Submission\n      Set-MpPreference -SubmitSamplesConsent 1\n\n      # Enable (Connected User Experiences and Telemetry) Service\n      Set-Service -Name diagtrack -StartupType Automatic\n\n      # Enable (Windows Error Reporting Manager) Service\n      Set-Service -Name wermgr -StartupType Automatic\n\n      # Enable PowerShell 7 telemetry\n      [Environment]::SetEnvironmentVariable('POWERSHELL_TELEMETRY_OPTOUT', '', 'Machine')"
+ },
+ {
+  "id": "wu-delivery-optimization",
+  "src": "WPFTweaksDeliveryOptimization",
+  "tab": "wu-essential",
+  "reg": [
+   {
+    "key": "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\DeliveryOptimization",
+    "name": "DODownloadMode",
+    "type": "REG_DWORD",
+    "value": 0
+   }
+  ],
+  "svc": []
+ },
+ {
+  "id": "wu-remove-edge",
+  "src": "WPFTweaksRemoveEdge",
+  "tab": "wu-advanced",
+  "reg": [],
+  "svc": [],
+  "inv": "$Path = Resolve-Path -Path \"$Env:ProgramFiles (x86)\\Microsoft\\Edge\\Application\\*\\Installer\\setup.exe\" | Select-Object -Last 1\n\n      if (Test-Path $Path) {\n          New-Item -Path \"$Env:SystemRoot\\SystemApps\\Microsoft.MicrosoftEdge_8wekyb3d8bbwe\\MicrosoftEdge.exe\" -Force\n          Start-Process -FilePath $Path -ArgumentList \"--uninstall --system-level --force-uninstall --delete-profile\" -Wait\n          Write-Host \"Microsoft Edge was removed\"\n      } else {\n          Write-Host \"Microsoft Edge is not installed\"\n      }",
+  "undo": "Write-Host \"Installing Microsoft Edge...\"\n      winget install Microsoft.Edge --source winget"
+ },
+ {
+  "id": "wu-disable-bit-locker",
+  "src": "WPFTweaksDisableBitLocker",
+  "tab": "wu-essential",
+  "reg": [],
+  "svc": [],
+  "inv": "Disable-BitLocker -MountPoint $Env:SystemDrive",
+  "undo": "Enable-BitLocker -MountPoint $Env:SystemDrive"
+ },
+ {
+  "id": "wu-utc",
+  "src": "WPFTweaksUTC",
+  "tab": "wu-advanced",
+  "reg": [
+   {
+    "key": "HKLM\\SYSTEM\\CurrentControlSet\\Control\\TimeZoneInformation",
+    "name": "RealTimeIsUniversal",
+    "type": "REG_QWORD",
+    "value": 1,
+    "def": 0
+   }
+  ],
+  "svc": []
+ },
+ {
+  "id": "wu-remove-one-drive",
+  "src": "WPFTweaksRemoveOneDrive",
+  "tab": "wu-advanced",
+  "reg": [],
+  "svc": [],
+  "inv": "# Deny permission to remove OneDrive folder\n      icacls $Env:OneDrive /deny \"*S-1-5-32-544:(D,DC)\"\n\n      Write-Host \"Uninstalling OneDrive...\"\n      Start-Process -FilePath (Join-Path $Env:SystemRoot \"System32\\OneDriveSetup.exe\") -ArgumentList '/uninstall' -Wait\n\n      # Some of OneDrive files use explorer, and OneDrive uses FileCoAuth\n      Write-Host \"Removing leftover OneDrive Files...\"\n\n      Stop-Process -Name FileCoAuth,Explorer\n\n      Remove-Item \"$Env:LocalAppData\\Microsoft\\OneDrive\" -Recurse -Force\n      Remove-Item \"$Env:ProgramData\\Microsoft OneDrive\" -Recurse -Force\n\n      # Grant back permission to access OneDrive folder\n      icacls $Env:OneDrive /grant \"*S-1-5-32-544:(D,DC)\"\n\n      if (-not (Get-ChildItem -Path $Env:OneDrive)) {\n          Remove-Item -Path $Env:OneDrive -Recurse\n          [Environment]::SetEnvironmentVariable('OneDrive', $null, 'User')\n      }\n\n      # Disable OneSyncSvc\n      Set-Service -Name OneSyncSvc -StartupType Disabled",
+  "undo": "Write-Host \"Installing OneDrive\"\n      winget install Microsoft.Onedrive --source winget\n\n      # Enabled OneSyncSvc\n      Set-Service -Name OneSyncSvc -StartupType Automatic"
+ },
+ {
+  "id": "wu-remove-home-and-gallery",
+  "src": "WPFTweaksRemoveHomeAndGallery",
+  "tab": "wu-advanced",
+  "reg": [
+   {
+    "key": "HKCU\\Software\\Classes\\CLSID\\{f874310e-b6b7-47dc-bc84-b9e6b38f5903}",
+    "name": "System.IsPinnedToNameSpaceTree",
+    "type": "REG_DWORD",
+    "value": 0
+   },
+   {
+    "key": "HKCU\\Software\\Classes\\CLSID\\{e88865ea-0e1c-4e20-9aa6-edcd0212c87c}",
+    "name": "System.IsPinnedToNameSpaceTree",
+    "type": "REG_DWORD",
+    "value": 0
+   },
+   {
+    "key": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced",
+    "name": "LaunchTo",
+    "type": "REG_DWORD",
+    "value": 1
+   }
+  ],
+  "svc": []
+ },
+ {
+  "id": "wu-display",
+  "src": "WPFTweaksDisplay",
+  "tab": "wu-advanced",
+  "reg": [
+   {
+    "key": "HKCU\\Control Panel\\Desktop",
+    "name": "DragFullWindows",
+    "type": "REG_SZ",
+    "value": "0",
+    "def": "1"
+   },
+   {
+    "key": "HKCU\\Control Panel\\Desktop",
+    "name": "MenuShowDelay",
+    "type": "REG_SZ",
+    "value": "200",
+    "def": "400"
+   },
+   {
+    "key": "HKCU\\Control Panel\\Desktop\\WindowMetrics",
+    "name": "MinAnimate",
+    "type": "REG_SZ",
+    "value": "0",
+    "def": "1"
+   },
+   {
+    "key": "HKCU\\Control Panel\\Keyboard",
+    "name": "KeyboardDelay",
+    "type": "REG_DWORD",
+    "value": 0,
+    "def": 1
+   },
+   {
+    "key": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced",
+    "name": "ListviewAlphaSelect",
+    "type": "REG_DWORD",
+    "value": 0,
+    "def": 1
+   },
+   {
+    "key": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced",
+    "name": "ListviewShadow",
+    "type": "REG_DWORD",
+    "value": 0,
+    "def": 1
+   },
+   {
+    "key": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced",
+    "name": "TaskbarAnimations",
+    "type": "REG_DWORD",
+    "value": 0,
+    "def": 1
+   },
+   {
+    "key": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\VisualEffects",
+    "name": "VisualFXSetting",
+    "type": "REG_DWORD",
+    "value": 3,
+    "def": 1
+   },
+   {
+    "key": "HKCU\\Software\\Microsoft\\Windows\\DWM",
+    "name": "EnableAeroPeek",
+    "type": "REG_DWORD",
+    "value": 0,
+    "def": 1
+   },
+   {
+    "key": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced",
+    "name": "TaskbarMn",
+    "type": "REG_DWORD",
+    "value": 0,
+    "def": 1
+   },
+   {
+    "key": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced",
+    "name": "ShowTaskViewButton",
+    "type": "REG_DWORD",
+    "value": 0,
+    "def": 1
+   },
+   {
+    "key": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Search",
+    "name": "SearchboxTaskbarMode",
+    "type": "REG_DWORD",
+    "value": 0,
+    "def": 1
+   }
+  ],
+  "svc": [],
+  "inv": "Set-ItemProperty -Path \"HKCU:\\Control Panel\\Desktop\" -Name \"UserPreferencesMask\" -Type Binary -Value ([byte[]](144,18,3,128,16,0,0,0))",
+  "undo": "Remove-ItemProperty -Path \"HKCU:\\Control Panel\\Desktop\" -Name \"UserPreferencesMask\""
+ },
+ {
+  "id": "wu-reserved-storage",
+  "src": "WPFTweaksReservedStorage",
+  "tab": "wu-advanced",
+  "reg": [],
+  "svc": [],
+  "inv": "DISM /Online /Set-ReservedStorageState /State:Disabled",
+  "undo": "DISM /Online /Set-ReservedStorageState /State:Enabled"
+ },
+ {
+  "id": "wu-restore-point",
+  "src": "WPFTweaksRestorePoint",
+  "tab": "wu-essential",
+  "reg": [
+   {
+    "key": "HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\SystemRestore",
+    "name": "SystemRestorePointCreationFrequency",
+    "type": "REG_DWORD",
+    "value": 0,
+    "def": 1440
+   }
+  ],
+  "svc": [],
+  "inv": "if (-not (Get-ComputerRestorePoint)) {\n          Enable-ComputerRestore -Drive $Env:SystemDrive\n      }\n\n      Checkpoint-Computer -Description \"System Restore Point created by WinUtil\" -RestorePointType MODIFY_SETTINGS\n      Write-Host \"System Restore Point Created Successfully\" -ForegroundColor Green"
+ },
+ {
+  "id": "wu-end-task-on-taskbar",
+  "src": "WPFTweaksEndTaskOnTaskbar",
+  "tab": "wu-essential",
+  "reg": [
+   {
+    "key": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced\\TaskbarDeveloperSettings",
+    "name": "TaskbarEndTask",
+    "type": "REG_DWORD",
+    "value": 1
+   }
+  ],
+  "svc": []
+ },
+ {
+  "id": "wu-storage",
+  "src": "WPFTweaksStorage",
+  "tab": "wu-advanced",
+  "reg": [
+   {
+    "key": "HKCU\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\StorageSense\\Parameters\\StoragePolicy",
+    "name": "01",
+    "type": "REG_DWORD",
+    "value": 0,
+    "def": 1
+   }
+  ],
+  "svc": []
+ },
+ {
+  "id": "wu-windows-ai",
+  "src": "WPFTweaksWindowsAI",
+  "tab": "wu-advanced",
+  "reg": [
+   {
+    "key": "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer",
+    "name": "SettingsPageVisibility",
+    "type": "REG_SZ",
+    "value": "hide:aicomponents"
+   },
+   {
+    "key": "HKLM\\SOFTWARE\\Policies\\WindowsNotepad",
+    "name": "DisableAIFeatures",
+    "type": "REG_DWORD",
+    "value": 1
+   }
+  ],
+  "svc": [],
+  "inv": "$Appx = (Get-AppxPackage MicrosoftWindows.Client.CoreAI).PackageFullName\n      $Sid = (Get-LocalUser $Env:UserName).Sid.Value\n\n      New-Item \"HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Appx\\AppxAllUserStore\\EndOfLife\\$Sid\\$Appx\" -Force\n\n      Get-AppxPackage -AllUsers \"*Copilot*\" | Remove-AppxPackage -AllUsers\n      winget uninstall -e --name \"Copilot\" --silent --force --accept-source-agreements 2>$null\n      Get-AppxPackage -AllUsers Microsoft.MicrosoftOfficeHub | Remove-AppxPackage -AllUsers\n\n      if ($Appx) {\n          Remove-AppxPackage $Appx\n      }\n\n      Set-Service -Name WSAIFabricSvc -StartupType Disabled\n      Disable-WindowsOptionalFeature -FeatureName Recall -Online -NoRestart\n\n      Write-Host \"Windows AI Disabled\""
+ },
+ {
+  "id": "wu-wpbt",
+  "src": "WPFTweaksWPBT",
+  "tab": "wu-essential",
+  "reg": [
+   {
+    "key": "HKLM\\SYSTEM\\CurrentControlSet\\Control\\Session Manager",
+    "name": "DisableWpbtExecution",
+    "type": "REG_DWORD",
+    "value": 1
+   }
+  ],
+  "svc": []
+ },
+ {
+  "id": "wu-prevent-device-metadata-from-network",
+  "src": "WPFTweaksPreventDeviceMetadataFromNetwork",
+  "tab": "wu-essential",
+  "reg": [
+   {
+    "key": "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\Device Metadata",
+    "name": "PreventDeviceMetadataFromNetwork",
+    "type": "REG_DWORD",
+    "value": 1
+   }
+  ],
+  "svc": []
+ },
+ {
+  "id": "wu-razer-block",
+  "src": "WPFTweaksRazerBlock",
+  "tab": "wu-advanced",
+  "reg": [
+   {
+    "key": "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\DriverSearching",
+    "name": "SearchOrderConfig",
+    "type": "REG_DWORD",
+    "value": 0,
+    "def": 1
+   },
+   {
+    "key": "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Device Installer",
+    "name": "DisableCoInstallers",
+    "type": "REG_DWORD",
+    "value": 1,
+    "def": 0
+   }
+  ],
+  "svc": [],
+  "inv": "$RazerPath = \"$Env:SystemRoot\\Installer\\Razer\"\n\n      if (Test-Path $RazerPath) {\n        Remove-Item $RazerPath\\* -Recurse -Force\n      } else {\n        New-Item -Path $RazerPath -ItemType Directory\n      }\n\n      icacls $RazerPath /deny \"*S-1-1-0:(W)\"",
+  "undo": "icacls \"$Env:SystemRoot\\Installer\\Razer\" /remove:d *S-1-1-0"
+ },
+ {
+  "id": "wu-logi-block",
+  "src": "WPFTweaksLogiBlock",
+  "tab": "wu-advanced",
+  "reg": [],
+  "svc": [],
+  "inv": "Stop-Process -Name \"logi_download_assistant\" -Force -ErrorAction SilentlyContinue\n\n      $ProgramFiles64 = if ($Env:ProgramW6432) { $Env:ProgramW6432 } else { $Env:ProgramFiles }\n      $LogiPath = \"$ProgramFiles64\\LogiDownloadAssistant\"\n\n      if (Test-Path $LogiPath) {\n        Remove-Item $LogiPath\\* -Recurse -Force\n      } else {\n        New-Item -Path $LogiPath -ItemType Directory\n      }\n\n      icacls $LogiPath /deny \"*S-1-1-0:(W)\"\n      if ($LASTEXITCODE -ne 0) { throw \"icacls failed to deny write access on $LogiPath (exit code $LASTEXITCODE)\" }",
+  "undo": "$ProgramFiles64 = if ($Env:ProgramW6432) { $Env:ProgramW6432 } else { $Env:ProgramFiles }\n      $LogiPath = \"$ProgramFiles64\\LogiDownloadAssistant\"\n\n      if (Test-Path $LogiPath) {\n        icacls $LogiPath /remove:d \"*S-1-1-0\"\n        if ($LASTEXITCODE -ne 0) { throw \"icacls failed to remove the write-deny rule on $LogiPath (exit code $LASTEXITCODE)\" }\n      }"
+ },
+ {
+  "id": "wu-disable-notifications",
+  "src": "WPFTweaksDisableNotifications",
+  "tab": "wu-advanced",
+  "reg": [
+   {
+    "key": "HKCU\\Software\\Policies\\Microsoft\\Windows\\Explorer",
+    "name": "DisableNotificationCenter",
+    "type": "REG_DWORD",
+    "value": 1
+   },
+   {
+    "key": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\PushNotifications",
+    "name": "ToastEnabled",
+    "type": "REG_DWORD",
+    "value": 0,
+    "def": 1
+   }
+  ],
+  "svc": []
+ },
+ {
+  "id": "wu-block-adobe-net",
+  "src": "WPFTweaksBlockAdobeNet",
+  "tab": "wu-advanced",
+  "reg": [],
+  "svc": [],
+  "inv": "$hostsUrl = Invoke-RestMethod -Uri https://github.com/Ruddernation-Designs/Adobe-URL-Block-List/raw/refs/heads/master/hosts\n      Add-Content -Path \"$Env:SystemRoot\\System32\\drivers\\etc\\hosts\" -Value $hostsUrl\n\n      ipconfig /flushdns\n      Write-Host 'Added Adobe url block list from host file'",
+  "undo": "Set-Content \"$Env:SystemRoot\\System32\\drivers\\etc\\hosts\" (\n          (Get-Content \"$Env:SystemRoot\\System32\\drivers\\etc\\hosts\") -join \"`n\" -replace '(?s)#New Ver.*', ''\n      )\n\n      ipconfig /flushdns\n      Write-Host 'Removed Adobe url block list from host file'"
+ },
+ {
+  "id": "wu-right-click-menu",
+  "src": "WPFTweaksRightClickMenu",
+  "tab": "wu-advanced",
+  "reg": [],
+  "svc": [],
+  "inv": "New-Item -Path \"HKCU:\\Software\\Classes\\CLSID\\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\" -Name InprocServer32 -Value \"\" -Force\n      Stop-Process -Name explorer",
+  "undo": "Remove-Item -Path \"HKCU:\\Software\\Classes\\CLSID\\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\" -Recurse"
+ },
+ {
+  "id": "wu-disk-cleanup",
+  "src": "WPFTweaksDiskCleanup",
+  "tab": "wu-essential",
+  "reg": [],
+  "svc": [],
+  "inv": "cleanmgr.exe /d C: /VERYLOWDISK\n      Dism.exe /online /Cleanup-Image /StartComponentCleanup /ResetBase"
+ },
+ {
+  "id": "wu-delete-temp-files",
+  "src": "WPFTweaksDeleteTempFiles",
+  "tab": "wu-essential",
+  "reg": [],
+  "svc": [],
+  "inv": "# A temp folder always holds files something has open, including this run's own, and\n      # the job layer counts a logged error as a failed step\n      Remove-Item -Path \"$Env:Temp\\*\" -Recurse -Force -ErrorAction SilentlyContinue\n      Remove-Item -Path \"$Env:SystemRoot\\Temp\\*\" -Recurse -Force -ErrorAction SilentlyContinue"
+ },
+ {
+  "id": "wu-ipv46",
+  "src": "WPFTweaksIPv46",
+  "tab": "wu-advanced",
+  "reg": [
+   {
+    "key": "HKLM\\SYSTEM\\CurrentControlSet\\Services\\Tcpip6\\Parameters",
+    "name": "DisabledComponents",
+    "type": "REG_DWORD",
+    "value": 32,
+    "def": 0
+   }
+  ],
+  "svc": []
+ },
+ {
+  "id": "wu-teredo",
+  "src": "WPFTweaksTeredo",
+  "tab": "wu-advanced",
+  "reg": [
+   {
+    "key": "HKLM\\SYSTEM\\CurrentControlSet\\Services\\Tcpip6\\Parameters",
+    "name": "DisabledComponents",
+    "type": "REG_DWORD",
+    "value": 1,
+    "def": 0
+   }
+  ],
+  "svc": [],
+  "inv": "netsh interface teredo set state disabled",
+  "undo": "netsh interface teredo set state default"
+ },
+ {
+  "id": "wu-disable-ipv6",
+  "src": "WPFTweaksDisableIPv6",
+  "tab": "wu-advanced",
+  "reg": [
+   {
+    "key": "HKLM\\SYSTEM\\CurrentControlSet\\Services\\Tcpip6\\Parameters",
+    "name": "DisabledComponents",
+    "type": "REG_DWORD",
+    "value": 255,
+    "def": 0
+   }
+  ],
+  "svc": [],
+  "inv": "Disable-NetAdapterBinding -Name * -ComponentID ms_tcpip6",
+  "undo": "Enable-NetAdapterBinding -Name * -ComponentID ms_tcpip6"
+ },
+ {
+  "id": "wu-disable-bgapps",
+  "src": "WPFTweaksDisableBGapps",
+  "tab": "wu-advanced",
+  "reg": [
+   {
+    "key": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\BackgroundAccessApplications",
+    "name": "GlobalUserDisabled",
+    "type": "REG_DWORD",
+    "value": 1,
+    "def": 0
+   }
+  ],
+  "svc": []
+ },
+ {
+  "id": "wu-disable-explorer-auto-discovery",
+  "src": "WPFTweaksDisableExplorerAutoDiscovery",
+  "tab": "wu-essential",
+  "reg": [],
+  "svc": [],
+  "inv": "# Previously detected folders\n      $bags = \"HKCU:\\Software\\Classes\\Local Settings\\Software\\Microsoft\\Windows\\Shell\\Bags\"\n\n      # Folder types lookup table\n      $bagMRU = \"HKCU:\\Software\\Classes\\Local Settings\\Software\\Microsoft\\Windows\\Shell\\BagMRU\"\n\n      # Flush Explorer view database\n      Remove-Item -Path $bags -Recurse -Force\n      Write-Host \"Removed $bags\"\n\n      Remove-Item -Path $bagMRU -Recurse -Force\n      Write-Host \"Removed $bagMRU\"\n\n      # Every folder\n      $allFolders = \"HKCU:\\Software\\Classes\\Local Settings\\Software\\Microsoft\\Windows\\Shell\\Bags\\AllFolders\\Shell\"\n\n      if (!(Test-Path $allFolders)) {\n        New-Item -Path $allFolders -Force\n        Write-Host \"Created $allFolders\"\n      }\n\n      # Generic view\n      New-ItemProperty -Path $allFolders -Name \"FolderType\" -Value \"NotSpecified\" -PropertyType String -Force\n      Write-Host \"Set FolderType to NotSpecified\"\n\n      Write-Host Please sign out and back in, or restart your computer to apply the changes!",
+  "undo": "# Previously detected folders\n      $bags = \"HKCU:\\Software\\Classes\\Local Settings\\Software\\Microsoft\\Windows\\Shell\\Bags\"\n\n      # Folder types lookup table\n      $bagMRU = \"HKCU:\\Software\\Classes\\Local Settings\\Software\\Microsoft\\Windows\\Shell\\BagMRU\"\n\n      # Flush Explorer view database\n      Remove-Item -Path $bags -Recurse -Force\n      Write-Host \"Removed $bags\"\n\n      Remove-Item -Path $bagMRU -Recurse -Force\n      Write-Host \"Removed $bagMRU\"\n\n      Write-Host Please sign out and back in, or restart your computer to apply the changes!"
+ },
+ {
+  "id": "wu-detailed-bso-d",
+  "src": "WPFToggleDetailedBSoD",
+  "tab": "wu-prefs",
+  "reg": [
+   {
+    "key": "HKLM\\SYSTEM\\CurrentControlSet\\Control\\CrashControl",
+    "name": "DisplayParameters",
+    "type": "REG_DWORD",
+    "value": 1,
+    "def": 0
+   },
+   {
+    "key": "HKLM\\SYSTEM\\CurrentControlSet\\Control\\CrashControl",
+    "name": "DisableEmoticon",
+    "type": "REG_DWORD",
+    "value": 1,
+    "def": 0
+   }
+  ],
+  "svc": []
+ },
+ {
+  "id": "wu-battery-percentage",
+  "src": "WPFToggleBatteryPercentage",
+  "tab": "wu-prefs",
+  "reg": [
+   {
+    "key": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced",
+    "name": "IsBatteryPercentageEnabled",
+    "type": "REG_DWORD",
+    "value": 1
+   }
+  ],
+  "svc": []
+ },
+ {
+  "id": "wu-dark-mode",
+  "src": "WPFToggleDarkMode",
+  "tab": "wu-prefs",
+  "reg": [
+   {
+    "key": "HKCU\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize",
+    "name": "AppsUseLightTheme",
+    "type": "REG_DWORD",
+    "value": 0,
+    "def": 1
+   },
+   {
+    "key": "HKCU\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize",
+    "name": "SystemUsesLightTheme",
+    "type": "REG_DWORD",
+    "value": 0,
+    "def": 1
+   }
+  ],
+  "svc": [],
+  "inv": "Invoke-WinUtilExplorerUpdate\n      if ($sync.ThemeButton.Content -eq [char]0xF08C) {\n        Invoke-WinutilThemeChange -theme \"Auto\"\n      }",
+  "undo": "Invoke-WinUtilExplorerUpdate\n      if ($sync.ThemeButton.Content -eq [char]0xF08C) {\n        Invoke-WinutilThemeChange -theme \"Auto\"\n      }"
+ },
+ {
+  "id": "wu-show-ext",
+  "src": "WPFToggleShowExt",
+  "tab": "wu-prefs",
+  "reg": [
+   {
+    "key": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced",
+    "name": "HideFileExt",
+    "type": "REG_DWORD",
+    "value": 0,
+    "def": 1
+   }
+  ],
+  "svc": [],
+  "inv": "Invoke-WinUtilExplorerUpdate -action \"restart\"",
+  "undo": "Invoke-WinUtilExplorerUpdate -action \"restart\""
+ },
+ {
+  "id": "wu-hidden-files",
+  "src": "WPFToggleHiddenFiles",
+  "tab": "wu-prefs",
+  "reg": [
+   {
+    "key": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced",
+    "name": "Hidden",
+    "type": "REG_DWORD",
+    "value": 1,
+    "def": 0
+   }
+  ],
+  "svc": [],
+  "inv": "Invoke-WinUtilExplorerUpdate -action \"restart\"",
+  "undo": "Invoke-WinUtilExplorerUpdate -action \"restart\""
+ },
+ {
+  "id": "wu-verbose-logon",
+  "src": "WPFToggleVerboseLogon",
+  "tab": "wu-prefs",
+  "reg": [
+   {
+    "key": "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System",
+    "name": "VerboseStatus",
+    "type": "REG_DWORD",
+    "value": 1,
+    "def": 0
+   }
+  ],
+  "svc": []
+ },
+ {
+  "id": "wu-new-outlook",
+  "src": "WPFToggleNewOutlook",
+  "tab": "wu-prefs",
+  "reg": [
+   {
+    "key": "HKCU\\SOFTWARE\\Microsoft\\Office\\16.0\\Outlook\\Preferences",
+    "name": "UseNewOutlook",
+    "type": "REG_DWORD",
+    "value": 1,
+    "def": 0
+   },
+   {
+    "key": "HKCU\\Software\\Microsoft\\Office\\16.0\\Outlook\\Options\\General",
+    "name": "HideNewOutlookToggle",
+    "type": "REG_DWORD",
+    "value": 0,
+    "def": 1
+   },
+   {
+    "key": "HKCU\\Software\\Policies\\Microsoft\\Office\\16.0\\Outlook\\Options\\General",
+    "name": "DoNewOutlookAutoMigration",
+    "type": "REG_DWORD",
+    "value": 0,
+    "def": 0
+   },
+   {
+    "key": "HKCU\\Software\\Policies\\Microsoft\\Office\\16.0\\Outlook\\Preferences",
+    "name": "NewOutlookMigrationUserSetting",
+    "type": "REG_DWORD",
+    "value": 0
+   }
+  ],
+  "svc": []
+ },
+ {
+  "id": "wu-scrollbars",
+  "src": "WPFToggleScrollbars",
+  "tab": "wu-prefs",
+  "reg": [
+   {
+    "key": "HKCU\\Control Panel\\Accessibility",
+    "name": "DynamicScrollbars",
+    "type": "REG_DWORD",
+    "value": 0,
+    "def": 1
+   }
+  ],
+  "svc": []
+ },
+ {
+  "id": "wu-mouse-acceleration",
+  "src": "WPFToggleMouseAcceleration",
+  "tab": "wu-prefs",
+  "reg": [
+   {
+    "key": "HKCU\\Control Panel\\Mouse",
+    "name": "MouseSpeed",
+    "type": "REG_DWORD",
+    "value": 1,
+    "def": 0
+   },
+   {
+    "key": "HKCU\\Control Panel\\Mouse",
+    "name": "MouseThreshold1",
+    "type": "REG_DWORD",
+    "value": 6,
+    "def": 0
+   },
+   {
+    "key": "HKCU\\Control Panel\\Mouse",
+    "name": "MouseThreshold2",
+    "type": "REG_DWORD",
+    "value": 10,
+    "def": 0
+   }
+  ],
+  "svc": []
+ },
+ {
+  "id": "wu-num-lock",
+  "src": "WPFToggleNumLock",
+  "tab": "wu-prefs",
+  "reg": [
+   {
+    "key": "HKU\\.Default\\Control Panel\\Keyboard",
+    "name": "InitialKeyboardIndicators",
+    "type": "REG_SZ",
+    "value": "2",
+    "def": "0"
+   },
+   {
+    "key": "HKCU\\Control Panel\\Keyboard",
+    "name": "InitialKeyboardIndicators",
+    "type": "REG_SZ",
+    "value": "2",
+    "def": "0"
+   }
+  ],
+  "svc": []
+ },
+ {
+  "id": "wu-window-snapping",
+  "src": "WPFToggleWindowSnapping",
+  "tab": "wu-prefs",
+  "reg": [
+   {
+    "key": "HKCU\\Control Panel\\Desktop",
+    "name": "WindowArrangementActive",
+    "type": "REG_SZ",
+    "value": "1",
+    "def": "0"
+   }
+  ],
+  "svc": []
+ },
+ {
+  "id": "wu-standby-fix",
+  "src": "WPFToggleStandbyFix",
+  "tab": "wu-prefs",
+  "reg": [
+   {
+    "key": "HKCU\\SOFTWARE\\Policies\\Microsoft\\Power\\PowerSettings\\f15576e8-98b7-4186-b944-eafa664402d9",
+    "name": "ACSettingIndex",
+    "type": "REG_DWORD",
+    "value": 1,
+    "def": 0
+   }
+  ],
+  "svc": []
+ },
+ {
+  "id": "wu-s3-sleep",
+  "src": "WPFToggleS3Sleep",
+  "tab": "wu-prefs",
+  "reg": [
+   {
+    "key": "HKLM\\SYSTEM\\CurrentControlSet\\Control\\Power",
+    "name": "PlatformAoAcOverride",
+    "type": "REG_DWORD",
+    "value": 0
+   }
+  ],
+  "svc": []
+ },
+ {
+  "id": "wu-hide-settings-home",
+  "src": "WPFToggleHideSettingsHome",
+  "tab": "wu-prefs",
+  "reg": [
+   {
+    "key": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer",
+    "name": "SettingsPageVisibility",
+    "type": "REG_SZ",
+    "value": "show:home",
+    "def": "hide:home"
+   }
+  ],
+  "svc": []
+ },
+ {
+  "id": "wu-bing-search",
+  "src": "WPFToggleBingSearch",
+  "tab": "wu-prefs",
+  "reg": [
+   {
+    "key": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Search",
+    "name": "BingSearchEnabled",
+    "type": "REG_DWORD",
+    "value": 1,
+    "def": 0
+   }
+  ],
+  "svc": []
+ },
+ {
+  "id": "wu-login-blur",
+  "src": "WPFToggleLoginBlur",
+  "tab": "wu-prefs",
+  "reg": [
+   {
+    "key": "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\System",
+    "name": "DisableAcrylicBackgroundOnLogon",
+    "type": "REG_DWORD",
+    "value": 0,
+    "def": 1
+   }
+  ],
+  "svc": []
+ },
+ {
+  "id": "wu-disable-lockscreen",
+  "src": "WPFToggleDisableLockscreen",
+  "tab": "wu-prefs",
+  "reg": [
+   {
+    "key": "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\Personalization",
+    "name": "NoLockScreen",
+    "type": "REG_DWORD",
+    "value": 1
+   }
+  ],
+  "svc": []
+ },
+ {
+  "id": "wu-start-menu-recommendations",
+  "src": "WPFToggleStartMenuRecommendations",
+  "tab": "wu-prefs",
+  "reg": [
+   {
+    "key": "HKLM\\SOFTWARE\\Microsoft\\PolicyManager\\current\\device\\Start",
+    "name": "HideRecommendedSection",
+    "type": "REG_DWORD",
+    "value": 0,
+    "def": 1
+   },
+   {
+    "key": "HKLM\\SOFTWARE\\Microsoft\\PolicyManager\\current\\device\\Education",
+    "name": "IsEducationEnvironment",
+    "type": "REG_DWORD",
+    "value": 0,
+    "def": 1
+   },
+   {
+    "key": "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\Explorer",
+    "name": "HideRecommendedSection",
+    "type": "REG_DWORD",
+    "value": 0,
+    "def": 1
+   }
+  ],
+  "svc": [],
+  "inv": "Invoke-WinUtilExplorerUpdate -action \"restart\"",
+  "undo": "Invoke-WinUtilExplorerUpdate -action \"restart\""
+ },
+ {
+  "id": "wu-sticky-keys",
+  "src": "WPFToggleStickyKeys",
+  "tab": "wu-prefs",
+  "reg": [
+   {
+    "key": "HKCU\\Control Panel\\Accessibility\\StickyKeys",
+    "name": "Flags",
+    "type": "REG_DWORD",
+    "value": 506,
+    "def": 58
+   }
+  ],
+  "svc": []
+ },
+ {
+  "id": "wu-taskbar-alignment",
+  "src": "WPFToggleTaskbarAlignment",
+  "tab": "wu-prefs",
+  "reg": [
+   {
+    "key": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced",
+    "name": "TaskbarAl",
+    "type": "REG_DWORD",
+    "value": 1,
+    "def": 0
+   }
+  ],
+  "svc": [],
+  "inv": "Invoke-WinUtilExplorerUpdate -action \"restart\"",
+  "undo": "Invoke-WinUtilExplorerUpdate -action \"restart\""
+ },
+ {
+  "id": "wu-taskbar-search",
+  "src": "WPFToggleTaskbarSearch",
+  "tab": "wu-prefs",
+  "reg": [
+   {
+    "key": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Search",
+    "name": "SearchboxTaskbarMode",
+    "type": "REG_DWORD",
+    "value": 1,
+    "def": 0
+   }
+  ],
+  "svc": []
+ },
+ {
+  "id": "wu-task-view",
+  "src": "WPFToggleTaskView",
+  "tab": "wu-prefs",
+  "reg": [
+   {
+    "key": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced",
+    "name": "ShowTaskViewButton",
+    "type": "REG_DWORD",
+    "value": 1,
+    "def": 0
+   }
+  ],
+  "svc": []
+ },
+ {
+  "id": "wu-game-mode",
+  "src": "WPFToggleGameMode",
+  "tab": "wu-prefs",
+  "reg": [
+   {
+    "key": "HKCU\\Software\\Microsoft\\GameBar",
+    "name": "AllowAutoGameMode",
+    "type": "REG_DWORD",
+    "value": 1,
+    "def": 0
+   },
+   {
+    "key": "HKCU\\Software\\Microsoft\\GameBar",
+    "name": "AutoGameModeEnabled",
+    "type": "REG_DWORD",
+    "value": 1,
+    "def": 0
+   }
+  ],
+  "svc": []
+ },
+ {
+  "id": "wu-long-paths",
+  "src": "WPFToggleLongPaths",
+  "tab": "wu-prefs",
+  "reg": [
+   {
+    "key": "HKLM\\SYSTEM\\CurrentControlSet\\Control\\FileSystem",
+    "name": "LongPathsEnabled",
+    "type": "REG_DWORD",
+    "value": 1,
+    "def": 0
+   }
+  ],
+  "svc": []
+ }
+];
+export const WU_FEATURES: WuFeature[] = [
+ {
+  "id": "wuf-dotnet",
+  "feature": [
+   "NetFx4-AdvSrvs",
+   "NetFx3"
+  ]
+ },
+ {
+  "id": "wuf-hyperv",
+  "feature": [
+   "Microsoft-Hyper-V-All"
+  ]
+ },
+ {
+  "id": "wuf-legacymedia",
+  "feature": [
+   "WindowsMediaPlayer",
+   "MediaPlayback",
+   "DirectPlay",
+   "LegacyComponents"
+  ]
+ },
+ {
+  "id": "wuf-wsl",
+  "feature": [
+   "VirtualMachinePlatform",
+   "Microsoft-Windows-Subsystem-Linux"
+  ]
+ },
+ {
+  "id": "wuf-nfs",
+  "feature": [
+   "ServicesForNFS-ClientOnly",
+   "ClientForNFS-Infrastructure",
+   "NFS-Administration"
+  ],
+  "inv": "nfsadmin client stop\nSet-ItemProperty -Path 'HKLM:\\SOFTWARE\\Microsoft\\ClientForNFS\\CurrentVersion\\Default' -Name 'AnonymousUID' -Type DWord -Value 0\nSet-ItemProperty -Path 'HKLM:\\SOFTWARE\\Microsoft\\ClientForNFS\\CurrentVersion\\Default' -Name 'AnonymousGID' -Type DWord -Value 0\nnfsadmin client start\nnfsadmin client localhost config fileaccess=755 SecFlavors=+sys -krb5 -krb5i"
+ },
+ {
+  "id": "wuf-reg-backup",
+  "feature": [],
+  "inv": "New-ItemProperty -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Configuration Manager' -Name 'EnablePeriodicBackup' -Type DWord -Value 1 -Force\n      New-ItemProperty -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Configuration Manager' -Name 'BackupCount' -Type DWord -Value 2 -Force\n      $action = New-ScheduledTaskAction -Execute 'schtasks' -Argument '/run /i /tn \"\\Microsoft\\Windows\\Registry\\RegIdleBackup\"'\n      $trigger = New-ScheduledTaskTrigger -Daily -At 00:30\n      Register-ScheduledTask -Action $action -Trigger $trigger -TaskName 'AutoRegBackup' -Description 'Create System Registry Backups' -User 'System'"
+ },
+ {
+  "id": "wuf-enable-legacy-recovery",
+  "feature": [],
+  "inv": "bcdedit /set bootmenupolicy legacy"
+ },
+ {
+  "id": "wuf-disable-legacy-recovery",
+  "feature": [],
+  "inv": "bcdedit /set bootmenupolicy standard"
+ },
+ {
+  "id": "wuf-sandbox",
+  "feature": [
+   "Containers-DisposableClientVM"
+  ]
+ }
+];
+export const WU_DNS: WuDns[] = [
+ {
+  "name": "Google",
+  "primary": "8.8.8.8",
+  "secondary": "8.8.4.4",
+  "primary6": "2001:4860:4860::8888",
+  "secondary6": "2001:4860:4860::8844",
+  "doh": "https://dns.google/dns-query"
+ },
+ {
+  "name": "Cloudflare",
+  "primary": "1.1.1.1",
+  "secondary": "1.0.0.1",
+  "primary6": "2606:4700:4700::1111",
+  "secondary6": "2606:4700:4700::1001",
+  "doh": "https://cloudflare-dns.com/dns-query"
+ },
+ {
+  "name": "Cloudflare_Malware",
+  "primary": "1.1.1.2",
+  "secondary": "1.0.0.2",
+  "primary6": "2606:4700:4700::1112",
+  "secondary6": "2606:4700:4700::1002",
+  "doh": "https://security.cloudflare-dns.com/dns-query"
+ },
+ {
+  "name": "Cloudflare_Malware_Adult",
+  "primary": "1.1.1.3",
+  "secondary": "1.0.0.3",
+  "primary6": "2606:4700:4700::1113",
+  "secondary6": "2606:4700:4700::1003",
+  "doh": "https://family.cloudflare-dns.com/dns-query"
+ },
+ {
+  "name": "Open_DNS",
+  "primary": "208.67.222.222",
+  "secondary": "208.67.220.220",
+  "primary6": "2620:119:35::35",
+  "secondary6": "2620:119:53::53",
+  "doh": "https://doh.opendns.com/dns-query"
+ },
+ {
+  "name": "Quad9",
+  "primary": "9.9.9.9",
+  "secondary": "149.112.112.112",
+  "primary6": "2620:fe::fe",
+  "secondary6": "2620:fe::9",
+  "doh": "https://dns.quad9.net/dns-query"
+ },
+ {
+  "name": "AdGuard_Ads_Trackers",
+  "primary": "94.140.14.14",
+  "secondary": "94.140.15.15",
+  "primary6": "2a10:50c0::ad1:ff",
+  "secondary6": "2a10:50c0::ad2:ff",
+  "doh": "https://dns.adguard-dns.com/dns-query"
+ },
+ {
+  "name": "AdGuard_Ads_Trackers_Malware_Adult",
+  "primary": "94.140.14.15",
+  "secondary": "94.140.15.16",
+  "primary6": "2a10:50c0::bad1:ff",
+  "secondary6": "2a10:50c0::bad2:ff",
+  "doh": "https://family.adguard-dns.com/dns-query"
+ }
+];
+export const WU_APPX: WuAppx[] = [
+ {
+  "id": "wua-microsoft-outlook-for-windows",
+  "pkg": "Microsoft.OutlookForWindows",
+  "store": "9NRX63209R7B",
+  "cat": "Microsoft Apps"
+ },
+ {
+  "id": "wua-msteams",
+  "pkg": "MSTeams",
+  "store": "XP8BT8DW290MPQ",
+  "cat": "Microsoft Apps"
+ },
+ {
+  "id": "wua-clipchamp-clipchamp",
+  "pkg": "Clipchamp.Clipchamp",
+  "store": "9P1J8S7CCWWT",
+  "cat": "Utilities & Productivity"
+ },
+ {
+  "id": "wua-microsoft-bing-search",
+  "pkg": "Microsoft.BingSearch",
+  "store": "9NZBF4GT040C",
+  "cat": "Bing & Web Services"
+ },
+ {
+  "id": "wua-microsoft-corporation-ii-quick-assist",
+  "pkg": "MicrosoftCorporationII.QuickAssist",
+  "store": "9P7BP5VNWKX5",
+  "cat": "Utilities & Productivity"
+ },
+ {
+  "id": "wua-microsoft-windows-dev-home",
+  "pkg": "Microsoft.Windows.DevHome",
+  "store": "9N8MHTPHNGVV",
+  "cat": "Developer Tools"
+ },
+ {
+  "id": "wua-microsoft-windows-cross-device",
+  "pkg": "MicrosoftWindows.CrossDevice",
+  "store": "9NTXGKQ8P7N0",
+  "cat": "Microsoft Ecosystem"
+ },
+ {
+  "id": "wua-microsoft-todos",
+  "pkg": "Microsoft.Todos",
+  "store": "9NBLGGH5R558",
+  "cat": "Utilities & Productivity"
+ },
+ {
+  "id": "wua-microsoft-power-automate-desktop",
+  "pkg": "Microsoft.PowerAutomateDesktop",
+  "store": "9NFTCH6J7FHV",
+  "cat": "Developer Tools"
+ },
+ {
+  "id": "wua-microsoft-microsoft-sticky-notes",
+  "pkg": "Microsoft.MicrosoftStickyNotes",
+  "store": "9NBLGGH4QGHW",
+  "cat": "Utilities & Productivity"
+ },
+ {
+  "id": "wua-microsoft-windows-sound-recorder",
+  "pkg": "Microsoft.WindowsSoundRecorder",
+  "store": "9WZDNCRFHWKN",
+  "cat": "Utilities & Productivity"
+ },
+ {
+  "id": "wua-microsoft-windows-alarms",
+  "pkg": "Microsoft.WindowsAlarms",
+  "store": "9WZDNCRFJ3PR",
+  "cat": "Utilities & Productivity"
+ },
+ {
+  "id": "wua-microsoft-paint",
+  "pkg": "Microsoft.Paint",
+  "store": "9PCFS5B6T72H",
+  "cat": "Utilities & Productivity"
+ },
+ {
+  "id": "wua-microsoft-windows-notepad",
+  "pkg": "Microsoft.WindowsNotepad",
+  "store": "9MSMLRH6LZF3",
+  "cat": "Utilities & Productivity"
+ },
+ {
+  "id": "wua-microsoft-screen-sketch",
+  "pkg": "Microsoft.ScreenSketch",
+  "store": "9MZ95KL8MR0L",
+  "cat": "Utilities & Productivity"
+ },
+ {
+  "id": "wua-microsoft-copilot",
+  "pkg": "Microsoft.Copilot",
+  "store": "9NHT9RB2F4HD",
+  "cat": "Bing & Web Services"
+ },
+ {
+  "id": "wua-microsoft-windows-calculator",
+  "pkg": "Microsoft.WindowsCalculator",
+  "store": "9WZDNCRFHVN5",
+  "cat": "Utilities & Productivity"
+ },
+ {
+  "id": "wua-microsoft-windows-camera",
+  "pkg": "Microsoft.WindowsCamera",
+  "store": "9WZDNCRFJBBG",
+  "cat": "Utilities & Productivity"
+ },
+ {
+  "id": "wua-microsoft-windows-photos",
+  "pkg": "Microsoft.Windows.Photos",
+  "store": "9WZDNCRFJBH4",
+  "cat": "Utilities & Productivity"
+ },
+ {
+  "id": "wua-microsoft-gaming-app",
+  "pkg": "Microsoft.GamingApp",
+  "store": "9MV0B5HZVK9Z",
+  "cat": "Xbox & Gaming"
+ },
+ {
+  "id": "wua-microsoft-xbox-gaming-overlay",
+  "pkg": "Microsoft.XboxGamingOverlay",
+  "store": "9NZKPSTSNW4P",
+  "cat": "Xbox & Gaming"
+ },
+ {
+  "id": "wua-microsoft-xbox-identity-provider",
+  "pkg": "Microsoft.XboxIdentityProvider",
+  "store": "9WZDNCRD1HKW",
+  "cat": "Xbox & Gaming"
+ },
+ {
+  "id": "wua-microsoft-xbox-speech-to-text-overlay",
+  "pkg": "Microsoft.XboxSpeechToTextOverlay",
+  "cat": "Xbox & Gaming"
+ },
+ {
+  "id": "wua-microsoft-xbox-tcui",
+  "pkg": "Microsoft.Xbox.TCUI",
+  "cat": "Xbox & Gaming"
+ },
+ {
+  "id": "wua-microsoft-start-experiences-app",
+  "pkg": "Microsoft.StartExperiencesApp",
+  "store": "9PC1H9VN18CM",
+  "cat": "Bing & Web Services"
+ }
+];
+export interface WuPanel { id: string; cmd: string }
+export const WU_PANELS: WuPanel[] = [
+ {
+  "id": "wup-computer",
+  "cmd": "compmgmt.msc"
+ },
+ {
+  "id": "wup-control",
+  "cmd": "control"
+ },
+ {
+  "id": "wup-mouse",
+  "cmd": "main.cpl"
+ },
+ {
+  "id": "wup-network",
+  "cmd": "ncpa.cpl"
+ },
+ {
+  "id": "wup-power",
+  "cmd": "powercfg.cpl"
+ },
+ {
+  "id": "wup-printer",
+  "cmd": "Start-Process 'shell:::{A8A91A66-3A7D-4424-8D24-04E180695C7A}'"
+ },
+ {
+  "id": "wup-programs",
+  "cmd": "appwiz.cpl"
+ },
+ {
+  "id": "wup-region",
+  "cmd": "intl.cpl"
+ },
+ {
+  "id": "wup-security",
+  "cmd": "wscui.cpl"
+ },
+ {
+  "id": "wup-sound",
+  "cmd": "mmsys.cpl"
+ },
+ {
+  "id": "wup-system",
+  "cmd": "sysdm.cpl"
+ },
+ {
+  "id": "wup-timedate",
+  "cmd": "timedate.cpl"
+ },
+ {
+  "id": "wup-firewall",
+  "cmd": "firewall.cpl"
+ },
+ {
+  "id": "wup-restore",
+  "cmd": "rstrui.exe"
+ }
+];
+export const WU_SCRIPTS: Record<string, string> = {
+ "updatesDefault": "function Invoke-WPFUpdatesdefault {\n    <#\n\n    .SYNOPSIS\n        Resets Windows Update settings to default\n\n    #>\n    Write-WinUtilLog -Component \"Updates\" -Message \"Resetting Windows Update settings to default.\"\n\n    Write-Host \"Removing Windows Update settings managed by WinUtil...\" -ForegroundColor Green\n    Write-WinUtilLog -Component \"Updates\" -Message \"Removing Windows Update registry values managed by WinUtil.\"\n\n    $registryValues = @(\n        @{\n            Path = \"HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate\\AU\"\n            Names = @(\"NoAutoUpdate\", \"AUOptions\", \"NoAutoRebootWithLoggedOnUsers\", \"AUPowerManagement\")\n        },\n        @{\n            Path = \"HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate\"\n            Names = @(\"ExcludeWUDriversInQualityUpdate\", \"DeferFeatureUpdates\", \"DeferFeatureUpdatesPeriodInDays\", \"DeferQualityUpdates\", \"DeferQualityUpdatesPeriodInDays\")\n        },\n        @{\n            Path = \"HKLM:\\SOFTWARE\\Microsoft\\WindowsUpdate\\UX\\Settings\"\n            Names = @(\"BranchReadinessLevel\", \"DeferFeatureUpdatesPeriodInDays\", \"DeferQualityUpdatesPeriodInDays\")\n        },\n        @{\n            Path = \"HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\Device Metadata\"\n            Names = @(\"PreventDeviceMetadataFromNetwork\")\n        },\n        @{\n            Path = \"HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\DriverSearching\"\n            Names = @(\"DontPromptForWindowsUpdate\", \"DontSearchWindowsUpdate\", \"DriverUpdateWizardWuSearchEnabled\")\n        },\n        @{\n            Path = \"HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\DeliveryOptimization\\Config\"\n            Names = @(\"DODownloadMode\")\n        }\n    )\n\n    foreach ($registryEntry in $registryValues) {\n        foreach ($valueName in $registryEntry.Names) {\n            Remove-ItemProperty -Path $registryEntry.Path -Name $valueName -ErrorAction SilentlyContinue\n        }\n    }\n\n    $explorerPolicyPath = \"HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer\"\n    $settingsPageVisibility = (Get-ItemProperty -Path $explorerPolicyPath -Name \"SettingsPageVisibility\" -ErrorAction SilentlyContinue).SettingsPageVisibility\n    if ($settingsPageVisibility -eq \"hide:windowsupdate\") {\n        Write-Host \"Removing WinUtil's legacy Windows Update page restriction...\"\n        Write-WinUtilLog -Component \"Updates\" -Message \"Removing the legacy Windows Update settings page restriction.\"\n        Remove-ItemProperty -Path $explorerPolicyPath -Name \"SettingsPageVisibility\" -ErrorAction SilentlyContinue\n    }\n\n    Write-Host \"Reenabling Windows Update Services...\" -ForegroundColor Green\n    Write-WinUtilLog -Component \"Updates\" -Message \"Restoring Windows Update service startup types.\"\n\n    Write-Host \"Restored BITS to Manual.\"\n    Write-WinUtilLog -Component \"Updates\" -Message \"Restoring BITS service to Manual.\"\n    Set-Service -Name BITS -StartupType Manual\n\n    Write-Host \"Restored wuauserv to Manual.\"\n    Write-WinUtilLog -Component \"Updates\" -Message \"Restoring wuauserv service to Manual.\"\n    Set-Service -Name wuauserv -StartupType Manual\n\n    Write-Host \"Restored UsoSvc to Automatic.\"\n    Write-WinUtilLog -Component \"Updates\" -Message \"Starting UsoSvc service and restoring startup type to Automatic.\"\n    Set-Service -Name UsoSvc -StartupType Automatic\n    Start-Service -Name UsoSvc\n\n    Write-Host \"Enabling update related scheduled tasks...\" -ForegroundColor Green\n    Write-WinUtilLog -Component \"Updates\" -Message \"Enabling update related scheduled tasks.\"\n\n    $Tasks =\n        '\\Microsoft\\Windows\\InstallService\\*',\n        '\\Microsoft\\Windows\\UpdateOrchestrator\\*',\n        '\\Microsoft\\Windows\\UpdateAssistant\\*',\n        '\\Microsoft\\Windows\\WaaSMedic\\*',\n        '\\Microsoft\\Windows\\WindowsUpdate\\*',\n        '\\Microsoft\\WindowsUpdate\\*'\n\n    foreach ($Task in $Tasks) {\n        Get-ScheduledTask -TaskPath $Task -ErrorAction SilentlyContinue | Enable-ScheduledTask -ErrorAction SilentlyContinue\n    }\n\n\n    Write-Host \"Note: You must restart your system in order for all changes to take effect.\" -ForegroundColor Yellow\n    Write-WinUtilLog -Component \"Updates\" -Message \"Windows Update default workflow completed. Restart required.\"\n}\n",
+ "updatesSecurity": "function Invoke-WPFUpdatessecurity {\n    <#\n\n    .SYNOPSIS\n        Sets Windows Update to recommended settings\n\n    .DESCRIPTION\n        1. Disables driver offering through Windows Update\n        2. Defers feature updates for 365 days\n        3. Defers quality updates for 4 days\n        4. Configures automatic updates to notify when downloaded updates are ready to install\n\n    #>\n\n    Write-Host \"Disabling driver offering through Windows Update...\"\n    Write-WinUtilLog -Component \"Updates\" -Message \"Applying recommended Windows Update settings.\"\n    Write-WinUtilLog -Component \"Updates\" -Message \"Disabling driver offering through Windows Update.\"\n\n    $windowsUpdatePolicyPath = \"HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate\"\n    $automaticUpdatePolicyPath = Join-Path $windowsUpdatePolicyPath \"AU\"\n\n    Write-Host \"Restoring Windows Update availability...\"\n    Write-WinUtilLog -Component \"Updates\" -Message \"Restoring Windows Update services and scheduled tasks before applying recommended settings.\"\n\n    Remove-ItemProperty -Path $automaticUpdatePolicyPath -Name \"NoAutoUpdate\" -ErrorAction SilentlyContinue\n    Remove-ItemProperty -Path \"HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\DeliveryOptimization\\Config\" -Name \"DODownloadMode\" -ErrorAction SilentlyContinue\n\n    Set-Service -Name BITS -StartupType Manual\n    Set-Service -Name wuauserv -StartupType Manual\n    Set-Service -Name UsoSvc -StartupType Automatic\n    Start-Service -Name UsoSvc\n\n    $Tasks =\n        '\\Microsoft\\Windows\\InstallService\\*',\n        '\\Microsoft\\Windows\\UpdateOrchestrator\\*',\n        '\\Microsoft\\Windows\\UpdateAssistant\\*',\n        '\\Microsoft\\Windows\\WaaSMedic\\*',\n        '\\Microsoft\\Windows\\WindowsUpdate\\*',\n        '\\Microsoft\\WindowsUpdate\\*'\n\n    foreach ($Task in $Tasks) {\n        Get-ScheduledTask -TaskPath $Task -ErrorAction SilentlyContinue | Enable-ScheduledTask -ErrorAction SilentlyContinue\n    }\n\n    New-Item -Path \"HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\Device Metadata\" -Force\n    Set-ItemProperty -Path \"HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\Device Metadata\" -Name \"PreventDeviceMetadataFromNetwork\" -Type DWord -Value 1\n\n    New-Item -Path \"HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\DriverSearching\" -Force\n\n    Set-ItemProperty -Path \"HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\DriverSearching\" -Name \"DontPromptForWindowsUpdate\" -Type DWord -Value 1\n    Set-ItemProperty -Path \"HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\DriverSearching\" -Name \"DontSearchWindowsUpdate\" -Type DWord -Value 1\n    Set-ItemProperty -Path \"HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\DriverSearching\" -Name \"DriverUpdateWizardWuSearchEnabled\" -Type DWord -Value 0\n\n    New-Item -Path $windowsUpdatePolicyPath -Force\n    Set-ItemProperty -Path $windowsUpdatePolicyPath -Name \"ExcludeWUDriversInQualityUpdate\" -Type DWord -Value 1\n\n    Write-Host \"Deferring feature updates by 365 days and quality updates by 4 days...\"\n    Write-WinUtilLog -Component \"Updates\" -Message \"Deferring feature updates by 365 days and quality updates by 4 days.\"\n\n    Set-ItemProperty -Path $windowsUpdatePolicyPath -Name \"DeferFeatureUpdates\" -Type DWord -Value 1\n    Set-ItemProperty -Path $windowsUpdatePolicyPath -Name \"DeferFeatureUpdatesPeriodInDays\" -Type DWord -Value 365\n    Set-ItemProperty -Path $windowsUpdatePolicyPath -Name \"DeferQualityUpdates\" -Type DWord -Value 1\n    Set-ItemProperty -Path $windowsUpdatePolicyPath -Name \"DeferQualityUpdatesPeriodInDays\" -Type DWord -Value 4\n\n    $legacySettingsPath = \"HKLM:\\SOFTWARE\\Microsoft\\WindowsUpdate\\UX\\Settings\"\n    foreach ($legacyValue in @(\"BranchReadinessLevel\", \"DeferFeatureUpdatesPeriodInDays\", \"DeferQualityUpdatesPeriodInDays\")) {\n        Remove-ItemProperty -Path $legacySettingsPath -Name $legacyValue -ErrorAction SilentlyContinue\n    }\n\n    Write-Host \"Configuring automatic updates to download and notify before installation...\"\n    Write-WinUtilLog -Component \"Updates\" -Message \"Configuring automatic updates to download and notify before installation.\"\n\n    New-Item -Path $automaticUpdatePolicyPath -Force\n\n    # Remove the previous scheduled-install reboot policy when switching to download-and-notify.\n    Remove-ItemProperty -Path $automaticUpdatePolicyPath -Name \"NoAutoRebootWithLoggedOnUsers\" -ErrorAction SilentlyContinue\n\n    # AUOptions 3 downloads updates and notifies before installation; it does not control restarts.\n    Set-ItemProperty -Path $automaticUpdatePolicyPath -Name \"AUOptions\" -Type DWord -Value 3\n    Set-ItemProperty -Path $automaticUpdatePolicyPath -Name \"AUPowerManagement\" -Type DWord -Value 0\n\n    Write-WinUtilLog -Component \"Updates\" -Message \"Recommended Windows Update settings workflow completed.\"\n}\n",
+ "updatesDisable": "function Invoke-WPFUpdatesdisable {\n    <#\n\n    .SYNOPSIS\n        Disables Windows Update\n\n    .NOTES\n        Disabling Windows Update is not recommended. This is only for advanced users who know what they are doing.\n\n    #>\n    param([switch]$Confirmed)\n\n    if (-not $Confirmed -and -not (Confirm-WPFUpdatesdisable)) {\n        return\n    }\n\n    Write-WinUtilLog -Component \"Updates\" -Message \"Disabling Windows Update settings.\"\n\n    Write-Host \"Configuring registry settings...\" -ForegroundColor Yellow\n    Write-WinUtilLog -Component \"Updates\" -Message \"Configuring Windows Update registry policy values for disable mode.\"\n    New-Item -Path \"HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate\\AU\" -Force\n\n    Set-ItemProperty -Path \"HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate\\AU\" -Name \"NoAutoUpdate\" -Type DWord -Value 1\n    Set-ItemProperty -Path \"HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate\\AU\" -Name \"AUOptions\" -Type DWord -Value 1\n\n    New-Item -Path \"HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\DeliveryOptimization\\Config\" -Force\n    Set-ItemProperty -Path \"HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\DeliveryOptimization\\Config\" -Name \"DODownloadMode\" -Type DWord -Value 0\n\n    foreach ($serviceName in @(\"BITS\", \"wuauserv\", \"UsoSvc\")) {\n        Write-Host \"Stopping and disabling $serviceName service.\"\n        Write-WinUtilLog -Component \"Updates\" -Message \"Stopping and disabling $serviceName service.\"\n        Stop-Service -Name $serviceName -Force -ErrorAction SilentlyContinue\n        Set-Service -Name $serviceName -StartupType Disabled\n    }\n\n    Remove-Item -Path \"C:\\Windows\\SoftwareDistribution\\*\" -Recurse -Force -ErrorAction SilentlyContinue\n    Write-Host \"Cleared SoftwareDistribution folder.\"\n    Write-WinUtilLog -Component \"Updates\" -Message \"Cleared SoftwareDistribution folder.\"\n\n    Write-Host \"Disabling update related scheduled tasks...\" -ForegroundColor Yellow\n    Write-WinUtilLog -Component \"Updates\" -Message \"Disabling update related scheduled tasks.\"\n\n    $Tasks =\n        '\\Microsoft\\Windows\\InstallService\\*',\n        '\\Microsoft\\Windows\\UpdateOrchestrator\\*',\n        '\\Microsoft\\Windows\\UpdateAssistant\\*',\n        '\\Microsoft\\Windows\\WaaSMedic\\*',\n        '\\Microsoft\\Windows\\WindowsUpdate\\*',\n        '\\Microsoft\\WindowsUpdate\\*'\n\n    foreach ($Task in $Tasks) {\n        Get-ScheduledTask -TaskPath $Task -ErrorAction SilentlyContinue | Disable-ScheduledTask -ErrorAction SilentlyContinue\n    }\n\n\n    Write-Host \"Note: You must restart your system in order for all changes to take effect.\" -ForegroundColor Yellow\n    Write-WinUtilLog -Component \"Updates\" -Message \"Windows Update disable workflow completed. Restart required.\"\n}\n\nfunction Confirm-WPFUpdatesdisable {\n    $confirmation = Show-WinUtilMessage `\n        -Message \"Disabling Windows Update stops update services, disables scheduled tasks, and clears downloaded update files. Security updates will not be installed until defaults are restored. Continue?\" `\n        -Title \"Disable Windows Update?\" `\n        -Button \"YesNo\" `\n        -Icon \"Warning\"\n\n    if ($confirmation -ne \"Yes\") {\n        Write-WinUtilLog -Component \"Updates\" -Message \"Windows Update disable workflow cancelled.\"\n        return $false\n    }\n    return $true\n}\n",
+ "fixesUpdate": "function Invoke-WPFFixesUpdate {\n\n    <#\n\n    .SYNOPSIS\n        Performs various tasks in an attempt to repair Windows Update\n\n    .DESCRIPTION\n        1. (Aggressive Only) Scans the system for corruption using the Invoke-WPFSystemRepair function\n        2. Stops Windows Update Services\n        3. Remove the QMGR Data file, which stores BITS jobs\n        4. (Aggressive Only) Renames the DataStore and CatRoot2 folders\n            DataStore - Contains the Windows Update History and Log Files\n            CatRoot2 - Contains the Signatures for Windows Update Packages\n        5. Renames the Windows Update Download Folder\n        6. Deletes the Windows Update Log\n        7. (Aggressive Only) Resets the Security Descriptors on the Windows Update Services\n        8. Reregisters the BITS and Windows Update DLLs\n        9. Removes the WSUS client settings\n        10. Resets WinSock\n        11. Gets and deletes all BITS jobs\n        12. Sets the startup type of the Windows Update Services then starts them\n        13. Forces Windows Update to check for updates\n\n    .PARAMETER Aggressive\n        If specified, the script will take additional steps to repair Windows Update that are more dangerous, take a significant amount of time, or are generally unnecessary\n\n    #>\n\n    param($Aggressive = $false)\n\n    Write-Progress -Id 0 -Activity \"Repairing Windows Update\" -PercentComplete 0\n    Step-WinUtilJob -State \"Indeterminate\"\n    Write-Host \"Starting Windows Update Repair...\"\n    # Wait for the first progress bar to show, otherwise the second one won't show\n    Start-Sleep -Milliseconds 200\n\n    if ($Aggressive) {\n        Invoke-WPFSystemRepair\n    }\n\n\n    Write-Progress -Id 0 -Activity \"Repairing Windows Update\" -Status \"Stopping Windows Update Services...\" -PercentComplete 10\n    # Stop the Windows Update Services\n    Write-Progress -Id 2 -ParentId 0 -Activity \"Stopping Services\" -Status \"Stopping BITS...\" -PercentComplete 0\n    Stop-Service -Name BITS -Force\n    Write-Progress -Id 2 -ParentId 0 -Activity \"Stopping Services\" -Status \"Stopping wuauserv...\" -PercentComplete 20\n    Stop-Service -Name wuauserv -Force\n    Write-Progress -Id 2 -ParentId 0 -Activity \"Stopping Services\" -Status \"Stopping appidsvc...\" -PercentComplete 40\n    Stop-Service -Name appidsvc -Force\n    Write-Progress -Id 2 -ParentId 0 -Activity \"Stopping Services\" -Status \"Stopping cryptsvc...\" -PercentComplete 60\n    Stop-Service -Name cryptsvc -Force\n    Write-Progress -Id 2 -ParentId 0 -Activity \"Stopping Services\" -Status \"Completed\" -PercentComplete 100\n\n\n    # Remove the QMGR Data file\n    Write-Progress -Id 0 -Activity \"Repairing Windows Update\" -Status \"Renaming/Removing Files...\" -PercentComplete 20\n    Write-Progress -Id 3 -ParentId 0 -Activity \"Renaming/Removing Files\" -Status \"Removing QMGR Data files...\" -PercentComplete 0\n    Remove-Item \"$env:allusersprofile\\Application Data\\Microsoft\\Network\\Downloader\\qmgr*.dat\" -ErrorAction SilentlyContinue\n\n\n    if ($Aggressive) {\n        # Rename the Windows Update Log and Signature Folders\n        Write-Progress -Id 3 -ParentId 0 -Activity \"Renaming/Removing Files\" -Status \"Renaming the Windows Update Log, Download, and Signature Folder...\" -PercentComplete 20\n        Rename-Item $env:systemroot\\SoftwareDistribution\\DataStore DataStore.bak -ErrorAction SilentlyContinue\n        Rename-Item $env:systemroot\\System32\\Catroot2 catroot2.bak -ErrorAction SilentlyContinue\n    }\n\n    # Rename the Windows Update Download Folder\n    Write-Progress -Id 3 -ParentId 0 -Activity \"Renaming/Removing Files\" -Status \"Renaming the Windows Update Download Folder...\" -PercentComplete 20\n    Rename-Item $env:systemroot\\SoftwareDistribution\\Download Download.bak -ErrorAction SilentlyContinue\n\n    # Delete the legacy Windows Update Log\n    Write-Progress -Id 3 -ParentId 0 -Activity \"Renaming/Removing Files\" -Status \"Removing the old Windows Update log...\" -PercentComplete 80\n    Remove-Item $env:systemroot\\WindowsUpdate.log -ErrorAction SilentlyContinue\n    Write-Progress -Id 3 -ParentId 0 -Activity \"Renaming/Removing Files\" -Status \"Completed\" -PercentComplete 100\n\n\n    if ($Aggressive) {\n        # Reset the Security Descriptors on the Windows Update Services\n        Write-Progress -Id 0 -Activity \"Repairing Windows Update\" -Status \"Resetting the WU Service Security Descriptors...\" -PercentComplete 25\n        Write-Progress -Id 4 -ParentId 0 -Activity \"Resetting the WU Service Security Descriptors\" -Status \"Resetting the BITS Security Descriptor...\" -PercentComplete 0\n        Start-Process -NoNewWindow -FilePath \"sc.exe\" -ArgumentList \"sdset\", \"bits\", \"D:(A;;CCLCSWRPWPDTLOCRRC;;;SY)(A;;CCDCLCSWRPWPDTLOCRSDRCWDWO;;;BA)(A;;CCLCSWLOCRRC;;;AU)(A;;CCLCSWRPWPDTLOCRRC;;;PU)\" -Wait\n        Write-Progress -Id 4 -ParentId 0 -Activity \"Resetting the WU Service Security Descriptors\" -Status \"Resetting the wuauserv Security Descriptor...\" -PercentComplete 50\n        Start-Process -NoNewWindow -FilePath \"sc.exe\" -ArgumentList \"sdset\", \"wuauserv\", \"D:(A;;CCLCSWRPWPDTLOCRRC;;;SY)(A;;CCDCLCSWRPWPDTLOCRSDRCWDWO;;;BA)(A;;CCLCSWLOCRRC;;;AU)(A;;CCLCSWRPWPDTLOCRRC;;;PU)\" -Wait\n        Write-Progress -Id 4 -ParentId 0 -Activity \"Resetting the WU Service Security Descriptors\" -Status \"Completed\" -PercentComplete 100\n    }\n\n\n    # Reregister the BITS and Windows Update DLLs\n    Write-Progress -Id 0 -Activity \"Repairing Windows Update\" -Status \"Reregistering DLLs...\" -PercentComplete 40\n    $oldLocation = Get-Location\n    Set-Location $env:systemroot\\system32\n    $i = 0\n    $DLLs = @(\n        \"atl.dll\", \"urlmon.dll\", \"mshtml.dll\", \"shdocvw.dll\", \"browseui.dll\",\n        \"jscript.dll\", \"vbscript.dll\", \"scrrun.dll\", \"msxml.dll\", \"msxml3.dll\",\n        \"msxml6.dll\", \"actxprxy.dll\", \"softpub.dll\", \"wintrust.dll\", \"dssenh.dll\",\n        \"rsaenh.dll\", \"gpkcsp.dll\", \"sccbase.dll\", \"slbcsp.dll\", \"cryptdlg.dll\",\n        \"oleaut32.dll\", \"ole32.dll\", \"shell32.dll\", \"initpki.dll\", \"wuapi.dll\",\n        \"wuaueng.dll\", \"wuaueng1.dll\", \"wucltui.dll\", \"wups.dll\", \"wups2.dll\",\n        \"wuweb.dll\", \"qmgr.dll\", \"qmgrprxy.dll\", \"wucltux.dll\", \"muweb.dll\", \"wuwebv.dll\"\n    )\n    foreach ($dll in $DLLs) {\n        Write-Progress -Id 5 -ParentId 0 -Activity \"Reregistering DLLs\" -Status \"Registering $dll...\" -PercentComplete ($i / $DLLs.Count * 100)\n        $i++\n        Start-Process -NoNewWindow -FilePath \"regsvr32.exe\" -ArgumentList \"/s\", $dll\n    }\n    Set-Location $oldLocation\n    Write-Progress -Id 5 -ParentId 0 -Activity \"Reregistering DLLs\" -Status \"Completed\" -PercentComplete 100\n\n\n    # Remove the WSUS client settings\n    if (Test-Path \"HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\WindowsUpdate\") {\n        Write-Progress -Id 0 -Activity \"Repairing Windows Update\" -Status \"Removing WSUS client settings...\" -PercentComplete 60\n        Write-Progress -Id 6 -ParentId 0 -Activity \"Removing WSUS client settings\" -PercentComplete 0\n        Remove-ItemProperty -Path \"HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\WindowsUpdate\" -Name \"AccountDomainSid\" -ErrorAction SilentlyContinue\n        Remove-ItemProperty -Path \"HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\WindowsUpdate\" -Name \"PingID\" -ErrorAction SilentlyContinue\n        Remove-ItemProperty -Path \"HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\WindowsUpdate\" -Name \"SusClientId\" -ErrorAction SilentlyContinue\n        Write-Progress -Id 6 -ParentId 0 -Activity \"Removing WSUS client settings\" -Status \"Completed\" -PercentComplete 100\n    }\n\n    # Remove Group Policy Windows Update settings\n    Write-Progress -Id 0 -Activity \"Repairing Windows Update\" -Status \"Removing Group Policy Windows Update settings...\" -PercentComplete 60\n    Write-Progress -Id 7 -ParentId 0 -Activity \"Removing Group Policy Windows Update settings\" -PercentComplete 0\n    Remove-ItemProperty -Path \"HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate\" -Name \"ExcludeWUDriversInQualityUpdate\" -ErrorAction SilentlyContinue\n    Write-Host \"Defaulting driver offering through Windows Update...\"\n    Remove-ItemProperty -Path \"HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\Device Metadata\" -Name \"PreventDeviceMetadataFromNetwork\" -ErrorAction SilentlyContinue\n    Remove-ItemProperty -Path \"HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\DriverSearching\" -Name \"DontPromptForWindowsUpdate\" -ErrorAction SilentlyContinue\n    Remove-ItemProperty -Path \"HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\DriverSearching\" -Name \"DontSearchWindowsUpdate\" -ErrorAction SilentlyContinue\n    Remove-ItemProperty -Path \"HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\DriverSearching\" -Name \"DriverUpdateWizardWuSearchEnabled\" -ErrorAction SilentlyContinue\n    Remove-ItemProperty -Path \"HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate\" -Name \"ExcludeWUDriversInQualityUpdate\" -ErrorAction SilentlyContinue\n    Write-Host \"Defaulting Windows Update automatic restart...\"\n    Remove-ItemProperty -Path \"HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate\\AU\" -Name \"NoAutoRebootWithLoggedOnUsers\" -ErrorAction SilentlyContinue\n    Remove-ItemProperty -Path \"HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate\\AU\" -Name \"AUPowerManagement\" -ErrorAction SilentlyContinue\n    Write-Host \"Clearing ANY Windows Update Policy settings...\"\n    Remove-ItemProperty -Path \"HKLM:\\SOFTWARE\\Microsoft\\WindowsUpdate\\UX\\Settings\" -Name \"BranchReadinessLevel\" -ErrorAction SilentlyContinue\n    Remove-ItemProperty -Path \"HKLM:\\SOFTWARE\\Microsoft\\WindowsUpdate\\UX\\Settings\" -Name \"DeferFeatureUpdatesPeriodInDays\" -ErrorAction SilentlyContinue\n    Remove-ItemProperty -Path \"HKLM:\\SOFTWARE\\Microsoft\\WindowsUpdate\\UX\\Settings\" -Name \"DeferQualityUpdatesPeriodInDays\" -ErrorAction SilentlyContinue\n    Remove-Item -Path \"HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\" -Recurse -Force -ErrorAction SilentlyContinue\n    Remove-Item -Path \"HKCU:\\Software\\Microsoft\\WindowsSelfHost\" -Recurse -Force -ErrorAction SilentlyContinue\n    Remove-Item -Path \"HKCU:\\Software\\Policies\" -Recurse -Force -ErrorAction SilentlyContinue\n    Remove-Item -Path \"HKLM:\\Software\\Microsoft\\Policies\" -Recurse -Force -ErrorAction SilentlyContinue\n    Remove-Item -Path \"HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\" -Recurse -Force -ErrorAction SilentlyContinue\n    Remove-Item -Path \"HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\WindowsStore\\WindowsUpdate\" -Recurse -Force -ErrorAction SilentlyContinue\n    Remove-Item -Path \"HKLM:\\Software\\Microsoft\\WindowsSelfHost\" -Recurse -Force -ErrorAction SilentlyContinue\n    Remove-Item -Path \"HKLM:\\Software\\Policies\" -Recurse -Force -ErrorAction SilentlyContinue\n    Remove-Item -Path \"HKLM:\\Software\\WOW6432Node\\Microsoft\\Policies\" -Recurse -Force -ErrorAction SilentlyContinue\n    Remove-Item -Path \"HKLM:\\Software\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Policies\" -Recurse -Force -ErrorAction SilentlyContinue\n    Remove-Item -Path \"HKLM:\\Software\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\WindowsStore\\WindowsUpdate\" -Recurse -Force -ErrorAction SilentlyContinue\n    Start-Process -NoNewWindow -FilePath \"secedit\" -ArgumentList \"/configure\", \"/cfg\", \"$env:windir\\inf\\defltbase.inf\", \"/db\", \"defltbase.sdb\", \"/verbose\" -Wait\n    Start-Process -NoNewWindow -FilePath \"cmd.exe\" -ArgumentList \"/c RD /S /Q $env:WinDir\\System32\\GroupPolicyUsers\" -Wait\n    Start-Process -NoNewWindow -FilePath \"cmd.exe\" -ArgumentList \"/c RD /S /Q $env:WinDir\\System32\\GroupPolicy\" -Wait\n    Start-Process -NoNewWindow -FilePath \"gpupdate\" -ArgumentList \"/force\" -Wait\n    Write-Progress -Id 7 -ParentId 0 -Activity \"Removing Group Policy Windows Update settings\" -Status \"Completed\" -PercentComplete 100\n\n\n    # Reset WinSock\n    Write-Progress -Id 0 -Activity \"Repairing Windows Update\" -Status \"Resetting WinSock...\" -PercentComplete 65\n    Write-Progress -Id 7 -ParentId 0 -Activity \"Resetting WinSock\" -Status \"Resetting WinSock...\" -PercentComplete 0\n    Start-Process -NoNewWindow -FilePath \"netsh\" -ArgumentList \"winsock\", \"reset\"\n    Start-Process -NoNewWindow -FilePath \"netsh\" -ArgumentList \"winhttp\", \"reset\", \"proxy\"\n    Start-Process -NoNewWindow -FilePath \"netsh\" -ArgumentList \"int\", \"ip\", \"reset\"\n    Write-Progress -Id 7 -ParentId 0 -Activity \"Resetting WinSock\" -Status \"Completed\" -PercentComplete 100\n\n\n    # Get and delete all BITS jobs\n    Write-Progress -Id 0 -Activity \"Repairing Windows Update\" -Status \"Deleting BITS jobs...\" -PercentComplete 75\n    Write-Progress -Id 8 -ParentId 0 -Activity \"Deleting BITS jobs\" -Status \"Deleting BITS jobs...\" -PercentComplete 0\n    Get-BitsTransfer | Remove-BitsTransfer\n    Write-Progress -Id 8 -ParentId 0 -Activity \"Deleting BITS jobs\" -Status \"Completed\" -PercentComplete 100\n\n\n    # Change the startup type of the Windows Update Services and start them\n    Write-Progress -Id 0 -Activity \"Repairing Windows Update\" -Status \"Starting Windows Update Services...\" -PercentComplete 90\n    Write-Progress -Id 9 -ParentId 0 -Activity \"Starting Windows Update Services\" -Status \"Starting BITS...\" -PercentComplete 0\n    Get-Service BITS | Set-Service -StartupType Manual -PassThru | Start-Service\n    Write-Progress -Id 9 -ParentId 0 -Activity \"Starting Windows Update Services\" -Status \"Starting wuauserv...\" -PercentComplete 25\n    Get-Service wuauserv | Set-Service -StartupType Manual -PassThru | Start-Service\n    Write-Progress -Id 9 -ParentId 0 -Activity \"Starting Windows Update Services\" -Status \"Starting AppIDSvc...\" -PercentComplete 50\n    # The AppIDSvc service is protected, so the startup type has to be changed in the registry\n    Set-ItemProperty -Path \"HKLM:\\SYSTEM\\CurrentControlSet\\Services\\AppIDSvc\" -Name \"Start\" -Value \"3\" # Manual\n    Start-Service AppIDSvc\n    Write-Progress -Id 9 -ParentId 0 -Activity \"Starting Windows Update Services\" -Status \"Starting CryptSvc...\" -PercentComplete 75\n    Get-Service CryptSvc | Set-Service -StartupType Manual -PassThru | Start-Service\n    Write-Progress -Id 9 -ParentId 0 -Activity \"Starting Windows Update Services\" -Status \"Completed\" -PercentComplete 100\n\n\n    # Force Windows Update to check for updates\n    Write-Progress -Id 0 -Activity \"Repairing Windows Update\" -Status \"Forcing discovery...\" -PercentComplete 95\n    Write-Progress -Id 10 -ParentId 0 -Activity \"Forcing discovery\" -Status \"Forcing discovery...\" -PercentComplete 0\n    try {\n        (New-Object -ComObject Microsoft.Update.AutoUpdate).DetectNow()\n    } catch {\n        Write-WinUtilLog -Level \"ERROR\" -Component \"Updates\" -Message \"Failed to create Windows Update COM object: $_\"\n        Write-Warning \"Failed to create Windows Update COM object: $_\"\n    }\n    Start-Process -NoNewWindow -FilePath \"wuauclt\" -ArgumentList \"/resetauthorization\", \"/detectnow\"\n    Write-Progress -Id 10 -ParentId 0 -Activity \"Forcing discovery\" -Status \"Completed\" -PercentComplete 100\n    Write-Progress -Id 0 -Activity \"Repairing Windows Update\" -Status \"Completed\" -PercentComplete 100\n\n    Show-WinUtilMessage -Message \"Stock settings loaded.`n Please reboot your computer\" -Title \"Reset Windows Update\" -Button \"OK\" -Icon \"Information\" | Out-Null\n\n    # Remove the progress bars\n    Write-Progress -Id 0 -Activity \"Repairing Windows Update\" -Completed\n    Write-Progress -Id 1 -Activity \"Scanning for corruption\" -Completed\n    Write-Progress -Id 2 -Activity \"Stopping Services\" -Completed\n    Write-Progress -Id 3 -Activity \"Renaming/Removing Files\" -Completed\n    Write-Progress -Id 4 -Activity \"Resetting the WU Service Security Descriptors\" -Completed\n    Write-Progress -Id 5 -Activity \"Reregistering DLLs\" -Completed\n    Write-Progress -Id 6 -Activity \"Removing Group Policy Windows Update settings\" -Completed\n    Write-Progress -Id 7 -Activity \"Resetting WinSock\" -Completed\n    Write-Progress -Id 8 -Activity \"Deleting BITS jobs\" -Completed\n    Write-Progress -Id 9 -Activity \"Starting Windows Update Services\" -Completed\n    Write-Progress -Id 10 -Activity \"Forcing discovery\" -Completed\n}\n",
+ "systemRepair": "function Invoke-WPFSystemRepair {\n    <#\n    .SYNOPSIS\n        Checks for system corruption using SFC, and DISM\n        Checks for disk failure using Chkdsk\n\n    .DESCRIPTION\n        1. Chkdsk - Checks for disk errors, which can cause system file corruption and notifies of early disk failure\n        2. SFC - scans protected system files for corruption and fixes them\n        3. DISM - Repair a corrupted Windows operating system image\n    #>\n\n    # SuccessCodes maps the non-zero exits a step treats as success to what they mean. The codes\n    # are per step because the same number means different things: 1 and 2 are ordinary chkdsk\n    # outcomes, while 1 from sfc is a failure, and 3010 is a repaired image from DISM only.\n    $steps = @(\n        @{\n            Label = \"Checking the disk for errors\"\n            Arguments = \"/c chkdsk /scan /perf\"\n            # 3 is left out: the disk could not be checked, or has errors an online scan cannot\n            # fix, and the steps after this one are not worth running on a disk in that state.\n            SuccessCodes = @{\n                1 = \"errors were found and fixed\"\n                2 = \"cleanup was performed, or was skipped because /f was not given\"\n            }\n        },\n        @{\n            Label = \"Scanning protected system files\"\n            Arguments = \"/c sfc /scannow\"\n            SuccessCodes = @{}\n        },\n        @{\n            Label = \"Repairing the Windows image\"\n            Arguments = \"/c dism /online /cleanup-image /restorehealth\"\n            SuccessCodes = @{\n                3010 = \"a restart is needed for the repair to take effect\"\n            }\n        }\n    )\n\n    $completed = 0\n    foreach ($step in $steps) {\n        Step-WinUtilJob -Status \"$($step.Label) ($($completed + 1)/$($steps.Count))\" -Percent ([int](($completed / $steps.Count) * 100))\n        Write-WinUtilLog -Component \"SystemRepair\" -Message $step.Label\n        # Start-Process does not throw on a nonzero exit, so without this a failed chkdsk, sfc\n        # or dism run would still be reported as a completed repair\n        $process = Start-Process cmd.exe -ArgumentList $step.Arguments -NoNewWindow -Wait -PassThru\n        $exitCode = $process.ExitCode\n\n        if ($exitCode -ne 0) {\n            if ($step.SuccessCodes.ContainsKey($exitCode)) {\n                # Start-WinUtilJob records WarningRecord output in both the session log and the\n                # job result, so accepted nonzero outcomes cannot finish with a green checkmark.\n                Write-Warning \"$($step.Label) finished: $($step.SuccessCodes[$exitCode]).\"\n            } else {\n                throw \"$($step.Label) failed with exit code $exitCode.\"\n            }\n        }\n\n        $completed++\n    }\n}\n",
+ "ntpPool": "function Invoke-WPFFixesNTPPool {\n    <#\n    .SYNOPSIS\n        Configures Windows to use pool.ntp.org for NTP synchronization\n\n    .DESCRIPTION\n        Replaces the default Windows NTP server (time.windows.com) with\n        pool.ntp.org for improved time synchronization accuracy and reliability.\n    #>\n\n    Start-Service w32time\n    w32tm /config /update /manualpeerlist:\"pool.ntp.org,0x8\" /syncfromflags:MANUAL\n\n    Restart-Service w32time\n    w32tm /resync\n\n}\n",
+ "ssh": "function Invoke-WinUtilSSHServer {\n    <#\n    .SYNOPSIS\n        Enables OpenSSH server to remote into your windows device\n    #>\n\n    # Install the OpenSSH Server feature if not already installed\n    if ((Get-WindowsCapability -Name OpenSSH.Server -Online).State -ne \"Installed\") {\n        Write-Host \"Enabling OpenSSH Server... This will take a long time.\"\n        Add-WindowsCapability -Name OpenSSH.Server -Online\n    }\n\n    Write-Host \"Starting the services\"\n\n    Set-Service -Name sshd -StartupType Automatic\n    Start-Service -Name sshd\n\n    Set-Service -Name ssh-agent -StartupType Automatic\n    Start-Service -Name ssh-agent\n\n    #Adding Firewall rule for port 22\n    Write-Host \"Setting up firewall rules\"\n    $firewallRule = Get-NetFirewallRule -Name 'sshd' -ErrorAction SilentlyContinue\n    if ($null -eq $firewallRule) {\n        New-NetFirewallRule -Name sshd -DisplayName 'OpenSSH Server (sshd)' -Enabled True -Direction Inbound -Protocol TCP -Action Allow -LocalPort 22\n        Write-Host \"Firewall rule for OpenSSH Server created and enabled.\"\n    } elseif ([int]$firewallRule.Enabled -eq 2) {\n        Set-NetFirewallRule -Name 'sshd' -Enabled True\n        Write-Host \"Firewall rule for OpenSSH Server enabled.\"\n    }\n\n    # An SSH logon for a member of the administrators group gets a full token\n    # with no UAC prompt, so sshd reads administrator keys from a machine-wide\n    # file that only Administrators and SYSTEM may write. WinUtil always runs\n    # elevated, so the account being set up here is always an administrator.\n    $sshProgramDataPath = Join-Path $env:ProgramData \"ssh\"\n    $sshdConfigPath = Join-Path $sshProgramDataPath \"sshd_config\"\n    $authorizedKeysPath = Join-Path $sshProgramDataPath \"administrators_authorized_keys\"\n    $profileKeysPath = Join-Path $env:USERPROFILE \".ssh\\authorized_keys\"\n\n    if (-not (Test-Path -Path $sshProgramDataPath)) {\n        New-Item -Path $sshProgramDataPath -ItemType Directory -Force | Out-Null\n    }\n\n    # Earlier WinUtil versions commented out the administrators block in\n    # sshd_config. Detect that state before restoring it, so administrator keys\n    # already in use are carried over instead of silently stopping working.\n    $configContent = if (Test-Path -Path $sshdConfigPath) { [string](Get-Content -Path $sshdConfigPath -Raw) } else { \"\" }\n    $restoredContent = $configContent -replace '(?m)^# (Match Group administrators)$', '$1'\n    $restoredContent = $restoredContent -replace '(?m)^# (\\s+AuthorizedKeysFile __PROGRAMDATA__/ssh/administrators_authorized_keys)$', '$1'\n    $configWasOverridden = $restoredContent -ne $configContent\n\n    if (-not (Test-Path -Path $authorizedKeysPath)) {\n        Write-Host \"Creating administrators_authorized_keys file...\"\n        New-Item -Path $authorizedKeysPath -ItemType File -Force | Out-Null\n        Write-Host \"administrators_authorized_keys file created at $authorizedKeysPath.\"\n    }\n\n    if ($configWasOverridden -and (Test-Path -Path $profileKeysPath)) {\n        $currentKeys = @(Get-Content -Path $authorizedKeysPath)\n        $keysToMove = @(Get-Content -Path $profileKeysPath | Where-Object {\n            $_.Trim() -and -not $_.TrimStart().StartsWith(\"#\") -and $currentKeys -notcontains $_\n        })\n\n        if ($keysToMove.Count -gt 0) {\n            Add-Content -Path $authorizedKeysPath -Value $keysToMove\n            Write-Host \"Moved $($keysToMove.Count) key(s) from $profileKeysPath to $authorizedKeysPath.\"\n        }\n    }\n\n    # sshd ignores the file unless inheritance is off and access is limited to\n    # Administrators (S-1-5-32-544) and SYSTEM (S-1-5-18). SIDs keep this\n    # working on localized installs, where the group names differ.\n    $acl = Get-Acl -Path $authorizedKeysPath\n    $acl.SetAccessRuleProtection($true, $false)\n    foreach ($rule in @($acl.Access)) {\n        [void]$acl.RemoveAccessRule($rule)\n    }\n    foreach ($sid in @(\"S-1-5-32-544\", \"S-1-5-18\")) {\n        [void]$acl.AddAccessRule([System.Security.AccessControl.FileSystemAccessRule]::new(\n            [System.Security.Principal.SecurityIdentifier]::new($sid), \"FullControl\", \"Allow\"))\n    }\n    Set-Acl -Path $authorizedKeysPath -AclObject $acl\n\n    if ($configWasOverridden) {\n        Set-Content -Path $sshdConfigPath -Value $restoredContent -Force\n        Write-Host \"Restored the administrator key file setting in sshd_config.\"\n        Restart-Service -Name sshd -Force\n    }\n\n    Write-Host \"OpenSSH server was successfully enabled.\"\n    Write-Host \"The config file can be located at $sshdConfigPath\"\n    Write-Host \"Add your public keys to this file -> $authorizedKeysPath\"\n}\n",
+ "ultPerf": "function Invoke-WPFUltimatePerformance ([switch]$Enable) {\n    <#\n\n    .SYNOPSIS\n        Adds or removes the Ultimate Performance power plan\n\n    #>\n\n    if ($Enable) {\n        Step-WinUtilJob -Status \"Adding the Ultimate Performance power plan\" -State \"Indeterminate\"\n        Write-WinUtilLog -Component \"Power\" -Message \"Duplicating and activating the Ultimate Performance power plan.\"\n\n        $duplicated = powercfg /duplicatescheme e9a42b02-d5df-448d-aa00-03f14749eb61\n        if ($LASTEXITCODE -ne 0) {\n            throw \"powercfg could not duplicate the Ultimate Performance scheme (exit code $LASTEXITCODE).\"\n        }\n\n        $guid = ($duplicated | Select-String -Pattern '[A-Fa-f0-9-]{36}').Matches.Value\n        if (-not $guid) {\n            throw \"powercfg did not report a scheme GUID to activate.\"\n        }\n\n        powercfg /setactive $guid\n        if ($LASTEXITCODE -ne 0) {\n            throw \"powercfg could not activate the Ultimate Performance scheme (exit code $LASTEXITCODE).\"\n        }\n\n        Write-WinUtilLog -Component \"Power\" -Message \"Ultimate Performance power plan installed and activated.\"\n    } else {\n        Step-WinUtilJob -Status \"Restoring the default power plans\" -State \"Indeterminate\"\n        Write-WinUtilLog -Component \"Power\" -Message \"Restoring the default power schemes.\"\n\n        powercfg /restoredefaultschemes\n        if ($LASTEXITCODE -ne 0) {\n            throw \"powercfg could not restore the default power schemes (exit code $LASTEXITCODE).\"\n        }\n\n        Write-WinUtilLog -Component \"Power\" -Message \"Power plans were reset to defaults.\"\n    }\n}\n"
+};
+export const WU_APPS: WuApp[] = [
+ {
+  "id": "1password",
+  "name": "1Password",
+  "cat": "Utilities",
+  "winget": "AgileBits.1Password"
+ },
+ {
+  "id": "7zip",
+  "name": "7-Zip",
+  "cat": "Utilities",
+  "winget": "7zip.7zip"
+ },
+ {
+  "id": "abdownloadmanager",
+  "name": "AB Download Manager",
+  "cat": "Utilities",
+  "winget": "amir1376.ABDownloadManager"
+ },
+ {
+  "id": "adobe",
+  "name": "Adobe Acrobat Reader",
+  "cat": "Document",
+  "winget": "Adobe.Acrobat.Reader.64-bit"
+ },
+ {
+  "id": "advancedip",
+  "name": "Advanced IP Scanner",
+  "cat": "Pro Tools",
+  "winget": "Famatech.AdvancedIPScanner"
+ },
+ {
+  "id": "aimp",
+  "name": "AIMP (Music Player)",
+  "cat": "Multimedia Tools",
+  "winget": "AIMP.AIMP"
+ },
+ {
+  "id": "angryipscanner",
+  "name": "Angry IP Scanner",
+  "cat": "Pro Tools",
+  "winget": "angryziber.AngryIPScanner"
+ },
+ {
+  "id": "anydesk",
+  "name": "AnyDesk",
+  "cat": "Utilities",
+  "winget": "AnyDesk.AnyDesk"
+ },
+ {
+  "id": "audacity",
+  "name": "Audacity",
+  "cat": "Multimedia Tools",
+  "winget": "Audacity.Audacity"
+ },
+ {
+  "id": "autoruns",
+  "name": "Autoruns",
+  "cat": "Microsoft Tools",
+  "winget": "Microsoft.Sysinternals.Autoruns"
+ },
+ {
+  "id": "rdcman",
+  "name": "RDCMan",
+  "cat": "Microsoft Tools",
+  "winget": "Microsoft.Sysinternals.RDCMan"
+ },
+ {
+  "id": "autohotkey",
+  "name": "AutoHotkey",
+  "cat": "Utilities",
+  "winget": "AutoHotkey.AutoHotkey"
+ },
+ {
+  "id": "battlenet",
+  "name": "Battle.net",
+  "cat": "Games",
+  "winget": "Blizzard.BattleNet"
+ },
+ {
+  "id": "bitwarden",
+  "name": "Bitwarden",
+  "cat": "Utilities",
+  "winget": "Bitwarden.Bitwarden"
+ },
+ {
+  "id": "blender",
+  "name": "Blender (3D Graphics)",
+  "cat": "Multimedia Tools",
+  "winget": "BlenderFoundation.Blender"
+ },
+ {
+  "id": "brave",
+  "name": "Brave",
+  "cat": "Browsers",
+  "winget": "Brave.Brave"
+ },
+ {
+  "id": "bruno",
+  "name": "Bruno",
+  "cat": "Development",
+  "winget": "Bruno.Bruno"
+ },
+ {
+  "id": "bulkcrapuninstaller",
+  "name": "Bulk Crap Uninstaller",
+  "cat": "Utilities",
+  "winget": "Klocman.BulkCrapUninstaller"
+ },
+ {
+  "id": "blurautoclicker",
+  "name": "BlurAutoClicker",
+  "cat": "Utilities",
+  "winget": "Blur009.BlurAutoClicker"
+ },
+ {
+  "id": "calibre",
+  "name": "Calibre",
+  "cat": "Multimedia Tools",
+  "winget": "calibre.calibre"
+ },
+ {
+  "id": "cemu",
+  "name": "Cemu",
+  "cat": "Games",
+  "winget": "Cemu.Cemu"
+ },
+ {
+  "id": "chatgpt",
+  "name": "ChatGPT Desktop",
+  "cat": "Development",
+  "winget": "msstore:9NT1R1C2HH7J"
+ },
+ {
+  "id": "chatterino",
+  "name": "Chatterino",
+  "cat": "Communications",
+  "winget": "ChatterinoTeam.Chatterino"
+ },
+ {
+  "id": "chrome",
+  "name": "Chrome",
+  "cat": "Browsers",
+  "winget": "Google.Chrome"
+ },
+ {
+  "id": "chromium",
+  "name": "Chromium",
+  "cat": "Browsers",
+  "winget": "Hibbiki.Chromium"
+ },
+ {
+  "id": "cinebenchr23",
+  "name": "Cinebench R23",
+  "cat": "Pro Tools",
+  "winget": "Maxon.CinebenchR23"
+ },
+ {
+  "id": "claude",
+  "name": "Claude Desktop",
+  "cat": "Development",
+  "winget": "Anthropic.Claude"
+ },
+ {
+  "id": "claude-code",
+  "name": "Claude Code",
+  "cat": "Development",
+  "winget": "Anthropic.ClaudeCode"
+ },
+ {
+  "id": "cmake",
+  "name": "CMake",
+  "cat": "Development",
+  "winget": "Kitware.CMake"
+ },
+ {
+  "id": "codex",
+  "name": "Codex",
+  "cat": "Development",
+  "winget": "OpenAI.Codex"
+ },
+ {
+  "id": "cpuz",
+  "name": "CPU-Z",
+  "cat": "Pro Tools",
+  "winget": "CPUID.CPU-Z"
+ },
+ {
+  "id": "crystaldiskinfo",
+  "name": "Crystal Disk Info",
+  "cat": "Utilities",
+  "winget": "CrystalDewWorld.CrystalDiskInfo"
+ },
+ {
+  "id": "crystaldiskmark",
+  "name": "Crystal Disk Mark",
+  "cat": "Utilities",
+  "winget": "CrystalDewWorld.CrystalDiskMark"
+ },
+ {
+  "id": "cursor",
+  "name": "Cursor",
+  "cat": "Development",
+  "winget": "Anysphere.Cursor"
+ },
+ {
+  "id": "ddu",
+  "name": "Display Driver Uninstaller",
+  "cat": "Pro Tools",
+  "winget": "Wagnardsoft.DisplayDriverUninstaller"
+ },
+ {
+  "id": "discord",
+  "name": "Discord",
+  "cat": "Communications",
+  "winget": "Discord.Discord"
+ },
+ {
+  "id": "dismtools",
+  "name": "DISMTools",
+  "cat": "Microsoft Tools",
+  "winget": "CodingWondersSoftware.DISMTools.Stable"
+ },
+ {
+  "id": "ntlite",
+  "name": "NTLite",
+  "cat": "Microsoft Tools",
+  "winget": "Nlitesoft.NTLite"
+ },
+ {
+  "id": "dorion",
+  "name": "Dorion",
+  "cat": "Communications",
+  "winget": "SpikeHD.Dorion"
+ },
+ {
+  "id": "dockerdesktop",
+  "name": "Docker Desktop",
+  "cat": "Development",
+  "winget": "Docker.DockerDesktop"
+ },
+ {
+  "id": "dotnet6",
+  "name": ".NET Desktop Runtime 6",
+  "cat": "Microsoft Tools",
+  "winget": "Microsoft.DotNet.DesktopRuntime.6"
+ },
+ {
+  "id": "dotnet8",
+  "name": ".NET Desktop Runtime 8",
+  "cat": "Microsoft Tools",
+  "winget": "Microsoft.DotNet.DesktopRuntime.8"
+ },
+ {
+  "id": "dotnet9",
+  "name": ".NET Desktop Runtime 9",
+  "cat": "Microsoft Tools",
+  "winget": "Microsoft.DotNet.DesktopRuntime.9"
+ },
+ {
+  "id": "dotnet10",
+  "name": ".NET Desktop Runtime 10",
+  "cat": "Microsoft Tools",
+  "winget": "Microsoft.DotNet.DesktopRuntime.10"
+ },
+ {
+  "id": "dropbox",
+  "name": "Dropbox",
+  "cat": "Utilities",
+  "winget": "Dropbox.Dropbox"
+ },
+ {
+  "id": "eaapp",
+  "name": "EA App",
+  "cat": "Games",
+  "winget": "ElectronicArts.EADesktop"
+ },
+ {
+  "id": "eartrumpet",
+  "name": "EarTrumpet (Audio)",
+  "cat": "Multimedia Tools",
+  "winget": "File-New-Project.EarTrumpet"
+ },
+ {
+  "id": "edge",
+  "name": "Edge",
+  "cat": "Browsers",
+  "winget": "Microsoft.Edge"
+ },
+ {
+  "id": "es-de",
+  "name": "EmulationStation Desktop Edition",
+  "cat": "Games",
+  "winget": "ES-DE.EmulationStation-DE"
+ },
+ {
+  "id": "enteauth",
+  "name": "Ente Auth",
+  "cat": "Utilities",
+  "winget": "ente-io.auth-desktop"
+ },
+ {
+  "id": "epicgames",
+  "name": "Epic Games Launcher",
+  "cat": "Games",
+  "winget": "EpicGames.EpicGamesLauncher"
+ },
+ {
+  "id": "files",
+  "name": "Files",
+  "cat": "Utilities",
+  "winget": "FilesCommunity.Files"
+ },
+ {
+  "id": "fileconverter",
+  "name": "File Converter",
+  "cat": "Multimedia Tools",
+  "winget": "AdrienAllard.FileConverter"
+ },
+ {
+  "id": "firefox",
+  "name": "Firefox",
+  "cat": "Browsers",
+  "winget": "Mozilla.Firefox"
+ },
+ {
+  "id": "firefoxesr",
+  "name": "Firefox ESR",
+  "cat": "Browsers",
+  "winget": "Mozilla.Firefox.ESR"
+ },
+ {
+  "id": "floorp",
+  "name": "Floorp",
+  "cat": "Browsers",
+  "winget": "Ablaze.Floorp"
+ },
+ {
+  "id": "flux",
+  "name": "F.lux",
+  "cat": "Utilities",
+  "winget": "flux.flux"
+ },
+ {
+  "id": "foobar",
+  "name": "foobar2000 (Music Player)",
+  "cat": "Multimedia Tools",
+  "winget": "PeterPawlowski.foobar2000"
+ },
+ {
+  "id": "fnm",
+  "name": "Fast Node Manager",
+  "cat": "Development",
+  "winget": "Schniz.fnm"
+ },
+ {
+  "id": "foxpdfreader",
+  "name": "Foxit PDF Reader",
+  "cat": "Document",
+  "winget": "Foxit.FoxitReader"
+ },
+ {
+  "id": "geforcenow",
+  "name": "GeForce NOW",
+  "cat": "Games",
+  "winget": "Nvidia.GeForceNow"
+ },
+ {
+  "id": "gimp",
+  "name": "GIMP (Image Editor)",
+  "cat": "Multimedia Tools",
+  "winget": "GIMP.GIMP.3"
+ },
+ {
+  "id": "git",
+  "name": "Git",
+  "cat": "Development",
+  "winget": "Git.Git"
+ },
+ {
+  "id": "gitextensions",
+  "name": "Git Extensions",
+  "cat": "Development",
+  "winget": "GitExtensionsTeam.GitExtensions"
+ },
+ {
+  "id": "githubcli",
+  "name": "GitHub CLI",
+  "cat": "Development",
+  "winget": "GitHub.cli"
+ },
+ {
+  "id": "githubdesktop",
+  "name": "GitHub Desktop",
+  "cat": "Development",
+  "winget": "GitHub.GitHubDesktop"
+ },
+ {
+  "id": "gog",
+  "name": "GOG Galaxy",
+  "cat": "Games",
+  "winget": "GOG.Galaxy"
+ },
+ {
+  "id": "golang",
+  "name": "Go",
+  "cat": "Development",
+  "winget": "GoLang.Go"
+ },
+ {
+  "id": "googledrive",
+  "name": "Google Drive",
+  "cat": "Utilities",
+  "winget": "Google.GoogleDrive"
+ },
+ {
+  "id": "gpuz",
+  "name": "GPU-Z",
+  "cat": "Pro Tools",
+  "winget": "TechPowerUp.GPU-Z"
+ },
+ {
+  "id": "gsudo",
+  "name": "gsudo",
+  "cat": "Pro Tools",
+  "winget": "gerardog.gsudo"
+ },
+ {
+  "id": "helium",
+  "name": "Helium",
+  "cat": "Browsers",
+  "winget": "ImputNet.Helium"
+ },
+ {
+  "id": "hugo",
+  "name": "Hugo",
+  "cat": "Utilities",
+  "winget": "Hugo.Hugo.Extended"
+ },
+ {
+  "id": "handbrake",
+  "name": "HandBrake",
+  "cat": "Multimedia Tools",
+  "winget": "HandBrake.HandBrake"
+ },
+ {
+  "id": "heroiclauncher",
+  "name": "Heroic Games Launcher",
+  "cat": "Games",
+  "winget": "HeroicGamesLauncher.HeroicGamesLauncher"
+ },
+ {
+  "id": "hwinfo",
+  "name": "HWiNFO",
+  "cat": "Pro Tools",
+  "winget": "REALiX.HWiNFO"
+ },
+ {
+  "id": "hwmonitor",
+  "name": "HWMonitor",
+  "cat": "Pro Tools",
+  "winget": "CPUID.HWMonitor"
+ },
+ {
+  "id": "imageglass",
+  "name": "ImageGlass (Image Viewer)",
+  "cat": "Multimedia Tools",
+  "winget": "DuongDieuPhap.ImageGlass"
+ },
+ {
+  "id": "internetdownloadmanager",
+  "name": "Internet Download Manager",
+  "cat": "Utilities",
+  "winget": "Tonec.InternetDownloadManager"
+ },
+ {
+  "id": "irfanview",
+  "name": "IrfanView",
+  "cat": "Multimedia Tools",
+  "winget": "IrfanSkiljan.IrfanView"
+ },
+ {
+  "id": "itch",
+  "name": "Itch.io",
+  "cat": "Games",
+  "winget": "ItchIo.Itch"
+ },
+ {
+  "id": "itunes",
+  "name": "iTunes",
+  "cat": "Multimedia Tools",
+  "winget": "Apple.iTunes"
+ },
+ {
+  "id": "java8",
+  "name": "Amazon Corretto 8 (LTS)",
+  "cat": "Development",
+  "winget": "Amazon.Corretto.8.JDK"
+ },
+ {
+  "id": "java21",
+  "name": "Amazon Corretto 21 (LTS)",
+  "cat": "Development",
+  "winget": "Amazon.Corretto.21.JDK"
+ },
+ {
+  "id": "java25",
+  "name": "Amazon Corretto 25 (LTS)",
+  "cat": "Development",
+  "winget": "Amazon.Corretto.25.JDK"
+ },
+ {
+  "id": "jellyfinmediaplayer",
+  "name": "Jellyfin Media Player",
+  "cat": "Selfhosted Tools",
+  "winget": "Jellyfin.JellyfinMediaPlayer"
+ },
+ {
+  "id": "jellyfinserver",
+  "name": "Jellyfin Server",
+  "cat": "Selfhosted Tools",
+  "winget": "Jellyfin.Server"
+ },
+ {
+  "id": "jetbrains",
+  "name": "Jetbrains Toolbox",
+  "cat": "Development",
+  "winget": "JetBrains.Toolbox"
+ },
+ {
+  "id": "jpegview",
+  "name": "JPEG View",
+  "cat": "Utilities",
+  "winget": "sylikc.JPEGView"
+ },
+ {
+  "id": "joplin",
+  "name": "Joplin",
+  "cat": "Document",
+  "winget": "Joplin.Joplin"
+ },
+ {
+  "id": "keepassxc",
+  "name": "KeePassXC",
+  "cat": "Utilities",
+  "winget": "KeePassXCTeam.KeePassXC"
+ },
+ {
+  "id": "klite",
+  "name": "K-Lite Codec Standard",
+  "cat": "Multimedia Tools",
+  "winget": "CodecGuide.K-LiteCodecPack.Standard"
+ },
+ {
+  "id": "kodi",
+  "name": "Kodi Media Center",
+  "cat": "Selfhosted Tools",
+  "winget": "XBMCFoundation.Kodi"
+ },
+ {
+  "id": "lazygit",
+  "name": "Lazygit",
+  "cat": "Development",
+  "winget": "JesseDuffield.lazygit"
+ },
+ {
+  "id": "libreoffice",
+  "name": "LibreOffice",
+  "cat": "Document",
+  "winget": "TheDocumentFoundation.LibreOffice"
+ },
+ {
+  "id": "librewolf",
+  "name": "LibreWolf",
+  "cat": "Browsers",
+  "winget": "LibreWolf.LibreWolf"
+ },
+ {
+  "id": "localsend",
+  "name": "LocalSend",
+  "cat": "Selfhosted Tools",
+  "winget": "LocalSend.LocalSend"
+ },
+ {
+  "id": "mpc-qt",
+  "name": "mpc-qt",
+  "cat": "Multimedia Tools",
+  "winget": "mpc-qt.mpc-qt"
+ },
+ {
+  "id": "mpv",
+  "name": "mpv",
+  "cat": "Multimedia Tools",
+  "winget": "shinchiro.mpv"
+ },
+ {
+  "id": "matrix",
+  "name": "Element",
+  "cat": "Communications",
+  "winget": "Element.Element"
+ },
+ {
+  "id": "minitoolpartitionwizard",
+  "name": "MiniTool Partition Wizard",
+  "cat": "Utilities",
+  "winget": "MiniTool.PartitionWizard.Free"
+ },
+ {
+  "id": "modrinth",
+  "name": "Modrinth App",
+  "cat": "Games",
+  "winget": "Modrinth.ModrinthApp"
+ },
+ {
+  "id": "moonlight",
+  "name": "Moonlight/GameStream Client",
+  "cat": "Selfhosted Tools",
+  "winget": "MoonlightGameStreamingProject.Moonlight"
+ },
+ {
+  "id": "mpchc",
+  "name": "Media Player Classic - Home Cinema",
+  "cat": "Multimedia Tools",
+  "winget": "clsid2.mpc-hc"
+ },
+ {
+  "id": "msedgeredirect",
+  "name": "MSEdgeRedirect",
+  "cat": "Utilities",
+  "winget": "rcmaehl.MSEdgeRedirect"
+ },
+ {
+  "id": "msiafterburner",
+  "name": "MSI Afterburner",
+  "cat": "Utilities",
+  "winget": "Guru3D.Afterburner"
+ },
+ {
+  "id": "mullvadvpn",
+  "name": "Mullvad VPN",
+  "cat": "Pro Tools",
+  "winget": "MullvadVPN.MullvadVPN"
+ },
+ {
+  "id": "mullvadbrowser",
+  "name": "Mullvad Browser",
+  "cat": "Browsers",
+  "winget": "MullvadVPN.MullvadBrowser"
+ },
+ {
+  "id": "nomacs",
+  "name": "nomacs",
+  "cat": "Multimedia Tools",
+  "winget": "nomacs.nomacs"
+ },
+ {
+  "id": "nanazip",
+  "name": "NanaZip",
+  "cat": "Utilities",
+  "winget": "M2Team.NanaZip"
+ },
+ {
+  "id": "netbird",
+  "name": "NetBird",
+  "cat": "Selfhosted Tools",
+  "winget": "Netbird.Netbird"
+ },
+ {
+  "id": "tailscale",
+  "name": "Tailscale",
+  "cat": "Utilities",
+  "winget": "Tailscale.Tailscale"
+ },
+ {
+  "id": "naps2",
+  "name": "NAPS2 (Scanner)",
+  "cat": "Document",
+  "winget": "Cyanfish.NAPS2"
+ },
+ {
+  "id": "neovim",
+  "name": "Neovim",
+  "cat": "Development",
+  "winget": "Neovim.Neovim"
+ },
+ {
+  "id": "nextclouddesktop",
+  "name": "Nextcloud Desktop",
+  "cat": "Selfhosted Tools",
+  "winget": "Nextcloud.NextcloudDesktop"
+ },
+ {
+  "id": "nmap",
+  "name": "Nmap",
+  "cat": "Pro Tools",
+  "winget": "Insecure.Nmap"
+ },
+ {
+  "id": "nodejs",
+  "name": "NodeJS",
+  "cat": "Development",
+  "winget": "OpenJS.NodeJS"
+ },
+ {
+  "id": "nodejslts",
+  "name": "NodeJS LTS",
+  "cat": "Development",
+  "winget": "OpenJS.NodeJS.LTS"
+ },
+ {
+  "id": "pnpm",
+  "name": "pnpm",
+  "cat": "Development",
+  "winget": "pnpm.pnpm"
+ },
+ {
+  "id": "notepadplus",
+  "name": "Notepad++",
+  "cat": "Multimedia Tools",
+  "winget": "Notepad++.Notepad++"
+ },
+ {
+  "id": "nuget",
+  "name": "NuGet",
+  "cat": "Microsoft Tools",
+  "winget": "Microsoft.NuGet"
+ },
+ {
+  "id": "nvclean",
+  "name": "NVCleanstall",
+  "cat": "Utilities",
+  "winget": "TechPowerUp.NVCleanstall"
+ },
+ {
+  "id": "obs",
+  "name": "OBS Studio",
+  "cat": "Multimedia Tools",
+  "winget": "OBSProject.OBSStudio"
+ },
+ {
+  "id": "obsidian",
+  "name": "Obsidian",
+  "cat": "Document",
+  "winget": "Obsidian.Obsidian"
+ },
+ {
+  "id": "okular",
+  "name": "Okular",
+  "cat": "Document",
+  "winget": "KDE.Okular"
+ },
+ {
+  "id": "onedrive",
+  "name": "OneDrive",
+  "cat": "Microsoft Tools",
+  "winget": "Microsoft.OneDrive"
+ },
+ {
+  "id": "onlyoffice",
+  "name": "ONLYOFFICE Desktop",
+  "cat": "Document",
+  "winget": "ONLYOFFICE.DesktopEditors"
+ },
+ {
+  "id": "opautoclicker",
+  "name": "OPAutoClicker",
+  "cat": "Utilities",
+  "winget": "OPAutoClicker.OPAutoClicker"
+ },
+ {
+  "id": "openrgb",
+  "name": "OpenRGB",
+  "cat": "Utilities",
+  "winget": "OpenRGB.OpenRGB"
+ },
+ {
+  "id": "openvpn",
+  "name": "OpenVPN Connect",
+  "cat": "Pro Tools",
+  "winget": "OpenVPNTechnologies.OpenVPNConnect"
+ },
+ {
+  "id": "ovirtualbox",
+  "name": "Oracle VirtualBox",
+  "cat": "Utilities",
+  "winget": "Oracle.VirtualBox"
+ },
+ {
+  "id": "policyplus",
+  "name": "Policy Plus",
+  "cat": "Utilities",
+  "winget": "Fleex255.PolicyPlus"
+ },
+ {
+  "id": "processexplorer",
+  "name": "Process Explorer",
+  "cat": "Microsoft Tools",
+  "winget": "Microsoft.Sysinternals.ProcessExplorer"
+ },
+ {
+  "id": "paintdotnet",
+  "name": "Paint.NET",
+  "cat": "Multimedia Tools",
+  "winget": "dotPDN.PaintDotNet"
+ },
+ {
+  "id": "parsec",
+  "name": "Parsec",
+  "cat": "Utilities",
+  "winget": "Parsec.Parsec"
+ },
+ {
+  "id": "peazip",
+  "name": "PeaZip",
+  "cat": "Utilities",
+  "winget": "Giorgiotani.Peazip"
+ },
+ {
+  "id": "pdf-xchange",
+  "name": "PDF-XChange Editor",
+  "cat": "Document",
+  "winget": "TrackerSoftware.PDF-XChangeEditor"
+ },
+ {
+  "id": "pdf24creator",
+  "name": "PDF24 Creator",
+  "cat": "Document",
+  "winget": "geeksoftwareGmbH.PDF24Creator"
+ },
+ {
+  "id": "pdfgear",
+  "name": "PDFgear",
+  "cat": "Document",
+  "winget": "PDFgear.PDFgear"
+ },
+ {
+  "id": "pdfsam",
+  "name": "PDFsam Basic",
+  "cat": "Document",
+  "winget": "PDFsam.PDFsam"
+ },
+ {
+  "id": "playnite",
+  "name": "Playnite",
+  "cat": "Games",
+  "winget": "Playnite.Playnite"
+ },
+ {
+  "id": "plex",
+  "name": "Plex Media Server",
+  "cat": "Selfhosted Tools",
+  "winget": "Plex.PlexMediaServer"
+ },
+ {
+  "id": "plexdesktop",
+  "name": "Plex Desktop",
+  "cat": "Selfhosted Tools",
+  "winget": "Plex.Plex"
+ },
+ {
+  "id": "posh",
+  "name": "Oh My Posh (Prompt)",
+  "cat": "Development",
+  "winget": "JanDeDobbeleer.OhMyPosh"
+ },
+ {
+  "id": "postman",
+  "name": "Postman",
+  "cat": "Development",
+  "winget": "Postman.Postman"
+ },
+ {
+  "id": "powershell",
+  "name": "PowerShell",
+  "cat": "Microsoft Tools",
+  "winget": "Microsoft.PowerShell"
+ },
+ {
+  "id": "powertoys",
+  "name": "PowerToys",
+  "cat": "Microsoft Tools",
+  "winget": "Microsoft.PowerToys"
+ },
+ {
+  "id": "prismlauncher",
+  "name": "Prism Launcher",
+  "cat": "Games",
+  "winget": "PrismLauncher.PrismLauncher"
+ },
+ {
+  "id": "processlasso",
+  "name": "Process Lasso",
+  "cat": "Utilities",
+  "winget": "BitSum.ProcessLasso"
+ },
+ {
+  "id": "protonauth",
+  "name": "Proton Authenticator",
+  "cat": "Utilities",
+  "winget": "Proton.ProtonAuthenticator"
+ },
+ {
+  "id": "protonmail",
+  "name": "Proton Mail",
+  "cat": "Communications",
+  "winget": "Proton.ProtonMail"
+ },
+ {
+  "id": "protondrive",
+  "name": "Proton Drive",
+  "cat": "Utilities",
+  "winget": "Proton.ProtonDrive"
+ },
+ {
+  "id": "protonpass",
+  "name": "Proton Pass",
+  "cat": "Utilities",
+  "winget": "Proton.ProtonPass"
+ },
+ {
+  "id": "protonvpn",
+  "name": "Proton VPN",
+  "cat": "Pro Tools",
+  "winget": "Proton.ProtonVPN"
+ },
+ {
+  "id": "processmonitor",
+  "name": "Process Monitor",
+  "cat": "Microsoft Tools",
+  "winget": "Microsoft.Sysinternals.ProcessMonitor"
+ },
+ {
+  "id": "putty",
+  "name": "PuTTY",
+  "cat": "Pro Tools",
+  "winget": "PuTTY.PuTTY"
+ },
+ {
+  "id": "python3",
+  "name": "Python3",
+  "cat": "Development",
+  "winget": "Python.Python.3.14"
+ },
+ {
+  "id": "qbittorrent",
+  "name": "qBittorrent",
+  "cat": "Utilities",
+  "winget": "qBittorrent.qBittorrent"
+ },
+ {
+  "id": "qownnotes",
+  "name": "QOwnNotes",
+  "cat": "Document",
+  "winget": "pbek.QOwnNotes"
+ },
+ {
+  "id": "qtox",
+  "name": "QTox",
+  "cat": "Communications",
+  "winget": "Tox.qTox"
+ },
+ {
+  "id": "revo",
+  "name": "Revo Uninstaller",
+  "cat": "Utilities",
+  "winget": "RevoUninstaller.RevoUninstaller"
+ },
+ {
+  "id": "wiseprogramuninstaller",
+  "name": "Wise Program Uninstaller (WiseCleaner)",
+  "cat": "Utilities",
+  "winget": "WiseCleaner.WiseProgramUninstaller"
+ },
+ {
+  "id": "rufus",
+  "name": "Rufus Imager",
+  "cat": "Utilities",
+  "winget": "Rufus.Rufus"
+ },
+ {
+  "id": "rustlang",
+  "name": "Rust",
+  "cat": "Development",
+  "winget": "Rustlang.Rust.MSVC"
+ },
+ {
+  "id": "sdio",
+  "name": "Snappy Driver Installer Origin",
+  "cat": "Utilities",
+  "winget": "GlennDelahoy.SnappyDriverInstallerOrigin"
+ },
+ {
+  "id": "sharex",
+  "name": "ShareX (Screenshots)",
+  "cat": "Multimedia Tools",
+  "winget": "ShareX.ShareX"
+ },
+ {
+  "id": "nilesoftshell",
+  "name": "Nilesoft Shell",
+  "cat": "Utilities",
+  "winget": "Nilesoft.Shell"
+ },
+ {
+  "id": "systeminformer",
+  "name": "System Informer",
+  "cat": "Development",
+  "winget": "WinsiderSS.SystemInformer"
+ },
+ {
+  "id": "signal",
+  "name": "Signal",
+  "cat": "Communications",
+  "winget": "OpenWhisperSystems.Signal"
+ },
+ {
+  "id": "signalrgb",
+  "name": "SignalRGB",
+  "cat": "Utilities",
+  "winget": "WhirlwindFX.SignalRgb"
+ },
+ {
+  "id": "simplenote",
+  "name": "Simplenote",
+  "cat": "Document",
+  "winget": "Automattic.Simplenote"
+ },
+ {
+  "id": "simplewall",
+  "name": "Simplewall",
+  "cat": "Pro Tools",
+  "winget": "Henry++.simplewall"
+ },
+ {
+  "id": "slack",
+  "name": "Slack",
+  "cat": "Communications",
+  "winget": "SlackTechnologies.Slack"
+ },
+ {
+  "id": "startallback",
+  "name": "StartAllBack",
+  "cat": "Utilities",
+  "winget": "StartIsBack.StartAllBack"
+ },
+ {
+  "id": "starship",
+  "name": "Starship (Shell Prompt)",
+  "cat": "Development",
+  "winget": "Starship.Starship"
+ },
+ {
+  "id": "steam",
+  "name": "Steam",
+  "cat": "Games",
+  "winget": "Valve.Steam"
+ },
+ {
+  "id": "roblox",
+  "name": "Roblox",
+  "cat": "Games",
+  "winget": "Roblox.Roblox"
+ },
+ {
+  "id": "sublimetext",
+  "name": "Sublime Text",
+  "cat": "Development",
+  "winget": "SublimeHQ.SublimeText.4"
+ },
+ {
+  "id": "sumatra",
+  "name": "Sumatra PDF",
+  "cat": "Document",
+  "winget": "SumatraPDF.SumatraPDF"
+ },
+ {
+  "id": "sunshine",
+  "name": "Sunshine/GameStream Server",
+  "cat": "Selfhosted Tools",
+  "winget": "LizardByte.Sunshine"
+ },
+ {
+  "id": "synctrayzor",
+  "name": "SyncTrayzor",
+  "cat": "Selfhosted Tools",
+  "winget": "GermanCoding.SyncTrayzor"
+ },
+ {
+  "id": "syncthing",
+  "name": "Syncthing (CLI / Web UI)",
+  "cat": "Selfhosted Tools",
+  "winget": "Syncthing.Syncthing"
+ },
+ {
+  "id": "tcpview",
+  "name": "TCPView",
+  "cat": "Microsoft Tools",
+  "winget": "Microsoft.Sysinternals.TCPView"
+ },
+ {
+  "id": "teams",
+  "name": "Teams",
+  "cat": "Communications",
+  "winget": "Microsoft.Teams"
+ },
+ {
+  "id": "teamviewer",
+  "name": "TeamViewer",
+  "cat": "Utilities",
+  "winget": "TeamViewer.TeamViewer"
+ },
+ {
+  "id": "teamspeak3",
+  "name": "TeamSpeak 3",
+  "cat": "Communications",
+  "winget": "TeamSpeakSystems.TeamSpeakClient"
+ },
+ {
+  "id": "teamspeak6",
+  "name": "TeamSpeak 6",
+  "cat": "Communications",
+  "winget": "TeamSpeakSystems.TeamSpeakClient.Beta.6"
+ },
+ {
+  "id": "telegram",
+  "name": "Telegram",
+  "cat": "Communications",
+  "winget": "Telegram.TelegramDesktop"
+ },
+ {
+  "id": "terminal",
+  "name": "Windows Terminal",
+  "cat": "Microsoft Tools",
+  "winget": "Microsoft.WindowsTerminal"
+ },
+ {
+  "id": "thunderbird",
+  "name": "Thunderbird",
+  "cat": "Communications",
+  "winget": "Mozilla.Thunderbird"
+ },
+ {
+  "id": "betterbird",
+  "name": "Betterbird",
+  "cat": "Communications",
+  "winget": "Betterbird.Betterbird"
+ },
+ {
+  "id": "tor",
+  "name": "Tor Browser",
+  "cat": "Browsers",
+  "winget": "TorProject.TorBrowser"
+ },
+ {
+  "id": "totalcommander",
+  "name": "Total Commander",
+  "cat": "Utilities",
+  "winget": "Ghisler.TotalCommander"
+ },
+ {
+  "id": "treesize",
+  "name": "TreeSize Free",
+  "cat": "Utilities",
+  "winget": "JAMSoftware.TreeSize.Free"
+ },
+ {
+  "id": "ttaskbar",
+  "name": "TranslucentTB",
+  "cat": "Utilities",
+  "winget": "CharlesMilette.TranslucentTB"
+ },
+ {
+  "id": "ubisoft",
+  "name": "Ubisoft Connect",
+  "cat": "Games",
+  "winget": "Ubisoft.Connect"
+ },
+ {
+  "id": "ungoogled",
+  "name": "Ungoogled Chromium",
+  "cat": "Browsers",
+  "winget": "eloston.ungoogled-chromium"
+ },
+ {
+  "id": "unity",
+  "name": "Unity Game Engine",
+  "cat": "Development",
+  "winget": "Unity.UnityHub"
+ },
+ {
+  "id": "vagrant",
+  "name": "Vagrant",
+  "cat": "Development",
+  "winget": "Hashicorp.Vagrant"
+ },
+ {
+  "id": "everything",
+  "name": "Everything",
+  "cat": "Utilities",
+  "winget": "voidtools.Everything"
+ },
+ {
+  "id": "vc2015_32",
+  "name": "Visual C++ 2015-2022 32-bit",
+  "cat": "Microsoft Tools",
+  "winget": "Microsoft.VCRedist.2015+.x86"
+ },
+ {
+  "id": "vc2015_64",
+  "name": "Visual C++ 2015-2022 64-bit",
+  "cat": "Microsoft Tools",
+  "winget": "Microsoft.VCRedist.2015+.x64"
+ },
+ {
+  "id": "ventoy",
+  "name": "Ventoy",
+  "cat": "Pro Tools",
+  "winget": "Ventoy.Ventoy"
+ },
+ {
+  "id": "vesktop",
+  "name": "Vesktop",
+  "cat": "Communications",
+  "winget": "Vencord.Vesktop"
+ },
+ {
+  "id": "viber",
+  "name": "Viber",
+  "cat": "Communications",
+  "winget": "Rakuten.Viber"
+ },
+ {
+  "id": "visualstudio2022",
+  "name": "Visual Studio 2022",
+  "cat": "Development",
+  "winget": "Microsoft.VisualStudio.2022.Community"
+ },
+ {
+  "id": "visualstudio2026",
+  "name": "Visual Studio 2026",
+  "cat": "Development",
+  "winget": "Microsoft.VisualStudio.Community"
+ },
+ {
+  "id": "vivaldi",
+  "name": "Vivaldi",
+  "cat": "Browsers",
+  "winget": "Vivaldi.Vivaldi"
+ },
+ {
+  "id": "vlc",
+  "name": "VLC (Video Player)",
+  "cat": "Multimedia Tools",
+  "winget": "VideoLAN.VLC"
+ },
+ {
+  "id": "vrdesktopstreamer",
+  "name": "Virtual Desktop Streamer",
+  "cat": "Games",
+  "winget": "VirtualDesktop.Streamer"
+ },
+ {
+  "id": "vscode",
+  "name": "VS Code",
+  "cat": "Development",
+  "winget": "Microsoft.VisualStudioCode"
+ },
+ {
+  "id": "vscodium",
+  "name": "VS Codium",
+  "cat": "Development",
+  "winget": "VSCodium.VSCodium"
+ },
+ {
+  "id": "waterfox",
+  "name": "Waterfox",
+  "cat": "Browsers",
+  "winget": "Waterfox.Waterfox"
+ },
+ {
+  "id": "whatsapp",
+  "name": "WhatsApp Desktop",
+  "cat": "Communications",
+  "winget": "msstore:9NKSQGP7F2NH"
+ },
+ {
+  "id": "wingetui",
+  "name": "UniGetUI",
+  "cat": "Utilities",
+  "winget": "Devolutions.UniGetUI"
+ },
+ {
+  "id": "winrar",
+  "name": "WinRAR",
+  "cat": "Utilities",
+  "winget": "RARLab.WinRAR"
+ },
+ {
+  "id": "winscp",
+  "name": "WinSCP",
+  "cat": "Pro Tools",
+  "winget": "WinSCP.WinSCP"
+ },
+ {
+  "id": "wireguard",
+  "name": "WireGuard",
+  "cat": "Pro Tools",
+  "winget": "WireGuard.WireGuard"
+ },
+ {
+  "id": "wireshark",
+  "name": "Wireshark",
+  "cat": "Pro Tools",
+  "winget": "WiresharkFoundation.Wireshark"
+ },
+ {
+  "id": "wiztree",
+  "name": "WizTree",
+  "cat": "Utilities",
+  "winget": "AntibodySoftware.WizTree"
+ },
+ {
+  "id": "xeheditor",
+  "name": "HxD Hex Editor",
+  "cat": "Utilities",
+  "winget": "MHNexus.HxD"
+ },
+ {
+  "id": "xournal",
+  "name": "Xournal++",
+  "cat": "Document",
+  "winget": "Xournal++.Xournal++"
+ },
+ {
+  "id": "yarn",
+  "name": "Yarn",
+  "cat": "Development",
+  "winget": "Yarn.Yarn"
+ },
+ {
+  "id": "zoom",
+  "name": "Zoom",
+  "cat": "Communications",
+  "winget": "Zoom.Zoom"
+ },
+ {
+  "id": "uv",
+  "name": "uv",
+  "cat": "Development",
+  "winget": "astral-sh.uv"
+ },
+ {
+  "id": "tightvnc",
+  "name": "TightVNC",
+  "cat": "Utilities",
+  "winget": "GlavSoft.TightVNC"
+ },
+ {
+  "id": "glazewm",
+  "name": "GlazeWM",
+  "cat": "Utilities",
+  "winget": "glzr-io.glazewm"
+ },
+ {
+  "id": "overwolf",
+  "name": "CurseForge",
+  "cat": "Games",
+  "winget": "Overwolf.CurseForge"
+ },
+ {
+  "id": "ofgb",
+  "name": "OFGB (Oh Frick Go Back)",
+  "cat": "Utilities",
+  "winget": "xM4ddy.OFGB"
+ },
+ {
+  "id": "zenbrowser",
+  "name": "Zen Browser",
+  "cat": "Browsers",
+  "winget": "Zen-Team.Zen-Browser"
+ },
+ {
+  "id": "zed",
+  "name": "Zed",
+  "cat": "Development",
+  "winget": "ZedIndustries.Zed"
+ },
+ {
+  "id": "zotero",
+  "name": "Zotero",
+  "cat": "Document",
+  "winget": "DigitalScholar.Zotero"
+ },
+ {
+  "id": "deskflow",
+  "name": "Deskflow",
+  "cat": "Utilities",
+  "winget": "Deskflow.Deskflow"
+ },
+ {
+  "id": "ruby",
+  "name": "Ruby",
+  "cat": "Development",
+  "winget": "RubyInstallerTeam.Ruby.4.0"
+ },
+ {
+  "id": "lua",
+  "name": "Lua",
+  "cat": "Development",
+  "winget": "rjpcomputing.luaforwindows"
+ },
+ {
+  "id": "cloudflarewarp",
+  "name": "Cloudflare WARP",
+  "cat": "Utilities",
+  "winget": "Cloudflare.Warp"
+ }
+];

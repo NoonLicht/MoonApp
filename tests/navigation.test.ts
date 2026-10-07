@@ -33,6 +33,7 @@ const ALL_IDS = [
   "lecture",
   "bypass",
   "tools",
+  "tuning",
   "games",
   "screenshots",
   "automation",

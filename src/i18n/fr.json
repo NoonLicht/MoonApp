@@ -20,7 +20,8 @@
     "games": "Jeux",
     "screenshots": "Captures d'écran",
     "automation": "Automatisation",
-    "budget": "Budget"
+    "budget": "Budget",
+    "tuning": "Réglage du PC"
   },
   "common": {
     "saved": "enregistré",
@@ -2553,5 +2554,11 @@
     "f_aichat": "Chat IA",
     "f_aichat_hint": "Modèles locaux via Ollama",
     "toolbarTitle": "Salut !"
+  },
+  "tuning": {
+    "title": "Réglage du PC"
+  },
+  "privacy": {
+    "panicTitle": "Confidentialité"
   }
 }

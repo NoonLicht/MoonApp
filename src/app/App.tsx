@@ -44,6 +44,7 @@ import "@/styles/lecture.css";
 import "@/styles/bypass.css";
 import "@/styles/automation.css";
 import "@/styles/budget.css";
+import "@/styles/tuning.css";
 import "@/styles/movies.css";
 import "@/styles/upscale.css";
 import "@/styles/screenshots.css";
@@ -70,6 +71,7 @@ import GamesPage from "@/pages/games/GamesPage";
 import ScreenshotsPage from "@/pages/screenshots/ScreenshotsPage";
 import AutomationPage from "@/pages/automation/AutomationPage";
 import BudgetPage from "@/pages/budget/BudgetPage";
+import TuningPage from "@/pages/tuning/TuningPage";
 
 // Идентификаторы страниц и их перечень (PAGES) живут в src/navigation.ts —
 // общий источник для дока приложения и списка «Стартовая страница» в настройках.
@@ -113,6 +115,7 @@ const PAGE_COMPONENTS: Record<PageId, React.ComponentType> = {
   screenshots: ScreenshotsPage,
   automation: AutomationPage,
   budget: BudgetPage,
+  tuning: TuningPage,
   archive: ArchiverPage,
   settings: SettingsPage,
 };
@@ -402,7 +405,9 @@ function Shell({
             <div className="pages-stack">
               {stack.map((id) => (
                 <PageHost key={id} id={id} active={id === safeActive}>
-                  <ErrorBoundary label={id}>{React.createElement(MEMO_PAGE_COMPONENTS[id])}</ErrorBoundary>
+                  <ErrorBoundary label={id}>
+                    {React.createElement(MEMO_PAGE_COMPONENTS[id])}
+                  </ErrorBoundary>
                 </PageHost>
               ))}
             </div>

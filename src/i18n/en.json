@@ -20,7 +20,8 @@
     "games": "Games",
     "screenshots": "Screenshots",
     "automation": "Automation",
-    "budget": "Budget"
+    "budget": "Budget",
+    "tuning": "PC Tuning"
   },
   "common": {
     "saved": "saved",
@@ -2761,5 +2762,1325 @@
     "f_aichat": "AI chat",
     "f_aichat_hint": "Local models via Ollama",
     "toolbarTitle": "Hi there!"
+  },
+  "tuning": {
+    "eyebrow": "OPTIMIZATION",
+    "title": "PC Tuning",
+    "loading": "Loading…",
+    "windowsOnly": "This page is available on Windows only.",
+    "adminYes": "Administrator rights",
+    "adminNo": "No administrator rights",
+    "adminNote": "The app runs without administrator rights: HKLM changes and system commands will run through a single UAC prompt.",
+    "statApplied": "Tweaks enabled",
+    "statByApp": "Applied by the app",
+    "statBackups": "Backups",
+    "tab": {
+      "windows": "Windows",
+      "scheduler": "Scheduler",
+      "usb": "USB",
+      "network": "Network",
+      "drivers": "Drivers",
+      "bios": "BIOS",
+      "bench": "Benchmarks",
+      "checklist": "Checklist",
+      "backups": "Backups & rollback",
+      "privacy": "Privacy",
+      "debloat": "Debloat",
+      "wu-essential": "Essential",
+      "wu-advanced": "Advanced",
+      "wu-prefs": "Windows prefs",
+      "wu-tools": "Tools",
+      "wu-apps": "Apps"
+    },
+    "tabHint": {
+      "windows": "Registry and service tweaks. Every change can be rolled back; a backup is made before applying.",
+      "scheduler": "Priorities, power and timer: lower latency and steadier frame times.",
+      "usb": "USB power saving and a controller map to spread peripherals out.",
+      "network": "Network latency: Nagle's algorithm, throttling, DNS and adapter power saving.",
+      "drivers": "MSI interrupt mode, driver policy and a driver inventory.",
+      "privacy": "Clear traces from the running system: history, recent files, caches, browsers, USB history and logs.",
+      "debloat": "Remove bundled apps, extra interface tweaks and quick Windows repair tools.",
+      "wu-essential": "Basic winutil tweaks: telemetry, services, location, consumer features and more.",
+      "wu-advanced": "Advanced winutil tweaks. They may remove Windows components or change networking — read the descriptions.",
+      "wu-prefs": "Windows look and behaviour: theme, Explorer, taskbar, sleep, window snapping and so on.",
+      "wu-tools": "One-shot winutil actions: DNS, updates, repair, Windows features, legacy control panels.",
+      "wu-apps": "Install, update and remove programs with winget — the catalogue comes from winutil."
+    },
+    "risk0": "Safe",
+    "risk1": "Caution",
+    "risk2": "Risky",
+    "statePartial": "Partial",
+    "stateNa": "Unavailable",
+    "byApp": "Applied by this app — rollback restores the previous values",
+    "needsReboot": "Reboot required",
+    "refresh": "Refresh",
+    "unknown": "Unknown",
+    "yes": "Yes",
+    "no": "No",
+    "delete": "Delete",
+    "close": "Close",
+    "done": "Done.",
+    "error": "Error",
+    "failedSome": "Not all changes were applied ({n}): {first}",
+    "uacCancelled": "The administrator prompt was declined.",
+    "rebootNeeded": "A reboot is required for the changes to take effect.",
+    "confirmRisk": "These tweaks reduce security or stability: {list}. Continue?",
+    "applied": "Changes applied: {n}.",
+    "pending": "Pending changes: {n}",
+    "discard": "Discard selection",
+    "apply": "Apply",
+    "working": "Working…",
+    "regButton": "Preview .reg",
+    "regPreview": ".reg file",
+    "regDownload": "Download .reg",
+    "procTitle": "Process priority and cores",
+    "procHint": "A live change lasts until the process exits. “Remember” stores the priority in Image File Execution Options so it applies on every launch (remove it with the button on the right).",
+    "procApplied": "Process settings changed.",
+    "procApply": "Apply now",
+    "ifeoAdd": "Remember priority",
+    "ifeoSaved": "Priority saved for all launches.",
+    "ifeoRemoved": "Rule removed.",
+    "ifeoRules": "Permanent rules",
+    "prio": {
+      "Idle": "Low (Idle)",
+      "BelowNormal": "Below normal",
+      "Normal": "Normal",
+      "AboveNormal": "Above normal",
+      "High": "High"
+    },
+    "usbTitle": "USB controller map",
+    "usbHint": "Plug the mouse, keyboard and audio into different controllers when possible.",
+    "usbEmpty": "No USB controllers found.",
+    "driversTitle": "Device drivers",
+    "driversHint": "Display, network, audio, USB and storage controllers. MSI mode is shown for PCI devices.",
+    "openDevmgmt": "Device Manager",
+    "msiOn": "MSI on",
+    "msiOff": "MSI off",
+    "biosFacts": "What Windows can see",
+    "biosHint": "BIOS settings can't be changed from Windows — below are firmware facts and a checklist. Rebooting to UEFI opens the firmware menu.",
+    "biosUnavailable": "Couldn't read system information.",
+    "smtOn": "SMT/Hyper-Threading is on",
+    "smtOff": "SMT/Hyper-Threading is off",
+    "uefiReboot": "Reboot to UEFI",
+    "uefiConfirm": "The computer will reboot into the UEFI menu in 20 seconds. Save your work. Continue?",
+    "uefiScheduled": "Rebooting in 20 seconds.",
+    "uefiAbort": "Cancel reboot",
+    "uefiAborted": "Reboot cancelled.",
+    "fact": {
+      "board": "Board and BIOS",
+      "cpu": "Processor",
+      "smt": "CPU threads",
+      "uefi": "UEFI boot mode",
+      "secureBoot": "Secure Boot",
+      "tpm": "TPM",
+      "virt": "Virtualization in BIOS",
+      "ram": "Memory (running / rated)",
+      "gpu": "Graphics cards",
+      "hags": "Hardware-accelerated GPU scheduling"
+    },
+    "verdict": {
+      "uefi": {
+        "good": "Good",
+        "warn": "UEFI needed"
+      },
+      "virt": {
+        "good": "Off",
+        "warn": "Can be disabled"
+      },
+      "ram": {
+        "good": "Profile active",
+        "warn": "Enable XMP/EXPO"
+      }
+    },
+    "benchTitle": "Latency measurements",
+    "benchHint": "Measures the system timer resolution, real Sleep(1) duration and DPC/interrupt load (about 10 seconds). Run it before and after tweaks, with heavy apps closed.",
+    "benchLabel": "Run name (for example, “before tweaks”)",
+    "benchRun": "Run measurement",
+    "benchRunning": "Measuring…",
+    "benchRunCol": "Run",
+    "benchBase": "Compare against this run",
+    "benchFailed": "The measurement failed.",
+    "benchDone": "Measurement saved.",
+    "metric": {
+      "timerCur": "Timer, ms",
+      "sleepAvg": "Sleep(1) avg, ms",
+      "sleepP99": "Sleep(1) p99, ms",
+      "sleepMax": "Sleep(1) max, ms",
+      "dpcAvg": "DPC, %",
+      "dpcMax": "DPC max, %",
+      "intAvg": "Interrupts, %",
+      "dpcRate": "DPCs per second"
+    },
+    "mouseTitle": "Mouse polling rate",
+    "mouseHint": "Move the mouse over the area: it shows the real event rate and its stability (σ).",
+    "mouseReset": "Reset",
+    "mousePad": "Move the mouse here",
+    "checklistTitle": "Manual steps",
+    "checklistHint": "Guide items that can't be done in software: hardware, cooling, peripherals, stability and maintenance. Your ticks are saved.",
+    "openMsinfo": "System information (IRQ)",
+    "openEvents": "Event Viewer",
+    "section": {
+      "bios": "BIOS/UEFI settings",
+      "physical": "Physical setup",
+      "cooling": "Cooling",
+      "peripherals": "Peripherals",
+      "stability": "Stability and overclocking",
+      "install": "Windows installation",
+      "maintenance": "Maintenance"
+    },
+    "backupsTitle": "Backups and rollback",
+    "backupsHint": "A backup stores the previous values of every tweak. One is created automatically before each apply; restoring puts the saved values back.",
+    "backupLabel": "Backup name",
+    "backupCreate": "Create backup",
+    "backupCreated": "Backup created.",
+    "backupManual": "Manual backup",
+    "backupsEmpty": "No backups yet.",
+    "backupTweaks": "tweaks: {n}",
+    "auto": "auto",
+    "restore": "Restore",
+    "restoreConfirm": "Restore settings from “{label}”?",
+    "restored": "Settings restored.",
+    "rollbackAll": "Roll back everything",
+    "rollbackConfirm": "Roll back all tweaks applied by the app ({n})?",
+    "rolledBack": "All changes made by the app were rolled back.",
+    "restorePoint": "Windows restore point",
+    "restorePointDone": "Restore point created.",
+    "openRestore": "System Restore",
+    "historyTitle": "Activity log",
+    "historyEmpty": "Nothing yet.",
+    "kind": {
+      "backup": "backup",
+      "restore": "restore",
+      "apply": "applied",
+      "revert": "rollback",
+      "restorePoint": "restore point",
+      "process": "process",
+      "ifeo": "priority",
+      "ifeoRemove": "rule removed",
+      "tool": "tool"
+    },
+    "tw": {
+      "timer-res": {
+        "t": "Global timer resolution",
+        "d": "GlobalTimerResolutionRequests=1: high-resolution timer requests apply system-wide (Windows 11)."
+      },
+      "fs-8dot3": {
+        "t": "Disable 8.3 file names",
+        "d": "NtfsDisable8dot3NameCreation=1: faster file creation on NTFS."
+      },
+      "fs-lastaccess": {
+        "t": "Don't update last access time",
+        "d": "NtfsDisableLastAccessUpdate: fewer disk writes while reading files."
+      },
+      "fast-startup": {
+        "t": "Disable Fast Startup",
+        "d": "HiberbootEnabled=0: full driver reload instead of kernel hibernation."
+      },
+      "gamedvr": {
+        "t": "Disable Game DVR",
+        "d": "Background game capture and Xbox Game Bar stop using resources."
+      },
+      "fso": {
+        "t": "Disable fullscreen optimizations",
+        "d": "Games run in native exclusive fullscreen mode."
+      },
+      "mouse-accel": {
+        "t": "Disable mouse acceleration",
+        "d": "“Enhance pointer precision” is turned off; takes effect after signing in again."
+      },
+      "power-throttling": {
+        "t": "Disable Power Throttling",
+        "d": "PowerThrottlingOff=1: Windows doesn't throttle background processes."
+      },
+      "transparency": {
+        "t": "Disable transparency effects",
+        "d": "Lower GPU load in the Windows UI."
+      },
+      "bg-apps": {
+        "t": "Block background apps",
+        "d": "Store apps don't run in the background."
+      },
+      "uac-always": {
+        "t": "UAC: always notify",
+        "d": "Highest User Account Control level on the secure desktop."
+      },
+      "telemetry": {
+        "t": "Disable telemetry",
+        "d": "DiagTrack and dmwappushservice are stopped and data collection is minimal."
+      },
+      "sysmain": {
+        "t": "Disable SysMain (Superfetch)",
+        "d": "Suited to SSDs: no background prefetcher."
+      },
+      "winupdate": {
+        "t": "Disable Windows Update",
+        "d": "The wuauserv service and automatic update policy are disabled. The system stops getting security fixes."
+      },
+      "mitigations": {
+        "t": "Disable Spectre/Meltdown mitigations",
+        "d": "FeatureSettingsOverride=3: a small speed-up at the cost of CPU vulnerabilities."
+      },
+      "prio-sep": {
+        "t": "Win32PrioritySeparation = 0x26",
+        "d": "Short quanta with foreground boost: snappier UI and games."
+      },
+      "mmcss": {
+        "t": "MMCSS game priorities",
+        "d": "SystemResponsiveness=0 and a higher priority for the Games task."
+      },
+      "power-plan": {
+        "t": "Ultimate Performance power plan",
+        "d": "Creates and activates the Ultimate Performance scheme; rollback restores the previous plan."
+      },
+      "core-unpark": {
+        "t": "Don't park cores",
+        "d": "Minimum active cores 100%: no wake-up delay."
+      },
+      "cpu-min": {
+        "t": "Minimum processor state 100%",
+        "d": "Fixed clocks; more heat and power use."
+      },
+      "c-states": {
+        "t": "Disable CPU idle states (C-states)",
+        "d": "IDLEDISABLE=1: cores never sleep. Runs hot; not for laptops."
+      },
+      "platform-tick": {
+        "t": "Platform tick without dynamic tick",
+        "d": "bcdedit: useplatformtick and disabledynamictick for a steadier timer."
+      },
+      "usb-suspend": {
+        "t": "Disable USB selective suspend",
+        "d": "Devices don't sleep and wake with a delay."
+      },
+      "usb-device-pm": {
+        "t": "Disable USB device power saving",
+        "d": "EnhancedPowerManagementEnabled=0 for every USB device that has the setting."
+      },
+      "nagle": {
+        "t": "Disable Nagle's algorithm",
+        "d": "TcpAckFrequency=1 and TCPNoDelay=1 on active interfaces: lower latency in online games."
+      },
+      "net-throttling": {
+        "t": "Disable network throttling",
+        "d": "NetworkThrottlingIndex=0xFFFFFFFF: the multimedia scheduler doesn't limit packets."
+      },
+      "qos-reserve": {
+        "t": "Release QoS reserve",
+        "d": "NonBestEffortLimit=0: Windows doesn't reserve part of the link."
+      },
+      "dns-fast": {
+        "t": "Cloudflare DNS 1.1.1.1",
+        "d": "For active physical adapters. Rollback returns to automatic DNS."
+      },
+      "nic-power": {
+        "t": "Disable network adapter power saving",
+        "d": "Energy-Efficient Ethernet and Green Ethernet off; rollback resets to driver defaults."
+      },
+      "ipv6-off": {
+        "t": "Disable IPv6",
+        "d": "DisabledComponents=0xFF. May break some services; reboot required."
+      },
+      "msi-gpu": {
+        "t": "MSI mode for the graphics card",
+        "d": "Message Signaled Interrupts: lower GPU interrupt latency. Reboot required."
+      },
+      "msi-nic": {
+        "t": "MSI mode for the network card",
+        "d": "The same for PCI network adapters. Reboot required."
+      },
+      "wu-drivers": {
+        "t": "Don't install drivers via Windows Update",
+        "d": "Windows Update won't replace drivers from the vendor's site."
+      },
+      "nv-telemetry": {
+        "t": "Disable NVIDIA telemetry",
+        "d": "NvTelemetryContainer service. Unavailable without NVIDIA."
+      },
+      "explorer-extensions": {
+        "t": "Show file extensions",
+        "d": "HideFileExt=0 in File Explorer."
+      },
+      "explorer-hidden": {
+        "t": "Show hidden files",
+        "d": "File Explorer shows hidden files and folders."
+      },
+      "explorer-fullpath": {
+        "t": "Full path in title bar",
+        "d": "Explorer shows the full path, not just the folder name."
+      },
+      "taskbar-widgets": {
+        "t": "Hide taskbar Widgets",
+        "d": "Removes the widgets (weather/news) icon."
+      },
+      "taskbar-chat": {
+        "t": "Hide taskbar Chat",
+        "d": "Removes the Teams/Chat icon."
+      },
+      "taskbar-search": {
+        "t": "Hide taskbar search",
+        "d": "Fully removes the search box/icon."
+      },
+      "taskbar-taskview": {
+        "t": "Hide Task View button",
+        "d": "Removes the Task View button next to search."
+      },
+      "start-ads": {
+        "t": "Disable Start menu ads",
+        "d": "Suggested apps and tips in the Start list."
+      },
+      "lock-tips": {
+        "t": "Disable lock screen tips",
+        "d": "Spotlight suggestions and fun facts."
+      },
+      "storage-sense-off": {
+        "t": "Disable automatic Storage Sense",
+        "d": "Windows won't delete files automatically on a schedule."
+      },
+      "onedrive-startup": {
+        "t": "Don't start OneDrive at sign-in",
+        "d": "Removes OneDrive from startup; doesn't uninstall it."
+      },
+      "cortana-off": {
+        "t": "Disable Cortana",
+        "d": "AllowCortana=0 policy. Needs administrator rights."
+      },
+      "context-menu-classic": {
+        "t": "Classic context menu (Windows 11)",
+        "d": "Restores the full right-click menu without “Show more options”."
+      },
+      "appx-3dviewer": {
+        "t": "3D Viewer",
+        "d": "The built-in 3D Viewer app."
+      },
+      "appx-mixedreality": {
+        "t": "Mixed Reality Portal",
+        "d": "If you don't use a VR/MR headset."
+      },
+      "appx-bingnews": {
+        "t": "News (Bing News)",
+        "d": "The built-in news app."
+      },
+      "appx-bingweather": {
+        "t": "Weather (Bing Weather)",
+        "d": "The built-in weather app."
+      },
+      "appx-gethelp": {
+        "t": "Get Help",
+        "d": "The built-in Microsoft support app."
+      },
+      "appx-getstarted": {
+        "t": "Tips",
+        "d": "First-run Windows tips."
+      },
+      "appx-messaging": {
+        "t": "Messaging",
+        "d": "The built-in SMS/messaging app."
+      },
+      "appx-officehub": {
+        "t": "Office (promo app)",
+        "d": "This is the Office Hub promo app, not Office itself."
+      },
+      "appx-solitaire": {
+        "t": "Microsoft Solitaire Collection",
+        "d": "The built-in solitaire game."
+      },
+      "appx-onenote": {
+        "t": "OneNote (Store)",
+        "d": "The UWP OneNote, not the desktop app."
+      },
+      "appx-people": {
+        "t": "People",
+        "d": "The built-in contacts app on the taskbar."
+      },
+      "appx-skype": {
+        "t": "Skype",
+        "d": "The built-in Skype app."
+      },
+      "appx-feedbackhub": {
+        "t": "Feedback Hub",
+        "d": "The Microsoft feedback app."
+      },
+      "appx-maps": {
+        "t": "Maps",
+        "d": "The built-in maps app."
+      },
+      "appx-yourphone": {
+        "t": "Phone Link",
+        "d": "The Android/iPhone sync app."
+      },
+      "appx-zunemusic": {
+        "t": "Groove Music",
+        "d": "The built-in music player."
+      },
+      "appx-zunevideo": {
+        "t": "Movies & TV",
+        "d": "The built-in video player/store."
+      },
+      "appx-xboxapp": {
+        "t": "Xbox",
+        "d": "The Xbox app. May affect games using Xbox Live features."
+      },
+      "wu-activity": {
+        "t": "Activity History - Disable",
+        "d": "Stops Windows from publishing or uploading user activities while preserving clipboard history."
+      },
+      "wu-hiber": {
+        "t": "Hibernation - Disable",
+        "d": "Hibernation is really meant for laptops as it saves what's in memory before turning the PC off. It really should never be used."
+      },
+      "wu-widget": {
+        "t": "Widgets - Remove",
+        "d": "Removes the annoying widgets in the bottom left of the Taskbar."
+      },
+      "wu-revert-start-menu": {
+        "t": "Start Menu Previous Layout - Enable",
+        "d": "Bring back the old Start Menu layout from before the gradual rollout of the new one in 25H2. On newer versions of Windows !!THIS TWEAK WILL NOT WORK!!"
+      },
+      "wu-disable-store-search": {
+        "t": "Microsoft Store Recommended Search Results - Disable",
+        "d": "Will not display recommended Microsoft Store apps when searching for apps in the Start menu."
+      },
+      "wu-location": {
+        "t": "Location Tracking - Disable",
+        "d": "Disables Location Tracking."
+      },
+      "wu-services": {
+        "t": "Services - Set to Manual",
+        "d": "Sets some services to Manual startup and adjusts the SvcHostSplitThresholdInKB registry value to better match system memory, which can significantly reduce the number of svchost.exe processes."
+      },
+      "wu-brave-debloat": {
+        "t": "Brave Browser - Debloat",
+        "d": "Disables various annoyances like Brave Rewards, Leo AI, Crypto Wallet and VPN."
+      },
+      "wu-disable-warning-for-unsigned-rdp": {
+        "t": "RDP Unsigned File Warnings - Disable",
+        "d": "Disables warnings shown when launching unsigned RDP files introduced with the latest Windows 10 and 11 updates."
+      },
+      "wu-edge-debloat": {
+        "t": "Microsoft Edge - Debloat",
+        "d": "Disables various telemetry options, popups, and other annoyances in Edge."
+      },
+      "wu-consumer-features": {
+        "t": "ConsumerFeatures - Disable",
+        "d": "Stops promoted app installs and reduces app suggestions from Microsoft Store content."
+      },
+      "wu-telemetry": {
+        "t": "Telemetry - Disable",
+        "d": "Disables Microsoft Telemetry."
+      },
+      "wu-delivery-optimization": {
+        "t": "Delivery Optimization - Disable",
+        "d": "Stops Windows from using your bandwidth to upload updates to other PCs on the internet or local network."
+      },
+      "wu-remove-edge": {
+        "t": "Microsoft Edge - Remove",
+        "d": "Uninstalls Microsoft Edge by creating dummy MicrosoftEdge.exe file in the legacy Edge folder. This tricks Windows into unlocking the official Edge uninstaller allowing for a system-level removal."
+      },
+      "wu-disable-bit-locker": {
+        "t": "BitLocker - Disable",
+        "d": "Disables BitLocker."
+      },
+      "wu-utc": {
+        "t": "Date & Time - Set Time to UTC",
+        "d": "Essential for computers that are dual booting. Fixes the time sync with Linux systems."
+      },
+      "wu-remove-one-drive": {
+        "t": "Microsoft OneDrive - Remove",
+        "d": "Denies permission to remove OneDrive user files, then uses its own uninstaller to remove it and restores the original permission afterward."
+      },
+      "wu-remove-home-and-gallery": {
+        "t": "File Explorer Home and Gallery - Disable",
+        "d": "Removes the Home and Gallery from Explorer and sets This PC as default."
+      },
+      "wu-display": {
+        "t": "Visual Effects - Set to Best Performance",
+        "d": "Sets the system preferences to performance. You can do this manually with sysdm.cpl as well."
+      },
+      "wu-reserved-storage": {
+        "t": "Disable Reserved Storage",
+        "d": "Disables Windows Reserved Storage (7-10 GB held for updates/temp files). Recommended only on small drives. Re-enable before major Windows feature updates to avoid installation failures."
+      },
+      "wu-restore-point": {
+        "t": "Restore Point - Create",
+        "d": "Creates a restore point at runtime in case a revert is needed from WinUtil modifications."
+      },
+      "wu-end-task-on-taskbar": {
+        "t": "End Task With Right Click - Enable",
+        "d": "Enables option to end task when right-clicking a program in the taskbar."
+      },
+      "wu-storage": {
+        "t": "Storage Sense - Disable",
+        "d": "Storage Sense deletes temp files automatically."
+      },
+      "wu-windows-ai": {
+        "t": "Windows AI - Disable And Remove",
+        "d": "Removes and disables all AI features/packages"
+      },
+      "wu-wpbt": {
+        "t": "Windows Platform Binary Table (WPBT) - Disable",
+        "d": "If enabled, WPBT allows your computer vendor to execute programs at boot time, such as anti-theft software, software drivers, as well as force install software without user consent. Poses potential security risk."
+      },
+      "wu-prevent-device-metadata-from-network": {
+        "t": "Prevent Device Companion Apps",
+        "d": "Prevents additional software from being installed when plugging in devices (e.g. Ads when plugging in a monitor). Poses potential security risk."
+      },
+      "wu-razer-block": {
+        "t": "Razer Software Auto-Install - Disable",
+        "d": "Blocks ALL Razer Software installations. The hardware works fine without any software."
+      },
+      "wu-logi-block": {
+        "t": "Logitech Download Assistant Auto-Install - Disable",
+        "d": "Blocks the Logi Download Assistant that Windows Update keeps reinstalling with Logitech device drivers. Logitech hardware keeps working without it."
+      },
+      "wu-disable-notifications": {
+        "t": "System Tray Notifications & Calendar - Disable",
+        "d": "Disables all Notifications INCLUDING Calendar."
+      },
+      "wu-block-adobe-net": {
+        "t": "Adobe URL Block List - Enable",
+        "d": "Reduces user interruptions by selectively blocking connections to Adobe's activation and telemetry servers. Credit: Ruddernation-Designs"
+      },
+      "wu-right-click-menu": {
+        "t": "Right-Click Menu Previous Layout - Enable",
+        "d": "Restores the classic context menu when right-clicking in File Explorer, replacing the simplified Windows 11 version."
+      },
+      "wu-disk-cleanup": {
+        "t": "Disk Cleanup - Run",
+        "d": "Runs Disk Cleanup on Drive C: and removes old Windows Updates."
+      },
+      "wu-delete-temp-files": {
+        "t": "Temporary Files - Remove",
+        "d": "Erases TEMP Folders."
+      },
+      "wu-ipv46": {
+        "t": "IPv6 - Set IPv4 as Preferred",
+        "d": "Setting the IPv4 preference can have latency and security benefits on private networks where IPv6 is not configured."
+      },
+      "wu-teredo": {
+        "t": "Teredo - Disable",
+        "d": "Teredo network tunneling is an IPv6 feature that can cause additional latency, but may cause problems with some games."
+      },
+      "wu-disable-ipv6": {
+        "t": "IPv6 - Disable",
+        "d": "Disables IPv6."
+      },
+      "wu-disable-bgapps": {
+        "t": "Background Apps - Disable",
+        "d": "Disables all Microsoft Store apps from running in the background, which has to be done individually since Windows 11."
+      },
+      "wu-disable-explorer-auto-discovery": {
+        "t": "File Explorer Automatic Folder Discovery - Disable",
+        "d": "Windows Explorer automatically tries to guess the type of the folder based on its contents, slowing down the browsing experience. WARNING! Will disable File Explorer grouping."
+      },
+      "wu-detailed-bso-d": {
+        "t": "BSoD Verbose Mode",
+        "d": "Gives more information when you blue screen."
+      },
+      "wu-battery-percentage": {
+        "t": "System Tray Battery Percentage",
+        "d": "Shows numeric battery percentage next to the battery icon in the system tray."
+      },
+      "wu-dark-mode": {
+        "t": "Dark Theme for Windows",
+        "d": "Dark Mode for the system and applications."
+      },
+      "wu-show-ext": {
+        "t": "File Explorer File Extensions",
+        "d": "Shows .file extensions in Explorer (.exe, .png, etc.)"
+      },
+      "wu-hidden-files": {
+        "t": "File Explorer Hidden Files",
+        "d": "Reveals hidden files in Explorer."
+      },
+      "wu-verbose-logon": {
+        "t": "Logon Verbose Mode",
+        "d": "Show detailed messages during startup/shutdown."
+      },
+      "wu-new-outlook": {
+        "t": "Microsoft Outlook New Version",
+        "d": "This will ensure the new Outlook application is used."
+      },
+      "wu-scrollbars": {
+        "t": "Scrollbars Always Visible",
+        "d": "If enabled, scrollbars will always be visible. If disabled, Windows will automatically hide scrollbars when not in use."
+      },
+      "wu-mouse-acceleration": {
+        "t": "Mouse Acceleration",
+        "d": "Makes it so Cursor movement is affected by the speed of your physical mouse movements."
+      },
+      "wu-num-lock": {
+        "t": "Num Lock on Startup",
+        "d": "Toggle the Num Lock key state when your computer starts."
+      },
+      "wu-window-snapping": {
+        "t": "Window Snapping",
+        "d": "Toggles the window snapping feature when dragging windows."
+      },
+      "wu-standby-fix": {
+        "t": "S0 Sleep Network Connectivity",
+        "d": "Toggles network connectivity during S0 Sleep which is low power idle in modern laptops."
+      },
+      "wu-s3-sleep": {
+        "t": "S3 Sleep",
+        "d": "Toggles between Modern Standby and S3 Sleep, which cuts off power to the CPU while continuing to refresh the memory."
+      },
+      "wu-hide-settings-home": {
+        "t": "Settings Home Page",
+        "d": "Toggles the Home Page in the Windows Settings app."
+      },
+      "wu-bing-search": {
+        "t": "Start Menu Bing Search",
+        "d": "Toggles Bing web search results in Windows Search."
+      },
+      "wu-login-blur": {
+        "t": "Logon Screen Acrylic Blur",
+        "d": "Toggles the acrylic blur effect on login screen background."
+      },
+      "wu-disable-lockscreen": {
+        "t": "Lock Screen - Disable",
+        "d": "Skips the lock screen entirely and goes directly to the sign-in screen on boot and wake."
+      },
+      "wu-start-menu-recommendations": {
+        "t": "Start Menu Recommendations",
+        "d": "Toggles the recommendations section in the Start Menu. WARNING: This will also disable Windows Spotlight on your Lock Screen as a side effect."
+      },
+      "wu-sticky-keys": {
+        "t": "Sticky Keys",
+        "d": "Toggles the Sticky Keys, which activate when clicking shift rapidly."
+      },
+      "wu-taskbar-alignment": {
+        "t": "Taskbar Centered Icons",
+        "d": "Toggles the Taskbar alignment either to the left or center."
+      },
+      "wu-taskbar-search": {
+        "t": "Taskbar Search Icon",
+        "d": "Toggles the Search Button on the Taskbar."
+      },
+      "wu-task-view": {
+        "t": "Taskbar Task View Icon",
+        "d": "Toggles the Task View Button in the Taskbar."
+      },
+      "wu-game-mode": {
+        "t": "Game Mode",
+        "d": "Toggles Windows prioritizes gaming performance by allocating system resources to games."
+      },
+      "wu-long-paths": {
+        "t": "Enable Long Paths",
+        "d": "Toggles support for file paths longer than 260 characters in Explorer."
+      },
+      "wua-microsoft-outlook-for-windows": {
+        "t": "Outlook for Windows",
+        "d": "Provides modern email management, calendar scheduling, and contact organization features."
+      },
+      "wua-msteams": {
+        "t": "Microsoft Teams",
+        "d": "Facilitates instant messaging, video conferencing, file sharing, and workspace collaboration."
+      },
+      "wua-clipchamp-clipchamp": {
+        "t": "Clipchamp",
+        "d": "Provides a user-friendly video editor with built-in templates, effects, and timeline editing tools."
+      },
+      "wua-microsoft-bing-search": {
+        "t": "Bing Search",
+        "d": "Integrates Microsoft Bing search capabilities and web services directly into the operating system."
+      },
+      "wua-microsoft-corporation-ii-quick-assist": {
+        "t": "Quick Assist",
+        "d": "Enables secure remote technical support and screen sharing over an internet connection."
+      },
+      "wua-microsoft-windows-dev-home": {
+        "t": "Dev Home",
+        "d": "Provides a specialized dashboard for software developer environment setups, repository syncing, and hardware widgets."
+      },
+      "wua-microsoft-windows-cross-device": {
+        "t": "Mobile Devices",
+        "d": "Manages system-level background connectivity with paired mobile devices. Removing this may disable cross-device features such as phone screen mirroring, file transfer, and mobile hotspot handoff integrated into Windows Settings."
+      },
+      "wua-microsoft-todos": {
+        "t": "To Do",
+        "d": "Creates, tracks, and synchronizes personal tasks, smart lists, and daily reminders."
+      },
+      "wua-microsoft-power-automate-desktop": {
+        "t": "Power Automate",
+        "d": "Automates repetitive workflows and desktop tasks using low-code visual scripting."
+      },
+      "wua-microsoft-microsoft-sticky-notes": {
+        "t": "Sticky Notes",
+        "d": "Creates quick, floating text notes on the desktop that automatically sync across devices."
+      },
+      "wua-microsoft-windows-sound-recorder": {
+        "t": "Sound Recorder",
+        "d": "Records and trims live audio inputs with simple microphone adjustment controls."
+      },
+      "wua-microsoft-windows-alarms": {
+        "t": "Clock",
+        "d": "Features world clocks, alarms, countdown timers, stopwatches, and dedicated focus session tracking."
+      },
+      "wua-microsoft-paint": {
+        "t": "Paint",
+        "d": "Provides built-in digital sketching, basic image editing, and pixel-level graphic manipulation tools."
+      },
+      "wua-microsoft-windows-notepad": {
+        "t": "Notepad",
+        "d": "Provides a lightweight text editor with multi-tab support for plain text files and code snippets."
+      },
+      "wua-microsoft-screen-sketch": {
+        "t": "Snipping Tool",
+        "d": "Captures screenshots or screen recordings with built-in markup, image cropping, and optical character recognition (OCR)."
+      },
+      "wua-microsoft-copilot": {
+        "t": "Copilot",
+        "d": "Launches the Microsoft AI companion for contextual answers, creative writing assistance, and intelligent web search."
+      },
+      "wua-microsoft-windows-calculator": {
+        "t": "Calculator",
+        "d": "Performs standard arithmetic, scientific operations, programming calculations, and unit conversions."
+      },
+      "wua-microsoft-windows-camera": {
+        "t": "Camera",
+        "d": "Captures photographs and records video files via connected webcams or imaging hardware."
+      },
+      "wua-microsoft-windows-photos": {
+        "t": "Photos",
+        "d": "Organizes, views, and crops local images with basic color adjustment and album creation tools."
+      },
+      "wua-microsoft-gaming-app": {
+        "t": "Xbox App",
+        "d": "Serves as the primary gaming library manager, social community interface, and PC Game Pass dashboard."
+      },
+      "wua-microsoft-xbox-gaming-overlay": {
+        "t": "Xbox Game Bar",
+        "d": "Provides customizable in-game status widgets, audio balancing sliders, system monitoring tools, and gameplay recording."
+      },
+      "wua-microsoft-xbox-identity-provider": {
+        "t": "Xbox Identity Provider",
+        "d": "Manages Xbox network user authentication and background account validation for connected titles. Warning: removing this may break Microsoft account sign-in for non-Xbox games and apps that rely on this authentication pipeline."
+      },
+      "wua-microsoft-xbox-speech-to-text-overlay": {
+        "t": "Xbox Speech To Text Overlay",
+        "d": "Provides system-level live accessibility captions and voice-to-text translation for gaming chat networks."
+      },
+      "wua-microsoft-xbox-tcui": {
+        "t": "Xbox TCUI",
+        "d": "Provides core account connection UI modules for single sign-on flows within game titles. Warning: removing this may break Microsoft account authentication in games and apps that do not otherwise require the Xbox app."
+      },
+      "wua-microsoft-start-experiences-app": {
+        "t": "Start Experiences App",
+        "d": "Powers the Windows Widgets board, delivering a personalized feed of news, weather, sports, and finance content."
+      },
+      "wu-mpo-compat": {
+        "t": "Multiplane Overlay - Disable (compatibility)",
+        "d": "Disables MPO using OverlayTestMode=5, the less aggressive compatibility method."
+      },
+      "wu-mpo-full": {
+        "t": "Multiplane Overlay - Fully Disable",
+        "d": "Disables MPO using OverlayTestMode=5 and DisableOverlays=1, the more aggressive method."
+      }
+    },
+    "cl": {
+      "bios-backup": {
+        "t": "Save a BIOS profile",
+        "d": "Export the current settings before changing anything."
+      },
+      "bios-update": {
+        "t": "Update the BIOS",
+        "d": "Newer firmware improves memory and power stability."
+      },
+      "bios-defaults": {
+        "t": "Reset to defaults",
+        "d": "Start from Load Optimized Defaults, then change settings one by one."
+      },
+      "bios-xmp": {
+        "t": "Enable XMP/EXPO",
+        "d": "Memory should run at its rated speed and timings."
+      },
+      "bios-rebar": {
+        "t": "Enable Resizable BAR",
+        "d": "Above 4G Decoding + Re-Size BAR Support for the GPU."
+      },
+      "bios-smt": {
+        "t": "SMT/Hyper-Threading per workload",
+        "d": "Some games run better with it off — measure it."
+      },
+      "bios-virt": {
+        "t": "Disable virtualization",
+        "d": "SVM/VT-x, if you don't need emulators or WSL."
+      },
+      "bios-igpu": {
+        "t": "Disable integrated graphics",
+        "d": "If you use a discrete graphics card."
+      },
+      "bios-devices": {
+        "t": "Disable unused devices",
+        "d": "Wi-Fi, Bluetooth, unused SATA/audio and COM ports."
+      },
+      "bios-csm": {
+        "t": "Disable CSM",
+        "d": "Pure UEFI mode; required for Resizable BAR."
+      },
+      "bios-cstates": {
+        "t": "Tune C-states and power saving",
+        "d": "Disable deep core sleep states for minimum latency."
+      },
+      "bios-pcie": {
+        "t": "Pin the PCIe speed",
+        "d": "Gen4/Gen5 instead of Auto; disable ASPM."
+      },
+      "bios-usb": {
+        "t": "Disable Legacy USB Support",
+        "d": "After installing the OS, if the mouse and keyboard work without it."
+      },
+      "bios-fans": {
+        "t": "Set fan curves",
+        "d": "More aggressive curves mean lower temperatures and less throttling."
+      },
+      "ph-ssd": {
+        "t": "System on an SSD/NVMe",
+        "d": "An HDD adds load and streaming delays."
+      },
+      "ph-ram": {
+        "t": "Correct memory slots",
+        "d": "Dual channel: slots A2/B2 per the board manual."
+      },
+      "ph-wired": {
+        "t": "Wired peripherals and network",
+        "d": "Mouse, keyboard and Ethernet instead of wireless."
+      },
+      "ph-irq": {
+        "t": "Check IRQ conflicts",
+        "d": "No devices share an interrupt in System Information."
+      },
+      "ph-cables": {
+        "t": "Separate cables",
+        "d": "Keep signal cables away from power cables to reduce interference."
+      },
+      "ph-usb-layout": {
+        "t": "Spread peripherals across controllers",
+        "d": "See the USB map on the USB tab."
+      },
+      "co-paste": {
+        "t": "Quality thermal paste",
+        "d": "Fresh paste lowers temperatures and throttling."
+      },
+      "co-airflow": {
+        "t": "Sensible airflow",
+        "d": "Intake at the front, exhaust at the rear and top."
+      },
+      "co-vrm": {
+        "t": "Airflow over the VRM",
+        "d": "A fan over the CPU power stage on overclocked systems."
+      },
+      "co-curve": {
+        "t": "Fan curves",
+        "d": "Respond to temperature without sudden jumps."
+      },
+      "co-dust": {
+        "t": "Clean out dust",
+        "d": "Every few months."
+      },
+      "pe-clean": {
+        "t": "Clean the mouse sensor",
+        "d": "Dirt causes cursor jumps."
+      },
+      "pe-profile": {
+        "t": "Onboard mouse profile",
+        "d": "Settings stored in the mouse, no background software."
+      },
+      "pe-rgb": {
+        "t": "Turn lighting off",
+        "d": "Lighting needs background software and polling."
+      },
+      "pe-dpi": {
+        "t": "High DPI and polling rate",
+        "d": "Check polling stability on the Benchmarks tab."
+      },
+      "pe-monitor": {
+        "t": "Calibrate the monitor",
+        "d": "Brightness, contrast and refresh-rate mode."
+      },
+      "pe-overdrive": {
+        "t": "Set Overdrive/AMA",
+        "d": "Fewest artifacts at the fastest response."
+      },
+      "st-memtest": {
+        "t": "MemTest86 before installing the OS",
+        "d": "Several passes, zero errors."
+      },
+      "st-prime": {
+        "t": "Linpack / Prime95",
+        "d": "CPU and memory stress test."
+      },
+      "st-temps": {
+        "t": "Watch temperatures",
+        "d": "No throttling under load."
+      },
+      "st-timings": {
+        "t": "Manual memory timings",
+        "d": "Only after stable XMP/EXPO."
+      },
+      "st-clock": {
+        "t": "Fixed clocks",
+        "d": "A static frequency instead of boosts gives steadier frames."
+      },
+      "in-gpt": {
+        "t": "GPT and UEFI",
+        "d": "Modern partitioning for Windows 10/11."
+      },
+      "in-nic": {
+        "t": "Network driver first",
+        "d": "Other drivers from vendor sites."
+      },
+      "in-minimal": {
+        "t": "Clean minimal install",
+        "d": "No custom builds or preinstalled software."
+      },
+      "in-bloat": {
+        "t": "Remove preinstalled apps",
+        "d": "Unneeded apps and services."
+      },
+      "in-restore": {
+        "t": "Create a restore point",
+        "d": "See the Backups & rollback tab."
+      },
+      "ma-events": {
+        "t": "Review the event log",
+        "d": "Driver and WHEA errors."
+      },
+      "ma-wpr": {
+        "t": "Windows Performance Toolkit analysis",
+        "d": "If latency remains, trace DPC/ISR."
+      },
+      "ma-cleanup": {
+        "t": "Clean the system",
+        "d": "Temporary files, old drivers."
+      },
+      "ma-backup": {
+        "t": "Regular backups",
+        "d": "A settings backup before changes."
+      }
+    },
+    "fixTitle": "System repair",
+    "fixHint": "One-shot actions, not tweaks: they can't be rolled back. SFC and DISM can take several minutes; Windows Update and Winsock resets need a reboot.",
+    "fixRun": "Run",
+    "fixDone": "Done.",
+    "fixConfirm": "Run “{name}”? This can't be undone.",
+    "fix": {
+      "sfc": {
+        "t": "System File Checker (SFC)",
+        "d": "sfc /scannow — repairs corrupted system files."
+      },
+      "dism": {
+        "t": "Image repair (DISM)",
+        "d": "DISM /Online /Cleanup-Image /RestoreHealth — fixes the Windows image SFC relies on."
+      },
+      "winsock-reset": {
+        "t": "Network reset (Winsock)",
+        "d": "netsh winsock reset + netsh int ip reset. Needs a reboot."
+      },
+      "explorer-restart": {
+        "t": "Restart Explorer",
+        "d": "If the taskbar or desktop stops responding."
+      },
+      "store-reset": {
+        "t": "Reset Microsoft Store",
+        "d": "wsreset.exe — clears the Store cache."
+      },
+      "wu-reset": {
+        "t": "Reset Windows Update",
+        "d": "Stops update services, renames the SoftwareDistribution and catroot2 caches, restarts the services."
+      }
+    },
+    "wf": {
+      "wuf-dotnet": {
+        "t": ".NET Framework (Versions 2, 3, 4) - Enable",
+        "d": ".NET and .NET Framework is a developer platform made up of tools, programming languages, and libraries for building many different types of applications."
+      },
+      "wuf-hyperv": {
+        "t": "Hyper-V - Enable",
+        "d": "Hyper-V is a hardware virtualization product developed by Microsoft that allows users to create and manage virtual machines."
+      },
+      "wuf-legacymedia": {
+        "t": "Legacy Media Components (WMP, DirectPlay) - Enable",
+        "d": "Enables legacy programs from previous versions of Windows."
+      },
+      "wuf-wsl": {
+        "t": "Windows Subsystem for Linux (WSL) - Enable",
+        "d": "Windows Subsystem for Linux is an optional feature of Windows that allows Linux programs to run natively on Windows without the need for a separate virtual machine or dual booting."
+      },
+      "wuf-nfs": {
+        "t": "Network File System (NFS) - Enable",
+        "d": "Network File System (NFS) is a mechanism for storing files on a network."
+      },
+      "wuf-reg-backup": {
+        "t": "Registry Backup (Daily Task 12:30am) - Enable",
+        "d": "Enables daily registry backup, previously disabled by Microsoft in Windows 10 1803."
+      },
+      "wuf-enable-legacy-recovery": {
+        "t": "Legacy F8 Boot Recovery - Enable",
+        "d": "Enables Advanced Boot Options screen that lets you start Windows in advanced troubleshooting modes."
+      },
+      "wuf-disable-legacy-recovery": {
+        "t": "Legacy F8 Boot Recovery - Disable",
+        "d": "Disables Advanced Boot Options screen that lets you start Windows in advanced troubleshooting modes."
+      },
+      "wuf-sandbox": {
+        "t": "Windows Sandbox - Enable",
+        "d": "Windows Sandbox is a lightweight virtual machine that provides a temporary desktop environment to safely run applications and programs in isolation."
+      }
+    },
+    "wu": {
+      "credit": "Catalogue ported from ChrisTitusTech/winutil (MIT license): the values and scripts are the originals.",
+      "dnsHint": "Applies to all active network adapters, including DNS-over-HTTPS where supported. Currently:",
+      "dnsDhcp": "Automatic (DHCP)",
+      "dnsApply": "Apply DNS",
+      "group": {
+        "updates": "Windows Update",
+        "power": "Power plan",
+        "repair": "Repair & time sync",
+        "extra": "Extras"
+      },
+      "features": "Windows features",
+      "featuresHint": "Turn optional components on or off (administrator rights needed; some need a reboot).",
+      "on": "Enabled",
+      "off": "Disabled",
+      "enable": "Enable",
+      "disable": "Disable",
+      "panels": "Legacy control panels",
+      "panelsHint": "Quick launch for the classic settings windows.",
+      "appsHint": "Programs are installed with winget. Requires winget (App Installer).",
+      "search": "Search apps",
+      "allCats": "All categories",
+      "detect": "Detect installed",
+      "installed": "Installed",
+      "appsConfirm": "{mode}: {n} app(s) selected. Continue?",
+      "mode": {
+        "install": "Install",
+        "uninstall": "Uninstall",
+        "upgrade": "Upgrade"
+      }
+    },
+    "wact": {
+      "updates-default": {
+        "t": "Updates - Default settings",
+        "d": "Restores stock Windows Update behaviour (services, tasks, policies). Reboot required."
+      },
+      "updates-security": {
+        "t": "Updates - Recommended (security only)",
+        "d": "Defers feature updates by 365 days and quality updates by 4 days; no driver offers via Windows Update."
+      },
+      "updates-disable": {
+        "t": "Updates - Disable completely",
+        "d": "Stops update services and tasks, clears downloaded files. Security updates will NOT be installed!"
+      },
+      "ultperf-add": {
+        "t": "Ultimate Performance plan - Add",
+        "d": "Creates and activates the Ultimate Performance plan. Not for laptops."
+      },
+      "ultperf-remove": {
+        "t": "Power plans - Restore defaults",
+        "d": "powercfg /restoredefaultschemes: removes Ultimate Performance and custom plans."
+      },
+      "sys-repair": {
+        "t": "System corruption scan",
+        "d": "CHKDSK + SFC + DISM: checks the disk, system files and Windows image. Can take a long time."
+      },
+      "wu-repair": {
+        "t": "Windows Update - Reset",
+        "d": "Stops services, clears update cache and policies, re-registers DLLs and restarts services."
+      },
+      "wu-repair-aggressive": {
+        "t": "Windows Update - Aggressive reset",
+        "d": "Same plus a system scan, renaming DataStore/catroot2 and resetting service descriptors. Slow and riskier."
+      },
+      "ntp-pool": {
+        "t": "NTP server pool.ntp.org - Enable",
+        "d": "Replaces time.windows.com with pool.ntp.org for more accurate time sync."
+      },
+      "oosu": {
+        "t": "O&O ShutUp10++ - Download and run",
+        "d": "Downloads the tool from the vendor (dl5.oo-software.com) and launches it: fine-grained privacy settings."
+      },
+      "autologon": {
+        "t": "AutoLogon - Run",
+        "d": "Downloads Sysinternals Autologon and launches it: automatic Windows sign-in without a password."
+      },
+      "ssh-server": {
+        "t": "OpenSSH Server - Enable",
+        "d": "Installs and starts OpenSSH Server and opens port 22 in the firewall."
+      }
+    },
+    "wp": {
+      "wup-computer": {
+        "t": "Computer Management"
+      },
+      "wup-control": {
+        "t": "Control Panel"
+      },
+      "wup-mouse": {
+        "t": "Mouse Properties"
+      },
+      "wup-network": {
+        "t": "Network Connections"
+      },
+      "wup-power": {
+        "t": "Power Panel"
+      },
+      "wup-printer": {
+        "t": "Printer Panel"
+      },
+      "wup-programs": {
+        "t": "Programs and Features"
+      },
+      "wup-region": {
+        "t": "Region"
+      },
+      "wup-security": {
+        "t": "Security and Maintenance"
+      },
+      "wup-sound": {
+        "t": "Sound Settings"
+      },
+      "wup-system": {
+        "t": "System Properties"
+      },
+      "wup-timedate": {
+        "t": "Time and Date"
+      },
+      "wup-firewall": {
+        "t": "Windows Defender Firewall"
+      },
+      "wup-restore": {
+        "t": "Windows Restore"
+      }
+    },
+    "lu": {
+      "tab": {
+        "system-setup": "System setup",
+        "applications-setup": "Applications",
+        "gaming": "Gaming",
+        "security": "Security",
+        "utils": "Utilities"
+      },
+      "hint": "Scripts from ChrisTitusTech/linutil. Each one opens in a terminal window where you can confirm actions and enter your password. Only entries that fit your distribution are shown.",
+      "credit": "Scripts and catalogue: ChrisTitusTech/linutil (MIT license), unmodified.",
+      "search": "Search entries",
+      "empty": "Nothing found.",
+      "run": "Run",
+      "confirm": "Run “{name}” in a terminal? The script may install or remove packages, change the system and ask for your administrator password.",
+      "launched": "Opened in a terminal window ({terminal}). Everything continues there.",
+      "err": {
+        "no_terminal": "No terminal emulator found (x-terminal-emulator, gnome-terminal, konsole, xterm…). Install one.",
+        "linux_only": "Linux only.",
+        "unknown_script": "No such entry in the catalogue.",
+        "unknown": "Could not start."
+      }
+    }
+  },
+  "privacy": {
+    "unsupported": "This platform isn't supported.",
+    "panicTitle": "Panic wipe",
+    "panicHint": "One click clears every available target at once: command history, recent files, caches, clipboard, DNS, browser caches, USB history and system logs. This cannot be undone.",
+    "panicButton": "Wipe everything",
+    "panicConfirm": "This will permanently delete command history, recent files, caches, clipboard, browser caches and system logs. Documents and personal files are not touched. Continue?",
+    "adminNote": "System logs, Prefetch and USB history need administrator rights.",
+    "selectTitle": "Selective wipe",
+    "selectHint": "Tick the items you want and clear only those.",
+    "wipeSelected": "Wipe selected ({n})",
+    "confirmSelected": "Wipe the selected items ({n})? This cannot be undone.",
+    "done": "Done: {removed} removed, {bytes} freed.",
+    "doneWithErrors": "Removed {removed}, but {failed} items failed.",
+    "itemDone": "Removed: {n}",
+    "historyTitle": "Wipe log",
+    "historyLine": "targets: {n} · removed: {removed} · {bytes}",
+    "historyFailed": "errors: {n}",
+    "cat": {
+      "history": "Command and search history",
+      "recent": "Recent files",
+      "cache": "Caches and temp files",
+      "clipboard": "Clipboard",
+      "network": "Network",
+      "browser": "Browsers",
+      "usb": "USB device history",
+      "logs": "System logs"
+    },
+    "it": {
+      "shell-history": {
+        "t": "PowerShell command history",
+        "d": "ConsoleHost_history.txt: everything you typed, including passwords passed as arguments."
+      },
+      "run-mru": {
+        "t": "Run dialog history (Win+R)",
+        "d": "Recently run commands and paths from the Run dialog."
+      },
+      "search-history": {
+        "t": "Explorer search history",
+        "d": "Address bar and search queries in File Explorer."
+      },
+      "recent-files": {
+        "t": "Recent files and jump lists",
+        "d": "Shortcuts to opened files and pinned apps' Jump Lists."
+      },
+      "recently-used": {
+        "t": "Recent files",
+        "d": "The recently-opened files list (GTK recently-used.xbel)."
+      },
+      "activity-history": {
+        "t": "Windows activity history",
+        "d": "Timeline of opened apps and documents."
+      },
+      "thumbnail-cache": {
+        "t": "Thumbnail cache",
+        "d": "Image and video previews, including for already-deleted files."
+      },
+      "temp-files": {
+        "t": "Temporary files",
+        "d": "The user's and system's Temp folders."
+      },
+      "recycle-bin": {
+        "t": "Recycle Bin",
+        "d": "Permanently deletes everything in the Recycle Bin."
+      },
+      "trash": {
+        "t": "Trash",
+        "d": "Permanently deletes everything in the Trash."
+      },
+      "clipboard": {
+        "t": "Clipboard",
+        "d": "Current clipboard content and its history (Win+V)."
+      },
+      "dns-cache": {
+        "t": "DNS cache",
+        "d": "The list of recently visited domains the system keeps."
+      },
+      "browser-chrome": {
+        "t": "Google Chrome",
+        "d": "History, cookies and cache for the default profile. Close the browser first."
+      },
+      "browser-edge": {
+        "t": "Microsoft Edge",
+        "d": "History, cookies and cache for the default profile. Close the browser first."
+      },
+      "browser-firefox": {
+        "t": "Mozilla Firefox",
+        "d": "History, cookies and cache for every profile. Close the browser first."
+      },
+      "event-logs": {
+        "t": "Windows event logs",
+        "d": "Application, Security, System, Setup. Needs administrator rights."
+      },
+      "journal-logs": {
+        "t": "System journal (journald)",
+        "d": "Clears the systemd journal. Needs root (pkexec)."
+      },
+      "prefetch": {
+        "t": "Prefetch",
+        "d": "Program launch traces in C:\\Windows\\Prefetch. Needs administrator rights."
+      },
+      "usb-history": {
+        "t": "USB storage history",
+        "d": "Registry records of connected flash drives and external disks. Needs administrator rights."
+      }
+    },
+    "selected": "Selected: {n}"
   }
 }
