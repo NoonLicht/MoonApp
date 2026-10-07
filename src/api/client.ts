@@ -50,6 +50,8 @@ import { systemApi } from "@/api/apiSystem";
 import { tuningApi } from "@/api/apiTuning";
 import { privacyApi } from "@/api/apiPrivacy";
 import { linutilApi } from "@/api/apiLinutil";
+import { translateApi } from "@/api/apiTranslate";
+import { llamaApi } from "@/api/apiLlama";
 
 export type {
   CompressorJob,
@@ -137,6 +139,16 @@ export type {
   WipeResult,
 } from "@/api/apiPrivacy";
 export type { LinutilOverview, LinutilTab, LinutilNode } from "@/api/apiLinutil";
+export type {
+  TrStatus,
+  TrJob,
+  TrBlock,
+  TrOptions,
+  TrProvider,
+  TrVariant,
+  TrDownload,
+} from "@/api/apiTranslate";
+export type { LlamaStatus, LlamaBuildId, LlamaCatalogModel } from "@/api/apiLlama";
 export type {
   ZapretEngine,
   ZapretStrategy,
@@ -318,4 +330,6 @@ export const api = {
   ...tuningApi,
   ...privacyApi,
   ...linutilApi,
+  ...translateApi,
+  ...llamaApi,
 };

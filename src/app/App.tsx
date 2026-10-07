@@ -45,6 +45,7 @@ import "@/styles/bypass.css";
 import "@/styles/automation.css";
 import "@/styles/budget.css";
 import "@/styles/tuning.css";
+import "@/styles/translate.css";
 import "@/styles/movies.css";
 import "@/styles/upscale.css";
 import "@/styles/screenshots.css";
@@ -72,6 +73,7 @@ import ScreenshotsPage from "@/pages/screenshots/ScreenshotsPage";
 import AutomationPage from "@/pages/automation/AutomationPage";
 import BudgetPage from "@/pages/budget/BudgetPage";
 import TuningPage from "@/pages/tuning/TuningPage";
+import TranslatePage from "@/pages/translate/TranslatePage";
 
 // Идентификаторы страниц и их перечень (PAGES) живут в src/navigation.ts —
 // общий источник для дока приложения и списка «Стартовая страница» в настройках.
@@ -116,6 +118,7 @@ const PAGE_COMPONENTS: Record<PageId, React.ComponentType> = {
   automation: AutomationPage,
   budget: BudgetPage,
   tuning: TuningPage,
+  translate: TranslatePage,
   archive: ArchiverPage,
   settings: SettingsPage,
 };

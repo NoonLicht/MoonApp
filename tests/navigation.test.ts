@@ -34,6 +34,7 @@ const ALL_IDS = [
   "bypass",
   "tools",
   "tuning",
+  "translate",
   "games",
   "screenshots",
   "automation",

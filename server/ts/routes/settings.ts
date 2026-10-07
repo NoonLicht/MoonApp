@@ -155,6 +155,7 @@ router.get("/providers", (req, res) => {
       label: p.label,
       models: p.models,
       stub: !!p.stub,
+      local: !!p.local,
       configured: hasSecret(p.id),
     })),
   );

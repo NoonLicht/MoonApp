@@ -8,6 +8,7 @@ import ollama from "./ollama";
 import openrouter from "./openrouter";
 import groq from "./groq";
 import perplexity from "./perplexity";
+import llamacpp from "./llamacpp";
 
 const PROVIDERS: Provider[] = [
   openai,
@@ -19,6 +20,7 @@ const PROVIDERS: Provider[] = [
   openrouter,
   groq,
   perplexity,
+  llamacpp,
 ];
 
 function getProvider(id: string): Provider {

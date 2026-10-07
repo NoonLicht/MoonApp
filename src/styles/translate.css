@@ -1,0 +1,146 @@
+/* Страница «Переводчик». Общие элементы (вкладки, строки, уведомления) — из tuning.css. */
+.tr-langs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.tr-panes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+@media (max-width: 760px) {
+  .tr-panes {
+    grid-template-columns: 1fr;
+  }
+}
+.tr-area {
+  min-height: 280px;
+  max-height: 55vh;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.12));
+  background: rgba(255, 255, 255, 0.04);
+  color: inherit;
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.5;
+  resize: vertical;
+}
+.tr-out {
+  white-space: pre-wrap;
+  overflow: auto;
+  user-select: text;
+}
+.tr-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+.tr-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 10px;
+}
+.tr-drop {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 28px 14px;
+  border: 1px dashed var(--border, rgba(255, 255, 255, 0.25));
+  border-radius: 12px;
+  cursor: pointer;
+  text-align: center;
+}
+.tr-drop.over {
+  background: rgba(255, 255, 255, 0.07);
+}
+.tr-canvas-wrap {
+  margin-top: 10px;
+  max-height: 60vh;
+  overflow: auto;
+  border-radius: 10px;
+}
+.tr-canvas {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+.tr-stats {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+.tr-tps {
+  font-size: 22px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.tr-tps small {
+  font-size: 12px;
+  font-weight: 400;
+  opacity: 0.7;
+}
+
+/* Вкладки страницы: активная занимает всю область, остальные скрыты, но не размонтируются. */
+.tr-body {
+  min-height: 0;
+}
+.tr-pane {
+  display: none;
+}
+.tr-pane.on {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+.tr-pane > .tr-fill {
+  flex: 1;
+  min-height: 0;
+}
+.tr-fill {
+  display: flex;
+  flex-direction: column;
+  min-height: 360px;
+}
+/* Блок перевода: жёсткий размер на всю ширину и высоту, без ручного ресайза. */
+.tr-panes {
+  flex: 1;
+  min-height: 0;
+  grid-template-rows: minmax(0, 1fr);
+}
+.tr-area {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  max-height: none;
+  resize: none;
+  box-sizing: border-box;
+  overflow: auto;
+}
+
+/* Узкий режим: поля друг под другом, строго 50/50 по высоте — перевод не наезжает на исходный текст. */
+@media (max-width: 760px) {
+  .tr-panes {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .tr-panes > .tr-area {
+    height: 100%;
+    min-height: 0;
+  }
+  .tr-fill {
+    min-height: 520px;
+  }
+}

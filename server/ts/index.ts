@@ -63,6 +63,8 @@ import killSwitchRouter from "./routes/killSwitch";
 import tuningRouter from "./routes/tuning";
 import privacyRouter from "./routes/privacy";
 import linutilRouter from "./routes/linutil";
+import translateRouter from "./routes/translate";
+import llamacppRouter from "./routes/llamacpp";
 import ocrRouter from "./routes/ocr";
 import screenshotsRouter from "./routes/screenshots";
 import officeRouter from "./routes/office";
@@ -258,6 +260,8 @@ function createApp(): express.Express {
   app.use("/api/tuning", tuningRouter);
   app.use("/api/privacy", privacyRouter);
   app.use("/api/linutil", linutilRouter);
+  app.use("/api/translate", translateRouter);
+  app.use("/api/llamacpp", llamacppRouter);
   app.use("/api/ocr", ocrRouter);
   app.use("/api/screenshots", screenshotsRouter);
   app.use("/api/office", officeRouter);

@@ -107,6 +107,8 @@ server/ytdlp.js
 server/compressor.js
 server/upscale.js
 server/upscale/
+server/translate/
+server/llamacpp/
 server/upscalePipeline.js
 server/ortPack.js
 server/zipRange.js

@@ -184,7 +184,11 @@ export function setSecret(name: string, plain: string): void {
   logger.info("secret.save", { name, inElectron: !!getElectronSafeStorage() });
 }
 
+/** Локальные провайдеры без ключа: вместо секрета возвращается метка. */
+const KEYLESS = new Set(["llamacpp"]);
+
 export function getSecret(name: string): string | null {
+  if (KEYLESS.has(name)) return "local";
   const all = readSecrets();
   const enc = all[name];
   if (!enc) return null;
@@ -197,6 +201,7 @@ export function getSecret(name: string): string | null {
 }
 
 export function hasSecret(name: string): boolean {
+  if (KEYLESS.has(name)) return true;
   return !!readSecrets()[name];
 }
 

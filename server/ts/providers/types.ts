@@ -26,6 +26,8 @@ export interface Provider {
   label: string;
   models: string[];
   stub?: boolean;
+  /** Локальный провайдер без ключа (llama.cpp): всегда считается настроенным. */
+  local?: boolean;
   modelsUrl?(): string;
   buildUrl?(model?: string, stream?: boolean): string;
   headers?(secret: string): Record<string, string>;

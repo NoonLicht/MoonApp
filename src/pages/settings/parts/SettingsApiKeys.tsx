@@ -7,6 +7,7 @@ import { api } from "@/api/client";
 import { KeyRound, ChevronDown, Check, Save } from "lucide-react";
 import { Badge, Btn } from "@/components/ui";
 import { Row } from "@/pages/settings/parts/SettingsControls";
+import LlamaPanel from "@/components/LlamaPanel";
 
 /**
  * Сворачиваемое подменю «API-ключи» внутри раздела AI Chat.
@@ -22,7 +23,7 @@ export function ApiKeysPanel() {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [providers, setProviders] = useState<
-    { id: string; label: string; configured: boolean; stub: boolean }[]
+    { id: string; label: string; configured: boolean; stub: boolean; local?: boolean }[]
   >([]);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [savedId, setSavedId] = useState<string | null>(null);
@@ -67,33 +68,45 @@ export function ApiKeysPanel() {
         <div className="keys-body">
           <div className="muted-sm">{t("chat.keysHint")}</div>
           {providers.length === 0 && <div className="muted-sm">{t("chat.keysEmpty")}</div>}
-          {providers.map((p) => (
-            <div className="keys-row" key={p.id}>
-              <div className="keys-name">
-                <span>{p.label}</span>
-                <Badge tone={p.configured ? "teal" : "neutral"} mono>
-                  {p.configured ? t("chat.keyConfigured") : t("chat.keyMissing")}
-                </Badge>
+          {providers.map((p) =>
+            p.local ? (
+              <div className="keys-row" key={p.id} style={{ display: "block" }}>
+                <div className="keys-name">
+                  <span>{p.label}</span>
+                  <Badge tone="teal" mono>
+                    {t("llama.noKey")}
+                  </Badge>
+                </div>
+                <LlamaPanel kind="chat" />
               </div>
-              <div className="keys-actions">
-                <input
-                  type="password"
-                  className="text-input"
-                  value={drafts[p.id] || ""}
-                  placeholder={t("chat.keyPlaceholder")}
-                  onChange={(e) => setDrafts((d) => ({ ...d, [p.id]: e.target.value }))}
-                />
-                <Btn
-                  icon={savedId === p.id ? Check : Save}
-                  onClick={() => save(p.id)}
-                  disabled={!(drafts[p.id] || "").trim()}
-                  title={t("chat.keySave")}
-                >
-                  {savedId === p.id ? t("chat.keySaved") : t("chat.keySave")}
-                </Btn>
+            ) : (
+              <div className="keys-row" key={p.id}>
+                <div className="keys-name">
+                  <span>{p.label}</span>
+                  <Badge tone={p.configured ? "teal" : "neutral"} mono>
+                    {p.configured ? t("chat.keyConfigured") : t("chat.keyMissing")}
+                  </Badge>
+                </div>
+                <div className="keys-actions">
+                  <input
+                    type="password"
+                    className="text-input"
+                    value={drafts[p.id] || ""}
+                    placeholder={t("chat.keyPlaceholder")}
+                    onChange={(e) => setDrafts((d) => ({ ...d, [p.id]: e.target.value }))}
+                  />
+                  <Btn
+                    icon={savedId === p.id ? Check : Save}
+                    onClick={() => save(p.id)}
+                    disabled={!(drafts[p.id] || "").trim()}
+                    title={t("chat.keySave")}
+                  >
+                    {savedId === p.id ? t("chat.keySaved") : t("chat.keySave")}
+                  </Btn>
+                </div>
               </div>
-            </div>
-          ))}
+            ),
+          )}
         </div>
       )}
     </div>

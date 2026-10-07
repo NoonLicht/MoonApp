@@ -21,7 +21,8 @@
     "screenshots": "Screenshots",
     "automation": "Automation",
     "budget": "Budget",
-    "tuning": "PC Tuning"
+    "tuning": "PC Tuning",
+    "translate": "Translator"
   },
   "common": {
     "saved": "saved",
@@ -4082,5 +4083,119 @@
       }
     },
     "selected": "Selected: {n}"
+  },
+  "translate": {
+    "auto": "Detect automatically",
+    "eyebrow": "Local AI",
+    "title": "Translator",
+    "needModel": "The model isn't downloaded yet. Pick a variant on the Model tab — after the download everything works offline.",
+    "tab": {
+      "text": "Text",
+      "file": "Files",
+      "image": "Images",
+      "model": "Model"
+    },
+    "modelTitle": "TranslateGemma 4B",
+    "inMemory": "In memory: {provider} · {variant}",
+    "unload": "Unload",
+    "modelHint": "Google's TranslateGemma runs on your computer: no character limits and nothing is sent to the internet. It unloads itself after 10 idle minutes.",
+    "noRuntime": "The ONNX runtime is unavailable.",
+    "provider": "Compute device",
+    "variant": "Model variant",
+    "prov": {
+      "auto": "Auto",
+      "cpu": "CPU",
+      "dml": "DirectML (GPU, Windows)",
+      "cuda": "NVIDIA CUDA",
+      "llamacpp": "llama.cpp (GGUF, faster; any GPU vendor)"
+    },
+    "unavailable": "not in your runtime",
+    "var": {
+      "auto": "Auto (matched to the device)",
+      "q4": "q4 — CPU and NVIDIA CUDA",
+      "q4f16": "q4f16 — CPU only (fp16 breaks on GPU)",
+      "dml": "dml — DirectML (AMD, Intel; may fail the check on NVIDIA)"
+    },
+    "packHint": "CUDA becomes available after installing the GPU pack on the Upscale page and restarting the app. It uses the q4 variant. If a provider is unavailable, translation falls back to the next one, down to CPU.",
+    "installed": "Installed",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "deleteConfirm": "Delete the “{name}” model files?",
+    "download": "Download",
+    "license": "Weights: google/translategemma-4b-it exported to ONNX (onnx-community; DirectML build by Menterium), Gemma Terms of Use. Downloaded from Hugging Face, text part only.",
+    "swap": "Swap languages",
+    "run": "Translate",
+    "textPlaceholder": "Paste text of any length…",
+    "outPlaceholder": "The translation appears here as it is produced",
+    "chars": "Characters: {n}",
+    "copy": "Copy",
+    "copied": "Copied",
+    "dropFile": "Drop a file here or click to choose",
+    "fileHint": "PDF results are saved as .txt: the layout isn't restored.",
+    "save": "Save result",
+    "unsupportedFile": "The {ext} format isn't supported.",
+    "pickImage": "Choose image",
+    "notImage": "That isn't an image.",
+    "ocrUnsupported": "No text recognition (OCR) for this language.",
+    "imageAutoHint": "With auto-detect, text in the picture is recognised as English. Choose the language manually for others.",
+    "imageHint": "Text is recognised by Tesseract, translated by the model and drawn over the image.",
+    "dropImage": "Drop an image, pick a file, or paste from the clipboard (Ctrl+V)",
+    "blocks": "Paragraphs found: {n}",
+    "showOriginal": "Show original",
+    "showTranslation": "Show translation",
+    "savePng": "Save PNG",
+    "st": {
+      "queued": "Queued",
+      "loading": "Loading model",
+      "running": "Translating",
+      "done": "Done",
+      "error": "Error",
+      "cancelled": "Cancelled"
+    },
+    "tps": "tok/s",
+    "failedProviders": "Failed to start or failed the self-check: {list}. Translation runs on the next available device (until the app restarts).",
+    "statTokens": "{n} tokens",
+    "statPrefill": "prefill {s}s",
+    "statGen": "generation {s}s",
+    "statLoad": "model load {s}s",
+    "restartNeeded": "The GPU pack is installed, but the app is still running on the previous runtime. Fully restart the app — CUDA will then appear in the list.",
+    "trtNote": "TensorRT isn't used for this model: it doesn't support its key operations (MatMulNBits, GroupQueryAttention, normalisations), so no working engine can be built. On NVIDIA cards use CUDA.",
+    "llamaHint": "Runs on any GPU through Vulkan and several times faster than ONNX. Install a build and a TranslateGemma GGUF model below. With \"Auto\" the first installed model is used.",
+    "pasteImage": "Paste",
+    "pasteEmpty": "There is no image in the clipboard.",
+    "pasteDenied": "Clipboard access denied. Press Ctrl+V on the page instead."
+  },
+  "llama": {
+    "title": "Built-in llama.cpp",
+    "hint": "Fast GGUF language models on any GPU vendor or on the CPU. One engine for every page: translator, chat, lecture summaries, notes.",
+    "unsupported": "There are no prebuilt llama.cpp binaries for this platform.",
+    "needBuild": "Install a build first: Vulkan suits most GPUs (NVIDIA, AMD, Intel).",
+    "failed": "failed to start",
+    "inMemory": "In memory: {build} · {model}",
+    "unload": "Unload",
+    "modelsTitle": "Models (GGUF)",
+    "urlPlaceholder": "Hugging Face .gguf link (…/resolve/main/model.gguf)",
+    "noKey": "no key needed",
+    "build": {
+      "cpu": "CPU",
+      "vulkan": "Vulkan (NVIDIA, AMD, Intel)",
+      "cuda": "NVIDIA CUDA"
+    },
+    "buildHint": {
+      "cpu": "Works everywhere, slow.",
+      "vulkan": "Recommended: any GPU, small download.",
+      "cuda": "Fastest on NVIDIA; needs a recent driver, large download."
+    },
+    "phase": {
+      "download": "Downloading…",
+      "extract": "Extracting…"
+    },
+    "model": {
+      "translategemma-4b-q4km": "TranslateGemma 4B · Q4_K_M (fast, recommended)",
+      "translategemma-4b-q6k": "TranslateGemma 4B · Q6_K (more accurate)",
+      "translategemma-4b-q8": "TranslateGemma 4B · Q8_0 (best quality)",
+      "gemma3-4b-q4km": "Gemma 3 4B · Q4_K_M (chat)",
+      "qwen3-4b-q4km": "Qwen3 4B Instruct · Q4_K_M (chat)"
+    }
   }
 }

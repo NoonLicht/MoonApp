@@ -62,6 +62,8 @@ const DIRS = {
   upscaleIn: ensureDir(path.join(STORAGE_DIR, "upscale", "in")),
   upscaleOut: ensureDir(path.join(STORAGE_DIR, "upscale", "out")),
   upscaleModels: ensureDir(path.join(STORAGE_DIR, "models", "upscale")),
+  translateModels: ensureDir(path.join(STORAGE_DIR, "models", "translate")),
+  translateTmp: ensureDir(path.join(STORAGE_DIR, "translate-tmp")),
   // TTS: референсы голоса, чанки, готовые аудиокниги, профили.
   tts: ensureDir(path.join(STORAGE_DIR, "tts")),
   // Web Archive: рабочие папки краулера, распакованные архивы и .sitebak.

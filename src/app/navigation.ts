@@ -21,6 +21,7 @@ import {
   Zap,
   Wallet,
   SlidersHorizontal,
+  Languages,
 } from "lucide-react";
 import type { ElementType } from "react";
 import type { TranslateFn } from "@/app/i18n";
@@ -48,7 +49,8 @@ export type PageId =
   | "screenshots"
   | "automation"
   | "budget"
-  | "tuning";
+  | "tuning"
+  | "translate";
 
 export interface PageMeta {
   id: PageId;
@@ -84,6 +86,7 @@ const ALL_PAGES: readonly PageMeta[] = [
   { id: "bypass", i18n: "nav.bypass", icon: Shield },
   { id: "tools", i18n: "nav.tools", icon: Wrench },
   { id: "tuning", i18n: "nav.tuning", icon: SlidersHorizontal },
+  { id: "translate", i18n: "nav.translate", icon: Languages },
   { id: "games", i18n: "nav.games", icon: Gamepad2 },
   { id: "screenshots", i18n: "nav.screenshots", icon: Camera },
   { id: "automation", i18n: "nav.automation", icon: Zap },
