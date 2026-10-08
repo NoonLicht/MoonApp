@@ -92,6 +92,43 @@ export interface ProcRow {
   mem: number;
 }
 
+export interface StartupEntry {
+  id: string;
+  kind: string;
+  scope: "user" | "machine";
+  loc: string;
+  name: string;
+  title: string;
+  cmd: string;
+  enabled: boolean;
+  running: boolean;
+  delayed: boolean;
+  std: boolean;
+  acct: string;
+  trig: string;
+  path: string;
+  exists: boolean;
+  company: string;
+  desc: string;
+  sig: string;
+  signer: string;
+  vkind: string;
+  hidden: boolean;
+  ms: boolean;
+  flags: string[];
+  can: string[];
+}
+
+export interface StartupTrashItem {
+  id: string;
+  at: number;
+  kind: string;
+  loc: string;
+  name: string;
+  cmd: string;
+  scope: "user" | "machine";
+}
+
 export interface BiosFacts {
   biosVendor: string;
   biosVersion: string;
@@ -169,6 +206,14 @@ export const tuningApi = {
     req<TuningResult>("POST", "/tuning/ifeo", { exe, priority }),
   tuningIfeoRemove: (exe: string) =>
     req<TuningResult>("DELETE", `/tuning/ifeo?exe=${encodeURIComponent(exe)}`),
+  tuningStartup: () => req<StartupEntry[]>("GET", "/tuning/startup"),
+  tuningStartupAction: (id: string, action: string) =>
+    req<TuningResult>("POST", "/tuning/startup/action", { id, action }),
+  tuningStartupTrash: () => req<StartupTrashItem[]>("GET", "/tuning/startup/trash"),
+  tuningStartupRestore: (id: string) =>
+    req<TuningResult>("POST", "/tuning/startup/restore", { id }),
+  tuningStartupDrop: (id: string) =>
+    req<{ ok: boolean }>("DELETE", `/tuning/startup/trash/${encodeURIComponent(id)}`),
   tuningBios: () => req<BiosFacts | null>("GET", "/tuning/bios"),
   tuningChecklist: (id: string, checked: boolean) =>
     req<{ ok: boolean }>("POST", "/tuning/checklist", { id, checked }),

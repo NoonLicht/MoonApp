@@ -2872,6 +2872,120 @@
     "fact": {
       "board": "Board and BIOS",
       "cpu": "Processor",
+    "su": {
+      "title": "Startup items",
+      "hint": "Everything Windows launches by itself: Run keys, startup folders, scheduled tasks at logon/boot, services and hidden spots (Winlogon, IFEO, AppInit, Active Setup, BootExecute). Disabling through Task Manager is reversible; anything deleted goes to the trash below.",
+      "search": "Search by name, command, publisher…",
+      "scan": "Scan",
+      "scanning": "Scanning…",
+      "shown": "Showing {n} of {total}",
+      "empty": "Nothing found.",
+      "onlyOn": "Enabled only",
+      "hideMs": "Hide Microsoft components",
+      "onlyHidden": "Hidden only",
+      "onlyFlagged": "Suspicious only",
+      "allKinds": "All sources",
+      "hiddenBadge": "hidden",
+      "running": "running",
+      "kind": {
+        "run": "Registry · Run",
+        "runonce": "Registry · RunOnce",
+        "policy": "Registry · policy Run",
+        "legacy": "Registry · Load/Run",
+        "folder": "Startup folder",
+        "task": "Task Scheduler",
+        "service": "Service",
+        "winlogon": "Winlogon",
+        "ifeo": "IFEO hijack",
+        "appinit": "AppInit_DLLs",
+        "bootexec": "BootExecute",
+        "activesetup": "Active Setup"
+      },
+      "kindHint": {
+        "run": "Starts when the user signs in. Visible in Task Manager.",
+        "runonce": "Runs once at the next sign-in and is removed by Windows itself. Not shown in Task Manager.",
+        "policy": "Group policy: runs at every sign-in. Not shown in Task Manager.",
+        "legacy": "Legacy way: Load/Run values under Windows NT. Modern software does not use it.",
+        "folder": "Shortcuts and files from the Startup folder.",
+        "task": "A scheduled task that fires at logon or boot. Not shown in Task Manager.",
+        "service": "A Windows service set to autostart (or disabled). Not shown in Task Manager.",
+        "winlogon": "Winlogon values launch the shell and logon programs. Tampering here is a classic malware trick.",
+        "ifeo": "Image File Execution Options: a “debugger” runs instead of the program. Rarely legitimate — suspicious.",
+        "appinit": "DLLs injected into every GUI process. Suspicious unless empty.",
+        "bootexec": "Programs run before Windows boots. The default (autochk) is hidden.",
+        "activesetup": "Commands run once for each new user at first sign-in."
+      },
+      "scope": {
+        "user": "current user",
+        "machine": "all users"
+      },
+      "flag": {
+        "missing": "file not found",
+        "unsigned": "unsigned",
+        "badsig": "signature broken",
+        "untrusted": "untrusted signature",
+        "tempPath": "from a temp folder",
+        "encoded": "encoded command",
+        "script": "runs via script host",
+        "modified": "modified",
+        "injection": "hijack point"
+      },
+      "field": {
+        "command": "Command",
+        "file": "File",
+        "company": "Publisher",
+        "desc": "Description",
+        "sig": "Signature",
+        "account": "Account",
+        "triggers": "Trigger",
+        "location": "Source",
+        "scope": "Scope",
+        "folderFile": "File in folder"
+      },
+      "trig": {
+        "logon": "user logon",
+        "boot": "system boot"
+      },
+      "sig": {
+        "Valid": "valid",
+        "NotSigned": "not signed",
+        "System": "Microsoft system file",
+        "HashMismatch": "file changed after signing",
+        "NotTrusted": "not trusted",
+        "UnknownError": "root not trusted"
+      },
+      "act": {
+        "enable": "Enable",
+        "disable": "Disable",
+        "delete": "Delete",
+        "reset": "Reset to default",
+        "reveal": "Show file",
+        "regedit": "Open in regedit",
+        "svcMode": "Startup type",
+        "svc-auto": "Automatic",
+        "svc-delayed": "Automatic (delayed)",
+        "svc-manual": "Manual",
+        "svc-disabled": "Disabled",
+        "details": "Details",
+        "close": "Collapse"
+      },
+      "confirmDelete": "Delete “{name}”? You can restore it from the startup trash.",
+      "confirmReset": "Reset “{name}” to the Windows default?",
+      "done": "Done.",
+      "restored": "Entry restored.",
+      "adminNote": "For all-users entries, services and Windows tasks, Windows will ask for administrator rights.",
+      "trash": "Startup trash",
+      "trashEmpty": "Empty. Anything you delete here ends up in this list.",
+      "trashRestore": "Restore",
+      "trashDrop": "Erase forever",
+      "trashAt": "Deleted {when}",
+      "stat": {
+        "total": "total",
+        "on": "enabled",
+        "hidden": "hidden",
+        "flagged": "suspicious"
+      }
+    },
       "smt": "CPU threads",
       "uefi": "UEFI boot mode",
       "secureBoot": "Secure Boot",
@@ -3606,6 +3720,186 @@
         "d": "Some games run better with it off — measure it."
       },
       "bios-virt": {
+      },
+      "xs-start-recent": {
+        "t": "Hide recently added apps in Start",
+        "d": "Removes the list of recently installed apps from the Start menu."
+      },
+      "xs-snap-flyout": {
+        "t": "Disable the Snap Assist flyout",
+        "d": "Stops the window layout flyout from appearing when hovering the maximize button."
+      },
+      "xs-lock-camera": {
+        "t": "Disable the lock screen camera",
+        "d": "Blocks launching the camera from the lock screen."
+      },
+      "xs-wu-pause": {
+        "t": "Extend the Windows Update pause limit to 20 years",
+        "d": "Raises the pause limit only; updates are not stopped until you pause them in Settings."
+      },
+      "xs-wu-metered": {
+        "t": "No updates over metered connections",
+        "d": "Windows Update will not download updates automatically over a metered connection."
+      },
+      "xs-maps-offline": {
+        "t": "Stop offline map downloads",
+        "d": "Disables automatic downloading and updating of map data."
+      },
+      "xs-defender-cpu": {
+        "t": "Limit Defender CPU usage",
+        "d": "Caps Microsoft Defender scan CPU load at 25%."
+      },
+      "xs-notif-center": {
+        "t": "Disable the notification center",
+        "d": "Removes the notification center and the calendar flyout. Notifications become unavailable."
+      },
+      "xs-windowed-opt": {
+        "t": "Optimizations for windowed games",
+        "d": "Enables the upgraded presentation model for windowed and borderless games (lower display latency)."
+      },
+      "xs-menu-delay": {
+        "t": "Remove menu and tooltip delay",
+        "d": "Menus and hover tooltips appear instantly."
+      },
+      "xs-voice-activation": {
+        "t": "Disable voice activation",
+        "d": "Stops apps from listening for a wake phrase."
+      },
+      "xs-wsearch": {
+        "t": "Disable Windows Search indexing",
+        "d": "Stops background indexing. Search in Explorer and Start becomes slower."
+      },
+      "xs-xbox-svc": {
+        "t": "Disable Xbox services",
+        "d": "Turns off the Xbox auth, cloud save and networking services. Xbox / Game Pass titles may fail to sign in."
+      },
+      "xs-gamebar": {
+        "t": "Disable Game Bar",
+        "d": "Removes controller-button launch and the startup panel of Game Bar."
+      },
+      "xs-ps-telemetry": {
+        "t": "Disable PowerShell telemetry",
+        "d": "Sets the system-wide POWERSHELL_TELEMETRY_OPTOUT variable."
+      },
+      "xs-wmdrm": {
+        "t": "Block WMDRM online access",
+        "d": "Stops licence-server requests for protected media files."
+      },
+      "xs-copilot": {
+        "t": "Disable Copilot",
+        "d": "Policies that turn off Windows Copilot and hide its button."
+      },
+      "xs-recall": {
+        "t": "Disable Recall",
+        "d": "Policy that blocks AI activity analysis and turns off the Recall component, if present."
+      },
+      "xs-telemetry-deep": {
+        "t": "Deep telemetry shutdown",
+        "d": "Extra policies for data collection, error reporting and the customer experience programme."
+      },
+      "xs-telemetry-tasks": {
+        "t": "Disable telemetry tasks",
+        "d": "Turns off scheduler tasks: CEIP, disk diagnostics, feedback, error reporting, Application Experience."
+      },
+      "xs-hosts-block": {
+        "t": "Block telemetry domains (hosts)",
+        "d": "Adds a marked block with Microsoft telemetry domains to the hosts file; update servers are untouched. Revert removes the block."
+      },
+      "xs-search-privacy": {
+        "t": "Windows Search privacy",
+        "d": "Disables web and cloud search and the use of location in search."
+      },
+      "xs-feedback": {
+        "t": "Disable feedback prompts",
+        "d": "Windows stops asking for feedback and ratings."
+      },
+      "xs-handwriting": {
+        "t": "Disable handwriting and typing data collection",
+        "d": "Blocks input personalisation and sending of handwriting data."
+      },
+      "xs-ads": {
+        "t": "Disable personalised ads",
+        "d": "Turns off the advertising ID, tailored experiences and Windows Spotlight."
+      },
+      "xs-content-delivery": {
+        "t": "Disable suggested apps and tips",
+        "d": "Stops automatic app installs and suggestions (Content Delivery Manager)."
+      },
+      "xs-cloud-sync": {
+        "t": "Disable settings cloud sync",
+        "d": "Stops syncing themes, passwords, language, Start layout and other settings with the Microsoft account."
+      },
+      "xs-access-location": {
+        "t": "Deny apps access to location",
+        "d": "Global block of location access for apps."
+      },
+      "xs-access-camera-mic": {
+        "t": "Deny apps camera and microphone",
+        "d": "Apps, including video calls, cannot use the camera or microphone until you restore access."
+      },
+      "xs-access-personal": {
+        "t": "Deny access to contacts, mail, calendar and calls",
+        "d": "Blocks contacts, calendar, email, tasks, messaging and call history."
+      },
+      "xs-access-account": {
+        "t": "Deny access to account info",
+        "d": "Apps no longer see your account name, picture and other details."
+      },
+      "xs-access-files": {
+        "t": "Deny access to documents, pictures, videos and the file system",
+        "d": "Blocks the document, picture and video libraries and broad file access. Some apps may stop opening files."
+      },
+      "xs-access-diag": {
+        "t": "Deny app diagnostics, notifications, activity and radios",
+        "d": "Blocks access to other apps’ diagnostics, notification reading, activity history and radio control."
+      },
+      "xs-access-capture": {
+        "t": "Deny programmatic screen capture",
+        "d": "Apps cannot capture the screen borderless or programmatically. Screen recorders and streaming may break."
+      },
+      "xs-access-ai": {
+        "t": "Deny access to system AI models",
+        "d": "Blocks apps from using the system AI models."
+      },
+      "xs-access-phone": {
+        "t": "Deny apps phone access",
+        "d": "Policy that blocks apps from phone features."
+      },
+      "xs-feature-ie": {
+        "t": "Disable Internet Explorer",
+        "d": "Turns off the Internet Explorer component, if present."
+      },
+      "xs-feature-fax": {
+        "t": "Disable Fax and Scan",
+        "d": "Turns off the Windows Fax and Scan component."
+      },
+      "xs-feature-wmp": {
+        "t": "Disable Windows Media Player (legacy)",
+        "d": "Turns off the legacy player component."
+      },
+      "xs-office-telemetry": {
+        "t": "Disable Microsoft Office telemetry",
+        "d": "Turns off logging, usage reports and telemetry tasks of Office 2013–2021 and 365."
+      },
+      "xs-vs-telemetry": {
+        "t": "Disable Visual Studio telemetry",
+        "d": "Turns off data collection, the feedback dialog and IntelliCode remote analysis."
+      },
+      "xs-media-telemetry": {
+        "t": "Disable Windows Media Player data collection",
+        "d": "Stops usage tracking and metadata lookups for discs, music and radio."
+      },
+      "xs-ccleaner": {
+        "t": "Disable CCleaner telemetry and promos",
+        "d": "Turns off monitoring, update checks, offers and usage statistics in CCleaner."
+      },
+      "xs-google-update": {
+        "t": "Disable Google Update services",
+        "d": "Stops the gupdate and gupdatem background services (Chrome and other Google products)."
+      },
+      "xs-adobe-update": {
+        "t": "Disable Adobe updaters",
+        "d": "Disables the Adobe ARM and Adobe Update services and the Acrobat update task."
         "t": "Disable virtualization",
         "d": "SVM/VT-x, if you don't need emulators or WSL."
       },

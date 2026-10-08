@@ -15,6 +15,7 @@ import express from "express";
 import { TWEAKS } from "../tuningCatalog";
 import * as engine from "../tuningEngine";
 import * as tools from "../tuningTools";
+import * as startup from "../tuningStartup";
 import * as wu from "../winutilTools";
 
 const router = express.Router();
@@ -178,6 +179,33 @@ router.delete(
     tools.benchDelete(String(req.params.id));
     return { ok: true };
   }),
+);
+
+// ── автозапуск ──
+router.get(
+  "/startup",
+  wrap(() => startup.listStartup()),
+);
+router.post(
+  "/startup/action",
+  wrap((req) =>
+    startup.startupAction(
+      String(req.body?.id || ""),
+      String(req.body?.action || "") as startup.StartupAction,
+    ),
+  ),
+);
+router.get(
+  "/startup/trash",
+  wrap(() => startup.trashList()),
+);
+router.post(
+  "/startup/restore",
+  wrap((req) => startup.startupRestore(String(req.body?.id || ""))),
+);
+router.delete(
+  "/startup/trash/:id",
+  wrap((req) => startup.trashDrop(String(req.params.id))),
 );
 
 // ── winutil (ChrisTitusTech/winutil, MIT) ──

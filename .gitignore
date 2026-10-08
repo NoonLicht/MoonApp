@@ -208,6 +208,8 @@ electron/mainCapture.js
 electron/mainClipboard.js
 server/tuningTypes.js
 server/tuningCatalog.js
+server/tuningExtra.js
+server/tuningStartup.js
 server/tuningEngine.js
 server/tuningTools.js
 server/privacyTypes.js

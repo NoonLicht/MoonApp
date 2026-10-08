@@ -6,6 +6,7 @@ import { api } from "@/api/client";
 import type { TuningOverview, TuningResult, TuningTabId } from "@/api/client";
 import TweaksList from "@/pages/tuning/parts/TweaksList";
 import ProcessTool from "@/pages/tuning/parts/ProcessTool";
+import StartupManager from "@/pages/tuning/parts/StartupManager";
 import UsbTree from "@/pages/tuning/parts/UsbTree";
 import DriversTable from "@/pages/tuning/parts/DriversTable";
 import BiosTab from "@/pages/tuning/parts/BiosTab";
@@ -329,6 +330,7 @@ function WindowsTuning() {
                 disabled={busy}
               />
             </Glass>
+            {tab === "scheduler" && <StartupManager ctx={ctx} />}
             {tab === "scheduler" && <ProcessTool ctx={ctx} />}
             {tab === "usb" && <UsbTree onError={(m) => notify(m, false)} />}
             {tab === "drivers" && <DriversTable onError={(m) => notify(m, false)} />}

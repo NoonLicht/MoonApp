@@ -127,6 +127,8 @@ export type {
   UsbController,
   DriverRow,
   ProcRow,
+  StartupEntry,
+  StartupTrashItem,
   BiosFacts,
   BenchRun,
 } from "@/api/apiTuning";

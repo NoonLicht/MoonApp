@@ -7,6 +7,7 @@
  */
 import type { CmdOp, Op, RegOp, RegType, Risk, Tweak, TweakTab } from "./tuningTypes";
 import { WU_APPX_LIST, winutilTweaks } from "./winutilCatalog";
+import { extraTweaks } from "./tuningExtra";
 
 const SYS = "HKLM\\SYSTEM\\CurrentControlSet";
 const SOFT = "HKLM\\SOFTWARE";
@@ -459,6 +460,8 @@ for (const [id, pkg] of APPX) TWEAKS.push(appxTweak(id, pkg));
 // Ещё приложения из appx.json winutil и все его твики (Essential/Advanced/Preferences).
 for (const [id, pkg] of WU_APPX_LIST) TWEAKS.push(appxTweak(id, pkg));
 TWEAKS.push(...winutilTweaks());
+// Дополнительные твики приватности, телеметрии и доступа приложений.
+TWEAKS.push(...extraTweaks());
 
 export const TWEAK_BY_ID = new Map(TWEAKS.map((t) => [t.id, t]));
 
