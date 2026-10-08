@@ -43,6 +43,11 @@ const PORTALED = [
   },
   { src: "src/pages/myspace/MyspacePage.tsx", css: "src/styles/notes.css", cls: "ms-ai-overlay" },
   {
+    src: "src/pages/myspace/parts/OcrDialog.tsx",
+    css: "src/styles/notes.css",
+    cls: "graph-fs-backdrop",
+  },
+  {
     src: "src/pages/myspace/MyspacePage.tsx",
     css: "src/styles/notes.css",
     cls: "graph-fs-backdrop",

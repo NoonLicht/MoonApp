@@ -1177,7 +1177,35 @@
     "expand": "Expand",
     "imageUrlPrompt": "Image URL:",
     "clipboardUnsupported": "This browser can't read the clipboard",
-    "clipboardNoImage": "No image found in the clipboard"
+    "clipboardNoImage": "No image found in the clipboard",
+    "ocr": {
+      "btn": "Recognize this image as text (Chandra OCR 2)",
+      "settings": "Recognition settings",
+      "busy": "Recognizing…",
+      "imageGone": "The image is no longer in the note — the result was not inserted.",
+      "needSetup": "Recognition needs the Chandra OCR 2 model and a llama.cpp build — install them in the settings.",
+      "failed": "Recognition failed: {error}",
+      "title": "Image recognition (Chandra OCR 2)",
+      "hint": "The OCR button on an image in a note turns it into Markdown: text stays text, tables become tables, and drawings and charts are cropped and inserted as pictures in their places. Runs locally through the built-in llama.cpp.",
+      "device": "Compute device",
+      "model": "Model",
+      "modelAuto": "First installed",
+      "modelHint": "Q4_K_M is the sweet spot. Q3_K_M is lighter for laptops; Q6_K and Q8_0 are more accurate but heavier.",
+      "notInstalled": "not installed",
+      "license": "Chandra OCR 2 © Datalab, OpenRAIL-M license: free for personal use and research, not for competing services.",
+      "dev": {
+        "auto": "Auto (best installed)",
+        "cpu": "CPU",
+        "vulkan": "Vulkan — any graphics card",
+        "cuda": "CUDA — NVIDIA only"
+      },
+      "devHint": {
+        "auto": "Picks CUDA, then Vulkan, then CPU — whatever is already installed.",
+        "cpu": "For laptops without a discrete GPU; a page takes minutes.",
+        "vulkan": "Works on NVIDIA, AMD and Intel with no driver SDKs; nearly as fast as CUDA.",
+        "cuda": "Fastest on NVIDIA but needs a separate build (~0.6 GB)."
+      }
+    }
   },
   "player": {
     "play": "Play",
@@ -2844,34 +2872,6 @@
     "ifeoSaved": "Priority saved for all launches.",
     "ifeoRemoved": "Rule removed.",
     "ifeoRules": "Permanent rules",
-    "prio": {
-      "Idle": "Low (Idle)",
-      "BelowNormal": "Below normal",
-      "Normal": "Normal",
-      "AboveNormal": "Above normal",
-      "High": "High"
-    },
-    "usbTitle": "USB controller map",
-    "usbHint": "Plug the mouse, keyboard and audio into different controllers when possible.",
-    "usbEmpty": "No USB controllers found.",
-    "driversTitle": "Device drivers",
-    "driversHint": "Display, network, audio, USB and storage controllers. MSI mode is shown for PCI devices.",
-    "openDevmgmt": "Device Manager",
-    "msiOn": "MSI on",
-    "msiOff": "MSI off",
-    "biosFacts": "What Windows can see",
-    "biosHint": "BIOS settings can't be changed from Windows — below are firmware facts and a checklist. Rebooting to UEFI opens the firmware menu.",
-    "biosUnavailable": "Couldn't read system information.",
-    "smtOn": "SMT/Hyper-Threading is on",
-    "smtOff": "SMT/Hyper-Threading is off",
-    "uefiReboot": "Reboot to UEFI",
-    "uefiConfirm": "The computer will reboot into the UEFI menu in 20 seconds. Save your work. Continue?",
-    "uefiScheduled": "Rebooting in 20 seconds.",
-    "uefiAbort": "Cancel reboot",
-    "uefiAborted": "Reboot cancelled.",
-    "fact": {
-      "board": "Board and BIOS",
-      "cpu": "Processor",
     "su": {
       "title": "Startup items",
       "hint": "Everything Windows launches by itself: Run keys, startup folders, scheduled tasks at logon/boot, services and hidden spots (Winlogon, IFEO, AppInit, Active Setup, BootExecute). Disabling through Task Manager is reversible; anything deleted goes to the trash below.",
@@ -2986,6 +2986,34 @@
         "flagged": "suspicious"
       }
     },
+    "prio": {
+      "Idle": "Low (Idle)",
+      "BelowNormal": "Below normal",
+      "Normal": "Normal",
+      "AboveNormal": "Above normal",
+      "High": "High"
+    },
+    "usbTitle": "USB controller map",
+    "usbHint": "Plug the mouse, keyboard and audio into different controllers when possible.",
+    "usbEmpty": "No USB controllers found.",
+    "driversTitle": "Device drivers",
+    "driversHint": "Display, network, audio, USB and storage controllers. MSI mode is shown for PCI devices.",
+    "openDevmgmt": "Device Manager",
+    "msiOn": "MSI on",
+    "msiOff": "MSI off",
+    "biosFacts": "What Windows can see",
+    "biosHint": "BIOS settings can't be changed from Windows — below are firmware facts and a checklist. Rebooting to UEFI opens the firmware menu.",
+    "biosUnavailable": "Couldn't read system information.",
+    "smtOn": "SMT/Hyper-Threading is on",
+    "smtOff": "SMT/Hyper-Threading is off",
+    "uefiReboot": "Reboot to UEFI",
+    "uefiConfirm": "The computer will reboot into the UEFI menu in 20 seconds. Save your work. Continue?",
+    "uefiScheduled": "Rebooting in 20 seconds.",
+    "uefiAbort": "Cancel reboot",
+    "uefiAborted": "Reboot cancelled.",
+    "fact": {
+      "board": "Board and BIOS",
+      "cpu": "Processor",
       "smt": "CPU threads",
       "uefi": "UEFI boot mode",
       "secureBoot": "Secure Boot",
@@ -3692,34 +3720,6 @@
       "wu-mpo-full": {
         "t": "Multiplane Overlay - Fully Disable",
         "d": "Disables MPO using OverlayTestMode=5 and DisableOverlays=1, the more aggressive method."
-      }
-    },
-    "cl": {
-      "bios-backup": {
-        "t": "Save a BIOS profile",
-        "d": "Export the current settings before changing anything."
-      },
-      "bios-update": {
-        "t": "Update the BIOS",
-        "d": "Newer firmware improves memory and power stability."
-      },
-      "bios-defaults": {
-        "t": "Reset to defaults",
-        "d": "Start from Load Optimized Defaults, then change settings one by one."
-      },
-      "bios-xmp": {
-        "t": "Enable XMP/EXPO",
-        "d": "Memory should run at its rated speed and timings."
-      },
-      "bios-rebar": {
-        "t": "Enable Resizable BAR",
-        "d": "Above 4G Decoding + Re-Size BAR Support for the GPU."
-      },
-      "bios-smt": {
-        "t": "SMT/Hyper-Threading per workload",
-        "d": "Some games run better with it off — measure it."
-      },
-      "bios-virt": {
       },
       "xs-start-recent": {
         "t": "Hide recently added apps in Start",
@@ -3900,6 +3900,34 @@
       "xs-adobe-update": {
         "t": "Disable Adobe updaters",
         "d": "Disables the Adobe ARM and Adobe Update services and the Acrobat update task."
+      }
+    },
+    "cl": {
+      "bios-backup": {
+        "t": "Save a BIOS profile",
+        "d": "Export the current settings before changing anything."
+      },
+      "bios-update": {
+        "t": "Update the BIOS",
+        "d": "Newer firmware improves memory and power stability."
+      },
+      "bios-defaults": {
+        "t": "Reset to defaults",
+        "d": "Start from Load Optimized Defaults, then change settings one by one."
+      },
+      "bios-xmp": {
+        "t": "Enable XMP/EXPO",
+        "d": "Memory should run at its rated speed and timings."
+      },
+      "bios-rebar": {
+        "t": "Enable Resizable BAR",
+        "d": "Above 4G Decoding + Re-Size BAR Support for the GPU."
+      },
+      "bios-smt": {
+        "t": "SMT/Hyper-Threading per workload",
+        "d": "Some games run better with it off — measure it."
+      },
+      "bios-virt": {
         "t": "Disable virtualization",
         "d": "SVM/VT-x, if you don't need emulators or WSL."
       },
@@ -4492,7 +4520,11 @@
       "translategemma-4b-q8": "TranslateGemma 4B · Q8_0 (best quality)",
       "gemma3-4b-q4km": "Gemma 3 4B · Q4_K_M (chat)",
       "qwen3-4b-q4km": "Qwen3 4B Instruct · Q4_K_M (chat)",
-      "qwen3tts-q4km": "Qwen3-TTS 1.7B · Q4_K_M + mmproj (speech)"
+      "qwen3tts-q4km": "Qwen3-TTS 1.7B · Q4_K_M + mmproj (speech)",
+      "chandra2-q3km": "Chandra OCR 2 · Q3_K_M (light, for laptops)",
+      "chandra2-q4km": "Chandra OCR 2 · Q4_K_M (recommended)",
+      "chandra2-q6k": "Chandra OCR 2 · Q6_K (more accurate)",
+      "chandra2-q8": "Chandra OCR 2 · Q8_0 (best quality)"
     }
   }
 }

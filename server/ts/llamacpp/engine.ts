@@ -257,11 +257,13 @@ function freePort(): Promise<number> {
   });
 }
 
-export type Device = "auto" | "cpu" | "gpu";
+/** auto — лучшая из установленных; cpu/gpu — по типу; vulkan/cuda — строго эта сборка. */
+export type Device = "auto" | "cpu" | "gpu" | BuildId;
 
 /** Порядок сборок для выбранного устройства: GPU-сборки раньше CPU, CUDA раньше Vulkan. */
 export function buildOrder(device: Device): BuildId[] {
   const have = installedBuilds().filter((b) => !bad.has(b));
+  if (isBuildId(device) && device !== "cpu") return have.includes(device) ? [device] : [];
   if (device === "cpu") return have.includes("cpu") ? ["cpu"] : have.slice(0, 1);
   const order: BuildId[] = ["cuda", "vulkan", "cpu"];
   const list = order.filter((b) => have.includes(b));
@@ -271,6 +273,8 @@ export function buildOrder(device: Device): BuildId[] {
 export interface StartOptions {
   /** Файл .gguf. */
   model: string;
+  /** Проектор изображений (--mmproj) для мультимодальных моделей. */
+  mmproj?: string;
   device?: Device;
   /** Контекст в токенах. */
   ctx?: number;
@@ -315,6 +319,7 @@ async function spawnServer(build: BuildId, o: StartOptions, cpuOnly: boolean): P
     "1",
     "--no-webui",
     ...(o.raw ? ["--no-jinja"] : []),
+    ...(o.mmproj ? ["--mmproj", o.mmproj, ...(gpu ? [] : ["--no-mmproj-offload"])] : []),
     "-t",
     String(Math.max(1, Math.floor(os.cpus().length / 2))),
   ];
@@ -385,7 +390,7 @@ function arm(r: Running): void {
 /** Поднять сервер для модели (или взять работающий). Смена модели/устройства перезапускает его. */
 export async function ensureServer(o: StartOptions): Promise<ServerInfo> {
   const device = o.device ?? "auto";
-  const key = `${o.model}|${device}|${o.ctx ?? 4096}|${o.raw ? "raw" : "chat"}`;
+  const key = `${o.model}|${o.mmproj ?? ""}|${device}|${o.ctx ?? 4096}|${o.raw ? "raw" : "chat"}`;
   if (running && running.key === key) return running;
   if (running && running.busy === 0) stopServer();
   if (running) return running;

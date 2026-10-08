@@ -7,6 +7,8 @@
  *  POST   /api/llamacpp/model               — {id} из каталога или {url} на .gguf в Hugging Face
  *  POST   /api/llamacpp/model/cancel        — отменить загрузку; DELETE /model/:file — удалить
  *  POST   /api/llamacpp/stop                — выгрузить модель из памяти
+ *  POST   /api/llamacpp/ocr?model=&device=  — тело: картинка; ответ: HTML-блоки Chandra OCR 2
+ *  GET    /api/llamacpp/ocr/fetch?url=      — скачать картинку по ссылке (для вставки в заметки)
  */
 import express from "express";
 import {
@@ -23,6 +25,8 @@ import {
   stopServer,
 } from "../llamacpp/engine";
 import { ttsProblem } from "../llamacpp/tts";
+import { fetchRemoteImage, ocrImage, ocrModels } from "../llamacpp/ocr";
+import type { Device } from "../llamacpp/engine";
 import {
   CATALOG,
   cancelDownload,
@@ -51,6 +55,7 @@ router.get("/status", (_req, res) => {
     download: downloadState(),
     server: serverInfo(),
     ttsProblem: ttsProblem(),
+    ocrModels: ocrModels(),
   });
 });
 
@@ -99,6 +104,45 @@ router.delete("/model/:file", (req, res) => {
 router.post("/stop", (_req, res) => {
   stopServer();
   res.json({ ok: true });
+});
+
+const DEVICES = ["auto", "cpu", "gpu", "vulkan", "cuda"];
+
+router.post("/ocr", express.raw({ type: "image/*", limit: "40mb" }), async (req, res) => {
+  if (!Buffer.isBuffer(req.body) || !req.body.length)
+    return res.status(400).json({ error: "image_required" });
+  const device = String(req.query.device || "auto");
+  if (!DEVICES.includes(device)) return res.status(400).json({ error: "bad_device" });
+  const ac = new AbortController();
+  res.on("close", () => {
+    if (!res.writableEnded) ac.abort();
+  });
+  try {
+    const out = await ocrImage({
+      image: req.body,
+      mime: String(req.headers["content-type"] || "image/png").split(";")[0],
+      model: req.query.model ? String(req.query.model) : undefined,
+      device: device as Device,
+      signal: ac.signal,
+    });
+    res.json(out);
+  } catch (e) {
+    if (ac.signal.aborted) return;
+    const msg = String((e as Error).message || e);
+    res
+      .status(msg.startsWith("ocr_model_missing") || msg === "build_missing" ? 409 : 500)
+      .json({ error: msg.slice(0, 400) });
+  }
+});
+
+router.get("/ocr/fetch", async (req, res) => {
+  try {
+    const { data, mime } = await fetchRemoteImage(String(req.query.url || ""));
+    res.setHeader("Content-Type", mime);
+    res.send(data);
+  } catch (e) {
+    res.status(400).json({ error: String((e as Error).message || e).slice(0, 200) });
+  }
 });
 
 export = router;

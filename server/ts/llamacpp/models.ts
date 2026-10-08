@@ -11,7 +11,7 @@ import { modelsDir } from "./engine";
 
 const HF = "https://huggingface.co";
 
-export type ModelKind = "translate" | "chat" | "tts";
+export type ModelKind = "translate" | "chat" | "tts" | "ocr";
 
 export interface CatalogModel {
   id: string;
@@ -34,6 +34,42 @@ export const CATALOG: CatalogModel[] = [
     sizeMb: 1036,
     note: "q4km",
     extra: [{ file: "mmproj-Qwen3-TTS-12Hz-1.7B-Base-Q8_0.gguf", sizeMb: 446 }],
+  },
+  {
+    id: "chandra2-q3km",
+    kind: "ocr",
+    repo: "prithivMLmods/chandra-ocr-2-GGUF",
+    file: "chandra-ocr-2.Q3_K_M.gguf",
+    sizeMb: 2600,
+    note: "q3km",
+    extra: [{ file: "chandra-ocr-2.mmproj-q8_0.gguf", sizeMb: 360 }],
+  },
+  {
+    id: "chandra2-q4km",
+    kind: "ocr",
+    repo: "prithivMLmods/chandra-ocr-2-GGUF",
+    file: "chandra-ocr-2.Q4_K_M.gguf",
+    sizeMb: 3140,
+    note: "q4km",
+    extra: [{ file: "chandra-ocr-2.mmproj-q8_0.gguf", sizeMb: 360 }],
+  },
+  {
+    id: "chandra2-q6k",
+    kind: "ocr",
+    repo: "prithivMLmods/chandra-ocr-2-GGUF",
+    file: "chandra-ocr-2.Q6_K.gguf",
+    sizeMb: 4090,
+    note: "q6k",
+    extra: [{ file: "chandra-ocr-2.mmproj-q8_0.gguf", sizeMb: 360 }],
+  },
+  {
+    id: "chandra2-q8",
+    kind: "ocr",
+    repo: "prithivMLmods/chandra-ocr-2-GGUF",
+    file: "chandra-ocr-2.Q8_0.gguf",
+    sizeMb: 5280,
+    note: "q8",
+    extra: [{ file: "chandra-ocr-2.mmproj-q8_0.gguf", sizeMb: 360 }],
   },
   {
     id: "translategemma-4b-q4km",
@@ -185,6 +221,8 @@ export function startDownload(
         st.total = 0;
         const info = await remoteInfo(repo, rev, remote);
         st.total = info.size;
+        // Общий файл (проектор для нескольких квантов) уже скачан — повторно не тянем.
+        if (info.size && fs.existsSync(dest) && fs.statSync(dest).size === info.size) continue;
         let have = fs.existsSync(part) ? fs.statSync(part).size : 0;
         if (have > info.size) {
           removePath(part);

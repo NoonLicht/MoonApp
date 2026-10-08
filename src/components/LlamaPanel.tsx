@@ -16,7 +16,7 @@ export default function LlamaPanel({
   notify,
   onChange,
 }: {
-  kind?: "translate" | "chat" | "tts";
+  kind?: "translate" | "chat" | "tts" | "ocr";
   notify?: (text: string, ok?: boolean) => void;
   onChange?: (s: LlamaStatus) => void;
 }) {
@@ -202,7 +202,7 @@ export default function LlamaPanel({
           {t("tuning.error")}: {dl.error}
         </div>
       )}
-      {kind !== "translate" && kind !== "tts" && (
+      {kind !== "translate" && kind !== "tts" && kind !== "ocr" && (
         <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
           <input
             className="text-input"

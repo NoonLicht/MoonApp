@@ -42,6 +42,10 @@ import {
 import EditingToolbar from "@/pages/myspace/parts/EditingToolbar";
 import MarkdownRenderer from "@/pages/myspace/parts/MarkdownRenderer";
 import CodeMirrorLiveEditor from "@/pages/myspace/parts/CodeMirrorLiveEditor";
+import type { OcrImageRequest } from "@/pages/myspace/parts/CodeMirrorLiveEditor";
+import OcrDialog from "@/pages/myspace/parts/OcrDialog";
+import { loadOcrPrefs, recognizeNoteImage } from "@/lib/noteOcr";
+import type { OcrPrefs } from "@/lib/noteOcr";
 import GraphView from "@/pages/myspace/parts/GraphView";
 import TasksPanel from "@/pages/myspace/parts/TasksPanel";
 import CanvasPage from "@/pages/myspace/canvas/CanvasPage";
@@ -142,6 +146,11 @@ export default function MyspacePage() {
   const imageFileInputRef = useRef<HTMLInputElement>(null);
   const attachInsertPos = useRef<{ start: number; end: number } | null>(null);
   const [attachError, setAttachError] = useState("");
+  // Распознавание картинок заметки (Chandra OCR 2 в llama.cpp).
+  const [ocrBusy, setOcrBusy] = useState<string[]>([]);
+  const [ocrDlg, setOcrDlg] = useState(false);
+  const [ocrPrefs, setOcrPrefs] = useState<OcrPrefs>(loadOcrPrefs);
+  const openFilesRef = useRef<OFile[]>([]);
   // Активная вкладка в ref: ответ ИИ приходит асинхронно, и если пользователь
   // успел переключиться, текст чужой заметки в редактор попасть не должен.
   const activeTabRef = useRef<string | null>(null);
@@ -300,6 +309,10 @@ export default function MyspacePage() {
     [openFiles],
   );
 
+  useEffect(() => {
+    openFilesRef.current = openFiles;
+  }, [openFiles]);
+
   const updContent = (p: string, c: string) => {
     setOpenFiles((prev) =>
       prev.map((f) => (f.path === p ? { ...f, content: c, modified: true } : f)),
@@ -309,6 +322,52 @@ export default function MyspacePage() {
     // тогда изменения сохраняются по Ctrl+S или при закрытии вкладки.
     if (msCfg.autosave) schedSave(p);
   };
+
+  /**
+   * Кнопка «OCR» на картинке: модель переводит её в Markdown (текст, таблицы, формулы), а рисунки
+   * и графики вырезает и вставляет картинками на нужные места. Результат заменяет саму картинку.
+   */
+  const runOcr = useCallback(
+    async (req: OcrImageRequest) => {
+      const path = activeTab;
+      setAttachError("");
+      setOcrBusy((b) => (b.includes(req.src) ? b : [...b, req.src]));
+      try {
+        const r = await recognizeNoteImage(
+          req.src,
+          async (blob, name) => (await api.myspaceUploadAsset(blob, name)).url,
+          ocrPrefs,
+        );
+        if (req.replace(r.markdown)) return;
+        // Редактор уже закрыт (переключились на другую заметку): правим сохранённый текст файла.
+        const f = path ? openFilesRef.current.find((x) => x.path === path) : undefined;
+        const needle = `![${req.alt}](${req.src}`;
+        const at = f ? f.content.indexOf(needle) : -1;
+        const end = f && at >= 0 ? f.content.indexOf(")", at + needle.length) : -1;
+        if (f && path && at >= 0 && end >= 0) {
+          updContent(path, f.content.slice(0, at) + r.markdown + f.content.slice(end + 1));
+        } else setAttachError(t("myspace.ocr.imageGone"));
+      } catch (e) {
+        const m = (e as Error).message;
+        if (/ocr_model_missing|build_missing/.test(m)) {
+          setAttachError(t("myspace.ocr.needSetup"));
+          setOcrDlg(true);
+        } else setAttachError(t("myspace.ocr.failed", { error: m }));
+      } finally {
+        setOcrBusy((b) => b.filter((x) => x !== req.src));
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [activeTab, ocrPrefs, t],
+  );
+  const ocrLabels = useMemo(
+    () => ({
+      ocr: t("myspace.ocr.btn"),
+      settings: t("myspace.ocr.settings"),
+      busy: t("myspace.ocr.busy"),
+    }),
+    [t],
+  );
 
   /** Вставляет ![alt](url) в позицию, запомненную в момент клика по кнопке
    * "Вложить" (fallback — конец текста, если курсор не был захвачен). */
@@ -2093,6 +2152,10 @@ export default function MyspacePage() {
                           onChange={(v: string) => updContent(activeTab, v)}
                           spellCheck={msCfg.spellcheck}
                           readOnly={!!aiBusy}
+                          onOcrImage={(r) => void runOcr(r)}
+                          onOcrSettings={() => setOcrDlg(true)}
+                          ocrBusy={ocrBusy}
+                          ocrLabels={ocrLabels}
                           placeholder="Start writing... Use [[wiki-links]] and #tags"
                           onWikiLink={(title: string) => {
                             const findNote = (
@@ -2780,6 +2843,9 @@ export default function MyspacePage() {
         .content-area (z-index:1) и центрировался по окну, из-за чего часть графа
         уходила под вертикальный рельс страниц, а снизу оставалась пустая полоса
         от старого нижнего меню. */}
+      {ocrDlg && pageActive && (
+        <OcrDialog prefs={ocrPrefs} onChange={setOcrPrefs} onClose={() => setOcrDlg(false)} />
+      )}
       {graphFullscreen &&
         pageActive &&
         createPortal(

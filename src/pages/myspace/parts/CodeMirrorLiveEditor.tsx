@@ -1,5 +1,12 @@
 import { useEffect, useRef } from "react";
-import { EditorState, StateField, RangeSetBuilder, type Extension, type Text } from "@codemirror/state";
+import {
+  EditorState,
+  StateEffect,
+  StateField,
+  RangeSetBuilder,
+  type Extension,
+  type Text,
+} from "@codemirror/state";
 import {
   EditorView,
   Decoration,
@@ -26,7 +33,32 @@ interface Props {
   /** Ctrl+V со скриншотом/картинкой в буфере: грузит blob и отдаёт markdown
    * ("![alt](url)") для вставки прямо в позицию курсора. null — не картинка/ошибка. */
   onPasteImage?: (blob: Blob) => Promise<string | null>;
+  /** Кнопка «распознать» на картинке. `replace` подменяет её markdown в документе. */
+  onOcrImage?: (req: OcrImageRequest) => void;
+  /** Шестерёнка на картинке: настройки распознавания. */
+  onOcrSettings?: () => void;
+  /** src картинок, которые распознаются прямо сейчас (на них показывается индикатор). */
+  ocrBusy?: string[];
+  ocrLabels?: { ocr: string; settings: string; busy: string };
 }
+
+export interface OcrImageRequest {
+  src: string;
+  alt: string;
+  /** Заменить `![alt](src)` на текст; false — картинки в документе уже нет. */
+  replace: (text: string) => boolean;
+}
+
+interface OcrState {
+  busy: Set<string>;
+  labels: { ocr: string; settings: string; busy: string } | null;
+}
+
+const refreshDecorations = StateEffect.define<null>();
+
+const IMAGE_URL = /^https?:\/\/\S+\.(?:png|jpe?g|gif|webp|bmp|avif)(?:\?\S*)?$/i;
+
+const IMAGE_MD = /^!\[[^\]]*\]\([^)\s]+(?:\s+"[^"]*")?\)/;
 
 /* ─── Виджет чекбокса: заменяет "[ ] "/"[x] " кликабельной галочкой ─── */
 class CheckboxWidget extends WidgetType {
@@ -51,18 +83,28 @@ class CheckboxWidget extends WidgetType {
   }
 }
 
-/* ─── Виджет картинки: заменяет "![alt](src)" превью-изображением ─── */
+/* ─── Виджет картинки: заменяет "![alt](src)" превью-изображением. Справа сверху — кнопки
+   «распознать» (Chandra OCR) и настроек; сами события уходят в редактор как cm-image-ocr. ─── */
 class ImageWidget extends WidgetType {
   constructor(
     readonly src: string,
     readonly alt: string,
+    readonly busy: boolean,
+    readonly labels: OcrState["labels"],
   ) {
     super();
   }
   eq(other: ImageWidget) {
-    return other.src === this.src && other.alt === this.alt;
+    return (
+      other.src === this.src &&
+      other.alt === this.alt &&
+      other.busy === this.busy &&
+      other.labels === this.labels
+    );
   }
-  toDOM() {
+  toDOM(view: EditorView) {
+    const wrap = document.createElement("span");
+    wrap.className = "cm-live-imgwrap" + (this.busy ? " is-busy" : "");
     const img = document.createElement("img");
     img.className = "cm-live-image";
     img.src = this.src;
@@ -71,10 +113,44 @@ class ImageWidget extends WidgetType {
     img.onerror = () => {
       img.classList.add("is-broken");
     };
-    return img;
+    wrap.appendChild(img);
+    const labels = this.labels;
+    if (labels) {
+      const act = document.createElement("span");
+      act.className = "cm-live-imgact";
+      const mk = (cls: string, text: string, title: string, kind: "ocr" | "settings") => {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = cls;
+        b.textContent = text;
+        b.title = title;
+        b.disabled = this.busy && kind === "ocr";
+        b.addEventListener("mousedown", (e) => e.preventDefault());
+        b.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          view.dom.dispatchEvent(
+            new CustomEvent("cm-image-ocr", {
+              detail: { kind, pos: view.posAtDOM(wrap), src: this.src, alt: this.alt },
+            }),
+          );
+        });
+        return b;
+      };
+      act.appendChild(mk("cm-live-imgbtn", "OCR", labels.ocr, "ocr"));
+      act.appendChild(mk("cm-live-imgbtn is-icon", "⚙", labels.settings, "settings"));
+      wrap.appendChild(act);
+      if (this.busy) {
+        const o = document.createElement("span");
+        o.className = "cm-live-imgbusy";
+        o.textContent = labels.busy;
+        wrap.appendChild(o);
+      }
+    }
+    return wrap;
   }
-  ignoreEvent() {
-    return false;
+  ignoreEvent(e: Event) {
+    return (e.target as HTMLElement | null)?.closest?.(".cm-live-imgact") != null;
   }
 }
 
@@ -380,6 +456,7 @@ function buildLiveDecorations(
   onToggleCheckbox: ((i: number) => void) | undefined,
   applyEdit: (from: number, to: number, text: string) => void,
   tableWidths: Map<number, number[]>,
+  ocr: OcrState,
 ): DecorationSet {
   const builder = new RangeSetBuilder<Decoration>();
   const activeLine = state.doc.lineAt(state.selection.main.head).number;
@@ -517,7 +594,9 @@ function buildLiveDecorations(
         builder.add(to - 2, to, Decoration.replace({}));
       } else if (m[15]) {
         // ![alt](src)
-        builder.add(from, to, Decoration.replace({ widget: new ImageWidget(m[17], m[16] || "") }));
+        builder.add(from, to, Decoration.replace({
+            widget: new ImageWidget(m[17], m[16] || "", ocr.busy.has(m[17]), ocr.labels),
+          }));
       } else if (m[18]) {
         // [text](url)
         builder.add(from, from + 1, Decoration.replace({}));
@@ -546,14 +625,15 @@ function livePreviewField(
   onToggleCheckbox: ((i: number) => void) | undefined,
   applyEdit: (from: number, to: number, text: string) => void,
   tableWidths: Map<number, number[]>,
+  ocr: OcrState,
 ) {
   return StateField.define<DecorationSet>({
     create(state) {
-      return buildLiveDecorations(state, onToggleCheckbox, applyEdit, tableWidths);
+      return buildLiveDecorations(state, onToggleCheckbox, applyEdit, tableWidths, ocr);
     },
     update(deco, tr) {
-      if (tr.docChanged || tr.selection) {
-        return buildLiveDecorations(tr.state, onToggleCheckbox, applyEdit, tableWidths);
+      if (tr.docChanged || tr.selection || tr.effects.some((e) => e.is(refreshDecorations))) {
+        return buildLiveDecorations(tr.state, onToggleCheckbox, applyEdit, tableWidths, ocr);
       }
       return deco.map(tr.changes);
     },
@@ -577,16 +657,50 @@ export default function CodeMirrorLiveEditor({
   onTagClick,
   onToggleCheckbox,
   onPasteImage,
+  onOcrImage,
+  onOcrSettings,
+  ocrBusy,
+  ocrLabels,
 }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const lastEmitted = useRef(content);
   const tableWidthsRef = useRef<Map<number, number[]>>(new Map());
-  const callbacksRef = useRef({ onWikiLink, onTagClick, onToggleCheckbox, onPasteImage });
+  const ocrStateRef = useRef<OcrState>({ busy: new Set(), labels: null });
+  const callbacksRef = useRef({
+    onWikiLink,
+    onTagClick,
+    onToggleCheckbox,
+    onPasteImage,
+    onOcrImage,
+    onOcrSettings,
+  });
 
   useEffect(() => {
-    callbacksRef.current = { onWikiLink, onTagClick, onToggleCheckbox, onPasteImage };
-  }, [onWikiLink, onTagClick, onToggleCheckbox, onPasteImage]);
+    callbacksRef.current = {
+      onWikiLink,
+      onTagClick,
+      onToggleCheckbox,
+      onPasteImage,
+      onOcrImage,
+      onOcrSettings,
+    };
+  }, [onWikiLink, onTagClick, onToggleCheckbox, onPasteImage, onOcrImage, onOcrSettings]);
+
+  // Кнопки OCR на картинках и индикатор «идёт распознавание»: состояние читает поле декораций.
+  const busyKey = (ocrBusy ?? []).join("\n");
+  const hasOcr = !!onOcrImage && !!ocrLabels;
+  useEffect(() => {
+    const st = ocrStateRef.current;
+    st.busy = new Set(ocrBusy ?? []);
+    if (hasOcr && ocrLabels) {
+      const l = st.labels;
+      if (!l || l.ocr !== ocrLabels.ocr || l.settings !== ocrLabels.settings || l.busy !== ocrLabels.busy)
+        st.labels = ocrLabels;
+    } else st.labels = null;
+    viewRef.current?.dispatch({ effects: refreshDecorations.of(null) });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [busyKey, hasOcr, ocrLabels?.ocr, ocrLabels?.settings, ocrLabels?.busy]);
 
   useEffect(() => {
     if (!hostRef.current) return;
@@ -640,6 +754,47 @@ export default function CodeMirrorLiveEditor({
           borderRadius: "8px",
           border: "1px solid var(--glass-border)",
           margin: "4px 0",
+        },
+        ".cm-live-imgwrap": {
+          display: "block",
+          position: "relative",
+          width: "fit-content",
+          maxWidth: "100%",
+        },
+        ".cm-live-imgact": {
+          position: "absolute",
+          top: "8px",
+          right: "8px",
+          display: "flex",
+          gap: "6px",
+        },
+        ".cm-live-imgbtn": {
+          font: "inherit",
+          fontSize: "12px",
+          fontWeight: "600",
+          lineHeight: "1",
+          padding: "6px 10px",
+          borderRadius: "8px",
+          border: "1px solid var(--glass-border)",
+          background: "var(--surface-solid, rgba(20,20,24,0.85))",
+          color: "var(--text-primary)",
+          cursor: "pointer",
+          opacity: "0.85",
+          backdropFilter: "blur(6px)",
+        },
+        ".cm-live-imgbtn:hover": { opacity: "1", borderColor: "var(--amber)", color: "var(--amber)" },
+        ".cm-live-imgbtn:disabled": { cursor: "progress", opacity: "0.5" },
+        ".cm-live-imgbusy": {
+          position: "absolute",
+          inset: "0",
+          display: "grid",
+          placeItems: "center",
+          borderRadius: "8px",
+          background: "rgba(0,0,0,0.45)",
+          color: "#fff",
+          fontSize: "13px",
+          fontWeight: "600",
+          pointerEvents: "none",
         },
         ".cm-live-image.is-broken": {
           display: "inline-block",
@@ -808,6 +963,14 @@ export default function CodeMirrorLiveEditor({
         return false;
       },
       paste(e, view) {
+        const pasted = e.clipboardData?.getData("text/plain")?.trim() ?? "";
+        if (IMAGE_URL.test(pasted) && !e.clipboardData?.files?.length) {
+          e.preventDefault();
+          const { from, to } = view.state.selection.main;
+          const md = `![](${pasted})`;
+          view.dispatch({ changes: { from, to, insert: md }, selection: { anchor: from + md.length } });
+          return true;
+        }
         if (!callbacksRef.current.onPasteImage) return false;
         const items = e.clipboardData?.items;
         if (!items) return false;
@@ -836,6 +999,31 @@ export default function CodeMirrorLiveEditor({
           .catch(() => {});
         return true;
       },
+      dragover(e) {
+        if (!callbacksRef.current.onPasteImage) return false;
+        if (!Array.from(e.dataTransfer?.types ?? []).includes("Files")) return false;
+        e.preventDefault();
+        return true;
+      },
+      drop(e, view) {
+        const files = Array.from(e.dataTransfer?.files ?? []).filter((f) => f.type.startsWith("image/"));
+        const upload = callbacksRef.current.onPasteImage;
+        if (!upload || !files.length) return false;
+        e.preventDefault();
+        let at = view.posAtCoords({ x: e.clientX, y: e.clientY }) ?? view.state.selection.main.head;
+        void (async () => {
+          for (const f of files) {
+            const md = await upload(f).catch(() => null);
+            if (!md) continue;
+            const line = view.state.doc.lineAt(at);
+            // Картинка — отдельным абзацем, чтобы рядом с ней работали кнопки.
+            const text = `${at > line.from ? "\n" : ""}${md}\n`;
+            view.dispatch({ changes: { from: at, insert: text }, selection: { anchor: at + text.length } });
+            at += text.length;
+          }
+        })();
+        return true;
+      },
     });
 
     const applyTableEdit = (from: number, to: number, text: string) => {
@@ -847,7 +1035,7 @@ export default function CodeMirrorLiveEditor({
       keymap.of([...defaultKeymap, ...historyKeymap]),
       markdown({ codeLanguages: languages, extensions: [GFM] }),
       syntaxHighlighting(liveHighlight),
-      livePreviewField(onToggleCheckbox, applyTableEdit, tableWidthsRef.current),
+      livePreviewField(onToggleCheckbox, applyTableEdit, tableWidthsRef.current, ocrStateRef.current),
       clickHandler,
       theme,
       EditorView.lineWrapping,
@@ -867,7 +1055,33 @@ export default function CodeMirrorLiveEditor({
     viewRef.current = view;
     lastEmitted.current = content;
 
+    const onImageAction = (ev: Event) => {
+      const d = (ev as CustomEvent<{ kind: "ocr" | "settings"; pos: number; src: string; alt: string }>)
+        .detail;
+      if (d.kind === "settings") return callbacksRef.current.onOcrSettings?.();
+      const req: OcrImageRequest = {
+        src: d.src,
+        alt: d.alt,
+        replace: (text) => {
+          const doc = view.state.doc.toString();
+          const needle = `![${d.alt}](${d.src}`;
+          // Картинка могла сместиться за время распознавания: берём ближайшую к исходной позиции.
+          let best = -1;
+          for (let i = doc.indexOf(needle); i >= 0; i = doc.indexOf(needle, i + 1))
+            if (best < 0 || Math.abs(i - d.pos) < Math.abs(best - d.pos)) best = i;
+          if (best < 0) return false;
+          const m = IMAGE_MD.exec(doc.slice(best, best + needle.length + 400));
+          if (!m) return false;
+          view.dispatch({ changes: { from: best, to: best + m[0].length, insert: text } });
+          return true;
+        },
+      };
+      callbacksRef.current.onOcrImage?.(req);
+    };
+    view.dom.addEventListener("cm-image-ocr", onImageAction);
+
     return () => {
+      view.dom.removeEventListener("cm-image-ocr", onImageAction);
       view.destroy();
       viewRef.current = null;
     };
