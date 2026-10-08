@@ -3,6 +3,7 @@ import {
   ChevronDown,
   Download,
   Grid3x3,
+  Keyboard,
   LayoutTemplate,
   Magnet,
   Maximize2,
@@ -47,6 +48,7 @@ interface Props {
   wheelZoom: boolean;
   onWheel: () => void;
   onTemplates: () => void;
+  onHelp: () => void;
   onExport: (fmt: "png" | "svg" | "json") => void;
   save: "saved" | "saving" | "error";
 }
@@ -174,6 +176,9 @@ export function TopBar(p: Props) {
         onClick={p.onSnap}
       >
         <Magnet size={16} />
+      </button>
+      <button type="button" className="hc-btn" title={`${t("shortcuts")} (?)`} onClick={p.onHelp}>
+        <Keyboard size={16} />
       </button>
       <button
         type="button"

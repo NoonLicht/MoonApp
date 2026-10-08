@@ -3845,7 +3845,19 @@ export default function Editor({
       )
         return;
       const mod = e.ctrlKey || e.metaKey;
-      if (mod && e.key.toLowerCase() === "z") {
+      /* буквы и знаки берём по физической клавише: на русской раскладке e.key другой */
+      const letter = e.code.startsWith("Key") ? e.code.slice(3).toLowerCase() : e.key.toLowerCase();
+      const sym =
+        e.code === "BracketRight"
+          ? "]"
+          : e.code === "BracketLeft"
+            ? "["
+            : e.code === "Equal" || e.code === "NumpadAdd"
+              ? "+"
+              : e.code === "Minus" || e.code === "NumpadSubtract"
+                ? "-"
+                : e.key;
+      if (mod && letter === "z") {
         e.preventDefault();
         if (e.shiftKey) redo();
         else undo();
@@ -3901,16 +3913,16 @@ export default function Editor({
         setSelectedLinkId(null);
         return;
       }
-      if (e.key === "p" || e.key === "P") {
+      if (letter === "p") {
         openPreviewRef.current();
         return;
       }
-      if (!mod && !e.altKey && (e.key === "]" || e.key === "PageDown")) {
+      if (!mod && !e.altKey && (sym === "]" || e.key === "PageDown")) {
         e.preventDefault();
         stepFrameRef.current(1);
         return;
       }
-      if (!mod && !e.altKey && (e.key === "[" || e.key === "PageUp")) {
+      if (!mod && !e.altKey && (sym === "[" || e.key === "PageUp")) {
         e.preventDefault();
         stepFrameRef.current(-1);
         return;
@@ -3925,10 +3937,10 @@ export default function Editor({
         return;
       }
       if (mod) return;
-      if (e.key === "v" || e.key === "V") setMode("select");
-      if (e.key === "h" || e.key === "H") setMode("hand");
-      if (e.key === "=" || e.key === "+") setZoomAt(viewRef.current.z * 1.2);
-      if (e.key === "-" || e.key === "_") setZoomAt(viewRef.current.z / 1.2);
+      if (letter === "v") setMode("select");
+      if (letter === "h") setMode("hand");
+      if (sym === "+") setZoomAt(viewRef.current.z * 1.2);
+      if (sym === "-") setZoomAt(viewRef.current.z / 1.2);
       if (e.key === "0") fitRef.current();
     };
     const onKeyUp = (e: KeyboardEvent) => {

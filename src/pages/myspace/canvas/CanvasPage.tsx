@@ -49,6 +49,7 @@ import { TopBar, type BoardEntry } from "@/pages/myspace/canvas/TopBar";
 import { Inspector, type InspectorActions } from "@/pages/myspace/canvas/Inspector";
 import { LayersPanel } from "@/pages/myspace/canvas/Layers";
 import { Minimap } from "@/pages/myspace/canvas/Minimap";
+import { Shortcuts } from "@/pages/myspace/canvas/Shortcuts";
 import { ContextMenu, type MenuItem } from "@/pages/myspace/canvas/ContextMenu";
 import { TemplatesModal } from "@/pages/myspace/canvas/TemplatePicker";
 import "@/styles/canvas.css";
@@ -190,6 +191,7 @@ export default function CanvasPage() {
 
   const [grid, setGrid] = useState(lsGet(LS.grid, "1") === "1");
   const [snap, setSnap] = useState(lsGet(LS.snap, "1") === "1");
+  const [helpOpen, setHelpOpen] = useState(false);
   const [wheelZoom, setWheelZoom] = useState(lsGet(LS.wheel, "1") === "1");
 
   const [boards, setBoards] = useState<BoardEntry[]>([]);
@@ -1503,11 +1505,85 @@ export default function CanvasPage() {
   kb.current = (e: KeyboardEvent) => {
     if (isTyping(e.target)) return;
     const meta = e.ctrlKey || e.metaKey;
-    const k = e.key.toLowerCase();
+    /* буквы и знаки берём по физической клавише: на русской и других раскладках e.key другой */
+    const k = e.code.startsWith("Key") ? e.code.slice(3).toLowerCase() : e.key.toLowerCase();
+    const sym =
+      e.code === "BracketRight"
+        ? "]"
+        : e.code === "BracketLeft"
+          ? "["
+          : e.code === "Equal" || e.code === "NumpadAdd"
+            ? "+"
+            : e.code === "Minus" || e.code === "NumpadSubtract"
+              ? "-"
+              : e.key;
     if (e.code === "Space" && !e.repeat) {
       spaceHeld.current = true;
       wrapRef.current?.classList.add("hc-space");
       e.preventDefault();
+      return;
+    }
+    if (e.key === "?" || e.key === "F1" || (e.shiftKey && e.code === "Slash")) {
+      e.preventDefault();
+      setHelpOpen(true);
+      return;
+    }
+    if (e.altKey && !meta && selRef.current.length) {
+      const al: Record<string, AlignKind> = {
+        KeyA: "left",
+        KeyD: "right",
+        KeyW: "top",
+        KeyS: "bottom",
+        KeyH: "hcenter",
+        KeyV: "vcenter",
+      };
+      if (al[e.code]) {
+        e.preventDefault();
+        actions.align(al[e.code]);
+        return;
+      }
+    }
+    if (e.key === "Tab" && board.ref.current.length) {
+      e.preventDefault();
+      const list = board.ref.current.filter((o) => !o.parent && !o.hidden && !o.locked);
+      if (list.length) {
+        const at = list.findIndex((o) => o.id === selRef.current[selRef.current.length - 1]);
+        const next = (at + (e.shiftKey ? -1 : 1) + list.length) % list.length;
+        setSel([list[next].id]);
+      }
+      return;
+    }
+    if (meta && (k === "b" || k === "i") && selRef.current.length) {
+      e.preventDefault();
+      const first = byIdRef.current.get(selRef.current[0]);
+      if (k === "b") actions.patch({ fw: (first?.fw ?? 500) >= 700 ? 500 : 700 });
+      else actions.patch({ italic: !first?.italic });
+      return;
+    }
+    if (meta && k === "0") {
+      e.preventDefault();
+      setZoom(1);
+      return;
+    }
+    if (meta && (sym === "+" || sym === "-")) {
+      e.preventDefault();
+      zoomAt(sym === "-" ? 0.8 : 1.25);
+      return;
+    }
+    if (meta && (e.key === "'" || e.code === "Quote")) {
+      e.preventDefault();
+      if (e.shiftKey) {
+        setSnap(!snap);
+        lsSet(LS.snap, snap ? "0" : "1");
+      } else {
+        setGrid(!grid);
+        lsSet(LS.grid, grid ? "0" : "1");
+      }
+      return;
+    }
+    if (meta && k === "h" && e.shiftKey) {
+      e.preventDefault();
+      actions.hide();
       return;
     }
     if (meta && k === "z") {
@@ -1552,10 +1628,10 @@ export default function CanvasPage() {
       actions.lock();
       return;
     }
-    if (meta && (e.key === "]" || e.key === "[")) {
+    if (meta && (sym === "]" || sym === "[")) {
       e.preventDefault();
       actions.order(
-        e.key === "]" ? (e.shiftKey ? "front" : "forward") : e.shiftKey ? "back" : "backward",
+        sym === "]" ? (e.shiftKey ? "front" : "forward") : e.shiftKey ? "back" : "backward",
       );
       return;
     }
@@ -1605,8 +1681,8 @@ export default function CanvasPage() {
       fitSelection();
       return;
     }
-    if (e.key === "+" || e.key === "=") return zoomAt(1.25);
-    if (e.key === "-") return zoomAt(0.8);
+    if (sym === "+") return zoomAt(1.25);
+    if (sym === "-") return zoomAt(0.8);
     const map: Record<string, Tool> = {
       v: "select",
       h: "hand",
@@ -1887,6 +1963,7 @@ export default function CanvasPage() {
           lsSet(LS.wheel, wheelZoom ? "0" : "1");
         }}
         onTemplates={() => setTplOpen(true)}
+        onHelp={() => setHelpOpen(true)}
         onExport={(f) => void exportBoard(f)}
         save={save}
       />
@@ -1980,6 +2057,7 @@ export default function CanvasPage() {
           }
         }}
       />
+      {helpOpen && <Shortcuts ru={ru} onClose={() => setHelpOpen(false)} />}
       {ctx && <ContextMenu x={ctx.x} y={ctx.y} items={ctx.items} onClose={() => setCtx(null)} />}
       {tplOpen && (
         <TemplatesModal t={t} onClose={() => setTplOpen(false)} onSelect={applyTemplate} />
