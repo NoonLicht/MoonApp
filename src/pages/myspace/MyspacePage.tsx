@@ -321,7 +321,7 @@ export default function MyspacePage() {
 
   // Переход из общего поиска / палитры: нужная вкладка и заметка.
   useDeepLink("myspace", (t) => {
-    if (t.view === "notes" || t.view === "tasks" || t.view === "bookmarks" || t.view === "canvas")
+    if (t.view === "notes" || t.view === "tasks" || t.view === "bookmarks" || t.view === "canvas" || t.view === "m3e")
       setMyspaceView(t.view);
     if (t.view === "notes" && t.ref) void openFile(t.ref);
     if (t.view === "canvas" && t.ref) return false; // дальше — CanvasPage

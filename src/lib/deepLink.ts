@@ -48,6 +48,10 @@ export function targetFor(source: SemSource, ref: string, at?: number): DeepTarg
       return { page: "movies", ref };
     case "book":
       return { page: "books", ref };
+    case "m3e":
+      return { page: "myspace", view: "m3e", ref };
+    case "archive":
+      return { page: "archive", ref };
   }
 }
 
@@ -62,6 +66,8 @@ export const SOURCE_LABEL: Record<SemSource, string> = {
   budget: "Бюджет",
   movie: "Фильм",
   book: "Книга",
+  m3e: "Макет M3E",
+  archive: "Веб-архив",
 };
 
 /** Подписка страницы на переход: handler вызывается и для цели, пришедшей до монтирования. */

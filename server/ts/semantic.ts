@@ -30,7 +30,9 @@ export type SemSource =
   | "quick"
   | "budget"
   | "movie"
-  | "book";
+  | "book"
+  | "m3e"
+  | "archive";
 
 interface ChunkMeta {
   source: SemSource;
@@ -537,6 +539,75 @@ function budgetDocs(): Doc[] {
   return out;
 }
 
+/** Макеты M3E: название, описание, имена экранов и подписи элементов. */
+function m3eDocs(): Doc[] {
+  const out: Doc[] = [];
+  const dir = path.join(DIRS.storage, "m3e", "pages");
+  let files: string[] = [];
+  try {
+    files = fs.readdirSync(dir).filter((f) => f.endsWith(".json"));
+  } catch {
+    return out;
+  }
+  for (const f of files) {
+    try {
+      const d = JSON.parse(fs.readFileSync(path.join(dir, f), "utf8")) as {
+        title?: string;
+        brief?: string;
+        frames?: { name?: string }[];
+        groups?: { items?: { label?: string; kind?: string }[] }[];
+      };
+      const labels = (d.groups ?? []).flatMap((g) =>
+        (g.items ?? []).map((i) => i.label || i.kind || ""),
+      );
+      const text = [d.brief, ...(d.frames ?? []).map((x) => x.name), ...labels]
+        .filter(Boolean)
+        .join(". ");
+      if (text.length < 8) continue;
+      out.push({
+        source: "m3e",
+        ref: f.replace(/\.json$/, ""),
+        title: d.title || d.brief?.slice(0, 50) || "Макет",
+        text,
+        parts: [{ text }],
+      });
+    } catch {
+      /* битый файл макета */
+    }
+  }
+  return out;
+}
+
+/** Веб-архивы: по адресу страницы (слова из пути и домен). */
+function archiveDocs(): Doc[] {
+  try {
+    const raw = JSON.parse(fs.readFileSync(path.join(DIRS.sitebak, "archives.json"), "utf8"));
+    return (Array.isArray(raw) ? raw : []).map(
+      (a: { id: string; site?: string; name?: string }) => {
+        let host = "";
+        let words = String(a.site ?? "");
+        try {
+          const u = new URL(String(a.site));
+          host = u.hostname;
+          words = decodeURIComponent(u.pathname).replace(/[-_/.]+/g, " ");
+        } catch {
+          /* не URL */
+        }
+        const text = `${host} ${words}`.trim();
+        return {
+          source: "archive" as const,
+          ref: String(a.id),
+          title: host || String(a.name ?? a.id),
+          text,
+          parts: [{ text }],
+        };
+      },
+    );
+  } catch {
+    return [];
+  }
+}
+
 export interface JobState {
   running: boolean;
   done: number;
@@ -564,6 +635,8 @@ export function syncAll(): JobState {
         ...budgetDocs(),
         ...movieDocs(),
         ...bookDocs(),
+        ...m3eDocs(),
+        ...archiveDocs(),
       ];
       job.total = docs.length;
       const s = load();
@@ -840,6 +913,8 @@ export const ALL_SOURCES: SemSource[] = [
   "budget",
   "movie",
   "book",
+  "m3e",
+  "archive",
 ];
 
 /** Раз в 10 минут (если индекс уже строили) подтягиваем лекции, чаты, задачи, доски и т.п. */

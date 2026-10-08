@@ -11,7 +11,9 @@ export type SemSource =
   | "quick"
   | "budget"
   | "movie"
-  | "book";
+  | "book"
+  | "m3e"
+  | "archive";
 
 export interface SemHit {
   source: SemSource;
