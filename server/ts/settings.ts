@@ -79,6 +79,8 @@ const DEFAULTS: SettingsTree = {
     maxTokens: 1024,
     stream: true,
     contextMessages: 30, // сколько последних сообщений уходит в контекст
+    // Долгая память: подмешивать в запрос похожие места из прошлых чатов (EmbeddingGemma).
+    memory: false,
   },
   // --- Store / каталог загрузок ---
   store: {

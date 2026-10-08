@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import {
   Search,
   BookOpen,
@@ -68,6 +68,40 @@ export default function BooksPage() {
   const [flags, setFlags] = useState<Record<string, { fav: boolean; bm: boolean }>>({});
   const [genres, setGenres] = useState<BookGenre[]>([]);
   const [popularFallback, setPopularFallback] = useState(false);
+  // «Похожие на моё избранное»: список сортируется по близости к избранному и закладкам.
+  const [similarOn, setSimilarOn] = useState(false);
+  const [simMap, setSimMap] = useState<Record<number, { score: number; like: string }>>({});
+  useEffect(() => {
+    if (!similarOn || tab === "myfav" || !items.length) return;
+    let live = true;
+    api
+      .semBooksSimilar(
+        items.map((b) => ({
+          bid: b.bid,
+          title: b.title,
+          author: b.author,
+          genres: b.genres || [],
+          description: b.description || "",
+        })),
+      )
+      .then((r) => {
+        if (!live) return;
+        const m: Record<number, { score: number; like: string }> = {};
+        r.forEach((x) => (m[x.bid] = { score: x.score, like: x.like }));
+        setSimMap(m);
+      })
+      .catch(() => live && setSimMap({}));
+    return () => {
+      live = false;
+    };
+  }, [similarOn, items, tab]);
+  const shown = useMemo(
+    () =>
+      similarOn && Object.keys(simMap).length
+        ? [...items].sort((a, b) => (simMap[b.bid]?.score ?? 0) - (simMap[a.bid]?.score ?? 0))
+        : items,
+    [items, simMap, similarOn],
+  );
   const [titleQ, setTitleQ] = useState("");
   const [authorQ, setAuthorQ] = useState("");
   const [genresOpen, setGenresOpen] = useState(false);
@@ -248,6 +282,14 @@ export default function BooksPage() {
         <Btn variant="secondary" onClick={doSearch} style={{ fontSize: 12 }}>
           {t("books.search")}
         </Btn>
+        <Btn
+          variant={similarOn ? "primary" : "secondary"}
+          onClick={() => setSimilarOn((v) => !v)}
+          title="Сортировать по близости к избранному и закладкам"
+          style={{ fontSize: 12 }}
+        >
+          ✨ Похожие на моё
+        </Btn>
       </div>
 
       {/* Жанры: свёрнуто — одна строка со скроллом; развёрнуто — поиск + скроллируемый список */}
@@ -378,7 +420,7 @@ export default function BooksPage() {
       )}
 
       <div className="book-list" style={{ flex: 1, maxHeight: "none" }}>
-        {items.map((b) => {
+        {shown.map((b) => {
           const fl = flagOf(b);
           const lb = langBadge(b.language);
           return (
@@ -440,6 +482,12 @@ export default function BooksPage() {
                       {b.year ? ` · ${b.year}` : ""}
                       {b.sizeText ? ` · ${b.sizeText}` : ""}
                     </div>
+                    {similarOn && simMap[b.bid]?.like && simMap[b.bid].score >= 0.72 && (
+                      <div className="muted-sm" style={{ color: "var(--amber)" }}>
+                        ✨ Похоже на «{simMap[b.bid].like}» ·{" "}
+                        {Math.round(simMap[b.bid].score * 100)}%
+                      </div>
+                    )}
                   </div>
                   <div
                     className="quality-row"

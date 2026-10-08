@@ -1,5 +1,15 @@
 import { useEffect, useRef, useState } from "react";
-import { Mic, Square, Pause, Play, Trash2, Copy, AlertTriangle, Clock, Sparkles } from "lucide-react";
+import {
+  Mic,
+  Square,
+  Pause,
+  Play,
+  Trash2,
+  Copy,
+  AlertTriangle,
+  Clock,
+  Sparkles,
+} from "lucide-react";
 import { Glass, Btn, Badge, EmptyHint, Checkbox } from "@/components/ui";
 import { useI18n } from "@/app/i18n";
 import { api } from "@/api/client";
@@ -33,6 +43,8 @@ export default function QuickNoteTab({ engineReady }: Props) {
   const [keepAudio, setKeepAudio] = useState(false);
   const [error, setError] = useState("");
   const [structuringId, setStructuringId] = useState<string | null>(null);
+  const [groups, setGroups] = useState<number[][] | null>(null);
+  const [topicErr, setTopicErr] = useState("");
 
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -145,10 +157,44 @@ export default function QuickNoteTab({ engineReady }: Props) {
     return `${m}:${sec.toString().padStart(2, "0")}`;
   };
 
+  const toggleTopics = async () => {
+    setTopicErr("");
+    if (groups) {
+      setGroups(null);
+      return;
+    }
+    try {
+      setGroups(
+        await api.semGroup(
+          notes.map((n) => n.structuredText || n.text || " "),
+          0.68,
+        ),
+      );
+    } catch (e) {
+      setTopicErr(
+        (e as Error).message.includes("model")
+          ? "Нужна модель поиска по смыслу (вкладка «Похожее» в заметках)"
+          : (e as Error).message,
+      );
+    }
+  };
+  const sections: { title: string; items: QuickNote[] }[] = groups
+    ? groups
+        .map((g) => g.map((i) => notes[i]).filter(Boolean))
+        .sort((a, b) => b.length - a.length)
+        .map((items) => ({
+          title: items.length > 1 ? (items[0].text || "").slice(0, 40) + "…" : "Разное",
+          items,
+        }))
+    : [{ title: "", items: notes }];
+
   return (
     <div className="lec-quicknote-tab">
       {!engineReady && (
-        <Glass className="source-placeholder" style={{ borderColor: "var(--coral)", marginBottom: 10 }}>
+        <Glass
+          className="source-placeholder"
+          style={{ borderColor: "var(--coral)", marginBottom: 10 }}
+        >
           <AlertTriangle size={16} style={{ color: "var(--coral)" }} />
           <span>{t("quickNotes.engineMissingHint")}</span>
         </Glass>
@@ -157,9 +203,22 @@ export default function QuickNoteTab({ engineReady }: Props) {
         {t("quickNotes.hint")}
       </div>
 
-      <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", marginBottom: 12 }}>
+      <div
+        style={{
+          display: "flex",
+          gap: 12,
+          alignItems: "center",
+          flexWrap: "wrap",
+          marginBottom: 12,
+        }}
+      >
         {recState === "idle" && (
-          <Btn variant="primary" icon={Mic} disabled={processing} onClick={() => void startRecording()}>
+          <Btn
+            variant="primary"
+            icon={Mic}
+            disabled={processing}
+            onClick={() => void startRecording()}
+          >
             {processing ? t("quickNotes.processing") : t("quickNotes.record")}
           </Btn>
         )}
@@ -209,46 +268,86 @@ export default function QuickNoteTab({ engineReady }: Props) {
         <EmptyHint icon={Mic} text={t("quickNotes.empty")} />
       )}
 
+      {notes.length > 2 && (
+        <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 8 }}>
+          <button
+            type="button"
+            className="icon-btn"
+            style={{ width: "auto", padding: "4px 10px", display: "inline-flex", gap: 6 }}
+            onClick={() => void toggleTopics()}
+          >
+            <Sparkles size={13} /> {groups ? "Показать по времени" : "Разложить по темам"}
+          </button>
+          {topicErr && <span className="muted-sm">{topicErr}</span>}
+        </div>
+      )}
       <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
-        {notes.map((n) => (
-          <Glass key={n.id} style={{ flexDirection: "column", alignItems: "stretch", gap: 6, padding: 12 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span className="muted-sm" style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                <Clock size={12} />
-                {new Date(n.createdAt).toLocaleString()}
-                {n.durationSec != null ? ` · ${n.durationSec.toFixed(1)} s` : ""}
-              </span>
-              <div style={{ display: "flex", gap: 6 }}>
-                <button
-                  type="button"
-                  className="icon-btn"
-                  title={t("quickNotes.structure")}
-                  disabled={structuringId === n.id || !n.text.trim()}
-                  onClick={() => void structure(n.id)}
+        {sections.map((sec) => (
+          <div
+            key={sec.title + sec.items[0]?.id}
+            style={{ display: "flex", flexDirection: "column", gap: 8 }}
+          >
+            {sec.title && (
+              <div style={{ fontWeight: 600, color: "var(--amber)", marginTop: 6 }}>
+                {sec.title}
+              </div>
+            )}
+            {sec.items.map((n) => (
+              <Glass
+                key={n.id}
+                style={{ flexDirection: "column", alignItems: "stretch", gap: 6, padding: 12 }}
+              >
+                <div
+                  style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}
                 >
-                  <Sparkles size={14} className={structuringId === n.id ? "spin" : ""} />
-                </button>
-                <button type="button" className="icon-btn" onClick={() => void copyText(n.structuredText || n.text)}>
-                  <Copy size={14} />
-                </button>
-                <button type="button" className="icon-btn" onClick={() => void remove(n.id)}>
-                  <Trash2 size={14} />
-                </button>
-              </div>
-            </div>
-            <div style={{ whiteSpace: "pre-wrap" }}>{n.text || t("quickNotes.emptyText")}</div>
-            {n.structuredText && (
-              <div className="lec-quicknote-structured">
-                <div className="muted-sm" style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                  <Sparkles size={11} /> {t("quickNotes.structuredLabel")}
+                  <span
+                    className="muted-sm"
+                    style={{ display: "flex", alignItems: "center", gap: 4 }}
+                  >
+                    <Clock size={12} />
+                    {new Date(n.createdAt).toLocaleString()}
+                    {n.durationSec != null ? ` · ${n.durationSec.toFixed(1)} s` : ""}
+                  </span>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <button
+                      type="button"
+                      className="icon-btn"
+                      title={t("quickNotes.structure")}
+                      disabled={structuringId === n.id || !n.text.trim()}
+                      onClick={() => void structure(n.id)}
+                    >
+                      <Sparkles size={14} className={structuringId === n.id ? "spin" : ""} />
+                    </button>
+                    <button
+                      type="button"
+                      className="icon-btn"
+                      onClick={() => void copyText(n.structuredText || n.text)}
+                    >
+                      <Copy size={14} />
+                    </button>
+                    <button type="button" className="icon-btn" onClick={() => void remove(n.id)}>
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
                 </div>
-                <div style={{ whiteSpace: "pre-wrap" }}>{n.structuredText}</div>
-              </div>
-            )}
-            {n.audioFile && (
-              <audio controls src={api.quickNotesAudioUrl(n.id)} style={{ width: "100%" }} />
-            )}
-          </Glass>
+                <div style={{ whiteSpace: "pre-wrap" }}>{n.text || t("quickNotes.emptyText")}</div>
+                {n.structuredText && (
+                  <div className="lec-quicknote-structured">
+                    <div
+                      className="muted-sm"
+                      style={{ display: "flex", alignItems: "center", gap: 4 }}
+                    >
+                      <Sparkles size={11} /> {t("quickNotes.structuredLabel")}
+                    </div>
+                    <div style={{ whiteSpace: "pre-wrap" }}>{n.structuredText}</div>
+                  </div>
+                )}
+                {n.audioFile && (
+                  <audio controls src={api.quickNotesAudioUrl(n.id)} style={{ width: "100%" }} />
+                )}
+              </Glass>
+            ))}
+          </div>
         ))}
       </div>
     </div>

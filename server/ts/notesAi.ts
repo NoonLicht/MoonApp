@@ -97,7 +97,13 @@ const SYSTEM_PROMPT =
  * Промпт оформления. «Умеренно дополнить» ограничено резюме и списком терминов:
  * любое сочинительство здесь — это подмена заметки пользователя.
  */
-function buildPrompt(text: string, title: string, part: number, total: number): string {
+function buildPrompt(
+  text: string,
+  title: string,
+  part: number,
+  total: number,
+  related: string[] = [],
+): string {
   const where =
     total > 1
       ? `Ниже ФРАГМЕНТ ${part} из ${total} заметки «${title || "без названия"}» (продолжение — в следующем фрагменте, повторять его не нужно).`
@@ -108,7 +114,12 @@ function buildPrompt(text: string, title: string, part: number, total: number): 
 - поправь опечатки, лишние пустые строки и разнобой в оформлении;
 - формулы оставь в LaTeX-нотации $...$, код — в \`\`\`-блоках;
 - [[вики-ссылки]], #теги, картинки и таблицы сохрани как есть;
-- можно умеренно дополнить: 1-2 строки резюме в начале и список ключевых терминов в конце.
+- можно умеренно дополнить: 1-2 строки резюме в начале и список ключевых терминов в конце.${
+    related.length
+      ? `
+- у пользователя есть близкие по теме заметки: ${related.map((r) => `«${r}»`).join(", ")} — называй термины так же, как там, и если уместно, оформи упоминание как [[вики-ссылку]] на такую заметку;`
+      : ""
+  }
   Если факта нет в заметке — его не должно быть и в ответе, ничего не выдумывай.
 
 Верни ТОЛЬКО готовый Markdown, без пояснений и без обрамляющих \`\`\`.
@@ -433,11 +444,23 @@ export async function formatNote(opts: NotesAiFormatOptions): Promise<NotesAiRes
   if (blocks.length > MAX_CHUNKS) throw new Error("notes_ai_too_long: " + raw.length);
   const target = await aiTarget(opts.appPage);
   const title = String(opts.title || "");
+  // Названия близких по смыслу заметок (поиск по смыслу) — только заголовки, не содержимое.
+  let related: string[] = [];
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const sem = require("./semantic") as typeof import("./semantic");
+    related = sem
+      .related("note", opts.path, { sources: ["note"], limit: 5 })
+      .map((h) => h.title)
+      .filter(Boolean);
+  } catch {
+    /* индекса нет — оформляем без подсказок */
+  }
   const parts: string[] = [];
   for (let i = 0; i < blocks.length; i++) {
     const answer = await askModel(
       target,
-      buildPrompt(blocks[i], title, i + 1, blocks.length),
+      buildPrompt(blocks[i], title, i + 1, blocks.length, related),
       opts.appPage,
       maxTokensFor(blocks[i].length),
     );

@@ -65,6 +65,7 @@ describe("server/myspace-vault — форма модуля", () => {
         "renameFile",
         "searchFiles",
         "VAULT_DIR",
+        "vaultEvents",
         "writeFile",
         "writeHolst",
       ].sort(),

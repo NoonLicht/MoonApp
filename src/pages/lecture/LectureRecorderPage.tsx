@@ -40,6 +40,8 @@ import {
 import LectureAudioPanel, { LevelMeter } from "@/pages/lecture/parts/LectureAudioPanel";
 import LectureEnginePanel from "@/pages/lecture/parts/LectureEnginePanel";
 import QuickNoteTab from "@/pages/lecture/parts/QuickNoteTab";
+import LectureSemantic from "@/pages/lecture/parts/LectureSemantic";
+import { useDeepLink } from "@/lib/deepLink";
 import LectureConspectusPanel from "@/pages/lecture/parts/LectureConspectusPanel";
 import LectureDiarizePanel from "@/pages/lecture/parts/LectureDiarizePanel";
 import { Btn } from "@/components/ui";
@@ -913,6 +915,15 @@ export default function LectureRecorderPage() {
     setShowSessions(false);
   }, []);
 
+  useDeepLink("lecture", (t) => {
+    if (t.view === "quick") setPageTab("quick");
+    else if (t.ref) {
+      setPageTab("lecture");
+      setShowSessions(true);
+      void openSession(Number(t.ref));
+    }
+  });
+
   const deleteSession = useCallback(
     async (id: number) => {
       // Если звучал фрагмент удаляемой лекции — глушим плеер.
@@ -1080,6 +1091,11 @@ export default function LectureRecorderPage() {
 
           {showSessions && (
             <div className="lec-sessions">
+              <LectureSemantic
+                title={sessions.find((x) => x.id === session?.id)?.title ?? ""}
+                notes={notes}
+                onOpen={(id) => void openSession(id)}
+              />
               {sessions.length === 0 && <div className="lec-dim">{t("lecture.noSessions")}</div>}
               {sessions.map((s) => (
                 <div

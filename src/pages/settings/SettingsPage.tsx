@@ -5,6 +5,7 @@ import { snapshotUiSettings } from "@/lib/telemetry";
 import { copyToClipboard } from "@/components/ContextMenu";
 import { collectUiSettings, applyUiSettings } from "@/lib/uiSettings";
 import { saveBlob } from "@/lib/download";
+import SettingsSearch from "@/pages/settings/parts/SettingsSearch";
 import { EmptyHint, SectionHead, Btn, Glass, Select, Badge } from "@/components/ui";
 import {
   Settings2,
@@ -334,9 +335,12 @@ export default function SettingsPage() {
         eyebrow={t("settings.eyebrow")}
         title={t("settings.title")}
         action={
-          <Btn icon={RotateCcw} onClick={resetSection} title={t("settings.reloadTitle")}>
-            {t("settings.reload")}
-          </Btn>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <SettingsSearch />
+            <Btn icon={RotateCcw} onClick={resetSection} title={t("settings.reloadTitle")}>
+              {t("settings.reload")}
+            </Btn>
+          </div>
         }
       />
 
@@ -895,6 +899,12 @@ export default function SettingsPage() {
             hint={t("chat.chatStreamHint")}
             value={chat.stream}
             onChange={(v) => change("chat.stream", v)}
+          />
+          <BoolRow
+            label="Долгая память"
+            hint="Подмешивать в запрос похожие места из прошлых чатов (нужна модель поиска по смыслу). Фрагменты уходят выбранному ИИ-провайдеру."
+            value={!!chat.memory}
+            onChange={(v) => change("chat.memory", v)}
           />
           <Row label={t("chat.chatContext")} hint={t("chat.chatContextHint")}>
             <NumberInput

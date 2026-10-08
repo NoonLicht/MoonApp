@@ -19,9 +19,13 @@ const router = express.Router();
 const parseSources = (v: unknown): semantic.SemSource[] | undefined => {
   const list = String(v || "")
     .split(",")
-    .filter((s): s is semantic.SemSource => s === "note" || s === "bookmark");
+    .filter((s): s is semantic.SemSource => semantic.ALL_SOURCES.includes(s as semantic.SemSource));
   return list.length ? list : undefined;
 };
+const oneSource = (v: unknown): semantic.SemSource =>
+  semantic.ALL_SOURCES.includes(String(v) as semantic.SemSource)
+    ? (String(v) as semantic.SemSource)
+    : "note";
 const num = (v: unknown, d: number, lo: number, hi: number): number => {
   const n = Number(v);
   return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : d;
@@ -56,7 +60,7 @@ router.get("/search", async (req, res) => {
 });
 
 router.get("/related", (req, res) => {
-  const source = String(req.query.source) === "bookmark" ? "bookmark" : "note";
+  const source = oneSource(req.query.source);
   res.json(
     semantic.related(source, String(req.query.ref || ""), {
       sources: parseSources(req.query.sources),
@@ -100,12 +104,12 @@ router.get("/suggest", (req, res) => {
 });
 
 router.get("/duplicates", (req, res) => {
-  const source = String(req.query.source) === "bookmark" ? "bookmark" : "note";
+  const source = oneSource(req.query.source);
   res.json(semantic.duplicates(source, num(req.query.threshold, 0.93, 0.7, 0.999)));
 });
 
 router.get("/clusters", (req, res) => {
-  const source = String(req.query.source) === "bookmark" ? "bookmark" : "note";
+  const source = oneSource(req.query.source);
   res.json(semantic.clusters(source, num(req.query.threshold, 0.8, 0.5, 0.97)));
 });
 
@@ -116,6 +120,70 @@ router.get("/bookmarks/similar", async (req, res) => {
     const hits = await semantic.search(q, { sources: ["bookmark"], limit: 6 });
     const known = new Set(semantic.readBookmarks().map((b) => b.id));
     res.json(hits.filter((h) => known.has(h.ref)));
+  } catch (e) {
+    fail(res, e);
+  }
+});
+
+/** Группы по смыслу для произвольных текстов (автораскладка стикеров, quickNotes). */
+router.post("/group", express.json({ limit: "2mb" }), async (req, res) => {
+  try {
+    const texts = Array.isArray(req.body?.texts) ? req.body.texts.map(String).slice(0, 400) : [];
+    res.json(await semantic.groupTexts(texts, num(req.body?.threshold, 0.7, 0.5, 0.95)));
+  } catch (e) {
+    fail(res, e);
+  }
+});
+
+/** Категория траты по комментарию. */
+router.get("/classify", async (req, res) => {
+  try {
+    res.json(await semantic.classifyExpense(String(req.query.q || "")));
+  } catch (e) {
+    fail(res, e);
+  }
+});
+
+/** Заметки, подходящие к доске/стикеру/лекции (для прикрепления и сопоставления). */
+router.get("/notes-for", async (req, res) => {
+  try {
+    res.json(
+      await semantic.search(String(req.query.q || ""), {
+        sources: ["note"],
+        limit: num(req.query.limit, 5, 1, 20),
+      }),
+    );
+  } catch (e) {
+    fail(res, e);
+  }
+});
+
+/** Оценка близости запроса к списку текстов (для поиска по настройкам). */
+router.post("/rank", express.json({ limit: "2mb" }), async (req, res) => {
+  try {
+    const texts = Array.isArray(req.body?.texts) ? req.body.texts.map(String).slice(0, 600) : [];
+    res.json(await semantic.rankTexts(String(req.body?.query || ""), texts));
+  } catch (e) {
+    fail(res, e);
+  }
+});
+
+/** Проект и теги для новой задачи по похожим. */
+router.get("/task-meta", async (req, res) => {
+  try {
+    res.json(await semantic.suggestTaskMeta(String(req.query.q || "")));
+  } catch (e) {
+    fail(res, e);
+  }
+});
+
+router.get("/movies/recommend", (_req, res) => res.json(semantic.recommendMovies()));
+
+/** Сходство списка книг с избранным. */
+router.post("/books/similar", express.json({ limit: "2mb" }), async (req, res) => {
+  try {
+    const books = Array.isArray(req.body?.books) ? req.body.books.slice(0, 200) : [];
+    res.json(await semantic.booksSimilarity(books));
   } catch (e) {
     fail(res, e);
   }

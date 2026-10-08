@@ -58,6 +58,27 @@ const TasksPanel: React.FC<TasksPanelProps> = ({ onOpenNote }) => {
   const [showDetail, setShowDetail] = useState(false);
   const [quickAddText, setQuickAddText] = useState("");
   const [parsedChips, setParsedChips] = useState<ParsedChip[]>([]);
+  // Подсказка проекта и тегов по похожим задачам (поиск по смыслу).
+  const [metaHint, setMetaHint] = useState<{ project: string; tags: string[] } | null>(null);
+  const [hintProject, setHintProject] = useState("");
+  useEffect(() => {
+    const text = quickAddText.replace(/[#!+@]\S+/g, " ").trim();
+    if (text.length < 5) {
+      setMetaHint(null);
+      return;
+    }
+    let live = true;
+    const tm = setTimeout(() => {
+      api
+        .semTaskMeta(text)
+        .then((m) => live && setMetaHint(m.project || m.tags.length ? m : null))
+        .catch(() => live && setMetaHint(null));
+    }, 500);
+    return () => {
+      live = false;
+      clearTimeout(tm);
+    };
+  }, [quickAddText]);
   const [streakCount, setStreakCount] = useState(0);
   const [weeklyData, setWeeklyData] = useState<number[]>([]);
   const [points, setPoints] = useState(0);
@@ -340,19 +361,21 @@ const TasksPanel: React.FC<TasksPanelProps> = ({ onOpenNote }) => {
         priority,
         dueDate,
         tags,
+        ...(hintProject ? { projectId: hintProject } : {}),
       };
 
       const created = await api.tasksCreate(payload);
       setTasks((prev) => [created, ...prev]);
       setQuickAddText("");
       setParsedChips([]);
+      setHintProject("");
       updateProgress(1);
     } catch (e: any) {
       console.error("Failed to create task", e);
       setErrorMsg("Failed to create task");
       setTimeout(() => setErrorMsg(null), 3000);
     }
-  }, [quickAddText]);
+  }, [quickAddText, hintProject]);
 
   /* ----- task actions ----- */
   const toggleTaskStatus = useCallback(
@@ -703,6 +726,31 @@ const TasksPanel: React.FC<TasksPanelProps> = ({ onOpenNote }) => {
             <Plus size={16} />
           </button>
         </div>
+        {metaHint && (
+          <div style={{ padding: "0 12px 4px 12px", fontSize: 11 }}>
+            <button
+              type="button"
+              style={{
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                color: "var(--amber)",
+                padding: 0,
+              }}
+              onClick={() => {
+                if (metaHint.project) setHintProject(metaHint.project);
+                const add = metaHint.tags.filter((tg) => !quickAddText.includes(`#${tg}`));
+                if (add.length)
+                  setQuickAddText((v) => `${v} ${add.map((tg) => `#${tg}`).join(" ")}`);
+                setMetaHint(null);
+              }}
+            >
+              ✨ Похожие задачи:{metaHint.project ? ` проект «${metaHint.project}»` : ""}
+              {metaHint.tags.length ? ` ${metaHint.tags.map((tg) => `#${tg}`).join(" ")}` : ""} —
+              применить
+            </button>
+          </div>
+        )}
         {parsedChips.length > 0 && (
           <div style={{ display: "flex", gap: 4, flexWrap: "wrap", padding: "0 12px 4px 12px" }}>
             {parsedChips.map((chip, i) => (

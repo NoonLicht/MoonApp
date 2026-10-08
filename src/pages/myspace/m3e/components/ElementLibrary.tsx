@@ -1,4 +1,5 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { api } from "@/api/client";
 import { PRESETS, type CustomSpec } from "@/pages/myspace/m3e/lib/custom";
 import { draftElement, hasKey, type AiSettings } from "@/pages/myspace/m3e/lib/ai";
 import { isRuUi, useLang } from "@/pages/myspace/m3e/lib/i18n";
@@ -146,6 +147,40 @@ export function ElementStudio({
   const [spec, setSpec] = useState<CustomSpec | null>(null);
   const [kept, setKept] = useState(false);
   const abort = useRef<AbortController | null>(null);
+  // Похожие уже сохранённые элементы: возможно, заново рисовать не нужно.
+  const [near, setNear] = useState<CustomSpec[]>([]);
+  useEffect(() => {
+    const text = q.trim();
+    if (text.length < 4 || !mine.length) {
+      setNear([]);
+      return;
+    }
+    let live = true;
+    const tm = setTimeout(() => {
+      api
+        .semRank(
+          text,
+          mine.map((m) => m.name),
+        )
+        .then((sc) => {
+          if (!live) return;
+          const top = Math.max(...sc, 0);
+          setNear(
+            sc
+              .map((v, i) => ({ v, m: mine[i] }))
+              .filter((x) => x.v >= Math.max(0.72, top - 0.04))
+              .sort((a, b) => b.v - a.v)
+              .slice(0, 3)
+              .map((x) => x.m),
+          );
+        })
+        .catch(() => live && setNear([]));
+    }, 450);
+    return () => {
+      live = false;
+      clearTimeout(tm);
+    };
+  }, [q, mine]);
 
   const make = async () => {
     if (!q.trim() || busy) return;
@@ -190,6 +225,22 @@ export function ElementStudio({
           </button>
           {!ready && <span style={{ fontSize: 12, color: p.outline }}>{L.noKey}</span>}
         </div>
+        {near.length > 0 && (
+          <div style={{ marginTop: 8, fontSize: 12, color: p.outline }}>
+            {isRuUi() ? "Уже есть похожие:" : "Similar saved:"}{" "}
+            {near.map((m, i) => (
+              <button
+                key={i}
+                type="button"
+                className="m3-press"
+                onClick={() => onAdd(m)}
+                style={{ ...btn(p, false), marginRight: 6, padding: "2px 8px" }}
+              >
+                {m.name}
+              </button>
+            ))}
+          </div>
+        )}
         {err && (
           <div role="alert" style={{ fontSize: 12, color: p.error, marginTop: 8 }}>
             {err}

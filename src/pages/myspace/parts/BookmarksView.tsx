@@ -323,6 +323,11 @@ export default function BookmarksView({ onOpenNote }: Props) {
   const [query, setQuery] = useState("");
   const [semIds, setSemIds] = useState<string[] | null>(null);
   const [similar, setSimilar] = useState<{ ref: string; title: string }[]>([]);
+  // Группы по темам и дубли (сервер считает по индексу EmbeddingGemma).
+  const [topics, setTopics] = useState<{ refs: { ref: string; title: string }[] }[] | null>(null);
+  const [dupes, setDupes] = useState<
+    { a: { ref: string; title: string }; b: { ref: string; title: string }; score: number }[] | null
+  >(null);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<{
@@ -481,6 +486,58 @@ export default function BookmarksView({ onOpenNote }: Props) {
         placeholder="Поиск по смыслу и по словам…"
         style={{ width: "100%", margin: "8px 0 0" }}
       />
+      <div style={{ display: "flex", gap: 8, margin: "6px 0", flexWrap: "wrap", fontSize: 12 }}>
+        <button
+          type="button"
+          className="text-input"
+          style={{ cursor: "pointer", width: "auto" }}
+          onClick={() => {
+            if (topics) return setTopics(null);
+            void api
+              .semClusters("bookmark")
+              .then(setTopics)
+              .catch(() => setTopics([]));
+          }}
+        >
+          ✨ {topics ? "Скрыть темы" : "Группы по темам"}
+        </button>
+        <button
+          type="button"
+          className="text-input"
+          style={{ cursor: "pointer", width: "auto" }}
+          onClick={() => {
+            if (dupes) return setDupes(null);
+            void api
+              .semDuplicates("bookmark")
+              .then(setDupes)
+              .catch(() => setDupes([]));
+          }}
+        >
+          {dupes ? "Скрыть дубли" : "Найти дубли"}
+        </button>
+      </div>
+      {topics && (
+        <div className="muted-sm" style={{ display: "grid", gap: 6, marginBottom: 8 }}>
+          {topics.length === 0 && (
+            <span>Пока групп нет — нужно больше закладок или проиндексируйте их</span>
+          )}
+          {topics.map((g, i) => (
+            <div key={i}>
+              <b>Тема {i + 1}:</b> {g.refs.map((r) => r.title).join(" · ")}
+            </div>
+          ))}
+        </div>
+      )}
+      {dupes && (
+        <div className="muted-sm" style={{ display: "grid", gap: 4, marginBottom: 8 }}>
+          {dupes.length === 0 && <span>Дублей не найдено</span>}
+          {dupes.map((d) => (
+            <div key={d.a.ref + d.b.ref}>
+              {d.a.title} ≈ {d.b.title} ({Math.round(d.score * 100)}%)
+            </div>
+          ))}
+        </div>
+      )}
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", margin: "8px 0" }}>
         {allTags.map((tg) => (
           <Badge

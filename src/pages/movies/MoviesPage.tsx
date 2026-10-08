@@ -70,6 +70,28 @@ export default function MoviesPage() {
   const [kind, setKind] = useState<MediaKind>("movie");
   const [view, setView] = useState<ViewId>("catalog");
   const [libFilter, setLibFilter] = useState<MediaWatchStatus | "all">("all");
+  // Поиск по описанию в моём списке и подбор из «планов» по вкусу.
+  const [libQuery, setLibQuery] = useState("");
+  const [libRank, setLibRank] = useState<string[] | null>(null);
+  const [reco, setReco] = useState<{ ref: string; title: string; score: number }[] | null>(null);
+  useEffect(() => {
+    const q = libQuery.trim();
+    if (q.length < 3) {
+      setLibRank(null);
+      return;
+    }
+    let live = true;
+    const tm = setTimeout(() => {
+      api
+        .semSearch(q, ["movie"], 30)
+        .then((h) => live && setLibRank(h.map((x) => x.ref)))
+        .catch(() => live && setLibRank(null));
+    }, 350);
+    return () => {
+      live = false;
+      clearTimeout(tm);
+    };
+  }, [libQuery]);
   const [reloadNonce, setReloadNonce] = useState(0);
 
   const [query, setQuery] = useState("");
@@ -535,9 +557,44 @@ export default function MoviesPage() {
                       className={`chip-toggle${libFilter === key ? " is-active" : ""}`}
                       onClick={() => setLibFilter(key)}
                     >
-                      {label} <Badge tone="neutral" mono>{count}</Badge>
+                      {label}{" "}
+                      <Badge tone="neutral" mono>
+                        {count}
+                      </Badge>
                     </button>
                   ))}
+              </div>
+            )}
+
+            {library && library.watchlist.length > 0 && (
+              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                <input
+                  className="text-input"
+                  value={libQuery}
+                  onChange={(e) => setLibQuery(e.target.value)}
+                  placeholder="Найти в списке по описанию: «космос и одиночество»…"
+                  style={{ minWidth: 280 }}
+                />
+                <Btn
+                  onClick={() =>
+                    void api
+                      .semMovieReco()
+                      .then(setReco)
+                      .catch(() => setReco([]))
+                  }
+                >
+                  ✨ Что посмотреть из планов
+                </Btn>
+              </div>
+            )}
+            {reco && (
+              <div className="muted-sm">
+                {reco.length === 0
+                  ? "Пока не из чего подбирать: нужны просмотренные или оценённые на 8+ тайтлы и модель поиска по смыслу."
+                  : `По вашему вкусу: ${reco
+                      .slice(0, 5)
+                      .map((r) => `${r.title} (${Math.round(r.score * 100)}%)`)
+                      .join(", ")}`}
               </div>
             )}
 
@@ -547,63 +604,70 @@ export default function MoviesPage() {
               <div className="mv-library-grid">
                 {library.watchlist
                   .filter((e) => libFilter === "all" || e.status === libFilter)
+                  .filter((e) => !libRank || libRank.includes(`${e.kind}:${e.tmdb_id}`))
+                  .sort((a, b) =>
+                    libRank
+                      ? libRank.indexOf(`${a.kind}:${a.tmdb_id}`) -
+                        libRank.indexOf(`${b.kind}:${b.tmdb_id}`)
+                      : 0,
+                  )
                   .map((e) => {
-                  const rating =
-                    library.ratings.find((r) => r.kind === e.kind && r.tmdb_id === e.tmdb_id)
-                      ?.rating || 0;
-                  return (
-                    <Glass key={`${e.kind}-${e.tmdb_id}`} className="mv-lib-card">
-                      <button
-                        className="mv-lib-art"
-                        onClick={() => setDetail({ kind: e.kind, id: e.tmdb_id })}
-                      >
-                        {e.poster ? (
-                          <img src={imgUrl(e.poster)} alt="" loading="lazy" />
-                        ) : (
-                          <Film size={22} strokeWidth={1.5} />
-                        )}
-                      </button>
-                      <div className="mv-lib-info">
-                        <div className="mv-lib-title" title={e.title}>
-                          {e.title}
-                        </div>
-                        <div className="muted-sm">
-                          {e.year || "—"}
-                          {rating > 0 ? ` · ★ ${rating}` : ""}
-                          {e.kind === "tv" && e.watched_season > 0
-                            ? ` · ${t("movies.seasonEpisodeShort", { s: e.watched_season, e: e.watched_episode })}`
-                            : ""}
-                        </div>
-                        <div className="mv-lib-status">
-                          {(["plan", "watching", "watched"] as MediaWatchStatus[]).map((st) => (
-                            <Badge
-                              key={st}
-                              tone={STATUS_TONE[st]}
-                              active={e.status === st}
-                              onClick={() => void changeWatchStatus(e, st)}
+                    const rating =
+                      library.ratings.find((r) => r.kind === e.kind && r.tmdb_id === e.tmdb_id)
+                        ?.rating || 0;
+                    return (
+                      <Glass key={`${e.kind}-${e.tmdb_id}`} className="mv-lib-card">
+                        <button
+                          className="mv-lib-art"
+                          onClick={() => setDetail({ kind: e.kind, id: e.tmdb_id })}
+                        >
+                          {e.poster ? (
+                            <img src={imgUrl(e.poster)} alt="" loading="lazy" />
+                          ) : (
+                            <Film size={22} strokeWidth={1.5} />
+                          )}
+                        </button>
+                        <div className="mv-lib-info">
+                          <div className="mv-lib-title" title={e.title}>
+                            {e.title}
+                          </div>
+                          <div className="muted-sm">
+                            {e.year || "—"}
+                            {rating > 0 ? ` · ★ ${rating}` : ""}
+                            {e.kind === "tv" && e.watched_season > 0
+                              ? ` · ${t("movies.seasonEpisodeShort", { s: e.watched_season, e: e.watched_episode })}`
+                              : ""}
+                          </div>
+                          <div className="mv-lib-status">
+                            {(["plan", "watching", "watched"] as MediaWatchStatus[]).map((st) => (
+                              <Badge
+                                key={st}
+                                tone={STATUS_TONE[st]}
+                                active={e.status === st}
+                                onClick={() => void changeWatchStatus(e, st)}
+                              >
+                                {t(`movies.status${st.charAt(0).toUpperCase()}${st.slice(1)}`)}
+                              </Badge>
+                            ))}
+                          </div>
+                          <div className="mv-lib-actions">
+                            <Btn
+                              icon={Zap}
+                              onClick={() => setPlayer({ trailerKey: null, query: null })}
                             >
-                              {t(`movies.status${st.charAt(0).toUpperCase()}${st.slice(1)}`)}
-                            </Badge>
-                          ))}
+                              {t("movies.openPlayer")}
+                            </Btn>
+                            <Btn
+                              icon={Trash2}
+                              onClick={() => void removeFromList(e)}
+                              disabled={busy}
+                              title={t("movies.removeFromList")}
+                            />
+                          </div>
                         </div>
-                        <div className="mv-lib-actions">
-                          <Btn
-                            icon={Zap}
-                            onClick={() => setPlayer({ trailerKey: null, query: null })}
-                          >
-                            {t("movies.openPlayer")}
-                          </Btn>
-                          <Btn
-                            icon={Trash2}
-                            onClick={() => void removeFromList(e)}
-                            disabled={busy}
-                            title={t("movies.removeFromList")}
-                          />
-                        </div>
-                      </div>
-                    </Glass>
-                  );
-                })}
+                      </Glass>
+                    );
+                  })}
               </div>
             )}
           </div>
@@ -653,8 +717,16 @@ export default function MoviesPage() {
                               if (e.key === "Escape") setBmRenaming(null);
                             }}
                           />
-                          <IconBtn icon={CheckIcon} title={t("common.save")} onClick={() => void renameBookmarkList()} />
-                          <IconBtn icon={XIcon} title={t("common.cancel")} onClick={() => setBmRenaming(null)} />
+                          <IconBtn
+                            icon={CheckIcon}
+                            title={t("common.save")}
+                            onClick={() => void renameBookmarkList()}
+                          />
+                          <IconBtn
+                            icon={XIcon}
+                            title={t("common.cancel")}
+                            onClick={() => setBmRenaming(null)}
+                          />
                         </div>
                       ) : (
                         <h3>

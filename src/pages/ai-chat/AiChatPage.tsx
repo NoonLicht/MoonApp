@@ -28,6 +28,8 @@ import { usePageToolbar, usePageActive, usePageBusy } from "@/components/Toolbar
 import { useI18n } from "@/app/i18n";
 import { useMediaQuery, BREAKPOINTS } from "@/lib/useMediaQuery";
 import { api, streamChatSend, streamArena } from "@/api/client";
+import type { SemHit } from "@/api/apiSemantic";
+import { useDeepLink } from "@/lib/deepLink";
 import type { ProviderInfo, Conversation, ChatMessage } from "@/api/types";
 import CodeBlock from "@/pages/ai-chat/parts/CodeBlock";
 import MsgList, { type MsgStats } from "@/pages/ai-chat/parts/MsgList";
@@ -795,6 +797,29 @@ export default function AiChatPage() {
     const q = (palette?.query || "").trim().toLowerCase();
     return convs.filter((c) => !q || c.title.toLowerCase().includes(q)).slice(0, 8);
   }, [palette, convs]);
+  // История чатов по смыслу: находит разговор по содержанию, а не только по названию.
+  const [semChats, setSemChats] = useState<SemHit[]>([]);
+  useEffect(() => {
+    const q = (palette?.query || "").trim();
+    if (q.length < 3) {
+      setSemChats([]);
+      return;
+    }
+    let live = true;
+    const tm = setTimeout(() => {
+      api
+        .semSearch(q, ["chat"], 6)
+        .then((h) => live && setSemChats(h))
+        .catch(() => live && setSemChats([]));
+    }, 300);
+    return () => {
+      live = false;
+      clearTimeout(tm);
+    };
+  }, [palette?.query]);
+  useDeepLink("aichat", (t) => {
+    if (t.ref) setActiveId(Number(t.ref));
+  });
   const paletteModels = useMemo(() => {
     const q = (palette?.query || "").trim().toLowerCase();
     return models.filter((m) => !q || m.toLowerCase().includes(q)).slice(0, 6);
@@ -990,6 +1015,24 @@ export default function AiChatPage() {
                     }}
                   >
                     💬 {c.title}
+                  </button>
+                ))}
+              </>
+            )}
+            {semChats.length > 0 && (
+              <>
+                <div className="palette-group">По смыслу</div>
+                {semChats.map((h) => (
+                  <button
+                    key={h.ref}
+                    className="palette-item"
+                    title={h.snippet}
+                    onClick={() => {
+                      setActiveId(Number(h.ref));
+                      setPalette(null);
+                    }}
+                  >
+                    ✨ {h.title} — {h.snippet.slice(0, 60)}
                   </button>
                 ))}
               </>

@@ -49,6 +49,8 @@ import { TopBar, type BoardEntry } from "@/pages/myspace/canvas/TopBar";
 import { Inspector, type InspectorActions } from "@/pages/myspace/canvas/Inspector";
 import { LayersPanel } from "@/pages/myspace/canvas/Layers";
 import { Minimap } from "@/pages/myspace/canvas/Minimap";
+import { SmartPanel } from "@/pages/myspace/canvas/SmartPanel";
+import { useDeepLink } from "@/lib/deepLink";
 import { Shortcuts } from "@/pages/myspace/canvas/Shortcuts";
 import { ContextMenu, type MenuItem } from "@/pages/myspace/canvas/ContextMenu";
 import { TemplatesModal } from "@/pages/myspace/canvas/TemplatePicker";
@@ -625,6 +627,38 @@ export default function CanvasPage() {
     fitBox(unionBox(vis.map((o) => boundsOf(o, m))));
   };
   const fitSelection = () => fitBox(selectionBox(board.ref.current, selRef.current));
+
+  /** Перейти к объекту доски: при необходимости открыть другую доску, выделить и показать. */
+  const focusObject = useCallback(
+    async (f: string, id: string) => {
+      if (f !== fileRef.current) {
+        await flush();
+        await loadBoard(f);
+      }
+      const o = board.ref.current.find((x) => x.id === id);
+      if (!o) return;
+      setSel([id]);
+      fitBox(boundsOf(o, mapById(board.ref.current)), 1.2);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [loadBoard, setSel, fitBox],
+  );
+  const pendingFocus = useRef<string | null>(null);
+  useDeepLink("myspace", (t) => {
+    if (t.view !== "canvas" || !t.ref) return;
+    pendingFocus.current = t.ref;
+    if (ready) {
+      const [f, id] = t.ref.split("#");
+      pendingFocus.current = null;
+      void focusObject(f, id);
+    }
+  });
+  useEffect(() => {
+    if (!ready || !pendingFocus.current) return;
+    const [f, id] = pendingFocus.current.split("#");
+    pendingFocus.current = null;
+    void focusObject(f, id);
+  }, [ready, focusObject]);
 
   /* колесо мыши */
   useEffect(() => {
@@ -2026,6 +2060,13 @@ export default function CanvasPage() {
           side
         )}
       </div>
+      <SmartPanel
+        file={file}
+        objs={objs}
+        sel={sel}
+        onFocus={(f, id) => void focusObject(f, id)}
+        onApply={(fn) => board.apply(fn)}
+      />
       <Minimap
         objs={objs}
         byId={byId}

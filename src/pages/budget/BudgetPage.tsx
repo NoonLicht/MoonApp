@@ -1,5 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
-import { Wallet, Plus, Trash2, X, Save, TrendingUp, TrendingDown, AlertTriangle, Upload } from "lucide-react";
+import {
+  Wallet,
+  Plus,
+  Trash2,
+  X,
+  Save,
+  TrendingUp,
+  TrendingDown,
+  AlertTriangle,
+  Upload,
+} from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { Glass, Btn, Badge, EmptyHint, SectionHead, Select } from "@/components/ui";
 import { useI18n } from "@/app/i18n";
@@ -153,6 +163,27 @@ export default function BudgetPage() {
     }
   };
 
+  // Подсказка категории по комментарию — по похожим прошлым тратам (поиск по смыслу).
+  const [guess, setGuess] = useState("");
+  useEffect(() => {
+    const text = form.note.trim();
+    if (form.type !== "expense" || text.length < 4) {
+      setGuess("");
+      return;
+    }
+    let live = true;
+    const tm = setTimeout(() => {
+      api
+        .semClassify(text)
+        .then((r) => live && setGuess(r[0] && r[0].score >= 0.8 ? r[0].category : ""))
+        .catch(() => live && setGuess(""));
+    }, 400);
+    return () => {
+      live = false;
+      clearTimeout(tm);
+    };
+  }, [form.note, form.type]);
+
   const categoryOptions = form.type === "income" ? categories?.income : categories?.expense;
 
   return (
@@ -239,7 +270,10 @@ export default function BudgetPage() {
       )}
 
       {showForm && (
-        <Glass className="media-preview" style={{ flexDirection: "column", alignItems: "stretch", gap: 8 }}>
+        <Glass
+          className="media-preview"
+          style={{ flexDirection: "column", alignItems: "stretch", gap: 8 }}
+        >
           <div style={{ display: "flex", gap: 8 }}>
             <Btn
               variant={form.type === "expense" ? "primary" : "default"}
@@ -291,6 +325,22 @@ export default function BudgetPage() {
             value={form.note}
             onChange={(e) => setForm((f) => ({ ...f, note: e.target.value }))}
           />
+          {guess && guess !== form.category && (categoryOptions || []).includes(guess) && (
+            <button
+              type="button"
+              className="muted-sm"
+              style={{
+                textAlign: "left",
+                cursor: "pointer",
+                background: "none",
+                border: "none",
+                color: "var(--amber)",
+              }}
+              onClick={() => setForm((f) => ({ ...f, category: guess }))}
+            >
+              ✨ Похоже на категорию «{guess}» — применить
+            </button>
+          )}
           <div style={{ display: "flex", gap: 8 }}>
             <Btn
               variant="primary"
@@ -342,15 +392,27 @@ export default function BudgetPage() {
                 formatter={(value: number) => [`${fmtMoney(value)} ${displayCurrency}`, undefined]}
               />
               <Legend />
-              <Bar dataKey="income" name={t("budget.income")} fill="var(--teal)" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="expense" name={t("budget.expense")} fill="var(--coral)" radius={[4, 4, 0, 0]} />
+              <Bar
+                dataKey="income"
+                name={t("budget.income")}
+                fill="var(--teal)"
+                radius={[4, 4, 0, 0]}
+              />
+              <Bar
+                dataKey="expense"
+                name={t("budget.expense")}
+                fill="var(--coral)"
+                radius={[4, 4, 0, 0]}
+              />
             </BarChart>
           </ResponsiveContainer>
         </Glass>
       )}
 
       {categoryBreakdown.length > 0 && (
-        <Glass style={{ padding: 12, display: "flex", flexDirection: "column", gap: 6, marginTop: 10 }}>
+        <Glass
+          style={{ padding: 12, display: "flex", flexDirection: "column", gap: 6, marginTop: 10 }}
+        >
           <div className="muted-sm">{t("budget.categoryBreakdown")}</div>
           {categoryBreakdown.map((c, i) => (
             <div key={c.category} style={{ display: "flex", alignItems: "center", gap: 8 }}>

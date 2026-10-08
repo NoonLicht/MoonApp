@@ -30,6 +30,7 @@ import WelcomeModal from "@/components/WelcomeModal";
 import SystemStatsBar from "@/components/SystemStatsBar";
 import { api } from "@/api/client";
 import { PAGES } from "@/app/navigation";
+import { onOpenTarget } from "@/lib/deepLink";
 import type { PageId } from "@/app/navigation";
 
 // Стили
@@ -452,6 +453,7 @@ function Shell({
 export default function App() {
   const [theme, setTheme] = useState("dark");
   const [active, setActive] = useState<PageId>("store");
+  useEffect(() => onOpenTarget(setActive), []);
   const [lang, setLang] = useState("en");
   const [blur, setBlur] = useState(true);
   const [accent, setAccent] = useState("amber");

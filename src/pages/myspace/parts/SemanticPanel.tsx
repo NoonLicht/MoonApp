@@ -192,7 +192,8 @@ export function SemanticPanel({ note, content, onOpenNote, onInsertLink, onAddTa
         {syncBtn}
         {status && (
           <span style={{ fontSize: 11, color: "var(--text-tertiary)" }}>
-            {status.indexed.note} заметок · {status.indexed.bookmark} закладок
+            {status.indexed.note ?? 0} заметок · {status.indexed.bookmark ?? 0} закладок ·{" "}
+            {status.indexed.lecture ?? 0} лекций · {status.indexed.chat ?? 0} чатов
           </span>
         )}
       </div>

@@ -5,6 +5,7 @@ import { getProvider } from "../providers";
 import { getSecret } from "../security";
 import { runWithPage } from "../middleware/perPageProxy";
 import logger from "../logger";
+import * as semantic from "../semantic";
 
 const router = express.Router();
 
@@ -129,9 +130,9 @@ router.post("/:id/send", async (req, res) => {
     history[history.length - 1].images = imgList;
   }
 
-  const fullMessages = systemPrompt
-    ? [{ role: "system", text: systemPrompt }, ...history]
-    : history;
+  const memo = chatCfg.memory ? await semantic.memoryFor(conv.id, String(text)) : "";
+  const sys = [systemPrompt, memo].filter(Boolean).join("\n\n");
+  const fullMessages = sys ? [{ role: "system", text: sys }, ...history] : history;
 
   const finalModel = model || chatCfg.model || provider.models?.[0] || "";
   const finalTemperature = temperature ?? chatCfg.temperature ?? 0.7;
@@ -257,9 +258,9 @@ router.post("/:id/arena", async (req, res) => {
   if (imgList.length && history.length && history[history.length - 1].role === "user") {
     history[history.length - 1].images = imgList;
   }
-  const fullMessages = systemPrompt
-    ? [{ role: "system", text: systemPrompt }, ...history]
-    : history;
+  const memo = chatCfg.memory ? await semantic.memoryFor(conv.id, String(text)) : "";
+  const sys = [systemPrompt, memo].filter(Boolean).join("\n\n");
+  const fullMessages = sys ? [{ role: "system", text: sys }, ...history] : history;
 
   res.writeHead(200, {
     "Content-Type": "text/event-stream",

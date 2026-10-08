@@ -250,3 +250,11 @@
 .keys-actions .text-input {
   min-width: 220px;
 }
+
+/* Строка, найденная поиском по настройкам. */
+.set-row.set-row-hit {
+  outline: 2px solid var(--amber);
+  outline-offset: 2px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--amber) 10%, transparent);
+}

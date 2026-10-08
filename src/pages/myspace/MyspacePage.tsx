@@ -45,6 +45,7 @@ import {
 import EditingToolbar from "@/pages/myspace/parts/EditingToolbar";
 import MarkdownRenderer from "@/pages/myspace/parts/MarkdownRenderer";
 import CodeMirrorLiveEditor from "@/pages/myspace/parts/CodeMirrorLiveEditor";
+import { useDeepLink } from "@/lib/deepLink";
 import { SemanticPanel } from "@/pages/myspace/parts/SemanticPanel";
 import type { OcrImageRequest, PdfDropRequest } from "@/pages/myspace/parts/CodeMirrorLiveEditor";
 import OcrDialog from "@/pages/myspace/parts/OcrDialog";
@@ -317,6 +318,14 @@ export default function MyspacePage() {
     },
     [openFiles],
   );
+
+  // Переход из общего поиска / палитры: нужная вкладка и заметка.
+  useDeepLink("myspace", (t) => {
+    if (t.view === "notes" || t.view === "tasks" || t.view === "bookmarks" || t.view === "canvas")
+      setMyspaceView(t.view);
+    if (t.view === "notes" && t.ref) void openFile(t.ref);
+    if (t.view === "canvas" && t.ref) return false; // дальше — CanvasPage
+  });
 
   const closeTab = (p: string) => {
     setOpenFiles((prev) => prev.filter((f) => f.path !== p));
