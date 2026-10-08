@@ -8,6 +8,7 @@
  * командой `npm run compile:server`, поэтому `require("../myspace-vault")` из
  * server/routes/myspace.js и тестов продолжает работать с теми же именами.
  */
+import { EventEmitter } from "events";
 import fs from "fs";
 import path from "path";
 import config from "./config";
@@ -18,6 +19,9 @@ import { removePath } from "./fsUtil";
 import { parseFrontmatter } from "./frontmatter";
 
 const { DIRS } = config;
+
+/** Заметка записана / удалена: на это подписан семантический индекс. */
+export const vaultEvents = new EventEmitter();
 
 const VAULT_DIR = DIRS.vault;
 const NOTEBOOK_DIR = DIRS.vaultNotes;
@@ -174,6 +178,7 @@ function writeFile(
   }
   md += String(content || "");
   fs.writeFileSync(fullPath, md, "utf8");
+  vaultEvents.emit("write", filePath);
   return { path: filePath, ok: true };
 }
 
@@ -186,6 +191,7 @@ function deleteFile(filePath: string): VaultOpResult {
       // файлы с кириллическими именами, поэтому «удалить заметку» возвращало
       // успех, а .md оставался на диске (см. server/ts/fsUtil.ts).
       if (!removePath(fullPath)) return { ok: false, error: "delete_failed" };
+      vaultEvents.emit("delete", filePath);
       return { ok: true };
     }
     return { ok: false, error: "not found" };

@@ -11,7 +11,7 @@ import { modelsDir } from "./engine";
 
 const HF = "https://huggingface.co";
 
-export type ModelKind = "translate" | "chat" | "tts" | "ocr";
+export type ModelKind = "translate" | "chat" | "tts" | "ocr" | "embed";
 
 export interface CatalogModel {
   id: string;
@@ -26,6 +26,22 @@ export interface CatalogModel {
 }
 
 export const CATALOG: CatalogModel[] = [
+  {
+    id: "embeddinggemma2-q8",
+    kind: "embed",
+    repo: "unsloth/embeddinggemma-2-GGUF",
+    file: "embeddinggemma-2-Q8_0.gguf",
+    sizeMb: 310,
+    note: "q8",
+  },
+  {
+    id: "embeddinggemma2-q4",
+    kind: "embed",
+    repo: "unsloth/embeddinggemma-2-GGUF",
+    file: "embeddinggemma-2-UD-Q4_K_XL.gguf",
+    sizeMb: 176,
+    note: "q4",
+  },
   {
     id: "qwen3tts-q4km",
     kind: "tts",

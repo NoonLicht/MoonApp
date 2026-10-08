@@ -45,6 +45,7 @@ import {
 import EditingToolbar from "@/pages/myspace/parts/EditingToolbar";
 import MarkdownRenderer from "@/pages/myspace/parts/MarkdownRenderer";
 import CodeMirrorLiveEditor from "@/pages/myspace/parts/CodeMirrorLiveEditor";
+import { SemanticPanel } from "@/pages/myspace/parts/SemanticPanel";
 import type { OcrImageRequest, PdfDropRequest } from "@/pages/myspace/parts/CodeMirrorLiveEditor";
 import OcrDialog from "@/pages/myspace/parts/OcrDialog";
 import { loadOcrPrefs, recognizeNoteImage, recognizePdf } from "@/lib/noteOcr";
@@ -120,6 +121,8 @@ export default function MyspacePage() {
   const [activeTab, setActiveTab] = useState<string | null>(null);
   const [sq, setSq] = useState("");
   const [sres, setSres] = useState<VaultSearchResult[]>([]);
+  // Поиск по смыслу (EmbeddingGemma) вместо точного совпадения слов.
+  const [semSearch, setSemSearch] = useState(false);
   const [tags, setTags] = useState<VaultTag[]>([]);
   const [showCreate, setShowCreate] = useState(false);
   const [crName, setCrName] = useState("");
@@ -812,13 +815,29 @@ export default function MyspacePage() {
       return;
     }
     const t = setTimeout(() => {
+      if (semSearch) {
+        api
+          .semSearch(sq, ["note"], 20)
+          .then((hits) =>
+            setSres(
+              hits.map((h) => ({
+                path: h.ref,
+                name: h.title || h.ref.replace(/^.*\//, ""),
+                snippet: `${Math.round(h.score * 100)}% · ${h.snippet.slice(0, 120)}`,
+                matchStart: 0,
+              })),
+            ),
+          )
+          .catch((e) => setError((e as Error).message));
+        return;
+      }
       api
         .myspaceSearch(sq)
         .then(setSres)
         .catch(() => {});
     }, 400);
     return () => clearTimeout(t);
-  }, [sq]);
+  }, [sq, semSearch]);
 
   const toggleExpand = (p: string) => {
     setExp((prev) => {
@@ -1549,8 +1568,25 @@ export default function MyspacePage() {
                       }}
                     >
                       <Search size={13} />
+                      <button
+                        type="button"
+                        onClick={() => setSemSearch((v) => !v)}
+                        title="Поиск по смыслу"
+                        aria-pressed={semSearch}
+                        style={{
+                          background: semSearch ? "var(--track)" : "transparent",
+                          border: "none",
+                          padding: 3,
+                          borderRadius: 5,
+                          cursor: "pointer",
+                          display: "flex",
+                          color: semSearch ? "var(--amber)" : "var(--text-tertiary)",
+                        }}
+                      >
+                        <Sparkles size={13} />
+                      </button>
                       <input
-                        placeholder="Search notes..."
+                        placeholder={semSearch ? "Search by meaning..." : "Search notes..."}
                         value={sq}
                         onChange={(e) => setSq(e.target.value)}
                         autoFocus
@@ -2461,6 +2497,7 @@ export default function MyspacePage() {
                       ["backlinks", Link2],
                       ["outline", Type],
                       ["graph", Globe],
+                      ["similar", Sparkles],
                     ] as const
                   ).map(([id, Icon]) => (
                     <button
@@ -2501,6 +2538,27 @@ export default function MyspacePage() {
                   overflow: "hidden",
                 }}
               >
+                {rightTab === "similar" && (
+                  <SemanticPanel
+                    note={activeTab}
+                    content={edContent}
+                    onOpenNote={(p) => void openFile(p)}
+                    onInsertLink={(name) => {
+                      if (!activeTab) return;
+                      const base = edContent.replace(/\s+$/, "");
+                      updContent(activeTab, `${base}${base ? " " : ""}[[${name}]]\n`);
+                    }}
+                    onAddTag={(tag) => {
+                      if (!activeTab) return;
+                      const t = tag.startsWith("#") ? tag : `#${tag}`;
+                      const lines = edContent.replace(/\s+$/, "").split("\n");
+                      const last = lines[lines.length - 1] ?? "";
+                      if (/^(#\S+\s*)+$/.test(last)) lines[lines.length - 1] = `${last} ${t}`;
+                      else lines.push("", t);
+                      updContent(activeTab, `${lines.join("\n")}\n`);
+                    }}
+                  />
+                )}
                 {rightTab === "backlinks" && (
                   <div
                     style={{

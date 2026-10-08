@@ -246,7 +246,7 @@ const IDLE_MS = 10 * 60 * 1000;
 
 export const badBuilds = (): BuildId[] => [...bad];
 
-function freePort(): Promise<number> {
+export function freePort(): Promise<number> {
   return new Promise((resolve, reject) => {
     const s = net.createServer();
     s.once("error", reject);
@@ -282,7 +282,7 @@ export interface StartOptions {
   raw?: boolean;
 }
 
-async function waitReady(proc: ChildProcess, base: string, tail: () => string): Promise<void> {
+export async function waitReady(proc: ChildProcess, base: string, tail: () => string): Promise<void> {
   let exited = false;
   proc.once("exit", () => (exited = true));
   const t0 = Date.now();

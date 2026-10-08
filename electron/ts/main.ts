@@ -2,7 +2,7 @@
 // выставляется первым (mainAppName), затем storagePath (путь к storage, env для
 // серверных модулей) и только потом всё остальное, включая ../server.
 import "./mainAppName";
-import { app, ipcMain, BrowserWindow, session, globalShortcut } from "electron";
+import { app, ipcMain, BrowserWindow, session, globalShortcut, nativeTheme } from "electron";
 import { serverModule } from "./serverApi";
 import fs from "fs";
 import path from "path";
@@ -243,10 +243,14 @@ async function createWindow() {
     ...(startX !== undefined ? { x: startX, y: startY } : {}),
     minWidth: MIN_WIN_WIDTH,
     minHeight: MIN_WIN_HEIGHT,
-    transparent: true,
+    // Не transparent: у прозрачных окон Windows нет анимаций сворачивания/разворачивания,
+    // а скругление приходилось рисовать CSS-ом. Обычное frameless-окно получает родные
+    // анимации, тень и скруглённые углы Windows 11 (на Windows 10 углы прямые).
     frame: false,
-    hasShadow: false,
-    backgroundColor: "#00000000",
+    thickFrame: true,
+    hasShadow: true,
+    roundedCorners: true,
+    backgroundColor: nativeTheme.shouldUseDarkColors ? "#0c0e16" : "#eef0f6",
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,

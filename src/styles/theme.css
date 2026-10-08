@@ -199,9 +199,10 @@ body {
                       max-height списков на страницах (см. страницы ниже);
      --content-max  — ограничитель ширины контента на ultrawide-мониторах. */
 .app-shell {
-  background: var(--bg-alpha);
+  /* окно непрозрачное, углы скругляет система */
+  background: var(--bg-base);
   height: 100vh;
-  border-radius: 18px;
+  border-radius: 0;
   overflow: hidden;
   --rail-w: 60px;
   --rail-gap: 12px;

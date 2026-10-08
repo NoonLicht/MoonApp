@@ -319,6 +319,10 @@ export default function BookmarksView({ onOpenNote }: Props) {
   const [items, setItems] = useState<Bookmark[]>([]);
   const [loading, setLoading] = useState(true);
   const [tagFilter, setTagFilter] = useState<string | null>(null);
+  // Поиск по смыслу: порядок и состав закладок задаёт EmbeddingGemma (если модель установлена).
+  const [query, setQuery] = useState("");
+  const [semIds, setSemIds] = useState<string[] | null>(null);
+  const [similar, setSimilar] = useState<{ ref: string; title: string }[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<{
@@ -350,10 +354,36 @@ export default function BookmarksView({ onOpenNote }: Props) {
     return [...s].sort();
   }, [items]);
 
-  const filtered = useMemo(
-    () => (tagFilter ? items.filter((b) => b.tags.includes(tagFilter)) : items),
-    [items, tagFilter],
-  );
+  useEffect(() => {
+    const q = query.trim();
+    if (!q) {
+      setSemIds(null);
+      return;
+    }
+    const tm = setTimeout(() => {
+      api
+        .semSearch(q, ["bookmark"], 30)
+        .then((hits) => setSemIds(hits.map((h) => h.ref)))
+        .catch(() => setSemIds([]));
+    }, 350);
+    return () => clearTimeout(tm);
+  }, [query]);
+
+  const filtered = useMemo(() => {
+    let list = tagFilter ? items.filter((b) => b.tags.includes(tagFilter)) : items;
+    const q = query.trim().toLowerCase();
+    if (q) {
+      const byId = new Map(list.map((b) => [b.id, b]));
+      const smart = (semIds ?? []).map((id) => byId.get(id)).filter((b): b is Bookmark => !!b);
+      const plain = list.filter(
+        (b) =>
+          !smart.includes(b) &&
+          `${b.title} ${b.url} ${b.notes} ${b.tags.join(" ")}`.toLowerCase().includes(q),
+      );
+      list = [...smart, ...plain];
+    }
+    return list;
+  }, [items, tagFilter, query, semIds]);
 
   const save = async () => {
     if (!form.url.trim()) return;
@@ -369,6 +399,7 @@ export default function BookmarksView({ onOpenNote }: Props) {
       setForm({ url: "", title: "", notes: "", tags: [], saveForLater: false });
       setShowForm(false);
       load();
+      void api.semSync().catch(() => {});
     } finally {
       setSaving(false);
     }
@@ -377,6 +408,7 @@ export default function BookmarksView({ onOpenNote }: Props) {
   const remove = async (id: string) => {
     await api.bookmarksDelete(id);
     load();
+    void api.semSync().catch(() => {});
   };
 
   const saveArticleNow = async (id: string) => {
@@ -414,6 +446,25 @@ export default function BookmarksView({ onOpenNote }: Props) {
     }
   };
 
+  // При добавлении закладки подсказываем, что по теме уже сохранено.
+  useEffect(() => {
+    if (!showForm || (form.title.trim().length < 4 && form.url.trim().length < 12)) {
+      setSimilar([]);
+      return;
+    }
+    const tm = setTimeout(() => {
+      api
+        .semSimilarBookmarks(form.title, form.url)
+        .then((hits) =>
+          setSimilar(
+            hits.filter((h) => h.score > 0.74).map((h) => ({ ref: h.ref, title: h.title })),
+          ),
+        )
+        .catch(() => setSimilar([]));
+    }, 600);
+    return () => clearTimeout(tm);
+  }, [showForm, form.title, form.url]);
+
   const handleArchived = (id: string, archiveId: string) => {
     setItems((prev) => prev.map((b) => (b.id === id ? { ...b, readerArchiveId: archiveId } : b)));
     void api.bookmarksSetReaderArchive(id, archiveId).catch(() => {});
@@ -423,6 +474,13 @@ export default function BookmarksView({ onOpenNote }: Props) {
     <div className="page" style={{ flex: 1, minHeight: 0, overflow: "auto" }}>
       <SectionHead eyebrow={t("myspace.bookmarksTab")} title={t("bookmarks.title")} />
 
+      <input
+        className="text-input"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder="Поиск по смыслу и по словам…"
+        style={{ width: "100%", margin: "8px 0 0" }}
+      />
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", margin: "8px 0" }}>
         {allTags.map((tg) => (
           <Badge
@@ -463,6 +521,26 @@ export default function BookmarksView({ onOpenNote }: Props) {
               value={form.notes}
               onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
             />
+            {similar.length > 0 && (
+              <div className="muted-sm">
+                Уже сохранено по теме:{" "}
+                {similar.map((x, i) => (
+                  <span key={x.ref}>
+                    {i > 0 ? " · " : ""}
+                    <a
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setQuery(x.title);
+                        setShowForm(false);
+                      }}
+                    >
+                      {x.title}
+                    </a>
+                  </span>
+                ))}
+              </div>
+            )}
             <label
               style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}
               className="muted-sm"

@@ -92,21 +92,17 @@ describe("живой редактор: PDF и кнопка OCR на картин
     expect(reqs).toHaveLength(0);
   });
 
-  it("на картинке есть кнопки OCR и настроек; OCR заменяет картинку текстом", async () => {
+  it("на картинке есть кнопка OCR (настройки вынесены в верхнюю панель); OCR заменяет картинку текстом", async () => {
     const got: OcrImageRequest[] = [];
-    let settings = 0;
     const m = await mount("Текст\n\n![скан](/api/myspace/assets/abc)\n\nКонец\n", {
       onOcrImage: (r) => got.push(r),
-      onOcrSettings: () => settings++,
       ocrLabels: LABELS,
     });
     const btns = m.host.querySelectorAll<HTMLButtonElement>(".cm-live-imgbtn");
-    expect(btns).toHaveLength(2);
+    expect(btns).toHaveLength(1);
     await act(async () => btns[0].click());
     expect(got).toHaveLength(1);
     expect(got[0].src).toBe("/api/myspace/assets/abc");
-    await act(async () => btns[1].click());
-    expect(settings).toBe(1);
     await act(async () => {
       expect(got[0].replace("## Заголовок\n\nТекст страницы")).toBe(true);
     });

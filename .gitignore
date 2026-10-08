@@ -72,6 +72,7 @@ server/officeConvert.js
 server/pdfProtect.js
 server/games.js
 server/m3e.js
+server/semantic.js
 server/netTools.js
 server/notesGit.js
 server/appTimeTracker.js

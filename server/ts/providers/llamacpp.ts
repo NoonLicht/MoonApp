@@ -10,16 +10,22 @@ import { hasModel, installed, modelPath } from "../llamacpp/models";
  */
 const CTX = 8192;
 
+/** Для чата подходят только языковые модели: эмбеддинги, проекторы, OCR и озвучка — нет. */
+const chatModels = (): string[] =>
+  installed()
+    .map((m) => m.file)
+    .filter((f) => !/embeddinggemma|mmproj|chandra|tts/i.test(f));
+
 const provider: Provider = {
   id: "llamacpp",
   label: "llama.cpp (локально)",
   models: [],
   local: true,
   async listModels() {
-    return installed().map((m) => m.file);
+    return chatModels();
   },
   async chat(p: ChatParams): Promise<string> {
-    const file = p.model || installed()[0]?.file || "";
+    const file = p.model || chatModels()[0] || "";
     if (!file || !hasModel(file)) throw new Error("llamacpp_model_missing");
     return withServer({ model: modelPath(file), ctx: CTX }, async (s) => {
       const body: Record<string, unknown> = {

@@ -7,7 +7,7 @@ export type LlamaBuildId = "cpu" | "vulkan" | "cuda";
 
 export interface LlamaCatalogModel {
   id: string;
-  kind: "translate" | "chat" | "tts" | "ocr";
+  kind: "translate" | "chat" | "tts" | "ocr" | "embed";
   repo: string;
   file: string;
   sizeMb: number;

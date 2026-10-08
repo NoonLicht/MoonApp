@@ -13,7 +13,7 @@ declare global {
 }
 
 export type Side = "explorer" | "search" | "tags";
-export type Right = "backlinks" | "outline" | "graph";
+export type Right = "backlinks" | "outline" | "graph" | "similar";
 export interface OFile {
   path: string;
   name: string;
