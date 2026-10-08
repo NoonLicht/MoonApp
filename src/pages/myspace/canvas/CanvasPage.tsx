@@ -1,1088 +1,1989 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  ReactFlow,
-  ReactFlowProvider,
-  Background,
-  BackgroundVariant,
-  useNodesState,
-  useEdgesState,
-  useReactFlow,
-  type Node,
-  type Edge,
-  type Connection,
-  MarkerType,
-  ConnectionLineType,
-} from "@xyflow/react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dagre from "dagre";
+import { toPng, toSvg } from "html-to-image";
 import { api } from "@/api/client";
-import { nodeTypes, edgeTypes } from "@/pages/myspace/canvas/nodes";
-import HolstHeader from "@/pages/myspace/canvas/HolstHeader";
-import HolstToolbar, { type LineProps } from "@/pages/myspace/canvas/HolstToolbar";
-import TemplatesModal from "@/pages/myspace/canvas/HolstTemplates";
-import { STICKY_COLORS, type CanvasTool, type ShapeKind } from "@/pages/myspace/canvas/types";
+import { useI18n } from "@/app/i18n";
+import {
+  alignDeltas,
+  boundsOf,
+  boxesTouch,
+  center,
+  distributeDeltas,
+  lineGeom,
+  make,
+  rotatePt,
+  snapMove,
+  unionBox,
+  type AlignKind,
+  type Box,
+  type Guide,
+  type HolstDoc,
+  type Obj,
+  type Pt,
+  type ShapeKind,
+} from "@/pages/myspace/canvas/model";
+import {
+  cloneObjs,
+  deleteObjs,
+  fitGroups,
+  groupObjs,
+  mapById,
+  moveObjs,
+  reorder,
+  reparent,
+  rotateAround,
+  selectionBox,
+  topGroupOf,
+  ungroupObjs,
+  withChildren,
+  type Order,
+} from "@/pages/myspace/canvas/board";
+import { fromFlow } from "@/pages/myspace/canvas/legacy";
 import { TEMPLATES } from "@/pages/myspace/canvas/templates";
+import { strings } from "@/pages/myspace/canvas/strings";
+import { useBoard } from "@/pages/myspace/canvas/useBoard";
+import { ObjectView } from "@/pages/myspace/canvas/ObjectView";
+import { SelectionLayer, type HandleId } from "@/pages/myspace/canvas/SelectionLayer";
+import { ToolDock, type Tool } from "@/pages/myspace/canvas/ToolDock";
+import { TopBar, type BoardEntry } from "@/pages/myspace/canvas/TopBar";
+import { Inspector, type InspectorActions } from "@/pages/myspace/canvas/Inspector";
+import { LayersPanel } from "@/pages/myspace/canvas/Layers";
+import { Minimap } from "@/pages/myspace/canvas/Minimap";
+import { ContextMenu, type MenuItem } from "@/pages/myspace/canvas/ContextMenu";
+import { TemplatesModal } from "@/pages/myspace/canvas/TemplatePicker";
 import "@/styles/canvas.css";
-import "@xyflow/react/dist/style.css";
 
-/* ───────────────────────── helpers ───────────────────────── */
+/* ───────────── вспомогательное ───────────── */
 
-let seq = 0;
-const uid = (p: string) =>
-  `${p}_${Date.now().toString(36)}${(seq++).toString(36)}${Math.floor(Math.random() * 1296).toString(36)}`;
+const MIN_Z = 0.05;
+const MAX_Z = 8;
+const clamp = (n: number, a: number, b: number) => Math.max(a, Math.min(b, n));
+const LS = {
+  file: "holst.file",
+  wheel: "holst.wheelZoom",
+  grid: "holst.grid",
+  snap: "holst.snap",
+};
+const lsGet = (k: string, d: string): string => {
+  try {
+    return localStorage.getItem(k) ?? d;
+  } catch {
+    return d;
+  }
+};
+const lsSet = (k: string, v: string) => {
+  try {
+    localStorage.setItem(k, v);
+  } catch {
+    /* без запоминания */
+  }
+};
 
-/** Strip runtime functions from node data — .holst stays plain JSON (RAM guardrails). */
-const clean = (list: any[]) => JSON.parse(JSON.stringify(list));
-
-const isTypingTarget = (t: EventTarget | null) => {
+const isTyping = (t: EventTarget | null) => {
   const el = t as HTMLElement | null;
-  if (!el) return false;
   return (
-    el.tagName === "INPUT" ||
-    el.tagName === "TEXTAREA" ||
-    el.tagName === "SELECT" ||
-    el.isContentEditable
+    !!el &&
+    (el.tagName === "INPUT" ||
+      el.tagName === "TEXTAREA" ||
+      el.tagName === "SELECT" ||
+      el.isContentEditable)
   );
 };
 
-const defaultSize: Record<string, { width: number; height: number }> = {
-  sticky: { width: 170, height: 150 },
-  text: { width: 200, height: 44 },
-  shape: { width: 160, height: 90 },
-  frame: { width: 420, height: 320 },
-  task: { width: 210, height: 120 },
-  md: { width: 190, height: 150 },
-  matrix: { width: 460, height: 330 },
-  sticker: { width: 48, height: 48 },
-  image: { width: 320, height: 200 },
-};
-
-/** Файл → data URL (для вставленных/перетащенных изображений — храним прямо в .holst JSON). */
-function fileToDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result));
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
+/** Картинка → data URL, уменьшенная так, чтобы доска оставалась лёгкой. */
+async function imageToData(file: Blob): Promise<{ src: string; w: number; h: number }> {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise<HTMLImageElement>((res, rej) => {
+      const i = new Image();
+      i.onload = () => res(i);
+      i.onerror = rej;
+      i.src = url;
+    });
+    const max = 1600;
+    const k = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+    const w = Math.max(1, Math.round(img.naturalWidth * k));
+    const h = Math.max(1, Math.round(img.naturalHeight * k));
+    const c = document.createElement("canvas");
+    c.width = w;
+    c.height = h;
+    c.getContext("2d")!.drawImage(img, 0, 0, w, h);
+    const keepAlpha = file.type === "image/png" || file.type === "image/webp";
+    const src =
+      keepAlpha && k === 1 && file.size < 400_000
+        ? c.toDataURL("image/png")
+        : c.toDataURL("image/webp", 0.88);
+    return { src, w: img.naturalWidth, h: img.naturalHeight };
+  } finally {
+    URL.revokeObjectURL(url);
+  }
 }
 
-/** Натуральный размер картинки по data URL, чтобы новый узел не растягивал/сплющивал вставленный скриншот. */
-function imageNaturalSize(src: string): Promise<{ w: number; h: number }> {
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.onload = () => resolve({ w: img.naturalWidth || 320, h: img.naturalHeight || 200 });
-    img.onerror = () => resolve({ w: 320, h: 200 });
-    img.src = src;
-  });
-}
+type Gesture =
+  | { kind: "pan"; vx: number; vy: number; cx: number; cy: number }
+  | {
+      kind: "move";
+      ids: Set<string>;
+      start: Pt;
+      moved: boolean;
+      only: string | null;
+      shift: boolean;
+      cloned: boolean;
+    }
+  | { kind: "resize"; handle: HandleId; start: Pt; ids: string[] }
+  | { kind: "rotate"; start: number; c: Pt; ids: string[]; base: number }
+  | { kind: "marquee"; start: Pt; base: string[] }
+  | { kind: "create"; tool: Tool; start: Pt; id: string | null; shift: boolean }
+  | { kind: "pen"; pts: Pt[] }
+  | { kind: "link"; id: string; end: "from" | "to"; start: Pt; moved: boolean }
+  | null;
 
-/* ───────────────────────── inner canvas ───────────────────────── */
+/* ───────────── страница ───────────── */
 
-function CanvasInner() {
-  const [nodes, setNodes, onNodesChange] = useNodesState([] as Node[]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState([] as Edge[]);
-  const { screenToFlowPosition, zoomIn, zoomOut, setViewport, getViewport, fitView } =
-    useReactFlow();
+export default function CanvasPage() {
+  const { lang } = useI18n();
+  const ru = lang.toLowerCase().startsWith("ru");
+  const t = useMemo(() => strings(lang), [lang]);
 
-  const [boardName, setBoardName] = useState("Untitled Holst 01");
-  const [tool, setTool] = useState<CanvasTool>("select");
-  const [shape, setShape] = useState<ShapeKind>("rounded");
-  const [sticker, setSticker] = useState("👍");
-  const [lineProps, setLineProps] = useState<LineProps>({
-    style: "bezier",
-    dash: "solid",
-    arrowStart: false,
-    arrowEnd: true,
-    animated: false,
-  });
+  const board = useBoard();
+  const { objs } = board;
+  const byId = useMemo(() => mapById(objs), [objs]);
+  const byIdRef = useRef(byId);
+  byIdRef.current = byId;
 
-  const [showTemplates, setShowTemplates] = useState(false);
-  const [slash, setSlash] = useState<{ x: number; y: number; fx: number; fy: number } | null>(null);
-  const [connectMenu, setConnectMenu] = useState<{
-    x: number;
-    y: number;
-    fx: number;
-    fy: number;
-    source: string;
-    handle: string;
-  } | null>(null);
-  const [penPreview, setPenPreview] = useState<{
-    x1: number;
-    y1: number;
-    x2: number;
-    y2: number;
-  } | null>(null);
+  const [sel, setSelState] = useState<string[]>([]);
+  const selRef = useRef<string[]>([]);
+  const setSel = useCallback((ids: string[]) => {
+    selRef.current = ids;
+    setSelState(ids);
+  }, []);
 
-  const [zoom, setZoom] = useState(1);
-  const [loaded, setLoaded] = useState(false);
+  const [tool, setToolState] = useState<Tool>("select");
+  const toolRef = useRef<Tool>("select");
+  const setTool = useCallback((tl: Tool) => {
+    toolRef.current = tl;
+    setToolState(tl);
+  }, []);
+  const [shapeKind, setShapeKind] = useState<ShapeKind>("rounded");
+  const [emoji, setEmoji] = useState("👍");
+  const [penColor, setPenColor] = useState("#f59e0b");
+  const [penWidth, setPenWidth] = useState(4);
+  const [marker, setMarker] = useState(false);
+
+  const [view, setViewState] = useState({ x: 0, y: 0, z: 1 });
+  const viewRef = useRef(view);
+  const setView = useCallback((v: { x: number; y: number; z: number }) => {
+    viewRef.current = v;
+    setViewState(v);
+  }, []);
+  const [size, setSize] = useState({ w: 800, h: 600 });
+
+  const [editing, setEditing] = useState<string | null>(null);
+  const [hover, setHover] = useState<string | null>(null);
+  const [guides, setGuides] = useState<Guide[]>([]);
+  const [marquee, setMarquee] = useState<Box | null>(null);
+  const [penPts, setPenPts] = useState<Pt[] | null>(null);
+  const [ctx, setCtx] = useState<{ x: number; y: number; items: MenuItem[] } | null>(null);
+  const [tplOpen, setTplOpen] = useState(false);
+  const [rightTab, setRightTab] = useState<"props" | "layers">("props");
+  const [dropping, setDropping] = useState(false);
+
+  const [grid, setGrid] = useState(lsGet(LS.grid, "1") === "1");
+  const [snap, setSnap] = useState(lsGet(LS.snap, "1") === "1");
+  const [wheelZoom, setWheelZoom] = useState(lsGet(LS.wheel, "1") === "1");
+
+  const [boards, setBoards] = useState<BoardEntry[]>([]);
+  const [file, setFile] = useState("");
+  const [name, setName] = useState("");
+  const [save, setSave] = useState<"saved" | "saving" | "error">("saved");
+  const [ready, setReady] = useState(false);
 
   const wrapRef = useRef<HTMLDivElement>(null);
-  const past = useRef<{ nodes: Node[]; edges: Edge[] }[]>([]);
-  const future = useRef<{ nodes: Node[]; edges: Edge[] }[]>([]);
-  const [, forceHist] = useState(0);
-  const skipSave = useRef(true);
-  const saveTimer = useRef<any>(null);
-  const dirtyRef = useRef(false);
-  const frameDrag = useRef<{
-    frameId: string;
-    children: string[];
-    starts: Record<string, { x: number; y: number }>;
-    origin: { x: number; y: number };
-  } | null>(null);
-  const penPoints = useRef<{ x: number; y: number }[]>([]);
-  const penOrigin = useRef<{ x: number; y: number } | null>(null);
+  const worldRef = useRef<HTMLDivElement>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
+  const gesture = useRef<Gesture>(null);
+  const spaceHeld = useRef(false);
+  const clip = useRef<string>("");
+  const pasteN = useRef(0);
+  const nameRef = useRef(name);
+  nameRef.current = name;
+  const fileRef = useRef(file);
+  fileRef.current = file;
+  const snapRef = useRef(snap);
+  snapRef.current = snap;
 
-  /* ── history (Ctrl+Z / Ctrl+Y) ── */
-  const pushHistory = useCallback(
-    (snapshot?: { nodes: Node[]; edges: Edge[] }) => {
-      past.current = [
-        ...past.current.slice(-49),
-        snapshot || { nodes: clean(nodes), edges: clean(edges) },
-      ];
-      future.current = [];
-      forceHist((v) => v + 1);
-    },
-    [nodes, edges],
-  );
+  const clientToWorld = useCallback((cx: number, cy: number): Pt => {
+    const r = wrapRef.current!.getBoundingClientRect();
+    const v = viewRef.current;
+    return { x: (cx - r.left - v.x) / v.z, y: (cy - r.top - v.y) / v.z };
+  }, []);
 
-  const undo = useCallback(() => {
-    const prev = past.current.pop();
-    if (!prev) return;
-    future.current = [...future.current, { nodes: clean(nodes), edges: clean(edges) }];
-    setNodes(prev.nodes);
-    setEdges(prev.edges);
-    forceHist((v) => v + 1);
-  }, [nodes, edges, setNodes, setEdges]);
-
-  const redo = useCallback(() => {
-    const next = future.current.pop();
-    if (!next) return;
-    past.current = [...past.current, { nodes: clean(nodes), edges: clean(edges) }];
-    setNodes(next.nodes);
-    setEdges(next.edges);
-    forceHist((v) => v + 1);
-  }, [nodes, edges, setNodes, setEdges]);
-
-  /* ── node factory ── */
-  const addNode = useCallback(
-    (type: string, pos: { x: number; y: number }, data: any, extra?: Partial<Node>): Node => {
-      const size = defaultSize[type] || { width: 160, height: 90 };
-      const n: Node = {
-        id: uid(type),
-        type,
-        position: pos,
-        data,
-        style: { width: size.width, height: size.height },
-        ...(type === "frame" ? { zIndex: -1 } : {}),
-        ...extra,
-      };
-      setNodes((ns) => [...ns, n]);
-      return n;
-    },
-    [setNodes],
-  );
-
-  const setData = useCallback(
-    (id: string, patch: any) => {
-      setNodes((ns) => ns.map((n) => (n.id === id ? { ...n, data: { ...n.data, ...patch } } : n)));
-    },
-    [setNodes],
-  );
-
-  const addConnectorEdge = useCallback(
-    (source: string, sourceHandle: string | null, target: string, targetHandle: string | null) => {
-      setEdges((es) => [
-        ...es,
-        {
-          id: uid("e"),
-          source,
-          target,
-          sourceHandle: sourceHandle || undefined,
-          targetHandle: targetHandle || undefined,
-          type: "connector",
-          markerEnd: { type: MarkerType.ArrowClosed, color: "#8b7bf0" },
-          style: { stroke: "#8b7bf0", strokeWidth: 2 },
-          data: { ...lineProps },
-        } as Edge,
-      ]);
-    },
-    [setEdges, lineProps],
-  );
-
-  /* ── persistence: load .holst on mount ── */
+  /* размеры области */
   useEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => setSize({ w: el.clientWidth, h: el.clientHeight }));
+    ro.observe(el);
+    setSize({ w: el.clientWidth, h: el.clientHeight });
+    return () => ro.disconnect();
+  }, []);
+
+  /* ───────────── загрузка и сохранение ───────────── */
+
+  const refreshBoards = useCallback(async () => {
+    const list = (await api.myspaceListHolsts()) as { name: string; title?: string | null }[];
+    const entries = list.map((h) => ({
+      file: h.name,
+      title: h.title || h.name.replace(/_/g, " "),
+    }));
+    setBoards(entries);
+    return entries;
+  }, []);
+
+  const applyDoc = useCallback(
+    (data: any, fileName: string) => {
+      let list: Obj[] = [];
+      let title = "";
+      let vp: { x: number; y: number; zoom: number } | undefined;
+      let g = true;
+      if (data && data.version === 3 && Array.isArray(data.objs)) {
+        list = data.objs as Obj[];
+        title = data.name ?? "";
+        vp = data.viewport;
+        if (typeof data.grid === "boolean") g = data.grid;
+      } else if (data && Array.isArray(data.nodes)) {
+        list = fromFlow(data.nodes, data.edges ?? []);
+        title = data.name ?? "";
+        vp = data.viewport;
+      }
+      board.reset(list);
+      setSel([]);
+      setEditing(null);
+      setName(title || fileName.replace(/_/g, " "));
+      setFile(fileName);
+      lsSet(LS.file, fileName);
+      void g;
+      if (vp && Number.isFinite(vp.zoom))
+        setView({ x: vp.x, y: vp.y, z: clamp(vp.zoom, MIN_Z, MAX_Z) });
+      else setView({ x: size.w / 2, y: size.h / 2, z: 1 });
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [board.reset, setSel, setView, size.w, size.h],
+  );
+
+  const loadBoard = useCallback(
+    async (fileName: string) => {
+      try {
+        const res: any = await api.myspaceReadHolst(fileName);
+        applyDoc(res?.data, fileName);
+      } catch {
+        applyDoc(null, fileName);
+      }
+    },
+    [applyDoc],
+  );
+
+  const newFile = () => `board_${Date.now().toString(36)}`;
+
+  useEffect(() => {
+    let live = true;
     (async () => {
       try {
-        const list = await api.myspaceListHolsts();
-        const mine = (list as any[]).find((h: any) => h.name === boardName) || (list as any[])[0];
-        if (mine) {
-          const res: any = await api.myspaceReadHolst(mine.name);
-          const doc = res?.data;
-          if (doc && doc.version === 2 && Array.isArray(doc.nodes)) {
-            setBoardName(doc.name || mine.name);
-            // re-attach runtime callbacks stripped during JSON persistence
-            setNodes(
-              (doc.nodes as any[]).map((n) => ({
-                ...n,
-                data: { ...n.data, setData },
-              })),
-            );
-            setEdges(doc.edges || []);
-            if (doc.viewport) setViewport(doc.viewport);
-          }
+        let list = await refreshBoards();
+        if (!live) return;
+        const stored = lsGet(LS.file, "");
+        let pick = list.find((b) => b.file === stored)?.file ?? list[0]?.file;
+        if (!pick) {
+          pick = newFile();
+          await api.myspaceWriteHolst(pick, {
+            version: 3,
+            name: ru ? "Моя доска" : "My board",
+            objs: [],
+          });
+          list = await refreshBoards();
         }
+        if (live) await loadBoard(pick);
       } catch {
-        /* first run */
+        if (live) applyDoc(null, newFile());
       }
-      skipSave.current = false;
-      setLoaded(true);
+      if (live) setReady(true);
     })();
+    return () => {
+      live = false;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  /* ── autosave (debounced, flat JSON) ── */
-  const save = useCallback(async () => {
-    if (skipSave.current) return;
-    try {
-      await api.myspaceWriteHolst(boardName, {
-        version: 2,
-        name: boardName,
-        nodes: clean(nodes),
-        edges: clean(edges),
-        viewport: getViewport(),
-        updatedAt: new Date().toISOString(),
-      });
-      dirtyRef.current = false;
-    } catch (e) {
-      console.error("holst save failed", e);
-    }
-  }, [boardName, nodes, edges, getViewport]);
-
-  useEffect(() => {
-    if (skipSave.current || !loaded) return;
-    dirtyRef.current = true;
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(save, 2500);
-    return () => clearTimeout(saveTimer.current);
-  }, [nodes, edges, boardName, loaded, save]);
-
-  useEffect(() => {
-    const onBeforeUnload = () => {
-      if (dirtyRef.current) save();
-    };
-    window.addEventListener("beforeunload", onBeforeUnload);
-    return () => window.removeEventListener("beforeunload", onBeforeUnload);
-  }, [save]);
-
-  /* ── zoom indicator sync ── */
-  useEffect(() => {
-    const iv = setInterval(() => setZoom(getViewport().zoom), 350);
-    return () => clearInterval(iv);
-  }, [getViewport]);
-
-  /* ── toolbar factory clicks ── */
-  const spawnForTool = useCallback(
-    (flowPos: { x: number; y: number }) => {
-      pushHistory();
-      switch (tool) {
-        case "sticky":
-          addNode("sticky", flowPos, {
-            text: "",
-            color: STICKY_COLORS[Math.floor(Math.random() * STICKY_COLORS.length)],
-            setData,
-          });
-          break;
-        case "text":
-          addNode("text", flowPos, {
-            text: "Text",
-            fontSize: 16,
-            weight: 600,
-            align: "left",
-            setData,
-          });
-          break;
-        case "shape":
-          addNode("shape", flowPos, {
-            shape,
-            label: "Label",
-            fill: STICKY_COLORS[Math.floor(Math.random() * STICKY_COLORS.length)],
-            stroke: "#16181f",
-            w: 160,
-            h: 90,
-            setData,
-          });
-          break;
-        case "frame":
-          addNode("frame", flowPos, { label: "Frame", color: "#3fc7ab", w: 420, h: 320, setData });
-          break;
-        case "task":
-          addNode("task", flowPos, {
-            title: "New task",
-            status: "todo",
-            subtasks: [{ text: "step", done: false }],
-            setData,
-          });
-          break;
-        case "sticker": {
-          if (sticker.startsWith("pill:")) {
-            const pill = sticker.slice(5);
-            addNode(
-              "shape",
-              flowPos,
-              {
-                shape: "rounded",
-                label: pill,
-                fill: pill === "CRITICAL" ? "#fed7aa" : "#bbf7d0",
-                stroke: "#16181f",
-                w: 130,
-                h: 44,
-                setData,
-              },
-              { style: { width: 130, height: 44 } },
-            );
-          } else {
-            addNode("sticker", flowPos, { emoji: sticker, setData });
-          }
-          break;
-        }
-        default:
-          return false;
-      }
-      setTool("select");
-      return true;
-    },
-    [tool, shape, sticker, addNode, setData, pushHistory],
-  );
-
-  /* ── smart frame: moving a frame carries its children ── */
-  const onNodeDragStart = useCallback(
-    (_: any, node: Node) => {
-      pushHistory();
-      if (node.type !== "frame") {
-        frameDrag.current = null;
-        return;
-      }
-      const fw = (node.style?.width as number) || 420;
-      const fh = (node.style?.height as number) || 320;
-      const children = nodes.filter((n) => {
-        if (n.id === node.id || n.type === "frame") return false;
-        const cx = n.position.x + ((n.style?.width as number) || 160) / 2;
-        const cy = n.position.y + ((n.style?.height as number) || 90) / 2;
-        return (
-          cx > node.position.x &&
-          cx < node.position.x + fw &&
-          cy > node.position.y &&
-          cy < node.position.y + fh
-        );
-      });
-      frameDrag.current = {
-        frameId: node.id,
-        children: children.map((c) => c.id),
-        starts: Object.fromEntries(children.map((c) => [c.id, { ...c.position }])),
-        origin: { ...node.position },
-      };
-    },
-    [nodes, pushHistory],
-  );
-
-  const onNodeDrag = useCallback(
-    (_: any, node: Node) => {
-      const fd = frameDrag.current;
-      if (!fd || node.id !== fd.frameId) return;
-      const dx = node.position.x - fd.origin.x;
-      const dy = node.position.y - fd.origin.y;
-      setNodes((ns) =>
-        ns.map((n) => {
-          const s = fd.starts[n.id];
-          if (!s) return n;
-          return { ...n, position: { x: s.x + dx, y: s.y + dy } };
-        }),
-      );
-    },
-    [setNodes],
-  );
-
-  /* ── connect (smart connectors) ── */
-  const onConnect = useCallback(
-    (c: Connection) => {
-      if (!c.source || !c.target) return;
-      pushHistory();
-      addConnectorEdge(c.source, c.sourceHandle, c.target, c.targetHandle);
-    },
-    [addConnectorEdge, pushHistory],
-  );
-
-  const onConnectEnd = useCallback(
-    (event: MouseEvent | TouchEvent, state: any) => {
-      if (!state || state.isValid) return;
-      const fromNode = state.fromNode;
-      if (!fromNode) return;
-      const pt = "touches" in event ? event.touches[0] : (event as MouseEvent);
-      const rect = wrapRef.current?.getBoundingClientRect();
-      const x = pt.clientX - (rect?.left || 0);
-      const y = pt.clientY - (rect?.top || 0);
-      const flow = screenToFlowPosition({ x: pt.clientX, y: pt.clientY });
-      setConnectMenu({
-        x,
-        y,
-        fx: flow.x,
-        fy: flow.y,
-        source: fromNode.id,
-        handle: state.fromHandle?.id || "r",
-      });
-    },
-    [screenToFlowPosition],
-  );
-
-  const connectSpawn = useCallback(
-    (kind: "note" | "task" | "decision") => {
-      if (!connectMenu) return;
-      pushHistory();
-      let n: Node;
-      if (kind === "note")
-        n = addNode(
-          "sticky",
-          { x: connectMenu.fx, y: connectMenu.fy },
-          { text: "", color: STICKY_COLORS[2], setData },
-        );
-      else if (kind === "task")
-        n = addNode(
-          "task",
-          { x: connectMenu.fx, y: connectMenu.fy },
-          { title: "New task", status: "todo", subtasks: [], setData },
-        );
-      else
-        n = addNode(
-          "shape",
-          { x: connectMenu.fx, y: connectMenu.fy },
-          {
-            shape: "diamond",
-            label: "Decision",
-            fill: STICKY_COLORS[0],
-            stroke: "#16181f",
-            w: 160,
-            h: 90,
-            setData,
-          },
-        );
-      addConnectorEdge(connectMenu.source, connectMenu.handle, n.id, "l");
-      setConnectMenu(null);
-    },
-    [connectMenu, addNode, addConnectorEdge, pushHistory, setData],
-  );
-
-  /* ── slash palette insert ── */
-  const slashInsert = useCallback(
-    (kind: string) => {
-      if (!slash) return;
-      pushHistory();
-      const pos = { x: slash.fx, y: slash.fy };
-      switch (kind) {
-        case "note":
-          addNode("sticky", pos, { text: "", color: STICKY_COLORS[3], setData });
-          break;
-        case "task":
-          addNode("task", pos, { title: "New task", status: "todo", subtasks: [], setData });
-          break;
-        case "sticky":
-          addNode("sticky", pos, { text: "", color: STICKY_COLORS[0], setData });
-          break;
-        case "matrix":
-          addNode("matrix", pos, {
-            title: "Impact Matrix",
-            columns: ["Quick Wins", "Major", "Fill-ins", "Thankless"],
-            items: [],
-            setData,
-          });
-          break;
-        case "frame":
-          addNode("frame", pos, {
-            label: "Retro Frame",
-            color: "#e9d5ff",
-            w: 420,
-            h: 320,
-            setData,
-          });
-          break;
-        case "text":
-          addNode("text", pos, { text: "Text", fontSize: 16, weight: 600, align: "left", setData });
-          break;
-      }
-      setSlash(null);
-    },
-    [slash, addNode, setData, pushHistory],
-  );
-
-  /* ── drop .md from MySpace sidebar, либо файл изображения (скриншот) с диска ── */
-  const onDrop = useCallback(
-    (event: React.DragEvent) => {
-      event.preventDefault();
-      const flow = screenToFlowPosition({ x: event.clientX, y: event.clientY });
-
-      const imageFile = [...event.dataTransfer.files].find((f) => f.type.startsWith("image/"));
-      if (imageFile) {
-        void (async () => {
-          const src = await fileToDataUrl(imageFile);
-          const { w, h } = await imageNaturalSize(src);
-          pushHistory();
-          const scale = Math.min(1, 480 / w);
-          addNode(
-            "image",
-            flow,
-            { src, w, h },
-            { style: { width: Math.round(w * scale), height: Math.round(h * scale) } },
-          );
-        })();
-        return;
-      }
-
-      const mdPath = event.dataTransfer.getData("text/plain");
-      if (!mdPath || !mdPath.toLowerCase().endsWith(".md")) return;
-      pushHistory();
-      addNode("md", flow, {
-        path: mdPath,
-        name: mdPath.split("/").pop() || mdPath,
-        loaded: false,
-        setData,
-      });
-    },
-    [screenToFlowPosition, addNode, setData, pushHistory],
-  );
-
-  /* ── вставка скриншота/картинки из буфера обмена (Ctrl+V) — "экранные заметки":
-     сделал снимок (например через будущую страницу Скриншотов или штатный
-     инструмент Windows), вставил на холст, обвёл/подписал уже существующими
-     инструментами (Pen/стикеры/текст) ── */
-  useEffect(() => {
-    const onPaste = (e: ClipboardEvent) => {
-      const items = e.clipboardData?.items;
-      if (!items) return;
-      const imageItem = [...items].find((it) => it.type.startsWith("image/"));
-      if (!imageItem) return;
-      const file = imageItem.getAsFile();
-      if (!file) return;
-      e.preventDefault();
-      void (async () => {
-        const src = await fileToDataUrl(file);
-        const { w, h } = await imageNaturalSize(src);
-        const wrap = wrapRef.current;
-        const center = wrap
-          ? screenToFlowPosition({
-              x: wrap.getBoundingClientRect().left + wrap.clientWidth / 2,
-              y: wrap.getBoundingClientRect().top + wrap.clientHeight / 2,
-            })
-          : { x: 0, y: 0 };
-        pushHistory();
-        const scale = Math.min(1, 480 / w);
-        addNode(
-          "image",
-          { x: center.x - (w * scale) / 2, y: center.y - (h * scale) / 2 },
-          { src, w, h },
-          { style: { width: Math.round(w * scale), height: Math.round(h * scale) } },
-        );
-      })();
-    };
-    document.addEventListener("paste", onPaste);
-    return () => document.removeEventListener("paste", onPaste);
-  }, [screenToFlowPosition, addNode, pushHistory]);
-
-  const onDragOver = useCallback((event: React.DragEvent) => {
-    if (event.dataTransfer.types.includes("text/plain")) {
-      event.preventDefault();
-      event.dataTransfer.dropEffect = "copy";
-    }
-  }, []);
-
-  /* ── pen (freehand strokes) ── */
-  const onPenDown = useCallback(
-    (e: React.PointerEvent) => {
-      if (tool !== "pen" || e.button !== 0) return;
-      const rect = wrapRef.current!.getBoundingClientRect();
-      penOrigin.current = { x: e.clientX - rect.left, y: e.clientY - rect.top };
-      penPoints.current = [penOrigin.current];
-      setPenPreview({
-        x1: penOrigin.current.x,
-        y1: penOrigin.current.y,
-        x2: penOrigin.current.x,
-        y2: penOrigin.current.y,
-      });
-    },
-    [tool],
-  );
-
-  const onPenMove = useCallback(
-    (e: React.PointerEvent) => {
-      if (tool !== "pen" || penPoints.current.length === 0) return;
-      const rect = wrapRef.current!.getBoundingClientRect();
-      penPoints.current.push({ x: e.clientX - rect.left, y: e.clientY - rect.top });
-      setPenPreview({
-        x1: penOrigin.current!.x,
-        y1: penOrigin.current!.y,
-        x2: e.clientX - rect.left,
-        y2: e.clientY - rect.top,
-      });
-    },
-    [tool],
-  );
-
-  const onPenUp = useCallback(() => {
-    if (tool !== "pen" || penPoints.current.length < 2) {
-      setPenPreview(null);
-      penPoints.current = [];
-      return;
-    }
-    const screenPts = penPoints.current;
-    const minX = Math.min(...screenPts.map((p) => p.x)) - 12;
-    const minY = Math.min(...screenPts.map((p) => p.y)) - 12;
-    const maxX = Math.max(...screenPts.map((p) => p.x)) + 12;
-    const maxY = Math.max(...screenPts.map((p) => p.y)) + 12;
-    const tl = screenToFlowPosition({ x: minX, y: minY });
-    const br = screenToFlowPosition({ x: maxX, y: maxY });
-    const w = br.x - tl.x,
-      h = br.y - tl.y;
-    const pts = screenPts.map((p) => [p.x - minX, p.y - minY] as [number, number]);
-    pushHistory();
-    addNode(
-      "stroke",
-      tl,
-      { points: pts, color: "#f0a63d", width: 3, opacity: 0.9, w, h },
-      { style: { width: w, height: h }, draggable: false },
-    );
-    penPoints.current = [];
-    setPenPreview(null);
-  }, [tool, screenToFlowPosition, addNode, pushHistory]);
-
-  /* ── auto-layout (dagre) ── */
-  const autoLayout = useCallback(() => {
-    if (nodes.length === 0) return;
-    pushHistory();
-    const g = new dagre.graphlib.Graph();
-    g.setGraph({ rankdir: "LR", nodesep: 40, ranksep: 90 });
-    g.setDefaultEdgeLabel(() => ({}));
-    nodes.forEach((n) => {
-      const w = (n.style?.width as number) || (n.measured?.width as number) || 180;
-      const h = (n.style?.height as number) || (n.measured?.height as number) || 100;
-      g.setNode(n.id, { width: w, height: h });
-    });
-    edges.forEach((e) => {
-      if (g.hasNode(e.source) && g.hasNode(e.target)) g.setEdge(e.source, e.target);
-    });
-    dagre.layout(g);
-    setNodes((ns) =>
-      ns.map((n) => {
-        const pos = g.node(n.id);
-        if (!pos) return n;
-        const w = (n.style?.width as number) || 180;
-        const h = (n.style?.height as number) || 100;
-        return { ...n, position: { x: pos.x - w / 2, y: pos.y - h / 2 } };
-      }),
-    );
-    setTimeout(() => fitView({ padding: 0.15, duration: 300 }), 60);
-  }, [nodes, edges, setNodes, fitView, pushHistory]);
-
-  /* ── export ── */
-  const exportJson = useCallback(() => {
-    const doc = {
-      version: 2,
-      name: boardName,
-      nodes: clean(nodes),
-      edges: clean(edges),
-      viewport: getViewport(),
+  const dirty = useRef(false);
+  const saveTimer = useRef<number | null>(null);
+  const flush = useCallback(async () => {
+    if (!dirty.current || !fileRef.current) return;
+    dirty.current = false;
+    setSave("saving");
+    const doc: HolstDoc = {
+      version: 3,
+      name: nameRef.current,
+      objs: board.ref.current,
+      viewport: { x: viewRef.current.x, y: viewRef.current.y, zoom: viewRef.current.z },
       updatedAt: new Date().toISOString(),
     };
-    const blob = new Blob([JSON.stringify(doc, null, 2)], { type: "application/json" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = `${boardName || "holst"}.holst`;
-    a.click();
-    URL.revokeObjectURL(a.href);
-  }, [boardName, nodes, edges, getViewport]);
+    try {
+      await api.myspaceWriteHolst(fileRef.current, doc);
+      setSave(dirty.current ? "saving" : "saved");
+    } catch {
+      dirty.current = true;
+      setSave("error");
+    }
+  }, [board.ref]);
 
-  const exportImage = useCallback(
-    async (fmt: "png" | "svg") => {
-      const viewportEl = wrapRef.current?.querySelector(
-        ".react-flow__viewport",
-      ) as HTMLElement | null;
-      if (!viewportEl) return;
-      const clone = viewportEl.cloneNode(true) as HTMLElement;
-      const srcEls = [viewportEl, ...Array.from(viewportEl.querySelectorAll("*"))] as HTMLElement[];
-      const dstEls = [clone, ...Array.from(clone.querySelectorAll("*"))] as HTMLElement[];
-      const cssProps = [
-        "position",
-        "left",
-        "top",
-        "width",
-        "height",
-        "margin",
-        "padding",
-        "background-color",
-        "background",
-        "border",
-        "border-radius",
-        "box-shadow",
-        "color",
-        "font-family",
-        "font-size",
-        "font-weight",
-        "line-height",
-        "text-align",
-        "display",
-        "flex-direction",
-        "align-items",
-        "justify-content",
-        "gap",
-        "overflow",
-        "opacity",
-        "transform",
-        "stroke",
-        "fill",
-        "stroke-width",
-        "stroke-dasharray",
-        "letter-spacing",
-        "white-space",
-      ];
-      srcEls.forEach((src, i) => {
-        const cs = window.getComputedStyle(src);
-        const dst = dstEls[i];
-        if (!dst) return;
-        const css = cssProps.map((k) => `${k}:${cs.getPropertyValue(k)};`).join("");
-        dst.setAttribute("style", css + (dst.getAttribute("style") || ""));
-      });
-      const bbox = viewportEl.getBoundingClientRect();
-      const wrapRect = wrapRef.current!.getBoundingClientRect();
-      const offX = bbox.left - wrapRect.left,
-        offY = bbox.top - wrapRect.top;
-      const W = Math.ceil(bbox.width),
-        H = Math.ceil(bbox.height);
-      const html = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}">
-      <foreignObject width="100%" height="100%">
-        <div xmlns="http://www.w3.org/1999/xhtml" style="width:${W}px;height:${H}px;overflow:hidden;position:relative;">
-          <div style="position:absolute;left:${-offX}px;top:${-offY}px;">${clone.outerHTML}</div>
-        </div>
-      </foreignObject>
-    </svg>`;
-      const url = URL.createObjectURL(new Blob([html], { type: "image/svg+xml;charset=utf-8" }));
-      const a = document.createElement("a");
-      a.download = `${boardName || "holst"}.${fmt}`;
-      if (fmt === "svg") {
-        a.href = url;
-        a.click();
-      } else {
-        const img = new Image();
-        await new Promise((res, rej) => {
-          img.onload = res;
-          img.onerror = rej;
-          img.src = url;
-        });
-        const canvas = document.createElement("canvas");
-        const scale = 2;
-        canvas.width = W * scale;
-        canvas.height = H * scale;
-        const ctx = canvas.getContext("2d")!;
-        ctx.fillStyle = "#11141f";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.scale(scale, scale);
-        ctx.drawImage(img, 0, 0);
-        a.href = canvas.toDataURL("image/png");
-        a.click();
-      }
-      URL.revokeObjectURL(url);
-    },
-    [boardName],
-  );
+  const touch = useCallback(() => {
+    dirty.current = true;
+    setSave("saving");
+    if (saveTimer.current) window.clearTimeout(saveTimer.current);
+    saveTimer.current = window.setTimeout(() => void flush(), 1200);
+  }, [flush]);
 
-  const onExport = useCallback(
-    (fmt: "png" | "svg" | "json") => {
-      if (fmt === "json") exportJson();
-      else exportImage(fmt).catch(() => exportJson());
-    },
-    [exportJson, exportImage],
-  );
-
-  /* ── templates ── */
-  const applyTemplate = useCallback(
-    (id: string) => {
-      const tpl = TEMPLATES.find((t) => t.id === id);
-      if (!tpl) return;
-      const rect = wrapRef.current!.getBoundingClientRect();
-      const c = screenToFlowPosition({
-        x: rect.left + rect.width / 2,
-        y: rect.top + rect.height / 2,
-      });
-      const { nodes: tn, edges: te } = tpl.gen(c.x - 300, c.y - 200);
-      pushHistory();
-      setNodes((ns) => [...ns, ...tn.map((n) => ({ ...n, data: { ...n.data, setData } }))]);
-      setEdges((es) => [...es, ...te]);
-      setTimeout(() => fitView({ padding: 0.2, duration: 350 }), 80);
-    },
-    [screenToFlowPosition, pushHistory, setNodes, setEdges, setData, fitView],
-  );
-
-  /* ── keyboard: tools, undo/redo, slash, delete, fit ── */
+  const first = useRef(true);
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (isTypingTarget(e.target)) return;
-      const meta = e.ctrlKey || e.metaKey;
-      if (meta && e.key.toLowerCase() === "z") {
-        e.preventDefault();
-        if (e.shiftKey) redo();
-        else undo();
+    if (!ready) return;
+    if (first.current) {
+      first.current = false;
+      return;
+    }
+    touch();
+  }, [objs, name, ready, touch]);
+
+  useEffect(() => {
+    const onHide = () => void flush();
+    window.addEventListener("beforeunload", onHide);
+    return () => {
+      window.removeEventListener("beforeunload", onHide);
+      void flush();
+    };
+  }, [flush]);
+
+  const openBoard = async (f: string) => {
+    if (f === file) return;
+    await flush();
+    await loadBoard(f);
+  };
+  const createBoard = async () => {
+    await flush();
+    const f = newFile();
+    const title = ru ? `Доска ${boards.length + 1}` : `Board ${boards.length + 1}`;
+    await api.myspaceWriteHolst(f, { version: 3, name: title, objs: [] });
+    await refreshBoards();
+    await loadBoard(f);
+  };
+  const removeBoard = async (f: string) => {
+    if (!window.confirm(t("delBoard"))) return;
+    await api.myspaceDeleteHolst(f);
+    const list = await refreshBoards();
+    if (f === file) {
+      dirty.current = false;
+      await loadBoard(list[0]?.file ?? newFile());
+    }
+  };
+
+  /* ───────────── правки ───────────── */
+
+  const onPatch = useCallback(
+    (id: string, patch: Partial<Obj>, history = true) => {
+      const fn = (o: Obj[]) => o.map((x) => (x.id === id ? { ...x, ...patch } : x));
+      if (history) board.apply(fn);
+      else board.silent(fn);
+    },
+    [board],
+  );
+  const onMeasure = useCallback(
+    (id: string, h: number) => board.silent((o) => o.map((x) => (x.id === id ? { ...x, h } : x))),
+    [board],
+  );
+  const onCommit = useCallback(
+    (id: string, text: string, cancel?: boolean) => {
+      setEditing(null);
+      const cur = byIdRef.current.get(id);
+      if (!cur) return;
+      if (cancel) {
+        if (cur.type === "text" && !(cur.text ?? "").trim())
+          board.apply((o) => deleteObjs(o, [id]));
         return;
       }
-      if (meta && e.key.toLowerCase() === "y") {
-        e.preventDefault();
-        redo();
+      if (cur.type === "frame") {
+        board.apply((o) => o.map((x) => (x.id === id ? { ...x, name: text.trim() || x.name } : x)));
         return;
       }
-      if (meta) return;
-      if (e.key === "Escape") {
-        setSlash(null);
-        setConnectMenu(null);
-        setShowTemplates(false);
+      if (cur.type === "text" && !text.trim()) {
+        board.apply((o) => deleteObjs(o, [id]));
+        setSel(selRef.current.filter((s) => s !== id));
         return;
       }
-      if (e.key === "Delete" || e.key === "Backspace") {
-        const selN = nodes.filter((n) => n.selected);
-        const selE = edges.filter((ed) => ed.selected);
-        if (selN.length || selE.length) {
-          e.preventDefault();
-          pushHistory();
-          setNodes((ns) => ns.filter((n) => !n.selected));
-          setEdges((es) => es.filter((ed) => !ed.selected));
+      if ((cur.text ?? "") === text) return;
+      board.apply((o) => o.map((x) => (x.id === id ? { ...x, text } : x)));
+    },
+    [board, setSel],
+  );
+
+  const selObjs = useMemo(
+    () => sel.map((id) => byId.get(id)).filter((o): o is Obj => !!o),
+    [sel, byId],
+  );
+
+  /** идентификаторы, к которым относится изменение оформления: группа распространяется на детей */
+  const styleTargets = (ids: string[]): Set<string> => {
+    const out = new Set<string>(ids);
+    for (const id of ids) {
+      const o = byIdRef.current.get(id);
+      if (o?.type === "group") for (const d of withChildren(board.ref.current, [id])) out.add(d);
+    }
+    return out;
+  };
+
+  const actions: InspectorActions = {
+    patch: (patch, key) => {
+      const set = styleTargets(selRef.current);
+      board.apply(
+        (o) => o.map((x) => (set.has(x.id) && x.type !== "group" ? { ...x, ...patch } : x)),
+        key ? `p:${key}` : undefined,
+      );
+    },
+    patchGeom: (patch) => {
+      const id = selRef.current[0];
+      if (!id) return;
+      board.apply((o) => {
+        const cur = o.find((x) => x.id === id);
+        if (!cur) return o;
+        let next = o.map((x) => (x.id === id ? { ...x, ...patch } : x));
+        const dx = (patch.x ?? cur.x) - cur.x;
+        const dy = (patch.y ?? cur.y) - cur.y;
+        if (dx || dy) {
+          const kids = withChildren(o, [id]);
+          kids.delete(id);
+          next = moveObjs(next, kids, dx, dy);
+        }
+        return fitGroups(next);
+      }, "geom");
+    },
+    align: (k: AlignKind) => {
+      const ids = selRef.current;
+      board.apply((o) => {
+        const map = mapById(o);
+        const boxes = new Map<string, Box>();
+        for (const id of ids) {
+          const ob = map.get(id);
+          if (ob && ob.type !== "line") boxes.set(id, boundsOf(ob, map));
+        }
+        const d = alignDeltas(boxes, k);
+        let next = o;
+        for (const [id, p] of d) next = moveObjs(next, withChildren(next, [id]), p.x, p.y);
+        return fitGroups(next);
+      });
+    },
+    distribute: (axis) => {
+      const ids = selRef.current;
+      board.apply((o) => {
+        const map = mapById(o);
+        const boxes = new Map<string, Box>();
+        for (const id of ids) {
+          const ob = map.get(id);
+          if (ob && ob.type !== "line") boxes.set(id, boundsOf(ob, map));
+        }
+        const d = distributeDeltas(boxes, axis);
+        let next = o;
+        for (const [id, p] of d) next = moveObjs(next, withChildren(next, [id]), p.x, p.y);
+        return fitGroups(next);
+      });
+    },
+    group: () => {
+      const r = groupObjs(board.ref.current, selRef.current);
+      if (!r) return;
+      board.apply(() => r.objs);
+      setSel([r.id]);
+    },
+    ungroup: () => {
+      const r = ungroupObjs(board.ref.current, selRef.current);
+      if (r.freed.length === 0) return;
+      board.apply(() => r.objs);
+      setSel(r.freed);
+    },
+    order: (how: Order) => board.apply((o) => reorder(o, selRef.current, how)),
+    lock: () => {
+      const ids = new Set(selRef.current);
+      const all = selRef.current.every((id) => byIdRef.current.get(id)?.locked);
+      board.apply((o) => o.map((x) => (ids.has(x.id) ? { ...x, locked: !all } : x)));
+    },
+    hide: () => {
+      const ids = new Set(selRef.current);
+      const all = selRef.current.every((id) => byIdRef.current.get(id)?.hidden);
+      board.apply((o) => o.map((x) => (ids.has(x.id) ? { ...x, hidden: !all } : x)));
+      if (!all) setSel([]);
+    },
+    duplicate: () => duplicate(),
+    remove: () => removeSel(),
+  };
+
+  function removeSel() {
+    const ids = selRef.current.filter((id) => !byIdRef.current.get(id)?.locked);
+    if (ids.length === 0) return;
+    board.apply((o) => deleteObjs(o, ids));
+    setSel([]);
+    setEditing(null);
+  }
+
+  function duplicate(dx = 24, dy = 24) {
+    const ids = selRef.current;
+    if (ids.length === 0) return;
+    const { copies, roots } = cloneObjs(board.ref.current, ids, dx, dy);
+    board.apply((o) => [...o, ...copies]);
+    setSel(roots);
+  }
+
+  /* буфер обмена */
+  function copySel(cut = false) {
+    const ids = selRef.current;
+    if (ids.length === 0) return;
+    const all = withChildren(board.ref.current, ids);
+    const items = board.ref.current.filter((o) => all.has(o.id));
+    const payload = `holst:v3:${JSON.stringify({ ids, items })}`;
+    clip.current = payload;
+    pasteN.current = 0;
+    void navigator.clipboard?.writeText(payload).catch(() => undefined);
+    if (cut) removeSel();
+  }
+  function pasteInternal(text: string, at?: Pt) {
+    try {
+      const { ids, items } = JSON.parse(text.slice("holst:v3:".length)) as {
+        ids: string[];
+        items: Obj[];
+      };
+      const tmp = [...board.ref.current.filter((o) => !items.some((i) => i.id === o.id)), ...items];
+      pasteN.current += 1;
+      const step = 24 * pasteN.current;
+      const box = selectionBox(tmp, ids);
+      let dx = step;
+      let dy = step;
+      if (at && box) {
+        dx = at.x - (box.x + box.w / 2);
+        dy = at.y - (box.y + box.h / 2);
+      }
+      const { copies, roots } = cloneObjs(tmp, ids, dx, dy);
+      board.apply((o) => [...o, ...copies]);
+      setSel(roots);
+    } catch {
+      /* чужой текст */
+    }
+  }
+
+  /* ───────────── вид ───────────── */
+
+  const zoomAt = useCallback(
+    (factor: number, cx?: number, cy?: number) => {
+      const v = viewRef.current;
+      const z = clamp(v.z * factor, MIN_Z, MAX_Z);
+      const px = cx ?? size.w / 2;
+      const py = cy ?? size.h / 2;
+      const k = z / v.z;
+      setView({ z, x: px - (px - v.x) * k, y: py - (py - v.y) * k });
+    },
+    [setView, size.w, size.h],
+  );
+  const setZoom = (z: number) => {
+    const v = viewRef.current;
+    const nz = clamp(z, MIN_Z, MAX_Z);
+    const k = nz / v.z;
+    setView({
+      z: nz,
+      x: size.w / 2 - (size.w / 2 - v.x) * k,
+      y: size.h / 2 - (size.h / 2 - v.y) * k,
+    });
+  };
+  const fitBox = useCallback(
+    (box: Box | null, max = 1.6) => {
+      if (!box || box.w <= 0 || box.h <= 0) {
+        setView({ x: size.w / 2, y: size.h / 2, z: 1 });
+        return;
+      }
+      const pad = 90;
+      const z = clamp(
+        Math.min((size.w - pad * 2) / box.w, (size.h - pad * 2) / box.h, max),
+        MIN_Z,
+        MAX_Z,
+      );
+      setView({
+        z,
+        x: size.w / 2 - (box.x + box.w / 2) * z,
+        y: size.h / 2 - (box.y + box.h / 2) * z,
+      });
+    },
+    [setView, size.w, size.h],
+  );
+  const fitAll = () => {
+    const vis = board.ref.current.filter((o) => !o.hidden);
+    const m = mapById(board.ref.current);
+    fitBox(unionBox(vis.map((o) => boundsOf(o, m))));
+  };
+  const fitSelection = () => fitBox(selectionBox(board.ref.current, selRef.current));
+
+  /* колесо мыши */
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      if ((e.target as HTMLElement).closest?.("[data-ui]")) return;
+      e.preventDefault();
+      const r = el.getBoundingClientRect();
+      const cx = e.clientX - r.left;
+      const cy = e.clientY - r.top;
+      const zoom = e.ctrlKey || e.metaKey || (wheelZoomRef.current && !e.shiftKey);
+      if (zoom) {
+        const k = Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.0016));
+        zoomAt(k, cx, cy);
+      } else {
+        const v = viewRef.current;
+        setView({
+          ...v,
+          x: v.x - (e.shiftKey && !e.deltaX ? e.deltaY : e.deltaX),
+          y: v.y - (e.shiftKey ? 0 : e.deltaY),
+        });
+      }
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, [zoomAt, setView]);
+  const wheelZoomRef = useRef(wheelZoom);
+  wheelZoomRef.current = wheelZoom;
+
+  /* ───────────── создание объектов ───────────── */
+
+  const addObjs = (list: Obj[], select = true) => {
+    board.apply((o) =>
+      reparent(
+        [...o, ...list],
+        list.map((l) => l.id),
+      ),
+    );
+    if (select) setSel(list.map((l) => l.id));
+  };
+
+  const viewCenter = (): Pt => clientCenter();
+  function clientCenter(): Pt {
+    const v = viewRef.current;
+    return { x: (size.w / 2 - v.x) / v.z, y: (size.h / 2 - v.y) / v.z };
+  }
+
+  const addImageBlob = async (blob: Blob, at: Pt) => {
+    try {
+      const { src, w, h } = await imageToData(blob);
+      const k = Math.min(1, 480 / w);
+      const ob = make("image", at, { src, w: Math.round(w * k), h: Math.round(h * k) });
+      addObjs([ob]);
+      /* картинка весит много, а обновление страницы отменяет отложенную запись: сохраняем сразу */
+      dirty.current = true;
+      void flush();
+    } catch {
+      /* не картинка */
+    }
+  };
+
+  const addNote = (path: string, at: Pt) => {
+    const ob = make("note", at, { path, text: path.split("/").pop() || path });
+    addObjs([ob]);
+  };
+
+  const applyTemplate = (id: string) => {
+    const tpl = TEMPLATES.find((x) => x.id === id);
+    if (!tpl) return;
+    const c = clientCenter();
+    const { nodes, edges } = tpl.gen(c.x - 300, c.y - 200);
+    const list = fromFlow(nodes, edges);
+    board.apply((o) => [...o, ...list]);
+    setSel([]);
+    const m = mapById(list);
+    window.setTimeout(() => fitBox(unionBox(list.map((x) => boundsOf(x, m)))), 30);
+  };
+
+  const tidy = () => {
+    const all = board.ref.current;
+    const lines = all.filter((o) => o.type === "line" && o.from?.id && o.to?.id);
+    if (lines.length === 0) return;
+    const ids = selRef.current.length > 1 ? new Set(withChildren(all, selRef.current)) : null;
+    const nodes = all.filter(
+      (o) =>
+        o.type !== "line" &&
+        o.type !== "group" &&
+        o.type !== "frame" &&
+        !o.parent &&
+        (!ids || ids.has(o.id)),
+    );
+    const g = new dagre.graphlib.Graph();
+    g.setGraph({ rankdir: "LR", nodesep: 50, ranksep: 90 });
+    g.setDefaultEdgeLabel(() => ({}));
+    nodes.forEach((n) => g.setNode(n.id, { width: n.w, height: n.h }));
+    lines.forEach((l) => {
+      if (g.hasNode(l.from!.id!) && g.hasNode(l.to!.id!)) g.setEdge(l.from!.id!, l.to!.id!);
+    });
+    dagre.layout(g);
+    const box = unionBox(nodes.map((n) => n));
+    board.apply((o) =>
+      o.map((x) => {
+        const p = g.node(x.id);
+        if (!p) return x;
+        return {
+          ...x,
+          x: Math.round(p.x - x.w / 2 + (box?.x ?? 0)),
+          y: Math.round(p.y - x.h / 2 + (box?.y ?? 0)),
+        };
+      }),
+    );
+    window.setTimeout(fitAll, 40);
+  };
+
+  /* ───────────── жесты ───────────── */
+
+  const hitId = (target: EventTarget | null): string | null =>
+    (target as Element | null)?.closest?.("[data-oid]")?.getAttribute("data-oid") ?? null;
+
+  /** Что под курсором на самом деле: после жеста с захватом указателя e.target — это сама сцена. */
+  const under = (e: {
+    clientX: number;
+    clientY: number;
+    target: EventTarget | null;
+  }): HTMLElement =>
+    (document.elementFromPoint?.(e.clientX, e.clientY) as HTMLElement | null) ??
+    (e.target as HTMLElement);
+
+  /** какой объект (не соединитель) под курсором; нужен, чтобы привязывать концы линий */
+  const objectUnder = (cx: number, cy: number, skip: string): string | null => {
+    for (const el of document.elementsFromPoint(cx, cy)) {
+      const id = (el as Element).closest?.("[data-oid]")?.getAttribute("data-oid");
+      if (!id || id === skip) continue;
+      const o = byIdRef.current.get(id);
+      if (o && o.type !== "line" && o.type !== "group" && !o.hidden) return id;
+    }
+    return null;
+  };
+
+  const resolveSelect = (id: string): string => {
+    const g = topGroupOf(board.ref.current, id);
+    if (g === id) return id;
+    const entered = selRef.current.some(
+      (s) => s !== g && s !== id && topGroupOf(board.ref.current, s) === g,
+    );
+    const selIsChild = selRef.current.includes(id);
+    return entered || selIsChild ? id : g;
+  };
+
+  const startLink = (
+    e: React.PointerEvent,
+    mode: { create: Anchor0 } | { edit: string; end: "from" | "to" },
+  ) => {
+    const start = clientToWorld(e.clientX, e.clientY);
+    board.begin();
+    let id: string;
+    let end: "from" | "to";
+    if ("create" in mode) {
+      const l = make("line", start, {
+        x: 0,
+        y: 0,
+        w: 0,
+        h: 0,
+        from: mode.create,
+        to: { x: start.x, y: start.y },
+      });
+      id = l.id;
+      end = "to";
+      board.live((base) => [...base, l]);
+      board.rebase();
+    } else {
+      id = mode.edit;
+      end = mode.end;
+    }
+    gesture.current = { kind: "link", id, end, start, moved: false };
+    setSel([id]);
+  };
+
+  type Anchor0 = { id?: string; side?: "t" | "r" | "b" | "l" | "auto"; x?: number; y?: number };
+
+  const capture = (id: number) => {
+    try {
+      wrapRef.current?.setPointerCapture?.(id);
+    } catch {
+      /* без захвата указателя */
+    }
+  };
+
+  const onPointerDown = (e: React.PointerEvent) => {
+    const target = e.target as HTMLElement;
+    if (target.closest("[data-ui]") && !target.closest("[data-handle]")) return;
+    if (target.closest("[data-nodrag]")) return;
+    if (ctx) setCtx(null);
+    const pt = clientToWorld(e.clientX, e.clientY);
+    const tl = toolRef.current;
+
+    /* пан: средняя кнопка, рука или зажатый пробел */
+    if (e.button === 1 || tl === "hand" || (spaceHeld.current && e.button === 0)) {
+      e.preventDefault();
+      gesture.current = {
+        kind: "pan",
+        vx: viewRef.current.x,
+        vy: viewRef.current.y,
+        cx: e.clientX,
+        cy: e.clientY,
+      };
+      capture(e.pointerId);
+      return;
+    }
+    if (e.button !== 0) return;
+
+    if (editing) {
+      // клик мимо поля ввода завершает правку (blur сам сохранит текст)
+      (document.activeElement as HTMLElement | null)?.blur?.();
+    }
+
+    /* ручки выделения */
+    const handle = target.closest("[data-handle]")?.getAttribute("data-handle");
+    if (handle) {
+      e.preventDefault();
+      capture(e.pointerId);
+      if (handle === "rot") {
+        const ids = selRef.current;
+        const box = selectionBox(board.ref.current, ids)!;
+        const single = ids.length === 1 ? byIdRef.current.get(ids[0]) : null;
+        const c = single ? center(single) : { x: box.x + box.w / 2, y: box.y + box.h / 2 };
+        board.begin();
+        gesture.current = {
+          kind: "rotate",
+          c,
+          ids,
+          start: Math.atan2(pt.y - c.y, pt.x - c.x),
+          base: single?.rot ?? 0,
+        };
+      } else if (handle === "la" || handle === "lb") {
+        startLink(e, { edit: selRef.current[0], end: handle === "la" ? "from" : "to" });
+      } else if (handle.startsWith("port-")) {
+        const of = (target.closest("[data-port-of]") as HTMLElement).dataset.portOf!;
+        const side = handle.slice(5) as "t" | "r" | "b" | "l";
+        startLink(e, { create: { id: of, side } });
+      } else {
+        board.begin();
+        gesture.current = {
+          kind: "resize",
+          handle: handle as HandleId,
+          start: pt,
+          ids: selRef.current,
+        };
+      }
+      return;
+    }
+
+    /* создание */
+    if (tl === "line") {
+      e.preventDefault();
+      capture(e.pointerId);
+      const under = objectUnder(e.clientX, e.clientY, "");
+      startLink(e, { create: under ? { id: under, side: "auto" } : { x: pt.x, y: pt.y } });
+      return;
+    }
+    if (tl === "pen") {
+      e.preventDefault();
+      capture(e.pointerId);
+      gesture.current = { kind: "pen", pts: [pt] };
+      setPenPts([pt]);
+      setSel([]);
+      return;
+    }
+    if (tl !== "select") {
+      e.preventDefault();
+      capture(e.pointerId);
+      gesture.current = { kind: "create", tool: tl, start: pt, id: null, shift: e.shiftKey };
+      board.begin();
+      return;
+    }
+
+    /* выбор и перенос */
+    const id = hitId(target);
+    if (id) {
+      const obj = byIdRef.current.get(id);
+      if (!obj) return;
+      const rid = resolveSelect(id);
+      e.preventDefault();
+      capture(e.pointerId);
+      let ids = selRef.current;
+      if (e.shiftKey) {
+        ids = ids.includes(rid) ? ids.filter((s) => s !== rid) : [...ids, rid];
+        setSel(ids);
+        if (!ids.includes(rid)) return;
+      } else if (!ids.includes(rid)) {
+        ids = [rid];
+        setSel(ids);
+      }
+      const movable = ids.filter((s) => !byIdRef.current.get(s)?.locked);
+      if (movable.length === 0) return;
+      board.begin();
+      gesture.current = {
+        kind: "move",
+        ids: withChildren(board.ref.current, movable),
+        start: pt,
+        moved: false,
+        only: !e.shiftKey && ids.length > 1 ? rid : null,
+        shift: e.shiftKey,
+        cloned: false,
+      };
+      if (e.altKey) {
+        const { copies, roots } = cloneObjs(board.ref.current, movable, 0, 0);
+        board.live((base) => [...base, ...copies]);
+        board.rebase();
+        setSel(roots);
+        gesture.current = {
+          kind: "move",
+          ids: withChildren([...board.ref.current], roots),
+          start: pt,
+          moved: false,
+          only: null,
+          shift: false,
+          cloned: true,
+        };
+      }
+      return;
+    }
+
+    /* пустое место: рамка выбора */
+    e.preventDefault();
+    capture(e.pointerId);
+    const base = e.shiftKey ? selRef.current : [];
+    if (!e.shiftKey) setSel([]);
+    gesture.current = { kind: "marquee", start: pt, base };
+  };
+
+  const onPointerMove = (e: React.PointerEvent) => {
+    const g = gesture.current;
+    if (!g) {
+      if (toolRef.current === "select" || toolRef.current === "line") {
+        const id = hitId(e.target);
+        setHover((h) => (h === id ? h : id));
+      }
+      return;
+    }
+    const pt = clientToWorld(e.clientX, e.clientY);
+    const z = viewRef.current.z;
+
+    switch (g.kind) {
+      case "pan": {
+        setView({ ...viewRef.current, x: g.vx + (e.clientX - g.cx), y: g.vy + (e.clientY - g.cy) });
+        break;
+      }
+      case "move": {
+        let dx = pt.x - g.start.x;
+        let dy = pt.y - g.start.y;
+        if (!g.moved) {
+          if (Math.hypot(dx, dy) * z < 3) return;
+          g.moved = true;
+        }
+        if (e.shiftKey) {
+          if (Math.abs(dx) > Math.abs(dy)) dy = 0;
+          else dx = 0;
+        }
+        const baseObjs = board.ref.current;
+        void baseObjs;
+        board.live((base) => {
+          const map = mapById(base);
+          const mine = [...g.ids]
+            .map((id) => map.get(id))
+            .filter((o): o is Obj => !!o && o.type !== "line" && !o.parent);
+          const roots = [...g.ids]
+            .map((id) => map.get(id))
+            .filter(
+              (o): o is Obj => !!o && o.type !== "line" && (!o.parent || !g.ids.has(o.parent)),
+            );
+          const bb = unionBox((roots.length ? roots : mine).map((o) => boundsOf(o, map)));
+          let gl: Guide[] = [];
+          if (bb && snapRef.current && !e.ctrlKey && !e.metaKey) {
+            const moving = { ...bb, x: bb.x + dx, y: bb.y + dy };
+            const others = base
+              .filter(
+                (o) => !g.ids.has(o.id) && !o.hidden && o.type !== "line" && o.type !== "group",
+              )
+              .map((o) => boundsOf(o, map))
+              .filter((b) =>
+                boxesTouch(b, {
+                  x: moving.x - 400,
+                  y: moving.y - 400,
+                  w: moving.w + 800,
+                  h: moving.h + 800,
+                }),
+              );
+            const s = snapMove(moving, others, 6 / z);
+            dx += s.dx;
+            dy += s.dy;
+            gl = s.guides;
+          }
+          setGuides(gl);
+          return fitGroups(moveObjs(base, g.ids, dx, dy));
+        });
+        break;
+      }
+      case "resize": {
+        resize(g, pt, e);
+        break;
+      }
+      case "rotate": {
+        let delta = ((Math.atan2(pt.y - g.c.y, pt.x - g.c.x) - g.start) * 180) / Math.PI;
+        if (g.ids.length === 1 && e.shiftKey)
+          delta = Math.round((g.base + delta) / 15) * 15 - g.base;
+        else if (e.shiftKey) delta = Math.round(delta / 15) * 15;
+        board.live((base) => rotateAround(base, new Set(g.ids), g.c, delta));
+        break;
+      }
+      case "marquee": {
+        const box: Box = {
+          x: Math.min(g.start.x, pt.x),
+          y: Math.min(g.start.y, pt.y),
+          w: Math.abs(pt.x - g.start.x),
+          h: Math.abs(pt.y - g.start.y),
+        };
+        setMarquee(box);
+        const map = byIdRef.current;
+        const hit: string[] = [];
+        for (const o of board.ref.current) {
+          if (o.hidden || o.locked) continue;
+          if (o.parent && map.get(o.parent)?.type === "group") continue;
+          const b = boundsOf(o, map);
+          if (o.type === "frame") {
+            if (
+              b.x >= box.x &&
+              b.y >= box.y &&
+              b.x + b.w <= box.x + box.w &&
+              b.y + b.h <= box.y + box.h
+            )
+              hit.push(o.id);
+          } else if (boxesTouch(b, box)) hit.push(o.id);
+        }
+        setSel([...new Set([...g.base, ...hit])]);
+        break;
+      }
+      case "create": {
+        const dx = pt.x - g.start.x;
+        const dy = pt.y - g.start.y;
+        if (!g.id) {
+          if (Math.hypot(dx, dy) * z < 5) return;
+          const ob = newByTool(g.tool, g.start);
+          if (!ob) return;
+          g.id = ob.id;
+          board.live((base) => [...base, ob]);
+          board.rebase();
+        }
+        const id = g.id!;
+        let w = Math.abs(dx);
+        let h = Math.abs(dy);
+        if (g.shift || g.tool === "sticky") {
+          const m = Math.max(w, h);
+          w = m;
+          h = m;
+        }
+        const x = dx < 0 ? g.start.x - w : g.start.x;
+        const y = dy < 0 ? g.start.y - h : g.start.y;
+        board.live((base) =>
+          base.map((o) =>
+            o.id === id
+              ? { ...o, x, y, w: Math.max(8, w), h: g.tool === "text" ? o.h : Math.max(8, h) }
+              : o,
+          ),
+        );
+        break;
+      }
+      case "pen": {
+        const last = g.pts[g.pts.length - 1];
+        if (Math.hypot(pt.x - last.x, pt.y - last.y) * z < 2) return;
+        g.pts.push(pt);
+        setPenPts([...g.pts]);
+        break;
+      }
+      case "link": {
+        if (!g.moved && Math.hypot(pt.x - g.start.x, pt.y - g.start.y) * z < 4) return;
+        g.moved = true;
+        const under = objectUnder(e.clientX, e.clientY, g.id);
+        setHover(under);
+        board.live((base) =>
+          base.map((o) => {
+            if (o.id !== g.id) return o;
+            const anchor = under ? { id: under, side: "auto" as const } : { x: pt.x, y: pt.y };
+            return g.end === "to" ? { ...o, to: anchor } : { ...o, from: anchor };
+          }),
+        );
+        break;
+      }
+    }
+  };
+
+  const newByTool = (tl: Tool, at: Pt): Obj | null => {
+    switch (tl) {
+      case "sticky":
+        return make("sticky", at, { x: at.x, y: at.y, w: 8, h: 8 });
+      case "text":
+        return make("text", at, { x: at.x, y: at.y, w: 8, auto: false });
+      case "shape":
+        return make("shape", at, { x: at.x, y: at.y, w: 8, h: 8, shape: shapeKind });
+      case "frame":
+        return make("frame", at, { x: at.x, y: at.y, w: 8, h: 8 });
+      case "task":
+        return make("task", at, { x: at.x, y: at.y, w: 8, h: 8 });
+      case "sticker":
+        return make("sticker", at, { x: at.x, y: at.y, w: 8, h: 8, emoji });
+      default:
+        return null;
+    }
+  };
+
+  const resize = (g: Extract<Gesture, { kind: "resize" }>, pt: Pt, e: React.PointerEvent) => {
+    const hx = g.handle.includes("e") ? 1 : g.handle.includes("w") ? -1 : 0;
+    const hy = g.handle.includes("s") ? 1 : g.handle.includes("n") ? -1 : 0;
+    const single = g.ids.length === 1 ? byIdRef.current.get(g.ids[0]) : null;
+    const dxw = pt.x - g.start.x;
+    const dyw = pt.y - g.start.y;
+    if (single && single.type !== "group" && single.type !== "line") {
+      board.live((base) => {
+        const o0 = base.find((x) => x.id === single.id);
+        if (!o0) return base;
+        const ld = rotatePt({ x: dxw, y: dyw }, { x: 0, y: 0 }, -o0.rot);
+        let dw = hx * ld.x;
+        let dh = hy * ld.y;
+        const keep =
+          (e.shiftKey
+            ? !(o0.type === "image" || o0.type === "sticker")
+            : o0.type === "image" || o0.type === "sticker") &&
+          hx !== 0 &&
+          hy !== 0;
+        if (keep) {
+          const s = Math.max((o0.w + dw) / o0.w, (o0.h + dh) / o0.h);
+          dw = (s - 1) * o0.w;
+          dh = (s - 1) * o0.h;
+        }
+        if (e.altKey) {
+          dw *= 2;
+          dh *= 2;
+        }
+        const w = Math.max(8, o0.w + dw);
+        const h = Math.max(8, o0.h + dh);
+        const adw = w - o0.w;
+        const adh = h - o0.h;
+        const c0 = center(o0);
+        const shift = e.altKey
+          ? { x: 0, y: 0 }
+          : rotatePt({ x: (hx * adw) / 2, y: (hy * adh) / 2 }, { x: 0, y: 0 }, o0.rot);
+        const nc = { x: c0.x + shift.x, y: c0.y + shift.y };
+        return base.map((o) =>
+          o.id === o0.id
+            ? {
+                ...o,
+                w: hx === 0 ? o0.w : w,
+                h: hy === 0 ? o0.h : h,
+                x: nc.x - (hx === 0 ? o0.w : w) / 2,
+                y: nc.y - (hy === 0 ? o0.h : h) / 2,
+                auto: hy !== 0 ? false : o0.auto,
+              }
+            : o,
+        );
+      });
+      return;
+    }
+    /* несколько объектов или группа: масштаб относительно противоположного угла габарита */
+    board.live((base) => {
+      const set = withChildren(base, g.ids);
+      const bb = unionBox(
+        g.ids
+          .map((id) => base.find((x) => x.id === id))
+          .filter((x): x is Obj => !!x)
+          .map((x) => boundsOf(x, mapById(base))),
+      );
+      if (!bb) return base;
+      const ax = hx > 0 ? bb.x : hx < 0 ? bb.x + bb.w : bb.x;
+      const ay = hy > 0 ? bb.y : hy < 0 ? bb.y + bb.h : bb.y;
+      let sx = hx === 0 ? 1 : Math.max(0.05, (bb.w + hx * dxw) / bb.w);
+      let sy = hy === 0 ? 1 : Math.max(0.05, (bb.h + hy * dyw) / bb.h);
+      if (e.shiftKey && hx !== 0 && hy !== 0) {
+        const s = Math.max(sx, sy);
+        sx = s;
+        sy = s;
+      }
+      return fitGroups(
+        base.map((o) => {
+          if (!set.has(o.id) || o.type === "line") return o;
+          return {
+            ...o,
+            x: ax + (o.x - ax) * sx,
+            y: ay + (o.y - ay) * sy,
+            w: Math.max(4, o.w * sx),
+            h: Math.max(4, o.h * sy),
+            auto: false,
+          };
+        }),
+      );
+    });
+  };
+
+  const onPointerUp = (e: React.PointerEvent) => {
+    const g = gesture.current;
+    gesture.current = null;
+    try {
+      wrapRef.current?.releasePointerCapture?.(e.pointerId);
+    } catch {
+      /* уже освобождён */
+    }
+    setGuides([]);
+    setMarquee(null);
+    if (!g) return;
+    const pt = clientToWorld(e.clientX, e.clientY);
+
+    switch (g.kind) {
+      case "move": {
+        if (!g.moved) {
+          board.cancel();
+          if (g.only) setSel([g.only]);
+          break;
+        }
+        board.silent((cur) => reparent(fitGroups(cur), selRef.current));
+        board.commit();
+        break;
+      }
+      case "resize":
+      case "rotate":
+        board.commit();
+        break;
+      case "create": {
+        let id = g.id;
+        if (!id) {
+          const ob = newByTool(g.tool, pt);
+          if (!ob) {
+            board.cancel();
+            break;
+          }
+          const s = ob.type === "sticker" ? { w: 56, h: 56 } : { w: ob.w, h: ob.h };
+          const def = make(
+            ob.type,
+            pt,
+            ob.type === "shape" ? { shape: shapeKind } : ob.type === "sticker" ? { emoji } : {},
+          );
+          void s;
+          id = def.id;
+          board.silent((base) => [...base, def]);
+        } else {
+          const cur = board.ref.current.find((o) => o.id === id);
+          // слишком маленький объект получает размер по умолчанию
+          if (cur && cur.w < 24 && cur.h < 24 && g.tool !== "text") {
+            const d = make(
+              cur.type,
+              { x: cur.x, y: cur.y },
+              cur.type === "shape" ? { shape: shapeKind } : cur.type === "sticker" ? { emoji } : {},
+            );
+            board.silent((base) => base.map((o) => (o.id === id ? { ...d, id: id! } : o)));
+          } else if (cur && g.tool === "text") {
+            board.silent((base) =>
+              base.map((o) => (o.id === id ? { ...o, w: Math.max(60, o.w), auto: true } : o)),
+            );
+          }
+        }
+        board.silent((base) => reparent(base, [id!]));
+        // рамка ложится под остальное, чтобы не закрывать уже лежащие объекты
+        if (g.tool === "frame") board.silent((base) => reorder(base, [id!], "back"));
+        board.commit();
+        setSel([id!]);
+        const created = board.ref.current.find((o) => o.id === id);
+        if (created && ["sticky", "text", "shape", "task"].includes(created.type)) setEditing(id);
+        if (!g.shift) setTool("select");
+        break;
+      }
+      case "pen": {
+        setPenPts(null);
+        if (g.pts.length < 2) break;
+        const xs = g.pts.map((p) => p.x);
+        const ys = g.pts.map((p) => p.y);
+        const pad = penWidth * (marker ? 1.5 : 1);
+        const x = Math.min(...xs) - pad;
+        const y = Math.min(...ys) - pad;
+        const w = Math.max(...xs) - Math.min(...xs) + pad * 2;
+        const h = Math.max(...ys) - Math.min(...ys) + pad * 2;
+        const ob = make(
+          "stroke",
+          { x: 0, y: 0 },
+          {
+            x,
+            y,
+            w,
+            h,
+            bw: w,
+            bh: h,
+            pts: g.pts.map(
+              (p) =>
+                [Math.round((p.x - x) * 10) / 10, Math.round((p.y - y) * 10) / 10] as [
+                  number,
+                  number,
+                ],
+            ),
+            stroke: penColor,
+            sw: marker ? penWidth * 3 : penWidth,
+            opacity: marker ? 0.45 : 1,
+          },
+        );
+        board.apply((o) => [...o, ob]);
+        break;
+      }
+      case "link": {
+        const line = board.ref.current.find((o) => o.id === g.id);
+        if (!g.moved && line && g.end === "to" && !line.to?.id && line.from?.id) {
+          // без движения соединитель не создаётся
+          board.cancel();
+          setSel([]);
+          break;
+        }
+        board.commit();
+        setHover(null);
+        if (toolRef.current === "line" && !e.shiftKey) setTool("select");
+        break;
+      }
+      case "marquee":
+      case "pan":
+        break;
+    }
+  };
+
+  /* двойной щелчок: правка текста / вход в группу / новый текст */
+  const onDoubleClick = (e: React.MouseEvent) => {
+    const target = under(e);
+    if (target.closest("[data-ui]") || target.closest("[data-nodrag]")) return;
+    const id = hitId(target);
+    const pt = clientToWorld(e.clientX, e.clientY);
+    if (id) {
+      const o = byIdRef.current.get(id);
+      if (!o) return;
+      if (o.type === "group" || (o.parent && byIdRef.current.get(o.parent)?.type === "group")) {
+        // войти в группу: выбрать то, что под курсором
+        const kids = board.ref.current.filter(
+          (k) =>
+            k.parent &&
+            topGroupOf(board.ref.current, k.id) === topGroupOf(board.ref.current, id) &&
+            k.type !== "group",
+        );
+        const hit = [...kids].reverse().find((k) => {
+          const b = boundsOf(k, byIdRef.current);
+          return pt.x >= b.x && pt.x <= b.x + b.w && pt.y >= b.y && pt.y <= b.y + b.h;
+        });
+        if (hit) {
+          setSel([hit.id]);
+          if (["text", "sticky", "shape"].includes(hit.type)) setEditing(hit.id);
         }
         return;
       }
-      if (e.key === "!") {
-        e.preventDefault();
-        fitView({ padding: 0.3, duration: 250 });
-        return;
+      if (o.locked) return;
+      if (["shape", "sticky", "text", "task"].includes(o.type) || o.type === "frame") {
+        setSel([id]);
+        setEditing(id);
+      } else if (o.type === "line") {
+        setSel([id]);
+        if (!o.text) board.apply((all) => all.map((x) => (x.id === id ? { ...x, text: "…" } : x)));
+        setEditing(id);
+      } else if (o.type === "image") {
+        setSel([id]);
       }
-      if (e.key === "/") {
+      return;
+    }
+    if (toolRef.current !== "select") return;
+    const ob = make("text", pt, { x: pt.x, y: pt.y, w: 240, auto: true });
+    addObjs([ob]);
+    setEditing(ob.id);
+  };
+
+  const onContextMenu = (e: React.MouseEvent) => {
+    const target = under(e);
+    if (target.closest("[data-ui]")) return;
+    e.preventDefault();
+    const id = hitId(target);
+    if (id) {
+      const rid = resolveSelect(id);
+      if (!selRef.current.includes(rid)) setSel([rid]);
+    } else {
+      /* пустое место внутри рамки выделения не снимает выбор: можно выделить всё и удалить правой кнопкой */
+      const wp = clientToWorld(e.clientX, e.clientY);
+      const inside = selRef.current.some((s) => {
+        const o = byIdRef.current.get(s);
+        if (!o) return false;
+        const b = boundsOf(o, byIdRef.current);
+        return wp.x >= b.x && wp.x <= b.x + b.w && wp.y >= b.y && wp.y <= b.y + b.h;
+      });
+      if (!inside) setSel([]);
+    }
+    const has = selRef.current.length > 0;
+    const pt = clientToWorld(e.clientX, e.clientY);
+    const only = selRef.current.length === 1 ? byIdRef.current.get(selRef.current[0]) : undefined;
+    const canText =
+      !!only && !only.locked && ["shape", "sticky", "text", "task", "frame"].includes(only.type);
+    const canFill = selRef.current.some((s) => {
+      const o = byIdRef.current.get(s);
+      return !!o && ["shape", "sticky", "task", "frame", "text"].includes(o.type);
+    });
+    const multi = selRef.current.length > 1;
+    const anyGroup = selRef.current.some((s) => byIdRef.current.get(s)?.type === "group");
+    const items: MenuItem[] = has
+      ? [
+          ...(canText
+            ? [{ label: t("edit"), hint: "Enter", onClick: () => setEditing(only!.id) }]
+            : []),
+          ...(canFill
+            ? [
+                {
+                  label: "",
+                  onClick: () => undefined,
+                  swatches: {
+                    colors: [
+                      "#ffffff",
+                      "#fef08a",
+                      "#bbf7d0",
+                      "#bfdbfe",
+                      "#fbcfe8",
+                      "#fed7aa",
+                      "#ddd6fe",
+                      "#e5e7eb",
+                      "#1f2937",
+                    ],
+                    onPick: (c: string) => actions.patch({ fill: c }, "fill"),
+                  },
+                },
+                { sep: true, label: "", onClick: () => undefined },
+              ]
+            : []),
+          { label: t("cut"), hint: "Ctrl+X", onClick: () => copySel(true) },
+          { label: t("copy"), hint: "Ctrl+C", onClick: () => copySel() },
+          {
+            label: t("paste"),
+            hint: "Ctrl+V",
+            onClick: () => clip.current && pasteInternal(clip.current, pt),
+            disabled: !clip.current,
+          },
+          { label: t("duplicate"), hint: "Ctrl+D", onClick: () => duplicate() },
+          { sep: true, label: "", onClick: () => undefined },
+          ...(multi ? [{ label: t("group"), hint: "Ctrl+G", onClick: actions.group }] : []),
+          ...(anyGroup ? [{ label: t("ungroup"), hint: "Ctrl+⇧G", onClick: actions.ungroup }] : []),
+          { label: t("front"), hint: "Ctrl+⇧]", onClick: () => actions.order("front") },
+          { label: t("back"), hint: "Ctrl+⇧[", onClick: () => actions.order("back") },
+          { label: t("lock"), hint: "Ctrl+⇧L", onClick: actions.lock },
+          { label: t("hide"), onClick: actions.hide },
+          { sep: true, label: "", onClick: () => undefined },
+          { label: t("del"), hint: "Del", danger: true, onClick: removeSel },
+        ]
+      : [
+          {
+            label: t("paste"),
+            hint: "Ctrl+V",
+            onClick: () => clip.current && pasteInternal(clip.current, pt),
+            disabled: !clip.current,
+          },
+          {
+            label: t("selectAll"),
+            hint: "Ctrl+A",
+            onClick: () =>
+              setSel(board.ref.current.filter((o) => !o.parent && !o.hidden).map((o) => o.id)),
+          },
+          {
+            label: t("delAll"),
+            danger: true,
+            disabled: board.ref.current.length === 0,
+            onClick: () => {
+              setSel([]);
+              board.apply(() => []);
+            },
+          },
+          { label: t("tidy"), onClick: tidy },
+          { label: t("fit"), hint: "⇧1", onClick: fitAll },
+        ];
+    setCtx({ x: e.clientX, y: e.clientY, items });
+  };
+
+  /* ───────────── клавиатура ───────────── */
+
+  const kb = useRef<(e: KeyboardEvent) => void>(() => undefined);
+  kb.current = (e: KeyboardEvent) => {
+    if (isTyping(e.target)) return;
+    const meta = e.ctrlKey || e.metaKey;
+    const k = e.key.toLowerCase();
+    if (e.code === "Space" && !e.repeat) {
+      spaceHeld.current = true;
+      wrapRef.current?.classList.add("hc-space");
+      e.preventDefault();
+      return;
+    }
+    if (meta && k === "z") {
+      e.preventDefault();
+      if (e.shiftKey) board.redo();
+      else board.undo();
+      setSel(selRef.current.filter((id) => board.ref.current.some((o) => o.id === id)));
+      return;
+    }
+    if (meta && k === "y") {
+      e.preventDefault();
+      board.redo();
+      return;
+    }
+    if (meta && k === "a") {
+      e.preventDefault();
+      setSel(board.ref.current.filter((o) => !o.parent && !o.hidden && !o.locked).map((o) => o.id));
+      return;
+    }
+    if (meta && k === "c") {
+      copySel();
+      return;
+    }
+    if (meta && k === "x") {
+      e.preventDefault();
+      copySel(true);
+      return;
+    }
+    if (meta && k === "d") {
+      e.preventDefault();
+      duplicate();
+      return;
+    }
+    if (meta && k === "g") {
+      e.preventDefault();
+      if (e.shiftKey) actions.ungroup();
+      else actions.group();
+      return;
+    }
+    if (meta && k === "l" && e.shiftKey) {
+      e.preventDefault();
+      actions.lock();
+      return;
+    }
+    if (meta && (e.key === "]" || e.key === "[")) {
+      e.preventDefault();
+      actions.order(
+        e.key === "]" ? (e.shiftKey ? "front" : "forward") : e.shiftKey ? "back" : "backward",
+      );
+      return;
+    }
+    if (meta) return;
+    if (e.key === "Delete" || e.key === "Backspace") {
+      e.preventDefault();
+      removeSel();
+      return;
+    }
+    if (e.key === "Escape") {
+      if (gesture.current) {
+        board.cancel();
+        gesture.current = null;
+        setPenPts(null);
+      } else if (selRef.current.length) setSel([]);
+      else setTool("select");
+      setCtx(null);
+      return;
+    }
+    if (e.key === "Enter" && selRef.current.length === 1) {
+      const o = byIdRef.current.get(selRef.current[0]);
+      if (o && !o.locked && ["shape", "sticky", "text", "task", "frame"].includes(o.type)) {
         e.preventDefault();
-        const rect = wrapRef.current!.getBoundingClientRect();
-        const cx = rect.left + rect.width / 2,
-          cy = rect.top + rect.height / 2;
-        const f = screenToFlowPosition({ x: cx, y: cy });
-        setSlash({ x: rect.width / 2 - 120, y: rect.height / 2 - 60, fx: f.x, fy: f.y });
-        return;
+        setEditing(o.id);
       }
-      const map: Record<string, CanvasTool> = {
-        v: "select",
-        h: "hand",
-        n: "sticky",
-        t: "text",
-        s: "shape",
-        a: "connector",
-        f: "frame",
-        k: "task",
-        p: "pen",
-        e: "sticker",
-      };
-      const k = e.key.toLowerCase();
-      if (map[k]) {
-        setTool(map[k]);
-        setSlash(null);
+      return;
+    }
+    if (e.key.startsWith("Arrow") && selRef.current.length) {
+      e.preventDefault();
+      const s = e.shiftKey ? 10 : 1;
+      const dx = e.key === "ArrowLeft" ? -s : e.key === "ArrowRight" ? s : 0;
+      const dy = e.key === "ArrowUp" ? -s : e.key === "ArrowDown" ? s : 0;
+      const ids = withChildren(
+        board.ref.current,
+        selRef.current.filter((id) => !byIdRef.current.get(id)?.locked),
+      );
+      board.apply((o) => fitGroups(moveObjs(o, ids, dx, dy)), "nudge");
+      return;
+    }
+    if (e.shiftKey && (e.key === "!" || e.code === "Digit1")) {
+      e.preventDefault();
+      fitAll();
+      return;
+    }
+    if (e.shiftKey && (e.key === "@" || e.code === "Digit2")) {
+      e.preventDefault();
+      fitSelection();
+      return;
+    }
+    if (e.key === "+" || e.key === "=") return zoomAt(1.25);
+    if (e.key === "-") return zoomAt(0.8);
+    const map: Record<string, Tool> = {
+      v: "select",
+      h: "hand",
+      s: "sticky",
+      t: "text",
+      r: "shape",
+      l: "line",
+      f: "frame",
+      p: "pen",
+      k: "task",
+      e: "sticker",
+    };
+    if (map[k] && !e.altKey) {
+      setTool(map[k]);
+      return;
+    }
+    if (k === "i") fileInput.current?.click();
+  };
+  useEffect(() => {
+    const down = (e: KeyboardEvent) => kb.current(e);
+    const up = (e: KeyboardEvent) => {
+      if (e.code === "Space") {
+        spaceHeld.current = false;
+        wrapRef.current?.classList.remove("hc-space");
       }
     };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [undo, redo, nodes, edges, setNodes, setEdges, pushHistory, fitView, screenToFlowPosition]);
+    window.addEventListener("keydown", down);
+    window.addEventListener("keyup", up);
+    return () => {
+      window.removeEventListener("keydown", down);
+      window.removeEventListener("keyup", up);
+    };
+  }, []);
 
-  if (!loaded) {
-    return (
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          height: "100%",
-          color: "var(--text-tertiary)",
-          fontSize: 13,
-        }}
-      >
-        Loading canvas…
-      </div>
-    );
-  }
+  /* вставка: картинки, свои объекты, обычный текст */
+  useEffect(() => {
+    const onPaste = (e: ClipboardEvent) => {
+      if (isTyping(e.target)) return;
+      const wrap = wrapRef.current;
+      if (!wrap || !wrap.offsetParent) return;
+      const files = [...(e.clipboardData?.files ?? [])].filter((f) => f.type.startsWith("image/"));
+      if (files.length) {
+        e.preventDefault();
+        void addImageBlob(files[0], clientCenter());
+        return;
+      }
+      const text = e.clipboardData?.getData("text/plain") ?? "";
+      if (text.startsWith("holst:v3:")) {
+        e.preventDefault();
+        pasteInternal(text);
+      } else if (text.trim()) {
+        e.preventDefault();
+        const ob = make("sticky", clientCenter(), { text: text.slice(0, 600) });
+        addObjs([ob]);
+      } else if (clip.current) pasteInternal(clip.current);
+    };
+    window.addEventListener("paste", onPaste);
+    return () => window.removeEventListener("paste", onPaste);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [size.w, size.h]);
 
-  const cursor =
-    tool === "hand"
-      ? "grab"
-      : tool === "pen"
-        ? "crosshair"
-        : tool === "select"
-          ? "default"
-          : "copy";
+  const onDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDropping(false);
+    const at = clientToWorld(e.clientX, e.clientY);
+    const img = [...e.dataTransfer.files].find((f) => f.type.startsWith("image/"));
+    if (img) {
+      void addImageBlob(img, at);
+      return;
+    }
+    const text = e.dataTransfer.getData("text/plain");
+    if (text && text.toLowerCase().endsWith(".md")) addNote(text, at);
+  };
 
-  return (
-    <div
-      ref={wrapRef}
-      className="holst-page"
-      style={{ cursor }}
-      onDragOver={onDragOver}
-      onDrop={onDrop}
-      onPointerDown={onPenDown}
-      onPointerMove={onPenMove}
-      onPointerUp={onPenUp}
-      onPointerLeave={onPenUp}
-    >
-      <ReactFlow
-        nodes={nodes}
-        edges={edges}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        onConnect={onConnect}
-        onConnectEnd={onConnectEnd}
-        onNodeDragStart={onNodeDragStart}
-        onNodeDrag={onNodeDrag}
-        onNodeDragStop={save}
-        nodeTypes={nodeTypes}
-        edgeTypes={edgeTypes}
-        connectionLineType={ConnectionLineType.Bezier}
-        connectionRadius={34}
-        onlyRenderVisibleElements={true}
-        panOnDrag={tool === "hand"}
-        selectionOnDrag={tool === "select"}
-        nodesDraggable={tool !== "pen" && tool !== "hand"}
-        zoomOnDoubleClick={false}
-        minZoom={0.08}
-        maxZoom={3}
-        proOptions={{ hideAttribution: true }}
-        onPaneClick={(ev) => {
-          const f = screenToFlowPosition({ x: ev.clientX, y: ev.clientY });
-          spawnForTool(f);
-        }}
-      >
-        <Background variant={BackgroundVariant.Dots} gap={22} size={1.6} color="#262a3f" />
-      </ReactFlow>
+  /* ───────────── экспорт ───────────── */
 
-      {/* pen live preview */}
-      {penPreview && (
-        <svg
-          style={{
-            position: "absolute",
-            inset: 0,
-            width: "100%",
-            height: "100%",
-            pointerEvents: "none",
-            zIndex: 45,
-          }}
-        >
-          <line
-            x1={penPreview.x1}
-            y1={penPreview.y1}
-            x2={penPreview.x2}
-            y2={penPreview.y2}
-            stroke="#f0a63d"
-            strokeWidth={3}
-            strokeLinecap="round"
-            opacity={0.9}
-          />
-        </svg>
-      )}
+  const exportBoard = async (fmt: "png" | "svg" | "json") => {
+    const all = board.ref.current.filter((o) => !o.hidden);
+    const dl = (href: string, ext: string) => {
+      const a = document.createElement("a");
+      a.href = href;
+      a.download = `${name || "holst"}.${ext}`;
+      a.click();
+    };
+    if (fmt === "json") {
+      const doc: HolstDoc = {
+        version: 3,
+        name,
+        objs: board.ref.current,
+        viewport: { x: view.x, y: view.y, zoom: view.z },
+        updatedAt: new Date().toISOString(),
+      };
+      const url = URL.createObjectURL(
+        new Blob([JSON.stringify(doc, null, 2)], { type: "application/json" }),
+      );
+      dl(url, "holst");
+      URL.revokeObjectURL(url);
+      return;
+    }
+    const box = unionBox(all.map((o) => boundsOf(o, byIdRef.current)));
+    const el = worldRef.current;
+    if (!box || !el) return;
+    const pad = 48;
+    const bg = getComputedStyle(wrapRef.current!).backgroundColor || "#11141f";
+    const opts = {
+      width: Math.ceil(box.w + pad * 2),
+      height: Math.ceil(box.h + pad * 2),
+      pixelRatio: 2,
+      backgroundColor: bg,
+      style: {
+        transform: `translate(${pad - box.x}px, ${pad - box.y}px) scale(1)`,
+        transformOrigin: "0 0",
+      } as Record<string, string>,
+      filter: (n: Node) => !(n instanceof HTMLElement && n.dataset.exportSkip),
+    };
+    try {
+      dl(fmt === "png" ? await toPng(el, opts) : await toSvg(el, opts), fmt);
+    } catch {
+      /* экспорт картинки не удался */
+    }
+  };
 
-      {/* header */}
-      <HolstHeader
-        boardName={boardName}
-        onName={setBoardName}
-        canUndo={past.current.length > 0}
-        canRedo={future.current.length > 0}
-        onUndo={undo}
-        onRedo={redo}
-        onTemplates={() => setShowTemplates(true)}
-        onExport={onExport}
-        zoom={zoom}
-        onZoomIn={() => zoomIn({ duration: 150 })}
-        onZoomOut={() => zoomOut({ duration: 150 })}
-        onFit={() => fitView({ padding: 0.25, duration: 250 })}
-        onResetZoom={() => setViewport({ ...getViewport(), zoom: 1 }, { duration: 200 })}
-      />
+  /* ───────────── отрисовка ───────────── */
 
-      {/* left dock */}
-      <HolstToolbar
-        activeTool={tool}
-        onTool={setTool}
-        shape={shape}
-        onShape={setShape}
-        lineProps={lineProps}
-        onLineProps={(patch) => setLineProps((lp) => ({ ...lp, ...patch }))}
-        sticker={sticker}
-        onSticker={setSticker}
-        onAutoLayout={autoLayout}
-      />
+  const geoms = useMemo(() => {
+    const m = new Map<string, ReturnType<typeof lineGeom>>();
+    for (const o of objs) if (o.type === "line") m.set(o.id, lineGeom(o, byId));
+    return m;
+  }, [objs, byId]);
 
-      {/* slash command palette */}
-      {slash && (
-        <div
-          className="holst-slash"
-          style={{ left: slash.x, top: slash.y }}
-          onMouseDown={(e) => e.stopPropagation()}
-        >
-          {(
-            [
-              ["note", "📝", "Note"],
-              ["sticky", "🟡", "Sticky note"],
-              ["task", "✅", "Task"],
-              ["matrix", "📋", "Impact Matrix"],
-              ["frame", "🖼", "Retro Frame"],
-              ["text", "🅣", "Text label"],
-            ] as const
-          ).map(([id, ico, label]) => (
-            <button key={id} className="holst-pop-item" onClick={() => slashInsert(id)}>
-              <span>{ico}</span> {label}
-            </button>
+  const penOpts = tool === "pen";
+  const side = penOpts ? (
+    <div className="hc-insp hc-float" data-ui>
+      <div className="hc-row">
+        <div className="hc-row-label">{t("color")}</div>
+        <div className="hc-swatches">
+          {[
+            "#1c1d2b",
+            "#ef4444",
+            "#f59e0b",
+            "#22c55e",
+            "#3b82f6",
+            "#8b5cf6",
+            "#ec4899",
+            "#ffffff",
+          ].map((c) => (
+            <button
+              key={c}
+              type="button"
+              className={`hc-sw${penColor === c ? " on" : ""}`}
+              style={{ background: c }}
+              onClick={() => setPenColor(c)}
+            />
           ))}
         </div>
-      )}
+      </div>
+      <div className="hc-row">
+        <div className="hc-row-label">{t("width")}</div>
+        <div className="hc-line">
+          <input
+            type="range"
+            min={1}
+            max={24}
+            value={penWidth}
+            onChange={(e) => setPenWidth(Number(e.target.value))}
+          />
+          <span>{penWidth}</span>
+        </div>
+      </div>
+      <label className="hc-check">
+        <input type="checkbox" checked={marker} onChange={(e) => setMarker(e.target.checked)} />
+        {ru ? "Маркер" : "Highlighter"}
+      </label>
+    </div>
+  ) : selObjs.length > 0 && rightTab === "props" ? (
+    <Inspector sel={selObjs} a={actions} t={t} ru={ru} />
+  ) : null;
 
-      {/* quick-connect branching menu */}
-      {connectMenu && (
+  const cursor = tool === "hand" ? "grab" : tool === "select" ? "default" : "crosshair";
+
+  return (
+    <div className="hc-root">
+      <div
+        ref={wrapRef}
+        className="hc-stage"
+        style={{
+          cursor,
+          backgroundSize: grid ? `${24 * view.z}px ${24 * view.z}px` : undefined,
+          backgroundPosition: `${view.x}px ${view.y}px`,
+          backgroundImage: grid
+            ? "radial-gradient(circle, var(--hc-dot) 1.2px, transparent 1.4px)"
+            : "none",
+        }}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
+        onDoubleClick={onDoubleClick}
+        onContextMenu={onContextMenu}
+        onDragOver={(e) => {
+          e.preventDefault();
+          setDropping(true);
+        }}
+        onDragLeave={(e) => {
+          if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDropping(false);
+        }}
+        onDrop={onDrop}
+      >
         <div
-          className="holst-pop"
-          style={{ left: connectMenu.x, top: connectMenu.y }}
-          onMouseDown={(e) => e.stopPropagation()}
+          ref={worldRef}
+          className="hc-world"
+          style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.z})` }}
         >
-          <button className="holst-pop-item" onClick={() => connectSpawn("note")}>
-            📝 Create connected Note
+          {objs.map((o) => (
+            <ObjectView
+              key={o.id}
+              o={o}
+              editing={editing === o.id}
+              selected={sel.includes(o.id)}
+              geom={geoms.get(o.id)}
+              onCommit={onCommit}
+              onPatch={onPatch}
+              onMeasure={onMeasure}
+            />
+          ))}
+          <div data-export-skip="1">
+            <SelectionLayer
+              objs={objs}
+              byId={byId}
+              sel={sel}
+              hover={hover}
+              z={view.z}
+              guides={guides}
+              marquee={marquee}
+              pen={penPts}
+              penColor={penColor}
+              penWidth={penWidth}
+              showPorts={(tool === "select" || tool === "line") && !editing}
+            />
+          </div>
+        </div>
+
+        {objs.length === 0 && ready && <div className="hc-empty">{t("empty")}</div>}
+        {dropping && <div className="hc-drop-hint">{t("dropHere")}</div>}
+      </div>
+
+      <TopBar
+        t={t}
+        boards={boards}
+        file={file}
+        name={name}
+        onName={setName}
+        onOpenBoard={(f) => void openBoard(f)}
+        onNewBoard={() => void createBoard()}
+        onDeleteBoard={(f) => void removeBoard(f)}
+        canUndo={board.canUndo}
+        canRedo={board.canRedo}
+        onUndo={() => board.undo()}
+        onRedo={() => board.redo()}
+        zoom={view.z}
+        onZoom={setZoom}
+        onFit={fitAll}
+        onFitSel={fitSelection}
+        hasSel={sel.length > 0}
+        grid={grid}
+        onGrid={() => {
+          setGrid(!grid);
+          lsSet(LS.grid, grid ? "0" : "1");
+        }}
+        snap={snap}
+        onSnap={() => {
+          setSnap(!snap);
+          lsSet(LS.snap, snap ? "0" : "1");
+        }}
+        wheelZoom={wheelZoom}
+        onWheel={() => {
+          setWheelZoom(!wheelZoom);
+          lsSet(LS.wheel, wheelZoom ? "0" : "1");
+        }}
+        onTemplates={() => setTplOpen(true)}
+        onExport={(f) => void exportBoard(f)}
+        save={save}
+      />
+      <ToolDock
+        tool={tool}
+        onTool={setTool}
+        shape={shapeKind}
+        onShape={setShapeKind}
+        emoji={emoji}
+        onEmoji={setEmoji}
+        onImage={() => fileInput.current?.click()}
+        t={t}
+        ru={ru}
+      />
+      <div className="hc-side" data-ui>
+        <div className="hc-tabs hc-float">
+          <button
+            type="button"
+            className={rightTab === "props" ? "on" : ""}
+            onClick={() => setRightTab("props")}
+          >
+            {t("props")}
           </button>
-          <button className="holst-pop-item" onClick={() => connectSpawn("task")}>
-            ✅ Create connected Task
-          </button>
-          <button className="holst-pop-item" onClick={() => connectSpawn("decision")}>
-            💠 Create Decision Node
+          <button
+            type="button"
+            className={rightTab === "layers" ? "on" : ""}
+            onClick={() => setRightTab("layers")}
+          >
+            {t("layers")}
           </button>
         </div>
-      )}
+        {rightTab === "layers" ? (
+          <div className="hc-insp hc-float" data-ui>
+            <LayersPanel
+              objs={objs}
+              sel={sel}
+              t={t}
+              onSelect={(id, add) => {
+                const o = byIdRef.current.get(id);
+                if (!o || o.hidden) return;
+                setSel(
+                  add
+                    ? selRef.current.includes(id)
+                      ? selRef.current.filter((s) => s !== id)
+                      : [...selRef.current, id]
+                    : [id],
+                );
+              }}
+              onToggle={(id, what) =>
+                board.apply((all) => all.map((x) => (x.id === id ? { ...x, [what]: !x[what] } : x)))
+              }
+              onRename={(id, nm) =>
+                board.apply((all) =>
+                  all.map((x) => (x.id === id ? { ...x, name: nm.trim() || undefined } : x)),
+                )
+              }
+            />
+          </div>
+        ) : (
+          side
+        )}
+      </div>
+      <Minimap
+        objs={objs}
+        byId={byId}
+        view={view}
+        size={size}
+        onJump={(wx, wy) =>
+          setView({
+            ...viewRef.current,
+            x: size.w / 2 - wx * viewRef.current.z,
+            y: size.h / 2 - wy * viewRef.current.z,
+          })
+        }
+      />
 
-      {/* tool hint */}
-      {tool !== "select" && (
-        <div className="holst-canvas-hint">
-          {tool === "hand" && "Hand: drag to pan · scroll to zoom"}
-          {tool === "sticky" && "Click empty canvas to drop a sticky note"}
-          {tool === "text" && "Click to place a text label"}
-          {tool === "shape" && `Click to place ${shape}`}
-          {tool === "connector" && "Drag from a node handle to another node"}
-          {tool === "frame" && "Click to draw a smart frame"}
-          {tool === "task" && "Click to place a synced task card"}
-          {tool === "pen" && "Draw freehand · strokes become vector nodes"}
-          {tool === "sticker" &&
-            `Click to place ${sticker.startsWith("pill:") ? sticker.slice(5) + " pill" : sticker}`}
-        </div>
-      )}
-
-      {showTemplates && (
-        <TemplatesModal onClose={() => setShowTemplates(false)} onSelect={applyTemplate} />
+      <input
+        ref={fileInput}
+        type="file"
+        accept="image/*"
+        hidden
+        multiple
+        onChange={(e) => {
+          const files = [...(e.target.files ?? [])];
+          e.target.value = "";
+          let n = 0;
+          for (const f of files) {
+            const c = viewCenter();
+            void addImageBlob(f, { x: c.x + n * 30, y: c.y + n * 30 });
+            n++;
+          }
+        }}
+      />
+      {ctx && <ContextMenu x={ctx.x} y={ctx.y} items={ctx.items} onClose={() => setCtx(null)} />}
+      {tplOpen && (
+        <TemplatesModal t={t} onClose={() => setTplOpen(false)} onSelect={applyTemplate} />
       )}
     </div>
-  );
-}
-
-/* ───────────────────────── export ───────────────────────── */
-
-export default function CanvasPage() {
-  return (
-    <ReactFlowProvider>
-      <CanvasInner />
-    </ReactFlowProvider>
   );
 }
