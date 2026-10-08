@@ -12,6 +12,7 @@ import net from "net";
 import { withServer } from "./engine";
 import type { Device } from "./engine";
 import { installed, modelPath } from "./models";
+import logger from "../logger";
 
 /** Подсказка Chandra «OCR в HTML блоками с разметкой» (chandra/prompts.py, OCR_LAYOUT_PROMPT). */
 const ALLOWED_TAGS =
@@ -101,37 +102,55 @@ export async function ocrImage(o: {
   return withServer(
     { model: files.model, mmproj: files.mmproj, ctx: CTX, device: o.device ?? "auto" },
     async (server) => {
-      const res = await fetch(`${server.baseUrl}/v1/chat/completions`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        signal: o.signal,
-        body: JSON.stringify({
-          messages: [
-            {
-              role: "user",
-              content: [
-                {
-                  type: "image_url",
-                  image_url: { url: `data:${o.mime};base64,${o.image.toString("base64")}` },
-                },
-                { type: "text", text: PROMPT },
-              ],
-            },
-          ],
-          temperature: 0,
-          max_tokens: MAX_TOKENS,
-        }),
-      });
-      if (!res.ok) throw new Error(`llamacpp_${res.status}: ${(await res.text()).slice(0, 300)}`);
-      const j = (await res.json()) as {
-        choices?: { message?: { content?: string } }[];
-        usage?: { completion_tokens?: number };
+      const ask = async (temperature: number) => {
+        const res = await fetch(`${server.baseUrl}/v1/chat/completions`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          signal: o.signal,
+          body: JSON.stringify({
+            messages: [
+              {
+                role: "user",
+                content: [
+                  {
+                    type: "image_url",
+                    image_url: { url: `data:${o.mime};base64,${o.image.toString("base64")}` },
+                  },
+                  { type: "text", text: PROMPT },
+                ],
+              },
+            ],
+            temperature,
+            max_tokens: MAX_TOKENS,
+          }),
+        });
+        if (!res.ok) throw new Error(`llamacpp_${res.status}: ${(await res.text()).slice(0, 300)}`);
+        const j = (await res.json()) as {
+          choices?: {
+            finish_reason?: string;
+            message?: { content?: string; reasoning_content?: string };
+          }[];
+          usage?: { completion_tokens?: number };
+        };
+        const m = j.choices?.[0]?.message;
+        const text = (m?.content || "").trim() ? m!.content! : (m?.reasoning_content ?? "");
+        logger.info("llamacpp.ocr", {
+          temperature,
+          finish: j.choices?.[0]?.finish_reason,
+          chars: text.length,
+          tokens: j.usage?.completion_tokens ?? 0,
+          head: text.slice(0, 160),
+        });
+        return { html: text, tokens: j.usage?.completion_tokens ?? 0 };
       };
-      const html = j.choices?.[0]?.message?.content ?? "";
+      // Пустой ответ на чёткой картинке — редкий сбой жадной выборки: пробуем ещё раз с шумом.
+      let r = await ask(0);
+      if (!r.html.trim()) r = await ask(0.2);
+      const html = r.html;
       if (!html.trim()) throw new Error("ocr_empty");
       return {
         html,
-        tokens: j.usage?.completion_tokens ?? 0,
+        tokens: r.tokens,
         ms: Date.now() - t0,
         build: server.build,
         gpu: server.gpu,

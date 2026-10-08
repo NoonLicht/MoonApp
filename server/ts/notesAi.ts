@@ -291,9 +291,9 @@ export function aiConfig(): AiCfg & { hasKey: boolean; providers: ReturnType<typ
  * пустая модель — «подобрать автоматически». Провайдер обязан существовать:
  * иначе остался бы «мёртвый» выбор, а ошибка всплыла бы при первом оформлении.
  */
-export function setAiConfig(patch: { providerId?: unknown; model?: unknown } = {}): ReturnType<
-  typeof aiConfig
-> {
+export function setAiConfig(
+  patch: { providerId?: unknown; model?: unknown } = {},
+): ReturnType<typeof aiConfig> {
   const next: { provider: string; model: string } = {
     provider: aiCfg().providerFromChat ? "" : aiCfg().providerId,
     model: String(settings.get("myspace")?.ai?.model || ""),
@@ -307,7 +307,10 @@ export function setAiConfig(patch: { providerId?: unknown; model?: unknown } = {
     // не подойдёт новому (ровно на этом ловились «model not exist»).
     next.model = "";
   }
-  if (patch.model !== undefined) next.model = String(patch.model || "").trim().slice(0, 200);
+  if (patch.model !== undefined)
+    next.model = String(patch.model || "")
+      .trim()
+      .slice(0, 200);
   settings.set({ myspace: { ai: next } });
   logger.action("myspace.ai.config", next);
   return aiConfig();
@@ -473,10 +476,15 @@ export async function formatNote(opts: NotesAiFormatOptions): Promise<NotesAiRes
 const ARTICLE_CLEANUP_SYSTEM_PROMPT =
   "Ты — редактор, который готовит извлечённый со страницы текст статьи для чтения. " +
   "Удаляешь мусор (меню, рекламу, подписи на кнопки, cookie-баннеры, ссылки " +
-  "\"читайте также\", подвал сайта, повторяющиеся заголовки навигации), но " +
+  '"читайте также", подвал сайта, повторяющиеся заголовки навигации), но ' +
   "НЕ меняешь и не сокращаешь сам текст статьи.";
 
-function buildArticleCleanupPrompt(text: string, title: string, part: number, total: number): string {
+function buildArticleCleanupPrompt(
+  text: string,
+  title: string,
+  part: number,
+  total: number,
+): string {
   const where =
     total > 1
       ? `Ниже ФРАГМЕНТ ${part} из ${total} извлечённого текста статьи «${title || "без названия"}» (это кусок одной статьи, продолжение — в следующем фрагменте).`
@@ -578,6 +586,10 @@ export async function structureQuickNote(
     if (!clean) throw new Error("notes_ai_empty_response");
     parts.push(clean);
   }
-  logger.action("quicknotes.ai.structure", { provider: target.provider.id, model: target.model, rawChars: raw.length });
+  logger.action("quicknotes.ai.structure", {
+    provider: target.provider.id,
+    model: target.model,
+    rawChars: raw.length,
+  });
   return { content: parts.join("\n\n").trim(), provider: target.provider.id, model: target.model };
 }

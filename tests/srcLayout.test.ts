@@ -76,9 +76,10 @@ describe("раскладка src: домены, общее и стили", () =>
         .map(rel)
         .filter((f) => f.startsWith(`pages/${domain}/`) && f.includes("/"))
         .filter((f) => f.split("/").length > 3);
-      // Разрешён максимум один уровень вложенности: parts/, lib/, canvas/.
+      // Разрешён максимум один уровень вложенности: parts/, lib/ и под-приложения домена
+      // со своей раскладкой: canvas/ (холст заметок), m3e/ (портированный редактор M3E Canvas).
       for (const f of nested) {
-        expect(["parts", "lib", "canvas"], `${f}: лишний уровень вложенности`).toContain(
+        expect(["parts", "lib", "canvas", "m3e"], `${f}: лишний уровень вложенности`).toContain(
           f.split("/")[2],
         );
       }

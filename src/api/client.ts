@@ -45,6 +45,7 @@ import { moviesApi } from "@/api/apiMovies";
 import { upscaleApi } from "@/api/apiUpscale";
 import { ttsApi } from "@/api/apiTts";
 import { myspaceApi } from "@/api/apiMyspace";
+import { m3eApi } from "@/api/apiM3e";
 import { filesApi } from "@/api/apiFiles";
 import { systemApi } from "@/api/apiSystem";
 import { tuningApi } from "@/api/apiTuning";
@@ -327,6 +328,7 @@ export const api = {
   ...upscaleApi,
   ...ttsApi,
   ...myspaceApi,
+  ...m3eApi,
   ...filesApi,
   ...systemApi,
   ...tuningApi,

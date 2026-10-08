@@ -57,13 +57,21 @@ try {
 }
 
 /** Кэш на 30с — сама проверка не бесплатна (реально дёргает COM). */
-export async function detectMsOffice({
-  force = false,
-}: { force?: boolean } = {}): Promise<{ word: boolean; excel: boolean; powerpoint: boolean; any: boolean }> {
+export async function detectMsOffice({ force = false }: { force?: boolean } = {}): Promise<{
+  word: boolean;
+  excel: boolean;
+  powerpoint: boolean;
+  any: boolean;
+}> {
   const now = Date.now();
   if (!force && msDetectCache && now - msDetectAt < 30000) {
     const c = msDetectCache;
-    return { word: c.word, excel: c.excel, powerpoint: c.powerpoint, any: c.word || c.excel || c.powerpoint };
+    return {
+      word: c.word,
+      excel: c.excel,
+      powerpoint: c.powerpoint,
+      any: c.word || c.excel || c.powerpoint,
+    };
   }
   const [word, excel, powerpoint] = await Promise.all([
     probeComObject(MSOFFICE_APPS.word.progId),
@@ -184,7 +192,15 @@ function sofficeCandidates(): string[] {
     list.push(
       "C:\\Program Files\\LibreOffice\\program\\soffice.exe",
       "C:\\Program Files (x86)\\LibreOffice\\program\\soffice.exe",
-      path.join(os.homedir(), "AppData", "Local", "Programs", "LibreOffice", "program", "soffice.exe"),
+      path.join(
+        os.homedir(),
+        "AppData",
+        "Local",
+        "Programs",
+        "LibreOffice",
+        "program",
+        "soffice.exe",
+      ),
     );
   } else {
     list.push("/usr/bin/soffice", "/usr/bin/libreoffice", "/opt/libreoffice/program/soffice");
@@ -201,7 +217,11 @@ function runVersion(cmd: string): Promise<string | null> {
     try {
       execFile(cmd, ["--version"], { timeout: 10000, windowsHide: true }, (err, stdout) => {
         if (err) return resolve(null);
-        resolve(String(stdout || "").trim().split(/\r?\n/)[0] || "unknown");
+        resolve(
+          String(stdout || "")
+            .trim()
+            .split(/\r?\n/)[0] || "unknown",
+        );
       });
     } catch {
       resolve(null);
@@ -216,7 +236,9 @@ export interface OfficeInfo {
 }
 
 /** Ищет soffice: явный путь из настроек → стандартные каталоги → PATH. Кэш 12с. */
-export async function detectOffice({ force = false }: { force?: boolean } = {}): Promise<OfficeInfo> {
+export async function detectOffice({
+  force = false,
+}: { force?: boolean } = {}): Promise<OfficeInfo> {
   const now = Date.now();
   if (!force && detectCache && now - detectAt < 12000)
     return { found: !!detectCache.path, path: detectCache.path, version: detectCache.version };
@@ -261,7 +283,9 @@ export async function convertOffice(
   origName: string,
   toExt: string,
 ): Promise<{ buf: Buffer; name: string; engine: "msoffice" | "libreoffice" }> {
-  const target = String(toExt || "").toLowerCase().replace(/^\./, "");
+  const target = String(toExt || "")
+    .toLowerCase()
+    .replace(/^\./, "");
   const filter = EXT_TO_FILTER[target];
   if (!filter) throw new Error(`unsupported_target: ${target}`);
 
@@ -287,7 +311,12 @@ export async function convertOffice(
           const outPath = path.join(workDir, "input.pdf");
           await convertViaMsOffice(srcPath, outPath, app);
           const outBuf = fs.readFileSync(outPath);
-          logger.info("office.convert", { from: srcExt, to: filter, size: outBuf.length, engine: "msoffice" });
+          logger.info("office.convert", {
+            from: srcExt,
+            to: filter,
+            size: outBuf.length,
+            engine: "msoffice",
+          });
           return { buf: outBuf, name: `${baseName}.pdf`, engine: "msoffice" };
         }
       }
@@ -317,7 +346,10 @@ export async function convertOffice(
         args,
         { timeout: 5 * 60 * 1000, windowsHide: true, maxBuffer: 8 * 1024 * 1024 },
         (err, _stdout, stderr) => {
-          if (err) return reject(new Error(`soffice_failed: ${String(stderr || err.message).slice(0, 500)}`));
+          if (err)
+            return reject(
+              new Error(`soffice_failed: ${String(stderr || err.message).slice(0, 500)}`),
+            );
           resolve();
         },
       );
@@ -326,7 +358,12 @@ export async function convertOffice(
     const outPath = path.join(workDir, `input.${filter}`);
     if (!fs.existsSync(outPath)) throw new Error("office_no_output");
     const outBuf = fs.readFileSync(outPath);
-    logger.info("office.convert", { from: srcExt, to: filter, size: outBuf.length, engine: "libreoffice" });
+    logger.info("office.convert", {
+      from: srcExt,
+      to: filter,
+      size: outBuf.length,
+      engine: "libreoffice",
+    });
     return { buf: outBuf, name: `${baseName}.${filter}`, engine: "libreoffice" };
   } finally {
     fs.rmSync(workDir, { recursive: true, force: true });

@@ -54,7 +54,11 @@ export function listLaunchers(): LauncherEntry[] {
   return readLaunchers().sort((a, b) => a.name.localeCompare(b.name));
 }
 
-export function createLauncher(input: { name: string; exePath: string; args?: string }): LauncherEntry {
+export function createLauncher(input: {
+  name: string;
+  exePath: string;
+  args?: string;
+}): LauncherEntry {
   const entry: LauncherEntry = {
     id: crypto.randomUUID(),
     name: String(input.name || "").trim() || path.basename(input.exePath),
@@ -115,10 +119,17 @@ export interface ScheduledTask {
   schedule: string;
 }
 
-function execFileAsync(cmd: string, args: string[]): Promise<{ ok: boolean; stdout: string; stderr: string }> {
+function execFileAsync(
+  cmd: string,
+  args: string[],
+): Promise<{ ok: boolean; stdout: string; stderr: string }> {
   return new Promise((resolve) => {
     execFile(cmd, args, { windowsHide: true, timeout: 10000 }, (err, stdout, stderr) => {
-      resolve({ ok: !err, stdout: String(stdout || ""), stderr: String(stderr || err?.message || "") });
+      resolve({
+        ok: !err,
+        stdout: String(stdout || ""),
+        stderr: String(stderr || err?.message || ""),
+      });
     });
   });
 }
@@ -154,7 +165,12 @@ export async function listScheduledTasks(): Promise<ScheduledTask[]> {
     const cols = parseCsvLine(line);
     const [name, nextRun, status] = cols;
     if (!name || !name.startsWith(TASK_FOLDER)) continue;
-    out.push({ name: name.slice(TASK_FOLDER.length), nextRun: nextRun || "", status: status || "", schedule: "" });
+    out.push({
+      name: name.slice(TASK_FOLDER.length),
+      nextRun: nextRun || "",
+      status: status || "",
+      schedule: "",
+    });
   }
   return out;
 }
@@ -170,10 +186,13 @@ export async function createScheduledTask(input: {
 }): Promise<{ ok: boolean; error?: string }> {
   const launcher = readLaunchers().find((x) => x.id === input.launcherId);
   if (!launcher) return { ok: false, error: "launcher_not_found" };
-  const safeName = String(input.name || "").trim().replace(/[\\/:*?"<>|]/g, "_");
+  const safeName = String(input.name || "")
+    .trim()
+    .replace(/[\\/:*?"<>|]/g, "_");
   if (!safeName) return { ok: false, error: "missing_name" };
 
-  if (!IS_WINDOWS) return createScheduledTaskLinux(safeName, safeName, launcher, input.schedule, input.time);
+  if (!IS_WINDOWS)
+    return createScheduledTaskLinux(safeName, safeName, launcher, input.schedule, input.time);
 
   const tr = launcher.args ? `"${launcher.exePath}" ${launcher.args}` : `"${launcher.exePath}"`;
   const tn = TASK_FOLDER + safeName;

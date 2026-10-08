@@ -59,6 +59,7 @@ import appTimeTrackerRouter from "./routes/appTimeTracker";
 import automationRouter from "./routes/automation";
 import budgetRouter from "./routes/budget";
 import quickNotesRouter from "./routes/quickNotes";
+import m3eRouter from "./routes/m3e";
 import killSwitchRouter from "./routes/killSwitch";
 import tuningRouter from "./routes/tuning";
 import privacyRouter from "./routes/privacy";
@@ -217,6 +218,8 @@ function createApp(): express.Express {
     next();
   });
   app.use(authMiddleware);
+  // доски Canvas хранят вставленные картинки прямо в JSON — им нужен лимит побольше
+  app.use("/api/myspace/holst", express.json({ limit: "40mb" }));
   app.use(express.json({ limit: "2mb" }));
   // Per-page проксирование: по заголовку X-App-Page размечаем req.appPage /
   // req.proxy / req.proxyUrl (см. server/middleware/perPageProxy.js).
@@ -256,6 +259,7 @@ function createApp(): express.Express {
   app.use("/api/automation", automationRouter);
   app.use("/api/budget", budgetRouter);
   app.use("/api/quicknotes", quickNotesRouter);
+  app.use("/api/m3e", m3eRouter);
   app.use("/api/killswitch", killSwitchRouter);
   app.use("/api/tuning", tuningRouter);
   app.use("/api/privacy", privacyRouter);

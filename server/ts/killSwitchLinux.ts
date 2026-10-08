@@ -32,10 +32,17 @@ const POLL_MS = 4000;
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const proxyCore = require("./proxyCore") as { getCoreStatus(): { running: boolean } };
 
-function execFileAsync(cmd: string, args: string[]): Promise<{ ok: boolean; stdout: string; stderr: string }> {
+function execFileAsync(
+  cmd: string,
+  args: string[],
+): Promise<{ ok: boolean; stdout: string; stderr: string }> {
   return new Promise((resolve) => {
     execFile(cmd, args, { timeout: 8000 }, (err, stdout, stderr) => {
-      resolve({ ok: !err, stdout: String(stdout || ""), stderr: String(stderr || err?.message || "") });
+      resolve({
+        ok: !err,
+        stdout: String(stdout || ""),
+        stderr: String(stderr || err?.message || ""),
+      });
     });
   });
 }
@@ -51,7 +58,10 @@ async function hasNft(): Promise<boolean> {
  * пароля. В отличие от Windows UAC, здесь нет отдельного модуля elevate —
  * pkexec делает то же самое одной внешней командой без обвязки в проекте.
  */
-async function runPrivileged(cmd: string, args: string[]): Promise<{ ok: boolean; error?: string }> {
+async function runPrivileged(
+  cmd: string,
+  args: string[],
+): Promise<{ ok: boolean; error?: string }> {
   const r = await execFileAsync("pkexec", [cmd, ...args]);
   if (!r.ok) return { ok: false, error: r.stderr || "elevation_failed" };
   return { ok: true };
@@ -123,7 +133,16 @@ async function installBlockRuleIpt(): Promise<{ ok: boolean; error?: string }> {
     if (!r.ok) return r;
   }
   await runPrivileged("iptables", ["-A", IPT_CHAIN, "-o", "lo", "-j", "ACCEPT"]);
-  const r2 = await runPrivileged("iptables", ["-A", IPT_CHAIN, "-j", "DROP", "-m", "comment", "--comment", RULE_COMMENT]);
+  const r2 = await runPrivileged("iptables", [
+    "-A",
+    IPT_CHAIN,
+    "-j",
+    "DROP",
+    "-m",
+    "comment",
+    "--comment",
+    RULE_COMMENT,
+  ]);
   return r2;
 }
 
@@ -208,7 +227,9 @@ export async function startupCleanup(): Promise<void> {
   try {
     if (await ruleExists()) {
       await removeBlockRule();
-      logger.warn("killSwitch.startup_cleanup", { message: "removed leftover block rule from previous session" });
+      logger.warn("killSwitch.startup_cleanup", {
+        message: "removed leftover block rule from previous session",
+      });
     }
   } catch (e) {
     logger.error("killSwitch.startup_cleanup_failed", { error: (e as Error).message });

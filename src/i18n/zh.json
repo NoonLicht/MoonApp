@@ -1042,6 +1042,7 @@
     "stage_crawl": "抓取页面中",
     "stage_optimize": "优化媒体中",
     "stage_pack": "打包 .sitebak 中",
+    "stage_done": "完成",
     "pagesDone": "页面：{{n}}",
     "openLive": "打开原网站",
     "previewOffline": "离线预览",

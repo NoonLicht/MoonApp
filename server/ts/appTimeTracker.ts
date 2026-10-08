@@ -125,7 +125,9 @@ export function todayStats(): { date: string; apps: { name: string; seconds: num
 
 export function history(days: number): { date: string; totalSeconds: number }[] {
   const all = readAll();
-  const dates = Object.keys(all).sort().slice(-Math.max(1, Math.min(90, days)));
+  const dates = Object.keys(all)
+    .sort()
+    .slice(-Math.max(1, Math.min(90, days)));
   return dates.map((date) => ({
     date,
     totalSeconds: Object.values(all[date]).reduce((s, v) => s + v, 0),

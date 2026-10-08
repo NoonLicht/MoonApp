@@ -81,7 +81,6 @@ export function isLockedError(e: unknown): boolean {
   );
 }
 
-
 export interface BrowserCookieResult {
   cookies: Record<string, string>;
   probes: BrowserProbe[];
@@ -203,7 +202,10 @@ export function encryptChromiumValue(value: string, key: Buffer, hostKey?: strin
   const nonce = crypto.randomBytes(12);
   const cipher = crypto.createCipheriv("aes-256-gcm", key, nonce);
   const plain = hostKey
-    ? Buffer.concat([crypto.createHash("sha256").update(hostKey, "utf8").digest(), Buffer.from(value, "utf8")])
+    ? Buffer.concat([
+        crypto.createHash("sha256").update(hostKey, "utf8").digest(),
+        Buffer.from(value, "utf8"),
+      ])
     : Buffer.from(value, "utf8");
   const enc = Buffer.concat([cipher.update(plain), cipher.final()]);
   return Buffer.concat([Buffer.from("v10", "latin1"), nonce, enc, cipher.getAuthTag()]);
@@ -211,7 +213,9 @@ export function encryptChromiumValue(value: string, key: Buffer, hostKey?: strin
 
 /** Подходит ли доменное имя куки целевому хосту (`.<host>`, сам хост, поддомен). */
 export function hostMatches(cookieHost: string, host: string): boolean {
-  const h = String(cookieHost || "").replace(/^\./, "").toLowerCase();
+  const h = String(cookieHost || "")
+    .replace(/^\./, "")
+    .toLowerCase();
   const t = String(host || "").toLowerCase();
   if (!h || !t) return false;
   return h === t || t.endsWith("." + h) || h.endsWith("." + t);
@@ -277,11 +281,15 @@ export function dpapiUnprotectWindows(input: Buffer): Buffer {
     "$p=[System.Security.Cryptography.ProtectedData]::Unprotect($b,$null,'CurrentUser')",
     "[Convert]::ToBase64String($p)",
   ].join("; ");
-  const out = execFileSync("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command", script], {
-    windowsHide: true,
-    encoding: "utf8",
-    timeout: 20000,
-  });
+  const out = execFileSync(
+    "powershell.exe",
+    ["-NoProfile", "-NonInteractive", "-Command", script],
+    {
+      windowsHide: true,
+      encoding: "utf8",
+      timeout: 20000,
+    },
+  );
   return Buffer.from(String(out).trim(), "base64");
 }
 
@@ -456,11 +464,10 @@ export function firefoxProfiles(env: NodeJS.ProcessEnv = process.env): string[] 
 }
 
 /** Куки Firefox-профиля: значения не шифруются, отсекаем только просроченные. */
-export function readFirefoxCookies(opts: {
-  profileDir: string;
-  host: string;
-  now?: number;
-}): { cookies: BrowserCookie[]; failed: number } {
+export function readFirefoxCookies(opts: { profileDir: string; host: string; now?: number }): {
+  cookies: BrowserCookie[];
+  failed: number;
+} {
   const file = path.join(opts.profileDir, "cookies.sqlite");
   const rows = readSqlite<{ name: string; value: string | null; host: string; expiry: number }>(
     file,

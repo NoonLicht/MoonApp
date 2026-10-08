@@ -1,7 +1,7 @@
 import { useI18n } from "@/app/i18n";
 import { useContextMenu } from "@/components/ContextMenu";
 import { usePageToolbar, usePageActive } from "@/components/Toolbar";
-import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useRef, useEffect, useCallback, useMemo, lazy, Suspense } from "react";
 import type {
   VaultFile,
   VaultSearchResult,
@@ -28,6 +28,9 @@ import {
   Hash,
   PanelLeftOpen,
   Sparkles,
+  Sun,
+  Moon,
+  Settings2,
   RefreshCw,
   SlidersHorizontal,
   PanelRightOpen,
@@ -42,13 +45,16 @@ import {
 import EditingToolbar from "@/pages/myspace/parts/EditingToolbar";
 import MarkdownRenderer from "@/pages/myspace/parts/MarkdownRenderer";
 import CodeMirrorLiveEditor from "@/pages/myspace/parts/CodeMirrorLiveEditor";
-import type { OcrImageRequest } from "@/pages/myspace/parts/CodeMirrorLiveEditor";
+import type { OcrImageRequest, PdfDropRequest } from "@/pages/myspace/parts/CodeMirrorLiveEditor";
 import OcrDialog from "@/pages/myspace/parts/OcrDialog";
-import { loadOcrPrefs, recognizeNoteImage } from "@/lib/noteOcr";
+import { loadOcrPrefs, recognizeNoteImage, recognizePdf } from "@/lib/noteOcr";
 import type { OcrPrefs } from "@/lib/noteOcr";
 import GraphView from "@/pages/myspace/parts/GraphView";
 import TasksPanel from "@/pages/myspace/parts/TasksPanel";
 import CanvasPage from "@/pages/myspace/canvas/CanvasPage";
+
+// Редактор M3E тяжёлый (таблицы токенов, редактор холста): грузим при первом открытии вкладки.
+const M3ePage = lazy(() => import("@/pages/myspace/m3e/M3ePage"));
 import BookmarksView from "@/pages/myspace/parts/BookmarksView";
 import GitSyncView from "@/pages/myspace/parts/GitSyncView";
 import { createPortal } from "react-dom";
@@ -71,7 +77,7 @@ export default function MyspacePage() {
   const [leftOpen, setLeftOpen] = useState(true);
   const [rightOpen, setRightOpen] = useState(true);
   const [myspaceView, setMyspaceView] = useState<
-    "notes" | "tasks" | "canvas" | "bookmarks" | "sync"
+    "notes" | "tasks" | "canvas" | "m3e" | "bookmarks" | "sync"
   >("notes");
   const [leftTab, setLeftTab] = useState<Side>("explorer");
   const [rightTab, setRightTab] = useState<Right>("backlinks");
@@ -151,6 +157,35 @@ export default function MyspacePage() {
   const [ocrDlg, setOcrDlg] = useState(false);
   const [ocrPrefs, setOcrPrefs] = useState<OcrPrefs>(loadOcrPrefs);
   const openFilesRef = useRef<OFile[]>([]);
+  // Тема самого документа (светлый/тёмный лист), независимо от темы приложения; по заметке.
+  const [docThemes, setDocThemes] = useState<Record<string, "light" | "dark">>(() => {
+    try {
+      return JSON.parse(localStorage.getItem("moonapp.noteDocTheme") || "{}");
+    } catch {
+      return {};
+    }
+  });
+  const cycleDocTheme = (p: string) =>
+    setDocThemes((prev) => {
+      const cur = prev[p];
+      const next = { ...prev };
+      if (!cur) next[p] = document.querySelector(".app-shell.theme-dark") ? "light" : "dark";
+      else if (cur === "light") next[p] = "dark";
+      else delete next[p];
+      try {
+        localStorage.setItem("moonapp.noteDocTheme", JSON.stringify(next));
+      } catch {
+        /* без запоминания */
+      }
+      return next;
+    });
+  // PDF, брошенный в заметку: идёт постраничное распознавание, его можно отменить.
+  const [pdfJob, setPdfJob] = useState<{
+    name: string;
+    done: number;
+    total: number;
+    ac: AbortController;
+  } | null>(null);
   // Активная вкладка в ref: ответ ИИ приходит асинхронно, и если пользователь
   // успел переключиться, текст чужой заметки в редактор попасть не должен.
   const activeTabRef = useRef<string | null>(null);
@@ -288,30 +323,36 @@ export default function MyspacePage() {
     }
   };
 
-  const schedSave = useCallback(
-    (p: string) => {
-      if (saveTimer.current) clearTimeout(saveTimer.current);
-      saveTimer.current = setTimeout(async () => {
-        setSaving(true);
-        const f = openFiles.find((x) => x.path === p);
-        if (f && f.modified) {
-          try {
-            await api.myspaceWrite(p, f.content, f.frontmatter);
-            setError("");
-          } catch (e: any) {
-            setError("Save failed: " + e.message);
-          }
-          setOpenFiles((prev) => prev.map((x) => (x.path === p ? { ...x, modified: false } : x)));
+  const schedSave = useCallback((p: string) => {
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(async () => {
+      setSaving(true);
+      /* из ref, а не из замыкания: к моменту срабатывания таймера вкладка уже обновлена,
+       * а замыкание помнит текст до последней правки (вставленная картинка не записывалась) */
+      const f = openFilesRef.current.find((x) => x.path === p);
+      if (f && f.modified) {
+        try {
+          await api.myspaceWrite(p, f.content, f.frontmatter);
+          setError("");
+        } catch (e: any) {
+          setError("Save failed: " + e.message);
         }
-        setSaving(false);
-      }, 250);
-    },
-    [openFiles],
-  );
+        /* правка, сделанная пока шла запись, остаётся несохранённой */
+        setOpenFiles((prev) =>
+          prev.map((x) =>
+            x.path === p && x.content === f.content ? { ...x, modified: false } : x,
+          ),
+        );
+      }
+      setSaving(false);
+    }, 250);
+  }, []);
 
   useEffect(() => {
     openFilesRef.current = openFiles;
   }, [openFiles]);
+
+  const updContentRef = useRef<(p: string, c: string) => void>(() => undefined);
 
   const updContent = (p: string, c: string) => {
     setOpenFiles((prev) =>
@@ -322,6 +363,9 @@ export default function MyspacePage() {
     // тогда изменения сохраняются по Ctrl+S или при закрытии вкладки.
     if (msCfg.autosave) schedSave(p);
   };
+  useEffect(() => {
+    updContentRef.current = updContent;
+  });
 
   /**
    * Кнопка «OCR» на картинке: модель переводит её в Markdown (текст, таблицы, формулы), а рисунки
@@ -345,7 +389,10 @@ export default function MyspacePage() {
         const at = f ? f.content.indexOf(needle) : -1;
         const end = f && at >= 0 ? f.content.indexOf(")", at + needle.length) : -1;
         if (f && path && at >= 0 && end >= 0) {
-          updContent(path, f.content.slice(0, at) + r.markdown + f.content.slice(end + 1));
+          updContentRef.current(
+            path,
+            f.content.slice(0, at) + r.markdown + f.content.slice(end + 1),
+          );
         } else setAttachError(t("myspace.ocr.imageGone"));
       } catch (e) {
         const m = (e as Error).message;
@@ -367,6 +414,58 @@ export default function MyspacePage() {
       busy: t("myspace.ocr.busy"),
     }),
     [t],
+  );
+
+  /**
+   * PDF, брошенный на редактор: страницы по очереди распознаются, текст каждой подставляется на место
+   * маркера (результат появляется в заметке по мере готовности).
+   */
+  const runPdf = useCallback(
+    async (req: PdfDropRequest) => {
+      const path = activeTab;
+      const ac = new AbortController();
+      setAttachError("");
+      setPdfJob({ name: req.file.name, done: 0, total: 0, ac });
+      // Если редактор закрыли (ушли в другую заметку), правим сохранённый текст файла.
+      const swap = (from: string, to: string): void => {
+        if (req.replace(from, to)) return;
+        const f = path ? openFilesRef.current.find((x) => x.path === path) : undefined;
+        if (f && path && f.content.includes(from))
+          updContentRef.current(
+            path,
+            f.content.replace(from, () => to),
+          );
+      };
+      try {
+        const r = await recognizePdf(
+          req.file,
+          async (blob, name) => (await api.myspaceUploadAsset(blob, name)).url,
+          ocrPrefs,
+          {
+            signal: ac.signal,
+            onProgress: (done, total) => setPdfJob((j) => (j ? { ...j, done, total } : j)),
+            onPage: (n, _total, md) =>
+              swap(req.marker, `${n > 1 ? "---\n\n" : ""}${md}\n\n${req.marker}`),
+          },
+        );
+        if (r.empty.length)
+          setAttachError(t("myspace.ocr.pdfEmpty", { pages: r.empty.join(", ") }));
+      } catch (e) {
+        const m = (e as Error).message;
+        if ((e as Error).name === "AbortError" || ac.signal.aborted) {
+          /* отмена пользователем: уже распознанное остаётся в заметке */
+        } else if (/ocr_model_missing|build_missing/.test(m)) {
+          setAttachError(t("myspace.ocr.needSetup"));
+          setOcrDlg(true);
+        } else setAttachError(t("myspace.ocr.failed", { error: m }));
+      } finally {
+        swap(`${req.marker}\n`, "");
+        swap(req.marker, "");
+        setPdfJob(null);
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [activeTab, ocrPrefs, t],
   );
 
   /** Вставляет ![alt](url) в позицию, запомненную в момент клика по кнопке
@@ -1192,6 +1291,9 @@ export default function MyspacePage() {
         >
           🎨 Canvas
         </button>
+        <button onClick={() => setMyspaceView("m3e")} style={viewTabStyle(myspaceView === "m3e")}>
+          🧩 {t("myspace.m3eTab")}
+        </button>
         <button
           onClick={() => setMyspaceView("bookmarks")}
           style={viewTabStyle(myspaceView === "bookmarks")}
@@ -1835,6 +1937,46 @@ export default function MyspacePage() {
                       </button>
                     </>
                   )}
+                  {activeTab && (
+                    <button
+                      onClick={() => cycleDocTheme(activeTab)}
+                      title={
+                        docThemes[activeTab] === "light"
+                          ? "Светлый лист → тёмный"
+                          : docThemes[activeTab] === "dark"
+                            ? "Тёмный лист → как в приложении"
+                            : "Фон документа: светлый / тёмный"
+                      }
+                      style={{
+                        background: docThemes[activeTab] ? "var(--track)" : "transparent",
+                        border: "none",
+                        padding: "3px 5px",
+                        borderRadius: 4,
+                        cursor: "pointer",
+                        color: docThemes[activeTab] ? "var(--amber)" : "var(--text-tertiary)",
+                        display: "flex",
+                      }}
+                    >
+                      {docThemes[activeTab] === "dark" ? <Moon size={12} /> : <Sun size={12} />}
+                    </button>
+                  )}
+                  {activeTab && (
+                    <button
+                      onClick={() => setOcrDlg(true)}
+                      title={t("myspace.ocr.settings")}
+                      style={{
+                        background: "transparent",
+                        border: "none",
+                        padding: "3px 5px",
+                        borderRadius: 4,
+                        cursor: "pointer",
+                        color: "var(--text-tertiary)",
+                        display: "flex",
+                      }}
+                    >
+                      <Settings2 size={12} />
+                    </button>
+                  )}
                   <button
                     onClick={() => setRightOpen(!rightOpen)}
                     style={{
@@ -2028,6 +2170,35 @@ export default function MyspacePage() {
                     if (f) void uploadAndInsertImage(f, f.name);
                   }}
                 />
+                {pdfJob && (
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10,
+                      padding: "4px 12px",
+                      fontSize: 12,
+                      color: "var(--text-secondary)",
+                      background: "var(--amber-soft)",
+                      borderBottom: "1px solid var(--glass-border)",
+                    }}
+                  >
+                    <span style={{ flex: 1 }}>
+                      {t("myspace.ocr.pdfProgress", {
+                        name: pdfJob.name,
+                        done: Math.min(pdfJob.done + 1, pdfJob.total || 1),
+                        total: pdfJob.total || "…",
+                      })}
+                    </span>
+                    <button
+                      type="button"
+                      className="btn btn-ghost"
+                      onClick={() => pdfJob.ac.abort()}
+                    >
+                      {t("myspace.ocr.pdfCancel")}
+                    </button>
+                  </div>
+                )}
                 {attachError && (
                   <div
                     style={{
@@ -2041,187 +2212,198 @@ export default function MyspacePage() {
                     {attachError}
                   </div>
                 )}
-                {activeTab &&
-                  (() => {
-                    const af = openFiles.find((f) => f.path === activeTab);
-                    if (!af) return null;
-                    // Smooth scroll sync via requestAnimationFrame
-                    const syncScroll = (source: string) => {
-                      if (typeof window === "undefined") return; // среда без DOM (тесты)
-                      if (window._msSyncRaf) cancelAnimationFrame(window._msSyncRaf);
-                      window._msSyncRaf = requestAnimationFrame(() => {
-                        window._msSyncRaf = undefined;
-                        const ta = document.querySelector(".ms-edit-textarea");
-                        const pv = document.querySelector(".ms-preview-pane");
-                        if (!ta || !pv) return;
-                        if (source === "edit") {
-                          const sh = ta.scrollHeight - ta.clientHeight;
-                          if (sh > 0) {
-                            const r = ta.scrollTop / sh;
-                            pv.scrollTop = r * (pv.scrollHeight - pv.clientHeight);
-                          }
-                        } else {
-                          const sh = pv.scrollHeight - pv.clientHeight;
-                          if (sh > 0) {
-                            const r = pv.scrollTop / sh;
-                            ta.scrollTop = r * (ta.scrollHeight - ta.clientHeight);
-                          }
-                        }
-                      });
-                    };
-                    const editPane = (
-                      <textarea
-                        key="edit"
-                        className="ms-edit-textarea"
-                        value={edContent}
-                        onChange={(e) => updContent(activeTab, e.target.value)}
-                        onScroll={() => syncScroll("edit")}
-                        spellCheck={msCfg.spellcheck}
-                        /* Идёт ИИ-оформление: текст на диске перезапишет сервер,
-                           поэтому правки в это время запрещены (см. runNotesAi). */
-                        readOnly={!!aiBusy}
-                        placeholder="Start writing... Use [[wiki-links]] and #tags"
-                        style={{
-                          ...txStyle,
-                          borderRight:
-                            previewMode === "split" ? "1px solid var(--glass-border)" : "none",
-                        }}
-                      />
-                    );
-                    const previewPane = (
-                      <div
-                        key="preview"
-                        className="ms-preview-pane"
-                        onScroll={() => syncScroll("preview")}
-                        style={{
-                          flex: 1,
-                          minHeight: 0,
-                          overflow: "auto",
-                          padding: "20px 24px",
-                          background: "transparent",
-                        }}
-                      >
-                        <MarkdownRenderer
-                          content={edContent}
-                          onWikiLink={(title: string) => {
-                            const findNote = (
-                              nodes: VaultFile[],
-                              ttl: string,
-                            ): VaultFile | null => {
-                              for (const n of nodes) {
-                                if (
-                                  n.type === "note" &&
-                                  (n.name.replace(/\.md$/, "").toLowerCase() ===
-                                    ttl.toLowerCase() ||
-                                    n.name === ttl + ".md")
-                                )
-                                  return n;
-                                if (n.children) {
-                                  const r: VaultFile | null = findNote(n.children, ttl);
-                                  if (r) return r;
-                                }
-                              }
-                              return null;
-                            };
-                            const t = findNote(tree, title);
-                            const fn = t ? t.path : title.replace(/[/\\?%*:|"<>]/g, "_") + ".md";
-                            openFile(fn);
-                          }}
-                          onTagClick={(tag: string) => {
-                            setLeftTab("search");
-                            setSq(tag);
-                          }}
-                          onToggleCheckbox={(lineIndex: number) => {
-                            const lines = edContent.split("\n");
-                            if (lineIndex >= lines.length) return;
-                            const l = lines[lineIndex];
-                            const m = l.match(/^(\s*(?:[-*+]\s+)?\[)([ xX])(\]\s*.*)/);
-                            if (!m) return;
-                            const newChar = m[2] === "x" || m[2] === "X" ? " " : "x";
-                            lines[lineIndex] = m[1] + newChar + m[3];
-                            updContent(activeTab, lines.join("\n"));
-                          }}
-                        />
-                      </div>
-                    );
-                    if (previewMode === "live")
-                      return (
-                        <CodeMirrorLiveEditor
-                          key={activeTab}
-                          content={edContent}
-                          onChange={(v: string) => updContent(activeTab, v)}
-                          spellCheck={msCfg.spellcheck}
-                          readOnly={!!aiBusy}
-                          onOcrImage={(r) => void runOcr(r)}
-                          onOcrSettings={() => setOcrDlg(true)}
-                          ocrBusy={ocrBusy}
-                          ocrLabels={ocrLabels}
-                          placeholder="Start writing... Use [[wiki-links]] and #tags"
-                          onWikiLink={(title: string) => {
-                            const findNote = (
-                              nodes: VaultFile[],
-                              ttl: string,
-                            ): VaultFile | null => {
-                              for (const n of nodes) {
-                                if (
-                                  n.type === "note" &&
-                                  (n.name.replace(/\.md$/, "").toLowerCase() ===
-                                    ttl.toLowerCase() ||
-                                    n.name === ttl + ".md")
-                                )
-                                  return n;
-                                if (n.children) {
-                                  const r: VaultFile | null = findNote(n.children, ttl);
-                                  if (r) return r;
-                                }
-                              }
-                              return null;
-                            };
-                            const t2 = findNote(tree, title);
-                            const fn = t2 ? t2.path : title.replace(/[/\\?%*:|"<>]/g, "_") + ".md";
-                            openFile(fn);
-                          }}
-                          onTagClick={(tag: string) => {
-                            setLeftTab("search");
-                            setSq(tag);
-                          }}
-                          onToggleCheckbox={(lineIndex: number) => {
-                            const lines = edContent.split("\n");
-                            if (lineIndex >= lines.length) return;
-                            const l = lines[lineIndex];
-                            const m = l.match(/^(\s*(?:[-*+]\s+)?\[)([ xX])(\]\s*.*)/);
-                            if (!m) return;
-                            const newChar = m[2] === "x" || m[2] === "X" ? " " : "x";
-                            lines[lineIndex] = m[1] + newChar + m[3];
-                            updContent(activeTab, lines.join("\n"));
-                          }}
-                          onPasteImage={async (blob: Blob) => {
-                            try {
-                              const ext = blob.type.split("/")[1] || "png";
-                              const { url } = await api.myspaceUploadAsset(
-                                blob,
-                                `clipboard.${ext}`,
-                              );
-                              return `![image](${url})`;
-                            } catch (e) {
-                              setAttachError((e as Error).message);
-                              return null;
+                {activeTab && (
+                  <div
+                    className={
+                      docThemes[activeTab] ? `note-doc-${docThemes[activeTab]}` : undefined
+                    }
+                    style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}
+                  >
+                    {(() => {
+                      const af = openFiles.find((f) => f.path === activeTab);
+                      if (!af) return null;
+                      // Smooth scroll sync via requestAnimationFrame
+                      const syncScroll = (source: string) => {
+                        if (typeof window === "undefined") return; // среда без DOM (тесты)
+                        if (window._msSyncRaf) cancelAnimationFrame(window._msSyncRaf);
+                        window._msSyncRaf = requestAnimationFrame(() => {
+                          window._msSyncRaf = undefined;
+                          const ta = document.querySelector(".ms-edit-textarea");
+                          const pv = document.querySelector(".ms-preview-pane");
+                          if (!ta || !pv) return;
+                          if (source === "edit") {
+                            const sh = ta.scrollHeight - ta.clientHeight;
+                            if (sh > 0) {
+                              const r = ta.scrollTop / sh;
+                              pv.scrollTop = r * (pv.scrollHeight - pv.clientHeight);
                             }
+                          } else {
+                            const sh = pv.scrollHeight - pv.clientHeight;
+                            if (sh > 0) {
+                              const r = pv.scrollTop / sh;
+                              ta.scrollTop = r * (ta.scrollHeight - ta.clientHeight);
+                            }
+                          }
+                        });
+                      };
+                      const editPane = (
+                        <textarea
+                          key="edit"
+                          className="ms-edit-textarea"
+                          value={edContent}
+                          onChange={(e) => updContent(activeTab, e.target.value)}
+                          onScroll={() => syncScroll("edit")}
+                          spellCheck={msCfg.spellcheck}
+                          /* Идёт ИИ-оформление: текст на диске перезапишет сервер,
+                           поэтому правки в это время запрещены (см. runNotesAi). */
+                          readOnly={!!aiBusy}
+                          placeholder="Start writing... Use [[wiki-links]] and #tags"
+                          style={{
+                            ...txStyle,
+                            borderRight:
+                              previewMode === "split" ? "1px solid var(--glass-border)" : "none",
                           }}
                         />
                       );
-                    if (previewMode === "preview") return previewPane;
-                    if (previewMode === "split")
-                      return (
+                      const previewPane = (
                         <div
-                          style={{ flex: 1, display: "flex", minHeight: 0, flexDirection: "row" }}
+                          key="preview"
+                          className="ms-preview-pane"
+                          onScroll={() => syncScroll("preview")}
+                          style={{
+                            flex: 1,
+                            minHeight: 0,
+                            overflow: "auto",
+                            padding: "20px 24px",
+                            background: "transparent",
+                          }}
                         >
-                          {editPane}
-                          {previewPane}
+                          <MarkdownRenderer
+                            content={edContent}
+                            onWikiLink={(title: string) => {
+                              const findNote = (
+                                nodes: VaultFile[],
+                                ttl: string,
+                              ): VaultFile | null => {
+                                for (const n of nodes) {
+                                  if (
+                                    n.type === "note" &&
+                                    (n.name.replace(/\.md$/, "").toLowerCase() ===
+                                      ttl.toLowerCase() ||
+                                      n.name === ttl + ".md")
+                                  )
+                                    return n;
+                                  if (n.children) {
+                                    const r: VaultFile | null = findNote(n.children, ttl);
+                                    if (r) return r;
+                                  }
+                                }
+                                return null;
+                              };
+                              const t = findNote(tree, title);
+                              const fn = t ? t.path : title.replace(/[/\\?%*:|"<>]/g, "_") + ".md";
+                              openFile(fn);
+                            }}
+                            onTagClick={(tag: string) => {
+                              setLeftTab("search");
+                              setSq(tag);
+                            }}
+                            onToggleCheckbox={(lineIndex: number) => {
+                              const lines = edContent.split("\n");
+                              if (lineIndex >= lines.length) return;
+                              const l = lines[lineIndex];
+                              const m = l.match(/^(\s*(?:[-*+]\s+)?\[)([ xX])(\]\s*.*)/);
+                              if (!m) return;
+                              const newChar = m[2] === "x" || m[2] === "X" ? " " : "x";
+                              lines[lineIndex] = m[1] + newChar + m[3];
+                              updContent(activeTab, lines.join("\n"));
+                            }}
+                          />
                         </div>
                       );
-                    return editPane;
-                  })()}
+                      if (previewMode === "live")
+                        return (
+                          <CodeMirrorLiveEditor
+                            key={activeTab}
+                            content={edContent}
+                            onChange={(v: string) => updContent(activeTab, v)}
+                            spellCheck={msCfg.spellcheck}
+                            readOnly={!!aiBusy}
+                            onOcrImage={(r) => void runOcr(r)}
+                            onOcrSettings={() => setOcrDlg(true)}
+                            onDropPdf={(r) => void runPdf(r)}
+                            ocrBusy={ocrBusy}
+                            ocrLabels={ocrLabels}
+                            placeholder="Start writing... Use [[wiki-links]] and #tags"
+                            onWikiLink={(title: string) => {
+                              const findNote = (
+                                nodes: VaultFile[],
+                                ttl: string,
+                              ): VaultFile | null => {
+                                for (const n of nodes) {
+                                  if (
+                                    n.type === "note" &&
+                                    (n.name.replace(/\.md$/, "").toLowerCase() ===
+                                      ttl.toLowerCase() ||
+                                      n.name === ttl + ".md")
+                                  )
+                                    return n;
+                                  if (n.children) {
+                                    const r: VaultFile | null = findNote(n.children, ttl);
+                                    if (r) return r;
+                                  }
+                                }
+                                return null;
+                              };
+                              const t2 = findNote(tree, title);
+                              const fn = t2
+                                ? t2.path
+                                : title.replace(/[/\\?%*:|"<>]/g, "_") + ".md";
+                              openFile(fn);
+                            }}
+                            onTagClick={(tag: string) => {
+                              setLeftTab("search");
+                              setSq(tag);
+                            }}
+                            onToggleCheckbox={(lineIndex: number) => {
+                              const lines = edContent.split("\n");
+                              if (lineIndex >= lines.length) return;
+                              const l = lines[lineIndex];
+                              const m = l.match(/^(\s*(?:[-*+]\s+)?\[)([ xX])(\]\s*.*)/);
+                              if (!m) return;
+                              const newChar = m[2] === "x" || m[2] === "X" ? " " : "x";
+                              lines[lineIndex] = m[1] + newChar + m[3];
+                              updContent(activeTab, lines.join("\n"));
+                            }}
+                            onPasteImage={async (blob: Blob) => {
+                              try {
+                                const ext = blob.type.split("/")[1] || "png";
+                                const { url } = await api.myspaceUploadAsset(
+                                  blob,
+                                  `clipboard.${ext}`,
+                                );
+                                return `![image](${url})`;
+                              } catch (e) {
+                                setAttachError((e as Error).message);
+                                return null;
+                              }
+                            }}
+                          />
+                        );
+                      if (previewMode === "preview") return previewPane;
+                      if (previewMode === "split")
+                        return (
+                          <div
+                            style={{ flex: 1, display: "flex", minHeight: 0, flexDirection: "row" }}
+                          >
+                            {editPane}
+                            {previewPane}
+                          </div>
+                        );
+                      return editPane;
+                    })()}
+                  </div>
+                )}
                 {!activeTab && (
                   <div
                     style={{
@@ -2815,6 +2997,16 @@ export default function MyspacePage() {
           style={{ display: "flex", flex: 1, minHeight: 0, overflow: "hidden", margin: "8px 12px" }}
         >
           <CanvasPage />
+        </div>
+      )}
+      {/* ─── M3E VIEW ─── */}
+      {myspaceView === "m3e" && (
+        <div
+          style={{ display: "flex", flex: 1, minHeight: 0, overflow: "hidden", margin: "8px 12px" }}
+        >
+          <Suspense fallback={<div style={{ margin: "auto", fontSize: 13 }}>…</div>}>
+            <M3ePage />
+          </Suspense>
         </div>
       )}
       {/* ─── BOOKMARKS VIEW ─── */}

@@ -1,4 +1,3 @@
-
 export function clip(v: unknown, n: number): string {
   return typeof v === "string" ? v.slice(0, n) : "";
 }

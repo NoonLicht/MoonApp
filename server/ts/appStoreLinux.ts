@@ -46,7 +46,10 @@ export interface AppIndexState {
 function run(cmd: string, args: string[]): Promise<{ stdout: string; code: number }> {
   return new Promise((resolve) => {
     execFile(cmd, args, { maxBuffer: 64 * 1024 * 1024 }, (err, stdout) => {
-      resolve({ stdout: String(stdout || ""), code: err ? (typeof err.code === "number" ? err.code : 1) : 0 });
+      resolve({
+        stdout: String(stdout || ""),
+        code: err ? (typeof err.code === "number" ? err.code : 1) : 0,
+      });
     });
   });
 }
@@ -55,7 +58,8 @@ let flatpakAvailable: boolean | null = null;
 let snapAvailable: boolean | null = null;
 
 async function hasFlatpak(): Promise<boolean> {
-  if (flatpakAvailable === null) flatpakAvailable = (await run("flatpak", ["--version"])).code === 0;
+  if (flatpakAvailable === null)
+    flatpakAvailable = (await run("flatpak", ["--version"])).code === 0;
   return flatpakAvailable;
 }
 
@@ -83,7 +87,12 @@ function parseFlatpakSearch(text: string): AppRow[] {
     if (cols.length < 3) continue;
     const [name, id, version] = cols;
     if (!id || !id.includes(".")) continue; // заголовок таблицы/пустая строка
-    rows.push({ name: name.trim(), id: `flatpak:${id.trim()}`, version: (version || "").trim(), source: "flatpak" });
+    rows.push({
+      name: name.trim(),
+      id: `flatpak:${id.trim()}`,
+      version: (version || "").trim(),
+      source: "flatpak",
+    });
   }
   return rows;
 }
@@ -169,8 +178,17 @@ const FLATHUB_API = "https://flathub.org/api/v2";
 /** Полный официальный список категорий Flathub — проверено живым запросом
  * к /collection/category 2026-09-29 (13:xx), см. отчёт прохода. */
 const FLATHUB_CATEGORIES = [
-  "audiovideo", "development", "education", "healthfitness",
-  "game", "graphics", "network", "office", "science", "system", "utility",
+  "audiovideo",
+  "development",
+  "education",
+  "healthfitness",
+  "game",
+  "graphics",
+  "network",
+  "office",
+  "science",
+  "system",
+  "utility",
 ];
 /** Приблизительное сведение таксономии Flathub к категориям, которые уже
  * понимает фильтр на странице Store (см. CATEGORIES в StorePage.tsx). */
@@ -191,9 +209,16 @@ const FLATHUB_CATEGORY_LABEL: Record<string, string> = {
  * вместе с мессенджерами/torrent-клиентами) — несколько самых частых id
  * переопределяем вручную, чтобы фильтр "Browser" не был пустым. */
 const KNOWN_BROWSER_APP_IDS = new Set([
-  "org.mozilla.firefox", "org.chromium.Chromium", "com.brave.Browser", "com.opera.Opera",
-  "com.microsoft.Edge", "org.gnome.Epiphany", "io.github.zen_browser.zen",
-  "one.ablaze.floorp", "net.mullvad.MullvadBrowser", "org.qutebrowser.qutebrowser",
+  "org.mozilla.firefox",
+  "org.chromium.Chromium",
+  "com.brave.Browser",
+  "com.opera.Opera",
+  "com.microsoft.Edge",
+  "org.gnome.Epiphany",
+  "io.github.zen_browser.zen",
+  "one.ablaze.floorp",
+  "net.mullvad.MullvadBrowser",
+  "org.qutebrowser.qutebrowser",
 ]);
 
 interface FlathubHit {
@@ -238,7 +263,10 @@ async function fetchFlathubCatalog(): Promise<AppSeedRow[]> {
       const r = await fetchFlathubJson(`/collection/category/${cat}`);
       for (const h of r.hits || []) if (!seen.has(h.app_id)) seen.set(h.app_id, flathubHitToRow(h));
     } catch (e) {
-      logger.error("appstore.flathub_category_failed", { category: cat, error: (e as Error).message });
+      logger.error("appstore.flathub_category_failed", {
+        category: cat,
+        error: (e as Error).message,
+      });
     }
   }
   return [...seen.values()];
@@ -256,7 +284,9 @@ function splitSourceId(prefixedId: string): { source: "flatpak" | "snap"; id: st
  * (тот же уровень прав, что и `apt install`) — элевация через pkexec (Polkit),
  * тот же приём, что в killSwitchLinux/zapretLinux. snap install всегда root.
  */
-export async function install(prefixedId: string): Promise<{ ok: boolean; id: string; tail: string }> {
+export async function install(
+  prefixedId: string,
+): Promise<{ ok: boolean; id: string; tail: string }> {
   const { source, id } = splitSourceId(prefixedId);
   if (source === "snap") {
     const r = await run("pkexec", ["snap", "install", id]);
@@ -322,7 +352,12 @@ export function startIndexing(): Promise<AppIndexState> {
     indexState = { ...indexState, done: 1, current: "flatpak-versions" };
     try {
       if (await hasFlatpak()) {
-        const r = await run("flatpak", ["remote-ls", "flathub", "--app", "--columns=application,version"]);
+        const r = await run("flatpak", [
+          "remote-ls",
+          "flathub",
+          "--app",
+          "--columns=application,version",
+        ]);
         if (r.code === 0) {
           const versionById = new Map<string, string>();
           for (const raw of r.stdout.split(/\r?\n/)) {

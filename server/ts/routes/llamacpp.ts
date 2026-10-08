@@ -8,6 +8,7 @@
  *  POST   /api/llamacpp/model/cancel        — отменить загрузку; DELETE /model/:file — удалить
  *  POST   /api/llamacpp/stop                — выгрузить модель из памяти
  *  POST   /api/llamacpp/ocr?model=&device=  — тело: картинка; ответ: HTML-блоки Chandra OCR 2
+ *  POST   /api/llamacpp/ocr/pdf             — тело: PDF; ответ {id, pages}; GET /ocr/pdf/:id/:page — страница PNG
  *  GET    /api/llamacpp/ocr/fetch?url=      — скачать картинку по ссылке (для вставки в заметки)
  */
 import express from "express";
@@ -26,6 +27,7 @@ import {
 } from "../llamacpp/engine";
 import { ttsProblem } from "../llamacpp/tts";
 import { fetchRemoteImage, ocrImage, ocrModels } from "../llamacpp/ocr";
+import { closePdf, openPdf, renderPdfPage } from "../llamacpp/ocrPdf";
 import type { Device } from "../llamacpp/engine";
 import {
   CATALOG,
@@ -133,6 +135,40 @@ router.post("/ocr", express.raw({ type: "image/*", limit: "40mb" }), async (req,
       .status(msg.startsWith("ocr_model_missing") || msg === "build_missing" ? 409 : 500)
       .json({ error: msg.slice(0, 400) });
   }
+});
+
+router.post(
+  "/ocr/pdf",
+  express.raw({ type: "application/pdf", limit: "300mb" }),
+  async (req, res) => {
+    if (!Buffer.isBuffer(req.body) || !req.body.length)
+      return res.status(400).json({ error: "pdf_required" });
+    try {
+      res.json(await openPdf(req.body));
+    } catch (e) {
+      res.status(400).json({ error: String((e as Error).message || e).slice(0, 200) });
+    }
+  },
+);
+
+router.get("/ocr/pdf/:id/:page", async (req, res) => {
+  try {
+    const png = await renderPdfPage(
+      String(req.params.id),
+      Number(req.params.page),
+      Number(req.query.width) || 1800,
+    );
+    res.setHeader("Content-Type", "image/png");
+    res.send(png);
+  } catch (e) {
+    const msg = String((e as Error).message || e);
+    res.status(msg === "pdf_expired" ? 404 : 400).json({ error: msg.slice(0, 200) });
+  }
+});
+
+router.delete("/ocr/pdf/:id", (req, res) => {
+  closePdf(String(req.params.id));
+  res.json({ ok: true });
 });
 
 router.get("/ocr/fetch", async (req, res) => {

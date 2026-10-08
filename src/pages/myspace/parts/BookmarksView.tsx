@@ -50,7 +50,10 @@ function TagEditor({
   const removeTag = (tg: string) => onChange(value.filter((x) => x !== tg));
 
   const pool = useMemo(
-    () => [...new Set([...suggestions, ...EXAMPLE_TAGS])].filter((tg) => !value.includes(tg)).slice(0, 10),
+    () =>
+      [...new Set([...suggestions, ...EXAMPLE_TAGS])]
+        .filter((tg) => !value.includes(tg))
+        .slice(0, 10),
     [suggestions, value],
   );
 
@@ -152,34 +155,50 @@ function ReaderOverlay({
     setJob(null);
     setPagePath("");
     setArchiveId(null);
-    if (bookmark.readerArchiveId) {
-      api
-        .archivePages(bookmark.readerArchiveId)
-        .then((pages) => {
-          if (cancelled) return;
-          const path = pages.pages[0]?.path || "";
-          if (!path) throw new Error("empty");
-          setArchiveId(bookmark.readerArchiveId as string);
-          setPagePath(path);
-          setJob({
-            id: bookmark.readerArchiveId as string,
-            url,
-            name: pages.name || url,
-            stage: "done",
-            progress: 100,
-            pages: pages.total,
-            origSize: 0,
-            bakSize: 0,
-            error: "",
-            done: true,
-          });
-        })
-        .catch(() => {
-          if (!cancelled) crawl();
+    // Открывает готовый .sitebak; false — архива нет или он пуст.
+    const open = async (id: string) => {
+      try {
+        const pages = await api.archivePages(id);
+        if (cancelled) return true;
+        const path = pages.pages[0]?.path || "";
+        if (!path) return false;
+        setArchiveId(id);
+        setPagePath(path);
+        setJob({
+          id,
+          url,
+          name: pages.name || url,
+          stage: "done",
+          progress: 100,
+          pages: pages.total,
+          origSize: 0,
+          bakSize: 0,
+          error: "",
+          done: true,
         });
-    } else {
-      crawl();
-    }
+        return true;
+      } catch {
+        return false;
+      }
+    };
+    void (async () => {
+      if (bookmark.readerArchiveId && (await open(bookmark.readerArchiveId))) return;
+      if (cancelled) return;
+      // Закладка сохранена раньше, чем появилась привязка к архиву: ищем уже
+      // снятую копию этого адреса среди архивов (самые новые — первые).
+      try {
+        const list = await api.archiveList();
+        const norm = (u: string) => u.replace(/#.*$/, "").replace(/\/+$/, "");
+        const found = list.find((a) => a.site && norm(a.site) === norm(url));
+        if (found && !cancelled && (await open(found.id))) {
+          if (found.id !== bookmark.readerArchiveId) onArchived(found.id);
+          return;
+        }
+      } catch {
+        /* нет списка — снимем заново */
+      }
+      if (!cancelled) crawl();
+    })();
     return () => {
       cancelled = true;
       setJobId(null);
@@ -267,7 +286,10 @@ function ReaderOverlay({
             {error ? (
               <div className="arch-view-error">{error}</div>
             ) : !ready ? (
-              <div className="muted-sm" style={{ margin: "auto", display: "flex", alignItems: "center", gap: 8 }}>
+              <div
+                className="muted-sm"
+                style={{ margin: "auto", display: "flex", alignItems: "center", gap: 8 }}
+              >
                 <RefreshCw size={14} className="spin" />
                 {job ? t(`arch.stage_${job.stage}`) : t("bookmarks.readerLoading")}
               </div>
@@ -475,7 +497,10 @@ export default function BookmarksView({ onOpenNote }: Props) {
       )}
 
       {error && (
-        <Glass className="source-placeholder" style={{ borderColor: "var(--coral)", marginBottom: 8 }}>
+        <Glass
+          className="source-placeholder"
+          style={{ borderColor: "var(--coral)", marginBottom: 8 }}
+        >
           <span style={{ color: "var(--coral)" }}>{error}</span>
         </Glass>
       )}

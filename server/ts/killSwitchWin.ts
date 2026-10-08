@@ -40,10 +40,17 @@ let armed = false;
 let pollTimer: ReturnType<typeof setInterval> | null = null;
 let lastError = "";
 
-function execFileAsync(cmd: string, args: string[]): Promise<{ ok: boolean; stdout: string; stderr: string }> {
+function execFileAsync(
+  cmd: string,
+  args: string[],
+): Promise<{ ok: boolean; stdout: string; stderr: string }> {
   return new Promise((resolve) => {
     execFile(cmd, args, { windowsHide: true, timeout: 8000 }, (err, stdout, stderr) => {
-      resolve({ ok: !err, stdout: String(stdout || ""), stderr: String(stderr || err?.message || "") });
+      resolve({
+        ok: !err,
+        stdout: String(stdout || ""),
+        stderr: String(stderr || err?.message || ""),
+      });
     });
   });
 }
@@ -57,7 +64,13 @@ function execFileAsync(cmd: string, args: string[]): Promise<{ ok: boolean; stdo
  * локали.
  */
 async function ruleExists(): Promise<boolean> {
-  const { ok } = await execFileAsync("netsh", ["advfirewall", "firewall", "show", "rule", `name=${RULE_NAME}`]);
+  const { ok } = await execFileAsync("netsh", [
+    "advfirewall",
+    "firewall",
+    "show",
+    "rule",
+    `name=${RULE_NAME}`,
+  ]);
   return ok;
 }
 
@@ -71,7 +84,17 @@ async function installBlockRule(): Promise<{ ok: boolean; error?: string }> {
   if (await ruleExists()) return { ok: true };
   const r = await runElevated(
     "netsh",
-    ["advfirewall", "firewall", "add", "rule", `name=${RULE_NAME}`, "dir=out", "action=block", "enable=yes", "profile=any"],
+    [
+      "advfirewall",
+      "firewall",
+      "add",
+      "rule",
+      `name=${RULE_NAME}`,
+      "dir=out",
+      "action=block",
+      "enable=yes",
+      "profile=any",
+    ],
     { timeoutMs: 30000 },
   );
   if (!r.ok) {
@@ -84,9 +107,13 @@ async function installBlockRule(): Promise<{ ok: boolean; error?: string }> {
 
 async function removeBlockRule(): Promise<{ ok: boolean; error?: string }> {
   if (!(await ruleExists())) return { ok: true };
-  const r = await runElevated("netsh", ["advfirewall", "firewall", "delete", "rule", `name=${RULE_NAME}`], {
-    timeoutMs: 30000,
-  });
+  const r = await runElevated(
+    "netsh",
+    ["advfirewall", "firewall", "delete", "rule", `name=${RULE_NAME}`],
+    {
+      timeoutMs: 30000,
+    },
+  );
   if (!r.ok) {
     logger.error("killSwitch.remove_failed", { error: r.error });
     return { ok: false, error: r.error || "elevation_failed" };
@@ -156,7 +183,9 @@ export async function startupCleanup(): Promise<void> {
   try {
     if (await ruleExists()) {
       await removeBlockRule();
-      logger.warn("killSwitch.startup_cleanup", { message: "removed leftover block rule from previous session" });
+      logger.warn("killSwitch.startup_cleanup", {
+        message: "removed leftover block rule from previous session",
+      });
     }
   } catch (e) {
     logger.error("killSwitch.startup_cleanup_failed", { error: (e as Error).message });

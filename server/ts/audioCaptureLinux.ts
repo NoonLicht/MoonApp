@@ -60,15 +60,28 @@ export async function startSystemAudioCapture(): Promise<{ ok: boolean; error?: 
   if (activeChild) return { ok: true };
   const monitor = await findMonitorSource();
   if (!monitor) {
-    return { ok: false, error: "no_monitor_source: PulseAudio/PipeWire monitor-источник не найден (pactl недоступен?)" };
+    return {
+      ok: false,
+      error:
+        "no_monitor_source: PulseAudio/PipeWire monitor-источник не найден (pactl недоступен?)",
+    };
   }
   const hasParec = await hasBinary("parec");
   const outPath = path.join(os.tmpdir(), `moonapp-sysaudio-${Date.now()}.wav`);
   try {
     if (hasParec) {
-      activeChild = spawn("parec", ["-d", monitor, "--file-format=wav", outPath]) as ChildProcessWithoutNullStreams;
+      activeChild = spawn("parec", [
+        "-d",
+        monitor,
+        "--file-format=wav",
+        outPath,
+      ]) as ChildProcessWithoutNullStreams;
     } else if (await hasBinary("pw-record")) {
-      activeChild = spawn("pw-record", ["--target", monitor, outPath]) as ChildProcessWithoutNullStreams;
+      activeChild = spawn("pw-record", [
+        "--target",
+        monitor,
+        outPath,
+      ]) as ChildProcessWithoutNullStreams;
     } else {
       return { ok: false, error: "no_capture_tool: не найдены ни parec, ни pw-record в PATH" };
     }

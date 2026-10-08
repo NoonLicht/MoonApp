@@ -118,7 +118,15 @@ export async function recognizeNoteImage(
   prefs: OcrPrefs,
   signal?: AbortSignal,
 ): Promise<NoteOcrResult> {
-  const blob = await loadImageBlob(src);
+  return recognizeBlob(await loadImageBlob(src), upload, prefs, signal);
+}
+
+export async function recognizeBlob(
+  blob: Blob,
+  upload: (blob: Blob, name: string) => Promise<string>,
+  prefs: OcrPrefs,
+  signal?: AbortSignal,
+): Promise<NoteOcrResult> {
   const bmp = await createImageBitmap(blob);
   try {
     const scaled = await prepare(bmp);
@@ -131,5 +139,41 @@ export async function recognizeNoteImage(
     return { markdown, ms: res.ms, tokens: res.tokens, build: res.build, gpu: res.gpu };
   } finally {
     bmp.close();
+  }
+}
+
+export interface PdfOcrOptions {
+  signal?: AbortSignal;
+  onProgress?: (done: number, total: number) => void;
+  /** Текст готовой страницы (по порядку). */
+  onPage: (page: number, total: number, markdown: string) => void;
+}
+
+/** Распознать PDF постранично; пустые страницы пропускаются. Возвращает число страниц. */
+export async function recognizePdf(
+  pdf: Blob,
+  upload: (blob: Blob, name: string) => Promise<string>,
+  prefs: OcrPrefs,
+  o: PdfOcrOptions,
+): Promise<{ pages: number; empty: number[] }> {
+  const { id, pages } = await api.llamaPdfOpen(pdf, o.signal);
+  const empty: number[] = [];
+  try {
+    o.onProgress?.(0, pages);
+    for (let n = 1; n <= pages; n++) {
+      if (o.signal?.aborted) throw new DOMException("aborted", "AbortError");
+      const img = await api.llamaPdfPage(id, n, o.signal);
+      try {
+        const r = await recognizeBlob(img, upload, prefs, o.signal);
+        o.onPage(n, pages, r.markdown);
+      } catch (e) {
+        if ((e as Error).message !== "ocr_empty") throw e;
+        empty.push(n);
+      }
+      o.onProgress?.(n, pages);
+    }
+    return { pages, empty };
+  } finally {
+    void api.llamaPdfClose(id);
   }
 }

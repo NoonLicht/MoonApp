@@ -26,7 +26,9 @@ const PY_ENV = { ...process.env, PYTHONIOENCODING: "utf-8", PYTHONUTF8: "1" };
 const SCRIPT = path.join(__dirname, "engines", "ocr_paddle.py");
 
 /* eslint-disable @typescript-eslint/no-require-imports */
-const { detectHardware } = require("./tts") as { detectHardware: () => Promise<{ gpu: { found: boolean } }> };
+const { detectHardware } = require("./tts") as {
+  detectHardware: () => Promise<{ gpu: { found: boolean } }>;
+};
 
 function pythonFor(): string {
   return String(settings.get("voice")?.pythonCmd || "python").trim() || "python";
@@ -84,10 +86,7 @@ export interface OcrStatus {
 
 export async function status(): Promise<OcrStatus> {
   const python = pythonFor();
-  const [mods, hw] = await Promise.all([
-    probeModules(python),
-    detectHardware().catch(() => null),
-  ]);
+  const [mods, hw] = await Promise.all([probeModules(python), detectHardware().catch(() => null)]);
   return {
     python,
     fitz: mods.fitz,
@@ -137,7 +136,10 @@ function runPip(python: string, args: string[], onLine: (l: string) => void): Pr
  * Ставит PyMuPDF (лёгкий, для PDF→JPG) и, если запрошено, PaddleOCR + paddle
  * (CPU или GPU-сборку — выбор пользователя, по умолчанию по detectHardware).
  */
-export function install(withOcr: boolean, device: "cpu" | "gpu" | "auto" = "auto"): OcrInstallState {
+export function install(
+  withOcr: boolean,
+  device: "cpu" | "gpu" | "auto" = "auto",
+): OcrInstallState {
   if (installState.state === "working") return installState;
   installState = { state: "working", progress: 0, phase: "pymupdf", error: "" };
   const python = pythonFor();

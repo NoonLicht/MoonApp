@@ -36,7 +36,12 @@ const EOCD_SIG = 0x06054b50;
 const CD_SIG = 0x02014b50;
 const LOCAL_SIG = 0x04034b50;
 
-async function rangeGet(url: string, start: number, end: number, userAgent: string): Promise<Buffer> {
+async function rangeGet(
+  url: string,
+  start: number,
+  end: number,
+  userAgent: string,
+): Promise<Buffer> {
   const res = await fetch(url, {
     redirect: "follow",
     headers: { "User-Agent": userAgent, Range: `bytes=${start}-${end}` },
@@ -52,7 +57,10 @@ async function rangeGet(url: string, start: number, end: number, userAgent: stri
  * архива не тот, что ожидается (ZIP64, повреждённый EOCD и т.п.) — в этом
  * случае вызывающий код должен откатиться на обычное скачивание.
  */
-export async function listRemoteZipEntries(url: string, userAgent: string): Promise<RemoteZipEntry[]> {
+export async function listRemoteZipEntries(
+  url: string,
+  userAgent: string,
+): Promise<RemoteZipEntry[]> {
   const head = await fetch(url, {
     method: "HEAD",
     redirect: "follow",
@@ -100,7 +108,8 @@ export async function listRemoteZipEntries(url: string, userAgent: string): Prom
     const extraLen = cdBuf.readUInt16LE(p + 30);
     const commentLen = cdBuf.readUInt16LE(p + 32);
     const localOffset = cdBuf.readUInt32LE(p + 42);
-    if (localOffset === 0xffffffff || compSize === 0xffffffff) throw new Error("zip64_not_supported");
+    if (localOffset === 0xffffffff || compSize === 0xffffffff)
+      throw new Error("zip64_not_supported");
     const name = cdBuf.toString("utf8", p + 46, p + 46 + nameLen);
     entries.push({ name, method, compSize, size, crc32, localOffset });
     p += 46 + nameLen + extraLen + commentLen;
@@ -140,7 +149,7 @@ export async function fetchRemoteZipEntry(
   // zlib.crc32 — в Node с 20.12/21.0; если рантайм старее, ограничиваемся
   // проверкой длины (уже сделана выше) вместо падения на отсутствующем API.
   const crc32Fn = (zlib as unknown as { crc32?: (data: Uint8Array) => number }).crc32;
-  if (typeof crc32Fn === "function" && (crc32Fn(out) >>> 0) !== (entry.crc32 >>> 0)) {
+  if (typeof crc32Fn === "function" && crc32Fn(out) >>> 0 !== entry.crc32 >>> 0) {
     throw new Error("zip_crc_mismatch");
   }
   return out;

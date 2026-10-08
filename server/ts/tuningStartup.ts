@@ -378,7 +378,8 @@ const HIDDEN_KINDS: ReadonlySet<StartupKind> = new Set([
 ]);
 
 const SUSPECT_PATH = /\\(temp|tmp|downloads|users\\public|\$recycle\.bin)\\/i;
-const SCRIPT_HOST = /\b(powershell|pwsh|wscript|cscript|mshta|regsvr32|certutil|bitsadmin)(\.exe)?\b|cmd(\.exe)?"?\s+\/[ck]\b/i;
+const SCRIPT_HOST =
+  /\b(powershell|pwsh|wscript|cscript|mshta|regsvr32|certutil|bitsadmin)(\.exe)?\b|cmd(\.exe)?"?\s+\/[ck]\b/i;
 const ENCODED = /\s-(e|enc|encodedcommand)\s+[A-Za-z0-9+/=]{20,}/i;
 
 function classify(r: RawRow): StartupEntry {
@@ -403,7 +404,8 @@ function classify(r: RawRow): StartupEntry {
   if (r.kind === "run" || r.kind === "folder") can.push("toggle");
   if (r.kind === "task" || r.kind === "appinit") can.push("toggle");
   if (r.kind === "service") can.push("svc");
-  if (r.kind === "winlogon" && !r.std && (r.name === "Shell" || r.name === "Userinit")) can.push("reset");
+  if (r.kind === "winlogon" && !r.std && (r.name === "Shell" || r.name === "Userinit"))
+    can.push("reset");
   if (reg || r.kind === "folder" || r.kind === "task") can.push("delete");
   if (reg) can.push("regedit");
   if (r.path && r.exists) can.push("reveal");
@@ -519,7 +521,9 @@ export async function startupAction(id: string, action: StartupAction): Promise<
   if (action === "regedit") {
     const t = regTarget(e);
     if (!t) return fail("unsupported");
-    const last = "Computer\\" + t.key.replace(/^HKLM:\\/, "HKEY_LOCAL_MACHINE\\").replace(/^HKCU:\\/, "HKEY_CURRENT_USER\\");
+    const last =
+      "Computer\\" +
+      t.key.replace(/^HKLM:\\/, "HKEY_LOCAL_MACHINE\\").replace(/^HKCU:\\/, "HKEY_CURRENT_USER\\");
     await runPs(
       String.raw`
 $k = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Applets\Regedit'
@@ -536,12 +540,16 @@ Start-Process regedit.exe
     const enable = action === "enable";
     const run = RUN_LOCS[e.loc];
     const folder = FOLDER_LOCS[e.loc];
-    if (run?.approved) steps = [psStep(approvedScript(run.approved, e.name, enable), machine, e.id)];
-    else if (folder) steps = [psStep(approvedScript(folder.approved, e.name, enable), machine, e.id)];
+    if (run?.approved)
+      steps = [psStep(approvedScript(run.approved, e.name, enable), machine, e.id)];
+    else if (folder)
+      steps = [psStep(approvedScript(folder.approved, e.name, enable), machine, e.id)];
     else if (e.kind === "task") {
       const { p, n } = taskParts(e);
       const cmd = enable ? "Enable-ScheduledTask" : "Disable-ScheduledTask";
-      steps = [psStep(`${cmd} -TaskPath ${psQuote(p)} -TaskName ${psQuote(n)} | Out-Null`, true, e.id)];
+      steps = [
+        psStep(`${cmd} -TaskPath ${psQuote(p)} -TaskName ${psQuote(n)} | Out-Null`, true, e.id),
+      ];
     } else if (e.kind === "appinit") {
       const key = WIN_APPINIT[e.loc];
       steps = [
@@ -566,7 +574,12 @@ Start-Process regedit.exe
     if (!mode) return fail("bad_action");
     steps = [{ exe: "sc.exe", args: ["config", e.name, "start=", mode], admin: true, label: e.id }];
   } else if (action === "reset") {
-    const def = e.name === "Shell" ? "explorer.exe" : e.name === "Userinit" ? "C:\\Windows\\system32\\userinit.exe," : null;
+    const def =
+      e.name === "Shell"
+        ? "explorer.exe"
+        : e.name === "Userinit"
+          ? "C:\\Windows\\system32\\userinit.exe,"
+          : null;
     if (e.kind !== "winlogon" || !def) return fail("unsupported");
     steps = [
       psStep(
@@ -610,7 +623,11 @@ Start-Process regedit.exe
       if (!xml.stdout.trim()) return fail("export_failed");
       fs.writeFileSync(item.file, xml.stdout, "utf8");
       steps = [
-        psStep(`Unregister-ScheduledTask -TaskPath ${psQuote(p)} -TaskName ${psQuote(n)} -Confirm:$false`, true, e.id),
+        psStep(
+          `Unregister-ScheduledTask -TaskPath ${psQuote(p)} -TaskName ${psQuote(n)} -Confirm:$false`,
+          true,
+          e.id,
+        ),
       ];
     } else return fail("unsupported");
     afterOk = () => writeTrash([item, ...readTrash()].slice(0, 200));

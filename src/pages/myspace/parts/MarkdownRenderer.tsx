@@ -4,6 +4,7 @@ import { markedHighlight } from "marked-highlight";
 import hljs from "highlight.js";
 import "highlight.js/styles/github-dark.css";
 import { sanitizeHtml } from "@/lib/sanitize";
+import { findInlineMath, findMathBlock, renderMath } from "@/lib/math";
 
 marked.use(
   markedHighlight({
@@ -31,6 +32,15 @@ interface Props {
 
 // Применяет наши кастомные inline-замены (wikilinks, теги, math, highlight...)
 // к одной строке. Вызывается только для строк вне code fence.
+// Готовый HTML формул на время одного прохода: в текст markdown кладётся безопасный токен, а
+// после marked он заменяется на разметку KaTeX (так marked не трогает "_" и "*" внутри формул).
+let mathStash: string[] = [];
+const MATH_TOKEN = /MOONMATH(\d+)END/g;
+const stashMath = (tex: string, display: boolean): string => {
+  mathStash.push(renderMath(tex, display));
+  return `MOONMATH${mathStash.length - 1}END`;
+};
+
 function processInline(l: string, lineIndex: number): string {
   const cb = l.match(/^(\s*(?:[-*+]\s+)?)\[([ xX])\]\s*(.*)/);
   if (cb) {
@@ -41,10 +51,17 @@ function processInline(l: string, lineIndex: number): string {
       `<span>${cb[3]}</span></span>`
     );
   }
-  // Math block $$...$$ FIRST (before inline math)
-  l = l.replace(/\$\$([^$]+)\$\$/g, '<code class="md-math-block">$1</code>');
-  // Math inline $...$
-  l = l.replace(/\$([^$]+)\$/g, '<code class="md-math">$1</code>');
+  // Формулы $...$ (правила Obsidian) — токеном, чтобы дальнейшие регэкспы их не портили
+  const maths = findInlineMath(l);
+  if (maths.length) {
+    let res = "";
+    let pos = 0;
+    for (const r of maths) {
+      res += l.slice(pos, r.from) + stashMath(r.tex, false);
+      pos = r.to;
+    }
+    l = res + l.slice(pos);
+  }
   // Superscript ^text^
   l = l.replace(/\^([^^]+)\^/g, "<sup>$1</sup>");
   // Subscript ~text~
@@ -74,6 +91,7 @@ function processInline(l: string, lineIndex: number): string {
 const TABLE_SEP_RE = /^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?\s*$/;
 
 function preprocess(text: string): string {
+  mathStash = [];
   const lines = text.split("\n");
   const out: string[] = [];
   let inFence = false;
@@ -95,6 +113,15 @@ function preprocess(text: string): string {
     if (inFence) {
       out.push(raw);
       continue;
+    }
+    // Формула-блок $$ ... $$ (в том числе на нескольких строках) — отдельным абзацем
+    if (raw.trimStart().startsWith("$$")) {
+      const mb = findMathBlock(lines, i);
+      if (mb) {
+        out.push("", stashMath(mb.tex, true), "");
+        i = mb.end;
+        continue;
+      }
     }
     // Строки таблиц пропускаем как есть: наши inline-регэкспы (sup/sub через
     // ^ и ~, math через $) ломают содержимое ячеек и marked перестаёт
@@ -141,9 +168,17 @@ export default function MarkdownRenderer({
 
   const html = useMemo(() => {
     const preprocessed = preprocess(content);
+    const stash = mathStash;
+    const restore = (h: string): string =>
+      h
+        .replace(/<p>\s*(MOONMATH\d+END)\s*<\/p>/g, "$1")
+        .replace(MATH_TOKEN, (_, n) => {
+          const html = stash[Number(n)] ?? "";
+          return html.includes("katex-display") ? `<div class="md-math-display">${html}</div>` : html;
+        });
     try {
       // marked.parseSync exists in v18+
-      return marked.parse(preprocessed) as string;
+      return restore(marked.parse(preprocessed) as string);
     } catch {
       return `<p>${preprocessed}</p>`;
     }

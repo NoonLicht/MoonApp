@@ -149,7 +149,11 @@ export async function transcribeAndSave(input: TranscribeInput): Promise<QuickNo
     const all = readAll();
     all.unshift(note);
     writeAll(all);
-    logger.info("quickNotes.transcribeAndSave", { id, chars: result.text.length, kept: !!audioFile });
+    logger.info("quickNotes.transcribeAndSave", {
+      id,
+      chars: result.text.length,
+      kept: !!audioFile,
+    });
     return note;
   } finally {
     fs.rmSync(wavPath, { force: true });
@@ -161,7 +165,11 @@ export async function transcribeAndSave(input: TranscribeInput): Promise<QuickNo
 function probeWavDurationSec(wavPath: string): number | null {
   try {
     const buf = fs.readFileSync(wavPath);
-    if (buf.length < 12 || buf.toString("ascii", 0, 4) !== "RIFF" || buf.toString("ascii", 8, 12) !== "WAVE") {
+    if (
+      buf.length < 12 ||
+      buf.toString("ascii", 0, 4) !== "RIFF" ||
+      buf.toString("ascii", 8, 12) !== "WAVE"
+    ) {
       return null;
     }
     // Честный обход чанков — ffmpeg иногда пишет доп. чанки (LIST/fmt с

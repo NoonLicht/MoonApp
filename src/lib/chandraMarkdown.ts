@@ -248,9 +248,11 @@ export async function chandraToMarkdown(html: string, crop: CropFn): Promise<str
     const md = blockNode(el);
     if (md) out.push(md);
   }
-  return out
+  const md = out
     .filter(Boolean)
     .join("\n\n")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
+  // Ответ без блоков (чистый текст) или блок-рисунок без подписи не должен давать пустоту.
+  return md || (doc.body.textContent ?? "").replace(/\s+/g, " ").trim();
 }

@@ -20,7 +20,15 @@ function probeDuration(ffprobeBin: string, file: string): Promise<number> {
   return new Promise((resolve) => {
     execFile(
       ffprobeBin,
-      ["-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", file],
+      [
+        "-v",
+        "error",
+        "-show_entries",
+        "format=duration",
+        "-of",
+        "default=noprint_wrappers=1:nokey=1",
+        file,
+      ],
       { timeout: 15000, windowsHide: true },
       (err, stdout) => {
         const n = Number(String(stdout || "").trim());
@@ -112,7 +120,8 @@ function runEncode(
     child.on("error", reject);
     child.on("close", (code) => {
       if (code === 0) resolve();
-      else reject(new Error(`ffmpeg (${encoder}) exited with code ${code}: ${stderr.slice(-1000)}`));
+      else
+        reject(new Error(`ffmpeg (${encoder}) exited with code ${code}: ${stderr.slice(-1000)}`));
     });
   });
 }
@@ -143,7 +152,10 @@ export async function finalizeRecording(
     // занят другим процессом) — не проваливаем всю запись, а один раз
     // откатываемся на программный libx264, который работает всегда.
     if (encoder === "libx264") throw e;
-    logger.info("screenshots.finalize.hw_fallback", { failedEncoder: encoder, error: (e as Error).message });
+    logger.info("screenshots.finalize.hw_fallback", {
+      failedEncoder: encoder,
+      error: (e as Error).message,
+    });
     encoder = "libx264";
     await runEncode(info.ffmpeg, tmpWebmPath, outPath, encoder, bitrateMbps, extraAudioPath);
   }

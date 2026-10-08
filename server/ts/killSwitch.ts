@@ -8,7 +8,9 @@
  * коду вообще не нужно знать про платформу.
  */
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const impl = (process.platform === "win32" ? require("./killSwitchWin") : require("./killSwitchLinux")) as {
+const impl = (
+  process.platform === "win32" ? require("./killSwitchWin") : require("./killSwitchLinux")
+) as {
   arm(): void;
   disarm(): Promise<{ ok: boolean; error?: string }>;
   status(): Promise<{ armed: boolean; blocking: boolean; proxyRunning: boolean; error: string }>;

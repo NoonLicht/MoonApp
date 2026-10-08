@@ -180,7 +180,10 @@ export async function create(input: {
       vaultWriteFile(fileName, body, { source: input.url, savedAt: now });
       articleNotePath = fileName;
     } catch (e) {
-      logger.error("bookmarks.save_article_failed", { url: input.url, error: (e as Error).message });
+      logger.error("bookmarks.save_article_failed", {
+        url: input.url,
+        error: (e as Error).message,
+      });
       // Не роняем создание закладки целиком — просто без сохранённой статьи.
     }
   }

@@ -71,6 +71,7 @@ server/ocrEngine.js
 server/officeConvert.js
 server/pdfProtect.js
 server/games.js
+server/m3e.js
 server/netTools.js
 server/notesGit.js
 server/appTimeTracker.js

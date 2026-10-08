@@ -48,6 +48,21 @@ const PORTALED = [
     cls: "graph-fs-backdrop",
   },
   {
+    src: "src/pages/myspace/m3e/pages/PagesOverview.tsx",
+    css: "src/styles/notes.css",
+    cls: "graph-fs-backdrop",
+  },
+  {
+    src: "src/pages/myspace/m3e/pages/PageSwitcher.tsx",
+    css: "src/styles/notes.css",
+    cls: "graph-fs-backdrop",
+  },
+  {
+    src: "src/pages/myspace/m3e/pages/Menu.tsx",
+    css: "src/styles/m3e-pages.css",
+    cls: "m3p-menu",
+  },
+  {
     src: "src/pages/myspace/MyspacePage.tsx",
     css: "src/styles/notes.css",
     cls: "graph-fs-backdrop",

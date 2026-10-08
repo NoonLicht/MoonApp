@@ -1051,9 +1051,7 @@ export const stmts = {
   tdUpsert: {
     run: (row: Record<string, Value>) =>
       run(() => {
-        const existing = tables.torrent_downloads.rows.find(
-          (r) => r.info_hash === row.info_hash,
-        );
+        const existing = tables.torrent_downloads.rows.find((r) => r.info_hash === row.info_hash);
         const stamp = now();
         if (existing)
           return tables.torrent_downloads.updateWhere((r) => r.id === existing.id, {

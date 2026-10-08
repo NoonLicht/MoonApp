@@ -76,18 +76,26 @@ export function qpdfSearchPaths(): string[] {
 
 function runQpdf(qpdf: string, args: string[]): Promise<void> {
   return new Promise((resolve, reject) => {
-    execFile(qpdf, args, { timeout: 2 * 60 * 1000, windowsHide: true, maxBuffer: 4 * 1024 * 1024 }, (err, _o, stderr) => {
-      // qpdf возвращает 2 на "warnings" (напр. чуть повреждённый, но читаемый
-      // PDF) — это не провал операции, файл на выходе валиден.
-      if (err && (err as NodeJS.ErrnoException & { code?: number }).code !== 2) {
-        return reject(new Error(`qpdf_failed: ${String(stderr || err.message).slice(0, 400)}`));
-      }
-      resolve();
-    });
+    execFile(
+      qpdf,
+      args,
+      { timeout: 2 * 60 * 1000, windowsHide: true, maxBuffer: 4 * 1024 * 1024 },
+      (err, _o, stderr) => {
+        // qpdf возвращает 2 на "warnings" (напр. чуть повреждённый, но читаемый
+        // PDF) — это не провал операции, файл на выходе валиден.
+        if (err && (err as NodeJS.ErrnoException & { code?: number }).code !== 2) {
+          return reject(new Error(`qpdf_failed: ${String(stderr || err.message).slice(0, 400)}`));
+        }
+        resolve();
+      },
+    );
   });
 }
 
-async function withTempFiles<T>(buf: Buffer, fn: (inPath: string, outPath: string) => Promise<T>): Promise<T> {
+async function withTempFiles<T>(
+  buf: Buffer,
+  fn: (inPath: string, outPath: string) => Promise<T>,
+): Promise<T> {
   const id = crypto.randomBytes(6).toString("hex");
   const dir = path.join(DIRS.tmp, `qpdf-${id}`);
   fs.mkdirSync(dir, { recursive: true });
@@ -108,15 +116,7 @@ export async function protectPdf(buf: Buffer, password: string): Promise<Buffer>
   const pw = String(password || "");
   if (!pw) throw new Error("missing_password");
   return withTempFiles(buf, async (inPath, outPath) => {
-    await runQpdf(qpdf.path as string, [
-      "--encrypt",
-      pw,
-      pw,
-      "256",
-      "--",
-      inPath,
-      outPath,
-    ]);
+    await runQpdf(qpdf.path as string, ["--encrypt", pw, pw, "256", "--", inPath, outPath]);
     const out = fs.readFileSync(outPath);
     logger.info("pdf.protect", { size: out.length });
     return out;

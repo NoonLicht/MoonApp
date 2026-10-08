@@ -88,16 +88,14 @@ const REBOOT = new Set([
 ]);
 
 function build(w: WuTweak): Tweak {
-  const ops: Op[] = w.reg.map(
-    (r): RegOp => ({
-      t: "reg",
-      key: r.key,
-      name: r.name,
-      type: r.type,
-      value: r.value,
-      def: r.def,
-    }),
-  );
+  const ops: Op[] = w.reg.map((r): RegOp => ({
+    t: "reg",
+    key: r.key,
+    name: r.name,
+    type: r.type,
+    value: r.value,
+    def: r.def,
+  }));
   if (w.svc.length) ops.push(svcOp(w.svc));
   if (w.inv || w.undo) ops.push(scriptOp(w.inv, w.undo));
   const risk: Risk = HIGH_RISK.has(w.id)

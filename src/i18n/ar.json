@@ -1042,6 +1042,7 @@
     "stage_crawl": "جارٍ الزحف",
     "stage_optimize": "جارٍ تحسين الوسائط",
     "stage_pack": "جارٍ حزم .sitebak",
+    "stage_done": "تم",
     "pagesDone": "الصفحات: {{n}}",
     "openLive": "فتح الموقع الحي",
     "previewOffline": "معاينة دون اتصال",

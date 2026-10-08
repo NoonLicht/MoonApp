@@ -116,13 +116,17 @@ export function decryptSecret(token: unknown): string {
  *  никогда для обычного decryptSecret. */
 function legacyAesDecrypt(token: string): string | null {
   try {
-    const key = crypto.createHash("sha256").update(LEGACY_DEV_KEY_DO_NOT_USE_FOR_ENCRYPTION).digest();
+    const key = crypto
+      .createHash("sha256")
+      .update(LEGACY_DEV_KEY_DO_NOT_USE_FOR_ENCRYPTION)
+      .digest();
     const [ivB, tagB, dataB] = token.split(".");
     const decipher = crypto.createDecipheriv(ALGO, key, Buffer.from(ivB, "base64"));
     decipher.setAuthTag(Buffer.from(tagB, "base64"));
-    return Buffer.concat([decipher.update(Buffer.from(dataB, "base64")), decipher.final()]).toString(
-      "utf8",
-    );
+    return Buffer.concat([
+      decipher.update(Buffer.from(dataB, "base64")),
+      decipher.final(),
+    ]).toString("utf8");
   } catch {
     return null; // не тот ключ (уже перешифровано/safeStorage) — не легаси, пропускаем
   }

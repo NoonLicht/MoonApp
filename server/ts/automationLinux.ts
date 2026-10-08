@@ -25,10 +25,17 @@ const UNIT_PREFIX = "moonapp-";
 const SYSTEMD_USER_DIR = path.join(os.homedir(), ".config", "systemd", "user");
 const CRON_MARKER = (id: string): string => `# moonapp:${id}`;
 
-function execFileAsync(cmd: string, args: string[]): Promise<{ ok: boolean; stdout: string; stderr: string }> {
+function execFileAsync(
+  cmd: string,
+  args: string[],
+): Promise<{ ok: boolean; stdout: string; stderr: string }> {
   return new Promise((resolve) => {
     execFile(cmd, args, { timeout: 10000 }, (err, stdout, stderr) => {
-      resolve({ ok: !err, stdout: String(stdout || ""), stderr: String(stderr || err?.message || "") });
+      resolve({
+        ok: !err,
+        stdout: String(stdout || ""),
+        stderr: String(stderr || err?.message || ""),
+      });
     });
   });
 }
@@ -68,7 +75,13 @@ function scheduleToTimerSection(schedule: ScheduleKind, time?: string): string {
   }
 }
 
-function writeUnitFiles(id: string, name: string, launcher: LauncherEntry, schedule: ScheduleKind, time?: string): void {
+function writeUnitFiles(
+  id: string,
+  name: string,
+  launcher: LauncherEntry,
+  schedule: ScheduleKind,
+  time?: string,
+): void {
   fs.mkdirSync(SYSTEMD_USER_DIR, { recursive: true });
   const unit = unitName(id);
   const execLine = launcher.args ? `${launcher.exePath} ${launcher.args}` : launcher.exePath;
@@ -237,7 +250,9 @@ export async function createScheduledTaskLinux(
   return res;
 }
 
-export async function deleteScheduledTaskLinux(id: string): Promise<{ ok: boolean; error?: string }> {
+export async function deleteScheduledTaskLinux(
+  id: string,
+): Promise<{ ok: boolean; error?: string }> {
   if (await systemdUserAvailable()) return deleteViaSystemd(id);
   return deleteViaCron(id);
 }
@@ -255,7 +270,12 @@ export async function listScheduledTasksLinux(): Promise<ScheduledTask[]> {
     });
 }
 
-export async function runScheduledTaskNowLinux(id: string): Promise<{ ok: boolean; error?: string }> {
+export async function runScheduledTaskNowLinux(
+  id: string,
+): Promise<{ ok: boolean; error?: string }> {
   if (await systemdUserAvailable()) return runNowViaSystemd(id);
-  return { ok: false, error: "cron_manual_run_unsupported: запустите лаунчер напрямую из карточки" };
+  return {
+    ok: false,
+    error: "cron_manual_run_unsupported: запустите лаунчер напрямую из карточки",
+  };
 }

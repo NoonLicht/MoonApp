@@ -1902,3 +1902,40 @@
   font-weight: 600;
   color: var(--text-secondary);
 }
+
+/* Формулы KaTeX в превью заметок: блок по центру, длинные формулы прокручиваются */
+.md-renderer .md-math-display {
+  margin: 12px 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  text-align: center;
+}
+.md-renderer .md-math-display .katex-display {
+  margin: 0;
+}
+
+/* Тема документа: лист заметки светлый или тёмный независимо от темы приложения */
+.note-doc-light,
+.note-doc-dark {
+  background: var(--bg-base);
+}
+.note-doc-light {
+  --bg-base: #fbfbfd;
+  --surface-solid: #ffffff;
+  --glass-border: rgba(20, 20, 40, 0.1);
+  --track: rgba(20, 20, 40, 0.07);
+  --text-primary: #1c1d2b;
+  --text-secondary: #5b5b70;
+  --text-tertiary: #8b8ba0;
+  color-scheme: light;
+}
+.note-doc-dark {
+  --bg-base: #14161f;
+  --surface-solid: #1b1e2b;
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --track: rgba(255, 255, 255, 0.08);
+  --text-primary: #f1f0f6;
+  --text-secondary: #a9a8bb;
+  --text-tertiary: #71708a;
+  color-scheme: dark;
+}

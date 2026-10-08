@@ -977,6 +977,8 @@ export interface HolstFileEntry {
   path: string;
   updatedAt: string | null;
   thumbnail: string | null;
+  /** отображаемое имя доски (в имени файла остаётся только ASCII) */
+  title?: string | null;
 }
 
 export interface HolstReadResult {

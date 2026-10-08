@@ -132,7 +132,10 @@ export async function testConnection(): Promise<ConnectionTestResult> {
     logger.info("notesGit.testConnection.ok", { url: cfg.remoteUrl, branches: branches.length });
     return { ok: true, branches, usedAuth: !!onAuth };
   } catch (e) {
-    logger.warn("notesGit.testConnection.failed", { url: cfg.remoteUrl, error: (e as Error).message });
+    logger.warn("notesGit.testConnection.failed", {
+      url: cfg.remoteUrl,
+      error: (e as Error).message,
+    });
     return { ok: false, usedAuth: !!onAuth, error: (e as Error).message };
   }
 }
@@ -213,8 +216,22 @@ export async function sync(): Promise<SyncResult> {
 
   if (!localBranchExists && remoteBranchExists) {
     try {
-      await git.fetch({ fs, http, dir: REPO_DIR, remote: "origin", ref: cfg.branch, singleBranch: true, onAuth });
-      await git.checkout({ fs, dir: REPO_DIR, ref: cfg.branch, remote: "origin", noUpdateHead: false });
+      await git.fetch({
+        fs,
+        http,
+        dir: REPO_DIR,
+        remote: "origin",
+        ref: cfg.branch,
+        singleBranch: true,
+        onAuth,
+      });
+      await git.checkout({
+        fs,
+        dir: REPO_DIR,
+        ref: cfg.branch,
+        remote: "origin",
+        noUpdateHead: false,
+      });
       logger.info("notesGit.initial_clone", { branch: cfg.branch });
     } catch (e) {
       return { ok: false, error: `initial_clone_failed: ${(e as Error).message}` };
@@ -286,7 +303,9 @@ export async function sync(): Promise<SyncResult> {
 export async function status(): Promise<{ dirty: boolean; files: number }> {
   await ensureRepo();
   const matrix = await git.statusMatrix({ fs, dir: REPO_DIR });
-  const dirtyFiles = matrix.filter(([, head, workdir, stage]) => !(head === workdir && workdir === stage));
+  const dirtyFiles = matrix.filter(
+    ([, head, workdir, stage]) => !(head === workdir && workdir === stage),
+  );
   return { dirty: dirtyFiles.length > 0, files: dirtyFiles.length };
 }
 

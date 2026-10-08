@@ -7,19 +7,14 @@ import {
   type Extension,
   type Text,
 } from "@codemirror/state";
-import {
-  EditorView,
-  Decoration,
-  type DecorationSet,
-  WidgetType,
-  keymap,
-} from "@codemirror/view";
+import { EditorView, Decoration, type DecorationSet, WidgetType, keymap } from "@codemirror/view";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { markdown } from "@codemirror/lang-markdown";
 import { languages } from "@codemirror/language-data";
 import { GFM } from "@lezer/markdown";
 import { syntaxHighlighting, HighlightStyle } from "@codemirror/language";
 import { tags as t } from "@lezer/highlight";
+import { findInlineMath, findMathBlock, renderMath } from "@/lib/math";
 
 interface Props {
   content: string;
@@ -37,9 +32,19 @@ interface Props {
   onOcrImage?: (req: OcrImageRequest) => void;
   /** Шестерёнка на картинке: настройки распознавания. */
   onOcrSettings?: () => void;
+  /** PDF, брошенный на редактор: распознавание страниц и подстановка текста. */
+  onDropPdf?: (req: PdfDropRequest) => void;
   /** src картинок, которые распознаются прямо сейчас (на них показывается индикатор). */
   ocrBusy?: string[];
   ocrLabels?: { ocr: string; settings: string; busy: string };
+}
+
+/** Брошенный в заметку PDF: на его месте стоит `marker`, который потом заменяют текстом. */
+export interface PdfDropRequest {
+  file: File;
+  marker: string;
+  /** Заменить точный фрагмент `from` на `to`; false — фрагмента в документе уже нет. */
+  replace: (from: string, to: string) => boolean;
 }
 
 export interface OcrImageRequest {
@@ -55,6 +60,18 @@ interface OcrState {
 }
 
 const refreshDecorations = StateEffect.define<null>();
+
+/** Заменить точный фрагмент документа (ближайший к `near`); false — не найден или редактор закрыт. */
+function replaceExact(view: EditorView, from: string, to: string, near: number): boolean {
+  if (!view.dom.isConnected) return false;
+  const doc = view.state.doc.toString();
+  let best = -1;
+  for (let i = doc.indexOf(from); i >= 0; i = doc.indexOf(from, i + 1))
+    if (best < 0 || Math.abs(i - near) < Math.abs(best - near)) best = i;
+  if (best < 0) return false;
+  view.dispatch({ changes: { from: best, to: best + from.length, insert: to } });
+  return true;
+}
 
 const IMAGE_URL = /^https?:\/\/\S+\.(?:png|jpe?g|gif|webp|bmp|avif)(?:\?\S*)?$/i;
 
@@ -83,14 +100,91 @@ class CheckboxWidget extends WidgetType {
   }
 }
 
-/* ─── Виджет картинки: заменяет "![alt](src)" превью-изображением. Справа сверху — кнопки
-   «распознать» (Chandra OCR) и настроек; сами события уходят в редактор как cm-image-ocr. ─── */
+/** `![alt|300](src)` — ширина картинки в alt, как в Obsidian. */
+function splitAlt(raw: string): { alt: string; width: number | null } {
+  const m = /^(.*?)\|(\d{2,4})$/.exec(raw);
+  return m ? { alt: m[1], width: Number(m[2]) } : { alt: raw, width: null };
+}
+
+/** Записать ширину картинки в её разметку (null — вернуть исходный размер). */
+function setImageWidth(view: EditorView, pos: number, width: number | null) {
+  const head = view.state.doc.sliceString(pos, Math.min(view.state.doc.length, pos + 4000));
+  const m = /^!\[([^\]]*)\]\(/.exec(head);
+  if (!m) return;
+  const next = splitAlt(m[1]).alt + (width ? `|${Math.round(width)}` : "");
+  if (next === m[1]) return;
+  view.dispatch({ changes: { from: pos + 2, to: pos + 2 + m[1].length, insert: next } });
+}
+
+/** Просмотр картинки во весь экран: колесо — масштаб, перетаскивание — сдвиг, клик по фону / Esc — закрыть. */
+function openLightbox(src: string, alt: string) {
+  const bg = document.createElement("div");
+  bg.style.cssText =
+    "position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.86);display:grid;place-items:center;overflow:hidden;cursor:zoom-out";
+  const img = document.createElement("img");
+  img.src = src;
+  img.alt = alt;
+  img.draggable = false;
+  img.style.cssText =
+    "max-width:92vw;max-height:92vh;transition:transform .08s;cursor:grab;user-select:none";
+  bg.appendChild(img);
+  let k = 1;
+  let x = 0;
+  let y = 0;
+  const apply = () => (img.style.transform = `translate(${x}px,${y}px) scale(${k})`);
+  const key = (e: KeyboardEvent) => {
+    if (e.key === "Escape") {
+      e.stopPropagation();
+      close();
+    }
+  };
+  function close() {
+    window.removeEventListener("keydown", key, true);
+    bg.remove();
+  }
+  bg.addEventListener("wheel", (e) => {
+    e.preventDefault();
+    k = Math.min(12, Math.max(0.2, k * (e.deltaY < 0 ? 1.15 : 1 / 1.15)));
+    apply();
+  });
+  let drag: { px: number; py: number; x: number; y: number } | null = null;
+  img.addEventListener("pointerdown", (e) => {
+    e.preventDefault();
+    img.setPointerCapture(e.pointerId);
+    drag = { px: e.clientX, py: e.clientY, x, y };
+  });
+  img.addEventListener("pointermove", (e) => {
+    if (!drag) return;
+    x = drag.x + e.clientX - drag.px;
+    y = drag.y + e.clientY - drag.py;
+    apply();
+  });
+  img.addEventListener("pointerup", () => {
+    drag = null;
+  });
+  img.addEventListener("dblclick", () => {
+    k = k === 1 ? 2.5 : 1;
+    x = 0;
+    y = 0;
+    apply();
+  });
+  bg.addEventListener("click", (e) => {
+    if (e.target === bg) close();
+  });
+  window.addEventListener("keydown", key, true);
+  document.body.appendChild(bg);
+}
+
+/* ─── Виджет картинки: заменяет "![alt](src)" превью-изображением. Кнопки (масштаб, на весь экран,
+   «распознать» Chandra OCR, настройки) появляются при наведении; ширину можно тянуть за угол, она
+   сохраняется в разметке как `![alt|300](src)`. События OCR уходят в редактор как cm-image-ocr. ─── */
 class ImageWidget extends WidgetType {
   constructor(
     readonly src: string,
     readonly alt: string,
     readonly busy: boolean,
     readonly labels: OcrState["labels"],
+    readonly width: number | null = null,
   ) {
     super();
   }
@@ -99,7 +193,8 @@ class ImageWidget extends WidgetType {
       other.src === this.src &&
       other.alt === this.alt &&
       other.busy === this.busy &&
-      other.labels === this.labels
+      other.labels === this.labels &&
+      other.width === this.width
     );
   }
   toDOM(view: EditorView) {
@@ -110,14 +205,20 @@ class ImageWidget extends WidgetType {
     img.src = this.src;
     img.alt = this.alt;
     img.loading = "lazy";
+    if (this.width) {
+      img.style.width = `${this.width}px`;
+      img.style.maxHeight = "none";
+      img.style.height = "auto";
+    }
     img.onerror = () => {
       img.classList.add("is-broken");
     };
     wrap.appendChild(img);
     const labels = this.labels;
+    const act = document.createElement("span");
+    act.className = "cm-live-imgact";
+    const cur = () => img.getBoundingClientRect().width || this.width || 300;
     if (labels) {
-      const act = document.createElement("span");
-      act.className = "cm-live-imgact";
       const mk = (cls: string, text: string, title: string, kind: "ocr" | "settings") => {
         const b = document.createElement("button");
         b.type = "button";
@@ -138,19 +239,75 @@ class ImageWidget extends WidgetType {
         return b;
       };
       act.appendChild(mk("cm-live-imgbtn", "OCR", labels.ocr, "ocr"));
-      act.appendChild(mk("cm-live-imgbtn is-icon", "⚙", labels.settings, "settings"));
-      wrap.appendChild(act);
-      if (this.busy) {
-        const o = document.createElement("span");
-        o.className = "cm-live-imgbusy";
-        o.textContent = labels.busy;
-        wrap.appendChild(o);
-      }
     }
+    wrap.appendChild(act);
+    if (labels && this.busy) {
+      const o = document.createElement("span");
+      o.className = "cm-live-imgbusy";
+      o.textContent = labels.busy;
+      wrap.appendChild(o);
+    }
+    // ручка в нижнем правом углу: тянем — ширина меняется, отпускаем — записывается в текст
+    const grip = document.createElement("span");
+    grip.className = "cm-live-imgresize";
+    grip.addEventListener("mousedown", (e) => e.preventDefault());
+    grip.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      grip.setPointerCapture(e.pointerId);
+      const startX = e.clientX;
+      const startW = cur();
+      const max = wrap.parentElement?.clientWidth || 4000;
+      let w = startW;
+      const move = (ev: PointerEvent) => {
+        w = Math.min(max, Math.max(60, startW + ev.clientX - startX));
+        img.style.width = `${w}px`;
+        img.style.height = "auto";
+        img.style.maxHeight = "none";
+      };
+      const up = () => {
+        grip.removeEventListener("pointermove", move);
+        grip.removeEventListener("pointerup", up);
+        grip.removeEventListener("pointercancel", up);
+        setImageWidth(view, view.posAtDOM(wrap), w);
+      };
+      grip.addEventListener("pointermove", move);
+      grip.addEventListener("pointerup", up);
+      grip.addEventListener("pointercancel", up);
+    });
+    wrap.appendChild(grip);
+    img.addEventListener("dblclick", (e) => {
+      e.preventDefault();
+      openLightbox(this.src, this.alt);
+    });
     return wrap;
   }
   ignoreEvent(e: Event) {
-    return (e.target as HTMLElement | null)?.closest?.(".cm-live-imgact") != null;
+    const t = e.target as HTMLElement | null;
+    return !!t?.closest?.(".cm-live-imgact, .cm-live-imgresize") || e.type === "dblclick";
+  }
+}
+
+/* ─── Формулы как в Obsidian: "$…$" в строке и "$$…$$" блоком рисуются KaTeX, пока курсор не
+   на этой строке (под курсором — исходный LaTeX для правки). ─── */
+class MathWidget extends WidgetType {
+  constructor(
+    readonly tex: string,
+    readonly display: boolean,
+  ) {
+    super();
+  }
+  eq(other: MathWidget) {
+    return other.tex === this.tex && other.display === this.display;
+  }
+  toDOM() {
+    const el = document.createElement(this.display ? "div" : "span");
+    el.className = this.display ? "cm-live-math-block" : "cm-live-math";
+    el.innerHTML = renderMath(this.tex, this.display);
+    return el;
+  }
+  ignoreEvent() {
+    return false;
   }
 }
 
@@ -222,7 +379,11 @@ class TableWidget extends WidgetType {
     super();
   }
   eq(other: TableWidget) {
-    return other.source === this.source && other.blockFrom === this.blockFrom && other.blockTo === this.blockTo;
+    return (
+      other.source === this.source &&
+      other.blockFrom === this.blockFrom &&
+      other.blockTo === this.blockTo
+    );
   }
   toDOM() {
     const { rows, align } = parseTableSource(this.source);
@@ -264,7 +425,8 @@ class TableWidget extends WidgetType {
         const cell = document.createElement(isHeader ? "th" : "td");
         cell.contentEditable = "true";
         cell.textContent = cellText;
-        cell.style.textAlign = align[colIdx] === "c" ? "center" : align[colIdx] === "r" ? "right" : "left";
+        cell.style.textAlign =
+          align[colIdx] === "c" ? "center" : align[colIdx] === "r" ? "right" : "left";
         cell.addEventListener("blur", () => {
           const next = rows.map((r) => r.slice());
           next[rowIdx][colIdx] = (cell.textContent || "").trim();
@@ -462,6 +624,7 @@ function buildLiveDecorations(
   const activeLine = state.doc.lineAt(state.selection.main.head).number;
   let inFence = false;
   const tableBlocks = findTableBlocks(state.doc);
+  const allLines = state.doc.toString().split("\n");
 
   for (let ln = 1; ln <= state.doc.lines; ln++) {
     const line = state.doc.line(ln);
@@ -488,13 +651,48 @@ function buildLiveDecorations(
       builder.add(
         line.from,
         line.from,
-        Decoration.line({ attributes: { class: opening ? "cm-live-fence-open" : "cm-live-fence-close" } }),
+        Decoration.line({
+          attributes: { class: opening ? "cm-live-fence-open" : "cm-live-fence-close" },
+        }),
       );
       continue;
     }
     if (inFence) {
-      builder.add(line.from, line.from, Decoration.line({ attributes: { class: "cm-live-fence-line" } }));
+      builder.add(
+        line.from,
+        line.from,
+        Decoration.line({ attributes: { class: "cm-live-fence-line" } }),
+      );
       continue;
+    }
+
+    // Формула-блок "$$ … $$": рисуем KaTeX, а под курсором оставляем исходник.
+    if (text.trimStart().startsWith("$$")) {
+      const mb = findMathBlock(allLines, ln - 1);
+      if (mb) {
+        const startLn = mb.start + 1;
+        const endLn = mb.end + 1;
+        if (activeLine >= startLn && activeLine <= endLn) {
+          for (let k = startLn; k <= endLn; k++) {
+            const lk = state.doc.line(k);
+            builder.add(
+              lk.from,
+              lk.from,
+              Decoration.line({ attributes: { class: "cm-live-math-src" } }),
+            );
+          }
+        } else {
+          const blockTo =
+            endLn + 1 <= state.doc.lines ? state.doc.line(endLn + 1).from : state.doc.length;
+          builder.add(
+            state.doc.line(startLn).from,
+            blockTo,
+            Decoration.replace({ widget: new MathWidget(mb.tex, true), block: true }),
+          );
+        }
+        ln = endLn;
+        continue;
+      }
     }
 
     // Горизонтальная линия "---"/"***"/"___"
@@ -541,16 +739,37 @@ function buildLiveDecorations(
       // цитата "> "
       const qm = text.match(/^\s*>+\s?/);
       if (qm) {
-        builder.add(line.from, line.from + qm[0].length, Decoration.mark({ class: "cm-live-quote-marker" }));
+        builder.add(
+          line.from,
+          line.from + qm[0].length,
+          Decoration.mark({ class: "cm-live-quote-marker" }),
+        );
       }
     }
 
     // Инлайн-разметка внутри остатка строки
     const bodyOffset = bodyFrom - line.from;
     const body = text.slice(bodyOffset);
+    // Формулы "$…$": внутри них "_" и "*" — не курсив, поэтому прячем их от INLINE_RE.
+    const maths = findInlineMath(body);
+    let masked = body;
+    for (const r of maths)
+      masked = masked.slice(0, r.from) + "\u2060".repeat(r.to - r.from) + masked.slice(r.to);
+    let mi = 0;
+    const flushMath = (upTo: number): void => {
+      while (mi < maths.length && maths[mi].from < upTo) {
+        const r = maths[mi++];
+        builder.add(
+          line.from + bodyOffset + r.from,
+          line.from + bodyOffset + r.to,
+          Decoration.replace({ widget: new MathWidget(r.tex, false) }),
+        );
+      }
+    };
     INLINE_RE.lastIndex = 0;
     let m: RegExpExecArray | null;
-    while ((m = INLINE_RE.exec(body))) {
+    while ((m = INLINE_RE.exec(masked))) {
+      flushMath(m.index);
       const from = line.from + bodyOffset + m.index;
       const to = from + m[0].length;
       if (m[1]) {
@@ -594,9 +813,16 @@ function buildLiveDecorations(
         builder.add(to - 2, to, Decoration.replace({}));
       } else if (m[15]) {
         // ![alt](src)
-        builder.add(from, to, Decoration.replace({
-            widget: new ImageWidget(m[17], m[16] || "", ocr.busy.has(m[17]), ocr.labels),
-          }));
+        builder.add(
+          from,
+          to,
+          Decoration.replace({
+            widget: (() => {
+              const { alt, width } = splitAlt(m[16] || "");
+              return new ImageWidget(m[17], alt, ocr.busy.has(m[17]), ocr.labels, width);
+            })(),
+          }),
+        );
       } else if (m[18]) {
         // [text](url)
         builder.add(from, from + 1, Decoration.replace({}));
@@ -608,9 +834,14 @@ function buildLiveDecorations(
         builder.add(from + 1 + m[19].length, to, Decoration.replace({}));
       } else if (m[21]) {
         // #tag
-        builder.add(from, to, Decoration.mark({ class: "cm-live-tag", attributes: { "data-tag": m[21] } }));
+        builder.add(
+          from,
+          to,
+          Decoration.mark({ class: "cm-live-tag", attributes: { "data-tag": m[21] } }),
+        );
       }
     }
+    flushMath(Infinity);
   }
 
   void onToggleCheckbox;
@@ -659,6 +890,7 @@ export default function CodeMirrorLiveEditor({
   onPasteImage,
   onOcrImage,
   onOcrSettings,
+  onDropPdf,
   ocrBusy,
   ocrLabels,
 }: Props) {
@@ -674,6 +906,7 @@ export default function CodeMirrorLiveEditor({
     onPasteImage,
     onOcrImage,
     onOcrSettings,
+    onDropPdf,
   });
 
   useEffect(() => {
@@ -684,8 +917,17 @@ export default function CodeMirrorLiveEditor({
       onPasteImage,
       onOcrImage,
       onOcrSettings,
+      onDropPdf,
     };
-  }, [onWikiLink, onTagClick, onToggleCheckbox, onPasteImage, onOcrImage, onOcrSettings]);
+  }, [
+    onWikiLink,
+    onTagClick,
+    onToggleCheckbox,
+    onPasteImage,
+    onOcrImage,
+    onOcrSettings,
+    onDropPdf,
+  ]);
 
   // Кнопки OCR на картинках и индикатор «идёт распознавание»: состояние читает поле декораций.
   const busyKey = (ocrBusy ?? []).join("\n");
@@ -695,7 +937,12 @@ export default function CodeMirrorLiveEditor({
     st.busy = new Set(ocrBusy ?? []);
     if (hasOcr && ocrLabels) {
       const l = st.labels;
-      if (!l || l.ocr !== ocrLabels.ocr || l.settings !== ocrLabels.settings || l.busy !== ocrLabels.busy)
+      if (
+        !l ||
+        l.ocr !== ocrLabels.ocr ||
+        l.settings !== ocrLabels.settings ||
+        l.busy !== ocrLabels.busy
+      )
         st.labels = ocrLabels;
     } else st.labels = null;
     viewRef.current?.dispatch({ effects: refreshDecorations.of(null) });
@@ -716,8 +963,15 @@ export default function CodeMirrorLiveEditor({
         ".cm-content": {
           fontFamily: "var(--font-mono)",
           lineHeight: "1.6",
-          padding: "20px 24px",
+          /* колонка по центру: на широком окне не растекается от края до края,
+             на узком боковые поля сжимаются вместе с контейнером */
+          padding: "20px clamp(10px, 4cqw, 48px)",
           caretColor: "var(--amber)",
+          flex: "1 1 0",
+          maxWidth: "980px",
+          margin: "0 auto",
+          boxSizing: "border-box",
+          minWidth: "0",
         },
         ".cm-scroller": { overflow: "auto" },
         "&.cm-focused": { outline: "none" },
@@ -767,7 +1021,29 @@ export default function CodeMirrorLiveEditor({
           right: "8px",
           display: "flex",
           gap: "6px",
+          opacity: "0",
+          pointerEvents: "none",
+          transition: "opacity 0.15s",
         },
+        ".cm-live-imgwrap:hover .cm-live-imgact, .cm-live-imgwrap:focus-within .cm-live-imgact": {
+          opacity: "1",
+          pointerEvents: "auto",
+        },
+        ".cm-live-imgresize": {
+          position: "absolute",
+          right: "4px",
+          bottom: "8px",
+          width: "14px",
+          height: "14px",
+          borderRadius: "4px",
+          background: "var(--amber)",
+          border: "2px solid var(--surface-solid, #fff)",
+          cursor: "nwse-resize",
+          opacity: "0",
+          transition: "opacity 0.15s",
+          touchAction: "none",
+        },
+        ".cm-live-imgwrap:hover .cm-live-imgresize": { opacity: "0.95" },
         ".cm-live-imgbtn": {
           font: "inherit",
           fontSize: "12px",
@@ -782,7 +1058,11 @@ export default function CodeMirrorLiveEditor({
           opacity: "0.85",
           backdropFilter: "blur(6px)",
         },
-        ".cm-live-imgbtn:hover": { opacity: "1", borderColor: "var(--amber)", color: "var(--amber)" },
+        ".cm-live-imgbtn:hover": {
+          opacity: "1",
+          borderColor: "var(--amber)",
+          color: "var(--amber)",
+        },
         ".cm-live-imgbtn:disabled": { cursor: "progress", opacity: "0.5" },
         ".cm-live-imgbusy": {
           position: "absolute",
@@ -801,6 +1081,19 @@ export default function CodeMirrorLiveEditor({
           minWidth: "120px",
           minHeight: "28px",
           background: "var(--track, rgba(255,255,255,0.06))",
+        },
+        ".cm-live-math": { color: "var(--text-primary)", padding: "0 1px" },
+        ".cm-live-math-block": {
+          textAlign: "center",
+          padding: "6px 0",
+          overflowX: "auto",
+          overflowY: "hidden",
+          color: "var(--text-primary)",
+        },
+        ".cm-live-math-block .katex-display": { margin: "0" },
+        ".cm-live-math-src": {
+          background: "var(--track, rgba(255,255,255,0.05))",
+          fontFamily: "var(--font-mono)",
         },
         ".cm-live-hr": {
           height: "1px",
@@ -968,7 +1261,10 @@ export default function CodeMirrorLiveEditor({
           e.preventDefault();
           const { from, to } = view.state.selection.main;
           const md = `![](${pasted})`;
-          view.dispatch({ changes: { from, to, insert: md }, selection: { anchor: from + md.length } });
+          view.dispatch({
+            changes: { from, to, insert: md },
+            selection: { anchor: from + md.length },
+          });
           return true;
         }
         if (!callbacksRef.current.onPasteImage) return false;
@@ -1000,25 +1296,45 @@ export default function CodeMirrorLiveEditor({
         return true;
       },
       dragover(e) {
-        if (!callbacksRef.current.onPasteImage) return false;
+        if (!callbacksRef.current.onPasteImage && !callbacksRef.current.onDropPdf) return false;
         if (!Array.from(e.dataTransfer?.types ?? []).includes("Files")) return false;
         e.preventDefault();
         return true;
       },
       drop(e, view) {
-        const files = Array.from(e.dataTransfer?.files ?? []).filter((f) => f.type.startsWith("image/"));
+        const isPdf = (f: File) => f.type === "application/pdf" || /\.pdf$/i.test(f.name);
+        const dropped = Array.from(e.dataTransfer?.files ?? []);
         const upload = callbacksRef.current.onPasteImage;
-        if (!upload || !files.length) return false;
+        const onPdf = callbacksRef.current.onDropPdf;
+        const files = dropped.filter(
+          (f) => (upload && f.type.startsWith("image/")) || (onPdf && isPdf(f)),
+        );
+        if (!files.length) return false;
         e.preventDefault();
         let at = view.posAtCoords({ x: e.clientX, y: e.clientY }) ?? view.state.selection.main.head;
         void (async () => {
           for (const f of files) {
-            const md = await upload(f).catch(() => null);
-            if (!md) continue;
             const line = view.state.doc.lineAt(at);
-            // Картинка — отдельным абзацем, чтобы рядом с ней работали кнопки.
-            const text = `${at > line.from ? "\n" : ""}${md}\n`;
-            view.dispatch({ changes: { from: at, insert: text }, selection: { anchor: at + text.length } });
+            // Картинка и PDF — отдельным абзацем, чтобы рядом с ней работали кнопки.
+            const lead = at > line.from ? "\n" : "";
+            if (isPdf(f)) {
+              const marker = `⏳ PDF «${f.name}» [${Math.random().toString(36).slice(2, 8)}]`;
+              const text = `${lead}${marker}\n`;
+              view.dispatch({
+                changes: { from: at, insert: text },
+                selection: { anchor: at + text.length },
+              });
+              at += text.length;
+              onPdf?.({ file: f, marker, replace: (a, b) => replaceExact(view, a, b, at) });
+              continue;
+            }
+            const md = await upload?.(f).catch(() => null);
+            if (!md) continue;
+            const text = `${lead}${md}\n`;
+            view.dispatch({
+              changes: { from: at, insert: text },
+              selection: { anchor: at + text.length },
+            });
             at += text.length;
           }
         })();
@@ -1035,7 +1351,12 @@ export default function CodeMirrorLiveEditor({
       keymap.of([...defaultKeymap, ...historyKeymap]),
       markdown({ codeLanguages: languages, extensions: [GFM] }),
       syntaxHighlighting(liveHighlight),
-      livePreviewField(onToggleCheckbox, applyTableEdit, tableWidthsRef.current, ocrStateRef.current),
+      livePreviewField(
+        onToggleCheckbox,
+        applyTableEdit,
+        tableWidthsRef.current,
+        ocrStateRef.current,
+      ),
       clickHandler,
       theme,
       EditorView.lineWrapping,
@@ -1056,8 +1377,9 @@ export default function CodeMirrorLiveEditor({
     lastEmitted.current = content;
 
     const onImageAction = (ev: Event) => {
-      const d = (ev as CustomEvent<{ kind: "ocr" | "settings"; pos: number; src: string; alt: string }>)
-        .detail;
+      const d = (
+        ev as CustomEvent<{ kind: "ocr" | "settings"; pos: number; src: string; alt: string }>
+      ).detail;
       if (d.kind === "settings") return callbacksRef.current.onOcrSettings?.();
       const req: OcrImageRequest = {
         src: d.src,
@@ -1121,5 +1443,11 @@ export default function CodeMirrorLiveEditor({
     view.scrollDOM.scrollTop = scrollTop;
   }, [content]);
 
-  return <div ref={hostRef} className="ms-live-editor-cm" style={{ flex: 1, minHeight: 0, overflow: "hidden" }} />;
+  return (
+    <div
+      ref={hostRef}
+      className="ms-live-editor-cm"
+      style={{ flex: 1, minHeight: 0, overflow: "hidden", containerType: "inline-size" }}
+    />
+  );
 }

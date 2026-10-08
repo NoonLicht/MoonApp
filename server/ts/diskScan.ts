@@ -123,7 +123,11 @@ function recordExt(job: Job, name: string, size: number, fullPath: string) {
   }
 }
 
-async function mapLimit<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
+async function mapLimit<T, R>(
+  items: T[],
+  limit: number,
+  fn: (item: T) => Promise<R>,
+): Promise<R[]> {
   const results: R[] = new Array(items.length);
   let i = 0;
   async function worker() {
@@ -284,7 +288,14 @@ async function scanTree(root: string, job: Job): Promise<DiskNode> {
           enqueue({
             dir: childDir,
             depth: task.depth + 1,
-            node: { name: e.name, path: childDir, size: 0, isDir: true, fileCount: 0, children: [] },
+            node: {
+              name: e.name,
+              path: childDir,
+              size: 0,
+              isDir: true,
+              fileCount: 0,
+              children: [],
+            },
             parent: task,
             pendingChildren: 0,
           });
@@ -310,7 +321,14 @@ async function scanTree(root: string, job: Job): Promise<DiskNode> {
     enqueue({
       dir: root,
       depth: 0,
-      node: { name: path.basename(root) || root, path: root, size: 0, isDir: true, fileCount: 0, children: [] },
+      node: {
+        name: path.basename(root) || root,
+        path: root,
+        size: 0,
+        isDir: true,
+        fileCount: 0,
+        children: [],
+      },
       parent: null,
       pendingChildren: 0,
     });
@@ -387,7 +405,13 @@ export function getExtFiles(jobId: string, ext: string): DiskNode[] | null {
   if (!job) return null;
   const bucket = job.extStats.get(ext);
   if (!bucket) return [];
-  return bucket.top.map((f) => ({ name: f.name, path: f.path, size: f.size, isDir: false, fileCount: 1 }));
+  return bucket.top.map((f) => ({
+    name: f.name,
+    path: f.path,
+    size: f.size,
+    isDir: false,
+    fileCount: 1,
+  }));
 }
 
 function psQuote(p: string): string {
@@ -402,14 +426,20 @@ function runPowerShell(script: string): Promise<void> {
     let stderr = "";
     child.stderr.on("data", (d) => (stderr += String(d)));
     child.on("error", reject);
-    child.on("close", (code) => (code === 0 ? resolve() : reject(new Error(stderr.trim() || `exit ${code}`))));
+    child.on("close", (code) =>
+      code === 0 ? resolve() : reject(new Error(stderr.trim() || `exit ${code}`)),
+    );
   });
 }
 
 /** Открыть проводник с выделенным файлом/папкой. */
 export function revealInExplorer(p: string): void {
   if (process.platform === "win32") {
-    spawn("explorer", ["/select,", p], { windowsHide: true, detached: true, stdio: "ignore" }).unref();
+    spawn("explorer", ["/select,", p], {
+      windowsHide: true,
+      detached: true,
+      stdio: "ignore",
+    }).unref();
   } else if (process.platform === "darwin") {
     spawn("open", ["-R", p], { detached: true, stdio: "ignore" }).unref();
   } else {
@@ -489,7 +519,13 @@ export async function listFiles(dirPath: string): Promise<DiskNode[]> {
   const kept = results.slice(0, LIST_FILES_MAX - 1);
   const rest = results.slice(LIST_FILES_MAX - 1);
   const restSize = rest.reduce((s, f) => s + f.size, 0);
-  kept.push({ name: `… ещё ${rest.length} файлов`, path: "", size: restSize, isDir: false, fileCount: rest.length });
+  kept.push({
+    name: `… ещё ${rest.length} файлов`,
+    path: "",
+    size: restSize,
+    isDir: false,
+    fileCount: rest.length,
+  });
   return kept;
 }
 

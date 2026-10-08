@@ -85,7 +85,7 @@ export async function splitPdf(
 /** Поворачивает все страницы PDF на заданный угол (90/180/270 по часовой). */
 export async function rotatePdf(buf: Buffer, angle: number): Promise<Buffer> {
   const doc = await PDFDocument.load(buf);
-  const norm = ((Math.round(angle / 90) * 90) % 360 + 360) % 360;
+  const norm = (((Math.round(angle / 90) * 90) % 360) + 360) % 360;
   for (const page of doc.getPages()) {
     page.setRotation(degrees((page.getRotation().angle + norm) % 360));
   }
@@ -219,7 +219,10 @@ export async function extractText(buf: Buffer): Promise<{ text: string; pages: n
   const parser = new PDFParse({ data: buf });
   try {
     const result = await parser.getText();
-    return { text: result.text || "", pages: Array.isArray(result.pages) ? result.pages.length : 0 };
+    return {
+      text: result.text || "",
+      pages: Array.isArray(result.pages) ? result.pages.length : 0,
+    };
   } finally {
     await parser.destroy();
   }

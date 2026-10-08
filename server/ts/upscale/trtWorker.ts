@@ -14,7 +14,8 @@
 import { buildTrtEngine } from "./trt";
 
 type Req = { id: string; tile?: number };
-type Res = { ok: true; result: Awaited<ReturnType<typeof buildTrtEngine>> } | { ok: false; error: string };
+type Res =
+  { ok: true; result: Awaited<ReturnType<typeof buildTrtEngine>> } | { ok: false; error: string };
 
 process.on("message", (msg: Req | undefined) => {
   if (!msg || typeof msg.id !== "string") return;

@@ -3,12 +3,7 @@ import path from "path";
 import config from "../config";
 import logger from "../logger";
 import { removePath } from "../fsUtil";
-import {
-  frameLimitOrInf,
-  planInterp,
-  planOutFrames,
-  rateFps,
-} from "../upscalePipeline";
+import { frameLimitOrInf, planInterp, planOutFrames, rateFps } from "../upscalePipeline";
 import type {
   BenchEntry,
   BenchResults,

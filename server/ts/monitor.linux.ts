@@ -52,7 +52,15 @@ function parseProcStat(text: string): ProcStatLine[] {
   return lines.map((l) => {
     const parts = l.trim().split(/\s+/).slice(1).map(Number);
     const [user, nice, sys, idle, iowait, irq, softirq, steal] = parts;
-    const total = (user || 0) + (nice || 0) + (sys || 0) + (idle || 0) + (iowait || 0) + (irq || 0) + (softirq || 0) + (steal || 0);
+    const total =
+      (user || 0) +
+      (nice || 0) +
+      (sys || 0) +
+      (idle || 0) +
+      (iowait || 0) +
+      (irq || 0) +
+      (softirq || 0) +
+      (steal || 0);
     return { idle: (idle || 0) + (iowait || 0), total };
   });
 }
@@ -205,9 +213,14 @@ function listMountedDisks(): DiskInfo[] {
 /* -------------------------------- GPU ----------------------------------------- */
 
 async function queryNvidiaGpus(): Promise<GpuInfo[] | null> {
-  const query = "name,temperature.gpu,utilization.gpu,memory.used,memory.total,fan.speed,power.draw";
+  const query =
+    "name,temperature.gpu,utilization.gpu,memory.used,memory.total,fan.speed,power.draw";
   try {
-    const stdout = await run("nvidia-smi", ["--query-gpu=" + query, "--format=csv,noheader,nounits"], 5000);
+    const stdout = await run(
+      "nvidia-smi",
+      ["--query-gpu=" + query, "--format=csv,noheader,nounits"],
+      5000,
+    );
     const gpus: GpuInfo[] = [];
     for (const line of stdout.split(/\r?\n/)) {
       const cols = line.split(",").map((c) => c.trim());

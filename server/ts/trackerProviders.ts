@@ -97,12 +97,18 @@ export const DEFAULT_PRESET: TrackerPreset = RUTOR;
 
 /** Ярлык движка из чего угодно: неизвестное значение — rutracker (совместимость). */
 export function normEngine(value: unknown): TrackerEngine {
-  return String(value || "").trim().toLowerCase() === "rutor" ? "rutor" : "rutracker";
+  return String(value || "")
+    .trim()
+    .toLowerCase() === "rutor"
+    ? "rutor"
+    : "rutracker";
 }
 
 /** Пресет по id (регистр не важен). null — такого пресета нет. */
 export function presetById(id: unknown): TrackerPreset | null {
-  const key = String(id || "").trim().toLowerCase();
+  const key = String(id || "")
+    .trim()
+    .toLowerCase();
   return TRACKER_PRESETS.find((p) => p.id === key) || null;
 }
 
@@ -112,7 +118,9 @@ export function presetById(id: unknown): TrackerPreset | null {
  * движок выводится из адреса площадки ещё при загрузке (см. settings.ts).
  */
 export function presetForEngine(engine: unknown): TrackerPreset {
-  const key = String(engine || "").trim().toLowerCase();
+  const key = String(engine || "")
+    .trim()
+    .toLowerCase();
   if (!key) return DEFAULT_PRESET;
   return TRACKER_PRESETS.find((p) => p.id === key || p.engine === key) || DEFAULT_PRESET;
 }

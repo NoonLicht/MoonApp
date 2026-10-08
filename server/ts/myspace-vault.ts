@@ -81,6 +81,7 @@ export interface VaultHolstSummary {
   path: string;
   updatedAt: string | null;
   thumbnail: string | null;
+  title?: string | null;
 }
 
 function ensureDirs(): void {
@@ -354,6 +355,7 @@ function listHolsts(): VaultHolstSummary[] {
             path: entry.name,
             updatedAt: data.meta?.updatedAt || data.updatedAt || null,
             thumbnail: data.meta?.thumbnail || null,
+            title: typeof data.name === "string" ? data.name : null,
           });
         } catch {
           /* skip corrupt */

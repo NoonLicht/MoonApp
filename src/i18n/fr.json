@@ -1042,6 +1042,7 @@
     "stage_crawl": "Exploration des pages",
     "stage_optimize": "Optimisation des médias",
     "stage_pack": "Empaquetage .sitebak",
+    "stage_done": "Terminé",
     "pagesDone": "Pages : {{n}}",
     "openLive": "Ouvrir le site réel",
     "previewOffline": "Aperçu hors ligne",

@@ -79,7 +79,9 @@ function buildTx(input: TxInput): Transaction {
     amount,
     category: String(input.category || "Другое").trim() || "Другое",
     note: String(input.note || ""),
-    date: /^\d{4}-\d{2}-\d{2}$/.test(input.date || "") ? input.date! : new Date().toISOString().slice(0, 10),
+    date: /^\d{4}-\d{2}-\d{2}$/.test(input.date || "")
+      ? input.date!
+      : new Date().toISOString().slice(0, 10),
     createdAt: Date.now(),
     currency: String(input.currency || "RUB").toUpperCase(),
     rates: null,
@@ -105,7 +107,12 @@ export async function create(input: TxInput): Promise<Transaction> {
   const all = readAll();
   all.push(tx);
   writeAll(all);
-  logger.info("budget.create", { id: tx.id, type: tx.type, amount: tx.amount, currency: tx.currency });
+  logger.info("budget.create", {
+    id: tx.id,
+    type: tx.type,
+    amount: tx.amount,
+    currency: tx.currency,
+  });
   return tx;
 }
 
@@ -320,8 +327,18 @@ export function importCsv(csvText: string): ImportResult {
       const num = parseFloat(rawAmount);
       if (!Number.isFinite(num) || num === 0) throw new Error("bad_amount");
 
-      const type: TxType = idx.type !== -1 ? (/income|доход/i.test(cols[idx.type] || "") ? "income" : "expense") : num >= 0 ? "income" : "expense";
-      const date = idx.date !== -1 ? normalizeDate(cols[idx.date] || "") : new Date().toISOString().slice(0, 10);
+      const type: TxType =
+        idx.type !== -1
+          ? /income|доход/i.test(cols[idx.type] || "")
+            ? "income"
+            : "expense"
+          : num >= 0
+            ? "income"
+            : "expense";
+      const date =
+        idx.date !== -1
+          ? normalizeDate(cols[idx.date] || "")
+          : new Date().toISOString().slice(0, 10);
       if (!date) throw new Error("bad_date");
 
       toImport.push(

@@ -80,6 +80,36 @@ export const llamaApi = {
     }
     return res.json();
   },
+  /** Загрузить PDF для распознавания: сервер хранит файл и отдаёт страницы картинками. */
+  llamaPdfOpen: async (pdf: Blob, signal?: AbortSignal): Promise<{ id: string; pages: number }> => {
+    const res = await fetch(`${BASE}/api/llamacpp/ocr/pdf`, {
+      method: "POST",
+      headers: { ...tokenHeaders(), ...pageHeaders(), "Content-Type": "application/pdf" },
+      body: pdf,
+      signal,
+    });
+    if (!res.ok) {
+      const j = (await res.json().catch(() => ({}))) as { error?: string };
+      throw new Error(j.error || `HTTP ${res.status}`);
+    }
+    return res.json();
+  },
+  llamaPdfPage: async (id: string, page: number, signal?: AbortSignal): Promise<Blob> => {
+    const res = await fetch(`${BASE}/api/llamacpp/ocr/pdf/${id}/${page}?width=1800`, {
+      headers: { ...tokenHeaders(), ...pageHeaders() },
+      signal,
+    });
+    if (!res.ok) {
+      const j = (await res.json().catch(() => ({}))) as { error?: string };
+      throw new Error(j.error || `HTTP ${res.status}`);
+    }
+    return res.blob();
+  },
+  llamaPdfClose: (id: string) =>
+    fetch(`${BASE}/api/llamacpp/ocr/pdf/${id}`, {
+      method: "DELETE",
+      headers: { ...tokenHeaders(), ...pageHeaders() },
+    }).catch(() => undefined),
   /** Скачать картинку по внешней ссылке через сервер (в обход CORS). */
   llamaFetchImage: async (url: string): Promise<Blob> => {
     const res = await fetch(`${BASE}/api/llamacpp/ocr/fetch?url=${encodeURIComponent(url)}`, {

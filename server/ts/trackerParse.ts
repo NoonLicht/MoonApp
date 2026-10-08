@@ -334,9 +334,8 @@ function parseRutorRow(inner: string): RawReleaseRow | null {
 
   // Размер: ячейка, содержимое которой — только число с единицей измерения
   // (6 Сен 26, счётчики и «5 комментариев» под это не подходят).
-  const sizeCell = /<td\b[^>]*>\s*(\d+(?:[.,]\d+)?\s*(?:TB|GB|MB|KB|B|ТБ|ГБ|МБ|КБ|Б))\s*<\/td>/i.exec(
-    text,
-  );
+  const sizeCell =
+    /<td\b[^>]*>\s*(\d+(?:[.,]\d+)?\s*(?:TB|GB|MB|KB|B|ТБ|ГБ|МБ|КБ|Б))\s*<\/td>/i.exec(text);
   const sizeText = sizeCell ? sizeCell[1].replace(/\s+/g, " ") : "";
 
   // Сиды/личи: значения лежат в span.green (сиды) и span.red (личи).
@@ -369,7 +368,9 @@ export function parseRutorRows(html: unknown): RawReleaseRow[] {
   if (!src) return [];
   const out: RawReleaseRow[] = [];
   const seen = new Set<string>();
-  for (const m of src.matchAll(/<tr\b[^>]*class="[^"]*\b(?:gai|tum)\b[^"]*"[^>]*>([\s\S]*?)<\/tr>/gi)) {
+  for (const m of src.matchAll(
+    /<tr\b[^>]*class="[^"]*\b(?:gai|tum)\b[^"]*"[^>]*>([\s\S]*?)<\/tr>/gi,
+  )) {
     const row = parseRutorRow(m[1]);
     if (!row) continue;
     if (seen.has(row.id)) continue; // одна строка на раздачу
@@ -386,7 +387,6 @@ export function parseRutorRows(html: unknown): RawReleaseRow[] {
 export function parseReleasesByEngine(html: unknown, engine: unknown): RawReleaseRow[] {
   return normEngine(engine) === "rutor" ? parseRutorRows(html) : parseReleasesTable(html);
 }
-
 
 /**
  * Скрытые поля формы входа (phpBB: creation_time, form_token, sid, redirect).
@@ -426,7 +426,9 @@ export function isCloudflareChallenge(html: unknown, status?: number): boolean {
   const s = String(html || "");
   if (!s) return false;
   if (/cf-mitigated\s*:\s*challenge/i.test(s)) return true;
-  const marker = /(just a moment|attention required|__cf_chl|cf-chl-|checking your browser)/i.test(s);
+  const marker = /(just a moment|attention required|__cf_chl|cf-chl-|checking your browser)/i.test(
+    s,
+  );
   if (!marker) return false;
   // Любой ответ с маркерами CF, но без разметки форума (нет таблиц) — челлендж.
   const statusOk = status === undefined || [401, 403, 429, 503].includes(Number(status));

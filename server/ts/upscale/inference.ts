@@ -13,14 +13,7 @@ import type {
   UpParams,
 } from "./types";
 import { alignUp } from "./util";
-import {
-  blendTile,
-  mixPlanes,
-  modelAlign,
-  normTile,
-  normTilePad,
-  tileRects,
-} from "./tiling";
+import { blendTile, mixPlanes, modelAlign, normTile, normTilePad, tileRects } from "./tiling";
 import { findModel, loadManifest, modelKind } from "./manifest";
 import { loadOrt } from "./runtime";
 import { trtProfileSize } from "./trt";
@@ -647,7 +640,11 @@ export async function upscaleRgbBatch(o: {
 }
 
 /** Кадр после ONNX → Buffer без копии пиксельных данных. */
-export function toProcessed(r: { data: Uint8Array; width: number; height: number }): ProcessedFrame {
+export function toProcessed(r: {
+  data: Uint8Array;
+  width: number;
+  height: number;
+}): ProcessedFrame {
   return {
     data: Buffer.from(r.data.buffer, r.data.byteOffset, r.data.byteLength),
     width: r.width,
