@@ -861,6 +861,7 @@ const EMBED_LINE = /^\s*!\[\[(task|canvas):([^\]]+)\]\]\s*$/;
 
 class EmbedWidget extends WidgetType {
   private root: Root | null = null;
+  private ro: ResizeObserver | null = null;
   constructor(
     readonly kind: string,
     readonly refId: string,
@@ -873,6 +874,10 @@ class EmbedWidget extends WidgetType {
   toDOM(view: EditorView) {
     const el = document.createElement("div");
     el.className = "cm-embed-host";
+    // Высота блока меняется после загрузки данных и при правках: без повторного замера
+    // CodeMirror считает позиции строк по старой высоте и клик попадает на строку ниже.
+    this.ro = new ResizeObserver(() => view.requestMeasure());
+    this.ro.observe(el);
     this.root = createRoot(el);
     this.root.render(
       <EmbedBlock
@@ -893,7 +898,12 @@ class EmbedWidget extends WidgetType {
     );
     return el;
   }
+  get estimatedHeight() {
+    return this.kind === "canvas" ? 250 : 96;
+  }
   destroy() {
+    this.ro?.disconnect();
+    this.ro = null;
     const r = this.root;
     this.root = null;
     if (r) setTimeout(() => r.unmount(), 0);

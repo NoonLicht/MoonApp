@@ -2021,7 +2021,7 @@ select option {
 
 /* ───────── Встроенные блоки в заметке: задача и доска ───────── */
 .cm-embed-host {
-  margin: 8px 0;
+  padding: 8px 0;
 }
 .emb {
   border-radius: 14px;
