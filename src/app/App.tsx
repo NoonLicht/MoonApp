@@ -28,6 +28,7 @@ import ProxyPanel from "@/pages/bypass/parts/ProxyPanel";
 import TaskManagerPanel from "@/components/TaskManagerPanel";
 import WelcomeModal from "@/components/WelcomeModal";
 import SystemStatsBar from "@/components/SystemStatsBar";
+import ModelToggle from "@/components/ModelToggle";
 import { api } from "@/api/client";
 import { PAGES } from "@/app/navigation";
 import { onOpenTarget } from "@/lib/deepLink";
@@ -336,6 +337,7 @@ function Shell({
               >
                 <ListChecks size={15} />
               </button>
+              <ModelToggle />
               <SystemStatsBar />
             </div>
             <div className="tb-center">
