@@ -1,7 +1,8 @@
 import dagre from "dagre";
 import type { Obj } from "@/pages/myspace/canvas/model";
+import { withChildren } from "@/pages/myspace/canvas/board";
 
-const SKIP = new Set(["line", "group", "frame", "stroke"]);
+const SKIP = new Set(["line", "stroke"]);
 
 export type LayoutDir = "LR" | "TB";
 
@@ -97,8 +98,16 @@ export function layoutGraph(objs: Obj[], ids: string[] | null, dir: LayoutDir = 
     });
   }
 
+  // рамки и группы едут вместе со всем содержимым
+  const shift = new Map<string, { dx: number; dy: number }>();
+  for (const n of nodes) {
+    const p = pos.get(n.id);
+    if (!p) continue;
+    const d = { dx: p.x - n.x, dy: p.y - n.y };
+    for (const id of withChildren(objs, [n.id])) shift.set(id, d);
+  }
   return objs.map((o) => {
-    const p = pos.get(o.id);
-    return p ? { ...o, x: p.x, y: p.y } : o;
+    const d = shift.get(o.id);
+    return d ? { ...o, x: o.x + d.dx, y: o.y + d.dy } : o;
   });
 }

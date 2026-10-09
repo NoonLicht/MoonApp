@@ -929,7 +929,7 @@ export default function MyspacePage() {
         nodesMap.set(f.path, { id: f.path, type: "note", label: f.name.replace(/\.md$/, "") });
       }
       // Extract [[WikiLinks]] from content and resolve to real paths
-      const linkRegex = /\[\[([^\]]+)\]\]/g;
+      const linkRegex = /(?<!!)\[\[(?!(?:task|canvas):)([^\]]+)\]\]/g;
       let m;
       while ((m = linkRegex.exec(f.content)) !== null) {
         const targetTitle = m[1].trim();

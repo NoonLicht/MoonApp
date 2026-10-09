@@ -67,6 +67,7 @@ const TasksPanel: React.FC<TasksPanelProps> = ({ onOpenNote }) => {
     const found = tasks.find((x) => x.id === wantTask);
     if (found) {
       setSelectedTask(found);
+      setShowDetail(true);
       setWantTask("");
     }
   }, [wantTask, tasks]);
@@ -2142,7 +2143,7 @@ const TasksPanel: React.FC<TasksPanelProps> = ({ onOpenNote }) => {
           }}
         >
           {Array.from({ length: firstDayOfWeek }).map((_, i) => (
-            <div key={`empty-${i}`} style={{ aspectRatio: "1", opacity: 0.2 }} />
+            <div key={`empty-${i}`} style={{ minHeight: 84, opacity: 0.2 }} />
           ))}
 
           {Array.from({ length: daysInMonth }).map((_, idx) => {
@@ -2155,7 +2156,7 @@ const TasksPanel: React.FC<TasksPanelProps> = ({ onOpenNote }) => {
               <div
                 key={day}
                 style={{
-                  aspectRatio: "1",
+                  minHeight: 84,
                   borderRadius: 6,
                   padding: 2,
                   cursor: "pointer",

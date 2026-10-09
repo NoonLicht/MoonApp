@@ -142,6 +142,7 @@ export function chunkText(text: string): string[] {
   const clean = text
     .replace(/\r/g, "")
     .replace(/```[\s\S]*?```/g, " ")
+    .replace(/!\[\[(?:task|canvas):[^\]]*\]\]/g, " ")
     .replace(/!\[[^\]]*\]\([^)]*\)/g, " ")
     .replace(/\[\[([^\]|]+)(?:\|[^\]]*)?\]\]/g, "$1")
     .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")

@@ -154,7 +154,7 @@ function readFile(filePath: string): VaultFileData | null {
   const meta = { path: filePath, name: path.basename(filePath), ext: path.extname(filePath) };
   const { frontmatter, content } = parseFrontmatter(raw);
   const tags = [...content.matchAll(/(?:^|\s)(#[a-zA-Zа-яА-Я0-9_/-]+)/g)].map((m) => m[1]);
-  const wikiLinks = [...content.matchAll(/\[\[([^\]]+)\]\]/g)].map((m) => m[1]);
+  const wikiLinks = [...content.matchAll(/(?<!!)\[\[(?!(?:task|canvas):)([^\]]+)\]\]/g)].map((m) => m[1]);
   return { ...meta, content, frontmatter, tags, wikiLinks };
 }
 
