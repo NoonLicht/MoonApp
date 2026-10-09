@@ -446,7 +446,10 @@ function ObjectViewInner(props: ViewProps) {
               background: o.fill && o.fill !== "none" ? o.fill : "transparent",
               boxShadow: o.shadow ? "0 14px 30px rgba(0,0,0,0.25)" : undefined,
               opacity: o.opacity ?? 1,
+              // тело рамки можно схватить и перетащить (раньше хватался только заголовок и контур)
+              pointerEvents: "auto",
             }}
+            data-oid={o.id}
           />
           <svg
             width={o.w}
