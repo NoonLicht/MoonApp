@@ -1547,7 +1547,7 @@ export default function MyspacePage() {
                         color: "var(--text-tertiary)",
                       }}
                     >
-                      <Search size={13} />
+                      <Search size={13} style={{ flexShrink: 0 }} />
                       <button
                         type="button"
                         onClick={() => setSemSearch((v) => !v)}
@@ -1560,6 +1560,7 @@ export default function MyspacePage() {
                           borderRadius: 5,
                           cursor: "pointer",
                           display: "flex",
+                          flexShrink: 0,
                           color: semSearch ? "var(--amber)" : "var(--text-tertiary)",
                         }}
                       >
@@ -1572,6 +1573,8 @@ export default function MyspacePage() {
                         autoFocus
                         style={{
                           flex: 1,
+                          minWidth: 0,
+                          width: 0,
                           padding: "3px 7px",
                           borderRadius: 6,
                           border: "1px solid var(--glass-border)",
