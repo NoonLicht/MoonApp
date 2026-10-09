@@ -125,13 +125,17 @@ describe("операции над списком", () => {
     expect(moved.find((o) => o.id === r.id)!.x).toBe(50);
   });
 
-  it("удаление убирает потомков и оставляет соединитель со свободным концом", () => {
+  it("удаление убирает потомков и соединители, привязанные к удалённому", () => {
     const l = make("line", { x: 0, y: 0 }, { id: "l", from: { id: "a" }, to: { id: "b" } });
-    const out = deleteObjs([a, b, l], ["b"]);
+    const free = make(
+      "line",
+      { x: 0, y: 0 },
+      { id: "f", from: { x: 1, y: 1 }, to: { x: 5, y: 5 } },
+    );
+    const out = deleteObjs([a, b, l, free], ["b"]);
     expect(out.find((o) => o.id === "b")).toBeUndefined();
-    const line = out.find((o) => o.id === "l")!;
-    expect(line.to?.id).toBeUndefined();
-    expect(typeof line.to?.x).toBe("number");
+    expect(out.find((o) => o.id === "l")).toBeUndefined();
+    expect(out.find((o) => o.id === "f")).toBeDefined();
   });
 
   it("копия получает новые id, а связь между копиями сохраняется", () => {

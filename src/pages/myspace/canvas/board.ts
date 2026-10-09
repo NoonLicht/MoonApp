@@ -240,16 +240,16 @@ export function cloneObjs(
 /** Удаление с потомками; соединители, потерявшие объект, остаются со свободным концом. */
 export function deleteObjs(objs: Obj[], ids: Iterable<string>): Obj[] {
   const gone = withChildren(objs, ids);
-  const byId = mapById(objs);
   const out: Obj[] = [];
   for (const o of objs) {
     if (gone.has(o.id)) continue;
-    if (o.type === "line") {
-      const ends = lineEnds(o, byId);
-      const fix = (a: Obj["from"], e: { x: number; y: number }) =>
-        a?.id && gone.has(a.id) ? { x: e.x, y: e.y } : a;
-      out.push({ ...o, from: fix(o.from, ends.a), to: fix(o.to, ends.b) });
-    } else out.push(o);
+    // Связь, привязанная к удалённому объекту, удаляется вместе с ним
+    if (
+      o.type === "line" &&
+      ((o.from?.id && gone.has(o.from.id)) || (o.to?.id && gone.has(o.to.id)))
+    )
+      continue;
+    out.push(o);
   }
   return pruneGroups(out);
 }
