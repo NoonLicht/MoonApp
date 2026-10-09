@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Download, Eye, ShieldAlert, Check, Save, Undo2 } from "lucide-react";
 import { Glass, Btn, Badge, SectionHead } from "@/components/ui";
 import { useI18n } from "@/app/i18n";
@@ -65,10 +65,18 @@ function WindowsTuning() {
   const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
 
+  const staleTimer = useRef(0);
+  useEffect(() => () => window.clearTimeout(staleTimer.current), []);
+
   const reload = useCallback(async () => {
     try {
-      setOv(await api.tuningOverview());
+      const o = await api.tuningOverview();
+      setOv(o);
       setError("");
+      if (o.stale) {
+        window.clearTimeout(staleTimer.current);
+        staleTimer.current = window.setTimeout(() => void reload(), 3000);
+      }
     } catch (e) {
       const m = (e as Error).message;
       setError(m === "windows_only" ? t("tuning.windowsOnly") : m);

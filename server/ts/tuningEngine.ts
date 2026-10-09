@@ -366,7 +366,59 @@ export function pushHistory(s: State, kind: string, ok: boolean, detail: string)
 
 type OpVerdict = "match" | "diff" | "na";
 
-export async function statusAll(): Promise<TweakStatus[]> {
+const STATUS_CACHE = path.join(TUNING_DIR, "status-cache.json");
+let statusCache: TweakStatus[] | null = null;
+let statusInflight: Promise<TweakStatus[]> | null = null;
+let statusAt = 0;
+
+function loadStatusCache(): TweakStatus[] | null {
+  if (statusCache) return statusCache;
+  try {
+    const j = JSON.parse(fs.readFileSync(STATUS_CACHE, "utf8")) as TweakStatus[];
+    if (Array.isArray(j) && j.length === TWEAKS.length) statusCache = j;
+  } catch {
+    /* кэша ещё нет */
+  }
+  return statusCache;
+}
+
+/** Статусы твиков: общий запуск на всех, результат кладётся в кэш (память и диск). */
+export function statusAll(): Promise<TweakStatus[]> {
+  statusInflight ??= computeStatus()
+    .then((list) => {
+      statusCache = list;
+      statusAt = Date.now();
+      try {
+        ensureDirs();
+        fs.writeFileSync(STATUS_CACHE, JSON.stringify(list), "utf8");
+      } catch {
+        /* кэш не критичен */
+      }
+      return list;
+    })
+    .finally(() => {
+      statusInflight = null;
+    });
+  return statusInflight;
+}
+
+/** Свежий пересчёт после изменений: дожидается начатого раньше запуска и считает заново. */
+export async function statusFresh(): Promise<TweakStatus[]> {
+  if (statusInflight) await statusInflight.catch(() => undefined);
+  return statusAll();
+}
+
+/** Страница открывается сразу по прошлым статусам, свежие считаются в фоне (stale = true). */
+export async function statusQuick(): Promise<{ list: TweakStatus[]; stale: boolean }> {
+  const cached = loadStatusCache();
+  if (!cached) return { list: await statusAll(), stale: false };
+  if (statusInflight) return { list: cached, stale: true };
+  if (Date.now() - statusAt < 30_000) return { list: cached, stale: false };
+  void statusAll().catch(() => undefined);
+  return { list: cached, stale: true };
+}
+
+async function computeStatus(): Promise<TweakStatus[]> {
   const expanded = await Promise.all(TWEAKS.map((t) => expand(t)));
   const regOps = expanded.flat().filter((o): o is RegOp => o.t === "reg");
   const reads = await readRegs(regOps);
@@ -374,7 +426,7 @@ export async function statusAll(): Promise<TweakStatus[]> {
     .flat()
     .filter((o): o is CmdOp & { i: number } => o.t === "cmd" && !o.noState);
   const cmdRes = new Map<CmdOp, CmdEval>();
-  await mapLimit(cmdOps, 4, async (op) => {
+  await mapLimit(cmdOps, 12, async (op) => {
     cmdRes.set(op, await evalCmd(op));
   });
   const state = readState();
@@ -686,7 +738,7 @@ export function deleteBackup(id: string): boolean {
 
 /** Синхронизировать список «применено нами» с реальным состоянием. */
 async function syncApplied(): Promise<void> {
-  const st = await statusAll();
+  const st = await statusFresh();
   const state = readState();
   for (const s of st) if (state.applied[s.id] && s.state !== "applied") delete state.applied[s.id];
   writeState(state);
@@ -731,7 +783,7 @@ export interface BatchResult extends StepResult {
 export async function applyBatch(ids: string[], mode: "apply" | "revert"): Promise<BatchResult> {
   const tweaks = [...new Set(ids)].map((id) => TWEAK_BY_ID.get(id)).filter((t): t is Tweak => !!t);
   if (!tweaks.length)
-    return { ok: true, failed: [], needsReboot: false, statuses: await statusAll() };
+    return { ok: true, failed: [], needsReboot: false, statuses: await statusFresh() };
   let backupId: string | undefined;
   if (mode === "apply")
     backupId = (
@@ -771,7 +823,7 @@ export async function applyBatch(ids: string[], mode: "apply" | "revert"): Promi
       .slice(0, 200),
   );
   writeState(fresh);
-  return { ...r, needsReboot: reboot && !r.error, statuses: await statusAll(), backupId };
+  return { ...r, needsReboot: reboot && !r.error, statuses: await statusFresh(), backupId };
 }
 
 /** Откатить всё, что применило приложение. */

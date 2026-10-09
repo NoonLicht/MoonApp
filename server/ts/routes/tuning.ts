@@ -20,6 +20,12 @@ import * as wu from "../winutilTools";
 
 const router = express.Router();
 
+// Прогрев: статусы твиков считаются долго (десятки запусков PowerShell), поэтому делаем это
+// в фоне сразу после старта — страница потом открывается мгновенно по кэшу.
+if (process.platform === "win32" && !process.env.VITEST) {
+  setTimeout(() => void engine.statusAll().catch(() => undefined), 8000).unref();
+}
+
 router.use((req, res, next) => {
   if (process.platform !== "win32") return res.status(501).json({ error: "windows_only" });
   next();
@@ -44,12 +50,13 @@ const ids = (v: unknown): string[] =>
 router.get(
   "/overview",
   wrap(async () => {
-    const [statuses, admin] = await Promise.all([engine.statusAll(), engine.isAdmin()]);
+    const [quick, admin] = await Promise.all([engine.statusQuick(), engine.isAdmin()]);
     const st = engine.readState();
     return {
       admin,
       tweaks: TWEAKS.map((t) => ({ id: t.id, tab: t.tab, risk: t.risk, reboot: !!t.reboot })),
-      statuses,
+      statuses: quick.list,
+      stale: quick.stale,
       checklist: st.checklist,
       history: st.history.slice(0, 50),
       applied: Object.keys(st.applied).length,
@@ -61,7 +68,7 @@ router.get(
 
 router.get(
   "/status",
-  wrap(() => engine.statusAll()),
+  wrap(() => engine.statusFresh()),
 );
 
 router.post(

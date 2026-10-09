@@ -41,6 +41,8 @@ export interface TuningOverview {
   admin: boolean;
   tweaks: TweakMeta[];
   statuses: TweakStatus[];
+  /** Статусы взяты из кэша, свежие досчитываются в фоне. */
+  stale?: boolean;
   checklist: Record<string, boolean>;
   history: TuningHistoryEntry[];
   applied: number;
