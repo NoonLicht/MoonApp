@@ -151,6 +151,14 @@ export function SemanticPanel({ note, content, onOpenNote, onInsertLink, onAddTa
     </button>
   );
 
+  if (status && !status.enabled) {
+    return (
+      <div style={{ padding: 14, fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.5 }}>
+        <Sparkles size={16} style={{ color: "var(--amber)" }} />
+        <p>Умный поиск выключен. Включить можно кнопкой с роботом в верхней панели.</p>
+      </div>
+    );
+  }
   if (status && !status.model) {
     return (
       <div style={{ padding: 14, fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.5 }}>

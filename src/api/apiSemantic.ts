@@ -32,10 +32,19 @@ export interface SemJob {
   startedAt: number;
 }
 export interface SemStatus {
+  enabled: boolean;
+  device: "cpu" | "gpu" | "auto";
   model: string | null;
+  models: string[];
+  runtime: { file: string; gpu: boolean; build: string } | null;
   indexed: Record<string, number>;
   chunks: number;
   job: SemJob;
+}
+export interface SemConfig {
+  enabled: boolean;
+  model: string;
+  device: "cpu" | "gpu" | "auto";
 }
 export interface SemDup {
   a: { ref: string; title: string };
@@ -59,6 +68,8 @@ const q_ = (o: Record<string, string | number | undefined>): string =>
 
 export const semanticApi = {
   semStatus: () => req<SemStatus>("GET", "/semantic/status"),
+  semConfig: (patch: Partial<SemConfig>) => req<SemConfig>("POST", "/semantic/config", patch),
+  semUnload: () => req<{ ok: boolean }>("POST", "/semantic/unload"),
   semSync: () => req<SemJob>("POST", "/semantic/sync"),
   semSearch: (query: string, sources?: SemSource[], limit = 12) =>
     req<SemHit[]>(

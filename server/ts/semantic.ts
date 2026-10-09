@@ -11,7 +11,16 @@ import fs from "fs";
 import path from "path";
 import config from "./config";
 import logger from "./logger";
-import { DIM, embedModelFile, embedRaw, withPrefix } from "./llamacpp/embed";
+import {
+  DIM,
+  embedConfig,
+  embedModelChoice,
+  embedModelFile,
+  embedModels,
+  embedRaw,
+  embedRuntime,
+  withPrefix,
+} from "./llamacpp/embed";
 import * as vault from "./myspace-vault";
 import { tables } from "./db";
 
@@ -740,7 +749,7 @@ export async function search(
   o: { sources?: SemSource[]; limit?: number } = {},
 ): Promise<Hit[]> {
   const q = query.trim();
-  if (!q || !load().chunks.length) return [];
+  if (!q || !embedModelFile() || !load().chunks.length) return [];
   const [v] = await embedRaw([withPrefix(q, "query")]);
   return rank(v, { ...o, min: SEARCH_MIN });
 }
@@ -768,7 +777,7 @@ export function related(
   ref: string,
   o: { sources?: SemSource[]; limit?: number } = {},
 ): Hit[] {
-  const v = refVector(source, ref);
+  const v = embedModelFile() ? refVector(source, ref) : null;
   if (!v) return [];
   return rank(v, { ...o, exclude: { source, ref }, min: RELATED_MIN });
 }
@@ -781,6 +790,7 @@ export interface DupPair {
 
 /** Пары почти одинаковых источников одного типа (косинус выше порога). */
 export function duplicates(source: SemSource, threshold = 0.93, limit = 50): DupPair[] {
+  if (!embedModelFile()) return [];
   const s = load();
   const refs = Object.keys(s.refs)
     .filter((k) => k.startsWith(`${source}\u0000`))
@@ -812,6 +822,7 @@ export function clusters(
   threshold = 0.62,
   minSize = 2,
 ): { refs: { ref: string; title: string }[] }[] {
+  if (!embedModelFile()) return [];
   const s = load();
   const refs = Object.keys(s.refs)
     .filter((k) => k.startsWith(`${source}\u0000`))
@@ -847,7 +858,15 @@ export function clusters(
 }
 
 export interface Status {
+  /** Включён ли умный поиск (выключатель в шапке). */
+  enabled: boolean;
+  device: "cpu" | "gpu" | "auto";
+  /** Выбранная/лучшая установленная модель (даже если поиск выключен). */
   model: string | null;
+  /** Установленные модели эмбеддингов. */
+  models: string[];
+  /** Что сейчас загружено в память. */
+  runtime: { file: string; gpu: boolean; build: string } | null;
   indexed: Record<string, number>;
   chunks: number;
   job: JobState;
@@ -860,7 +879,16 @@ export function status(): Status {
     const src = k.split("\u0000")[0];
     n[src] = (n[src] ?? 0) + 1;
   }
-  return { model: embedModelFile(), indexed: n, chunks: s.chunks.length, job };
+  return {
+    enabled: embedConfig().enabled,
+    device: embedConfig().device,
+    model: embedModelChoice(),
+    models: embedModels(),
+    runtime: embedRuntime(),
+    indexed: n,
+    chunks: s.chunks.length,
+    job,
+  };
 }
 
 /** Тексты без сохранения: группы по близости (автораскладка стикеров). */
@@ -953,6 +981,7 @@ export async function memoryFor(convId: number, text: string): Promise<string> {
 
 /** Фильмы из «планов», больше всего похожие на понравившиеся (просмотрено или оценка 8+). */
 export function recommendMovies(): { ref: string; title: string; score: number }[] {
+  if (!embedModelFile()) return [];
   const ratings = new Map(
     tables.media_ratings.all().map((r) => [`${r.kind}:${r.tmdb_id}`, Number(r.rating) || 0]),
   );

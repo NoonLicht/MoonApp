@@ -12,6 +12,7 @@
  */
 import express from "express";
 import * as semantic from "../semantic";
+import { embedConfig, setEmbedConfig, unloadEmbed } from "../llamacpp/embed";
 import * as vault from "../myspace-vault";
 
 const router = express.Router();
@@ -38,6 +39,18 @@ const fail = (res: express.Response, e: unknown): void => {
 };
 
 router.get("/status", (_req, res) => res.json(semantic.status()));
+
+/** Настройки умного поиска: включение, модель, устройство. */
+router.get("/config", (_req, res) => res.json(embedConfig()));
+router.post("/config", (req, res) => {
+  const out = setEmbedConfig(req.body ?? {});
+  if (out.enabled) semantic.syncAll();
+  res.json(out);
+});
+router.post("/unload", (_req, res) => {
+  unloadEmbed();
+  res.json({ ok: true });
+});
 
 router.post("/sync", (_req, res) => {
   try {

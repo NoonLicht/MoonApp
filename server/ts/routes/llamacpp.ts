@@ -12,7 +12,6 @@
  *  GET    /api/llamacpp/ocr/fetch?url=      — скачать картинку по ссылке (для вставки в заметки)
  */
 import express from "express";
-import path from "path";
 import {
   BUILD_IDS,
   LLAMA_TAG,
@@ -25,10 +24,6 @@ import {
   serverInfo,
   setup,
   stopServer,
-  ensureServer,
-  isPinned,
-  modelsDir,
-  setPinned,
 } from "../llamacpp/engine";
 import { ttsProblem } from "../llamacpp/tts";
 import { fetchRemoteImage, ocrImage, ocrModels } from "../llamacpp/ocr";
@@ -61,7 +56,6 @@ router.get("/status", (_req, res) => {
     models: installed(),
     download: downloadState(),
     server: serverInfo(),
-    pinned: isPinned(),
     ttsProblem: ttsProblem(),
     ocrModels: ocrModels(),
   });
@@ -107,38 +101,6 @@ router.delete("/model/:file", (req, res) => {
   if (serverInfo()?.file === req.params.file) stopServer();
   removeModel(req.params.file);
   res.json({ ok: true });
-});
-
-/** Включить модель вручную: файл из storage/models/llama, способ запуска и контекст. */
-router.post("/start", async (req, res) => {
-  const {
-    file,
-    device = "auto",
-    ctx = 8192,
-  } = (req.body ?? {}) as {
-    file?: string;
-    device?: string;
-    ctx?: number;
-  };
-  if (!file || !/^[^\\/]+\.gguf$/i.test(file) || !installed().some((m) => m.file === file))
-    return res.status(400).json({ error: "bad_model" });
-  if (!DEVICES.includes(device)) return res.status(400).json({ error: "bad_device" });
-  const entry = CATALOG.find((m) => m.file === file);
-  const mm = entry?.extra?.find((e) => /mmproj/i.test(e.file))?.file;
-  const n = Math.min(131072, Math.max(1024, Math.round(Number(ctx) || 8192)));
-  try {
-    setPinned(false);
-    await ensureServer({
-      model: path.join(modelsDir(), file),
-      mmproj: mm && installed().some((m) => m.file === mm) ? path.join(modelsDir(), mm) : undefined,
-      device: device as Device,
-      ctx: n,
-    });
-    setPinned(true);
-    res.json({ ok: true, server: serverInfo() });
-  } catch (e) {
-    res.status(500).json({ error: String((e as Error).message || e).slice(0, 300) });
-  }
 });
 
 router.post("/stop", (_req, res) => {

@@ -4593,7 +4593,9 @@
       "chandra2-q3km": "Chandra OCR 2 · Q3_K_M (лёгкая, для ноутбуков)",
       "chandra2-q4km": "Chandra OCR 2 · Q4_K_M (рекомендуется)",
       "chandra2-q6k": "Chandra OCR 2 · Q6_K (точнее)",
-      "chandra2-q8": "Chandra OCR 2 · Q8_0 (максимум качества)"
+      "chandra2-q8": "Chandra OCR 2 · Q8_0 (максимум качества)",
+      "embeddinggemma2-q8": "EmbeddingGemma 2 · Q8_0 (умный поиск, рекомендуется)",
+      "embeddinggemma2-q4": "EmbeddingGemma 2 · Q4 (умный поиск, легче)"
     }
   }
 }

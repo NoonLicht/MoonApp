@@ -37,8 +37,6 @@ export interface LlamaStatus {
     error: string;
   } | null;
   server: { build: LlamaBuildId; gpu: boolean; model: string; file: string } | null;
-  /** Модель включена вручную и не выгружается по простою. */
-  pinned?: boolean;
   /** Установленные модели Chandra OCR 2 (без проекторов). */
   ocrModels: { file: string; sizeMb: number }[];
 }
@@ -123,7 +121,5 @@ export const llamaApi = {
     }
     return res.blob();
   },
-  llamaStart: (body: { file: string; device: string; ctx: number }) =>
-    req<{ ok: boolean }>("POST", "/llamacpp/start", body),
   llamaStop: () => req<{ ok: boolean }>("POST", "/llamacpp/stop"),
 };

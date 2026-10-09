@@ -4593,7 +4593,9 @@
       "chandra2-q3km": "Chandra OCR 2 · Q3_K_M (light, for laptops)",
       "chandra2-q4km": "Chandra OCR 2 · Q4_K_M (recommended)",
       "chandra2-q6k": "Chandra OCR 2 · Q6_K (more accurate)",
-      "chandra2-q8": "Chandra OCR 2 · Q8_0 (best quality)"
+      "chandra2-q8": "Chandra OCR 2 · Q8_0 (best quality)",
+      "embeddinggemma2-q8": "EmbeddingGemma 2 · Q8_0 (smart search, recommended)",
+      "embeddinggemma2-q4": "EmbeddingGemma 2 · Q4 (smart search, lighter)"
     }
   }
 }

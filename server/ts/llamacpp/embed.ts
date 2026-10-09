@@ -5,9 +5,11 @@
  * Простаивающий сервер выгружается сам.
  */
 import { spawn, type ChildProcess } from "child_process";
+import fs from "fs";
 import os from "os";
 import path from "path";
 import logger from "../logger";
+import config from "../config";
 import { buildOrder, exePath, freePort, waitReady, type BuildId } from "./engine";
 import { installed, modelPath } from "./models";
 
@@ -18,16 +20,73 @@ const BATCH = 16;
 
 export type EmbedKind = "query" | "doc" | "similar";
 
-/** Файл модели эмбеддингов: Q8_0 предпочтительнее, дальше любая установленная. */
-export function embedModelFile(): string | null {
-  const all = installed()
+/** Настройки умного поиска (кнопка в шапке): включён ли, какая модель и на чём запускать. */
+export interface EmbedConfig {
+  enabled: boolean;
+  /** Файл .gguf; пусто — лучшая из установленных. */
+  model: string;
+  device: "cpu" | "gpu" | "auto";
+}
+const CFG_FILE = path.join(config.DIRS.storage, "semantic", "config.json");
+let cfg: EmbedConfig | null = null;
+
+export function embedConfig(): EmbedConfig {
+  if (cfg) return cfg;
+  const d: EmbedConfig = { enabled: true, model: "", device: "cpu" };
+  try {
+    const v = JSON.parse(fs.readFileSync(CFG_FILE, "utf8")) as Partial<EmbedConfig>;
+    if (typeof v.enabled === "boolean") d.enabled = v.enabled;
+    if (typeof v.model === "string") d.model = v.model;
+    if (v.device === "cpu" || v.device === "gpu" || v.device === "auto") d.device = v.device;
+  } catch {
+    /* первый запуск — значения по умолчанию */
+  }
+  cfg = d;
+  return d;
+}
+
+export function setEmbedConfig(p: Partial<EmbedConfig>): EmbedConfig {
+  const cur = embedConfig();
+  const next: EmbedConfig = {
+    enabled: typeof p.enabled === "boolean" ? p.enabled : cur.enabled,
+    model: typeof p.model === "string" ? p.model : cur.model,
+    device: p.device === "cpu" || p.device === "gpu" || p.device === "auto" ? p.device : cur.device,
+  };
+  cfg = next;
+  fs.mkdirSync(path.dirname(CFG_FILE), { recursive: true });
+  fs.writeFileSync(CFG_FILE, JSON.stringify(next), "utf8");
+  // Другая модель или устройство — процесс перезапустится при следующем запросе; выключено — сразу выгружаем.
+  if (!next.enabled || next.model !== cur.model || next.device !== cur.device) stop();
+  return next;
+}
+
+/** Установленные модели эмбеддингов (любой GGUF с «embedding» в имени). */
+export function embedModels(): string[] {
+  return installed()
     .map((m) => m.file)
-    .filter((f) => /embeddinggemma/i.test(f) && !/mmproj/i.test(f));
+    .filter((f) => /embedding/i.test(f) && !/mmproj/i.test(f));
+}
+
+/** Модель, которую выбрала бы настройка, не учитывая выключатель. */
+export function embedModelChoice(): string | null {
+  const all = embedModels();
+  const c = embedConfig().model;
+  if (c && all.includes(c)) return c;
   return all.find((f) => /q8_0/i.test(f)) ?? all[0] ?? null;
+}
+
+/** Файл модели для работы: null, если умный поиск выключен или модели нет. */
+export function embedModelFile(): string | null {
+  return embedConfig().enabled ? embedModelChoice() : null;
+}
+
+export function unloadEmbed(): void {
+  stop();
 }
 
 interface Srv {
   proc: ChildProcess;
+  gpu: boolean;
   base: string;
   file: string;
   build: BuildId;
@@ -68,7 +127,7 @@ function arm(s: Srv): void {
   s.idle.unref?.();
 }
 
-async function spawnOn(build: BuildId, file: string): Promise<Srv> {
+async function spawnOn(build: BuildId, file: string, gpu: boolean): Promise<Srv> {
   const exe = exePath(build);
   if (!exe) throw new Error("build_missing");
   const port = await freePort();
@@ -89,7 +148,7 @@ async function spawnOn(build: BuildId, file: string): Promise<Srv> {
       "-ub",
       "2048",
       "-ngl",
-      "0",
+      gpu ? "99" : "0",
       "-np",
       "1",
       "--no-webui",
@@ -111,7 +170,7 @@ async function spawnOn(build: BuildId, file: string): Promise<Srv> {
     proc.kill();
     throw e;
   }
-  const s: Srv = { proc, base, file, build, busy: 0, idle: null };
+  const s: Srv = { proc, gpu, base, file, build, busy: 0, idle: null };
   proc.once("exit", () => {
     if (srv === s) srv = null;
   });
@@ -124,13 +183,19 @@ async function ensure(): Promise<Srv> {
   if (srv && srv.file === file) return srv;
   if (srv) stop();
   if (starting) return starting;
-  const candidates = buildOrder("cpu").length ? buildOrder("cpu") : buildOrder("auto");
+  const dev = embedConfig().device;
+  const candidates =
+    dev === "cpu"
+      ? buildOrder("cpu").length
+        ? buildOrder("cpu")
+        : buildOrder("auto")
+      : buildOrder(dev);
   if (!candidates.length) throw new Error("build_missing");
   starting = (async () => {
     let last: unknown = null;
     for (const b of candidates) {
       try {
-        const s = await spawnOn(b, file);
+        const s = await spawnOn(b, file, b !== "cpu" && dev !== "cpu");
         srv = s;
         arm(s);
         logger.info("embed.started", { build: b, model: file });
@@ -200,3 +265,5 @@ export async function embedRaw(inputs: string[]): Promise<Float32Array[]> {
 }
 
 export const embedLoaded = (): boolean => !!srv;
+export const embedRuntime = (): { file: string; gpu: boolean; build: string } | null =>
+  srv ? { file: srv.file, gpu: srv.gpu, build: srv.build } : null;

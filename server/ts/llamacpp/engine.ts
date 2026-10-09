@@ -246,14 +246,6 @@ const IDLE_MS = 10 * 60 * 1000;
 
 export const badBuilds = (): BuildId[] => [...bad];
 
-/** Модель включена вручную (кнопка в шапке): не выгружать по простою, пока не выключат. */
-let pinned = false;
-export const isPinned = (): boolean => pinned && !!running;
-export function setPinned(v: boolean): void {
-  pinned = v;
-  if (running) arm(running);
-}
-
 export function freePort(): Promise<number> {
   return new Promise((resolve, reject) => {
     const s = net.createServer();
@@ -290,11 +282,7 @@ export interface StartOptions {
   raw?: boolean;
 }
 
-export async function waitReady(
-  proc: ChildProcess,
-  base: string,
-  tail: () => string,
-): Promise<void> {
+export async function waitReady(proc: ChildProcess, base: string, tail: () => string): Promise<void> {
   let exited = false;
   proc.once("exit", () => (exited = true));
   const t0 = Date.now();
@@ -374,7 +362,6 @@ export function stopServer(): void {
   if (!r) return;
   if (r.idle) clearTimeout(r.idle);
   running = null;
-  pinned = false;
   try {
     r.proc.kill();
   } catch {
@@ -393,8 +380,6 @@ process.once("exit", () => {
 
 function arm(r: Running): void {
   if (r.idle) clearTimeout(r.idle);
-  r.idle = null;
-  if (pinned) return;
   r.idle = setTimeout(() => {
     if (r.busy > 0) return arm(r);
     stopServer();
