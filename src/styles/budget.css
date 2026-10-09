@@ -31,3 +31,14 @@
   gap: 12px;
   padding: 8px 12px;
 }
+
+/* Страница длиннее окна: прокрутка вниз (базовый .page обрезает содержимое). */
+.page.budget-page {
+  overflow-y: auto;
+  overflow-x: hidden;
+  scroll-behavior: smooth;
+  padding: 2px 2px 10px;
+}
+.budget-page > * {
+  flex-shrink: 0;
+}

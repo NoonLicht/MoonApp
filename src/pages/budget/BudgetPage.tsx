@@ -187,7 +187,7 @@ export default function BudgetPage() {
   const categoryOptions = form.type === "income" ? categories?.income : categories?.expense;
 
   return (
-    <div className="page">
+    <div className="page budget-page">
       <SectionHead
         eyebrow={t("budget.eyebrow")}
         title={t("budget.title")}
