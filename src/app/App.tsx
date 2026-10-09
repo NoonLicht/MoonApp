@@ -28,7 +28,7 @@ import ProxyPanel from "@/pages/bypass/parts/ProxyPanel";
 import TaskManagerPanel from "@/components/TaskManagerPanel";
 import WelcomeModal from "@/components/WelcomeModal";
 import SystemStatsBar from "@/components/SystemStatsBar";
-import ModelToggle from "@/components/ModelToggle";
+import ModelToggle, { ModelPanel } from "@/components/ModelToggle";
 import { api } from "@/api/client";
 import { PAGES } from "@/app/navigation";
 import { onOpenTarget } from "@/lib/deepLink";
@@ -209,6 +209,7 @@ function Shell({
   welcomeOpen,
 }: ShellProps) {
   const { t, lang } = useI18n();
+  const [modelPanelVisible, setModelPanelVisible] = useState(false);
   // Если активная страница была удалена или сохранена в настройках устаревшая
   // (например "todo"), откатываемся к первой доступной странице.
   const safeActive: PageId = PAGES.some((p) => p.id === active)
@@ -337,7 +338,7 @@ function Shell({
               >
                 <ListChecks size={15} />
               </button>
-              <ModelToggle />
+              <ModelToggle onClick={() => setModelPanelVisible((v) => !v)} />
               <SystemStatsBar />
             </div>
             <div className="tb-center">
@@ -404,6 +405,7 @@ function Shell({
 
           {proxyPanelVisible && <ProxyPanel onClose={() => setProxyPanelVisible(false)} />}
           {taskManagerVisible && <TaskManagerPanel onClose={() => setTaskManagerVisible(false)} />}
+          {modelPanelVisible && <ModelPanel onClose={() => setModelPanelVisible(false)} />}
 
           {/* Стопка живых страниц: активная видима, остальные скрыты, но сохраняют
             состояние (прогресс задач, ввод, позицию скролла). */}

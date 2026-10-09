@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
-import { Bot, Loader2 } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { Bot, Loader2, Power, X } from "lucide-react";
+import { Badge, Btn, Select } from "@/components/ui";
 import { useI18n } from "@/app/i18n";
 import { api } from "@/api/client";
 import type { LlamaStatus } from "@/api/client";
@@ -26,17 +26,12 @@ function loadPrefs(): { file: string; device: Device; ctx: number } {
   }
 }
 
-export default function ModelToggle() {
+export function ModelPanel({ onClose }: { onClose: () => void }) {
   const { t } = useI18n();
-  const [open, setOpen] = useState(false);
   const [st, setSt] = useState<LlamaStatus | null>(null);
   const [prefs, setPrefs] = useState(loadPrefs);
   const [busy, setBusy] = useState<"start" | "stop" | null>(null);
   const [err, setErr] = useState("");
-  const btnRef = useRef<HTMLButtonElement>(null);
-  const boxRef = useRef<HTMLDivElement>(null);
-  const [pos, setPos] = useState({ left: 0, top: 0 });
-
   const refresh = useCallback(() => {
     api
       .llamaStatus()
@@ -47,9 +42,9 @@ export default function ModelToggle() {
   // Пока окно закрыто — редкий опрос (для индикатора на кнопке), открыто — чаще.
   useEffect(() => {
     refresh();
-    const id = window.setInterval(refresh, open || busy ? 1500 : 8000);
+    const id = window.setInterval(refresh, busy ? 1000 : 2500);
     return () => window.clearInterval(id);
-  }, [refresh, open, busy]);
+  }, [refresh, busy]);
 
   useEffect(() => {
     try {
@@ -58,24 +53,6 @@ export default function ModelToggle() {
       /* без сохранения выбора */
     }
   }, [prefs]);
-
-  useEffect(() => {
-    if (!open) return;
-    const r = btnRef.current?.getBoundingClientRect();
-    if (r) setPos({ left: Math.max(8, r.left), top: r.bottom + 6 });
-    const onDown = (e: MouseEvent) => {
-      const n = e.target as Node;
-      if (boxRef.current?.contains(n) || btnRef.current?.contains(n)) return;
-      setOpen(false);
-    };
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
-    document.addEventListener("mousedown", onDown);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("mousedown", onDown);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [open]);
 
   const models = (st?.models ?? []).filter((m) => {
     if (SKIP.test(m.file)) return false;
@@ -132,152 +109,164 @@ export default function ModelToggle() {
     }
   };
 
-  const row: React.CSSProperties = { display: "grid", gap: 4, marginBottom: 10 };
-  const cap: React.CSSProperties = { fontSize: 11, color: "var(--text-tertiary)" };
-
+  const fieldCap: React.CSSProperties = { marginBottom: 4 };
   return (
-    <>
-      <button
-        ref={btnRef}
-        className="task-mgr-toggle no-drag"
-        onClick={() => setOpen((v) => !v)}
-        title={on ? `Модель включена: ${label(server.file)}` : "Локальная модель"}
-        aria-label="Локальная модель"
-        style={{ position: "relative", color: on ? "var(--amber)" : undefined }}
-      >
-        {busy ? <Loader2 size={15} className="spin" /> : <Bot size={15} />}
-        {on && (
-          <span
-            style={{
-              position: "absolute",
-              right: 3,
-              top: 3,
-              width: 6,
-              height: 6,
-              borderRadius: "50%",
-              background: "#22c55e",
-            }}
-          />
-        )}
-      </button>
-      {open &&
-        createPortal(
-          <div
-            ref={boxRef}
-            className="no-drag"
-            style={{
-              position: "fixed",
-              left: pos.left,
-              top: pos.top,
-              zIndex: 2000,
-              width: 320,
-              maxWidth: "calc(100vw - 16px)",
-              padding: 14,
-              borderRadius: 14,
-              border: "1px solid var(--glass-border)",
-              background: "var(--bg-base)",
-              boxShadow: "0 12px 40px rgba(0,0,0,.35)",
-              fontSize: 13,
-              color: "var(--text-primary)",
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                marginBottom: 12,
-              }}
-            >
-              <b>Локальная модель</b>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={on}
-                aria-label={on ? "Выключить модель" : "Включить модель"}
-                className={`switch ${on ? "is-on" : ""}`}
-                disabled={!!busy || (!on && !file)}
-                onClick={() => void (on ? stop() : start())}
-              >
-                <span className="switch-knob" />
-              </button>
+    <div
+      className="proxy-panel-overlay"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div className="proxy-panel">
+        <div className="proxy-panel-header">
+          <div className="proxy-panel-title">
+            <span className="proxy-shield">
+              <Bot size={18} strokeWidth={2} />
+            </span>
+            <div className="proxy-title-text">
+              <div className="proxy-eyebrow">llama.cpp</div>
+              <div className="proxy-h1">Локальная модель</div>
             </div>
+          </div>
+          <button className="proxy-panel-close" onClick={onClose} title={t("common.close")}>
+            <X size={15} />
+          </button>
+        </div>
 
-            {models.length === 0 ? (
-              <div style={cap}>
-                Нет установленных моделей. Скачайте модель и сборку llama.cpp в «Настройки → Чат».
-              </div>
-            ) : (
-              <>
-                <label style={row}>
-                  <span style={cap}>Модель</span>
-                  <select
-                    className="text-input"
-                    value={file}
-                    disabled={!!busy}
-                    onChange={(e) => setPrefs((p) => ({ ...p, file: e.target.value }))}
-                  >
-                    {models.map((m) => (
-                      <option key={m.file} value={m.file}>
-                        {label(m.file)} · {(m.sizeMb / 1024).toFixed(1)} GB
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label style={row}>
-                  <span style={cap}>Способ запуска</span>
-                  <select
-                    className="text-input"
-                    value={devices.some((d) => d.id === prefs.device) ? prefs.device : "auto"}
-                    disabled={!!busy}
-                    onChange={(e) => setPrefs((p) => ({ ...p, device: e.target.value as Device }))}
-                  >
-                    {devices.map((d) => (
-                      <option key={d.id} value={d.id}>
-                        {d.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label style={row}>
-                  <span style={cap}>Контекст</span>
-                  <select
-                    className="text-input"
-                    value={prefs.ctx}
-                    disabled={!!busy}
-                    onChange={(e) => setPrefs((p) => ({ ...p, ctx: Number(e.target.value) }))}
-                  >
-                    {[4096, 8192, 16384, 32768].map((n) => (
-                      <option key={n} value={n}>
-                        {n / 1024}K токенов
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                {builds.length === 0 && (
-                  <div style={cap}>Сначала установите сборку llama.cpp в «Настройки → Чат».</div>
-                )}
-              </>
-            )}
+        {err && <div className="proxy-error">{err}</div>}
 
-            <div style={{ ...cap, marginTop: 4, lineHeight: 1.45 }}>
+        <div className="task-mgr-row">
+          <div
+            className="task-mgr-row-top"
+            style={{ display: "flex", alignItems: "center", gap: 8 }}
+          >
+            <span className="task-mgr-label" style={{ flex: 1 }}>
               {busy === "start"
                 ? "Загрузка модели…"
                 : busy === "stop"
                   ? "Выключение…"
                   : on
-                    ? `Работает: ${label(server.file)} · ${server.gpu ? "видеокарта" : "процессор"} (${t(`llama.build.${server.build}`)})${st?.pinned ? "" : " · выгрузится при простое"}`
+                    ? label(server.file)
                     : "Выключена"}
+            </span>
+            {on && !busy && (
+              <Badge tone="teal">
+                {server.gpu ? "Видеокарта" : "Процессор"} · {t(`llama.build.${server.build}`)}
+              </Badge>
+            )}
+            {busy && <Loader2 size={14} className="spin" />}
+          </div>
+          {on && !st?.pinned && !busy && (
+            <div className="muted-sm">Запущена другой функцией — выгрузится при простое</div>
+          )}
+          {on && file !== server.file && !busy && (
+            <div className="muted-sm">
+              Чтобы запустить другую модель или способ, выключите и включите снова.
             </div>
-            {on && file !== server.file && !busy && (
-              <div style={{ ...cap, marginTop: 4 }}>
-                Чтобы запустить другую модель или способ, выключите и включите снова.
+          )}
+        </div>
+
+        {models.length === 0 ? (
+          <div className="muted-sm">
+            Нет установленных моделей. Скачайте модель и сборку llama.cpp в «Настройки → Чат».
+          </div>
+        ) : (
+          <div className="task-mgr-section">
+            <div className="task-mgr-section-title" style={fieldCap}>
+              Модель
+            </div>
+            <Select
+              value={file}
+              onChange={(e) => setPrefs((p) => ({ ...p, file: e.target.value }))}
+              options={models.map((m) => ({
+                value: m.file,
+                label: `${label(m.file)} · ${(m.sizeMb / 1024).toFixed(1)} GB`,
+              }))}
+              style={{ width: "100%", marginBottom: 12 }}
+            />
+            <div className="task-mgr-section-title" style={fieldCap}>
+              Способ запуска
+            </div>
+            <Select
+              value={devices.some((d) => d.id === prefs.device) ? prefs.device : "auto"}
+              onChange={(e) => setPrefs((p) => ({ ...p, device: e.target.value as Device }))}
+              options={devices.map((d) => ({ value: d.id, label: d.name }))}
+              style={{ width: "100%", marginBottom: 12 }}
+            />
+            <div className="task-mgr-section-title" style={fieldCap}>
+              Контекст
+            </div>
+            <Select
+              value={String(prefs.ctx)}
+              onChange={(e) => setPrefs((p) => ({ ...p, ctx: Number(e.target.value) }))}
+              options={[4096, 8192, 16384, 32768].map((n) => ({
+                value: String(n),
+                label: `${n / 1024}K токенов`,
+              }))}
+              style={{ width: "100%", marginBottom: 12 }}
+            />
+            {builds.length === 0 && (
+              <div className="muted-sm">
+                Сначала установите сборку llama.cpp в «Настройки → Чат».
               </div>
             )}
-            {err && <div style={{ marginTop: 6, fontSize: 12, color: "var(--coral)" }}>{err}</div>}
-          </div>,
-          document.body,
+          </div>
         )}
-    </>
+
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+          <Btn
+            variant={on ? "secondary" : "primary"}
+            icon={Power}
+            disabled={!!busy || (!on && (!file || builds.length === 0))}
+            onClick={() => void (on ? stop() : start())}
+          >
+            {on ? "Выключить" : "Включить"}
+          </Btn>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Кнопка в шапке: зелёная точка — модель в памяти. */
+export default function ModelToggle({ onClick }: { onClick: () => void }) {
+  const [on, setOn] = useState(false);
+  const [name, setName] = useState("");
+  useEffect(() => {
+    const tick = () =>
+      api
+        .llamaStatus()
+        .then((s) => {
+          setOn(!!s.server);
+          setName(s.server?.file ?? "");
+        })
+        .catch(() => {});
+    tick();
+    const id = window.setInterval(tick, 5000);
+    return () => window.clearInterval(id);
+  }, []);
+  return (
+    <button
+      className="task-mgr-toggle no-drag"
+      onClick={onClick}
+      title={on ? `Локальная модель: ${name}` : "Локальная модель"}
+      aria-label="Локальная модель"
+      style={{ position: "relative", color: on ? "var(--amber)" : undefined }}
+    >
+      <Bot size={15} />
+      {on && (
+        <span
+          style={{
+            position: "absolute",
+            right: 3,
+            top: 3,
+            width: 6,
+            height: 6,
+            borderRadius: "50%",
+            background: "#22c55e",
+          }}
+        />
+      )}
+    </button>
   );
 }
