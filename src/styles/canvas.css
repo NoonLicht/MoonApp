@@ -778,3 +778,20 @@
   color: var(--text-secondary);
   white-space: nowrap;
 }
+
+/* Текстовые поля панели свойств (название, срок, подзадачи) */
+.hc-text {
+  box-sizing: border-box;
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--glass-border);
+  background: var(--track);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 12px;
+  outline: none;
+  min-width: 0;
+}
+.hc-text:focus {
+  border-color: var(--amber);
+}

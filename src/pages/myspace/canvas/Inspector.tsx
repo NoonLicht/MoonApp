@@ -156,10 +156,15 @@ export function Inspector({ sel, a, t, ru }: Props) {
   const one = sel.length === 1;
   const types = new Set(sel.map((s) => s.type));
   const has = (...k: Obj["type"][]) => sel.some((s) => k.includes(s.type));
-  const canFill = has("shape", "sticky", "frame", "task", "text");
-  const canStroke = has("shape", "frame", "line", "stroke");
-  const canText = has("shape", "sticky", "text");
-  const canRadius = has("shape", "sticky", "frame", "image");
+  const L = (r: string, e: string): string => (ru ? r : e);
+  const canFill = has("shape", "sticky", "frame", "task", "text", "note");
+  const canStroke = has("shape", "frame", "line", "stroke", "task", "note", "image");
+  const canText = has("shape", "sticky", "text", "task");
+  const canRadius = has("shape", "sticky", "frame", "image", "task", "note");
+  const canShadow = has("shape", "sticky", "frame", "task", "note", "image");
+  const richText = has("shape", "sticky", "text", "task");
+  const swDefault = o.type === "image" ? 0 : o.type === "task" || o.type === "note" ? 1 : 2;
+  const softShadow = has("task", "note") && !has("shape", "sticky", "frame", "image");
   const onlyLines = types.size === 1 && types.has("line");
   const multi = sel.length > 1;
   const locked = sel.every((s) => s.locked);
@@ -291,6 +296,293 @@ export function Inspector({ sel, a, t, ru }: Props) {
         </Row>
       )}
 
+      {one && o.type !== "group" && (
+        <Row label={L("Название", "Name")}>
+          <input
+            className="hc-text"
+            value={o.name ?? ""}
+            placeholder={L("Название слоя", "Layer name")}
+            onChange={(e) => a.patch({ name: e.target.value || undefined }, "name")}
+            onKeyDown={(e) => e.stopPropagation()}
+            style={{ width: "100%" }}
+          />
+        </Row>
+      )}
+
+      {one && o.type === "frame" && (
+        <label className="hc-check">
+          <input
+            type="checkbox"
+            checked={!o.noName}
+            onChange={(e) => a.patch({ noName: !e.target.checked })}
+          />
+          {L("Показывать заголовок рамки", "Show frame title")}
+        </label>
+      )}
+
+      {one && o.type === "text" && (
+        <label className="hc-check">
+          <input
+            type="checkbox"
+            checked={!!o.auto}
+            onChange={(e) => a.patch({ auto: e.target.checked })}
+          />
+          {L("Высота по тексту", "Auto height")}
+        </label>
+      )}
+
+      {one && o.type === "sticker" && (
+        <Row label={L("Эмодзи", "Emoji")}>
+          <div className="hc-icons" style={{ flexWrap: "wrap" }}>
+            {[
+              "👍",
+              "👎",
+              "❤️",
+              "⭐",
+              "🔥",
+              "✅",
+              "❌",
+              "❓",
+              "❗",
+              "💡",
+              "🎯",
+              "🚀",
+              "😀",
+              "😮",
+              "🎉",
+              "📌",
+            ].map((em) => (
+              <button
+                key={em}
+                type="button"
+                className={`hc-ib${o.emoji === em ? " on" : ""}`}
+                onClick={() => a.patch({ emoji: em })}
+              >
+                {em}
+              </button>
+            ))}
+          </div>
+        </Row>
+      )}
+
+      {one && o.type === "task" && (
+        <>
+          <Row label={L("Статус", "Status")}>
+            <div className="hc-icons">
+              {(
+                [
+                  ["todo", L("К выполнению", "To do")],
+                  ["inprogress", L("В работе", "In progress")],
+                  ["done", L("Готово", "Done")],
+                ] as const
+              ).map(([k, label]) => (
+                <button
+                  key={k}
+                  type="button"
+                  className={`hc-ib wide${(o.status ?? "todo") === k ? " on" : ""}`}
+                  onClick={() => a.patch({ status: k })}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </Row>
+          <Row label={L("Приоритет", "Priority")}>
+            <div className="hc-icons">
+              {(
+                [
+                  [undefined, L("Нет", "None")],
+                  ["low", L("Низкий", "Low")],
+                  ["medium", L("Средний", "Medium")],
+                  ["high", L("Высокий", "High")],
+                ] as const
+              ).map(([k, label]) => (
+                <button
+                  key={label}
+                  type="button"
+                  className={`hc-ib wide${o.prio === k ? " on" : ""}`}
+                  onClick={() => a.patch({ prio: k })}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </Row>
+          <Row label={L("Срок", "Due date")}>
+            <input
+              type="date"
+              className="hc-text"
+              value={o.due ?? ""}
+              onChange={(e) => a.patch({ due: e.target.value || undefined })}
+              onKeyDown={(e) => e.stopPropagation()}
+            />
+          </Row>
+          <Row label={L("Цвет полоски", "Accent colour")}>
+            <Colors
+              value={o.acc}
+              list={["#94a3b8", "#f59e0b", "#22c55e", "#3b82f6", "#8b5cf6", "#ef4444", "#ec4899"]}
+              custom={t("custom")}
+              onPick={(c) => a.patch({ acc: c }, "acc")}
+            />
+          </Row>
+          <label className="hc-check">
+            <input
+              type="checkbox"
+              checked={!!o.prog}
+              onChange={(e) => a.patch({ prog: e.target.checked })}
+            />
+            {L("Показывать выполнено/всего", "Show done/total")}
+          </label>
+          <Row label={L("Подзадачи", "Subtasks")}>
+            <div style={{ display: "grid", gap: 6, width: "100%" }}>
+              {(o.subtasks ?? []).map((sub, i) => (
+                <div key={i} style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                  <input
+                    type="checkbox"
+                    checked={sub.done}
+                    onChange={() =>
+                      a.patch({
+                        subtasks: (o.subtasks ?? []).map((x, j) =>
+                          j === i ? { ...x, done: !x.done } : x,
+                        ),
+                      })
+                    }
+                  />
+                  <input
+                    className="hc-text"
+                    style={{ flex: 1, minWidth: 0 }}
+                    value={sub.text}
+                    onChange={(e) =>
+                      a.patch(
+                        {
+                          subtasks: (o.subtasks ?? []).map((x, j) =>
+                            j === i ? { ...x, text: e.target.value } : x,
+                          ),
+                        },
+                        "sub",
+                      )
+                    }
+                    onKeyDown={(e) => e.stopPropagation()}
+                  />
+                  <button
+                    type="button"
+                    className="hc-ib danger"
+                    title={t("del")}
+                    onClick={() =>
+                      a.patch({ subtasks: (o.subtasks ?? []).filter((_, j) => j !== i) })
+                    }
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                </div>
+              ))}
+              <button
+                type="button"
+                className="hc-ib wide"
+                onClick={() =>
+                  a.patch({
+                    subtasks: [...(o.subtasks ?? []), { text: L("Шаг", "Step"), done: false }],
+                  })
+                }
+              >
+                + {L("Добавить подзадачу", "Add subtask")}
+              </button>
+            </div>
+          </Row>
+        </>
+      )}
+
+      {one && o.type === "image" && (
+        <>
+          <Row label={L("Вписывание", "Fit")}>
+            <div className="hc-icons">
+              {(
+                [
+                  ["fill", L("Растянуть", "Stretch")],
+                  ["contain", L("Целиком", "Contain")],
+                  ["cover", L("Заполнить", "Cover")],
+                ] as const
+              ).map(([k, label]) => (
+                <button
+                  key={k}
+                  type="button"
+                  className={`hc-ib wide${(o.fit ?? "fill") === k ? " on" : ""}`}
+                  onClick={() => a.patch({ fit: k })}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </Row>
+          <Row label={L("Отражение", "Flip")}>
+            <div className="hc-icons">
+              <button
+                type="button"
+                className={`hc-ib wide${o.flipX ? " on" : ""}`}
+                onClick={() => a.patch({ flipX: !o.flipX })}
+              >
+                {L("По горизонтали", "Horizontal")}
+              </button>
+              <button
+                type="button"
+                className={`hc-ib wide${o.flipY ? " on" : ""}`}
+                onClick={() => a.patch({ flipY: !o.flipY })}
+              >
+                {L("По вертикали", "Vertical")}
+              </button>
+            </div>
+          </Row>
+          {(
+            [
+              ["bri", L("Яркость", "Brightness"), 0.2, 2, 0.05, 1],
+              ["con", L("Контраст", "Contrast"), 0.2, 2, 0.05, 1],
+              ["sat", L("Насыщенность", "Saturation"), 0, 2, 0.05, 1],
+              ["blr", L("Размытие", "Blur"), 0, 20, 1, 0],
+            ] as const
+          ).map(([k, label, min, max, step, def]) => (
+            <Row key={k} label={label}>
+              <div className="hc-line">
+                <input
+                  type="range"
+                  min={min}
+                  max={max}
+                  step={step}
+                  value={o[k] ?? def}
+                  onChange={(e) => a.patch({ [k]: Number(e.target.value) }, k)}
+                />
+                <span>{o[k] ?? def}</span>
+              </div>
+            </Row>
+          ))}
+          <label className="hc-check">
+            <input
+              type="checkbox"
+              checked={!!o.gray}
+              onChange={(e) => a.patch({ gray: e.target.checked })}
+            />
+            {L("Чёрно-белое", "Grayscale")}
+          </label>
+          <button
+            type="button"
+            className="hc-ib wide"
+            onClick={() =>
+              a.patch({
+                bri: undefined,
+                con: undefined,
+                sat: undefined,
+                blr: undefined,
+                gray: undefined,
+                flipX: undefined,
+                flipY: undefined,
+                fit: undefined,
+              })
+            }
+          >
+            {L("Сбросить обработку", "Reset adjustments")}
+          </button>
+        </>
+      )}
+
       {one && o.type === "shape" && (
         <Row label={t("shape")}>
           <div className="hc-icons">
@@ -339,10 +631,10 @@ export function Inspector({ sel, a, t, ru }: Props) {
                 min={0}
                 max={16}
                 step={1}
-                value={o.sw ?? 2}
+                value={o.sw ?? swDefault}
                 onChange={(e) => a.patch({ sw: Number(e.target.value) }, "sw")}
               />
-              <span>{o.sw ?? 2}</span>
+              <span>{o.sw ?? swDefault}</span>
             </div>
           </Row>
           {has("shape", "frame", "line") && (
@@ -501,6 +793,52 @@ export function Inspector({ sel, a, t, ru }: Props) {
               </div>
             </Row>
           )}
+          {richText && (
+            <>
+              <Row label={L("Начертание", "Style")}>
+                <div className="hc-icons">
+                  {(
+                    [
+                      ["ul", L("Подчёрк.", "Underline")],
+                      ["st", L("Зачёрк.", "Strike")],
+                      ["caps", "AA"],
+                    ] as const
+                  ).map(([k, label]) => (
+                    <button
+                      key={k}
+                      type="button"
+                      className={`hc-ib wide${o[k] ? " on" : ""}`}
+                      onClick={() => a.patch({ [k]: !o[k] })}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </Row>
+              <Row label={L("Интервалы", "Spacing")}>
+                <div className="hc-icons">
+                  <Num
+                    suffix="↕"
+                    title={L("Межстрочный интервал", "Line height")}
+                    value={o.lh ?? 1.3}
+                    min={0.8}
+                    max={3}
+                    step={0.1}
+                    onChange={(lh) => a.patch({ lh }, "lh")}
+                  />
+                  <Num
+                    suffix="↔"
+                    title={L("Межбуквенный интервал, px", "Letter spacing, px")}
+                    value={o.sp ?? 0}
+                    min={-2}
+                    max={20}
+                    step={0.5}
+                    onChange={(sp) => a.patch({ sp }, "sp")}
+                  />
+                </div>
+              </Row>
+            </>
+          )}
           <Row label={t("textColor")}>
             <Colors
               value={o.tc}
@@ -510,6 +848,17 @@ export function Inspector({ sel, a, t, ru }: Props) {
             />
           </Row>
         </>
+      )}
+
+      {has("note") && !canText && (
+        <Row label={t("textColor")}>
+          <Colors
+            value={o.tc}
+            list={INK}
+            custom={t("custom")}
+            onPick={(c) => a.patch({ tc: c }, "tc")}
+          />
+        </Row>
       )}
 
       {canRadius && (
@@ -540,11 +889,11 @@ export function Inspector({ sel, a, t, ru }: Props) {
           <span>{Math.round((o.opacity ?? 1) * 100)}%</span>
         </div>
       </Row>
-      {has("shape", "sticky", "frame") && (
+      {canShadow && (
         <label className="hc-check">
           <input
             type="checkbox"
-            checked={!!o.shadow}
+            checked={softShadow ? o.shadow !== false : !!o.shadow}
             onChange={(e) => a.patch({ shadow: e.target.checked })}
           />
           {t("shadow")}

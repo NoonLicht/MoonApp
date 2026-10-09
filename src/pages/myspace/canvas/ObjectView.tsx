@@ -128,7 +128,11 @@ function textStyle(o: Obj): CSSProperties {
     fontStyle: o.italic ? "italic" : "normal",
     textAlign: o.ta ?? "left",
     color: ink,
-    lineHeight: 1.3,
+    lineHeight: o.lh ?? 1.3,
+    letterSpacing: o.sp ? `${o.sp}px` : undefined,
+    textDecoration:
+      [o.ul ? "underline" : "", o.st ? "line-through" : ""].filter(Boolean).join(" ") || undefined,
+    textTransform: o.caps ? "uppercase" : undefined,
     whiteSpace: "pre-wrap",
     overflowWrap: "anywhere",
     wordBreak: "break-word",
@@ -409,6 +413,7 @@ function ObjectViewInner(props: ViewProps) {
             }}
             data-oid={o.id}
             data-frame-title="1"
+            hidden={o.noName && !editing}
           >
             {editing ? (
               <input
@@ -481,6 +486,9 @@ function ObjectViewInner(props: ViewProps) {
             pointerEvents: "auto",
             borderRadius: o.radius ?? 8,
             overflow: "hidden",
+            border: o.sw ? `${o.sw}px solid ${o.stroke ?? "#1f2937"}` : undefined,
+            boxSizing: "border-box",
+            boxShadow: o.shadow ? "0 12px 24px -8px rgba(0,0,0,0.4)" : undefined,
           }}
           data-oid={o.id}
         >
@@ -491,9 +499,20 @@ function ObjectViewInner(props: ViewProps) {
             style={{
               width: "100%",
               height: "100%",
-              objectFit: "fill",
+              objectFit: o.fit ?? "fill",
               display: "block",
               userSelect: "none",
+              transform: `scale(${o.flipX ? -1 : 1}, ${o.flipY ? -1 : 1})`,
+              filter:
+                [
+                  o.bri != null && o.bri !== 1 ? `brightness(${o.bri})` : "",
+                  o.con != null && o.con !== 1 ? `contrast(${o.con})` : "",
+                  o.sat != null && o.sat !== 1 ? `saturate(${o.sat})` : "",
+                  o.gray ? "grayscale(1)" : "",
+                  o.blr ? `blur(${o.blr}px)` : "",
+                ]
+                  .filter(Boolean)
+                  .join(" ") || undefined,
             }}
           />
         </div>
@@ -654,7 +673,10 @@ function ObjectViewInner(props: ViewProps) {
     }
     case "task": {
       const status = o.status ?? "todo";
-      const col = status === "done" ? "#22c55e" : status === "inprogress" ? "#f59e0b" : "#94a3b8";
+      const col =
+        o.acc ?? (status === "done" ? "#22c55e" : status === "inprogress" ? "#f59e0b" : "#94a3b8");
+      const PR = { low: "#22c55e", medium: "#f59e0b", high: "#ef4444" } as const;
+      const PRL = { low: "низкий", medium: "средний", high: "высокий" } as const;
       const label =
         status === "done" ? "Готово" : status === "inprogress" ? "В работе" : "К выполнению";
       const subs = o.subtasks ?? [];
@@ -665,9 +687,10 @@ function ObjectViewInner(props: ViewProps) {
             pointerEvents: "auto",
             background: o.fill ?? "#ffffff",
             borderRadius: o.radius ?? 14,
-            border: `1px solid rgba(0,0,0,0.12)`,
-            boxShadow: "0 8px 16px -8px rgba(0,0,0,0.35)",
-            color: "#1c1d2b",
+            border: `${o.sw ?? 1}px solid ${o.stroke ?? "rgba(0,0,0,0.12)"}`,
+            boxSizing: "border-box",
+            boxShadow: o.shadow === false ? undefined : "0 8px 16px -8px rgba(0,0,0,0.35)",
+            color: o.tc ?? "#1c1d2b",
             display: "flex",
             flexDirection: "column",
             overflow: "hidden",
@@ -677,7 +700,14 @@ function ObjectViewInner(props: ViewProps) {
           <div style={{ height: 4, background: col, flex: "0 0 auto" }} />
           <div style={{ position: "relative", flex: "0 0 auto", minHeight: 44 }}>
             <TextBlock
-              o={{ ...o, fs: 15, fw: 600, va: "top", ta: "left", tc: "#1c1d2b" }}
+              o={{
+                ...o,
+                fs: o.fs ?? 15,
+                fw: o.fw ?? 600,
+                va: "top",
+                ta: o.ta ?? "left",
+                tc: o.tc ?? "#1c1d2b",
+              }}
               editing={editing}
               onCommit={commit}
               box={{ position: "relative" }}
@@ -708,6 +738,26 @@ function ObjectViewInner(props: ViewProps) {
             >
               {label}
             </button>
+            {o.prio && (
+              <span
+                style={{
+                  fontSize: 11,
+                  fontWeight: 700,
+                  padding: "3px 8px",
+                  borderRadius: 999,
+                  background: `${PR[o.prio]}26`,
+                  color: PR[o.prio],
+                }}
+              >
+                ● {PRL[o.prio]}
+              </span>
+            )}
+            {o.due && <span style={{ fontSize: 11, color: "#64748b" }}>📅 {o.due}</span>}
+            {o.prog && subs.length > 0 && (
+              <span style={{ fontSize: 11, color: "#64748b" }}>
+                {subs.filter((x) => x.done).length}/{subs.length}
+              </span>
+            )}
             <div style={{ flex: 1 }} />
             <button
               type="button"
@@ -789,9 +839,9 @@ function ObjectViewInner(props: ViewProps) {
             pointerEvents: "auto",
             background: o.fill ?? "#ffffff",
             borderRadius: o.radius ?? 14,
-            border: "1px solid rgba(0,0,0,0.12)",
-            boxShadow: "0 8px 16px -8px rgba(0,0,0,0.35)",
-            color: "#1c1d2b",
+            border: `${o.sw ?? 1}px solid ${o.stroke ?? "rgba(0,0,0,0.12)"}`,
+            boxShadow: o.shadow === false ? undefined : "0 8px 16px -8px rgba(0,0,0,0.35)",
+            color: o.tc ?? "#1c1d2b",
             padding: 12,
             boxSizing: "border-box",
             overflow: "hidden",

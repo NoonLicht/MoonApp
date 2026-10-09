@@ -108,6 +108,35 @@ export interface Obj {
 
   /* стикер */
   emoji?: string;
+
+  /* расширенные настройки текста */
+  /** подчёркнутый / зачёркнутый / ПРОПИСНЫЕ */
+  ul?: boolean;
+  st?: boolean;
+  caps?: boolean;
+  /** межстрочный интервал (множитель) и межбуквенный (px) */
+  lh?: number;
+  sp?: number;
+
+  /* картинка */
+  fit?: "fill" | "contain" | "cover";
+  flipX?: boolean;
+  flipY?: boolean;
+  /** яркость, контраст, насыщенность (1 = без изменений), размытие px, оттенки серого */
+  bri?: number;
+  con?: number;
+  sat?: number;
+  blr?: number;
+  gray?: boolean;
+
+  /* карточка задачи */
+  prio?: "low" | "medium" | "high";
+  /** цвет полоски-акцента; без него — по статусу */
+  acc?: string;
+  /** показывать прогресс подзадач */
+  prog?: boolean;
+  /** скрыть заголовок рамки */
+  noName?: boolean;
 }
 
 export interface HolstDoc {
