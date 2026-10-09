@@ -606,7 +606,10 @@
   padding-top: 14vh;
 }
 .palette {
-  width: 440px;
+  width: 560px;
+  max-width: 92vw;
+  color: var(--text-primary);
+  font-family: inherit;
   max-height: 52vh;
   overflow: auto;
   background: rgba(26, 26, 26, 0.96);

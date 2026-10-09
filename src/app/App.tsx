@@ -406,6 +406,7 @@ function Shell({
           {proxyPanelVisible && <ProxyPanel onClose={() => setProxyPanelVisible(false)} />}
           {taskManagerVisible && <TaskManagerPanel onClose={() => setTaskManagerVisible(false)} />}
           {modelPanelVisible && <ModelPanel onClose={() => setModelPanelVisible(false)} />}
+          <CommandPalette />
 
           {/* Стопка живых страниц: активная видима, остальные скрыты, но сохраняют
             состояние (прогресс задач, ввод, позицию скролла). */}
@@ -601,7 +602,6 @@ export default function App() {
           unloadIdleMinutes={unloadIdleMinutes}
           welcomeOpen={welcomeOpen}
         />
-        <CommandPalette />
       </ContextMenuProvider>
     </I18nProvider>
   );

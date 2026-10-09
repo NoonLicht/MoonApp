@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Search } from "lucide-react";
 import { api } from "@/api/client";
+import { useDeepLink } from "@/lib/deepLink";
 
 const HIT = "set-row-hit";
 
@@ -12,6 +13,9 @@ const HIT = "set-row-hit";
 export default function SettingsSearch() {
   const [q, setQ] = useState("");
   const [note, setNote] = useState("");
+  useDeepLink("settings", (t) => {
+    if (t.view === "search" && t.ref) setQ(t.ref);
+  });
 
   useEffect(() => {
     const clear = () =>

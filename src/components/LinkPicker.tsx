@@ -27,7 +27,7 @@ const flatNotes = (items: VaultFile[]): PickItem[] =>
         : [],
   );
 
-async function load(kind: SemSource): Promise<PickItem[]> {
+export async function loadPickItems(kind: SemSource): Promise<PickItem[]> {
   switch (kind) {
     case "note":
       return flatNotes(await api.myspaceTree());
@@ -90,7 +90,7 @@ export default function LinkPicker({
   useEffect(() => {
     let live = true;
     setLoading(true);
-    load(tab)
+    loadPickItems(tab)
       .then((l) => live && setItems(l))
       .catch(() => live && setItems([]))
       .finally(() => live && setLoading(false));

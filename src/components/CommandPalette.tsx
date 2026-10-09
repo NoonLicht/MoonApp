@@ -1,12 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Zap, Search, Sparkles } from "lucide-react";
-import { Glass } from "@/components/ui";
+import { Zap, Search, Settings2 } from "lucide-react";
 import { useI18n } from "@/app/i18n";
 import { api } from "@/api/client";
 import type { LauncherEntry } from "@/api/types";
 import type { SemHit } from "@/api/apiSemantic";
 import { PAGES } from "@/app/navigation";
-import { openTarget, targetFor, SOURCE_LABEL } from "@/lib/deepLink";
+import { openTarget, targetFor, SOURCE_LABEL, SOURCE_ICON } from "@/lib/deepLink";
+import { loadPickItems, type PickItem } from "@/components/LinkPicker";
+import type { SemSource } from "@/api/apiSemantic";
+
+const KINDS: SemSource[] = ["note", "task", "bookmark", "canvas", "lecture", "chat"];
+const PER_KIND = 4;
 
 /**
  * Командная палитра поверх всего приложения: открывается глобальным хоткеем
@@ -24,6 +28,7 @@ export default function CommandPalette() {
   const [selected, setSelected] = useState(0);
   const [runError, setRunError] = useState("");
   const [hits, setHits] = useState<SemHit[]>([]);
+  const [index, setIndex] = useState<PickItem[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -33,6 +38,9 @@ export default function CommandPalette() {
       setRunError("");
       setHits([]);
       setOpen(true);
+      void Promise.all(KINDS.map((k) => loadPickItems(k).catch(() => [] as PickItem[]))).then((l) =>
+        setIndex(l.flat()),
+      );
       api
         .automationLaunchers()
         .then(setLaunchers)
@@ -86,10 +94,30 @@ export default function CommandPalette() {
         name: string;
         Icon: React.ElementType;
       }
-    | { kind: "hit"; key: string; h: SemHit };
+    | {
+        kind: "obj";
+        key: string;
+        src: SemSource;
+        ref: string;
+        title: string;
+        sub: string;
+        at?: number;
+      }
+    | { kind: "settings"; key: string; q: string };
 
-  const filtered = useMemo<Item[]>(() => {
+  const groups = useMemo(() => {
     const q = query.trim().toLowerCase();
+    const out: { title: string; items: Item[] }[] = [];
+    const pg = PAGES.map((p) => ({ p, name: t(p.i18n) }))
+      .filter((x) => !q || x.name.toLowerCase().includes(q))
+      .map((x): Item => ({
+        kind: "page",
+        key: `p${x.p.id}`,
+        id: x.p.id,
+        name: x.name,
+        Icon: x.p.icon,
+      }));
+    if (pg.length) out.push({ title: "Страницы", items: pg });
     const ls = (
       q
         ? launchers.filter(
@@ -97,21 +125,54 @@ export default function CommandPalette() {
           )
         : launchers
     ).map((l): Item => ({ kind: "launcher", key: `l${l.id}`, l }));
-    const pg = q
-      ? PAGES.map((p) => ({ p, name: t(p.i18n) }))
-          .filter((x) => x.name.toLowerCase().includes(q))
-          .map((x): Item => ({
-            kind: "page",
-            key: `p${x.p.id}`,
-            id: x.p.id,
-            name: x.name,
-            Icon: x.p.icon,
-          }))
-      : [];
-    const hs = hits.map((h): Item => ({ kind: "hit", key: `h${h.source}${h.ref}`, h }));
-    return [...pg, ...ls, ...hs];
+    if (ls.length) out.push({ title: "Запуск", items: ls });
+    if (q) {
+      const seen = new Set<string>();
+      const words = q.split(/\s+/).filter(Boolean);
+      for (const k of KINDS) {
+        const found = index
+          .filter((i) => i.kind === k)
+          .filter((i) => {
+            const text = `${i.title} ${i.preview ?? ""} ${i.url ?? ""}`.toLowerCase();
+            return words.every((w) => text.includes(w));
+          })
+          .slice(0, PER_KIND);
+        if (!found.length) continue;
+        found.forEach((i) => seen.add(i.kind + i.ref));
+        out.push({
+          title: SOURCE_LABEL[k],
+          items: found.map((i): Item => ({
+            kind: "obj",
+            key: `o${i.kind}${i.ref}`,
+            src: i.kind,
+            ref: i.ref,
+            title: i.title,
+            sub: (i.preview ?? "").slice(0, 80),
+          })),
+        });
+      }
+      const sem = hits
+        .filter((h) => !seen.has(h.source + h.ref))
+        .map((h): Item => ({
+          kind: "obj",
+          key: `h${h.source}${h.ref}${h.at ?? ""}`,
+          src: h.source,
+          ref: h.ref,
+          title: h.title,
+          sub: `${SOURCE_LABEL[h.source]} · ${h.snippet.slice(0, 80)}`,
+          at: h.at,
+        }));
+      if (sem.length) out.push({ title: "По смыслу", items: sem });
+      if (q.length >= 2)
+        out.push({
+          title: "Настройки",
+          items: [{ kind: "settings", key: "settings-q", q: query.trim() }],
+        });
+    }
+    return out;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [launchers, query, hits]);
+  }, [launchers, query, hits, index]);
+  const filtered = useMemo(() => groups.flatMap((g) => g.items), [groups]);
 
   const run = async (it: Item) => {
     if (it.kind === "launcher") {
@@ -121,7 +182,8 @@ export default function CommandPalette() {
         return;
       }
     } else if (it.kind === "page") openTarget({ page: it.id });
-    else openTarget(targetFor(it.h.source, it.h.ref, it.h.at));
+    else if (it.kind === "settings") openTarget({ page: "settings", view: "search", ref: it.q });
+    else openTarget(targetFor(it.src, it.ref, it.at));
     setOpen(false);
   };
 
@@ -146,52 +208,24 @@ export default function CommandPalette() {
     }
   };
 
+  useEffect(() => {
+    if (open)
+      document.querySelector(".palette-item.is-active")?.scrollIntoView({ block: "nearest" });
+  }, [open, selected, groups]);
+
   if (!open) return null;
 
+  let idx = -1;
   return (
-    <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        background: "rgba(0,0,0,0.45)",
-        zIndex: 1000,
-        display: "flex",
-        alignItems: "flex-start",
-        justifyContent: "center",
-        paddingTop: "14vh",
-      }}
-      onClick={() => setOpen(false)}
-    >
-      <Glass
-        style={{
-          width: 480,
-          maxWidth: "90vw",
-          maxHeight: "60vh",
-          background: "rgba(24,24,28,0.97)",
-          border: "1px solid var(--glass-border)",
-          boxShadow: "0 16px 50px rgba(0,0,0,0.5)",
-          display: "flex",
-          flexDirection: "column",
-          borderRadius: 14,
-          overflow: "hidden",
-        }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            padding: "10px 14px",
-            borderBottom: "1px solid var(--glass-border)",
-          }}
-        >
-          <Search size={16} style={{ color: "var(--text-tertiary)" }} />
+    <div className="palette-overlay" onClick={() => setOpen(false)}>
+      <div className="palette" onClick={(e) => e.stopPropagation()}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+          <Search size={16} style={{ color: "var(--text-tertiary)", flexShrink: 0 }} />
           <input
             ref={inputRef}
-            className="text-input"
-            style={{ border: "none", background: "transparent", flex: 1, fontSize: 15 }}
-            placeholder={t("palette.placeholder")}
+            className="palette-input"
+            style={{ marginBottom: 0 }}
+            placeholder="Страницы, заметки, задачи, закладки, доски, лекции, чаты… или по смыслу"
             value={query}
             onChange={(e) => {
               setQuery(e.target.value);
@@ -200,54 +234,65 @@ export default function CommandPalette() {
             onKeyDown={onKeyDown}
           />
         </div>
-
         {runError && (
-          <div style={{ padding: "8px 14px", color: "var(--coral)", fontSize: 13 }}>{runError}</div>
+          <div style={{ padding: "6px 8px", color: "var(--coral)", fontSize: 13 }}>{runError}</div>
         )}
-
-        <div style={{ overflow: "auto" }}>
-          {filtered.length === 0 && (
-            <div className="muted-sm" style={{ padding: 14 }}>
-              {launchers.length === 0 ? t("palette.empty") : t("palette.noMatch")}
-            </div>
-          )}
-          {filtered.map((it, i) => (
-            <div
-              key={it.key}
-              onClick={() => void run(it)}
-              onMouseEnter={() => setSelected(i)}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 10,
-                padding: "9px 14px",
-                cursor: "pointer",
-                background:
-                  i === selected ? "var(--glass-hover, rgba(255,255,255,0.06))" : "transparent",
-              }}
-            >
-              {it.kind === "launcher" && <Zap size={14} style={{ color: "var(--amber)" }} />}
-              {it.kind === "page" && <it.Icon size={14} style={{ color: "var(--amber)" }} />}
-              {it.kind === "hit" && <Sparkles size={14} style={{ color: "var(--amber)" }} />}
-              <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: 13, fontWeight: 600 }}>
-                  {it.kind === "launcher" ? it.l.name : it.kind === "page" ? it.name : it.h.title}
-                </div>
-                <div
-                  className="muted-sm"
-                  style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+        {filtered.length === 0 && (
+          <div className="muted-sm" style={{ padding: 10 }}>
+            {query.trim() ? t("palette.noMatch") : t("palette.empty")}
+          </div>
+        )}
+        {groups.map((g) => (
+          <div key={g.title}>
+            <div className="palette-group">{g.title}</div>
+            {g.items.map((it) => {
+              idx += 1;
+              const i = idx;
+              return (
+                <button
+                  key={it.key}
+                  type="button"
+                  className={`palette-item${i === selected ? " is-active" : ""}`}
+                  onClick={() => void run(it)}
+                  onMouseEnter={() => setSelected(i)}
                 >
-                  {it.kind === "launcher"
-                    ? it.l.exePath
-                    : it.kind === "page"
-                      ? "Страница"
-                      : `${SOURCE_LABEL[it.h.source]} · ${it.h.snippet.slice(0, 80)}`}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </Glass>
+                  {it.kind === "launcher" && <Zap size={14} style={{ color: "var(--amber)" }} />}
+                  {it.kind === "page" && <it.Icon size={14} style={{ color: "var(--amber)" }} />}
+                  {it.kind === "settings" && (
+                    <Settings2 size={14} style={{ color: "var(--amber)" }} />
+                  )}
+                  {it.kind === "obj" && (
+                    <span style={{ width: 14, textAlign: "center" }}>{SOURCE_ICON[it.src]}</span>
+                  )}
+                  <span style={{ minWidth: 0, display: "flex", flexDirection: "column" }}>
+                    <span style={{ color: "var(--text-primary)", fontWeight: 600 }}>
+                      {it.kind === "launcher"
+                        ? it.l.name
+                        : it.kind === "page"
+                          ? it.name
+                          : it.kind === "settings"
+                            ? `Искать в настройках: «${it.q}»`
+                            : it.title}
+                    </span>
+                    <span
+                      className="muted-sm"
+                      style={{ overflow: "hidden", textOverflow: "ellipsis" }}
+                    >
+                      {it.kind === "launcher"
+                        ? it.l.exePath
+                        : it.kind === "page"
+                          ? "Страница"
+                          : it.kind === "settings"
+                            ? "Подсветит нужные пункты на странице настроек"
+                            : it.sub || SOURCE_LABEL[it.src]}
+                    </span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
