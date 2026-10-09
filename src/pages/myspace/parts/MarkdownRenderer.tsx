@@ -69,19 +69,23 @@ function processInline(l: string, lineIndex: number): string {
   l = l.replace(/(?<!~)~([^~\s][^~]*[^~\s])~(?!~)/g, "<sub>$1</sub>");
   // Highlight ==text== -> <mark>text</mark>
   l = l.replace(/==([^=]+)==/g, "<mark>$1</mark>");
+  // Встроенные блоки живого редактора в предпросмотре — обычные ссылки
+  l = l.replace(
+    /!\[\[(task|canvas):([^\]]+)\]\]/g,
+    (_, k, r) =>
+      `<a href="moon://${k}/${encodeURIComponent(r.trim())}">${k === "task" ? "✅ Задача" : "🎨 Доска"}</a>`,
+  );
   // WikiLinks [[...]]
   l = l.replace(
     /\[\[([^\]]+)\]\]/g,
-    (_, title) => `<span class="md-wl" data-title="${title.replace(/"/g, "&quot;")}">${title}</span>`,
+    (_, title) =>
+      `<span class="md-wl" data-title="${title.replace(/"/g, "&quot;")}">${title}</span>`,
   );
   // #tags (не трогаем markdown-заголовки "# Title" в начале строки)
-  l = l.replace(
-    /(^|\s)(#[a-zA-Zа-яА-Я0-9_\-/]+)/g,
-    (m, sp, tag, offset) => {
-      if (offset === 0 && /^#{1,6}\s/.test(l)) return m;
-      return `${sp}<span class="md-tg" data-tag="${tag}">${tag}</span>`;
-    },
-  );
+  l = l.replace(/(^|\s)(#[a-zA-Zа-яА-Я0-9_\-/]+)/g, (m, sp, tag, offset) => {
+    if (offset === 0 && /^#{1,6}\s/.test(l)) return m;
+    return `${sp}<span class="md-tg" data-tag="${tag}">${tag}</span>`;
+  });
   return l;
 }
 
@@ -149,7 +153,11 @@ function preprocess(text: string): string {
       const segments = raw.split(/(`[^`]*`)/g);
       out.push(
         segments
-          .map((seg) => (seg.startsWith("`") && seg.endsWith("`") && seg.length > 1 ? seg : processInline(seg, i)))
+          .map((seg) =>
+            seg.startsWith("`") && seg.endsWith("`") && seg.length > 1
+              ? seg
+              : processInline(seg, i),
+          )
           .join(""),
       );
       continue;
@@ -171,12 +179,10 @@ export default function MarkdownRenderer({
     const preprocessed = preprocess(content);
     const stash = mathStash;
     const restore = (h: string): string =>
-      h
-        .replace(/<p>\s*(MOONMATH\d+END)\s*<\/p>/g, "$1")
-        .replace(MATH_TOKEN, (_, n) => {
-          const html = stash[Number(n)] ?? "";
-          return html.includes("katex-display") ? `<div class="md-math-display">${html}</div>` : html;
-        });
+      h.replace(/<p>\s*(MOONMATH\d+END)\s*<\/p>/g, "$1").replace(MATH_TOKEN, (_, n) => {
+        const html = stash[Number(n)] ?? "";
+        return html.includes("katex-display") ? `<div class="md-math-display">${html}</div>` : html;
+      });
     try {
       // marked.parseSync exists in v18+
       return restore(marked.parse(preprocessed) as string);

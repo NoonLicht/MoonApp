@@ -1,5 +1,7 @@
 import { useEffect, useRef } from "react";
+import { createRoot, type Root } from "react-dom/client";
 import { openMoonHref } from "@/lib/deepLink";
+import EmbedBlock from "@/pages/myspace/parts/EmbedBlocks";
 import {
   EditorState,
   StateEffect,
@@ -853,6 +855,98 @@ function buildLiveDecorations(
    содержащие блочные (block: true) виджеты/замены — как TableWidget —
    предоставлялись именно полем состояния, а не плагином вида, иначе падает
    с "Block decorations may not be specified via plugins". ─── */
+/* ───── встроенные блоки: ![[task:ID]] и ![[canvas:доска]] на отдельной строке ───── */
+
+const EMBED_LINE = /^\s*!\[\[(task|canvas):([^\]]+)\]\]\s*$/;
+
+class EmbedWidget extends WidgetType {
+  private root: Root | null = null;
+  constructor(
+    readonly kind: string,
+    readonly refId: string,
+  ) {
+    super();
+  }
+  eq(o: EmbedWidget) {
+    return o.kind === this.kind && o.refId === this.refId;
+  }
+  toDOM(view: EditorView) {
+    const el = document.createElement("div");
+    el.className = "cm-embed-host";
+    this.root = createRoot(el);
+    this.root.render(
+      <EmbedBlock
+        kind={this.kind}
+        refId={this.refId}
+        onRemove={() => {
+          const pos = view.posAtDOM(el);
+          const line = view.state.doc.lineAt(pos);
+          view.dispatch({
+            changes: {
+              from: line.from,
+              to: Math.min(view.state.doc.length, line.to + 1),
+              insert: "",
+            },
+          });
+        }}
+      />,
+    );
+    return el;
+  }
+  destroy() {
+    const r = this.root;
+    this.root = null;
+    if (r) setTimeout(() => r.unmount(), 0);
+  }
+  ignoreEvent() {
+    return true;
+  }
+}
+
+const embedField = StateField.define<DecorationSet>({
+  create: (state) => buildEmbeds(state.doc),
+  update: (deco, tr) => (tr.docChanged ? buildEmbeds(tr.state.doc) : deco),
+  provide: (f) => EditorView.decorations.from(f),
+});
+
+function buildEmbeds(doc: Text): DecorationSet {
+  const b = new RangeSetBuilder<Decoration>();
+  for (let i = 1; i <= doc.lines; i++) {
+    const line = doc.line(i);
+    const m = EMBED_LINE.exec(line.text);
+    if (m)
+      b.add(
+        line.from,
+        line.to,
+        Decoration.replace({ widget: new EmbedWidget(m[1], m[2].trim()), block: true }),
+      );
+  }
+  return b.finish();
+}
+
+/* ───── вставка в позицию курсора из внешнего окна (после потери фокуса) ───── */
+
+let lastView: EditorView | null = null;
+let lastPos = 0;
+
+/** Вставить текст там, где стоял курсор редактора заметки; block — на отдельной строке. */
+export function insertIntoLiveEditor(text: string, block = false): boolean {
+  const view = lastView;
+  if (!view || !view.dom.isConnected) return false;
+  const doc = view.state.doc;
+  const at = Math.min(lastPos, doc.length);
+  let ins = text;
+  if (block) {
+    const before = at > 0 ? doc.sliceString(at - 1, at) : "\n";
+    const after = at < doc.length ? doc.sliceString(at, at + 1) : "\n";
+    ins = `${before === "\n" ? "" : "\n"}${text}${after === "\n" ? "" : "\n"}`;
+  }
+  view.dispatch({ changes: { from: at, insert: ins }, selection: { anchor: at + ins.length } });
+  lastPos = at + ins.length;
+  view.focus();
+  return true;
+}
+
 function livePreviewField(
   onToggleCheckbox: ((i: number) => void) | undefined,
   applyEdit: (from: number, to: number, text: string) => void,
@@ -1360,11 +1454,13 @@ export default function CodeMirrorLiveEditor({
         ocrStateRef.current,
       ),
       clickHandler,
+      embedField,
       theme,
       EditorView.lineWrapping,
       EditorView.editable.of(!readOnly),
       EditorView.contentAttributes.of({ spellcheck: spellCheck ? "true" : "false" }),
       EditorView.updateListener.of((u) => {
+        if (u.selectionSet || u.docChanged) lastPos = u.state.selection.main.head;
         if (u.docChanged) {
           const v = u.state.doc.toString();
           lastEmitted.current = v;
@@ -1376,6 +1472,8 @@ export default function CodeMirrorLiveEditor({
     const state = EditorState.create({ doc: content, extensions });
     const view = new EditorView({ state, parent: hostRef.current });
     viewRef.current = view;
+    lastView = view;
+    lastPos = view.state.selection.main.head;
     lastEmitted.current = content;
 
     const onImageAction = (ev: Event) => {

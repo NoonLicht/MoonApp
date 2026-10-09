@@ -47,6 +47,7 @@ import MarkdownRenderer from "@/pages/myspace/parts/MarkdownRenderer";
 import CodeMirrorLiveEditor from "@/pages/myspace/parts/CodeMirrorLiveEditor";
 import { useDeepLink, moonHref, SOURCE_ICON } from "@/lib/deepLink";
 import LinkPicker, { type PickItem } from "@/components/LinkPicker";
+import { insertIntoLiveEditor } from "@/pages/myspace/parts/CodeMirrorLiveEditor";
 import { SemanticPanel } from "@/pages/myspace/parts/SemanticPanel";
 import type { OcrImageRequest, PdfDropRequest } from "@/pages/myspace/parts/CodeMirrorLiveEditor";
 import OcrDialog from "@/pages/myspace/parts/OcrDialog";
@@ -138,6 +139,7 @@ export default function MyspacePage() {
   // плашка об успехе. Ошибки живут в общем `error` над редактором.
   const [aiBusy, setAiBusy] = useState<"" | "format" | "regenerate">("");
   const [pickerOpen, setPickerOpen] = useState(false);
+  const pickPos = useRef<number | null>(null);
   const [aiNotice, setAiNotice] = useState("");
   const aiNoticeTimer = useRef<any>(null);
   // Выбор провайдера/модели для ИИ-оформления (всплывающее окно рядом с
@@ -1872,7 +1874,13 @@ export default function MyspacePage() {
                           Markdown из текущего текста; «Регенерировать» (RefreshCw)
                           — заново из сохранённого исходника, полная замена. */}
                       <button
-                        onClick={() => setPickerOpen(true)}
+                        onClick={() => {
+                          const ta = document.querySelector(
+                            ".ms-edit-textarea",
+                          ) as HTMLTextAreaElement | null;
+                          pickPos.current = ta ? ta.selectionStart : null;
+                          setPickerOpen(true);
+                        }}
                         title="Вставить ссылку на задачу, закладку, заметку, доску, лекцию или чат"
                         aria-label="Вставить из приложения"
                         style={{
@@ -3087,11 +3095,22 @@ export default function MyspacePage() {
           kinds={["task", "bookmark", "note", "canvas", "lecture", "chat"]}
           onClose={() => setPickerOpen(false)}
           onPick={(it: PickItem) => {
+            // Задачи и доски встраиваются блоком (виджет в тексте), остальное — ссылкой.
+            const block = it.kind === "task" || it.kind === "canvas";
             const href = it.kind === "bookmark" && it.url ? it.url : moonHref(it.kind, it.ref);
-            const link = `[${SOURCE_ICON[it.kind]} ${it.title.replace(/[\[\]]/g, "")}](${href})`;
-            const base = edContent.replace(/\s+$/, "");
-            updContent(activeTab, `${base}${base ? "\n\n" : ""}${link}\n`);
+            const label = it.title.replace(/[[\]]/g, "");
+            const text = block
+              ? `![[${it.kind}:${it.ref}]]`
+              : `[${SOURCE_ICON[it.kind]} ${label}](${href})`;
             setPickerOpen(false);
+            if (!insertIntoLiveEditor(text, block) && activeTab) {
+              // режим исходного текста: вставляем в позицию курсора textarea
+              const at = Math.min(pickPos.current ?? edContent.length, edContent.length);
+              const pre = edContent.slice(0, at);
+              const lead = block && pre && !pre.endsWith("\n") ? "\n" : "";
+              const tail = block && !edContent.slice(at).startsWith("\n") ? "\n" : "";
+              updContent(activeTab, pre + lead + text + tail + edContent.slice(at));
+            }
           }}
         />
       )}

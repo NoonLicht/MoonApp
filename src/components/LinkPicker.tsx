@@ -145,51 +145,42 @@ export default function LinkPicker({
             <X size={15} />
           </button>
         </div>
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
+        <div className="lp-tabs">
           {kinds.map((k) => (
             <button
               key={k}
               type="button"
-              className={`chip-toggle${tab === k ? " is-active" : ""}`}
+              className={`lp-tab${tab === k ? " is-active" : ""}`}
               onClick={() => setTab(k)}
             >
-              {SOURCE_ICON[k]} {SOURCE_LABEL[k]}
+              <span>{SOURCE_ICON[k]}</span> {SOURCE_LABEL[k]}
             </button>
           ))}
         </div>
-        <label style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
-          <Search size={14} />
+        <label className="lp-search">
+          <Search size={15} />
           <input
             autoFocus
-            className="text-input"
-            style={{ flex: 1 }}
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Поиск по названию или смыслу…"
           />
         </label>
-        <div style={{ maxHeight: 320, overflow: "auto", display: "grid", gap: 4 }}>
-          {loading && <div className="muted-sm">Загрузка…</div>}
-          {!loading && shown.length === 0 && <div className="muted-sm">Ничего не найдено</div>}
+        <div className="lp-list">
+          {loading && <div className="lp-empty">Загрузка…</div>}
+          {!loading && shown.length === 0 && <div className="lp-empty">Ничего не найдено</div>}
           {shown.map((i) => (
             <button
               key={i.kind + i.ref}
               type="button"
-              className="task-mgr-row"
-              style={{ textAlign: "left", cursor: "pointer", margin: 0 }}
+              className="lp-item"
               onClick={() => onPick(i)}
             >
-              <span style={{ fontWeight: 600 }}>
-                {SOURCE_ICON[i.kind]} {i.title}
+              <span className="lp-ico">{SOURCE_ICON[i.kind]}</span>
+              <span className="lp-txt">
+                <span className="lp-title">{i.title}</span>
+                {i.preview && <span className="lp-sub">{i.preview.slice(0, 90)}</span>}
               </span>
-              {i.preview && (
-                <span
-                  className="muted-sm"
-                  style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
-                >
-                  {i.preview.slice(0, 90)}
-                </span>
-              )}
             </button>
           ))}
         </div>
