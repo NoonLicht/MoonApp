@@ -14,7 +14,7 @@ import logger from "./logger";
 import {
   DIM,
   embedConfig,
-  embedModelChoice,
+  embedModelSelected,
   embedModelFile,
   embedModels,
   embedRaw,
@@ -882,7 +882,7 @@ export function status(): Status {
   return {
     enabled: embedConfig().enabled,
     device: embedConfig().device,
-    model: embedModelChoice(),
+    model: embedModelSelected(),
     models: embedModels(),
     runtime: embedRuntime(),
     indexed: n,

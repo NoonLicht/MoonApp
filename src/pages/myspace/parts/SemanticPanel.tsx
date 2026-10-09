@@ -69,7 +69,7 @@ export function SemanticPanel({ note, content, onOpenNote, onInsertLink, onAddTa
     return () => clearInterval(t);
   }, [loadStatus]);
 
-  const ready = !!status?.model && status.chunks > 0;
+  const ready = !!status?.models.length && status.chunks > 0;
 
   // похожие и подсказки — при смене заметки и после (до)индексации
   useEffect(() => {
@@ -159,7 +159,7 @@ export function SemanticPanel({ note, content, onOpenNote, onInsertLink, onAddTa
       </div>
     );
   }
-  if (status && !status.model) {
+  if (status && !status.models.length) {
     return (
       <div style={{ padding: 14, fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.5 }}>
         <Sparkles size={16} style={{ color: "var(--amber)" }} />

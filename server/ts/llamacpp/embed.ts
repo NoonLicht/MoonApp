@@ -68,6 +68,10 @@ export function embedModels(): string[] {
 }
 
 /** Модель, которую выбрала бы настройка, не учитывая выключатель. */
+export function embedModelSelected(): string | null {
+  return embedConfig().model || embedModelChoice();
+}
+
 export function embedModelChoice(): string | null {
   const all = embedModels();
   const c = embedConfig().model;

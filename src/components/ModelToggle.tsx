@@ -237,7 +237,7 @@ export default function ModelToggle({ onClick }: { onClick: () => void }) {
     const tick = () =>
       api
         .semStatus()
-        .then((s) => setOn(s.enabled && !!s.model))
+        .then((s) => setOn(s.enabled && s.models.includes(s.model ?? "")))
         .catch(() => {});
     tick();
     const id = window.setInterval(tick, 5000);
