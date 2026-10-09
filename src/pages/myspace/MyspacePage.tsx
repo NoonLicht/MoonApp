@@ -34,7 +34,6 @@ import {
   RefreshCw,
   SlidersHorizontal,
   PanelRightOpen,
-  Eye,
   PanelRightClose,
   Link2,
   Type,
@@ -42,8 +41,6 @@ import {
   Maximize2,
   AlertTriangle,
 } from "lucide-react";
-import EditingToolbar from "@/pages/myspace/parts/EditingToolbar";
-import MarkdownRenderer from "@/pages/myspace/parts/MarkdownRenderer";
 import CodeMirrorLiveEditor from "@/pages/myspace/parts/CodeMirrorLiveEditor";
 import { useDeepLink, moonHref, SOURCE_ICON } from "@/lib/deepLink";
 import LinkPicker, { type PickItem } from "@/components/LinkPicker";
@@ -133,7 +130,6 @@ export default function MyspacePage() {
   const [edContent, setEdContent] = useState("");
   const saveTimer = useRef<any>(null);
   const [saving, setSaving] = useState(false);
-  const [previewMode, setPreviewMode] = useState<"edit" | "preview" | "split" | "live">("live");
   const [error, setError] = useState("");
   // ИИ-оформление заметки: какая операция идёт сейчас ("" — ничего) и короткая
   // плашка об успехе. Ошибки живут в общем `error` над редактором.
@@ -515,27 +511,6 @@ export default function MyspacePage() {
     },
     [insertImageMarkdown],
   );
-
-  const attachFromClipboard = useCallback(async () => {
-    try {
-      if (!navigator.clipboard?.read) {
-        setAttachError(t("myspace.clipboardUnsupported"));
-        return;
-      }
-      const items = await navigator.clipboard.read();
-      for (const item of items) {
-        const imgType = item.types.find((ty) => ty.startsWith("image/"));
-        if (imgType) {
-          const blob = await item.getType(imgType);
-          await uploadAndInsertImage(blob, `clipboard.${imgType.split("/")[1] || "png"}`);
-          return;
-        }
-      }
-      setAttachError(t("myspace.clipboardNoImage"));
-    } catch (e) {
-      setAttachError((e as Error).message);
-    }
-  }, [uploadAndInsertImage, t]);
 
   /**
    * ИИ-оформление заметки.
@@ -1284,20 +1259,6 @@ export default function MyspacePage() {
     );
   };
 
-  const txStyle: React.CSSProperties = {
-    flex: 1,
-    minHeight: 0,
-    width: "100%",
-    padding: "20px 24px",
-    fontFamily: "var(--font-mono)",
-    fontSize: 14,
-    lineHeight: 1.6,
-    border: "none",
-    outline: "none",
-    resize: "none",
-    background: "transparent",
-    color: "var(--text-primary)",
-  };
   return (
     <div
       className="page-wide"
@@ -1946,71 +1907,6 @@ export default function MyspacePage() {
                       >
                         <SlidersHorizontal size={13} />
                       </button>
-                      <span
-                        style={{
-                          width: 1,
-                          height: 14,
-                          background: "var(--glass-border)",
-                          margin: "0 2px",
-                        }}
-                      />
-                      <button
-                        onClick={() => setPreviewMode("edit")}
-                        title="Edit"
-                        style={{
-                          background: previewMode === "edit" ? "var(--track)" : "transparent",
-                          border: "none",
-                          padding: "3px 5px",
-                          borderRadius: 4,
-                          cursor: "pointer",
-                          color: previewMode === "edit" ? "var(--amber)" : "var(--text-tertiary)",
-                        }}
-                      >
-                        <PenLine size={12} />
-                      </button>
-                      <button
-                        onClick={() => setPreviewMode("split")}
-                        title="Split view"
-                        style={{
-                          background: previewMode === "split" ? "var(--track)" : "transparent",
-                          border: "none",
-                          padding: "3px 5px",
-                          borderRadius: 4,
-                          cursor: "pointer",
-                          color: previewMode === "split" ? "var(--amber)" : "var(--text-tertiary)",
-                        }}
-                      >
-                        <PanelRightOpen size={12} />
-                      </button>
-                      <button
-                        onClick={() => setPreviewMode("preview")}
-                        title="Preview"
-                        style={{
-                          background: previewMode === "preview" ? "var(--track)" : "transparent",
-                          border: "none",
-                          padding: "3px 5px",
-                          borderRadius: 4,
-                          cursor: "pointer",
-                          color:
-                            previewMode === "preview" ? "var(--amber)" : "var(--text-tertiary)",
-                        }}
-                      >
-                        <Eye size={12} />
-                      </button>
-                      <button
-                        onClick={() => setPreviewMode("live")}
-                        title={t("myspace.livePreview")}
-                        style={{
-                          background: previewMode === "live" ? "var(--track)" : "transparent",
-                          border: "none",
-                          padding: "3px 5px",
-                          borderRadius: 4,
-                          cursor: "pointer",
-                          color: previewMode === "live" ? "var(--amber)" : "var(--text-tertiary)",
-                        }}
-                      >
-                        <Sparkles size={12} />
-                      </button>
                     </>
                   )}
                   {activeTab && (
@@ -2095,146 +1991,6 @@ export default function MyspacePage() {
                     {aiNotice}
                   </div>
                 )}
-                {activeTab && previewMode !== "live" && (
-                  <EditingToolbar
-                    /* Пока ИИ оформляет заметку, инструменты выключены: иначе
-                       правки ушли бы в файл уже после ответа модели. */
-                    isDisabled={!!aiBusy}
-                    onFormat={(type, value, selRange) => {
-                      const ta = document.querySelector(".ms-edit-textarea") as HTMLTextAreaElement;
-                      if (!ta) return;
-                      const savedScroll = ta.scrollTop;
-                      const fullText = ta.value;
-                      const start = selRange ? selRange.start : ta.selectionStart;
-                      const end = selRange ? selRange.end : ta.selectionEnd;
-                      const sel = fullText.substring(start, end);
-                      const restore = (cb: () => void) => {
-                        ta.focus();
-                        cb();
-                        requestAnimationFrame(() => {
-                          ta.scrollTop = savedScroll;
-                        });
-                      };
-                      const wrap = (before: string, after: string) => {
-                        if (sel.startsWith(before) && sel.endsWith(after)) {
-                          const inner = sel.substring(before.length, sel.length - after.length);
-                          const nc = fullText.substring(0, start) + inner + fullText.substring(end);
-                          updContent(activeTab, nc);
-                          restore(() => ta.setSelectionRange(start, start + inner.length));
-                        } else {
-                          const nc =
-                            fullText.substring(0, start) +
-                            before +
-                            sel +
-                            after +
-                            fullText.substring(end);
-                          updContent(activeTab, nc);
-                          restore(() =>
-                            ta.setSelectionRange(start + before.length, end + before.length),
-                          );
-                        }
-                      };
-                      const lineStart = fullText.lastIndexOf("\n", start - 1) + 1;
-                      const lineEnd = fullText.indexOf("\n", end);
-                      const curLine = fullText.substring(
-                        lineStart,
-                        lineEnd === -1 ? fullText.length : lineEnd,
-                      );
-                      const insertAtCursor = (txt: string) => {
-                        const nc = fullText.substring(0, end) + txt + fullText.substring(end);
-                        updContent(activeTab, nc);
-                        restore(() => ta.setSelectionRange(end + txt.length, end + txt.length));
-                      };
-                      const toggleHeading = (level: number) => {
-                        const prefix = "#".repeat(level) + " ";
-                        const hMatch = curLine.match(/^(#{1,6}) /);
-                        let newLine;
-                        if (hMatch) {
-                          const curLevel = hMatch[1].length;
-                          if (curLevel === level) newLine = curLine.substring(level + 1);
-                          else newLine = prefix + curLine.replace(/^#{1,6} /, "");
-                        } else {
-                          newLine = prefix + curLine;
-                        }
-                        const nc =
-                          fullText.substring(0, lineStart) +
-                          newLine +
-                          fullText.substring(lineStart + curLine.length);
-                        updContent(activeTab, nc);
-                        const newEnd = lineStart + newLine.length;
-                        restore(() => ta.setSelectionRange(newEnd, newEnd));
-                      };
-                      if (type === "bold") wrap("**", "**");
-                      else if (type === "italic") wrap("*", "*");
-                      else if (type === "strike") wrap("~~", "~~");
-                      else if (type === "underline") wrap("<u>", "</u>");
-                      else if (type === "inlineCode") wrap("`", "`");
-                      else if (type === "superscript") wrap("^", "^");
-                      else if (type === "subscript") wrap("~", "~");
-                      else if (type === "wikiLink") wrap("[[", "]]");
-                      else if (type === "highlight") wrap("==", "==");
-                      else if (type === "bgColor")
-                        wrap(
-                          '<span style="background:' + (value || "rgba(240,166,61,0.25)") + '">',
-                          "</span>",
-                        );
-                      else if (type === "math") wrap("$", "$");
-                      else if (type === "h1") toggleHeading(1);
-                      else if (type === "h2") toggleHeading(2);
-                      else if (type === "h3") toggleHeading(3);
-                      else if (type === "h4") toggleHeading(4);
-                      else if (type === "h5") toggleHeading(5);
-                      else if (type === "h6") toggleHeading(6);
-                      else if (type === "task") insertAtCursor("- [ ] ");
-                      else if (type === "table") insertAtCursor("|  |  |\n|---|---|\n|  |  |\n\n");
-                      else if (type === "blockquote") insertAtCursor("> ");
-                      else if (type === "callout") insertAtCursor("> [!NOTE]\n> ");
-                      else if (type === "hr") insertAtCursor("\n\n---\n\n");
-                      else if (type === "codeBlock") insertAtCursor("```\n\n```\n\n");
-                      else if (type === "mathBlock") insertAtCursor("$\n\n$\n\n");
-                      else if (type === "ul") insertAtCursor("- ");
-                      else if (type === "ol") insertAtCursor("1. ");
-                      else if (type === "link") {
-                        if (sel) wrap("[", "](url)");
-                        else insertAtCursor("[text](url)");
-                      } else if (type === "textColor")
-                        wrap('<span style="color:' + (value || "#f0a63d") + '">', "</span>");
-                      else if (type === "clearFormatting") {
-                        const s = sel
-                          .replace(/\*\*/g, "")
-                          .replace(/^\*|\*$/g, "")
-                          .replace(/~~/g, "")
-                          .replace(/<\/?[^>]+>/g, "")
-                          .replace(/`/g, "")
-                          .replace(/\$/g, "")
-                          .replace(/==/g, "")
-                          .replace(/[\^~]/g, "")
-                          .replace(/style="[^"]*"/g, "");
-                        const nc = fullText.substring(0, start) + s + fullText.substring(end);
-                        updContent(activeTab, nc);
-                        restore(() => ta.setSelectionRange(start, start + s.length));
-                      }
-                    }}
-                    onUndo={() => document.execCommand("undo")}
-                    onRedo={() => document.execCommand("redo")}
-                    onAttach={(kind) => {
-                      setAttachError("");
-                      const ta = document.querySelector(".ms-edit-textarea") as HTMLTextAreaElement;
-                      attachInsertPos.current = {
-                        start: ta?.selectionStart ?? edContent.length,
-                        end: ta?.selectionEnd ?? edContent.length,
-                      };
-                      if (kind === "file") {
-                        imageFileInputRef.current?.click();
-                      } else if (kind === "url") {
-                        const url = window.prompt(t("myspace.imageUrlPrompt"));
-                        if (url && url.trim()) insertImageMarkdown(url.trim(), "image");
-                      } else if (kind === "clipboard") {
-                        void attachFromClipboard();
-                      }
-                    }}
-                  />
-                )}
                 <input
                   ref={imageFileInputRef}
                   type="file"
@@ -2298,185 +2054,72 @@ export default function MyspacePage() {
                     {(() => {
                       const af = openFiles.find((f) => f.path === activeTab);
                       if (!af) return null;
-                      // Smooth scroll sync via requestAnimationFrame
-                      const syncScroll = (source: string) => {
-                        if (typeof window === "undefined") return; // среда без DOM (тесты)
-                        if (window._msSyncRaf) cancelAnimationFrame(window._msSyncRaf);
-                        window._msSyncRaf = requestAnimationFrame(() => {
-                          window._msSyncRaf = undefined;
-                          const ta = document.querySelector(".ms-edit-textarea");
-                          const pv = document.querySelector(".ms-preview-pane");
-                          if (!ta || !pv) return;
-                          if (source === "edit") {
-                            const sh = ta.scrollHeight - ta.clientHeight;
-                            if (sh > 0) {
-                              const r = ta.scrollTop / sh;
-                              pv.scrollTop = r * (pv.scrollHeight - pv.clientHeight);
-                            }
-                          } else {
-                            const sh = pv.scrollHeight - pv.clientHeight;
-                            if (sh > 0) {
-                              const r = pv.scrollTop / sh;
-                              ta.scrollTop = r * (ta.scrollHeight - ta.clientHeight);
-                            }
-                          }
-                        });
-                      };
-                      const editPane = (
-                        <textarea
-                          key="edit"
-                          className="ms-edit-textarea"
-                          value={edContent}
-                          onChange={(e) => updContent(activeTab, e.target.value)}
-                          onScroll={() => syncScroll("edit")}
+                      return (
+                        <CodeMirrorLiveEditor
+                          key={activeTab}
+                          content={edContent}
+                          onChange={(v: string) => updContent(activeTab, v)}
                           spellCheck={msCfg.spellcheck}
-                          /* Идёт ИИ-оформление: текст на диске перезапишет сервер,
-                           поэтому правки в это время запрещены (см. runNotesAi). */
                           readOnly={!!aiBusy}
+                          onOcrImage={(r) => void runOcr(r)}
+                          onOcrSettings={() => setOcrDlg(true)}
+                          onDropPdf={(r) => void runPdf(r)}
+                          ocrBusy={ocrBusy}
+                          ocrLabels={ocrLabels}
                           placeholder="Start writing... Use [[wiki-links]] and #tags"
-                          style={{
-                            ...txStyle,
-                            borderRight:
-                              previewMode === "split" ? "1px solid var(--glass-border)" : "none",
+                          onWikiLink={(title: string) => {
+                            const findNote = (
+                              nodes: VaultFile[],
+                              ttl: string,
+                            ): VaultFile | null => {
+                              for (const n of nodes) {
+                                if (
+                                  n.type === "note" &&
+                                  (n.name.replace(/\.md$/, "").toLowerCase() ===
+                                    ttl.toLowerCase() ||
+                                    n.name === ttl + ".md")
+                                )
+                                  return n;
+                                if (n.children) {
+                                  const r: VaultFile | null = findNote(n.children, ttl);
+                                  if (r) return r;
+                                }
+                              }
+                              return null;
+                            };
+                            const t2 = findNote(tree, title);
+                            const fn = t2 ? t2.path : title.replace(/[/\\?%*:|"<>]/g, "_") + ".md";
+                            openFile(fn);
+                          }}
+                          onTagClick={(tag: string) => {
+                            setLeftTab("search");
+                            setSq(tag);
+                          }}
+                          onToggleCheckbox={(lineIndex: number) => {
+                            const lines = edContent.split("\n");
+                            if (lineIndex >= lines.length) return;
+                            const l = lines[lineIndex];
+                            const m = l.match(/^(\s*(?:[-*+]\s+)?\[)([ xX])(\]\s*.*)/);
+                            if (!m) return;
+                            const newChar = m[2] === "x" || m[2] === "X" ? " " : "x";
+                            lines[lineIndex] = m[1] + newChar + m[3];
+                            updContent(activeTab, lines.join("\n"));
+                          }}
+                          onPasteImage={async (blob: Blob) => {
+                            try {
+                              const ext = blob.type.split("/")[1] || "png";
+                              const { url } = await api.myspaceUploadAsset(
+                                blob,
+                                `clipboard.${ext}`,
+                              );
+                              return `![image](${url})`;
+                            } catch (e) {
+                              setAttachError((e as Error).message);
+                              return null;
+                            }
                           }}
                         />
                       );
-                      const previewPane = (
-                        <div
-                          key="preview"
-                          className="ms-preview-pane"
-                          onScroll={() => syncScroll("preview")}
-                          style={{
-                            flex: 1,
-                            minHeight: 0,
-                            overflow: "auto",
-                            padding: "20px 24px",
-                            background: "transparent",
-                          }}
-                        >
-                          <MarkdownRenderer
-                            content={edContent}
-                            onWikiLink={(title: string) => {
-                              const findNote = (
-                                nodes: VaultFile[],
-                                ttl: string,
-                              ): VaultFile | null => {
-                                for (const n of nodes) {
-                                  if (
-                                    n.type === "note" &&
-                                    (n.name.replace(/\.md$/, "").toLowerCase() ===
-                                      ttl.toLowerCase() ||
-                                      n.name === ttl + ".md")
-                                  )
-                                    return n;
-                                  if (n.children) {
-                                    const r: VaultFile | null = findNote(n.children, ttl);
-                                    if (r) return r;
-                                  }
-                                }
-                                return null;
-                              };
-                              const t = findNote(tree, title);
-                              const fn = t ? t.path : title.replace(/[/\\?%*:|"<>]/g, "_") + ".md";
-                              openFile(fn);
-                            }}
-                            onTagClick={(tag: string) => {
-                              setLeftTab("search");
-                              setSq(tag);
-                            }}
-                            onToggleCheckbox={(lineIndex: number) => {
-                              const lines = edContent.split("\n");
-                              if (lineIndex >= lines.length) return;
-                              const l = lines[lineIndex];
-                              const m = l.match(/^(\s*(?:[-*+]\s+)?\[)([ xX])(\]\s*.*)/);
-                              if (!m) return;
-                              const newChar = m[2] === "x" || m[2] === "X" ? " " : "x";
-                              lines[lineIndex] = m[1] + newChar + m[3];
-                              updContent(activeTab, lines.join("\n"));
-                            }}
-                          />
-                        </div>
-                      );
-                      if (previewMode === "live")
-                        return (
-                          <CodeMirrorLiveEditor
-                            key={activeTab}
-                            content={edContent}
-                            onChange={(v: string) => updContent(activeTab, v)}
-                            spellCheck={msCfg.spellcheck}
-                            readOnly={!!aiBusy}
-                            onOcrImage={(r) => void runOcr(r)}
-                            onOcrSettings={() => setOcrDlg(true)}
-                            onDropPdf={(r) => void runPdf(r)}
-                            ocrBusy={ocrBusy}
-                            ocrLabels={ocrLabels}
-                            placeholder="Start writing... Use [[wiki-links]] and #tags"
-                            onWikiLink={(title: string) => {
-                              const findNote = (
-                                nodes: VaultFile[],
-                                ttl: string,
-                              ): VaultFile | null => {
-                                for (const n of nodes) {
-                                  if (
-                                    n.type === "note" &&
-                                    (n.name.replace(/\.md$/, "").toLowerCase() ===
-                                      ttl.toLowerCase() ||
-                                      n.name === ttl + ".md")
-                                  )
-                                    return n;
-                                  if (n.children) {
-                                    const r: VaultFile | null = findNote(n.children, ttl);
-                                    if (r) return r;
-                                  }
-                                }
-                                return null;
-                              };
-                              const t2 = findNote(tree, title);
-                              const fn = t2
-                                ? t2.path
-                                : title.replace(/[/\\?%*:|"<>]/g, "_") + ".md";
-                              openFile(fn);
-                            }}
-                            onTagClick={(tag: string) => {
-                              setLeftTab("search");
-                              setSq(tag);
-                            }}
-                            onToggleCheckbox={(lineIndex: number) => {
-                              const lines = edContent.split("\n");
-                              if (lineIndex >= lines.length) return;
-                              const l = lines[lineIndex];
-                              const m = l.match(/^(\s*(?:[-*+]\s+)?\[)([ xX])(\]\s*.*)/);
-                              if (!m) return;
-                              const newChar = m[2] === "x" || m[2] === "X" ? " " : "x";
-                              lines[lineIndex] = m[1] + newChar + m[3];
-                              updContent(activeTab, lines.join("\n"));
-                            }}
-                            onPasteImage={async (blob: Blob) => {
-                              try {
-                                const ext = blob.type.split("/")[1] || "png";
-                                const { url } = await api.myspaceUploadAsset(
-                                  blob,
-                                  `clipboard.${ext}`,
-                                );
-                                return `![image](${url})`;
-                              } catch (e) {
-                                setAttachError((e as Error).message);
-                                return null;
-                              }
-                            }}
-                          />
-                        );
-                      if (previewMode === "preview") return previewPane;
-                      if (previewMode === "split")
-                        return (
-                          <div
-                            style={{ flex: 1, display: "flex", minHeight: 0, flexDirection: "row" }}
-                          >
-                            {editPane}
-                            {previewPane}
-                          </div>
-                        );
-                      return editPane;
                     })()}
                   </div>
                 )}
