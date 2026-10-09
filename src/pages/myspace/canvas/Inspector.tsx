@@ -157,14 +157,15 @@ export function Inspector({ sel, a, t, ru }: Props) {
   const types = new Set(sel.map((s) => s.type));
   const has = (...k: Obj["type"][]) => sel.some((s) => k.includes(s.type));
   const L = (r: string, e: string): string => (ru ? r : e);
-  const canFill = has("shape", "sticky", "frame", "task", "text", "note");
-  const canStroke = has("shape", "frame", "line", "stroke", "task", "note", "image");
+  const canFill = has("shape", "sticky", "frame", "task", "text", "note", "link");
+  const canStroke = has("shape", "frame", "line", "stroke", "task", "note", "image", "link");
   const canText = has("shape", "sticky", "text", "task");
-  const canRadius = has("shape", "sticky", "frame", "image", "task", "note");
-  const canShadow = has("shape", "sticky", "frame", "task", "note", "image");
+  const canRadius = has("shape", "sticky", "frame", "image", "task", "note", "link");
+  const canShadow = has("shape", "sticky", "frame", "task", "note", "image", "link");
   const richText = has("shape", "sticky", "text", "task");
-  const swDefault = o.type === "image" ? 0 : o.type === "task" || o.type === "note" ? 1 : 2;
-  const softShadow = has("task", "note") && !has("shape", "sticky", "frame", "image");
+  const swDefault =
+    o.type === "image" ? 0 : o.type === "task" || o.type === "note" || o.type === "link" ? 1 : 2;
+  const softShadow = has("task", "note", "link") && !has("shape", "sticky", "frame", "image");
   const onlyLines = types.size === 1 && types.has("line");
   const multi = sel.length > 1;
   const locked = sel.every((s) => s.locked);
@@ -303,6 +304,18 @@ export function Inspector({ sel, a, t, ru }: Props) {
             value={o.name ?? ""}
             placeholder={L("Название слоя", "Layer name")}
             onChange={(e) => a.patch({ name: e.target.value || undefined }, "name")}
+            onKeyDown={(e) => e.stopPropagation()}
+            style={{ width: "100%" }}
+          />
+        </Row>
+      )}
+
+      {one && o.type === "link" && (
+        <Row label={L("Заголовок карточки", "Card title")}>
+          <input
+            className="hc-text"
+            value={o.text ?? ""}
+            onChange={(e) => a.patch({ text: e.target.value }, "text")}
             onKeyDown={(e) => e.stopPropagation()}
             style={{ width: "100%" }}
           />
@@ -850,7 +863,7 @@ export function Inspector({ sel, a, t, ru }: Props) {
         </>
       )}
 
-      {has("note") && !canText && (
+      {has("note", "link") && !canText && (
         <Row label={t("textColor")}>
           <Colors
             value={o.tc}

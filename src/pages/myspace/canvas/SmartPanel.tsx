@@ -1,8 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
-import { Sparkles, Search, LayoutGrid, FileText, X } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Sparkles, Search, Workflow, FileText, Link2, X } from "lucide-react";
 import { api } from "@/api/client";
 import type { SemHit } from "@/api/apiSemantic";
 import { make, uid, type Obj } from "@/pages/myspace/canvas/model";
+import { layoutGraph, type LayoutDir } from "@/pages/myspace/canvas/smartLayout";
+import LinkPicker, { type PickItem } from "@/components/LinkPicker";
 
 interface Props {
   /** Файл открытой доски. */
@@ -14,86 +16,20 @@ interface Props {
   onFocus: (file: string, id: string) => void;
   /** Заменить содержимое доски (с записью в историю). */
   onApply: (fn: (o: Obj[]) => Obj[]) => void;
+  /** Центр видимой области в координатах доски. */
+  center: () => { x: number; y: number };
 }
 
 const objText = (o: Obj): string => String(o.text || o.name || "").trim();
 
-/**
- * Раскладка стикеров по смыслу: группы → рамки, внутри рамки стикеры сеткой.
- * Рамки идут вниз по списку слоёв (под стикеры), стикерам выставляется parent.
- */
-export function layoutByGroups(objs: Obj[], ids: string[], groups: number[][]): Obj[] {
-  const byId = new Map(objs.map((o) => [o.id, o]));
-  const items = ids.map((id) => byId.get(id)).filter((o): o is Obj => !!o);
-  if (!items.length) return objs;
-  const minX = Math.min(...items.map((o) => o.x));
-  const minY = Math.min(...items.map((o) => o.y));
-  const CW = 190;
-  const CH = 170;
-  const PAD = 16;
-  const HEAD = 44;
-  // одиночки собираем в «Разное»
-  const real = groups.filter((g) => g.length > 1);
-  const rest = groups.filter((g) => g.length === 1).flat();
-  if (rest.length) real.push(rest);
-
-  const frames: Obj[] = [];
-  const moved = new Map<string, Obj>();
-  let cx = minX;
-  let cy = minY;
-  let rowH = 0;
-  const maxRow = 4;
-  let inRow = 0;
-  real.forEach((g, gi) => {
-    const cols = Math.max(1, Math.ceil(Math.sqrt(g.length)));
-    const rows = Math.ceil(g.length / cols);
-    const w = cols * CW + PAD;
-    const h = rows * CH + HEAD + PAD;
-    if (inRow >= maxRow) {
-      cx = minX;
-      cy += rowH + 40;
-      rowH = 0;
-      inRow = 0;
-    }
-    const first = items[g[0]];
-    const label = g === rest ? "Разное" : objText(first).slice(0, 26) || `Тема ${gi + 1}`;
-    const frame: Obj = {
-      ...make("frame", { x: 0, y: 0 }, { w, h }),
-      x: cx,
-      y: cy,
-      w,
-      h,
-      name: label,
-      parent: null,
-    };
-    frames.push(frame);
-    g.forEach((idx, k) => {
-      const o = items[idx];
-      moved.set(o.id, {
-        ...o,
-        x: cx + PAD / 2 + (k % cols) * CW + (CW - o.w) / 2,
-        y: cy + HEAD + Math.floor(k / cols) * CH,
-        parent: frame.id,
-      });
-    });
-    cx += w + 40;
-    rowH = Math.max(rowH, h);
-    inRow++;
-  });
-  return [...frames, ...objs.map((o) => moved.get(o.id) ?? o)];
-}
-
 /** Умные действия на доске: поиск по объектам, раскладка стикеров по смыслу, подбор заметок. */
-export function SmartPanel({ file, objs, sel, onFocus, onApply }: Props) {
+export function SmartPanel({ file, objs, sel, onFocus, onApply, center }: Props) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
   const [hits, setHits] = useState<SemHit[]>([]);
   const [msg, setMsg] = useState("");
-  const [busy, setBusy] = useState(false);
   const [notes, setNotes] = useState<SemHit[]>([]);
 
-  const stickies = useMemo(() => objs.filter((o) => o.type === "sticky" && objText(o)), [objs]);
-  const selStickies = stickies.filter((o) => sel.includes(o.id));
   const selOne = objs.find((o) => o.id === sel[0]);
 
   // Поиск: смысловой по всем доскам, плюс точное совпадение слов на этой.
@@ -148,31 +84,31 @@ export function SmartPanel({ file, objs, sel, onFocus, onApply }: Props) {
     };
   }, [open, selOne]);
 
-  const arrange = async () => {
-    const pool = selStickies.length > 1 ? selStickies : stickies.filter((o) => !o.parent);
-    if (pool.length < 2) {
-      setMsg("Нужно хотя бы два стикера с текстом");
+  const arrange = (dir: LayoutDir) => {
+    const pool = sel.length > 1 ? sel : null;
+    const links = objs.filter((o) => o.type === "line" && o.from?.id && o.to?.id).length;
+    if (!links) {
+      setMsg("Сначала соедините элементы линиями — раскладка идёт по связям");
       return;
     }
-    setBusy(true);
-    setMsg("");
-    try {
-      const groups = await api.semGroup(
-        pool.map((o) => objText(o)),
-        0.7,
-      );
-      const ids = pool.map((o) => o.id);
-      onApply((all) => layoutByGroups(all, ids, groups));
-      setMsg(`Готово: ${groups.filter((g) => g.length > 1).length} тем`);
-    } catch (e) {
-      setMsg(
-        (e as Error).message.includes("model")
-          ? "Установите модель во вкладке «Похожее»"
-          : (e as Error).message,
-      );
-    } finally {
-      setBusy(false);
-    }
+    onApply((all) => layoutGraph(all, pool, dir));
+    setMsg("Готово: схема выстроена по связям");
+  };
+
+  const [picker, setPicker] = useState(false);
+  const addLink = (it: PickItem) => {
+    const c = center();
+    onApply((all) => [
+      ...all,
+      {
+        ...make("link", c),
+        id: uid(),
+        text: it.title,
+        preview: it.preview?.slice(0, 120),
+        link: { kind: it.kind, ref: it.ref, url: it.url },
+      },
+    ]);
+    setPicker(false);
   };
 
   const attach = (h: SemHit) => {
@@ -279,16 +215,29 @@ export function SmartPanel({ file, objs, sel, onFocus, onApply }: Props) {
             );
           })}
 
-          <div style={{ marginTop: 10 }}>
-            <button type="button" style={btn} disabled={busy} onClick={() => void arrange()}>
-              <LayoutGrid size={13} />
-              {busy
-                ? "Раскладываю…"
-                : selStickies.length > 1
-                  ? "Разложить выделенные стикеры по темам"
-                  : "Разложить стикеры по темам"}
+          <div style={{ marginTop: 10, display: "grid", gap: 6 }}>
+            <button type="button" style={btn} onClick={() => setPicker(true)}>
+              <Link2 size={13} /> Вставить из приложения (заметка, задача, закладка…)
             </button>
-            {msg && <div style={{ marginTop: 6, color: "var(--text-secondary)" }}>{msg}</div>}
+            <div style={{ display: "flex", gap: 6 }}>
+              <button
+                type="button"
+                style={{ ...btn, flex: 1 }}
+                title="Упорядочить схему по связям: слева направо"
+                onClick={() => arrange("LR")}
+              >
+                <Workflow size={13} /> Схема →
+              </button>
+              <button
+                type="button"
+                style={{ ...btn, flex: 1 }}
+                title="Упорядочить схему по связям: сверху вниз"
+                onClick={() => arrange("TB")}
+              >
+                <Workflow size={13} style={{ transform: "rotate(90deg)" }} /> Схема ↓
+              </button>
+            </div>
+            {msg && <div style={{ color: "var(--text-secondary)" }}>{msg}</div>}
           </div>
 
           {notes.length > 0 && (
@@ -317,6 +266,7 @@ export function SmartPanel({ file, objs, sel, onFocus, onApply }: Props) {
           )}
         </div>
       )}
+      {picker && <LinkPicker onClose={() => setPicker(false)} onPick={addLink} />}
     </>
   );
 }

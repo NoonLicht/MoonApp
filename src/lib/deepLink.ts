@@ -55,6 +55,43 @@ export function targetFor(source: SemSource, ref: string, at?: number): DeepTarg
   }
 }
 
+/** Значок вида объекта (для ссылок в заметках и карточек на Canvas). */
+export const SOURCE_ICON: Record<SemSource, string> = {
+  note: "📝",
+  bookmark: "🔖",
+  task: "✅",
+  canvas: "🎨",
+  chat: "💬",
+  lecture: "🎓",
+  quick: "🎙️",
+  budget: "💰",
+  movie: "🎬",
+  book: "📚",
+  m3e: "🧩",
+  archive: "🗄️",
+};
+
+/** Ссылка внутри приложения для markdown: [📝 Название](moon://note/путь). */
+export function moonHref(kind: SemSource, ref: string): string {
+  return `moon://${kind}/${encodeURIComponent(ref)}`;
+}
+export function parseMoonHref(href: string): { kind: SemSource; ref: string } | null {
+  const m = /^moon:\/\/([a-z0-9]+)\/(.*)$/i.exec(href);
+  if (!m) return null;
+  try {
+    return { kind: m[1] as SemSource, ref: decodeURIComponent(m[2]) };
+  } catch {
+    return null;
+  }
+}
+/** Открыть moon://-ссылку: переход на страницу и к объекту. */
+export function openMoonHref(href: string): boolean {
+  const p = parseMoonHref(href);
+  if (!p) return false;
+  openTarget(targetFor(p.kind, p.ref));
+  return true;
+}
+
 export const SOURCE_LABEL: Record<SemSource, string> = {
   note: "Заметка",
   bookmark: "Закладка",

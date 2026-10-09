@@ -13,7 +13,7 @@ import DOMPurify from "dompurify";
 const config = {
   FORBID_TAGS: ["style", "form", "input", "button", "textarea", "select"],
   FORBID_ATTR: ["srcdoc", "srcset"],
-  ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto|tel|data|blob):|[^a-z]|[a-z+.-]+(?:[^a-z+.\-:]|$))/i,
+  ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto|tel|data|blob|moon):|[^a-z]|[a-z+.-]+(?:[^a-z+.\-:]|$))/i,
 };
 
 /* Кэш: санитайз вызывается на каждом рендере для одних и тех же строк

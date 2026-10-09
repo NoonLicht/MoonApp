@@ -29,6 +29,7 @@ export type ObjType =
   | "image"
   | "task"
   | "note"
+  | "link"
   | "sticker";
 
 export type Dash = "solid" | "dashed" | "dotted";
@@ -105,6 +106,9 @@ export interface Obj {
   /* заметка из «Моего пространства» */
   path?: string;
   preview?: string;
+
+  /* карточка-ссылка на объект приложения (заметка, задача, закладка, доска, лекция, чат) */
+  link?: { kind: string; ref: string; url?: string };
 
   /* стикер */
   emoji?: string;
@@ -220,6 +224,7 @@ export const DEFAULT_SIZE: Record<ObjType, { w: number; h: number }> = {
   image: { w: 320, h: 200 },
   task: { w: 240, h: 140 },
   note: { w: 220, h: 150 },
+  link: { w: 240, h: 96 },
   sticker: { w: 56, h: 56 },
 };
 
@@ -286,6 +291,9 @@ export function make(type: ObjType, at: Pt, patch: Partial<Obj> = {}): Obj {
       break;
     case "note":
       Object.assign(base, { fill: "#ffffff", radius: 14 });
+      break;
+    case "link":
+      Object.assign(base, { fill: "#ffffff", radius: 14, text: "" });
       break;
     case "sticker":
       Object.assign(base, { emoji: "👍", fs: 44 });

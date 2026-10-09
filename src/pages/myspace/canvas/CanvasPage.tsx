@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import dagre from "dagre";
 import { toPng, toSvg } from "html-to-image";
 import { api } from "@/api/client";
 import { useI18n } from "@/app/i18n";
@@ -50,7 +49,9 @@ import { Inspector, type InspectorActions } from "@/pages/myspace/canvas/Inspect
 import { LayersPanel } from "@/pages/myspace/canvas/Layers";
 import { Minimap } from "@/pages/myspace/canvas/Minimap";
 import { SmartPanel } from "@/pages/myspace/canvas/SmartPanel";
-import { useDeepLink } from "@/lib/deepLink";
+import { useDeepLink, openTarget, targetFor, moonHref } from "@/lib/deepLink";
+import type { SemSource } from "@/api/apiSemantic";
+import { layoutGraph } from "@/pages/myspace/canvas/smartLayout";
 import { Shortcuts } from "@/pages/myspace/canvas/Shortcuts";
 import { ContextMenu, type MenuItem } from "@/pages/myspace/canvas/ContextMenu";
 import { TemplatesModal } from "@/pages/myspace/canvas/TemplatePicker";
@@ -635,6 +636,7 @@ export default function CanvasPage() {
         await flush();
         await loadBoard(f);
       }
+      if (!id) return;
       const o = board.ref.current.find((x) => x.id === id);
       if (!o) return;
       setSel([id]);
@@ -739,39 +741,35 @@ export default function CanvasPage() {
   };
 
   const tidy = () => {
-    const all = board.ref.current;
-    const lines = all.filter((o) => o.type === "line" && o.from?.id && o.to?.id);
-    if (lines.length === 0) return;
-    const ids = selRef.current.length > 1 ? new Set(withChildren(all, selRef.current)) : null;
-    const nodes = all.filter(
-      (o) =>
-        o.type !== "line" &&
-        o.type !== "group" &&
-        o.type !== "frame" &&
-        !o.parent &&
-        (!ids || ids.has(o.id)),
-    );
-    const g = new dagre.graphlib.Graph();
-    g.setGraph({ rankdir: "LR", nodesep: 50, ranksep: 90 });
-    g.setDefaultEdgeLabel(() => ({}));
-    nodes.forEach((n) => g.setNode(n.id, { width: n.w, height: n.h }));
-    lines.forEach((l) => {
-      if (g.hasNode(l.from!.id!) && g.hasNode(l.to!.id!)) g.setEdge(l.from!.id!, l.to!.id!);
-    });
-    dagre.layout(g);
-    const box = unionBox(nodes.map((n) => n));
-    board.apply((o) =>
-      o.map((x) => {
-        const p = g.node(x.id);
-        if (!p) return x;
-        return {
-          ...x,
-          x: Math.round(p.x - x.w / 2 + (box?.x ?? 0)),
-          y: Math.round(p.y - x.h / 2 + (box?.y ?? 0)),
-        };
-      }),
-    );
+    const ids = selRef.current.length > 1 ? selRef.current : null;
+    board.apply((all) => layoutGraph(all, ids, "LR"));
     window.setTimeout(fitAll, 40);
+  };
+
+  /** Открыть объект приложения, на который ссылается карточка. */
+  const openLinked = (o: Obj): boolean => {
+    if (o.type === "link" && o.link) {
+      const k = o.link.kind as SemSource;
+      if (k === "bookmark" && o.link.url) {
+        if (window.appBridge?.openExternal) void window.appBridge.openExternal(o.link.url);
+        else window.open(o.link.url, "_blank", "noopener");
+        return true;
+      }
+      openTarget(targetFor(k, o.link.ref));
+      return true;
+    }
+    if (o.type === "note" && o.path) {
+      openTarget(targetFor("note", o.path));
+      return true;
+    }
+    return false;
+  };
+
+  /** Ссылка на объект доски для вставки в заметку. */
+  const copyBoardLink = (o: Obj) => {
+    const label = (o.text || o.name || name || "Canvas").replace(/[[\]\r\n]/g, " ").slice(0, 60);
+    const md = `[🎨 ${label}](${moonHref("canvas", `${fileRef.current}#${o.id}`)})`;
+    void navigator.clipboard?.writeText(md);
   };
 
   /* ───────────── жесты ───────────── */
@@ -1409,6 +1407,7 @@ export default function CanvasPage() {
         }
         return;
       }
+      if (openLinked(o)) return;
       if (o.locked) return;
       if (["shape", "sticky", "text", "task"].includes(o.type) || o.type === "frame") {
         setSel([id]);
@@ -1460,6 +1459,17 @@ export default function CanvasPage() {
     const anyGroup = selRef.current.some((s) => byIdRef.current.get(s)?.type === "group");
     const items: MenuItem[] = has
       ? [
+          ...(only && (only.type === "link" || (only.type === "note" && only.path))
+            ? [{ label: ru ? "Открыть" : "Open", hint: "2×", onClick: () => openLinked(only) }]
+            : []),
+          ...(only && only.type !== "line" && only.type !== "group"
+            ? [
+                {
+                  label: ru ? "Копировать ссылку для заметки" : "Copy link for a note",
+                  onClick: () => copyBoardLink(only),
+                },
+              ]
+            : []),
           ...(canText
             ? [{ label: t("edit"), hint: "Enter", onClick: () => setEditing(only!.id) }]
             : []),
@@ -2066,6 +2076,10 @@ export default function CanvasPage() {
         sel={sel}
         onFocus={(f, id) => void focusObject(f, id)}
         onApply={(fn) => board.apply(fn)}
+        center={() => ({
+          x: (size.w / 2 - viewRef.current.x) / viewRef.current.z,
+          y: (size.h / 2 - viewRef.current.y) / viewRef.current.z,
+        })}
       />
       <Minimap
         objs={objs}

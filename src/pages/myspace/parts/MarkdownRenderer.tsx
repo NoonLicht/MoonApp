@@ -1,4 +1,5 @@
 import { useEffect, useRef, useMemo } from "react";
+import { openMoonHref } from "@/lib/deepLink";
 import { marked } from "marked";
 import { markedHighlight } from "marked-highlight";
 import hljs from "highlight.js";
@@ -193,6 +194,11 @@ export default function MarkdownRenderer({
       let target: any = e.target;
       // Walk up to find clickable span
       while (target && target !== el) {
+        if (target.tagName === "A" && /^moon:/i.test(target.getAttribute("href") || "")) {
+          e.preventDefault();
+          openMoonHref(target.getAttribute("href") || "");
+          return;
+        }
         if (target.classList.contains("md-wl")) {
           e.preventDefault();
           const title = target.getAttribute("data-title");

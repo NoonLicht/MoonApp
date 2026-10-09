@@ -1,4 +1,6 @@
 import { memo, useEffect, useLayoutEffect, useRef, type CSSProperties } from "react";
+import { SOURCE_ICON, SOURCE_LABEL } from "@/lib/deepLink";
+import type { SemSource } from "@/api/apiSemantic";
 import { api } from "@/api/client";
 import { FONTS, type LineGeom, type Obj, type ShapeKind } from "@/pages/myspace/canvas/model";
 
@@ -828,6 +830,63 @@ function ObjectViewInner(props: ViewProps) {
               </label>
             ))}
           </div>
+        </div>
+      );
+    }
+    case "link": {
+      const kind = (o.link?.kind ?? "note") as SemSource;
+      const ACC: Record<string, string> = {
+        note: "#8b7bf0",
+        task: "#22c55e",
+        bookmark: "#f59e0b",
+        canvas: "#3b82f6",
+        lecture: "#ec4899",
+        chat: "#14b8a6",
+      };
+      const col = o.acc ?? ACC[kind] ?? "#64748b";
+      return (
+        <div
+          style={{
+            ...wrap,
+            pointerEvents: "auto",
+            background: o.fill ?? "#ffffff",
+            borderRadius: o.radius ?? 14,
+            border: `${o.sw ?? 1}px solid ${o.stroke ?? "rgba(0,0,0,0.12)"}`,
+            borderLeft: `5px solid ${col}`,
+            boxShadow: o.shadow === false ? undefined : "0 8px 16px -8px rgba(0,0,0,0.35)",
+            color: o.tc ?? "#1c1d2b",
+            padding: "8px 12px",
+            boxSizing: "border-box",
+            overflow: "hidden",
+            display: "flex",
+            flexDirection: "column",
+            gap: 3,
+            cursor: "pointer",
+          }}
+          data-oid={o.id}
+          title="Двойной клик — открыть"
+        >
+          <div style={{ fontSize: 11, fontWeight: 700, color: col }}>
+            {SOURCE_ICON[kind]} {SOURCE_LABEL[kind]}
+          </div>
+          <div
+            style={{
+              fontSize: o.fs ?? 14,
+              fontWeight: 700,
+              lineHeight: 1.25,
+              overflow: "hidden",
+              display: "-webkit-box",
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: "vertical",
+            }}
+          >
+            {o.text || "…"}
+          </div>
+          {o.preview && (
+            <div style={{ fontSize: 11.5, color: "#64748b", lineHeight: 1.3, overflow: "hidden" }}>
+              {o.preview}
+            </div>
+          )}
         </div>
       );
     }

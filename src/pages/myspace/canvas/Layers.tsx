@@ -16,6 +16,7 @@ import {
   StickyNote,
   Type,
   FileText,
+  Link2,
 } from "lucide-react";
 import type { Obj, ObjType } from "@/pages/myspace/canvas/model";
 import type { Key } from "@/pages/myspace/canvas/strings";
@@ -31,6 +32,7 @@ const ICONS: Record<ObjType, typeof Box> = {
   image: ImageIcon,
   task: ListTodo,
   note: FileText,
+  link: Link2,
   sticker: Smile,
 };
 

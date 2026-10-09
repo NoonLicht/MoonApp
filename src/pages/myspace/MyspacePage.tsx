@@ -45,7 +45,8 @@ import {
 import EditingToolbar from "@/pages/myspace/parts/EditingToolbar";
 import MarkdownRenderer from "@/pages/myspace/parts/MarkdownRenderer";
 import CodeMirrorLiveEditor from "@/pages/myspace/parts/CodeMirrorLiveEditor";
-import { useDeepLink } from "@/lib/deepLink";
+import { useDeepLink, moonHref, SOURCE_ICON } from "@/lib/deepLink";
+import LinkPicker, { type PickItem } from "@/components/LinkPicker";
 import { SemanticPanel } from "@/pages/myspace/parts/SemanticPanel";
 import type { OcrImageRequest, PdfDropRequest } from "@/pages/myspace/parts/CodeMirrorLiveEditor";
 import OcrDialog from "@/pages/myspace/parts/OcrDialog";
@@ -136,6 +137,7 @@ export default function MyspacePage() {
   // ИИ-оформление заметки: какая операция идёт сейчас ("" — ничего) и короткая
   // плашка об успехе. Ошибки живут в общем `error` над редактором.
   const [aiBusy, setAiBusy] = useState<"" | "format" | "regenerate">("");
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [aiNotice, setAiNotice] = useState("");
   const aiNoticeTimer = useRef<any>(null);
   // Выбор провайдера/модели для ИИ-оформления (всплывающее окно рядом с
@@ -321,10 +323,16 @@ export default function MyspacePage() {
 
   // Переход из общего поиска / палитры: нужная вкладка и заметка.
   useDeepLink("myspace", (t) => {
-    if (t.view === "notes" || t.view === "tasks" || t.view === "bookmarks" || t.view === "canvas" || t.view === "m3e")
+    if (
+      t.view === "notes" ||
+      t.view === "tasks" ||
+      t.view === "bookmarks" ||
+      t.view === "canvas" ||
+      t.view === "m3e"
+    )
       setMyspaceView(t.view);
     if (t.view === "notes" && t.ref) void openFile(t.ref);
-    if (t.view === "canvas" && t.ref) return false; // дальше — CanvasPage
+    if ((t.view === "canvas" || t.view === "tasks") && t.ref) return false; // дальше — вложенная страница
   });
 
   const closeTab = (p: string) => {
@@ -1864,6 +1872,21 @@ export default function MyspacePage() {
                           Markdown из текущего текста; «Регенерировать» (RefreshCw)
                           — заново из сохранённого исходника, полная замена. */}
                       <button
+                        onClick={() => setPickerOpen(true)}
+                        title="Вставить ссылку на задачу, закладку, заметку, доску, лекцию или чат"
+                        aria-label="Вставить из приложения"
+                        style={{
+                          background: "transparent",
+                          border: "none",
+                          padding: 3,
+                          cursor: "pointer",
+                          color: "var(--text-tertiary)",
+                          display: "flex",
+                        }}
+                      >
+                        <Link2 size={13} />
+                      </button>
+                      <button
                         onClick={() => runNotesAi("format")}
                         disabled={!!aiBusy}
                         title={t("myspace.ai.formatHint")}
@@ -3059,6 +3082,19 @@ export default function MyspacePage() {
         </div>
       )}
       {/* ─── CANVAS VIEW ─── */}
+      {pickerOpen && activeTab && (
+        <LinkPicker
+          kinds={["task", "bookmark", "note", "canvas", "lecture", "chat"]}
+          onClose={() => setPickerOpen(false)}
+          onPick={(it: PickItem) => {
+            const href = it.kind === "bookmark" && it.url ? it.url : moonHref(it.kind, it.ref);
+            const link = `[${SOURCE_ICON[it.kind]} ${it.title.replace(/[\[\]]/g, "")}](${href})`;
+            const base = edContent.replace(/\s+$/, "");
+            updContent(activeTab, `${base}${base ? "\n\n" : ""}${link}\n`);
+            setPickerOpen(false);
+          }}
+        />
+      )}
       {myspaceView === "canvas" && (
         <div
           style={{ display: "flex", flex: 1, minHeight: 0, overflow: "hidden", margin: "8px 12px" }}

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { useDeepLink } from "@/lib/deepLink";
 import type {
   TaskItem,
   TaskPriority,
@@ -55,6 +56,20 @@ const TasksPanel: React.FC<TasksPanelProps> = ({ onOpenNote }) => {
   const [filterProject, setFilterProject] = useState<string>("");
   const [filterSmart, setFilterSmart] = useState<SmartFilter>("all");
   const [selectedTask, setSelectedTask] = useState<TaskItem | null>(null);
+  // Переход по ссылке из заметки/Canvas/поиска: открыть нужную задачу.
+  const [wantTask, setWantTask] = useState("");
+  useDeepLink("myspace", (t) => {
+    if (t.view !== "tasks" || !t.ref) return;
+    setWantTask(t.ref);
+  });
+  useEffect(() => {
+    if (!wantTask) return;
+    const found = tasks.find((x) => x.id === wantTask);
+    if (found) {
+      setSelectedTask(found);
+      setWantTask("");
+    }
+  }, [wantTask, tasks]);
   const [showDetail, setShowDetail] = useState(false);
   const [quickAddText, setQuickAddText] = useState("");
   const [parsedChips, setParsedChips] = useState<ParsedChip[]>([]);

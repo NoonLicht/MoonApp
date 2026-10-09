@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { openMoonHref } from "@/lib/deepLink";
 import {
   EditorState,
   StateEffect,
@@ -1245,6 +1246,7 @@ export default function CodeMirrorLiveEditor({
           const href = link.getAttribute("data-href");
           if (href) {
             e.preventDefault();
+            if (openMoonHref(href)) return true;
             if (/^https?:\/\//i.test(href) && window.appBridge?.openExternal) {
               void window.appBridge.openExternal(href);
             } else if (/^https?:\/\//i.test(href)) {
