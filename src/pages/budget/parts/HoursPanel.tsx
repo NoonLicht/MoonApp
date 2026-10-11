@@ -23,6 +23,7 @@ export default function HoursPanel({ currency }: { currency: string }) {
   const [date, setDate] = useState("");
   const [fc, setFc] = useState<Forecast | null>(null);
   const [error, setError] = useState("");
+  const [note, setNote] = useState("");
 
   const load = async () => {
     setError("");
@@ -87,6 +88,7 @@ export default function HoursPanel({ currency }: { currency: string }) {
         <Btn onClick={() => void load()}>{t("budget.hours.apply")}</Btn>
       </div>
       {error && <div className="muted-sm">{error}</div>}
+      {note && <div className="muted-sm">{note}</div>}
       {r && r.perWorkHour === 0 && <div className="muted-sm">{t("budget.hours.noIncome")}</div>}
       {r && r.perWorkHour > 0 && report && (
         <>
@@ -116,7 +118,25 @@ export default function HoursPanel({ currency }: { currency: string }) {
               {report.top.map((x, i) => (
                 <div key={i} className="muted-sm">
                   {x.date.slice(5)} · {x.note || x.category}: {money(x.amount)} →{" "}
-                  <b>{t("budget.hours.h", { n: x.workHours })}</b> ({t("budget.hours.life", { n: x.lifeHours })})
+                  <b>{t("budget.hours.h", { n: x.workHours })}</b> ({t("budget.hours.life", { n: x.lifeHours })}){" "}
+                  <button
+                    type="button"
+                    className="ghost-x"
+                    title={t("budget.hours.remember")}
+                    onClick={() =>
+                      void api
+                        .mindTraceCreate({
+                          kind: "expense",
+                          ref: x.date,
+                          title: x.note || x.category,
+                          decision: `${x.note || x.category}: ${money(x.amount)} (${x.date})`,
+                        })
+                        .then(() => setNote(t("budget.hours.remembered")))
+                        .catch((e: Error) => setError(e.message))
+                    }
+                  >
+                    🧭
+                  </button>
                 </div>
               ))}
             </div>

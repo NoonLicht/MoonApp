@@ -14,6 +14,7 @@ import * as vault from "../myspace-vault";
 import * as tools from "../answerTools";
 import * as skills from "../aiSkills";
 import * as plugins from "../plugins";
+import * as prov from "../provenance";
 import multer from "multer";
 import * as ocr from "../ocr";
 import * as imageExplain from "../imageExplain";
@@ -64,6 +65,7 @@ router.post("/save-answer", (req, res) => {
     });
     const r = vault.writeFile(note.path, note.content, note.frontmatter);
     if (!r.ok) return res.status(500).json({ error: r.error || "write_failed" });
+    prov.save(prov.record(prov.load(), note.path, answer, "ai", Date.now()));
     res.json({ saved: true, path: note.path, title: note.title });
   } catch (e) {
     res.status(500).json({ error: (e as Error).message });
