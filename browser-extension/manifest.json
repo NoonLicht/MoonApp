@@ -1,0 +1,9 @@
+{
+  "manifest_version": 3,
+  "name": "MoonApp Web Clipper",
+  "version": "1.0.0",
+  "description": "Отправляет страницу или выделенный текст в заметки MoonApp (через протокол moonapp://).",
+  "permissions": ["contextMenus", "activeTab", "tabs", "scripting"],
+  "background": { "service_worker": "background.js" },
+  "action": { "default_title": "Сохранить в MoonApp" }
+}
