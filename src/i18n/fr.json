@@ -22,7 +22,9 @@
     "automation": "Automatisation",
     "budget": "Budget",
     "tuning": "Réglage du PC",
-    "translate": "Traducteur"
+    "translate": "Traducteur",
+    "diary": "Journal",
+    "rss": "RSS"
   },
   "common": {
     "saved": "enregistré",
@@ -39,7 +41,8 @@
     "format": "Format",
     "save": "Enregistrer",
     "cancel": "Annuler",
-    "delete": "Supprimer"
+    "delete": "Supprimer",
+    "nothingFound": "Aucun résultat"
   },
   "settings": {
     "diagTitle": "Journaux et diagnostic",
@@ -53,6 +56,11 @@
     "diagCopy": "Copier le chemin",
     "diagCopyTitle": "Copier le chemin du fichier",
     "diagCopied": "Chemin copié",
+    "problemsLabel": "Journal des problèmes",
+    "problemsCount": "Erreurs et avertissements : {n}",
+    "problemsEmpty": "Aucun problème enregistré",
+    "problemsRefresh": "Actualiser",
+    "problemsClear": "Effacer",
     "diagReady": "Terminé : {events} événements, {kb} Ko",
     "diagError": "Échec de la collecte des journaux : {msg}",
     "updatesTitle": "Mises à jour de l'appli",
@@ -174,7 +182,130 @@
     "sitebak": "Web Archive (.sitebak)",
     "upscale": "Upscale des médias",
     "showWelcome": "Écran de bienvenue",
-    "showWelcomeHint": "Afficher l'écran de présentation des fonctions au démarrage"
+    "showWelcomeHint": "Afficher l'écran de présentation des fonctions au démarrage",
+    "chatMemory": "Mémoire à long terme",
+    "chatMemoryHint": "Ajoute à la requête des passages similaires de conversations passées (nécessite un modèle de recherche sémantique). Les extraits sont envoyés au fournisseur d'IA sélectionné.",
+    "searchPh": "Rechercher dans les réglages…",
+    "interchangeImport": "Importer des notes",
+    "interchangeImportHint": "Un .zip d’Obsidian (dossier du coffre) ou de Notion (Export → Markdown & CSV). Les notes existantes ne sont jamais écrasées.",
+    "interchangePickZip": "Choisir l’archive",
+    "interchangeExport": "Exporter les notes",
+    "interchangeExportHint": "Une archive pour Obsidian ou Notion ; Anki — cartes « question :: réponse » et trous {{c1::…}}",
+    "interchangeDone": "Importées : {n}. Renommées pour ne pas écraser : {renamed}. Pièces jointes ignorées : {skipped}.",
+    "interchangeNoNotes": "Le coffre ne contient aucune note",
+    "interchangeNoCards": "Aucune carte trouvée : écrivez « question :: réponse » ou {{c1::trou}}",
+    "cursorHighlight": "Surbrillance du curseur",
+    "cursorHighlightHint": "Un cercle autour du pointeur et un anneau au clic — pour les présentations et l’enregistrement d’écran",
+    "hotkeys": {
+      "title": "Raccourcis clavier",
+      "palette": "Palette de commandes",
+      "chatSwitcher": "Sélecteur de conversations (chat IA)",
+      "noteSave": "Enregistrer la note",
+      "press": "Appuyez sur une combinaison…",
+      "reset": "Rétablir par défaut",
+      "needModifier": "Ctrl ou Alt est requis (ou une touche F1–F12)",
+      "conflict": "Déjà utilisé par : {name}",
+      "privacy": "Mode « curieux derrière moi »"
+    },
+    "fileSearch": "Recherche dans les fichiers",
+    "fileSearchHint": "Le texte des PDF, fichiers texte et images (OCR) alimente la recherche globale. Les images sont traitées lentement.",
+    "fileSearchFolders": "Dossiers, un par ligne, p. ex. D:/Documents",
+    "fileSearchScan": "Actualiser l’index",
+    "fileSearchRunning": "Analyse…",
+    "fileSearchProgress": "{done} sur {total} analysés, textes ajoutés : {indexed}, échecs : {failed}",
+    "highContrast": "Contraste élevé",
+    "highContrastHint": "Le texte secondaire et les bordures sont renforcés — plus lisible en cas de basse vision",
+    "focusRing": "Focus visible",
+    "focusRingHint": "Un contour vif autour de l’élément sélectionné au clavier",
+    "windows": {
+      "open": "Page dans une fenêtre séparée",
+      "openHint": "Ouvre la page choisie dans une nouvelle fenêtre sur l’écran choisi — p. ex. un cours sur le deuxième écran",
+      "display": "Écran {n}",
+      "primary": "principal",
+      "openBtn": "Ouvrir",
+      "layouts": "Dispositions de fenêtres",
+      "layoutsHint": "Ouvrez les fenêtres voulues avec le bouton ci-dessus, nommez-les et enregistrez : la disposition se restaure en un clic",
+      "layoutName": "Nom de la disposition",
+      "save": "Enregistrer ({n})",
+      "widget": "En widget (toujours au premier plan)"
+    },
+    "backups": {
+      "title": "Sauvegardes",
+      "hint": "Une sauvegarde contient la base, les réglages, notes, journal, tableaux, favoris et M3E. La restauration s’applique après redémarrage.",
+      "create": "Créer une sauvegarde",
+      "verify": "Vérifier",
+      "restore": "Restaurer",
+      "confirm": "Restaurer les données de cette sauvegarde ? Une sauvegarde de sécurité de l’état actuel est faite avant.",
+      "verifyOk": "Sauvegarde intacte : fichiers vérifiés — {n}",
+      "verifyBad": "Sauvegarde endommagée : modifiés {bad}, manquants {missing}",
+      "noManifest": "Cette sauvegarde n’a pas de manifeste (ancienne version) — vérification et restauration impossibles",
+      "corrupted": "Sauvegarde endommagée — restauration annulée",
+      "restored": "Fichiers restaurés : {n}. Redémarrez l’application pour appliquer la base."
+    },
+    "profile": {
+      "title": "Profil chiffré",
+      "hint": "Réglages et clés API dans un fichier protégé par mot de passe. Le mot de passe n'est jamais enregistré : s'il est perdu, il est impossible de le récupérer.",
+      "password": "Mot de passe (6 caractères min.)",
+      "export": "Enregistrer",
+      "import": "Charger",
+      "exported": "Profil enregistré dans un fichier chiffré",
+      "confirm": "Remplacer les réglages et clés actuels par ceux du profil ?",
+      "imported": "Réglages appliqués : {n}, clés : {keys}. Redémarrez l'application pour tout appliquer.",
+      "tooShort": "Mot de passe trop court (6 caractères minimum)",
+      "wrong": "Mot de passe incorrect ou fichier endommagé",
+      "notProfile": "Ce n'est pas un fichier de profil chiffré MoonApp"
+    },
+    "contextMenu": {
+      "title": "Menu de l'Explorateur",
+      "hint": "Clic droit sur .txt/.md : « ajouter aux notes », sur un dossier : « créer un instantané ». Utilisateur actuel uniquement.",
+      "add": "Ajouter les entrées",
+      "remove": "Retirer les entrées",
+      "noteLabel": "MoonApp : ajouter aux notes",
+      "folderLabel": "MoonApp : instantané du dossier",
+      "dev": "Les entrées ne sont pas ajoutées en mode développement ; une version installée est nécessaire"
+    },
+    "plugins": {
+      "title": "Extensions",
+      "hint": "Paquet JSON de compétences du chat et de modèles de notes. Uniquement des données : une extension n'exécute aucun code et n'a pas accès à l'application.",
+      "install": "Installer depuis un fichier…",
+      "installed": "Extension « {name} » installée",
+      "failed": "Impossible d'installer l'extension : {reason}",
+      "counts": "compétences : {s}, modèles : {t}",
+      "remove": "Supprimer l'extension"
+    },
+    "p2p": {
+      "title": "Synchronisation des notes en réseau",
+      "hint": "Échange de notes (.md) entre deux appareils du même réseau. La réception s'active manuellement et s'arrête au redémarrage ; les échanges sont signés et chiffrés avec une clé d'appairage. Les suppressions ne sont pas synchronisées ; en cas de conflit, la version la plus récente l'emporte et l'autre est gardée en copie.",
+      "enable": "Activer la réception",
+      "disable": "Désactiver la réception",
+      "address": "Adresse pour l'autre appareil : {list}",
+      "key": "Clé d'appairage",
+      "rotate": "Changer la clé",
+      "connect": "Synchroniser avec un appareil",
+      "connectHint": "Sur l'autre appareil, activez la réception et saisissez ici son adresse et sa clé.",
+      "host": "Adresse (IP)",
+      "sync": "Synchroniser",
+      "done": "Reçus : {pulled}, envoyés : {pushed}, conflits : {conflicts}, erreurs : {failed}",
+      "wrongKey": "Clé d'appairage incorrecte"
+    },
+    "aiShield": {
+      "enabled": "Bouclier IA",
+      "enabledHint": "Avant l'envoi à un fournisseur cloud, masque clés, jetons, numéros de carte et mots de passe derrière des étiquettes comme [КАРТА_1] ; elles sont rétablies dans la réponse. Les modèles locaux ne sont pas concernés.",
+      "pii": "Masquer e-mails, téléphones et IP",
+      "piiHint": "Plus strict, mais le modèle ne verra pas les adresses et numéros utiles à certaines tâches.",
+      "audit": "Journal d'envois",
+      "auditHint": "Enregistre quel fournisseur, quel modèle et quelle quantité de données ont été envoyés. Le contenu des requêtes n'est pas conservé.",
+      "preview": "Début de la requête dans le journal",
+      "previewHint": "Conserve les 80 premiers caractères de la requête (après masquage) pour savoir ce qui est parti.",
+      "log": "Qui a reçu quoi",
+      "summary": "Requêtes : {total}, vers le cloud : {cloud}, valeurs masquées : {hidden}",
+      "show": "Afficher",
+      "hide": "Masquer",
+      "clear": "Effacer",
+      "local": "local",
+      "hiddenCount": "masqués : {n}",
+      "empty": "Rien n'a encore été envoyé."
+    }
   },
   "chat": {
     "chatProvider": "Fournisseur par défaut",
@@ -351,7 +482,8 @@
     "readerOpenTab": "Ouvrir dans un nouvel onglet",
     "readerDownloadBak": "Télécharger la copie hors ligne (.sitebak)",
     "readerError": "Échec du téléchargement de la page",
-    "downloadClean": "Télécharger sans publicités"
+    "downloadClean": "Télécharger sans publicités",
+    "exampleTags": "article,vidéo,tutoriel,travail,idée,à lire"
   },
   "screenshots": {
     "eyebrow": "Captures et enregistrement",
@@ -396,7 +528,12 @@
     "micDevice": "Microphone",
     "micDeviceAuto": "Auto (par défaut)",
     "micDeviceFallback": "Microphone",
-    "autoCapture": "Sauvegarde auto depuis le presse-papiers"
+    "autoCapture": "Sauvegarde auto depuis le presse-papiers",
+    "hideSecrets": "Masquer les secrets",
+    "smartCrop": "Recadrage intelligent",
+    "secretsFound": "Zones masquées : {n}",
+    "cropNothing": "Aucune marge superflue trouvée",
+    "cropDone": "Recadré à {w}×{h}"
   },
   "automation": {
     "eyebrow": "Automatisation",
@@ -426,7 +563,58 @@
     "helpTitle": "Comment ça marche",
     "helpLaunchers": "Un lanceur est un raccourci vers un programme/script : nom + chemin vers un .exe (ou .bat/.ps1) + arguments de ligne de commande facultatifs. Le bouton « Lancer » l'exécute immédiatement.",
     "helpHotkey": "Alt+Espace n'importe où dans le système ouvre la palette de commandes — trouvez un lanceur par son nom et exécutez-le sans ouvrir cette app.",
-    "helpTasks": "Une tâche réutilise un lanceur mais l'exécute selon une planification via le Planificateur de tâches Windows (quotidien à une heure fixe, toutes les heures, à la connexion ou au démarrage) — sans avoir à garder cet écran ouvert."
+    "helpTasks": "Une tâche réutilise un lanceur mais l'exécute selon une planification via le Planificateur de tâches Windows (quotidien à une heure fixe, toutes les heures, à la connexion ou au démarrage) — sans avoir à garder cet écran ouvert.",
+    "rules": {
+      "eyebrow": "Règles",
+      "title": "Si → alors : dossiers surveillés",
+      "hint": "Quand un nouveau fichier apparaît dans le dossier, il traverse la chaîne d’étapes. Une étape « si » arrête la règle si le fichier ne correspond pas. Il n’y a volontairement ni « supprimer » ni « lancer un programme ».",
+      "new": "Nouvelle règle",
+      "newName": "Nouvelle règle",
+      "empty": "Aucune règle pour l’instant",
+      "enabled": "Activée",
+      "save": "Enregistrer",
+      "removeStep": "Retirer l’étape",
+      "trigger": "Dossier",
+      "noFolder": "non défini",
+      "folder": "Surveiller le dossier",
+      "folderPh": "Chemin absolu, p. ex. D:/Téléchargements",
+      "folderError": "Un chemin de dossier absolu est requis",
+      "log": "Dernières exécutions",
+      "step_if": "Si",
+      "step_move": "Déplacer",
+      "step_copy": "Copier",
+      "step_rename": "Renommer",
+      "step_zip": "Vers zip",
+      "f_ext": "Extensions séparées par des virgules : jpg, png",
+      "f_nameRegex": "Le nom correspond à l’expression régulière",
+      "f_minSizeMb": "Au moins, Mo",
+      "f_maxSizeMb": "Au plus, Mo",
+      "f_dest": "Dossier de destination, accepte {year}/{month}/{extnodot}",
+      "f_template": "Nouveau nom : {date}_{name}{ext}"
+    },
+    "clip": {
+      "eyebrow": "Presse-papiers",
+      "title": "Historique du presse-papiers",
+      "on": "Enregistrement activé",
+      "off": "Enregistrement désactivé",
+      "search": "Rechercher dans l'historique",
+      "clear": "Effacer",
+      "hint": "Les secrets (cartes, jetons, clés) ne sont pas enregistrés. Les entrées sont conservées 7 jours, les épinglées jusqu'à suppression.",
+      "empty": "L'historique est vide",
+      "copy": "Copier",
+      "pin": "Épingler",
+      "delete": "Supprimer"
+    },
+    "modes": {
+      "eyebrow": "Modes",
+      "title": "Modes de l'application",
+      "study": "Étude",
+      "studyHint": "Sans animations, affichage compact, sans alertes en arrière-plan ni historique du presse-papiers.",
+      "game": "Jeu",
+      "gameHint": "Effets minimaux et peu de pages en mémoire, surveillance activée.",
+      "on": "Activer",
+      "off": "Désactiver et restaurer les réglages"
+    }
   },
   "budget": {
     "eyebrow": "Finances",
@@ -455,6 +643,90 @@
       "day": "Jour",
       "week": "Semaine",
       "month": "Mois"
+    },
+    "importDuplicates": "doublons ignorés : {n}",
+    "rec": {
+      "eyebrow": "Récurrents",
+      "title": "Abonnements et paiements",
+      "add": "Ajouter un abonnement",
+      "forecast": "Dépenses prévues ce mois-ci",
+      "forecastParts": "Dépensé {spent} + rythme habituel {daily}/jour + paiements à venir {ahead} ({cur})",
+      "forecastSkipped": "{n} éléments dans d'autres devises ne sont pas comptés",
+      "name": "Nom (par ex. Netflix)",
+      "first": "Premier paiement",
+      "remindBefore": "Rappeler, jours avant",
+      "interval": {
+        "week": "Hebdomadaire",
+        "month": "Mensuel",
+        "year": "Annuel"
+      },
+      "pay": "Payé",
+      "overdue": "en retard de {n} j",
+      "today": "aujourd'hui",
+      "inDays": "dans {n} j",
+      "monthlyTotal": "Les abonnements actifs coûtent environ {sum} {cur} par mois",
+      "pause": "Suspendre",
+      "resume": "Reprendre",
+      "empty": "Pas encore d'abonnements — ajoutez-en un pour recevoir des rappels de prélèvement et une prévision mensuelle."
+    },
+    "receipt": {
+      "eyebrow": "Tickets",
+      "title": "Ticket depuis une photo",
+      "pick": "Choisir la photo du ticket",
+      "working": "Reconnaissance…",
+      "unknownShop": "Magasin non détecté",
+      "noDate": "date introuvable",
+      "total": "Total",
+      "mismatch": "Les articles diffèrent du total de {diff}. Vérifiez noms et prix.",
+      "noItems": "Aucun article trouvé. Essayez une photo plus nette.",
+      "save": "Ajouter la sélection au budget",
+      "saved": "Opérations ajoutées : {n}"
+    },
+    "insights": {
+      "eyebrow": "Analyse",
+      "title": "L’argent suffira-t-il et où part-il",
+      "runwayTitle": "Suffisant jusqu’à la paie",
+      "available": "Argent disponible",
+      "payday": "Jour de paie",
+      "calc": "Calculer",
+      "enough": "Ça suffit",
+      "notEnough": "Insuffisant au rythme actuel",
+      "runwayLine": "{days} jours avant la paie ; dépenses habituelles {avg} par jour ; vous pouvez dépenser {allow} par jour ; reste {left}",
+      "subs": "Ressemble à des abonnements",
+      "subsHint": "⚠️ — plus de prélèvement depuis longtemps : peut-être inutile ou résilié",
+      "days": "j",
+      "perYear": "par an",
+      "compare": "Mois dernier {a} → celui-ci {b}",
+      "inflation": "Inflation personnelle : {pct} %",
+      "whatIf": "Et si je réduisais les dépenses",
+      "pickCategory": "Catégorie",
+      "calcSaving": "Calculer l’économie",
+      "saving": "Économie : {m} par mois, {y} par an",
+      "tax": "Déduction fiscale (santé, études, sport), plafond {limit}",
+      "taxKinds": "santé {m} · études {e} · sport {s}",
+      "taxRefund": "remboursement ≈ {n}",
+      "taxHint": "Estimation selon les catégories et les mots des notes ; le montant réel est fixé par l'administration fiscale."
+    },
+    "hours": {
+      "title": "Prix en heures",
+      "income": "Revenu mensuel (si non issu des opérations)",
+      "workHours": "Heures par mois",
+      "apply": "Recalculer",
+      "noIncome": "Pas de données de revenu : ajoutez des revenus ou saisissez un montant.",
+      "rates": "Une heure de travail vaut {work}, une heure de vie {life} (revenu {income}/mois).",
+      "month": "Dépenses du mois : {sum}, soit {hours} heures de travail.",
+      "h": "{n} h",
+      "life": "{n} h de vie",
+      "top": "Achats les plus chers en heures",
+      "forecast": "Épargne",
+      "target": "Montant visé",
+      "have": "Déjà épargné",
+      "calc": "Calculer",
+      "saving": "Vous épargnez environ {n} par mois.",
+      "reached": "Objectif atteint le {date} (dans {months} mois).",
+      "never": "Au rythme actuel, impossible d'épargner : les dépenses ne sont pas inférieures aux revenus.",
+      "feasible": "Pour le {date}, il faut {n} par mois : vous êtes dans les temps.",
+      "notFeasible": "Pour le {date}, il faut {n} par mois : plus que votre rythme actuel."
     }
   },
   "quickNotes": {
@@ -477,7 +749,15 @@
   "palette": {
     "placeholder": "Commencez à taper le nom d'une commande…",
     "empty": "Aucun lanceur — ajoutez-en depuis la page « Automatisation »",
-    "noMatch": "Rien trouvé"
+    "noMatch": "Rien trouvé",
+    "groupPages": "Pages",
+    "groupLaunch": "Lancer",
+    "groupSemantic": "Par sens",
+    "groupSettings": "Réglages",
+    "searchPh": "Pages, notes, tâches, favoris, tableaux, cours, discussions… ou par sens",
+    "searchSettings": "Rechercher dans les réglages : « {q} »",
+    "pageSub": "Page",
+    "settingsHint": "Mettra en évidence les éléments correspondants dans la page des réglages"
   },
   "games": {
     "eyebrow": "Lanceur",
@@ -514,7 +794,47 @@
     "filterEpic": "Epic",
     "tileSize_s": "Petites tuiles",
     "tileSize_m": "Tuiles moyennes",
-    "tileSize_l": "Grandes tuiles"
+    "tileSize_l": "Grandes tuiles",
+    "insights": {
+      "eyebrow": "Analyse",
+      "title": "Backlog, réglages et mesures FPS",
+      "backlog": "À quoi jouer ensuite",
+      "empty": "Aucun jeu dans la bibliothèque",
+      "hours": "{h} h",
+      "status": {
+        "playing": "En cours",
+        "backlog": "En attente",
+        "done": "Terminé",
+        "dropped": "Abandonné"
+      },
+      "recommend": "Réglages pour un FPS cible",
+      "gpu": "GPU, p. ex. RTX 3060",
+      "pick": "Suggérer",
+      "preset": "Préréglage",
+      "preset_low": "bas",
+      "preset_medium": "moyen",
+      "preset_high": "élevé",
+      "preset_ultra": "ultra",
+      "upscaler": "upscaler",
+      "up_quality": "qualité",
+      "up_balanced": "équilibré",
+      "up_performance": "performance",
+      "frameGen": "activez la génération d’images",
+      "note_vram_low": "VRAM faible : gardez les textures en moyen.",
+      "note_integrated_gpu": "Graphisme intégré : baissez la résolution et désactivez les ombres.",
+      "note_frame_gen": "Ce GPU gère la génération d’images (DLSS FG / FSR FG).",
+      "bench": "Mesures FPS avant et après",
+      "benchHint": "Enregistrez le jeu avec PresentMon, CapFrameX ou MSI Afterburner et importez le CSV. Cochez deux mesures pour les comparer.",
+      "chooseGame": "Jeu",
+      "label": "Libellé, p. ex. « avant réglages »",
+      "addCsv": "Importer un CSV",
+      "noFrames": "Aucune colonne de temps d’image trouvée.",
+      "verdict_better": "Amélioré",
+      "verdict_worse": "Dégradé",
+      "verdict_same": "Pas de différence notable",
+      "avgDelta": "FPS moyen : {d} ({p} %)",
+      "lowDelta": "1% low : {d} ({p} %)"
+    }
   },
   "tools": {
     "eyebrow": "Multi-outil",
@@ -690,7 +1010,57 @@
     "apiKey": "Clé API pour {label} (stockée chiffrée)",
     "saveKey": "Enregistrer la clé",
     "cancel": "Annuler",
-    "chooseAnswer": "Choisir cette réponse"
+    "chooseAnswer": "Choisir cette réponse",
+    "saveToNotes": "Vers les notes",
+    "savedToNotes": "Enregistré",
+    "savedAs": "Enregistré dans les notes : {path}",
+    "checkNotes": "Comparer aux notes",
+    "checking": "Vérification…",
+    "checkNothing": "Aucune affirmation à vérifier.",
+    "checkLegend": "✅ présent dans les notes · 🟡 proche de ce qui est écrit · ⚪ introuvable dans les notes",
+    "autoSave": "Enregistrer automatiquement les réponses utiles",
+    "autoSaveHint": "Les réponses avec code, listes ou beaucoup de texte sont enregistrées d’elles-mêmes dans les notes « Réponses IA »",
+    "voiceMode": "Mode vocal : parlez, la réponse est lue à voix haute et vous pouvez l’interrompre",
+    "voice_listening": "J’écoute… (cliquez pour éteindre)",
+    "voice_hearing": "Je vous entends…",
+    "voice_thinking": "Reconnaissance vocale…",
+    "voice_speaking": "Je réponds — vous pouvez m’interrompre",
+    "voiceCodeSkipped": "un bloc de code se trouve ici",
+    "costHint": "≈ {tokens} jetons en entrée, réponse ≈ {out} ; prix estimé {price}",
+    "costUnknown": "inconnu",
+    "skills": "Compétences (dossier « Навыки »)",
+    "judge": "Évaluer la réponse",
+    "judging": "Évaluation…",
+    "judgeScore": "Note {n}/10",
+    "ctx": {
+      "title": "Documents pour le chat",
+      "kind": "Type de source",
+      "file": "Fichier",
+      "folder": "Dossier",
+      "site": "Site web",
+      "ph": {
+        "file": "Chemin du fichier (txt, md, pdf…)",
+        "folder": "Chemin du dossier",
+        "site": "https://…"
+      },
+      "question": "Votre question (pour choisir les passages)",
+      "attach": "Joindre",
+      "loading": "Chargement…",
+      "nothing": "Aucun passage pertinent trouvé",
+      "attached": "Ajouté au prompt système, sources : {n}"
+    },
+    "branch": "Créer une branche",
+    "explain": {
+      "title": "Expliquer une image",
+      "mode": "Mode",
+      "modeExplain": "Ce qui est à l'écran",
+      "modeFormulas": "Formules du tableau",
+      "paste": "Question (ou collez une image avec Ctrl+V)",
+      "pick": "Choisir une image…",
+      "working": "Reconnaissance et analyse…",
+      "noText": "Aucun texte trouvé dans l'image",
+      "use": "Insérer dans le message"
+    }
   },
   "books": {
     "title": "Catalogue de livres",
@@ -794,6 +1164,12 @@
     "lhmNotFound": "LibreHardwareMonitor.exe introuvable — installez-le d'abord.",
     "lhmRunningHidden": "Capteurs actifs",
     "openExternal": "Ouvrir dans le navigateur",
+    "embedStarting": "Démarrage du service de conversion…",
+    "embedError": "Échec du démarrage du convertisseur",
+    "embedHint": "Le service ConvertX intégré démarre automatiquement à la première utilisation.",
+    "embedMissing": "Le runtime du convertisseur est absent de cette installation.",
+    "embedStart": "Démarrer le convertisseur",
+    "formatsNote": "Les formats multimédias nécessitent ffmpeg dans le PATH. Documents/livres : outils correspondants requis (pandoc, Calibre, LibreOffice…).",
     "hwCpu": "Processeur — {name}",
     "hwMotherboard": "Carte mère — {name}",
     "hwDrive": "Disque — {name}",
@@ -806,12 +1182,98 @@
     "levels": "Niveaux",
     "controls": "Contrôles",
     "data": "Données",
-    "embedStarting": "Démarrage du service de conversion…",
-    "embedError": "Échec du démarrage du convertisseur",
-    "embedHint": "Le service ConvertX intégré démarre automatiquement à la première utilisation.",
-    "embedMissing": "Le runtime du convertisseur est absent de cette installation.",
-    "embedStart": "Démarrer le convertisseur",
-    "formatsNote": "Les formats multimédias nécessitent ffmpeg dans le PATH. Documents/livres : outils correspondants requis (pandoc, Calibre, LibreOffice…)."
+    "scanError": "Erreur d'analyse",
+    "insightsTitle": "Doublons et fichiers oubliés",
+    "insightsDup": "Doublons",
+    "insightsForgotten": "Gros fichiers oubliés",
+    "insightsSimilar": "Images similaires",
+    "insightsRoot": "Dossier à analyser, p. ex. D:\\Downloads",
+    "insightsRun": "Lancer",
+    "insightsEmpty": "Rien trouvé",
+    "insightsScanned": "Fichiers analysés : {n}",
+    "insightsIdle": "{days} j sans accès",
+    "alertsTitle": "Historique et alertes",
+    "alertsOn": "Collecte activée",
+    "alertsOff": "Activer la collecte et les alertes",
+    "alertsHint": "Toutes les 30 secondes : surchauffe, manque d’espace, état des disques",
+    "alertsCpuTemp": "Température CPU, dernière heure",
+    "alertsGpuTemp": "Température GPU, dernière heure",
+    "alertsLoad": "Charge CPU, dernière heure",
+    "alertsWear": "usure {n} %",
+    "alertsEmpty": "Aucune alerte pour l’instant",
+    "alertsHeat": "Charge CPU par heure de la journée (historique conservé)",
+    "versions": {
+      "title": "Versions de dossier",
+      "folder": "Chemin du dossier",
+      "show": "Afficher les versions",
+      "create": "Créer un instantané",
+      "created": "Instantané créé",
+      "restore": "Restaurer à côté",
+      "restored": "Version restaurée dans {path}",
+      "delete": "Supprimer la version",
+      "hint": "Jusqu'à 10 instantanés par dossier (500 Mo chacun) ; node_modules et .git sont ignorés. La restauration ne modifie jamais le dossier d'origine."
+    },
+    "attention": {
+      "title": "Carte de l'attention",
+      "noData": "Pas encore de données horaires : activez le suivi du temps par application et travaillez un jour ou deux.",
+      "min": "min",
+      "lecture": "cours, min :",
+      "tasks": "tâches :",
+      "legend": "La luminosité est le temps passé dans les applications ; le contour, un cours ; la barre verte, les tâches terminées ; le fond bleu, le sommeil probable (d'après les pauses d'activité).",
+      "facts": "Heures actives par jour : {active} ; après 18 h — {evening} % du temps ; plus longue série sans pause : {streak} h ; sommeil ≈ {sleep} h.",
+      "placeholder": "Où passe mon temps ?",
+      "ask": "Demander à l'IA",
+      "evening": "Pourquoi n'ai-je plus d'énergie le soir ?",
+      "insight": {
+        "evening": "Plus de {n} % du temps d'ordinateur tombe le soir.",
+        "streak": "Il y a eu une série de {n} heures sans pause.",
+        "late": "Travail tardif (après 23 h) sur {n} jours de la semaine.",
+        "sleep": "Le sommeil probable est en moyenne de {n} h : moins de 6,5."
+      }
+    },
+    "diag": {
+      "title": "Diagnostic du PC",
+      "slow": "Ça rame : enquêter",
+      "measuring": "Mesure…",
+      "passport": "Passeport du PC",
+      "windowsOnly": "L'enquête sur les lenteurs ne fonctionne que sous Windows.",
+      "sec": "s",
+      "progress": "Mesure : {elapsed} sur {total} s, {n} relevés.",
+      "fine": "Pas de cause évidente de lenteur à cet instant.",
+      "cause": {
+        "cpu": "Le processeur est le goulot d'étranglement",
+        "disk": "Le disque est le goulot d'étranglement",
+        "memory": "Manque de mémoire libre"
+      },
+      "find": {
+        "cpu": "Charge moyenne du processeur : {v} %.",
+        "disk": "Disque occupé à {v} % en moyenne.",
+        "memory": "Mémoire libre moyenne : {v} Mo."
+      },
+      "why": {
+        "defender": "l'antivirus Windows analyse des fichiers",
+        "indexer": "l'indexation de la recherche Windows est en cours",
+        "update": "Windows installe des mises à jour",
+        "sync": "un service cloud synchronise des fichiers",
+        "system": "tâches système (pilotes, pagination)",
+        "vm": "une machine virtuelle ou WSL occupe la mémoire",
+        "browser": "un navigateur avec de nombreux onglets",
+        "dwm": "gestionnaire de fenêtres, souvent sous forte charge GPU",
+        "svchost": "un service Windows : voyez lequel",
+        "wmi": "interrogation du système via WMI (supervision)",
+        "launcher": "un lanceur de jeux en arrière-plan"
+      },
+      "peak": "pic",
+      "at": "à",
+      "io": "disque",
+      "mbs": "Mo/s",
+      "mb": "Mo",
+      "avg": "En moyenne : processeur {cpu} %, disque {disk} %, libre {mem} Mo, durée {seconds} s.",
+      "peaks": "Pics : processeur {cpu} % à {cpuAt}, disque {disk} % à {diskAt}.",
+      "save": "Enregistrer le passeport",
+      "saveAnon": "Enregistrer sans le nom du PC",
+      "stale": "Pilotes non mis à jour depuis longtemps"
+    }
   },
   "voice": {
     "title": "Clonage de voix",
@@ -841,10 +1303,33 @@
     "applyProfile": "Appliquer le profil",
     "reRender": "Re-rendre"
   },
+  "video": {
+    "title": "Téléchargement de vidéos",
+    "eyebrow": "Récupérer et enregistrer une vidéo",
+    "paste": "Collez une URL de vidéo",
+    "fetch": "Récupérer",
+    "fetching": "Récupération…",
+    "clipboard": "Coller depuis le presse-papiers",
+    "empty": "Collez un lien ci-dessus pour prévisualiser",
+    "reading": "Lecture des infos de la vidéo…",
+    "untitled": "Capture sans titre",
+    "download": "Télécharger {quality}",
+    "downloading": "Téléchargement {p}%",
+    "saved": "Enregistré dans les téléchargements",
+    "ytdlpMissing": "yt-dlp n'est pas installé (cliquez ci-dessous pour installer)",
+    "errUnsupported": "Ce site n'est pas pris en charge par yt-dlp. Essayez un autre lien.",
+    "errTimeout": "La source a expiré. Vérifiez la connexion ou activez le proxy.",
+    "clip": {
+      "label": "Extrait",
+      "from": "de 0:00",
+      "to": "à 1:30"
+    }
+  },
   "proxy": {
     "title": "Proxy",
     "connected": "Connecté",
     "disconnected": "Déconnecté",
+    "httpInboundDown": "Le port SOCKS est ouvert, mais le port HTTP du proxy ne s'est pas lancé : des sites comme TMDB contournent le proxy. Redémarrez le proxy.",
     "vlessLink": "Lien VLESS",
     "ping": "Ping",
     "country": "Pays",
@@ -853,6 +1338,7 @@
     "disable": "Désactiver le proxy",
     "singboxMissing": "sing-box n'est pas installé",
     "installSingBox": "Installer sing-box",
+    "placeholder": "vless:// ou profil JSON",
     "subscriptions": "Abonnements",
     "subName": "Nom",
     "add": "Ajouter",
@@ -863,7 +1349,6 @@
     "savedVless": "VLESS enregistrés",
     "profile": "Profil (lien VLESS ou JSON)",
     "paste": "Coller depuis le presse-papiers",
-    "placeholder": "vless:// ou profil JSON",
     "nodes": "Serveurs",
     "selectServer": "Serveur sélectionné",
     "testAll": "Tester tout",
@@ -894,23 +1379,6 @@
     "errPortBusy": "Le port {port} est occupé : fermez l'autre proxy/VPN puis réessayez",
     "errStartTimeout": "sing-box n'a pas démarré à temps. Vérifiez la configuration du nœud",
     "unsupported": "Le moteur sing-box ne prend pas en charge ce transport (ex. XHTTP) : le nœud ne peut pas être démarré"
-  },
-  "video": {
-    "title": "Téléchargement de vidéos",
-    "eyebrow": "Récupérer et enregistrer une vidéo",
-    "paste": "Collez une URL de vidéo",
-    "fetch": "Récupérer",
-    "fetching": "Récupération…",
-    "clipboard": "Coller depuis le presse-papiers",
-    "empty": "Collez un lien ci-dessus pour prévisualiser",
-    "reading": "Lecture des infos de la vidéo…",
-    "untitled": "Capture sans titre",
-    "download": "Télécharger {quality}",
-    "downloading": "Téléchargement {p}%",
-    "saved": "Enregistré dans les téléchargements",
-    "ytdlpMissing": "yt-dlp n'est pas installé (cliquez ci-dessous pour installer)",
-    "errUnsupported": "Ce site n'est pas pris en charge par yt-dlp. Essayez un autre lien.",
-    "errTimeout": "La source a expiré. Vérifiez la connexion ou activez le proxy."
   },
   "conv": {
     "pdfEyebrow": "Boîte à outils PDF",
@@ -1007,10 +1475,24 @@
     "playlistSave": "Créer",
     "playlistEmpty": "Cette playlist n'a pas encore de titres — ajoutez-en depuis les résultats de recherche (clic droit sur un titre)",
     "addToPlaylist": "Ajouter à la playlist",
-    "placeholder": "Connecteur non configuré — le backend est un espace réservé.",
-    "untitled": "Piste sans titre",
-    "unknown": "Artiste inconnu · 3:41",
-    "download": "Télécharger"
+    "download": "Télécharger",
+    "smart": {
+      "recent": "Récentes",
+      "short": "Courtes",
+      "long": "Longues",
+      "artist": "{artist}",
+      "mix": "20 au hasard"
+    },
+    "karaoke": {
+      "title": "Karaoké",
+      "pick": "Choisir un fichier audio…",
+      "artist": "Artiste",
+      "song": "Titre de la chanson",
+      "find": "Chercher les paroles",
+      "searching": "Recherche…",
+      "none": "Paroles introuvables",
+      "plain": "Paroles trouvées sans horodatage :"
+    }
   },
   "arch": {
     "title": "Archiveur web",
@@ -1180,7 +1662,244 @@
     "expand": "Agrandir",
     "imageUrlPrompt": "URL de l'image :",
     "clipboardUnsupported": "Ce navigateur ne peut pas lire le presse-papiers",
-    "clipboardNoImage": "Aucune image trouvée dans le presse-papiers"
+    "clipboardNoImage": "Aucune image trouvée dans le presse-papiers",
+    "ocr": {
+      "pdfProgress": "PDF « {name} » : reconnaissance de la page {done} sur {total}…",
+      "pdfCancel": "Annuler",
+      "pdfEmpty": "Pages PDF vierges ignorées : {pages}.",
+      "btn": "Reconnaître cette image comme du texte (Chandra OCR 2)",
+      "settings": "Réglages de reconnaissance",
+      "busy": "Reconnaissance…",
+      "imageGone": "L'image n'est plus dans la note : le résultat n'a pas été inséré.",
+      "needSetup": "La reconnaissance nécessite le modèle Chandra OCR 2 et une build de llama.cpp : installez-les dans les réglages.",
+      "failed": "Échec de la reconnaissance : {error}",
+      "title": "Reconnaissance d'images (Chandra OCR 2)",
+      "hint": "Le bouton OCR d'une image dans une note la convertit en Markdown : le texte reste du texte, les tableaux deviennent des tableaux, et les dessins et graphiques sont découpés et insérés comme images à leur place. Fonctionne en local via le llama.cpp intégré.",
+      "device": "Périphérique de calcul",
+      "model": "Modèle",
+      "modelAuto": "Le premier installé",
+      "modelHint": "Q4_K_M est le bon compromis. Q3_K_M est plus léger pour les portables ; Q6_K et Q8_0 sont plus précis mais plus lourds.",
+      "notInstalled": "non installé",
+      "license": "Chandra OCR 2 © Datalab, licence OpenRAIL-M : gratuit pour un usage personnel et la recherche, pas pour des services concurrents.",
+      "dev": {
+        "auto": "Auto (le meilleur installé)",
+        "cpu": "CPU",
+        "vulkan": "Vulkan — n'importe quelle carte graphique",
+        "cuda": "CUDA — NVIDIA uniquement"
+      },
+      "devHint": {
+        "auto": "Choisit CUDA, puis Vulkan, puis CPU — selon ce qui est déjà installé.",
+        "cpu": "Pour les portables sans GPU dédié ; une page prend plusieurs minutes.",
+        "vulkan": "Fonctionne sur NVIDIA, AMD et Intel sans SDK de pilote ; presque aussi rapide que CUDA.",
+        "cuda": "Le plus rapide sur NVIDIA, mais nécessite une build séparée (~0,6 Go)."
+      }
+    },
+    "m3eTab": "M3E",
+    "m3e": {
+      "loading": "Ouverture du canevas…",
+      "loadFailed": "Impossible d'ouvrir la page : {error}",
+      "retry": "Réessayer",
+      "pageN": "Page {n}",
+      "newPage": "Nouvelle page",
+      "newBlank": "Page vierge",
+      "newDemo": "Application d'exemple",
+      "newCopy": "Copie de cette page",
+      "importFile": "Depuis un fichier de projet…",
+      "importMany": "Pages ajoutées : {n}",
+      "invalidFile": "Ce n'est pas un fichier de projet M3E Canvas.",
+      "rename": "Renommer",
+      "duplicate": "Dupliquer",
+      "pin": "Épingler",
+      "unpin": "Désépingler",
+      "color": "Couleur de l'onglet",
+      "noColor": "Sans couleur",
+      "moveLeft": "Déplacer vers la gauche",
+      "moveRight": "Déplacer vers la droite",
+      "export": "Enregistrer en fichier",
+      "delete": "Supprimer",
+      "deleted": "Page « {name} » supprimée",
+      "undo": "Annuler",
+      "restored": "Page « {name} » restaurée",
+      "overview": "Toutes les pages",
+      "overviewHint": "Toutes les pages et écrans (Ctrl+K pour accéder rapidement)",
+      "search": "Rechercher une page ou un écran…",
+      "sort": "Ordre",
+      "sortManual": "Comme dans les onglets",
+      "sortRecent": "Les plus récentes d'abord",
+      "sortName": "Par nom",
+      "screens": "Écrans",
+      "screensCount": "{n} écrans",
+      "partsCount": "{n} éléments",
+      "updated": "modifié {when}",
+      "justNow": "à l'instant",
+      "minutesAgo": "il y a {n} min",
+      "hoursAgo": "il y a {n} h",
+      "daysAgo": "il y a {n} j",
+      "emptySearch": "Aucun résultat",
+      "trash": "Corbeille",
+      "trashEmpty": "La corbeille est vide. Les pages supprimées y restent 30 jours.",
+      "restore": "Restaurer",
+      "purge": "Supprimer définitivement",
+      "purgeConfirm": "Supprimer « {name} » définitivement ?",
+      "open": "Ouvrir",
+      "close": "Fermer",
+      "current": "Ouverte",
+      "switcher": "Accès rapide",
+      "switcherHint": "↑↓ choisir · Entrée ouvrir · Échap fermer",
+      "pageKind": "page",
+      "screenKind": "écran",
+      "keys": "Alt+←/→ page voisine · Alt+1…9 page par numéro · Ctrl+Alt+N nouvelle · Ctrl+K accès rapide · [ ] écrans",
+      "dropHint": "Déposez un fichier de projet pour l'ajouter comme page",
+      "tabsLabel": "Pages",
+      "scrollLeft": "Faire défiler les onglets vers la gauche",
+      "scrollRight": "Faire défiler les onglets vers la droite",
+      "empty": "Vide",
+      "saving": "Enregistrement…",
+      "saved": "Enregistré",
+      "saveFailed": "Échec de l'enregistrement",
+      "duplicateOf": "{name} (copie)"
+    },
+    "fontTitle": "Police des notes",
+    "zoomIn": "Agrandir le texte",
+    "zoomOut": "Réduire le texte",
+    "zoomReset": "Réinitialiser la taille",
+    "tools": {
+      "snapshot": "Instantané maintenant",
+      "snapshotDone": "Instantané enregistré",
+      "history": "Historique des instantanés",
+      "restore": "Restaurer",
+      "restored": "Texte restauré depuis l’instantané (pensez à enregistrer)",
+      "noNote": "Ouvrez une note pour utiliser les outils",
+      "toc": "Table des matières",
+      "tocDone": "Table des matières mise à jour",
+      "formulas": "Calculer les formules des tableaux",
+      "formulasDone": "Formules calculées",
+      "transclude": "Développer les ![[inclusions]]",
+      "transcludeDone": "Inclusions développées",
+      "parasites": "Mots parasites",
+      "parasitesNone": "Aucun mot parasite",
+      "parasitesTotal": "Mots parasites au total : {n}",
+      "glossary": "Glossaire des **termes**",
+      "glossaryNone": "Aucune ligne du type « **Terme** — définition »",
+      "plan": "Plan de révision",
+      "planFrom": "Réviser à partir du {date} :",
+      "moc": "Ajouter la carte de contenu du dossier",
+      "mocDone": "Notes ajoutées à la carte : {n}",
+      "debts": "« Dettes » du graphe : liens orphelins",
+      "debtsNone": "Tous les liens pointent vers des notes existantes",
+      "quotes": "Recueil de citations (blocs >)",
+      "quotesNone": "Aucune citation pour l’instant",
+      "slides": "Exporter en diapositives (HTML)",
+      "slidesDone": "Présentation enregistrée : naviguez avec les flèches",
+      "rsvp": "Lecture rapide",
+      "rsvpEmpty": "La note ne contient aucun texte",
+      "rsvpPlay": "Lire",
+      "rsvpPause": "Pause",
+      "rsvpReset": "Recommencer",
+      "rsvpSpeed": "{n} mots/min",
+      "tags": "Suggérer des tags par le sens",
+      "tagsNone": "Aucune note étiquetée similaire",
+      "template": "Modèle",
+      "templateInsert": "Insérer le modèle",
+      "compareWith": "Comparer avec la note…",
+      "compare": "Comparer",
+      "compareSummary": "Correspondance {pct} % · seulement ici : {a} · seulement là : {b}",
+      "dictate": "Dicter dans la note",
+      "dictateStop": "Arrêter et insérer",
+      "dictating": "Transcription…",
+      "site": "Mini-site du dossier (zip)"
+    },
+    "mind": {
+      "title": "Réflexion",
+      "gaps": {
+        "title": "Angles morts",
+        "placeholder": "Un sujet, p. ex. « réseaux de neurones »",
+        "find": "Ce qui manque",
+        "covered": "Notes abordant « {topic} » : {n}",
+        "notes": "notes : {n}",
+        "dangling": "Liens sans note :"
+      },
+      "contra": {
+        "title": "Contradictions",
+        "run": "Chercher des contradictions avec d'anciennes notes",
+        "noClaims": "Aucune affirmation vérifiable dans le texte.",
+        "none": "Aucune contradiction trouvée.",
+        "heuristic": "Modèle indisponible : contradictions possibles d'après des indices (négation, nombres).",
+        "now": "Maintenant",
+        "before": "Avant dans",
+        "why": {
+          "negation": "l'une des affirmations contient une négation",
+          "number": "nombres différents sur le même sujet"
+        }
+      },
+      "review": {
+        "title": "Relecteur",
+        "hint": "Seulement des questions, sans réécriture : votre style reste le vôtre.",
+        "general": "Revue générale",
+        "evidence": "Preuves",
+        "audience": "Lecteur",
+        "logic": "Logique",
+        "run": "Poser des questions",
+        "short": "Trop peu de texte à relire.",
+        "empty": "Aucune question n'est apparue."
+      },
+      "conf": {
+        "title": "Degré de confiance",
+        "hint": "Marque dans le texte : {70 % : affirmation} ou {70 % jusqu'au 2026-12-01 : affirmation}. L'appli vous demandera de vérifier à l'échéance.",
+        "claim": "Affirmation",
+        "add": "Ajouter à la note",
+        "scan": "Rassembler les marques de toutes les notes",
+        "added": "Marque ajoutée.",
+        "scanned": "Nouvelles marques : {n}",
+        "due": "Il est temps de vérifier :",
+        "came": "S'est réalisé",
+        "notCame": "Ne s'est pas réalisé",
+        "calibration": "Vérifiés : {n}, score de Brier : {brier} (0 parfait, 0,25 comme « 50/50 »).",
+        "over": "Vous surestimez votre confiance d'environ {n} points.",
+        "under": "Vous vous sous-estimez d'environ {n} points.",
+        "fine": "L'étalonnage est proche de l'idéal.",
+        "bucket": "annoncé {said} % en moyenne, réalisé {was} % ({n})"
+      },
+      "author": {
+        "title": "Auteur de la pensée",
+        "hint": "Propre, collé ou IA, d'après ce que l'appli a vu au collage et lors des actions IA.",
+        "run": "Afficher l'origine des paragraphes",
+        "own": "propre",
+        "copied": "collé",
+        "ai": "IA"
+      },
+      "traces": {
+        "title": "Traces de décisions",
+        "hint": "Conserve le contexte d'une décision ; dans six mois l'appli demandera si vous aviez raison.",
+        "reason": "Pourquoi vous avez décidé ainsi (facultatif)",
+        "save": "Retenir la décision",
+        "saved": "Décision enregistrée avec son contexte.",
+        "track": "Vous aviez raison dans {score} % des décisions revues ({n}).",
+        "because": "Pourquoi",
+        "ask": "Aviez-vous raison ?",
+        "note": "Ce qui s'est passé (facultatif)",
+        "right": "Oui",
+        "partly": "En partie",
+        "wrong": "Non",
+        "waiting": "En attente de revue : {n}"
+      }
+    },
+    "photo": {
+      "title": "Photo → tâches",
+      "hint": "La photo d'un tableau ou d'un cahier devient une note avec liste de contrôle et des tâches liées à l'image. La reconnaissance de l'écriture manuscrite est approximative : vérifiez la liste.",
+      "createTasks": "Créer les tâches",
+      "pick": "Choisir une photo",
+      "busy": "Reconnaissance…",
+      "result": "Éléments : {items}, tâches créées : {tasks}, confiance de la reconnaissance : {conf} %",
+      "open": "Ouvrir la note"
+    },
+    "speak": {
+      "title": "Écouter la note",
+      "noProfiles": "Aucun profil vocal : créez-en un dans la section Voix (un échantillon de votre voix).",
+      "run": "Lire à voix haute",
+      "estimate": "Environ {min} min de parole",
+      "save": "Enregistrer l'audio"
+    }
   },
   "player": {
     "play": "Lecture",
@@ -1221,6 +1940,67 @@
     "tab_catalog": "Catalogue",
     "tab_library": "Ma liste",
     "tab_stats": "Statistiques",
+    "tab_downloads": "Téléchargements",
+    "dlLoading": "Lecture de la liste des téléchargements…",
+    "dlEmpty": "Aucun téléchargement pour l'instant : ouvrez un film et lancez une release dans le lecteur",
+    "dlDownloading": "Téléchargement",
+    "dlPaused": "Arrêté",
+    "dlDone": "Téléchargé",
+    "dlStop": "Arrêter",
+    "dlResume": "Reprendre",
+    "dlDelete": "Supprimer",
+    "dlDeleteHint": "Arrête le téléchargement et supprime du disque les fichiers téléchargés",
+    "dlCleanup": "Libérer de l'espace",
+    "dlKeep": "Conserver",
+    "dlKeepDefault": "Conserver les téléchargements après visionnage",
+    "dlKeepHint": "Décocher la case supprime les releases terminées (libère de l'espace)",
+    "dlKeepAfter": "Conserver le torrent téléchargé après visionnage",
+    "dlKeepAfterHint": "Si la case est décochée, une release terminée est supprimée avec ses fichiers",
+    "dlPosition": "reprendre à {time}",
+    "dlContinue": "Reprendre la lecture",
+    "dlContinueFrom": "Reprise à {time}",
+    "dlRestored": "Téléchargement restauré : {title}",
+    "dlStopped": "Téléchargement arrêté — les fichiers restent sur le disque",
+    "dlBadge": "Téléchargement : {percent} % · {speed}",
+    "playerSeekLimit": "Téléchargé jusqu'à {time} — l'avance plus loin sera possible au fil du téléchargement",
+    "playerExactSeek": "Impossible de confirmer la seconde de départ exacte — transcodage à partir de la seconde demandée, sinon le son serait désynchronisé",
+    "playerBack10": "Reculer de 10 secondes",
+    "playerFwd10": "Avancer de 10 secondes",
+    "playerMute": "Son (M)",
+    "playerVolume": "Volume",
+    "playerSettings": "Réglages du lecteur",
+    "playerPip": "Picture-in-picture",
+    "playerPipOn": "Le lecteur est en mode picture-in-picture",
+    "playerFullscreen": "Plein écran (F)",
+    "playerFit": "Taille et zoom de l'image",
+    "playerZoom": "Zoom",
+    "playerZoomCustom": "Zoom personnalisé (50–400 %)",
+    "playerZoomReset": "Réinitialiser",
+    "fit_fit": "Adapter à l'écran",
+    "fit_cover": "Remplir (recadrer)",
+    "fit_width": "Adapter à la largeur",
+    "fit_height": "Adapter à la hauteur",
+    "fitPanHint": "Zoom actif — faites glisser avec la souris pour déplacer",
+    "playerFailed": "Le flux ne s'est pas ouvert",
+    "playerRetry": "Recréer le flux",
+    "playerRecreated": "Le flux a été recréé",
+    "playerFallbackRemux": "La lecture directe a échoué — remuxage du flux en MP4 à la volée",
+    "playerFallbackTranscode": "Le navigateur ne peut pas décoder ce codec — transcodage de la vidéo à la volée (le son et l'image peuvent être décalés)",
+    "playerRemuxHint": "Le fichier est empaqueté en MP4 à la volée : le navigateur ne peut pas lire MKV/AC3, le son est donc réencodé en AAC",
+    "playerTranscodeHint": "La vidéo est transcodée à la volée — le démarrage prend quelques secondes",
+    "playerNeedsFfmpeg": "Le fichier est un MKV : le navigateur ne peut pas le lire et FFmpeg est introuvable. Placez ffmpeg.exe et ffprobe.exe dans storage/ffmpeg",
+    "ffmpegReady": "FFmpeg : {version} · {path}",
+    "ffmpegMissingPath": "FFmpeg introuvable : placez ffmpeg.exe et ffprobe.exe dans {dir} (ou installez-le depuis la page « Convertisseur »)",
+    "ffmpegRecheck": "Vérifier à nouveau",
+    "tracksFfmpeg": "Sans FFmpeg, le choix des pistes est indisponible — la vidéo est lue telle quelle",
+    "tracksProbeFailed": "Impossible de lire les pistes : {message}",
+    "subtitlesOff": "Désactivés",
+    "trackerResolution": "Résolution",
+    "trackerResolutionAll": "Toutes",
+    "trackerSeeds": "Seeds",
+    "trackerSeedsAny": "Tous",
+    "trackerSeedsMin": "{n}+",
+    "trackerShown": "{shown} affichés sur {total}",
     "tab_overview": "Aperçu",
     "tab_cast": "Distribution",
     "tab_gallery": "Galerie",
@@ -1264,7 +2044,6 @@
     "magnet": "Lien magnet",
     "openSource": "Ouvrir",
     "openTorrentFile": "Ouvrir un fichier .torrent",
-    "torrentNotice": "N'ouvrez que du contenu auquel vous avez droit (domaine public, vos propres fichiers, etc.). L'application ne recherche pas de torrents.",
     "torrentConnecting": "Connexion à l'essaim…",
     "torrentNoEngine": "Le moteur torrent n'est pas disponible",
     "torrentEngineHint": "Le paquet webtorrent est absent — installez les dépendances et redémarrez l'application.",
@@ -1292,6 +2071,80 @@
     "nextImage": "Suivant",
     "photoOf": "{i} / {n}",
     "providersMore": "+{n} de plus",
+    "tracker": "Tracker du forum",
+    "trackerSearch": "Rechercher des releases",
+    "trackerSearching": "Recherche sur le forum…",
+    "trackerQuery": "Requête de recherche",
+    "trackerFind": "Rechercher",
+    "trackerEmpty": "Aucun résultat",
+    "trackerOpen": "Ouvrir",
+    "trackerFound": "Releases trouvées : {count}",
+    "trackerCached": "en cache",
+    "trackerDisabled": "La recherche sur le forum est désactivée dans les réglages",
+    "trackerNoCreds": "Saisissez votre identifiant et votre mot de passe du forum",
+    "trackerLoginFailed": "Le forum a refusé l'identifiant ou le mot de passe",
+    "trackerCaptcha": "Le forum demande un captcha : connectez-vous sur le site dans un navigateur puis réessayez",
+    "trackerSession": "La session du forum a expiré — reconnectez-vous",
+    "trackerParse": "Impossible d'analyser la page du forum (le balisage a changé)",
+    "trackerNetwork": "Le forum est inaccessible : vérifiez votre réseau ou votre proxy",
+    "trackerBadQuery": "Requête vide ou trop longue",
+    "trackerBadRelease": "Release invalide",
+    "trackerNoTorrentFile": "Le forum n'a pas renvoyé de .torrent (un compte avec accès est requis)",
+    "trackerLogin": "Identifiant",
+    "trackerPassword": "Mot de passe",
+    "trackerSaveCreds": "Enregistrer et se connecter",
+    "trackerCredsHint": "Le mot de passe est conservé dans les secrets chiffrés de l'application, pas dans le navigateur.",
+    "trackerSessionOn": "Connecté",
+    "trackerSessionOff": "Non connecté",
+    "seekTo": "Aller à",
+    "seekGo": "Aller",
+    "tracksUnavailable": "FFmpeg n'est pas installé : le choix des pistes est indisponible",
+    "trackerCf": "Le forum a renvoyé une page de vérification Cloudflare (« Just a moment… ») au lieu de résultats",
+    "trackerCfHint": "Que faire : appuyez sur « Repasser la vérification Cloudflare » (ou « Se connecter au forum ») — la fenêtre de l'application passe la vérification avec la même IP et le même User-Agent que la recherche. Cette fenêtre n'existe que dans l'application ; dans un navigateur, copiez les cookies dans le bloc « Cookies du navigateur » ci-dessous.",
+    "trackerDetails": "Réponse du forum",
+    "trackerLoginForm": "formulaire de connexion",
+    "trackerCookiesBtn": "Cookies du navigateur",
+    "trackerCookiesHave": "Cookies de session",
+    "trackerCookiesApply": "Appliquer les cookies",
+    "trackerCookiesHint": "Dans le navigateur : F12 → Network → n'importe quelle requête vers le forum → Request Headers → Cookie. cf_clearance et bb_data sont requis. document.cookie ne fonctionne pas : les deux sont HttpOnly.",
+    "trackerCookiesSaved": "Cookies enregistrés : {count}",
+    "trackerLoginWindow": "Se connecter au forum",
+    "trackerWindowNoBridge": "La fenêtre de connexion n'est disponible que dans l'application MoonApp (dans un navigateur, utilisez « Cookies du navigateur »)",
+    "trackerWindowFailed": "Impossible d'ouvrir la fenêtre de connexion",
+    "trackerWinLoggedIn": "Connecté, cookies récupérés",
+    "trackerWinClosed": "Fenêtre fermée, cookies enregistrés",
+    "trackerCheck": "Vérifier",
+    "trackerProbeOk": "Le forum répond correctement",
+    "trackerProbeCf": "Le forum renvoie une vérification Cloudflare — connectez-vous via la fenêtre de l'application",
+    "trackerProbeGuest": "Le forum vous demande de vous connecter",
+    "trackerDirect": "sans proxy",
+    "trackerNeedLogin": "Pour trouver des releases de « {{q}} », connectez-vous : utilisez le bouton « Se connecter au forum » ci-dessus",
+    "trackerCookiesFromBrowser": "Récupérer depuis le navigateur",
+    "trackerCookiesFromBrowserHint": "Fonctionne si vous êtes connecté au forum dans Firefox ou dans Chrome/Edge antérieur à 127 : Chrome/Edge 127+ chiffrent les cookies avec app-bound (v20) et ne les exposent pas aux autres programmes.",
+    "trackerCookiesNotFound": "Aucun cookie du forum trouvé dans les navigateurs — voir la liste des vérifications ci-dessous",
+    "trackerCookiesSource": "Source :",
+    "trackerProbesTitle": "Ce qui a été vérifié",
+    "trackerCookiesManual": "Coller manuellement",
+    "trackerLogout": "Se déconnecter",
+    "trackerLogoutDone": "Session du forum effacée — reconnectez-vous",
+    "trackerWindowNeedsApp": "La fenêtre de connexion n'est disponible que dans l'application MoonApp : cette interface est ouverte dans un navigateur",
+    "trackerWindowNeedsAppHow": "La fenêtre de connexion (Chromium de l'application) est la seule voie qui passe la vérification Cloudflare. Lancez l'application (npm start ou MoonApp empaqueté) et appuyez-y sur « Se connecter au forum ». Dans un navigateur, vous ne pouvez que coller les cookies manuellement — le panneau ci-dessous est déjà ouvert.",
+    "trackerCookiesPaste": "Coller depuis le presse-papiers",
+    "trackerCookiesPasteEmpty": "Aucune chaîne de cookies dans le presse-papiers — copiez-la d'abord depuis les DevTools",
+    "trackerCookiesPasteDenied": "Le navigateur a bloqué l'accès au presse-papiers — collez la chaîne manuellement dans le champ (Ctrl+V)",
+    "trackerCookiesKeys": "Cookies clés : cf_clearance {cf}, bb_data {bb}",
+    "trackerBadgeAppBound": "app-bound : lisible uniquement par le navigateur",
+    "trackerBadgeLocked": "base de données occupée : fermez le navigateur et réessayez",
+    "trackerWinNoCookies": "La connexion n'a pas abouti : aucun cookie du forum n'est apparu. Très probablement, Cloudflare n'a pas laissé passer la page — vérifiez que l'application utilise le même proxy que votre navigateur et réessayez.",
+    "trackerWinNoLogin": "Cookies reçus mais non connecté (pas de bb_data) : terminez la connexion dans cette fenêtre — saisissez identifiant et mot de passe et attendez la page principale",
+    "trackerLoginAuto": "Connecté (identifiant et mot de passe des réglages)",
+    "trackerWinCfOnly": "Vérification Cloudflare réussie mais vous n'êtes pas connecté : saisissez identifiant et mot de passe dans la fenêtre de connexion — elle se fermera toute seule",
+    "trackerCfWindow": "Repasser la vérification Cloudflare",
+    "trackerPreset": "Tracker",
+    "trackerPreset_rutracker": "RuTracker (connexion requise)",
+    "trackerPreset_rutor": "RuTor (sans connexion)",
+    "trackerPresetSwitched": "Tracker changé",
+    "trackerNoLoginNeeded": "Ce tracker ne nécessite pas de connexion : la recherche et les fichiers .torrent fonctionnent anonymement",
     "tab_bookmarks": "Favoris",
     "bookmarksAdd": "Ajouter aux favoris",
     "bookmarksAddedCount": "Dans les favoris ({n})",
@@ -1327,10 +2180,6 @@
     "keyConfigured": "Clé définie",
     "keyMissing": "Clé non définie"
   },
-  "_meta": {
-    "code": "fr",
-    "native": "Français"
-  },
   "videoSection": {
     "videoQuality": "Qualité max par défaut",
     "videoQualityHint": "Hauteur vidéo maximale présélectionnée pour les nouveaux téléchargements (best = sans limite)",
@@ -1362,9 +2211,13 @@
     "favRemove": "Retirer des favoris",
     "copy": "Copier",
     "copyName": "Copier le nom",
+    "copyOriginal": "Copier le titre original",
+    "copyMagnet": "Copier le lien magnet",
+    "copyValue": "Copier la valeur",
     "copyLink": "Copier le lien",
     "copyId": "Copier l'ID",
     "remove": "Retirer du catalogue",
+    "clear": "Effacer",
     "rename": "Renommer",
     "pin": "Épingler",
     "unpin": "Désépingler",
@@ -1373,7 +2226,6 @@
     "newFolder": "Nouveau dossier",
     "select": "Sélectionner",
     "paste": "Coller et ouvrir",
-    "clear": "Effacer",
     "exportMd": "Exporter en Markdown",
     "delFolder": "Supprimer le dossier",
     "copyAuthor": "Copier l'auteur",
@@ -1632,11 +2484,11 @@
       "device": "Version de PyTorch",
       "deviceCuda": "CUDA 12.8 (NVIDIA)",
       "deviceCudaHint": "Rapide : cartes NVIDIA depuis GTX 16xx / RTX 20xx",
-      "deviceCpu": "CPU (sans carte graphique)",
-      "deviceCpuHint": "Plus lent, mais fonctionne sans NVIDIA",
       "deviceCudaSeparate": "C'est un runtime PyTorch indépendant (pip, CUDA 12.8) — des fichiers physiquement différents du pack GPU d'Upscale (ONNX Runtime/TensorRT, CUDA 12.9) ou de la compilation CUDA de whisper dans Lecture (CUDA 11.8/12.4). Impossible à fusionner : trois moteurs différents, trois versions de CUDA différentes. Téléchargé une seule fois, au premier usage.",
       "upscaleCudaFound": "Statut : le pack GPU d'Upscale est déjà installé (ce téléchargement reste nécessaire — runtimes différents)",
       "upscaleCudaMissing": "Statut : le pack GPU d'Upscale n'est pas encore installé",
+      "deviceCpu": "CPU (sans carte graphique)",
+      "deviceCpuHint": "Plus lent, mais fonctionne sans NVIDIA",
       "recommended": "Recommandé",
       "gpu": "Carte graphique détectée : {name}",
       "gpuNone": "Aucune carte NVIDIA détectée : la version CPU suffit",
@@ -1689,7 +2541,12 @@
       "errNetwork": "Serveur de paquets injoignable : vérifiez internet ou le proxy"
     },
     "yoficate": "Yofication (ё → е)",
-    "markStress": "Accents toniques (RUAccent)"
+    "markStress": "Accents toniques (RUAccent)",
+    "llamaDesc": "llama.cpp intégré : russe, clonage de voix, n'importe quel GPU (Vulkan).",
+    "noPython": "sans Python",
+    "defaultPreset": "Mon préréglage",
+    "fmtM4b": "M4B (chapitres)",
+    "fmtMp3": "MP3 (chapitres)"
   },
   "lecture": {
     "defaultTitle": "Cours",
@@ -2034,7 +2891,73 @@
     "modelSaved": "Modèle enregistré : {model}",
     "fixModel": "Corriger le modèle",
     "tabLecture": "Cours",
-    "tabQuickNote": "Note rapide"
+    "tabQuickNote": "Note rapide",
+    "askPanel": {
+      "title": "Question sur l’enregistrement",
+      "placeholder": "Que voulez-vous clarifier sur le cours ?",
+      "ask": "Demander",
+      "thinking": "Recherche…",
+      "noMatch": "Aucun passage correspondant dans la transcription.",
+      "sources": "Passages sources",
+      "play": "Écouter",
+      "btn": "Question sur l’enregistrement",
+      "btnHint": "Interroger le modèle sur le cours, avec horodatage",
+      "missed": "J’ai manqué les minutes",
+      "min": "min",
+      "catchUp": "Que s’est-il passé ?",
+      "missedEmpty": "Aucune transcription dans cet intervalle.",
+      "chapters": "Chapitres du cours",
+      "chaptersNone": "Transcription insuffisante pour des chapitres"
+    },
+    "clean": {
+      "title": "Réduction du bruit",
+      "level": "Intensité",
+      "light": "Légère",
+      "medium": "Moyenne",
+      "strong": "Forte",
+      "normalize": "Normaliser le volume",
+      "pick": "Choisir un fichier…",
+      "working": "Traitement…",
+      "done": "Terminé : l'enregistrement nettoyé a été sauvegardé",
+      "hint": "Coupure des graves et débruitage spectral via ffmpeg. Un nettoyage fort peut étouffer légèrement la voix.",
+      "noFfmpeg": "ffmpeg introuvable : installez-le sur la page Convertisseur"
+    },
+    "exam": {
+      "title": "Examen du cours",
+      "build": "Créer cartes et quiz",
+      "building": "Création…",
+      "withConspectus": "et résumé",
+      "built": "Terminé : {cards} cartes, {quiz} questions.",
+      "stats": "Cartes : {total}, à réviser : {due}, nouvelles : {fresh}",
+      "schedule": "Calendrier de révision",
+      "show": "Afficher la réponse",
+      "grade1": "À revoir",
+      "grade2": "Difficile",
+      "grade3": "Bien",
+      "grade4": "Facile",
+      "minutes": "dans quelques minutes",
+      "days": "{n} j",
+      "noDue": "Rien à réviser aujourd'hui.",
+      "quiz": "Quiz",
+      "check": "Vérifier",
+      "score": "Résultat : {correct} sur {total} ({percent} %)",
+      "weak": "Points faibles"
+    },
+    "vault": {
+      "title": "Recherche vocale",
+      "placeholder": "Par exemple : où ai-je parlé de la date limite du mémoire",
+      "search": "Rechercher",
+      "empty": "Rien trouvé.",
+      "play": "Écouter",
+      "stop": "Arrêter",
+      "noAudio": "Audio non conservé : texte seulement.",
+      "montage": "Faire un montage",
+      "montageBusy": "Montage…",
+      "montageHint": "Assemble les extraits de cours trouvés en un seul fichier.",
+      "montageEmpty": "Rien à assembler.",
+      "montageTotal": "Montage : {n} extraits, {sec} s",
+      "montageDownload": "Télécharger le mp3"
+    }
   },
   "bypass": {
     "netEyebrow": "Diagnostic réseau",
@@ -2100,11 +3023,6 @@
     "legendErr": "rouge — ne fonctionne pas",
     "legendIdle": "gris — non vérifié",
     "serviceWarn": "Le service « zapret » est installé (mode service). La vérification des configurations est indisponible tant que le service est actif — supprimez-le (« Supprimer le service ») avant de vérifier.",
-    "mode": "Mode",
-    "modeProcess": "Processus (winws.exe)",
-    "modeService": "Service Windows",
-    "modeServiceHint": "winws s'exécute comme service Windows — aucune fenêtre de console. « Démarrer » installe le service pour la configuration sélectionnée (comme service.bat → 1. Install Service) ; « Arrêter » le supprime (→ 2. Remove Services).",
-    "modeProcessHint": "winws s'exécute en processus élevé via le .bat du moteur : une fenêtre de console apparaît et reste dans la barre des tâches tant que le contournement est actif — impossible de la fermer séparément.",
     "checkNoResults": "La vérification n'a donné aucun résultat",
     "uacCancelled": "Demande d'administrateur annulée",
     "consoleError": "erreur",
@@ -2112,7 +3030,7 @@
     "stopCheck": "Arrêter la vérification",
     "checkHint": "Lance utils/test zapret.ps1 sans interaction (service.bat → Run Tests) : tests standard sur toutes les configurations.",
     "fastMode": "Mode rapide",
-    "fastModeHint": "Délais courts (curl 2 s, 16 cibles en parallèle) et sans questions",
+    "fastModeHint": "Délais courts (curl 2 s, 16 cibles en parallèle) et aucune question interactive",
     "checkServiceBlocked": "Le service Windows « zapret » est installé — supprimez-le (« Supprimer le service ») avant la vérification.",
     "checkRunningChip": "vérification des configurations",
     "serviceDiagnostics": "Diagnostic du moteur (service.bat)",
@@ -2123,7 +3041,7 @@
     "consoleStopped": "arrêté",
     "consoleHint": "Les lignes [PA] viennent de l'application, le reste de service.bat / zapret.ps1",
     "bestConfig": "Meilleure configuration : {best}",
-    "lightsSummary": "vérifiées {done}/{total}",
+    "lightsSummary": "vérifiés {done}/{total}",
     "light": {
       "ok": "fonctionne",
       "warn": "avec avertissements",
@@ -2133,36 +3051,93 @@
     "logDiagStart": "app : matrice rapide de disponibilité (HTTP/STUN)…",
     "logDiagDone": "app : {ok}/{total} accessibles, moyenne {avg} ms",
     "logTuneStart": "app : essai des stratégies (démarrage → test → arrêt)…",
-    "logTuneBest": "app : meilleure — {best}",
+    "logTuneBest": "app : la meilleure — {best}",
     "logError": "app : erreur — {error}",
     "active": "ACTIF · stratégie {strategy}",
     "stopped": "ARRÊTÉ",
     "pidMem": "PID winws {pid} · mémoire {mem} Mo",
-    "starting": "Démarrage…",
+    "noProcess": "Le processus winws n'est pas en cours d'exécution",
+    "serviceRunning": "Le service zapret est en cours d'exécution",
+    "serviceInstalled": "Le service zapret est installé",
+    "processMode": "mode processus",
     "start": "Démarrer",
+    "starting": "Démarrage…",
     "stop": "Arrêter",
+    "engineNotFound": "Moteur zapret introuvable. Copiez zapret-discord-youtube dans {dir} ou indiquez le chemin dans les réglages.",
+    "strategies": "Stratégies de contournement DPI",
+    "noStrategies": "Aucune stratégie trouvée (general*.bat)",
+    "currentChip": "actuel",
+    "mode": "Mode",
+    "modeProcess": "Processus (winws.exe)",
+    "modeService": "Service Windows",
+    "modeServiceHint": "winws s'exécute comme service Windows — aucune fenêtre de console. « Démarrer » installe le service pour la configuration sélectionnée (comme service.bat → 1. Install Service) ; « Arrêter » le supprime (→ 2. Remove Services).",
+    "modeProcessHint": "winws s'exécute en processus élevé via le .bat du moteur : une fenêtre de console apparaît et reste dans la barre des tâches tant que le contournement est actif — impossible de la fermer séparément.",
     "serviceInstall": "Installer le service",
     "serviceRemove": "Supprimer le service",
     "serviceInstallHint": "Installer le service Windows pour la configuration sélectionnée (démarrage auto)",
     "checkOne": "Vérifier la configuration",
     "checkOneHint": "Lancer les tests uniquement pour la configuration sélectionnée",
+    "customArgs": "Arguments personnalisés de winws.exe",
+    "customArgsHint": "--filter-tcp 443 --dpi-desync fake,disorder2 --dpi-desync-fooling md5sig --dpi-desync-fake-tls bin/tls_clienthello_www_google_com.bin",
+    "reloadStrategies": "Recharger",
+    "saveProfile": "Enregistrer le profil",
+    "diagnostics": "Diagnostic de disponibilité",
+    "runTest": "Lancer le test",
+    "testing": "Test en cours…",
+    "autoTune": "Trouver automatiquement une stratégie fonctionnelle",
+    "tuning": "Essai des stratégies…",
+    "diagAllOk": "Tout est débloqué · latence moyenne {avg} ms",
+    "diagPartial": "Fonctionne {ok}/{total} · latence moyenne {avg} ms",
+    "drop": "abandon",
+    "tuneProgress": "Itération : démarrage → test YouTube/Discord → arrêt, pour chaque stratégie…",
+    "tuneOk": "OK · {avg} ms",
+    "customTargetPh": "https://example.com/check",
+    "addTarget": "Ajouter une cible",
+    "lists": "Listes de domaines (lists/)",
+    "filterPh": "Filtrer les lignes…",
+    "addCurrentSite": "Ajouter youtube.com",
+    "saveList": "Enregistrer la liste",
+    "lines": "lignes",
+    "userDomains": "Domaines de l'utilisateur (synchronisés avec list-*-user.txt)",
+    "domainPh": "example.com",
+    "include": "débloquer",
+    "exclude": "exclure",
+    "noDomains": "La liste est vide",
+    "utilities": "Utilitaires",
+    "gameFilter": "GameFilter",
+    "flushDns": "Vider le cache DNS (ipconfig /flushdns)",
+    "clearDiscord": "Vider le cache de Discord",
+    "fakePayloads": "Faux payloads (bin/*.bin)",
+    "noPayloads": "Aucun bin/*.bin trouvé",
+    "winwsLog": "Journal de winws",
+    "logEmpty": "Le journal est vide",
     "engineTitle": "Moteur zapret",
+    "engineInstalled": "Installé",
     "engineNotInstalled": "non installé",
     "engineLatest": "Sur GitHub",
+    "engineDirHint": "Appuyez sur « Télécharger » — la release est décompressée automatiquement",
     "updateAvailable": "mise à jour disponible",
     "upToDate": "à jour",
-    "releaseNotes": "Nouveautés",
-    "checking": "Vérification…",
-    "checkUpdates": "Vérifier les mises à jour",
-    "installing": "Installation…",
-    "download": "Télécharger depuis GitHub",
     "updateTo": "Mettre à jour vers {tag}",
     "reinstall": "Réinstaller",
+    "download": "Télécharger depuis GitHub",
+    "installing": "Installation…",
+    "checking": "Vérification…",
+    "checkUpdates": "Vérifier les mises à jour",
+    "releases": "Releases",
     "installDone": "Terminé : zapret {tag}",
-    "keptLists": "Vos listes de domaines et réglages GameFilter ont été conservés",
     "installError": "Échec de l'installation",
-    "strategies": "Stratégies de contournement DPI",
-    "noStrategies": "Aucune stratégie trouvée (general*.bat)",
+    "keptLists": "Vos listes de domaines et réglages GameFilter ont été conservés",
+    "releaseNotes": "Nouveautés",
+    "phase.resolve": "Recherche de la dernière version…",
+    "phase.stop": "Arrêt du moteur…",
+    "phase.download": "Téléchargement de l'archive depuis GitHub…",
+    "phase.extract": "Extraction…",
+    "phase.install": "Installation des fichiers…",
+    "configsCount": "configurations",
+    "searchConfigPh": "Rechercher une configuration (alt13, fake, discord…)",
+    "clear": "Effacer",
+    "groupAll": "Tous",
     "group": {
       "base": "Base",
       "alt": "ALT",
@@ -2170,14 +3145,38 @@
       "simple-fake": "SIMPLE FAKE",
       "exp": "EXP"
     },
-    "currentChip": "actuel",
-    "phase.resolve": "Recherche de la dernière version…",
-    "phase.stop": "Arrêt du moteur…",
-    "phase.download": "Téléchargement de l'archive depuis GitHub…",
-    "phase.extract": "Extraction…",
-    "phase.install": "Installation des fichiers…",
-    "engineNotFound": "Moteur zapret introuvable. Copiez zapret-discord-youtube dans {dir} ou indiquez le chemin dans les réglages.",
-    "launchNote": "Le profil est lancé via le .bat du moteur (comme un double-clic manuel) : une fenêtre réduite « zapret: <profil> » apparaît — c'est normal, ne la fermez pas pendant le contournement."
+    "nothingFound": "Aucun résultat",
+    "argsCount": "{n} arguments winws",
+    "copyCmd": "Copier la commande",
+    "copied": "Copié",
+    "showAllBat": "Tous les fichiers .bat ({n})",
+    "hideAllBat": "Masquer la liste des .bat",
+    "customSuffix": "plus vos arguments :",
+    "gameFilterRestart": "Les changements de GameFilter s'appliquent après le redémarrage du contournement.",
+    "restartBypass": "Redémarrer",
+    "launchNote": "Le profil est lancé via le .bat du moteur (comme un double-clic manuel) : une fenêtre réduite « zapret: <profil> » apparaît — c'est normal, ne la fermez pas pendant le contournement.",
+    "insights": {
+      "eyebrow": "Diagnostic",
+      "title": "Wi-Fi, DNS et fuites",
+      "wifi": "Canaux Wi-Fi",
+      "dns": "Serveurs DNS",
+      "webrtc": "Vérifier WebRTC",
+      "checking": "Vérification…",
+      "wifiFail": "Impossible d’obtenir la liste des réseaux",
+      "recommended": "Canal 2,4 GHz recommandé : {ch}",
+      "noBand": "Aucun réseau 2,4 GHz trouvé",
+      "dnsNone": "Aucun serveur DNS détecté",
+      "dnsKind_private": "local (routeur)",
+      "dnsKind_loopback": "cet ordinateur",
+      "dnsKind_public_known": "public",
+      "dnsKind_public_other": "public, peu connu",
+      "dnsHint": "Si un proxy ou VPN est actif mais que ce sont les adresses de votre FAI, les requêtes DNS peuvent le contourner",
+      "iceNone": "WebRTC n’expose aucune adresse",
+      "iceHint": "(host) — adresses locales, (srflx) — votre IP externe visible des sites. Si elle diffère de l’IP du proxy/VPN, c’est une fuite",
+      "iceSafe": "Aucune adresse publique n'est exposée via WebRTC",
+      "iceLeak": "Fuite possible : WebRTC expose {ip}, différente de l'adresse de l'application",
+      "iceOk": "Seule l'adresse identique à celle de l'application est visible"
+    }
   },
   "up": {
     "eyebrow": "Médias",
@@ -2518,6 +3517,25 @@
     "audio": "Action audio",
     "audioHint": "copy — garder la piste, aac — réencoder"
   },
+  "taskmgr": {
+    "eyebrow": "Tâches en arrière-plan",
+    "title": "Gestionnaire de tâches",
+    "empty": "Rien n'est en cours d'exécution",
+    "active": "Actives",
+    "recent": "Récentes",
+    "cancel": "Arrêter",
+    "pause": "Pause",
+    "resume": "Reprendre",
+    "done": "Terminé",
+    "engine": {
+      "compressor": "Compression vidéo",
+      "convert": "Conversion",
+      "upscale": "Upscale",
+      "tts": "Voix",
+      "lecture": "Cours",
+      "archive": "Archive web"
+    }
+  },
   "welcome": {
     "title": "Bienvenue sur MoonApp",
     "subtitle": "Un panneau d'utilitaires personnel : médias, contournement de censure, surveillance, notes et bien plus — tout en local, dans une seule app.",
@@ -2555,12 +3573,2408 @@
     "f_music_hint": "Lecteur et téléchargements yt-dlp",
     "f_aichat": "Chat IA",
     "f_aichat_hint": "Modèles locaux via Ollama",
-    "toolbarTitle": "Salut !"
+    "toolbarTitle": "Salut !",
+    "setup": {
+      "language": "Langue",
+      "theme": "Thème",
+      "accent": "Accent",
+      "contrast": "Contraste élevé",
+      "reduceMotion": "Sans animations",
+      "theme_dark": "Sombre",
+      "theme_midnight": "Minuit",
+      "theme_light": "Clair",
+      "theme_sand": "Sable",
+      "theme_oled": "OLED",
+      "accent_amber": "Ambre",
+      "accent_violet": "Violet",
+      "accent_teal": "Sarcelle",
+      "accent_coral": "Corail",
+      "accent_sky": "Ciel",
+      "accent_rose": "Rose"
+    }
   },
   "tuning": {
-    "title": "Réglage du PC"
+    "eyebrow": "OPTIMISATION",
+    "title": "Réglage du PC",
+    "loading": "Chargement…",
+    "windowsOnly": "Cette page n'est disponible que sous Windows.",
+    "adminYes": "Droits administrateur",
+    "adminNo": "Sans droits administrateur",
+    "adminNote": "L'application s'exécute sans droits administrateur : les modifications HKLM et les commandes système passeront par une seule invite UAC.",
+    "statApplied": "Réglages activés",
+    "statByApp": "Appliqués par l'application",
+    "statBackups": "Sauvegardes",
+    "tab": {
+      "windows": "Windows",
+      "scheduler": "Planificateur",
+      "usb": "USB",
+      "network": "Réseau",
+      "drivers": "Pilotes",
+      "bios": "BIOS",
+      "bench": "Benchmarks",
+      "checklist": "Liste de contrôle",
+      "backups": "Sauvegardes et restauration",
+      "privacy": "Confidentialité",
+      "debloat": "Débloat",
+      "wu-essential": "Essentiels",
+      "wu-advanced": "Avancés",
+      "wu-prefs": "Préférences Windows",
+      "wu-tools": "Outils",
+      "wu-apps": "Applications"
+    },
+    "tabHint": {
+      "windows": "Réglages du registre et des services. Chaque changement peut être annulé ; une sauvegarde est faite avant l'application.",
+      "scheduler": "Priorités, alimentation et minuterie : latence réduite et temps d'image plus réguliers.",
+      "usb": "Économie d'énergie USB et carte des contrôleurs pour répartir les périphériques.",
+      "network": "Latence réseau : algorithme de Nagle, limitation, DNS et économie d'énergie de la carte.",
+      "drivers": "Mode d'interruption MSI, politique des pilotes et inventaire des pilotes.",
+      "privacy": "Efface les traces du système en cours : historique, fichiers récents, caches, navigateurs, historique USB et journaux.",
+      "debloat": "Supprime les applications préinstallées, des réglages d'interface supplémentaires et des outils de réparation Windows rapides.",
+      "wu-essential": "Réglages de base de winutil : télémétrie, services, localisation, fonctions grand public et plus.",
+      "wu-advanced": "Réglages avancés de winutil. Ils peuvent supprimer des composants Windows ou modifier le réseau — lisez les descriptions.",
+      "wu-prefs": "Apparence et comportement de Windows : thème, Explorateur, barre des tâches, veille, ancrage des fenêtres, etc.",
+      "wu-tools": "Actions ponctuelles de winutil : DNS, mises à jour, réparation, fonctionnalités Windows, anciens panneaux de configuration.",
+      "wu-apps": "Installez, mettez à jour et supprimez des programmes avec winget — le catalogue provient de winutil."
+    },
+    "risk0": "Sûr",
+    "risk1": "Prudence",
+    "risk2": "Risqué",
+    "statePartial": "Partiel",
+    "stateNa": "Indisponible",
+    "byApp": "Appliqué par cette application — la restauration rétablit les valeurs précédentes",
+    "needsReboot": "Redémarrage requis",
+    "refresh": "Actualiser",
+    "unknown": "Inconnu",
+    "yes": "Oui",
+    "no": "Non",
+    "delete": "Supprimer",
+    "close": "Fermer",
+    "done": "Terminé.",
+    "error": "Erreur",
+    "failedSome": "Tous les changements n'ont pas été appliqués ({n}) : {first}",
+    "uacCancelled": "L'invite administrateur a été refusée.",
+    "rebootNeeded": "Un redémarrage est nécessaire pour que les changements prennent effet.",
+    "confirmRisk": "Ces réglages réduisent la sécurité ou la stabilité : {list}. Continuer ?",
+    "applied": "Changements appliqués : {n}.",
+    "pending": "Changements en attente : {n}",
+    "discard": "Annuler la sélection",
+    "apply": "Appliquer",
+    "working": "Traitement…",
+    "regButton": "Aperçu du .reg",
+    "regPreview": "Fichier .reg",
+    "regDownload": "Télécharger le .reg",
+    "procTitle": "Priorité des processus et cœurs",
+    "procHint": "Un changement à chaud dure jusqu'à la fin du processus. « Mémoriser » enregistre la priorité dans Image File Execution Options pour qu'elle s'applique à chaque lancement (supprimez-la avec le bouton de droite).",
+    "procApplied": "Les paramètres du processus ont été modifiés.",
+    "procApply": "Appliquer maintenant",
+    "ifeoAdd": "Mémoriser la priorité",
+    "ifeoSaved": "Priorité enregistrée pour tous les lancements.",
+    "ifeoRemoved": "Règle supprimée.",
+    "ifeoRules": "Règles permanentes",
+    "su": {
+      "title": "Éléments de démarrage",
+      "hint": "Tout ce que Windows lance de lui-même : clés Run, dossiers de démarrage, tâches planifiées à la connexion/au démarrage, services et recoins cachés (Winlogon, IFEO, AppInit, Active Setup, BootExecute). La désactivation via le Gestionnaire des tâches est réversible ; tout ce qui est supprimé va dans la corbeille ci-dessous.",
+      "search": "Rechercher par nom, commande, éditeur…",
+      "scan": "Analyser",
+      "scanning": "Analyse…",
+      "shown": "{n} affichés sur {total}",
+      "empty": "Aucun résultat.",
+      "onlyOn": "Activés uniquement",
+      "hideMs": "Masquer les composants Microsoft",
+      "onlyHidden": "Cachés uniquement",
+      "onlyFlagged": "Suspects uniquement",
+      "allKinds": "Toutes les sources",
+      "hiddenBadge": "caché",
+      "running": "en cours",
+      "kind": {
+        "run": "Registre · Run",
+        "runonce": "Registre · RunOnce",
+        "policy": "Registre · stratégie Run",
+        "legacy": "Registre · Load/Run",
+        "folder": "Dossier de démarrage",
+        "task": "Planificateur de tâches",
+        "service": "Service",
+        "winlogon": "Winlogon",
+        "ifeo": "Détournement IFEO",
+        "appinit": "AppInit_DLLs",
+        "bootexec": "BootExecute",
+        "activesetup": "Active Setup"
+      },
+      "kindHint": {
+        "run": "Se lance à la connexion de l'utilisateur. Visible dans le Gestionnaire des tâches.",
+        "runonce": "S'exécute une fois à la prochaine connexion et est supprimé par Windows lui-même. Non affiché dans le Gestionnaire des tâches.",
+        "policy": "Stratégie de groupe : s'exécute à chaque connexion. Non affiché dans le Gestionnaire des tâches.",
+        "legacy": "Méthode héritée : valeurs Load/Run sous Windows NT. Les logiciels modernes ne l'utilisent pas.",
+        "folder": "Raccourcis et fichiers du dossier Démarrage.",
+        "task": "Une tâche planifiée qui se déclenche à la connexion ou au démarrage. Non affichée dans le Gestionnaire des tâches.",
+        "service": "Un service Windows configuré en démarrage automatique (ou désactivé). Non affiché dans le Gestionnaire des tâches.",
+        "winlogon": "Les valeurs Winlogon lancent le shell et les programmes de connexion. Les altérer est une astuce classique des logiciels malveillants.",
+        "ifeo": "Image File Execution Options : un « débogueur » s'exécute à la place du programme. Rarement légitime — suspect.",
+        "appinit": "DLL injectées dans chaque processus graphique. Suspect sauf si vide.",
+        "bootexec": "Programmes exécutés avant le démarrage de Windows. La valeur par défaut (autochk) est masquée.",
+        "activesetup": "Commandes exécutées une fois pour chaque nouvel utilisateur à sa première connexion."
+      },
+      "scope": {
+        "user": "utilisateur actuel",
+        "machine": "tous les utilisateurs"
+      },
+      "flag": {
+        "missing": "fichier introuvable",
+        "unsigned": "non signé",
+        "badsig": "signature corrompue",
+        "untrusted": "signature non fiable",
+        "tempPath": "depuis un dossier temporaire",
+        "encoded": "commande encodée",
+        "script": "s'exécute via un hôte de script",
+        "modified": "modifié",
+        "injection": "point de détournement"
+      },
+      "field": {
+        "command": "Commande",
+        "file": "Fichier",
+        "company": "Éditeur",
+        "desc": "Description",
+        "sig": "Signature",
+        "account": "Compte",
+        "triggers": "Déclencheur",
+        "location": "Source",
+        "scope": "Portée",
+        "folderFile": "Fichier dans le dossier"
+      },
+      "trig": {
+        "logon": "connexion de l'utilisateur",
+        "boot": "démarrage du système"
+      },
+      "sig": {
+        "Valid": "valide",
+        "NotSigned": "non signé",
+        "System": "fichier système Microsoft",
+        "HashMismatch": "fichier modifié après la signature",
+        "NotTrusted": "non fiable",
+        "UnknownError": "racine non fiable"
+      },
+      "act": {
+        "enable": "Activer",
+        "disable": "Désactiver",
+        "delete": "Supprimer",
+        "reset": "Rétablir la valeur par défaut",
+        "reveal": "Afficher le fichier",
+        "regedit": "Ouvrir dans regedit",
+        "svcMode": "Type de démarrage",
+        "svc-auto": "Automatique",
+        "svc-delayed": "Automatique (différé)",
+        "svc-manual": "Manuel",
+        "svc-disabled": "Désactivé",
+        "details": "Détails",
+        "close": "Réduire"
+      },
+      "confirmDelete": "Supprimer « {name} » ? Vous pourrez le restaurer depuis la corbeille de démarrage.",
+      "confirmReset": "Rétablir « {name} » à la valeur par défaut de Windows ?",
+      "done": "Terminé.",
+      "restored": "Entrée restaurée.",
+      "adminNote": "Pour les entrées de tous les utilisateurs, les services et les tâches Windows, Windows demandera des droits administrateur.",
+      "trash": "Corbeille de démarrage",
+      "trashEmpty": "Vide. Tout ce que vous supprimez ici apparaît dans cette liste.",
+      "trashRestore": "Restaurer",
+      "trashDrop": "Effacer définitivement",
+      "trashAt": "Supprimé {when}",
+      "stat": {
+        "total": "total",
+        "on": "activés",
+        "hidden": "cachés",
+        "flagged": "suspects"
+      }
+    },
+    "prio": {
+      "Idle": "Basse (Idle)",
+      "BelowNormal": "Inférieure à la normale",
+      "Normal": "Normale",
+      "AboveNormal": "Supérieure à la normale",
+      "High": "Haute"
+    },
+    "usbTitle": "Carte des contrôleurs USB",
+    "usbHint": "Branchez la souris, le clavier et l'audio sur des contrôleurs différents si possible.",
+    "usbEmpty": "Aucun contrôleur USB trouvé.",
+    "driversTitle": "Pilotes de périphériques",
+    "driversHint": "Contrôleurs d'affichage, réseau, audio, USB et stockage. Le mode MSI est indiqué pour les périphériques PCI.",
+    "openDevmgmt": "Gestionnaire de périphériques",
+    "msiOn": "MSI activé",
+    "msiOff": "MSI désactivé",
+    "biosFacts": "Ce que Windows peut voir",
+    "biosHint": "Les réglages du BIOS ne peuvent pas être modifiés depuis Windows — voici des informations sur le firmware et une liste de contrôle. Redémarrer vers l'UEFI ouvre le menu du firmware.",
+    "biosUnavailable": "Impossible de lire les informations système.",
+    "smtOn": "SMT/Hyper-Threading activé",
+    "smtOff": "SMT/Hyper-Threading désactivé",
+    "uefiReboot": "Redémarrer vers l'UEFI",
+    "uefiConfirm": "L'ordinateur redémarrera dans le menu UEFI dans 20 secondes. Enregistrez votre travail. Continuer ?",
+    "uefiScheduled": "Redémarrage dans 20 secondes.",
+    "uefiAbort": "Annuler le redémarrage",
+    "uefiAborted": "Redémarrage annulé.",
+    "fact": {
+      "board": "Carte mère et BIOS",
+      "cpu": "Processeur",
+      "smt": "Threads du processeur",
+      "uefi": "Mode de démarrage UEFI",
+      "secureBoot": "Démarrage sécurisé",
+      "tpm": "TPM",
+      "virt": "Virtualisation dans le BIOS",
+      "ram": "Mémoire (actuelle / nominale)",
+      "gpu": "Cartes graphiques",
+      "hags": "Planification GPU accélérée par le matériel"
+    },
+    "verdict": {
+      "uefi": {
+        "good": "Bon",
+        "warn": "UEFI requis"
+      },
+      "virt": {
+        "good": "Désactivée",
+        "warn": "Peut être désactivée"
+      },
+      "ram": {
+        "good": "Profil actif",
+        "warn": "Activez XMP/EXPO"
+      }
+    },
+    "benchTitle": "Mesures de latence",
+    "benchHint": "Mesure la résolution de la minuterie système, la durée réelle de Sleep(1) et la charge DPC/interruptions (environ 10 secondes). Lancez-le avant et après les réglages, applications lourdes fermées.",
+    "benchLabel": "Nom de la mesure (par exemple « avant les réglages »)",
+    "benchRun": "Lancer la mesure",
+    "benchRunning": "Mesure en cours…",
+    "benchRunCol": "Mesure",
+    "benchBase": "Comparer à cette mesure",
+    "benchFailed": "La mesure a échoué.",
+    "benchDone": "Mesure enregistrée.",
+    "metric": {
+      "timerCur": "Minuterie, ms",
+      "sleepAvg": "Sleep(1) moyen, ms",
+      "sleepP99": "Sleep(1) p99, ms",
+      "sleepMax": "Sleep(1) max, ms",
+      "dpcAvg": "DPC, %",
+      "dpcMax": "DPC max, %",
+      "intAvg": "Interruptions, %",
+      "dpcRate": "DPC par seconde"
+    },
+    "mouseTitle": "Fréquence d'interrogation de la souris",
+    "mouseHint": "Déplacez la souris sur la zone : elle affiche la fréquence réelle des événements et sa stabilité (σ).",
+    "mouseReset": "Réinitialiser",
+    "mousePad": "Déplacez la souris ici",
+    "checklistTitle": "Étapes manuelles",
+    "checklistHint": "Guide des éléments impossibles à régler par logiciel : matériel, refroidissement, périphériques, stabilité et maintenance. Vos coches sont enregistrées.",
+    "openMsinfo": "Informations système (IRQ)",
+    "openEvents": "Observateur d'événements",
+    "section": {
+      "bios": "Réglages BIOS/UEFI",
+      "physical": "Montage physique",
+      "cooling": "Refroidissement",
+      "peripherals": "Périphériques",
+      "stability": "Stabilité et overclocking",
+      "install": "Installation de Windows",
+      "maintenance": "Maintenance"
+    },
+    "backupsTitle": "Sauvegardes et restauration",
+    "backupsHint": "Une sauvegarde conserve les valeurs précédentes de chaque réglage. Une est créée automatiquement avant chaque application ; la restauration remet les valeurs enregistrées.",
+    "backupLabel": "Nom de la sauvegarde",
+    "backupCreate": "Créer une sauvegarde",
+    "backupCreated": "Sauvegarde créée.",
+    "backupManual": "Sauvegarde manuelle",
+    "backupsEmpty": "Aucune sauvegarde pour l'instant.",
+    "backupTweaks": "réglages : {n}",
+    "auto": "auto",
+    "restore": "Restaurer",
+    "restoreConfirm": "Restaurer les réglages depuis « {label} » ?",
+    "restored": "Réglages restaurés.",
+    "rollbackAll": "Tout annuler",
+    "rollbackConfirm": "Annuler tous les réglages appliqués par l'application ({n}) ?",
+    "rolledBack": "Tous les changements effectués par l'application ont été annulés.",
+    "restorePoint": "Point de restauration Windows",
+    "restorePointDone": "Point de restauration créé.",
+    "openRestore": "Restauration du système",
+    "historyTitle": "Journal d'activité",
+    "historyEmpty": "Rien pour l'instant.",
+    "kind": {
+      "backup": "sauvegarde",
+      "restore": "restauration",
+      "apply": "appliqué",
+      "revert": "annulation",
+      "restorePoint": "point de restauration",
+      "process": "processus",
+      "ifeo": "priorité",
+      "ifeoRemove": "règle supprimée",
+      "tool": "outil"
+    },
+    "tw": {
+      "timer-res": {
+        "t": "Résolution globale de la minuterie",
+        "d": "GlobalTimerResolutionRequests=1 : les demandes de minuterie haute résolution s'appliquent à tout le système (Windows 11)."
+      },
+      "fs-8dot3": {
+        "t": "Désactiver les noms de fichier 8.3",
+        "d": "NtfsDisable8dot3NameCreation=1 : création de fichiers plus rapide sur NTFS."
+      },
+      "fs-lastaccess": {
+        "t": "Ne pas mettre à jour l'heure du dernier accès",
+        "d": "NtfsDisableLastAccessUpdate : moins d'écritures disque lors de la lecture de fichiers."
+      },
+      "fast-startup": {
+        "t": "Désactiver le démarrage rapide",
+        "d": "HiberbootEnabled=0 : rechargement complet des pilotes au lieu de l'hibernation du noyau."
+      },
+      "gamedvr": {
+        "t": "Désactiver Game DVR",
+        "d": "La capture de jeux en arrière-plan et la Xbox Game Bar cessent d'utiliser des ressources."
+      },
+      "fso": {
+        "t": "Désactiver les optimisations du plein écran",
+        "d": "Les jeux s'exécutent en mode plein écran exclusif natif."
+      },
+      "mouse-accel": {
+        "t": "Désactiver l'accélération de la souris",
+        "d": "« Améliorer la précision du pointeur » est désactivé ; prend effet à la prochaine connexion."
+      },
+      "power-throttling": {
+        "t": "Désactiver le Power Throttling",
+        "d": "PowerThrottlingOff=1 : Windows ne bride pas les processus en arrière-plan."
+      },
+      "transparency": {
+        "t": "Désactiver les effets de transparence",
+        "d": "Moins de charge GPU dans l'interface Windows."
+      },
+      "bg-apps": {
+        "t": "Bloquer les applications en arrière-plan",
+        "d": "Les applications du Store ne s'exécutent pas en arrière-plan."
+      },
+      "uac-always": {
+        "t": "UAC : toujours avertir",
+        "d": "Niveau le plus élevé du contrôle de compte d'utilisateur sur le bureau sécurisé."
+      },
+      "telemetry": {
+        "t": "Désactiver la télémétrie",
+        "d": "DiagTrack et dmwappushservice sont arrêtés et la collecte de données est minimale."
+      },
+      "sysmain": {
+        "t": "Désactiver SysMain (Superfetch)",
+        "d": "Adapté aux SSD : pas de préchargement en arrière-plan."
+      },
+      "winupdate": {
+        "t": "Désactiver Windows Update",
+        "d": "Le service wuauserv et la stratégie de mise à jour automatique sont désactivés. Le système ne reçoit plus de correctifs de sécurité."
+      },
+      "mitigations": {
+        "t": "Désactiver les atténuations Spectre/Meltdown",
+        "d": "FeatureSettingsOverride=3 : un léger gain de vitesse au prix de vulnérabilités du processeur."
+      },
+      "prio-sep": {
+        "t": "Win32PrioritySeparation = 0x26",
+        "d": "Quanta courts avec boost de premier plan : interface et jeux plus réactifs."
+      },
+      "mmcss": {
+        "t": "Priorités de jeu MMCSS",
+        "d": "SystemResponsiveness=0 et priorité plus élevée pour la tâche Games."
+      },
+      "power-plan": {
+        "t": "Mode d'alimentation Performances ultimes",
+        "d": "Crée et active le mode Performances ultimes ; l'annulation rétablit le plan précédent."
+      },
+      "core-unpark": {
+        "t": "Ne pas parquer les cœurs",
+        "d": "Cœurs actifs minimum 100 % : aucun délai de réveil."
+      },
+      "cpu-min": {
+        "t": "État minimal du processeur 100 %",
+        "d": "Fréquences fixes ; plus de chaleur et de consommation."
+      },
+      "c-states": {
+        "t": "Désactiver les états de veille du processeur (C-states)",
+        "d": "IDLEDISABLE=1 : les cœurs ne se mettent jamais en veille. Chauffe ; déconseillé sur portable."
+      },
+      "platform-tick": {
+        "t": "Tick de plateforme sans tick dynamique",
+        "d": "bcdedit : useplatformtick et disabledynamictick pour une minuterie plus stable."
+      },
+      "usb-suspend": {
+        "t": "Désactiver la suspension sélective USB",
+        "d": "Les périphériques ne se mettent pas en veille et ne se réveillent pas avec retard."
+      },
+      "usb-device-pm": {
+        "t": "Désactiver l'économie d'énergie des périphériques USB",
+        "d": "EnhancedPowerManagementEnabled=0 pour chaque périphérique USB disposant du paramètre."
+      },
+      "nagle": {
+        "t": "Désactiver l'algorithme de Nagle",
+        "d": "TcpAckFrequency=1 et TCPNoDelay=1 sur les interfaces actives : latence réduite dans les jeux en ligne."
+      },
+      "net-throttling": {
+        "t": "Désactiver la limitation réseau",
+        "d": "NetworkThrottlingIndex=0xFFFFFFFF : le planificateur multimédia ne limite pas les paquets."
+      },
+      "qos-reserve": {
+        "t": "Libérer la réserve QoS",
+        "d": "NonBestEffortLimit=0 : Windows ne réserve pas une partie de la liaison."
+      },
+      "dns-fast": {
+        "t": "DNS Cloudflare 1.1.1.1",
+        "d": "Pour les cartes physiques actives. L'annulation revient au DNS automatique."
+      },
+      "nic-power": {
+        "t": "Désactiver l'économie d'énergie de la carte réseau",
+        "d": "Energy-Efficient Ethernet et Green Ethernet désactivés ; l'annulation rétablit les valeurs par défaut du pilote."
+      },
+      "ipv6-off": {
+        "t": "Désactiver IPv6",
+        "d": "DisabledComponents=0xFF. Peut casser certains services ; redémarrage requis."
+      },
+      "msi-gpu": {
+        "t": "Mode MSI pour la carte graphique",
+        "d": "Message Signaled Interrupts : latence d'interruption GPU réduite. Redémarrage requis."
+      },
+      "msi-nic": {
+        "t": "Mode MSI pour la carte réseau",
+        "d": "Idem pour les cartes réseau PCI. Redémarrage requis."
+      },
+      "wu-drivers": {
+        "t": "Ne pas installer de pilotes via Windows Update",
+        "d": "Windows Update ne remplacera pas les pilotes du site du fabricant."
+      },
+      "nv-telemetry": {
+        "t": "Désactiver la télémétrie NVIDIA",
+        "d": "Service NvTelemetryContainer. Indisponible sans NVIDIA."
+      },
+      "explorer-extensions": {
+        "t": "Afficher les extensions de fichier",
+        "d": "HideFileExt=0 dans l'Explorateur de fichiers."
+      },
+      "explorer-hidden": {
+        "t": "Afficher les fichiers cachés",
+        "d": "L'Explorateur de fichiers affiche les fichiers et dossiers cachés."
+      },
+      "explorer-fullpath": {
+        "t": "Chemin complet dans la barre de titre",
+        "d": "L'Explorateur affiche le chemin complet, pas seulement le nom du dossier."
+      },
+      "taskbar-widgets": {
+        "t": "Masquer les Widgets de la barre des tâches",
+        "d": "Supprime l'icône des widgets (météo/actualités)."
+      },
+      "taskbar-chat": {
+        "t": "Masquer Chat de la barre des tâches",
+        "d": "Supprime l'icône Teams/Chat."
+      },
+      "taskbar-search": {
+        "t": "Masquer la recherche de la barre des tâches",
+        "d": "Supprime complètement la zone/icône de recherche."
+      },
+      "taskbar-taskview": {
+        "t": "Masquer le bouton Affichage des tâches",
+        "d": "Supprime le bouton Affichage des tâches à côté de la recherche."
+      },
+      "start-ads": {
+        "t": "Désactiver les publicités du menu Démarrer",
+        "d": "Applications suggérées et conseils dans la liste Démarrer."
+      },
+      "lock-tips": {
+        "t": "Désactiver les astuces de l'écran de verrouillage",
+        "d": "Suggestions Spotlight et anecdotes."
+      },
+      "storage-sense-off": {
+        "t": "Désactiver l'Assistant stockage automatique",
+        "d": "Windows ne supprimera pas automatiquement des fichiers selon un calendrier."
+      },
+      "onedrive-startup": {
+        "t": "Ne pas lancer OneDrive à la connexion",
+        "d": "Retire OneDrive du démarrage ; ne le désinstalle pas."
+      },
+      "cortana-off": {
+        "t": "Désactiver Cortana",
+        "d": "Stratégie AllowCortana=0. Nécessite des droits administrateur."
+      },
+      "context-menu-classic": {
+        "t": "Menu contextuel classique (Windows 11)",
+        "d": "Rétablit le menu complet du clic droit sans « Afficher plus d'options »."
+      },
+      "appx-3dviewer": {
+        "t": "Visionneuse 3D",
+        "d": "L'application Visionneuse 3D intégrée."
+      },
+      "appx-mixedreality": {
+        "t": "Portail de réalité mixte",
+        "d": "Si vous n'utilisez pas de casque VR/MR."
+      },
+      "appx-bingnews": {
+        "t": "Actualités (Bing News)",
+        "d": "L'application d'actualités intégrée."
+      },
+      "appx-bingweather": {
+        "t": "Météo (Bing Weather)",
+        "d": "L'application météo intégrée."
+      },
+      "appx-gethelp": {
+        "t": "Obtenir de l'aide",
+        "d": "L'application d'assistance Microsoft intégrée."
+      },
+      "appx-getstarted": {
+        "t": "Conseils",
+        "d": "Astuces Windows du premier lancement."
+      },
+      "appx-messaging": {
+        "t": "Messagerie",
+        "d": "L'application SMS/messagerie intégrée."
+      },
+      "appx-officehub": {
+        "t": "Office (application promotionnelle)",
+        "d": "C'est l'application promotionnelle Office Hub, pas Office lui-même."
+      },
+      "appx-solitaire": {
+        "t": "Collection Solitaire de Microsoft",
+        "d": "Le jeu de solitaire intégré."
+      },
+      "appx-onenote": {
+        "t": "OneNote (Store)",
+        "d": "OneNote UWP, pas l'application de bureau."
+      },
+      "appx-people": {
+        "t": "Contacts",
+        "d": "L'application de contacts intégrée à la barre des tâches."
+      },
+      "appx-skype": {
+        "t": "Skype",
+        "d": "L'application Skype intégrée."
+      },
+      "appx-feedbackhub": {
+        "t": "Hub de commentaires",
+        "d": "L'application de commentaires de Microsoft."
+      },
+      "appx-maps": {
+        "t": "Cartes",
+        "d": "L'application de cartes intégrée."
+      },
+      "appx-yourphone": {
+        "t": "Liaison avec le téléphone",
+        "d": "L'application de synchronisation avec Android/iPhone."
+      },
+      "appx-zunemusic": {
+        "t": "Groove Musique",
+        "d": "Le lecteur de musique intégré."
+      },
+      "appx-zunevideo": {
+        "t": "Films et TV",
+        "d": "Le lecteur/magasin vidéo intégré."
+      },
+      "appx-xboxapp": {
+        "t": "Xbox",
+        "d": "L'application Xbox. Peut affecter les jeux utilisant les fonctions Xbox Live."
+      },
+      "wu-activity": {
+        "t": "Historique d'activité : désactiver",
+        "d": "Empêche Windows de publier ou d'envoyer les activités de l'utilisateur tout en conservant l'historique du presse-papiers."
+      },
+      "wu-hiber": {
+        "t": "Hibernation : désactiver",
+        "d": "L'hibernation est en réalité conçue pour les portables : elle enregistre le contenu de la mémoire avant d'éteindre le PC. Elle ne devrait jamais être utilisée."
+      },
+      "wu-widget": {
+        "t": "Widgets : supprimer",
+        "d": "Supprime les widgets gênants en bas à gauche de la barre des tâches."
+      },
+      "wu-revert-start-menu": {
+        "t": "Ancienne disposition du menu Démarrer : activer",
+        "d": "Rétablit l'ancienne disposition du menu Démarrer d'avant le déploiement progressif de la nouvelle en 25H2. Sur les versions plus récentes de Windows, !!CE RÉGLAGE NE FONCTIONNERA PAS!!"
+      },
+      "wu-disable-store-search": {
+        "t": "Résultats de recherche recommandés du Microsoft Store : désactiver",
+        "d": "N'affichera pas les applications recommandées du Microsoft Store lors de la recherche d'applications dans le menu Démarrer."
+      },
+      "wu-location": {
+        "t": "Suivi de la localisation : désactiver",
+        "d": "Désactive le suivi de la localisation."
+      },
+      "wu-services": {
+        "t": "Services : définir en manuel",
+        "d": "Définit certains services en démarrage manuel et ajuste la valeur de registre SvcHostSplitThresholdInKB selon la mémoire du système, ce qui peut réduire sensiblement le nombre de processus svchost.exe."
+      },
+      "wu-brave-debloat": {
+        "t": "Navigateur Brave : débloat",
+        "d": "Désactive diverses nuisances comme Brave Rewards, Leo AI, le portefeuille crypto et le VPN."
+      },
+      "wu-disable-warning-for-unsigned-rdp": {
+        "t": "Avertissements des fichiers RDP non signés : désactiver",
+        "d": "Désactive les avertissements affichés lors du lancement de fichiers RDP non signés, introduits par les dernières mises à jour de Windows 10 et 11."
+      },
+      "wu-edge-debloat": {
+        "t": "Microsoft Edge : débloat",
+        "d": "Désactive diverses options de télémétrie, fenêtres contextuelles et autres nuisances dans Edge."
+      },
+      "wu-consumer-features": {
+        "t": "Fonctionnalités grand public : désactiver",
+        "d": "Arrête l'installation d'applications promues et réduit les suggestions d'applications du contenu du Microsoft Store."
+      },
+      "wu-telemetry": {
+        "t": "Télémétrie : désactiver",
+        "d": "Désactive la télémétrie Microsoft."
+      },
+      "wu-delivery-optimization": {
+        "t": "Optimisation de la distribution : désactiver",
+        "d": "Empêche Windows d'utiliser votre bande passante pour envoyer des mises à jour à d'autres PC sur Internet ou le réseau local."
+      },
+      "wu-remove-edge": {
+        "t": "Microsoft Edge : supprimer",
+        "d": "Désinstalle Microsoft Edge en créant un faux fichier MicrosoftEdge.exe dans le dossier de l'ancien Edge. Cela trompe Windows et débloque le désinstallateur officiel d'Edge, permettant une suppression au niveau du système."
+      },
+      "wu-disable-bit-locker": {
+        "t": "BitLocker : désactiver",
+        "d": "Désactive BitLocker."
+      },
+      "wu-utc": {
+        "t": "Date et heure : régler l'heure sur UTC",
+        "d": "Indispensable pour les ordinateurs en double démarrage. Corrige la synchronisation de l'heure avec les systèmes Linux."
+      },
+      "wu-remove-one-drive": {
+        "t": "Microsoft OneDrive : supprimer",
+        "d": "Refuse la permission de supprimer les fichiers utilisateur OneDrive, utilise son propre désinstallateur pour le retirer, puis rétablit la permission d'origine."
+      },
+      "wu-remove-home-and-gallery": {
+        "t": "Accueil et Galerie de l'Explorateur de fichiers : désactiver",
+        "d": "Supprime Accueil et Galerie de l'Explorateur et définit Ce PC par défaut."
+      },
+      "wu-display": {
+        "t": "Effets visuels : régler sur meilleures performances",
+        "d": "Règle les préférences système sur les performances. Vous pouvez aussi le faire manuellement avec sysdm.cpl."
+      },
+      "wu-reserved-storage": {
+        "t": "Désactiver le stockage réservé",
+        "d": "Désactive le stockage réservé de Windows (7 à 10 Go mis de côté pour les mises à jour/fichiers temporaires). Recommandé uniquement sur les petits disques. Réactivez-le avant les grandes mises à jour de fonctionnalités de Windows pour éviter les échecs d'installation."
+      },
+      "wu-restore-point": {
+        "t": "Point de restauration : créer",
+        "d": "Crée un point de restauration à l'exécution, au cas où il faudrait annuler les modifications de WinUtil."
+      },
+      "wu-end-task-on-taskbar": {
+        "t": "Terminer la tâche par clic droit : activer",
+        "d": "Active l'option de fin de tâche par clic droit sur un programme de la barre des tâches."
+      },
+      "wu-storage": {
+        "t": "Assistant stockage : désactiver",
+        "d": "L'Assistant stockage supprime automatiquement les fichiers temporaires."
+      },
+      "wu-windows-ai": {
+        "t": "IA de Windows : désactiver et supprimer",
+        "d": "Supprime et désactive toutes les fonctions/paquets d'IA"
+      },
+      "wu-wpbt": {
+        "t": "Table des binaires de la plateforme Windows (WPBT) : désactiver",
+        "d": "Si elle est activée, la WPBT permet au fabricant de votre ordinateur d'exécuter des programmes au démarrage, comme des logiciels antivol ou des pilotes, et même d'installer des logiciels de force sans le consentement de l'utilisateur. Risque de sécurité potentiel."
+      },
+      "wu-prevent-device-metadata-from-network": {
+        "t": "Empêcher les applications compagnons des appareils",
+        "d": "Empêche l'installation de logiciels supplémentaires lors du branchement d'appareils (par exemple des publicités en branchant un écran). Risque de sécurité potentiel."
+      },
+      "wu-razer-block": {
+        "t": "Installation automatique des logiciels Razer : désactiver",
+        "d": "Bloque TOUTES les installations de logiciels Razer. Le matériel fonctionne très bien sans logiciel."
+      },
+      "wu-logi-block": {
+        "t": "Installation automatique de l'Assistant de téléchargement Logitech : désactiver",
+        "d": "Bloque l'Assistant de téléchargement Logi que Windows Update réinstalle sans cesse avec les pilotes Logitech. Le matériel Logitech continue de fonctionner sans lui."
+      },
+      "wu-disable-notifications": {
+        "t": "Notifications de la zone de notification et calendrier : désactiver",
+        "d": "Désactive TOUTES les notifications, Y COMPRIS le calendrier."
+      },
+      "wu-block-adobe-net": {
+        "t": "Liste de blocage d'URL Adobe : activer",
+        "d": "Réduit les interruptions pour l'utilisateur en bloquant sélectivement les connexions aux serveurs d'activation et de télémétrie d'Adobe. Crédit : Ruddernation-Designs"
+      },
+      "wu-right-click-menu": {
+        "t": "Ancienne disposition du menu clic droit : activer",
+        "d": "Rétablit le menu contextuel classique lors d'un clic droit dans l'Explorateur de fichiers, à la place de la version simplifiée de Windows 11."
+      },
+      "wu-disk-cleanup": {
+        "t": "Nettoyage de disque : exécuter",
+        "d": "Exécute le Nettoyage de disque sur le lecteur C: et supprime les anciennes mises à jour Windows."
+      },
+      "wu-delete-temp-files": {
+        "t": "Fichiers temporaires : supprimer",
+        "d": "Efface les dossiers TEMP."
+      },
+      "wu-ipv46": {
+        "t": "IPv6 : définir IPv4 comme préféré",
+        "d": "Préférer IPv4 peut apporter des avantages en latence et en sécurité sur les réseaux privés où IPv6 n'est pas configuré."
+      },
+      "wu-teredo": {
+        "t": "Teredo : désactiver",
+        "d": "Le tunnel réseau Teredo est une fonction IPv6 qui peut ajouter de la latence et poser problème à certains jeux."
+      },
+      "wu-disable-ipv6": {
+        "t": "IPv6 : désactiver",
+        "d": "Désactive IPv6."
+      },
+      "wu-disable-bgapps": {
+        "t": "Applications en arrière-plan : désactiver",
+        "d": "Empêche toutes les applications du Microsoft Store de s'exécuter en arrière-plan ; depuis Windows 11, il faut le faire une par une."
+      },
+      "wu-disable-explorer-auto-discovery": {
+        "t": "Détection automatique des dossiers de l'Explorateur de fichiers : désactiver",
+        "d": "L'Explorateur Windows tente de deviner automatiquement le type de dossier selon son contenu, ce qui ralentit la navigation. ATTENTION ! Cela désactivera le regroupement dans l'Explorateur de fichiers."
+      },
+      "wu-detailed-bso-d": {
+        "t": "Mode détaillé de l'écran bleu (BSoD)",
+        "d": "Fournit plus d'informations lors d'un écran bleu."
+      },
+      "wu-battery-percentage": {
+        "t": "Pourcentage de batterie dans la zone de notification",
+        "d": "Affiche le pourcentage numérique de la batterie à côté de l'icône de batterie de la zone de notification."
+      },
+      "wu-dark-mode": {
+        "t": "Thème sombre de Windows",
+        "d": "Mode sombre pour le système et les applications."
+      },
+      "wu-show-ext": {
+        "t": "Extensions de fichier de l'Explorateur de fichiers",
+        "d": "Affiche les extensions de fichier dans l'Explorateur (.exe, .png, etc.)"
+      },
+      "wu-hidden-files": {
+        "t": "Fichiers cachés de l'Explorateur de fichiers",
+        "d": "Affiche les fichiers cachés dans l'Explorateur."
+      },
+      "wu-verbose-logon": {
+        "t": "Mode détaillé de la connexion",
+        "d": "Affiche des messages détaillés pendant le démarrage/l'arrêt."
+      },
+      "wu-new-outlook": {
+        "t": "Nouvelle version de Microsoft Outlook",
+        "d": "Garantit l'utilisation de la nouvelle application Outlook."
+      },
+      "wu-scrollbars": {
+        "t": "Barres de défilement toujours visibles",
+        "d": "Si activé, les barres de défilement sont toujours visibles. Sinon, Windows les masque automatiquement quand elles ne sont pas utilisées."
+      },
+      "wu-mouse-acceleration": {
+        "t": "Accélération de la souris",
+        "d": "Fait dépendre le déplacement du curseur de la vitesse à laquelle vous déplacez physiquement la souris."
+      },
+      "wu-num-lock": {
+        "t": "Verr. Num au démarrage",
+        "d": "Bascule l'état de la touche Verr. Num au démarrage de l'ordinateur."
+      },
+      "wu-window-snapping": {
+        "t": "Ancrage des fenêtres",
+        "d": "Active/désactive la fonction d'ancrage lors du glissement des fenêtres."
+      },
+      "wu-standby-fix": {
+        "t": "Connectivité réseau en veille S0",
+        "d": "Active/désactive la connectivité réseau pendant la veille S0, l'état inactif basse consommation des portables modernes."
+      },
+      "wu-s3-sleep": {
+        "t": "Veille S3",
+        "d": "Bascule entre Modern Standby et la veille S3, qui coupe l'alimentation du processeur tout en continuant à rafraîchir la mémoire."
+      },
+      "wu-hide-settings-home": {
+        "t": "Page d'accueil des Paramètres",
+        "d": "Active/désactive la page d'accueil dans l'application Paramètres de Windows."
+      },
+      "wu-bing-search": {
+        "t": "Recherche Bing dans le menu Démarrer",
+        "d": "Active/désactive les résultats de recherche web Bing dans la recherche Windows."
+      },
+      "wu-login-blur": {
+        "t": "Flou acrylique de l'écran de connexion",
+        "d": "Active/désactive l'effet de flou acrylique sur l'arrière-plan de l'écran de connexion."
+      },
+      "wu-disable-lockscreen": {
+        "t": "Écran de verrouillage : désactiver",
+        "d": "Ignore complètement l'écran de verrouillage et passe directement à l'écran de connexion au démarrage et à la reprise."
+      },
+      "wu-start-menu-recommendations": {
+        "t": "Recommandations du menu Démarrer",
+        "d": "Active/désactive la section des recommandations du menu Démarrer. ATTENTION : cela désactivera aussi Windows Spotlight sur l'écran de verrouillage en effet secondaire."
+      },
+      "wu-sticky-keys": {
+        "t": "Touches rémanentes (Sticky Keys)",
+        "d": "Active/désactive les Sticky Keys, qui se déclenchent en appuyant rapidement sur Maj."
+      },
+      "wu-taskbar-alignment": {
+        "t": "Icônes centrées dans la barre des tâches",
+        "d": "Bascule l'alignement de la barre des tâches à gauche ou au centre."
+      },
+      "wu-taskbar-search": {
+        "t": "Icône de recherche de la barre des tâches",
+        "d": "Active/désactive le bouton de recherche de la barre des tâches."
+      },
+      "wu-task-view": {
+        "t": "Icône d'Affichage des tâches de la barre des tâches",
+        "d": "Active/désactive le bouton Affichage des tâches de la barre des tâches."
+      },
+      "wu-game-mode": {
+        "t": "Mode jeu",
+        "d": "Active/désactive la priorité aux performances de jeu en allouant les ressources système aux jeux."
+      },
+      "wu-long-paths": {
+        "t": "Activer les chemins longs",
+        "d": "Active/désactive la prise en charge des chemins de fichier de plus de 260 caractères dans l'Explorateur."
+      },
+      "wua-microsoft-outlook-for-windows": {
+        "t": "Outlook pour Windows",
+        "d": "Offre une gestion moderne du courrier, la planification du calendrier et l'organisation des contacts."
+      },
+      "wua-msteams": {
+        "t": "Microsoft Teams",
+        "d": "Facilite la messagerie instantanée, la visioconférence, le partage de fichiers et la collaboration dans l'espace de travail."
+      },
+      "wua-clipchamp-clipchamp": {
+        "t": "Clipchamp",
+        "d": "Fournit un éditeur vidéo convivial avec modèles, effets et outils de montage sur chronologie."
+      },
+      "wua-microsoft-bing-search": {
+        "t": "Recherche Bing",
+        "d": "Intègre les capacités de recherche Microsoft Bing et les services web directement dans le système d'exploitation."
+      },
+      "wua-microsoft-corporation-ii-quick-assist": {
+        "t": "Assistance rapide",
+        "d": "Permet un support technique à distance sécurisé et le partage d'écran via une connexion Internet."
+      },
+      "wua-microsoft-windows-dev-home": {
+        "t": "Dev Home",
+        "d": "Fournit un tableau de bord spécialisé pour configurer les environnements de développement, synchroniser les dépôts et afficher des widgets matériels."
+      },
+      "wua-microsoft-windows-cross-device": {
+        "t": "Appareils mobiles",
+        "d": "Gère la connectivité système en arrière-plan avec les appareils mobiles associés. Le supprimer peut désactiver des fonctions multi-appareils comme la recopie d'écran du téléphone, le transfert de fichiers et le passage du point d'accès mobile intégrés aux Paramètres Windows."
+      },
+      "wua-microsoft-todos": {
+        "t": "To Do",
+        "d": "Crée, suit et synchronise les tâches personnelles, listes intelligentes et rappels quotidiens."
+      },
+      "wua-microsoft-power-automate-desktop": {
+        "t": "Power Automate",
+        "d": "Automatise les flux de travail répétitifs et les tâches du bureau grâce à des scripts visuels low-code."
+      },
+      "wua-microsoft-microsoft-sticky-notes": {
+        "t": "Pense-bêtes",
+        "d": "Crée des notes de texte flottantes sur le bureau qui se synchronisent automatiquement entre appareils."
+      },
+      "wua-microsoft-windows-sound-recorder": {
+        "t": "Enregistreur vocal",
+        "d": "Enregistre et découpe des entrées audio en direct avec des commandes simples de réglage du microphone."
+      },
+      "wua-microsoft-windows-alarms": {
+        "t": "Horloge",
+        "d": "Propose horloges mondiales, alarmes, minuteurs, chronomètres et suivi de sessions de concentration."
+      },
+      "wua-microsoft-paint": {
+        "t": "Paint",
+        "d": "Fournit des outils intégrés de dessin numérique, de retouche d'image de base et de manipulation graphique au pixel."
+      },
+      "wua-microsoft-windows-notepad": {
+        "t": "Bloc-notes",
+        "d": "Fournit un éditeur de texte léger avec onglets multiples pour les fichiers texte brut et les extraits de code."
+      },
+      "wua-microsoft-screen-sketch": {
+        "t": "Outil Capture d'écran",
+        "d": "Capture des copies d'écran ou des enregistrements d'écran avec annotation, recadrage d'image et reconnaissance optique de caractères (OCR) intégrés."
+      },
+      "wua-microsoft-copilot": {
+        "t": "Copilot",
+        "d": "Lance le compagnon IA de Microsoft pour des réponses contextuelles, une aide à l'écriture créative et une recherche web intelligente."
+      },
+      "wua-microsoft-windows-calculator": {
+        "t": "Calculatrice",
+        "d": "Effectue des calculs arithmétiques standard, scientifiques, de programmation et des conversions d'unités."
+      },
+      "wua-microsoft-windows-camera": {
+        "t": "Caméra",
+        "d": "Prend des photos et enregistre des vidéos via les webcams ou le matériel d'imagerie connecté."
+      },
+      "wua-microsoft-windows-photos": {
+        "t": "Photos",
+        "d": "Organise, affiche et recadre les images locales avec des réglages de couleur de base et des outils de création d'albums."
+      },
+      "wua-microsoft-gaming-app": {
+        "t": "Application Xbox",
+        "d": "Sert de gestionnaire principal de la bibliothèque de jeux, d'interface communautaire sociale et de tableau de bord PC Game Pass."
+      },
+      "wua-microsoft-xbox-gaming-overlay": {
+        "t": "Xbox Game Bar",
+        "d": "Fournit des widgets d'état personnalisables en jeu, des curseurs d'équilibrage audio, des outils de surveillance système et l'enregistrement de parties."
+      },
+      "wua-microsoft-xbox-identity-provider": {
+        "t": "Fournisseur d'identité Xbox",
+        "d": "Gère l'authentification des utilisateurs du réseau Xbox et la validation des comptes en arrière-plan pour les titres connectés. Attention : le supprimer peut casser la connexion avec un compte Microsoft pour les jeux et applications hors Xbox qui reposent sur cette authentification."
+      },
+      "wua-microsoft-xbox-speech-to-text-overlay": {
+        "t": "Superposition voix-texte Xbox",
+        "d": "Fournit des sous-titres d'accessibilité en direct au niveau système et la traduction voix-texte pour les messageries de jeu."
+      },
+      "wua-microsoft-xbox-tcui": {
+        "t": "Xbox TCUI",
+        "d": "Fournit les modules d'interface de connexion de compte de base pour les flux d'authentification unique dans les jeux. Attention : le supprimer peut casser l'authentification du compte Microsoft dans les jeux et applications qui n'exigent pas autrement l'application Xbox."
+      },
+      "wua-microsoft-start-experiences-app": {
+        "t": "Application Start Experiences",
+        "d": "Alimente le panneau Widgets de Windows avec un flux personnalisé d'actualités, de météo, de sport et de finance."
+      },
+      "wu-mpo-compat": {
+        "t": "Multiplane Overlay : désactiver (compatibilité)",
+        "d": "Désactive MPO avec OverlayTestMode=5, la méthode de compatibilité la moins agressive."
+      },
+      "wu-mpo-full": {
+        "t": "Multiplane Overlay : désactiver complètement",
+        "d": "Désactive MPO avec OverlayTestMode=5 et DisableOverlays=1, la méthode la plus agressive."
+      },
+      "xs-start-recent": {
+        "t": "Masquer les applications récemment ajoutées dans Démarrer",
+        "d": "Supprime du menu Démarrer la liste des applications récemment installées."
+      },
+      "xs-snap-flyout": {
+        "t": "Désactiver le menu contextuel d'ancrage",
+        "d": "Empêche l'apparition du menu des dispositions de fenêtres au survol du bouton agrandir."
+      },
+      "xs-lock-camera": {
+        "t": "Désactiver la caméra sur l'écran de verrouillage",
+        "d": "Bloque le lancement de la caméra depuis l'écran de verrouillage."
+      },
+      "xs-wu-pause": {
+        "t": "Étendre à 20 ans la limite de suspension de Windows Update",
+        "d": "Relève uniquement la limite de suspension ; les mises à jour ne sont pas arrêtées tant que vous ne les suspendez pas dans les Paramètres."
+      },
+      "xs-wu-metered": {
+        "t": "Pas de mises à jour sur les connexions limitées",
+        "d": "Windows Update ne téléchargera pas automatiquement les mises à jour sur une connexion limitée."
+      },
+      "xs-maps-offline": {
+        "t": "Arrêter les téléchargements de cartes hors ligne",
+        "d": "Désactive le téléchargement et la mise à jour automatiques des données cartographiques."
+      },
+      "xs-defender-cpu": {
+        "t": "Limiter l'utilisation du processeur par Defender",
+        "d": "Plafonne à 25 % la charge processeur des analyses de Microsoft Defender."
+      },
+      "xs-notif-center": {
+        "t": "Désactiver le centre de notifications",
+        "d": "Supprime le centre de notifications et le volet du calendrier. Les notifications deviennent indisponibles."
+      },
+      "xs-windowed-opt": {
+        "t": "Optimisations pour les jeux en fenêtré",
+        "d": "Active le modèle de présentation amélioré pour les jeux fenêtrés et sans bordure (latence d'affichage réduite)."
+      },
+      "xs-menu-delay": {
+        "t": "Supprimer le délai des menus et des info-bulles",
+        "d": "Les menus et les info-bulles apparaissent instantanément."
+      },
+      "xs-voice-activation": {
+        "t": "Désactiver l'activation vocale",
+        "d": "Empêche les applications d'écouter une phrase de réveil."
+      },
+      "xs-wsearch": {
+        "t": "Désactiver l'indexation de Windows Search",
+        "d": "Arrête l'indexation en arrière-plan. La recherche dans l'Explorateur et Démarrer devient plus lente."
+      },
+      "xs-xbox-svc": {
+        "t": "Désactiver les services Xbox",
+        "d": "Désactive les services Xbox d'authentification, de sauvegarde cloud et de réseau. Les titres Xbox / Game Pass peuvent ne plus se connecter."
+      },
+      "xs-gamebar": {
+        "t": "Désactiver la Game Bar",
+        "d": "Supprime le lancement par le bouton de la manette et le panneau de démarrage de la Game Bar."
+      },
+      "xs-ps-telemetry": {
+        "t": "Désactiver la télémétrie PowerShell",
+        "d": "Définit la variable système POWERSHELL_TELEMETRY_OPTOUT."
+      },
+      "xs-wmdrm": {
+        "t": "Bloquer l'accès en ligne de WMDRM",
+        "d": "Arrête les requêtes vers le serveur de licences pour les fichiers multimédias protégés."
+      },
+      "xs-copilot": {
+        "t": "Désactiver Copilot",
+        "d": "Stratégies qui désactivent Windows Copilot et masquent son bouton."
+      },
+      "xs-recall": {
+        "t": "Désactiver Recall",
+        "d": "Stratégie qui bloque l'analyse d'activité par l'IA et désactive le composant Recall, s'il est présent."
+      },
+      "xs-telemetry-deep": {
+        "t": "Arrêt approfondi de la télémétrie",
+        "d": "Stratégies supplémentaires pour la collecte de données, le rapport d'erreurs et le programme d'amélioration de l'expérience utilisateur."
+      },
+      "xs-telemetry-tasks": {
+        "t": "Désactiver les tâches de télémétrie",
+        "d": "Désactive les tâches planifiées : CEIP, diagnostic de disque, commentaires, rapport d'erreurs, Application Experience."
+      },
+      "xs-hosts-block": {
+        "t": "Bloquer les domaines de télémétrie (hosts)",
+        "d": "Ajoute au fichier hosts un bloc marqué avec les domaines de télémétrie Microsoft ; les serveurs de mise à jour ne sont pas touchés. L'annulation supprime le bloc."
+      },
+      "xs-search-privacy": {
+        "t": "Confidentialité de Windows Search",
+        "d": "Désactive la recherche web et cloud ainsi que l'utilisation de la localisation dans la recherche."
+      },
+      "xs-feedback": {
+        "t": "Désactiver les demandes de commentaires",
+        "d": "Windows cesse de demander des commentaires et des évaluations."
+      },
+      "xs-handwriting": {
+        "t": "Désactiver la collecte des données d'écriture manuscrite et de frappe",
+        "d": "Bloque la personnalisation de la saisie et l'envoi des données d'écriture manuscrite."
+      },
+      "xs-ads": {
+        "t": "Désactiver les publicités personnalisées",
+        "d": "Désactive l'identifiant publicitaire, les expériences personnalisées et Windows Spotlight."
+      },
+      "xs-content-delivery": {
+        "t": "Désactiver les applications et conseils suggérés",
+        "d": "Arrête l'installation automatique d'applications et les suggestions (Content Delivery Manager)."
+      },
+      "xs-cloud-sync": {
+        "t": "Désactiver la synchronisation cloud des paramètres",
+        "d": "Arrête la synchronisation des thèmes, mots de passe, langue, disposition de Démarrer et autres paramètres avec le compte Microsoft."
+      },
+      "xs-access-location": {
+        "t": "Refuser aux applications l'accès à la localisation",
+        "d": "Blocage global de l'accès à la localisation pour les applications."
+      },
+      "xs-access-camera-mic": {
+        "t": "Refuser aux applications la caméra et le microphone",
+        "d": "Les applications, y compris les appels vidéo, ne peuvent pas utiliser la caméra ni le microphone tant que vous n'avez pas rétabli l'accès."
+      },
+      "xs-access-personal": {
+        "t": "Refuser l'accès aux contacts, au courrier, au calendrier et aux appels",
+        "d": "Bloque les contacts, le calendrier, le courrier, les tâches, la messagerie et l'historique des appels."
+      },
+      "xs-access-account": {
+        "t": "Refuser l'accès aux informations du compte",
+        "d": "Les applications ne voient plus le nom de votre compte, votre photo ni d'autres informations."
+      },
+      "xs-access-files": {
+        "t": "Refuser l'accès aux documents, images, vidéos et au système de fichiers",
+        "d": "Bloque les bibliothèques de documents, d'images et de vidéos ainsi que l'accès étendu aux fichiers. Certaines applications peuvent ne plus ouvrir de fichiers."
+      },
+      "xs-access-diag": {
+        "t": "Refuser les diagnostics d'applications, les notifications, l'activité et les radios",
+        "d": "Bloque l'accès aux diagnostics des autres applications, à la lecture des notifications, à l'historique d'activité et au contrôle des radios."
+      },
+      "xs-access-capture": {
+        "t": "Refuser la capture d'écran programmatique",
+        "d": "Les applications ne peuvent pas capturer l'écran sans bordure ni par programmation. Les enregistreurs d'écran et le streaming peuvent cesser de fonctionner."
+      },
+      "xs-access-ai": {
+        "t": "Refuser l'accès aux modèles d'IA du système",
+        "d": "Empêche les applications d'utiliser les modèles d'IA du système."
+      },
+      "xs-access-phone": {
+        "t": "Refuser aux applications l'accès au téléphone",
+        "d": "Stratégie qui empêche les applications d'utiliser les fonctions du téléphone."
+      },
+      "xs-feature-ie": {
+        "t": "Désactiver Internet Explorer",
+        "d": "Désactive le composant Internet Explorer, s'il est présent."
+      },
+      "xs-feature-fax": {
+        "t": "Désactiver Télécopie et numérisation",
+        "d": "Désactive le composant Télécopie et numérisation de Windows."
+      },
+      "xs-feature-wmp": {
+        "t": "Désactiver Windows Media Player (ancien)",
+        "d": "Désactive le composant du lecteur hérité."
+      },
+      "xs-office-telemetry": {
+        "t": "Désactiver la télémétrie de Microsoft Office",
+        "d": "Désactive la journalisation, les rapports d'utilisation et les tâches de télémétrie d'Office 2013–2021 et 365."
+      },
+      "xs-vs-telemetry": {
+        "t": "Désactiver la télémétrie de Visual Studio",
+        "d": "Désactive la collecte de données, la boîte de dialogue de commentaires et l'analyse distante d'IntelliCode."
+      },
+      "xs-media-telemetry": {
+        "t": "Désactiver la collecte de données de Windows Media Player",
+        "d": "Arrête le suivi de l'utilisation et les recherches de métadonnées pour les disques, la musique et la radio."
+      },
+      "xs-ccleaner": {
+        "t": "Désactiver la télémétrie et les promotions de CCleaner",
+        "d": "Désactive la surveillance, la vérification des mises à jour, les offres et les statistiques d'utilisation dans CCleaner."
+      },
+      "xs-google-update": {
+        "t": "Désactiver les services Google Update",
+        "d": "Arrête les services d'arrière-plan gupdate et gupdatem (Chrome et autres produits Google)."
+      },
+      "xs-adobe-update": {
+        "t": "Désactiver les programmes de mise à jour Adobe",
+        "d": "Désactive les services Adobe ARM et Adobe Update ainsi que la tâche de mise à jour d'Acrobat."
+      }
+    },
+    "cl": {
+      "bios-backup": {
+        "t": "Enregistrer un profil BIOS",
+        "d": "Exportez les réglages actuels avant de modifier quoi que ce soit."
+      },
+      "bios-update": {
+        "t": "Mettre à jour le BIOS",
+        "d": "Un firmware plus récent améliore la stabilité de la mémoire et de l'alimentation."
+      },
+      "bios-defaults": {
+        "t": "Rétablir les valeurs par défaut",
+        "d": "Partez de Load Optimized Defaults, puis modifiez les réglages un par un."
+      },
+      "bios-xmp": {
+        "t": "Activer XMP/EXPO",
+        "d": "La mémoire doit fonctionner à sa vitesse et ses timings nominaux."
+      },
+      "bios-rebar": {
+        "t": "Activer Resizable BAR",
+        "d": "Above 4G Decoding + Re-Size BAR Support pour le GPU."
+      },
+      "bios-smt": {
+        "t": "SMT/Hyper-Threading selon la charge de travail",
+        "d": "Certains jeux fonctionnent mieux sans : mesurez-le."
+      },
+      "bios-virt": {
+        "t": "Désactiver la virtualisation",
+        "d": "SVM/VT-x, si vous n'avez pas besoin d'émulateurs ni de WSL."
+      },
+      "bios-igpu": {
+        "t": "Désactiver les graphiques intégrés",
+        "d": "Si vous utilisez une carte graphique dédiée."
+      },
+      "bios-devices": {
+        "t": "Désactiver les périphériques inutilisés",
+        "d": "Wi-Fi, Bluetooth, SATA/audio inutilisés et ports COM."
+      },
+      "bios-csm": {
+        "t": "Désactiver CSM",
+        "d": "Mode UEFI pur ; requis pour Resizable BAR."
+      },
+      "bios-cstates": {
+        "t": "Régler les C-states et l'économie d'énergie",
+        "d": "Désactive les états de veille profonde des cœurs pour une latence minimale."
+      },
+      "bios-pcie": {
+        "t": "Fixer la vitesse PCIe",
+        "d": "Gen4/Gen5 au lieu d'Auto ; désactivez ASPM."
+      },
+      "bios-usb": {
+        "t": "Désactiver la prise en charge USB héritée",
+        "d": "Après l'installation de l'OS, si la souris et le clavier fonctionnent sans."
+      },
+      "bios-fans": {
+        "t": "Régler les courbes de ventilateurs",
+        "d": "Des courbes plus agressives donnent des températures plus basses et moins de bridage."
+      },
+      "ph-ssd": {
+        "t": "Système sur un SSD/NVMe",
+        "d": "Un disque dur ajoute de la charge et des retards de streaming."
+      },
+      "ph-ram": {
+        "t": "Emplacements mémoire corrects",
+        "d": "Double canal : emplacements A2/B2 selon le manuel de la carte."
+      },
+      "ph-wired": {
+        "t": "Périphériques et réseau filaires",
+        "d": "Souris, clavier et Ethernet plutôt que sans fil."
+      },
+      "ph-irq": {
+        "t": "Vérifier les conflits d'IRQ",
+        "d": "Aucun périphérique ne partage d'interruption dans Informations système."
+      },
+      "ph-cables": {
+        "t": "Câbles séparés",
+        "d": "Éloignez les câbles de signal des câbles d'alimentation pour réduire les interférences."
+      },
+      "ph-usb-layout": {
+        "t": "Répartir les périphériques entre les contrôleurs",
+        "d": "Voir la carte USB dans l'onglet USB."
+      },
+      "co-paste": {
+        "t": "Pâte thermique de qualité",
+        "d": "Une pâte neuve réduit les températures et le bridage."
+      },
+      "co-airflow": {
+        "t": "Circulation d'air adéquate",
+        "d": "Entrée à l'avant, sortie à l'arrière et en haut."
+      },
+      "co-vrm": {
+        "t": "Flux d'air sur le VRM",
+        "d": "Un ventilateur sur l'étage d'alimentation du processeur sur les systèmes overclockés."
+      },
+      "co-curve": {
+        "t": "Courbes de ventilateurs",
+        "d": "Qu'elles réagissent à la température sans à-coups."
+      },
+      "co-dust": {
+        "t": "Nettoyer la poussière",
+        "d": "Tous les quelques mois."
+      },
+      "pe-clean": {
+        "t": "Nettoyer le capteur de la souris",
+        "d": "La saleté provoque des sauts du curseur."
+      },
+      "pe-profile": {
+        "t": "Profil embarqué de la souris",
+        "d": "Réglages stockés dans la souris, sans logiciel en arrière-plan."
+      },
+      "pe-rgb": {
+        "t": "Éteindre l'éclairage",
+        "d": "L'éclairage nécessite un logiciel en arrière-plan et de l'interrogation."
+      },
+      "pe-dpi": {
+        "t": "DPI et fréquence d'interrogation élevés",
+        "d": "Vérifiez la stabilité de l'interrogation dans l'onglet Benchmarks."
+      },
+      "pe-monitor": {
+        "t": "Calibrer l'écran",
+        "d": "Luminosité, contraste et mode de fréquence de rafraîchissement."
+      },
+      "pe-overdrive": {
+        "t": "Régler l'Overdrive/AMA",
+        "d": "Le moins d'artefacts avec le temps de réponse le plus rapide."
+      },
+      "st-memtest": {
+        "t": "MemTest86 avant d'installer l'OS",
+        "d": "Plusieurs passes, zéro erreur."
+      },
+      "st-prime": {
+        "t": "Linpack / Prime95",
+        "d": "Test de charge du processeur et de la mémoire."
+      },
+      "st-temps": {
+        "t": "Surveiller les températures",
+        "d": "Pas de bridage sous charge."
+      },
+      "st-timings": {
+        "t": "Timings mémoire manuels",
+        "d": "Seulement après un XMP/EXPO stable."
+      },
+      "st-clock": {
+        "t": "Fréquences fixes",
+        "d": "Une fréquence statique plutôt que des boosts donne des images plus régulières."
+      },
+      "in-gpt": {
+        "t": "GPT et UEFI",
+        "d": "Partitionnement moderne pour Windows 10/11."
+      },
+      "in-nic": {
+        "t": "Pilote réseau d'abord",
+        "d": "Les autres pilotes depuis les sites des fabricants."
+      },
+      "in-minimal": {
+        "t": "Installation propre et minimale",
+        "d": "Pas de builds personnalisées ni de logiciels préinstallés."
+      },
+      "in-bloat": {
+        "t": "Supprimer les applications préinstallées",
+        "d": "Applications et services inutiles."
+      },
+      "in-restore": {
+        "t": "Créer un point de restauration",
+        "d": "Voir l'onglet Sauvegardes et restauration."
+      },
+      "ma-events": {
+        "t": "Examiner le journal d'événements",
+        "d": "Erreurs de pilotes et WHEA."
+      },
+      "ma-wpr": {
+        "t": "Analyse avec Windows Performance Toolkit",
+        "d": "Si la latence persiste, tracez les DPC/ISR."
+      },
+      "ma-cleanup": {
+        "t": "Nettoyer le système",
+        "d": "Fichiers temporaires, anciens pilotes."
+      },
+      "ma-backup": {
+        "t": "Sauvegardes régulières",
+        "d": "Une sauvegarde des réglages avant les modifications."
+      }
+    },
+    "fixTitle": "Réparation du système",
+    "fixHint": "Actions ponctuelles, pas des réglages : elles ne peuvent pas être annulées. SFC et DISM peuvent prendre plusieurs minutes ; la réinitialisation de Windows Update et de Winsock nécessite un redémarrage.",
+    "fixRun": "Exécuter",
+    "fixDone": "Terminé.",
+    "fixConfirm": "Exécuter « {name} » ? Cette action est irréversible.",
+    "fix": {
+      "sfc": {
+        "t": "Vérificateur des fichiers système (SFC)",
+        "d": "sfc /scannow — répare les fichiers système corrompus."
+      },
+      "dism": {
+        "t": "Réparation de l'image (DISM)",
+        "d": "DISM /Online /Cleanup-Image /RestoreHealth — corrige l'image Windows dont dépend SFC."
+      },
+      "winsock-reset": {
+        "t": "Réinitialisation du réseau (Winsock)",
+        "d": "netsh winsock reset + netsh int ip reset. Redémarrage requis."
+      },
+      "explorer-restart": {
+        "t": "Redémarrer l'Explorateur",
+        "d": "Si la barre des tâches ou le bureau ne répond plus."
+      },
+      "store-reset": {
+        "t": "Réinitialiser le Microsoft Store",
+        "d": "wsreset.exe — vide le cache du Store."
+      },
+      "wu-reset": {
+        "t": "Réinitialiser Windows Update",
+        "d": "Arrête les services de mise à jour, renomme les caches SoftwareDistribution et catroot2 et redémarre les services."
+      }
+    },
+    "wf": {
+      "wuf-dotnet": {
+        "t": ".NET Framework (versions 2, 3, 4) : activer",
+        "d": ".NET et .NET Framework sont une plateforme de développement composée d'outils, de langages de programmation et de bibliothèques pour créer de nombreux types d'applications."
+      },
+      "wuf-hyperv": {
+        "t": "Hyper-V : activer",
+        "d": "Hyper-V est un produit de virtualisation matérielle développé par Microsoft qui permet de créer et de gérer des machines virtuelles."
+      },
+      "wuf-legacymedia": {
+        "t": "Composants multimédias hérités (WMP, DirectPlay) : activer",
+        "d": "Active les programmes hérités des versions précédentes de Windows."
+      },
+      "wuf-wsl": {
+        "t": "Sous-système Windows pour Linux (WSL) : activer",
+        "d": "Le sous-système Windows pour Linux est une fonctionnalité facultative de Windows qui permet d'exécuter des programmes Linux nativement sans machine virtuelle séparée ni double démarrage."
+      },
+      "wuf-nfs": {
+        "t": "Système de fichiers réseau (NFS) : activer",
+        "d": "Le système de fichiers réseau (NFS) est un mécanisme de stockage de fichiers sur un réseau."
+      },
+      "wuf-reg-backup": {
+        "t": "Sauvegarde du registre (tâche quotidienne à 00h30) : activer",
+        "d": "Active la sauvegarde quotidienne du registre, désactivée par Microsoft dans Windows 10 1803."
+      },
+      "wuf-enable-legacy-recovery": {
+        "t": "Récupération au démarrage F8 héritée : activer",
+        "d": "Active l'écran Options de démarrage avancées, qui permet de lancer Windows dans des modes de dépannage avancés."
+      },
+      "wuf-disable-legacy-recovery": {
+        "t": "Récupération au démarrage F8 héritée : désactiver",
+        "d": "Désactive l'écran Options de démarrage avancées, qui permet de lancer Windows dans des modes de dépannage avancés."
+      },
+      "wuf-sandbox": {
+        "t": "Windows Sandbox : activer",
+        "d": "Windows Sandbox est une machine virtuelle légère offrant un environnement de bureau temporaire pour exécuter des applications et programmes de manière isolée et sûre."
+      }
+    },
+    "wu": {
+      "credit": "Catalogue porté depuis ChrisTitusTech/winutil (licence MIT) : les valeurs et scripts sont les originaux.",
+      "dnsHint": "S'applique à toutes les cartes réseau actives, y compris DNS sur HTTPS lorsque c'est pris en charge. Actuellement :",
+      "dnsDhcp": "Automatique (DHCP)",
+      "dnsApply": "Appliquer le DNS",
+      "group": {
+        "updates": "Windows Update",
+        "power": "Mode d'alimentation",
+        "repair": "Réparation et synchronisation de l'heure",
+        "extra": "Extras"
+      },
+      "features": "Fonctionnalités Windows",
+      "featuresHint": "Activez ou désactivez des composants facultatifs (droits administrateur requis ; certains nécessitent un redémarrage).",
+      "on": "Activé",
+      "off": "Désactivé",
+      "enable": "Activer",
+      "disable": "Désactiver",
+      "panels": "Anciens panneaux de configuration",
+      "panelsHint": "Accès rapide aux fenêtres de paramètres classiques.",
+      "appsHint": "Les programmes sont installés avec winget. Nécessite winget (Programme d'installation d'application).",
+      "search": "Rechercher des applications",
+      "allCats": "Toutes les catégories",
+      "detect": "Détecter les installées",
+      "installed": "Installée",
+      "appsConfirm": "{mode} : {n} application(s) sélectionnée(s). Continuer ?",
+      "mode": {
+        "install": "Installer",
+        "uninstall": "Désinstaller",
+        "upgrade": "Mettre à jour"
+      }
+    },
+    "wact": {
+      "updates-default": {
+        "t": "Mises à jour : réglages par défaut",
+        "d": "Rétablit le comportement d'origine de Windows Update (services, tâches, stratégies). Redémarrage requis."
+      },
+      "updates-security": {
+        "t": "Mises à jour : recommandé (sécurité uniquement)",
+        "d": "Reporte de 365 jours les mises à jour de fonctionnalités et de 4 jours les mises à jour qualité ; aucune offre de pilotes via Windows Update."
+      },
+      "updates-disable": {
+        "t": "Mises à jour : désactiver complètement",
+        "d": "Arrête les services et tâches de mise à jour et supprime les fichiers téléchargés. Les mises à jour de sécurité NE seront PAS installées !"
+      },
+      "ultperf-add": {
+        "t": "Mode Performances ultimes : ajouter",
+        "d": "Crée et active le mode Performances ultimes. Déconseillé sur portable."
+      },
+      "ultperf-remove": {
+        "t": "Modes d'alimentation : rétablir les valeurs par défaut",
+        "d": "powercfg /restoredefaultschemes : supprime Performances ultimes et les modes personnalisés."
+      },
+      "sys-repair": {
+        "t": "Analyse de corruption du système",
+        "d": "CHKDSK + SFC + DISM : vérifie le disque, les fichiers système et l'image Windows. Peut être long."
+      },
+      "wu-repair": {
+        "t": "Windows Update : réinitialiser",
+        "d": "Arrête les services, efface le cache et les stratégies de mise à jour, réenregistre les DLL et redémarre les services."
+      },
+      "wu-repair-aggressive": {
+        "t": "Windows Update : réinitialisation agressive",
+        "d": "Pareil, plus une analyse du système, le renommage de DataStore/catroot2 et la réinitialisation des descripteurs de service. Lent et plus risqué."
+      },
+      "ntp-pool": {
+        "t": "Serveur NTP pool.ntp.org : activer",
+        "d": "Remplace time.windows.com par pool.ntp.org pour une synchronisation de l'heure plus précise."
+      },
+      "oosu": {
+        "t": "O&O ShutUp10++ : télécharger et exécuter",
+        "d": "Télécharge l'outil depuis le site de l'éditeur (dl5.oo-software.com) et le lance : réglages de confidentialité détaillés."
+      },
+      "autologon": {
+        "t": "AutoLogon : exécuter",
+        "d": "Télécharge Sysinternals Autologon et le lance : connexion automatique à Windows sans mot de passe."
+      },
+      "ssh-server": {
+        "t": "Serveur OpenSSH : activer",
+        "d": "Installe et démarre le serveur OpenSSH et ouvre le port 22 dans le pare-feu."
+      }
+    },
+    "wp": {
+      "wup-computer": {
+        "t": "Gestion de l'ordinateur"
+      },
+      "wup-control": {
+        "t": "Panneau de configuration"
+      },
+      "wup-mouse": {
+        "t": "Propriétés de la souris"
+      },
+      "wup-network": {
+        "t": "Connexions réseau"
+      },
+      "wup-power": {
+        "t": "Options d'alimentation"
+      },
+      "wup-printer": {
+        "t": "Panneau des imprimantes"
+      },
+      "wup-programs": {
+        "t": "Programmes et fonctionnalités"
+      },
+      "wup-region": {
+        "t": "Région"
+      },
+      "wup-security": {
+        "t": "Sécurité et maintenance"
+      },
+      "wup-sound": {
+        "t": "Paramètres du son"
+      },
+      "wup-system": {
+        "t": "Propriétés système"
+      },
+      "wup-timedate": {
+        "t": "Date et heure"
+      },
+      "wup-firewall": {
+        "t": "Pare-feu Windows Defender"
+      },
+      "wup-restore": {
+        "t": "Restauration de Windows"
+      }
+    },
+    "lu": {
+      "tab": {
+        "system-setup": "Configuration du système",
+        "applications-setup": "Applications",
+        "gaming": "Jeux",
+        "security": "Sécurité",
+        "utils": "Utilitaires"
+      },
+      "hint": "Scripts de ChrisTitusTech/linutil. Chacun s'ouvre dans une fenêtre de terminal où vous pouvez confirmer les actions et saisir votre mot de passe. Seules les entrées adaptées à votre distribution sont affichées.",
+      "credit": "Scripts et catalogue : ChrisTitusTech/linutil (licence MIT), non modifiés.",
+      "search": "Rechercher des entrées",
+      "empty": "Aucun résultat.",
+      "run": "Exécuter",
+      "confirm": "Exécuter « {name} » dans un terminal ? Le script peut installer ou supprimer des paquets, modifier le système et demander votre mot de passe administrateur.",
+      "launched": "Ouvert dans une fenêtre de terminal ({terminal}). Tout se poursuit là-bas.",
+      "err": {
+        "no_terminal": "Aucun émulateur de terminal trouvé (x-terminal-emulator, gnome-terminal, konsole, xterm…). Installez-en un.",
+        "linux_only": "Linux uniquement.",
+        "unknown_script": "Cette entrée n'existe pas dans le catalogue.",
+        "unknown": "Impossible de démarrer."
+      }
+    },
+    "searchPh": "Rechercher un réglage par tâche…"
   },
   "privacy": {
-    "panicTitle": "Confidentialité"
+    "unsupported": "Cette plateforme n'est pas prise en charge.",
+    "panicTitle": "Confidentialité",
+    "panicHint": "Un clic efface toutes les cibles disponibles à la fois : historique des commandes, fichiers récents, caches, presse-papiers, DNS, caches des navigateurs, historique USB et journaux système. Irréversible.",
+    "panicButton": "Tout effacer",
+    "panicConfirm": "L'historique des commandes, les fichiers récents, les caches, le presse-papiers, les caches des navigateurs et les journaux système seront supprimés définitivement. Les documents et fichiers personnels ne sont pas touchés. Continuer ?",
+    "adminNote": "Les journaux système, Prefetch et l'historique USB nécessitent des droits administrateur.",
+    "selectTitle": "Effacement sélectif",
+    "selectHint": "Cochez les éléments voulus et n'effacez que ceux-là.",
+    "wipeSelected": "Effacer la sélection ({n})",
+    "confirmSelected": "Effacer les éléments sélectionnés ({n}) ? Cette action est irréversible.",
+    "done": "Terminé : {removed} supprimés, {bytes} libérés.",
+    "doneWithErrors": "{removed} supprimés, mais {failed} éléments ont échoué.",
+    "itemDone": "Supprimés : {n}",
+    "historyTitle": "Journal des effacements",
+    "historyLine": "cibles : {n} · supprimés : {removed} · {bytes}",
+    "historyFailed": "erreurs : {n}",
+    "cat": {
+      "history": "Historique des commandes et recherches",
+      "recent": "Fichiers récents",
+      "cache": "Caches et fichiers temporaires",
+      "clipboard": "Presse-papiers",
+      "network": "Réseau",
+      "browser": "Navigateurs",
+      "usb": "Historique des périphériques USB",
+      "logs": "Journaux système"
+    },
+    "it": {
+      "shell-history": {
+        "t": "Historique des commandes PowerShell",
+        "d": "ConsoleHost_history.txt : tout ce que vous avez saisi, y compris les mots de passe passés en arguments."
+      },
+      "run-mru": {
+        "t": "Historique de la boîte Exécuter (Win+R)",
+        "d": "Commandes et chemins récemment exécutés depuis la boîte Exécuter."
+      },
+      "search-history": {
+        "t": "Historique de recherche de l'Explorateur",
+        "d": "Barre d'adresse et requêtes de recherche dans l'Explorateur de fichiers."
+      },
+      "recent-files": {
+        "t": "Fichiers récents et listes de raccourcis",
+        "d": "Raccourcis vers les fichiers ouverts et listes de raccourcis des applications épinglées."
+      },
+      "recently-used": {
+        "t": "Fichiers récents",
+        "d": "La liste des fichiers récemment ouverts (GTK recently-used.xbel)."
+      },
+      "activity-history": {
+        "t": "Historique d'activité de Windows",
+        "d": "Chronologie des applications et documents ouverts."
+      },
+      "thumbnail-cache": {
+        "t": "Cache des miniatures",
+        "d": "Aperçus d'images et de vidéos, y compris pour des fichiers déjà supprimés."
+      },
+      "temp-files": {
+        "t": "Fichiers temporaires",
+        "d": "Les dossiers Temp de l'utilisateur et du système."
+      },
+      "recycle-bin": {
+        "t": "Corbeille",
+        "d": "Supprime définitivement tout le contenu de la Corbeille."
+      },
+      "trash": {
+        "t": "Corbeille",
+        "d": "Supprime définitivement tout le contenu de la Corbeille."
+      },
+      "clipboard": {
+        "t": "Presse-papiers",
+        "d": "Contenu actuel du presse-papiers et son historique (Win+V)."
+      },
+      "dns-cache": {
+        "t": "Cache DNS",
+        "d": "La liste des domaines récemment visités conservée par le système."
+      },
+      "browser-chrome": {
+        "t": "Google Chrome",
+        "d": "Historique, cookies et cache du profil par défaut. Fermez d'abord le navigateur."
+      },
+      "browser-edge": {
+        "t": "Microsoft Edge",
+        "d": "Historique, cookies et cache du profil par défaut. Fermez d'abord le navigateur."
+      },
+      "browser-firefox": {
+        "t": "Mozilla Firefox",
+        "d": "Historique, cookies et cache de tous les profils. Fermez d'abord le navigateur."
+      },
+      "event-logs": {
+        "t": "Journaux d'événements Windows",
+        "d": "Application, Sécurité, Système, Installation. Nécessite des droits administrateur."
+      },
+      "journal-logs": {
+        "t": "Journal système (journald)",
+        "d": "Efface le journal systemd. Nécessite root (pkexec)."
+      },
+      "prefetch": {
+        "t": "Prefetch",
+        "d": "Traces de lancement des programmes dans C:\\Windows\\Prefetch. Nécessite des droits administrateur."
+      },
+      "usb-history": {
+        "t": "Historique du stockage USB",
+        "d": "Entrées du registre pour les clés USB et disques externes connectés. Nécessite des droits administrateur."
+      }
+    },
+    "selected": "Sélectionnés : {n}",
+    "docTitle": "Document",
+    "heading": "Document sans titre"
+  },
+  "translate": {
+    "auto": "Détecter automatiquement",
+    "eyebrow": "IA locale",
+    "title": "Traducteur",
+    "needModel": "Le modèle n'est pas encore téléchargé. Choisissez une variante dans l'onglet Modèle — après le téléchargement, tout fonctionne hors ligne.",
+    "tab": {
+      "text": "Texte",
+      "file": "Fichiers",
+      "image": "Images",
+      "model": "Modèle"
+    },
+    "modelTitle": "TranslateGemma 4B",
+    "inMemory": "En mémoire : {provider} · {variant}",
+    "unload": "Décharger",
+    "modelHint": "TranslateGemma de Google s'exécute sur votre ordinateur : pas de limite de caractères et rien n'est envoyé sur Internet. Il se décharge tout seul après 10 minutes d'inactivité.",
+    "noRuntime": "Le runtime ONNX n'est pas disponible.",
+    "provider": "Périphérique de calcul",
+    "variant": "Variante du modèle",
+    "prov": {
+      "auto": "Auto",
+      "cpu": "CPU",
+      "dml": "DirectML (GPU, Windows)",
+      "cuda": "NVIDIA CUDA",
+      "llamacpp": "llama.cpp (GGUF, plus rapide ; n'importe quel fabricant de GPU)"
+    },
+    "unavailable": "absent de votre runtime",
+    "var": {
+      "auto": "Auto (adapté au périphérique)",
+      "q4": "q4 — CPU et NVIDIA CUDA",
+      "q4f16": "q4f16 — CPU uniquement (fp16 échoue sur GPU)",
+      "dml": "dml — DirectML (AMD, Intel ; la vérification peut échouer sur NVIDIA)"
+    },
+    "packHint": "CUDA devient disponible après l'installation du pack GPU sur la page Upscale et le redémarrage de l'application. Elle utilise la variante q4. Si un fournisseur est indisponible, la traduction bascule sur le suivant, jusqu'au CPU.",
+    "installed": "Installé",
+    "cancel": "Annuler",
+    "delete": "Supprimer",
+    "deleteConfirm": "Supprimer les fichiers du modèle « {name} » ?",
+    "download": "Télécharger",
+    "license": "Poids : google/translategemma-4b-it exporté en ONNX (onnx-community ; build DirectML par Menterium), Conditions d'utilisation de Gemma. Téléchargé depuis Hugging Face, partie texte uniquement.",
+    "swap": "Inverser les langues",
+    "run": "Traduire",
+    "textPlaceholder": "Collez un texte de n'importe quelle longueur…",
+    "outPlaceholder": "La traduction apparaît ici au fur et à mesure",
+    "chars": "Caractères : {n}",
+    "copy": "Copier",
+    "copied": "Copié",
+    "dropFile": "Déposez un fichier ici ou cliquez pour en choisir un",
+    "fileHint": "Les résultats PDF sont enregistrés en .txt : la mise en page n'est pas restituée.",
+    "save": "Enregistrer le résultat",
+    "unsupportedFile": "Le format {ext} n'est pas pris en charge.",
+    "pickImage": "Choisir une image",
+    "notImage": "Ce n'est pas une image.",
+    "ocrUnsupported": "Pas de reconnaissance de texte (OCR) pour cette langue.",
+    "imageAutoHint": "Avec la détection automatique, le texte de l'image est reconnu comme de l'anglais. Choisissez la langue manuellement pour les autres.",
+    "imageHint": "Le texte est reconnu par Tesseract, traduit par le modèle et dessiné sur l'image.",
+    "dropImage": "Déposez une image, choisissez un fichier ou collez depuis le presse-papiers (Ctrl+V)",
+    "blocks": "Paragraphes trouvés : {n}",
+    "showOriginal": "Afficher l'original",
+    "showTranslation": "Afficher la traduction",
+    "savePng": "Enregistrer en PNG",
+    "st": {
+      "queued": "En attente",
+      "loading": "Chargement du modèle",
+      "running": "Traduction en cours",
+      "done": "Terminé",
+      "error": "Erreur",
+      "cancelled": "Annulé"
+    },
+    "tps": "tok/s",
+    "failedProviders": "Échec du démarrage ou de l'autotest : {list}. La traduction s'exécute sur le prochain périphérique disponible (jusqu'au redémarrage de l'application).",
+    "statTokens": "{n} tokens",
+    "statPrefill": "prefill {s} s",
+    "statGen": "génération {s} s",
+    "statLoad": "chargement du modèle {s} s",
+    "restartNeeded": "Le pack GPU est installé, mais l'application tourne encore sur l'ancien runtime. Redémarrez complètement l'application — CUDA apparaîtra alors dans la liste.",
+    "trtNote": "TensorRT n'est pas utilisé pour ce modèle : il ne prend pas en charge ses opérations clés (MatMulNBits, GroupQueryAttention, normalisations), donc aucun moteur fonctionnel ne peut être construit. Sur les cartes NVIDIA, utilisez CUDA.",
+    "llamaHint": "Fonctionne sur n'importe quel GPU via Vulkan et plusieurs fois plus vite qu'ONNX. Installez ci-dessous une build et un modèle GGUF TranslateGemma. Avec « Auto », le premier modèle installé est utilisé.",
+    "pasteImage": "Coller",
+    "pasteEmpty": "Il n'y a pas d'image dans le presse-papiers.",
+    "pasteDenied": "Accès au presse-papiers refusé. Appuyez plutôt sur Ctrl+V dans la page."
+  },
+  "llama": {
+    "title": "llama.cpp intégré",
+    "hint": "Modèles de langage GGUF rapides sur n'importe quel fabricant de GPU ou sur le CPU. Un seul moteur pour toutes les pages : traducteur, chat, résumés de cours, notes.",
+    "unsupported": "Il n'existe pas de binaires llama.cpp précompilés pour cette plateforme.",
+    "needBuild": "Installez d'abord une build : Vulkan convient à la plupart des GPU (NVIDIA, AMD, Intel).",
+    "failed": "échec du démarrage",
+    "inMemory": "En mémoire : {build} · {model}",
+    "unload": "Décharger",
+    "modelsTitle": "Modèles (GGUF)",
+    "urlPlaceholder": "Lien .gguf Hugging Face (…/resolve/main/model.gguf)",
+    "noKey": "aucune clé nécessaire",
+    "build": {
+      "cpu": "CPU",
+      "vulkan": "Vulkan (NVIDIA, AMD, Intel)",
+      "cuda": "NVIDIA CUDA"
+    },
+    "buildHint": {
+      "cpu": "Fonctionne partout, lent.",
+      "vulkan": "Recommandé : n'importe quel GPU, petit téléchargement.",
+      "cuda": "Le plus rapide sur NVIDIA ; nécessite un pilote récent, gros téléchargement."
+    },
+    "phase": {
+      "download": "Téléchargement…",
+      "extract": "Extraction…"
+    },
+    "model": {
+      "translategemma-4b-q4km": "TranslateGemma 4B · Q4_K_M (rapide, recommandé)",
+      "translategemma-4b-q6k": "TranslateGemma 4B · Q6_K (plus précis)",
+      "translategemma-4b-q8": "TranslateGemma 4B · Q8_0 (meilleure qualité)",
+      "gemma3-4b-q4km": "Gemma 3 4B · Q4_K_M (chat)",
+      "qwen3-4b-q4km": "Qwen3 4B Instruct · Q4_K_M (chat)",
+      "qwen3tts-q4km": "Qwen3-TTS 1.7B · Q4_K_M + mmproj (voix)",
+      "chandra2-q3km": "Chandra OCR 2 · Q3_K_M (léger, pour portables)",
+      "chandra2-q4km": "Chandra OCR 2 · Q4_K_M (recommandé)",
+      "chandra2-q6k": "Chandra OCR 2 · Q6_K (plus précis)",
+      "chandra2-q8": "Chandra OCR 2 · Q8_0 (meilleure qualité)",
+      "embeddinggemma2-q8": "EmbeddingGemma 2 · Q8_0 (recherche intelligente, recommandé)",
+      "embeddinggemma2-q4": "EmbeddingGemma 2 · Q4 (recherche intelligente, plus léger)"
+    }
+  },
+  "canvas": {
+    "select": "Sélectionner",
+    "hand": "Main (Espace)",
+    "sticky": "Pense-bête",
+    "text": "Texte",
+    "shape": "Forme",
+    "line": "Connecteur",
+    "frame": "Cadre",
+    "pen": "Crayon",
+    "sticker": "Émoji",
+    "task": "Tâche",
+    "image": "Image",
+    "note": "Note",
+    "undo": "Annuler",
+    "redo": "Rétablir",
+    "templates": "Modèles",
+    "export": "Exporter",
+    "exportPng": "Image PNG",
+    "exportSvg": "Vectoriel SVG",
+    "exportJson": "Fichier .holst (JSON)",
+    "fit": "Tout afficher",
+    "fitSel": "Afficher la sélection",
+    "zoomIn": "Zoom avant",
+    "zoomOut": "Zoom arrière",
+    "grid": "Grille",
+    "snap": "Aimanter aux objets",
+    "wheelZoom": "La molette zoome",
+    "wheelPan": "La molette défile",
+    "boards": "Tableaux",
+    "newBoard": "Nouveau tableau",
+    "rename": "Renommer",
+    "del": "Supprimer",
+    "delBoard": "Supprimer le tableau ?",
+    "layers": "Calques",
+    "props": "Propriétés",
+    "fill": "Remplissage",
+    "stroke": "Contour",
+    "width": "Épaisseur",
+    "opacity": "Opacité",
+    "radius": "Rayon des coins",
+    "shadow": "Ombre",
+    "dash": "Ligne",
+    "solid": "Continu",
+    "dashed": "Tirets",
+    "dotted": "Pointillés",
+    "fontSize": "Taille",
+    "bold": "Gras",
+    "italic": "Italique",
+    "alignL": "Aligner à gauche",
+    "alignC": "Centrer",
+    "alignR": "Aligner à droite",
+    "top": "Haut",
+    "middle": "Milieu",
+    "bottom": "Bas",
+    "font": "Police",
+    "textColor": "Couleur du texte",
+    "align": "Aligner",
+    "distribute": "Répartir",
+    "group": "Grouper",
+    "ungroup": "Dissocier",
+    "front": "Mettre au premier plan",
+    "back": "Mettre à l'arrière-plan",
+    "forward": "Avancer",
+    "backward": "Reculer",
+    "lock": "Verrouiller",
+    "unlock": "Déverrouiller",
+    "hide": "Masquer",
+    "show": "Afficher",
+    "duplicate": "Dupliquer",
+    "copy": "Copier",
+    "cut": "Couper",
+    "paste": "Coller",
+    "selectAll": "Tout sélectionner",
+    "delAll": "Tout supprimer",
+    "edit": "Modifier le texte",
+    "position": "Position",
+    "rotation": "Rotation",
+    "lineStyle": "Style du connecteur",
+    "straight": "Droit",
+    "curve": "Courbe",
+    "step": "Coudé",
+    "startHead": "Début",
+    "endHead": "Fin",
+    "none": "Aucun",
+    "arrow": "Flèche",
+    "triangle": "Triangle",
+    "dot": "Point",
+    "animated": "Tirets animés",
+    "tidy": "Disposition automatique",
+    "empty": "Double-cliquez pour ajouter du texte. Déposez ici une image ou une note.",
+    "hintHand": "Main : faites glisser pour déplacer le tableau",
+    "saved": "Enregistré",
+    "saving": "Enregistrement…",
+    "saveFail": "Échec de l'enregistrement",
+    "shortcuts": "Raccourcis",
+    "frameName": "Cadre",
+    "groupName": "Groupe",
+    "tooBig": "L'image est trop grande",
+    "align_left": "Gauche",
+    "align_hcenter": "Centre (horizontal)",
+    "align_right": "Droite",
+    "align_top": "Haut",
+    "align_vcenter": "Centre (vertical)",
+    "align_bottom": "Bas",
+    "distH": "Horizontalement",
+    "distV": "Verticalement",
+    "pasteImage": "Image collée",
+    "sans": "Sans",
+    "serif": "Serif",
+    "mono": "Mono",
+    "hand_": "Manuscrit",
+    "color": "Couleur",
+    "custom": "Couleur personnalisée",
+    "layersEmpty": "Rien ici pour l'instant",
+    "object": "Objet",
+    "dropHere": "Déposez pour ajouter au tableau",
+    "newName": "Nom du tableau",
+    "copyOf": "copie"
+  },
+  "canvasHelp": {
+    "title": "Raccourcis clavier",
+    "groups": {
+      "tools": "Outils",
+      "edit": "Édition",
+      "arrange": "Disposition",
+      "view": "Affichage"
+    },
+    "keys": {
+      "handSpace": "H / Espace",
+      "altDrag": "Alt + glisser",
+      "enterDbl": "Entrée / double-clic",
+      "zoom": "+ / −  ou  Ctrl+= / Ctrl+−"
+    },
+    "rows": {
+      "select": "Sélectionner",
+      "hand": "Main / maintenez Espace pour déplacer",
+      "sticky": "Pense-bête",
+      "text": "Texte",
+      "shape": "Forme",
+      "connector": "Connecteur",
+      "frame": "Cadre",
+      "pen": "Crayon",
+      "task": "Carte de tâche",
+      "emoji": "Émoji",
+      "image": "Insérer une image",
+      "undoRedo": "Annuler / rétablir",
+      "selectAll": "Tout sélectionner",
+      "nextPrev": "Objet suivant / précédent",
+      "clipboard": "Copier / couper / coller",
+      "duplicate": "Dupliquer",
+      "altCopy": "Glissez avec Alt pour copier",
+      "delete": "Supprimer",
+      "editText": "Modifier le texte",
+      "boldItalic": "Gras / italique",
+      "nudge": "Déplacer de 1 px",
+      "group": "Grouper / dissocier",
+      "layer": "Avancer / reculer",
+      "frontBack": "Premier plan / arrière-plan",
+      "lock": "Verrouiller / déverrouiller",
+      "hide": "Masquer",
+      "alignLR": "Aligner à gauche / à droite",
+      "alignTB": "Aligner en haut / en bas",
+      "center": "Centrer horizontalement / verticalement",
+      "zoom": "Zoom",
+      "zoom100": "Zoom à 100 %",
+      "fit": "Tout / sélection à l'écran",
+      "grid": "Afficher/masquer la grille",
+      "snap": "Activer/désactiver l'aimantation",
+      "help": "Cette fenêtre",
+      "escape": "Désélectionner / annuler"
+    }
+  },
+  "canvasShapes": {
+    "rect": "Rectangle",
+    "rounded": "Arrondi",
+    "ellipse": "Ellipse",
+    "diamond": "Losange (décision)",
+    "triangle": "Triangle",
+    "hexagon": "Hexagone",
+    "parallelogram": "Parallélogramme",
+    "cylinder": "Cylindre (base de données)",
+    "star": "Étoile",
+    "cloud": "Nuage",
+    "arrow": "Flèche",
+    "chat": "Bulle"
+  },
+  "canvasObj": {
+    "notePh": "Note",
+    "textPh": "Texte",
+    "prLow": "faible",
+    "prMedium": "moyenne",
+    "prHigh": "élevée",
+    "taskTitlePh": "Titre de la tâche",
+    "dblOpen": "Double-clic pour ouvrir",
+    "note": "Note"
+  },
+  "canvasPage": {
+    "myBoard": "Mon tableau",
+    "boardN": "Tableau {n}",
+    "open": "Ouvrir",
+    "copyLinkForNote": "Copier le lien pour une note",
+    "highlighter": "Surligneur"
+  },
+  "canvasInsp": {
+    "name": "Nom",
+    "layerName": "Nom du calque",
+    "cardTitle": "Titre de la carte",
+    "showFrameTitle": "Afficher le titre du cadre",
+    "autoHeight": "Hauteur automatique",
+    "emoji": "Émoji",
+    "status": "Statut",
+    "toDo": "À faire",
+    "inProgress": "En cours",
+    "done": "Terminé",
+    "priority": "Priorité",
+    "none": "Aucune",
+    "low": "Basse",
+    "medium": "Moyenne",
+    "high": "Haute",
+    "dueDate": "Échéance",
+    "accentColour": "Couleur d'accent",
+    "showDoneTotal": "Afficher fait/total",
+    "subtasks": "Sous-tâches",
+    "step": "Étape",
+    "addSubtask": "Ajouter une sous-tâche",
+    "fit": "Ajustement",
+    "stretch": "Étirer",
+    "contain": "Contenir",
+    "cover": "Couvrir",
+    "flip": "Retourner",
+    "horizontal": "Horizontal",
+    "vertical": "Vertical",
+    "brightness": "Luminosité",
+    "contrast": "Contraste",
+    "saturation": "Saturation",
+    "blur": "Flou",
+    "grayscale": "Niveaux de gris",
+    "resetAdjustments": "Réinitialiser les ajustements",
+    "style": "Style",
+    "underline": "Souligné",
+    "strike": "Barré",
+    "spacing": "Espacement",
+    "lineHeight": "Interligne",
+    "letterSpacingPx": "Espacement des lettres, px"
+  },
+  "canvasSmart": {
+    "thisBoard": "ce tableau",
+    "needLinks": "Reliez d'abord les éléments par des lignes — la disposition suit les liens",
+    "layoutDone": "Terminé : le schéma est organisé selon ses liens",
+    "toggleTitle": "Actions intelligentes : recherche, disposition par sens, notes",
+    "title": "Actions intelligentes",
+    "searchPh": "Trouver un objet par le sens…",
+    "insertFromApp": "Insérer depuis l'application (note, tâche, favori…)",
+    "layoutLRTitle": "Organiser le schéma selon les liens : de gauche à droite",
+    "layoutLR": "Schéma →",
+    "layoutTBTitle": "Organiser le schéma selon les liens : de haut en bas",
+    "layoutTB": "Schéma ↓",
+    "relatedNotes": "Notes liées à la sélection",
+    "addNoteCard": "Ajouter une carte de note à côté"
+  },
+  "canvasSel": {
+    "rotate": "Pivoter (Maj : pas de 15°)",
+    "dragToConnect": "Faites glisser pour connecter"
+  },
+  "source": {
+    "note": "Note",
+    "bookmark": "Favori",
+    "task": "Tâche",
+    "canvas": "Canvas",
+    "chat": "Chat IA",
+    "lecture": "Cours",
+    "quick": "Note rapide",
+    "budget": "Budget",
+    "movie": "Film",
+    "book": "Livre",
+    "m3e": "Maquette M3E",
+    "archive": "Archive web",
+    "rss": "Actualités (RSS)",
+    "file": "Fichier"
+  },
+  "lineDiff": {
+    "tooLarge": "Le texte est trop volumineux pour être comparé"
+  },
+  "units": {
+    "s": "{n} s",
+    "min": "{n} min",
+    "hMin": "{h} h {m} min",
+    "gb": "Go",
+    "framePrev": "-1 image",
+    "frameNext": "+1 image"
+  },
+  "boundary": {
+    "title": "Un problème est survenu sur cette page",
+    "retry": "Réessayer"
+  },
+  "linkPicker": {
+    "eyebrow": "Lier",
+    "title": "Insérer depuis l'application",
+    "searchPh": "Rechercher par titre ou par sens…"
+  },
+  "semModel": {
+    "devCpu": "Processeur (CPU) — n'utilise pas de mémoire vidéo",
+    "devGpu": "Carte graphique (CUDA / Vulkan)",
+    "devAuto": "Auto",
+    "notInstalled": "non installé",
+    "title": "Recherche intelligente",
+    "on": "Activée",
+    "off": "Désactivée",
+    "gpu": "GPU",
+    "cpu": "CPU",
+    "inMemory": "en mémoire",
+    "loadsOnRequest": "se charge à la première requête",
+    "blurb": "Recherche par sens, notes similaires, suggestions, regroupement par thèmes et mémoire du chat — sur toutes les pages qui les utilisent. Éléments dans l'index : {total}",
+    "indexing": " · indexation {done}/{total}",
+    "model": "Modèle",
+    "noModels": "Aucun modèle",
+    "launchMode": "Mode d'exécution",
+    "needBuild": "Une build de llama.cpp est requise — installez-la dans Réglages → Chat.",
+    "otherModel": "Un autre modèle (GGUF, par exemple plus grand)",
+    "embeddingHint": "Le nom du fichier doit contenir « embedding »",
+    "updateIndex": "Mettre à jour l'index",
+    "unload": "Décharger de la mémoire",
+    "disable": "Désactiver",
+    "enable": "Activer",
+    "toggleOn": "Recherche intelligente : activée",
+    "toggleOff": "Recherche intelligente : désactivée"
+  },
+  "sem": {
+    "similarToMineHint": "Trier par proximité avec vos favoris et signets",
+    "similarToMine": "Similaires aux miens",
+    "similarTo": "Similaire à « {like} » · {pct} %",
+    "budgetGuess": "Ressemble à la catégorie « {guess} » — appliquer",
+    "lectureSearchPh": "Rechercher dans les transcriptions par le sens…",
+    "lectureNotes": "Notes sur le sujet de ce cours",
+    "needModel": "Un modèle de recherche par sens est requis (l'onglet « Similaires » des notes)",
+    "misc": "Divers",
+    "showByTime": "Afficher par date",
+    "groupByTopic": "Regrouper par thèmes",
+    "movieSearchPh": "Rechercher dans la liste par description : « espace et solitude »…",
+    "whatToWatch": "Que regarder parmi mes projets",
+    "recoEmpty": "Rien à proposer pour l'instant : il faut des titres vus ou notés 8+ et un modèle de recherche par sens.",
+    "recoTaste": "Selon vos goûts : {list}",
+    "searchByMeaning": "Recherche par sens",
+    "insertLinkHint": "Insérer un lien vers une tâche, un favori, une note, un tableau, un cours ou un chat",
+    "docThemeLight": "Page claire → sombre",
+    "docThemeDark": "Page sombre → comme l'application",
+    "docThemeAuto": "Fond du document : clair / sombre",
+    "searchMeaningWords": "Rechercher par le sens et par mots…",
+    "hideTopics": "Masquer les thèmes",
+    "showTopics": "Groupes par thèmes",
+    "hideDupes": "Masquer les doublons",
+    "findDupes": "Trouver les doublons",
+    "noGroups": "Pas encore de groupes — il faut plus de favoris ou les indexer",
+    "topicN": "Thème {n}",
+    "noDupes": "Aucun doublon trouvé",
+    "alreadySaved": "Déjà enregistré sur ce thème :",
+    "similarTasks": "Tâches similaires :{project}{tags} — appliquer",
+    "projectN": " projet « {name} »"
+  },
+  "liveTable": {
+    "delRow": "Supprimer la ligne",
+    "addRow": "+ ligne",
+    "addCol": "+ colonne"
+  },
+  "embed": {
+    "board": "Tableau",
+    "st": {
+      "todo": "À faire",
+      "inProgress": "En cours",
+      "deferred": "Reportée",
+      "completed": "Terminé"
+    },
+    "pr": {
+      "low": "Basse",
+      "medium": "Moyenne",
+      "high": "Haute",
+      "urgent": "Urgente"
+    },
+    "loadingTask": "Chargement de la tâche…",
+    "taskNotFound": "Tâche introuvable (peut-être supprimée)",
+    "removeFromNote": "Retirer de la note",
+    "openTasks": "Ouvrir dans la page des tâches",
+    "status": "Statut",
+    "priority": "Priorité",
+    "due": "Échéance",
+    "openBoard": "Ouvrir le tableau",
+    "dblOpenBoard": "Double-clic pour ouvrir le tableau",
+    "loadingBoard": "Chargement du tableau…",
+    "boardNotFound": "Tableau introuvable",
+    "boardEmpty": "Le tableau est vide"
+  },
+  "semPanel": {
+    "disabled": "La recherche intelligente est désactivée. Activez-la avec le bouton robot de la barre supérieure.",
+    "needModel": "La recherche par sens, les notes similaires et les suggestions reposent sur le modèle EmbeddingGemma 2 (310 Mo, s'exécute sur le CPU dans le llama.cpp intégré).",
+    "install": "Installer le modèle",
+    "indexed": "{notes} notes · {bookmarks} favoris · {lectures} cours · {chats} discussions",
+    "empty": "L'index est vide — appuyez sur « Mettre à jour l'index ».",
+    "related": "Notes similaires",
+    "nothingClose": "Rien de proche pour l'instant",
+    "insertLink": "Insérer un lien",
+    "tagsFolder": "Étiquettes et dossier",
+    "folderHint": "Les notes similaires sont dans le dossier « {folder} »",
+    "dupesTopics": "Doublons et thèmes",
+    "noDupes": "Aucun doublon",
+    "match": "correspondance {pct} %",
+    "noGroups": "Aucun groupe trouvé"
+  },
+  "diary": {
+    "eyebrow": "Entrées",
+    "title": "Journal",
+    "streak": "{n} jours d'affilée",
+    "streakHint": "Jours consécutifs avec une entrée",
+    "today": "Aujourd'hui",
+    "placeholder": "Que s'est-il passé aujourd'hui ? À quoi avez-vous pensé, de quoi êtes-vous reconnaissant…",
+    "saving": "Enregistrement…",
+    "saved": "Enregistré",
+    "applyTemplate": "Insérer le modèle",
+    "editTemplate": "Modifier le modèle",
+    "resetTemplate": "Rétablir par défaut",
+    "defaultTemplate": "## L'essentiel de la journée\n\n\n## Ce qui s'est bien passé\n\n\n## Ce qui pourrait être mieux\n\n\n## Humeur et énergie (1–10)\n\n\n## Projets pour demain\n",
+    "week": {
+      "eyebrow": "Bilan",
+      "heading": "Bilan de la semaine",
+      "run": "Résumer la semaine",
+      "busy": "Rédaction du bilan…",
+      "title": "Semaine",
+      "entries": "Entrées du journal",
+      "tasksDone": "Tâches terminées",
+      "tasksCreated": "Tâches ajoutées",
+      "notes": "Notes modifiées",
+      "lectures": "Cours",
+      "nothing": "Rien n'a été enregistré cette semaine.",
+      "byAi": "Rédigé par l'IA ({model}) à partir de vos entrées, tâches, notes et cours.",
+      "noAi": "Synthèse simple sans IA. Configurez un fournisseur dans Réglages → Chat pour obtenir un bilan rédigé.",
+      "noData": "Il n'y a encore rien à résumer pour cette semaine.",
+      "insert": "Ajouter à l'entrée de ce jour",
+      "inserted": "Ajouté à l'entrée ✓",
+      "edit": "Modifier",
+      "cancel": "Annuler",
+      "savedNote": "Enregistré : s'ouvre n'importe quel jour de cette semaine.",
+      "done": "Terminé"
+    },
+    "drift": {
+      "title": "Dérive des centres d'intérêt",
+      "empty": "Pas encore assez de données : il faut des notes, favoris ou cours sur plusieurs mois.",
+      "overall": "Thème principal de la période",
+      "persistent": "Intérêts durables",
+      "biggest": "Les intérêts ont le plus changé en {month} (de {pct} %).",
+      "docs": "documents : {n}",
+      "shift": "écart {pct} %",
+      "emerging": "nouveau",
+      "fading": "disparu"
+    },
+    "self": {
+      "title": "Engagements envers soi",
+      "empty": "Rien pour l'instant. Fixez une règle, par exemple « pas plus de 2 heures de vidéo par jour ».",
+      "min": "min",
+      "status": {
+        "ok": "Dans les limites.",
+        "near": "Proche de la limite, à titre d'information.",
+        "over": "Limite dépassée. Sans reproche : à vous de voir s'il faut changer quelque chose."
+      },
+      "checks": "Il est temps de vérifier si cela s'est réalisé :",
+      "traces": "Il y a six mois vous avez pris des décisions : aviez-vous raison ?",
+      "came": "Réalisé",
+      "notCame": "Non",
+      "right": "J'avais raison",
+      "wrong": "Je me suis trompé",
+      "metric": {
+        "category_minutes_day": "Temps dans une catégorie d'applis par jour (min)",
+        "app_minutes_day": "Temps dans une appli par jour (min)",
+        "spend_day": "Dépenses par jour",
+        "spend_month": "Dépenses par mois",
+        "category_spend_month": "Dépenses par catégorie et par mois"
+      },
+      "cat": {
+        "media": "Vidéo et musique",
+        "game": "Jeux",
+        "chat": "Messageries",
+        "browser": "Navigateur",
+        "dev": "Développement",
+        "office": "Bureautique et notes",
+        "other": "Autre"
+      },
+      "app": "Processus, p. ex. chrome",
+      "category": "Catégorie de dépense",
+      "label": "Nom (facultatif)",
+      "add": "Ajouter"
+    }
+  },
+  "rss": {
+    "eyebrow": "Actualités",
+    "title": "Lecteur RSS",
+    "refresh": "Actualiser",
+    "readAll": "Tout marquer comme lu",
+    "digest": "Synthèse par IA",
+    "digestBusy": "Rédaction de la synthèse…",
+    "digestBy": "À partir de {n} articles · {model}",
+    "digestEmpty": "Aucun article à résumer.",
+    "digestNoAi": "Configurez un fournisseur d'IA dans Réglages → Chat pour obtenir une synthèse.",
+    "addPh": "Adresse du flux ou du site (https://…)",
+    "add": "S'abonner",
+    "addFailed": "Impossible d'ajouter le flux : {error}",
+    "refreshed": "Nouveaux articles : {added}, flux en erreur : {failed}",
+    "allFeeds": "Tous les flux",
+    "unsubscribe": "Se désabonner",
+    "unsubscribeConfirm": "Se désabonner de « {name} » ? Ses articles seront supprimés.",
+    "importOpml": "Importer un OPML",
+    "exportOpml": "Exporter en OPML",
+    "opmlResult": "Ajoutés : {added}, déjà présents : {skipped}, en échec : {failed}",
+    "filter": {
+      "unread": "Non lus",
+      "all": "Tous",
+      "saved": "Enregistrés"
+    },
+    "searchPh": "Rechercher des articles…",
+    "emptyNoFeeds": "Pas encore de flux — collez l'adresse d'un flux ci-dessus ou importez un fichier OPML.",
+    "emptyItems": "Rien ici. Essayez un autre filtre ou appuyez sur Actualiser.",
+    "openSite": "Ouvrir l'article",
+    "readLater": "Lire plus tard",
+    "readLaterDone": "Enregistré dans les favoris avec le texte de l'article.",
+    "save": "Mettre en favori",
+    "unsave": "Retirer des favoris",
+    "articleLoading": "Chargement de l'article…",
+    "articlePartial": "Texte complet indisponible — aperçu du flux affiché. Utilisez « Ouvrir le site ».",
+    "digestCollapse": "Réduire la synthèse",
+    "digestExpand": "Développer la synthèse",
+    "translate": "Traduire",
+    "translating": "Traduction…",
+    "translateHint": "Traduire les actualités dans d'autres langues vers la vôtre",
+    "showOriginal": "Original",
+    "showTranslation": "Traduction",
+    "settingsTitle": "Paramètres",
+    "engineTitle": "Moteur de traduction",
+    "engine": {
+      "ai": "Fournisseur d'IA",
+      "aiHint": "Le fournisseur et le modèle configurés pour le chat. Meilleure qualité ; consomme des jetons.",
+      "local": "Modèle local (page Traduction)",
+      "localHint": "Tourne sur votre PC, hors ligne et gratuit. Le modèle doit être installé sur la page Traduction ; plus lent.",
+      "google": "Google Traduction",
+      "googleHint": "Rapide, sans clé. Le texte est envoyé à Google ; point d'accès non officiel, limites possibles.",
+      "mymemory": "MyMemory",
+      "mymemoryHint": "Gratuit, sans clé. Environ 5 000 caractères par jour (50 000 avec un e-mail). Bien pour les titres.",
+      "libre": "LibreTranslate",
+      "libreHint": "Traducteur open source : votre serveur ou un serveur public. Indiquez son adresse (et la clé si nécessaire).",
+      "lingva": "Lingva Translate",
+      "lingvaHint": "Interface ouverte de Google Traduction. Les serveurs publics sont souvent bloqués ; vous pouvez indiquer le vôtre."
+    },
+    "localMissing": "Le modèle local n'est pas installé — installez-le sur la page Traduction.",
+    "ctx": {
+      "open": "Lire",
+      "copyLink": "Copier le lien",
+      "copyTitle": "Copier le titre",
+      "markRead": "Marquer comme lu",
+      "markUnread": "Marquer comme non lu",
+      "copyFeedUrl": "Copier l'URL du flux"
+    },
+    "searchSemantic": "Recherche intelligente : par le sens (EmbeddingGemma)",
+    "searchSemanticTag": "par le sens",
+    "autoTitle": "Actualisation automatique",
+    "autoHint": "Tourne en arrière-plan tant que l'app est ouverte, même si cette page ne l'est pas",
+    "autoOff": "Désactivé",
+    "autoEvery": "Toutes les {n} min",
+    "googleLimited": "Google Traduction a temporairement limité les requêtes de cette connexion — réessayez dans ~15 minutes ou choisissez un autre moteur dans les Paramètres.",
+    "translateFailed": "Impossible de traduire le texte de l'article.",
+    "tps": "tok/s",
+    "engineLimited": "Le service de traduction limite temporairement les requêtes — réessayez plus tard ou choisissez un autre moteur dans les Paramètres.",
+    "libreMissing": "Indiquez l'adresse du serveur LibreTranslate dans les Paramètres.",
+    "cfg": {
+      "email": "E-mail (facultatif, relève la limite quotidienne)",
+      "key": "Clé API (si nécessaire)",
+      "keySaved": "Clé enregistrée — saisissez pour la remplacer"
+    },
+    "clearDb": "Vider la base",
+    "clearConfirm": "Supprimer tous les articles stockés, leurs textes et traductions ? Les articles enregistrés (favoris) et vos abonnements sont conservés. Les flux se rempliront à la prochaine mise à jour.",
+    "cleared": "Articles supprimés de la base : {n}.",
+    "modelTitle": "Modèle de traduction local",
+    "unloadAfter": "Décharger le modèle de la mémoire après la traduction",
+    "unloadNow": "Décharger le modèle de la mémoire",
+    "unloaded": "Modèle déchargé",
+    "unloadHint": "Libère la RAM et la mémoire vidéo. La prochaine traduction locale rechargera le modèle (quelques secondes). Le déchargement arrête un instant le serveur llama.cpp partagé, y compris le chat."
+  },
+  "companion": {
+    "title": "Compagnon web",
+    "hint": "Ouvrez vos notes et tâches depuis votre téléphone en Wi-Fi, envoyez du texte, des liens et des fichiers vers ce PC et contrôlez le lecteur. Fonctionne uniquement dans votre réseau domestique ; rien ne part sur Internet.",
+    "enable": "Activer le compagnon web",
+    "enableHint": "Démarre un petit serveur distinct sur votre réseau local. Le gestionnaire de mots de passe, les clés et les réglages ne sont jamais exposés. Désactivé par défaut.",
+    "port": "Port",
+    "portHint": "S'applique à la prochaine activation du compagnon.",
+    "portInUse": "Ce port est déjà utilisé — choisissez-en un autre.",
+    "address": "Adresse pour le téléphone",
+    "addressHint": "Scannez le code QR ou saisissez l'adresse dans le navigateur du téléphone. Le téléphone doit être sur le même réseau Wi-Fi.",
+    "noNetwork": "Aucune adresse de réseau local trouvée.",
+    "code": "Code d'appairage",
+    "codeHint": "Saisissez-le une fois sur le téléphone. Le code est à usage unique et expire au bout de 5 minutes.",
+    "codeLeft": "il reste {m}:{s}",
+    "newCode": "Nouveau code",
+    "devices": "Appareils connectés",
+    "devicesHint": "Révoquer un appareil lui coupe l'accès immédiatement.",
+    "lastSeen": "dernière activité {when}",
+    "revoke": "Révoquer l'accès",
+    "inbox": "Fichiers reçus"
+  },
+  "_meta": {
+    "code": "fr",
+    "native": "Français"
+  },
+  "ghost": {
+    "title": "Contexte (suggestions)",
+    "off": "Le panneau voit sur quoi vous travaillez (une sélection dans l'app ou le titre de la fenêtre active) et affiche notes, cours, dépenses et tâches liés. La recherche est locale, les titres de fenêtres ne sont jamais conservés ; les fenêtres de gestionnaires de mots de passe et de banques sont ignorées.",
+    "enable": "Activer",
+    "disable": "Désactiver les suggestions",
+    "because": "D'après",
+    "empty": "Rien de lié pour l'instant. Sélectionnez du texte ou ouvrez un document."
+  },
+  "timeMachine": {
+    "title": "Machine à remonter le temps",
+    "readOnly": "lecture seule",
+    "slider": "Date",
+    "today": "aujourd'hui",
+    "daysAgo": "il y a {n} jours",
+    "snapshot": "Instantané maintenant",
+    "snapshotDone": "Instantané enregistré.",
+    "snapshotSame": "Aucun changement depuis le dernier instantané.",
+    "notes": "Notes",
+    "noSnapshot": "Pas encore d'instantané de notes pour cette date (ils sont faits automatiquement toutes les quelques heures).",
+    "snapshotAt": "Instantané du {at}",
+    "filter": "Rechercher par titre",
+    "boards": "Tableaux",
+    "tasks": "Tâches",
+    "tasksOpen": "ouvertes : {n}",
+    "tasksDone": "terminées : {n}",
+    "tasksNote": "Approximation : l'historique des statuts n'est pas conservé, les tâches terminées plus tard apparaissent comme ouvertes.",
+    "budget": "Dépenses",
+    "balance": "Solde",
+    "income": "Revenus",
+    "expense": "Dépensé",
+    "diary": "Journal",
+    "restore": "Restaurer en copie",
+    "restored": "Copie créée : {path}"
+  },
+  "night": {
+    "message": "Il est tard dans la nuit. Les décisions budgétaires et l'envoi de messages gagnent à attendre le matin — simple conseil, rien n'est bloqué.",
+    "ok": "Compris",
+    "never": "Ne plus rappeler"
   }
 }

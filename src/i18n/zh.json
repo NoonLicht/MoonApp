@@ -22,7 +22,9 @@
     "automation": "自动化",
     "budget": "预算",
     "tuning": "PC 调优",
-    "translate": "翻译"
+    "translate": "翻译",
+    "diary": "日记",
+    "rss": "RSS"
   },
   "common": {
     "saved": "已保存",
@@ -39,7 +41,8 @@
     "format": "格式",
     "save": "保存",
     "cancel": "取消",
-    "delete": "删除"
+    "delete": "删除",
+    "nothingFound": "未找到任何内容"
   },
   "settings": {
     "diagTitle": "日志与诊断",
@@ -53,6 +56,11 @@
     "diagCopy": "复制路径",
     "diagCopyTitle": "复制文件路径",
     "diagCopied": "路径已复制",
+    "problemsLabel": "问题日志",
+    "problemsCount": "错误和警告：{n}",
+    "problemsEmpty": "没有记录到问题",
+    "problemsRefresh": "刷新",
+    "problemsClear": "清除",
     "diagReady": "完成：{events} 个事件，{kb} KB",
     "diagError": "收集日志失败：{msg}",
     "updatesTitle": "应用更新",
@@ -174,7 +182,130 @@
     "sitebak": "Web Archive (.sitebak)",
     "upscale": "媒体放大",
     "showWelcome": "欢迎屏幕",
-    "showWelcomeHint": "每次启动时显示功能概览屏幕"
+    "showWelcomeHint": "每次启动时显示功能概览屏幕",
+    "chatMemory": "长期记忆",
+    "chatMemoryHint": "将过往聊天中的相似片段加入请求（需要语义搜索模型）。片段会发送给所选的 AI 提供商。",
+    "searchPh": "搜索设置…",
+    "interchangeImport": "导入笔记",
+    "interchangeImportHint": "来自 Obsidian（仓库文件夹）或 Notion（Export → Markdown & CSV）的 .zip。不会覆盖已有笔记。",
+    "interchangePickZip": "选择压缩包",
+    "interchangeExport": "导出笔记",
+    "interchangeExportHint": "Obsidian 或 Notion 的压缩包；Anki 为“问题 :: 答案”卡片和 {{c1::…}} 填空",
+    "interchangeDone": "已导入：{n}。为避免覆盖已重命名：{renamed}。已跳过附件：{skipped}。",
+    "interchangeNoNotes": "仓库中没有笔记",
+    "interchangeNoCards": "未找到卡片：请写“问题 :: 答案”或 {{c1::填空}}",
+    "cursorHighlight": "光标高亮",
+    "cursorHighlightHint": "指针周围显示圆圈，点击时出现圆环——适合演示和录屏",
+    "hotkeys": {
+      "title": "键盘快捷键",
+      "palette": "命令面板",
+      "chatSwitcher": "对话切换（AI 聊天）",
+      "noteSave": "保存笔记",
+      "press": "请按下组合键…",
+      "reset": "恢复默认",
+      "needModifier": "需要 Ctrl 或 Alt（或 F1–F12 键）",
+      "conflict": "已被占用：{name}",
+      "privacy": "“有人靠近”模式"
+    },
+    "fileSearch": "文件搜索",
+    "fileSearchHint": "PDF、文本文件和图片（OCR）中的文字会进入全局搜索。图片处理较慢。",
+    "fileSearchFolders": "文件夹，每行一个，例如 D:/Documents",
+    "fileSearchScan": "更新索引",
+    "fileSearchRunning": "扫描中…",
+    "fileSearchProgress": "已检查 {done}/{total}，新增文本：{indexed}，失败：{failed}",
+    "highContrast": "高对比度",
+    "highContrastHint": "次要文字和边框更醒目，便于低视力阅读",
+    "focusRing": "醒目的焦点框",
+    "focusRingHint": "键盘选中元素时显示明亮的轮廓",
+    "windows": {
+      "open": "在独立窗口中打开页面",
+      "openHint": "在所选显示器上的新窗口中打开所选页面，例如把讲座放到第二块屏幕",
+      "display": "显示器 {n}",
+      "primary": "主屏",
+      "openBtn": "打开",
+      "layouts": "窗口布局",
+      "layoutsHint": "用上方按钮打开所需窗口，命名并保存——之后一键即可恢复布局",
+      "layoutName": "布局名称",
+      "save": "保存（{n}）",
+      "widget": "作为小组件（置顶）"
+    },
+    "backups": {
+      "title": "备份",
+      "hint": "备份包含数据库、设置、笔记、日记、白板、书签和 M3E。恢复在重启后生效。",
+      "create": "创建备份",
+      "verify": "校验",
+      "restore": "恢复",
+      "confirm": "从此备份恢复数据？恢复前会先为当前状态创建安全备份。",
+      "verifyOk": "备份完整：已检查文件 {n} 个",
+      "verifyBad": "备份已损坏：已更改 {bad}，缺失 {missing}",
+      "noManifest": "此备份没有清单（旧版本创建）——无法校验或恢复",
+      "corrupted": "备份已损坏——已取消恢复",
+      "restored": "已恢复文件：{n}。请重启应用以应用数据库。"
+    },
+    "profile": {
+      "title": "加密配置文件",
+      "hint": "设置和 API 密钥保存在一个受密码保护的文件中。密码不会被保存，丢失后无法找回。",
+      "password": "密码（至少 6 个字符）",
+      "export": "保存",
+      "import": "加载",
+      "exported": "配置已保存到加密文件",
+      "confirm": "用配置文件中的数据替换当前设置和密钥吗？",
+      "imported": "已应用设置：{n}，密钥：{keys}。请重启应用以完全生效。",
+      "tooShort": "密码太短（至少 6 个字符）",
+      "wrong": "密码错误或文件已损坏",
+      "notProfile": "这不是 MoonApp 加密配置文件"
+    },
+    "contextMenu": {
+      "title": "资源管理器菜单",
+      "hint": "右键 .txt/.md：“添加到笔记”；右键文件夹：“创建快照”。仅限当前用户。",
+      "add": "添加菜单项",
+      "remove": "移除菜单项",
+      "noteLabel": "MoonApp：添加到笔记",
+      "folderLabel": "MoonApp：为文件夹创建快照",
+      "dev": "开发模式下不会添加 — 需要已安装的版本"
+    },
+    "plugins": {
+      "title": "插件",
+      "hint": "包含聊天技能和笔记模板的 JSON 数据包。仅为数据：插件不会执行代码，也无法访问应用。",
+      "install": "从文件安装…",
+      "installed": "插件“{name}”已安装",
+      "failed": "无法安装插件：{reason}",
+      "counts": "技能：{s}，模板：{t}",
+      "remove": "移除插件"
+    },
+    "p2p": {
+      "title": "局域网笔记同步",
+      "hint": "在同一网络的两台设备之间交换笔记（.md）。接收需手动开启，重启后自动关闭；通信经配对密钥签名并加密。删除不会同步；冲突时较新的版本胜出，另一版本保存为副本。",
+      "enable": "开启接收",
+      "disable": "关闭接收",
+      "address": "另一台设备使用的地址：{list}",
+      "key": "配对密钥",
+      "rotate": "更换密钥",
+      "connect": "与设备同步",
+      "connectHint": "在另一台设备上开启接收，并在此输入其地址和配对密钥。",
+      "host": "地址（IP）",
+      "sync": "同步",
+      "done": "已接收：{pulled}，已发送：{pushed}，冲突：{conflicts}，错误：{failed}",
+      "wrongKey": "配对密钥错误"
+    },
+    "aiShield": {
+      "enabled": "AI 防护盾",
+      "enabledHint": "发送给云端服务商前，将密钥、令牌、银行卡号和密码替换为 [КАРТА_1] 之类的标记，并在回复中还原。本地模型不受影响。",
+      "pii": "隐藏邮箱、电话和 IP",
+      "piiHint": "更严格，但模型将看不到某些任务需要的地址和号码。",
+      "audit": "发送日志",
+      "auditHint": "记录发送给了哪个服务商、哪个模型以及数据量。不保存请求内容。",
+      "preview": "日志中的请求开头",
+      "previewHint": "保留请求的前 80 个字符（已脱敏），以便了解发送了什么。",
+      "log": "谁收到了什么",
+      "summary": "请求：{total}，发往云端：{cloud}，已隐藏的值：{hidden}",
+      "show": "显示",
+      "hide": "隐藏",
+      "clear": "清除",
+      "local": "本地",
+      "hiddenCount": "已隐藏：{n}",
+      "empty": "尚未发送任何内容。"
+    }
   },
   "chat": {
     "chatProvider": "默认提供商",
@@ -351,7 +482,8 @@
     "readerOpenTab": "在新标签页中打开",
     "readerDownloadBak": "下载离线副本 (.sitebak)",
     "readerError": "网页下载失败",
-    "downloadClean": "下载无广告版本"
+    "downloadClean": "下载无广告版本",
+    "exampleTags": "文章,视频,教程,工作,想法,稍后阅读"
   },
   "screenshots": {
     "eyebrow": "截图与录制",
@@ -396,7 +528,12 @@
     "micDevice": "麦克风",
     "micDeviceAuto": "自动（默认）",
     "micDeviceFallback": "麦克风",
-    "autoCapture": "从剪贴板自动保存"
+    "autoCapture": "从剪贴板自动保存",
+    "hideSecrets": "隐藏敏感信息",
+    "smartCrop": "智能裁剪",
+    "secretsFound": "已隐藏区域：{n}",
+    "cropNothing": "未发现多余边距",
+    "cropDone": "已裁剪为 {w}×{h}"
   },
   "automation": {
     "eyebrow": "自动化",
@@ -426,7 +563,58 @@
     "helpTitle": "工作原理",
     "helpLaunchers": "启动项是指向程序/脚本的快捷方式：名称 + .exe(或 .bat/.ps1)路径 + 可选命令行参数。点击「运行」立即启动它。",
     "helpHotkey": "在系统任意位置按 Alt+Space 可打开命令面板 — 按名称快速查找启动项并运行，无需打开本应用。",
-    "helpTasks": "任务复用某个启动项，但通过 Windows 自带的任务计划程序按计划运行(每天固定时间、每小时、登录时或开机时) — 无需保持此页面打开。"
+    "helpTasks": "任务复用某个启动项，但通过 Windows 自带的任务计划程序按计划运行(每天固定时间、每小时、登录时或开机时) — 无需保持此页面打开。",
+    "rules": {
+      "eyebrow": "规则",
+      "title": "如果 → 那么：监控文件夹",
+      "hint": "文件夹中出现新文件时，会依次执行步骤链。“如果”步骤在文件不符合时停止规则。有意不提供“删除”和“运行程序”步骤。",
+      "new": "新建规则",
+      "newName": "新规则",
+      "empty": "还没有规则",
+      "enabled": "启用",
+      "save": "保存",
+      "removeStep": "移除步骤",
+      "trigger": "文件夹",
+      "noFolder": "未设置",
+      "folder": "监控文件夹",
+      "folderPh": "绝对路径，例如 D:/Downloads",
+      "folderError": "需要文件夹的绝对路径",
+      "log": "最近执行",
+      "step_if": "如果",
+      "step_move": "移动",
+      "step_copy": "复制",
+      "step_rename": "重命名",
+      "step_zip": "压缩为 zip",
+      "f_ext": "扩展名，逗号分隔：jpg, png",
+      "f_nameRegex": "名称匹配正则表达式",
+      "f_minSizeMb": "至少 MB",
+      "f_maxSizeMb": "至多 MB",
+      "f_dest": "目标文件夹，可用 {year}/{month}/{extnodot}",
+      "f_template": "新名称：{date}_{name}{ext}"
+    },
+    "clip": {
+      "eyebrow": "剪贴板",
+      "title": "剪贴板历史",
+      "on": "记录已开启",
+      "off": "记录已关闭",
+      "search": "搜索历史",
+      "clear": "清空",
+      "hint": "不会保存机密内容（银行卡号、令牌、密钥）。记录保留 7 天，已固定的保留到你删除为止。",
+      "empty": "历史为空",
+      "copy": "复制",
+      "pin": "固定",
+      "delete": "删除"
+    },
+    "modes": {
+      "eyebrow": "模式",
+      "title": "应用模式",
+      "study": "学习",
+      "studyHint": "无动画、紧凑布局，关闭后台提醒和剪贴板历史。",
+      "game": "游戏",
+      "gameHint": "最少特效和后台页面，开启监控。",
+      "on": "开启",
+      "off": "关闭并恢复设置"
+    }
   },
   "budget": {
     "eyebrow": "财务",
@@ -455,6 +643,90 @@
       "day": "日",
       "week": "周",
       "month": "月"
+    },
+    "importDuplicates": "已跳过重复项：{n}",
+    "rec": {
+      "eyebrow": "定期",
+      "title": "订阅与定期付款",
+      "add": "添加订阅",
+      "forecast": "本月预计支出",
+      "forecastParts": "已花 {spent} + 日常节奏 {daily}/天 + 即将到期的付款 {ahead}（{cur}）",
+      "forecastSkipped": "其他币种的 {n} 项未计入",
+      "name": "名称（例如 Netflix）",
+      "first": "首次扣款",
+      "remindBefore": "提前提醒（天）",
+      "interval": {
+        "week": "每周",
+        "month": "每月",
+        "year": "每年"
+      },
+      "pay": "已付",
+      "overdue": "已逾期 {n} 天",
+      "today": "今天",
+      "inDays": "{n} 天后",
+      "monthlyTotal": "当前订阅每月约花费 {sum} {cur}",
+      "pause": "暂停",
+      "resume": "恢复",
+      "empty": "还没有订阅——添加一个即可获得扣款提醒和月度预测。"
+    },
+    "receipt": {
+      "eyebrow": "小票",
+      "title": "拍照识别小票",
+      "pick": "选择小票照片",
+      "working": "识别中…",
+      "unknownShop": "未识别到商店",
+      "noDate": "未找到日期",
+      "total": "合计",
+      "mismatch": "明细与合计相差 {diff}，请检查名称和价格。",
+      "noItems": "未找到商品，请换一张更清晰的照片。",
+      "save": "将所选添加到预算",
+      "saved": "已添加交易：{n}"
+    },
+    "insights": {
+      "eyebrow": "分析",
+      "title": "钱够不够用，花到哪儿去了",
+      "runwayTitle": "够不够撑到发薪日",
+      "available": "当前可用金额",
+      "payday": "发薪日",
+      "calc": "计算",
+      "enough": "够用",
+      "notEnough": "按当前速度不够",
+      "runwayLine": "距发薪日 {days} 天；日常日均支出 {avg}；每天可花 {allow}；预计剩余 {left}",
+      "subs": "疑似订阅",
+      "subsHint": "⚠️ — 很久没有扣费：订阅可能已不再使用或已取消",
+      "days": "天",
+      "perYear": "每年",
+      "compare": "上月 {a} → 本月 {b}",
+      "inflation": "个人通胀：{pct}%",
+      "whatIf": "如果削减开支",
+      "pickCategory": "类别",
+      "calcSaving": "计算节省",
+      "saving": "每月节省 {m}，每年 {y}",
+      "tax": "税收减免（医疗、教育、运动），上限 {limit}",
+      "taxKinds": "医疗 {m} · 教育 {e} · 运动 {s}",
+      "taxRefund": "可退税 ≈ {n}",
+      "taxHint": "按类别和备注关键词估算，实际金额以税务机关为准。"
+    },
+    "hours": {
+      "title": "以小时计价",
+      "income": "月收入（不取自记录时填写）",
+      "workHours": "每月小时数",
+      "apply": "重新计算",
+      "noIncome": "没有收入数据：请添加收入记录或手动输入金额。",
+      "rates": "一个工作小时值 {work}，一个生活小时值 {life}（月收入 {income}）。",
+      "month": "本月支出：{sum}，相当于 {hours} 个工作小时。",
+      "h": "{n} 小时",
+      "life": "{n} 生活小时",
+      "top": "按小时计最贵的支出",
+      "forecast": "储蓄",
+      "target": "目标金额",
+      "have": "已存",
+      "calc": "计算",
+      "saving": "你平均每月存约 {n}。",
+      "reached": "目标将在 {date} 达成（{months} 个月后）。",
+      "never": "按当前速度无法存够：支出不低于收入。",
+      "feasible": "到 {date} 每月需存 {n}，你能做到。",
+      "notFeasible": "到 {date} 每月需存 {n}，超过你当前的速度。"
     }
   },
   "quickNotes": {
@@ -477,7 +749,15 @@
   "palette": {
     "placeholder": "输入命令名称…",
     "empty": "没有启动项 — 请在「自动化」页面添加",
-    "noMatch": "未找到匹配项"
+    "noMatch": "未找到匹配项",
+    "groupPages": "页面",
+    "groupLaunch": "启动",
+    "groupSemantic": "按语义",
+    "groupSettings": "设置",
+    "searchPh": "页面、笔记、任务、书签、白板、讲座、聊天……或按语义搜索",
+    "searchSettings": "在设置中搜索：“{q}”",
+    "pageSub": "页面",
+    "settingsHint": "将在设置页面中高亮匹配的项目"
   },
   "games": {
     "eyebrow": "启动器",
@@ -514,7 +794,47 @@
     "filterEpic": "Epic",
     "tileSize_s": "小卡片",
     "tileSize_m": "中等卡片",
-    "tileSize_l": "大卡片"
+    "tileSize_l": "大卡片",
+    "insights": {
+      "eyebrow": "分析",
+      "title": "待玩清单、画质设置与帧率测试",
+      "backlog": "接下来玩什么",
+      "empty": "游戏库中还没有游戏",
+      "hours": "{h} 小时",
+      "status": {
+        "playing": "在玩",
+        "backlog": "待玩",
+        "done": "已通关",
+        "dropped": "已放弃"
+      },
+      "recommend": "按目标帧率推荐设置",
+      "gpu": "显卡，例如 RTX 3060",
+      "pick": "推荐",
+      "preset": "预设",
+      "preset_low": "低",
+      "preset_medium": "中",
+      "preset_high": "高",
+      "preset_ultra": "极高",
+      "upscaler": "超分",
+      "up_quality": "质量",
+      "up_balanced": "均衡",
+      "up_performance": "性能",
+      "frameGen": "建议开启帧生成",
+      "note_vram_low": "显存较小，纹理建议保持中等。",
+      "note_integrated_gpu": "核显：请降低分辨率并关闭阴影。",
+      "note_frame_gen": "该显卡支持帧生成（DLSS FG / FSR FG）。",
+      "bench": "优化前后的帧率测试",
+      "benchHint": "用 PresentMon、CapFrameX 或 MSI Afterburner 录制游戏并上传 CSV，勾选两条记录即可对比。",
+      "chooseGame": "游戏",
+      "label": "标签，例如“优化前”",
+      "addCsv": "上传 CSV",
+      "noFrames": "文件中未找到帧时间列。",
+      "verdict_better": "有提升",
+      "verdict_worse": "变差了",
+      "verdict_same": "差异不明显",
+      "avgDelta": "平均 FPS：{d}（{p}%）",
+      "lowDelta": "1% low：{d}（{p}%）"
+    }
   },
   "tools": {
     "eyebrow": "多功能工具",
@@ -690,7 +1010,57 @@
     "apiKey": "用于 {label} 的 API 密钥（加密存储）",
     "saveKey": "保存密钥",
     "cancel": "取消",
-    "chooseAnswer": "选择此回答"
+    "chooseAnswer": "选择此回答",
+    "saveToNotes": "存入笔记",
+    "savedToNotes": "已保存",
+    "savedAs": "已保存到笔记：{path}",
+    "checkNotes": "对照笔记核实",
+    "checking": "核实中…",
+    "checkNothing": "没有可核实的陈述。",
+    "checkLegend": "✅ 笔记中有 · 🟡 与已记录内容相近 · ⚪ 笔记中未找到",
+    "autoSave": "自动保存有价值的回答",
+    "autoSaveHint": "包含代码、列表或篇幅较长的回答会自动保存到“AI 回答”笔记",
+    "voiceMode": "语音模式：直接说话，回答会被朗读，你可以随时打断",
+    "voice_listening": "正在聆听…（点击关闭）",
+    "voice_hearing": "正在听你说…",
+    "voice_thinking": "正在识别语音…",
+    "voice_speaking": "正在回答——可随时打断",
+    "voiceCodeSkipped": "此处有一段代码",
+    "costHint": "输入约 {tokens} 个 token，回答约 {out}；预估价格 {price}",
+    "costUnknown": "未知",
+    "skills": "技能（“Навыки”文件夹）",
+    "judge": "评判回答",
+    "judging": "评判中…",
+    "judgeScore": "评分 {n}/10",
+    "ctx": {
+      "title": "聊天资料",
+      "kind": "来源类型",
+      "file": "文件",
+      "folder": "文件夹",
+      "site": "网站",
+      "ph": {
+        "file": "文件路径（txt、md、pdf…）",
+        "folder": "文件夹路径",
+        "site": "https://…"
+      },
+      "question": "你要问的内容（用于挑选片段）",
+      "attach": "附加",
+      "loading": "加载中…",
+      "nothing": "未找到相关片段",
+      "attached": "已加入系统提示，来源数：{n}"
+    },
+    "branch": "分支",
+    "explain": {
+      "title": "解释图片",
+      "mode": "模式",
+      "modeExplain": "屏幕内容",
+      "modeFormulas": "板书公式",
+      "paste": "问题（或用 Ctrl+V 粘贴图片）",
+      "pick": "选择图片…",
+      "working": "识别并分析中…",
+      "noText": "图片中未找到文字",
+      "use": "插入到消息"
+    }
   },
   "books": {
     "title": "图书目录",
@@ -794,6 +1164,12 @@
     "lhmNotFound": "未找到 LibreHardwareMonitor.exe — 请先安装。",
     "lhmRunningHidden": "传感器已激活",
     "openExternal": "在浏览器中打开",
+    "embedStarting": "正在启动转换服务…",
+    "embedError": "转换器启动失败",
+    "embedHint": "内置的 ConvertX 服务会在首次使用时自动启动。",
+    "embedMissing": "此安装缺少转换器运行时。",
+    "embedStart": "启动转换器",
+    "formatsNote": "媒体格式需要 PATH 中有 ffmpeg。文档/电子书需要相应工具（pandoc、Calibre、LibreOffice…）。",
     "hwCpu": "处理器 — {name}",
     "hwMotherboard": "主板 — {name}",
     "hwDrive": "磁盘 — {name}",
@@ -806,12 +1182,98 @@
     "levels": "级别",
     "controls": "控制",
     "data": "数据",
-    "embedStarting": "正在启动转换服务…",
-    "embedError": "转换器启动失败",
-    "embedHint": "内置的 ConvertX 服务会在首次使用时自动启动。",
-    "embedMissing": "此安装缺少转换器运行时。",
-    "embedStart": "启动转换器",
-    "formatsNote": "媒体格式需要 PATH 中有 ffmpeg。文档/电子书需要相应工具（pandoc、Calibre、LibreOffice…）。"
+    "scanError": "扫描错误",
+    "insightsTitle": "重复与被遗忘的文件",
+    "insightsDup": "重复文件",
+    "insightsForgotten": "被遗忘的大文件",
+    "insightsSimilar": "相似图片",
+    "insightsRoot": "要分析的文件夹，例如 D:\\Downloads",
+    "insightsRun": "开始",
+    "insightsEmpty": "未找到任何内容",
+    "insightsScanned": "已扫描文件：{n}",
+    "insightsIdle": "{days} 天未访问",
+    "alertsTitle": "历史与告警",
+    "alertsOn": "采集已开启",
+    "alertsOff": "开启采集与告警",
+    "alertsHint": "每 30 秒检查：过热、空间不足、磁盘健康",
+    "alertsCpuTemp": "CPU 温度（最近一小时）",
+    "alertsGpuTemp": "GPU 温度（最近一小时）",
+    "alertsLoad": "CPU 负载（最近一小时）",
+    "alertsWear": "磨损 {n}%",
+    "alertsEmpty": "暂无告警",
+    "alertsHeat": "按小时统计的 CPU 负载（基于已保存历史）",
+    "versions": {
+      "title": "文件夹版本",
+      "folder": "文件夹路径",
+      "show": "显示版本",
+      "create": "创建快照",
+      "created": "快照已创建",
+      "restore": "恢复到旁边",
+      "restored": "版本已恢复到 {path}",
+      "delete": "删除版本",
+      "hint": "每个文件夹最多保留 10 个快照（每个 500 MB）；跳过 node_modules 和 .git。恢复不会改动原文件夹。"
+    },
+    "attention": {
+      "title": "注意力地图",
+      "noData": "还没有按小时的数据：请开启应用时间追踪并使用一两天。",
+      "min": "分钟",
+      "lecture": "讲座，分钟：",
+      "tasks": "任务：",
+      "legend": "亮度表示应用使用时间；外框表示讲座；绿色条表示已完成任务；蓝色背景表示可能的睡眠（依据活动间隔）。",
+      "facts": "每天活跃小时：{active}；18 点后占 {evening}% 的时间；最长连续不休息：{streak} 小时；睡眠约 {sleep} 小时。",
+      "placeholder": "我的时间都去哪儿了？",
+      "ask": "问 AI",
+      "evening": "为什么晚上总没精力？",
+      "insight": {
+        "evening": "超过 {n}% 的电脑使用时间在晚上。",
+        "streak": "出现过连续 {n} 小时不休息。",
+        "late": "一周中有 {n} 天工作到 23 点之后。",
+        "sleep": "可能的睡眠平均 {n} 小时，低于 6.5。"
+      }
+    },
+    "diag": {
+      "title": "电脑诊断",
+      "slow": "卡顿——排查",
+      "measuring": "测量中…",
+      "passport": "电脑护照",
+      "windowsOnly": "卡顿排查仅支持 Windows。",
+      "sec": "秒",
+      "progress": "测量：{elapsed}/{total} 秒，已采样 {n} 次。",
+      "fine": "此刻没有明显的卡顿原因。",
+      "cause": {
+        "cpu": "瓶颈在处理器",
+        "disk": "瓶颈在磁盘",
+        "memory": "可用内存不足"
+      },
+      "find": {
+        "cpu": "处理器平均负载 {v}%。",
+        "disk": "磁盘平均占用 {v}%。",
+        "memory": "平均可用内存 {v} MB。"
+      },
+      "why": {
+        "defender": "Windows 杀毒软件正在扫描文件",
+        "indexer": "Windows 搜索正在建立索引",
+        "update": "Windows 正在安装更新",
+        "sync": "云服务正在同步文件",
+        "system": "系统任务（驱动、分页）",
+        "vm": "虚拟机或 WSL 占用了内存",
+        "browser": "浏览器打开了很多标签页",
+        "dwm": "窗口管理器——常见于显卡负载高时",
+        "svchost": "Windows 服务——请查看具体是哪一个",
+        "wmi": "通过 WMI 轮询系统（监控）",
+        "launcher": "后台的游戏启动器"
+      },
+      "peak": "峰值",
+      "at": "于",
+      "io": "磁盘",
+      "mbs": "MB/秒",
+      "mb": "MB",
+      "avg": "平均：处理器 {cpu}%，磁盘 {disk}%，可用 {mem} MB，时长 {seconds} 秒。",
+      "peaks": "峰值：处理器 {cpu}%（{cpuAt}），磁盘 {disk}%（{diskAt}）。",
+      "save": "保存护照",
+      "saveAnon": "保存（不含电脑名）",
+      "stale": "长期未更新的驱动"
+    }
   },
   "voice": {
     "title": "语音克隆",
@@ -841,10 +1303,33 @@
     "applyProfile": "应用配置",
     "reRender": "重新渲染"
   },
+  "video": {
+    "title": "视频下载",
+    "eyebrow": "获取并保存视频",
+    "paste": "粘贴视频链接",
+    "fetch": "获取",
+    "fetching": "获取中…",
+    "clipboard": "从剪贴板粘贴",
+    "empty": "在上面粘贴链接以预览和下载",
+    "reading": "读取视频信息…",
+    "untitled": "未命名流捕获",
+    "download": "下载 {quality}",
+    "downloading": "下载中 {p}%",
+    "saved": "已保存到下载",
+    "ytdlpMissing": "yt-dlp 未安装（点击下方安装）",
+    "errUnsupported": "yt-dlp 不支持该网站。请尝试其他链接。",
+    "errTimeout": "源站超时。请检查网络或启用代理后重试。",
+    "clip": {
+      "label": "片段",
+      "from": "从 0:00",
+      "to": "到 1:30"
+    }
+  },
   "proxy": {
     "title": "代理",
     "connected": "已连接",
     "disconnected": "未连接",
+    "httpInboundDown": "SOCKS 端口已打开，但代理的 HTTP 端口未启动——TMDB 等站点会绕过代理。请重启代理。",
     "vlessLink": "VLESS 链接",
     "ping": "延迟",
     "country": "国家/地区",
@@ -853,6 +1338,7 @@
     "disable": "禁用代理",
     "singboxMissing": "sing-box 未安装",
     "installSingBox": "安装 sing-box",
+    "placeholder": "vless:// 或 JSON 配置",
     "subscriptions": "订阅",
     "subName": "名称",
     "add": "添加",
@@ -863,7 +1349,6 @@
     "savedVless": "已保存的 VLESS",
     "profile": "配置（VLESS 链接或 JSON）",
     "paste": "从剪贴板粘贴",
-    "placeholder": "vless:// 或 JSON 配置",
     "nodes": "服务器",
     "selectServer": "已选服务器",
     "testAll": "测试全部",
@@ -894,23 +1379,6 @@
     "errPortBusy": "端口 {port} 被占用：请关闭其他代理/VPN 后重试",
     "errStartTimeout": "sing-box 未及时启动。请检查节点配置",
     "unsupported": "sing-box 引擎不支持此传输方式（例如 XHTTP）——该节点无法启动"
-  },
-  "video": {
-    "title": "视频下载",
-    "eyebrow": "获取并保存视频",
-    "paste": "粘贴视频链接",
-    "fetch": "获取",
-    "fetching": "获取中…",
-    "clipboard": "从剪贴板粘贴",
-    "empty": "在上面粘贴链接以预览和下载",
-    "reading": "读取视频信息…",
-    "untitled": "未命名流捕获",
-    "download": "下载 {quality}",
-    "downloading": "下载中 {p}%",
-    "saved": "已保存到下载",
-    "ytdlpMissing": "yt-dlp 未安装（点击下方安装）",
-    "errUnsupported": "yt-dlp 不支持该网站。请尝试其他链接。",
-    "errTimeout": "源站超时。请检查网络或启用代理后重试。"
   },
   "conv": {
     "pdfEyebrow": "PDF 工具",
@@ -1007,10 +1475,24 @@
     "playlistSave": "创建",
     "playlistEmpty": "此播放列表还没有歌曲 — 从搜索结果中添加(右键点击歌曲)",
     "addToPlaylist": "添加到播放列表",
-    "placeholder": "源连接器未配置 — 解析后端目前为占位。",
-    "untitled": "未命名歌曲",
-    "unknown": "未知艺术家 · 3:41",
-    "download": "下载"
+    "download": "下载",
+    "smart": {
+      "recent": "最近添加",
+      "short": "短曲",
+      "long": "长曲",
+      "artist": "{artist}",
+      "mix": "随机 20 首"
+    },
+    "karaoke": {
+      "title": "卡拉 OK",
+      "pick": "选择音频文件…",
+      "artist": "歌手",
+      "song": "歌名",
+      "find": "查找歌词",
+      "searching": "搜索中…",
+      "none": "未找到歌词",
+      "plain": "找到无时间轴的歌词："
+    }
   },
   "arch": {
     "title": "网页归档器",
@@ -1180,7 +1662,244 @@
     "expand": "展开",
     "imageUrlPrompt": "图片链接（URL）：",
     "clipboardUnsupported": "此浏览器不支持读取剪贴板",
-    "clipboardNoImage": "剪贴板中没有图片"
+    "clipboardNoImage": "剪贴板中没有图片",
+    "ocr": {
+      "pdfProgress": "PDF“{name}”：正在识别第 {done} / {total} 页…",
+      "pdfCancel": "取消",
+      "pdfEmpty": "已跳过空白 PDF 页面：{pages}。",
+      "btn": "将此图片识别为文字（Chandra OCR 2）",
+      "settings": "识别设置",
+      "busy": "正在识别…",
+      "imageGone": "图片已不在笔记中——结果未插入。",
+      "needSetup": "识别需要 Chandra OCR 2 模型和 llama.cpp 构建——请在设置中安装。",
+      "failed": "识别失败：{error}",
+      "title": "图片识别（Chandra OCR 2）",
+      "hint": "笔记中图片上的 OCR 按钮会将其转换为 Markdown：文字仍是文字，表格变为表格，图画和图表会被裁剪并作为图片插入原位。通过内置的 llama.cpp 在本地运行。",
+      "device": "计算设备",
+      "model": "模型",
+      "modelAuto": "第一个已安装的",
+      "modelHint": "Q4_K_M 是最佳平衡点。Q3_K_M 对笔记本更轻量；Q6_K 和 Q8_0 更精确但更重。",
+      "notInstalled": "未安装",
+      "license": "Chandra OCR 2 © Datalab，OpenRAIL-M 许可：个人使用和研究免费，不得用于竞争性服务。",
+      "dev": {
+        "auto": "自动（已安装的最佳项）",
+        "cpu": "CPU",
+        "vulkan": "Vulkan——任意显卡",
+        "cuda": "CUDA——仅限 NVIDIA"
+      },
+      "devHint": {
+        "auto": "依次选择 CUDA、Vulkan、CPU——取决于已安装的内容。",
+        "cpu": "适用于没有独立显卡的笔记本；每页需要几分钟。",
+        "vulkan": "适用于 NVIDIA、AMD 和 Intel，无需驱动 SDK；速度接近 CUDA。",
+        "cuda": "在 NVIDIA 上最快，但需要单独的构建（约 0.6 GB）。"
+      }
+    },
+    "m3eTab": "M3E",
+    "m3e": {
+      "loading": "正在打开画布…",
+      "loadFailed": "无法打开页面：{error}",
+      "retry": "重试",
+      "pageN": "第 {n} 页",
+      "newPage": "新建页面",
+      "newBlank": "空白页面",
+      "newDemo": "示例应用",
+      "newCopy": "此页面的副本",
+      "importFile": "从项目文件…",
+      "importMany": "已添加页面：{n}",
+      "invalidFile": "这不是 M3E Canvas 项目文件。",
+      "rename": "重命名",
+      "duplicate": "复制",
+      "pin": "固定",
+      "unpin": "取消固定",
+      "color": "标签颜色",
+      "noColor": "无颜色",
+      "moveLeft": "左移",
+      "moveRight": "右移",
+      "export": "另存为文件",
+      "delete": "删除",
+      "deleted": "页面“{name}”已删除",
+      "undo": "撤销",
+      "restored": "页面“{name}”已恢复",
+      "overview": "所有页面",
+      "overviewHint": "所有页面和屏幕（Ctrl+K 快速跳转）",
+      "search": "查找页面或屏幕…",
+      "sort": "排序",
+      "sortManual": "与标签顺序一致",
+      "sortRecent": "最近的优先",
+      "sortName": "按名称",
+      "screens": "屏幕",
+      "screensCount": "{n} 个屏幕",
+      "partsCount": "{n} 个组件",
+      "updated": "编辑于 {when}",
+      "justNow": "刚刚",
+      "minutesAgo": "{n} 分钟前",
+      "hoursAgo": "{n} 小时前",
+      "daysAgo": "{n} 天前",
+      "emptySearch": "未找到任何内容",
+      "trash": "回收站",
+      "trashEmpty": "回收站为空。已删除的页面会在此保留 30 天。",
+      "restore": "恢复",
+      "purge": "永久删除",
+      "purgeConfirm": "永久删除“{name}”？",
+      "open": "打开",
+      "close": "关闭",
+      "current": "已打开",
+      "switcher": "快速跳转",
+      "switcherHint": "↑↓ 选择 · Enter 打开 · Esc 关闭",
+      "pageKind": "页面",
+      "screenKind": "屏幕",
+      "keys": "Alt+←/→ 相邻页面 · Alt+1…9 按序号切换页面 · Ctrl+Alt+N 新建 · Ctrl+K 跳转 · [ ] 屏幕",
+      "dropHint": "拖放项目文件以将其添加为页面",
+      "tabsLabel": "页面",
+      "scrollLeft": "向左滚动标签",
+      "scrollRight": "向右滚动标签",
+      "empty": "空",
+      "saving": "正在保存…",
+      "saved": "已保存",
+      "saveFailed": "无法保存",
+      "duplicateOf": "{name}（副本）"
+    },
+    "fontTitle": "笔记字体",
+    "zoomIn": "放大文字",
+    "zoomOut": "缩小文字",
+    "zoomReset": "重置文字大小",
+    "tools": {
+      "snapshot": "立即快照",
+      "snapshotDone": "快照已保存",
+      "history": "快照历史",
+      "restore": "还原",
+      "restored": "已从快照还原文本（记得保存）",
+      "noNote": "打开一条笔记以使用工具",
+      "toc": "目录",
+      "tocDone": "目录已更新",
+      "formulas": "计算表格公式",
+      "formulasDone": "已计算公式",
+      "transclude": "展开 ![[嵌入]]",
+      "transcludeDone": "嵌入已展开",
+      "parasites": "口头禅",
+      "parasitesNone": "未发现口头禅",
+      "parasitesTotal": "口头禅共计：{n}",
+      "glossary": "从 **术语** 生成词汇表",
+      "glossaryNone": "没有“**术语** — 定义”形式的行",
+      "plan": "复习计划",
+      "planFrom": "从 {date} 开始复习：",
+      "moc": "添加文件夹内容地图",
+      "mocDone": "已加入地图的笔记：{n}",
+      "debts": "图谱“欠账”：悬空链接",
+      "debtsNone": "所有链接都指向已有笔记",
+      "quotes": "摘录本（> 块）",
+      "quotesNone": "暂无摘录",
+      "slides": "导出为幻灯片（HTML）",
+      "slidesDone": "演示文稿已保存：用方向键翻页",
+      "rsvp": "速读",
+      "rsvpEmpty": "笔记中没有文字",
+      "rsvpPlay": "开始阅读",
+      "rsvpPause": "暂停",
+      "rsvpReset": "重新开始",
+      "rsvpSpeed": "{n} 词/分钟",
+      "tags": "按语义推荐标签",
+      "tagsNone": "没有找到相似的已标记笔记",
+      "template": "模板",
+      "templateInsert": "插入模板",
+      "compareWith": "与笔记比较…",
+      "compare": "比较",
+      "compareSummary": "相似度 {pct}% · 仅此处：{a} · 仅彼处：{b}",
+      "dictate": "语音输入到笔记",
+      "dictateStop": "停止并插入",
+      "dictating": "正在识别…",
+      "site": "文件夹生成迷你网站（zip）"
+    },
+    "mind": {
+      "title": "思考",
+      "gaps": {
+        "title": "知识盲区",
+        "placeholder": "主题，例如“神经网络”",
+        "find": "缺少什么",
+        "covered": "涉及“{topic}”的笔记：{n}",
+        "notes": "笔记：{n}",
+        "dangling": "没有对应笔记的链接："
+      },
+      "contra": {
+        "title": "矛盾",
+        "run": "查找与过去笔记的矛盾",
+        "noClaims": "文本中没有可核对的陈述。",
+        "none": "未发现矛盾。",
+        "heuristic": "模型不可用：按特征（否定、数字）显示可能的矛盾。",
+        "now": "现在",
+        "before": "此前在",
+        "why": {
+          "negation": "其中一个陈述含否定",
+          "number": "同一主题下数字不同"
+        }
+      },
+      "review": {
+        "title": "评阅人",
+        "hint": "只提问题，不改写，保持你的风格。",
+        "general": "整体评阅",
+        "evidence": "证据",
+        "audience": "读者",
+        "logic": "逻辑",
+        "run": "提出问题",
+        "short": "文本太少，无法评阅。",
+        "empty": "没有产生问题。"
+      },
+      "conf": {
+        "title": "把握程度",
+        "hint": "文中标记：{70%: 陈述} 或 {70% 到 2026-12-01: 陈述}。到期时应用会请你核实。",
+        "claim": "陈述",
+        "add": "加入笔记",
+        "scan": "从所有笔记收集标记",
+        "added": "已添加标记。",
+        "scanned": "新标记：{n}",
+        "due": "该核实了：",
+        "came": "应验",
+        "notCame": "未应验",
+        "calibration": "已核实：{n}，布赖尔分数：{brier}（0 为完美，0.25 相当于“五五开”）。",
+        "over": "你对自己的把握高估了约 {n} 个百分点。",
+        "under": "你低估了自己约 {n} 个百分点。",
+        "fine": "校准接近理想。",
+        "bucket": "平均说 {said}%，实际应验 {was}%（{n}）"
+      },
+      "author": {
+        "title": "思想的作者",
+        "hint": "自己写的、粘贴的还是 AI 的——依据应用在粘贴和 AI 操作时看到的内容。",
+        "run": "显示段落来源",
+        "own": "自己",
+        "copied": "粘贴",
+        "ai": "AI"
+      },
+      "traces": {
+        "title": "决策痕迹",
+        "hint": "记住决策的背景；半年后应用会问你当初是否正确。",
+        "reason": "为何如此决定（可选）",
+        "save": "记住决策",
+        "saved": "决策已连同背景保存。",
+        "track": "在已回顾的决策中你有 {score}% 是正确的（{n}）。",
+        "because": "原因",
+        "ask": "你当初对了吗？",
+        "note": "结果如何（可选）",
+        "right": "对",
+        "partly": "部分",
+        "wrong": "错",
+        "waiting": "待回顾：{n}"
+      }
+    },
+    "photo": {
+      "title": "照片 → 任务",
+      "hint": "白板或笔记本的照片会变成带清单的笔记，以及链接到原图的任务。手写识别不够精确，请检查清单。",
+      "createTasks": "创建任务",
+      "pick": "选择照片",
+      "busy": "识别中…",
+      "result": "条目：{items}，已创建任务：{tasks}，识别置信度：{conf}%",
+      "open": "打开笔记"
+    },
+    "speak": {
+      "title": "收听笔记",
+      "noProfiles": "没有声音档案：请在“配音”部分创建一个（你的声音样本）。",
+      "run": "朗读",
+      "estimate": "约 {min} 分钟语音",
+      "save": "保存音频"
+    }
   },
   "player": {
     "play": "播放",
@@ -1221,6 +1940,67 @@
     "tab_catalog": "目录",
     "tab_library": "我的列表",
     "tab_stats": "统计",
+    "tab_downloads": "下载",
+    "dlLoading": "正在读取下载列表…",
+    "dlEmpty": "暂无下载：打开一部电影并在播放器中开始下载发布版本",
+    "dlDownloading": "正在下载",
+    "dlPaused": "已停止",
+    "dlDone": "已下载",
+    "dlStop": "停止",
+    "dlResume": "继续",
+    "dlDelete": "删除",
+    "dlDeleteHint": "停止下载并从磁盘删除已下载的文件",
+    "dlCleanup": "释放空间",
+    "dlKeep": "保留",
+    "dlKeepDefault": "观看后保留下载内容",
+    "dlKeepHint": "取消勾选将删除已完成的发布版本（释放空间）",
+    "dlKeepAfter": "观看后保留已下载的种子",
+    "dlKeepAfterHint": "取消勾选后，已完成的发布版本将连同其文件一起删除",
+    "dlPosition": "从 {time} 继续",
+    "dlContinue": "继续观看",
+    "dlContinueFrom": "从 {time} 继续",
+    "dlRestored": "已恢复下载：{title}",
+    "dlStopped": "下载已停止——文件保留在磁盘上",
+    "dlBadge": "下载中：{percent}% · {speed}",
+    "playerSeekLimit": "已下载到 {time}——随着下载继续才能跳转到更后的位置",
+    "playerExactSeek": "无法确认精确的起始秒——将从请求的秒数开始转码，否则音频会不同步",
+    "playerBack10": "后退 10 秒",
+    "playerFwd10": "前进 10 秒",
+    "playerMute": "声音 (M)",
+    "playerVolume": "音量",
+    "playerSettings": "播放器设置",
+    "playerPip": "画中画",
+    "playerPipOn": "播放器处于画中画模式",
+    "playerFullscreen": "全屏 (F)",
+    "playerFit": "画面大小与缩放",
+    "playerZoom": "缩放",
+    "playerZoomCustom": "自定义缩放（50–400%）",
+    "playerZoomReset": "重置",
+    "fit_fit": "适应屏幕",
+    "fit_cover": "填充（裁剪）",
+    "fit_width": "适应宽度",
+    "fit_height": "适应高度",
+    "fitPanHint": "已放大——用鼠标拖动平移",
+    "playerFailed": "流未能打开",
+    "playerRetry": "重新创建流",
+    "playerRecreated": "流已重新创建",
+    "playerFallbackRemux": "直接播放失败——正在即时将流重新封装为 MP4",
+    "playerFallbackTranscode": "浏览器无法解码此编码——正在即时转码视频（音频和画面可能延迟）",
+    "playerRemuxHint": "文件正在即时封装为 MP4：浏览器无法读取 MKV/AC3，因此音频会重新编码为 AAC",
+    "playerTranscodeHint": "视频正在即时转码——启动需要几秒钟",
+    "playerNeedsFfmpeg": "该文件为 MKV：浏览器无法播放，且未找到 FFmpeg。请将 ffmpeg.exe 和 ffprobe.exe 放入 storage/ffmpeg",
+    "ffmpegReady": "FFmpeg：{version} · {path}",
+    "ffmpegMissingPath": "未找到 FFmpeg：请将 ffmpeg.exe 和 ffprobe.exe 放入 {dir}（或在“转换器”页面安装）",
+    "ffmpegRecheck": "重新检查",
+    "tracksFfmpeg": "没有 FFmpeg 就无法选择轨道——视频将按原样播放",
+    "tracksProbeFailed": "无法读取轨道：{message}",
+    "subtitlesOff": "关闭",
+    "trackerResolution": "分辨率",
+    "trackerResolutionAll": "任意",
+    "trackerSeeds": "做种数",
+    "trackerSeedsAny": "任意",
+    "trackerSeedsMin": "{n}+",
+    "trackerShown": "显示 {shown} / {total}",
     "tab_overview": "概览",
     "tab_cast": "演职人员",
     "tab_gallery": "图库",
@@ -1264,7 +2044,6 @@
     "magnet": "磁力链接",
     "openSource": "打开",
     "openTorrentFile": "打开 .torrent 文件",
-    "torrentNotice": "请只打开您有权使用的内容（公有领域、您自己的文件等）。本应用不会搜索种子。",
     "torrentConnecting": "正在连接节点…",
     "torrentNoEngine": "种子引擎不可用",
     "torrentEngineHint": "缺少 webtorrent 包——请安装依赖并重启应用。",
@@ -1292,6 +2071,80 @@
     "nextImage": "下一张",
     "photoOf": "{i} / {n}",
     "providersMore": "另有 {n} 个",
+    "tracker": "论坛 Tracker",
+    "trackerSearch": "搜索发布版本",
+    "trackerSearching": "正在搜索论坛…",
+    "trackerQuery": "搜索关键词",
+    "trackerFind": "搜索",
+    "trackerEmpty": "未找到任何内容",
+    "trackerOpen": "打开",
+    "trackerFound": "找到的发布版本：{count}",
+    "trackerCached": "已缓存",
+    "trackerDisabled": "论坛搜索已在设置中禁用",
+    "trackerNoCreds": "请输入论坛的用户名和密码",
+    "trackerLoginFailed": "论坛拒绝了用户名或密码",
+    "trackerCaptcha": "论坛要求验证码：请在浏览器中登录该网站后重试",
+    "trackerSession": "论坛会话已过期——请重新登录",
+    "trackerParse": "无法解析论坛页面（页面结构已变化）",
+    "trackerNetwork": "无法连接论坛：请检查网络或代理",
+    "trackerBadQuery": "关键词为空或过长",
+    "trackerBadRelease": "无效的发布版本",
+    "trackerNoTorrentFile": "论坛未返回 .torrent（需要有权限的账号）",
+    "trackerLogin": "用户名",
+    "trackerPassword": "密码",
+    "trackerSaveCreds": "保存并登录",
+    "trackerCredsHint": "密码保存在应用的加密机密存储中，而不是浏览器里。",
+    "trackerSessionOn": "已登录",
+    "trackerSessionOff": "未登录",
+    "seekTo": "跳转到",
+    "seekGo": "前往",
+    "tracksUnavailable": "未安装 FFmpeg：无法选择轨道",
+    "trackerCf": "论坛返回了 Cloudflare 验证页面（“Just a moment…”），而非搜索结果",
+    "trackerCfHint": "解决办法：点击“重新通过 Cloudflare 验证”（或“登录论坛”）——应用窗口使用与搜索相同的 IP 和 User-Agent 通过验证。该窗口仅存在于应用中；在浏览器里请将 Cookie 复制到下方的“浏览器 Cookie”区域。",
+    "trackerDetails": "论坛响应",
+    "trackerLoginForm": "登录表单",
+    "trackerCookiesBtn": "浏览器 Cookie",
+    "trackerCookiesHave": "会话 Cookie",
+    "trackerCookiesApply": "应用 Cookie",
+    "trackerCookiesHint": "在浏览器中：F12 → Network → 任意发往论坛的请求 → Request Headers → Cookie。必须包含 cf_clearance 和 bb_data。document.cookie 无效：它们都是 HttpOnly。",
+    "trackerCookiesSaved": "已保存 Cookie：{count}",
+    "trackerLoginWindow": "登录论坛",
+    "trackerWindowNoBridge": "登录窗口仅在 MoonApp 应用中可用（在浏览器中请使用“浏览器 Cookie”）",
+    "trackerWindowFailed": "无法打开登录窗口",
+    "trackerWinLoggedIn": "已登录，已获取 Cookie",
+    "trackerWinClosed": "窗口已关闭，Cookie 已保存",
+    "trackerCheck": "检查",
+    "trackerProbeOk": "论坛响应正常",
+    "trackerProbeCf": "论坛返回了 Cloudflare 验证——请通过应用窗口登录",
+    "trackerProbeGuest": "论坛要求您登录",
+    "trackerDirect": "不使用代理",
+    "trackerNeedLogin": "要查找“{{q}}”的发布版本，请先登录：使用上方的“登录论坛”按钮",
+    "trackerCookiesFromBrowser": "从浏览器获取",
+    "trackerCookiesFromBrowserHint": "如果您在 Firefox 或 127 之前版本的 Chrome/Edge 中已登录论坛，则可使用：Chrome/Edge 127+ 使用 app-bound（v20）加密 Cookie，不向其他程序开放。",
+    "trackerCookiesNotFound": "在浏览器中未找到论坛 Cookie——请查看下方的检查清单",
+    "trackerCookiesSource": "来源",
+    "trackerProbesTitle": "检查内容",
+    "trackerCookiesManual": "手动粘贴",
+    "trackerLogout": "退出登录",
+    "trackerLogoutDone": "论坛会话已清除——请重新登录",
+    "trackerWindowNeedsApp": "登录窗口仅在 MoonApp 应用中可用：当前界面是在浏览器中打开的",
+    "trackerWindowNeedsAppHow": "登录窗口（应用内置的 Chromium）是通过 Cloudflare 验证的唯一途径。请运行应用（npm start 或已打包的 MoonApp），并在其中点击“登录论坛”。在浏览器里只能手动粘贴 Cookie——下方面板已展开。",
+    "trackerCookiesPaste": "从剪贴板粘贴",
+    "trackerCookiesPasteEmpty": "剪贴板中没有 Cookie 字符串——请先从开发者工具中复制",
+    "trackerCookiesPasteDenied": "浏览器阻止了剪贴板访问——请手动将字符串粘贴到输入框（Ctrl+V）",
+    "trackerCookiesKeys": "关键 Cookie：cf_clearance {cf}，bb_data {bb}",
+    "trackerBadgeAppBound": "app-bound：仅浏览器可读取",
+    "trackerBadgeLocked": "数据库被占用：请关闭浏览器后重试",
+    "trackerWinNoCookies": "登录未完成：未出现任何论坛 Cookie。很可能是 Cloudflare 拦截了页面——请确认应用使用与浏览器相同的代理后重试。",
+    "trackerWinNoLogin": "已收到 Cookie 但未登录（缺少 bb_data）：请在该窗口完成登录——输入用户名和密码，并等待主页加载",
+    "trackerLoginAuto": "已登录（使用设置中的用户名和密码）",
+    "trackerWinCfOnly": "已通过 Cloudflare 验证但尚未登录：请在登录窗口中输入用户名和密码——窗口会自动关闭",
+    "trackerCfWindow": "重新通过 Cloudflare 验证",
+    "trackerPreset": "Tracker",
+    "trackerPreset_rutracker": "RuTracker（需要登录）",
+    "trackerPreset_rutor": "RuTor（无需登录）",
+    "trackerPresetSwitched": "已切换 Tracker",
+    "trackerNoLoginNeeded": "此 Tracker 无需登录：搜索和 .torrent 文件可匿名使用",
     "tab_bookmarks": "收藏夹",
     "bookmarksAdd": "加入收藏夹",
     "bookmarksAddedCount": "已在收藏夹中 ({n})",
@@ -1327,10 +2180,6 @@
     "keyConfigured": "已设置密钥",
     "keyMissing": "未设置密钥"
   },
-  "_meta": {
-    "code": "zh",
-    "native": "中文"
-  },
   "videoSection": {
     "videoQuality": "默认最高画质",
     "videoQualityHint": "新下载默认选中的最大视频高度（best = 不限制）",
@@ -1362,9 +2211,13 @@
     "favRemove": "从收藏移除",
     "copy": "复制",
     "copyName": "复制名称",
+    "copyOriginal": "复制原标题",
+    "copyMagnet": "复制磁力链接",
+    "copyValue": "复制值",
     "copyLink": "复制链接",
     "copyId": "复制 ID",
     "remove": "从目录移除",
+    "clear": "清空",
     "rename": "重命名",
     "pin": "置顶",
     "unpin": "取消置顶",
@@ -1373,7 +2226,6 @@
     "newFolder": "新建文件夹",
     "select": "选择",
     "paste": "粘贴并打开",
-    "clear": "清空",
     "exportMd": "导出为 Markdown",
     "delFolder": "删除文件夹",
     "copyAuthor": "复制作者",
@@ -1632,11 +2484,11 @@
       "device": "PyTorch 版本",
       "deviceCuda": "CUDA 12.8（NVIDIA）",
       "deviceCudaHint": "速度快：GTX 16xx / RTX 20xx 及更新的 NVIDIA 显卡",
-      "deviceCpu": "CPU（无显卡）",
-      "deviceCpuHint": "较慢，但无需 NVIDIA 显卡",
       "deviceCudaSeparate": "这是独立的 PyTorch 运行时（pip，CUDA 12.8）——与放大功能的 GPU 包（ONNX Runtime/TensorRT，CUDA 12.9）或录音转写中 whisper 的 CUDA 版本（CUDA 11.8/12.4）是物理上不同的文件。三者无法合并：三个不同引擎，三个不同 CUDA 版本，首次使用时下载一次。",
       "upscaleCudaFound": "状态：放大功能的 GPU 包已安装（这次下载仍然需要——运行时不同）",
       "upscaleCudaMissing": "状态：放大功能的 GPU 包尚未安装",
+      "deviceCpu": "CPU（无显卡）",
+      "deviceCpuHint": "较慢，但无需 NVIDIA 显卡",
       "recommended": "推荐",
       "gpu": "检测到显卡：{name}",
       "gpuNone": "未检测到 NVIDIA 显卡，可使用 CPU 版本",
@@ -1689,7 +2541,12 @@
       "errNetwork": "无法访问软件包服务器：请检查网络或代理"
     },
     "yoficate": "ё 字母还原",
-    "markStress": "重音标记（RUAccent）"
+    "markStress": "重音标记（RUAccent）",
+    "llamaDesc": "内置 llama.cpp：支持俄语、声音克隆，适配任意 GPU（Vulkan）。",
+    "noPython": "无 Python",
+    "defaultPreset": "我的预设",
+    "fmtM4b": "M4B（章节）",
+    "fmtMp3": "MP3（章节）"
   },
   "lecture": {
     "defaultTitle": "讲座",
@@ -2034,7 +2891,73 @@
     "modelSaved": "已保存模型：{model}",
     "fixModel": "修正模型",
     "tabLecture": "课程",
-    "tabQuickNote": "快速笔记"
+    "tabQuickNote": "快速笔记",
+    "askPanel": {
+      "title": "就录音提问",
+      "placeholder": "你想了解讲座的哪一部分？",
+      "ask": "提问",
+      "thinking": "查找中…",
+      "noMatch": "转写文本中没有匹配的位置。",
+      "sources": "来源片段",
+      "play": "播放",
+      "btn": "就录音提问",
+      "btnHint": "向模型询问讲座内容，附带时间戳",
+      "missed": "我错过了第",
+      "min": "分钟",
+      "catchUp": "讲了什么？",
+      "missedEmpty": "该时间段没有转写文本。",
+      "chapters": "讲座章节",
+      "chaptersNone": "转写内容还不足以划分章节"
+    },
+    "clean": {
+      "title": "录音降噪",
+      "level": "强度",
+      "light": "轻度",
+      "medium": "中度",
+      "strong": "强力",
+      "normalize": "标准化音量",
+      "pick": "选择文件…",
+      "working": "处理中…",
+      "done": "完成：已保存降噪后的录音",
+      "hint": "通过 ffmpeg 去除低频轰鸣并进行频谱降噪。强力降噪可能让人声略显发闷。",
+      "noFfmpeg": "未找到 ffmpeg — 请在“转换器”页面安装"
+    },
+    "exam": {
+      "title": "讲座考试",
+      "build": "生成卡片和测验",
+      "building": "生成中…",
+      "withConspectus": "及笔记",
+      "built": "完成：{cards} 张卡片，{quiz} 道测验题。",
+      "stats": "卡片：{total}，待复习：{due}，新卡：{fresh}",
+      "schedule": "复习计划",
+      "show": "显示答案",
+      "grade1": "重来",
+      "grade2": "困难",
+      "grade3": "良好",
+      "grade4": "简单",
+      "minutes": "几分钟后",
+      "days": "{n} 天",
+      "noDue": "今天没有要复习的内容。",
+      "quiz": "测验",
+      "check": "检查",
+      "score": "结果：{total} 题答对 {correct}（{percent}%）",
+      "weak": "薄弱点"
+    },
+    "vault": {
+      "title": "语音搜索",
+      "placeholder": "例如：我在哪里说过论文截止日期",
+      "search": "搜索",
+      "empty": "未找到内容。",
+      "play": "播放",
+      "stop": "停止",
+      "noAudio": "未保存音频，仅有文字。",
+      "montage": "生成剪辑",
+      "montageBusy": "剪辑中…",
+      "montageHint": "把找到的讲座片段拼成一个文件。",
+      "montageEmpty": "没有可剪辑的内容。",
+      "montageTotal": "剪辑：{n} 段，{sec} 秒",
+      "montageDownload": "下载 mp3"
+    }
   },
   "bypass": {
     "netEyebrow": "网络诊断",
@@ -2100,11 +3023,6 @@
     "legendErr": "红色 — 不可用",
     "legendIdle": "灰色 — 未检查",
     "serviceWarn": "已安装 zapret 服务（服务模式）。服务处于活动状态时无法进行配置检查——请先删除服务（“删除服务”）再检查。",
-    "mode": "模式",
-    "modeProcess": "进程（winws.exe）",
-    "modeService": "Windows 服务",
-    "modeServiceHint": "winws 作为 Windows 服务运行——没有控制台窗口。“启动”会为所选配置安装服务（相当于 service.bat → 1. Install Service）；“停止”会删除它（→ 2. Remove Services）。",
-    "modeProcessHint": "winws 通过引擎的 .bat 以管理员进程运行：会出现一个控制台窗口，并在绕过启用期间一直留在任务栏中——无法单独关闭。",
     "checkNoResults": "检查未返回结果",
     "uacCancelled": "管理员权限请求已取消",
     "consoleError": "错误",
@@ -2112,10 +3030,10 @@
     "stopCheck": "停止检查",
     "checkHint": "以非交互方式运行 utils/test zapret.ps1（service.bat → Run Tests）：对所有配置执行标准测试。",
     "fastMode": "快速模式",
-    "fastModeHint": "短超时（curl 2 秒，16 个并行目标）且无交互提问",
+    "fastModeHint": "超时较短（curl 2 秒，16 个并行目标），无交互提问",
     "checkServiceBlocked": "已安装 Windows 服务“zapret”——请先删除（“删除服务”）再检查。",
     "checkRunningChip": "正在检查配置",
-    "serviceDiagnostics": "引擎诊断（service.bat）",
+    "serviceDiagnostics": "引擎诊断 (service.bat)",
     "fixUserLists": "修复域名列表",
     "console": "控制台",
     "consoleIdle": "点击检查按钮，输出将显示在此处",
@@ -2130,39 +3048,96 @@
       "err": "不可用",
       "idle": "未检查"
     },
-    "logDiagStart": "app：快速可用性矩阵（HTTP/STUN）…",
-    "logDiagDone": "app：{ok}/{total} 可用，平均 {avg} 毫秒",
-    "logTuneStart": "app：正在尝试策略（启动 → 测试 → 停止）…",
-    "logTuneBest": "app：最佳 — {best}",
-    "logError": "app：错误 — {error}",
+    "logDiagStart": "应用：快速可用性矩阵（HTTP/STUN）…",
+    "logDiagDone": "应用：{ok}/{total} 可达，平均 {avg} 毫秒",
+    "logTuneStart": "应用：正在尝试策略（启动 → 测试 → 停止）…",
+    "logTuneBest": "应用：最佳——{best}",
+    "logError": "应用：错误——{error}",
     "active": "已启用 · 策略 {strategy}",
     "stopped": "已停止",
     "pidMem": "winws PID {pid} · 内存 {mem} MB",
-    "starting": "启动中…",
+    "noProcess": "winws 进程未运行",
+    "serviceRunning": "zapret 服务正在运行",
+    "serviceInstalled": "zapret 服务已安装",
+    "processMode": "进程模式",
     "start": "启动",
+    "starting": "启动中…",
     "stop": "停止",
+    "engineNotFound": "未找到 zapret 引擎。请将 zapret-discord-youtube 放入 {dir} 或在设置中指定路径。",
+    "strategies": "DPI 绕过策略",
+    "noStrategies": "未找到策略（general*.bat）",
+    "currentChip": "当前",
+    "mode": "模式",
+    "modeProcess": "进程（winws.exe）",
+    "modeService": "Windows 服务",
+    "modeServiceHint": "winws 作为 Windows 服务运行——没有控制台窗口。“启动”会为所选配置安装服务（相当于 service.bat → 1. Install Service）；“停止”会删除它（→ 2. Remove Services）。",
+    "modeProcessHint": "winws 通过引擎的 .bat 以管理员进程运行：会出现一个控制台窗口，并在绕过启用期间一直留在任务栏中——无法单独关闭。",
     "serviceInstall": "安装服务",
     "serviceRemove": "删除服务",
     "serviceInstallHint": "为所选配置安装 Windows 服务（开机自启）",
     "checkOne": "检查配置",
     "checkOneHint": "仅对所选配置运行测试",
+    "customArgs": "自定义 winws.exe 参数",
+    "customArgsHint": "--filter-tcp 443 --dpi-desync fake,disorder2 --dpi-desync-fooling md5sig --dpi-desync-fake-tls bin/tls_clienthello_www_google_com.bin",
+    "reloadStrategies": "重新加载",
+    "saveProfile": "保存配置",
+    "diagnostics": "可用性诊断",
+    "runTest": "运行测试",
+    "testing": "正在测试…",
+    "autoTune": "自动查找可用策略",
+    "tuning": "正在尝试策略…",
+    "diagAllOk": "全部已解除封锁 · 平均延迟 {avg} 毫秒",
+    "diagPartial": "可用 {ok}/{total} · 平均延迟 {avg} 毫秒",
+    "drop": "丢弃",
+    "tuneProgress": "正在遍历：启动 → 测试 YouTube/Discord → 停止，逐个策略…",
+    "tuneOk": "正常 · {avg} 毫秒",
+    "customTargetPh": "https://example.com/check",
+    "addTarget": "添加目标",
+    "lists": "域名列表 (lists/)",
+    "filterPh": "筛选行…",
+    "addCurrentSite": "添加 youtube.com",
+    "saveList": "保存列表",
+    "lines": "行",
+    "userDomains": "用户域名（同步到 list-*-user.txt）",
+    "domainPh": "example.com",
+    "include": "解除封锁",
+    "exclude": "排除",
+    "noDomains": "列表为空",
+    "utilities": "实用工具",
+    "gameFilter": "GameFilter",
+    "flushDns": "刷新 DNS (ipconfig /flushdns)",
+    "clearDiscord": "清除 Discord 缓存",
+    "fakePayloads": "伪造载荷 (bin/*.bin)",
+    "noPayloads": "未找到 bin/*.bin",
+    "winwsLog": "winws 日志",
+    "logEmpty": "日志为空",
     "engineTitle": "zapret 引擎",
+    "engineInstalled": "已安装",
     "engineNotInstalled": "未安装",
     "engineLatest": "GitHub 上",
+    "engineDirHint": "点击“下载”——发布包会自动解压",
     "updateAvailable": "有可用更新",
     "upToDate": "已是最新",
-    "releaseNotes": "更新内容",
-    "checking": "检查中…",
-    "checkUpdates": "检查更新",
-    "installing": "安装中…",
-    "download": "从 GitHub 下载",
     "updateTo": "更新到 {tag}",
     "reinstall": "重新安装",
+    "download": "从 GitHub 下载",
+    "installing": "安装中…",
+    "checking": "检查中…",
+    "checkUpdates": "检查更新",
+    "releases": "发布版本",
     "installDone": "完成：zapret {tag}",
-    "keptLists": "你的域名列表和 GameFilter 设置已保留",
     "installError": "安装失败",
-    "strategies": "DPI 绕过策略",
-    "noStrategies": "未找到策略（general*.bat）",
+    "keptLists": "你的域名列表和 GameFilter 设置已保留",
+    "releaseNotes": "更新内容",
+    "phase.resolve": "正在获取最新版本…",
+    "phase.stop": "正在停止引擎…",
+    "phase.download": "正在从 GitHub 下载压缩包…",
+    "phase.extract": "正在解压…",
+    "phase.install": "正在安装文件…",
+    "configsCount": "配置",
+    "searchConfigPh": "搜索配置（alt13、fake、discord…）",
+    "clear": "清除",
+    "groupAll": "全部",
     "group": {
       "base": "基础",
       "alt": "ALT",
@@ -2170,14 +3145,38 @@
       "simple-fake": "SIMPLE FAKE",
       "exp": "EXP"
     },
-    "currentChip": "当前",
-    "phase.resolve": "正在获取最新版本…",
-    "phase.stop": "正在停止引擎…",
-    "phase.download": "正在从 GitHub 下载压缩包…",
-    "phase.extract": "正在解压…",
-    "phase.install": "正在安装文件…",
-    "engineNotFound": "未找到 zapret 引擎。请将 zapret-discord-youtube 放入 {dir} 或在设置中指定路径。",
-    "launchNote": "配置通过引擎自带的 .bat 启动（等同于手动双击）：会出现一个最小化的窗口「zapret: <配置>」——这是正常的，绕过开启时请勿关闭它。"
+    "nothingFound": "未找到任何内容",
+    "argsCount": "{n} 个 winws 参数",
+    "copyCmd": "复制命令",
+    "copied": "已复制",
+    "showAllBat": "所有 .bat 文件（{n}）",
+    "hideAllBat": "隐藏 .bat 列表",
+    "customSuffix": "加上你的参数：",
+    "gameFilterRestart": "GameFilter 的更改将在重启绕过功能后生效。",
+    "restartBypass": "重启",
+    "launchNote": "配置通过引擎自带的 .bat 启动（等同于手动双击）：会出现一个最小化的窗口「zapret: <配置>」——这是正常的，绕过开启时请勿关闭它。",
+    "insights": {
+      "eyebrow": "诊断",
+      "title": "Wi-Fi、DNS 与泄漏",
+      "wifi": "Wi-Fi 信道",
+      "dns": "DNS 服务器",
+      "webrtc": "检查 WebRTC",
+      "checking": "检查中…",
+      "wifiFail": "无法获取网络列表",
+      "recommended": "推荐的 2.4 GHz 信道：{ch}",
+      "noBand": "未发现 2.4 GHz 网络",
+      "dnsNone": "未检测到 DNS 服务器",
+      "dnsKind_private": "本地（路由器）",
+      "dnsKind_loopback": "本机",
+      "dnsKind_public_known": "公共",
+      "dnsKind_public_other": "公共（不常见）",
+      "dnsHint": "如果已启用代理或 VPN，但这里是运营商地址，DNS 请求可能绕过了它",
+      "iceNone": "WebRTC 未暴露任何地址",
+      "iceHint": "(host) 为本地地址，(srflx) 为网站可见的外网 IP。若与代理/VPN 的 IP 不同，即为泄漏",
+      "iceSafe": "WebRTC 未暴露公网地址",
+      "iceLeak": "可能泄漏：WebRTC 暴露了 {ip}，与应用地址不同",
+      "iceOk": "仅可见与应用地址一致的地址"
+    }
   },
   "up": {
     "eyebrow": "媒体",
@@ -2476,10 +3475,6 @@
     "pickOnlyReady": "仅已下载",
     "pickOnlyTrt": "有引擎",
     "pickCatalog": "模型目录…",
-    "precision": "精度",
-    "precisionHint": "模型按发布时的精度运行（通常为 FP32）。TensorRT 后端会为你的显卡编译计算图并支持 FP16 — 这就是 NVIDIA 的精度选项。AMD、Intel 和 CPU 使用常规 ONNX 路径。不支持 FP8/INT8：它们需要单独的校准。",
-    "precisionOnnx": "与模型一致（FP32）",
-    "precisionTrt": "TensorRT FP16（NVIDIA 显卡）",
     "packTitle": "GPU 加速包",
     "packHint": "为 NVIDIA 显卡单独下载的 CUDA/TensorRT 版 ONNX 运行库：不安装也可使用 DirectML/CPU 常规路径。",
     "packOn": "已安装（{v}）",
@@ -2492,7 +3487,11 @@
     "packDownload": "下载中",
     "packUnpack": "解压中",
     "packDone": "完成",
-    "packFailed": "失败"
+    "packFailed": "失败",
+    "precision": "精度",
+    "precisionHint": "模型按发布时的精度运行（通常为 FP32）。TensorRT 后端会为你的显卡编译计算图并支持 FP16 — 这就是 NVIDIA 的精度选项。AMD、Intel 和 CPU 使用常规 ONNX 路径。不支持 FP8/INT8：它们需要单独的校准。",
+    "precisionOnnx": "与模型一致（FP32）",
+    "precisionTrt": "TensorRT FP16（NVIDIA 显卡）"
   },
   "upSettings": {
     "model": "默认模型",
@@ -2517,6 +3516,25 @@
     "vcrfHint": "0–51，越低越好",
     "audio": "音频处理",
     "audioHint": "copy — 保留原轨，aac — 重新编码"
+  },
+  "taskmgr": {
+    "eyebrow": "后台任务",
+    "title": "任务管理器",
+    "empty": "当前没有正在运行的任务",
+    "active": "进行中",
+    "recent": "最近",
+    "cancel": "停止",
+    "pause": "暂停",
+    "resume": "继续",
+    "done": "完成",
+    "engine": {
+      "compressor": "视频压缩",
+      "convert": "转换",
+      "upscale": "超分辨率",
+      "tts": "语音",
+      "lecture": "讲座",
+      "archive": "网页归档"
+    }
   },
   "welcome": {
     "title": "欢迎使用 MoonApp",
@@ -2555,12 +3573,2408 @@
     "f_music_hint": "播放器与 yt-dlp 下载",
     "f_aichat": "AI 聊天",
     "f_aichat_hint": "通过 Ollama 使用本地模型",
-    "toolbarTitle": "你好！"
+    "toolbarTitle": "你好！",
+    "setup": {
+      "language": "语言",
+      "theme": "主题",
+      "accent": "强调色",
+      "contrast": "高对比度",
+      "reduceMotion": "关闭动画",
+      "theme_dark": "深色",
+      "theme_midnight": "午夜",
+      "theme_light": "浅色",
+      "theme_sand": "沙色",
+      "theme_oled": "OLED",
+      "accent_amber": "琥珀",
+      "accent_violet": "紫罗兰",
+      "accent_teal": "青绿",
+      "accent_coral": "珊瑚",
+      "accent_sky": "天蓝",
+      "accent_rose": "玫瑰"
+    }
   },
   "tuning": {
-    "title": "PC 调优"
+    "eyebrow": "优化",
+    "title": "PC 调优",
+    "loading": "加载中…",
+    "windowsOnly": "此页面仅适用于 Windows。",
+    "adminYes": "管理员权限",
+    "adminNo": "无管理员权限",
+    "adminNote": "应用以非管理员身份运行：HKLM 更改和系统命令将通过一次 UAC 提示执行。",
+    "statApplied": "已启用的优化项",
+    "statByApp": "由应用应用",
+    "statBackups": "备份",
+    "tab": {
+      "windows": "Windows",
+      "scheduler": "调度器",
+      "usb": "USB",
+      "network": "网络",
+      "drivers": "驱动程序",
+      "bios": "BIOS",
+      "bench": "基准测试",
+      "checklist": "检查清单",
+      "backups": "备份与回滚",
+      "privacy": "隐私",
+      "debloat": "精简系统",
+      "wu-essential": "基础",
+      "wu-advanced": "高级",
+      "wu-prefs": "Windows 偏好",
+      "wu-tools": "工具",
+      "wu-apps": "应用"
+    },
+    "tabHint": {
+      "windows": "注册表和服务优化。所有更改均可回滚；应用前会先备份。",
+      "scheduler": "优先级、电源和计时器：更低延迟、更稳定的帧时间。",
+      "usb": "USB 节能设置以及用于分散外设的控制器分布图。",
+      "network": "网络延迟：Nagle 算法、限速、DNS 和网卡节能。",
+      "drivers": "MSI 中断模式、驱动策略及驱动清单。",
+      "privacy": "清除运行中系统的痕迹：历史记录、最近文件、缓存、浏览器、USB 历史和日志。",
+      "debloat": "移除预装应用、额外的界面调整以及快速的 Windows 修复工具。",
+      "wu-essential": "winutil 基础优化：遥测、服务、位置、消费者功能等。",
+      "wu-advanced": "winutil 高级优化。可能移除 Windows 组件或更改网络——请阅读说明。",
+      "wu-prefs": "Windows 外观与行为：主题、资源管理器、任务栏、睡眠、窗口贴靠等。",
+      "wu-tools": "winutil 一次性操作：DNS、更新、修复、Windows 功能、传统控制面板。",
+      "wu-apps": "使用 winget 安装、更新和卸载程序——目录来自 winutil。"
+    },
+    "risk0": "安全",
+    "risk1": "谨慎",
+    "risk2": "有风险",
+    "statePartial": "部分",
+    "stateNa": "不可用",
+    "byApp": "由此应用应用——回滚将恢复之前的值",
+    "needsReboot": "需要重启",
+    "refresh": "刷新",
+    "unknown": "未知",
+    "yes": "是",
+    "no": "否",
+    "delete": "删除",
+    "close": "关闭",
+    "done": "完成。",
+    "error": "错误",
+    "failedSome": "并非所有更改都已应用（{n}）：{first}",
+    "uacCancelled": "管理员提示已被拒绝。",
+    "rebootNeeded": "需要重启才能使更改生效。",
+    "confirmRisk": "这些优化会降低安全性或稳定性：{list}。是否继续？",
+    "applied": "已应用的更改：{n}。",
+    "pending": "待应用的更改：{n}",
+    "discard": "放弃选择",
+    "apply": "应用",
+    "working": "处理中…",
+    "regButton": "预览 .reg",
+    "regPreview": "reg 文件",
+    "regDownload": "下载 .reg",
+    "procTitle": "进程优先级与核心",
+    "procHint": "实时更改在进程退出前有效。“记住”会将优先级保存到 Image File Execution Options，使其在每次启动时生效（可用右侧按钮移除）。",
+    "procApplied": "进程设置已更改。",
+    "procApply": "立即应用",
+    "ifeoAdd": "记住优先级",
+    "ifeoSaved": "已为所有启动保存优先级。",
+    "ifeoRemoved": "规则已移除。",
+    "ifeoRules": "永久规则",
+    "su": {
+      "title": "启动项",
+      "hint": "Windows 自行启动的所有项目：Run 注册表项、启动文件夹、登录/开机时的计划任务、服务以及隐藏位置（Winlogon、IFEO、AppInit、Active Setup、BootExecute）。通过任务管理器禁用是可逆的；删除的内容会进入下方的回收站。",
+      "search": "按名称、命令、发布者搜索…",
+      "scan": "扫描",
+      "scanning": "正在扫描…",
+      "shown": "显示 {n} / {total}",
+      "empty": "未找到任何内容。",
+      "onlyOn": "仅已启用",
+      "hideMs": "隐藏 Microsoft 组件",
+      "onlyHidden": "仅隐藏项",
+      "onlyFlagged": "仅可疑项",
+      "allKinds": "所有来源",
+      "hiddenBadge": "隐藏",
+      "running": "运行中",
+      "kind": {
+        "run": "注册表 · Run",
+        "runonce": "注册表 · RunOnce",
+        "policy": "注册表 · 策略 Run",
+        "legacy": "注册表 · Load/Run",
+        "folder": "启动文件夹",
+        "task": "任务计划程序",
+        "service": "服务",
+        "winlogon": "Winlogon",
+        "ifeo": "IFEO 劫持",
+        "appinit": "AppInit_DLLs",
+        "bootexec": "BootExecute",
+        "activesetup": "Active Setup"
+      },
+      "kindHint": {
+        "run": "用户登录时启动。在任务管理器中可见。",
+        "runonce": "在下次登录时运行一次，之后由 Windows 自动移除。任务管理器中不显示。",
+        "policy": "组策略：每次登录时运行。任务管理器中不显示。",
+        "legacy": "旧方式：Windows NT 下的 Load/Run 值。现代软件不再使用。",
+        "folder": "启动文件夹中的快捷方式和文件。",
+        "task": "在登录或开机时触发的计划任务。任务管理器中不显示。",
+        "service": "设置为自动启动（或已禁用）的 Windows 服务。任务管理器中不显示。",
+        "winlogon": "Winlogon 的值用于启动外壳和登录程序。篡改这里是恶意软件的经典手法。",
+        "ifeo": "Image File Execution Options：运行“调试器”来取代程序。极少是合法用途——可疑。",
+        "appinit": "注入到每个 GUI 进程的 DLL。除非为空，否则可疑。",
+        "bootexec": "在 Windows 启动之前运行的程序。默认项 (autochk) 已隐藏。",
+        "activesetup": "在每位新用户首次登录时运行一次的命令。"
+      },
+      "scope": {
+        "user": "当前用户",
+        "machine": "所有用户"
+      },
+      "flag": {
+        "missing": "找不到文件",
+        "unsigned": "未签名",
+        "badsig": "签名已损坏",
+        "untrusted": "签名不受信任",
+        "tempPath": "来自临时文件夹",
+        "encoded": "编码命令",
+        "script": "通过脚本宿主运行",
+        "modified": "已修改",
+        "injection": "劫持点"
+      },
+      "field": {
+        "command": "命令",
+        "file": "文件",
+        "company": "发布者",
+        "desc": "描述",
+        "sig": "签名",
+        "account": "账户",
+        "triggers": "触发器",
+        "location": "来源",
+        "scope": "范围",
+        "folderFile": "文件夹中的文件"
+      },
+      "trig": {
+        "logon": "用户登录",
+        "boot": "系统启动"
+      },
+      "sig": {
+        "Valid": "有效",
+        "NotSigned": "未签名",
+        "System": "Microsoft 系统文件",
+        "HashMismatch": "文件在签名后被更改",
+        "NotTrusted": "不受信任",
+        "UnknownError": "根证书不受信任"
+      },
+      "act": {
+        "enable": "启用",
+        "disable": "禁用",
+        "delete": "删除",
+        "reset": "重置为默认值",
+        "reveal": "显示文件",
+        "regedit": "在 regedit 中打开",
+        "svcMode": "启动类型",
+        "svc-auto": "自动",
+        "svc-delayed": "自动（延迟启动）",
+        "svc-manual": "手动",
+        "svc-disabled": "已禁用",
+        "details": "详情",
+        "close": "收起"
+      },
+      "confirmDelete": "删除“{name}”？可从启动项回收站中恢复。",
+      "confirmReset": "将“{name}”重置为 Windows 默认值？",
+      "done": "完成。",
+      "restored": "条目已恢复。",
+      "adminNote": "对于所有用户的条目、服务和 Windows 任务，Windows 会请求管理员权限。",
+      "trash": "启动项回收站",
+      "trashEmpty": "为空。你在此删除的内容都会出现在这个列表中。",
+      "trashRestore": "恢复",
+      "trashDrop": "永久清除",
+      "trashAt": "删除于 {when}",
+      "stat": {
+        "total": "总计",
+        "on": "已启用",
+        "hidden": "隐藏",
+        "flagged": "可疑"
+      }
+    },
+    "prio": {
+      "Idle": "低（Idle）",
+      "BelowNormal": "低于正常",
+      "Normal": "正常",
+      "AboveNormal": "高于正常",
+      "High": "高"
+    },
+    "usbTitle": "USB 控制器分布",
+    "usbHint": "尽量把鼠标、键盘和音频设备接到不同的控制器上。",
+    "usbEmpty": "未找到 USB 控制器。",
+    "driversTitle": "设备驱动程序",
+    "driversHint": "显示、网络、音频、USB 和存储控制器。PCI 设备会显示 MSI 模式。",
+    "openDevmgmt": "设备管理器",
+    "msiOn": "MSI 已开启",
+    "msiOff": "MSI 已关闭",
+    "biosFacts": "Windows 可见的信息",
+    "biosHint": "BIOS 设置无法在 Windows 中更改——下方是固件信息和检查清单。重启到 UEFI 会打开固件菜单。",
+    "biosUnavailable": "无法读取系统信息。",
+    "smtOn": "SMT/超线程已开启",
+    "smtOff": "SMT/超线程已关闭",
+    "uefiReboot": "重启到 UEFI",
+    "uefiConfirm": "电脑将在 20 秒后重启进入 UEFI 菜单。请保存您的工作。是否继续？",
+    "uefiScheduled": "将在 20 秒后重启。",
+    "uefiAbort": "取消重启",
+    "uefiAborted": "重启已取消。",
+    "fact": {
+      "board": "主板与 BIOS",
+      "cpu": "处理器",
+      "smt": "CPU 线程数",
+      "uefi": "UEFI 启动模式",
+      "secureBoot": "安全启动",
+      "tpm": "TPM",
+      "virt": "BIOS 中的虚拟化",
+      "ram": "内存（运行 / 标称）",
+      "gpu": "显卡",
+      "hags": "硬件加速 GPU 计划"
+    },
+    "verdict": {
+      "uefi": {
+        "good": "良好",
+        "warn": "需要 UEFI"
+      },
+      "virt": {
+        "good": "已关闭",
+        "warn": "可以关闭"
+      },
+      "ram": {
+        "good": "配置文件已启用",
+        "warn": "请启用 XMP/EXPO"
+      }
+    },
+    "benchTitle": "延迟测量",
+    "benchHint": "测量系统计时器分辨率、Sleep(1) 的实际时长以及 DPC/中断负载（约 10 秒）。请在优化前后各运行一次，并关闭占用资源的程序。",
+    "benchLabel": "测量名称（例如“优化前”）",
+    "benchRun": "运行测量",
+    "benchRunning": "正在测量…",
+    "benchRunCol": "测量",
+    "benchBase": "与此次测量比较",
+    "benchFailed": "测量失败。",
+    "benchDone": "测量已保存。",
+    "metric": {
+      "timerCur": "计时器（毫秒）",
+      "sleepAvg": "Sleep(1) 平均值（毫秒）",
+      "sleepP99": "Sleep(1) p99（毫秒）",
+      "sleepMax": "Sleep(1) 最大值（毫秒）",
+      "dpcAvg": "DPC，%",
+      "dpcMax": "DPC 最大值，%",
+      "intAvg": "中断，%",
+      "dpcRate": "每秒 DPC 数"
+    },
+    "mouseTitle": "鼠标回报率",
+    "mouseHint": "在区域上移动鼠标：将显示实际事件频率及其稳定性（σ）。",
+    "mouseReset": "重置",
+    "mousePad": "在此移动鼠标",
+    "checklistTitle": "手动步骤",
+    "checklistHint": "无法通过软件完成的事项指南：硬件、散热、外设、稳定性与维护。你的勾选会被保存。",
+    "openMsinfo": "系统信息 (IRQ)",
+    "openEvents": "事件查看器",
+    "section": {
+      "bios": "BIOS/UEFI 设置",
+      "physical": "物理配置",
+      "cooling": "散热",
+      "peripherals": "外设",
+      "stability": "稳定性与超频",
+      "install": "Windows 安装",
+      "maintenance": "维护"
+    },
+    "backupsTitle": "备份与回滚",
+    "backupsHint": "备份会保存每项优化之前的值。每次应用前会自动创建一个；恢复时会写回已保存的值。",
+    "backupLabel": "备份名称",
+    "backupCreate": "创建备份",
+    "backupCreated": "备份已创建。",
+    "backupManual": "手动备份",
+    "backupsEmpty": "暂无备份。",
+    "backupTweaks": "优化项：{n}",
+    "auto": "自动",
+    "restore": "恢复",
+    "restoreConfirm": "从“{label}”恢复设置？",
+    "restored": "设置已恢复。",
+    "rollbackAll": "全部回滚",
+    "rollbackConfirm": "回滚应用所做的全部优化（{n} 项）？",
+    "rolledBack": "应用所做的全部更改均已回滚。",
+    "restorePoint": "Windows 还原点",
+    "restorePointDone": "还原点已创建。",
+    "openRestore": "系统还原",
+    "historyTitle": "活动日志",
+    "historyEmpty": "暂无内容。",
+    "kind": {
+      "backup": "备份",
+      "restore": "恢复",
+      "apply": "已应用",
+      "revert": "回滚",
+      "restorePoint": "还原点",
+      "process": "进程",
+      "ifeo": "优先级",
+      "ifeoRemove": "规则已移除",
+      "tool": "工具"
+    },
+    "tw": {
+      "timer-res": {
+        "t": "全局计时器分辨率",
+        "d": "GlobalTimerResolutionRequests=1：高分辨率计时器请求对整个系统生效（Windows 11）。"
+      },
+      "fs-8dot3": {
+        "t": "禁用 8.3 文件名",
+        "d": "NtfsDisable8dot3NameCreation=1：NTFS 上创建文件更快。"
+      },
+      "fs-lastaccess": {
+        "t": "不更新上次访问时间",
+        "d": "NtfsDisableLastAccessUpdate：读取文件时减少磁盘写入。"
+      },
+      "fast-startup": {
+        "t": "禁用快速启动",
+        "d": "HiberbootEnabled=0：完整重载驱动，而非内核休眠。"
+      },
+      "gamedvr": {
+        "t": "禁用 Game DVR",
+        "d": "后台游戏录制和 Xbox Game Bar 将不再占用资源。"
+      },
+      "fso": {
+        "t": "禁用全屏优化",
+        "d": "游戏以原生独占全屏模式运行。"
+      },
+      "mouse-accel": {
+        "t": "禁用鼠标加速",
+        "d": "“提高指针精确度”将被关闭；重新登录后生效。"
+      },
+      "power-throttling": {
+        "t": "禁用电源节流",
+        "d": "PowerThrottlingOff=1：Windows 不再限制后台进程。"
+      },
+      "transparency": {
+        "t": "禁用透明效果",
+        "d": "降低 Windows 界面的 GPU 负载。"
+      },
+      "bg-apps": {
+        "t": "阻止后台应用",
+        "d": "应用商店应用不会在后台运行。"
+      },
+      "uac-always": {
+        "t": "UAC：始终通知",
+        "d": "在安全桌面上使用最高级别的用户账户控制。"
+      },
+      "telemetry": {
+        "t": "禁用遥测",
+        "d": "DiagTrack 和 dmwappushservice 被停止，数据收集降至最低。"
+      },
+      "sysmain": {
+        "t": "禁用 SysMain (Superfetch)",
+        "d": "适合 SSD：无后台预取。"
+      },
+      "winupdate": {
+        "t": "禁用 Windows 更新",
+        "d": "wuauserv 服务和自动更新策略将被禁用。系统将不再获得安全修复。"
+      },
+      "mitigations": {
+        "t": "禁用 Spectre/Meltdown 缓解措施",
+        "d": "FeatureSettingsOverride=3：速度略有提升，代价是 CPU 漏洞暴露。"
+      },
+      "prio-sep": {
+        "t": "Win32PrioritySeparation = 0x26",
+        "d": "短时间片并提升前台优先级：界面和游戏更灵敏。"
+      },
+      "mmcss": {
+        "t": "MMCSS 游戏优先级",
+        "d": "SystemResponsiveness=0，并提高 Games 任务的优先级。"
+      },
+      "power-plan": {
+        "t": "卓越性能电源计划",
+        "d": "创建并启用“卓越性能”方案；回滚会恢复之前的计划。"
+      },
+      "core-unpark": {
+        "t": "不停放核心",
+        "d": "最少活动核心 100%：无唤醒延迟。"
+      },
+      "cpu-min": {
+        "t": "处理器最小状态 100%",
+        "d": "频率固定；发热和功耗更高。"
+      },
+      "c-states": {
+        "t": "禁用 CPU 空闲状态 (C-states)",
+        "d": "IDLEDISABLE=1：核心永不休眠。发热大；不适用于笔记本。"
+      },
+      "platform-tick": {
+        "t": "使用平台计时而不启用动态计时",
+        "d": "bcdedit：useplatformtick 与 disabledynamictick，使计时器更稳定。"
+      },
+      "usb-suspend": {
+        "t": "禁用 USB 选择性暂停",
+        "d": "设备不会休眠，也不会延迟唤醒。"
+      },
+      "usb-device-pm": {
+        "t": "禁用 USB 设备节能",
+        "d": "对每个具备该设置的 USB 设备设置 EnhancedPowerManagementEnabled=0。"
+      },
+      "nagle": {
+        "t": "禁用 Nagle 算法",
+        "d": "在活动接口上设置 TcpAckFrequency=1 和 TCPNoDelay=1：降低网络游戏延迟。"
+      },
+      "net-throttling": {
+        "t": "禁用网络节流",
+        "d": "NetworkThrottlingIndex=0xFFFFFFFF：多媒体调度器不再限制数据包。"
+      },
+      "qos-reserve": {
+        "t": "释放 QoS 保留带宽",
+        "d": "NonBestEffortLimit=0：Windows 不再预留部分带宽。"
+      },
+      "dns-fast": {
+        "t": "Cloudflare DNS 1.1.1.1",
+        "d": "适用于活动的物理网卡。回滚会恢复自动 DNS。"
+      },
+      "nic-power": {
+        "t": "禁用网卡节能",
+        "d": "关闭节能以太网和绿色以太网；回滚会重置为驱动默认值。"
+      },
+      "ipv6-off": {
+        "t": "禁用 IPv6",
+        "d": "DisabledComponents=0xFF。可能导致部分服务异常；需要重启。"
+      },
+      "msi-gpu": {
+        "t": "显卡的 MSI 模式",
+        "d": "Message Signaled Interrupts：降低 GPU 中断延迟。需要重启。"
+      },
+      "msi-nic": {
+        "t": "网卡的 MSI 模式",
+        "d": "对 PCI 网卡同样适用。需要重启。"
+      },
+      "wu-drivers": {
+        "t": "不通过 Windows 更新安装驱动",
+        "d": "Windows 更新不会替换来自厂商网站的驱动。"
+      },
+      "nv-telemetry": {
+        "t": "禁用 NVIDIA 遥测",
+        "d": "NvTelemetryContainer 服务。没有 NVIDIA 时不可用。"
+      },
+      "explorer-extensions": {
+        "t": "显示文件扩展名",
+        "d": "文件资源管理器中设置 HideFileExt=0。"
+      },
+      "explorer-hidden": {
+        "t": "显示隐藏文件",
+        "d": "文件资源管理器显示隐藏的文件和文件夹。"
+      },
+      "explorer-fullpath": {
+        "t": "标题栏显示完整路径",
+        "d": "资源管理器显示完整路径，而不只是文件夹名称。"
+      },
+      "taskbar-widgets": {
+        "t": "隐藏任务栏小组件",
+        "d": "移除小组件（天气/新闻）图标。"
+      },
+      "taskbar-chat": {
+        "t": "隐藏任务栏聊天",
+        "d": "移除 Teams/聊天图标。"
+      },
+      "taskbar-search": {
+        "t": "隐藏任务栏搜索",
+        "d": "彻底移除搜索框/图标。"
+      },
+      "taskbar-taskview": {
+        "t": "隐藏任务视图按钮",
+        "d": "移除搜索旁边的任务视图按钮。"
+      },
+      "start-ads": {
+        "t": "禁用开始菜单广告",
+        "d": "开始列表中的推荐应用和提示。"
+      },
+      "lock-tips": {
+        "t": "禁用锁屏提示",
+        "d": "Spotlight 推荐和趣闻。"
+      },
+      "storage-sense-off": {
+        "t": "禁用自动存储感知",
+        "d": "Windows 不会按计划自动删除文件。"
+      },
+      "onedrive-startup": {
+        "t": "登录时不启动 OneDrive",
+        "d": "将 OneDrive 从启动项中移除；不会卸载它。"
+      },
+      "cortana-off": {
+        "t": "禁用 Cortana",
+        "d": "策略 AllowCortana=0。需要管理员权限。"
+      },
+      "context-menu-classic": {
+        "t": "经典右键菜单（Windows 11）",
+        "d": "恢复完整的右键菜单，无需“显示更多选项”。"
+      },
+      "appx-3dviewer": {
+        "t": "3D 查看器",
+        "d": "内置的 3D 查看器应用。"
+      },
+      "appx-mixedreality": {
+        "t": "混合现实门户",
+        "d": "如果你不使用 VR/MR 头显。"
+      },
+      "appx-bingnews": {
+        "t": "资讯（Bing News）",
+        "d": "内置的新闻应用。"
+      },
+      "appx-bingweather": {
+        "t": "天气（Bing Weather）",
+        "d": "内置的天气应用。"
+      },
+      "appx-gethelp": {
+        "t": "获取帮助",
+        "d": "内置的 Microsoft 支持应用。"
+      },
+      "appx-getstarted": {
+        "t": "提示",
+        "d": "首次运行的 Windows 提示。"
+      },
+      "appx-messaging": {
+        "t": "信息",
+        "d": "内置的短信/消息应用。"
+      },
+      "appx-officehub": {
+        "t": "Office（推广应用）",
+        "d": "这是 Office Hub 推广应用，而不是 Office 本身。"
+      },
+      "appx-solitaire": {
+        "t": "Microsoft 纸牌合集",
+        "d": "内置的纸牌游戏。"
+      },
+      "appx-onenote": {
+        "t": "OneNote（应用商店版）",
+        "d": "UWP 版 OneNote，不是桌面应用。"
+      },
+      "appx-people": {
+        "t": "人脉",
+        "d": "任务栏上的内置联系人应用。"
+      },
+      "appx-skype": {
+        "t": "Skype",
+        "d": "内置的 Skype 应用。"
+      },
+      "appx-feedbackhub": {
+        "t": "反馈中心",
+        "d": "Microsoft 反馈应用。"
+      },
+      "appx-maps": {
+        "t": "地图",
+        "d": "内置的地图应用。"
+      },
+      "appx-yourphone": {
+        "t": "手机连接",
+        "d": "Android/iPhone 同步应用。"
+      },
+      "appx-zunemusic": {
+        "t": "Groove 音乐",
+        "d": "内置的音乐播放器。"
+      },
+      "appx-zunevideo": {
+        "t": "电影和电视",
+        "d": "内置的视频播放器/商店。"
+      },
+      "appx-xboxapp": {
+        "t": "Xbox",
+        "d": "Xbox 应用。可能影响使用 Xbox Live 功能的游戏。"
+      },
+      "wu-activity": {
+        "t": "活动历史记录：禁用",
+        "d": "阻止 Windows 发布或上传用户活动，同时保留剪贴板历史记录。"
+      },
+      "wu-hiber": {
+        "t": "休眠：禁用",
+        "d": "休眠实际上是为笔记本设计的，它会在关机前保存内存内容。实际上根本不应该使用它。"
+      },
+      "wu-widget": {
+        "t": "小组件：移除",
+        "d": "移除任务栏左下角烦人的小组件。"
+      },
+      "wu-revert-start-menu": {
+        "t": "旧版开始菜单布局：启用",
+        "d": "恢复 25H2 逐步推出新开始菜单之前的旧布局。在更新版本的 Windows 上，!!此优化无效!!"
+      },
+      "wu-disable-store-search": {
+        "t": "Microsoft Store 推荐搜索结果：禁用",
+        "d": "在开始菜单中搜索应用时，不再显示 Microsoft Store 推荐的应用。"
+      },
+      "wu-location": {
+        "t": "位置跟踪：禁用",
+        "d": "禁用位置跟踪。"
+      },
+      "wu-services": {
+        "t": "服务：设为手动",
+        "d": "将部分服务设为手动启动，并按系统内存调整注册表值 SvcHostSplitThresholdInKB，可显著减少 svchost.exe 进程数量。"
+      },
+      "wu-brave-debloat": {
+        "t": "Brave 浏览器：精简",
+        "d": "禁用 Brave Rewards、Leo AI、加密钱包和 VPN 等各种烦扰功能。"
+      },
+      "wu-disable-warning-for-unsigned-rdp": {
+        "t": "未签名 RDP 文件警告：禁用",
+        "d": "禁用最新 Windows 10 和 11 更新引入的、启动未签名 RDP 文件时显示的警告。"
+      },
+      "wu-edge-debloat": {
+        "t": "Microsoft Edge：精简",
+        "d": "禁用 Edge 中的各种遥测选项、弹窗及其他烦扰功能。"
+      },
+      "wu-consumer-features": {
+        "t": "消费者功能：禁用",
+        "d": "停止推广应用的安装，并减少来自 Microsoft Store 内容的应用推荐。"
+      },
+      "wu-telemetry": {
+        "t": "遥测：禁用",
+        "d": "禁用 Microsoft 遥测。"
+      },
+      "wu-delivery-optimization": {
+        "t": "传递优化：禁用",
+        "d": "阻止 Windows 使用你的带宽向互联网或局域网中的其他电脑上传更新。"
+      },
+      "wu-remove-edge": {
+        "t": "Microsoft Edge：移除",
+        "d": "通过在旧版 Edge 文件夹中创建一个虚拟的 MicrosoftEdge.exe 文件来卸载 Microsoft Edge。这会骗过 Windows，解锁官方 Edge 卸载程序，从而实现系统级移除。"
+      },
+      "wu-disable-bit-locker": {
+        "t": "BitLocker：禁用",
+        "d": "禁用 BitLocker。"
+      },
+      "wu-utc": {
+        "t": "日期和时间：将时间设为 UTC",
+        "d": "对双系统电脑至关重要。修复与 Linux 系统的时间同步问题。"
+      },
+      "wu-remove-one-drive": {
+        "t": "Microsoft OneDrive：移除",
+        "d": "先拒绝删除 OneDrive 用户文件的权限，再使用其自带的卸载程序移除，最后恢复原有权限。"
+      },
+      "wu-remove-home-and-gallery": {
+        "t": "文件资源管理器主页和图库：禁用",
+        "d": "从资源管理器中移除主页和图库，并将“此电脑”设为默认。"
+      },
+      "wu-display": {
+        "t": "视觉效果：设为最佳性能",
+        "d": "将系统首选项设为性能优先。也可以用 sysdm.cpl 手动设置。"
+      },
+      "wu-reserved-storage": {
+        "t": "禁用保留的存储空间",
+        "d": "禁用 Windows 保留存储空间（为更新/临时文件预留的 7-10 GB）。仅建议在小容量磁盘上使用。在 Windows 大型功能更新之前请重新启用，以避免安装失败。"
+      },
+      "wu-restore-point": {
+        "t": "还原点：创建",
+        "d": "运行时创建一个还原点，以便需要撤销 WinUtil 的修改时使用。"
+      },
+      "wu-end-task-on-taskbar": {
+        "t": "右键结束任务：启用",
+        "d": "启用在任务栏程序上右键即可结束任务的选项。"
+      },
+      "wu-storage": {
+        "t": "存储感知：禁用",
+        "d": "存储感知会自动删除临时文件。"
+      },
+      "wu-windows-ai": {
+        "t": "Windows AI：禁用并移除",
+        "d": "移除并禁用所有 AI 功能/软件包"
+      },
+      "wu-wpbt": {
+        "t": "Windows 平台二进制表 (WPBT)：禁用",
+        "d": "启用后，WPBT 允许电脑厂商在开机时运行程序（如防盗软件、驱动程序），甚至在未经用户同意的情况下强制安装软件。存在潜在安全风险。"
+      },
+      "wu-prevent-device-metadata-from-network": {
+        "t": "阻止设备配套应用",
+        "d": "防止在插入设备时安装额外软件（例如连接显示器时出现广告）。存在潜在安全风险。"
+      },
+      "wu-razer-block": {
+        "t": "Razer 软件自动安装：禁用",
+        "d": "阻止所有 Razer 软件安装。没有任何软件，硬件也能正常工作。"
+      },
+      "wu-logi-block": {
+        "t": "Logitech 下载助手自动安装：禁用",
+        "d": "阻止 Windows 更新随 Logitech 设备驱动反复重装的 Logi 下载助手。没有它，Logitech 硬件照样能用。"
+      },
+      "wu-disable-notifications": {
+        "t": "系统托盘通知和日历：禁用",
+        "d": "禁用所有通知，包括日历。"
+      },
+      "wu-block-adobe-net": {
+        "t": "Adobe URL 屏蔽列表：启用",
+        "d": "通过有选择地阻止连接到 Adobe 激活和遥测服务器，减少对用户的打扰。致谢：Ruddernation-Designs"
+      },
+      "wu-right-click-menu": {
+        "t": "旧版右键菜单布局：启用",
+        "d": "在文件资源管理器中右键时恢复经典上下文菜单，取代 Windows 11 的简化版。"
+      },
+      "wu-disk-cleanup": {
+        "t": "磁盘清理：运行",
+        "d": "对 C: 盘运行磁盘清理并删除旧的 Windows 更新。"
+      },
+      "wu-delete-temp-files": {
+        "t": "临时文件：删除",
+        "d": "清空 TEMP 文件夹。"
+      },
+      "wu-ipv46": {
+        "t": "IPv6：将 IPv4 设为优先",
+        "d": "在未配置 IPv6 的专用网络中，优先使用 IPv4 可带来延迟和安全方面的好处。"
+      },
+      "wu-teredo": {
+        "t": "Teredo：禁用",
+        "d": "Teredo 网络隧道是一项 IPv6 功能，可能增加延迟，并可能导致某些游戏出现问题。"
+      },
+      "wu-disable-ipv6": {
+        "t": "IPv6：禁用",
+        "d": "禁用 IPv6。"
+      },
+      "wu-disable-bgapps": {
+        "t": "后台应用：禁用",
+        "d": "禁止所有 Microsoft Store 应用在后台运行；自 Windows 11 起需要逐个设置。"
+      },
+      "wu-disable-explorer-auto-discovery": {
+        "t": "文件资源管理器自动文件夹发现：禁用",
+        "d": "Windows 资源管理器会根据内容自动猜测文件夹类型，从而拖慢浏览速度。警告！这将禁用文件资源管理器的分组功能。"
+      },
+      "wu-detailed-bso-d": {
+        "t": "蓝屏详细模式",
+        "d": "发生蓝屏时提供更多信息。"
+      },
+      "wu-battery-percentage": {
+        "t": "系统托盘电池百分比",
+        "d": "在系统托盘电池图标旁显示电量百分比数字。"
+      },
+      "wu-dark-mode": {
+        "t": "Windows 深色主题",
+        "d": "系统和应用使用深色模式。"
+      },
+      "wu-show-ext": {
+        "t": "文件资源管理器文件扩展名",
+        "d": "在资源管理器中显示文件扩展名（.exe、.png 等）"
+      },
+      "wu-hidden-files": {
+        "t": "文件资源管理器隐藏文件",
+        "d": "在资源管理器中显示隐藏文件。"
+      },
+      "wu-verbose-logon": {
+        "t": "登录详细模式",
+        "d": "在启动/关机期间显示详细信息。"
+      },
+      "wu-new-outlook": {
+        "t": "新版 Microsoft Outlook",
+        "d": "确保使用新版 Outlook 应用。"
+      },
+      "wu-scrollbars": {
+        "t": "滚动条始终可见",
+        "d": "启用后滚动条始终可见；禁用后 Windows 会在不使用时自动隐藏滚动条。"
+      },
+      "wu-mouse-acceleration": {
+        "t": "鼠标加速",
+        "d": "让光标移动受物理鼠标移动速度的影响。"
+      },
+      "wu-num-lock": {
+        "t": "启动时启用 Num Lock",
+        "d": "在电脑启动时切换 Num Lock 键的状态。"
+      },
+      "wu-window-snapping": {
+        "t": "窗口贴靠",
+        "d": "切换拖动窗口时的贴靠功能。"
+      },
+      "wu-standby-fix": {
+        "t": "S0 睡眠时的网络连接",
+        "d": "切换 S0 睡眠期间的网络连接；S0 是现代笔记本的低功耗空闲状态。"
+      },
+      "wu-s3-sleep": {
+        "t": "S3 睡眠",
+        "d": "在 Modern Standby 与 S3 睡眠之间切换；S3 会切断 CPU 供电，同时继续刷新内存。"
+      },
+      "wu-hide-settings-home": {
+        "t": "设置主页",
+        "d": "切换 Windows 设置应用中的主页。"
+      },
+      "wu-bing-search": {
+        "t": "开始菜单 Bing 搜索",
+        "d": "切换 Windows 搜索中的 Bing 网页搜索结果。"
+      },
+      "wu-login-blur": {
+        "t": "登录界面亚克力模糊",
+        "d": "切换登录界面背景的亚克力模糊效果。"
+      },
+      "wu-disable-lockscreen": {
+        "t": "锁屏：禁用",
+        "d": "完全跳过锁屏，在开机和唤醒时直接进入登录界面。"
+      },
+      "wu-start-menu-recommendations": {
+        "t": "开始菜单推荐",
+        "d": "切换开始菜单的推荐区域。警告：副作用是同时会禁用锁屏上的 Windows 聚焦。"
+      },
+      "wu-sticky-keys": {
+        "t": "粘滞键",
+        "d": "切换粘滞键功能，快速连按 Shift 时会触发。"
+      },
+      "wu-taskbar-alignment": {
+        "t": "任务栏图标居中",
+        "d": "在左对齐与居中之间切换任务栏对齐方式。"
+      },
+      "wu-taskbar-search": {
+        "t": "任务栏搜索图标",
+        "d": "切换任务栏上的搜索按钮。"
+      },
+      "wu-task-view": {
+        "t": "任务栏任务视图图标",
+        "d": "切换任务栏上的任务视图按钮。"
+      },
+      "wu-game-mode": {
+        "t": "游戏模式",
+        "d": "切换 Windows 优先保障游戏性能，为游戏分配系统资源。"
+      },
+      "wu-long-paths": {
+        "t": "启用长路径",
+        "d": "切换资源管理器对超过 260 个字符的文件路径的支持。"
+      },
+      "wua-microsoft-outlook-for-windows": {
+        "t": "Outlook for Windows",
+        "d": "提供现代化的邮件管理、日程安排和联系人整理功能。"
+      },
+      "wua-msteams": {
+        "t": "Microsoft Teams",
+        "d": "支持即时消息、视频会议、文件共享和工作区协作。"
+      },
+      "wua-clipchamp-clipchamp": {
+        "t": "Clipchamp",
+        "d": "提供易用的视频编辑器，内置模板、特效和时间线编辑工具。"
+      },
+      "wua-microsoft-bing-search": {
+        "t": "必应搜索",
+        "d": "将 Microsoft Bing 搜索功能和网络服务直接集成到操作系统中。"
+      },
+      "wua-microsoft-corporation-ii-quick-assist": {
+        "t": "快速助手",
+        "d": "通过互联网连接提供安全的远程技术支持和屏幕共享。"
+      },
+      "wua-microsoft-windows-dev-home": {
+        "t": "Dev Home",
+        "d": "提供面向开发者的专用仪表板，用于配置开发环境、同步代码仓库和硬件小组件。"
+      },
+      "wua-microsoft-windows-cross-device": {
+        "t": "移动设备",
+        "d": "管理与已配对移动设备的系统级后台连接。移除后可能会禁用集成在 Windows 设置中的跨设备功能，例如手机屏幕镜像、文件传输和移动热点切换。"
+      },
+      "wua-microsoft-todos": {
+        "t": "To Do",
+        "d": "创建、跟踪并同步个人任务、智能列表和每日提醒。"
+      },
+      "wua-microsoft-power-automate-desktop": {
+        "t": "Power Automate",
+        "d": "通过低代码可视化脚本自动完成重复性工作流和桌面任务。"
+      },
+      "wua-microsoft-microsoft-sticky-notes": {
+        "t": "便笺",
+        "d": "在桌面上创建悬浮文字便笺，并自动在设备间同步。"
+      },
+      "wua-microsoft-windows-sound-recorder": {
+        "t": "录音机",
+        "d": "录制并裁剪实时音频输入，并提供简单的麦克风调节控件。"
+      },
+      "wua-microsoft-windows-alarms": {
+        "t": "时钟",
+        "d": "包含世界时钟、闹钟、倒计时、秒表以及专注时段记录。"
+      },
+      "wua-microsoft-paint": {
+        "t": "画图",
+        "d": "提供内置的数字绘图、基础图片编辑和像素级图形处理工具。"
+      },
+      "wua-microsoft-windows-notepad": {
+        "t": "记事本",
+        "d": "提供支持多标签页的轻量文本编辑器，适用于纯文本文件和代码片段。"
+      },
+      "wua-microsoft-screen-sketch": {
+        "t": "截图工具",
+        "d": "捕获截图或屏幕录像，内置标注、图片裁剪和光学字符识别 (OCR)。"
+      },
+      "wua-microsoft-copilot": {
+        "t": "Copilot",
+        "d": "启动 Microsoft AI 助手，提供情境化回答、创意写作辅助和智能网页搜索。"
+      },
+      "wua-microsoft-windows-calculator": {
+        "t": "计算器",
+        "d": "执行标准算术、科学运算、程序员计算和单位换算。"
+      },
+      "wua-microsoft-windows-camera": {
+        "t": "相机",
+        "d": "通过已连接的网络摄像头或成像设备拍摄照片和录制视频。"
+      },
+      "wua-microsoft-windows-photos": {
+        "t": "照片",
+        "d": "整理、查看和裁剪本地图片，提供基础色彩调整和相册创建工具。"
+      },
+      "wua-microsoft-gaming-app": {
+        "t": "Xbox 应用",
+        "d": "作为游戏库主管理器、社交社区界面以及 PC Game Pass 仪表板。"
+      },
+      "wua-microsoft-xbox-gaming-overlay": {
+        "t": "Xbox Game Bar",
+        "d": "提供可自定义的游戏内状态小组件、音频平衡滑块、系统监视工具和游戏录制。"
+      },
+      "wua-microsoft-xbox-identity-provider": {
+        "t": "Xbox 身份提供程序",
+        "d": "管理 Xbox 网络用户身份验证以及已连接游戏的后台账户验证。警告：移除后，依赖此验证流程的非 Xbox 游戏和应用可能无法使用 Microsoft 账户登录。"
+      },
+      "wua-microsoft-xbox-speech-to-text-overlay": {
+        "t": "Xbox 语音转文字叠加层",
+        "d": "为游戏聊天网络提供系统级实时无障碍字幕和语音转文字翻译。"
+      },
+      "wua-microsoft-xbox-tcui": {
+        "t": "Xbox TCUI",
+        "d": "为游戏内的单点登录流程提供核心账户连接界面模块。警告：移除后，原本无需 Xbox 应用的游戏和应用可能无法进行 Microsoft 账户验证。"
+      },
+      "wua-microsoft-start-experiences-app": {
+        "t": "Start Experiences 应用",
+        "d": "驱动 Windows 小组件面板，提供个性化的新闻、天气、体育和财经内容流。"
+      },
+      "wu-mpo-compat": {
+        "t": "Multiplane Overlay：禁用（兼容方式）",
+        "d": "使用 OverlayTestMode=5 禁用 MPO，这是较温和的兼容方式。"
+      },
+      "wu-mpo-full": {
+        "t": "Multiplane Overlay：完全禁用",
+        "d": "使用 OverlayTestMode=5 和 DisableOverlays=1 禁用 MPO，这是较激进的方式。"
+      },
+      "xs-start-recent": {
+        "t": "在开始菜单中隐藏最近添加的应用",
+        "d": "从开始菜单中移除最近安装的应用列表。"
+      },
+      "xs-snap-flyout": {
+        "t": "禁用贴靠布局浮出菜单",
+        "d": "悬停在最大化按钮上时不再显示窗口布局浮出菜单。"
+      },
+      "xs-lock-camera": {
+        "t": "禁用锁屏相机",
+        "d": "禁止从锁屏启动相机。"
+      },
+      "xs-wu-pause": {
+        "t": "将 Windows 更新暂停上限延长到 20 年",
+        "d": "仅提高暂停上限；在设置中手动暂停之前，更新不会停止。"
+      },
+      "xs-wu-metered": {
+        "t": "按流量计费的连接不更新",
+        "d": "Windows 更新不会在按流量计费的连接上自动下载更新。"
+      },
+      "xs-maps-offline": {
+        "t": "停止离线地图下载",
+        "d": "禁用地图数据的自动下载和更新。"
+      },
+      "xs-defender-cpu": {
+        "t": "限制 Defender 的 CPU 占用",
+        "d": "将 Microsoft Defender 扫描的 CPU 负载上限设为 25%。"
+      },
+      "xs-notif-center": {
+        "t": "禁用通知中心",
+        "d": "移除通知中心和日历浮出面板。通知将不可用。"
+      },
+      "xs-windowed-opt": {
+        "t": "窗口化游戏优化",
+        "d": "为窗口化和无边框游戏启用升级版呈现模型（降低显示延迟）。"
+      },
+      "xs-menu-delay": {
+        "t": "移除菜单和提示延迟",
+        "d": "菜单和悬停提示会立即显示。"
+      },
+      "xs-voice-activation": {
+        "t": "禁用语音激活",
+        "d": "阻止应用监听唤醒词。"
+      },
+      "xs-wsearch": {
+        "t": "禁用 Windows 搜索索引",
+        "d": "停止后台索引。资源管理器和开始菜单中的搜索会变慢。"
+      },
+      "xs-xbox-svc": {
+        "t": "禁用 Xbox 服务",
+        "d": "关闭 Xbox 的身份验证、云存档和网络服务。Xbox / Game Pass 游戏可能无法登录。"
+      },
+      "xs-gamebar": {
+        "t": "禁用 Game Bar",
+        "d": "移除通过手柄按键启动及 Game Bar 的启动面板。"
+      },
+      "xs-ps-telemetry": {
+        "t": "禁用 PowerShell 遥测",
+        "d": "设置系统级变量 POWERSHELL_TELEMETRY_OPTOUT。"
+      },
+      "xs-wmdrm": {
+        "t": "阻止 WMDRM 联网",
+        "d": "停止对受保护媒体文件的许可服务器请求。"
+      },
+      "xs-copilot": {
+        "t": "禁用 Copilot",
+        "d": "关闭 Windows Copilot 并隐藏其按钮的策略。"
+      },
+      "xs-recall": {
+        "t": "禁用 Recall",
+        "d": "阻止 AI 活动分析并关闭 Recall 组件（若存在）的策略。"
+      },
+      "xs-telemetry-deep": {
+        "t": "深度关闭遥测",
+        "d": "针对数据收集、错误报告和客户体验改善计划的额外策略。"
+      },
+      "xs-telemetry-tasks": {
+        "t": "禁用遥测任务",
+        "d": "关闭计划任务：CEIP、磁盘诊断、反馈、错误报告、Application Experience。"
+      },
+      "xs-hosts-block": {
+        "t": "屏蔽遥测域名 (hosts)",
+        "d": "在 hosts 文件中添加带标记的 Microsoft 遥测域名块；更新服务器不受影响。回滚会移除该块。"
+      },
+      "xs-search-privacy": {
+        "t": "Windows 搜索隐私",
+        "d": "禁用网页和云搜索，以及搜索中对位置的使用。"
+      },
+      "xs-feedback": {
+        "t": "禁用反馈提示",
+        "d": "Windows 不再询问反馈和评分。"
+      },
+      "xs-handwriting": {
+        "t": "禁用手写和键入数据收集",
+        "d": "阻止输入个性化及手写数据的发送。"
+      },
+      "xs-ads": {
+        "t": "禁用个性化广告",
+        "d": "关闭广告 ID、个性化体验和 Windows 聚焦。"
+      },
+      "xs-content-delivery": {
+        "t": "禁用推荐应用和提示",
+        "d": "停止自动安装应用和推荐（Content Delivery Manager）。"
+      },
+      "xs-cloud-sync": {
+        "t": "禁用设置云同步",
+        "d": "停止将主题、密码、语言、开始菜单布局及其他设置同步到 Microsoft 账户。"
+      },
+      "xs-access-location": {
+        "t": "禁止应用访问位置",
+        "d": "全局禁止应用访问位置信息。"
+      },
+      "xs-access-camera-mic": {
+        "t": "禁止应用使用摄像头和麦克风",
+        "d": "在恢复访问之前，包括视频通话在内的应用都无法使用摄像头或麦克风。"
+      },
+      "xs-access-personal": {
+        "t": "禁止访问联系人、邮件、日历和通话",
+        "d": "阻止访问联系人、日历、邮件、任务、消息和通话记录。"
+      },
+      "xs-access-account": {
+        "t": "禁止访问账户信息",
+        "d": "应用将无法再看到你的账户名称、头像等信息。"
+      },
+      "xs-access-files": {
+        "t": "禁止访问文档、图片、视频和文件系统",
+        "d": "阻止访问文档、图片和视频库以及广泛的文件访问。部分应用可能无法再打开文件。"
+      },
+      "xs-access-diag": {
+        "t": "禁止应用诊断、通知、活动和无线电访问",
+        "d": "阻止访问其他应用的诊断信息、通知读取、活动历史和无线电控制。"
+      },
+      "xs-access-capture": {
+        "t": "禁止以编程方式截屏",
+        "d": "应用无法无边框或以编程方式捕获屏幕。屏幕录制和直播可能失效。"
+      },
+      "xs-access-ai": {
+        "t": "禁止访问系统 AI 模型",
+        "d": "阻止应用使用系统 AI 模型。"
+      },
+      "xs-access-phone": {
+        "t": "禁止应用访问电话功能",
+        "d": "阻止应用使用电话功能的策略。"
+      },
+      "xs-feature-ie": {
+        "t": "禁用 Internet Explorer",
+        "d": "关闭 Internet Explorer 组件（若存在）。"
+      },
+      "xs-feature-fax": {
+        "t": "禁用传真和扫描",
+        "d": "关闭 Windows 传真和扫描组件。"
+      },
+      "xs-feature-wmp": {
+        "t": "禁用 Windows Media Player（旧版）",
+        "d": "关闭旧版播放器组件。"
+      },
+      "xs-office-telemetry": {
+        "t": "禁用 Microsoft Office 遥测",
+        "d": "关闭 Office 2013–2021 和 365 的日志记录、使用情况报告和遥测任务。"
+      },
+      "xs-vs-telemetry": {
+        "t": "禁用 Visual Studio 遥测",
+        "d": "关闭数据收集、反馈对话框和 IntelliCode 远程分析。"
+      },
+      "xs-media-telemetry": {
+        "t": "禁用 Windows Media Player 数据收集",
+        "d": "停止使用情况跟踪以及对光盘、音乐和广播的元数据查询。"
+      },
+      "xs-ccleaner": {
+        "t": "禁用 CCleaner 遥测和推广",
+        "d": "关闭 CCleaner 中的监控、更新检查、优惠和使用统计。"
+      },
+      "xs-google-update": {
+        "t": "禁用 Google Update 服务",
+        "d": "停止 gupdate 和 gupdatem 后台服务（Chrome 及其他 Google 产品）。"
+      },
+      "xs-adobe-update": {
+        "t": "禁用 Adobe 更新程序",
+        "d": "禁用 Adobe ARM 和 Adobe Update 服务以及 Acrobat 更新任务。"
+      }
+    },
+    "cl": {
+      "bios-backup": {
+        "t": "保存 BIOS 配置文件",
+        "d": "在更改任何内容之前导出当前设置。"
+      },
+      "bios-update": {
+        "t": "更新 BIOS",
+        "d": "较新的固件可提升内存和供电稳定性。"
+      },
+      "bios-defaults": {
+        "t": "恢复默认设置",
+        "d": "从“Load Optimized Defaults”开始，再逐项修改设置。"
+      },
+      "bios-xmp": {
+        "t": "启用 XMP/EXPO",
+        "d": "内存应按标称速度和时序运行。"
+      },
+      "bios-rebar": {
+        "t": "启用 Resizable BAR",
+        "d": "为 GPU 启用 Above 4G Decoding + Re-Size BAR Support。"
+      },
+      "bios-smt": {
+        "t": "按负载选择 SMT/超线程",
+        "d": "某些游戏关闭后表现更好——请实际测量。"
+      },
+      "bios-virt": {
+        "t": "禁用虚拟化",
+        "d": "SVM/VT-x，如果你不需要模拟器或 WSL。"
+      },
+      "bios-igpu": {
+        "t": "禁用集成显卡",
+        "d": "如果你使用独立显卡。"
+      },
+      "bios-devices": {
+        "t": "禁用未使用的设备",
+        "d": "Wi-Fi、蓝牙、未使用的 SATA/音频及 COM 端口。"
+      },
+      "bios-csm": {
+        "t": "禁用 CSM",
+        "d": "纯 UEFI 模式；Resizable BAR 的必要条件。"
+      },
+      "bios-cstates": {
+        "t": "调整 C-states 和节能",
+        "d": "禁用核心深度睡眠状态以获得最低延迟。"
+      },
+      "bios-pcie": {
+        "t": "固定 PCIe 速度",
+        "d": "使用 Gen4/Gen5 而非 Auto；禁用 ASPM。"
+      },
+      "bios-usb": {
+        "t": "禁用传统 USB 支持",
+        "d": "安装系统后，如果鼠标键盘在没有它时仍能正常使用。"
+      },
+      "bios-fans": {
+        "t": "设置风扇曲线",
+        "d": "更激进的曲线意味着更低的温度和更少的降频。"
+      },
+      "ph-ssd": {
+        "t": "系统安装在 SSD/NVMe 上",
+        "d": "机械硬盘会增加负载并造成流式加载延迟。"
+      },
+      "ph-ram": {
+        "t": "正确的内存插槽",
+        "d": "双通道：按主板手册使用 A2/B2 插槽。"
+      },
+      "ph-wired": {
+        "t": "有线外设和网络",
+        "d": "使用有线鼠标、键盘和以太网，而非无线。"
+      },
+      "ph-irq": {
+        "t": "检查 IRQ 冲突",
+        "d": "在“系统信息”中，没有设备共享同一个中断。"
+      },
+      "ph-cables": {
+        "t": "分开布线",
+        "d": "让信号线远离电源线以减少干扰。"
+      },
+      "ph-usb-layout": {
+        "t": "将外设分散到不同控制器",
+        "d": "查看 USB 标签页中的 USB 分布图。"
+      },
+      "co-paste": {
+        "t": "优质导热硅脂",
+        "d": "新硅脂可降低温度并减少降频。"
+      },
+      "co-airflow": {
+        "t": "合理风道",
+        "d": "前部进风，后部和顶部出风。"
+      },
+      "co-vrm": {
+        "t": "VRM 区域气流",
+        "d": "超频系统在 CPU 供电区域加装风扇。"
+      },
+      "co-curve": {
+        "t": "风扇曲线",
+        "d": "随温度平滑响应，没有突变。"
+      },
+      "co-dust": {
+        "t": "清理灰尘",
+        "d": "每隔几个月一次。"
+      },
+      "pe-clean": {
+        "t": "清洁鼠标传感器",
+        "d": "脏污会导致光标跳动。"
+      },
+      "pe-profile": {
+        "t": "鼠标板载配置文件",
+        "d": "设置保存在鼠标中，无需后台软件。"
+      },
+      "pe-rgb": {
+        "t": "关闭灯效",
+        "d": "灯效需要后台软件和轮询。"
+      },
+      "pe-dpi": {
+        "t": "高 DPI 和高回报率",
+        "d": "在“基准测试”标签页中检查回报率稳定性。"
+      },
+      "pe-monitor": {
+        "t": "校准显示器",
+        "d": "亮度、对比度和刷新率模式。"
+      },
+      "pe-overdrive": {
+        "t": "设置 Overdrive/AMA",
+        "d": "在最快响应时间下伪影最少。"
+      },
+      "st-memtest": {
+        "t": "安装系统前运行 MemTest86",
+        "d": "多轮测试，零错误。"
+      },
+      "st-prime": {
+        "t": "Linpack / Prime95",
+        "d": "CPU 和内存压力测试。"
+      },
+      "st-temps": {
+        "t": "监控温度",
+        "d": "满载时不降频。"
+      },
+      "st-timings": {
+        "t": "手动内存时序",
+        "d": "仅在 XMP/EXPO 稳定之后。"
+      },
+      "st-clock": {
+        "t": "固定频率",
+        "d": "使用固定频率而非加速，帧率更平稳。"
+      },
+      "in-gpt": {
+        "t": "GPT 与 UEFI",
+        "d": "适用于 Windows 10/11 的现代分区方案。"
+      },
+      "in-nic": {
+        "t": "先安装网卡驱动",
+        "d": "其他驱动从厂商网站获取。"
+      },
+      "in-minimal": {
+        "t": "干净的最小化安装",
+        "d": "不使用定制版本，也不预装软件。"
+      },
+      "in-bloat": {
+        "t": "移除预装应用",
+        "d": "不需要的应用和服务。"
+      },
+      "in-restore": {
+        "t": "创建还原点",
+        "d": "请参阅“备份与回滚”标签页。"
+      },
+      "ma-events": {
+        "t": "查看事件日志",
+        "d": "驱动和 WHEA 错误。"
+      },
+      "ma-wpr": {
+        "t": "使用 Windows Performance Toolkit 分析",
+        "d": "如果延迟仍然存在，请跟踪 DPC/ISR。"
+      },
+      "ma-cleanup": {
+        "t": "清理系统",
+        "d": "临时文件、旧驱动。"
+      },
+      "ma-backup": {
+        "t": "定期备份",
+        "d": "更改前先备份设置。"
+      }
+    },
+    "fixTitle": "系统修复",
+    "fixHint": "这是一次性操作而非优化项：无法回滚。SFC 和 DISM 可能需要几分钟；重置 Windows 更新和 Winsock 需要重启。",
+    "fixRun": "运行",
+    "fixDone": "完成。",
+    "fixConfirm": "运行“{name}”？此操作无法撤销。",
+    "fix": {
+      "sfc": {
+        "t": "系统文件检查器 (SFC)",
+        "d": "sfc /scannow——修复损坏的系统文件。"
+      },
+      "dism": {
+        "t": "映像修复 (DISM)",
+        "d": "DISM /Online /Cleanup-Image /RestoreHealth——修复 SFC 所依赖的 Windows 映像。"
+      },
+      "winsock-reset": {
+        "t": "网络重置 (Winsock)",
+        "d": "netsh winsock reset + netsh int ip reset。需要重启。"
+      },
+      "explorer-restart": {
+        "t": "重启资源管理器",
+        "d": "当任务栏或桌面无响应时使用。"
+      },
+      "store-reset": {
+        "t": "重置 Microsoft Store",
+        "d": "wsreset.exe——清除应用商店缓存。"
+      },
+      "wu-reset": {
+        "t": "重置 Windows 更新",
+        "d": "停止更新服务，重命名 SoftwareDistribution 和 catroot2 缓存，并重启服务。"
+      }
+    },
+    "wf": {
+      "wuf-dotnet": {
+        "t": ".NET Framework（版本 2、3、4）：启用",
+        "d": ".NET 与 .NET Framework 是由工具、编程语言和库组成的开发平台，用于构建多种类型的应用程序。"
+      },
+      "wuf-hyperv": {
+        "t": "Hyper-V：启用",
+        "d": "Hyper-V 是 Microsoft 开发的硬件虚拟化产品，可用于创建和管理虚拟机。"
+      },
+      "wuf-legacymedia": {
+        "t": "旧版媒体组件（WMP、DirectPlay）：启用",
+        "d": "启用来自旧版 Windows 的传统程序。"
+      },
+      "wuf-wsl": {
+        "t": "适用于 Linux 的 Windows 子系统 (WSL)：启用",
+        "d": "适用于 Linux 的 Windows 子系统是 Windows 的可选功能，无需单独的虚拟机或双系统即可原生运行 Linux 程序。"
+      },
+      "wuf-nfs": {
+        "t": "网络文件系统 (NFS)：启用",
+        "d": "网络文件系统 (NFS) 是一种在网络上存储文件的机制。"
+      },
+      "wuf-reg-backup": {
+        "t": "注册表备份（每日 00:30 任务）：启用",
+        "d": "启用每日注册表备份（Microsoft 在 Windows 10 1803 中已将其关闭）。"
+      },
+      "wuf-enable-legacy-recovery": {
+        "t": "传统 F8 启动修复：启用",
+        "d": "启用“高级启动选项”屏幕，可让 Windows 以高级故障排除模式启动。"
+      },
+      "wuf-disable-legacy-recovery": {
+        "t": "传统 F8 启动修复：禁用",
+        "d": "禁用“高级启动选项”屏幕，该屏幕可让 Windows 以高级故障排除模式启动。"
+      },
+      "wuf-sandbox": {
+        "t": "Windows 沙盒：启用",
+        "d": "Windows 沙盒是一种轻量级虚拟机，提供临时桌面环境，可在隔离状态下安全运行应用程序。"
+      }
+    },
+    "wu": {
+      "credit": "目录移植自 ChrisTitusTech/winutil（MIT 许可）：数值和脚本均为原版。",
+      "dnsHint": "应用于所有活动的网络适配器，支持时包括 DNS-over-HTTPS。当前：",
+      "dnsDhcp": "自动 (DHCP)",
+      "dnsApply": "应用 DNS",
+      "group": {
+        "updates": "Windows 更新",
+        "power": "电源计划",
+        "repair": "修复与时间同步",
+        "extra": "附加项"
+      },
+      "features": "Windows 功能",
+      "featuresHint": "开启或关闭可选组件（需要管理员权限；部分需要重启）。",
+      "on": "已启用",
+      "off": "已禁用",
+      "enable": "启用",
+      "disable": "禁用",
+      "panels": "传统控制面板",
+      "panelsHint": "快速打开经典设置窗口。",
+      "appsHint": "程序通过 winget 安装。需要 winget（应用安装程序）。",
+      "search": "搜索应用",
+      "allCats": "所有类别",
+      "detect": "检测已安装",
+      "installed": "已安装",
+      "appsConfirm": "{mode}：已选择 {n} 个应用。是否继续？",
+      "mode": {
+        "install": "安装",
+        "uninstall": "卸载",
+        "upgrade": "升级"
+      }
+    },
+    "wact": {
+      "updates-default": {
+        "t": "更新：默认设置",
+        "d": "恢复 Windows 更新的原始行为（服务、任务、策略）。需要重启。"
+      },
+      "updates-security": {
+        "t": "更新：推荐（仅安全更新）",
+        "d": "功能更新推迟 365 天，质量更新推迟 4 天；不通过 Windows 更新提供驱动。"
+      },
+      "updates-disable": {
+        "t": "更新：完全禁用",
+        "d": "停止更新服务和任务并清除已下载的文件。安全更新将不会被安装！"
+      },
+      "ultperf-add": {
+        "t": "卓越性能计划：添加",
+        "d": "创建并启用“卓越性能”计划。不适用于笔记本。"
+      },
+      "ultperf-remove": {
+        "t": "电源计划：恢复默认",
+        "d": "powercfg /restoredefaultschemes：移除“卓越性能”和自定义计划。"
+      },
+      "sys-repair": {
+        "t": "系统损坏扫描",
+        "d": "CHKDSK + SFC + DISM：检查磁盘、系统文件和 Windows 映像。可能耗时较长。"
+      },
+      "wu-repair": {
+        "t": "Windows 更新：重置",
+        "d": "停止服务，清除更新缓存和策略，重新注册 DLL 并重启服务。"
+      },
+      "wu-repair-aggressive": {
+        "t": "Windows 更新：深度重置",
+        "d": "相同操作，外加系统扫描、重命名 DataStore/catroot2 以及重置服务描述符。较慢且风险更高。"
+      },
+      "ntp-pool": {
+        "t": "NTP 服务器 pool.ntp.org：启用",
+        "d": "用 pool.ntp.org 取代 time.windows.com，实现更精确的时间同步。"
+      },
+      "oosu": {
+        "t": "O&O ShutUp10++：下载并运行",
+        "d": "从厂商处（dl5.oo-software.com）下载该工具并启动：精细的隐私设置。"
+      },
+      "autologon": {
+        "t": "AutoLogon：运行",
+        "d": "下载 Sysinternals Autologon 并启动：Windows 免密码自动登录。"
+      },
+      "ssh-server": {
+        "t": "OpenSSH 服务器：启用",
+        "d": "安装并启动 OpenSSH 服务器，并在防火墙中开放 22 端口。"
+      }
+    },
+    "wp": {
+      "wup-computer": {
+        "t": "计算机管理"
+      },
+      "wup-control": {
+        "t": "控制面板"
+      },
+      "wup-mouse": {
+        "t": "鼠标属性"
+      },
+      "wup-network": {
+        "t": "网络连接"
+      },
+      "wup-power": {
+        "t": "电源选项"
+      },
+      "wup-printer": {
+        "t": "打印机面板"
+      },
+      "wup-programs": {
+        "t": "程序和功能"
+      },
+      "wup-region": {
+        "t": "区域"
+      },
+      "wup-security": {
+        "t": "安全和维护"
+      },
+      "wup-sound": {
+        "t": "声音设置"
+      },
+      "wup-system": {
+        "t": "系统属性"
+      },
+      "wup-timedate": {
+        "t": "日期和时间"
+      },
+      "wup-firewall": {
+        "t": "Windows Defender 防火墙"
+      },
+      "wup-restore": {
+        "t": "Windows 还原"
+      }
+    },
+    "lu": {
+      "tab": {
+        "system-setup": "系统设置",
+        "applications-setup": "应用",
+        "gaming": "游戏",
+        "security": "安全",
+        "utils": "实用工具"
+      },
+      "hint": "来自 ChrisTitusTech/linutil 的脚本。每个脚本都会在终端窗口中打开，你可以在其中确认操作并输入密码。仅显示适合你发行版的条目。",
+      "credit": "脚本与目录：ChrisTitusTech/linutil（MIT 许可），未经修改。",
+      "search": "搜索条目",
+      "empty": "未找到任何内容。",
+      "run": "运行",
+      "confirm": "在终端中运行“{name}”？脚本可能会安装或卸载软件包、修改系统，并要求输入管理员密码。",
+      "launched": "已在终端窗口（{terminal}）中打开。后续操作都在那里继续。",
+      "err": {
+        "no_terminal": "未找到终端模拟器（x-terminal-emulator、gnome-terminal、konsole、xterm…）。请安装一个。",
+        "linux_only": "仅限 Linux。",
+        "unknown_script": "目录中没有此条目。",
+        "unknown": "无法启动。"
+      }
+    },
+    "searchPh": "按任务查找优化项…"
   },
   "privacy": {
-    "panicTitle": "隐私"
+    "unsupported": "不支持此平台。",
+    "panicTitle": "隐私",
+    "panicHint": "一键清除所有可用目标：命令历史、最近文件、缓存、剪贴板、DNS、浏览器缓存、USB 历史和系统日志。此操作无法撤销。",
+    "panicButton": "全部清除",
+    "panicConfirm": "将永久删除命令历史、最近文件、缓存、剪贴板、浏览器缓存和系统日志。文档和个人文件不受影响。是否继续？",
+    "adminNote": "系统日志、Prefetch 和 USB 历史需要管理员权限。",
+    "selectTitle": "选择性清除",
+    "selectHint": "勾选需要的项目，只清除这些。",
+    "wipeSelected": "清除所选项（{n}）",
+    "confirmSelected": "清除所选项目（{n}）？此操作无法撤销。",
+    "done": "完成：已删除 {removed} 项，释放 {bytes}。",
+    "doneWithErrors": "已删除 {removed} 项，但有 {failed} 项失败。",
+    "itemDone": "已删除：{n}",
+    "historyTitle": "清除日志",
+    "historyLine": "目标：{n} · 已删除：{removed} · {bytes}",
+    "historyFailed": "错误：{n}",
+    "cat": {
+      "history": "命令和搜索历史",
+      "recent": "最近文件",
+      "cache": "缓存和临时文件",
+      "clipboard": "剪贴板",
+      "network": "网络",
+      "browser": "浏览器",
+      "usb": "USB 设备历史",
+      "logs": "系统日志"
+    },
+    "it": {
+      "shell-history": {
+        "t": "PowerShell 命令历史",
+        "d": "ConsoleHost_history.txt：你输入过的所有内容，包括作为参数传递的密码。"
+      },
+      "run-mru": {
+        "t": "“运行”对话框历史 (Win+R)",
+        "d": "“运行”对话框中最近运行的命令和路径。"
+      },
+      "search-history": {
+        "t": "资源管理器搜索历史",
+        "d": "文件资源管理器中的地址栏和搜索查询。"
+      },
+      "recent-files": {
+        "t": "最近文件和跳转列表",
+        "d": "已打开文件的快捷方式及固定应用的跳转列表。"
+      },
+      "recently-used": {
+        "t": "最近文件",
+        "d": "最近打开文件的列表（GTK recently-used.xbel）。"
+      },
+      "activity-history": {
+        "t": "Windows 活动历史",
+        "d": "已打开应用和文档的时间线。"
+      },
+      "thumbnail-cache": {
+        "t": "缩略图缓存",
+        "d": "图片和视频的预览，包括已删除文件的预览。"
+      },
+      "temp-files": {
+        "t": "临时文件",
+        "d": "用户和系统的 Temp 文件夹。"
+      },
+      "recycle-bin": {
+        "t": "回收站",
+        "d": "永久删除回收站中的所有内容。"
+      },
+      "trash": {
+        "t": "垃圾箱",
+        "d": "永久删除垃圾箱中的所有内容。"
+      },
+      "clipboard": {
+        "t": "剪贴板",
+        "d": "当前剪贴板内容及其历史记录 (Win+V)。"
+      },
+      "dns-cache": {
+        "t": "DNS 缓存",
+        "d": "系统保存的最近访问过的域名列表。"
+      },
+      "browser-chrome": {
+        "t": "Google Chrome",
+        "d": "默认配置文件的历史记录、Cookie 和缓存。请先关闭浏览器。"
+      },
+      "browser-edge": {
+        "t": "Microsoft Edge",
+        "d": "默认配置文件的历史记录、Cookie 和缓存。请先关闭浏览器。"
+      },
+      "browser-firefox": {
+        "t": "Mozilla Firefox",
+        "d": "所有配置文件的历史记录、Cookie 和缓存。请先关闭浏览器。"
+      },
+      "event-logs": {
+        "t": "Windows 事件日志",
+        "d": "应用程序、安全、系统、安装。需要管理员权限。"
+      },
+      "journal-logs": {
+        "t": "系统日志 (journald)",
+        "d": "清除 systemd 日志。需要 root 权限（pkexec）。"
+      },
+      "prefetch": {
+        "t": "Prefetch",
+        "d": "C:\\Windows\\Prefetch 中的程序启动痕迹。需要管理员权限。"
+      },
+      "usb-history": {
+        "t": "USB 存储历史",
+        "d": "注册表中已连接 U 盘和外置磁盘的记录。需要管理员权限。"
+      }
+    },
+    "selected": "已选：{n}",
+    "docTitle": "文档",
+    "heading": "未命名文档"
+  },
+  "translate": {
+    "auto": "自动检测",
+    "eyebrow": "本地 AI",
+    "title": "翻译器",
+    "needModel": "模型尚未下载。请在“模型”标签页选择一个版本——下载完成后全部功能可离线使用。",
+    "tab": {
+      "text": "文本",
+      "file": "文件",
+      "image": "图片",
+      "model": "模型"
+    },
+    "modelTitle": "TranslateGemma 4B",
+    "inMemory": "内存中：{provider} · {variant}",
+    "unload": "卸载",
+    "modelHint": "Google 的 TranslateGemma 在你的电脑上运行：不限字符数，也不会向互联网发送任何内容。空闲 10 分钟后会自动卸载。",
+    "noRuntime": "ONNX 运行时不可用。",
+    "provider": "计算设备",
+    "variant": "模型版本",
+    "prov": {
+      "auto": "自动",
+      "cpu": "CPU",
+      "dml": "DirectML（GPU，Windows）",
+      "cuda": "NVIDIA CUDA",
+      "llamacpp": "llama.cpp（GGUF，更快；支持任意 GPU 厂商）"
+    },
+    "unavailable": "不在你的运行时中",
+    "var": {
+      "auto": "自动（匹配设备）",
+      "q4": "q4——CPU 和 NVIDIA CUDA",
+      "q4f16": "q4f16——仅 CPU（fp16 在 GPU 上会出问题）",
+      "dml": "dml——DirectML（AMD、Intel；在 NVIDIA 上自检可能失败）"
+    },
+    "packHint": "在“超分辨率”页面安装 GPU 包并重启应用后即可使用 CUDA，使用 q4 版本。如果某个提供方不可用，翻译会自动回退到下一个，直至 CPU。",
+    "installed": "已安装",
+    "cancel": "取消",
+    "delete": "删除",
+    "deleteConfirm": "删除模型“{name}”的文件？",
+    "download": "下载",
+    "license": "权重：google/translategemma-4b-it 导出为 ONNX（onnx-community；DirectML 构建由 Menterium 提供），遵循 Gemma 使用条款。从 Hugging Face 下载，仅文本部分。",
+    "swap": "交换语言",
+    "run": "翻译",
+    "textPlaceholder": "粘贴任意长度的文本…",
+    "outPlaceholder": "译文会在生成过程中显示在此处",
+    "chars": "字符数：{n}",
+    "copy": "复制",
+    "copied": "已复制",
+    "dropFile": "将文件拖放到此处，或点击选择",
+    "fileHint": "PDF 的结果会保存为 .txt：不会还原版式。",
+    "save": "保存结果",
+    "unsupportedFile": "不支持 {ext} 格式。",
+    "pickImage": "选择图片",
+    "notImage": "这不是图片。",
+    "ocrUnsupported": "此语言不支持文字识别 (OCR)。",
+    "imageAutoHint": "使用自动检测时，图片中的文字按英语识别。其他语言请手动选择。",
+    "imageHint": "文字由 Tesseract 识别，由模型翻译，并绘制到图片上。",
+    "dropImage": "拖入图片、选择文件，或从剪贴板粘贴 (Ctrl+V)",
+    "blocks": "找到的段落：{n}",
+    "showOriginal": "显示原文",
+    "showTranslation": "显示译文",
+    "savePng": "保存 PNG",
+    "st": {
+      "queued": "排队中",
+      "loading": "正在加载模型",
+      "running": "正在翻译",
+      "done": "完成",
+      "error": "错误",
+      "cancelled": "已取消"
+    },
+    "tps": "tok/s",
+    "failedProviders": "启动失败或自检未通过：{list}。翻译将在下一个可用设备上运行（直到应用重启）。",
+    "statTokens": "{n} 个 token",
+    "statPrefill": "预填充 {s} 秒",
+    "statGen": "生成 {s} 秒",
+    "statLoad": "模型加载 {s} 秒",
+    "restartNeeded": "GPU 包已安装，但应用仍在使用旧的运行时。请完全重启应用——之后列表中会出现 CUDA。",
+    "trtNote": "此模型不使用 TensorRT：它不支持模型的关键算子（MatMulNBits、GroupQueryAttention、归一化），因此无法构建可用的引擎。NVIDIA 显卡请使用 CUDA。",
+    "llamaHint": "通过 Vulkan 在任意 GPU 上运行，速度比 ONNX 快数倍。请在下方安装一个构建和 TranslateGemma GGUF 模型。选择“自动”时使用第一个已安装的模型。",
+    "pasteImage": "粘贴",
+    "pasteEmpty": "剪贴板中没有图片。",
+    "pasteDenied": "剪贴板访问被拒绝。请改为在页面上按 Ctrl+V。"
+  },
+  "llama": {
+    "title": "内置 llama.cpp",
+    "hint": "在任意 GPU 厂商或 CPU 上运行的快速 GGUF 语言模型。一个引擎服务所有页面：翻译、聊天、讲座摘要、笔记。",
+    "unsupported": "此平台没有预编译的 llama.cpp 二进制文件。",
+    "needBuild": "请先安装一个构建：Vulkan 适合大多数 GPU（NVIDIA、AMD、Intel）。",
+    "failed": "启动失败",
+    "inMemory": "内存中：{build} · {model}",
+    "unload": "卸载",
+    "modelsTitle": "模型 (GGUF)",
+    "urlPlaceholder": "Hugging Face .gguf 链接（…/resolve/main/model.gguf）",
+    "noKey": "无需密钥",
+    "build": {
+      "cpu": "CPU",
+      "vulkan": "Vulkan（NVIDIA、AMD、Intel）",
+      "cuda": "NVIDIA CUDA"
+    },
+    "buildHint": {
+      "cpu": "到处可用，但较慢。",
+      "vulkan": "推荐：适用任意 GPU，下载量小。",
+      "cuda": "在 NVIDIA 上最快；需要较新的驱动，下载量大。"
+    },
+    "phase": {
+      "download": "正在下载…",
+      "extract": "正在解压…"
+    },
+    "model": {
+      "translategemma-4b-q4km": "TranslateGemma 4B · Q4_K_M（快速，推荐）",
+      "translategemma-4b-q6k": "TranslateGemma 4B · Q6_K（更精确）",
+      "translategemma-4b-q8": "TranslateGemma 4B · Q8_0（最佳质量）",
+      "gemma3-4b-q4km": "Gemma 3 4B · Q4_K_M（聊天）",
+      "qwen3-4b-q4km": "Qwen3 4B Instruct · Q4_K_M（聊天）",
+      "qwen3tts-q4km": "Qwen3-TTS 1.7B · Q4_K_M + mmproj（语音）",
+      "chandra2-q3km": "Chandra OCR 2 · Q3_K_M（轻量，适合笔记本）",
+      "chandra2-q4km": "Chandra OCR 2 · Q4_K_M（推荐）",
+      "chandra2-q6k": "Chandra OCR 2 · Q6_K（更精确）",
+      "chandra2-q8": "Chandra OCR 2 · Q8_0（最佳质量）",
+      "embeddinggemma2-q8": "EmbeddingGemma 2 · Q8_0（智能搜索，推荐）",
+      "embeddinggemma2-q4": "EmbeddingGemma 2 · Q4（智能搜索，更轻量）"
+    }
+  },
+  "canvas": {
+    "select": "选择",
+    "hand": "手形（空格）",
+    "sticky": "便签",
+    "text": "文本",
+    "shape": "形状",
+    "line": "连接线",
+    "frame": "框架",
+    "pen": "画笔",
+    "sticker": "表情符号",
+    "task": "任务",
+    "image": "图片",
+    "note": "笔记",
+    "undo": "撤销",
+    "redo": "重做",
+    "templates": "模板",
+    "export": "导出",
+    "exportPng": "PNG 图片",
+    "exportSvg": "SVG 矢量图",
+    "exportJson": ".holst 文件 (JSON)",
+    "fit": "缩放到适合",
+    "fitSel": "缩放到所选",
+    "zoomIn": "放大",
+    "zoomOut": "缩小",
+    "grid": "网格",
+    "snap": "吸附到对象",
+    "wheelZoom": "滚轮缩放",
+    "wheelPan": "滚轮滚动",
+    "boards": "白板",
+    "newBoard": "新建白板",
+    "rename": "重命名",
+    "del": "删除",
+    "delBoard": "删除此白板？",
+    "layers": "图层",
+    "props": "属性",
+    "fill": "填充",
+    "stroke": "描边",
+    "width": "粗细",
+    "opacity": "不透明度",
+    "radius": "圆角半径",
+    "shadow": "阴影",
+    "dash": "线条",
+    "solid": "实线",
+    "dashed": "虚线",
+    "dotted": "点线",
+    "fontSize": "大小",
+    "bold": "粗体",
+    "italic": "斜体",
+    "alignL": "左对齐",
+    "alignC": "居中对齐",
+    "alignR": "右对齐",
+    "top": "顶部",
+    "middle": "中间",
+    "bottom": "底部",
+    "font": "字体",
+    "textColor": "文字颜色",
+    "align": "对齐",
+    "distribute": "分布",
+    "group": "编组",
+    "ungroup": "取消编组",
+    "front": "置于顶层",
+    "back": "置于底层",
+    "forward": "上移一层",
+    "backward": "下移一层",
+    "lock": "锁定",
+    "unlock": "解锁",
+    "hide": "隐藏",
+    "show": "显示",
+    "duplicate": "复制一份",
+    "copy": "复制",
+    "cut": "剪切",
+    "paste": "粘贴",
+    "selectAll": "全选",
+    "delAll": "全部删除",
+    "edit": "编辑文字",
+    "position": "位置",
+    "rotation": "旋转",
+    "lineStyle": "连接线样式",
+    "straight": "直线",
+    "curve": "曲线",
+    "step": "折线",
+    "startHead": "起点",
+    "endHead": "终点",
+    "none": "无",
+    "arrow": "箭头",
+    "triangle": "三角形",
+    "dot": "圆点",
+    "animated": "动画虚线",
+    "tidy": "自动布局",
+    "empty": "双击添加文字。可将图片或笔记拖放到此处。",
+    "hintHand": "手形：拖动以平移白板",
+    "saved": "已保存",
+    "saving": "正在保存…",
+    "saveFail": "无法保存",
+    "shortcuts": "快捷键",
+    "frameName": "框架",
+    "groupName": "编组",
+    "tooBig": "图片过大",
+    "align_left": "左",
+    "align_hcenter": "水平居中",
+    "align_right": "右",
+    "align_top": "上",
+    "align_vcenter": "垂直居中",
+    "align_bottom": "下",
+    "distH": "水平",
+    "distV": "垂直",
+    "pasteImage": "已粘贴图片",
+    "sans": "无衬线",
+    "serif": "衬线",
+    "mono": "等宽",
+    "hand_": "手写体",
+    "color": "颜色",
+    "custom": "自定义颜色",
+    "layersEmpty": "这里还没有内容",
+    "object": "对象",
+    "dropHere": "松开以添加到白板",
+    "newName": "白板名称",
+    "copyOf": "副本"
+  },
+  "canvasHelp": {
+    "title": "键盘快捷键",
+    "groups": {
+      "tools": "工具",
+      "edit": "编辑",
+      "arrange": "排列",
+      "view": "视图"
+    },
+    "keys": {
+      "handSpace": "H / 空格",
+      "altDrag": "Alt + 拖动",
+      "enterDbl": "Enter / 双击",
+      "zoom": "+ / −  或  Ctrl+= / Ctrl+−"
+    },
+    "rows": {
+      "select": "选择",
+      "hand": "手形 / 按住空格平移",
+      "sticky": "便签",
+      "text": "文本",
+      "shape": "形状",
+      "connector": "连接线",
+      "frame": "框架",
+      "pen": "画笔",
+      "task": "任务卡片",
+      "emoji": "表情符号",
+      "image": "插入图片",
+      "undoRedo": "撤销 / 重做",
+      "selectAll": "全选",
+      "nextPrev": "下一个 / 上一个对象",
+      "clipboard": "复制 / 剪切 / 粘贴",
+      "duplicate": "复制一份",
+      "altCopy": "按住 Alt 拖动可复制",
+      "delete": "删除",
+      "editText": "编辑文字",
+      "boldItalic": "粗体 / 斜体",
+      "nudge": "移动 1 像素",
+      "group": "编组 / 取消编组",
+      "layer": "上移 / 下移一层",
+      "frontBack": "置顶 / 置底",
+      "lock": "锁定 / 解锁",
+      "hide": "隐藏",
+      "alignLR": "左对齐 / 右对齐",
+      "alignTB": "顶部对齐 / 底部对齐",
+      "center": "水平居中 / 垂直居中",
+      "zoom": "缩放",
+      "zoom100": "缩放到 100%",
+      "fit": "适应全部 / 所选",
+      "grid": "切换网格",
+      "snap": "切换吸附",
+      "help": "此窗口",
+      "escape": "取消选择 / 取消操作"
+    }
+  },
+  "canvasShapes": {
+    "rect": "矩形",
+    "rounded": "圆角矩形",
+    "ellipse": "椭圆",
+    "diamond": "菱形（判断）",
+    "triangle": "三角形",
+    "hexagon": "六边形",
+    "parallelogram": "平行四边形",
+    "cylinder": "圆柱（数据库）",
+    "star": "星形",
+    "cloud": "云形",
+    "arrow": "箭头",
+    "chat": "对话气泡"
+  },
+  "canvasObj": {
+    "notePh": "笔记",
+    "textPh": "文本",
+    "prLow": "低",
+    "prMedium": "中",
+    "prHigh": "高",
+    "taskTitlePh": "任务标题",
+    "dblOpen": "双击打开",
+    "note": "笔记"
+  },
+  "canvasPage": {
+    "myBoard": "我的白板",
+    "boardN": "白板 {n}",
+    "open": "打开",
+    "copyLinkForNote": "复制笔记用链接",
+    "highlighter": "荧光笔"
+  },
+  "canvasInsp": {
+    "name": "名称",
+    "layerName": "图层名称",
+    "cardTitle": "卡片标题",
+    "showFrameTitle": "显示框架标题",
+    "autoHeight": "自动高度",
+    "emoji": "表情符号",
+    "status": "状态",
+    "toDo": "待办",
+    "inProgress": "进行中",
+    "done": "完成",
+    "priority": "优先级",
+    "none": "无",
+    "low": "低",
+    "medium": "中",
+    "high": "高",
+    "dueDate": "截止日期",
+    "accentColour": "强调色",
+    "showDoneTotal": "显示已完成/总数",
+    "subtasks": "子任务",
+    "step": "步骤",
+    "addSubtask": "添加子任务",
+    "fit": "适应方式",
+    "stretch": "拉伸",
+    "contain": "包含",
+    "cover": "覆盖",
+    "flip": "翻转",
+    "horizontal": "水平",
+    "vertical": "垂直",
+    "brightness": "亮度",
+    "contrast": "对比度",
+    "saturation": "饱和度",
+    "blur": "模糊",
+    "grayscale": "灰度",
+    "resetAdjustments": "重置调整",
+    "style": "样式",
+    "underline": "下划线",
+    "strike": "删除线",
+    "spacing": "间距",
+    "lineHeight": "行高",
+    "letterSpacingPx": "字间距（px）"
+  },
+  "canvasSmart": {
+    "thisBoard": "此白板",
+    "needLinks": "请先用连线连接元素——布局按连接关系排列",
+    "layoutDone": "完成：图表已按连接关系排列",
+    "toggleTitle": "智能操作：搜索、按语义布局、笔记",
+    "title": "智能操作",
+    "searchPh": "按语义查找对象…",
+    "insertFromApp": "从应用插入（笔记、任务、书签…）",
+    "layoutLRTitle": "按连接关系排列图表：从左到右",
+    "layoutLR": "图表 →",
+    "layoutTBTitle": "按连接关系排列图表：从上到下",
+    "layoutTB": "图表 ↓",
+    "relatedNotes": "与所选内容相关的笔记",
+    "addNoteCard": "在旁边添加笔记卡片"
+  },
+  "canvasSel": {
+    "rotate": "旋转（Shift：每次 15°）",
+    "dragToConnect": "拖动以连接"
+  },
+  "source": {
+    "note": "笔记",
+    "bookmark": "书签",
+    "task": "任务",
+    "canvas": "Canvas",
+    "chat": "AI 聊天",
+    "lecture": "讲座",
+    "quick": "快速笔记",
+    "budget": "预算",
+    "movie": "电影",
+    "book": "图书",
+    "m3e": "M3E 原型",
+    "archive": "网页归档",
+    "rss": "新闻 (RSS)",
+    "file": "文件"
+  },
+  "lineDiff": {
+    "tooLarge": "文本过大，无法比较"
+  },
+  "units": {
+    "s": "{n} 秒",
+    "min": "{n} 分钟",
+    "hMin": "{h} 小时 {m} 分钟",
+    "gb": "GB",
+    "framePrev": "-1 帧",
+    "frameNext": "+1 帧"
+  },
+  "boundary": {
+    "title": "此页面出了点问题",
+    "retry": "重试"
+  },
+  "linkPicker": {
+    "eyebrow": "链接",
+    "title": "从应用插入",
+    "searchPh": "按标题或语义搜索…"
+  },
+  "semModel": {
+    "devCpu": "处理器 (CPU)——不占用显存",
+    "devGpu": "显卡 (CUDA / Vulkan)",
+    "devAuto": "自动",
+    "notInstalled": "未安装",
+    "title": "智能搜索",
+    "on": "已启用",
+    "off": "已禁用",
+    "gpu": "GPU",
+    "cpu": "CPU",
+    "inMemory": "在内存中",
+    "loadsOnRequest": "首次请求时加载",
+    "blurb": "按语义搜索、相似笔记、建议、主题分组和聊天记忆——在所有使用它们的页面生效。索引中的条目：{total}",
+    "indexing": " · 正在索引 {done}/{total}",
+    "model": "模型",
+    "noModels": "没有模型",
+    "launchMode": "运行方式",
+    "needBuild": "需要 llama.cpp 构建——请在“设置 → 聊天”中安装。",
+    "otherModel": "其他模型（GGUF，例如更大的）",
+    "embeddingHint": "文件名必须包含“embedding”",
+    "updateIndex": "更新索引",
+    "unload": "从内存卸载",
+    "disable": "禁用",
+    "enable": "启用",
+    "toggleOn": "智能搜索：已开启",
+    "toggleOff": "智能搜索：已关闭"
+  },
+  "sem": {
+    "similarToMineHint": "按与你的收藏和书签的接近程度排序",
+    "similarToMine": "与我的相似",
+    "similarTo": "类似“{like}”· {pct}%",
+    "budgetGuess": "看起来属于“{guess}”类别——点击应用",
+    "lectureSearchPh": "按语义搜索转写内容…",
+    "lectureNotes": "与本讲座主题相关的笔记",
+    "needModel": "需要语义搜索模型（笔记中的“相似”标签页）",
+    "misc": "其他",
+    "showByTime": "按时间显示",
+    "groupByTopic": "按主题分组",
+    "movieSearchPh": "按描述搜索列表：“太空与孤独”…",
+    "whatToWatch": "从我的计划中看什么",
+    "recoEmpty": "暂时没有可挑选的内容：需要已看过或评分 8 分以上的作品，以及语义搜索模型。",
+    "recoTaste": "根据你的口味：{list}",
+    "searchByMeaning": "按语义搜索",
+    "insertLinkHint": "插入指向任务、书签、笔记、白板、讲座或聊天的链接",
+    "docThemeLight": "浅色页面 → 深色",
+    "docThemeDark": "深色页面 → 与应用一致",
+    "docThemeAuto": "文档背景：浅色 / 深色",
+    "searchMeaningWords": "按语义和关键词搜索…",
+    "hideTopics": "隐藏主题",
+    "showTopics": "按主题分组",
+    "hideDupes": "隐藏重复项",
+    "findDupes": "查找重复项",
+    "noGroups": "暂无分组——需要更多书签，或先为其建立索引",
+    "topicN": "主题 {n}",
+    "noDupes": "未发现重复项",
+    "alreadySaved": "此主题下已保存：",
+    "similarTasks": "相似任务：{project}{tags}——应用",
+    "projectN": " 项目“{name}”"
+  },
+  "liveTable": {
+    "delRow": "删除行",
+    "addRow": "+ 行",
+    "addCol": "+ 列"
+  },
+  "embed": {
+    "board": "白板",
+    "st": {
+      "todo": "待办",
+      "inProgress": "进行中",
+      "deferred": "已推迟",
+      "completed": "完成"
+    },
+    "pr": {
+      "low": "低",
+      "medium": "中",
+      "high": "高",
+      "urgent": "紧急"
+    },
+    "loadingTask": "正在加载任务…",
+    "taskNotFound": "未找到任务（可能已删除）",
+    "removeFromNote": "从笔记中移除",
+    "openTasks": "在任务页面中打开",
+    "status": "状态",
+    "priority": "优先级",
+    "due": "截止",
+    "openBoard": "打开白板",
+    "dblOpenBoard": "双击打开白板",
+    "loadingBoard": "正在加载白板…",
+    "boardNotFound": "未找到白板",
+    "boardEmpty": "白板为空"
+  },
+  "semPanel": {
+    "disabled": "智能搜索已关闭。可用顶部栏的机器人按钮开启。",
+    "needModel": "按语义搜索、相似笔记和建议由 EmbeddingGemma 2 模型驱动（310 MB，在内置 llama.cpp 中使用 CPU 运行）。",
+    "install": "安装模型",
+    "indexed": "{notes} 条笔记 · {bookmarks} 个书签 · {lectures} 场讲座 · {chats} 个聊天",
+    "empty": "索引为空——请点击“更新索引”。",
+    "related": "相似笔记",
+    "nothingClose": "暂时没有相近内容",
+    "insertLink": "插入链接",
+    "tagsFolder": "标签和文件夹",
+    "folderHint": "相似笔记位于文件夹“{folder}”",
+    "dupesTopics": "重复项和主题",
+    "noDupes": "没有重复项",
+    "match": "匹配度 {pct}%",
+    "noGroups": "未找到分组"
+  },
+  "diary": {
+    "eyebrow": "记录",
+    "title": "日记",
+    "streak": "连续 {n} 天",
+    "streakHint": "连续有记录的天数",
+    "today": "今天",
+    "placeholder": "今天发生了什么？想到了什么，感恩什么……",
+    "saving": "正在保存…",
+    "saved": "已保存",
+    "applyTemplate": "插入模板",
+    "editTemplate": "编辑模板",
+    "resetTemplate": "恢复默认",
+    "defaultTemplate": "## 今日要点\n\n\n## 做得好的\n\n\n## 可以改进的\n\n\n## 心情与精力（1–10）\n\n\n## 明天的计划\n",
+    "week": {
+      "eyebrow": "回顾",
+      "heading": "本周总结",
+      "run": "总结本周",
+      "busy": "正在撰写总结…",
+      "title": "周",
+      "entries": "日记条目",
+      "tasksDone": "已完成的任务",
+      "tasksCreated": "新增的任务",
+      "notes": "编辑过的笔记",
+      "lectures": "讲座",
+      "nothing": "本周没有任何记录。",
+      "byAi": "由 AI（{model}）根据你的日记、任务、笔记和讲座撰写。",
+      "noAi": "这是不含 AI 的简单汇总。在“设置 → 聊天”中配置提供商即可获得文字总结。",
+      "noData": "本周暂时没有可总结的内容。",
+      "insert": "添加到当天的日记",
+      "inserted": "已添加到当天记录 ✓",
+      "edit": "编辑",
+      "cancel": "取消",
+      "savedNote": "已保存——本周任意一天都会显示。",
+      "done": "完成"
+    },
+    "drift": {
+      "title": "兴趣漂移",
+      "empty": "数据还不够：需要几个月的笔记、书签或讲座。",
+      "overall": "这一时期的主要主题",
+      "persistent": "长期兴趣",
+      "biggest": "兴趣在 {month} 变化最大（{pct}%）。",
+      "docs": "文档：{n}",
+      "shift": "变化 {pct}%",
+      "emerging": "新出现",
+      "fading": "淡出"
+    },
+    "self": {
+      "title": "对自己的约定",
+      "empty": "还没有。设一条规则，例如“每天视频不超过 2 小时”。",
+      "min": "分钟",
+      "status": {
+        "ok": "在范围内。",
+        "near": "接近上限——仅供参考。",
+        "over": "已超出上限。无需自责：是否要调整由你决定。"
+      },
+      "checks": "该核实是否应验了：",
+      "traces": "半年前你做过一些决定——当时对吗？",
+      "came": "应验",
+      "notCame": "没有",
+      "right": "当时对了",
+      "wrong": "当时错了",
+      "metric": {
+        "category_minutes_day": "每天某类应用的使用时间（分钟）",
+        "app_minutes_day": "每天某应用的使用时间（分钟）",
+        "spend_day": "每日支出",
+        "spend_month": "每月支出",
+        "category_spend_month": "某类别每月支出"
+      },
+      "cat": {
+        "media": "视频与音乐",
+        "game": "游戏",
+        "chat": "通讯",
+        "browser": "浏览器",
+        "dev": "开发",
+        "office": "办公与笔记",
+        "other": "其他"
+      },
+      "app": "进程，例如 chrome",
+      "category": "支出类别",
+      "label": "名称（可选）",
+      "add": "添加"
+    }
+  },
+  "rss": {
+    "eyebrow": "资讯",
+    "title": "RSS 阅读器",
+    "refresh": "刷新",
+    "readAll": "全部标为已读",
+    "digest": "AI 摘要",
+    "digestBusy": "正在撰写摘要…",
+    "digestBy": "基于 {n} 篇文章 · {model}",
+    "digestEmpty": "没有可摘要的文章。",
+    "digestNoAi": "在“设置 → 聊天”中配置 AI 提供商即可获得摘要。",
+    "addPh": "订阅源或网站地址（https://…）",
+    "add": "订阅",
+    "addFailed": "无法添加订阅源：{error}",
+    "refreshed": "新文章：{added}，出错的订阅源：{failed}",
+    "allFeeds": "所有订阅源",
+    "unsubscribe": "取消订阅",
+    "unsubscribeConfirm": "取消订阅“{name}”？其文章将被删除。",
+    "importOpml": "导入 OPML",
+    "exportOpml": "导出 OPML",
+    "opmlResult": "已添加：{added}，已存在：{skipped}，失败：{failed}",
+    "filter": {
+      "unread": "未读",
+      "all": "全部",
+      "saved": "已收藏"
+    },
+    "searchPh": "搜索文章…",
+    "emptyNoFeeds": "还没有订阅源——在上方粘贴订阅源地址，或导入 OPML 文件。",
+    "emptyItems": "这里没有内容。换个筛选条件或点击“刷新”。",
+    "openSite": "打开文章",
+    "readLater": "稍后阅读",
+    "readLaterDone": "已连同文章正文保存到书签。",
+    "save": "加星标",
+    "unsave": "取消星标",
+    "articleLoading": "正在加载文章…",
+    "articlePartial": "无法提取全文——显示订阅源摘要。请点击“打开网站”。",
+    "digestCollapse": "收起摘要",
+    "digestExpand": "展开摘要",
+    "translate": "翻译",
+    "translating": "翻译中…",
+    "translateHint": "将其他语言的新闻翻译为你的语言",
+    "showOriginal": "原文",
+    "showTranslation": "译文",
+    "settingsTitle": "设置",
+    "engineTitle": "翻译引擎",
+    "engine": {
+      "ai": "AI 提供商",
+      "aiHint": "使用聊天中配置的提供商和模型。质量最佳，消耗额度。",
+      "local": "本地模型（“翻译”页面）",
+      "localHint": "在本机运行，离线免费。需在“翻译”页面安装模型；速度较慢。",
+      "google": "谷歌翻译",
+      "googleHint": "速度快，无需密钥。文章文本会发送给 Google；非官方接口，可能受限。",
+      "mymemory": "MyMemory",
+      "mymemoryHint": "免费，无需密钥。每天约 5000 字符（填写邮箱后 50000）。适合标题。",
+      "libre": "LibreTranslate",
+      "libreHint": "开源翻译服务：自建或公共服务器。填写其地址（如需要，再填密钥）。",
+      "lingva": "Lingva Translate",
+      "lingvaHint": "Google 翻译的开放前端。公共服务器常被封锁；可填写自己的地址。"
+    },
+    "localMissing": "未安装本地翻译模型——请在“翻译”页面安装。",
+    "ctx": {
+      "open": "阅读",
+      "copyLink": "复制链接",
+      "copyTitle": "复制标题",
+      "markRead": "标为已读",
+      "markUnread": "标为未读",
+      "copyFeedUrl": "复制订阅地址"
+    },
+    "searchSemantic": "智能搜索：按语义匹配（EmbeddingGemma）",
+    "searchSemanticTag": "按语义",
+    "autoTitle": "自动刷新",
+    "autoHint": "只要应用在运行就会在后台刷新，即使未打开此页面",
+    "autoOff": "关闭",
+    "autoEvery": "每 {n} 分钟",
+    "googleLimited": "Google 翻译暂时限制了此连接的请求——请约 15 分钟后重试，或在“设置”中换用其他引擎。",
+    "translateFailed": "无法翻译文章正文。",
+    "tps": "词元/秒",
+    "engineLimited": "翻译服务暂时限制了请求——请稍后重试，或在“设置”中换用其他引擎。",
+    "libreMissing": "请在“设置”中填写 LibreTranslate 服务器地址。",
+    "cfg": {
+      "email": "邮箱（可选，可提高每日额度）",
+      "key": "API 密钥（如需要）",
+      "keySaved": "密钥已保存——输入以替换"
+    },
+    "clearDb": "清空数据库",
+    "clearConfirm": "删除所有已存储的文章、其全文和译文？已收藏的文章和订阅会保留。下次更新时订阅源会重新填充。",
+    "cleared": "已从数据库删除文章：{n}。",
+    "modelTitle": "本地翻译模型",
+    "unloadAfter": "翻译后从内存卸载模型",
+    "unloadNow": "从内存卸载模型",
+    "unloaded": "模型已卸载",
+    "unloadHint": "释放内存和显存。下次本地翻译会重新加载模型（几秒）。卸载会暂时停止共享的 llama.cpp 服务，包括聊天。"
+  },
+  "companion": {
+    "title": "网页伴侣",
+    "hint": "通过 Wi-Fi 在手机上查看笔记和任务，向这台电脑发送文字、链接和文件，并控制播放器。仅在家庭网络内工作，不会向互联网发送任何内容。",
+    "enable": "启用网页伴侣",
+    "enableHint": "在局域网中启动一个独立的小型服务器。密码管理器、密钥和设置绝不会暴露。默认关闭。",
+    "port": "端口",
+    "portHint": "下次启用伴侣时生效。",
+    "portInUse": "该端口已被占用——请换一个。",
+    "address": "手机访问地址",
+    "addressHint": "扫描二维码或在手机浏览器中输入地址。手机必须连接同一个 Wi-Fi。",
+    "noNetwork": "未找到局域网地址。",
+    "code": "配对码",
+    "codeHint": "在手机上输入一次即可。该码仅可使用一次，5 分钟后失效。",
+    "codeLeft": "剩余 {m}:{s}",
+    "newCode": "新的配对码",
+    "devices": "已连接的设备",
+    "devicesHint": "撤销设备后，其访问权限立即失效。",
+    "lastSeen": "最近活动 {when}",
+    "revoke": "撤销访问",
+    "inbox": "已接收的文件"
+  },
+  "_meta": {
+    "code": "zh",
+    "native": "中文"
+  },
+  "ghost": {
+    "title": "上下文（提示）",
+    "off": "面板会感知你正在做的事（应用内的选中文字或活动窗口标题），并显示相关的笔记、讲座、支出和任务。搜索在本地进行，不保存窗口标题；密码管理器和银行窗口会被忽略。",
+    "enable": "开启",
+    "disable": "关闭提示",
+    "because": "依据",
+    "empty": "暂无相关内容。请选中文字或打开文档。"
+  },
+  "timeMachine": {
+    "title": "时光机",
+    "readOnly": "仅查看",
+    "slider": "日期",
+    "today": "今天",
+    "daysAgo": "{n} 天前",
+    "snapshot": "立即快照",
+    "snapshotDone": "快照已保存。",
+    "snapshotSame": "自上次快照以来没有变化。",
+    "notes": "笔记",
+    "noSnapshot": "该日期尚无笔记快照（每隔几小时自动生成）。",
+    "snapshotAt": "{at} 的快照",
+    "filter": "按标题搜索",
+    "boards": "白板",
+    "tasks": "任务",
+    "tasksOpen": "未完成：{n}",
+    "tasksDone": "已完成：{n}",
+    "tasksNote": "近似值：不保存状态变更历史，之后才完成的任务显示为未完成。",
+    "budget": "开支",
+    "balance": "余额",
+    "income": "收入",
+    "expense": "支出",
+    "diary": "日记",
+    "restore": "恢复为副本",
+    "restored": "已创建副本：{path}"
+  },
+  "night": {
+    "message": "现在是深夜。预算决策和发送消息最好等到早上——只是建议，没有任何限制。",
+    "ok": "知道了",
+    "never": "不再提醒"
   }
 }

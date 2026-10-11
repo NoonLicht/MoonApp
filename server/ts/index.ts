@@ -15,15 +15,18 @@ import express from "express";
 import type http from "http";
 import config from "./config";
 import logger from "./logger";
-import { db, stmts } from "./db";
+import { db } from "./db";
 import * as backups from "./backup";
 import settings from "./settings";
 import * as monitor from "./monitor";
+import * as monitorAlerts from "./monitorAlerts";
 import * as security from "./security";
 import * as passwordVault from "./passwordVault";
 import * as winget from "./winget";
 import * as proxySubs from "./proxySubscriptions";
 import * as tgws from "./tgwsproxy";
+import * as bodyLimits from "./bodyLimits";
+import * as problems from "./problemLog";
 
 import chatRouter from "./routes/chat";
 import settingsRouter from "./routes/settings";
@@ -50,6 +53,35 @@ import tgwsRouter from "./routes/tgws";
 import tasksRouter from "./routes/tasks";
 import passwordVaultRouter from "./routes/passwordVault";
 import diskScanRouter from "./routes/diskScan";
+import fileInsightsRouter from "./routes/fileInsights";
+import interchangeRouter from "./routes/interchange";
+import chatToolsRouter from "./routes/chatTools";
+import automationRulesRouter from "./routes/automationRules";
+import noteToolsRouter from "./routes/noteTools";
+import clipboardHistoryRouter from "./routes/clipboardHistory";
+import folderVersionsRouter from "./routes/folderVersions";
+import chatForkRouter from "./routes/chatFork";
+import appModesRouter from "./routes/appModes";
+import audioCleanRouter from "./routes/audioClean";
+import lyricsRouter from "./routes/lyrics";
+import contextMenuRouter from "./routes/contextMenu";
+import pluginsRouter from "./routes/plugins";
+import p2pRouter from "./routes/p2p";
+import aiShieldRouter from "./routes/aiShield";
+import ghostRouter from "./routes/ghost";
+import timeMachineRouter from "./routes/timeMachine";
+import examRouter from "./routes/exam";
+import voiceVaultRouter from "./routes/voiceVault";
+import attentionRouter from "./routes/attention";
+import driftRouter from "./routes/drift";
+import gapsRouter from "./routes/gaps";
+import mindRouter from "./routes/mind";
+import contractsRouter from "./routes/contracts";
+import scanRouter from "./routes/scan";
+import montageRouter from "./routes/montage";
+import diagnosticsRouter from "./routes/diagnostics";
+import * as timeMachineAuto from "./timeMachineAuto";
+import * as automationRules from "./automationRules";
 import bookmarksRouter from "./routes/bookmarks";
 import pdfRouter from "./routes/pdf";
 import gamesRouter from "./routes/games";
@@ -70,6 +102,11 @@ import semanticRouter from "./routes/semantic";
 import ocrRouter from "./routes/ocr";
 import screenshotsRouter from "./routes/screenshots";
 import officeRouter from "./routes/office";
+import diaryRouter from "./routes/diary";
+import rssRouter from "./routes/rss";
+import * as rssModule from "./rss";
+import companionRouter from "./routes/companion";
+import * as companion from "./companion";
 import * as perPageProxy from "./middleware/perPageProxy";
 import * as lecture from "./lecture";
 import * as proxy from "./proxy";
@@ -81,12 +118,18 @@ process.on("uncaughtException", (err) => {
     message: err?.message || String(err),
     stack: String(err?.stack || "").slice(0, 4000),
   });
+  problems.reportProblem({ source: "process", error: err });
 });
 process.on("unhandledRejection", (reason) => {
   const r = reason as { message?: unknown; stack?: unknown } | null;
   logger.error("process.unhandledRejection", {
     message: String(r?.message || reason).slice(0, 1000),
     stack: String(r?.stack || "").slice(0, 4000),
+  });
+  problems.reportProblem({
+    source: "process",
+    level: "warn",
+    error: reason instanceof Error ? reason : new Error(String(r?.message || reason)),
   });
 });
 
@@ -129,57 +172,7 @@ function authMiddleware(
   }
   next();
 }
-// Стартовые книги (как раньше MOCK_BOOKS).
-function seedBooks(): void {
-  if (stmts.bookAll.all().length > 0) return;
-  // Кортеж (а не массив) — чтобы spread ниже соответствовал порядку колонок.
-  const books: [string, string, number, string, string, string][] = [
-    [
-      "The Quiet Algorithm",
-      "N. Halvorsen",
-      2019,
-      "EPUB,PDF",
-      "amber",
-      "A field guide to reasoning about systems that think in silence.",
-    ],
-    [
-      "Slow Static",
-      "R. Adeyemi",
-      2021,
-      "EPUB",
-      "violet",
-      "Essays on signal, noise, and the long half-life of information.",
-    ],
-    [
-      "Copper & Circuit",
-      "M. Duval",
-      2016,
-      "PDF,MOBI",
-      "teal",
-      "A short history of the workbench, from hand tools to relay.",
-    ],
-    [
-      "Foundations of Drift",
-      "S. Okafor",
-      2023,
-      "EPUB,PDF",
-      "amber",
-      "Distributed consensus through the lens of migratory systems.",
-    ],
-    [
-      "Glass Rooms",
-      "T. Lindqvist",
-      2020,
-      "MOBI",
-      "violet",
-      "A design memoir on transparency and interfaces.",
-    ],
-  ];
-  for (const b of books) stmts.bookInsert.run(...b);
-  logger.info("seed.books", { count: books.length });
-}
 function createApp(): express.Express {
-  seedBooks();
   // Fail-safe лекций: сессии, оборванные падением приложения (status=recording,
   // но процесса записи нет), помечаем interrupted и чиним header raw.wav.
   try {
@@ -219,9 +212,17 @@ function createApp(): express.Express {
     next();
   });
   app.use(authMiddleware);
-  // доски Canvas хранят вставленные картинки прямо в JSON — им нужен лимит побольше
-  app.use("/api/myspace/holst", express.json({ limit: "40mb" }));
-  app.use(express.json({ limit: "2mb" }));
+  // Лимит JSON-тела зависит от маршрута (см. bodyLimits.ts): доски, заметки и импорты — больше.
+  const jsonParsers = new Map<string, express.RequestHandler>();
+  app.use((req, res, next) => {
+    const limit = bodyLimits.jsonLimitFor(req.path);
+    let parser = jsonParsers.get(limit);
+    if (!parser) {
+      parser = express.json({ limit });
+      jsonParsers.set(limit, parser);
+    }
+    parser(req, res, next);
+  });
   // Per-page проксирование: по заголовку X-App-Page размечаем req.appPage /
   // req.proxy / req.proxyUrl (см. server/middleware/perPageProxy.js).
   app.use(perPageProxy.perPageProxyMiddleware);
@@ -251,6 +252,33 @@ function createApp(): express.Express {
   app.use("/api/tasks", tasksRouter);
   app.use("/api/passwords", passwordVaultRouter);
   app.use("/api/diskscan", diskScanRouter);
+  app.use("/api/fileinsights", fileInsightsRouter);
+  app.use("/api/interchange", interchangeRouter);
+  app.use("/api/chat-tools", chatToolsRouter);
+  app.use("/api/automation-rules", automationRulesRouter);
+  app.use("/api/note-tools", noteToolsRouter);
+  app.use("/api/clipboard-history", clipboardHistoryRouter);
+  app.use("/api/folder-versions", folderVersionsRouter);
+  app.use("/api/chat-fork", chatForkRouter);
+  app.use("/api/app-modes", appModesRouter);
+  app.use("/api/audio-clean", audioCleanRouter);
+  app.use("/api/lyrics", lyricsRouter);
+  app.use("/api/context-menu", contextMenuRouter);
+  app.use("/api/plugins", pluginsRouter);
+  app.use("/api/p2p", p2pRouter);
+  app.use("/api/ai-shield", aiShieldRouter);
+  app.use("/api/ghost", ghostRouter);
+  app.use("/api/time-machine", timeMachineRouter);
+  app.use("/api/exam", examRouter);
+  app.use("/api/voice-vault", voiceVaultRouter);
+  app.use("/api/attention", attentionRouter);
+  app.use("/api/drift", driftRouter);
+  app.use("/api/gaps", gapsRouter);
+  app.use("/api/mind", mindRouter);
+  app.use("/api/self-contracts", contractsRouter);
+  app.use("/api/scan", scanRouter);
+  app.use("/api/montage", montageRouter);
+  app.use("/api/diagnostics", diagnosticsRouter);
   app.use("/api/bookmarks", bookmarksRouter);
   app.use("/api/pdf", pdfRouter);
   app.use("/api/games", gamesRouter);
@@ -271,6 +299,9 @@ function createApp(): express.Express {
   app.use("/api/ocr", ocrRouter);
   app.use("/api/screenshots", screenshotsRouter);
   app.use("/api/office", officeRouter);
+  app.use("/api/diary", diaryRouter);
+  app.use("/api/rss", rssRouter);
+  app.use("/api/companion", companionRouter);
 
   // Раздача собранного фронта (dist), если он собран.
   const dist = path.join(__dirname, "..", "dist");
@@ -286,11 +317,24 @@ function createApp(): express.Express {
   // понимает, что это именно обработчик ошибок, а не обычный middleware.
   app.use(
     (err: Error, req: express.Request, res: express.Response, _next: express.NextFunction) => {
-      logger.error("route.error", { path: req.path, error: err.message });
-      res.status(500).json({ error: err.message });
+      const status = bodyLimits.statusOf(err);
+      const error = bodyLimits.publicMessage(err);
+      // 4xx от разбора тела — не сбой приложения, в журнал проблем их не несём.
+      if (status >= 500) {
+        logger.error("route.error", { path: req.path, error: err.message });
+        problems.reportProblem({ source: "route", error: err, context: { path: req.path } });
+      } else {
+        logger.warn("route.rejected", { path: req.path, status, error: err.message });
+      }
+      res.status(status).json({ error });
     },
   );
   backups.startAuto();
+  timeMachineAuto.startAuto();
+
+  // Веб-компаньон поднимается только если пользователь включил его в настройках.
+  companion.autoStart();
+  rssModule.startAutoRefresh();
 
   // Фоновое обновление подписок прокси (первичный проход + раз в 6 часов).
   try {
@@ -301,6 +345,8 @@ function createApp(): express.Express {
 
   // LibreHardwareMonitor запускается сам, если это включено в настройках и он установлен.
   monitor.autoStartLhmIfConfigured();
+  monitorAlerts.startMonitorAlerts();
+  automationRules.startRules();
 
   // Разовая (идемпотентная) миграция секретов/паролей со старого захардкоженного
   // резервного AES-ключа (был виден в открытом репозитории на GitHub) на
@@ -381,9 +427,26 @@ function startServer(port: number = config.PORT, opts: { token?: string } = {}):
   return server;
 }
 
+/**
+ * Токен для запуска без Electron (`node server/index.js` + `npm run dev`).
+ * Раньше такой сервер работал вовсе без аутентификации: любой локальный процесс
+ * мог дёрнуть API (менеджер паролей, запуск файлов, установка ПО). Теперь токен
+ * генерируется на каждый запуск и кладётся в storage/.dev-token — его читает
+ * Vite-прокси (vite.config.ts) и подставляет в заголовок всех /api и /events,
+ * включая <img>/<video>. Открытый режим остаётся только по явному
+ * MOONAPP_INSECURE_DEV=1.
+ */
+function devToken(): string | undefined {
+  if (process.env.MOONAPP_TOKEN || process.env.MOONAPP_INSECURE_DEV === "1") return undefined;
+  const token = crypto.randomBytes(32).toString("hex");
+  const file = path.join(config.DIRS.storage, ".dev-token");
+  fs.writeFileSync(file, token, { encoding: "utf8", mode: 0o600 });
+  return token;
+}
+
 // Запуск напрямую: node server/index.js
 if (require.main === module) {
-  startServer();
+  startServer(config.PORT, { token: devToken() });
 }
 
 export { createApp, startServer, db };

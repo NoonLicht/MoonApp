@@ -46,7 +46,9 @@ import {
   setAt,
 } from "@/pages/settings/parts/SettingsControls";
 import { ApiKeysPanel, TmdbKeyRow } from "@/pages/settings/parts/SettingsApiKeys";
+import { ProblemsRow } from "@/pages/settings/parts/SettingsProblems";
 import { PasswordVaultSection } from "@/pages/settings/parts/SettingsPasswordVault";
+import { CompanionSection } from "@/pages/settings/parts/SettingsCompanion";
 
 export default function SettingsPage() {
   const { t } = useI18n();
@@ -65,7 +67,7 @@ export default function SettingsPage() {
     api
       .getSettings()
       .then(setS)
-      .catch(() => setError(t("settings.loadError") || "Не удалось загрузить настройки"));
+      .catch(() => setError(t("settings.loadError")));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -480,6 +482,7 @@ export default function SettingsPage() {
               </div>
             </Row>
           )}
+          <ProblemsRow />
           {diagStatus && (
             <div className="muted-sm" style={{ marginTop: -6 }}>
               {diagStatus}
@@ -901,8 +904,8 @@ export default function SettingsPage() {
             onChange={(v) => change("chat.stream", v)}
           />
           <BoolRow
-            label="Долгая память"
-            hint="Подмешивать в запрос похожие места из прошлых чатов (нужна модель поиска по смыслу). Фрагменты уходят выбранному ИИ-провайдеру."
+            label={t("settings.chatMemory")}
+            hint={t("settings.chatMemoryHint")}
             value={!!chat.memory}
             onChange={(v) => change("chat.memory", v)}
           />
@@ -965,7 +968,7 @@ export default function SettingsPage() {
               onChange={(e) => change("lecture.language", e.target.value)}
               options={[
                 { value: "auto", label: t("settings.lectureLangAuto") },
-                { value: "ru", label: "Русский" },
+                { value: "ru", label: "Русский" }, // i18n-ignore: название языка на нём самом
                 { value: "en", label: "English" },
                 { value: "de", label: "Deutsch" },
                 { value: "fr", label: "Français" },
@@ -1060,6 +1063,8 @@ export default function SettingsPage() {
             />
           </Row>
         </Section>
+
+        <CompanionSection />
 
         {/* ---- Автобэкап ---- */}
         <Section title={t("settings.backup")} icon={Database}>

@@ -18,7 +18,12 @@ import {
 } from "lucide-react";
 import ToolbarMenu from "@/components/ToolbarMenu";
 import { DiskScanPanel } from "@/pages/monitor/parts/MonitorDisk";
+import { FileInsightsPanel } from "@/pages/monitor/parts/FileInsightsPanel";
+import { FolderVersionsPanel } from "@/pages/monitor/parts/FolderVersionsPanel";
+import { MonitorAlertsPanel } from "@/pages/monitor/parts/MonitorAlertsPanel";
 import { AppTimeTrackerPanel } from "@/pages/monitor/parts/AppTimeTrackerPanel";
+import { AttentionMapPanel } from "@/pages/monitor/parts/AttentionMapPanel";
+import { DiagnosticsPanel } from "@/pages/monitor/parts/DiagnosticsPanel";
 import { CpuTiles, LoadChart } from "@/pages/monitor/parts/MonitorCharts";
 import { Donut, LhmCard, SensorSections } from "@/pages/monitor/parts/MonitorSensors";
 
@@ -226,7 +231,12 @@ export default function MonitorPage() {
           onLhmChanged={() => setPollNonce((x) => x + 1)}
         />
         <DiskScanPanel />
+        <MonitorAlertsPanel />
+        <FileInsightsPanel />
+        <FolderVersionsPanel />
         <AppTimeTrackerPanel />
+        <AttentionMapPanel />
+        <DiagnosticsPanel />
       </div>
     </div>
   );

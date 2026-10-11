@@ -51,6 +51,9 @@ import { filesApi } from "@/api/apiFiles";
 import { systemApi } from "@/api/apiSystem";
 import { tuningApi } from "@/api/apiTuning";
 import { privacyApi } from "@/api/apiPrivacy";
+import { diaryApi } from "@/api/apiDiary";
+import { rssApi } from "@/api/apiRss";
+import { companionApi } from "@/api/apiCompanion";
 import { linutilApi } from "@/api/apiLinutil";
 import { translateApi } from "@/api/apiTranslate";
 import { llamaApi } from "@/api/apiLlama";
@@ -304,6 +307,22 @@ export const api = {
   collectLogs: () =>
     req<{ ok: boolean; file: string; size: number; events: number }>("POST", "/backup/logs"),
 
+  // Журнал проблем: ошибки и предупреждения, одинаковые склеены со счётчиком.
+  getProblems: () =>
+    req<{
+      items: {
+        id: string;
+        level: "warn" | "error";
+        source: string;
+        message: string;
+        count: number;
+        firstAt: number;
+        lastAt: number;
+      }[];
+      summary: string;
+    }>("GET", "/problems"),
+  clearProblems: () => req<{ ok: boolean }>("DELETE", "/problems"),
+
   // Proxy
   getProxyStatus: () => req<ProxyStatus>("GET", "/proxy/status"),
   startProxy: (vlessLink: string) => req<ProxyStatus>("POST", "/proxy/start", { vlessLink }),
@@ -335,6 +354,9 @@ export const api = {
   ...systemApi,
   ...tuningApi,
   ...privacyApi,
+  ...diaryApi,
+  ...rssApi,
+  ...companionApi,
   ...linutilApi,
   ...translateApi,
   ...llamaApi,

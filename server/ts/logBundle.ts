@@ -23,6 +23,7 @@ import config from "./config";
 import logger from "./logger";
 import settings from "./settings";
 import { stmts } from "./db";
+import { listProblems, summarize } from "./problemLog";
 
 const { DIRS, FILES } = config;
 
@@ -366,6 +367,8 @@ export function collect(): { file: string; size: number; events: number } {
   parts.push("MoonApp — диагностический отчёт\n");
   parts.push("Файл содержит все события приложения: навигацию, нажатия, загрузки,\n");
   parts.push("предупреждения и ошибки. Передайте его разработчику для разбора проблемы.\n");
+  parts.push(section("Журнал проблем (ошибки и предупреждения, одинаковые склеены)"));
+  parts.push(summarize(listProblems()) + "\n");
   parts.push(section("Окружение"));
   parts.push(describeEnvironment());
   parts.push(section("Настройки по страницам (эффективные значения: дефолт + сохранённое)"));

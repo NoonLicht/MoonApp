@@ -137,36 +137,94 @@ export let win: any = null;
 // перехватил бы и штатный выход из приложения.
 export const appState = { quitting: false };
 
+// Своя «развёртка» окна вместо нативной: у frameless-окна Windows при maximize()
+// закрывает весь монитор (автоскрываемая панель задач перестаёт выезжать), анимация
+// дёрганая, а перетаскивание за -webkit-app-region: drag не даёт ни событий мыши в
+// рендерер, ни «сжатия до прежнего размера». Поэтому размер и перетаскивание ведём сами.
+let normalBounds: Electron.Rectangle | null = null;
+let customMaximized = false;
+let dragTimer: ReturnType<typeof setInterval> | null = null;
+
+function targetBounds(): Electron.Rectangle {
+  const { screen } = require("electron") as typeof import("electron");
+  const d = screen.getDisplayMatching(win.getBounds());
+  const a = d.workArea;
+  const b = d.bounds;
+  // Панель задач в режиме автоскрытия не занимает рабочую область: окно на весь монитор
+  // перекрыло бы её. Оставляем 1px по краям — курсор у края снова вызывает панель.
+  const autoHide = a.x === b.x && a.y === b.y && a.width === b.width && a.height === b.height;
+  return autoHide ? { x: a.x + 1, y: a.y + 1, width: a.width - 2, height: a.height - 2 } : a;
+}
+
+function maximizeWindow() {
+  if (!win || customMaximized) return;
+  if (win.isMaximized()) win.unmaximize();
+  normalBounds = win.getBounds();
+  customMaximized = true;
+  win.setBounds(targetBounds());
+}
+
+function restoreWindow(at?: { x: number; y: number }) {
+  if (!win) return;
+  if (win.isMaximized()) win.unmaximize();
+  if (!customMaximized || !normalBounds) return;
+  const cur = win.getBounds();
+  const nb = normalBounds;
+  customMaximized = false;
+  let x = nb.x;
+  let y = nb.y;
+  if (at && cur.width > 0) {
+    // Курсор остаётся на том же относительном месте шапки, как в нативном заголовке.
+    const ratio = Math.min(1, Math.max(0, (at.x - cur.x) / cur.width));
+    x = Math.round(at.x - ratio * nb.width);
+    y = Math.round(at.y - 16);
+  }
+  win.setBounds({ x, y, width: nb.width, height: nb.height });
+}
+
+function stopDrag() {
+  if (dragTimer) clearInterval(dragTimer);
+  dragTimer = null;
+}
+
 function registerWindowControls() {
+  const { screen } = require("electron") as typeof import("electron");
   ipcMain.on("win:minimize", () => win?.minimize());
   ipcMain.on("win:toggle-maximize", () => {
     if (!win) return;
-    if (win.isMaximized()) win.unmaximize();
-    else win.maximize();
+    if (customMaximized || win.isMaximized()) restoreWindow();
+    else maximizeWindow();
   });
   ipcMain.on("win:close", () => win?.close());
 
-  // Перетаскивание развёрнутого окна за тулбар: у окна нет системной рамки
-  // (frame: false), поэтому родное поведение Windows «тянешь заголовок
-  // развёрнутого окна — оно сжимается до обычного размера под курсором» не
-  // работает само по себе — см. известное ограничение Electron для
-  // -webkit-app-region: drag (electron/electron#16385). Рендерер шлёт экранные
-  // координаты курсора на mousedown по тулбару; если окно развёрнуто — сжимаем
-  // его до предыдущего размера и подставляем позицию так, чтобы курсор остался
-  // на том же относительном месте по ширине — дальше нативный drag (уже
-  // начатый тем же mousedown) продолжает двигать уже нормальное окно.
-  ipcMain.on("win:drag-restore", (_e, pos) => {
-    if (!win || !win.isMaximized()) return;
-    const maxBounds = win.getBounds();
-    win.unmaximize();
-    const restored = win.getBounds();
-    const x = Number(pos?.x);
-    const y = Number(pos?.y);
-    if (!Number.isFinite(x) || !Number.isFinite(y) || maxBounds.width <= 0) return;
-    const ratio = (x - maxBounds.x) / maxBounds.width;
-    const newX = Math.round(x - ratio * restored.width);
-    const newY = Math.max(0, Math.round(y - 10));
-    win.setBounds({ x: newX, y: newY, width: restored.width, height: restored.height });
+  // Перетаскивание за шапку: рендерер сообщает начало/конец, позицию окна ведёт main по
+  // положению курсора (плавно, без IPC на каждый mousemove). Клик без сдвига окно не
+  // трогает, а сдвиг развёрнутого окна сначала возвращает ему прежний размер.
+  ipcMain.on("win:drag-start", () => {
+    if (!win || win.isFullScreen()) return;
+    stopDrag();
+    const start = screen.getCursorScreenPoint();
+    let off: { dx: number; dy: number; w: number; h: number } | null = null;
+    dragTimer = setInterval(() => {
+      if (!win || win.isDestroyed()) return stopDrag();
+      const p = screen.getCursorScreenPoint();
+      if (!off) {
+        if (Math.abs(p.x - start.x) + Math.abs(p.y - start.y) < 4) return;
+        if (customMaximized || win.isMaximized()) restoreWindow(p);
+        const b = win.getBounds();
+        off = { dx: p.x - b.x, dy: p.y - b.y, w: b.width, h: b.height };
+      }
+      // Размер задаём явно: на мониторах с масштабом setPosition «растит» окно.
+      win.setBounds({ x: p.x - off.dx, y: p.y - off.dy, width: off.w, height: off.h });
+    }, 8);
+  });
+  ipcMain.on("win:drag-end", () => {
+    const moved = !!dragTimer;
+    stopDrag();
+    if (!win || !moved || customMaximized) return;
+    // «Прилипание» к верхнему краю экрана — развернуть, как это делает Windows.
+    const p = screen.getCursorScreenPoint();
+    if (p.y <= screen.getDisplayNearestPoint(p).bounds.y + 1) maximizeWindow();
   });
 }
 
@@ -319,6 +377,15 @@ async function createWindow() {
       if (cfg.rememberSize !== false && !win.isMaximized() && !win.isMinimized()) {
         const [w, h] = win.getSize();
         const [x, y] = win.getPosition();
+        if (customMaximized && normalBounds) {
+          patchSettings({
+            window: {
+              lastSize: { width: normalBounds.width, height: normalBounds.height },
+              lastPos: { x: normalBounds.x, y: normalBounds.y },
+            },
+          });
+          return;
+        }
         patchSettings({ window: { lastSize: { width: w, height: h }, lastPos: { x, y } } });
       }
     } catch {
@@ -378,6 +445,26 @@ app.whenReady().then(() => {
   // появиться в начале работы, а не через минуты.
   setTimeout(() => setupAutoUpdates(), 2500);
 });
+
+// Падения дочерних процессов Chromium (GPU, утилиты) и рендерера — в журнал проблем:
+// пользователь видит «окно перезагрузилось», а причина иначе нигде не остаётся.
+function reportGone(
+  source: string,
+  details: { reason?: string; type?: string; exitCode?: number },
+) {
+  if (details.reason === "clean-exit") return;
+  try {
+    serverModule("../server/problemLog").reportProblem({
+      source,
+      error: new Error(`${details.type ?? "renderer"} gone: ${details.reason ?? "unknown"}`),
+      context: { exitCode: details.exitCode ?? 0 },
+    });
+  } catch {
+    /* журнал недоступен — не мешаем перезапуску */
+  }
+}
+app.on("child-process-gone", (_e, details) => reportGone("electron-child", details));
+app.on("render-process-gone", (_e, _wc, details) => reportGone("electron-renderer", details));
 
 app.on("before-quit", () => {
   appState.quitting = true;

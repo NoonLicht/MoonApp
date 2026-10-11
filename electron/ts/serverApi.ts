@@ -30,6 +30,14 @@ export interface ServerModules {
   "../server/taskRegistry": {
     killAllActive(): number;
   };
+  "../server/problemLog": {
+    reportProblem(input: {
+      source: string;
+      error: unknown;
+      level?: "warn" | "error";
+      context?: Record<string, string | number | boolean>;
+    }): unknown;
+  };
   "../server/audioCaptureLinux": {
     startSystemAudioCapture(): Promise<{ ok: boolean; error?: string }>;
     stopSystemAudioCapture(): Promise<string | null>;
