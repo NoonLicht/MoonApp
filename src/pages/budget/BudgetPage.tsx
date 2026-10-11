@@ -16,6 +16,9 @@ import { useI18n } from "@/app/i18n";
 import { api } from "@/api/client";
 import type { Transaction, TxType, BudgetCategories, MonthSummary } from "@/api/types";
 import RecurringPanel from "@/pages/budget/parts/RecurringPanel";
+import ReceiptPanel from "@/pages/budget/parts/ReceiptPanel";
+import InsightsPanel from "@/pages/budget/parts/InsightsPanel";
+import HoursPanel from "@/pages/budget/parts/HoursPanel";
 
 const PIE_COLORS = [
   "var(--amber)",
@@ -439,6 +442,15 @@ export default function BudgetPage() {
       )}
 
       <RecurringPanel currency={displayCurrency} currencies={currencies} onChanged={() => load()} />
+
+      <HoursPanel currency={displayCurrency} />
+      <InsightsPanel currency={displayCurrency} categories={categories?.expense ?? []} />
+
+      <ReceiptPanel
+        currency={displayCurrency}
+        categories={categories?.expense ?? []}
+        onChanged={() => load()}
+      />
 
       <SectionHead eyebrow={t("budget.listEyebrow")} title={t("budget.listTitle")} />
       {loading && <div className="muted-sm">{t("passwordVault.loading")}</div>}

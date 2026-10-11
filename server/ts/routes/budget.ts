@@ -15,6 +15,7 @@ import * as budget from "../budget";
 import * as recurring from "../budgetRecurring";
 import { parseReceipt } from "../receiptParser";
 import * as insights from "../budgetInsights";
+import * as hours from "../budgetHours";
 
 const router = express.Router();
 
@@ -108,6 +109,41 @@ router.get("/tax-deductions", (req, res) => {
       rate: rate > 0 && rate < 1 ? rate : undefined,
     }),
   );
+});
+
+// «Цена в часах»: траты месяца в рабочих часах и часах жизни по доходу.
+router.get("/hours", (req, res) => {
+  try {
+    const currency = String(req.query.currency || "RUB").toUpperCase();
+    const today = new Date().toISOString().slice(0, 10);
+    const month = /^\d{4}-\d{2}$/.test(String(req.query.month || "")) ? String(req.query.month) : today.slice(0, 7);
+    const txs = insightTxs(currency);
+    const rates = hours.hourRates(txs, today, {
+      monthlyIncome: Number(req.query.monthlyIncome) || undefined,
+      workHoursPerMonth: Number(req.query.workHours) || undefined,
+    });
+    res.json(hours.hoursReport(txs, month, rates));
+  } catch (e) {
+    res.status(500).json({ error: (e as Error).message });
+  }
+});
+
+// Прогноз «накопишь на X к дате».
+router.get("/saving-forecast", (req, res) => {
+  try {
+    const target = Number(req.query.target);
+    if (!(target > 0)) return res.status(400).json({ error: "bad_target" });
+    const today = new Date().toISOString().slice(0, 10);
+    res.json(
+      hours.savingForecast(insightTxs(String(req.query.currency || "RUB").toUpperCase()), today, {
+        target,
+        have: Number(req.query.have) || 0,
+        byDate: String(req.query.date || "") || undefined,
+      }),
+    );
+  } catch (e) {
+    res.status(500).json({ error: (e as Error).message });
+  }
 });
 
 router.post("/what-if", (req, res) => {
