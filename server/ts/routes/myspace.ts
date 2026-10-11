@@ -1,3 +1,4 @@
+import * as snapshots from "../noteSnapshots";
 import express from "express";
 import multer from "multer";
 import * as vault from "../myspace-vault";
@@ -217,6 +218,8 @@ async function runAiFormat(req: any, res: any, mode: any) {
       mode,
       appPage: req.appPage,
     });
+    // Снимок до правки: ИИ может испортить текст, а вернуть его надо одним нажатием.
+    snapshots.snapshot(filePath, file.content, "ai-" + mode);
     // Пишем результат тем же способом, что и обычное сохранение (POST /file):
     // frontmatter заметки остаётся нетронутым.
     vault.writeFile(filePath, out.content, file.frontmatter || {});

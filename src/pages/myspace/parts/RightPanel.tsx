@@ -1,5 +1,15 @@
-import { Search, Sparkles, PanelRightClose, Link2, Type, Globe, Maximize2 } from "lucide-react";
+import {
+  Search,
+  Sparkles,
+  PanelRightClose,
+  Link2,
+  Type,
+  Globe,
+  Maximize2,
+  Wrench,
+} from "lucide-react";
 import { SemanticPanel } from "@/pages/myspace/parts/SemanticPanel";
+import NoteToolsPanel from "@/pages/myspace/parts/NoteToolsPanel";
 import GraphView from "@/pages/myspace/parts/GraphLazy";
 import type React from "react";
 import type { Right, OFile } from "@/pages/myspace/parts/MyspaceHelpers";
@@ -68,6 +78,7 @@ export default function RightPanel({ narrowRight, rightW, setRightTab, rightTab,
                           ["outline", Type],
                           ["graph", Globe],
                           ["similar", Sparkles],
+                          ["tools", Wrench],
                         ] as const
                       ).map(([id, Icon]) => (
                         <button
@@ -108,6 +119,13 @@ export default function RightPanel({ narrowRight, rightW, setRightTab, rightTab,
                       overflow: "hidden",
                     }}
                   >
+                    {rightTab === "tools" && (
+                      <NoteToolsPanel
+                        path={activeTab}
+                        content={edContent}
+                        onChange={(p, text) => updContent(p, text)}
+                      />
+                    )}
                     {rightTab === "similar" && (
                       <SemanticPanel
                         note={activeTab}

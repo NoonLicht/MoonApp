@@ -21,6 +21,9 @@ import * as vault from "../myspace-vault";
 import * as nt from "../noteTools";
 import * as snapshots from "../noteSnapshots";
 import * as extras from "../noteExtras";
+import * as plugins from "../plugins";
+import nodePath from "path";
+import config from "../config";
 import * as miniSite from "../miniSite";
 import AdmZip from "adm-zip";
 
@@ -150,13 +153,23 @@ router.get("/templates", (_req, res) => {
   const mine = allNotes()
     .filter((n) => n.path.startsWith(TEMPLATE_DIR))
     .map((n) => ({ id: `note:${n.path}`, title: n.title }));
-  res.json({ items: [...extras.BUILTIN_TEMPLATES.map((t) => ({ id: t.id, title: t.title })), ...mine] });
+  const fromPlugins = plugins
+    .collect(plugins.listPlugins(nodePath.join(config.DIRS.storage, "plugins")))
+    .templates.map((t) => ({ id: t.id, title: t.title }));
+  res.json({
+    items: [...extras.BUILTIN_TEMPLATES.map((t) => ({ id: t.id, title: t.title })), ...fromPlugins, ...mine],
+  });
 });
 
 router.post("/template", (req, res) => {
   const id = String(req.body?.id ?? "");
   let body: string | null = null;
-  if (id.startsWith("note:")) {
+  if (id.startsWith("plugin:")) {
+    body =
+      plugins
+        .collect(plugins.listPlugins(nodePath.join(config.DIRS.storage, "plugins")))
+        .templates.find((t) => t.id === id)?.body ?? null;
+  } else if (id.startsWith("note:")) {
     const p = id.slice(5);
     if (p.startsWith(TEMPLATE_DIR)) body = vault.readFile(p)?.content ?? null;
   } else {
