@@ -259,6 +259,24 @@ export const systemApi = {
       "/p2p/sync",
       { host, port, key },
     ),
+  canvasAnalyze: (
+    objs: {
+      id: string;
+      type: string;
+      text?: string;
+      name?: string;
+      preview?: string;
+      path?: string;
+      src?: string;
+      link?: { kind: string; ref: string };
+    }[],
+  ) =>
+    req<{
+      seen: number;
+      links: { from: string; to: string; why: string }[];
+      groups: { name: string; ids: string[] }[];
+      missing: { text: string }[];
+    }>("POST", "/canvas-ai/analyze", { objs }),
   pcPassportFile: async (anonymize: boolean): Promise<Blob> => {
     const res = await fetch(`${BASE}/api/diagnostics/passport.md${anonymize ? "?anonymize=1" : ""}`, {
       headers: { ...tokenHeaders(), ...pageHeaders() },

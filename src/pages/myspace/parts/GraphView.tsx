@@ -1,6 +1,7 @@
-import React, { useRef, useEffect, useState } from "react";
+import React, { useRef, useEffect, useMemo, useState } from "react";
 import type { GraphNode, GraphData } from "@/api/types";
 import { ZoomIn, ZoomOut, Maximize2, X, Settings2 } from "lucide-react";
+import { limitGraph, repulseGrid, LABELS_ALWAYS } from "@/pages/myspace/lib/graphSim";
 
 interface Props {
   data: GraphData;
@@ -27,7 +28,10 @@ const MIN_DIST = 30;
 const MAX_SPEED = 12;
 const VELOCITY_THRESHOLD = 0.08;
 
-export default function GraphView({ data, onNodeClick, onClose }: Props) {
+export default function GraphView({ data: fullData, onNodeClick, onClose }: Props) {
+  // На больших хранилищах показываем самые связные узлы (см. graphSim.limitGraph).
+  const limited = useMemo(() => limitGraph(fullData), [fullData]);
+  const data = limited.data;
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [dims, setDims] = useState({ w: 600, h: 500 });
@@ -57,6 +61,9 @@ export default function GraphView({ data, onNodeClick, onClose }: Props) {
   const panningRef = useRef(false);
   const runningRef = useRef(true);
   const rafRef = useRef<number>(0);
+  const nodeMap = useRef(new Map<string, SimNode>());
+  const labelMap = useRef(new Map<string, string>());
+  const lastKey = useRef("");
 
   // Live mirrors so the single persistent loop always sees fresh values
   const p = useRef({
@@ -137,6 +144,9 @@ export default function GraphView({ data, onNodeClick, onClose }: Props) {
     const changed =
       ns.length !== simRef.current.length || ns.some((n, i) => n.id !== simRef.current[i]?.id);
     simRef.current = ns;
+    nodeMap.current = new Map(ns.map((n) => [n.id, n]));
+    labelMap.current = new Map(data.nodes.map((n) => [n.id, n.label || ""]));
+    lastKey.current = "";
     edgeRef.current = data.edges.map((e) => ({ source: e.source, target: e.target }));
     if (changed) runningRef.current = true;
   }, [data, dims]);
@@ -169,25 +179,18 @@ export default function GraphView({ data, onNodeClick, onClose }: Props) {
     let maxVel = 0;
 
     if (runningRef.current) {
-      // Repulsion + center gravity
-      for (const n of ns) {
-        if (n.pinned) continue;
-        n.vx += (cx - n.x) * S.centerGravity;
-        n.vy += (cy - n.y) * S.centerGravity;
-        for (const o of ns) {
-          if (o.id === n.id) continue;
-          const dx = n.x - o.x,
-            dy = n.y - o.y;
-          const d = Math.max(Math.sqrt(dx * dx + dy * dy), MIN_DIST);
-          const f = S.repulsion / (d * d);
-          n.vx += (dx / d) * f;
-          n.vy += (dy / d) * f;
-        }
-      }
+      // Отталкивание по сетке (только соседи в радиусе) + тяготение к центру
+      repulseGrid(ns, {
+        repulsion: S.repulsion,
+        centerGravity: S.centerGravity,
+        cx,
+        cy,
+        minDist: MIN_DIST,
+      });
       // Spring edges (stretch/contract) + attraction
       for (const e of es) {
-        const s = ns.find((n) => n.id === e.source),
-          t = ns.find((n) => n.id === e.target);
+        const s = nodeMap.current.get(e.source),
+        t = nodeMap.current.get(e.target);
         if (!s || !t) continue;
         const dx = t.x - s.x,
           dy = t.y - s.y;
@@ -232,7 +235,10 @@ export default function GraphView({ data, onNodeClick, onClose }: Props) {
       if (maxVel < VELOCITY_THRESHOLD) runningRef.current = false;
     }
 
-    // Draw (cheap when settled)
+    // Перерисовываем только при движении или смене вида — спокойный граф не грузит CPU.
+    const key = [sc, off.x, off.y, w, h, S.nodeRadius, S.edgeWidth, S.noteColor, S.taskColor].join("|");
+    if (!runningRef.current && key === lastKey.current) return;
+    lastKey.current = key;
     ctx.save();
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     const dpr = window.devicePixelRatio || 1;
@@ -242,8 +248,8 @@ export default function GraphView({ data, onNodeClick, onClose }: Props) {
     ctx.strokeStyle = "rgba(255,255,255,0.22)";
     ctx.lineWidth = Math.max(S.edgeWidth, 1.4);
     for (const e of es) {
-      const s = ns.find((n) => n.id === e.source),
-        t = ns.find((n) => n.id === e.target);
+      const s = nodeMap.current.get(e.source),
+        t = nodeMap.current.get(e.target);
       if (!s || !t) continue;
       ctx.beginPath();
       ctx.moveTo(s.x, s.y);
@@ -275,10 +281,10 @@ export default function GraphView({ data, onNodeClick, onClose }: Props) {
       }
     }
     // Labels — clean text without background halo
-    const theData = dataRef.current;
     for (const n of ns) {
       const r = Math.max(S.nodeRadius, 6);
-      const lbl = (theData.nodes.find((gn) => gn.id === n.id)?.label || "").slice(0, 28);
+      if (ns.length > LABELS_ALWAYS && sc < 0.9) break; // крупный граф: подписи только при приближении
+      const lbl = (labelMap.current.get(n.id) || "").slice(0, 28);
       if (!lbl) continue;
       const fontSize = Math.max(Math.min(r * 1.1, 15), 10);
       ctx.font = "600 " + fontSize + "px Inter, system-ui, sans-serif";
@@ -309,7 +315,7 @@ export default function GraphView({ data, onNodeClick, onClose }: Props) {
     movedRef.current = false;
     if (node) {
       dragRef.current = { node };
-      dragTarget.current = data.nodes.find((n) => n.id === node.id) ?? null;
+      dragTarget.current = dataRef.current.nodes.find((n) => n.id === node.id) ?? null;
       node.pinned = true;
       node.vx = 0;
       node.vy = 0;
@@ -398,6 +404,14 @@ export default function GraphView({ data, onNodeClick, onClose }: Props) {
         onMouseLeave={handleMouseUp}
         onWheel={handleWheel}
       />
+      {limited.shown < limited.total && (
+        <div
+          className="graph-settings-label"
+          style={{ position: "absolute", left: 8, bottom: 6, opacity: 0.8 }}
+        >
+          {limited.shown} / {limited.total}
+        </div>
+      )}
       <div className="graph-controls">
         <button onClick={() => setScale((s) => Math.min(5, s * 1.3))}>
           <ZoomIn size={14} />

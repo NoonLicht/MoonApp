@@ -80,6 +80,7 @@ import contractsRouter from "./routes/contracts";
 import scanRouter from "./routes/scan";
 import montageRouter from "./routes/montage";
 import diagnosticsRouter from "./routes/diagnostics";
+import canvasAiRouter from "./routes/canvasAi";
 import * as timeMachineAuto from "./timeMachineAuto";
 import * as automationRules from "./automationRules";
 import bookmarksRouter from "./routes/bookmarks";
@@ -279,6 +280,7 @@ function createApp(): express.Express {
   app.use("/api/scan", scanRouter);
   app.use("/api/montage", montageRouter);
   app.use("/api/diagnostics", diagnosticsRouter);
+  app.use("/api/canvas-ai", canvasAiRouter);
   app.use("/api/bookmarks", bookmarksRouter);
   app.use("/api/pdf", pdfRouter);
   app.use("/api/games", gamesRouter);
