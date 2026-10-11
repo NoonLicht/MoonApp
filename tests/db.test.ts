@@ -73,6 +73,7 @@ describe("db — контракт CommonJS (порт server/db.js → server/ts/
         "SCHEMA_VERSION",
         "backupTo",
         "close",
+        "connection",
         "db",
         "docStore",
         "exportSnapshot",
