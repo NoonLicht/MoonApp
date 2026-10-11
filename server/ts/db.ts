@@ -24,6 +24,7 @@ import fs from "fs";
 import Database from "better-sqlite3";
 import config from "./config";
 import logger from "./logger";
+import { applyPendingDbRestore } from "./backupManifest";
 import * as notesFs from "./notes-fs";
 
 const { FILES } = config;
@@ -517,6 +518,8 @@ function importLegacyJson(sqlite: Database.Database, file: string): void {
 }
 
 function openDatabase(): Database.Database {
+  // Восстановление из бэкапа подменяет файл ДО открытия базы (см. backupManifest.ts).
+  applyPendingDbRestore(FILES.db);
   const isNew = !fs.existsSync(FILES.db);
   const sqlite = new Database(FILES.db);
   try {

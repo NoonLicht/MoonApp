@@ -47,6 +47,12 @@ import {
 } from "@/pages/settings/parts/SettingsControls";
 import { ApiKeysPanel, TmdbKeyRow } from "@/pages/settings/parts/SettingsApiKeys";
 import { ProblemsRow } from "@/pages/settings/parts/SettingsProblems";
+import { InterchangeRows } from "@/pages/settings/parts/SettingsInterchange";
+import { HotkeyRows } from "@/pages/settings/parts/SettingsHotkeys";
+import { ChatAutoSaveRow } from "@/pages/settings/parts/SettingsChatTools";
+import { FileSearchRows } from "@/pages/settings/parts/SettingsFileSearch";
+import { WindowRows } from "@/pages/settings/parts/SettingsWindows";
+import { BackupRows } from "@/pages/settings/parts/SettingsBackups";
 import { PasswordVaultSection } from "@/pages/settings/parts/SettingsPasswordVault";
 import { CompanionSection } from "@/pages/settings/parts/SettingsCompanion";
 
@@ -483,6 +489,10 @@ export default function SettingsPage() {
             </Row>
           )}
           <ProblemsRow />
+          <InterchangeRows />
+          <FileSearchRows />
+          <WindowRows />
+          <BackupRows />
           {diagStatus && (
             <div className="muted-sm" style={{ marginTop: -6 }}>
               {diagStatus}
@@ -525,6 +535,26 @@ export default function SettingsPage() {
             value={ap.reduceMotion}
             onChange={(v) => change("appearance.reduceMotion", v)}
           />
+          <BoolRow
+            label={t("settings.cursorHighlight")}
+            hint={t("settings.cursorHighlightHint")}
+            value={!!ap.cursorHighlight}
+            onChange={(v) => change("appearance.cursorHighlight", v)}
+          />
+          <BoolRow
+            label={t("settings.highContrast")}
+            hint={t("settings.highContrastHint")}
+            value={!!ap.highContrast}
+            onChange={(v) => change("appearance.highContrast", v)}
+          />
+          <BoolRow
+            label={t("settings.focusRing")}
+            hint={t("settings.focusRingHint")}
+            value={!!ap.focusRing}
+            onChange={(v) => change("appearance.focusRing", v)}
+          />
+          <HotkeyRows />
+          <ChatAutoSaveRow />
           <Row label={t("settings.density")} hint={t("settings.densityHint")}>
             <Select
               value={ap.density}

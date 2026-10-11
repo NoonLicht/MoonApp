@@ -17,6 +17,28 @@ router.get("/", (req, res) => {
   res.json(backups.list());
 });
 
+// GET /api/backup/:id/verify — сверка файлов бэкапа с манифестом (sha256).
+router.get("/:id/verify", (req, res) => {
+  try {
+    res.json(backups.verify(req.params.id));
+  } catch (e) {
+    const msg = (e as Error).message;
+    res.status(msg === "backup.not_found" ? 404 : 400).json({ error: msg });
+  }
+});
+
+// POST /api/backup/:id/restore — вернуть данные из проверенного бэкапа.
+// Перед этим снимается страховочный бэкап; БД подменится при следующем запуске.
+router.post("/:id/restore", (req, res) => {
+  try {
+    res.json({ ok: true, ...backups.restore(req.params.id) });
+  } catch (e) {
+    const msg = (e as Error).message;
+    const status = msg === "backup.not_found" ? 404 : msg === "backup.bad_id" ? 400 : 409;
+    res.status(status).json({ error: msg });
+  }
+});
+
 // POST /api/log — приём событий с фронта (клики, навигация, ошибки UI).
 // Принимает как одно событие { event, data, level }, так и пачку { events: [...] }.
 // Все события идут в полный журнал (logs/audit.log) и попадают в файл,

@@ -12,6 +12,14 @@ import path from "path";
 import config from "./config";
 import settings from "./settings";
 import logger from "./logger";
+import {
+  copySources,
+  restoreFiles,
+  verifyBackup,
+  writeManifest,
+  type RestoreResult,
+  type VerifyResult,
+} from "./backupManifest";
 
 const { DIRS, FILES } = config;
 
@@ -19,6 +27,8 @@ const { DIRS, FILES } = config;
 export interface BackupMeta {
   trigger: string;
   at: string;
+  /** Имя каталога бэкапа — по нему вызываются verify/restore. */
+  id?: string;
 }
 
 function stamp(): string {
@@ -49,10 +59,19 @@ export function createBackup(trigger = "manual"): string | null {
     if (fs.existsSync(FILES.secrets))
       fs.copyFileSync(FILES.secrets, path.join(dir, "secrets.json"));
 
+    // Файловые хранилища (заметки, дневник, доски, закладки…) и манифест с хэшами.
+    try {
+      const skipped = copySources(DIRS.storage, dir);
+      if (skipped.length) logger.warn("backup.skipped_large", { files: skipped.slice(0, 20) });
+    } catch (e) {
+      logger.warn("backup.files_failed", { error: (e as Error).message });
+    }
+
     fs.writeFileSync(
       path.join(dir, "meta.json"),
       JSON.stringify({ trigger, at: new Date().toISOString() }, null, 2),
     );
+    writeManifest(dir);
 
     rotate();
     logger.info("backup.created", { trigger, dir });
@@ -100,13 +119,45 @@ export function list(): BackupMeta[] {
     .filter((n) => fs.existsSync(path.join(DIRS.backups, n, "meta.json")))
     .map((n): BackupMeta => {
       try {
-        return JSON.parse(fs.readFileSync(path.join(DIRS.backups, n, "meta.json"), "utf8"));
+        const meta = JSON.parse(
+          fs.readFileSync(path.join(DIRS.backups, n, "meta.json"), "utf8"),
+        ) as BackupMeta;
+        return { ...meta, id: n };
       } catch {
         return {
           at: new Date(fs.statSync(path.join(DIRS.backups, n)).mtimeMs).toISOString(),
           trigger: "?",
+          id: n,
         };
       }
     })
     .reverse();
+}
+
+const ID_RE = /^[\w.-]+$/;
+
+function dirOf(id: string): string {
+  if (!ID_RE.test(id) || id.includes("..")) throw new Error("backup.bad_id");
+  const dir = path.join(DIRS.backups, id);
+  if (!fs.existsSync(dir)) throw new Error("backup.not_found");
+  return dir;
+}
+
+/** Проверка целостности бэкапа по манифесту. */
+export function verify(id: string): VerifyResult {
+  return verifyBackup(dirOf(id));
+}
+
+/**
+ * Восстановление из бэкапа. Порядок: проверка → страховочный бэкап текущего
+ * состояния → возврат файлов. БД подменяется при следующем запуске.
+ */
+export function restore(id: string): RestoreResult & { safety: string | null } {
+  const dir = dirOf(id);
+  const v = verifyBackup(dir);
+  if (!v.ok) throw new Error(v.hasManifest ? "backup.corrupted" : "backup.no_manifest");
+  const safety = createBackup("pre-restore");
+  const res = restoreFiles(dir, DIRS.storage);
+  logger.info("backup.restored", { id, ...res, safety });
+  return { ...res, safety };
 }
