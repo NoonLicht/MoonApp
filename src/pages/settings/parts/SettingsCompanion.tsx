@@ -6,6 +6,7 @@ import type { CompanionStatus } from "@/api/apiCompanion";
 import { Btn, Badge } from "@/components/ui";
 import QrCode from "@/components/QrCode";
 import { BoolRow, NumberInput, Row, Section } from "@/pages/settings/parts/SettingsControls";
+import { PhoneCamPanel } from "@/pages/settings/parts/PhoneCamPanel";
 
 const fmtBytes = (n: number): string =>
   n > 1048576 ? `${(n / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`;
@@ -96,6 +97,7 @@ export function CompanionSection() {
               </Btn>
             </div>
           </Row>
+          <PhoneCamPanel st={st} onStatus={setSt} />
         </>
       )}
 

@@ -10,6 +10,7 @@ import __m____config from "../config";
 const { DIRS } = __m____config;
 import { removePath } from "../fsUtil";
 import * as ocr from "../ocr";
+import { findSecrets } from "../secretFinder";
 
 const router = express.Router();
 const MAX_BYTES = 20 * 1024 * 1024;
@@ -28,6 +29,21 @@ router.post("/recognize", upload.single("file"), async (req, res) => {
     const result = await ocr.recognize(buf);
     cleanup();
     res.json(result);
+  } catch (e: any) {
+    cleanup();
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Области с секретами (почта, карты, ключи, пароли…) — для автоматического блюра.
+router.post("/secrets", upload.single("file"), async (req, res) => {
+  const cleanup = () => req.file && removePath(req.file.path);
+  try {
+    if (!req.file) return res.status(400).json({ error: "missing_file" });
+    const fs = require("fs") as typeof import("fs");
+    const words = await ocr.recognizeWords(fs.readFileSync(req.file.path));
+    cleanup();
+    res.json({ regions: findSecrets(words) });
   } catch (e: any) {
     cleanup();
     res.status(500).json({ error: e.message });

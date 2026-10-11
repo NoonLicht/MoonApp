@@ -21,7 +21,8 @@
 import crypto from "crypto";
 import express from "express";
 import fs from "fs";
-import type http from "http";
+import http from "http";
+import https from "https";
 import os from "os";
 import path from "path";
 import multer from "multer";
@@ -29,6 +30,8 @@ import config from "./config";
 import logger from "./logger";
 import { APP_JS, INDEX_HTML, STYLE_CSS } from "./companionPage";
 import * as photoTasks from "./photoTasks";
+import * as phoneCam from "./phoneCam";
+import { makeSelfSigned, type SelfSigned } from "./selfCert";
 
 import type { CompanionStatus, PlayerCommand, PlayerState } from "./contracts/companion";
 
@@ -342,6 +345,27 @@ export function createCompanionApp(): express.Express {
     next();
   });
 
+  // 1б) Поток камеры телефона для OBS и других программ, где заголовков нет:
+  //     доступ по секретному ключу в адресе (ключ видно только в приложении).
+  app.get("/cam/stream", (req, res) => {
+    if (!phoneCam.keyMatches(req.query.key)) return res.status(403).type("text/plain").send("forbidden");
+    res.writeHead(200, {
+      "Content-Type": `multipart/x-mixed-replace; boundary=${phoneCam.BOUNDARY}`,
+      "Cache-Control": "no-store",
+      Connection: "close",
+    });
+    const first = phoneCam.latest();
+    if (first) res.write(phoneCam.mjpegPart(first.jpeg));
+    const off = phoneCam.subscribe((jpeg) => res.write(phoneCam.mjpegPart(jpeg)));
+    req.on("close", off);
+  });
+  app.get("/cam/frame.jpg", (req, res) => {
+    if (!phoneCam.keyMatches(req.query.key)) return res.status(403).type("text/plain").send("forbidden");
+    const f = phoneCam.latest();
+    if (!f) return res.status(404).type("text/plain").send("no_frame");
+    res.type("image/jpeg").send(f.jpeg);
+  });
+
   // 2) Статика страницы.
   app.get("/", (_req, res) => res.type("html").send(INDEX_HTML));
   app.get("/app.js", (_req, res) => res.type("application/javascript").send(APP_JS));
@@ -372,6 +396,23 @@ export function createCompanionApp(): express.Express {
   });
 
   api.get("/me", (req, res) => res.json({ name: (req as express.Request & { device?: Device }).device?.name }));
+
+  /* веб-камера: кадры JPEG с телефона (страница открыта по HTTPS) */
+  api.get("/cam/info", (_req, res) => res.json({ httpsPort, ...phoneCam.info() }));
+  api.post("/cam/frame", express.raw({ type: "image/jpeg", limit: phoneCam.MAX_FRAME }), (req, res) => {
+    try {
+      const dev = (req as express.Request & { device?: Device }).device;
+      phoneCam.pushFrame(Buffer.isBuffer(req.body) ? req.body : Buffer.alloc(0), dev?.name || "phone");
+      res.status(204).end();
+    } catch (e) {
+      const m = (e as Error).message;
+      res.status(m === "too_big" ? 413 : 400).json({ error: m });
+    }
+  });
+  api.post("/cam/stop", (_req, res) => {
+    phoneCam.reset();
+    res.json({ ok: true });
+  });
 
   /* заметки */
   api.get("/notes", (req, res) => {
@@ -540,6 +581,46 @@ export function createCompanionApp(): express.Express {
 
 let server: http.Server | null = null;
 let listenPort = 0;
+let secureServer: https.Server | null = null;
+let httpsPort = 0;
+
+/* -------------------------- HTTPS для камеры телефона -------------------------- */
+
+const tlsFile = (): string => path.join(DIRS.storage, "companion", "tls.json");
+
+/** Сертификат кэшируется; пересоздаётся при смене адресов сети или перед истечением. */
+export function tlsCredentials(ips: string[], now = Date.now()): SelfSigned {
+  try {
+    const c = JSON.parse(fs.readFileSync(tlsFile(), "utf8")) as SelfSigned;
+    const same = c.ips.length === ips.length && ips.every((ip) => c.ips.includes(ip));
+    if (same && c.key && c.cert && c.notAfter - now > 30 * 24 * 3600 * 1000) return c;
+  } catch {
+    /* файла нет или он повреждён — создаём заново */
+  }
+  const c = makeSelfSigned(ips, new Date(now));
+  fs.mkdirSync(path.dirname(tlsFile()), { recursive: true });
+  fs.writeFileSync(tlsFile(), JSON.stringify(c), { encoding: "utf8", mode: 0o600 });
+  return c;
+}
+
+/** Поднимает HTTPS-сервер на следующем за HTTP порту. Ошибка не мешает основному режиму. */
+async function startSecure(httpPort: number): Promise<void> {
+  if (secureServer) return;
+  try {
+    const cred = tlsCredentials(lanAddresses());
+    const s = https.createServer({ key: cred.key, cert: cred.cert }, createCompanionApp());
+    await new Promise<void>((resolve, reject) => {
+      s.once("error", reject);
+      s.listen(httpPort + 1, "0.0.0.0", () => resolve());
+    });
+    secureServer = s;
+    httpsPort = httpPort + 1;
+    logger.info("companion.https_start", { port: httpsPort });
+  } catch (e) {
+    httpsPort = 0;
+    logger.warn("companion.https_failed", { error: (e as Error).message });
+  }
+}
 
 export function lanAddresses(): string[] {
   const out: string[] = [];
@@ -562,14 +643,25 @@ export async function start(port?: number): Promise<number> {
     });
     s.once("error", reject);
   });
+  await startSecure(listenPort);
   logger.info("companion.start", { port: listenPort });
   return listenPort;
 }
 
 export async function stop(): Promise<void> {
   const s = server;
+  const sec = secureServer;
   server = null;
+  secureServer = null;
   listenPort = 0;
+  httpsPort = 0;
+  phoneCam.reset();
+  if (sec) {
+    await new Promise<void>((r) => {
+      sec.close(() => r());
+      sec.closeAllConnections?.();
+    });
+  }
   pairing = null;
   playerState = null;
   queue = [];
@@ -589,6 +681,13 @@ export function status(): CompanionStatus {
     running: !!server,
     port,
     urls: lanAddresses().map((ip) => `http://${ip}:${port}/`),
+    httpsUrls: httpsPort ? lanAddresses().map((ip) => `https://${ip}:${httpsPort}/`) : [],
+    camera: {
+      ...phoneCam.info(),
+      streamUrls: server
+        ? lanAddresses().map((ip) => `http://${ip}:${port}/cam/stream?key=${phoneCam.streamKey()}`)
+        : [],
+    },
     pairing: currentPairing(),
     devices: st.devices.map(({ tokenHash: _h, ...d }) => d),
     inboxDir: inboxDir(),

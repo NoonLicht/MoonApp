@@ -1,7 +1,7 @@
 /**
  * API управления веб-компаньоном (server/ts/routes/companion.ts).
  */
-import { req } from "@/api/apiHttp";
+import { BASE, req, tokenHeaders } from "@/api/apiHttp";
 import type { CompanionStatus, PlayerCommand as CompanionCommand, PlayerState } from "@contracts/companion";
 
 export type { CompanionStatus, CompanionCommand };
@@ -18,4 +18,12 @@ export const companionApi = {
   companionPlayerState: (state: CompanionPlayerState | null) =>
     req<{ ok: boolean }>("POST", "/companion/player-state", { state }),
   companionCommands: () => req<CompanionCommand[]>("GET", "/companion/commands"),
+  companionCamSnapshot: () => req<{ ok: boolean; name: string; dir: string }>("POST", "/companion/cam/snapshot"),
+  companionCamKey: () => req<CompanionStatus>("POST", "/companion/cam/key"),
+  /** Последний кадр камеры телефона как blob-URL (вызывающий освобождает его через URL.revokeObjectURL). */
+  companionCamFrame: async (): Promise<string | null> => {
+    const r = await fetch(`${BASE}/api/companion/cam/frame`, { headers: tokenHeaders() });
+    if (!r.ok) return null;
+    return URL.createObjectURL(await r.blob());
+  },
 };

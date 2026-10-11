@@ -16,6 +16,8 @@ import {
 } from "lucide-react";
 import RsvpReader from "@/pages/myspace/parts/RsvpReader";
 import NoteExtrasPanel from "@/pages/myspace/parts/NoteExtrasPanel";
+import MindPanel from "@/pages/myspace/parts/MindPanel";
+import PhotoChecklistPanel from "@/pages/myspace/parts/PhotoChecklistPanel";
 import { Btn } from "@/components/ui";
 import { useI18n } from "@/app/i18n";
 import { api } from "@/api/client";
@@ -226,6 +228,8 @@ export default function NoteToolsPanel({
       </Btn>
       {rsvp && <RsvpReader text={content} />}
       <NoteExtrasPanel path={path} content={content} onChange={onChange} />
+      <MindPanel path={path} content={content} onChange={onChange} />
+      <PhotoChecklistPanel />
       {err && <div style={{ color: "var(--danger, #e66)", fontSize: 12 }}>{err}</div>}
       {out.map((l, i) => (
         <div key={i} className="muted-sm">

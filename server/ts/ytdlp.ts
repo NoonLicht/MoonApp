@@ -9,6 +9,7 @@ import * as proxy from "./proxy";
 import type { InstallState, InstallStatus } from "./proxy";
 import config from "./config";
 import { downloadToFile } from "./download";
+import { clipArgs, type Clip } from "./videoClip";
 
 const { DIRS } = config;
 
@@ -139,6 +140,8 @@ interface StartDownloadArgs {
   subs?: string[] | null;
   thumb?: { embed?: boolean } | null;
   proxyUrl?: string | null;
+  /** Скачать только отрезок (секунды от начала). */
+  clip?: Clip | null;
 }
 
 /** Аргументы старта аудиозагрузки (страница музыки). */
@@ -523,6 +526,7 @@ function startDownload({
   subs,
   thumb,
   proxyUrl,
+  clip,
 }: StartDownloadArgs): { id: string } {
   const jobId = crypto.randomBytes(6).toString("hex");
   const token = `pa_${jobId}`;
@@ -561,6 +565,7 @@ function startDownload({
   if (subs && subs.length)
     args.push("--write-subs", "--sub-langs", subs.join(","), "--sub-format", "best");
   if (thumb) args.push(wantEmbed ? "--embed-thumbnail" : "--write-thumbnail");
+  if (clip) args.push(...clipArgs(clip));
   if (needsMerge) args.push("--merge-output-format", containerOut);
   // С9: "--" перед URL — URL вида "-o…" не будет истолкован как опция.
   args.push("--format", plan.format, "--", url);

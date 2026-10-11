@@ -29,6 +29,18 @@ export interface CompanionStatus {
   running: boolean;
   port: number;
   urls: string[];
+  httpsUrls: string[];
+  camera: {
+    active: boolean;
+    device: string;
+    fps: number;
+    width: number;
+    height: number;
+    frames: number;
+    lastAt: number;
+    kbPerFrame: number;
+    streamUrls: string[];
+  };
   pairing: { code: string; expiresAt: number } | null;
   devices: PublicDevice[];
   inboxDir: string;

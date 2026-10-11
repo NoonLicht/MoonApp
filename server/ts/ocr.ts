@@ -10,6 +10,7 @@
  */
 import config from "./config";
 import logger from "./logger";
+import { flattenWords, type OcrWord } from "./secretFinder";
 
 const { DIRS } = config;
 
@@ -45,6 +46,13 @@ export async function recognize(imageBuffer: Buffer): Promise<OcrResult> {
   const { data } = await worker.recognize(imageBuffer);
   logger.info("ocr.recognize", { chars: (data.text || "").length, confidence: data.confidence });
   return { text: data.text || "", confidence: data.confidence || 0 };
+}
+
+/** Слова с рамками (для поиска секретов на скриншоте). Координаты — пиксели изображения. */
+export async function recognizeWords(imageBuffer: Buffer): Promise<OcrWord[]> {
+  const worker = await getWorker();
+  const { data } = await worker.recognize(imageBuffer, {}, { blocks: true });
+  return flattenWords(data);
 }
 
 /** Освобождает воркер (память/WASM-инстанс) — вызывается при остановке сервера. */

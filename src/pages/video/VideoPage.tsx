@@ -60,6 +60,8 @@ export default function VideoPage() {
   const [err, setErr] = useState("");
   const [sub, setSub] = useState<string[]>([]);
   const [et, setEt] = useState(false);
+  const [clipFrom, setClipFrom] = useState("");
+  const [clipTo, setClipTo] = useState("");
   const [ins, setIns] = useState<YtdlpInstallStatus | null>(null);
 
   // Дефолты загрузки из настроек (раздел «Видео»): макс. высота,
@@ -159,6 +161,8 @@ export default function VideoPage() {
         container: c,
         subs: sub.length ? sub : undefined,
         thumb: et ? { embed: true } : undefined,
+        clipFrom: clipFrom.trim() || undefined,
+        clipTo: clipTo.trim() || undefined,
       });
       setJ(r.id);
     } catch (e) {
@@ -298,6 +302,24 @@ export default function VideoPage() {
                 <Image size={12} />
                 {et ? "thumb in" : "thumb"}
               </Badge>
+            </div>
+            <div className="quality-row" style={{ gap: 6, alignItems: "center" }}>
+              <span className="muted-sm">{t("video.clip.label")}</span>
+              <input
+                className="input"
+                style={{ width: 100 }}
+                placeholder={t("video.clip.from")}
+                value={clipFrom}
+                onChange={(e) => setClipFrom(e.target.value)}
+              />
+              <span>–</span>
+              <input
+                className="input"
+                style={{ width: 100 }}
+                placeholder={t("video.clip.to")}
+                value={clipTo}
+                onChange={(e) => setClipTo(e.target.value)}
+              />
             </div>
             <Btn variant="primary" icon={Download} onClick={dl} style={{ width: 260 }}>
               {t("video.download", { quality: h ? h + "p" : "best" })}

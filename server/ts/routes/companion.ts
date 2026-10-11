@@ -9,9 +9,13 @@
  *  DELETE /api/companion/devices/:id            — отозвать устройство
  *  POST   /api/companion/player-state           — окно приложения сообщает, что играет
  *  GET    /api/companion/commands               — забрать команды плееру от телефона
+ *  GET    /api/companion/cam/frame              — последний кадр камеры телефона (JPEG)
+ *  POST   /api/companion/cam/snapshot           — сохранить кадр в storage/companion/camera
+ *  POST   /api/companion/cam/key                — выпустить новый ключ адреса потока
  */
 import express from "express";
 import * as companion from "../companion";
+import * as phoneCam from "../phoneCam";
 
 const router = express.Router();
 
@@ -44,5 +48,23 @@ router.post("/player-state", (req, res) => {
 });
 
 router.get("/commands", (_req, res) => res.json(companion.takeCommands()));
+
+
+router.get("/cam/frame", (_req, res) => {
+  const f = phoneCam.latest();
+  if (!f) return res.status(404).json({ error: "no_frame" });
+  res.set("Cache-Control", "no-store").type("image/jpeg").send(f.jpeg);
+});
+
+router.post("/cam/snapshot", (_req, res) => {
+  const name = phoneCam.saveSnapshot();
+  if (!name) return res.status(409).json({ error: "no_frame" });
+  res.json({ ok: true, name, dir: phoneCam.photosDir() });
+});
+
+router.post("/cam/key", (_req, res) => {
+  phoneCam.regenerateKey();
+  res.json(companion.status());
+});
 
 export = router;

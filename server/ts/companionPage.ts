@@ -58,8 +58,8 @@ export const APP_JS = `
   "use strict";
   var LS = "moonapp.companion.token";
   var T = {
-    en: { pairTitle: "Connect to MoonApp", pairHint: "Enter the 6-digit code shown in MoonApp: Settings → Web companion.", connect: "Connect", badCode: "Wrong or expired code.", tooMany: "Too many attempts. Wait a minute.", inbox: "Inbox", notes: "Notes", tasks: "Tasks", player: "Player", send: "Send", textPh: "Text or link to send to your PC…", sent: "Sent to the PC", pickFile: "Choose a file", uploading: "Uploading…", fileSent: "File delivered", blocked: "This file type is not accepted", failed: "Failed", search: "Search notes…", empty: "Nothing here", back: "Back", append: "Add to note", newNote: "New note", titlePh: "Title", save: "Save", addTask: "Add", taskPh: "New task…", noPlayer: "No media is playing on the PC.", forget: "Disconnect this device", offline: "Cannot reach the PC", saved: "Saved", scan: "Scanner", shoot: "Take a photo", pages: "Pages", makePdf: "Make PDF", toTasks: "Photo → tasks", clearPages: "Clear", working: "Processing on the PC…", pdfDone: "PDF is on the PC (Scans)", tasksDone: "Tasks created: ", scanHint: "Shoot a document or a whiteboard. PDF and text are made on the PC." },
-    ru: { pairTitle: "Подключение к MoonApp", pairHint: "Введите 6-значный код из MoonApp: Настройки → Веб-компаньон.", connect: "Подключить", badCode: "Неверный или просроченный код.", tooMany: "Слишком много попыток. Подождите минуту.", inbox: "Входящие", notes: "Заметки", tasks: "Задачи", player: "Плеер", send: "Отправить", textPh: "Текст или ссылка для ПК…", sent: "Отправлено на ПК", pickFile: "Выбрать файл", uploading: "Загрузка…", fileSent: "Файл доставлен", blocked: "Такой тип файлов не принимается", failed: "Не удалось", search: "Поиск по заметкам…", empty: "Пусто", back: "Назад", append: "Дописать в заметку", newNote: "Новая заметка", titlePh: "Заголовок", save: "Сохранить", addTask: "Добавить", taskPh: "Новая задача…", noPlayer: "На ПК сейчас ничего не играет.", forget: "Отключить это устройство", offline: "ПК недоступен", saved: "Сохранено", scan: "Сканер", shoot: "Снять", pages: "Страниц", makePdf: "Собрать PDF", toTasks: "Фото → задачи", clearPages: "Очистить", working: "Обрабатываю на ПК…", pdfDone: "PDF на ПК (папка «Сканы»)", tasksDone: "Создано задач: ", scanHint: "Снимите документ или доску. PDF и текст делает ПК." }
+    en: { pairTitle: "Connect to MoonApp", pairHint: "Enter the 6-digit code shown in MoonApp: Settings → Web companion.", connect: "Connect", badCode: "Wrong or expired code.", tooMany: "Too many attempts. Wait a minute.", inbox: "Inbox", notes: "Notes", tasks: "Tasks", player: "Player", send: "Send", textPh: "Text or link to send to your PC…", sent: "Sent to the PC", pickFile: "Choose a file", uploading: "Uploading…", fileSent: "File delivered", blocked: "This file type is not accepted", failed: "Failed", search: "Search notes…", empty: "Nothing here", back: "Back", append: "Add to note", newNote: "New note", titlePh: "Title", save: "Save", addTask: "Add", taskPh: "New task…", noPlayer: "No media is playing on the PC.", forget: "Disconnect this device", offline: "Cannot reach the PC", saved: "Saved", scan: "Scanner", shoot: "Take a photo", pages: "Pages", makePdf: "Make PDF", toTasks: "Photo → tasks", clearPages: "Clear", working: "Processing on the PC…", pdfDone: "PDF is on the PC (Scans)", tasksDone: "Tasks created: ", scanHint: "Shoot a document or a whiteboard. PDF and text are made on the PC.", cam: "Camera", camHint: "Use the phone as a PC webcam. Keep this page open and the screen on.", camStart: "Start", camStop: "Stop", camFlip: "Flip camera", camLive: "Streaming to the PC", camHttps: "The camera needs a secure (HTTPS) connection. Open the secure address: the browser will warn about the certificate — choose Continue, then enter the code again.", camOpen: "Open secure page", camNoHttps: "Secure mode is unavailable on this PC.", camDenied: "Camera access was denied." },
+    ru: { pairTitle: "Подключение к MoonApp", pairHint: "Введите 6-значный код из MoonApp: Настройки → Веб-компаньон.", connect: "Подключить", badCode: "Неверный или просроченный код.", tooMany: "Слишком много попыток. Подождите минуту.", inbox: "Входящие", notes: "Заметки", tasks: "Задачи", player: "Плеер", send: "Отправить", textPh: "Текст или ссылка для ПК…", sent: "Отправлено на ПК", pickFile: "Выбрать файл", uploading: "Загрузка…", fileSent: "Файл доставлен", blocked: "Такой тип файлов не принимается", failed: "Не удалось", search: "Поиск по заметкам…", empty: "Пусто", back: "Назад", append: "Дописать в заметку", newNote: "Новая заметка", titlePh: "Заголовок", save: "Сохранить", addTask: "Добавить", taskPh: "Новая задача…", noPlayer: "На ПК сейчас ничего не играет.", forget: "Отключить это устройство", offline: "ПК недоступен", saved: "Сохранено", scan: "Сканер", shoot: "Снять", pages: "Страниц", makePdf: "Собрать PDF", toTasks: "Фото → задачи", clearPages: "Очистить", working: "Обрабатываю на ПК…", pdfDone: "PDF на ПК (папка «Сканы»)", tasksDone: "Создано задач: ", scanHint: "Снимите документ или доску. PDF и текст делает ПК.", cam: "Камера", camHint: "Телефон как веб-камера для ПК. Держите страницу открытой и экран включённым.", camStart: "Запустить", camStop: "Остановить", camFlip: "Сменить камеру", camLive: "Идёт трансляция на ПК", camHttps: "Камере нужно защищённое соединение (HTTPS). Откройте защищённый адрес: браузер предупредит о сертификате — выберите «Продолжить» и снова введите код.", camOpen: "Открыть защищённую страницу", camNoHttps: "Защищённый режим на этом ПК недоступен.", camDenied: "Доступ к камере запрещён." }
   };
   var L = T[(navigator.language || "en").slice(0, 2)] || T.en;
   var root = document.getElementById("app");
@@ -71,6 +71,7 @@ export const APP_JS = `
     if (props) for (var k in props) {
       if (k === "text") n.textContent = props[k];
       else if (k === "class") n.className = props[k];
+      else if (k === "style") n.style.cssText = props[k]; /* CSP запрещает style-атрибут, cssText разрешён */
       else if (k.slice(0, 2) === "on") n.addEventListener(k.slice(2), props[k]);
       else n.setAttribute(k, props[k]);
     }
@@ -115,20 +116,22 @@ export const APP_JS = `
   }
 
   /* ---- вкладки ---- */
-  var tab = "inbox";
+  var tab = location.hash === "#cam" ? "cam" : "inbox";
+  var cleanup = null;
   var timer = null;
   function render() {
     if (timer) { clearInterval(timer); timer = null; }
+    if (cleanup) { cleanup(); cleanup = null; }
     if (!token) return renderPair();
     clear(root);
     var body = el("div");
     root.appendChild(body);
-    var names = ["inbox", "notes", "tasks", "scan", "player"];
+    var names = ["inbox", "notes", "tasks", "scan", "cam", "player"];
     var nav = el("nav", null, names.map(function (n) {
       return el("button", { class: n === tab ? "on" : "", text: L[n], onclick: function () { tab = n; render(); } });
     }));
     root.appendChild(nav);
-    ({ inbox: viewInbox, notes: viewNotes, tasks: viewTasks, scan: viewScan, player: viewPlayer })[tab](body);
+    ({ inbox: viewInbox, notes: viewNotes, tasks: viewTasks, scan: viewScan, cam: viewCam, player: viewPlayer })[tab](body);
   }
 
   function status(node, text, cls) { node.className = cls || "dim"; node.textContent = text; }
@@ -298,6 +301,67 @@ export const APP_JS = `
     upd();
   }
 
+
+  /* ---- веб-камера: кадры уходят на ПК по HTTPS ---- */
+  function viewCam(body) {
+    var st = el("div", { class: "dim" });
+    body.appendChild(el("h1", { text: L.cam }));
+    var secure = window.isSecureContext && navigator.mediaDevices && navigator.mediaDevices.getUserMedia;
+    if (!secure) {
+      var card = el("div", { class: "card" }, [el("p", { class: "dim", text: L.camHttps })]);
+      body.appendChild(card);
+      api("GET", "/cam/info").then(function (r) {
+        if (!r.httpsPort) { card.appendChild(el("div", { class: "err", text: L.camNoHttps })); return; }
+        var url = "https://" + location.hostname + ":" + r.httpsPort + "/#cam";
+        card.appendChild(el("a", { href: url, class: "pri", style: "display:block;text-align:center;padding:12px;border-radius:10px;text-decoration:none", text: L.camOpen }));
+      }).catch(function () { card.appendChild(el("div", { class: "err", text: L.offline })); });
+      return;
+    }
+    var video = el("video", { playsinline: "", autoplay: "", style: "width:100%;border-radius:12px;background:#000;max-height:50vh" });
+    video.muted = true;
+    var canvas = document.createElement("canvas");
+    var facing = "environment", stream = null, loop = null, busy = false, lock = null, sent = 0;
+    function stop() {
+      if (loop) { clearInterval(loop); loop = null; }
+      if (stream) { stream.getTracks().forEach(function (t) { t.stop(); }); stream = null; }
+      if (lock) { try { lock.release(); } catch (e) {} lock = null; }
+      video.srcObject = null;
+      api("POST", "/cam/stop").catch(function () {});
+      status(st, "", "dim");
+    }
+    function tick() {
+      if (busy || !video.videoWidth) return;
+      var k = Math.min(1, 960 / Math.max(video.videoWidth, video.videoHeight));
+      canvas.width = Math.round(video.videoWidth * k); canvas.height = Math.round(video.videoHeight * k);
+      canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
+      busy = true;
+      canvas.toBlob(function (b) {
+        if (!b) { busy = false; return; }
+        fetch("/api/cam/frame", { method: "POST", headers: { Authorization: "Bearer " + token, "Content-Type": "image/jpeg" }, body: b })
+          .then(function (r) { if (r.status === 401) { forget(); } else { sent++; status(st, L.camLive + " · " + sent, "ok"); } })
+          .catch(function () { status(st, L.offline, "err"); })
+          .then(function () { busy = false; });
+      }, "image/jpeg", 0.7);
+    }
+    function start() {
+      stop();
+      navigator.mediaDevices.getUserMedia({ video: { facingMode: facing, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false }).then(function (s) {
+        stream = s; video.srcObject = s; video.play().catch(function () {});
+        loop = setInterval(tick, 100);
+        if (navigator.wakeLock) navigator.wakeLock.request("screen").then(function (l) { lock = l; }).catch(function () {});
+      }).catch(function () { status(st, L.camDenied, "err"); });
+    }
+    cleanup = stop;
+    body.appendChild(el("div", { class: "card" }, [
+      el("p", { class: "dim", text: L.camHint }), video, el("div", { style: "height:10px" }),
+      el("div", { class: "row" }, [
+        el("button", { class: "pri", text: L.camStart, onclick: start }),
+        el("button", { text: L.camStop, onclick: stop }),
+        el("button", { text: L.camFlip, onclick: function () { facing = facing === "environment" ? "user" : "environment"; if (stream) start(); } })
+      ]), el("div", { style: "height:8px" }), st
+    ]));
+  }
+
   function viewPlayer(body) {
     var info = el("div", { class: "card" });
     var pad = el("div", { class: "big" });
