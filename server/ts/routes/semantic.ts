@@ -14,6 +14,7 @@ import express from "express";
 import * as semantic from "../semantic";
 import { embedConfig, setEmbedConfig, unloadEmbed } from "../llamacpp/embed";
 import * as vault from "../myspace-vault";
+import * as fileIndex from "../fileTextIndex";
 
 const router = express.Router();
 
@@ -37,6 +38,22 @@ const fail = (res: express.Response, e: unknown): void => {
     .status(msg.startsWith("embed_model_missing") || msg === "build_missing" ? 409 : 500)
     .json({ error: msg.slice(0, 300) });
 };
+
+// Поиск по файлам: папки (PDF, текст, картинки через OCR) и обход.
+router.get("/files", (_req, res) => {
+  res.json({ folders: fileIndex.getFolders(), scan: fileIndex.scanState() });
+});
+
+router.post("/files/folders", express.json({ limit: "64kb" }), (req, res) => {
+  const list = Array.isArray(req.body?.folders) ? req.body.folders : [];
+  res.json({ folders: fileIndex.setFolders(list.map(String)) });
+});
+
+// Обход папок и обновление индекса (после обхода запускается общая синхронизация).
+router.post("/files/scan", (_req, res) => {
+  const st = fileIndex.startScan(() => semantic.syncAll());
+  res.status(202).json(st);
+});
 
 router.get("/status", (_req, res) => res.json(semantic.status()));
 

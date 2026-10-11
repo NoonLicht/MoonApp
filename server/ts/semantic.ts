@@ -6,6 +6,7 @@
  * (Float32 подряд, DIM чисел на кусок, в порядке meta). Для десятков тысяч кусков перебора достаточно.
  * Куски пересчитываются только у того источника, чей текст изменился (хеш).
  */
+import { fileDocs } from "./fileTextIndex";
 import crypto from "crypto";
 import fs from "fs";
 import path from "path";
@@ -23,6 +24,8 @@ import {
 } from "./llamacpp/embed";
 import * as vault from "./myspace-vault";
 import { tables } from "./db";
+import { ftsCount, ftsHas, ftsPut, ftsRemove, ftsSearch } from "./ftsIndex";
+import { rrf } from "./hybridRank";
 
 const { DIRS } = config;
 const DIR = path.join(DIRS.storage, "semantic");
@@ -42,7 +45,8 @@ export type SemSource =
   | "book"
   | "m3e"
   | "archive"
-  | "rss";
+  | "rss"
+  | "file";
 
 interface ChunkMeta {
   source: SemSource;
@@ -203,7 +207,11 @@ export async function indexRef(
 ): Promise<boolean> {
   const s = load();
   const file = embedModelFile();
-  if (!file) throw new Error("embed_model_missing");
+  if (!file) {
+    // Без модели индексируем только лексически: поиск по словам работает сразу.
+    lexicalIndex(source, ref, title, text, pre);
+    return false;
+  }
   if (s.model && s.model !== file) {
     s.chunks = [];
     s.vecs = new Float32Array(0);
@@ -213,15 +221,26 @@ export async function indexRef(
   const key = refKey(source, ref);
   const full = `${title}\n${text}${pre ? pre.map((p) => p.text).join("") : ""}`;
   const hash = sha(full);
-  if (s.refs[key]?.hash === hash) return false;
+  if (s.refs[key]?.hash === hash) {
+    // Индекс мог быть построен до появления полнотекстовой части — дозаполняем.
+    if (!ftsHas(source, ref)) lexicalIndex(source, ref, title, text, pre);
+    return false;
+  }
   const parts: Part[] = pre ?? chunkText(text).map((t) => ({ text: t }));
   if (!parts.length && title.trim().length > 2) parts.push({ text: title.trim() });
   if (!parts.length) {
     dropRef(s, source, ref);
     delete s.refs[key];
+    ftsRemove(source, ref);
     save();
     return true;
   }
+  ftsPut(
+    source,
+    ref,
+    title,
+    parts.map((p) => p.text),
+  );
   const vecs = await embedRaw(parts.map((p) => withPrefix(p.text, "doc", title)));
   dropRef(s, source, ref);
   const merged = new Float32Array(s.vecs.length + vecs.length * DIM);
@@ -236,8 +255,23 @@ export async function indexRef(
   return true;
 }
 
+/** Только полнотекстовая часть индекса (без векторов). */
+function lexicalIndex(
+  source: SemSource,
+  ref: string,
+  title: string,
+  text: string,
+  pre?: Part[],
+): void {
+  const parts = (pre ?? chunkText(text).map((t) => ({ text: t }))).map((p) => p.text);
+  if (!parts.length && title.trim().length > 2) parts.push(title.trim());
+  if (parts.length) ftsPut(source, ref, title, parts);
+  else ftsRemove(source, ref);
+}
+
 export function removeRef(source: SemSource, ref: string): void {
   const s = load();
+  ftsRemove(source, ref);
   dropRef(s, source, ref);
   delete s.refs[refKey(source, ref)];
   save();
@@ -597,7 +631,9 @@ function rssDocs(): Doc[] {
     const rss = require("./rss") as typeof import("./rss");
     return rss.listItems({ limit: 500 }).map((i) => {
       const tr = Object.values(i.tr || {}).find((x) => x && typeof x === "object");
-      const text = [i.title, tr ? tr.title : "", i.summary, tr ? tr.summary : ""].filter(Boolean).join(". ");
+      const text = [i.title, tr ? tr.title : "", i.summary, tr ? tr.summary : ""]
+        .filter(Boolean)
+        .join(". ");
       return { source: "rss" as const, ref: i.id, title: i.title, text, parts: [{ text }] };
     });
   } catch {
@@ -634,6 +670,10 @@ function archiveDocs(): Doc[] {
   }
 }
 
+function fileSourceDocs(): Doc[] {
+  return fileDocs().map((d) => ({ source: "file" as const, ref: d.ref, title: d.title, text: d.text }));
+}
+
 export interface JobState {
   running: boolean;
   done: number;
@@ -646,7 +686,7 @@ export const jobState = (): JobState => job;
 
 /** Полная синхронизация индекса с заметками и закладками (в фоне). */
 export function syncAll(): JobState {
-  if (job.running || !embedModelFile()) return job;
+  if (job.running) return job;
   job = { running: true, done: 0, total: 0, error: "", startedAt: Date.now() };
   void (async () => {
     try {
@@ -664,6 +704,7 @@ export function syncAll(): JobState {
         ...m3eDocs(),
         ...archiveDocs(),
         ...rssDocs(),
+        ...fileSourceDocs(),
       ];
       job.total = docs.length;
       const s = load();
@@ -693,7 +734,7 @@ export function syncAll(): JobState {
 const pending = new Map<string, NodeJS.Timeout>();
 /** Заметку сохранили: переиндексируем через паузу, если индекс уже строили. */
 export function noteChanged(notePath: string, removed = false): void {
-  if (!embedModelFile() || !Object.keys(load().refs).length) return;
+  if (!Object.keys(load().refs).length && ftsCount() === 0) return;
   const prev = pending.get(notePath);
   if (prev) clearTimeout(prev);
   pending.set(
@@ -767,9 +808,36 @@ export async function search(
   o: { sources?: SemSource[]; limit?: number } = {},
 ): Promise<Hit[]> {
   const q = query.trim();
-  if (!q || !embedModelFile() || !load().chunks.length) return [];
-  const [v] = await embedRaw([withPrefix(q, "query")]);
-  return rank(v, { ...o, min: SEARCH_MIN });
+  if (!q) return [];
+  const limit = o.limit ?? 10;
+  const lex = ftsSearch(q, { sources: o.sources, limit: limit * 2 });
+  const haveVectors = !!embedModelFile() && load().chunks.length > 0;
+  if (!haveVectors) return lex.slice(0, limit).map((h) => lexHit(h));
+  let vec: Hit[] = [];
+  try {
+    const [v] = await embedRaw([withPrefix(q, "query")]);
+    vec = rank(v, { ...o, limit: limit * 2, min: SEARCH_MIN });
+  } catch (e) {
+    // модель не поднялась — поиск по словам остаётся рабочим
+    logger.warn("semantic.search_vector_failed", { error: (e as Error).message });
+  }
+  if (!lex.length) return vec.slice(0, limit);
+  const lexHits = lex.map((h) => lexHit(h));
+  const fused = rrf<Hit>([vec, lexHits]).map((f) => f.item);
+  return fused.slice(0, limit);
+}
+
+/** Оценка для хитов, найденных только по словам: выше порога семантики, ниже уверенных совпадений. */
+const LEX_ONLY_SCORE = 0.7;
+
+function lexHit(h: { source: string; ref: string; title: string; snippet: string }): Hit {
+  return {
+    source: h.source as SemSource,
+    ref: h.ref,
+    title: h.title,
+    snippet: h.snippet,
+    score: LEX_ONLY_SCORE,
+  };
 }
 
 /** Средний вектор источника (для «похожих» и дублей). */
@@ -962,6 +1030,7 @@ export const ALL_SOURCES: SemSource[] = [
   "m3e",
   "archive",
   "rss",
+  "file",
 ];
 
 /** Раз в 10 минут (если индекс уже строили) подтягиваем лекции, чаты, задачи, доски и т.п. */

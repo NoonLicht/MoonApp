@@ -14,7 +14,8 @@ export type SemSource =
   | "book"
   | "m3e"
   | "archive"
-  | "rss";
+  | "rss"
+  | "file";
 
 export interface SemHit {
   source: SemSource;
@@ -68,6 +69,14 @@ const q_ = (o: Record<string, string | number | undefined>): string =>
     .join("&");
 
 export const semanticApi = {
+  semFiles: () =>
+    req<{
+      folders: string[];
+      scan: { running: boolean; total: number; done: number; indexed: number; failed: number; error: string };
+    }>("GET", "/semantic/files"),
+  semFilesSetFolders: (folders: string[]) =>
+    req<{ folders: string[] }>("POST", "/semantic/files/folders", { folders }),
+  semFilesScan: () => req<{ running: boolean }>("POST", "/semantic/files/scan"),
   semStatus: () => req<SemStatus>("GET", "/semantic/status"),
   semConfig: (patch: Partial<SemConfig>) => req<SemConfig>("POST", "/semantic/config", patch),
   semUnload: () => req<{ ok: boolean }>("POST", "/semantic/unload"),

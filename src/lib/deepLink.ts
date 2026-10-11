@@ -7,6 +7,7 @@ import { useEffect, useRef } from "react";
 import type { PageId } from "@/app/navigation";
 import { tNow } from "@/app/i18n";
 import type { SemSource } from "@/api/apiSemantic";
+import { api } from "@/api/client";
 
 export interface DeepTarget {
   page: PageId;
@@ -22,6 +23,11 @@ const EVENT = "moon:open";
 let pending: DeepTarget | null = null;
 
 export function openTarget(t: DeepTarget): void {
+  // Файл на диске: страницы у него нет — показываем в проводнике.
+  if (t.view === "file" && t.ref) {
+    void api.diskScanReveal(t.ref).catch(() => undefined);
+    return;
+  }
   pending = t;
   window.dispatchEvent(new CustomEvent<DeepTarget>(EVENT, { detail: t }));
 }
@@ -55,6 +61,8 @@ export function targetFor(source: SemSource, ref: string, at?: number): DeepTarg
       return { page: "archive", ref };
     case "rss":
       return { page: "rss", ref };
+    case "file":
+      return { page: "monitor", view: "file", ref };
   }
 }
 
@@ -73,6 +81,7 @@ export const SOURCE_ICON: Record<SemSource, string> = {
   m3e: "🧩",
   archive: "🗄️",
   rss: "📰",
+  file: "📄",
 };
 
 /** Ссылка внутри приложения для markdown: [📝 Название](moon://note/путь). */
