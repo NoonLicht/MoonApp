@@ -15,6 +15,7 @@ import { Glass, Btn, Badge, EmptyHint, SectionHead, Select } from "@/components/
 import { useI18n } from "@/app/i18n";
 import { api } from "@/api/client";
 import type { Transaction, TxType, BudgetCategories, MonthSummary } from "@/api/types";
+import RecurringPanel from "@/pages/budget/parts/RecurringPanel";
 
 const PIE_COLORS = [
   "var(--amber)",
@@ -153,8 +154,13 @@ export default function BudgetPage() {
     setImportMsg("");
     try {
       const text = await file.text();
-      const r = await api.budgetImportCsv(text);
-      setImportMsg(t("budget.importResult", { imported: r.imported, skipped: r.skipped }));
+      // Банки отдают и CSV, и OFX/QFX — формат определяем по расширению и содержимому.
+      const isOfx = /\.(ofx|qfx)$/i.test(file.name) || /<OFX>|OFXHEADER/i.test(text.slice(0, 2000));
+      const r = isOfx ? await api.budgetImportOfx(text) : await api.budgetImportCsv(text);
+      setImportMsg(
+        t("budget.importResult", { imported: r.imported, skipped: r.skipped }) +
+          (r.duplicates ? ` · ${t("budget.importDuplicates", { n: r.duplicates })}` : ""),
+      );
       load();
     } catch (e) {
       setImportMsg((e as Error).message);
@@ -207,7 +213,7 @@ export default function BudgetPage() {
               {importing ? t("budget.importing") : t("budget.import")}
               <input
                 type="file"
-                accept=".csv,text/csv"
+                accept=".csv,.ofx,.qfx,text/csv"
                 hidden
                 disabled={importing}
                 onChange={(e) => {
@@ -338,7 +344,7 @@ export default function BudgetPage() {
               }}
               onClick={() => setForm((f) => ({ ...f, category: guess }))}
             >
-              ✨ Похоже на категорию «{guess}» — применить
+              ✨ {t("sem.budgetGuess", { guess })}
             </button>
           )}
           <div style={{ display: "flex", gap: 8 }}>
@@ -431,6 +437,8 @@ export default function BudgetPage() {
           ))}
         </Glass>
       )}
+
+      <RecurringPanel currency={displayCurrency} currencies={currencies} onChanged={() => load()} />
 
       <SectionHead eyebrow={t("budget.listEyebrow")} title={t("budget.listTitle")} />
       {loading && <div className="muted-sm">{t("passwordVault.loading")}</div>}

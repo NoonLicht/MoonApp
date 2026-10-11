@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useI18n } from "@/app/i18n";
 import {
   Frame,
   Hand,
@@ -28,7 +29,6 @@ interface Props {
   onEmoji: (e: string) => void;
   onImage: () => void;
   t: (k: Key) => string;
-  ru: boolean;
 }
 
 const ITEMS: { tool: Tool; icon: typeof Hand; key: Key; hot: string }[] = [
@@ -46,6 +46,7 @@ const ITEMS: { tool: Tool; icon: typeof Hand; key: Key; hot: string }[] = [
 
 /** Панель инструментов слева. */
 export function ToolDock(p: Props) {
+  const { t: tx } = useI18n();
   const [pop, setPop] = useState<"shape" | "sticker" | null>(null);
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -114,7 +115,7 @@ export function ToolDock(p: Props) {
               key={s.kind}
               type="button"
               className={`hc-shape-opt${p.shape === s.kind ? " on" : ""}`}
-              title={p.ru ? s.ru : s.en}
+              title={tx(`canvasShapes.${s.kind}`)}
               onClick={() => {
                 p.onShape(s.kind);
                 p.onTool("shape");

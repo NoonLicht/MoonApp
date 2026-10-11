@@ -65,6 +65,20 @@ const baseReq = (b: Record<string, unknown>): Req => ({
   variant: normVariant(b.variant),
 });
 
+function llamaReady(): boolean {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const eng = require("../llamacpp/engine") as typeof import("../llamacpp/engine");
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const llama = require("../translate/llama") as typeof import("../translate/llama");
+    if (!eng.installedBuilds().length) return false;
+    llama.pickModel("auto");
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 router.get("/status", (_req, res) => {
   const rt = runtimeStatus();
   res.json({
@@ -75,6 +89,8 @@ router.get("/status", (_req, res) => {
     restart: packStatus().installed && runtimeStatus().pack !== packStatus().binding,
     platform: process.platform,
     installed: installedVariants(),
+    // llama.cpp-режим не зависит от ONNX-модели: нужны установленная сборка и GGUF TranslateGemma.
+    llamaReady: llamaReady(),
     download: downloadState(),
     loaded: loadedInfo(),
     failed: failedList(),

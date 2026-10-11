@@ -1,3 +1,4 @@
+import { askText } from "@/lib/askText";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   Search,
@@ -345,8 +346,8 @@ export default function MoviesPage() {
       {
         label: t("movies.bookmarksCreate"),
         icon: Plus,
-        onClick: () => {
-          const name = window.prompt(t("movies.bookmarksNewPlaceholder"));
+        onClick: async () => {
+          const name = await askText(t("movies.bookmarksNewPlaceholder"));
           if (!name?.trim()) return;
           void api
             .moviesBookmarkCreate(name.trim())
@@ -572,7 +573,7 @@ export default function MoviesPage() {
                   className="text-input"
                   value={libQuery}
                   onChange={(e) => setLibQuery(e.target.value)}
-                  placeholder="Найти в списке по описанию: «космос и одиночество»…"
+                  placeholder={t("sem.movieSearchPh")}
                   style={{ minWidth: 280 }}
                 />
                 <Btn
@@ -583,18 +584,20 @@ export default function MoviesPage() {
                       .catch(() => setReco([]))
                   }
                 >
-                  ✨ Что посмотреть из планов
+                  ✨ {t("sem.whatToWatch")}
                 </Btn>
               </div>
             )}
             {reco && (
               <div className="muted-sm">
                 {reco.length === 0
-                  ? "Пока не из чего подбирать: нужны просмотренные или оценённые на 8+ тайтлы и модель поиска по смыслу."
-                  : `По вашему вкусу: ${reco
-                      .slice(0, 5)
-                      .map((r) => `${r.title} (${Math.round(r.score * 100)}%)`)
-                      .join(", ")}`}
+                  ? t("sem.recoEmpty")
+                  : t("sem.recoTaste", {
+                      list: reco
+                        .slice(0, 5)
+                        .map((r) => `${r.title} (${Math.round(r.score * 100)}%)`)
+                        .join(", "),
+                    })}
               </div>
             )}
 

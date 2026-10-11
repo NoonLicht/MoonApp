@@ -23,6 +23,8 @@ export interface TrStatus {
   restart: boolean;
   platform: string;
   installed: TrVariant[];
+  /** Для режима llama.cpp: сборка и GGUF-модель установлены (ONNX-модель не нужна). */
+  llamaReady: boolean;
   download: TrDownload | null;
   loaded: { provider: string; variant: TrVariant } | null;
   /** «вариант|провайдер», не прошедшие запуск или самопроверку. */

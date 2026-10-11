@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Sparkles, Search, Workflow, FileText, Link2, X } from "lucide-react";
 import { api } from "@/api/client";
+import { useI18n } from "@/app/i18n";
 import type { SemHit } from "@/api/apiSemantic";
 import { make, uid, type Obj } from "@/pages/myspace/canvas/model";
 import { layoutGraph, type LayoutDir } from "@/pages/myspace/canvas/smartLayout";
@@ -24,6 +25,7 @@ const objText = (o: Obj): string => String(o.text || o.name || "").trim();
 
 /** Умные действия на доске: поиск по объектам, раскладка стикеров по смыслу, подбор заметок. */
 export function SmartPanel({ file, objs, sel, onFocus, onApply, center }: Props) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
   const [hits, setHits] = useState<SemHit[]>([]);
@@ -47,7 +49,7 @@ export function SmartPanel({ file, objs, sel, onFocus, onApply, center }: Props)
         .map((o) => ({
           source: "canvas",
           ref: `${file}#${o.id}`,
-          title: "эта доска",
+          title: t("canvasSmart.thisBoard"),
           snippet: objText(o),
           score: 1,
         }));
@@ -88,11 +90,11 @@ export function SmartPanel({ file, objs, sel, onFocus, onApply, center }: Props)
     const pool = sel.length > 1 ? sel : null;
     const links = objs.filter((o) => o.type === "line" && o.from?.id && o.to?.id).length;
     if (!links) {
-      setMsg("Сначала соедините элементы линиями — раскладка идёт по связям");
+      setMsg(t("canvasSmart.needLinks"));
       return;
     }
     onApply((all) => layoutGraph(all, pool, dir));
-    setMsg("Готово: схема выстроена по связям");
+    setMsg(t("canvasSmart.layoutDone"));
   };
 
   const [picker, setPicker] = useState(false);
@@ -162,7 +164,7 @@ export function SmartPanel({ file, objs, sel, onFocus, onApply, center }: Props)
     <>
       <button
         type="button"
-        title="Умные действия: поиск, раскладка по смыслу, заметки"
+        title={t("canvasSmart.toggleTitle")}
         onClick={() => setOpen((v) => !v)}
         style={{
           ...btn,
@@ -179,7 +181,7 @@ export function SmartPanel({ file, objs, sel, onFocus, onApply, center }: Props)
       {open && (
         <div style={box} onPointerDown={(e) => e.stopPropagation()}>
           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-            <b>Умные действия</b>
+            <b>{t("canvasSmart.title")}</b>
             <X size={14} style={{ cursor: "pointer" }} onClick={() => setOpen(false)} />
           </div>
           <label style={{ ...btn, width: "100%", cursor: "text" }}>
@@ -187,7 +189,7 @@ export function SmartPanel({ file, objs, sel, onFocus, onApply, center }: Props)
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="Найти объект по смыслу…"
+              placeholder={t("canvasSmart.searchPh")}
               style={{
                 flex: 1,
                 border: "none",
@@ -217,24 +219,25 @@ export function SmartPanel({ file, objs, sel, onFocus, onApply, center }: Props)
 
           <div style={{ marginTop: 10, display: "grid", gap: 6 }}>
             <button type="button" style={btn} onClick={() => setPicker(true)}>
-              <Link2 size={13} /> Вставить из приложения (заметка, задача, закладка…)
+              <Link2 size={13} /> {t("canvasSmart.insertFromApp")}
             </button>
             <div style={{ display: "flex", gap: 6 }}>
               <button
                 type="button"
                 style={{ ...btn, flex: 1 }}
-                title="Упорядочить схему по связям: слева направо"
+                title={t("canvasSmart.layoutLRTitle")}
                 onClick={() => arrange("LR")}
               >
-                <Workflow size={13} /> Схема →
+                <Workflow size={13} /> {t("canvasSmart.layoutLR")}
               </button>
               <button
                 type="button"
                 style={{ ...btn, flex: 1 }}
-                title="Упорядочить схему по связям: сверху вниз"
+                title={t("canvasSmart.layoutTBTitle")}
                 onClick={() => arrange("TB")}
               >
-                <Workflow size={13} style={{ transform: "rotate(90deg)" }} /> Схема ↓
+                <Workflow size={13} style={{ transform: "rotate(90deg)" }} />{" "}
+                {t("canvasSmart.layoutTB")}
               </button>
             </div>
             {msg && <div style={{ color: "var(--text-secondary)" }}>{msg}</div>}
@@ -243,12 +246,12 @@ export function SmartPanel({ file, objs, sel, onFocus, onApply, center }: Props)
           {notes.length > 0 && (
             <div style={{ marginTop: 10 }}>
               <div style={{ color: "var(--text-secondary)", marginBottom: 4 }}>
-                <FileText size={12} /> Заметки по теме выделенного
+                <FileText size={12} /> {t("canvasSmart.relatedNotes")}
               </div>
               {notes.map((h) => (
                 <div
                   key={h.ref}
-                  title="Добавить карточку заметки рядом"
+                  title={t("canvasSmart.addNoteCard")}
                   style={{
                     padding: "4px",
                     cursor: "pointer",

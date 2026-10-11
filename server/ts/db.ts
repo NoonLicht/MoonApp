@@ -1,15 +1,27 @@
 /**
- * Лёгкий JS-стор вместо полноценной БД — данные живут в JSON.
- * Одинаково работает в Electron, standalone и тестах, т.к. нет нативной сборки
- * (в отличие от node:sqlite / better-sqlite3, которые в Electron капризничают).
- * API держу как в SQL (run/get/all), чтобы роуты не переписывать.
+ * Хранилище приложения: SQLite (better-sqlite3), файл storage/data.db.
  *
- * TS-исходник, как server/ts/notes-fs.ts: компилируется в server/db.js командой
- * `npm run compile:server`, поэтому `const { stmts } = require("./db")` из роутов,
- * proxyCore.js, lecture.js, zapret.js, tmdb.js и тестов работает без изменений.
- * Форма экспорта та же, что была в .js: db, stmts, tables, exportSnapshot, flush.
+ * Раньше это был один data.json, который целиком переписывался при каждом
+ * изменении (сейчас — сотни КБ на каждую правку), без схемы, версий и индексов.
+ * Теперь:
+ *  - схема версионируется через PRAGMA user_version, миграции — в MIGRATIONS;
+ *  - новые колонки, добавленные в объявления таблиц ниже, досыпаются в БД сами
+ *    (ALTER TABLE ... ADD COLUMN), значения при этом ложатся ровно в свои колонки;
+ *  - на диск пишутся только изменённые строки (одной транзакцией, дебаунс 300 мс);
+ *  - есть индексы на полях, по которым ищут чаще всего;
+ *  - старый data.json при первом запуске импортируется и переименовывается в
+ *    data.json.migrated (остаётся как резервная копия, ничего не удаляется).
+ *
+ * API остался прежним (`stmts.*.run/get/all`, `tables`, `exportSnapshot`, `flush`):
+ * строки таблиц держатся в памяти, как и раньше, — чтение остаётся мгновенным, а
+ * SQLite отвечает за надёжное и быстрое сохранение. Таблицы небольшие (тысячи
+ * строк), поэтому держать их целиком в памяти дёшево.
+ *
+ * TS-исходник: компилируется в server/db.js командой `npm run compile:server`,
+ * поэтому `const { stmts } = require("./db")` из роутов и тестов работает как раньше.
  */
 import fs from "fs";
+import Database from "better-sqlite3";
 import config from "./config";
 import logger from "./logger";
 import * as notesFs from "./notes-fs";
@@ -17,9 +29,10 @@ import * as notesFs from "./notes-fs";
 const { FILES } = config;
 
 /**
- * Значение колонки. В .js-версии валидации не было никакой (значения приходят из
- * JSON и из роутов как есть), поэтому здесь any — сузить до unknown означало бы
- * кастовать в каждом потребителе без всякой пользы.
+ * Значение колонки. Значения приходят из роутов и UI и валидации не имели никогда
+ * (SQLite динамически типизирован, колонки объявлены без типа и хранят то, что
+ * положили: число — числом, строка — строкой), поэтому здесь any — сузить до
+ * unknown означало бы кастовать в каждом потребителе без всякой пользы.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Value = any;
@@ -33,8 +46,8 @@ export interface Row {
 /** Патч строки: подмножество колонок с новыми значениями. */
 type Patch = Record<string, Value>;
 
-/** Загрузка/сохранение строк: ровно те поля, что попадают в data.json. */
-interface TableJSON {
+/** Загрузка строк из старого data.json (только для разового импорта). */
+interface LegacyTableJSON {
   cols?: string[];
   rows?: Row[];
   seq?: number;
@@ -46,11 +59,30 @@ export interface RunResult {
   lastInsertRowid?: number;
 }
 
+const q = (ident: string): string => `"${ident.replace(/"/g, '""')}"`;
+
+/** Значение в то, что умеет принимать better-sqlite3. */
+function toSql(v: Value): number | string | bigint | Buffer | null {
+  if (v === undefined || v === null) return null;
+  if (typeof v === "boolean") return v ? 1 : 0;
+  if (typeof v === "number") return Number.isFinite(v) ? v : null;
+  if (typeof v === "string" || typeof v === "bigint" || Buffer.isBuffer(v)) return v;
+  return JSON.stringify(v);
+}
+
 class Table {
+  /** Имя таблицы в БД; выставляется после объявления (см. ниже). */
+  name = "";
   cols: string[];
   orderBy: string | null;
   rows: Row[];
   seq: number;
+  /** Колонки-флаги: в SQLite лежат как 0/1, в памяти — boolean. */
+  boolCols: Set<string> = new Set();
+  /** id строк, которые нужно записать, и id удалённых — до ближайшего persist. */
+  dirty: Set<number> = new Set();
+  removed: Set<number> = new Set();
+  seqDirty = false;
 
   constructor(cols: string[], orderBy: string | null) {
     this.cols = cols;
@@ -66,6 +98,8 @@ class Table {
       row[c] = values[i];
     });
     this.rows.push(row);
+    this.dirty.add(id);
+    this.seqDirty = true;
     return { lastInsertRowid: id };
   }
 
@@ -93,6 +127,7 @@ class Table {
     this.rows.forEach((r) => {
       if (fn(r)) {
         Object.assign(r, patch);
+        this.dirty.add(r.id);
         changes++;
       }
     });
@@ -100,35 +135,30 @@ class Table {
   }
 
   delete(id: number): { changes: number } {
-    const before = this.rows.length;
-    this.rows = this.rows.filter((r) => r.id !== id);
-    return { changes: before - this.rows.length };
+    return this.deleteWhere((r) => r.id === id);
   }
 
   deleteWhere(fn: (row: Row) => boolean): { changes: number } {
-    const before = this.rows.length;
-    this.rows = this.rows.filter((r) => !fn(r));
-    return { changes: before - this.rows.length };
-  }
-
-  toJSON(): { cols: string[]; rows: Row[]; seq: number } {
-    return { cols: this.cols, rows: this.rows, seq: this.seq };
-  }
-
-  loadJSON(j: TableJSON): void {
-    // В .js здесь было `this.cols = j.cols` без проверки: если в data.json нет
-    // поля cols, таблица оставалась без колонок и insert() молча терял значения.
-    // Фолбэк на текущие колонки ничего не меняет для нормальных файлов (там cols
-    // есть всегда) и убирает эту ловушку.
-    this.cols = j.cols || this.cols;
-    this.rows = j.rows || [];
-    this.seq = j.seq || this.rows.length || 0;
+    const keep: Row[] = [];
+    let changes = 0;
+    for (const r of this.rows) {
+      if (fn(r)) {
+        this.dirty.delete(r.id);
+        this.removed.add(r.id);
+        changes++;
+      } else {
+        keep.push(r);
+      }
+    }
+    if (changes) this.rows = keep;
+    return { changes };
   }
 }
+
 /**
- * Таблицы стора. Порядок объявления не важен, но важен порядок КОЛОНОК: insert
- * пишет значения позиционно, а старые data.json содержат порезанный список
- * колонок (миграцию досыпает load()).
+ * Таблицы стора. Порядок объявления не важен, но важен порядок КОЛОНОК:
+ * insert пишет значения позиционно. Новые колонки добавляйте В КОНЕЦ списка —
+ * существующая БД получит их автоматически (см. ensureColumns).
  */
 const tables: Record<string, Table> = {
   tasks: new Table(["text", "done", "priority", "tag", "pos", "created_at"], "pos"),
@@ -144,6 +174,8 @@ const tables: Record<string, Table> = {
     "-id",
   ),
   favorites: new Table(["key"], "key"),
+  // Документы-JSON по видам (RSS-ленты и статьи, последняя ИИ-сводка): одна строка = один документ.
+  app_docs: new Table(["kind", "uid", "json"], null),
   // Lecture Recorder: сессии лекций и чанки расшифровки.
   lectures: new Table(
     [
@@ -300,37 +332,266 @@ const tables: Record<string, Table> = {
   ),
 };
 
-// Снимок объявленных колонок ДО load(): loadJSON перезаписывает cols данными из
-// data.json, поэтому колонки, добавленные в код позже (у старых файлов их нет),
-// нужно досыпать вручную — иначе insert() молча не запишет их значения.
-// Досыпаем В КОНЕЦ, чтобы позиционное соответствие старых колонок не сломалось.
-const DECLARED_COLS: Record<string, string[]> = {};
-for (const k of Object.keys(tables)) DECLARED_COLS[k] = tables[k].cols.slice();
+for (const [name, t] of Object.entries(tables)) t.name = name;
+tables.torrent_downloads.boolCols.add("kept");
+
 function now(): string {
   return new Date().toISOString().replace("T", " ").slice(0, 19);
 }
 
-// Запись атомарная: временный файл + rename. На Windows rename иногда отдаёт
-// EPERM, если файл занят (антивирус/редактор) — тогда запись идёт прямо в основной.
-// М8: persist дебаунсится на 300 мс — при серии мутаций (стриминг чата)
-// диск дёргается один раз. flush() вызывается на exit, чтобы ничего не терялось.
-let persistTimer: NodeJS.Timeout | null = null;
-function persistNow(): void {
-  const payload: Record<string, { cols: string[]; rows: Row[]; seq: number }> = {};
-  for (const k of Object.keys(tables)) payload[k] = tables[k].toJSON();
-  const json = JSON.stringify(payload);
-  try {
-    fs.writeFileSync(FILES.data + ".tmp", json, "utf8");
-    fs.renameSync(FILES.data + ".tmp", FILES.data);
-  } catch (e) {
-    try {
-      fs.writeFileSync(FILES.data, json, "utf8");
-      logger.warn("persist.rename_fallback", { error: (e as Error).message });
-    } catch (e2) {
-      logger.error("persist.error", { error: (e2 as Error).message });
+// ---------------------------------------------------------------------------
+// SQLite: открытие, схема, миграции
+// ---------------------------------------------------------------------------
+
+/**
+ * Миграции схемы. Номер = значение PRAGMA user_version после применения.
+ * Добавили колонку в объявление таблицы выше — миграция НЕ нужна (ensureColumns
+ * досыплет её). Миграция нужна для всего остального: индексы, переименования,
+ * пересчёт данных. Уже выпущенные миграции не правим — только дописываем новые.
+ */
+interface Migration {
+  version: number;
+  name: string;
+  up: (sqlite: Database.Database) => void;
+}
+
+/** Индексы по полям, на которые приходятся выборки и проверки существования. */
+const INDEXES: [table: string, columns: string[]][] = [
+  ["messages", ["conversation_id"]],
+  ["lecture_chunks", ["lecture_id"]],
+  ["proxy_nodes", ["sub_id"]],
+  ["media_watchlist", ["kind", "tmdb_id"]],
+  ["media_ratings", ["kind", "tmdb_id"]],
+  ["media_watch_stats", ["kind", "tmdb_id"]],
+  ["media_bookmark_items", ["list_id"]],
+  ["media_meta_cache", ["key"]],
+  ["tracker_search_cache", ["key"]],
+  ["torrent_downloads", ["info_hash"]],
+  ["bypass_check_results", ["strategy_id"]],
+  ["proxy_page_rules", ["route_path"]],
+];
+
+const MIGRATIONS: Migration[] = [
+  {
+    version: 1,
+    name: "initial schema",
+    up: (sqlite) => {
+      sqlite.exec(`CREATE TABLE IF NOT EXISTS _seq (name TEXT PRIMARY KEY, seq INTEGER NOT NULL)`);
+      for (const t of Object.values(tables)) {
+        // Колонки без типа: SQLite хранит значение как есть (число — числом, строка
+        // — строкой), как раньше хранил JSON.
+        const cols = t.cols.map(q).join(", ");
+        sqlite.exec(`CREATE TABLE IF NOT EXISTS ${q(t.name)} (id INTEGER PRIMARY KEY, ${cols})`);
+      }
+    },
+  },
+  {
+    version: 2,
+    name: "indexes",
+    up: (sqlite) => {
+      for (const [table, columns] of INDEXES) {
+        sqlite.exec(
+          `CREATE INDEX IF NOT EXISTS ${q(`idx_${table}_${columns.join("_")}`)} ON ${q(table)} (${columns.map(q).join(", ")})`,
+        );
+      }
+    },
+  },
+  {
+    version: 3,
+    name: "app_docs (RSS в БД)",
+    up: (sqlite) => {
+      // Таблица добавлена после выпуска v1 — у уже созданных БД её нет.
+      sqlite.exec(
+        `CREATE TABLE IF NOT EXISTS app_docs (id INTEGER PRIMARY KEY, "kind", "uid", "json")`,
+      );
+      sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_app_docs_kind ON app_docs ("kind")`);
+    },
+  },
+];
+
+/** Актуальная версия схемы (последняя миграция). */
+export const SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;
+
+function applyMigrations(sqlite: Database.Database): void {
+  const current = Number(sqlite.pragma("user_version", { simple: true })) || 0;
+  if (current > SCHEMA_VERSION) {
+    // БД создана более новой версией приложения: молча работать с ней нельзя —
+    // старый код не знает новых колонок и мог бы испортить данные.
+    throw new Error(
+      `db.schema_too_new: data.db имеет версию схемы ${current}, приложение знает только ${SCHEMA_VERSION}. Обновите приложение.`,
+    );
+  }
+  for (const m of MIGRATIONS) {
+    if (m.version <= current) continue;
+    sqlite.transaction(() => {
+      m.up(sqlite);
+      sqlite.pragma(`user_version = ${m.version}`);
+    })();
+    logger.info("db.migrated", { version: m.version, name: m.name });
+  }
+}
+
+/** Досыпает колонки, добавленные в объявления таблиц после создания БД. */
+function ensureColumns(sqlite: Database.Database): void {
+  for (const t of Object.values(tables)) {
+    const have = new Set(
+      (sqlite.prepare(`PRAGMA table_info(${q(t.name)})`).all() as { name: string }[]).map(
+        (c) => c.name,
+      ),
+    );
+    for (const c of t.cols) {
+      if (have.has(c)) continue;
+      sqlite.exec(`ALTER TABLE ${q(t.name)} ADD COLUMN ${q(c)}`);
+      logger.info("db.column_added", { table: t.name, column: c });
     }
   }
 }
+
+function loadTables(sqlite: Database.Database): void {
+  const seqs = new Map(
+    (sqlite.prepare(`SELECT name, seq FROM _seq`).all() as { name: string; seq: number }[]).map(
+      (r) => [r.name, r.seq],
+    ),
+  );
+  for (const t of Object.values(tables)) {
+    const rows = sqlite.prepare(`SELECT * FROM ${q(t.name)} ORDER BY id`).all() as Row[];
+    if (t.boolCols.size) {
+      for (const r of rows) {
+        for (const c of t.boolCols) if (r[c] !== null && r[c] !== undefined) r[c] = !!r[c];
+      }
+    }
+    t.rows = rows;
+    t.seq = Math.max(seqs.get(t.name) ?? 0, ...rows.map((r) => r.id));
+    t.dirty.clear();
+    t.removed.clear();
+    t.seqDirty = false;
+  }
+}
+
+/**
+ * Разовый импорт старого data.json. Колонки берутся по именам: строки из файла,
+ * записанного до добавления новых колонок, просто получают для них NULL.
+ */
+function importLegacyJson(sqlite: Database.Database, file: string): void {
+  const data = JSON.parse(fs.readFileSync(file, "utf8")) as Record<string, LegacyTableJSON>;
+  let imported = 0;
+  sqlite.transaction(() => {
+    for (const t of Object.values(tables)) {
+      const src = data[t.name];
+      if (!src?.rows?.length) {
+        if (src?.seq) sqlite.prepare(`INSERT OR REPLACE INTO _seq VALUES (?, ?)`).run(t.name, src.seq);
+        continue;
+      }
+      const cols = ["id", ...t.cols];
+      const ins = sqlite.prepare(
+        `INSERT OR REPLACE INTO ${q(t.name)} (${cols.map(q).join(", ")}) VALUES (${cols.map(() => "?").join(", ")})`,
+      );
+      let maxId = 0;
+      for (const row of src.rows) {
+        if (!Number.isInteger(row.id)) continue;
+        ins.run(...cols.map((c) => toSql(row[c])));
+        maxId = Math.max(maxId, row.id);
+        imported++;
+      }
+      sqlite
+        .prepare(`INSERT OR REPLACE INTO _seq VALUES (?, ?)`)
+        .run(t.name, Math.max(src.seq ?? 0, maxId));
+    }
+  })();
+
+  // Заметки раньше лежали в data.json, потом переехали в .md (notes-fs).
+  const legacyNotes = (data as { notes?: { rows?: Row[] } }).notes?.rows;
+  if (legacyNotes?.length) {
+    const notesDir = notesFs.NOTES_DIR;
+    const hasMd =
+      fs.existsSync(notesDir) && fs.readdirSync(notesDir).some((f) => f.endsWith(".md"));
+    if (!hasMd) {
+      logger.info("notes-fs.migrate.start", { count: legacyNotes.length });
+      for (const note of legacyNotes) {
+        notesFs.insert(note.title, note.content, note.tags || "", note.folder || "");
+      }
+      logger.info("notes-fs.migrate.done", { count: legacyNotes.length });
+    }
+  }
+  logger.info("db.legacy_import", { rows: imported });
+}
+
+function openDatabase(): Database.Database {
+  const isNew = !fs.existsSync(FILES.db);
+  const sqlite = new Database(FILES.db);
+  try {
+    // WAL: запись не блокирует чтение, файл не «переписывается» целиком.
+    sqlite.pragma("journal_mode = WAL");
+    sqlite.pragma("synchronous = NORMAL");
+    applyMigrations(sqlite);
+    ensureColumns(sqlite);
+    if (isNew && fs.existsSync(FILES.data)) {
+      importLegacyJson(sqlite, FILES.data);
+      // Старый файл не удаляем — это резервная копия на случай отката.
+      try {
+        fs.renameSync(FILES.data, FILES.data + ".migrated");
+      } catch (e) {
+        logger.warn("db.legacy_rename_failed", { error: (e as Error).message });
+      }
+    }
+    loadTables(sqlite);
+    return sqlite;
+  } catch (e) {
+    sqlite.close();
+    throw e;
+  }
+}
+
+let sqlite: Database.Database | null = openDatabase();
+
+/** Живое соединение (после close() использовать нельзя). */
+function conn(): Database.Database {
+  if (!sqlite) throw new Error("db.closed: соединение с БД закрыто");
+  return sqlite;
+}
+
+// ---------------------------------------------------------------------------
+// Сохранение изменений
+// ---------------------------------------------------------------------------
+
+/** Записывает в БД только изменённые строки — одной транзакцией. */
+function persistNow(): void {
+  if (!sqlite) return;
+  const db = sqlite;
+  try {
+    db.transaction(() => {
+      for (const t of Object.values(tables)) {
+        if (!t.dirty.size && !t.removed.size && !t.seqDirty) continue;
+        if (t.removed.size) {
+          const del = db.prepare(`DELETE FROM ${q(t.name)} WHERE id = ?`);
+          for (const id of t.removed) del.run(id);
+          t.removed.clear();
+        }
+        if (t.dirty.size) {
+          const cols = ["id", ...t.cols];
+          const up = db.prepare(
+            `INSERT OR REPLACE INTO ${q(t.name)} (${cols.map(q).join(", ")}) VALUES (${cols.map(() => "?").join(", ")})`,
+          );
+          for (const row of t.rows) {
+            if (t.dirty.has(row.id)) up.run(...cols.map((c) => toSql(row[c])));
+          }
+          t.dirty.clear();
+        }
+        if (t.seqDirty) {
+          db.prepare(`INSERT OR REPLACE INTO _seq VALUES (?, ?)`).run(t.name, t.seq);
+          t.seqDirty = false;
+        }
+      }
+    })();
+  } catch (e) {
+    // Изменения остаются помеченными (dirty) и уйдут при следующей попытке.
+    logger.error("persist.error", { error: (e as Error).message });
+  }
+}
+
+// М8: persist дебаунсится на 300 мс — при серии мутаций (стриминг чата) диск
+// дёргается один раз. flush() вызывается на exit, чтобы ничего не терялось.
+let persistTimer: NodeJS.Timeout | null = null;
 
 function persist(): void {
   if (persistTimer) return;
@@ -350,46 +611,35 @@ export function flush(): void {
   persistNow();
 }
 
+/** Сбросить запись и закрыть соединение (завершение работы, тесты). */
+export function close(): void {
+  flush();
+  if (sqlite) {
+    try {
+      sqlite.close();
+    } catch {
+      /* уже закрыта */
+    }
+    sqlite = null;
+  }
+}
+
+/**
+ * Консистентный снимок БД одним файлом (для бэкапов): VACUUM INTO не мешает
+ * работе приложения и не тащит за собой WAL-файлы.
+ */
+export function backupTo(file: string): void {
+  flush();
+  if (fs.existsSync(file)) fs.rmSync(file);
+  conn().prepare(`VACUUM INTO ?`).run(file);
+}
+
 process.on("exit", () => {
-  if (persistTimer) {
-    clearTimeout(persistTimer);
+  if (sqlite) {
+    if (persistTimer) clearTimeout(persistTimer);
     persistNow();
   }
 });
-function load(): void {
-  try {
-    const data = JSON.parse(fs.readFileSync(FILES.data, "utf8"));
-    for (const k of Object.keys(tables)) {
-      if (data[k]) tables[k].loadJSON(data[k]);
-      // Миграция схемы: возвращаем колонки, которых не было в файле.
-      for (const c of DECLARED_COLS[k]) {
-        if (!tables[k].cols.includes(c)) tables[k].cols.push(c);
-      }
-      tables[k].seq = Math.max(tables[k].seq, ...tables[k].rows.map((r) => r.id || 0));
-    }
-    // Миграция: заметки из data.json -> .md файлы (только если в storage/notes/ пусто)
-    if (data.notes && Array.isArray(data.notes.rows) && data.notes.rows.length > 0) {
-      const notesDir = notesFs.NOTES_DIR;
-      if (fs.existsSync(notesDir)) {
-        const existing = fs.readdirSync(notesDir).filter((f) => f.endsWith(".md"));
-        if (existing.length === 0) {
-          logger.info("notes-fs.migrate.start", { count: data.notes.rows.length });
-          for (const note of data.notes.rows) {
-            notesFs.insert(note.title, note.content, note.tags || "", note.folder || "");
-          }
-          logger.info("notes-fs.migrate.done", { count: data.notes.rows.length });
-        }
-      } else {
-        for (const note of data.notes.rows) {
-          notesFs.insert(note.title, note.content, note.tags || "", note.folder || "");
-        }
-      }
-    }
-  } catch {
-    /* первый запуск — файла ещё нет */
-  }
-}
-load();
 
 /** Мутация + сохранение на диск. */
 function run<T>(mutator: () => T): T {
@@ -397,6 +647,59 @@ function run<T>(mutator: () => T): T {
   persist();
   return out;
 }
+/**
+ * Хранилище JSON-документов по видам (kind). sync() приводит набор документов вида к
+ * переданному: меняет только изменившиеся строки, добавляет новые, удаляет исчезнувшие.
+ */
+export const docStore = {
+  all(kind: string): { uid: string; json: string }[] {
+    return tables.app_docs.rows
+      .filter((r) => r.kind === kind)
+      .map((r) => ({ uid: String(r.uid), json: String(r.json) }));
+  },
+  get(kind: string, uid: string): string | undefined {
+    const r = tables.app_docs.rows.find((x) => x.kind === kind && x.uid === uid);
+    return r ? String(r.json) : undefined;
+  },
+  set(kind: string, uid: string, json: string): void {
+    const t = tables.app_docs;
+    const r = t.rows.find((x) => x.kind === kind && x.uid === uid);
+    if (!r) t.insert([kind, uid, json]);
+    else if (r.json !== json) t.updateWhere((x) => x.id === r.id, { json });
+    else return;
+    persist();
+  },
+  /** Удаляет документы вида, у которых uid подходит под условие. */
+  deleteWhere(kind: string, match: (uid: string) => boolean): number {
+    const n = tables.app_docs.deleteWhere((r) => r.kind === kind && match(String(r.uid))).changes;
+    if (n) persist();
+    return n;
+  },
+  sync(kind: string, next: Map<string, string>): void {
+    const t = tables.app_docs;
+    const have = new Map<string, Row>();
+    for (const r of t.rows) if (r.kind === kind) have.set(String(r.uid), r);
+    let changed = false;
+    for (const [uid, json] of next) {
+      const row = have.get(uid);
+      if (!row) {
+        t.insert([kind, uid, json]);
+        changed = true;
+      } else if (row.json !== json) {
+        t.updateWhere((r) => r.id === row.id, { json });
+        changed = true;
+      }
+    }
+    const gone = new Set<number>();
+    for (const [uid, row] of have) if (!next.has(uid)) gone.add(row.id);
+    if (gone.size) {
+      t.deleteWhere((r) => gone.has(r.id));
+      changed = true;
+    }
+    if (changed) persist();
+  },
+};
+
 // ---- stmts: единая точка доступа (API как у SQL-версии) ----
 // Параметры объявлены Value (= any): значения приходят из роутов и UI и раньше
 // никак не проверялись. Так типы не мешают читать код, но и не врут про
@@ -680,8 +983,7 @@ export const stmts = {
           (r) => r.strategy_id === strategy_id,
         );
         if (existing) {
-          Object.assign(existing, patch);
-          return { changes: 1 };
+          return tables.bypass_check_results.updateWhere((r) => r.id === existing.id, patch);
         }
         return tables.bypass_check_results.insert([
           strategy_id,
@@ -1096,13 +1398,15 @@ export function exportSnapshot(): {
   };
 }
 
-// db.exec/db.prepare оставлены как no-op для совместимости.
+// db.exec/db.prepare оставлены как no-op для совместимости со старым кодом, который
+// писал в SQLite-заглушку. Настоящее соединение наружу не отдаётся: работать с
+// данными нужно через stmts/tables, иначе in-memory кэш разойдётся с файлом.
 export const db = {
   exec: () => {},
   prepare: () => ({ run: () => ({}), all: () => [], get: () => null }),
 };
 
-// Форма экспорта — как в .js-версии: require("./db") отдаёт объект с теми же
-// ключами (stmts/tables/db/exportSnapshot/flush), поэтому .js-потребители и
+// Форма экспорта — как была: require("./db") отдаёт объект с этими ключами
+// (плюс служебные close/backupTo/SCHEMA_VERSION), поэтому .js-потребители и
 // тесты работают без правок.
 export { tables };

@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { openMoonHref } from "@/lib/deepLink";
+import { tNow } from "@/app/i18n";
 import EmbedBlock from "@/pages/myspace/parts/EmbedBlocks";
 import {
   EditorState,
@@ -15,6 +16,16 @@ import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { markdown } from "@codemirror/lang-markdown";
 import { languages } from "@codemirror/language-data";
 import { GFM } from "@lezer/markdown";
+import { autoRenumberLists } from "@/pages/myspace/parts/listRenumber";
+import { listInputHandler, shiftTabCommand, tabCommand } from "@/pages/myspace/parts/listCommands";
+import { fontCss, getNoteView, subscribeNoteView, zoomNote } from "@/pages/myspace/parts/noteView";
+import {
+  adaptPlainText,
+  fitToContext,
+  htmlToMarkdown,
+  looksRich,
+  type PasteContext,
+} from "@/pages/myspace/parts/pasteAdapt";
 import { syntaxHighlighting, HighlightStyle } from "@codemirror/language";
 import { tags as t } from "@lezer/highlight";
 import { findInlineMath, findMathBlock, renderMath } from "@/lib/math";
@@ -77,6 +88,76 @@ function replaceExact(view: EditorView, from: string, to: string, near: number):
 }
 
 const IMAGE_URL = /^https?:\/\/\S+\.(?:png|jpe?g|gif|webp|bmp|avif)(?:\?\S*)?$/i;
+
+
+/** Контекст вставки: отступ списка, пустой пункт, уровень ближайшего заголовка выше курсора. */
+function pasteContext(view: EditorView): PasteContext {
+  const { from } = view.state.selection.main;
+  const line = view.state.doc.lineAt(from);
+  const before = line.text.slice(0, from - line.from);
+  const list = /^(\s*)([-*+]|\d+[.)])\s/.exec(line.text);
+  const emptyItem = /^\s*([-*+]|\d+[.)])\s*$/.test(line.text) && from === line.to;
+  let headingLevel = 0;
+  for (let n = line.number; n >= 1 && line.number - n < 500; n--) {
+    const m = /^(#{1,6})\s/.exec(view.state.doc.line(n).text);
+    if (m) {
+      headingLevel = m[1].length;
+      break;
+    }
+  }
+  return {
+    indent: list ? list[1] + " ".repeat(list[2].length + 1) : "",
+    emptyItem,
+    headingLevel,
+    atLineStart: before.trim() === "",
+  };
+}
+
+/** Курсор внутри блока кода — там вставляем как есть. */
+function inCodeFence(view: EditorView): boolean {
+  const ln = view.state.doc.lineAt(view.state.selection.main.from).number;
+  let open = false;
+  for (let i = 1; i < ln; i++) if (/^\s*(```|~~~)/.test(view.state.doc.line(i).text)) open = !open;
+  return open;
+}
+
+/**
+ * Умная вставка: HTML из браузера/Word → чистый Markdown, обычный текст → нормализованный, затем
+ * подгонка под место вставки (заголовки, список). Возвращает false — пусть вставит CodeMirror сам.
+ */
+function smartPaste(e: ClipboardEvent, view: EditorView): boolean {
+  const cd = e.clipboardData;
+  if (!cd || cd.files?.length) return false;
+  for (const it of Array.from(cd.items ?? [])) if (it.kind === "file") return false;
+  if (inCodeFence(view)) return false;
+  const html = cd.getData("text/html");
+  const text = cd.getData("text/plain");
+  let md: string;
+  if (html && looksRich(html)) md = htmlToMarkdown(html);
+  else md = adaptPlainText(text);
+  if (!md.trim()) return false;
+  // Одна простая строка без списка/заголовка — штатная вставка (не мешаем обычному вводу).
+  if (!md.includes("\n") && !/^(\s*([-*+]|\d+[.)])\s|#{1,6}\s)/.test(md) && md === text.trim()) return false;
+  const ctx = pasteContext(view);
+  let out = fitToContext(md, ctx);
+  const { from, to } = view.state.selection.main;
+  // Блочный текст (несколько строк/список/заголовок) ставим с новой строки, если курсор не в её начале.
+  const multi = out.includes("\n") || /^(\s*([-*+]|\d+[.)])\s|#{1,6}\s)/.test(out);
+  const lead = multi && !ctx.atLineStart && !ctx.emptyItem ? "\n" : "";
+  out = lead + out;
+  // Пустой пункт «- »/«1. » под курсором заменяем вставкой целиком.
+  const line = view.state.doc.lineAt(from);
+  const start = ctx.emptyItem ? line.from + (/^\s*/.exec(line.text)?.[0].length ?? 0) : from;
+  const insert = ctx.emptyItem && !/^\s*([-*+]|\d+[.)])\s/.test(out) ? out : out;
+  e.preventDefault();
+  view.dispatch({
+    changes: { from: start, to, insert },
+    selection: { anchor: start + insert.length },
+    userEvent: "input.paste",
+    scrollIntoView: true,
+  });
+  return true;
+}
 
 const IMAGE_MD = /^!\[[^\]]*\]\([^)\s]+(?:\s+"[^"]*")?\)/;
 
@@ -213,8 +294,12 @@ class ImageWidget extends WidgetType {
       img.style.maxHeight = "none";
       img.style.height = "auto";
     }
+    // Размер картинки известен только после загрузки. Без повторного замера CodeMirror считает
+    // позиции строк по прежней высоте — клик попадает на соседнюю строку, курсор рисуется не там.
+    img.onload = () => view.requestMeasure();
     img.onerror = () => {
       img.classList.add("is-broken");
+      view.requestMeasure();
     };
     wrap.appendChild(img);
     const labels = this.labels;
@@ -284,6 +369,9 @@ class ImageWidget extends WidgetType {
       openLightbox(this.src, this.alt);
     });
     return wrap;
+  }
+  get estimatedHeight() {
+    return 200;
   }
   ignoreEvent(e: Event) {
     const t = e.target as HTMLElement | null;
@@ -477,7 +565,7 @@ class TableWidget extends WidgetType {
         del.type = "button";
         del.className = "cm-live-table-btn";
         del.textContent = "−";
-        del.title = "Удалить строку";
+        del.title = tNow("liveTable.delRow");
         del.addEventListener("mousedown", (e) => {
           e.preventDefault();
           const next = rows.filter((_, i) => i !== rowIdx);
@@ -499,7 +587,7 @@ class TableWidget extends WidgetType {
     const addRow = document.createElement("button");
     addRow.type = "button";
     addRow.className = "cm-live-table-btn";
-    addRow.textContent = "+ строка";
+    addRow.textContent = tNow("liveTable.addRow");
     addRow.addEventListener("mousedown", (e) => {
       e.preventDefault();
       const cols = rows[0]?.length || 1;
@@ -509,7 +597,7 @@ class TableWidget extends WidgetType {
     const addCol = document.createElement("button");
     addCol.type = "button";
     addCol.className = "cm-live-table-btn";
-    addCol.textContent = "+ столбец";
+    addCol.textContent = tNow("liveTable.addCol");
     addCol.addEventListener("mousedown", (e) => {
       e.preventDefault();
       commit(
@@ -1063,10 +1151,11 @@ export default function CodeMirrorLiveEditor({
           color: "var(--text-primary)",
           backgroundColor: "transparent",
           height: "100%",
-          fontSize: "14px",
+          /* масштаб и шрифт задаёт панель заметки через переменные на контейнере (Ctrl +/-) */
+          fontSize: "calc(14px * var(--note-scale, 1))",
         },
         ".cm-content": {
-          fontFamily: "var(--font-mono)",
+          fontFamily: "var(--note-font, var(--font-mono))",
           lineHeight: "1.6",
           /* колонка по центру: на широком окне не растекается от края до края,
              на узком боковые поля сжимаются вместе с контейнером */
@@ -1115,7 +1204,8 @@ export default function CodeMirrorLiveEditor({
           margin: "4px 0",
         },
         ".cm-live-imgwrap": {
-          display: "block",
+          display: "inline-block",
+          verticalAlign: "top",
           position: "relative",
           width: "fit-content",
           maxWidth: "100%",
@@ -1201,9 +1291,13 @@ export default function CodeMirrorLiveEditor({
           fontFamily: "var(--font-mono)",
         },
         ".cm-live-hr": {
+          /* Виджет стоит внутри строки (inline), поэтому и сам он inline-block: block-элемент
+             с вертикальными полями ломает расчёт высот строк и позицию курсора. */
+          display: "inline-block",
+          width: "100%",
           height: "1px",
+          verticalAlign: "middle",
           background: "var(--glass-border)",
-          margin: "14px 0",
         },
         ".cm-live-fence-open": {
           background: "var(--track, rgba(255,255,255,0.05))",
@@ -1362,6 +1456,7 @@ export default function CodeMirrorLiveEditor({
         return false;
       },
       paste(e, view) {
+        if (smartPaste(e, view)) return true;
         const pasted = e.clipboardData?.getData("text/plain")?.trim() ?? "";
         if (IMAGE_URL.test(pasted) && !e.clipboardData?.files?.length) {
           e.preventDefault();
@@ -1454,7 +1549,32 @@ export default function CodeMirrorLiveEditor({
 
     const extensions: Extension[] = [
       history(),
-      keymap.of([...defaultKeymap, ...historyKeymap]),
+      keymap.of([
+        { key: "Tab", run: tabCommand },
+        { key: "Shift-Tab", run: shiftTabCommand },
+        ...defaultKeymap,
+        ...historyKeymap,
+      ]),
+      // «-», «*», «+», «1» поверх выделенных строк — список вместо замены текста
+      EditorView.inputHandler.of(listInputHandler),
+      EditorView.domEventHandlers({
+        // Ctrl +/−/0 — масштаб текста заметки (колесо с Ctrl — так же); отменяем и штатный зум окна
+        keydown(e) {
+          if (!(e.ctrlKey || e.metaKey) || e.altKey) return false;
+          if (e.key === "+" || e.key === "=" || e.code === "NumpadAdd") zoomNote(1);
+          else if (e.key === "-" || e.key === "_" || e.code === "NumpadSubtract") zoomNote(-1);
+          else if (e.key === "0" || e.code === "Numpad0") zoomNote(0);
+          else return false;
+          e.preventDefault();
+          return true;
+        },
+        wheel(e) {
+          if (!(e.ctrlKey || e.metaKey)) return false;
+          e.preventDefault();
+          zoomNote(e.deltaY < 0 ? 1 : -1);
+          return true;
+        },
+      }),
       markdown({ codeLanguages: languages, extensions: [GFM] }),
       syntaxHighlighting(liveHighlight),
       livePreviewField(
@@ -1467,6 +1587,7 @@ export default function CodeMirrorLiveEditor({
       embedField,
       theme,
       EditorView.lineWrapping,
+      autoRenumberLists,
       EditorView.editable.of(!readOnly),
       EditorView.contentAttributes.of({ spellcheck: spellCheck ? "true" : "false" }),
       EditorView.updateListener.of((u) => {
@@ -1512,8 +1633,28 @@ export default function CodeMirrorLiveEditor({
     };
     view.dom.addEventListener("cm-image-ocr", onImageAction);
 
+    // Высоты строк меняются без правок текста: подгрузились картинки, шрифты (в т.ч. KaTeX),
+    // раскрылись виджеты. Любое такое изменение размера содержимого — повод пересчитать геометрию,
+    // иначе клик по строке попадает на соседнюю.
+    // Шрифт и масштаб заметок: переменные на контейнере, редактор подписан на их изменения.
+    const applyNoteView = () => {
+      const host = hostRef.current;
+      if (!host) return;
+      const nv = getNoteView();
+      host.style.setProperty("--note-font", fontCss(nv.font));
+      host.style.setProperty("--note-scale", String(nv.scale));
+      view.requestMeasure();
+    };
+    applyNoteView();
+    const unsubNoteView = subscribeNoteView(applyNoteView);
+    const ro = new ResizeObserver(() => view.requestMeasure());
+    ro.observe(view.contentDOM);
+    void document.fonts?.ready.then(() => viewRef.current === view && view.requestMeasure());
+
     return () => {
       view.dom.removeEventListener("cm-image-ocr", onImageAction);
+      ro.disconnect();
+      unsubNoteView();
       view.destroy();
       viewRef.current = null;
     };

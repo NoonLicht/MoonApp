@@ -2,6 +2,7 @@ import { memo, useEffect, useLayoutEffect, useRef, type CSSProperties } from "re
 import { SOURCE_ICON, SOURCE_LABEL } from "@/lib/deepLink";
 import type { SemSource } from "@/api/apiSemantic";
 import { api } from "@/api/client";
+import { useI18n } from "@/app/i18n";
 import { FONTS, type LineGeom, type Obj, type ShapeKind } from "@/pages/myspace/canvas/model";
 
 /* ───────────── геометрия фигур ───────────── */
@@ -269,6 +270,7 @@ function Heads({ g, o }: { g: LineGeom; o: Obj }) {
 }
 
 function ObjectViewInner(props: ViewProps) {
+  const { t } = useI18n();
   const { o, editing, geom, onCommit, onPatch, onMeasure } = props;
   const wrap: CSSProperties = {
     position: "absolute",
@@ -372,7 +374,7 @@ function ObjectViewInner(props: ViewProps) {
             editing={editing}
             onCommit={commit}
             box={{ inset: 0 }}
-            placeholder="Заметка"
+            placeholder={t("canvasObj.notePh")}
           />
         </div>
       );
@@ -388,7 +390,7 @@ function ObjectViewInner(props: ViewProps) {
               editing={editing}
               onCommit={commit}
               box={{ position: "relative" }}
-              placeholder="Текст"
+              placeholder={t("canvasObj.textPh")}
             />
           </div>
         </div>
@@ -442,7 +444,7 @@ function ObjectViewInner(props: ViewProps) {
                 }}
               />
             ) : (
-              (o.name ?? "Рамка")
+              (o.name ?? t("canvas.frameName"))
             )}
           </div>
           <div
@@ -678,9 +680,17 @@ function ObjectViewInner(props: ViewProps) {
       const col =
         o.acc ?? (status === "done" ? "#22c55e" : status === "inprogress" ? "#f59e0b" : "#94a3b8");
       const PR = { low: "#22c55e", medium: "#f59e0b", high: "#ef4444" } as const;
-      const PRL = { low: "низкий", medium: "средний", high: "высокий" } as const;
+      const PRL = {
+        low: t("canvasObj.prLow"),
+        medium: t("canvasObj.prMedium"),
+        high: t("canvasObj.prHigh"),
+      } as const;
       const label =
-        status === "done" ? "Готово" : status === "inprogress" ? "В работе" : "К выполнению";
+        status === "done"
+          ? t("canvasInsp.done")
+          : status === "inprogress"
+            ? t("canvasInsp.inProgress")
+            : t("canvasInsp.toDo");
       const subs = o.subtasks ?? [];
       return (
         <div
@@ -713,7 +723,7 @@ function ObjectViewInner(props: ViewProps) {
               editing={editing}
               onCommit={commit}
               box={{ position: "relative" }}
-              placeholder="Название задачи"
+              placeholder={t("canvasObj.taskTitlePh")}
             />
           </div>
           <div style={{ padding: "0 10px 6px", display: "flex", gap: 6, alignItems: "center" }}>
@@ -764,9 +774,9 @@ function ObjectViewInner(props: ViewProps) {
             <button
               type="button"
               data-nodrag="1"
-              title="Добавить подзадачу"
+              title={t("canvasInsp.addSubtask")}
               onPointerDown={(e) => e.stopPropagation()}
-              onClick={() => onPatch(o.id, { subtasks: [...subs, { text: "Шаг", done: false }] })}
+              onClick={() => onPatch(o.id, { subtasks: [...subs, { text: t("canvasInsp.step"), done: false }] })}
               style={{
                 border: "none",
                 background: "transparent",
@@ -864,7 +874,7 @@ function ObjectViewInner(props: ViewProps) {
             cursor: "pointer",
           }}
           data-oid={o.id}
-          title="Двойной клик — открыть"
+          title={t("canvasObj.dblOpen")}
         >
           <div style={{ fontSize: 11, fontWeight: 700, color: col }}>
             {SOURCE_ICON[kind]} {SOURCE_LABEL[kind]}
@@ -909,7 +919,7 @@ function ObjectViewInner(props: ViewProps) {
           title={o.path}
         >
           <div style={{ fontSize: 11, fontWeight: 700, color: "#8b7bf0", marginBottom: 4 }}>
-            📄 Заметка
+            📄 {t("canvasObj.note")}
           </div>
           <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 4 }}>{o.text}</div>
           <div style={{ fontSize: 12, color: "#475569", lineHeight: 1.35 }}>{o.preview ?? "…"}</div>

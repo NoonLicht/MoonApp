@@ -1,5 +1,6 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
 import { AlertTriangle } from "lucide-react";
+import { tNow } from "@/app/i18n";
 
 interface Props {
   children: ReactNode;
@@ -39,12 +40,12 @@ export default class ErrorBoundary extends Component<Props, State> {
           }}
         >
           <AlertTriangle size={28} color="var(--coral)" />
-          <div style={{ fontWeight: 600 }}>Что-то пошло не так на этой странице</div>
+          <div style={{ fontWeight: 600 }}>{tNow("boundary.title")}</div>
           <div className="muted-sm" style={{ maxWidth: 480, wordBreak: "break-word" }}>
             {this.state.error.message}
           </div>
           <button type="button" className="btn" onClick={this.reset}>
-            Попробовать снова
+            {tNow("boundary.retry")}
           </button>
         </div>
       );

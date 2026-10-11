@@ -191,19 +191,20 @@ export const INK = [
 ];
 export const EMOJIS = ["👍", "❤️", "🎉", "🔥", "⭐", "✅", "❓", "💡", "⚠️", "🚀", "👀", "🎯"];
 
-export const SHAPES: { kind: ShapeKind; ru: string; en: string }[] = [
-  { kind: "rect", ru: "Прямоугольник", en: "Rectangle" },
-  { kind: "rounded", ru: "Скруглённый", en: "Rounded" },
-  { kind: "ellipse", ru: "Эллипс", en: "Ellipse" },
-  { kind: "diamond", ru: "Ромб (решение)", en: "Diamond" },
-  { kind: "triangle", ru: "Треугольник", en: "Triangle" },
-  { kind: "hexagon", ru: "Шестиугольник", en: "Hexagon" },
-  { kind: "parallelogram", ru: "Параллелограмм", en: "Parallelogram" },
-  { kind: "cylinder", ru: "Цилиндр (база данных)", en: "Cylinder" },
-  { kind: "star", ru: "Звезда", en: "Star" },
-  { kind: "cloud", ru: "Облако", en: "Cloud" },
-  { kind: "arrow", ru: "Стрелка", en: "Arrow" },
-  { kind: "chat", ru: "Реплика", en: "Speech" },
+/** Фигуры палитры; подпись — i18n-ключ canvasShapes.<kind>. */
+export const SHAPES: { kind: ShapeKind }[] = [
+  { kind: "rect" },
+  { kind: "rounded" },
+  { kind: "ellipse" },
+  { kind: "diamond" },
+  { kind: "triangle" },
+  { kind: "hexagon" },
+  { kind: "parallelogram" },
+  { kind: "cylinder" },
+  { kind: "star" },
+  { kind: "cloud" },
+  { kind: "arrow" },
+  { kind: "chat" },
 ];
 
 export const FONTS: Record<FontFamily, string> = {
@@ -278,7 +279,7 @@ export function make(type: ObjType, at: Pt, patch: Partial<Obj> = {}): Obj {
       break;
     case "frame":
       Object.assign(base, {
-        name: "Рамка",
+        // Без имени: слои и заголовок показывают локализованное «Рамка» (canvas.frameName).
         fill: "#ffffff",
         stroke: "#94a3b8",
         sw: 1,

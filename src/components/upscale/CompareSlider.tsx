@@ -416,13 +416,13 @@ export default function CompareSlider({
         </div>
       ) : (
         <div className="up-cmp-controls">
-          <button type="button" className="icon-btn" onClick={() => stepFrame(-1)} title="-1 кадр">
+          <button type="button" className="icon-btn" onClick={() => stepFrame(-1)} title={t("units.framePrev")}>
             <SkipBack size={15} />
           </button>
           <button type="button" className="icon-btn" onClick={toggle}>
             {playing ? <Pause size={15} /> : <Play size={15} />}
           </button>
-          <button type="button" className="icon-btn" onClick={() => stepFrame(1)} title="+1 кадр">
+          <button type="button" className="icon-btn" onClick={() => stepFrame(1)} title={t("units.frameNext")}>
             <SkipForward size={15} />
           </button>
           <input

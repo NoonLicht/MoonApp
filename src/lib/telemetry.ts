@@ -106,11 +106,11 @@ export async function snapshotUiSettings(): Promise<void> {
       if (!k) continue;
       const raw = localStorage.getItem(k) ?? "";
       if (/key|token|secret|password|passwd|apikey/i.test(k)) {
-        store[k] = `***(${raw.length} симв.)`;
+        store[k] = `***(${raw.length} chars)`;
         continue;
       }
       if (raw.length > 2000) {
-        store[k] = raw.slice(0, 2000) + `…(обрезано, всего ${raw.length} симв.)`;
+        store[k] = raw.slice(0, 2000) + `…(truncated, ${raw.length} chars total)`;
         continue;
       }
       try {

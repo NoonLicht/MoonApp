@@ -46,6 +46,6 @@ describe("backup", () => {
     const bk = await import("../server/backup");
     const dir = bk.createBackup("test");
     expect(dir).toBeTruthy();
-    expect(fs.existsSync(path.join(dir, "data.json"))).toBe(true);
+    expect(fs.existsSync(path.join(dir, "data.db"))).toBe(true);
   });
 });

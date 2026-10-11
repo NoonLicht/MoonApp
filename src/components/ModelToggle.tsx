@@ -7,15 +7,15 @@ import type { LlamaStatus } from "@/api/client";
 import type { SemStatus } from "@/api/apiSemantic";
 
 const gb = (mb: number): string => `${(mb / 1024).toFixed(2)} GB`;
-const DEVICES = [
-  { value: "cpu", label: "Процессор (CPU) — не занимает видеопамять" },
-  { value: "gpu", label: "Видеокарта (CUDA / Vulkan)" },
-  { value: "auto", label: "Авто" },
-];
 
 /** Окно «Умный поиск»: включение функций EmbeddingGemma, выбор модели и способа запуска. */
 export function ModelPanel({ onClose }: { onClose: () => void }) {
   const { t } = useI18n();
+  const DEVICES = [
+    { value: "cpu", label: t("semModel.devCpu") },
+    { value: "gpu", label: t("semModel.devGpu") },
+    { value: "auto", label: t("semModel.devAuto") },
+  ];
   const [sem, setSem] = useState<SemStatus | null>(null);
   const [llama, setLlama] = useState<LlamaStatus | null>(null);
   const [busy, setBusy] = useState(false);
@@ -71,7 +71,7 @@ export function ModelPanel({ onClose }: { onClose: () => void }) {
       .filter((m) => !installed.includes(m.file))
       .map((m) => ({
         value: m.file,
-        label: `${nameOf(m.id, m.file)} · ${gb(m.sizeMb)} (не установлена)`,
+        label: `${nameOf(m.id, m.file)} · ${gb(m.sizeMb)} (${t("semModel.notInstalled")})`,
       })),
   ];
   const chosen = sem?.model ?? options[0]?.value ?? "";
@@ -99,7 +99,7 @@ export function ModelPanel({ onClose }: { onClose: () => void }) {
             </span>
             <div className="proxy-title-text">
               <div className="proxy-eyebrow">EmbeddingGemma 2</div>
-              <div className="proxy-h1">Умный поиск</div>
+              <div className="proxy-h1">{t("semModel.title")}</div>
             </div>
           </div>
           <button className="proxy-panel-close" onClick={onClose} title={t("common.close")}>
@@ -115,30 +115,33 @@ export function ModelPanel({ onClose }: { onClose: () => void }) {
             style={{ display: "flex", alignItems: "center", gap: 8 }}
           >
             <span className="task-mgr-label" style={{ flex: 1 }}>
-              {on ? "Включён" : "Выключен"}
+              {on ? t("semModel.on") : t("semModel.off")}
             </span>
             {on && running && (
-              <Badge tone="teal">{running.gpu ? "Видеокарта" : "Процессор"} · в памяти</Badge>
+              <Badge tone="teal">
+                {running.gpu ? t("semModel.gpu") : t("semModel.cpu")} · {t("semModel.inMemory")}
+              </Badge>
             )}
-            {on && !running && <Badge tone="neutral">загрузится при запросе</Badge>}
+            {on && !running && <Badge tone="neutral">{t("semModel.loadsOnRequest")}</Badge>}
             {busy && <Loader2 size={14} className="spin" />}
           </div>
           <div className="muted-sm">
-            Поиск по смыслу, похожие заметки, подсказки, раскладка по темам и память чата — на всех
-            страницах, где они подключены. В индексе: {total} источников
-            {sem?.job.running ? ` · индексация ${sem.job.done}/${sem.job.total}` : ""}
+            {t("semModel.blurb", { total })}
+            {sem?.job.running
+              ? t("semModel.indexing", { done: sem.job.done, total: sem.job.total })
+              : ""}
           </div>
           {sem?.job.error && <div className="muted-sm task-mgr-err">{sem.job.error}</div>}
         </div>
 
         <div className="task-mgr-section">
           <div className="task-mgr-section-title" style={{ marginBottom: 4 }}>
-            Модель
+            {t("semModel.model")}
           </div>
           <Select
             value={chosen}
             onChange={(e) => void run(() => api.semConfig({ model: e.target.value }))}
-            options={options.length ? options : [{ value: "", label: "Моделей нет" }]}
+            options={options.length ? options : [{ value: "", label: t("semModel.noModels") }]}
             style={{ width: "100%", marginBottom: 8 }}
           />
           {!isInstalled && entry && (
@@ -163,7 +166,7 @@ export function ModelPanel({ onClose }: { onClose: () => void }) {
           )}
 
           <div className="task-mgr-section-title" style={{ marginBottom: 4 }}>
-            Способ запуска
+            {t("semModel.launchMode")}
           </div>
           <Select
             value={sem?.device ?? "cpu"}
@@ -175,12 +178,12 @@ export function ModelPanel({ onClose }: { onClose: () => void }) {
           />
           {!anyBuild && (
             <div className="muted-sm" style={{ marginBottom: 8 }}>
-              Нужна сборка llama.cpp — установите её в «Настройки → Чат».
+              {t("semModel.needBuild")}
             </div>
           )}
 
           <div className="task-mgr-section-title" style={{ marginBottom: 4 }}>
-            Другая модель (GGUF, например побольше)
+            {t("semModel.otherModel")}
           </div>
           <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
             <input
@@ -193,7 +196,7 @@ export function ModelPanel({ onClose }: { onClose: () => void }) {
             <Btn
               icon={Download}
               disabled={downloading || !/embedding/i.test(url)}
-              title="Имя файла должно содержать «embedding»"
+              title={t("semModel.embeddingHint")}
               onClick={() => {
                 const u = url.trim();
                 setUrl("");
@@ -211,10 +214,10 @@ export function ModelPanel({ onClose }: { onClose: () => void }) {
             disabled={busy || !on || !isInstalled || !!sem?.job.running}
             onClick={() => void run(() => api.semSync())}
           >
-            Обновить индекс
+            {t("semModel.updateIndex")}
           </Btn>
           <Btn icon={Power} disabled={busy || !running} onClick={() => void run(api.semUnload)}>
-            Выгрузить из памяти
+            {t("semModel.unload")}
           </Btn>
           <Btn
             variant={on ? "secondary" : "primary"}
@@ -222,7 +225,7 @@ export function ModelPanel({ onClose }: { onClose: () => void }) {
             disabled={busy || (!on && !isInstalled)}
             onClick={() => void run(() => api.semConfig({ enabled: !on }))}
           >
-            {on ? "Выключить" : "Включить"}
+            {on ? t("semModel.disable") : t("semModel.enable")}
           </Btn>
         </div>
       </div>
@@ -232,6 +235,7 @@ export function ModelPanel({ onClose }: { onClose: () => void }) {
 
 /** Кнопка в шапке: зелёная точка — умный поиск включён. */
 export default function ModelToggle({ onClick }: { onClick: () => void }) {
+  const { t } = useI18n();
   const [on, setOn] = useState(false);
   useEffect(() => {
     const tick = () =>
@@ -247,8 +251,8 @@ export default function ModelToggle({ onClick }: { onClick: () => void }) {
     <button
       className="task-mgr-toggle no-drag"
       onClick={onClick}
-      title={on ? "Умный поиск: включён" : "Умный поиск: выключен"}
-      aria-label="Умный поиск"
+      title={on ? t("semModel.toggleOn") : t("semModel.toggleOff")}
+      aria-label={t("semModel.title")}
       style={{ position: "relative", color: on ? "var(--amber)" : undefined }}
     >
       <Bot size={15} />

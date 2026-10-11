@@ -114,10 +114,10 @@ export default function SystemStatsBar() {
           className="sys-group"
           title={[
             ramUsedGb != null
-              ? `${t("monitor.ram")}: ${ramUsedGb.toFixed(1)}/${ramTotalGb?.toFixed(1)} ГБ (${ramPct}%)`
+              ? `${t("monitor.ram")}: ${ramUsedGb.toFixed(1)}/${ramTotalGb?.toFixed(1)} ${t("units.gb")} (${ramPct}%)`
               : "",
             vramUsedGb != null
-              ? `${t("monitor.vram")}: ${vramUsedGb.toFixed(1)}/${vramTotalGb?.toFixed(1)} ГБ (${vramPct}%)`
+              ? `${t("monitor.vram")}: ${vramUsedGb.toFixed(1)}/${vramTotalGb?.toFixed(1)} ${t("units.gb")} (${vramPct}%)`
               : "",
           ]
             .filter(Boolean)

@@ -130,7 +130,7 @@ export function groupObjs(objs: Obj[], ids: string[]): { objs: Obj[]; id: string
     w: box.w,
     h: box.h,
     rot: 0,
-    name: "Группа",
+    // Имя не задаём: слои показывают локализованное «Группа» (canvas.groupName).
     parent: sameParent ? parent : null,
   };
   const set = new Set(members.map((m) => m.id));

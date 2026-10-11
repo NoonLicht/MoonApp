@@ -13,7 +13,8 @@ export type SemSource =
   | "movie"
   | "book"
   | "m3e"
-  | "archive";
+  | "archive"
+  | "rss";
 
 export interface SemHit {
   source: SemSource;

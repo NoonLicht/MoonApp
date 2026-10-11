@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ExternalLink, X } from "lucide-react";
 import { api } from "@/api/client";
+import { useI18n } from "@/app/i18n";
 import type { TaskItem, TaskPriority, TaskStatus } from "@/api/types";
 import { ObjectView } from "@/pages/myspace/canvas/ObjectView";
 import { boundsOf, unionBox, type Obj } from "@/pages/myspace/canvas/model";
@@ -9,20 +10,21 @@ import { lineGeom } from "@/pages/myspace/canvas/model";
 import { openTarget, targetFor } from "@/lib/deepLink";
 
 const STATUS: { v: TaskStatus; label: string; color: string }[] = [
-  { v: "todo", label: "К выполнению", color: "#94a3b8" },
-  { v: "in_progress", label: "В работе", color: "#f59e0b" },
-  { v: "deferred", label: "Отложена", color: "#8b7bf0" },
-  { v: "completed", label: "Готово", color: "#22c55e" },
+  { v: "todo", label: "embed.st.todo", color: "#94a3b8" },
+  { v: "in_progress", label: "embed.st.inProgress", color: "#f59e0b" },
+  { v: "deferred", label: "embed.st.deferred", color: "#8b7bf0" },
+  { v: "completed", label: "embed.st.completed", color: "#22c55e" },
 ];
 const PRIO: { v: TaskPriority; label: string; color: string }[] = [
-  { v: "low", label: "Низкий", color: "#22c55e" },
-  { v: "medium", label: "Средний", color: "#f59e0b" },
-  { v: "high", label: "Высокий", color: "#f97316" },
-  { v: "urgent", label: "Срочный", color: "#ef4444" },
+  { v: "low", label: "embed.pr.low", color: "#22c55e" },
+  { v: "medium", label: "embed.pr.medium", color: "#f59e0b" },
+  { v: "high", label: "embed.pr.high", color: "#f97316" },
+  { v: "urgent", label: "embed.pr.urgent", color: "#ef4444" },
 ];
 
 /** Задача прямо в тексте заметки: статус, приоритет, срок и «готово» меняются на месте. */
 function TaskEmbed({ id, onRemove }: { id: string; onRemove: () => void }) {
+  const { t: tr } = useI18n();
   const [task, setTask] = useState<TaskItem | null | undefined>(undefined);
 
   useEffect(() => {
@@ -42,12 +44,12 @@ function TaskEmbed({ id, onRemove }: { id: string; onRemove: () => void }) {
     void api.tasksUpdate(task.id, patch).then((t) => setTask(t));
   };
 
-  if (task === undefined) return <div className="emb emb-task muted-sm">Загрузка задачи…</div>;
+  if (task === undefined) return <div className="emb emb-task muted-sm">{tr("embed.loadingTask")}</div>;
   if (task === null)
     return (
       <div className="emb emb-task">
-        <span className="muted-sm">Задача не найдена (возможно, удалена)</span>
-        <button type="button" className="emb-x" title="Убрать из заметки" onClick={onRemove}>
+        <span className="muted-sm">{tr("embed.taskNotFound")}</span>
+        <button type="button" className="emb-x" title={tr("embed.removeFromNote")} onClick={onRemove}>
           <X size={13} />
         </button>
       </div>
@@ -67,18 +69,18 @@ function TaskEmbed({ id, onRemove }: { id: string; onRemove: () => void }) {
         <button
           type="button"
           className="emb-x"
-          title="Открыть на странице задач"
+          title={tr("embed.openTasks")}
           onClick={() => openTarget(targetFor("task", task.id))}
         >
           <ExternalLink size={13} />
         </button>
-        <button type="button" className="emb-x" title="Убрать из заметки" onClick={onRemove}>
+        <button type="button" className="emb-x" title={tr("embed.removeFromNote")} onClick={onRemove}>
           <X size={13} />
         </button>
       </div>
       <div className="emb-row emb-fields">
         <label>
-          <span>Статус</span>
+          <span>{tr("embed.status")}</span>
           <select
             className="emb-sel"
             value={task.status}
@@ -87,13 +89,13 @@ function TaskEmbed({ id, onRemove }: { id: string; onRemove: () => void }) {
           >
             {STATUS.map((s) => (
               <option key={s.v} value={s.v}>
-                {s.label}
+                {tr(s.label)}
               </option>
             ))}
           </select>
         </label>
         <label>
-          <span>Приоритет</span>
+          <span>{tr("embed.priority")}</span>
           <select
             className="emb-sel"
             value={task.priority}
@@ -102,13 +104,13 @@ function TaskEmbed({ id, onRemove }: { id: string; onRemove: () => void }) {
           >
             {PRIO.map((p) => (
               <option key={p.v} value={p.v}>
-                {p.label}
+                {tr(p.label)}
               </option>
             ))}
           </select>
         </label>
         <label>
-          <span>Срок</span>
+          <span>{tr("embed.due")}</span>
           <input
             type="date"
             className="emb-sel"
@@ -132,6 +134,7 @@ function TaskEmbed({ id, onRemove }: { id: string; onRemove: () => void }) {
 
 /** Доска Canvas прямо в заметке: на всю ширину текста, видно, как она выглядит. */
 function CanvasEmbed({ file, onRemove }: { file: string; onRemove: () => void }) {
+  const { t: tr } = useI18n();
   const [objs, setObjs] = useState<Obj[] | null | undefined>(undefined);
   const [title, setTitle] = useState("");
   const [width, setWidth] = useState(0);
@@ -187,12 +190,12 @@ function CanvasEmbed({ file, onRemove }: { file: string; onRemove: () => void })
         <button
           type="button"
           className="emb-x"
-          title="Открыть доску"
+          title={tr("embed.openBoard")}
           onClick={() => openTarget(targetFor("canvas", file))}
         >
           <ExternalLink size={13} />
         </button>
-        <button type="button" className="emb-x" title="Убрать из заметки" onClick={onRemove}>
+        <button type="button" className="emb-x" title={tr("embed.removeFromNote")} onClick={onRemove}>
           <X size={13} />
         </button>
       </div>
@@ -201,11 +204,11 @@ function CanvasEmbed({ file, onRemove }: { file: string; onRemove: () => void })
         className="emb-stage"
         style={{ height: h }}
         onDoubleClick={() => openTarget(targetFor("canvas", file))}
-        title="Двойной клик — открыть доску"
+        title={tr("embed.dblOpenBoard")}
       >
-        {objs === undefined && <span className="muted-sm">Загрузка доски…</span>}
-        {objs === null && <span className="muted-sm">Доска не найдена</span>}
-        {objs && !view && <span className="muted-sm">Доска пуста</span>}
+        {objs === undefined && <span className="muted-sm">{tr("embed.loadingBoard")}</span>}
+        {objs === null && <span className="muted-sm">{tr("embed.boardNotFound")}</span>}
+        {objs && !view && <span className="muted-sm">{tr("embed.boardEmpty")}</span>}
         {view && (
           <div
             style={{

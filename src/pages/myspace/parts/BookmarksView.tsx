@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { Glass, Btn, Badge, EmptyHint, SectionHead } from "@/components/ui";
 import { getOverlayRoot } from "@/components/overlayHost";
-import { useI18n } from "@/app/i18n";
+import { useI18n, tNow } from "@/app/i18n";
 import { api } from "@/api/client";
 import type { SitebakJob } from "@/api/client";
 import type { Bookmark } from "@/api/types";
@@ -26,7 +26,8 @@ interface Props {
   onOpenNote: (path: string) => void;
 }
 
-const EXAMPLE_TAGS = ["статья", "видео", "туториал", "работа", "идея", "почитать"];
+/** Примеры тегов-подсказок на языке интерфейса (строка bookmarks.exampleTags через запятую). */
+const exampleTags = (): string[] => tNow("bookmarks.exampleTags").split(",");
 
 /** Тег-редактор: чипы вместо строки через запятую + клик по примерам/уже
  * существующим тегам сразу добавляет тег. */
@@ -51,7 +52,7 @@ function TagEditor({
 
   const pool = useMemo(
     () =>
-      [...new Set([...suggestions, ...EXAMPLE_TAGS])]
+      [...new Set([...suggestions, ...exampleTags()])]
         .filter((tg) => !value.includes(tg))
         .slice(0, 10),
     [suggestions, value],
@@ -483,7 +484,7 @@ export default function BookmarksView({ onOpenNote }: Props) {
         className="text-input"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        placeholder="Поиск по смыслу и по словам…"
+        placeholder={t("sem.searchMeaningWords")}
         style={{ width: "100%", margin: "8px 0 0" }}
       />
       <div style={{ display: "flex", gap: 8, margin: "6px 0", flexWrap: "wrap", fontSize: 12 }}>
@@ -499,7 +500,7 @@ export default function BookmarksView({ onOpenNote }: Props) {
               .catch(() => setTopics([]));
           }}
         >
-          ✨ {topics ? "Скрыть темы" : "Группы по темам"}
+          ✨ {topics ? t("sem.hideTopics") : t("sem.showTopics")}
         </button>
         <button
           type="button"
@@ -513,24 +514,24 @@ export default function BookmarksView({ onOpenNote }: Props) {
               .catch(() => setDupes([]));
           }}
         >
-          {dupes ? "Скрыть дубли" : "Найти дубли"}
+          {dupes ? t("sem.hideDupes") : t("sem.findDupes")}
         </button>
       </div>
       {topics && (
         <div className="muted-sm" style={{ display: "grid", gap: 6, marginBottom: 8 }}>
           {topics.length === 0 && (
-            <span>Пока групп нет — нужно больше закладок или проиндексируйте их</span>
+            <span>{t("sem.noGroups")}</span>
           )}
           {topics.map((g, i) => (
             <div key={i}>
-              <b>Тема {i + 1}:</b> {g.refs.map((r) => r.title).join(" · ")}
+              <b>{t("sem.topicN", { n: i + 1 })}:</b> {g.refs.map((r) => r.title).join(" · ")}
             </div>
           ))}
         </div>
       )}
       {dupes && (
         <div className="muted-sm" style={{ display: "grid", gap: 4, marginBottom: 8 }}>
-          {dupes.length === 0 && <span>Дублей не найдено</span>}
+          {dupes.length === 0 && <span>{t("sem.noDupes")}</span>}
           {dupes.map((d) => (
             <div key={d.a.ref + d.b.ref}>
               {d.a.title} ≈ {d.b.title} ({Math.round(d.score * 100)}%)
@@ -580,7 +581,7 @@ export default function BookmarksView({ onOpenNote }: Props) {
             />
             {similar.length > 0 && (
               <div className="muted-sm">
-                Уже сохранено по теме:{" "}
+                {t("sem.alreadySaved")}{" "}
                 {similar.map((x, i) => (
                   <span key={x.ref}>
                     {i > 0 ? " · " : ""}

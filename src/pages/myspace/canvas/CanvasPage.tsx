@@ -52,6 +52,8 @@ import { SmartPanel } from "@/pages/myspace/canvas/SmartPanel";
 import { useDeepLink, openTarget, targetFor, moonHref } from "@/lib/deepLink";
 import type { SemSource } from "@/api/apiSemantic";
 import { layoutGraph } from "@/pages/myspace/canvas/smartLayout";
+import { LS, lsGet, lsSet, useCanvasKeyboard, isTyping, type Gesture } from "@/pages/myspace/canvas/useCanvasKeyboard";
+import { buildCanvasMenu } from "@/pages/myspace/canvas/canvasMenu";
 import { Shortcuts } from "@/pages/myspace/canvas/Shortcuts";
 import { ContextMenu, type MenuItem } from "@/pages/myspace/canvas/ContextMenu";
 import { TemplatesModal } from "@/pages/myspace/canvas/TemplatePicker";
@@ -62,38 +64,6 @@ import "@/styles/canvas.css";
 const MIN_Z = 0.05;
 const MAX_Z = 8;
 const clamp = (n: number, a: number, b: number) => Math.max(a, Math.min(b, n));
-const LS = {
-  file: "holst.file",
-  wheel: "holst.wheelZoom",
-  grid: "holst.grid",
-  snap: "holst.snap",
-};
-const lsGet = (k: string, d: string): string => {
-  try {
-    return localStorage.getItem(k) ?? d;
-  } catch {
-    return d;
-  }
-};
-const lsSet = (k: string, v: string) => {
-  try {
-    localStorage.setItem(k, v);
-  } catch {
-    /* без запоминания */
-  }
-};
-
-const isTyping = (t: EventTarget | null) => {
-  const el = t as HTMLElement | null;
-  return (
-    !!el &&
-    (el.tagName === "INPUT" ||
-      el.tagName === "TEXTAREA" ||
-      el.tagName === "SELECT" ||
-      el.isContentEditable)
-  );
-};
-
 /** Картинка → data URL, уменьшенная так, чтобы доска оставалась лёгкой. */
 async function imageToData(file: Blob): Promise<{ src: string; w: number; h: number }> {
   const url = URL.createObjectURL(file);
@@ -123,31 +93,11 @@ async function imageToData(file: Blob): Promise<{ src: string; w: number; h: num
   }
 }
 
-type Gesture =
-  | { kind: "pan"; vx: number; vy: number; cx: number; cy: number }
-  | {
-      kind: "move";
-      ids: Set<string>;
-      start: Pt;
-      moved: boolean;
-      only: string | null;
-      shift: boolean;
-      cloned: boolean;
-    }
-  | { kind: "resize"; handle: HandleId; start: Pt; ids: string[] }
-  | { kind: "rotate"; start: number; c: Pt; ids: string[]; base: number }
-  | { kind: "marquee"; start: Pt; base: string[] }
-  | { kind: "create"; tool: Tool; start: Pt; id: string | null; shift: boolean }
-  | { kind: "pen"; pts: Pt[] }
-  | { kind: "link"; id: string; end: "from" | "to"; start: Pt; moved: boolean }
-  | null;
-
 /* ───────────── страница ───────────── */
 
 export default function CanvasPage() {
-  const { lang } = useI18n();
-  const ru = lang.toLowerCase().startsWith("ru");
-  const t = useMemo(() => strings(lang), [lang]);
+  const { t: tr } = useI18n();
+  const t = useMemo(() => strings(tr), [tr]);
 
   const board = useBoard();
   const { objs } = board;
@@ -302,7 +252,7 @@ export default function CanvasPage() {
           pick = newFile();
           await api.myspaceWriteHolst(pick, {
             version: 3,
-            name: ru ? "Моя доска" : "My board",
+            name: tr("canvasPage.myBoard"),
             objs: [],
           });
           list = await refreshBoards();
@@ -375,7 +325,7 @@ export default function CanvasPage() {
   const createBoard = async () => {
     await flush();
     const f = newFile();
-    const title = ru ? `Доска ${boards.length + 1}` : `Board ${boards.length + 1}`;
+    const title = tr("canvasPage.boardN", { n: boards.length + 1 });
     await api.myspaceWriteHolst(f, { version: 3, name: title, objs: [] });
     await refreshBoards();
     await loadBoard(f);
@@ -1446,320 +1396,43 @@ export default function CanvasPage() {
       });
       if (!inside) setSel([]);
     }
-    const has = selRef.current.length > 0;
-    const pt = clientToWorld(e.clientX, e.clientY);
-    const only = selRef.current.length === 1 ? byIdRef.current.get(selRef.current[0]) : undefined;
-    const canText =
-      !!only && !only.locked && ["shape", "sticky", "text", "task", "frame"].includes(only.type);
-    const canFill = selRef.current.some((s) => {
-      const o = byIdRef.current.get(s);
-      return !!o && ["shape", "sticky", "task", "frame", "text"].includes(o.type);
+    setCtx({
+      x: e.clientX,
+      y: e.clientY,
+      items: buildCanvasMenu(e.clientX, e.clientY, {
+        selRef, byIdRef, clientToWorld, tr, t, openLinked, copyBoardLink, setEditing, actions, copySel, clip, pasteInternal, duplicate, removeSel, board, tidy, fitAll, setSel,
+      }),
     });
-    const multi = selRef.current.length > 1;
-    const anyGroup = selRef.current.some((s) => byIdRef.current.get(s)?.type === "group");
-    const items: MenuItem[] = has
-      ? [
-          ...(only && (only.type === "link" || (only.type === "note" && only.path))
-            ? [{ label: ru ? "Открыть" : "Open", hint: "2×", onClick: () => openLinked(only) }]
-            : []),
-          ...(only && only.type !== "line" && only.type !== "group"
-            ? [
-                {
-                  label: ru ? "Копировать ссылку для заметки" : "Copy link for a note",
-                  onClick: () => copyBoardLink(only),
-                },
-              ]
-            : []),
-          ...(canText
-            ? [{ label: t("edit"), hint: "Enter", onClick: () => setEditing(only!.id) }]
-            : []),
-          ...(canFill
-            ? [
-                {
-                  label: "",
-                  onClick: () => undefined,
-                  swatches: {
-                    colors: [
-                      "#ffffff",
-                      "#fef08a",
-                      "#bbf7d0",
-                      "#bfdbfe",
-                      "#fbcfe8",
-                      "#fed7aa",
-                      "#ddd6fe",
-                      "#e5e7eb",
-                      "#1f2937",
-                    ],
-                    onPick: (c: string) => actions.patch({ fill: c }, "fill"),
-                  },
-                },
-                { sep: true, label: "", onClick: () => undefined },
-              ]
-            : []),
-          { label: t("cut"), hint: "Ctrl+X", onClick: () => copySel(true) },
-          { label: t("copy"), hint: "Ctrl+C", onClick: () => copySel() },
-          {
-            label: t("paste"),
-            hint: "Ctrl+V",
-            onClick: () => clip.current && pasteInternal(clip.current, pt),
-            disabled: !clip.current,
-          },
-          { label: t("duplicate"), hint: "Ctrl+D", onClick: () => duplicate() },
-          { sep: true, label: "", onClick: () => undefined },
-          ...(multi ? [{ label: t("group"), hint: "Ctrl+G", onClick: actions.group }] : []),
-          ...(anyGroup ? [{ label: t("ungroup"), hint: "Ctrl+⇧G", onClick: actions.ungroup }] : []),
-          { label: t("front"), hint: "Ctrl+⇧]", onClick: () => actions.order("front") },
-          { label: t("back"), hint: "Ctrl+⇧[", onClick: () => actions.order("back") },
-          { label: t("lock"), hint: "Ctrl+⇧L", onClick: actions.lock },
-          { label: t("hide"), onClick: actions.hide },
-          { sep: true, label: "", onClick: () => undefined },
-          { label: t("del"), hint: "Del", danger: true, onClick: removeSel },
-        ]
-      : [
-          {
-            label: t("paste"),
-            hint: "Ctrl+V",
-            onClick: () => clip.current && pasteInternal(clip.current, pt),
-            disabled: !clip.current,
-          },
-          {
-            label: t("selectAll"),
-            hint: "Ctrl+A",
-            onClick: () =>
-              setSel(board.ref.current.filter((o) => !o.parent && !o.hidden).map((o) => o.id)),
-          },
-          {
-            label: t("delAll"),
-            danger: true,
-            disabled: board.ref.current.length === 0,
-            onClick: () => {
-              setSel([]);
-              board.apply(() => []);
-            },
-          },
-          { label: t("tidy"), onClick: tidy },
-          { label: t("fit"), hint: "⇧1", onClick: fitAll },
-        ];
-    setCtx({ x: e.clientX, y: e.clientY, items });
   };
 
   /* ───────────── клавиатура ───────────── */
-
-  const kb = useRef<(e: KeyboardEvent) => void>(() => undefined);
-  kb.current = (e: KeyboardEvent) => {
-    if (isTyping(e.target)) return;
-    const meta = e.ctrlKey || e.metaKey;
-    /* буквы и знаки берём по физической клавише: на русской и других раскладках e.key другой */
-    const k = e.code.startsWith("Key") ? e.code.slice(3).toLowerCase() : e.key.toLowerCase();
-    const sym =
-      e.code === "BracketRight"
-        ? "]"
-        : e.code === "BracketLeft"
-          ? "["
-          : e.code === "Equal" || e.code === "NumpadAdd"
-            ? "+"
-            : e.code === "Minus" || e.code === "NumpadSubtract"
-              ? "-"
-              : e.key;
-    if (e.code === "Space" && !e.repeat) {
-      spaceHeld.current = true;
-      wrapRef.current?.classList.add("hc-space");
-      e.preventDefault();
-      return;
-    }
-    if (e.key === "?" || e.key === "F1" || (e.shiftKey && e.code === "Slash")) {
-      e.preventDefault();
-      setHelpOpen(true);
-      return;
-    }
-    if (e.altKey && !meta && selRef.current.length) {
-      const al: Record<string, AlignKind> = {
-        KeyA: "left",
-        KeyD: "right",
-        KeyW: "top",
-        KeyS: "bottom",
-        KeyH: "hcenter",
-        KeyV: "vcenter",
-      };
-      if (al[e.code]) {
-        e.preventDefault();
-        actions.align(al[e.code]);
-        return;
-      }
-    }
-    if (e.key === "Tab" && board.ref.current.length) {
-      e.preventDefault();
-      const list = board.ref.current.filter((o) => !o.parent && !o.hidden && !o.locked);
-      if (list.length) {
-        const at = list.findIndex((o) => o.id === selRef.current[selRef.current.length - 1]);
-        const next = (at + (e.shiftKey ? -1 : 1) + list.length) % list.length;
-        setSel([list[next].id]);
-      }
-      return;
-    }
-    if (meta && (k === "b" || k === "i") && selRef.current.length) {
-      e.preventDefault();
-      const first = byIdRef.current.get(selRef.current[0]);
-      if (k === "b") actions.patch({ fw: (first?.fw ?? 500) >= 700 ? 500 : 700 });
-      else actions.patch({ italic: !first?.italic });
-      return;
-    }
-    if (meta && k === "0") {
-      e.preventDefault();
-      setZoom(1);
-      return;
-    }
-    if (meta && (sym === "+" || sym === "-")) {
-      e.preventDefault();
-      zoomAt(sym === "-" ? 0.8 : 1.25);
-      return;
-    }
-    if (meta && (e.key === "'" || e.code === "Quote")) {
-      e.preventDefault();
-      if (e.shiftKey) {
-        setSnap(!snap);
-        lsSet(LS.snap, snap ? "0" : "1");
-      } else {
-        setGrid(!grid);
-        lsSet(LS.grid, grid ? "0" : "1");
-      }
-      return;
-    }
-    if (meta && k === "h" && e.shiftKey) {
-      e.preventDefault();
-      actions.hide();
-      return;
-    }
-    if (meta && k === "z") {
-      e.preventDefault();
-      if (e.shiftKey) board.redo();
-      else board.undo();
-      setSel(selRef.current.filter((id) => board.ref.current.some((o) => o.id === id)));
-      return;
-    }
-    if (meta && k === "y") {
-      e.preventDefault();
-      board.redo();
-      return;
-    }
-    if (meta && k === "a") {
-      e.preventDefault();
-      setSel(board.ref.current.filter((o) => !o.parent && !o.hidden && !o.locked).map((o) => o.id));
-      return;
-    }
-    if (meta && k === "c") {
-      copySel();
-      return;
-    }
-    if (meta && k === "x") {
-      e.preventDefault();
-      copySel(true);
-      return;
-    }
-    if (meta && k === "d") {
-      e.preventDefault();
-      duplicate();
-      return;
-    }
-    if (meta && k === "g") {
-      e.preventDefault();
-      if (e.shiftKey) actions.ungroup();
-      else actions.group();
-      return;
-    }
-    if (meta && k === "l" && e.shiftKey) {
-      e.preventDefault();
-      actions.lock();
-      return;
-    }
-    if (meta && (sym === "]" || sym === "[")) {
-      e.preventDefault();
-      actions.order(
-        sym === "]" ? (e.shiftKey ? "front" : "forward") : e.shiftKey ? "back" : "backward",
-      );
-      return;
-    }
-    if (meta) return;
-    if (e.key === "Delete" || e.key === "Backspace") {
-      e.preventDefault();
-      removeSel();
-      return;
-    }
-    if (e.key === "Escape") {
-      if (gesture.current) {
-        board.cancel();
-        gesture.current = null;
-        setPenPts(null);
-      } else if (selRef.current.length) setSel([]);
-      else setTool("select");
-      setCtx(null);
-      return;
-    }
-    if (e.key === "Enter" && selRef.current.length === 1) {
-      const o = byIdRef.current.get(selRef.current[0]);
-      if (o && !o.locked && ["shape", "sticky", "text", "task", "frame"].includes(o.type)) {
-        e.preventDefault();
-        setEditing(o.id);
-      }
-      return;
-    }
-    if (e.key.startsWith("Arrow") && selRef.current.length) {
-      e.preventDefault();
-      const s = e.shiftKey ? 10 : 1;
-      const dx = e.key === "ArrowLeft" ? -s : e.key === "ArrowRight" ? s : 0;
-      const dy = e.key === "ArrowUp" ? -s : e.key === "ArrowDown" ? s : 0;
-      const ids = withChildren(
-        board.ref.current,
-        selRef.current.filter((id) => !byIdRef.current.get(id)?.locked),
-      );
-      board.apply((o) => fitGroups(moveObjs(o, ids, dx, dy)), "nudge");
-      return;
-    }
-    if (e.shiftKey && (e.key === "!" || e.code === "Digit1")) {
-      e.preventDefault();
-      fitAll();
-      return;
-    }
-    if (e.shiftKey && (e.key === "@" || e.code === "Digit2")) {
-      e.preventDefault();
-      fitSelection();
-      return;
-    }
-    if (sym === "+") return zoomAt(1.25);
-    if (sym === "-") return zoomAt(0.8);
-    const map: Record<string, Tool> = {
-      v: "select",
-      h: "hand",
-      s: "sticky",
-      t: "text",
-      r: "shape",
-      l: "line",
-      f: "frame",
-      p: "pen",
-      k: "task",
-      e: "sticker",
-    };
-    if (map[k] && !e.altKey) {
-      setTool(map[k]);
-      return;
-    }
-    if (k === "i") fileInput.current?.click();
-  };
-  useEffect(() => {
-    const down = (e: KeyboardEvent) => kb.current(e);
-    const up = (e: KeyboardEvent) => {
-      if (e.code === "Space") {
-        spaceHeld.current = false;
-        wrapRef.current?.classList.remove("hc-space");
-      }
-    };
-    window.addEventListener("keydown", down);
-    window.addEventListener("keyup", up);
-    return () => {
-      window.removeEventListener("keydown", down);
-      window.removeEventListener("keyup", up);
-    };
-  }, []);
+  useCanvasKeyboard({
+    spaceHeld,
+    wrapRef,
+    setHelpOpen,
+    selRef,
+    actions,
+    board,
+    setSel,
+    byIdRef,
+    setZoom,
+    zoomAt,
+    setSnap,
+    snap,
+    setGrid,
+    grid,
+    copySel,
+    duplicate,
+    removeSel,
+    gesture,
+    setPenPts,
+    setTool,
+    setCtx,
+    setEditing,
+    fitAll,
+    fitSelection,
+    fileInput,
+  });
 
   /* вставка: картинки, свои объекты, обычный текст */
   useEffect(() => {
@@ -1898,11 +1571,11 @@ export default function CanvasPage() {
       </div>
       <label className="hc-check">
         <input type="checkbox" checked={marker} onChange={(e) => setMarker(e.target.checked)} />
-        {ru ? "Маркер" : "Highlighter"}
+        {tr("canvasPage.highlighter")}
       </label>
     </div>
   ) : selObjs.length > 0 && rightTab === "props" ? (
-    <Inspector sel={selObjs} a={actions} t={t} ru={ru} />
+    <Inspector sel={selObjs} a={actions} t={t} />
   ) : null;
 
   const cursor = tool === "hand" ? "grab" : tool === "select" ? "default" : "crosshair";
@@ -2020,7 +1693,6 @@ export default function CanvasPage() {
         onEmoji={setEmoji}
         onImage={() => fileInput.current?.click()}
         t={t}
-        ru={ru}
       />
       <div className="hc-side" data-ui>
         <div className="hc-tabs hc-float">
@@ -2112,7 +1784,7 @@ export default function CanvasPage() {
           }
         }}
       />
-      {helpOpen && <Shortcuts ru={ru} onClose={() => setHelpOpen(false)} />}
+      {helpOpen && <Shortcuts onClose={() => setHelpOpen(false)} />}
       {ctx && <ContextMenu x={ctx.x} y={ctx.y} items={ctx.items} onClose={() => setCtx(null)} />}
       {tplOpen && (
         <TemplatesModal t={t} onClose={() => setTplOpen(false)} onSelect={applyTemplate} />

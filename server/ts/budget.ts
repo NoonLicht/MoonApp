@@ -9,6 +9,7 @@ import fs from "fs";
 import config from "./config";
 import logger from "./logger";
 import { getRatesToRub, KNOWN_CURRENCIES } from "./fx";
+import type { ImportResult } from "./contracts/budget";
 
 export { KNOWN_CURRENCIES };
 
@@ -34,6 +35,8 @@ export interface Transaction {
    * только в исходной валюте.
    */
   rates: Record<string, number> | null;
+  /** Идентификатор операции во внешней выписке (FITID из OFX) — защита от повторного импорта. */
+  externalId?: string;
 }
 
 export const DEFAULT_CATEGORIES = {
@@ -288,10 +291,59 @@ function normalizeDate(raw: string): string | null {
   return null;
 }
 
-export interface ImportResult {
-  imported: number;
-  skipped: number;
-  errors: string[];
+export type { ImportResult };
+
+/** Ключ для поиска дубля: внешний id, а если его нет — дата, тип, сумма и описание. */
+function dedupKey(tx: Pick<Transaction, "externalId" | "date" | "type" | "amount" | "note">): string {
+  return tx.externalId
+    ? `x:${tx.externalId}`
+    : `h:${tx.date}|${tx.type}|${tx.amount.toFixed(2)}|${tx.note.trim().toLowerCase()}`;
+}
+
+/** Добавляет операции пачкой, пропуская уже существующие (повторный импорт той же выписки безопасен). */
+export function addImported(items: Transaction[]): { added: Transaction[]; duplicates: number } {
+  const all = readAll();
+  const seen = new Set(all.map(dedupKey));
+  const added: Transaction[] = [];
+  let duplicates = 0;
+  for (const tx of items) {
+    const k = dedupKey(tx);
+    if (seen.has(k)) {
+      duplicates++;
+      continue;
+    }
+    seen.add(k);
+    added.push(tx);
+  }
+  if (added.length) writeAll([...all, ...added]);
+  return { added, duplicates };
+}
+
+export interface OfxItem {
+  date: string;
+  amount: number;
+  name: string;
+  fitid: string;
+  currency?: string;
+}
+
+/** Импорт разобранной выписки OFX: знак суммы определяет доход/расход. */
+export function importOfxItems(items: OfxItem[], skipped = 0): ImportResult {
+  const txs = items.map((i) => {
+    const tx = buildTx({
+      type: i.amount >= 0 ? "income" : "expense",
+      amount: Math.abs(i.amount),
+      category: "Импорт",
+      note: i.name,
+      date: i.date,
+      currency: i.currency && i.currency.length === 3 ? i.currency : "RUB",
+    });
+    if (i.fitid) tx.externalId = i.fitid;
+    return tx;
+  });
+  const { added, duplicates } = addImported(txs);
+  logger.info("budget.importOfx", { imported: added.length, duplicates, skipped });
+  return { imported: added.length, skipped, errors: [], duplicates };
 }
 
 /**
@@ -355,11 +407,12 @@ export function importCsv(csvText: string): ImportResult {
     }
   }
 
-  if (toImport.length > 0) {
-    const all = readAll();
-    all.push(...toImport);
-    writeAll(all);
-  }
-  logger.info("budget.importCsv", { imported: toImport.length, skipped: errors.length });
-  return { imported: toImport.length, skipped: errors.length, errors: errors.slice(0, 20) };
+  const { added, duplicates } = addImported(toImport);
+  logger.info("budget.importCsv", { imported: added.length, skipped: errors.length, duplicates });
+  return {
+    imported: added.length,
+    skipped: errors.length,
+    errors: errors.slice(0, 20),
+    duplicates,
+  };
 }

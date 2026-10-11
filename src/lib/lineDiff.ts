@@ -1,3 +1,5 @@
+import { tNow } from "@/app/i18n";
+
 export interface DiffLine {
   type: "same" | "add" | "del";
   text: string;
@@ -12,7 +14,7 @@ export function lineDiff(a: string, b: string): DiffLine[] {
   const n = A.length;
   const m = B.length;
   // Ограничение по размеру: O(n*m) память/время — не годится для гигантских файлов.
-  if (n * m > 4_000_000) return [{ type: "same", text: "Слишком большой текст для сравнения" }];
+  if (n * m > 4_000_000) return [{ type: "same", text: tNow("lineDiff.tooLarge") }];
   const dp: number[][] = Array.from({ length: n + 1 }, () => new Array(m + 1).fill(0));
   for (let i = n - 1; i >= 0; i--) {
     for (let j = m - 1; j >= 0; j--) {

@@ -35,7 +35,7 @@ async function postStream(
     signal,
   });
   if (res.status === 409 || res.status === 401) {
-    let msg = "Ошибка";
+    let msg = "Error";
     try {
       msg = (await res.json()).error || msg;
     } catch {

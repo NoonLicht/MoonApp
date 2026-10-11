@@ -85,7 +85,7 @@ export default function ModelPanel({
         </div>
       )}
 
-      {!status.runtime.available && (
+      {!status.runtime.available && !isLlama && (
         <div className="tn-note" style={{ marginTop: 10 }}>
           {t("translate.noRuntime")} {status.runtime.error}
         </div>

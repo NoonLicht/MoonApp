@@ -44,6 +44,14 @@ afterEach(() => {
 /** Сбросить require-кэш серверных модулей (config читает env при импорте). */
 function clearServerCache() {
   for (const key of Object.keys(require_.cache)) {
+    // БД держит открытый файл: на Windows без close() каталог не удалить (EPERM).
+    if (key.endsWith(`${path.sep}server${path.sep}db.js`)) {
+      try {
+        (require_.cache[key]?.exports as { close?: () => void }).close?.();
+      } catch {
+        /* уже закрыта */
+      }
+    }
     if (key.includes(`${path.sep}server${path.sep}`)) delete require_.cache[key];
   }
 }

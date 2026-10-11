@@ -117,7 +117,7 @@ export default function CommandPalette() {
         name: x.name,
         Icon: x.p.icon,
       }));
-    if (pg.length) out.push({ title: "Страницы", items: pg });
+    if (pg.length) out.push({ title: t("palette.groupPages"), items: pg });
     const ls = (
       q
         ? launchers.filter(
@@ -125,7 +125,7 @@ export default function CommandPalette() {
           )
         : launchers
     ).map((l): Item => ({ kind: "launcher", key: `l${l.id}`, l }));
-    if (ls.length) out.push({ title: "Запуск", items: ls });
+    if (ls.length) out.push({ title: t("palette.groupLaunch"), items: ls });
     if (q) {
       const seen = new Set<string>();
       const words = q.split(/\s+/).filter(Boolean);
@@ -162,10 +162,10 @@ export default function CommandPalette() {
           sub: `${SOURCE_LABEL[h.source]} · ${h.snippet.slice(0, 80)}`,
           at: h.at,
         }));
-      if (sem.length) out.push({ title: "По смыслу", items: sem });
+      if (sem.length) out.push({ title: t("palette.groupSemantic"), items: sem });
       if (q.length >= 2)
         out.push({
-          title: "Настройки",
+          title: t("palette.groupSettings"),
           items: [{ kind: "settings", key: "settings-q", q: query.trim() }],
         });
     }
@@ -225,7 +225,7 @@ export default function CommandPalette() {
             ref={inputRef}
             className="palette-input"
             style={{ marginBottom: 0 }}
-            placeholder="Страницы, заметки, задачи, закладки, доски, лекции, чаты… или по смыслу"
+            placeholder={t("palette.searchPh")}
             value={query}
             onChange={(e) => {
               setQuery(e.target.value);
@@ -271,7 +271,7 @@ export default function CommandPalette() {
                         : it.kind === "page"
                           ? it.name
                           : it.kind === "settings"
-                            ? `Искать в настройках: «${it.q}»`
+                            ? t("palette.searchSettings", { q: it.q })
                             : it.title}
                     </span>
                     <span
@@ -281,9 +281,9 @@ export default function CommandPalette() {
                       {it.kind === "launcher"
                         ? it.l.exePath
                         : it.kind === "page"
-                          ? "Страница"
+                          ? t("palette.pageSub")
                           : it.kind === "settings"
-                            ? "Подсветит нужные пункты на странице настроек"
+                            ? t("palette.settingsHint")
                             : it.sub || SOURCE_LABEL[it.src]}
                     </span>
                   </span>

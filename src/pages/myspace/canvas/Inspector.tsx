@@ -34,6 +34,7 @@ import {
 } from "@/pages/myspace/canvas/model";
 import type { Order } from "@/pages/myspace/canvas/board";
 import type { Key } from "@/pages/myspace/canvas/strings";
+import { useI18n } from "@/app/i18n";
 
 type Patch = Partial<Obj>;
 
@@ -55,7 +56,6 @@ interface Props {
   sel: Obj[];
   a: InspectorActions;
   t: (k: Key) => string;
-  ru: boolean;
 }
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
@@ -150,13 +150,13 @@ function Num({
 const HEADS: Head[] = ["none", "arrow", "triangle", "dot"];
 
 /** Правая панель: свойства выбранного. Показывает только то, что относится к выбору. */
-export function Inspector({ sel, a, t, ru }: Props) {
+export function Inspector({ sel, a, t }: Props) {
+  const { t: tx } = useI18n();
   if (sel.length === 0) return null;
   const o = sel[0];
   const one = sel.length === 1;
   const types = new Set(sel.map((s) => s.type));
   const has = (...k: Obj["type"][]) => sel.some((s) => k.includes(s.type));
-  const L = (r: string, e: string): string => (ru ? r : e);
   const canFill = has("shape", "sticky", "frame", "task", "text", "note", "link");
   const canStroke = has("shape", "frame", "line", "stroke", "task", "note", "image", "link");
   const canText = has("shape", "sticky", "text", "task");
@@ -298,11 +298,11 @@ export function Inspector({ sel, a, t, ru }: Props) {
       )}
 
       {one && o.type !== "group" && (
-        <Row label={L("Название", "Name")}>
+        <Row label={tx("canvasInsp.name")}>
           <input
             className="hc-text"
             value={o.name ?? ""}
-            placeholder={L("Название слоя", "Layer name")}
+            placeholder={tx("canvasInsp.layerName")}
             onChange={(e) => a.patch({ name: e.target.value || undefined }, "name")}
             onKeyDown={(e) => e.stopPropagation()}
             style={{ width: "100%" }}
@@ -311,7 +311,7 @@ export function Inspector({ sel, a, t, ru }: Props) {
       )}
 
       {one && o.type === "link" && (
-        <Row label={L("Заголовок карточки", "Card title")}>
+        <Row label={tx("canvasInsp.cardTitle")}>
           <input
             className="hc-text"
             value={o.text ?? ""}
@@ -329,7 +329,7 @@ export function Inspector({ sel, a, t, ru }: Props) {
             checked={!o.noName}
             onChange={(e) => a.patch({ noName: !e.target.checked })}
           />
-          {L("Показывать заголовок рамки", "Show frame title")}
+          {tx("canvasInsp.showFrameTitle")}
         </label>
       )}
 
@@ -340,12 +340,12 @@ export function Inspector({ sel, a, t, ru }: Props) {
             checked={!!o.auto}
             onChange={(e) => a.patch({ auto: e.target.checked })}
           />
-          {L("Высота по тексту", "Auto height")}
+          {tx("canvasInsp.autoHeight")}
         </label>
       )}
 
       {one && o.type === "sticker" && (
-        <Row label={L("Эмодзи", "Emoji")}>
+        <Row label={tx("canvasInsp.emoji")}>
           <div className="hc-icons" style={{ flexWrap: "wrap" }}>
             {[
               "👍",
@@ -380,13 +380,13 @@ export function Inspector({ sel, a, t, ru }: Props) {
 
       {one && o.type === "task" && (
         <>
-          <Row label={L("Статус", "Status")}>
+          <Row label={tx("canvasInsp.status")}>
             <div className="hc-icons">
               {(
                 [
-                  ["todo", L("К выполнению", "To do")],
-                  ["inprogress", L("В работе", "In progress")],
-                  ["done", L("Готово", "Done")],
+                  ["todo", tx("canvasInsp.toDo")],
+                  ["inprogress", tx("canvasInsp.inProgress")],
+                  ["done", tx("canvasInsp.done")],
                 ] as const
               ).map(([k, label]) => (
                 <button
@@ -400,14 +400,14 @@ export function Inspector({ sel, a, t, ru }: Props) {
               ))}
             </div>
           </Row>
-          <Row label={L("Приоритет", "Priority")}>
+          <Row label={tx("canvasInsp.priority")}>
             <div className="hc-icons">
               {(
                 [
-                  [undefined, L("Нет", "None")],
-                  ["low", L("Низкий", "Low")],
-                  ["medium", L("Средний", "Medium")],
-                  ["high", L("Высокий", "High")],
+                  [undefined, tx("canvasInsp.none")],
+                  ["low", tx("canvasInsp.low")],
+                  ["medium", tx("canvasInsp.medium")],
+                  ["high", tx("canvasInsp.high")],
                 ] as const
               ).map(([k, label]) => (
                 <button
@@ -421,7 +421,7 @@ export function Inspector({ sel, a, t, ru }: Props) {
               ))}
             </div>
           </Row>
-          <Row label={L("Срок", "Due date")}>
+          <Row label={tx("canvasInsp.dueDate")}>
             <input
               type="date"
               className="hc-text"
@@ -430,7 +430,7 @@ export function Inspector({ sel, a, t, ru }: Props) {
               onKeyDown={(e) => e.stopPropagation()}
             />
           </Row>
-          <Row label={L("Цвет полоски", "Accent colour")}>
+          <Row label={tx("canvasInsp.accentColour")}>
             <Colors
               value={o.acc}
               list={["#94a3b8", "#f59e0b", "#22c55e", "#3b82f6", "#8b5cf6", "#ef4444", "#ec4899"]}
@@ -444,9 +444,9 @@ export function Inspector({ sel, a, t, ru }: Props) {
               checked={!!o.prog}
               onChange={(e) => a.patch({ prog: e.target.checked })}
             />
-            {L("Показывать выполнено/всего", "Show done/total")}
+            {tx("canvasInsp.showDoneTotal")}
           </label>
-          <Row label={L("Подзадачи", "Subtasks")}>
+          <Row label={tx("canvasInsp.subtasks")}>
             <div style={{ display: "grid", gap: 6, width: "100%" }}>
               {(o.subtasks ?? []).map((sub, i) => (
                 <div key={i} style={{ display: "flex", gap: 6, alignItems: "center" }}>
@@ -494,11 +494,11 @@ export function Inspector({ sel, a, t, ru }: Props) {
                 className="hc-ib wide"
                 onClick={() =>
                   a.patch({
-                    subtasks: [...(o.subtasks ?? []), { text: L("Шаг", "Step"), done: false }],
+                    subtasks: [...(o.subtasks ?? []), { text: tx("canvasInsp.step"), done: false }],
                   })
                 }
               >
-                + {L("Добавить подзадачу", "Add subtask")}
+                + {tx("canvasInsp.addSubtask")}
               </button>
             </div>
           </Row>
@@ -507,13 +507,13 @@ export function Inspector({ sel, a, t, ru }: Props) {
 
       {one && o.type === "image" && (
         <>
-          <Row label={L("Вписывание", "Fit")}>
+          <Row label={tx("canvasInsp.fit")}>
             <div className="hc-icons">
               {(
                 [
-                  ["fill", L("Растянуть", "Stretch")],
-                  ["contain", L("Целиком", "Contain")],
-                  ["cover", L("Заполнить", "Cover")],
+                  ["fill", tx("canvasInsp.stretch")],
+                  ["contain", tx("canvasInsp.contain")],
+                  ["cover", tx("canvasInsp.cover")],
                 ] as const
               ).map(([k, label]) => (
                 <button
@@ -527,30 +527,30 @@ export function Inspector({ sel, a, t, ru }: Props) {
               ))}
             </div>
           </Row>
-          <Row label={L("Отражение", "Flip")}>
+          <Row label={tx("canvasInsp.flip")}>
             <div className="hc-icons">
               <button
                 type="button"
                 className={`hc-ib wide${o.flipX ? " on" : ""}`}
                 onClick={() => a.patch({ flipX: !o.flipX })}
               >
-                {L("По горизонтали", "Horizontal")}
+                {tx("canvasInsp.horizontal")}
               </button>
               <button
                 type="button"
                 className={`hc-ib wide${o.flipY ? " on" : ""}`}
                 onClick={() => a.patch({ flipY: !o.flipY })}
               >
-                {L("По вертикали", "Vertical")}
+                {tx("canvasInsp.vertical")}
               </button>
             </div>
           </Row>
           {(
             [
-              ["bri", L("Яркость", "Brightness"), 0.2, 2, 0.05, 1],
-              ["con", L("Контраст", "Contrast"), 0.2, 2, 0.05, 1],
-              ["sat", L("Насыщенность", "Saturation"), 0, 2, 0.05, 1],
-              ["blr", L("Размытие", "Blur"), 0, 20, 1, 0],
+              ["bri", tx("canvasInsp.brightness"), 0.2, 2, 0.05, 1],
+              ["con", tx("canvasInsp.contrast"), 0.2, 2, 0.05, 1],
+              ["sat", tx("canvasInsp.saturation"), 0, 2, 0.05, 1],
+              ["blr", tx("canvasInsp.blur"), 0, 20, 1, 0],
             ] as const
           ).map(([k, label, min, max, step, def]) => (
             <Row key={k} label={label}>
@@ -573,7 +573,7 @@ export function Inspector({ sel, a, t, ru }: Props) {
               checked={!!o.gray}
               onChange={(e) => a.patch({ gray: e.target.checked })}
             />
-            {L("Чёрно-белое", "Grayscale")}
+            {tx("canvasInsp.grayscale")}
           </label>
           <button
             type="button"
@@ -591,7 +591,7 @@ export function Inspector({ sel, a, t, ru }: Props) {
               })
             }
           >
-            {L("Сбросить обработку", "Reset adjustments")}
+            {tx("canvasInsp.resetAdjustments")}
           </button>
         </>
       )}
@@ -604,7 +604,7 @@ export function Inspector({ sel, a, t, ru }: Props) {
                 key={s.kind}
                 type="button"
                 className={`hc-ib${o.shape === s.kind ? " on" : ""}`}
-                title={ru ? s.ru : s.en}
+                title={tx(`canvasShapes.${s.kind}`)}
                 onClick={() => a.patch({ shape: s.kind as ShapeKind })}
               >
                 <ShapeGlyph kind={s.kind} />
@@ -808,12 +808,12 @@ export function Inspector({ sel, a, t, ru }: Props) {
           )}
           {richText && (
             <>
-              <Row label={L("Начертание", "Style")}>
+              <Row label={tx("canvasInsp.style")}>
                 <div className="hc-icons">
                   {(
                     [
-                      ["ul", L("Подчёрк.", "Underline")],
-                      ["st", L("Зачёрк.", "Strike")],
+                      ["ul", tx("canvasInsp.underline")],
+                      ["st", tx("canvasInsp.strike")],
                       ["caps", "AA"],
                     ] as const
                   ).map(([k, label]) => (
@@ -828,11 +828,11 @@ export function Inspector({ sel, a, t, ru }: Props) {
                   ))}
                 </div>
               </Row>
-              <Row label={L("Интервалы", "Spacing")}>
+              <Row label={tx("canvasInsp.spacing")}>
                 <div className="hc-icons">
                   <Num
                     suffix="↕"
-                    title={L("Межстрочный интервал", "Line height")}
+                    title={tx("canvasInsp.lineHeight")}
                     value={o.lh ?? 1.3}
                     min={0.8}
                     max={3}
@@ -841,7 +841,7 @@ export function Inspector({ sel, a, t, ru }: Props) {
                   />
                   <Num
                     suffix="↔"
-                    title={L("Межбуквенный интервал, px", "Letter spacing, px")}
+                    title={tx("canvasInsp.letterSpacingPx")}
                     value={o.sp ?? 0}
                     min={-2}
                     max={20}

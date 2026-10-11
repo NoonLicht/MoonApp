@@ -5,6 +5,7 @@
  */
 import { useEffect, useRef } from "react";
 import type { PageId } from "@/app/navigation";
+import { tNow } from "@/app/i18n";
 import type { SemSource } from "@/api/apiSemantic";
 
 export interface DeepTarget {
@@ -52,6 +53,8 @@ export function targetFor(source: SemSource, ref: string, at?: number): DeepTarg
       return { page: "myspace", view: "m3e", ref };
     case "archive":
       return { page: "archive", ref };
+    case "rss":
+      return { page: "rss", ref };
   }
 }
 
@@ -69,6 +72,7 @@ export const SOURCE_ICON: Record<SemSource, string> = {
   book: "📚",
   m3e: "🧩",
   archive: "🗄️",
+  rss: "📰",
 };
 
 /** Ссылка внутри приложения для markdown: [📝 Название](moon://note/путь). */
@@ -92,20 +96,13 @@ export function openMoonHref(href: string): boolean {
   return true;
 }
 
-export const SOURCE_LABEL: Record<SemSource, string> = {
-  note: "Заметка",
-  bookmark: "Закладка",
-  task: "Задача",
-  canvas: "Canvas",
-  chat: "Чат ИИ",
-  lecture: "Лекция",
-  quick: "Быстрая заметка",
-  budget: "Бюджет",
-  movie: "Фильм",
-  book: "Книга",
-  m3e: "Макет M3E",
-  archive: "Веб-архив",
-};
+/**
+ * Подписи источников. Прокси над словарём i18n (ключи source.<вид>): места
+ * использования читают SOURCE_LABEL[kind] как раньше, а язык берётся актуальный.
+ */
+export const SOURCE_LABEL = new Proxy({} as Record<SemSource, string>, {
+  get: (_t, kind) => (typeof kind === "string" ? tNow(`source.${kind}`) : undefined),
+});
 
 /** Подписка страницы на переход: handler вызывается и для цели, пришедшей до монтирования. */
 export function useDeepLink(page: PageId, handler: (t: DeepTarget) => boolean | void): void {

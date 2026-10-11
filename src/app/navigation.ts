@@ -22,6 +22,8 @@ import {
   Wallet,
   SlidersHorizontal,
   Languages,
+  BookText,
+  Rss,
 } from "lucide-react";
 import type { ElementType } from "react";
 import type { TranslateFn } from "@/app/i18n";
@@ -42,6 +44,8 @@ export type PageId =
   | "archive"
   | "settings"
   | "myspace"
+  | "diary"
+  | "rss"
   | "lecture"
   | "bypass"
   | "tools"
@@ -80,6 +84,8 @@ const ALL_PAGES: readonly PageMeta[] = [
   { id: "books", i18n: "nav.books", icon: BookOpen },
   { id: "monitor", i18n: "nav.monitor", icon: Activity },
   { id: "myspace", i18n: "nav.myspace", icon: User },
+  { id: "diary", i18n: "nav.diary", icon: BookText },
+  { id: "rss", i18n: "nav.rss", icon: Rss },
   { id: "aichat", i18n: "nav.aichat", icon: MessageSquare },
   { id: "voice", i18n: "nav.voice", icon: Mic2 },
   { id: "lecture", i18n: "nav.lecture", icon: GraduationCap },

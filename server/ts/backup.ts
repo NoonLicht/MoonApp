@@ -1,5 +1,5 @@
 /**
- * Бэкапы данных приложения: storage/backups/<timestamp>/ с копиями data.json,
+ * Бэкапы данных приложения: storage/backups/<timestamp>/ со снимком data.db,
  * settings.json, secrets.json и meta.json; плюс ротация «последние N» и
  * автобэкап по расписанию.
  *
@@ -31,19 +31,19 @@ function stamp(): string {
  */
 export function createBackup(trigger = "manual"): string | null {
   try {
-    // Persist дебаунсится — перед копированием сбрасываем буфер на диск.
-    try {
-      // db грузится лениво (require, а не import): бэкап не должен падать без него.
-      // typeof import(...) даёт типы из server/ts/db.ts без рантайм-загрузки модуля.
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      (require("./db") as typeof import("./db")).flush();
-    } catch {
-      /* noop */
-    }
     const dir = path.join(DIRS.backups, stamp());
     fs.mkdirSync(dir, { recursive: true });
 
-    if (fs.existsSync(FILES.data)) fs.copyFileSync(FILES.data, path.join(dir, "data.json"));
+    // Снимок БД делает сама БД (VACUUM INTO): он консистентен даже при записи
+    // и не тянет за собой WAL-файлы. Persist дебаунсится — backupTo сбрасывает
+    // буфер перед снимком. db грузится лениво (require, а не import): бэкап не
+    // должен падать там, где БД не открыта.
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      (require("./db") as typeof import("./db")).backupTo(path.join(dir, "data.db"));
+    } catch (e) {
+      logger.warn("backup.db_failed", { error: (e as Error).message });
+    }
     if (fs.existsSync(FILES.settings))
       fs.copyFileSync(FILES.settings, path.join(dir, "settings.json"));
     if (fs.existsSync(FILES.secrets))

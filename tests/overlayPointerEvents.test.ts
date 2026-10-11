@@ -41,7 +41,10 @@ const PORTALED = [
     css: "src/styles/arch.css",
     cls: "arch-view-overlay",
   },
-  { src: "src/pages/myspace/MyspacePage.tsx", css: "src/styles/notes.css", cls: "ms-ai-overlay" },
+  { src: "src/pages/myspace/MyspacePage.tsx", classIn: "src/pages/myspace/parts/NotesAiModal.tsx", css: "src/styles/notes.css", cls: "ms-ai-overlay" },
+  { src: "src/pages/rss/RssPage.tsx", css: "src/styles/rss.css", cls: "rss-drawer-wrap" },
+  { src: "src/pages/rss/RssPage.tsx", css: "src/styles/rss.css", cls: "rss-modal-wrap" },
+  { src: "src/lib/askText.tsx", css: "src/styles/notes.css", cls: "ms-ai-overlay" },
   {
     src: "src/pages/myspace/parts/OcrDialog.tsx",
     css: "src/styles/notes.css",
@@ -64,6 +67,7 @@ const PORTALED = [
   },
   {
     src: "src/pages/myspace/MyspacePage.tsx",
+    classIn: "src/pages/myspace/parts/GraphFullscreen.tsx",
     css: "src/styles/notes.css",
     cls: "graph-fs-backdrop",
   },
@@ -119,9 +123,12 @@ describe("портальные окна: клики не проходят скв
     );
   });
 
-  it.each(PORTALED)("$cls действительно рендерится порталом в #overlay-root", ({ src, cls }) => {
+  it.each(PORTALED)("$cls действительно рендерится порталом в #overlay-root", (item) => {
+    const { src, cls } = item;
     const code = fs.readFileSync(path.join(root, src), "utf8");
-    expect(code).toContain(cls);
+    // Класс окна может жить в подкомпоненте (classIn), а портал — в странице.
+    const classSrc = (item as { classIn?: string }).classIn;
+    expect(classSrc ? fs.readFileSync(path.join(root, classSrc), "utf8") : code).toContain(cls);
     expect(code).toMatch(/getOverlayRoot\(\)/);
   });
 

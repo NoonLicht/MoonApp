@@ -18,7 +18,7 @@ import {
   RefreshCw,
   ChevronLeft,
 } from "lucide-react";
-import { useI18n } from "@/app/i18n";
+import { useI18n, tNow } from "@/app/i18n";
 import { EmptyHint, Glass, Btn, Badge } from "@/components/ui";
 import { useContextMenu, copyToClipboard } from "@/components/ContextMenu";
 import { api } from "@/api/client";
@@ -313,7 +313,7 @@ export function DiskScanPanel() {
           }
         } else if (st.stage === "error" || st.stage === "cancelled") {
           clearInterval(timer);
-          if (st.stage === "error") setError(st.error || "Ошибка сканирования");
+          if (st.stage === "error") setError(st.error || t("monitor.scanError"));
         }
       } catch (e) {
         clearInterval(timer);
@@ -518,7 +518,7 @@ export function DiskScanPanel() {
 export function fmtDuration(totalSeconds: number): string {
   const h = Math.floor(totalSeconds / 3600);
   const m = Math.floor((totalSeconds % 3600) / 60);
-  if (h > 0) return `${h} ч ${m} мин`;
-  if (m > 0) return `${m} мин`;
-  return `${totalSeconds} с`;
+  if (h > 0) return tNow("units.hMin", { h, m });
+  if (m > 0) return tNow("units.min", { n: m });
+  return tNow("units.s", { n: totalSeconds });
 }

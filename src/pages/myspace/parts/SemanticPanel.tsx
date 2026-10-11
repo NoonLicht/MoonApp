@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Sparkles, RefreshCw, Download } from "lucide-react";
 import { api } from "@/api/client";
+import { useI18n } from "@/app/i18n";
 import type { SemCluster, SemDup, SemHit, SemStatus, SemSuggest } from "@/api/apiSemantic";
 
 interface Props {
@@ -47,6 +48,7 @@ const pill: React.CSSProperties = {
 
 /** Правая панель «Похожее»: похожие заметки, подсказки ссылок, тегов и папки, дубли и темы. */
 export function SemanticPanel({ note, content, onOpenNote, onInsertLink, onAddTag }: Props) {
+  const { t } = useI18n();
   const [status, setStatus] = useState<SemStatus | null>(null);
   const [related, setRelated] = useState<SemHit[]>([]);
   const [links, setLinks] = useState<SemHit[]>([]);
@@ -65,8 +67,8 @@ export function SemanticPanel({ note, content, onOpenNote, onInsertLink, onAddTa
   }, []);
   useEffect(() => {
     loadStatus();
-    const t = setInterval(loadStatus, 2000);
-    return () => clearInterval(t);
+    const timer = setInterval(loadStatus, 2000);
+    return () => clearInterval(timer);
   }, [loadStatus]);
 
   const ready = !!status?.models.length && status.chunks > 0;
@@ -143,11 +145,11 @@ export function SemanticPanel({ note, content, onOpenNote, onInsertLink, onAddTa
       type="button"
       onClick={() => void api.semSync().then(loadStatus)}
       disabled={!!job?.running}
-      title="Обновить индекс"
+      title={t("semModel.updateIndex")}
       style={{ ...pill, display: "inline-flex", alignItems: "center", gap: 5 }}
     >
       <RefreshCw size={11} className={job?.running ? "spin" : undefined} />
-      {job?.running ? `${job.done}/${job.total}` : "Обновить индекс"}
+      {job?.running ? `${job.done}/${job.total}` : t("semModel.updateIndex")}
     </button>
   );
 
@@ -155,7 +157,7 @@ export function SemanticPanel({ note, content, onOpenNote, onInsertLink, onAddTa
     return (
       <div style={{ padding: 14, fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.5 }}>
         <Sparkles size={16} style={{ color: "var(--amber)" }} />
-        <p>Умный поиск выключен. Включить можно кнопкой с роботом в верхней панели.</p>
+        <p>{t("semPanel.disabled")}</p>
       </div>
     );
   }
@@ -163,10 +165,7 @@ export function SemanticPanel({ note, content, onOpenNote, onInsertLink, onAddTa
     return (
       <div style={{ padding: 14, fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.5 }}>
         <Sparkles size={16} style={{ color: "var(--amber)" }} />
-        <p>
-          Поиск по смыслу, похожие заметки и подсказки работают на модели EmbeddingGemma 2 (310 МБ,
-          запускается на процессоре в встроенном llama.cpp).
-        </p>
+        <p>{t("semPanel.needModel")}</p>
         <button
           type="button"
           onClick={() => void install()}
@@ -179,7 +178,7 @@ export function SemanticPanel({ note, content, onOpenNote, onInsertLink, onAddTa
             padding: "5px 12px",
           }}
         >
-          <Download size={12} /> {installing ? "Загрузка…" : "Установить модель"}
+          <Download size={12} /> {installing ? t("common.loading") : t("semPanel.install")}
         </button>
         {err && <p style={{ color: "#e5484d" }}>{err}</p>}
       </div>
@@ -200,8 +199,12 @@ export function SemanticPanel({ note, content, onOpenNote, onInsertLink, onAddTa
         {syncBtn}
         {status && (
           <span style={{ fontSize: 11, color: "var(--text-tertiary)" }}>
-            {status.indexed.note ?? 0} заметок · {status.indexed.bookmark ?? 0} закладок ·{" "}
-            {status.indexed.lecture ?? 0} лекций · {status.indexed.chat ?? 0} чатов
+            {t("semPanel.indexed", {
+              notes: status.indexed.note ?? 0,
+              bookmarks: status.indexed.bookmark ?? 0,
+              lectures: status.indexed.lecture ?? 0,
+              chats: status.indexed.chat ?? 0,
+            })}
           </span>
         )}
       </div>
@@ -210,16 +213,16 @@ export function SemanticPanel({ note, content, onOpenNote, onInsertLink, onAddTa
       )}
       {status && status.chunks === 0 && !job?.running && (
         <div style={{ padding: "6px 8px", fontSize: 12, color: "var(--text-tertiary)" }}>
-          Индекс пуст — нажмите «Обновить индекс».
+          {t("semPanel.empty")}
         </div>
       )}
 
       {note && ready && (
         <>
-          <div style={box}>Похожие заметки</div>
+          <div style={box}>{t("semPanel.related")}</div>
           {related.length === 0 && (
             <div style={{ padding: "2px 8px", fontSize: 12, color: "var(--text-tertiary)" }}>
-              Пока ничего близкого
+              {t("semPanel.nothingClose")}
             </div>
           )}
           {related.map((h) => (
@@ -235,7 +238,7 @@ export function SemanticPanel({ note, content, onOpenNote, onInsertLink, onAddTa
 
           {links.length > 0 && (
             <>
-              <div style={box}>Вставить ссылку</div>
+              <div style={box}>{t("semPanel.insertLink")}</div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 5, padding: "2px 8px" }}>
                 {links.map((h) => (
                   <button
@@ -254,17 +257,17 @@ export function SemanticPanel({ note, content, onOpenNote, onInsertLink, onAddTa
 
           {sug && (sug.tags.length > 0 || sug.folder) && (
             <>
-              <div style={box}>Теги и папка</div>
+              <div style={box}>{t("semPanel.tagsFolder")}</div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 5, padding: "2px 8px" }}>
-                {sug.tags.map((t) => (
-                  <button key={t} type="button" style={pill} onClick={() => onAddTag(t)}>
-                    + {t}
+                {sug.tags.map((tag) => (
+                  <button key={tag} type="button" style={pill} onClick={() => onAddTag(tag)}>
+                    + {tag}
                   </button>
                 ))}
               </div>
               {sug.folder && note.includes("/") === false && (
                 <div style={{ padding: "4px 8px", fontSize: 11, color: "var(--text-tertiary)" }}>
-                  Похожие заметки лежат в папке «{sug.folder}»
+                  {t("semPanel.folderHint", { folder: sug.folder })}
                 </div>
               )}
             </>
@@ -274,28 +277,28 @@ export function SemanticPanel({ note, content, onOpenNote, onInsertLink, onAddTa
 
       {ready && (
         <>
-          <div style={box}>Дубли и темы</div>
+          <div style={box}>{t("semPanel.dupesTopics")}</div>
           <div style={{ display: "flex", gap: 6, padding: "2px 8px", flexWrap: "wrap" }}>
             <button
               type="button"
               style={pill}
               onClick={() => void api.semDuplicates("note").then(setDups)}
             >
-              Найти дубли
+              {t("sem.findDupes")}
             </button>
             <button
               type="button"
               style={pill}
               onClick={() => void api.semClusters("note").then(setGroups)}
             >
-              Группы по темам
+              {t("sem.showTopics")}
             </button>
           </div>
           {dups && (
             <div style={{ padding: "4px 0" }}>
               {dups.length === 0 && (
                 <div style={{ padding: "2px 8px", fontSize: 12, color: "var(--text-tertiary)" }}>
-                  Дублей нет
+                  {t("semPanel.noDupes")}
                 </div>
               )}
               {dups.map((d) => (
@@ -307,7 +310,7 @@ export function SemanticPanel({ note, content, onOpenNote, onInsertLink, onAddTa
                     {d.b.title}
                   </span>
                   <span style={{ fontSize: 11, color: "var(--text-tertiary)" }}>
-                    совпадение {Math.round(d.score * 100)}%
+                    {t("semPanel.match", { pct: Math.round(d.score * 100) })}
                   </span>
                 </div>
               ))}
@@ -317,13 +320,13 @@ export function SemanticPanel({ note, content, onOpenNote, onInsertLink, onAddTa
             <div style={{ padding: "4px 0" }}>
               {groups.length === 0 && (
                 <div style={{ padding: "2px 8px", fontSize: 12, color: "var(--text-tertiary)" }}>
-                  Групп не нашлось
+                  {t("semPanel.noGroups")}
                 </div>
               )}
               {groups.map((g, i) => (
                 <div key={i} style={{ ...row, cursor: "default" }}>
                   <span style={{ fontSize: 11, color: "var(--text-tertiary)" }}>
-                    Тема {i + 1} · {g.refs.length}
+                    {t("sem.topicN", { n: i + 1 })} · {g.refs.length}
                   </span>
                   {g.refs.map((r) => (
                     <span

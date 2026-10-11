@@ -2,104 +2,10 @@ import { ASSET_BASE } from "@/pages/myspace/m3e/lib/assets";
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
-import { AnimatePresence, motion, useReducedMotion, useSpring } from "motion/react";
+import { AnimatePresence, motion, useSpring } from "motion/react";
 import { toPng } from "html-to-image";
-import { buildPrompt, effectivePrompt } from "@/pages/myspace/m3e/lib/prompt";
-import {
-  Action,
-  actionsOf,
-  TAPPABLE,
-  Axis,
-  BACK_TARGET,
-  baseRadii,
-  draftGradient,
-  BUTTON_H_MAX,
-  BUTTON_H_MIN,
-  CHIP_H_MAX,
-  CHIP_H_MIN,
-  FAB_H_MAX,
-  FAB_H_MIN,
-  isFab,
-  isMeasured,
-  fabOpen,
-  splitMenuRisesAt,
-  menuUp,
-  opensMenu,
-  splitOpens,
-  hasPickerFields,
-  migrateCarousel,
-  migrateFabMenu,
-  migratePicker,
-  isSheetBox,
-  migrateSheetBox,
-  buttonHeightOf,
-  explodeGroup,
-  freeRadii,
-  radiiOfRuns,
-  BEZEL,
-  canJoin,
-  clamp,
-  connectSpecOf,
-  Doc,
-  isPlatform,
-  Platform,
-  Frame,
-  Place,
-  FramePreset,
-  FRAME_GAP,
-  FRAME_LABEL_H,
-  FrameMode,
-  frameOfGroup,
-  framePresetPatch,
-  frameRadius,
-  frameRect,
-  frameSizeOf,
-  frameLengthOf,
-  carryItemSize,
-  matchRunSize,
-  runSizePatch,
-  defaultPlatformOf,
-  GAP,
-  Group,
-  groupBounds,
-  Item,
-  Kind,
-  KIND_SPEC,
-  collapseFree,
-  layoutOf,
-  lerp,
-  makeItem,
-  DEFAULT_THEME,
-  Theme,
-  fontFamilyOf,
-  uiFontFamily,
-  normalizeTheme,
-  setGlobalShape,
-  MEASURED,
-  NAV_BAR_H,
-  Palette,
-  paletteOf,
-  PHONE_H,
-  PHONE_MARGIN,
-  PHONE_W,
-  PULL_EXP,
-  Radii,
-  SETTLE_CSS_VARS,
-  SETTLE_MS,
-  sizeOf,
-  toggleIcon,
-  SNAP_CROSS,
-  SNAP_MAIN,
-  Transition,
-  TRANSITIONS,
-  uid,
-  uniformRadii,
-  FULL_WIDTH,
-  fitHeight,
-  railExpansionSide,
-  CONTENT_W,
-  contentWidth,
-} from "@/pages/myspace/m3e/lib/tokens";
+import { effectivePrompt } from "@/pages/myspace/m3e/lib/prompt";
+import { Action, actionsOf, TAPPABLE, Axis, BACK_TARGET, baseRadii, BUTTON_H_MAX, BUTTON_H_MIN, CHIP_H_MAX, CHIP_H_MIN, FAB_H_MAX, FAB_H_MIN, isFab, isMeasured, fabOpen, splitMenuRisesAt, menuUp, opensMenu, splitOpens, hasPickerFields, migrateCarousel, migrateFabMenu, migratePicker, isSheetBox, migrateSheetBox, buttonHeightOf, explodeGroup, freeRadii, radiiOfRuns, BEZEL, canJoin, clamp, connectSpecOf, Doc, isPlatform, Platform, Frame, Place, FramePreset, FRAME_GAP, FRAME_LABEL_H, FrameMode, frameOfGroup, framePresetPatch, frameRadius, frameRect, frameSizeOf, frameLengthOf, carryItemSize, matchRunSize, runSizePatch, defaultPlatformOf, GAP, Group, groupBounds, Item, Kind, KIND_SPEC, collapseFree, layoutOf, lerp, makeItem, DEFAULT_THEME, Theme, fontFamilyOf, uiFontFamily, normalizeTheme, setGlobalShape, MEASURED, NAV_BAR_H, Palette, paletteOf, PHONE_H, PHONE_MARGIN, PHONE_W, PULL_EXP, Radii, SETTLE_CSS_VARS, SETTLE_MS, sizeOf, toggleIcon, SNAP_CROSS, SNAP_MAIN, Transition, TRANSITIONS, uid, uniformRadii, FULL_WIDTH, fitHeight, railExpansionSide, CONTENT_W, contentWidth } from "@/pages/myspace/m3e/lib/tokens";
 import { Icon, M3Node, M3Static, MeasuredContent } from "@/pages/myspace/m3e/components/M3Node";
 import {
   CORNER_GAIN,
@@ -107,16 +13,13 @@ import {
   HandleSide,
   SizeHandles,
 } from "@/pages/myspace/m3e/components/SizeHandles";
-import { LayersPanel } from "@/pages/myspace/m3e/components/Layers";
-import { FrameSizePicker, Inspector } from "@/pages/myspace/m3e/components/Inspector";
-import { FrameInspector } from "@/pages/myspace/m3e/components/FramePanel";
 import { Preview } from "@/pages/myspace/m3e/components/Preview";
-import { Logo } from "@/pages/myspace/m3e/components/Logo";
-import { PartsPalette } from "@/pages/myspace/m3e/components/PartsPalette";
-import { PromptPanel } from "@/pages/myspace/m3e/components/PromptPanel";
 import { Mode, Toolbar } from "@/pages/myspace/m3e/components/Toolbar";
-import { AiActionKey, AiPanel, aiErrorText } from "@/pages/myspace/m3e/components/AiPanel";
-import { TidyState, PANEL_FADE_H } from "@/pages/myspace/m3e/components/ui";
+import { AiActionKey, aiErrorText } from "@/pages/myspace/m3e/components/AiPanel";
+import { VANISH_MS, type View, type DragState, type Guide, type Snap } from "@/pages/myspace/m3e/lib/editorState";
+import { RAIL_W, type LeftTab } from "@/pages/myspace/m3e/components/EditorLeftPanel";
+import type { LengthDrag } from "@/pages/myspace/m3e/components/EditorRightPanel";
+import { TidyState } from "@/pages/myspace/m3e/components/ui";
 import {
   AiSettings,
   DEFAULT_AI,
@@ -142,12 +45,9 @@ import {
 import { constrainModalRails, modalRailOf, updateRail } from "@/pages/myspace/m3e/lib/rail";
 import { isProject, readProject, saveProject } from "@/pages/myspace/m3e/lib/project";
 import { hasShareHash, readShareHash } from "@/pages/myspace/m3e/lib/share";
-import { LoadingIndicator } from "@/pages/myspace/m3e/components/Loading";
 import { draftDesign } from "@/pages/myspace/m3e/lib/ai";
 import { ShareDialog } from "@/pages/myspace/m3e/components/ShareMenu";
-import { ColorPanel } from "@/pages/myspace/m3e/components/ColorPanel";
-import { MotionPanel, ShapePanel, TypePanel } from "@/pages/myspace/m3e/components/ThemePanel";
-import { makeCustomItem, useLibrary } from "@/pages/myspace/m3e/lib/library";
+import { useLibrary } from "@/pages/myspace/m3e/lib/library";
 import { useChrome, viewportBox } from "@/pages/myspace/m3e/lib/chrome";
 import {
   DocPaletteContext,
@@ -163,18 +63,12 @@ import {
   MobileSettings,
 } from "@/pages/myspace/m3e/components/Mobile";
 import { ConfirmDialog, IconBtn, Segmented } from "@/pages/myspace/m3e/components/ui";
-import {
-  Lang,
-  LangContext,
-  SEED_TEXT,
-  UiLang,
-  getLang,
-  setGlobalLang,
-  setRuUi,
-  t,
-  translateDefaultFrameName,
-  translateDefaultText,
-} from "@/pages/myspace/m3e/lib/i18n";
+import { Lang, LangContext, SEED_TEXT, UiLang, getLang, setGlobalLang, setRuUi, t, translateDefaultFrameName, translateDefaultText } from "@/pages/myspace/m3e/lib/i18n";
+import EditorRightPanel from "@/pages/myspace/m3e/components/EditorRightPanel";
+import EditorLeftPanel from "@/pages/myspace/m3e/components/EditorLeftPanel";
+import EditAccessDialog from "@/pages/myspace/m3e/components/EditAccessDialog";
+import FrameCard from "@/pages/myspace/m3e/components/FrameCard";
+import DragGhost from "@/pages/myspace/m3e/components/DragGhost";
 
 /** the screens while a model drafts: primary, tertiary and primary container, drifting */
 const BASE_PATH = ASSET_BASE;
@@ -194,14 +88,9 @@ const OPEN = {
   mass: 0.55,
 };
 const INSTANT = { duration: 0 };
-/** a cancelled part shrinking away: long enough to be seen, short enough not to be waited for */
-const VANISH_MS = 180;
-const VANISH = { duration: VANISH_MS / 1000, ease: [0.3, 0, 0.8, 0.15] as const };
 /** a hole opening or closing: the run's offset travels on the same curve the hole's own width does */
 const GAP_TWEEN = { duration: SETTLE_MS / 1000, ease: [0.2, 0, 0, 1] as const };
 
-/** the icon rail on the left edge of the parts / layers panel */
-const RAIL_W = 46;
 const MIN_Z = 0.25;
 const MAX_Z = 3;
 /** the room a screen keeps from the canvas edges when the camera glides to it: the floating
@@ -213,11 +102,7 @@ const HISTORY_MAX = 100;
 const BEFORE_KEY = "m3e:doc:before";
 const UI_KEY = "m3e:ui";
 
-type View = { x: number; y: number; z: number };
-type Snap = { groupId: string; index: number; pull: number };
 
-/** alignment guide: the snapped position plus the line to draw */
-type Guide = { x?: number; y?: number; gx?: number; gy?: number };
 const GUIDE_PX = 7;
 
 /** Material's 4dp grid: a coordinate rounded to it, measured from the screen's corner */
@@ -225,29 +110,6 @@ const GRID = 4;
 const onGrid = (v: number, origin: number) => origin + Math.round((v - origin) / GRID) * GRID;
 const FRAME_MARGIN = PHONE_MARGIN;
 
-type DragState = {
-  item: Item;
-  /** the part as it was picked up, before any run it hovered lent it its size */
-  base: Item;
-  /** where the part was held when it was picked up; the magnet is worked out from these, so a
-   *  run lending the part its size never moves the search out from under itself */
-  baseOffX: number;
-  baseOffY: number;
-  guide: Guide | null;
-  offX: number;
-  offY: number;
-  startX: number;
-  startY: number;
-  px: number;
-  py: number;
-  active: boolean;
-  fromPalette: boolean;
-  overBin: boolean;
-  snap: Snap | null;
-  settling: boolean;
-  /** let go where it cannot land: the ghost shrinks away before the state is cleared */
-  vanishing: boolean;
-};
 
 type Gesture =
   | { kind: "pan"; sx: number; sy: number; vx: number; vy: number }
@@ -366,8 +228,6 @@ const TALL = new Set<Kind>(["carousel", "navRail"]);
 const TALL_SIDES = ["top", "bottom"] as const;
 /** parts with one measure whichever side is pulled; none today, a picture has two */
 
-/** a screen changing size eases the way a settling part does */
-const SIZE_TRANSITION = `width ${SETTLE_MS}ms cubic-bezier(0.2, 0, 0, 1), height ${SETTLE_MS}ms cubic-bezier(0.2, 0, 0, 1), border-radius ${SETTLE_MS}ms cubic-bezier(0.2, 0, 0, 1)`;
 
 function translateSnapshot(snap: Snapshot, lang: Lang): Snapshot {
   return {
@@ -533,63 +393,7 @@ const mobileSeed = (lang: Lang = getLang()): Group[] => {
   ];
 };
 
-/** While the model works on a screen, the scheme's colors drift through its bezel. */
-function ThinkingRing({ p, frame }: { p: Palette; frame: Frame }) {
-  const still = useReducedMotion();
-  const w = frameSizeOf(frame).w + BEZEL * 2;
-  const h = frameLengthOf(frame) + BEZEL * 2;
-  const d = Math.ceil(Math.hypot(w, h)) + 80;
-  const stops = [
-    p.primary,
-    p.tertiaryContainer,
-    p.inversePrimary,
-    p.secondaryContainer,
-    p.primaryContainer,
-    p.primary,
-  ];
-  return (
-    <motion.div
-      aria-hidden
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.6, ease: [0.2, 0, 0, 1] }}
-      style={{ position: "absolute", inset: 0, pointerEvents: "none" }}
-    >
-      <motion.div
-        animate={still ? undefined : { rotate: 360 }}
-        transition={{ repeat: Infinity, duration: 3.2, ease: "linear" }}
-        style={{
-          position: "absolute",
-          left: "50%",
-          top: "50%",
-          width: d,
-          height: d,
-          marginLeft: -d / 2,
-          marginTop: -d / 2,
-          background: `conic-gradient(from 0deg, ${stops.join(", ")})`,
-          filter: "blur(22px)",
-        }}
-      />
-    </motion.div>
-  );
-}
 
-type LeftTab = "parts" | "layers" | "color" | "shape" | "type" | "motion" | "ai";
-/** the left rail: parts and layers, then the four theme axes of the whole design */
-const LEFT_TABS: {
-  key: LeftTab;
-  icon: string;
-  title: "parts" | "layers" | "colors" | "shape" | "typography" | "motion" | "ai";
-}[] = [
-  { key: "parts", icon: "add_box", title: "parts" },
-  { key: "layers", icon: "layers", title: "layers" },
-  { key: "color", icon: "palette", title: "colors" },
-  { key: "shape", icon: "rounded_corner", title: "shape" },
-  { key: "type", icon: "text_fields", title: "typography" },
-  { key: "motion", icon: "animation", title: "motion" },
-  { key: "ai", icon: "auto_awesome", title: "ai" },
-];
 
 export interface M3eEditorHandle {
   /** Показать экран по id: камера прилетает к нему и он выделяется. */
@@ -3178,7 +2982,6 @@ export default function Editor({
    *  A slider sends a stream of lengths; each is worked out from where the stream began, so a part
    *  is never taken for one at the foot halfway through and dragged along from then on. */
   /** One drag of a screen's length handle: the document it started from, and how it takes its one undo step */
-  type LengthDrag = { from: { frames: Frame[]; groups: Group[] }; snap: () => void };
   const setFrameLength = (id: string, length: number, drag?: LengthDrag) => {
     const run = lengthRun.current;
     const from = drag
@@ -4633,309 +4436,13 @@ export default function Editor({
               (() => {
                 const r = canvasRect();
                 return (
-                  <div
-                    aria-hidden
-                    style={{
-                      position: "fixed",
-                      inset: 0,
-                      pointerEvents: "none",
-                      zIndex: 60,
-                      overflow: "hidden",
-                    }}
-                  >
-                    <div
-                      style={{
-                        position: "absolute",
-                        left: 0,
-                        top: 0,
-                        transform: `translate(${(r?.left ?? 0) + view.x}px, ${(r?.top ?? 0) + view.y}px) scale(${view.z})`,
-                        transformOrigin: "0 0",
-                        fontFamily: fontFamilyOf(theme.font, lang),
-                      }}
-                    >
-                      {/* the part in flight */}
-                      {drag?.active && (
-                        <motion.div
-                          style={{
-                            position: "absolute",
-                            left: 0,
-                            top: 0,
-                            x: sx,
-                            y: sy,
-                            pointerEvents: "none",
-                            zIndex: 50,
-                          }}
-                          animate={{
-                            opacity: drag.vanishing ? 0 : drag.overBin ? 0.4 : 1,
-                            scale: drag.vanishing ? 0.6 : drag.overBin ? 0.84 : 1,
-                          }}
-                          transition={
-                            drag.vanishing
-                              ? VANISH
-                              : {
-                                  type: "spring",
-                                  stiffness: 520,
-                                  damping: 34,
-                                  mass: 0.6,
-                                }
-                          }
-                        >
-                          <M3Node
-                            item={drag.item}
-                            palette={dp}
-                            widths={widths}
-                            lit={dragLit}
-                            dragging
-                            radii={(() => {
-                              const conn = connectSpecOf(drag.item);
-                              if (!conn || !drag.snap) return baseRadii(drag.item);
-                              const g = groupsRef.current.find((x) => x.id === drag.snap!.groupId);
-                              const mm = (g?.items.length ?? 0) + 1;
-                              const k = drag.snap.index;
-                              return runRadii(
-                                conn.axis,
-                                k === 0,
-                                k === mm - 1,
-                                k > 0,
-                                k < mm - 1,
-                                drag.snap.pull,
-                                conn.outer,
-                                conn.inner,
-                              );
-                            })()}
-                          />
-                        </motion.div>
-                      )}
-                    </div>
-                  </div>
+                  <DragGhost r={r} view={view} theme={theme} lang={lang} drag={drag} sx={sx} sy={sy} dp={dp} widths={widths} dragLit={dragLit} groupsRef={groupsRef} runRadii={runRadii} />
                 );
               })()}
 
             {/* ---- left: rail + parts / layers ---- */}
             {!isMobile && (
-              <aside
-                style={{
-                  ...panelStyle,
-                  width: leftOpen ? leftW : RAIL_W,
-                  flexDirection: "row",
-                  transition: "width 200ms cubic-bezier(0.2, 0, 0, 1)",
-                }}
-              >
-                {/* dropping a canvas part anywhere on this side deletes it, whichever tab is open */}
-                {overBin && (
-                  <div
-                    style={{
-                      position: "absolute",
-                      inset: 0,
-                      zIndex: 5,
-                      background: "rgba(179,38,30,0.10)",
-                      display: "grid",
-                      placeItems: "center",
-                      pointerEvents: "none",
-                      color: p.error,
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: 72,
-                        height: 72,
-                        borderRadius: 36,
-                        background: p.errorContainer,
-                        color: p.onErrorContainer,
-                        display: "grid",
-                        placeItems: "center",
-                        boxShadow: "0 4px 14px rgba(0,0,0,0.14)",
-                      }}
-                    >
-                      <Icon name="delete" size={34} />
-                    </div>
-                  </div>
-                )}
-                <div
-                  onPointerEnter={() => setRailHover(true)}
-                  onPointerLeave={() => setRailHover(false)}
-                  onClick={(e) => {
-                    // a click on the rail's empty background opens the panel
-                    if (!leftOpen && e.target === e.currentTarget) setLeftOpen(true);
-                  }}
-                  style={{
-                    width: RAIL_W,
-                    flex: "0 0 auto",
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    gap: 6,
-                    padding: "10px 0",
-                    background: p.surfaceContainerLow,
-                    cursor: leftOpen ? undefined : "pointer",
-                  }}
-                >
-                  {!leftOpen && railHover ? (
-                    <IconBtn
-                      icon="left_panel_open"
-                      p={p}
-                      on
-                      onClick={() => setLeftOpen(true)}
-                      title={t("openPanel", lang)}
-                      size={34}
-                    />
-                  ) : (
-                    <div
-                      onClick={() => !leftOpen && setLeftOpen(true)}
-                      style={{
-                        width: 40,
-                        height: 40,
-                        display: "grid",
-                        placeItems: "center",
-                        cursor: leftOpen ? "default" : "pointer",
-                      }}
-                    >
-                      <Logo size={28} color={p.primary} glyph={p.onPrimary} />
-                    </div>
-                  )}
-                  <div style={{ height: 6 }} />
-                  {LEFT_TABS.map((tab, i) => (
-                    <div key={tab.key} style={{ marginTop: i === 2 || i === 6 ? 10 : 0 }}>
-                      <IconBtn
-                        icon={tab.icon}
-                        p={p}
-                        on={leftOpen && leftTab === tab.key}
-                        onClick={() => {
-                          setLeftTab(tab.key);
-                          setLeftOpen(true);
-                        }}
-                        title={t(tab.title, lang)}
-                        size={36}
-                      />
-                    </div>
-                  ))}
-                  <div style={{ flex: 1 }} onClick={() => !leftOpen && setLeftOpen(true)} />
-                  <IconBtn
-                    icon={chrome.mode === "dark" ? "light_mode" : "dark_mode"}
-                    p={p}
-                    onClick={chrome.toggle}
-                    title={chrome.mode === "dark" ? "Светлый интерфейс" : "Тёмный интерфейс"}
-                    size={36}
-                  />
-                </div>
-                {leftOpen && (
-                  <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 8,
-                        padding: "10px 10px 0 14px",
-                      }}
-                    >
-                      <span
-                        style={{
-                          fontWeight: 700,
-                          fontSize: 14,
-                          color: p.onSurface,
-                          flex: 1,
-                        }}
-                      >
-                        {t(LEFT_TABS.find((x) => x.key === leftTab)?.title ?? "parts", lang)}
-                      </span>
-                      <IconBtn
-                        icon="left_panel_close"
-                        p={p}
-                        onClick={() => setLeftOpen(false)}
-                        title={t("closePanel", lang)}
-                      />
-                    </div>
-                    <div style={{ flex: 1, minHeight: 0 }}>
-                      {leftTab === "parts" ? (
-                        <PartsPalette
-                          palette={p}
-                          favorites={favorites}
-                          onToggleFavorite={(k) =>
-                            setFavorites((f) =>
-                              f.includes(k) ? f.filter((x) => x !== k) : [...f, k],
-                            )
-                          }
-                          onPartPointerDown={onPartPointerDown}
-                          onPartActivate={addPart}
-                          ai={aiSettings}
-                          mine={library.list}
-                          onSaveCustom={library.save}
-                          onRemoveCustom={library.remove}
-                          onCustomAdd={(spec) => addPart("custom", makeCustomItem(spec))}
-                          onCustomDown={(e, spec) =>
-                            onPartPointerDown(e, "custom", makeCustomItem(spec))
-                          }
-                        />
-                      ) : leftTab === "color" ? (
-                        <ColorPanel
-                          p={p}
-                          paletteKey={paletteKey}
-                          onPalette={setPaletteKey}
-                          custom={customPalette}
-                          onCustom={setCustomPalette}
-                          dynamic={dynamicColor}
-                          onDynamic={setDynamicColor}
-                          theme={theme}
-                          onTheme={patchTheme}
-                        />
-                      ) : leftTab === "shape" ? (
-                        <ShapePanel p={p} theme={theme} onChange={patchTheme} />
-                      ) : leftTab === "type" ? (
-                        <TypePanel p={p} theme={theme} onChange={patchTheme} />
-                      ) : leftTab === "motion" ? (
-                        <MotionPanel p={p} theme={theme} onChange={patchTheme} />
-                      ) : leftTab === "ai" ? (
-                        <AiPanel p={p} settings={aiSettings} onSettings={updateAiSettings} />
-                      ) : (
-                        <LayersPanel
-                          p={p}
-                          frames={frames}
-                          frameId={layersFrame?.id ?? null}
-                          onFrame={(id) => {
-                            setLayersFrameId(id);
-                            setSelectedIds([]);
-                            setSelectedFrameId(id);
-                            const f = framesRef.current.find((x) => x.id === id);
-                            if (f) glideToFrame(f);
-                          }}
-                          groups={layerGroups}
-                          widths={widths}
-                          selectedIds={selectedIds}
-                          onSelect={(ids, add) => {
-                            setSelectedIds((cur) =>
-                              add ? [...cur.filter((x) => !ids.includes(x)), ...ids] : ids,
-                            );
-                            setSelectedFrameId(null);
-                            setSelectedLinkId(null);
-                            setRightTab("edit");
-                          }}
-                          onReorder={reorderLayers}
-                          onToggleLock={toggleGroupLock}
-                          onReorderItems={reorderGroupItems}
-                          onDragging={onLayerDragging}
-                        />
-                      )}
-                    </div>
-                  </div>
-                )}
-                {leftOpen && (
-                  <div
-                    onPointerDown={(e) => {
-                      e.preventDefault();
-                      setResizing("left");
-                    }}
-                    style={{
-                      position: "absolute",
-                      top: 0,
-                      bottom: 0,
-                      right: -3,
-                      width: 6,
-                      cursor: "col-resize",
-                      zIndex: 5,
-                    }}
-                  />
-                )}
-              </aside>
+              <EditorLeftPanel panelStyle={panelStyle} leftOpen={leftOpen} leftW={leftW} overBin={overBin} p={p} setRailHover={setRailHover} setLeftOpen={setLeftOpen} railHover={railHover} lang={lang} leftTab={leftTab} setLeftTab={setLeftTab} chrome={chrome} favorites={favorites} setFavorites={setFavorites} onPartPointerDown={onPartPointerDown} addPart={addPart} aiSettings={aiSettings} library={library} paletteKey={paletteKey} setPaletteKey={setPaletteKey} customPalette={customPalette} setCustomPalette={setCustomPalette} dynamicColor={dynamicColor} setDynamicColor={setDynamicColor} theme={theme} patchTheme={patchTheme} updateAiSettings={updateAiSettings} frames={frames} layersFrame={layersFrame} setLayersFrameId={setLayersFrameId} setSelectedIds={setSelectedIds} setSelectedFrameId={setSelectedFrameId} framesRef={framesRef} glideToFrame={glideToFrame} layerGroups={layerGroups} widths={widths} selectedIds={selectedIds} setSelectedLinkId={setSelectedLinkId} setRightTab={setRightTab} reorderLayers={reorderLayers} toggleGroupLock={toggleGroupLock} reorderGroupItems={reorderGroupItems} onLayerDragging={onLayerDragging} setResizing={setResizing} />
             )}
 
             {/* ---- canvas ---- */}
@@ -4984,184 +4491,7 @@ export default function Editor({
                       const h = frameLengthOf(f);
                       const radius = frameRadius(f);
                       return (
-                        <div
-                          key={f.id}
-                          data-frame={f.id}
-                          style={{
-                            position: "absolute",
-                            left: f.x,
-                            top: f.y,
-                            transition: easing
-                              ? `left ${SETTLE_MS}ms cubic-bezier(0.2, 0, 0, 1)`
-                              : undefined,
-                          }}
-                        >
-                          <div
-                            onPointerDown={(e) => onFramePointerDown(e, f)}
-                            style={{
-                              position: "absolute",
-                              left: -BEZEL,
-                              top: -BEZEL - FRAME_LABEL_H,
-                              height: FRAME_LABEL_H,
-                              /* follows the zoom, softened: a little larger when zoomed out, a little smaller when zoomed in */
-                              transform: `scale(${clamp(1 / view.z, 0.7, 1.4)})`,
-                              transformOrigin: "left bottom",
-                              display: "flex",
-                              alignItems: "center",
-                              gap: 10,
-                              padding: "0 8px",
-                              fontSize: 20,
-                              fontWeight: 600,
-                              color: on ? p.primary : p.onSurfaceVariant,
-                              transition: "color 160ms",
-                              cursor: handMode ? "grab" : "move",
-                              userSelect: "none",
-                              whiteSpace: "nowrap",
-                              fontFamily: uiFontFamily(lang),
-                            }}
-                          >
-                            <div onPointerDown={(e) => e.stopPropagation()}>
-                              <FrameSizePicker
-                                frame={f}
-                                onChange={(preset) => setFramePreset(f.id, preset)}
-                                palette={p}
-                                compact
-                              />
-                            </div>
-                            {f.name || t("screen", lang)}
-                          </div>
-                          <div
-                            onPointerDown={(e) => onFramePointerDown(e, f)}
-                            style={{
-                              position: "absolute",
-                              left: -BEZEL,
-                              top: -BEZEL,
-                              overflow: "hidden",
-                              width: w + BEZEL * 2,
-                              height: h + BEZEL * 2,
-                              borderRadius: radius + BEZEL,
-                              /* the chosen screen's bezel is painted in the theme's primary; the others stay dark */
-                              backgroundColor: on ? dp.primary : dp.inverseSurface,
-                              backgroundImage: draftBusy ? draftGradient(dp) : undefined,
-                              backgroundSize: draftBusy ? "300% 300%" : undefined,
-                              animation: draftBusy
-                                ? "m3e-drift 3s ease-in-out infinite"
-                                : undefined,
-                              boxShadow: on
-                                ? "0 18px 50px rgba(0,0,0,0.16)"
-                                : "0 18px 50px rgba(0,0,0,0.14)",
-                              cursor: handMode ? "grab" : "move",
-                              transition:
-                                lengthDragId === f.id
-                                  ? "background-color 160ms, box-shadow 120ms"
-                                  : `background-color 160ms, box-shadow 120ms, ${SIZE_TRANSITION}`,
-                            }}
-                          >
-                            <AnimatePresence>
-                              {aiFrameId === f.id && <ThinkingRing key="ring" p={dp} frame={f} />}
-                            </AnimatePresence>
-                            <div
-                              data-screen={f.id}
-                              style={{
-                                position: "absolute",
-                                left: BEZEL,
-                                top: BEZEL,
-                                width: w,
-                                height: h,
-                                borderRadius: radius,
-                                background: bg,
-                                overflow: "hidden",
-                                transition: lengthDragId === f.id ? undefined : SIZE_TRANSITION,
-                              }}
-                            >
-                              {groups
-                                .filter((g) => frameOf.get(g.id) === f.id)
-                                .map((g) => renderGroup(g, f.x, f.y))}
-                              {groups.some((g) => frameOf.get(g.id) === f.id && modalRailOf(g)) && (
-                                <div
-                                  aria-hidden
-                                  style={{
-                                    position: "absolute",
-                                    inset: 0,
-                                    background: "rgba(0,0,0,0.32)",
-                                    pointerEvents: "none",
-                                    zIndex: 1,
-                                  }}
-                                />
-                              )}
-                              {/* where the device ends on a screen that runs further: below it, the body scrolls */}
-                              {h > fold && (
-                                <div
-                                  aria-hidden
-                                  style={{
-                                    position: "absolute",
-                                    left: 0,
-                                    right: 0,
-                                    top: fold,
-                                    borderTop: `2px dashed ${p.outline}`,
-                                    opacity: 0.6,
-                                    pointerEvents: "none",
-                                    zIndex: 2,
-                                  }}
-                                />
-                              )}
-                              {draftBusy && (
-                                <div
-                                  style={{
-                                    position: "absolute",
-                                    inset: 0,
-                                    zIndex: 90,
-                                    background: canvasBg,
-                                    display: "grid",
-                                    placeItems: "center",
-                                  }}
-                                >
-                                  <LoadingIndicator size={96} color="url(#m3e-drafting)" />
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                          {/* the chosen screen's length grip, a small nub on its bottom bezel: drag it down and the body runs on */}
-                          {on && !handMode && !draftBusy && (
-                            <div
-                              role="slider"
-                              tabIndex={0}
-                              aria-label={t("screenLength", lang)}
-                              aria-valuemin={selectedMinLength}
-                              aria-valuemax={maxFrameLength(f)}
-                              aria-valuenow={h}
-                              onPointerDown={(e) => onLengthHandleDown(e, f)}
-                              onKeyDown={(e) => onLengthHandleKey(e, f)}
-                              style={{
-                                position: "absolute",
-                                left: w / 2 - 32,
-                                top: h - 4,
-                                width: 64,
-                                height: BEZEL + 8,
-                                display: "grid",
-                                placeItems: "center",
-                                transform: `scale(${clamp(1 / view.z, 1, 2)})`,
-                                cursor: "ns-resize",
-                                touchAction: "none",
-                                zIndex: 1,
-                                transition:
-                                  lengthDragId === f.id
-                                    ? undefined
-                                    : `top ${SETTLE_MS}ms cubic-bezier(0.2, 0, 0, 1)`,
-                              }}
-                            >
-                              <div
-                                style={{
-                                  width: 40,
-                                  height: 4,
-                                  borderRadius: 2,
-                                  background: dp.onPrimary,
-                                  opacity: 0.9,
-                                }}
-                              />
-                            </div>
-                          )}
-                        </div>
+                        <FrameCard key={f.id} f={f} easing={easing} onFramePointerDown={onFramePointerDown} view={view} on={on} p={p} handMode={handMode} lang={lang} setFramePreset={setFramePreset} w={w} h={h} radius={radius} dp={dp} draftBusy={draftBusy} lengthDragId={lengthDragId} aiFrameId={aiFrameId} bg={bg} groups={groups} frameOf={frameOf} renderGroup={renderGroup} fold={fold} canvasBg={canvasBg} selectedMinLength={selectedMinLength} onLengthHandleDown={onLengthHandleDown} onLengthHandleKey={onLengthHandleKey} />
                       );
                     })}
 
@@ -5661,165 +4991,7 @@ export default function Editor({
 
             {/* ---- right: inspector / prompt ---- */}
             {showRight && (
-              <aside style={{ ...panelStyle, width: rightW }}>
-                <div
-                  onPointerDown={(e) => {
-                    e.preventDefault();
-                    setResizing("right");
-                  }}
-                  style={{
-                    position: "absolute",
-                    top: 0,
-                    bottom: 0,
-                    left: -3,
-                    width: 6,
-                    cursor: "col-resize",
-                    zIndex: 5,
-                  }}
-                />
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                    /* the close button lands exactly where the button that reopens the panel sits */
-                    padding: "20px 20px 8px 16px",
-                    /* the band is the panel's own colour; the strip below it carries the fade */
-                    background: p.surface,
-                    /* while the prompt stands full screen the band has nothing to do: it fades out as the cover opens and back in as it closes */
-                    opacity: promptCoverUp ? 0 : 1,
-                    pointerEvents: promptCoverUp ? "none" : undefined,
-                    transition: "opacity 220ms ease",
-                  }}
-                  inert={promptCoverUp ? "" : undefined}
-                >
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <Segmented<"edit" | "prompt">
-                      options={[
-                        {
-                          key: "edit",
-                          icon: "tune",
-                          title: t("edit", lang),
-                          grow: false,
-                          wide: true,
-                        },
-                        {
-                          key: "prompt",
-                          icon: "auto_awesome",
-                          label: t("prompt", lang),
-                          title: t("prompt", lang),
-                          grow: true,
-                        },
-                      ]}
-                      value={rightTab}
-                      onChange={setRightTab}
-                      p={p}
-                      height={34}
-                    />
-                  </div>
-                  {/* the same button in the same spot as the one that reopens the panel, but plain:
-                   * the filled look belongs to the one that has to be found over the canvas */}
-                  <IconBtn
-                    icon="right_panel_close"
-                    p={p}
-                    size={36}
-                    onClick={() => setRightOpen(false)}
-                    title={t("closePanel", lang)}
-                  />
-                </div>
-                <div style={{ flex: 1, minHeight: 0, position: "relative" }}>
-                  {/* what scrolls past the top of the panel dissolves into the band instead of being cut */}
-                  <div
-                    aria-hidden
-                    style={{
-                      position: "absolute",
-                      top: 0,
-                      left: 0,
-                      right: 0,
-                      height: PANEL_FADE_H,
-                      zIndex: 3,
-                      background: `linear-gradient(to bottom, ${p.surface}, ${p.surface}00)`,
-                      pointerEvents: "none",
-                    }}
-                  />
-                  {rightTab === "edit" && selectedFrame && !selected ? (
-                    <FrameInspector
-                      frame={selectedFrame}
-                      palette={p}
-                      onSize={(preset) => setFramePreset(selectedFrame.id, preset)}
-                      onChange={(patch) => patchFrame(selectedFrame.id, patch)}
-                      onDelete={() => deleteFrame(selectedFrame.id)}
-                      onDuplicate={() => duplicateFrame(selectedFrame.id)}
-                      onPreview={() => openPreview(selectedFrame.id)}
-                      prompt={buildPrompt(doc, widths, selectedFrame.id, lang)}
-                      onSaveImage={() => saveFrameImage(selectedFrame)}
-                      tidy={tidyState ?? "done"}
-                      onTidy={() => tidy(selectedFrame)}
-                      onPlace={(pl) => setPlace(selectedFrame, pl)}
-                      minLength={selectedMinLength}
-                      onLength={(length) => setFrameLength(selectedFrame.id, length)}
-                      ai={{
-                        ready: aiReady,
-                        reason: aiReason,
-                        busy: aiBusy && aiFrameId === selectedFrame.id,
-                        onRun: () => runAi("describe", selectedFrame),
-                        onCancel: cancelAi,
-                      }}
-                    />
-                  ) : rightTab === "edit" ? (
-                    <Inspector
-                      ai={{
-                        ready: aiReady && !!tidyTarget,
-                        reason: aiReason,
-                        busy: aiBusy,
-                        onRun: () => {
-                          if (tidyTarget && selected) runAi("behavior", tidyTarget, selected.id);
-                        },
-                        onCancel: cancelAi,
-                      }}
-                      item={selectedIds.length > 1 ? null : selected}
-                      railStandalone={groups.some(
-                        (g) => g.items.length === 1 && g.items[0].id === selected?.id,
-                      )}
-                      frame={selectedPartFrame}
-                      palette={p}
-                      frames={frame === "phone" ? frames : []}
-                      onChange={patchSelected}
-                      onDelete={deleteSelected}
-                      onDuplicate={duplicateSelected}
-                      locked={selectedLocked}
-                      onToggleLock={toggleLockSelected}
-                      onPlace={selectionPlaceable ? placeSelected : undefined}
-                      widths={widths}
-                      selfRect={selectedRect}
-                      allFrames={frames}
-                      onShowOn={onShowOn}
-                      onShowMenu={onShowMenu}
-                      multi={selectedIds.length}
-                      grouped={!!selectedGroup}
-                      selectionWhole={selectionWhole}
-                      selectionKey={selectedIds.join(" ")}
-                      onGroup={groupSelected}
-                      onUngroup={ungroupSelected}
-                    />
-                  ) : (
-                    <PromptPanel
-                      doc={doc}
-                      widths={widths}
-                      palette={p}
-                      onCover={setPromptCoverUp}
-                      onDoc={(patch) => {
-                        if (patch.title !== undefined) setTitle(patch.title);
-                        if (patch.brief !== undefined) setBrief(patch.brief);
-                        if ("promptEdit" in patch) setPromptEdit(patch.promptEdit);
-                        if ("promptOptions" in patch) setPromptOptions(patch.promptOptions);
-                        if ("platform" in patch)
-                          setPlatform(isPlatform(patch.platform) ? patch.platform : null);
-                      }}
-                    />
-                  )}
-                </div>
-              </aside>
+              <EditorRightPanel panelStyle={panelStyle} rightW={rightW} setResizing={setResizing} p={p} promptCoverUp={promptCoverUp} lang={lang} rightTab={rightTab} setRightTab={setRightTab} setRightOpen={setRightOpen} selectedFrame={selectedFrame} selected={selected} setFramePreset={setFramePreset} patchFrame={patchFrame} deleteFrame={deleteFrame} duplicateFrame={duplicateFrame} openPreview={openPreview} doc={doc} widths={widths} saveFrameImage={saveFrameImage} tidyState={tidyState} tidy={tidy} setPlace={setPlace} selectedMinLength={selectedMinLength} setFrameLength={setFrameLength} aiReady={aiReady} aiReason={aiReason} aiBusy={aiBusy} aiFrameId={aiFrameId} runAi={runAi} cancelAi={cancelAi} tidyTarget={tidyTarget} selectedIds={selectedIds} groups={groups} selectedPartFrame={selectedPartFrame} frame={frame} frames={frames} patchSelected={patchSelected} deleteSelected={deleteSelected} duplicateSelected={duplicateSelected} selectedLocked={selectedLocked} toggleLockSelected={toggleLockSelected} selectionPlaceable={selectionPlaceable} placeSelected={placeSelected} selectedRect={selectedRect} onShowOn={onShowOn} onShowMenu={onShowMenu} selectedGroup={selectedGroup} selectionWhole={selectionWhole} groupSelected={groupSelected} ungroupSelected={ungroupSelected} setPromptCoverUp={setPromptCoverUp} setTitle={setTitle} setBrief={setBrief} setPromptEdit={setPromptEdit} setPromptOptions={setPromptOptions} setPlatform={setPlatform} />
             )}
 
             <input
@@ -5892,62 +5064,7 @@ export default function Editor({
           </AnimatePresence>
 
           {editAccess === "readonly" && (
-            <div
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="edit-access-title"
-              style={{
-                position: "fixed",
-                inset: 0,
-                zIndex: 100,
-                display: "grid",
-                placeItems: "center",
-                padding: 24,
-                background: "rgba(0,0,0,0.32)",
-              }}
-            >
-              <div
-                style={{
-                  width: "min(420px, 100%)",
-                  padding: 24,
-                  borderRadius: 28,
-                  background: p.surfaceContainerHigh,
-                  color: p.onSurface,
-                  boxShadow: "0 12px 40px rgba(0,0,0,0.22)",
-                }}
-              >
-                <Icon name="lock" size={28} />
-                <h1
-                  id="edit-access-title"
-                  style={{ margin: "16px 0 8px", fontSize: 22, lineHeight: 1.25 }}
-                >
-                  {t("readOnlyTitle", lang)}
-                </h1>
-                <p style={{ margin: 0, color: p.onSurfaceVariant, fontSize: 14, lineHeight: 1.5 }}>
-                  {t("readOnlyBody", lang)}
-                </p>
-                <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 24 }}>
-                  <button
-                    autoFocus
-                    className="m3-press"
-                    onClick={() => window.location.reload()}
-                    style={{
-                      minHeight: 40,
-                      padding: "0 20px",
-                      border: "none",
-                      borderRadius: 20,
-                      background: p.primary,
-                      color: p.onPrimary,
-                      fontSize: 14,
-                      fontWeight: 700,
-                      cursor: "pointer",
-                    }}
-                  >
-                    {t("reload", lang)}
-                  </button>
-                </div>
-              </div>
-            </div>
+            <EditAccessDialog p={p} lang={lang} />
           )}
         </DocPaletteContext.Provider>
       </ThemeContext.Provider>

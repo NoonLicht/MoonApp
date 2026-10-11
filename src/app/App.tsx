@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef, Suspense } from "react";
 import {
   Sun,
   Moon,
@@ -11,7 +11,7 @@ import {
   ListChecks,
   Sparkles,
 } from "lucide-react";
-import { I18nProvider, useI18n } from "@/app/i18n";
+import { I18nProvider, useI18n, storedLang } from "@/app/i18n";
 import { ContextMenuProvider } from "@/components/ContextMenu";
 import CommandPalette from "@/components/CommandPalette";
 import ErrorBoundary from "@/components/ErrorBoundary";
@@ -24,6 +24,7 @@ import {
   KEEP_ALIVE_DEFAULT_IDLE_MIN,
 } from "@/lib/pageCache";
 import { initTelemetry, setCurrentPage } from "@/lib/telemetry";
+import { startCompanionBridge } from "@/lib/companionBridge";
 import ProxyPanel from "@/pages/bypass/parts/ProxyPanel";
 import TaskManagerPanel from "@/components/TaskManagerPanel";
 import WelcomeModal from "@/components/WelcomeModal";
@@ -46,36 +47,13 @@ import "@/styles/lecture.css";
 import "@/styles/bypass.css";
 import "@/styles/automation.css";
 import "@/styles/budget.css";
+import "@/styles/diary.css";
+import "@/styles/rss.css";
 import "@/styles/tuning.css";
 import "@/styles/translate.css";
 import "@/styles/movies.css";
 import "@/styles/upscale.css";
 import "@/styles/screenshots.css";
-
-// Страницы
-import StorePage from "@/pages/store/StorePage";
-import ConverterPage from "@/pages/convert/ConverterPage";
-import CompressorPage from "@/pages/compressor/CompressorPage";
-import UpscalePage from "@/pages/upscale/UpscalePage";
-import VideoPage from "@/pages/video/VideoPage";
-import MusicPage from "@/pages/music/MusicPage";
-import BooksPage from "@/pages/books/BooksPage";
-import MonitorPage from "@/pages/monitor/MonitorPage";
-import AiChatPage from "@/pages/ai-chat/AiChatPage";
-import AudiobookTTSPage from "@/pages/voice/AudiobookTTSPage";
-import ArchiverPage from "@/pages/archiver/ArchiverPage";
-import SettingsPage from "@/pages/settings/SettingsPage";
-import MyspacePage from "@/pages/myspace/MyspacePage";
-import LectureRecorderPage from "@/pages/lecture/LectureRecorderPage";
-import BypassControlPage from "@/pages/bypass/BypassControlPage";
-import MoviesPage from "@/pages/movies/MoviesPage";
-import ToolsPage from "@/pages/tools/ToolsPage";
-import GamesPage from "@/pages/games/GamesPage";
-import ScreenshotsPage from "@/pages/screenshots/ScreenshotsPage";
-import AutomationPage from "@/pages/automation/AutomationPage";
-import BudgetPage from "@/pages/budget/BudgetPage";
-import TuningPage from "@/pages/tuning/TuningPage";
-import TranslatePage from "@/pages/translate/TranslatePage";
 
 // Идентификаторы страниц и их перечень (PAGES) живут в src/navigation.ts —
 // общий источник для дока приложения и списка «Стартовая страница» в настройках.
@@ -99,44 +77,78 @@ function themeFamily(theme: string): string {
 
 // Перечень страниц (порядок в доке + названия) — в src/navigation.ts.
 
-const PAGE_COMPONENTS: Record<PageId, React.ComponentType> = {
-  store: StorePage,
-  convert: ConverterPage,
-  compress: CompressorPage,
-  upscale: UpscalePage,
-  video: VideoPage,
-  movies: MoviesPage,
-  music: MusicPage,
-  books: BooksPage,
-  monitor: MonitorPage,
-  myspace: MyspacePage,
-  aichat: AiChatPage,
-  voice: AudiobookTTSPage,
-  lecture: LectureRecorderPage,
-  bypass: BypassControlPage,
-  tools: ToolsPage,
-  games: GamesPage,
-  screenshots: ScreenshotsPage,
-  automation: AutomationPage,
-  budget: BudgetPage,
-  tuning: TuningPage,
-  translate: TranslatePage,
-  archive: ArchiverPage,
-  settings: SettingsPage,
+/**
+ * Загрузчики страниц. Каждая страница — отдельный чанк: раньше все 23 страницы
+ * импортировались статически и попадали в один стартовый бандл (~4,4 МБ),
+ * который парсился целиком ещё до первого кадра. Теперь при старте грузится
+ * только оболочка и стартовая страница, остальные — при первом открытии
+ * (или заранее, при наведении на кнопку дока — см. preloadPage).
+ */
+type PageModule = { default: React.ComponentType };
+const PAGE_LOADERS: Record<PageId, () => Promise<PageModule>> = {
+  store: () => import("@/pages/store/StorePage"),
+  convert: () => import("@/pages/convert/ConverterPage"),
+  compress: () => import("@/pages/compressor/CompressorPage"),
+  upscale: () => import("@/pages/upscale/UpscalePage"),
+  video: () => import("@/pages/video/VideoPage"),
+  movies: () => import("@/pages/movies/MoviesPage"),
+  music: () => import("@/pages/music/MusicPage"),
+  books: () => import("@/pages/books/BooksPage"),
+  monitor: () => import("@/pages/monitor/MonitorPage"),
+  myspace: () => import("@/pages/myspace/MyspacePage"),
+  diary: () => import("@/pages/diary/DiaryPage"),
+  rss: () => import("@/pages/rss/RssPage"),
+  aichat: () => import("@/pages/ai-chat/AiChatPage"),
+  voice: () => import("@/pages/voice/AudiobookTTSPage"),
+  lecture: () => import("@/pages/lecture/LectureRecorderPage"),
+  bypass: () => import("@/pages/bypass/BypassControlPage"),
+  tools: () => import("@/pages/tools/ToolsPage"),
+  games: () => import("@/pages/games/GamesPage"),
+  screenshots: () => import("@/pages/screenshots/ScreenshotsPage"),
+  automation: () => import("@/pages/automation/AutomationPage"),
+  budget: () => import("@/pages/budget/BudgetPage"),
+  tuning: () => import("@/pages/tuning/TuningPage"),
+  translate: () => import("@/pages/translate/TranslatePage"),
+  archive: () => import("@/pages/archiver/ArchiverPage"),
+  settings: () => import("@/pages/settings/SettingsPage"),
 };
+
+/** Один промис на страницу: повторные preload/lazy не дёргают import() заново. */
+const pageModules = new Map<PageId, Promise<PageModule>>();
+function loadPage(id: PageId): Promise<PageModule> {
+  let p = pageModules.get(id);
+  if (!p) {
+    p = PAGE_LOADERS[id]();
+    // Сбой загрузки чанка (например, обновление поменяло хэши файлов) не должен
+    // «залипать»: следующая попытка снова вызовет import().
+    p.catch(() => pageModules.delete(id));
+    pageModules.set(id, p);
+  }
+  return p;
+}
+
+/** Подгрузить чанк страницы заранее (наведение на кнопку дока). */
+function preloadPage(id: PageId): void {
+  void loadPage(id).catch(() => {});
+}
 
 /**
  * Страницы в стопке обёрнуты в memo: ререндер оболочки (смена тулбара, счётчики
  * задач и т.п.) не должен перерисовывать скрытые страницы — они остаются
  * смонтированными, но «спящими». Контекст (id/active) при этом работает как надо.
  */
-const MEMO_PAGE_COMPONENTS = (Object.keys(PAGE_COMPONENTS) as PageId[]).reduce(
+const MEMO_PAGE_COMPONENTS = (Object.keys(PAGE_LOADERS) as PageId[]).reduce(
   (acc, id) => {
-    acc[id] = React.memo(PAGE_COMPONENTS[id]);
+    acc[id] = React.memo(React.lazy(() => loadPage(id)));
     return acc;
   },
   {} as Record<PageId, React.ComponentType>,
 );
+
+/** Заглушка на время загрузки чанка страницы (обычно — доли секунды). */
+function PageFallback() {
+  return <div className="page-loading" aria-busy="true" />;
+}
 
 interface ShellProps {
   active: PageId;
@@ -315,15 +327,28 @@ function Shell({
               перекрывать его сами кнопки — см. src/components/overlayHost.ts. */}
           <div id="under-toolbar-root" className="under-toolbar-root" />
           <header
-            className="top-toolbar titlebar-drag"
-            onMouseDown={(e) => {
-              // Только левая кнопка и только сам drag-регион (не кнопки внутри
-              // тулбара — у них класс no-drag, но JS-событие всё равно бы
-              // всплыло сюда). Дальше main-процесс сам решает, разворачено ли
-              // окно — если нет, ничего не делает.
+            className="top-toolbar"
+            onPointerDown={(e) => {
+              // Окно двигает main-процесс по положению курсора (плавно, с возвратом
+              // развёрнутого окна к прежнему размеру). Только левая кнопка и только
+              // пустое место шапки — не интерактивные элементы.
               if (e.button !== 0) return;
-              if ((e.target as HTMLElement).closest(".no-drag")) return;
-              window.appBridge?.dragRestore?.({ x: e.screenX, y: e.screenY });
+              const el = e.target as HTMLElement;
+              if (el.closest(".no-drag, button, a, input, select, textarea, [role=button]")) return;
+              e.currentTarget.setPointerCapture(e.pointerId);
+              window.appBridge?.dragStart?.();
+            }}
+            onPointerUp={(e) => {
+              if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+                e.currentTarget.releasePointerCapture(e.pointerId);
+                window.appBridge?.dragEnd?.();
+              }
+            }}
+            onPointerCancel={() => window.appBridge?.dragEnd?.()}
+            onDoubleClick={(e) => {
+              const el = e.target as HTMLElement;
+              if (el.closest(".no-drag, button, a, input, select, textarea, [role=button]")) return;
+              window.appBridge?.toggleMaximize();
             }}
           >
             <div className="tb-side-left">
@@ -415,7 +440,9 @@ function Shell({
               {stack.map((id) => (
                 <PageHost key={id} id={id} active={id === safeActive}>
                   <ErrorBoundary label={id}>
-                    {React.createElement(MEMO_PAGE_COMPONENTS[id])}
+                    <Suspense fallback={<PageFallback />}>
+                      {React.createElement(MEMO_PAGE_COMPONENTS[id])}
+                    </Suspense>
                   </ErrorBoundary>
                 </PageHost>
               ))}
@@ -440,6 +467,8 @@ function Shell({
                 key={p.id}
                 className={`dock-btn ${isActive ? "is-active" : ""}`}
                 onClick={() => setActive(p.id)}
+                onMouseEnter={() => preloadPage(p.id)}
+                onFocus={() => preloadPage(p.id)}
                 aria-label={t(p.i18n)}
                 title={t(p.i18n)}
               >
@@ -459,7 +488,7 @@ export default function App() {
   const [theme, setTheme] = useState("dark");
   const [active, setActive] = useState<PageId>("store");
   useEffect(() => onOpenTarget(setActive), []);
-  const [lang, setLang] = useState("en");
+  const [lang, setLang] = useState(storedLang);
   const [blur, setBlur] = useState(true);
   const [accent, setAccent] = useState("amber");
   const [reduceMotion, setReduceMotion] = useState(false);
@@ -493,6 +522,9 @@ export default function App() {
   useEffect(() => {
     initTelemetry();
   }, []);
+
+  // Мост к веб-компаньону: сообщает серверу, что играет, и выполняет команды телефона.
+  useEffect(() => startCompanionBridge(), []);
 
   // Смена страницы — в журнал (по какой странице ходил пользователь).
   useEffect(() => {

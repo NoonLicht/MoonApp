@@ -107,7 +107,7 @@ export function fromFlow(nodes: unknown[], edges: unknown[]): Obj[] {
         put(
           make("frame", at, {
             ...s,
-            name: d.label || "Рамка",
+            name: d.label || undefined,
             fill: "#ffffff",
             stroke: d.color ?? "#94a3b8",
             opacity: 1,
@@ -178,7 +178,7 @@ export function fromFlow(nodes: unknown[], edges: unknown[]): Obj[] {
         const cols: string[] = Array.isArray(d.columns) ? d.columns : [];
         const frame = make("frame", at, {
           ...s,
-          name: d.title ?? "Матрица",
+          name: d.title ?? undefined,
           x: p.x,
           y: p.y,
         });

@@ -26,57 +26,75 @@ import { mlog, readSettings } from "./mainCore";
 let clipboardWatchTimer: any = null;
 let lastClipboardHash = "";
 
-function clipboardImageHash(img: any) {
-  if (!img || img.isEmpty()) return "";
-  const buf = img.toPNG();
-  if (!buf.length) return "";
-  return crypto.createHash("sha1").update(buf).digest("hex");
+/** PNG из буфера обмена (Electron 44: clipboard стал асинхронным, readImage() убран). */
+async function readClipboardPng(): Promise<Buffer | null> {
+  const { clipboard } = require("electron") as typeof import("electron");
+  const items = await clipboard.read();
+  for (const item of items) {
+    if (!item.types.includes("image/png")) continue;
+    const blob = await item.getType("image/png");
+    const buf = Buffer.from(await blob.arrayBuffer());
+    return buf.length ? buf : null;
+  }
+  return null;
+}
+
+function pngHash(buf: Buffer | null) {
+  return buf ? crypto.createHash("sha1").update(buf).digest("hex") : "";
 }
 
 export function startClipboardWatch() {
   if (clipboardWatchTimer) return;
-  const { clipboard } = require("electron") as typeof import("electron");
   // Стартовое значение — то, что уже лежало в буфере ДО запуска приложения,
   // не должно тут же уйти в библиотеку как "новый" скриншот.
-  try {
-    lastClipboardHash = clipboardImageHash(clipboard.readImage());
-  } catch {
-    lastClipboardHash = "";
-  }
-  clipboardWatchTimer = setInterval(() => {
+  let busy = false;
+  readClipboardPng()
+    .then((buf) => {
+      lastClipboardHash = pngHash(buf);
+    })
+    .catch(() => {
+      lastClipboardHash = "";
+    });
+  clipboardWatchTimer = setInterval(async () => {
+    if (busy) return;
     if (readSettings()?.screenshots?.autoCaptureClipboard === false) return;
-    let img;
+    busy = true;
     try {
-      img = clipboard.readImage();
-    } catch {
-      return;
-    }
-    const hash = clipboardImageHash(img);
-    if (!hash || hash === lastClipboardHash) return;
-    lastClipboardHash = hash;
-    try {
-      const buf = img.toPNG();
-      const size = img.getSize();
-      const { DIRS } = serverModule("../server/config");
-      const tmpPath = path.join(
-        DIRS.tmp,
-        `clip-${Date.now()}-${crypto.randomBytes(4).toString("hex")}.png`,
-      );
-      fs.writeFileSync(tmpPath, buf);
-      serverModule("../server/screenshots").saveFromTemp(tmpPath, {
-        type: "image",
-        ext: "png",
-        mime: "image/png",
-        width: size.width,
-        height: size.height,
-      });
-      mlog("info", "clipboard.autosave", {
-        width: size.width,
-        height: size.height,
-        bytes: buf.length,
-      });
-    } catch (e: any) {
-      mlog("error", "clipboard.autosave_failed", { error: e?.message || String(e) });
+      let buf: Buffer | null;
+      try {
+        buf = await readClipboardPng();
+      } catch {
+        return;
+      }
+      const hash = pngHash(buf);
+      if (!buf || !hash || hash === lastClipboardHash) return;
+      lastClipboardHash = hash;
+      try {
+        const { nativeImage } = require("electron") as typeof import("electron");
+        const size = nativeImage.createFromBuffer(buf).getSize();
+        const { DIRS } = serverModule("../server/config");
+        const tmpPath = path.join(
+          DIRS.tmp,
+          `clip-${Date.now()}-${crypto.randomBytes(4).toString("hex")}.png`,
+        );
+        fs.writeFileSync(tmpPath, buf);
+        serverModule("../server/screenshots").saveFromTemp(tmpPath, {
+          type: "image",
+          ext: "png",
+          mime: "image/png",
+          width: size.width,
+          height: size.height,
+        });
+        mlog("info", "clipboard.autosave", {
+          width: size.width,
+          height: size.height,
+          bytes: buf.length,
+        });
+      } catch (e: any) {
+        mlog("error", "clipboard.autosave_failed", { error: e?.message || String(e) });
+      }
+    } finally {
+      busy = false;
     }
   }, 1200);
 }
@@ -89,10 +107,9 @@ export function stopClipboardWatch() {
 // Страница «Скриншоты» вызывает это сразу после того, как сама записала
 // картинку в буфер обмена (кнопка «Скопировать») — иначе вотчер решил бы,
 // что это новый внешний скриншот, и задвоил бы библиотеку тем же кадром.
-ipcMain.handle("clipboard:mark-seen", () => {
+ipcMain.handle("clipboard:mark-seen", async () => {
   try {
-    const { clipboard } = require("electron") as typeof import("electron");
-    lastClipboardHash = clipboardImageHash(clipboard.readImage());
+    lastClipboardHash = pngHash(await readClipboardPng());
   } catch {
     /* ignore */
   }

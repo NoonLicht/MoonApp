@@ -69,11 +69,11 @@ export default function TweaksList({ tab, ov, pending, onToggle, disabled }: Pro
           className="text-input"
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="Найти твик по задаче…"
+          placeholder={t("tuning.searchPh")}
           style={{ flex: 1 }}
         />
       </label>
-      {rank && items.length === 0 && <div className="muted-sm">Ничего не найдено</div>}
+      {rank && items.length === 0 && <div className="muted-sm">{t("common.nothingFound")}</div>}
       {items.map((tw) => {
         const st = ov.statuses.find((s) => s.id === tw.id);
         const state = st?.state ?? "na";

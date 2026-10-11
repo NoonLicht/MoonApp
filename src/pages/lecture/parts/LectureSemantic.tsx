@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Search, FileText } from "lucide-react";
 import { api } from "@/api/client";
+import { useI18n } from "@/app/i18n";
 import type { SemHit } from "@/api/apiSemantic";
 import { openTarget } from "@/lib/deepLink";
 
@@ -19,6 +20,7 @@ const fmt = (ms: number): string => {
 
 /** Поиск по смыслу по всем расшифровкам + заметки, подходящие к открытой лекции. */
 export default function LectureSemantic({ title, notes, onOpen }: Props) {
+  const { t } = useI18n();
   const [q, setQ] = useState("");
   const [hits, setHits] = useState<SemHit[]>([]);
   const [related, setRelated] = useState<SemHit[]>([]);
@@ -66,7 +68,7 @@ export default function LectureSemantic({ title, notes, onOpen }: Props) {
           className="text-input"
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="Найти в расшифровках по смыслу…"
+          placeholder={t("sem.lectureSearchPh")}
           style={{ flex: 1 }}
         />
       </label>
@@ -86,7 +88,7 @@ export default function LectureSemantic({ title, notes, onOpen }: Props) {
       {related.length > 0 && (
         <div style={{ marginTop: 8 }}>
           <div className="lec-dim">
-            <FileText size={12} /> Заметки по теме этой лекции
+            <FileText size={12} /> {t("sem.lectureNotes")}
           </div>
           {related.map((h) => (
             <div

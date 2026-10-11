@@ -1,3 +1,5 @@
+import { tNow } from "@/app/i18n";
+
 /**
  * Человекочитаемые размеры и скорости — общие для плеера и вкладки «Скачанные».
  *
@@ -29,9 +31,9 @@ export function fmtSpeed(bps?: number | null): string {
 export function fmtEta(sec?: number | null): string {
   const s = Math.floor(Number(sec) || 0);
   if (!Number.isFinite(s) || s <= 0) return "—";
-  if (s < 60) return `${s} с`;
+  if (s < 60) return tNow("units.s", { n: s });
   const m = Math.floor(s / 60);
-  if (m < 60) return `${m} мин`;
+  if (m < 60) return tNow("units.min", { n: m });
   const h = Math.floor(m / 60);
-  return `${h} ч ${m % 60} мин`;
+  return tNow("units.hMin", { h, m: m % 60 });
 }

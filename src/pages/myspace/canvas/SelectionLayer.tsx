@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+import { useI18n } from "@/app/i18n";
 import {
   boundsOf,
   lineGeom,
@@ -54,6 +55,7 @@ function Frame({
   handles: boolean;
   rotate: boolean;
 }) {
+  const { t } = useI18n();
   const hs = 10 / z;
   const style: CSSProperties = {
     position: "absolute",
@@ -105,7 +107,7 @@ function Frame({
           />
           <div
             data-handle="rot"
-            title="Повернуть (Shift — шаг 15°)"
+            title={t("canvasSel.rotate")}
             style={{
               position: "absolute",
               left: "50%",
@@ -130,6 +132,7 @@ function Frame({
 
 /** Рамки выделения, ручки, порты соединителей, направляющие и рамка выбора. */
 export function SelectionLayer(p: Props) {
+  const { t } = useI18n();
   const { byId, sel, z } = p;
   const selected = sel.map((id) => byId.get(id)).filter((o): o is Obj => !!o);
   const single = selected.length === 1 ? selected[0] : null;
@@ -145,7 +148,7 @@ export function SelectionLayer(p: Props) {
           key={s}
           data-handle={`port-${s}`}
           data-port-of={o.id}
-          title="Потяните, чтобы соединить"
+          title={t("canvasSel.dragToConnect")}
           style={{
             position: "absolute",
             left: e.x + e.nx * out - dot / 2,

@@ -349,7 +349,7 @@ export default function AudiobookTTSPage() {
   const savePreset = async () => {
     try {
       await api.ttsSavePreset({
-        name: presetName || "Мой пресет",
+        name: presetName || t("ab.defaultPreset"),
         engine,
         params: { ...params, mode: undefined },
         refFile,
@@ -1039,8 +1039,8 @@ export default function AudiobookTTSPage() {
                       label={t("ab.format")}
                       tip={t("ab.tipFormat")}
                       options={[
-                        { value: "m4b", label: "M4B (главы)" },
-                        { value: "mp3", label: "MP3 (главы)" },
+                        { value: "m4b", label: t("ab.fmtM4b") },
+                        { value: "mp3", label: t("ab.fmtMp3") },
                         { value: "wav", label: "WAV" },
                       ]}
                     />

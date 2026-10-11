@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll } from "vitest";
 import fs from "fs";
 import os from "os";
 import path from "path";
+import Database from "better-sqlite3";
 import { createRequire } from "module";
 
 /**
@@ -34,8 +35,7 @@ describe("server/backup — создание, список и ротация", (
     expect(typeof backup.createBackup).toBe("function");
   });
 
-  it("createBackup копирует data/settings и пишет meta.json с триггером", () => {
-    fs.writeFileSync(path.join(storage, "data.json"), JSON.stringify({ notes: 1 }), "utf8");
+  it("createBackup снимает копию БД, копирует settings и пишет meta.json с триггером", () => {
     fs.writeFileSync(
       path.join(storage, "settings.json"),
       JSON.stringify({ theme: "dark" }),
@@ -44,7 +44,18 @@ describe("server/backup — создание, список и ротация", (
 
     const dir = backup.createBackup("unit");
     expect(typeof dir).toBe("string");
-    expect(fs.existsSync(path.join(dir, "data.json"))).toBe(true);
+    // Снимок БД — настоящая SQLite-база со схемой приложения (VACUUM INTO).
+    const snap = new Database(path.join(dir, "data.db"), { readonly: true });
+    try {
+      const tables = (
+        snap.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all() as {
+          name: string;
+        }[]
+      ).map((t) => t.name);
+      expect(tables).toEqual(expect.arrayContaining(["tasks", "messages", "_seq"]));
+    } finally {
+      snap.close();
+    }
     expect(fs.existsSync(path.join(dir, "settings.json"))).toBe(true);
     expect(JSON.parse(fs.readFileSync(path.join(dir, "meta.json"), "utf8"))).toMatchObject({
       trigger: "unit",

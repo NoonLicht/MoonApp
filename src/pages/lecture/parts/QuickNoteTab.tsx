@@ -173,7 +173,7 @@ export default function QuickNoteTab({ engineReady }: Props) {
     } catch (e) {
       setTopicErr(
         (e as Error).message.includes("model")
-          ? "Нужна модель поиска по смыслу (вкладка «Похожее» в заметках)"
+          ? t("sem.needModel")
           : (e as Error).message,
       );
     }
@@ -183,7 +183,7 @@ export default function QuickNoteTab({ engineReady }: Props) {
         .map((g) => g.map((i) => notes[i]).filter(Boolean))
         .sort((a, b) => b.length - a.length)
         .map((items) => ({
-          title: items.length > 1 ? (items[0].text || "").slice(0, 40) + "…" : "Разное",
+          title: items.length > 1 ? (items[0].text || "").slice(0, 40) + "…" : t("sem.misc"),
           items,
         }))
     : [{ title: "", items: notes }];
@@ -276,7 +276,7 @@ export default function QuickNoteTab({ engineReady }: Props) {
             style={{ width: "auto", padding: "4px 10px", display: "inline-flex", gap: 6 }}
             onClick={() => void toggleTopics()}
           >
-            <Sparkles size={13} /> {groups ? "Показать по времени" : "Разложить по темам"}
+            <Sparkles size={13} /> {groups ? t("sem.showByTime") : t("sem.groupByTopic")}
           </button>
           {topicErr && <span className="muted-sm">{topicErr}</span>}
         </div>

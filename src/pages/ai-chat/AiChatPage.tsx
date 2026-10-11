@@ -1021,7 +1021,7 @@ export default function AiChatPage() {
             )}
             {semChats.length > 0 && (
               <>
-                <div className="palette-group">По смыслу</div>
+                <div className="palette-group">{t("palette.groupSemantic")}</div>
                 {semChats.map((h) => (
                   <button
                     key={h.ref}

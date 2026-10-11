@@ -23,7 +23,10 @@ const root = path.resolve(__dirname, "..");
 const read = (rel: string): string => fs.readFileSync(path.join(root, rel), "utf8");
 
 const pageSrc =
-  read("src/pages/myspace/MyspacePage.tsx") + read("src/pages/myspace/parts/MyspaceHelpers.ts");
+  read("src/pages/myspace/MyspacePage.tsx") +
+  read("src/pages/myspace/parts/EditorArea.tsx") +
+  read("src/pages/myspace/parts/NotesAiModal.tsx") +
+  read("src/pages/myspace/parts/MyspaceHelpers.ts");
 const moduleSrc = read("server/ts/notesAi.ts");
 const routeSrc = read("server/routes/myspace.js");
 

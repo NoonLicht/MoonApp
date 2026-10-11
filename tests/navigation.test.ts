@@ -28,6 +28,8 @@ const ALL_IDS = [
   "books",
   "monitor",
   "myspace",
+  "diary",
+  "rss",
   "aichat",
   "voice",
   "lecture",

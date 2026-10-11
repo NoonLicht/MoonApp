@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Search, X } from "lucide-react";
 import { api } from "@/api/client";
+import { useI18n } from "@/app/i18n";
 import type { VaultFile } from "@/api/types";
 import type { SemSource } from "@/api/apiSemantic";
 import { SOURCE_ICON, SOURCE_LABEL } from "@/lib/deepLink";
@@ -81,6 +82,7 @@ export default function LinkPicker({
   onClose: () => void;
   kinds?: SemSource[];
 }) {
+  const { t } = useI18n();
   const [tab, setTab] = useState<SemSource>(kinds[0]);
   const [items, setItems] = useState<PickItem[]>([]);
   const [q, setQ] = useState("");
@@ -137,8 +139,8 @@ export default function LinkPicker({
         <div className="proxy-panel-header">
           <div className="proxy-panel-title">
             <div className="proxy-title-text">
-              <div className="proxy-eyebrow">Связать</div>
-              <div className="proxy-h1">Вставить из приложения</div>
+              <div className="proxy-eyebrow">{t("linkPicker.eyebrow")}</div>
+              <div className="proxy-h1">{t("linkPicker.title")}</div>
             </div>
           </div>
           <button className="proxy-panel-close" onClick={onClose}>
@@ -163,12 +165,12 @@ export default function LinkPicker({
             autoFocus
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Поиск по названию или смыслу…"
+            placeholder={t("linkPicker.searchPh")}
           />
         </label>
         <div className="lp-list">
-          {loading && <div className="lp-empty">Загрузка…</div>}
-          {!loading && shown.length === 0 && <div className="lp-empty">Ничего не найдено</div>}
+          {loading && <div className="lp-empty">{t("common.loading")}</div>}
+          {!loading && shown.length === 0 && <div className="lp-empty">{t("common.nothingFound")}</div>}
           {shown.map((i) => (
             <button
               key={i.kind + i.ref}

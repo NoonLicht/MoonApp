@@ -3,13 +3,15 @@ import { createRequire } from "module";
 import fs from "fs";
 import os from "os";
 import path from "path";
+import Database from "better-sqlite3";
 
 /**
- * Тесты хранилища (server/db): форма экспорта, миграция схемы, CRUD и persist.
+ * Тесты хранилища (server/db): форма экспорта, импорт старого data.json, CRUD и persist.
  *
- * storage задаём ДО require: db читает data.json на загрузке модуля, а миграцию
- * колонок можно проверить только на файле, который старше объявления схемы.
+ * storage задаём ДО require: при первом запуске db импортирует data.json в SQLite.
  * Пишем СТАРЫЙ формат: catalog без wingetId, proxy_nodes без is_excluded.
+ * Миграции схемы SQLite (версии, ALTER TABLE, слишком новая БД) проверяет
+ * tests/dbMigrations.test.ts — там каждый сценарий идёт в отдельном процессе.
  */
 const STORAGE = fs.mkdtempSync(path.join(os.tmpdir(), "moonapp-db-"));
 process.env.MOONAPP_STORAGE = STORAGE;
@@ -53,13 +55,31 @@ const require = createRequire(import.meta.url);
 const dbm = require("../server/db");
 const { stmts, tables, exportSnapshot, flush } = dbm;
 
-const dataFile = path.join(STORAGE, "data.json");
-const onDisk = () => fs.readFileSync(dataFile, "utf8");
+const dbFile = path.join(STORAGE, "data.db");
+/** Что реально лежит в файле БД (отдельное read-only соединение, мимо кэша в памяти). */
+const onDisk = <T = any>(sql: string, ...args: unknown[]): T[] => {
+  const ro = new Database(dbFile, { readonly: true });
+  try {
+    return ro.prepare(sql).all(...args) as T[];
+  } finally {
+    ro.close();
+  }
+};
 describe("db — контракт CommonJS (порт server/db.js → server/ts/db.ts)", () => {
   it("отдаёт те же ключи, что .js-версия, и не имеет default", () => {
     // Роуты и тесты делают `require("./db")` и берут stmts/tables напрямую.
     expect(Object.keys(dbm).sort()).toEqual(
-      ["db", "exportSnapshot", "flush", "stmts", "tables"].sort(),
+      [
+        "SCHEMA_VERSION",
+        "backupTo",
+        "close",
+        "db",
+        "docStore",
+        "exportSnapshot",
+        "flush",
+        "stmts",
+        "tables",
+      ].sort(),
     );
     expect(dbm.default).toBeUndefined();
   });
@@ -71,8 +91,15 @@ describe("db — контракт CommonJS (порт server/db.js → server/ts/
   });
 });
 
-describe("db — миграция схемы", () => {
-  it("досыпает новые колонки В КОНЕЦ и не ломает старые значения", () => {
+describe("db — импорт старого data.json", () => {
+  it("переносит строки в SQLite, а старый файл оставляет как *.migrated", () => {
+    expect(fs.existsSync(path.join(STORAGE, "data.json"))).toBe(false);
+    expect(fs.existsSync(path.join(STORAGE, "data.json.migrated"))).toBe(true);
+    expect(onDisk("SELECT name FROM catalog WHERE id = 1")).toEqual([{ name: "Old" }]);
+    expect(onDisk("PRAGMA user_version")[0].user_version).toBe(dbm.SCHEMA_VERSION);
+  });
+
+  it("колонки берутся по именам: новые поля старых строк пусты, старые не поехали", () => {
     // is_excluded добавлена в код позже: у старого файла её нет.
     expect(tables.proxy_nodes.cols).toEqual([
       "sub_id",
@@ -88,7 +115,7 @@ describe("db — миграция схемы", () => {
     const row = stmts.pnodeGet.get(1);
     expect(row.name).toBe("legacy");
     expect(row.is_selected).toBe(1);
-    expect(row.is_excluded).toBeUndefined();
+    expect(row.is_excluded).toBeNull();
   });
 
   it("исключение и восстановление узла: скрытие снимает выбор", () => {
@@ -103,17 +130,16 @@ describe("db — миграция схемы", () => {
     expect(stmts.pnodeExcludedForSub.all(7)).toEqual([]);
   });
 
-  it("НАБЛЮДАЕМОЕ: если колонки досыпались после первого запуска, insert пишет мимо", () => {
-    // Унаследованное поведение .js-версии (не задумка порта): insert() раскладывает
-    // значения по this.cols, а досыпанная колонка стоит В КОНЦЕ. Для catalog
-    // (в файле не было wingetId) значения уезжают в соседние колонки:
-    //   favorite ← wingetId, added_at ← 0, wingetId ← now()
-    // На свежей установке (cols = объявленные) раскладка корректна.
+  it("insert после миграции колонок кладёт значения ровно в свои колонки", () => {
+    // В .js-версии insert() раскладывал значения по порядку колонок из СТАРОГО файла,
+    // а досыпанная колонка стояла в конце: для catalog (в файле не было wingetId)
+    // значения уезжали в соседние колонки (favorite ← wingetId и т.д.).
+    // Теперь порядок колонок всегда объявленный, и этот баг невозможен.
     stmts.catInsert.run("New", "https://new.example", "seed", "Tools", "7zip.7zip");
     const row = tables.catalog.all().find((r: any) => r.name === "New");
-    expect(row.favorite).toBe("7zip.7zip");
-    expect(row.added_at).toBe(0);
-    expect(String(row.wingetId)).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/);
+    expect(row.wingetId).toBe("7zip.7zip");
+    expect(row.favorite).toBe(0);
+    expect(String(row.added_at)).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/);
   });
 });
 describe("db — задачи (tasks)", () => {
@@ -213,15 +239,52 @@ describe("db — фильмы и сериалы", () => {
 });
 describe("db — persist и заметки", () => {
   it("запись отложена, flush() сбрасывает её на диск немедленно", () => {
-    // persist — дебаунс 300 мс: сразу после мутации файл ещё не обновлён.
+    // persist — дебаунс 300 мс: сразу после мутации в файле её ещё нет.
+    const find = () =>
+      onDisk("SELECT id FROM bypass_custom_domains WHERE domain = ?", "persist-check.example");
     stmts.bcdInsert.run("persist-check.example", "domain", 1);
-    expect(onDisk()).not.toContain("persist-check.example");
+    expect(find()).toEqual([]);
     flush();
-    expect(onDisk()).toContain("persist-check.example");
-    // Снимок содержит все таблицы (роуты /api/backup читают этот файл).
-    const parsed = JSON.parse(onDisk());
-    expect(Object.keys(parsed)).toContain("tasks");
-    expect(Object.keys(parsed)).toContain("proxy_nodes");
+    expect(find().length).toBe(1);
+    // В файле есть все таблицы схемы.
+    const names = onDisk<{ name: string }>("SELECT name FROM sqlite_master WHERE type = 'table'").map(
+      (r) => r.name,
+    );
+    expect(names).toEqual(expect.arrayContaining(["tasks", "proxy_nodes", "_seq"]));
+  });
+
+  it("на диск уходят только изменённые строки: правка и удаление видны после flush", () => {
+    const t = stmts.taskInsert.run("для диска", 0, "low", "");
+    flush();
+    expect(onDisk("SELECT text FROM tasks WHERE id = ?", t.lastInsertRowid)).toEqual([
+      { text: "для диска" },
+    ]);
+    stmts.taskUpdate.run("поправлено", "text", t.lastInsertRowid);
+    flush();
+    expect(onDisk("SELECT text FROM tasks WHERE id = ?", t.lastInsertRowid)[0].text).toBe(
+      "поправлено",
+    );
+    stmts.taskDelete.run(t.lastInsertRowid);
+    flush();
+    expect(onDisk("SELECT id FROM tasks WHERE id = ?", t.lastInsertRowid)).toEqual([]);
+  });
+
+  it("upsert результатов проверки тоже попадает на диск (раньше правка обходила учёт)", () => {
+    stmts.bcrUpsert.run("s-disk", { file: "a.bat", ok: true, ok_count: 3 });
+    stmts.bcrUpsert.run("s-disk", { file: "a.bat", ok: false, ok_count: 5 });
+    flush();
+    const rows = onDisk("SELECT ok, ok_count FROM bypass_check_results WHERE strategy_id = 's-disk'");
+    expect(rows).toEqual([{ ok: 0, ok_count: 5 }]);
+  });
+
+  it("булевы колонки возвращаются булевыми, числа остаются числами, строки — строками", () => {
+    stmts.tdUpsert.run({ info_hash: "abc", name: "n", kept: true, length: 7, release_id: "007" });
+    flush();
+    const row = stmts.tdGet.get("abc");
+    expect(row.kept).toBe(true);
+    expect(row.length).toBe(7);
+    expect(row.release_id).toBe("007"); // не превратилась в число 7
+    stmts.tdDelete.run("abc");
   });
 
   it("exportSnapshot отдаёт задачи, чаты, сообщения и архивные страницы", () => {

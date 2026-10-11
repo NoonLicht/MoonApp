@@ -102,8 +102,13 @@ const DIRS = {
   ocr: ensureDir(path.join(STORAGE_DIR, "ocr")),
   // Скриншоты и записи экрана: единая библиотека медиа страницы «Скриншоты».
   screenshots: ensureDir(path.join(STORAGE_DIR, "screenshots")),
+  // Дневник: по файлу .md на день (YYYY-MM-DD.md) + _template.md.
+  diary: ensureDir(path.join(STORAGE_DIR, "diary")),
 };
 const FILES = {
+  /** SQLite-база приложения (см. server/ts/db.ts). */
+  db: path.join(DIRS.storage, "data.db"),
+  /** Старый JSON-стор: читается один раз при первом запуске и переименовывается в *.migrated. */
   data: path.join(DIRS.storage, "data.json"),
   settings: path.join(DIRS.storage, "settings.json"),
   secrets: path.join(DIRS.storage, "secrets.json"),
@@ -114,6 +119,9 @@ const FILES = {
   gamesLibrary: path.join(DIRS.games, "library.json"),
   automationLaunchers: path.join(DIRS.storage, "automation-launchers.json"),
   budgetTransactions: path.join(DIRS.storage, "budget-transactions.json"),
+  budgetRecurring: path.join(DIRS.storage, "budget-recurring.json"),
+  rss: path.join(DIRS.storage, "rss.json"),
+  companion: path.join(DIRS.storage, "companion.json"),
   quickNotesIndex: path.join(DIRS.quickNotes, "index.json"),
   notesGitConfig: path.join(DIRS.storage, "notes-git.json"),
   appTimeTracker: path.join(DIRS.storage, "app-time-tracker.json"),

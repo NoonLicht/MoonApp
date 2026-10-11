@@ -17,7 +17,11 @@
     // в vite.config.js). Так файлы можно свободно переносить между папками,
     // не пересчитывая "../../".
     "baseUrl": ".",
-    "paths": { "@/*": ["src/*"] }
+    "paths": {
+      "@/*": ["src/*"],
+      // Контракты API живут на сервере (только типы) — клиент импортирует их оттуда же.
+      "@contracts/*": ["server/ts/contracts/*"]
+    }
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx", "vite.config.ts"]
+  "include": ["src/**/*.ts", "src/**/*.tsx", "server/ts/contracts/**/*.ts", "vite.config.ts"]
 }

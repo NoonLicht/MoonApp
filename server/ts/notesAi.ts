@@ -406,6 +406,22 @@ async function askModel(
   return String(text || "").trim();
 }
 
+/**
+ * Свободный запрос к ИИ-провайдеру, выбранному для заметок (chat.provider/model).
+ * Нужен модулям, которым требуется «просто спросить модель»: сводка недели
+ * дневника и т. п. Ошибки те же: notes_ai_not_configured / notes_ai_model_missing.
+ */
+export async function askAi(
+  prompt: string,
+  systemPrompt: string,
+  appPage: unknown = "myspace",
+  maxTokens = 1500,
+): Promise<{ text: string; provider: string; model: string }> {
+  const target = await aiTarget(appPage);
+  const text = await askModel(target, prompt, appPage, maxTokens, systemPrompt);
+  return { text, provider: target.provider.id, model: target.model };
+}
+
 export interface NotesAiFormatOptions {
   /** Путь заметки внутри vault (как в /api/myspace/file). */
   path: string;

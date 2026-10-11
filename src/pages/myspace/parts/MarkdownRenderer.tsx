@@ -1,8 +1,9 @@
 import { useEffect, useRef, useMemo } from "react";
 import { openMoonHref } from "@/lib/deepLink";
+import { tNow } from "@/app/i18n";
 import { marked } from "marked";
 import { markedHighlight } from "marked-highlight";
-import hljs from "highlight.js";
+import hljs from "@/lib/hljs";
 import "highlight.js/styles/github-dark.css";
 import { sanitizeHtml } from "@/lib/sanitize";
 import { findInlineMath, findMathBlock, renderMath } from "@/lib/math";
@@ -73,7 +74,7 @@ function processInline(l: string, lineIndex: number): string {
   l = l.replace(
     /!\[\[(task|canvas):([^\]]+)\]\]/g,
     (_, k, r) =>
-      `<a href="moon://${k}/${encodeURIComponent(r.trim())}">${k === "task" ? "✅ Задача" : "🎨 Доска"}</a>`,
+      `<a href="moon://${k}/${encodeURIComponent(r.trim())}">${k === "task" ? `✅ ${tNow("source.task")}` : `🎨 ${tNow("embed.board")}`}</a>`,
   );
   // WikiLinks [[...]]
   l = l.replace(

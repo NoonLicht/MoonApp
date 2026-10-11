@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Search } from "lucide-react";
 import { api } from "@/api/client";
 import { useDeepLink } from "@/lib/deepLink";
+import { useI18n } from "@/app/i18n";
 
 const HIT = "set-row-hit";
 
@@ -11,6 +12,7 @@ const HIT = "set-row-hit";
  * первая прокручивается в область видимости.
  */
 export default function SettingsSearch() {
+  const { t } = useI18n();
   const [q, setQ] = useState("");
   const [note, setNote] = useState("");
   useDeepLink("settings", (t) => {
@@ -51,7 +53,7 @@ export default function SettingsSearch() {
       clear();
       order.forEach((x) => rows[x.i].classList.add(HIT));
       if (order.length) rows[order[0].i].scrollIntoView({ block: "center", behavior: "smooth" });
-      else setNote("Ничего не найдено");
+      else setNote(t("common.nothingFound"));
     }, 350);
     return () => {
       live = false;
@@ -82,7 +84,7 @@ export default function SettingsSearch() {
           className="text-input"
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="Поиск по настройкам…"
+          placeholder={t("settings.searchPh")}
           style={{ border: "none", background: "transparent", width: 220, padding: 0 }}
         />
       </label>

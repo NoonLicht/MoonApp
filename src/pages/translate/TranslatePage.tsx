@@ -23,8 +23,11 @@ export default function TranslatePage() {
   const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null);
   const notify = useCallback((text: string, ok = true) => setMsg({ text, ok }), []);
 
-  const ready = !!status && status.runtime.available && status.installed.length > 0;
-  const noModel = !!status && status.installed.length === 0;
+  // В режиме llama.cpp работаем с GGUF-моделью: ONNX-рантайм и ONNX-модель не нужны.
+  const viaLlama = settings.provider === "llamacpp";
+  const ready =
+    !!status && (viaLlama ? status.llamaReady : status.runtime.available && status.installed.length > 0);
+  const noModel = !!status && (viaLlama ? !status.llamaReady : status.installed.length === 0);
 
   // Пока модели нет, сразу показываем вкладку загрузки.
   useEffect(() => {

@@ -23,6 +23,7 @@ const T = {
     fail: "Не получилось. Попробуйте описать иначе или проверьте ключ.",
     remove: "Удалить",
     empty: "Сохранённые элементы появятся здесь",
+    similar: "Уже есть похожие:",
   },
   en: {
     mine: "My elements",
@@ -37,6 +38,7 @@ const T = {
     fail: "Could not make it. Try describing it differently or check the key.",
     remove: "Delete",
     empty: "Saved elements will appear here",
+    similar: "Similar saved:",
   },
 };
 
@@ -227,7 +229,7 @@ export function ElementStudio({
         </div>
         {near.length > 0 && (
           <div style={{ marginTop: 8, fontSize: 12, color: p.outline }}>
-            {isRuUi() ? "Уже есть похожие:" : "Similar saved:"}{" "}
+            {L.similar}{" "}
             {near.map((m, i) => (
               <button
                 key={i}

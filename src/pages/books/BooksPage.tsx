@@ -285,10 +285,10 @@ export default function BooksPage() {
         <Btn
           variant={similarOn ? "primary" : "secondary"}
           onClick={() => setSimilarOn((v) => !v)}
-          title="Сортировать по близости к избранному и закладкам"
+          title={t("sem.similarToMineHint")}
           style={{ fontSize: 12 }}
         >
-          ✨ Похожие на моё
+          ✨ {t("sem.similarToMine")}
         </Btn>
       </div>
 
@@ -484,8 +484,11 @@ export default function BooksPage() {
                     </div>
                     {similarOn && simMap[b.bid]?.like && simMap[b.bid].score >= 0.72 && (
                       <div className="muted-sm" style={{ color: "var(--amber)" }}>
-                        ✨ Похоже на «{simMap[b.bid].like}» ·{" "}
-                        {Math.round(simMap[b.bid].score * 100)}%
+                        ✨{" "}
+                        {t("sem.similarTo", {
+                          like: simMap[b.bid].like,
+                          pct: Math.round(simMap[b.bid].score * 100),
+                        })}
                       </div>
                     )}
                   </div>

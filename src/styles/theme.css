@@ -1123,3 +1123,8 @@ input[type="range"] {
     width: 70px;
   }
 }
+
+/* Перетаскивание окна ведёт main-процесс (App.tsx): выделение текста шапки мешает. */
+.top-toolbar {
+  user-select: none;
+}

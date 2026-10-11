@@ -1,0 +1,145 @@
+/* Страница «Дневник»: календарь месяца слева, редактор и итог недели справа. */
+.page.diary-page {
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 2px 2px 10px;
+}
+.diary-layout {
+  display: grid;
+  grid-template-columns: minmax(240px, 300px) minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+}
+@media (max-width: 820px) {
+  .diary-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.diary-side {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+}
+.diary-main {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+.diary-streak {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--amber);
+  font-weight: 600;
+  font-size: 13px;
+}
+.diary-cal-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.diary-cal {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+}
+.diary-wd {
+  text-align: center;
+  font-size: 11px;
+}
+.diary-day {
+  aspect-ratio: 1;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: 12px;
+  position: relative;
+}
+.diary-day:hover {
+  background: var(--track);
+}
+.diary-day.is-today {
+  border-color: var(--amber);
+}
+.diary-day.is-active {
+  background: var(--amber);
+  color: #1a1204;
+  font-weight: 700;
+}
+.diary-day.has-entry::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 3px;
+  width: 4px;
+  height: 4px;
+  margin-left: -2px;
+  border-radius: 50%;
+  background: var(--teal);
+}
+.diary-day.is-active.has-entry::after {
+  background: #1a1204;
+}
+.diary-recent {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.diary-recent-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  text-align: left;
+  padding: 6px 8px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: 12px;
+}
+.diary-recent-row:hover {
+  background: var(--track);
+}
+.diary-recent-row .muted-sm {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.diary-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+}
+.diary-editor-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.diary-text {
+  width: 100%;
+  min-height: 320px;
+  resize: vertical;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  line-height: 1.55;
+}
+.diary-week {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+}
