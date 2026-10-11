@@ -38,6 +38,9 @@
  *  GET    /api/lecture/:id/diarize         — прогресс разбора говорящих
  */
 
+import { askLecture, summarizeMissed } from "../lectureAsk";
+import { buildChapters } from "../lectureChapters";
+import { stmts } from "../db";
 import express from "express";
 import fs from "fs";
 import * as lecture from "../lecture";
@@ -398,6 +401,40 @@ router.post("/:id/conspectus", async (req, res) => {
     );
   } catch (e: any) {
     res.status(500).json({ error: e.message });
+  }
+});
+
+// Вопрос по записи: ответ модели со ссылками на таймкоды и сами отрывки-источники.
+router.post("/:id/ask", async (req, res) => {
+  try {
+    res.json(
+      await askLecture(Number(req.params.id), String(req.body?.question ?? ""), {
+        appPage: req.appPage,
+      }),
+    );
+  } catch (e: any) {
+    const msg = String(e?.message || e);
+    res.status(/empty_question/.test(msg) ? 400 : /not_found/.test(msg) ? 404 : 500).json({ error: msg });
+  }
+});
+
+// Главы лекции: смысловые части по расшифровке (без модели).
+router.get("/:id/chapters", (req, res) => {
+  const id = Number(req.params.id);
+  if (!stmts.lectureGet.get(id)) return res.status(404).json({ error: "session_not_found" });
+  const rows = stmts.chunkFor.all(id) as unknown as { start_ms: number; end_ms: number; text: string }[];
+  res.json({ items: buildChapters(rows) });
+});
+
+// «Я пропустил»: пересказ интервала лекции (минуты от начала записи).
+router.post("/:id/missed", async (req, res) => {
+  try {
+    const fromMs = Math.max(0, Number(req.body?.fromMin) || 0) * 60_000;
+    const toMs = Math.max(0, Number(req.body?.toMin) || 0) * 60_000;
+    res.json(await summarizeMissed(Number(req.params.id), fromMs, toMs, { appPage: req.appPage }));
+  } catch (e: any) {
+    const msg = String(e?.message || e);
+    res.status(/bad_range/.test(msg) ? 400 : /not_found/.test(msg) ? 404 : 500).json({ error: msg });
   }
 });
 

@@ -232,6 +232,8 @@ export const api = {
   createConversation: (provider: string, title: string) =>
     req<Conversation>("POST", "/chat", { provider, title }),
   getMessages: (id: number) => req<ChatMessage[]>("GET", `/chat/${id}/messages`),
+  chatFork: (id: number, upToMessageId: number) =>
+    req<Conversation>("POST", `/chat-fork/${id}`, { upToMessageId }),
   deleteConversation: (id: number) => req("DELETE", `/chat/${id}`),
   chatModels: (provider: string) =>
     req<string[]>("GET", `/chat/models?provider=${encodeURIComponent(provider)}`),
@@ -274,6 +276,8 @@ export const api = {
     container?: string;
     subs?: string[];
     thumb?: { embed: boolean };
+    clipFrom?: string;
+    clipTo?: string;
   }) => req<VideoDownloadResult>("POST", "/video/download", body),
   getVideoJobStatus: (id: string) => req<VideoJobStatus>("GET", `/video/status/${id}`),
   getVideoInstall: () => req<YtdlpInstallStatus>("GET", "/video/install"),
@@ -288,6 +292,19 @@ export const api = {
   // Backup
   createBackup: () => req("POST", "/backup"),
   listBackups: () => req<BackupInfo[]>("GET", "/backup"),
+  backupVerify: (id: string) =>
+    req<{
+      ok: boolean;
+      hasManifest: boolean;
+      checked: number;
+      missing: string[];
+      corrupted: string[];
+    }>("GET", `/backup/${encodeURIComponent(id)}/verify`),
+  backupRestore: (id: string) =>
+    req<{ ok: boolean; restoredFiles: number; dbPending: boolean; safety: string | null }>(
+      "POST",
+      `/backup/${encodeURIComponent(id)}/restore`,
+    ),
 
   // Catalog — пользовательский каталог загрузок
   getCatalog: () => req("GET", "/catalog"),

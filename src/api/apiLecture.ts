@@ -146,6 +146,25 @@ export const lectureApi = {
     const name = filenameFromDisposition(res) || `lecture_${id}.${format}`;
     return { blob: await res.blob(), name };
   },
+  /** Вопрос по записи: ответ со ссылками на таймкоды и отрывки-источники. */
+  lectureAsk: (id: number, question: string) =>
+    req<{
+      answer: string;
+      citations: { ms: number; label: string }[];
+      passages: { chunkId: number | null; startMs: number; endMs: number; text: string }[];
+    }>("POST", `/lecture/${id}/ask`, { question }),
+  lectureChapters: (id: number) =>
+    req<{ items: { startMs: number; endMs: number; title: string; chunks: number }[] }>(
+      "GET",
+      `/lecture/${id}/chapters`,
+    ),
+  /** «Я пропустил»: пересказ фрагмента лекции между минутами fromMin и toMin. */
+  lectureMissed: (id: number, fromMin: number, toMin: number) =>
+    req<{
+      summary: string;
+      truncated: boolean;
+      passages: { chunkId: number | null; startMs: number; endMs: number; text: string }[];
+    }>("POST", `/lecture/${id}/missed`, { fromMin, toMin }),
   lectureDownloadAudio: async (
     id: number,
     track: "mic" | "sys" = "mic",

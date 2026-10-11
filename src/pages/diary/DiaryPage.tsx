@@ -5,6 +5,8 @@ import { useI18n } from "@/app/i18n";
 import { api } from "@/api/client";
 import type { DiaryListItem, DiarySavedSummary } from "@/api/apiDiary";
 import MarkdownRenderer from "@/pages/myspace/parts/MarkdownRenderer";
+import DriftPanel from "@/pages/diary/DriftPanel";
+import SelfCheckPanel from "@/pages/diary/SelfCheckPanel";
 
 const ymd = (d: Date): string =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -426,6 +428,8 @@ export default function DiaryPage() {
           )}
         </div>
       </div>
+      <SelfCheckPanel />
+      <DriftPanel />
     </div>
   );
 }

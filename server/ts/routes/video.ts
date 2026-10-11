@@ -10,6 +10,7 @@
  */
 
 import express from "express";
+import { normalizeClip } from "../videoClip";
 import * as ytdlp from "../ytdlp";
 import logger from "../logger";
 // yt-dlp переименовывает скачанное в название видео (часто кириллица), а fs.rmSync
@@ -31,8 +32,14 @@ router.get("/info", async (req, res) => {
 
 router.post("/download", async (req, res) => {
   try {
-    const { url, info, height, container, subs, thumb } = req.body || {};
+    const { url, info, height, container, subs, thumb, clipFrom, clipTo } = req.body || {};
     if (!url || !info) return res.status(400).json({ error: "missing_url" });
+    let clip = null;
+    try {
+      clip = normalizeClip(clipFrom, clipTo, info.duration);
+    } catch (e: any) {
+      return res.status(400).json({ error: e.message });
+    }
     const result = ytdlp.startDownload({
       url,
       info,
@@ -40,6 +47,7 @@ router.post("/download", async (req, res) => {
       container,
       subs,
       thumb,
+      clip,
       proxyUrl: req.proxyUrl,
     });
     logger.action("video.download.start", { id: result.id, url });
@@ -59,7 +67,9 @@ router.get("/download/:key", (req, res) => {
   res.download(entry.path, entry.name, () => {
     try {
       removePath(entry.path);
-    } catch {}
+    } catch {
+/* файл уже удалён или занят — уберёт плановая очистка */
+}
   });
 });
 

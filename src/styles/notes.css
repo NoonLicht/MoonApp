@@ -1830,6 +1830,7 @@
   overflow: auto;
 }
 .git-sync-diff-file {
+  flex-shrink: 0; /* иначе в колонке с max-height блоки сжимаются и налезают друг на друга */
   border: 1px solid var(--glass-border);
   border-radius: 8px;
   overflow: hidden;

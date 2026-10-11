@@ -13,6 +13,8 @@
 import express from "express";
 import * as budget from "../budget";
 import * as recurring from "../budgetRecurring";
+import { parseReceipt } from "../receiptParser";
+import * as insights from "../budgetInsights";
 
 const router = express.Router();
 
@@ -45,6 +47,73 @@ router.delete("/transactions/:id", (req, res) => {
   } catch (e) {
     res.status(500).json({ error: (e as Error).message });
   }
+});
+
+// Черновик операций из текста чека (OCR делает /api/ocr/recognize). Ничего не сохраняет.
+router.post("/receipt-parse", (req, res) => {
+  const text = String(req.body?.text ?? "").slice(0, 20000);
+  res.json(parseReceipt(text));
+});
+
+/** Операции в единой валюте для аналитики (без снимка курса берётся исходная сумма). */
+function insightTxs(currency: string): insights.Tx[] {
+  return budget.list().map((t) => ({
+    type: t.type,
+    amount: budget.convertAmount(t, currency) ?? t.amount,
+    category: t.category,
+    note: t.note,
+    date: t.date,
+  }));
+}
+
+// Аналитика: хватит ли до зарплаты, подписки, сравнение месяцев, личная инфляция, «что если».
+router.get("/insights", (req, res) => {
+  try {
+    const currency = String(req.query.currency || "RUB").toUpperCase();
+    const today = new Date().toISOString().slice(0, 10);
+    const txs = insightTxs(currency);
+    const out: Record<string, unknown> = {
+      subscriptions: insights.findSubscriptions(txs, today),
+      inflation: insights.personalInflation(txs),
+    };
+    const payday = String(req.query.payday || "");
+    const available = Number(req.query.available);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(payday) && Number.isFinite(available)) {
+      const days = Math.max(
+        0,
+        Math.ceil((Date.parse(payday) - Date.parse(today)) / 86_400_000),
+      );
+      const fixed = recurring
+        .getUpcoming(Math.max(1, days))
+        .filter((u) => u.recurring.type === "expense" && u.due <= payday)
+        .reduce((s, u) => s + u.recurring.amount, 0);
+      out.runway = insights.runway({ txs, available, today, payday, fixedUntilPayday: fixed, trimTop: 2 });
+    }
+    const a = String(req.query.monthA || "");
+    const b = String(req.query.monthB || "");
+    if (/^\d{4}-\d{2}$/.test(a) && /^\d{4}-\d{2}$/.test(b)) out.compare = insights.compareMonths(txs, a, b);
+    res.json(out);
+  } catch (e) {
+    res.status(500).json({ error: (e as Error).message });
+  }
+});
+
+// Оценка социального налогового вычета по тратам за все годы.
+router.get("/tax-deductions", (req, res) => {
+  const limit = Number(req.query.limit);
+  const rate = Number(req.query.rate);
+  res.json(
+    insights.taxDeductions(insightTxs(String(req.query.currency || "RUB").toUpperCase()), {
+      limit: limit > 0 ? limit : undefined,
+      rate: rate > 0 && rate < 1 ? rate : undefined,
+    }),
+  );
+});
+
+router.post("/what-if", (req, res) => {
+  const cut: Record<string, number> = {};
+  for (const [k, v] of Object.entries(req.body?.cut ?? {})) cut[String(k)] = Number(v) || 0;
+  res.json(insights.whatIf(insightTxs(String(req.body?.currency || "RUB").toUpperCase()), cut));
 });
 
 router.get("/summary", (req, res) => {

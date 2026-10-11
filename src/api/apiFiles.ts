@@ -1,7 +1,15 @@
 /**
  * Выделено из client.ts при разбиении крупного файла (поведение не менялось).
  */
-import { req, multipart, BASE, tokenHeaders, pageHeaders, pdfBlobPost } from "@/api/apiHttp";
+import {
+  req,
+  multipart,
+  BASE,
+  tokenHeaders,
+  pageHeaders,
+  pdfBlobPost,
+  filenameFromDisposition,
+} from "@/api/apiHttp";
 import type {
   BookDownloadResult,
   MusicSearchResult,
@@ -312,6 +320,179 @@ export const filesApi = {
   },
 
   // --- OCR ---
+  /** Импорт заметок из архива Obsidian/Notion (.zip) в vault. */
+  interchangeImport: (file: File, source: "obsidian" | "notion", folder = "") => {
+    const fd = new FormData();
+    fd.append("file", file, file.name);
+    fd.append("source", source);
+    fd.append("folder", folder);
+    return multipart<{
+      imported: number;
+      renamed: number;
+      skipped: number;
+      skippedAttachments: number;
+    }>("/interchange/import", fd);
+  },
+  /** Экспорт заметок (.zip, Obsidian или Notion) либо карточек Anki (.tsv) — готовым blob. */
+  interchangeDownload: async (
+    kind: "obsidian" | "notion" | "anki-basic" | "anki-cloze",
+  ): Promise<{ blob: Blob; name: string }> => {
+    const url = kind.startsWith("anki")
+      ? `/api/interchange/anki?type=${kind === "anki-cloze" ? "cloze" : "basic"}`
+      : `/api/interchange/export?flavor=${kind}`;
+    const res = await fetch(`${BASE}${url}`, { headers: { ...tokenHeaders() } });
+    if (!res.ok) {
+      let msg = `HTTP ${res.status}`;
+      try {
+        msg = (await res.json()).error || msg;
+      } catch {
+        /* оставляем HTTP-статус */
+      }
+      throw new Error(msg);
+    }
+    return {
+      blob: await res.blob(),
+      name: filenameFromDisposition(res) || `moonapp-${kind}`,
+    };
+  },
+  /** Проверка утверждений ответа по заметкам (локально, без модели). */
+  chatContext: (kind: "file" | "folder" | "site", target: string, question: string) =>
+    req<{ context: string; sources: string[]; files: number }>("POST", "/chat-tools/context", {
+      kind,
+      target,
+      question,
+    }),
+  chatExplainImage: async (
+    file: File | Blob,
+    mode: "explain" | "formulas",
+    question = "",
+  ): Promise<{ answer: string; ocr: string; formulas: string[] }> => {
+    const fd = new FormData();
+    fd.append("mode", mode);
+    fd.append("question", question);
+    fd.append("file", file, "image.png");
+    return multipart("/chat-tools/explain-image", fd);
+  },
+  chatSkills: () =>
+    req<{ items: { path: string; name: string; description: string; prompt: string }[] }>(
+      "GET",
+      "/chat-tools/skills",
+    ),
+  chatJudge: (question: string, answer: string) =>
+    req<{
+      score: number;
+      accuracy: number | null;
+      completeness: number | null;
+      clarity: number | null;
+      issues: string[];
+      summary: string;
+    }>("POST", "/chat-tools/judge", { question, answer }),
+  chatFactCheck: (text: string) =>
+    req<{
+      results: {
+        claim: string;
+        support: "supported" | "related" | "none";
+        hits: { ref: string; title: string; snippet: string; score: number }[];
+      }[];
+    }>("POST", "/chat-tools/factcheck", { text }),
+  /** Сохранить ответ в vault; auto=true — только если ответ «ценный». */
+  chatSaveAnswer: (question: string, answer: string, opts: { model?: string; auto?: boolean } = {}) =>
+    req<{ saved: boolean; path?: string; title?: string; reason?: string }>(
+      "POST",
+      "/chat-tools/save-answer",
+      { question, answer, ...opts },
+    ),
+  // --- Инструменты заметок и учёбы ---
+  noteToc: (text: string) => req<{ text: string }>("POST", "/note-tools/toc", { text }),
+  noteFormulas: (text: string) =>
+    req<{ text: string; evaluated: number }>("POST", "/note-tools/formulas", { text }),
+  noteTransclude: (text: string) => req<{ text: string }>("POST", "/note-tools/transclude", { text }),
+  noteParasites: (text: string) =>
+    req<{ total: number; hits: { word: string; count: number }[] }>(
+      "POST",
+      "/note-tools/parasites",
+      { text },
+    ),
+  noteGlossary: (text: string) =>
+    req<{ items: { term: string; definition: string }[] }>("POST", "/note-tools/glossary", { text }),
+  notePlan: (date?: string) =>
+    req<{ date: string; reviews: string[] }>("POST", "/note-tools/plan", { date }),
+  noteDebts: () =>
+    req<{ items: { target: string; count: number; from: string[] }[] }>("GET", "/note-tools/debts"),
+  noteQuotes: () => req<{ items: { text: string; source: string }[] }>("GET", "/note-tools/quotes"),
+  noteSlides: (text: string, title: string) =>
+    req<{ html: string }>("POST", "/note-tools/slides", { text, title }),
+  noteSnapshots: (path: string) =>
+    req<{ items: { id: string; at: number; size: number; reason: string }[] }>(
+      "GET",
+      `/note-tools/snapshots?path=${encodeURIComponent(path)}`,
+    ),
+  noteSnapshotRead: (path: string, id: string) =>
+    req<{ text: string }>(
+      "GET",
+      `/note-tools/snapshots/read?path=${encodeURIComponent(path)}&id=${encodeURIComponent(id)}`,
+    ),
+  noteSnapshotCreate: (path: string, text: string) =>
+    req<{ id: string }>("POST", "/note-tools/snapshots", { path, text }),
+  lyrics: (artist: string, title: string, duration?: number) =>
+    req<{ synced: { t: number; text: string }[]; plain: string }>(
+      "GET",
+      `/lyrics?artist=${encodeURIComponent(artist)}&title=${encodeURIComponent(title)}${
+        duration ? `&duration=${Math.round(duration)}` : ""
+      }`,
+    ),
+  audioClean: async (file: File, level: string, normalize: boolean): Promise<Blob> => {
+    const fd = new FormData();
+    fd.append("level", level);
+    fd.append("normalize", String(normalize));
+    fd.append("file", file, file.name);
+    const res = await fetch(`${BASE}/api/audio-clean`, {
+      method: "POST",
+      headers: { ...tokenHeaders(), ...pageHeaders() },
+      body: fd,
+    });
+    if (!res.ok) {
+      const j = (await res.json().catch(() => ({}))) as { error?: string };
+      throw new Error(j.error || `HTTP ${res.status}`);
+    }
+    return res.blob();
+  },
+  noteSite: async (folder: string, title: string): Promise<Blob> => {
+    const res = await fetch(`${BASE}/api/note-tools/site`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...tokenHeaders(), ...pageHeaders() },
+      body: JSON.stringify({ folder, title }),
+    });
+    if (!res.ok) throw new Error(res.status === 404 ? "no_notes" : `HTTP ${res.status}`);
+    return res.blob();
+  },
+  noteTags: (text: string, path: string, have: string[]) =>
+    req<{ items: { tag: string; score: number; from: string[] }[] }>("POST", "/note-tools/tags", {
+      text,
+      path,
+      have,
+    }),
+  noteTemplates: () => req<{ items: { id: string; title: string }[] }>("GET", "/note-tools/templates"),
+  noteTemplate: (id: string, title: string) =>
+    req<{ text: string }>("POST", "/note-tools/template", { id, title }),
+  noteCompare: (a: string, b: string) =>
+    req<{ common: string[]; onlyA: string[]; onlyB: string[]; similarity: number }>(
+      "POST",
+      "/note-tools/compare",
+      { a, b },
+    ),
+  noteMoc: (folder: string) =>
+    req<{ text: string; count: number }>(
+      "GET",
+      `/note-tools/moc?folder=${encodeURIComponent(folder)}`,
+    ),
+  ocrSecrets: (file: File | Blob) => {
+    const fd = new FormData();
+    fd.append("file", file, "image.png");
+    return multipart<{
+      regions: { kind: string; x0: number; y0: number; x1: number; y1: number }[];
+    }>("/ocr/secrets", fd);
+  },
   ocrRecognize: (file: File | Blob) => {
     const fd = new FormData();
     fd.append("file", file, "ocr.png");
@@ -375,4 +556,64 @@ export const filesApi = {
   diskScanExts: (id: string) => req<{ exts: DiskExtStat[] }>("GET", `/diskscan/exts/${id}`),
   diskScanExtFiles: (id: string, ext: string) =>
     req<{ files: DiskNode[] }>("GET", `/diskscan/exts/${id}/files?ext=${encodeURIComponent(ext)}`),
+  // --- Анализ файлов: дубликаты, забытые, похожие картинки ---
+  fileInsightsStart: (
+    kind: "duplicates" | "forgotten" | "images",
+    roots: string[],
+    opts: { minSize?: number; olderThanDays?: number } = {},
+  ) => req<{ id: string }>("POST", "/fileinsights/start", { kind, roots, ...opts }),
+  fileInsightsStatus: (id: string) =>
+    req<{
+      id: string;
+      kind: string;
+      stage: "scanning" | "hashing" | "done" | "error" | "cancelled";
+      scanned: number;
+      progress: number;
+      error: string | null;
+      duplicates?: { hash: string; size: number; files: string[]; wasted: number }[];
+      forgotten?: { path: string; size: number; idleDays: number }[];
+      images?: string[];
+    }>("GET", `/fileinsights/status/${id}`),
+  fileInsightsCancel: (id: string) => req<{ ok: boolean }>("POST", `/fileinsights/cancel/${id}`),
+  fileInsightsSimilar: (items: { path: string; hash: string }[], maxDistance = 6) =>
+    req<{ groups: { files: string[]; maxDistance: number }[] }>("POST", "/fileinsights/similar", {
+      items,
+      maxDistance,
+    }),
+  fileInsightsImageUrl: (path: string) =>
+    `${BASE}/api/fileinsights/image?path=${encodeURIComponent(path)}`,
+  monitorHistory: (minutes = 60) =>
+    req<
+      {
+        t: number;
+        cpuTemp: number | null;
+        gpuTemp: number | null;
+        cpuLoad: number;
+        ramPercent: number;
+        diskFree: Record<string, number>;
+      }[]
+    >("GET", `/monitor/history?minutes=${minutes}`),
+  monitorHourly: () =>
+    req<
+      {
+        hour: number;
+        samples: number;
+        cpuLoad: number | null;
+        cpuTemp: number | null;
+        gpuTemp: number | null;
+        ramPercent: number | null;
+      }[]
+    >("GET", "/monitor/hourly"),
+  monitorAlerts: () =>
+    req<{
+      enabled: boolean;
+      alerts: { id: string; rule: string; message: string; at: number }[];
+      smart: {
+        name: string;
+        health: string;
+        operational: string;
+        temperatureC: number | null;
+        wearPercent: number | null;
+      }[];
+    }>("GET", "/monitor/alerts"),
 };

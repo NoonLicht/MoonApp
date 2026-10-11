@@ -287,6 +287,7 @@ export interface ArchiveItem {
 }
 
 export interface BackupInfo {
+  id?: string;
   at: string;
   trigger: string;
 }
@@ -453,7 +454,57 @@ export interface GameEntry {
   source: "manual" | "steam" | "epic";
   /** Steam AppID (только для source="steam") — нужен для запуска через steam://rungameid. */
   appId: string | null;
+  status?: "backlog" | "playing" | "done" | "dropped";
   createdAt: number;
+}
+
+/** Замер FPS по игре (CSV PresentMon/CapFrameX → статистика кадров). */
+export interface GameBenchRun {
+  id: string;
+  gameId: string;
+  label: string;
+  at: number;
+  stats: {
+    frames: number;
+    avgFps: number;
+    p1LowFps: number;
+    p01LowFps: number;
+    avgFrameMs: number;
+  };
+}
+
+/** Аналитика бюджета (GET /api/budget/insights). */
+export interface BudgetInsights {
+  subscriptions: {
+    name: string;
+    category: string;
+    amount: number;
+    everyDays: number;
+    charges: number;
+    lastDate: string;
+    monthlyCost: number;
+    yearlyCost: number;
+    stale: boolean;
+  }[];
+  inflation: {
+    overallPct: number | null;
+    items: { name: string; first: number; last: number; pct: number; purchases: number }[];
+  };
+  runway?: {
+    daysUntilPayday: number;
+    avgDaily: number;
+    fixedUntilPayday: number;
+    projectedSpend: number;
+    leftover: number;
+    dailyAllowance: number;
+    coveredDays: number;
+    enough: boolean;
+  };
+  compare?: {
+    totalA: number;
+    totalB: number;
+    categories: { category: string; a: number; b: number; delta: number; pct: number | null }[];
+  };
 }
 
 export interface GameInput {
@@ -465,6 +516,7 @@ export interface GameInput {
   backgroundUrl?: string | null;
   useCustomBg?: boolean;
   savePath?: string | null;
+  status?: "backlog" | "playing" | "done" | "dropped";
 }
 
 export interface SaveVersion {
@@ -1574,6 +1626,20 @@ declare global {
       pickFile?: (opts?: {
         filters?: { name: string; extensions: string[] }[];
       }) => Promise<{ ok: boolean; path?: string; canceled?: boolean; error?: string }>;
+      // Мониторы и отдельные окна страниц (презентация на втором экране).
+      listDisplays?: () => Promise<
+        {
+          id: number;
+          label: string;
+          primary: boolean;
+          bounds: { x: number; y: number; width: number; height: number };
+        }[]
+      >;
+      openPageWindow?: (
+        pageId: string,
+        displayId?: number,
+        opts?: { widget?: boolean },
+      ) => Promise<{ ok: boolean; error?: string }>;
       // Нативный диалог выбора папки (кнопка "Обзор..." у полей путей к папкам).
       pickFolder?: () => Promise<{ ok: boolean; path?: string; canceled?: boolean; error?: string }>;
       /**
