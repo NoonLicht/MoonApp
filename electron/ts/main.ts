@@ -17,10 +17,12 @@ import {
   registerCommandPaletteHotkey,
   registerOwnScreenshotHotkey,
 } from "./mainHotkeys";
-import { startClipboardWatch, stopClipboardWatch } from "./mainClipboard";
+import { startClipboardWatch, stopClipboardWatch, startClipboardTextHistory } from "./mainClipboard";
+import { handleMenuArgv } from "./mainContextMenu";
 import { setupAutoUpdates } from "./mainUpdates";
 import "./mainIpc";
 import "./mainCapture";
+import { registerPageWindows, isPageWindowSender, closePageWindows } from "./mainPageWindows";
 
 const { startServer } = serverModule("../server");
 
@@ -71,7 +73,9 @@ const gotSingleInstanceLock = app.requestSingleInstanceLock();
 if (!gotSingleInstanceLock) {
   app.quit();
 } else {
-  app.on("second-instance", () => {
+  app.on("second-instance", (_event, argv) => {
+    // запуск из меню Проводника: выполняем действие без показа окна
+    if (handleMenuArgv(argv)) return;
     showWindow();
   });
 }
@@ -325,7 +329,7 @@ async function createWindow() {
   ipcMain.on("app:get-token", (event) => {
     const trusted =
       !!win &&
-      event.sender === win.webContents &&
+      (event.sender === win.webContents || isPageWindowSender(event.sender)) &&
       String(event.senderFrame?.url || "").startsWith(`http://127.0.0.1:${port}/`);
     event.returnValue = trusted ? token : null;
   });
@@ -364,6 +368,8 @@ async function createWindow() {
   });
 
   win.setMenuBarVisibility(false);
+  registerPageWindows(port);
+  win.on("closed", closePageWindows);
 
   const ready = await waitForServer(port);
   if (!ready) console.error("[electron] server health-check failed; loading anyway");
@@ -439,7 +445,9 @@ app.whenReady().then(() => {
   registerCommandPaletteHotkey();
   registerOwnScreenshotHotkey();
   createWindow();
+  handleMenuArgv(process.argv);
   startClipboardWatch();
+  startClipboardTextHistory();
   // Проверка обновлений — после создания окна, чтобы не задерживать старт, но
   // достаточно рано: с 0.2.2 обновления обязательны, и диалог установки должен
   // появиться в начале работы, а не через минуты.

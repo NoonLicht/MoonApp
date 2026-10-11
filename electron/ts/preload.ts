@@ -59,6 +59,10 @@ contextBridge.exposeInMainWorld("appBridge", {
   // перечитывает settings.json и перерегистрирует/снимает шорткат без
   // перезапуска приложения.
   refreshHotkey: () => ipcRenderer.invoke("app:refresh-hotkey"),
+  // Отдельные окна страниц на выбранном мониторе.
+  listDisplays: () => ipcRenderer.invoke("win:list-displays"),
+  openPageWindow: (pageId: string, displayId?: number, opts?: { widget?: boolean }) =>
+    ipcRenderer.invoke("win:open-page", pageId, displayId, opts),
   // Подписка на событие "открыть палитру" (Alt+Space нажат где угодно в ОС).
   // Возвращает функцию отписки — вызывающий код обязан её сохранить и дёрнуть
   // на unmount, иначе на каждый ремонт компонента копится ещё один слушатель.

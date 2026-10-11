@@ -25,6 +25,8 @@ import { mlog, readSettings } from "./mainCore";
  */
 let clipboardWatchTimer: any = null;
 let lastClipboardHash = "";
+let clipboardTextTimer: any = null;
+let lastClipText = "";
 
 /** PNG из буфера обмена (Electron 44: clipboard стал асинхронным, readImage() убран). */
 async function readClipboardPng(): Promise<Buffer | null> {
@@ -102,6 +104,41 @@ export function startClipboardWatch() {
 export function stopClipboardWatch() {
   if (clipboardWatchTimer) clearInterval(clipboardWatchTimer);
   clipboardWatchTimer = null;
+  if (clipboardTextTimer) clearInterval(clipboardTextTimer);
+  clipboardTextTimer = null;
+}
+
+/** Текст из буфера обмена (Electron 44: через асинхронный clipboard.read()). */
+async function readClipboardText(): Promise<string> {
+  const { clipboard } = require("electron") as typeof import("electron");
+  for (const item of await clipboard.read()) {
+    if (!item.types.includes("text/plain")) continue;
+    return await (await item.getType("text/plain")).text();
+  }
+  return "";
+}
+
+/**
+ * История текста буфера обмена: только если пользователь включил
+ * clipboardHistory.enabled. Фильтр секретов и хранение — server/clipboardHistory.
+ */
+export function startClipboardTextHistory() {
+  if (clipboardTextTimer) return;
+  let busy = false;
+  clipboardTextTimer = setInterval(async () => {
+    if (busy || readSettings()?.clipboardHistory?.enabled !== true) return;
+    busy = true;
+    try {
+      const text = await readClipboardText().catch(() => "");
+      if (!text || text === lastClipText) return;
+      lastClipText = text;
+      serverModule("../server/clipboardHistory").push(text);
+    } catch (e: any) {
+      mlog("error", "clipboard.history_failed", { error: e?.message || String(e) });
+    } finally {
+      busy = false;
+    }
+  }, 1000);
 }
 
 // Страница «Скриншоты» вызывает это сразу после того, как сама записала

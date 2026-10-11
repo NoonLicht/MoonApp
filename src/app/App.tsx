@@ -54,6 +54,17 @@ import "@/styles/translate.css";
 import "@/styles/movies.css";
 import "@/styles/upscale.css";
 import "@/styles/screenshots.css";
+import CursorSpotlight from "@/components/CursorSpotlight";
+import A11yFlags from "@/components/A11yFlags";
+
+/** Окно открыто как «отдельная страница» (?solo=<id>): показываем её, без приветствия. */
+const SOLO_PAGE: string = (() => {
+  try {
+    return new URLSearchParams(window.location.search).get("solo") ?? "";
+  } catch {
+    return "";
+  }
+})();
 
 // Идентификаторы страниц и их перечень (PAGES) живут в src/navigation.ts —
 // общий источник для дока приложения и списка «Стартовая страница» в настройках.
@@ -502,7 +513,7 @@ export default function App() {
   const [keepPagesLimit, setKeepPagesLimit] = useState(KEEP_ALIVE_DEFAULT_LIMIT);
   const [unloadIdleMinutes, setUnloadIdleMinutes] = useState(KEEP_ALIVE_DEFAULT_IDLE_MIN);
   const [welcomeOpen, setWelcomeOpen] = useState(false);
-  const [welcomeMounted, setWelcomeMounted] = useState(true);
+  const [welcomeMounted, setWelcomeMounted] = useState(!SOLO_PAGE);
 
   // Слот тулбара: пишем по ключу страницы. null — удалить слот (страница выгружена).
   const setPageToolbar = useCallback((id: string, node: React.ReactNode | null) => {
@@ -542,7 +553,13 @@ export default function App() {
         // settings.json, ручная правка) — открываем первую страницу «App»
         // (установщик приложений, id "store").
         const startPage = String(sc?.general?.startPage || "");
-        setActive(PAGES.some((p) => p.id === startPage) ? (startPage as PageId) : "store");
+        setActive(
+          PAGES.some((p) => p.id === SOLO_PAGE)
+            ? (SOLO_PAGE as PageId)
+            : PAGES.some((p) => p.id === startPage)
+              ? (startPage as PageId)
+              : "store",
+        );
         if (sc?.general?.language) setLang(sc.general.language);
         if (sc?.performance?.backgroundBlur != null) setBlur(!!sc.performance.backgroundBlur);
         // Внешний вид: акцент, анимации, плотность, непрозрачный фон.
@@ -605,6 +622,8 @@ export default function App() {
             экран) стартовал раньше остальных и приветствие не мигало поверх
             уже отрисованной страницы. После закрытия сразу размонтируется
             (welcomeMounted=false) — не держим 16 карточек фич в памяти. */}
+        <CursorSpotlight />
+        <A11yFlags />
         {welcomeMounted && (
           <WelcomeModal
             onOpenChange={(o) => {

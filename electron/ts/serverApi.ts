@@ -24,6 +24,16 @@ export interface ServerModules {
       opts: { type: string; ext: string; mime: string; width?: number; height?: number },
     ): unknown;
   };
+  "../server/contextMenu": {
+    parseArgv(argv: string[]): { action: "add-note" | "folder-snapshot" | "web-clip"; target: string } | null;
+    runAction(
+      action: "add-note" | "folder-snapshot" | "web-clip",
+      target: string,
+    ): { action: "add-note" | "folder-snapshot" | "web-clip"; result: string };
+  };
+  "../server/clipboardHistory": {
+    push(text: string): boolean;
+  };
   "../server/trackerScraper": {
     bindChromiumSession(ses: unknown): void;
   };
