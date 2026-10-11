@@ -58,8 +58,8 @@ export const APP_JS = `
   "use strict";
   var LS = "moonapp.companion.token";
   var T = {
-    en: { pairTitle: "Connect to MoonApp", pairHint: "Enter the 6-digit code shown in MoonApp: Settings → Web companion.", connect: "Connect", badCode: "Wrong or expired code.", tooMany: "Too many attempts. Wait a minute.", inbox: "Inbox", notes: "Notes", tasks: "Tasks", player: "Player", send: "Send", textPh: "Text or link to send to your PC…", sent: "Sent to the PC", pickFile: "Choose a file", uploading: "Uploading…", fileSent: "File delivered", blocked: "This file type is not accepted", failed: "Failed", search: "Search notes…", empty: "Nothing here", back: "Back", append: "Add to note", newNote: "New note", titlePh: "Title", save: "Save", addTask: "Add", taskPh: "New task…", noPlayer: "No media is playing on the PC.", forget: "Disconnect this device", offline: "Cannot reach the PC", saved: "Saved" },
-    ru: { pairTitle: "Подключение к MoonApp", pairHint: "Введите 6-значный код из MoonApp: Настройки → Веб-компаньон.", connect: "Подключить", badCode: "Неверный или просроченный код.", tooMany: "Слишком много попыток. Подождите минуту.", inbox: "Входящие", notes: "Заметки", tasks: "Задачи", player: "Плеер", send: "Отправить", textPh: "Текст или ссылка для ПК…", sent: "Отправлено на ПК", pickFile: "Выбрать файл", uploading: "Загрузка…", fileSent: "Файл доставлен", blocked: "Такой тип файлов не принимается", failed: "Не удалось", search: "Поиск по заметкам…", empty: "Пусто", back: "Назад", append: "Дописать в заметку", newNote: "Новая заметка", titlePh: "Заголовок", save: "Сохранить", addTask: "Добавить", taskPh: "Новая задача…", noPlayer: "На ПК сейчас ничего не играет.", forget: "Отключить это устройство", offline: "ПК недоступен", saved: "Сохранено" }
+    en: { pairTitle: "Connect to MoonApp", pairHint: "Enter the 6-digit code shown in MoonApp: Settings → Web companion.", connect: "Connect", badCode: "Wrong or expired code.", tooMany: "Too many attempts. Wait a minute.", inbox: "Inbox", notes: "Notes", tasks: "Tasks", player: "Player", send: "Send", textPh: "Text or link to send to your PC…", sent: "Sent to the PC", pickFile: "Choose a file", uploading: "Uploading…", fileSent: "File delivered", blocked: "This file type is not accepted", failed: "Failed", search: "Search notes…", empty: "Nothing here", back: "Back", append: "Add to note", newNote: "New note", titlePh: "Title", save: "Save", addTask: "Add", taskPh: "New task…", noPlayer: "No media is playing on the PC.", forget: "Disconnect this device", offline: "Cannot reach the PC", saved: "Saved", scan: "Scanner", shoot: "Take a photo", pages: "Pages", makePdf: "Make PDF", toTasks: "Photo → tasks", clearPages: "Clear", working: "Processing on the PC…", pdfDone: "PDF is on the PC (Scans)", tasksDone: "Tasks created: ", scanHint: "Shoot a document or a whiteboard. PDF and text are made on the PC." },
+    ru: { pairTitle: "Подключение к MoonApp", pairHint: "Введите 6-значный код из MoonApp: Настройки → Веб-компаньон.", connect: "Подключить", badCode: "Неверный или просроченный код.", tooMany: "Слишком много попыток. Подождите минуту.", inbox: "Входящие", notes: "Заметки", tasks: "Задачи", player: "Плеер", send: "Отправить", textPh: "Текст или ссылка для ПК…", sent: "Отправлено на ПК", pickFile: "Выбрать файл", uploading: "Загрузка…", fileSent: "Файл доставлен", blocked: "Такой тип файлов не принимается", failed: "Не удалось", search: "Поиск по заметкам…", empty: "Пусто", back: "Назад", append: "Дописать в заметку", newNote: "Новая заметка", titlePh: "Заголовок", save: "Сохранить", addTask: "Добавить", taskPh: "Новая задача…", noPlayer: "На ПК сейчас ничего не играет.", forget: "Отключить это устройство", offline: "ПК недоступен", saved: "Сохранено", scan: "Сканер", shoot: "Снять", pages: "Страниц", makePdf: "Собрать PDF", toTasks: "Фото → задачи", clearPages: "Очистить", working: "Обрабатываю на ПК…", pdfDone: "PDF на ПК (папка «Сканы»)", tasksDone: "Создано задач: ", scanHint: "Снимите документ или доску. PDF и текст делает ПК." }
   };
   var L = T[(navigator.language || "en").slice(0, 2)] || T.en;
   var root = document.getElementById("app");
@@ -123,12 +123,12 @@ export const APP_JS = `
     clear(root);
     var body = el("div");
     root.appendChild(body);
-    var names = ["inbox", "notes", "tasks", "player"];
+    var names = ["inbox", "notes", "tasks", "scan", "player"];
     var nav = el("nav", null, names.map(function (n) {
       return el("button", { class: n === tab ? "on" : "", text: L[n], onclick: function () { tab = n; render(); } });
     }));
     root.appendChild(nav);
-    ({ inbox: viewInbox, notes: viewNotes, tasks: viewTasks, player: viewPlayer })[tab](body);
+    ({ inbox: viewInbox, notes: viewNotes, tasks: viewTasks, scan: viewScan, player: viewPlayer })[tab](body);
   }
 
   function status(node, text, cls) { node.className = cls || "dim"; node.textContent = text; }
@@ -227,6 +227,75 @@ export const APP_JS = `
     body.appendChild(el("div", { style: "height:10px" }));
     body.appendChild(list);
     load();
+  }
+
+  /* ---- сканер: снимки сжимаются на телефоне и уходят на ПК ---- */
+  var shots = [];
+  function shrink(file, maxSide) {
+    return new Promise(function (resolve, reject) {
+      var url = URL.createObjectURL(file);
+      var img = new Image();
+      img.onload = function () {
+        var k = Math.min(1, maxSide / Math.max(img.naturalWidth, img.naturalHeight));
+        var c = document.createElement("canvas");
+        c.width = Math.round(img.naturalWidth * k); c.height = Math.round(img.naturalHeight * k);
+        c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+        URL.revokeObjectURL(url);
+        c.toBlob(function (b) { b ? resolve(b) : reject(new Error("shrink")); }, "image/jpeg", 0.88);
+      };
+      img.onerror = function () { URL.revokeObjectURL(url); reject(new Error("image")); };
+      img.src = url;
+    });
+  }
+
+  function viewScan(body) {
+    var st = el("div", { class: "dim" });
+    var count = el("div", { class: "dim" });
+    var input = el("input", { type: "file", accept: "image/*", capture: "environment", style: "display:none" });
+    var upd = function () { count.textContent = L.pages + ": " + shots.length; };
+    input.addEventListener("change", function () {
+      var f = input.files[0];
+      if (!f) return;
+      shrink(f, 2200).then(function (b) { shots.push(b); upd(); }).catch(function () { status(st, L.failed, "err"); });
+      input.value = "";
+    });
+    var send = function (path, doneText) {
+      if (!shots.length) return;
+      var fd = new FormData();
+      shots.forEach(function (b, i) { fd.append(path === "/scan/pdf" ? "files" : "file", b, "page" + (i + 1) + ".jpg"); });
+      status(st, L.working);
+      api("POST", path, fd).then(function (r) {
+        status(st, doneText(r), "ok");
+        shots = []; upd();
+      }).catch(function () { status(st, L.failed, "err"); });
+    };
+    body.appendChild(el("h1", { text: L.scan }));
+    body.appendChild(el("div", { class: "card" }, [
+      el("p", { class: "dim", text: L.scanHint }),
+      el("div", { class: "row" }, [
+        el("button", { class: "pri", text: L.shoot, onclick: function () { input.click(); } }),
+        el("button", { text: L.clearPages, onclick: function () { shots = []; upd(); } }), input
+      ]),
+      el("div", { style: "height:8px" }), count, el("div", { style: "height:8px" }),
+      el("div", { class: "row" }, [
+        el("button", { text: L.makePdf, onclick: function () { send("/scan/pdf", function () { return L.pdfDone; }); } }),
+        el("button", { text: L.toTasks, onclick: function () {
+          if (!shots.length) return;
+          // чек-лист строится из первого кадра; остальные страницы — отдельными вызовами
+          var all = shots.slice(); var total = 0; var chain = Promise.resolve();
+          status(st, L.working);
+          all.forEach(function (b) {
+            chain = chain.then(function () {
+              var fd = new FormData(); fd.append("file", b, "photo.jpg");
+              return api("POST", "/scan/tasks", fd).then(function (r) { total += r.tasks || 0; });
+            });
+          });
+          chain.then(function () { status(st, L.tasksDone + total, "ok"); shots = []; upd(); })
+            .catch(function () { status(st, L.failed, "err"); });
+        } })
+      ]), st
+    ]));
+    upd();
   }
 
   function viewPlayer(body) {

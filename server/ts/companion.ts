@@ -28,6 +28,7 @@ import multer from "multer";
 import config from "./config";
 import logger from "./logger";
 import { APP_JS, INDEX_HTML, STYLE_CSS } from "./companionPage";
+import * as photoTasks from "./photoTasks";
 
 import type { CompanionStatus, PlayerCommand, PlayerState } from "./contracts/companion";
 
@@ -486,6 +487,38 @@ export function createCompanionApp(): express.Express {
       logger.info("companion.file", { name: req.file.filename, size: req.file.size });
       res.status(201).json({ ok: true, name: req.file.filename });
     });
+  });
+
+  /* сканер документов: телефон снимает, ПК распознаёт и собирает PDF */
+  const scanUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 25 * 1024 * 1024, files: 20 },
+  });
+  api.post("/scan/pdf", scanUpload.array("files", 20), async (req, res) => {
+    try {
+      const files = (req.files as Express.Multer.File[] | undefined) ?? [];
+      if (!files.length) return res.status(400).json({ error: "no_file" });
+      const r = await photoTasks.scanToPdf(
+        files.map((f) => ({ data: f.buffer, mime: f.mimetype })),
+        { title: String(req.body?.title ?? "") },
+      );
+      logger.info("companion.scan_pdf", { pages: r.pages });
+      res.status(201).json({ ok: true, file: r.file, pages: r.pages });
+    } catch (e) {
+      const m = (e as Error).message;
+      res.status(m === "unsupported_image" ? 415 : 500).json({ error: m });
+    }
+  });
+  api.post("/scan/tasks", scanUpload.single("file"), async (req, res) => {
+    try {
+      if (!req.file) return res.status(400).json({ error: "no_file" });
+      const r = await photoTasks.photoToTasks(req.file.buffer, { name: req.file.originalname, mime: req.file.mimetype });
+      logger.info("companion.scan_tasks", { tasks: r.tasks });
+      res.status(201).json({ ok: true, tasks: r.tasks, note: r.note });
+    } catch (e) {
+      const m = (e as Error).message;
+      res.status(m === "unsupported_image" ? 415 : 500).json({ error: m });
+    }
   });
 
   /* плеер */
