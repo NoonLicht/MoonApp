@@ -15,6 +15,7 @@
  */
 import express from "express";
 import * as rss from "../rss";
+import { youtubeFeedUrl } from "../youtubeFeed";
 
 const router = express.Router();
 
@@ -25,7 +26,10 @@ router.get("/feeds", (_req, res) => res.json(rss.listFeeds()));
 
 router.post("/feeds", async (req, res) => {
   try {
-    res.status(201).json(await rss.addFeed(req.body && req.body.url));
+    // ссылка на канал/плейлист YouTube или @handle превращается в адрес ленты
+    const input = String((req.body && req.body.url) ?? "");
+    const yt = await youtubeFeedUrl(input, async (u) => (await rss.defaultFetcher(u, {})).text);
+    res.status(201).json(await rss.addFeed(yt ?? input));
   } catch (e) {
     fail(res, e);
   }
