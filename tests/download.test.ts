@@ -118,7 +118,7 @@ describe("контракт: единый модуль скачивания вм�
     // <a download> после первой унификации и переведены на общий хелпер.
     const pages = [
       "settings/SettingsPage.tsx",
-      "lecture/LectureRecorderPage.tsx",
+      "lecture/useLectureRecorder.tsx",
       "music/MusicPage.tsx",
       "video/VideoPage.tsx",
       "voice/AudiobookTTSPage.tsx",
