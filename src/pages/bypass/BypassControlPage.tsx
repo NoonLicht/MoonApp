@@ -1,3 +1,4 @@
+import NetInsightsPanel from "@/pages/bypass/parts/NetInsightsPanel";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Shield,
@@ -878,6 +879,7 @@ export default function BypassControlPage() {
       </div>
 
       <NetworkToolsPanel />
+      <NetInsightsPanel />
       <KillSwitchPanel />
     </div>
   );

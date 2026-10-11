@@ -74,6 +74,22 @@ router.get("/wifi/current", async (req, res) => {
   }
 });
 
+router.get("/wifi/analyze", async (req, res) => {
+  try {
+    res.json(await net.wifiAnalyze());
+  } catch (e) {
+    res.status(500).json({ error: (e as Error).message });
+  }
+});
+
+router.get("/dns", async (req, res) => {
+  try {
+    res.json(await net.dnsServers());
+  } catch (e) {
+    res.status(500).json({ error: (e as Error).message });
+  }
+});
+
 router.get("/speedtest", async (req, res) => {
   try {
     res.json(await net.speedTest());

@@ -1,3 +1,4 @@
+import fs from "fs";
 /**
  * Сетевые утилиты для страницы Bypass: ping/traceroute (обёртка над системными
  * ping/tracert — тот же приём, что и для ffmpeg/git в проекте), TCP connect-scan
@@ -6,6 +7,7 @@
  * автономно, без возможности протестировать на живой машине ночью, слишком
  * рискованны (см. итоговый отчёт).
  */
+import * as insights from "./netInsights";
 import { execFile } from "child_process";
 import net from "net";
 import os from "os";
@@ -146,6 +148,59 @@ export async function wifiCurrent(): Promise<{ ok: boolean; output: string }> {
       : ["nmcli", ["-t", "-f", "DEVICE,TYPE,STATE,CONNECTION", "dev", "status"]];
   const { out, err } = await execAsync(file as string, args as string[], 10000);
   return { ok: !err, output: out || err };
+}
+
+/** Wi-Fi сети с оценкой загруженности каналов 2,4 ГГц и рекомендацией канала. */
+export async function wifiAnalyze(): Promise<{
+  ok: boolean;
+  nets: insights.WifiNet[];
+  channels: insights.ChannelLoad[];
+  recommended: number | null;
+  error?: string;
+}> {
+  const win = process.platform === "win32";
+  const [file, args] = win
+    ? ["netsh", ["wlan", "show", "networks", "mode=bssid"]]
+    : ["nmcli", ["-t", "-f", "SSID,SIGNAL,CHAN", "dev", "wifi", "list"]];
+  const { out, err } = await execAsync(file as string, args as string[], 10000);
+  if (err && !out) return { ok: false, nets: [], channels: [], recommended: null, error: err };
+  const nets = win ? insights.parseNetsh(out) : insights.parseNmcli(out);
+  const a = insights.analyzeChannels(nets);
+  return { ok: true, nets, channels: a.loads, recommended: a.recommended };
+}
+
+/** DNS-серверы системы с классификацией (частный / известный публичный / прочий). */
+export async function dnsServers(): Promise<{
+  servers: { ip: string; kind: string; provider: string | null }[];
+}> {
+  let ips: string[];
+  if (process.platform === "win32") {
+    const { out } = await execAsync(
+      "powershell.exe",
+      [
+        "-NoProfile",
+        "-Command",
+        "Get-DnsClientServerAddress -AddressFamily IPv4 | ForEach-Object { $_.ServerAddresses } | Sort-Object -Unique",
+      ],
+      10000,
+    );
+    ips = out.split(/\r?\n/).map((l) => l.trim());
+  } else {
+    try {
+      ips = fs
+        .readFileSync("/etc/resolv.conf", "utf8")
+        .split("\n")
+        .map((l) => l.match(/^nameserver\s+(\S+)/)?.[1] ?? "");
+    } catch {
+      ips = [];
+    }
+  }
+  const seen = new Set<string>();
+  const servers = ips
+    .filter((ip) => ip && !seen.has(ip) && seen.add(ip))
+    .map((ip) => ({ ip, ...insights.classifyDns(ip) }))
+    .filter((s) => s.kind !== "invalid");
+  return { servers };
 }
 
 export interface SpeedTestResult {

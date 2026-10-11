@@ -28,6 +28,18 @@ export function isPrivateAddress(ip: string): boolean {
   return a === 10 || a === 127 || (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168);
 }
 
+/**
+ * Адреса виртуальных адаптеров: Hamachi (25.x), Radmin VPN (26.x), CGNAT и Tailscale
+ * (100.64.0.0/10). Они видны в WebRTC как host-кандидаты, но выглядят «публичными»;
+ * реального адреса провайдера они не раскрывают.
+ */
+export function isOverlayAddress(ip: string): boolean {
+  const m = ip.match(/^(\d+)\.(\d+)\./);
+  if (!m) return false;
+  const [a, b] = [Number(m[1]), Number(m[2])];
+  return a === 25 || a === 26 || (a === 100 && b >= 64 && b <= 127);
+}
+
 export interface LeakVerdict {
   /** Публичные адреса, видимые через WebRTC. */
   publicIps: string[];
@@ -41,7 +53,7 @@ export function verdict(candidates: IceCandidate[], appIp: string | null): LeakV
   const publicIps = [
     ...new Set(
       candidates
-        .filter((c) => c.type !== "relay" && !isPrivateAddress(c.ip))
+        .filter((c) => c.type !== "relay" && !isPrivateAddress(c.ip) && !isOverlayAddress(c.ip))
         .map((c) => c.ip),
     ),
   ];

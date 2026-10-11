@@ -41,4 +41,18 @@ describe("webrtcLeak", () => {
     expect(verdict([{ ip: "198.51.100.1", type: "srflx" }], "198.51.100.1").leak).toBe(false);
     expect(verdict([{ ip: "203.0.113.7", type: "srflx" }], null).leak).toBe(false);
   });
+
+  it("адреса виртуальных адаптеров (Radmin, Hamachi, Tailscale) не считаются утечкой", () => {
+    const v = verdict(
+      [
+        { ip: "26.188.221.88", type: "host" },
+        { ip: "25.4.5.6", type: "host" },
+        { ip: "100.101.102.103", type: "host" },
+        { ip: "89.124.37.4", type: "srflx" },
+      ],
+      "89.124.37.4",
+    );
+    expect(v.publicIps).toEqual(["89.124.37.4"]);
+    expect(v.leak).toBe(false);
+  });
 });
