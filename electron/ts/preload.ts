@@ -63,6 +63,13 @@ contextBridge.exposeInMainWorld("appBridge", {
   listDisplays: () => ipcRenderer.invoke("win:list-displays"),
   openPageWindow: (pageId: string, displayId?: number, opts?: { widget?: boolean }) =>
     ipcRenderer.invoke("win:open-page", pageId, displayId, opts),
+  // Режим «чужой за столом»: глобальная клавиша из main → renderer, и обратная синхронизация заголовка.
+  onPrivacy: (cb: any) => {
+    const listener = (_e: unknown, on: boolean) => cb(on);
+    ipcRenderer.on("app:privacy", listener);
+    return () => ipcRenderer.removeListener("app:privacy", listener);
+  },
+  privacySet: (on: boolean) => ipcRenderer.invoke("app:privacy-set", on),
   // Подписка на событие "открыть палитру" (Alt+Space нажат где угодно в ОС).
   // Возвращает функцию отписки — вызывающий код обязан её сохранить и дёрнуть
   // на unmount, иначе на каждый ремонт компонента копится ещё один слушатель.

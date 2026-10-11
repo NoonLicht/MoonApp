@@ -18,6 +18,7 @@ export const HOTKEYS: HotkeyDef[] = [
   { id: "palette", labelKey: "settings.hotkeys.palette", defaultCombo: "Ctrl+K" },
   { id: "chatSwitcher", labelKey: "settings.hotkeys.chatSwitcher", defaultCombo: "Ctrl+Shift+K" },
   { id: "noteSave", labelKey: "settings.hotkeys.noteSave", defaultCombo: "Ctrl+S" },
+  { id: "privacy", labelKey: "settings.hotkeys.privacy", defaultCombo: "Ctrl+Alt+H" },
 ];
 
 const STORAGE_KEY = "moonapp.hotkeys";

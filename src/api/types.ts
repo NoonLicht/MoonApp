@@ -1696,6 +1696,9 @@ declare global {
       refreshHotkey?: () => Promise<{ ok: boolean }>;
       /** Подписка на "Alt+Space нажат где угодно в ОС" — возвращает функцию отписки. */
       onOpenPalette?: (cb: () => void) => () => void;
+      /** Режим «чужой за столом»: Ctrl+Alt+H нажат где угодно в ОС. */
+      onPrivacy?: (cb: (active: boolean) => void) => () => void;
+      privacySet?: (on: boolean) => Promise<{ ok: boolean; active: boolean }>;
       /**
        * Окно входа на форум (Chromium приложения): открывается страница входа, и
        * когда пользователь вошёл — возвращаются куки его сессии. Единственный путь

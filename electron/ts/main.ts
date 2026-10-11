@@ -19,6 +19,7 @@ import {
 } from "./mainHotkeys";
 import { startClipboardWatch, stopClipboardWatch, startClipboardTextHistory } from "./mainClipboard";
 import { handleMenuArgv } from "./mainContextMenu";
+import { registerPrivacyHotkey } from "./mainPrivacy";
 import { setupAutoUpdates } from "./mainUpdates";
 import "./mainIpc";
 import "./mainCapture";
@@ -444,6 +445,7 @@ app.whenReady().then(() => {
   applyAutoLaunch();
   registerCommandPaletteHotkey();
   registerOwnScreenshotHotkey();
+  registerPrivacyHotkey();
   createWindow();
   handleMenuArgv(process.argv);
   startClipboardWatch();
