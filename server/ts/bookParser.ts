@@ -295,24 +295,18 @@ function parseFb2(buf: Buffer): ParsedBook {
 /* --------------------- Форматы: PDF / MOBI / RTF / TXT --------------------- */
 
 async function parsePdf(buf: Buffer): Promise<ParsedBook> {
-  // require из lib — у pdf-parse обычный index при require читает дебаг-тест.
-  // ВНИМАНИЕ (проверено эмпирически): pdf-parse v2 закрыл подпуть lib/ через
-  // "exports", поэтому этот require кидает ERR_PACKAGE_PATH_NOT_EXPORTED и
-  // разбор PDF падает всегда. Поведение сохранено 1:1 при переводе на TS;
-  // лечится переходом на require("pdf-parse") (см. tests/bookParser.test.ts).
+  // Раньше здесь был require("pdf-parse/lib/pdf-parse.js"): у pdf-parse v2 этот
+  // подпуть закрыт через "exports", поэтому разбор PDF падал всегда. Берём тот
+  // же извлекатель текста, что и страница PDF-инструментов (PDFParse из v2).
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const pdfParse = require("pdf-parse/lib/pdf-parse.js") as (b: Buffer) => Promise<{
-    text?: string;
-    info?: { Title?: string; Author?: string };
-  }>;
-  const data = await pdfParse(buf);
-  const text = cleanText(data.text || "");
-  const title = (data.info?.Title || "").trim();
+  const { extractText } = require("./pdfTools") as typeof import("./pdfTools");
+  const data = await extractText(buf);
+  const text = cleanText((data.text || "").replace(/--\s*\d+\s+of\s+\d+\s*--/g, " "));
   return {
-    title,
-    author: (data.info?.Author || "").trim(),
+    title: "",
+    author: "",
     coverImage: null,
-    chapters: text ? [{ title: title || "PDF", text }] : [],
+    chapters: text ? [{ title: "PDF", text }] : [],
   };
 }
 
