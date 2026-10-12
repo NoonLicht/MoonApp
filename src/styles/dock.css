@@ -147,3 +147,8 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Подпись пункта рельса показывает только дизайн Fluent 2 (см. fluent.css). */
+.dock-label {
+  display: none;
+}

@@ -1,0 +1,343 @@
+/* ===========================================================================
+   Fluent 2 — дизайн-слой MoonApp.
+   Включается классом html.design-fluent (настройки → Внешний вид → Дизайн).
+   Всё лежит под этим селектором, поэтому «Классический» вид не затронут,
+   а откат — одна настройка. Эффект стекла отдельно: html.no-glass.
+
+   Идеи слоя:
+   • Mica-подложка окна: фон слегка подкрашен акцентом сверху вниз;
+   • ступенчатые поверхности (layer → card → flyout) вместо одного «стекла»;
+   • навигация NavigationView: иконка + подпись, индикатор-«пилюля» акцента,
+     на широком окне рельс раскрывается сам, на узком — только иконки;
+   • радиусы 4/8 px, штрих-фокус и подчёркивание у полей ввода;
+   • максимум полезной площади: контент не ограничивается 1680 px, сетки
+     карточек подстраиваются под ширину (auto-fill), панели растут на 4K.
+   =========================================================================== */
+
+/* ---------- Токены ---------- */
+html.design-fluent .app-shell {
+  --fl-r-ctl: 6px;
+  --fl-r-card: 10px;
+  --fl-r-fly: 12px;
+  --fl-stroke: var(--glass-border);
+  --fl-card: var(--glass);
+  --fl-card-hover: var(--glass-strong);
+  --fl-shadow-2: 0 1px 2px rgba(0, 0, 0, 0.18), 0 0 1px rgba(0, 0, 0, 0.2);
+  --fl-shadow-8: 0 4px 12px rgba(0, 0, 0, 0.22), 0 0 2px rgba(0, 0, 0, 0.2);
+  --fl-shadow-16: 0 8px 24px rgba(0, 0, 0, 0.3), 0 0 2px rgba(0, 0, 0, 0.24);
+  --font-body: "Segoe UI Variable Text", "Segoe UI", "Inter", system-ui, sans-serif;
+  --font-display: "Segoe UI Variable Display", "Segoe UI", "Inter", system-ui, sans-serif;
+  --content-max: 2560px;
+  --tbar-gap: 8px;
+  --tbar-h: 44px;
+  --rail-gap: 8px;
+  --rail-w: 52px;
+  --content-bottom: 16px;
+  --shadow: var(--fl-shadow-8);
+  letter-spacing: 0;
+}
+
+html.design-fluent .app-shell.theme-dark {
+  --bg-base: #1b1b1f;
+  --bg-base-2: #232329;
+  --bg-alpha: rgba(27, 27, 31, 0.96);
+  --glass: rgba(255, 255, 255, 0.045);
+  --glass-strong: rgba(255, 255, 255, 0.075);
+  --glass-border: rgba(255, 255, 255, 0.085);
+  --track: rgba(255, 255, 255, 0.07);
+  --surface-solid: #2a2a30;
+  --text-primary: #ffffff;
+  --text-secondary: #cfcfd6;
+  --text-tertiary: #9a9aa6;
+}
+html.design-fluent .app-shell.theme-midnight {
+  --surface-solid: #101a36;
+  --glass-border: rgba(140, 175, 255, 0.16);
+}
+html.design-fluent .app-shell.theme-oled {
+  --bg-base: #000;
+  --surface-solid: #141418;
+}
+html.design-fluent .app-shell.theme-light {
+  --bg-base: #f3f3f6;
+  --bg-base-2: #ececf1;
+  --bg-alpha: rgba(243, 243, 246, 0.96);
+  --glass: rgba(255, 255, 255, 0.7);
+  --glass-strong: rgba(255, 255, 255, 0.92);
+  --glass-border: rgba(0, 0, 0, 0.08);
+  --track: rgba(0, 0, 0, 0.05);
+  --surface-solid: #ffffff;
+  --text-primary: #1b1b1f;
+  --text-secondary: #494955;
+  --text-tertiary: #767684;
+  --fl-shadow-2: 0 1px 2px rgba(0, 0, 0, 0.08), 0 0 1px rgba(0, 0, 0, 0.1);
+  --fl-shadow-8: 0 4px 12px rgba(0, 0, 0, 0.1), 0 0 2px rgba(0, 0, 0, 0.08);
+  --fl-shadow-16: 0 8px 24px rgba(0, 0, 0, 0.14), 0 0 2px rgba(0, 0, 0, 0.1);
+}
+
+/* ---------- Окно: Mica ---------- */
+html.design-fluent .app-shell {
+  background:
+    radial-gradient(1200px 520px at 12% -8%, color-mix(in srgb, var(--amber) 14%, transparent), transparent 70%),
+    radial-gradient(900px 480px at 100% 0%, color-mix(in srgb, var(--violet) 9%, transparent), transparent 70%),
+    var(--bg-base);
+}
+html.design-fluent .app-shell .blob {
+  opacity: 0.1;
+}
+
+/* ---------- Поверхности ---------- */
+html.design-fluent .glass,
+html.design-fluent .glass-solid {
+  border-radius: var(--fl-r-card);
+  border-color: var(--fl-stroke);
+  box-shadow: var(--fl-shadow-2);
+}
+html.design-fluent .glass-solid,
+html.design-fluent .proxy-panel {
+  border-radius: var(--fl-r-fly);
+  box-shadow: var(--fl-shadow-16);
+}
+
+/* ---------- Верхняя панель: командная строка ---------- */
+html.design-fluent .top-toolbar {
+  border-radius: var(--fl-r-card);
+  box-shadow: var(--fl-shadow-2);
+  background: var(--glass-strong);
+}
+
+/* ---------- Навигация (NavigationView) ---------- */
+html.design-fluent .dock-label {
+  display: none;
+}
+html.design-fluent .dock-scroll {
+  align-items: stretch;
+  gap: 2px;
+  padding: 6px;
+  border-radius: var(--fl-r-card);
+  box-shadow: var(--fl-shadow-2);
+}
+html.design-fluent .dock-btn {
+  position: relative;
+  justify-content: flex-start;
+  gap: 12px;
+  padding: 0;
+  height: 40px;
+  border-radius: var(--fl-r-ctl);
+  color: var(--text-secondary);
+  transform: none !important;
+  transition:
+    background-color 0.12s ease,
+    color 0.12s ease;
+}
+html.design-fluent .dock-btn:hover {
+  background: var(--track);
+  color: var(--text-primary);
+}
+html.design-fluent .dock-icon {
+  width: 40px;
+  height: 40px;
+  flex: none;
+  border-radius: var(--fl-r-ctl);
+  background: transparent;
+  color: inherit;
+  box-shadow: none !important;
+}
+html.design-fluent .dock-btn:hover .dock-icon {
+  color: var(--text-primary);
+}
+html.design-fluent .dock-btn.is-active {
+  background: var(--track);
+  color: var(--text-primary);
+}
+html.design-fluent .dock-btn.is-active .dock-icon {
+  background: transparent;
+  color: var(--amber);
+  box-shadow: none !important;
+}
+/* индикатор активного пункта — вертикальная «пилюля» акцента */
+html.design-fluent .dock-btn.is-active::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 11px;
+  bottom: 11px;
+  width: 3px;
+  border-radius: 3px;
+  background: var(--amber);
+}
+html.design-fluent .app-shell[dir="rtl"] .dock-btn.is-active::before {
+  left: auto;
+  right: 0;
+}
+
+/* Рельс раскрывается сам, когда окно достаточно широкое */
+@media (min-width: 1360px) {
+  html.design-fluent .app-shell {
+    --rail-w: 224px;
+  }
+  html.design-fluent .dock-label {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding-right: 10px;
+  }
+  html.design-fluent .dock-scroll {
+    width: var(--rail-w);
+  }
+  html.design-fluent .dock-btn.is-active .dock-label {
+    font-weight: 600;
+  }
+}
+@media (min-width: 2200px) {
+  html.design-fluent .app-shell {
+    --rail-w: 248px;
+  }
+}
+
+/* ---------- Кнопки ---------- */
+html.design-fluent .btn {
+  min-height: 32px;
+  border-radius: var(--fl-r-ctl);
+  font-weight: 600;
+  border-color: var(--fl-stroke);
+  box-shadow: var(--fl-shadow-2);
+  transition:
+    background-color 0.12s ease,
+    border-color 0.12s ease,
+    transform 0.08s ease;
+}
+html.design-fluent .btn:active {
+  transform: scale(0.98);
+}
+html.design-fluent .btn-primary {
+  background: var(--amber);
+  color: #1b1100;
+  border-color: transparent;
+}
+html.design-fluent .btn-primary:hover {
+  background: color-mix(in srgb, var(--amber) 88%, #fff);
+}
+html.design-fluent .btn-ghost {
+  box-shadow: none;
+}
+html.design-fluent .icon-btn {
+  border-radius: var(--fl-r-ctl);
+}
+
+/* ---------- Поля ввода: подчёркивание акцентом при фокусе ---------- */
+html.design-fluent .text-input,
+html.design-fluent .num-input,
+html.design-fluent .select-wrap select,
+html.design-fluent input[type="text"],
+html.design-fluent input[type="search"],
+html.design-fluent input[type="number"],
+html.design-fluent textarea {
+  border-radius: var(--fl-r-ctl);
+  border-color: var(--fl-stroke);
+  border-bottom-color: color-mix(in srgb, var(--text-tertiary) 55%, transparent);
+  background-color: var(--fl-card);
+}
+html.design-fluent .text-input:focus,
+html.design-fluent .num-input:focus,
+html.design-fluent .select-wrap select:focus,
+html.design-fluent input[type="text"]:focus,
+html.design-fluent input[type="search"]:focus,
+html.design-fluent input[type="number"]:focus,
+html.design-fluent textarea:focus {
+  outline: none;
+  border-bottom: 2px solid var(--amber);
+}
+
+/* ---------- Вкладки (Pivot) ---------- */
+html.design-fluent .page-tabs {
+  gap: 4px;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--fl-stroke);
+  border-radius: 0;
+  padding: 0;
+}
+html.design-fluent .page-tab {
+  position: relative;
+  border-radius: var(--fl-r-ctl) var(--fl-r-ctl) 0 0;
+  background: transparent;
+  border: none;
+  padding: 8px 14px;
+}
+html.design-fluent .page-tab:hover {
+  background: var(--track);
+}
+html.design-fluent .page-tab.active {
+  background: transparent;
+  color: var(--text-primary);
+  box-shadow: none;
+}
+html.design-fluent .page-tab.active::after {
+  content: "";
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 0;
+  height: 3px;
+  border-radius: 3px 3px 0 0;
+  background: var(--amber);
+}
+
+/* ---------- Бейджи и чипы ---------- */
+html.design-fluent .badge,
+html.design-fluent .tag-chip,
+html.design-fluent .chip-toggle {
+  border-radius: var(--fl-r-ctl);
+}
+
+/* ---------- Адаптивные сетки: максимум полезной площади ---------- */
+html.design-fluent .store-grid {
+  grid-template-columns: repeat(auto-fill, minmax(212px, 1fr));
+}
+html.design-fluent .games-grid {
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+}
+html.design-fluent .ss-lib-grid {
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+}
+
+/* Страницы-«списки» (настройки и т.п.) на сверхширокой раскладке не тянем в
+   нитку: читаемая колонка по центру, остальное — воздух. */
+@media (min-width: 1900px) {
+  html.design-fluent .page-host .page.page-settings {
+    max-width: 1280px;
+    margin-inline: auto;
+    width: 100%;
+  }
+}
+
+/* ---------- Стекло выключено: плотные матовые панели ---------- */
+html.no-glass .app-shell,
+html.no-glass .app-shell *,
+html.no-glass .proxy-panel,
+html.no-glass .proxy-panel-overlay,
+html.no-glass .modal-overlay,
+html.no-glass .tb-pop {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+html.no-glass .app-shell .blob,
+html.no-glass .app-shell .mesh {
+  display: none;
+}
+html.no-glass .app-shell .glass,
+html.no-glass .app-shell .top-toolbar,
+html.no-glass .app-shell .dock-scroll {
+  background: var(--surface-solid);
+}
+html.no-glass .app-shell.opaque-bg,
+html.no-glass .app-shell {
+  background: var(--bg-base);
+}
+html.design-fluent.no-glass .app-shell {
+  background: var(--bg-base);
+}

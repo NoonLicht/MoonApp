@@ -58,6 +58,7 @@ import "@/styles/translate.css";
 import "@/styles/movies.css";
 import "@/styles/upscale.css";
 import "@/styles/screenshots.css";
+import "@/styles/fluent.css";
 import CursorSpotlight from "@/components/CursorSpotlight";
 import A11yFlags from "@/components/A11yFlags";
 
@@ -502,6 +503,7 @@ function Shell({
                 <span className="dock-icon">
                   <Icon size={18} strokeWidth={2} />
                 </span>
+                <span className="dock-label">{t(p.i18n)}</span>
               </button>
             );
           })}
