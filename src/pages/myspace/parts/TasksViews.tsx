@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { tNow } from "@/app/i18n";
 import type { TaskItem, TaskStatus } from "@/api/types";
 import {
@@ -284,6 +285,8 @@ export function KanbanView({ sortedTasks, openDetail, moveTaskStatus }: KanbanVi
     { status: "deferred", label: tNow("tasksUi.s_deferred") },
     { status: "completed", label: tNow("tasksUi.s_completed") },
   ];
+  // Перетаскивание карточки между колонками (зажать ЛКМ и отпустить над колонкой).
+  const [dropOver, setDropOver] = useState<TaskStatus | null>(null);
 
   return (
     <div style={{ display: "flex", gap: 8, height: "100%", overflow: "auto" }}>
@@ -292,15 +295,35 @@ export function KanbanView({ sortedTasks, openDetail, moveTaskStatus }: KanbanVi
         return (
           <div
             key={col.status}
+            onDragOver={(e) => {
+              if (!e.dataTransfer.types.includes("text/x-task-id")) return;
+              e.preventDefault();
+              e.dataTransfer.dropEffect = "move";
+              if (dropOver !== col.status) setDropOver(col.status);
+            }}
+            onDragLeave={(e) => {
+              if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDropOver(null);
+            }}
+            onDrop={(e) => {
+              e.preventDefault();
+              const id = e.dataTransfer.getData("text/x-task-id");
+              setDropOver(null);
+              const moved = sortedTasks.find((t) => t.id === id);
+              if (id && moved && moved.status !== col.status) moveTaskStatus(id, col.status);
+            }}
             style={{
               flex: 1,
               minWidth: 200,
               display: "flex",
               flexDirection: "column",
-              background: "var(--glass)",
+              background: dropOver === col.status ? "var(--glass-strong)" : "var(--glass)",
               borderRadius: 8,
-              border: "1px solid var(--glass-border)",
+              border:
+                dropOver === col.status
+                  ? `1px dashed ${statusColor(col.status)}`
+                  : "1px solid var(--glass-border)",
               overflow: "hidden",
+              transition: "background-color 0.12s ease",
             }}
           >
             {/* Column header */}
@@ -371,6 +394,11 @@ function KanbanCard({
   return (
     <div
       key={task.id}
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.setData("text/x-task-id", task.id);
+        e.dataTransfer.effectAllowed = "move";
+      }}
       onClick={() => openDetail(task)}
       style={{
         display: "flex",
@@ -380,7 +408,7 @@ function KanbanCard({
         borderRadius: 6,
         background: "var(--surface-glass)",
         border: "1px solid var(--glass-border)",
-        cursor: "pointer",
+        cursor: "grab",
         transition: "box-shadow 0.15s",
       }}
     >
