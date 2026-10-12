@@ -1,3 +1,4 @@
+import { useEscape } from "@/lib/useEscape";
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import {
   Repeat,
@@ -389,6 +390,9 @@ function ToolModal({
   title: string;
   children: React.ReactNode;
 }) {
+  useEscape(() => {
+    if (open) onClose();
+  });
   if (!open) return null;
   return (
     <div className="modal-overlay" onClick={onClose}>
