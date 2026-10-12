@@ -15,11 +15,15 @@ marked.use(
       if (lang && hljs.getLanguage(lang)) {
         try {
           return hljs.highlight(code, { language: lang }).value;
-        } catch {}
+        } catch {
+/* язык не распознан — ниже сработает автоопределение */
+}
       }
       try {
         return hljs.highlightAuto(code).value;
-      } catch {}
+      } catch {
+/* подсветка не удалась — код выводится без неё */
+}
       return code;
     },
   }),
