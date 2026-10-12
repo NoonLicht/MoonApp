@@ -381,3 +381,41 @@ html.design-fluent .app-shell.theme-sand {
 html.design-fluent .app-shell.theme-sand .glass {
   background: var(--glass-strong);
 }
+
+/* ---------- Высокий контраст (перебивает темы и Fluent) ---------- */
+html.a11y-contrast .app-shell.app-shell.app-shell {
+  --text-primary: #ffffff;
+  --text-secondary: #ffffff;
+  --text-tertiary: #e6e6e6;
+  --glass-border: rgba(255, 255, 255, 0.75);
+  --track: rgba(255, 255, 255, 0.16);
+  --glass: rgba(0, 0, 0, 0.55);
+  --glass-strong: rgba(0, 0, 0, 0.7);
+  --surface-solid: #000000;
+  --bg-base: #000000;
+  --bg-base-2: #000000;
+}
+html.a11y-contrast .app-shell.app-shell.theme-light,
+html.a11y-contrast .app-shell.app-shell.theme-sand {
+  --text-primary: #000000;
+  --text-secondary: #000000;
+  --text-tertiary: #1a1a1a;
+  --glass-border: rgba(0, 0, 0, 0.8);
+  --track: rgba(0, 0, 0, 0.12);
+  --glass: rgba(255, 255, 255, 0.9);
+  --glass-strong: #ffffff;
+  --surface-solid: #ffffff;
+  --bg-base: #ffffff;
+  --bg-base-2: #ffffff;
+}
+html.a11y-contrast .app-shell .btn,
+html.a11y-contrast .app-shell .glass,
+html.a11y-contrast .app-shell input,
+html.a11y-contrast .app-shell select,
+html.a11y-contrast .app-shell textarea {
+  border-width: 2px;
+}
+html.a11y-contrast .app-shell .blob,
+html.a11y-contrast .app-shell .mesh {
+  display: none;
+}
