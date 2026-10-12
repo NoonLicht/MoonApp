@@ -592,7 +592,10 @@ export function useTasksPanel({ onOpenNote }: TasksPanelProps) {
       setDetailEstimatedTime(selectedTask.estimatedTime || 0);
       setDetailChecklistInput("");
     }
-  }, [selectedTask]);
+    // Поля пере-читываются только при смене открытой задачи: после автосохранения
+    // selectedTask обновляется, и сброс на каждое сохранение сбивал бы ввод.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedTask?.id]);
 
   const saveDetail = useCallback(async () => {
     if (!selectedTask) return;
@@ -624,6 +627,38 @@ export function useTasksPanel({ onOpenNote }: TasksPanelProps) {
     detailEstimatedTime,
     updateTask,
   ]);
+  // Автосохранение: любое изменение полей панели записывается через 0,5 с
+  // (кнопки «Сохранить» нет), закрытие панели тоже дожидается записи.
+  useEffect(() => {
+    if (!selectedTask) return;
+    const dirty =
+      detailTitle !== selectedTask.title ||
+      detailDescription !== (selectedTask.description || "") ||
+      detailStatus !== selectedTask.status ||
+      detailPriority !== selectedTask.priority ||
+      detailDueDate !== (selectedTask.dueDate || "") ||
+      detailTags !== (selectedTask.tags || []).join(", ") ||
+      detailEstimatedTime !== (selectedTask.estimatedTime || 0);
+    if (!dirty) return;
+    const h = setTimeout(() => void saveDetail(), 500);
+    return () => clearTimeout(h);
+  }, [
+    selectedTask,
+    detailTitle,
+    detailDescription,
+    detailStatus,
+    detailPriority,
+    detailDueDate,
+    detailTags,
+    detailEstimatedTime,
+    saveDetail,
+  ]);
+
+  const closeDetailSaved = useCallback(async () => {
+    await saveDetail();
+    closeDetail();
+  }, [saveDetail, closeDetail]);
+
   return {
     onOpenNote,
     t,
@@ -675,7 +710,7 @@ export function useTasksPanel({ onOpenNote }: TasksPanelProps) {
     sortIndicator,
     moveTaskStatus,
     openDetail,
-    closeDetail,
+    closeDetail: closeDetailSaved,
     prevMonth,
     nextMonth,
     calendarTasks,

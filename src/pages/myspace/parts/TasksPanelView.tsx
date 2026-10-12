@@ -103,7 +103,6 @@ export default function TasksPanelView({ c }: { c: useTasksPanelResult }) {
     setDetailEstimatedTime,
     detailChecklistInput,
     setDetailChecklistInput,
-    saveDetail,
   } = c;
   return (
     <div
@@ -553,6 +552,8 @@ export default function TasksPanelView({ c }: { c: useTasksPanelResult }) {
 
       {/* ========== TASK DETAIL DRAWER ========== */}
       {showDetail && selectedTask && (
+        <>
+        <div className="task-drawer-backdrop" onClick={closeDetail} />
         <div className="task-drawer">
           {/* Header */}
           <div
@@ -564,25 +565,7 @@ export default function TasksPanelView({ c }: { c: useTasksPanelResult }) {
               borderBottom: "1px solid var(--glass-border)",
             }}
           >
-            <button
-              onClick={saveDetail}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 4,
-                padding: "4px 10px",
-                borderRadius: 6,
-                fontSize: 11,
-                background: "var(--teal)",
-                border: "none",
-                color: "#fff",
-                cursor: "pointer",
-                marginRight: "auto",
-                fontFamily: "var(--font-mono)",
-              }}
-            >
-              <Check size={12} /> {tNow("tasksUi.save")}
-            </button>
+            <span style={{ marginRight: "auto" }} />
             <button
               onClick={() => deleteTask(selectedTask.id)}
               style={{
@@ -1078,6 +1061,7 @@ export default function TasksPanelView({ c }: { c: useTasksPanelResult }) {
             )}
           </div>
         </div>
+        </>
       )}
     </div>
   );
