@@ -1,3 +1,4 @@
+import { getOverlayRoot } from "@/components/overlayHost";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Ghost, X } from "lucide-react";
@@ -130,7 +131,7 @@ export default function GhostToggle() {
               </div>
             )}
           </aside>,
-          document.body,
+          getOverlayRoot() ?? document.body,
         )}
     </>
   );

@@ -1,3 +1,4 @@
+import { getOverlayRoot } from "@/components/overlayHost";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { History, X } from "lucide-react";
@@ -249,7 +250,7 @@ export default function TimeMachineToggle() {
               </div>
             )}
           </div>,
-          document.body,
+          getOverlayRoot() ?? document.body,
         )}
     </>
   );
