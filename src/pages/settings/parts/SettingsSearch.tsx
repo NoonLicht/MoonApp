@@ -51,9 +51,16 @@ export default function SettingsSearch() {
         .sort((a, b) => b.s - a.s)
         .slice(0, 4);
       clear();
-      order.forEach((x) => rows[x.i].classList.add(HIT));
-      if (order.length) rows[order[0].i].scrollIntoView({ block: "center", behavior: "smooth" });
-      else setNote(t("common.nothingFound"));
+      order.forEach((x) => {
+        rows[x.i].classList.add(HIT);
+        rows[x.i].closest(".set-section-wrap")?.dispatchEvent(new Event("set-open"));
+      });
+      if (order.length) {
+        const first = rows[order[0].i];
+        // секция разворачивается на следующем кадре — после этого прокручиваем
+        requestAnimationFrame(() => first.scrollIntoView({ block: "center", behavior: "smooth" }));
+      }
+      if (!order.length) setNote(t("common.nothingFound"));
     }, 350);
     return () => {
       live = false;

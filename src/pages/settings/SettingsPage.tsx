@@ -53,8 +53,15 @@ import { ChatAutoSaveRow } from "@/pages/settings/parts/SettingsChatTools";
 import { FileSearchRows } from "@/pages/settings/parts/SettingsFileSearch";
 import { WindowRows } from "@/pages/settings/parts/SettingsWindows";
 import { BackupRows } from "@/pages/settings/parts/SettingsBackups";
+import { ProfileRows } from "@/pages/settings/parts/SettingsProfile";
+import { ContextMenuRow } from "@/pages/settings/parts/SettingsContextMenu";
+import { PluginRows } from "@/pages/settings/parts/SettingsPlugins";
+import { P2pRows } from "@/pages/settings/parts/SettingsP2p";
+import { AiShieldRows } from "@/pages/settings/parts/SettingsAiShield";
 import { PasswordVaultSection } from "@/pages/settings/parts/SettingsPasswordVault";
 import { CompanionSection } from "@/pages/settings/parts/SettingsCompanion";
+import { AiHub } from "@/pages/settings/parts/SettingsAiHub";
+import { loadCfg } from "@/pages/ai-chat/lib/chatUtils";
 
 export default function SettingsPage() {
   const { t } = useI18n();
@@ -364,6 +371,10 @@ export default function SettingsPage() {
       <Glass className="settings-scroll-wrap">
         {/* ---- Store / загрузки (док: store) ---- */}
         {/* ---- Общее (док: settings) ---- */}
+        <Section title={t("aiHub.title")} icon={Sparkles}>
+          <AiHub chatProvider={loadCfg().provider} chatModel={loadCfg().model} />
+        </Section>
+
         <Section title={t("settings.general")} icon={Settings2}>
           <Row label={t("settings.language")} hint={t("settings.languageHint")}>
             <Select
@@ -493,6 +504,11 @@ export default function SettingsPage() {
           <FileSearchRows />
           <WindowRows />
           <BackupRows />
+          <ProfileRows />
+          <ContextMenuRow />
+          <PluginRows />
+          <P2pRows />
+          <AiShieldRows />
           {diagStatus && (
             <div className="muted-sm" style={{ marginTop: -6 }}>
               {diagStatus}
@@ -560,6 +576,13 @@ export default function SettingsPage() {
               value={ap.density}
               onChange={(e) => change("appearance.density", e.target.value)}
               options={["comfortable", "compact"]}
+            />
+          </Row>
+          <Row label={t("settings.uiScale")} hint={t("settings.uiScaleHint")}>
+            <Select
+              value={String(ap.uiScale ?? 100)}
+              onChange={(e) => change("appearance.uiScale", Number(e.target.value))}
+              options={["85", "100", "115", "130", "150"].map((v) => ({ value: v, label: `${v}%` }))}
             />
           </Row>
           <BoolRow

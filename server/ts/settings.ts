@@ -49,6 +49,7 @@ const DEFAULTS: SettingsTree = {
     accent: "amber", // amber | violet | teal | coral | sky | rose
     reduceMotion: false, // вырубать анимации/blur-блобы
     density: "comfortable", // comfortable | compact
+    uiScale: 100, // масштаб интерфейса, % (85–150): zoom всего окна, включая таблицы
     opaqueBackground: false, // непрозрачный фон вместо полупрозрачного окна
     cursorHighlight: false, // подсветка курсора для презентаций и записи экрана
     highContrast: false, // доступность: усиленный контраст текста и границ
@@ -288,6 +289,36 @@ const DEFAULTS: SettingsTree = {
     // Ограничение: отличить "это скриншот" от "любая скопированная картинка"
     // по буферу нечем — выключатель здесь именно на этот случай.
     autoCaptureClipboard: true,
+  },
+
+  // --- История буфера обмена (текст). Выключена: включается пользователем явно ---
+  clipboardHistory: {
+    enabled: false,
+  },
+
+  // --- Щит для ИИ: маскировка секретов перед облачными провайдерами + журнал отправок ---
+  aiShield: {
+    enabled: true,
+    // Прятать ещё и e-mail, телефоны, IP
+    pii: false,
+    audit: true,
+    // Хранить в журнале начало запроса (после маскировки)
+    preview: true,
+    // Прятать ФИО по шаблонам («Иванов И. И.», «Пётр Сергеевич»)
+    names: true,
+    // Искать имена локальной моделью (llama.cpp): точнее, но дольше. Нужна установленная модель
+    localNames: false,
+  },
+
+  // --- Ghost Context: подсказки по активному окну. Выключено: включается явно ---
+  ghost: {
+    enabled: false,
+  },
+
+  // --- Машина времени: локальные снимки vault (git) для просмотра прошлого ---
+  timeMachine: {
+    enabled: true,
+    intervalHours: 6,
   },
 
   // --- Автобэкап ---

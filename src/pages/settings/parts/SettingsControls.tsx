@@ -2,6 +2,7 @@
  * Выделено из SettingsPage.tsx при разбиении крупного файла (поведение не менялось).
  */
 import React from "react";
+import { ChevronDown } from "lucide-react";
 import { Glass } from "@/components/ui";
 
 /**
@@ -51,6 +52,7 @@ export function applyLiveSettings(settings: unknown) {
     "appearance.accent",
     "appearance.reduceMotion",
     "appearance.density",
+    "appearance.uiScale",
     "appearance.opaqueBackground",
     "appearance.cursorHighlight",
     "appearance.highContrast",
@@ -160,6 +162,21 @@ export function TextInput({
 }
 
 /* ---------- Блок секции ---------- */
+const OPEN_KEY = "moonapp.settings.open";
+
+function readOpen(): Record<string, boolean> {
+  try {
+    return JSON.parse(localStorage.getItem(OPEN_KEY) || "{}") as Record<string, boolean>;
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * Секция настроек сворачивается по клику на заголовок (состояние помнится).
+ * Тело остаётся в DOM — поиск по настройкам видит строки и сам разворачивает
+ * нужную секцию событием «set-open».
+ */
 export function Section({
   title,
   icon: Icon,
@@ -169,15 +186,37 @@ export function Section({
   icon: React.ElementType;
   children: React.ReactNode;
 }) {
+  const [open, setOpen] = React.useState<boolean>(() => readOpen()[title] ?? false);
+  const rootRef = React.useRef<HTMLDivElement>(null);
+  const toggle = () =>
+    setOpen((v) => {
+      const next = !v;
+      try {
+        localStorage.setItem(OPEN_KEY, JSON.stringify({ ...readOpen(), [title]: next }));
+      } catch {
+        /* хранилище недоступно — состояние живёт до перезагрузки */
+      }
+      return next;
+    });
+  React.useEffect(() => {
+    const el = rootRef.current;
+    if (!el) return undefined;
+    const on = () => setOpen(true);
+    el.addEventListener("set-open", on);
+    return () => el.removeEventListener("set-open", on);
+  }, []);
   return (
-    <Glass className="set-section">
-      <div className="set-section-head">
-        <span className="set-section-icon tone-violet">
-          <Icon size={16} strokeWidth={2} />
-        </span>
-        <span className="set-section-title">{title}</span>
-      </div>
-      <div className="set-section-body">{children}</div>
-    </Glass>
+    <div ref={rootRef} className={`set-section-wrap${open ? " is-open" : ""}`}>
+      <Glass className="set-section">
+        <button type="button" className="set-section-head" aria-expanded={open} onClick={toggle}>
+          <span className="set-section-icon tone-violet">
+            <Icon size={16} strokeWidth={2} />
+          </span>
+          <span className="set-section-title">{title}</span>
+          <ChevronDown size={16} className="set-section-chevron" />
+        </button>
+        <div className="set-section-body">{children}</div>
+      </Glass>
+    </div>
   );
 }

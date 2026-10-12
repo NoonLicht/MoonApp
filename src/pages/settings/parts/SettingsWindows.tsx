@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { MonitorUp, Save, Trash2 } from "lucide-react";
+import { MonitorUp, PictureInPicture2, Save, Trash2 } from "lucide-react";
 import { useI18n } from "@/app/i18n";
 import { Btn } from "@/components/ui";
 import { Row } from "@/pages/settings/parts/SettingsControls";
@@ -60,6 +60,11 @@ export function WindowRows() {
     await bridge.openPageWindow?.(item.page, d?.id);
   };
 
+  const openWidget = async () => {
+    const d = displays[display] ?? displays[0];
+    await bridge.openPageWindow?.(page, d?.id, { widget: true });
+  };
+
   const openNow = async () => {
     const item = { page, displayIndex: display };
     await open(item);
@@ -105,6 +110,9 @@ export function WindowRows() {
           </select>
           <Btn icon={MonitorUp} onClick={() => void openNow()}>
             {t("settings.windows.openBtn")}
+          </Btn>
+          <Btn icon={PictureInPicture2} onClick={() => void openWidget()}>
+            {t("settings.windows.widget")}
           </Btn>
         </div>
       </Row>
