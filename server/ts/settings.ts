@@ -49,6 +49,8 @@ const DEFAULTS: SettingsTree = {
     accent: "amber", // amber | violet | teal | coral | sky | rose
     reduceMotion: false, // вырубать анимации/blur-блобы
     density: "comfortable", // comfortable | compact
+    design: "classic", // classic | fluent (Fluent 2)
+    glass: true, // стеклянные поверхности (blur); false — плотные непрозрачные
     uiScale: 100, // масштаб интерфейса, % (85–150): zoom всего окна, включая таблицы
     opaqueBackground: false, // непрозрачный фон вместо полупрозрачного окна
     cursorHighlight: false, // подсветка курсора для презентаций и записи экрана

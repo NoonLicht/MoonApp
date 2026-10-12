@@ -311,7 +311,13 @@
       "localNamesHint": "更准确但更慢：由你电脑上的 llama.cpp 模型解析文本。需要已安装的模型。"
     },
     "uiScale": "界面缩放",
-    "uiScaleHint": "整体缩放界面：字体、表格和间距"
+    "uiScaleHint": "整体缩放界面：字体、表格和间距",
+    "design": "界面设计",
+    "designHint": "Fluent 2 是新外观：宽敞的自适应布局。经典为之前的外观",
+    "designFluent": "Fluent 2",
+    "designClassic": "经典",
+    "glass": "玻璃效果",
+    "glassHint": "模糊与半透明表面（liquid glass）。关闭后使用不透明的磨砂面板，降低 GPU 负载"
   },
   "chat": {
     "chatProvider": "默认提供商",

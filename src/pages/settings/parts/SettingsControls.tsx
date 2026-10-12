@@ -53,6 +53,8 @@ export function applyLiveSettings(settings: unknown) {
     "appearance.reduceMotion",
     "appearance.density",
     "appearance.uiScale",
+    "appearance.design",
+    "appearance.glass",
     "appearance.opaqueBackground",
     "appearance.cursorHighlight",
     "appearance.highContrast",

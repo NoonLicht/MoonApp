@@ -311,7 +311,13 @@
       "localNamesHint": "Plus précis mais plus lent : le texte est analysé par un modèle llama.cpp sur votre ordinateur. Nécessite un modèle installé."
     },
     "uiScale": "Échelle de l'interface",
-    "uiScaleHint": "Met à l'échelle toute l'interface : polices, tableaux et espacements"
+    "uiScaleHint": "Met à l'échelle toute l'interface : polices, tableaux et espacements",
+    "design": "Design de l'interface",
+    "designHint": "Fluent 2 est le nouveau style : grille adaptative et aérée. Classique est l'ancien style",
+    "designFluent": "Fluent 2",
+    "designClassic": "Classique",
+    "glass": "Effet verre",
+    "glassHint": "Flou et surfaces translucides (liquid glass). Désactivez pour des panneaux mats pleins et moins de charge GPU"
   },
   "chat": {
     "chatProvider": "Fournisseur par défaut",

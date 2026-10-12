@@ -86,6 +86,8 @@ const THEME_CYCLE = ["dark", "midnight", "oled", "light", "sand"] as const;
  * показывала бы луну вместо иконки контраста.
  */
 /** Масштаб интерфейса (%): zoom корня масштабирует и шрифты, и таблицы, и отступы. */
+import { applyDesign, applyGlass } from "@/lib/designMode";
+
 function applyUiScale(v: unknown): void {
   const n = Math.min(150, Math.max(85, Number(v) || 100));
   (document.documentElement.style as CSSStyleDeclaration & { zoom: string }).zoom = String(n / 100);
@@ -581,6 +583,8 @@ export default function App() {
         setReduceMotion(!!sc?.appearance?.reduceMotion);
         if (sc?.appearance?.density) setDensity(sc.appearance.density);
         applyUiScale(sc?.appearance?.uiScale);
+        applyDesign(sc?.appearance?.design);
+        applyGlass(sc?.appearance?.glass);
         setOpaqueBg(!!sc?.appearance?.opaqueBackground);
         // Производительность: keep-alive страниц.
         if (sc?.performance?.keepPagesAlive != null)
@@ -611,6 +615,8 @@ export default function App() {
       else if (path === "appearance.reduceMotion") setReduceMotion(!!value);
       else if (path === "appearance.density") setDensity(String(value));
       else if (path === "appearance.uiScale") applyUiScale(value);
+      else if (path === "appearance.design") applyDesign(value);
+      else if (path === "appearance.glass") applyGlass(value);
       else if (path === "appearance.opaqueBackground") setOpaqueBg(!!value);
     };
     window.addEventListener("app:theme", onTheme);

@@ -311,7 +311,13 @@
       "localNamesHint": "More accurate but slower: the text is parsed by a llama.cpp model on your computer. Needs an installed model."
     },
     "uiScale": "Interface scale",
-    "uiScaleHint": "Scales the whole UI: fonts, tables and spacing"
+    "uiScaleHint": "Scales the whole UI: fonts, tables and spacing",
+    "design": "Interface design",
+    "designHint": "Fluent 2 is the new look: roomy adaptive layout and solid accents. Classic is the previous look",
+    "designFluent": "Fluent 2",
+    "designClassic": "Classic",
+    "glass": "Glass effect",
+    "glassHint": "Blur and translucent surfaces (liquid glass). Turn off for solid matte panels and lower GPU load"
   },
   "chat": {
     "chatProvider": "Default provider",

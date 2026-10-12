@@ -311,7 +311,13 @@
       "localNamesHint": "Más preciso pero más lento: un modelo llama.cpp de tu ordenador analiza el texto. Requiere un modelo instalado."
     },
     "uiScale": "Escala de la interfaz",
-    "uiScaleHint": "Escala toda la interfaz: fuentes, tablas y espacios"
+    "uiScaleHint": "Escala toda la interfaz: fuentes, tablas y espacios",
+    "design": "Diseño de la interfaz",
+    "designHint": "Fluent 2 es el nuevo aspecto: cuadrícula adaptable y espaciosa. Clásico es el aspecto anterior",
+    "designFluent": "Fluent 2",
+    "designClassic": "Clásico",
+    "glass": "Efecto cristal",
+    "glassHint": "Desenfoque y superficies translúcidas (liquid glass). Desactívalo para paneles sólidos y menos carga de GPU"
   },
   "chat": {
     "chatProvider": "Proveedor por defecto",
