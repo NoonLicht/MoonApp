@@ -134,7 +134,9 @@ router.get("/download/:key", (req, res) => {
     res.download(entry.path, entry.name, () => {
       try {
         removePath(entry.path);
-      } catch {}
+      } catch {
+/* файл уже удалён или занят — уберёт плановая очистка */
+}
     });
   } catch (e: any) {
     res.status(500).json({ error: e.message });

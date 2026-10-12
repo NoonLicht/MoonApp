@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Music2,
   Download,
@@ -26,6 +26,8 @@ import { api } from "@/api/client";
 import { saveBlob } from "@/lib/download";
 import MediaLoading from "@/components/MediaLoading";
 import type { MusicTrack, MusicFormats, MusicPlaylist } from "@/api/types";
+import { smartPlaylists, type SmartPlaylist } from "@/lib/smartPlaylists";
+import KaraokePanel from "@/pages/music/KaraokePanel";
 
 // Форматы/качества для выбора в тулбаре
 const QUALITY_OPTIONS = [
@@ -107,6 +109,8 @@ export default function MusicPage() {
   const [showNewPlaylist, setShowNewPlaylist] = useState(false);
   const [playlistName, setPlaylistName] = useState("");
   const [viewingPlaylist, setViewingPlaylist] = useState<MusicPlaylist | null>(null);
+  const [viewingSmart, setViewingSmart] = useState<SmartPlaylist | null>(null);
+  const smart = useMemo(() => smartPlaylists(playlists), [playlists]);
 
   const loadPlaylists = () => {
     api
@@ -322,7 +326,10 @@ export default function MusicPage() {
             key={p.id}
             tone={viewingPlaylist?.id === p.id ? "amber" : "violet"}
             mono
-            onClick={() => setViewingPlaylist((cur) => (cur?.id === p.id ? null : p))}
+            onClick={() => {
+              setViewingSmart(null);
+              setViewingPlaylist((cur) => (cur?.id === p.id ? null : p));
+            }}
           >
             <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
               <ListMusic size={11} />
@@ -338,6 +345,22 @@ export default function MusicPage() {
               >
                 <Trash2 size={11} />
               </span>
+            </span>
+          </Badge>
+        ))}
+        {smart.map((p) => (
+          <Badge
+            key={p.id}
+            tone={viewingSmart?.id === p.id ? "amber" : "teal"}
+            mono
+            onClick={() => {
+              setViewingPlaylist(null);
+              setViewingSmart((cur) => (cur?.id === p.id ? null : p));
+            }}
+          >
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+              <ListMusic size={11} />
+              {t(`music.smart.${p.kind}`, { artist: p.arg ?? "" })} ({p.tracks.length})
             </span>
           </Badge>
         ))}
@@ -376,6 +399,20 @@ export default function MusicPage() {
       </div>
 
       {/* Просмотр треков выбранного плейлиста */}
+      {viewingSmart && !viewingPlaylist && (
+        <div className="music-results" style={{ marginBottom: 12 }}>
+          {viewingSmart.tracks.map((pt) => (
+            <Glass key={pt.id} className="music-track-row" onClick={() => playPlaylistTrack(pt)} style={{ cursor: "pointer" }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div className="music-track-title">{pt.title}</div>
+                <div className="muted-sm">
+                  {pt.artist} · {fmtDuration(pt.duration)}
+                </div>
+              </div>
+            </Glass>
+          ))}
+        </div>
+      )}
       {viewingPlaylist && (
         <div className="music-results" style={{ marginBottom: 12 }}>
           {viewingPlaylist.tracks.length === 0 && (
@@ -493,6 +530,8 @@ export default function MusicPage() {
           ))}
         </div>
       )}
+
+      <KaraokePanel />
 
       {/* Панель выбранного трека */}
       {selectedTrack && (
