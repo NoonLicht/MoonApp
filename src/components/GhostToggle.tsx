@@ -2,10 +2,28 @@ import { getOverlayRoot } from "@/components/overlayHost";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Ghost, PanelRightClose, PanelRightOpen, X } from "lucide-react";
-import { useI18n } from "@/app/i18n";
+import { useI18n, tNow } from "@/app/i18n";
 import { api } from "@/api/client";
 import { openTarget, targetFor, SOURCE_LABEL } from "@/lib/deepLink";
 import type { SemSource } from "@/api/apiSemantic";
+import type { PageId } from "@/app/navigation";
+import { PAGES } from "@/app/navigation";
+
+type Hit = Result["groups"][number]["items"][number];
+
+/** Подсказки, которые не лежат в семантическом индексе (см. server/ts/ghostExtras.ts). */
+const EXTRA_TARGET: Record<string, (h: Hit) => { page: PageId; view?: string; ref?: string } | null> = {
+  diary: (h) => ({ page: "diary", ref: h.ref }),
+  contract: () => ({ page: "diary" }),
+  shot: (h) => ({ page: "screenshots", ref: h.ref }),
+  clip: () => null,
+  vault: () => ({ page: "settings" }),
+  due: (h) => ({ page: "myspace", view: "tasks", ref: h.ref }),
+  schedule: () => ({ page: "automation" }),
+  app: () => ({ page: "monitor" }),
+  spend: () => ({ page: "budget" }),
+};
+const RECENT_KEY = "moonapp.ghost.recent";
 
 type Result = Awaited<ReturnType<typeof api.ghostContext>>;
 
@@ -48,6 +66,13 @@ export default function GhostToggle() {
   const [res, setRes] = useState<Result>({ query: "", groups: [] });
   const lastKey = useRef("");
   const { open, collapsed, width } = dock;
+  // Последнее выделение: на нём строятся быстрые действия и проверка противоречий.
+  const [selection, setSelection] = useState("");
+  const [note, setNote] = useState("");
+  const [conflicts, setConflicts] = useState<
+    { claim: string; source: string; ref: string; passage: string }[] | null
+  >(null);
+  const [recent, setRecent] = useState<{ id: PageId; title: string }[]>([]);
 
   // Запоминаем состояние панели между запусками.
   useEffect(() => {
@@ -86,6 +111,7 @@ export default function GhostToggle() {
       } else {
         title = (await api.ghostActive()).title;
       }
+      if (text.trim().length >= 3) setSelection(text.trim());
       const key = `${title}\u0000${text.slice(0, 200)}`;
       if (key === lastKey.current) return;
       lastKey.current = key;
@@ -104,6 +130,91 @@ export default function GhostToggle() {
       clearInterval(timer);
     };
   }, [open, enabled, collapsed, tick]);
+
+  // Недавние страницы: запоминаем смену заголовка в верхней панели.
+  useEffect(() => {
+    if (!open) return;
+    const byTitle = new Map(PAGES.map((p) => [tNow(p.i18n), p.id as PageId]));
+    const read = (): { id: PageId; title: string }[] => {
+      try {
+        return JSON.parse(sessionStorage.getItem(RECENT_KEY) || "[]");
+      } catch {
+        return [];
+      }
+    };
+    const push = () => {
+      const title = document.querySelector(".tb-title")?.textContent?.trim() ?? "";
+      const id = byTitle.get(title);
+      if (!id) return;
+      const list = [{ id, title }, ...read().filter((x) => x.id !== id)].slice(0, 6);
+      try {
+        sessionStorage.setItem(RECENT_KEY, JSON.stringify(list));
+      } catch {
+        /* sessionStorage недоступен — просто не запоминаем */
+      }
+      setRecent(list);
+    };
+    push();
+    const timer = setInterval(push, 1500);
+    return () => clearInterval(timer);
+  }, [open]);
+
+  const flash = (m: string) => {
+    setNote(m);
+    setTimeout(() => setNote(""), 2500);
+  };
+
+  const makeTask = async () => {
+    try {
+      await api.tasksCreate({
+        title: selection.replace(/\s+/g, " ").slice(0, 80),
+        description: selection,
+      });
+      flash(tNow("ghost.taskCreated"));
+    } catch (e) {
+      flash((e as Error).message);
+    }
+  };
+
+  const via = async (page: PageId) => {
+    try {
+      await navigator.clipboard.writeText(selection);
+      flash(tNow("ghost.copiedToPaste"));
+    } catch {
+      /* буфер недоступен — просто переходим */
+    }
+    openTarget({ page });
+  };
+
+  const findConflicts = async () => {
+    flash(tNow("ghost.checking"));
+    try {
+      const r = await api.mindContradictions("", selection);
+      setConflicts(r.findings);
+      flash(r.findings.length ? "" : tNow("ghost.noConflicts"));
+    } catch (e) {
+      flash((e as Error).message);
+    }
+  };
+
+  const openHit = (h: Hit) => {
+    const ex = EXTRA_TARGET[h.source];
+    if (ex) {
+      if (h.source === "clip") {
+        void navigator.clipboard.writeText(h.snippet).then(() => flash(tNow("ghost.copied")));
+        return;
+      }
+      const t = ex(h);
+      if (t) openTarget(t);
+      return;
+    }
+    openTarget(targetFor(h.source as SemSource, h.ref, h.at));
+  };
+
+  const groupLabel = (source: string): string =>
+    EXTRA_TARGET[source] || source === "tag"
+      ? tNow(`ghost.g_${source}`)
+      : SOURCE_LABEL[source as SemSource];
 
   const toggleEnabled = async (next: boolean) => {
     setEnabled(next);
@@ -198,12 +309,12 @@ export default function GhostToggle() {
                   {res.groups.length === 0 && <p className="muted-sm">{t("ghost.empty")}</p>}
                   {res.groups.map((g) => (
                     <div key={g.source} className="ghost-group">
-                      <div className="ghost-group-title">{SOURCE_LABEL[g.source as SemSource]}</div>
+                      <div className="ghost-group-title">{groupLabel(g.source)}</div>
                       {g.items.map((h) => (
                         <button
                           key={`${h.source}-${h.ref}-${h.at ?? ""}`}
                           className="ghost-item"
-                          onClick={() => openTarget(targetFor(h.source as SemSource, h.ref, h.at))}
+                          onClick={() => openHit(h)}
                         >
                           <span className="ghost-item-title">{h.title}</span>
                           <span className="muted-sm">{h.snippet.slice(0, 90)}</span>
@@ -211,6 +322,61 @@ export default function GhostToggle() {
                       ))}
                     </div>
                   ))}
+                  {conflicts && conflicts.length > 0 && (
+                    <div className="ghost-group">
+                      <div className="ghost-group-title">{t("ghost.g_conflicts")}</div>
+                      {conflicts.slice(0, 4).map((c, i) => (
+                        <button
+                          key={i}
+                          className="ghost-item"
+                          onClick={() => openTarget(targetFor("note", c.ref))}
+                        >
+                          <span className="ghost-item-title">{c.source}</span>
+                          <span className="muted-sm">{c.passage.slice(0, 110)}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {recent.length > 0 && (
+                    <div className="ghost-group">
+                      <div className="ghost-group-title">{t("ghost.g_recent")}</div>
+                      <div className="ghost-chips">
+                        {recent.map((r) => (
+                          <button
+                            key={r.id}
+                            className="ghost-chip"
+                            onClick={() => openTarget({ page: r.id })}
+                          >
+                            {r.title}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {selection && (
+                    <div className="ghost-group">
+                      <div className="ghost-group-title">{t("ghost.actions")}</div>
+                      <div className="ghost-quote">{selection.slice(0, 140)}</div>
+                      <div className="ghost-chips">
+                        <button className="ghost-chip" onClick={() => void makeTask()}>
+                          {t("ghost.actTask")}
+                        </button>
+                        <button className="ghost-chip" onClick={() => void via("aichat")}>
+                          {t("ghost.actAsk")}
+                        </button>
+                        <button className="ghost-chip" onClick={() => void via("translate")}>
+                          {t("ghost.actTranslate")}
+                        </button>
+                        <button className="ghost-chip" onClick={() => void findConflicts()}>
+                          {t("ghost.actConflicts")}
+                        </button>
+                        <button className="ghost-chip" onClick={() => setSelection("")}>
+                          {t("ghost.actClear")}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  {note && <div className="muted-sm ghost-note">{note}</div>}
                   <button className="ghost-off" onClick={() => void toggleEnabled(false)}>
                     {t("ghost.disable")}
                   </button>

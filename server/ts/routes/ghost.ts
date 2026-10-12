@@ -11,6 +11,7 @@ import { execFile } from "child_process";
 import settings from "../settings";
 import * as semantic from "../semantic";
 import * as g from "../ghostContext";
+import * as extras from "../ghostExtras";
 
 const router = express.Router();
 
@@ -36,14 +37,22 @@ router.post("/context", async (req, res) => {
       title: String(req.body?.title ?? ""),
       text: String(req.body?.text ?? ""),
     });
-    if (!query) return res.json({ query: "", groups: [] });
-    const hits = await semantic.search(query, { sources: g.GHOST_SOURCES, limit: 24 });
+    const sel = String(req.body?.text ?? "");
+    if (!query) {
+      // Без темы остаются «фоновые» подсказки: сроки, расписание, время.
+      return res.json({ query: "", groups: await extras.collect("", sel) });
+    }
+    const hits = await semantic.search(query, { sources: g.GHOST_SOURCES, limit: 48 });
     const ex = req.body?.exclude;
     const exclude =
       ex && typeof ex.source === "string" && typeof ex.ref === "string"
         ? { source: ex.source, ref: ex.ref }
         : undefined;
-    res.json({ query, groups: g.groupHits(hits, { exclude, minScore: 0.6 }) });
+    const groups = [
+      ...g.groupHits(hits, { exclude, minScore: 0.6 }),
+      ...(await extras.collect(query, sel)),
+    ];
+    res.json({ query, groups });
   } catch (e) {
     res.status(500).json({ error: (e as Error).message });
   }

@@ -1354,3 +1354,36 @@ html.a11y-focus *:focus-visible {
   color: var(--amber);
   background: var(--track);
 }
+
+/* Контекст: чипы быстрых действий, цитата выделения, служебная строка */
+.ghost-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.ghost-chip {
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--glass-border);
+  background: var(--track);
+  color: var(--text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+}
+.ghost-chip:hover {
+  color: var(--text-primary);
+  border-color: var(--amber);
+}
+.ghost-quote {
+  margin: 4px 0 8px;
+  padding: 8px 10px;
+  border-left: 3px solid var(--amber);
+  border-radius: 4px;
+  background: var(--track);
+  font-size: 12px;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+.ghost-note {
+  padding: 2px 2px;
+}

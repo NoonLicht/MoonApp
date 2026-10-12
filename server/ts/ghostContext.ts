@@ -80,8 +80,37 @@ export function buildQuery(p: { title?: string; text?: string }): string {
   return queryFromTitle(p.title ?? "");
 }
 
-export type GhostSource = "note" | "lecture" | "budget" | "task" | "quick";
-export const GHOST_SOURCES: GhostSource[] = ["note", "lecture", "budget", "task", "quick"];
+export type GhostSource =
+  | "note"
+  | "lecture"
+  | "budget"
+  | "task"
+  | "quick"
+  | "bookmark"
+  | "chat"
+  | "canvas"
+  | "rss"
+  | "file"
+  | "movie"
+  | "book"
+  | "m3e"
+  | "archive";
+export const GHOST_SOURCES: GhostSource[] = [
+  "note",
+  "task",
+  "lecture",
+  "quick",
+  "bookmark",
+  "chat",
+  "canvas",
+  "budget",
+  "rss",
+  "file",
+  "movie",
+  "book",
+  "m3e",
+  "archive",
+];
 
 export interface GhostHit {
   source: string;
