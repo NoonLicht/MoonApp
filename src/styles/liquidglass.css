@@ -1,9 +1,23 @@
 /* ===========================================================================
    Liquid Glass: настраиваемое «жидкое» стекло поверх Fluent 2.
    Управляется переменными --lg-* (см. lib/designMode.ts → applyLiquid):
-   размытие, насыщенность, подкраска, преломление, блик и скругление.
+   размытие, насыщенность, подкраска, преломление, блик, скругление, подсветка.
    Выключается тем же переключателем «Стекло» (html.no-glass).
+
+   ВАЖНО: все стеклянные поверхности (верхняя панель, меню слева, «Контекст»,
+   карточки страниц, окна, поповеры) получают ОДНО И ТО ЖЕ оформление из одного
+   правила ниже — поэтому ползунки действуют на них одинаково.
    =========================================================================== */
+
+/* Единые производные величины (ползунки → то, что реально подставляется). */
+html {
+  /* доля цвета темы в поверхности: «Подкраска» 0–60 % → 24–72 % */
+  --lg-fill: calc(24% + var(--lg-tint, 12%) * 0.8);
+  /* насыщенность фона за стеклом: половина от заданной, чтобы цвета не «кричали» */
+  --lg-sat-eff: calc(100% + (var(--lg-sat, 170%) - 100%) * 0.5);
+}
+
+/* ---------- Стеклянные поверхности ---------- */
 html:not(.no-glass) .app-shell .glass,
 html:not(.no-glass) .app-shell .top-toolbar,
 html:not(.no-glass) .app-shell .dock-scroll,
@@ -15,45 +29,47 @@ html:not(.no-glass) .ghost-dock {
     linear-gradient(
       135deg,
       rgba(255, 255, 255, calc(var(--lg-spec, 0.55) * 0.14)) 0%,
-      rgba(255, 255, 255, 0) 38%,
+      rgba(255, 255, 255, 0) 40%,
       rgba(255, 255, 255, 0) 62%,
       rgba(255, 255, 255, calc(var(--lg-spec, 0.55) * 0.08)) 100%
     ),
-    color-mix(in srgb, var(--surface-solid, #2a2a30) var(--lg-tint, 12%), transparent);
-  -webkit-backdrop-filter: blur(var(--lg-blur, 22px)) saturate(var(--lg-sat, 170%));
-  backdrop-filter: blur(var(--lg-blur, 22px)) saturate(var(--lg-sat, 170%));
+    color-mix(in srgb, var(--surface-solid, #2a2a30) var(--lg-fill, 32%), transparent);
+  -webkit-backdrop-filter: blur(var(--lg-blur, 22px)) saturate(var(--lg-sat-eff, 135%));
+  backdrop-filter: blur(var(--lg-blur, 22px)) saturate(var(--lg-sat-eff, 135%));
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, calc(var(--lg-spec, 0.55) * 0.6)),
     inset 1px 0 0 rgba(255, 255, 255, calc(var(--lg-spec, 0.55) * 0.25)),
     inset 0 -1px 0 rgba(0, 0, 0, 0.18),
-    0 8px 28px rgba(0, 0, 0, 0.22);
+    0 8px 28px rgba(0, 0, 0, 0.2);
   border: 1px solid rgba(255, 255, 255, calc(var(--lg-spec, 0.55) * 0.16));
 }
 
 /* Преломление: искажаем то, что видно сквозь стекло (Chromium). */
+html.lg-refract:not(.no-glass) .app-shell .glass,
 html.lg-refract:not(.no-glass) .app-shell .top-toolbar,
 html.lg-refract:not(.no-glass) .app-shell .dock-scroll,
 html.lg-refract:not(.no-glass) .proxy-panel,
 html.lg-refract:not(.no-glass) .tb-pop,
 html.lg-refract:not(.no-glass) .ghost-dock {
-  -webkit-backdrop-filter: url(#lg-refract) blur(var(--lg-blur, 22px)) saturate(var(--lg-sat, 170%));
-  backdrop-filter: url(#lg-refract) blur(var(--lg-blur, 22px)) saturate(var(--lg-sat, 170%));
+  -webkit-backdrop-filter: url(#lg-refract) blur(var(--lg-blur, 22px))
+    saturate(var(--lg-sat-eff, 135%));
+  backdrop-filter: url(#lg-refract) blur(var(--lg-blur, 22px)) saturate(var(--lg-sat-eff, 135%));
 }
 
 /* Светлые темы: блик мягче, тень светлее. */
 html:not(.no-glass) .app-shell.theme-light .glass,
 html:not(.no-glass) .app-shell.theme-light .top-toolbar,
-html:not(.no-glass) .app-shell.theme-light .dock-scroll {
+html:not(.no-glass) .app-shell.theme-light .dock-scroll,
+html:not(.no-glass) .app-shell.theme-light .proxy-panel,
+html:not(.no-glass) .theme-light .ghost-dock {
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.8),
     inset 0 -1px 0 rgba(0, 0, 0, 0.06),
     0 8px 24px rgba(0, 0, 0, 0.1);
+  border-color: rgba(20, 20, 40, 0.1);
 }
 
-/* ---------- Подсветка фона: то, что стекло преломляет и размывает ----------
-   Стекло показывает только то, что лежит под ним. Плоский фон делал эффект
-   видимым лишь там, где под панелью случайно оказывался блик. Поэтому весь
-   фон окна — мягкая цветная сетка из акцентов темы (яркость — --lg-glow). */
+/* ---------- Подсветка фона: то, что стекло преломляет и размывает ---------- */
 html:not(.no-glass) .app-shell .mesh {
   background:
     radial-gradient(52% 46% at 8% 6%, color-mix(in srgb, var(--amber) 55%, transparent), transparent 72%),
@@ -66,10 +82,24 @@ html:not(.no-glass) .app-shell .mesh {
 html:not(.no-glass) .app-shell .blob {
   display: none;
 }
+/* Вуаль цвета темы поверх подсветки: читаемость текста на цветном фоне. */
+html:not(.no-glass) .app-shell .mesh::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: color-mix(in srgb, var(--bg-base) 45%, transparent);
+}
+html:not(.no-glass) .app-shell.theme-light .mesh::after {
+  background: color-mix(in srgb, var(--bg-base) 72%, transparent);
+}
+/* Светлая тема: плотный текст, чтобы серый не терялся на стекле. */
+html:not(.no-glass) .app-shell.app-shell.theme-light:not(.theme-sand) {
+  --text-primary: #14141a;
+  --text-secondary: #34343f;
+  --text-tertiary: #555563;
+}
 
-/* ---------- Прозрачное окно (appearance.windowOpacity < 100) ----------
-   Окно рисует акрил Windows 11, а сплошной фон приложения становится
-   полупрозрачным: сквозь него видно рабочий стол. */
+/* ---------- Прозрачное окно (appearance.windowOpacity < 100) ---------- */
 html.win-translucent,
 html.win-translucent body {
   background: transparent;
@@ -78,27 +108,6 @@ html.win-translucent.win-translucent .app-shell:not(.opaque-bg) {
   background: color-mix(in srgb, var(--bg-base) var(--win-alpha, 100%), transparent);
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
-}
-
-/* Боковые панели (меню страниц слева и «Контекст» справа) — одинакового тона:
-   они стоят у разных краёв окна, где под ними лежат разные цвета подсветки,
-   поэтому берём плотную подкраску и умеренную насыщенность. */
-html:not(.no-glass) .app-shell .dock-scroll,
-html:not(.no-glass) .ghost-dock {
-  background:
-    linear-gradient(
-      135deg,
-      rgba(255, 255, 255, calc(var(--lg-spec, 0.55) * 0.1)) 0%,
-      rgba(255, 255, 255, 0) 45%
-    ),
-    color-mix(in srgb, var(--surface-solid, #2a2a30) 62%, transparent);
-  -webkit-backdrop-filter: blur(var(--lg-blur, 22px)) saturate(115%);
-  backdrop-filter: blur(var(--lg-blur, 22px)) saturate(115%);
-}
-html.lg-refract:not(.no-glass) .app-shell .dock-scroll,
-html.lg-refract:not(.no-glass) .ghost-dock {
-  -webkit-backdrop-filter: url(#lg-refract) blur(var(--lg-blur, 22px)) saturate(115%);
-  backdrop-filter: url(#lg-refract) blur(var(--lg-blur, 22px)) saturate(115%);
 }
 
 /* ---------- Окно свёрнуто: ничего не держим на видеокарте ---------- */
@@ -116,46 +125,4 @@ html.app-idle .ghost-dock {
 html.app-idle .app-shell .mesh,
 html.app-idle .app-shell .blob {
   display: none !important;
-}
-
-/* ---------- Боковые панели реагируют на ползунки стекла ----------
-   Подкраска и насыщенность берутся из настроек, но с «базой», чтобы левое и
-   правое меню оставались одного тона, как бы ни легла подсветка фона. */
-html:not(.no-glass) .app-shell .dock-scroll,
-html:not(.no-glass) .ghost-dock {
-  background:
-    linear-gradient(
-      135deg,
-      rgba(255, 255, 255, calc(var(--lg-spec, 0.55) * 0.12)) 0%,
-      rgba(255, 255, 255, 0) 45%
-    ),
-    color-mix(in srgb, var(--surface-solid, #2a2a30) calc(30% + var(--lg-tint, 12%) * 0.8), transparent);
-  -webkit-backdrop-filter: blur(var(--lg-blur, 22px)) saturate(calc(100% + (var(--lg-sat, 170%) - 100%) * 0.5));
-  backdrop-filter: blur(var(--lg-blur, 22px)) saturate(calc(100% + (var(--lg-sat, 170%) - 100%) * 0.5));
-}
-html.lg-refract:not(.no-glass) .app-shell .dock-scroll,
-html.lg-refract:not(.no-glass) .ghost-dock {
-  -webkit-backdrop-filter: url(#lg-refract) blur(var(--lg-blur, 22px))
-    saturate(calc(100% + (var(--lg-sat, 170%) - 100%) * 0.5));
-  backdrop-filter: url(#lg-refract) blur(var(--lg-blur, 22px))
-    saturate(calc(100% + (var(--lg-sat, 170%) - 100%) * 0.5));
-}
-
-/* ---------- Читаемость: вуаль поверх подсветки + плотный текст в светлых темах ---------- */
-html:not(.no-glass) .app-shell .mesh::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: color-mix(in srgb, var(--bg-base) 45%, transparent);
-}
-html:not(.no-glass) .app-shell.theme-light .mesh::after {
-  background: color-mix(in srgb, var(--bg-base) 72%, transparent);
-}
-html:not(.no-glass) .app-shell.app-shell.theme-light:not(.theme-sand) {
-  --text-primary: #14141a;
-  --text-secondary: #34343f;
-  --text-tertiary: #555563;
-}
-html:not(.no-glass) .app-shell.theme-light .glass {
-  background-color: color-mix(in srgb, #ffffff 58%, transparent);
 }
