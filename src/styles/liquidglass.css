@@ -100,3 +100,20 @@ html.lg-refract:not(.no-glass) .ghost-dock {
   -webkit-backdrop-filter: url(#lg-refract) blur(var(--lg-blur, 22px)) saturate(115%);
   backdrop-filter: url(#lg-refract) blur(var(--lg-blur, 22px)) saturate(115%);
 }
+
+/* ---------- Окно свёрнуто: ничего не держим на видеокарте ---------- */
+html.app-idle .app-shell *,
+html.app-idle .app-shell,
+html.app-idle .proxy-panel,
+html.app-idle .proxy-panel-overlay,
+html.app-idle .tb-pop,
+html.app-idle .ghost-dock {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  animation-play-state: paused !important;
+  will-change: auto !important;
+}
+html.app-idle .app-shell .mesh,
+html.app-idle .app-shell .blob {
+  display: none !important;
+}

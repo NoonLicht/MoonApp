@@ -120,3 +120,16 @@ export function applyWindowOpacity(pct: number): void {
     /* не Electron — достаточно CSS */
   }
 }
+
+/**
+ * Окно свёрнуто или скрыто: снимаем с видеокарты всё, что держит слои —
+ * размытие фона, анимации, декоративную подсветку. Chromium при этом освобождает
+ * память растров невидимых слоёв, а после разворачивания всё возвращается.
+ */
+export function watchIdle(): () => void {
+  const root = document.documentElement;
+  const sync = () => root.classList.toggle("app-idle", document.visibilityState === "hidden");
+  document.addEventListener("visibilitychange", sync);
+  sync();
+  return () => document.removeEventListener("visibilitychange", sync);
+}

@@ -87,7 +87,14 @@ const THEME_CYCLE = ["dark", "midnight", "oled", "light", "sand"] as const;
  * показывала бы луну вместо иконки контраста.
  */
 /** Масштаб интерфейса (%): zoom корня масштабирует и шрифты, и таблицы, и отступы. */
-import { applyDesign, applyGlass, applyLiquid, applyWindowOpacity, readLiquid } from "@/lib/designMode";
+import {
+  applyDesign,
+  applyGlass,
+  applyLiquid,
+  applyWindowOpacity,
+  readLiquid,
+  watchIdle,
+} from "@/lib/designMode";
 import "@/styles/liquidglass.css";
 
 function applyUiScale(v: unknown): void {
@@ -558,6 +565,7 @@ export default function App() {
   const [density, setDensity] = useState("comfortable");
   const [opaqueBg, setOpaqueBg] = useState(false);
   const [winOpacity, setWinOpacity] = useState(100);
+  useEffect(() => watchIdle(), []);
   useEffect(() => {
     applyWindowOpacity(opaqueBg ? 100 : winOpacity);
   }, [opaqueBg, winOpacity]);

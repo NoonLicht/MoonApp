@@ -105,6 +105,7 @@ export default function GhostToggle() {
   }, [open]);
 
   const tick = useCallback(async () => {
+    if (document.visibilityState === "hidden") return;
     try {
       let title = "";
       let text = "";
