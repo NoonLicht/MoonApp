@@ -54,6 +54,7 @@ import { usePageActive, usePageBusy } from "@/components/Toolbar";
 export default function BypassControlPage() {
   const { t } = useI18n();
 
+  const [tab, setTab] = useState<"zapret" | "tg" | "net">("zapret");
   const [engine, setEngine] = useState<ZapretEngine | null>(null);
   const [status, setStatus] = useState<ZapretStatus | null>(null);
   const [strategies, setStrategies] = useState<ZapretStrategy[]>([]);
@@ -487,10 +488,24 @@ export default function BypassControlPage() {
         </div>
       )}
 
+      <div className="page-tabs">
+        {(["zapret", "tg", "net"] as const).map((k) => (
+          <button
+            key={k}
+            type="button"
+            className={`page-tab${tab === k ? " active" : ""}`}
+            onClick={() => setTab(k)}
+          >
+            {t(`bypass.tabs.${k}`)}
+          </button>
+        ))}
+      </div>
+
       {/* TG WS Proxy — локальный MTProto-прокси для Telegram Desktop
           (Flowseal/tg-ws-proxy). Отдельная карточка: у неё свой движок, свой
           порт и свой секрет. Порядок для пользователя ровно такой: скачать →
           запустить → скопировать ссылку tg://proxy в Telegram → остановить. */}
+      {tab === "tg" && (
       <section className="bp-card bp-tgws-card">
         <h3>
           <Send size={15} /> {t("bypass.tgws.title")}
@@ -629,7 +644,10 @@ export default function BypassControlPage() {
           </pre>
         </details>
       </section>
+      )}
 
+      {tab === "zapret" && (
+      <>
       {/* Движок: проверка обновлений + скачать/обновить релиз с GitHub */}
       <section className="bp-card bp-engine-card">
         <h3>
@@ -878,9 +896,16 @@ export default function BypassControlPage() {
         </section>
       </div>
 
-      <NetworkToolsPanel />
-      <NetInsightsPanel />
-      <KillSwitchPanel />
+      </>
+      )}
+
+      {tab === "net" && (
+        <>
+          <NetworkToolsPanel />
+          <NetInsightsPanel />
+          <KillSwitchPanel />
+        </>
+      )}
     </div>
   );
 }

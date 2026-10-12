@@ -3,14 +3,15 @@ import { Wifi, ShieldQuestion, Radar } from "lucide-react";
 import { Glass, Btn, SectionHead } from "@/components/ui";
 import { useI18n } from "@/app/i18n";
 import { api } from "@/api/client";
+import { parseCandidate, verdict, type IceCandidate, type LeakVerdict } from "@/lib/webrtcLeak";
 
 type Wifi = Awaited<ReturnType<typeof api.netWifiAnalyze>>;
 type Dns = Awaited<ReturnType<typeof api.netDns>>;
 
 /** Собирает ICE-кандидаты браузера: показывает, какие адреса видны сайтам через WebRTC. */
-function collectIce(timeoutMs = 4000): Promise<string[]> {
+function collectIce(timeoutMs = 4000): Promise<IceCandidate[]> {
   return new Promise((resolve) => {
-    const found = new Set<string>();
+    const found = new Map<string, IceCandidate>();
     let pc: RTCPeerConnection;
     try {
       pc = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] });
@@ -20,13 +21,13 @@ function collectIce(timeoutMs = 4000): Promise<string[]> {
     }
     pc.createDataChannel("probe");
     pc.onicecandidate = (e) => {
-      const m = e.candidate?.candidate.match(/candidate:\S+\s+\d+\s+\S+\s+\d+\s+(\S+)\s+\d+\s+typ\s+(\w+)/);
-      if (m) found.add(`${m[1]} (${m[2]})`);
+      const c = e.candidate ? parseCandidate(e.candidate.candidate) : null;
+      if (c) found.set(`${c.ip}|${c.type}`, c);
     };
     void pc.createOffer().then((o) => pc.setLocalDescription(o));
     setTimeout(() => {
       pc.close();
-      resolve([...found]);
+      resolve([...found.values()]);
     }, timeoutMs);
   });
 }
@@ -39,7 +40,8 @@ export default function NetInsightsPanel() {
   const { t } = useI18n();
   const [wifi, setWifi] = useState<Wifi | null>(null);
   const [dns, setDns] = useState<Dns | null>(null);
-  const [ice, setIce] = useState<string[] | null>(null);
+  const [ice, setIce] = useState<IceCandidate[] | null>(null);
+  const [leak, setLeak] = useState<LeakVerdict | null>(null);
   const [busy, setBusy] = useState("");
   const [err, setErr] = useState("");
 
@@ -66,7 +68,12 @@ export default function NetInsightsPanel() {
           <Btn icon={ShieldQuestion} disabled={!!busy} onClick={() => run("dns", async () => setDns(await api.netDns()))}>
             {t("bypass.insights.dns")}
           </Btn>
-          <Btn icon={Radar} disabled={!!busy} onClick={() => run("ice", async () => setIce(await collectIce()))}>
+          <Btn icon={Radar} disabled={!!busy} onClick={() => run("ice", async () => {
+                const found = await collectIce();
+                const appIp = await api.netPublicIp().then((r) => r.ip || null).catch(() => null);
+                setIce(found);
+                setLeak(verdict(found, appIp));
+              })}>
             {busy === "ice" ? t("bypass.insights.checking") : t("bypass.insights.webrtc")}
           </Btn>
         </div>
@@ -127,9 +134,18 @@ export default function NetInsightsPanel() {
         {ice && (
           <div style={{ marginTop: 12 }}>
             {ice.length === 0 && <div className="muted-sm">{t("bypass.insights.iceNone")}</div>}
+            {leak && (
+              <strong style={{ color: leak.leak ? "var(--coral)" : "var(--teal)" }}>
+                {leak.safe
+                  ? t("bypass.insights.iceSafe")
+                  : leak.leak
+                    ? t("bypass.insights.iceLeak", { ip: leak.publicIps.join(", ") })
+                    : t("bypass.insights.iceOk")}
+              </strong>
+            )}
             {ice.map((a) => (
-              <div key={a} className="muted-sm">
-                {a}
+              <div key={`${a.ip}|${a.type}`} className="muted-sm">
+                {a.ip} ({a.type})
               </div>
             ))}
             {ice.length > 0 && <div className="muted-sm">{t("bypass.insights.iceHint")}</div>}
