@@ -53,6 +53,7 @@ import "@/styles/automation.css";
 import "@/styles/budget.css";
 import "@/styles/diary.css";
 import "@/styles/rss.css";
+import "@/styles/mail.css";
 import "@/styles/tuning.css";
 import "@/styles/translate.css";
 import "@/styles/movies.css";
@@ -142,6 +143,7 @@ const PAGE_LOADERS: Record<PageId, () => Promise<PageModule>> = {
   myspace: () => import("@/pages/myspace/MyspacePage"),
   diary: () => import("@/pages/diary/DiaryPage"),
   rss: () => import("@/pages/rss/RssPage"),
+  mail: () => import("@/pages/mail/MailPage"),
   aichat: () => import("@/pages/ai-chat/AiChatPage"),
   voice: () => import("@/pages/voice/AudiobookTTSPage"),
   lecture: () => import("@/pages/lecture/LectureRecorderPage"),

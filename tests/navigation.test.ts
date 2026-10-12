@@ -30,6 +30,7 @@ const ALL_IDS = [
   "myspace",
   "diary",
   "rss",
+  "mail",
   "aichat",
   "voice",
   "lecture",
