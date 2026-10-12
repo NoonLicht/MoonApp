@@ -348,7 +348,7 @@ export default function MusicPage() {
   const showPlayer = searchState !== "idle" || selectedTrack;
 
   return (
-    <div className="page">
+    <div className="page music-page">
       <SectionHead eyebrow={t("music.eyebrow")} title={t("music.title")} />
 
       {/* Поисковая строка */}
@@ -525,7 +525,7 @@ export default function MusicPage() {
         </Glass>
       )}
 
-      {!viewingPlaylist && searchState === "done" && tracks.length === 0 && !selectedTrack && (
+      {!viewingPlaylist && !linkList && searchState === "done" && tracks.length === 0 && !selectedTrack && (
         <EmptyHint icon={Music2} text={t("music.empty")} />
       )}
 

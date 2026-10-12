@@ -1356,3 +1356,14 @@ html.a11y-focus *:focus-visible {
   opacity: 0.5;
   cursor: default;
 }
+
+/* Подзаголовки панелей (SectionHead внутри вкладок): воздух под заголовком, а
+   на главной шапке страницы отступ даёт gap самого .page. */
+.section-head {
+  margin-bottom: 12px;
+}
+.page > .section-head,
+.page-scroll-body > .section-head,
+.page-flush > .section-head {
+  margin-bottom: 0;
+}

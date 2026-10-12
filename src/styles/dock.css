@@ -78,7 +78,7 @@
 }
 .dock-btn.is-active .dock-icon {
   color: #241605;
-  background: linear-gradient(135deg, var(--amber), #d98a26);
+  background: linear-gradient(135deg, var(--amber), color-mix(in srgb, var(--amber) 78%, #000));
   box-shadow:
     0 0 0 4px var(--amber-soft),
     0 6px 16px rgba(240, 166, 61, 0.35);

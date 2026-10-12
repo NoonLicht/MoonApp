@@ -97,7 +97,7 @@ select option {
   cursor: not-allowed;
 }
 .btn-primary {
-  background: linear-gradient(135deg, var(--amber), #d98a26);
+  background: linear-gradient(135deg, var(--amber), color-mix(in srgb, var(--amber) 78%, #000));
   color: #241605;
   border-color: transparent;
 }
@@ -1350,12 +1350,12 @@ select option {
 .ap-play {
   width: 34px;
   height: 34px;
-  background: linear-gradient(135deg, var(--amber), #d98a26);
+  background: linear-gradient(135deg, var(--amber), color-mix(in srgb, var(--amber) 78%, #000));
   color: #241605;
 }
 .ap-play:hover:not(:disabled) {
   color: #241605;
-  background: linear-gradient(135deg, var(--amber), #d98a26);
+  background: linear-gradient(135deg, var(--amber), color-mix(in srgb, var(--amber) 78%, #000));
   filter: brightness(1.07);
 }
 .audio-player.is-compact .ap-play {

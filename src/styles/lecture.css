@@ -263,7 +263,7 @@
   cursor: not-allowed;
 }
 .lec-btn.primary {
-  background: linear-gradient(135deg, var(--amber), #d98a26);
+  background: linear-gradient(135deg, var(--amber), color-mix(in srgb, var(--amber) 78%, #000));
   color: #241605;
 }
 .lec-btn.danger {

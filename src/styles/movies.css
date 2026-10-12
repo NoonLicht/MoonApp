@@ -927,7 +927,7 @@
   color: #fff;
 }
 .mv-progress-seasons .chip-toggle.is-active {
-  background: linear-gradient(135deg, var(--amber), #d98a26);
+  background: linear-gradient(135deg, var(--amber), color-mix(in srgb, var(--amber) 78%, #000));
   border-color: var(--amber);
   color: #241605;
 }
@@ -962,7 +962,7 @@
   color: #fff;
 }
 .mv-progress-dot.is-watched {
-  background: linear-gradient(135deg, var(--amber), #d98a26);
+  background: linear-gradient(135deg, var(--amber), color-mix(in srgb, var(--amber) 78%, #000));
   border-color: var(--amber);
   color: #241605;
 }

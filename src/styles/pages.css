@@ -1982,3 +1982,15 @@
   inset: 0;
   z-index: 49;
 }
+
+/* Страница музыки прокручивается целиком, список плейлиста — со своим пределом */
+.music-page {
+  overflow-y: auto;
+  padding-bottom: 24px;
+}
+.music-page > * {
+  flex-shrink: 0;
+}
+.pl-picker-list {
+  max-height: min(38vh, 380px);
+}

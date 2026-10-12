@@ -987,3 +987,8 @@
   color: #1b1100;
   border-radius: 50%;
 }
+.chat-composer textarea {
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: var(--track);
+}
