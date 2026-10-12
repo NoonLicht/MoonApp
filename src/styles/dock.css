@@ -152,3 +152,8 @@
 .dock-label {
   display: none;
 }
+
+/* Кнопка сворачивания меню существует только в Fluent 2. */
+.dock-collapse {
+  display: none;
+}

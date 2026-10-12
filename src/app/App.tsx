@@ -1,3 +1,4 @@
+import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import React, { useState, useEffect, useCallback, useMemo, useRef, Suspense } from "react";
 import {
   Sun,
@@ -223,6 +224,28 @@ function PageHost({
   );
 }
 
+const DOCK_KEY = "moonapp.dock.collapsed";
+
+/** Свёрнутое меню страниц (только иконки) даже на широком окне; помним выбор. */
+function useDockCollapsed(): [boolean, () => void] {
+  const [c, setC] = useState(() => {
+    try {
+      return localStorage.getItem(DOCK_KEY) === "1";
+    } catch {
+      return false;
+    }
+  });
+  useEffect(() => {
+    document.documentElement.classList.toggle("dock-collapsed", c);
+    try {
+      localStorage.setItem(DOCK_KEY, c ? "1" : "0");
+    } catch {
+      /* без localStorage выбор просто не запомнится */
+    }
+  }, [c]);
+  return [c, () => setC((v) => !v)];
+}
+
 function Shell({
   active,
   setActive,
@@ -315,6 +338,7 @@ function Shell({
 
   // В стопке всегда есть активная страница: список живых обновляется эффектом
   // ПОСЛЕ рендера, поэтому без этого добавления был бы пустой кадр при переходе.
+  const [dockCollapsed, toggleDockCollapsed] = useDockCollapsed();
   const stack = alive.includes(safeActive) ? alive : ([safeActive, ...alive] as PageId[]);
 
   // Классы/стили, управляемые разделом «Внешний вид»:
@@ -487,6 +511,17 @@ function Shell({
 
       <nav className="bottom-dock">
         <div className="dock-scroll">
+          <button
+            className="dock-btn dock-collapse"
+            onClick={toggleDockCollapsed}
+            aria-label={t(dockCollapsed ? "nav.expand" : "nav.collapse")}
+            title={t(dockCollapsed ? "nav.expand" : "nav.collapse")}
+          >
+            <span className="dock-icon">
+              {dockCollapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+            </span>
+            <span className="dock-label">{t(dockCollapsed ? "nav.expand" : "nav.collapse")}</span>
+          </button>
           {PAGES.map((p) => {
             const Icon = p.icon;
             const isActive = p.id === active;

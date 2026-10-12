@@ -24,7 +24,9 @@
     "tuning": "ضبط الحاسوب",
     "translate": "المترجم",
     "diary": "اليوميات",
-    "rss": "RSS"
+    "rss": "RSS",
+    "collapse": "طي القائمة",
+    "expand": "توسيع القائمة"
   },
   "common": {
     "saved": "تم الحفظ",

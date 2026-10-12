@@ -338,3 +338,24 @@ html.no-glass .app-shell {
 html.design-fluent.no-glass .app-shell {
   background: var(--bg-base);
 }
+
+/* ---------- Сворачивание меню страниц ---------- */
+html.design-fluent .dock-collapse {
+  display: flex;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--fl-stroke);
+  border-radius: var(--fl-r-ctl) var(--fl-r-ctl) 0 0;
+}
+@media (max-width: 1359px) {
+  html.design-fluent .dock-collapse {
+    display: none;
+  }
+}
+@media (min-width: 1360px) {
+  html.design-fluent.dock-collapsed .app-shell {
+    --rail-w: 52px;
+  }
+  html.design-fluent.dock-collapsed .dock-label {
+    display: none;
+  }
+}

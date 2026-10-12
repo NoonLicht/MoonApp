@@ -24,7 +24,9 @@
     "tuning": "PC Tuning",
     "translate": "Translator",
     "diary": "Diary",
-    "rss": "RSS"
+    "rss": "RSS",
+    "collapse": "Collapse menu",
+    "expand": "Expand menu"
   },
   "common": {
     "saved": "saved",

@@ -24,7 +24,9 @@
     "tuning": "PC 调优",
     "translate": "翻译",
     "diary": "日记",
-    "rss": "RSS"
+    "rss": "RSS",
+    "collapse": "收起菜单",
+    "expand": "展开菜单"
   },
   "common": {
     "saved": "已保存",

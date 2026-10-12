@@ -24,7 +24,9 @@
     "tuning": "Тюнинг ПК",
     "translate": "Переводчик",
     "diary": "Дневник",
-    "rss": "RSS"
+    "rss": "RSS",
+    "collapse": "Свернуть меню",
+    "expand": "Развернуть меню"
   },
   "common": {
     "saved": "сохранено",

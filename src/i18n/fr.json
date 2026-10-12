@@ -24,7 +24,9 @@
     "tuning": "Réglage du PC",
     "translate": "Traducteur",
     "diary": "Journal",
-    "rss": "RSS"
+    "rss": "RSS",
+    "collapse": "Réduire le menu",
+    "expand": "Développer le menu"
   },
   "common": {
     "saved": "enregistré",
