@@ -1,3 +1,4 @@
+import { matchesCombo, getCombo } from "@/lib/hotkeys";
 import { useI18n } from "@/app/i18n";
 import { useContextMenu } from "@/components/ContextMenu";
 import { usePageToolbar, usePageActive } from "@/components/Toolbar";
@@ -13,7 +14,19 @@ import type {
 } from "@/api/types";
 import { api } from "@/api/client";
 import { parseModelNameError } from "@/lib/modelError";
-import { ChevronDown, FileText, PenLine, Trash2, ChevronRight, Folder } from "lucide-react";
+import {
+  Bookmark,
+  CheckSquare,
+  ChevronDown,
+  FileText,
+  PenLine,
+  Trash2,
+  ChevronRight,
+  Folder,
+  Palette,
+  Puzzle,
+  RefreshCw,
+} from "lucide-react";
 import { useDeepLink, moonHref, SOURCE_ICON } from "@/lib/deepLink";
 import LinkPicker, { type PickItem } from "@/components/LinkPicker";
 import { insertIntoLiveEditor } from "@/pages/myspace/parts/CodeMirrorLiveEditor";
@@ -34,7 +47,6 @@ import { getOverlayRoot } from "@/components/overlayHost";
 import {
   dirname,
   notesAiError,
-  viewTabStyle,
   type OFile,
   type Right,
   type Side,
@@ -623,6 +635,8 @@ export default function MyspacePage() {
             : f,
         ),
       );
+      // Перегенерированная заметка целиком написана ИИ — «Автор мысли» пометит её абзацы.
+      if (mode === "regenerate") void api.mindProvenanceRecord(target, res.content, "ai").catch(() => undefined);
       // В редактор — только если пользователь не переключился на другую заметку.
       if (activeTabRef.current === target) setEdContent(res.content);
       setError("");
@@ -662,7 +676,7 @@ export default function MyspacePage() {
   useEffect(() => {
     if (typeof window === "undefined") return; // SSR-окружение (smoke-тесты)
     const onKey = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s" && activeTab) {
+      if (matchesCombo(e, getCombo("noteSave")) && activeTab) {
         e.preventDefault();
         const f = openFiles.find((x) => x.path === activeTab);
         if (f) {
@@ -1247,36 +1261,24 @@ export default function MyspacePage() {
       }}
     >
       {/* ─── VIEW SWITCHER ─── */}
-      <div style={{ display: "flex", gap: 4, padding: "4px 4px 0 4px" }}>
-        <button
-          onClick={() => setMyspaceView("notes")}
-          style={viewTabStyle(myspaceView === "notes")}
-        >
-          📝 Notes
+      <div className="page-tabs" style={{ padding: "4px 4px 0 4px" }}>
+        <button type="button" className={`page-tab${myspaceView === "notes" ? " active" : ""}`} onClick={() => setMyspaceView("notes")}>
+          <FileText size={14} /> {t("myspace.notesTab")}
         </button>
-        <button
-          onClick={() => setMyspaceView("tasks")}
-          style={viewTabStyle(myspaceView === "tasks")}
-        >
-          ✓ Tasks
+        <button type="button" className={`page-tab${myspaceView === "tasks" ? " active" : ""}`} onClick={() => setMyspaceView("tasks")}>
+          <CheckSquare size={14} /> {t("myspace.tasksTab")}
         </button>
-        <button
-          onClick={() => setMyspaceView("canvas")}
-          style={viewTabStyle(myspaceView === "canvas")}
-        >
-          🎨 Canvas
+        <button type="button" className={`page-tab${myspaceView === "canvas" ? " active" : ""}`} onClick={() => setMyspaceView("canvas")}>
+          <Palette size={14} /> {t("myspace.canvasTab")}
         </button>
-        <button onClick={() => setMyspaceView("m3e")} style={viewTabStyle(myspaceView === "m3e")}>
-          🧩 {t("myspace.m3eTab")}
+        <button type="button" className={`page-tab${myspaceView === "m3e" ? " active" : ""}`} onClick={() => setMyspaceView("m3e")}>
+          <Puzzle size={14} /> {t("myspace.m3eTab")}
         </button>
-        <button
-          onClick={() => setMyspaceView("bookmarks")}
-          style={viewTabStyle(myspaceView === "bookmarks")}
-        >
-          🔖 {t("myspace.bookmarksTab")}
+        <button type="button" className={`page-tab${myspaceView === "bookmarks" ? " active" : ""}`} onClick={() => setMyspaceView("bookmarks")}>
+          <Bookmark size={14} /> {t("myspace.bookmarksTab")}
         </button>
-        <button onClick={() => setMyspaceView("sync")} style={viewTabStyle(myspaceView === "sync")}>
-          🔄 {t("myspace.syncTab")}
+        <button type="button" className={`page-tab${myspaceView === "sync" ? " active" : ""}`} onClick={() => setMyspaceView("sync")}>
+          <RefreshCw size={14} /> {t("myspace.syncTab")}
         </button>
       </div>
       {myspaceView === "notes" && (

@@ -1,3 +1,4 @@
+import { useEscape } from "@/lib/useEscape";
 import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
@@ -21,6 +22,7 @@ export default function OcrDialog({
   onClose: () => void;
 }) {
   const { t } = useI18n();
+  useEscape(onClose);
   const [st, setSt] = useState<LlamaStatus | null>(null);
   const [msg, setMsg] = useState("");
 

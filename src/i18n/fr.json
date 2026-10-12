@@ -309,7 +309,9 @@
       "namesHint": "« Ivanov I. I. », « Piotr Sergueïevitch » et similaires sont remplacés par des étiquettes [ИМЯ_1].",
       "localNames": "Chercher les noms avec un modèle local",
       "localNamesHint": "Plus précis mais plus lent : le texte est analysé par un modèle llama.cpp sur votre ordinateur. Nécessite un modèle installé."
-    }
+    },
+    "uiScale": "Échelle de l'interface",
+    "uiScaleHint": "Met à l'échelle toute l'interface : polices, tableaux et espacements"
   },
   "chat": {
     "chatProvider": "Fournisseur par défaut",
@@ -1286,6 +1288,12 @@
       "save": "Enregistrer le passeport",
       "saveAnon": "Enregistrer sans le nom du PC",
       "stale": "Pilotes non mis à jour depuis longtemps"
+    },
+    "tabs": {
+      "live": "Capteurs",
+      "disk": "Disque et fichiers",
+      "activity": "Activité",
+      "alerts": "Alertes et diagnostic"
     }
   },
   "voice": {
@@ -1912,7 +1920,10 @@
       "run": "Lire à voix haute",
       "estimate": "Environ {min} min de parole",
       "save": "Enregistrer l'audio"
-    }
+    },
+    "notesTab": "Notes",
+    "tasksTab": "Tâches",
+    "canvasTab": "Canevas"
   },
   "player": {
     "play": "Lecture",
@@ -3191,6 +3202,11 @@
       "iceSafe": "Aucune adresse publique n'est exposée via WebRTC",
       "iceLeak": "Fuite possible : WebRTC expose {ip}, différente de l'adresse de l'application",
       "iceOk": "Seule l'adresse identique à celle de l'application est visible"
+    },
+    "tabs": {
+      "zapret": "Contournement (zapret)",
+      "tg": "Proxy Telegram",
+      "net": "Réseau et protection"
     }
   },
   "up": {
@@ -6108,6 +6124,7 @@
     "off": "Désactivé",
     "models": "Modèles : {n}",
     "open": "Ouvrir",
-    "openToManage": "Moteurs et voix : page de synthèse vocale"
+    "openToManage": "Moteurs et voix : page de synthèse vocale",
+    "manage": "Gérer"
   }
 }

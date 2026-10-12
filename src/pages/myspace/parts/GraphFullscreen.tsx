@@ -1,5 +1,5 @@
 import { Search, X, Globe } from "lucide-react";
-import GraphView from "@/pages/myspace/parts/GraphView";
+import GraphView from "@/pages/myspace/parts/GraphLazy";
 import type React from "react";
 import type { GraphData } from "@/api/types";
 

@@ -309,7 +309,9 @@
       "namesHint": "«Ivánov I. I.», «Pyotr Serguéyevich» y similares se sustituyen por etiquetas [ИМЯ_1].",
       "localNames": "Buscar nombres con un modelo local",
       "localNamesHint": "Más preciso pero más lento: un modelo llama.cpp de tu ordenador analiza el texto. Requiere un modelo instalado."
-    }
+    },
+    "uiScale": "Escala de la interfaz",
+    "uiScaleHint": "Escala toda la interfaz: fuentes, tablas y espacios"
   },
   "chat": {
     "chatProvider": "Proveedor por defecto",
@@ -1286,6 +1288,12 @@
       "save": "Guardar pasaporte",
       "saveAnon": "Guardar sin el nombre del PC",
       "stale": "Controladores sin actualizar desde hace tiempo"
+    },
+    "tabs": {
+      "live": "Sensores",
+      "disk": "Disco y archivos",
+      "activity": "Actividad",
+      "alerts": "Alertas y diagnóstico"
     }
   },
   "voice": {
@@ -1912,7 +1920,10 @@
       "run": "Leer en voz alta",
       "estimate": "Unos {min} min de voz",
       "save": "Guardar audio"
-    }
+    },
+    "notesTab": "Notas",
+    "tasksTab": "Tareas",
+    "canvasTab": "Lienzo"
   },
   "player": {
     "play": "Reproducir",
@@ -3191,6 +3202,11 @@
       "iceSafe": "WebRTC no expone ninguna dirección pública",
       "iceLeak": "Posible fuga: WebRTC expone {ip}, distinta de la dirección de la aplicación",
       "iceOk": "Solo es visible la dirección que coincide con la de la aplicación"
+    },
+    "tabs": {
+      "zapret": "Bypass (zapret)",
+      "tg": "Proxy de Telegram",
+      "net": "Red y protección"
     }
   },
   "up": {
@@ -6108,6 +6124,7 @@
     "off": "Desactivado",
     "models": "Modelos: {n}",
     "open": "Abrir",
-    "openToManage": "Motores y voces están en la página de voz"
+    "openToManage": "Motores y voces están en la página de voz",
+    "manage": "Gestionar"
   }
 }

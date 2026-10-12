@@ -309,7 +309,9 @@
       "namesHint": "“Ivanov I. I.”, “Pyotr Sergeyevich” and similar become [ИМЯ_1] labels.",
       "localNames": "Find names with a local model",
       "localNamesHint": "More accurate but slower: the text is parsed by a llama.cpp model on your computer. Needs an installed model."
-    }
+    },
+    "uiScale": "Interface scale",
+    "uiScaleHint": "Scales the whole UI: fonts, tables and spacing"
   },
   "chat": {
     "chatProvider": "Default provider",
@@ -1286,6 +1288,12 @@
       "save": "Save passport",
       "saveAnon": "Save without PC name",
       "stale": "Drivers not updated for a long time"
+    },
+    "tabs": {
+      "live": "Sensors",
+      "disk": "Disk & files",
+      "activity": "Activity",
+      "alerts": "Alerts & diagnostics"
     }
   },
   "voice": {
@@ -1912,7 +1920,10 @@
       "run": "Read aloud",
       "estimate": "About {min} min of speech",
       "save": "Save audio"
-    }
+    },
+    "notesTab": "Notes",
+    "tasksTab": "Tasks",
+    "canvasTab": "Canvas"
   },
   "player": {
     "play": "Play",
@@ -3195,6 +3206,11 @@
       "iceSafe": "No public address is exposed via WebRTC",
       "iceLeak": "Possible leak: WebRTC exposes {ip}, which differs from the app's address",
       "iceOk": "Only the address matching the app's address is visible"
+    },
+    "tabs": {
+      "zapret": "Bypass (zapret)",
+      "tg": "Telegram proxy",
+      "net": "Network & protection"
     }
   },
   "up": {
@@ -6108,6 +6124,7 @@
     "off": "Off",
     "models": "Models: {n}",
     "open": "Open",
-    "openToManage": "Engines and voices live on the voice page"
+    "openToManage": "Engines and voices live on the voice page",
+    "manage": "Manage"
   }
 }

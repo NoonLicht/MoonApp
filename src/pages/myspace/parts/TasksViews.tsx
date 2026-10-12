@@ -1,3 +1,4 @@
+import { tNow } from "@/app/i18n";
 import type { TaskItem, TaskStatus } from "@/api/types";
 import {
   List, Calendar, Check, Pause, Play, ChevronRight,
@@ -56,7 +57,7 @@ export function ListView({
         }}
       >
         <List size={32} style={{ opacity: 0.3 }} />
-        <span>{tasks.length === 0 ? "No tasks yet. Add one above." : "No matching tasks"}</span>
+        <span>{tasks.length === 0 ? tNow("tasksUi.noTasks") : tNow("tasksUi.noMatch")}</span>
       </div>
     );
   }
@@ -83,34 +84,34 @@ export function ListView({
           onClick={() => handleSort("priority")}
           style={{ cursor: "pointer", width: 70, flexShrink: 0 }}
         >
-          Priority{sortIndicator("priority")}
+          {tNow("tasksUi.priority")}{sortIndicator("priority")}
         </div>
         <div
           onClick={() => handleSort("title")}
           style={{ cursor: "pointer", flex: 1, minWidth: 0 }}
         >
-          Title{sortIndicator("title")}
+          {tNow("tasksUi.colTitle")}{sortIndicator("title")}
         </div>
         <div
           onClick={() => handleSort("dueDate")}
           style={{ cursor: "pointer", width: 100, flexShrink: 0 }}
         >
-          Due{sortIndicator("dueDate")}
+          {tNow("tasksUi.colDue")}{sortIndicator("dueDate")}
         </div>
-        <div style={{ width: 80, flexShrink: 0 }}>Tags</div>
+        <div style={{ width: 80, flexShrink: 0 }}>{tNow("tasksUi.tags")}</div>
         <div
           onClick={() => handleSort("status")}
           style={{ cursor: "pointer", width: 90, flexShrink: 0 }}
         >
-          Status{sortIndicator("status")}
+          {tNow("tasksUi.status")}{sortIndicator("status")}
         </div>
         <div
           onClick={() => handleSort("estimatedTime")}
           style={{ cursor: "pointer", width: 50, flexShrink: 0 }}
         >
-          Est{sortIndicator("estimatedTime")}
+          {tNow("tasksUi.colEst")}{sortIndicator("estimatedTime")}
         </div>
-        <div style={{ width: 50, flexShrink: 0 }}>Act</div>
+        <div style={{ width: 50, flexShrink: 0 }}>{tNow("tasksUi.colAct")}</div>
         <div style={{ width: 50, flexShrink: 0 }} />
       </div>
 
@@ -262,7 +263,7 @@ export function ListView({
                 cursor: "pointer",
                 fontSize: 10,
               }}
-              title={timerRunning && timerTaskId === task.id ? "Pause timer" : "Start timer"}
+              title={timerRunning && timerTaskId === task.id ? tNow("tasksUi.pauseTimer") : tNow("tasksUi.startTimer")}
             >
               {timerRunning && timerTaskId === task.id ? <Pause size={10} /> : <Play size={10} />}
             </button>
@@ -278,10 +279,10 @@ export function ListView({
    ================================================================ */
 export function KanbanView({ sortedTasks, openDetail, moveTaskStatus }: KanbanViewProps) {
   const columns: { status: TaskStatus; label: string }[] = [
-    { status: "todo", label: "Todo" },
-    { status: "in_progress", label: "In Progress" },
-    { status: "deferred", label: "Deferred" },
-    { status: "completed", label: "Completed" },
+    { status: "todo", label: tNow("tasksUi.s_todo") },
+    { status: "in_progress", label: tNow("tasksUi.s_in_progress") },
+    { status: "deferred", label: tNow("tasksUi.s_deferred") },
+    { status: "completed", label: tNow("tasksUi.s_completed") },
   ];
 
   return (
@@ -310,14 +311,24 @@ export function KanbanView({ sortedTasks, openDetail, moveTaskStatus }: KanbanVi
                 justifyContent: "space-between",
                 padding: "8px 10px",
                 borderBottom: "1px solid var(--glass-border)",
-                background: statusColor(col.status),
-                color: "#fff",
-                fontSize: 12,
+                borderTop: `3px solid ${statusColor(col.status)}`,
+                color: "var(--text-primary)",
+                fontSize: 13,
                 fontWeight: 600,
               }}
             >
               <span>{col.label}</span>
-              <span style={{ fontSize: 10, opacity: 0.8 }}>{colTasks.length}</span>
+              <span
+                style={{
+                  fontSize: 11,
+                  padding: "1px 8px",
+                  borderRadius: 999,
+                  background: "var(--track)",
+                  color: "var(--text-secondary)",
+                }}
+              >
+                {colTasks.length}
+              </span>
             </div>
 
             {/* Cards */}
@@ -340,7 +351,7 @@ export function KanbanView({ sortedTasks, openDetail, moveTaskStatus }: KanbanVi
                     padding: 16,
                   }}
                 >
-                  Empty
+                  {tNow("tasksUi.empty")}
                 </div>
               )}
               {colTasks.map((task) => (
@@ -494,20 +505,7 @@ export function CalendarView({
   const daysInMonth = new Date(calendarYear, calendarMonth + 1, 0).getDate();
   /* Неделя начинается с понедельника: getDay() даёт 0=вс..6=сб, сдвигаем на пн=0. */
   const firstDayOfWeek = (new Date(calendarYear, calendarMonth, 1).getDay() + 6) % 7;
-  const monthNames = [
-    "January",
-    "February",
-    "March",
-    "April",
-    "May",
-    "June",
-    "July",
-    "August",
-    "September",
-    "October",
-    "November",
-    "December",
-  ];
+  const monthNames = Array.from({ length: 12 }, (_, i) => tNow("tasksUi.m" + (i + 1)));
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 4, height: "100%" }}>
@@ -531,7 +529,7 @@ export function CalendarView({
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 2 }}>
-        {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
+        {[1, 2, 3, 4, 5, 6, 7].map((n) => tNow("tasksUi.wd" + n)).map((d) => (
           <div
             key={d}
             style={{
@@ -647,7 +645,7 @@ export function CalendarView({
                 })}
                 {dayTasks.length > 3 && (
                   <span style={{ fontSize: 7, color: "var(--text-tertiary)", paddingLeft: 2 }}>
-                    +{dayTasks.length - 3} more
+                    +{dayTasks.length - 3} {tNow("tasksUi.more")}
                   </span>
                 )}
               </div>

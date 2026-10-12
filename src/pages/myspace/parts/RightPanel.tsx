@@ -1,6 +1,6 @@
 import { Search, Sparkles, PanelRightClose, Link2, Type, Globe, Maximize2 } from "lucide-react";
 import { SemanticPanel } from "@/pages/myspace/parts/SemanticPanel";
-import GraphView from "@/pages/myspace/parts/GraphView";
+import GraphView from "@/pages/myspace/parts/GraphLazy";
 import type React from "react";
 import type { Right, OFile } from "@/pages/myspace/parts/MyspaceHelpers";
 import type { GraphData } from "@/api/types";
