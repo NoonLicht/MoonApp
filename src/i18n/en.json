@@ -759,7 +759,8 @@
     "paused": "Paused",
     "structure": "Structure into Markdown",
     "structuredLabel": "AI-structured:",
-    "engineMissingHint": "The recognition engine isn't set up — open the \"Lecture\" tab above and install whisper (same setting used here)."
+    "engineMissingHint": "Speech engine is not set up — install a Whisper model in Settings → AI & models.",
+    "openModels": "Open models"
   },
   "palette": {
     "placeholder": "Start typing a command name…",
@@ -1616,8 +1617,8 @@
     "backlinks": "Backlinks",
     "outline": "Outline",
     "graph": "Graph",
-    "localGraph": "Local Graph",
-    "globalGraph": "Global Graph",
+    "localGraph": "Local graph",
+    "globalGraph": "Global graph",
     "noOpenFiles": "No open files",
     "selectNote": "Select a note or create a new one",
     "noBacklinks": "No backlinks",
@@ -1631,8 +1632,8 @@
     "depth": "Depth",
     "fullscreen": "Fullscreen",
     "close": "Close",
-    "filterNodes": "Filter nodes...",
-    "searchNodes": "Search nodes...",
+    "filterNodes": "Filter nodes…",
+    "searchNodes": "Search nodes…",
     "newNote": "New note",
     "newFolder": "New folder",
     "deleteConfirm": "Delete {name}?",
@@ -1923,7 +1924,20 @@
     },
     "notesTab": "Notes",
     "tasksTab": "Tasks",
-    "canvasTab": "Canvas"
+    "canvasTab": "Canvas",
+    "openNoteBacklinks": "Open a note to see backlinks",
+    "openNoteOutline": "Open a note to see its outline",
+    "expandGraph": "Expand graph",
+    "graphView": "Graph view",
+    "showAllConn": "Show all nodes and connections",
+    "closeEsc": "Close (Esc)",
+    "graphSettings": "Graph settings",
+    "forces": "Forces",
+    "spring": "Spring",
+    "appearance": "Appearance",
+    "noResults": "No results",
+    "noTagsYet": "No tags yet",
+    "startWriting": "Start writing… Use [[wiki-links]] and #tags"
   },
   "player": {
     "play": "Play",

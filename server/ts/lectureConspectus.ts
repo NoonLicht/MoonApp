@@ -279,7 +279,7 @@ function conspectusCfg() {
  * (У DeepSeek в API есть deepseek-chat и deepseek-reasoner; имени «flash» нет,
  * поэтому неизвестное имя не подставляем молча, а сверяемся со списком сервиса.)
  */
-async function conspectusTarget(appPage: any) {
+export async function conspectusTarget(appPage: any) {
   const c = conspectusCfg();
   let provider;
   try {

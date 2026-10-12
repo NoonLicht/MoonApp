@@ -13,6 +13,7 @@ import {
 import { Glass, Btn, Badge, EmptyHint, Checkbox } from "@/components/ui";
 import { useI18n } from "@/app/i18n";
 import { api } from "@/api/client";
+import { openAiHub } from "@/lib/openAiHub";
 import type { QuickNote } from "@/api/types";
 
 interface Props {
@@ -197,6 +198,9 @@ export default function QuickNoteTab({ engineReady }: Props) {
         >
           <AlertTriangle size={16} style={{ color: "var(--coral)" }} />
           <span>{t("quickNotes.engineMissingHint")}</span>
+          <Btn variant="secondary" onClick={() => openAiHub(t("aiHub.title"))}>
+            {t("quickNotes.openModels")}
+          </Btn>
         </Glass>
       )}
       <div className="muted-sm" style={{ marginBottom: 10 }}>

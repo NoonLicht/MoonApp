@@ -1091,3 +1091,28 @@
     grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
   }
 }
+
+/* Панели-вставки на странице лекций и дневника: экзамен, Voice Vault, вопрос по записи, дрейф. */
+.lec-panel {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--glass-border);
+  border-radius: 14px;
+  background: var(--glass);
+}
+.lec-exam-card {
+  display: grid;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  background: var(--track);
+}
+
+/* Селект модели не выпирает за пару и не наезжает на кнопку «Модели» */
+.leca-pair.grow .leca-select {
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 100%;
+}
