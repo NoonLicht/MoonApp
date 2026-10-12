@@ -83,7 +83,79 @@ export function mailDb(): Database.Database {
       created INTEGER NOT NULL
     );
   `);
+  migrate(db);
   return db;
+}
+
+function addCol(d: Database.Database, table: string, col: string, ddl: string): void {
+  const cols = d.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[];
+  if (!cols.some((c) => c.name === col)) d.exec(`ALTER TABLE ${table} ADD COLUMN ${col} ${ddl}`);
+}
+
+/** Добавления схемы второго этапа: черновики, правила, подписи, OAuth, метки, вложения. */
+function migrate(d: Database.Database): void {
+  addCol(d, "accounts", "auth_type", "TEXT NOT NULL DEFAULT 'password'");
+  addCol(d, "accounts", "oauth_enc", "TEXT NOT NULL DEFAULT ''");
+  addCol(d, "accounts", "aliases", "TEXT NOT NULL DEFAULT '[]'");
+  addCol(d, "accounts", "default_signature", "TEXT NOT NULL DEFAULT ''");
+  addCol(d, "accounts", "pinned", "INTEGER NOT NULL DEFAULT 0");
+  addCol(d, "accounts", "color", "TEXT NOT NULL DEFAULT ''");
+  addCol(d, "messages", "list_unsub", "TEXT NOT NULL DEFAULT ''");
+  addCol(d, "messages", "list_unsub_post", "INTEGER NOT NULL DEFAULT 0");
+  addCol(d, "messages", "ics", "TEXT NOT NULL DEFAULT ''");
+  addCol(d, "messages", "att_text", "TEXT NOT NULL DEFAULT ''");
+  addCol(d, "messages", "size", "INTEGER NOT NULL DEFAULT 0");
+  addCol(d, "messages", "track_id", "TEXT NOT NULL DEFAULT ''");
+  d.exec(`
+    CREATE INDEX IF NOT EXISTS ix_msg_unseen ON messages(account, seen);
+    CREATE TABLE IF NOT EXISTS drafts (
+      id TEXT PRIMARY KEY,
+      account TEXT NOT NULL DEFAULT '',
+      payload TEXT NOT NULL,
+      updated INTEGER NOT NULL,
+      server_folder TEXT NOT NULL DEFAULT '',
+      server_uid INTEGER NOT NULL DEFAULT 0
+    );
+    CREATE TABLE IF NOT EXISTS rules (
+      id TEXT PRIMARY KEY,
+      account TEXT NOT NULL DEFAULT '',
+      name TEXT NOT NULL,
+      enabled INTEGER NOT NULL DEFAULT 1,
+      match_all INTEGER NOT NULL DEFAULT 1,
+      conditions TEXT NOT NULL DEFAULT '[]',
+      actions TEXT NOT NULL DEFAULT '[]',
+      position INTEGER NOT NULL DEFAULT 0
+    );
+    CREATE TABLE IF NOT EXISTS signatures (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      html TEXT NOT NULL DEFAULT ''
+    );
+    CREATE TABLE IF NOT EXISTS kv (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS replied (
+      account TEXT NOT NULL,
+      addr TEXT NOT NULL,
+      ts INTEGER NOT NULL,
+      PRIMARY KEY (account, addr)
+    );
+    CREATE TABLE IF NOT EXISTS track_events (
+      id TEXT PRIMARY KEY,
+      track_id TEXT NOT NULL,
+      kind TEXT NOT NULL,
+      url TEXT NOT NULL DEFAULT '',
+      ts INTEGER NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS tracked (
+      track_id TEXT PRIMARY KEY,
+      account TEXT NOT NULL,
+      subject TEXT NOT NULL DEFAULT '',
+      to_json TEXT NOT NULL DEFAULT '[]',
+      sent INTEGER NOT NULL
+    );
+  `);
 }
 
 export function closeMailDb(): void {

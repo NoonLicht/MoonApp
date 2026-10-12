@@ -1,33 +1,44 @@
 /**
- * API почты (логика — server/ts/mail/mailService.ts).
+ * API почты (логика — server/ts/mail/*).
  *
- *  GET    /api/mail/accounts · POST · PATCH /:id · DELETE /:id
- *  GET    /api/mail/guess?email=          — настройки серверов по домену
- *  POST   /api/mail/sync { account? }     — синхронизация
- *  GET    /api/mail/folders?account=      — папки с числами
- *  GET    /api/mail/counts                — счётчики виртуальных ящиков
- *  GET    /api/mail/messages?box=&account=&folder=&q=&unread=&threads=&limit=&offset=
- *  GET    /api/mail/messages/:id          — письмо; /thread — вся цепочка
- *  POST   /api/mail/flags { ids, seen?, flagged? }
- *  POST   /api/mail/move { ids, special? | path? }
- *  POST   /api/mail/delete { ids }
- *  POST   /api/mail/snooze { ids, until }
- *  POST   /api/mail/reminder { id, at }
- *  GET    /api/mail/reminders             — просроченные «нет ответа»
- *  GET    /api/mail/attachment/:id/:index
- *  POST   /api/mail/send · GET /outbox · POST /outbox/:id/cancel · POST /outbox/:id/retry
- *  GET/POST /api/mail/templates · DELETE /templates/:id
- *  GET    /api/mail/contacts?q= · /contact?address=
+ *  Ящики:      GET/POST /accounts · PATCH/DELETE /accounts/:id · GET /guess?email=
+ *              POST /oauth/start {provider} · GET /oauth/:id
+ *  Чтение:     POST /sync · GET /folders · /labels · /counts · /messages · /messages/:id[/thread]
+ *              POST /load-older {account, folder}
+ *  Действия:   POST /flags · /move · /delete · /snooze · /reminder · /unsubscribe · /invite
+ *              (ids принимают «t:<id>» — вся цепочка в той же папке)
+ *  Вложения:   GET /attachment/:id/:index · GET /eml/:id · POST /import/eml
+ *  Отправка:   POST /send · GET /outbox · POST /outbox/:id/cancel|retry
+ *  Черновики:  GET/POST /drafts · GET/DELETE /drafts/:id
+ *  Прочее:     /templates · /signatures · /rules · /settings · /contacts · /contact · /avatar
+ *              /ai · /tracking · /backup · /mcp/status
  */
 import express from "express";
 import * as mail from "../mail/mailService";
+import * as settingsMod from "../mail/mailSettings";
+import { runAi } from "../mail/mailAi";
+import { avatarFor } from "../mail/mailAvatar";
+import { oauthStatus, oauthConfigured, type OAuthProvider } from "../mail/mailOAuth";
+import { WORKER_TEMPLATE, pollTracking, trackingSummary } from "../mail/mailTracking";
+import { exportBundle, importBundle, exportMbox, splitMbox } from "../mail/mailBackup";
+import { syncMcp, mcpStatus } from "../mail/mailMcp";
 
 const router = express.Router();
+
+// локальный MCP-сервер поднимается при старте, если включён в настройках
+try {
+  syncMcp();
+} catch {
+  /* настройки недоступны — включится при сохранении */
+}
 
 const fail = (res: express.Response, e: unknown, status = 400) =>
   res.status(status).json({ error: (e as Error).message || "error" });
 
 const ids = (v: unknown): string[] => (Array.isArray(v) ? v.map(String) : []);
+const str = (v: unknown): string => (v === undefined || v === null ? "" : String(v));
+
+/* ------------------------------ ящики ------------------------------------- */
 
 router.get("/accounts", (_req, res) => res.json(mail.listAccounts()));
 
@@ -52,7 +63,28 @@ router.delete("/accounts/:id", (req, res) => {
   res.json({ ok: true });
 });
 
-router.get("/guess", (req, res) => res.json(mail.guessServers(String(req.query.email ?? ""))));
+router.get("/guess", (req, res) => {
+  const g = mail.guessServers(str(req.query.email));
+  res.json({ ...g, oauthReady: g.oauth ? oauthConfigured(g.oauth) : false });
+});
+
+router.post("/oauth/start", async (req, res) => {
+  try {
+    const p = str((req.body ?? {}).provider);
+    if (p !== "google" && p !== "microsoft") throw new Error("bad_provider");
+    res.json(await mail.startOAuthLogin(p as OAuthProvider));
+  } catch (e) {
+    fail(res, e);
+  }
+});
+
+router.get("/oauth/:id", (req, res) => {
+  const s = oauthStatus(req.params.id);
+  if (!s) return res.status(404).json({ error: "not_found" });
+  res.json(s);
+});
+
+/* ------------------------------ чтение ------------------------------------ */
 
 router.post("/sync", async (req, res) => {
   try {
@@ -67,7 +99,17 @@ router.post("/sync", async (req, res) => {
   }
 });
 
-router.get("/folders", (req, res) => res.json(mail.listFolders(String(req.query.account ?? ""))));
+router.post("/load-older", async (req, res) => {
+  try {
+    const b = req.body ?? {};
+    res.json(await mail.loadOlder(str(b.account), str(b.folder)));
+  } catch (e) {
+    fail(res, e, 502);
+  }
+});
+
+router.get("/folders", (req, res) => res.json(mail.listFolders(str(req.query.account))));
+router.get("/labels", (req, res) => res.json(mail.listLabels(str(req.query.account))));
 router.get("/counts", (_req, res) => res.json(mail.boxCounts()));
 
 router.get("/messages", (req, res) => {
@@ -77,6 +119,7 @@ router.get("/messages", (req, res) => {
       account: q.account ? String(q.account) : undefined,
       box: q.box ? String(q.box) : undefined,
       folder: q.folder ? String(q.folder) : undefined,
+      label: q.label ? String(q.label) : undefined,
       q: q.q ? String(q.q) : undefined,
       unread: q.unread === "1",
       threads: q.threads === "0" ? false : true,
@@ -93,6 +136,8 @@ router.get("/messages/:id", (req, res) => {
 });
 
 router.get("/messages/:id/thread", (req, res) => res.json(mail.getThread(req.params.id)));
+
+/* ------------------------------ действия ---------------------------------- */
 
 router.post("/flags", async (req, res) => {
   try {
@@ -137,26 +182,86 @@ router.post("/snooze", (req, res) => {
 
 router.post("/reminder", (req, res) => {
   const b = req.body ?? {};
-  mail.setReminder(String(b.id ?? ""), Number(b.at) || 0);
+  mail.setReminder(str(b.id), Number(b.at) || 0);
   res.json({ ok: true });
 });
 
 router.get("/reminders", (_req, res) => res.json(mail.dueReminders()));
 
+router.post("/unsubscribe", async (req, res) => {
+  try {
+    res.json(await mail.unsubscribe(str((req.body ?? {}).id)));
+  } catch (e) {
+    fail(res, e, 502);
+  }
+});
+
+router.post("/invite", (req, res) => {
+  try {
+    const b = req.body ?? {};
+    const p = str(b.partstat).toUpperCase();
+    if (!["ACCEPTED", "DECLINED", "TENTATIVE"].includes(p)) throw new Error("bad_partstat");
+    res.json(mail.replyInvite(str(b.id), p as "ACCEPTED" | "DECLINED" | "TENTATIVE"));
+  } catch (e) {
+    fail(res, e);
+  }
+});
+
+/* ------------------------------ вложения ---------------------------------- */
+
 router.get("/attachment/:id/:index", async (req, res) => {
   try {
     const a = await mail.fetchAttachment(req.params.id, Number(req.params.index));
     if (!a) return res.status(404).json({ error: "not_found" });
+    const inline = req.query.inline === "1";
     res.setHeader("Content-Type", a.contentType || "application/octet-stream");
     res.setHeader(
       "Content-Disposition",
-      `attachment; filename*=UTF-8''${encodeURIComponent(a.filename)}`,
+      `${inline ? "inline" : "attachment"}; filename*=UTF-8''${encodeURIComponent(a.filename)}`,
     );
     res.send(a.content);
   } catch (e) {
     fail(res, e, 502);
   }
 });
+
+router.get("/eml/:id", async (req, res) => {
+  try {
+    const src = await mail.fetchSource(req.params.id);
+    if (!src) return res.status(404).json({ error: "not_found" });
+    res.setHeader("Content-Type", "message/rfc822");
+    res.setHeader("Content-Disposition", "attachment; filename=message.eml");
+    res.send(src);
+  } catch (e) {
+    fail(res, e, 502);
+  }
+});
+
+router.post("/import/eml", async (req, res) => {
+  try {
+    const b = req.body ?? {};
+    const data = Buffer.from(str(b.data), "base64");
+    const isMbox = /^From \S+/.test(data.subarray(0, 200).toString("latin1"));
+    const parts = isMbox ? splitMbox(data) : [data];
+    for (const p of parts) await mail.importEml(str(b.account), str(b.folder), p);
+    res.json({ imported: parts.length });
+  } catch (e) {
+    fail(res, e, 502);
+  }
+});
+
+router.get("/export/mbox", async (req, res) => {
+  try {
+    const buf = await exportMbox(str(req.query.account), str(req.query.folder));
+    res.setHeader("Content-Type", "application/mbox");
+    res.setHeader("Content-Disposition", "attachment; filename=mail.mbox");
+    res.send(buf);
+  } catch (e) {
+    fail(res, e, 502);
+  }
+});
+
+/* ------------------------------ отправка ---------------------------------- */
 
 router.post("/send", (req, res) => {
   try {
@@ -167,11 +272,39 @@ router.post("/send", (req, res) => {
 });
 
 router.get("/outbox", (_req, res) => res.json(mail.listOutbox()));
-router.post("/outbox/:id/cancel", (req, res) => res.json({ ok: mail.cancelSend(req.params.id) }));
+
+/** Отмена отправки возвращает содержимое: окно написания можно открыть снова. */
+router.post("/outbox/:id/cancel", (req, res) => {
+  const p = mail.cancelSend(req.params.id);
+  res.json({ ok: !!p, payload: p });
+});
+
 router.post("/outbox/:id/retry", (req, res) => {
   mail.retryOutbox(req.params.id);
   res.json({ ok: true });
 });
+
+/* ------------------------------ черновики --------------------------------- */
+
+router.get("/drafts", (_req, res) => res.json(mail.listDrafts()));
+router.get("/drafts/:id", (req, res) => {
+  const d = mail.getDraft(req.params.id);
+  if (!d) return res.status(404).json({ error: "not_found" });
+  res.json(d);
+});
+router.post("/drafts", async (req, res) => {
+  try {
+    res.json(await mail.saveDraft(req.body ?? {}));
+  } catch (e) {
+    fail(res, e);
+  }
+});
+router.delete("/drafts/:id", async (req, res) => {
+  await mail.deleteDraft(req.params.id);
+  res.json({ ok: true });
+});
+
+/* -------------------------- шаблоны, подписи, правила --------------------- */
 
 router.get("/templates", (_req, res) => res.json(mail.listTemplates()));
 router.post("/templates", (req, res) => {
@@ -184,7 +317,93 @@ router.delete("/templates/:id", (req, res) => {
   res.json({ ok: true });
 });
 
-router.get("/contacts", (req, res) => res.json(mail.contacts(String(req.query.q ?? ""))));
-router.get("/contact", (req, res) => res.json(mail.contactCard(String(req.query.address ?? ""))));
+router.get("/signatures", (_req, res) => res.json(mail.listSignatures()));
+router.post("/signatures", (req, res) => {
+  const b = req.body ?? {};
+  if (!b.name) return res.status(400).json({ error: "name_required" });
+  res.json(mail.saveSignature(b));
+});
+router.delete("/signatures/:id", (req, res) => {
+  mail.removeSignature(req.params.id);
+  res.json({ ok: true });
+});
+
+router.get("/rules", (_req, res) => res.json(mail.listRules()));
+router.post("/rules", (req, res) => {
+  const b = req.body ?? {};
+  if (!b.name) return res.status(400).json({ error: "name_required" });
+  res.json(mail.saveRule(b));
+});
+router.delete("/rules/:id", (req, res) => {
+  mail.removeRule(req.params.id);
+  res.json({ ok: true });
+});
+router.post("/rules/run", async (req, res) => {
+  try {
+    res.json(await mail.runRulesNow(req.body && req.body.account ? String(req.body.account) : undefined));
+  } catch (e) {
+    fail(res, e, 502);
+  }
+});
+
+/* ------------------------------ настройки --------------------------------- */
+
+router.get("/settings", (_req, res) => res.json(settingsMod.publicSettings()));
+router.put("/settings", (req, res) => {
+  settingsMod.setSettingsFromClient(req.body ?? {});
+  syncMcp();
+  res.json(settingsMod.publicSettings());
+});
+router.post("/settings/generate-key", (req, res) => {
+  const which = str((req.body ?? {}).which);
+  const key = settingsMod.newKey();
+  if (which === "mcp") settingsMod.setSettings({ mcp: { key } });
+  else if (which === "tracking") settingsMod.setSettings({ tracking: { key } });
+  else return res.status(400).json({ error: "bad_target" });
+  syncMcp();
+  // ключ показывается один раз — его нужно скопировать в настройки клиента / воркера
+  res.json({ key });
+});
+router.get("/mcp/status", (_req, res) => res.json(mcpStatus()));
+
+/* ------------------------------ контакты, аватары ------------------------- */
+
+router.get("/contacts", (req, res) => res.json(mail.contacts(str(req.query.q))));
+router.get("/contact", (req, res) => res.json(mail.contactCard(str(req.query.address))));
+router.get("/avatar", async (req, res) => {
+  const a = await avatarFor(str(req.query.address));
+  if (!a) return res.status(404).end();
+  res.setHeader("Content-Type", a.type);
+  res.setHeader("Cache-Control", "private, max-age=86400");
+  res.send(a.data);
+});
+
+/* ------------------------------ ИИ, трекинг, бэкап ------------------------ */
+
+router.post("/ai", async (req, res) => {
+  try {
+    res.json(await runAi(req.body ?? {}));
+  } catch (e) {
+    fail(res, e, 502);
+  }
+});
+
+router.get("/tracking", async (_req, res) => {
+  try {
+    await pollTracking().catch(() => 0);
+  } finally {
+    res.json(trackingSummary());
+  }
+});
+router.get("/tracking/worker", (_req, res) => res.json({ code: WORKER_TEMPLATE }));
+
+router.get("/backup", (_req, res) => res.json(exportBundle()));
+router.post("/backup", (req, res) => {
+  try {
+    res.json(importBundle(req.body ?? {}));
+  } catch (e) {
+    fail(res, e);
+  }
+});
 
 export default router;

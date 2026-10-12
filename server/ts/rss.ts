@@ -916,7 +916,7 @@ async function localManyRun(texts: string[], lang: string): Promise<Translated> 
 }
 
 /** Перевод набора строк выбранным (не «ai») движком. */
-async function translateStrings(texts: string[], lang: string, engine: TranslateEngine): Promise<Translated> {
+export async function translateStrings(texts: string[], lang: string, engine: TranslateEngine): Promise<Translated> {
   switch (engine) {
     case "local":
       return localMany(texts, lang);
