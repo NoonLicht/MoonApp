@@ -31,6 +31,8 @@ import WelcomeModal from "@/components/WelcomeModal";
 import SystemStatsBar from "@/components/SystemStatsBar";
 import GhostToggle from "@/components/GhostToggle";
 import TimeMachineToggle from "@/components/TimeMachineToggle";
+import PrivacyShield from "@/components/PrivacyShield";
+import NightBanner from "@/components/NightBanner";
 import ModelToggle, { ModelPanel } from "@/components/ModelToggle";
 import { api } from "@/api/client";
 import { PAGES } from "@/app/navigation";
@@ -83,6 +85,12 @@ const THEME_CYCLE = ["dark", "midnight", "oled", "light", "sand"] as const;
  * (правила .theme-oled), поэтому семейство ему не добавляем: иначе кнопка темы
  * показывала бы луну вместо иконки контраста.
  */
+/** Масштаб интерфейса (%): zoom корня масштабирует и шрифты, и таблицы, и отступы. */
+function applyUiScale(v: unknown): void {
+  const n = Math.min(150, Math.max(85, Number(v) || 100));
+  (document.documentElement.style as CSSStyleDeclaration & { zoom: string }).zoom = String(n / 100);
+}
+
 function themeFamily(theme: string): string {
   if (theme === "oled") return "";
   return theme === "light" || theme === "sand" ? "theme-light" : "theme-dark";
@@ -447,6 +455,8 @@ function Shell({
           {taskManagerVisible && <TaskManagerPanel onClose={() => setTaskManagerVisible(false)} />}
           {modelPanelVisible && <ModelPanel onClose={() => setModelPanelVisible(false)} />}
           <CommandPalette />
+          <PrivacyShield />
+          <NightBanner page={safeActive} />
 
           {/* Стопка живых страниц: активная видима, остальные скрыты, но сохраняют
             состояние (прогресс задач, ввод, позицию скролла). */}
@@ -570,6 +580,7 @@ export default function App() {
         if (sc?.appearance?.accent) setAccent(sc.appearance.accent);
         setReduceMotion(!!sc?.appearance?.reduceMotion);
         if (sc?.appearance?.density) setDensity(sc.appearance.density);
+        applyUiScale(sc?.appearance?.uiScale);
         setOpaqueBg(!!sc?.appearance?.opaqueBackground);
         // Производительность: keep-alive страниц.
         if (sc?.performance?.keepPagesAlive != null)
@@ -599,6 +610,7 @@ export default function App() {
       else if (path === "appearance.accent") setAccent(String(value));
       else if (path === "appearance.reduceMotion") setReduceMotion(!!value);
       else if (path === "appearance.density") setDensity(String(value));
+      else if (path === "appearance.uiScale") applyUiScale(value);
       else if (path === "appearance.opaqueBackground") setOpaqueBg(!!value);
     };
     window.addEventListener("app:theme", onTheme);

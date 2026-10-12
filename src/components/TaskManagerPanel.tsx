@@ -1,3 +1,4 @@
+import { useEscape } from "@/lib/useEscape";
 import { useEffect, useState, useCallback } from "react";
 import { ListChecks, X, Pause, Play, Square } from "lucide-react";
 import { Btn, Badge, ProgressBar, EmptyHint } from "@/components/ui";
@@ -18,6 +19,7 @@ import type { TmTask } from "@/api/types";
  * каждого движка — не создаёт дополнительной нагрузки).
  */
 export default function TaskManagerPanel({ onClose }: { onClose: () => void }) {
+  useEscape(onClose);
   const { t } = useI18n();
   const [tasks, setTasks] = useState<TmTask[]>([]);
   const [busy, setBusy] = useState<string>("");

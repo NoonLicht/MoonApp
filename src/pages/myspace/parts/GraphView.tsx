@@ -1,3 +1,4 @@
+import { useI18n } from "@/app/i18n";
 import React, { useRef, useEffect, useMemo, useState } from "react";
 import type { GraphNode, GraphData } from "@/api/types";
 import { ZoomIn, ZoomOut, Maximize2, X, Settings2 } from "lucide-react";
@@ -29,6 +30,7 @@ const MAX_SPEED = 12;
 const VELOCITY_THRESHOLD = 0.08;
 
 export default function GraphView({ data: fullData, onNodeClick, onClose }: Props) {
+  const { t } = useI18n();
   // На больших хранилищах показываем самые связные узлы (см. graphSim.limitGraph).
   const limited = useMemo(() => limitGraph(fullData), [fullData]);
   const data = limited.data;
@@ -437,14 +439,14 @@ export default function GraphView({ data: fullData, onNodeClick, onClose }: Prop
       <button
         className="graph-settings-toggle"
         onClick={() => setShowSettings((s) => !s)}
-        title="Graph settings"
+        title={t("myspace.graphSettings")}
       >
         <Settings2 size={14} />
       </button>
 
       {showSettings && (
         <div className="graph-settings-panel">
-          <div className="graph-settings-label">Forces</div>
+          <div className="graph-settings-label">{t("myspace.forces")}</div>
           {fld(
             "Repulsion",
             <>
@@ -509,7 +511,7 @@ export default function GraphView({ data: fullData, onNodeClick, onClose }: Prop
               <span className="graph-settings-val">{(attraction * 1000).toFixed(0)}</span>
             </>,
           )}
-          <div className="graph-settings-label">Spring</div>
+          <div className="graph-settings-label">{t("myspace.spring")}</div>
           {fld(
             "Rest Len",
             <>
@@ -542,7 +544,7 @@ export default function GraphView({ data: fullData, onNodeClick, onClose }: Prop
               <span className="graph-settings-val">{(edgeSpring * 1000).toFixed(0)}</span>
             </>,
           )}
-          <div className="graph-settings-label">Appearance</div>
+          <div className="graph-settings-label">{t("myspace.appearance")}</div>
           {fld(
             "Node Size",
             <>

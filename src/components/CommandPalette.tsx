@@ -1,3 +1,4 @@
+import { onHotkey } from "@/lib/hotkeys";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Zap, Search, Settings2 } from "lucide-react";
 import { useI18n } from "@/app/i18n";
@@ -47,17 +48,15 @@ export default function CommandPalette() {
         .catch(() => setLaunchers([]));
     };
     const off = window.appBridge?.onOpenPalette?.(show);
-    // Внутри окна — Ctrl+K (Alt+Space работает глобально, через Electron).
-    const onKey = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.code === "KeyK" && !e.shiftKey && !e.altKey) {
-        e.preventDefault();
-        show();
-      }
-    };
-    window.addEventListener("keydown", onKey);
+    // Внутри окна — настраиваемое сочетание, по умолчанию Ctrl+K
+    // (Alt+Space работает глобально, через Electron).
+    const offKey = onHotkey("palette", (e) => {
+      e.preventDefault();
+      show();
+    });
     return () => {
       off?.();
-      window.removeEventListener("keydown", onKey);
+      offKey();
     };
   }, []);
 

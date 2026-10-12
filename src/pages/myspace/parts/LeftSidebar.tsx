@@ -127,7 +127,7 @@ export default function LeftSidebar({ narrowLeft, leftW, setLeftTab, leftTab, se
                               cursor: "pointer",
                               color: "var(--text-tertiary)",
                             }}
-                            title="New note"
+                            title={t("myspace.newNote")}
                           >
                             <Plus size={14} />
                           </button>
@@ -146,7 +146,7 @@ export default function LeftSidebar({ narrowLeft, leftW, setLeftTab, leftTab, se
                               cursor: "pointer",
                               color: "var(--text-tertiary)",
                             }}
-                            title="New folder"
+                            title={t("myspace.newFolder")}
                           >
                             <Folder size={13} />
                           </button>
@@ -342,7 +342,7 @@ export default function LeftSidebar({ narrowLeft, leftW, setLeftTab, leftTab, se
                                 color: "var(--text-tertiary)",
                               }}
                             >
-                              No results
+                              {t("myspace.noResults")}
                             </div>
                           )}
                         </div>
@@ -389,7 +389,7 @@ export default function LeftSidebar({ narrowLeft, leftW, setLeftTab, leftTab, se
                               color: "var(--text-tertiary)",
                             }}
                           >
-                            No tags yet
+                            {t("myspace.noTagsYet")}
                           </div>
                         )}
                       </div>

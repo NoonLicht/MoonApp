@@ -1,5 +1,7 @@
 import React, { useMemo } from "react";
-import { Copy, RefreshCw, Pencil, Volume2, StopCircle, Check, X, Send } from "lucide-react";
+import { Copy, RefreshCw, Pencil, Volume2, StopCircle, Check, X, Send, GitBranch } from "lucide-react";
+import MsgTools from "@/pages/ai-chat/parts/MsgTools";
+import { useAutoSaveAnswers } from "@/pages/ai-chat/lib/autoSave";
 import { Btn, EmptyHint } from "@/components/ui";
 import { useContextMenu } from "@/components/ContextMenu";
 import CodeBlock from "@/pages/ai-chat/parts/CodeBlock";
@@ -48,6 +50,7 @@ export default function MsgList(props: {
   copiedIdx: number | null;
   onCopy: (text: string, idx: number) => void;
   onRegenerate: () => void;
+  onBranch?: (messageId: number) => void;
   onSaveEdit: () => void;
   onSpeak: (text: string) => void;
   stopGeneration: () => void;
@@ -63,6 +66,7 @@ export default function MsgList(props: {
     copiedIdx,
     onCopy,
     onRegenerate,
+    onBranch,
     onSaveEdit,
     onSpeak,
     stopGeneration,
@@ -70,6 +74,7 @@ export default function MsgList(props: {
     t,
   } = props;
   const menu = useContextMenu();
+  useAutoSaveAnswers(messages, sending);
   return (
     <>
       {messages.map((m, i) => (
@@ -116,7 +121,7 @@ export default function MsgList(props: {
             style={{ justifyContent: m.role === "user" ? "flex-end" : "flex-start" }}
           >
             {m.role === "assistant" && (
-              <button onClick={() => onCopy(m.text, i)} title="Copy">
+              <button onClick={() => onCopy(m.text, i)} title={t("aichat.copy")}>
                 <Copy size={11} /> {copiedIdx === i ? t("aichat.copied") : t("aichat.copy")}
               </button>
             )}
@@ -133,9 +138,21 @@ export default function MsgList(props: {
                 <Pencil size={11} /> {t("aichat.edit")}
               </button>
             )}
+            {onBranch && m.id && !sending && (
+              <button onClick={() => onBranch(m.id!)} title={t("aichat.branch")}>
+                <GitBranch size={11} /> {t("aichat.branch")}
+              </button>
+            )}
             <button onClick={() => onSpeak(m.text)} title={t("aichat.listen")}>
               <Volume2 size={11} /> {t("aichat.listen")}
             </button>
+            {m.role === "assistant" && !sending && (
+              <MsgTools
+                question={[...messages.slice(0, i)].reverse().find((x) => x.role === "user")?.text ?? ""}
+                answer={m.text}
+                t={t}
+              />
+            )}
           </div>
         </div>
       ))}

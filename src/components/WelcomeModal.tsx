@@ -22,6 +22,7 @@ import { Checkbox } from "@/components/ui";
 import { getOverlayRoot, getUnderToolbarRoot } from "@/components/overlayHost";
 import { useI18n } from "@/app/i18n";
 import { api } from "@/api/client";
+import WelcomeSetup from "@/components/WelcomeSetup";
 import logoUrl from "@/assets/app-logo.ico?url";
 
 /** Позиции искр фиксированы (не Math.random на каждый рендер — иначе они бы
@@ -166,6 +167,8 @@ export default function WelcomeModal({
                 </div>
               ))}
             </div>
+
+            <WelcomeSetup />
 
             <div className="welcome-foot">
               <label className="welcome-check">

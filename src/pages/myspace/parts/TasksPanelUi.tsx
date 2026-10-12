@@ -1,3 +1,4 @@
+import { tNow } from "@/app/i18n";
 /**
  * Выделено из TasksPanel.tsx при разбиении крупного файла (поведение не менялось).
  */
@@ -74,10 +75,18 @@ export const priorityColor = (p: TaskPriority): string => {
 };
 
 export const statusLabel: Record<TaskStatus, string> = {
-  todo: "Todo",
-  in_progress: "In Progress",
-  deferred: "Deferred",
-  completed: "Completed",
+  get todo() {
+    return tNow("tasksUi.s_todo");
+  },
+  get in_progress() {
+    return tNow("tasksUi.s_in_progress");
+  },
+  get deferred() {
+    return tNow("tasksUi.s_deferred");
+  },
+  get completed() {
+    return tNow("tasksUi.s_completed");
+  },
 };
 
 export const statusColor = (s: TaskStatus): string => {

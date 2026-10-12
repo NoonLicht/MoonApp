@@ -1,3 +1,4 @@
+import { useEscape } from "@/lib/useEscape";
 import { useCallback, useEffect, useState } from "react";
 import { Bot, Download, Loader2, Power, RefreshCw, X } from "lucide-react";
 import { Badge, Btn, ProgressBar, Select } from "@/components/ui";
@@ -10,6 +11,7 @@ const gb = (mb: number): string => `${(mb / 1024).toFixed(2)} GB`;
 
 /** Окно «Умный поиск»: включение функций EmbeddingGemma, выбор модели и способа запуска. */
 export function ModelPanel({ onClose }: { onClose: () => void }) {
+  useEscape(onClose);
   const { t } = useI18n();
   const DEVICES = [
     { value: "cpu", label: t("semModel.devCpu") },

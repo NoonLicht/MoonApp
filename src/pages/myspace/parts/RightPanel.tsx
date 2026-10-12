@@ -1,3 +1,4 @@
+import { useI18n } from "@/app/i18n";
 import {
   Search,
   Sparkles,
@@ -40,6 +41,7 @@ export interface RightPanelProps {
 }
 
 export default function RightPanel({ narrowRight, rightW, setRightTab, rightTab, setRightOpen, activeTab, edContent, openFile, updContent, rightSplit, openFiles, setRightSplit, setGraphFullscreen, setGraphDepth, setGraphShowOrphans, setGraphSearch, graphData, graphSearch, graphShowOrphans, graphDepth, startRes }: RightPanelProps) {
+  const { t } = useI18n();
   return (
     <div
                   onClick={(e) => narrowRight && e.stopPropagation()}
@@ -178,7 +180,7 @@ export default function RightPanel({ narrowRight, rightW, setRightTab, rightTab,
                                     color: "var(--text-tertiary)",
                                   }}
                                 >
-                                  Open a note to see backlinks
+                                  {t("myspace.openNoteBacklinks")}
                                 </div>
                               );
                             const bl = af.backlinks;
@@ -197,7 +199,7 @@ export default function RightPanel({ narrowRight, rightW, setRightTab, rightTab,
                                     marginBottom: 2,
                                   }}
                                 >
-                                  Linked ({linked.length})
+                                  {t("myspace.linked")} ({linked.length})
                                 </div>
                                 {linked.map((b) => (
                                   <div
@@ -240,7 +242,7 @@ export default function RightPanel({ narrowRight, rightW, setRightTab, rightTab,
                                     marginBottom: 2,
                                   }}
                                 >
-                                  Unlinked ({unlinked.length})
+                                  {t("myspace.unlinked")} ({unlinked.length})
                                 </div>
                                 {unlinked.map((b) => (
                                   <div
@@ -280,7 +282,7 @@ export default function RightPanel({ narrowRight, rightW, setRightTab, rightTab,
                                       color: "var(--text-tertiary)",
                                     }}
                                   >
-                                    No backlinks
+                                    {t("myspace.noBacklinks")}
                                   </div>
                                 )}
                               </>
@@ -348,7 +350,7 @@ export default function RightPanel({ narrowRight, rightW, setRightTab, rightTab,
                                 letterSpacing: "0.03em",
                               }}
                             >
-                              Local Graph
+                              {t("myspace.localGraph")}
                             </span>
                             <button
                               onClick={() => setGraphFullscreen(true)}
@@ -360,7 +362,7 @@ export default function RightPanel({ narrowRight, rightW, setRightTab, rightTab,
                                 color: "var(--text-tertiary)",
                                 display: "flex",
                               }}
-                              title="Expand graph"
+                              title={t("myspace.expandGraph")}
                             >
                               <Maximize2 size={12} />
                             </button>
@@ -382,7 +384,7 @@ export default function RightPanel({ narrowRight, rightW, setRightTab, rightTab,
                                 alignItems: "center",
                                 gap: 2,
                               }}
-                              title="Show all"
+                              title={t("myspace.showAll")}
                             >
                               <Globe size={10} /> All
                             </button>
@@ -414,7 +416,7 @@ export default function RightPanel({ narrowRight, rightW, setRightTab, rightTab,
                                   color: "var(--text-tertiary)",
                                 }}
                               >
-                                Open a note to see outline
+                                {t("myspace.openNoteOutline")}
                               </div>
                             );
                           return (
@@ -455,7 +457,7 @@ export default function RightPanel({ narrowRight, rightW, setRightTab, rightTab,
                                     color: "var(--text-tertiary)",
                                   }}
                                 >
-                                  No headings
+                                  {t("myspace.noHeadings")}
                                 </div>
                               )}
                             </>
@@ -485,7 +487,7 @@ export default function RightPanel({ narrowRight, rightW, setRightTab, rightTab,
                               letterSpacing: "0.03em",
                             }}
                           >
-                            Global Graph
+                            {t("myspace.globalGraph")}
                           </span>
                           <button
                             onClick={() => {
@@ -506,7 +508,7 @@ export default function RightPanel({ narrowRight, rightW, setRightTab, rightTab,
                               gap: 2,
                               marginLeft: "auto",
                             }}
-                            title="Show all"
+                            title={t("myspace.showAll")}
                           >
                             <Globe size={10} /> All
                           </button>
@@ -520,7 +522,7 @@ export default function RightPanel({ narrowRight, rightW, setRightTab, rightTab,
                               color: "var(--text-tertiary)",
                               display: "flex",
                             }}
-                            title="Fullscreen"
+                            title={t("myspace.fullscreen")}
                           >
                             <Maximize2 size={12} />
                           </button>
@@ -538,7 +540,7 @@ export default function RightPanel({ narrowRight, rightW, setRightTab, rightTab,
                         >
                           <Search size={11} style={{ color: "var(--text-tertiary)", flexShrink: 0 }} />
                           <input
-                            placeholder="Filter nodes..."
+                            placeholder={t("myspace.filterNodes")}
                             value={graphSearch}
                             onChange={(e) => setGraphSearch(e.target.value)}
                             style={{
@@ -567,7 +569,7 @@ export default function RightPanel({ narrowRight, rightW, setRightTab, rightTab,
                               checked={graphShowOrphans}
                               onChange={(e) => setGraphShowOrphans(e.target.checked)}
                             />{" "}
-                            Orphans
+                            {t("myspace.orphans")}
                           </label>
                           <label
                             style={{
@@ -579,7 +581,7 @@ export default function RightPanel({ narrowRight, rightW, setRightTab, rightTab,
                               flexShrink: 0,
                             }}
                           >
-                            Depth
+                            {t("myspace.depth")}
                             <select
                               value={graphDepth}
                               onChange={(e) => setGraphDepth(Number(e.target.value))}

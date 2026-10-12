@@ -1,3 +1,4 @@
+import { useI18n } from "@/app/i18n";
 import { Search, X, Globe } from "lucide-react";
 import GraphView from "@/pages/myspace/parts/GraphLazy";
 import type React from "react";
@@ -16,13 +17,14 @@ export interface GraphFullscreenProps {
 }
 
 export default function GraphFullscreen({ setGraphFullscreen, setGraphDepth, setGraphShowOrphans, setGraphSearch, graphShowOrphans, graphDepth, graphSearch, graphData, openFile }: GraphFullscreenProps) {
+  const { t } = useI18n();
   return (
     <div className="graph-fs-backdrop" onClick={() => setGraphFullscreen(false)}>
                 <div className="graph-fs-panel glass-solid" onClick={(e) => e.stopPropagation()}>
                   <div className="graph-fs-header">
                     <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       <span style={{ fontSize: 15, fontWeight: 600, color: "var(--text-primary)" }}>
-                        Graph View
+                        {t("myspace.graphView")}
                       </span>
                       <button
                         onClick={() => {
@@ -42,7 +44,7 @@ export default function GraphFullscreen({ setGraphFullscreen, setGraphDepth, set
                           alignItems: "center",
                           gap: 4,
                         }}
-                        title="Show all nodes and connections"
+                        title={t("myspace.showAllConn")}
                       >
                         <Globe size={13} /> Show all
                       </button>
@@ -63,10 +65,10 @@ export default function GraphFullscreen({ setGraphFullscreen, setGraphDepth, set
                             checked={graphShowOrphans}
                             onChange={(e) => setGraphShowOrphans(e.target.checked)}
                           />{" "}
-                          Orphans
+                          {t("myspace.orphans")}
                         </label>
                         <label style={{ display: "flex", alignItems: "center", gap: 3 }}>
-                          Depth
+                          {t("myspace.depth")}
                           <select
                             value={graphDepth}
                             onChange={(e) => setGraphDepth(Number(e.target.value))}
@@ -98,7 +100,7 @@ export default function GraphFullscreen({ setGraphFullscreen, setGraphDepth, set
                           display: "flex",
                           borderRadius: 6,
                         }}
-                        title="Close (Esc)"
+                        title={t("myspace.closeEsc")}
                       >
                         <X size={18} />
                       </button>
@@ -107,7 +109,7 @@ export default function GraphFullscreen({ setGraphFullscreen, setGraphDepth, set
                   <div className="graph-fs-search">
                     <Search size={14} style={{ color: "var(--text-tertiary)", flexShrink: 0 }} />
                     <input
-                      placeholder="Search nodes..."
+                      placeholder={t("myspace.searchNodes")}
                       value={graphSearch}
                       onChange={(e) => setGraphSearch(e.target.value)}
                       style={{

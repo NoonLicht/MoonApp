@@ -1,3 +1,4 @@
+import { useEscape } from "@/lib/useEscape";
 import { useState, useEffect } from "react";
 import {
   Shield,
@@ -59,7 +60,8 @@ interface ProxyPanelProps {
   onClose: () => void;
 }
 
-export default function ProxyPanel({ onClose }: ProxyPanelProps) {
+export default function ProxyPanel({ onClose }: ProxyPanelProps) {  useEscape(onClose);
+
   const { t } = useI18n();
   const [core, setCore] = useState<ProxyCoreStatus | null>(null);
   const [subs, setSubs] = useState<ProxySubscription[]>([]);

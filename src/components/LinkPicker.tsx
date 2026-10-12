@@ -1,3 +1,4 @@
+import { useEscape } from "@/lib/useEscape";
 import { useEffect, useMemo, useState } from "react";
 import { Search, X } from "lucide-react";
 import { api } from "@/api/client";
@@ -82,6 +83,7 @@ export default function LinkPicker({
   onClose: () => void;
   kinds?: SemSource[];
 }) {
+  useEscape(onClose);
   const { t } = useI18n();
   const [tab, setTab] = useState<SemSource>(kinds[0]);
   const [items, setItems] = useState<PickItem[]>([]);

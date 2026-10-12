@@ -52,6 +52,9 @@ export function applyLiveSettings(settings: unknown) {
     "appearance.reduceMotion",
     "appearance.density",
     "appearance.opaqueBackground",
+    "appearance.cursorHighlight",
+    "appearance.highContrast",
+    "appearance.focusRing",
   ];
   for (const path of paths) {
     const value = path.split(".").reduce<any>((a, k) => (a == null ? a : a[k]), s);

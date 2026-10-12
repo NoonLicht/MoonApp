@@ -193,7 +193,7 @@ export default function EditorArea({ setLeftOpen, leftOpen, openFiles, setActive
                       ))}
                       {openFiles.length === 0 && (
                         <span style={{ fontSize: 12, color: "var(--text-tertiary)" }}>
-                          No open files
+                          {t("myspace.noOpenFiles")}
                         </span>
                       )}
                     </div>
@@ -484,12 +484,13 @@ export default function EditorArea({ setLeftOpen, leftOpen, openFiles, setActive
                               onChange={(v: string) => updContent(activeTab, v)}
                               spellCheck={msCfg.spellcheck}
                               readOnly={!!aiBusy}
+                              onPasteText={(txt) => void api.mindProvenanceRecord(activeTab, txt, "copied").catch(() => undefined)}
                               onOcrImage={(r) => void runOcr(r)}
                               onOcrSettings={() => setOcrDlg(true)}
                               onDropPdf={(r) => void runPdf(r)}
                               ocrBusy={ocrBusy}
                               ocrLabels={ocrLabels}
-                              placeholder="Start writing... Use [[wiki-links]] and #tags"
+                              placeholder={t("myspace.startWriting")}
                               onWikiLink={(title: string) => {
                                 const findNote = (
                                   nodes: VaultFile[],

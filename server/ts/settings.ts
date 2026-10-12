@@ -50,6 +50,9 @@ const DEFAULTS: SettingsTree = {
     reduceMotion: false, // вырубать анимации/blur-блобы
     density: "comfortable", // comfortable | compact
     opaqueBackground: false, // непрозрачный фон вместо полупрозрачного окна
+    cursorHighlight: false, // подсветка курсора для презентаций и записи экрана
+    highContrast: false, // доступность: усиленный контраст текста и границ
+    focusRing: false, // доступность: заметное кольцо фокуса
   },
 
   // --- Производительность ---
