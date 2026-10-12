@@ -6044,7 +6044,7 @@
     "slider": "Date",
     "today": "aujourd'hui",
     "daysAgo": "il y a {n} jours",
-    "snapshot": "Instantané maintenant",
+    "snapshot": "Tout capturer",
     "snapshotDone": "Instantané enregistré.",
     "snapshotSame": "Aucun changement depuis le dernier instantané.",
     "notes": "Notes",
@@ -6062,7 +6062,9 @@
     "expense": "Dépensé",
     "diary": "Journal",
     "restore": "Restaurer en copie",
-    "restored": "Copie créée : {path}"
+    "restored": "Copie créée : {path}",
+    "snapshotOf": "instantané {i} sur {n}",
+    "fullBackup": "Sauvegarde complète de l'app pour ce jour : {at}"
   },
   "night": {
     "message": "Il est tard dans la nuit. Les décisions budgétaires et l'envoi de messages gagnent à attendre le matin — simple conseil, rien n'est bloqué.",

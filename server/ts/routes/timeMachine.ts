@@ -16,6 +16,7 @@ import * as notesGit from "../notesGit";
 import * as budget from "../budget";
 import * as diary from "../diary";
 import * as tm from "../timeMachine";
+import * as backup from "../backup";
 
 const router = express.Router();
 const OID = /^[0-9a-f]{40}$/;
@@ -54,7 +55,15 @@ router.get("/range", async (_req, res) => {
         .filter((x): x is string => !!x),
       diaryDates: diary.listEntries().map((e) => e.date),
     });
-    res.json({ ...range, commits: cs.length });
+    // Ползунок ходит только по дням, где реально есть снимок: коммит заметок
+    // или полная резервная копия приложения.
+    const days = new Set<string>();
+    for (const c of cs) days.add(tm.dateKey(c.timestamp));
+    for (const b of backup.list()) {
+      const t = Date.parse(b.at);
+      if (Number.isFinite(t)) days.add(tm.dateKey(t));
+    }
+    res.json({ ...range, commits: cs.length, days: [...days].sort() });
   } catch (e) {
     res.status(500).json({ error: (e as Error).message });
   }
@@ -78,11 +87,20 @@ router.get("/state", async (req, res) => {
       boards = files.filter((p) => /^holts\//.test(p)).map((p) => ({ path: p, title: title(p) }));
     }
 
+    // Ближайшая полная копия приложения не позже этого дня.
+    let fullBackup: { id: string; at: string } | null = null;
+    for (const b of backup.list()) {
+      const t = Date.parse(b.at);
+      if (!Number.isFinite(t) || t > end || !b.id) continue;
+      if (!fullBackup || t > Date.parse(fullBackup.at)) fullBackup = { id: b.id, at: b.at };
+    }
+
     const tasks = tm.tasksAsOf(readTasks(), date);
     const entry = diary.isValidDate(date) ? diary.readEntry(date) : null;
     res.json({
       date,
       snapshot: commit ? { oid: commit.oid, at: commit.timestamp, message: commit.message } : null,
+      backup: fullBackup,
       notes: notes.slice(0, 500),
       notesTotal: notes.length,
       boards: boards.slice(0, 200),
@@ -135,7 +153,11 @@ router.post("/restore", async (req, res) => {
 
 router.post("/snapshot", async (_req, res) => {
   try {
-    res.json(await notesGit.snapshot("MoonApp: снимок вручную"));
+    // Снимок всего приложения: заметки/доски (git) + полная копия БД, настроек,
+    // дневника, закладок и т. д. (резервная копия).
+    const notes = await notesGit.snapshot("MoonApp: снимок вручную");
+    const full = backup.createBackup("time-machine");
+    res.json({ ...notes, committed: !!notes.committed || !!full, backup: full ? path.basename(full) : null });
   } catch (e) {
     res.status(500).json({ error: (e as Error).message });
   }

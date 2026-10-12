@@ -8,14 +8,6 @@ import { api } from "@/api/client";
 type State = Awaited<ReturnType<typeof api.timeMachineState>>;
 type Range = Awaited<ReturnType<typeof api.timeMachineRange>>;
 
-const DAY = 86_400_000;
-const toDate = (key: string): number => new Date(`${key}T00:00:00`).getTime();
-const toKey = (ts: number): string => {
-  const d = new Date(ts);
-  const p = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
-};
-
 /**
  * «Машина времени»: ползунок по дате показывает заметки, доски, задачи, траты и
  * запись дневника на выбранный день. Только просмотр; заметку можно
@@ -40,7 +32,8 @@ export default function TimeMachineToggle() {
       .then((r) => {
         if (!live) return;
         setRange(r);
-        setDay(Math.round((toDate(r.to) - toDate(r.from)) / DAY));
+        // Стартуем с самого свежего снимка (последний индекс списка дней).
+        setDay(Math.max(0, (r.days?.length ?? 1) - 1));
       })
       .catch(() => undefined);
     return () => {
@@ -48,8 +41,10 @@ export default function TimeMachineToggle() {
     };
   }, [open]);
 
-  const dateKey = useMemo(() => (range ? toKey(toDate(range.from) + day * DAY) : ""), [range, day]);
-  const total = range ? Math.round((toDate(range.to) - toDate(range.from)) / DAY) : 0;
+  // Ползунок листает только дни, где есть снимок.
+  const days = useMemo(() => range?.days ?? [], [range]);
+  const dateKey = days[Math.min(day, Math.max(0, days.length - 1))] ?? "";
+  const total = Math.max(0, days.length - 1);
 
   useEffect(() => {
     if (!open || !dateKey) return;
@@ -96,6 +91,10 @@ export default function TimeMachineToggle() {
     try {
       const r = await api.timeMachineSnapshot();
       setMsg(r.committed ? t("timeMachine.snapshotDone") : t("timeMachine.snapshotSame"));
+      // Новый снимок — новая точка на ползунке.
+      const nr = await api.timeMachineRange();
+      setRange(nr);
+      setDay(Math.max(0, (nr.days?.length ?? 1) - 1));
     } catch (e) {
       setMsg((e as Error).message);
     }
@@ -148,9 +147,7 @@ export default function TimeMachineToggle() {
               <div className="tm-date">
                 <b>{dateKey}</b>
                 <span className="muted-sm">
-                  {total - day === 0
-                    ? t("timeMachine.today")
-                    : t("timeMachine.daysAgo", { n: total - day })}
+                  {t("timeMachine.snapshotOf", { i: Math.min(day, total) + 1, n: days.length })}
                 </span>
                 <button className="btn" onClick={() => void snapshotNow()}>
                   {t("timeMachine.snapshot")}
@@ -158,6 +155,11 @@ export default function TimeMachineToggle() {
               </div>
             </div>
             {msg && <div className="muted-sm tm-msg">{msg}</div>}
+            {state?.backup && (
+              <div className="muted-sm tm-msg">
+                {t("timeMachine.fullBackup", { at: new Date(state.backup.at).toLocaleString() })}
+              </div>
+            )}
             {!state ? (
               <div className="tm-body muted-sm">…</div>
             ) : (

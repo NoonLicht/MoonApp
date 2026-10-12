@@ -6044,7 +6044,7 @@
     "slider": "Date",
     "today": "today",
     "daysAgo": "{n} days ago",
-    "snapshot": "Snapshot now",
+    "snapshot": "Snapshot everything",
     "snapshotDone": "Snapshot saved.",
     "snapshotSame": "No changes since the last snapshot.",
     "notes": "Notes",
@@ -6062,7 +6062,9 @@
     "expense": "Spent",
     "diary": "Diary",
     "restore": "Restore as a copy",
-    "restored": "Copy created: {path}"
+    "restored": "Copy created: {path}",
+    "snapshotOf": "snapshot {i} of {n}",
+    "fullBackup": "Full app backup for this day: {at}"
   },
   "night": {
     "message": "It is the dead of night. Budget decisions and sending messages are better left until morning — just a suggestion, nothing is blocked.",

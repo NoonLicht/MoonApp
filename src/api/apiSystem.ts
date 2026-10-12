@@ -514,11 +514,13 @@ export const systemApi = {
       learned: number;
       schedule: { date: string; count: number }[];
     }>("GET", "/exam/stats"),
-  timeMachineRange: () => req<{ from: string; to: string; commits: number }>("GET", "/time-machine/range"),
+  timeMachineRange: () =>
+    req<{ from: string; to: string; commits: number; days: string[] }>("GET", "/time-machine/range"),
   timeMachineState: (date: string) =>
     req<{
       date: string;
       snapshot: { oid: string; at: number; message: string } | null;
+      backup: { id: string; at: string } | null;
       notes: { path: string; title: string }[];
       notesTotal: number;
       boards: { path: string; title: string }[];
