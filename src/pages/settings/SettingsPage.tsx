@@ -580,7 +580,7 @@ export default function SettingsPage() {
           </Row>
           <Row label={t("settings.design")} hint={t("settings.designHint")}>
             <Select
-              value={ap.design === "fluent" ? "fluent" : "classic"}
+              value={ap.design === "classic" ? "classic" : "fluent"}
               onChange={(e) => change("appearance.design", e.target.value)}
               options={[
                 { value: "fluent", label: t("settings.designFluent") },

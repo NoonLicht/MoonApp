@@ -9,7 +9,7 @@
 export type DesignId = "classic" | "fluent";
 
 export function applyDesign(v: unknown): void {
-  const id: DesignId = v === "fluent" ? "fluent" : "classic";
+  const id: DesignId = v === "classic" ? "classic" : "fluent";
   const el = document.documentElement;
   el.classList.toggle("design-fluent", id === "fluent");
   el.classList.toggle("design-classic", id === "classic");
