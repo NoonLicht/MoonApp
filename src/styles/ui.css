@@ -2140,3 +2140,21 @@ select option {
   background-image: radial-gradient(circle, var(--glass-border) 1.1px, transparent 1.3px);
   background-size: 20px 20px;
 }
+
+/* Поле выбора папки (FolderInput): путь + кнопка «Обзор…» */
+.folder-input {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+  flex: 1;
+  min-width: 0;
+}
+.folder-input .input {
+  flex: 1;
+  min-width: 0;
+  cursor: pointer;
+}
+.folder-input .btn {
+  flex-shrink: 0;
+  white-space: nowrap;
+}

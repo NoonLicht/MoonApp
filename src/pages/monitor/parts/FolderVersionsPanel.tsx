@@ -1,3 +1,4 @@
+import FolderInput from "@/components/FolderInput";
 import { useState } from "react";
 import { History, Camera, RotateCcw, Trash2 } from "lucide-react";
 import { useI18n } from "@/app/i18n";
@@ -41,12 +42,11 @@ export function FolderVersionsPanel() {
     <Glass className="p-4" style={{ marginTop: 16 }}>
       <SubHead>{t("monitor.versions.title")}</SubHead>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-        <input
-          className="input"
-          style={{ flex: 1, minWidth: 220 }}
+        <FolderInput
+          style={{ minWidth: 220 }}
           placeholder={t("monitor.versions.folder")}
           value={folder}
-          onChange={(e) => setFolder(e.target.value)}
+          onChange={setFolder}
         />
         <Btn icon={History} disabled={busy || !folder.trim()} onClick={() => void run(refresh)}>
           {t("monitor.versions.show")}

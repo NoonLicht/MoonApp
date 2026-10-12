@@ -1,3 +1,4 @@
+import FolderInput from "@/components/FolderInput";
 import { useEffect, useRef, useState } from "react";
 import { Copy, FolderOpen, Trash2, Hourglass, Images, Search, StopCircle } from "lucide-react";
 import { useI18n } from "@/app/i18n";
@@ -165,12 +166,10 @@ export function FileInsightsPanel() {
         ))}
       </div>
       <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
-        <input
-          className="input"
-          style={{ flex: 1 }}
+        <FolderInput
           placeholder={t("monitor.insightsRoot")}
           value={root}
-          onChange={(e) => setRoot(e.target.value)}
+          onChange={setRoot}
         />
         {working ? (
           <Btn onClick={cancel}>

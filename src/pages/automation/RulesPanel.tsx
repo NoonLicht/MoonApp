@@ -1,3 +1,4 @@
+import FolderPicker from "@/components/FolderInput";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ReactFlow,
@@ -258,12 +259,10 @@ export default function RulesPanel() {
             {sel === "trigger" && (
               <div>
                 <div className="field-label">{t("automation.rules.folder")}</div>
-                <input
-                  className="input"
-                  style={{ width: "100%" }}
+                <FolderPicker
                   placeholder={t("automation.rules.folderPh")}
                   value={draft.folder}
-                  onChange={(e) => update({ folder: e.target.value })}
+                  onChange={(folder) => update({ folder })}
                 />
               </div>
             )}

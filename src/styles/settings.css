@@ -378,3 +378,34 @@
 .aihub-prov-name {
   font-weight: 600;
 }
+
+/* Папки поиска по файлам: чипы + выбор через проводник */
+.fs-folders {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: -6px;
+}
+.fs-folder {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: var(--track);
+  border: 1px solid var(--glass-border);
+}
+.fs-folder-path {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fs-folder button {
+  border: none;
+  background: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  font-size: 16px;
+}
