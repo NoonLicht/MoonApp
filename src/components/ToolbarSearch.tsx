@@ -42,7 +42,10 @@ export default function ToolbarSearch({
   clearTitle,
   bare,
 }: ToolbarSearchProps) {
-  const narrow = useMediaQuery(NARROW_TOOLBAR_QUERY);
+  // Поле в панели всегда сворачивается в иконку (на всех страницах одинаково);
+  // «bare»-вариант живёт в чужой строке и остаётся полем.
+  const narrowByWidth = useMediaQuery(NARROW_TOOLBAR_QUERY);
+  const narrow = narrowByWidth || !bare;
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
