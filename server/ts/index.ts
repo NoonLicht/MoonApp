@@ -103,6 +103,8 @@ import screenshotsRouter from "./routes/screenshots";
 import officeRouter from "./routes/office";
 import diaryRouter from "./routes/diary";
 import rssRouter from "./routes/rss";
+import mailRouter from "./routes/mail";
+import * as mailService from "./mail/mailService";
 import * as rssModule from "./rss";
 import companionRouter from "./routes/companion";
 import * as companion from "./companion";
@@ -308,6 +310,7 @@ function createApp(): express.Express {
   app.use("/api/office", officeRouter);
   app.use("/api/diary", diaryRouter);
   app.use("/api/rss", rssRouter);
+  app.use("/api/mail", mailRouter);
   app.use("/api/companion", companionRouter);
 
   // Раздача собранного фронта (dist), если он собран.
@@ -341,6 +344,7 @@ function createApp(): express.Express {
   // Веб-компаньон поднимается только если пользователь включил его в настройках.
   companion.autoStart();
   rssModule.startAutoRefresh();
+  mailService.init();
 
   // Фоновое обновление подписок прокси (первичный проход + раз в 6 часов).
   try {

@@ -23,6 +23,8 @@ export const ROUTE_JSON_LIMITS: ReadonlyArray<{ prefix: string; limit: string }>
   // OPML-импорт и сохранение текста статей «прочитать позже»
   { prefix: "/api/rss", limit: "16mb" },
   { prefix: "/api/bookmarks", limit: "16mb" },
+  // письма с вложениями (base64)
+  { prefix: "/api/mail", limit: "40mb" },
   { prefix: "/api/diary", limit: "8mb" },
   { prefix: "/api/quicknotes", limit: "8mb" },
 ];

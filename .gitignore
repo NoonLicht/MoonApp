@@ -110,6 +110,7 @@ server/compressor.js
 server/upscale.js
 server/upscale/
 server/translate/
+server/mail/
 server/llamacpp/
 server/upscalePipeline.js
 server/ortPack.js
