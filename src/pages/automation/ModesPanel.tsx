@@ -41,7 +41,7 @@ export default function ModesPanel() {
   };
 
   return (
-    <div style={{ marginTop: 24 }}>
+    <div>
       <SectionHead eyebrow={t("automation.modes.eyebrow")} title={t("automation.modes.title")} />
       <Glass className="p-4">
         {modes.map((m) => (

@@ -51,7 +51,7 @@ export default function ClipboardHistoryPanel() {
   };
 
   return (
-    <div style={{ marginTop: 24 }}>
+    <div>
       <SectionHead eyebrow={t("automation.clip.eyebrow")} title={t("automation.clip.title")} />
       <Glass className="p-4">
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
