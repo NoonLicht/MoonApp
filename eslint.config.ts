@@ -7,6 +7,14 @@ import globals from "globals";
 import tseslint from "typescript-eslint";
 import reactHooks from "eslint-plugin-react-hooks";
 import reactRefresh from "eslint-plugin-react-refresh";
+import { readFileSync } from "node:fs";
+
+// Файлы, где any уже есть (долг на момент включения правила). Список только
+// сокращается: почистили файл — убрали его из eslint.any-baseline.json. Любой
+// файл вне списка получает any как ошибку, так что новый код пишется типизированным.
+const anyBaseline = JSON.parse(
+  readFileSync(new URL("./eslint.any-baseline.json", import.meta.url), "utf8"),
+);
 
 // Осознанные заглушки типов встречаются (например, marked.setOptions),
 // поэтому any не запрещаем жёстко — только подсвечиваем.
@@ -67,7 +75,7 @@ export default tseslint.config(
       "@typescript-eslint/no-explicit-any": "warn",
       "@typescript-eslint/no-unused-vars": unusedVars,
       eqeqeq: ["error", "smart"],
-      "no-empty": ["error", { allowEmptyCatch: true }],
+      "no-empty": ["error", { allowEmptyCatch: false }],
     },
   },
 
@@ -83,7 +91,7 @@ export default tseslint.config(
     rules: {
       "@typescript-eslint/no-explicit-any": "off",
       "@typescript-eslint/no-unused-vars": unusedVars,
-      "no-empty": ["error", { allowEmptyCatch: true }],
+      "no-empty": ["error", { allowEmptyCatch: false }],
       // Тесты импортируют серверные CommonJS-модули через createRequire.
       "@typescript-eslint/no-require-imports": "off",
     },
@@ -108,7 +116,7 @@ export default tseslint.config(
       "@typescript-eslint/no-explicit-any": "warn",
       "@typescript-eslint/no-unused-vars": unusedVars,
       eqeqeq: ["error", "smart"],
-      "no-empty": ["error", { allowEmptyCatch: true }],
+      "no-empty": ["error", { allowEmptyCatch: false }],
       "no-console": "off",
       "no-control-regex": "off",
       // Отложенные require() — осознанный приём: разрыв циклических зависимостей,
@@ -124,6 +132,39 @@ export default tseslint.config(
     rules: {
       "@typescript-eslint/no-explicit-any": "off",
     },
+  },
+
+  // ── Строгие зоны: any запрещён ───────────────────────────────────────────
+  // Контракты API общие для сервера и интерфейса, а модули ниже написаны уже с
+  // типами на границах. В старом коде any остаётся предупреждением (его чистят
+  // постепенно), здесь — ошибка, чтобы долг не рос.
+  {
+    files: [
+      "server/ts/contracts/**/*.ts",
+      "server/ts/budgetRecurring.ts",
+      "server/ts/diary.ts",
+      "server/ts/rss.ts",
+      "server/ts/companion.ts",
+      "server/ts/routes/diary.ts",
+      "server/ts/routes/rss.ts",
+      "server/ts/routes/companion.ts",
+      "src/api/apiDiary.ts",
+      "src/api/apiRss.ts",
+      "src/api/apiCompanion.ts",
+    ],
+    rules: { "@typescript-eslint/no-explicit-any": "error" },
+  },
+
+  // ── any — ошибка везде, кроме файлов из базы долга ───────────────────────
+  {
+    files: [
+      "src/**/*.{ts,tsx}",
+      "server/ts/**/*.ts",
+      "electron/ts/**/*.ts",
+      "scripts/ts/**/*.{ts,mts}",
+    ],
+    ignores: [...anyBaseline, "**/*.d.ts"],
+    rules: { "@typescript-eslint/no-explicit-any": "error" },
   },
 
   // ── Конфиги сборки на верхнем уровне (ESM, окружение Node) ───────────────

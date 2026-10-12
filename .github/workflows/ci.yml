@@ -1,0 +1,71 @@
+name: CI
+
+# Проверки на каждый push и pull request — те же гейты, что в release.yml,
+# только без сборки инсталлятора. Так сломанный master видно сразу, а не
+# в момент выпуска тега.
+on:
+  push:
+    branches: ['**']
+    tags-ignore: ['v*'] # теги проверяет release.yml
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    # windows-latest: часть тестов и нативные модули завязаны на Windows,
+    # как и сам релиз.
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Mojibake scan
+        run: npm run scan:mojibake
+
+      - name: i18n completeness
+        run: npm run check:i18n
+
+      - name: Unit tests
+        run: npm test
+
+      # Ловит регрессии размера стартового бандла (ленивые страницы).
+      - name: Build web
+        run: npm run build:web
+
+  # Сквозные тесты запускают собранное приложение; пока не блокируют слияние.
+  e2e:
+    runs-on: windows-latest
+    continue-on-error: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: E2E
+        run: npm run test:e2e

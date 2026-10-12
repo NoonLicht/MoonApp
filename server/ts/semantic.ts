@@ -41,7 +41,8 @@ export type SemSource =
   | "movie"
   | "book"
   | "m3e"
-  | "archive";
+  | "archive"
+  | "rss";
 
 interface ChunkMeta {
   source: SemSource;
@@ -553,7 +554,7 @@ function budgetDocs(): Doc[] {
 function m3eDocs(): Doc[] {
   const out: Doc[] = [];
   const dir = path.join(DIRS.storage, "m3e", "pages");
-  let files: string[] = [];
+  let files: string[];
   try {
     files = fs.readdirSync(dir).filter((f) => f.endsWith(".json"));
   } catch {
@@ -589,6 +590,21 @@ function m3eDocs(): Doc[] {
 }
 
 /** Веб-архивы: по адресу страницы (слова из пути и домен). */
+/** Свежие статьи RSS: заголовок + описание (и перевод заголовка, если есть) — для поиска по смыслу. */
+function rssDocs(): Doc[] {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const rss = require("./rss") as typeof import("./rss");
+    return rss.listItems({ limit: 500 }).map((i) => {
+      const tr = Object.values(i.tr || {}).find((x) => x && typeof x === "object");
+      const text = [i.title, tr ? tr.title : "", i.summary, tr ? tr.summary : ""].filter(Boolean).join(". ");
+      return { source: "rss" as const, ref: i.id, title: i.title, text, parts: [{ text }] };
+    });
+  } catch {
+    return [];
+  }
+}
+
 function archiveDocs(): Doc[] {
   try {
     const raw = JSON.parse(fs.readFileSync(path.join(DIRS.sitebak, "archives.json"), "utf8"));
@@ -647,6 +663,7 @@ export function syncAll(): JobState {
         ...bookDocs(),
         ...m3eDocs(),
         ...archiveDocs(),
+        ...rssDocs(),
       ];
       job.total = docs.length;
       const s = load();
@@ -944,6 +961,7 @@ export const ALL_SOURCES: SemSource[] = [
   "book",
   "m3e",
   "archive",
+  "rss",
 ];
 
 /** Раз в 10 минут (если индекс уже строили) подтягиваем лекции, чаты, задачи, доски и т.п. */

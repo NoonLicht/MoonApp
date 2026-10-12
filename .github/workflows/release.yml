@@ -13,6 +13,9 @@ permissions:
 jobs:
   release:
     runs-on: windows-latest
+    env:
+      # На уровне job, чтобы шаги могли проверять наличие секрета в `if`.
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -51,6 +54,27 @@ jobs:
       # Ключ TMDB вшивается в сборку: страница «Фильмы» работает «из коробки»,
       # а сам ключ в репозитории не лежит (server/bundled-keys.js в .gitignore).
       # Секрет не задан — шаг просто ничего не вшивает, сборка не падает.
+      # Подпись кода (необязательна). Если секреты Azure Trusted Signing не заданы, шаг
+      # пропускается, а scripts/sign.js оставляет файлы неподписанными — сборка проходит
+      # как раньше. Как включить: см. раздел «Подпись кода» в README.
+      - name: Prepare Azure Trusted Signing
+        if: env.AZURE_CLIENT_ID != ''
+        shell: pwsh
+        run: |
+          $ts = Join-Path $env:RUNNER_TEMP "trusted-signing"
+          nuget install Microsoft.Trusted.Signing.Client -Version 1.0.95 -OutputDirectory $ts
+          $dlib = Get-ChildItem $ts -Recurse -Filter Azure.CodeSigning.Dlib.dll | Where-Object { $_.FullName -match 'x64' } | Select-Object -First 1
+          if (-not $dlib) { throw "Azure.CodeSigning.Dlib.dll not found" }
+          "AZURE_TS_DLIB=$($dlib.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "AZURE_TS_ENDPOINT=${{ vars.AZURE_TS_ENDPOINT }}" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "AZURE_TS_ACCOUNT=${{ vars.AZURE_TS_ACCOUNT }}" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "AZURE_TS_PROFILE=${{ vars.AZURE_TS_PROFILE }}" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      # SBOM (CycloneDX): состав зависимостей конкретного релиза. Формируется из
+      # package-lock.json встроенной командой npm, прикладывается к Release.
+      - name: Generate SBOM
+        run: npm sbom --sbom-format cyclonedx --omit dev > release-sbom.cdx.json
+
       - name: Bundle API keys
         env:
           MOONAPP_TMDB_KEY: ${{ secrets.TMDB_API_KEY }}
@@ -60,9 +84,22 @@ jobs:
         env:
           # Встроенный токен — electron-builder публикует в текущий репозиторий.
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Подпись: Azure Trusted Signing (служебный принципал) или .pfx — см. scripts/ts/sign.ts.
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
         # electron-builder вызывается напрямую: `npm run dist -- --publish always`
         # передал бы аргументы в конец всей цепочки скрипта, а не в publisher.
         run: npm run compile && npm run build:web && npx electron-builder --win --publish always
+
+      - name: Attach SBOM to release
+        if: success()
+        # Не критично для самого релиза (например, если Release создан черновиком).
+        continue-on-error: true
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "${GITHUB_REF_NAME}" release-sbom.cdx.json --clobber
 
       # Инсталлятор + latest.yml + .blockmap попадают в Release автоматически.
       # Если шаг publish упал, артефакты всё равно можно скачать из Actions.

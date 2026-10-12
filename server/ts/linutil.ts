@@ -62,7 +62,7 @@ function commandExists(cmd: string): boolean {
 
 /** Условия показа пункта (как в linutil): command_exists — все команды, env/file — любое значение. */
 function preOk(p: LuPre): boolean {
-  let hit = false;
+  let hit: boolean;
   if (p.kind === "command_exists") hit = p.values.every(commandExists);
   else if (p.kind === "env") hit = p.values.includes(process.env[p.arg || ""] ?? "\u0000");
   else {
