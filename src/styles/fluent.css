@@ -298,9 +298,6 @@ html.design-fluent .chip-toggle {
 html.design-fluent .store-grid {
   grid-template-columns: repeat(auto-fill, minmax(212px, 1fr));
 }
-html.design-fluent .games-grid {
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-}
 html.design-fluent .ss-lib-grid {
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
 }
