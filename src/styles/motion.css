@@ -106,3 +106,17 @@ html {
     animation: none;
   }
 }
+
+/* ---- Сворачивание меню страниц: рельс и контент едут плавно ---- */
+html.design-fluent .dock-scroll {
+  transition: width calc(320ms / var(--anim-speed)) var(--ease-out);
+}
+.content-area {
+  transition:
+    padding-left calc(320ms / var(--anim-speed)) var(--ease-out),
+    padding-right calc(320ms / var(--anim-speed)) var(--ease-out);
+}
+/* Пока тянем границу «Контекста», контент не должен отставать. */
+body[style*="col-resize"] .content-area {
+  transition: none;
+}

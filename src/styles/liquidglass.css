@@ -117,3 +117,45 @@ html.app-idle .app-shell .mesh,
 html.app-idle .app-shell .blob {
   display: none !important;
 }
+
+/* ---------- Боковые панели реагируют на ползунки стекла ----------
+   Подкраска и насыщенность берутся из настроек, но с «базой», чтобы левое и
+   правое меню оставались одного тона, как бы ни легла подсветка фона. */
+html:not(.no-glass) .app-shell .dock-scroll,
+html:not(.no-glass) .ghost-dock {
+  background:
+    linear-gradient(
+      135deg,
+      rgba(255, 255, 255, calc(var(--lg-spec, 0.55) * 0.12)) 0%,
+      rgba(255, 255, 255, 0) 45%
+    ),
+    color-mix(in srgb, var(--surface-solid, #2a2a30) calc(30% + var(--lg-tint, 12%) * 0.8), transparent);
+  -webkit-backdrop-filter: blur(var(--lg-blur, 22px)) saturate(calc(100% + (var(--lg-sat, 170%) - 100%) * 0.5));
+  backdrop-filter: blur(var(--lg-blur, 22px)) saturate(calc(100% + (var(--lg-sat, 170%) - 100%) * 0.5));
+}
+html.lg-refract:not(.no-glass) .app-shell .dock-scroll,
+html.lg-refract:not(.no-glass) .ghost-dock {
+  -webkit-backdrop-filter: url(#lg-refract) blur(var(--lg-blur, 22px))
+    saturate(calc(100% + (var(--lg-sat, 170%) - 100%) * 0.5));
+  backdrop-filter: url(#lg-refract) blur(var(--lg-blur, 22px))
+    saturate(calc(100% + (var(--lg-sat, 170%) - 100%) * 0.5));
+}
+
+/* ---------- Читаемость: вуаль поверх подсветки + плотный текст в светлых темах ---------- */
+html:not(.no-glass) .app-shell .mesh::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: color-mix(in srgb, var(--bg-base) 45%, transparent);
+}
+html:not(.no-glass) .app-shell.theme-light .mesh::after {
+  background: color-mix(in srgb, var(--bg-base) 72%, transparent);
+}
+html:not(.no-glass) .app-shell.app-shell.theme-light:not(.theme-sand) {
+  --text-primary: #14141a;
+  --text-secondary: #34343f;
+  --text-tertiary: #555563;
+}
+html:not(.no-glass) .app-shell.theme-light .glass {
+  background-color: color-mix(in srgb, #ffffff 58%, transparent);
+}

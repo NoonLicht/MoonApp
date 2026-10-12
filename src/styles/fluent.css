@@ -178,6 +178,11 @@ html.design-fluent .app-shell[dir="rtl"] .dock-btn.is-active::before {
   }
   html.design-fluent .dock-label {
     display: block;
+    opacity: 1;
+    max-width: 200px;
+    transition:
+      opacity calc(180ms / var(--anim-speed, 1)) ease,
+      max-width calc(300ms / var(--anim-speed, 1)) cubic-bezier(0.22, 1, 0.36, 1);
     font-size: 13px;
     font-weight: 500;
     white-space: nowrap;
@@ -356,7 +361,9 @@ html.design-fluent .dock-collapse {
     --rail-w: 52px;
   }
   html.design-fluent.dock-collapsed .dock-label {
-    display: none;
+    opacity: 0;
+    max-width: 0;
+    padding: 0;
   }
 }
 

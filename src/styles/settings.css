@@ -42,8 +42,37 @@
   margin-bottom: 6px;
 }
 /* Свёрнутая секция — только заголовок; тело остаётся в DOM для поиска. */
+/* Плавное сворачивание: высота тела анимируется через grid 0fr → 1fr. */
+.set-section-body {
+  display: grid;
+  grid-template-rows: 1fr;
+  opacity: 1;
+  transition:
+    grid-template-rows calc(320ms / var(--anim-speed, 1)) cubic-bezier(0.22, 1, 0.36, 1),
+    opacity calc(220ms / var(--anim-speed, 1)) ease,
+    visibility 0s;
+}
 .set-section-wrap:not(.is-open) .set-section-body {
-  display: none;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    grid-template-rows calc(280ms / var(--anim-speed, 1)) cubic-bezier(0.22, 1, 0.36, 1),
+    opacity calc(160ms / var(--anim-speed, 1)) ease,
+    visibility 0s linear calc(280ms / var(--anim-speed, 1));
+}
+.set-section-inner {
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+/* После раскрытия выпадающие списки не должны обрезаться. */
+.set-section-wrap.is-open .set-section-inner {
+  overflow: visible;
+  transition: overflow 0s linear calc(320ms / var(--anim-speed, 1)) allow-discrete;
 }
 .set-section-wrap:not(.is-open) .set-section {
   padding-top: 10px;
@@ -68,11 +97,6 @@
   font-family: var(--font-mono);
 }
 
-.set-section-body {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
 
 .set-row {
   display: flex;

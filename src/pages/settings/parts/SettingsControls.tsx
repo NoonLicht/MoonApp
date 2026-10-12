@@ -225,7 +225,9 @@ export function Section({
           <span className="set-section-title">{title}</span>
           <ChevronDown size={16} className="set-section-chevron" />
         </button>
-        <div className="set-section-body">{children}</div>
+        <div className="set-section-body">
+          <div className="set-section-inner">{children}</div>
+        </div>
       </Glass>
     </div>
   );
