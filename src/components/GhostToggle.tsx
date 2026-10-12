@@ -67,6 +67,7 @@ export default function GhostToggle() {
   const lastKey = useRef("");
   const { open, collapsed, width } = dock;
   // Последнее выделение: на нём строятся быстрые действия и проверка противоречий.
+  const [aiMode, setAiMode] = useState(true);
   const [selection, setSelection] = useState("");
   const [note, setNote] = useState("");
   const [conflicts, setConflicts] = useState<
@@ -95,8 +96,11 @@ export default function GhostToggle() {
 
   useEffect(() => {
     if (!open) return;
-    void (api.getSettings() as Promise<{ ghost?: { enabled?: boolean } }>)
-      .then((s) => setEnabled(s?.ghost?.enabled === true))
+    void (api.getSettings() as Promise<{ ghost?: { enabled?: boolean; ai?: boolean } }>)
+      .then((s) => {
+        setEnabled(s?.ghost?.enabled === true);
+        setAiMode(s?.ghost?.ai !== false);
+      })
       .catch(() => undefined);
   }, [open]);
 
@@ -223,6 +227,18 @@ export default function GhostToggle() {
       await api.updateSettings({ ghost: { enabled: next } });
     } catch {
       setEnabled(!next);
+    }
+  };
+
+  const chooseMode = async (ai: boolean) => {
+    if (ai === aiMode) return;
+    setAiMode(ai);
+    lastKey.current = "";
+    try {
+      await api.updateSettings({ ghost: { ai } });
+      void tick();
+    } catch {
+      setAiMode(!ai);
     }
   };
 
@@ -377,6 +393,22 @@ export default function GhostToggle() {
                     </div>
                   )}
                   {note && <div className="muted-sm ghost-note">{note}</div>}
+                  <div className="ghost-mode" role="group" aria-label={t("ghost.mode")}>
+                    <button
+                      className={`ghost-chip${!aiMode ? " on" : ""}`}
+                      title={t("ghost.modeLocalHint")}
+                      onClick={() => void chooseMode(false)}
+                    >
+                      {t("ghost.modeLocal")}
+                    </button>
+                    <button
+                      className={`ghost-chip${aiMode ? " on" : ""}`}
+                      title={t("ghost.modeAiHint")}
+                      onClick={() => void chooseMode(true)}
+                    >
+                      {t("ghost.modeAi")}
+                    </button>
+                  </div>
                   <button className="ghost-off" onClick={() => void toggleEnabled(false)}>
                     {t("ghost.disable")}
                   </button>

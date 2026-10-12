@@ -6059,7 +6059,12 @@
     "copiedToPaste": "文本已复制，请在页面中粘贴",
     "copied": "已复制",
     "checking": "检查中…",
-    "noConflicts": "未发现矛盾"
+    "noConflicts": "未发现矛盾",
+    "mode": "建议模式",
+    "modeLocal": "本地",
+    "modeAi": "通过提供商",
+    "modeLocalHint": "仅在本机进行语义搜索：不发送任何数据",
+    "modeAiHint": "候选项还会由聊天提供商的模型复核：更准确，但笔记片段会发送给提供商"
   },
   "night": {
     "message": "现在是深夜。预算决策和发送消息最好等到早上——只是建议，没有任何限制。",

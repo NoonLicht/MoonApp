@@ -1387,3 +1387,13 @@ html.a11y-focus *:focus-visible {
 .ghost-note {
   padding: 2px 2px;
 }
+.ghost-mode {
+  display: flex;
+  gap: 6px;
+  margin: 10px 0 4px;
+}
+.ghost-chip.on {
+  background: color-mix(in srgb, var(--amber) 22%, transparent);
+  border-color: var(--amber);
+  color: var(--text-primary);
+}

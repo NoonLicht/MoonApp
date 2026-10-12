@@ -6059,7 +6059,12 @@
     "copiedToPaste": "Text copied — paste it on the page",
     "copied": "Copied",
     "checking": "Checking…",
-    "noConflicts": "No contradictions found"
+    "noConflicts": "No contradictions found",
+    "mode": "Suggestion mode",
+    "modeLocal": "Local",
+    "modeAi": "Via provider",
+    "modeLocalHint": "Semantic search on this computer only: nothing is sent anywhere",
+    "modeAiHint": "Candidates are also checked by your chat provider's model: more accurate, but note snippets are sent to the provider"
   },
   "night": {
     "message": "It is the dead of night. Budget decisions and sending messages are better left until morning — just a suggestion, nothing is blocked.",

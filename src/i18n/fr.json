@@ -6059,7 +6059,12 @@
     "copiedToPaste": "Texte copié — collez-le sur la page",
     "copied": "Copié",
     "checking": "Vérification…",
-    "noConflicts": "Aucune contradiction"
+    "noConflicts": "Aucune contradiction",
+    "mode": "Mode de suggestions",
+    "modeLocal": "Local",
+    "modeAi": "Via le fournisseur",
+    "modeLocalHint": "Recherche sémantique sur cet ordinateur uniquement : rien n'est envoyé",
+    "modeAiHint": "Le modèle de votre fournisseur de chat vérifie aussi les candidats : plus précis, mais des extraits sont envoyés au fournisseur"
   },
   "night": {
     "message": "Il est tard dans la nuit. Les décisions budgétaires et l'envoi de messages gagnent à attendre le matin — simple conseil, rien n'est bloqué.",

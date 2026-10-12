@@ -6059,7 +6059,12 @@
     "copiedToPaste": "Texto copiado: pégalo en la página",
     "copied": "Copiado",
     "checking": "Comprobando…",
-    "noConflicts": "No hay contradicciones"
+    "noConflicts": "No hay contradicciones",
+    "mode": "Modo de sugerencias",
+    "modeLocal": "Local",
+    "modeAi": "Vía proveedor",
+    "modeLocalHint": "Solo búsqueda semántica en este equipo: no se envía nada",
+    "modeAiHint": "El modelo de su proveedor de chat revisa además los candidatos: más preciso, pero los fragmentos se envían al proveedor"
   },
   "night": {
     "message": "Es plena noche. Las decisiones de presupuesto y el envío de mensajes mejor para la mañana: solo un consejo, nada está bloqueado.",
