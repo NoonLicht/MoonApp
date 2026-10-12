@@ -62,13 +62,19 @@ export function MailAttachmentPreview({
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <Glass className="modal-panel mail-preview" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+      <Glass
+        className="modal-panel mail-preview"
+        onClick={(e: React.MouseEvent) => e.stopPropagation()}
+      >
         <div className="mail-modal-head">
           <div className="media-title">
             {att.filename} <em className="mail-dim">{fmtSize(att.size)}</em>
           </div>
           <div className="mail-row-gap">
-            <Btn icon={Download} onClick={() => void api.mailDownloadAttachment(messageId, att.index)}>
+            <Btn
+              icon={Download}
+              onClick={() => void api.mailDownloadAttachment(messageId, att.index)}
+            >
               {t("mail.download")}
             </Btn>
             <button className="mail-x" onClick={onClose} aria-label="close">

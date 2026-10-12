@@ -6483,6 +6483,24 @@
     "unsubscribe": "Cancelar suscripción",
     "unsubscribeBanner": "Es una lista de correo. Puedes darte de baja con un clic.",
     "unsubscribeFailed": "No se pudo cancelar la suscripción",
-    "unsubscribed": "Solicitud de baja enviada"
+    "unsubscribed": "Solicitud de baja enviada",
+    "createFolder": "Crear carpeta",
+    "deleteFolderConfirm": "¿Eliminar la carpeta «{name}» con sus mensajes en el servidor?",
+    "emptyConfirm": "¿Eliminar para siempre todos los mensajes de esta carpeta?",
+    "emptySpam": "Vaciar spam",
+    "emptyTrash": "Vaciar papelera",
+    "folderManager": "Carpetas del servidor",
+    "markAllRead": "Marcar todo como leído",
+    "more": "Más",
+    "newFolderName": "Nombre de la nueva carpeta",
+    "notSpam": "No es spam — a Recibidos",
+    "print": "Imprimir",
+    "rename": "Renombrar",
+    "renameFolder": "Nuevo nombre (ruta) de la carpeta",
+    "restore": "Restaurar a Recibidos",
+    "ruleFromSender": "Crear regla para este remitente",
+    "qf_unread": "No leídos",
+    "qf_starred": "Destacados",
+    "qf_attach": "Con adjuntos"
   }
 }

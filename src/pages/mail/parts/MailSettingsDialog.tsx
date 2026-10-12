@@ -34,7 +34,15 @@ export type MailSettingsTab = (typeof TABS)[number];
 
 /* ---------------------------- мелкие поля -------------------------------- */
 
-function Row({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+function Row({
+  label,
+  hint,
+  children,
+}: {
+  label: string;
+  hint?: string;
+  children: React.ReactNode;
+}) {
   return (
     <div className="mail-set-row">
       <div className="mail-set-label">
@@ -46,7 +54,15 @@ function Row({ label, hint, children }: { label: string; hint?: string; children
   );
 }
 
-function Check({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
+function Check({
+  checked,
+  onChange,
+  label,
+}: {
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  label: string;
+}) {
   return (
     <label className="mail-check">
       <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} />
@@ -74,7 +90,8 @@ function Txt({
   const common = {
     value: v,
     placeholder,
-    onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setV(e.target.value),
+    onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+      setV(e.target.value),
     onBlur: () => v !== value && onCommit(v),
   };
   return multiline ? <textarea rows={5} {...common} /> : <input type={type} {...common} />;
@@ -85,17 +102,21 @@ function Txt({
 export function MailSettingsDialog({
   accounts,
   initialTab,
+  ruleSeed,
   onClose,
   onChanged,
 }: {
   accounts: MailAccount[];
   initialTab?: string;
+  ruleSeed?: string;
   onClose: () => void;
   onChanged: () => void;
 }) {
   const { t, lang } = useI18n();
   const [tab, setTab] = useState<MailSettingsTab>(
-    (TABS as readonly string[]).includes(initialTab ?? "") ? (initialTab as MailSettingsTab) : "general",
+    (TABS as readonly string[]).includes(initialTab ?? "")
+      ? (initialTab as MailSettingsTab)
+      : "general",
   );
   const [s, setS] = useState<MailSettings | null>(null);
   const [sigs, setSigs] = useState<MailSignature[]>([]);
@@ -118,8 +139,16 @@ export function MailSettingsDialog({
   }, [reload]);
 
   useEffect(() => {
-    if (tab === "tracking") api.mailTracking().then(setTracks).catch(() => undefined);
-    if (tab === "mcp") api.mailMcpStatus().then(setMcpState).catch(() => undefined);
+    if (tab === "tracking")
+      api
+        .mailTracking()
+        .then(setTracks)
+        .catch(() => undefined);
+    if (tab === "mcp")
+      api
+        .mailMcpStatus()
+        .then(setMcpState)
+        .catch(() => undefined);
   }, [tab]);
 
   const save = async (patch: Record<string, unknown>) => {
@@ -198,7 +227,10 @@ export function MailSettingsDialog({
               <Select
                 value={String(s.appearance.sendDelaySec)}
                 onChange={(e) => upd("appearance", { sendDelaySec: Number(e.target.value) })}
-                options={["0", "5", "8", "15", "30"].map((v) => ({ value: v, label: `${v} ${t("mail.sec")}` }))}
+                options={["0", "5", "8", "15", "30"].map((v) => ({
+                  value: v,
+                  label: `${v} ${t("mail.sec")}`,
+                }))}
               />
             </Row>
             <Check
@@ -226,10 +258,26 @@ export function MailSettingsDialog({
       case "notifications":
         return (
           <>
-            <Check checked={s.notify.enabled} onChange={(v) => upd("notify", { enabled: v })} label={t("mail.n_enabled")} />
-            <Check checked={s.notify.preview} onChange={(v) => upd("notify", { preview: v })} label={t("mail.n_preview")} />
-            <Check checked={s.notify.sound} onChange={(v) => upd("notify", { sound: v })} label={t("mail.n_sound")} />
-            <Check checked={s.notify.badge} onChange={(v) => upd("notify", { badge: v })} label={t("mail.n_badge")} />
+            <Check
+              checked={s.notify.enabled}
+              onChange={(v) => upd("notify", { enabled: v })}
+              label={t("mail.n_enabled")}
+            />
+            <Check
+              checked={s.notify.preview}
+              onChange={(v) => upd("notify", { preview: v })}
+              label={t("mail.n_preview")}
+            />
+            <Check
+              checked={s.notify.sound}
+              onChange={(v) => upd("notify", { sound: v })}
+              label={t("mail.n_sound")}
+            />
+            <Check
+              checked={s.notify.badge}
+              onChange={(v) => upd("notify", { badge: v })}
+              label={t("mail.n_badge")}
+            />
             <Check
               checked={s.notify.quietEnabled}
               onChange={(v) => upd("notify", { quietEnabled: v })}
@@ -272,7 +320,7 @@ export function MailSettingsDialog({
           <IdentitiesTab accounts={accounts} sigs={sigs} setSigs={setSigs} onChanged={onChanged} />
         );
       case "rules":
-        return <RulesTab rules={rules} setRules={setRules} accounts={accounts} />;
+        return <RulesTab rules={rules} setRules={setRules} accounts={accounts} seed={ruleSeed} />;
       case "autoreply":
         return (
           <>
@@ -335,8 +383,16 @@ export function MailSettingsDialog({
                 </button>
               </div>
             )}
-            <Check checked={s.tracking.opens} onChange={(v) => upd("tracking", { opens: v })} label={t("mail.tr_opens")} />
-            <Check checked={s.tracking.clicks} onChange={(v) => upd("tracking", { clicks: v })} label={t("mail.tr_clicks")} />
+            <Check
+              checked={s.tracking.opens}
+              onChange={(v) => upd("tracking", { opens: v })}
+              label={t("mail.tr_opens")}
+            />
+            <Check
+              checked={s.tracking.clicks}
+              onChange={(v) => upd("tracking", { clicks: v })}
+              label={t("mail.tr_clicks")}
+            />
             <div className="mail-row-gap">
               <Btn
                 icon={Copy}
@@ -368,19 +424,21 @@ export function MailSettingsDialog({
       case "ai":
         return (
           <>
-            <Check checked={s.ai.enabled} onChange={(v) => upd("ai", { enabled: v })} label={t("mail.ai_enabled")} />
+            <Check
+              checked={s.ai.enabled}
+              onChange={(v) => upd("ai", { enabled: v })}
+              label={t("mail.ai_enabled")}
+            />
             <Row label={t("mail.ai_language")} hint={t("mail.ai_languageHint")}>
               <Select
                 value={s.ai.language}
                 onChange={(e) => upd("ai", { language: e.target.value })}
                 options={[
                   { value: "", label: t("mail.ai_auto") },
-                  { value: "ru", label: "Русский" },
-                  { value: "en", label: "English" },
-                  { value: "es", label: "Español" },
-                  { value: "fr", label: "Français" },
-                  { value: "zh", label: "中文" },
-                  { value: "ar", label: "العربية" },
+                  ...["ru", "en", "es", "fr", "zh", "ar"].map((c) => ({
+                    value: c,
+                    label: new Intl.DisplayNames([c], { type: "language" }).of(c) ?? c,
+                  })),
                 ]}
               />
             </Row>
@@ -414,11 +472,17 @@ export function MailSettingsDialog({
         return (
           <>
             <p className="mail-hint">{t("mail.mcp_intro")}</p>
-            <Check checked={s.mcp.enabled} onChange={(v) => upd("mcp", { enabled: v })} label={t("mail.mcp_enabled")} />
+            <Check
+              checked={s.mcp.enabled}
+              onChange={(v) => upd("mcp", { enabled: v })}
+              label={t("mail.mcp_enabled")}
+            />
             <Row label={t("mail.port")}>
               <Txt
                 value={String(s.mcp.port)}
-                onCommit={(v) => upd("mcp", { port: Math.min(65535, Math.max(1024, Number(v) || 38417)) })}
+                onCommit={(v) =>
+                  upd("mcp", { port: Math.min(65535, Math.max(1024, Number(v) || 38417)) })
+                }
               />
             </Row>
             <Row label={t("mail.tr_key")}>
@@ -440,9 +504,15 @@ export function MailSettingsDialog({
                 </button>
               </div>
             )}
-            <Check checked={s.mcp.allowSend} onChange={(v) => upd("mcp", { allowSend: v })} label={t("mail.mcp_allowSend")} />
+            <Check
+              checked={s.mcp.allowSend}
+              onChange={(v) => upd("mcp", { allowSend: v })}
+              label={t("mail.mcp_allowSend")}
+            />
             <div className="mail-hint">
-              {mcpState?.running ? t("mail.mcp_running", { port: mcpState.port }) : t("mail.mcp_stopped")}
+              {mcpState?.running
+                ? t("mail.mcp_running", { port: mcpState.port })
+                : t("mail.mcp_stopped")}
             </div>
             <div className="mail-set-sub">{t("mail.mcp_config")}</div>
             <pre className="mail-code">{cfg}</pre>
@@ -457,7 +527,10 @@ export function MailSettingsDialog({
           <>
             <p className="mail-hint">{t("mail.oauth_intro")}</p>
             <Row label="Google Client ID" hint={t("mail.oauth_googleHint")}>
-              <Txt value={s.oauth.googleClientId} onCommit={(v) => upd("oauth", { googleClientId: v.trim() })} />
+              <Txt
+                value={s.oauth.googleClientId}
+                onCommit={(v) => upd("oauth", { googleClientId: v.trim() })}
+              />
             </Row>
             <Row label="Google Client secret">
               <Txt
@@ -484,7 +557,10 @@ export function MailSettingsDialog({
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <Glass className="modal-panel mail-settings" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+      <Glass
+        className="modal-panel mail-settings"
+        onClick={(e: React.MouseEvent) => e.stopPropagation()}
+      >
         <div className="mail-modal-head">
           <div className="media-title">{t("mail.settings")}</div>
           <div className="mail-row-gap">
@@ -532,7 +608,10 @@ function IdentitiesTab({
     setEditing(null);
   };
 
-  const sigOptions = [{ value: "", label: t("mail.noSignature") }, ...sigs.map((x) => ({ value: x.id, label: x.name }))];
+  const sigOptions = [
+    { value: "", label: t("mail.noSignature") },
+    ...sigs.map((x) => ({ value: x.id, label: x.name })),
+  ];
 
   return (
     <>
@@ -590,7 +669,9 @@ function IdentitiesTab({
             <Select
               value={a.defaultSignature}
               onChange={(e) =>
-                void api.mailUpdateAccount(a.id, { defaultSignature: e.target.value }).then(onChanged)
+                void api
+                  .mailUpdateAccount(a.id, { defaultSignature: e.target.value })
+                  .then(onChanged)
               }
               options={sigOptions}
             />
@@ -601,7 +682,9 @@ function IdentitiesTab({
                 defaultValue={al.name}
                 placeholder={t("mail.accountName")}
                 onBlur={(e) => {
-                  const next = a.aliases.map((x, j) => (j === i ? { ...x, name: e.target.value } : x));
+                  const next = a.aliases.map((x, j) =>
+                    j === i ? { ...x, name: e.target.value } : x,
+                  );
                   void api.mailUpdateAccount(a.id, { aliases: next }).then(onChanged);
                 }}
               />
@@ -609,14 +692,18 @@ function IdentitiesTab({
                 defaultValue={al.address}
                 placeholder="alias@example.com"
                 onBlur={(e) => {
-                  const next = a.aliases.map((x, j) => (j === i ? { ...x, address: e.target.value } : x));
+                  const next = a.aliases.map((x, j) =>
+                    j === i ? { ...x, address: e.target.value } : x,
+                  );
                   void api.mailUpdateAccount(a.id, { aliases: next }).then(onChanged);
                 }}
               />
               <Select
                 value={al.signature ?? ""}
                 onChange={(e) => {
-                  const next = a.aliases.map((x, j) => (j === i ? { ...x, signature: e.target.value } : x));
+                  const next = a.aliases.map((x, j) =>
+                    j === i ? { ...x, signature: e.target.value } : x,
+                  );
                   void api.mailUpdateAccount(a.id, { aliases: next }).then(onChanged);
                 }}
                 options={sigOptions}
@@ -650,21 +737,61 @@ function IdentitiesTab({
   );
 }
 
-const FIELDS: MailRuleCondition["field"][] = ["from", "to", "cc", "subject", "body", "hasAttachment", "list", "size"];
-const OPS: MailRuleCondition["op"][] = ["contains", "notContains", "equals", "startsWith", "endsWith", "regex"];
-const ACTS: MailRuleAction["type"][] = ["move", "markRead", "star", "archive", "trash", "spam", "snooze", "label"];
+const FIELDS: MailRuleCondition["field"][] = [
+  "from",
+  "to",
+  "cc",
+  "subject",
+  "body",
+  "hasAttachment",
+  "list",
+  "size",
+];
+const OPS: MailRuleCondition["op"][] = [
+  "contains",
+  "notContains",
+  "equals",
+  "startsWith",
+  "endsWith",
+  "regex",
+];
+const ACTS: MailRuleAction["type"][] = [
+  "move",
+  "markRead",
+  "star",
+  "archive",
+  "trash",
+  "spam",
+  "snooze",
+  "label",
+];
 
 function RulesTab({
   rules,
   setRules,
   accounts,
+  seed,
 }: {
   rules: MailRule[];
   setRules: (r: MailRule[]) => void;
   accounts: MailAccount[];
+  seed?: string;
 }) {
   const { t } = useI18n();
-  const [edit, setEdit] = useState<MailRule | null>(null);
+  const [edit, setEdit] = useState<MailRule | null>(() =>
+    seed
+      ? {
+          id: "",
+          account: "",
+          name: seed,
+          enabled: true,
+          matchAll: true,
+          conditions: [{ field: "from", op: "contains", value: seed }],
+          actions: [{ type: "archive" }],
+          position: 0,
+        }
+      : null,
+  );
   const [info, setInfo] = useState("");
   const blank = (): MailRule => ({
     id: "",
@@ -702,7 +829,9 @@ function RulesTab({
           <div className="mail-acc-main">
             <b>{r.name}</b>
             <span>
-              {r.conditions.map((c) => `${t(`mail.f_${c.field}`)} ${c.value}`).join(r.matchAll ? " & " : " | ")}
+              {r.conditions
+                .map((c) => `${t(`mail.f_${c.field}`)} ${c.value}`)
+                .join(r.matchAll ? " & " : " | ")}
             </span>
           </div>
           <Btn onClick={() => setEdit(r)}>{t("mail.edit")}</Btn>
@@ -795,7 +924,9 @@ function RulesTab({
                   onChange={(e) =>
                     setEdit({
                       ...edit,
-                      conditions: edit.conditions.map((x, j) => (j === i ? { ...x, value: e.target.value } : x)),
+                      conditions: edit.conditions.map((x, j) =>
+                        j === i ? { ...x, value: e.target.value } : x,
+                      ),
                     })
                   }
                 />
@@ -803,7 +934,9 @@ function RulesTab({
               <button
                 className="mail-x"
                 aria-label={t("mail.remove")}
-                onClick={() => setEdit({ ...edit, conditions: edit.conditions.filter((_, j) => j !== i) })}
+                onClick={() =>
+                  setEdit({ ...edit, conditions: edit.conditions.filter((_, j) => j !== i) })
+                }
               >
                 <X size={15} />
               </button>
@@ -812,7 +945,10 @@ function RulesTab({
           <Btn
             icon={Plus}
             onClick={() =>
-              setEdit({ ...edit, conditions: [...edit.conditions, { field: "subject", op: "contains", value: "" }] })
+              setEdit({
+                ...edit,
+                conditions: [...edit.conditions, { field: "subject", op: "contains", value: "" }],
+              })
             }
           >
             {t("mail.addCondition")}
@@ -836,12 +972,18 @@ function RulesTab({
                 <input
                   value={a.value ?? ""}
                   placeholder={
-                    a.type === "move" ? t("mail.folderPath") : a.type === "snooze" ? t("mail.hours") : t("mail.label")
+                    a.type === "move"
+                      ? t("mail.folderPath")
+                      : a.type === "snooze"
+                        ? t("mail.hours")
+                        : t("mail.label")
                   }
                   onChange={(e) =>
                     setEdit({
                       ...edit,
-                      actions: edit.actions.map((x, j) => (j === i ? { ...x, value: e.target.value } : x)),
+                      actions: edit.actions.map((x, j) =>
+                        j === i ? { ...x, value: e.target.value } : x,
+                      ),
                     })
                   }
                 />
@@ -849,13 +991,18 @@ function RulesTab({
               <button
                 className="mail-x"
                 aria-label={t("mail.remove")}
-                onClick={() => setEdit({ ...edit, actions: edit.actions.filter((_, j) => j !== i) })}
+                onClick={() =>
+                  setEdit({ ...edit, actions: edit.actions.filter((_, j) => j !== i) })
+                }
               >
                 <X size={15} />
               </button>
             </div>
           ))}
-          <Btn icon={Plus} onClick={() => setEdit({ ...edit, actions: [...edit.actions, { type: "markRead" }] })}>
+          <Btn
+            icon={Plus}
+            onClick={() => setEdit({ ...edit, actions: [...edit.actions, { type: "markRead" }] })}
+          >
             {t("mail.addAction")}
           </Btn>
           <div className="mail-row-gap">
@@ -895,13 +1042,28 @@ function AutoReplyBlock({
   onSave: (v: MailAutoReply) => void;
 }) {
   const { t } = useI18n();
-  const v: MailAutoReply = value ?? { enabled: false, subject: "", body: "", from: 0, to: 0, onlyKnown: false };
+  const v: MailAutoReply = value ?? {
+    enabled: false,
+    subject: "",
+    body: "",
+    from: 0,
+    to: 0,
+    onlyKnown: false,
+  };
   return (
     <div className="mail-edit-box">
       <b>{account.email}</b>
-      <Check checked={v.enabled} onChange={(x) => onSave({ ...v, enabled: x })} label={t("mail.ar_enabled")} />
+      <Check
+        checked={v.enabled}
+        onChange={(x) => onSave({ ...v, enabled: x })}
+        label={t("mail.ar_enabled")}
+      />
       <Row label={t("mail.subject")}>
-        <Txt value={v.subject} onCommit={(x) => onSave({ ...v, subject: x })} placeholder={t("mail.ar_subjectHint")} />
+        <Txt
+          value={v.subject}
+          onCommit={(x) => onSave({ ...v, subject: x })}
+          placeholder={t("mail.ar_subjectHint")}
+        />
       </Row>
       <Row label={t("mail.ar_text")}>
         <Txt value={v.body} multiline onCommit={(x) => onSave({ ...v, body: x })} />
@@ -911,22 +1073,36 @@ function AutoReplyBlock({
           <input
             type="datetime-local"
             value={v.from ? toLocalInput(v.from) : ""}
-            onChange={(e) => onSave({ ...v, from: e.target.value ? new Date(e.target.value).getTime() : 0 })}
+            onChange={(e) =>
+              onSave({ ...v, from: e.target.value ? new Date(e.target.value).getTime() : 0 })
+            }
           />
           <span>—</span>
           <input
             type="datetime-local"
             value={v.to ? toLocalInput(v.to) : ""}
-            onChange={(e) => onSave({ ...v, to: e.target.value ? new Date(e.target.value).getTime() : 0 })}
+            onChange={(e) =>
+              onSave({ ...v, to: e.target.value ? new Date(e.target.value).getTime() : 0 })
+            }
           />
         </div>
       </Row>
-      <Check checked={v.onlyKnown} onChange={(x) => onSave({ ...v, onlyKnown: x })} label={t("mail.ar_onlyKnown")} />
+      <Check
+        checked={v.onlyKnown}
+        onChange={(x) => onSave({ ...v, onlyKnown: x })}
+        label={t("mail.ar_onlyKnown")}
+      />
     </div>
   );
 }
 
-function TemplatesTab({ tpls, setTpls }: { tpls: MailTemplate[]; setTpls: (l: MailTemplate[]) => void }) {
+function TemplatesTab({
+  tpls,
+  setTpls,
+}: {
+  tpls: MailTemplate[];
+  setTpls: (l: MailTemplate[]) => void;
+}) {
   const { t } = useI18n();
   const [edit, setEdit] = useState<MailTemplate | null>(null);
   const save = async () => {
@@ -958,9 +1134,21 @@ function TemplatesTab({ tpls, setTpls }: { tpls: MailTemplate[]; setTpls: (l: Ma
       ))}
       {edit ? (
         <div className="mail-edit-box">
-          <input value={edit.name} placeholder={t("mail.templateName")} onChange={(e) => setEdit({ ...edit, name: e.target.value })} />
-          <input value={edit.subject} placeholder={t("mail.subject")} onChange={(e) => setEdit({ ...edit, subject: e.target.value })} />
-          <textarea rows={8} value={edit.body} onChange={(e) => setEdit({ ...edit, body: e.target.value })} />
+          <input
+            value={edit.name}
+            placeholder={t("mail.templateName")}
+            onChange={(e) => setEdit({ ...edit, name: e.target.value })}
+          />
+          <input
+            value={edit.subject}
+            placeholder={t("mail.subject")}
+            onChange={(e) => setEdit({ ...edit, subject: e.target.value })}
+          />
+          <textarea
+            rows={8}
+            value={edit.body}
+            onChange={(e) => setEdit({ ...edit, body: e.target.value })}
+          />
           <div className="mail-row-gap">
             <Btn variant="primary" onClick={() => void save()}>
               {t("mail.save")}
@@ -1011,7 +1199,11 @@ function SmartTab({
         </div>
       ))}
       <div className="mail-edit-box">
-        <input value={name} placeholder={t("mail.smart_name")} onChange={(e) => setName(e.target.value)} />
+        <input
+          value={name}
+          placeholder={t("mail.smart_name")}
+          onChange={(e) => setName(e.target.value)}
+        />
         <input
           value={query}
           placeholder="is:unread has:attachment from:ivan"
@@ -1029,7 +1221,10 @@ function SmartTab({
           icon={Plus}
           disabled={!name.trim() || !query.trim()}
           onClick={() => {
-            onSave([...s.smartFolders, { id: crypto.randomUUID(), name: name.trim(), query: query.trim(), account }]);
+            onSave([
+              ...s.smartFolders,
+              { id: crypto.randomUUID(), name: name.trim(), query: query.trim(), account },
+            ]);
             setName("");
             setQuery("");
           }}
@@ -1037,6 +1232,7 @@ function SmartTab({
           {t("mail.smart_add")}
         </Btn>
       </div>
+      <FolderManager accounts={accounts} />
       <div className="mail-set-sub">{t("mail.pinnedFolders")}</div>
       {s.pinned.length === 0 && <div className="mail-hint">{t("mail.pinnedEmpty")}</div>}
       {s.pinned.map((p) => (
@@ -1048,7 +1244,9 @@ function SmartTab({
           <button
             className="mail-x"
             aria-label={t("mail.remove")}
-            onClick={() => onSavePinned(s.pinned.filter((x) => !(x.account === p.account && x.path === p.path)))}
+            onClick={() =>
+              onSavePinned(s.pinned.filter((x) => !(x.account === p.account && x.path === p.path)))
+            }
           >
             <Trash2 size={15} />
           </button>
@@ -1081,7 +1279,9 @@ function BackupTab({ accounts, onDone }: { accounts: MailAccount[]; onDone: () =
 
   const exportJson = async () => {
     const b = await api.mailBackupExport();
-    const url = URL.createObjectURL(new Blob([JSON.stringify(b, null, 2)], { type: "application/json" }));
+    const url = URL.createObjectURL(
+      new Blob([JSON.stringify(b, null, 2)], { type: "application/json" }),
+    );
     const a = document.createElement("a");
     a.href = url;
     a.download = "moonapp-mail-settings.json";
@@ -1108,7 +1308,8 @@ function BackupTab({ accounts, onDone }: { accounts: MailAccount[]; onDone: () =
       for (const f of Array.from(files)) {
         const buf = new Uint8Array(await f.arrayBuffer());
         let bin = "";
-        for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode(...buf.subarray(i, i + 0x8000));
+        for (let i = 0; i < buf.length; i += 0x8000)
+          bin += String.fromCharCode(...buf.subarray(i, i + 0x8000));
         const r = await api.mailImportEml(account, folder, btoa(bin));
         n += r.imported;
       }
@@ -1130,7 +1331,13 @@ function BackupTab({ accounts, onDone }: { accounts: MailAccount[]; onDone: () =
         <Btn icon={Upload} onClick={() => fileJson.current?.click()}>
           {t("mail.bk_import")}
         </Btn>
-        <input ref={fileJson} type="file" accept=".json" hidden onChange={(e) => void importJson(e.target.files?.[0])} />
+        <input
+          ref={fileJson}
+          type="file"
+          accept=".json"
+          hidden
+          onChange={(e) => void importJson(e.target.files?.[0])}
+        />
       </div>
       <p className="mail-hint">{t("mail.bk_note")}</p>
       <div className="mail-set-sub">{t("mail.bk_messages")}</div>
@@ -1140,13 +1347,25 @@ function BackupTab({ accounts, onDone }: { accounts: MailAccount[]; onDone: () =
           onChange={(e) => setAccount(e.target.value)}
           options={accounts.map((a) => ({ value: a.id, label: a.email }))}
         />
-        <Select value={folder} onChange={(e) => setFolder(e.target.value)} options={folders.map((f) => ({ value: f.path, label: f.name }))} />
+        <Select
+          value={folder}
+          onChange={(e) => setFolder(e.target.value)}
+          options={folders.map((f) => ({ value: f.path, label: f.name }))}
+        />
       </div>
       <div className="mail-row-gap">
-        <Btn icon={busy ? Loader2 : Upload} disabled={busy || !folder} onClick={() => fileEml.current?.click()}>
+        <Btn
+          icon={busy ? Loader2 : Upload}
+          disabled={busy || !folder}
+          onClick={() => fileEml.current?.click()}
+        >
           {t("mail.bk_importEml")}
         </Btn>
-        <Btn icon={Download} disabled={!folder} onClick={() => void api.mailExportMbox(account, folder)}>
+        <Btn
+          icon={Download}
+          disabled={!folder}
+          onClick={() => void api.mailExportMbox(account, folder)}
+        >
           {t("mail.bk_exportMbox")}
         </Btn>
         <input
@@ -1159,6 +1378,90 @@ function BackupTab({ accounts, onDone }: { accounts: MailAccount[]; onDone: () =
         />
       </div>
       {msg && <div className="mail-dim">{msg}</div>}
+    </>
+  );
+}
+
+/** Создание, переименование и удаление папок на сервере. */
+function FolderManager({ accounts }: { accounts: MailAccount[] }) {
+  const { t } = useI18n();
+  const [account, setAccount] = useState(accounts[0]?.id ?? "");
+  const [list, setList] = useState<{ path: string; name: string; special: string }[]>([]);
+  const [name, setName] = useState("");
+  const [err, setErr] = useState("");
+
+  const load = useCallback(() => {
+    if (!account) return;
+    api
+      .mailFolders(account)
+      .then((l) => setList(l.filter((f) => !f.special)))
+      .catch(() => setList([]));
+  }, [account]);
+
+  useEffect(load, [load]);
+
+  const run = async (fn: () => Promise<unknown>) => {
+    setErr("");
+    try {
+      await fn();
+      load();
+    } catch (e) {
+      setErr((e as Error).message);
+    }
+  };
+
+  return (
+    <>
+      <div className="mail-set-sub">{t("mail.folderManager")}</div>
+      <Select
+        value={account}
+        onChange={(e) => setAccount(e.target.value)}
+        options={accounts.map((a) => ({ value: a.id, label: a.email }))}
+      />
+      {list.map((f) => (
+        <div key={f.path} className="mail-acc-row">
+          <div className="mail-acc-main">
+            <b>{f.name}</b>
+            <span>{f.path}</span>
+          </div>
+          <Btn
+            onClick={() => {
+              const n = window.prompt(t("mail.renameFolder"), f.path);
+              if (n && n !== f.path) void run(() => api.mailRenameFolder(account, f.path, n));
+            }}
+          >
+            {t("mail.rename")}
+          </Btn>
+          <button
+            className="mail-x"
+            aria-label={t("mail.remove")}
+            onClick={() => {
+              if (window.confirm(t("mail.deleteFolderConfirm", { name: f.name })))
+                void run(() => api.mailDeleteFolder(account, f.path));
+            }}
+          >
+            <Trash2 size={15} />
+          </button>
+        </div>
+      ))}
+      <div className="mail-row-gap">
+        <input
+          value={name}
+          placeholder={t("mail.newFolderName")}
+          onChange={(e) => setName(e.target.value)}
+        />
+        <Btn
+          icon={Plus}
+          disabled={!name.trim()}
+          onClick={() => {
+            void run(() => api.mailCreateFolder(account, name.trim()));
+            setName("");
+          }}
+        >
+          {t("mail.createFolder")}
+        </Btn>
+      </div>
+      {err && <div className="mail-err">{err}</div>}
     </>
   );
 }

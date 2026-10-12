@@ -89,6 +89,7 @@ export interface MailMessageFull extends MailMessage {
   unsubscribe: { https?: string; mailto?: string; oneClick: boolean } | null;
   ics: MailIcs | null;
   trackId: string;
+  replyTo: string;
 }
 
 export interface MailFolder {
@@ -120,7 +121,16 @@ export interface MailSignature {
 
 export interface MailRuleCondition {
   field: "from" | "to" | "cc" | "subject" | "body" | "hasAttachment" | "list" | "size";
-  op: "contains" | "notContains" | "equals" | "startsWith" | "endsWith" | "regex" | "gt" | "lt" | "is";
+  op:
+    | "contains"
+    | "notContains"
+    | "equals"
+    | "startsWith"
+    | "endsWith"
+    | "regex"
+    | "gt"
+    | "lt"
+    | "is";
   value: string;
 }
 
@@ -264,7 +274,8 @@ export interface MailListQuery {
 }
 
 export interface MailAiRequest {
-  action: "summarize" | "reply" | "compose" | "improve" | "subject" | "quick" | "tasks" | "translate";
+  action:
+    "summarize" | "reply" | "compose" | "improve" | "subject" | "quick" | "tasks" | "translate";
   id?: string;
   text?: string;
   instruction?: string;
@@ -327,6 +338,21 @@ export const mailApi = {
     req<MailFolder[]>("GET", `/mail/folders?account=${encodeURIComponent(account)}`),
   mailLabels: (account: string) =>
     req<MailLabel[]>("GET", `/mail/labels?account=${encodeURIComponent(account)}`),
+  mailSetLabel: (ids: string[], label: string, add: boolean) =>
+    req<{ ok: boolean }>("POST", "/mail/label", { ids, label, add }),
+  mailCreateFolder: (account: string, path: string) =>
+    req<{ ok: boolean }>("POST", "/mail/folders", { account, path }),
+  mailRenameFolder: (account: string, path: string, rename: string) =>
+    req<{ ok: boolean }>("POST", "/mail/folders", { account, path, rename }),
+  mailDeleteFolder: (account: string, path: string) =>
+    req<{ ok: boolean }>(
+      "DELETE",
+      `/mail/folders?account=${encodeURIComponent(account)}&path=${encodeURIComponent(path)}`,
+    ),
+  mailMarkAllRead: (account: string, folder: string) =>
+    req<{ count: number }>("POST", "/mail/mark-all-read", { account, folder }),
+  mailEmptyFolder: (account: string, special: "\\Trash" | "\\Junk") =>
+    req<{ count: number }>("POST", "/mail/empty", { account, special }),
   mailCounts: () => req<Record<string, number>>("GET", "/mail/counts"),
   mailMessages: (q: MailListQuery) => {
     const p = new URLSearchParams();
@@ -352,7 +378,8 @@ export const mailApi = {
   mailDelete: (ids: string[]) => req<{ ok: boolean }>("POST", "/mail/delete", { ids }),
   mailSnooze: (ids: string[], until: number) =>
     req<{ ok: boolean }>("POST", "/mail/snooze", { ids, until }),
-  mailReminder: (id: string, at: number) => req<{ ok: boolean }>("POST", "/mail/reminder", { id, at }),
+  mailReminder: (id: string, at: number) =>
+    req<{ ok: boolean }>("POST", "/mail/reminder", { id, at }),
   mailReminders: () => req<MailMessage[]>("GET", "/mail/reminders"),
   mailUnsubscribe: (id: string) =>
     req<{ done: boolean; method: "oneclick" | "mailto" | "link" | "none"; url?: string }>(
@@ -380,13 +407,15 @@ export const mailApi = {
     req<MailSignature>("POST", "/mail/signatures", s),
   mailRemoveSignature: (id: string) => req<{ ok: boolean }>("DELETE", `/mail/signatures/${id}`),
   mailRules: () => req<MailRule[]>("GET", "/mail/rules"),
-  mailSaveRule: (r: Partial<MailRule> & { name: string }) => req<MailRule>("POST", "/mail/rules", r),
+  mailSaveRule: (r: Partial<MailRule> & { name: string }) =>
+    req<MailRule>("POST", "/mail/rules", r),
   mailRemoveRule: (id: string) => req<{ ok: boolean }>("DELETE", `/mail/rules/${id}`),
   mailRunRules: (account?: string) =>
     req<{ matched: number }>("POST", "/mail/rules/run", { account }),
   mailSettings: () => req<MailSettings>("GET", "/mail/settings"),
-  mailSaveSettings: (p: Partial<{ [K in keyof MailSettings]: Partial<MailSettings[K]> }> | Record<string, unknown>) =>
-    req<MailSettings>("PUT", "/mail/settings", p),
+  mailSaveSettings: (
+    p: Partial<{ [K in keyof MailSettings]: Partial<MailSettings[K]> }> | Record<string, unknown>,
+  ) => req<MailSettings>("PUT", "/mail/settings", p),
   mailGenerateKey: (which: "mcp" | "tracking") =>
     req<{ key: string }>("POST", "/mail/settings/generate-key", { which }),
   mailMcpStatus: () => req<{ running: boolean; port: number }>("GET", "/mail/mcp/status"),
@@ -398,7 +427,11 @@ export const mailApi = {
   mailContact: (address: string) =>
     req<MailContactCard>("GET", `/mail/contact?address=${encodeURIComponent(address)}`),
   mailAi: (r: MailAiRequest) =>
-    req<{ text?: string; html?: string; list?: string[]; blocks?: string[] }>("POST", "/mail/ai", r),
+    req<{ text?: string; html?: string; list?: string[]; blocks?: string[] }>(
+      "POST",
+      "/mail/ai",
+      r,
+    ),
   mailTracking: () => req<MailTrackItem[]>("GET", "/mail/tracking"),
   mailTrackingWorker: () => req<{ code: string }>("GET", "/mail/tracking/worker"),
   mailBackupExport: () => req<Record<string, unknown>>("GET", "/mail/backup"),
@@ -419,7 +452,9 @@ export const mailApi = {
     }
   },
   mailAttachmentBlob: async (id: string, index: number): Promise<{ url: string; type: string }> => {
-    const { blob } = await blobFetch(`/mail/attachment/${encodeURIComponent(id)}/${index}?inline=1`);
+    const { blob } = await blobFetch(
+      `/mail/attachment/${encodeURIComponent(id)}/${index}?inline=1`,
+    );
     return { url: URL.createObjectURL(blob), type: blob.type };
   },
   mailDownloadAttachment: async (id: string, index: number): Promise<void> => {

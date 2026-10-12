@@ -6483,6 +6483,24 @@
     "unsubscribe": "Unsubscribe",
     "unsubscribeBanner": "This is a mailing list. You can unsubscribe in one click.",
     "unsubscribeFailed": "Could not unsubscribe",
-    "unsubscribed": "Unsubscribe request sent"
+    "unsubscribed": "Unsubscribe request sent",
+    "createFolder": "Create folder",
+    "deleteFolderConfirm": "Delete folder “{name}” together with its messages on the server?",
+    "emptyConfirm": "Permanently delete all messages in this folder?",
+    "emptySpam": "Empty spam",
+    "emptyTrash": "Empty trash",
+    "folderManager": "Server folders",
+    "markAllRead": "Mark all read",
+    "more": "More",
+    "newFolderName": "New folder name",
+    "notSpam": "Not spam — move to inbox",
+    "print": "Print",
+    "rename": "Rename",
+    "renameFolder": "New folder name (path)",
+    "restore": "Restore to inbox",
+    "ruleFromSender": "Create rule for this sender",
+    "qf_unread": "Unread",
+    "qf_starred": "Starred",
+    "qf_attach": "With attachments"
   }
 }

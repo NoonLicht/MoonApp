@@ -62,6 +62,12 @@ export const MailList = forwardRef<
     setQuery: (q: string) => void;
     unreadOnly: boolean;
     setUnreadOnly: (v: boolean) => void;
+    quick: string[];
+    toggleQuick: (k: string) => void;
+    canMarkAll: boolean;
+    onMarkAllRead: () => void;
+    emptyKind: "" | "trash" | "spam";
+    onEmpty: () => void;
     selected: string | null;
     sel: Set<string>;
     folders: MailFolder[];
@@ -121,6 +127,21 @@ export const MailList = forwardRef<
         </button>
       </div>
 
+      <div className="mail-quickfilters">
+        {(["unread", "starred", "attach"] as const).map((k) => {
+          const on = k === "unread" ? p.unreadOnly : p.quick.includes(k);
+          return (
+            <button
+              key={k}
+              className={`mail-chip ${on ? "is-on" : ""}`}
+              onClick={() => (k === "unread" ? p.setUnreadOnly(!p.unreadOnly) : p.toggleQuick(k))}
+            >
+              {t(`mail.qf_${k}`)}
+            </button>
+          );
+        })}
+      </div>
+
       {multi ? (
         <div className="mail-bulk">
           <button className="mail-ic" onClick={p.bulk.clear} title={t("mail.clearSelection")}>
@@ -170,6 +191,18 @@ export const MailList = forwardRef<
         <div className="mail-list-title">
           {p.title}
           {p.loading && <Loader2 size={13} className="spin" />}
+          <span className="mail-list-title-actions">
+            {p.canMarkAll && (
+              <button className="mail-link" onClick={p.onMarkAllRead}>
+                {t("mail.markAllRead")}
+              </button>
+            )}
+            {p.emptyKind && (
+              <button className="mail-link" onClick={p.onEmpty}>
+                {p.emptyKind === "trash" ? t("mail.emptyTrash") : t("mail.emptySpam")}
+              </button>
+            )}
+          </span>
         </div>
       )}
 
@@ -239,7 +272,8 @@ export const MailList = forwardRef<
               <div key={d.id} className="mail-item is-draft" onClick={() => p.onOpenDraft(d)}>
                 <div className="mail-item-top">
                   <b>
-                    <em className="mail-draft-tag">{t("mail.draft")}</em> {d.to || t("mail.noRecipient")}
+                    <em className="mail-draft-tag">{t("mail.draft")}</em>{" "}
+                    {d.to || t("mail.noRecipient")}
                   </b>
                   <span>{fmtDate(d.updated, p.lang)}</span>
                 </div>
@@ -258,10 +292,15 @@ export const MailList = forwardRef<
               </div>
             ))}
             {p.rows.length === 0 && p.drafts.length === 0 ? (
-              <EmptyHint icon={MailIcon} text={p.loading ? t("mail.loading") : t("mail.noMessages")} />
+              <EmptyHint
+                icon={MailIcon}
+                text={p.loading ? t("mail.loading") : t("mail.noMessages")}
+              />
             ) : (
               p.rows.map((m) => {
-                const who = p.isSent ? m.to.map(addrShort).join(", ") || "—" : m.fromName || m.fromAddr;
+                const who = p.isSent
+                  ? m.to.map(addrShort).join(", ") || "—"
+                  : m.fromName || m.fromAddr;
                 const checked = p.sel.has(m.id);
                 return (
                   <div

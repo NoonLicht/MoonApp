@@ -116,7 +116,10 @@ export function MailAccountForm({
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <Glass className="modal-panel mail-modal" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+      <Glass
+        className="modal-panel mail-modal"
+        onClick={(e: React.MouseEvent) => e.stopPropagation()}
+      >
         <div className="mail-modal-head">
           <div className="media-title">{t("mail.accounts")}</div>
           <button className="mail-x" onClick={onClose} aria-label="close">
@@ -135,7 +138,9 @@ export function MailAccountForm({
             </div>
             <button
               className={`mail-ic ${a.pinned ? "is-on" : ""}`}
-              onClick={() => void api.mailUpdateAccount(a.id, { pinned: !a.pinned }).then(onChanged)}
+              onClick={() =>
+                void api.mailUpdateAccount(a.id, { pinned: !a.pinned }).then(onChanged)
+              }
               aria-label={t("mail.pin")}
             >
               <Pin size={15} />
@@ -194,7 +199,10 @@ export function MailAccountForm({
         {advanced && (
           <div className="mail-grid2">
             <Field label="IMAP">
-              <input value={srv.imapHost} onChange={(e) => setSrv({ ...srv, imapHost: e.target.value })} />
+              <input
+                value={srv.imapHost}
+                onChange={(e) => setSrv({ ...srv, imapHost: e.target.value })}
+              />
             </Field>
             <Field label={t("mail.port")}>
               <input
@@ -203,7 +211,10 @@ export function MailAccountForm({
               />
             </Field>
             <Field label="SMTP">
-              <input value={srv.smtpHost} onChange={(e) => setSrv({ ...srv, smtpHost: e.target.value })} />
+              <input
+                value={srv.smtpHost}
+                onChange={(e) => setSrv({ ...srv, smtpHost: e.target.value })}
+              />
             </Field>
             <Field label={t("mail.port")}>
               <input
@@ -218,7 +229,11 @@ export function MailAccountForm({
         )}
         {err && <div className="mail-err">{err}</div>}
         <div className="mail-actions">
-          <Btn variant="primary" onClick={() => void connect()} disabled={busy || !email || !password}>
+          <Btn
+            variant="primary"
+            onClick={() => void connect()}
+            disabled={busy || !email || !password}
+          >
             {busy ? <Loader2 size={14} className="spin" /> : null}
             {busy ? t("mail.connecting") : t("mail.connect")}
           </Btn>

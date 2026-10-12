@@ -77,7 +77,11 @@ export function MailCompose({
     if (!acc) return [];
     return [
       { name: acc.name, address: acc.email, signature: acc.defaultSignature },
-      ...acc.aliases.map((a) => ({ name: a.name || acc.name, address: a.address, signature: a.signature })),
+      ...acc.aliases.map((a) => ({
+        name: a.name || acc.name,
+        address: a.address,
+        signature: a.signature,
+      })),
     ];
   }, [acc]);
   const [fromAddr, setFromAddr] = useState(init.from || acc?.email || "");
@@ -134,7 +138,9 @@ export function MailCompose({
     if (init.html !== undefined && init.draftId) return init.html;
     const sig = sigHtml(defaultSig(fromAddr));
     const sigBlock = sig ? `<div class="mail-sig" data-sig="1">-- <br>${sig}</div>` : "";
-    const lead = init.lead ? `<p>${init.lead.replace(/&/g, "&amp;").replace(/</g, "&lt;")}</p><p><br></p>` : "<p><br></p>";
+    const lead = init.lead
+      ? `<p>${init.lead.replace(/&/g, "&amp;").replace(/</g, "&lt;")}</p><p><br></p>`
+      : "<p><br></p>";
     return `${lead}${sigBlock}${init.quoted ?? ""}${init.html ?? ""}`;
   };
 
@@ -149,7 +155,10 @@ export function MailCompose({
       s?.removeAllRanges();
       s?.addRange(r);
     }
-    api.mailTemplates().then(setTemplates).catch(() => undefined);
+    api
+      .mailTemplates()
+      .then(setTemplates)
+      .catch(() => undefined);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -167,7 +176,14 @@ export function MailCompose({
   const bodyText = (): string => (markdown ? md : html2text(editor.current?.innerHTML ?? ""));
 
   const hasContent = (): boolean =>
-    !!(to.trim() || subject.trim() || bodyText().replace(/--\s*$/m, "").trim() || atts.length);
+    !!(
+      to.trim() ||
+      subject.trim() ||
+      bodyText()
+        .replace(/--\s*$/m, "")
+        .trim() ||
+      atts.length
+    );
 
   const persist = async (server: boolean) => {
     if (!account) return;
@@ -360,7 +376,10 @@ export function MailCompose({
       const immediate = !at;
       const r = await api.mailSend({
         account,
-        from: fromAddr && acc && fromAddr !== acc.email ? `"${(identities.find((i) => i.address === fromAddr)?.name || acc.name).replace(/"/g, "")}" <${fromAddr}>` : undefined,
+        from:
+          fromAddr && acc && fromAddr !== acc.email
+            ? `"${(identities.find((i) => i.address === fromAddr)?.name || acc.name).replace(/"/g, "")}" <${fromAddr}>`
+            : undefined,
         to: toList,
         cc: parseAddrs(cc),
         bcc: parseAddrs(bcc),
@@ -392,7 +411,8 @@ export function MailCompose({
       // из визуального режима берём простой текст как исходник Markdown
       const sigEl = editor.current?.querySelector(".mail-sig, .mail-quote");
       const clone = editor.current?.cloneNode(true) as HTMLElement | undefined;
-      if (clone && sigEl) clone.querySelectorAll(".mail-sig, .mail-quote").forEach((n) => n.remove());
+      if (clone && sigEl)
+        clone.querySelectorAll(".mail-sig, .mail-quote").forEach((n) => n.remove());
       setMd((clone?.innerText ?? "").trim());
     }
     setMarkdown((v) => !v);
@@ -400,7 +420,10 @@ export function MailCompose({
 
   return (
     <div className="modal-overlay" onClick={() => void close()}>
-      <Glass className="modal-panel mail-compose" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+      <Glass
+        className="modal-panel mail-compose"
+        onClick={(e: React.MouseEvent) => e.stopPropagation()}
+      >
         <div className="mail-modal-head">
           <div className="media-title">{t("mail.newMessage")}</div>
           <div className="mail-row-gap">
@@ -576,7 +599,11 @@ export function MailCompose({
               placeholder={t("mail.aiInstruction")}
             />
             <div className="mail-ai-btns">
-              <Btn icon={aiBusy ? Loader2 : Sparkles} disabled={aiBusy} onClick={() => void aiRun("compose")}>
+              <Btn
+                icon={aiBusy ? Loader2 : Sparkles}
+                disabled={aiBusy}
+                onClick={() => void aiRun("compose")}
+              >
                 {t("mail.aiWrite")}
               </Btn>
               {init.inReplyTo && (
@@ -626,7 +653,10 @@ export function MailCompose({
               <span key={i} className="mail-att">
                 <Paperclip size={12} />
                 {a.name}
-                <button onClick={() => setAtts((l) => l.filter((_, j) => j !== i))} aria-label="remove">
+                <button
+                  onClick={() => setAtts((l) => l.filter((_, j) => j !== i))}
+                  aria-label="remove"
+                >
                   <X size={12} />
                 </button>
               </span>
@@ -636,7 +666,11 @@ export function MailCompose({
 
         <div className="mail-opts">
           <label className="mail-check">
-            <input type="checkbox" checked={receipt} onChange={(e) => setReceipt(e.target.checked)} />
+            <input
+              type="checkbox"
+              checked={receipt}
+              onChange={(e) => setReceipt(e.target.checked)}
+            />
             {t("mail.readReceipt")}
           </label>
           {settings.tracking.enabled && (

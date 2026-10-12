@@ -8,11 +8,13 @@ const pending = new Map<string, Promise<string | null>>();
 function load(address: string): Promise<string | null> {
   const key = address.toLowerCase();
   if (cache.has(key)) return Promise.resolve(cache.get(key) ?? null);
-  const p = pending.get(key) ?? api.mailAvatar(key).then((u) => {
-    cache.set(key, u);
-    pending.delete(key);
-    return u;
-  });
+  const p =
+    pending.get(key) ??
+    api.mailAvatar(key).then((u) => {
+      cache.set(key, u);
+      pending.delete(key);
+      return u;
+    });
   pending.set(key, p);
   return p;
 }

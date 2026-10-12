@@ -114,11 +114,13 @@ describe("апскейл: зум, полоса сравнения, пакет и
     const pro = read("src/pages/upscale/parts/UpscaleProSettings.tsx");
     const css = read("src/styles/upscale.css");
     // У каждой настройки — маленькая кнопка «?», описание всплывает по наведению.
-    expect(pro).toContain("function HelpTip");
-    expect(pro).toContain("<HelpCircle");
-    expect(pro).toContain('className="up-info-btn"');
-    expect(pro).toContain('className="up-tip"');
-    expect(pro).toMatch(/hint \? <HelpTip text=\{hint\} \/> : null/);
+    // Подсказка вынесена в общий компонент (портал в #overlay-root, float-tip).
+    const tip = read("src/components/HelpTip.tsx");
+    expect(pro).toContain("<HelpTip");
+    expect(tip).toContain("export function HelpTip");
+    expect(tip).toContain('className = "up-info-btn"');
+    expect(tip).toContain('className="float-tip"');
+    expect(pro).toMatch(/<HelpTip text=\{hint\}>/);
     // Текста-описания под подписью больше нет: строки одинаковой высоты.
     const row = pro.slice(pro.indexOf("function Row("), pro.indexOf("export default function"));
     expect(row).not.toContain("muted-sm");

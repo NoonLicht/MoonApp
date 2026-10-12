@@ -8,6 +8,11 @@ import {
   Forward,
   Languages,
   ListChecks,
+  MoreHorizontal,
+  Printer,
+  ShieldCheck,
+  Tag,
+  Filter,
   Loader2,
   Mail as MailIcon,
   MailOpen,
@@ -26,7 +31,13 @@ import {
 import { Btn, EmptyHint } from "@/components/ui";
 import { useI18n } from "@/app/i18n";
 import { api } from "@/api/client";
-import type { MailContactCard, MailMessageFull, MailSettings } from "@/api/apiMail";
+import type {
+  MailContactCard,
+  MailFolder,
+  MailLabel,
+  MailMessageFull,
+  MailSettings,
+} from "@/api/apiMail";
 import { MailBody } from "@/pages/mail/parts/MailBody";
 import { MailAvatar } from "@/pages/mail/parts/MailAvatar";
 import { canPreview, MailAttachmentPreview } from "@/pages/mail/parts/MailAttachmentPreview";
@@ -52,6 +63,12 @@ interface Props {
   dark: boolean;
   lang: string;
   inTrash: boolean;
+  inSpam: boolean;
+  folders: MailFolder[];
+  labels: MailLabel[];
+  onMovePath: (path: string) => void;
+  onLabel: (label: string, add: boolean) => void;
+  onRuleFromSender: () => void;
   onReply: (all: boolean, text?: string) => void;
   onForward: () => void;
   onMove: (special: string) => void;
@@ -67,8 +84,13 @@ export function MailReader(p: Props) {
   const { t } = useI18n();
   const last = p.thread[p.thread.length - 1];
   const [snoozeMenu, setSnoozeMenu] = useState(false);
+  const [moreMenu, setMoreMenu] = useState(false);
   const [custom, setCustom] = useState(toLocalInput(tomorrow()));
-  const [summary, setSummary] = useState<{ kind: "summary" | "tasks"; text: string; list?: string[] } | null>(null);
+  const [summary, setSummary] = useState<{
+    kind: "summary" | "tasks";
+    text: string;
+    list?: string[];
+  } | null>(null);
   const [aiBusy, setAiBusy] = useState("");
   const [quick, setQuick] = useState<string[]>([]);
   const [card, setCard] = useState<MailContactCard | null>(null);
@@ -79,9 +101,15 @@ export function MailReader(p: Props) {
     setQuick([]);
     setCard(null);
     setSnoozeMenu(false);
+    setMoreMenu(false);
   }, [id]);
 
-  if (!last) return <section className="mail-read"><EmptyHint icon={MailIcon} text={t("mail.selectMessage")} /></section>;
+  if (!last)
+    return (
+      <section className="mail-read">
+        <EmptyHint icon={MailIcon} text={t("mail.selectMessage")} />
+      </section>
+    );
 
   const aiOn = p.settings?.ai.enabled !== false;
   const isSnoozed = last.snoozeUntil > 0;
@@ -143,7 +171,11 @@ export function MailReader(p: Props) {
             <Forward size={16} />
           </button>
           <span className="mail-fmt-sep" />
-          <button className="mail-ic" onClick={() => p.onMove("\\Archive")} title={t("mail.toArchive")}>
+          <button
+            className="mail-ic"
+            onClick={() => p.onMove("\\Archive")}
+            title={t("mail.toArchive")}
+          >
             <Archive size={16} />
           </button>
           <button className="mail-ic" onClick={() => p.onMove("\\Junk")} title={t("mail.toSpam")}>
@@ -157,7 +189,11 @@ export function MailReader(p: Props) {
             <Trash2 size={16} />
           </button>
           <span className="mail-fmt-sep" />
-          <button className={`mail-ic ${last.flagged ? "is-on" : ""}`} onClick={p.onStar} title={t("mail.star")}>
+          <button
+            className={`mail-ic ${last.flagged ? "is-on" : ""}`}
+            onClick={p.onStar}
+            title={t("mail.star")}
+          >
             <Star size={16} />
           </button>
           <button className="mail-ic" onClick={p.onUnread} title={t("mail.markUnread")}>
@@ -178,7 +214,11 @@ export function MailReader(p: Props) {
                 <button onClick={() => p.onSnooze(weekend())}>{t("mail.snoozeWeekend")}</button>
                 <button onClick={() => p.onSnooze(nextWeek())}>{t("mail.snoozeNextWeek")}</button>
                 <div className="mail-menu-custom">
-                  <input type="datetime-local" value={custom} onChange={(e) => setCustom(e.target.value)} />
+                  <input
+                    type="datetime-local"
+                    value={custom}
+                    onChange={(e) => setCustom(e.target.value)}
+                  />
                   <Btn
                     onClick={() => {
                       const ts = new Date(custom).getTime();
@@ -191,9 +231,81 @@ export function MailReader(p: Props) {
               </div>
             )}
           </div>
-          <button className="mail-ic" onClick={() => void api.mailDownloadEml(last.id)} title={t("mail.saveEml")}>
+          <button
+            className="mail-ic"
+            onClick={() => void api.mailDownloadEml(last.id)}
+            title={t("mail.saveEml")}
+          >
             <Download size={16} />
           </button>
+          <button className="mail-ic" onClick={() => window.print()} title={t("mail.print")}>
+            <Printer size={16} />
+          </button>
+          <div className="mail-pop-wrap">
+            <button
+              className={`mail-ic ${moreMenu ? "is-on" : ""}`}
+              onClick={() => setMoreMenu((v) => !v)}
+              title={t("mail.more")}
+            >
+              <MoreHorizontal size={16} />
+            </button>
+            {moreMenu && (
+              <div className="mail-menu mail-menu-wide">
+                {(p.inSpam || p.inTrash) && (
+                  <button
+                    onClick={() => {
+                      setMoreMenu(false);
+                      p.onMove("\\Inbox");
+                    }}
+                  >
+                    <ShieldCheck size={14} /> {p.inSpam ? t("mail.notSpam") : t("mail.restore")}
+                  </button>
+                )}
+                <button
+                  onClick={() => {
+                    setMoreMenu(false);
+                    p.onRuleFromSender();
+                  }}
+                >
+                  <Filter size={14} /> {t("mail.ruleFromSender")}
+                </button>
+                {p.folders.length > 0 && (
+                  <>
+                    <div className="mail-menu-title">{t("mail.moveTo")}</div>
+                    <div className="mail-menu-scroll">
+                      {p.folders.map((f) => (
+                        <button
+                          key={f.path}
+                          onClick={() => {
+                            setMoreMenu(false);
+                            p.onMovePath(f.path);
+                          }}
+                        >
+                          {f.name}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+                {p.labels.length > 0 && (
+                  <>
+                    <div className="mail-menu-title">{t("mail.labels")}</div>
+                    <div className="mail-menu-scroll">
+                      {p.labels.map((l) => {
+                        const on = last.labels.includes(l.label);
+                        return (
+                          <button key={l.label} onClick={() => p.onLabel(l.label, !on)}>
+                            <Tag size={14} /> {on ? "✓ " : ""}
+                            {l.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
           {aiOn && (
             <>
               <span className="mail-fmt-sep" />
@@ -203,10 +315,23 @@ export function MailReader(p: Props) {
                 title={t("mail.aiSummary")}
                 disabled={!!aiBusy}
               >
-                {aiBusy === "summarize" ? <Loader2 size={16} className="spin" /> : <Sparkles size={16} />}
+                {aiBusy === "summarize" ? (
+                  <Loader2 size={16} className="spin" />
+                ) : (
+                  <Sparkles size={16} />
+                )}
               </button>
-              <button className="mail-ic" onClick={() => void runAi("tasks")} title={t("mail.aiTasks")} disabled={!!aiBusy}>
-                {aiBusy === "tasks" ? <Loader2 size={16} className="spin" /> : <ListChecks size={16} />}
+              <button
+                className="mail-ic"
+                onClick={() => void runAi("tasks")}
+                title={t("mail.aiTasks")}
+                disabled={!!aiBusy}
+              >
+                {aiBusy === "tasks" ? (
+                  <Loader2 size={16} className="spin" />
+                ) : (
+                  <ListChecks size={16} />
+                )}
               </button>
             </>
           )}
@@ -215,7 +340,11 @@ export function MailReader(p: Props) {
           <div className="mail-quick">
             {quick.length === 0 ? (
               <button className="mail-chip" onClick={() => void runAi("quick")} disabled={!!aiBusy}>
-                {aiBusy === "quick" ? <Loader2 size={12} className="spin" /> : <Sparkles size={12} />}{" "}
+                {aiBusy === "quick" ? (
+                  <Loader2 size={12} className="spin" />
+                ) : (
+                  <Sparkles size={12} />
+                )}{" "}
                 {t("mail.aiQuick")}
               </button>
             ) : (
@@ -341,7 +470,12 @@ function MessageCard({
   return (
     <div className={`mail-msg ${open ? "is-open" : ""}`}>
       <div className="mail-msg-head" onClick={() => setOpen((v) => !v)}>
-        <MailAvatar address={m.fromAddr} name={m.fromName} size={34} mode={avatars === "off" ? "initials" : avatars} />
+        <MailAvatar
+          address={m.fromAddr}
+          name={m.fromName}
+          size={34}
+          mode={avatars === "off" ? "initials" : avatars}
+        />
         <div className="mail-msg-who">
           <b
             onClick={(e) => {
@@ -369,9 +503,17 @@ function MessageCard({
           <div>
             <b>{card.name || card.address}</b>
             <span>{card.address}</span>
-            <span>{t("mail.cardStats", { n: card.received, since: fmtDate(card.first, lang, true) })}</span>
+            <span>
+              {t("mail.cardStats", { n: card.received, since: fmtDate(card.first, lang, true) })}
+            </span>
             {card.recent.length > 0 && (
-              <span className="mail-dim">{card.recent.map((r) => r.subject).filter(Boolean).slice(0, 3).join(" · ")}</span>
+              <span className="mail-dim">
+                {card.recent
+                  .map((r) => r.subject)
+                  .filter(Boolean)
+                  .slice(0, 3)
+                  .join(" · ")}
+              </span>
             )}
           </div>
         </div>
@@ -444,7 +586,9 @@ function MessageCard({
                   key={a.index}
                   className="mail-att"
                   onClick={() =>
-                    canPreview(a) ? setPreview(a.index) : void api.mailDownloadAttachment(m.id, a.index)
+                    canPreview(a)
+                      ? setPreview(a.index)
+                      : void api.mailDownloadAttachment(m.id, a.index)
                   }
                   title={canPreview(a) ? t("mail.preview") : t("mail.download")}
                 >

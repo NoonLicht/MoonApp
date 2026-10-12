@@ -53,10 +53,7 @@ export function parseAddrs(s: string): string[] {
  * Очистка HTML письма. Скрипты, формы, <style>, фреймы убираются; удалённые
  * картинки и фоны блокируются (трекер-пиксели), пока пользователь не разрешит.
  */
-export function prepareHtml(
-  html: string,
-  allowRemote: boolean,
-): { html: string; blocked: number } {
+export function prepareHtml(html: string, allowRemote: boolean): { html: string; blocked: number } {
   const clean = DOMPurify.sanitize(html, {
     FORBID_TAGS: ["style", "link", "meta", "form", "iframe", "object", "embed", "base"],
     FORBID_ATTR: ["srcset"],

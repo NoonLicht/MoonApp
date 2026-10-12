@@ -6483,6 +6483,24 @@
     "unsubscribe": "Se désabonner",
     "unsubscribeBanner": "Ceci est une liste de diffusion. Vous pouvez vous désabonner en un clic.",
     "unsubscribeFailed": "Désabonnement impossible",
-    "unsubscribed": "Demande de désabonnement envoyée"
+    "unsubscribed": "Demande de désabonnement envoyée",
+    "createFolder": "Créer le dossier",
+    "deleteFolderConfirm": "Supprimer le dossier « {name} » avec ses messages sur le serveur ?",
+    "emptyConfirm": "Supprimer définitivement tous les messages de ce dossier ?",
+    "emptySpam": "Vider le spam",
+    "emptyTrash": "Vider la corbeille",
+    "folderManager": "Dossiers du serveur",
+    "markAllRead": "Tout marquer comme lu",
+    "more": "Plus",
+    "newFolderName": "Nom du nouveau dossier",
+    "notSpam": "Pas du spam — vers la boîte de réception",
+    "print": "Imprimer",
+    "rename": "Renommer",
+    "renameFolder": "Nouveau nom (chemin) du dossier",
+    "restore": "Restaurer dans la boîte de réception",
+    "ruleFromSender": "Créer une règle pour cet expéditeur",
+    "qf_unread": "Non lus",
+    "qf_starred": "Suivis",
+    "qf_attach": "Avec pièces jointes"
   }
 }

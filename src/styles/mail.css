@@ -1251,3 +1251,56 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ---- быстрые фильтры, меню «Ещё», действия заголовка ---- */
+.mail-quickfilters {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 0 10px 6px;
+}
+.mail-chip.is-on {
+  background: var(--amber-soft);
+  border-color: var(--amber);
+  color: var(--text-primary);
+}
+.mail-list-title-actions {
+  margin-left: auto;
+  display: inline-flex;
+  gap: 10px;
+}
+.mail-menu-wide {
+  min-width: 260px;
+}
+.mail-menu-title {
+  padding: 8px 10px 2px;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+.mail-menu-scroll {
+  max-height: 180px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.mail-menu button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+@media print {
+  .mail-side,
+  .mail-list,
+  .mail-toolbar,
+  .mail-read-head .mail-quick,
+  .dock-scroll,
+  .top-toolbar {
+    display: none !important;
+  }
+  .mail-shell {
+    display: block;
+  }
+}

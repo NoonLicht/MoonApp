@@ -31,7 +31,16 @@ const BOXES: { id: string; icon: React.ElementType; key: string }[] = [
   { id: "trash", icon: Trash2, key: "mail.trash" },
 ];
 
-const SPECIAL_BOX = new Set(["\\Inbox", "\\Sent", "\\Drafts", "\\Trash", "\\Junk", "\\Archive", "\\All", "\\Flagged"]);
+const SPECIAL_BOX = new Set([
+  "\\Inbox",
+  "\\Sent",
+  "\\Drafts",
+  "\\Trash",
+  "\\Junk",
+  "\\Archive",
+  "\\All",
+  "\\Flagged",
+]);
 
 /** Боковая панель: ящик, виртуальные папки, закреплённые, умные папки, метки и папки аккаунта. */
 export function MailSidebar({
@@ -150,7 +159,12 @@ export function MailSidebar({
           <div className="mail-side-title">{t("mail.pinnedFolders")}</div>
           <nav className="mail-boxes">
             {settings.pinned.map((p) => {
-              const v: MailView = { kind: "folder", account: p.account, path: p.path, name: p.name };
+              const v: MailView = {
+                kind: "folder",
+                account: p.account,
+                path: p.path,
+                name: p.name,
+              };
               return (
                 <button
                   key={p.account + p.path}
@@ -216,7 +230,9 @@ export function MailSidebar({
           <nav className="mail-boxes">
             {customFolders.map((f) => {
               const v: MailView = { kind: "folder", account, path: f.path, name: f.name };
-              const pinned = settings?.pinned.some((p) => p.account === account && p.path === f.path);
+              const pinned = settings?.pinned.some(
+                (p) => p.account === account && p.path === f.path,
+              );
               return (
                 <button
                   key={f.path}

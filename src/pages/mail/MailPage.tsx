@@ -75,6 +75,8 @@ export default function MailPage() {
   const [compose, setCompose] = useState<ComposeInit | null>(null);
   const [showAccounts, setShowAccounts] = useState(false);
   const [settingsTab, setSettingsTab] = useState<string | null>(null);
+  const [ruleSeed, setRuleSeed] = useState("");
+  const [quick, setQuick] = useState<string[]>([]);
   const [toast, setToast] = useState<Toast | null>(null);
   const [loaded, setLoaded] = useState(false);
   const toastTimer = useRef<number | null>(null);
@@ -91,9 +93,21 @@ export default function MailPage() {
     toastTimer.current = window.setTimeout(() => setToast(null), ms);
   }, []);
 
-  const own = useMemo(() => new Set(accounts.flatMap((a) => [a.email, ...a.aliases.map((x) => x.address)]).map((x) => x.toLowerCase())), [accounts]);
+  const own = useMemo(
+    () =>
+      new Set(
+        accounts
+          .flatMap((a) => [a.email, ...a.aliases.map((x) => x.address)])
+          .map((x) => x.toLowerCase()),
+      ),
+    [accounts],
+  );
 
   const threadsOn = settings?.appearance.threads !== false;
+
+  useEffect(() => {
+    if (ruleSeed) setSettingsTab("rules");
+  }, [ruleSeed]);
 
   /* ------------------------------ загрузка ------------------------------ */
 
@@ -134,9 +148,16 @@ export default function MailPage() {
 
   const buildQuery = useCallback(
     (offset: number): MailListQuery => {
+      const tokens = [
+        query.trim(),
+        quick.includes("starred") ? "is:starred" : "",
+        quick.includes("attach") ? "has:attachment" : "",
+      ]
+        .filter(Boolean)
+        .join(" ");
       const q: MailListQuery = {
         account: account === "all" ? undefined : account,
-        q: query.trim() || undefined,
+        q: tokens || undefined,
         unread: unreadOnly,
         threads: threadsOn,
         limit: PAGE,
@@ -152,11 +173,11 @@ export default function MailPage() {
       } else if (view.kind === "smart") {
         const f = settings?.smartFolders.find((x) => x.id === view.id);
         q.account = f?.account || undefined;
-        q.q = [f?.query, query.trim()].filter(Boolean).join(" ") || undefined;
+        q.q = [f?.query, tokens].filter(Boolean).join(" ") || undefined;
       }
       return q;
     },
-    [account, query, unreadOnly, threadsOn, view, settings],
+    [account, query, quick, unreadOnly, threadsOn, view, settings],
   );
 
   const loadList = useCallback(
@@ -176,7 +197,8 @@ export default function MailPage() {
         if (seq !== reqSeq.current) return;
         exhausted.current = r.length < PAGE;
         setRows(r);
-        if (view.kind === "box" && view.id === "drafts") setDrafts(await api.mailDrafts().catch(() => []));
+        if (view.kind === "box" && view.id === "drafts")
+          setDrafts(await api.mailDrafts().catch(() => []));
         else setDrafts([]);
       } catch {
         /* ignore */
@@ -206,7 +228,8 @@ export default function MailPage() {
       if (!exhausted.current) {
         const r = await api.mailMessages(buildQuery(rows.length));
         if (r.length < PAGE) exhausted.current = true;
-        if (r.length) setRows((cur) => [...cur, ...r.filter((x) => !cur.some((y) => y.id === x.id))]);
+        if (r.length)
+          setRows((cur) => [...cur, ...r.filter((x) => !cur.some((y) => y.id === x.id))]);
         if (r.length) return;
       }
       const tgt = olderTarget();
@@ -302,7 +325,9 @@ export default function MailPage() {
         const unseen = th.filter((x) => !x.seen).map((x) => x.id);
         if (unseen.length) {
           await api.mailFlags(unseen, { seen: true });
-          setRows((l) => l.map((x) => (x.thread === m.thread ? { ...x, seen: true, unreadCount: 0 } : x)));
+          setRows((l) =>
+            l.map((x) => (x.thread === m.thread ? { ...x, seen: true, unreadCount: 0 } : x)),
+          );
           void loadSide();
         }
       } catch {
@@ -351,6 +376,21 @@ export default function MailPage() {
   const cur = selected;
   const curRef = cur ? ref(cur) : "";
   const last = thread[thread.length - 1];
+  const lastAccount = last?.account;
+  const [readerFolders, setReaderFolders] = useState<MailFolder[]>([]);
+  const [readerLabels, setReaderLabels] = useState<MailLabel[]>([]);
+  // в режиме «Все ящики» папки и метки берём у ящика открытого письма
+  useEffect(() => {
+    if (account !== "all" || !lastAccount) return;
+    void api
+      .mailFolders(lastAccount)
+      .then(setReaderFolders)
+      .catch(() => undefined);
+    void api
+      .mailLabels(lastAccount)
+      .then(setReaderLabels)
+      .catch(() => undefined);
+  }, [account, lastAccount]);
   const inTrash = view.kind === "box" && view.id === "trash";
 
   const actMove = (special: string) => {
@@ -361,6 +401,58 @@ export default function MailPage() {
       () => {
         dropRows([cur]);
         if (next) void openMessage(next);
+      },
+    );
+  };
+
+  const actMovePath = (path: string) => {
+    if (!cur) return;
+    const next = nextAfter(cur);
+    void guard(
+      () => api.mailMove([curRef], { path }),
+      () => {
+        dropRows([cur]);
+        if (next) void openMessage(next);
+      },
+    );
+  };
+
+  const actLabel = (label: string, add: boolean) => {
+    if (!cur) return;
+    void guard(
+      () => api.mailSetLabel([curRef], label, add),
+      () =>
+        setThread((th) =>
+          th.map((x) => ({
+            ...x,
+            labels: add ? [...new Set([...x.labels, label])] : x.labels.filter((l) => l !== label),
+          })),
+        ),
+    );
+  };
+
+  const markAll = () => {
+    const tgt = olderTarget();
+    if (!tgt) return;
+    void guard(
+      () => api.mailMarkAllRead(tgt.account, tgt.folder),
+      () => {
+        setRows((l) => l.map((x) => ({ ...x, seen: true, unreadCount: 0 })));
+        void loadList(true);
+      },
+    );
+  };
+
+  const emptyBox = () => {
+    if (view.kind !== "box" || account === "all") return;
+    if (!window.confirm(t("mail.emptyConfirm"))) return;
+    const special = view.id === "trash" ? "\\Trash" : "\\Junk";
+    void guard(
+      () => api.mailEmptyFolder(account, special),
+      () => {
+        setRows([]);
+        setThread([]);
+        setSelected(null);
       },
     );
   };
@@ -394,7 +486,8 @@ export default function MailPage() {
       () => api.mailSnooze([curRef], until),
       () => {
         dropRows([cur]);
-        if (until > 0) showToast({ text: t("mail.snoozedUntil", { when: fmtDate(until, lang, true) }) });
+        if (until > 0)
+          showToast({ text: t("mail.snoozedUntil", { when: fmtDate(until, lang, true) }) });
         if (next) void openMessage(next);
       },
     );
@@ -416,7 +509,7 @@ export default function MailPage() {
     if (!m) return;
     // отвечаем отправителю; если это наше письмо — тем, кому писали
     const fromMe = own.has(m.fromAddr.toLowerCase());
-    const toList = fromMe ? m.to.map((a) => a.address) : [m.fromAddr];
+    const toList = fromMe ? m.to.map((a) => a.address) : [m.replyTo || m.fromAddr];
     const ccList = all
       ? [...m.to, ...m.cc]
           .map((a) => a.address)
@@ -440,7 +533,11 @@ export default function MailPage() {
   const startForward = () => {
     const m = thread[thread.length - 1];
     if (!m) return;
-    setCompose({ account: m.account, subject: prefixSubject("Fwd", m.subject), quoted: quoteOf(m) });
+    setCompose({
+      account: m.account,
+      subject: prefixSubject("Fwd", m.subject),
+      quoted: quoteOf(m),
+    });
   };
 
   const openDraft = (d: MailDraft) =>
@@ -459,7 +556,11 @@ export default function MailPage() {
     });
 
   const onQueued = (id: string, sendAt: number, immediate: boolean) => {
-    if (immediate) showToast({ text: t("mail.sending"), undoId: id }, Math.max(4000, (settings?.appearance.sendDelaySec ?? 8) * 1000));
+    if (immediate)
+      showToast(
+        { text: t("mail.sending"), undoId: id },
+        Math.max(4000, (settings?.appearance.sendDelaySec ?? 8) * 1000),
+      );
     else showToast({ text: t("mail.scheduledFor", { when: fmtDate(sendAt, lang, true) }) });
     void loadSide();
     void loadList(true);
@@ -528,31 +629,65 @@ export default function MailPage() {
   const selIds = () => [...sel].map(ref);
 
   const bulk: BulkActions = {
-    read: () => void guard(() => api.mailFlags(selIds(), { seen: true }), () => {
-      setRows((l) => l.map((x) => (sel.has(x.id) ? { ...x, seen: true } : x)));
-      setSel(new Set());
-    }),
-    unread: () => void guard(() => api.mailFlags(selIds(), { seen: false }), () => {
-      setRows((l) => l.map((x) => (sel.has(x.id) ? { ...x, seen: false } : x)));
-      setSel(new Set());
-    }),
+    read: () =>
+      void guard(
+        () => api.mailFlags(selIds(), { seen: true }),
+        () => {
+          setRows((l) => l.map((x) => (sel.has(x.id) ? { ...x, seen: true } : x)));
+          setSel(new Set());
+        },
+      ),
+    unread: () =>
+      void guard(
+        () => api.mailFlags(selIds(), { seen: false }),
+        () => {
+          setRows((l) => l.map((x) => (sel.has(x.id) ? { ...x, seen: false } : x)));
+          setSel(new Set());
+        },
+      ),
     star: () => {
       const all = rows.filter((x) => sel.has(x.id)).every((x) => x.flagged);
-      void guard(() => api.mailFlags(selIds(), { flagged: !all }), () => {
-        setRows((l) => l.map((x) => (sel.has(x.id) ? { ...x, flagged: !all } : x)));
-        setSel(new Set());
-      });
+      void guard(
+        () => api.mailFlags(selIds(), { flagged: !all }),
+        () => {
+          setRows((l) => l.map((x) => (sel.has(x.id) ? { ...x, flagged: !all } : x)));
+          setSel(new Set());
+        },
+      );
     },
-    archive: () => void guard(() => api.mailMove(selIds(), { special: "\\Archive" }), () => dropRows([...sel])),
-    spam: () => void guard(() => api.mailMove(selIds(), { special: "\\Junk" }), () => dropRows([...sel])),
-    trash: () => void guard(() => api.mailMove(selIds(), { special: "\\Trash" }), () => dropRows([...sel])),
-    snooze: () => void guard(() => api.mailSnooze(selIds(), laterToday()), () => dropRows([...sel])),
-    move: (path) => void guard(() => api.mailMove(selIds(), { path }), () => dropRows([...sel])),
+    archive: () =>
+      void guard(
+        () => api.mailMove(selIds(), { special: "\\Archive" }),
+        () => dropRows([...sel]),
+      ),
+    spam: () =>
+      void guard(
+        () => api.mailMove(selIds(), { special: "\\Junk" }),
+        () => dropRows([...sel]),
+      ),
+    trash: () =>
+      void guard(
+        () => api.mailMove(selIds(), { special: "\\Trash" }),
+        () => dropRows([...sel]),
+      ),
+    snooze: () =>
+      void guard(
+        () => api.mailSnooze(selIds(), laterToday()),
+        () => dropRows([...sel]),
+      ),
+    move: (path) =>
+      void guard(
+        () => api.mailMove(selIds(), { path }),
+        () => dropRows([...sel]),
+      ),
     selectAll: () => setSel(new Set(rows.map((x) => x.id))),
     clear: () => setSel(new Set()),
   };
 
-  const onDropIds = (ids: string[], dest: { special?: string; path?: string; account?: string }) => {
+  const onDropIds = (
+    ids: string[],
+    dest: { special?: string; path?: string; account?: string },
+  ) => {
     void guard(
       () => api.mailMove(ids, dest.path ? { path: dest.path } : { special: dest.special }),
       () => dropRows(ids),
@@ -627,7 +762,10 @@ export default function MailPage() {
 
   const pin = async (f: { account: string; path: string; name: string }) => {
     if (!settings) return;
-    const next = [...settings.pinned.filter((p) => !(p.account === f.account && p.path === f.path)), f];
+    const next = [
+      ...settings.pinned.filter((p) => !(p.account === f.account && p.path === f.path)),
+      f,
+    ];
     setSettings(await api.mailSaveSettings({ pinned: next }));
   };
 
@@ -661,7 +799,8 @@ export default function MailPage() {
 
   // тема письма: «авто» следует теме приложения
   const lightApp =
-    typeof document !== "undefined" && !!document.querySelector(".app-shell.theme-light, .app-shell[class*='theme-light']");
+    typeof document !== "undefined" &&
+    !!document.querySelector(".app-shell.theme-light, .app-shell[class*='theme-light']");
   const bodyTheme = settings?.appearance.bodyTheme ?? "auto";
   const dark = bodyTheme === "dark" || (bodyTheme === "auto" && !lightApp);
 
@@ -694,7 +833,11 @@ export default function MailPage() {
           <MailSettingsDialog
             accounts={accounts}
             initialTab={settingsTab}
-            onClose={() => setSettingsTab(null)}
+            ruleSeed={ruleSeed}
+            onClose={() => {
+              setSettingsTab(null);
+              setRuleSeed("");
+            }}
             onChanged={() => void loadSettings()}
           />
         )}
@@ -713,7 +856,8 @@ export default function MailPage() {
           account={account}
           setAccount={(a) => {
             setAccount(a);
-            if (view.kind === "folder" || view.kind === "label") changeView({ kind: "box", id: "inbox" });
+            if (view.kind === "folder" || view.kind === "label")
+              changeView({ kind: "box", id: "inbox" });
           }}
           view={view}
           setView={changeView}
@@ -744,6 +888,18 @@ export default function MailPage() {
           setQuery={setQuery}
           unreadOnly={unreadOnly}
           setUnreadOnly={setUnreadOnly}
+          quick={quick}
+          toggleQuick={(k) =>
+            setQuick((l) => (l.includes(k) ? l.filter((x) => x !== k) : [...l, k]))
+          }
+          canMarkAll={view.kind === "folder" || (view.kind === "box" && !!olderTarget())}
+          onMarkAllRead={markAll}
+          emptyKind={
+            view.kind === "box" && account !== "all" && (view.id === "trash" || view.id === "spam")
+              ? view.id
+              : ""
+          }
+          onEmpty={emptyBox}
           selected={selected}
           sel={sel}
           folders={account === "all" ? [] : folders}
@@ -773,6 +929,12 @@ export default function MailPage() {
           dark={dark}
           lang={lang}
           inTrash={inTrash}
+          inSpam={view.kind === "box" && view.id === "spam"}
+          folders={(account === "all" ? readerFolders : folders).filter((f) => !f.special)}
+          labels={account === "all" ? readerLabels : labels}
+          onMovePath={actMovePath}
+          onLabel={actLabel}
+          onRuleFromSender={() => setRuleSeed(last ? last.fromAddr : "")}
           onReply={startReply}
           onForward={startForward}
           onMove={actMove}
@@ -787,7 +949,9 @@ export default function MailPage() {
       {toast && (
         <div className="mail-toast">
           <span>{toast.text}</span>
-          {toast.undoId && <button onClick={() => void undo(toast.undoId as string)}>{t("mail.undo")}</button>}
+          {toast.undoId && (
+            <button onClick={() => void undo(toast.undoId as string)}>{t("mail.undo")}</button>
+          )}
         </div>
       )}
 
@@ -823,7 +987,11 @@ export default function MailPage() {
         <MailSettingsDialog
           accounts={accounts}
           initialTab={settingsTab}
-          onClose={() => setSettingsTab(null)}
+          ruleSeed={ruleSeed}
+          onClose={() => {
+            setSettingsTab(null);
+            setRuleSeed("");
+          }}
           onChanged={() => {
             void loadSettings();
             void loadAccounts();

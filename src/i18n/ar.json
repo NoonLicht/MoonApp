@@ -6483,6 +6483,24 @@
     "unsubscribe": "إلغاء الاشتراك",
     "unsubscribeBanner": "هذه قائمة بريدية. يمكنك إلغاء الاشتراك بنقرة واحدة.",
     "unsubscribeFailed": "تعذّر إلغاء الاشتراك",
-    "unsubscribed": "تم إرسال طلب إلغاء الاشتراك"
+    "unsubscribed": "تم إرسال طلب إلغاء الاشتراك",
+    "createFolder": "إنشاء مجلد",
+    "deleteFolderConfirm": "حذف المجلد «{name}» مع رسائله على الخادم؟",
+    "emptyConfirm": "حذف جميع رسائل هذا المجلد نهائيًا؟",
+    "emptySpam": "تفريغ البريد غير المرغوب",
+    "emptyTrash": "تفريغ المهملات",
+    "folderManager": "مجلدات الخادم",
+    "markAllRead": "تعليم الكل كمقروء",
+    "more": "المزيد",
+    "newFolderName": "اسم المجلد الجديد",
+    "notSpam": "ليست غير مرغوبة — إلى الوارد",
+    "print": "طباعة",
+    "rename": "إعادة تسمية",
+    "renameFolder": "الاسم (المسار) الجديد للمجلد",
+    "restore": "استعادة إلى الوارد",
+    "ruleFromSender": "إنشاء قاعدة لهذا المرسل",
+    "qf_unread": "غير المقروءة",
+    "qf_starred": "المميّزة",
+    "qf_attach": "بمرفقات"
   }
 }
