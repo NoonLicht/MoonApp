@@ -110,6 +110,7 @@ export default function MonitorPage() {
   const [live, setLive] = useState(true);
   const [interval_, setInterval_] = useState<number>(500);
   const [view, setView] = useState<CpuView>("threads");
+  const [tab, setTab] = useState<"live" | "disk" | "activity" | "alerts">("live");
   const [data, setData] = useState<MonitorSnapshot | null>(null);
   const [tick, setTick] = useState(0); // перерисовка при обновлении истории
   const [pollNonce, setPollNonce] = useState(0); // немедленный опрос после действий с LHM
@@ -221,22 +222,48 @@ export default function MonitorPage() {
 
   return (
     <div className="page">
+      <div className="page-tabs">
+        {(["live", "disk", "activity", "alerts"] as const).map((k) => (
+          <button
+            key={k}
+            type="button"
+            className={`page-tab${tab === k ? " active" : ""}`}
+            onClick={() => setTab(k)}
+          >
+            {t(`monitor.tabs.${k}`)}
+          </button>
+        ))}
+      </div>
       <div className="monitor-scroll">
-        <MonitorBody
-          data={data}
-          t={t}
-          points={points}
-          tick={tick}
-          view={view}
-          onLhmChanged={() => setPollNonce((x) => x + 1)}
-        />
-        <DiskScanPanel />
-        <MonitorAlertsPanel />
-        <FileInsightsPanel />
-        <FolderVersionsPanel />
-        <AppTimeTrackerPanel />
-        <AttentionMapPanel />
-        <DiagnosticsPanel />
+        {tab === "live" && (
+          <MonitorBody
+            data={data}
+            t={t}
+            points={points}
+            tick={tick}
+            view={view}
+            onLhmChanged={() => setPollNonce((x) => x + 1)}
+          />
+        )}
+        {tab === "disk" && (
+          <>
+            <DiskScanPanel />
+            <FileInsightsPanel />
+            <FolderVersionsPanel />
+          </>
+        )}
+        {tab === "activity" && (
+          <>
+            <AppTimeTrackerPanel />
+            <AttentionMapPanel />
+          </>
+        )}
+        {tab === "alerts" && (
+          <>
+            <MonitorAlertsPanel />
+            <DiagnosticsPanel />
+          </>
+        )}
       </div>
     </div>
   );

@@ -29,6 +29,8 @@ import ProxyPanel from "@/pages/bypass/parts/ProxyPanel";
 import TaskManagerPanel from "@/components/TaskManagerPanel";
 import WelcomeModal from "@/components/WelcomeModal";
 import SystemStatsBar from "@/components/SystemStatsBar";
+import GhostToggle from "@/components/GhostToggle";
+import TimeMachineToggle from "@/components/TimeMachineToggle";
 import ModelToggle, { ModelPanel } from "@/components/ModelToggle";
 import { api } from "@/api/client";
 import { PAGES } from "@/app/navigation";
@@ -376,6 +378,8 @@ function Shell({
               </button>
               <ModelToggle onClick={() => setModelPanelVisible((v) => !v)} />
               <SystemStatsBar />
+              <GhostToggle />
+              <TimeMachineToggle />
             </div>
             <div className="tb-center">
               <div className="tb-title">

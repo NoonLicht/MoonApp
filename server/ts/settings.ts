@@ -274,6 +274,7 @@ const DEFAULTS: SettingsTree = {
     refreshInterval: "2s", // (устарело) 1s | 2s | 5s
     refreshMs: 500, // интервал опроса UI в миллисекундах (100–1000)
     lhmAutoStart: true, // автозапуск LibreHardwareMonitor для сенсоров
+    alertsEnabled: false, // история показателей и алерты (перегрев, место, SMART)
   },
 
   // --- Скриншоты / запись экрана ---

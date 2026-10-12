@@ -1,5 +1,7 @@
 import express from "express";
 import * as monitor from "../monitor";
+import * as monitorAlerts from "../monitorAlerts";
+import settings from "../settings";
 import logger from "../logger";
 import { clearProblems, listProblems, reportProblem, summarize } from "../problemLog";
 
@@ -73,6 +75,24 @@ router.post("/monitor/lhm/stop", (req, res) => {
 
 // Реальная телеметрия системы (server/ts/monitor.ts → server/monitor.js).
 // Поля cpuTemp/gpuTemp/ram/vram/fan1/fan2 оставлены для обратной совместимости.
+// История показателей и алерты (сбор включается настройкой monitor.alertsEnabled).
+router.get("/monitor/history", (req, res) => {
+  const minutes = Math.min(1440, Math.max(1, Number(req.query.minutes) || 60));
+  res.json(monitorAlerts.getHistory(minutes * 60_000));
+});
+
+router.get("/monitor/hourly", (_req, res) => {
+  res.json(monitorAlerts.getHourly());
+});
+
+router.get("/monitor/alerts", (req, res) => {
+  res.json({
+    enabled: settings.get("monitor").alertsEnabled === true,
+    alerts: monitorAlerts.getAlerts(),
+    smart: monitorAlerts.getSmart(),
+  });
+});
+
 router.get("/monitor", async (req, res) => {
   try {
     const s = await monitor.getSnapshot();

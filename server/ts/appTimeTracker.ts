@@ -10,6 +10,7 @@ import fs from "fs";
 import readline from "readline";
 import config from "./config";
 import logger from "./logger";
+import path from "path";
 import { startLinux, stopLinux, statusLinux } from "./appTimeTrackerLinux";
 
 const { FILES } = config;
@@ -58,12 +59,62 @@ function todayKey(): string {
 // Игнорируем сам трекер/оболочку/системные "приложения" без экрана.
 const IGNORE = new Set(["", "explorer", "SearchHost", "ShellExperienceHost", "TextInputHost"]);
 
+// --- Почасовая разбивка для «Карты внимания»: дата (локальная) → час → процесс → секунды.
+// Накапливается в памяти и сбрасывается на диск раз в минуту, чтобы не переписывать файл каждые 5 секунд.
+type HourStats = Record<string, Record<string, Record<string, number>>>;
+const HOURS_KEEP_DAYS = 60;
+const hoursFile = (): string => path.join(config.DIRS.storage, "app-time-hours.json");
+let hours: HourStats | null = null;
+let hoursDirty = 0;
+
+function loadHours(): HourStats {
+  if (hours) return hours;
+  try {
+    hours = JSON.parse(fs.readFileSync(hoursFile(), "utf8")) as HourStats;
+  } catch {
+    hours = {};
+  }
+  return hours;
+}
+
+export function flushHours(): void {
+  if (!hours || !hoursDirty) return;
+  const keys = Object.keys(hours).sort();
+  for (const k of keys.slice(0, Math.max(0, keys.length - HOURS_KEEP_DAYS))) delete hours[k];
+  try {
+    fs.writeFileSync(hoursFile(), JSON.stringify(hours), "utf8");
+    hoursDirty = 0;
+  } catch (e) {
+    logger.warn("appTimeTracker.hours_write_failed", { error: (e as Error).message });
+  }
+}
+
+function recordHour(appName: string, at = new Date()): void {
+  const h = loadHours();
+  const p = (n: number) => String(n).padStart(2, "0");
+  const day = `${at.getFullYear()}-${p(at.getMonth() + 1)}-${p(at.getDate())}`;
+  const bucket = ((h[day] ??= {})[String(at.getHours())] ??= {});
+  bucket[appName] = (bucket[appName] || 0) + SAMPLE_SECONDS;
+  // сброс примерно раз в минуту (12 замеров по 5 секунд)
+  if (++hoursDirty >= 12) flushHours();
+}
+
+/** Почасовая статистика за последние `days` дней (локальные даты). */
+export function hourStats(days = 7): HourStats {
+  const h = loadHours();
+  const keys = Object.keys(h).sort().slice(-Math.max(1, days));
+  const out: HourStats = {};
+  for (const k of keys) out[k] = h[k];
+  return out;
+}
+
 let child: ChildProcessWithoutNullStreams | null = null;
 let tracking = false;
 
 function recordSample(appName: string): void {
   const name = appName.trim();
   if (IGNORE.has(name)) return;
+  recordHour(name);
   const all = readAll();
   const day = todayKey();
   if (!all[day]) all[day] = {};
@@ -104,6 +155,7 @@ export function stop(): { ok: boolean } {
     child = null;
   }
   tracking = false;
+  flushHours();
   logger.info("appTimeTracker.stop");
   return { ok: true };
 }
@@ -121,6 +173,16 @@ export function todayStats(): { date: string; apps: { name: string; seconds: num
     .map(([name, seconds]) => ({ name, seconds }))
     .sort((a, b) => b.seconds - a.seconds);
   return { date: day, apps };
+}
+
+/** Суммарное время по процессам за последние `days` дней (всё хранимое, если days не задан). */
+export function totalsByApp(days?: number): Record<string, number> {
+  const all = readAll();
+  let dates = Object.keys(all).sort();
+  if (days) dates = dates.slice(-Math.max(1, days));
+  const out: Record<string, number> = {};
+  for (const d of dates) for (const [name, sec] of Object.entries(all[d])) out[name] = (out[name] || 0) + sec;
+  return out;
 }
 
 export function history(days: number): { date: string; totalSeconds: number }[] {

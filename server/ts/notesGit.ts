@@ -165,6 +165,17 @@ async function stageAllAndCommit(message: string): Promise<{ committed: boolean;
   return { committed: true, oid };
 }
 
+/**
+ * Локальный снимок без сети: коммитит изменения vault, если они есть. Нужен
+ * «Машине времени» — история появляется и у тех, кто не настраивал удалённый репозиторий.
+ */
+export async function snapshot(
+  message = "MoonApp: снимок для Машины времени",
+): Promise<{ committed: boolean; oid?: string }> {
+  await ensureRepo();
+  return stageAllAndCommit(message);
+}
+
 export interface SyncResult {
   ok: boolean;
   error?: string;
@@ -336,7 +347,7 @@ export async function log(limit = 50): Promise<LogEntry[]> {
 }
 
 /** Множество файлов (blob-путей) в дереве коммита. */
-async function listTreeFiles(oid: string): Promise<Set<string>> {
+export async function listTreeFiles(oid: string): Promise<Set<string>> {
   const files = new Set<string>();
   await git.walk({
     fs,
@@ -353,7 +364,7 @@ async function listTreeFiles(oid: string): Promise<Set<string>> {
 
 /** Текст файла в указанном коммите, либо null, если файла там нет или он
  * не текстовый (не пытаемся диффать бинарники построчно). */
-async function readTextAt(oid: string, filepath: string): Promise<string | null> {
+export async function readTextAt(oid: string, filepath: string): Promise<string | null> {
   try {
     const { blob } = await git.readBlob({ fs, dir: REPO_DIR, oid, filepath });
     const buf = Buffer.from(blob);
