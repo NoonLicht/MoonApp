@@ -341,7 +341,9 @@
     "winOpacity": "Transparencia de la ventana",
     "winOpacityHint": "Por debajo del 100 % se ve el escritorio a través de la ventana (acrílico de Windows 11). No actúa con «Fondo opaco»",
     "lg_glow": "Brillo de fondo",
-    "lg_glowHint": "Intensidad de los destellos de color tras el cristal: sin ellos no hay nada que refractar"
+    "lg_glowHint": "Intensidad de los destellos de color tras el cristal: sin ellos no hay nada que refractar",
+    "animSpeed": "Velocidad de animaciones",
+    "animSpeedHint": "Aparición de páginas, ventanas y paneles. 100 % es normal; más es más rápido. «Reducir movimiento» las desactiva"
   },
   "chat": {
     "chatProvider": "Proveedor por defecto",

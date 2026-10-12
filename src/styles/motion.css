@@ -1,0 +1,108 @@
+/* ===========================================================================
+   Анимации появления: страницы, окна, всплывающие панели, «Контекст».
+   Скорость — одна переменная --anim-speed (1 = обычная, 2 = вдвое быстрее,
+   0.5 = вдвое медленнее); задаётся в Настройки → Внешний вид → Скорость анимаций.
+   «Уменьшить анимации» гасит всё это правилом .reduce-motion (theme.css).
+   =========================================================================== */
+html {
+  --anim-speed: 1;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-spring: cubic-bezier(0.34, 1.4, 0.5, 1);
+}
+
+/* ---- Страница: мягкий выезд снизу + каскад блоков ---- */
+@keyframes mo-page-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.992);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes mo-rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.page-host.is-active {
+  animation: mo-page-in calc(340ms / var(--anim-speed)) var(--ease-out) both;
+}
+.page-host.is-active .page > * {
+  animation: mo-rise calc(420ms / var(--anim-speed)) var(--ease-out) backwards;
+}
+.page-host.is-active .page > *:nth-child(2) {
+  animation-delay: calc(40ms / var(--anim-speed));
+}
+.page-host.is-active .page > *:nth-child(3) {
+  animation-delay: calc(80ms / var(--anim-speed));
+}
+.page-host.is-active .page > *:nth-child(4) {
+  animation-delay: calc(120ms / var(--anim-speed));
+}
+.page-host.is-active .page > *:nth-child(n + 5) {
+  animation-delay: calc(160ms / var(--anim-speed));
+}
+
+/* ---- Окна: фон проявляется, карточка вырастает с пружинкой ---- */
+@keyframes mo-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.proxy-panel-overlay {
+  animation-duration: calc(220ms / var(--anim-speed));
+}
+.proxy-panel {
+  animation: mo-card-in calc(340ms / var(--anim-speed)) var(--ease-spring) both;
+}
+
+/* ---- Всплывающие панели верхней строки ---- */
+.tb-pop {
+  animation-duration: calc(200ms / var(--anim-speed));
+  animation-timing-function: var(--ease-out);
+}
+
+/* ---- «Контекст»: выезжает справа ---- */
+@keyframes mo-dock-in {
+  from {
+    opacity: 0;
+    transform: translateX(28px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.ghost-dock {
+  animation: mo-dock-in calc(320ms / var(--anim-speed)) var(--ease-out) both;
+}
+
+/* ---- Мелочи: плавные наведения у кнопок и карточек ---- */
+.glass,
+.card,
+.app-card,
+.dock-btn {
+  transition-duration: calc(180ms / var(--anim-speed));
+  transition-timing-function: var(--ease-out);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-host.is-active,
+  .page-host.is-active .page > *,
+  .proxy-panel,
+  .ghost-dock {
+    animation: none;
+  }
+}

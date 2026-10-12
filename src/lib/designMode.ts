@@ -133,3 +133,10 @@ export function watchIdle(): () => void {
   sync();
   return () => document.removeEventListener("visibilitychange", sync);
 }
+
+/** Скорость анимаций появления, %: 100 — обычная, 200 — вдвое быстрее, 50 — вдвое медленнее. */
+export function applyAnimSpeed(pct: unknown): void {
+  const n = Number(pct);
+  const v = Math.min(250, Math.max(40, Number.isFinite(n) && n > 0 ? n : 100));
+  document.documentElement.style.setProperty("--anim-speed", String(v / 100));
+}

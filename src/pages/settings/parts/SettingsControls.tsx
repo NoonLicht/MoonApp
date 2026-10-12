@@ -62,6 +62,7 @@ export function applyLiveSettings(settings: unknown) {
     "appearance.lgRadius",
     "appearance.lgGlow",
     "appearance.windowOpacity",
+    "appearance.animSpeed",
     "appearance.opaqueBackground",
     "appearance.cursorHighlight",
     "appearance.highContrast",

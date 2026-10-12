@@ -604,6 +604,19 @@ export default function SettingsPage() {
               options={["85", "100", "115", "130", "150"].map((v) => ({ value: v, label: `${v}%` }))}
             />
           </Row>
+          <Row label={t("settings.animSpeed")} hint={t("settings.animSpeedHint")}>
+            <div className="lg-slider">
+              <input
+                type="range"
+                min={40}
+                max={250}
+                step={10}
+                value={Number(ap.animSpeed ?? 100)}
+                onChange={(e) => change("appearance.animSpeed", Number(e.target.value))}
+              />
+              <span className="lg-val">{Number(ap.animSpeed ?? 100)}%</span>
+            </div>
+          </Row>
           <Row label={t("settings.winOpacity")} hint={t("settings.winOpacityHint")}>
             <div className="lg-slider">
               <input

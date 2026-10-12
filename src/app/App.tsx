@@ -91,11 +91,13 @@ import {
   applyDesign,
   applyGlass,
   applyLiquid,
+  applyAnimSpeed,
   applyWindowOpacity,
   readLiquid,
   watchIdle,
 } from "@/lib/designMode";
 import "@/styles/liquidglass.css";
+import "@/styles/motion.css";
 
 function applyUiScale(v: unknown): void {
   const n = Math.min(150, Math.max(85, Number(v) || 100));
@@ -636,6 +638,7 @@ export default function App() {
         applyDesign();
         applyGlass(sc?.appearance?.glass);
         applyLiquid(readLiquid(sc?.appearance));
+        applyAnimSpeed(sc?.appearance?.animSpeed);
         setOpaqueBg(!!sc?.appearance?.opaqueBackground);
         setWinOpacity(Number(sc?.appearance?.windowOpacity ?? 100));
         // Производительность: keep-alive страниц.
@@ -673,6 +676,7 @@ export default function App() {
       else if (path === "appearance.glass") applyGlass(value);
       else if (path === "appearance.opaqueBackground") setOpaqueBg(!!value);
       else if (path === "appearance.windowOpacity") setWinOpacity(Number(value));
+      else if (path === "appearance.animSpeed") applyAnimSpeed(value);
     };
     window.addEventListener("app:theme", onTheme);
     window.addEventListener("app:setting", onSetting);

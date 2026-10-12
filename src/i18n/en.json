@@ -341,7 +341,9 @@
     "winOpacity": "Window transparency",
     "winOpacityHint": "Below 100% the desktop shows through the window (Windows 11 acrylic). Ignored while “Opaque background” is on",
     "lg_glow": "Background glow",
-    "lg_glowHint": "Brightness of the colour glows behind the glass: without it there is nothing to refract"
+    "lg_glowHint": "Brightness of the colour glows behind the glass: without it there is nothing to refract",
+    "animSpeed": "Animation speed",
+    "animSpeedHint": "How pages, windows and panels appear. 100% is normal, higher is faster, lower is slower. “Reduce motion” turns them off entirely"
   },
   "chat": {
     "chatProvider": "Default provider",
