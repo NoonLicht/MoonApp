@@ -17,6 +17,7 @@ import { markdown } from "@codemirror/lang-markdown";
 import { languages } from "@codemirror/language-data";
 import { GFM } from "@lezer/markdown";
 import { autoRenumberLists } from "@/pages/myspace/parts/listRenumber";
+import { provenanceExtension } from "@/pages/myspace/parts/provenanceMarks";
 import { listInputHandler, shiftTabCommand, tabCommand } from "@/pages/myspace/parts/listCommands";
 import { fontCss, getNoteView, subscribeNoteView, zoomNote } from "@/pages/myspace/parts/noteView";
 import {
@@ -42,6 +43,8 @@ interface Props {
   /** Ctrl+V со скриншотом/картинкой в буфере: грузит blob и отдаёт markdown
    * ("![alt](url)") для вставки прямо в позицию курсора. null — не картинка/ошибка. */
   onPasteImage?: (blob: Blob) => Promise<string | null>;
+  /** Вставлен текст из буфера (≥ 40 символов): нужен «Автору мысли» для пометки чужого. */
+  onPasteText?: (text: string) => void;
   /** Кнопка «распознать» на картинке. `replace` подменяет её markdown в документе. */
   onOcrImage?: (req: OcrImageRequest) => void;
   /** Шестерёнка на картинке: настройки распознавания. */
@@ -1081,6 +1084,7 @@ export default function CodeMirrorLiveEditor({
   onTagClick,
   onToggleCheckbox,
   onPasteImage,
+  onPasteText,
   onOcrImage,
   onOcrSettings,
   onDropPdf,
@@ -1097,6 +1101,7 @@ export default function CodeMirrorLiveEditor({
     onTagClick,
     onToggleCheckbox,
     onPasteImage,
+    onPasteText,
     onOcrImage,
     onOcrSettings,
     onDropPdf,
@@ -1108,6 +1113,7 @@ export default function CodeMirrorLiveEditor({
       onTagClick,
       onToggleCheckbox,
       onPasteImage,
+      onPasteText,
       onOcrImage,
       onOcrSettings,
       onDropPdf,
@@ -1117,6 +1123,7 @@ export default function CodeMirrorLiveEditor({
     onTagClick,
     onToggleCheckbox,
     onPasteImage,
+    onPasteText,
     onOcrImage,
     onOcrSettings,
     onDropPdf,
@@ -1456,6 +1463,8 @@ export default function CodeMirrorLiveEditor({
         return false;
       },
       paste(e, view) {
+        const pastedRaw = e.clipboardData?.getData("text/plain") ?? "";
+        if (pastedRaw.trim().length >= 40) callbacksRef.current.onPasteText?.(pastedRaw);
         if (smartPaste(e, view)) return true;
         const pasted = e.clipboardData?.getData("text/plain")?.trim() ?? "";
         if (IMAGE_URL.test(pasted) && !e.clipboardData?.files?.length) {
@@ -1588,6 +1597,7 @@ export default function CodeMirrorLiveEditor({
       theme,
       EditorView.lineWrapping,
       autoRenumberLists,
+      provenanceExtension,
       EditorView.editable.of(!readOnly),
       EditorView.contentAttributes.of({ spellcheck: spellCheck ? "true" : "false" }),
       EditorView.updateListener.of((u) => {
