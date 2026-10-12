@@ -6044,7 +6044,7 @@
     "slider": "Date",
     "today": "aujourd'hui",
     "daysAgo": "il y a {n} jours",
-    "snapshot": "Tout capturer",
+    "snapshot": "Capturer maintenant",
     "snapshotDone": "Instantané enregistré.",
     "snapshotSame": "Aucun changement depuis le dernier instantané.",
     "notes": "Notes",

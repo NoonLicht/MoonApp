@@ -6044,7 +6044,7 @@
     "slider": "日期",
     "today": "今天",
     "daysAgo": "{n} 天前",
-    "snapshot": "为全部数据创建快照",
+    "snapshot": "立即创建快照",
     "snapshotDone": "快照已保存。",
     "snapshotSame": "自上次快照以来没有变化。",
     "notes": "笔记",

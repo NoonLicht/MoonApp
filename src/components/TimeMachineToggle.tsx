@@ -8,6 +8,12 @@ import { api } from "@/api/client";
 type State = Awaited<ReturnType<typeof api.timeMachineState>>;
 type Range = Awaited<ReturnType<typeof api.timeMachineRange>>;
 
+const localKey = (ts: number): string => {
+  const d = new Date(ts);
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+};
+
 /**
  * «Машина времени»: ползунок по дате показывает заметки, доски, задачи, траты и
  * запись дневника на выбранный день. Только просмотр; заметку можно
@@ -33,7 +39,7 @@ export default function TimeMachineToggle() {
         if (!live) return;
         setRange(r);
         // Стартуем с самого свежего снимка (последний индекс списка дней).
-        setDay(Math.max(0, (r.days?.length ?? 1) - 1));
+        setDay(Math.max(0, (r.points?.length ?? 1) - 1));
       })
       .catch(() => undefined);
     return () => {
@@ -42,23 +48,24 @@ export default function TimeMachineToggle() {
   }, [open]);
 
   // Ползунок листает только дни, где есть снимок.
-  const days = useMemo(() => range?.days ?? [], [range]);
-  const dateKey = days[Math.min(day, Math.max(0, days.length - 1))] ?? "";
-  const total = Math.max(0, days.length - 1);
+  const points = useMemo(() => range?.points ?? [], [range]);
+  const pointTs = points[Math.min(day, Math.max(0, points.length - 1))] ?? 0;
+  const dateKey = pointTs ? localKey(pointTs) : "";
+  const total = Math.max(0, points.length - 1);
 
   useEffect(() => {
     if (!open || !dateKey) return;
     const my = ++seq.current;
     const tm = setTimeout(() => {
       api
-        .timeMachineState(dateKey)
+        .timeMachineState(dateKey, pointTs)
         .then((s) => {
           if (my === seq.current) setState(s);
         })
         .catch(() => undefined);
     }, 200);
     return () => clearTimeout(tm);
-  }, [open, dateKey]);
+  }, [open, dateKey, pointTs]);
 
   const notes = useMemo(() => {
     const q = filter.trim().toLowerCase();
@@ -94,7 +101,7 @@ export default function TimeMachineToggle() {
       // Новый снимок — новая точка на ползунке.
       const nr = await api.timeMachineRange();
       setRange(nr);
-      setDay(Math.max(0, (nr.days?.length ?? 1) - 1));
+      setDay(Math.max(0, (nr.points?.length ?? 1) - 1));
     } catch (e) {
       setMsg((e as Error).message);
     }
@@ -145,9 +152,9 @@ export default function TimeMachineToggle() {
                 aria-label={t("timeMachine.slider")}
               />
               <div className="tm-date">
-                <b>{dateKey}</b>
+                <b>{dateKey} {new Date(pointTs).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</b>
                 <span className="muted-sm">
-                  {t("timeMachine.snapshotOf", { i: Math.min(day, total) + 1, n: days.length })}
+                  {t("timeMachine.snapshotOf", { i: Math.min(day, total) + 1, n: points.length })}
                 </span>
                 <button className="btn" onClick={() => void snapshotNow()}>
                   {t("timeMachine.snapshot")}

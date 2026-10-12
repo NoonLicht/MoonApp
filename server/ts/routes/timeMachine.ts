@@ -57,13 +57,15 @@ router.get("/range", async (_req, res) => {
     });
     // Ползунок ходит только по дням, где реально есть снимок: коммит заметок
     // или полная резервная копия приложения.
-    const days = new Set<string>();
-    for (const c of cs) days.add(tm.dateKey(c.timestamp));
+    // Каждый снимок — отдельная точка (а не день): несколько снимков за день
+    // остаются разными позициями ползунка.
+    const pts = new Set<number>();
+    for (const c of cs) pts.add(c.timestamp);
     for (const b of backup.list()) {
       const t = Date.parse(b.at);
-      if (Number.isFinite(t)) days.add(tm.dateKey(t));
+      if (Number.isFinite(t)) pts.add(t);
     }
-    res.json({ ...range, commits: cs.length, days: [...days].sort() });
+    res.json({ ...range, commits: cs.length, points: [...pts].sort((a, b) => a - b) });
   } catch (e) {
     res.status(500).json({ error: (e as Error).message });
   }
@@ -73,7 +75,9 @@ router.get("/state", async (req, res) => {
   try {
     const date = String(req.query.date ?? "");
     if (!DATE.test(date)) return res.status(400).json({ error: "bad_date" });
-    const end = tm.endOfDay(date);
+    // ts — момент конкретного снимка; без него берётся конец дня.
+    const tsQ = Number(req.query.ts);
+    const end = Number.isFinite(tsQ) && tsQ > 0 ? tsQ : tm.endOfDay(date);
     const commit = tm.pickCommit(await commits(), end);
 
     let notes: { path: string; title: string }[] = [];

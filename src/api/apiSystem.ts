@@ -515,8 +515,8 @@ export const systemApi = {
       schedule: { date: string; count: number }[];
     }>("GET", "/exam/stats"),
   timeMachineRange: () =>
-    req<{ from: string; to: string; commits: number; days: string[] }>("GET", "/time-machine/range"),
-  timeMachineState: (date: string) =>
+    req<{ from: string; to: string; commits: number; points: number[] }>("GET", "/time-machine/range"),
+  timeMachineState: (date: string, ts?: number) =>
     req<{
       date: string;
       snapshot: { oid: string; at: number; message: string } | null;
@@ -537,7 +537,7 @@ export const systemApi = {
         monthByCategory: { category: string; amount: number }[];
       };
       diary: { content: string } | null;
-    }>("GET", `/time-machine/state?date=${encodeURIComponent(date)}`),
+    }>("GET", `/time-machine/state?date=${encodeURIComponent(date)}${ts ? `&ts=${ts}` : ""}`),
   timeMachineFile: (oid: string, path: string) =>
     req<{ path: string; text: string }>(
       "GET",
