@@ -1298,7 +1298,8 @@ html.a11y-focus *:focus-visible {
 
 /* ===== Контекст (Ghost): закреплённая правая панель, как меню страниц слева ===== */
 .content-area {
-  padding-right: calc(24px + var(--ghost-w, 0px));
+  /* зазор до панели «Контекст» — 12px, как между меню страниц и контентом */
+  padding-right: max(24px, calc(var(--ghost-w, 0px) + 20px));
 }
 .app-shell[dir="rtl"] .content-area {
   padding-right: calc(var(--rail-gap) + var(--rail-w) + 12px);
