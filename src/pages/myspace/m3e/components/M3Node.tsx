@@ -1,68 +1,31 @@
-import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { useMemo } from "react";
 import { CustomBody } from "@/pages/myspace/m3e/components/CustomNode";
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { motion, useReducedMotion } from "motion/react";
 import {
-  FAB_MENU_CLOSE,
-  FAB_MENU_GAP,
-  FAB_MENU_ITEM_H,
-  H,
   Item,
-  Kind,
   MEASURED,
-  NAV_BAR_H,
   Palette,
   Radii,
-  R_INNER,
-  SPLIT_GAP,
   SPLIT_MAIN_SLOT,
-  SPLIT_MENU_ITEM_H,
-  SPLIT_MENU_PAD,
-  SPLIT_MENU_SHEET_GAP,
   SPLIT_MENU_SLOT,
   baseRadii,
   buttonHeightOf,
-  chipHeightOf,
-  chipMetrics,
-  extendedFabHeight,
-  extendedFabMetrics,
   fabOpen,
   isMeasured,
   menuOpen,
   buttonMetrics,
-  CARD_MEDIA_GAP,
-  CARD_PADDING,
-  CARD_TEXT_GAP,
-  cardContentAlignOf,
-  cardTextAlignOf,
   cardFillOf,
-  cardImagePosOf,
-  cardImageSizeOf,
-  cardBodyColorOf,
-  cardScrimOf,
-  cardTextColorOf,
   dateLayoutOf,
   onToken,
   scaleR,
-  menuRises,
   sizeOf,
   splitMetrics,
   variantShadow,
   variantStyle,
   SETTLE_MS,
   progressThickness,
-  RAIL_TOP,
-  RAIL_W,
-  RAIL_ITEM_H,
-  RAIL_GAP,
   isWideRail,
-  railMetrics,
-  isScrollableTabs,
-  tabScrollOffset,
-  SCROLL_TAB_W,
   RIPPLE_KINDS,
-  TOP_BAR_SIZES,
-  topBarHeightOf,
-  topBarFontOf,
 } from "@/pages/myspace/m3e/lib/tokens";
 import {
   CircularProgress,
@@ -75,924 +38,39 @@ import {
   TimePickerBody,
 } from "@/pages/myspace/m3e/components/Pickers";
 import { t, useLang } from "@/pages/myspace/m3e/lib/i18n";
-import { useTheme } from "@/pages/myspace/m3e/lib/theme";
-import { railSelectedLabelColor } from "@/pages/myspace/m3e/lib/color";
 
-/** weight of a heading or label: heavier under the emphasized type setting */
-const useWeight = () => {
-  const emphasized = useTheme().emphasized;
-  return (normal: number, strong: number) => (emphasized ? strong : normal);
-};
-
-export function Icon({
-  name,
-  size = 24,
-  color,
-  fill,
-  weight,
-}: {
-  name: string;
-  size?: number;
-  color?: string;
-  fill?: boolean;
-  weight?: number;
-}) {
-  return (
-    <span
-      className="msr"
-      /* the ligature is a picture, not words: a screen reader should not spell out its name */
-      aria-hidden
-      data-fill={fill ? "1" : "0"}
-      style={{
-        fontSize: size,
-        color,
-        fontVariationSettings: weight
-          ? `"FILL" ${fill ? 1 : 0}, "wght" ${weight}, "GRAD" 0, "opsz" 24`
-          : undefined,
-      }}
-    >
-      {name}
-    </span>
-  );
-}
-
-/** One touch of a part: where it landed, how far the circle has to travel to cover the shape it
- *  landed in, and which shape that was -- a split button's two halves light up one at a time. */
-export type Ripple = {
-  id: number;
-  part: string | null;
-  /** the finger or pointer that made it, so lifting one finger leaves another's light alone */
-  pointer?: number;
-  x: number;
-  y: number;
-  d: number;
-  /** the size it starts at, as a part of the whole: a light handed from one drawing of a part to
-   *  another carries on from where the first one had got to rather than starting over */
-  from?: number;
-  /** how long it has left to finish growing, in seconds */
-  dur?: number;
-};
-
-/** how long a ripple takes to cover what it was started in */
-export const RIPPLE_GROW = 0.42;
-
-/** how far out of the point touched a circle must grow to cover the whole of an element */
-export function rippleSize(r: { width: number; height: number }, x: number, y: number): number {
-  return (
-    2 *
-    Math.max(
-      Math.hypot(x, y),
-      Math.hypot(r.width - x, y),
-      Math.hypot(x, r.height - y),
-      Math.hypot(r.width - x, r.height - y),
-    )
-  );
-}
-
-/** The circles themselves: they spread out of the point touched at the colour of whatever is
- *  written on the part -- white over a filled button -- and fade once the finger is off it.
- *  M3's pressed state layer is a tenth of that colour; the ripple arrives a shade stronger and
- *  settles onto it. The caller gives them something to be clipped by. */
-export function Ripples({ list, color }: { list: Ripple[]; color: string }) {
-  const reducedMotion = useReducedMotion();
-  return (
-    <AnimatePresence>
-      {list.map((r) => (
-        <motion.span
-          key={r.id}
-          aria-hidden
-          initial={{ opacity: 0.16, scale: r.from ?? 0 }}
-          animate={{ opacity: 0.12, scale: 1 }}
-          exit={{ opacity: 0 }}
-          transition={
-            reducedMotion
-              ? { duration: 0 }
-              : {
-                  scale: { duration: r.dur ?? RIPPLE_GROW, ease: MENU_EASE },
-                  opacity: { duration: 0.3, ease: MENU_EASE },
-                }
-          }
-          style={{
-            position: "absolute",
-            left: r.x - r.d / 2,
-            top: r.y - r.d / 2,
-            width: r.d,
-            height: r.d,
-            borderRadius: "50%",
-            background: color,
-            pointerEvents: "none",
-          }}
-        />
-      ))}
-    </AnimatePresence>
-  );
-}
-
-/** what a part being pressed is lighting up, for the shapes drawn deep inside it to read */
-const RippleCtx = createContext<{ list: Ripple[]; color: string } | null>(null);
-
-/** the light of a press, inside one shape of a part: the shape clips it and keeps its corners */
-function RippleShape({ part }: { part: string | null }) {
-  const ctx = useContext(RippleCtx);
-  if (!ctx) return null;
-  return (
-    <span
-      aria-hidden
-      style={{
-        position: "absolute",
-        inset: 0,
-        overflow: "hidden",
-        borderRadius: "inherit",
-        pointerEvents: "none",
-      }}
-    >
-      <Ripples list={ctx.list.filter((r) => r.part === part)} color={ctx.color} />
-    </span>
-  );
-}
-
-/** the touches a part is holding, and where each of them landed */
-function useRipples(on: boolean) {
-  const [list, setList] = useState<Ripple[]>([]);
-  const next = useRef(0);
-  /* the light stays for as long as the finger is down, wherever it travels: a part being dragged
-   * across the canvas keeps it, and it fades once the finger is lifted rather than at the edge
-   * of the part. The release is watched on the window, because that is where a drag ends. */
-  const waiting = useRef<(() => void) | null>(null);
-  const end = () => {
-    waiting.current?.();
-    setList((rs) => (rs.length ? [] : rs));
-  };
-  const add = (e: React.PointerEvent) => {
-    if (!on) return;
-    /* only the main button of a mouse is a press: a right or a middle click opens nothing here */
-    if (e.pointerType === "mouse" && e.button !== 0) return;
-    /* a part made of more than one shape says which one was touched */
-    const seg = (e.target as HTMLElement | null)?.closest?.(
-      "[data-part-shape]",
-    ) as HTMLElement | null;
-    const el = seg ?? (e.currentTarget as HTMLElement);
-    const r = el.getBoundingClientRect();
-    const x = e.clientX - r.left;
-    const y = e.clientY - r.top;
-    setList((rs) => [
-      ...rs,
-      { id: ++next.current, part: seg?.dataset.partShape ?? null, x, y, d: rippleSize(r, x, y) },
-    ]);
-    waiting.current?.();
-    const done = () => {
-      waiting.current = null;
-      window.removeEventListener("pointerup", done);
-      window.removeEventListener("pointercancel", done);
-      setList((rs) => (rs.length ? [] : rs));
-    };
-    waiting.current = done;
-    window.addEventListener("pointerup", done);
-    window.addEventListener("pointercancel", done);
-  };
-  /* a part taken off the canvas mid-press leaves no listener behind */
-  useEffect(() => () => waiting.current?.(), []);
-  return { list, add, end };
-}
-
-const ellipsis = {
-  overflow: "hidden",
-  textOverflow: "ellipsis",
-  whiteSpace: "nowrap",
-} as const;
-
-const NO_BOX: Kind[] = [
-  "circularProgress",
-  "linearProgress",
-  "loadingIndicator",
-  "switch",
-  "checkbox",
-  "radio",
-  "slider",
-  "text",
-  "divider",
-  "splitButton",
-  "fabMenu",
-  "carousel",
-  "rating",
-  "segmentedButton",
-];
-
-/** Padding follows M3: icon+label is tighter than label alone. */
-export function ButtonContent({ item }: { item: Item }) {
-  const w = useWeight();
-  const hasIcon = !!item.icon;
-  const hasLabel = item.label.trim().length > 0;
-  /* padding, gap, icon and label all come from the M3 size the height lands on;
-   * with no label the icon is centred instead, which makes the button a circle */
-  const m = buttonMetrics(buttonHeightOf(item));
-  const padX = hasLabel ? m.padX : Math.round((m.h - m.icon) / 2);
-  return (
-    <span
-      className="m3-size-ease"
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-        width: item.size ? "100%" : undefined,
-        boxSizing: "border-box",
-        gap: hasIcon && hasLabel ? m.gap : 0,
-        paddingLeft: padX,
-        paddingRight: padX,
-        height: m.h,
-        fontSize: m.font,
-        fontWeight: w(500, 700),
-        letterSpacing: 0.1,
-        whiteSpace: "nowrap",
-      }}
-    >
-      {hasIcon && <Icon name={item.icon!} size={m.icon} fill={item.variant === "filled"} />}
-      {hasLabel && <span>{item.label}</span>}
-    </span>
-  );
-}
-
-function ExtendedFabContent({ item }: { item: Item }) {
-  const w = useWeight();
-  const hasIcon = !!item.icon;
-  const hasLabel = item.label.trim().length > 0;
-  /* the padding, the icon and the label are the ones the height it was given asks for */
-  const m = extendedFabMetrics(extendedFabHeight(item));
-  return (
-    <span
-      className="m3-size-ease"
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: hasIcon && hasLabel ? m.gap : 0,
-        paddingLeft: m.padX,
-        paddingRight: m.padX,
-        height: m.h,
-        fontSize: m.font,
-        fontWeight: w(500, 700),
-        whiteSpace: "nowrap",
-      }}
-    >
-      {hasIcon && <Icon name={item.icon!} size={m.icon} />}
-      {hasLabel && <span>{item.label}</span>}
-    </span>
-  );
-}
-
-function ChipContent({ item, p }: { item: Item; p: Palette }) {
-  const on = !!item.checked;
-  const lead = on ? "check" : item.icon;
-  /* the padding, the icon and the label are the ones the height it was given asks for */
-  const m = chipMetrics(chipHeightOf(item));
-  return (
-    <span
-      className="m3-size-ease"
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: m.gap,
-        paddingLeft: lead ? m.lead : m.padX,
-        paddingRight: m.padX,
-        height: m.h,
-        fontSize: m.font,
-        fontWeight: 500,
-        whiteSpace: "nowrap",
-        color: on ? p.onSecondaryContainer : undefined,
-      }}
-    >
-      {lead && <Icon name={lead} size={m.icon} />}
-      <span>{item.label}</span>
-    </span>
-  );
-}
-
-function SwitchContent({ item, p }: { item: Item; p: Palette }) {
-  const hasLabel = item.label.trim().length > 0;
-  return (
-    <span
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 14,
-        height: H - 8,
-        whiteSpace: "nowrap",
-        width: item.size ? "100%" : undefined,
-        justifyContent: item.size ? "space-between" : undefined,
-      }}
-    >
-      {hasLabel && (
-        <span
-          style={{ fontSize: 16, color: p.onSurface, overflow: "hidden", textOverflow: "ellipsis" }}
-        >
-          {item.label}
-        </span>
-      )}
-      <SwitchControl on={!!item.checked} p={p} />
-    </span>
-  );
-}
-
-/** the M3 switch track and handle, 52 × 32 */
-function SwitchControl({ on, p }: { on: boolean; p: Palette }) {
-  return (
-    <span
-      style={{
-        position: "relative",
-        width: 52,
-        height: 32,
-        borderRadius: 16,
-        background: on ? p.primary : p.surfaceContainerHighest,
-        border: on ? "2px solid transparent" : `2px solid ${p.outline}`,
-        boxSizing: "border-box",
-        flex: "0 0 auto",
-        transition: "background 160ms",
-      }}
-    >
-      <span
-        style={{
-          position: "absolute",
-          top: "50%",
-          left: on ? 22 : 4,
-          width: on ? 24 : 16,
-          height: on ? 24 : 16,
-          marginTop: on ? -12 : -8,
-          borderRadius: 12,
-          background: on ? p.onPrimary : p.outline,
-          display: "grid",
-          placeItems: "center",
-          color: p.onPrimaryContainer,
-          transition: "left 160ms, width 160ms, height 160ms",
-        }}
-      >
-        {on && <Icon name="check" size={16} weight={600} />}
-      </span>
-    </span>
-  );
-}
-
-function CheckboxContent({ item, p }: { item: Item; p: Palette }) {
-  const on = !!item.checked;
-  const hasLabel = item.label.trim().length > 0;
-  return (
-    <span
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 4,
-        height: 40,
-        whiteSpace: "nowrap",
-      }}
-    >
-      <span
-        style={{ width: 40, height: 40, display: "grid", placeItems: "center", flex: "0 0 auto" }}
-      >
-        <span
-          style={{
-            width: 18,
-            height: 18,
-            borderRadius: 3,
-            boxSizing: "border-box",
-            border: on ? "none" : `2px solid ${p.onSurfaceVariant}`,
-            background: on ? p.primary : "transparent",
-            color: p.onPrimary,
-            display: "grid",
-            placeItems: "center",
-          }}
-        >
-          {on && <Icon name="check" size={16} weight={700} />}
-        </span>
-      </span>
-      {hasLabel && (
-        <span style={{ fontSize: 16, color: p.onSurface, paddingRight: 8 }}>{item.label}</span>
-      )}
-    </span>
-  );
-}
-
-function TextContent({ item, p }: { item: Item; p: Palette }) {
-  const w = useWeight();
-  const fs = item.size ?? 28;
-  return (
-    <span
-      style={{
-        display: "inline-block",
-        fontSize: fs,
-        lineHeight: 1.3,
-        fontWeight: item.bold ? w(700, 800) : w(400, fs >= 22 ? 600 : 500),
-        letterSpacing: fs >= 28 ? -0.25 : 0,
-        color: p.onSurface,
-        whiteSpace: "nowrap",
-        padding: "0 2px",
-      }}
-    >
-      {item.label || " "}
-    </span>
-  );
-}
-
-/** A split button: the labeled action and, after a hairline gap, the arrow that opens its menu.
- *  Both segments are read off the button scale the height lands on, and they keep their own
- *  corners, so the box around them stays plain. */
-function SplitButtonContent({ item, p, open }: { item: Item; p: Palette; open?: boolean }) {
-  const w = useWeight();
-  const reducedMotion = useReducedMotion();
-  const st = variantStyle(item.variant, p);
-  const h = buttonHeightOf(item);
-  const m = splitMetrics(h);
-  const outer = scaleR(h / 2);
-  const inner = scaleR(R_INNER);
-  const hasLabel = item.label.trim().length > 0;
-  /* with no label the icon is centred instead, the way a button with none is */
-  const padX = hasLabel ? m.padX : Math.round((m.h - m.icon) / 2);
-  const shadow = variantShadow(item.variant);
-  return (
-    <span
-      className="m3-size-ease"
-      style={{ display: "inline-flex", alignItems: "center", gap: SPLIT_GAP, height: m.h }}
-    >
-      <span
-        className="m3-size-ease"
-        data-part-shape={SPLIT_MAIN_SLOT}
-        style={{
-          ...st,
-          display: "inline-flex",
-          alignItems: "center",
-          gap: hasLabel && item.icon ? m.gap : 0,
-          height: m.h,
-          paddingLeft: padX,
-          paddingRight: padX,
-          borderTopLeftRadius: outer,
-          borderBottomLeftRadius: outer,
-          borderTopRightRadius: inner,
-          borderBottomRightRadius: inner,
-          fontSize: m.font,
-          fontWeight: w(500, 700),
-          whiteSpace: "nowrap",
-          boxSizing: "border-box",
-          boxShadow: shadow,
-          position: "relative",
-          overflow: "hidden",
-        }}
-      >
-        {item.icon && <Icon name={item.icon} size={m.icon} fill={item.variant === "filled"} />}
-        {hasLabel && <span>{item.label}</span>}
-        <RippleShape part={SPLIT_MAIN_SLOT} />
-      </span>
-      <span
-        className="m3-size-ease"
-        data-part-shape={SPLIT_MENU_SLOT}
-        style={{
-          ...st,
-          display: "inline-grid",
-          placeItems: "center",
-          position: "relative",
-          overflow: "hidden",
-          /* the segment is as wide as its arrow with its own padding, so it eases like the other one */
-          height: m.h,
-          paddingLeft: m.trailPadX,
-          paddingRight: m.trailPadX,
-          /* opening the menu rounds this segment right off, the way M3 does it; the segment with
-             the words keeps the shape it had */
-          borderTopLeftRadius: open ? outer : inner,
-          borderBottomLeftRadius: open ? outer : inner,
-          borderTopRightRadius: outer,
-          borderBottomRightRadius: outer,
-          boxSizing: "border-box",
-          boxShadow: shadow,
-        }}
-      >
-        {/* the arrow turns over while the menu it opened is showing */}
-        <span
-          style={{
-            display: "inline-flex",
-            transform: open ? "rotate(180deg)" : "none",
-            transition: reducedMotion ? "none" : "transform 200ms cubic-bezier(0.2, 0, 0, 1)",
-          }}
-        >
-          <Icon name="keyboard_arrow_down" size={m.icon} />
-        </span>
-        <RippleShape part={SPLIT_MENU_SLOT} />
-      </span>
-    </span>
-  );
-}
-
-/** Whether a menu is drawn open, on its way out, or not yet. The preview draws its screens
- *  inside an AnimatePresence that blocks animations on mount, so a menu is drawn shut for one
- *  frame and told to open on the next, where nothing blocks it. A menu that has never been open
- *  starts rolled up; one on its way out only gives way a little, because what carries it off is
- *  the fade. */
-function useOpenPhase(shown: boolean): "shut" | "open" | "closing" {
-  const [phase, setPhase] = useState<"shut" | "open" | "closing">("shut");
-  useEffect(() => {
-    if (!shown) {
-      setPhase((was) => (was === "shut" ? "shut" : "closing"));
-      return;
-    }
-    const id = requestAnimationFrame(() => setPhase("open"));
-    return () => cancelAnimationFrame(id);
-  }, [shown]);
-  return phase;
-}
-
-/** A split button with its menu open: the button where the author put it, and the sheet of
- *  entries beside it -- below the button where the screen has room, above it where it does not.
- *  The sheet grows out of the edge nearest the button, so the two read as one gesture. */
-function SplitMenuContent({ item, p, shown = true }: { item: Item; p: Palette; shown?: boolean }) {
-  const w = useWeight();
-  const reducedMotion = useReducedMotion();
-  const up = menuRises(item);
-  const tabs = item.tabs ?? [];
-  const phase = useOpenPhase(shown);
-  const open = phase === "open";
-  const sheet = (
-    <motion.div
-      initial={false}
-      animate={{ opacity: open ? 1 : 0, scaleY: open ? 1 : 0.7 }}
-      transition={
-        reducedMotion
-          ? { duration: 0 }
-          : { duration: open ? MENU_ROLL : MENU_SHUT, ease: MENU_EASE }
-      }
-      style={{
-        /* it unrolls out of the edge the button is on */
-        transformOrigin: up ? "50% 100%" : "50% 0%",
-        background: p.surfaceContainer,
-        color: p.onSurface,
-        borderRadius: scaleR(12),
-        padding: `${SPLIT_MENU_PAD}px 0`,
-        boxShadow: "0 8px 24px rgba(0,0,0,0.18), 0 2px 6px rgba(0,0,0,0.10)",
-        boxSizing: "border-box",
-        overflow: "hidden",
-      }}
-    >
-      {tabs.map((tab, i) => (
-        <motion.div
-          key={i}
-          initial={false}
-          /* the entry nearest the button is read first, so it is the first to arrive */
-          animate={{ opacity: open ? 1 : 0 }}
-          transition={
-            reducedMotion
-              ? { duration: 0 }
-              : open
-                ? { duration: 0.12, delay: (up ? tabs.length - 1 - i : i) * MENU_STAGGER }
-                : { duration: 0.06 }
-          }
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 12,
-            height: SPLIT_MENU_ITEM_H,
-            padding: "0 12px",
-            fontSize: 14,
-            fontWeight: w(500, 700),
-            whiteSpace: "nowrap",
-            boxSizing: "border-box",
-          }}
-        >
-          {tab.icon && <Icon name={tab.icon} size={24} />}
-          <span style={ellipsis}>{tab.label}</span>
-        </motion.div>
-      ))}
-    </motion.div>
-  );
-  return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "stretch",
-        justifyContent: up ? "flex-end" : "flex-start",
-        gap: SPLIT_MENU_SHEET_GAP,
-        height: "100%",
-      }}
-    >
-      {up && sheet}
-      {/* the button keeps its own width whatever the sheet under it comes to */}
-      <span style={{ alignSelf: "flex-start" }}>
-        <SplitButtonContent item={item} p={p} open={open} />
-      </span>
-      {!up && sheet}
-    </div>
-  );
-}
-
-function RadioContent({ item, p }: { item: Item; p: Palette }) {
-  const on = !!item.checked;
-  const hasLabel = item.label.trim().length > 0;
-  return (
-    <span
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 4,
-        height: 40,
-        whiteSpace: "nowrap",
-      }}
-    >
-      <span
-        style={{ width: 40, height: 40, display: "grid", placeItems: "center", flex: "0 0 auto" }}
-      >
-        <span
-          style={{
-            width: 20,
-            height: 20,
-            borderRadius: 10,
-            boxSizing: "border-box",
-            border: `2px solid ${on ? p.primary : p.onSurfaceVariant}`,
-            display: "grid",
-            placeItems: "center",
-          }}
-        >
-          {on && <span style={{ width: 10, height: 10, borderRadius: 5, background: p.primary }} />}
-        </span>
-      </span>
-      {hasLabel && (
-        <span style={{ fontSize: 16, color: p.onSurface, paddingRight: 8 }}>{item.label}</span>
-      )}
-    </span>
-  );
-}
-
-/** Content for kinds that size to their text; rendered again offscreen to measure. */
-export function MeasuredContent({ item, p }: { item: Item; p: Palette }) {
-  if (menuOpen(item))
-    return item.kind === "splitButton" ? (
-      <SplitMenuContent item={item} p={p} />
-    ) : (
-      <FabMenuContent item={item} p={p} />
-    );
-  switch (item.kind) {
-    case "button":
-      return <ButtonContent item={item} />;
-    case "extendedFab":
-      return <ExtendedFabContent item={item} />;
-    case "chip":
-      return <ChipContent item={item} p={p} />;
-    case "switch":
-      return <SwitchContent item={item} p={p} />;
-    case "checkbox":
-      return <CheckboxContent item={item} p={p} />;
-    case "text":
-      return <TextContent item={item} p={p} />;
-    case "splitButton":
-      return <SplitButtonContent item={item} p={p} />;
-    case "radio":
-      return <RadioContent item={item} p={p} />;
-    case "fabMenu":
-      return <FabMenuContent item={item} p={p} />;
-    default:
-      return null;
-  }
-}
-
-/** how long one entry takes to unroll, and how far apart the entries start */
-const MENU_ROLL = 0.28;
-const MENU_STAGGER = 0.045;
-/** how long the button takes to reach the M size. A FAB taller than that reaches up into the row
- *  the nearest entry stands in, so the two are never on screen together: opening, the entries wait
- *  for the button to come down to size; shutting, the button waits for the entries to go. */
-const MENU_BUTTON_ROLL = 0.16;
-/** shutting is not the unrolling backwards: the entries give way a little and fade, from the far
- *  end down, so the menu is gone long before a full reverse run would have finished */
-const MENU_SHUT = 0.16;
-/** the one frame the drawing is swapped on, held long enough for the box not to ease across it */
-const MENU_SNAP_MS = 60;
-const MENU_SHUT_FADE = 0.1;
-const MENU_SHUT_STAGGER = 0.025;
-const MENU_SHUT_SCALE = 0.72;
-const MENU_BUTTON_SHUT = 0.16;
-const MENU_EASE = [0.2, 0, 0, 1] as const;
-
-/** how long the whole reverse run takes, in milliseconds */
-export const menuShutMs = (it: Item) => {
-  const entries = menuEntriesShut(it);
-  return Math.round(Math.max(entries, menuButtonWait(it) + MENU_BUTTON_SHUT) * 1000);
-};
-
-/** how long every entry takes to fade away */
-const menuEntriesShut = (it: Item) =>
-  MENU_SHUT_FADE + Math.max(0, (it.tabs?.length ?? 1) - 1) * MENU_SHUT_STAGGER;
-/** a FAB that reaches above the close button takes its turn; one that does not never waits */
-const overTall = (it: Item) => (it.size ?? FAB_MENU_CLOSE) > FAB_MENU_CLOSE;
-/** what the button waits for before growing back: every entry gone */
-const menuButtonWait = (it: Item) => (overTall(it) ? menuEntriesShut(it) : 0);
-/** what the entries wait for before unrolling: the button down to the close size */
-const menuEntriesWait = (it: Item) => (overTall(it) ? MENU_BUTTON_ROLL : 0);
-
-/** Whether the menu is drawn at all, and whether it is drawn open. The two part ways while the
- *  menu shuts: the node keeps its open shape, transparent and as tall as the entries, until they
- *  have rolled back into the button, and only then becomes the FAB again. */
-function useMenuPhase(item: Item) {
-  const open = menuOpen(item);
-  const [drawn, setDrawn] = useState(open);
-  /* read by the effect without restarting it: only the menu opening or closing may do that */
-  const drawnRef = useRef(open);
-  /** the frame the drawing is swapped on: the box must not ease its height across the swap */
-  const [snap, setSnap] = useState(false);
-  const shutMs = menuShutMs(item);
-  useEffect(() => {
-    if (open) {
-      drawnRef.current = true;
-      setDrawn(true);
-      return;
-    }
-    if (!drawnRef.current) return;
-    const id = setTimeout(() => {
-      drawnRef.current = false;
-      setDrawn(false);
-      setSnap(true);
-    }, shutMs);
-    return () => clearTimeout(id);
-  }, [open, shutMs]);
-  useEffect(() => {
-    if (!snap) return;
-    const id = setTimeout(() => setSnap(false), MENU_SNAP_MS);
-    return () => clearTimeout(id);
-  }, [snap]);
-  return { drawn, open, snap };
-}
-
-/** A FAB with its menu open: the entries it offers, and the button itself showing the close
- *  icon under them. The button stays where the author put it and grows or shrinks into the M-size
- *  close button; the entries unroll out of its right edge, the one nearest the button first.
- *  Nothing here changes the drawing's size, so the editor can measure it while it moves, and the
- *  menu is exactly as wide as its widest entry. */
-function FabMenuContent({ item, p, shown = true }: { item: Item; p: Palette; shown?: boolean }) {
-  const w = useWeight();
-  const reducedMotion = useReducedMotion();
-  const tabs = item.tabs ?? [];
-  const filled = item.variant === "filled";
-  const itemStyle = filled
-    ? { background: p.primaryContainer, color: p.onPrimaryContainer }
-    : { background: p.secondaryContainer, color: p.onSecondaryContainer };
-  const extended = item.kind === "extendedFab";
-  /* the close button is the M size: a small or a large FAB eases into it rather than jumping */
-  const grow = (item.size ?? FAB_MENU_CLOSE) / FAB_MENU_CLOSE;
-  /* opening, the entry nearest the button leads; shutting, the run plays back from the far end */
-  const wait = menuEntriesWait(item);
-  const after = (i: number) => wait + (tabs.length - 1 - i) * MENU_STAGGER;
-  const before = (i: number) => i * MENU_SHUT_STAGGER;
-  const phase = useOpenPhase(shown);
-  const open = phase === "open";
-  const closing = phase === "closing";
-  const roll = (i: number) =>
-    reducedMotion
-      ? { duration: 0 }
-      : open
-        ? { duration: MENU_ROLL, ease: MENU_EASE, delay: after(i) }
-        : { duration: MENU_SHUT, ease: MENU_EASE, delay: before(i) };
-  const fade = (i: number) =>
-    reducedMotion
-      ? { duration: 0 }
-      : open
-        ? { duration: 0.12, delay: after(i) + MENU_ROLL * 0.55 }
-        : { duration: 0.06, delay: before(i) };
-  /* an entry is not there at all until its own roll begins, so a menu waiting its turn shows no
-     slivers stacked over the button; on the way out it is the fade that takes it */
-  const show = (i: number) =>
-    reducedMotion
-      ? { duration: 0 }
-      : open
-        ? { duration: 0, delay: after(i) }
-        : closing
-          ? { duration: MENU_SHUT_FADE, ease: MENU_EASE, delay: before(i) }
-          : { duration: 0 };
-  return (
-    /* the column hangs from the bottom: the button keeps its place while the box above it grows */
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "flex-end",
-        justifyContent: "flex-end",
-        gap: FAB_MENU_GAP,
-        height: "100%",
-      }}
-    >
-      {tabs.map((tab, i) => (
-        <motion.span
-          key={i}
-          /* the entry arrives with its roll and leaves by fading, part way through a roll it
-             never finishes */
-          initial={false}
-          animate={{ opacity: open ? 1 : 0 }}
-          transition={show(i)}
-          style={{
-            position: "relative",
-            color: itemStyle.color,
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 12,
-            height: FAB_MENU_ITEM_H,
-            padding: "0 24px 0 20px",
-            fontSize: 16,
-            fontWeight: w(500, 700),
-            whiteSpace: "nowrap",
-            maxWidth: "100%",
-            boxSizing: "border-box",
-            flex: "0 0 auto",
-          }}
-        >
-          {/* the pill itself unrolls from its right edge, so the entry opens towards the text */}
-          <motion.span
-            aria-hidden
-            initial={false}
-            animate={{ scaleX: open ? 1 : closing ? MENU_SHUT_SCALE : 0.06 }}
-            transition={roll(i)}
-            style={{
-              ...itemStyle,
-              position: "absolute",
-              inset: 0,
-              transformOrigin: "100% 50%",
-              borderRadius: scaleR(28),
-              boxShadow: "0 1px 3px rgba(0,0,0,0.16)",
-            }}
-          />
-          {/* the icon and the label arrive once there is a pill wide enough to hold them */}
-          <motion.span
-            initial={false}
-            animate={{ opacity: open ? 1 : 0 }}
-            transition={fade(i)}
-            style={{
-              position: "relative",
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 12,
-              minWidth: 0,
-            }}
-          >
-            {tab.icon && <Icon name={tab.icon} size={22} />}
-            <span style={ellipsis}>{tab.label}</span>
-          </motion.span>
-        </motion.span>
-      ))}
-      <motion.span
-        /* scaled rather than resized: the button, its icon and its corners all land on the M size
-           together, and the drawing the editor measures never changes width */
-        initial={false}
-        animate={extended ? undefined : { scale: open ? 1 : grow }}
-        transition={
-          reducedMotion
-            ? { duration: 0 }
-            : open
-              ? { duration: MENU_BUTTON_ROLL, ease: MENU_EASE }
-              : { duration: MENU_BUTTON_SHUT, ease: MENU_EASE, delay: menuButtonWait(item) }
-        }
-        style={{
-          /* the button the menu hangs off is the FAB itself, wearing the icon that shuts it */
-          ...variantStyle(item.variant, p),
-          transformOrigin: "100% 100%",
-          width: extended ? undefined : FAB_MENU_CLOSE,
-          height: extended ? extendedFabHeight(item) : FAB_MENU_CLOSE,
-          padding: extended ? "0 20px" : undefined,
-          gap: 12,
-          fontSize: 16,
-          fontWeight: w(500, 700),
-          whiteSpace: "nowrap",
-          borderRadius: scaleR(
-            extended
-              ? extendedFabMetrics(extendedFabHeight(item)).radius
-              : Math.round(FAB_MENU_CLOSE * 0.28),
-          ),
-          display: "grid",
-          placeItems: "center",
-          boxShadow: "0 3px 8px rgba(0,0,0,0.18), 0 1px 3px rgba(0,0,0,0.12)",
-          flex: "0 0 auto",
-        }}
-      >
-        {/* the cross and the button's own icon trade places, so the swap at either end is
-            between two drawings that already match */}
-        <span style={{ display: "grid", placeItems: "center", gridArea: "1 / 1" }}>
-          <motion.span
-            initial={false}
-            animate={{ opacity: open ? 1 : 0 }}
-            transition={reducedMotion ? { duration: 0 } : { duration: 0.1, delay: open ? 0.04 : 0 }}
-            style={{ gridArea: "1 / 1", display: "grid", placeItems: "center" }}
-          >
-            <Icon name="close" size={24} />
-          </motion.span>
-          {item.icon && (
-            <motion.span
-              initial={false}
-              animate={{ opacity: open ? 0 : 1 }}
-              transition={
-                reducedMotion
-                  ? { duration: 0 }
-                  : { duration: 0.1, delay: open ? 0 : menuButtonWait(item) + 0.04 }
-              }
-              style={{ gridArea: "1 / 1", display: "grid", placeItems: "center" }}
-            >
-              <Icon name={item.icon} size={24} />
-            </motion.span>
-          )}
-        </span>
-        {extended && item.label.trim() && <span style={{ gridArea: "1 / 2" }}>{item.label}</span>}
-      </motion.span>
-    </div>
-  );
-}
+import {
+  useWeight,
+  Icon,
+  type Ripple,
+  RIPPLE_GROW,
+  rippleSize,
+  RippleCtx,
+  RippleShape,
+  useRipples,
+} from "@/pages/myspace/m3e/components/M3Ripple";
+import {
+  ellipsis,
+  NO_BOX,
+  SwitchControl,
+  SplitMenuContent,
+  MeasuredContent,
+} from "@/pages/myspace/m3e/components/M3Content";
+import { useMenuPhase, FabMenuContent } from "@/pages/myspace/m3e/components/M3Menu";
+import {
+  TopAppBarBody,
+  CardBody,
+  TextFieldBody,
+  SelectBody,
+  SliderBody,
+  NavRailBody,
+  BottomNavBody,
+  TabsBody,
+} from "@/pages/myspace/m3e/components/M3Bodies";
+export { Icon, RIPPLE_GROW, rippleSize, Ripples } from "@/pages/myspace/m3e/components/M3Ripple";
+export type { Ripple } from "@/pages/myspace/m3e/components/M3Ripple";
+export { ButtonContent, MeasuredContent } from "@/pages/myspace/m3e/components/M3Content";
+export { menuShutMs } from "@/pages/myspace/m3e/components/M3Menu";
 
 function Body({
   item,
@@ -1057,94 +135,19 @@ function Body({
       );
     }
 
-    case "topAppBar": {
-      /* the small bar keeps its title between the icons; the medium and large ones let it down
-         onto a line of its own at the foot, the way M3's flexible bars do */
-      const barH = topBarHeightOf(item);
-      const tall = barH > TOP_BAR_SIZES[0].h;
-      const font = topBarFontOf(item);
+    case "topAppBar":
       return (
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            /* the inset the bar has, if any (see sizeOf) */
-            padding: `${sizeOf(item, {}).h - barH}px 0 0`,
-            height: "100%",
-            boxSizing: "border-box",
-            position: "relative",
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 4,
-              padding: "0 4px",
-              height: 64,
-              flex: "0 0 auto",
-            }}
-          >
-            <div
-              style={{
-                width: 48,
-                height: 48,
-                display: "grid",
-                placeItems: "center",
-                flex: "0 0 auto",
-              }}
-            >
-              {item.icon && <Icon name={item.icon} size={24} color={p.onSurface} />}
-            </div>
-            <div
-              className="m3-size-ease"
-              style={{
-                flex: 1,
-                minWidth: 0,
-                fontSize: tall ? 0 : font,
-                opacity: tall ? 0 : 1,
-                fontWeight: w(400, 600),
-                color: p.onSurface,
-                transition: "opacity 200ms",
-                ...ellipsis,
-              }}
-            >
-              {item.label}
-            </div>
-            <div
-              style={{
-                width: 48,
-                height: 48,
-                display: "grid",
-                placeItems: "center",
-                flex: "0 0 auto",
-              }}
-            >
-              {item.icon2 && <Icon name={item.icon2} size={24} color={p.onSurfaceVariant} />}
-            </div>
-          </div>
-          {tall && (
-            <div
-              className="m3-size-ease"
-              style={{
-                flex: 1,
-                minWidth: 0,
-                display: "flex",
-                alignItems: "flex-end",
-                padding: "0 16px 24px",
-                fontSize: font,
-                lineHeight: 1.2,
-                fontWeight: w(400, 600),
-                color: p.onSurface,
-                ...ellipsis,
-              }}
-            >
-              {item.label}
-            </div>
-          )}
-        </div>
+        <TopAppBarBody
+          item={item}
+          p={p}
+          lang={lang}
+          w={w}
+          hasLabel={hasLabel}
+          hasSupporting={hasSupporting}
+          tabScroll={tabScroll}
+          menuShown={menuShown}
+        />
       );
-    }
 
     case "searchBar":
       return (
@@ -1167,160 +170,19 @@ function Body({
         </div>
       );
 
-    case "card": {
-      const pos = cardImagePosOf(item);
-      const hasImage = !item.noImage;
-      const padding = CARD_PADDING;
-      const align = cardContentAlignOf(item);
-      const justifyContent = { start: "flex-start", center: "center", end: "flex-end" }[
-        align
-      ] as React.CSSProperties["justifyContent"];
-      const across = cardTextAlignOf(item);
-      const alignItems = { start: "flex-start", center: "center", end: "flex-end" }[
-        across
-      ] as React.CSSProperties["alignItems"];
-      const textAlign = { start: "start", center: "center", end: "end" }[
-        across
-      ] as React.CSSProperties["textAlign"];
-      const ink = cardTextColorOf(item, p);
-      const body = cardBodyColorOf(item, p);
-      const picture = item.src ? (
-        <img
-          src={item.src}
-          alt=""
-          draggable={false}
-          style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-        />
-      ) : (
-        item.icon && <Icon name={item.icon} size={34} />
-      );
-      const media = (style: React.CSSProperties) => (
-        <div
-          style={{
-            borderRadius: scaleR(14),
-            background: p.primaryContainer,
-            color: p.onPrimaryContainer,
-            display: "grid",
-            placeItems: "center",
-            flex: "0 0 auto",
-            overflow: "hidden",
-            ...style,
-          }}
-        >
-          {picture}
-        </div>
-      );
-      const text = (
-        /* the column may shrink under a large picture: what does not fit is clipped, never pushed out of the card */
-        <div
-          style={{
-            flex: 1,
-            minWidth: 0,
-            minHeight: 0,
-            overflow: "hidden",
-            display: "flex",
-            flexDirection: "column",
-            gap: CARD_TEXT_GAP,
-            justifyContent,
-            alignItems,
-            textAlign,
-          }}
-        >
-          {hasLabel && (
-            <div
-              style={{
-                fontSize: 16,
-                fontWeight: w(600, 700),
-                color: ink,
-                maxWidth: "100%",
-                ...ellipsis,
-              }}
-            >
-              {item.label}
-            </div>
-          )}
-          {hasSupporting && (
-            <div
-              style={{
-                fontSize: 13,
-                lineHeight: 1.5,
-                color: body.color,
-                opacity: body.opacity,
-                overflow: "hidden",
-              }}
-            >
-              {item.supporting}
-            </div>
-          )}
-        </div>
-      );
-      if (hasImage && pos === "background") {
-        /* Full-bleed media behind the text. A photo, or a chosen text color that the placeholder's
-         * container may not carry, gets a scrim on the text's side: dark under light text, light under dark. */
-        const scrim = item.src || item.textColor ? cardScrimOf(ink, align) : undefined;
-        return (
-          <div style={{ position: "relative", height: "100%", boxSizing: "border-box" }}>
-            <div
-              style={{
-                position: "absolute",
-                inset: 0,
-                background: p.primaryContainer,
-                color: p.onPrimaryContainer,
-                display: "grid",
-                placeItems: "center",
-              }}
-            >
-              {picture}
-            </div>
-            {scrim && <div style={{ position: "absolute", inset: 0, background: scrim }} />}
-            <div
-              style={{
-                position: "relative",
-                height: "100%",
-                boxSizing: "border-box",
-                padding,
-                display: "flex",
-                flexDirection: "column",
-              }}
-            >
-              {text}
-            </div>
-          </div>
-        );
-      }
-      /* top / bottom: the image band above or under the text; leading / trailing: a full-height column beside it */
-      const side = hasImage && (pos === "leading" || pos === "trailing");
-      const after = pos === "trailing" || pos === "bottom";
+    case "card":
       return (
-        <div
-          style={{
-            padding,
-            height: "100%",
-            display: "flex",
-            flexDirection: side ? "row" : "column",
-            gap: CARD_MEDIA_GAP,
-            boxSizing: "border-box",
-            overflow: "hidden",
-          }}
-        >
-          {hasImage &&
-            !after &&
-            media(
-              side
-                ? { width: cardImageSizeOf(item), alignSelf: "stretch" }
-                : { height: cardImageSizeOf(item) },
-            )}
-          {text}
-          {hasImage &&
-            after &&
-            media(
-              side
-                ? { width: cardImageSizeOf(item), alignSelf: "stretch" }
-                : { height: cardImageSizeOf(item) },
-            )}
-        </div>
+        <CardBody
+          item={item}
+          p={p}
+          lang={lang}
+          w={w}
+          hasLabel={hasLabel}
+          hasSupporting={hasSupporting}
+          tabScroll={tabScroll}
+          menuShown={menuShown}
+        />
       );
-    }
 
     case "listItem": {
       const iconBg = item.iconFill === "none" ? null : (item.iconFill ?? "primaryContainer");
@@ -1468,206 +330,47 @@ function Body({
         </div>
       );
 
-    case "textField": {
-      const filled = item.variant === "filled";
+    case "textField":
       return (
-        <div style={{ position: "relative", height: "100%" }}>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 12,
-              padding: "0 16px",
-              height: "100%",
-            }}
-          >
-            {item.icon && <Icon name={item.icon} size={24} color={p.onSurfaceVariant} />}
-            <span
-              style={{ flex: 1, minWidth: 0, fontSize: 16, color: p.onSurfaceVariant, ...ellipsis }}
-            >
-              {filled ? "" : ""}
-            </span>
-          </div>
-          {hasLabel && (
-            <span
-              style={{
-                position: "absolute",
-                left: item.icon ? 52 : 16,
-                top: filled ? 8 : -8,
-                fontSize: 12,
-                lineHeight: "16px",
-                color: p.primary,
-                background: filled ? "transparent" : p.surface,
-                padding: filled ? 0 : "0 4px",
-                marginLeft: filled ? 0 : -4,
-              }}
-            >
-              {item.label}
-            </span>
-          )}
-          {filled && (
-            <span
-              style={{
-                position: "absolute",
-                left: 0,
-                right: 0,
-                bottom: 0,
-                height: 2,
-                background: p.primary,
-              }}
-            />
-          )}
-          {hasSupporting && (
-            <span
-              style={{
-                position: "absolute",
-                left: 16,
-                top: "100%",
-                marginTop: 4,
-                fontSize: 12,
-                color: p.onSurfaceVariant,
-                whiteSpace: "nowrap",
-              }}
-            >
-              {item.supporting}
-            </span>
-          )}
-        </div>
+        <TextFieldBody
+          item={item}
+          p={p}
+          lang={lang}
+          w={w}
+          hasLabel={hasLabel}
+          hasSupporting={hasSupporting}
+          tabScroll={tabScroll}
+          menuShown={menuShown}
+        />
       );
-    }
 
-    case "select": {
-      /* a closed dropdown: the chosen option is the value and the label floats; with
-       * nothing chosen the label sits in the field */
-      const filled = item.variant === "filled";
-      const value = item.selected === undefined ? undefined : item.tabs?.[item.selected]?.label;
+    case "select":
       return (
-        <div style={{ position: "relative", height: "100%" }}>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 12,
-              padding: "0 12px 0 16px",
-              height: "100%",
-            }}
-          >
-            {item.icon && <Icon name={item.icon} size={24} color={p.onSurfaceVariant} />}
-            <span
-              style={{
-                flex: 1,
-                minWidth: 0,
-                fontSize: 16,
-                color: value ? p.onSurface : p.onSurfaceVariant,
-                paddingTop: value && filled ? 16 : 0,
-                ...ellipsis,
-              }}
-            >
-              {value ?? item.label}
-            </span>
-            <Icon name="arrow_drop_down" size={24} color={p.onSurfaceVariant} />
-          </div>
-          {value && hasLabel && (
-            <span
-              style={{
-                position: "absolute",
-                left: item.icon ? 52 : 16,
-                top: filled ? 8 : -8,
-                fontSize: 12,
-                lineHeight: "16px",
-                color: p.onSurfaceVariant,
-                background: filled ? "transparent" : p.surface,
-                padding: filled ? 0 : "0 4px",
-                marginLeft: filled ? 0 : -4,
-              }}
-            >
-              {item.label}
-            </span>
-          )}
-          {filled && (
-            <span
-              style={{
-                position: "absolute",
-                left: 0,
-                right: 0,
-                bottom: 0,
-                height: 1,
-                background: p.onSurfaceVariant,
-              }}
-            />
-          )}
-          {hasSupporting && (
-            <span
-              style={{
-                position: "absolute",
-                left: 16,
-                top: "100%",
-                marginTop: 4,
-                fontSize: 12,
-                color: p.onSurfaceVariant,
-                whiteSpace: "nowrap",
-              }}
-            >
-              {item.supporting}
-            </span>
-          )}
-        </div>
+        <SelectBody
+          item={item}
+          p={p}
+          lang={lang}
+          w={w}
+          hasLabel={hasLabel}
+          hasSupporting={hasSupporting}
+          tabScroll={tabScroll}
+          menuShown={menuShown}
+        />
       );
-    }
 
-    case "slider": {
-      const v = Math.min(100, Math.max(0, item.value ?? 40)) / 100;
-      const w = item.size ?? 280;
-      const handleX = 2 + (w - 4) * v;
+    case "slider":
       return (
-        <div style={{ position: "relative", height: "100%" }}>
-          <div
-            style={{
-              position: "absolute",
-              left: 0,
-              width: Math.max(0, handleX - 8),
-              top: 14,
-              height: 16,
-              borderRadius: "8px 2px 2px 8px",
-              background: p.primary,
-            }}
-          />
-          <div
-            style={{
-              position: "absolute",
-              left: handleX + 8,
-              right: 0,
-              top: 14,
-              height: 16,
-              borderRadius: "2px 8px 8px 2px",
-              background: p.secondaryContainer,
-            }}
-          />
-          <div
-            style={{
-              position: "absolute",
-              right: 6,
-              top: 20,
-              width: 4,
-              height: 4,
-              borderRadius: 2,
-              background: p.onSecondaryContainer,
-            }}
-          />
-          <div
-            style={{
-              position: "absolute",
-              left: handleX - 2,
-              top: 0,
-              width: 4,
-              height: 44,
-              borderRadius: 2,
-              background: p.primary,
-            }}
-          />
-        </div>
+        <SliderBody
+          item={item}
+          p={p}
+          lang={lang}
+          w={w}
+          hasLabel={hasLabel}
+          hasSupporting={hasSupporting}
+          tabScroll={tabScroll}
+          menuShown={menuShown}
+        />
       );
-    }
 
     case "image":
       if (item.src) {
@@ -2052,218 +755,33 @@ function Body({
     case "timePicker":
       return <TimePickerBody item={item} p={p} />;
 
-    case "navRail": {
-      const tabs = item.tabs ?? [];
-      const wide = isWideRail(item);
-      const expanded = !!item.railExpanded;
-      const rail = railMetrics(item);
-      if (wide)
-        return (
-          <div style={{ position: "relative", height: "100%" }}>
-            <div
-              className="m3-rail-geometry"
-              style={{
-                position: "absolute",
-                left: rail.headerLeft,
-                top: RAIL_TOP,
-                width: 48,
-                height: 48,
-                display: "grid",
-                placeItems: "center",
-                color: p.onSurfaceVariant,
-              }}
-            >
-              <Icon name={expanded ? "menu_open" : "menu"} size={24} />
-            </div>
-            {tabs.map((tab, i) => {
-              const on = i === Math.min(item.selected ?? 0, Math.max(0, tabs.length - 1));
-              return (
-                <div
-                  key={i}
-                  className="m3-rail-geometry"
-                  style={{
-                    position: "absolute",
-                    left: rail.inset,
-                    top: rail.top + i * (rail.itemHeight + rail.gap),
-                    width: rail.width - rail.inset * 2,
-                    height: rail.itemHeight,
-                  }}
-                >
-                  <div
-                    className="m3-rail-geometry"
-                    style={{
-                      position: "absolute",
-                      left: expanded ? 0 : 8,
-                      top: 0,
-                      width: expanded ? rail.width - rail.inset * 2 : 56,
-                      height: expanded ? 56 : 32,
-                      borderRadius: expanded ? 28 : 16,
-                      background: on ? p.secondaryContainer : "transparent",
-                    }}
-                  />
-                  <div
-                    className="m3-rail-geometry"
-                    style={{
-                      position: "absolute",
-                      left: 0,
-                      top: 0,
-                      width: 24,
-                      height: 24,
-                      transform: `translate(${expanded ? 16 : 24}px, ${expanded ? 16 : 4}px)`,
-                      color: on ? p.onSecondaryContainer : p.onSurfaceVariant,
-                    }}
-                  >
-                    {tab.icon && <Icon name={tab.icon} size={24} fill={on} />}
-                  </div>
-                  {tab.label.trim() && (
-                    <span
-                      className="m3-rail-geometry"
-                      style={{
-                        position: "absolute",
-                        left: expanded ? 48 : 0,
-                        top: expanded ? 18 : 36,
-                        width: expanded ? rail.width - 88 : 72,
-                        textAlign: expanded ? "left" : "center",
-                        fontSize: expanded ? 14 : 12,
-                        lineHeight: "20px",
-                        fontWeight: on ? w(600, 700) : w(400, 500),
-                        color: on ? railSelectedLabelColor(p, expanded) : p.onSurfaceVariant,
-                        ...ellipsis,
-                      }}
-                    >
-                      {tab.label}
-                    </span>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        );
+    case "navRail":
       return (
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: RAIL_GAP,
-            height: "100%",
-            padding: `${RAIL_TOP}px 0`,
-            boxSizing: "border-box",
-            position: "relative",
-          }}
-        >
-          {tabs.map((t, i) => {
-            const on = i === Math.min(item.selected ?? 0, Math.max(0, tabs.length - 1));
-            const withLabel = t.label.trim().length > 0;
-            return (
-              <div
-                key={i}
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  gap: 4,
-                  width: RAIL_W - 12,
-                  height: RAIL_ITEM_H,
-                  flex: "0 0 auto",
-                }}
-              >
-                <div
-                  style={{
-                    width: 56,
-                    height: 32,
-                    borderRadius: scaleR(16),
-                    display: "grid",
-                    placeItems: "center",
-                    background: on ? p.secondaryContainer : "transparent",
-                    color: on ? p.onSecondaryContainer : p.onSurfaceVariant,
-                    transition: "background 160ms, color 160ms",
-                  }}
-                >
-                  {t.icon && <Icon name={t.icon} size={22} fill={on} />}
-                </div>
-                {withLabel && (
-                  <span
-                    style={{
-                      fontSize: 11,
-                      fontWeight: on ? w(600, 700) : w(400, 500),
-                      color: on ? p.onSurface : p.onSurfaceVariant,
-                      maxWidth: "100%",
-                      ...ellipsis,
-                    }}
-                  >
-                    {t.label}
-                  </span>
-                )}
-              </div>
-            );
-          })}
-        </div>
+        <NavRailBody
+          item={item}
+          p={p}
+          lang={lang}
+          w={w}
+          hasLabel={hasLabel}
+          hasSupporting={hasSupporting}
+          tabScroll={tabScroll}
+          menuShown={menuShown}
+        />
       );
-    }
 
-    case "bottomNav": {
-      const tabs = item.tabs ?? [];
+    case "bottomNav":
       return (
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-around",
-            height: "100%",
-            padding: `0 4px ${NAV_BAR_H}px`,
-            boxSizing: "border-box",
-            position: "relative",
-          }}
-        >
-          {tabs.map((t, i) => {
-            const on = i === Math.min(item.selected ?? 0, Math.max(0, tabs.length - 1));
-            const withLabel = t.label.trim().length > 0;
-            return (
-              <div
-                key={i}
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  gap: 4,
-                  flex: 1,
-                  minWidth: 0,
-                }}
-              >
-                <div
-                  style={{
-                    width: 56,
-                    height: 32,
-                    borderRadius: scaleR(16),
-                    display: "grid",
-                    placeItems: "center",
-                    background: on ? p.secondaryContainer : "transparent",
-                    color: on ? p.onSecondaryContainer : p.onSurfaceVariant,
-                    transition: "background 160ms, color 160ms",
-                  }}
-                >
-                  {t.icon && <Icon name={t.icon} size={22} fill={on} />}
-                </div>
-                {withLabel && (
-                  <span
-                    style={{
-                      fontSize: 11,
-                      fontWeight: on ? w(600, 700) : w(400, 500),
-                      color: on ? p.onSurface : p.onSurfaceVariant,
-                      maxWidth: "100%",
-                      ...ellipsis,
-                    }}
-                  >
-                    {t.label}
-                  </span>
-                )}
-              </div>
-            );
-          })}
-        </div>
+        <BottomNavBody
+          item={item}
+          p={p}
+          lang={lang}
+          w={w}
+          hasLabel={hasLabel}
+          hasSupporting={hasSupporting}
+          tabScroll={tabScroll}
+          menuShown={menuShown}
+        />
       );
-    }
 
     case "circularProgress":
       return (
@@ -2328,81 +846,19 @@ function Body({
       );
     }
 
-    case "tabs": {
-      const tabs = item.tabs ?? [];
-      const scroll = isScrollableTabs(item);
-      const offset = tabScroll ?? tabScrollOffset(item, sizeOf(item, {}).w);
+    case "tabs":
       return (
-        <div
-          style={{
-            display: "flex",
-            alignItems: "stretch",
-            height: "100%",
-            position: "relative",
-            overflow: "hidden",
-          }}
-        >
-          {tabs.map((tab, i) => {
-            const on = i === Math.min(item.selected ?? 0, Math.max(0, tabs.length - 1));
-            return (
-              <div
-                key={i}
-                style={{
-                  flex: scroll ? "none" : 1,
-                  width: scroll ? SCROLL_TAB_W : undefined,
-                  marginLeft: scroll && i === 0 ? -offset : undefined,
-                  minWidth: 0,
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  justifyContent: "flex-end",
-                  position: "relative",
-                  padding: "0 8px",
-                }}
-              >
-                <span
-                  style={{
-                    fontSize: 14,
-                    fontWeight: w(500, 700),
-                    color: on ? p.primary : p.onSurfaceVariant,
-                    padding: "0 4px 14px",
-                    maxWidth: "100%",
-                    ...ellipsis,
-                  }}
-                >
-                  {tab.label}
-                </span>
-                {on && (
-                  <span
-                    style={{
-                      position: "absolute",
-                      left: "50%",
-                      bottom: 0,
-                      transform: "translateX(-50%)",
-                      width: `calc(100% - 24px)`,
-                      height: 3,
-                      borderTopLeftRadius: 3,
-                      borderTopRightRadius: 3,
-                      background: p.primary,
-                    }}
-                  />
-                )}
-              </div>
-            );
-          })}
-          <span
-            style={{
-              position: "absolute",
-              left: 0,
-              right: 0,
-              bottom: 0,
-              height: 1,
-              background: p.outlineVariant,
-            }}
-          />
-        </div>
+        <TabsBody
+          item={item}
+          p={p}
+          lang={lang}
+          w={w}
+          hasLabel={hasLabel}
+          hasSupporting={hasSupporting}
+          tabScroll={tabScroll}
+          menuShown={menuShown}
+        />
       );
-    }
 
     case "loadingIndicator": {
       const s = item.size ?? 48;

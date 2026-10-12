@@ -1,0 +1,4314 @@
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { flushSync } from "react-dom";
+import { motion, useSpring } from "motion/react";
+import { toPng } from "html-to-image";
+import {
+  Action,
+  actionsOf,
+  Axis,
+  BACK_TARGET,
+  baseRadii,
+  BUTTON_H_MAX,
+  BUTTON_H_MIN,
+  CHIP_H_MAX,
+  CHIP_H_MIN,
+  FAB_H_MAX,
+  FAB_H_MIN,
+  isFab,
+  fabOpen,
+  splitMenuRisesAt,
+  menuUp,
+  opensMenu,
+  splitOpens,
+  buttonHeightOf,
+  explodeGroup,
+  freeRadii,
+  radiiOfRuns,
+  BEZEL,
+  canJoin,
+  clamp,
+  connectSpecOf,
+  Doc,
+  isPlatform,
+  Platform,
+  Frame,
+  Place,
+  FramePreset,
+  FRAME_GAP,
+  FRAME_LABEL_H,
+  FrameMode,
+  frameOfGroup,
+  framePresetPatch,
+  frameRect,
+  frameSizeOf,
+  frameLengthOf,
+  carryItemSize,
+  matchRunSize,
+  runSizePatch,
+  defaultPlatformOf,
+  GAP,
+  Group,
+  groupBounds,
+  Item,
+  Kind,
+  KIND_SPEC,
+  collapseFree,
+  layoutOf,
+  lerp,
+  makeItem,
+  DEFAULT_THEME,
+  Theme,
+  normalizeTheme,
+  setGlobalShape,
+  MEASURED,
+  Palette,
+  paletteOf,
+  PHONE_H,
+  PHONE_W,
+  PULL_EXP,
+  Radii,
+  SETTLE_MS,
+  sizeOf,
+  toggleIcon,
+  SNAP_CROSS,
+  SNAP_MAIN,
+  Transition,
+  uid,
+  uniformRadii,
+  FULL_WIDTH,
+  fitHeight,
+  CONTENT_W,
+  contentWidth,
+} from "@/pages/myspace/m3e/lib/tokens";
+import { M3Node, M3Static } from "@/pages/myspace/m3e/components/M3Node";
+import { CORNER_GAIN, CORNERS, HandleSide } from "@/pages/myspace/m3e/components/SizeHandles";
+import { Mode } from "@/pages/myspace/m3e/components/Toolbar";
+import { AiActionKey, aiErrorText } from "@/pages/myspace/m3e/components/AiPanel";
+import {
+  VANISH_MS,
+  type View,
+  type DragState,
+  type Guide,
+  type Snap,
+} from "@/pages/myspace/m3e/lib/editorState";
+import { RAIL_W, type LeftTab } from "@/pages/myspace/m3e/components/EditorLeftPanel";
+import type { LengthDrag } from "@/pages/myspace/m3e/components/EditorRightPanel";
+import { TidyState } from "@/pages/myspace/m3e/components/ui";
+import {
+  AiSettings,
+  DEFAULT_AI,
+  hasKey,
+  isSecureUrl,
+  loadAiSettings,
+  proposeBehavior,
+  proposeDescription,
+  pushHistory,
+  saveAiSettings,
+} from "@/pages/myspace/m3e/lib/ai";
+import {
+  barSlotOf,
+  bodyRect,
+  carryFrame,
+  holdsEdgeBar,
+  maxFrameLength,
+  minFrameLength,
+  pullInto,
+  stretchFrame,
+  tidyFrame,
+} from "@/pages/myspace/m3e/lib/tidy";
+import { constrainModalRails, modalRailOf, updateRail } from "@/pages/myspace/m3e/lib/rail";
+import { isProject } from "@/pages/myspace/m3e/lib/project";
+import { hasShareHash, readShareHash } from "@/pages/myspace/m3e/lib/share";
+import { draftDesign } from "@/pages/myspace/m3e/lib/ai";
+import { useLibrary } from "@/pages/myspace/m3e/lib/library";
+import { useChrome, viewportBox } from "@/pages/myspace/m3e/lib/chrome";
+import { ensureFontLoaded, ensureLangFontLoaded } from "@/pages/myspace/m3e/lib/theme";
+import { Lang, UiLang, getLang, setGlobalLang, setRuUi, t } from "@/pages/myspace/m3e/lib/i18n";
+import {
+  BASE_PATH,
+  CARRY,
+  OPEN,
+  INSTANT,
+  GAP_TWEEN,
+  MIN_Z,
+  MAX_Z,
+  GLIDE_TOP,
+  GLIDE_PAD,
+  HISTORY_MAX,
+  BEFORE_KEY,
+  UI_KEY,
+  GUIDE_PX,
+  onGrid,
+  FRAME_MARGIN,
+  Gesture,
+  Snapshot,
+  BUTTON_LIKE,
+  translateSnapshot,
+  SEED_FRAMES,
+  migrateGroups,
+  rekeyed,
+  copiedIds,
+  lockedGroupMsg,
+  seed,
+  mobileSeed,
+} from "@/pages/myspace/m3e/lib/editorModel";
+
+export interface M3eEditorHandle {
+  /** Показать экран по id: камера прилетает к нему и он выделяется. */
+  focusFrame: (id: string) => void;
+  /** Переименовать проект (название приложения) из менеджера страниц. */
+  setTitle: (title: string) => void;
+  /** Вписать все экраны в окно. */
+  fit: () => void;
+}
+
+export interface M3eEditorProps {
+  initialLang: UiLang;
+  /** Язык интерфейса «ru» поверх контентного языка (см. lib/i18n). */
+  onLangChange?: (lang: UiLang) => void;
+  /** Идентификатор страницы: ключи UI-черновика привязаны к нему. */
+  pageId: string;
+  /** Сохранённый документ страницы (null — новая, пустая). */
+  initialDoc: Partial<Doc> | null;
+  /** Документ изменился — сохранить. */
+  onDocChange: (doc: Doc) => void;
+  /** Экран, к которому надо прилететь сразу после открытия страницы. */
+  initialFocusFrame?: string | null;
+  handleRef?: React.MutableRefObject<M3eEditorHandle | null>;
+  onReady?: () => void;
+}
+
+/** Состояние и обработчики страницы (вынесено из M3eEditor.tsx). */
+export function useM3eEditor({
+  initialLang: initialUiLang,
+  onLangChange,
+  pageId,
+  initialDoc,
+  onDocChange,
+  initialFocusFrame,
+  handleRef,
+  onReady,
+}: M3eEditorProps) {
+  const initialLang: Lang = initialUiLang === "ru" ? "en" : initialUiLang;
+  /* русский интерфейс — надстройка над английским содержимым (lib/ru.ts) */
+  const [ru, setRu] = useState(initialUiLang === "ru");
+  setRuUi(ru);
+  useEffect(() => () => setRuUi(false), []);
+  const beforeKey = `${BEFORE_KEY}:${pageId}`;
+  const onDocChangeRef = useRef(onDocChange);
+  onDocChangeRef.current = onDocChange;
+  const onLangChangeRef = useRef(onLangChange);
+  onLangChangeRef.current = onLangChange;
+  const onReadyRef = useRef(onReady);
+  onReadyRef.current = onReady;
+  /* ---------- document ---------- */
+  const [lang, setLang] = useState<Lang>(initialLang);
+  const [editAccess, setEditAccess] = useState<"checking" | "editable" | "readonly">("checking");
+  const [groups, setGroupState] = useState<Group[]>(() => seed(initialLang));
+  /* Enforce the standalone-modal rule for imports, grouping, undo and all edits. */
+  const setGroups = useCallback((next: Group[] | ((prev: Group[]) => Group[])) => {
+    setGroupState((prev) => constrainModalRails(typeof next === "function" ? next(prev) : next));
+  }, []);
+  const [frames, setFrames] = useState<Frame[]>(() => [
+    { ...SEED_FRAMES[0], name: t("home", initialLang) },
+  ]);
+  const [paletteKey, setPaletteKey] = useState("purple");
+  const [customPalette, setCustomPalette] = useState<Palette | null>(null);
+  const [dynamicColor, setDynamicColor] = useState(false);
+  const [theme, setTheme] = useState<Theme>(DEFAULT_THEME);
+  const patchTheme = (patch: Partial<Theme>) => setTheme((t) => ({ ...t, ...patch }));
+  const [frame, setFrame] = useState<FrameMode>("phone");
+  const changeLanguage = (nextUi: UiLang) => {
+    const next: Lang = nextUi === "ru" ? "en" : nextUi;
+    setRuUi(nextUi === "ru");
+    setRu(nextUi === "ru");
+    onLangChangeRef.current?.(nextUi);
+    setGlobalLang(next);
+    initialLangRef.current = next;
+    setLang(next);
+    const translated = translateSnapshot(
+      { groups: groupsRef.current, frames: framesRef.current },
+      next,
+    );
+    const tidy = tidyRef.current;
+    if (tidy) {
+      tidyRef.current =
+        tidy.after === groupsRef.current
+          ? {
+              ...tidy,
+              before: translateSnapshot({ groups: tidy.before, frames: framesRef.current }, next)
+                .groups,
+              after: translated.groups,
+            }
+          : null;
+    }
+    setGroups(translated.groups);
+    setFrames(translated.frames);
+    pastRef.current = pastRef.current.map((snap) => translateSnapshot(snap, next));
+    futureRef.current = futureRef.current.map((snap) => translateSnapshot(snap, next));
+  };
+  const [isMobile, setIsMobile] = useState(false);
+  const [sheet, setSheet] = useState<"edit" | "settings" | "lang" | null>(null);
+  const [confirmClear, setConfirmClear] = useState(false);
+  /** frame being rendered offscreen for the PNG export */
+  const [exportFrame, setExportFrame] = useState<Frame | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+  const [title, setTitle] = useState("");
+  const [brief, setBrief] = useState("");
+  const [promptEdit, setPromptEdit] = useState<string | undefined>(undefined);
+  const [promptOptions, setPromptOptions] = useState<string[] | undefined>(undefined);
+  /** the prompt's full-screen cover is up: the panel's own band steps aside while it is */
+  const [promptCoverUp, setPromptCoverUp] = useState(false);
+  /** the author's explicit target; null follows the screens (web once a desktop screen exists) */
+  const [platform, setPlatform] = useState<Platform | null>(null);
+  /** a project file waiting for the author to confirm replacing the canvas */
+  const [pendingImport, setPendingImport] = useState<Doc | null>(null);
+  const [shareOpen, setShareOpen] = useState(false);
+  /** the idea typed into the "ask an AI" dialog; kept here so a failed draft does not lose it */
+  const [ideaText, setIdeaText] = useState("");
+  /** a model is drafting a design right now */
+  const [draftBusy, setDraftBusy] = useState(false);
+  /** the design a draft replaced, kept until the author keeps or undoes the draft */
+  const [draftBefore, setDraftBefore] = useState<Doc | null>(null);
+  const draftBeforeRef = useRef<Doc | null>(null);
+  draftBeforeRef.current = draftBefore;
+  /** true for the moment after a design arrives, so its colours ease over */
+  const [revealing, setRevealing] = useState(false);
+  const revealTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (revealTimer.current) clearTimeout(revealTimer.current);
+    },
+    [],
+  );
+  const guideRef = useRef<string | null>(null);
+
+  /* ---------- editor ui ---------- */
+  const [view, setView] = useState<View>({ x: 0, y: 0, z: 1 });
+  /** Keep the server-rendered world hidden until its first fit has completed. */
+  const [viewReady, setViewReady] = useState(false);
+  /** screens ease to their new place and size for a moment after one changes size */
+  const [easing, setEasing] = useState(false);
+  /** the canvas transform eases while the camera glides to or from a screen */
+  const [cameraEasing, setCameraEasing] = useState(false);
+  const [mode, setMode] = useState<Mode>("select");
+  const [spaceHeld, setSpaceHeld] = useState(false);
+  const [leftOpen, setLeftOpen] = useState(true);
+  const [rightOpen, setRightOpen] = useState(true);
+  const [leftW, setLeftW] = useState(RAIL_W + 268);
+  const [leftTab, setLeftTab] = useState<LeftTab>("parts");
+  /** pointer over the collapsed rail: the logo becomes the open button */
+  const [railHover, setRailHover] = useState(false);
+  /** the screen whose layers are listed when nothing on a screen is selected */
+  const [layersFrameId, setLayersFrameId] = useState<string | null>(null);
+  const [rightW, setRightW] = useState(320);
+  const [rightTab, setRightTab] = useState<"edit" | "prompt">("edit");
+  const [favorites, setFavorites] = useState<Kind[]>([]);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [selectedFrameId, setSelectedFrameId] = useState<string | null>(null);
+  const [selectedLinkId, setSelectedLinkId] = useState<string | null>(null);
+  /** a connector being pulled from a part to the screen it should open */
+  const [linkDrag, setLinkDrag] = useState<{
+    itemId: string;
+    sx: number;
+    sy: number;
+    x: number;
+    y: number;
+    over: string | null;
+  } | null>(null);
+  const [previewId, setPreviewId] = useState<string | null>(null);
+  const [pressedId, setPressedId] = useState<string | null>(null);
+  const [drag, setDrag] = useState<DragState | null>(null);
+  const [gesture, setGesture] = useState<Gesture | null>(null);
+  const [widths, setWidths] = useState<Record<string, number>>({});
+  const [resizing, setResizing] = useState<"left" | "right" | null>(null);
+  const [, bumpHistory] = useState(0);
+  /* ---------- tidy and ai ---------- */
+  /** the groups before and after the last tidy; "undo" is offered only while the after-state is still current */
+  const tidyRef = useRef<{ frameId: string; before: Group[]; after: Group[] } | null>(null);
+  const [aiSettings, setAiSettings] = useState<AiSettings>(DEFAULT_AI);
+  const library = useLibrary();
+  const [aiBusy, setAiBusy] = useState(false);
+  /** the screen the model is working on, which wears the animated ring meanwhile */
+  const [aiFrameId, setAiFrameId] = useState<string | null>(null);
+  /** the "applied" confirmation beside the tidy button */
+  const [aiNote, setAiNote] = useState<{ text: string; icon: string } | null>(null);
+  const projectFileRef = useRef<HTMLInputElement>(null);
+  const aiNoteTimer = useRef<number | null>(null);
+  const aiAbortRef = useRef<AbortController | null>(null);
+
+  const dp = useMemo(
+    () => paletteOf(paletteKey, customPalette, theme),
+    [paletteKey, customPalette, theme],
+  );
+  /* the surrounding interface wears the app's own theme; only the screens use the document's palette */
+  const chrome = useChrome();
+  const p = chrome.palette;
+  /* corner helpers read the shape scale outside React; keep it current before anything renders */
+  setGlobalShape(theme.shape);
+
+  const canvasRef = useRef<HTMLDivElement>(null);
+  const measureEls = useRef<Map<string, HTMLElement>>(new Map());
+  const dragRef = useRef<DragState | null>(null);
+  const gestureRef = useRef<Gesture | null>(null);
+  const pendingRef = useRef<{ timer: number; commit: () => void } | null>(null);
+  const groupsRef = useRef(groups);
+  groupsRef.current = groups;
+  const framesRef = useRef(frames);
+  framesRef.current = frames;
+  const widthsRef = useRef(widths);
+  widthsRef.current = widths;
+  const viewRef = useRef(view);
+  viewRef.current = view;
+  const previewIdRef = useRef(previewId);
+  previewIdRef.current = previewId;
+  const leftOpenRef = useRef(leftOpen);
+  leftOpenRef.current = leftOpen;
+  const leftWRef = useRef(leftW);
+  leftWRef.current = leftW;
+  const modeRef = useRef(mode);
+  modeRef.current = mode;
+  const spaceRef = useRef(spaceHeld);
+  spaceRef.current = spaceHeld;
+  /** focus last moved with Tab, not with a pointer */
+  const tabbedRef = useRef(false);
+  const frameRef = useRef(frame);
+  frameRef.current = frame;
+  const mobileRef = useRef(isMobile);
+  mobileRef.current = isMobile;
+  /** active touch points, for pinch zoom */
+  const touchesRef = useRef<Map<number, { x: number; y: number }>>(new Map());
+  const pinchRef = useRef<{
+    d0: number;
+    z0: number;
+    mx: number;
+    my: number;
+    vx: number;
+    vy: number;
+  } | null>(null);
+  /** groups that must reposition without animating on the next render */
+  const instantRef = useRef<Set<string>>(new Set());
+  const loadedRef = useRef(false);
+  const initialLangRef = useRef<Lang>(initialLang);
+  /** A saved document or the first viewport initialization prevents later reseeding. */
+  const hadDocRef = useRef(false);
+
+  /* ---------- history ---------- */
+  const pastRef = useRef<Snapshot[]>([]);
+  const futureRef = useRef<Snapshot[]>([]);
+  const lastPatchRef = useRef<{ key: string; at: number }>({ key: "", at: 0 });
+
+  const snapshot = useCallback((withMeta = false) => {
+    setQuickUndo(false);
+    pastRef.current.push(current(withMeta));
+    if (pastRef.current.length > HISTORY_MAX) pastRef.current.shift();
+    futureRef.current = [];
+    bumpHistory((v) => v + 1);
+  }, []);
+
+  /** consecutive edits of the same field collapse into one undo step */
+  const snapshotFor = useCallback(
+    (key: string) => {
+      const now = Date.now();
+      const last = lastPatchRef.current;
+      if (last.key !== key || now - last.at > 800) snapshot();
+      lastPatchRef.current = { key, at: now };
+    },
+    [snapshot],
+  );
+
+  const restore = (snap: Snapshot) => {
+    for (const g of snap.groups) instantRef.current.add(g.id);
+    if (snap.meta) {
+      applyDoc({ ...snap.meta, groups: snap.groups, frames: snap.frames }, true);
+      if (!mobileRef.current) {
+        const mode = snap.meta.frame === "blank" ? "blank" : "phone";
+        setFrame(mode);
+        frameRef.current = mode;
+      }
+    } else {
+      setGroups(snap.groups);
+      setFrames(snap.frames);
+    }
+    bumpHistory((v) => v + 1);
+  };
+
+  /** the current step as a snapshot; `withMeta` when the step being crossed replaced the whole document */
+  const current = (withMeta: boolean): Snapshot => {
+    const { groups: _g, frames: _f, ...meta } = docRef.current;
+    return {
+      groups: groupsRef.current,
+      frames: framesRef.current,
+      meta: withMeta ? meta : undefined,
+    };
+  };
+
+  const undo = useCallback(() => {
+    setQuickUndo(false);
+    const prev = pastRef.current.pop();
+    if (!prev) return;
+    futureRef.current.push(current(!!prev.meta));
+    restore(prev);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const redo = useCallback(() => {
+    const next = futureRef.current.pop();
+    if (!next) return;
+    pastRef.current.push(current(!!next.meta));
+    restore(next);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    instantRef.current.clear();
+  });
+
+  /* ---------- persistence ---------- */
+  useEffect(() => {
+    /* В приложении одно окно редактора: блокировка между вкладками браузера не нужна. */
+    setEditAccess("editable");
+  }, []);
+
+  /** Puts a stored or opened document into the editor. Fields a partial document
+   *  leaves out keep their current value, or go back to the default when `reset`. */
+  const applyDoc = (doc: Partial<Doc>, reset: boolean) => {
+    // A document can arrive during the opening glide, before previewId is set. The
+    // screen the glide was heading for belongs to the replaced document, so the pending
+    // opening is dropped and the camera returns; an open preview simply closes.
+    if (previewTimer.current !== null) abandonPreview();
+    else {
+      /* a return still on its way would drag the camera off the new document's fit */
+      cancelReturn();
+      if (previewIdRef.current !== null) {
+        setPreviewId(null);
+        viewBeforePreview.current = null;
+      }
+    }
+    const frames = Array.isArray(doc.frames) ? doc.frames : framesRef.current;
+    if (Array.isArray(doc.groups)) setGroups(migrateGroups(doc.groups, frames));
+    if (Array.isArray(doc.frames)) setFrames(doc.frames);
+    if (typeof doc.paletteKey === "string" && doc.paletteKey) setPaletteKey(doc.paletteKey);
+    else if (reset) setPaletteKey("purple");
+    /* normalize once so a scheme saved before the secondary role gets it and keeps it on re-save */
+    if (doc.customPalette && typeof doc.customPalette.primary === "string")
+      setCustomPalette(paletteOf("custom", doc.customPalette));
+    else if (reset) setCustomPalette(null);
+    if (typeof doc.dynamicColor === "boolean") setDynamicColor(doc.dynamicColor);
+    else if (reset) setDynamicColor(false);
+    if (doc.theme && typeof doc.theme === "object") setTheme(normalizeTheme(doc.theme));
+    else if (reset) setTheme(normalizeTheme(undefined));
+    if (typeof doc.title === "string") setTitle(doc.title);
+    else if (reset) setTitle("");
+    if (typeof doc.brief === "string") setBrief(doc.brief);
+    else if (reset) setBrief("");
+    if (typeof doc.promptEdit === "string") setPromptEdit(doc.promptEdit);
+    else if (reset) setPromptEdit(undefined);
+    if (Array.isArray(doc.promptOptions)) setPromptOptions(doc.promptOptions);
+    else if (reset) setPromptOptions(undefined);
+    if (isPlatform(doc.platform)) setPlatform(doc.platform);
+    else if (reset) setPlatform(null);
+  };
+
+  useEffect(() => {
+    // React's development double-run would otherwise read back its own first save
+    if (loadedRef.current) return;
+    try {
+      const d = initialDoc;
+      if (d) {
+        hadDocRef.current = true;
+        applyDoc(d, false);
+        // frame mode is decided by the device (media-query effect), not restored
+      }
+      const before = d ? localStorage.getItem(beforeKey) : null;
+      if (!d) localStorage.removeItem(beforeKey);
+      if (before) {
+        const value: unknown = JSON.parse(before);
+        if (isProject(value)) setDraftBefore(value);
+        else localStorage.removeItem(beforeKey);
+      }
+      const u = localStorage.getItem(UI_KEY);
+      if (u) {
+        const ui = JSON.parse(u);
+        if (ui.view) setView(ui.view);
+        if (typeof ui.leftOpen === "boolean") setLeftOpen(ui.leftOpen);
+        if (typeof ui.rightOpen === "boolean") setRightOpen(ui.rightOpen);
+        if (ui.leftW) setLeftW(Math.max(RAIL_W + 244, ui.leftW));
+        if (ui.rightW) setRightW(ui.rightW);
+        if (Array.isArray(ui.favorites)) setFavorites(ui.favorites);
+        if (ui.mode) setMode(ui.mode);
+      } else {
+        queueMicrotask(() => fitRef.current());
+      }
+      setGlobalLang(initialLang);
+      initialLangRef.current = initialLang;
+      if (!d) {
+        setGroups(seed(initialLang));
+        setFrames([{ ...SEED_FRAMES[0], name: t("home", initialLang) }]);
+      }
+    } catch {
+      /* документ в localStorage не прочитался — остаётся начальный набор */
+    }
+    setAiSettings(loadAiSettings());
+    loadedRef.current = true;
+    /* the document is in state; one frame later it is on screen and the boot overlay may go.
+       Not cancelled on cleanup: the development double-run skips this effect the second time. */
+    requestAnimationFrame(() => onReadyRef.current?.());
+  }, []);
+
+  useEffect(() => {
+    ensureLangFontLoaded(lang, () => setWidths({}));
+  }, [lang]);
+
+  useEffect(() => {
+    /* an empty width map makes every measured part read its width again in the new face */
+    ensureFontLoaded(theme.font, () => setWidths({}));
+  }, [theme.font]);
+
+  /* in-app browsers size the page behind their own toolbars and may ignore dvh,
+     so the measured inner height wins over the CSS height (innerHeight, not the
+     visual viewport, so pinch-zoom and the keyboard leave the layout alone) */
+  useEffect(() => {
+    /* in-app browsers (X, Instagram, LINE...) keep their own action bar over the
+       page bottom, so the controls sit one button higher there. App names in the
+       user agent are unreliable; the embedded web view itself is not: iOS web
+       views omit the Safari token and Android ones carry "wv" */
+    const ua = navigator.userAgent;
+    const iosWebView = /iPhone|iPad|iPod/.test(ua) && !/Safari\//.test(ua);
+    const androidWebView = /Android/.test(ua) && /(?:^|\W)wv(?:\W|$)/.test(ua);
+    if (iosWebView || androidWebView || /Twitter|Instagram|FBAN|FBAV|Line\//i.test(ua)) {
+      document.documentElement.style.setProperty("--bottom-ui", "64px");
+    }
+  }, []);
+
+  /* everyone works on phone screens; a phone gets one fixed screen and the select tool only */
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 640px)");
+    const apply = () => {
+      const m = mq.matches;
+      setIsMobile(m);
+      mobileRef.current = m;
+      if (m) {
+        setMode("select");
+        setSheet(null);
+        if (!hadDocRef.current) {
+          hadDocRef.current = true;
+          setGroups(mobileSeed(initialLangRef.current));
+          setFrames([{ id: uid(), name: t("home", initialLangRef.current), x: 0, y: 0 }]);
+        }
+      }
+      hadDocRef.current = true;
+      if (frameRef.current !== "phone") {
+        setFrame("phone");
+        frameRef.current = "phone";
+      }
+      ensureFrameRef.current();
+      queueMicrotask(() => {
+        fitRef.current();
+        setViewReady(true);
+      });
+    };
+    apply();
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
+  }, []);
+
+  useEffect(() => {
+    if (!loadedRef.current || editAccess !== "editable") return;
+    try {
+      onDocChangeRef.current({
+        groups,
+        frames,
+        paletteKey,
+        frame,
+        title,
+        brief,
+        promptEdit,
+        promptOptions,
+        platform: platform ?? undefined,
+        customPalette: customPalette ?? undefined,
+        dynamicColor,
+        theme,
+      } as Doc);
+    } catch {
+      /* localStorage недоступен или переполнен — автосохранение черновика пропущено */
+    }
+  }, [
+    editAccess,
+    groups,
+    frames,
+    paletteKey,
+    frame,
+    title,
+    brief,
+    promptEdit,
+    promptOptions,
+    platform,
+    customPalette,
+    dynamicColor,
+    theme,
+  ]);
+
+  useEffect(() => {
+    if (!loadedRef.current) return;
+    try {
+      localStorage.setItem(
+        UI_KEY,
+        JSON.stringify({
+          view,
+          leftOpen,
+          rightOpen,
+          leftW,
+          rightW,
+          favorites,
+          mode,
+          lang,
+          /* the theme's surfaces, so the shell drawn before the editor loads is already this colour */
+          boot: {
+            surface: p.surface,
+            container: p.surfaceContainer,
+            low: p.surfaceContainerLow,
+            high: p.surfaceContainerHigh,
+            primary: p.primary,
+            canvas: frame === "phone" ? dp.surfaceContainerLow : "#ffffff",
+          },
+        }),
+      );
+    } catch {
+      /* localStorage недоступен или переполнен — автосохранение пропущено */
+    }
+  }, [view, leftOpen, rightOpen, leftW, rightW, p, frame, favorites, mode, lang]);
+
+  /* ---------- measurement (text-sized kinds) ---------- */
+  const allItems = useMemo(() => {
+    const map = new Map<string, Item>();
+    for (const g of groups) for (const it of g.items) map.set(it.id, it);
+    if (drag) map.set(drag.item.id, drag.item);
+    return [...map.values()];
+  }, [groups, drag]);
+
+  /** a FAB whose size the author just changed, and the corner it is to keep. A part as wide as
+   *  its own label is only measured after it is drawn, so the corner is put right once the
+   *  measuring pass knows how wide it came out. */
+  const fabAnchor = useRef<{ id: string; right: number; bottom: number } | null>(null);
+  useLayoutEffect(() => {
+    const next: Record<string, number> = {};
+    measureEls.current.forEach((el, id) => {
+      next[id] = Math.ceil(el.getBoundingClientRect().width);
+    });
+    const keys = Object.keys(next);
+    const changed =
+      keys.length !== Object.keys(widthsRef.current).length ||
+      keys.some((k) => widthsRef.current[k] !== next[k]);
+    if (changed) setWidths(next);
+    const anchor = fabAnchor.current;
+    if (!anchor) return;
+    const g = groupsRef.current.find((x) => x.items.some((it) => it.id === anchor.id));
+    const item = g?.items.find((it) => it.id === anchor.id);
+    if (!g || !item) {
+      fabAnchor.current = null;
+      return;
+    }
+    const sz = sizeOf(item, next);
+    const dx = anchor.right - (g.x + sz.w);
+    const dy = anchor.bottom - (g.y + sz.h);
+    fabAnchor.current = null;
+    if (!dx && !dy) return;
+    instantRef.current.add(g.id);
+    setGroups((prev) => prev.map((x) => (x.id === g.id ? { ...x, x: x.x + dx, y: x.y + dy } : x)));
+  });
+
+  useEffect(() => {
+    const refreshWidths = () => setWidths({});
+    document.fonts?.ready.then(refreshWidths);
+    document.fonts?.addEventListener("loadingdone", refreshWidths);
+    return () => document.fonts?.removeEventListener("loadingdone", refreshWidths);
+  }, []);
+
+  const sizeRef = useCallback((it: Item) => sizeOf(it, widthsRef.current), []);
+  const alongRef = useCallback(
+    (it: Item, axis: Axis) => (axis === "x" ? sizeRef(it).w : sizeRef(it).h),
+    [sizeRef],
+  );
+  const prefixOf = useCallback(
+    (g: Group, k: number) =>
+      g.items.slice(0, k).reduce((s, it) => s + alongRef(it, g.axis) + GAP, 0),
+    [alongRef],
+  );
+
+  /* ---------- coordinates ---------- */
+  const canvasRect = () => canvasRef.current?.getBoundingClientRect();
+  const inCanvas = (clientX: number, clientY: number) => {
+    const r = canvasRect();
+    return (
+      !!r && clientX >= r.left && clientX <= r.right && clientY >= r.top && clientY <= r.bottom
+    );
+  };
+  const toWorld = (clientX: number, clientY: number) => {
+    const r = canvasRect();
+    const v = viewRef.current;
+    return {
+      x: (clientX - (r?.left ?? 0) - v.x) / v.z,
+      y: (clientY - (r?.top ?? 0) - v.y) / v.z,
+    };
+  };
+  /* only the open left panel accepts a drop for deletion; the narrow rail never does */
+  const inBin = (clientX: number) =>
+    !mobileRef.current && leftOpenRef.current && clientX >= 0 && clientX <= leftWRef.current;
+
+  const setZoomAt = useCallback((nz: number, cx?: number, cy?: number) => {
+    const r = canvasRect();
+    const v = viewRef.current;
+    const z = clamp(nz, MIN_Z, MAX_Z);
+    const px = cx === undefined ? (r?.width ?? 0) / 2 : cx - (r?.left ?? 0);
+    const py = cy === undefined ? (r?.height ?? 0) / 2 : cy - (r?.top ?? 0);
+    setView({
+      x: px - ((px - v.x) * z) / v.z,
+      y: py - ((py - v.y) * z) / v.z,
+      z,
+    });
+  }, []);
+
+  const fit = useCallback(() => {
+    const r = canvasRect();
+    if (!r) return;
+    const gs = groupsRef.current;
+    let x0 = -BEZEL;
+    let y0 = -BEZEL - FRAME_LABEL_H;
+    let x1 = PHONE_W + BEZEL;
+    let y1 = PHONE_H + BEZEL;
+    const fs = framesRef.current;
+    if (frameRef.current === "phone" && fs.length > 0) {
+      x0 = Math.min(...fs.map((f) => f.x)) - BEZEL;
+      y0 = Math.min(...fs.map((f) => f.y)) - BEZEL - FRAME_LABEL_H;
+      x1 = Math.max(...fs.map((f) => frameRect(f).r)) + BEZEL;
+      y1 = Math.max(...fs.map((f) => frameRect(f).b)) + BEZEL;
+    }
+    if (frameRef.current === "blank") {
+      if (gs.length === 0) {
+        setView({ x: 48, y: 48, z: 1 });
+        return;
+      }
+      x0 = Infinity;
+      y0 = Infinity;
+      x1 = -Infinity;
+      y1 = -Infinity;
+      for (const g of gs) {
+        for (const pl of layoutOf(g, widthsRef.current)) {
+          x0 = Math.min(x0, pl.x);
+          y0 = Math.min(y0, pl.y);
+          x1 = Math.max(x1, pl.x + pl.w);
+          y1 = Math.max(y1, pl.y + pl.h);
+        }
+      }
+    }
+    const mobile = mobileRef.current;
+    const pad = mobile ? 14 : 40;
+    const top = mobile ? 96 : 84; // keep the floating toolbar clear of the frame
+    const bottom = mobile ? 96 : pad;
+    if (mobile) {
+      // a phone zooms to the screen's width and starts at its top; the rest scrolls
+      const z = clamp((r.width - pad * 2) / (x1 - x0), MIN_Z, MAX_Z);
+      setView({ x: (r.width - (x1 - x0) * z) / 2 - x0 * z, y: top - y0 * z, z });
+      return;
+    }
+    const z = clamp(
+      Math.min((r.width - pad * 2) / (x1 - x0), (r.height - top - bottom) / (y1 - y0), 1),
+      MIN_Z,
+      MAX_Z,
+    );
+    setView({
+      x: (r.width - (x1 - x0) * z) / 2 - x0 * z,
+      y: top + (r.height - top - bottom - (y1 - y0) * z) / 2 - y0 * z,
+      z,
+    });
+  }, []);
+  const fitRef = useRef(fit);
+  fitRef.current = fit;
+
+  /* touch: two fingers pinch-zoom and pan, cancelling whatever one finger started */
+  const onTouchCapture = (e: React.PointerEvent) => {
+    if (e.pointerType !== "touch") return;
+    touchesRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (touchesRef.current.size === 2) {
+      const [a, b] = [...touchesRef.current.values()];
+      const v = viewRef.current;
+      pinchRef.current = {
+        d0: Math.hypot(a.x - b.x, a.y - b.y),
+        z0: v.z,
+        mx: (a.x + b.x) / 2,
+        my: (a.y + b.y) / 2,
+        vx: v.x,
+        vy: v.y,
+      };
+      dragRef.current = null;
+      setDrag(null);
+      setPressedId(null);
+      gestureRef.current = null;
+      setGesture(null);
+    }
+  };
+  useEffect(() => {
+    const move = (e: PointerEvent) => {
+      if (e.pointerType !== "touch" || !touchesRef.current.has(e.pointerId)) return;
+      touchesRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      const pinch = pinchRef.current;
+      if (!pinch || touchesRef.current.size < 2) return;
+      const [a, b] = [...touchesRef.current.values()];
+      const r = canvasRef.current?.getBoundingClientRect();
+      const d = Math.hypot(a.x - b.x, a.y - b.y);
+      const z = clamp((pinch.z0 * d) / Math.max(1, pinch.d0), MIN_Z, MAX_Z);
+      const mx = (a.x + b.x) / 2;
+      const my = (a.y + b.y) / 2;
+      const px = pinch.mx - (r?.left ?? 0);
+      const py = pinch.my - (r?.top ?? 0);
+      setView({
+        x: px - ((px - pinch.vx) * z) / pinch.z0 + (mx - pinch.mx),
+        y: py - ((py - pinch.vy) * z) / pinch.z0 + (my - pinch.my),
+        z,
+      });
+    };
+    const up = (e: PointerEvent) => {
+      if (e.pointerType !== "touch") return;
+      touchesRef.current.delete(e.pointerId);
+      if (touchesRef.current.size < 2) pinchRef.current = null;
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", up);
+    return () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", up);
+    };
+  }, []);
+
+  /* wheel: pan, or zoom with ctrl / pinch */
+  useEffect(() => {
+    const el = canvasRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      if (e.ctrlKey || e.metaKey) {
+        setZoomAt(viewRef.current.z * Math.exp(-e.deltaY * 0.0022), e.clientX, e.clientY);
+      } else {
+        setView((v) => ({ ...v, x: v.x - e.deltaX, y: v.y - e.deltaY }));
+      }
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, [setZoomAt]);
+
+  /* ---------- rest positions and the magnet ---------- */
+  const restPos = useCallback(
+    (g: Group, k: number, sz: { w: number; h: number }) =>
+      g.axis === "x"
+        ? { left: k === 0 ? g.x - sz.w - GAP : g.x + prefixOf(g, k), top: g.y }
+        : { left: g.x, top: k === 0 ? g.y - sz.h - GAP : g.y + prefixOf(g, k) },
+    [prefixOf],
+  );
+
+  /** Nearest slot inside the magnetic field with an attraction that ramps
+   *  from 0 at the edge to 1 on target. A part only fuses with its own kind. */
+  const findSnap = useCallback(
+    (item: Item, left: number, top: number): Snap | null => {
+      const spec = connectSpecOf(item);
+      if (!spec) return null;
+      let best: Snap | null = null;
+      let bestD = 1;
+      for (const g of groupsRef.current) {
+        /* a locked run is finished: nothing joins it, so it never moves to make room */
+        if (g.free || g.locked || g.axis !== spec.axis || !g.items[0] || !canJoin(g.items[0], item))
+          continue;
+        const sz = sizeRef(item);
+        /* across the run, the part and the band it would join are lined up by their middles:
+         * a small part carried onto a tall run should still find it, and it takes the run's
+         * size as it lands anyway */
+        const band = g.items.reduce(
+          (m, it) => Math.max(m, spec.axis === "x" ? sizeRef(it).h : sizeRef(it).w),
+          0,
+        );
+        for (let k = 0; k <= g.items.length; k++) {
+          const r = restPos(g, k, sz);
+          const dx = left - r.left;
+          const dy = top - r.top;
+          const mid =
+            spec.axis === "x"
+              ? top + sz.h / 2 - (g.y + band / 2)
+              : left + sz.w / 2 - (g.x + band / 2);
+          const nMain = (spec.axis === "x" ? dx : dy) / SNAP_MAIN;
+          const nCross = mid / SNAP_CROSS;
+          if (Math.abs(nMain) >= 1 || Math.abs(nCross) >= 1) continue;
+          const d = Math.hypot(nMain, nCross);
+          if (d < bestD) {
+            bestD = d;
+            best = { groupId: g.id, index: k, pull: Math.pow(1 - d, PULL_EXP) };
+          }
+        }
+      }
+      return best;
+    },
+    [restPos, sizeRef],
+  );
+
+  const sx = useSpring(0, CARRY);
+  const sy = useSpring(0, CARRY);
+
+  /** Canva-style alignment: edges and centres of neighbours and of the frame
+   *  pull the part gently into line and draw a guide while they do. */
+  const guideFor = useCallback(
+    (left: number, top: number, sz: { w: number; h: number }, skip: Set<string>): Guide | null => {
+      const tol = GUIDE_PX / viewRef.current.z;
+      const xs: number[] = [];
+      const ys: number[] = [];
+      for (const g of groupsRef.current) {
+        for (const pl of layoutOf(g, widthsRef.current)) {
+          if (skip.has(pl.item.id)) continue;
+          xs.push(pl.x, pl.x + pl.w / 2, pl.x + pl.w);
+          ys.push(pl.y, pl.y + pl.h / 2, pl.y + pl.h);
+        }
+      }
+      if (frameRef.current === "phone") {
+        for (const f of framesRef.current) {
+          const { w } = frameSizeOf(f);
+          const h = frameLengthOf(f);
+          xs.push(f.x, f.x + FRAME_MARGIN, f.x + w / 2, f.x + w - FRAME_MARGIN, f.x + w);
+          ys.push(f.y, f.y + FRAME_MARGIN, f.y + h / 2, f.y + h - FRAME_MARGIN, f.y + h);
+        }
+      }
+      const mine = (pos: number, len: number) => [pos, pos + len / 2, pos + len];
+      let best: Guide = {};
+      let bx = tol;
+      for (const c of xs)
+        for (const m of mine(left, sz.w)) {
+          const d = Math.abs(c - m);
+          if (d < bx) {
+            bx = d;
+            best = { ...best, x: left + (c - m), gx: c };
+          }
+        }
+      let by = tol;
+      for (const c of ys)
+        for (const m of mine(top, sz.h)) {
+          const d = Math.abs(c - m);
+          if (d < by) {
+            by = d;
+            best = { ...best, y: top + (c - m), gy: c };
+          }
+        }
+      return best.x === undefined && best.y === undefined ? null : best;
+    },
+    [],
+  );
+  const findGuide = useCallback(
+    (item: Item, left: number, top: number): Guide | null =>
+      guideFor(left, top, sizeRef(item), new Set([item.id])),
+    [guideFor, sizeRef],
+  );
+
+  /* ---------- pointer: parts ---------- */
+  const flushPending = useCallback(() => {
+    const pend = pendingRef.current;
+    if (!pend) return;
+    clearTimeout(pend.timer);
+    pendingRef.current = null;
+    pend.commit();
+  }, []);
+  useEffect(() => () => flushPending(), [flushPending]);
+
+  const startPan = (clientX: number, clientY: number) => {
+    const g: Gesture = {
+      kind: "pan",
+      sx: clientX,
+      sy: clientY,
+      vx: viewRef.current.x,
+      vy: viewRef.current.y,
+    };
+    gestureRef.current = g;
+    setGesture(g);
+  };
+
+  /** where the finger is inside the part being carried: the copy that follows the pointer is
+   *  drawn lit at that point, so the light of the press is not lost when the drag begins */
+  const [dragLit, setDragLit] = useState<{ x: number; y: number; at: number } | null>(null);
+  /** the part that has just landed, and where the press was on it: it takes the light over,
+   *  already grown, and lets it go out in place */
+  const [landed, setLanded] = useState<{ id: string; x: number; y: number } | null>(null);
+  const landTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (landTimer.current) clearTimeout(landTimer.current);
+    },
+    [],
+  );
+  /* a drop that adds or deletes nothing: the ghost fades and shrinks where it was let go, so the
+   * cancel is seen rather than the part simply blinking out */
+  const vanishDrag = (d: DragState) => {
+    setDrag({ ...d, vanishing: true, overBin: false, snap: null, guide: null });
+    window.setTimeout(() => setDrag((cur) => (cur?.vanishing ? null : cur)), VANISH_MS);
+  };
+  const lightLands = (id: string, x: number, y: number) => {
+    setLanded({ id, x, y });
+    if (landTimer.current) clearTimeout(landTimer.current);
+    /* long enough to be drawn: taking it away again is what makes it fade */
+    landTimer.current = setTimeout(() => setLanded(null), 50);
+  };
+
+  const onItemPointerDown = (e: React.PointerEvent, g: Group, index: number, item: Item) => {
+    if (e.button === 1 || modeRef.current === "hand" || spaceRef.current) {
+      e.preventDefault();
+      e.stopPropagation();
+      startPan(e.clientX, e.clientY);
+      return;
+    }
+    if (e.button !== 0) return;
+    e.preventDefault();
+    e.stopPropagation();
+    flushPending();
+    if (g.free) {
+      setSelectedIds((cur) =>
+        e.shiftKey
+          ? [
+              ...cur.filter((x) => !g.items.some((it) => it.id === x)),
+              ...g.items.map((it) => it.id),
+            ]
+          : g.items.map((it) => it.id),
+      );
+      setSelectedFrameId(null);
+      setSelectedLinkId(null);
+      setRightTab("edit");
+      /* a locked group stays selectable, but dragging it does nothing */
+      if (g.locked) return;
+      const gg: Gesture = {
+        kind: "group",
+        id: g.id,
+        sx: e.clientX,
+        sy: e.clientY,
+        gx: g.x,
+        gy: g.y,
+        moved: false,
+        overBin: false,
+      };
+      gestureRef.current = gg;
+      setGesture(gg);
+      return;
+    }
+    const pt = toWorld(e.clientX, e.clientY);
+    const off = prefixOf(g, index);
+    const left = g.axis === "x" ? g.x + off : g.x;
+    const top = g.axis === "x" ? g.y : g.y + off;
+    sx.jump(left);
+    sy.jump(top);
+    setSelectedIds((cur) =>
+      e.shiftKey ? [...cur.filter((x) => x !== item.id), item.id] : [item.id],
+    );
+    setSelectedFrameId(null);
+    setSelectedLinkId(null);
+    setRightTab("edit");
+    /* a locked group's part stays selectable, but dragging it does nothing */
+    if (g.locked) return;
+    setPressedId(item.id);
+    /* the moment of the press travels with it, so the light carries on rather than starting over
+       when the part is handed to the copy that follows the pointer */
+    setDragLit({ x: pt.x - left, y: pt.y - top, at: performance.now() });
+    const d: DragState = {
+      item,
+      base: item,
+      baseOffX: pt.x - left,
+      baseOffY: pt.y - top,
+      offX: pt.x - left,
+      offY: pt.y - top,
+      startX: pt.x,
+      startY: pt.y,
+      px: pt.x,
+      py: pt.y,
+      active: false,
+      fromPalette: false,
+      overBin: false,
+      snap: null,
+      settling: false,
+      vanishing: false,
+      guide: null,
+    };
+    dragRef.current = d;
+    setDrag({ ...d });
+  };
+
+  /** The group a new part becomes when it lands with its top-left at rawX/rawY, on the screen
+   *  under its centre if there is one. A bar spans that screen beside its rail; any other part
+   *  keeps its phone-sized default (a list or a field as wide as a desktop is rarely what the
+   *  author means), but no taller than the screen. Off any guide the part settles on the 4dp
+   *  grid of the screen it lands on; `held` names the axes that keep their whole pixel instead
+   *  (a guide's hold, or a Ctrl drop). A part that grew to the screen's width is kept inside it,
+   *  then settles back on the grid. */
+  const landNewPart = (
+    item: Item,
+    rawX: number,
+    rawY: number,
+    held: (axis: "x" | "y") => boolean,
+  ): Group => {
+    const sz = sizeOf(item, widthsRef.current);
+    const targetFrame = framesRef.current.find((f) => {
+      const r = frameRect(f);
+      const cx = rawX + sz.w / 2;
+      const cy = rawY + sz.h / 2;
+      return cx >= r.l && cx <= r.r && cy >= r.t && cy <= r.b;
+    });
+    const slot = targetFrame
+      ? barSlotOf(groupsRef.current, targetFrame, framesRef.current, widthsRef.current)
+      : null;
+    const isBar = FULL_WIDTH.includes(item.kind);
+    const placedItem =
+      targetFrame && slot
+        ? isBar
+          ? carryItemSize(
+              item,
+              { w: PHONE_W, h: PHONE_H },
+              { w: slot.w, h: frameSizeOf(targetFrame).h },
+            )
+          : fitHeight(item, frameSizeOf(targetFrame).h)
+        : item;
+    const origin = targetFrame ?? { x: 0, y: 0 };
+    const settle = (axis: "x" | "y", pos: number) =>
+      held(axis) ? Math.round(pos) : onGrid(pos, origin[axis]);
+    const landed: Group = {
+      id: uid(),
+      x: isBar && slot ? Math.round(slot.x) : settle("x", rawX),
+      y: settle("y", rawY),
+      axis: connectSpecOf(item)?.axis ?? "x",
+      items: [placedItem],
+    };
+    const pulled = targetFrame ? pullInto(landed, targetFrame, widthsRef.current) : landed;
+    if (pulled === landed) return pulled;
+    return {
+      ...pulled,
+      x: held("x") ? pulled.x : onGrid(pulled.x, origin.x),
+      y: held("y") ? pulled.y : onGrid(pulled.y, origin.y),
+    };
+  };
+
+  const onPartPointerDown = (e: React.PointerEvent, kind: Kind, made?: Item) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    e.stopPropagation();
+    flushPending();
+    const item = made ?? makeItem(kind);
+    const pt = toWorld(e.clientX, e.clientY);
+    const sz = sizeOf(item, widthsRef.current);
+    const offX = Math.min(sz.w / 2, 90);
+    const offY = Math.min(sz.h / 2, 40);
+    sx.jump(pt.x - offX);
+    sy.jump(pt.y - offY);
+    setSelectedIds([item.id]);
+    setRightTab("edit");
+    setDragLit({ x: offX, y: offY, at: performance.now() });
+    const d: DragState = {
+      item,
+      base: item,
+      baseOffX: offX,
+      baseOffY: offY,
+      offX,
+      offY,
+      startX: pt.x,
+      startY: pt.y,
+      px: pt.x,
+      py: pt.y,
+      active: true,
+      fromPalette: true,
+      overBin: false,
+      snap: null,
+      settling: false,
+      vanishing: false,
+      guide: null,
+    };
+    dragRef.current = d;
+    setDrag({ ...d });
+  };
+
+  /** the in-flight size drag on a lone button's edge handle */
+  const [widthDragId, setWidthDragId] = useState<string | null>(null);
+  /** a size drag from the panel's slider is in flight: the part follows the slider with no easing */
+  const [sizeEditId, setSizeEditId] = useState<string | null>(null);
+  const sizeEditTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (sizeEditTimer.current) clearTimeout(sizeEditTimer.current);
+    },
+    [],
+  );
+  const lastSizeEdit = useRef<{ id: string; t: number } | null>(null);
+  const markSizeEdit = (id: string) => {
+    const now = performance.now();
+    const prev = lastSizeEdit.current;
+    lastSizeEdit.current = { id, t: now };
+    /* one tap on a preset is a size to grow into; a stream of them is a drag, and a drag
+     * must land where the pointer is rather than trail an easing behind it */
+    if (!prev || prev.id !== id || now - prev.t > 150) return;
+    setSizeEditId(id);
+    if (sizeEditTimer.current) clearTimeout(sizeEditTimer.current);
+    sizeEditTimer.current = setTimeout(() => setSizeEditId(null), 400);
+  };
+  /** how far the group under a left- or top-edge drag is drawn from where it sits, so the opposite
+   *  edge stays put. It rides on the same commit as the new size, which keeps the two in step; the
+   *  group's own position only moves once the drag ends. */
+  const [widthShift, setWidthShift] = useState<{ gid: string; dx: number; dy: number } | null>(
+    null,
+  );
+  const widthDragRef = useRef<{
+    id: string;
+    gid: string;
+    side: HandleSide;
+    vertical: boolean;
+    round: boolean;
+    tall: boolean;
+    /** the part must stay at least as wide as it is tall */
+    grows: boolean;
+    startX: number;
+    startY: number;
+    start0: number;
+    startV: number;
+    v: number;
+    min: number;
+    max: number;
+    /** the undo step for this drag has been taken: it is taken at the first change */
+    taken: boolean;
+    /** a square picture: either side pulls its one measure */
+  } | null>(null);
+  /** What a handle on this side of the part changes, and how far it may be pulled: the measure
+   *  it holds, and the bounds that measure has for this kind on this screen. A drag and a key
+   *  press read the same answer. */
+  const sizeDragSpec = (item: Item, side: HandleSide, f: Frame | null) => {
+    const vertical = side === "top" || side === "bottom";
+    /* a circle is pulled by a point on it: the drag reads along the diagonal and the one
+     * measure it has -- its diameter -- follows, so it stays round the whole way */
+    const round = CORNERS.includes(side);
+    /* an extended FAB, a chip and a split button are as wide as their label makes them:
+     * their one measure is height */
+    const tall = item.kind === "extendedFab" || item.kind === "chip" || item.kind === "splitButton";
+    const box = sizeOf(item, widthsRef.current);
+    const startV = vertical || tall ? box.h : box.w;
+    /* any part outside the button family is sized the way its panel sizes it: between the
+     * bounds its kind is given, and a part as wide as the screen it sits on at most */
+    const gauge = !BUTTON_LIKE.has(item.kind);
+    /* across, the part's own measure; down, the second one it may have */
+    const gaugeSpec = vertical ? KIND_SPEC[item.kind].size2 : KIND_SPEC[item.kind].size;
+    /* only a button must stay at least as wide as it is tall: it is a circle at its narrowest */
+    const grows = item.kind === "button";
+    const { w: screenW, h: screenH } = f ? frameSizeOf(f) : { w: PHONE_W, h: PHONE_H };
+    /* a bound written as the phone's size means the screen's, whatever screen this is */
+    const onScreen = (v: number | undefined, fallback: number) =>
+      v === undefined
+        ? fallback
+        : v === PHONE_W
+          ? screenW
+          : v === PHONE_H
+            ? screenH
+            : v === CONTENT_W
+              ? contentWidth(screenW)
+              : v;
+    return {
+      vertical,
+      round,
+      tall,
+      grows,
+      startV,
+      /* a button is a circle at its narrowest, so its height says how narrow it may be drawn; a
+       * kind handled without a spec for this measure is simply not pulled */
+      min: gauge
+        ? (gaugeSpec?.min ?? startV)
+        : isFab(item.kind)
+          ? tall
+            ? KIND_SPEC.extendedFab.h
+            : FAB_H_MIN
+          : item.kind === "chip"
+            ? CHIP_H_MIN
+            : vertical || round
+              ? BUTTON_H_MIN
+              : buttonHeightOf(item),
+      max: gauge
+        ? Math.max(startV, onScreen(gaugeSpec?.max, startV))
+        : isFab(item.kind)
+          ? FAB_H_MAX
+          : item.kind === "chip"
+            ? CHIP_H_MAX
+            : vertical || round
+              ? BUTTON_H_MAX
+              : screenW,
+    };
+  };
+  /** the patch a new measure is: the height for a part held top and bottom or as wide as its
+   *  label, the width or diameter for the rest; a button set narrower than it is tall grows */
+  const sizePatch = (
+    item: Item,
+    d: { vertical: boolean; tall: boolean; grows: boolean },
+    v: number,
+  ): Partial<Item> =>
+    d.vertical || d.tall
+      ? { size2: v, ...(d.grows && item.size && item.size < v ? { size: v } : {}) }
+      : { size: v };
+  /** a handle pulled by the keyboard: one 4dp step out or in, kept the way a panel change is */
+  const nudgeSize = (g: Group, item: Item, side: HandleSide, dir: 1 | -1) => {
+    const d = sizeDragSpec(
+      item,
+      side,
+      frameOfGroup(g, framesRef.current, widthsRef.current) ?? null,
+    );
+    const v = clamp(Math.round(d.startV / 4) * 4 + dir * 4, d.min, d.max);
+    if (v === d.startV) return;
+    patchSelected(sizePatch(item, d, v));
+  };
+  /* a drag that outlives the editor leaves nothing listening behind it */
+  const widthDragEnd = useRef<(() => void) | null>(null);
+  useEffect(() => () => widthDragEnd.current?.(), []);
+  const onWidthHandleDown = (e: React.PointerEvent, g: Group, item: Item, side: HandleSide) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    e.stopPropagation();
+    flushPending();
+    const f = frameOfGroup(g, framesRef.current, widthsRef.current);
+    const spec = sizeDragSpec(item, side, f ?? null);
+    widthDragRef.current = {
+      id: item.id,
+      gid: g.id,
+      side,
+      ...spec,
+      startX: e.clientX,
+      startY: e.clientY,
+      start0: spec.vertical ? e.clientY : e.clientX,
+      v: spec.startV,
+      taken: false,
+    };
+    setWidthDragId(item.id);
+    const move = (ev: PointerEvent) => {
+      const d = widthDragRef.current;
+      if (!d) return;
+      const z = viewRef.current.z;
+      let raw: number;
+      if (d.round) {
+        /* how far the point travelled along its own diagonal, the two axes counting equally, read
+           back as size through the gain the point itself is drawn with: it stays under the pointer */
+        const dx = ((ev.clientX - d.startX) / z) * (d.side === "tl" || d.side === "bl" ? -1 : 1);
+        const dy = ((ev.clientY - d.startY) / z) * (d.side === "tl" || d.side === "tr" ? -1 : 1);
+        raw = d.startV + (dx + dy) / CORNER_GAIN;
+      } else {
+        const delta = ((d.vertical ? ev.clientY : ev.clientX) - d.start0) / z;
+        raw = d.startV + (d.side === "right" || d.side === "bottom" ? delta : -delta);
+      }
+      const v = clamp(Math.round(raw / 4) * 4, d.min, d.max);
+      if (v === d.v) return;
+      /* the undo step is taken at the first change, so a handle merely pressed leaves none */
+      if (!d.taken) {
+        snapshot();
+        d.taken = true;
+      }
+      d.v = v;
+      /* a FAB hangs off its own corner, so its run is drawn at an offset that changes with the
+         size: it has to land with the pointer rather than ease after it */
+      instantRef.current.add(d.gid);
+      /* whichever point is held, the one across from it stays where it is */
+      const back = d.startV - v;
+      if (d.side === "left") setWidthShift({ gid: d.gid, dx: back, dy: 0 });
+      if (d.side === "top") setWidthShift({ gid: d.gid, dx: 0, dy: back });
+      /* a part as wide as its label makes it grows only in height, so its left side stays put */
+      if (d.round && d.side !== "br") {
+        setWidthShift({
+          gid: d.gid,
+          dx: !d.tall && (d.side === "tl" || d.side === "bl") ? back : 0,
+          dy: d.side === "tl" || d.side === "tr" ? back : 0,
+        });
+      }
+      setGroups((prev) =>
+        prev.map((gr) =>
+          gr.id !== d.gid
+            ? gr
+            : {
+                ...gr,
+                items: gr.items.map((it) =>
+                  it.id !== d.id ? it : { ...it, ...sizePatch(it, d, v) },
+                ),
+              },
+        ),
+      );
+    };
+    const up = () => {
+      const d = widthDragRef.current;
+      /* the drawn offset becomes the group's real position, in one step and with no easing */
+      if (d && d.v !== d.startV && d.side !== "right" && d.side !== "bottom" && d.side !== "br") {
+        const shift = d.startV - d.v;
+        const movesX = !d.tall && (d.side === "left" || d.side === "tl" || d.side === "bl");
+        const movesY = d.side === "top" || d.side === "tl" || d.side === "tr";
+        instantRef.current.add(d.gid);
+        setGroups((prev) =>
+          prev.map((gr) =>
+            gr.id !== d.gid
+              ? gr
+              : { ...gr, x: gr.x + (movesX ? shift : 0), y: gr.y + (movesY ? shift : 0) },
+          ),
+        );
+      }
+      setWidthShift(null);
+      widthDragRef.current = null;
+      setWidthDragId(null);
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", up);
+      widthDragEnd.current = null;
+    };
+    widthDragEnd.current = up;
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", up);
+  };
+
+  const isDragging = drag !== null;
+
+  useEffect(() => {
+    if (!isDragging) return;
+    /* Ctrl overrides auto-snap for as long as it is held: no magnet slot, no
+       alignment guide, no 4dp grid. A pointer move carries its own ctrlKey, and
+       key events cover the moments in between when the pointer is still. */
+    let ctrlHeld = false;
+
+    const move = (e: PointerEvent) => {
+      const d = dragRef.current;
+      if (!d) return;
+      const pt = toWorld(e.clientX, e.clientY);
+      d.px = pt.x;
+      d.py = pt.y;
+      ctrlHeld = e.ctrlKey || e.metaKey;
+
+      if (!d.active) {
+        if (Math.hypot(pt.x - d.startX, pt.y - d.startY) * viewRef.current.z < 5) {
+          setDrag({ ...d });
+          return;
+        }
+        d.active = true;
+        d.snap = null;
+        const id = d.item.id;
+        /* the run keeps the hole the part came out of: it closes only once the part is carried
+         * out of reach, rather than snapping shut the moment the drag begins */
+        const from = groupsRef.current.find(
+          (x) => !x.free && x.items.length > 1 && x.items.some((it) => it.id === id),
+        );
+        if (from) {
+          const index = from.items.findIndex((it) => it.id === id);
+          const sz = sizeRef(d.item);
+          d.snap = { groupId: from.id, index, pull: 1 };
+          holdGap(from.id, index, sz.w, sz.h, true);
+        }
+        snapshot();
+        setGroups((prev) => {
+          const out: Group[] = [];
+          for (const g of prev) {
+            const idx = g.items.findIndex((it) => it.id === id);
+            if (idx < 0) {
+              out.push(g);
+              continue;
+            }
+            const rest = g.items.filter((it) => it.id !== id);
+            if (rest.length === 0) continue;
+            const sz = sizeOf(g.items[idx], widthsRef.current);
+            const back = idx === 0;
+            // The anchor moves to the new first item; that jump must not animate,
+            // otherwise the remaining run springs sideways for a frame.
+            if (back) instantRef.current.add(g.id);
+            out.push({
+              ...g,
+              x: back && g.axis === "x" ? g.x + sz.w + GAP : g.x,
+              y: back && g.axis === "y" ? g.y + sz.h + GAP : g.y,
+              items: rest,
+            });
+          }
+          return out;
+        });
+        setPressedId(null);
+        setDrag({ ...d });
+        return;
+      }
+
+      /* a part being added from the palette has nothing to delete yet; dropping it back there just cancels */
+      d.overBin = !d.fromPalette && inBin(e.clientX);
+      /* a palette part only lands where the pointer is released inside the canvas, so it must
+       * not join a run (nor hold a gap open) while the pointer is still over the palette */
+      const outside = d.fromPalette && !inCanvas(e.clientX, e.clientY);
+      d.snap =
+        d.overBin || ctrlHeld || outside
+          ? null
+          : findSnap(d.base, pt.x - d.baseOffX, pt.y - d.baseOffY);
+      /* the run that is standing still sets the size: the part in flight takes it while it is
+       * held over the run, and has its own back the moment it is carried away again */
+      const host = d.snap
+        ? groupsRef.current.find((g) => g.id === d.snap!.groupId)?.items[0]
+        : undefined;
+      d.item = host ? matchRunSize(d.base, host) : d.base;
+      /* a part that grew or shrank keeps the same spot under the finger */
+      const was = sizeRef(d.base);
+      const now = sizeRef(d.item);
+      d.offX = was.w ? (d.baseOffX * now.w) / was.w : d.baseOffX;
+      d.offY = was.h ? (d.baseOffY * now.h) / was.h : d.baseOffY;
+      if (d.snap) holdGap(d.snap.groupId, d.snap.index, now.w, now.h);
+      else closeGap();
+      d.guide =
+        d.overBin || d.snap || ctrlHeld ? null : findGuide(d.item, pt.x - d.offX, pt.y - d.offY);
+      setDrag({ ...d });
+    };
+
+    const up = (e: PointerEvent) => {
+      const d = dragRef.current;
+      dragRef.current = null;
+      setPressedId(null);
+      /* the finger is off: whatever is holding the light lets it go out */
+      setDragLit(null);
+      if (!d) return;
+      if (!d.active) {
+        setDrag(null);
+        return;
+      }
+
+      const loose = ctrlHeld || e.ctrlKey || e.metaKey;
+
+      const item = d.item;
+      const sz = sizeRef(item);
+
+      if (d.overBin) {
+        setSelectedIds((cur) => cur.filter((x) => x !== item.id));
+        vanishDrag(d);
+        return;
+      }
+
+      if (!loose && d.snap) {
+        const t = d.snap;
+        setDrag({ ...d, snap: { ...t, pull: 1 }, settling: true });
+        const commit = () => {
+          /* the run's own position takes the new first part's width in one step: the hole it was
+           * holding open is handed straight to the part, with nothing sliding */
+          if (t.index === 0) instantRef.current.add(t.groupId);
+          if (gapTimer.current) clearTimeout(gapTimer.current);
+          setGap(null);
+          setGroups((prev) => {
+            if (prev.some((g) => g.items.some((it) => it.id === item.id))) return prev;
+            return prev.map((g) => {
+              if (g.id !== t.groupId) return g;
+              const front = t.index === 0;
+              return {
+                ...g,
+                x: front && g.axis === "x" ? g.x - sz.w - GAP : g.x,
+                y: front && g.axis === "y" ? g.y - sz.h - GAP : g.y,
+                items: [...g.items.slice(0, t.index), item, ...g.items.slice(t.index)],
+              };
+            });
+          });
+          lightLands(item.id, d.offX, d.offY);
+          setDrag(null);
+        };
+        const timer = window.setTimeout(() => {
+          pendingRef.current = null;
+          commit();
+        }, SETTLE_MS);
+        pendingRef.current = { timer, commit };
+        return;
+      }
+
+      /* A palette part is accepted by the canvas only when the pointer is released over it.
+       * Testing the part's bounds here made a click in the palette add any wide part whose
+       * preview happened to overlap the canvas. */
+      if (d.fromPalette && !inCanvas(e.clientX, e.clientY)) {
+        setSelectedIds((cur) => cur.filter((x) => x !== item.id));
+        vanishDrag(d);
+        return;
+      }
+      /* a Ctrl drop lands where the cursor is, untouched by any guide hold */
+      const rawX = loose ? d.px - d.offX : (d.guide?.x ?? d.px - d.offX);
+      const rawY = loose ? d.py - d.offY : (d.guide?.y ?? d.py - d.offY);
+      if (d.fromPalette) snapshot();
+      /* Ctrl keeps the pixel the cursor chose and a guide holds its whole-pixel position */
+      const ng = landNewPart(
+        item,
+        rawX,
+        rawY,
+        (axis) => loose || (axis === "x" ? d.guide?.gx : d.guide?.gy) !== undefined,
+      );
+      setGroups((prev) =>
+        prev.some((g) => g.items.some((it) => it.id === item.id)) ? prev : [...prev, ng],
+      );
+      lightLands(item.id, d.offX, d.offY);
+      setDrag(null);
+    };
+
+    /* Ctrl (or Cmd on a Mac) pressed or released while the pointer is still: the drawn
+       magnet and guide must leave (or be free to return) right away, not on the next move */
+    const onCtrl = (e: KeyboardEvent, held: boolean) => {
+      if ((e.key !== "Control" && e.key !== "Meta") || e.repeat) return;
+      const d = dragRef.current;
+      if (!d) return;
+      ctrlHeld = held;
+      if (held) {
+        d.snap = null;
+        d.guide = null;
+      }
+      setDrag({ ...d });
+    };
+    const onCtrlDown = (e: KeyboardEvent) => onCtrl(e, true);
+    const onCtrlUp = (e: KeyboardEvent) => onCtrl(e, false);
+    window.addEventListener("keydown", onCtrlDown);
+    window.addEventListener("keyup", onCtrlUp);
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", up);
+    return () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", up);
+      window.removeEventListener("keydown", onCtrlDown);
+      window.removeEventListener("keyup", onCtrlUp);
+    };
+    // handlers read live state through refs, so this binds once per drag
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDragging]);
+
+  /* the overlay sits between the cursor and the slot, weighted by attraction */
+  useEffect(() => {
+    if (!drag?.active) return;
+    const cursorL = drag.px - drag.offX;
+    const cursorT = drag.py - drag.offY;
+    if (drag.snap) {
+      const g = groupsRef.current.find((x) => x.id === drag.snap!.groupId);
+      if (g) {
+        const r = restPos(g, drag.snap.index, sizeRef(drag.item));
+        sx.set(lerp(cursorL, r.left, drag.snap.pull));
+        sy.set(lerp(cursorT, r.top, drag.snap.pull));
+        return;
+      }
+    }
+    sx.set(drag.guide?.x ?? cursorL);
+    sy.set(drag.guide?.y ?? cursorT);
+  }, [drag, restPos, sizeRef, sx, sy]);
+
+  /* ---------- pointer: canvas (pan / marquee) ---------- */
+  const itemRects = useCallback(() => {
+    const out: { id: string; l: number; t: number; r: number; b: number }[] = [];
+    for (const g of groupsRef.current) {
+      for (const pl of layoutOf(g, widthsRef.current)) {
+        out.push({ id: pl.item.id, l: pl.x, t: pl.y, r: pl.x + pl.w, b: pl.y + pl.h });
+      }
+    }
+    return out;
+  }, []);
+
+  const clearSelection = () => {
+    setSelectedIds([]);
+    setSelectedFrameId(null);
+    setSelectedLinkId(null);
+  };
+
+  const onCanvasPointerDown = (e: React.PointerEvent) => {
+    if (mobileRef.current && e.pointerType === "touch") {
+      e.preventDefault();
+      clearSelection();
+      startPan(e.clientX, e.clientY);
+      return;
+    }
+    if (e.button === 1 || modeRef.current === "hand" || spaceRef.current) {
+      e.preventDefault();
+      startPan(e.clientX, e.clientY);
+      return;
+    }
+    if (e.button !== 0) return;
+    const pt = toWorld(e.clientX, e.clientY);
+    const g: Gesture = {
+      kind: "marquee",
+      x0: pt.x,
+      y0: pt.y,
+      x1: pt.x,
+      y1: pt.y,
+      moved: false,
+    };
+    gestureRef.current = g;
+    setGesture(g);
+    if (!e.shiftKey) setSelectedIds([]);
+    setSelectedFrameId(null);
+    setSelectedLinkId(null);
+  };
+
+  /** grab a phone frame by its bezel or label: it carries everything on it;
+   *  on a phone the screen stays put and a tap on it just clears the selection */
+  const onFramePointerDown = (e: React.PointerEvent, f: Frame) => {
+    if (mobileRef.current) {
+      e.preventDefault();
+      e.stopPropagation();
+      clearSelection();
+      startPan(e.clientX, e.clientY);
+      return;
+    }
+    if (e.button === 1 || modeRef.current === "hand" || spaceRef.current) {
+      e.preventDefault();
+      e.stopPropagation();
+      startPan(e.clientX, e.clientY);
+      return;
+    }
+    if (e.button !== 0) return;
+    e.preventDefault();
+    e.stopPropagation();
+    setSelectedFrameId(f.id);
+    setSelectedIds([]);
+    setSelectedLinkId(null);
+    setRightTab("edit");
+    const carried = groupsRef.current
+      .filter((g) => frameOfGroup(g, framesRef.current, widthsRef.current)?.id === f.id)
+      .map((g) => ({ id: g.id, x: g.x, y: g.y }));
+    const g: Gesture = {
+      kind: "frame",
+      id: f.id,
+      sx: e.clientX,
+      sy: e.clientY,
+      fx: f.x,
+      fy: f.y,
+      groups: carried,
+      moved: false,
+    };
+    gestureRef.current = g;
+    setGesture(g);
+  };
+
+  const isGesturing = gesture !== null;
+  useEffect(() => {
+    if (!isGesturing) return;
+    const move = (e: PointerEvent) => {
+      const g = gestureRef.current;
+      if (!g) return;
+      if (g.kind === "pan") {
+        setView((v) => ({
+          ...v,
+          x: g.vx + (e.clientX - g.sx),
+          y: g.vy + (e.clientY - g.sy),
+        }));
+        return;
+      }
+      if (g.kind === "group") {
+        const z = viewRef.current.z;
+        const dx = (e.clientX - g.sx) / z;
+        const dy = (e.clientY - g.sy) / z;
+        if (!g.moved) {
+          if (Math.hypot(dx, dy) * z < 4) return;
+          g.moved = true;
+          snapshot();
+        }
+        instantRef.current.add(g.id);
+        g.overBin = inBin(e.clientX);
+        const gr = groupsRef.current.find((x) => x.id === g.id);
+        if (!gr) return;
+        /* a moved group lines up with its neighbours like a single part does, and off
+           any guide settles on the 4dp grid of the screen it is over; Ctrl (or Cmd)
+           skips both */
+        const moved = { ...gr, x: g.gx + dx, y: g.gy + dy };
+        const loose = e.ctrlKey || e.metaKey;
+        const b = groupBounds(moved, widthsRef.current);
+        const guide =
+          loose || g.overBin
+            ? null
+            : guideFor(
+                b.l,
+                b.t,
+                { w: b.r - b.l, h: b.b - b.t },
+                new Set(gr.items.map((it) => it.id)),
+              );
+        g.guide = guide;
+        setGesture({ ...g });
+        const f = frameOfGroup(moved, framesRef.current, widthsRef.current);
+        const placed = loose
+          ? moved
+          : {
+              ...moved,
+              x:
+                guide?.x !== undefined
+                  ? Math.round(moved.x + guide.x - b.l)
+                  : onGrid(moved.x, f?.x ?? 0),
+              y:
+                guide?.y !== undefined
+                  ? Math.round(moved.y + guide.y - b.t)
+                  : onGrid(moved.y, f?.y ?? 0),
+            };
+        setGroups((gs) => gs.map((x) => (x.id === g.id ? placed : x)));
+        return;
+      }
+      if (g.kind === "frame") {
+        const z = viewRef.current.z;
+        const dx = (e.clientX - g.sx) / z;
+        const dy = (e.clientY - g.sy) / z;
+        if (!g.moved) {
+          if (Math.hypot(dx, dy) * z < 4) return;
+          g.moved = true;
+          snapshot();
+        }
+        const ids = new Map(g.groups.map((o) => [o.id, o]));
+        for (const o of g.groups) instantRef.current.add(o.id);
+        setFrames((fs) =>
+          fs.map((f) =>
+            f.id === g.id ? { ...f, x: Math.round(g.fx + dx), y: Math.round(g.fy + dy) } : f,
+          ),
+        );
+        setGroups((gs) =>
+          gs.map((gr) => {
+            const o = ids.get(gr.id);
+            return o ? { ...gr, x: Math.round(o.x + dx), y: Math.round(o.y + dy) } : gr;
+          }),
+        );
+        return;
+      }
+      const pt = toWorld(e.clientX, e.clientY);
+      g.x1 = pt.x;
+      g.y1 = pt.y;
+      if (!g.moved && Math.hypot(pt.x - g.x0, pt.y - g.y0) * viewRef.current.z > 4) g.moved = true;
+      if (g.moved) {
+        const l = Math.min(g.x0, g.x1);
+        const r = Math.max(g.x0, g.x1);
+        const t = Math.min(g.y0, g.y1);
+        const b = Math.max(g.y0, g.y1);
+        const hit = itemRects()
+          .filter((it) => it.l < r && it.r > l && it.t < b && it.b > t)
+          .map((it) => it.id);
+        setSelectedIds(hit);
+      }
+      setGesture({ ...g });
+    };
+    const up = (e: PointerEvent) => {
+      const g = gestureRef.current;
+      gestureRef.current = null;
+      setGesture(null);
+      // a group dragged onto the parts panel is deleted, like a single part
+      if (g?.kind === "group" && g.moved && inBin(e.clientX)) {
+        setGroups((gs) => gs.filter((x) => x.id !== g.id));
+        setSelectedIds([]);
+      }
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", up);
+    return () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", up);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isGesturing]);
+
+  /* ---------- panel resize ---------- */
+  useEffect(() => {
+    if (!resizing) return;
+    const move = (e: PointerEvent) => {
+      if (resizing === "left") setLeftW(clamp(e.clientX, RAIL_W + 244, 480));
+      else setRightW(clamp(window.innerWidth - e.clientX, 260, 440));
+    };
+    const up = () => setResizing(null);
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    return () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+    };
+  }, [resizing]);
+
+  /* ---------- editing ---------- */
+  const primaryId = selectedIds[selectedIds.length - 1] ?? null;
+  const selected = useMemo(() => {
+    for (const g of groups) {
+      const it = g.items.find((i) => i.id === primaryId);
+      if (it) return it;
+    }
+    return drag?.item.id === primaryId ? (drag?.item ?? null) : null;
+  }, [groups, primaryId, drag]);
+
+  useEffect(() => {
+    if (!selected && sheet === "edit") setSheet(null);
+  }, [selected, sheet]);
+
+  /** Resizing a lone part keeps whatever it was lined up with on the frame:
+   *  its centre on the centre line, or its far edge on the margin or screen edge.
+   *  Otherwise the near (left / top) edge stays put, as the sliders always did. */
+  const resizeShift = (g: Group, before: Item, after: Item) => {
+    const none = { dx: 0, dy: 0 };
+    if (g.items.length !== 1) return none;
+    /* a FAB is the part in the corner of a screen: it grows and shrinks out of that corner,
+     * whatever the corner happens to be, rather than out of its top left */
+    if (isFab(before.kind) || isFab(after.kind)) {
+      const a = sizeOf(before, widthsRef.current);
+      const b = sizeOf(after, widthsRef.current);
+      /* the corner to keep, put right again once a part as wide as its label has been measured */
+      fabAnchor.current = { id: before.id, right: g.x + a.w, bottom: g.y + a.h };
+      const measured = MEASURED.includes(after.kind);
+      return { dx: measured ? 0 : a.w - b.w, dy: a.h - b.h };
+    }
+    if (frameRef.current !== "phone") return none;
+    const f = frameOfGroup(g, framesRef.current, widthsRef.current);
+    if (!f) return none;
+    const { w: frameW, h: deviceH } = frameSizeOf(f);
+    const frameH = frameLengthOf(f);
+    const a = sizeOf(before, widthsRef.current);
+    const b = sizeOf(after, widthsRef.current);
+    const shift = (
+      pos: number,
+      len: number,
+      next: number,
+      f0: number,
+      fLen: number,
+      foot = true,
+    ) => {
+      const d = next - len;
+      if (d === 0) return 0;
+      const near = (v: number, target: number) => Math.abs(v - target) <= 1;
+      if (near(pos + len / 2, f0 + fLen / 2)) return -Math.round(d / 2);
+      if (foot && (near(pos + len, f0 + fLen - FRAME_MARGIN) || near(pos + len, f0 + fLen)))
+        return -d;
+      return 0;
+    };
+    return {
+      dx: shift(g.x, a.w, b.w, f.x, frameW),
+      /* on a screen that runs further, a part keeps to its foot, or to the middle of the device;
+       * the foot of the device is no edge there, since the body runs on past it */
+      dy:
+        shift(g.y, a.h, b.h, f.y, frameH) ||
+        (frameH > deviceH ? shift(g.y, a.h, b.h, f.y, deviceH, false) : 0),
+    };
+  };
+
+  const patchSelected = (patch: Partial<Item>) => {
+    if (!primaryId) return;
+    const id = primaryId;
+    /* a locked part is not to be changed at all: its panel is behind a blur, and anything that
+     * asks for a change anyway -- a shortcut, the phone's panel -- is turned away here */
+    if (groupsRef.current.some((g) => g.locked && g.items.some((it) => it.id === id))) {
+      showToast(lockedGroupMsg());
+      return;
+    }
+    /* a rail state change resizes it too, so it counts as a resize for the reflow below */
+    const resizes =
+      "size" in patch || "size2" in patch || "railExpanded" in patch || "railModal" in patch;
+    snapshotFor(id + ":" + Object.keys(patch).join(","));
+    if ("size" in patch || "size2" in patch) markSizeEdit(id);
+    /* the shift is worked out here, once, from the groups as they stand: the updater below may
+     * be run more than once and must not be the one to remember a FAB's corner */
+    const home = groupsRef.current.find((g) => g.items.some((it) => it.id === id));
+    const was = home?.items.find((it) => it.id === id);
+    const shift =
+      resizes && home && was ? resizeShift(home, was, { ...was, ...patch }) : { dx: 0, dy: 0 };
+    if (shift.dx || shift.dy) instantRef.current.add(home!.id);
+    setGroups((prev) =>
+      "railExpanded" in patch || "railModal" in patch
+        ? updateRail(prev, framesRef.current, widthsRef.current, id, patch)
+        : prev.map((g) => {
+            const idx = g.items.findIndex((it) => it.id === id);
+            if (idx < 0) return g;
+            const next = { ...g.items[idx], ...patch };
+            const { dx, dy } = g.id === home?.id ? shift : { dx: 0, dy: 0 };
+            return {
+              ...g,
+              x: g.x + dx,
+              y: g.y + dy,
+              /* the parts of one run share a height; each keeps its own width */
+              items: g.free
+                ? g.items.map((it, i) => (i === idx ? next : it))
+                : runSizePatch(g.items, id, patch),
+            };
+          }),
+    );
+    if (dragRef.current?.item.id === id) {
+      dragRef.current.item = { ...dragRef.current.item, ...patch };
+    }
+  };
+
+  const deleteSelected = useCallback(() => {
+    if (selectedIds.length === 0) return;
+    const ids = new Set(selectedIds);
+    /* nothing deletable when every selected part sits in a locked group: no snapshot, keep the selection */
+    if (groupsRef.current.every((g) => g.locked || !g.items.some((it) => ids.has(it.id)))) {
+      showToast(lockedGroupMsg());
+      return;
+    }
+    snapshot();
+    /* some of the selection sits in a locked group: the rest goes, and the author is told why that part stayed */
+    if (groupsRef.current.some((g) => g.locked && g.items.some((it) => ids.has(it.id))))
+      showToast(t("lockedKept", getLang()));
+    setGroups((prev) =>
+      prev
+        .map((g) => {
+          /* Delete / Backspace leaves a locked group and its parts alone */
+          if (g.locked) return g;
+          if (g.free)
+            return collapseFree(
+              { ...g, items: g.items.filter((it) => !ids.has(it.id)) },
+              widthsRef.current,
+            );
+          let x = g.x;
+          let y = g.y;
+          let items = g.items;
+          while (items.length && ids.has(items[0].id)) {
+            const sz = sizeOf(items[0], widthsRef.current);
+            if (g.axis === "x") x += sz.w + GAP;
+            else y += sz.h + GAP;
+            items = items.slice(1);
+          }
+          if (x !== g.x || y !== g.y) instantRef.current.add(g.id);
+          return { ...g, x, y, items: items.filter((it) => !ids.has(it.id)) };
+        })
+        .filter((g) => g.items.length > 0),
+    );
+    setSelectedIds([]);
+  }, [selectedIds, snapshot]);
+
+  /** every group holding a selected part is locked, so the menu offers to unlock instead */
+  const selectedLocked = useMemo(() => {
+    const ids = new Set(selectedIds);
+    const held = groups.filter((g) => g.items.some((it) => ids.has(it.id)));
+    return held.length > 0 && held.every((g) => !!g.locked);
+  }, [groups, selectedIds]);
+
+  /** the selection can be placed in a screen: something in it is not a bar, and all of that
+   *  stands on one screen -- a selection of bars alone, or one spread over several screens,
+   *  has no one body to go to */
+  const selectionPlaceable = useMemo(() => {
+    const ids = new Set(selectedIds);
+    const units = groups.filter((g) => g.items.some((it) => ids.has(it.id)) && !holdsEdgeBar(g));
+    if (!units.length) return false;
+    const f = frameOfGroup(units[0], frames, widths);
+    return !!f && units.every((g) => frameOfGroup(g, frames, widths)?.id === f.id);
+  }, [groups, frames, widths, selectedIds]);
+
+  /** the selection covers every group it touches, so locking it locks nothing that was not selected */
+  const selectionWhole = useMemo(() => {
+    const ids = new Set(selectedIds);
+    const held = groups.filter((g) => g.items.some((it) => ids.has(it.id)));
+    return held.length > 0 && held.every((g) => g.items.every((it) => ids.has(it.id)));
+  }, [groups, selectedIds]);
+
+  /** locks every group holding a selected part, or unlocks them all when they already are */
+  const toggleLockSelected = useCallback(() => {
+    const ids = new Set(selectedIds);
+    const held = groupsRef.current.filter((g) => g.items.some((it) => ids.has(it.id)));
+    if (!held.length) return;
+    const next = !held.every((g) => !!g.locked);
+    snapshot();
+    setGroups((gs) =>
+      gs.map((g) =>
+        g.items.some((it) => ids.has(it.id)) ? { ...g, locked: next || undefined } : g,
+      ),
+    );
+  }, [selectedIds, snapshot]);
+
+  /** The selection as units that can be copied: a group whose parts are all selected goes
+   *  whole, keeping its layout; a part picked out of a larger group goes on its own, at its
+   *  place on the canvas. A copy starts unlocked; the lock belongs to the original. */
+  const selectionUnits = useCallback((): Group[] => {
+    const ids = new Set(selectedIds);
+    const rects = new Map(itemRects().map((r) => [r.id, r]));
+    const out: Group[] = [];
+    for (const g of groupsRef.current) {
+      const picked = g.items.filter((it) => ids.has(it.id));
+      if (!picked.length) continue;
+      if (picked.length === g.items.length) {
+        out.push({ ...structuredClone(g), locked: undefined });
+        continue;
+      }
+      for (const it of picked) {
+        const r = rects.get(it.id);
+        if (r)
+          out.push({
+            id: g.id,
+            x: r.l,
+            y: r.t,
+            axis: connectSpecOf(it)?.axis ?? "x",
+            items: [structuredClone(it)],
+          });
+      }
+    }
+    return out;
+  }, [selectedIds, itemRects]);
+
+  /** duplicates everything selected a step aside, and selects the copies */
+  const duplicateSelected = useCallback(() => {
+    const units = selectionUnits();
+    if (!units.length) return;
+    const copies = units.map((u) => rekeyed(u, 24, 24));
+    const primaryAt = units.flatMap((u) => u.items.map((it) => it.id)).indexOf(primaryId ?? "");
+    snapshot();
+    setGroups((prev) => [...prev, ...copies]);
+    setSelectedIds(copiedIds(copies, primaryAt));
+  }, [selectionUnits, primaryId, snapshot]);
+
+  /* The in-app clipboard: Ctrl+C keeps a copy of the selection (whole groups where the
+   * selection covers them) with its offset inside its screen, so Ctrl+V can put it at the
+   * same spot on another screen, or a step aside on the same one. The offset is that of the
+   * selection's top-left corner, so several units keep their places relative to each other. */
+  const clipboardRef = useRef<{
+    groups: Group[];
+    dx: number;
+    dy: number;
+    frameId: string | null;
+    primaryAt: number;
+  } | null>(null);
+
+  const copySelected = useCallback(() => {
+    if (!selected) return;
+    const g = groupsRef.current.find((x) => x.items.some((it) => it.id === selected.id));
+    if (!g) return;
+    const groups = selectionUnits();
+    if (!groups.length) return;
+    const x = Math.min(...groups.map((u) => u.x));
+    const y = Math.min(...groups.map((u) => u.y));
+    /* a selection on no screen keeps its canvas position; one on a screen keeps its offset there */
+    const f = frameOfGroup(g, framesRef.current, widthsRef.current);
+    const primaryAt = groups.flatMap((u) => u.items.map((it) => it.id)).indexOf(selected.id);
+    clipboardRef.current = {
+      groups,
+      dx: f ? x - f.x : x,
+      dy: f ? y - f.y : y,
+      frameId: f?.id ?? null,
+      primaryAt,
+    };
+  }, [selected, selectionUnits]);
+
+  const pasteClipboard = useCallback(() => {
+    const clip = clipboardRef.current;
+    if (!clip) return;
+    const fs = framesRef.current;
+    /* the screen to paste into: the selected screen, else the selection's, else the source */
+    let target = selectedFrameId ? fs.find((f) => f.id === selectedFrameId) : undefined;
+    if (!target && selected) {
+      const g = groupsRef.current.find((x) => x.items.some((it) => it.id === selected.id));
+      if (g) target = frameOfGroup(g, fs, widthsRef.current) ?? undefined;
+    }
+    if (!target) target = fs.find((f) => f.id === clip.frameId);
+    const x0 = Math.min(...clip.groups.map((u) => u.x));
+    const y0 = Math.min(...clip.groups.map((u) => u.y));
+    /* with no screen to land on -- none was copied from, or it is gone -- it goes back where it was copied from */
+    let dx = target && clip.frameId ? target.x + clip.dx - x0 : 0;
+    let dy = target && clip.frameId ? target.y + clip.dy - y0 : 0;
+    /* onto a spot already taken (the source, or an earlier paste) it steps aside like a duplicate;
+       a part taken from the middle of a run is known by its own corner, not the run's */
+    const taken = new Set([
+      ...groupsRef.current.map((g) => `${g.x},${g.y}`),
+      ...itemRects().map((r) => `${r.l},${r.t}`),
+    ]);
+    while (clip.groups.some((u) => taken.has(`${u.x + dx},${u.y + dy}`))) {
+      dx += 24;
+      dy += 24;
+    }
+    const copies = clip.groups.map((u) => rekeyed(u, dx, dy));
+    snapshot();
+    setGroups((prev) => [...prev, ...copies]);
+    setSelectedIds(copiedIds(copies, clip.primaryAt));
+    setSelectedFrameId(null);
+  }, [selected, selectedFrameId, itemRects, snapshot]);
+
+  /** the free group the whole selection belongs to, if it is exactly one */
+  const selectedGroup = useMemo(() => {
+    if (selectedIds.length === 0) return null;
+    const g = groups.find((x) => x.free && x.items.some((it) => it.id === selectedIds[0]));
+    if (!g) return null;
+    const ids = new Set(g.items.map((it) => it.id));
+    return selectedIds.every((id) => ids.has(id)) && selectedIds.length === g.items.length
+      ? g
+      : null;
+  }, [groups, selectedIds]);
+
+  /** Puts the selection at one of nine spots in its screen's body, the box Tidy fills between
+   *  the bars. Whole groups move, as one block: a connected run or a hand-made group is one
+   *  unit, like in Tidy, and several units keep their places relative to each other. A bar in
+   *  the selection is not part of the block: it keeps to its edge. Parts already there are
+   *  obstacles: the block slides along the vertical axis, away from the edge it was sent to
+   *  (down from the top, up from the bottom, the nearer way from the middle), until it sits
+   *  clear of them or the body runs out. */
+  const placeSelected = useCallback(
+    (col: "left" | "centerH" | "right", row: "top" | "centerV" | "bottom") => {
+      const ids = new Set(selectedIds);
+      const all = groupsRef.current;
+      /* a bar stays on the edge it belongs to, and the body it bounds is where the rest goes */
+      const units = all.filter((x) => x.items.some((it) => ids.has(it.id)) && !holdsEdgeBar(x));
+      if (!units.length) return;
+      /* a locked group stays where it is, and the rest does not move without it */
+      if (units.some((x) => x.locked)) {
+        showToast(lockedGroupMsg());
+        return;
+      }
+      const f = frameOfGroup(units[0], framesRef.current, widthsRef.current);
+      /* the block lines up inside one screen; parts spread over several have no one body to fill */
+      if (
+        !f ||
+        units.some((x) => frameOfGroup(x, framesRef.current, widthsRef.current)?.id !== f.id)
+      )
+        return;
+      const unitIds = new Set(units.map((x) => x.id));
+      const rects = new Map(all.map((x) => [x.id, groupBounds(x, widthsRef.current)]));
+      const r = units
+        .map((x) => rects.get(x.id)!)
+        .reduce((a, o) => ({
+          l: Math.min(a.l, o.l),
+          t: Math.min(a.t, o.t),
+          r: Math.max(a.r, o.r),
+          b: Math.max(a.b, o.b),
+        }));
+      const w = r.r - r.l;
+      const h = r.b - r.t;
+      const bb = bodyRect(all, f, framesRef.current, widthsRef.current, unitIds);
+      const x =
+        col === "left" ? bb.l : col === "right" ? bb.r - w : Math.round((bb.l + bb.r) / 2 - w / 2);
+      const y0 =
+        row === "top" ? bb.t : row === "bottom" ? bb.b - h : Math.round((bb.t + bb.b) / 2 - h / 2);
+      const others = all
+        .filter(
+          (x) =>
+            !unitIds.has(x.id) &&
+            frameOfGroup(x, framesRef.current, widthsRef.current)?.id === f.id,
+        )
+        .map((x) => rects.get(x.id)!)
+        /* only parts in the same column can be in the way */
+        .filter((o) => o.l < x + w && o.r > x);
+      const hits = (y: number) => others.filter((o) => o.t < y + h && o.b > y);
+      const free = (y: number) => y >= bb.t && y + h <= bb.b && hits(y).length === 0;
+      const gap = 8;
+      /* candidate rows: just below or just above every obstacle, nearest to the target first */
+      const spots = [y0, ...others.flatMap((o) => [o.b + gap, o.t - gap - h])]
+        .filter((y) => free(y))
+        .sort((a, b) => {
+          const da = Math.abs(a - y0);
+          const db = Math.abs(b - y0);
+          if (da !== db) return da - db;
+          /* a tie breaks away from the edge the part was sent to */
+          return row === "top" ? a - b : row === "bottom" ? b - a : 0;
+        });
+      const y = spots[0] ?? y0;
+      const dx = x - r.l;
+      const dy = y - r.t;
+      if (!dx && !dy) return;
+      snapshot();
+      setGroups((gs) =>
+        gs.map((x) => (unitIds.has(x.id) ? { ...x, x: x.x + dx, y: x.y + dy } : x)),
+      );
+    },
+    [selectedIds, snapshot],
+  );
+
+  /** Pull the selected parts out of their runs into one free group that keeps
+   *  their positions. It takes the layer slot of the topmost run involved. */
+  const groupSelected = useCallback(() => {
+    const ids = new Set(selectedIds);
+    if (ids.size < 2) return;
+    /* regrouping would carry a locked group's parts into an unlocked group */
+    if (groupsRef.current.some((g) => g.locked && g.items.some((it) => ids.has(it.id)))) {
+      showToast(lockedGroupMsg());
+      return;
+    }
+    const rects = new Map(itemRects().map((r) => [r.id, r]));
+    const picked: Item[] = [];
+    let top = -1;
+    groupsRef.current.forEach((g, i) => {
+      for (const it of g.items)
+        if (ids.has(it.id)) {
+          picked.push(it);
+          top = i;
+        }
+    });
+    if (picked.length < 2) return;
+    const l = Math.min(...picked.map((it) => rects.get(it.id)!.l));
+    const t = Math.min(...picked.map((it) => rects.get(it.id)!.t));
+    const pos: Record<string, { x: number; y: number }> = {};
+    for (const it of picked)
+      pos[it.id] = { x: rects.get(it.id)!.l - l, y: rects.get(it.id)!.t - t };
+    const ng: Group = { id: uid(), x: l, y: t, axis: "x", items: picked, free: true, pos };
+    snapshot();
+    setGroups((prev) => {
+      const out: Group[] = [];
+      prev.forEach((g, i) => {
+        if (g.free) {
+          const rest = g.items.filter((it) => !ids.has(it.id));
+          if (rest.length) out.push(collapseFree({ ...g, items: rest }, widthsRef.current));
+        } else {
+          let x = g.x;
+          let y = g.y;
+          let items = g.items;
+          while (items.length && ids.has(items[0].id)) {
+            const sz = sizeOf(items[0], widthsRef.current);
+            if (g.axis === "x") x += sz.w + GAP;
+            else y += sz.h + GAP;
+            items = items.slice(1);
+          }
+          items = items.filter((it) => !ids.has(it.id));
+          if (items.length) {
+            if (x !== g.x || y !== g.y) instantRef.current.add(g.id);
+            out.push({ ...g, x, y, items });
+          }
+        }
+        if (i === top) out.push(ng);
+      });
+      return out;
+    });
+    setSelectedIds(picked.map((it) => it.id));
+  }, [selectedIds, itemRects, snapshot]);
+
+  /** Split a free group back into single runs at their current positions, in the same layer slot. */
+  const ungroupSelected = useCallback(() => {
+    const g = selectedGroup;
+    if (!g) return;
+    /* ungrouping would replace a locked group with unlocked single runs */
+    if (g.locked) {
+      showToast(lockedGroupMsg());
+      return;
+    }
+    snapshot();
+    const singles: Group[] = explodeGroup(g, widthsRef.current).map((run) => ({
+      ...run,
+      id: uid(),
+    }));
+    for (const sg of singles) instantRef.current.add(sg.id);
+    setGroups((prev) => prev.flatMap((x) => (x.id === g.id ? singles : [x])));
+  }, [selectedGroup, snapshot]);
+
+  const nudge = useCallback(
+    (dx: number, dy: number) => {
+      if (selectedIds.length === 0 && selectedFrameId) {
+        const f = framesRef.current.find((x) => x.id === selectedFrameId);
+        if (!f) return;
+        snapshotFor("nudge:frame:" + f.id);
+        const carried = new Set(
+          groupsRef.current
+            .filter((g) => frameOfGroup(g, framesRef.current, widthsRef.current)?.id === f.id)
+            .map((g) => g.id),
+        );
+        for (const id of carried) instantRef.current.add(id);
+        setFrames((fs) => fs.map((x) => (x.id === f.id ? { ...x, x: x.x + dx, y: x.y + dy } : x)));
+        setGroups((gs) =>
+          gs.map((g) => (carried.has(g.id) ? { ...g, x: g.x + dx, y: g.y + dy } : g)),
+        );
+        return;
+      }
+      if (selectedIds.length === 0) return;
+      const ids = new Set(selectedIds);
+      /* a locked group stays where it is, even when its parts are selected */
+      const moving = new Set(
+        groupsRef.current
+          .filter((g) => !g.locked && g.items.some((it) => ids.has(it.id)))
+          .map((g) => g.id),
+      );
+      if (moving.size === 0) return;
+      snapshotFor("nudge:" + selectedIds.join(","));
+      setGroups((prev) =>
+        prev.map((g) => (moving.has(g.id) ? { ...g, x: g.x + dx, y: g.y + dy } : g)),
+      );
+    },
+    [selectedIds, selectedFrameId, snapshotFor],
+  );
+
+  const clearAll = () => {
+    setConfirmClear(false);
+    if (groupsRef.current.length === 0 && framesRef.current.length === 0) return;
+    setDraftBefore(null);
+    setQuickUndo(false);
+    try {
+      localStorage.removeItem(beforeKey);
+    } catch {
+      /* localStorage недоступен (приватный режим/квота) — настройка просто не запомнится */
+    }
+    snapshot();
+    setGroups([]);
+    setFrames([]);
+    setSelectedIds([]);
+    setSelectedFrameId(null);
+  };
+
+  /** Opening a project file replaces the canvas with the same restore path the saved
+   *  document goes through, then starts the editor fresh on it. */
+  const importDoc = (next: Doc) => {
+    hadDocRef.current = true;
+    /* the whole document being replaced stays one undo away */
+    snapshot(true);
+    /* whatever was under review is over: a file, a clear or a new arrival replaces it */
+    setDraftBefore(null);
+    setQuickUndo(false);
+    try {
+      localStorage.removeItem(beforeKey);
+    } catch {
+      /* localStorage недоступен (приватный режим/квота) — настройка просто не запомнится */
+    }
+    applyDoc(next, true);
+    if (!mobileRef.current) {
+      const nextFrame = next.frame === "blank" ? "blank" : "phone";
+      setFrame(nextFrame);
+      frameRef.current = nextFrame;
+    }
+    setSelectedIds([]);
+    setSelectedFrameId(null);
+    setSelectedLinkId(null);
+    setWidths({});
+    lastPatchRef.current = { key: "", at: 0 };
+    queueMicrotask(() => fitRef.current());
+  };
+
+  /* A link with a design in its hash offers it once the editor is ready to take it,
+     whether the page opened on that link or the link was pasted into this tab. */
+  useEffect(() => {
+    if (editAccess !== "editable" || typeof window === "undefined") return;
+    let active = true;
+    const offer = () => {
+      if (!hasShareHash(window.location.hash)) return;
+      void readShareHash(window.location.hash).then((next) => {
+        if (!active) return;
+        if (next) {
+          setShareOpen(false);
+          arrive(next);
+          clearShareHash();
+        } else {
+          clearShareHash();
+          showToast(t("invalidProject", getLang()), 3000, "error");
+        }
+      });
+    };
+    offer();
+    window.addEventListener("hashchange", offer);
+    return () => {
+      active = false;
+      window.removeEventListener("hashchange", offer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editAccess]);
+
+  /** Asks the author's own model for a design and puts it on the canvas. The guide it reads
+   *  is the one a coding agent reads (public/agent.md). The replaced design waits in
+   *  `draftBefore` until the author keeps or undoes the draft. */
+  /** A design that arrived from a model or a link takes the canvas with its colours easing
+   *  over; the design it replaced waits in `draftBefore` until the author keeps or undoes it. */
+  const arrive = (next: Doc) => {
+    /* the phone editor has no keep / undo buttons: a link simply opens there, undoable as usual */
+    if (mobileRef.current) {
+      importDoc(next);
+      return;
+    }
+    const before = draftBeforeRef.current ?? docRef.current;
+    setRevealing(true);
+    if (revealTimer.current) clearTimeout(revealTimer.current);
+    revealTimer.current = setTimeout(() => setRevealing(false), 900);
+    importDoc(next);
+    setDraftBefore(before);
+    try {
+      localStorage.setItem(beforeKey, JSON.stringify(before));
+    } catch {
+      /* localStorage недоступен (приватный режим/квота) — настройка просто не запомнится */
+    }
+  };
+
+  const startDraft = async (idea: string) => {
+    setShareOpen(false);
+    setDraftBusy(true);
+    try {
+      if (guideRef.current === null) {
+        const res = await fetch(`${BASE_PATH}/agent.md`);
+        if (!res.ok) throw new Error("guide");
+        guideRef.current = await res.text();
+      }
+      const next = await draftDesign(aiSettings, guideRef.current, idea, lang);
+      arrive(next);
+    } catch (e) {
+      const m = e instanceof Error ? e.message : "";
+      showToast(
+        m === "json"
+          ? t("aiErrorJson", lang)
+          : m === "refusal"
+            ? t("aiErrorRefusal", lang)
+            : m === "long"
+              ? t("aiErrorLong", lang)
+              : t("aiError", lang),
+        3200,
+        "error",
+      );
+    } finally {
+      setDraftBusy(false);
+    }
+  };
+  /** true after a kept draft until the author undoes something, so the header's undo also sits by the opener */
+  const [quickUndo, setQuickUndo] = useState(false);
+  const keepDraft = () => {
+    setDraftBefore(null);
+    setQuickUndo(true);
+    try {
+      localStorage.removeItem(beforeKey);
+    } catch {
+      /* localStorage недоступен (приватный режим/квота) — настройка просто не запомнится */
+    }
+  };
+  const undoDraft = () => {
+    if (draftBefore) {
+      setRevealing(true);
+      if (revealTimer.current) clearTimeout(revealTimer.current);
+      revealTimer.current = setTimeout(() => setRevealing(false), 900);
+      importDoc(draftBefore);
+    }
+    setDraftBefore(null);
+  };
+
+  /** drops the design from the URL once it has been taken or declined */
+  const clearShareHash = () => {
+    if (typeof window !== "undefined" && window.location.hash)
+      window.history.replaceState(null, "", window.location.pathname + window.location.search);
+  };
+
+  const selectedFrame = useMemo(
+    () => frames.find((f) => f.id === selectedFrameId) ?? null,
+    [frames, selectedFrameId],
+  );
+  const selectedMinLength = useMemo(
+    () => (selectedFrame ? minFrameLength(groups, selectedFrame, frames, widths) : 0),
+    [groups, selectedFrame, frames, widths],
+  );
+  /** the selected toggle button is drawn in its "on" look while the panel edits that look */
+  const [showOnId, setShowOnId] = useState<string | null>(null);
+  /** the FAB whose menu the panel is showing open: it is open while its trigger tab is */
+  const [menuId, setMenuId] = useState<string | null>(null);
+  useEffect(() => {
+    setShowOnId(null);
+    setMenuId(null);
+  }, [primaryId]);
+  const onShowOn = useCallback((on: boolean) => setShowOnId(on ? primaryId : null), [primaryId]);
+  const onShowMenu = useCallback((on: boolean) => setMenuId(on ? primaryId : null), [primaryId]);
+  const onLook = (it: Item): Item => {
+    /* a FAB and a split button show their menu while the panel is on the tab that sets it up */
+    if (it.id === menuId && opensMenu(it)) return { ...it, [fabOpen]: true };
+    return it.id === showOnId && it.toggle
+      ? {
+          ...it,
+          label: it.toggle.label ?? it.label,
+          icon: toggleIcon(it),
+          variant: it.toggle.variant ?? it.variant,
+        }
+      : it;
+  };
+  const selectedRect = useMemo(() => {
+    if (!primaryId) return null;
+    const g = groups.find((g) => g.items.some((it) => it.id === primaryId));
+    if (!g) return null;
+    const b = groupBounds(g, widths);
+    return { x: b.l, y: b.t, w: b.r - b.l, h: b.b - b.t };
+  }, [primaryId, groups, widths]);
+
+  const selectedPartFrame = useMemo(() => {
+    if (!primaryId || frame !== "phone") return null;
+    const g = groups.find((g) => g.items.some((it) => it.id === primaryId));
+    return g ? (frameOfGroup(g, frames, widths) ?? null) : null;
+  }, [primaryId, frame, groups, frames, widths]);
+
+  /** the screen the tidy button works on: the selected one, or the one under the selected part */
+  const tidyTarget = useMemo((): Frame | null => {
+    if (frame !== "phone" || isMobile) return null;
+    if (selectedFrame) return selectedFrame;
+    if (!primaryId) return null;
+    const g = groups.find((g) => g.items.some((it) => it.id === primaryId));
+    return g ? (frameOfGroup(g, frames, widths) ?? null) : null;
+  }, [frame, isMobile, selectedFrame, primaryId, groups, frames, widths]);
+
+  const nextFrameX = () =>
+    framesRef.current.length
+      ? Math.max(...framesRef.current.map((f) => frameRect(f).r)) + FRAME_GAP
+      : 0;
+
+  /** Entering phone mode with no frames wraps the existing parts in one. */
+  const ensureFrame = () => {
+    if (framesRef.current.length > 0) return;
+    const gs = groupsRef.current;
+    let x = 0;
+    let y = 0;
+    if (gs.length) {
+      const bbs = gs.map((g) => groupBounds(g, widthsRef.current));
+      const l = Math.min(...bbs.map((b) => b.l));
+      const t = Math.min(...bbs.map((b) => b.t));
+      const r = Math.max(...bbs.map((b) => b.r));
+      x = Math.round(Math.max(l - 24, r - PHONE_W + 24 > l ? l : l - 24));
+      y = Math.round(t - 72);
+      x = Math.min(x, l);
+      y = Math.min(y, t);
+    }
+    const f: Frame = { id: uid(), name: t("home"), x, y };
+    setFrames([f]);
+  };
+
+  const ensureFrameRef = useRef(() => {});
+  ensureFrameRef.current = ensureFrame;
+
+  /** A palette tile chosen without a pointer, and the phone's plus button, drop a part where
+   *  the view is looking, landing as a drop there would. Over a screen it is kept inside it and
+   *  nudged down when that spot is already taken; over empty canvas it stays at the centre of
+   *  the view, so the new part is always in sight */
+  const addPart = (kind: Kind, made?: Item) => {
+    /* a snapped drop still settling is committed and rendered first, so the undo step taken
+     * below sees it and the free-spot search counts it */
+    if (pendingRef.current) flushSync(flushPending);
+    const r = canvasRect();
+    const v = viewRef.current;
+    const item = made ?? makeItem(kind);
+    const sz = sizeOf(item, widthsRef.current);
+    const cx = ((r?.width ?? 0) / 2 - v.x) / v.z;
+    const cy = ((r?.height ?? 0) / 2 - v.y) / v.z;
+    /* screens are hidden on a blank canvas; the phone shows one screen at a time, so its plus
+     * button always means that screen */
+    const f =
+      frameRef.current !== "phone"
+        ? undefined
+        : (framesRef.current.find((fr) => {
+            const fr2 = frameRect(fr);
+            return cx >= fr2.l && cx <= fr2.r && cy >= fr2.t && cy <= fr2.b;
+          }) ?? (mobileRef.current ? framesRef.current[0] : undefined));
+    let x = cx - sz.w / 2;
+    let y = cy - sz.h / 2;
+    if (f) {
+      const { w } = frameSizeOf(f);
+      const h = frameLengthOf(f);
+      const lx = f.x + Math.min(FRAME_MARGIN, (w - sz.w) / 2);
+      const ly = f.y + Math.min(FRAME_MARGIN, (h - sz.h) / 2);
+      x = clamp(x, lx, Math.max(lx, f.x + w - FRAME_MARGIN - sz.w));
+      y = clamp(y, ly, Math.max(ly, f.y + h - FRAME_MARGIN - sz.h));
+      const taken = (yy: number) =>
+        itemRects().some((o) => o.l < x + sz.w && o.r > x && o.t < yy + sz.h && o.b > yy);
+      let tries = 0;
+      while (taken(y) && y + sz.h * 2 < f.y + h && tries++ < 12) y += sz.h + 12;
+    }
+    snapshot();
+    const ng = landNewPart(item, x, y, () => false);
+    setGroups((gs) => [...gs, ng]);
+    setSelectedIds([item.id]);
+    setSelectedFrameId(null);
+    setRightTab("edit");
+    setSheet(null);
+  };
+
+  const changeFrame = (f: FrameMode) => {
+    if (f === frame) return;
+    snapshot();
+    setFrame(f);
+    frameRef.current = f;
+    if (f === "phone") ensureFrame();
+    setSelectedFrameId(null);
+    setSelectedLinkId(null);
+    queueMicrotask(() => fitRef.current());
+  };
+
+  const addFrame = () => {
+    snapshot();
+    const base = framesRef.current[0];
+    const f: Frame = {
+      id: uid(),
+      name: `${t("screenN")} ${framesRef.current.length + 1}`,
+      x: nextFrameX(),
+      y: base?.y ?? 0,
+    };
+    setFrames((fs) => [...fs, f]);
+    setSelectedFrameId(f.id);
+    setSelectedIds([]);
+    const r = canvasRect();
+    if (r) {
+      const z = viewRef.current.z;
+      const { w, h } = frameSizeOf(f);
+      setView({
+        x: r.width / 2 - (f.x + w / 2) * z,
+        y: r.height / 2 - (f.y + h / 2) * z,
+        z,
+      });
+    }
+  };
+
+  const patchFrame = (id: string, patch: Partial<Frame>) => {
+    snapshotFor("frame:" + id + ":" + Object.keys(patch).join(","));
+    setFrames((fs) => fs.map((f) => (f.id === id ? { ...f, ...patch } : f)));
+  };
+
+  const setFramePreset = (id: string, preset: FramePreset | { w: number; h: number }) => {
+    const current = framesRef.current.find((f) => f.id === id);
+    if (!current) return;
+    const sized = {
+      ...current,
+      ...(typeof preset === "string" ? framePresetPatch(preset) : preset),
+    };
+    /* a screen no longer than its new device does not scroll any more */
+    const next =
+      sized.length !== undefined && sized.length <= frameSizeOf(sized).h
+        ? { ...sized, length: undefined }
+        : sized;
+    const before = frameSizeOf(current);
+    const after = frameSizeOf(next);
+    if (before.w === after.w && before.h === after.h) return;
+    const frames = framesRef.current;
+    /* the screens to the right move over, parts take the sizes the new screen calls for,
+     * and the screen is laid out again by the tidy rules */
+    const laid = carryFrame(groupsRef.current, current, next, frames, widthsRef.current);
+    /* a target the author never picked follows the screens */
+    if (platform === defaultPlatformOf(frames, frameRef.current)) setPlatform(null);
+    snapshot();
+    tidyRef.current = null;
+    setEasing(true);
+    window.setTimeout(() => setEasing(false), SETTLE_MS + 40);
+    setFrames(laid.frames);
+    setGroups(laid.groups);
+  };
+
+  /** the document a run of length changes started from, and what the last of them made of it */
+  const lengthRun = useRef<{
+    id: string;
+    from: { frames: Frame[]; groups: Group[] };
+    to: { frames: Frame[]; groups: Group[] };
+  } | null>(null);
+  /** makes a screen run longer than its device, or back: what stands at its foot goes with the foot.
+   *  A slider sends a stream of lengths; each is worked out from where the stream began, so a part
+   *  is never taken for one at the foot halfway through and dragged along from then on. */
+  /** One drag of a screen's length handle: the document it started from, and how it takes its one undo step */
+  const setFrameLength = (id: string, length: number, drag?: LengthDrag) => {
+    const run = lengthRun.current;
+    const from = drag
+      ? drag.from
+      : run &&
+          run.id === id &&
+          run.to.frames === framesRef.current &&
+          run.to.groups === groupsRef.current
+        ? run.from
+        : { frames: framesRef.current, groups: groupsRef.current };
+    const start = from.frames.find((f) => f.id === id);
+    const current = framesRef.current.find((f) => f.id === id);
+    if (!start || !current) return;
+    const to = Math.max(length, minFrameLength(from.groups, start, from.frames, widthsRef.current));
+    if (to === frameLengthOf(current)) return;
+    const laid = stretchFrame(from.groups, start, to, from.frames, widthsRef.current);
+    lengthRun.current = { id, from, to: laid };
+    if (drag) drag.snap();
+    else snapshotFor("frame:" + id + ":length");
+    tidyRef.current = null;
+    setFrames(laid.frames);
+    setGroups(laid.groups);
+  };
+
+  /** the screen whose length handle is being dragged: it follows the pointer without easing */
+  const [lengthDragId, setLengthDragId] = useState<string | null>(null);
+  /** the grip under the chosen screen: dragging it makes the screen run longer or shorter, as the
+   *  length slider does, in steps of 4dp. The whole drag is worked out from the document it began
+   *  with, and takes one undo step, and only once the length really changes. */
+  const onLengthHandleDown = (e: React.PointerEvent, f: Frame) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const pointerId = e.pointerId;
+    const startY = e.clientY;
+    const start = frameLengthOf(f);
+    const deviceH = frameSizeOf(f).h;
+    const max = maxFrameLength(f);
+    let snapped = false;
+    const drag: LengthDrag = {
+      from: { frames: framesRef.current, groups: groupsRef.current },
+      snap: () => {
+        if (snapped) return;
+        snapshot();
+        snapped = true;
+      },
+    };
+    lengthRun.current = null;
+    setLengthDragId(f.id);
+    /* captured, the pointer's events reach the window through the handle wherever it is let go;
+     * should the handle go away mid-drag, they reach the window directly */
+    (e.currentTarget as HTMLElement).setPointerCapture(pointerId);
+    const move = (ev: PointerEvent) => {
+      if (ev.pointerId !== pointerId) return;
+      setFrameLength(
+        f.id,
+        clamp(
+          Math.round((start + (ev.clientY - startY) / viewRef.current.z) / 4) * 4,
+          deviceH,
+          max,
+        ),
+        drag,
+      );
+    };
+    const end = (ev: PointerEvent) => {
+      if (ev.pointerId !== pointerId) return;
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", end);
+      window.removeEventListener("pointercancel", end);
+      lengthRun.current = null;
+      setLengthDragId(null);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", end);
+    window.addEventListener("pointercancel", end);
+  };
+  /** the same handle from the keyboard: arrows move it by 4dp, with Shift by 40dp */
+  const onLengthHandleKey = (e: React.KeyboardEvent, f: Frame) => {
+    if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
+    e.preventDefault();
+    e.stopPropagation();
+    const step = (e.shiftKey ? 40 : 4) * (e.key === "ArrowDown" ? 1 : -1);
+    setFrameLength(f.id, clamp(frameLengthOf(f) + step, frameSizeOf(f).h, maxFrameLength(f)));
+  };
+
+  /** the tidy button's state for the screen in play; the layout pass runs only when the document changes */
+  const tidyState = useMemo((): TidyState | null => {
+    if (!tidyTarget) return null;
+    const last = tidyRef.current;
+    if (last && last.frameId === tidyTarget.id && last.after === groups) return "undo";
+    return tidyFrame(groups, tidyTarget, frames, widths) ? "tidy" : "done";
+  }, [tidyTarget, groups, frames, widths]);
+
+  const tidy = (f: Frame) => {
+    const last = tidyRef.current;
+    if (last && last.frameId === f.id && last.after === groupsRef.current) {
+      snapshot();
+      setGroups(last.before);
+      tidyRef.current = null;
+      return;
+    }
+    const after = tidyFrame(groupsRef.current, f, framesRef.current, widthsRef.current);
+    if (!after) return;
+    snapshot();
+    tidyRef.current = { frameId: f.id, before: groupsRef.current, after };
+    setGroups(after);
+  };
+
+  /** sets where Tidy puts a screen's body, then tidies it that way */
+  const setPlace = (f: Frame, place: Place) => {
+    const next: Frame = { ...f, place: place === "top" ? undefined : place };
+    /* one undo step covers both the setting and the tidy it causes */
+    snapshot();
+    const frames = framesRef.current.map((o) => (o.id === f.id ? next : o));
+    setFrames(frames);
+    tidyRef.current = null;
+    const after = tidyFrame(groupsRef.current, next, frames, widthsRef.current);
+    if (!after) return;
+    tidyRef.current = { frameId: f.id, before: groupsRef.current, after };
+    setGroups(after);
+  };
+
+  const toastTimer = useRef<number | null>(null);
+  /** the desktop's message pill beside the tidy button; the phone keeps its centered toast */
+  const showAiNote = (text: string, icon = "check", ms = 2200) => {
+    setAiNote({ text, icon });
+    if (aiNoteTimer.current) window.clearTimeout(aiNoteTimer.current);
+    aiNoteTimer.current = window.setTimeout(() => setAiNote(null), ms);
+  };
+
+  const showToast = (msg: string, ms = 2200, icon = "info") => {
+    if (!mobileRef.current) {
+      showAiNote(msg, icon, ms);
+      return;
+    }
+    setToast(msg);
+    if (toastTimer.current) window.clearTimeout(toastTimer.current);
+    toastTimer.current = window.setTimeout(() => setToast(null), ms);
+  };
+
+  const updateAiSettings = (s: AiSettings) => {
+    setAiSettings(s);
+    saveAiSettings(s);
+  };
+
+  const aiReady =
+    hasKey(aiSettings) && aiSettings.model.trim().length > 0 && isSecureUrl(aiSettings.baseUrl);
+  const aiReason = !aiReady
+    ? t("aiNoKey", lang)
+    : !tidyTarget
+      ? t("aiSelectScreen", lang)
+      : undefined;
+
+  /** Writes one field with the model: a part's behavior note, or a screen's description.
+   *  The result goes straight in; the field remembers what it said so the rewrite can be undone. */
+  const runAi = async (action: AiActionKey, f: Frame, itemId?: string) => {
+    if (!aiReady) {
+      showToast(t("aiNoKey", lang));
+      return;
+    }
+    const curDoc = doc;
+    aiAbortRef.current?.abort();
+    const ac = new AbortController();
+    aiAbortRef.current = ac;
+    setAiBusy(true);
+    setAiFrameId(f.id);
+    try {
+      if (action === "describe") {
+        const r = await proposeDescription(
+          aiSettings,
+          curDoc,
+          widthsRef.current,
+          f,
+          lang,
+          ac.signal,
+        );
+        if (ac.signal.aborted) return;
+        snapshot();
+        setFrames((fs) =>
+          fs.map((x) =>
+            x.id === f.id
+              ? {
+                  ...x,
+                  note: r.note,
+                  noteHistory: pushHistory(x.noteHistory, x.note),
+                  name: r.name ?? x.name,
+                }
+              : x,
+          ),
+        );
+        showAiNote(t("aiApplied", lang));
+        return;
+      }
+      if (!itemId) return;
+      const note = await proposeBehavior(
+        aiSettings,
+        curDoc,
+        widthsRef.current,
+        f,
+        lang,
+        itemId,
+        ac.signal,
+      );
+      if (ac.signal.aborted) return;
+      if (!note) {
+        showToast(t("aiErrorJson", lang));
+        return;
+      }
+      snapshot();
+      setGroups((gs) =>
+        gs.map((g) =>
+          g.items.some((it) => it.id === itemId)
+            ? {
+                ...g,
+                items: g.items.map((it) =>
+                  it.id === itemId
+                    ? { ...it, note, noteHistory: pushHistory(it.noteHistory, it.note) }
+                    : it,
+                ),
+              }
+            : g,
+        ),
+      );
+      showAiNote(t("aiApplied", lang));
+    } catch (e) {
+      if (!ac.signal.aborted) showToast(aiErrorText(e, lang), 4000, "error");
+    } finally {
+      if (aiAbortRef.current === ac) {
+        aiAbortRef.current = null;
+        setAiBusy(false);
+        setAiFrameId(null);
+      }
+    }
+  };
+
+  const cancelAi = () => {
+    aiAbortRef.current?.abort();
+    aiAbortRef.current = null;
+    setAiBusy(false);
+    setAiFrameId(null);
+  };
+
+  useEffect(
+    () => () => {
+      aiAbortRef.current?.abort();
+      if (aiNoteTimer.current) window.clearTimeout(aiNoteTimer.current);
+      if (toastTimer.current) window.clearTimeout(toastTimer.current);
+    },
+    [],
+  );
+
+  /** a screen takes everything on it along, and links into it are dropped */
+  const deleteFrame = useCallback(
+    (id: string) => {
+      snapshot();
+      const gone = new Set(
+        groupsRef.current
+          .filter((g) => frameOfGroup(g, framesRef.current, widthsRef.current)?.id === id)
+          .map((g) => g.id),
+      );
+      setFrames((fs) =>
+        fs
+          .filter((f) => f.id !== id)
+          .map((f) => {
+            if (!f.swipe) return f;
+            const swipe = Object.fromEntries(Object.entries(f.swipe).filter(([, to]) => to !== id));
+            return { ...f, swipe: Object.keys(swipe).length ? swipe : undefined };
+          }),
+      );
+      setGroups((gs) =>
+        gs
+          .filter((g) => !gone.has(g.id))
+          .map((g) => ({
+            ...g,
+            items: g.items.map((it) => {
+              const next = { ...it };
+              if (next.action?.to === id) next.action = undefined;
+              if (next.actions) {
+                const actions = Object.fromEntries(
+                  Object.entries(next.actions).filter(([, a]) => a.to !== id),
+                );
+                next.actions = Object.keys(actions).length ? actions : undefined;
+              }
+              return next;
+            }),
+          })),
+      );
+      setSelectedFrameId(null);
+      setSelectedIds((cur) =>
+        cur.filter(
+          (x) =>
+            !groupsRef.current.some((g) => gone.has(g.id) && g.items.some((it) => it.id === x)),
+        ),
+      );
+    },
+    [snapshot],
+  );
+
+  const duplicateFrame = (id: string) => {
+    const f = framesRef.current.find((x) => x.id === id);
+    if (!f) return;
+    snapshot();
+    const nf: Frame = {
+      ...f,
+      id: uid(),
+      name: `${f.name}${t("copySuffix")}`,
+      x: nextFrameX(),
+    };
+    const dx = nf.x - f.x;
+    const copies = groupsRef.current
+      .filter((g) => frameOfGroup(g, framesRef.current, widthsRef.current)?.id === id)
+      .map((g) => {
+        const idMap = new Map(g.items.map((it) => [it.id, uid()]));
+        const pos = g.pos
+          ? Object.fromEntries(Object.entries(g.pos).map(([id, o]) => [idMap.get(id) ?? id, o]))
+          : undefined;
+        return {
+          ...g,
+          id: uid(),
+          x: g.x + dx,
+          pos,
+          items: g.items.map((it) => ({
+            ...it,
+            id: idMap.get(it.id)!,
+            tabs: it.tabs?.map((t) => ({ ...t })),
+          })),
+        };
+      });
+    setFrames((fs) => [...fs, nf]);
+    setGroups((gs) => [...gs, ...copies]);
+    setSelectedFrameId(nf.id);
+  };
+  const duplicateFrameRef = useRef(duplicateFrame);
+  duplicateFrameRef.current = duplicateFrame;
+
+  /** The screen is re-rendered offscreen at 1:1 with static parts, so the
+   *  canvas zoom, selection outlines and in-flight animations never leak into the PNG. */
+  const saveFrameImage = async (f: Frame) => {
+    setExportFrame(f);
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => r(null))));
+    try {
+      await document.fonts?.ready;
+      const el = document.querySelector<HTMLElement>(`[data-export="${f.id}"]`);
+      if (!el) return;
+      const url = await toPng(el, {
+        pixelRatio: 2,
+        cacheBust: true,
+        width: frameSizeOf(f).w,
+        height: frameLengthOf(f),
+      });
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${f.name || "screen"}.png`;
+      a.click();
+    } finally {
+      setExportFrame(null);
+    }
+  };
+
+  /** the runs of one screen drawn with plain divs: the export layer */
+  const renderExport = (f: Frame) => {
+    const gs = groups.filter((g) => frameOfGroup(g, frames, widths)?.id === f.id);
+    const { w } = frameSizeOf(f);
+    const h = frameLengthOf(f);
+    return (
+      <div
+        data-export={f.id}
+        style={{
+          position: "relative",
+          width: w,
+          height: h,
+          background: dp[f.bg ?? "surface"],
+          overflow: "hidden",
+        }}
+      >
+        {gs.map((g) =>
+          g.free ? (
+            ((corners) =>
+              layoutOf(g, widths).map((pl) => (
+                <div
+                  key={pl.item.id}
+                  style={{
+                    position: "absolute",
+                    left: pl.x - f.x,
+                    top: pl.y - f.y,
+                    zIndex: modalRailOf(g) ? 2 : undefined,
+                  }}
+                >
+                  <M3Static
+                    item={pl.item}
+                    palette={dp}
+                    radii={corners.get(pl.item.id)}
+                    style={
+                      MEASURED.includes(pl.item.kind) ? undefined : { width: pl.w, height: pl.h }
+                    }
+                  />
+                </div>
+              )))(freeRadii(g, widths))
+          ) : (
+            <div
+              key={g.id}
+              style={{
+                position: "absolute",
+                left: g.x - f.x,
+                top: g.y - f.y,
+                zIndex: modalRailOf(g) ? 2 : undefined,
+                display: "flex",
+                flexDirection: g.axis === "x" ? "row" : "column",
+                alignItems: g.axis === "x" ? "center" : "stretch",
+                gap: GAP,
+              }}
+            >
+              {g.items.map((it, i) => {
+                const conn = connectSpecOf(it);
+                const n = g.items.length;
+                const radii =
+                  conn && n > 1
+                    ? runRadii(
+                        g.axis,
+                        i === 0,
+                        i === n - 1,
+                        false,
+                        false,
+                        0,
+                        conn.outer,
+                        conn.inner,
+                      )
+                    : conn
+                      ? uniformRadii(conn.outer)
+                      : baseRadii(it);
+                return (
+                  <M3Static
+                    key={it.id}
+                    item={it}
+                    palette={dp}
+                    radii={radii}
+                    style={
+                      MEASURED.includes(it.kind)
+                        ? undefined
+                        : { width: sizeOf(it, widths).w, height: sizeOf(it, widths).h }
+                    }
+                  />
+                );
+              })}
+            </div>
+          ),
+        )}
+        {gs.some((g) => modalRailOf(g)) && (
+          <div
+            aria-hidden
+            style={{
+              position: "absolute",
+              inset: 0,
+              background: "rgba(0,0,0,0.32)",
+              pointerEvents: "none",
+              zIndex: 1,
+            }}
+          />
+        )}
+      </div>
+    );
+  };
+
+  /** the view before the preview opened, restored when it closes */
+  const viewBeforePreview = useRef<View | null>(null);
+  /** the opening scheduled after the glide, while it is still pending */
+  const previewTimer = useRef<number | null>(null);
+  /** the camera's return scheduled after a close, with the view it is heading back to */
+  const returnTimer = useRef<{ id: number; view: View } | null>(null);
+  const cancelReturn = () => {
+    if (returnTimer.current !== null) window.clearTimeout(returnTimer.current.id);
+    returnTimer.current = null;
+  };
+  useEffect(
+    () => () => {
+      if (previewTimer.current !== null) window.clearTimeout(previewTimer.current);
+      if (returnTimer.current !== null) window.clearTimeout(returnTimer.current.id);
+    },
+    [],
+  );
+  /** the camera glides for a moment: a screen is brought to the center before the
+   *  preview opens over it, and the view returns once the preview closes */
+  const glide = (v: View) => {
+    setCameraEasing(true);
+    setView(v);
+    window.setTimeout(() => setCameraEasing(false), SETTLE_MS + 40);
+  };
+  /** Brings one screen to the middle of the canvas at the zoom it fits in, gliding there. A
+   *  screen already wholly in view is left where it is, so picking it does not move the camera. */
+  const glideToFrame = (f: Frame) => {
+    const r = canvasRect();
+    if (!r) return;
+    const { w } = frameSizeOf(f);
+    const h = frameLengthOf(f);
+    const boxW = w + BEZEL * 2;
+    const boxH = h + BEZEL * 2 + FRAME_LABEL_H;
+    const v = viewRef.current;
+    const left = (f.x - BEZEL) * v.z + v.x;
+    const top = (f.y - BEZEL - FRAME_LABEL_H) * v.z + v.y;
+    if (
+      left >= GLIDE_PAD &&
+      top >= GLIDE_TOP &&
+      left + boxW * v.z <= r.width - GLIDE_PAD &&
+      top + boxH * v.z <= r.height - GLIDE_PAD
+    )
+      return;
+    const z = clamp(
+      Math.min((r.width - GLIDE_PAD * 2) / boxW, (r.height - GLIDE_TOP - GLIDE_PAD) / boxH, v.z),
+      MIN_Z,
+      MAX_Z,
+    );
+    glide({
+      x: (r.width - boxW * z) / 2 - (f.x - BEZEL) * z,
+      y:
+        GLIDE_TOP +
+        (r.height - GLIDE_TOP - GLIDE_PAD - boxH * z) / 2 -
+        (f.y - BEZEL - FRAME_LABEL_H) * z,
+      z,
+    });
+  };
+  /** Переход к экрану из менеджера страниц и по клавишам: всегда в центр, вписанным целиком. */
+  const flyToFrame = (f: Frame) => {
+    const r = canvasRect();
+    if (!r) return;
+    const { w } = frameSizeOf(f);
+    const h = frameLengthOf(f);
+    const boxW = w + BEZEL * 2;
+    const boxH = h + BEZEL * 2 + FRAME_LABEL_H;
+    const z = clamp(
+      Math.min((r.width - GLIDE_PAD * 2) / boxW, (r.height - GLIDE_TOP - GLIDE_PAD) / boxH, 1),
+      MIN_Z,
+      MAX_Z,
+    );
+    glide({
+      x: (r.width - boxW * z) / 2 - (f.x - BEZEL) * z,
+      y:
+        GLIDE_TOP +
+        (r.height - GLIDE_TOP - GLIDE_PAD - boxH * z) / 2 -
+        (f.y - BEZEL - FRAME_LABEL_H) * z,
+      z,
+    });
+  };
+  const goToFrame = (id: string) => {
+    const f = framesRef.current.find((x) => x.id === id);
+    if (!f) return;
+    setLayersFrameId(id);
+    setSelectedIds([]);
+    setSelectedLinkId(null);
+    setSelectedFrameId(id);
+    flyToFrame(f);
+  };
+  /** Следующий или предыдущий экран по порядку на холсте (слева направо, сверху вниз). */
+  const stepFrame = (dir: 1 | -1) => {
+    const list = [...framesRef.current].sort((a, b) => a.y - b.y || a.x - b.x);
+    if (list.length === 0) return;
+    const cur = list.findIndex((x) => x.id === (selectedFrameId ?? layersFrame?.id));
+    const at = cur < 0 ? (dir > 0 ? 0 : list.length - 1) : (cur + dir + list.length) % list.length;
+    goToFrame(list[at].id);
+  };
+  const stepFrameRef = useRef(stepFrame);
+  stepFrameRef.current = stepFrame;
+  const goToFrameRef = useRef(goToFrame);
+  goToFrameRef.current = goToFrame;
+  useEffect(() => {
+    if (!handleRef) return;
+    handleRef.current = {
+      focusFrame: (id) => goToFrameRef.current(id),
+      setTitle: (v) => setTitle(v),
+      fit: () => fitRef.current(),
+    };
+    return () => {
+      handleRef.current = null;
+    };
+  }, [handleRef]);
+  useEffect(() => {
+    if (!initialFocusFrame) return;
+    const id = window.setTimeout(() => goToFrameRef.current(initialFocusFrame), 160);
+    return () => window.clearTimeout(id);
+  }, [initialFocusFrame]);
+  const openPreview = (startId?: string | null) => {
+    if (frame !== "phone") {
+      changeFrame("phone");
+    }
+    queueMicrotask(() => {
+      const id = startId ?? selectedFrameId ?? framesRef.current[0]?.id ?? null;
+      const f = framesRef.current.find((x) => x.id === id);
+      const r = canvasRect();
+      if (f && r) {
+        /* the preview's own fit and center, in window coordinates: its stage is sized for the
+         * largest screen and sits left of the control column, so the screen lands where the
+         * preview will show it */
+        const { w, h } = frameSizeOf(f);
+        const vb = viewportBox();
+        const wide = vb.width >= 720;
+        const maxW = Math.max(...framesRef.current.map((x) => frameSizeOf(x).w)) + BEZEL * 2;
+        const maxH = Math.max(...framesRef.current.map((x) => frameSizeOf(x).h)) + BEZEL * 2;
+        const z = clamp(
+          Math.min(1.4, (vb.height - 32) / maxH, (vb.width - (wide ? 236 : 16)) / maxW),
+          MIN_Z,
+          MAX_Z,
+        );
+        const cx = vb.left + (vb.width - (wide ? 220 : 0)) / 2 - r.left;
+        const cy = vb.top + vb.height / 2 - (wide ? 0 : 28) - r.top;
+        /* reopening while the camera is still returning keeps the view it was returning
+         * to; reopening during the opening glide keeps the view already captured */
+        if (returnTimer.current !== null) {
+          viewBeforePreview.current = returnTimer.current.view;
+          cancelReturn();
+        } else if (previewTimer.current === null) {
+          viewBeforePreview.current = viewRef.current;
+        }
+        glide({ x: cx - (f.x + w / 2) * z, y: cy - (f.y + h / 2) * z, z });
+        if (previewTimer.current !== null) window.clearTimeout(previewTimer.current);
+        previewTimer.current = window.setTimeout(() => {
+          previewTimer.current = null;
+          /* the screen may have gone while the camera moved: an undo can remove it */
+          if (framesRef.current.some((x) => x.id === id)) setPreviewId(id);
+          else abandonPreview();
+        }, SETTLE_MS);
+      } else {
+        setPreviewId(id);
+      }
+    });
+  };
+  /** Gives up an opening that has not happened yet and brings the camera straight back. */
+  const abandonPreview = () => {
+    if (previewTimer.current !== null) window.clearTimeout(previewTimer.current);
+    previewTimer.current = null;
+    cancelReturn();
+    const back = viewBeforePreview.current;
+    viewBeforePreview.current = null;
+    if (back) glide(back);
+  };
+  const closePreview = () => {
+    setPreviewId(null);
+    const back = viewBeforePreview.current;
+    viewBeforePreview.current = null;
+    cancelReturn();
+    if (back)
+      returnTimer.current = {
+        id: window.setTimeout(() => {
+          returnTimer.current = null;
+          glide(back);
+        }, 220),
+        view: back,
+      };
+  };
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Tab") tabbedRef.current = true;
+      if (editAccess !== "editable") return;
+      const t = e.target as HTMLElement;
+      const typing =
+        t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable);
+      if (typing) return;
+      // dialogs, the preview and the prompt's full-screen cover own the keyboard while they are up
+      if (
+        confirmClear ||
+        pendingImport !== null ||
+        shareOpen ||
+        previewId !== null ||
+        promptCoverUp
+      )
+        return;
+      const mod = e.ctrlKey || e.metaKey;
+      /* буквы и знаки берём по физической клавише: на русской раскладке e.key другой */
+      const letter = e.code.startsWith("Key") ? e.code.slice(3).toLowerCase() : e.key.toLowerCase();
+      const sym =
+        e.code === "BracketRight"
+          ? "]"
+          : e.code === "BracketLeft"
+            ? "["
+            : e.code === "Equal" || e.code === "NumpadAdd"
+              ? "+"
+              : e.code === "Minus" || e.code === "NumpadSubtract"
+                ? "-"
+                : e.key;
+      if (mod && letter === "z") {
+        e.preventDefault();
+        if (e.shiftKey) redo();
+        else undo();
+        return;
+      }
+      if (mod && e.key.toLowerCase() === "y") {
+        e.preventDefault();
+        redo();
+        return;
+      }
+      if (mod && e.key.toLowerCase() === "d") {
+        e.preventDefault();
+        if (selectedIds.length === 0 && selectedFrameId) duplicateFrameRef.current(selectedFrameId);
+        else duplicateSelected();
+        return;
+      }
+      if (mod && e.key.toLowerCase() === "c") {
+        /* with nothing selected, or text highlighted somewhere, the browser keeps its own copy */
+        if (selectedIds.length === 0 || window.getSelection()?.toString()) return;
+        e.preventDefault();
+        copySelected();
+        return;
+      }
+      if (mod && e.key.toLowerCase() === "v") {
+        if (!clipboardRef.current) return;
+        e.preventDefault();
+        pasteClipboard();
+        return;
+      }
+      if (mod && e.key.toLowerCase() === "g") {
+        e.preventDefault();
+        if (e.shiftKey) ungroupSelected();
+        else groupSelected();
+        return;
+      }
+      /* Space presses a control reached with Tab instead of holding the hand tool; a button
+       * clicked with the mouse keeps focus too, and must not be pressed again */
+      if (e.key === " " && tabbedRef.current && t.closest?.("button, [role=button]")) return;
+      if (e.key === " " && !e.repeat) {
+        e.preventDefault();
+        setSpaceHeld(true);
+        return;
+      }
+      if (e.key === "Delete" || e.key === "Backspace") {
+        e.preventDefault();
+        if (selectedIds.length === 0 && selectedFrameId) deleteFrame(selectedFrameId);
+        else deleteSelected();
+        return;
+      }
+      if (e.key === "Escape") {
+        setSelectedIds([]);
+        setSelectedFrameId(null);
+        setSelectedLinkId(null);
+        return;
+      }
+      if (letter === "p") {
+        openPreviewRef.current();
+        return;
+      }
+      if (!mod && !e.altKey && (sym === "]" || e.key === "PageDown")) {
+        e.preventDefault();
+        stepFrameRef.current(1);
+        return;
+      }
+      if (!mod && !e.altKey && (sym === "[" || e.key === "PageUp")) {
+        e.preventDefault();
+        stepFrameRef.current(-1);
+        return;
+      }
+      if (e.key.startsWith("Arrow")) {
+        e.preventDefault();
+        const s = e.shiftKey ? 8 : 1;
+        nudge(
+          e.key === "ArrowLeft" ? -s : e.key === "ArrowRight" ? s : 0,
+          e.key === "ArrowUp" ? -s : e.key === "ArrowDown" ? s : 0,
+        );
+        return;
+      }
+      if (mod) return;
+      if (letter === "v") setMode("select");
+      if (letter === "h") setMode("hand");
+      if (sym === "+") setZoomAt(viewRef.current.z * 1.2);
+      if (sym === "-") setZoomAt(viewRef.current.z / 1.2);
+      if (e.key === "0") fitRef.current();
+    };
+    const onKeyUp = (e: KeyboardEvent) => {
+      if (e.key === " ") setSpaceHeld(false);
+    };
+    const onPointer = () => {
+      tabbedRef.current = false;
+    };
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("keyup", onKeyUp);
+    window.addEventListener("pointerdown", onPointer, true);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("keyup", onKeyUp);
+      window.removeEventListener("pointerdown", onPointer, true);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    deleteSelected,
+    duplicateSelected,
+    copySelected,
+    pasteClipboard,
+    groupSelected,
+    ungroupSelected,
+    nudge,
+    redo,
+    undo,
+    setZoomAt,
+    selectedIds,
+    selectedFrameId,
+    deleteFrame,
+    confirmClear,
+    pendingImport,
+    shareOpen,
+    previewId,
+    promptCoverUp,
+    editAccess,
+  ]);
+  const openPreviewRef = useRef(openPreview);
+  openPreviewRef.current = openPreview;
+
+  /* ---------- render ---------- */
+  /* The hole a run holds for a part: where it is, how big, and whether it is still wanted. It
+   * outlives the drag by the moment it takes to close, and is the same element throughout, so
+   * the closing is a transition rather than a part vanishing. */
+  type Gap = {
+    gid: string;
+    index: number;
+    w: number;
+    h: number;
+    open: boolean;
+    /** the hole the part was pulled out of, which stays its full size while the part is in reach */ from: boolean;
+  };
+  const [gapOut, setGapOut] = useState<Gap | null>(null);
+  const gapRef = useRef<Gap | null>(null);
+  const gapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (gapTimer.current) clearTimeout(gapTimer.current);
+    },
+    [],
+  );
+  const setGap = useCallback((next: Gap | null) => {
+    const cur = gapRef.current;
+    if (cur === next) return;
+    if (
+      cur &&
+      next &&
+      cur.gid === next.gid &&
+      cur.index === next.index &&
+      cur.w === next.w &&
+      cur.h === next.h &&
+      cur.open === next.open &&
+      cur.from === next.from
+    )
+      return;
+    gapRef.current = next;
+    setGapOut(next);
+  }, []);
+  /** the run keeps the hole open while the part is in reach, and closes it once it is not */
+  const holdGap = useCallback(
+    (gid: string, index: number, w: number, h: number, from = false) => {
+      if (gapTimer.current) {
+        clearTimeout(gapTimer.current);
+        gapTimer.current = null;
+      }
+      /* a part that came out of this run keeps its hole at full size for as long as it is in
+       * reach, however the magnet is pulling; a part arriving from elsewhere opens one as it
+       * comes, so the run can be seen making room */
+      setGap({
+        gid,
+        index,
+        w,
+        h,
+        open: true,
+        from:
+          from ||
+          (gapRef.current?.gid === gid && gapRef.current.index === index && gapRef.current.from),
+      });
+    },
+    [setGap],
+  );
+  const closeGap = useCallback(() => {
+    const cur = gapRef.current;
+    if (!cur || !cur.open) return;
+    setGap({ ...cur, open: false });
+    if (gapTimer.current) clearTimeout(gapTimer.current);
+    gapTimer.current = setTimeout(() => setGap(null), SETTLE_MS + 40);
+  }, [setGap]);
+  const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
+  const doc: Doc = useMemo(
+    () => ({
+      groups,
+      frames,
+      paletteKey,
+      frame,
+      title,
+      brief,
+      promptEdit,
+      promptOptions,
+      platform: platform ?? undefined,
+      customPalette: customPalette ?? undefined,
+      dynamicColor,
+      theme,
+    }),
+    [
+      groups,
+      frames,
+      paletteKey,
+      frame,
+      title,
+      brief,
+      promptEdit,
+      promptOptions,
+      platform,
+      customPalette,
+      dynamicColor,
+      theme,
+    ],
+  );
+  /** the same document, for callbacks that were created on an earlier render */
+  const docRef = useRef(doc);
+  docRef.current = doc;
+
+  /** arrows from tappable parts to the frames they open */
+  const links = useMemo(() => {
+    if (frame !== "phone") return [];
+    const rects = itemRects();
+    const out: {
+      id: string;
+      d: string;
+      mx: number;
+      my: number;
+      tx: number;
+      ty: number;
+      ang: number;
+      t: Transition;
+    }[] = [];
+    for (const g of groups) {
+      for (const it of g.items) {
+        for (const { slot, action } of actionsOf(it)) {
+          if (action.to === BACK_TARGET) continue;
+          const f = frames.find((x) => x.id === action.to);
+          const r = rects.find((x) => x.id === it.id);
+          if (!f || !r) continue;
+          const fr = frameRect(f);
+          const rightward = (fr.l + fr.r) / 2 >= (r.l + r.r) / 2;
+          const sx = rightward ? r.r : r.l;
+          const sy = (r.t + r.b) / 2;
+          const tx = rightward ? fr.l - BEZEL : fr.r + BEZEL;
+          const ty = clamp(sy, fr.t + 40, fr.b - 40);
+          const dx = Math.max(60, Math.abs(tx - sx) * 0.5);
+          const c1x = sx + (rightward ? dx : -dx);
+          const c2x = tx + (rightward ? -dx : dx);
+          const d = `M${sx} ${sy} C${c1x} ${sy} ${c2x} ${ty} ${tx} ${ty}`;
+          // midpoint of the cubic at t = 0.5
+          const mx = 0.125 * sx + 0.375 * c1x + 0.375 * c2x + 0.125 * tx;
+          const my = 0.125 * sy + 0.375 * sy + 0.375 * ty + 0.125 * ty;
+          out.push({
+            id: `${it.id}|${slot}`,
+            d,
+            mx,
+            my,
+            tx,
+            ty,
+            ang: rightward ? 0 : 180,
+            t: action.transition,
+          });
+        }
+      }
+    }
+    return out;
+  }, [groups, frames, frame, itemRects, widths]);
+
+  /** apply a change to the action behind a link id ("itemId|slot") */
+  const patchLink = (linkId: string, fn: (a: Action) => Action | undefined) => {
+    const [itemId, slot] = linkId.split("|");
+    setGroups((gs) =>
+      gs.map((g) => ({
+        ...g,
+        items: g.items.map((it) => {
+          if (it.id !== itemId) return it;
+          if (!slot) return { ...it, action: it.action ? fn(it.action) : undefined };
+          const cur = it.actions?.[slot];
+          if (!cur) return it;
+          const next = fn(cur);
+          const actions = { ...(it.actions ?? {}) };
+          if (next) actions[slot] = next;
+          else delete actions[slot];
+          return { ...it, actions: Object.keys(actions).length ? actions : undefined };
+        }),
+      })),
+    );
+  };
+
+  /** pull a line from a part's connector dot onto a screen: that screen becomes where the part leads */
+  const startLinkDrag = (e: React.PointerEvent, itemId: string, sx: number, sy: number) => {
+    e.stopPropagation();
+    e.preventDefault();
+    const frameAt = (x: number, y: number) =>
+      framesRef.current.find((f) => {
+        const r = frameRect(f);
+        return x >= r.l && x <= r.r && y >= r.t && y <= r.b;
+      })?.id ?? null;
+    let over: string | null = null;
+    const move = (ev: PointerEvent) => {
+      const w = toWorld(ev.clientX, ev.clientY);
+      over = frameAt(w.x, w.y);
+      setLinkDrag({ itemId, sx, sy, x: w.x, y: w.y, over });
+    };
+    const done = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", done);
+      window.removeEventListener("pointercancel", done);
+      const target = over;
+      setLinkDrag(null);
+      if (!target) return;
+      snapshot();
+      setGroups((gs) =>
+        gs.map((g) => ({
+          ...g,
+          items: g.items.map((it) =>
+            it.id === itemId
+              ? { ...it, action: { transition: it.action?.transition ?? "slide", to: target } }
+              : it,
+          ),
+        })),
+      );
+      showToast(t("linkMade", lang), 1400, "check");
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", done);
+    window.addEventListener("pointercancel", done);
+    const w = toWorld(e.clientX, e.clientY);
+    setLinkDrag({ itemId, sx, sy, x: w.x, y: w.y, over: null });
+  };
+
+  const setLinkTransition = (linkId: string, transition: Transition) => {
+    snapshotFor("link:" + linkId);
+    patchLink(linkId, (a) => ({ ...a, transition }));
+  };
+  const removeLink = (linkId: string) => {
+    snapshot();
+    patchLink(linkId, () => undefined);
+    setSelectedLinkId(null);
+  };
+
+  const runRadii = (
+    axis: Axis,
+    first: boolean,
+    last: boolean,
+    prevPh: boolean,
+    nextPh: boolean,
+    pull: number,
+    outer: number,
+    inner: number,
+  ): Radii => {
+    const soft = lerp(outer, inner, pull);
+    const s = first ? outer : prevPh ? soft : inner;
+    const e = last ? outer : nextPh ? soft : inner;
+    return axis === "x" ? { tl: s, bl: s, tr: e, br: e } : { tl: s, tr: s, bl: e, br: e };
+  };
+
+  /** which frame each run sits on (phone mode only) */
+  const frameOf = useMemo(() => {
+    const m = new Map<string, string>();
+    if (frame !== "phone") return m;
+    for (const g of groups) {
+      const f = frameOfGroup(g, frames, widths);
+      if (f) m.set(g.id, f.id);
+    }
+    return m;
+  }, [groups, frames, frame, widths]);
+
+  /** the screen whose layers the panel lists: the selection's, else the chosen one */
+  const layersFrame = useMemo(() => {
+    if (frame !== "phone") return null;
+    if (primaryId) {
+      const g = groups.find((x) => x.items.some((it) => it.id === primaryId));
+      const fid = g ? frameOf.get(g.id) : undefined;
+      if (fid) return frames.find((f) => f.id === fid) ?? null;
+    }
+    if (selectedFrameId) return frames.find((f) => f.id === selectedFrameId) ?? null;
+    return frames.find((f) => f.id === layersFrameId) ?? frames[0] ?? null;
+  }, [frame, primaryId, groups, frameOf, frames, selectedFrameId, layersFrameId]);
+  const layerGroups = useMemo(
+    () => (layersFrame ? groups.filter((g) => frameOf.get(g.id) === layersFrame.id) : []),
+    [groups, frameOf, layersFrame],
+  );
+  /** A drag in the layers panel is one undo step: the snapshot is taken when it starts,
+   *  and the reorders it fires along the way record nothing more. */
+  const layerDragRef = useRef(false);
+  const onLayerDragging = (dragging: boolean) => {
+    if (dragging && !layerDragRef.current) snapshot();
+    layerDragRef.current = dragging;
+  };
+  const layerSnapshot = (key: string) => {
+    if (!layerDragRef.current) snapshotFor(key);
+  };
+
+  const reorderLayers = (topFirst: string[]) => {
+    const inFrame = new Set(topFirst);
+    const byId = new Map(groupsRef.current.map((g) => [g.id, g]));
+    const ordered = [...topFirst]
+      .reverse()
+      .map((id) => byId.get(id))
+      .filter((g): g is Group => !!g);
+    if (ordered.length !== inFrame.size) return;
+    layerSnapshot("layers:" + (layersFrame?.id ?? ""));
+    for (const id of inFrame) instantRef.current.add(id);
+    setGroups((gs) => [...gs.filter((g) => !inFrame.has(g.id)), ...ordered]);
+  };
+
+  /** flips a group's lock from its row's lock icon in the Layers panel */
+  const toggleGroupLock = (id: string) => {
+    snapshot();
+    setGroups((prev) => prev.map((g) => (g.id === id ? { ...g, locked: !g.locked } : g)));
+  };
+
+  /** The parts of one group in a new order: reading order for a connected run, back to
+   *  front for a free group. Inside a free group a hidden run keeps its slots, handed out
+   *  again in the new order, so reordering a list really moves its rows. */
+  const reorderGroupItems = (groupId: string, order: string[]) => {
+    const g = groupsRef.current.find((x) => x.id === groupId);
+    if (!g || g.locked) return;
+    const byId = new Map(g.items.map((it) => [it.id, it]));
+    const items = order.map((id) => byId.get(id)).filter((it): it is Item => !!it);
+    if (items.length !== g.items.length || new Set(order).size !== order.length) return;
+    layerSnapshot("layers:items:" + groupId);
+    instantRef.current.add(groupId);
+    if (!g.free) {
+      setGroups((gs) => gs.map((x) => (x.id === groupId ? { ...x, items } : x)));
+      return;
+    }
+    const rank = new Map(items.map((it, i) => [it.id, i]));
+    const pos = { ...(g.pos ?? {}) };
+    for (const run of explodeGroup(g, widthsRef.current)) {
+      if (run.items.length < 2) continue;
+      const slots = run.items.map((it) => pos[it.id] ?? { x: 0, y: 0 });
+      const members = [...run.items].sort((a, b) => rank.get(a.id)! - rank.get(b.id)!);
+      members.forEach((it, i) => {
+        pos[it.id] = slots[i];
+      });
+    }
+    setGroups((gs) => gs.map((x) => (x.id === groupId ? { ...x, items, pos } : x)));
+  };
+
+  const renderGroup = (g: Group, ox: number, oy: number) => {
+    const modalRail = modalRailOf(g);
+    if (g.free) {
+      const instantG = instantRef.current.has(g.id);
+      const allOn = g.items.every((it) => selectedSet.has(it.id));
+      /* explode once: the runs feed both the corner radii and the lift gate below */
+      const runs = explodeGroup(g, widths);
+      const corners = radiiOfRuns(runs);
+      /* hidden runs are connected too: only their members may lift above siblings when selected */
+      const runIds = new Set(
+        runs.filter((r) => r.items.length > 1).flatMap((r) => r.items.map((it) => it.id)),
+      );
+      return (
+        <motion.div
+          key={g.id}
+          initial={false}
+          animate={{ x: g.x - ox, y: g.y - oy }}
+          transition={instantG ? INSTANT : OPEN}
+          /* keep any selection lift inside the group, so canvas-wide layer order is preserved */
+          style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            zIndex: modalRail ? 2 : undefined,
+            isolation: "isolate",
+          }}
+        >
+          {layoutOf(g, widths).map((pl) => (
+            <div
+              key={pl.item.id}
+              style={{ position: "absolute", left: pl.x - g.x, top: pl.y - g.y }}
+            >
+              <M3Node
+                item={pl.item}
+                palette={dp}
+                widths={widths}
+                radii={corners.get(pl.item.id)}
+                pressed={false}
+                ripple={!handMode}
+                selected={selectedSet.has(pl.item.id)}
+                inRun={runIds.has(pl.item.id)}
+                interactive={!handMode}
+                onPointerDown={(e) => onItemPointerDown(e, g, pl.index, pl.item)}
+              />
+            </div>
+          ))}
+          {allOn && (
+            <div
+              aria-hidden
+              style={{
+                position: "absolute",
+                left: -6,
+                top: -6,
+                width: groupBounds(g, widths).r - g.x + 12,
+                height: groupBounds(g, widths).b - g.y + 12,
+                border: `${1.5 / view.z}px dashed ${p.primary}`,
+                borderRadius: 10,
+                pointerEvents: "none",
+              }}
+            />
+          )}
+        </motion.div>
+      );
+    }
+    const snap = drag?.active && drag.snap?.groupId === g.id ? drag.snap : null;
+    const hole = gapOut?.gid === g.id ? gapOut : null;
+    const pull = snap?.pull ?? 0;
+    /* while the part is in reach the hole follows the magnet with no easing of its own, so the
+     * run it sits in never wobbles; the closing is eased, and the run's own offset with it */
+    /* a hole is either wanted or not: it opens and closes on one curve rather than tracking the
+     * magnet, so a part arriving between two others is seen making room for itself. The run's own
+     * offset travels on the same curve, so the parts behind the hole never drift. */
+    const phMain = hole && hole.open ? (g.axis === "x" ? hole.w : hole.h) : 0;
+    /* a hole at the front is taken off the run's own position, so the parts behind it stay put.
+     * What it costs the run is its width plus the run's spacing, and a closed hole costs nothing:
+     * it has already taken that spacing off its own margin. */
+    const front = hole && hole.index === 0 ? -(phMain + (hole.open ? GAP : 0)) : 0;
+    const conn = g.items[0] ? connectSpecOf(g.items[0]) : undefined;
+
+    type Cell = { ph: true } | { ph: false; item: Item; index: number };
+    const cells: Cell[] = [];
+    for (let i = 0; i <= g.items.length; i++) {
+      if (hole && hole.index === i) cells.push({ ph: true });
+      if (i < g.items.length) cells.push({ ph: false, item: g.items[i], index: i });
+    }
+    const m = cells.length;
+    const instant = instantRef.current.has(g.id);
+    /* A FAB sits in the corner of a screen, and that is the corner it grows out of: the run is
+     * drawn hanging from its own bottom right, so a box changing size moves its top and its left
+     * and nothing else. Nothing has to be kept in step, because nothing else moves. */
+    /* the corner is the button's own, menu or no menu: the entries rise out of it and the
+     * button itself never moves */
+    const corner =
+      g.items.length === 1 && isFab(g.items[0].kind) ? sizeOf(g.items[0], widths) : null;
+    /* a split button's menu drops below the button or rises above it, whichever its screen has
+     * room for; a rising one hangs the run from its own bottom, so the button never moves */
+    const menuPart =
+      g.items.length === 1 && g.items[0].id === menuId && splitOpens(g.items[0])
+        ? g.items[0]
+        : null;
+    const rises =
+      !!menuPart &&
+      splitMenuRisesAt(menuPart, g.y, frameOfGroup(g, framesRef.current, widths) ?? null);
+    /* The corner is held by the run's own translate rather than by the offset it is animated to.
+     * Both halves of it -- the size in pixels and the box's own 100% -- are then settled by the
+     * browser in the frame React hands them over in, so a size being dragged cannot leave the
+     * drawn box a step behind the offset and make it shiver. */
+    const hang = corner
+      ? `calc(${corner.w}px - 100%) calc(${corner.h}px - 100%)`
+      : rises && menuPart
+        ? `0 calc(${sizeOf(menuPart, widths).h}px - 100%)`
+        : undefined;
+
+    return (
+      <motion.div
+        key={g.id}
+        initial={false}
+        animate={{
+          x: g.x - ox + (g.axis === "x" ? front : 0),
+          y: g.y - oy + (g.axis === "y" ? front : 0),
+        }}
+        transition={instant ? INSTANT : hole ? GAP_TWEEN : OPEN}
+        style={{
+          zIndex: modalRail ? 2 : undefined,
+          position: "absolute",
+          left: 0,
+          top: 0,
+          marginLeft: widthShift?.gid === g.id ? widthShift.dx : undefined,
+          marginTop: widthShift?.gid === g.id ? widthShift.dy : undefined,
+          /* hung from its own corner, a FAB changes size without moving that corner */
+          translate: hang,
+          display: "flex",
+          flexDirection: g.axis === "x" ? "row" : "column",
+          alignItems: g.axis === "x" ? "center" : "stretch",
+          gap: GAP,
+          /* keep any selection lift inside the run, so canvas-wide layer order is preserved */
+          isolation: "isolate",
+        }}
+      >
+        {cells.map((c, r) => {
+          if (c.ph) {
+            /* the hole is moved by the same clock the run's own offset is, and on the same
+             * curve: a frame where one has moved and the other has not is a frame where the
+             * parts behind the hole appear somewhere they never were */
+            return (
+              <motion.div
+                key="__gap"
+                /* The hole a part came out of is already the part's size; one a part is arriving
+                 * into opens from nothing. The run's own spacing sits beside the hole whatever
+                 * its width, so the hole takes that much off its own margin as it closes: what
+                 * it costs the run then travels to nothing exactly as the run's offset does. */
+                initial={
+                  hole?.from
+                    ? false
+                    : g.axis === "x"
+                      ? { width: 0, height: hole?.h ?? 0, marginRight: -GAP }
+                      : { height: 0, width: hole?.w ?? 0, marginBottom: -GAP }
+                }
+                animate={
+                  g.axis === "x"
+                    ? { width: phMain, height: hole?.h ?? 0, marginRight: hole?.open ? 0 : -GAP }
+                    : { height: phMain, width: hole?.w ?? 0, marginBottom: hole?.open ? 0 : -GAP }
+                }
+                transition={GAP_TWEEN}
+                style={{ flex: "0 0 auto" }}
+              />
+            );
+          }
+          const ic = connectSpecOf(c.item);
+          const radii =
+            conn && ic
+              ? runRadii(
+                  g.axis,
+                  r === 0,
+                  r === m - 1,
+                  r > 0 && cells[r - 1].ph,
+                  r < m - 1 && cells[r + 1].ph,
+                  pull,
+                  ic.outer,
+                  ic.inner,
+                )
+              : baseRadii(c.item);
+          return (
+            <M3Node
+              key={c.item.id}
+              item={
+                menuPart && c.item.id === menuPart.id
+                  ? { ...onLook(c.item), [menuUp]: rises }
+                  : onLook(c.item)
+              }
+              palette={dp}
+              widths={widths}
+              radii={radii}
+              pressed={pressedId === c.item.id}
+              /* a press lights the part up from inside, the way it does in the preview */
+              ripple={!handMode}
+              lit={
+                landed && landed.id === c.item.id ? { x: landed.x, y: landed.y, grown: true } : null
+              }
+              selected={selectedSet.has(c.item.id)}
+              inRun={g.items.length > 1}
+              instant={widthDragId === c.item.id || sizeEditId === c.item.id}
+              interactive={!handMode}
+              onPointerDown={(e) => onItemPointerDown(e, g, c.index, c.item)}
+            />
+          );
+        })}
+      </motion.div>
+    );
+  };
+
+  const handMode = !isMobile && (mode === "hand" || spaceHeld);
+  const panning = gesture?.kind === "pan";
+  const marquee = gesture?.kind === "marquee" && gesture.moved ? gesture : null;
+  const canvasBg = frame === "phone" ? dp.surfaceContainerLow : "#ffffff";
+
+  const panelStyle: React.CSSProperties = {
+    background: p.surface,
+    display: "flex",
+    flexDirection: "column",
+    overflow: "hidden",
+    position: "relative",
+    flex: "0 0 auto",
+  };
+
+  const showRight = rightOpen && !isMobile;
+  const overBin =
+    (!!drag?.active && drag.overBin) || (gesture?.kind === "group" && gesture.overBin);
+  const guide = drag?.active
+    ? drag.guide
+    : gesture?.kind === "group" && gesture.moved
+      ? (gesture.guide ?? null)
+      : null;
+  const visibleWorld = (() => {
+    const r = canvasRef.current?.getBoundingClientRect();
+    return {
+      l: -view.x / view.z,
+      t: -view.y / view.z,
+      w: (r?.width ?? 0) / view.z,
+      h: (r?.height ?? 0) / view.z,
+    };
+  })();
+  return {
+    lang,
+    editAccess,
+    groups,
+    frames,
+    paletteKey,
+    setPaletteKey,
+    customPalette,
+    setCustomPalette,
+    dynamicColor,
+    setDynamicColor,
+    theme,
+    patchTheme,
+    frame,
+    changeLanguage,
+    isMobile,
+    sheet,
+    setSheet,
+    confirmClear,
+    setConfirmClear,
+    exportFrame,
+    toast,
+    title,
+    setTitle,
+    setBrief,
+    setPromptEdit,
+    setPromptOptions,
+    promptCoverUp,
+    setPromptCoverUp,
+    setPlatform,
+    pendingImport,
+    setPendingImport,
+    shareOpen,
+    setShareOpen,
+    ideaText,
+    setIdeaText,
+    draftBusy,
+    draftBefore,
+    revealing,
+    view,
+    viewReady,
+    easing,
+    cameraEasing,
+    mode,
+    setMode,
+    leftOpen,
+    setLeftOpen,
+    rightOpen,
+    setRightOpen,
+    leftW,
+    leftTab,
+    setLeftTab,
+    railHover,
+    setRailHover,
+    setLayersFrameId,
+    rightW,
+    rightTab,
+    setRightTab,
+    favorites,
+    setFavorites,
+    selectedIds,
+    setSelectedIds,
+    selectedFrameId,
+    setSelectedFrameId,
+    selectedLinkId,
+    setSelectedLinkId,
+    linkDrag,
+    previewId,
+    drag,
+    widths,
+    resizing,
+    setResizing,
+    aiSettings,
+    library,
+    aiBusy,
+    aiFrameId,
+    aiNote,
+    projectFileRef,
+    dp,
+    chrome,
+    p,
+    canvasRef,
+    measureEls,
+    groupsRef,
+    framesRef,
+    pastRef,
+    futureRef,
+    current,
+    undo,
+    redo,
+    allItems,
+    canvasRect,
+    setZoomAt,
+    fit,
+    onTouchCapture,
+    sx,
+    sy,
+    dragLit,
+    onPartPointerDown,
+    widthDragId,
+    sizeEditId,
+    widthShift,
+    nudgeSize,
+    onWidthHandleDown,
+    itemRects,
+    onCanvasPointerDown,
+    onFramePointerDown,
+    selected,
+    patchSelected,
+    deleteSelected,
+    selectedLocked,
+    selectionPlaceable,
+    selectionWhole,
+    toggleLockSelected,
+    duplicateSelected,
+    selectedGroup,
+    placeSelected,
+    groupSelected,
+    ungroupSelected,
+    clearAll,
+    importDoc,
+    startDraft,
+    quickUndo,
+    keepDraft,
+    undoDraft,
+    selectedFrame,
+    selectedMinLength,
+    menuId,
+    onShowOn,
+    onShowMenu,
+    onLook,
+    selectedRect,
+    selectedPartFrame,
+    tidyTarget,
+    addPart,
+    changeFrame,
+    addFrame,
+    patchFrame,
+    setFramePreset,
+    setFrameLength,
+    lengthDragId,
+    onLengthHandleDown,
+    onLengthHandleKey,
+    tidyState,
+    tidy,
+    setPlace,
+    showToast,
+    updateAiSettings,
+    aiReady,
+    aiReason,
+    runAi,
+    cancelAi,
+    deleteFrame,
+    duplicateFrame,
+    saveFrameImage,
+    renderExport,
+    glideToFrame,
+    openPreview,
+    closePreview,
+    doc,
+    links,
+    startLinkDrag,
+    setLinkTransition,
+    removeLink,
+    runRadii,
+    frameOf,
+    layersFrame,
+    layerGroups,
+    onLayerDragging,
+    reorderLayers,
+    toggleGroupLock,
+    reorderGroupItems,
+    renderGroup,
+    handMode,
+    panning,
+    marquee,
+    canvasBg,
+    panelStyle,
+    showRight,
+    overBin,
+    guide,
+    visibleWorld,
+  };
+}
+
+export type useM3eEditorResult = ReturnType<typeof useM3eEditor>;

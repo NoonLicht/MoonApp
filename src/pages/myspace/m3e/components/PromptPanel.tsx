@@ -558,7 +558,9 @@ export function PromptPanel({
     try {
       await navigator.clipboard.writeText(text);
       setCopied(true);
-    } catch {}
+    } catch {
+/* буфер обмена недоступен — не копируем, это не ошибка */
+}
   };
   const caret = (at: number) => setLit(markAt(starts, marks, at));
   const pick = (i: number) => {

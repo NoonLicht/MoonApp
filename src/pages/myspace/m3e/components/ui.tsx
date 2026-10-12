@@ -1670,13 +1670,17 @@ export function Section({
     try {
       const v = localStorage.getItem(`m3e:sec:${id}`);
       if (v !== null) setOpen(v === "1");
-    } catch {}
+    } catch {
+/* localStorage недоступен (приватный режим/квота) — настройка просто не запомнится */
+}
   }, [id]);
   const toggle = () => {
     const next = !open;
     try {
       localStorage.setItem(`m3e:sec:${id}`, next ? "1" : "0");
-    } catch {}
+    } catch {
+/* localStorage недоступен (приватный режим/квота) — настройка просто не запомнится */
+}
     setOpen(next);
     onToggle?.(next);
   };

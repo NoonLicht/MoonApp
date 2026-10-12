@@ -367,7 +367,9 @@ export function FrameInspector({
               try {
                 await navigator.clipboard.writeText(prompt);
                 setCopied(true);
-              } catch {}
+              } catch {
+/* буфер обмена недоступен — не копируем, это не ошибка */
+}
             },
           )}
           {actionBtn(

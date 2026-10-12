@@ -124,13 +124,17 @@ export function ShareDialog({
     try {
       await navigator.clipboard.writeText(text);
       setCopied("ask");
-    } catch {}
+    } catch {
+/* буфер обмена недоступен — не копируем, это не ошибка */
+}
   };
   const copyLink = async () => {
     try {
       await navigator.clipboard.writeText(await shareLink(doc, appUrl()));
       setCopied("link");
-    } catch {}
+    } catch {
+/* буфер обмена недоступен — не копируем, это не ошибка */
+}
   };
 
   /* a connected pair, the way the canvas draws connected buttons: outer corners round, inner ones tight */

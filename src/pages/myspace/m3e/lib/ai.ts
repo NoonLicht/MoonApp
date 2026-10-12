@@ -77,7 +77,9 @@ export function loadAiSettings(): AiSettings {
       if (typeof v.model === "string") s.model = v.model;
       if (typeof v.key === "string") s.key = v.key;
     }
-  } catch {}
+  } catch {
+/* повреждённые настройки в localStorage — берём значения по умолчанию */
+}
   return s;
 }
 
@@ -85,7 +87,9 @@ export function loadAiSettings(): AiSettings {
 export function saveAiSettings(s: AiSettings) {
   try {
     localStorage.setItem(STORE_KEY, JSON.stringify(s));
-  } catch {}
+  } catch {
+/* localStorage недоступен (приватный режим/квота) — настройка просто не запомнится */
+}
 }
 
 const isLocal = (u: string) =>
@@ -107,7 +111,9 @@ async function readError(res: Response): Promise<string> {
   } catch {
     try {
       detail = await res.text();
-    } catch {}
+    } catch {
+/* тело ответа не читается — остаётся общий текст ошибки */
+}
   }
   return `${res.status} ${res.statusText}${detail ? `: ${detail.slice(0, 300)}` : ""}`;
 }
