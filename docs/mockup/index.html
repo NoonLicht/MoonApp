@@ -1,0 +1,365 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MoonApp — макет интерфейса (Material 3)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto+Flex:wght@400;500;600&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet">
+<style>
+/* ---------- Material 3 tokens: тёмная схема + выбор акцента ---------- */
+:root{
+  --primary:#ffb951; --on-primary:#472a00; --primary-container:#654000; --on-primary-container:#ffddb0;
+  --secondary-container:#3f3626; --on-secondary-container:#f1e0c4;
+  --surface:#15130f; --surface-1:#1d1a15; --surface-2:#221f19; --surface-3:#292520; --surface-4:#2f2a24;
+  --on-surface:#e9e1d8; --on-surface-variant:#cfc5b4; --outline:#988f80; --outline-variant:#4d463a;
+  --good:#7ddca0; --bad:#ffb4ab; --warn:#ffd36e;
+  --r-s:8px; --r-m:12px; --r-l:16px; --r-xl:28px;
+  --scale:1;
+}
+:root[data-accent="violet"]{--primary:#d0bcff;--on-primary:#381e72;--primary-container:#4f378b;--on-primary-container:#eaddff;--secondary-container:#33304a;--on-secondary-container:#e1dcf5;--surface:#141218;--surface-1:#1c1a21;--surface-2:#211f26;--surface-3:#2b2930;--surface-4:#312f38;--outline-variant:#49454f}
+:root[data-accent="teal"]{--primary:#4fd8c4;--on-primary:#003730;--primary-container:#005046;--on-primary-container:#6ff7e0;--secondary-container:#1f3a37;--on-secondary-container:#cce8e3;--surface:#0e1514;--surface-1:#161d1c;--surface-2:#1a2120;--surface-3:#252b2a;--surface-4:#2b3231;--outline-variant:#3f4947}
+:root[data-accent="coral"]{--primary:#ffb4a8;--on-primary:#561e17;--primary-container:#73342b;--on-primary-container:#ffdad4;--secondary-container:#4a2b27;--on-secondary-container:#ffdad4;--surface:#18110f;--surface-1:#201714;--surface-2:#261b18;--surface-3:#312622;--surface-4:#382c28;--outline-variant:#534340}
+:root[data-theme="light"]{--primary:#8a5100;--on-primary:#fff;--primary-container:#ffddb0;--on-primary-container:#2c1600;--secondary-container:#f7e0bd;--on-secondary-container:#261a04;--surface:#fff8f3;--surface-1:#f8efe4;--surface-2:#f3e9dc;--surface-3:#eee3d4;--surface-4:#e8dccb;--on-surface:#1f1b13;--on-surface-variant:#4e4639;--outline:#7f7667;--outline-variant:#d1c5b4;--good:#1b7a45;--bad:#ba1a1a;--warn:#8a6100}
+*{box-sizing:border-box}
+html{zoom:var(--scale)}
+body{margin:0;background:var(--surface);color:var(--on-surface);font:400 14px/1.45 "Roboto Flex",system-ui,sans-serif;height:100vh;overflow:hidden}
+.ms{font-family:"Material Symbols Rounded";font-weight:400;font-style:normal;font-size:22px;line-height:1;display:inline-block;letter-spacing:normal;text-transform:none;white-space:nowrap;-webkit-font-feature-settings:"liga";font-feature-settings:"liga";vertical-align:middle;user-select:none}
+button{font:inherit;color:inherit;cursor:pointer}
+/* ---------- каркас ---------- */
+.app{display:grid;grid-template-columns:auto 1fr;grid-template-rows:64px 1fr;height:100vh}
+.topbar{grid-column:1/3;display:flex;align-items:center;gap:12px;padding:0 16px;background:var(--surface);border-bottom:1px solid var(--outline-variant)}
+.topbar .brand{display:flex;align-items:center;gap:10px;font-weight:600;font-size:18px;min-width:200px}
+.logo{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,var(--primary),var(--primary-container));display:grid;place-items:center;color:var(--on-primary)}
+.search{flex:1;max-width:560px;display:flex;align-items:center;gap:10px;background:var(--surface-3);border-radius:999px;padding:0 16px;height:44px;color:var(--on-surface-variant);border:0}
+.search{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:left}
+.search kbd{margin-left:auto;font:500 11px "Roboto Mono",monospace;padding:2px 6px;border-radius:6px;background:var(--surface-1);border:1px solid var(--outline-variant)}
+.spacer{flex:1}
+.icon-btn{width:40px;height:40px;border-radius:50%;border:0;background:transparent;display:grid;place-items:center;color:var(--on-surface-variant);position:relative}
+.icon-btn:hover{background:color-mix(in srgb,var(--on-surface) 10%,transparent)}
+.icon-btn.on{background:var(--secondary-container);color:var(--on-secondary-container)}
+.dot{position:absolute;top:8px;right:8px;width:8px;height:8px;border-radius:50%;background:var(--good)}
+.tag{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border-radius:var(--r-s);border:1px solid var(--outline-variant);background:transparent;color:var(--on-surface-variant);font-size:13px}
+/* навигация: сгруппированный drawer, сворачивается в rail */
+.nav{width:280px;background:var(--surface-1);padding:12px;overflow-y:auto;transition:width .2s;border-right:1px solid var(--outline-variant)}
+.app.rail .nav{width:80px}
+.app.rail .nav .lbl,.app.rail .nav .grp{display:none}
+.nav .grp{font:500 12px "Roboto Flex";letter-spacing:.06em;text-transform:uppercase;color:var(--on-surface-variant);padding:16px 16px 6px}
+.nav-item{display:flex;align-items:center;gap:12px;height:48px;padding:0 16px;border-radius:999px;border:0;background:transparent;width:100%;text-align:left;color:var(--on-surface-variant)}
+.nav-item:hover{background:color-mix(in srgb,var(--on-surface) 8%,transparent)}
+.nav-item.active{background:var(--secondary-container);color:var(--on-secondary-container);font-weight:600}
+.nav-item .badge{margin-left:auto;font-size:11px;padding:2px 8px;border-radius:999px;background:var(--primary-container);color:var(--on-primary-container)}
+.app.rail .nav .nav-item{justify-content:center;padding:0}
+.app.rail .nav .nav-item .badge{display:none}
+/* контент */
+.main{overflow-y:auto;overflow-x:hidden;padding:24px 32px 48px;min-width:0}
+@media (max-width:700px){.main{padding:16px}.topbar .brand span:last-child{display:none}.search{display:none}}
+.page{max-width:1280px;margin:0 auto}
+h1{font:500 28px/36px "Roboto Flex";margin:0}
+.sub{color:var(--on-surface-variant);margin:2px 0 20px}
+.head{display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:8px}
+.head .spacer{flex:1}
+/* вкладки M3 (primary tabs) */
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--outline-variant);margin:8px 0 20px;overflow-x:auto}
+.tab{display:flex;align-items:center;gap:8px;height:48px;padding:0 20px;background:transparent;border:0;border-bottom:3px solid transparent;color:var(--on-surface-variant);font-weight:500;white-space:nowrap}
+.tab:hover{background:color-mix(in srgb,var(--on-surface) 6%,transparent)}
+.tab.active{color:var(--primary);border-bottom-color:var(--primary)}
+/* карточки */
+.grid{display:grid;gap:16px}
+.g2{grid-template-columns:repeat(auto-fit,minmax(340px,1fr))}
+.g3{grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+.g4{grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+.card{background:var(--surface-2);border-radius:var(--r-l);padding:20px}
+.card.out{background:transparent;border:1px solid var(--outline-variant)}
+.card h3{margin:0 0 4px;font:500 16px "Roboto Flex"}
+.card .hint{color:var(--on-surface-variant);font-size:13px}
+.metric{display:flex;flex-direction:column;gap:2px;position:relative}
+.metric .v{font:500 32px/40px "Roboto Flex"}
+.metric .l{color:var(--on-surface-variant);font-size:13px}
+.metric .ms{position:absolute;right:0;top:0;color:var(--primary)}
+.bar{height:8px;border-radius:999px;background:var(--surface-4);overflow:hidden;margin-top:10px}
+.bar>i{display:block;height:100%;background:var(--primary);border-radius:inherit;transition:width .4s}
+.bar.good>i{background:var(--good)} .bar.bad>i{background:var(--bad)}
+/* кнопки */
+.btn{display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 24px;border-radius:999px;border:0;font-weight:500;background:var(--primary);color:var(--on-primary)}
+.btn.tonal{background:var(--secondary-container);color:var(--on-secondary-container)}
+.btn.outline{background:transparent;color:var(--primary);border:1px solid var(--outline)}
+.btn.text{background:transparent;color:var(--primary);padding:0 12px}
+.btn.sm{height:32px;padding:0 16px;font-size:13px}
+.btn:disabled{opacity:.45;cursor:default}
+.fab{position:fixed;right:32px;bottom:32px;height:56px;padding:0 20px;border-radius:var(--r-l);border:0;background:var(--primary-container);color:var(--on-primary-container);display:flex;align-items:center;gap:12px;font-weight:600;box-shadow:0 4px 12px rgba(0,0,0,.35)}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border-radius:var(--r-s);border:1px solid var(--outline);background:transparent;color:var(--on-surface-variant);font-size:13px}
+.chip.sel{background:var(--secondary-container);color:var(--on-secondary-container);border-color:transparent}
+.chip.good{border-color:var(--good);color:var(--good)} .chip.bad{border-color:var(--bad);color:var(--bad)}
+.seg{display:inline-flex;border:1px solid var(--outline);border-radius:999px;overflow:hidden}
+.seg button{height:40px;padding:0 18px;border:0;background:transparent;border-right:1px solid var(--outline);color:var(--on-surface)}
+.seg button:last-child{border-right:0}
+.seg button.sel{background:var(--secondary-container);color:var(--on-secondary-container)}
+/* списки */
+.list{display:flex;flex-direction:column}
+.li{display:flex;align-items:center;gap:16px;padding:12px 8px;border-bottom:1px solid var(--outline-variant);min-height:64px}
+.li:last-child{border-bottom:0}
+.li .lead{width:40px;height:40px;border-radius:50%;background:var(--primary-container);color:var(--on-primary-container);display:grid;place-items:center;flex-shrink:0}
+.li .t{font-weight:500}.li .s{font-size:13px;color:var(--on-surface-variant)}
+.li .end{margin-left:auto;display:flex;gap:8px;align-items:center}
+.li.click{cursor:pointer;border-radius:var(--r-m)} .li.click:hover{background:color-mix(in srgb,var(--on-surface) 6%,transparent)}
+/* переключатель */
+.switch{position:relative;width:52px;height:32px;border-radius:999px;border:2px solid var(--outline);background:var(--surface-4);flex-shrink:0;padding:0}
+.switch::after{content:"";position:absolute;top:6px;left:6px;width:16px;height:16px;border-radius:50%;background:var(--outline);transition:.15s}
+.switch.on{background:var(--primary);border-color:var(--primary)}
+.switch.on::after{left:26px;top:2px;width:24px;height:24px;background:var(--on-primary);top:2px}
+.switch.on::after{top:2px;left:22px}
+input[type=range]{width:100%;accent-color:var(--primary)}
+.field{display:flex;flex-direction:column;gap:6px}
+.field input,.field select,.field textarea{background:var(--surface-3);border:0;border-bottom:2px solid var(--outline);border-radius:var(--r-s) var(--r-s) 0 0;padding:12px;color:var(--on-surface);font:inherit;outline:0}
+.field input:focus,.field textarea:focus{border-bottom-color:var(--primary)}
+.field label{font-size:12px;color:var(--on-surface-variant)}
+/* master-detail «ИИ и модели» */
+.md{display:grid;grid-template-columns:minmax(260px,320px) 1fr;gap:16px;align-items:start}
+@media (max-width:900px){.md{grid-template-columns:1fr}}
+.md .nav-item{height:auto;min-height:64px;padding:10px 16px;border-radius:var(--r-l)}
+.md .nav-item small{display:block;color:var(--on-surface-variant);font-weight:400}
+.st{width:10px;height:10px;border-radius:50%;background:var(--bad);flex-shrink:0}.st.ok{background:var(--good)}
+/* боковая панель (side sheet) */
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.4);opacity:0;pointer-events:none;transition:.2s;z-index:20}
+.scrim.show{opacity:1;pointer-events:auto}
+.sheet{position:fixed;top:0;right:0;bottom:0;width:min(440px,100vw);background:var(--surface-1);border-radius:var(--r-xl) 0 0 var(--r-xl);transform:translateX(105%);transition:transform .25s;z-index:21;display:flex;flex-direction:column;padding:24px;gap:16px;overflow:auto}
+.sheet.show{transform:none}
+.sheet h2{margin:0;font:500 22px "Roboto Flex"}
+/* график */
+canvas{width:100%;height:160px;display:block}
+.cores{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px}
+.core{background:var(--surface-3);border-radius:var(--r-m);padding:10px 12px;font-size:12px;color:var(--on-surface-variant)}
+.core b{display:block;font:500 18px "Roboto Flex";color:var(--on-surface)}
+.snack{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(80px);background:var(--on-surface);color:var(--surface);padding:14px 20px;border-radius:var(--r-s);transition:.25s;z-index:30}
+.snack.show{transform:translateX(-50%)}
+.banner{display:flex;gap:12px;align-items:center;background:var(--primary-container);color:var(--on-primary-container);border-radius:var(--r-l);padding:12px 16px;margin-bottom:16px}
+.note{font-size:12px;color:var(--on-surface-variant)}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <header class="topbar">
+    <button class="icon-btn" id="railBtn" title="Свернуть меню"><span class="ms">menu</span></button>
+    <div class="brand"><span class="logo"><span class="ms">dark_mode</span></span>MoonApp</div>
+    <button class="search" id="cmdk"><span class="ms">search</span>Поиск по приложению, командам и файлам<kbd>Ctrl K</kbd></button>
+    <div class="spacer"></div>
+    <button class="icon-btn" id="ctxBtn" title="Контекст (подсказки)"><span class="ms">tips_and_updates</span><span class="dot"></span></button>
+    <button class="icon-btn" title="Машина времени"><span class="ms">history</span></button>
+    <button class="icon-btn" title="Диспетчер задач"><span class="ms">monitoring</span></button>
+    <button class="icon-btn" id="themeBtn" title="Тема"><span class="ms">contrast</span></button>
+  </header>
+  <nav class="nav" id="nav"></nav>
+  <main class="main"><div class="page" id="page"></div></main>
+</div>
+<div class="scrim" id="scrim"></div>
+<aside class="sheet" id="sheet"></aside>
+<div class="snack" id="snack"></div>
+
+<script>
+const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
+const ic=n=>`<span class="ms">${n}</span>`;
+/* ---------- навигация: 5 групп вместо 25 одинаковых иконок ---------- */
+const NAV=[
+ {g:"Главное",items:[["home","Обзор","home"]]},
+ {g:"ИИ",items:[["models","Модели и ИИ","neurology","единое место"],["chat","ИИ-чат","chat"],["voice","Озвучка","record_voice_over"],["lecture","Лекторий","school"],["translate","Переводчик","translate"],["upscale","Апскейл","auto_fix_high"]]},
+ {g:"Знания",items:[["tasks","Задачи и заметки","task_alt"],["diary","Дневник","book_2"],["rss","RSS","rss_feed"],["books","Книги","menu_book"]]},
+ {g:"Медиа",items:[["movies","Кино","movie"],["music","Музыка","music_note"],["video","Видео","videocam"],["convert","Конвертер","autorenew"],["compress","Сжатие","compress"],["shots","Скриншоты","screenshot_monitor"]]},
+ {g:"Система",items:[["monitor","Мониторинг","monitoring"],["bypass","Обход блокировок","shield"],["auto","Автоматизация","bolt"],["games","Игры","sports_esports"],["budget","Бюджет","account_balance_wallet"],["archive","Архив","inventory_2"],["tools","Инструменты","build"]]},
+ {g:"",items:[["settings","Настройки","settings"]]}
+];
+const TITLES={};NAV.forEach(s=>s.items.forEach(i=>TITLES[i[0]]=i));
+function renderNav(cur){
+  $("#nav").innerHTML=NAV.map(s=>(s.g?`<div class="grp">${s.g}</div>`:"")+s.items.map(i=>
+    `<button class="nav-item ${i[0]===cur?"active":""}" data-p="${i[0]}" title="${i[1]}">${ic(i[2])}<span class="lbl">${i[1]}</span>${i[3]?`<span class="badge lbl">${i[3]}</span>`:""}</button>`).join("")).join("");
+  $$(".nav-item").forEach(b=>b.onclick=()=>go(b.dataset.p));
+}
+/* ---------- утилиты UI ---------- */
+function tabs(list,cur,id){return `<div class="tabs" data-tabs="${id}">`+list.map(t=>`<button class="tab ${t[0]===cur?"active":""}" data-t="${t[0]}">${ic(t[2])}${t[1]}</button>`).join("")+`</div>`}
+function snack(t){const s=$("#snack");s.textContent=t;s.classList.add("show");clearTimeout(snack.t);snack.t=setTimeout(()=>s.classList.remove("show"),2200)}
+function openSheet(html){$("#sheet").innerHTML=html;$("#sheet").classList.add("show");$("#scrim").classList.add("show")}
+function closeSheet(){$("#sheet").classList.remove("show");$("#scrim").classList.remove("show")}
+$("#scrim").onclick=closeSheet;
+const state={page:"home",tab:{}};
+function header(t,s,actions=""){return `<div class="head"><div><h1>${t}</h1><p class="sub" style="margin:0">${s}</p></div><div class="spacer"></div>${actions}</div>`}
+function mount(html,after){$("#page").innerHTML=html;$$("[data-tabs]").forEach(el=>{$$(".tab",el).forEach(b=>b.onclick=()=>{state.tab[state.page]=b.dataset.t;go(state.page,true)})});after&&after()}
+const curTab=(d)=>state.tab[state.page]||d;
+let timers=[];
+function go(p,keep){state.page=p;timers.forEach(clearInterval);timers=[];renderNav(p);(PAGES[p]||generic)(p);if(!keep)$("#page").parentElement.scrollTop=0}
+
+/* ---------- страницы ---------- */
+const PAGES={};
+PAGES.home=()=>mount(`
+ ${header("Добрый вечер, Moon","Всё локально, в одном окне. Ниже — что сейчас важно.")}
+ <div class="grid g4" style="margin-bottom:24px">
+  <div class="card metric">${ic("memory")}<span class="v">28%</span><span class="l">Процессор · 12 потоков</span><div class="bar"><i style="width:28%"></i></div></div>
+  <div class="card metric">${ic("thermostat")}<span class="v">39°C</span><span class="l">Температура GPU</span><div class="bar good"><i style="width:39%"></i></div></div>
+  <div class="card metric">${ic("developer_board")}<span class="v">43%</span><span class="l">Память · 13.6 / 32 ГБ</span><div class="bar"><i style="width:43%"></i></div></div>
+  <div class="card metric">${ic("hard_drive")}<span class="v">62%</span><span class="l">Диск C: занят</span><div class="bar"><i style="width:62%"></i></div></div>
+ </div>
+ <h3 style="margin:0 0 12px">Быстрые действия</h3>
+ <div class="grid g3" style="margin-bottom:24px">
+  ${[["models","neurology","Установить модель ИИ","Whisper, озвучка, перевод — в одном месте"],["tasks","add_task","Новая задача","Быстрый ввод: «встреча завтра 15:00 !high»"],["lecture","mic","Записать лекцию","Распознавание + конспект ИИ"],["monitor","monitoring","Состояние ПК","Датчики, диски, дубликаты"],["upscale","auto_fix_high","Улучшить фото/видео","ONNX-модели, GPU"],["bypass","shield","Обход блокировок","zapret + прокси Telegram"]].map(a=>
+   `<button class="card out" style="text-align:left;display:flex;gap:16px;align-items:center" onclick="go('${a[0]}')"><span class="li"><span class="lead">${ic(a[1])}</span></span><span><div class="t" style="font-weight:600">${a[2]}</div><div class="hint">${a[3]}</div></span></button>`).join("")}
+ </div>
+ <div class="card"><h3>ИИ и модели</h3><p class="hint">Что установлено и работает</p>
+  <div class="chips"><span class="chip bad">${ic("error")} Whisper не установлен</span><span class="chip good">${ic("check_circle")} Озвучка F5-TTS</span><span class="chip bad">Переводчик не установлен</span><span class="chip">Умный поиск выключен</span></div>
+  <p style="margin:16px 0 0"><button class="btn tonal" onclick="go('models')">${ic("neurology")}Открыть управление моделями</button></p></div>`);
+
+PAGES.monitor=()=>{
+ const t=curTab("live");
+ let body="";
+ if(t==="live")body=`
+  <div class="grid g4" style="margin-bottom:16px">
+   <div class="card metric">${ic("memory")}<span class="v" id="mCpu">28%</span><span class="l">CPU · 12 потоков</span></div>
+   <div class="card metric">${ic("thermostat")}<span class="v">—</span><span class="l">Температура CPU</span></div>
+   <div class="card metric">${ic("developer_board")}<span class="v" id="mGpu">17%</span><span class="l">RTX 5060 Ti</span></div>
+   <div class="card metric">${ic("sdcard")}<span class="v">43%</span><span class="l">ОЗУ · 13.6/32 ГБ</span></div>
+  </div>
+  <div class="card" style="margin-bottom:16px"><h3>Загрузка CPU / GPU</h3><canvas id="chart" height="160"></canvas></div>
+  <div class="card"><h3>Потоки</h3><div class="cores" id="cores"></div></div>`;
+ if(t==="disk")body=`
+  <div class="grid g2">
+   <div class="card"><h3>Анализатор диска</h3><p class="hint">Карта занятого места с переходом по папкам</p>
+    <div class="chips" style="margin:12px 0">${["C:\\","D:\\","E:\\"].map((d,i)=>`<span class="chip ${i?"":"sel"}">${ic("hard_drive")}${d}</span>`).join("")}</div>
+    <div class="field"><label>Своя папка</label><input placeholder="D:\\Games"></div>
+    <p style="margin:16px 0 0"><button class="btn">${ic("search")}Сканировать</button></p></div>
+   <div class="card"><h3>Дубликаты и забытые файлы</h3><p class="hint">Найти повторы, давно не открывавшиеся и похожие картинки</p>
+    <div class="chips" style="margin:12px 0"><span class="chip sel">Дубликаты</span><span class="chip">Забытые крупные</span><span class="chip">Похожие картинки</span></div>
+    <div class="field"><label>Папка для анализа</label><input placeholder="D:\\Downloads"></div>
+    <p style="margin:16px 0 0"><button class="btn tonal">Запустить</button></p></div>
+   <div class="card"><h3>Версии папки</h3><p class="hint">До 10 снимков на папку (до 500 МБ каждый)</p>
+    <div class="field" style="margin-top:12px"><label>Путь к папке</label><input></div>
+    <p style="margin:16px 0 0;display:flex;gap:8px"><button class="btn outline">Показать версии</button><button class="btn tonal">${ic("photo_camera")}Снимок</button></p></div>
+  </div>`;
+ if(t==="act")body=`<div class="grid g2"><div class="card"><h3>Время в приложениях</h3><div class="list">
+  ${[["Chrome","3 ч 12 м",80],["VS Code","2 ч 40 м",66],["Telegram","48 м",20],["Steam","1 ч 05 м",30]].map(r=>`<div class="li"><div style="flex:1"><div class="t">${r[0]}</div><div class="bar"><i style="width:${r[2]}%"></i></div></div><div class="end s">${r[1]}</div></div>`).join("")}</div></div>
+  <div class="card"><h3>Карта внимания</h3><p class="hint">Куда уходит время по часам суток</p><div style="display:grid;grid-template-columns:repeat(24,1fr);gap:3px;margin-top:12px">${Array.from({length:96},(_,i)=>`<i style="aspect-ratio:1;border-radius:4px;background:color-mix(in srgb,var(--primary) ${Math.round(Math.random()*90)}%,var(--surface-4))"></i>`).join("")}</div></div></div>`;
+ if(t==="alerts")body=`<div class="grid g2"><div class="card"><h3>Алерты</h3><div class="list">
+  ${[["CPU выше 90% дольше 1 мин","thermostat",true],["Диск C: свободно меньше 10%","hard_drive",true],["GPU выше 85 °C","local_fire_department",false]].map(r=>`<div class="li"><span class="lead">${ic(r[1])}</span><div class="t">${r[0]}</div><div class="end"><button class="switch ${r[2]?"on":""}" onclick="this.classList.toggle('on')"></button></div></div>`).join("")}</div></div>
+  <div class="card"><h3>Диагностика</h3><p class="hint">Быстрая проверка состояния системы</p><p><button class="btn">${ic("stethoscope")}Запустить диагностику</button></p></div></div>`;
+ mount(header("Мониторинг","Оборудование, диски и активность")+tabs([["live","Датчики","sensors"],["disk","Диск и файлы","hard_drive"],["act","Активность","insights"],["alerts","Алерты и диагностика","notifications"]],t,"m")+body,()=>{
+  if(t!=="live")return;
+  const cores=$("#cores");cores.innerHTML=Array.from({length:12},(_,i)=>`<div class="core">Поток ${i}<b>0%</b></div>`).join("");
+  const cv=$("#chart"),cx=cv.getContext("2d"),H=[],G=[];
+  const draw=()=>{const w=cv.width=cv.clientWidth*2,h=cv.height=320;cx.clearRect(0,0,w,h);
+   const css=getComputedStyle(document.documentElement);
+   [[H,css.getPropertyValue("--primary")],[G,css.getPropertyValue("--good")]].forEach(([a,c])=>{cx.beginPath();a.forEach((v,i)=>{const x=i/(60-1)*w,y=h-v/100*h;i?cx.lineTo(x,y):cx.moveTo(x,y)});cx.strokeStyle=c;cx.lineWidth=3;cx.stroke()})};
+  timers.push(setInterval(()=>{const c=20+Math.random()*30,g=10+Math.random()*20;H.push(c);G.push(g);if(H.length>60){H.shift();G.shift()}
+   $("#mCpu").textContent=Math.round(c)+"%";$("#mGpu").textContent=Math.round(g)+"%";
+   $$(".core b").forEach(b=>b.textContent=Math.round(10+Math.random()*45)+"%");draw()},700));
+ });
+};
+
+PAGES.models=()=>{
+ const M=[
+  ["stt","Распознавание речи (Whisper)","mic","Не установлено",false],
+  ["tts","Озвучка текста","record_voice_over","F5-TTS · XTTS v2",true],
+  ["tr","Переводчик","translate","TranslateGemma · не установлено",false],
+  ["llm","Локальные модели (llama.cpp)","memory","Моделей: 0",false],
+  ["emb","Умный поиск (эмбеддинги)","manage_search","Выключен",false],
+  ["up","Апскейл и интерполяция","auto_fix_high","Не установлено",false],
+  ["chat","Чат и провайдеры","chat","openai · gpt-5",true]];
+ const cur=state.tab.models||"stt";
+ const it=M.find(m=>m[0]===cur);
+ const models={stt:[["tiny","74 МБ","быстрая","подойдёт"],["base","141 МБ","быстрая","подойдёт"],["small","466 МБ","баланс","рекомендуем"],["large-v3-turbo","1.5 ГБ","точная","лучше для вашего ПК"]],
+  tr:[["q4 — CPU и NVIDIA CUDA","3.0 ГБ","","лучше для вашего ПК"],["q4f16 — только CPU","2.7 ГБ","",""],["dml — DirectML","3.6 ГБ","",""]],
+  llm:[["EmbeddingGemma 2 · Q8_0","0.3 ГБ","умный поиск","рекомендуем"],["Qwen3-TTS 1.7B","1.0 ГБ","озвучка",""],["Chandra OCR 2","2.5 ГБ","ОЦР",""]],
+  emb:[["EmbeddingGemma 2 · Q8_0","0.3 ГБ","рекомендуем",""]],
+  up:[["Real-ESRGAN x4v3","64 МБ","фото",""],["Real-CUGAN","38 МБ","аниме",""],["RIFE","22 МБ","интерполяция",""]]};
+ let right="";
+ if(cur==="tts")right=`<div class="card"><h3>Движок озвучки</h3><div class="seg" style="margin:12px 0"><button class="sel">F5-TTS</button><button>XTTS v2</button></div>
+   <div class="chips">${["torch","torchaudio","f5_tts"].map(x=>`<span class="chip good">${ic("check")}${x}</span>`).join("")}</div><p class="note">Окружение Python готово. Голоса и референсы — на странице «Озвучка».</p></div>`;
+ else if(cur==="chat")right=`<div class="card"><h3>Провайдер чата</h3><div class="grid g2" style="margin-top:12px"><div class="field"><label>Провайдер</label><select><option>OpenAI</option><option>Ollama</option><option>llama.cpp</option></select></div><div class="field"><label>Модель</label><input value="gpt-5"></div></div></div>`;
+ else right=`<div class="card"><div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap"><div><h3>${it[1]}</h3><p class="hint" style="margin:0">Ваш ПК: Ryzen 5 5600X · RTX 5060 Ti 8 ГБ · ОЗУ 32 ГБ</p></div><div class="spacer" style="flex:1"></div><div class="seg"><button class="sel">Видеокарта</button><button>Процессор</button></div></div>
+   <div class="list" style="margin-top:12px">${(models[cur]||[]).map((m,i)=>`<div class="li"><span class="lead">${ic("deployed_code")}</span><div><div class="t">${m[0]}</div><div class="s">${[m[1],m[2]].filter(Boolean).join(" · ")}</div></div><div class="end">${m[3]?`<span class="chip good">${m[3]}</span>`:""}<button class="btn sm tonal dl" data-i="${i}">${ic("download")}Скачать</button></div></div>`).join("")}</div></div>`;
+ mount(header("Модели и ИИ","Единое место управления всеми моделями приложения")+`
+  <div class="md"><div class="card" style="padding:8px"><div class="list">${M.map(m=>`<button class="nav-item ${m[0]===cur?"active":""}" data-m="${m[0]}"><span class="st ${m[4]?"ok":""}"></span>${ic(m[2])}<span class="lbl"><b style="font-weight:500">${m[1]}</b><small>${m[3]}</small></span></button>`).join("")}</div></div><div>${right}</div></div>`,
+  ()=>{$$("[data-m]").forEach(b=>b.onclick=()=>{state.tab.models=b.dataset.m;PAGES.models()});
+   $$(".dl").forEach(b=>b.onclick=()=>{let p=0;b.disabled=true;const iv=setInterval(()=>{p+=8;b.innerHTML=p>=100?ic("check")+"Установлено":ic("hourglass_top")+p+"%";if(p>=100){clearInterval(iv);snack("Модель установлена")}},150)})});
+};
+
+PAGES.tasks=()=>{
+ const rows=[["Проверка панели","high","Сегодня","тест"],["Оплатить хостинг","med","Завтра","финансы"],["Собрать установщик","low","Пт","работа"],["Разобрать Downloads","low","—","дом"]];
+ const col={high:"var(--bad)",med:"var(--warn)",low:"var(--good)"};
+ mount(header("Задачи и заметки","Задачи, заметки, холст и закладки — одно пространство")+tabs([["tasks","Задачи","task_alt"],["notes","Заметки","description"],["canvas","Холст","draw"],["bk","Закладки","bookmark"],["sync","Синхронизация","sync"]],curTab("tasks"),"t")+`
+  <div class="field" style="margin-bottom:16px"><input placeholder="Быстро добавить: «Встреча завтра в 15:00 !high #работа»"></div>
+  <div class="chips" style="margin-bottom:12px"><span class="chip sel">Все</span><span class="chip">Сегодня</span><span class="chip">Эта неделя</span><span class="chip">Просроченные</span><span class="chip">Важные</span></div>
+  <div class="card"><div class="list">${rows.map((r,i)=>`<div class="li click" data-i="${i}"><span class="lead" style="background:transparent;border:2px solid ${col[r[1]]}"></span><div><div class="t">${r[0]}</div><div class="s">#${r[3]}</div></div><div class="end"><span class="chip">${ic("event")}${r[2]}</span></div></div>`).join("")}</div></div>
+  <button class="fab">${ic("add")}Задача</button>`,
+  ()=>$$(".li.click").forEach(el=>el.onclick=()=>{const r=rows[el.dataset.i];openSheet(`
+   <div style="display:flex;align-items:center"><h2>Задача</h2><span style="flex:1"></span><button class="icon-btn" onclick="closeSheet()">${ic("close")}</button></div>
+   <div class="field"><label>Название</label><input value="${r[0]}"></div>
+   <div class="field"><label>Описание</label><textarea rows="3"></textarea></div>
+   <div><div class="note" style="margin-bottom:6px">Статус</div><div class="chips"><span class="chip sel">К выполнению</span><span class="chip">В работе</span><span class="chip">Отложено</span><span class="chip">Выполнено</span></div></div>
+   <div class="grid g2"><div class="field"><label>Срок</label><input type="date"></div><div class="field"><label>Оценка, мин</label><input value="0"></div></div>
+   <div><div class="note" style="margin-bottom:6px">Приоритет</div><div class="chips"><span class="chip">Низкий</span><span class="chip">Средний</span><span class="chip sel">Высокий</span><span class="chip">Срочный</span></div></div>
+   <div class="field"><label>Теги</label><input value="${r[3]}"></div>
+   <div class="spacer" style="flex:1"></div>
+   <div style="display:flex;gap:8px"><button class="btn" onclick="closeSheet();snack('Сохранено')">Сохранить</button><button class="btn text" style="color:var(--bad)">Удалить</button></div>`)}));
+};
+
+PAGES.games=()=>{
+ const t=curTab("lib");let b="";
+ if(t==="lib")b=`<div class="grid g4">${["Cyberpunk 2077","Hades II","Elden Ring","Factorio","Baldur's Gate 3","Hollow Knight"].map((g,i)=>`<div class="card out"><div style="height:96px;border-radius:12px;background:linear-gradient(135deg,var(--primary-container),var(--surface-4))"></div><h3 style="margin-top:12px">${g}</h3><p class="hint">${[42,18,96,210,65,30][i]} ч · ${["Steam","Steam","Steam","GOG","Steam","Epic"][i]}</p><button class="btn sm tonal">${ic("play_arrow")}Запустить</button></div>`).join("")}</div>`;
+ if(t==="back")b=`<div class="card"><div class="list">${["Disco Elysium","Outer Wilds","Control"].map((g,i)=>`<div class="li"><span class="lead">${ic("sports_esports")}</span><div><div class="t">${g}</div><div class="s">Бэклог · ~${[22,15,12][i]} ч до прохождения</div></div><div class="end"><button class="btn sm tonal">В игру</button></div></div>`).join("")}</div></div>`;
+ if(t==="fps")b=`<div class="grid g2"><div class="card"><h3>Подбор под целевой FPS</h3><div class="field" style="margin:12px 0"><label>Целевой FPS</label><input type="range" min="30" max="240" value="120"></div><button class="btn">${ic("tune")}Подобрать настройки</button></div><div class="card"><h3>Рекомендации</h3><p class="hint">Для 120 FPS на RTX 5060 Ti: тени — средние, DLSS — качество, RT — выкл.</p></div></div>`;
+ if(t==="bench")b=`<div class="card"><h3>Замеры до / после</h3><div class="grid g3" style="margin-top:12px"><div class="metric"><span class="l">До</span><span class="v">88 FPS</span></div><div class="metric"><span class="l">После</span><span class="v" style="color:var(--good)">112 FPS</span></div><div class="metric"><span class="l">Прирост</span><span class="v">+27%</span></div></div></div>`;
+ mount(header("Игры","Библиотека, бэклог и оптимизация")+tabs([["lib","Библиотека","grid_view"],["back","Бэклог","checklist"],["fps","Подбор FPS","speed"],["bench","Замеры","analytics"]],t,"g")+b);
+};
+
+PAGES.auto=()=>{
+ const t=curTab("launch");
+ const body={launch:`<div class="grid g3">${["Рабочий день","Игровой режим","Стрим"].map(n=>`<div class="card out"><h3>${n}</h3><p class="hint">3 приложения</p><button class="btn sm tonal">${ic("rocket_launch")}Запустить</button></div>`).join("")}</div>`,
+  sched:`<div class="card"><div class="list">${[["Бэкап заметок","каждый день 03:00"],["Очистка загрузок","по пятницам 18:00"]].map(r=>`<div class="li"><span class="lead">${ic("schedule")}</span><div><div class="t">${r[0]}</div><div class="s">${r[1]}</div></div><div class="end"><button class="switch on" onclick="this.classList.toggle('on')"></button></div></div>`).join("")}</div></div>`,
+  rules:`<div class="card"><h3>Правила</h3><p class="hint">Если → то. Например: «если запущена игра → отключить уведомления».</p><button class="btn tonal">${ic("add")}Добавить правило</button></div>`,
+  modes:`<div class="card"><h3>Режимы</h3><div class="chips" style="margin-top:12px"><span class="chip sel">Обычный</span><span class="chip">Экономия</span><span class="chip">Максимум</span></div></div>`,
+  clip:`<div class="card"><h3>История буфера обмена</h3><p class="hint">Последние 50 записей.</p></div>`}[t];
+ mount(header("Автоматизация","Лаунчеры, расписание, правила и режимы")+tabs([["launch","Лаунчеры","rocket_launch"],["sched","Расписание","schedule"],["rules","Правила","rule"],["modes","Режимы","tune"],["clip","Буфер обмена","content_paste"]],t,"a")+body);
+};
+
+PAGES.settings=()=>{
+ const t=curTab("look");
+ const sc=Math.round((parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--scale"))||1)*100);
+ const body={look:`
+  <div class="card" style="margin-bottom:16px"><h3>Тема и цвет</h3>
+   <div class="chips" style="margin:12px 0">${[["amber","Янтарный"],["violet","Фиолетовый"],["teal","Бирюзовый"],["coral","Коралловый"]].map(a=>`<button class="chip ${document.documentElement.dataset.accent===a[0]||(!document.documentElement.dataset.accent&&a[0]==="amber")?"sel":""}" data-acc="${a[0]}">${a[1]}</button>`).join("")}</div>
+   <div class="li" style="border:0;padding:0"><div><div class="t">Светлая тема</div><div class="s">Переключает палитру Material 3</div></div><div class="end"><button class="switch ${document.documentElement.dataset.theme==="light"?"on":""}" id="lightSw"></button></div></div></div>
+  <div class="card"><h3>Масштаб интерфейса</h3><p class="hint">Увеличивает шрифты, таблицы и отступы целиком</p>
+   <div style="display:flex;align-items:center;gap:16px"><input type="range" id="scl" min="85" max="150" step="5" value="${sc}"><b id="sclv" style="min-width:48px">${sc}%</b></div></div>`,
+  perf:`<div class="card">${[["Аппаратное ускорение",true],["Размытие фона",false],["Держать страницы в памяти",true]].map(r=>`<div class="li"><div><div class="t">${r[0]}</div></div><div class="end"><button class="switch ${r[1]?"on":""}" onclick="this.classList.toggle('on')"></button></div></div>`).join("")}</div>`,
+  about:`<div class="card"><h3>MoonApp 0.5.0</h3><p class="hint">Электрон + React. Все данные хранятся локально.</p></div>`}[t];
+ mount(header("Настройки","Внешний вид, производительность и поведение")+tabs([["look","Внешний вид","palette"],["perf","Производительность","speed"],["about","О приложении","info"]],t,"s")+body,()=>{
+  $$("[data-acc]").forEach(b=>b.onclick=()=>{document.documentElement.dataset.accent=b.dataset.acc==="amber"?"":b.dataset.acc;PAGES.settings()});
+  const ls=$("#lightSw");ls&&(ls.onclick=()=>{const d=document.documentElement;d.dataset.theme=d.dataset.theme==="light"?"":"light";PAGES.settings()});
+  const s=$("#scl");s&&(s.oninput=()=>{document.documentElement.style.setProperty("--scale",s.value/100);$("#sclv").textContent=s.value+"%"});
+ });
+};
+
+function generic(p){
+ const it=TITLES[p];
+ mount(header(it[1],"Макет страницы — структура будет такой же: вкладки сверху, карточки на сетке, действия справа")+`
+  <div class="banner">${ic("info")}<span>Эта страница в макете показана шаблоном. Принцип тот же: ${it[1]} получает M3-вкладки вместо длинной простыни блоков и прокрутку внутри контента.</span></div>
+  <div class="grid g3">${[1,2,3].map(i=>`<div class="card"><h3>Блок ${i}</h3><p class="hint">Заголовок, пояснение, элементы управления M3.</p><button class="btn tonal sm">Действие</button></div>`).join("")}</div>`);
+}
+PAGES.chat=p=>mount(header("ИИ-чат","Диалоги с локальными и облачными моделями")+`<div class="md"><div class="card" style="padding:8px"><button class="btn tonal" style="width:100%">${ic("add")}Новый чат</button><p class="note" style="padding:12px">Чатов пока нет</p></div>
+ <div class="card" style="min-height:420px;display:flex;flex-direction:column"><div style="flex:1;display:grid;place-items:center" class="hint">Начните разговор</div>
+ <div class="field"><div style="display:flex;gap:8px"><input style="flex:1" placeholder="Сообщение…"><button class="icon-btn on" title="Параметры">${ic("tune")}</button><button class="icon-btn on">${ic("send")}</button></div></div></div></div>`);
+
+/* ---------- верхняя панель ---------- */
+$("#railBtn").onclick=()=>$("#app").classList.toggle("rail");
+$("#themeBtn").onclick=()=>{const d=document.documentElement;d.dataset.theme=d.dataset.theme==="light"?"":"light"};
+$("#cmdk").onclick=()=>openSheet(`<div style="display:flex;align-items:center"><h2>Поиск и команды</h2><span style="flex:1"></span><button class="icon-btn" onclick="closeSheet()">${ic("close")}</button></div>
+ <div class="field"><input placeholder="Что найти или сделать?" autofocus></div>
+ <div class="list">${Object.values(TITLES).slice(0,8).map(i=>`<div class="li click" onclick="closeSheet();go('${i[0]}')"><span class="lead">${ic(i[2])}</span><div class="t">Открыть: ${i[1]}</div></div>`).join("")}</div>`);
+$("#ctxBtn").onclick=()=>openSheet(`<div style="display:flex;align-items:center"><h2>Контекст (подсказки)</h2><span style="flex:1"></span><button class="icon-btn" onclick="closeSheet()">${ic("close")}</button></div>
+ <p class="hint">Панель открывается как боковой лист на всю высоту (в приложении это исправлено: раньше она схлопывалась в полоску).</p>
+ <div class="card out"><h3>Сейчас вы в «${TITLES[state.page][1]}»</h3><p class="hint">Здесь будут релевантные заметки, задачи и недавние файлы.</p></div>`);
+if(innerWidth<1000)$("#app").classList.add("rail");
+go("home");
+</script>
+</body>
+</html>
