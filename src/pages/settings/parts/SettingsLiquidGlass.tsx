@@ -60,23 +60,32 @@ export function SettingsLiquidGlass({ appearance }: { appearance: Record<string,
           ))}
         </div>
       </Row>
-      {FIELDS.map((f) => (
-        <Row key={f.key} label={t(`settings.lg_${f.key}`)} hint={t(`settings.lg_${f.key}Hint`)}>
-          <div className="lg-slider">
-            <input
-              type="range"
-              min={LIQUID_LIMITS[f.key][0]}
-              max={LIQUID_LIMITS[f.key][1]}
-              value={cfg[f.key]}
-              onChange={(e) => commit({ ...cfg, [f.key]: Number(e.target.value) })}
-            />
-            <span className="lg-val">
-              {cfg[f.key]}
-              {f.unit}
-            </span>
-          </div>
-        </Row>
-      ))}
+      {FIELDS.map((f) => {
+        // «Прозрачность элементов»: ползунок показывает 100 − плотность.
+        const inv = f.key === "tint";
+        const [lo, hi] = LIQUID_LIMITS[f.key];
+        const shown = inv ? 100 - cfg[f.key] : cfg[f.key];
+        return (
+          <Row key={f.key} label={t(`settings.lg_${f.key}`)} hint={t(`settings.lg_${f.key}Hint`)}>
+            <div className="lg-slider">
+              <input
+                type="range"
+                min={inv ? 100 - hi : lo}
+                max={inv ? 100 - lo : hi}
+                value={shown}
+                onChange={(e) => {
+                  const v = Number(e.target.value);
+                  commit({ ...cfg, [f.key]: inv ? 100 - v : v });
+                }}
+              />
+              <span className="lg-val">
+                {shown}
+                {f.unit}
+              </span>
+            </div>
+          </Row>
+        );
+      })}
     </>
   );
 }

@@ -56,7 +56,7 @@ export function applyLiveSettings(settings: unknown) {
     "appearance.glass",
     "appearance.lgBlur",
     "appearance.lgSaturate",
-    "appearance.lgTint",
+    "appearance.lgFill",
     "appearance.lgRefraction",
     "appearance.lgSpecular",
     "appearance.lgRadius",

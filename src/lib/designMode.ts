@@ -8,7 +8,7 @@
 export interface LiquidGlassConfig {
   blur: number; // размытие фона, px
   saturate: number; // насыщенность фона за стеклом, %
-  tint: number; // подкраска поверхности, %
+  tint: number; // плотность элементов, % (100 — непрозрачные); прозрачность = 100 − tint
   refraction: number; // искажение (преломление) фона, 0 — нет
   specular: number; // блик по краю, %
   radius: number; // скругление стеклянных панелей, px
@@ -18,7 +18,7 @@ export interface LiquidGlassConfig {
 export const LIQUID_DEFAULTS: LiquidGlassConfig = {
   blur: 22,
   saturate: 170,
-  tint: 12,
+  tint: 34,
   refraction: 0,
   specular: 55,
   radius: 14,
@@ -26,16 +26,16 @@ export const LIQUID_DEFAULTS: LiquidGlassConfig = {
 };
 
 export const LIQUID_PRESETS: Record<string, LiquidGlassConfig> = {
-  clear: { blur: 10, saturate: 150, tint: 6, refraction: 0, specular: 70, radius: 18, glow: 70 },
+  clear: { blur: 10, saturate: 150, tint: 24, refraction: 0, specular: 70, radius: 18, glow: 70 },
   balanced: { ...LIQUID_DEFAULTS },
-  frosted: { blur: 40, saturate: 130, tint: 26, refraction: 0, specular: 35, radius: 12, glow: 45 },
-  crystal: { blur: 6, saturate: 200, tint: 4, refraction: 20, specular: 90, radius: 22, glow: 85 },
+  frosted: { blur: 40, saturate: 130, tint: 58, refraction: 0, specular: 35, radius: 12, glow: 45 },
+  crystal: { blur: 6, saturate: 200, tint: 20, refraction: 20, specular: 90, radius: 22, glow: 85 },
 };
 
 export const LIQUID_LIMITS: Record<keyof LiquidGlassConfig, [number, number]> = {
   blur: [0, 60],
   saturate: [100, 250],
-  tint: [0, 60],
+  tint: [10, 100],
   refraction: [0, 40],
   specular: [0, 100],
   radius: [4, 32],
@@ -45,7 +45,8 @@ export const LIQUID_LIMITS: Record<keyof LiquidGlassConfig, [number, number]> = 
 const KEYS = Object.keys(LIQUID_LIMITS) as (keyof LiquidGlassConfig)[];
 
 /** Имя ключа в settings.appearance: blur → lgBlur. */
-export const liquidKey = (k: keyof LiquidGlassConfig): string => `lg${k[0].toUpperCase()}${k.slice(1)}`;
+export const liquidKey = (k: keyof LiquidGlassConfig): string =>
+  k === "tint" ? "lgFill" : `lg${k[0].toUpperCase()}${k.slice(1)}`;
 
 export function readLiquid(ap: Record<string, unknown> | undefined): LiquidGlassConfig {
   const out = { ...LIQUID_DEFAULTS };
@@ -95,6 +96,7 @@ export function applyLiquid(cfg: LiquidGlassConfig): void {
   st.setProperty("--lg-blur", `${cfg.blur}px`);
   st.setProperty("--lg-sat", `${cfg.saturate}%`);
   st.setProperty("--lg-tint", `${cfg.tint}%`);
+  st.setProperty("--lg-fill", `${cfg.tint}%`);
   st.setProperty("--lg-spec", String(cfg.specular / 100));
   st.setProperty("--lg-radius", `${cfg.radius}px`);
   st.setProperty("--lg-glow", String(cfg.glow / 100));

@@ -621,13 +621,13 @@ export default function SettingsPage() {
             <div className="lg-slider">
               <input
                 type="range"
-                min={30}
-                max={100}
+                min={0}
+                max={70}
                 disabled={!!ap.opaqueBackground}
-                value={Number(ap.windowOpacity ?? 100)}
-                onChange={(e) => change("appearance.windowOpacity", Number(e.target.value))}
+                value={100 - Number(ap.windowOpacity ?? 100)}
+                onChange={(e) => change("appearance.windowOpacity", 100 - Number(e.target.value))}
               />
-              <span className="lg-val">{Number(ap.windowOpacity ?? 100)}%</span>
+              <span className="lg-val">{100 - Number(ap.windowOpacity ?? 100)}%</span>
             </div>
           </Row>
           <BoolRow

@@ -53,7 +53,7 @@ const DEFAULTS: SettingsTree = {
     // Liquid Glass (lib/designMode.ts): размытие px, насыщенность %, подкраска %, преломление, блик %, скругление px
     lgBlur: 22,
     lgSaturate: 170,
-    lgTint: 12,
+    lgFill: 34, // плотность элементов, % (прозрачность элементов = 100 − значение)
     lgRefraction: 0,
     lgSpecular: 55,
     lgRadius: 14,
