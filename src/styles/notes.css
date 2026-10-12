@@ -1940,3 +1940,35 @@
   --text-tertiary: #71708a;
   color-scheme: dark;
 }
+
+/* Инструменты заметки: ровная колонка кнопок одной высоты, подпись слева */
+.note-tools {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  overflow: auto;
+  min-height: 0;
+}
+.note-tools .btn {
+  width: 100%;
+  justify-content: flex-start;
+  text-align: left;
+  gap: 10px;
+  min-height: 34px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.25;
+  white-space: normal;
+}
+.note-tools .btn svg {
+  flex-shrink: 0;
+}
+.note-tools > div[style*="display: flex"] {
+  gap: 6px;
+}
+.note-tools > div[style*="display: flex"] .btn {
+  flex: 1 1 0;
+  min-width: 0;
+}

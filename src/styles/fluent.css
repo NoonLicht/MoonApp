@@ -359,3 +359,11 @@ html.design-fluent .dock-collapse {
     display: none;
   }
 }
+
+/* Одинаковые внутренние отступы карточек-«панелей» (p-4) и подписей полей */
+html.design-fluent .glass.p-4 {
+  padding: 18px 20px;
+}
+html.design-fluent .field-label {
+  margin-bottom: 8px;
+}

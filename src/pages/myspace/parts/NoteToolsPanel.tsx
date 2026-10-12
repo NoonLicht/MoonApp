@@ -63,7 +63,7 @@ export default function NoteToolsPanel({
     });
 
   return (
-    <div style={{ padding: 10, display: "flex", flexDirection: "column", gap: 8, overflow: "auto" }}>
+    <div className="note-tools">
       <Btn icon={ListTree} onClick={() => void apply("myspace.tools.tocDone", async () => ({ text: (await api.noteToc(content)).text }))}>
         {t("myspace.tools.toc")}
       </Btn>
