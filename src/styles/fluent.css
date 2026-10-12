@@ -37,7 +37,7 @@ html.design-fluent .app-shell {
   letter-spacing: 0;
 }
 
-html.design-fluent .app-shell.theme-dark {
+html.design-fluent .app-shell.theme-dark:not(.theme-midnight):not(.theme-oled) {
   --bg-base: #1b1b1f;
   --bg-base-2: #232329;
   --bg-alpha: rgba(27, 27, 31, 0.96);
@@ -58,7 +58,7 @@ html.design-fluent .app-shell.theme-oled {
   --bg-base: #000;
   --surface-solid: #141418;
 }
-html.design-fluent .app-shell.theme-light {
+html.design-fluent .app-shell.theme-light:not(.theme-sand) {
   --bg-base: #f3f3f6;
   --bg-base-2: #ececf1;
   --bg-alpha: rgba(243, 243, 246, 0.96);
@@ -366,4 +366,18 @@ html.design-fluent .glass.p-4 {
 }
 html.design-fluent .field-label {
   margin-bottom: 8px;
+}
+
+/* Песок: тёплая светлая тема сохраняет собственные цвета, Fluent меняет лишь
+   поверхности и тени. */
+html.design-fluent .app-shell.theme-sand {
+  --fl-shadow-2: 0 1px 2px rgba(72, 56, 34, 0.1), 0 0 1px rgba(72, 56, 34, 0.12);
+  --fl-shadow-8: 0 4px 12px rgba(72, 56, 34, 0.14), 0 0 2px rgba(72, 56, 34, 0.1);
+  --fl-shadow-16: 0 8px 24px rgba(72, 56, 34, 0.18), 0 0 2px rgba(72, 56, 34, 0.12);
+  background:
+    radial-gradient(1200px 520px at 12% -8%, color-mix(in srgb, var(--amber) 16%, transparent), transparent 70%),
+    var(--bg-base);
+}
+html.design-fluent .app-shell.theme-sand .glass {
+  background: var(--glass-strong);
 }
