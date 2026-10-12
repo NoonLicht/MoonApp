@@ -6153,6 +6153,9 @@
     "models": "Modèles : {n}",
     "open": "Ouvrir",
     "openToManage": "Moteurs et voix : page de synthèse vocale",
-    "manage": "Gérer"
+    "manage": "Gérer",
+    "keySaved": "Clé enregistrée — saisissez-en une nouvelle pour la remplacer",
+    "keyPlaceholder": "Collez la clé API",
+    "saveKey": "Enregistrer"
   }
 }

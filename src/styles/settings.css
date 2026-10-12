@@ -357,3 +357,24 @@
   flex-direction: column;
   gap: 12px;
 }
+
+/* Провайдеры чата в хабе моделей */
+.aihub-row2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.aihub-prov-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.aihub-prov {
+  display: grid;
+  grid-template-columns: auto minmax(90px, 140px) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+}
+.aihub-prov-name {
+  font-weight: 600;
+}

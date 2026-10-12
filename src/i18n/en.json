@@ -6153,6 +6153,9 @@
     "models": "Models: {n}",
     "open": "Open",
     "openToManage": "Engines and voices live on the voice page",
-    "manage": "Manage"
+    "manage": "Manage",
+    "keySaved": "Key saved — enter a new one to replace",
+    "keyPlaceholder": "Paste API key",
+    "saveKey": "Save"
   }
 }

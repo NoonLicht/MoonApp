@@ -6153,6 +6153,9 @@
     "models": "Modelos: {n}",
     "open": "Abrir",
     "openToManage": "Motores y voces están en la página de voz",
-    "manage": "Gestionar"
+    "manage": "Gestionar",
+    "keySaved": "Clave guardada: introduce una nueva para reemplazarla",
+    "keyPlaceholder": "Pega la clave API",
+    "saveKey": "Guardar"
   }
 }

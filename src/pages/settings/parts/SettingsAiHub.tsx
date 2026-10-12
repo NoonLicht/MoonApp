@@ -3,8 +3,10 @@ import { ArrowUpRight } from "lucide-react";
 import { useI18n } from "@/app/i18n";
 import { api } from "@/api/client";
 import type { TtsPythonEnv } from "@/api/client";
+import type { ProviderInfo } from "@/api/types";
 import { Btn, Select } from "@/components/ui";
 import { openTarget } from "@/lib/deepLink";
+import { loadCfg, saveCfg } from "@/pages/ai-chat/lib/chatUtils";
 import type { PageId } from "@/app/navigation";
 import LectureEnginePanel from "@/pages/lecture/parts/LectureEnginePanel";
 import LlamaPanel from "@/components/LlamaPanel";
@@ -36,6 +38,83 @@ function TranslateManager() {
       refresh={refresh}
       notify={() => {}}
     />
+  );
+}
+
+/** Провайдеры чата: ключи API и провайдер/модель по умолчанию. */
+function ChatProviders({ onChanged }: { onChanged: () => void }) {
+  const { t } = useI18n();
+  const [list, setList] = useState<ProviderInfo[] | null>(null);
+  const [keys, setKeys] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState<string | null>(null);
+  const [cfg, setCfg] = useState(loadCfg());
+  const load = useCallback(() => {
+    api
+      .getProviders()
+      .then((r) => setList(r.filter((p) => !p.stub)))
+      .catch(() => setList([]));
+  }, []);
+  useEffect(() => load(), [load]);
+  if (!list) return <div className="muted-sm">…</div>;
+  const cur = list.find((p) => p.id === cfg.provider) ?? list[0];
+  const setDefault = (patch: Partial<typeof cfg>) => {
+    const next = { ...cfg, ...patch };
+    setCfg(next);
+    saveCfg(next);
+    onChanged();
+  };
+  const save = async (id: string) => {
+    const key = (keys[id] || "").trim();
+    if (!key) return;
+    setSaving(id);
+    try {
+      await api.saveKey(id, key);
+      setKeys((k) => ({ ...k, [id]: "" }));
+      load();
+      onChanged();
+    } finally {
+      setSaving(null);
+    }
+  };
+  return (
+    <div className="aihub-stack">
+      <div className="aihub-row2">
+        <Select
+          value={cur?.id ?? ""}
+          onChange={(e) => setDefault({ provider: e.target.value, model: "" })}
+          options={list.map((p) => ({ value: p.id, label: p.label }))}
+        />
+        <Select
+          value={cfg.model || cur?.models?.[0] || ""}
+          onChange={(e) => setDefault({ model: e.target.value })}
+          options={(cur?.models ?? []).map((m) => ({ value: m, label: m }))}
+        />
+      </div>
+      <div className="aihub-prov-list">
+        {list.map((p) => (
+          <div key={p.id} className="aihub-prov">
+            <span className={`aihub-dot${p.configured ? " ok" : ""}`} />
+            <span className="aihub-prov-name">{p.label}</span>
+            <input
+              className="text-input aihub-prov-key"
+              type="password"
+              autoComplete="off"
+              placeholder={p.configured ? t("aiHub.keySaved") : t("aiHub.keyPlaceholder")}
+              value={keys[p.id] || ""}
+              onChange={(e) => setKeys((k) => ({ ...k, [p.id]: e.target.value }))}
+              onKeyDown={(e) => e.key === "Enter" && void save(p.id)}
+            />
+            <Btn
+              variant="primary"
+              disabled={!(keys[p.id] || "").trim() || saving === p.id}
+              onClick={() => void save(p.id)}
+            >
+              {t("aiHub.saveKey")}
+            </Btn>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -205,7 +284,8 @@ export function AiHub({ chatProvider, chatModel }: { chatProvider?: string; chat
             }}
           />
         )}
-        {(cur.id === "chat" || cur.id === "upscale") && (
+        {cur.id === "chat" && <ChatProviders onChanged={bump} />}
+        {cur.id === "upscale" && (
           <div className="aihub-stack">
             <div className="muted-sm">{cur.status}</div>
             <div>

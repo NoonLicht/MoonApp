@@ -6153,6 +6153,9 @@
     "models": "模型：{n}",
     "open": "打开",
     "openToManage": "引擎和声音在朗读页面中管理",
-    "manage": "管理"
+    "manage": "管理",
+    "keySaved": "密钥已保存——输入新密钥可替换",
+    "keyPlaceholder": "粘贴 API 密钥",
+    "saveKey": "保存"
   }
 }
