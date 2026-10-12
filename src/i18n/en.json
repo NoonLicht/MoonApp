@@ -333,7 +333,7 @@
     "lg_tint": "Tint",
     "lg_tintHint": "How much theme colour is mixed into panels: more is denser",
     "lg_refraction": "Refraction",
-    "lg_refractionHint": "Liquid distortion of the background; 0 is off",
+    "lg_refractionHint": "Liquid distortion of the background. The heaviest effect for the GPU: set to 0 if the app lags",
     "lg_specular": "Highlight",
     "lg_specularHint": "Bright edge and sheen on the glass",
     "lg_radius": "Corner radius",

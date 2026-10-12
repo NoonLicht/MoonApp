@@ -333,7 +333,7 @@
     "lg_tint": "Tinte",
     "lg_tintHint": "Cuánto color del tema se mezcla en los paneles",
     "lg_refraction": "Refracción",
-    "lg_refractionHint": "Distorsión líquida del fondo; 0 es desactivado",
+    "lg_refractionHint": "Distorsión líquida del fondo. El efecto más pesado para la GPU: póngalo en 0 si hay lag",
     "lg_specular": "Brillo",
     "lg_specularHint": "Borde luminoso y destellos del cristal",
     "lg_radius": "Radio de esquina",

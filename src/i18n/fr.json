@@ -333,7 +333,7 @@
     "lg_tint": "Teinte",
     "lg_tintHint": "Quantité de couleur du thème mélangée aux panneaux",
     "lg_refraction": "Réfraction",
-    "lg_refractionHint": "Distorsion liquide de l'arrière-plan ; 0 = désactivé",
+    "lg_refractionHint": "Distorsion liquide de l'arrière-plan. L'effet le plus lourd pour le GPU : mettez 0 en cas de ralentissements",
     "lg_specular": "Reflet",
     "lg_specularHint": "Bord lumineux et reflets sur le verre",
     "lg_radius": "Rayon des coins",

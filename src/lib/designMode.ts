@@ -19,17 +19,17 @@ export const LIQUID_DEFAULTS: LiquidGlassConfig = {
   blur: 22,
   saturate: 170,
   tint: 12,
-  refraction: 14,
+  refraction: 0,
   specular: 55,
   radius: 14,
   glow: 60,
 };
 
 export const LIQUID_PRESETS: Record<string, LiquidGlassConfig> = {
-  clear: { blur: 10, saturate: 150, tint: 6, refraction: 22, specular: 70, radius: 18, glow: 70 },
+  clear: { blur: 10, saturate: 150, tint: 6, refraction: 0, specular: 70, radius: 18, glow: 70 },
   balanced: { ...LIQUID_DEFAULTS },
-  frosted: { blur: 40, saturate: 130, tint: 26, refraction: 4, specular: 35, radius: 12, glow: 45 },
-  crystal: { blur: 6, saturate: 200, tint: 4, refraction: 34, specular: 90, radius: 22, glow: 85 },
+  frosted: { blur: 40, saturate: 130, tint: 26, refraction: 0, specular: 35, radius: 12, glow: 45 },
+  crystal: { blur: 6, saturate: 200, tint: 4, refraction: 20, specular: 90, radius: 22, glow: 85 },
 };
 
 export const LIQUID_LIMITS: Record<keyof LiquidGlassConfig, [number, number]> = {

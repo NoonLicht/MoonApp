@@ -333,7 +333,7 @@
     "lg_tint": "着色",
     "lg_tintHint": "面板中混入的主题色比例，越高越实",
     "lg_refraction": "折射",
-    "lg_refractionHint": "背景的液态扭曲，0 为关闭",
+    "lg_refractionHint": "背景的液态扭曲。对显卡最吃力的效果：卡顿时请设为 0",
     "lg_specular": "高光",
     "lg_specularHint": "玻璃边缘的亮边与光泽",
     "lg_radius": "圆角",

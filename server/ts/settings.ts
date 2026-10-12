@@ -54,7 +54,7 @@ const DEFAULTS: SettingsTree = {
     lgBlur: 22,
     lgSaturate: 170,
     lgTint: 12,
-    lgRefraction: 14,
+    lgRefraction: 0,
     lgSpecular: 55,
     lgRadius: 14,
     lgGlow: 60,
