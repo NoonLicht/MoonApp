@@ -126,3 +126,34 @@ html.app-idle .app-shell .mesh,
 html.app-idle .app-shell .blob {
   display: none !important;
 }
+
+/* ---------- Верхняя строка (температуры, память) в светлых темах ----------
+   Зелёный на светлом почти не виден — берём насыщенно-тёмные оттенки. */
+.app-shell.theme-light .sys-val.sev-ok {
+  color: #0b7a5c;
+}
+.app-shell.theme-light .sys-val.sev-warn {
+  color: #a35a00;
+}
+.app-shell.theme-light .sys-val.sev-crit {
+  color: #b3261e;
+}
+.app-shell.theme-light .sys-sep {
+  color: #55556a;
+}
+
+/* ---------- Скругление «Скругление» действует и на кнопки с полями ----------
+   Fluent раздаёт радиусы через токены; привязываем токены к ползунку. */
+html:not(.no-glass) .app-shell.app-shell {
+  --fl-r-ctl: calc(var(--lg-radius, 14px) * 0.6);
+  --fl-r-card: var(--lg-radius, 14px);
+  --fl-r-fly: calc(var(--lg-radius, 14px) * 1.15);
+}
+html:not(.no-glass) .app-shell .btn,
+html:not(.no-glass) .app-shell .field input,
+html:not(.no-glass) .app-shell .field select,
+html:not(.no-glass) .app-shell .field textarea,
+html:not(.no-glass) .app-shell .chip,
+html:not(.no-glass) .app-shell .tab {
+  border-radius: var(--fl-r-ctl);
+}

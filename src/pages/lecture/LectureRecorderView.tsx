@@ -1,5 +1,19 @@
 import { openAiHub } from "@/lib/openAiHub";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+
+// Колонка конспекта: по умолчанию минимальной ширины, тянется за левый край.
+const NOTES_W_KEY = "moonapp.lecture.notesW";
+const NOTES_W_MIN = 260;
+const NOTES_W_MAX = 640;
+function readNotesW(): number {
+  try {
+    const v = Number(localStorage.getItem(NOTES_W_KEY));
+    if (Number.isFinite(v) && v >= NOTES_W_MIN) return Math.min(NOTES_W_MAX, v);
+  } catch {
+    /* хранилище недоступно — по умолчанию минимум */
+  }
+  return NOTES_W_MIN;
+}
 import { copyToClipboard } from "@/components/ContextMenu";
 import {
   Cpu,
@@ -120,6 +134,32 @@ export default function LectureRecorderView({ c }: { c: useLectureRecorderResult
   // Диалоги (движок, аудио, конспект, говорящие, вопрос) — взаимоисключающие:
   // новый закрывает прежний, а Esc закрывает открытый. Раньше они копились
   // друг на друге и не закрывались с клавиатуры.
+  // Ширина колонки конспекта (по умолчанию минимальная, тянется мышью, запоминается).
+  const [notesW, setNotesW] = useState<number>(readNotesW);
+  const startNotesResize = (e: React.PointerEvent) => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startW = notesW;
+    let last = startW;
+    const move = (ev: PointerEvent) => {
+      last = Math.min(NOTES_W_MAX, Math.max(NOTES_W_MIN, startW + (startX - ev.clientX)));
+      setNotesW(last);
+    };
+    const up = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      document.body.style.cursor = "";
+      try {
+        localStorage.setItem(NOTES_W_KEY, String(Math.round(last)));
+      } catch {
+        /* не критично */
+      }
+    };
+    document.body.style.cursor = "col-resize";
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  };
+
   const panelFlags = [showEngine, showAudio, showConspectus, showDiarize, showAsk];
   const prevFlags = useRef(panelFlags);
   useEffect(() => {
@@ -491,7 +531,14 @@ export default function LectureRecorderView({ c }: { c: useLectureRecorderResult
           )}
 
           {/* Сплит-скрин: телепромтер / конспект */}
-          <div className="lec-split">
+          <div className="lec-split" style={{ gridTemplateColumns: `minmax(0, 1fr) ${notesW}px` }}>
+            <div
+              className="lec-split-handle"
+              style={{ right: notesW + 1 }}
+              role="separator"
+              aria-orientation="vertical"
+              onPointerDown={startNotesResize}
+            />
             <div
               className="lec-feed"
               ref={feedRef}

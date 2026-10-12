@@ -1116,3 +1116,34 @@
   min-width: 0;
   max-width: 100%;
 }
+
+/* Граница колонки конспекта: тянется мышью. */
+.lec-split {
+  position: relative;
+}
+.lec-split-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 10px;
+  transform: translateX(50%);
+  cursor: col-resize;
+  z-index: 3;
+  touch-action: none;
+}
+.lec-split-handle::after {
+  content: "";
+  position: absolute;
+  top: 12%;
+  bottom: 12%;
+  left: 4px;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--glass-border);
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+.lec-split-handle:hover::after {
+  opacity: 1;
+  background: var(--amber);
+}
