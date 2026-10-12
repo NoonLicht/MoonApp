@@ -27,7 +27,6 @@ export default function WelcomeSetup() {
   const { t, lang } = useI18n();
   const [theme, setTheme] = useState<string>("dark");
   const [accent, setAccent] = useState<string>("amber");
-  const [design, setDesign] = useState<string>("fluent");
   const [glass, setGlass] = useState(true);
   const [contrast, setContrast] = useState(false);
   const [motion, setMotion] = useState(false);
@@ -43,7 +42,6 @@ export default function WelcomeSetup() {
         >;
         if (typeof ap.theme === "string") setTheme(ap.theme);
         if (typeof ap.accent === "string") setAccent(ap.accent);
-        setDesign(ap.design === "classic" ? "classic" : "fluent");
         setGlass(ap.glass !== false);
         setContrast(!!ap.highContrast);
         setMotion(!!ap.reduceMotion);
@@ -136,25 +134,6 @@ export default function WelcomeSetup() {
                 setAppearance("accent", a.id);
               }}
             />
-          ))}
-        </div>
-      </div>
-
-      <div className="ws-group">
-        <div className="ws-label">{t("welcome.setup.design")}</div>
-        <div className="ws-chips">
-          {(["fluent", "classic"] as const).map((d) => (
-            <button
-              key={d}
-              type="button"
-              className={`ws-chip ${design === d ? "is-on" : ""}`}
-              onClick={() => {
-                setDesign(d);
-                setAppearance("design", d);
-              }}
-            >
-              {t(d === "fluent" ? "settings.designFluent" : "settings.designClassic")}
-            </button>
           ))}
         </div>
       </div>

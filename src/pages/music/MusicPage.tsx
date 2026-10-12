@@ -60,7 +60,7 @@ interface JobFile {
   key: string;
 }
 
-import PlaylistPicker from "./PlaylistPicker";
+import PlaylistPicker from "@/pages/music/PlaylistPicker";
 
 export default function MusicPage() {
   const { t } = useI18n();

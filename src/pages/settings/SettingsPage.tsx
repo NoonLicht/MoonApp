@@ -61,6 +61,7 @@ import { AiShieldRows } from "@/pages/settings/parts/SettingsAiShield";
 import { PasswordVaultSection } from "@/pages/settings/parts/SettingsPasswordVault";
 import { CompanionSection } from "@/pages/settings/parts/SettingsCompanion";
 import { AiHub } from "@/pages/settings/parts/SettingsAiHub";
+import { SettingsLiquidGlass } from "@/pages/settings/parts/SettingsLiquidGlass";
 import { loadCfg } from "@/pages/ai-chat/lib/chatUtils";
 
 export default function SettingsPage() {
@@ -589,22 +590,13 @@ export default function SettingsPage() {
               options={["comfortable", "compact"]}
             />
           </Row>
-          <Row label={t("settings.design")} hint={t("settings.designHint")}>
-            <Select
-              value={ap.design === "classic" ? "classic" : "fluent"}
-              onChange={(e) => change("appearance.design", e.target.value)}
-              options={[
-                { value: "fluent", label: t("settings.designFluent") },
-                { value: "classic", label: t("settings.designClassic") },
-              ]}
-            />
-          </Row>
           <BoolRow
             label={t("settings.glass")}
             hint={t("settings.glassHint")}
             value={ap.glass !== false}
             onChange={(v) => change("appearance.glass", v)}
           />
+          {ap.glass !== false && <SettingsLiquidGlass appearance={ap} />}
           <Row label={t("settings.uiScale")} hint={t("settings.uiScaleHint")}>
             <Select
               value={String(ap.uiScale ?? 100)}

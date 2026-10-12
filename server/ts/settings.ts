@@ -49,8 +49,14 @@ const DEFAULTS: SettingsTree = {
     accent: "amber", // amber | violet | teal | coral | sky | rose
     reduceMotion: false, // вырубать анимации/blur-блобы
     density: "comfortable", // comfortable | compact
-    design: "fluent", // fluent (Fluent 2) | classic — прежний вид
     glass: true, // стеклянные поверхности (blur); false — плотные непрозрачные
+    // Liquid Glass (lib/designMode.ts): размытие px, насыщенность %, подкраска %, преломление, блик %, скругление px
+    lgBlur: 22,
+    lgSaturate: 170,
+    lgTint: 12,
+    lgRefraction: 14,
+    lgSpecular: 55,
+    lgRadius: 14,
     uiScale: 100, // масштаб интерфейса, % (85–150): zoom всего окна, включая таблицы
     opaqueBackground: false, // непрозрачный фон вместо полупрозрачного окна
     cursorHighlight: false, // подсветка курсора для презентаций и записи экрана

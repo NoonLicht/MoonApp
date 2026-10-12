@@ -73,7 +73,7 @@ describe("перечень страниц приложения (src/navigation.t
 
   it("док приложения рисует кнопку для каждой страницы перечня", () => {
     const html = renderToString(React.createElement(App));
-    const dockButtons = html.split("dock-btn").length - 1;
+    const dockButtons = html.split("dock-btn").length - 1 - (html.split("dock-collapse").length - 1);
     expect(dockButtons).toBe(PAGES.length);
   });
 });

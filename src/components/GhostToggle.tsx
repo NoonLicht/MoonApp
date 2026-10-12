@@ -259,7 +259,7 @@ export default function GhostToggle() {
     window.addEventListener("pointerup", up);
   };
 
-  const root = getOverlayRoot() ?? document.body;
+  const root = typeof document === "undefined" ? null : (getOverlayRoot() ?? document.body);
 
   return (
     <>
@@ -272,7 +272,7 @@ export default function GhostToggle() {
       >
         <Ghost size={15} />
       </button>
-      {open &&
+      {open && root &&
         createPortal(
           <aside
             className={`ghost-dock no-drag ${collapsed ? "is-collapsed" : ""}`}
