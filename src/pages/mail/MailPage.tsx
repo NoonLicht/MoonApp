@@ -1,84 +1,47 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  AlarmClock,
-  Archive,
-  BellRing,
-  ChevronDown,
-  Clock,
-  FileText,
-  Folder,
-  Forward,
-  Inbox,
-  Loader2,
-  Mail as MailIcon,
-  MailOpen,
-  Paperclip,
-  Plus,
-  RefreshCw,
-  Reply,
-  ReplyAll,
-  Search,
-  Send,
-  Settings2,
-  ShieldAlert,
-  Star,
-  Trash2,
-  User,
-  X,
-} from "lucide-react";
-import { Btn, EmptyHint, Glass } from "@/components/ui";
+import { Mail as MailIcon, Plus } from "lucide-react";
+import { Btn, Glass } from "@/components/ui";
 import { useI18n } from "@/app/i18n";
 import { api } from "@/api/client";
 import { usePageActive } from "@/components/Toolbar";
 import type {
   MailAccount,
-  MailContactCard,
+  MailDraft,
   MailFolder,
+  MailLabel,
+  MailListQuery,
   MailMessage,
   MailMessageFull,
   MailOutboxItem,
+  MailSettings,
+  MailSignature,
+  MailTrackItem,
 } from "@/api/apiMail";
 import { MailAccountForm } from "@/pages/mail/parts/MailAccountForm";
 import { MailCompose, type ComposeInit } from "@/pages/mail/parts/MailCompose";
-import { MailBody } from "@/pages/mail/parts/MailBody";
+import { MailSettingsDialog } from "@/pages/mail/parts/MailSettingsDialog";
+import { MailSidebar } from "@/pages/mail/parts/MailSidebar";
+import { MailList, type BulkActions } from "@/pages/mail/parts/MailList";
+import { MailReader } from "@/pages/mail/parts/MailReader";
+import type { MailView } from "@/pages/mail/parts/mailTypes";
 import {
-  addrLabel,
-  addrShort,
   escapeHtml,
   fmtDate,
-  fmtSize,
-  initials,
   laterToday,
-  nextWeek,
   prefixSubject,
   prepareHtml,
-  tomorrow,
-  toLocalInput,
-  weekend,
 } from "@/pages/mail/parts/mailUtil";
 
-const BOXES: { id: string; icon: React.ElementType; key: string }[] = [
-  { id: "inbox", icon: Inbox, key: "mail.inbox" },
-  { id: "starred", icon: Star, key: "mail.starred" },
-  { id: "snoozed", icon: Clock, key: "mail.snoozed" },
-  { id: "sent", icon: Send, key: "mail.sentBox" },
-  { id: "drafts", icon: FileText, key: "mail.drafts" },
-  { id: "archive", icon: Archive, key: "mail.archive" },
-  { id: "spam", icon: ShieldAlert, key: "mail.spam" },
-  { id: "trash", icon: Trash2, key: "mail.trash" },
-];
+const PAGE = 100;
 
-const SPECIAL_TO_BOX: Record<string, string> = {
-  "\\Inbox": "inbox",
-  "\\Sent": "sent",
-  "\\Drafts": "drafts",
-  "\\Trash": "trash",
-  "\\Junk": "spam",
-  "\\Archive": "archive",
+const SPECIAL_OF_BOX: Record<string, string> = {
+  inbox: "\\Inbox",
+  sent: "\\Sent",
+  drafts: "\\Drafts",
+  trash: "\\Trash",
+  spam: "\\Junk",
+  archive: "\\Archive",
 };
-
-/** Служебная папка «Вся почта» (Gmail): в списке папок не показывается. */
-const SPECIAL_ALL = "\\All";
 
 interface Toast {
   text: string;
@@ -90,28 +53,37 @@ export default function MailPage() {
   const active = usePageActive();
   const [accounts, setAccounts] = useState<MailAccount[]>([]);
   const [account, setAccount] = useState("all");
-  const [box, setBox] = useState("inbox");
-  const [folderPath, setFolderPath] = useState("");
+  const [view, setView] = useState<MailView>({ kind: "box", id: "inbox" });
   const [folders, setFolders] = useState<MailFolder[]>([]);
+  const [labels, setLabels] = useState<MailLabel[]>([]);
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [query, setQuery] = useState("");
   const [unreadOnly, setUnreadOnly] = useState(false);
-  const [list, setList] = useState<MailMessage[]>([]);
+  const [rows, setRows] = useState<MailMessage[]>([]);
+  const [drafts, setDrafts] = useState<MailDraft[]>([]);
+  const [outbox, setOutbox] = useState<MailOutboxItem[]>([]);
+  const [tracks, setTracks] = useState<MailTrackItem[]>([]);
+  const [reminders, setReminders] = useState<MailMessage[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
   const [thread, setThread] = useState<MailMessageFull[]>([]);
-  const [outbox, setOutbox] = useState<MailOutboxItem[]>([]);
-  const [reminders, setReminders] = useState<MailMessage[]>([]);
+  const [sel, setSel] = useState<Set<string>>(new Set());
+  const [settings, setSettings] = useState<MailSettings | null>(null);
+  const [signatures, setSignatures] = useState<MailSignature[]>([]);
   const [compose, setCompose] = useState<ComposeInit | null>(null);
   const [showAccounts, setShowAccounts] = useState(false);
+  const [settingsTab, setSettingsTab] = useState<string | null>(null);
   const [toast, setToast] = useState<Toast | null>(null);
-  const [snoozeMenu, setSnoozeMenu] = useState(false);
-  const [card, setCard] = useState<MailContactCard | null>(null);
-  const [customSnooze, setCustomSnooze] = useState(toLocalInput(tomorrow()));
   const [loaded, setLoaded] = useState(false);
   const toastTimer = useRef<number | null>(null);
-  const searchRef = useRef<HTMLInputElement>(null);
+  const searchRef = useRef<HTMLInputElement | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const lastIdx = useRef(-1);
+  const exhausted = useRef(false);
+  const lastSyncAt = useRef(0);
+  const reqSeq = useRef(0);
 
   const showToast = useCallback((tt: Toast, ms = 6000) => {
     setToast(tt);
@@ -119,7 +91,9 @@ export default function MailPage() {
     toastTimer.current = window.setTimeout(() => setToast(null), ms);
   }, []);
 
-  const own = useMemo(() => new Set(accounts.map((a) => a.email.toLowerCase())), [accounts]);
+  const own = useMemo(() => new Set(accounts.flatMap((a) => [a.email, ...a.aliases.map((x) => x.address)]).map((x) => x.toLowerCase())), [accounts]);
+
+  const threadsOn = settings?.appearance.threads !== false;
 
   /* ------------------------------ загрузка ------------------------------ */
 
@@ -133,50 +107,128 @@ export default function MailPage() {
     }
   }, []);
 
+  const loadSettings = useCallback(async () => {
+    try {
+      setSettings(await api.mailSettings());
+      setSignatures(await api.mailSignatures());
+    } catch {
+      /* настройки подтянутся позже */
+    }
+  }, []);
+
   const loadSide = useCallback(async () => {
     try {
       setCounts(await api.mailCounts());
       setReminders(await api.mailReminders());
-      if (account !== "all") setFolders(await api.mailFolders(account));
-      else setFolders([]);
+      if (account !== "all") {
+        setFolders(await api.mailFolders(account));
+        setLabels(await api.mailLabels(account));
+      } else {
+        setFolders([]);
+        setLabels([]);
+      }
     } catch {
       /* обновится при следующем опросе */
     }
   }, [account]);
 
+  const buildQuery = useCallback(
+    (offset: number): MailListQuery => {
+      const q: MailListQuery = {
+        account: account === "all" ? undefined : account,
+        q: query.trim() || undefined,
+        unread: unreadOnly,
+        threads: threadsOn,
+        limit: PAGE,
+        offset,
+      };
+      if (view.kind === "box") q.box = view.id;
+      else if (view.kind === "folder") {
+        q.account = view.account;
+        q.folder = view.path;
+      } else if (view.kind === "label") {
+        q.account = view.account;
+        q.label = view.label;
+      } else if (view.kind === "smart") {
+        const f = settings?.smartFolders.find((x) => x.id === view.id);
+        q.account = f?.account || undefined;
+        q.q = [f?.query, query.trim()].filter(Boolean).join(" ") || undefined;
+      }
+      return q;
+    },
+    [account, query, unreadOnly, threadsOn, view, settings],
+  );
+
   const loadList = useCallback(
     async (silent = false) => {
-      if (box === "outbox") {
-        try {
-          setOutbox(await api.mailOutbox());
-        } catch {
-          /* ignore */
-        }
+      const seq = ++reqSeq.current;
+      if (view.kind === "outbox") {
+        setOutbox(await api.mailOutbox().catch(() => []));
+        return;
+      }
+      if (view.kind === "tracking") {
+        setTracks(await api.mailTracking().catch(() => []));
         return;
       }
       if (!silent) setLoading(true);
       try {
-        const r = await api.mailMessages({
-          account: account === "all" ? undefined : account,
-          box: folderPath ? undefined : box,
-          folder: folderPath || undefined,
-          q: query.trim() || undefined,
-          unread: unreadOnly,
-          limit: 200,
-        });
-        setList(r);
+        const r = await api.mailMessages(buildQuery(0));
+        if (seq !== reqSeq.current) return;
+        exhausted.current = r.length < PAGE;
+        setRows(r);
+        if (view.kind === "box" && view.id === "drafts") setDrafts(await api.mailDrafts().catch(() => []));
+        else setDrafts([]);
       } catch {
         /* ignore */
       } finally {
-        setLoading(false);
+        if (seq === reqSeq.current) setLoading(false);
       }
     },
-    [account, box, folderPath, query, unreadOnly],
+    [view, buildQuery],
   );
+
+  /** Какую папку сервера можно «догружать» для текущего вида. */
+  const olderTarget = useCallback((): { account: string; folder: string } | null => {
+    if (query.trim() || view.kind === "smart" || view.kind === "label") return null;
+    if (view.kind === "folder") return { account: view.account, folder: view.path };
+    if (view.kind === "box" && account !== "all") {
+      const sp = SPECIAL_OF_BOX[view.id];
+      const f = sp ? folders.find((x) => x.special === sp) : undefined;
+      return f ? { account, folder: f.path } : null;
+    }
+    return null;
+  }, [view, account, folders, query]);
+
+  const loadMore = useCallback(async () => {
+    if (loadingMore || loading || view.kind === "outbox" || view.kind === "tracking") return;
+    setLoadingMore(true);
+    try {
+      if (!exhausted.current) {
+        const r = await api.mailMessages(buildQuery(rows.length));
+        if (r.length < PAGE) exhausted.current = true;
+        if (r.length) setRows((cur) => [...cur, ...r.filter((x) => !cur.some((y) => y.id === x.id))]);
+        if (r.length) return;
+      }
+      const tgt = olderTarget();
+      if (!tgt) return;
+      const res = await api.mailLoadOlder(tgt.account, tgt.folder);
+      if (res.added > 0) {
+        exhausted.current = false;
+        const r = await api.mailMessages(buildQuery(rows.length));
+        setRows((cur) => [...cur, ...r.filter((x) => !cur.some((y) => y.id === x.id))]);
+        if (r.length < PAGE && !res.hasMore) exhausted.current = true;
+      }
+    } catch {
+      /* подгрузка необязательна */
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [loadingMore, loading, view, buildQuery, rows.length, olderTarget]);
 
   useEffect(() => {
     void loadAccounts();
-  }, [loadAccounts]);
+    void loadSettings();
+  }, [loadAccounts, loadSettings]);
 
   useEffect(() => {
     const id = window.setTimeout(() => void loadList(), query ? 250 : 0);
@@ -187,30 +239,50 @@ export default function MailPage() {
     void loadSide();
   }, [loadSide]);
 
-  // фоновый опрос: пока страница открыта
+  // фоновый опрос локальной базы: синхронизация идёт на сервере (IDLE), здесь только перерисовка
   useEffect(() => {
     if (!active || !accounts.length) return;
     const id = window.setInterval(() => {
       void loadList(true);
       void loadSide();
       void loadAccounts();
-    }, 20_000);
+    }, 15_000);
     return () => window.clearInterval(id);
   }, [active, accounts.length, loadList, loadSide, loadAccounts]);
 
-  const sync = useCallback(async () => {
-    setSyncing(true);
-    try {
-      await api.mailSync(account === "all" ? undefined : account);
-    } catch (e) {
-      showToast({ text: (e as Error).message });
-    } finally {
-      setSyncing(false);
-      void loadAccounts();
-      void loadList(true);
-      void loadSide();
-    }
-  }, [account, loadAccounts, loadList, loadSide, showToast]);
+  const sync = useCallback(
+    async (silent = false) => {
+      lastSyncAt.current = Date.now();
+      if (!silent) setSyncing(true);
+      try {
+        await api.mailSync(account === "all" ? undefined : account);
+      } catch (e) {
+        if (!silent) showToast({ text: (e as Error).message });
+      } finally {
+        setSyncing(false);
+        void loadAccounts();
+        void loadList(true);
+        void loadSide();
+      }
+    },
+    [account, loadAccounts, loadList, loadSide, showToast],
+  );
+
+  // синхронизация при возврате в окно (плагин refresh-on-focus)
+  useEffect(() => {
+    if (!settings?.appearance.refreshOnFocus || !accounts.length) return;
+    const onFocus = () => {
+      if (!active || document.hidden) return;
+      if (Date.now() - lastSyncAt.current < 20_000) return;
+      void sync(true);
+    };
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onFocus);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onFocus);
+    };
+  }, [settings?.appearance.refreshOnFocus, accounts.length, active, sync]);
 
   // первая синхронизация после добавления ящика
   useEffect(() => {
@@ -223,107 +295,143 @@ export default function MailPage() {
   const openMessage = useCallback(
     async (m: MailMessage) => {
       setSelected(m.id);
-      setSnoozeMenu(false);
-      setCard(null);
       try {
         const th = await api.mailThread(m.id);
         setThread(th);
+        if (settings?.appearance.markReadOnOpen === false) return;
         const unseen = th.filter((x) => !x.seen).map((x) => x.id);
         if (unseen.length) {
           await api.mailFlags(unseen, { seen: true });
-          setList((l) => l.map((x) => (x.thread === m.thread ? { ...x, seen: true, unreadCount: 0 } : x)));
+          setRows((l) => l.map((x) => (x.thread === m.thread ? { ...x, seen: true, unreadCount: 0 } : x)));
           void loadSide();
         }
       } catch {
         setThread([]);
       }
     },
-    [loadSide],
+    [loadSide, settings?.appearance.markReadOnOpen],
   );
 
-  const threadIds = useCallback(() => thread.map((x) => x.id), [thread]);
+  const ref = (id: string) => (threadsOn ? `t:${id}` : id);
 
-  const afterAction = useCallback(
-    (removeFromList: boolean) => {
-      if (removeFromList) {
-        const idx = list.findIndex((x) => x.id === selected);
-        const next = list[idx + 1] ?? list[idx - 1];
-        setList((l) => l.filter((x) => x.id !== selected));
+  const dropRows = useCallback((ids: string[]) => {
+    const gone = new Set(ids.map((i) => i.replace(/^t:/, "")));
+    setRows((l) => l.filter((x) => !gone.has(x.id)));
+    setSel(new Set());
+    setSelected((cur) => {
+      if (cur && gone.has(cur)) {
         setThread([]);
-        setSelected(null);
-        if (next) void openMessage(next);
+        return null;
       }
-      void loadSide();
-    },
-    [list, selected, openMessage, loadSide],
-  );
+      return cur;
+    });
+  }, []);
 
-  const run = useCallback(
-    async (fn: () => Promise<unknown>, removeFromList: boolean) => {
+  const guard = useCallback(
+    async (fn: () => Promise<unknown>, after?: () => void) => {
       try {
         await fn();
-        afterAction(removeFromList);
+        after?.();
       } catch (e) {
         showToast({ text: (e as Error).message });
+      } finally {
+        void loadSide();
       }
     },
-    [afterAction, showToast],
+    [loadSide, showToast],
   );
 
-  const toggleStar = () => {
-    const last = thread[thread.length - 1];
-    if (!last) return;
+  const nextAfter = (id: string) => {
+    const idx = rows.findIndex((x) => x.id === id);
+    return rows[idx + 1] ?? rows[idx - 1] ?? null;
+  };
+
+  /* ---------------------- действия над открытой цепочкой ---------------- */
+
+  const cur = selected;
+  const curRef = cur ? ref(cur) : "";
+  const last = thread[thread.length - 1];
+  const inTrash = view.kind === "box" && view.id === "trash";
+
+  const actMove = (special: string) => {
+    if (!cur) return;
+    const next = nextAfter(cur);
+    void guard(
+      () => api.mailMove([curRef], { special }),
+      () => {
+        dropRows([cur]);
+        if (next) void openMessage(next);
+      },
+    );
+  };
+
+  const actDeleteForever = () => {
+    if (!cur || !window.confirm(t("mail.deleteConfirm"))) return;
+    void guard(
+      () => api.mailDelete([curRef]),
+      () => dropRows([cur]),
+    );
+  };
+
+  const actStar = () => {
+    if (!cur || !last) return;
     const v = !last.flagged;
     setThread((th) => th.map((x) => ({ ...x, flagged: v })));
-    setList((l) => l.map((x) => (x.id === selected ? { ...x, flagged: v } : x)));
-    void run(() => api.mailFlags(threadIds(), { flagged: v }), false);
+    setRows((l) => l.map((x) => (x.id === cur ? { ...x, flagged: v } : x)));
+    void guard(() => api.mailFlags([curRef], { flagged: v }));
   };
 
-  const markUnread = () =>
-    void run(async () => {
-      await api.mailFlags(threadIds(), { seen: false });
-      setList((l) => l.map((x) => (x.id === selected ? { ...x, seen: false } : x)));
-    }, false);
-
-  const moveTo = (special: string) => void run(() => api.mailMove(threadIds(), { special }), true);
-
-  const delForever = () => {
-    if (!window.confirm(t("mail.deleteConfirm"))) return;
-    void run(() => api.mailDelete(threadIds()), true);
+  const actUnread = () => {
+    if (!cur) return;
+    setRows((l) => l.map((x) => (x.id === cur ? { ...x, seen: false } : x)));
+    void guard(() => api.mailFlags([curRef], { seen: false }));
   };
 
-  const snoozeTo = (until: number) => {
-    setSnoozeMenu(false);
-    void run(() => api.mailSnooze(threadIds(), until), true);
-    showToast({ text: t("mail.snoozedUntil", { when: fmtDate(until, lang, true) }) });
+  const actSnooze = (until: number) => {
+    if (!cur) return;
+    const next = nextAfter(cur);
+    void guard(
+      () => api.mailSnooze([curRef], until),
+      () => {
+        dropRows([cur]);
+        if (until > 0) showToast({ text: t("mail.snoozedUntil", { when: fmtDate(until, lang, true) }) });
+        if (next) void openMessage(next);
+      },
+    );
   };
-
-  const unsnooze = () => void run(() => api.mailSnooze(threadIds(), 0), true);
 
   /* ------------------------------ написание ----------------------------- */
 
   const quoteOf = (m: MailMessageFull): string => {
     const body = prepareHtml(m.html || `<pre>${escapeHtml(m.text)}</pre>`, false).html;
-    const who = m.fromName ? `${m.fromName} &lt;${m.fromAddr}&gt;` : m.fromAddr;
+    const who = m.fromName ? `${escapeHtml(m.fromName)} &lt;${m.fromAddr}&gt;` : m.fromAddr;
     return `<br><blockquote class="mail-quote">${t("mail.wrote", {
       date: fmtDate(m.date, lang, true),
       who,
     })}<br>${body}</blockquote>`;
   };
 
-  const startReply = (all: boolean) => {
+  const startReply = (all: boolean, lead?: string) => {
     const m = thread[thread.length - 1];
     if (!m) return;
-    const toList = [m.fromAddr];
+    // отвечаем отправителю; если это наше письмо — тем, кому писали
+    const fromMe = own.has(m.fromAddr.toLowerCase());
+    const toList = fromMe ? m.to.map((a) => a.address) : [m.fromAddr];
     const ccList = all
-      ? [...m.to, ...m.cc].map((a) => a.address).filter((a) => a && !own.has(a.toLowerCase()) && a !== m.fromAddr)
+      ? [...m.to, ...m.cc]
+          .map((a) => a.address)
+          .filter((a) => a && !own.has(a.toLowerCase()) && !toList.includes(a))
       : [];
+    // отвечаем с того адреса, на который пришло письмо
+    const mine = [...m.to, ...m.cc].map((a) => a.address).find((a) => own.has(a.toLowerCase()));
     setCompose({
       account: m.account,
+      from: mine,
       to: toList.join(", "),
       cc: ccList.join(", "),
       subject: prefixSubject("Re", m.subject),
-      html: quoteOf(m),
+      lead,
+      quoted: quoteOf(m),
       inReplyTo: m.messageId,
       references: m.references,
     });
@@ -332,24 +440,123 @@ export default function MailPage() {
   const startForward = () => {
     const m = thread[thread.length - 1];
     if (!m) return;
-    setCompose({
-      account: m.account,
-      subject: prefixSubject("Fwd", m.subject),
-      html: quoteOf(m),
-    });
+    setCompose({ account: m.account, subject: prefixSubject("Fwd", m.subject), quoted: quoteOf(m) });
   };
 
+  const openDraft = (d: MailDraft) =>
+    setCompose({
+      draftId: d.id,
+      account: d.account,
+      from: d.from,
+      to: d.to,
+      cc: d.cc,
+      bcc: d.bcc,
+      subject: d.subject,
+      html: d.html,
+      inReplyTo: d.inReplyTo,
+      references: d.references,
+      attachments: d.attachments,
+    });
+
   const onQueued = (id: string, sendAt: number, immediate: boolean) => {
-    if (immediate) showToast({ text: t("mail.sending"), undoId: id }, 8000);
+    if (immediate) showToast({ text: t("mail.sending"), undoId: id }, Math.max(4000, (settings?.appearance.sendDelaySec ?? 8) * 1000));
     else showToast({ text: t("mail.scheduledFor", { when: fmtDate(sendAt, lang, true) }) });
     void loadSide();
+    void loadList(true);
   };
 
   const undo = async (id: string) => {
-    const ok = await api.mailCancelSend(id);
     setToast(null);
-    if (ok) showToast({ text: t("mail.sendCancelled") });
-    void loadSide();
+    try {
+      const r = await api.mailCancelSend(id);
+      if (r.ok && r.payload) {
+        const p = r.payload;
+        setCompose({
+          draftId: p.draftId,
+          account: p.account,
+          to: p.to.join(", "),
+          cc: (p.cc ?? []).join(", "),
+          bcc: (p.bcc ?? []).join(", "),
+          subject: p.subject,
+          html: p.html,
+          inReplyTo: p.inReplyTo,
+          references: p.references,
+          attachments: p.attachments,
+          // без draftId HTML вставится как «хвост» — для вернувшегося письма нужен весь текст
+          ...(p.draftId ? {} : { draftId: crypto.randomUUID() }),
+        });
+        showToast({ text: t("mail.sendCancelled") });
+      }
+    } finally {
+      void loadSide();
+    }
+  };
+
+  /* ------------------------ выделение и пакетные действия --------------- */
+
+  const onOpen = (m: MailMessage, e: React.MouseEvent) => {
+    const idx = rows.findIndex((x) => x.id === m.id);
+    if (e.ctrlKey || e.metaKey) {
+      toggle(m, e);
+      lastIdx.current = idx;
+      return;
+    }
+    if (e.shiftKey && lastIdx.current >= 0) {
+      const [a, b] = [Math.min(lastIdx.current, idx), Math.max(lastIdx.current, idx)];
+      setSel(new Set(rows.slice(a, b + 1).map((x) => x.id)));
+      return;
+    }
+    setSel(new Set());
+    lastIdx.current = idx;
+    void openMessage(m);
+  };
+
+  function toggle(m: MailMessage, e?: React.MouseEvent) {
+    const idx = rows.findIndex((x) => x.id === m.id);
+    setSel((s) => {
+      const n = new Set(s);
+      if (e?.shiftKey && lastIdx.current >= 0) {
+        const [a, b] = [Math.min(lastIdx.current, idx), Math.max(lastIdx.current, idx)];
+        rows.slice(a, b + 1).forEach((x) => n.add(x.id));
+      } else if (n.has(m.id)) n.delete(m.id);
+      else n.add(m.id);
+      return n;
+    });
+    lastIdx.current = idx;
+  }
+
+  const selIds = () => [...sel].map(ref);
+
+  const bulk: BulkActions = {
+    read: () => void guard(() => api.mailFlags(selIds(), { seen: true }), () => {
+      setRows((l) => l.map((x) => (sel.has(x.id) ? { ...x, seen: true } : x)));
+      setSel(new Set());
+    }),
+    unread: () => void guard(() => api.mailFlags(selIds(), { seen: false }), () => {
+      setRows((l) => l.map((x) => (sel.has(x.id) ? { ...x, seen: false } : x)));
+      setSel(new Set());
+    }),
+    star: () => {
+      const all = rows.filter((x) => sel.has(x.id)).every((x) => x.flagged);
+      void guard(() => api.mailFlags(selIds(), { flagged: !all }), () => {
+        setRows((l) => l.map((x) => (sel.has(x.id) ? { ...x, flagged: !all } : x)));
+        setSel(new Set());
+      });
+    },
+    archive: () => void guard(() => api.mailMove(selIds(), { special: "\\Archive" }), () => dropRows([...sel])),
+    spam: () => void guard(() => api.mailMove(selIds(), { special: "\\Junk" }), () => dropRows([...sel])),
+    trash: () => void guard(() => api.mailMove(selIds(), { special: "\\Trash" }), () => dropRows([...sel])),
+    snooze: () => void guard(() => api.mailSnooze(selIds(), laterToday()), () => dropRows([...sel])),
+    move: (path) => void guard(() => api.mailMove(selIds(), { path }), () => dropRows([...sel])),
+    selectAll: () => setSel(new Set(rows.map((x) => x.id))),
+    clear: () => setSel(new Set()),
+  };
+
+  const onDropIds = (ids: string[], dest: { special?: string; path?: string; account?: string }) => {
+    void guard(
+      () => api.mailMove(ids, dest.path ? { path: dest.path } : { special: dest.special }),
+      () => dropRows(ids),
+    );
   };
 
   /* --------------------------- горячие клавиши -------------------------- */
@@ -359,32 +566,43 @@ export default function MailPage() {
     const onKey = (e: KeyboardEvent) => {
       const el = e.target as HTMLElement | null;
       if (el && (/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) || el.isContentEditable)) return;
-      if (e.ctrlKey || e.metaKey || e.altKey || compose || showAccounts) return;
-      const i = list.findIndex((x) => x.id === selected);
+      if (e.ctrlKey || e.metaKey || e.altKey || compose || showAccounts || settingsTab) return;
+      const i = rows.findIndex((x) => x.id === selected);
       switch (e.key) {
         case "j":
-          if (list[i + 1]) void openMessage(list[i + 1]);
+          if (rows[i + 1]) void openMessage(rows[i + 1]);
           break;
         case "k":
-          if (list[i - 1]) void openMessage(list[i - 1]);
+          if (rows[i - 1]) void openMessage(rows[i - 1]);
           break;
         case "c":
           setCompose({ account: account === "all" ? undefined : account });
           break;
+        case "x":
+          if (rows[i]) toggle(rows[i]);
+          break;
         case "e":
-          if (thread.length) moveTo("\\Archive");
+          if (sel.size) bulk.archive();
+          else if (thread.length) actMove("\\Archive");
           break;
         case "#":
-          if (thread.length) moveTo("\\Trash");
+          if (sel.size) bulk.trash();
+          else if (thread.length) actMove("\\Trash");
           break;
         case "s":
-          if (thread.length) toggleStar();
+          if (thread.length) actStar();
           break;
         case "u":
-          if (thread.length) markUnread();
+          if (thread.length) actUnread();
           break;
         case "r":
           if (thread.length) startReply(false);
+          break;
+        case "a":
+          if (thread.length) startReply(true);
+          break;
+        case "f":
+          if (thread.length) startForward();
           break;
         case "/":
           e.preventDefault();
@@ -399,32 +617,53 @@ export default function MailPage() {
 
   /* ------------------------------- разметка ----------------------------- */
 
-  const goBox = (id: string) => {
-    setBox(id);
-    setFolderPath("");
+  const changeView = (v: MailView) => {
+    setView(v);
     setSelected(null);
     setThread([]);
+    setSel(new Set());
+    exhausted.current = false;
   };
 
-  const openCard = async (address: string) => {
-    if (card?.address === address.toLowerCase()) return setCard(null);
-    try {
-      setCard(await api.mailContact(address));
-    } catch {
-      /* карточка необязательна */
+  const pin = async (f: { account: string; path: string; name: string }) => {
+    if (!settings) return;
+    const next = [...settings.pinned.filter((p) => !(p.account === f.account && p.path === f.path)), f];
+    setSettings(await api.mailSaveSettings({ pinned: next }));
+  };
+
+  const title = (() => {
+    switch (view.kind) {
+      case "outbox":
+        return t("mail.outbox");
+      case "tracking":
+        return t("mail.tracking");
+      case "folder":
+        return view.name;
+      case "label":
+        return view.label;
+      case "smart":
+        return settings?.smartFolders.find((x) => x.id === view.id)?.name ?? "";
+      default:
+        return t(
+          {
+            inbox: "mail.inbox",
+            starred: "mail.starred",
+            snoozed: "mail.snoozed",
+            sent: "mail.sentBox",
+            drafts: "mail.drafts",
+            archive: "mail.archive",
+            spam: "mail.spam",
+            trash: "mail.trash",
+          }[view.id] ?? "mail.inbox",
+        );
     }
-  };
+  })();
 
-  const specialBoxIds = new Set(Object.values(SPECIAL_TO_BOX));
-  const customFolders = folders.filter(
-    (f) => f.special !== SPECIAL_ALL &&!specialBoxIds.has(SPECIAL_TO_BOX[f.special] ?? ""),
-  );
-  const boxTitle =
-    box === "outbox"
-      ? t("mail.outbox")
-      : folderPath
-        ? (folders.find((f) => f.path === folderPath)?.name ?? folderPath)
-        : t(BOXES.find((b) => b.id === box)?.key ?? "mail.inbox");
+  // тема письма: «авто» следует теме приложения
+  const lightApp =
+    typeof document !== "undefined" && !!document.querySelector(".app-shell.theme-light, .app-shell[class*='theme-light']");
+  const bodyTheme = settings?.appearance.bodyTheme ?? "auto";
+  const dark = bodyTheme === "dark" || (bodyTheme === "auto" && !lightApp);
 
   if (loaded && accounts.length === 0) {
     return (
@@ -445,301 +684,104 @@ export default function MailPage() {
               void loadAccounts();
               setShowAccounts(false);
             }}
+            onOpenSettings={(tab) => {
+              setShowAccounts(false);
+              setSettingsTab(tab);
+            }}
+          />
+        )}
+        {settingsTab && (
+          <MailSettingsDialog
+            accounts={accounts}
+            initialTab={settingsTab}
+            onClose={() => setSettingsTab(null)}
+            onChanged={() => void loadSettings()}
           />
         )}
       </div>
     );
   }
 
-  const last = thread[thread.length - 1];
-  const isSnoozed = !!last && last.snoozeUntil > 0;
+  const mode = view.kind === "outbox" ? "outbox" : view.kind === "tracking" ? "tracking" : "list";
+  const density = settings?.appearance.density ?? "cozy";
 
   return (
-    <div className="page mail-page">
+    <div className={`page mail-page mail-density-${density}`}>
       <Glass className="mail-shell">
-        {/* ---- левая колонка ---- */}
-        <aside className="mail-side">
-          <Btn variant="primary" icon={Plus} onClick={() => setCompose({ account: account === "all" ? undefined : account })}>
-            {t("mail.compose")}
-          </Btn>
+        <MailSidebar
+          accounts={accounts}
+          account={account}
+          setAccount={(a) => {
+            setAccount(a);
+            if (view.kind === "folder" || view.kind === "label") changeView({ kind: "box", id: "inbox" });
+          }}
+          view={view}
+          setView={changeView}
+          counts={counts}
+          folders={folders}
+          labels={labels}
+          settings={settings}
+          onCompose={() => setCompose({ account: account === "all" ? undefined : account })}
+          onSettings={() => setSettingsTab("general")}
+          onAccounts={() => setShowAccounts(true)}
+          onDropIds={onDropIds}
+          onPin={(f) => void pin(f)}
+        />
 
-          <div className="select-wrap mail-acc-select">
-            <select
-              value={account}
-              onChange={(e) => {
-                setAccount(e.target.value);
-                setFolderPath("");
-              }}
-            >
-              <option value="all">{t("mail.allAccounts")}</option>
-              {accounts.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.email}
-                </option>
-              ))}
-            </select>
-          </div>
+        <MailList
+          ref={scrollRef}
+          title={title}
+          rows={rows}
+          drafts={view.kind === "box" && view.id === "drafts" && !query ? drafts : []}
+          outbox={outbox}
+          tracks={tracks}
+          mode={mode}
+          isSent={view.kind === "box" && view.id === "sent"}
+          loading={loading}
+          syncing={syncing}
+          loadingMore={loadingMore}
+          query={query}
+          setQuery={setQuery}
+          unreadOnly={unreadOnly}
+          setUnreadOnly={setUnreadOnly}
+          selected={selected}
+          sel={sel}
+          folders={account === "all" ? [] : folders}
+          settings={settings}
+          lang={lang}
+          reminders={reminders}
+          bulk={bulk}
+          searchRef={searchRef}
+          onOpen={onOpen}
+          onToggle={(m, e) => toggle(m, e)}
+          onOpenDraft={openDraft}
+          onDeleteDraft={(d) => void api.mailDeleteDraft(d.id).then(() => loadList(true))}
+          onSync={() => void sync()}
+          onScrollEnd={() => void loadMore()}
+          onOutboxCancel={(o) => void api.mailCancelSend(o.id).then(() => loadList(true))}
+          onOutboxRetry={(o) => void api.mailRetrySend(o.id).then(() => loadList(true))}
+          onDismissReminders={async () => {
+            await Promise.all(reminders.map((r) => api.mailReminder(r.id, 0)));
+            void loadSide();
+          }}
+          onOpenReminder={(m) => void openMessage(m)}
+        />
 
-          <nav className="mail-boxes">
-            {BOXES.map((b) => {
-              const Ic = b.icon;
-              const n = counts[b.id] ?? 0;
-              const on = !folderPath && box === b.id;
-              return (
-                <button key={b.id} className={`mail-box ${on ? "is-on" : ""}`} onClick={() => goBox(b.id)}>
-                  <Ic size={15} />
-                  <span>{t(b.key)}</span>
-                  {n > 0 && b.id !== "starred" && <i>{n}</i>}
-                </button>
-              );
-            })}
-            <button
-              className={`mail-box ${box === "outbox" ? "is-on" : ""}`}
-              onClick={() => goBox("outbox")}
-            >
-              <Send size={15} />
-              <span>{t("mail.outbox")}</span>
-              {(counts.outbox ?? 0) > 0 && <i>{counts.outbox}</i>}
-            </button>
-          </nav>
-
-          {customFolders.length > 0 && (
-            <>
-              <div className="mail-side-title">{t("mail.folders")}</div>
-              <nav className="mail-boxes">
-                {customFolders.map((f) => (
-                  <button
-                    key={f.path}
-                    className={`mail-box ${folderPath === f.path ? "is-on" : ""}`}
-                    onClick={() => {
-                      setFolderPath(f.path);
-                      setBox("");
-                      setSelected(null);
-                      setThread([]);
-                    }}
-                  >
-                    <Folder size={15} />
-                    <span>{f.name}</span>
-                    {f.unread > 0 && <i>{f.unread}</i>}
-                  </button>
-                ))}
-              </nav>
-            </>
-          )}
-
-          <div className="mail-side-foot">
-            <button className="mail-box" onClick={() => setShowAccounts(true)}>
-              <Settings2 size={15} />
-              <span>{t("mail.accounts")}</span>
-            </button>
-          </div>
-        </aside>
-
-        {/* ---- список ---- */}
-        <section className="mail-list">
-          <div className="mail-list-head">
-            <div className="mail-search">
-              <Search size={14} />
-              <input
-                ref={searchRef}
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder={t("mail.searchHint")}
-              />
-              {query && (
-                <button onClick={() => setQuery("")} aria-label="clear">
-                  <X size={13} />
-                </button>
-              )}
-            </div>
-            <button
-              className={`mail-ic ${unreadOnly ? "is-on" : ""}`}
-              onClick={() => setUnreadOnly((v) => !v)}
-              title={t("mail.unreadOnly")}
-            >
-              <MailOpen size={15} />
-            </button>
-            <button className="mail-ic" onClick={() => void sync()} title={t("mail.refresh")}>
-              {syncing ? <Loader2 size={15} className="spin" /> : <RefreshCw size={15} />}
-            </button>
-          </div>
-          <div className="mail-list-title">
-            {boxTitle}
-            {loading && <Loader2 size={13} className="spin" />}
-          </div>
-
-          {reminders.length > 0 && box === "inbox" && !query && (
-            <div className="mail-reminders">
-              <BellRing size={14} />
-              <div>
-                {reminders.slice(0, 3).map((r) => (
-                  <button key={r.id} onClick={() => void openMessage(r)}>
-                    {t("mail.noReplyTo", { subject: r.subject || t("mail.noSubject") })}
-                  </button>
-                ))}
-              </div>
-              <button
-                className="mail-ic"
-                onClick={async () => {
-                  await Promise.all(reminders.map((r) => api.mailReminder(r.id, 0)));
-                  void loadSide();
-                }}
-                aria-label={t("mail.dismiss")}
-              >
-                <X size={13} />
-              </button>
-            </div>
-          )}
-
-          <div className="mail-scroll">
-            {box === "outbox" ? (
-              outbox.length === 0 ? (
-                <EmptyHint icon={Send} text={t("mail.outboxEmpty")} />
-              ) : (
-                outbox.map((o) => (
-                  <div key={o.id} className="mail-item">
-                    <div className="mail-item-top">
-                      <b>{o.to.join(", ")}</b>
-                      <span>{fmtDate(o.sendAt, lang, true)}</span>
-                    </div>
-                    <div className="mail-item-sub">{o.subject}</div>
-                    <div className="mail-item-actions">
-                      {o.status === "failed" ? (
-                        <>
-                          <em className="mail-err">{o.error}</em>
-                          <Btn onClick={() => void api.mailRetrySend(o.id).then(() => loadList())}>
-                            {t("mail.retry")}
-                          </Btn>
-                        </>
-                      ) : (
-                        <span className="mail-pending">{t("mail.scheduled")}</span>
-                      )}
-                      <Btn onClick={() => void api.mailCancelSend(o.id).then(() => loadList())}>
-                        {t("mail.cancel")}
-                      </Btn>
-                    </div>
-                  </div>
-                ))
-              )
-            ) : list.length === 0 ? (
-              <EmptyHint icon={MailIcon} text={loading ? t("mail.loading") : t("mail.noMessages")} />
-            ) : (
-              list.map((m) => {
-                const who =
-                  box === "sent" ? m.to.map(addrShort).join(", ") || "—" : m.fromName || m.fromAddr;
-                return (
-                  <button
-                    key={m.id}
-                    className={`mail-item ${selected === m.id ? "is-sel" : ""} ${m.seen ? "" : "is-unread"}`}
-                    onClick={() => void openMessage(m)}
-                  >
-                    <div className="mail-item-top">
-                      <b>{who}</b>
-                      {(m.count ?? 1) > 1 && <em>{m.count}</em>}
-                      <span>{fmtDate(m.date, lang)}</span>
-                    </div>
-                    <div className="mail-item-sub">
-                      {m.flagged && <Star size={12} className="mail-star" />}
-                      {m.hasAttachments && <Paperclip size={12} />}
-                      {m.subject || t("mail.noSubject")}
-                    </div>
-                    <div className="mail-item-snip">{m.snippet}</div>
-                  </button>
-                );
-              })
-            )}
-          </div>
-        </section>
-
-        {/* ---- чтение ---- */}
-        <section className="mail-read">
-          {!last ? (
-            <EmptyHint icon={MailIcon} text={t("mail.selectMessage")} />
-          ) : (
-            <>
-              <div className="mail-read-head">
-                <h2>{last.subject || t("mail.noSubject")}</h2>
-                <div className="mail-toolbar">
-                  <button className="mail-ic" onClick={() => startReply(false)} title={t("mail.reply")}>
-                    <Reply size={16} />
-                  </button>
-                  <button className="mail-ic" onClick={() => startReply(true)} title={t("mail.replyAll")}>
-                    <ReplyAll size={16} />
-                  </button>
-                  <button className="mail-ic" onClick={startForward} title={t("mail.forward")}>
-                    <Forward size={16} />
-                  </button>
-                  <span className="mail-fmt-sep" />
-                  <button className="mail-ic" onClick={() => moveTo("\\Archive")} title={t("mail.toArchive")}>
-                    <Archive size={16} />
-                  </button>
-                  <button className="mail-ic" onClick={() => moveTo("\\Junk")} title={t("mail.toSpam")}>
-                    <ShieldAlert size={16} />
-                  </button>
-                  <button
-                    className="mail-ic"
-                    onClick={() => (box === "trash" ? delForever() : moveTo("\\Trash"))}
-                    title={box === "trash" ? t("mail.deleteForever") : t("mail.toTrash")}
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                  <span className="mail-fmt-sep" />
-                  <button className={`mail-ic ${last.flagged ? "is-on" : ""}`} onClick={toggleStar} title={t("mail.star")}>
-                    <Star size={16} />
-                  </button>
-                  <button className="mail-ic" onClick={markUnread} title={t("mail.markUnread")}>
-                    <MailOpen size={16} />
-                  </button>
-                  <div className="mail-pop-wrap">
-                    <button
-                      className={`mail-ic ${isSnoozed ? "is-on" : ""}`}
-                      onClick={() => (isSnoozed ? unsnooze() : setSnoozeMenu((v) => !v))}
-                      title={t("mail.snooze")}
-                    >
-                      <AlarmClock size={16} />
-                    </button>
-                    {snoozeMenu && (
-                      <div className="mail-menu">
-                        <button onClick={() => snoozeTo(laterToday())}>{t("mail.snoozeLater")}</button>
-                        <button onClick={() => snoozeTo(tomorrow())}>{t("mail.snoozeTomorrow")}</button>
-                        <button onClick={() => snoozeTo(weekend())}>{t("mail.snoozeWeekend")}</button>
-                        <button onClick={() => snoozeTo(nextWeek())}>{t("mail.snoozeNextWeek")}</button>
-                        <div className="mail-menu-custom">
-                          <input
-                            type="datetime-local"
-                            value={customSnooze}
-                            onChange={(e) => setCustomSnooze(e.target.value)}
-                          />
-                          <Btn
-                            onClick={() => {
-                              const ts = new Date(customSnooze).getTime();
-                              if (ts > Date.now()) snoozeTo(ts);
-                            }}
-                          >
-                            OK
-                          </Btn>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <div className="mail-read-scroll">
-                {thread.map((m, i) => (
-                  <MessageCard
-                    key={m.id}
-                    m={m}
-                    open={i === thread.length - 1 || thread.length === 1}
-                    lang={lang}
-                    onCard={() => void openCard(m.fromAddr)}
-                    card={card && card.address === m.fromAddr ? card : null}
-                  />
-                ))}
-              </div>
-            </>
-          )}
-        </section>
+        <MailReader
+          thread={thread}
+          settings={settings}
+          dark={dark}
+          lang={lang}
+          inTrash={inTrash}
+          onReply={startReply}
+          onForward={startForward}
+          onMove={actMove}
+          onDeleteForever={actDeleteForever}
+          onStar={actStar}
+          onUnread={actUnread}
+          onSnooze={actSnooze}
+          onToast={(text) => showToast({ text })}
+        />
       </Glass>
 
       {toast && (
@@ -749,11 +791,17 @@ export default function MailPage() {
         </div>
       )}
 
-      {compose && (
+      {compose && settings && (
         <MailCompose
           accounts={accounts}
           init={compose}
-          onClose={() => setCompose(null)}
+          settings={settings}
+          signatures={signatures}
+          onClose={() => {
+            setCompose(null);
+            void loadSide();
+            void loadList(true);
+          }}
           onQueued={onQueued}
         />
       )}
@@ -765,83 +813,22 @@ export default function MailPage() {
             void loadAccounts();
             void loadSide();
           }}
+          onOpenSettings={(tab) => {
+            setShowAccounts(false);
+            setSettingsTab(tab);
+          }}
         />
       )}
-    </div>
-  );
-}
-
-function MessageCard({
-  m,
-  open: openInit,
-  lang,
-  onCard,
-  card,
-}: {
-  m: MailMessageFull;
-  open: boolean;
-  lang: string;
-  onCard: () => void;
-  card: MailContactCard | null;
-}) {
-  const { t } = useI18n();
-  const [open, setOpen] = useState(openInit);
-  return (
-    <div className={`mail-msg ${open ? "is-open" : ""}`}>
-      <div className="mail-msg-head" onClick={() => setOpen((v) => !v)}>
-        <span className="mail-avatar">{initials(m.fromName || m.fromAddr)}</span>
-        <div className="mail-msg-who">
-          <b
-            onClick={(e) => {
-              e.stopPropagation();
-              onCard();
-            }}
-          >
-            {m.fromName || m.fromAddr}
-          </b>
-          {open ? (
-            <span>
-              {m.fromAddr} → {m.to.map(addrLabel).join(", ")}
-              {m.cc.length > 0 && ` · cc: ${m.cc.map(addrLabel).join(", ")}`}
-            </span>
-          ) : (
-            <span>{m.snippet}</span>
-          )}
-        </div>
-        <span className="mail-msg-date">{fmtDate(m.date, lang, true)}</span>
-        <ChevronDown size={14} className={open ? "mail-rot" : ""} />
-      </div>
-      {card && (
-        <div className="mail-card">
-          <User size={16} />
-          <div>
-            <b>{card.name || card.address}</b>
-            <span>{card.address}</span>
-            <span>{t("mail.cardStats", { n: card.received, since: fmtDate(card.first, lang, true) })}</span>
-          </div>
-        </div>
-      )}
-      {open && (
-        <>
-          <MailBody html={m.html} text={m.text} />
-          {m.attachments.filter((a) => !a.inline).length > 0 && (
-            <div className="mail-atts">
-              {m.attachments
-                .filter((a) => !a.inline)
-                .map((a) => (
-                  <button
-                    key={a.index}
-                    className="mail-att"
-                    onClick={() => void api.mailDownloadAttachment(m.id, a.index)}
-                  >
-                    <Paperclip size={12} />
-                    {a.filename}
-                    <em>{fmtSize(a.size)}</em>
-                  </button>
-                ))}
-            </div>
-          )}
-        </>
+      {settingsTab && (
+        <MailSettingsDialog
+          accounts={accounts}
+          initialTab={settingsTab}
+          onClose={() => setSettingsTab(null)}
+          onChanged={() => {
+            void loadSettings();
+            void loadAccounts();
+          }}
+        />
       )}
     </div>
   );

@@ -5,9 +5,20 @@ import { escapeHtml, prepareHtml } from "@/pages/mail/parts/mailUtil";
 
 /**
  * Тело письма в изолированном iframe: очищенный HTML, CSP без скриптов,
- * удалённые картинки блокируются до явного разрешения.
+ * удалённые картинки блокируются до явного разрешения. Тёмная тема письма — инверсия
+ * светлого шаблона с возвратом цветов картинкам.
  */
-export function MailBody({ html, text }: { html: string; text: string }) {
+export function MailBody({
+  html,
+  text,
+  dark,
+  fontSize,
+}: {
+  html: string;
+  text: string;
+  dark: boolean;
+  fontSize: number;
+}) {
   const { t } = useI18n();
   const [allow, setAllow] = useState(false);
   const frame = useRef<HTMLIFrameElement>(null);
@@ -17,19 +28,23 @@ export function MailBody({ html, text }: { html: string; text: string }) {
     const src = html || `<pre style="white-space:pre-wrap;font:inherit">${escapeHtml(text)}</pre>`;
     const p = prepareHtml(src, allow);
     const csp = `default-src 'none'; img-src data: ${allow ? "https: http:" : ""}; style-src 'unsafe-inline'`;
+    const darkCss = dark
+      ? `html{filter:invert(1) hue-rotate(180deg);background:#fff}img,video,picture{filter:invert(1) hue-rotate(180deg)}`
+      : "";
     return {
       blocked: p.blocked,
       doc: `<!doctype html><html><head><meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy" content="${csp}">
 <base target="_blank"><style>
 html,body{margin:0}
-body{padding:14px 16px;font:14px/1.55 system-ui,"Segoe UI",sans-serif;color:#1c1c1e;background:#fff;word-wrap:break-word;overflow-wrap:anywhere}
+body{padding:14px 16px;font:${fontSize}px/1.55 system-ui,"Segoe UI",sans-serif;color:#1c1c1e;background:#fff;word-wrap:break-word;overflow-wrap:anywhere}
 img{max-width:100%;height:auto}img[data-blocked]{display:none}
 a{color:#0b57d0}blockquote{margin:8px 0;padding:0 0 0 12px;border-left:3px solid #d0d4da;color:#555}
 table{max-width:100%}pre{white-space:pre-wrap}
+${darkCss}
 </style></head><body>${p.html}</body></html>`,
     };
-  }, [html, text, allow]);
+  }, [html, text, allow, dark, fontSize]);
 
   const fit = () => {
     const d = frame.current?.contentDocument;

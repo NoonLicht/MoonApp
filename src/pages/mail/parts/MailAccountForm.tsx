@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Loader2, Trash2, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Loader2, LogIn, Pin, Trash2, X } from "lucide-react";
 import { Btn, Field, Glass } from "@/components/ui";
 import { useI18n } from "@/app/i18n";
 import { api } from "@/api/client";
@@ -14,29 +14,49 @@ const EMPTY: MailServers = {
   smtpSecure: true,
 };
 
-/** Окно «Ящики»: список подключённых аккаунтов и форма добавления нового. */
+function openExternal(url: string): void {
+  if (window.appBridge?.openExternal) void window.appBridge.openExternal(url);
+  else window.open(url, "_blank", "noopener");
+}
+
+/** Окно «Ящики»: подключённые аккаунты и форма добавления (пароль или вход через Google/Microsoft). */
 export function MailAccountForm({
   accounts,
   onClose,
   onChanged,
+  onOpenSettings,
 }: {
   accounts: MailAccount[];
   onClose: () => void;
   onChanged: () => void;
+  onOpenSettings: (tab: string) => void;
 }) {
   const { t } = useI18n();
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
   const [srv, setSrv] = useState<MailServers>(EMPTY);
+  const [oauth, setOauth] = useState<"" | "google" | "microsoft">("");
+  const [oauthReady, setOauthReady] = useState(false);
   const [advanced, setAdvanced] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  const poll = useRef<number | null>(null);
+
+  useEffect(
+    () => () => {
+      if (poll.current) window.clearInterval(poll.current);
+    },
+    [],
+  );
 
   const guess = async () => {
     if (!/@/.test(email)) return;
     try {
-      setSrv(await api.mailGuess(email));
+      const g = await api.mailGuess(email);
+      setSrv(g);
+      setOauth(g.oauth);
+      setOauthReady(g.oauthReady);
     } catch {
       /* автоподбор необязателен */
     }
@@ -58,6 +78,33 @@ export function MailAccountForm({
     }
   };
 
+  const oauthLogin = async (provider: "google" | "microsoft") => {
+    setBusy(true);
+    setErr("");
+    try {
+      const r = await api.mailOAuthStart(provider);
+      openExternal(r.url);
+      const started = Date.now();
+      poll.current = window.setInterval(async () => {
+        try {
+          const s = await api.mailOAuthStatus(r.id);
+          if (s.status === "pending" && Date.now() - started < 300_000) return;
+          if (poll.current) window.clearInterval(poll.current);
+          setBusy(false);
+          if (s.status === "done") onChanged();
+          else setErr(s.error || "timeout");
+        } catch (e) {
+          if (poll.current) window.clearInterval(poll.current);
+          setBusy(false);
+          setErr((e as Error).message);
+        }
+      }, 1500);
+    } catch (e) {
+      setBusy(false);
+      setErr((e as Error).message);
+    }
+  };
+
   const remove = async (a: MailAccount) => {
     if (!window.confirm(t("mail.removeConfirm", { email: a.email }))) return;
     await api.mailRemoveAccount(a.id);
@@ -65,6 +112,7 @@ export function MailAccountForm({
   };
 
   const num = (v: string) => Number(v.replace(/\D/g, "")) || 0;
+  const providerName = oauth === "google" ? "Google" : "Microsoft";
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -79,10 +127,19 @@ export function MailAccountForm({
         {accounts.map((a) => (
           <div key={a.id} className="mail-acc-row">
             <div className="mail-acc-main">
-              <b>{a.name}</b>
+              <b>
+                {a.name} {a.authType === "oauth" && <em className="mail-dim">OAuth</em>}
+              </b>
               <span>{a.email}</span>
               {a.error && <em className="mail-err">{a.error}</em>}
             </div>
+            <button
+              className={`mail-ic ${a.pinned ? "is-on" : ""}`}
+              onClick={() => void api.mailUpdateAccount(a.id, { pinned: !a.pinned }).then(onChanged)}
+              aria-label={t("mail.pin")}
+            >
+              <Pin size={15} />
+            </button>
             <button className="mail-x" onClick={() => void remove(a)} aria-label={t("mail.remove")}>
               <Trash2 size={15} />
             </button>
@@ -99,6 +156,30 @@ export function MailAccountForm({
             autoFocus
           />
         </Field>
+
+        {oauth && (
+          <div className="mail-oauth">
+            {oauthReady ? (
+              <Btn
+                variant="primary"
+                icon={busy ? Loader2 : LogIn}
+                disabled={busy}
+                onClick={() => void oauthLogin(oauth)}
+              >
+                {t("mail.signInWith", { provider: providerName })}
+              </Btn>
+            ) : (
+              <div className="mail-hint">
+                {t("mail.oauthNotConfigured", { provider: providerName })}{" "}
+                <button className="mail-link" onClick={() => onOpenSettings("oauth")}>
+                  {t("mail.openOauthSettings")}
+                </button>
+              </div>
+            )}
+            <div className="mail-hint">{t("mail.orPassword")}</div>
+          </div>
+        )}
+
         <Field label={t("mail.accountName")}>
           <input value={name} onChange={(e) => setName(e.target.value)} />
         </Field>
