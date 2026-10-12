@@ -783,7 +783,9 @@ function legacyCleanup() {
         fs.rmSync(f, { force: true });
         logger.info("flibusta.legacy_removed", { file: f });
       }
-    } catch {}
+    } catch (e) {
+logger.warn("flibusta.legacy_remove_failed", { file: f, error: String(e) });
+}
   }
 }
 legacyCleanup();
