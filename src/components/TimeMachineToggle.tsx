@@ -117,7 +117,13 @@ export default function TimeMachineToggle() {
         /* Тулбар с backdrop-filter становится контейнером для position:fixed —
            без портала панель «схлопывалась» в полоску внутри самого тулбара. */
         createPortal(
-          <div className="tm-panel no-drag" role="dialog" aria-label={t("timeMachine.title")}>
+          <div className="proxy-panel-overlay no-drag" onMouseDown={() => setOpen(false)}>
+          <div
+            className="tm-panel"
+            role="dialog"
+            aria-label={t("timeMachine.title")}
+            onMouseDown={(e) => e.stopPropagation()}
+          >
             <div className="tm-head">
               <b>{t("timeMachine.title")}</b>
               <span className="muted-sm">{t("timeMachine.readOnly")}</span>
@@ -249,6 +255,7 @@ export default function TimeMachineToggle() {
                 <pre className="tm-pre">{preview.text.slice(0, 20000)}</pre>
               </div>
             )}
+          </div>
           </div>,
           getOverlayRoot() ?? document.body,
         )}

@@ -2267,3 +2267,46 @@ select option {
   font-size: 13px;
   color: var(--text-primary);
 }
+
+/* ===== Единый вид модальных окон (как «Модель и ускорение» в Лектории) =====
+   Окно живёт в области контента: меню страниц и верхняя панель остаются на
+   виду, фон лишь слегка затемнён и размыт — без резкого «разделения». */
+.proxy-panel-overlay {
+  padding: var(--content-top) 24px var(--content-bottom)
+    calc(var(--rail-gap) + var(--rail-w) + 12px);
+  background: rgba(0, 0, 0, 0.58);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  pointer-events: auto;
+}
+.theme-light .proxy-panel-overlay {
+  background: rgba(40, 42, 64, 0.32);
+}
+.proxy-panel-overlay .tm-panel,
+.proxy-panel-overlay .ghost-panel {
+  position: relative;
+  top: auto;
+  right: auto;
+  bottom: auto;
+  left: auto;
+  transform: none;
+  width: min(720px, 100%);
+  max-height: 100%;
+  border-radius: 18px;
+  background: var(--surface-solid);
+  box-shadow: var(--shadow);
+  pointer-events: auto;
+  overflow-y: auto;
+}
+.proxy-panel-overlay .ghost-panel {
+  width: min(480px, 100%);
+}
+.proxy-panel-overlay .tm-head,
+.proxy-panel-overlay .ghost-head {
+  padding: 16px 20px;
+}
+.proxy-panel-overlay .tm-slider,
+.proxy-panel-overlay .tm-body,
+.proxy-panel-overlay .ghost-body {
+  padding: 14px 20px;
+}

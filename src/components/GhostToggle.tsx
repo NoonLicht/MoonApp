@@ -84,7 +84,12 @@ export default function GhostToggle() {
         /* Портал: внутри тулбара (backdrop-filter) position:fixed считался бы от
            самого тулбара — панель превращалась в тонкую полоску справа сверху. */
         createPortal(
-          <aside className="ghost-panel no-drag" aria-label={t("ghost.title")}>
+          <div className="proxy-panel-overlay no-drag" onMouseDown={() => setOpen(false)}>
+          <aside
+            className="ghost-panel"
+            aria-label={t("ghost.title")}
+            onMouseDown={(e) => e.stopPropagation()}
+          >
             <div className="ghost-head">
               <b>{t("ghost.title")}</b>
               <button
@@ -130,7 +135,8 @@ export default function GhostToggle() {
                 </button>
               </div>
             )}
-          </aside>,
+          </aside>
+          </div>,
           getOverlayRoot() ?? document.body,
         )}
     </>
