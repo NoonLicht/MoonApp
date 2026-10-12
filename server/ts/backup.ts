@@ -84,19 +84,8 @@ export function createBackup(trigger = "manual"): string | null {
 
 /** Оставляем только последние N бэкапов. */
 export function rotate(): void {
-  // Копии «Машины времени» (trigger: time-machine) делает пользователь вручную —
-  // ротация их не считает и не удаляет, иначе снимок вытеснял бы автобэкапы.
-  const isManualSnapshot = (n: string): boolean => {
-    try {
-      const m = JSON.parse(fs.readFileSync(path.join(DIRS.backups, n, "meta.json"), "utf8"));
-      return m?.trigger === "time-machine";
-    } catch {
-      return false;
-    }
-  };
   const all = fs
     .readdirSync(DIRS.backups)
-    .filter((n) => !isManualSnapshot(n))
     .map((n) => ({ n, t: fs.statSync(path.join(DIRS.backups, n)).mtimeMs }))
     .sort((a, b) => b.t - a.t);
   const keep: number = settings.get("backup").keep ?? 5;

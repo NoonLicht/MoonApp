@@ -318,12 +318,6 @@ const DEFAULTS: SettingsTree = {
     enabled: false,
   },
 
-  // --- Машина времени: локальные снимки vault (git) для просмотра прошлого ---
-  timeMachine: {
-    enabled: true,
-    intervalHours: 6,
-  },
-
   // --- Автобэкап ---
   backup: {
     auto: true,

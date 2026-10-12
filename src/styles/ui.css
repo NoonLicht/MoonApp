@@ -2282,25 +2282,4 @@ select option {
 .theme-light .proxy-panel-overlay {
   background: rgba(40, 42, 64, 0.32);
 }
-.proxy-panel-overlay .tm-panel {
-  position: relative;
-  top: auto;
-  right: auto;
-  bottom: auto;
-  left: auto;
-  transform: none;
-  width: min(720px, 100%);
-  max-height: 100%;
-  border-radius: 18px;
-  background: var(--surface-solid);
-  box-shadow: var(--shadow);
-  pointer-events: auto;
-  overflow-y: auto;
-}
-.proxy-panel-overlay .tm-head {
-  padding: 16px 20px;
-}
-.proxy-panel-overlay .tm-slider,
-.proxy-panel-overlay .tm-body {
-  padding: 14px 20px;
-}
+.proxy-panel-overlay .proxy-panel-overlay .proxy-panel-overlay 

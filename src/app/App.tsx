@@ -31,7 +31,6 @@ import TaskManagerPanel from "@/components/TaskManagerPanel";
 import WelcomeModal from "@/components/WelcomeModal";
 import SystemStatsBar from "@/components/SystemStatsBar";
 import GhostToggle from "@/components/GhostToggle";
-import TimeMachineToggle from "@/components/TimeMachineToggle";
 import PrivacyShield from "@/components/PrivacyShield";
 import NightBanner from "@/components/NightBanner";
 import ModelToggle, { ModelPanel } from "@/components/ModelToggle";
@@ -414,7 +413,6 @@ function Shell({
               <ModelToggle onClick={() => setModelPanelVisible((v) => !v)} />
               <SystemStatsBar />
               <GhostToggle />
-              <TimeMachineToggle />
             </div>
             <div className="tb-center">
               <div className="tb-title">

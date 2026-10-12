@@ -514,39 +514,6 @@ export const systemApi = {
       learned: number;
       schedule: { date: string; count: number }[];
     }>("GET", "/exam/stats"),
-  timeMachineRange: () =>
-    req<{ from: string; to: string; commits: number; points: number[] }>("GET", "/time-machine/range"),
-  timeMachineState: (date: string, ts?: number) =>
-    req<{
-      date: string;
-      snapshot: { oid: string; at: number; message: string } | null;
-      backup: { id: string; at: string } | null;
-      notes: { path: string; title: string }[];
-      notesTotal: number;
-      boards: { path: string; title: string }[];
-      tasks: {
-        open: number;
-        done: number;
-        items: { id: string; title: string; status: "open" | "done"; dueDate: string | null }[];
-      };
-      budget: {
-        count: number;
-        income: number;
-        expense: number;
-        balance: number;
-        monthByCategory: { category: string; amount: number }[];
-      };
-      diary: { content: string } | null;
-    }>("GET", `/time-machine/state?date=${encodeURIComponent(date)}${ts ? `&ts=${ts}` : ""}`),
-  timeMachineFile: (oid: string, path: string) =>
-    req<{ path: string; text: string }>(
-      "GET",
-      `/time-machine/file?oid=${encodeURIComponent(oid)}&path=${encodeURIComponent(path)}`,
-    ),
-  timeMachineRestore: (oid: string, path: string, date: string) =>
-    req<{ ok: boolean; path: string }>("POST", "/time-machine/restore", { oid, path, date }),
-  timeMachineSnapshot: () =>
-    req<{ committed: boolean; oid?: string }>("POST", "/time-machine/snapshot", {}),
   ghostActive: () => req<{ title: string; process: string }>("GET", "/ghost/active"),
   ghostContext: (title: string, text: string, exclude?: { source: string; ref: string }) =>
     req<{

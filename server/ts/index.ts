@@ -69,7 +69,6 @@ import pluginsRouter from "./routes/plugins";
 import p2pRouter from "./routes/p2p";
 import aiShieldRouter from "./routes/aiShield";
 import ghostRouter from "./routes/ghost";
-import timeMachineRouter from "./routes/timeMachine";
 import examRouter from "./routes/exam";
 import voiceVaultRouter from "./routes/voiceVault";
 import attentionRouter from "./routes/attention";
@@ -81,7 +80,6 @@ import scanRouter from "./routes/scan";
 import montageRouter from "./routes/montage";
 import diagnosticsRouter from "./routes/diagnostics";
 import canvasAiRouter from "./routes/canvasAi";
-import * as timeMachineAuto from "./timeMachineAuto";
 import * as automationRules from "./automationRules";
 import bookmarksRouter from "./routes/bookmarks";
 import pdfRouter from "./routes/pdf";
@@ -277,7 +275,6 @@ function createApp(): express.Express {
   app.use("/api/p2p", p2pRouter);
   app.use("/api/ai-shield", aiShieldRouter);
   app.use("/api/ghost", ghostRouter);
-  app.use("/api/time-machine", timeMachineRouter);
   app.use("/api/exam", examRouter);
   app.use("/api/voice-vault", voiceVaultRouter);
   app.use("/api/attention", attentionRouter);
@@ -340,7 +337,6 @@ function createApp(): express.Express {
     },
   );
   backups.startAuto();
-  timeMachineAuto.startAuto();
 
   // Веб-компаньон поднимается только если пользователь включил его в настройках.
   companion.autoStart();
