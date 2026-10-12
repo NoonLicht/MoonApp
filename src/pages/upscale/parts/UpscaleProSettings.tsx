@@ -1,4 +1,5 @@
-import React, { useRef, useState } from "react";
+import React from "react";
+import { HelpTip } from "@/components/HelpTip";
 import { Download, Cpu, Gauge, Film, HelpCircle, SlidersHorizontal } from "lucide-react";
 import { Btn, Badge, ProgressBar, Select } from "@/components/ui";
 import { useI18n } from "@/app/i18n";
@@ -19,49 +20,6 @@ function packStateText(t: (k: string) => string, state: string): string {
   return t("up.packDownload");
 }
 
-/**
- * Подсказка к настройке: всплывает по наведению (или по фокусу) на «?».
- *
- * Координаты считаются от кнопки, а сам блок — `position: fixed`: панель настроек
- * прокручивается (`overflow: auto`), и подсказка внутри потока обрезалась бы её краем.
- */
-function HelpTip({ text }: { text: string }) {
-  const btn = useRef<HTMLButtonElement>(null);
-  const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
-
-  const show = () => {
-    const r = btn.current?.getBoundingClientRect();
-    if (!r) return;
-    // У края окна подсказку сдвигаем: центр по кнопке вывел бы её за экран.
-    const half = 140;
-    const x = Math.min(Math.max(r.left + r.width / 2, half), window.innerWidth - half);
-    setPos({ x, y: r.bottom + 6 });
-  };
-
-  return (
-    <>
-      <button
-        type="button"
-        ref={btn}
-        className="up-info-btn"
-        aria-label={text}
-        onMouseEnter={show}
-        onFocus={show}
-        onMouseLeave={() => setPos(null)}
-        onBlur={() => setPos(null)}
-        onClick={() => (pos ? setPos(null) : show())}
-      >
-        <HelpCircle size={11} />
-      </button>
-      {pos ? (
-        <span className="up-tip" role="tooltip" style={{ left: pos.x, top: pos.y }}>
-          {text}
-        </span>
-      ) : null}
-    </>
-  );
-}
-
 /** Строка настройки: подпись + «?» со всплывающим описанием и контрол справа. */
 function Row({
   label,
@@ -76,7 +34,11 @@ function Row({
     <div className="up-pro-row">
       <div className="up-pro-info">
         <span className="up-pro-label">{label}</span>
-        {hint ? <HelpTip text={hint} /> : null}
+        {hint ? (
+          <HelpTip text={hint}>
+            <HelpCircle size={11} />
+          </HelpTip>
+        ) : null}
       </div>
       <div className="up-pro-ctl">{children}</div>
     </div>
@@ -220,7 +182,9 @@ export default function UpscaleProSettings({
       <div className="up-pro-section">
         <div className="up-pro-section-title">
           <Download size={14} /> {t("up.modelsTitle")}
-          <HelpTip text={t("up.mdlOpenHint")} />
+          <HelpTip text={t("up.mdlOpenHint")}>
+            <HelpCircle size={11} />
+          </HelpTip>
         </div>
         <div className="up-row-inline">
           <Badge tone={modelCount && modelCount.ready ? "teal" : "coral"}>

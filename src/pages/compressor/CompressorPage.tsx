@@ -563,12 +563,12 @@ export default function CompressorPage() {
                 padding: "10px 14px",
                 display: "flex",
                 gap: 10,
-                alignItems: "center",
-                flexWrap: "wrap",
+                alignItems: "flex-start",
+                flexWrap: "nowrap",
               }}
             >
-              <Zap size={15} style={{ color: "var(--amber)" }} />
-              <span className="muted-sm">
+              <Zap size={16} style={{ color: "var(--amber)", flex: "0 0 auto", marginTop: 1 }} />
+              <span className="muted-sm" style={{ flex: "1 1 auto", minWidth: 0 }}>
                 {t("cmp.recommendFor", {
                   hw: rec.hwName,
                   method: t(`cmp.engine_${rec.engine}`),

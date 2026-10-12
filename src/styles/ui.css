@@ -2283,3 +2283,22 @@ select option {
   background: rgba(40, 42, 64, 0.32);
 }
 .proxy-panel-overlay .proxy-panel-overlay .proxy-panel-overlay 
+/* Всплывающая подсказка кнопок «?» / «i» (компонент HelpTip, портал в #overlay-root). */
+.float-tip {
+  position: fixed;
+  transform: translate(-50%, 0);
+  z-index: 9500;
+  max-width: 280px;
+  padding: 9px 12px;
+  border-radius: var(--fl-r-fly, 12px);
+  background: var(--surface-solid);
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.28);
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-primary);
+  text-align: left;
+  white-space: normal;
+  pointer-events: auto;
+  animation: mo-rise 160ms ease both;
+}

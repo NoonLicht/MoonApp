@@ -18,7 +18,8 @@ html {
 }
 
 /* ---------- Стеклянные поверхности ---------- */
-html:not(.no-glass) .app-shell .glass,
+html:not(.no-glass) .app-shell .glass:not(.glass-solid),
+html:not(.no-glass) .app-shell :is(.card, .app-card, .arch-view, .arch-card, .arch-archive, .bp-card, .bp-tile, .core-tile, .kanban-card, .kanban-col, .lec-feed, .lec-notes, .lec-panel, .lec-sessions, .lec-live-strip, .m3p-card, .mono-panel, .rss-item, .tools-block, .tr-area, .up-pro-section, .hc-tpl-card, .note-explorer, .note-editor, .up-alert),
 html:not(.no-glass) .app-shell .top-toolbar,
 html:not(.no-glass) .app-shell .dock-scroll,
 html:not(.no-glass) .proxy-panel,
@@ -40,7 +41,7 @@ html:not(.no-glass) .ghost-dock {
     inset 0 1px 0 rgba(255, 255, 255, calc(var(--lg-spec, 0.55) * 0.6)),
     inset 1px 0 0 rgba(255, 255, 255, calc(var(--lg-spec, 0.55) * 0.25)),
     inset 0 -1px 0 rgba(0, 0, 0, 0.18),
-    0 8px 28px rgba(0, 0, 0, 0.2);
+    0 1px 3px rgba(0, 0, 0, 0.14);
   border: 1px solid rgba(255, 255, 255, calc(var(--lg-spec, 0.55) * 0.16));
 }
 
@@ -65,7 +66,7 @@ html:not(.no-glass) .theme-light .ghost-dock {
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.8),
     inset 0 -1px 0 rgba(0, 0, 0, 0.06),
-    0 8px 24px rgba(0, 0, 0, 0.1);
+    0 1px 3px rgba(0, 0, 0, 0.08);
   border-color: rgba(20, 20, 40, 0.1);
 }
 
@@ -156,4 +157,160 @@ html:not(.no-glass) .app-shell .field textarea,
 html:not(.no-glass) .app-shell .chip,
 html:not(.no-glass) .app-shell .tab {
   border-radius: var(--fl-r-ctl);
+}
+
+/* ===========================================================================
+   Единые правила для всего приложения
+   =========================================================================== */
+
+/* ---------- Плавающие панели: тень крупнее (они не лежат в прокручиваемой области) ---------- */
+html:not(.no-glass) .proxy-panel,
+html:not(.no-glass) .tb-pop,
+html:not(.no-glass) .ghost-dock {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, calc(var(--lg-spec, 0.55) * 0.6)),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.18),
+    0 12px 36px rgba(0, 0, 0, 0.26);
+}
+
+/* ---------- Модальные окна: как окно диспетчера процессов / прокси ----------
+   Почти непрозрачная подложка (читаемость), общая геометрия и появление. */
+html:not(.no-glass) .proxy-panel.proxy-panel,
+html:not(.no-glass) .modal-panel.modal-panel,
+html:not(.no-glass) .lecs-modal.lecs-modal,
+html:not(.no-glass) .up-mdl-panel.up-mdl-panel,
+html:not(.no-glass) .hc-modal.hc-modal,
+html:not(.no-glass) .ms-ai-modal.ms-ai-modal,
+html:not(.no-glass) .rss-modal.rss-modal,
+html:not(.no-glass) .app-shell .glass.glass-solid {
+  border-radius: var(--fl-r-fly, 16px);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0) 42%),
+    color-mix(in srgb, var(--surface-solid) 94%, transparent);
+  -webkit-backdrop-filter: blur(var(--lg-blur, 22px)) saturate(var(--lg-sat-eff, 135%));
+  backdrop-filter: blur(var(--lg-blur, 22px)) saturate(var(--lg-sat-eff, 135%));
+  border: 1px solid var(--glass-border);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, calc(var(--lg-spec, 0.55) * 0.45)),
+    0 24px 70px rgba(0, 0, 0, 0.38);
+}
+html:not(.no-glass) .proxy-panel-overlay,
+html:not(.no-glass) .modal-overlay,
+html:not(.no-glass) .lecs-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* окно живёт в контентной зоне — не заезжает на меню и верхнюю панель */
+  padding: var(--content-top) 24px var(--content-bottom)
+    calc(var(--rail-gap) + var(--rail-w) + 12px);
+  background: rgba(6, 8, 14, 0.5);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+html:not(.no-glass) .modal-panel,
+html:not(.no-glass) .lecs-modal,
+html:not(.no-glass) .up-mdl-panel,
+html:not(.no-glass) .hc-modal {
+  max-height: 100%;
+  animation: mo-card-in calc(340ms / var(--anim-speed, 1)) var(--ease-spring, ease) both;
+}
+
+/* ---------- Поля ввода: нигде не «голые» ----------
+   :where даёт нулевую специфичность — любые классовые стили полей сильнее. */
+:where(.app-shell, #overlay-root)
+  :where(
+    input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not(
+        [type="file"]
+      ):not([type="hidden"]):not([type="button"]):not([type="submit"]),
+    textarea,
+    select
+  ) {
+  background: color-mix(in srgb, var(--surface-solid) 82%, transparent);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--fl-r-ctl, 8px);
+  padding: 7px 11px;
+  color: var(--text-primary);
+  font: inherit;
+  outline: none;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    background-color 0.15s ease;
+}
+:where(.app-shell, #overlay-root)
+  :where(
+    input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not(
+        [type="file"]
+      ):not([type="hidden"]):not([type="button"]):not([type="submit"]),
+    textarea,
+    select
+  ):focus {
+  border-color: var(--amber);
+  box-shadow: 0 0 0 3px var(--amber-soft);
+}
+:where(.app-shell, #overlay-root) :where(input, textarea)::placeholder {
+  color: var(--text-tertiary);
+}
+
+/* ---------- Подзаголовки разделов — в собственном блоке, а не «голым» текстом ---------- */
+html:not(.no-glass) .app-shell .section-head:not(.page > .section-head:first-child) {
+  padding: 12px 16px;
+  border-radius: var(--fl-r-card, 12px);
+  background: color-mix(in srgb, var(--surface-solid) var(--lg-fill, 32%), transparent);
+  -webkit-backdrop-filter: blur(var(--lg-blur, 22px)) saturate(var(--lg-sat-eff, 135%));
+  backdrop-filter: blur(var(--lg-blur, 22px)) saturate(var(--lg-sat-eff, 135%));
+  border: 1px solid var(--glass-border);
+}
+
+/* ---------- Читаемость в светлых темах: насыщенные оттенки акцентов ----------
+   Яркие розовый/зелёный/жёлтый/красный на светлом стекле не читаются. */
+html .app-shell.app-shell.theme-light:not(.theme-sand) {
+  --amber-base: #9a5300;
+  --violet: #5338c9;
+  --teal: #0a7458;
+  --coral: #b3261e;
+  --sky: #0a5fc4;
+  --rose: #b81b55;
+  --success: #0a7458;
+}
+
+/* ---------- Баннеры поверх постеров всегда тёмные: текст на них светлый ---------- */
+.mv-hero,
+.mv-hero-body,
+.mv-detail-hero,
+.mv-detail-head {
+  --text-primary: #ffffff;
+  --text-secondary: rgba(255, 255, 255, 0.86);
+  --text-tertiary: rgba(255, 255, 255, 0.68);
+  color: #ffffff;
+}
+.mv-hero-overview,
+.mv-hero-meta,
+.mv-hero-meta > span {
+  color: rgba(255, 255, 255, 0.86);
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.55);
+}
+/* Чипы жанров и фильтры — читаемая подложка на светлых темах. */
+.app-shell.theme-light .mv-genres button,
+.app-shell.theme-light .mv-chip-btn {
+  background: color-mix(in srgb, var(--surface-solid) 82%, transparent);
+  color: var(--text-primary);
+}
+
+/* ---------- Карточки архивов: одинаковые по ширине и высоте ---------- */
+.app-shell .arch-archive-grid {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
+  grid-auto-rows: 1fr;
+  align-items: stretch;
+}
+.app-shell .arch-archive-grid > * {
+  min-width: 0;
+  height: 100%;
+}
+.app-shell .arch-archive-stats {
+  min-height: 62px;
+  align-content: flex-start;
 }

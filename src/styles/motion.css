@@ -120,3 +120,17 @@ html.design-fluent .dock-scroll {
 body[style*="col-resize"] .content-area {
   transition: none;
 }
+
+/* ---- Появление блоков, которые рисуются по условию (Pro-настройки, результат, выбор файла) ---- */
+.up-pro-section,
+.up-alert,
+.up-batch-item,
+.up-left > *,
+.up-side > *,
+.cmp-left > *,
+.cmp-right > *,
+.arch-card,
+.arch-archive,
+.rss-item {
+  animation: mo-rise calc(380ms / var(--anim-speed)) var(--ease-out) backwards;
+}

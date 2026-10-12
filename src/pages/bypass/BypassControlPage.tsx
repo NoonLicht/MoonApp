@@ -1086,8 +1086,17 @@ function NetworkToolsPanel() {
 
   return (
     <div style={{ marginTop: 16 }}>
+      <Glass
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "stretch",
+          gap: 12,
+          padding: 14,
+        }}
+      >
       <SectionHead eyebrow={t("bypass.netEyebrow")} title={t("bypass.netTitle")} />
-      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", margin: "8px 0" }}>
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
         {(
           [
             ["ping", Network],
@@ -1112,15 +1121,6 @@ function NetworkToolsPanel() {
         ))}
       </div>
 
-      <Glass
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "stretch",
-          gap: 12,
-          padding: 14,
-        }}
-      >
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           {needsHost && (
             <input

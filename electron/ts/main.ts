@@ -33,7 +33,7 @@ const { startServer } = serverModule("../server");
 // 720px — нижняя граница шкалы брейкпоинтов: CSS-правила для ещё более
 // узких окон (≤700 / ≤640 / ≤520 в src/styles/*.css) в окне приложения
 // недостижимы, они остаются страховкой для запуска в браузере (vite dev).
-const MIN_WIN_WIDTH = 720;
+const MIN_WIN_WIDTH = 1030;
 const MIN_WIN_HEIGHT = 520;
 
 // Аппаратное ускорение Chromium. По умолчанию вкл.; если в настройках

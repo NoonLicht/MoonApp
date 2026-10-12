@@ -36,6 +36,7 @@ function bodyOf(cssFile: string, cls: string): string[] {
 
 /** Полноэкранные слои, которые рендерятся порталом в #overlay-root. */
 const PORTALED = [
+  { src: "src/components/HelpTip.tsx", css: "src/styles/ui.css", cls: "float-tip" },
   { src: "src/components/GhostToggle.tsx", css: "src/styles/theme.css", cls: "ghost-dock" },
   {
     src: "src/pages/archiver/ArchiverPage.tsx",

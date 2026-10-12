@@ -1,4 +1,5 @@
-import React, { useState, useRef, useEffect } from "react";
+import React from "react";
+import { HelpTip } from "@/components/HelpTip";
 import { Info } from "lucide-react";
 
 /**
@@ -17,35 +18,15 @@ export interface ParamFieldProps {
 }
 
 export function ParamField({ label, tooltip, optimal, children }: ParamFieldProps) {
-  const [open, setOpen] = useState(false);
-  const wrapRef = useRef<HTMLDivElement | null>(null);
-
-  // Закрытие по клику вне поповера
-  useEffect(() => {
-    if (!open) return;
-    const onDoc = (e: MouseEvent) => {
-      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
-  }, [open]);
-
   return (
-    <div className="ab-param" ref={wrapRef}>
+    <div className="ab-param">
       <div className="ab-param-head">
         <span className="field-label" style={{ marginBottom: 0 }}>
           {label}
         </span>
-        <button
-          type="button"
-          className="ab-info-btn"
-          title={label}
-          onClick={() => setOpen((v) => !v)}
-          onMouseEnter={() => setOpen(true)}
-          onMouseLeave={() => setOpen(false)}
-        >
+        <HelpTip text={tooltip} className="ab-info-btn">
           <Info size={13} strokeWidth={2} />
-        </button>
+        </HelpTip>
         {optimal && (
           <span className="ab-optimal-badge" title={`Optimal for Your PC — ${optimal}`}>
             ✓ {optimal}
@@ -53,11 +34,6 @@ export function ParamField({ label, tooltip, optimal, children }: ParamFieldProp
         )}
       </div>
       {children}
-      {open && (
-        <div className="ab-tooltip" role="tooltip">
-          {tooltip}
-        </div>
-      )}
     </div>
   );
 }
