@@ -332,6 +332,15 @@ export default function GhostToggle() {
                           className="ghost-item"
                           onClick={() => openHit(h)}
                         >
+                          {h.source === "shot" && h.snippet === "image" && (
+                            <img
+                              className="ghost-shot-img"
+                              src={api.screenshotFileUrl(h.ref)}
+                              alt=""
+                              loading="lazy"
+                              draggable={false}
+                            />
+                          )}
                           <span className="ghost-item-title">{h.title}</span>
                           <span className="muted-sm">{h.why || h.snippet.slice(0, 90)}</span>
                         </button>

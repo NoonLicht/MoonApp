@@ -79,3 +79,24 @@ html.win-translucent.win-translucent .app-shell:not(.opaque-bg) {
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
 }
+
+/* Боковые панели (меню страниц слева и «Контекст» справа) — одинакового тона:
+   они стоят у разных краёв окна, где под ними лежат разные цвета подсветки,
+   поэтому берём плотную подкраску и умеренную насыщенность. */
+html:not(.no-glass) .app-shell .dock-scroll,
+html:not(.no-glass) .ghost-dock {
+  background:
+    linear-gradient(
+      135deg,
+      rgba(255, 255, 255, calc(var(--lg-spec, 0.55) * 0.1)) 0%,
+      rgba(255, 255, 255, 0) 45%
+    ),
+    color-mix(in srgb, var(--surface-solid, #2a2a30) 62%, transparent);
+  -webkit-backdrop-filter: blur(var(--lg-blur, 22px)) saturate(115%);
+  backdrop-filter: blur(var(--lg-blur, 22px)) saturate(115%);
+}
+html.lg-refract:not(.no-glass) .app-shell .dock-scroll,
+html.lg-refract:not(.no-glass) .ghost-dock {
+  -webkit-backdrop-filter: url(#lg-refract) blur(var(--lg-blur, 22px)) saturate(115%);
+  backdrop-filter: url(#lg-refract) blur(var(--lg-blur, 22px)) saturate(115%);
+}
