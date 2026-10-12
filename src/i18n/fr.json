@@ -319,7 +319,11 @@
     "designFluent": "Fluent 2",
     "designClassic": "Classique",
     "glass": "Effet verre",
-    "glassHint": "Flou et surfaces translucides (liquid glass). Désactivez pour des panneaux mats pleins et moins de charge GPU"
+    "glassHint": "Flou et surfaces translucides (liquid glass). Désactivez pour des panneaux mats pleins et moins de charge GPU",
+    "dataSection": "Notes : import, export, recherche dans les fichiers",
+    "workspaceSection": "Fenêtre, profils et extensions",
+    "privacyNetSection": "Réseau et bouclier IA",
+    "backupsTitle": "Sauvegardes"
   },
   "chat": {
     "chatProvider": "Fournisseur par défaut",

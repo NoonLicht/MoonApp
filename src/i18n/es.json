@@ -319,7 +319,11 @@
     "designFluent": "Fluent 2",
     "designClassic": "Clásico",
     "glass": "Efecto cristal",
-    "glassHint": "Desenfoque y superficies translúcidas (liquid glass). Desactívalo para paneles sólidos y menos carga de GPU"
+    "glassHint": "Desenfoque y superficies translúcidas (liquid glass). Desactívalo para paneles sólidos y menos carga de GPU",
+    "dataSection": "Notas: importar, exportar, búsqueda en archivos",
+    "workspaceSection": "Ventana, perfiles y complementos",
+    "privacyNetSection": "Red y escudo de IA",
+    "backupsTitle": "Copias de seguridad"
   },
   "chat": {
     "chatProvider": "Proveedor por defecto",

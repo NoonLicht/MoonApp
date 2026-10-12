@@ -319,7 +319,11 @@
     "designFluent": "Fluent 2",
     "designClassic": "经典",
     "glass": "玻璃效果",
-    "glassHint": "模糊与半透明表面（liquid glass）。关闭后使用不透明的磨砂面板，降低 GPU 负载"
+    "glassHint": "模糊与半透明表面（liquid glass）。关闭后使用不透明的磨砂面板，降低 GPU 负载",
+    "dataSection": "笔记：导入、导出、文件搜索",
+    "workspaceSection": "窗口、配置文件与插件",
+    "privacyNetSection": "网络与 AI 防护",
+    "backupsTitle": "备份"
   },
   "chat": {
     "chatProvider": "默认提供商",

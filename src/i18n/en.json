@@ -319,7 +319,11 @@
     "designFluent": "Fluent 2",
     "designClassic": "Classic",
     "glass": "Glass effect",
-    "glassHint": "Blur and translucent surfaces (liquid glass). Turn off for solid matte panels and lower GPU load"
+    "glassHint": "Blur and translucent surfaces (liquid glass). Turn off for solid matte panels and lower GPU load",
+    "dataSection": "Notes: import, export, file search",
+    "workspaceSection": "Window, profiles and plugins",
+    "privacyNetSection": "Network and AI shield",
+    "backupsTitle": "Backups"
   },
   "chat": {
     "chatProvider": "Default provider",

@@ -500,20 +500,31 @@ export default function SettingsPage() {
             </Row>
           )}
           <ProblemsRow />
-          <InterchangeRows />
-          <FileSearchRows />
-          <WindowRows />
-          <BackupRows />
-          <ProfileRows />
-          <ContextMenuRow />
-          <PluginRows />
-          <P2pRows />
-          <AiShieldRows />
           {diagStatus && (
             <div className="muted-sm" style={{ marginTop: -6 }}>
               {diagStatus}
             </div>
           )}
+        </Section>
+
+        {/* ---- Заметки: импорт/экспорт и поиск по файлам ---- */}
+        <Section title={t("settings.dataSection")} icon={FolderOpen}>
+          <InterchangeRows />
+          <FileSearchRows />
+        </Section>
+
+        {/* ---- Окно, профили, плагины ---- */}
+        <Section title={t("settings.workspaceSection")} icon={Settings2}>
+          <WindowRows />
+          <ProfileRows />
+          <ContextMenuRow />
+          <PluginRows />
+        </Section>
+
+        {/* ---- Сеть и защита ИИ ---- */}
+        <Section title={t("settings.privacyNetSection")} icon={ShieldCheck}>
+          <P2pRows />
+          <AiShieldRows />
         </Section>
 
         {/* ---- Внешний вид ---- */}
@@ -1149,7 +1160,7 @@ export default function SettingsPage() {
         <CompanionSection />
 
         {/* ---- Автобэкап ---- */}
-        <Section title={t("settings.backup")} icon={Database}>
+        <Section title={t("settings.backupsTitle")} icon={Database}>
           <BoolRow
             label={t("backupSettings.backupEnable")}
             hint={t("backupSettings.backupEnableHint")}
@@ -1168,6 +1179,7 @@ export default function SettingsPage() {
               suffix=" h"
             />
           </Row>
+          <BackupRows />
         </Section>
 
         {/* Экспорт и импорт ВСЕХ настроек: секции settings.json для каждой страницы
