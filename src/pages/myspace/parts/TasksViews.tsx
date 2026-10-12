@@ -534,9 +534,12 @@ export function CalendarView({
   /* Неделя начинается с понедельника: getDay() даёт 0=вс..6=сб, сдвигаем на пн=0. */
   const firstDayOfWeek = (new Date(calendarYear, calendarMonth, 1).getDay() + 6) % 7;
   const monthNames = Array.from({ length: 12 }, (_, i) => tNow("tasksUi.m" + (i + 1)));
+  // Сетка занимает всю высоту: строки делят её поровну, без пустого места внизу.
+  const weeks = Math.ceil((firstDayOfWeek + daysInMonth) / 7);
+  const trailing = weeks * 7 - firstDayOfWeek - daysInMonth;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 4, height: "100%" }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 4, height: "100%", minHeight: 0 }}>
       <div
         style={{
           display: "flex",
@@ -580,11 +583,15 @@ export function CalendarView({
           gridTemplateColumns: "repeat(7, 1fr)",
           gap: 2,
           flex: 1,
-          alignContent: "start",
+          minHeight: 0,
+          gridTemplateRows: `repeat(${weeks}, minmax(0, 1fr))`,
         }}
       >
         {Array.from({ length: firstDayOfWeek }).map((_, i) => (
-          <div key={`empty-${i}`} style={{ minHeight: 84, opacity: 0.2 }} />
+          <div
+            key={`empty-${i}`}
+            style={{ borderRadius: 6, border: "1px solid var(--glass-border)", opacity: 0.3 }}
+          />
         ))}
 
         {Array.from({ length: daysInMonth }).map((_, idx) => {
@@ -597,16 +604,16 @@ export function CalendarView({
             <div
               key={day}
               style={{
-                minHeight: 84,
+                minHeight: 0,
+                overflow: "hidden",
                 borderRadius: 6,
-                padding: 2,
+                padding: 4,
                 cursor: "pointer",
-                background: isToday ? "var(--glass)" : "transparent",
-                border: isToday ? "1px solid var(--glass-border)" : "none",
+                background: isToday ? "var(--glass-strong)" : "var(--glass)",
+                border: isToday ? "1px solid var(--teal)" : "1px solid var(--glass-border)",
                 display: "flex",
                 flexDirection: "column",
                 gap: 1,
-                overflow: "hidden",
               }}
             >
               <span
@@ -636,9 +643,9 @@ export function CalendarView({
                         display: "flex",
                         alignItems: "center",
                         gap: 2,
-                        padding: "1px 3px",
-                        borderRadius: 2,
-                        fontSize: 8,
+                        padding: "2px 5px",
+                        borderRadius: 4,
+                        fontSize: 11,
                         background: comp ? "var(--teal)" : "var(--surface-glass)",
                         color: comp ? "#fff" : "var(--text-primary)",
                         opacity: comp ? 0.7 : 1,
@@ -672,7 +679,7 @@ export function CalendarView({
                   );
                 })}
                 {dayTasks.length > 3 && (
-                  <span style={{ fontSize: 7, color: "var(--text-tertiary)", paddingLeft: 2 }}>
+                  <span style={{ fontSize: 10, color: "var(--text-tertiary)", paddingLeft: 2 }}>
                     +{dayTasks.length - 3} {tNow("tasksUi.more")}
                   </span>
                 )}
@@ -680,6 +687,12 @@ export function CalendarView({
             </div>
           );
         })}
+        {Array.from({ length: trailing }).map((_, i) => (
+          <div
+            key={`tail-${i}`}
+            style={{ borderRadius: 6, border: "1px solid var(--glass-border)", opacity: 0.3 }}
+          />
+        ))}
       </div>
     </div>
   );
