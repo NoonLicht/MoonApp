@@ -101,7 +101,10 @@ function merge<T>(base: T, patch: unknown): T {
   if (!isObj(base) || !isObj(patch)) return (patch === undefined ? base : (patch as T)) ?? base;
   const out: Record<string, unknown> = { ...base };
   for (const [k, v] of Object.entries(patch)) {
-    out[k] = k in base && isObj((base as Record<string, unknown>)[k]) && isObj(v) ? merge((base as Record<string, unknown>)[k], v) : v;
+    out[k] =
+      k in base && isObj((base as Record<string, unknown>)[k]) && isObj(v)
+        ? merge((base as Record<string, unknown>)[k], v)
+        : v;
   }
   return out as T;
 }
@@ -110,7 +113,8 @@ let cache: MailSettings | null = null;
 
 export function getSettings(): MailSettings {
   if (cache) return cache;
-  const r = mailDb().prepare("SELECT value FROM kv WHERE key = 'settings'").get() as { value: string } | undefined;
+  const r = mailDb().prepare("SELECT value FROM kv WHERE key = 'settings'").get() as
+    { value: string } | undefined;
   let stored: unknown = {};
   try {
     stored = r ? JSON.parse(r.value) : {};
@@ -126,12 +130,16 @@ export function setSettings(patch: unknown): MailSettings {
   // массивы и словари заменяются целиком (merge рекурсивен только по объектам-секциям)
   if (isObj(patch)) {
     for (const k of ["smartFolders", "pinned", "autoReply"] as const) {
-      if (k in patch) (next as unknown as Record<string, unknown>)[k] = (patch as Record<string, unknown>)[k];
+      if (k in patch)
+        (next as unknown as Record<string, unknown>)[k] = (patch as Record<string, unknown>)[k];
     }
-    if (isObj(patch.notify) && Array.isArray(patch.notify.muted)) next.notify.muted = patch.notify.muted as string[];
+    if (isObj(patch.notify) && Array.isArray(patch.notify.muted))
+      next.notify.muted = patch.notify.muted as string[];
   }
   cache = next;
-  mailDb().prepare("INSERT OR REPLACE INTO kv (key, value) VALUES ('settings', ?)").run(JSON.stringify(next));
+  mailDb()
+    .prepare("INSERT OR REPLACE INTO kv (key, value) VALUES ('settings', ?)")
+    .run(JSON.stringify(next));
   return next;
 }
 

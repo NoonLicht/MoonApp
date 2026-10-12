@@ -38,7 +38,11 @@ export function exportBundle(): Bundle {
   };
 }
 
-export function importBundle(b: Partial<Bundle>): { rules: number; signatures: number; templates: number } {
+export function importBundle(b: Partial<Bundle>): {
+  rules: number;
+  signatures: number;
+  templates: number;
+} {
   if (!b || b.app !== "moonapp-mail") throw new Error("bad_bundle");
   if (b.settings) {
     const s = JSON.parse(JSON.stringify(b.settings)) as Partial<MailSettings>;
@@ -50,7 +54,8 @@ export function importBundle(b: Partial<Bundle>): { rules: number; signatures: n
     if (s.tracking) delete (s.tracking as Partial<typeof DEFAULTS.tracking>).key;
     if (s.oauth) delete (s.oauth as Partial<typeof DEFAULTS.oauth>).googleClientSecret;
     setSettings(s);
-    if (b.settings.smartFolders) setSettings({ smartFolders: b.settings.smartFolders.map((x) => ({ ...x, account: "" })) });
+    if (b.settings.smartFolders)
+      setSettings({ smartFolders: b.settings.smartFolders.map((x) => ({ ...x, account: "" })) });
   }
   let rules = 0;
   for (const r of b.rules ?? []) {
@@ -73,7 +78,9 @@ export function importBundle(b: Partial<Bundle>): { rules: number; signatures: n
 /** mbox из загруженных писем папки (по одному запросу источника на письмо; не более max). */
 export async function exportMbox(account: string, folder: string, max = 500): Promise<Buffer> {
   const rows = mailDb()
-    .prepare("SELECT id, date, from_addr FROM messages WHERE account = ? AND folder = ? ORDER BY date DESC LIMIT ?")
+    .prepare(
+      "SELECT id, date, from_addr FROM messages WHERE account = ? AND folder = ? ORDER BY date DESC LIMIT ?",
+    )
     .all(account, folder, max) as { id: string; date: number; from_addr: string }[];
   const parts: Buffer[] = [];
   for (const r of rows) {
@@ -81,7 +88,11 @@ export async function exportMbox(account: string, folder: string, max = 500): Pr
     if (!src) continue;
     const head = `From ${r.from_addr || "MAILER-DAEMON"} ${new Date(r.date).toUTCString()}\r\n`;
     const body = src.toString("latin1").replace(/^(>*From )/gm, ">$1");
-    parts.push(Buffer.from(head, "latin1"), Buffer.from(body, "latin1"), Buffer.from("\r\n", "latin1"));
+    parts.push(
+      Buffer.from(head, "latin1"),
+      Buffer.from(body, "latin1"),
+      Buffer.from("\r\n", "latin1"),
+    );
   }
   return Buffer.concat(parts);
 }

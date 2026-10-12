@@ -18,8 +18,13 @@ const LANG_NAMES: Record<string, string> = {
 };
 
 function plain(m: MessageFull, max = 6000): string {
-  const t = m.text || m.html.replace(/<(script|style)[\s\S]*?<\/\1>/gi, " ").replace(/<[^>]+>/g, " ");
-  return t.replace(/[ \t]+/g, " ").replace(/\n{3,}/g, "\n\n").trim().slice(0, max);
+  const t =
+    m.text || m.html.replace(/<(script|style)[\s\S]*?<\/\1>/gi, " ").replace(/<[^>]+>/g, " ");
+  return t
+    .replace(/[ \t]+/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim()
+    .slice(0, max);
 }
 
 function threadText(id: string, perMessage = 2500, total = 12000): string {
@@ -50,7 +55,8 @@ function toHtml(text: string): string {
 }
 
 export interface AiRequest {
-  action: "summarize" | "reply" | "compose" | "improve" | "subject" | "quick" | "tasks" | "translate";
+  action:
+    "summarize" | "reply" | "compose" | "improve" | "subject" | "quick" | "tasks" | "translate";
   id?: string;
   text?: string;
   instruction?: string;
@@ -60,7 +66,9 @@ export interface AiRequest {
   engine?: string;
 }
 
-export async function runAi(r: AiRequest): Promise<{ text?: string; html?: string; list?: string[]; blocks?: string[] }> {
+export async function runAi(
+  r: AiRequest,
+): Promise<{ text?: string; html?: string; list?: string[]; blocks?: string[] }> {
   if (!getSettings().ai.enabled) throw new Error("ai_disabled");
   const tone = r.tone || getSettings().ai.tone || "neutral";
   switch (r.action) {
@@ -117,7 +125,13 @@ export async function runAi(r: AiRequest): Promise<{ text?: string; html?: strin
         `Suggest 3 short subject lines (max 8 words each) for this email, one per line, no numbering, same language as the email.\n\n${(r.text || "").slice(0, 3000)}`,
         { appPage: "mail", maxTokens: 120, temperature: 0.7 },
       );
-      return { list: out.split(/\n+/).map((s) => s.replace(/^[-*\d.\s"]+|"$/g, "").trim()).filter(Boolean).slice(0, 3) };
+      return {
+        list: out
+          .split(/\n+/)
+          .map((s) => s.replace(/^[-*\d.\s"]+|"$/g, "").trim())
+          .filter(Boolean)
+          .slice(0, 3),
+      };
     }
     case "quick": {
       if (!r.id) throw new Error("id_required");
@@ -133,7 +147,13 @@ export async function runAi(r: AiRequest): Promise<{ text?: string; html?: strin
         const arr = JSON.parse(out.slice(out.indexOf("["), out.lastIndexOf("]") + 1)) as unknown[];
         return { list: arr.map(String).slice(0, 3) };
       } catch {
-        return { list: out.split(/\n+/).map((s) => s.replace(/^[-*\d.\s"]+|"[,]?$/g, "").trim()).filter(Boolean).slice(0, 3) };
+        return {
+          list: out
+            .split(/\n+/)
+            .map((s) => s.replace(/^[-*\d.\s"]+|"[,]?$/g, "").trim())
+            .filter(Boolean)
+            .slice(0, 3),
+        };
       }
     }
     case "tasks": {
@@ -144,7 +164,12 @@ export async function runAi(r: AiRequest): Promise<{ text?: string; html?: strin
           `one per line starting with "- ". If there are none, reply with "-".\n\n${threadText(r.id)}`,
         { appPage: "mail", maxTokens: 500 },
       );
-      return { list: out.split(/\n+/).map((s) => s.replace(/^[-*•]\s*/, "").trim()).filter((s) => s && s !== "-") };
+      return {
+        list: out
+          .split(/\n+/)
+          .map((s) => s.replace(/^[-*•]\s*/, "").trim())
+          .filter((s) => s && s !== "-"),
+      };
     }
     case "translate": {
       if (!r.id && !r.text) throw new Error("id_required");

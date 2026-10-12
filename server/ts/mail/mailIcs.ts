@@ -111,7 +111,11 @@ export function parseIcs(text: string): IcsEvent | null {
   return ev;
 }
 
-const fmtUtc = (ts: number) => new Date(ts).toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+const fmtUtc = (ts: number) =>
+  new Date(ts)
+    .toISOString()
+    .replace(/[-:]/g, "")
+    .replace(/\.\d{3}/, "");
 
 /** Ответ участника: PARTSTAT = ACCEPTED | DECLINED | TENTATIVE. */
 export function buildReply(

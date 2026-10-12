@@ -11,6 +11,8 @@
  *  - отслеживание открытий/ссылок — через необязательный собственный endpoint (mailTracking.ts).
  */
 import crypto from "crypto";
+import dns from "dns";
+import net from "net";
 import { ImapFlow } from "imapflow";
 import { simpleParser, type ParsedMail, type AddressObject } from "mailparser";
 import nodemailer from "nodemailer";
@@ -24,7 +26,13 @@ import { mailDb } from "./mailDb";
 import { getSettings } from "./mailSettings";
 import { attachmentText } from "./mailAttText";
 import { parseIcs, buildReply, type IcsEvent } from "./mailIcs";
-import { actionsFor, parseListUnsubscribe, type Rule, type RuleAction, type RuleSubject } from "./mailRules";
+import {
+  actionsFor,
+  parseListUnsubscribe,
+  type Rule,
+  type RuleAction,
+  type RuleSubject,
+} from "./mailRules";
 import { notifyNew, setBadge, type NewMailInfo } from "./mailNotify";
 import {
   freshAccessToken,
@@ -226,7 +234,8 @@ interface AccountRow {
 }
 
 function accountRow(id: string): AccountRow {
-  const r = mailDb().prepare("SELECT * FROM accounts WHERE id = ?").get(id) as AccountRow | undefined;
+  const r = mailDb().prepare("SELECT * FROM accounts WHERE id = ?").get(id) as
+    AccountRow | undefined;
   if (!r) throw new Error("account_not_found");
   return r;
 }
@@ -271,11 +280,15 @@ function toView(r: AccountRow): AccountView {
 }
 
 export function listAccounts(): AccountView[] {
-  const rows = mailDb().prepare("SELECT * FROM accounts ORDER BY pinned DESC, created").all() as AccountRow[];
+  const rows = mailDb()
+    .prepare("SELECT * FROM accounts ORDER BY pinned DESC, created")
+    .all() as AccountRow[];
   return rows.map(toView);
 }
 
-async function imapAuth(r: AccountRow): Promise<{ user: string; pass?: string; accessToken?: string }> {
+async function imapAuth(
+  r: AccountRow,
+): Promise<{ user: string; pass?: string; accessToken?: string }> {
   if (r.auth_type === "oauth") {
     const accessToken = await freshAccessToken(r.oauth_enc, (enc) =>
       mailDb().prepare("UPDATE accounts SET oauth_enc = ? WHERE id = ?").run(enc, r.id),
@@ -304,7 +317,7 @@ async function verify(r: AccountRow): Promise<void> {
   try {
     await c.connect();
   } catch (e) {
-    throw new Error("imap_login_failed: " + (e as Error).message);
+    throw new Error("imap_login_failed: " + (e as Error).message, { cause: e });
   } finally {
     try {
       await c.logout();
@@ -360,11 +373,13 @@ function insertAccount(row: AccountRow): void {
 }
 
 /** Вход через аккаунт Google/Microsoft: возвращает адрес страницы авторизации и id сеанса. */
-export async function startOAuthLogin(provider: OAuthProvider): Promise<{ id: string; url: string }> {
+export async function startOAuthLogin(
+  provider: OAuthProvider,
+): Promise<{ id: string; url: string }> {
   return oauthStart(provider, async ({ email, name, tokens }) => {
-    const exists = mailDb().prepare("SELECT id FROM accounts WHERE lower(email) = ?").get(email.toLowerCase()) as
-      | { id: string }
-      | undefined;
+    const exists = mailDb()
+      .prepare("SELECT id FROM accounts WHERE lower(email) = ?")
+      .get(email.toLowerCase()) as { id: string } | undefined;
     if (exists) {
       mailDb()
         .prepare("UPDATE accounts SET oauth_enc = ?, auth_type = 'oauth', error = '' WHERE id = ?")
@@ -453,7 +468,8 @@ function addrList(a: AddressObject | AddressObject[] | undefined): Addr[] {
   if (!a) return [];
   const arr = Array.isArray(a) ? a : [a];
   const out: Addr[] = [];
-  for (const o of arr) for (const v of o.value) out.push({ name: v.name || "", address: v.address || "" });
+  for (const o of arr)
+    for (const v of o.value) out.push({ name: v.name || "", address: v.address || "" });
   return out;
 }
 
@@ -469,7 +485,13 @@ function bufToDataUri(content: Buffer, type: string): string {
   return `data:${type};base64,${content.toString("base64")}`;
 }
 
-function threadFor(account: string, msgid: string, inReplyTo: string, refs: string[], subject: string): string {
+function threadFor(
+  account: string,
+  msgid: string,
+  inReplyTo: string,
+  refs: string[],
+  subject: string,
+): string {
   const d = mailDb();
   const candidates = [inReplyTo, ...refs.slice().reverse()].map(normMsgId).filter(Boolean);
   for (const c of candidates) {
@@ -481,7 +503,10 @@ function threadFor(account: string, msgid: string, inReplyTo: string, refs: stri
   if (refs.length) return `${account}:${normMsgId(refs[0])}`;
   if (inReplyTo) return `${account}:${normMsgId(inReplyTo)}`;
   // письмо без заголовков цепочки: «Re: тема» садится к существующей теме, иначе — своя
-  const base = subject.replace(/^((re|fwd?|ответ|пересл)\s*:\s*)+/i, "").trim().toLowerCase();
+  const base = subject
+    .replace(/^((re|fwd?|ответ|пересл)\s*:\s*)+/i, "")
+    .trim()
+    .toLowerCase();
   if (base && base !== subject.toLowerCase()) {
     const r = d
       .prepare("SELECT thread FROM messages WHERE account = ? AND lower(subject) = ? LIMIT 1")
@@ -520,10 +545,21 @@ async function storeParsed(
   const textJobs: Promise<string>[] = [];
   (p.attachments || []).forEach((a, i) => {
     const inline = !!a.cid && a.contentDisposition !== "attachment";
-    if (inline && a.cid && html && a.content && a.size < 1_500_000 && a.contentType.startsWith("image/")) {
+    if (
+      inline &&
+      a.cid &&
+      html &&
+      a.content &&
+      a.size < 1_500_000 &&
+      a.contentType.startsWith("image/")
+    ) {
       html = html.split(`cid:${a.cid}`).join(bufToDataUri(a.content, a.contentType));
     }
-    if (!ics && (a.contentType === "text/calendar" || /\.ics$/i.test(a.filename || "")) && a.content) {
+    if (
+      !ics &&
+      (a.contentType === "text/calendar" || /\.ics$/i.test(a.filename || "")) &&
+      a.content
+    ) {
       const ev = parseIcs(a.content.toString("utf8"));
       if (ev) ics = JSON.stringify(ev);
     }
@@ -547,12 +583,18 @@ async function storeParsed(
   const id = `${account}|${folder}|${uid}`;
   const prev = mailDb()
     .prepare("SELECT thread, snooze_until, remind_at, track_id FROM messages WHERE id = ?")
-    .get(id) as { thread: string; snooze_until: number; remind_at: number; track_id: string } | undefined;
+    .get(id) as
+    { thread: string; snooze_until: number; remind_at: number; track_id: string } | undefined;
   const thread = prev?.thread || threadFor(account, msgid, normMsgId(p.inReplyTo), refs, subject);
   // исходные строки заголовков: mailparser сворачивает List-* в объект, теряя детали
   const hdr = (k: string): string => {
     const line = p.headerLines.find((h) => h.key === k);
-    return line ? line.line.replace(/^[^:]+:\s*/, "").replace(/\s+/g, " ").trim() : "";
+    return line
+      ? line.line
+          .replace(/^[^:]+:\s*/, "")
+          .replace(/\s+/g, " ")
+          .trim()
+      : "";
   };
   const listUnsub = hdr("list-unsubscribe");
   const oneClick = /one-click/i.test(hdr("list-unsubscribe-post"));
@@ -599,6 +641,8 @@ async function storeParsed(
       source.length,
       prev?.track_id ?? "",
     );
+  const replyTo = p.replyTo?.value?.[0]?.address?.toLowerCase() ?? "";
+  if (replyTo) mailDb().prepare("UPDATE messages SET reply_to = ? WHERE id = ?").run(replyTo, id);
   return {
     id,
     isNew: !prev,
@@ -634,7 +678,9 @@ function isGmail(r: AccountRow): boolean {
 
 function rulesFor(account: string): Rule[] {
   const rows = mailDb()
-    .prepare("SELECT * FROM rules WHERE enabled = 1 AND (account = '' OR account = ?) ORDER BY position")
+    .prepare(
+      "SELECT * FROM rules WHERE enabled = 1 AND (account = '' OR account = ?) ORDER BY position",
+    )
     .all(account) as {
     id: string;
     account: string;
@@ -732,7 +778,16 @@ async function processIncoming(r: AccountRow, fresh: Stored[]): Promise<void> {
 async function maybeAutoReply(
   r: AccountRow,
   m: Stored,
-  cfg: { enabled: boolean; subject: string; body: string; from: number; to: number; onlyKnown: boolean } | undefined,
+  cfg:
+    | {
+        enabled: boolean;
+        subject: string;
+        body: string;
+        from: number;
+        to: number;
+        onlyKnown: boolean;
+      }
+    | undefined,
 ): Promise<void> {
   if (!cfg?.enabled || !m.fromAddr || m.autoSubmitted || m.listUnsub) return;
   const now = Date.now();
@@ -740,9 +795,9 @@ async function maybeAutoReply(
   if (m.fromAddr === r.email.toLowerCase()) return;
   if (/(no-?reply|noreply|mailer-daemon|postmaster|notifications?@)/i.test(m.fromAddr)) return;
   const d = mailDb();
-  const last = d.prepare("SELECT ts FROM replied WHERE account = ? AND addr = ?").get(r.id, m.fromAddr) as
-    | { ts: number }
-    | undefined;
+  const last = d
+    .prepare("SELECT ts FROM replied WHERE account = ? AND addr = ?")
+    .get(r.id, m.fromAddr) as { ts: number } | undefined;
   if (last && now - last.ts < 7 * 86_400_000) return;
   if (cfg.onlyKnown) {
     const known = d
@@ -753,7 +808,11 @@ async function maybeAutoReply(
       .get(r.id, `%${m.fromAddr}%`);
     if (!known) return;
   }
-  d.prepare("INSERT OR REPLACE INTO replied (account, addr, ts) VALUES (?,?,?)").run(r.id, m.fromAddr, now);
+  d.prepare("INSERT OR REPLACE INTO replied (account, addr, ts) VALUES (?,?,?)").run(
+    r.id,
+    m.fromAddr,
+    now,
+  );
   queueSend({
     account: r.id,
     to: [m.fromAddr],
@@ -799,14 +858,18 @@ export async function syncAccount(id: string): Promise<{ added: number }> {
       } else keep.push(b.path);
     }
     // папки, удалённые на сервере, убираем из кэша
-    for (const f of d.prepare("SELECT path FROM folders WHERE account = ?").all(id) as { path: string }[]) {
+    for (const f of d.prepare("SELECT path FROM folders WHERE account = ?").all(id) as {
+      path: string;
+    }[]) {
       if (!seenPaths.has(f.path)) {
         d.prepare("DELETE FROM folders WHERE account = ? AND path = ?").run(id, f.path);
         d.prepare("DELETE FROM messages WHERE account = ? AND folder = ?").run(id, f.path);
       }
     }
     for (const path of keep) {
-      const f = d.prepare("SELECT special FROM folders WHERE account = ? AND path = ?").get(id, path) as {
+      const f = d
+        .prepare("SELECT special FROM folders WHERE account = ? AND path = ?")
+        .get(id, path) as {
         special: string;
       };
       const limit = f.special ? INITIAL_COUNT : OTHER_FOLDER_COUNT;
@@ -823,7 +886,9 @@ export async function syncAccount(id: string): Promise<{ added: number }> {
         if (mb.exists > 0) {
           const serverUids = (await c.search({ all: true }, { uid: true })) || [];
           const alive = new Set(serverUids);
-          const del = d.prepare("DELETE FROM messages WHERE account = ? AND folder = ? AND uid = ?");
+          const del = d.prepare(
+            "DELETE FROM messages WHERE account = ? AND folder = ? AND uid = ?",
+          );
           for (const u of haveSet) if (!alive.has(u)) del.run(id, path, u);
           const freshUids = serverUids.filter((u) => !haveSet.has(u));
           // уже загруженные «старые» письма не перекачиваем: берём только новее максимума
@@ -834,9 +899,19 @@ export async function syncAccount(id: string): Promise<{ added: number }> {
             const up = d.prepare(
               "UPDATE messages SET seen = ?, flagged = ? WHERE account = ? AND folder = ? AND uid = ?",
             );
-            for await (const m of c.fetch(`${minUid}:*`, { uid: true, flags: true }, { uid: true })) {
+            for await (const m of c.fetch(
+              `${minUid}:*`,
+              { uid: true, flags: true },
+              { uid: true },
+            )) {
               if (haveSet.has(m.uid)) {
-                up.run(m.flags?.has("\\Seen") ? 1 : 0, m.flags?.has("\\Flagged") ? 1 : 0, id, path, m.uid);
+                up.run(
+                  m.flags?.has("\\Seen") ? 1 : 0,
+                  m.flags?.has("\\Flagged") ? 1 : 0,
+                  id,
+                  path,
+                  m.uid,
+                );
               }
             }
           }
@@ -863,7 +938,10 @@ export async function syncAccount(id: string): Promise<{ added: number }> {
     }
     d.prepare("UPDATE accounts SET last_sync = ?, error = '' WHERE id = ?").run(Date.now(), id);
   } catch (e) {
-    d.prepare("UPDATE accounts SET error = ? WHERE id = ?").run((e as Error).message.slice(0, 300), id);
+    d.prepare("UPDATE accounts SET error = ? WHERE id = ?").run(
+      (e as Error).message.slice(0, 300),
+      id,
+    );
     throw e;
   } finally {
     syncing.delete(id);
@@ -1192,6 +1270,8 @@ export interface MessageFull extends MessageRow {
   unsubscribe: { https?: string; mailto?: string; oneClick: boolean } | null;
   ics: IcsEvent | null;
   trackId: string;
+  /** Адрес из заголовка Reply-To (пусто — отвечать отправителю). */
+  replyTo: string;
 }
 
 export function getMessage(id: string): MessageFull | null {
@@ -1205,6 +1285,7 @@ export function getMessage(id: string): MessageFull | null {
         list_unsub_post: number;
         ics: string;
         track_id: string;
+        reply_to: string;
       })
     | undefined;
   if (!r) return null;
@@ -1218,14 +1299,14 @@ export function getMessage(id: string): MessageFull | null {
     unsubscribe: r.list_unsub ? parseListUnsubscribe(r.list_unsub, !!r.list_unsub_post) : null,
     ics: r.ics ? parseJson<IcsEvent | null>(r.ics, null) : null,
     trackId: r.track_id,
+    replyTo: r.reply_to,
   };
 }
 
 /** Все письма цепочки по возрастанию даты. */
 export function getThread(id: string): MessageFull[] {
   const m = mailDb().prepare("SELECT thread FROM messages WHERE id = ?").get(id) as
-    | { thread: string }
-    | undefined;
+    { thread: string } | undefined;
   if (!m) return [];
   const ids = mailDb()
     .prepare("SELECT id FROM messages WHERE thread = ? ORDER BY date ASC")
@@ -1243,7 +1324,13 @@ export function listFolders(
          (SELECT COUNT(*) FROM messages m WHERE m.account = f.account AND m.folder = f.path) AS total
        FROM folders f WHERE f.account = ? ORDER BY (f.special = '') , f.special, f.name`,
     )
-    .all(account) as { path: string; name: string; special: string; unread: number; total: number }[];
+    .all(account) as {
+    path: string;
+    name: string;
+    special: string;
+    unread: number;
+    total: number;
+  }[];
 }
 
 /** Метки (Gmail): уникальные пользовательские метки с числом писем. */
@@ -1261,13 +1348,16 @@ export function listLabels(account: string): { label: string; count: number; unr
       map.set(l, e);
     }
   }
-  return [...map.entries()].map(([label, v]) => ({ label, ...v })).sort((a, b) => a.label.localeCompare(b.label));
+  return [...map.entries()]
+    .map(([label, v]) => ({ label, ...v }))
+    .sort((a, b) => a.label.localeCompare(b.label));
 }
 
 export function boxCounts(): Record<string, number> {
   const d = mailDb();
   const now = Date.now();
-  const n = (sql: string, ...a: (string | number)[]) => (d.prepare(sql).get(...a) as { n: number }).n;
+  const n = (sql: string, ...a: (string | number)[]) =>
+    (d.prepare(sql).get(...a) as { n: number }).n;
   const base =
     "SELECT COUNT(*) AS n FROM messages m JOIN folders f ON f.account = m.account AND f.path = m.folder";
   return {
@@ -1289,7 +1379,9 @@ export function refreshBadge(): void {
 }
 
 /** Контакты из переписки: частота и последний контакт. */
-export function contacts(query: string): { name: string; address: string; count: number; last: number }[] {
+export function contacts(
+  query: string,
+): { name: string; address: string; count: number; last: number }[] {
   const like = `%${query.toLowerCase()}%`;
   return mailDb()
     .prepare(
@@ -1316,9 +1408,18 @@ export function contactCard(address: string): {
     )
     .get(a) as { name: string | null; n: number; first: number | null; last: number | null };
   const recent = d
-    .prepare("SELECT id, subject, date FROM messages WHERE from_addr = ? ORDER BY date DESC LIMIT 5")
+    .prepare(
+      "SELECT id, subject, date FROM messages WHERE from_addr = ? ORDER BY date DESC LIMIT 5",
+    )
     .all(a) as { id: string; subject: string; date: number }[];
-  return { address: a, name: s.name || "", received: s.n, first: s.first ?? 0, last: s.last ?? 0, recent };
+  return {
+    address: a,
+    name: s.name || "",
+    received: s.n,
+    first: s.first ?? 0,
+    last: s.last ?? 0,
+    recent,
+  };
 }
 
 /* ------------------------------ действия ---------------------------------- */
@@ -1331,8 +1432,7 @@ interface MsgLoc {
 
 function loc(id: string): MsgLoc {
   const r = mailDb().prepare("SELECT account, folder, uid FROM messages WHERE id = ?").get(id) as
-    | MsgLoc
-    | undefined;
+    MsgLoc | undefined;
   if (!r) throw new Error("message_not_found");
   return r;
 }
@@ -1348,8 +1448,7 @@ export function expandIds(ids: string[]): string[] {
     }
     const id = raw.slice(2);
     const m = d.prepare("SELECT thread, account, folder FROM messages WHERE id = ?").get(id) as
-      | { thread: string; account: string; folder: string }
-      | undefined;
+      { thread: string; account: string; folder: string } | undefined;
     if (!m) continue;
     const rows = d
       .prepare("SELECT id FROM messages WHERE thread = ? AND account = ? AND folder = ?")
@@ -1359,7 +1458,11 @@ export function expandIds(ids: string[]): string[] {
   return [...out];
 }
 
-async function withMailbox<T>(account: string, folder: string, fn: (c: ImapFlow) => Promise<T>): Promise<T> {
+async function withMailbox<T>(
+  account: string,
+  folder: string,
+  fn: (c: ImapFlow) => Promise<T>,
+): Promise<T> {
   const c = await clientFor(accountRow(account));
   await c.connect();
   try {
@@ -1399,7 +1502,8 @@ export async function setFlags(
     } catch {
       continue;
     }
-    if (patch.seen !== undefined) d.prepare("UPDATE messages SET seen = ? WHERE id = ?").run(patch.seen ? 1 : 0, id);
+    if (patch.seen !== undefined)
+      d.prepare("UPDATE messages SET seen = ? WHERE id = ?").run(patch.seen ? 1 : 0, id);
     if (patch.flagged !== undefined)
       d.prepare("UPDATE messages SET flagged = ? WHERE id = ?").run(patch.flagged ? 1 : 0, id);
     const k = `${l.account}|${l.folder}`;
@@ -1500,7 +1604,9 @@ export function snooze(rawIds: string[], until: number): void {
 }
 
 export function setReminder(id: string, at: number): void {
-  mailDb().prepare("UPDATE messages SET remind_at = ? WHERE id = ?").run(at > 0 ? at : 0, id);
+  mailDb()
+    .prepare("UPDATE messages SET remind_at = ? WHERE id = ?")
+    .run(at > 0 ? at : 0, id);
 }
 
 export async function fetchSource(id: string): Promise<Buffer | null> {
@@ -1539,6 +1645,44 @@ export async function importEml(account: string, folder: string, raw: Buffer): P
   void syncAccount(account).catch(() => undefined);
 }
 
+/** Адрес из письма нельзя использовать для запросов во внутреннюю сеть (SSRF). */
+function isPrivateIp(ip: string): boolean {
+  if (net.isIPv6(ip)) {
+    const l = ip.toLowerCase();
+    return (
+      l === "::1" ||
+      l === "::" ||
+      l.startsWith("fc") ||
+      l.startsWith("fd") ||
+      l.startsWith("fe80") ||
+      l.startsWith("::ffff:")
+    );
+  }
+  const p = ip.split(".").map(Number);
+  if (p.length !== 4) return true;
+  return (
+    p[0] === 10 ||
+    p[0] === 127 ||
+    p[0] === 0 ||
+    (p[0] === 169 && p[1] === 254) ||
+    (p[0] === 172 && p[1] >= 16 && p[1] <= 31) ||
+    (p[0] === 192 && p[1] === 168) ||
+    (p[0] === 100 && p[1] >= 64 && p[1] <= 127)
+  );
+}
+
+export async function assertPublicUrl(raw: string): Promise<URL> {
+  const u = new URL(raw);
+  if (!/^https?:$/.test(u.protocol)) throw new Error("bad_url");
+  const host = u.hostname.replace(/^\[|\]$/g, "");
+  const addrs = net.isIP(host)
+    ? [{ address: host }]
+    : await dns.promises.lookup(host, { all: true }).catch(() => []);
+  if (!addrs.length || addrs.some((a) => isPrivateIp(a.address)))
+    throw new Error("private_address_blocked");
+  return u;
+}
+
 /** Отписка: one-click POST (RFC 8058), иначе письмо на mailto; ссылку без one-click открывает клиент. */
 export async function unsubscribe(
   id: string,
@@ -1547,8 +1691,10 @@ export async function unsubscribe(
   if (!m?.unsubscribe) return { done: false, method: "none" };
   const u = m.unsubscribe;
   if (u.https && u.oneClick) {
-    const res = await fetch(u.https, {
+    const target = await assertPublicUrl(u.https);
+    const res = await fetch(target, {
       method: "POST",
+      redirect: "manual",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: "List-Unsubscribe=One-Click",
     });
@@ -1567,6 +1713,130 @@ export async function unsubscribe(
   }
   if (u.https) return { done: false, method: "link", url: u.https };
   return { done: false, method: "none" };
+}
+
+/* --------------------- метки, папки, массовые операции -------------------- */
+
+/** Gmail: поставить/снять метку (X-GM-LABELS). */
+export async function setLabel(rawIds: string[], label: string, add: boolean): Promise<void> {
+  const groups = new Map<string, MsgLoc[]>();
+  for (const id of expandIds(rawIds)) {
+    let l: MsgLoc;
+    try {
+      l = loc(id);
+    } catch {
+      continue;
+    }
+    const k = `${l.account}|${l.folder}`;
+    groups.set(k, [...(groups.get(k) ?? []), l]);
+  }
+  const d = mailDb();
+  for (const [k, locs] of groups) {
+    const sep = k.indexOf("|");
+    const account = k.slice(0, sep);
+    const folder = k.slice(sep + 1);
+    if (!isGmail(accountRow(account))) throw new Error("labels_gmail_only");
+    await withMailbox(account, folder, async (c) => {
+      const range = locs.map((x) => x.uid).join(",");
+      if (add) await c.messageFlagsAdd(range, [label], { uid: true, useLabels: true });
+      else await c.messageFlagsRemove(range, [label], { uid: true, useLabels: true });
+    });
+    // локальная копия меток обновляется сразу
+    for (const l of locs) {
+      const r = d
+        .prepare("SELECT labels FROM messages WHERE account = ? AND folder = ? AND uid = ?")
+        .get(account, folder, l.uid) as { labels: string } | undefined;
+      if (!r) continue;
+      const set = new Set(r.labels.split("\u0001").filter(Boolean));
+      if (add) set.add(label);
+      else set.delete(label);
+      d.prepare("UPDATE messages SET labels = ? WHERE account = ? AND folder = ? AND uid = ?").run(
+        [...set].join("\u0001"),
+        account,
+        folder,
+        l.uid,
+      );
+    }
+  }
+}
+
+async function withClient<T>(account: string, fn: (c: ImapFlow) => Promise<T>): Promise<T> {
+  const c = await clientFor(accountRow(account));
+  await c.connect();
+  try {
+    return await fn(c);
+  } finally {
+    await c.logout().catch(() => undefined);
+  }
+}
+
+export async function createFolder(account: string, path: string): Promise<void> {
+  const name = path.trim();
+  if (!name) throw new Error("name_required");
+  await withClient(account, (c) => c.mailboxCreate(name));
+  mailDb()
+    .prepare("INSERT OR IGNORE INTO folders (account, path, name, special) VALUES (?,?,?, '')")
+    .run(account, name, name.split(/[/.]/).pop() || name);
+}
+
+export async function renameFolder(account: string, path: string, next: string): Promise<void> {
+  const name = next.trim();
+  if (!name) throw new Error("name_required");
+  await withClient(account, (c) => c.mailboxRename(path, name));
+  const d = mailDb();
+  d.transaction(() => {
+    d.prepare("UPDATE folders SET path = ?, name = ? WHERE account = ? AND path = ?").run(
+      name,
+      name.split(/[/.]/).pop() || name,
+      account,
+      path,
+    );
+    d.prepare(
+      "UPDATE messages SET folder = ?, id = account || '|' || ? || '|' || uid WHERE account = ? AND folder = ?",
+    ).run(name, name, account, path);
+  })();
+}
+
+export async function deleteFolder(account: string, path: string): Promise<void> {
+  const f = mailDb()
+    .prepare("SELECT special FROM folders WHERE account = ? AND path = ?")
+    .get(account, path) as { special: string } | undefined;
+  if (f?.special) throw new Error("system_folder");
+  await withClient(account, (c) => c.mailboxDelete(path));
+  mailDb().prepare("DELETE FROM messages WHERE account = ? AND folder = ?").run(account, path);
+  mailDb().prepare("DELETE FROM folders WHERE account = ? AND path = ?").run(account, path);
+}
+
+/** Отметить прочитанными всё в папке (или во входящих всех ящиков). */
+export async function markAllRead(account: string, folder: string): Promise<number> {
+  const d = mailDb();
+  const rows = d
+    .prepare("SELECT id FROM messages WHERE account = ? AND folder = ? AND seen = 0")
+    .all(account, folder) as { id: string }[];
+  if (!rows.length) return 0;
+  await setFlags(
+    rows.map((r) => r.id),
+    { seen: true },
+  );
+  return rows.length;
+}
+
+/** Очистить «Корзину» или «Спам»: письма удаляются на сервере навсегда. */
+export async function emptyFolder(account: string, special: string): Promise<number> {
+  if (special !== "\\Trash" && special !== "\\Junk") throw new Error("not_allowed");
+  const path = folderBySpecial(account, special);
+  if (!path) return 0;
+  const rows = mailDb()
+    .prepare("SELECT id FROM messages WHERE account = ? AND folder = ?")
+    .all(account, path) as { id: string }[];
+  if (!rows.length) return 0;
+  await withMailbox(account, path, async (c) => {
+    const uids = (await c.search({ all: true }, { uid: true })) || [];
+    if (uids.length) await c.messageDelete(uids.join(","), { uid: true });
+  });
+  mailDb().prepare("DELETE FROM messages WHERE account = ? AND folder = ?").run(account, path);
+  refreshBadge();
+  return rows.length;
 }
 
 /* ------------------------------- шаблоны ---------------------------------- */
@@ -1616,7 +1886,9 @@ export function saveSignature(s: Partial<Signature> & { name: string }): Signatu
 
 export function removeSignature(id: string): void {
   mailDb().prepare("DELETE FROM signatures WHERE id = ?").run(id);
-  mailDb().prepare("UPDATE accounts SET default_signature = '' WHERE default_signature = ?").run(id);
+  mailDb()
+    .prepare("UPDATE accounts SET default_signature = '' WHERE default_signature = ?")
+    .run(id);
 }
 
 /* -------------------------------- правила --------------------------------- */
@@ -1647,7 +1919,9 @@ export function listRules(): Rule[] {
 export function saveRule(r: Partial<Rule> & { name: string }): Rule {
   const id = r.id || crypto.randomUUID();
   const pos =
-    r.position ?? (mailDb().prepare("SELECT COALESCE(MAX(position),0)+1 AS p FROM rules").get() as { p: number }).p;
+    r.position ??
+    (mailDb().prepare("SELECT COALESCE(MAX(position),0)+1 AS p FROM rules").get() as { p: number })
+      .p;
   mailDb()
     .prepare(
       "INSERT OR REPLACE INTO rules (id,account,name,enabled,match_all,conditions,actions,position) VALUES (?,?,?,?,?,?,?,?)",
@@ -1698,8 +1972,12 @@ export async function runRulesNow(account?: string): Promise<{ matched: number }
     const subj: RuleSubject = {
       from: m.from_addr,
       fromName: m.from_name,
-      to: parseJson<Addr[]>(m.to_json, []).map((a) => `${a.name} ${a.address}`).join(" "),
-      cc: parseJson<Addr[]>(m.cc_json, []).map((a) => `${a.name} ${a.address}`).join(" "),
+      to: parseJson<Addr[]>(m.to_json, [])
+        .map((a) => `${a.name} ${a.address}`)
+        .join(" "),
+      cc: parseJson<Addr[]>(m.cc_json, [])
+        .map((a) => `${a.name} ${a.address}`)
+        .join(" "),
       subject: m.subject,
       body: m.text.slice(0, 5000),
       hasAttachment: parseJson<AttachmentMeta[]>(m.att_json, []).some((a) => !a.inline),
@@ -1744,12 +2022,18 @@ export interface DraftView extends DraftInput {
 }
 
 export function listDrafts(): DraftView[] {
-  const rows = mailDb().prepare("SELECT id, payload, updated FROM drafts ORDER BY updated DESC").all() as {
+  const rows = mailDb()
+    .prepare("SELECT id, payload, updated FROM drafts ORDER BY updated DESC")
+    .all() as {
     id: string;
     payload: string;
     updated: number;
   }[];
-  return rows.map((r) => ({ ...parseJson<DraftInput>(r.payload, {} as DraftInput), id: r.id, updated: r.updated }));
+  return rows.map((r) => ({
+    ...parseJson<DraftInput>(r.payload, {} as DraftInput),
+    id: r.id,
+    updated: r.updated,
+  }));
 }
 
 export function getDraft(id: string): DraftView | null {
@@ -1801,7 +2085,12 @@ async function buildRaw(p: SendPayload, acc: AccountRow, draft = false): Promise
     bcc: draft ? undefined : p.bcc,
     subject: p.subject,
     html: p.html,
-    text: p.text ?? p.html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim(),
+    text:
+      p.text ??
+      p.html
+        .replace(/<[^>]+>/g, " ")
+        .replace(/\s+/g, " ")
+        .trim(),
     inReplyTo: p.inReplyTo ? `<${p.inReplyTo.replace(/^<|>$/g, "")}>` : undefined,
     references: p.references
       ? p.references
@@ -1823,9 +2112,10 @@ async function buildRaw(p: SendPayload, acc: AccountRow, draft = false): Promise
 }
 
 async function pushDraftToServer(id: string): Promise<void> {
-  const d = mailDb().prepare("SELECT account, payload, server_folder, server_uid FROM drafts WHERE id = ?").get(id) as
-    | { account: string; payload: string; server_folder: string; server_uid: number }
-    | undefined;
+  const d = mailDb()
+    .prepare("SELECT account, payload, server_folder, server_uid FROM drafts WHERE id = ?")
+    .get(id) as
+    { account: string; payload: string; server_folder: string; server_uid: number } | undefined;
   if (!d || !d.account) return;
   const acc = accountRow(d.account);
   const folder = folderBySpecial(acc.id, "\\Drafts");
@@ -1835,8 +2125,14 @@ async function pushDraftToServer(id: string): Promise<void> {
     {
       account: acc.id,
       from: p.from,
-      to: (p.to || "").split(/[,;]+/).map((x) => x.trim()).filter(Boolean),
-      cc: (p.cc || "").split(/[,;]+/).map((x) => x.trim()).filter(Boolean),
+      to: (p.to || "")
+        .split(/[,;]+/)
+        .map((x) => x.trim())
+        .filter(Boolean),
+      cc: (p.cc || "")
+        .split(/[,;]+/)
+        .map((x) => x.trim())
+        .filter(Boolean),
       subject: p.subject || "",
       html: p.html || "",
       inReplyTo: p.inReplyTo,
@@ -1860,17 +2156,22 @@ async function pushDraftToServer(id: string): Promise<void> {
       }
     }
     const res = await c.append(folder, raw, ["\\Draft", "\\Seen"]);
-    const uid = res && typeof res === "object" && "uid" in res ? Number((res as { uid?: number }).uid) || 0 : 0;
-    mailDb().prepare("UPDATE drafts SET server_folder = ?, server_uid = ? WHERE id = ?").run(folder, uid, id);
+    const uid =
+      res && typeof res === "object" && "uid" in res
+        ? Number((res as { uid?: number }).uid) || 0
+        : 0;
+    mailDb()
+      .prepare("UPDATE drafts SET server_folder = ?, server_uid = ? WHERE id = ?")
+      .run(folder, uid, id);
   } finally {
     await c.logout().catch(() => undefined);
   }
 }
 
 export async function deleteDraft(id: string): Promise<void> {
-  const d = mailDb().prepare("SELECT account, server_folder, server_uid FROM drafts WHERE id = ?").get(id) as
-    | { account: string; server_folder: string; server_uid: number }
-    | undefined;
+  const d = mailDb()
+    .prepare("SELECT account, server_folder, server_uid FROM drafts WHERE id = ?")
+    .get(id) as { account: string; server_folder: string; server_uid: number } | undefined;
   mailDb().prepare("DELETE FROM drafts WHERE id = ?").run(id);
   if (d?.server_uid && d.server_folder && d.account) {
     try {
@@ -1899,18 +2200,21 @@ export function queueSend(p: SendPayload): { id: string; sendAt: number } {
   accountRow(p.account);
   if (!p.to?.length) throw new Error("recipient_required");
   const id = crypto.randomUUID();
-  const sendAt = p.sendAt && p.sendAt > Date.now() ? p.sendAt : Date.now() + Math.max(0, p.delayMs ?? 0);
+  const sendAt =
+    p.sendAt && p.sendAt > Date.now() ? p.sendAt : Date.now() + Math.max(0, p.delayMs ?? 0);
   mailDb()
-    .prepare("INSERT INTO outbox (id,account,payload,send_at,status,error,created) VALUES (?,?,?,?, 'pending','',?)")
+    .prepare(
+      "INSERT INTO outbox (id,account,payload,send_at,status,error,created) VALUES (?,?,?,?, 'pending','',?)",
+    )
     .run(id, p.account, JSON.stringify(p), sendAt, Date.now());
   if (sendAt <= Date.now() + 50) void processOutbox().catch(() => undefined);
   return { id, sendAt };
 }
 
 export function cancelSend(id: string): SendPayload | null {
-  const r = mailDb().prepare("SELECT payload FROM outbox WHERE id = ? AND status = 'pending'").get(id) as
-    | { payload: string }
-    | undefined;
+  const r = mailDb()
+    .prepare("SELECT payload FROM outbox WHERE id = ? AND status = 'pending'")
+    .get(id) as { payload: string } | undefined;
   if (!r) return null;
   mailDb().prepare("DELETE FROM outbox WHERE id = ?").run(id);
   return parseJson<SendPayload>(r.payload, null as unknown as SendPayload);
@@ -1919,7 +2223,14 @@ export function cancelSend(id: string): SendPayload | null {
 export function listOutbox(): OutboxItem[] {
   const rows = mailDb()
     .prepare("SELECT id, account, payload, send_at, status, error FROM outbox ORDER BY send_at")
-    .all() as { id: string; account: string; payload: string; send_at: number; status: string; error: string }[];
+    .all() as {
+    id: string;
+    account: string;
+    payload: string;
+    send_at: number;
+    status: string;
+    error: string;
+  }[];
   return rows.map((r) => {
     const p = parseJson<Partial<SendPayload>>(r.payload, {});
     return {
@@ -1961,7 +2272,9 @@ async function sendOne(p: SendPayload): Promise<void> {
   transport.close();
   if (decorated.trackId) {
     mailDb()
-      .prepare("INSERT OR REPLACE INTO tracked (track_id, account, subject, to_json, sent) VALUES (?,?,?,?,?)")
+      .prepare(
+        "INSERT OR REPLACE INTO tracked (track_id, account, subject, to_json, sent) VALUES (?,?,?,?,?)",
+      )
       .run(decorated.trackId, acc.id, p.subject, JSON.stringify(p.to), Date.now());
   }
   try {
@@ -2015,12 +2328,17 @@ export async function processOutbox(): Promise<void> {
 }
 
 export function retryOutbox(id: string): void {
-  mailDb().prepare("UPDATE outbox SET status = 'pending', error = '', send_at = ? WHERE id = ?").run(Date.now(), id);
+  mailDb()
+    .prepare("UPDATE outbox SET status = 'pending', error = '', send_at = ? WHERE id = ?")
+    .run(Date.now(), id);
   void processOutbox().catch(() => undefined);
 }
 
 /** Ответ на приглашение календаря (iMIP). */
-export function replyInvite(id: string, partstat: "ACCEPTED" | "DECLINED" | "TENTATIVE"): { id: string } {
+export function replyInvite(
+  id: string,
+  partstat: "ACCEPTED" | "DECLINED" | "TENTATIVE",
+): { id: string } {
   const m = getMessage(id);
   if (!m?.ics) throw new Error("no_invite");
   const acc = accountRow(m.account);
@@ -2075,7 +2393,9 @@ export function dueReminders(): MessageRow[] {
 
 function wakeSnoozed(): void {
   const r = mailDb()
-    .prepare("UPDATE messages SET snooze_until = 0, seen = 0 WHERE snooze_until > 0 AND snooze_until <= ?")
+    .prepare(
+      "UPDATE messages SET snooze_until = 0, seen = 0 WHERE snooze_until > 0 AND snooze_until <= ?",
+    )
     .run(Date.now());
   if (r.changes) refreshBadge();
 }

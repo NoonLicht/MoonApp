@@ -38,7 +38,9 @@ function officeText(buf: Buffer): string {
 async function pdfText(buf: Buffer): Promise<string> {
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const mod = require("pdf-parse") as { PDFParse?: new (o: { data: Buffer }) => { getText(): Promise<{ text: string }> } };
+    const mod = require("pdf-parse") as {
+      PDFParse?: new (o: { data: Buffer }) => { getText(): Promise<{ text: string }> };
+    };
     if (mod.PDFParse) {
       const p = new mod.PDFParse({ data: buf });
       return (await p.getText()).text || "";

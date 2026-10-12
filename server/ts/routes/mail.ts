@@ -108,6 +108,54 @@ router.post("/load-older", async (req, res) => {
   }
 });
 
+router.post("/label", async (req, res) => {
+  try {
+    const b = req.body ?? {};
+    await mail.setLabel(ids(b.ids), str(b.label), b.add !== false);
+    res.json({ ok: true });
+  } catch (e) {
+    fail(res, e);
+  }
+});
+
+router.post("/folders", async (req, res) => {
+  try {
+    const b = req.body ?? {};
+    if (b.rename) await mail.renameFolder(str(b.account), str(b.path), str(b.rename));
+    else await mail.createFolder(str(b.account), str(b.path));
+    res.json({ ok: true });
+  } catch (e) {
+    fail(res, e, 502);
+  }
+});
+
+router.delete("/folders", async (req, res) => {
+  try {
+    await mail.deleteFolder(str(req.query.account), str(req.query.path));
+    res.json({ ok: true });
+  } catch (e) {
+    fail(res, e, 502);
+  }
+});
+
+router.post("/mark-all-read", async (req, res) => {
+  try {
+    const b = req.body ?? {};
+    res.json({ count: await mail.markAllRead(str(b.account), str(b.folder)) });
+  } catch (e) {
+    fail(res, e, 502);
+  }
+});
+
+router.post("/empty", async (req, res) => {
+  try {
+    const b = req.body ?? {};
+    res.json({ count: await mail.emptyFolder(str(b.account), str(b.special)) });
+  } catch (e) {
+    fail(res, e, 502);
+  }
+});
+
 router.get("/folders", (req, res) => res.json(mail.listFolders(str(req.query.account))));
 router.get("/labels", (req, res) => res.json(mail.listLabels(str(req.query.account))));
 router.get("/counts", (_req, res) => res.json(mail.boxCounts()));
@@ -340,7 +388,9 @@ router.delete("/rules/:id", (req, res) => {
 });
 router.post("/rules/run", async (req, res) => {
   try {
-    res.json(await mail.runRulesNow(req.body && req.body.account ? String(req.body.account) : undefined));
+    res.json(
+      await mail.runRulesNow(req.body && req.body.account ? String(req.body.account) : undefined),
+    );
   } catch (e) {
     fail(res, e, 502);
   }

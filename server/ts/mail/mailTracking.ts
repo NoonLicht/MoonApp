@@ -33,11 +33,15 @@ export function decorateOutgoing(p: SendPayload): { payload: SendPayload; trackI
   const id = crypto.randomBytes(9).toString("base64url");
   let html = p.html;
   if (t.clicks) {
-    html = html.replace(/<a\b([^>]*?)href=("|')(https?:\/\/[^"']+)\2/gi, (_m, pre: string, q: string, url: string) => {
-      return `<a${pre}href=${q}${base}/c/${id}?u=${encodeURIComponent(url)}${q}`;
-    });
+    html = html.replace(
+      /<a\b([^>]*?)href=("|')(https?:\/\/[^"']+)\2/gi,
+      (_m, pre: string, q: string, url: string) => {
+        return `<a${pre}href=${q}${base}/c/${id}?u=${encodeURIComponent(url)}${q}`;
+      },
+    );
   }
-  if (t.opens) html += `<img src="${base}/o/${id}.gif" width="1" height="1" alt="" style="display:none">`;
+  if (t.opens)
+    html += `<img src="${base}/o/${id}.gif" width="1" height="1" alt="" style="display:none">`;
   return { payload: { ...p, html }, trackId: id };
 }
 
@@ -50,12 +54,19 @@ export async function pollTracking(): Promise<number> {
   try {
     const t = getSettings().tracking;
     const d = mailDb();
-    const last = (d.prepare("SELECT MAX(ts) AS m FROM track_events").get() as { m: number | null }).m ?? 0;
+    const last =
+      (d.prepare("SELECT MAX(ts) AS m FROM track_events").get() as { m: number | null }).m ?? 0;
     const res = await fetch(`${t.base.replace(/\/+$/, "")}/events?since=${last}`, {
       headers: { "X-Key": t.key },
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const list = (await res.json()) as { id: string; t: string; k: string; u?: string; ts: number }[];
+    const list = (await res.json()) as {
+      id: string;
+      t: string;
+      k: string;
+      u?: string;
+      ts: number;
+    }[];
     const ins = d.prepare(
       "INSERT OR IGNORE INTO track_events (id, track_id, kind, url, ts) VALUES (?,?,?,?,?)",
     );
@@ -90,7 +101,9 @@ export function trackingSummary(): {
   }[];
   return rows.map((r) => {
     const ev = d
-      .prepare("SELECT id, track_id, kind, url, ts FROM track_events WHERE track_id = ? ORDER BY ts DESC LIMIT 50")
+      .prepare(
+        "SELECT id, track_id, kind, url, ts FROM track_events WHERE track_id = ? ORDER BY ts DESC LIMIT 50",
+      )
       .all(r.track_id) as { id: string; track_id: string; kind: string; url: string; ts: number }[];
     const events = ev.map((e) => ({
       id: e.id,

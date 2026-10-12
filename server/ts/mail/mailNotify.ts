@@ -9,7 +9,10 @@ import { getSettings } from "./mailSettings";
 interface ElectronLike {
   Notification?: {
     isSupported(): boolean;
-    new (o: { title: string; body: string; silent?: boolean }): { show(): void; on(e: string, cb: () => void): void };
+    new (o: { title: string; body: string; silent?: boolean }): {
+      show(): void;
+      on(e: string, cb: () => void): void;
+    };
   };
   BrowserWindow?: {
     getAllWindows(): {

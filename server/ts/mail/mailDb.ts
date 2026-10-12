@@ -106,6 +106,7 @@ function migrate(d: Database.Database): void {
   addCol(d, "messages", "att_text", "TEXT NOT NULL DEFAULT ''");
   addCol(d, "messages", "size", "INTEGER NOT NULL DEFAULT 0");
   addCol(d, "messages", "track_id", "TEXT NOT NULL DEFAULT ''");
+  addCol(d, "messages", "reply_to", "TEXT NOT NULL DEFAULT ''");
   d.exec(`
     CREATE INDEX IF NOT EXISTS ix_msg_unseen ON messages(account, seen);
     CREATE TABLE IF NOT EXISTS drafts (

@@ -6,6 +6,7 @@
  * включается отдельным переключателем и всё равно идёт через очередь «Исходящие» с отменой.
  * Для клиентов со stdio-транспортом: npx mcp-remote http://127.0.0.1:<port>/mcp --header "Authorization: Bearer <ключ>".
  */
+import crypto from "crypto";
 import http from "http";
 import { getSettings } from "./mailSettings";
 import {
@@ -84,11 +85,16 @@ const TOOLS = [
   {
     name: "mail_contact",
     description: "How many messages came from an address and recent subjects.",
-    inputSchema: { type: "object", properties: { address: { type: "string" } }, required: ["address"] },
+    inputSchema: {
+      type: "object",
+      properties: { address: { type: "string" } },
+      required: ["address"],
+    },
   },
   {
     name: "mail_send",
-    description: "Queue an email for sending (cancellable for a short time). Disabled unless enabled in the app.",
+    description:
+      "Queue an email for sending (cancellable for a short time). Disabled unless enabled in the app.",
     inputSchema: {
       type: "object",
       properties: {
@@ -103,8 +109,13 @@ const TOOLS = [
 ];
 
 function plain(m: MessageFull, max: number): string {
-  const t = m.text || m.html.replace(/<(script|style)[\s\S]*?<\/\1>/gi, " ").replace(/<[^>]+>/g, " ");
-  return t.replace(/[ \t]+/g, " ").replace(/\n{3,}/g, "\n\n").trim().slice(0, max);
+  const t =
+    m.text || m.html.replace(/<(script|style)[\s\S]*?<\/\1>/gi, " ").replace(/<[^>]+>/g, " ");
+  return t
+    .replace(/[ \t]+/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim()
+    .slice(0, max);
 }
 
 function brief(m: ReturnType<typeof listMessages>[number]) {
@@ -129,7 +140,13 @@ function callTool(name: string, a: Record<string, unknown>): unknown {
   const num = (k: string, d: number) => (typeof a[k] === "number" ? (a[k] as number) : d);
   switch (name) {
     case "mail_list_accounts":
-      return listAccounts().map((x) => ({ id: x.id, email: x.email, name: x.name, unread: x.unread, lastSync: x.lastSync }));
+      return listAccounts().map((x) => ({
+        id: x.id,
+        email: x.email,
+        name: x.name,
+        unread: x.unread,
+        lastSync: x.lastSync,
+      }));
     case "mail_list_folders":
       return listFolders(str("account"));
     case "mail_search":
@@ -147,9 +164,17 @@ function callTool(name: string, a: Record<string, unknown>): unknown {
         ...brief(m),
         cc: m.cc.map((x) => x.address),
         body: plain(m, Math.min(num("max_chars", 8000), 50_000)),
-        attachmentFiles: m.attachments.filter((x) => !x.inline).map((x) => ({ name: x.filename, size: x.size, type: x.contentType })),
+        attachmentFiles: m.attachments
+          .filter((x) => !x.inline)
+          .map((x) => ({ name: x.filename, size: x.size, type: x.contentType })),
         unsubscribe: !!m.unsubscribe,
-        invite: m.ics ? { summary: m.ics.summary, start: new Date(m.ics.start).toISOString(), location: m.ics.location } : null,
+        invite: m.ics
+          ? {
+              summary: m.ics.summary,
+              start: new Date(m.ics.start).toISOString(),
+              location: m.ics.location,
+            }
+          : null,
       };
     }
     case "mail_get_thread": {
@@ -159,12 +184,17 @@ function callTool(name: string, a: Record<string, unknown>): unknown {
     case "mail_unread_summary":
       return {
         counts: boxCounts(),
-        newest: listMessages({ box: "inbox", unread: true, limit: Math.min(num("limit", 10), 50) }).map(brief),
+        newest: listMessages({
+          box: "inbox",
+          unread: true,
+          limit: Math.min(num("limit", 10), 50),
+        }).map(brief),
       };
     case "mail_contact":
       return contactCard(str("address"));
     case "mail_send": {
-      if (!getSettings().mcp.allowSend) throw new Error("sending is disabled in MoonApp mail settings");
+      if (!getSettings().mcp.allowSend)
+        throw new Error("sending is disabled in MoonApp mail settings");
       const to = Array.isArray(a.to) ? (a.to as unknown[]).map(String) : [];
       const body = str("body");
       return queueSend({
@@ -183,7 +213,11 @@ function callTool(name: string, a: Record<string, unknown>): unknown {
 
 function handle(rpc: Rpc): unknown {
   const ok = (result: unknown) => ({ jsonrpc: "2.0", id: rpc.id ?? null, result });
-  const err = (code: number, message: string) => ({ jsonrpc: "2.0", id: rpc.id ?? null, error: { code, message } });
+  const err = (code: number, message: string) => ({
+    jsonrpc: "2.0",
+    id: rpc.id ?? null,
+    error: { code, message },
+  });
   switch (rpc.method) {
     case "initialize":
       return ok({
@@ -194,7 +228,9 @@ function handle(rpc: Rpc): unknown {
     case "ping":
       return ok({});
     case "tools/list":
-      return ok({ tools: getSettings().mcp.allowSend ? TOOLS : TOOLS.filter((t) => t.name !== "mail_send") });
+      return ok({
+        tools: getSettings().mcp.allowSend ? TOOLS : TOOLS.filter((t) => t.name !== "mail_send"),
+      });
     case "tools/call": {
       const p = rpc.params ?? {};
       try {
@@ -240,7 +276,11 @@ export function syncMcp(): void {
     };
     const key = getSettings().mcp.key;
     if (req.url?.split("?")[0] !== "/mcp") return send(404, { error: "not_found" });
-    if (!key || req.headers.authorization !== `Bearer ${key}`) return send(401, { error: "unauthorized" });
+    const got = Buffer.from(String(req.headers.authorization || ""));
+    const want = Buffer.from(`Bearer ${key}`);
+    if (!key || got.length !== want.length || !crypto.timingSafeEqual(got, want)) {
+      return send(401, { error: "unauthorized" });
+    }
     if (req.method !== "POST") return send(405, { error: "use POST" });
     let raw = "";
     req.on("data", (c: Buffer) => {
@@ -250,7 +290,8 @@ export function syncMcp(): void {
     req.on("end", () => {
       try {
         const body = JSON.parse(raw) as Rpc | Rpc[];
-        if (Array.isArray(body)) return send(200, body.filter((r) => r.id !== undefined).map(handle));
+        if (Array.isArray(body))
+          return send(200, body.filter((r) => r.id !== undefined).map(handle));
         if (body.id === undefined) {
           res.writeHead(202);
           return res.end();

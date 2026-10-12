@@ -85,7 +85,10 @@ function parseJwt(t: string): Record<string, unknown> {
   }
 }
 
-async function tokenRequest(p: OAuthProvider, body: Record<string, string>): Promise<Record<string, unknown>> {
+async function tokenRequest(
+  p: OAuthProvider,
+  body: Record<string, string>,
+): Promise<Record<string, unknown>> {
   const { id, secret } = clientCreds(p);
   const form = new URLSearchParams({ client_id: id, ...body });
   if (secret) form.set("client_secret", secret);
@@ -140,10 +143,16 @@ export async function oauthStart(
     }
     const page = (msg: string) => {
       res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
-      res.end(`<!doctype html><meta charset="utf-8"><title>MoonApp</title><body style="font-family:system-ui;padding:40px;text-align:center"><h2>${msg}</h2><p>Можно закрыть эту вкладку и вернуться в приложение.</p>`);
+      res.end(
+        `<!doctype html><meta charset="utf-8"><title>MoonApp</title><body style="font-family:system-ui;padding:40px;text-align:center"><h2>${msg}</h2><p>Можно закрыть эту вкладку и вернуться в приложение.</p>`,
+      );
     };
+    // чужой запрос без нашего state не должен ломать вход — просто отвечаем отказом
+    if (u.searchParams.get("state") !== state) {
+      res.writeHead(400).end("bad state");
+      return;
+    }
     try {
-      if (u.searchParams.get("state") !== state) throw new Error("state_mismatch");
       const err = u.searchParams.get("error");
       if (err) throw new Error(err);
       const code = u.searchParams.get("code");
@@ -209,7 +218,10 @@ export async function freshAccessToken(
   const t = unpackTokens(enc);
   if (t.expires - 60_000 > Date.now()) return t.access;
   if (!t.refresh) throw new Error("oauth_expired");
-  const j = await tokenRequest(t.provider, { grant_type: "refresh_token", refresh_token: t.refresh });
+  const j = await tokenRequest(t.provider, {
+    grant_type: "refresh_token",
+    refresh_token: t.refresh,
+  });
   const next: OAuthTokens = {
     provider: t.provider,
     access: String(j.access_token),
