@@ -13,6 +13,7 @@ import * as semantic from "../semantic";
 import * as vault from "../myspace-vault";
 import * as tools from "../answerTools";
 import * as skills from "../aiSkills";
+import * as plugins from "../plugins";
 import multer from "multer";
 import * as ocr from "../ocr";
 import * as imageExplain from "../imageExplain";
@@ -82,6 +83,10 @@ router.get("/skills", (_req, res) => {
     }
   };
   walk(vault.buildTree());
+  const dir = path.join(config.DIRS.storage, "plugins");
+  for (const s of plugins.collect(plugins.listPlugins(dir)).skills) {
+    out.push({ path: `plugin:${s.plugin}`, name: s.name, description: s.description, prompt: s.prompt });
+  }
   res.json({ items: out.sort((a, b) => a.name.localeCompare(b.name)) });
 });
 

@@ -58,6 +58,20 @@ router.post("/", upload.single("file"), async (req, res) => {
   }
 });
 
+// Распознавание реплики для голосового режима чата: текст без сохранения заметки.
+router.post("/transcribe", upload.single("file"), async (req, res) => {
+  const cleanup = () => req.file && removePath(req.file.path);
+  try {
+    if (!req.file) return res.status(400).json({ error: "missing_file" });
+    const r = await quickNotes.transcribeOnly(req.file.path);
+    cleanup();
+    res.json(r);
+  } catch (e: any) {
+    cleanup();
+    res.status(500).json({ error: e.message });
+  }
+});
+
 router.delete("/:id", (req, res) => {
   try {
     const ok = quickNotes.remove(req.params.id);

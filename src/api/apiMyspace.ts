@@ -141,6 +141,12 @@ export const myspaceApi = {
     fd.append("keepAudio", String(keepAudio));
     return multipart<QuickNote>("/quicknotes", fd);
   },
+  /** Текст реплики без сохранения заметки (голосовой режим чата). */
+  quickNotesTranscribe: (blob: Blob) => {
+    const fd = new FormData();
+    fd.append("file", blob, "speech.webm");
+    return multipart<{ text: string }>("/quicknotes/transcribe", fd);
+  },
   quickNotesDelete: (id: string) => req<{ ok: boolean }>("DELETE", `/quicknotes/${id}`),
   quickNotesAudioUrl: (id: string) => `${BASE}/api/quicknotes/${id}/audio`,
   quickNotesStructure: (id: string) => req<QuickNote>("POST", `/quicknotes/${id}/structure`),

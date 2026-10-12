@@ -1,10 +1,28 @@
 /* --- ai chat --- */
+/* Панель параметров — поповер поверх чата: раньше она шла в потоке, выдавливала
+   чат вниз и упиралась в верхний край окна. */
+.page-flush {
+  position: relative;
+}
 .settings-drawer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 30;
+  width: min(820px, 100%);
+  max-height: calc(100% - 8px);
+  overflow-y: auto;
   display: flex;
   gap: 20px;
   padding: 14px 18px;
-  margin-bottom: 4px;
   flex-wrap: wrap;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.5);
+  background: var(--surface-solid);
+}
+/* Кнопки экспорта — одной строкой внизу поповера. */
+.settings-drawer > div:last-child {
+  flex: 0 0 100% !important;
+  flex-direction: row !important;
 }
 .chat-scroll {
   flex: 1;

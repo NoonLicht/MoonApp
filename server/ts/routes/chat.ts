@@ -148,7 +148,9 @@ router.post("/:id/send", async (req, res) => {
   const emit = (payload: any) => {
     try {
       res.write(`data: ${JSON.stringify(payload)}\n\n`);
-    } catch {}
+    } catch {
+/* клиент закрыл соединение — писать некуда */
+}
   };
   emit({ type: "meta", title: autoTitle || conv.title });
 
@@ -205,7 +207,9 @@ router.post("/:id/send", async (req, res) => {
   } finally {
     try {
       res.end();
-    } catch {}
+    } catch {
+/* соединение уже закрыто клиентом */
+}
   }
 });
 
@@ -270,7 +274,9 @@ router.post("/:id/arena", async (req, res) => {
   const emit = (payload: any) => {
     try {
       res.write(`data: ${JSON.stringify(payload)}\n\n`);
-    } catch {}
+    } catch {
+/* клиент закрыл соединение — писать некуда */
+}
   };
   emit({ type: "meta", title: autoTitle || conv.title });
 
@@ -318,7 +324,9 @@ router.post("/:id/arena", async (req, res) => {
   await Promise.all([runSide("a", modelA), runSide("b", modelB)]);
   try {
     res.end();
-  } catch {}
+  } catch {
+/* соединение уже закрыто клиентом */
+}
 });
 
 // POST /:id/choose — сохранить выбранный в Arena ответ как ответ ассистента

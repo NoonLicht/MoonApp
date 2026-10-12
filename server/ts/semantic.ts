@@ -803,7 +803,7 @@ function rank(
   return [...best.values()].sort((a, b) => b.score - a.score).slice(0, o.limit ?? 10);
 }
 
-export async function search(
+async function searchRaw(
   query: string,
   o: { sources?: SemSource[]; limit?: number } = {},
 ): Promise<Hit[]> {
@@ -825,6 +825,22 @@ export async function search(
   const lexHits = lex.map((h) => lexHit(h));
   const fused = rrf<Hit>([vec, lexHits]).map((f) => f.item);
   return fused.slice(0, limit);
+}
+
+/** Убирает из отрывка мусор распознавания: символы замены, блоки, управляющие и пробелы подряд. */
+function cleanSnippet(text: string): string {
+  return text
+    .replace(/[ --�▀-▟■-◿]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+export async function search(
+  query: string,
+  o: { sources?: SemSource[]; limit?: number } = {},
+): Promise<Hit[]> {
+  const hits = await searchRaw(query, o);
+  return hits.map((h) => ({ ...h, snippet: cleanSnippet(h.snippet) }));
 }
 
 /** Оценка для хитов, найденных только по словам: выше порога семантики, ниже уверенных совпадений. */

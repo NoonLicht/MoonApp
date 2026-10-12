@@ -161,6 +161,29 @@ export async function transcribeAndSave(input: TranscribeInput): Promise<QuickNo
   }
 }
 
+/**
+ * Только распознавание: текст фразы без сохранения заметки. Нужно голосовому
+ * режиму ИИ-чата — там каждая реплика уходит в диалог, а не в список заметок.
+ */
+export async function transcribeOnly(audioPath: string): Promise<{ text: string }> {
+  const ff = await detectFfmpeg();
+  if (!ff.found || !ff.ffmpeg) throw new Error("ffmpeg_not_found");
+  const bin = whisperEngine.findBin();
+  const model = whisperEngine.findModel();
+  if (!bin || !model) throw new Error("whisper_not_installed");
+  const id = crypto.randomUUID();
+  const wavPath = path.join(DIRS.quickNotesTmp, `${id}.wav`);
+  const outBase = path.join(DIRS.quickNotesTmp, id);
+  try {
+    await toWav16kMono(ff.ffmpeg, audioPath, wavPath);
+    const result = await lecture.transcribeFile(bin, model, wavPath, outBase);
+    return { text: String(result.text || "").trim() };
+  } finally {
+    fs.rmSync(wavPath, { force: true });
+    fs.rmSync(`${outBase}.srt`, { force: true });
+  }
+}
+
 /** Длительность WAV из заголовка (без внешних либ) — байты данных / байт-в-секунду. */
 function probeWavDurationSec(wavPath: string): number | null {
   try {

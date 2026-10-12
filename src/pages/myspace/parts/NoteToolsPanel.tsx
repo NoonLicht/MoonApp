@@ -18,6 +18,7 @@ import RsvpReader from "@/pages/myspace/parts/RsvpReader";
 import NoteExtrasPanel from "@/pages/myspace/parts/NoteExtrasPanel";
 import MindPanel from "@/pages/myspace/parts/MindPanel";
 import PhotoChecklistPanel from "@/pages/myspace/parts/PhotoChecklistPanel";
+import SpeakNotePanel from "@/pages/myspace/parts/SpeakNotePanel";
 import { Btn } from "@/components/ui";
 import { useI18n } from "@/app/i18n";
 import { api } from "@/api/client";
@@ -230,6 +231,7 @@ export default function NoteToolsPanel({
       <NoteExtrasPanel path={path} content={content} onChange={onChange} />
       <MindPanel path={path} content={content} onChange={onChange} />
       <PhotoChecklistPanel />
+      <SpeakNotePanel path={path} content={content} />
       {err && <div style={{ color: "var(--danger, #e66)", fontSize: 12 }}>{err}</div>}
       {out.map((l, i) => (
         <div key={i} className="muted-sm">

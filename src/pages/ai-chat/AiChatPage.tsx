@@ -1,3 +1,8 @@
+import { matchesCombo, getCombo } from "@/lib/hotkeys";
+import { useVoiceMode } from "@/pages/ai-chat/lib/voiceMode";
+import { estimateCost, formatUsd } from "@/pages/ai-chat/lib/cost";
+import ChatContextAttach from "@/pages/ai-chat/parts/ChatContextAttach";
+import ExplainImage from "@/pages/ai-chat/parts/ExplainImage";
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import {
   Settings2,
@@ -21,6 +26,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   SlidersHorizontal,
+  AudioLines,
 } from "lucide-react";
 import { Glass, Btn, IconBtn, Field, Select } from "@/components/ui";
 import ToolbarMenu from "@/components/ToolbarMenu";
@@ -325,7 +331,23 @@ export default function AiChatPage() {
     [providers, chatCfg.provider],
   );
   const activeConv = convs.find((c) => c.id === activeId);
-  const allPresets = useMemo(() => [...customPresets, ...SYSTEM_PROMPT_PRESETS], [customPresets]);
+  const [skillPresets, setSkillPresets] = useState<SysPreset[]>([]);
+  useEffect(() => {
+    let alive = true;
+    void api
+      .chatSkills()
+      .then((r) => {
+        if (alive) setSkillPresets(r.items.map((s) => ({ name: s.name, prompt: s.prompt })));
+      })
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, []);
+  const allPresets = useMemo(
+    () => [...customPresets, ...skillPresets, ...SYSTEM_PROMPT_PRESETS],
+    [customPresets, skillPresets],
+  );
 
   /* ── чаты ── */
   const newChat = async () => {
@@ -334,6 +356,20 @@ export default function AiChatPage() {
       setConvs((c) => [conv, ...c]);
       setActiveId(conv.id);
       setMessages([]);
+      setLastStats(null);
+      inputRef.current?.focus();
+    } catch {
+      /* noop */
+    }
+  };
+
+  const branchFrom = async (messageId: number) => {
+    if (activeId == null) return;
+    try {
+      const conv = await api.chatFork(activeId, messageId);
+      setConvs((c) => [conv, ...c]);
+      setActiveId(conv.id);
+      setMessages(await api.getMessages(conv.id));
       setLastStats(null);
       inputRef.current?.focus();
     } catch {
@@ -755,6 +791,14 @@ export default function AiChatPage() {
     speechSynthesis.speak(u);
   };
 
+  // Голосовой режим: реплики уходят в чат, ответы озвучиваются, речь прерывает озвучку.
+  const voice = useVoiceMode({
+    messages,
+    sending,
+    lang,
+    onUtterance: (text) => void send(text),
+  });
+
   /* ── системные пресеты: выбор + свои ── */
   const handleSysPreset = (name: string) => {
     setSysPreset(name);
@@ -777,10 +821,10 @@ export default function AiChatPage() {
     if (sysPreset === name) handleSysPreset(SYSTEM_PROMPT_PRESETS[0].name);
   };
 
-  /* ── Ctrl+K палитра: переход к чату / смена модели ── */
+  /* ── Палитра чатов (по умолчанию Ctrl+Shift+K): переход к чату / смена модели ── */
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+      if (matchesCombo(e, getCombo("chatSwitcher"))) {
         e.preventDefault();
         setPalette((p) => (p ? null : { query: "" }));
       }
@@ -929,6 +973,15 @@ export default function AiChatPage() {
                   ))}
                 </optgroup>
               )}
+              {skillPresets.length > 0 && (
+                <optgroup label={t("aichat.skills")}>
+                  {skillPresets.map((p) => (
+                    <option key={`skill:${p.name}`} value={p.name}>
+                      {p.name}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
               <optgroup label="System">
                 {SYSTEM_PROMPT_PRESETS.map((p) => (
                   <option key={p.name} value={p.name}>
@@ -941,6 +994,10 @@ export default function AiChatPage() {
               value={systemPrompt}
               onChange={(e) => setSystemPrompt(e.target.value)}
               placeholder={t("aichat.systemPlaceholder")}
+            />
+            <ExplainImage onUse={(text) => setInput((v) => (v.trim() ? `${v}\n\n${text}` : text))} />
+            <ChatContextAttach
+              onAttach={(block) => setSystemPrompt((s) => (s.trim() ? `${s}\n\n${block}` : block))}
             />
             <div className="sys-presets-actions">
               {presetDraft.open ? (
@@ -1274,6 +1331,7 @@ export default function AiChatPage() {
                 copiedIdx={copiedIdx}
                 onCopy={copyMessage}
                 onRegenerate={regenerate}
+                onBranch={branchFrom}
                 onSaveEdit={saveEdit}
                 onSpeak={speak}
                 stopGeneration={stopGeneration}
@@ -1335,6 +1393,23 @@ export default function AiChatPage() {
                 ))}
               </div>
             )}
+            {input.trim() &&
+              (() => {
+                const est = estimateCost({
+                  model: chatCfg.model || "",
+                  history: messages.map((m) => m.text),
+                  prompt: input,
+                });
+                return (
+                  <div className="muted-sm" style={{ padding: "0 4px" }}>
+                    {t("aichat.costHint", {
+                      tokens: est.inputTokens,
+                      out: est.outputTokens,
+                      price: est.usd === null ? t("aichat.costUnknown") : formatUsd(est.usd),
+                    })}
+                  </div>
+                );
+              })()}
             <textarea
               rows={1}
               ref={inputRef}
@@ -1374,6 +1449,20 @@ export default function AiChatPage() {
               icon={Paperclip}
               onClick={() => fileInputRef.current?.click()}
               title={t("aichat.attach")}
+            />
+            <IconBtn
+              icon={AudioLines}
+              onClick={voice.toggle}
+              title={
+                voice.state === "off" || voice.state === "error"
+                  ? t("aichat.voiceMode")
+                  : t(`aichat.voice_${voice.state}`)
+              }
+              style={
+                voice.state === "off" || voice.state === "error"
+                  ? undefined
+                  : { color: voice.state === "hearing" ? "var(--coral)" : "var(--teal)" }
+              }
             />
             <IconBtn
               icon={Mic}
