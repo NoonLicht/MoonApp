@@ -99,6 +99,16 @@ import {
 import "@/styles/liquidglass.css";
 import "@/styles/motion.css";
 
+const LAST_PAGE_KEY = "moonapp.lastPage";
+// Читаем до первого рендера: иначе эффект сохранения успел бы затереть значение стартовой «store».
+const LAST_PAGE_AT_BOOT = (() => {
+  try {
+    return localStorage.getItem(LAST_PAGE_KEY) || "";
+  } catch {
+    return "";
+  }
+})();
+
 function applyUiScale(v: unknown): void {
   const n = Math.min(150, Math.max(85, Number(v) || 100));
   (document.documentElement.style as CSSStyleDeclaration & { zoom: string }).zoom = String(n / 100);
@@ -560,6 +570,14 @@ export default function App() {
   const [theme, setTheme] = useState("dark");
   const [active, setActive] = useState<PageId>("store");
   useEffect(() => onOpenTarget(setActive), []);
+  // Запоминаем текущую страницу для режима стартовой страницы «Последняя открытая».
+  useEffect(() => {
+    try {
+      localStorage.setItem(LAST_PAGE_KEY, active);
+    } catch {
+      /* хранилище недоступно — просто не запоминаем */
+    }
+  }, [active]);
   const [lang, setLang] = useState(storedLang);
   const [blur, setBlur] = useState(true);
   const [accent, setAccent] = useState("amber");
@@ -620,7 +638,9 @@ export default function App() {
         // Стартовая страница: если в настройках что-то неизвестное (старый
         // settings.json, ручная правка) — открываем первую страницу «App»
         // (установщик приложений, id "store").
-        const startPage = String(sc?.general?.startPage || "");
+        let startPage = String(sc?.general?.startPage || "");
+        // «Последняя открытая»: страница, на которой приложение было закрыто.
+        if (startPage === "last") startPage = LAST_PAGE_AT_BOOT;
         setActive(
           PAGES.some((p) => p.id === SOLO_PAGE)
             ? (SOLO_PAGE as PageId)

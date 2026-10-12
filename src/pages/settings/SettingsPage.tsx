@@ -391,7 +391,7 @@ export default function SettingsPage() {
             <Select
               value={g.startPage}
               onChange={(e) => change("general.startPage", e.target.value)}
-              options={startPageOptions(t)}
+              options={[{ value: "last", label: t("settings.startPageLast") }, ...startPageOptions(t)]}
             />
           </Row>
           <BoolRow

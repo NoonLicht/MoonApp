@@ -343,7 +343,8 @@
     "lg_glow": "Lueur d'arrière-plan",
     "lg_glowHint": "Intensité des lueurs colorées derrière le verre : sans elles, rien à réfracter",
     "animSpeed": "Vitesse des animations",
-    "animSpeedHint": "Apparition des pages, fenêtres et panneaux. 100 % est normal ; plus, c'est plus rapide. « Réduire les animations » les désactive"
+    "animSpeedHint": "Apparition des pages, fenêtres et panneaux. 100 % est normal ; plus, c'est plus rapide. « Réduire les animations » les désactive",
+    "startPageLast": "Dernière ouverte"
   },
   "chat": {
     "chatProvider": "Fournisseur par défaut",

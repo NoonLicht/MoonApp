@@ -343,7 +343,8 @@
     "lg_glow": "Background glow",
     "lg_glowHint": "Brightness of the colour glows behind the glass: without it there is nothing to refract",
     "animSpeed": "Animation speed",
-    "animSpeedHint": "How pages, windows and panels appear. 100% is normal, higher is faster, lower is slower. “Reduce motion” turns them off entirely"
+    "animSpeedHint": "How pages, windows and panels appear. 100% is normal, higher is faster, lower is slower. “Reduce motion” turns them off entirely",
+    "startPageLast": "Last opened"
   },
   "chat": {
     "chatProvider": "Default provider",

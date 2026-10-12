@@ -343,7 +343,8 @@
     "lg_glow": "Brillo de fondo",
     "lg_glowHint": "Intensidad de los destellos de color tras el cristal: sin ellos no hay nada que refractar",
     "animSpeed": "Velocidad de animaciones",
-    "animSpeedHint": "Aparición de páginas, ventanas y paneles. 100 % es normal; más es más rápido. «Reducir movimiento» las desactiva"
+    "animSpeedHint": "Aparición de páginas, ventanas y paneles. 100 % es normal; más es más rápido. «Reducir movimiento» las desactiva",
+    "startPageLast": "Última abierta"
   },
   "chat": {
     "chatProvider": "Proveedor por defecto",
