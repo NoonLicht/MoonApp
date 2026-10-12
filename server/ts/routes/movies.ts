@@ -25,6 +25,7 @@ import settings from "../settings";
 import { setSecret } from "../security";
 import { stmts } from "../db";
 import logger from "../logger";
+import { INTERNAL_KEY } from "../internalKey";
 
 const router = express.Router();
 
@@ -974,7 +975,7 @@ function torrentTarget(req: any) {
 /** URL собственного Range-стрима — именно его читают ffprobe и ffmpeg. */
 function selfStreamUrl(req: any, infoHash: any, idx: any) {
   const port = (req.socket && req.socket.localPort) || config.PORT;
-  return `http://127.0.0.1:${port}/api/movies/torrent/stream/${infoHash}/${idx}`;
+  return `http://127.0.0.1:${port}/api/movies/torrent/stream/${infoHash}/${idx}?ik=${INTERNAL_KEY}`;
 }
 
 /** Прочитать файл раздачи целиком (с ограничением) — для внешних .srt/.vtt. */

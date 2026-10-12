@@ -111,6 +111,7 @@ import * as companion from "./companion";
 import * as perPageProxy from "./middleware/perPageProxy";
 import * as lecture from "./lecture";
 import * as proxy from "./proxy";
+import { INTERNAL_KEY, INTERNAL_STREAM_PREFIX } from "./internalKey";
 // Глобальные перехватчики процесса: необработанные исключения и отклонённые
 // промисы попадают в полный журнал (logs/audit.log), а значит — в файл,
 // который собирает кнопка «Собрать логи» в Настройках.
@@ -167,6 +168,13 @@ function authMiddleware(
   // Ресурсных исключений нет: <img>/<video>/<track> окна приложения тоже идут
   // через session.webRequest.onBeforeSendHeaders (electron/ts/main.ts), поэтому
   // заголовок подставляется и им. Без токена не отдаётся ничего.
+  if (
+    req.path.startsWith(INTERNAL_STREAM_PREFIX) &&
+    typeof req.query.ik === "string" &&
+    req.query.ik === INTERNAL_KEY
+  ) {
+    return next();
+  }
   if (!tokenMatches(req.get("x-moonapp-token"))) {
     res.status(401).json({ error: "unauthorized" });
     return;
