@@ -452,7 +452,9 @@ async function startProxy(profileArg: unknown): Promise<ProxyStatus> {
   if (PS.child) {
     try {
       PS.child.kill();
-    } catch {}
+    } catch {
+/* процесс уже завершён */
+}
     PS.child = null;
   }
   // Порт 10808 один: при запуске legacy-прокси гасим встроенное ядро sing-box.
@@ -468,7 +470,9 @@ async function startProxy(profileArg: unknown): Promise<ProxyStatus> {
   try {
     const olds = fs.readdirSync(cDir).filter((f) => f.endsWith(".json"));
     for (const f of olds) fs.unlinkSync(path.join(cDir, f));
-  } catch {}
+  } catch {
+/* старых конфигов нет или они заняты — перезапишутся ниже */
+}
   const cPath = path.join(cDir, "proxy.json");
   const port = DEF_PORT;
   let cfg: Record<string, unknown> | null | undefined;
@@ -535,7 +539,9 @@ function stopProxy(): ProxyStatus {
   if (PS.child) {
     try {
       PS.child.kill();
-    } catch {}
+    } catch {
+/* процесс уже завершён */
+}
     PS.child = null;
   }
   PS = { ...PS, enabled: false, running: false, error: "", pingMs: null, country: null };
@@ -654,10 +660,14 @@ async function installSB(): Promise<InstallStatus> {
     if (!findExe(tmpDir)) throw new Error("sing-box.exe not found after extraction");
     try {
       fs.rmSync(zp, { force: true });
-    } catch {}
+    } catch {
+/* архив не удалился — подчистится при следующей установке */
+}
     try {
       fs.rmSync(tmpDir, { recursive: true, force: true });
-    } catch {}
+    } catch {
+/* временная папка не удалилась — подчистится позже */
+}
     dc = null;
     is = { state: "done", progress: 100, phase: "", error: "" };
     logger.info("singbox.install.done", { path: BUNDLED_BIN });
@@ -719,7 +729,9 @@ async function socksFetch(url: string, opts: SocksOpts = {}): Promise<SocksRespo
     req.setTimeout(timeout, () => {
       try {
         req.destroy();
-      } catch {}
+      } catch {
+/* запрос уже закрыт */
+}
       reject(new Error("Proxy timeout"));
     });
     req.on("error", reject);
