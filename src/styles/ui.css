@@ -2282,8 +2282,7 @@ select option {
 .theme-light .proxy-panel-overlay {
   background: rgba(40, 42, 64, 0.32);
 }
-.proxy-panel-overlay .tm-panel,
-.proxy-panel-overlay .ghost-panel {
+.proxy-panel-overlay .tm-panel {
   position: relative;
   top: auto;
   right: auto;
@@ -2298,15 +2297,10 @@ select option {
   pointer-events: auto;
   overflow-y: auto;
 }
-.proxy-panel-overlay .ghost-panel {
-  width: min(480px, 100%);
-}
-.proxy-panel-overlay .tm-head,
-.proxy-panel-overlay .ghost-head {
+.proxy-panel-overlay .tm-head {
   padding: 16px 20px;
 }
 .proxy-panel-overlay .tm-slider,
-.proxy-panel-overlay .tm-body,
-.proxy-panel-overlay .ghost-body {
+.proxy-panel-overlay .tm-body {
   padding: 14px 20px;
 }
