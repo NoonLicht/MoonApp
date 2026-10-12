@@ -1082,7 +1082,9 @@
       "working": "识别并分析中…",
       "noText": "图片中未找到文字",
       "use": "插入到消息"
-    }
+    },
+    "removeAttachment": "移除附件",
+    "networkError": "无法连接到提供商。请检查网络、代理或密钥后重试"
   },
   "books": {
     "title": "图书目录",

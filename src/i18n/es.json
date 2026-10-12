@@ -1082,7 +1082,9 @@
       "working": "Reconociendo y analizando…",
       "noText": "No se encontró texto en la imagen",
       "use": "Insertar en el mensaje"
-    }
+    },
+    "removeAttachment": "Quitar adjunto",
+    "networkError": "No se pudo contactar con el proveedor. Revisa la red, el proxy o la clave y reintenta"
   },
   "books": {
     "title": "Catálogo de libros",

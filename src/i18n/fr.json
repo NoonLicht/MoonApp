@@ -1082,7 +1082,9 @@
       "working": "Reconnaissance et analyse…",
       "noText": "Aucun texte trouvé dans l'image",
       "use": "Insérer dans le message"
-    }
+    },
+    "removeAttachment": "Retirer la pièce jointe",
+    "networkError": "Impossible de joindre le fournisseur. Vérifiez le réseau, le proxy ou la clé puis réessayez"
   },
   "books": {
     "title": "Catalogue de livres",

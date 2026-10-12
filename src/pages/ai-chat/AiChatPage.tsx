@@ -1,3 +1,4 @@
+import { rememberImages, withImages } from "@/pages/ai-chat/lib/chatImages";
 import { matchesCombo, getCombo } from "@/lib/hotkeys";
 import { useVoiceMode } from "@/pages/ai-chat/lib/voiceMode";
 import { estimateCost, formatUsd } from "@/pages/ai-chat/lib/cost";
@@ -44,7 +45,6 @@ import { useContextMenu } from "@/components/ContextMenu";
 import {
   renderInlineMd,
   parseSegments,
-  approxTokens,
   SYSTEM_PROMPT_PRESETS,
   type SysPreset,
   loadCfg,
@@ -87,6 +87,13 @@ const HYPER_PRESETS: { id: string; label: string; cfg: Partial<ChatCfg> }[] = [
     cfg: { temperature: 1.2, topP: 1, frequencyPenalty: 0.4, presencePenalty: 0.4 },
   },
 ];
+
+/** «fetch failed» и подобное — понятным языком, с подсказкой что проверить. */
+function friendlyChatError(msg: string, t: (k: string) => string): string {
+  return /fetch failed|ECONNRESET|ENOTFOUND|ETIMEDOUT|network/i.test(msg)
+    ? `${t("aichat.networkError")} (${msg})`
+    : msg;
+}
 
 export default function AiChatPage() {
   const menu = useContextMenu();
@@ -298,7 +305,7 @@ export default function AiChatPage() {
   /* ── сообщения активного чата ── */
   const refreshMessages = useCallback(async (id: number) => {
     try {
-      setMessages(await api.getMessages(id));
+      setMessages(withImages(id, await api.getMessages(id)));
     } catch {
       setMessages([]);
     }
@@ -369,7 +376,7 @@ export default function AiChatPage() {
       const conv = await api.chatFork(activeId, messageId);
       setConvs((c) => [conv, ...c]);
       setActiveId(conv.id);
-      setMessages(await api.getMessages(conv.id));
+      setMessages(withImages(conv.id, await api.getMessages(conv.id)));
       setLastStats(null);
       inputRef.current?.focus();
     } catch {
@@ -450,7 +457,13 @@ export default function AiChatPage() {
         textFiles.map((a) => `--- ${a.name} ---\n${a.data.slice(0, 3000)}`).join("\n\n")
       : "";
 
-    const userMsg: ChatMessage = { role: "user", text: txt };
+    const fullText = txt + attachmentText;
+    const userMsg: ChatMessage = {
+      role: "user",
+      text: fullText,
+      images: imgUrls.length ? imgUrls : undefined,
+    };
+    rememberImages(activeId, fullText, imgUrls);
     setMessages((m) => [...m, userMsg]);
     setInput("");
     setAttachments([]);
@@ -491,7 +504,7 @@ export default function AiChatPage() {
             setStreamingText("");
             setSending(false);
           } else if (ev.type === "error") {
-            setMessages((m) => [...m, { role: "assistant", text: `⚠ ${ev.message || "Error"}` }]);
+            setMessages((m) => [...m, { role: "assistant", text: `⚠ ${friendlyChatError(ev.message || "Error", t)}` }]);
             setStreamingText("");
             setSending(false);
           }
@@ -500,7 +513,7 @@ export default function AiChatPage() {
       );
     } catch (e: any) {
       if (e.name !== "AbortError") {
-        setMessages((m) => [...m, { role: "assistant", text: `⚠ ${e.message}` }]);
+        setMessages((m) => [...m, { role: "assistant", text: `⚠ ${friendlyChatError(e.message, t)}` }]);
       }
       setStreamingText("");
       setSending(false);
@@ -588,7 +601,7 @@ export default function AiChatPage() {
         },
       );
     } catch (e: any) {
-      setMessages((m) => [...m, { role: "assistant", text: `⚠ ${e.message}` }]);
+      setMessages((m) => [...m, { role: "assistant", text: `⚠ ${friendlyChatError(e.message, t)}` }]);
     } finally {
       setSending(false);
     }
@@ -1355,37 +1368,29 @@ export default function AiChatPage() {
             )}
           </div>
 
-          {/* ─── панель ввода ─── */}
+          {/* ─── панель ввода (композер) ─── */}
           <Glass
-            className="chat-input-bar"
-            style={{ position: "relative" }}
+            className="chat-composer"
             onPaste={onPaste}
             onDragOver={(e) => e.preventDefault()}
             onDrop={onDropFiles}
           >
             {attachments.length > 0 && (
-              <div
-                className="chat-attachments"
-                style={{ position: "absolute", bottom: "100%", left: 16, marginBottom: 4 }}
-              >
+              <div className="composer-atts">
                 {attachments.map((a, i) => (
-                  <div key={i} className="chat-attachment">
+                  <div key={i} className={`composer-att ${a.type === "image" ? "is-image" : ""}`}>
                     {a.type === "image" ? (
-                      <img src={a.data} alt="" style={{ width: 20, height: 20, borderRadius: 4 }} />
+                      <img src={a.data} alt={a.name} />
                     ) : (
-                      <FileText size={14} />
+                      <>
+                        <FileText size={16} />
+                        <span className="composer-att-name">{a.name}</span>
+                      </>
                     )}
-                    <span>{a.name}</span>
                     <button
+                      className="composer-att-x"
                       onClick={() => removeAttachment(i)}
-                      style={{
-                        background: "none",
-                        border: "none",
-                        color: "var(--text-tertiary)",
-                        cursor: "pointer",
-                        padding: 0,
-                        fontSize: 14,
-                      }}
+                      aria-label={t("aichat.removeAttachment")}
                     >
                       ×
                     </button>
@@ -1393,23 +1398,6 @@ export default function AiChatPage() {
                 ))}
               </div>
             )}
-            {input.trim() &&
-              (() => {
-                const est = estimateCost({
-                  model: chatCfg.model || "",
-                  history: messages.map((m) => m.text),
-                  prompt: input,
-                });
-                return (
-                  <div className="muted-sm" style={{ padding: "0 4px" }}>
-                    {t("aichat.costHint", {
-                      tokens: est.inputTokens,
-                      out: est.outputTokens,
-                      price: est.usd === null ? t("aichat.costUnknown") : formatUsd(est.usd),
-                    })}
-                  </div>
-                );
-              })()}
             <textarea
               rows={1}
               ref={inputRef}
@@ -1434,9 +1422,6 @@ export default function AiChatPage() {
               }}
               disabled={!activeId}
             />
-            <span className="char-counter" title={t("aichat.chars", { n: input.length })}>
-              {input.length > 0 ? `${input.length} · ~${approxTokens(input)}` : ""}
-            </span>
             <input
               ref={fileInputRef}
               type="file"
@@ -1445,54 +1430,80 @@ export default function AiChatPage() {
               onChange={handleFileAttach}
               style={{ display: "none" }}
             />
-            <IconBtn
-              icon={Paperclip}
-              onClick={() => fileInputRef.current?.click()}
-              title={t("aichat.attach")}
-            />
-            <IconBtn
-              icon={AudioLines}
-              onClick={voice.toggle}
-              title={
-                voice.state === "off" || voice.state === "error"
-                  ? t("aichat.voiceMode")
-                  : t(`aichat.voice_${voice.state}`)
-              }
-              style={
-                voice.state === "off" || voice.state === "error"
-                  ? undefined
-                  : { color: voice.state === "hearing" ? "var(--coral)" : "var(--teal)" }
-              }
-            />
-            <IconBtn
-              icon={Mic}
-              onClick={toggleMic}
-              title={listening ? t("aichat.listening") : t("aichat.voiceInput")}
-              style={listening ? { color: "var(--coral)" } : undefined}
-            />
-            {sending ? (
-              <IconBtn
-                icon={Square}
-                onClick={stopGeneration}
-                title={t("aichat.stop")}
-                style={{ color: "var(--coral)" }}
-              />
-            ) : (
-              <IconBtn
-                icon={Send}
-                onClick={() => {
-                  if (arena.on) {
-                    const q = input.trim();
-                    if (q) {
-                      setInput("");
-                      runArena(q);
-                    }
-                  } else send();
-                }}
-                title={t("aichat.send")}
-                disabled={!activeId || !input.trim()}
-              />
-            )}
+            <div className="composer-bar">
+              <div className="composer-left">
+                <IconBtn
+                  icon={Paperclip}
+                  onClick={() => fileInputRef.current?.click()}
+                  title={t("aichat.attach")}
+                />
+                <IconBtn
+                  icon={AudioLines}
+                  onClick={voice.toggle}
+                  title={
+                    voice.state === "off" || voice.state === "error"
+                      ? t("aichat.voiceMode")
+                      : t(`aichat.voice_${voice.state}`)
+                  }
+                  style={
+                    voice.state === "off" || voice.state === "error"
+                      ? undefined
+                      : { color: voice.state === "hearing" ? "var(--coral)" : "var(--teal)" }
+                  }
+                />
+              </div>
+              <div className="composer-info">
+                {input.trim() &&
+                  (() => {
+                    const est = estimateCost({
+                      model: chatCfg.model || "",
+                      history: messages.map((m) => m.text),
+                      prompt: input,
+                    });
+                    return (
+                      <span title={t("aichat.chars", { n: input.length })}>
+                        {t("aichat.costHint", {
+                          tokens: est.inputTokens,
+                          out: est.outputTokens,
+                          price: est.usd === null ? t("aichat.costUnknown") : formatUsd(est.usd),
+                        })}
+                      </span>
+                    );
+                  })()}
+              </div>
+              <div className="composer-right">
+                <IconBtn
+                  icon={Mic}
+                  onClick={toggleMic}
+                  title={listening ? t("aichat.listening") : t("aichat.voiceInput")}
+                  style={listening ? { color: "var(--coral)" } : undefined}
+                />
+                {sending ? (
+                  <IconBtn
+                    icon={Square}
+                    onClick={stopGeneration}
+                    title={t("aichat.stop")}
+                    style={{ color: "var(--coral)" }}
+                  />
+                ) : (
+                  <IconBtn
+
+                    icon={Send}
+                    onClick={() => {
+                      if (arena.on) {
+                        const q = input.trim();
+                        if (q) {
+                          setInput("");
+                          runArena(q);
+                        }
+                      } else send();
+                    }}
+                    title={t("aichat.send")}
+                    disabled={!activeId || !input.trim()}
+                  />
+                )}
+              </div>
+            </div>
           </Glass>
         </div>
       </div>

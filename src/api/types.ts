@@ -227,6 +227,8 @@ export interface ChatMessage {
   conversation_id?: number;
   role: "user" | "assistant";
   text: string;
+  /** Картинки пользователя (только на клиенте, см. chatImages.ts). */
+  images?: string[];
   created_at?: string;
 }
 

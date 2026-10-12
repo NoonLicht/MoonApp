@@ -1082,7 +1082,9 @@
       "working": "Recognizing and analysing…",
       "noText": "No text found in the image",
       "use": "Insert into message"
-    }
+    },
+    "removeAttachment": "Remove attachment",
+    "networkError": "Could not reach the provider. Check your network, proxy or key and retry"
   },
   "books": {
     "title": "Book catalog",

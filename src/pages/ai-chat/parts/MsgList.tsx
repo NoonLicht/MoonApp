@@ -41,8 +41,40 @@ const BubbleContent = React.memo(function BubbleContent({ text }: { text: string
   );
 });
 
+/** Сообщение пользователя: картинки, затем файлы (из блока [Attachments]) и текст. */
+function UserBody({ text, images }: { text: string; images?: string[] }) {
+  const marker = "\n\n[Attachments]:\n";
+  const at = text.indexOf(marker);
+  const main = at >= 0 ? text.slice(0, at) : text;
+  const files: string[] = [];
+  if (at >= 0) {
+    for (const mm of text.slice(at + marker.length).matchAll(/^--- (.+?) ---$/gm)) files.push(mm[1]);
+  }
+  return (
+    <>
+      {images && images.length > 0 && (
+        <div className="msg-images">
+          {images.map((src, k) => (
+            <img key={k} src={src} alt="" />
+          ))}
+        </div>
+      )}
+      {files.length > 0 && (
+        <div className="msg-files">
+          {files.map((f, k) => (
+            <span key={k} className="msg-file">
+              {f}
+            </span>
+          ))}
+        </div>
+      )}
+      {main}
+    </>
+  );
+}
+
 export default function MsgList(props: {
-  messages: { id?: number; role: "user" | "assistant"; text: string }[];
+  messages: { id?: number; role: "user" | "assistant"; text: string; images?: string[] }[];
   sending: boolean;
   streamingText: string;
   editing: { id: number; text: string } | null;
@@ -112,7 +144,7 @@ export default function MsgList(props: {
                   ])
                 }
               >
-                {m.role === "user" ? m.text : <BubbleContent text={m.text} />}
+                {m.role === "user" ? <UserBody text={m.text} images={m.images} /> : <BubbleContent text={m.text} />}
               </div>
             )}
           </div>
