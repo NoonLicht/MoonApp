@@ -18,6 +18,7 @@ const FIELDS: { key: keyof LiquidGlassConfig; unit: string }[] = [
   { key: "refraction", unit: "" },
   { key: "specular", unit: "%" },
   { key: "radius", unit: "px" },
+  { key: "glow", unit: "%" },
 ];
 
 /** Настройка «жидкого стекла»: пресеты и ползунки, применяются мгновенно. */

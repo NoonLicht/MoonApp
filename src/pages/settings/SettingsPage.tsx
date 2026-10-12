@@ -604,6 +604,19 @@ export default function SettingsPage() {
               options={["85", "100", "115", "130", "150"].map((v) => ({ value: v, label: `${v}%` }))}
             />
           </Row>
+          <Row label={t("settings.winOpacity")} hint={t("settings.winOpacityHint")}>
+            <div className="lg-slider">
+              <input
+                type="range"
+                min={30}
+                max={100}
+                disabled={!!ap.opaqueBackground}
+                value={Number(ap.windowOpacity ?? 100)}
+                onChange={(e) => change("appearance.windowOpacity", Number(e.target.value))}
+              />
+              <span className="lg-val">{Number(ap.windowOpacity ?? 100)}%</span>
+            </div>
+          </Row>
           <BoolRow
             label={t("settings.opaqueBg")}
             hint={t("settings.opaqueBgHint")}

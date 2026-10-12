@@ -337,7 +337,11 @@
     "lg_specular": "Highlight",
     "lg_specularHint": "Bright edge and sheen on the glass",
     "lg_radius": "Corner radius",
-    "lg_radiusHint": "Corner radius of glass panels"
+    "lg_radiusHint": "Corner radius of glass panels",
+    "winOpacity": "Window transparency",
+    "winOpacityHint": "Below 100% the desktop shows through the window (Windows 11 acrylic). Ignored while “Opaque background” is on",
+    "lg_glow": "Background glow",
+    "lg_glowHint": "Brightness of the colour glows behind the glass: without it there is nothing to refract"
   },
   "chat": {
     "chatProvider": "Default provider",

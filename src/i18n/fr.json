@@ -337,7 +337,11 @@
     "lg_specular": "Reflet",
     "lg_specularHint": "Bord lumineux et reflets sur le verre",
     "lg_radius": "Rayon des coins",
-    "lg_radiusHint": "Rayon des coins des panneaux de verre"
+    "lg_radiusHint": "Rayon des coins des panneaux de verre",
+    "winOpacity": "Transparence de la fenêtre",
+    "winOpacityHint": "En dessous de 100 %, le bureau transparaît (acrylique Windows 11). Sans effet avec « Fond opaque »",
+    "lg_glow": "Lueur d'arrière-plan",
+    "lg_glowHint": "Intensité des lueurs colorées derrière le verre : sans elles, rien à réfracter"
   },
   "chat": {
     "chatProvider": "Fournisseur par défaut",

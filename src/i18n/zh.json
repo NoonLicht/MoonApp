@@ -337,7 +337,11 @@
     "lg_specular": "高光",
     "lg_specularHint": "玻璃边缘的亮边与光泽",
     "lg_radius": "圆角",
-    "lg_radiusHint": "玻璃面板的圆角半径"
+    "lg_radiusHint": "玻璃面板的圆角半径",
+    "winOpacity": "窗口透明度",
+    "winOpacityHint": "低于 100% 时可透过窗口看到桌面（Windows 11 亚克力）。开启“不透明背景”时无效",
+    "lg_glow": "背景光晕",
+    "lg_glowHint": "玻璃后方彩色光晕的亮度：没有它玻璃就无物可折射"
   },
   "chat": {
     "chatProvider": "默认提供商",

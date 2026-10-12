@@ -87,7 +87,7 @@ const THEME_CYCLE = ["dark", "midnight", "oled", "light", "sand"] as const;
  * показывала бы луну вместо иконки контраста.
  */
 /** Масштаб интерфейса (%): zoom корня масштабирует и шрифты, и таблицы, и отступы. */
-import { applyDesign, applyGlass, applyLiquid, readLiquid } from "@/lib/designMode";
+import { applyDesign, applyGlass, applyLiquid, applyWindowOpacity, readLiquid } from "@/lib/designMode";
 import "@/styles/liquidglass.css";
 
 function applyUiScale(v: unknown): void {
@@ -557,6 +557,10 @@ export default function App() {
   const [reduceMotion, setReduceMotion] = useState(false);
   const [density, setDensity] = useState("comfortable");
   const [opaqueBg, setOpaqueBg] = useState(false);
+  const [winOpacity, setWinOpacity] = useState(100);
+  useEffect(() => {
+    applyWindowOpacity(opaqueBg ? 100 : winOpacity);
+  }, [opaqueBg, winOpacity]);
   const [toolbarNodes, setToolbarNodes] = useState<Record<string, React.ReactNode>>({});
   const [proxyPanelVisible, setProxyPanelVisible] = useState(false);
   const [taskManagerVisible, setTaskManagerVisible] = useState(false);
@@ -625,6 +629,7 @@ export default function App() {
         applyGlass(sc?.appearance?.glass);
         applyLiquid(readLiquid(sc?.appearance));
         setOpaqueBg(!!sc?.appearance?.opaqueBackground);
+        setWinOpacity(Number(sc?.appearance?.windowOpacity ?? 100));
         // Производительность: keep-alive страниц.
         if (sc?.performance?.keepPagesAlive != null)
           setKeepPagesAlive(!!sc.performance.keepPagesAlive);
@@ -659,6 +664,7 @@ export default function App() {
       }
       else if (path === "appearance.glass") applyGlass(value);
       else if (path === "appearance.opaqueBackground") setOpaqueBg(!!value);
+      else if (path === "appearance.windowOpacity") setWinOpacity(Number(value));
     };
     window.addEventListener("app:theme", onTheme);
     window.addEventListener("app:setting", onSetting);

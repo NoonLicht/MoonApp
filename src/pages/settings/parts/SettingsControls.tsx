@@ -60,6 +60,8 @@ export function applyLiveSettings(settings: unknown) {
     "appearance.lgRefraction",
     "appearance.lgSpecular",
     "appearance.lgRadius",
+    "appearance.lgGlow",
+    "appearance.windowOpacity",
     "appearance.opaqueBackground",
     "appearance.cursorHighlight",
     "appearance.highContrast",

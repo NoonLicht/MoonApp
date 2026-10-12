@@ -201,6 +201,17 @@ function registerWindowControls() {
     else maximizeWindow();
   });
   ipcMain.on("win:close", () => win?.close());
+  ipcMain.on("win:set-transparent", (_e, on: unknown) => {
+    if (!win || win.isDestroyed() || process.platform !== "win32") return;
+    try {
+      win.setBackgroundMaterial(on === true ? "acrylic" : "none");
+      win.setBackgroundColor(
+        on === true ? "#00000000" : nativeTheme.shouldUseDarkColors ? "#0c0e16" : "#eef0f6",
+      );
+    } catch {
+      /* старая Windows без материалов окна: остаётся обычный фон */
+    }
+  });
 
   // Перетаскивание за шапку: рендерер сообщает начало/конец, позицию окна ведёт main по
   // положению курсора (плавно, без IPC на каждый mousemove). Клик без сдвига окно не

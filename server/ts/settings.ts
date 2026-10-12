@@ -57,6 +57,8 @@ const DEFAULTS: SettingsTree = {
     lgRefraction: 14,
     lgSpecular: 55,
     lgRadius: 14,
+    lgGlow: 60,
+    windowOpacity: 100, // прозрачность окна, % (30–100): <100 — акриловая подложка Windows 11
     uiScale: 100, // масштаб интерфейса, % (85–150): zoom всего окна, включая таблицы
     opaqueBackground: false, // непрозрачный фон вместо полупрозрачного окна
     cursorHighlight: false, // подсветка курсора для презентаций и записи экрана

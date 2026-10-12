@@ -337,7 +337,11 @@
     "lg_specular": "Brillo",
     "lg_specularHint": "Borde luminoso y destellos del cristal",
     "lg_radius": "Radio de esquina",
-    "lg_radiusHint": "Radio de las esquinas de los paneles"
+    "lg_radiusHint": "Radio de las esquinas de los paneles",
+    "winOpacity": "Transparencia de la ventana",
+    "winOpacityHint": "Por debajo del 100 % se ve el escritorio a través de la ventana (acrílico de Windows 11). No actúa con «Fondo opaco»",
+    "lg_glow": "Brillo de fondo",
+    "lg_glowHint": "Intensidad de los destellos de color tras el cristal: sin ellos no hay nada que refractar"
   },
   "chat": {
     "chatProvider": "Proveedor por defecto",

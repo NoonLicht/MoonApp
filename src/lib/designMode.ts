@@ -12,6 +12,7 @@ export interface LiquidGlassConfig {
   refraction: number; // искажение (преломление) фона, 0 — нет
   specular: number; // блик по краю, %
   radius: number; // скругление стеклянных панелей, px
+  glow: number; // яркость цветной подсветки фона за стеклом, %
 }
 
 export const LIQUID_DEFAULTS: LiquidGlassConfig = {
@@ -21,13 +22,14 @@ export const LIQUID_DEFAULTS: LiquidGlassConfig = {
   refraction: 14,
   specular: 55,
   radius: 14,
+  glow: 60,
 };
 
 export const LIQUID_PRESETS: Record<string, LiquidGlassConfig> = {
-  clear: { blur: 10, saturate: 150, tint: 6, refraction: 22, specular: 70, radius: 18 },
+  clear: { blur: 10, saturate: 150, tint: 6, refraction: 22, specular: 70, radius: 18, glow: 70 },
   balanced: { ...LIQUID_DEFAULTS },
-  frosted: { blur: 40, saturate: 130, tint: 26, refraction: 4, specular: 35, radius: 12 },
-  crystal: { blur: 6, saturate: 200, tint: 4, refraction: 34, specular: 90, radius: 22 },
+  frosted: { blur: 40, saturate: 130, tint: 26, refraction: 4, specular: 35, radius: 12, glow: 45 },
+  crystal: { blur: 6, saturate: 200, tint: 4, refraction: 34, specular: 90, radius: 22, glow: 85 },
 };
 
 export const LIQUID_LIMITS: Record<keyof LiquidGlassConfig, [number, number]> = {
@@ -37,6 +39,7 @@ export const LIQUID_LIMITS: Record<keyof LiquidGlassConfig, [number, number]> = 
   refraction: [0, 40],
   specular: [0, 100],
   radius: [4, 32],
+  glow: [0, 100],
 };
 
 const KEYS = Object.keys(LIQUID_LIMITS) as (keyof LiquidGlassConfig)[];
@@ -94,6 +97,26 @@ export function applyLiquid(cfg: LiquidGlassConfig): void {
   st.setProperty("--lg-tint", `${cfg.tint}%`);
   st.setProperty("--lg-spec", String(cfg.specular / 100));
   st.setProperty("--lg-radius", `${cfg.radius}px`);
+  st.setProperty("--lg-glow", String(cfg.glow / 100));
   root.classList.toggle("lg-refract", cfg.refraction > 0);
   ensureFilter()?.setAttribute("scale", String(cfg.refraction));
+}
+
+/**
+ * Прозрачность окна, %: 100 — сплошное. Меньше — окно с акриловой подложкой
+ * (Windows 11): сквозь него видно рабочий стол и окна позади.
+ */
+export function applyWindowOpacity(pct: number): void {
+  const v = Math.min(100, Math.max(30, Math.round(Number.isFinite(pct) ? pct : 100)));
+  const root = document.documentElement;
+  const translucent = v < 100;
+  root.classList.toggle("win-translucent", translucent);
+  root.style.setProperty("--win-alpha", `${v}%`);
+  try {
+    (window as unknown as { appBridge?: { setTransparent?: (on: boolean) => void } }).appBridge?.setTransparent?.(
+      translucent,
+    );
+  } catch {
+    /* не Electron — достаточно CSS */
+  }
 }

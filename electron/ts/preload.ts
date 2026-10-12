@@ -49,6 +49,8 @@ contextBridge.exposeInMainWorld("appBridge", {
   // через обязательный диалог. Выключателя (updates:toggle) больше нет.
   checkUpdates: () => ipcRenderer.invoke("updates:check"),
   downloadUpdate: () => ipcRenderer.invoke("updates:download"),
+  // Прозрачное окно: акриловая подложка Windows 11 (сквозь окно виден рабочий стол).
+  setTransparent: (on: boolean) => ipcRenderer.send("win:set-transparent", !!on),
   minimize: () => ipcRenderer.send("win:minimize"),
   toggleMaximize: () => ipcRenderer.send("win:toggle-maximize"),
   close: () => ipcRenderer.send("win:close"),
