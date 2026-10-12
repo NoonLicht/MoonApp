@@ -111,3 +111,42 @@
   width: min(88vw, 1100px);
   height: min(78vh, 640px);
 }
+
+/* Панель захвата: действия сверху, настройки ровной сеткой */
+.ss-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 14px;
+  padding: 16px;
+}
+.ss-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--glass-border);
+}
+.ss-actions .btn {
+  min-height: 38px;
+  padding: 0 18px;
+  font-size: 13px;
+}
+.ss-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 12px;
+  align-items: end;
+}
+.ss-row .field {
+  width: auto !important;
+  min-width: 0;
+}
+.ss-row .field .select,
+.ss-row .field select {
+  width: 100%;
+}
+.ss-row > :not(.field) {
+  justify-self: start;
+}

@@ -1,3 +1,4 @@
+import { autoCropBounds } from "@/pages/screenshots/lib/autoCrop";
 import { useRef, useState, useEffect, useCallback, useMemo } from "react";
 import { createPortal } from "react-dom";
 import {
@@ -14,6 +15,7 @@ import {
   ScanText,
   X,
   Crop,
+  EyeOff,
   Trash2,
   Play,
   Image as ImageIcon,
@@ -336,6 +338,7 @@ export default function ScreenshotsPage() {
   const baseSnapshotRef = useRef<ImageData | null>(null); // снимок канваса на момент pointerdown — для превью arrow/blur/ocrArea
   const strokesRef = useRef<ImageData[]>([]); // для undo — снимки канваса перед каждым штрихом
   const [tool, setTool] = useState<AnnotateTool>("pen");
+  const [notice, setNotice] = useState("");
 
   const uploadImageFromCanvas = useCallback((c: HTMLCanvasElement) => {
     c.toBlob(async (blob) => {
@@ -478,6 +481,55 @@ export default function ScreenshotsPage() {
     lastPtRef.current = null;
     startPtRef.current = null;
     baseSnapshotRef.current = null;
+  };
+
+  /** Находит секреты через OCR и закрывает их блюром (одно действие = один шаг undo). */
+  const hideSecrets = () => {
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext("2d");
+    if (!canvas || !ctx) return;
+    setOcrBusy(true);
+    setError("");
+    setNotice("");
+    canvas.toBlob(async (blob) => {
+      if (!blob) {
+        setOcrBusy(false);
+        return;
+      }
+      try {
+        const { regions } = await api.ocrSecrets(blob);
+        if (regions.length) {
+          strokesRef.current.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
+          for (const r of regions) {
+            const pad = 3;
+            applyBlurRect(ctx, canvas, { x: r.x0 - pad, y: r.y0 - pad }, { x: r.x1 + pad, y: r.y1 + pad });
+          }
+        }
+        setNotice(t("screenshots.secretsFound", { n: regions.length }));
+      } catch (e) {
+        setError((e as Error).message);
+      } finally {
+        setOcrBusy(false);
+      }
+    });
+  };
+
+  /** Обрезает однотонные поля вокруг содержимого. */
+  const smartCrop = () => {
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext("2d");
+    if (!canvas || !ctx) return;
+    const rect = autoCropBounds(ctx.getImageData(0, 0, canvas.width, canvas.height));
+    if (!rect) {
+      setNotice(t("screenshots.cropNothing"));
+      return;
+    }
+    strokesRef.current.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
+    const part = ctx.getImageData(rect.x, rect.y, rect.w, rect.h);
+    canvas.width = rect.w;
+    canvas.height = rect.h;
+    canvas.getContext("2d")?.putImageData(part, 0, 0);
+    setNotice(t("screenshots.cropDone", { w: rect.w, h: rect.h }));
   };
 
   const undoStroke = () => {
@@ -960,10 +1012,28 @@ export default function ScreenshotsPage() {
       </div>
 
       <div className="page-scroll-body">
-        <Glass
-          style={{ display: "flex", flexDirection: "column", alignItems: "stretch", gap: 14, padding: 12 }}
-        >
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-end" }}>
+        <Glass className="ss-panel">
+          <div className="ss-actions">
+            <Btn variant="primary" icon={Camera} onClick={() => void takeScreenshot()}>
+              {t("screenshots.take")}
+            </Btn>
+            {!recording ? (
+              <Btn icon={Video} onClick={() => void startRecording()}>
+                {t("screenshots.recStart")}
+              </Btn>
+            ) : (
+              <Btn icon={Square} onClick={stopRecording} style={{ borderColor: "var(--coral)" }}>
+                {t("screenshots.recStop")} · {fmtTime(recSeconds)}
+              </Btn>
+            )}
+            {recording && (
+              <Badge tone="coral" mono>
+                ● REC
+              </Badge>
+            )}
+          </div>
+
+          <div className="ss-row">
             <Field label={t("screenshots.source")} w={260}>
               <Select
                 value={sourceId}
@@ -986,7 +1056,7 @@ export default function ScreenshotsPage() {
             </Badge>
           </div>
 
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-end" }}>
+          <div className="ss-row">
             <Field label={t("screenshots.resolution")} w={170}>
               <Select
                 value={resolution}
@@ -1031,7 +1101,7 @@ export default function ScreenshotsPage() {
             </Field>
           </div>
 
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-end" }}>
+          <div className="ss-row">
             <Field label={t("screenshots.audioSource")} w={190}>
               <Select
                 value={audioSource}
@@ -1056,26 +1126,6 @@ export default function ScreenshotsPage() {
                   onMouseDown={() => void loadMicDevices()}
                 />
               </Field>
-            )}
-          </div>
-
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <Btn variant="primary" icon={Camera} onClick={() => void takeScreenshot()}>
-              {t("screenshots.take")}
-            </Btn>
-            {!recording ? (
-              <Btn icon={Video} onClick={() => void startRecording()}>
-                {t("screenshots.recStart")}
-              </Btn>
-            ) : (
-              <Btn icon={Square} onClick={stopRecording} style={{ borderColor: "var(--coral)" }}>
-                {t("screenshots.recStop")} · {fmtTime(recSeconds)}
-              </Btn>
-            )}
-            {recording && (
-              <Badge tone="coral" mono>
-                ● REC
-              </Badge>
             )}
           </div>
         </Glass>
@@ -1140,6 +1190,12 @@ export default function ScreenshotsPage() {
               <Btn icon={Download} onClick={downloadShot}>
                 {t("screenshots.download")}
               </Btn>
+              <Btn icon={EyeOff} disabled={ocrBusy} onClick={hideSecrets}>
+                {t("screenshots.hideSecrets")}
+              </Btn>
+              <Btn icon={Crop} onClick={smartCrop}>
+                {t("screenshots.smartCrop")}
+              </Btn>
               <Btn
                 icon={ScanText}
                 disabled={ocrBusy}
@@ -1149,6 +1205,7 @@ export default function ScreenshotsPage() {
               </Btn>
             </div>
             <div className="muted-sm">{t("screenshots.annotateHint")}</div>
+            {notice && <div className="muted-sm">{notice}</div>}
             {ocrText !== null && (
               <Glass
                 style={{ display: "flex", flexDirection: "column", alignItems: "stretch", gap: 6, padding: 10 }}
