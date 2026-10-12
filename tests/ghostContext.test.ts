@@ -24,14 +24,11 @@ describe("запрос из заголовка окна", () => {
 });
 
 describe("запрос из выделения", () => {
-  it("сводит длинный текст к ключевым словам", () => {
-    const q = g.buildQuery({
-      title: "Заметки - Obsidian",
-      text: "Нейросети обучаются градиентным спуском. Градиентный спуск минимизирует функцию потерь нейросети.",
-    });
-    expect(q.split(" ").length).toBeLessThanOrEqual(10);
-    expect(q).toContain("нейросети");
-    expect(q).toContain("градиентным");
+  it("длинное выделение берётся целиком (смысл важнее набора слов), с ограничением длины", () => {
+    const text = "Нейросети обучаются градиентным спуском. ".repeat(20);
+    const q = g.buildQuery({ title: "Заметки - Obsidian", text });
+    expect(q.startsWith("Нейросети обучаются градиентным спуском.")).toBe(true);
+    expect(q.length).toBeLessThanOrEqual(300);
   });
 
   it("короткое выделение игнорируется в пользу заголовка", () => {
@@ -55,7 +52,7 @@ describe("группировка подсказок", () => {
         h("note", "d.md"),
         h("budget", "42", 0.3),
         h("lecture", "7"),
-        h("movie", "x"),
+        h("unknown", "x"),
       ],
       { exclude: { source: "note", ref: "a.md" }, minScore: 0.6, perSource: 2 },
     );

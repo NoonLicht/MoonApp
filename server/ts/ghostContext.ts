@@ -76,7 +76,7 @@ export function keywords(text: string, n = 10): string[] {
 export function buildQuery(p: { title?: string; text?: string }): string {
   const sel = String(p.text ?? "").trim();
   if (SENSITIVE.test(sel)) return "";
-  if (sel.length >= 12) return keywords(sel, 10).join(" ");
+  if (sel.length >= 12) return sel.replace(/\s+/g, " ").slice(0, 300);
   return queryFromTitle(p.title ?? "");
 }
 

@@ -107,7 +107,7 @@ export default function GhostToggle() {
       if (document.hasFocus()) {
         // внутри приложения: выделенный текст и заголовок текущего раздела
         text = String(window.getSelection?.()?.toString() ?? "").slice(0, 4000);
-        title = document.querySelector(".tb-title")?.textContent ?? "";
+        // название раздела — слишком общий запрос: ищем только по выделению
       } else {
         title = (await api.ghostActive()).title;
       }
@@ -317,7 +317,7 @@ export default function GhostToggle() {
                           onClick={() => openHit(h)}
                         >
                           <span className="ghost-item-title">{h.title}</span>
-                          <span className="muted-sm">{h.snippet.slice(0, 90)}</span>
+                          <span className="muted-sm">{h.why || h.snippet.slice(0, 90)}</span>
                         </button>
                       ))}
                     </div>

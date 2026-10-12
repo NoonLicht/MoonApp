@@ -276,6 +276,8 @@ server/p2pSync.js
 server/p2pServer.js
 server/aiShield.js
 server/ghostContext.js
+server/ghostExtras.js
+server/ghostAi.js
 server/timeMachine.js
 server/timeMachineAuto.js
 server/fsrs.js

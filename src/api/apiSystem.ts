@@ -520,7 +520,7 @@ export const systemApi = {
       query: string;
       groups: {
         source: string;
-        items: { source: string; ref: string; title: string; snippet: string; score: number; at?: number }[];
+        items: { source: string; ref: string; title: string; snippet: string; score: number; at?: number; why?: string }[];
       }[];
     }>("POST", "/ghost/context", { title, text, exclude }),
   aiShieldAudit: (limit = 100) =>

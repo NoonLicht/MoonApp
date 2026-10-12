@@ -12,10 +12,12 @@ import settings from "../settings";
 import * as semantic from "../semantic";
 import * as g from "../ghostContext";
 import * as extras from "../ghostExtras";
+import * as ghostAi from "../ghostAi";
 
 const router = express.Router();
 
 const enabled = (): boolean => settings.get("ghost")?.enabled === true;
+const aiOn = (): boolean => settings.get("ghost")?.ai !== false;
 
 router.get("/active", (_req, res) => {
   if (!enabled() || process.platform !== "win32") return res.json({ title: "", process: "" });
@@ -48,8 +50,16 @@ router.post("/context", async (req, res) => {
       ex && typeof ex.source === "string" && typeof ex.ref === "string"
         ? { source: ex.source, ref: ex.ref }
         : undefined;
+    // Строго по смыслу: порог выше «чужой» зоны эмбеддингов (0.55–0.67).
+    let pool = g.groupHits(hits, { exclude, minScore: 0.75, perSource: 4 });
+    if (aiOn()) {
+      // Нейросеть чата отбирает действительно относящееся и объясняет связь.
+      const flat = pool.flatMap((x) => x.items);
+      const judged = await ghostAi.judge(sel.trim() || query, flat, req.appPage);
+      if (judged) pool = g.groupHits(judged, { perSource: 3 });
+    }
     const groups = [
-      ...g.groupHits(hits, { exclude, minScore: 0.6 }),
+      ...pool,
       ...(await extras.collect(query, sel)),
     ];
     res.json({ query, groups });
