@@ -35,12 +35,17 @@ router.get("/", async (req, res) => {
     let result;
     if (q.trim() || authorQ.trim()) {
       result = await flibusta.searchBooks({ q, authorQ, genre, page, size });
-    } else if (genre) {
-      result = await flibusta.genreBooks(genre, page, size);
-    } else if (list === "popular") {
-      result = await flibusta.popularBooks(page, size);
     } else {
-      result = await flibusta.newBooks(page, size);
+      // Каталог читается из БД; в сеть идём только если записи ещё нет
+      // (первый запуск) или её сбросила кнопка «Обновить».
+      const key = `${list}|${genre}|${page}|${size}`;
+      result = flibusta.catalogGet(key);
+      if (!result) {
+        if (genre) result = await flibusta.genreBooks(genre, page, size);
+        else if (list === "popular") result = await flibusta.popularBooks(page, size);
+        else result = await flibusta.newBooks(page, size);
+        if (result && result.books && result.books.length) flibusta.catalogSet(key, result);
+      }
     }
 
     const bids = result.books.map((b: any) => b.bid);
@@ -69,6 +74,7 @@ router.get("/genres", async (req, res) => {
 /** POST /api/books/refresh — сбросить кэш фидов (кнопки «Обновить»). */
 router.post("/refresh", (req, res) => {
   flibusta.clearFeedCache();
+  flibusta.clearCatalog();
   logger.action("books.cache_refresh");
   res.json({ ok: true });
 });

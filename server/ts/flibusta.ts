@@ -713,8 +713,45 @@ function metaDb() {
       bm INTEGER NOT NULL DEFAULT 0,
       addedAt TEXT NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS catalog (
+      key TEXT PRIMARY KEY,
+      data TEXT NOT NULL,
+      ts INTEGER NOT NULL
+    );
   `);
   return _meta;
+}
+
+/**
+ * Постоянный каталог (новинки, популярное, жанры): первый запуск загружает
+ * данные с Флибусты и кладёт их в БД, последующие открытия читают только БД.
+ * Обновление — только явной кнопкой («Обновить» → clearCatalog).
+ */
+function catalogGet(key: string): any | null {
+  try {
+    const row = metaDb().prepare("SELECT data FROM catalog WHERE key = ?").get(key);
+    return row ? JSON.parse(row.data) : null;
+  } catch {
+    return null;
+  }
+}
+
+function catalogSet(key: string, data: any): void {
+  try {
+    metaDb()
+      .prepare("INSERT OR REPLACE INTO catalog (key, data, ts) VALUES (?, ?, ?)")
+      .run(key, JSON.stringify(data), Date.now());
+  } catch (e) {
+    logger.warn("flibusta.catalog_save_failed", { error: String(e) });
+  }
+}
+
+function clearCatalog(): void {
+  try {
+    metaDb().prepare("DELETE FROM catalog").run();
+  } catch {
+    /* таблицы ещё нет — чистить нечего */
+  }
 }
 
 /** Переключить флаг (fav — избранное, bm — закладка). Возвращает актуальные флаги. */
@@ -805,4 +842,7 @@ export {
   myBooks,
   myFlags,
   clearFeedCache,
+  catalogGet,
+  catalogSet,
+  clearCatalog,
 };
