@@ -3655,8 +3655,24 @@
       "accent_teal": "Sarcelle",
       "accent_coral": "Corail",
       "accent_sky": "Ciel",
-      "accent_rose": "Rose"
-    }
+      "accent_rose": "Rose",
+      "design": "Design",
+      "glass": "Effet verre"
+    },
+    "f_store": "Installateur d'apps",
+    "f_store_hint": "Catalogue winget, installation et mises à jour en un clic",
+    "f_compress": "Compression vidéo",
+    "f_compress_hint": "Réduit les vidéos avec choix de qualité",
+    "f_monitor": "Surveillance",
+    "f_monitor_hint": "Charge, disques, temps par app et alertes",
+    "f_diary": "Journal",
+    "f_diary_hint": "Notes, bilans hebdo et accords",
+    "f_rss": "RSS",
+    "f_rss_hint": "Flux d'actualités au même endroit",
+    "f_translate": "Traducteur",
+    "f_translate_hint": "Traduction locale sans cloud",
+    "f_tuning": "Réglage du PC",
+    "f_tuning_hint": "Réglages Windows avec retour arrière et copies"
   },
   "tuning": {
     "eyebrow": "OPTIMISATION",

@@ -17,6 +17,13 @@ import {
   BookOpen,
   Music,
   MessageSquare,
+  Package,
+  Activity,
+  NotebookText,
+  Rss,
+  Languages,
+  SlidersHorizontal,
+  Gauge,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui";
 import { getOverlayRoot, getUnderToolbarRoot } from "@/components/overlayHost";
@@ -61,6 +68,13 @@ const HIGHLIGHTS = [
   { icon: BookOpen, key: "books" },
   { icon: Music, key: "music" },
   { icon: MessageSquare, key: "aichat" },
+  { icon: Package, key: "store" },
+  { icon: Gauge, key: "compress" },
+  { icon: Activity, key: "monitor" },
+  { icon: NotebookText, key: "diary" },
+  { icon: Rss, key: "rss" },
+  { icon: Languages, key: "translate" },
+  { icon: SlidersHorizontal, key: "tuning" },
 ] as const;
 
 /**

@@ -3659,8 +3659,24 @@
       "accent_teal": "Teal",
       "accent_coral": "Coral",
       "accent_sky": "Sky",
-      "accent_rose": "Rose"
-    }
+      "accent_rose": "Rose",
+      "design": "Design",
+      "glass": "Glass effect"
+    },
+    "f_store": "App installer",
+    "f_store_hint": "winget catalog, one-click install and updates",
+    "f_compress": "Video compression",
+    "f_compress_hint": "Shrinks clips with a quality choice",
+    "f_monitor": "Monitoring",
+    "f_monitor_hint": "Load, disks, app time and alerts",
+    "f_diary": "Diary",
+    "f_diary_hint": "Entries, weekly recaps and agreements",
+    "f_rss": "RSS",
+    "f_rss_hint": "News feeds in one place",
+    "f_translate": "Translator",
+    "f_translate_hint": "Local translation, no cloud",
+    "f_tuning": "PC tuning",
+    "f_tuning_hint": "Windows tweaks with rollback and backups"
   },
   "tuning": {
     "eyebrow": "OPTIMIZATION",

@@ -489,7 +489,7 @@ function Shell({
             состояние (прогресс задач, ввод, позицию скролла). */}
           <main className="content-area">
             <div className="pages-stack">
-              {stack.map((id) => (
+              {(welcomeOpen ? [] : stack).map((id) => (
                 <PageHost key={id} id={id} active={id === safeActive}>
                   <ErrorBoundary label={id}>
                     <Suspense fallback={<PageFallback />}>
@@ -565,7 +565,9 @@ export default function App() {
   const [keepPagesAlive, setKeepPagesAlive] = useState(true);
   const [keepPagesLimit, setKeepPagesLimit] = useState(KEEP_ALIVE_DEFAULT_LIMIT);
   const [unloadIdleMinutes, setUnloadIdleMinutes] = useState(KEEP_ALIVE_DEFAULT_IDLE_MIN);
-  const [welcomeOpen, setWelcomeOpen] = useState(false);
+  // Пока не выяснено, нужно ли приветствие, считаем, что оно открыто: страницы
+  // не монтируются и их модули не грузятся — первым рисуется приветствие.
+  const [welcomeOpen, setWelcomeOpen] = useState(!SOLO_PAGE);
   const [welcomeMounted, setWelcomeMounted] = useState(!SOLO_PAGE);
 
   // Слот тулбара: пишем по ключу страницы. null — удалить слот (страница выгружена).

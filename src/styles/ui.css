@@ -2158,3 +2158,112 @@ select option {
   flex-shrink: 0;
   white-space: nowrap;
 }
+
+/* ---- Быстрая настройка на приветственном экране ---- */
+.welcome-setup {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 18px 28px;
+  margin: 20px 0;
+  padding: 18px 20px;
+  border-radius: 16px;
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  text-align: left;
+}
+.ws-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+.ws-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-tertiary);
+}
+.ws-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.ws-chip {
+  padding: 7px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--glass-border);
+  background: var(--track);
+  color: var(--text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+}
+.ws-chip:hover {
+  color: var(--text-primary);
+}
+.ws-chip.is-on {
+  background: var(--amber);
+  border-color: transparent;
+  color: #1b1100;
+  font-weight: 600;
+}
+.ws-themes {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(76px, 1fr));
+  gap: 8px;
+}
+.ws-theme {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 6px;
+  border-radius: 12px;
+  border: 2px solid transparent;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+}
+.ws-theme.is-on {
+  border-color: var(--amber);
+  color: var(--text-primary);
+}
+.ws-theme-prev {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 40px;
+  border-radius: 8px;
+  border: 1px solid var(--glass-border);
+  font-weight: 700;
+}
+.ws-accents {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.ws-accent {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  box-shadow: 0 0 0 2px var(--bg-base);
+  cursor: pointer;
+}
+.ws-accent.is-on {
+  outline: 2px solid var(--text-primary);
+  outline-offset: 2px;
+}
+.ws-switches {
+  gap: 4px;
+}
+.ws-switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 0;
+  font-size: 13px;
+  color: var(--text-primary);
+}

@@ -3655,8 +3655,24 @@
       "accent_teal": "青绿",
       "accent_coral": "珊瑚",
       "accent_sky": "天蓝",
-      "accent_rose": "玫瑰"
-    }
+      "accent_rose": "玫瑰",
+      "design": "设计",
+      "glass": "玻璃效果"
+    },
+    "f_store": "应用安装器",
+    "f_store_hint": "winget 目录，一键安装与更新",
+    "f_compress": "视频压缩",
+    "f_compress_hint": "可选画质，缩小视频体积",
+    "f_monitor": "监控",
+    "f_monitor_hint": "负载、磁盘、应用时长与告警",
+    "f_diary": "日记",
+    "f_diary_hint": "记录、周报与约定",
+    "f_rss": "RSS",
+    "f_rss_hint": "新闻订阅集中管理",
+    "f_translate": "翻译",
+    "f_translate_hint": "本地翻译，无需云端",
+    "f_tuning": "电脑调优",
+    "f_tuning_hint": "可回滚并带备份的 Windows 调整"
   },
   "tuning": {
     "eyebrow": "优化",
