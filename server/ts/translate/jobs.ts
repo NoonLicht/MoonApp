@@ -4,6 +4,7 @@
  * копится уже готовая часть перевода — длинный текст виден по мере готовности,
  * а лимита на длину нет: документ режется на куски (см. segment.ts).
  */
+import { scheduler } from "../jobQueue";
 import crypto from "crypto";
 import fs from "fs";
 import path from "path";
@@ -159,7 +160,8 @@ function enqueue(it: Internal, work: () => Promise<void>): Job {
       return;
     }
     try {
-      await work();
+      // Общий GPU-слот: перевод не идёт одновременно с апскейлом и озвучкой.
+      await scheduler.withSlot("gpu", work);
       if (it.job.status === "running" || it.job.status === "loading") it.job.status = "done";
     } catch (e) {
       const msg = String((e as Error).message || e);

@@ -5,6 +5,7 @@ import logger from "../logger";
 import { detectFfmpeg } from "../convertEngine";
 import { removeOlderThan, removePath } from "../fsUtil";
 import { createQueue, trimJobs } from "../jobStore";
+import { scheduler } from "../jobQueue";
 import {
   ffmpegCaps,
   isSceneCut,
@@ -712,7 +713,8 @@ export function startJob(
   jobs.set(job.id, job);
   trimJobs(jobs, JOB_LIMIT);
   plannedJobs++;
-  queue.enqueue(() => runJob(job));
+  // Общий GPU-слот: апскейл не должен делить видеокарту с озвучкой одновременно.
+  queue.enqueue(() => scheduler.withSlot("gpu", () => runJob(job)));
   logger.action("upscale.start", {
     id: job.id,
     kind: job.kind,

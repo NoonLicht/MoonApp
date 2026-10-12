@@ -32,6 +32,7 @@ import type { FfmpegInfo } from "./convertEngine";
 // такие пути на Windows молча не удаляет — исходники копились бы в storage.
 import { removePath, removeOlderThan } from "./fsUtil";
 import { createQueue, trimJobs } from "./jobStore";
+import { scheduler } from "./jobQueue";
 
 const { DIRS } = config;
 
@@ -589,7 +590,8 @@ function startJob(raw: RawJobInput): CompressorJob {
   };
   jobs.set(id, job);
   trimJobs(jobs, JOB_LIMIT);
-  queue.enqueue(() => runJob(job));
+  // CPU-слот: сжатие не мешает GPU-задачам, но не больше двух тяжёлых на процессор.
+  queue.enqueue(() => scheduler.withSlot("cpu", () => runJob(job)));
   return job;
 }
 

@@ -17,6 +17,9 @@ import { Glass, Btn, Badge, EmptyHint, SectionHead, Select } from "@/components/
 import { useI18n } from "@/app/i18n";
 import { api } from "@/api/client";
 import type { LauncherEntry, ScheduledTask, ScheduleKind } from "@/api/types";
+import RulesPanel from "@/pages/automation/RulesPanel";
+import ClipboardHistoryPanel from "@/pages/automation/ClipboardHistoryPanel";
+import ModesPanel from "@/pages/automation/ModesPanel";
 
 interface LauncherForm {
   name: string;
@@ -34,6 +37,7 @@ interface TaskForm {
 
 export default function AutomationPage() {
   const { t } = useI18n();
+  const [tab, setTab] = useState<"launch" | "tasks" | "rules" | "modes" | "clip">("launch");
   const [launchers, setLaunchers] = useState<LauncherEntry[]>([]);
   const [tasks, setTasks] = useState<ScheduledTask[]>([]);
   const [loading, setLoading] = useState(true);
@@ -160,6 +164,22 @@ export default function AutomationPage() {
         }
       />
 
+      <div className="page-tabs">
+        {(["launch", "tasks", "rules", "modes", "clip"] as const).map((k) => (
+          <button
+            key={k}
+            type="button"
+            className={`page-tab${tab === k ? " active" : ""}`}
+            onClick={() => setTab(k)}
+          >
+            {t(`automation.tabs.${k}`)}
+          </button>
+        ))}
+      </div>
+
+      <div className="page-scroll-body">
+      {tab === "launch" && (
+      <>
       <Glass
         className="media-preview"
         style={{ flexDirection: "column", alignItems: "stretch", gap: 8, fontSize: 13 }}
@@ -253,7 +273,11 @@ export default function AutomationPage() {
           </Glass>
         ))}
       </div>
+      </>
+      )}
 
+      {tab === "tasks" && (
+      <>
       <SectionHead
         eyebrow={t("automation.tasksEyebrow")}
         title={t("automation.tasksTitle")}
@@ -352,6 +376,12 @@ export default function AutomationPage() {
             </div>
           </Glass>
         ))}
+      </div>
+      </>
+      )}
+      {tab === "rules" && <RulesPanel />}
+      {tab === "modes" && <ModesPanel />}
+      {tab === "clip" && <ClipboardHistoryPanel />}
       </div>
     </div>
   );

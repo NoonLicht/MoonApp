@@ -28,6 +28,7 @@ import config from "./config";
 import { detectFfmpeg } from "./convertEngine";
 import * as ruNlp from "./ruNlp";
 import { createQueue, trimJobs } from "./jobStore";
+import { scheduler } from "./jobQueue";
 import { removeOlderThan } from "./fsUtil";
 import { synth as llamaSynth, ttsProblem as llamaProblem } from "./llamacpp/tts";
 
@@ -1353,7 +1354,8 @@ function startJob(opts: TtsJobInput): TtsJob {
   };
   jobs.set(id, job);
   trimJobs(jobs, JOB_LIMIT);
-  queue.enqueue(() => runPipeline(job));
+  // Общий GPU-слот: озвучка не делит видеокарту с апскейлом одновременно.
+  queue.enqueue(() => scheduler.withSlot("gpu", () => runPipeline(job)));
   return job;
 }
 
