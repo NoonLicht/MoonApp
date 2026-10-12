@@ -394,28 +394,28 @@ export default function MoviesPage() {
           onClick={() => setView("catalog")}
           title={t("movies.tab_catalog")}
         >
-          <LayoutGrid size={14} />
+          <LayoutGrid size={14} /> {view === "catalog" && <span className="mv-seg-label">{t("movies.tab_catalog")}</span>}
         </button>
         <button
           className={view === "library" ? "is-active" : ""}
           onClick={() => setView("library")}
           title={t("movies.tab_library")}
         >
-          <ListVideo size={14} />
+          <ListVideo size={14} /> {view === "library" && <span className="mv-seg-label">{t("movies.tab_library")}</span>}
         </button>
         <button
           className={view === "bookmarks" ? "is-active" : ""}
           onClick={() => setView("bookmarks")}
           title={t("movies.tab_bookmarks")}
         >
-          <Bookmark size={14} />
+          <Bookmark size={14} /> {view === "bookmarks" && <span className="mv-seg-label">{t("movies.tab_bookmarks")}</span>}
         </button>
         <button
           className={view === "stats" ? "is-active" : ""}
           onClick={() => setView("stats")}
           title={t("movies.tab_stats")}
         >
-          <BarChart3 size={14} />
+          <BarChart3 size={14} /> {view === "stats" && <span className="mv-seg-label">{t("movies.tab_stats")}</span>}
         </button>
         {/* «Скачанные» — сразу справа от «Статистики»: там реестр загрузок плеера
             (что качается, что остановлено, что уже скачано). */}
@@ -424,7 +424,7 @@ export default function MoviesPage() {
           onClick={() => setView("downloads")}
           title={t("movies.tab_downloads")}
         >
-          <Download size={14} />
+          <Download size={14} /> {view === "downloads" && <span className="mv-seg-label">{t("movies.tab_downloads")}</span>}
         </button>
       </div>
 
