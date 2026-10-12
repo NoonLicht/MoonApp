@@ -30,6 +30,8 @@ export interface GameEntry {
   source: "manual" | "steam" | "epic";
   /** Steam AppID — есть только у source="steam", нужен для запуска через steam://rungameid (без предупреждения "нестандартные параметры запуска") и для обложки с CDN. */
   appId: string | null;
+  /** Статус в бэклоге (по умолчанию «backlog»). */
+  status?: "backlog" | "playing" | "done" | "dropped";
   createdAt: number;
 }
 

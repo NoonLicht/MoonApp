@@ -14,6 +14,9 @@
  *  GET    /api/games/cover/:appId       — прокси обложки Steam (CSP img-src 'self')
  */
 
+import * as appTime from "../appTimeTracker";
+import * as gameInsights from "../gameInsights";
+import * as gameBench from "../gameBench";
 import express from "express";
 import * as games from "../games";
 
@@ -66,6 +69,60 @@ router.post("/", async (req, res) => {
   } catch (e: any) {
     res.status(500).json({ error: e.message });
   }
+});
+
+// Аналитика: время игры из трекера окон, статус бэклога и рекомендации под FPS.
+router.get("/insights", (_req, res) => {
+  const totals = appTime.totalsByApp();
+  const items = games.list().map((g) => ({
+    id: g.id,
+    name: g.name,
+    status: (g.status ?? "backlog") as gameInsights.GameStatus,
+    playSeconds: gameInsights.playSecondsFor(g.exePath, totals),
+    createdAt: g.createdAt,
+  }));
+  res.json({ items: gameInsights.backlogOrder(items) });
+});
+
+router.get("/recommend", (req, res) => {
+  const fps = Math.min(360, Math.max(30, Number(req.query.fps) || 60));
+  const height = Number(req.query.height) || 1080;
+  const vram = Number(req.query.vram);
+  res.json(
+    gameInsights.recommend({
+      gpuName: String(req.query.gpu ?? ""),
+      vramMb: Number.isFinite(vram) && vram > 0 ? vram : null,
+      targetFps: fps,
+      height,
+    }),
+  );
+});
+
+// Замеры FPS (CSV PresentMon / CapFrameX / Afterburner) и их сравнение.
+router.get("/bench", (req, res) => {
+  res.json({ runs: gameBench.listRuns(req.query.gameId ? String(req.query.gameId) : undefined) });
+});
+
+router.post("/bench", (req, res) => {
+  try {
+    const { gameId, label, csv } = req.body || {};
+    if (!gameId) return res.status(400).json({ error: "missing_game" });
+    res.status(201).json(gameBench.addRunFromCsv(String(gameId), String(label || ""), String(csv || "")));
+  } catch (e: any) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+router.delete("/bench/:id", (req, res) => {
+  res.json({ ok: gameBench.removeRun(req.params.id) });
+});
+
+router.get("/bench/compare", (req, res) => {
+  const runs = gameBench.listRuns();
+  const a = runs.find((r) => r.id === String(req.query.before));
+  const b = runs.find((r) => r.id === String(req.query.after));
+  if (!a || !b) return res.status(404).json({ error: "not_found" });
+  res.json({ before: a, after: b, diff: gameInsights.compareRuns(a.stats, b.stats) });
 });
 
 router.put("/:id", (req, res) => {

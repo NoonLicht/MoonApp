@@ -1,3 +1,4 @@
+import GameInsightsPanel from "@/pages/games/GameInsightsPanel";
 import { useEffect, useRef, useState } from "react";
 import {
   Gamepad2,
@@ -486,6 +487,7 @@ export default function GamesPage() {
           </div>
         ))}
       </div>
+      <GameInsightsPanel />
       </div>
 
       <input
