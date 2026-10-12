@@ -1520,7 +1520,13 @@
       "searching": "Recherche…",
       "none": "Paroles introuvables",
       "plain": "Paroles trouvées sans horodatage :"
-    }
+    },
+    "playlistFromLink": "Playlist du lien",
+    "pickAll": "Tout sélectionner",
+    "pickNone": "Désélectionner",
+    "downloadPicked": "Télécharger la sélection ({n})",
+    "cookiesBrowser": "Navigateur pour YouTube",
+    "cookiesBrowserHint": "Si YouTube demande de confirmer que vous n'êtes pas un robot, choisissez le navigateur connecté ; ses cookies aident au téléchargement"
   },
   "arch": {
     "title": "Archiveur web",

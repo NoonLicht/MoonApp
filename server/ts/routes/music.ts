@@ -91,6 +91,20 @@ router.get("/search", async (req, res) => {
 });
 
 /**
+ * GET /api/music/playlist?url=...
+ * Список треков плейлиста (без загрузки) — для выборочного скачивания.
+ */
+router.get("/playlist", async (req, res) => {
+  try {
+    const url = String(req.query.url || "").trim();
+    if (!/^https?:\/\//i.test(url)) return res.status(400).json({ error: "bad_url" });
+    res.json(await ytdlp.fetchPlaylist(url, req.proxyUrl));
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+/**
  * POST /api/music/download
  * Запускает скачивание аудио в выбранном формате/качестве.
  */

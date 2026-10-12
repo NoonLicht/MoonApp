@@ -1520,7 +1520,13 @@
       "searching": "Searching…",
       "none": "Lyrics not found",
       "plain": "Lyrics found without timestamps:"
-    }
+    },
+    "playlistFromLink": "Playlist from link",
+    "pickAll": "Select all",
+    "pickNone": "Clear selection",
+    "downloadPicked": "Download selected ({n})",
+    "cookiesBrowser": "Browser for YouTube",
+    "cookiesBrowserHint": "If YouTube asks you to confirm you are not a bot, pick the browser you are signed in with; its cookies help downloads work"
   },
   "arch": {
     "title": "Web archiver",

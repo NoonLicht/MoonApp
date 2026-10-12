@@ -60,6 +60,8 @@ interface JobFile {
   key: string;
 }
 
+import PlaylistPicker from "./PlaylistPicker";
+
 export default function MusicPage() {
   const { t } = useI18n();
   const menu = useContextMenu();
@@ -72,6 +74,10 @@ export default function MusicPage() {
 
   // Состояние поиска
   const [query, setQuery] = useState("");
+  // Плейлист со ссылки: список для выборочного скачивания.
+  const [linkList, setLinkList] = useState<{ title: string; tracks: MusicTrack[] } | null>(null);
+  const [queueBusy, setQueueBusy] = useState(false);
+  const [queueProgress, setQueueProgress] = useState("");
   const [searchState, setSearchState] = useState<"idle" | "searching" | "done" | "error">("idle");
   const [tracks, setTracks] = useState<MusicTrack[]>([]);
   const [searchError, setSearchError] = useState("");
@@ -223,7 +229,21 @@ export default function MusicPage() {
       setSearchState("searching");
       setSearchError("");
       setSelectedTrack(null);
+      setLinkList(null);
       try {
+        if (/^https?:\/\//i.test(term)) {
+          // Ссылка: одиночный трек открываем сразу, плейлист — списком с выбором.
+          const pl = await api.musicPlaylist(term);
+          if (pl.entries.length > 1) {
+            setLinkList({ title: pl.title, tracks: pl.entries });
+            setTracks([]);
+          } else {
+            setTracks(pl.entries);
+            if (pl.entries[0]) setSelectedTrack(pl.entries[0]);
+          }
+          setSearchState("done");
+          return;
+        }
         const result = await api.musicSearch(term);
         setTracks(result.tracks || []);
         setSearchState(result.tracks?.length ? "done" : "done");
@@ -263,6 +283,40 @@ export default function MusicPage() {
       setDownloadState("error");
       setDownloadError((e as Error).message);
     }
+  };
+
+  // Очередь: отмеченные треки плейлиста скачиваются по одному, файлы сохраняются сразу.
+  const downloadQueue = async (picked: MusicTrack[]) => {
+    if (queueBusy || picked.length === 0) return;
+    setQueueBusy(true);
+    const known = fmtInfo?.qualityMap?.[quality];
+    const format = known?.format || "mp3";
+    const q = known?.quality ?? 0;
+    let failed = 0;
+    for (let i = 0; i < picked.length; i++) {
+      setQueueProgress(`${i + 1} / ${picked.length}`);
+      try {
+        const { id } = await api.musicDownload(picked[i].webpageUrl, format, q);
+        for (;;) {
+          await new Promise((r) => setTimeout(r, 900));
+          const st = await api.musicJobStatus(id);
+          if (st.state === "error") throw new Error(st.error || "download failed");
+          if (st.state === "done") {
+            for (const f of st.files || []) {
+              const { blob, name } = await api.musicDownloadFile(f.key);
+              saveBlob(blob, name);
+            }
+            break;
+          }
+        }
+      } catch (e) {
+        failed++;
+        setSearchError((e as Error).message);
+      }
+    }
+    setQueueBusy(false);
+    setQueueProgress("");
+    if (failed > 0) setSearchState("error");
   };
 
   // Скачивание готового файла
@@ -447,6 +501,16 @@ export default function MusicPage() {
             </Glass>
           ))}
         </div>
+      )}
+
+      {linkList && !viewingPlaylist && (
+        <PlaylistPicker
+          title={linkList.title}
+          tracks={linkList.tracks}
+          busy={queueBusy}
+          progress={queueProgress}
+          onDownload={(p) => void downloadQueue(p)}
+        />
       )}
 
       {/* Результаты поиска */}

@@ -13,6 +13,7 @@ import {
 import type {
   BookDownloadResult,
   MusicSearchResult,
+  MusicTrack,
   MusicDownloadStart,
   MusicJobStatus,
   MusicFormats,
@@ -123,6 +124,11 @@ export const filesApi = {
     }),
 
   // Music / Audio
+  musicPlaylist: (url: string) =>
+    req<{ title: string; entries: MusicTrack[] }>(
+      "GET",
+      `/music/playlist?url=${encodeURIComponent(url)}`,
+    ),
   musicSearch: (q: string) =>
     req<MusicSearchResult>("GET", `/music/search?q=${encodeURIComponent(q)}`),
   musicDownload: (url: string, format?: string, quality?: number) =>

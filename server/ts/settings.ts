@@ -121,6 +121,7 @@ const DEFAULTS: SettingsTree = {
   // --- Видео / Музыка (это уже yt-dlp) ---
   media: {
     ytdlpPath: "", // путь к yt-dlp (пусто = искать в PATH)
+    ytCookiesBrowser: "", // chrome | edge | firefox | brave | opera | vivaldi — cookies для YouTube
   },
 
   // --- Фильмы и сериалы (страница «movies», каталог TMDB) ---

@@ -1520,7 +1520,13 @@
       "searching": "搜索中…",
       "none": "未找到歌词",
       "plain": "找到无时间轴的歌词："
-    }
+    },
+    "playlistFromLink": "链接中的播放列表",
+    "pickAll": "全选",
+    "pickNone": "取消选择",
+    "downloadPicked": "下载所选（{n}）",
+    "cookiesBrowser": "YouTube 使用的浏览器",
+    "cookiesBrowserHint": "如果 YouTube 要求验证你不是机器人，请选择已登录的浏览器，其 Cookie 有助于下载"
   },
   "arch": {
     "title": "网页归档器",

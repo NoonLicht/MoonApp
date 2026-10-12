@@ -894,6 +894,19 @@ export default function SettingsPage() {
               ]}
             />
           </Row>
+          <Row label={t("music.cookiesBrowser")} hint={t("music.cookiesBrowserHint")}>
+            <Select
+              value={String((s as any)?.media?.ytCookiesBrowser ?? "")}
+              onChange={(e) => change("media.ytCookiesBrowser", e.target.value)}
+              options={[
+                { value: "", label: "—" },
+                ...["chrome", "edge", "firefox", "brave", "opera", "vivaldi"].map((b) => ({
+                  value: b,
+                  label: b[0].toUpperCase() + b.slice(1),
+                })),
+              ]}
+            />
+          </Row>
         </Section>
 
         {/* ---- Книги (док: books) ---- */}

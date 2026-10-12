@@ -1926,3 +1926,52 @@
   padding: 6px 12px !important;
   border-radius: 999px !important;
 }
+
+/* Выбор треков плейлиста (Музыка) */
+.pl-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+}
+.pl-picker-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.pl-picker-title {
+  flex: 1 1 200px;
+  font-weight: 600;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pl-picker-list {
+  display: flex;
+  flex-direction: column;
+  max-height: 46vh;
+  overflow-y: auto;
+  gap: 2px;
+}
+.pl-picker-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) minmax(0, 180px) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.pl-picker-row:hover {
+  background: var(--track);
+}
+.pl-picker-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pl-picker-dur {
+  font-variant-numeric: tabular-nums;
+}

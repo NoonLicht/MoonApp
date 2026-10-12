@@ -329,6 +329,28 @@ function sanitizeInfo(info: RawInfo): VideoInfo {
 /** Транзиентные сетевые/TLS-сбои (обрыв соединения, битый TLS-рекорд от
  * нестабильной сети/VPN и т.п.) — имеет смысл повторить попытку, в отличие
  * от смысловых ошибок вроде "Unsupported URL" или "Video unavailable". */
+/** Браузеры, из которых yt-dlp умеет брать cookies (`--cookies-from-browser`). */
+const COOKIE_BROWSERS = ["chrome", "edge", "firefox", "brave", "opera", "vivaldi", "chromium"];
+
+/**
+ * Аргументы доступа к YouTube: без входа сервис часто отвечает «Sign in to
+ * confirm you're not a bot». Если в настройках выбран браузер, yt-dlp берёт
+ * его cookies — это штатный способ обойти проверку.
+ */
+function accessArgs(): string[] {
+  const cfg = (settings.get("media") || {}) as { ytCookiesBrowser?: unknown };
+  const b = String(cfg.ytCookiesBrowser || "").toLowerCase();
+  return COOKIE_BROWSERS.includes(b) ? ["--cookies-from-browser", b] : [];
+}
+
+/** Понятная ошибка вместо сырого вывода yt-dlp при проверке «вы не бот». */
+function friendlyError(msg: string): string {
+  if (/confirm you.?re not a bot|Sign in to confirm/i.test(msg)) {
+    return "youtube_bot_check: YouTube просит подтвердить, что вы не бот. Откройте Настройки → Музыка и выберите браузер, в котором вы вошли в YouTube.";
+  }
+  return msg;
+}
+
 function isTransientNetworkError(msg: string): boolean {
   return /SSL|DECRYPTION_FAILED|bad record mac|ECONNRESET|ETIMEDOUT|ECONNREFUSED|socket hang up|Connection reset|Temporary failure/i.test(
     msg,
@@ -344,6 +366,7 @@ function runJsonOnce(bin: string, url: string, proxyUrl?: string | null): Promis
       "--no-warnings",
       "--socket-timeout",
       "30",
+      ...accessArgs(),
     ];
     if (proxyUrl) args.push("--proxy", proxyUrl);
     args.push("--", url);
@@ -354,7 +377,7 @@ function runJsonOnce(bin: string, url: string, proxyUrl?: string | null): Promis
       (err, stdout, stderr) => {
         if (err) {
           const msg = meaningfulStderr(stderr || err.message);
-          return reject(new Error(msg || err.message));
+          return reject(new Error(friendlyError(msg || err.message)));
         }
         resolve(String(stdout ?? ""));
       },
@@ -556,6 +579,7 @@ function startDownload({
     "--fragment-retries",
     "3",
     "--restrict-filenames",
+    ...accessArgs(),
     "-o",
     outTemplate,
   ];
@@ -607,7 +631,7 @@ function startDownload({
           if (code === 0) finalizeJob(job, "done");
           else {
             const errMsg = meaningfulStderr(job.stderrBuf) || `yt-dlp exited with code ${code}`;
-            finalizeJob(job, "error", errMsg);
+            finalizeJob(job, "error", friendlyError(errMsg));
           }
         }
       });
@@ -721,6 +745,63 @@ async function searchTracks(
   return { tracks, source: data.extractor ? String(data.extractor) : "youtube" };
 }
 
+/** Содержимое плейлиста без загрузки (`--flat-playlist`): список треков для выбора. */
+async function fetchPlaylist(
+  url: string,
+  proxyUrl?: string | null,
+): Promise<{ title: string; entries: Track[] }> {
+  const d = await detectYtDlp();
+  if (!d.found || !d.path) throw new Error("yt-dlp not found");
+  const bin = d.path;
+  const args = [
+    "-J",
+    "--flat-playlist",
+    "--ignore-config",
+    "--no-warnings",
+    "--socket-timeout",
+    "30",
+    ...accessArgs(),
+  ];
+  if (proxyUrl) args.push("--proxy", proxyUrl);
+  args.push("--", url);
+  const stdout = await new Promise<string>((resolve, reject) => {
+    execFile(
+      bin,
+      args,
+      { timeout: 180000, windowsHide: true, maxBuffer: 128 * 1024 * 1024 },
+      (err, out, stderr) => {
+        if (err) return reject(new Error(friendlyError(meaningfulStderr(stderr || err.message))));
+        resolve(String(out ?? ""));
+      },
+    );
+  });
+  const data = JSON.parse(stdout) as any;
+  // Одиночное видео приходит без entries — отдаём его одним элементом.
+  const list: any[] = Array.isArray(data.entries) ? data.entries : data.id ? [data] : [];
+  const entries: Track[] = list
+    .filter((e) => e && e.id)
+    .map((e) => {
+      const dur = typeof e.duration === "number" ? e.duration : null;
+      const thumb =
+        (Array.isArray(e.thumbnails) && e.thumbnails.length
+          ? e.thumbnails[e.thumbnails.length - 1].url
+          : e.thumbnail) || null;
+      return {
+        id: String(e.id),
+        title: String(e.title || e.id),
+        artist: String(e.channel || e.uploader || ""),
+        duration: dur,
+        durationString: dur != null ? `${Math.floor(dur / 60)}:${String(dur % 60).padStart(2, "0")}` : "",
+        thumbnail: thumb,
+        webpageUrl: String(
+          e.webpage_url || (/^https?:/i.test(String(e.url || "")) ? e.url : "") ||
+            `https://www.youtube.com/watch?v=${e.id}`,
+        ),
+      } as Track;
+    });
+  return { title: String(data.title || ""), entries };
+}
+
 // --- Скачивание аудио (через --extract-audio) ---
 
 const AUDIO_FORMATS: string[] = ["mp3", "m4a", "flac", "opus", "wav"];
@@ -767,7 +848,7 @@ function startAudioDownload({ url, format = "mp3", quality = 0, proxyUrl }: Star
     "--embed-thumbnail",
     "--add-metadata",
     "--no-embed-subs",
-    url,
+    ...accessArgs(),
   ];
   const effProxy = proxyUrl !== undefined ? proxyUrl : proxy.getProxyUrl();
   if (effProxy) args.push("--proxy", effProxy);
@@ -813,7 +894,7 @@ function startAudioDownload({ url, format = "mp3", quality = 0, proxyUrl }: Star
                 .filter(Boolean)
                 .slice(-5)
                 .join(" · ") || `yt-dlp exited with code ${code}`;
-            finalizeJob(job, "error", errMsg);
+            finalizeJob(job, "error", friendlyError(errMsg));
           }
         }
       });
@@ -827,6 +908,7 @@ function startAudioDownload({ url, format = "mp3", quality = 0, proxyUrl }: Star
 }
 
 export {
+  fetchPlaylist,
   BUNDLED_BIN,
   YTDLP_URL,
   YTDLP_MAX_BYTES,
