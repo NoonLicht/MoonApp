@@ -19,7 +19,7 @@ html {
 
 /* ---------- Стеклянные поверхности ---------- */
 html:not(.no-glass) .app-shell .glass:not(.glass-solid),
-html:not(.no-glass) .app-shell :is(.card, .app-card, .arch-view, .arch-card, .arch-archive, .bp-card, .bp-tile, .core-tile, .kanban-card, .kanban-col, .lec-feed, .lec-notes, .lec-panel, .lec-sessions, .lec-live-strip, .m3p-card, .mono-panel, .rss-item, .tools-block, .tr-area, .up-pro-section, .hc-tpl-card, .note-explorer, .note-editor, .up-alert),
+html:not(.no-glass) .app-shell :is(.card, .app-card, .arch-view, .arch-card, .arch-archive, .bp-card, .bp-tile, .core-tile, .kanban-card, .kanban-col, .lec-feed, .lec-notes, .lec-panel, .lec-sessions, .lec-live-strip, .m3p-card, .rss-item, .tools-block, .tr-area, .up-pro-section, .hc-tpl-card, .up-alert),
 html:not(.no-glass) .app-shell .top-toolbar,
 html:not(.no-glass) .app-shell .dock-scroll,
 html:not(.no-glass) .proxy-panel,
@@ -255,16 +255,6 @@ html:not(.no-glass) .hc-modal {
   color: var(--text-tertiary);
 }
 
-/* ---------- Подзаголовки разделов — в собственном блоке, а не «голым» текстом ---------- */
-html:not(.no-glass) .app-shell .section-head:not(.page > .section-head:first-child) {
-  padding: 12px 16px;
-  border-radius: var(--fl-r-card, 12px);
-  background: color-mix(in srgb, var(--surface-solid) var(--lg-fill, 32%), transparent);
-  -webkit-backdrop-filter: blur(var(--lg-blur, 22px)) saturate(var(--lg-sat-eff, 135%));
-  backdrop-filter: blur(var(--lg-blur, 22px)) saturate(var(--lg-sat-eff, 135%));
-  border: 1px solid var(--glass-border);
-}
-
 /* ---------- Читаемость в светлых темах: насыщенные оттенки акцентов ----------
    Яркие розовый/зелёный/жёлтый/красный на светлом стекле не читаются. */
 html .app-shell.app-shell.theme-light:not(.theme-sand) {
@@ -313,4 +303,188 @@ html .app-shell.app-shell.theme-light:not(.theme-sand) {
 .app-shell .arch-archive-stats {
   min-height: 62px;
   align-content: flex-start;
+}
+
+/* ===========================================================================
+   Правки по итогам проверки страниц
+   =========================================================================== */
+
+/* Переменные, которыми пользуются «самописные» окна и блоки (раньше не были определены
+   и давали прозрачную подложку). */
+.app-shell,
+#overlay-root {
+  --glass-bg: var(--surface-solid);
+  --card-bg: color-mix(in srgb, var(--surface-solid) 72%, transparent);
+}
+
+/* ---------- Заголовок раздела + его блок = один блок ----------
+   Заголовок, за которым сразу идёт карточка, рисуется её верхней частью.
+   Заголовок страницы (первый в контейнере) и «одинокие» заголовки остаются как есть. */
+html:not(.no-glass) .app-shell .section-head:not(:first-child):has(+ .glass:not(.glass-solid)) {
+  padding: 14px 18px 4px;
+  margin-bottom: 0;
+  border-radius: var(--fl-r-card, 14px) var(--fl-r-card, 14px) 0 0;
+  background:
+    linear-gradient(
+      135deg,
+      rgba(255, 255, 255, calc(var(--lg-spec, 0.55) * 0.14)) 0%,
+      rgba(255, 255, 255, 0) 40%
+    ),
+    color-mix(in srgb, var(--surface-solid, #2a2a30) var(--lg-fill, 32%), transparent);
+  -webkit-backdrop-filter: blur(var(--lg-blur, 22px)) saturate(var(--lg-sat-eff, 135%));
+  backdrop-filter: blur(var(--lg-blur, 22px)) saturate(var(--lg-sat-eff, 135%));
+  border: 1px solid rgba(255, 255, 255, calc(var(--lg-spec, 0.55) * 0.16));
+  border-bottom: 0;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, calc(var(--lg-spec, 0.55) * 0.6));
+}
+/* внутри .page между детьми есть gap — «съедаем» его, чтобы части слились */
+html:not(.no-glass) .app-shell .page > .section-head:not(:first-child):has(+ .glass:not(.glass-solid)) {
+  margin-bottom: -14px;
+}
+html:not(.no-glass) .app-shell .section-head:not(:first-child) + .glass:not(.glass-solid) {
+  border-top: 0;
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+  box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.12);
+}
+
+/* ---------- Мониторинг: группы показателей — обычный текст, а не блоки в блоке ---------- */
+html:not(.no-glass) .app-shell .mono-panel {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  padding: 0;
+}
+
+/* ---------- Заметки и задачи: весь рабочий экран — один блок стекла ---------- */
+html:not(.no-glass) .app-shell :is(.todo-layout, :has(> .note-explorer)) {
+  border-radius: var(--fl-r-card, 14px);
+  background: color-mix(in srgb, var(--surface-solid, #2a2a30) var(--lg-fill, 32%), transparent);
+  -webkit-backdrop-filter: blur(var(--lg-blur, 22px)) saturate(var(--lg-sat-eff, 135%));
+  backdrop-filter: blur(var(--lg-blur, 22px)) saturate(var(--lg-sat-eff, 135%));
+  border: 1px solid rgba(255, 255, 255, calc(var(--lg-spec, 0.55) * 0.16));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, calc(var(--lg-spec, 0.55) * 0.6));
+  padding: 8px;
+  gap: 8px;
+}
+html:not(.no-glass) .app-shell :has(> .note-explorer) > * {
+  background: transparent;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+/* ---------- Выбранный жанр / фильтр: заметный (был бледный акцент на светлом) ---------- */
+.app-shell .badge.is-active {
+  background: var(--amber);
+  border-color: var(--amber);
+  color: #ffffff;
+  font-weight: 600;
+}
+.app-shell .badge.tone-violet.is-active {
+  background: var(--violet);
+  color: #fff;
+}
+.app-shell .badge.tone-teal.is-active {
+  background: var(--teal);
+  color: #fff;
+}
+
+/* ---------- Кино: названия крупнее и контрастнее ---------- */
+.app-shell .mv-card-title {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+.app-shell .mv-card-meta {
+  font-size: 12.5px;
+  color: var(--text-secondary);
+}
+.app-shell .mv-row-scroll {
+  grid-auto-columns: 172px;
+}
+
+/* ---------- Плитки инструментов (PDF и др.) в стиле стекла ---------- */
+html:not(.no-glass) .app-shell .tool-tile {
+  background: color-mix(in srgb, var(--surface-solid) var(--lg-fill, 32%), transparent);
+  -webkit-backdrop-filter: blur(var(--lg-blur, 22px)) saturate(var(--lg-sat-eff, 135%));
+  backdrop-filter: blur(var(--lg-blur, 22px)) saturate(var(--lg-sat-eff, 135%));
+  border-color: rgba(255, 255, 255, calc(var(--lg-spec, 0.55) * 0.18));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, calc(var(--lg-spec, 0.55) * 0.5));
+  color: var(--text-primary);
+  border-radius: var(--fl-r-card, 12px);
+}
+html:not(.no-glass) .app-shell .tool-tile:hover {
+  background: color-mix(in srgb, var(--amber) 22%, var(--surface-solid));
+}
+
+/* ---------- Поле заметок в лектории: рамка и отступы ---------- */
+.app-shell .lec-notes-area {
+  margin: 0 10px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--fl-r-ctl, 10px);
+  background: color-mix(in srgb, var(--surface-solid) 78%, transparent);
+}
+
+/* ---------- Одинаковая высота полей и выпадающих списков ---------- */
+:where(.app-shell, #overlay-root)
+  :where(
+    input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not(
+        [type="file"]
+      ):not([type="hidden"]):not([type="button"]):not([type="submit"]),
+    select
+  ) {
+  min-height: 38px;
+  box-sizing: border-box;
+}
+
+/* ---------- Выпадающие списки: стилизованные, а не системные ----------
+   Кастомизируемый <select> (Chromium): и поле, и сам список в стиле приложения. */
+.app-shell select,
+.app-shell select::picker(select),
+#overlay-root select,
+#overlay-root select::picker(select) {
+  appearance: base-select;
+}
+.app-shell select {
+  padding-right: 8px;
+  cursor: pointer;
+}
+.app-shell select::picker-icon {
+  color: var(--text-tertiary);
+  transition: transform 0.18s ease;
+}
+.app-shell select:open::picker-icon {
+  transform: rotate(180deg);
+}
+.app-shell select::picker(select),
+#overlay-root select::picker(select) {
+  margin-top: 6px;
+  padding: 6px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--fl-r-fly, 12px);
+  background: color-mix(in srgb, var(--surface-solid) 96%, transparent);
+  color: var(--text-primary);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.3);
+  max-height: min(320px, 60vh);
+}
+.app-shell select option {
+  padding: 8px 10px;
+  border-radius: var(--fl-r-ctl, 8px);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+.app-shell select option:hover,
+.app-shell select option:focus-visible {
+  background: var(--track);
+}
+.app-shell select option:checked {
+  background: var(--amber-soft);
+  color: var(--text-primary);
+  font-weight: 600;
+}
+.app-shell select option::checkmark {
+  color: var(--amber);
 }
