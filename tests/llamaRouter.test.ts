@@ -77,6 +77,20 @@ describe("маршрутизатор", () => {
     expect(engine.isMoeFile("gemma-4-26B-A4B-it-UD-Q4_K_M.gguf")).toBe(true);
     expect(engine.isMoeFile("Qwen3.6-35B-A3B-UD-IQ3_XXS.gguf")).toBe(true);
     expect(engine.isMoeFile("Qwen3.5-4B-Q4_K_M.gguf")).toBe(false);
+    for (const f of [
+      "Qwen3-30B-A3B-Instruct-2507-Q4_K_M.gguf",
+      "SmallThinker-21BA3B-Instruct.Q4_K_M.gguf",
+      "ERNIE-4.5-21B-A3B-PT-Q4_K_M.gguf",
+      "GLM-4.7-Flash-Q4_K_M.gguf",
+      "gpt-oss-20b-Q4_K_M.gguf",
+    ])
+      expect(engine.isMoeFile(f)).toBe(true);
+    for (const f of [
+      "gemma-4-E4B-it-Q4_K_M.gguf",
+      "Qwen3-4B-Instruct-2507-Q4_K_M.gguf",
+      "translategemma-4b-it-Q4_K_M.gguf",
+    ])
+      expect(engine.isMoeFile(f)).toBe(false);
   });
 
   it("для команд берётся самая крупная чат-модель, без эмбеддингов и переводчика", () => {

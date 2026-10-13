@@ -322,7 +322,9 @@ export function configureEngine(o: {
 }
 /** Модель из семейства MoE (Gemma 4 26B-A4B, Qwen3.6-35B-A3B…): по имени файла. */
 export const isMoeFile = (file: string): boolean =>
-  /(?:^|[-_.])a\d+(?:\.\d+)?b(?:[-_.]|$)|moe|gpt-oss/i.test(path.basename(file));
+  /(?:^|[-_.]|\db)a\d+(?:\.\d+)?b(?:[-_.]|$)|moe|gpt-oss|glm-4\.\d+-flash/i.test(
+    path.basename(file),
+  );
 /** Сборки, на которых сервер не поднялся: пропускаем до перезапуска приложения. */
 const bad = new Set<BuildId>();
 let idleFn: () => number = () => 10 * 60 * 1000;
