@@ -470,6 +470,33 @@ html:not(.no-glass) .app-shell .tool-tile:hover {
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.3);
   max-height: min(320px, 60vh);
 }
+/* Селекты в .select-wrap: стрелку рисует сама обёртка (::after), встроенную прячем,
+   чтобы не было двух; текст — в одну строку с многоточием, место под стрелку сохраняем. */
+.app-shell .select-wrap select::picker-icon,
+#overlay-root .select-wrap select::picker-icon {
+  display: none;
+}
+.app-shell .select-wrap select,
+#overlay-root .select-wrap select {
+  padding-right: 30px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  max-width: 100%;
+}
+.app-shell .select-wrap select selectedcontent,
+#overlay-root .select-wrap select selectedcontent {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.app-shell .select-wrap select option,
+#overlay-root .select-wrap select option {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
 .app-shell select option {
   padding: 8px 10px;
   border-radius: var(--fl-r-ctl, 8px);
