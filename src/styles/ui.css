@@ -30,7 +30,10 @@
 .select-wrap select {
   appearance: none;
   -webkit-appearance: none;
-  background-color: var(--track);
+  /* Выпадающий список берёт background-color самого select: он должен быть непрозрачным,
+     иначе список просвечивает. Полупрозрачная «стеклянная» заливка — слоем поверх. */
+  background-color: var(--surface-solid);
+  background-image: linear-gradient(var(--track), var(--track));
   border: 1px solid var(--glass-border);
   color: var(--text-primary);
   border-radius: 11px;
@@ -48,7 +51,7 @@
 }
 .select-wrap select:hover:not(:disabled) {
   border-color: var(--amber);
-  background-color: var(--glass-strong);
+  background-image: linear-gradient(var(--glass-strong), var(--glass-strong));
 }
 .select-wrap select:focus-visible {
   border-color: var(--amber);

@@ -426,3 +426,9 @@ html.a11y-contrast .app-shell .blob,
 html.a11y-contrast .app-shell .mesh {
   display: none;
 }
+
+/* Список селекта берёт background-color самого select — он обязан быть непрозрачным. */
+html.design-fluent .select-wrap select {
+  background-color: var(--surface-solid);
+  background-image: linear-gradient(var(--fl-card), var(--fl-card));
+}

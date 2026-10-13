@@ -38,7 +38,9 @@ const MODELS_TTL = 10 * 60 * 1000;
 router.get("/models", async (req, res) => {
   const { provider: providerId } = req.query;
   if (!providerId) return res.status(400).json({ error: "provider required" });
-  const cached = modelsCache.get(providerId);
+  // Локальные модели (скачали/удалили файл) кэшировать нельзя: список читается с диска.
+  const isLocal = providerId === "llamacpp" || providerId === "ollama";
+  const cached = isLocal ? undefined : modelsCache.get(providerId);
   if (cached && Date.now() - cached.at < MODELS_TTL) return res.json(cached.models);
   try {
     const provider = getProvider(providerId as string);
@@ -47,7 +49,7 @@ router.get("/models", async (req, res) => {
       return res.json(provider.models || []);
     }
     const models = await runWithPage(req.appPage, () => provider.listModels(secret));
-    if (Array.isArray(models) && models.length)
+    if (!isLocal && Array.isArray(models) && models.length)
       modelsCache.set(providerId, { at: Date.now(), models });
     res.json(models.length ? models : provider.models || []);
   } catch {

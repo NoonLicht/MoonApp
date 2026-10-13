@@ -563,6 +563,16 @@
   gap: 6px 10px;
   align-items: center;
 }
+.llama-model-actions .select-wrap {
+  flex: 1 1 160px;
+  min-width: 0;
+  max-width: 100%;
+}
+.llama-model-actions .select-wrap select {
+  width: 100%;
+  min-width: 0;
+  text-overflow: ellipsis;
+}
 .llama-fit {
   overflow: hidden;
   text-overflow: ellipsis;

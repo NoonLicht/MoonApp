@@ -672,6 +672,14 @@ export default function AiChatPage() {
             value={chatCfg.model}
             onChange={(e) => setChatCfg({ model: e.target.value })}
             options={models}
+            // список локальных моделей меняется (скачали/удалили) — обновляем перед открытием
+            onMouseDown={() => {
+              if (chatCfg.provider === "llamacpp" || chatCfg.provider === "ollama")
+                api
+                  .chatModels(chatCfg.provider)
+                  .then((m) => m.length && setModels(m))
+                  .catch(() => undefined);
+            }}
           />
         </Field>
       </ToolbarMenu>
