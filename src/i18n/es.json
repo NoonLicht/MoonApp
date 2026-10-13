@@ -2781,7 +2781,7 @@
     "errSystemAudio": "Sin audio del sistema: marque «Compartir audio» en el diálogo",
     "errSession": "Sesión de grabación no encontrada en el servidor",
     "errIngest": "Grabación detenida: se perdió el flujo de audio hacia el servidor",
-    "errWhisper": "whisper.cpp no está instalado (storage/whisper)",
+    "errWhisper": "No hay motor de voz instalado: descarga GigaAM v3 o Whisper en los ajustes del motor",
     "errNoTranscript": "Aún no hay transcripción: espere los fragmentos",
     "errConspectusKey": "No hay clave API del proveedor «{provider}» — guárdala en los ajustes del chat",
     "errConspectusProvider": "Proveedor desconocido «{provider}» para el resumen",
@@ -2895,7 +2895,14 @@
       "errBinNotFound": "Archivo no encontrado",
       "errCancelled": "Descarga cancelada",
       "errDownload": "La descarga falló (HTTP {code})",
-      "errNetwork": "No hay conexión con el servidor de descargas — revise la red o el proxy"
+      "errNetwork": "No hay conexión con el servidor de descargas — revise la red o el proxy",
+      "asrTitle": "Reconocimiento de voz",
+      "gigaamNote": "ru · rápido",
+      "whisperNote": "100+ idiomas",
+      "asrHint": "GigaAM v3 es el motor predeterminado para voz en ruso: más preciso y rápido que los modelos Whisper pequeños, funciona en CPU. Para otros idiomas y ante fallos se usa Whisper.",
+      "gigaamLang": "El idioma de la clase no es ruso: se transcribirá con Whisper.",
+      "errGigaamMissing": "El modelo GigaAM v3 no está descargado",
+      "errRuntimeMissing": "No se encontró el runtime ONNX (onnxruntime-node): GigaAM v3 no puede ejecutarse"
     },
     "audio": {
       "btn": "Audio",
@@ -3039,7 +3046,8 @@
       "montageDownload": "Descargar mp3"
     },
     "modelMissing": "El modelo de reconocimiento no está descargado: se graba, pero sin transcripción",
-    "downloadModel": "Descargar modelo"
+    "downloadModel": "Descargar modelo",
+    "engineReadyGigaam": "GigaAM v3 listo · CPU"
   },
   "bypass": {
     "netEyebrow": "Diagnóstico de red",

@@ -2781,7 +2781,7 @@
     "errSystemAudio": "Pas de son système : cochez « Partager l'audio » dans la boîte de dialogue",
     "errSession": "Session d'enregistrement introuvable sur le serveur",
     "errIngest": "Enregistrement arrêté : flux audio vers le serveur perdu",
-    "errWhisper": "whisper.cpp n'est pas installé (storage/whisper)",
+    "errWhisper": "Aucun moteur de reconnaissance installé — téléchargez GigaAM v3 ou Whisper dans les réglages du moteur",
     "errNoTranscript": "Pas encore de transcription — attendez les segments",
     "errConspectusKey": "Pas de clé API pour le fournisseur « {provider} » — enregistrez-la dans les réglages du chat",
     "errConspectusProvider": "Fournisseur inconnu « {provider} » pour le résumé",
@@ -2895,7 +2895,14 @@
       "errBinNotFound": "Fichier introuvable",
       "errCancelled": "Téléchargement annulé",
       "errDownload": "Échec du téléchargement (HTTP {code})",
-      "errNetwork": "Serveur de téléchargement injoignable — vérifiez la connexion ou le proxy"
+      "errNetwork": "Serveur de téléchargement injoignable — vérifiez la connexion ou le proxy",
+      "asrTitle": "Reconnaissance vocale",
+      "gigaamNote": "ru · rapide",
+      "whisperNote": "100+ langues",
+      "asrHint": "GigaAM v3 est le moteur par défaut pour le russe : plus précis et plus rapide que les petits modèles Whisper, fonctionne sur CPU. Pour les autres langues et en cas d'échec, Whisper est utilisé.",
+      "gigaamLang": "La langue du cours n'est pas le russe — la transcription passera par Whisper.",
+      "errGigaamMissing": "Le modèle GigaAM v3 n'est pas téléchargé",
+      "errRuntimeMissing": "Runtime ONNX (onnxruntime-node) introuvable — GigaAM v3 ne peut pas démarrer"
     },
     "audio": {
       "btn": "Audio",
@@ -3039,7 +3046,8 @@
       "montageDownload": "Télécharger le mp3"
     },
     "modelMissing": "Le modèle de reconnaissance n'est pas téléchargé : l'enregistrement fonctionne, sans transcription",
-    "downloadModel": "Télécharger le modèle"
+    "downloadModel": "Télécharger le modèle",
+    "engineReadyGigaam": "GigaAM v3 prêt · CPU"
   },
   "bypass": {
     "netEyebrow": "Diagnostic réseau",

@@ -96,6 +96,7 @@ export type {
   LectureGpuInfo,
   LectureEngineVerify,
   LectureEngineSetup,
+  LectureGigaamInfo,
   LectureSession,
   LectureChunk,
   LectureVadMetrics,

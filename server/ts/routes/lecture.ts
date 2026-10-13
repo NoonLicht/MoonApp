@@ -2,6 +2,7 @@
  * API Lecture Recorder (whisper.cpp + VAD).
  *
  *  GET    /api/lecture/engine              — статус whisper.cpp (сборка, модель, GPU)
+ *  GET/POST /api/lecture/engine/gigaam     — GigaAM v3 (скачать, выбрать движок)
  *  GET    /api/lecture/engine/setup        — каталог моделей/сборок + детект GPU + прогресс
  *  POST   /api/lecture/engine/model        — { id, action: select|download|remove }
  *  POST   /api/lecture/engine/build        — { id, action: select|download } (CPU/BLAS/CUDA)
@@ -46,6 +47,7 @@ import fs from "fs";
 import * as lecture from "../lecture";
 import * as diarize from "../diarize";
 import * as whisperEngine from "../whisperEngine";
+import * as gigaamEngine from "../gigaamEngine";
 import logger from "../logger";
 
 const router = express.Router();
@@ -142,6 +144,28 @@ router.post("/engine/verify", async (req, res) => {
     res.json(whisperEngine.setupInfo());
   } catch (e: any) {
     res.status(500).json({ error: e.message });
+  }
+});
+
+/**
+ * GigaAM v3 — движок распознавания речи по умолчанию (ONNX, без сборок и GPU).
+ * GET  /engine/gigaam            — статус: скачана ли модель, прогресс, выбранный движок
+ * POST /engine/gigaam { action } — download | cancel | remove | use-gigaam | use-whisper
+ */
+router.get("/engine/gigaam", (req, res) => res.json(gigaamEngine.info()));
+
+router.post("/engine/gigaam", (req, res) => {
+  try {
+    const action = String(req.body?.action || "");
+    if (action === "download") gigaamEngine.download();
+    else if (action === "cancel") gigaamEngine.cancelTask();
+    else if (action === "remove") gigaamEngine.remove();
+    else if (action === "use-gigaam") gigaamEngine.selectEngine("gigaam");
+    else if (action === "use-whisper") gigaamEngine.selectEngine("whisper");
+    else throw new Error("unknown_action");
+    res.json(gigaamEngine.info());
+  } catch (e: any) {
+    res.status(400).json({ error: e.message });
   }
 });
 

@@ -20,7 +20,8 @@ import fs from "fs";
 import logger from "./logger";
 import { VadBufferManager } from "./vad";
 import { maybeAutoConspectus, maybeAutoDiarize } from "./lectureConspectus";
-import { transcribeFile } from "./lectureAsr";
+import { transcribeFile, asrReady } from "./lectureAsr";
+import * as gigaam from "./gigaamEngine";
 import { recheckState } from "./lectureRecheck";
 import { fmtTs } from "./lectureExport";
 export { exportContent, contentDisposition } from "./lectureExport";
@@ -108,10 +109,21 @@ export function sessionDir(id: any) {
  */
 function engineStatus() {
   const summary = whisperEngine.engineSummary();
+  const gigaamReady = gigaam.isInstalled() && gigaam.runtimeAvailable();
   // Наличие NVIDIA-устройства нужно для предупреждений в шапке; детект кэширован
   // в whisperEngine, поэтому вызов дешёвый (первый — ~50 мс на nvidia-smi).
   return {
     ...summary,
+    // Движок готов, если есть Whisper ИЛИ скачанный GigaAM v3.
+    ready: summary.ready || gigaamReady,
+    // Какой движок реально расшифрует следующий чанк: gigaam | whisper | null.
+    asr: gigaamReady && (!summary.ready || (gigaam.preferred() === "gigaam" && gigaam.languageSupported()))
+      ? "gigaam"
+      : summary.ready
+        ? "whisper"
+        : null,
+    asrPreferred: gigaam.preferred(),
+    gigaamInstalled: gigaamReady,
     activeSession: sessions.size > 0,
   };
 }
@@ -355,7 +367,7 @@ function pumpQueue(id: any) {
 export async function transcribeChunk(id: any, item: any) {
   const bin = whisperEngine.findBin();
   const model = whisperEngine.findModel();
-  if (!bin || !model) {
+  if (!asrReady(bin, model)) {
     const err = new Error(bin ? "whisper_model_missing" : "whisper_not_installed");
     if (item.chunkId) stmts.chunkUpdate.run(item.chunkId, { status: "error", error: err.message });
     throw err;
@@ -433,7 +445,7 @@ function pumpDraft(id: any) {
 async function draftTranscribe(id: any, track: any, samples: any, sampleRate: any) {
   const bin = whisperEngine.findBin();
   const model = whisperEngine.findModel();
-  if (!bin || !model) return "";
+  if (!asrReady(bin, model)) return "";
   const file = `_draft_${track}.wav`;
   const wavPath = path.join(sessionDir(id), file);
   fs.writeFileSync(wavPath, toWav(samples, sampleRate, 1));

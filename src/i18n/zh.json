@@ -2781,7 +2781,7 @@
     "errSystemAudio": "没有系统音频：请在弹窗中勾选「分享音频」",
     "errSession": "服务器上未找到录制会话",
     "errIngest": "录制已停止：到服务器的音频流已断开",
-    "errWhisper": "未安装 whisper.cpp（storage/whisper）",
+    "errWhisper": "未安装语音识别引擎 — 请在引擎设置中下载 GigaAM v3 或 Whisper",
     "errNoTranscript": "暂无转写——请等待片段",
     "errConspectusKey": "缺少提供商「{provider}」的 API 密钥 — 请在聊天设置中保存",
     "errConspectusProvider": "概要的提供商「{provider}」未知",
@@ -2895,7 +2895,14 @@
       "errBinNotFound": "未找到文件",
       "errCancelled": "下载已取消",
       "errDownload": "下载失败（HTTP {code}）",
-      "errNetwork": "无法连接下载服务器——请检查网络或代理"
+      "errNetwork": "无法连接下载服务器——请检查网络或代理",
+      "asrTitle": "语音识别",
+      "gigaamNote": "俄语 · 快速",
+      "whisperNote": "100+ 种语言",
+      "asrHint": "GigaAM v3 是俄语语音的默认引擎：比小型 Whisper 模型更准更快，在 CPU 上运行。其他语言或出错时使用 Whisper。",
+      "gigaamLang": "讲座语言不是俄语 — 将使用 Whisper 转写。",
+      "errGigaamMissing": "尚未下载 GigaAM v3 模型",
+      "errRuntimeMissing": "未找到 ONNX 运行时 (onnxruntime-node) — GigaAM v3 无法运行"
     },
     "audio": {
       "btn": "音频",
@@ -3039,7 +3046,8 @@
       "montageDownload": "下载 mp3"
     },
     "modelMissing": "尚未下载识别模型——可录音，但不会转写",
-    "downloadModel": "下载模型"
+    "downloadModel": "下载模型",
+    "engineReadyGigaam": "GigaAM v3 就绪 · CPU"
   },
   "bypass": {
     "netEyebrow": "网络诊断",

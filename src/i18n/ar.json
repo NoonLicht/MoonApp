@@ -2781,7 +2781,7 @@
     "errSystemAudio": "لا يوجد صوت نظام: حدّد «مشاركة الصوت» في النافذة",
     "errSession": "لم يتم العثور على جلسة التسجيل على الخادم",
     "errIngest": "تم إيقاف التسجيل: انقطع تدفق الصوت إلى الخادم",
-    "errWhisper": "whisper.cpp غير مثبّت (storage/whisper)",
+    "errWhisper": "لا يوجد محرك تعرف على الكلام — نزّل GigaAM v3 أو Whisper من إعدادات المحرك",
     "errNoTranscript": "لا يوجد تفريغ بعد — انتظر المقاطع",
     "errConspectusKey": "لا يوجد مفتاح API للمزوّد «{provider}» — احفظه في إعدادات المحادثة",
     "errConspectusProvider": "مزوّد غير معروف «{provider}» للملخص",
@@ -2895,7 +2895,14 @@
       "errBinNotFound": "الملف غير موجود",
       "errCancelled": "أُلغي التنزيل",
       "errDownload": "فشل التنزيل (HTTP {code})",
-      "errNetwork": "لا اتصال بخادم التنزيل — تحقق من الشبكة أو الوكيل"
+      "errNetwork": "لا اتصال بخادم التنزيل — تحقق من الشبكة أو الوكيل",
+      "asrTitle": "التعرف على الكلام",
+      "gigaamNote": "الروسية · سريع",
+      "whisperNote": "أكثر من 100 لغة",
+      "asrHint": "GigaAM v3 هو المحرك الافتراضي للكلام الروسي: أدق وأسرع من نماذج Whisper الصغيرة ويعمل على المعالج. للغات الأخرى وعند حدوث خطأ يُستخدم Whisper.",
+      "gigaamLang": "لغة المحاضرة ليست الروسية — ستتم الكتابة عبر Whisper.",
+      "errGigaamMissing": "لم يتم تنزيل نموذج GigaAM v3",
+      "errRuntimeMissing": "لم يتم العثور على ONNX runtime (onnxruntime-node) — لا يمكن تشغيل GigaAM v3"
     },
     "audio": {
       "btn": "الصوت",
@@ -3039,7 +3046,8 @@
       "montageDownload": "تنزيل mp3"
     },
     "modelMissing": "نموذج التعرف غير منزّل — التسجيل يعمل بدون تفريغ",
-    "downloadModel": "تنزيل النموذج"
+    "downloadModel": "تنزيل النموذج",
+    "engineReadyGigaam": "GigaAM v3 جاهز · CPU"
   },
   "bypass": {
     "netEyebrow": "تشخيص الشبكة",

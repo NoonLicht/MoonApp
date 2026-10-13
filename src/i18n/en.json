@@ -2785,7 +2785,7 @@
     "errSystemAudio": "No system audio — tick “Share audio” in the picker",
     "errSession": "Recording session not found on the server",
     "errIngest": "Recording stopped: the audio stream to the server was lost",
-    "errWhisper": "whisper.cpp is not installed (storage/whisper)",
+    "errWhisper": "No speech engine installed — download GigaAM v3 or Whisper in the engine settings",
     "errNoTranscript": "No transcript yet — wait for the chunks",
     "errConspectusKey": "No API key for provider \"{provider}\" — save it in the chat settings",
     "errConspectusProvider": "Unknown conspectus provider \"{provider}\"",
@@ -2899,7 +2899,14 @@
       "errBinNotFound": "File not found",
       "errCancelled": "Download cancelled",
       "errDownload": "Download failed (HTTP {code})",
-      "errNetwork": "Cannot reach the download server — check your connection or proxy"
+      "errNetwork": "Cannot reach the download server — check your connection or proxy",
+      "asrTitle": "Speech recognition",
+      "gigaamNote": "ru · fast",
+      "whisperNote": "100+ languages",
+      "asrHint": "GigaAM v3 is the default engine for Russian speech: more accurate and faster than small Whisper models, runs on the CPU. For other lecture languages and on failure, Whisper is used.",
+      "gigaamLang": "The lecture language is not Russian — Whisper will transcribe it.",
+      "errGigaamMissing": "The GigaAM v3 model is not downloaded",
+      "errRuntimeMissing": "ONNX runtime (onnxruntime-node) not found — GigaAM v3 cannot run"
     },
     "audio": {
       "btn": "Audio",
@@ -3043,7 +3050,8 @@
       "montageDownload": "Download mp3"
     },
     "modelMissing": "Recognition model isn't downloaded — recording works, no transcription",
-    "downloadModel": "Download model"
+    "downloadModel": "Download model",
+    "engineReadyGigaam": "GigaAM v3 ready · CPU"
   },
   "bypass": {
     "netEyebrow": "Network diagnostics",

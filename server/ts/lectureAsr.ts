@@ -6,7 +6,24 @@ import { spawn } from "child_process";
 import path from "path";
 import settings from "./settings";
 import * as whisperEngine from "./whisperEngine";
+import * as gigaam from "./gigaamEngine";
 import logger from "./logger";
+
+/**
+ * Каким движком расшифровывать: GigaAM v3 или Whisper.
+ * GigaAM — если модель скачана и (выбрана по умолчанию и язык русский) либо
+ * Whisper вообще не установлен: пользователь без Whisper не остаётся без речи.
+ */
+export function useGigaam(whisperReady: boolean): boolean {
+  if (!gigaam.isInstalled() || !gigaam.runtimeAvailable()) return false;
+  if (!whisperReady) return true;
+  return gigaam.preferred() === "gigaam" && gigaam.languageSupported();
+}
+
+/** Есть ли чем расшифровывать: готовый Whisper (bin+model) или скачанный GigaAM. */
+export function asrReady(bin: unknown, model: unknown): boolean {
+  return !!(bin && model) || (gigaam.isInstalled() && gigaam.runtimeAvailable());
+}
 
 /** Типовые галлюцинации Whisper на тишине/шуме — вырезаем из результата. */
 const HALLUCINATION_RE = [
@@ -234,6 +251,22 @@ export async function transcribeFile(
   runner = runWhisper,
   allowRetry = true,
 ) {
+  // GigaAM v3 (ONNX, без внешних процессов): подсказки и откат без --prompt ей не нужны.
+  if (useGigaam(!!(bin && model))) {
+    try {
+      const r = await gigaam.transcribeWav(wavPath);
+      return { text: r.text, segments: r.segments, promptless: true };
+    } catch (e: any) {
+      // Whisper есть — этот чанк уходит на него, очередь не рвётся; иначе — ошибка.
+      if (!(bin && model)) throw e;
+      logger.warn("lecture.chunk.gigaam_fallback_whisper", {
+        id: meta.id ?? null,
+        file: meta.file ?? path.basename(wavPath),
+        error: String(e.message || e),
+      });
+    }
+  }
+
   // Если на этой модели подсказка уже выбила пустой ответ, дальше идём сразу без
   // неё: повтор стоит полной загрузки модели, а чанков в лекции сотни.
   const skipHint = whisperEngine.promptUnusableFor(model);

@@ -21,6 +21,7 @@ import type {
   LectureDiarizeSettings,
   LectureDiarizeState,
   LectureEngineSetup,
+  LectureGigaamInfo,
 } from "@/api/apiTypesLecture";
 
 export const lectureApi = {
@@ -126,6 +127,10 @@ export const lectureApi = {
     req<LectureEngineSetup>("POST", "/lecture/engine/bin", { path }),
   lectureEngineCancel: () => req<LectureEngineSetup>("POST", "/lecture/engine/cancel", {}),
   lectureEngineVerify: () => req<LectureEngineSetup>("POST", "/lecture/engine/verify", {}),
+  // GigaAM v3 — движок распознавания речи по умолчанию.
+  lectureGigaam: () => req<LectureGigaamInfo>("GET", "/lecture/engine/gigaam"),
+  lectureGigaamAction: (action: "download" | "cancel" | "remove" | "use-gigaam" | "use-whisper") =>
+    req<LectureGigaamInfo>("POST", "/lecture/engine/gigaam", { action }),
   // Скачивания идут через fetch с токеном: <a download> не умеет заголовок
   // x-moonapp-token, поэтому в Electron такие ссылки отдавали 401.
   lectureDownloadExport: async (

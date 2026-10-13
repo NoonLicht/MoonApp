@@ -28,10 +28,14 @@ const whisperEngine = require("./whisperEngine") as {
   findModel(): string | null;
 };
 // eslint-disable-next-line @typescript-eslint/no-require-imports
+const lectureAsr = require("./lectureAsr") as {
+  asrReady(bin: unknown, model: unknown): boolean;
+};
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const lecture = require("./lecture") as {
   transcribeFile(
-    bin: string,
-    model: string,
+    bin: string | null,
+    model: string | null,
     wavPath: string,
     outBase: string,
   ): Promise<{ text: string; segments: unknown[] }>;
@@ -121,7 +125,7 @@ export async function transcribeAndSave(input: TranscribeInput): Promise<QuickNo
 
   const bin = whisperEngine.findBin();
   const model = whisperEngine.findModel();
-  if (!bin || !model) throw new Error("whisper_not_installed");
+  if (!lectureAsr.asrReady(bin, model)) throw new Error("whisper_not_installed");
 
   const id = crypto.randomUUID();
   const wavPath = path.join(DIRS.quickNotesTmp, `${id}.wav`);
@@ -170,7 +174,7 @@ export async function transcribeOnly(audioPath: string): Promise<{ text: string 
   if (!ff.found || !ff.ffmpeg) throw new Error("ffmpeg_not_found");
   const bin = whisperEngine.findBin();
   const model = whisperEngine.findModel();
-  if (!bin || !model) throw new Error("whisper_not_installed");
+  if (!lectureAsr.asrReady(bin, model)) throw new Error("whisper_not_installed");
   const id = crypto.randomUUID();
   const wavPath = path.join(DIRS.quickNotesTmp, `${id}.wav`);
   const outBase = path.join(DIRS.quickNotesTmp, id);

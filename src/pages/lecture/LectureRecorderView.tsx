@@ -209,7 +209,9 @@ export default function LectureRecorderView({ c }: { c: useLectureRecorderResult
           <Cpu size={16} />
           <span className={engine?.ready ? "lec-ok" : "lec-warn"}>
             {engine?.ready
-              ? t("lecture.engineReady", { backend: engine.backend || "cpu" })
+              ? engine.asr === "gigaam"
+                ? t("lecture.engineReadyGigaam")
+                : t("lecture.engineReady", { backend: engine.backend || "cpu" })
               : engine?.bin
                 ? t("lecture.modelMissing")
                 : t("lecture.engineMissing")}
@@ -220,7 +222,13 @@ export default function LectureRecorderView({ c }: { c: useLectureRecorderResult
             </button>
           )}
           <span className="lec-sep">·</span>
-          <span className="lec-dim">{engine?.model ? engine.model.split(/[\\/]/).pop() : "—"}</span>
+          <span className="lec-dim">
+            {engine?.asr === "gigaam"
+              ? "GigaAM v3"
+              : engine?.model
+                ? engine.model.split(/[\\/]/).pop()
+                : "—"}
+          </span>
         </div>
         <div className="lec-actions">
           {pageTab === "lecture" && recordingActive && (

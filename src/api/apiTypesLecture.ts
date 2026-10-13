@@ -24,6 +24,25 @@ export interface LectureEngineStatus {
   threads: number;
   /** Предупреждения движка: cuda_without_nvidia, cuda_blackwell, prompt_unusable. */
   warnings: string[];
+  /** Какой движок расшифрует речь сейчас: GigaAM v3, Whisper или никакой. */
+  asr?: "gigaam" | "whisper" | null;
+  /** Выбранный пользователем движок (по умолчанию gigaam). */
+  asrPreferred?: "gigaam" | "whisper";
+  /** Модель GigaAM v3 скачана и рантайм ONNX доступен. */
+  gigaamInstalled?: boolean;
+}
+
+/** Состояние движка GigaAM v3 (GET/POST /api/lecture/engine/gigaam). */
+export interface LectureGigaamInfo {
+  installed: boolean;
+  runtime: boolean;
+  sizeMb: number;
+  downloadedMb: number;
+  preferred: "gigaam" | "whisper";
+  /** Язык лекции поддерживается GigaAM (ru/auto). */
+  languageOk: boolean;
+  task: LectureEngineTask;
+  dir: string;
 }
 
 /** Сборка whisper.cpp из каталога (CPU / OpenBLAS / CUDA 11.8 / CUDA 12.4). */

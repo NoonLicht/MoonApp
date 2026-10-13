@@ -15,7 +15,7 @@ import { Btn, Badge, ProgressBar } from "@/components/ui";
 import { useI18n } from "@/app/i18n";
 import type { TranslateFn } from "@/app/i18n";
 import { api } from "@/api/client";
-import type { LectureEngineSetup } from "@/api/client";
+import type { LectureEngineSetup, LectureGigaamInfo } from "@/api/client";
 
 /**
  * Панель настройки движка распознавания лекций (whisper.cpp).
@@ -42,6 +42,8 @@ function errorText(t: TranslateFn, raw: string): string {
     build_no_exe: "errBuildNoExe",
     bin_not_found: "errBinNotFound",
     cancelled: "errCancelled",
+    gigaam_not_installed: "errGigaamMissing",
+    runtime_missing: "errRuntimeMissing",
   };
   const key = map[raw];
   if (key) return t(`lecture.setup.${key}`);
@@ -117,6 +119,40 @@ export default function LectureEnginePanel({
   // повторной закачки (см. server/ts/whisperEngine.ts::tryInstallBuildShared).
   const [upscaleCuda, setUpscaleCuda] = useState<boolean | null>(null);
   const alive = useRef(true);
+  // GigaAM v3: отдельное состояние (свой прогресс скачивания, не из whisper-задачи).
+  const [giga, setGiga] = useState<LectureGigaamInfo | null>(null);
+
+  const refreshGiga = useCallback(async () => {
+    try {
+      const g = await api.lectureGigaam();
+      if (alive.current) setGiga(g);
+    } catch {
+      /* бэкенд ещё поднимается */
+    }
+  }, []);
+
+  const gigaAction = useCallback(
+    async (action: "download" | "cancel" | "remove" | "use-gigaam" | "use-whisper") => {
+      setError("");
+      try {
+        const g = await api.lectureGigaamAction(action);
+        if (alive.current) setGiga(g);
+        onChanged?.();
+      } catch (e) {
+        setError(errorText(t, String((e as Error)?.message || e)));
+      }
+    },
+    [onChanged, t],
+  );
+
+  const gigaWorking = giga?.task.state === "working";
+  useEffect(() => {
+    if (!gigaWorking) return;
+    const timer = setInterval(() => {
+      void refreshGiga().then(() => onChanged?.());
+    }, 900);
+    return () => clearInterval(timer);
+  }, [gigaWorking, refreshGiga, onChanged]);
 
   useEffect(() => {
     api
@@ -158,6 +194,7 @@ export default function LectureEnginePanel({
   useEffect(() => {
     alive.current = true;
     void refresh();
+    void refreshGiga();
     return () => {
       alive.current = false;
     };
@@ -217,7 +254,11 @@ export default function LectureEnginePanel({
           <div className="lecs-h1">{t("lecture.setup.title")}</div>
         </div>
         <span className={`lecs-pill ${engine?.ready ? "on" : "off"}`}>
-          {engine?.ready ? `${backendLabel(t, engine.backend)}` : t("lecture.setup.notReady")}
+          {engine?.ready
+            ? engine.asr === "gigaam"
+              ? "GigaAM v3"
+              : `${backendLabel(t, engine.backend)}`
+            : t("lecture.setup.notReady")}
         </span>
         {!inline && (
           <button className="lecs-close" onClick={onClose} title={t("common.close")}>
@@ -234,6 +275,120 @@ export default function LectureEnginePanel({
           <span>{t(`lecture.setup.warn.${w}`)}</span>
         </div>
       ))}
+
+      {/* --- Распознавание речи: GigaAM v3 (по умолчанию) или Whisper --- */}
+      <div className="lecs-block">
+        <div className="lecs-block-label">{t("lecture.setup.asrTitle")}</div>
+        <div className="lecs-list">
+          <div
+            className={`lecs-row ${giga && giga.preferred === "gigaam" ? "active" : ""}`}
+            key="gigaam"
+          >
+            <div className="lecs-row-main">
+              <div className="lecs-row-name">
+                GigaAM v3
+                <Badge tone="teal" mono>
+                  {humanMb(giga?.installed ? giga.downloadedMb : giga?.sizeMb || 215)}
+                </Badge>
+                <Badge tone="violet" mono>
+                  {t("lecture.setup.gigaamNote")}
+                </Badge>
+              </div>
+              <div className="lecs-dim">
+                {giga?.installed ? t("lecture.setup.downloaded") : t("lecture.setup.notDownloaded")}
+                {giga?.installed && giga.preferred === "gigaam"
+                  ? ` · ${t("lecture.setup.active")}`
+                  : ""}
+              </div>
+              {giga && !giga.runtime && (
+                <div className="lecs-warn">
+                  <AlertTriangle size={13} />
+                  <span>{t("lecture.setup.errRuntimeMissing")}</span>
+                </div>
+              )}
+              {giga && giga.preferred === "gigaam" && !giga.languageOk && (
+                <div className="lecs-dim lecs-hint">{t("lecture.setup.gigaamLang")}</div>
+              )}
+            </div>
+            <div className="lecs-row-actions">
+              {giga && !giga.installed && (
+                <Btn
+                  variant="secondary"
+                  icon={Download}
+                  onClick={() => void gigaAction("download")}
+                  disabled={gigaWorking}
+                >
+                  {gigaWorking ? t("lecture.setup.downloading") : t("lecture.setup.download")}
+                </Btn>
+              )}
+              {giga?.installed && giga.preferred !== "gigaam" && (
+                <Btn variant="secondary" icon={Check} onClick={() => void gigaAction("use-gigaam")}>
+                  {t("lecture.setup.use")}
+                </Btn>
+              )}
+              {giga?.installed && (
+                <Btn
+                  variant="ghost"
+                  icon={Trash2}
+                  onClick={() => void gigaAction("remove")}
+                  disabled={gigaWorking}
+                  title={t("common.delete")}
+                />
+              )}
+            </div>
+          </div>
+          <div
+            className={`lecs-row ${giga && giga.preferred === "whisper" ? "active" : ""}`}
+            key="whisper"
+          >
+            <div className="lecs-row-main">
+              <div className="lecs-row-name">
+                Whisper
+                <Badge tone="violet" mono>
+                  {t("lecture.setup.whisperNote")}
+                </Badge>
+              </div>
+              <div className="lecs-dim">
+                {engine?.bin && engine.model
+                  ? t("lecture.setup.installed")
+                  : t("lecture.setup.notInstalled")}
+                {giga?.preferred === "whisper" ? ` · ${t("lecture.setup.active")}` : ""}
+              </div>
+            </div>
+            <div className="lecs-row-actions">
+              {giga && giga.preferred !== "whisper" && (
+                <Btn variant="secondary" icon={Check} onClick={() => void gigaAction("use-whisper")}>
+                  {t("lecture.setup.use")}
+                </Btn>
+              )}
+            </div>
+          </div>
+        </div>
+        {giga && giga.task.state === "working" && (
+          <div className="lecs-task">
+            <div className="lecs-task-top">
+              <span className="lecs-row-name">GigaAM v3</span>
+              <span className="lecs-dim">
+                {humanMb(Math.round(giga.task.received / 1048576))}
+                {giga.task.total > 0 ? ` / ${humanMb(Math.round(giga.task.total / 1048576))}` : ""}
+              </span>
+            </div>
+            <ProgressBar value={giga.task.progress} />
+            <div className="lecs-task-foot">
+              <span className="lecs-dim">{giga.task.progress}%</span>
+              <div className="lecs-task-actions">
+                <Btn variant="ghost" icon={X} onClick={() => void gigaAction("cancel")}>
+                  {t("common.cancel")}
+                </Btn>
+              </div>
+            </div>
+          </div>
+        )}
+        {giga && giga.task.state === "error" && (
+          <div className="lecs-error">{errorText(t, giga.task.error)}</div>
+        )}
+        <div className="lecs-dim lecs-hint">{t("lecture.setup.asrHint")}</div>
+      </div>
 
       {/* --- Ваш ПК: что реально потянет это железо --- */}
       {system?.detected && (

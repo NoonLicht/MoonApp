@@ -1,5 +1,6 @@
 import { marked } from "marked";
 import hljs from "@/lib/hljs";
+import { api } from "@/api/client";
 
 marked.setOptions({ breaks: true, gfm: true } as any);
 
@@ -295,6 +296,13 @@ export function saveLast(provider: string, model: string) {
 
 /* ─────────────── Голосовой ввод ─────────────── */
 
+/**
+ * Интерфейс совместим с Web Speech API (его использует AiChatPage), но речь
+ * распознаёт локальный движок приложения (GigaAM v3 / Whisper): Chromium-овский
+ * SpeechRecognition в Electron уходит в облако Google и без ключа не работает.
+ * Запись идёт через MediaRecorder; по stop() ролик отправляется на
+ * /api/quicknotes/transcribe, результат приходит одним финальным onresult.
+ */
 type SpeechRecognitionLike = {
   lang: string;
   continuous: boolean;
@@ -307,14 +315,68 @@ type SpeechRecognitionLike = {
 };
 
 export function createRecognition(locale: string): SpeechRecognitionLike | null {
-  const w = window as any;
-  const Ctor = w.SpeechRecognition || w.webkitSpeechRecognition;
-  if (!Ctor) return null;
-  const rec = new Ctor();
-  rec.lang = locale;
-  rec.continuous = false;
-  rec.interimResults = true;
-  return rec;
+  if (typeof MediaRecorder === "undefined" || !navigator.mediaDevices?.getUserMedia) return null;
+  let rec: MediaRecorder | null = null;
+  let stopped = false;
+  const r: SpeechRecognitionLike = {
+    lang: locale,
+    continuous: false,
+    interimResults: false,
+    onresult: null,
+    onend: null,
+    onerror: null,
+    start() {
+      stopped = false;
+      navigator.mediaDevices
+        .getUserMedia({ audio: true })
+        .then((stream) => {
+          if (stopped) {
+            stream.getTracks().forEach((tr) => tr.stop());
+            r.onend?.();
+            return;
+          }
+          const chunks: Blob[] = [];
+          const mr = new MediaRecorder(stream);
+          rec = mr;
+          mr.ondataavailable = (e) => {
+            if (e.data.size) chunks.push(e.data);
+          };
+          mr.onstop = () => {
+            stream.getTracks().forEach((tr) => tr.stop());
+            void (async () => {
+              try {
+                const blob = new Blob(chunks, { type: mr.mimeType || "audio/webm" });
+                const { text } = await api.quickNotesTranscribe(blob);
+                const out = String(text || "").trim();
+                if (out) {
+                  r.onresult?.({
+                    resultIndex: 0,
+                    results: [Object.assign([{ transcript: out }], { isFinal: true })],
+                  });
+                }
+              } catch (e) {
+                r.onerror?.(e);
+              }
+              r.onend?.();
+            })();
+          };
+          mr.start();
+        })
+        .catch((e) => {
+          r.onerror?.(e);
+          r.onend?.();
+        });
+    },
+    stop() {
+      stopped = true;
+      try {
+        if (rec && rec.state !== "inactive") rec.stop();
+      } catch {
+        /* уже остановлен */
+      }
+    },
+  };
+  return r;
 }
 
 /* ─────────────── Экспорт чата ─────────────── */

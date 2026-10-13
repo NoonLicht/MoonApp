@@ -180,7 +180,11 @@ export function AiHub({ chatProvider, chatModel }: { chatProvider?: string; chat
           id: "stt",
           page: "lecture",
           title: t("aiHub.stt"),
-          status: r.ready ? `${r.model ?? r.modelId} · ${r.backend ?? "cpu"}` : t("aiHub.notInstalled"),
+          status: r.ready
+            ? r.asr === "gigaam"
+              ? "GigaAM v3 · cpu"
+              : `${r.model ?? r.modelId} · ${r.backend ?? "cpu"}`
+            : t("aiHub.notInstalled"),
           ready: r.ready,
         });
       }
