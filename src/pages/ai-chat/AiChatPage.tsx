@@ -516,9 +516,17 @@ export default function AiChatPage() {
             // подтягиваем id сообщений: без них нельзя ответвить, править или удалить
             void refreshMessages(activeId);
           } else if (ev.type === "error") {
-            setMessages((m) => [...m, { role: "assistant", text: `⚠ ${friendlyChatError(ev.message || "Error", t)}` }]);
+            const errText = `⚠ ${friendlyChatError(ev.message || "Error", t)}`;
+            setMessages((m) => [...m, { role: "assistant", text: errText }]);
             setStreamingText("");
             setSending(false);
+            // подтягиваем id: у вопроса без ответа должны работать «Регенерировать»/«Удалить»
+            void api
+              .getMessages(activeId)
+              .then((srv) =>
+                setMessages([...withImages(activeId, srv), { role: "assistant", text: errText }]),
+              )
+              .catch(() => undefined);
           }
         },
         signal,
@@ -768,6 +776,18 @@ export default function AiChatPage() {
     }
     setMessages((m) => m.filter((x) => (x.id || 0) < lastUser.id!));
     await send(lastUser.text);
+  };
+
+  /* повторная отправка любого сообщения пользователя: оно и всё после него удаляются, затем отправка заново */
+  const resendFrom = async (messageId: number, text: string) => {
+    if (!activeId || sending) return;
+    try {
+      await api.chatTruncateFrom(activeId, messageId);
+    } catch {
+      return;
+    }
+    setMessages((m) => m.filter((x) => (x.id || 0) < messageId));
+    await send(text);
   };
 
   const saveEdit = async () => {
@@ -1540,6 +1560,7 @@ export default function AiChatPage() {
                 onCopy={copyMessage}
                 onRegenerate={regenerate}
                 onContinue={continueGeneration}
+                onResend={resendFrom}
                 onBranch={branchFrom}
                 onDelete={deleteMessage}
                 onSaveEdit={saveEdit}

@@ -84,6 +84,8 @@ export default function MsgList(props: {
   onRegenerate: () => void;
   /** Дописать оборванный последний ответ. */
   onContinue?: () => void;
+  /** Повторно отправить сообщение пользователя (всё после него удаляется). */
+  onResend?: (messageId: number, text: string) => void;
   onBranch?: (messageId: number) => void;
   /** Удалить сообщение пользователя и всё, что идёт после него. */
   onDelete?: (messageId: number) => void;
@@ -103,6 +105,7 @@ export default function MsgList(props: {
     onCopy,
     onRegenerate,
     onContinue,
+    onResend,
     onBranch,
     onDelete,
     onSaveEdit,
@@ -179,6 +182,11 @@ export default function MsgList(props: {
                 title={t("aichat.edit")}
               >
                 <Pencil size={11} /> {t("aichat.edit")}
+              </button>
+            )}
+            {m.role === "user" && onResend && m.id && !sending && (
+              <button onClick={() => onResend(m.id!, m.text)} title={t("aichat.regenerate")}>
+                <RefreshCw size={11} /> {t("aichat.regenerate")}
               </button>
             )}
             {m.role === "user" && onDelete && m.id && !sending && (

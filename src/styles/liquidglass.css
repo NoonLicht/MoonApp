@@ -175,7 +175,8 @@ html:not(.no-glass) .ghost-dock {
 
 /* Поповеры тулбара (провайдер/модель и др.) висят над лентой чата с текстом и кодом:
    с 32% заливкой сквозь них читался фон. Подложка как у выпадающих списков (96%). */
-html:not(.no-glass) .tb-pop {
+html:not(.no-glass) .tb-pop,
+html:not(.no-glass) .app-shell .glass.settings-drawer:not(.glass-solid) {
   background:
     linear-gradient(
       135deg,
