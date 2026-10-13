@@ -1979,7 +1979,33 @@
     "appearance": "外观",
     "noResults": "无结果",
     "noTagsYet": "暂无标签",
-    "startWriting": "开始写作… 使用 [[链接]] 和 #标签"
+    "startWriting": "开始写作… 使用 [[链接]] 和 #标签",
+    "cmd": {
+      "menuTitle": "AI 命令：回车执行，Tab 补全",
+      "running": "{cmd} 执行中",
+      "gone": "笔记已变化，结果未插入。",
+      "noModel": "没有本地模型。请在 设置 → AI 与模型 → llama.cpp 中下载 Qwen3.5 或 Gemma 4。",
+      "noText": "该命令基于笔记文本，而笔记为空（或请选中一段文字）。",
+      "empty": "请在“...”后写下需要做的事",
+      "format": "整理为 Markdown",
+      "fix": "纠正错误",
+      "short": "精简",
+      "expand": "扩写",
+      "simplify": "简化",
+      "formal": "正式语气",
+      "translate": "翻译（…translate en）",
+      "table": "转为表格",
+      "list": "转为列表",
+      "summary": "笔记摘要",
+      "todo": "提取任务",
+      "plan": "计划",
+      "fact": "有趣的事实（…fact 主题）",
+      "continue": "续写",
+      "title": "标题建议",
+      "ideas": "点子",
+      "explain": "解释",
+      "tags": "推荐标签"
+    }
   },
   "player": {
     "play": "播放",
@@ -5439,6 +5465,56 @@
       "chandra2-q8": "Chandra OCR 2 · Q8_0（最佳质量）",
       "embeddinggemma2-q8": "EmbeddingGemma 2 · Q8_0（智能搜索，推荐）",
       "embeddinggemma2-q4": "EmbeddingGemma 2 · Q4（智能搜索，更轻量）"
+    },
+    "noneLoaded": "目前内存中没有模型，首次请求时才会加载。",
+    "loadingModel": "正在加载 {model}…",
+    "working": "运行中",
+    "unloadAll": "全部卸载",
+    "sec": {
+      "auto": "自动化与内存",
+      "builds": "llama.cpp 版本"
+    },
+    "autoMeta": "内存中最多 {n} 个",
+    "laptopNote": "这是笔记本电脑：默认只保留一个模型，其余卸载以节省内存和电量。",
+    "defaultModel": "默认模型",
+    "defaultAuto": "按任务自动选择",
+    "maxLoaded": "同时保留在内存中的模型数",
+    "maxAuto": "自动（{n}）",
+    "autoWarm": "进入页面时加载模型",
+    "autoWarmHint": "“我的空间”、翻译、讲座和聊天会提前准备所需模型。",
+    "moe": "MoE 模型：部分层放显卡，其余放内存",
+    "moeHint": "对 A3B/A4B 模型，只把需要的层放到显卡，专家权重留在内存，不占满显存。",
+    "idle": "空闲后卸载模型",
+    "idleAuto": "自动",
+    "idleMin": "{n} 分钟",
+    "kind": {
+      "embed": "嵌入",
+      "chat": "聊天",
+      "translate": "翻译",
+      "ocr": "OCR",
+      "tts": "语音"
+    },
+    "vision": "支持图像理解",
+    "visionShort": "图像",
+    "haveCount": "已下载：{n}",
+    "custom": "自定义模型",
+    "task": {
+      "command": "命令",
+      "summary": "摘要",
+      "translate": "翻译",
+      "chat": "聊天",
+      "vision": "图像"
+    },
+    "quant": {
+      "q3km": "体积小，质量略低，适合低配电脑",
+      "q3kl": "体积小，质量略低，适合低配电脑",
+      "q4": "轻量量化，快速省资源",
+      "q4km": "体积与质量的最佳平衡",
+      "q5": "质量优于 Q4，体积明显更大",
+      "q5km": "质量优于 Q4，体积略大",
+      "q6": "几乎无损，嵌入模型的高精度之选",
+      "q6k": "质量几乎无损",
+      "q8": "接近原始模型，精度最高"
     }
   },
   "canvas": {
@@ -5777,7 +5853,13 @@
     "disable": "禁用",
     "enable": "启用",
     "toggleOn": "智能搜索：已开启",
-    "toggleOff": "智能搜索：已关闭"
+    "toggleOff": "智能搜索：已关闭",
+    "activity": "当前状态",
+    "actLoading": "正在加载 {model} {task}",
+    "actBusy": "{model} 正在处理请求 {task}",
+    "actReady": "{model} 已就绪 {task}",
+    "actLimit": "同时加载的模型上限：{n}",
+    "actLaptop": "笔记本，节能模式"
   },
   "sem": {
     "similarToMineHint": "按与你的收藏和书签的接近程度排序",

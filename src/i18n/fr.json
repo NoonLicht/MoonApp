@@ -1979,7 +1979,33 @@
     "appearance": "Apparence",
     "noResults": "Aucun résultat",
     "noTagsYet": "Pas encore de tags",
-    "startWriting": "Commencez à écrire… Utilisez [[liens]] et #tags"
+    "startWriting": "Commencez à écrire… Utilisez [[liens]] et #tags",
+    "cmd": {
+      "menuTitle": "Commandes IA — Entrée exécute, Tab complète",
+      "running": "{cmd} en cours",
+      "gone": "La note a changé : le résultat n'a pas été inséré.",
+      "noModel": "Aucun modèle local. Téléchargez Qwen3.5 ou Gemma 4 dans Réglages → IA et modèles → llama.cpp.",
+      "noText": "La commande travaille sur le texte de la note, qui est vide (ou sélectionnez un passage).",
+      "empty": "Écrivez ce qu'il faut faire après « ... »",
+      "format": "Mettre en forme (Markdown)",
+      "fix": "Corriger les fautes",
+      "short": "Raccourcir",
+      "expand": "Développer",
+      "simplify": "Simplifier",
+      "formal": "Ton formel",
+      "translate": "Traduire (…translate en)",
+      "table": "En tableau",
+      "list": "En liste",
+      "summary": "Résumé de la note",
+      "todo": "Tâches du texte",
+      "plan": "Plan",
+      "fact": "Fait intéressant (…fact sur un sujet)",
+      "continue": "Poursuivre le texte",
+      "title": "Idées de titre",
+      "ideas": "Idées",
+      "explain": "Expliquer",
+      "tags": "Suggérer des tags"
+    }
   },
   "player": {
     "play": "Lecture",
@@ -5439,6 +5465,56 @@
       "chandra2-q8": "Chandra OCR 2 · Q8_0 (meilleure qualité)",
       "embeddinggemma2-q8": "EmbeddingGemma 2 · Q8_0 (recherche intelligente, recommandé)",
       "embeddinggemma2-q4": "EmbeddingGemma 2 · Q4 (recherche intelligente, plus léger)"
+    },
+    "noneLoaded": "Aucun modèle en mémoire pour l'instant : ils se chargent à la première requête.",
+    "loadingModel": "Chargement de {model}…",
+    "working": "en cours",
+    "unloadAll": "Tout décharger",
+    "sec": {
+      "auto": "Automatisation et mémoire",
+      "builds": "Versions de llama.cpp"
+    },
+    "autoMeta": "jusqu'à {n} en mémoire",
+    "laptopNote": "C'est un portable : un seul modèle est conservé par défaut, les autres sont déchargés pour économiser mémoire et batterie.",
+    "defaultModel": "Modèle par défaut",
+    "defaultAuto": "Choisir automatiquement selon la tâche",
+    "maxLoaded": "Modèles gardés en mémoire simultanément",
+    "maxAuto": "Auto ({n})",
+    "autoWarm": "Charger le modèle à l'ouverture d'une page",
+    "autoWarmHint": "Mon espace, Traducteur, Cours et Chat préparent à l'avance le modèle nécessaire.",
+    "moe": "Modèles MoE : couches sur le GPU, le reste en RAM",
+    "moeHint": "Pour A3B/A4B, seules les couches utiles vont sur le GPU, les experts restent en RAM : la VRAM n'est pas saturée.",
+    "idle": "Décharger le modèle après inactivité",
+    "idleAuto": "Automatique",
+    "idleMin": "{n} min",
+    "kind": {
+      "embed": "embeddings",
+      "chat": "chat",
+      "translate": "traduction",
+      "ocr": "OCR",
+      "tts": "voix"
+    },
+    "vision": "Comprend les images",
+    "visionShort": "images",
+    "haveCount": "téléchargés : {n}",
+    "custom": "Modèles personnels",
+    "task": {
+      "command": "commandes",
+      "summary": "résumés",
+      "translate": "traduction",
+      "chat": "chat",
+      "vision": "images"
+    },
+    "quant": {
+      "q3km": "Compact, qualité un peu moindre — pour PC modestes",
+      "q3kl": "Compact, qualité un peu moindre — pour PC modestes",
+      "q4": "Quantification légère — rapide et économe",
+      "q4km": "Meilleur équilibre taille / qualité",
+      "q5": "Meilleur que Q4, nettement plus volumineux",
+      "q5km": "Meilleur que Q4, un peu plus volumineux",
+      "q6": "Quasiment sans perte — le plus précis pour les embeddings",
+      "q6k": "Qualité quasiment sans perte",
+      "q8": "Pratiquement l'original, précision maximale"
     }
   },
   "canvas": {
@@ -5777,7 +5853,13 @@
     "disable": "Désactiver",
     "enable": "Activer",
     "toggleOn": "Recherche intelligente : activée",
-    "toggleOff": "Recherche intelligente : désactivée"
+    "toggleOff": "Recherche intelligente : désactivée",
+    "activity": "Ce qui se passe maintenant",
+    "actLoading": "Chargement de {model} {task}",
+    "actBusy": "{model} traite une requête {task}",
+    "actReady": "{model} prêt {task}",
+    "actLimit": "Limite de modèles chargés en même temps : {n}",
+    "actLaptop": "portable — mode économique"
   },
   "sem": {
     "similarToMineHint": "Trier par proximité avec vos favoris et signets",

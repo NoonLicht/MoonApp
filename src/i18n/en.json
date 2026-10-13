@@ -1979,7 +1979,33 @@
     "appearance": "Appearance",
     "noResults": "No results",
     "noTagsYet": "No tags yet",
-    "startWriting": "Start writing… Use [[wiki-links]] and #tags"
+    "startWriting": "Start writing… Use [[wiki-links]] and #tags",
+    "cmd": {
+      "menuTitle": "AI commands — Enter runs, Tab completes",
+      "running": "{cmd} is running",
+      "gone": "The note changed — the result was not inserted.",
+      "noModel": "No local model. Download Qwen3.5 or Gemma 4 in Settings → AI & models → llama.cpp.",
+      "noText": "The command works on the note text, which is empty (or select a fragment).",
+      "empty": "Write what you need after “...”",
+      "format": "Format as Markdown",
+      "fix": "Fix mistakes",
+      "short": "Shorten",
+      "expand": "Expand",
+      "simplify": "Simplify",
+      "formal": "Formal tone",
+      "translate": "Translate (…translate es)",
+      "table": "To a table",
+      "list": "To a list",
+      "summary": "Note summary",
+      "todo": "Tasks from text",
+      "plan": "Plan",
+      "fact": "Interesting fact (…fact about topic)",
+      "continue": "Continue the text",
+      "title": "Title ideas",
+      "ideas": "Ideas",
+      "explain": "Explain",
+      "tags": "Suggest tags"
+    }
   },
   "player": {
     "play": "Play",
@@ -5443,6 +5469,56 @@
       "chandra2-q8": "Chandra OCR 2 · Q8_0 (best quality)",
       "embeddinggemma2-q8": "EmbeddingGemma 2 · Q8_0 (smart search, recommended)",
       "embeddinggemma2-q4": "EmbeddingGemma 2 · Q4 (smart search, lighter)"
+    },
+    "noneLoaded": "No models in memory right now — they load on the first request.",
+    "loadingModel": "Loading {model}…",
+    "working": "working",
+    "unloadAll": "Unload all",
+    "sec": {
+      "auto": "Automation & memory",
+      "builds": "llama.cpp builds"
+    },
+    "autoMeta": "up to {n} in memory",
+    "laptopNote": "This is a laptop: one model is kept by default and others are unloaded to spare memory and battery.",
+    "defaultModel": "Default model",
+    "defaultAuto": "Pick automatically per task",
+    "maxLoaded": "Models kept in memory at once",
+    "maxAuto": "Auto ({n})",
+    "autoWarm": "Load the model when opening a page",
+    "autoWarmHint": "My Space, Translator, Lectures and Chat prepare the model they need in advance.",
+    "moe": "MoE models: layers on GPU, the rest in RAM",
+    "moeHint": "For A3B/A4B models only the needed layers go to the GPU, experts stay in system RAM, so VRAM isn't clogged.",
+    "idle": "Unload a model after idle time",
+    "idleAuto": "Automatic",
+    "idleMin": "{n} min",
+    "kind": {
+      "embed": "embeddings",
+      "chat": "chat",
+      "translate": "translation",
+      "ocr": "OCR",
+      "tts": "speech"
+    },
+    "vision": "Understands images",
+    "visionShort": "images",
+    "haveCount": "downloaded: {n}",
+    "custom": "Custom models",
+    "task": {
+      "command": "commands",
+      "summary": "summaries",
+      "translate": "translation",
+      "chat": "chat",
+      "vision": "images"
+    },
+    "quant": {
+      "q3km": "Compact, slightly lower quality — for weak PCs",
+      "q3kl": "Compact, slightly lower quality — for weak PCs",
+      "q4": "Light quant — fast and economical",
+      "q4km": "Best balance of size and quality",
+      "q5": "Better than Q4, noticeably larger",
+      "q5km": "Better than Q4, a bit larger",
+      "q6": "Nearly lossless — most accurate choice for embeddings",
+      "q6k": "Nearly lossless quality",
+      "q8": "Practically original, maximum precision"
     }
   },
   "canvas": {
@@ -5781,7 +5857,13 @@
     "disable": "Disable",
     "enable": "Enable",
     "toggleOn": "Smart search: on",
-    "toggleOff": "Smart search: off"
+    "toggleOff": "Smart search: off",
+    "activity": "What is happening now",
+    "actLoading": "Loading {model} {task}",
+    "actBusy": "{model} is handling a request {task}",
+    "actReady": "{model} is ready {task}",
+    "actLimit": "Limit of models loaded at once: {n}",
+    "actLaptop": "laptop — economy mode"
   },
   "sem": {
     "similarToMineHint": "Sort by closeness to your favorites and bookmarks",

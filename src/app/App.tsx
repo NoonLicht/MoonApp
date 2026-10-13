@@ -160,6 +160,29 @@ const PAGE_LOADERS: Record<PageId, () => Promise<PageModule>> = {
 };
 
 /** Один промис на страницу: повторные preload/lazy не дёргают import() заново. */
+/** Какую модель стоит прогреть при входе на страницу (null — ничего). */
+function warmTaskFor(page: PageId): string | null {
+  try {
+    if (page === "myspace") return "command";
+    if (page === "lecture") return "stt";
+    if (page === "aichat") {
+      const cfg = JSON.parse(localStorage.getItem("aichat.cfg.v2") || "null") as {
+        provider?: string;
+      } | null;
+      return cfg?.provider === "llamacpp" ? "chat" : null;
+    }
+    if (page === "translate") {
+      const tr = JSON.parse(localStorage.getItem("moonapp.translate") || "null") as {
+        provider?: string;
+      } | null;
+      return tr?.provider === "llamacpp" ? "translate" : null;
+    }
+  } catch {
+    /* localStorage недоступен */
+  }
+  return null;
+}
+
 const pageModules = new Map<PageId, Promise<PageModule>>();
 function loadPage(id: PageId): Promise<PageModule> {
   let p = pageModules.get(id);
@@ -296,6 +319,13 @@ function Shell({
     ? active
     : ((PAGES[0]?.id as PageId) ?? "store");
   const activeMeta = PAGES.find((p) => p.id === safeActive)!;
+  // Вход на страницу с локальной моделью: загружаем её заранее, чтобы первый запрос не ждал.
+  useEffect(() => {
+    const task = warmTaskFor(safeActive);
+    if (!task) return;
+    const id = window.setTimeout(() => void api.llamaWarm(task).catch(() => undefined), 400);
+    return () => window.clearTimeout(id);
+  }, [safeActive]);
   const MetaIcon = welcomeOpen ? Sparkles : activeMeta.icon;
   const metaTitle = welcomeOpen ? t("welcome.toolbarTitle") : t(activeMeta.i18n);
   const toolbarNode = toolbarNodes[safeActive] ?? null;

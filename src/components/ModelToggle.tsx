@@ -60,9 +60,9 @@ export function ModelPanel({ onClose }: { onClose: () => void }) {
   const catalog = (llama?.catalog ?? []).filter((m) => m.kind === "embed");
   const installed = sem?.models ?? [];
   const nameOf = (id: string, file: string): string => {
-    const k = `llama.model.${id}`;
-    const v = t(k);
-    return v === k ? file.replace(/\.gguf$/i, "") : v;
+    const c = (llama?.catalog ?? []).find((m) => m.id === id);
+    if (c) return `${c.title} · ${c.note.toUpperCase()}`;
+    return file.replace(/\.gguf$/i, "");
   };
   const options = [
     ...installed.map((f) => {
@@ -135,6 +135,34 @@ export function ModelPanel({ onClose }: { onClose: () => void }) {
           </div>
           {sem?.job.error && <div className="muted-sm task-mgr-err">{sem.job.error}</div>}
         </div>
+
+        {llama && (llama.activity.loading.length > 0 || llama.activity.loaded.length > 0) && (
+          <div className="task-mgr-row">
+            <span className="task-mgr-label">{t("semModel.activity")}</span>
+            {llama.activity.loading.map((l) => (
+              <div key={`l-${l.file}`} className="muted-sm">
+                <Loader2 size={12} className="spin" />{" "}
+                {t("semModel.actLoading", {
+                  model: l.file,
+                  task: l.task ? `· ${t(`llama.task.${l.task}`)}` : "",
+                })}
+              </div>
+            ))}
+            {llama.activity.loaded.map((l) => (
+              <div key={l.file} className="muted-sm">
+                {l.busy ? <Loader2 size={12} className="spin" /> : "●"}{" "}
+                {t(l.busy ? "semModel.actBusy" : "semModel.actReady", {
+                  model: l.file,
+                  task: l.task ? `· ${t(`llama.task.${l.task}`)}` : "",
+                })}
+              </div>
+            ))}
+            <div className="muted-sm">
+              {t("semModel.actLimit", { n: llama.activity.limit })}
+              {llama.activity.laptop ? ` · ${t("semModel.actLaptop")}` : ""}
+            </div>
+          </div>
+        )}
 
         <div className="task-mgr-section">
           <div className="task-mgr-section-title" style={{ marginBottom: 4 }}>

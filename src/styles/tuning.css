@@ -391,3 +391,112 @@
   overflow-wrap: anywhere;
   color: var(--text-primary);
 }
+
+/* ── llama.cpp: свёртываемые группы моделей и автоматика ── */
+.llama-fold {
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  margin-top: 8px;
+  background: transparent;
+}
+.llama-fold-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 9px 12px;
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 12px;
+}
+.llama-fold-head:hover {
+  background: var(--glass);
+}
+.llama-fold-chev {
+  flex: none;
+  color: var(--text-tertiary);
+  transition: transform 0.18s ease;
+}
+.llama-fold.is-open > .llama-fold-head .llama-fold-chev {
+  transform: rotate(90deg);
+}
+.llama-fold-title {
+  flex: none;
+  max-width: 55%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.llama-fold-meta {
+  margin-left: auto;
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+.llama-fold-body {
+  padding: 2px 12px 10px;
+}
+.llama-kind {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: var(--glass-border);
+}
+.llama-kind-vis {
+  color: var(--teal);
+  background: var(--teal-soft, var(--glass-border));
+}
+.llama-have {
+  color: var(--teal);
+  font-weight: 600;
+}
+.llama-loaded {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-top: 10px;
+}
+.llama-chip {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+.llama-auto {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 6px;
+}
+.llama-check {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  cursor: pointer;
+}
+.llama-check input {
+  margin-top: 3px;
+}
+.llama-check > span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.llama-groups {
+  margin-top: 4px;
+}

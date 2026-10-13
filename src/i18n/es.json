@@ -1979,7 +1979,33 @@
     "appearance": "Apariencia",
     "noResults": "Sin resultados",
     "noTagsYet": "Aún no hay etiquetas",
-    "startWriting": "Empieza a escribir… Usa [[enlaces]] y #etiquetas"
+    "startWriting": "Empieza a escribir… Usa [[enlaces]] y #etiquetas",
+    "cmd": {
+      "menuTitle": "Comandos de IA — Enter ejecuta, Tab completa",
+      "running": "{cmd} en curso",
+      "gone": "La nota cambió; el resultado no se insertó.",
+      "noModel": "No hay modelo local. Descarga Qwen3.5 o Gemma 4 en Ajustes → IA y modelos → llama.cpp.",
+      "noText": "El comando trabaja con el texto de la nota, que está vacía (o selecciona un fragmento).",
+      "empty": "Escribe qué necesitas después de «...»",
+      "format": "Dar formato Markdown",
+      "fix": "Corregir errores",
+      "short": "Acortar",
+      "expand": "Ampliar",
+      "simplify": "Simplificar",
+      "formal": "Tono formal",
+      "translate": "Traducir (…translate fr)",
+      "table": "A tabla",
+      "list": "A lista",
+      "summary": "Resumen de la nota",
+      "todo": "Tareas del texto",
+      "plan": "Plan",
+      "fact": "Dato curioso (…fact sobre tema)",
+      "continue": "Continuar el texto",
+      "title": "Ideas de título",
+      "ideas": "Ideas",
+      "explain": "Explicar",
+      "tags": "Sugerir etiquetas"
+    }
   },
   "player": {
     "play": "Reproducir",
@@ -5439,6 +5465,56 @@
       "chandra2-q8": "Chandra OCR 2 · Q8_0 (mejor calidad)",
       "embeddinggemma2-q8": "EmbeddingGemma 2 · Q8_0 (búsqueda inteligente, recomendado)",
       "embeddinggemma2-q4": "EmbeddingGemma 2 · Q4 (búsqueda inteligente, más ligero)"
+    },
+    "noneLoaded": "No hay modelos en memoria ahora; se cargan con la primera petición.",
+    "loadingModel": "Cargando {model}…",
+    "working": "trabajando",
+    "unloadAll": "Descargar todo",
+    "sec": {
+      "auto": "Automatización y memoria",
+      "builds": "Compilaciones de llama.cpp"
+    },
+    "autoMeta": "hasta {n} en memoria",
+    "laptopNote": "Es un portátil: por defecto se mantiene un modelo y los demás se descargan para ahorrar memoria y batería.",
+    "defaultModel": "Modelo por defecto",
+    "defaultAuto": "Elegir automáticamente según la tarea",
+    "maxLoaded": "Modelos en memoria a la vez",
+    "maxAuto": "Auto ({n})",
+    "autoWarm": "Cargar el modelo al abrir una página",
+    "autoWarmHint": "Mi espacio, Traductor, Clases y Chat preparan el modelo necesario con antelación.",
+    "moe": "Modelos MoE: capas en la GPU, el resto en RAM",
+    "moeHint": "En A3B/A4B solo las capas necesarias van a la GPU y los expertos se quedan en la RAM, sin saturar la VRAM.",
+    "idle": "Descargar el modelo tras inactividad",
+    "idleAuto": "Automático",
+    "idleMin": "{n} min",
+    "kind": {
+      "embed": "embeddings",
+      "chat": "chat",
+      "translate": "traducción",
+      "ocr": "OCR",
+      "tts": "voz"
+    },
+    "vision": "Entiende imágenes",
+    "visionShort": "imágenes",
+    "haveCount": "descargados: {n}",
+    "custom": "Modelos propios",
+    "task": {
+      "command": "comandos",
+      "summary": "resúmenes",
+      "translate": "traducción",
+      "chat": "chat",
+      "vision": "imágenes"
+    },
+    "quant": {
+      "q3km": "Compacto, calidad algo menor — para PC modestos",
+      "q3kl": "Compacto, calidad algo menor — para PC modestos",
+      "q4": "Cuantización ligera — rápida y económica",
+      "q4km": "Mejor equilibrio entre tamaño y calidad",
+      "q5": "Mejor que Q4, notablemente más grande",
+      "q5km": "Mejor que Q4, algo más grande",
+      "q6": "Casi sin pérdidas — la opción más precisa para embeddings",
+      "q6k": "Calidad casi sin pérdidas",
+      "q8": "Prácticamente el original, máxima precisión"
     }
   },
   "canvas": {
@@ -5777,7 +5853,13 @@
     "disable": "Desactivar",
     "enable": "Activar",
     "toggleOn": "Búsqueda inteligente: activada",
-    "toggleOff": "Búsqueda inteligente: desactivada"
+    "toggleOff": "Búsqueda inteligente: desactivada",
+    "activity": "Qué ocurre ahora",
+    "actLoading": "Cargando {model} {task}",
+    "actBusy": "{model} atiende una petición {task}",
+    "actReady": "{model} lista {task}",
+    "actLimit": "Límite de modelos cargados a la vez: {n}",
+    "actLaptop": "portátil — modo económico"
   },
   "sem": {
     "similarToMineHint": "Ordenar por cercanía a tus favoritos y marcadores",
