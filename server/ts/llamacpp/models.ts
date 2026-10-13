@@ -206,6 +206,18 @@ export const CATALOG: CatalogModel[] = [
   }),
   // Остальные MoE-модели (3–4B активных параметров): на 8 ГБ видеокарте — слои на GPU,
   // эксперты в RAM. Размеры и имена файлов сверены с репозиториями unsloth / mradermacher.
+  // Лёгкая MoE (7B / ~1B активных, гибрид Mamba): целиком помещается в 8 ГБ видеокарты.
+  ...family({
+    group: "granite40-h-tiny",
+    title: "Granite 4.0 H-Tiny 7B-A1B (MoE, лёгкая)",
+    kind: "chat",
+    repo: "unsloth/granite-4.0-h-tiny-GGUF",
+    quants: [
+      { q: Q3, file: "granite-4.0-h-tiny-Q3_K_M.gguf", mb: 3228 },
+      { q: Q4, file: "granite-4.0-h-tiny-Q4_K_M.gguf", mb: 4057 },
+      { q: Q5, file: "granite-4.0-h-tiny-Q5_K_M.gguf", mb: 4739 },
+    ],
+  }),
   ...family({
     group: "qwen3-30b-a3b-instruct",
     title: "Qwen3 30B-A3B Instruct 2507 (MoE)",
