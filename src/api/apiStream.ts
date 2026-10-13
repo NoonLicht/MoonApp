@@ -107,6 +107,8 @@ export function streamArena(
   body: {
     text: string;
     models: [string, string];
+    /** Провайдер из селектора: модели арены принадлежат ему. */
+    provider?: string;
     temperature?: number;
     maxTokens?: number;
     topP?: number;

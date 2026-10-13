@@ -311,7 +311,7 @@
       "names": "Hide full names",
       "namesHint": "“Ivanov I. I.”, “Pyotr Sergeyevich” and similar become [ИМЯ_1] labels.",
       "localNames": "Find names with a local model",
-      "localNamesHint": "More accurate but slower: the text is parsed by a llama.cpp model on your computer. Needs an installed model."
+      "localNamesHint": "More accurate but slower: a local llama.cpp model analyses the text on your computer. It never loads a model on its own: an already loaded one or the one chosen in AI model bindings is used."
     },
     "uiScale": "Interface scale",
     "uiScaleHint": "Scales the whole UI: fonts, tables and spacing",
@@ -1100,6 +1100,10 @@
       "attached": "Added to the system prompt, sources: {n}"
     },
     "branch": "Branch",
+    "arenaPick": "Pick a model",
+    "arenaHint": "Pick two different models in columns A and B — the arena starts only after that, when you send a question.",
+    "arenaReady": "Models chosen. Send a question — both will answer.",
+    "arenaRunLast": "Run with the last question",
     "tokShort": "tok",
     "secShort": "s",
     "continue": "Continue",
@@ -6345,6 +6349,7 @@
     "g.translate": "Translation",
     "f.chat": "AI chat replies",
     "f.chat.tools": "Chat tools",
+    "f.shield": "AI Shield: finding people’s names",
     "f.notes.commands": "“...” commands in notes",
     "f.notes.ai": "Notes AI panel",
     "f.notes.canvas": "Canvas: links and groups",
@@ -6359,6 +6364,7 @@
     "f.translate": "Translator (and RSS translation)",
     "h.chat": "The model that answers in chat. Overrides the chat selector.",
     "h.chat.tools": "Answer rating, image explanation, check against notes.",
+    "h.shield": "The local model that finds names before text goes to a cloud provider. In Auto it uses an already loaded model and never loads one on its own.",
     "h.notes.commands": "The “...command” line in the editor: formatting, translation, tables, lists.",
     "h.notes.ai": "Questions about notes, summaries, ideas and tags in the AI panel.",
     "h.notes.canvas": "Canvas analysis: suggest links and groups.",

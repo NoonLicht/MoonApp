@@ -311,7 +311,7 @@
       "names": "Ocultar nombres completos",
       "namesHint": "«Ivánov I. I.», «Pyotr Serguéyevich» y similares se sustituyen por etiquetas [ИМЯ_1].",
       "localNames": "Buscar nombres con un modelo local",
-      "localNamesHint": "Más preciso pero más lento: un modelo llama.cpp de tu ordenador analiza el texto. Requiere un modelo instalado."
+      "localNamesHint": "Más preciso pero más lento: un modelo llama.cpp local analiza el texto. No carga ningún modelo por su cuenta: usa uno ya cargado o el elegido en la asignación de modelos de IA."
     },
     "uiScale": "Escala de la interfaz",
     "uiScaleHint": "Escala toda la interfaz: fuentes, tablas y espacios",
@@ -1100,6 +1100,10 @@
       "attached": "Añadido al prompt del sistema, fuentes: {n}"
     },
     "branch": "Bifurcar",
+    "arenaPick": "Elija un modelo",
+    "arenaHint": "Elija dos modelos distintos en las columnas A y B: la arena empieza solo después, al enviar una pregunta.",
+    "arenaReady": "Modelos elegidos. Envíe una pregunta: responderán ambos.",
+    "arenaRunLast": "Ejecutar con la última pregunta",
     "tokShort": "tok",
     "secShort": "s",
     "continue": "Continuar",
@@ -6345,6 +6349,7 @@
     "g.translate": "Traducción",
     "f.chat": "Respuestas del chat de IA",
     "f.chat.tools": "Herramientas del chat",
+    "f.shield": "Escudo de IA: búsqueda de nombres",
     "f.notes.commands": "Comandos «...» en notas",
     "f.notes.ai": "Panel de IA de notas",
     "f.notes.canvas": "Lienzo: enlaces y grupos",
@@ -6359,6 +6364,7 @@
     "f.translate": "Traductor (y traducción RSS)",
     "h.chat": "El modelo que responde en el chat. Prevalece sobre el selector.",
     "h.chat.tools": "Valoración de respuestas, explicación de imágenes, verificación con notas.",
+    "h.shield": "El modelo local que busca nombres antes de enviar el texto a un proveedor en la nube. En Auto usa un modelo ya cargado y nunca carga uno por su cuenta.",
     "h.notes.commands": "La línea «...comando» del editor: formato, traducción, tablas, listas.",
     "h.notes.ai": "Preguntas sobre notas, resúmenes, ideas y etiquetas en el panel de IA.",
     "h.notes.canvas": "Análisis del lienzo: sugerir enlaces y grupos.",

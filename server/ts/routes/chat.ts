@@ -376,6 +376,7 @@ router.post("/:id/arena", async (req, res) => {
     systemPrompt,
     images,
     persist = true,
+    provider: wantedProvider,
   } = req.body || {};
   const [modelA, modelB] = Array.isArray(models) ? models : [];
   if (!text || !String(text).trim() || !modelA || !modelB) {
@@ -383,6 +384,16 @@ router.post("/:id/arena", async (req, res) => {
   }
   const conv = stmts.convGet.get(Number(req.params.id));
   if (!conv) return res.status(404).json({ error: "conversation not found" });
+  // Модели арены принадлежат провайдеру из селектора, а не тому, на котором создан чат.
+  if (typeof wantedProvider === "string" && wantedProvider && wantedProvider !== conv.provider) {
+    try {
+      getProvider(wantedProvider);
+      stmts.convUpdate.run(conv.id, { provider: wantedProvider });
+      conv.provider = wantedProvider;
+    } catch {
+      /* неизвестный провайдер — остаёмся на текущем */
+    }
+  }
   const provider = getProvider(conv.provider);
   const secret = getSecret(provider.id);
   if (!secret)

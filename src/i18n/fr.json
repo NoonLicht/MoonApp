@@ -311,7 +311,7 @@
       "names": "Masquer les noms complets",
       "namesHint": "« Ivanov I. I. », « Piotr Sergueïevitch » et similaires sont remplacés par des étiquettes [ИМЯ_1].",
       "localNames": "Chercher les noms avec un modèle local",
-      "localNamesHint": "Plus précis mais plus lent : le texte est analysé par un modèle llama.cpp sur votre ordinateur. Nécessite un modèle installé."
+      "localNamesHint": "Plus précis mais plus lent : un modèle llama.cpp local analyse le texte. Il ne charge jamais de modèle de lui-même : un modèle déjà chargé ou celui choisi dans l’association des modèles d’IA est utilisé."
     },
     "uiScale": "Échelle de l'interface",
     "uiScaleHint": "Met à l'échelle toute l'interface : polices, tableaux et espacements",
@@ -1100,6 +1100,10 @@
       "attached": "Ajouté au prompt système, sources : {n}"
     },
     "branch": "Créer une branche",
+    "arenaPick": "Choisir un modèle",
+    "arenaHint": "Choisissez deux modèles différents dans les colonnes A et B : l’arène ne démarre qu’ensuite, à l’envoi d’une question.",
+    "arenaReady": "Modèles choisis. Envoyez une question : les deux répondront.",
+    "arenaRunLast": "Lancer avec la dernière question",
     "tokShort": "tok",
     "secShort": "s",
     "continue": "Continuer",
@@ -6345,6 +6349,7 @@
     "g.translate": "Traduction",
     "f.chat": "Réponses du chat IA",
     "f.chat.tools": "Outils du chat",
+    "f.shield": "Bouclier IA : détection des noms",
     "f.notes.commands": "Commandes « ... » dans les notes",
     "f.notes.ai": "Panneau IA des notes",
     "f.notes.canvas": "Canevas : liens et groupes",
@@ -6359,6 +6364,7 @@
     "f.translate": "Traducteur (et traduction RSS)",
     "h.chat": "Le modèle qui répond dans le chat. Prioritaire sur le sélecteur.",
     "h.chat.tools": "Évaluation des réponses, explication d’image, vérification par les notes.",
+    "h.shield": "Le modèle local qui détecte les noms avant l’envoi au fournisseur cloud. En Auto il utilise un modèle déjà chargé et n’en charge jamais de lui-même.",
     "h.notes.commands": "La ligne « ...commande » de l’éditeur : mise en forme, traduction, tableaux, listes.",
     "h.notes.ai": "Questions sur les notes, résumés, idées et tags dans le panneau IA.",
     "h.notes.canvas": "Analyse du canevas : suggérer liens et groupes.",

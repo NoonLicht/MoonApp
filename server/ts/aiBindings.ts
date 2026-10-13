@@ -22,6 +22,7 @@ export interface FeatureDef {
 export const FEATURES: FeatureDef[] = [
   { id: "chat", group: "chat", task: "chat" },
   { id: "chat.tools", group: "chat", task: "chat" },
+  { id: "shield", group: "chat", task: "chat" },
   { id: "notes.commands", group: "notes", task: "command" },
   { id: "notes.ai", group: "notes", task: "chat" },
   { id: "notes.canvas", group: "notes", task: "chat" },

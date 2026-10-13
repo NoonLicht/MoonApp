@@ -311,7 +311,7 @@
       "names": "隐藏姓名",
       "namesHint": "“Иванов И. И.”“Пётр Сергеевич”等会被替换为 [ИМЯ_1] 标记。",
       "localNames": "用本地模型查找姓名",
-      "localNamesHint": "更准确但更慢：由你电脑上的 llama.cpp 模型解析文本。需要已安装的模型。"
+      "localNamesHint": "更准确但更慢：由本机 llama.cpp 模型分析文本。不会自行加载模型：使用已加载的模型，或在“AI 模型绑定”中选择的模型。"
     },
     "uiScale": "界面缩放",
     "uiScaleHint": "整体缩放界面：字体、表格和间距",
@@ -1100,6 +1100,10 @@
       "attached": "已加入系统提示，来源数：{n}"
     },
     "branch": "分支",
+    "arenaPick": "选择模型",
+    "arenaHint": "在 A、B 两列中选择两个不同的模型，选好后发送问题才会开始对比。",
+    "arenaReady": "模型已选好。发送问题后两者都会回答。",
+    "arenaRunLast": "用最近的问题运行",
     "tokShort": "词元",
     "secShort": "秒",
     "continue": "继续生成",
@@ -6345,6 +6349,7 @@
     "g.translate": "翻译",
     "f.chat": "AI 聊天回复",
     "f.chat.tools": "聊天工具",
+    "f.shield": "AI 防护：识别人名",
     "f.notes.commands": "笔记中的“...”命令",
     "f.notes.ai": "笔记 AI 面板",
     "f.notes.canvas": "画布：关联与分组",
@@ -6359,6 +6364,7 @@
     "f.translate": "翻译器（含 RSS 翻译）",
     "h.chat": "聊天回答所用的模型，优先于聊天中的选择器。",
     "h.chat.tools": "回答评分、图片讲解、对照笔记检查。",
+    "h.shield": "在文本发送给云端提供商之前识别人名的本地模型。“自动”只使用已加载的模型，不会自行加载。",
     "h.notes.commands": "编辑器中的“...命令”：格式化、翻译、表格、列表。",
     "h.notes.ai": "AI 面板中的笔记提问、摘要、想法和标签。",
     "h.notes.canvas": "画布分析：建议关联和分组。",

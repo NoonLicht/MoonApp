@@ -608,52 +608,38 @@ export default function AiChatPage() {
     setStreamingText("");
   };
 
-  /* Включение Arena: если в чате уже есть последний вопрос — сразу прогоняем его (авто-регенерация) */
+  /* Включение Arena: модели не подставляются сами — ничего не запускается, пока пользователь
+     не выберет две разные модели и не отправит вопрос (или не нажмёт «Запустить с последним»). */
   const toggleArena = () => {
-    if (arena.on) {
-      setArena((a) => ({ ...a, on: false }));
-      return;
-    }
-    const a = models.includes(chatCfg.model) ? chatCfg.model : models[0] || "";
-    const b = models[1] || models[0] || "";
-    if (!activeId) {
-      setArena({
-        on: true,
-        a,
-        b,
-        aText: { text: "", done: false },
-        bText: { text: "", done: false },
-      });
-      return;
-    }
-    const lastUser = [...messages].reverse().find((m) => m.role === "user");
-    if (lastUser?.id) {
-      // авто-регенерация: убираем вопрос и всё после него из истории, прогоняем через обе модели
-      const q = lastUser.text;
-      api.chatTruncateFrom(activeId, lastUser.id).catch(() => {});
-      setMessages((m) => m.filter((x) => (x.id || 0) < lastUser.id!));
-      setArena({
-        on: true,
-        a,
-        b,
-        aText: { text: "", done: false },
-        bText: { text: "", done: false },
-      });
-      setTimeout(() => runArenaWith(a, b, q), 0);
-    } else {
-      setArena({
-        on: true,
-        a,
-        b,
-        aText: { text: "", done: false },
-        bText: { text: "", done: false },
-      });
-    }
+    setArena({
+      on: !arena.on,
+      a: "",
+      b: "",
+      aText: { text: "", done: false },
+      bText: { text: "", done: false },
+    });
   };
+
+  /* Арена готова к запуску только при двух выбранных разных моделях из списка текущего провайдера */
+  const arenaReady =
+    !!arena.a && !!arena.b && arena.a !== arena.b && models.includes(arena.a) && models.includes(arena.b);
+
+  /* Выбранные модели принадлежат провайдеру: при его смене (список моделей другой) выбор сбрасывается */
+  useEffect(() => {
+    setArena((a) =>
+      (a.a && !models.includes(a.a)) || (a.b && !models.includes(a.b))
+        ? {
+            ...a,
+            a: models.includes(a.a) ? a.a : "",
+            b: models.includes(a.b) ? a.b : "",
+          }
+        : a,
+    );
+  }, [models]);
 
   /* Прогон с явно заданными моделями (используется при авто-регенерации до установки стейта) */
   const runArenaWith = async (ma: string, mb: string, questionText: string) => {
-    if (!activeId || sending || !ma || !mb) return;
+    if (!activeId || sending || !ma || !mb || ma === mb) return;
     if (!provider?.configured) return;
     setSending(true);
     setArena((a) => ({ ...a, aText: { text: "", done: false }, bText: { text: "", done: false } }));
@@ -663,6 +649,7 @@ export default function AiChatPage() {
         {
           text: questionText,
           models: [ma, mb],
+          provider: chatCfg.provider || undefined,
           persist: false,
           temperature: chatCfg.temperature,
           maxTokens: chatCfg.maxTokens,
@@ -693,8 +680,20 @@ export default function AiChatPage() {
      Тонкая обёртка над runArenaWith: раньше это была вторая копия того же тела,
      отличавшаяся только тем, что модели брались из стейта, а не из аргументов. */
   const runArena = (questionText: string) => {
-    if (!arena.a || !arena.b) return;
+    if (!arenaReady) return;
     return runArenaWith(arena.a, arena.b, questionText);
+  };
+
+  /* Запуск арены с последним вопросом чата — явной кнопкой, а не автоматически */
+  const runArenaLast = async () => {
+    if (!activeId || !arenaReady || sending) return;
+    const lastUser = [...messages].reverse().find((m) => m.role === "user");
+    if (!lastUser?.id) return;
+    const q = lastUser.text;
+    // вопрос и ответ после него убираем из истории: ответом станет выбранный вариант арены
+    await api.chatTruncateFrom(activeId, lastUser.id).catch(() => undefined);
+    setMessages((m) => m.filter((x) => (x.id || 0) < lastUser.id!));
+    void runArenaWith(arena.a, arena.b, q);
   };
 
   /* Выбор понравившегося ответа: сохраняем в чат и выходим из Arena */
@@ -1480,6 +1479,20 @@ export default function AiChatPage() {
         {/* ─── основная колонка ─── */}
         <div className="chat-main">
           <div className="chat-scroll" ref={scrollRef} onScroll={onScroll}>
+            {arena.on && (
+              <div className="arena-hint">
+                <span>{arenaReady ? t("aichat.arenaReady") : t("aichat.arenaHint")}</span>
+                {arenaReady &&
+                  !sending &&
+                  !arena.aText.text &&
+                  !arena.bText.text &&
+                  messages.some((m) => m.role === "user" && m.id) && (
+                    <Btn icon={Swords} onClick={() => void runArenaLast()}>
+                      {t("aichat.arenaRunLast")}
+                    </Btn>
+                  )}
+              </div>
+            )}
             {arena.on ? (
               /* ─── Arena: сравнение двух моделей ─── */
               <div className="arena-grid">
@@ -1494,6 +1507,7 @@ export default function AiChatPage() {
                           value={mdl}
                           onChange={(e) => setArena((a) => ({ ...a, [side]: e.target.value }))}
                         >
+                          <option value="">{t("aichat.arenaPick")}</option>
                           {models.map((m) => (
                             <option key={m} value={m}>
                               {m}
@@ -1652,8 +1666,9 @@ export default function AiChatPage() {
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();
                   if (arena.on) {
+                    // текст не стираем, пока арена не готова (две разные модели не выбраны)
                     const q = input.trim();
-                    if (q) {
+                    if (q && arenaReady) {
                       setInput("");
                       runArena(q);
                     }
@@ -1732,14 +1747,14 @@ export default function AiChatPage() {
                     onClick={() => {
                       if (arena.on) {
                         const q = input.trim();
-                        if (q) {
+                        if (q && arenaReady) {
                           setInput("");
                           runArena(q);
                         }
                       } else send();
                     }}
-                    title={t("aichat.send")}
-                    disabled={!activeId || !input.trim()}
+                    title={arena.on && !arenaReady ? t("aichat.arenaHint") : t("aichat.send")}
+                    disabled={!activeId || !input.trim() || (arena.on && !arenaReady)}
                   />
                 )}
               </div>

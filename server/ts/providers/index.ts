@@ -10,6 +10,9 @@ import openrouter from "./openrouter";
 import groq from "./groq";
 import perplexity from "./perplexity";
 import llamacpp from "./llamacpp";
+import { boundOf } from "../aiBindings";
+import { loadedServers } from "../llamacpp/engine";
+import { chatModels } from "../llamacpp/router";
 
 const PROVIDERS: Provider[] = [
   openai,
@@ -35,11 +38,23 @@ async function localNames(texts: string[]): Promise<string[]> {
   if (!local || !rawChat) return [];
   const sample = texts.join("\n").slice(0, 6000);
   if (sample.trim().length < 20) return [];
+  // Модель для поиска имён никогда не загружается «сама» из-за обычного сообщения в чате:
+  // либо она выбрана в Настройках → «Привязка моделей ИИ» → «Щит для ИИ», либо берётся
+  // уже загруженная чатовая модель. Если ничего не загружено — имена ищутся по шаблонам.
+  const bound = boundOf("shield");
+  let model = "";
+  if (bound && bound.provider === "llamacpp") {
+    model = bound.model;
+  } else {
+    const chat = new Set(chatModels().map((m) => m.file));
+    model = loadedServers().find((s) => chat.has(s.file))?.file ?? "";
+    if (!model) return [];
+  }
   try {
     const out = await Promise.race([
       rawChat({
         secret: "",
-        model: "",
+        model,
         stream: false,
         temperature: 0,
         maxTokens: 300,
