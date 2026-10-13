@@ -1613,6 +1613,8 @@ declare global {
       version: () => string;
       platform: string;
       getToken: () => string | null;
+      /** Начать системный перенос файла в другое приложение (из dragstart). */
+      startDrag?: (file: string) => void;
       minimize: () => void;
       toggleMaximize: () => void;
       close: () => void;

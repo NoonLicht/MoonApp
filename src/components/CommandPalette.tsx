@@ -6,6 +6,7 @@ import { api } from "@/api/client";
 import type { LauncherEntry } from "@/api/types";
 import type { SemHit } from "@/api/apiSemantic";
 import { PAGES } from "@/app/navigation";
+import { dragOutProps } from "@/lib/dragOut";
 import { openTarget, targetFor, SOURCE_LABEL, SOURCE_ICON } from "@/lib/deepLink";
 import { loadPickItems, type PickItem } from "@/components/LinkPicker";
 import type { SemSource } from "@/api/apiSemantic";
@@ -254,6 +255,9 @@ export default function CommandPalette() {
                   className={`palette-item${i === selected ? " is-active" : ""}`}
                   onClick={() => void run(it)}
                   onMouseEnter={() => setSelected(i)}
+                  {...(it.kind === "obj" && it.src === "note"
+                    ? dragOutProps({ kind: "note", path: it.ref })
+                    : {})}
                 >
                   {it.kind === "launcher" && <Zap size={14} style={{ color: "var(--amber)" }} />}
                   {it.kind === "page" && <it.Icon size={14} style={{ color: "var(--amber)" }} />}

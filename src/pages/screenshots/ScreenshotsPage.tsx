@@ -27,6 +27,7 @@ import { saveBlob } from "@/lib/download";
 import { api } from "@/api/client";
 import type { ScreenshotItem } from "@/api/types";
 import VideoPlayer from "@/pages/movies/parts/VideoPlayer";
+import { dragOutProps } from "@/lib/dragOut";
 
 type AnnotateTool = "pen" | "arrow" | "blur" | "ocrArea";
 
@@ -1252,12 +1253,23 @@ export default function ScreenshotsPage() {
                     className="ss-lib-thumb"
                     onClick={() => setViewing(it)}
                     title={t("screenshots.libOpen")}
+                    {...dragOutProps({ kind: "screenshot", id: it.id })}
                   >
                     {it.type === "image" ? (
-                      <img src={api.screenshotFileUrl(it.id)} alt="" loading="lazy" />
+                      <img
+                        src={api.screenshotFileUrl(it.id)}
+                        alt=""
+                        loading="lazy"
+                        draggable={false}
+                      />
                     ) : (
                       <>
-                        <video src={api.screenshotFileUrl(it.id)} muted preload="metadata" />
+                        <video
+                          src={api.screenshotFileUrl(it.id)}
+                          muted
+                          preload="metadata"
+                          draggable={false}
+                        />
                         <span className="ss-lib-play">
                           <Play size={22} />
                         </span>
@@ -1300,7 +1312,12 @@ export default function ScreenshotsPage() {
                 <IconBtn icon={X} title={t("common.close")} onClick={() => setViewing(null)} />
               </div>
               {viewing.type === "image" ? (
-                <img src={api.screenshotFileUrl(viewing.id)} alt="" className="ss-modal-img" />
+                <img
+                    src={api.screenshotFileUrl(viewing.id)}
+                    alt=""
+                    className="ss-modal-img"
+                    {...dragOutProps({ kind: "screenshot", id: viewing.id })}
+                  />
               ) : (
                 <div className="ss-modal-video">
                   <VideoPlayer src={api.screenshotFileUrl(viewing.id)} duration={viewing.durationSec || null} />

@@ -28,6 +28,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { useDeepLink, moonHref, SOURCE_ICON } from "@/lib/deepLink";
+import { prefetchDrag, startNativeDrag } from "@/lib/dragOut";
 import LinkPicker, { type PickItem } from "@/components/LinkPicker";
 import { insertIntoLiveEditor } from "@/pages/myspace/parts/CodeMirrorLiveEditor";
 import type { OcrImageRequest, PdfDropRequest } from "@/pages/myspace/parts/CodeMirrorLiveEditor";
@@ -1203,10 +1204,18 @@ export default function MyspacePage() {
         }
         draggable={true}
         onDragStart={(e) => {
+          // Alt + перенос — вытащить файл заметки в другую программу (Telegram, проводник…)
+          if (e.altKey && startNativeDrag({ kind: "note", path: node.path })) {
+            e.preventDefault();
+            return;
+          }
           e.dataTransfer.setData("text/plain", node.path);
           e.dataTransfer.effectAllowed = "move";
         }}
-        onMouseEnter={() => setHoverDel(node.path)}
+        onMouseEnter={() => {
+          setHoverDel(node.path);
+          prefetchDrag({ kind: "note", path: node.path });
+        }}
         onMouseLeave={() => setHoverDel(null)}
         style={{
           display: "flex",

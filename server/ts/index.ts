@@ -100,6 +100,7 @@ import llamacppRouter from "./routes/llamacpp";
 import semanticRouter from "./routes/semantic";
 import ocrRouter from "./routes/ocr";
 import screenshotsRouter from "./routes/screenshots";
+import dragOutRouter from "./routes/dragOut";
 import officeRouter from "./routes/office";
 import diaryRouter from "./routes/diary";
 import rssRouter from "./routes/rss";
@@ -307,6 +308,7 @@ function createApp(): express.Express {
   app.use("/api/semantic", semanticRouter);
   app.use("/api/ocr", ocrRouter);
   app.use("/api/screenshots", screenshotsRouter);
+  app.use("/api/dragout", dragOutRouter);
   app.use("/api/office", officeRouter);
   app.use("/api/diary", diaryRouter);
   app.use("/api/rss", rssRouter);

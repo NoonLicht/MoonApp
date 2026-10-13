@@ -101,6 +101,27 @@ ipcMain.handle("shell:reveal", (_e, p) => {
   }
 });
 
+// Перетаскивание файла из приложения в другие программы (Telegram, проводник, редакторы):
+// рендерер на dragstart отменяет HTML5-перенос и просит main начать системный drag с файлом.
+const DRAG_ICON =
+  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAMElEQVR4nO3OIQEAAAgDMJoRmCA0IQcxbibmV71zSSUgICAgICAgICAgICAgIJAOPAMJXJdnKCoJAAAAAElFTkSuQmCC";
+ipcMain.on("drag:start", (e, p) => {
+  try {
+    const { nativeImage } = require("electron") as typeof import("electron");
+    const fs = require("fs") as typeof import("fs");
+    const file = String(p || "");
+    if (!path.isAbsolute(file) || !fs.existsSync(file) || !fs.statSync(file).isFile()) return;
+    let icon = nativeImage.createFromDataURL(DRAG_ICON);
+    if (/\.(png|jpe?g|gif|webp|bmp)$/i.test(file)) {
+      const img = nativeImage.createFromPath(file);
+      if (!img.isEmpty()) icon = img.resize({ width: 96 });
+    }
+    e.sender.startDrag({ file, icon });
+  } catch {
+    /* перенос не начался — ничего страшного */
+  }
+});
+
 // Обновить подменю zapret в трее: страница Bypass Control вызывает после
 // изменения стратегий/профилей, чтобы быстрые переключения были актуальны.
 ipcMain.on("bypass:tray-refresh", () => {

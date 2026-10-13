@@ -10,6 +10,8 @@ contextBridge.exposeInMainWorld("appBridge", {
   // Токен подставляется в заголовок x-moonapp-token (см. src/api/client.ts).
   getToken: () => ipcRenderer.sendSync("app:get-token") as string | null,
   revealPath: (p: any) => ipcRenderer.invoke("shell:reveal", p),
+  // Системный drag файла наружу (Telegram, проводник…): вызывается из dragstart.
+  startDrag: (file: string) => ipcRenderer.send("drag:start", file),
   openExternal: (url: any) => ipcRenderer.invoke("shell:open-external", url),
   pickFile: (opts: any) => ipcRenderer.invoke("dialog:pick-file", opts),
   pickFolder: () => ipcRenderer.invoke("dialog:pick-folder"),
