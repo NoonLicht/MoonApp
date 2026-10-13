@@ -180,6 +180,18 @@ export default function LocalModelsControl({
           <span className="muted-sm">{t("llama.moeHint")}</span>
         </span>
       </label>
+      <div className="llama-model-actions" style={{ marginTop: 8 }} title={t("llama.ctxHint")}>
+        <span className="muted-sm">{t("llama.ctxLabel")}</span>
+        <Select
+          value={String(router.ctx ?? 16384)}
+          onChange={(e) => void run(() => api.llamaSetRouter({ ctx: Number(e.target.value) }))}
+          options={[4096, 8192, 16384, 32768, 65536, 131072].map((n) => ({
+            value: String(n),
+            label: `${n / 1024}k`,
+          }))}
+        />
+      </div>
+      <div className="muted-sm">{t("llama.ctxHint")}</div>
       <div className="llama-model-actions" style={{ marginTop: 8 }}>
         <span className="muted-sm">{t("llama.maxLoaded")}</span>
         <Select

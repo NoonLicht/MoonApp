@@ -38,7 +38,16 @@ export interface RouterSettings {
   idleMinutes: number;
   /** Устройство для конкретной модели: файл → auto | cpu | gpu. */
   devices: Record<string, string>;
+  /** Окно контекста чатовых моделей (токены: промпт + ответ). Больше — больше RAM/VRAM под KV-кэш. */
+  ctx: number;
 }
+
+export const CTX_MIN = 2048;
+export const CTX_MAX = 131072;
+export const CTX_DEFAULT = 16384;
+
+/** Окно контекста для чатовых задач (команды, сводки, чат, vision). */
+export const chatCtx = (): number => routerSettings().ctx;
 
 const FILE = path.join(config.DIRS.storage, "llama", "router.json");
 let cfg: RouterSettings | null = null;
@@ -75,6 +84,7 @@ export function routerSettings(): RouterSettings {
     autoWarm: v.autoWarm !== false,
     idleMinutes: clampInt(v.idleMinutes, 0, 240, 0),
     devices: cleanDevices(v.devices),
+    ctx: clampInt(v.ctx, CTX_MIN, CTX_MAX, CTX_DEFAULT),
   };
   return cfg;
 }
@@ -88,6 +98,7 @@ export function setRouterSettings(p: Partial<RouterSettings>): RouterSettings {
     autoWarm: typeof p.autoWarm === "boolean" ? p.autoWarm : cur.autoWarm,
     idleMinutes: clampInt(p.idleMinutes, 0, 240, cur.idleMinutes),
     devices: p.devices ? cleanDevices(p.devices) : cur.devices,
+    ctx: clampInt(p.ctx, CTX_MIN, CTX_MAX, cur.ctx),
   };
   cfg = next;
   fs.mkdirSync(path.dirname(FILE), { recursive: true });
@@ -236,7 +247,7 @@ export function warm(task: Task): { file: string | null; started: boolean } {
   void ensureServer({
     model: r.model,
     device: r.device,
-    ctx: task === "translate" ? 4096 : 8192,
+    ctx: task === "translate" ? 4096 : chatCtx(),
     task,
   }).catch(() => undefined);
   return { file: r.file, started: true };
@@ -275,7 +286,7 @@ export function loadNow(file: string, device?: string): { file: string; started:
     model: modelPath(f),
     mmproj: mmproj ? modelPath(mmproj) : undefined,
     device: deviceFor(f),
-    ctx: 8192,
+    ctx: chatCtx(),
     task: "manual",
   }).catch(() => undefined);
   return { file: f, started: true };

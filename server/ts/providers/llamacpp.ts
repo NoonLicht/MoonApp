@@ -1,7 +1,7 @@
 import type { ChatParams, Provider } from "./types";
 import { consumeSSE } from "./stream";
 import { withServer } from "../llamacpp/engine";
-import { chatModels, resolve, type Task } from "../llamacpp/router";
+import { chatCtx, chatModels, resolve, type Task } from "../llamacpp/router";
 import { fitHistory } from "../llamacpp/fit";
 
 /**
@@ -9,7 +9,6 @@ import { fitHistory } from "../llamacpp/fit";
  * всегда «настроен» (security.getSecret возвращает метку), а моделью служит имя .gguf-файла.
  * Запрос идёт напрямую на 127.0.0.1 — в обход прокси страницы.
  */
-const CTX = 16384;
 
 /** Для чата подходят только языковые модели: эмбеддинги, проекторы, OCR и озвучка — нет. */
 const listChat = (): string[] => chatModels().map((m) => m.file);
@@ -30,6 +29,7 @@ const provider: Provider = {
     if (!r) throw new Error("llamacpp_model_missing");
     // Окно контекста — общее на промпт и ответ: просим не больше половины, а историю
     // подрезаем с начала, иначе llama-server отвечает ошибкой/пустотой, когда не влезает.
+    const CTX = chatCtx();
     const maxTokens = Math.max(64, Math.min(Number(p.maxTokens) || 1024, Math.floor(CTX / 2)));
     const messages = fitHistory(p.messages, CTX - maxTokens - 256);
     return withServer({ model: r.model, mmproj: r.mmproj, device: r.device, ctx: CTX, task }, async (s) => {

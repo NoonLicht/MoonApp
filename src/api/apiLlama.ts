@@ -40,6 +40,8 @@ export interface LlamaRouterSettings {
   defaultModel: string;
   autoWarm: boolean;
   idleMinutes: number;
+  /** Окно контекста чатовых моделей, токены. */
+  ctx: number;
 }
 
 export interface LlamaActivity {

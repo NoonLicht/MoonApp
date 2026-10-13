@@ -5509,6 +5509,8 @@
     "defaultAuto": "Choisir automatiquement selon la tâche",
     "maxLoaded": "Modèles gardés en mémoire simultanément",
     "maxAuto": "Auto ({n})",
+    "ctxLabel": "Contexte du modèle (fenêtre, jetons)",
+    "ctxHint": "Quantité de texte vue par le modèle : historique + réponse. Plus grand = plus de mémoire ; appliqué au prochain chargement (Recharger). « Jetons max » dans les réglages du chat est la longueur de la RÉPONSE, pas le contexte.",
     "autoWarm": "Charger le modèle à l'ouverture d'une page",
     "autoWarmHint": "Mon espace, Traducteur, Cours et Chat préparent à l'avance le modèle nécessaire.",
     "moe": "Modèles MoE : couches sur le GPU, le reste en RAM",

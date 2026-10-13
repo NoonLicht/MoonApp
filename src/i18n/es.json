@@ -5509,6 +5509,8 @@
     "defaultAuto": "Elegir automáticamente según la tarea",
     "maxLoaded": "Modelos en memoria a la vez",
     "maxAuto": "Auto ({n})",
+    "ctxLabel": "Contexto del modelo (ventana, tokens)",
+    "ctxHint": "Cuánto texto ve el modelo a la vez: historial + respuesta. Más contexto usa más memoria; se aplica en la próxima carga (Recargar). «Máx. tokens» en los ajustes del chat es la longitud de la RESPUESTA, no el contexto.",
     "autoWarm": "Cargar el modelo al abrir una página",
     "autoWarmHint": "Mi espacio, Traductor, Clases y Chat preparan el modelo necesario con antelación.",
     "moe": "Modelos MoE: capas en la GPU, el resto en RAM",

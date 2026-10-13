@@ -5513,6 +5513,8 @@
     "defaultAuto": "Pick automatically per task",
     "maxLoaded": "Models kept in memory at once",
     "maxAuto": "Auto ({n})",
+    "ctxLabel": "Model context (window, tokens)",
+    "ctxHint": "How much text the model sees at once: history + answer. Larger uses more memory for the cache; applied on the next model load (Reload). “Max tokens” in chat settings is the ANSWER length, not the context.",
     "autoWarm": "Load the model when opening a page",
     "autoWarmHint": "My Space, Translator, Lectures and Chat prepare the model they need in advance.",
     "moe": "MoE models: layers on GPU, the rest in RAM",
