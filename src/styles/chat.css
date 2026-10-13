@@ -1050,3 +1050,10 @@
 .chat-bubble.is-assistant hr { margin: 1em 0; }
 .chat-bubble.is-assistant blockquote { margin: 0 0 0.7em; padding-left: 0.9em; border-left: 3px solid var(--glass-border); opacity: 0.9; }
 .chat-bubble.is-assistant pre { white-space: pre; }
+
+/* Системный промпт занимает всю высоту панели настроек. */
+.sys-panel textarea {
+  flex: 1 1 auto;
+  max-height: none;
+  min-height: 160px;
+}

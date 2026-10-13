@@ -2,8 +2,6 @@ import { rememberImages, withImages } from "@/pages/ai-chat/lib/chatImages";
 import { matchesCombo, getCombo } from "@/lib/hotkeys";
 import { useVoiceMode } from "@/pages/ai-chat/lib/voiceMode";
 import { estimateCost, formatUsd } from "@/pages/ai-chat/lib/cost";
-import ChatContextAttach from "@/pages/ai-chat/parts/ChatContextAttach";
-import ExplainImage from "@/pages/ai-chat/parts/ExplainImage";
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import {
   Settings2,
@@ -1222,10 +1220,6 @@ export default function AiChatPage() {
               value={systemPrompt}
               onChange={(e) => setSystemPrompt(e.target.value)}
               placeholder={t("aichat.systemPlaceholder")}
-            />
-            <ExplainImage onUse={(text) => setInput((v) => (v.trim() ? `${v}\n\n${text}` : text))} />
-            <ChatContextAttach
-              onAttach={(block) => setSystemPrompt((s) => (s.trim() ? `${s}\n\n${block}` : block))}
             />
             <div className="sys-presets-actions">
               {presetDraft.open ? (
