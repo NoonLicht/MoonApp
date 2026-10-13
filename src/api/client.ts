@@ -243,6 +243,8 @@ export const api = {
     req<Conversation>("PATCH", `/chat/${id}`, patch),
   chatTruncateFrom: (id: number, msgId: number) =>
     req<{ ok: boolean }>("DELETE", `/chat/${id}/messages/${msgId}`),
+  chatCompact: (id: number, body: { model?: string; provider?: string; focus?: string }) =>
+    req<{ messages: ChatMessage[] }>("POST", `/chat/${id}/compact`, body),
   chatChoose: (id: number, text: string) =>
     req<{ ok: boolean }>("POST", `/chat/${id}/choose`, { text }),
 

@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { Copy, RefreshCw, Pencil, Volume2, StopCircle, Check, X, Send, GitBranch } from "lucide-react";
+import { Copy, RefreshCw, Pencil, Volume2, StopCircle, Check, X, Send, GitBranch, Trash2 } from "lucide-react";
 import MsgTools from "@/pages/ai-chat/parts/MsgTools";
 import { useAutoSaveAnswers } from "@/pages/ai-chat/lib/autoSave";
 import { Btn, EmptyHint } from "@/components/ui";
@@ -83,6 +83,8 @@ export default function MsgList(props: {
   onCopy: (text: string, idx: number) => void;
   onRegenerate: () => void;
   onBranch?: (messageId: number) => void;
+  /** Удалить сообщение пользователя и всё, что идёт после него. */
+  onDelete?: (messageId: number) => void;
   onSaveEdit: () => void;
   onSpeak: (text: string) => void;
   stopGeneration: () => void;
@@ -99,6 +101,7 @@ export default function MsgList(props: {
     onCopy,
     onRegenerate,
     onBranch,
+    onDelete,
     onSaveEdit,
     onSpeak,
     stopGeneration,
@@ -168,6 +171,11 @@ export default function MsgList(props: {
                 title={t("aichat.edit")}
               >
                 <Pencil size={11} /> {t("aichat.edit")}
+              </button>
+            )}
+            {m.role === "user" && onDelete && m.id && !sending && (
+              <button onClick={() => onDelete(m.id!)} title={t("aichat.delete")}>
+                <Trash2 size={11} /> {t("aichat.delete")}
               </button>
             )}
             {onBranch && m.id && !sending && (

@@ -75,6 +75,8 @@ export function streamChatSend(
   body: {
     text: string;
     model?: string;
+    /** Провайдер из селектора: чат переключается на него и продолжается с той же историей. */
+    provider?: string;
     temperature?: number;
     maxTokens?: number;
     stream?: boolean;

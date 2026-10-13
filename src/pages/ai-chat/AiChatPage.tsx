@@ -40,6 +40,7 @@ import { useDeepLink } from "@/lib/deepLink";
 import type { ProviderInfo, Conversation, ChatMessage } from "@/api/types";
 import CodeBlock from "@/pages/ai-chat/parts/CodeBlock";
 import MsgList, { type MsgStats } from "@/pages/ai-chat/parts/MsgList";
+import { SLASH_COMMANDS, parseSlash, suggestSlash } from "@/pages/ai-chat/lib/slashCommands";
 import { sanitizeHtml } from "@/lib/sanitize";
 import { useContextMenu } from "@/components/ContextMenu";
 import {
@@ -449,6 +450,14 @@ export default function AiChatPage() {
   const send = async (overrideText?: string) => {
     const txt = (overrideText ?? input).trim();
     if (!txt || sending || !activeId) return;
+    if (overrideText === undefined) {
+      const cmd = parseSlash(txt);
+      if (cmd) {
+        setInput("");
+        await runSlash(cmd.name, cmd.arg);
+        return;
+      }
+    }
     if (!provider?.configured) return;
     const imgUrls = attachments.filter((a) => a.type === "image").map((a) => a.data);
     const textFiles = attachments.filter((a) => a.type === "text");
@@ -480,6 +489,7 @@ export default function AiChatPage() {
           text: txt + attachmentText,
           images: imgUrls.length ? imgUrls : undefined,
           model: chatCfg.model || models[0] || "",
+          provider: chatCfg.provider || undefined,
           temperature: chatCfg.temperature,
           maxTokens: chatCfg.maxTokens,
           stream: chatCfg.streaming,
@@ -503,6 +513,8 @@ export default function AiChatPage() {
             }
             setStreamingText("");
             setSending(false);
+            // подтягиваем id сообщений: без них нельзя ответвить, править или удалить
+            void refreshMessages(activeId);
           } else if (ev.type === "error") {
             setMessages((m) => [...m, { role: "assistant", text: `⚠ ${friendlyChatError(ev.message || "Error", t)}` }]);
             setStreamingText("");
@@ -701,6 +713,119 @@ export default function AiChatPage() {
     }
     setMessages((m) => m.filter((x) => (x.id || 0) < target.id!));
     await send(newText);
+  };
+
+  /* ── удаление сообщения пользователя вместе со всем, что после него ── */
+  const deleteMessage = async (messageId: number) => {
+    if (!activeId || sending) return;
+    if (!window.confirm(t("aichat.deleteConfirm"))) return;
+    try {
+      await api.chatTruncateFrom(activeId, messageId);
+    } catch {
+      return;
+    }
+    setMessages((m) => m.filter((x) => (x.id || 0) < messageId));
+    setLastStats(null);
+  };
+
+  /* ── слэш-команды (/compact, /clear, /undo …) ── */
+  const notice = (text: string) => setMessages((m) => [...m, { role: "assistant", text: `ℹ ${text}` }]);
+
+  const runSlash = async (name: string, arg: string) => {
+    const lastWithId = (role?: "user" | "assistant") =>
+      [...messages].reverse().find((m) => m.id && (!role || m.role === role));
+    switch (name) {
+      case "help":
+        notice(
+          `${t("aichat.cmdHelpTitle")}:\n` +
+            SLASH_COMMANDS.map((c) => `/${c.name} — ${t(c.desc)}`).join("\n"),
+        );
+        return;
+      case "new":
+        await newChat();
+        return;
+      case "retry":
+        await regenerate();
+        return;
+      case "fork": {
+        const m = lastWithId();
+        if (m?.id) await branchFrom(m.id);
+        else notice(t("aichat.cmdNothing"));
+        return;
+      }
+      case "undo": {
+        const u = lastWithId("user");
+        if (!u?.id || !activeId) return notice(t("aichat.cmdNothing"));
+        await api.chatTruncateFrom(activeId, u.id).catch(() => undefined);
+        setMessages((m) => m.filter((x) => (x.id || 0) < u.id!));
+        setLastStats(null);
+        return;
+      }
+      case "clear": {
+        const first = messages.find((m) => m.id);
+        if (!first?.id || !activeId) return notice(t("aichat.cmdNothing"));
+        if (!window.confirm(t("aichat.cmdClearConfirm"))) return;
+        await api.chatTruncateFrom(activeId, first.id).catch(() => undefined);
+        setMessages([]);
+        setLastStats(null);
+        return;
+      }
+      case "compact": {
+        if (!activeId || messages.length < 2) return notice(t("aichat.cmdNothing"));
+        setSending(true);
+        notice(t("aichat.cmdCompacting"));
+        try {
+          const r = await api.chatCompact(activeId, {
+            model: chatCfg.model || undefined,
+            provider: chatCfg.provider || undefined,
+            focus: arg || undefined,
+          });
+          setMessages(withImages(activeId, r.messages));
+          notice(t("aichat.cmdCompacted"));
+        } catch (e: any) {
+          notice(`⚠ ${friendlyChatError(e.message, t)}`);
+        } finally {
+          setSending(false);
+        }
+        return;
+      }
+      case "title":
+        if (!arg || !activeId) return notice(t("aichat.cmdNeedArg", { name }));
+        await renameConv(activeId, arg);
+        notice(t("aichat.cmdTitleSet"));
+        return;
+      case "system":
+        if (!arg) return notice(t("aichat.cmdNeedArg", { name }));
+        setSystemPrompt(arg);
+        notice(t("aichat.cmdSystemSet"));
+        return;
+      case "model": {
+        if (!arg) return notice(t("aichat.cmdModelNone", { q: "", list: models.join(", ") }));
+        const q = arg.toLowerCase();
+        const hit = models.find((x) => x.toLowerCase() === q) ?? models.find((x) => x.toLowerCase().includes(q));
+        if (!hit) return notice(t("aichat.cmdModelNone", { q: arg, list: models.join(", ") }));
+        setChatCfg({ model: hit });
+        notice(t("aichat.cmdModelSet", { model: hit }));
+        return;
+      }
+      case "export":
+        if (!activeConv || !messages.length) return notice(t("aichat.cmdNothing"));
+        doExport(arg.toLowerCase() === "json" ? "json" : "md");
+        return;
+      case "copy": {
+        const a = [...messages].reverse().find((m) => m.role === "assistant" && !m.text.startsWith("ℹ"));
+        if (!a) return notice(t("aichat.cmdNothing"));
+        try {
+          await navigator.clipboard.writeText(a.text);
+          notice(t("aichat.cmdCopied"));
+        } catch {
+          /* буфер недоступен */
+        }
+        return;
+      }
+      default:
+        notice(t("aichat.cmdUnknown", { name }));
+    }
   };
 
   /* ── голосовой ввод ── */
@@ -1345,6 +1470,7 @@ export default function AiChatPage() {
                 onCopy={copyMessage}
                 onRegenerate={regenerate}
                 onBranch={branchFrom}
+                onDelete={deleteMessage}
                 onSaveEdit={saveEdit}
                 onSpeak={speak}
                 stopGeneration={stopGeneration}
@@ -1398,6 +1524,24 @@ export default function AiChatPage() {
                 ))}
               </div>
             )}
+            {suggestSlash(input).length > 0 && (
+              <div className="slash-menu">
+                {suggestSlash(input).map((c) => (
+                  <button
+                    key={c.name}
+                    className="slash-item"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      setInput(`/${c.name}${c.needsArg ? " " : ""}`);
+                      inputRef.current?.focus();
+                    }}
+                  >
+                    <b>/{c.name}</b>
+                    <span>{t(c.desc)}</span>
+                  </button>
+                ))}
+              </div>
+            )}
             <textarea
               rows={1}
               ref={inputRef}
@@ -1409,6 +1553,14 @@ export default function AiChatPage() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => {
+                const hints = suggestSlash(input);
+                const top = hints[0];
+                // «/co» + Tab/Enter дополняет команду; полностью набранная — выполняется как обычно
+                if (top && (e.key === "Tab" || (e.key === "Enter" && !e.shiftKey && input !== `/${top.name}`))) {
+                  e.preventDefault();
+                  setInput(`/${top.name}${top.needsArg ? " " : ""}`);
+                  return;
+                }
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();
                   if (arena.on) {

@@ -90,12 +90,24 @@ router.post("/:id/send", async (req, res) => {
     presencePenalty,
     systemPrompt,
     images,
+    provider: wantedProvider,
   } = req.body || {};
   if (!text || !String(text).trim()) {
     return res.status(400).json({ error: "empty message" });
   }
   const conv = stmts.convGet.get(Number(req.params.id));
   if (!conv) return res.status(404).json({ error: "conversation not found" });
+
+  // Провайдер сменили в селекторе — продолжаем этот же чат на новом, история сохраняется.
+  if (typeof wantedProvider === "string" && wantedProvider && wantedProvider !== conv.provider) {
+    try {
+      getProvider(wantedProvider);
+      stmts.convUpdate.run(conv.id, { provider: wantedProvider });
+      conv.provider = wantedProvider;
+    } catch {
+      /* неизвестный провайдер — остаёмся на текущем */
+    }
+  }
 
   const provider = getProvider(conv.provider);
   const secret = getSecret(provider.id);
@@ -134,7 +146,12 @@ router.post("/:id/send", async (req, res) => {
   const sys = [systemPrompt, memo].filter(Boolean).join("\n\n");
   const fullMessages = sys ? [{ role: "system", text: sys }, ...history] : history;
 
-  const finalModel = model || chatCfg.model || provider.models?.[0] || "";
+  // Имя локального .gguf-файла не имеет смысла облачному провайдеру (чат мог быть создан
+  // на DeepSeek, а в селекторе осталась локальная модель) — берём его собственную модель.
+  const isLocalFile = (m: unknown): boolean => /\.gguf$/i.test(String(m || ""));
+  const pick = (m: unknown): string =>
+    m && (provider.id === "llamacpp" || !isLocalFile(m)) ? String(m) : "";
+  const finalModel = pick(model) || pick(chatCfg.model) || provider.models?.[0] || "";
   const finalTemperature = temperature ?? chatCfg.temperature ?? 0.7;
   const finalMaxTokens = maxTokens ?? chatCfg.maxTokens ?? 1024;
   const streaming = streamReq !== false;
@@ -210,6 +227,75 @@ router.post("/:id/send", async (req, res) => {
     } catch {
 /* соединение уже закрыто клиентом */
 }
+  }
+});
+
+// POST /:id/compact — сжать историю: сводка вместо переписки (команда /compact)
+// body: { model?, provider?, focus? } → { messages }
+router.post("/:id/compact", async (req, res) => {
+  const conv = stmts.convGet.get(Number(req.params.id));
+  if (!conv) return res.status(404).json({ error: "conversation not found" });
+  const wanted = req.body?.provider;
+  if (typeof wanted === "string" && wanted && wanted !== conv.provider) {
+    try {
+      getProvider(wanted);
+      stmts.convUpdate.run(conv.id, { provider: wanted });
+      conv.provider = wanted;
+    } catch {
+      /* неизвестный провайдер — остаёмся на текущем */
+    }
+  }
+  const provider = getProvider(conv.provider);
+  const secret = getSecret(provider.id);
+  if (!secret) return res.status(409).json({ error: `Provider "${provider.id}" not configured.` });
+
+  const msgs = (stmts.msgFor.all(conv.id) as any[]).filter((m) => m.role !== "system");
+  if (msgs.length < 2) return res.status(400).json({ error: "nothing_to_compact" });
+
+  // Хвост переписки в разумных пределах: сводка не должна упираться в окно модели
+  let transcript = msgs
+    .map((m) => `${m.role === "user" ? "Пользователь" : "Ассистент"}: ${m.text}`)
+    .join("\n\n");
+  if (transcript.length > 24000) transcript = "…\n" + transcript.slice(-24000);
+  const focus = String(req.body?.focus || "").trim();
+  const instruction =
+    "Сожми переписку ниже в краткую сводку, чтобы продолжить диалог без потери контекста. " +
+    "Сохрани: цель пользователя, принятые решения, важные факты, имена, числа, пути, код и " +
+    "незавершённые задачи. Без вступлений, списком или короткими абзацами, на языке переписки." +
+    (focus ? `\nОсобое внимание: ${focus}.` : "");
+
+  const chatCfg = settings.get("chat");
+  const local = (m: unknown): boolean => /\.gguf$/i.test(String(m || ""));
+  const pick = (m: unknown): string =>
+    m && (provider.id === "llamacpp" || !local(m)) ? String(m) : "";
+  const model = pick(req.body?.model) || pick(chatCfg.model) || provider.models?.[0] || "";
+  try {
+    const summary = String(
+      await runWithPage(req.appPage, () =>
+        provider.chat({
+          secret,
+          model,
+          messages: [
+            { role: "system", text: instruction },
+            { role: "user", text: transcript },
+          ],
+          temperature: 0.2,
+          maxTokens: 1200,
+          stream: false,
+          onToken: () => undefined,
+        }),
+      ),
+    ).trim();
+    if (!summary) return res.status(502).json({ error: "empty_summary" });
+    stmts.msgTruncateFrom.run(conv.id, (msgs[0] as any).id);
+    stmts.msgInsert.run(conv.id, "user", `[Сводка предыдущего диалога]\n${summary}`);
+    stmts.msgInsert.run(conv.id, "assistant", "Принято, продолжаем с учётом сводки.");
+    stmts.convTouch.run(conv.id);
+    logger.action("chat.compact", { id: conv.id, from: msgs.length, chars: summary.length });
+    res.json({ messages: stmts.msgFor.all(conv.id) });
+  } catch (e: any) {
+    logger.error("chat.compact", { id: conv.id, error: e.message });
+    res.status(500).json({ error: e.message });
   }
 });
 
