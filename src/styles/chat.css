@@ -1070,3 +1070,23 @@
 .msg-head.is-user {
   text-align: right;
 }
+
+/* Действия под сообщением — только иконки; названия — во всплывающей подсказке (title). */
+.msg-actions {
+  flex-wrap: wrap;
+  gap: 2px;
+}
+.msg-actions button {
+  font-size: 0;
+  gap: 0;
+  padding: 5px 7px;
+  border-radius: 7px;
+}
+.msg-actions button svg {
+  width: 14px;
+  height: 14px;
+}
+.msg-actions button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}

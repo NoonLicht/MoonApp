@@ -174,8 +174,11 @@ export default function MsgList(props: {
             style={{ justifyContent: m.role === "user" ? "flex-end" : "flex-start" }}
           >
             {m.role === "assistant" && (
-              <button onClick={() => onCopy(m.text, i)} title={t("aichat.copy")}>
-                <Copy size={11} /> {copiedIdx === i ? t("aichat.copied") : t("aichat.copy")}
+              <button
+                onClick={() => onCopy(m.text, i)}
+                title={copiedIdx === i ? t("aichat.copied") : t("aichat.copy")}
+              >
+                {copiedIdx === i ? <Check size={11} /> : <Copy size={11} />}
               </button>
             )}
             {m.role === "assistant" && i === messages.length - 1 && !sending && (
