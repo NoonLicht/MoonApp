@@ -1057,3 +1057,13 @@
   max-height: none;
   min-height: 160px;
 }
+
+/* Компактная подпись под сообщением: токены · время генерации · время */
+.msg-meta {
+  font-size: 10.5px;
+  font-family: var(--font-mono);
+  color: var(--text-tertiary);
+  opacity: 0.8;
+  white-space: nowrap;
+  padding: 0 4px;
+}

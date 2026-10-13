@@ -232,7 +232,16 @@ router.post("/:id/send", async (req, res) => {
       saved = prev + glue + saved;
       stmts.msgTruncateFrom.run(conv.id, lastMsg.id);
     }
-    stmts.msgInsert.run(conv.id, "assistant", saved);
+    // Время генерации и оценка токенов (≈3.5 символа на токен) — показываются под сообщением
+    let genMs = Date.now() - startedAt;
+    if (isContinue && lastMsg) genMs += Number((lastMsg as { gen_ms?: number }).gen_ms) || 0;
+    stmts.msgInsert.run(
+      conv.id,
+      "assistant",
+      saved,
+      genMs,
+      Math.max(1, Math.round(saved.length / 3.5)),
+    );
     logger.action("chat.completed", {
       id: conv.id,
       provider: provider.id,

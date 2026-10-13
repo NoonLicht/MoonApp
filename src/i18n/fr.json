@@ -1100,6 +1100,8 @@
       "attached": "Ajouté au prompt système, sources : {n}"
     },
     "branch": "Créer une branche",
+    "tokShort": "tok",
+    "secShort": "s",
     "continue": "Continuer",
     "delete": "Supprimer",
     "deleteConfirm": "Supprimer ce message et tout ce qui suit ?",

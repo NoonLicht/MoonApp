@@ -167,7 +167,8 @@ const tables: Record<string, Table> = {
     ["provider", "title", "created_at", "updated_at", "pinned"],
     "-updated_at",
   ),
-  messages: new Table(["conversation_id", "role", "text", "created_at"], "id"),
+  // gen_ms/tokens — время генерации и оценка токенов ответа (колонки в конце: старая БД дополнится сама)
+  messages: new Table(["conversation_id", "role", "text", "created_at", "gen_ms", "tokens"], "id"),
   archived_pages: new Table(["name", "size_text", "saved_at"], "-id"), // устарело (М9), оставлено для совместимости старых data.json
   books: new Table(["title", "author", "year", "fmt", "tone", "description"], "title"),
   catalog: new Table(
@@ -765,8 +766,13 @@ export const stmts = {
   },
   // Messages
   msgInsert: {
-    run: (conversation_id: Value, role: Value, text: Value) =>
-      run(() => tables.messages.insert([conversation_id, role, text, now()])),
+    run: (
+      conversation_id: Value,
+      role: Value,
+      text: Value,
+      gen_ms: Value = null,
+      tokens: Value = null,
+    ) => run(() => tables.messages.insert([conversation_id, role, text, now(), gen_ms, tokens])),
   },
   msgFor: {
     all: (conversation_id: Value) =>

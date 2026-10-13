@@ -7,6 +7,7 @@ import { useContextMenu } from "@/components/ContextMenu";
 import CodeBlock from "@/pages/ai-chat/parts/CodeBlock";
 import { renderInlineMd, parseSegments } from "@/pages/ai-chat/lib/chatUtils";
 import { sanitizeHtml } from "@/lib/sanitize";
+import { msgMeta } from "@/pages/ai-chat/lib/msgMeta";
 
 export interface MsgStats {
   ms: number;
@@ -74,7 +75,15 @@ function UserBody({ text, images }: { text: string; images?: string[] }) {
 }
 
 export default function MsgList(props: {
-  messages: { id?: number; role: "user" | "assistant"; text: string; images?: string[] }[];
+  messages: {
+    id?: number;
+    role: "user" | "assistant";
+    text: string;
+    images?: string[];
+    created_at?: string;
+    gen_ms?: number | null;
+    tokens?: number | null;
+  }[];
   sending: boolean;
   streamingText: string;
   editing: { id: number; text: string } | null;
@@ -199,6 +208,9 @@ export default function MsgList(props: {
                 <GitBranch size={11} /> {t("aichat.branch")}
               </button>
             )}
+            <span className="msg-meta">
+              {msgMeta(m, { tok: t("aichat.tokShort"), sec: t("aichat.secShort") })}
+            </span>
             <button onClick={() => onSpeak(m.text)} title={t("aichat.listen")}>
               <Volume2 size={11} /> {t("aichat.listen")}
             </button>

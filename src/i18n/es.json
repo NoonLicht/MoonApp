@@ -1100,6 +1100,8 @@
       "attached": "Añadido al prompt del sistema, fuentes: {n}"
     },
     "branch": "Bifurcar",
+    "tokShort": "tok",
+    "secShort": "s",
     "continue": "Continuar",
     "delete": "Eliminar",
     "deleteConfirm": "¿Eliminar este mensaje y todo lo que sigue?",

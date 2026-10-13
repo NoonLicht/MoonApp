@@ -1100,6 +1100,8 @@
       "attached": "Added to the system prompt, sources: {n}"
     },
     "branch": "Branch",
+    "tokShort": "tok",
+    "secShort": "s",
     "continue": "Continue",
     "delete": "Delete",
     "deleteConfirm": "Delete this message and everything after it?",

@@ -1100,6 +1100,8 @@
       "attached": "已加入系统提示，来源数：{n}"
     },
     "branch": "分支",
+    "tokShort": "词元",
+    "secShort": "秒",
     "continue": "继续生成",
     "delete": "删除",
     "deleteConfirm": "删除此消息及其之后的所有内容？",

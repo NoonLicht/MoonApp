@@ -230,6 +230,10 @@ export interface ChatMessage {
   /** Картинки пользователя (только на клиенте, см. chatImages.ts). */
   images?: string[];
   created_at?: string;
+  /** Время генерации ответа, мс (только у ответов ассистента). */
+  gen_ms?: number | null;
+  /** Оценка числа токенов. */
+  tokens?: number | null;
 }
 
 export interface ProviderInfo {
