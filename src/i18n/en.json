@@ -5519,6 +5519,10 @@
       "q6": "Nearly lossless — most accurate choice for embeddings",
       "q6k": "Nearly lossless quality",
       "q8": "Practically original, maximum precision"
+    },
+    "pill": {
+      "loading": "Loading {model} · {task}",
+      "busy": "{model} · {where} · {task}"
     }
   },
   "canvas": {

@@ -5515,6 +5515,10 @@
       "q6": "Quasiment sans perte — le plus précis pour les embeddings",
       "q6k": "Qualité quasiment sans perte",
       "q8": "Pratiquement l'original, précision maximale"
+    },
+    "pill": {
+      "loading": "Chargement de {model} · {task}",
+      "busy": "{model} · {where} · {task}"
     }
   },
   "canvas": {

@@ -33,7 +33,7 @@ import SystemStatsBar from "@/components/SystemStatsBar";
 import GhostToggle from "@/components/GhostToggle";
 import PrivacyShield from "@/components/PrivacyShield";
 import NightBanner from "@/components/NightBanner";
-import ModelToggle, { ModelPanel } from "@/components/ModelToggle";
+import ModelToggle, { ModelActivityPill, ModelPanel } from "@/components/ModelToggle";
 import { api } from "@/api/client";
 import { PAGES } from "@/app/navigation";
 import { onOpenTarget } from "@/lib/deepLink";
@@ -463,6 +463,7 @@ function Shell({
                 <ListChecks size={15} />
               </button>
               <ModelToggle onClick={() => setModelPanelVisible((v) => !v)} />
+              <ModelActivityPill />
               <SystemStatsBar />
               <GhostToggle />
             </div>

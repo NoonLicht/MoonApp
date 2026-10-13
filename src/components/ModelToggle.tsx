@@ -302,3 +302,61 @@ export default function ModelToggle({ onClick }: { onClick: () => void }) {
     </button>
   );
 }
+
+/**
+ * Временная плашка в шапке: какая локальная модель сейчас грузится или работает,
+ * на чём (видеокарта/процессор) и для какой задачи. Исчезает через пару секунд после конца.
+ */
+export function ModelActivityPill() {
+  const { t } = useI18n();
+  const [line, setLine] = useState("");
+  const [loading, setLoading] = useState(false);
+  useEffect(() => {
+    let hide = 0;
+    let alive = true;
+    const tick = async () => {
+      try {
+        const a = await api.llamaActivity();
+        if (!alive) return;
+        const task = (x: string): string => (x ? t(`llama.task.${x}`) : t("llama.working"));
+        const ld = a.loading[0];
+        const busy = a.loaded.find((m) => m.busy);
+        if (ld) {
+          setLoading(true);
+          setLine(t("llama.pill.loading", { model: ld.file, task: task(ld.task) }));
+        } else if (busy) {
+          setLoading(false);
+          setLine(
+            t("llama.pill.busy", {
+              model: busy.file,
+              where: busy.gpu ? "GPU" : "CPU",
+              task: task(busy.task),
+            }),
+          );
+        } else {
+          window.clearTimeout(hide);
+          hide = window.setTimeout(() => setLine(""), 2500);
+          return;
+        }
+        window.clearTimeout(hide);
+      } catch {
+        /* сервер недоступен */
+      }
+    };
+    void tick();
+    const id = window.setInterval(() => void tick(), 1000);
+    return () => {
+      alive = false;
+      window.clearInterval(id);
+      window.clearTimeout(hide);
+    };
+  }, [t]);
+  if (!line) return null;
+  return (
+    <span className="model-pill no-drag" title={line}>
+      <Loader2 size={12} className="spin" />
+      <span className="model-pill-text">{line}</span>
+      {loading && <span className="model-pill-dot" />}
+    </span>
+  );
+}
