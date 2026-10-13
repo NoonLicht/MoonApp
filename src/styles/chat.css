@@ -1090,3 +1090,42 @@
   opacity: 0.5;
   cursor: default;
 }
+
+/* Плитка чата фиксированной высоты: заголовок сжимается с многоточием, кнопки в один ряд. */
+.chat-conv {
+  height: 38px;
+  min-height: 38px;
+  box-sizing: border-box;
+  flex: 0 0 auto;
+  overflow: hidden;
+}
+.chat-conv > span:not(.x) {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.chat-conv .x {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 2px;
+  margin-left: 0;
+}
+.chat-conv .x .icon-btn {
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
+  min-height: 22px;
+  padding: 0;
+}
+/* Поле поиска чатов: без «жирной» минимальной высоты общих инпутов (38px). */
+.conv-search {
+  height: 34px;
+  box-sizing: border-box;
+  padding: 0 9px;
+}
+.conv-search input {
+  min-height: 0;
+  height: 100
