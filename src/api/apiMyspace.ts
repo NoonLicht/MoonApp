@@ -72,6 +72,21 @@ export const myspaceApi = {
   myspaceAiFormat: (path: string) => req<NotesAiResult>("POST", "/myspace/ai/format", { path }),
   myspaceAiRegenerate: (path: string) =>
     req<NotesAiResult>("POST", "/myspace/ai/regenerate", { path }),
+  // Команда ИИ из строки заметки (`...факт про луну`): результат применяет редактор.
+  myspaceAiCommand: (b: {
+    command: string;
+    args: string;
+    content: string;
+    selection: string;
+    title: string;
+  }) =>
+    req<{
+      mode: "replace" | "insert";
+      target: "selection" | "note";
+      text: string;
+      provider: string;
+      model: string;
+    }>("POST", "/myspace/ai/command", b),
   // Провайдер и модель ИИ-оформления заметок: выбор сохраняется в настройках
   // (myspace.ai), поэтому задавать его заново в следующий раз не нужно.
   myspaceAiConfig: () => req<NotesAiConfig>("GET", "/myspace/ai/config"),

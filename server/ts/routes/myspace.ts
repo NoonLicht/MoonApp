@@ -5,6 +5,7 @@ import * as vault from "../myspace-vault";
 // ИИ-оформление заметок: провайдер чата + sidecar с «сырым» текстом
 // (server/ts/notesAi.ts → server/notesAi.js, см. npm run compile:server).
 import * as notesAi from "../notesAi";
+import * as notesCommands from "../notesCommands";
 import logger from "../logger";
 import * as vaultAssets from "../vaultAssets";
 
@@ -236,6 +237,33 @@ async function runAiFormat(req: any, res: any, mode: any) {
 }
 
 router.post("/ai/format", (req, res) => runAiFormat(req, res, "format"));
+
+// POST /api/myspace/ai/command { command, args, content, selection, title }
+// Команда `...факт про луну` из редактора: ответ {mode, target, text}. Файл не пишем —
+// результат применяет редактор, чтобы он попал в историю правок (Ctrl+Z).
+router.post("/ai/command", async (req, res) => {
+  const b = (req.body || {}) as Record<string, unknown>;
+  try {
+    const out = await notesCommands.runCommand({
+      command: String(b.command || "ask"),
+      args: String(b.args || "").slice(0, 2000),
+      content: String(b.content || "").slice(0, 200_000),
+      selection: String(b.selection || "").slice(0, 100_000),
+      title: String(b.title || "").slice(0, 200),
+      appPage: req.appPage as string | null,
+    });
+    logger.action("myspace.ai.command", {
+      command: b.command,
+      provider: out.provider,
+      model: out.model,
+      chars: out.text.length,
+    });
+    res.json(out);
+  } catch (e: any) {
+    const m = String(e?.message || e);
+    res.status(/^notes_(cmd|ai)_|llamacpp_model_missing/.test(m) ? 400 : 500).json({ error: m });
+  }
+});
 router.post("/ai/regenerate", (req, res) => runAiFormat(req, res, "regenerate"));
 
 // GET /api/myspace/ai/config   — выбранные провайдер/модель + список провайдеров

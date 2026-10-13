@@ -19,6 +19,7 @@ import { GFM } from "@lezer/markdown";
 import { autoRenumberLists } from "@/pages/myspace/parts/listRenumber";
 import { provenanceExtension } from "@/pages/myspace/parts/provenanceMarks";
 import { listInputHandler, shiftTabCommand, tabCommand } from "@/pages/myspace/parts/listCommands";
+import { aiCommandExtension, type AiCommandHooks } from "@/pages/myspace/parts/aiCommands";
 import { fontCss, getNoteView, subscribeNoteView, zoomNote } from "@/pages/myspace/parts/noteView";
 import {
   adaptPlainText,
@@ -51,6 +52,8 @@ interface Props {
   onOcrSettings?: () => void;
   /** PDF, брошенный на редактор: распознавание страниц и подстановка текста. */
   onDropPdf?: (req: PdfDropRequest) => void;
+  /** Команды ИИ `...команда` в строке заметки: выполнение запроса и показ ошибки. */
+  aiCommands?: AiCommandHooks;
   /** src картинок, которые распознаются прямо сейчас (на них показывается индикатор). */
   ocrBusy?: string[];
   ocrLabels?: { ocr: string; settings: string; busy: string };
@@ -1088,6 +1091,7 @@ export default function CodeMirrorLiveEditor({
   onOcrImage,
   onOcrSettings,
   onDropPdf,
+  aiCommands,
   ocrBusy,
   ocrLabels,
 }: Props) {
@@ -1105,6 +1109,7 @@ export default function CodeMirrorLiveEditor({
     onOcrImage,
     onOcrSettings,
     onDropPdf,
+    aiCommands,
   });
 
   useEffect(() => {
@@ -1117,6 +1122,7 @@ export default function CodeMirrorLiveEditor({
       onOcrImage,
       onOcrSettings,
       onDropPdf,
+      aiCommands,
     };
   }, [
     onWikiLink,
@@ -1127,6 +1133,7 @@ export default function CodeMirrorLiveEditor({
     onOcrImage,
     onOcrSettings,
     onDropPdf,
+    aiCommands,
   ]);
 
   // Кнопки OCR на картинках и индикатор «идёт распознавание»: состояние читает поле декораций.
@@ -1557,6 +1564,7 @@ export default function CodeMirrorLiveEditor({
     };
 
     const extensions: Extension[] = [
+      aiCommandExtension(() => callbacksRef.current.aiCommands ?? null),
       history(),
       keymap.of([
         { key: "Tab", run: tabCommand },

@@ -488,6 +488,23 @@ export default function EditorArea({ setLeftOpen, leftOpen, openFiles, setActive
                               onOcrImage={(r) => void runOcr(r)}
                               onOcrSettings={() => setOcrDlg(true)}
                               onDropPdf={(r) => void runPdf(r)}
+                              aiCommands={{
+                                run: (r) =>
+                                  api.myspaceAiCommand({
+                                    ...r,
+                                    title: activeTab.replace(/^.*[\\/]/, "").replace(/\.md$/, ""),
+                                  }),
+                                onError: (m) =>
+                                  setAttachError(
+                                    /llamacpp_model_missing|build_missing/.test(m)
+                                      ? t("myspace.cmd.noModel")
+                                      : /notes_cmd_no_text/.test(m)
+                                        ? t("myspace.cmd.noText")
+                                        : /notes_cmd_empty/.test(m)
+                                          ? t("myspace.cmd.empty")
+                                          : m,
+                                  ),
+                              }}
                               ocrBusy={ocrBusy}
                               ocrLabels={ocrLabels}
                               placeholder={t("myspace.startWriting")}

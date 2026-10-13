@@ -1972,3 +1972,56 @@
   flex: 1 1 0;
   min-width: 0;
 }
+
+/* ── Команды ИИ в заметке: подсказка по «...» ── */
+.cm-tooltip:has(.ms-cmd-menu) {
+  border: none;
+  background: none;
+}
+.ms-cmd-menu {
+  display: flex;
+  flex-direction: column;
+  min-width: 260px;
+  max-width: 360px;
+  max-height: 300px;
+  overflow-y: auto;
+  padding: 6px;
+  border-radius: 12px;
+  border: 1px solid var(--glass-border);
+  background: var(--surface-solid);
+  backdrop-filter: blur(18px);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+}
+.ms-cmd-head {
+  padding: 4px 8px 6px;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+.ms-cmd-item {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  padding: 6px 8px;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+.ms-cmd-item:hover {
+  background: var(--glass);
+}
+.ms-cmd-item b {
+  flex: none;
+  font-weight: 600;
+  color: var(--teal);
+}
+.ms-cmd-item span {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
