@@ -398,7 +398,6 @@ export function MailReader(p: Props) {
             settings={p.settings}
             dark={p.dark}
             lang={p.lang}
-            aiOn={aiOn}
             card={card && card.address === m.fromAddr ? card : null}
             onCard={() => void openCard(m.fromAddr)}
             onToast={p.onToast}
@@ -415,7 +414,6 @@ function MessageCard({
   settings,
   dark,
   lang,
-  aiOn,
   card,
   onCard,
   onToast,
@@ -425,7 +423,6 @@ function MessageCard({
   settings: MailSettings | null;
   dark: boolean;
   lang: string;
-  aiOn: boolean;
   card: MailContactCard | null;
   onCard: () => void;
   onToast: (t: string) => void;
@@ -447,7 +444,6 @@ function MessageCard({
         action: "translate",
         id: m.id,
         lang: lang.slice(0, 2),
-        engine: aiOn ? "ai" : "google",
       });
       setTr(r.blocks ?? (r.text ? r.text.split(/\n+/) : []));
     } catch (e) {

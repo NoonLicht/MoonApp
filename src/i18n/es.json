@@ -6330,7 +6330,7 @@
     "ai_friendly": "Más amistoso",
     "ai_language": "Idioma de las respuestas IA",
     "ai_languageHint": "Para borradores y resúmenes.",
-    "ai_note": "El texto del correo no sale del equipo: resúmenes, tareas y respuestas rápidas los calcula EmbeddingGemma integrado y la traducción, el modelo local. No se usan proveedores en la nube.",
+    "ai_note": "Por defecto el texto del correo no sale del equipo: EmbeddingGemma calcula resúmenes, tareas y respuestas y el modelo local traduce. Los proveedores en la nube solo si los eliges arriba.",
     "ai_shorten": "Más corto",
     "ai_tone": "Tono predeterminado",
     "ar_enabled": "Activar respuesta automática",
@@ -6543,6 +6543,20 @@
     "digestCount": "Mensajes en el resumen: {n}",
     "digestEmpty": "No hay mensajes en la bandeja en ese periodo.",
     "aiDisabled": "El asistente de IA está desactivado en los ajustes del correo.",
-    "aiEmpty": "La IA devolvió una respuesta vacía. El modelo se elige en los ajustes de «Resumen IA» (compartidos con el correo): prueba otro."
+    "aiEmpty": "La IA devolvió una respuesta vacía. El modelo se elige en los ajustes de «Resumen IA» (compartidos con el correo): prueba otro.",
+    "ai_engineTitle": "Motor de IA (resumen, tareas, respuestas)",
+    "ai_eng_embedding": "Local: EmbeddingGemma",
+    "ai_eng_embeddingHint": "El correo no sale del equipo. Resúmenes y tareas se extraen del texto, respuestas con plantillas; sin reescritura libre.",
+    "ai_eng_provider": "Proveedor de IA (nube)",
+    "ai_eng_providerHint": "Mejor calidad: resúmenes y respuestas reales. El texto se envía al proveedor.",
+    "ai_eng_llamacpp": "Modelo local (llama.cpp)",
+    "ai_eng_llamacppHint": "Un modelo de lenguaje en tu PC: resúmenes y respuestas sin enviar nada. Debe estar instalado; más lento que la nube.",
+    "ai_sameAsConspectus": "Igual que «Resumen IA»",
+    "ai_noKey": "sin clave",
+    "ai_autoModel": "Modelo: auto",
+    "ai_cloudWarn": "Atención: el texto de los correos se envía al proveedor elegido.",
+    "tr_engineTitle": "Traducción de correos",
+    "tr_localNote": "La traducción se hace en tu equipo; el texto no se envía.",
+    "tr_cloudWarn": "Atención: con este motor el texto se envía a un servicio externo."
   }
 }

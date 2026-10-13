@@ -55,7 +55,17 @@ export interface MailSettings {
     accountTags: boolean;
   };
   tracking: { enabled: boolean; base: string; key: string; opens: boolean; clicks: boolean };
-  ai: { enabled: boolean; language: string; tone: string };
+  ai: {
+    enabled: boolean;
+    language: string;
+    tone: string;
+    /** embedding — локально (EmbeddingGemma), provider — облачный провайдер, llamacpp — локальная LLM. */
+    engine: "embedding" | "provider" | "llamacpp";
+    providerId: string;
+    model: string;
+    /** ai | local | google | mymemory | libre | lingva (как в RSS). */
+    translateEngine: string;
+  };
   mcp: { enabled: boolean; key: string; allowSend: boolean; port: number };
   oauth: { googleClientId: string; googleClientSecret: string; microsoftClientId: string };
   smartFolders: SmartFolder[];
@@ -89,7 +99,15 @@ export const DEFAULTS: MailSettings = {
     composeMarkdown: false,
   },
   tracking: { enabled: false, base: "", key: "", opens: true, clicks: true },
-  ai: { enabled: true, language: "", tone: "neutral" },
+  ai: {
+    enabled: true,
+    language: "",
+    tone: "neutral",
+    engine: "embedding",
+    providerId: "",
+    model: "",
+    translateEngine: "local",
+  },
   mcp: { enabled: false, key: "", allowSend: false, port: 38417 },
   oauth: { googleClientId: "", googleClientSecret: "", microsoftClientId: "" },
   smartFolders: [],

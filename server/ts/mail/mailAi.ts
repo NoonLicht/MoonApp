@@ -1,6 +1,6 @@
 /**
- * Локальный «интеллект» почты. Текст писем никуда не отправляется: ни облачным провайдерам,
- * ни онлайн-переводчикам. Всё считается на этом компьютере:
+ * Локальный «интеллект» почты (движок по умолчанию). Пока в настройках не выбран провайдер,
+ * текст писем никуда не отправляется. Всё считается на этом компьютере:
  *  - EmbeddingGemma (встроенный llama.cpp) даёт векторы смысла предложений и писем;
  *  - сводки и задачи — извлекающие: выбираются самые «центральные» предложения цепочки,
  *    письма за период группируются по темам кластеризацией векторов;
@@ -10,7 +10,8 @@
  * качество ниже, но функции продолжают работать.
  */
 import { embedModelFile, embedRaw, withPrefix } from "../llamacpp/embed";
-import { translateStrings } from "../rss";
+import { translateStrings, normEngine } from "../rss";
+import { runLlm, translateWithModel } from "./mailLlm";
 import { mailDb } from "./mailDb";
 import { getSettings } from "./mailSettings";
 import { getMessage, getThread, type MessageFull } from "./mailService";
@@ -283,7 +284,10 @@ const ACTION_RE =
 export async function runAi(
   r: AiRequest,
 ): Promise<{ text?: string; html?: string; list?: string[]; blocks?: string[] }> {
-  if (!getSettings().ai.enabled) throw new Error("ai_disabled");
+  const cfg = getSettings().ai;
+  if (!cfg.enabled) throw new Error("ai_disabled");
+  // выбран провайдер или локальная LLM — генеративные функции идут через модель
+  if (cfg.engine !== "embedding" && r.action !== "translate") return runLlm(r);
   switch (r.action) {
     case "summarize": {
       if (!r.id) throw new Error("id_required");
@@ -406,17 +410,13 @@ export async function runAi(
         .map((s) => s.trim())
         .filter(Boolean)
         .slice(0, 200);
-      // только локальная модель: онлайн-переводчики получили бы текст письма
-      let res;
-      try {
-        res = await translateStrings(chunks, lang, "local");
-      } catch (e) {
-        throw new Error(
-          "Local translation model is unavailable (install it in the Translator page): " +
-            (e as Error).message,
-          { cause: e },
-        );
+      // движок перевода выбирается в настройках почты (по умолчанию — локальная модель)
+      const engine = normEngine(cfg.translateEngine || "local");
+      if (engine === "ai") {
+        const out = await translateWithModel(src, lang);
+        return { text: out, blocks: out.split(/\n+/).filter(Boolean) };
       }
+      const res = await translateStrings(chunks, lang, engine);
       const blocks = chunks.map((c, i) => res.out[i] ?? c);
       return { text: blocks.join("\n\n"), blocks };
     }

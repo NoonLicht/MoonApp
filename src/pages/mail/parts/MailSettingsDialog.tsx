@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Copy, Download, Loader2, Plus, Trash2, Upload, X } from "lucide-react";
 import { Btn, Glass, Select } from "@/components/ui";
+import { MailAiSettings } from "@/pages/mail/parts/MailAiSettings";
 import { useI18n } from "@/app/i18n";
 import { api } from "@/api/client";
 import type {
@@ -462,6 +463,7 @@ export function MailSettingsDialog({
                 }))}
               />
             </Row>
+            <MailAiSettings ai={s.ai} onChange={(p) => upd("ai", p)} />
             <p className="mail-hint">{t("mail.ai_note")}</p>
           </>
         );

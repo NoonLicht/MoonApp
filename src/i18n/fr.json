@@ -6330,7 +6330,7 @@
     "ai_friendly": "Plus amical",
     "ai_language": "Langue des réponses IA",
     "ai_languageHint": "Pour les brouillons et résumés.",
-    "ai_note": "Le texte des messages ne quitte pas l'ordinateur : résumés, tâches et réponses rapides sont calculés par EmbeddingGemma intégré, la traduction par le modèle local. Aucun fournisseur cloud.",
+    "ai_note": "Par défaut le texte ne quitte pas l'ordinateur : EmbeddingGemma calcule résumés, tâches et réponses, le modèle local traduit. Les services cloud ne sont utilisés que si vous les choisissez ci-dessus.",
     "ai_shorten": "Plus court",
     "ai_tone": "Ton par défaut",
     "ar_enabled": "Activer la réponse automatique",
@@ -6543,6 +6543,20 @@
     "digestCount": "Messages dans le résumé : {n}",
     "digestEmpty": "Aucun message reçu sur cette période.",
     "aiDisabled": "L'assistant IA est désactivé dans les réglages du courrier.",
-    "aiEmpty": "L'IA a renvoyé une réponse vide. Le modèle se choisit dans les réglages « Résumé IA » (partagés avec le courrier) : essayez-en un autre."
+    "aiEmpty": "L'IA a renvoyé une réponse vide. Le modèle se choisit dans les réglages « Résumé IA » (partagés avec le courrier) : essayez-en un autre.",
+    "ai_engineTitle": "Moteur IA (résumés, tâches, réponses)",
+    "ai_eng_embedding": "Local : EmbeddingGemma",
+    "ai_eng_embeddingHint": "Le courrier reste sur l'ordinateur. Résumés et tâches sont extraits du texte, réponses par modèles ; pas de réécriture libre.",
+    "ai_eng_provider": "Fournisseur IA (cloud)",
+    "ai_eng_providerHint": "Meilleure qualité : vrais résumés et réponses rédigées. Le texte est envoyé au fournisseur.",
+    "ai_eng_llamacpp": "Modèle local (llama.cpp)",
+    "ai_eng_llamacppHint": "Un modèle de langage sur votre PC : vrais résumés et réponses sans rien envoyer. Doit être installé ; plus lent que le cloud.",
+    "ai_sameAsConspectus": "Comme « Résumé IA »",
+    "ai_noKey": "pas de clé",
+    "ai_autoModel": "Modèle : auto",
+    "ai_cloudWarn": "Attention : le texte des messages traités est envoyé au fournisseur choisi.",
+    "tr_engineTitle": "Traduction des e-mails",
+    "tr_localNote": "La traduction se fait sur votre ordinateur ; le texte n'est pas envoyé.",
+    "tr_cloudWarn": "Attention : avec ce moteur, le texte est envoyé à un service externe."
   }
 }

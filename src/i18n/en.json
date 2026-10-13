@@ -6330,7 +6330,7 @@
     "ai_friendly": "Friendlier",
     "ai_language": "AI reply language",
     "ai_languageHint": "For drafts and summaries.",
-    "ai_note": "Mail text never leaves this computer: digests, tasks and quick replies are computed by the built-in EmbeddingGemma model, translation by the local model. No cloud providers or online translators are used.",
+    "ai_note": "By default mail text never leaves this computer: EmbeddingGemma computes digests, tasks and quick replies, the local model translates. Cloud providers and online translators are used only if you choose them above.",
     "ai_shorten": "Shorter",
     "ai_tone": "Default tone",
     "ar_enabled": "Enable auto-reply",
@@ -6543,6 +6543,20 @@
     "digestCount": "Messages in digest: {n}",
     "digestEmpty": "No inbox messages in the selected period.",
     "aiDisabled": "The AI assistant is turned off in mail settings.",
-    "aiEmpty": "The AI returned an empty answer. The model is chosen in the “AI summary” settings (shared by mail and lecture notes) — try another one."
+    "aiEmpty": "The AI returned an empty answer. The model is chosen in the “AI summary” settings (shared by mail and lecture notes) — try another one.",
+    "ai_engineTitle": "AI engine (digest, tasks, replies)",
+    "ai_eng_embedding": "Local: EmbeddingGemma",
+    "ai_eng_embeddingHint": "Mail never leaves this computer. Digests and tasks are extracted from the text, replies are templates; free-form rewriting is not available.",
+    "ai_eng_provider": "AI provider (cloud)",
+    "ai_eng_providerHint": "Best quality: real summaries and written replies. Mail text is sent to the provider.",
+    "ai_eng_llamacpp": "Local model (llama.cpp)",
+    "ai_eng_llamacppHint": "A language model runs on your PC: real summaries and replies with nothing sent out. The model must be installed; slower than cloud.",
+    "ai_sameAsConspectus": "Same as “AI summary”",
+    "ai_noKey": "no key",
+    "ai_autoModel": "Model: auto",
+    "ai_cloudWarn": "Note: the text of emails you run AI on is sent to the selected provider.",
+    "tr_engineTitle": "Email translation",
+    "tr_localNote": "Translation runs on your computer; the email text is not sent anywhere.",
+    "tr_cloudWarn": "Note: with this engine the email text is sent to an external translation service."
   }
 }

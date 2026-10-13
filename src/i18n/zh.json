@@ -6330,7 +6330,7 @@
     "ai_friendly": "更友好",
     "ai_language": "AI 回复语言",
     "ai_languageHint": "用于草稿和摘要。",
-    "ai_note": "邮件内容不会离开本机：摘要、任务和快捷回复由内置 EmbeddingGemma 计算，翻译使用本地模型，不使用云端服务商或在线翻译。",
+    "ai_note": "默认情况下邮件内容不会离开本机：EmbeddingGemma 计算摘要、任务和快捷回复，本地模型负责翻译。仅在你于上方选择时才会使用云端服务。",
     "ai_shorten": "更简短",
     "ai_tone": "默认语气",
     "ar_enabled": "启用自动回复",
@@ -6543,6 +6543,20 @@
     "digestCount": "摘要包含邮件：{n}",
     "digestEmpty": "所选时间段内收件箱没有邮件。",
     "aiDisabled": "AI 助手已在邮件设置中关闭。",
-    "aiEmpty": "AI 返回了空结果。模型在“AI 摘要”设置中选择（与邮件共用），请尝试更换。"
+    "aiEmpty": "AI 返回了空结果。模型在“AI 摘要”设置中选择（与邮件共用），请尝试更换。",
+    "ai_engineTitle": "AI 引擎（摘要、任务、回复）",
+    "ai_eng_embedding": "本地：EmbeddingGemma",
+    "ai_eng_embeddingHint": "邮件不离开本机。摘要与任务从原文提取，回复使用模板，不支持自由改写。",
+    "ai_eng_provider": "AI 服务商（云端）",
+    "ai_eng_providerHint": "质量最佳：真正的摘要和回复撰写。邮件文本会发送给服务商。",
+    "ai_eng_llamacpp": "本地模型 (llama.cpp)",
+    "ai_eng_llamacppHint": "语言模型在本机运行：真正的摘要与回复，不外发。需已安装，速度比云端慢。",
+    "ai_sameAsConspectus": "与“AI 摘要”相同",
+    "ai_noKey": "无密钥",
+    "ai_autoModel": "模型：自动",
+    "ai_cloudWarn": "注意：你使用 AI 处理的邮件文本会发送给所选服务商。",
+    "tr_engineTitle": "邮件翻译",
+    "tr_localNote": "翻译在本机进行，邮件文本不会外发。",
+    "tr_cloudWarn": "注意：使用此引擎时邮件文本会发送到外部翻译服务。"
   }
 }

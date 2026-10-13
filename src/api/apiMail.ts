@@ -228,7 +228,15 @@ export interface MailSettings {
     accountTags: boolean;
   };
   tracking: { enabled: boolean; base: string; key: string; opens: boolean; clicks: boolean };
-  ai: { enabled: boolean; language: string; tone: string };
+  ai: {
+    enabled: boolean;
+    language: string;
+    tone: string;
+    engine: "embedding" | "provider" | "llamacpp";
+    providerId: string;
+    model: string;
+    translateEngine: string;
+  };
   mcp: { enabled: boolean; key: string; allowSend: boolean; port: number };
   oauth: { googleClientId: string; googleClientSecret: string; microsoftClientId: string };
   smartFolders: { id: string; name: string; query: string; account: string }[];
