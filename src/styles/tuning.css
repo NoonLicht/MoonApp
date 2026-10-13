@@ -578,15 +578,3 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-
-.llama-layers {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-.llama-layers input {
-  width: 64px;
-  min-height: 0;
-  height: 30px;
-  padding: 0 8px;
-}

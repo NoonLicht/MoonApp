@@ -26,8 +26,6 @@ export default function LocalModelsControl({
   const [pick, setPick] = useState("");
   const [dev, setDev] = useState("auto");
   const [devs, setDevs] = useState<Record<string, string>>({});
-  /** Введённое число слоёв по моделям; пусто — авто. */
-  const [lay, setLay] = useState<Record<string, string>>({});
 
   const run = async (fn: () => Promise<unknown>): Promise<void> => {
     setErr("");
@@ -107,18 +105,9 @@ export default function LocalModelsControl({
               {m.busy && <Badge tone="amber">{t("llama.working")}</Badge>}
             </div>
             <div className="llama-model-facts muted-sm">
-              {p.mode !== "cpu" &&
-                p.layersTotal > 0 &&
-                (p.moe && router.layers?.[m.file] ? (
-                  <span>
-                    {t("llama.ctl.expertsGpu", {
-                      a: Math.min(router.layers[m.file], Math.max(1, p.layersTotal - 1)),
-                      b: Math.max(1, p.layersTotal - 1),
-                    })}
-                  </span>
-                ) : (
-                  <span>{t("llama.ctl.layers", { a: p.layersGpu, b: p.layersTotal })}</span>
-                ))}
+              {p.mode !== "cpu" && p.layersTotal > 0 && (
+                <span>{t("llama.ctl.layers", { a: p.layersGpu, b: p.layersTotal })}</span>
+              )}
               {p.device && <span>{p.device}</span>}
               <span>
                 {t("llama.ctl.vram")}: {mb(p.gpuMb + p.kvGpuMb)}
@@ -143,38 +132,10 @@ export default function LocalModelsControl({
                 onChange={(e) => setDevs((d) => ({ ...d, [m.file]: e.target.value }))}
                 options={deviceOptions}
               />
-              {selDev !== "cpu" && (
-                <label className="llama-layers" title={t("llama.ctl.layersHint")}>
-                  <span className="muted-sm">{t("llama.ctl.layersSet")}</span>
-                  <input
-                    className="text-input"
-                    type="number"
-                    min={0}
-                    max={p.layersTotal || 512}
-                    placeholder={t("llama.ctl.layersAuto")}
-                    value={lay[m.file] ?? (router.layers?.[m.file] ? String(router.layers[m.file]) : "")}
-                    onChange={(e) => setLay((l) => ({ ...l, [m.file]: e.target.value }))}
-                  />
-                  {p.layersTotal > 0 && <span className="muted-sm">/ {p.layersTotal}</span>}
-                </label>
-              )}
               <Btn
                 icon={RefreshCw}
                 disabled={busy}
-                onClick={() =>
-                  void run(() =>
-                    api.llamaLoad(
-                      m.file,
-                      selDev,
-                      Math.max(
-                        0,
-                        Math.round(
-                          Number(lay[m.file] ?? router.layers?.[m.file] ?? 0) || 0,
-                        ),
-                      ),
-                    ),
-                  )
-                }
+                onClick={() => void run(() => api.llamaLoad(m.file, selDev))}
               >
                 {t("llama.ctl.reload")}
               </Btn>
