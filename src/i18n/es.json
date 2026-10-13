@@ -5503,7 +5503,8 @@
       "summary": "resúmenes",
       "translate": "traducción",
       "chat": "chat",
-      "vision": "imágenes"
+      "vision": "imágenes",
+      "manual": "manual"
     },
     "quant": {
       "q3km": "Compacto, calidad algo menor — para PC modestos",
@@ -5519,6 +5520,23 @@
     "pill": {
       "loading": "Cargando {model} · {task}",
       "busy": "{model} · {where} · {task}"
+    },
+    "ctl": {
+      "title": "Modelos locales: dónde y en qué se ejecutan",
+      "modeFull": "Totalmente en VRAM",
+      "modePartial": "Parcialmente en VRAM",
+      "modeCpu": "CPU (RAM)",
+      "layers": "Capas en GPU: {a}/{b}",
+      "vram": "VRAM",
+      "ram": "RAM",
+      "ctx": "contexto {n}",
+      "vision": "+ imágenes",
+      "moeNote": "Los expertos MoE están en la RAM: ahorra VRAM, algo más lento.",
+      "devAuto": "Dispositivo: auto",
+      "devGpu": "Dispositivo: GPU",
+      "devCpu": "Dispositivo: CPU",
+      "reload": "Recargar",
+      "load": "Cargar"
     }
   },
   "canvas": {

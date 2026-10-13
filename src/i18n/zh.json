@@ -5503,7 +5503,8 @@
       "summary": "摘要",
       "translate": "翻译",
       "chat": "聊天",
-      "vision": "图像"
+      "vision": "图像",
+      "manual": "手动"
     },
     "quant": {
       "q3km": "体积小，质量略低，适合低配电脑",
@@ -5519,6 +5520,23 @@
     "pill": {
       "loading": "正在加载 {model} · {task}",
       "busy": "{model} · {where} · {task}"
+    },
+    "ctl": {
+      "title": "本地模型：运行位置与设备",
+      "modeFull": "完全在显存中",
+      "modePartial": "部分在显存中",
+      "modeCpu": "处理器（内存）",
+      "layers": "GPU 层数：{a}/{b}",
+      "vram": "显存",
+      "ram": "内存",
+      "ctx": "上下文 {n}",
+      "vision": "+ 图像",
+      "moeNote": "MoE 专家权重在内存中：节省显存，速度略慢。",
+      "devAuto": "设备：自动",
+      "devGpu": "设备：显卡",
+      "devCpu": "设备：处理器",
+      "reload": "重新加载",
+      "load": "加载"
     }
   },
   "canvas": {

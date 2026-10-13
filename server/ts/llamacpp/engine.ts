@@ -223,6 +223,65 @@ export function removeBuild(id: BuildId): void {
 
 // ───────────────────────────── сервер ─────────────────────────────
 
+/** Где реально лежит модель: слои и веса на видеокарте/в оперативной памяти (разбор лога llama.cpp). */
+export interface Placement {
+  layersGpu: number;
+  layersTotal: number;
+  gpuMb: number;
+  cpuMb: number;
+  kvGpuMb: number;
+  kvCpuMb: number;
+  /** Название видеокарты (пусто — процессор). */
+  device: string;
+  moe: boolean;
+  mode: "cpu" | "gpu-full" | "gpu-partial";
+  /** Итог подбора --fit: влезло целиком или что-то ушло в RAM. */
+  fit: string;
+}
+
+const num = (v: string | undefined): number => (v ? Math.round(parseFloat(v)) : 0);
+
+/** Разбор лога загрузки (-lv 4): слои на GPU, размеры буферов, имя устройства. */
+export function parsePlacement(log: string, o: { gpu: boolean; file: string }): Placement {
+  const layers = /offloaded (\d+)\/(\d+) layers to GPU/.exec(log);
+  let gpuMb = 0;
+  let cpuMb = 0;
+  for (const m of log.matchAll(/(\S+) model buffer size =\s*([\d.]+) MiB/g))
+    if (/^CPU/i.test(m[1])) cpuMb += num(m[2]);
+    else gpuMb += num(m[2]);
+  let kvGpuMb = 0;
+  let kvCpuMb = 0;
+  for (const m of log.matchAll(/(\S+) KV buffer size =\s*([\d.]+) MiB/g))
+    if (/^CPU/i.test(m[1])) kvCpuMb += num(m[2]);
+    else kvGpuMb += num(m[2]);
+  const dev = /using device \S+ \((.+?)\)/.exec(log);
+  const fit = /common_params_fit_impl: (will leave[^\n]*|[^\n]*(?:changes|offload)[^\n]*)/i.exec(
+    log,
+  );
+  const layersGpu = layers ? Number(layers[1]) : 0;
+  const layersTotal = layers ? Number(layers[2]) : 0;
+  const moe = isMoeFile(o.file);
+  const onGpu = o.gpu && (layersGpu > 0 || gpuMb > 0);
+  let mode: Placement["mode"] = "cpu";
+  if (onGpu) {
+    const partial =
+      (layersTotal > 0 && layersGpu < layersTotal) || (moe && cpuMb > Math.max(1, gpuMb) * 0.2);
+    mode = partial ? "gpu-partial" : "gpu-full";
+  }
+  return {
+    layersGpu,
+    layersTotal,
+    gpuMb,
+    cpuMb,
+    kvGpuMb,
+    kvCpuMb,
+    device: onGpu ? (dev?.[1] ?? "") : "",
+    moe,
+    mode,
+    fit: fit?.[1]?.trim().slice(0, 200) ?? "",
+  };
+}
+
 export interface ServerInfo {
   baseUrl: string;
   build: BuildId;
@@ -239,6 +298,9 @@ interface Running extends ServerInfo {
   used: number;
   mmproj: string;
   task: string;
+  place: Placement;
+  device: Device;
+  ctx: number;
 }
 
 /** Пул запущенных серверов: ключ → процесс. Несколько моделей живут одновременно в пределах лимита. */
@@ -355,6 +417,9 @@ async function spawnServer(build: BuildId, o: StartOptions, cpuOnly: boolean): P
     "-np",
     "1",
     "--no-webui",
+    // подробный лог загрузки: по нему определяем, сколько слоёв и весов ушло на видеокарту
+    "-lv",
+    "4",
     ...(o.raw ? ["--no-jinja"] : []),
     ...(o.mmproj ? ["--mmproj", o.mmproj, ...(gpu ? [] : ["--no-mmproj-offload"])] : []),
     "-t",
@@ -366,8 +431,12 @@ async function spawnServer(build: BuildId, o: StartOptions, cpuOnly: boolean): P
     stdio: ["ignore", "pipe", "pipe"],
   });
   let log = "";
+  let boot = "";
+  let booting = true;
   const add = (d: Buffer): void => {
-    log = (log + d.toString()).slice(-4000);
+    const t = d.toString();
+    log = (log + t).slice(-4000);
+    if (booting && boot.length < 400_000) boot += t;
   };
   proc.stdout?.on("data", add);
   proc.stderr?.on("data", add);
@@ -378,6 +447,9 @@ async function spawnServer(build: BuildId, o: StartOptions, cpuOnly: boolean): P
     proc.kill();
     throw e;
   }
+  booting = false;
+  const place = parsePlacement(boot, { gpu, file: o.model });
+  boot = "";
   const r: Running = {
     key: "",
     proc,
@@ -390,6 +462,9 @@ async function spawnServer(build: BuildId, o: StartOptions, cpuOnly: boolean): P
     used: Date.now(),
     mmproj: o.mmproj ?? "",
     task: o.task ?? "",
+    place,
+    device: o.device ?? "auto",
+    ctx: o.ctx ?? 4096,
   };
   proc.once("exit", () => {
     for (const [k, v] of pool) if (v === r) pool.delete(k);
@@ -513,6 +588,9 @@ export interface LoadedServer extends ServerInfo {
   used: number;
   mmproj: string;
   task: string;
+  place: Placement;
+  device: Device;
+  ctx: number;
 }
 
 /** Модели, которые прямо сейчас загружаются в память. */
@@ -533,6 +611,9 @@ export function loadedServers(): LoadedServer[] {
       used: r.used,
       mmproj: r.mmproj ? path.basename(r.mmproj) : "",
       task: r.task,
+      place: r.place,
+      device: r.device,
+      ctx: r.ctx,
     }));
 }
 

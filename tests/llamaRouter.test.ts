@@ -113,3 +113,43 @@ describe("маршрутизатор", () => {
     expect(models.installed().some((m: any) => /mmproj/i.test(m.file))).toBe(false);
   });
 });
+
+describe("размещение модели по логу llama.cpp", () => {
+  const log = [
+    "0.01.147 I llama_prepare_model_devices: using device Vulkan0 (NVIDIA GeForce RTX 5060 Ti) (0000:05:00.0) - 7120 MiB free",
+    "0.01.632 I load_tensors: offloaded 36/36 layers to GPU",
+    "0.01.632 I load_tensors:   CPU_Mapped model buffer size =  1756.00 MiB",
+    "0.01.632 I load_tensors:      Vulkan0 model buffer size =  1407.73 MiB",
+    "0.02.370 I llama_kv_cache:    Vulkan0 KV buffer size =    48.00 MiB",
+    "0.00.869 I common_params_fit_impl: will leave 5540 >= 768 MiB of free device memory, no changes needed",
+  ].join("\n");
+
+  it("слои, видеопамять и RAM разбираются из лога", () => {
+    const p = engine.parsePlacement(log, { gpu: true, file: "gemma-4-E2B-it-Q4_K_M.gguf" });
+    expect(p).toMatchObject({ layersGpu: 36, layersTotal: 36, gpuMb: 1408, cpuMb: 1756, kvGpuMb: 48 });
+    expect(p.device).toBe("NVIDIA GeForce RTX 5060 Ti");
+    expect(p.mode).toBe("gpu-full");
+    expect(p.fit).toMatch(/will leave/);
+  });
+
+  it("MoE с экспертами в RAM и частичная выгрузка слоёв — «частично»; CPU-сборка — процессор", () => {
+    const moe = engine.parsePlacement(
+      "offloaded 49/49 layers to GPU\nCPU model buffer size = 14000.00 MiB\nCUDA0 model buffer size = 2500.00 MiB",
+      { gpu: true, file: "gemma-4-26B-A4B-it-UD-Q4_K_M.gguf" },
+    );
+    expect(moe.mode).toBe("gpu-partial");
+    expect(moe.moe).toBe(true);
+    const part = engine.parsePlacement("offloaded 20/36 layers to GPU\nCUDA0 model buffer size = 3000.00 MiB", {
+      gpu: true,
+      file: "Qwen3.5-9B-Q4_K_M.gguf",
+    });
+    expect(part.mode).toBe("gpu-partial");
+    expect(engine.parsePlacement("CPU_Mapped model buffer size = 900 MiB", { gpu: false, file: "x.gguf" }).mode).toBe("cpu");
+  });
+
+  it("Gemma 4 E4B есть в каталоге с проектором", () => {
+    const e4 = models.CATALOG.filter((m: any) => m.group === "gemma4-e4b");
+    expect(e4.map((m: any) => m.note)).toEqual(["q3km", "q4km", "q5km"]);
+    expect(e4[0].extra[0].as).toBe("gemma-4-E4B-it.mmproj-F16.gguf");
+  });
+});

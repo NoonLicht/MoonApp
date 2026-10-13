@@ -12,7 +12,15 @@ import fs from "fs";
 import os from "os";
 import path from "path";
 import config from "../config";
-import { configureEngine, ensureServer, loadedServers, loadingServers, stopServer } from "./engine";
+import {
+  configureEngine,
+  ensureServer,
+  loadedServers,
+  loadingServers,
+  stopServer,
+  type Device,
+  type Placement,
+} from "./engine";
 import { CATALOG, installed, modelPath, siblingMmproj } from "./models";
 
 export type Task = "command" | "summary" | "translate" | "chat" | "vision";
@@ -28,6 +36,8 @@ export interface RouterSettings {
   autoWarm: boolean;
   /** Через сколько минут простоя выгружать модель; 0 — автоматически. */
   idleMinutes: number;
+  /** Устройство для конкретной модели: файл → auto | cpu | gpu. */
+  devices: Record<string, string>;
 }
 
 const FILE = path.join(config.DIRS.storage, "llama", "router.json");
@@ -35,6 +45,20 @@ let cfg: RouterSettings | null = null;
 
 const clampInt = (v: unknown, min: number, max: number, d: number): number =>
   typeof v === "number" && Number.isFinite(v) ? Math.min(max, Math.max(min, Math.round(v))) : d;
+
+function cleanDevices(v: unknown): Record<string, string> {
+  const out: Record<string, string> = {};
+  if (v && typeof v === "object")
+    for (const [k, d] of Object.entries(v as Record<string, unknown>))
+      if (d === "cpu" || d === "gpu") out[path.basename(k)] = d;
+  return out;
+}
+
+/** Выбранное для модели устройство (auto — решает llama.cpp). */
+export const deviceFor = (file: string): Device => {
+  const d = routerSettings().devices[path.basename(file)];
+  return d === "cpu" || d === "gpu" ? d : "auto";
+};
 
 export function routerSettings(): RouterSettings {
   if (cfg) return cfg;
@@ -50,6 +74,7 @@ export function routerSettings(): RouterSettings {
     defaultModel: typeof v.defaultModel === "string" ? v.defaultModel : "",
     autoWarm: v.autoWarm !== false,
     idleMinutes: clampInt(v.idleMinutes, 0, 240, 0),
+    devices: cleanDevices(v.devices),
   };
   return cfg;
 }
@@ -62,6 +87,7 @@ export function setRouterSettings(p: Partial<RouterSettings>): RouterSettings {
     defaultModel: typeof p.defaultModel === "string" ? p.defaultModel : cur.defaultModel,
     autoWarm: typeof p.autoWarm === "boolean" ? p.autoWarm : cur.autoWarm,
     idleMinutes: clampInt(p.idleMinutes, 0, 240, cur.idleMinutes),
+    devices: p.devices ? cleanDevices(p.devices) : cur.devices,
   };
   cfg = next;
   fs.mkdirSync(path.dirname(FILE), { recursive: true });
@@ -178,6 +204,7 @@ export interface Resolved {
   file: string;
   model: string;
   mmproj?: string;
+  device: Device;
 }
 
 /** Модель + проектор (если нужны картинки и он скачан). */
@@ -185,7 +212,12 @@ export function resolve(task: Task, preferred = "", wantImages = false): Resolve
   const file = pickModel(wantImages ? "vision" : task, preferred);
   if (!file) return null;
   const mmproj = wantImages ? siblingMmproj(file) : null;
-  return { file, model: modelPath(file), ...(mmproj ? { mmproj: modelPath(mmproj) } : {}) };
+  return {
+    file,
+    model: modelPath(file),
+    device: deviceFor(file),
+    ...(mmproj ? { mmproj: modelPath(mmproj) } : {}),
+  };
 }
 
 /** Каталожный размер модели (для подсказок в UI). */
@@ -201,14 +233,56 @@ export function warm(task: Task): { file: string | null; started: boolean } {
   if (!r) return { file: null, started: false };
   if (loadedServers().some((s) => s.file === r.file)) return { file: r.file, started: false };
   if (loadingServers().some((s) => s.file === r.file)) return { file: r.file, started: false };
-  void ensureServer({ model: r.model, ctx: task === "translate" ? 4096 : 8192, task }).catch(
-    () => undefined,
-  );
+  void ensureServer({
+    model: r.model,
+    device: r.device,
+    ctx: task === "translate" ? 4096 : 8192,
+    task,
+  }).catch(() => undefined);
   return { file: r.file, started: true };
 }
 
+export interface LoadedInfo {
+  file: string;
+  task: string;
+  busy: boolean;
+  gpu: boolean;
+  build: string;
+  /** Выбранное устройство: auto | cpu | gpu. */
+  device: string;
+  ctx: number;
+  mmproj: string;
+  place: Placement;
+}
+
+/**
+ * Загрузить конкретную модель вручную (кнопка в панели): при смене устройства сохраняем выбор и
+ * перезапускаем сервер этой модели, чтобы она встала в память уже по новым правилам.
+ */
+export function loadNow(file: string, device?: string): { file: string; started: boolean } {
+  const f = path.basename(file);
+  if (!installed().some((m) => m.file === f) || /embedding|mmproj|chandra|tts/i.test(f))
+    throw new Error("bad_model");
+  if (device === "auto" || device === "cpu" || device === "gpu") {
+    const devices = { ...routerSettings().devices };
+    if (device === "auto") delete devices[f];
+    else devices[f] = device;
+    setRouterSettings({ devices });
+  }
+  stopServer(f);
+  const mmproj = siblingMmproj(f);
+  void ensureServer({
+    model: modelPath(f),
+    mmproj: mmproj ? modelPath(mmproj) : undefined,
+    device: deviceFor(f),
+    ctx: 8192,
+    task: "manual",
+  }).catch(() => undefined);
+  return { file: f, started: true };
+}
+
 export interface Activity {
-  loaded: { file: string; task: string; busy: boolean; gpu: boolean }[];
+  loaded: LoadedInfo[];
   loading: { file: string; task: string }[];
   limit: number;
   laptop: boolean;
@@ -222,6 +296,11 @@ export function activity(): Activity {
       task: s.task,
       busy: s.busy,
       gpu: s.gpu,
+      build: s.build,
+      device: s.device,
+      ctx: s.ctx,
+      mmproj: s.mmproj,
+      place: s.place,
     })),
     loading: loadingServers(),
     limit: effectiveLimit(),

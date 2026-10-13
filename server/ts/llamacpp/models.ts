@@ -179,6 +179,19 @@ export const CATALOG: CatalogModel[] = [
     mmproj: { file: "mmproj-F16.gguf", mb: 781 },
   }),
   ...family({
+    group: "gemma4-e4b",
+    title: "Gemma 4 E4B",
+    kind: "chat",
+    repo: "unsloth/gemma-4-E4B-it-GGUF",
+    stem: "gemma-4-E4B-it",
+    quants: [
+      { q: Q3, file: "gemma-4-E4B-it-Q3_K_M.gguf", mb: 3870 },
+      { q: Q4, file: "gemma-4-E4B-it-Q4_K_M.gguf", mb: 4747 },
+      { q: Q5, file: "gemma-4-E4B-it-Q5_K_M.gguf", mb: 5228 },
+    ],
+    mmproj: { file: "mmproj-F16.gguf", mb: 944 },
+  }),
+  ...family({
     group: "gemma3-4b",
     title: "Gemma 3 4B",
     kind: "chat",

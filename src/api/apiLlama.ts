@@ -20,7 +20,21 @@ export interface LlamaCatalogModel {
   extra?: { file: string; sizeMb: number; as?: string }[];
 }
 
+export interface LlamaPlacement {
+  layersGpu: number;
+  layersTotal: number;
+  gpuMb: number;
+  cpuMb: number;
+  kvGpuMb: number;
+  kvCpuMb: number;
+  device: string;
+  moe: boolean;
+  mode: "cpu" | "gpu-full" | "gpu-partial";
+  fit: string;
+}
+
 export interface LlamaRouterSettings {
+  devices: Record<string, string>;
   maxLoaded: number;
   moeOffload: boolean;
   defaultModel: string;
@@ -29,7 +43,17 @@ export interface LlamaRouterSettings {
 }
 
 export interface LlamaActivity {
-  loaded: { file: string; task: string; busy: boolean; gpu: boolean }[];
+  loaded: {
+    file: string;
+    task: string;
+    busy: boolean;
+    gpu: boolean;
+    build: string;
+    device: string;
+    ctx: number;
+    mmproj: string;
+    place: LlamaPlacement;
+  }[];
   loading: { file: string; task: string }[];
   limit: number;
   laptop: boolean;
@@ -145,6 +169,9 @@ export const llamaApi = {
     return res.blob();
   },
   llamaStop: (file?: string) => req<{ ok: boolean }>("POST", "/llamacpp/stop", { file }),
+  /** Загрузить модель вручную; device: auto | cpu | gpu (запоминается для этой модели). */
+  llamaLoad: (file: string, device?: string) =>
+    req<{ file: string; started: boolean }>("POST", "/llamacpp/load", { file, device }),
   llamaActivity: () => req<LlamaActivity>("GET", "/llamacpp/activity"),
   llamaSetRouter: (patch: Partial<LlamaRouterSettings>) =>
     req<LlamaRouterSettings>("POST", "/llamacpp/settings", patch),

@@ -526,3 +526,45 @@
   border-radius: 50%;
   background: var(--amber);
 }
+
+/* Карточки загруженных локальных моделей */
+.llama-model-card {
+  margin-top: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.llama-model-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.llama-model-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.llama-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--teal);
+  flex: none;
+}
+.llama-model-badges,
+.llama-model-facts,
+.llama-model-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  align-items: center;
+}
+.llama-fit {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

@@ -5507,7 +5507,8 @@
       "summary": "summaries",
       "translate": "translation",
       "chat": "chat",
-      "vision": "images"
+      "vision": "images",
+      "manual": "manual"
     },
     "quant": {
       "q3km": "Compact, slightly lower quality — for weak PCs",
@@ -5523,6 +5524,23 @@
     "pill": {
       "loading": "Loading {model} · {task}",
       "busy": "{model} · {where} · {task}"
+    },
+    "ctl": {
+      "title": "Local models: where and on what they run",
+      "modeFull": "Fully in VRAM",
+      "modePartial": "Partly in VRAM",
+      "modeCpu": "CPU (RAM)",
+      "layers": "GPU layers: {a}/{b}",
+      "vram": "VRAM",
+      "ram": "RAM",
+      "ctx": "context {n}",
+      "vision": "+ images",
+      "moeNote": "MoE experts sit in system RAM — saves VRAM, slightly slower.",
+      "devAuto": "Device: auto",
+      "devGpu": "Device: GPU",
+      "devCpu": "Device: CPU",
+      "reload": "Reload",
+      "load": "Load"
     }
   },
   "canvas": {

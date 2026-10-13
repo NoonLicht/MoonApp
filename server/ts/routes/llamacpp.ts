@@ -31,6 +31,7 @@ import {
   routerSettings,
   setRouterSettings,
   warm,
+  loadNow,
   pickModel,
   type Task,
 } from "../llamacpp/router";
@@ -131,6 +132,15 @@ router.get("/activity", (_req, res) => res.json(activity()));
 
 router.get("/settings", (_req, res) => res.json(routerSettings()));
 router.post("/settings", (req, res) => res.json(setRouterSettings(req.body ?? {})));
+
+// Ручная загрузка модели с выбором устройства (панель «Умный поиск»).
+router.post("/load", (req, res) => {
+  try {
+    res.json(loadNow(String(req.body?.file ?? ""), req.body?.device as string | undefined));
+  } catch (e) {
+    res.status(400).json({ error: String((e as Error).message) });
+  }
+});
 
 const TASKS: Task[] = ["command", "summary", "translate", "chat", "vision"];
 // Прогрев: клиент сообщает, что пользователь зашёл на страницу, которой нужна модель.

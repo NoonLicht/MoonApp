@@ -27,7 +27,7 @@ const provider: Provider = {
     const task = ((p as { task?: Task }).task ?? "chat") as Task;
     const r = resolve(task, p.model || "", wantImages);
     if (!r) throw new Error("llamacpp_model_missing");
-    return withServer({ model: r.model, mmproj: r.mmproj, ctx: CTX, task }, async (s) => {
+    return withServer({ model: r.model, mmproj: r.mmproj, device: r.device, ctx: CTX, task }, async (s) => {
       const body: Record<string, unknown> = {
         messages: p.messages.map((m) => {
           const imgs = Array.isArray(m.images) ? m.images : [];

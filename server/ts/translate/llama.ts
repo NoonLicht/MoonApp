@@ -8,6 +8,7 @@ import { consumeSSE } from "../providers/stream";
 import { withServer } from "../llamacpp/engine";
 import type { ServerInfo } from "../llamacpp/engine";
 import { installed, modelPath } from "../llamacpp/models";
+import { deviceFor } from "../llamacpp/router";
 import { buildPrompt } from "./engine";
 import type { ChunkResult, GenStats } from "./engine";
 
@@ -30,7 +31,7 @@ export interface LlamaRun extends ChunkResult {
 
 export async function ensureLlama(wanted: string): Promise<{ server: ServerInfo; file: string }> {
   const file = pickModel(wanted);
-  const server = await withServer({ model: modelPath(file), ctx: CTX, raw: true }, async (s) => s);
+  const server = await withServer({ model: modelPath(file), device: deviceFor(file), ctx: CTX, raw: true }, async (s) => s);
   return { server, file };
 }
 
@@ -43,7 +44,7 @@ export async function translateLlama(
 ): Promise<LlamaRun> {
   const file = pickModel(wanted);
   const prompt = buildPrompt(text, src, tgt).replace(/^<bos>/, ""); // BOS добавит сам сервер
-  return withServer({ model: modelPath(file), ctx: CTX, raw: true }, async (server) => {
+  return withServer({ model: modelPath(file), device: deviceFor(file), ctx: CTX, raw: true }, async (server) => {
     const nPredict = Math.min(2048, Math.max(64, Math.ceil(text.length / 2) + 64));
     const res = await fetch(`${server.baseUrl}/completion`, {
       method: "POST",

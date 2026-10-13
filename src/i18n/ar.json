@@ -5503,7 +5503,8 @@
       "summary": "ملخصات",
       "translate": "ترجمة",
       "chat": "دردشة",
-      "vision": "صور"
+      "vision": "صور",
+      "manual": "يدوي"
     },
     "quant": {
       "q3km": "مضغوط وجودة أقل قليلًا — للأجهزة الضعيفة",
@@ -5519,6 +5520,23 @@
     "pill": {
       "loading": "جارٍ تحميل {model} · {task}",
       "busy": "{model} · {where} · {task}"
+    },
+    "ctl": {
+      "title": "النماذج المحلية: أين وعلى ماذا تعمل",
+      "modeFull": "بالكامل في VRAM",
+      "modePartial": "جزئيًا في VRAM",
+      "modeCpu": "المعالج (RAM)",
+      "layers": "طبقات GPU: {a}/{b}",
+      "vram": "VRAM",
+      "ram": "RAM",
+      "ctx": "السياق {n}",
+      "vision": "+ صور",
+      "moeNote": "خبراء MoE في الذاكرة — يوفّر VRAM مع بطء طفيف.",
+      "devAuto": "الجهاز: تلقائي",
+      "devGpu": "الجهاز: كرت الشاشة",
+      "devCpu": "الجهاز: المعالج",
+      "reload": "إعادة التحميل",
+      "load": "تحميل"
     }
   },
   "canvas": {
