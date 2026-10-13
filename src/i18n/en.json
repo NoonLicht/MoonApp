@@ -6543,6 +6543,6 @@
     "digestCount": "Messages in digest: {n}",
     "digestEmpty": "No inbox messages in the selected period.",
     "aiDisabled": "The AI assistant is turned off in mail settings.",
-    "aiEmpty": "The AI returned an empty answer — the model could not handle this much mail. Try again or choose another model in mail settings."
+    "aiEmpty": "The AI returned an empty answer. The model is chosen in the “AI summary” settings (shared by mail and lecture notes) — try another one."
   }
 }

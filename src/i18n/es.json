@@ -6543,6 +6543,6 @@
     "digestCount": "Mensajes en el resumen: {n}",
     "digestEmpty": "No hay mensajes en la bandeja en ese periodo.",
     "aiDisabled": "El asistente de IA está desactivado en los ajustes del correo.",
-    "aiEmpty": "La IA devolvió una respuesta vacía. Inténtalo de nuevo o elige otro modelo en los ajustes del correo."
+    "aiEmpty": "La IA devolvió una respuesta vacía. El modelo se elige en los ajustes de «Resumen IA» (compartidos con el correo): prueba otro."
   }
 }

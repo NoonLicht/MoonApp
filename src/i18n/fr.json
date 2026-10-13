@@ -6543,6 +6543,6 @@
     "digestCount": "Messages dans le résumé : {n}",
     "digestEmpty": "Aucun message reçu sur cette période.",
     "aiDisabled": "L'assistant IA est désactivé dans les réglages du courrier.",
-    "aiEmpty": "L'IA a renvoyé une réponse vide. Réessayez ou choisissez un autre modèle dans les réglages du courrier."
+    "aiEmpty": "L'IA a renvoyé une réponse vide. Le modèle se choisit dans les réglages « Résumé IA » (partagés avec le courrier) : essayez-en un autre."
   }
 }

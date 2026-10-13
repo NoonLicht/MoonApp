@@ -235,34 +235,65 @@ export async function runAi(
         else
           groups.set(key, { who, subject: m.subject || "(no subject)", snippet: m.snippet, n: 1 });
       }
-      const ask = async (maxLines: number, snip: number, maxTokens: number): Promise<string> => {
-        const lines = [...groups.values()]
-          .slice(0, maxLines)
-          .map(
-            (g) =>
-              `- ${g.who} | ${g.subject}${g.n > 1 ? ` (x${g.n})` : ""} | ${g.snippet.slice(0, snip)}`,
-          )
-          .join("\n");
-        return askModel(
-          SYSTEM,
-          `Here are ${rows.length} emails received in the last ${days === 1 ? "24 hours" : "7 days"}. ` +
-            `Write a digest in ${langName(r.lang)}: first one line with the overall picture, then group the mail ` +
-            `by topic (important/personal, work, services & notifications, newsletters/promotions) with short ` +
-            `bullet points. Name senders. Call out anything that needs a reply or has a deadline. Skip empty groups.
+      const period = days === 1 ? "24 hours" : "7 days";
+      const entries = [...groups.values()];
+      const fmt = (g: { who: string; subject: string; snippet: string; n: number }, snip: number) =>
+        `- ${g.who} | ${g.subject}${g.n > 1 ? ` (x${g.n})` : ""} | ${g.snippet.slice(0, snip)}`;
+      const tryAsk = async (system: string, user: string, maxTokens: number): Promise<string> => {
+        try {
+          return await askModel(system, user, { appPage: "mail", maxTokens });
+        } catch {
+          return "";
+        }
+      };
+
+      // 1) пакеты: каждая порция писем сжимается в короткие тезисы, провал порции не рушит всё
+      const BATCH = 18;
+      const batches: (typeof entries)[] = [];
+      for (let i = 0; i < entries.length; i += BATCH) batches.push(entries.slice(i, i + BATCH));
+      const partial: string[] = new Array(batches.length).fill("");
+      let next = 0;
+      const worker = async () => {
+        while (next < batches.length) {
+          const i = next++;
+          const lines = batches[i].map((g) => fmt(g, 140)).join("\n");
+          const out = await tryAsk(
+            SYSTEM,
+            `Summarize these emails in ${langName(r.lang)} as 3-8 short bullet points. Name senders, ` +
+              `merge similar notifications, and mark anything that needs a reply or has a deadline.` +
+              `
 
 ${lines}`,
-          { appPage: "mail", maxTokens },
-        );
+            700,
+          );
+          // порция не обработана — оставляем «сырой» список отправителей и тем
+          partial[i] = out.trim()
+            ? out
+            : batches[i]
+                .map((g) => `- ${g.who}: ${g.subject}${g.n > 1 ? ` (x${g.n})` : ""}`)
+                .join("\n");
+        }
       };
-      let out = "";
-      try {
-        out = await ask(days === 1 ? 60 : 70, days === 1 ? 160 : 90, days === 1 ? 1100 : 2200);
-      } catch {
-        out = "";
+      await Promise.all(Array.from({ length: Math.min(3, batches.length) }, worker));
+
+      // 2) итог: одна порция — уже готово, иначе объединяем тезисы
+      if (batches.length === 1) {
+        return { text: partial[0], list: [String(rows.length)] };
       }
-      // пустой ответ или сбой на длинном запросе — повтор с меньшим объёмом
-      if (!out.trim()) out = await ask(30, 60, 1600);
-      if (!out.trim()) throw new Error("ai_empty_response");
+      const merged = partial.map((p, i) => `Part ${i + 1}:\n${p}`).join("\n\n");
+      let out = await tryAsk(
+        SYSTEM,
+        `Below are summaries of ${rows.length} emails received in the last ${period}, split into parts. ` +
+          `Write one digest in ${langName(r.lang)}: first one line with the overall picture, then group by ` +
+          `topic (important/personal, work, services & notifications, newsletters/promotions) with short ` +
+          `bullet points. Name senders, call out replies needed and deadlines, skip empty groups.` +
+          `
+
+${merged}`,
+        1600,
+      );
+      // итог не получился — отдаём тезисы по порциям, они уже содержательны
+      if (!out.trim()) out = partial.join("\n\n");
       return { text: out, list: [String(rows.length)] };
     }
     default:
