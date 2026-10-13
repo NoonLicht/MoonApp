@@ -73,7 +73,7 @@ router.post("/analyze", async (req, res) => {
     const raw = await askModel(
       "Ты помогаешь структурировать доску идей. Отвечаешь строго JSON.",
       cai.buildPrompt(items),
-      { appPage: req.appPage, maxTokens: 1200, temperature: 0.3 },
+      { appPage: req.appPage, maxTokens: 1200, temperature: 0.3, feature: "notes.canvas" },
     );
     res.json({ ...cai.parseSuggestions(raw, items.map((i) => i.id)), seen: items.length });
   } catch (e) {

@@ -87,7 +87,7 @@ router.post("/contradictions", async (req, res) => {
       const raw = await askModel(
         "Ты внимательный логик. Отвечаешь строго в заданном JSON-формате.",
         ct.buildJudgePrompt(batch),
-        { appPage: req.appPage, maxTokens: 900, temperature: 0 },
+        { appPage: req.appPage, maxTokens: 900, temperature: 0, feature: "notes.mind" },
       );
       judged = ct.parseVerdicts(raw, batch.length);
     } catch {
@@ -130,7 +130,7 @@ router.post("/review", async (req, res) => {
     const raw = await askModel(
       "Ты рецензент. Только вопросы, никаких переписываний и советов.",
       rv.buildReviewPrompt(text, focus),
-      { appPage: req.appPage, maxTokens: 700, temperature: 0.4 },
+      { appPage: req.appPage, maxTokens: 700, temperature: 0.4, feature: "notes.mind" },
     );
     res.json({ questions: rv.parseQuestions(raw) });
   } catch (e) {

@@ -71,7 +71,7 @@ router.post("/:lectureId/build", async (req, res) => {
       conspectus = true;
     }
 
-    const t = (await conspectusTarget(req.appPage ?? null)) as unknown as Target;
+    const t = (await conspectusTarget(req.appPage ?? null, "lecture.exam")) as unknown as Target;
     const text = await runWithPage(req.appPage ?? null, () =>
       t.provider.chat({
         secret: t.secret,

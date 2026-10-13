@@ -4,6 +4,7 @@
 import fs from "fs";
 import config from "./config";
 import logger from "./logger";
+import { boundTarget } from "./aiBindings";
 import settings from "./settings";
 import { getProvider, PROVIDERS } from "./providers";
 import { getSecret } from "./security";
@@ -279,8 +280,12 @@ function conspectusCfg() {
  * (У DeepSeek в API есть deepseek-chat и deepseek-reasoner; имени «flash» нет,
  * поэтому неизвестное имя не подставляем молча, а сверяемся со списком сервиса.)
  */
-export async function conspectusTarget(appPage: any) {
+export async function conspectusTarget(appPage: any, feature?: string) {
   const c = conspectusCfg();
+  // Привязка модели к функции (Настройки → «Привязка моделей ИИ») главнее общих настроек.
+  const bound = boundTarget(feature);
+  if (bound)
+    return { ...bound, cfg: { ...c, systemPrompt: resolveConspectusSystemPrompt(c) } };
   let provider;
   try {
     provider = getProvider(c.providerId);
@@ -630,7 +635,7 @@ export async function generateConspectus(
   });
   try {
     // target можно внедрить (тесты и локальные модели): тогда ключ/провайдер не нужны.
-    const target = injected || (await conspectusTarget(appPage));
+    const target = injected || (await conspectusTarget(appPage, "lecture.conspectus"));
     setJob({ model: target.model });
 
     // --- Первый проход: черновые заметки по каждому блоку ---

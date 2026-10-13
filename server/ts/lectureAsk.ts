@@ -135,7 +135,9 @@ export async function askLecture(
   if (!stmts.lectureGet.get(id)) throw new Error("session_not_found");
   const passages = pickPassages(stmts.chunkFor.all(id) as unknown as AskChunk[], q);
   if (!passages.length) return { answer: "", citations: [], passages: [] };
-  const target: AskTarget = opts.target || ((await conspectusTarget(opts.appPage ?? null)) as unknown as AskTarget);
+  const target: AskTarget =
+    opts.target ||
+    ((await conspectusTarget(opts.appPage ?? null, "lecture.ask")) as unknown as AskTarget);
   const text = await runWithPage(opts.appPage ?? null, () =>
     target.provider.chat({
       secret: target.secret,
@@ -189,7 +191,8 @@ export async function summarizeMissed(
   const truncated = text.length > MISSED_MAX_CHARS;
   if (truncated) text = text.slice(0, MISSED_MAX_CHARS);
   const target: AskTarget =
-    opts.target || ((await conspectusTarget(opts.appPage ?? null)) as unknown as AskTarget);
+    opts.target ||
+    ((await conspectusTarget(opts.appPage ?? null, "lecture.ask")) as unknown as AskTarget);
   const out = await runWithPage(opts.appPage ?? null, () =>
     target.provider.chat({
       secret: target.secret,

@@ -66,7 +66,7 @@ router.post("/ask", async (req, res) => {
     const answer = await askModel(
       "Ты аналитик личной продуктивности. Отвечаешь честно и без морализаторства, не выдумываешь данных.",
       att.buildAskPrompt(question, r.week, r.facts),
-      { appPage: req.appPage, maxTokens: 700, temperature: 0.3 },
+      { appPage: req.appPage, maxTokens: 700, temperature: 0.3, feature: "notes.attention" },
     );
     res.json({ answer, facts: r.facts });
   } catch (e) {

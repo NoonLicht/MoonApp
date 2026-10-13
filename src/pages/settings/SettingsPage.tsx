@@ -61,6 +61,7 @@ import { AiShieldRows } from "@/pages/settings/parts/SettingsAiShield";
 import { PasswordVaultSection } from "@/pages/settings/parts/SettingsPasswordVault";
 import { CompanionSection } from "@/pages/settings/parts/SettingsCompanion";
 import { AiHub } from "@/pages/settings/parts/SettingsAiHub";
+import { AiBindings } from "@/pages/settings/parts/SettingsAiBindings";
 import { SettingsLiquidGlass } from "@/pages/settings/parts/SettingsLiquidGlass";
 import { loadCfg } from "@/pages/ai-chat/lib/chatUtils";
 
@@ -374,6 +375,10 @@ export default function SettingsPage() {
         {/* ---- Общее (док: settings) ---- */}
         <Section title={t("aiHub.title")} icon={Sparkles}>
           <AiHub chatProvider={loadCfg().provider} chatModel={loadCfg().model} />
+        </Section>
+
+        <Section title={t("aibind.title")} icon={Sparkles}>
+          <AiBindings />
         </Section>
 
         <Section title={t("settings.general")} icon={Settings2}>

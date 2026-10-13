@@ -35,7 +35,7 @@ router.post("/suggest", async (req, res) => {
     const answer = await askModel(
       "Ты помогаешь выстроить карту знаний. Отвечаешь только списком тем.",
       gaps.buildSuggestPrompt(topic, gaps.topTopics(d, { topN: 12, minDocs: 3 })),
-      { appPage: req.appPage, maxTokens: 300, temperature: 0.4 },
+      { appPage: req.appPage, maxTokens: 300, temperature: 0.4, feature: "notes.gaps" },
     );
     res.json(gaps.gapReport(topic, gaps.parseSuggestions(answer), d));
   } catch (e) {

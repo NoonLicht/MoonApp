@@ -61,7 +61,12 @@ export async function judge(
   if (!cands.length || text.trim().length < 3) return null;
   try {
     const raw = await Promise.race([
-      askModel(SYSTEM, buildPrompt(text, cands), { appPage, maxTokens: 500, temperature: 0 }),
+      askModel(SYSTEM, buildPrompt(text, cands), {
+        appPage,
+        maxTokens: 500,
+        temperature: 0,
+        feature: "ghost",
+      }),
       new Promise<string>((_, rej) => setTimeout(() => rej(new Error("timeout")), TIMEOUT_MS)),
     ]);
     const picked = parseJudged(raw, cands.length);

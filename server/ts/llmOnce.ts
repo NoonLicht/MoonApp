@@ -5,6 +5,7 @@
  */
 import { runWithPage } from "./middleware/perPageProxy";
 import { conspectusTarget } from "./lectureConspectus";
+import { boundTarget } from "./aiBindings";
 
 export interface LlmTarget {
   provider: { chat(o: Record<string, unknown>): Promise<string> };
@@ -15,9 +16,19 @@ export interface LlmTarget {
 export async function askModel(
   system: string,
   user: string,
-  o: { appPage?: string | null; maxTokens?: number; temperature?: number; target?: LlmTarget } = {},
+  o: {
+    appPage?: string | null;
+    maxTokens?: number;
+    temperature?: number;
+    target?: LlmTarget;
+    /** Функция, к которой можно привязать модель (см. aiBindings.ts). */
+    feature?: string;
+  } = {},
 ): Promise<string> {
-  const t = o.target ?? ((await conspectusTarget(o.appPage ?? null)) as unknown as LlmTarget);
+  const t =
+    (boundTarget(o.feature) as LlmTarget | null) ??
+    o.target ??
+    ((await conspectusTarget(o.appPage ?? null)) as unknown as LlmTarget);
   const text = await runWithPage(o.appPage ?? null, () =>
     t.provider.chat({
       secret: t.secret,

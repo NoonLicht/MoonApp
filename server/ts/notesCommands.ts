@@ -7,6 +7,7 @@
  * облако используется, только если для заметок явно выбран облачный провайдер.
  */
 import settings from "./settings";
+import { boundOf } from "./aiBindings";
 import { askModel, type LlmTarget } from "./llmOnce";
 import { getProvider } from "./providers";
 import { getSecret } from "./security";
@@ -255,10 +256,21 @@ export async function runCommand(i: CommandInput): Promise<CommandResult> {
     hasSelection,
   });
   const r = route();
+  const bound = boundOf("notes.commands");
   let out: string;
   let provider = "llamacpp";
   let model = r.model;
-  if (r.local) {
+  if (bound) {
+    // привязка модели к командам заметок (Настройки → «Привязка моделей ИИ»)
+    out = await askModel(SYSTEM, prompt, {
+      appPage: i.appPage ?? "myspace",
+      maxTokens: spec.maxTokens,
+      temperature: spec.temperature,
+      feature: "notes.commands",
+    });
+    provider = bound.provider;
+    model = bound.model;
+  } else if (r.local) {
     const p = getProvider("llamacpp");
     const target = {
       provider: p,

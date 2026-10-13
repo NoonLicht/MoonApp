@@ -320,6 +320,79 @@
     grid-template-columns: 1fr;
   }
 }
+/* Настройки → «Привязка моделей ИИ» */
+.aibind {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.aibind-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.aibind-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.aibind-group-title {
+  font-size: 11px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+  padding: 4px 2px;
+}
+.aibind-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.2fr) auto minmax(220px, 2fr);
+  gap: 8px 14px;
+  align-items: center;
+  padding: 10px 12px;
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  background: var(--track);
+}
+.aibind-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.aibind-auto {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.aibind-pick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  min-width: 0;
+}
+.aibind-pick .select-wrap {
+  flex: 1 1 140px;
+  min-width: 0;
+}
+.aibind-pick .select-wrap select {
+  width: 100%;
+}
+.aibind-warn {
+  flex-basis: 100%;
+  font-size: 11px;
+  color: var(--coral);
+}
+@media (max-width: 760px) {
+  .aibind-row {
+    grid-template-columns: 1fr;
+  }
+}
+
 .aihub-list {
   display: flex;
   flex-direction: column;

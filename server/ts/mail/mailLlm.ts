@@ -6,6 +6,7 @@
 import { askModel, type LlmTarget } from "../llmOnce";
 import { getProvider } from "../providers";
 import { getSecret } from "../security";
+import { boundOf } from "../aiBindings";
 import { getSettings } from "./mailSettings";
 import { getMessage, getThread, type MessageFull } from "./mailService";
 import { mailDb } from "./mailDb";
@@ -102,7 +103,13 @@ export async function ask(
   user: string,
   o: { maxTokens?: number; temperature?: number } = {},
 ): Promise<string> {
-  return askModel(system, user, { appPage: "mail", target: await target(), ...o });
+  return askModel(system, user, {
+    appPage: "mail",
+    feature: "mail",
+    // при привязке модели настройки движка почты не нужны (и не должны падать без ключа)
+    target: boundOf("mail") ? undefined : await target(),
+    ...o,
+  });
 }
 
 async function safeAsk(system: string, user: string, maxTokens: number): Promise<string> {

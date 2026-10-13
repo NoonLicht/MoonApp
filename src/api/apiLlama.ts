@@ -99,7 +99,28 @@ export interface LlamaOcrResult {
   model: string;
 }
 
+export interface AiFeatureDef {
+  id: string;
+  group: "chat" | "notes" | "mail" | "lecture" | "translate";
+  task: string;
+}
+export interface AiBinding {
+  auto: boolean;
+  provider: string;
+  model: string;
+}
+export interface AiBindingsData {
+  features: AiFeatureDef[];
+  bindings: Record<string, AiBinding>;
+  providers: { id: string; label: string; local: boolean; configured: boolean }[];
+}
+
 export const llamaApi = {
+  /** Привязка модели к ИИ-функциям (Настройки → «Привязка моделей ИИ»). */
+  aiBindings: () => req<AiBindingsData>("GET", "/ai-bindings"),
+  aiBindingSet: (id: string, patch: Partial<AiBinding>) =>
+    req<AiBinding>("PUT", `/ai-bindings/${encodeURIComponent(id)}`, patch),
+  aiBindingsReset: () => req<{ ok: boolean }>("POST", "/ai-bindings/reset"),
   llamaStatus: () => req<LlamaStatus>("GET", "/llamacpp/status"),
   llamaBuildInstall: (id: LlamaBuildId) => req<unknown>("POST", "/llamacpp/build", { id }),
   llamaBuildCancel: () => req<unknown>("POST", "/llamacpp/build/cancel"),

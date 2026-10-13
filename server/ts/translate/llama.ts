@@ -9,6 +9,7 @@ import { withServer } from "../llamacpp/engine";
 import type { ServerInfo } from "../llamacpp/engine";
 import { installed, modelPath } from "../llamacpp/models";
 import { deviceFor } from "../llamacpp/router";
+import { boundOf } from "../aiBindings";
 import { buildPrompt } from "./engine";
 import type { ChunkResult, GenStats } from "./engine";
 
@@ -18,6 +19,8 @@ const CTX = 4096;
 /** Какой GGUF использовать: выбранный или первый установленный TranslateGemma. */
 export function pickModel(wanted: string): string {
   const all = installed().map((m) => m.file);
+  const bound = boundOf("translate");
+  if (bound && bound.provider === "llamacpp" && all.includes(bound.model)) return bound.model;
   if (wanted.toLowerCase().endsWith(".gguf") && all.includes(wanted)) return wanted;
   const tg = all.find((f) => /translategemma/i.test(f));
   if (!tg) throw new Error("model_missing");

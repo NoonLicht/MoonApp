@@ -6,6 +6,7 @@ import { getSecret } from "../security";
 import { runWithPage } from "../middleware/perPageProxy";
 import logger from "../logger";
 import * as semantic from "../semantic";
+import { boundOf } from "../aiBindings";
 
 const router = express.Router();
 
@@ -122,7 +123,9 @@ router.post("/:id/send", async (req, res) => {
     }
   }
 
-  const provider = getProvider(conv.provider);
+  // Привязка «AI-чат» (Настройки → «Привязка моделей ИИ») главнее выбора в селекторе.
+  const chatBound = boundOf("chat");
+  const provider = getProvider(chatBound ? chatBound.provider : conv.provider);
   const secret = getSecret(provider.id);
   if (!secret) {
     return res
@@ -173,7 +176,12 @@ router.post("/:id/send", async (req, res) => {
   const isLocalFile = (m: unknown): boolean => /\.gguf$/i.test(String(m || ""));
   const pick = (m: unknown): string =>
     m && (provider.id === "llamacpp" || !isLocalFile(m)) ? String(m) : "";
-  const finalModel = pick(model) || pick(chatCfg.model) || provider.models?.[0] || "";
+  const finalModel =
+    (chatBound ? chatBound.model : "") ||
+    pick(model) ||
+    pick(chatCfg.model) ||
+    provider.models?.[0] ||
+    "";
   const finalTemperature = temperature ?? chatCfg.temperature ?? 0.7;
   const finalMaxTokens = maxTokens ?? chatCfg.maxTokens ?? 1024;
   const streaming = streamReq !== false;
@@ -294,7 +302,8 @@ router.post("/:id/compact", async (req, res) => {
       /* неизвестный провайдер — остаёмся на текущем */
     }
   }
-  const provider = getProvider(conv.provider);
+  const compactBound = boundOf("chat");
+  const provider = getProvider(compactBound ? compactBound.provider : conv.provider);
   const secret = getSecret(provider.id);
   if (!secret) return res.status(409).json({ error: `Provider "${provider.id}" not configured.` });
 
@@ -317,7 +326,12 @@ router.post("/:id/compact", async (req, res) => {
   const local = (m: unknown): boolean => /\.gguf$/i.test(String(m || ""));
   const pick = (m: unknown): string =>
     m && (provider.id === "llamacpp" || !local(m)) ? String(m) : "";
-  const model = pick(req.body?.model) || pick(chatCfg.model) || provider.models?.[0] || "";
+  const model =
+    (compactBound ? compactBound.model : "") ||
+    pick(req.body?.model) ||
+    pick(chatCfg.model) ||
+    provider.models?.[0] ||
+    "";
   try {
     const summary = String(
       await runWithPage(req.appPage, () =>

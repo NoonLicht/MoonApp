@@ -97,7 +97,7 @@ router.post("/judge", async (req, res) => {
     const question = String(req.body?.question ?? "");
     const answer = String(req.body?.answer ?? "");
     if (!answer.trim()) return res.status(400).json({ error: "empty_answer" });
-    const target = (await conspectusTarget(req.appPage ?? null)) as unknown as {
+    const target = (await conspectusTarget(req.appPage ?? null, "chat.tools")) as unknown as {
       provider: { chat(opts: Record<string, unknown>): Promise<string> };
       secret: string;
       model: string;
@@ -202,7 +202,7 @@ router.post("/explain-image", explainUpload.single("file"), async (req, res) => 
     const text = imageExplain.cleanOcr((await ocr.recognize(fs.readFileSync(req.file.path))).text);
     cleanup();
     if (!imageExplain.isUsable(text)) return res.json({ answer: "", ocr: text, formulas: [] });
-    const target = (await conspectusTarget(req.appPage ?? null)) as unknown as {
+    const target = (await conspectusTarget(req.appPage ?? null, "chat.tools")) as unknown as {
       provider: { chat(opts: Record<string, unknown>): Promise<string> };
       secret: string;
       model: string;
