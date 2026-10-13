@@ -6542,6 +6542,7 @@
     "digestHint": "选择时间段，AI 会按主题归类收件箱并标出需要回复的邮件。",
     "digestCount": "摘要包含邮件：{n}",
     "digestEmpty": "所选时间段内收件箱没有邮件。",
-    "aiDisabled": "AI 助手已在邮件设置中关闭。"
+    "aiDisabled": "AI 助手已在邮件设置中关闭。",
+    "aiEmpty": "AI 返回了空结果，请重试或在邮件设置中更换模型。"
   }
 }

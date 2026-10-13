@@ -221,23 +221,45 @@ export async function runAi(
         snippet: string;
         date: number;
       }[];
-      if (!rows.length) return { text: "", list: [] };
-      const lines = rows
-        .map(
-          (m) =>
-            `- ${m.from_name || m.from_addr} | ${m.subject || "(no subject)"} | ${m.snippet.slice(0, 160)}`,
-        )
-        .join("\n");
-      const out = await askModel(
-        SYSTEM,
-        `Here are ${rows.length} emails received in the last ${days === 1 ? "24 hours" : "7 days"}. ` +
-          `Write a digest in ${langName(r.lang)}: first one line with the overall picture, then group the mail ` +
-          `by topic (important/personal, work, services & notifications, newsletters/promotions) with short ` +
-          `bullet points. Name senders. Call out anything that needs a reply or has a deadline. Skip empty groups.
+      if (!rows.length) return { text: "", list: ["0"] };
+      // одинаковые письма (оповещения, рассылки) схлопываем: так неделя влезает в запрос
+      const groups = new Map<string, { who: string; subject: string; snippet: string; n: number }>();
+      for (const m of rows) {
+        const who = m.from_name || m.from_addr;
+        const key = `${m.from_addr}|${m.subject}`;
+        const g = groups.get(key);
+        if (g) g.n++;
+        else groups.set(key, { who, subject: m.subject || "(no subject)", snippet: m.snippet, n: 1 });
+      }
+      const ask = async (maxLines: number, snip: number, maxTokens: number): Promise<string> => {
+        const lines = [...groups.values()]
+          .slice(0, maxLines)
+          .map(
+            (g) =>
+              `- ${g.who} | ${g.subject}${g.n > 1 ? ` (x${g.n})` : ""} | ${g.snippet.slice(0, snip)}`,
+          )
+          .join("
+");
+        return askModel(
+          SYSTEM,
+          `Here are ${rows.length} emails received in the last ${days === 1 ? "24 hours" : "7 days"}. ` +
+            `Write a digest in ${langName(r.lang)}: first one line with the overall picture, then group the mail ` +
+            `by topic (important/personal, work, services & notifications, newsletters/promotions) with short ` +
+            `bullet points. Name senders. Call out anything that needs a reply or has a deadline. Skip empty groups.
 
 ${lines}`,
-        { appPage: "mail", maxTokens: 1100 },
-      );
+          { appPage: "mail", maxTokens },
+        );
+      };
+      let out = "";
+      try {
+        out = await ask(days === 1 ? 60 : 70, days === 1 ? 160 : 90, days === 1 ? 1100 : 2200);
+      } catch {
+        out = "";
+      }
+      // пустой ответ или сбой на длинном запросе — повтор с меньшим объёмом
+      if (!out.trim()) out = await ask(30, 60, 1600);
+      if (!out.trim()) throw new Error("ai_empty_response");
       return { text: out, list: [String(rows.length)] };
     }
     default:

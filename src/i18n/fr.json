@@ -6542,6 +6542,7 @@
     "digestHint": "Choisissez une période : l'IA regroupe la boîte par sujet et signale ce qui demande une réponse.",
     "digestCount": "Messages dans le résumé : {n}",
     "digestEmpty": "Aucun message reçu sur cette période.",
-    "aiDisabled": "L'assistant IA est désactivé dans les réglages du courrier."
+    "aiDisabled": "L'assistant IA est désactivé dans les réglages du courrier.",
+    "aiEmpty": "L'IA a renvoyé une réponse vide. Réessayez ou choisissez un autre modèle dans les réglages du courrier."
   }
 }

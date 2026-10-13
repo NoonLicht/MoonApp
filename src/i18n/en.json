@@ -6542,6 +6542,7 @@
     "digestHint": "Pick a period — the AI groups your inbox by topic and flags what needs a reply.",
     "digestCount": "Messages in digest: {n}",
     "digestEmpty": "No inbox messages in the selected period.",
-    "aiDisabled": "The AI assistant is turned off in mail settings."
+    "aiDisabled": "The AI assistant is turned off in mail settings.",
+    "aiEmpty": "The AI returned an empty answer — the model could not handle this much mail. Try again or choose another model in mail settings."
   }
 }

@@ -1431,8 +1431,22 @@
 }
 .mail-digest-body {
   overflow-y: auto;
-  white-space: pre-wrap;
   line-height: 1.6;
   font-size: 14px;
   color: var(--text-primary);
+}
+.mail-digest-body p,
+.mail-digest-body ul,
+.mail-digest-body ol {
+  margin: 0 0 10px;
+}
+.mail-digest-body ul,
+.mail-digest-body ol {
+  padding-left: 20px;
+}
+.mail-digest-body h1,
+.mail-digest-body h2,
+.mail-digest-body h3 {
+  margin: 12px 0 6px;
+  font-size: 15px;
 }

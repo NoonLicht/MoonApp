@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { marked } from "marked";
+import DOMPurify from "dompurify";
 import { Loader2, Sparkles, X } from "lucide-react";
 import { Btn, Glass } from "@/components/ui";
 import { useI18n } from "@/app/i18n";
@@ -20,6 +22,10 @@ export function MailDigest({
   const [text, setText] = useState("");
   const [count, setCount] = useState(0);
   const [err, setErr] = useState("");
+  const html = useMemo(
+    () => DOMPurify.sanitize(marked.parse(text, { async: false }) as string),
+    [text],
+  );
 
   const run = async (p: "day" | "week") => {
     setPeriod(p);
@@ -38,7 +44,13 @@ export function MailDigest({
       else setText(r.text);
     } catch (e) {
       const m = (e as Error).message;
-      setErr(m.includes("ai_disabled") ? t("mail.aiDisabled") : m);
+      setErr(
+        m.includes("ai_disabled")
+          ? t("mail.aiDisabled")
+          : m.includes("ai_empty_response")
+            ? t("mail.aiEmpty")
+            : m,
+      );
     } finally {
       setBusy(false);
     }
@@ -79,7 +91,7 @@ export function MailDigest({
           <div className="mail-hint">{t("mail.digestCount", { n: count })}</div>
         )}
         {err && <div className="mail-err">{err}</div>}
-        {text && <div className="mail-digest-body">{text}</div>}
+        {text && <div className="mail-digest-body" dangerouslySetInnerHTML={{ __html: html }} />}
       </Glass>
     </div>
   );
