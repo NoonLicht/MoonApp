@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Mail as MailIcon, Plus } from "lucide-react";
-import { Btn, Glass } from "@/components/ui";
+import { Glass } from "@/components/ui";
 import { useI18n } from "@/app/i18n";
 import { api } from "@/api/client";
 import { usePageActive } from "@/components/Toolbar";
@@ -807,16 +806,9 @@ export default function MailPage() {
   if (loaded && accounts.length === 0) {
     return (
       <div className="page mail-page">
-        <Glass className="mail-empty">
-          <MailIcon size={42} strokeWidth={1.5} />
-          <h2>{t("mail.noAccounts")}</h2>
-          <p>{t("mail.noAccountsHint")}</p>
-          <Btn variant="primary" icon={Plus} onClick={() => setShowAccounts(true)}>
-            {t("mail.addAccount")}
-          </Btn>
-        </Glass>
-        {showAccounts && (
+        {(showAccounts || accounts.length === 0) && (
           <MailAccountForm
+            closeOnAdd
             accounts={accounts}
             onClose={() => setShowAccounts(false)}
             onChanged={() => {

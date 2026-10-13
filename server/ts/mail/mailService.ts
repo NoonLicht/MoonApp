@@ -327,6 +327,25 @@ async function verify(r: AccountRow): Promise<void> {
   }
 }
 
+/** Проверка входа на SMTP: без неё ящик «подключается», а отправка потом падает. */
+async function verifySmtp(r: AccountRow): Promise<void> {
+  const t = nodemailer.createTransport({
+    host: r.smtp_host,
+    port: r.smtp_port,
+    secure: !!r.smtp_secure,
+    auth: { user: r.username, pass: decryptSecret(r.pass_enc) },
+    connectionTimeout: 15_000,
+    greetingTimeout: 15_000,
+  });
+  try {
+    await t.verify();
+  } catch (e) {
+    throw new Error("smtp_login_failed: " + (e as Error).message, { cause: e });
+  } finally {
+    t.close();
+  }
+}
+
 export async function addAccount(input: AccountInput): Promise<AccountView> {
   const email = String(input.email || "").trim();
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw new Error("bad_email");
@@ -356,6 +375,7 @@ export async function addAccount(input: AccountInput): Promise<AccountView> {
     color: "",
   };
   await verify(row);
+  await verifySmtp(row);
   insertAccount(row);
   return toView(row);
 }
