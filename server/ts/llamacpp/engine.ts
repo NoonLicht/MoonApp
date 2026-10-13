@@ -550,8 +550,36 @@ export async function ensureServer(o: StartOptions): Promise<ServerInfo> {
     lastUsedKey = key;
     return have;
   }
+  // Тот же файл, устройство и окно, но без проектора (чат без картинок) — годится уже
+  // загруженный экземпляр с проектором: вторую копию модели поднимать незачем.
+  const mode = o.raw ? "raw" : "chat";
+  const ctx = o.ctx ?? 4096;
+  for (const r of pool.values()) {
+    if (
+      r.model === o.model &&
+      r.device === device &&
+      r.ctx === ctx &&
+      r.key.endsWith(`|${mode}`) &&
+      (!o.mmproj || r.mmproj === o.mmproj)
+    ) {
+      r.used = Date.now();
+      lastUsedKey = r.key;
+      return r;
+    }
+  }
   const pending = starting.get(key);
   if (pending) return pending.p;
+  for (const [k, v] of starting) {
+    const [m, mp, dev, c, md] = k.split("|");
+    if (
+      m === o.model &&
+      dev === device &&
+      Number(c) === ctx &&
+      md === mode &&
+      (!o.mmproj || mp === o.mmproj)
+    )
+      return v.p;
+  }
   const candidates = buildOrder(device);
   if (!candidates.length) throw new Error("build_missing");
   makeRoom();

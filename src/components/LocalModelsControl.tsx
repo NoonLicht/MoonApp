@@ -107,9 +107,18 @@ export default function LocalModelsControl({
               {m.busy && <Badge tone="amber">{t("llama.working")}</Badge>}
             </div>
             <div className="llama-model-facts muted-sm">
-              {p.mode !== "cpu" && p.layersTotal > 0 && (
-                <span>{t("llama.ctl.layers", { a: p.layersGpu, b: p.layersTotal })}</span>
-              )}
+              {p.mode !== "cpu" &&
+                p.layersTotal > 0 &&
+                (p.moe && router.layers?.[m.file] ? (
+                  <span>
+                    {t("llama.ctl.expertsGpu", {
+                      a: Math.min(router.layers[m.file], Math.max(1, p.layersTotal - 1)),
+                      b: Math.max(1, p.layersTotal - 1),
+                    })}
+                  </span>
+                ) : (
+                  <span>{t("llama.ctl.layers", { a: p.layersGpu, b: p.layersTotal })}</span>
+                ))}
               {p.device && <span>{p.device}</span>}
               <span>
                 {t("llama.ctl.vram")}: {mb(p.gpuMb + p.kvGpuMb)}

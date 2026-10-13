@@ -305,6 +305,8 @@ export function loadNow(
     else delete all[f];
     setRouterSettings({ layers: all });
   }
+  // Перезагрузка не должна менять «зачем модель загружена»: сохраняем прежнюю задачу.
+  const prevTask = loadedServers().find((s) => s.file === f)?.task;
   stopServer(f);
   const mmproj = siblingMmproj(f);
   void ensureServer({
@@ -312,7 +314,7 @@ export function loadNow(
     mmproj: mmproj ? modelPath(mmproj) : undefined,
     device: deviceFor(f),
     ctx: chatCtx(),
-    task: "manual",
+    task: prevTask || "manual",
   }).catch(() => undefined);
   return { file: f, started: true };
 }
