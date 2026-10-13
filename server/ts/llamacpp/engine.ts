@@ -17,6 +17,7 @@ import logger from "../logger";
 import { downloadToFile } from "../download";
 import { createSetupTask } from "../setupTask";
 import { removePath } from "../fsUtil";
+import { ggufInfo } from "./gguf";
 
 const { DIRS } = config;
 
@@ -320,11 +321,20 @@ export function configureEngine(o: {
   if (o.idleMs) idleFn = o.idleMs;
   if (o.moeOffload) moeFn = o.moeOffload;
 }
-/** Модель из семейства MoE (Gemma 4 26B-A4B, Qwen3.6-35B-A3B…): по имени файла. */
-export const isMoeFile = (file: string): boolean =>
+/** Запасной признак MoE по имени файла — если заголовок GGUF прочитать не удалось. */
+const moeByName = (file: string): boolean =>
   /(?:^|[-_.]|\db)a\d+(?:\.\d+)?b(?:[-_.]|$)|moe|gpt-oss|glm-4\.\d+-flash/i.test(
     path.basename(file),
   );
+/**
+ * Модель MoE или обычная — по метаданным GGUF (`<arch>.expert_count` > 0), а не по названию.
+ * Имя используется только когда файл недоступен или это не GGUF.
+ */
+export const isMoeFile = (file: string): boolean => {
+  const full = path.isAbsolute(file) && fs.existsSync(file) ? file : path.join(modelsDir(), path.basename(file));
+  const info = ggufInfo(full);
+  return info ? info.experts > 0 : moeByName(file);
+};
 /** Сборки, на которых сервер не поднялся: пропускаем до перезапуска приложения. */
 const bad = new Set<BuildId>();
 let idleFn: () => number = () => 10 * 60 * 1000;
