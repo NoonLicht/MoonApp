@@ -21,7 +21,7 @@ import path from "path";
 import config from "./config";
 import logger from "./logger";
 import settings from "./settings";
-import { boundTarget } from "./aiBindings";
+import { assertFeature, boundTarget } from "./aiBindings";
 import { removePath } from "./fsUtil";
 
 /* eslint-disable @typescript-eslint/no-require-imports */
@@ -357,6 +357,7 @@ export async function providerModels(
  * страница заметок переводит их в подсказки (см. notesAiError в MyspacePage).
  */
 async function aiTarget(appPage: unknown): Promise<AiTarget> {
+  assertFeature("notes.ai");
   const bound = boundTarget("notes.ai");
   if (bound) return bound as unknown as AiTarget;
   const cfg = aiCfg();

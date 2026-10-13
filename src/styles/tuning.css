@@ -578,3 +578,47 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* Выключатели ИИ-функций (LocalModelsControl) */
+.aifeat {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.aifeat-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.aifeat-head b {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+.aifeat-list {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 4px;
+}
+.aifeat-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--glass-border);
+  background: var(--glass-bg, transparent);
+}
+.aifeat-row.is-off .aifeat-name {
+  color: var(--text-tertiary);
+}
+.aifeat-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

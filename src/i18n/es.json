@@ -5502,6 +5502,20 @@
     "noneLoaded": "No hay modelos en memoria ahora; se cargan con la primera petición.",
     "loadingModel": "Cargando {model}…",
     "working": "trabajando",
+    "feat": {
+
+      "title": "Funciones de IA",
+
+      "count": "{a} de {b} activas",
+
+      "hint": "Una función desactivada no llama a ningún modelo ni carga nada. Los embeddings, la traducción y los modelos de voz no se ven afectados. El modelo de cada función se elige en Ajustes → Asignación de modelos de IA.",
+
+      "offAll": "Desactivar todas",
+
+      "onAll": "Activar todas"
+
+    },
+
     "unloadAll": "Descargar todo",
     "sec": {
       "auto": "Automatización y memoria",

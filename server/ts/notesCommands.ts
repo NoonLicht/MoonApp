@@ -7,7 +7,7 @@
  * облако используется, только если для заметок явно выбран облачный провайдер.
  */
 import settings from "./settings";
-import { boundOf } from "./aiBindings";
+import { assertFeature, boundOf } from "./aiBindings";
 import { askModel, type LlmTarget } from "./llmOnce";
 import { getProvider } from "./providers";
 import { getSecret } from "./security";
@@ -255,6 +255,7 @@ export async function runCommand(i: CommandInput): Promise<CommandResult> {
     title: i.title,
     hasSelection,
   });
+  assertFeature("notes.commands");
   const r = route();
   const bound = boundOf("notes.commands");
   let out: string;

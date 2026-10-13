@@ -38,6 +38,8 @@ export const FEATURES: FeatureDef[] = [
 ];
 
 export interface Binding {
+  /** false — функция выключена пользователем (см. SWITCHABLE). Нет поля = включена. */
+  enabled?: boolean;
   /** true — модель выбирается автоматически (как раньше). */
   auto: boolean;
   provider: string;
@@ -49,6 +51,13 @@ let cache: Record<string, Binding> | null = null;
 
 const known = (id: string): boolean => FEATURES.some((f) => f.id === id);
 
+/**
+ * Функции, которые можно выключить целиком. Основной чат, «Щит» (свой выключатель в его настройках)
+ * и переводчик сюда не входят; эмбеддинги и голосовые модели вообще не относятся к этому списку.
+ */
+const NOT_SWITCHABLE = new Set(["chat", "shield", "translate"]);
+export const switchable = (id: string): boolean => known(id) && !NOT_SWITCHABLE.has(id);
+
 function clean(v: unknown): Record<string, Binding> {
   const out: Record<string, Binding> = {};
   if (!v || typeof v !== "object") return out;
@@ -56,6 +65,7 @@ function clean(v: unknown): Record<string, Binding> {
     if (!known(id) || !raw || typeof raw !== "object") continue;
     const b = raw as Partial<Binding>;
     out[id] = {
+      ...(b.enabled === false && switchable(id) ? { enabled: false } : {}),
       auto: b.auto !== false,
       provider: typeof b.provider === "string" ? b.provider.slice(0, 64) : "",
       model: typeof b.model === "string" ? b.model.slice(0, 256) : "",
@@ -84,7 +94,9 @@ export function setBinding(id: string, b: Partial<Binding>): Binding {
   if (!known(id)) throw new Error("unknown_feature");
   const all = { ...getBindings() };
   const cur = all[id] ?? { auto: true, provider: "", model: "" };
+  const enabled = typeof b.enabled === "boolean" && switchable(id) ? b.enabled : cur.enabled;
   all[id] = {
+    ...(enabled === false ? { enabled: false } : {}),
     auto: typeof b.auto === "boolean" ? b.auto : cur.auto,
     provider: typeof b.provider === "string" ? b.provider.slice(0, 64) : cur.provider,
     model: typeof b.model === "string" ? b.model.slice(0, 256) : cur.model,
@@ -95,6 +107,17 @@ export function setBinding(id: string, b: Partial<Binding>): Binding {
 
 export function resetBindings(): void {
   save({});
+}
+
+/** Включена ли функция (по умолчанию — да). */
+export function featureEnabled(feature?: string): boolean {
+  if (!feature) return true;
+  return getBindings()[feature]?.enabled !== false;
+}
+
+/** Бросает ошибку, если пользователь выключил эту ИИ-функцию (Настройки → «ИИ и модели»). */
+export function assertFeature(feature?: string): void {
+  if (!featureEnabled(feature)) throw new Error("ai_feature_disabled: " + feature);
 }
 
 /** Активная привязка функции: «авто» снято и выбраны провайдер с моделью; иначе null. */

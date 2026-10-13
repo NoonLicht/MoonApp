@@ -1,12 +1,93 @@
-import { useState } from "react";
-import { Cpu, Loader2, Play, Power, RefreshCw } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { Cpu, Loader2, Power, RefreshCw, Sparkles } from "lucide-react";
 import { Badge, Btn, Select } from "@/components/ui";
 import { useI18n } from "@/app/i18n";
 import { api } from "@/api/client";
 import type { LlamaStatus } from "@/api/client";
+import type { AiBindingsData } from "@/api/apiLlama";
 
 const mb = (v: number): string => (v >= 1024 ? `${(v / 1024).toFixed(1)} GB` : `${v} MB`);
 const BUILD: Record<string, string> = { cpu: "CPU", vulkan: "Vulkan", cuda: "CUDA" };
+
+/**
+ * Выключатели ИИ-функций (заметки, почта, лекторий, «Контекст» и т.д.). Выключенная функция
+ * не обращается к модели вообще. Эмбеддинги, перевод и голосовые модели сюда не входят.
+ */
+function FeatureSwitches() {
+  const { t } = useI18n();
+  const [data, setData] = useState<AiBindingsData | null>(null);
+  const [err, setErr] = useState("");
+  const load = useCallback(() => {
+    api
+      .aiBindings()
+      .then(setData)
+      .catch((e: Error) => setErr(e.message));
+  }, []);
+  useEffect(() => load(), [load]);
+  if (!data) return err ? <div className="proxy-error">{err}</div> : null;
+
+  const list = data.features.filter((f) => f.switchable);
+  const isOn = (id: string): boolean => data.bindings[id]?.enabled !== false;
+  const set = async (ids: string[], enabled: boolean): Promise<void> => {
+    setErr("");
+    try {
+      for (const id of ids) {
+        const next = await api.aiBindingSet(id, { enabled });
+        setData((d) => (d ? { ...d, bindings: { ...d.bindings, [id]: next } } : d));
+      }
+    } catch (e) {
+      setErr((e as Error).message);
+      load();
+    }
+  };
+  const onCount = list.filter((f) => isOn(f.id)).length;
+  const allOn = onCount === list.length;
+
+  return (
+    <div className="aifeat">
+      <div className="aifeat-head">
+        <b>
+          <Sparkles size={13} /> {t("llama.feat.title")}
+        </b>
+        <span className="muted-sm">{t("llama.feat.count", { a: onCount, b: list.length })}</span>
+        <Btn
+          onClick={() =>
+            void set(
+              list.map((f) => f.id),
+              !allOn,
+            )
+          }
+        >
+          {allOn ? t("llama.feat.offAll") : t("llama.feat.onAll")}
+        </Btn>
+      </div>
+      <div className="muted-sm">{t("llama.feat.hint")}</div>
+      {err && <div className="proxy-error">{err}</div>}
+      <div className="aifeat-list">
+        {list.map((f) => {
+          const on = isOn(f.id);
+          return (
+            <div key={f.id} className={`aifeat-row${on ? "" : " is-off"}`}>
+              <span className="aifeat-name" title={t(`aibind.h_${f.id.replaceAll(".", "_")}`)}>
+                {t(`aibind.f_${f.id.replaceAll(".", "_")}`)}
+              </span>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={on}
+                aria-label={t(`aibind.f_${f.id.replaceAll(".", "_")}`)}
+                className={`switch${on ? " is-on" : ""}`}
+                onClick={() => void set([f.id], !on)}
+              >
+                <span className="switch-knob" />
+              </button>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 /**
  * Управление локальными моделями llama.cpp: что в памяти, где лежат слои (видеокарта/RAM),
@@ -23,8 +104,6 @@ export default function LocalModelsControl({
   const { activity: act, router } = llama;
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
-  const [pick, setPick] = useState("");
-  const [dev, setDev] = useState("auto");
   const [devs, setDevs] = useState<Record<string, string>>({});
 
   const run = async (fn: () => Promise<unknown>): Promise<void> => {
@@ -40,10 +119,6 @@ export default function LocalModelsControl({
     }
   };
 
-  const chatFiles = llama.models
-    .map((m) => m.file)
-    .filter((f) => !/embedding|mmproj|chandra|tts/i.test(f));
-  const chosen = pick || chatFiles[0] || "";
   const deviceOptions = [
     { value: "auto", label: t("llama.ctl.devAuto") },
     { value: "gpu", label: t("llama.ctl.devGpu") },
@@ -151,23 +226,7 @@ export default function LocalModelsControl({
         );
       })}
 
-      {chatFiles.length > 0 && (
-        <div className="llama-model-actions" style={{ marginTop: 10 }}>
-          <Select
-            value={chosen}
-            onChange={(e) => setPick(e.target.value)}
-            options={chatFiles.map((f) => ({ value: f, label: f }))}
-          />
-          <Select value={dev} onChange={(e) => setDev(e.target.value)} options={deviceOptions} />
-          <Btn
-            icon={Play}
-            disabled={busy || !chosen}
-            onClick={() => void run(() => api.llamaLoad(chosen, dev))}
-          >
-            {t("llama.ctl.load")}
-          </Btn>
-        </div>
-      )}
+      <FeatureSwitches />
 
       <label className="llama-check" style={{ marginTop: 10 }}>
         <input

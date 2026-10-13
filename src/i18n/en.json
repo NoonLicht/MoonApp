@@ -5506,6 +5506,20 @@
     "noneLoaded": "No models in memory right now — they load on the first request.",
     "loadingModel": "Loading {model}…",
     "working": "working",
+    "feat": {
+
+      "title": "AI features",
+
+      "count": "{a} of {b} on",
+
+      "hint": "A switched-off feature never calls a model and loads nothing. Embeddings, translation and voice models are not affected. Pick which model serves a feature in Settings → AI model bindings.",
+
+      "offAll": "Turn all off",
+
+      "onAll": "Turn all on"
+
+    },
+
     "unloadAll": "Unload all",
     "sec": {
       "auto": "Automation & memory",

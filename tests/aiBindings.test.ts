@@ -62,6 +62,19 @@ describe("привязка моделей к ИИ-функциям", () => {
     }
   });
 
+  it("выключатель: функции по умолчанию включены, чат/щит/перевод выключить нельзя", () => {
+    expect(b.featureEnabled("notes.ai")).toBe(true);
+    b.setBinding("notes.ai", { enabled: false });
+    expect(b.featureEnabled("notes.ai")).toBe(false);
+    expect(() => b.assertFeature("notes.ai")).toThrow(/ai_feature_disabled/);
+    b.setBinding("notes.ai", { enabled: true });
+    expect(b.featureEnabled("notes.ai")).toBe(true);
+    for (const id of ["chat", "shield", "translate"]) {
+      b.setBinding(id, { enabled: false });
+      expect(b.featureEnabled(id)).toBe(true);
+    }
+  });
+
   it("сброс возвращает все функции в «авто»", () => {
     b.setBinding("chat", { auto: false, provider: "llamacpp", model: "y.gguf" });
     b.resetBindings();

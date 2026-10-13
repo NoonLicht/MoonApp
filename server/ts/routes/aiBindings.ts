@@ -14,7 +14,7 @@ const router = express.Router();
 
 router.get("/", (_req, res) => {
   res.json({
-    features: b.FEATURES,
+    features: b.FEATURES.map((f) => ({ ...f, switchable: b.switchable(f.id) })),
     bindings: b.getBindings(),
     providers: (PROVIDERS as { id: string; label: string; local?: boolean; stub?: boolean }[])
       .filter((p) => !p.stub)

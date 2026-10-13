@@ -4,7 +4,7 @@
 import fs from "fs";
 import config from "./config";
 import logger from "./logger";
-import { boundTarget } from "./aiBindings";
+import { assertFeature, boundTarget } from "./aiBindings";
 import settings from "./settings";
 import { getProvider, PROVIDERS } from "./providers";
 import { getSecret } from "./security";
@@ -281,6 +281,7 @@ function conspectusCfg() {
  * поэтому неизвестное имя не подставляем молча, а сверяемся со списком сервиса.)
  */
 export async function conspectusTarget(appPage: any, feature?: string) {
+  assertFeature(feature);
   const c = conspectusCfg();
   // Привязка модели к функции (Настройки → «Привязка моделей ИИ») главнее общих настроек.
   const bound = boundTarget(feature);

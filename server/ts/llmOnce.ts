@@ -5,7 +5,7 @@
  */
 import { runWithPage } from "./middleware/perPageProxy";
 import { conspectusTarget } from "./lectureConspectus";
-import { boundTarget } from "./aiBindings";
+import { assertFeature, boundTarget } from "./aiBindings";
 
 export interface LlmTarget {
   provider: { chat(o: Record<string, unknown>): Promise<string> };
@@ -25,6 +25,7 @@ export async function askModel(
     feature?: string;
   } = {},
 ): Promise<string> {
+  assertFeature(o.feature);
   const t =
     (boundTarget(o.feature) as LlmTarget | null) ??
     o.target ??

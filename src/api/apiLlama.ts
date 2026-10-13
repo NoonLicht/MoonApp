@@ -103,8 +103,12 @@ export interface AiFeatureDef {
   id: string;
   group: "chat" | "notes" | "mail" | "lecture" | "translate";
   task: string;
+  /** Функцию можно выключить целиком. */
+  switchable?: boolean;
 }
 export interface AiBinding {
+  /** false — функция выключена. Нет поля — включена. */
+  enabled?: boolean;
   auto: boolean;
   provider: string;
   model: string;
