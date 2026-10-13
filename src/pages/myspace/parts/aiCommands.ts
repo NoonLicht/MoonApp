@@ -32,6 +32,7 @@ export type CommandId =
   | "ask";
 
 /** Команда: id, основное слово (то, что подставляется) и синонимы. */
+// i18n-ignore-start
 export const COMMANDS: { id: CommandId; word: string; aliases: string[] }[] = [
   { id: "format", word: "формат", aliases: ["оформи", "оформить", "markdown", "md", "format"] },
   { id: "fix", word: "исправь", aliases: ["исправить", "ошибки", "fix", "правка"] },
@@ -52,6 +53,7 @@ export const COMMANDS: { id: CommandId; word: string; aliases: string[] }[] = [
   { id: "explain", word: "объясни", aliases: ["explain"] },
   { id: "tags", word: "теги", aliases: ["tags"] },
 ];
+// i18n-ignore-end
 
 const PREFIX = /^(\s*)(?:\.{3}|…)/;
 
