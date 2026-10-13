@@ -1128,4 +1128,7 @@
 }
 .conv-search input {
   min-height: 0;
-  height: 100
+  height: 100%;
+  padding: 0;
+  box-shadow: none;
+}
