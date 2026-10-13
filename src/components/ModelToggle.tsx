@@ -309,11 +309,17 @@ export function ModelActivityPill() {
             }),
           );
         } else {
-          window.clearTimeout(hide);
-          hide = window.setTimeout(() => setLine(""), 2500);
+          // таймер заводим один раз: тик идёт раз в секунду и иначе сбрасывал бы его вечно
+          if (!hide)
+            hide = window.setTimeout(() => {
+              hide = 0;
+              setLine("");
+            }, 2500);
           return;
         }
+        // снова работа — отложенное скрытие отменяем
         window.clearTimeout(hide);
+        hide = 0;
       } catch {
         /* сервер недоступен */
       }
