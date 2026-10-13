@@ -11,8 +11,29 @@ export interface LlamaCatalogModel {
   repo: string;
   file: string;
   sizeMb: number;
+  /** Квант (q4km, q5km…). */
   note: string;
-  extra?: { file: string; sizeMb: number }[];
+  /** Семейство: кванты одной модели сворачиваются в группу. */
+  group: string;
+  title: string;
+  vision?: boolean;
+  extra?: { file: string; sizeMb: number; as?: string }[];
+}
+
+export interface LlamaRouterSettings {
+  maxLoaded: number;
+  moeOffload: boolean;
+  defaultModel: string;
+  autoWarm: boolean;
+  idleMinutes: number;
+}
+
+export interface LlamaActivity {
+  loaded: { file: string; task: string; busy: boolean; gpu: boolean }[];
+  loading: { file: string; task: string }[];
+  limit: number;
+  laptop: boolean;
+  ramMb: number;
 }
 
 export interface LlamaStatus {
@@ -37,6 +58,8 @@ export interface LlamaStatus {
     error: string;
   } | null;
   server: { build: LlamaBuildId; gpu: boolean; model: string; file: string } | null;
+  activity: LlamaActivity;
+  router: LlamaRouterSettings;
   /** Установленные модели Chandra OCR 2 (без проекторов). */
   ocrModels: { file: string; sizeMb: number }[];
 }
@@ -121,5 +144,11 @@ export const llamaApi = {
     }
     return res.blob();
   },
-  llamaStop: () => req<{ ok: boolean }>("POST", "/llamacpp/stop"),
+  llamaStop: (file?: string) => req<{ ok: boolean }>("POST", "/llamacpp/stop", { file }),
+  llamaActivity: () => req<LlamaActivity>("GET", "/llamacpp/activity"),
+  llamaSetRouter: (patch: Partial<LlamaRouterSettings>) =>
+    req<LlamaRouterSettings>("POST", "/llamacpp/settings", patch),
+  /** Загрузить модель под задачу заранее: command | summary | translate | chat | vision | stt. */
+  llamaWarm: (task: string) =>
+    req<{ file: string | null; started: boolean }>("POST", "/llamacpp/warm", { task }),
 };

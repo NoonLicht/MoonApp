@@ -493,6 +493,16 @@ async function ensureLoaded(): Promise<Loaded> {
   }
 }
 
+/** Загрузить модель заранее (вход на страницу «Лекторий»): первый запрос не ждёт старта сессии. */
+export function warmup(): boolean {
+  if (loaded || loading) return false;
+  if (preferred() !== "gigaam" || !isInstalled() || !runtimeAvailable()) return false;
+  void ensureLoaded()
+    .then(() => touchIdle())
+    .catch(() => undefined);
+  return true;
+}
+
 function touchIdle(): void {
   if (idleTimer) clearTimeout(idleTimer);
   idleTimer = setTimeout(unload, IDLE_UNLOAD_MS);

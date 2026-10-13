@@ -26,6 +26,14 @@ import {
   stopServer,
 } from "../llamacpp/engine";
 import { ttsProblem } from "../llamacpp/tts";
+import {
+  activity,
+  routerSettings,
+  setRouterSettings,
+  warm,
+  pickModel,
+  type Task,
+} from "../llamacpp/router";
 import { fetchRemoteImage, ocrImage, ocrModels } from "../llamacpp/ocr";
 import { closePdf, openPdf, renderPdfPage } from "../llamacpp/ocrPdf";
 import type { Device } from "../llamacpp/engine";
@@ -37,6 +45,7 @@ import {
   parseHfUrl,
   removeModel,
   startDownload,
+  type Remote,
 } from "../llamacpp/models";
 
 const router = express.Router();
@@ -56,6 +65,8 @@ router.get("/status", (_req, res) => {
     models: installed(),
     download: downloadState(),
     server: serverInfo(),
+    activity: activity(),
+    router: routerSettings(),
     ttsProblem: ttsProblem(),
     ocrModels: ocrModels(),
   });
@@ -80,10 +91,16 @@ router.delete("/build/:id", (req, res) => {
 
 router.post("/model", (req, res) => {
   const { id, url } = (req.body ?? {}) as { id?: string; url?: string };
-  let src: { repo: string; rev: string; file: string; extra?: string[] } | null = null;
+  let src: { repo: string; rev: string; file: string; extra?: Remote[] } | null = null;
   if (id) {
     const m = CATALOG.find((c) => c.id === id);
-    if (m) src = { repo: m.repo, rev: "main", file: m.file, extra: m.extra?.map((e) => e.file) };
+    if (m)
+      src = {
+        repo: m.repo,
+        rev: "main",
+        file: m.file,
+        extra: m.extra?.map((e) => ({ remote: e.file, as: e.as })),
+      };
   } else if (url) {
     src = parseHfUrl(String(url));
   }
@@ -103,9 +120,34 @@ router.delete("/model/:file", (req, res) => {
   res.json({ ok: true });
 });
 
-router.post("/stop", (_req, res) => {
-  stopServer();
+router.post("/stop", (req, res) => {
+  const file = typeof req.body?.file === "string" ? req.body.file : undefined;
+  stopServer(file);
   res.json({ ok: true });
+});
+
+// Что сейчас загружено/грузится — для индикатора в «Умном поиске».
+router.get("/activity", (_req, res) => res.json(activity()));
+
+router.get("/settings", (_req, res) => res.json(routerSettings()));
+router.post("/settings", (req, res) => res.json(setRouterSettings(req.body ?? {})));
+
+const TASKS: Task[] = ["command", "summary", "translate", "chat", "vision"];
+// Прогрев: клиент сообщает, что пользователь зашёл на страницу, которой нужна модель.
+router.post("/warm", (req, res) => {
+  const task = String(req.body?.task ?? "");
+  if (task === "stt") {
+    // GigaAM работает через ONNX Runtime, не через llama.cpp — прогреваем его сессию.
+    const g = require("../gigaamEngine") as typeof import("../gigaamEngine");
+    return res.json({ file: "gigaam", started: g.warmup() });
+  }
+  if (!TASKS.includes(task as Task)) return res.status(400).json({ error: "bad_task" });
+  res.json(warm(task as Task));
+});
+
+router.get("/pick", (req, res) => {
+  const task = String(req.query.task ?? "chat") as Task;
+  res.json({ file: TASKS.includes(task) ? pickModel(task) : null });
 });
 
 const DEVICES = ["auto", "cpu", "gpu", "vulkan", "cuda"];

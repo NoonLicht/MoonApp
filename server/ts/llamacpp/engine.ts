@@ -217,7 +217,7 @@ export function installBuild(id: BuildId): { ok: boolean; error?: string } {
 }
 
 export function removeBuild(id: BuildId): void {
-  if (running?.build === id) stopServer();
+  for (const r of pool.values()) if (r.build === id) kill(r);
   removePath(buildDir(id));
 }
 
@@ -236,13 +236,34 @@ interface Running extends ServerInfo {
   proc: ChildProcess;
   busy: number;
   idle: NodeJS.Timeout | null;
+  used: number;
+  mmproj: string;
+  task: string;
 }
 
-let running: Running | null = null;
-let starting: { key: string; p: Promise<Running> } | null = null;
+/** Пул запущенных серверов: ключ → процесс. Несколько моделей живут одновременно в пределах лимита. */
+const pool = new Map<string, Running>();
+const starting = new Map<string, { p: Promise<Running>; file: string; task: string }>();
+let lastUsedKey = "";
+/** Лимит одновременно загруженных моделей; задаёт router.ts (зависит от ноутбука/памяти). */
+let limitFn: () => number = () => 2;
+/** Режим размещения MoE-моделей на видеокарте (см. router.ts). */
+let moeFn: () => boolean = () => true;
+export function configureEngine(o: {
+  limit?: () => number;
+  moeOffload?: () => boolean;
+  idleMs?: () => number;
+}): void {
+  if (o.limit) limitFn = o.limit;
+  if (o.idleMs) idleFn = o.idleMs;
+  if (o.moeOffload) moeFn = o.moeOffload;
+}
+/** Модель из семейства MoE (Gemma 4 26B-A4B, Qwen3.6-35B-A3B…): по имени файла. */
+export const isMoeFile = (file: string): boolean =>
+  /(?:^|[-_.])a\d+(?:\.\d+)?b(?:[-_.]|$)|moe/i.test(path.basename(file));
 /** Сборки, на которых сервер не поднялся: пропускаем до перезапуска приложения. */
 const bad = new Set<BuildId>();
-const IDLE_MS = 10 * 60 * 1000;
+let idleFn: () => number = () => 10 * 60 * 1000;
 
 export const badBuilds = (): BuildId[] => [...bad];
 
@@ -280,9 +301,15 @@ export interface StartOptions {
   ctx?: number;
   /** Без jinja-шаблона чата: для сырого /completion (у TranslateGemma шаблон не разбирается). */
   raw?: boolean;
+  /** Для чего запущено (подпись в индикаторе активности): command, summary, translate… */
+  task?: string;
 }
 
-export async function waitReady(proc: ChildProcess, base: string, tail: () => string): Promise<void> {
+export async function waitReady(
+  proc: ChildProcess,
+  base: string,
+  tail: () => string,
+): Promise<void> {
   let exited = false;
   proc.once("exit", () => (exited = true));
   const t0 = Date.now();
@@ -299,6 +326,17 @@ export async function waitReady(proc: ChildProcess, base: string, tail: () => st
   throw new Error("llama_start_timeout");
 }
 
+/**
+ * Размещение слоёв. На CPU — ничего на видеокарте. На GPU слои не задаём жёстко: llama.cpp сам
+ * подбирает (--fit) по свободной видеопамяти и выгружает в оперативную память то, что не влезло —
+ * у MoE-моделей это эксперты (A3B/A4B считают на 3–4 млрд параметров, остальные веса лежат в RAM).
+ */
+function gpuArgs(o: StartOptions, gpu: boolean): string[] {
+  if (!gpu) return ["-ngl", "0"];
+  if (isMoeFile(o.model) && !moeFn()) return ["-ngl", "99"];
+  return ["--fit", "on", "--fit-target", "768"];
+}
+
 async function spawnServer(build: BuildId, o: StartOptions, cpuOnly: boolean): Promise<Running> {
   const exe = exePath(build);
   if (!exe) throw new Error("build_missing");
@@ -313,8 +351,7 @@ async function spawnServer(build: BuildId, o: StartOptions, cpuOnly: boolean): P
     String(port),
     "-c",
     String(o.ctx ?? 4096),
-    "-ngl",
-    gpu ? "99" : "0",
+    ...gpuArgs(o, gpu),
     "-np",
     "1",
     "--no-webui",
@@ -350,31 +387,40 @@ async function spawnServer(build: BuildId, o: StartOptions, cpuOnly: boolean): P
     model: o.model,
     busy: 0,
     idle: null,
+    used: Date.now(),
+    mmproj: o.mmproj ?? "",
+    task: o.task ?? "",
   };
   proc.once("exit", () => {
-    if (running === r) running = null;
+    for (const [k, v] of pool) if (v === r) pool.delete(k);
   });
   return r;
 }
 
-export function stopServer(): void {
-  const r = running;
-  if (!r) return;
+function kill(r: Running): void {
   if (r.idle) clearTimeout(r.idle);
-  running = null;
+  for (const [k, v] of pool) if (v === r) pool.delete(k);
   try {
     r.proc.kill();
   } catch {
     /* уже завершён */
   }
-  logger.info("llamacpp.stopped", { build: r.build });
+  logger.info("llamacpp.stopped", { build: r.build, model: path.basename(r.model) });
+}
+
+/** Выгрузить все модели или только ту, что запущена из этого файла. */
+export function stopServer(file?: string): void {
+  for (const r of [...pool.values()])
+    if (!file || path.basename(r.model) === path.basename(file)) kill(r);
 }
 
 process.once("exit", () => {
-  try {
-    running?.proc.kill();
-  } catch {
-    /* ignore */
+  for (const r of pool.values()) {
+    try {
+      r.proc.kill();
+    } catch {
+      /* ignore */
+    }
   }
 });
 
@@ -382,28 +428,45 @@ function arm(r: Running): void {
   if (r.idle) clearTimeout(r.idle);
   r.idle = setTimeout(() => {
     if (r.busy > 0) return arm(r);
-    stopServer();
-  }, IDLE_MS);
+    kill(r);
+  }, idleFn());
   r.idle.unref?.();
 }
 
-/** Поднять сервер для модели (или взять работающий). Смена модели/устройства перезапускает его. */
+/** Освободить место под новую модель: выгружаем давно не использованные простаивающие серверы. */
+function makeRoom(): void {
+  const limit = Math.max(1, limitFn());
+  while (pool.size + starting.size >= limit) {
+    const idle = [...pool.values()].filter((r) => r.busy === 0).sort((a, b) => a.used - b.used);
+    if (!idle.length) return; // все заняты — временно превышаем лимит, чем ломаем запрос
+    kill(idle[0]);
+  }
+}
+
+/** Поднять сервер для модели (или взять уже работающий). Лишние простаивающие выгружаются по лимиту. */
 export async function ensureServer(o: StartOptions): Promise<ServerInfo> {
   const device = o.device ?? "auto";
   const key = `${o.model}|${o.mmproj ?? ""}|${device}|${o.ctx ?? 4096}|${o.raw ? "raw" : "chat"}`;
-  if (running && running.key === key) return running;
-  if (running && running.busy === 0) stopServer();
-  if (running) return running;
-  if (starting?.key === key) return starting.p;
+  const have = pool.get(key);
+  if (have) {
+    have.used = Date.now();
+    lastUsedKey = key;
+    return have;
+  }
+  const pending = starting.get(key);
+  if (pending) return pending.p;
   const candidates = buildOrder(device);
   if (!candidates.length) throw new Error("build_missing");
+  makeRoom();
   const p = (async () => {
     let last: unknown = null;
     for (const build of candidates) {
       try {
         const r = await spawnServer(build, o, device === "cpu");
         r.key = key;
-        running = r;
+        r.used = Date.now();
+        pool.set(key, r);
+        lastUsedKey = key;
         arm(r);
         logger.info("llamacpp.started", { build, gpu: r.gpu, model: path.basename(o.model) });
         return r;
@@ -420,9 +483,9 @@ export async function ensureServer(o: StartOptions): Promise<ServerInfo> {
       `llama_start_failed: ${String((last as Error)?.message || last).slice(0, 300)}`,
     );
   })().finally(() => {
-    starting = null;
+    starting.delete(key);
   });
-  starting = { key, p };
+  starting.set(key, { p, file: path.basename(o.model), task: o.task ?? "" });
   return p;
 }
 
@@ -433,22 +496,56 @@ export async function withServer<T>(
 ): Promise<T> {
   const s = (await ensureServer(o)) as Running;
   s.busy++;
+  s.used = Date.now();
+  if (o.task) s.task = o.task;
   try {
     return await fn(s);
   } finally {
     s.busy--;
-    if (running === s) arm(s);
+    s.used = Date.now();
+    if (pool.get(s.key) === s) arm(s);
   }
 }
 
+export interface LoadedServer extends ServerInfo {
+  file: string;
+  busy: boolean;
+  used: number;
+  mmproj: string;
+  task: string;
+}
+
+/** Модели, которые прямо сейчас загружаются в память. */
+export const loadingServers = (): { file: string; task: string }[] =>
+  [...starting.values()].map((v) => ({ file: v.file, task: v.task }));
+
+/** Все загруженные сейчас модели (новее — раньше). */
+export function loadedServers(): LoadedServer[] {
+  return [...pool.values()]
+    .sort((a, b) => b.used - a.used)
+    .map((r) => ({
+      baseUrl: r.baseUrl,
+      build: r.build,
+      gpu: r.gpu,
+      model: r.model,
+      file: path.basename(r.model),
+      busy: r.busy > 0,
+      used: r.used,
+      mmproj: r.mmproj ? path.basename(r.mmproj) : "",
+      task: r.task,
+    }));
+}
+
+/** Модель, которой пользовались последней (для совместимости со старым API). */
 export function serverInfo(): (ServerInfo & { file: string }) | null {
-  return running
+  const r = pool.get(lastUsedKey) ?? [...pool.values()][0];
+  return r
     ? {
-        baseUrl: running.baseUrl,
-        build: running.build,
-        gpu: running.gpu,
-        model: running.model,
-        file: path.basename(running.model),
+        baseUrl: r.baseUrl,
+        build: r.build,
+        gpu: r.gpu,
+        model: r.model,
+        file: path.basename(r.model),
       }
     : null;
 }

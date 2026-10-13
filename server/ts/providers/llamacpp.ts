@@ -1,7 +1,7 @@
 import type { ChatParams, Provider } from "./types";
 import { consumeSSE } from "./stream";
 import { withServer } from "../llamacpp/engine";
-import { hasModel, installed, modelPath } from "../llamacpp/models";
+import { chatModels, resolve, type Task } from "../llamacpp/router";
 
 /**
  * Локальные модели через встроенный llama.cpp (см. server/ts/llamacpp). Ключ не нужен: провайдер
@@ -11,10 +11,7 @@ import { hasModel, installed, modelPath } from "../llamacpp/models";
 const CTX = 8192;
 
 /** Для чата подходят только языковые модели: эмбеддинги, проекторы, OCR и озвучка — нет. */
-const chatModels = (): string[] =>
-  installed()
-    .map((m) => m.file)
-    .filter((f) => !/embeddinggemma|mmproj|chandra|tts/i.test(f));
+const listChat = (): string[] => chatModels().map((m) => m.file);
 
 const provider: Provider = {
   id: "llamacpp",
@@ -22,12 +19,15 @@ const provider: Provider = {
   models: [],
   local: true,
   async listModels() {
-    return chatModels();
+    return listChat();
   },
   async chat(p: ChatParams): Promise<string> {
-    const file = p.model || chatModels()[0] || "";
-    if (!file || !hasModel(file)) throw new Error("llamacpp_model_missing");
-    return withServer({ model: modelPath(file), ctx: CTX }, async (s) => {
+    const wantImages = p.messages.some((m) => Array.isArray(m.images) && m.images.length > 0);
+    // Пустая модель или "auto" — подбирает маршрутизатор под задачу из списка скачанных.
+    const task = ((p as { task?: Task }).task ?? "chat") as Task;
+    const r = resolve(task, p.model || "", wantImages);
+    if (!r) throw new Error("llamacpp_model_missing");
+    return withServer({ model: r.model, mmproj: r.mmproj, ctx: CTX, task }, async (s) => {
       const body: Record<string, unknown> = {
         messages: p.messages.map((m) => {
           const imgs = Array.isArray(m.images) ? m.images : [];

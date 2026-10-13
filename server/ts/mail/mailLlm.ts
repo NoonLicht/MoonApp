@@ -64,10 +64,17 @@ function toHtml(text: string): string {
 async function target(): Promise<LlmTarget | undefined> {
   const ai = getSettings().ai;
   if (ai.engine === "llamacpp") {
+    // Модель подбирает маршрутизатор из скачанных (пусто = «автоматически»); пока идёт сводка,
+    // остальные модели (чат, перевод, поиск) остаются в памяти в пределах лимита.
     const provider = getProvider("llamacpp");
-    const model = ai.model || (await provider.listModels(""))[0] || "";
-    if (!model) throw new Error("llamacpp_model_missing");
-    return { provider, secret: getSecret("llamacpp") || "local", model } as unknown as LlmTarget;
+    const wrapped = {
+      chat: (o: Record<string, unknown>) => provider.chat({ ...o, task: "summary" } as never),
+    };
+    return {
+      provider: wrapped,
+      secret: getSecret("llamacpp") || "local",
+      model: ai.model || "auto",
+    } as unknown as LlmTarget;
   }
   if (ai.engine === "provider" && ai.providerId) {
     const provider = getProvider(ai.providerId);
