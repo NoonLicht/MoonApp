@@ -490,6 +490,14 @@ html:not(.no-glass) .app-shell .tool-tile:hover {
 .select-wrap {
   min-width: 0;
   max-width: 100%;
+  /* В части сборок Chromium нативный base-select не обрезает текст по своей рамке —
+     поэтому режем по обёртке (список раскрывается в top layer и под обрезку не попадает). */
+  overflow: hidden;
+  border-radius: 11px;
+}
+/* Кольцо фокуса рисуем внутрь: снаружи его съела бы обрезка обёртки. */
+.select-wrap select:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--amber-soft);
 }
 .select-wrap select {
   box-sizing: border-box;
