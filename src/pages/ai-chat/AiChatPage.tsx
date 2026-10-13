@@ -506,7 +506,9 @@ export default function AiChatPage() {
             if (ev.stats) {
               setLastStats({
                 ms: ev.stats.ms,
-                tokens: Math.round(ev.stats.tokensApprox / (ev.stats.ms / 1000)),
+                tokens: Math.round(
+                  ev.stats.tokensApprox / (((ev.stats.genMs ?? 0) > 400 ? ev.stats.genMs! : ev.stats.ms) / 1000),
+                ),
               });
             }
             setStreamingText("");

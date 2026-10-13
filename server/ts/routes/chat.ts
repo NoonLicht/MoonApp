@@ -206,7 +206,9 @@ router.post("/:id/send", async (req, res) => {
   });
 
   try {
+    let firstTokenAt = 0;
     const onToken = (token: any) => {
+      if (!firstTokenAt) firstTokenAt = Date.now();
       if (streaming) emit({ type: "token", text: token });
     };
     const full = await runWithPage(req.appPage, () =>
@@ -253,6 +255,9 @@ router.post("/:id/send", async (req, res) => {
       text: saved,
       stats: {
         ms: Date.now() - startedAt,
+        // само «печатание» — без загрузки модели и разбора промпта (они у CPU занимают десятки секунд)
+        genMs: firstTokenAt ? Date.now() - firstTokenAt : undefined,
+        waitMs: firstTokenAt ? firstTokenAt - startedAt : undefined,
         chars: full.length,
         tokensApprox: Math.round(full.length / 4),
       },

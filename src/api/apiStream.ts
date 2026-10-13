@@ -11,7 +11,14 @@ export interface StreamEvent {
   side?: "a" | "b";
   model?: string;
   title?: string;
-  stats?: { ms: number; chars: number; tokensApprox: number };
+  stats?: {
+    ms: number;
+    /** Время от первого токена до конца (без загрузки модели и разбора промпта). */
+    genMs?: number;
+    waitMs?: number;
+    chars: number;
+    tokensApprox: number;
+  };
 }
 
 /**
