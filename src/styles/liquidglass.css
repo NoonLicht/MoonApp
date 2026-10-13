@@ -485,9 +485,27 @@ html:not(.no-glass) .app-shell .tool-tile:hover {
   min-width: 0;
   max-width: 100%;
 }
+/* Внутри base-select поле — flex-контейнер: без min-width:0 содержимое не сжимается
+   и вылезает за рамку, поэтому обрезаем и сам контейнер, и выбранное значение. */
+.select-wrap {
+  min-width: 0;
+  max-width: 100%;
+}
+.select-wrap select {
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.select-wrap select selectedcontent,
 .app-shell .select-wrap select selectedcontent,
 #overlay-root .select-wrap select selectedcontent {
   display: block;
+  flex: 1 1 0;
+  min-width: 0;
+  width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
