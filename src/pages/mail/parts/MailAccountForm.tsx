@@ -226,8 +226,11 @@ export function MailAccountForm({
   const providerHint = pick && pick.id !== "other" ? t(`mail.hint_${pick.id}`) : "";
 
   return (
-    <div className="mail-connect-layer">
-      <Glass className="mail-connect">
+    <div className="modal-overlay" onClick={closeOnAdd ? undefined : onClose}>
+      <Glass
+        className="modal-panel mail-connect"
+        onClick={(e: React.MouseEvent) => e.stopPropagation()}
+      >
         <div className="mail-connect-head">
           <div>
             <h2>{t("mail.connectTitle")}</h2>
