@@ -135,6 +135,8 @@ export default defineConfig({
   test: {
     // Словари языков в приложении ленивые — тестам нужны все сразу.
     setupFiles: ["tests/setup.ts"],
+    // Удаляет временные хранилища %TEMP%\moonapp-*, оставленные тестами.
+    globalSetup: ["tests/globalTeardown.ts"],
     // Не собираем чужие тесты из вендоренных проектов (ConvertX и т.п.)
     // и то, что уже собрано (dist — Vite, release — electron-builder).
     exclude: ["**/node_modules/**", "**/dist/**", "**/release/**", "server/vendor/**"],

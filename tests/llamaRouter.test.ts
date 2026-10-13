@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll } from "vitest";
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { createRequire } from "node:module";
 import fs from "node:fs";
 import os from "node:os";
@@ -20,6 +20,15 @@ function fake(name: string, mb: number): void {
   fs.writeFileSync(f, "");
   fs.truncateSync(f, mb * 1048576);
 }
+
+/* «Модели» — файлы в гигабайты (в NTFS truncate не разреженный): после тестов временное хранилище удаляем. */
+afterAll(() => {
+  try {
+    fs.rmSync(STORAGE, { recursive: true, force: true });
+  } catch {
+    /* файл может быть занят — не критично */
+  }
+});
 
 beforeAll(() => {
   engine = req("../server/llamacpp/engine");
