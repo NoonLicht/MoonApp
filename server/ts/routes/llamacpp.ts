@@ -136,7 +136,13 @@ router.post("/settings", (req, res) => res.json(setRouterSettings(req.body ?? {}
 // Ручная загрузка модели с выбором устройства (панель «Умный поиск»).
 router.post("/load", (req, res) => {
   try {
-    res.json(loadNow(String(req.body?.file ?? ""), req.body?.device as string | undefined));
+    res.json(
+      loadNow(
+        String(req.body?.file ?? ""),
+        req.body?.device as string | undefined,
+        typeof req.body?.layers === "number" ? req.body.layers : undefined,
+      ),
+    );
   } catch (e) {
     res.status(400).json({ error: String((e as Error).message) });
   }

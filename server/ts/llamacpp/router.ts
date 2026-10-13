@@ -40,6 +40,17 @@ export interface RouterSettings {
   devices: Record<string, string>;
   /** Окно контекста чатовых моделей (токены: промпт + ответ). Больше — больше RAM/VRAM под KV-кэш. */
   ctx: number;
+  /** Слоёв на видеокарте для конкретной модели: файл → N (нет записи — автоматически). */
+  layers: Record<string, number>;
+}
+
+function cleanLayers(v: unknown): Record<string, number> {
+  const out: Record<string, number> = {};
+  if (v && typeof v === "object")
+    for (const [k, n] of Object.entries(v as Record<string, unknown>))
+      if (typeof n === "number" && Number.isFinite(n) && n > 0)
+        out[path.basename(k)] = Math.min(512, Math.round(n));
+  return out;
 }
 
 export const CTX_MIN = 2048;
@@ -85,6 +96,7 @@ export function routerSettings(): RouterSettings {
     idleMinutes: clampInt(v.idleMinutes, 0, 240, 0),
     devices: cleanDevices(v.devices),
     ctx: clampInt(v.ctx, CTX_MIN, CTX_MAX, CTX_DEFAULT),
+    layers: cleanLayers(v.layers),
   };
   return cfg;
 }
@@ -99,6 +111,7 @@ export function setRouterSettings(p: Partial<RouterSettings>): RouterSettings {
     idleMinutes: clampInt(p.idleMinutes, 0, 240, cur.idleMinutes),
     devices: p.devices ? cleanDevices(p.devices) : cur.devices,
     ctx: clampInt(p.ctx, CTX_MIN, CTX_MAX, cur.ctx),
+    layers: p.layers ? cleanLayers(p.layers) : cur.layers,
   };
   cfg = next;
   fs.mkdirSync(path.dirname(FILE), { recursive: true });
@@ -163,6 +176,7 @@ const effectiveIdleMs = (): number => {
 configureEngine({
   limit: effectiveLimit,
   moeOffload: () => routerSettings().moeOffload,
+  gpuLayers: (file) => routerSettings().layers[path.basename(file)] ?? 0,
   idleMs: effectiveIdleMs,
 });
 
@@ -270,7 +284,11 @@ export interface LoadedInfo {
  * Загрузить конкретную модель вручную (кнопка в панели): при смене устройства сохраняем выбор и
  * перезапускаем сервер этой модели, чтобы она встала в память уже по новым правилам.
  */
-export function loadNow(file: string, device?: string): { file: string; started: boolean } {
+export function loadNow(
+  file: string,
+  device?: string,
+  layers?: number | null,
+): { file: string; started: boolean } {
   const f = path.basename(file);
   if (!installed().some((m) => m.file === f) || /embedding|mmproj|chandra|tts/i.test(f))
     throw new Error("bad_model");
@@ -279,6 +297,13 @@ export function loadNow(file: string, device?: string): { file: string; started:
     if (device === "auto") delete devices[f];
     else devices[f] = device;
     setRouterSettings({ devices });
+  }
+  if (typeof layers === "number") {
+    // 0 / пусто — автоматически; иначе сохраняем число слоёв для этой модели
+    const all = { ...routerSettings().layers };
+    if (layers > 0) all[f] = layers;
+    else delete all[f];
+    setRouterSettings({ layers: all });
   }
   stopServer(f);
   const mmproj = siblingMmproj(f);

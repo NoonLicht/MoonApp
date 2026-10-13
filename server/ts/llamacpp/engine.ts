@@ -311,11 +311,15 @@ let lastUsedKey = "";
 let limitFn: () => number = () => 2;
 /** Режим размещения MoE-моделей на видеокарте (см. router.ts). */
 let moeFn: () => boolean = () => true;
+/** Заданное пользователем число слоёв на видеокарте для файла (0 — автоматически). */
+let layersFn: (file: string) => number = () => 0;
 export function configureEngine(o: {
   limit?: () => number;
   moeOffload?: () => boolean;
   idleMs?: () => number;
+  gpuLayers?: (file: string) => number;
 }): void {
+  if (o.gpuLayers) layersFn = o.gpuLayers;
   if (o.limit) limitFn = o.limit;
   if (o.idleMs) idleFn = o.idleMs;
   if (o.moeOffload) moeFn = o.moeOffload;
@@ -393,8 +397,26 @@ export async function waitReady(
  * подбирает (--fit) по свободной видеопамяти и выгружает в оперативную память то, что не влезло —
  * у MoE-моделей это эксперты (A3B/A4B считают на 3–4 млрд параметров, остальные веса лежат в RAM).
  */
-function gpuArgs(o: StartOptions, gpu: boolean): string[] {
+function gpuArgs(o: StartOptions, gpu: boolean, build: BuildId = "cuda"): string[] {
   if (!gpu) return ["-ngl", "0"];
+  const n = layersFn(path.basename(o.model));
+  if (n > 0) {
+    // Ручное число слоёв: --fit выключаем, иначе он перераспределит по-своему.
+    if (isMoeFile(o.model)) {
+      // MoE: всё (внимание, нормы) на видеокарте, а эксперты — на видеокарте только у первых N слоёв.
+      const dev = build === "vulkan" ? "Vulkan0" : "CUDA0";
+      const first = Array.from({ length: Math.min(n, 256) }, (_, i) => i).join("|");
+      return [
+        "--fit",
+        "off",
+        "-ngl",
+        "99",
+        "-ot",
+        `blk\\.(?:${first})\\.ffn_.*_exps\\.=${dev},ffn_.*_exps\\.=CPU`,
+      ];
+    }
+    return ["--fit", "off", "-ngl", String(n)];
+  }
   if (isMoeFile(o.model) && !moeFn()) return ["-ngl", "99"];
   return ["--fit", "on", "--fit-target", "768"];
 }
@@ -413,7 +435,7 @@ async function spawnServer(build: BuildId, o: StartOptions, cpuOnly: boolean): P
     String(port),
     "-c",
     String(o.ctx ?? 4096),
-    ...gpuArgs(o, gpu),
+    ...gpuArgs(o, gpu, build),
     "-np",
     "1",
     "--no-webui",

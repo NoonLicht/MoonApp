@@ -42,6 +42,8 @@ export interface LlamaRouterSettings {
   idleMinutes: number;
   /** Окно контекста чатовых моделей, токены. */
   ctx: number;
+  /** Слоёв на видеокарте по моделям (нет записи — авто). */
+  layers: Record<string, number>;
 }
 
 export interface LlamaActivity {
@@ -172,8 +174,8 @@ export const llamaApi = {
   },
   llamaStop: (file?: string) => req<{ ok: boolean }>("POST", "/llamacpp/stop", { file }),
   /** Загрузить модель вручную; device: auto | cpu | gpu (запоминается для этой модели). */
-  llamaLoad: (file: string, device?: string) =>
-    req<{ file: string; started: boolean }>("POST", "/llamacpp/load", { file, device }),
+  llamaLoad: (file: string, device?: string, layers?: number) =>
+    req<{ file: string; started: boolean }>("POST", "/llamacpp/load", { file, device, layers }),
   llamaActivity: () => req<LlamaActivity>("GET", "/llamacpp/activity"),
   llamaSetRouter: (patch: Partial<LlamaRouterSettings>) =>
     req<LlamaRouterSettings>("POST", "/llamacpp/settings", patch),
