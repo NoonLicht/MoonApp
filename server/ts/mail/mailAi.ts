@@ -223,13 +223,17 @@ export async function runAi(
       }[];
       if (!rows.length) return { text: "", list: ["0"] };
       // одинаковые письма (оповещения, рассылки) схлопываем: так неделя влезает в запрос
-      const groups = new Map<string, { who: string; subject: string; snippet: string; n: number }>();
+      const groups = new Map<
+        string,
+        { who: string; subject: string; snippet: string; n: number }
+      >();
       for (const m of rows) {
         const who = m.from_name || m.from_addr;
         const key = `${m.from_addr}|${m.subject}`;
         const g = groups.get(key);
         if (g) g.n++;
-        else groups.set(key, { who, subject: m.subject || "(no subject)", snippet: m.snippet, n: 1 });
+        else
+          groups.set(key, { who, subject: m.subject || "(no subject)", snippet: m.snippet, n: 1 });
       }
       const ask = async (maxLines: number, snip: number, maxTokens: number): Promise<string> => {
         const lines = [...groups.values()]
@@ -238,8 +242,7 @@ export async function runAi(
             (g) =>
               `- ${g.who} | ${g.subject}${g.n > 1 ? ` (x${g.n})` : ""} | ${g.snippet.slice(0, snip)}`,
           )
-          .join("
-");
+          .join("\n");
         return askModel(
           SYSTEM,
           `Here are ${rows.length} emails received in the last ${days === 1 ? "24 hours" : "7 days"}. ` +
