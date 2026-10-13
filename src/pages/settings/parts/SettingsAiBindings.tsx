@@ -104,7 +104,7 @@ export function AiBindings() {
         if (!items.length) return null;
         return (
           <div key={g} className="aibind-group">
-            <div className="aibind-group-title">{t(`aibind.g.${g}`)}</div>
+            <div className="aibind-group-title">{t(`aibind.g_${g}`)}</div>
             {items.map((f) => {
               const b = bindingOf(f.id);
               const prov = data.providers.find((p) => p.id === b.provider);
@@ -113,8 +113,8 @@ export function AiBindings() {
               return (
                 <div key={f.id} className="aibind-row">
                   <div className="aibind-info">
-                    <b>{t(`aibind.f.${f.id}`)}</b>
-                    <span className="muted-sm">{t(`aibind.h.${f.id}`)}</span>
+                    <b>{t(`aibind.f_${f.id.replaceAll(".", "_")}`)}</b>
+                    <span className="muted-sm">{t(`aibind.h_${f.id.replaceAll(".", "_")}`)}</span>
                   </div>
                   <label className="aibind-auto">
                     <input
