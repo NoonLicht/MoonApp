@@ -6557,6 +6557,7 @@
     "ai_cloudWarn": "注意：你使用 AI 处理的邮件文本会发送给所选服务商。",
     "tr_engineTitle": "邮件翻译",
     "tr_localNote": "翻译在本机进行，邮件文本不会外发。",
-    "tr_cloudWarn": "注意：使用此引擎时邮件文本会发送到外部翻译服务。"
+    "tr_cloudWarn": "注意：使用此引擎时邮件文本会发送到外部翻译服务。",
+    "accountColor": "邮箱标签颜色"
   }
 }

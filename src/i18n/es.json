@@ -6557,6 +6557,7 @@
     "ai_cloudWarn": "Atención: el texto de los correos se envía al proveedor elegido.",
     "tr_engineTitle": "Traducción de correos",
     "tr_localNote": "La traducción se hace en tu equipo; el texto no se envía.",
-    "tr_cloudWarn": "Atención: con este motor el texto se envía a un servicio externo."
+    "tr_cloudWarn": "Atención: con este motor el texto se envía a un servicio externo.",
+    "accountColor": "Color de la etiqueta del buzón"
   }
 }

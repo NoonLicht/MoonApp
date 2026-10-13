@@ -1481,3 +1481,17 @@
   color: var(--text-primary);
   font-size: 12.5px;
 }
+.mail-rename {
+  width: 100%;
+  font-weight: 700;
+}
+.mail-color {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid var(--glass-border);
+  border-radius: 50%;
+  background: none;
+  cursor: pointer;
+  overflow: hidden;
+}

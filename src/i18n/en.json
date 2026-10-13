@@ -6557,6 +6557,7 @@
     "ai_cloudWarn": "Note: the text of emails you run AI on is sent to the selected provider.",
     "tr_engineTitle": "Email translation",
     "tr_localNote": "Translation runs on your computer; the email text is not sent anywhere.",
-    "tr_cloudWarn": "Note: with this engine the email text is sent to an external translation service."
+    "tr_cloudWarn": "Note: with this engine the email text is sent to an external translation service.",
+    "accountColor": "Mailbox tag colour"
   }
 }

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Check, ExternalLink, Loader2, LogIn, Pin, Trash2, X } from "lucide-react";
+import { Check, ExternalLink, Loader2, LogIn, Pen, Pin, Trash2, X } from "lucide-react";
 import { Btn, Field, Glass } from "@/components/ui";
 import { useI18n } from "@/app/i18n";
 import { api } from "@/api/client";
@@ -111,6 +111,8 @@ export function MailAccountForm({
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [added, setAdded] = useState("");
+  const [editId, setEditId] = useState("");
+  const [editName, setEditName] = useState("");
   const poll = useRef<number | null>(null);
 
   useEffect(
@@ -214,6 +216,14 @@ export function MailAccountForm({
     }
   };
 
+  const saveName = async (a: MailAccount) => {
+    const name = editName.trim();
+    setEditId("");
+    if (!name || name === a.name) return;
+    await api.mailUpdateAccount(a.id, { name });
+    onChanged();
+  };
+
   const remove = async (a: MailAccount) => {
     if (!window.confirm(t("mail.removeConfirm", { email: a.email }))) return;
     await api.mailRemoveAccount(a.id);
@@ -248,12 +258,46 @@ export function MailAccountForm({
             {accounts.map((a) => (
               <div key={a.id} className="mail-acc-row">
                 <div className="mail-acc-main">
-                  <b>
-                    {a.name} {a.authType === "oauth" && <em className="mail-dim">OAuth</em>}
-                  </b>
+                  {editId === a.id ? (
+                    <input
+                      className="mail-rename"
+                      value={editName}
+                      autoFocus
+                      onChange={(e) => setEditName(e.target.value)}
+                      onBlur={() => void saveName(a)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") void saveName(a);
+                        if (e.key === "Escape") setEditId("");
+                      }}
+                    />
+                  ) : (
+                    <b>
+                      {a.name} {a.authType === "oauth" && <em className="mail-dim">OAuth</em>}
+                    </b>
+                  )}
                   <span>{a.email}</span>
                   {a.error && <em className="mail-err">{a.error}</em>}
                 </div>
+                <input
+                  type="color"
+                  className="mail-color"
+                  value={a.color || "#f97316"}
+                  title={t("mail.accountColor")}
+                  onChange={(e) =>
+                    void api.mailUpdateAccount(a.id, { color: e.target.value }).then(onChanged)
+                  }
+                />
+                <button
+                  className="mail-ic"
+                  onClick={() => {
+                    setEditId(a.id);
+                    setEditName(a.name);
+                  }}
+                  aria-label={t("mail.rename")}
+                  title={t("mail.rename")}
+                >
+                  <Pen size={15} />
+                </button>
                 <button
                   className={`mail-ic ${a.pinned ? "is-on" : ""}`}
                   onClick={() =>
