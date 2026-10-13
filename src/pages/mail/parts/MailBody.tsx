@@ -1,3 +1,4 @@
+import { bindImageDragOut } from "@/lib/dragOut";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ImageOff } from "lucide-react";
 import { useI18n } from "@/app/i18n";
@@ -80,6 +81,8 @@ ${darkCss}
     if (!d) return;
     const measure = () => setHeight(Math.max(60, d.documentElement.scrollHeight + 2));
     measure();
+    // картинки письма можно вытащить в другое приложение (Telegram, проводник)
+    bindImageDragOut(d);
     // картинки догружаются после onLoad и меняют высоту письма
     if (typeof ResizeObserver !== "undefined") new ResizeObserver(measure).observe(d.body);
     d.querySelectorAll("a").forEach((a) => {

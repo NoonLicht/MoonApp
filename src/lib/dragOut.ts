@@ -21,6 +21,43 @@ export type DragSource =
 const keyOf = (s: DragSource): string =>
   s.kind === "note" ? `n:${s.path}` : s.kind === "screenshot" ? `s:${s.id}` : `u:${s.url}`;
 
+const EXT: Record<string, string> = {
+  "image/png": ".png",
+  "image/jpeg": ".jpg",
+  "image/gif": ".gif",
+  "image/webp": ".webp",
+  "image/bmp": ".bmp",
+  "image/avif": ".avif",
+  "image/svg+xml": ".svg",
+};
+
+/** Скачать файл по адресу: свои пути — с токеном, внешние — через серверный прокси (без CORS). */
+async function fetchBlob(url: string): Promise<Blob> {
+  const own = url.startsWith("/") || url.startsWith("blob:") || url.startsWith("data:");
+  const target =
+    !own && /^https?:/i.test(url)
+      ? `${BASE}/api/llamacpp/ocr/fetch?url=${encodeURIComponent(url)}`
+      : url;
+  const headers = target.startsWith("/") ? { ...tokenHeaders(), ...pageHeaders() } : undefined;
+  const res = await fetch(target, { headers });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.blob();
+}
+
+/** Имя файла: из адреса (без параметров) либо «image» + расширение по типу содержимого. */
+function nameFor(url: string, hint: string, type: string): string {
+  let base = hint;
+  if (!base && !url.startsWith("data:") && !url.startsWith("blob:")) {
+    try {
+      base = decodeURIComponent(new URL(url, location.href).pathname.split("/").pop() || "");
+    } catch {
+      base = "";
+    }
+  }
+  base = base || "image";
+  return /\.[a-z0-9]{2,5}$/i.test(base) ? base : base + (EXT[type] ?? "");
+}
+
 async function resolvePath(s: DragSource): Promise<string> {
   if (s.kind === "note")
     return (await req<{ path: string }>("GET", `/dragout/note?path=${encodeURIComponent(s.path)}`))
@@ -28,10 +65,9 @@ async function resolvePath(s: DragSource): Promise<string> {
   if (s.kind === "screenshot")
     return (await req<{ path: string }>("GET", `/dragout/screenshot/${encodeURIComponent(s.id)}`))
       .path;
-  const blob = await (
-    await fetch(s.url, { headers: { ...tokenHeaders(), ...pageHeaders() } })
-  ).blob();
-  const r = await fetch(`${BASE}/api/dragout/stash?name=${encodeURIComponent(s.name)}`, {
+  const blob = await fetchBlob(s.url);
+  const name = nameFor(s.url, s.name, blob.type);
+  const r = await fetch(`${BASE}/api/dragout/stash?name=${encodeURIComponent(name)}`, {
     method: "POST",
     headers: { ...tokenHeaders(), ...pageHeaders(), "Content-Type": "application/octet-stream" },
     body: blob,
@@ -79,4 +115,42 @@ export function dragOutProps(
       startNativeDrag(src);
     },
   };
+}
+
+const bound = new WeakSet<Document>();
+
+/**
+ * Любую картинку на странице можно вытащить в другое приложение: делегированные обработчики на
+ * документе (в том числе на документе iframe с письмом). Картинки с явным draggable="true" —
+ * это внутренний перенос приложения, их не трогаем.
+ */
+export function bindImageDragOut(doc: Document): void {
+  if (bound.has(doc)) return;
+  bound.add(doc);
+  const srcOf = (t: EventTarget | null): string => {
+    if (!(t instanceof HTMLImageElement)) return "";
+    if (t.getAttribute("draggable") === "true") return "";
+    if (t.complete && t.naturalWidth > 0 && t.naturalWidth < 40) return "";
+    const s = t.currentSrc || t.src;
+    return /^(https?:|blob:|data:image\/)/i.test(s) ? s : "";
+  };
+  doc.addEventListener(
+    "pointerover",
+    (e) => {
+      const url = srcOf(e.target);
+      if (url) prefetchDrag({ kind: "url", url, name: "" });
+    },
+    true,
+  );
+  doc.addEventListener(
+    "dragstart",
+    (e) => {
+      const url = srcOf(e.target);
+      if (!url || e.defaultPrevented) return;
+      if (!cache.has(keyOf({ kind: "url", url, name: "" }))) return;
+      e.preventDefault();
+      startNativeDrag({ kind: "url", url, name: "" });
+    },
+    true,
+  );
 }

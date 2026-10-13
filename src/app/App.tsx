@@ -35,6 +35,7 @@ import PrivacyShield from "@/components/PrivacyShield";
 import NightBanner from "@/components/NightBanner";
 import ModelToggle, { ModelActivityPill, ModelPanel } from "@/components/ModelToggle";
 import { api } from "@/api/client";
+import { bindImageDragOut } from "@/lib/dragOut";
 import { PAGES } from "@/app/navigation";
 import { onOpenTarget } from "@/lib/deepLink";
 import type { PageId } from "@/app/navigation";
@@ -320,6 +321,8 @@ function Shell({
     : ((PAGES[0]?.id as PageId) ?? "store");
   const activeMeta = PAGES.find((p) => p.id === safeActive)!;
   // Вход на страницу с локальной моделью: загружаем её заранее, чтобы первый запрос не ждал.
+  // Любую картинку приложения можно перетащить в другую программу (Telegram, проводник…)
+  useEffect(() => bindImageDragOut(document), []);
   useEffect(() => {
     const task = warmTaskFor(safeActive);
     if (!task) return;

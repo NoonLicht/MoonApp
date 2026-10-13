@@ -1,3 +1,4 @@
+import { dragOutProps } from "@/lib/dragOut";
 import { useEffect, useState } from "react";
 import {
   AlarmClock,
@@ -588,6 +589,11 @@ function MessageCard({
                       : void api.mailDownloadAttachment(m.id, a.index)
                   }
                   title={canPreview(a) ? t("mail.preview") : t("mail.download")}
+                  {...dragOutProps({
+                    kind: "url",
+                    url: `/api/mail/attachment/${encodeURIComponent(m.id)}/${a.index}`,
+                    name: a.filename,
+                  })}
                 >
                   <Paperclip size={12} />
                   {a.filename}
