@@ -1058,12 +1058,15 @@
   min-height: 160px;
 }
 
-/* Компактная подпись под сообщением: токены · время генерации · время */
-.msg-meta {
+/* Компактная подпись над сообщением: токены · время генерации · время */
+.msg-head {
   font-size: 10.5px;
   font-family: var(--font-mono);
   color: var(--text-tertiary);
-  opacity: 0.8;
-  white-space: nowrap;
-  padding: 0 4px;
+  opacity: 0.75;
+  margin: 0 2px 3px;
+  line-height: 1.2;
+}
+.msg-head.is-user {
+  text-align: right;
 }

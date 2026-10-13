@@ -129,6 +129,9 @@ export default function MsgList(props: {
     <>
       {messages.map((m, i) => (
         <div key={m.id ?? `i${i}`}>
+          <div className={`msg-head ${m.role === "user" ? "is-user" : ""}`}>
+            {msgMeta(m, { tok: t("aichat.tokShort"), sec: t("aichat.secShort") })}
+          </div>
           <div className={`chat-bubble-row ${m.role === "user" ? "is-user" : ""}`}>
             {editing && editing.id === m.id ? (
               <div className="msg-edit">
@@ -208,9 +211,6 @@ export default function MsgList(props: {
                 <GitBranch size={11} /> {t("aichat.branch")}
               </button>
             )}
-            <span className="msg-meta">
-              {msgMeta(m, { tok: t("aichat.tokShort"), sec: t("aichat.secShort") })}
-            </span>
             <button onClick={() => onSpeak(m.text)} title={t("aichat.listen")}>
               <Volume2 size={11} /> {t("aichat.listen")}
             </button>
