@@ -19,6 +19,7 @@ import type {
 import { MailAccountForm } from "@/pages/mail/parts/MailAccountForm";
 import { MailCompose, type ComposeInit } from "@/pages/mail/parts/MailCompose";
 import { MailSettingsDialog } from "@/pages/mail/parts/MailSettingsDialog";
+import { MailDigest } from "@/pages/mail/parts/MailDigest";
 import { MailSidebar } from "@/pages/mail/parts/MailSidebar";
 import { MailList, type BulkActions } from "@/pages/mail/parts/MailList";
 import { MailReader } from "@/pages/mail/parts/MailReader";
@@ -73,6 +74,7 @@ export default function MailPage() {
   const [signatures, setSignatures] = useState<MailSignature[]>([]);
   const [compose, setCompose] = useState<ComposeInit | null>(null);
   const [showAccounts, setShowAccounts] = useState(false);
+  const [showDigest, setShowDigest] = useState(false);
   const [settingsTab, setSettingsTab] = useState<string | null>(null);
   const [ruleSeed, setRuleSeed] = useState("");
   const [quick, setQuick] = useState<string[]>([]);
@@ -866,6 +868,8 @@ export default function MailPage() {
 
         <MailList
           ref={scrollRef}
+          accounts={accounts}
+          onDigest={() => setShowDigest(true)}
           title={title}
           rows={rows}
           drafts={view.kind === "box" && view.id === "drafts" && !query ? drafts : []}
@@ -960,6 +964,9 @@ export default function MailPage() {
           }}
           onQueued={onQueued}
         />
+      )}
+      {showDigest && (
+        <MailDigest account={account} lang={lang} onClose={() => setShowDigest(false)} />
       )}
       {showAccounts && (
         <MailAccountForm

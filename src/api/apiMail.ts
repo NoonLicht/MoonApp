@@ -224,6 +224,8 @@ export interface MailSettings {
     refreshOnFocus: boolean;
     markReadOnOpen: boolean;
     composeMarkdown: boolean;
+    loadImages: boolean;
+    accountTags: boolean;
   };
   tracking: { enabled: boolean; base: string; key: string; opens: boolean; clicks: boolean };
   ai: { enabled: boolean; language: string; tone: string };
@@ -275,7 +277,17 @@ export interface MailListQuery {
 
 export interface MailAiRequest {
   action:
-    "summarize" | "reply" | "compose" | "improve" | "subject" | "quick" | "tasks" | "translate";
+    | "summarize"
+    | "reply"
+    | "compose"
+    | "improve"
+    | "subject"
+    | "quick"
+    | "tasks"
+    | "translate"
+    | "digest";
+  period?: "day" | "week";
+  account?: string;
   id?: string;
   text?: string;
   instruction?: string;
@@ -443,6 +455,18 @@ export const mailApi = {
   mailAvatar: async (address: string): Promise<string | null> => {
     try {
       const res = await fetch(`${BASE}/api/mail/avatar?address=${encodeURIComponent(address)}`, {
+        headers: tokenHeaders(),
+      });
+      if (!res.ok) return null;
+      return URL.createObjectURL(await res.blob());
+    } catch {
+      return null;
+    }
+  },
+  /** Картинка из письма через сервер приложения (blob-адрес); null — не удалось. */
+  mailRemoteImage: async (url: string): Promise<string | null> => {
+    try {
+      const res = await fetch(`${BASE}/api/mail/img?u=${encodeURIComponent(url)}`, {
         headers: tokenHeaders(),
       });
       if (!res.ok) return null;

@@ -249,6 +249,16 @@ export function MailSettingsDialog({
               label={t("mail.set_markRead")}
             />
             <Check
+              checked={s.appearance.loadImages}
+              onChange={(v) => upd("appearance", { loadImages: v })}
+              label={t("mail.set_loadImages")}
+            />
+            <Check
+              checked={s.appearance.accountTags}
+              onChange={(v) => upd("appearance", { accountTags: v })}
+              label={t("mail.set_accountTags")}
+            />
+            <Check
               checked={s.appearance.composeMarkdown}
               onChange={(v) => upd("appearance", { composeMarkdown: v })}
               label={t("mail.set_composeMarkdown")}

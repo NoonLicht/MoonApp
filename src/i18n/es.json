@@ -6533,6 +6533,15 @@
     "hint_mailru": "Crea una contraseña para una aplicación externa con acceso a «Correo» y pégala abajo.",
     "hint_yahoo": "En Seguridad de la cuenta crea una «contraseña de aplicación» y pégala abajo.",
     "hint_icloud": "Entra en tu cuenta Apple → «Contraseñas de apps», crea una y pégala abajo. Requiere doble factor.",
-    "hint_proton": "Proton no permite acceso directo: instala Proton Bridge, inicia sesión y pega la contraseña que muestra (puertos 1143 y 1025)."
+    "hint_proton": "Proton no permite acceso directo: instala Proton Bridge, inicia sesión y pega la contraseña que muestra (puertos 1143 y 1025).",
+    "set_loadImages": "Mostrar siempre las imágenes remotas",
+    "set_accountTags": "Etiqueta con el nombre del buzón en cada mensaje (con varios buzones)",
+    "digestTitle": "Resumen del correo",
+    "digestDay": "Últimas 24 horas",
+    "digestWeek": "Últimos 7 días",
+    "digestHint": "Elige un periodo: la IA agrupa tu bandeja por temas y marca lo que requiere respuesta.",
+    "digestCount": "Mensajes en el resumen: {n}",
+    "digestEmpty": "No hay mensajes en la bandeja en ese periodo.",
+    "aiDisabled": "El asistente de IA está desactivado en los ajustes del correo."
   }
 }

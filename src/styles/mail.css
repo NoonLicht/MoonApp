@@ -321,6 +321,9 @@
   margin: 0 6px;
   background: var(--glass-border);
 }
+.mail-read-scroll > * {
+  flex-shrink: 0;
+}
 .mail-read-scroll {
   flex: 1;
   min-height: 0;
@@ -508,7 +511,7 @@
   min-width: 0;
 }
 .mail-toast {
-  position: absolute;
+  position: fixed;
   left: 50%;
   bottom: 18px;
   transform: translateX(-50%);
@@ -1315,7 +1318,10 @@
   justify-content: center;
   overflow-y: auto;
   padding: 28px 16px;
-  background: var(--bg, transparent);
+  border-radius: inherit;
+  background: color-mix(in srgb, var(--surface-solid) 82%, transparent);
+  -webkit-backdrop-filter: blur(30px) saturate(120%);
+  backdrop-filter: blur(30px) saturate(120%);
 }
 .mail-connect {
   width: min(680px, 100%);
@@ -1324,6 +1330,9 @@
   gap: 14px;
   padding: 24px 26px;
   margin: auto 0;
+  background: color-mix(in srgb, var(--surface-solid) 94%, transparent);
+  -webkit-backdrop-filter: blur(28px);
+  backdrop-filter: blur(28px);
 }
 .mail-connect-head {
   display: flex;
@@ -1401,4 +1410,46 @@
   padding: 10px 12px;
   border-radius: var(--fl-r-ctl, 10px);
   background: var(--track);
+}
+
+/* окно письма доходит до правой границы верхней панели, как меню слева */
+.page-host:has(.mail-page) {
+  max-width: none;
+  margin-inline: 0;
+  width: calc(
+    100% + max(24px, calc(var(--ghost-w, 0px) + 4px)) - max(8px, calc(var(--ghost-w, 0px) + 4px))
+  );
+}
+
+/* ---- метка ящика у письма, дайджест ---- */
+.mail-acc-tag {
+  display: inline-block;
+  max-width: 96px;
+  margin-left: 6px;
+  padding: 0 7px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 600;
+  line-height: 17px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: 1px;
+  color: var(--tag-c);
+  background: color-mix(in srgb, var(--tag-c) 16%, transparent);
+  border: 1px solid color-mix(in srgb, var(--tag-c) 38%, transparent);
+}
+.mail-digest {
+  width: min(640px, 94vw);
+  max-height: 86%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.mail-digest-body {
+  overflow-y: auto;
+  white-space: pre-wrap;
+  line-height: 1.6;
+  font-size: 14px;
+  color: var(--text-primary);
 }

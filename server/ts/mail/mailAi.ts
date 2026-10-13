@@ -7,6 +7,7 @@ import { askModel } from "../llmOnce";
 import { translateStrings, normEngine } from "../rss";
 import { getSettings } from "./mailSettings";
 import { getMessage, getThread, type MessageFull } from "./mailService";
+import { mailDb } from "./mailDb";
 
 const LANG_NAMES: Record<string, string> = {
   ru: "Russian",
@@ -56,7 +57,15 @@ function toHtml(text: string): string {
 
 export interface AiRequest {
   action:
-    "summarize" | "reply" | "compose" | "improve" | "subject" | "quick" | "tasks" | "translate";
+    | "summarize"
+    | "reply"
+    | "compose"
+    | "improve"
+    | "subject"
+    | "quick"
+    | "tasks"
+    | "translate"
+    | "digest";
   id?: string;
   text?: string;
   instruction?: string;
@@ -64,6 +73,8 @@ export interface AiRequest {
   mode?: string;
   lang?: string;
   engine?: string;
+  period?: "day" | "week";
+  account?: string;
 }
 
 export async function runAi(
@@ -192,6 +203,42 @@ export async function runAi(
       const res = await translateStrings(chunks, lang, engine);
       const blocks = chunks.map((c, i) => res.out[i] ?? c);
       return { text: blocks.join("\n\n"), blocks };
+    }
+    case "digest": {
+      const days = r.period === "week" ? 7 : 1;
+      const since = Date.now() - days * 86_400_000;
+      const rows = mailDb()
+        .prepare(
+          `SELECT m.from_name, m.from_addr, m.subject, m.snippet, m.date, m.account
+           FROM messages m JOIN folders f ON f.account = m.account AND f.path = m.folder
+           WHERE m.date >= ? AND f.special = '\\Inbox' ${r.account ? "AND m.account = ?" : ""}
+           ORDER BY m.date DESC LIMIT 80`,
+        )
+        .all(...(r.account ? [since, r.account] : [since])) as {
+        from_name: string;
+        from_addr: string;
+        subject: string;
+        snippet: string;
+        date: number;
+      }[];
+      if (!rows.length) return { text: "", list: [] };
+      const lines = rows
+        .map(
+          (m) =>
+            `- ${m.from_name || m.from_addr} | ${m.subject || "(no subject)"} | ${m.snippet.slice(0, 160)}`,
+        )
+        .join("\n");
+      const out = await askModel(
+        SYSTEM,
+        `Here are ${rows.length} emails received in the last ${days === 1 ? "24 hours" : "7 days"}. ` +
+          `Write a digest in ${langName(r.lang)}: first one line with the overall picture, then group the mail ` +
+          `by topic (important/personal, work, services & notifications, newsletters/promotions) with short ` +
+          `bullet points. Name senders. Call out anything that needs a reply or has a deadline. Skip empty groups.
+
+${lines}`,
+        { appPage: "mail", maxTokens: 1100 },
+      );
+      return { text: out, list: [String(rows.length)] };
     }
     default:
       throw new Error("unknown_action");

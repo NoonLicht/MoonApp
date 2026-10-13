@@ -1712,13 +1712,23 @@ export async function unsubscribe(
   const u = m.unsubscribe;
   if (u.https && u.oneClick) {
     const target = await assertPublicUrl(u.https);
-    const res = await fetch(target, {
-      method: "POST",
-      redirect: "manual",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: "List-Unsubscribe=One-Click",
-    });
-    return { done: res.ok, method: "oneclick" };
+    try {
+      const res = await fetch(target, {
+        method: "POST",
+        redirect: "manual",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          "User-Agent": "Mozilla/5.0 MoonApp",
+        },
+        body: "List-Unsubscribe=One-Click",
+        signal: AbortSignal.timeout(15_000),
+      });
+      // 2xx — отписано; 3xx — сервис принял запрос и перенаправил на страницу подтверждения
+      if (res.ok || (res.status >= 300 && res.status < 400))
+        return { done: true, method: "oneclick" };
+    } catch {
+      /* сервер недоступен — пробуем остальные способы ниже */
+    }
   }
   if (u.mailto) {
     const url = new URL(u.mailto);
@@ -1733,6 +1743,32 @@ export async function unsubscribe(
   }
   if (u.https) return { done: false, method: "link", url: u.https };
   return { done: false, method: "none" };
+}
+
+/** Картинка из письма через сервер: приложение не пускает «чужие» адреса напрямую (CSP). */
+export async function fetchRemoteImage(raw: string): Promise<{ type: string; data: Buffer }> {
+  let url = raw;
+  for (let hop = 0; hop < 4; hop++) {
+    const target = await assertPublicUrl(url);
+    const res = await fetch(target, {
+      redirect: "manual",
+      headers: { "User-Agent": "Mozilla/5.0 MoonApp", Accept: "image/*,*/*;q=0.5" },
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (res.status >= 300 && res.status < 400) {
+      const loc = res.headers.get("location");
+      if (!loc) break;
+      url = new URL(loc, target).toString();
+      continue;
+    }
+    if (!res.ok) throw new Error("image_http_" + res.status);
+    const type = (res.headers.get("content-type") || "").split(";")[0].trim().toLowerCase();
+    if (!/^image\//.test(type) || type === "image/svg+xml") throw new Error("not_an_image");
+    const data = Buffer.from(await res.arrayBuffer());
+    if (data.length > 8 * 1024 * 1024) throw new Error("image_too_large");
+    return { type, data };
+  }
+  throw new Error("image_unreachable");
 }
 
 /* --------------------- метки, папки, массовые операции -------------------- */

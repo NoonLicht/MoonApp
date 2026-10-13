@@ -51,6 +51,8 @@ export interface MailSettings {
     refreshOnFocus: boolean;
     markReadOnOpen: boolean;
     composeMarkdown: boolean;
+    loadImages: boolean;
+    accountTags: boolean;
   };
   tracking: { enabled: boolean; base: string; key: string; opens: boolean; clicks: boolean };
   ai: { enabled: boolean; language: string; tone: string };
@@ -82,6 +84,8 @@ export const DEFAULTS: MailSettings = {
     sendDelaySec: 8,
     refreshOnFocus: true,
     markReadOnOpen: true,
+    loadImages: false,
+    accountTags: true,
     composeMarkdown: false,
   },
   tracking: { enabled: false, base: "", key: "", opens: true, clicks: true },

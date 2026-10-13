@@ -6533,6 +6533,15 @@
     "hint_mailru": "Créez un mot de passe pour application externe avec accès à « Mail » et collez-le ci-dessous.",
     "hint_yahoo": "Dans la sécurité du compte, créez un « mot de passe d'application » et collez-le ci-dessous.",
     "hint_icloud": "Connectez-vous à votre compte Apple → « Mots de passe d'app », créez-en un et collez-le ci-dessous. Double authentification requise.",
-    "hint_proton": "Proton n'offre pas d'accès direct : installez Proton Bridge, connectez-vous et collez le mot de passe affiché (ports 1143 et 1025)."
+    "hint_proton": "Proton n'offre pas d'accès direct : installez Proton Bridge, connectez-vous et collez le mot de passe affiché (ports 1143 et 1025).",
+    "set_loadImages": "Toujours afficher les images distantes",
+    "set_accountTags": "Étiquette du nom de la boîte sur chaque message (plusieurs boîtes)",
+    "digestTitle": "Résumé du courrier",
+    "digestDay": "Dernières 24 h",
+    "digestWeek": "7 derniers jours",
+    "digestHint": "Choisissez une période : l'IA regroupe la boîte par sujet et signale ce qui demande une réponse.",
+    "digestCount": "Messages dans le résumé : {n}",
+    "digestEmpty": "Aucun message reçu sur cette période.",
+    "aiDisabled": "L'assistant IA est désactivé dans les réglages du courrier."
   }
 }

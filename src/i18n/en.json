@@ -6533,6 +6533,15 @@
     "hint_mailru": "Create a password for an external app with access to “Mail” and paste it below.",
     "hint_yahoo": "In Account security create an “app password” and paste it below.",
     "hint_icloud": "Sign in to your Apple account → “App-specific passwords”, create one and paste it below. Two-factor auth is required.",
-    "hint_proton": "Proton has no direct access: install Proton Bridge, sign in there and paste the password it shows (ports 1143 and 1025)."
+    "hint_proton": "Proton has no direct access: install Proton Bridge, sign in there and paste the password it shows (ports 1143 and 1025).",
+    "set_loadImages": "Always show remote images in emails",
+    "set_accountTags": "Show a mailbox name tag on each message (with several mailboxes)",
+    "digestTitle": "Mail digest",
+    "digestDay": "Last 24 hours",
+    "digestWeek": "Last 7 days",
+    "digestHint": "Pick a period — the AI groups your inbox by topic and flags what needs a reply.",
+    "digestCount": "Messages in digest: {n}",
+    "digestEmpty": "No inbox messages in the selected period.",
+    "aiDisabled": "The AI assistant is turned off in mail settings."
   }
 }

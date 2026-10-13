@@ -576,6 +576,7 @@ function MessageCard({
               text={m.text}
               dark={dark}
               fontSize={settings?.appearance.fontSize ?? 14}
+              autoLoad={settings?.appearance.loadImages}
             />
           )}
 

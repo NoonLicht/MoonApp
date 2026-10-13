@@ -8,6 +8,25 @@
   display: inline-flex;
   align-items: center;
 }
+/* Каретка — аккуратный шеврон из границ, цвет берётся из текущего. */
+.select-wrap::after {
+  content: "";
+  position: absolute;
+  right: 13px;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  border-right: 1.6px solid currentColor;
+  border-bottom: 1.6px solid currentColor;
+  transform: translateY(-70%) rotate(45deg);
+  color: var(--text-tertiary);
+  pointer-events: none;
+  transition: color 0.18s ease;
+}
+.select-wrap:hover::after,
+.select-wrap:focus-within::after {
+  color: var(--amber);
+}
 .select-wrap select {
   appearance: none;
   -webkit-appearance: none;
@@ -22,15 +41,6 @@
   min-height: 30px;
   outline: none;
   cursor: pointer;
-  /* Каретка: два косых штриха из currentColor — сама подстраивается под тему. */
-  background-image:
-    linear-gradient(45deg, transparent 50%, currentColor 50%),
-    linear-gradient(135deg, currentColor 50%, transparent 50%);
-  background-position:
-    calc(100% - 15px) calc(50% + 1px),
-    calc(100% - 10px) calc(50% + 1px);
-  background-size: 5px 5px;
-  background-repeat: no-repeat;
   transition:
     border-color 0.18s ease,
     background-color 0.18s ease,
@@ -1772,7 +1782,10 @@ select option {
   text-align: center;
   font-size: 12.5px;
   line-height: 1.25;
-  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    color 0.15s ease,
+    background 0.15s ease;
 }
 .tool-tile:hover {
   border-color: var(--amber);
@@ -1782,7 +1795,7 @@ select option {
 
 /* --- Инструменты: подсветка совпадений regex --- */
 .regex-highlight-preview {
-  background: var(--track, rgba(255,255,255,0.04));
+  background: var(--track, rgba(255, 255, 255, 0.04));
   border: 1px solid var(--glass-border);
   border-radius: 8px;
 }

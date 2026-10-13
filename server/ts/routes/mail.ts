@@ -420,6 +420,16 @@ router.get("/mcp/status", (_req, res) => res.json(mcpStatus()));
 
 router.get("/contacts", (req, res) => res.json(mail.contacts(str(req.query.q))));
 router.get("/contact", (req, res) => res.json(mail.contactCard(str(req.query.address))));
+router.get("/img", async (req, res) => {
+  try {
+    const r = await mail.fetchRemoteImage(str(req.query.u));
+    res.setHeader("Content-Type", r.type);
+    res.setHeader("Cache-Control", "private, max-age=86400");
+    res.send(r.data);
+  } catch {
+    res.status(404).end();
+  }
+});
 router.get("/avatar", async (req, res) => {
   const a = await avatarFor(str(req.query.address));
   if (!a) return res.status(404).end();

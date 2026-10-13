@@ -6533,6 +6533,15 @@
     "hint_mailru": "为外部应用创建具有“邮件”权限的密码并粘贴到下方。",
     "hint_yahoo": "在账户安全中生成“应用密码”并粘贴到下方。",
     "hint_icloud": "登录 Apple 账户→“App 专用密码”，创建后粘贴到下方。需开启双重认证。",
-    "hint_proton": "Proton 不提供直接访问：安装 Proton Bridge，登录后粘贴其显示的密码（端口 1143 和 1025）。"
+    "hint_proton": "Proton 不提供直接访问：安装 Proton Bridge，登录后粘贴其显示的密码（端口 1143 和 1025）。",
+    "set_loadImages": "始终显示邮件中的远程图片",
+    "set_accountTags": "多邮箱时在每封邮件上显示邮箱名称标签",
+    "digestTitle": "邮件摘要",
+    "digestDay": "过去 24 小时",
+    "digestWeek": "过去 7 天",
+    "digestHint": "选择时间段，AI 会按主题归类收件箱并标出需要回复的邮件。",
+    "digestCount": "摘要包含邮件：{n}",
+    "digestEmpty": "所选时间段内收件箱没有邮件。",
+    "aiDisabled": "AI 助手已在邮件设置中关闭。"
   }
 }

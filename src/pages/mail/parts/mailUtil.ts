@@ -53,13 +53,30 @@ export function parseAddrs(s: string): string[] {
  * Очистка HTML письма. Скрипты, формы, <style>, фреймы убираются; удалённые
  * картинки и фоны блокируются (трекер-пиксели), пока пользователь не разрешит.
  */
-export function prepareHtml(html: string, allowRemote: boolean): { html: string; blocked: number } {
+export function prepareHtml(
+  html: string,
+  allowRemote: boolean,
+  resolved?: Record<string, string>,
+): { html: string; blocked: number; remote: string[] } {
   const clean = DOMPurify.sanitize(html, {
     FORBID_TAGS: ["style", "link", "meta", "form", "iframe", "object", "embed", "base"],
     FORBID_ATTR: ["srcset"],
   });
   const doc = new DOMParser().parseFromString(clean, "text/html");
   let blocked = 0;
+  const remote: string[] = [];
+  if (allowRemote) {
+    // картинки идут через сервер приложения: напрямую их не пускает CSP
+    doc.querySelectorAll("img,source,image").forEach((el) => {
+      const src = el.getAttribute("src") || "";
+      if (!/^(https?:)?\/\//i.test(src)) return;
+      const abs = src.startsWith("//") ? `https:${src}` : src;
+      remote.push(abs);
+      const blob = resolved?.[abs];
+      if (blob) el.setAttribute("src", blob);
+      else el.setAttribute("data-blocked", "1");
+    });
+  }
   if (!allowRemote) {
     doc.querySelectorAll("img,video,audio,source,image").forEach((el) => {
       const src = el.getAttribute("src") || "";
@@ -84,7 +101,7 @@ export function prepareHtml(html: string, allowRemote: boolean): { html: string;
     a.setAttribute("target", "_blank");
     a.setAttribute("rel", "noopener noreferrer");
   });
-  return { html: doc.body.innerHTML, blocked };
+  return { html: doc.body.innerHTML, blocked, remote };
 }
 
 /** Тема ответа/пересылки без дублирования префикса. */

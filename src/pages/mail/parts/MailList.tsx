@@ -16,12 +16,14 @@ import {
   Trash2,
   X,
   Check,
+  Sparkles,
 } from "lucide-react";
 import { Btn, EmptyHint } from "@/components/ui";
 import { useI18n } from "@/app/i18n";
 import type {
   MailDraft,
   MailFolder,
+  MailAccount,
   MailMessage,
   MailOutboxItem,
   MailSettings,
@@ -30,6 +32,17 @@ import type {
 import { MailAvatar } from "@/pages/mail/parts/MailAvatar";
 import { addrShort, fmtDate } from "@/pages/mail/parts/mailUtil";
 import { DRAG_MIME } from "@/pages/mail/parts/mailTypes";
+
+const TAG_COLORS = [
+  "#f97316",
+  "#3b82f6",
+  "#10b981",
+  "#a855f7",
+  "#ec4899",
+  "#eab308",
+  "#06b6d4",
+  "#ef4444",
+];
 
 export interface BulkActions {
   read: () => void;
@@ -72,6 +85,8 @@ export const MailList = forwardRef<
     sel: Set<string>;
     folders: MailFolder[];
     settings: MailSettings | null;
+    accounts: MailAccount[];
+    onDigest: () => void;
     lang: string;
     reminders: MailMessage[];
     bulk: BulkActions;
@@ -92,6 +107,13 @@ export const MailList = forwardRef<
   const avatars = p.settings?.appearance.avatars ?? "initials";
   const compact = p.settings?.appearance.density === "compact";
   const multi = p.sel.size > 0;
+  const tagsOn = p.accounts.length > 1 && p.settings?.appearance.accountTags !== false;
+  const tagOf = (id: string): { name: string; color: string } | null => {
+    const i = p.accounts.findIndex((a) => a.id === id);
+    if (i < 0) return null;
+    const a = p.accounts[i];
+    return { name: a.name || a.email, color: a.color || TAG_COLORS[i % TAG_COLORS.length] };
+  };
 
   const onScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const el = e.currentTarget;
@@ -121,6 +143,9 @@ export const MailList = forwardRef<
           title={t("mail.unreadOnly")}
         >
           <MailOpen size={15} />
+        </button>
+        <button className="mail-ic" onClick={p.onDigest} title={t("mail.digestTitle")}>
+          <Sparkles size={15} />
         </button>
         <button className="mail-ic" onClick={p.onSync} title={t("mail.refresh")}>
           {p.syncing ? <Loader2 size={15} className="spin" /> : <RefreshCw size={15} />}
@@ -341,6 +366,19 @@ export const MailList = forwardRef<
                       <div className="mail-item-main">
                         <div className="mail-item-top">
                           <b>{who}</b>
+                          {tagsOn &&
+                            (() => {
+                              const tg = tagOf(m.account);
+                              return tg ? (
+                                <span
+                                  className="mail-acc-tag"
+                                  style={{ "--tag-c": tg.color } as React.CSSProperties}
+                                  title={tg.name}
+                                >
+                                  {tg.name}
+                                </span>
+                              ) : null;
+                            })()}
                           {(m.count ?? 1) > 1 && <em>{m.count}</em>}
                           <span>{fmtDate(m.date, p.lang)}</span>
                         </div>

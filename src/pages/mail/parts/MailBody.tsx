@@ -1,6 +1,7 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ImageOff } from "lucide-react";
 import { useI18n } from "@/app/i18n";
+import { api } from "@/api/client";
 import { escapeHtml, prepareHtml } from "@/pages/mail/parts/mailUtil";
 
 /**
@@ -13,21 +14,49 @@ export function MailBody({
   text,
   dark,
   fontSize,
+  autoLoad,
 }: {
   html: string;
   text: string;
   dark: boolean;
   fontSize: number;
+  /** Показывать удалённые картинки сразу, без кнопки. */
+  autoLoad?: boolean;
 }) {
   const { t } = useI18n();
-  const [allow, setAllow] = useState(false);
+  const [allow, setAllow] = useState(!!autoLoad);
+  const [resolved, setResolved] = useState<Record<string, string>>({});
   const frame = useRef<HTMLIFrameElement>(null);
   const [height, setHeight] = useState(120);
 
+  const src = html || `<pre style="white-space:pre-wrap;font:inherit">${escapeHtml(text)}</pre>`;
+
+  // адреса картинок письма: загружаем через сервер и подставляем blob-адреса
+  const remote = useMemo(() => (allow ? prepareHtml(src, true).remote : []), [allow, src]);
+  useEffect(() => {
+    let alive = true;
+    const todo = remote.filter((u) => !(u in resolved));
+    if (!todo.length) return;
+    void Promise.all(todo.map(async (u) => [u, await api.mailRemoteImage(u)] as const)).then(
+      (pairs) => {
+        if (!alive) return;
+        setResolved((prev) => {
+          const next = { ...prev };
+          for (const [u, b] of pairs)
+            if (b) next[u] = b;
+            else next[u] = "";
+          return next;
+        });
+      },
+    );
+    return () => {
+      alive = false;
+    };
+  }, [remote, resolved]);
+
   const { doc, blocked } = useMemo(() => {
-    const src = html || `<pre style="white-space:pre-wrap;font:inherit">${escapeHtml(text)}</pre>`;
-    const p = prepareHtml(src, allow);
-    const csp = `default-src 'none'; img-src data: ${allow ? "https: http:" : ""}; style-src 'unsafe-inline'`;
+    const p = prepareHtml(src, allow, resolved);
+    const csp = `default-src 'none'; img-src data: blob:; style-src 'unsafe-inline'`;
     const darkCss = dark
       ? `html{filter:invert(1) hue-rotate(180deg);background:#fff}img,video,picture{filter:invert(1) hue-rotate(180deg)}`
       : "";
@@ -44,12 +73,15 @@ table{max-width:100%}pre{white-space:pre-wrap}
 ${darkCss}
 </style></head><body>${p.html}</body></html>`,
     };
-  }, [html, text, allow, dark, fontSize]);
+  }, [src, allow, dark, fontSize, resolved]);
 
   const fit = () => {
     const d = frame.current?.contentDocument;
     if (!d) return;
-    setHeight(Math.max(60, d.documentElement.scrollHeight + 2));
+    const measure = () => setHeight(Math.max(60, d.documentElement.scrollHeight + 2));
+    measure();
+    // картинки догружаются после onLoad и меняют высоту письма
+    if (typeof ResizeObserver !== "undefined") new ResizeObserver(measure).observe(d.body);
     d.querySelectorAll("a").forEach((a) => {
       a.addEventListener("click", (e) => {
         e.preventDefault();
