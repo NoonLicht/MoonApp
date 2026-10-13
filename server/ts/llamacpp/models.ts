@@ -191,6 +191,18 @@ export const CATALOG: CatalogModel[] = [
     ],
     mmproj: { file: "mmproj-F16.gguf", mb: 944 },
   }),
+  // MoE 21B/3.6B активных: тяжёлые слои идут в видеокарту, эксперты — в RAM (--fit).
+  // У gpt-oss эксперты уже в MXFP4, поэтому кванты Q4/Q5 почти одного размера.
+  ...family({
+    group: "gpt-oss-20b",
+    title: "gpt-oss 20B (MoE)",
+    kind: "chat",
+    repo: "unsloth/gpt-oss-20b-GGUF",
+    quants: [
+      { q: Q4, file: "gpt-oss-20b-Q4_K_M.gguf", mb: 11870 },
+      { q: Q5, file: "gpt-oss-20b-Q5_K_M.gguf", mb: 11990 },
+    ],
+  }),
   ...family({
     group: "gemma3-4b",
     title: "Gemma 3 4B",
