@@ -1100,6 +1100,7 @@
       "attached": "Ajouté au prompt système, sources : {n}"
     },
     "branch": "Créer une branche",
+    "continue": "Continuer",
     "delete": "Supprimer",
     "deleteConfirm": "Supprimer ce message et tout ce qui suit ?",
     "cmdCompact": "Condenser l'historique en résumé (un sujet peut être précisé)",

@@ -77,6 +77,8 @@ export function streamChatSend(
     model?: string;
     /** Провайдер из селектора: чат переключается на него и продолжается с той же историей. */
     provider?: string;
+    /** Дописать оборванный последний ответ ассистента (text не нужен). */
+    continue?: boolean;
     temperature?: number;
     maxTokens?: number;
     stream?: boolean;

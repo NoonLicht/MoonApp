@@ -93,12 +93,23 @@ router.post("/:id/send", async (req, res) => {
     systemPrompt,
     images,
     provider: wantedProvider,
+    continue: wantContinue,
   } = req.body || {};
-  if (!text || !String(text).trim()) {
+  const isContinue = wantContinue === true;
+  if (!isContinue && (!text || !String(text).trim())) {
     return res.status(400).json({ error: "empty message" });
   }
   const conv = stmts.convGet.get(Number(req.params.id));
   if (!conv) return res.status(404).json({ error: "conversation not found" });
+  // «Продолжить»: дописываем оборванный последний ответ ассистента, новый вопрос не создаётся.
+  const lastMsg = isContinue
+    ? ((stmts.msgFor.all(conv.id) as any[]).slice(-1)[0] as
+        | { id: number; role: string; text: string }
+        | undefined)
+    : undefined;
+  if (isContinue && (!lastMsg || lastMsg.role !== "assistant")) {
+    return res.status(400).json({ error: "nothing_to_continue" });
+  }
 
   // Провайдер сменили в селекторе — продолжаем этот же чат на новом, история сохраняется.
   if (typeof wantedProvider === "string" && wantedProvider && wantedProvider !== conv.provider) {
@@ -121,7 +132,7 @@ router.post("/:id/send", async (req, res) => {
 
   // Авто-название чата по первому сообщению
   let autoTitle = null;
-  if (conv.title === "New chat") {
+  if (!isContinue && conv.title === "New chat") {
     autoTitle = String(text).replace(/\s+/g, " ").trim().slice(0, 48) || null;
     if (autoTitle) stmts.convUpdate.run(conv.id, { title: autoTitle });
   }
@@ -129,7 +140,7 @@ router.post("/:id/send", async (req, res) => {
   const imgList = Array.isArray(images)
     ? images.filter((u) => /^data:image\//.test(u)).slice(0, 5)
     : [];
-  stmts.msgInsert.run(conv.id, "user", String(text));
+  if (!isContinue) stmts.msgInsert.run(conv.id, "user", String(text));
   stmts.convTouch.run(conv.id);
 
   const chatCfg = settings.get("chat");
@@ -143,8 +154,17 @@ router.post("/:id/send", async (req, res) => {
   if (imgList.length && history.length && history[history.length - 1].role === "user") {
     history[history.length - 1].images = imgList;
   }
+  if (isContinue) {
+    history.push({
+      role: "user",
+      text:
+        "Продолжи свой предыдущий ответ ровно с того места, где он оборвался. " +
+        "Не повторяй уже написанное и не добавляй вступлений.",
+    });
+  }
 
-  const memo = chatCfg.memory ? await semantic.memoryFor(conv.id, String(text)) : "";
+  const memo =
+    chatCfg.memory && !isContinue ? await semantic.memoryFor(conv.id, String(text)) : "";
   const sys = [systemPrompt, memo].filter(Boolean).join("\n\n");
   const fullMessages = sys ? [{ role: "system", text: sys }, ...history] : history;
 
@@ -204,11 +224,24 @@ router.post("/:id/send", async (req, res) => {
         presencePenalty,
       }),
     );
-    stmts.msgInsert.run(conv.id, "assistant", full);
-    logger.action("chat.completed", { id: conv.id, provider: provider.id, chars: full.length });
+    let saved = String(full);
+    if (isContinue && lastMsg) {
+      // Склейка: после законченного предложения — пробел, иначе (оборвано на слове) — встык.
+      const prev = lastMsg.text;
+      const glue = /[.!?:;)»"\n]$/.test(prev) && !/^[\s.,;:!?)\]]/.test(saved) ? " " : "";
+      saved = prev + glue + saved;
+      stmts.msgTruncateFrom.run(conv.id, lastMsg.id);
+    }
+    stmts.msgInsert.run(conv.id, "assistant", saved);
+    logger.action("chat.completed", {
+      id: conv.id,
+      provider: provider.id,
+      chars: full.length,
+      continued: isContinue,
+    });
     emit({
       type: "done",
-      text: full,
+      text: saved,
       stats: {
         ms: Date.now() - startedAt,
         chars: full.length,

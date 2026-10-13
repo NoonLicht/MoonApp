@@ -1100,6 +1100,7 @@
       "attached": "已加入系统提示，来源数：{n}"
     },
     "branch": "分支",
+    "continue": "继续生成",
     "delete": "删除",
     "deleteConfirm": "删除此消息及其之后的所有内容？",
     "cmdCompact": "将历史压缩为摘要（可指定重点）",

@@ -532,6 +532,68 @@ export default function AiChatPage() {
     }
   };
 
+  /* ── продолжить оборванный ответ (лимит токенов, обрыв) — дописывается в то же сообщение ── */
+  const continueGeneration = async () => {
+    if (!activeId || sending || !provider?.configured) return;
+    const last = messages[messages.length - 1];
+    if (!last || last.role !== "assistant" || !last.id) return;
+    setMessages((m) => m.slice(0, -1));
+    setSending(true);
+    setStreamingText(last.text);
+    abortRef.current = new AbortController();
+    let finished = false;
+    try {
+      await streamChatSend(
+        activeId,
+        {
+          text: "",
+          continue: true,
+          model: chatCfg.model || models[0] || "",
+          provider: chatCfg.provider || undefined,
+          temperature: chatCfg.temperature,
+          maxTokens: chatCfg.maxTokens,
+          stream: chatCfg.streaming,
+          topP: chatCfg.topP,
+          frequencyPenalty: chatCfg.frequencyPenalty,
+          presencePenalty: chatCfg.presencePenalty,
+          systemPrompt: systemPrompt || undefined,
+        },
+        (ev) => {
+          if (ev.type === "token" && chatCfg.streaming) {
+            setStreamingText((prev) => prev + (ev.text || ""));
+          } else if (ev.type === "done") {
+            finished = true;
+            setMessages((m) => [...m, { role: "assistant", text: ev.text || last.text }]);
+            setStreamingText("");
+            setSending(false);
+            void refreshMessages(activeId);
+          } else if (ev.type === "error") {
+            finished = true;
+            setMessages((m) => [
+              ...m,
+              last,
+              { role: "assistant", text: `⚠ ${friendlyChatError(ev.message || "Error", t)}` },
+            ]);
+            setStreamingText("");
+            setSending(false);
+          }
+        },
+        abortRef.current.signal,
+      );
+    } catch (e: any) {
+      if (!finished) {
+        setMessages((m) => [...m, last]);
+        if (e.name !== "AbortError")
+          setMessages((m) => [
+            ...m,
+            { role: "assistant", text: `⚠ ${friendlyChatError(e.message, t)}` },
+          ]);
+      }
+      setStreamingText("");
+      setSending(false);
+    }
+  };
+
   const stopGeneration = () => {
     abortRef.current?.abort();
     setSending(false);
@@ -1477,6 +1539,7 @@ export default function AiChatPage() {
                 copiedIdx={copiedIdx}
                 onCopy={copyMessage}
                 onRegenerate={regenerate}
+                onContinue={continueGeneration}
                 onBranch={branchFrom}
                 onDelete={deleteMessage}
                 onSaveEdit={saveEdit}

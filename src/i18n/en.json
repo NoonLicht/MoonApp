@@ -1100,6 +1100,7 @@
       "attached": "Added to the system prompt, sources: {n}"
     },
     "branch": "Branch",
+    "continue": "Continue",
     "delete": "Delete",
     "deleteConfirm": "Delete this message and everything after it?",
     "cmdCompact": "Compress the history into a summary (a focus can be given)",

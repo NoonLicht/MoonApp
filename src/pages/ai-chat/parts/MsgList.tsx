@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { Copy, RefreshCw, Pencil, Volume2, StopCircle, Check, X, Send, GitBranch, Trash2 } from "lucide-react";
+import { Copy, RefreshCw, Pencil, Volume2, StopCircle, Check, X, Send, GitBranch, Trash2, ChevronsRight } from "lucide-react";
 import MsgTools from "@/pages/ai-chat/parts/MsgTools";
 import { useAutoSaveAnswers } from "@/pages/ai-chat/lib/autoSave";
 import { Btn, EmptyHint } from "@/components/ui";
@@ -82,6 +82,8 @@ export default function MsgList(props: {
   copiedIdx: number | null;
   onCopy: (text: string, idx: number) => void;
   onRegenerate: () => void;
+  /** Дописать оборванный последний ответ. */
+  onContinue?: () => void;
   onBranch?: (messageId: number) => void;
   /** Удалить сообщение пользователя и всё, что идёт после него. */
   onDelete?: (messageId: number) => void;
@@ -100,6 +102,7 @@ export default function MsgList(props: {
     copiedIdx,
     onCopy,
     onRegenerate,
+    onContinue,
     onBranch,
     onDelete,
     onSaveEdit,
@@ -163,6 +166,11 @@ export default function MsgList(props: {
             {m.role === "assistant" && i === messages.length - 1 && !sending && (
               <button onClick={onRegenerate} title={t("aichat.regenerate")}>
                 <RefreshCw size={11} /> {t("aichat.regenerate")}
+              </button>
+            )}
+            {m.role === "assistant" && m.id && i === messages.length - 1 && !sending && onContinue && (
+              <button onClick={onContinue} title={t("aichat.continue")}>
+                <ChevronsRight size={11} /> {t("aichat.continue")}
               </button>
             )}
             {m.role === "user" && m.id && !sending && (

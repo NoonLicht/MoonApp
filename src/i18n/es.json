@@ -1100,6 +1100,7 @@
       "attached": "Añadido al prompt del sistema, fuentes: {n}"
     },
     "branch": "Bifurcar",
+    "continue": "Continuar",
     "delete": "Eliminar",
     "deleteConfirm": "¿Eliminar este mensaje y todo lo que sigue?",
     "cmdCompact": "Comprimir el historial en un resumen (se puede indicar el foco)",
