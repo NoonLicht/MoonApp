@@ -335,11 +335,145 @@ export const isMoeFile = (file: string): boolean => {
   const info = ggufInfo(full);
   return info ? info.experts > 0 : moeByName(file);
 };
-/** Сборки, на которых сервер не поднялся: пропускаем до перезапуска приложения. */
-const bad = new Set<BuildId>();
+/**
+ * Сборки с неисправностью САМОЙ сборки (драйвер, DLL, архитектура видеокарты): пропускаем
+ * BAD_TTL_MS. Нехватка памяти под крупную модель или битый GGUF сюда не попадают: раньше один
+ * такой сбой навсегда отключал CUDA и Vulkan, и все модели молча уходили на процессор.
+ */
+const BAD_TTL_MS = 10 * 60 * 1000;
+const bad = new Map<BuildId, number>();
 let idleFn: () => number = () => 10 * 60 * 1000;
 
-export const badBuilds = (): BuildId[] => [...bad];
+const isBad = (b: BuildId): boolean => {
+  const until = bad.get(b);
+  if (!until) return false;
+  if (Date.now() < until) return true;
+  bad.delete(b);
+  return false;
+};
+
+export const badBuilds = (): BuildId[] => BUILD_IDS.filter(isBad);
+
+/** Снова разрешить сборки (кнопка «включить» и ручная перезагрузка модели). */
+export function clearBadBuilds(): void {
+  bad.clear();
+}
+
+// ───────────────────────────── сбои запуска ─────────────────────────────
+
+/** build — неисправна сборка; memory — модель не влезла; model — прочее (битый файл, таймаут). */
+export type Fault = "build" | "memory" | "model";
+
+const MEMORY_RE =
+  /out of memory|failed to allocate|cudaMalloc failed|unable to allocate|ErrorOutOfDeviceMemory|ErrorOutOfHostMemory|not enough memory|bad_alloc|insufficient memory/i;
+const BUILD_RE =
+  /spawn_failed|ENOENT|EACCES|EPERM|ggml_cuda_init: failed|no CUDA-capable device|CUDA error:[^\n]*(no kernel image|invalid device|unknown error)|failed to initialize CUDA|cudaGetDeviceCount failed|vkCreateInstance|failed to create (a )?vulkan instance|0xC0000135|STATUS_DLL_NOT_FOUND/i;
+
+/** Причина неудачного запуска по тексту ошибки и хвосту лога сервера. */
+export function classifyFault(text: string): Fault {
+  if (MEMORY_RE.test(text)) return "memory";
+  if (BUILD_RE.test(text)) return "build";
+  return "model";
+}
+
+function tagFault(e: unknown, log: string): Error & { fault: Fault } {
+  const err = (e instanceof Error ? e : new Error(String(e))) as Error & { fault: Fault };
+  err.fault = classifyFault(`${err.message}\n${log}`);
+  return err;
+}
+
+export interface LoadFailure {
+  file: string;
+  /** Код для перевода: memory | build | model | gpu_build_missing | gpu_build_failed | build_missing. */
+  code: string;
+  detail: string;
+  device: string;
+  at: number;
+}
+
+/** Последний неудачный запуск каждой модели: UI показывает причину, а не молча «теряет» модель. */
+const failures = new Map<string, LoadFailure>();
+
+export const loadFailures = (): LoadFailure[] =>
+  [...failures.values()].sort((a, b) => b.at - a.at);
+
+export function clearFailure(file?: string): void {
+  if (file) failures.delete(path.basename(file));
+  else failures.clear();
+}
+
+function noteFailure(o: StartOptions, e: unknown): void {
+  const err = e as Error & { fault?: Fault };
+  const msg = String(err?.message ?? e);
+  const code = /^(gpu_build_missing|gpu_build_failed|build_missing)$/.test(msg)
+    ? msg
+    : (err?.fault ?? "model");
+  failures.set(path.basename(o.model), {
+    file: path.basename(o.model),
+    code,
+    detail: msg.replace(/\s+/g, " ").slice(0, 240),
+    device: o.device ?? "auto",
+    at: Date.now(),
+  });
+}
+
+const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
+
+// ───────────────────────────── видеокарта ─────────────────────────────
+
+export interface GpuProbe {
+  present: boolean;
+  name: string;
+  vramMb: number;
+}
+
+let gpuProbe: GpuProbe = { present: false, name: "", vramMb: 0 };
+let gpuProbeAt = 0;
+
+function runCmd(cmd: string, args: string[]): Promise<string> {
+  return new Promise((resolve) => {
+    try {
+      execFile(cmd, args, { timeout: 5000, windowsHide: true }, (err, out) =>
+        resolve(err ? "" : String(out || "")),
+      );
+    } catch {
+      resolve("");
+    }
+  });
+}
+
+/** Видит ли система видеокарту (кэш на минуту, запрос в фоне). Нужна подсказкам интерфейса. */
+export function gpuInfo(): GpuProbe {
+  if (Date.now() - gpuProbeAt > 60_000) {
+    gpuProbeAt = Date.now();
+    void (async () => {
+      const smi = await runCmd("nvidia-smi", [
+        "--query-gpu=name,memory.total",
+        "--format=csv,noheader,nounits",
+      ]);
+      const line = smi.split(/\r?\n/).find((l) => l.trim());
+      if (line) {
+        const [name, mem] = line.split(",").map((x) => x.trim());
+        gpuProbe = { present: true, name, vramMb: parseInt(mem, 10) || 0 };
+        return;
+      }
+      if (process.platform === "win32") {
+        const wmi = await runCmd("powershell.exe", [
+          "-NoProfile",
+          "-NonInteractive",
+          "-Command",
+          "(Get-CimInstance Win32_VideoController).Name",
+        ]);
+        const name = wmi
+          .split(/\r?\n/)
+          .map((x) => x.trim())
+          .find((x) => /nvidia|geforce|rtx|gtx|radeon|amd|arc\b|intel.*(arc|iris|xe)/i.test(x));
+        gpuProbe = { present: !!name, name: name ?? "", vramMb: 0 };
+      }
+    })();
+  }
+  return gpuProbe;
+}
 
 export function freePort(): Promise<number> {
   return new Promise((resolve, reject) => {
@@ -357,7 +491,7 @@ export type Device = "auto" | "cpu" | "gpu" | BuildId;
 
 /** Порядок сборок для выбранного устройства: GPU-сборки раньше CPU, CUDA раньше Vulkan. */
 export function buildOrder(device: Device): BuildId[] {
-  const have = installedBuilds().filter((b) => !bad.has(b));
+  const have = installedBuilds().filter((b) => !isBad(b));
   if (isBuildId(device) && device !== "cpu") return have.includes(device) ? [device] : [];
   if (device === "cpu") return have.includes("cpu") ? ["cpu"] : have.slice(0, 1);
   const order: BuildId[] = ["cuda", "vulkan", "cpu"];
@@ -386,6 +520,7 @@ export async function waitReady(
 ): Promise<void> {
   let exited = false;
   proc.once("exit", () => (exited = true));
+  proc.once("error", () => (exited = true));
   const t0 = Date.now();
   while (Date.now() - t0 < 5 * 60 * 1000) {
     if (exited) throw new Error(`llama_exited: ${tail().slice(-300)}`);
@@ -437,11 +572,17 @@ async function spawnServer(build: BuildId, o: StartOptions, cpuOnly: boolean): P
     "-t",
     String(Math.max(1, Math.floor(os.cpus().length / 2))),
   ];
-  const proc = spawn(exe, args, {
-    cwd: path.dirname(exe),
-    windowsHide: true,
-    stdio: ["ignore", "pipe", "pipe"],
-  });
+  let proc: ChildProcess;
+  try {
+    proc = spawn(exe, args, {
+      cwd: path.dirname(exe),
+      windowsHide: true,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+  } catch (e) {
+    // В Windows spawn бросает синхронно («spawn UNKNOWN» — файл не исполняемый или заблокирован).
+    throw tagFault(new Error(`spawn_failed: ${(e as Error).message}`), "");
+  }
   let log = "";
   let boot = "";
   let booting = true;
@@ -453,11 +594,21 @@ async function spawnServer(build: BuildId, o: StartOptions, cpuOnly: boolean): P
   proc.stdout?.on("data", add);
   proc.stderr?.on("data", add);
   const base = `http://127.0.0.1:${port}`;
+  // Без обработчика 'error' неудачный запуск (нет файла, антивирус) валит весь серверный процесс.
+  let spawnErr = "";
+  const spawnFailed = new Promise<never>((_, reject) =>
+    proc.once("error", (e) => {
+      spawnErr = `spawn_failed: ${e.message}`;
+      reject(new Error(spawnErr));
+    }),
+  );
   try {
-    await waitReady(proc, base, () => log);
+    await Promise.race([waitReady(proc, base, () => log), spawnFailed]);
   } catch (e) {
-    proc.kill();
-    throw e;
+    // Ждём реального выхода: пока процесс жив, он держит видеопамять, и следующая попытка упадёт.
+    await reap(proc);
+    throw tagFault(e, `${log}
+${spawnErr}`);
   }
   booting = false;
   const place = parsePlacement(boot, { gpu, file: o.model });
@@ -484,15 +635,97 @@ async function spawnServer(build: BuildId, o: StartOptions, cpuOnly: boolean): P
   return r;
 }
 
+/** Серверы, которые сейчас завершаются: до выхода процесса видеопамять ещё занята. */
+const dying = new Set<Promise<void>>();
+
+/**
+ * Завершить процесс и дождаться его выхода (через 6 с — принудительно, через 12 с — не ждём).
+ * Ещё 300 мс после выхода: драйверу нужно время, чтобы вернуть видеопамять.
+ */
+export function reap(proc: ChildProcess): Promise<void> {
+  const done = new Promise<void>((resolve) => {
+    if (proc.exitCode !== null || proc.signalCode !== null) return resolve();
+    const force = setTimeout(() => {
+      try {
+        proc.kill("SIGKILL");
+      } catch {
+        /* уже завершён */
+      }
+    }, 6000);
+    const giveUp = setTimeout(resolve, 12_000);
+    proc.once("exit", () => {
+      clearTimeout(force);
+      clearTimeout(giveUp);
+      setTimeout(resolve, 300);
+    });
+    try {
+      proc.kill();
+    } catch {
+      resolve();
+    }
+  });
+  dying.add(done);
+  void done.finally(() => dying.delete(done));
+  return done;
+}
+
+/** Дождаться, пока завершатся все выгружаемые серверы (и освободится видеопамять). */
+export const settled = (): Promise<void> => Promise.all([...dying]).then(() => undefined);
+
 function kill(r: Running): void {
   if (r.idle) clearTimeout(r.idle);
   for (const [k, v] of pool) if (v === r) pool.delete(k);
-  try {
-    r.proc.kill();
-  } catch {
-    /* уже завершён */
-  }
+  void reap(r.proc);
   logger.info("llamacpp.stopped", { build: r.build, model: path.basename(r.model) });
+}
+
+/**
+ * Запуски идут строго по одному: две модели, стартующие одновременно, замеряют свободную
+ * видеопамять в один и тот же момент, обе берут «всё свободное» и обе падают.
+ */
+let startChain: Promise<unknown> = Promise.resolve();
+function serialized<T>(fn: () => Promise<T>): Promise<T> {
+  const run = startChain.then(fn, fn);
+  startChain = run.catch(() => undefined);
+  return run;
+}
+
+let orphansReaped = false;
+const alive = (pid: number): boolean => {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (e) {
+    return (e as NodeJS.ErrnoException).code === "EPERM";
+  }
+};
+
+/**
+ * Серверы, оставшиеся от прошлого запуска (приложение закрыли аварийно): родителя уже нет, а
+ * видеопамять занята. Завершаем только процессы из нашей папки сборок и только осиротевшие.
+ */
+async function reapOrphans(): Promise<void> {
+  if (orphansReaped || process.platform !== "win32") return;
+  orphansReaped = true;
+  const out = await runCmd("powershell.exe", [
+    "-NoProfile",
+    "-NonInteractive",
+    "-Command",
+    "Get-CimInstance Win32_Process -Filter \"Name='llama-server.exe'\" | ForEach-Object { \"$($_.ProcessId)|$($_.ParentProcessId)|$($_.ExecutablePath)\" }",
+  ]);
+  const mine = new Set([...pool.values()].map((r) => r.proc.pid));
+  const root = buildsDir().toLowerCase();
+  for (const line of out.split(/\r?\n/)) {
+    const [pid, ppid, exe] = line.trim().split("|");
+    if (!pid || !exe || !exe.toLowerCase().startsWith(root)) continue;
+    if (mine.has(Number(pid)) || alive(Number(ppid))) continue;
+    try {
+      process.kill(Number(pid));
+      logger.warn("llamacpp.orphan_killed", { pid: Number(pid) });
+    } catch {
+      /* уже завершён */
+    }
+  }
 }
 
 /** Выгрузить все модели или только ту, что запущена из этого файла. */
@@ -521,13 +754,18 @@ function arm(r: Running): void {
 }
 
 /** Освободить место под новую модель: выгружаем давно не использованные простаивающие серверы. */
-function makeRoom(): void {
+function makeRoom(queued: number, wantsGpu: boolean): void {
   const limit = Math.max(1, limitFn());
-  while (pool.size + starting.size >= limit) {
+  while (pool.size + queued >= limit) {
     const idle = [...pool.values()].filter((r) => r.busy === 0).sort((a, b) => a.used - b.used);
-    if (!idle.length) return; // все заняты — временно превышаем лимит, чем ломаем запрос
+    if (!idle.length) break; // все заняты — временно превышаем лимит, чем ломаем запрос
     kill(idle[0]);
   }
+  // Небольшая видеокарта (до 12 ГБ): вторая модель рядом с первой получает жалкие остатки
+  // видеопамяти и работает на процессоре. Простаивающую «видеокартную» модель выгружаем.
+  const vram = gpuInfo().vramMb;
+  if (wantsGpu && vram > 0 && vram <= 12288)
+    for (const r of [...pool.values()]) if (r.gpu && r.busy === 0) kill(r);
 }
 
 /** Поднять сервер для модели (или взять уже работающий). Лишние простаивающие выгружаются по лимиту. */
@@ -570,36 +808,70 @@ export async function ensureServer(o: StartOptions): Promise<ServerInfo> {
     )
       return v.p;
   }
-  const candidates = buildOrder(device);
-  if (!candidates.length) throw new Error("build_missing");
-  makeRoom();
-  const p = (async () => {
+  const p = serialized(async () => {
+    await reapOrphans();
+    makeRoom(Math.max(0, starting.size - 1), device !== "cpu");
+    await settled();
+    const candidates = buildOrder(device);
+    if (!candidates.length) {
+      const gpuAsked = device !== "auto" && device !== "cpu";
+      const gpuInstalled = installedBuilds().some((b) => b !== "cpu");
+      throw new Error(
+        gpuAsked ? (gpuInstalled ? "gpu_build_failed" : "gpu_build_missing") : "build_missing",
+      );
+    }
     let last: unknown = null;
+    let gpuNoMemory = false;
     for (const build of candidates) {
-      try {
-        const r = await spawnServer(build, o, device === "cpu");
-        r.key = key;
-        r.used = Date.now();
-        pool.set(key, r);
-        lastUsedKey = key;
-        arm(r);
-        logger.info("llamacpp.started", { build, gpu: r.gpu, model: path.basename(o.model) });
-        return r;
-      } catch (e) {
-        last = e;
-        bad.add(build);
-        logger.warn("llamacpp.start_failed", {
-          build,
-          error: String((e as Error).message).slice(0, 300),
-        });
+      // Видеопамяти не хватило — Vulkan после CUDA её не добавит, идём сразу к процессору.
+      if (build !== "cpu" && gpuNoMemory) continue;
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          const r = await spawnServer(build, o, device === "cpu");
+          r.key = key;
+          r.used = Date.now();
+          pool.set(key, r);
+          lastUsedKey = key;
+          failures.delete(path.basename(o.model));
+          arm(r);
+          logger.info("llamacpp.started", { build, gpu: r.gpu, model: path.basename(o.model) });
+          return r;
+        } catch (e) {
+          last = e;
+          const fault = (e as { fault?: Fault }).fault ?? "model";
+          logger.warn("llamacpp.start_failed", {
+            build,
+            fault,
+            attempt,
+            error: String((e as Error).message).slice(0, 300),
+          });
+          if (fault === "build") {
+            bad.set(build, Date.now() + BAD_TTL_MS);
+            break;
+          }
+          if (build === "cpu" || attempt === 1) {
+            if (build !== "cpu" && fault === "memory") gpuNoMemory = true;
+            break;
+          }
+          // Часто это гонка за видеопамять с только что выгруженной моделью: одна повторная попытка.
+          await sleep(1500);
+          await settled();
+        }
       }
     }
-    throw new Error(
+    const err = new Error(
       `llama_start_failed: ${String((last as Error)?.message || last).slice(0, 300)}`,
-    );
-  })().finally(() => {
-    starting.delete(key);
-  });
+    ) as Error & { fault?: Fault };
+    err.fault = (last as { fault?: Fault } | null)?.fault ?? "model";
+    throw err;
+  })
+    .catch((e) => {
+      noteFailure(o, e);
+      throw e;
+    })
+    .finally(() => {
+      starting.delete(key);
+    });
   starting.set(key, { p, file: path.basename(o.model), task: o.task ?? "" });
   return p;
 }

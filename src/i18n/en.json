@@ -1107,7 +1107,6 @@
     "tokShort": "tok",
     "secShort": "s",
     "continue": "Continue",
-    "delete": "Delete",
     "deleteConfirm": "Delete this message and everything after it?",
     "cmdCompact": "Compress the history into a summary (a focus can be given)",
     "cmdClear": "Clear the chat (delete all messages)",
@@ -5507,19 +5506,12 @@
     "loadingModel": "Loading {model}…",
     "working": "working",
     "feat": {
-
       "title": "AI features",
-
       "count": "{a} of {b} on",
-
       "hint": "A switched-off feature never calls a model and loads nothing. Embeddings, translation and voice models are not affected. Pick which model serves a feature in Settings → AI model bindings.",
-
       "offAll": "Turn all off",
-
       "onAll": "Turn all on"
-
     },
-
     "unloadAll": "Unload all",
     "sec": {
       "auto": "Automation & memory",
@@ -5589,7 +5581,21 @@
       "devGpu": "Device: GPU",
       "devCpu": "Device: CPU",
       "reload": "Reload",
-      "load": "Load"
+      "load": "Load",
+      "gpuNoBuild": "The system sees the GPU “{name}”, but no llama.cpp GPU build is installed — models run on the CPU.",
+      "installVulkan": "Install Vulkan ({size})",
+      "badBuilds": "Builds {list} are temporarily disabled after a failure — models run on the CPU.",
+      "badReset": "Enable again",
+      "failedTitle": "Failed to load: {model}",
+      "retry": "Retry"
+    },
+    "err": {
+      "memory": "Not enough memory for this model (VRAM or RAM). Unload other models or choose the CPU device.",
+      "build": "The llama.cpp build failed to start (driver or libraries). Reinstall the build or pick another device.",
+      "model": "The model failed to load. {detail}",
+      "gpu_build_missing": "No GPU build is installed — install Vulkan or CUDA in the builds section.",
+      "gpu_build_failed": "GPU builds were disabled after a failure — press “Enable again”.",
+      "build_missing": "No llama.cpp build is installed."
     }
   },
   "canvas": {

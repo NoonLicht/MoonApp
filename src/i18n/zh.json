@@ -1107,7 +1107,6 @@
     "tokShort": "词元",
     "secShort": "秒",
     "continue": "继续生成",
-    "delete": "删除",
     "deleteConfirm": "删除此消息及其之后的所有内容？",
     "cmdCompact": "将历史压缩为摘要（可指定重点）",
     "cmdClear": "清空聊天（删除所有消息）",
@@ -5503,19 +5502,12 @@
     "loadingModel": "正在加载 {model}…",
     "working": "运行中",
     "feat": {
-
       "title": "AI 功能",
-
       "count": "已开启 {a}/{b}",
-
       "hint": "关闭的功能不会调用任何模型，也不会加载任何内容。嵌入、翻译和语音模型不受影响。各功能使用的模型请在 设置 → AI 模型绑定 中选择。",
-
       "offAll": "全部关闭",
-
       "onAll": "全部开启"
-
     },
-
     "unloadAll": "全部卸载",
     "sec": {
       "auto": "自动化与内存",
@@ -5585,7 +5577,21 @@
       "devGpu": "设备：显卡",
       "devCpu": "设备：处理器",
       "reload": "重新加载",
-      "load": "加载"
+      "load": "加载",
+      "gpuNoBuild": "系统检测到显卡“{name}”，但未安装 llama.cpp 的 GPU 版本 — 模型在 CPU 上运行。",
+      "installVulkan": "安装 Vulkan（{size}）",
+      "badBuilds": "构建 {list} 因故障被暂时禁用 — 模型在 CPU 上运行。",
+      "badReset": "重新启用",
+      "failedTitle": "加载失败：{model}",
+      "retry": "重试"
+    },
+    "err": {
+      "memory": "此模型内存不足（显存或内存）。请卸载其他模型或选择 CPU 设备。",
+      "build": "llama.cpp 构建无法启动（驱动或库）。请重新安装构建或选择其他设备。",
+      "model": "模型加载失败。{detail}",
+      "gpu_build_missing": "未安装 GPU 构建 — 请在构建部分安装 Vulkan 或 CUDA。",
+      "gpu_build_failed": "GPU 构建因故障被禁用 — 请点击“重新启用”。",
+      "build_missing": "未安装任何 llama.cpp 构建。"
     }
   },
   "canvas": {

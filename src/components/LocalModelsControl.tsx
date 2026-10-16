@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Cpu, Loader2, Power, RefreshCw, Sparkles } from "lucide-react";
+import { AlertTriangle, Cpu, Download, Loader2, Power, RefreshCw, Sparkles } from "lucide-react";
 import { Badge, Btn, Select } from "@/components/ui";
 import { useI18n } from "@/app/i18n";
 import { api } from "@/api/client";
@@ -126,6 +126,16 @@ export default function LocalModelsControl({
   ];
   const taskLabel = (x: string): string => (x ? t(`llama.task.${x}`) : t("llama.working"));
 
+  // Видеокарту система видит, а сборки llama.cpp для неё нет — всё считается на процессоре.
+  const hasGpuBuild = llama.builds.some((b) => b.installed && b.id !== "cpu");
+  const vulkan = llama.builds.find((b) => b.id === "vulkan");
+  const failed = act.failed ?? [];
+  const bad = act.badBuilds ?? [];
+  const failText = (f: { code: string; detail: string }): string => {
+    const known = ["memory", "build", "model", "gpu_build_missing", "gpu_build_failed", "build_missing"];
+    return t(known.includes(f.code) ? `llama.err.${f.code}` : "llama.err.model", { detail: f.detail });
+  };
+
   return (
     <div className="task-mgr-section">
       <div className="task-mgr-section-title" style={{ marginBottom: 4 }}>
@@ -137,7 +147,52 @@ export default function LocalModelsControl({
       </div>
       {err && <div className="proxy-error">{err}</div>}
 
-      {act.loaded.length === 0 && act.loading.length === 0 && (
+      {act.gpu?.present && !hasGpuBuild && vulkan && (
+        <div className="llama-alert">
+          <AlertTriangle size={14} />
+          <span>{t("llama.ctl.gpuNoBuild", { name: act.gpu.name })}</span>
+          <Btn
+            icon={Download}
+            disabled={busy || llama.install.state === "working"}
+            onClick={() => void run(() => api.llamaBuildInstall("vulkan"))}
+          >
+            {t("llama.ctl.installVulkan", { size: mb(vulkan.sizeMb) })}
+          </Btn>
+        </div>
+      )}
+
+      {bad.length > 0 && (
+        <div className="llama-alert">
+          <AlertTriangle size={14} />
+          <span>{t("llama.ctl.badBuilds", { list: bad.map((b) => BUILD[b] ?? b).join(", ") })}</span>
+          <Btn icon={RefreshCw} disabled={busy} onClick={() => void run(() => api.llamaResetBuilds())}>
+            {t("llama.ctl.badReset")}
+          </Btn>
+        </div>
+      )}
+
+      {failed.map((f) => (
+        <div key={`f-${f.file}`} className="llama-model-card llama-model-failed">
+          <div className="llama-model-head">
+            <AlertTriangle size={13} />
+            <b className="llama-model-name" title={f.file}>
+              {t("llama.ctl.failedTitle", { model: f.file })}
+            </b>
+          </div>
+          <div className="muted-sm">{failText(f)}</div>
+          <div className="llama-model-actions">
+            <Btn
+              icon={RefreshCw}
+              disabled={busy}
+              onClick={() => void run(() => api.llamaLoad(f.file, f.device))}
+            >
+              {t("llama.ctl.retry")}
+            </Btn>
+          </div>
+        </div>
+      ))}
+
+      {act.loaded.length === 0 && act.loading.length === 0 && failed.length === 0 && (
         <div className="muted-sm" style={{ marginTop: 6 }}>
           {t("llama.noneLoaded")}
         </div>

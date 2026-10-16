@@ -1107,7 +1107,6 @@
     "tokShort": "tok",
     "secShort": "s",
     "continue": "Continuer",
-    "delete": "Supprimer",
     "deleteConfirm": "Supprimer ce message et tout ce qui suit ?",
     "cmdCompact": "Condenser l'historique en résumé (un sujet peut être précisé)",
     "cmdClear": "Vider le chat (supprimer tous les messages)",
@@ -5503,19 +5502,12 @@
     "loadingModel": "Chargement de {model}…",
     "working": "en cours",
     "feat": {
-
       "title": "Fonctions IA",
-
       "count": "{a} sur {b} activées",
-
       "hint": "Une fonction désactivée n'appelle aucun modèle et ne charge rien. Les embeddings, la traduction et les modèles vocaux ne sont pas concernés. Le modèle de chaque fonction se choisit dans Paramètres → Association des modèles IA.",
-
       "offAll": "Tout désactiver",
-
       "onAll": "Tout activer"
-
     },
-
     "unloadAll": "Tout décharger",
     "sec": {
       "auto": "Automatisation et mémoire",
@@ -5585,7 +5577,21 @@
       "devGpu": "Périphérique : GPU",
       "devCpu": "Périphérique : CPU",
       "reload": "Recharger",
-      "load": "Charger"
+      "load": "Charger",
+      "gpuNoBuild": "Le système voit le GPU « {name} », mais aucune build llama.cpp GPU n'est installée — les modèles tournent sur le CPU.",
+      "installVulkan": "Installer Vulkan ({size})",
+      "badBuilds": "Les builds {list} sont désactivées temporairement après un échec — les modèles tournent sur le CPU.",
+      "badReset": "Réactiver",
+      "failedTitle": "Échec du chargement : {model}",
+      "retry": "Réessayer"
+    },
+    "err": {
+      "memory": "Mémoire insuffisante pour ce modèle (VRAM ou RAM). Déchargez d'autres modèles ou choisissez le CPU.",
+      "build": "La build llama.cpp n'a pas démarré (pilote ou bibliothèques). Réinstallez-la ou choisissez un autre appareil.",
+      "model": "Le modèle n'a pas pu être chargé. {detail}",
+      "gpu_build_missing": "Aucune build GPU installée — installez Vulkan ou CUDA dans la section des builds.",
+      "gpu_build_failed": "Les builds GPU ont été désactivées après un échec — appuyez sur « Réactiver ».",
+      "build_missing": "Aucune build llama.cpp n'est installée."
     }
   },
   "canvas": {

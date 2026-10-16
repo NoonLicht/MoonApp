@@ -16,6 +16,8 @@ import {
   BUILD_IDS,
   LLAMA_TAG,
   badBuilds,
+  clearBadBuilds,
+  clearFailure,
   catalog,
   installBuild,
   installedBuilds,
@@ -83,6 +85,13 @@ router.post("/build", (req, res) => {
 });
 
 router.post("/build/cancel", (_req, res) => res.json(setup.cancel()));
+
+// Вернуть сборки, отключённые после сбоя, и забыть прошлые ошибки загрузки.
+router.post("/reset-builds", (_req, res) => {
+  clearBadBuilds();
+  clearFailure();
+  res.json({ ok: true });
+});
 
 router.delete("/build/:id", (req, res) => {
   if (!isBuildId(req.params.id)) return res.status(400).json({ error: "bad_build" });

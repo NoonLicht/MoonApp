@@ -13,12 +13,20 @@ import os from "os";
 import path from "path";
 import config from "../config";
 import {
+  badBuilds,
+  clearBadBuilds,
+  clearFailure,
   configureEngine,
   ensureServer,
+  gpuInfo,
   loadedServers,
+  loadFailures,
   loadingServers,
   stopServer,
+  type BuildId,
   type Device,
+  type GpuProbe,
+  type LoadFailure,
   type Placement,
 } from "./engine";
 import { CATALOG, installed, modelPath, siblingMmproj } from "./models";
@@ -282,6 +290,9 @@ export function loadNow(file: string, device?: string): { file: string; started:
   }
   // Перезагрузка не должна менять «зачем модель загружена»: сохраняем прежнюю задачу.
   const prevTask = loadedServers().find((s) => s.file === f)?.task;
+  // Ручная перезагрузка — повод заново попробовать и сборки, отключённые после сбоя.
+  clearBadBuilds();
+  clearFailure(f);
   stopServer(f);
   const mmproj = siblingMmproj(f);
   void ensureServer({
@@ -300,6 +311,12 @@ export interface Activity {
   limit: number;
   laptop: boolean;
   ramMb: number;
+  /** Модели, которые не удалось загрузить, и почему. */
+  failed: LoadFailure[];
+  /** Видеокарта, которую видит система (для подсказок). */
+  gpu: GpuProbe;
+  /** Сборки, временно отключённые после сбоя самой сборки. */
+  badBuilds: BuildId[];
 }
 
 export function activity(): Activity {
@@ -319,6 +336,13 @@ export function activity(): Activity {
     limit: effectiveLimit(),
     laptop,
     ramMb: ramMb(),
+    failed: loadFailures().filter(
+      (x) =>
+        !loadedServers().some((s) => s.file === x.file) &&
+        !loadingServers().some((s) => s.file === x.file),
+    ),
+    gpu: gpuInfo(),
+    badBuilds: badBuilds(),
   };
 }
 

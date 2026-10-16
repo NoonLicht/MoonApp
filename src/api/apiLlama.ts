@@ -60,6 +60,12 @@ export interface LlamaActivity {
   limit: number;
   laptop: boolean;
   ramMb: number;
+  /** Модели, которые не удалось загрузить: код причины для перевода и подробности. */
+  failed: { file: string; code: string; detail: string; device: string; at: number }[];
+  /** Видеокарта, которую видит система. */
+  gpu: { present: boolean; name: string; vramMb: number };
+  /** Сборки, временно отключённые после сбоя самой сборки. */
+  badBuilds: LlamaBuildId[];
 }
 
 export interface LlamaStatus {
@@ -128,6 +134,8 @@ export const llamaApi = {
   llamaStatus: () => req<LlamaStatus>("GET", "/llamacpp/status"),
   llamaBuildInstall: (id: LlamaBuildId) => req<unknown>("POST", "/llamacpp/build", { id }),
   llamaBuildCancel: () => req<unknown>("POST", "/llamacpp/build/cancel"),
+  /** Вернуть сборки, отключённые после сбоя, и сбросить ошибки загрузки. */
+  llamaResetBuilds: () => req<{ ok: boolean }>("POST", "/llamacpp/reset-builds"),
   llamaBuildRemove: (id: LlamaBuildId) => req<{ ok: boolean }>("DELETE", `/llamacpp/build/${id}`),
   llamaModelDownload: (body: { id?: string; url?: string }) =>
     req<unknown>("POST", "/llamacpp/model", body),

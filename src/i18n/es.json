@@ -1107,7 +1107,6 @@
     "tokShort": "tok",
     "secShort": "s",
     "continue": "Continuar",
-    "delete": "Eliminar",
     "deleteConfirm": "¿Eliminar este mensaje y todo lo que sigue?",
     "cmdCompact": "Comprimir el historial en un resumen (se puede indicar el foco)",
     "cmdClear": "Vaciar el chat (eliminar todos los mensajes)",
@@ -5503,19 +5502,12 @@
     "loadingModel": "Cargando {model}…",
     "working": "trabajando",
     "feat": {
-
       "title": "Funciones de IA",
-
       "count": "{a} de {b} activas",
-
       "hint": "Una función desactivada no llama a ningún modelo ni carga nada. Los embeddings, la traducción y los modelos de voz no se ven afectados. El modelo de cada función se elige en Ajustes → Asignación de modelos de IA.",
-
       "offAll": "Desactivar todas",
-
       "onAll": "Activar todas"
-
     },
-
     "unloadAll": "Descargar todo",
     "sec": {
       "auto": "Automatización y memoria",
@@ -5585,7 +5577,21 @@
       "devGpu": "Dispositivo: GPU",
       "devCpu": "Dispositivo: CPU",
       "reload": "Recargar",
-      "load": "Cargar"
+      "load": "Cargar",
+      "gpuNoBuild": "El sistema detecta la GPU «{name}», pero no hay una compilación de llama.cpp para GPU: los modelos se ejecutan en la CPU.",
+      "installVulkan": "Instalar Vulkan ({size})",
+      "badBuilds": "Las compilaciones {list} están desactivadas temporalmente tras un fallo: los modelos usan la CPU.",
+      "badReset": "Activar de nuevo",
+      "failedTitle": "No se pudo cargar: {model}",
+      "retry": "Reintentar"
+    },
+    "err": {
+      "memory": "Memoria insuficiente para este modelo (VRAM o RAM). Descarga otros modelos o elige el dispositivo CPU.",
+      "build": "La compilación de llama.cpp no arrancó (controlador o bibliotecas). Reinstálala o elige otro dispositivo.",
+      "model": "No se pudo cargar el modelo. {detail}",
+      "gpu_build_missing": "No hay compilación para GPU: instala Vulkan o CUDA en la sección de compilaciones.",
+      "gpu_build_failed": "Las compilaciones de GPU se desactivaron tras un fallo: pulsa «Activar de nuevo».",
+      "build_missing": "No hay ninguna compilación de llama.cpp instalada."
     }
   },
   "canvas": {
