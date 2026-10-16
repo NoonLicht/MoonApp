@@ -1,0 +1,30 @@
+[package]
+name = "moon-wordcore"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.95"
+license = "MIT"
+description = "Headless WordCraft core for MoonApp: JSON lines over stdin/stdout"
+
+[[bin]]
+name = "wordcore"
+path = "src/main.rs"
+
+[dependencies]
+# ядро WordCraft (MIT OR Apache-2.0): модель документа, вёрстка, команды, растеризатор
+wordcraft-engine = { git = "https://github.com/storytold/wordcraft", rev = "eae242176108d328c5dd81fbc10370c51ab90706" }
+wordcraft-mcp = { git = "https://github.com/storytold/wordcraft", rev = "eae242176108d328c5dd81fbc10370c51ab90706" }
+wordcraft-layout = { git = "https://github.com/storytold/wordcraft", rev = "eae242176108d328c5dd81fbc10370c51ab90706" }
+wordcraft-doc = { git = "https://github.com/storytold/wordcraft", rev = "eae242176108d328c5dd81fbc10370c51ab90706" }
+wordcraft-render = { git = "https://github.com/storytold/wordcraft", rev = "eae242176108d328c5dd81fbc10370c51ab90706" }
+serde_json = "1"
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 8
+strip = true
+
+# Нужен craft-pdf: бэкенд отклоняет писателей, упавших при разматывании стека.
+[patch.crates-io]
+krilla = { git = "https://github.com/storytold/craft-libs", rev = "c3487320b2d1de657b860b3c8abb44e1f2b32bd8" }

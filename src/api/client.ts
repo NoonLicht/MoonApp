@@ -44,6 +44,7 @@ import { bypassApi } from "@/api/apiBypass";
 import { moviesApi } from "@/api/apiMovies";
 import { upscaleApi } from "@/api/apiUpscale";
 import { photoApi } from "@/api/apiPhoto";
+import { wordApi } from "@/api/apiWord";
 import { ttsApi } from "@/api/apiTts";
 import { myspaceApi } from "@/api/apiMyspace";
 import { m3eApi } from "@/api/apiM3e";
@@ -370,6 +371,7 @@ export const api = {
   ...moviesApi,
   ...upscaleApi,
   ...photoApi,
+  ...wordApi,
   ...ttsApi,
   ...myspaceApi,
   ...m3eApi,

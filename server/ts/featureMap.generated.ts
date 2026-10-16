@@ -40,6 +40,9 @@ export const FEATURE_MAP: {
       "photo",
       "upscale"
     ],
+    "word": [
+      "word"
+    ],
     "video": [
       "video"
     ],

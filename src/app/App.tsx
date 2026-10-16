@@ -61,6 +61,7 @@ import "@/styles/translate.css";
 import "@/styles/movies.css";
 import "@/styles/upscale.css";
 import "@/styles/photo.css";
+import "@/styles/word.css";
 import "@/styles/screenshots.css";
 import "@/styles/fluent.css";
 import CursorSpotlight from "@/components/CursorSpotlight";
@@ -138,6 +139,7 @@ const PAGE_LOADERS: Record<PageId, () => Promise<PageModule>> = {
   convert: () => import("@/pages/convert/ConverterPage"),
   compress: () => import("@/pages/compressor/CompressorPage"),
   photo: () => import("@/pages/photo/PhotoPage"),
+  word: () => import("@/pages/word/WordPage"),
   video: () => import("@/pages/video/VideoPage"),
   movies: () => import("@/pages/movies/MoviesPage"),
   music: () => import("@/pages/music/MusicPage"),

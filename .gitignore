@@ -110,6 +110,7 @@ server/compressor.js
 server/upscale.js
 server/upscale/
 server/photo/
+server/office/
 server/foresight.js
 server/translate/
 server/mail/
@@ -316,3 +317,5 @@ server/slowdown.js
 server/pcPassport.js
 server/canvasAi.js
 server/internalKey.js
+# ядро редактора (Rust): артефакты сборки
+native/wordcore/target/

@@ -22,6 +22,7 @@ const ALL_IDS = [
   "convert",
   "compress",
   "photo",
+  "word",
   "video",
   "movies",
   "music",

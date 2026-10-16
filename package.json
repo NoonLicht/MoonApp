@@ -13,6 +13,7 @@
     "dev": "vite",
     "build:web": "vite build",
     "compile:server": "tsc -p tsconfig.server.json",
+    "build:wordcore": "node scripts/build-wordcore.mjs",
     "compile:electron": "tsc -p tsconfig.electron.json",
     "compile:scripts": "tsc -p tsconfig.scripts.json",
     "compile": "npm run compile:server && npm run compile:electron && npm run compile:scripts",

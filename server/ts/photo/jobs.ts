@@ -94,9 +94,11 @@ export function start(o: StartOpts): PhotoJob {
     if (!s) return;
     job.log.push(s.length > 300 ? `${s.slice(0, 300)}…` : s);
     if (job.log.length > 120) job.log.splice(0, job.log.length - 120);
-    const p = parsePercent(s);
-    if (p != null) job.progress = Math.max(job.progress, Math.min(99, p));
     for (const [re, stage] of o.stages || []) if (re.test(s)) job.stage = stage;
+    // Проценты скачивания моделей и загрузки весов — не прогресс обработки: считаем только этап «infer».
+    const p = parsePercent(s);
+    if (p != null && (!o.stages?.length || job.stage === "infer"))
+      job.progress = Math.max(job.progress, Math.min(99, p));
   };
   try {
     const h = py.run(o.tool, o.args, onLine, o.env);

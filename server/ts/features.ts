@@ -36,7 +36,7 @@ export const PROFILES: Record<string, string[] | null> = {
   ],
   study: [
     "store", "aichat", "voice", "lecture", "myspace", "diary", "translate", "books", "rss",
-    "tools", "settings",
+    "word", "tools", "settings",
   ],
   minimal: ["store", "video", "music", "settings"],
 };
