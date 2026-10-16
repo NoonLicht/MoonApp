@@ -8,6 +8,13 @@ import { spawn, type ChildProcess } from "child_process";
 import * as py from "./pyTool";
 import * as jobs from "./jobs";
 import { PHOTO_DIR } from "./modelStore";
+import { ffmpegPath } from "./ff";
+
+/** Deep-Live-Cam ищет ffmpeg в PATH — подставляем тот, что уже нашло приложение. */
+async function ffEnv(): Promise<Record<string, string>> {
+  const dir = path.dirname(await ffmpegPath());
+  return { PATH: `${dir}${path.delimiter}${process.env.PATH || ""}` };
+}
 
 export interface SwapOptions {
   source: string;
@@ -48,7 +55,8 @@ export function buildArgs(o: SwapOptions, out: string): string[] {
   return args;
 }
 
-export function start(o: SwapOptions): jobs.PhotoJob {
+export async function start(o: SwapOptions): Promise<jobs.PhotoJob> {
+  const env = await ffEnv();
   const video = isVideo(o.target);
   const tmpDir = path.join(PHOTO_DIR, "tmp", `swap_${Date.now()}`);
   fs.mkdirSync(tmpDir, { recursive: true });
@@ -58,6 +66,7 @@ export function start(o: SwapOptions): jobs.PhotoJob {
     tool: "faceswap",
     args: buildArgs(o, out),
     outName: `swap_${Date.now()}${ext}`,
+    env,
     stages: [
       [/download/i, "download"],
       [/Processing|processing|frame/i, "infer"],
@@ -73,12 +82,13 @@ let live: ChildProcess | null = null;
 export const liveRunning = (): boolean => !!live && live.exitCode == null;
 
 /** Окно Deep-Live-Cam с камерой (интерфейс самого проекта). */
-export function startLive(device: "cuda" | "cpu" = "cuda"): void {
+export async function startLive(device: "cuda" | "cpu" = "cuda"): Promise<void> {
   if (liveRunning()) return;
+  const env = { ...process.env, ...(await ffEnv()) };
   const proc = spawn(
     py.pythonExe("faceswap"),
     ["run.py", "--execution-provider", device === "cpu" ? "cpu" : "cuda"],
-    { cwd: py.repoDir("faceswap"), windowsHide: false, stdio: "ignore" },
+    { cwd: py.repoDir("faceswap"), windowsHide: false, stdio: "ignore", env },
   );
   proc.on("exit", () => {
     if (live === proc) live = null;

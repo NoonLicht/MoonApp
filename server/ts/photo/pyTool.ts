@@ -112,15 +112,18 @@ export const TOOLS: Record<ToolId, ToolDef> = {
     repo: true,
     zipUrl: "https://github.com/hacksider/Deep-Live-Cam/archive/refs/heads/main.zip",
     modules: ["onnxruntime", "insightface", "cv2"],
-    note: "Используйте только с согласия людей на фото и помечайте результат как синтетический.",
+    note: "Код Deep-Live-Cam — AGPL-3.0; модели insightface разрешены только для некоммерческих исследований. Ставится вместе с onnxruntime-gpu.",
     steps: (device) => [
       { id: "python", approxMb: 11 },
       { id: "getpip", approxMb: 3 },
       { id: "repo", approxMb: 5 },
-      // onnxruntime-gpu вместо CPU-версии: требования проекта указывают именно его
+      // insightface есть только исходниками, а его единственное C++-расширение (3D-сетка лица) для замены
+      // лица не нужно и без компилятора в embeddable-Python не собирается: ставим чистой Python-частью
+      { id: "buildtools", pip: ["numpy>=2,<3", "cython", "setuptools", "wheel"], approxMb: 40 },
+      { id: "insightface", approxMb: 60 },
       {
         id: "deps",
-        pip: ["-r", "requirements.txt", ...(device === "cpu" ? [] : [])],
+        pip: ["-r", "requirements.txt"],
         approxMb: device === "cpu" ? 900 : 1600,
         inRepo: true,
       },
@@ -387,6 +390,83 @@ async function stepPip(def: ToolDef, step: Step, index: number): Promise<void> {
   if (code !== 0) throw new Error(`pip_failed: ${step.id}`);
 }
 
+const PATCH_INSIGHTFACE = [
+  "import sys, tarfile, glob, os",
+  "d = sys.argv[1]",
+  'archive = glob.glob(os.path.join(d, "*.tar.gz"))[0]',
+  "tarfile.open(archive).extractall(d)",
+  'src = [x for x in glob.glob(os.path.join(d, "insightface-*")) if os.path.isdir(x)][0]',
+  'p = os.path.join(src, "setup.py")',
+  's = open(p, encoding="utf8").read()',
+  's = s.replace("ext_modules=cythonize(extensions)", "ext_modules=[]")',
+  'open(p, "w", encoding="utf8").write(s)',
+  'for f in glob.glob(os.path.join(src, "insightface", "thirdparty", "face3d", "mesh", "*.py")):',
+  '    t = open(f, encoding="utf8").read()',
+  '    t2 = t.replace("\\nfrom .cython import mesh_core_cython", "\\ntry:\\n    from .cython import mesh_core_cython\\nexcept ImportError:\\n    mesh_core_cython = None")',
+  "    if t2 != t:",
+  '        open(f, "w", encoding="utf8").write(t2)',
+  "print(src)",
+].join("\n");
+
+/** insightface 0.7.3: скачать исходники, убрать C++-расширение, поставить чистым Python вместе с зависимостями. */
+async function stepInsightface(def: ToolDef, index: number): Promise<void> {
+  const exe = pythonExe(def.id);
+  const dir = path.join(toolDir(def.id), "insightface-src");
+  fs.rmSync(dir, { recursive: true, force: true });
+  fs.mkdirSync(dir, { recursive: true });
+  let fr = 0;
+  const pipLine = (line: string): void => {
+    pushLog(line);
+    fr = stepFraction(line, fr);
+    setProgress(index, fr * 0.8);
+  };
+  const dl = await runProc(
+    exe,
+    [
+      "-m",
+      "pip",
+      "download",
+      "insightface==0.7.3",
+      "--no-deps",
+      "--no-binary",
+      ":all:",
+      "--no-build-isolation",
+      "-d",
+      dir,
+      "--disable-pip-version-check",
+    ],
+    toolDir(def.id),
+    pipLine,
+  );
+  if (dl !== 0) throw new Error("pip_failed: insightface download");
+  const script = path.join(dir, "patch.py");
+  fs.writeFileSync(script, PATCH_INSIGHTFACE, "utf8");
+  let src = "";
+  const pc = await runProc(exe, [script, dir], dir, (l) => {
+    if (l.trim() && !l.startsWith("Warning")) src = l.trim();
+  });
+  if (pc !== 0 || !src) throw new Error("insightface_patch_failed");
+  const code = await runProc(
+    exe,
+    [
+      "-m",
+      "pip",
+      "install",
+      src,
+      "--no-build-isolation",
+      "--disable-pip-version-check",
+      "--no-input",
+      "--progress-bar",
+      "off",
+      "--no-warn-script-location",
+    ],
+    toolDir(def.id),
+    pipLine,
+  );
+  if (code !== 0) throw new Error("pip_failed: insightface");
+  fs.rmSync(dir, { recursive: true, force: true });
+}
+
 export function install(id: ToolId, device: ToolDevice): ToolSnapshot {
   const def = TOOLS[id];
   if (!def) throw new Error("unknown_tool");
@@ -408,6 +488,7 @@ export function install(id: ToolId, device: ToolDevice): ToolSnapshot {
         if (st.id === "python") await stepPython(def, i);
         else if (st.id === "getpip") await stepGetPip(def, i);
         else if (st.id === "repo") await stepRepo(def, i);
+        else if (st.id === "insightface") await stepInsightface(def, i);
         else await stepPip(def, st, i);
         if (setup.shouldCancel()) throw new Error("cancelled");
         setProgress(i, 1);

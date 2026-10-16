@@ -188,7 +188,7 @@ router.post("/faceswap", uploadMany, async (req, res) => {
     const st = await swap.ready();
     if (!st.ready) throw new Error("tool_not_installed");
     const flag = (v: unknown): boolean => v === true || v === "true" || v === "1" || v === "on";
-    const job = swap.start({
+    const job = await swap.start({
       source: src.path,
       target: tgt.path,
       device: req.body?.device === "cpu" ? "cpu" : "cuda",
@@ -215,7 +215,7 @@ router.post("/faceswap/live", async (req, res) => {
     }
     const st = await swap.ready();
     if (!st.ready) throw new Error("tool_not_installed");
-    swap.startLive(req.body?.device === "cpu" ? "cpu" : "cuda");
+    await swap.startLive(req.body?.device === "cpu" ? "cpu" : "cuda");
     res.json({ running: swap.liveRunning() });
   } catch (e) {
     fail(res, e, (e as Error).message === "tool_not_installed" ? 409 : 500);
