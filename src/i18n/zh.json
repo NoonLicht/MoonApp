@@ -27,7 +27,8 @@
     "rss": "RSS",
     "collapse": "收起菜单",
     "expand": "展开菜单",
-    "mail": "邮件"
+    "mail": "邮件",
+    "photo": "照片与视频"
   },
   "common": {
     "saved": "已保存",
@@ -6825,5 +6826,69 @@
     "tr_localNote": "翻译在本机进行，邮件文本不会外发。",
     "tr_cloudWarn": "注意：使用此引擎时邮件文本会发送到外部翻译服务。",
     "accountColor": "邮箱标签颜色"
+  },
+  "photo": {
+    "eyebrow": "编辑",
+    "title": "照片与视频",
+    "tabs": {
+      "upscale": "放大",
+      "bg": "去除背景",
+      "invsr": "InvSR（扩散）",
+      "face": "换脸"
+    },
+    "ready": "就绪",
+    "notInstalled": "未安装",
+    "deviceGpu": "显卡 (CUDA)",
+    "deviceCpu": "处理器",
+    "install": "安装",
+    "cancel": "取消",
+    "remove": "删除",
+    "step": "步骤",
+    "pickFile": "选择文件或拖放到此处",
+    "download": "下载",
+    "save": "保存",
+    "working": "处理中…",
+    "before": "之前",
+    "after": "之后",
+    "none": "无",
+    "done": "用时 {sec} 秒",
+    "bg": {
+      "model": "模型",
+      "needModel": "请先下载模型",
+      "cutout": "透明背景抠图",
+      "mask": "仅蒙版",
+      "color": "纯色背景",
+      "run": "去除背景"
+    },
+    "invsr": {
+      "steps": "采样步数",
+      "tile": "分块大小",
+      "colorFix": "颜色校正",
+      "hint": "放大 4 倍。1 步最快，3–5 步细节更多。分块越小占用显存越少。",
+      "run": "放大"
+    },
+    "face": {
+      "consent": "仅使用已获同意者的照片，并将结果标注为合成内容。",
+      "source": "人脸（源照片）",
+      "target": "目标（照片或视频）",
+      "device": "设备",
+      "quality": "视频质量（CRF，越小越好）",
+      "enhance": "增强人脸",
+      "many": "画面中所有人脸",
+      "mouth": "保留原始嘴部",
+      "run": "开始换脸",
+      "live": "实时摄像头",
+      "liveStop": "关闭摄像头"
+    },
+    "stage": {
+      "start": "启动",
+      "download": "下载模型",
+      "load": "加载中",
+      "infer": "处理中",
+      "encode": "编码视频",
+      "done": "完成",
+      "error": "错误",
+      "stopped": "已停止"
+    }
   }
 }

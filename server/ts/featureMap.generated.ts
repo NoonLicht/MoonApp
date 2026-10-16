@@ -36,7 +36,8 @@ export const FEATURE_MAP: {
     "compress": [
       "compressor"
     ],
-    "upscale": [
+    "photo": [
+      "photo",
       "upscale"
     ],
     "video": [

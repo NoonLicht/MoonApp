@@ -196,7 +196,7 @@ describe("загрузка модулей при старте (отдельны�
 
   it("минимальный профиль — модули отключённых страниц не читаются вообще", () => {
     const r = loaded(
-      "mail,rss,monitor,lecture,aichat,bypass,automation,convert,compress,upscale,movies,books",
+      "mail,rss,monitor,lecture,aichat,bypass,automation,convert,compress,photo,movies,books",
       PROBES,
     );
     // «/server/lecture.js» здесь не проверяем: его тянет общий код (сводки ИИ через llmOnce)

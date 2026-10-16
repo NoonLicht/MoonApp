@@ -785,7 +785,7 @@ export default function SettingsPage() {
         )}
 
         {/* ---- Апскейл медиа (док: upscale) — умолчания ONNX-движка ---- */}
-        {on("upscale") && (
+        {on("photo") && (
         <Section title={t("settings.upscale")} icon={Sparkles}>
           <Row label={t("upSettings.model")} hint={t("upSettings.modelHint")}>
             <TextInput

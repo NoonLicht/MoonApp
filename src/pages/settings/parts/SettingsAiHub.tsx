@@ -211,7 +211,7 @@ export function AiHub({ chatProvider, chatModel }: { chatProvider?: string; chat
         const n = up.value.models.filter((m) => m.available).length;
         out.push({
           id: "upscale",
-          page: "upscale",
+          page: "photo",
           title: t("aiHub.upscale"),
           status: n > 0 ? t("aiHub.models", { n }) : t("aiHub.notInstalled"),
           ready: n > 0,

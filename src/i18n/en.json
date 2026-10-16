@@ -27,7 +27,8 @@
     "rss": "RSS",
     "collapse": "Collapse menu",
     "expand": "Expand menu",
-    "mail": "Mail"
+    "mail": "Mail",
+    "photo": "Photo & Video"
   },
   "common": {
     "saved": "saved",
@@ -6825,5 +6826,69 @@
     "tr_localNote": "Translation runs on your computer; the email text is not sent anywhere.",
     "tr_cloudWarn": "Note: with this engine the email text is sent to an external translation service.",
     "accountColor": "Mailbox tag colour"
+  },
+  "photo": {
+    "eyebrow": "Editing",
+    "title": "Photo & Video",
+    "tabs": {
+      "upscale": "Upscale",
+      "bg": "Remove background",
+      "invsr": "InvSR (diffusion)",
+      "face": "Face swap"
+    },
+    "ready": "Ready",
+    "notInstalled": "Not installed",
+    "deviceGpu": "GPU (CUDA)",
+    "deviceCpu": "CPU",
+    "install": "Install",
+    "cancel": "Cancel",
+    "remove": "Remove",
+    "step": "Step",
+    "pickFile": "Choose a file or drop it here",
+    "download": "Download",
+    "save": "Save",
+    "working": "Processing…",
+    "before": "Before",
+    "after": "After",
+    "none": "None",
+    "done": "Done in {sec} s",
+    "bg": {
+      "model": "Model",
+      "needModel": "Download the model first",
+      "cutout": "Cutout on transparent",
+      "mask": "Mask only",
+      "color": "Solid colour",
+      "run": "Remove background"
+    },
+    "invsr": {
+      "steps": "Sampling steps",
+      "tile": "Tile size",
+      "colorFix": "Colour fix",
+      "hint": "Upscales 4×. 1 step is fast, 3–5 gives more detail. A smaller tile uses less VRAM.",
+      "run": "Upscale"
+    },
+    "face": {
+      "consent": "Use only photos of people who gave consent and label the result as synthetic.",
+      "source": "Face (source photo)",
+      "target": "Target (photo or video)",
+      "device": "Device",
+      "quality": "Video quality (CRF, lower is better)",
+      "enhance": "Enhance face",
+      "many": "All faces in frame",
+      "mouth": "Keep original mouth",
+      "run": "Swap face",
+      "live": "Live camera",
+      "liveStop": "Stop camera"
+    },
+    "stage": {
+      "start": "Starting",
+      "download": "Downloading models",
+      "load": "Loading",
+      "infer": "Processing",
+      "encode": "Encoding video",
+      "done": "Done",
+      "error": "Error",
+      "stopped": "Stopped"
+    }
   }
 }

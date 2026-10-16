@@ -31,7 +31,7 @@ export const LOCKED_PAGES: readonly string[] = ["settings"];
 export const PROFILES: Record<string, string[] | null> = {
   all: null,
   media: [
-    "store", "convert", "compress", "upscale", "video", "movies", "music", "books",
+    "store", "convert", "compress", "photo", "video", "movies", "music", "books",
     "monitor", "screenshots", "archive", "tools", "settings",
   ],
   study: [
@@ -53,6 +53,8 @@ export function disabledPages(): Set<string> {
     raw
       .split(",")
       .map((s) => s.trim())
+      // страница «Апскейл» стала вкладкой «Фото и видео» (id photo)
+      .map((s) => (s === "upscale" ? "photo" : s))
       .filter((s) => PAGE_IDS.includes(s) && !LOCKED_PAGES.includes(s)),
   );
 }

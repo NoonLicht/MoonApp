@@ -155,6 +155,7 @@ function createApp(): express.Express {
     ["/api/video", "video"],
     ["/api/compressor", "compressor"],
     ["/api/upscale", "upscale"],
+    ["/api/photo", "photo"],
     ["/api/tts", "tts"],
     ["/api/archive", "archive"],
     ["/api/proxy", "proxy"],

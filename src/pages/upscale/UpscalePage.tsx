@@ -93,7 +93,7 @@ const DEFAULT_PARAMS: Params = {
 
 const fmtMB = (b?: number | null) => (!b && b !== 0 ? "—" : `${(b / 1024 / 1024).toFixed(1)} MB`);
 
-export default function UpscalePage() {
+export default function UpscalePage({ embedded = false }: { embedded?: boolean } = {}) {
   const { t } = useI18n();
   const isActive = usePageActive();
   const menu = useContextMenu();
@@ -1029,7 +1029,7 @@ export default function UpscalePage() {
 
   return (
     <div className="page up-page">
-      <SectionHead eyebrow={t("up.eyebrow")} title={t("up.title")} />
+      {!embedded && <SectionHead eyebrow={t("up.eyebrow")} title={t("up.title")} />}
 
       <div className="up-grid">
         {/* --- Левая колонка: исходник и результат --- */}

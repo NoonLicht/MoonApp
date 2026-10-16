@@ -60,6 +60,7 @@ import "@/styles/tuning.css";
 import "@/styles/translate.css";
 import "@/styles/movies.css";
 import "@/styles/upscale.css";
+import "@/styles/photo.css";
 import "@/styles/screenshots.css";
 import "@/styles/fluent.css";
 import CursorSpotlight from "@/components/CursorSpotlight";
@@ -136,7 +137,7 @@ const PAGE_LOADERS: Record<PageId, () => Promise<PageModule>> = {
   store: () => import("@/pages/store/StorePage"),
   convert: () => import("@/pages/convert/ConverterPage"),
   compress: () => import("@/pages/compressor/CompressorPage"),
-  upscale: () => import("@/pages/upscale/UpscalePage"),
+  photo: () => import("@/pages/photo/PhotoPage"),
   video: () => import("@/pages/video/VideoPage"),
   movies: () => import("@/pages/movies/MoviesPage"),
   music: () => import("@/pages/music/MusicPage"),
@@ -687,6 +688,7 @@ export default function App() {
         let startPage = String(sc?.general?.startPage || "");
         // «Последняя открытая»: страница, на которой приложение было закрыто.
         if (startPage === "last") startPage = LAST_PAGE_AT_BOOT;
+        if (startPage === "upscale") startPage = "photo"; // страница переименована
         setActive(
           PAGES.some((p) => p.id === SOLO_PAGE)
             ? (SOLO_PAGE as PageId)

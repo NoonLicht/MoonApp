@@ -109,6 +109,7 @@ server/ytdlp.js
 server/compressor.js
 server/upscale.js
 server/upscale/
+server/photo/
 server/translate/
 server/mail/
 server/llamacpp/

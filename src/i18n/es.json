@@ -27,7 +27,8 @@
     "rss": "RSS",
     "collapse": "Contraer menú",
     "expand": "Expandir menú",
-    "mail": "Correo"
+    "mail": "Correo",
+    "photo": "Foto y vídeo"
   },
   "common": {
     "saved": "guardado",
@@ -6825,5 +6826,69 @@
     "tr_localNote": "La traducción se hace en tu equipo; el texto no se envía.",
     "tr_cloudWarn": "Atención: con este motor el texto se envía a un servicio externo.",
     "accountColor": "Color de la etiqueta del buzón"
+  },
+  "photo": {
+    "eyebrow": "Edición",
+    "title": "Foto y vídeo",
+    "tabs": {
+      "upscale": "Ampliar",
+      "bg": "Quitar fondo",
+      "invsr": "InvSR (difusión)",
+      "face": "Cambio de cara"
+    },
+    "ready": "Listo",
+    "notInstalled": "No instalado",
+    "deviceGpu": "GPU (CUDA)",
+    "deviceCpu": "CPU",
+    "install": "Instalar",
+    "cancel": "Cancelar",
+    "remove": "Eliminar",
+    "step": "Paso",
+    "pickFile": "Elige un archivo o suéltalo aquí",
+    "download": "Descargar",
+    "save": "Guardar",
+    "working": "Procesando…",
+    "before": "Antes",
+    "after": "Después",
+    "none": "Ninguno",
+    "done": "Hecho en {sec} s",
+    "bg": {
+      "model": "Modelo",
+      "needModel": "Primero descarga el modelo",
+      "cutout": "Recorte sobre transparente",
+      "mask": "Solo máscara",
+      "color": "Color sólido",
+      "run": "Quitar fondo"
+    },
+    "invsr": {
+      "steps": "Pasos de muestreo",
+      "tile": "Tamaño de mosaico",
+      "colorFix": "Corrección de color",
+      "hint": "Amplía 4×. 1 paso es rápido, 3–5 da más detalle. Un mosaico menor usa menos VRAM.",
+      "run": "Ampliar"
+    },
+    "face": {
+      "consent": "Usa solo fotos de personas que dieron su consentimiento y etiqueta el resultado como sintético.",
+      "source": "Cara (foto de origen)",
+      "target": "Destino (foto o vídeo)",
+      "device": "Dispositivo",
+      "quality": "Calidad de vídeo (CRF, menor es mejor)",
+      "enhance": "Mejorar la cara",
+      "many": "Todas las caras del encuadre",
+      "mouth": "Conservar la boca original",
+      "run": "Cambiar cara",
+      "live": "Cámara en vivo",
+      "liveStop": "Cerrar cámara"
+    },
+    "stage": {
+      "start": "Iniciando",
+      "download": "Descargando modelos",
+      "load": "Cargando",
+      "infer": "Procesando",
+      "encode": "Codificando vídeo",
+      "done": "Hecho",
+      "error": "Error",
+      "stopped": "Detenido"
+    }
   }
 }

@@ -34,7 +34,7 @@ export type PageId =
   | "store"
   | "convert"
   | "compress"
-  | "upscale"
+  | "photo"
   | "video"
   | "movies"
   | "music"
@@ -79,7 +79,7 @@ const ALL_PAGES: readonly PageMeta[] = [
   { id: "store", i18n: "nav.store", icon: Store },
   { id: "convert", i18n: "nav.convert", icon: Repeat },
   { id: "compress", i18n: "nav.compress", icon: Gauge },
-  { id: "upscale", i18n: "nav.upscale", icon: Sparkles },
+  { id: "photo", i18n: "nav.photo", icon: Sparkles },
   { id: "video", i18n: "nav.video", icon: Video },
   { id: "movies", i18n: "nav.movies", icon: Clapperboard },
   { id: "music", i18n: "nav.music", icon: Music2 },

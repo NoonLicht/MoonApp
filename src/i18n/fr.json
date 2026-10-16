@@ -27,7 +27,8 @@
     "rss": "RSS",
     "collapse": "Réduire le menu",
     "expand": "Développer le menu",
-    "mail": "Messagerie"
+    "mail": "Messagerie",
+    "photo": "Photo et vidéo"
   },
   "common": {
     "saved": "enregistré",
@@ -6825,5 +6826,69 @@
     "tr_localNote": "La traduction se fait sur votre ordinateur ; le texte n'est pas envoyé.",
     "tr_cloudWarn": "Attention : avec ce moteur, le texte est envoyé à un service externe.",
     "accountColor": "Couleur de l'étiquette de la boîte"
+  },
+  "photo": {
+    "eyebrow": "Édition",
+    "title": "Photo et vidéo",
+    "tabs": {
+      "upscale": "Upscale",
+      "bg": "Supprimer l'arrière-plan",
+      "invsr": "InvSR (diffusion)",
+      "face": "Échange de visage"
+    },
+    "ready": "Prêt",
+    "notInstalled": "Non installé",
+    "deviceGpu": "GPU (CUDA)",
+    "deviceCpu": "CPU",
+    "install": "Installer",
+    "cancel": "Annuler",
+    "remove": "Supprimer",
+    "step": "Étape",
+    "pickFile": "Choisissez un fichier ou déposez-le ici",
+    "download": "Télécharger",
+    "save": "Enregistrer",
+    "working": "Traitement…",
+    "before": "Avant",
+    "after": "Après",
+    "none": "Aucun",
+    "done": "Terminé en {sec} s",
+    "bg": {
+      "model": "Modèle",
+      "needModel": "Téléchargez d'abord le modèle",
+      "cutout": "Détourage sur transparent",
+      "mask": "Masque seul",
+      "color": "Couleur unie",
+      "run": "Supprimer l'arrière-plan"
+    },
+    "invsr": {
+      "steps": "Étapes d'échantillonnage",
+      "tile": "Taille de tuile",
+      "colorFix": "Correction des couleurs",
+      "hint": "Agrandit ×4. 1 étape est rapide, 3–5 donne plus de détails. Une tuile plus petite utilise moins de VRAM.",
+      "run": "Agrandir"
+    },
+    "face": {
+      "consent": "Utilisez uniquement des photos de personnes consentantes et indiquez que le résultat est synthétique.",
+      "source": "Visage (photo source)",
+      "target": "Cible (photo ou vidéo)",
+      "device": "Appareil",
+      "quality": "Qualité vidéo (CRF, plus bas = mieux)",
+      "enhance": "Améliorer le visage",
+      "many": "Tous les visages du cadre",
+      "mouth": "Garder la bouche d'origine",
+      "run": "Échanger le visage",
+      "live": "Caméra en direct",
+      "liveStop": "Fermer la caméra"
+    },
+    "stage": {
+      "start": "Démarrage",
+      "download": "Téléchargement des modèles",
+      "load": "Chargement",
+      "infer": "Traitement",
+      "encode": "Encodage vidéo",
+      "done": "Terminé",
+      "error": "Erreur",
+      "stopped": "Arrêté"
+    }
   }
 }
