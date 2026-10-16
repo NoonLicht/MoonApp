@@ -3163,7 +3163,25 @@
     },
     "modelMissing": "尚未下载识别模型——可录音，但不会转写",
     "downloadModel": "下载模型",
-    "engineReadyGigaam": "GigaAM v3 就绪 · CPU"
+    "engineReadyGigaam": "GigaAM v3 就绪 · CPU",
+    "tabForesight": "会议（Foresight）",
+    "foresight": {
+      "title": "Foresight",
+      "sub": "会议提问，答案来自你的笔记和文件",
+      "askPlaceholder": "向你的知识库提问…",
+      "ask": "提问",
+      "noSession": "开始录音：会议中的问题会显示在这里。",
+      "empty": "暂未听到问题。",
+      "searching": "正在你的资料中搜索…",
+      "none": "你的资料中没有相关内容。",
+      "error": "搜索失败。",
+      "expandTitle": "笔记 → 完整文本",
+      "expandHint": "在右侧写简短笔记，模型会根据会议转录将其展开。",
+      "expand": "展开笔记",
+      "expanding": "展开中…",
+      "insert": "插入笔记",
+      "emptyNotes": "请先在右侧写一些笔记。"
+    }
   },
   "bypass": {
     "netEyebrow": "网络诊断",

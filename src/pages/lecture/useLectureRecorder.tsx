@@ -35,7 +35,7 @@ export function useLectureRecorder() {
   // Вкладка страницы: полноценная сессия лекции или быстрая голосовая заметка
   // (перенесена сюда со своей отдельной страницы — настройки движка распознавания
   // общие, это та же секция ниже "engine"/whisper, второй настройки не заводим).
-  const [pageTab, setPageTab] = useState<"lecture" | "quick">("lecture");
+  const [pageTab, setPageTab] = useState<"lecture" | "quick" | "foresight">("lecture");
 
   const [engine, setEngine] = useState<LectureEngineStatus | null>(null);
   const [sessions, setSessions] = useState<LectureSession[]>([]);

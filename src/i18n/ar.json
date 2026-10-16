@@ -3163,7 +3163,25 @@
     },
     "modelMissing": "نموذج التعرف غير منزّل — التسجيل يعمل بدون تفريغ",
     "downloadModel": "تنزيل النموذج",
-    "engineReadyGigaam": "GigaAM v3 جاهز · CPU"
+    "engineReadyGigaam": "GigaAM v3 جاهز · CPU",
+    "tabForesight": "اجتماع (Foresight)",
+    "foresight": {
+      "title": "Foresight",
+      "sub": "أسئلة الاجتماع وإجاباتها من ملاحظاتك وملفاتك",
+      "askPlaceholder": "اسأل قاعدة معرفتك…",
+      "ask": "اسأل",
+      "noSession": "ابدأ التسجيل: ستظهر أسئلة الاجتماع هنا.",
+      "empty": "لم تُسمع أسئلة بعد.",
+      "searching": "جارٍ البحث في موادك…",
+      "none": "لا شيء ذو صلة في موادك.",
+      "error": "فشل البحث.",
+      "expandTitle": "الملاحظات ← نص كامل",
+      "expandHint": "اكتب ملاحظات قصيرة على اليمين وسيوسعها النموذج بالاعتماد على النص المفرغ.",
+      "expand": "توسيع الملاحظات",
+      "expanding": "جارٍ التوسيع…",
+      "insert": "إدراج في الملاحظات",
+      "emptyNotes": "اكتب بعض الملاحظات على اليمين أولاً."
+    }
   },
   "bypass": {
     "netEyebrow": "تشخيص الشبكة",

@@ -3167,7 +3167,25 @@
     },
     "modelMissing": "Recognition model isn't downloaded — recording works, no transcription",
     "downloadModel": "Download model",
-    "engineReadyGigaam": "GigaAM v3 ready · CPU"
+    "engineReadyGigaam": "GigaAM v3 ready · CPU",
+    "tabForesight": "Meeting (Foresight)",
+    "foresight": {
+      "title": "Foresight",
+      "sub": "meeting questions answered from your notes and files",
+      "askPlaceholder": "Ask your knowledge base…",
+      "ask": "Ask",
+      "noSession": "Start recording: questions from the meeting will appear here.",
+      "empty": "No questions heard yet.",
+      "searching": "Searching your materials…",
+      "none": "Nothing relevant in your materials.",
+      "error": "Search failed.",
+      "expandTitle": "Notes → full text",
+      "expandHint": "Jot short notes on the right — the model expands them using the meeting transcript.",
+      "expand": "Expand notes",
+      "expanding": "Expanding…",
+      "insert": "Insert into notes",
+      "emptyNotes": "Write some notes on the right first."
+    }
   },
   "bypass": {
     "netEyebrow": "Network diagnostics",

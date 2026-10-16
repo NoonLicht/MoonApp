@@ -41,6 +41,7 @@ import LectureAudioPanel, { LevelMeter } from "@/pages/lecture/parts/LectureAudi
 import LectureEnginePanel from "@/pages/lecture/parts/LectureEnginePanel";
 import AudioCleanPanel from "@/pages/lecture/parts/AudioCleanPanel";
 import QuickNoteTab from "@/pages/lecture/parts/QuickNoteTab";
+import ForesightPanel from "@/pages/lecture/parts/ForesightPanel";
 import LectureSemantic from "@/pages/lecture/parts/LectureSemantic";
 import LectureConspectusPanel from "@/pages/lecture/parts/LectureConspectusPanel";
 import LectureAskPanel from "@/pages/lecture/parts/LectureAskPanel";
@@ -200,6 +201,13 @@ export default function LectureRecorderView({ c }: { c: useLectureRecorderResult
         >
           {t("lecture.tabQuickNote")}
         </button>
+        <button
+          type="button"
+          className={`lec-tabbtn${pageTab === "foresight" ? " is-active" : ""}`}
+          onClick={() => setPageTab("foresight")}
+        >
+          {t("lecture.tabForesight")}
+        </button>
       </div>
       {/* Шапка: статус движка + контролы. Общая для обеих вкладок — настройки
           движка распознавания (кнопка Settings2) одни и те же и для Лектория,
@@ -231,14 +239,14 @@ export default function LectureRecorderView({ c }: { c: useLectureRecorderResult
           </span>
         </div>
         <div className="lec-actions">
-          {pageTab === "lecture" && recordingActive && (
+          {pageTab !== "quick" && recordingActive && (
             <LevelMeter db={levelDb} thresholdDb={audio?.vad.thresholdDb ?? -42} t={t} />
           )}
           {/* Кнопки-иконки, без подписей: ряд больше не распирает шапку, поэтому
               последняя кнопка не уезжает за край узкого окна. Смысл кнопки —
               в title (подсказка) и aria-label (скринридер). Часть кнопок имеет
               смысл только на вкладке «Лекторий». */}
-          {pageTab === "lecture" && (
+          {pageTab !== "quick" && (
             <>
               <button
                 className={`lec-btn ghost icon${showSessions ? " on" : ""}`}
@@ -316,7 +324,7 @@ export default function LectureRecorderView({ c }: { c: useLectureRecorderResult
           <AudioCleanPanel />
         </>
       )}
-      {pageTab === "lecture" && (
+      {pageTab !== "quick" && (
         <>
           {showAudio && (
             <LectureAudioPanel
@@ -536,6 +544,21 @@ export default function LectureRecorderView({ c }: { c: useLectureRecorderResult
                   : t("lecture.recheck.error", { error: status.recheck.error })}
               {status.recheck.truncated ? ` · ${t("lecture.recheck.truncated")}` : ""}
             </div>
+          )}
+
+          {pageTab === "foresight" && (
+            <ForesightPanel
+              sessionId={session?.id ?? null}
+              live={recordingActive}
+              notes={notes}
+              onInsertNotes={(text) => {
+                setNotes(notes ? `${notes}
+
+${text}` : text);
+                notesDirtyRef.current = true;
+                setNotesSaved(false);
+              }}
+            />
           )}
 
           {/* Сплит-скрин: телепромтер / конспект */}

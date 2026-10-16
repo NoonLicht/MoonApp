@@ -22,6 +22,7 @@ import type {
   LectureDiarizeState,
   LectureEngineSetup,
   LectureGigaamInfo,
+  ForesightCard,
 } from "@/api/apiTypesLecture";
 
 export const lectureApi = {
@@ -158,6 +159,20 @@ export const lectureApi = {
       citations: { ms: number; label: string }[];
       passages: { chunkId: number | null; startMs: number; endMs: number; text: string }[];
     }>("POST", `/lecture/${id}/ask`, { question }),
+  /** Foresight: вопросы встречи и ответы из личной базы знаний. */
+  foresightScan: (id: number) =>
+    req<{ added: number; cards: ForesightCard[] }>("POST", `/lecture/${id}/foresight/scan`),
+  foresightAsk: (id: number, question: string) =>
+    req<{ card: ForesightCard; cards: ForesightCard[] }>("POST", `/lecture/${id}/foresight/ask`, {
+      question,
+    }),
+  foresightCards: (id: number) =>
+    req<{ cards: ForesightCard[] }>("GET", `/lecture/${id}/foresight`),
+  foresightDismiss: (id: number, cardId: string) =>
+    req<{ ok: boolean }>("DELETE", `/lecture/${id}/foresight/${cardId}`),
+  /** Сокращённые пометки → связные заметки по расшифровке. */
+  foresightExpand: (id: number, notes: string) =>
+    req<{ markdown: string }>("POST", `/lecture/${id}/foresight/expand`, { notes }),
   lectureChapters: (id: number) =>
     req<{ items: { startMs: number; endMs: number; title: string; chunks: number }[] }>(
       "GET",

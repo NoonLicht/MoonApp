@@ -40,6 +40,7 @@
  */
 
 import { askLecture, summarizeMissed } from "../lectureAsk";
+import * as foresight from "../foresight";
 import { buildChapters } from "../lectureChapters";
 import { stmts } from "../db";
 import express from "express";
@@ -367,10 +368,60 @@ router.post("/:id/stop", (req, res) => {
 
 router.delete("/:id", (req, res) => {
   try {
-    res.json({ ok: lecture.deleteSession(Number(req.params.id)) });
+    const ok = lecture.deleteSession(Number(req.params.id));
+    foresight.forget(Number(req.params.id));
+    res.json({ ok });
   } catch (e: any) {
     res.status(400).json({ error: e.message });
   }
+});
+
+// Foresight: вопросы встречи с ответами из личной базы знаний и «заметки → полный текст».
+const foresightFail = (res: express.Response, e: any): void => {
+  const msg = String(e?.message || e);
+  res.status(/empty_/.test(msg) ? 400 : /not_found/.test(msg) ? 404 : 500).json({ error: msg });
+};
+
+router.get("/:id/foresight", (req, res) => {
+  res.json({ cards: foresight.cardsOf(Number(req.params.id)) });
+});
+
+router.post("/:id/foresight/scan", (req, res) => {
+  try {
+    res.json(foresight.scan(Number(req.params.id), req.appPage ?? null));
+  } catch (e) {
+    foresightFail(res, e);
+  }
+});
+
+router.post("/:id/foresight/ask", (req, res) => {
+  try {
+    const card = foresight.ask(
+      Number(req.params.id),
+      String(req.body?.question ?? ""),
+      req.appPage ?? null,
+    );
+    res.json({ card, cards: foresight.cardsOf(Number(req.params.id)) });
+  } catch (e) {
+    foresightFail(res, e);
+  }
+});
+
+router.post("/:id/foresight/expand", async (req, res) => {
+  try {
+    const markdown = await foresight.expandNotes(
+      Number(req.params.id),
+      String(req.body?.notes ?? ""),
+      req.appPage ?? null,
+    );
+    res.json({ markdown });
+  } catch (e) {
+    foresightFail(res, e);
+  }
+});
+
+router.delete("/:id/foresight/:cardId", (req, res) => {
+  res.json({ ok: foresight.dismiss(Number(req.params.id), req.params.cardId) });
 });
 
 router.get("/:id/export", (req, res) => {
@@ -438,7 +489,9 @@ router.post("/:id/ask", async (req, res) => {
     );
   } catch (e: any) {
     const msg = String(e?.message || e);
-    res.status(/empty_question/.test(msg) ? 400 : /not_found/.test(msg) ? 404 : 500).json({ error: msg });
+    res
+      .status(/empty_question/.test(msg) ? 400 : /not_found/.test(msg) ? 404 : 500)
+      .json({ error: msg });
   }
 });
 
@@ -446,7 +499,11 @@ router.post("/:id/ask", async (req, res) => {
 router.get("/:id/chapters", (req, res) => {
   const id = Number(req.params.id);
   if (!stmts.lectureGet.get(id)) return res.status(404).json({ error: "session_not_found" });
-  const rows = stmts.chunkFor.all(id) as unknown as { start_ms: number; end_ms: number; text: string }[];
+  const rows = stmts.chunkFor.all(id) as unknown as {
+    start_ms: number;
+    end_ms: number;
+    text: string;
+  }[];
   res.json({ items: buildChapters(rows) });
 });
 
@@ -458,7 +515,9 @@ router.post("/:id/missed", async (req, res) => {
     res.json(await summarizeMissed(Number(req.params.id), fromMs, toMs, { appPage: req.appPage }));
   } catch (e: any) {
     const msg = String(e?.message || e);
-    res.status(/bad_range/.test(msg) ? 400 : /not_found/.test(msg) ? 404 : 500).json({ error: msg });
+    res
+      .status(/bad_range/.test(msg) ? 400 : /not_found/.test(msg) ? 404 : 500)
+      .json({ error: msg });
   }
 });
 

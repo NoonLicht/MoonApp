@@ -3163,7 +3163,25 @@
     },
     "modelMissing": "Le modèle de reconnaissance n'est pas téléchargé : l'enregistrement fonctionne, sans transcription",
     "downloadModel": "Télécharger le modèle",
-    "engineReadyGigaam": "GigaAM v3 prêt · CPU"
+    "engineReadyGigaam": "GigaAM v3 prêt · CPU",
+    "tabForesight": "Réunion (Foresight)",
+    "foresight": {
+      "title": "Foresight",
+      "sub": "questions de la réunion avec réponses tirées de vos notes et fichiers",
+      "askPlaceholder": "Interroger votre base de connaissances…",
+      "ask": "Demander",
+      "noSession": "Lancez l'enregistrement : les questions de la réunion apparaîtront ici.",
+      "empty": "Aucune question entendue pour l'instant.",
+      "searching": "Recherche dans vos documents…",
+      "none": "Rien de pertinent dans vos documents.",
+      "error": "La recherche a échoué.",
+      "expandTitle": "Notes → texte complet",
+      "expandHint": "Notez de courtes remarques à droite : le modèle les développe d'après la transcription.",
+      "expand": "Développer les notes",
+      "expanding": "Développement…",
+      "insert": "Insérer dans les notes",
+      "emptyNotes": "Écrivez d'abord des notes à droite."
+    }
   },
   "bypass": {
     "netEyebrow": "Diagnostic réseau",

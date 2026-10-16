@@ -447,3 +447,15 @@ export interface LectureCreateResult {
   };
   whisper: LectureEngineStatus;
 }
+
+/** Карточка Foresight: вопрос со встречи и найденный в личной базе ответ. */
+export interface ForesightCard {
+  id: string;
+  question: string;
+  /** Когда прозвучал (мс от начала записи); 0 для вопроса, заданного вручную. */
+  atMs: number;
+  status: "searching" | "done" | "none" | "error";
+  answer: string;
+  sources: { source: string; ref: string; title: string; snippet: string; score: number }[];
+  manual: boolean;
+}
