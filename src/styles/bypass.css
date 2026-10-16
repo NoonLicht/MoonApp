@@ -397,6 +397,70 @@
 .bp-tile.light-err {
   border-color: rgba(239, 68, 68, 0.5);
 }
+
+/* Состояния плиток. Правило «стекла» (liquidglass.css) красит фон, рамку и тень всех .bp-tile
+   с более высокой специфичностью, поэтому обычные .sel/.running/.light-* под ним не были
+   видны, и выбранная стратегия никак не подсвечивалась. Ниже те же состояния для стекла. */
+.bp-tile {
+  transition:
+    border-color 0.15s,
+    background 0.15s,
+    box-shadow 0.2s,
+    transform 0.15s;
+}
+html:not(.no-glass) .app-shell .bp-tile:hover {
+  border-color: var(--amber);
+}
+html:not(.no-glass) .app-shell .bp-tile.light-ok {
+  border-color: rgba(52, 211, 153, 0.5);
+}
+html:not(.no-glass) .app-shell .bp-tile.light-err {
+  border-color: rgba(239, 68, 68, 0.5);
+}
+.bp-tile.running,
+html:not(.no-glass) .app-shell .bp-tile.running {
+  box-shadow:
+    inset 0 0 0 1px rgba(52, 211, 153, 0.65),
+    0 0 12px -2px rgba(52, 211, 153, 0.35);
+}
+.bp-tile.sel,
+html:not(.no-glass) .app-shell .bp-tile.sel {
+  border-color: var(--amber);
+  background:
+    linear-gradient(135deg, rgba(245, 158, 11, 0.28), rgba(245, 158, 11, 0.08) 70%),
+    color-mix(in srgb, var(--surface-solid, #2a2a30) 40%, transparent);
+  box-shadow:
+    0 0 0 1px var(--amber),
+    0 8px 20px -8px rgba(245, 158, 11, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  transform: translateY(-1px);
+}
+.bp-tile.sel.running,
+html:not(.no-glass) .app-shell .bp-tile.sel.running {
+  box-shadow:
+    0 0 0 1px var(--amber),
+    inset 0 0 0 2px rgba(52, 211, 153, 0.65),
+    0 8px 20px -8px rgba(245, 158, 11, 0.6);
+}
+.bp-tile.sel .bp-tile-label {
+  color: var(--amber);
+}
+.bp-tile.sel::after {
+  content: "\2713";
+  position: absolute;
+  right: 7px;
+  bottom: 7px;
+  width: 15px;
+  height: 15px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--amber);
+  color: #1a1203;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+}
 .bp-tile-num {
   font-size: 10px;
   opacity: 0.5;
