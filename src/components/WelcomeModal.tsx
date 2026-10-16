@@ -30,6 +30,7 @@ import { getOverlayRoot, getUnderToolbarRoot } from "@/components/overlayHost";
 import { useI18n } from "@/app/i18n";
 import { api } from "@/api/client";
 import WelcomeSetup from "@/components/WelcomeSetup";
+import PageProfilePicker from "@/components/PageProfilePicker";
 import logoUrl from "@/assets/app-logo.ico?url";
 
 /** Позиции искр фиксированы (не Math.random на каждый рендер — иначе они бы
@@ -180,6 +181,12 @@ export default function WelcomeModal({
                   </div>
                 </div>
               ))}
+            </div>
+
+            <div className="welcome-pages">
+              <h3>{t("welcome.pagesTitle")}</h3>
+              <PageProfilePicker />
+              <div className="muted-sm">{t("welcome.pagesHint")}</div>
             </div>
 
             <WelcomeSetup />

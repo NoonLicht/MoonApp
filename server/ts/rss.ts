@@ -447,6 +447,12 @@ export function startAutoRefresh(): void {
   autoTimer.unref();
 }
 
+/** Остановить автообновление (страницы RSS и почты отключены). */
+export function stopAutoRefresh(): void {
+  if (autoTimer) clearInterval(autoTimer);
+  autoTimer = null;
+}
+
 /* ------------------------- текст статьи по ссылке --------------------------- */
 
 export interface ArticleBlock {

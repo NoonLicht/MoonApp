@@ -54,6 +54,7 @@ import { privacyApi } from "@/api/apiPrivacy";
 import { diaryApi } from "@/api/apiDiary";
 import { rssApi } from "@/api/apiRss";
 import { mailApi } from "@/api/apiMail";
+import { featuresApi } from "@/api/apiFeatures";
 import { companionApi } from "@/api/apiCompanion";
 import { linutilApi } from "@/api/apiLinutil";
 import { translateApi } from "@/api/apiTranslate";
@@ -378,6 +379,7 @@ export const api = {
   ...diaryApi,
   ...rssApi,
   ...mailApi,
+  ...featuresApi,
   ...companionApi,
   ...linutilApi,
   ...translateApi,

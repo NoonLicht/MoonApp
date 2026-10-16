@@ -27,6 +27,12 @@ interface SettingsTree {
 }
 
 const DEFAULTS: SettingsTree = {
+  // --- Страницы: какие отключены (id через запятую) и по какому профилю (all | media | study | minimal | custom) ---
+  pages: {
+    disabled: "",
+    profile: "all",
+  },
+
   // --- Общее / приложение ---
   general: {
     language: "ru",

@@ -228,7 +228,10 @@ describe("апскейл: API подключён к серверу прилож�
       .filter((f) => f.endsWith(".js"))
       .map((f) => f.replace(/\.js$/, ""));
     const index = fs.readFileSync(path.join(root, "server", "ts", "index.ts"), "utf8");
-    const missing = routes.filter((name) => !index.includes(`./routes/${name}`));
+    // Роуты подключаются либо прямым импортом, либо строкой таблицы LAZY_ROUTES (["/api/x", "x"]).
+    const missing = routes.filter(
+      (name) => !index.includes(`./routes/${name}`) && !index.includes(`"${name}"],`),
+    );
     expect(missing, `не подключены в server/ts/index.ts: ${missing.join(", ")}`).toEqual([]);
     // И каждый require должен попасть в app.use, а не просто лежать в переменной.
     const required = [...index.matchAll(/require\("\.\/routes\/([^"]+)"\)/g)].map((m) => m[1]);

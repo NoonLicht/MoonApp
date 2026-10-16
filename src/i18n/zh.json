@@ -345,7 +345,63 @@
     "lg_glowHint": "玻璃后方彩色光晕的亮度：没有它玻璃就无物可折射",
     "animSpeed": "动画速度",
     "animSpeedHint": "页面、窗口和面板出现的速度。100% 为正常，越大越快，越小越慢。开启“减少动画”则完全关闭",
-    "startPageLast": "上次打开的页面"
+    "startPageLast": "上次打开的页面",
+    "pages": {
+      "title": "页面与配置",
+      "hint": "停用的页面会从菜单中消失，其服务器功能和后台服务不会启动。其他已启用页面所需的功能（例如聊天中的语音输入）仍会继续工作。",
+      "profile": "配置",
+      "profileName": {
+        "all": "全部",
+        "media": "媒体与文件",
+        "study": "学习与笔记",
+        "minimal": "精简",
+        "custom": "自定义"
+      },
+      "profileDesc": {
+        "all": "应用的全部页面",
+        "media": "视频与音乐、转换、放大、电影、图书、监控",
+        "study": "AI 聊天、讲座、笔记、日记、翻译、语音、图书",
+        "minimal": "应用商店、视频与音乐"
+      },
+      "stops": "将停止：{list}",
+      "keeps": "保留 — 其他页面需要：{list}",
+      "locked": "无法停用",
+      "shell": "应用本身",
+      "feat": {
+        "ocr": "文字识别 (OCR)",
+        "quicknotes": "语音输入与语音识别",
+        "tts": "文本朗读",
+        "translate": "翻译",
+        "upscale": "图像与视频放大",
+        "movies": "电影目录",
+        "rss": "RSS 订阅",
+        "archive": "网站存档",
+        "chat_tools": "AI 聊天工具",
+        "semantic": "智能搜索",
+        "convert": "文件转换",
+        "office": "Office 文档",
+        "pdf": "PDF 工具",
+        "compressor": "文件压缩",
+        "video": "视频下载",
+        "music": "音乐",
+        "lyrics": "歌词",
+        "books": "图书",
+        "lecture": "讲座",
+        "audio_clean": "音频降噪",
+        "exam": "考试准备",
+        "monitor": "系统监控",
+        "mail": "邮件",
+        "budget": "预算",
+        "bookmarks": "书签",
+        "games": "游戏",
+        "zapret": "绕过工具",
+        "automation_rules": "自动化规则",
+        "tuning": "电脑优化",
+        "screenshots": "截图",
+        "myspace": "笔记与我的空间",
+        "diary": "日记"
+      }
+    }
   },
   "chat": {
     "chatProvider": "默认提供商",
@@ -3759,7 +3815,9 @@
     "f_translate": "翻译",
     "f_translate_hint": "本地翻译，无需云端",
     "f_tuning": "电脑调优",
-    "f_tuning_hint": "可回滚并带备份的 Windows 调整"
+    "f_tuning_hint": "可回滚并带备份的 Windows 调整",
+    "pagesTitle": "您需要哪些页面？",
+    "pagesHint": "其余页面可稍后在 设置 → 页面与配置 中启用。"
   },
   "tuning": {
     "eyebrow": "优化",

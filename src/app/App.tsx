@@ -37,6 +37,7 @@ import ModelToggle, { ModelActivityPill, ModelPanel } from "@/components/ModelTo
 import { api } from "@/api/client";
 import { bindImageDragOut } from "@/lib/dragOut";
 import { PAGES } from "@/app/navigation";
+import { enabledPages, isPageEnabled, loadPageAccess, usePageAccess } from "@/app/pageAccess";
 import { onOpenTarget } from "@/lib/deepLink";
 import type { PageId } from "@/app/navigation";
 
@@ -316,10 +317,11 @@ function Shell({
   const [modelPanelVisible, setModelPanelVisible] = useState(false);
   // Если активная страница была удалена или сохранена в настройках устаревшая
   // (например "todo"), откатываемся к первой доступной странице.
-  const safeActive: PageId = PAGES.some((p) => p.id === active)
+  const { pages: shownPages } = usePageAccess();
+  const safeActive: PageId = shownPages.some((p) => p.id === active)
     ? active
-    : ((PAGES[0]?.id as PageId) ?? "store");
-  const activeMeta = PAGES.find((p) => p.id === safeActive)!;
+    : ((shownPages[0]?.id as PageId) ?? "settings");
+  const activeMeta = shownPages.find((p) => p.id === safeActive) ?? PAGES[0];
   // Вход на страницу с локальной моделью: загружаем её заранее, чтобы первый запрос не ждал.
   // Любую картинку приложения можно перетащить в другую программу (Telegram, проводник…)
   useEffect(() => bindImageDragOut(document), []);
@@ -393,7 +395,10 @@ function Shell({
   // В стопке всегда есть активная страница: список живых обновляется эффектом
   // ПОСЛЕ рендера, поэтому без этого добавления был бы пустой кадр при переходе.
   const [dockCollapsed, toggleDockCollapsed] = useDockCollapsed();
-  const stack = alive.includes(safeActive) ? alive : ([safeActive, ...alive] as PageId[]);
+  // Отключённую страницу не держим в памяти, даже если она была открыта до отключения.
+  const stack = (
+    alive.includes(safeActive) ? alive : ([safeActive, ...alive] as PageId[])
+  ).filter((id) => isPageEnabled(id));
 
   // Классы/стили, управляемые разделом «Внешний вид»:
   //  - accent-* подменяет акцентный цвет (см. theme.css);
@@ -576,7 +581,7 @@ function Shell({
             </span>
             <span className="dock-label">{t(dockCollapsed ? "nav.expand" : "nav.collapse")}</span>
           </button>
-          {PAGES.map((p) => {
+          {shownPages.map((p) => {
             const Icon = p.icon;
             const isActive = p.id === active;
             return (
@@ -605,7 +610,13 @@ function Shell({
 export default function App() {
   const [theme, setTheme] = useState("dark");
   const [active, setActive] = useState<PageId>("store");
-  useEffect(() => onOpenTarget(setActive), []);
+  useEffect(
+    () =>
+      onOpenTarget((id) => {
+        if (isPageEnabled(id)) setActive(id);
+      }),
+    [],
+  );
   // Запоминаем текущую страницу для режима стартовой страницы «Последняя открытая».
   useEffect(() => {
     try {
@@ -666,9 +677,8 @@ export default function App() {
 
   // Подтягиваем тему, стартовую страницу, язык, blur и внешние вид из настроек.
   useEffect(() => {
-    api
-      .getSettings()
-      .then((s) => {
+    Promise.all([api.getSettings(), loadPageAccess()])
+      .then(([s]) => {
         const sc = s as any;
         if (sc?.appearance?.theme) setTheme(sc.appearance.theme);
         // Стартовая страница: если в настройках что-то неизвестное (старый
@@ -680,9 +690,9 @@ export default function App() {
         setActive(
           PAGES.some((p) => p.id === SOLO_PAGE)
             ? (SOLO_PAGE as PageId)
-            : PAGES.some((p) => p.id === startPage)
+            : enabledPages().some((p) => p.id === startPage)
               ? (startPage as PageId)
-              : "store",
+              : ((enabledPages()[0]?.id as PageId) ?? "settings"),
         );
         if (sc?.general?.language) setLang(sc.general.language);
         if (sc?.performance?.backgroundBlur != null) setBlur(!!sc.performance.backgroundBlur);

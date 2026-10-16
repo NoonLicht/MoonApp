@@ -117,6 +117,9 @@ server/ortPack.js
 server/zipRange.js
 server/whisperEngine.js
 server/gigaamEngine.js
+server/features.js
+server/featureServices.js
+server/featureMap.generated.js
 server/screenshots.js
 server/sitebak.js
 server/tts.js

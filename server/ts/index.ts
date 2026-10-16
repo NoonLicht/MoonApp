@@ -18,100 +18,19 @@ import logger from "./logger";
 import { db } from "./db";
 import * as backups from "./backup";
 import settings from "./settings";
-import * as monitor from "./monitor";
-import * as monitorAlerts from "./monitorAlerts";
 import * as security from "./security";
 import * as passwordVault from "./passwordVault";
-import * as winget from "./winget";
 import * as proxySubs from "./proxySubscriptions";
-import * as tgws from "./tgwsproxy";
 import * as bodyLimits from "./bodyLimits";
 import * as problems from "./problemLog";
 
-import chatRouter from "./routes/chat";
 import settingsRouter from "./routes/settings";
-import backupRouter from "./routes/backup";
+import featuresRouter from "./routes/features";
+import * as features from "./features";
+import { registerFeatureServices } from "./featureServices";
 import metaRouter from "./routes/meta";
-import catalogRouter from "./routes/catalog";
-import appsRouter from "./routes/apps";
-import convertRouter from "./routes/convert";
-import videoRouter from "./routes/video";
-import compressorRouter from "./routes/compressor";
-import upscaleRouter from "./routes/upscale";
-import ttsRouter from "./routes/tts";
-import archiveRouter from "./routes/archive";
-import proxyRouter from "./routes/proxy";
-import proxyCoreRouter from "./routes/proxyCore";
-import booksRouter from "./routes/books";
-import musicRouter from "./routes/music";
-import moviesRouter from "./routes/movies";
-import myspaceRouter from "./routes/myspace";
-import myspaceTasksRouter from "./routes/myspace-tasks";
-import lectureRouter from "./routes/lecture";
-import zapretRouter from "./routes/zapret";
-import tgwsRouter from "./routes/tgws";
-import tasksRouter from "./routes/tasks";
-import passwordVaultRouter from "./routes/passwordVault";
-import diskScanRouter from "./routes/diskScan";
-import fileInsightsRouter from "./routes/fileInsights";
-import interchangeRouter from "./routes/interchange";
-import chatToolsRouter from "./routes/chatTools";
-import automationRulesRouter from "./routes/automationRules";
-import noteToolsRouter from "./routes/noteTools";
-import clipboardHistoryRouter from "./routes/clipboardHistory";
-import folderVersionsRouter from "./routes/folderVersions";
-import chatForkRouter from "./routes/chatFork";
-import appModesRouter from "./routes/appModes";
-import audioCleanRouter from "./routes/audioClean";
-import lyricsRouter from "./routes/lyrics";
-import contextMenuRouter from "./routes/contextMenu";
-import pluginsRouter from "./routes/plugins";
-import p2pRouter from "./routes/p2p";
-import aiShieldRouter from "./routes/aiShield";
-import ghostRouter from "./routes/ghost";
-import examRouter from "./routes/exam";
-import voiceVaultRouter from "./routes/voiceVault";
-import attentionRouter from "./routes/attention";
-import driftRouter from "./routes/drift";
-import gapsRouter from "./routes/gaps";
-import mindRouter from "./routes/mind";
-import contractsRouter from "./routes/contracts";
-import scanRouter from "./routes/scan";
-import montageRouter from "./routes/montage";
-import diagnosticsRouter from "./routes/diagnostics";
-import canvasAiRouter from "./routes/canvasAi";
-import aiBindingsRouter from "./routes/aiBindings";
-import * as automationRules from "./automationRules";
-import bookmarksRouter from "./routes/bookmarks";
-import pdfRouter from "./routes/pdf";
-import gamesRouter from "./routes/games";
-import netToolsRouter from "./routes/netTools";
-import notesGitRouter from "./routes/notesGit";
-import appTimeTrackerRouter from "./routes/appTimeTracker";
-import automationRouter from "./routes/automation";
-import budgetRouter from "./routes/budget";
-import quickNotesRouter from "./routes/quickNotes";
-import m3eRouter from "./routes/m3e";
-import killSwitchRouter from "./routes/killSwitch";
-import tuningRouter from "./routes/tuning";
-import privacyRouter from "./routes/privacy";
-import linutilRouter from "./routes/linutil";
-import translateRouter from "./routes/translate";
-import llamacppRouter from "./routes/llamacpp";
-import semanticRouter from "./routes/semantic";
-import ocrRouter from "./routes/ocr";
-import screenshotsRouter from "./routes/screenshots";
-import dragOutRouter from "./routes/dragOut";
-import officeRouter from "./routes/office";
-import diaryRouter from "./routes/diary";
-import rssRouter from "./routes/rss";
-import mailRouter from "./routes/mail";
-import * as mailService from "./mail/mailService";
-import * as rssModule from "./rss";
-import companionRouter from "./routes/companion";
 import * as companion from "./companion";
 import * as perPageProxy from "./middleware/perPageProxy";
-import * as lecture from "./lecture";
 import * as proxy from "./proxy";
 import { INTERNAL_KEY, INTERNAL_STREAM_PREFIX } from "./internalKey";
 // Глобальные перехватчики процесса: необработанные исключения и отклонённые
@@ -184,23 +103,6 @@ function authMiddleware(
   next();
 }
 function createApp(): express.Express {
-  // Fail-safe лекций: сессии, оборванные падением приложения (status=recording,
-  // но процесса записи нет), помечаем interrupted и чиним header raw.wav.
-  try {
-    lecture.recoverInterrupted();
-  } catch {
-    /* журнал уже внутри */
-  }
-  // Заметки лекций синхронизируются с .md в storage/notes при каждом изменении
-  // (кнопка, маркер, ИИ-конспект). У лекций, записанных ДО этой синхронизации,
-  // файла ещё нет — заводим при старте. Ошибка не должна мешать запуску: лекции
-  // работают и без зеркала, поэтому здесь только лог.
-  try {
-    lecture.backfillNotesFiles();
-  } catch {
-    /* зеркало не критично */
-  }
-
   const app = express();
 
   // Без открытого CORS (same-origin через Vite-proxy / раздачу dist),
@@ -238,84 +140,100 @@ function createApp(): express.Express {
   // req.proxy / req.proxyUrl (см. server/middleware/perPageProxy.js).
   app.use(perPageProxy.perPageProxyMiddleware);
   app.get("/api/health", (_req, res) => res.json({ ok: true }));
-  app.use("/api/chat", chatRouter);
   app.use("/api/settings", settingsRouter);
-  app.use("/api/backup", backupRouter);
   app.use("/api", metaRouter);
-  app.use("/api/catalog", catalogRouter);
-  app.use("/api/apps", appsRouter);
-  app.use("/api/convert", convertRouter);
-  app.use("/api/video", videoRouter);
-  app.use("/api/compressor", compressorRouter);
-  app.use("/api/upscale", upscaleRouter);
-  app.use("/api/tts", ttsRouter);
-  app.use("/api/archive", archiveRouter);
-  app.use("/api/proxy", proxyRouter);
-  app.use("/api/proxycore", proxyCoreRouter);
-  app.use("/api/books", booksRouter);
-  app.use("/api/music", musicRouter);
-  app.use("/api/movies", moviesRouter);
-  app.use("/api/myspace", myspaceRouter);
-  app.use("/api/myspace/tasks", myspaceTasksRouter);
-  app.use("/api/lecture", lectureRouter);
-  app.use("/api/zapret", zapretRouter);
-  app.use("/api/tgws", tgwsRouter);
-  app.use("/api/tasks", tasksRouter);
-  app.use("/api/passwords", passwordVaultRouter);
-  app.use("/api/diskscan", diskScanRouter);
-  app.use("/api/fileinsights", fileInsightsRouter);
-  app.use("/api/interchange", interchangeRouter);
-  app.use("/api/chat-tools", chatToolsRouter);
-  app.use("/api/automation-rules", automationRulesRouter);
-  app.use("/api/note-tools", noteToolsRouter);
-  app.use("/api/clipboard-history", clipboardHistoryRouter);
-  app.use("/api/folder-versions", folderVersionsRouter);
-  app.use("/api/chat-fork", chatForkRouter);
-  app.use("/api/app-modes", appModesRouter);
-  app.use("/api/audio-clean", audioCleanRouter);
-  app.use("/api/lyrics", lyricsRouter);
-  app.use("/api/context-menu", contextMenuRouter);
-  app.use("/api/plugins", pluginsRouter);
-  app.use("/api/p2p", p2pRouter);
-  app.use("/api/ai-shield", aiShieldRouter);
-  app.use("/api/ghost", ghostRouter);
-  app.use("/api/exam", examRouter);
-  app.use("/api/voice-vault", voiceVaultRouter);
-  app.use("/api/attention", attentionRouter);
-  app.use("/api/drift", driftRouter);
-  app.use("/api/gaps", gapsRouter);
-  app.use("/api/mind", mindRouter);
-  app.use("/api/self-contracts", contractsRouter);
-  app.use("/api/scan", scanRouter);
-  app.use("/api/montage", montageRouter);
-  app.use("/api/diagnostics", diagnosticsRouter);
-  app.use("/api/canvas-ai", canvasAiRouter);
-  app.use("/api/ai-bindings", aiBindingsRouter);
-  app.use("/api/bookmarks", bookmarksRouter);
-  app.use("/api/pdf", pdfRouter);
-  app.use("/api/games", gamesRouter);
-  app.use("/api/nettools", netToolsRouter);
-  app.use("/api/notesgit", notesGitRouter);
-  app.use("/api/apptracker", appTimeTrackerRouter);
-  app.use("/api/automation", automationRouter);
-  app.use("/api/budget", budgetRouter);
-  app.use("/api/quicknotes", quickNotesRouter);
-  app.use("/api/m3e", m3eRouter);
-  app.use("/api/killswitch", killSwitchRouter);
-  app.use("/api/tuning", tuningRouter);
-  app.use("/api/privacy", privacyRouter);
-  app.use("/api/linutil", linutilRouter);
-  app.use("/api/translate", translateRouter);
-  app.use("/api/llamacpp", llamacppRouter);
-  app.use("/api/semantic", semanticRouter);
-  app.use("/api/ocr", ocrRouter);
-  app.use("/api/screenshots", screenshotsRouter);
-  app.use("/api/dragout", dragOutRouter);
-  app.use("/api/office", officeRouter);
-  app.use("/api/diary", diaryRouter);
-  app.use("/api/rss", rssRouter);
-  app.use("/api/mail", mailRouter);
-  app.use("/api/companion", companionRouter);
+  app.use("/api/features", featuresRouter);
+  // Роуты подключаются лениво: модуль читается при первом запросе, а у отключённой страницы —
+  // никогда (см. features.ts). Порядок строк важен: он совпадает с порядком подключения express.
+  const LAZY_ROUTES: [string, string][] = [
+    ["/api/chat", "chat"],
+    ["/api/backup", "backup"],
+    ["/api/catalog", "catalog"],
+    ["/api/monitor", "monitor"],
+    ["/api/apps", "apps"],
+    ["/api/convert", "convert"],
+    ["/api/video", "video"],
+    ["/api/compressor", "compressor"],
+    ["/api/upscale", "upscale"],
+    ["/api/tts", "tts"],
+    ["/api/archive", "archive"],
+    ["/api/proxy", "proxy"],
+    ["/api/proxycore", "proxyCore"],
+    ["/api/books", "books"],
+    ["/api/music", "music"],
+    ["/api/movies", "movies"],
+    ["/api/myspace", "myspace"],
+    ["/api/myspace/tasks", "myspace-tasks"],
+    ["/api/lecture", "lecture"],
+    ["/api/zapret", "zapret"],
+    ["/api/tgws", "tgws"],
+    ["/api/tasks", "tasks"],
+    ["/api/passwords", "passwordVault"],
+    ["/api/diskscan", "diskScan"],
+    ["/api/fileinsights", "fileInsights"],
+    ["/api/interchange", "interchange"],
+    ["/api/chat-tools", "chatTools"],
+    ["/api/automation-rules", "automationRules"],
+    ["/api/note-tools", "noteTools"],
+    ["/api/clipboard-history", "clipboardHistory"],
+    ["/api/folder-versions", "folderVersions"],
+    ["/api/chat-fork", "chatFork"],
+    ["/api/app-modes", "appModes"],
+    ["/api/audio-clean", "audioClean"],
+    ["/api/lyrics", "lyrics"],
+    ["/api/context-menu", "contextMenu"],
+    ["/api/plugins", "plugins"],
+    ["/api/p2p", "p2p"],
+    ["/api/ai-shield", "aiShield"],
+    ["/api/ghost", "ghost"],
+    ["/api/exam", "exam"],
+    ["/api/voice-vault", "voiceVault"],
+    ["/api/attention", "attention"],
+    ["/api/drift", "drift"],
+    ["/api/gaps", "gaps"],
+    ["/api/mind", "mind"],
+    ["/api/self-contracts", "contracts"],
+    ["/api/scan", "scan"],
+    ["/api/montage", "montage"],
+    ["/api/diagnostics", "diagnostics"],
+    ["/api/canvas-ai", "canvasAi"],
+    ["/api/ai-bindings", "aiBindings"],
+    ["/api/bookmarks", "bookmarks"],
+    ["/api/pdf", "pdf"],
+    ["/api/games", "games"],
+    ["/api/nettools", "netTools"],
+    ["/api/notesgit", "notesGit"],
+    ["/api/apptracker", "appTimeTracker"],
+    ["/api/automation", "automation"],
+    ["/api/budget", "budget"],
+    ["/api/quicknotes", "quickNotes"],
+    ["/api/m3e", "m3e"],
+    ["/api/killswitch", "killSwitch"],
+    ["/api/tuning", "tuning"],
+    ["/api/privacy", "privacy"],
+    ["/api/linutil", "linutil"],
+    ["/api/translate", "translate"],
+    ["/api/llamacpp", "llamacpp"],
+    ["/api/semantic", "semantic"],
+    ["/api/ocr", "ocr"],
+    ["/api/screenshots", "screenshots"],
+    ["/api/dragout", "dragOut"],
+    ["/api/office", "office"],
+    ["/api/diary", "diary"],
+    ["/api/rss", "rss"],
+    ["/api/mail", "mail"],
+    ["/api/companion", "companion"],
+  ];
+  for (const [mount, file] of LAZY_ROUTES) {
+    app.use(
+      mount,
+      features.lazyRouter(mount, () => {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const m = require(`./routes/${file}`) as { default?: express.RequestHandler };
+        return (m.default ?? m) as express.RequestHandler;
+      }),
+    );
+  }
 
   // Раздача собранного фронта (dist), если он собран.
   const dist = path.join(__dirname, "..", "dist");
@@ -347,8 +265,6 @@ function createApp(): express.Express {
 
   // Веб-компаньон поднимается только если пользователь включил его в настройках.
   companion.autoStart();
-  rssModule.startAutoRefresh();
-  mailService.init();
 
   // Фоновое обновление подписок прокси (первичный проход + раз в 6 часов).
   try {
@@ -357,10 +273,12 @@ function createApp(): express.Express {
     logger.warn("proxycore.autosync.failed", { error: (e as Error).message });
   }
 
-  // LibreHardwareMonitor запускается сам, если это включено в настройках и он установлен.
-  monitor.autoStartLhmIfConfigured();
-  monitorAlerts.startMonitorAlerts();
-  automationRules.startRules();
+  // Службы страниц (лекции, RSS, почта, мониторинг, автоматизации, Telegram-прокси, индекс
+  // магазина) стартуют только для включённых страниц — см. features.ts / featureServices.ts.
+  registerFeatureServices();
+  features.reconcileServices();
+  // Модули включённых роутов читаются в фоне, чтобы первый запрос не ждал; отключённые — нет.
+  features.warmRoutes();
 
   // Разовая (идемпотентная) миграция секретов/паролей со старого захардкоженного
   // резервного AES-ключа (был виден в открытом репозитории на GitHub) на
@@ -376,30 +294,6 @@ function createApp(): express.Express {
     }
   } catch (e) {
     logger.warn("security.migration_failed", { error: (e as Error).message });
-  }
-
-  // tgws.autoStart: локальный MTProto-прокси для Telegram Desktop (страница
-  // Bypass). Поднимаем без ожидания — старт приложения не должен ждать чужой
-  // бинарь, а статус страница всё равно опрашивает сама.
-  void tgws.autoStart();
-
-  // store.wingetAutoIndex: при старте один раз индексируем полный каталог winget,
-  // если локальный кэш ещё не собран (иначе UI показывает только курируемый seed).
-  try {
-    if (settings.get("store").wingetAutoIndex !== false && !(winget.indexStatus().cached > 0)) {
-      void winget.startIndexing();
-    }
-  } catch {
-    /* индексация не критична для старта */
-  }
-
-  // monitor.autoStart: прогреваем телеметрию сразу после старта — первый
-  // getSnapshot собирает данные (WMI/nvidia-smi/LHM), чтобы UI мониторинга
-  // открылся уже с готовыми значениями, а не с нулями.
-  try {
-    if (settings.get("monitor").autoStart === true) void monitor.getSnapshot();
-  } catch {
-    /* сбор телеметрии не должен ломать старт */
   }
 
   // После рестарта прокси всегда выключен (состояние «включён» в настройках не хранится).

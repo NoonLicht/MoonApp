@@ -345,7 +345,63 @@
     "lg_glowHint": "Brightness of the colour glows behind the glass: without it there is nothing to refract",
     "animSpeed": "Animation speed",
     "animSpeedHint": "How pages, windows and panels appear. 100% is normal, higher is faster, lower is slower. “Reduce motion” turns them off entirely",
-    "startPageLast": "Last opened"
+    "startPageLast": "Last opened",
+    "pages": {
+      "title": "Pages and profiles",
+      "hint": "A disabled page disappears from the menu, and its server features and background services do not start. Features that other enabled pages need (for example, voice input in chat) keep working.",
+      "profile": "Profile",
+      "profileName": {
+        "all": "Everything",
+        "media": "Media & files",
+        "study": "Study & notes",
+        "minimal": "Minimal",
+        "custom": "Custom"
+      },
+      "profileDesc": {
+        "all": "All app pages",
+        "media": "Video and music, converter, upscaling, movies, books, monitoring",
+        "study": "AI chat, lectures, notes, diary, translation, voice, books",
+        "minimal": "App store, video and music"
+      },
+      "stops": "Will stop: {list}",
+      "keeps": "Stays — others need it: {list}",
+      "locked": "Cannot be disabled",
+      "shell": "the app shell",
+      "feat": {
+        "ocr": "Text recognition (OCR)",
+        "quicknotes": "Voice input and speech recognition",
+        "tts": "Text-to-speech",
+        "translate": "Translation",
+        "upscale": "Image and video upscaling",
+        "movies": "Movie catalog",
+        "rss": "RSS feeds",
+        "archive": "Website archiving",
+        "chat_tools": "AI chat tools",
+        "semantic": "Smart search",
+        "convert": "File converter",
+        "office": "Office documents",
+        "pdf": "PDF tools",
+        "compressor": "File compression",
+        "video": "Video download",
+        "music": "Music",
+        "lyrics": "Lyrics",
+        "books": "Books",
+        "lecture": "Lectures",
+        "audio_clean": "Audio cleanup",
+        "exam": "Exam prep",
+        "monitor": "System monitor",
+        "mail": "Mail",
+        "budget": "Budget",
+        "bookmarks": "Bookmarks",
+        "games": "Games",
+        "zapret": "Bypass tools",
+        "automation_rules": "Automation rules",
+        "tuning": "PC tuning",
+        "screenshots": "Screenshots",
+        "myspace": "Notes and My Space",
+        "diary": "Diary"
+      }
+    }
   },
   "chat": {
     "chatProvider": "Default provider",
@@ -3763,7 +3819,9 @@
     "f_translate": "Translator",
     "f_translate_hint": "Local translation, no cloud",
     "f_tuning": "PC tuning",
-    "f_tuning_hint": "Windows tweaks with rollback and backups"
+    "f_tuning_hint": "Windows tweaks with rollback and backups",
+    "pagesTitle": "Which pages do you need?",
+    "pagesHint": "You can enable the rest later: Settings → Pages and profiles."
   },
   "tuning": {
     "eyebrow": "OPTIMIZATION",

@@ -33,8 +33,11 @@ import {
   Upload,
   ShieldCheck,
   AlertTriangle,
+  LayoutGrid,
 } from "lucide-react";
 import { startPageOptions } from "@/app/navigation";
+import { usePageAccess } from "@/app/pageAccess";
+import { PagesSection } from "@/pages/settings/parts/SettingsPages";
 import {
   BoolRow,
   NumberInput,
@@ -67,6 +70,7 @@ import { loadCfg } from "@/pages/ai-chat/lib/chatUtils";
 
 export default function SettingsPage() {
   const { t } = useI18n();
+  const { isEnabled: on } = usePageAccess();
   const [s, setS] = useState<any>(null);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
@@ -381,6 +385,10 @@ export default function SettingsPage() {
           <AiBindings />
         </Section>
 
+        <Section title={t("settings.pages.title")} icon={LayoutGrid}>
+          <PagesSection />
+        </Section>
+
         <Section title={t("settings.general")} icon={Settings2}>
           <Row label={t("settings.language")} hint={t("settings.languageHint")}>
             <Select
@@ -396,7 +404,7 @@ export default function SettingsPage() {
             <Select
               value={g.startPage}
               onChange={(e) => change("general.startPage", e.target.value)}
-              options={[{ value: "last", label: t("settings.startPageLast") }, ...startPageOptions(t)]}
+              options={[{ value: "last", label: t("settings.startPageLast") }, ...startPageOptions(t).filter((o) => on(o.value))]}
             />
           </Row>
           <BoolRow
@@ -684,6 +692,7 @@ export default function SettingsPage() {
           </Row>
         </Section>
 
+        {on("store") && (
         <Section title={t("settings.storeSection")} icon={Package}>
           <Row label={t("storeSection.storeDir")} hint={t("storeSection.storeDirHint")}>
             <TextInput
@@ -706,8 +715,10 @@ export default function SettingsPage() {
             />
           </Row>
         </Section>
+        )}
 
         {/* ---- Сжатие видео (док: compressor) — дефолты матрицы энкодеров ---- */}
+        {on("compress") && (
         <Section title={t("settings.compressor")} icon={Gauge}>
           <Row label={t("cmpSettings.cmpEngine")} hint={t("cmpSettings.cmpEngineHint")}>
             <Select
@@ -771,8 +782,10 @@ export default function SettingsPage() {
             onChange={(v) => change("compressor.cleanupTemp", v)}
           />
         </Section>
+        )}
 
         {/* ---- Апскейл медиа (док: upscale) — умолчания ONNX-движка ---- */}
+        {on("upscale") && (
         <Section title={t("settings.upscale")} icon={Sparkles}>
           <Row label={t("upSettings.model")} hint={t("upSettings.modelHint")}>
             <TextInput
@@ -879,8 +892,10 @@ export default function SettingsPage() {
             />
           </Row>
         </Section>
+        )}
 
         {/* ---- Видео (док: video) — дефолты для новых загрузок yt-dlp ---- */}
+        {on("video") && (
         <Section title={t("settings.video")} icon={Video}>
           <Row label={t("videoSection.videoQuality")} hint={t("videoSection.videoQualityHint")}>
             <Select
@@ -909,8 +924,10 @@ export default function SettingsPage() {
             onChange={(v) => change("video.downloadSubs", v)}
           />
         </Section>
+        )}
 
         {/* ---- Музыка (док: music) — качество аудио по умолчанию ---- */}
+        {on("music") && (
         <Section title={t("settings.musicSection")} icon={Music2}>
           <Row label={t("musicSection.musicQuality")} hint={t("musicSection.musicQualityHint")}>
             <Select
@@ -942,8 +959,10 @@ export default function SettingsPage() {
             />
           </Row>
         </Section>
+        )}
 
         {/* ---- Книги (док: books) ---- */}
+        {on("movies") && (
         <Section title={t("nav.movies")} icon={Clapperboard}>
           <TmdbKeyRow />
           <Row label={t("moviesSettings.language")} hint={t("moviesSettings.languageHint")}>
@@ -967,8 +986,10 @@ export default function SettingsPage() {
             onChange={(v) => change("movies.showAdult", v)}
           />
         </Section>
+        )}
 
         {/* ---- Мониторинг (док: monitor) ---- */}
+        {on("monitor") && (
         <Section title={t("settings.monitor")} icon={Activity}>
           <BoolRow
             label={t("monSettings.monAutoStart")}
@@ -993,8 +1014,10 @@ export default function SettingsPage() {
             onChange={(v) => change("monitor.lhmAutoStart", v)}
           />
         </Section>
+        )}
 
         {/* ---- My Space (док: myspace) ---- */}
+        {on("myspace") && (
         <Section title={t("settings.myspace")} icon={User}>
           <BoolRow
             label={t("myspaceSection.myAutosave")}
@@ -1009,8 +1032,10 @@ export default function SettingsPage() {
             onChange={(v) => change("myspace.spellcheck", v)}
           />
         </Section>
+        )}
 
         {/* ---- Чат / ИИ (док: aichat) — со сворачиваемым подменю API-ключей ---- */}
+        {on("aichat") && (
         <Section title={t("settings.chat")} icon={MessageSquare}>
           <ApiKeysPanel />
           <BoolRow
@@ -1035,8 +1060,10 @@ export default function SettingsPage() {
             />
           </Row>
         </Section>
+        )}
 
         {/* ---- Голос (док: voice) ---- */}
+        {on("voice") && (
         <Section title={t("settings.voice")} icon={Mic2}>
           <Row label={t("voiceSettings.voiceVram")} hint={t("voiceSettings.voiceVramHint")}>
             <NumberInput
@@ -1070,6 +1097,7 @@ export default function SettingsPage() {
             />
           </Row>
         </Section>
+        )}
 
         {/* ---- Лекции: распознавание речи и нарезка чанков (док: lecture) ----
              Здесь ТОЛЬКО то, чего нет на странице лектория: язык Whisper,
@@ -1077,6 +1105,7 @@ export default function SettingsPage() {
              Модель/ускорение, ИИ-конспект и говорящие намеренно НЕ дублируются —
              они живут в панелях страницы лекций (кнопки «Модель и ускорение»,
              «ИИ-конспект», «Говорящие»), где рядом стоит сам материал записи. ---- */}
+        {(on("lecture") || on("aichat")) && (
         <Section title={t("settings.lectureSttTitle")} icon={AudioLines}>
           <Row label={t("settings.lectureLangLabel")} hint={t("settings.lectureLangHint")}>
             <Select
@@ -1120,8 +1149,10 @@ export default function SettingsPage() {
             />
           </Row>
         </Section>
+        )}
 
         {/* ---- Web Archive / .sitebak (док: sitebak) — параметры краулера ---- */}
+        {on("archive") && (
         <Section title={t("settings.sitebak")} icon={Archive}>
           <Row label={t("sbSettings.sbConcurrent")} hint={t("sbSettings.sbConcurrentHint")}>
             <NumberInput
@@ -1179,6 +1210,7 @@ export default function SettingsPage() {
             />
           </Row>
         </Section>
+        )}
 
         <CompanionSection />
 

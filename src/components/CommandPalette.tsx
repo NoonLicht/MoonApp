@@ -6,6 +6,7 @@ import { api } from "@/api/client";
 import type { LauncherEntry } from "@/api/types";
 import type { SemHit } from "@/api/apiSemantic";
 import { PAGES } from "@/app/navigation";
+import { usePageAccess } from "@/app/pageAccess";
 import { dragOutProps } from "@/lib/dragOut";
 import { openTarget, targetFor, SOURCE_LABEL, SOURCE_ICON } from "@/lib/deepLink";
 import { loadPickItems, type PickItem } from "@/components/LinkPicker";
@@ -24,6 +25,7 @@ const PER_KIND = 4;
  */
 export default function CommandPalette() {
   const { t } = useI18n();
+  const { pages: shownPages } = usePageAccess();
   const [open, setOpen] = useState(false);
   const [launchers, setLaunchers] = useState<LauncherEntry[]>([]);
   const [query, setQuery] = useState("");
@@ -108,7 +110,7 @@ export default function CommandPalette() {
   const groups = useMemo(() => {
     const q = query.trim().toLowerCase();
     const out: { title: string; items: Item[] }[] = [];
-    const pg = PAGES.map((p) => ({ p, name: t(p.i18n) }))
+    const pg = shownPages.map((p) => ({ p, name: t(p.i18n) }))
       .filter((x) => !q || x.name.toLowerCase().includes(q))
       .map((x): Item => ({
         kind: "page",
@@ -171,7 +173,7 @@ export default function CommandPalette() {
     }
     return out;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [launchers, query, hits, index]);
+  }, [launchers, query, hits, index, shownPages]);
   const filtered = useMemo(() => groups.flatMap((g) => g.items), [groups]);
 
   const run = async (it: Item) => {

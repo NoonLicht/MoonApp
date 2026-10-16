@@ -8,6 +8,7 @@ import { openTarget, targetFor, SOURCE_LABEL } from "@/lib/deepLink";
 import type { SemSource } from "@/api/apiSemantic";
 import type { PageId } from "@/app/navigation";
 import { PAGES } from "@/app/navigation";
+import { isPageEnabled } from "@/app/pageAccess";
 
 type Hit = Result["groups"][number]["items"][number];
 
@@ -139,7 +140,9 @@ export default function GhostToggle() {
   // Недавние страницы: запоминаем смену заголовка в верхней панели.
   useEffect(() => {
     if (!open) return;
-    const byTitle = new Map(PAGES.map((p) => [tNow(p.i18n), p.id as PageId]));
+    const byTitle = new Map(
+      PAGES.filter((p) => isPageEnabled(p.id)).map((p) => [tNow(p.i18n), p.id as PageId]),
+    );
     const read = (): { id: PageId; title: string }[] => {
       try {
         return JSON.parse(sessionStorage.getItem(RECENT_KEY) || "[]");

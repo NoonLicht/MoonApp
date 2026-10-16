@@ -4,6 +4,7 @@ import { useI18n } from "@/app/i18n";
 import { Btn } from "@/components/ui";
 import { Row } from "@/pages/settings/parts/SettingsControls";
 import { PAGES } from "@/app/navigation";
+import { usePageAccess } from "@/app/pageAccess";
 
 type Display = { id: number; label: string; primary: boolean };
 interface LayoutItem {
@@ -41,6 +42,7 @@ function writeLayouts(l: Layout[]): void {
  */
 export function WindowRows() {
   const { t } = useI18n();
+  const { isEnabled } = usePageAccess();
   const bridge = window.appBridge;
   const [displays, setDisplays] = useState<Display[]>([]);
   const [page, setPage] = useState("lecture");
@@ -90,7 +92,7 @@ export function WindowRows() {
       <Row label={t("settings.windows.open")} hint={t("settings.windows.openHint")}>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <select className="input" value={page} onChange={(e) => setPage(e.target.value)}>
-            {PAGES.map((p) => (
+            {PAGES.filter((p) => isEnabled(p.id)).map((p) => (
               <option key={p.id} value={p.id}>
                 {t(p.i18n)}
               </option>

@@ -345,7 +345,63 @@
     "lg_glowHint": "Intensité des lueurs colorées derrière le verre : sans elles, rien à réfracter",
     "animSpeed": "Vitesse des animations",
     "animSpeedHint": "Apparition des pages, fenêtres et panneaux. 100 % est normal ; plus, c'est plus rapide. « Réduire les animations » les désactive",
-    "startPageLast": "Dernière ouverte"
+    "startPageLast": "Dernière ouverte",
+    "pages": {
+      "title": "Pages et profils",
+      "hint": "Une page désactivée disparaît du menu et ses fonctions serveur et services d'arrière-plan ne démarrent pas. Les fonctions dont d'autres pages actives ont besoin (par exemple la saisie vocale du chat) continuent de fonctionner.",
+      "profile": "Profil",
+      "profileName": {
+        "all": "Tout",
+        "media": "Médias et fichiers",
+        "study": "Études et notes",
+        "minimal": "Minimal",
+        "custom": "Personnalisé"
+      },
+      "profileDesc": {
+        "all": "Toutes les pages de l'application",
+        "media": "Vidéo et musique, convertisseur, upscaling, films, livres, moniteur",
+        "study": "Chat IA, cours, notes, journal, traduction, voix, livres",
+        "minimal": "Boutique d'applications, vidéo et musique"
+      },
+      "stops": "S'arrêtera : {list}",
+      "keeps": "Reste actif — nécessaire ailleurs : {list}",
+      "locked": "Ne peut pas être désactivée",
+      "shell": "l'application elle-même",
+      "feat": {
+        "ocr": "Reconnaissance de texte (OCR)",
+        "quicknotes": "Saisie vocale et reconnaissance vocale",
+        "tts": "Synthèse vocale",
+        "translate": "Traduction",
+        "upscale": "Upscaling image et vidéo",
+        "movies": "Catalogue de films",
+        "rss": "Flux RSS",
+        "archive": "Archivage de sites",
+        "chat_tools": "Outils du chat IA",
+        "semantic": "Recherche intelligente",
+        "convert": "Convertisseur de fichiers",
+        "office": "Documents Office",
+        "pdf": "Outils PDF",
+        "compressor": "Compression de fichiers",
+        "video": "Téléchargement vidéo",
+        "music": "Musique",
+        "lyrics": "Paroles",
+        "books": "Livres",
+        "lecture": "Cours",
+        "audio_clean": "Nettoyage audio",
+        "exam": "Préparation d'examen",
+        "monitor": "Moniteur système",
+        "mail": "Courrier",
+        "budget": "Budget",
+        "bookmarks": "Favoris",
+        "games": "Jeux",
+        "zapret": "Contournement",
+        "automation_rules": "Règles d'automatisation",
+        "tuning": "Réglage du PC",
+        "screenshots": "Captures d'écran",
+        "myspace": "Notes et Mon espace",
+        "diary": "Journal"
+      }
+    }
   },
   "chat": {
     "chatProvider": "Fournisseur par défaut",
@@ -3759,7 +3815,9 @@
     "f_translate": "Traducteur",
     "f_translate_hint": "Traduction locale sans cloud",
     "f_tuning": "Réglage du PC",
-    "f_tuning_hint": "Réglages Windows avec retour arrière et copies"
+    "f_tuning_hint": "Réglages Windows avec retour arrière et copies",
+    "pagesTitle": "De quelles pages avez-vous besoin ?",
+    "pagesHint": "Vous pourrez activer le reste plus tard : Réglages → Pages et profils."
   },
   "tuning": {
     "eyebrow": "OPTIMISATION",
