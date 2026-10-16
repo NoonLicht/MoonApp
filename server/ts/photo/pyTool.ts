@@ -23,7 +23,7 @@ import { createSetupTask } from "../setupTask";
 import type { SetupTaskState } from "../setupTask";
 import { PHOTO_DIR } from "./modelStore";
 
-export type ToolId = "invsr" | "faceswap";
+export type ToolId = "invsr" | "faceswap" | "chatterbox";
 export type ToolDevice = "cuda" | "cpu";
 
 const PY_ENV = { ...process.env, PYTHONIOENCODING: "utf-8", PYTHONUTF8: "1" };
@@ -49,6 +49,8 @@ export interface ToolDef {
   license: string;
   /** Версия портативного Python. */
   python: string;
+  /** Нужен ли каталог исходников (zip репозитория). */
+  repo: boolean;
   zipUrl: string;
   /** Модули, наличие которых означает «окружение готово». */
   modules: string[];
@@ -67,6 +69,7 @@ export const TOOLS: Record<ToolId, ToolDef> = {
     title: "InvSR",
     license: "NTU S-Lab 1.0",
     python: "3.10.11",
+    repo: true,
     zipUrl: "https://github.com/zsyOAOA/InvSR/archive/refs/heads/master.zip",
     modules: ["torch", "diffusers", "omegaconf"],
     note: "Код и веса InvSR — NTU S-Lab License 1.0 (некоммерческое использование); SD-Turbo — отдельная лицензия Stability AI.",
@@ -106,6 +109,7 @@ export const TOOLS: Record<ToolId, ToolDef> = {
     title: "Deep-Live-Cam",
     license: "AGPL-3.0 (код), insightface — только некоммерческое исследование",
     python: "3.11.9",
+    repo: true,
     zipUrl: "https://github.com/hacksider/Deep-Live-Cam/archive/refs/heads/main.zip",
     modules: ["onnxruntime", "insightface", "cv2"],
     note: "Используйте только с согласия людей на фото и помечайте результат как синтетический.",
@@ -122,6 +126,47 @@ export const TOOLS: Record<ToolId, ToolDef> = {
       },
     ],
     sizeMb: (d) => (d === "cpu" ? 1000 : 1700),
+  },
+  chatterbox: {
+    id: "chatterbox",
+    title: "Chatterbox",
+    license: "MIT",
+    python: "3.11.9",
+    repo: false,
+    zipUrl: "",
+    modules: ["torch", "chatterbox"],
+    note: "Модель Resemble AI (MIT). Каждый файл получает невидимый водяной знак Perth. Свой Python: у пакета жёсткие версии torch и transformers.",
+    steps: (device) => [
+      { id: "python", approxMb: 11 },
+      { id: "getpip", approxMb: 3 },
+      // пакет закрепляет torch==2.6.0 (нет колёс под RTX 50) — ставим свежий torch отдельно, пакет без зависимостей
+      {
+        id: "torch",
+        pip: [...TORCH_PKGS, "torchaudio", "--index-url", TORCH_INDEX[device]],
+        approxMb: device === "cpu" ? 250 : 2800,
+      },
+      { id: "package", pip: ["chatterbox-tts", "--no-deps"], approxMb: 5 },
+      {
+        id: "deps",
+        pip: [
+          "numpy<2",
+          "librosa==0.11.0",
+          "s3tokenizer",
+          "transformers==5.2.0",
+          "diffusers==0.29.0",
+          "resemble-perth",
+          "conformer==0.3.2",
+          "safetensors",
+          "spacy-pkuseg",
+          "pykakasi==2.3.0",
+          "pyloudnorm",
+          "omegaconf",
+          "soundfile",
+        ],
+        approxMb: 500,
+      },
+    ],
+    sizeMb: (d) => (d === "cpu" ? 1000 : 3500),
   },
 };
 
@@ -392,7 +437,8 @@ export function remove(id: ToolId): void {
 /** Проверка окружения: python отвечает и нужные модули находятся (без их загрузки). */
 export async function check(id: ToolId): Promise<{ ready: boolean; missing: string[] }> {
   const def = TOOLS[id];
-  if (!pyInstalled(id) || !fs.existsSync(repoDir(id))) return { ready: false, missing: ["python"] };
+  if (!pyInstalled(id) || (def.repo && !fs.existsSync(repoDir(id))))
+    return { ready: false, missing: ["python"] };
   const code =
     "import importlib.util as u,json;print(json.dumps({m:(u.find_spec(m) is not None) for m in " +
     JSON.stringify(def.modules) +
@@ -408,6 +454,33 @@ export async function check(id: ToolId): Promise<{ ready: boolean; missing: stri
   } catch {
     return { ready: false, missing: def.modules };
   }
+}
+
+/** Описание инструмента для интерфейса: размеры, лицензия, готовность окружения. */
+export async function describe(id: ToolId): Promise<{
+  id: ToolId;
+  title: string;
+  license: string;
+  note: string;
+  python: string;
+  sizeMb: { cuda: number; cpu: number };
+  ready: boolean;
+  missing: string[];
+  installed: boolean;
+}> {
+  const def = TOOLS[id];
+  const st = await check(id);
+  return {
+    id,
+    title: def.title,
+    license: def.license,
+    note: def.note,
+    python: def.python,
+    sizeMb: { cuda: def.sizeMb("cuda"), cpu: def.sizeMb("cpu") },
+    ready: st.ready,
+    missing: st.missing,
+    installed: pyInstalled(id),
+  };
 }
 
 /* ------------------------- Запуск скриптов ------------------------- */

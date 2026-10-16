@@ -2,6 +2,7 @@
  * Выделено из client.ts при разбиении крупного файла (поведение не менялось).
  */
 import { req, multipart, BASE, tokenHeaders } from "@/api/apiHttp";
+import type { PhotoInstallSnapshot, PhotoToolsState } from "@/api/apiPhoto";
 import type {
   TtsHardware,
   TtsPythonEnv,
@@ -25,6 +26,12 @@ export const ttsApi = {
   // Установка Python-окружения из интерфейса (см. server/ts/pyEnv.ts):
   // план (CUDA/CPU) → установка с прогрессом → отмена. Ручной ввод pip-команд
   // в консоли больше не нужен.
+  /** Chatterbox: свой изолированный Python (установка, отмена, удаление). */
+  ttsChatterbox: () => req<PhotoToolsState>("GET", "/tts/chatterbox"),
+  ttsChatterboxInstall: (device: "cuda" | "cpu") =>
+    req<PhotoInstallSnapshot>("POST", "/tts/chatterbox/install", { device }),
+  ttsChatterboxCancel: () => req<PhotoInstallSnapshot>("POST", "/tts/chatterbox/cancel"),
+  ttsChatterboxRemove: () => req<{ ok: boolean }>("DELETE", "/tts/chatterbox"),
   ttsEnvInstallInfo: (engine: string, device: string) =>
     req<PyInstallState>(
       "GET",

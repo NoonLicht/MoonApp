@@ -2,12 +2,15 @@
  * API управления веб-компаньоном (server/ts/routes/companion.ts).
  */
 import { BASE, req, tokenHeaders } from "@/api/apiHttp";
-import type { CompanionStatus, PlayerCommand as CompanionCommand, PlayerState } from "@contracts/companion";
+import type {
+  CompanionStatus,
+  PlayerCommand as CompanionCommand,
+  PlayerState,
+} from "@contracts/companion";
 
 export type { CompanionStatus, CompanionCommand };
 /** Состояние плеера, которое окно приложения отправляет на сервер (без метки времени — её ставит сервер). */
 export type CompanionPlayerState = Omit<PlayerState, "at">;
-
 
 export const companionApi = {
   companionStatus: () => req<CompanionStatus>("GET", "/companion/status"),
@@ -18,7 +21,8 @@ export const companionApi = {
   companionPlayerState: (state: CompanionPlayerState | null) =>
     req<{ ok: boolean }>("POST", "/companion/player-state", { state }),
   companionCommands: () => req<CompanionCommand[]>("GET", "/companion/commands"),
-  companionCamSnapshot: () => req<{ ok: boolean; name: string; dir: string }>("POST", "/companion/cam/snapshot"),
+  companionCamSnapshot: () =>
+    req<{ ok: boolean; name: string; dir: string }>("POST", "/companion/cam/snapshot"),
   companionCamKey: () => req<CompanionStatus>("POST", "/companion/cam/key"),
   /** Последний кадр камеры телефона как blob-URL (вызывающий освобождает его через URL.revokeObjectURL). */
   companionCamFrame: async (): Promise<string | null> => {

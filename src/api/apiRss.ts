@@ -2,7 +2,11 @@
  * API RSS-ридера (server/ts/routes/rss.ts).
  */
 import { req, BASE, tokenHeaders } from "@/api/apiHttp";
-import type { DigestResult, FeedWithCounts as RssFeed, ItemWithFeed as RssItem } from "@contracts/rss";
+import type {
+  DigestResult,
+  FeedWithCounts as RssFeed,
+  ItemWithFeed as RssItem,
+} from "@contracts/rss";
 
 export type { RssFeed, RssItem };
 
@@ -14,7 +18,6 @@ export interface RssSettingsView {
   hasLibreKey: boolean;
   unloadAfter: boolean;
 }
-
 
 export interface RssQuery {
   feed?: string;
@@ -51,33 +54,39 @@ export const rssApi = {
       { ids, lang, engine },
     ),
   rssArticleTranslate: (id: string, lang: string, engine: string) =>
-    req<{ blocks: { kind: "h" | "p" | "li" | "q"; text: string }[] | 0; tps?: number; cached?: boolean }>(
-      "POST",
-      `/rss/items/${id}/article-translate`,
-      { lang, engine },
-    ),
+    req<{
+      blocks: { kind: "h" | "p" | "li" | "q"; text: string }[] | 0;
+      tps?: number;
+      cached?: boolean;
+    }>("POST", `/rss/items/${id}/article-translate`, { lang, engine }),
   /** Поиск по статьям: по смыслу (EmbeddingGemma), с запасным текстовым поиском. */
   rssSearch: (q: RssQuery & { q: string }) => {
     const p = new URLSearchParams({ q: q.q });
     if (q.feed) p.set("feed", q.feed);
     if (q.unread) p.set("unread", "1");
     if (q.saved) p.set("saved", "1");
-    return req<{ mode: "semantic" | "text"; items: RssItem[] }>("GET", `/rss/search?${p.toString()}`);
+    return req<{ mode: "semantic" | "text"; items: RssItem[] }>(
+      "GET",
+      `/rss/search?${p.toString()}`,
+    );
   },
   rssSettings: () => req<RssSettingsView>("GET", "/rss/settings"),
   /** Частичное сохранение: уходят только переданные поля (libreKey "" ключ не затирает). */
-  rssSaveSettings: (patch: Partial<RssSettingsView> & { libreKey?: string; clearLibreKey?: boolean }) =>
-    req<RssSettingsView>("PUT", "/rss/settings", patch),
+  rssSaveSettings: (
+    patch: Partial<RssSettingsView> & { libreKey?: string; clearLibreKey?: boolean },
+  ) => req<RssSettingsView>("PUT", "/rss/settings", patch),
   /** Очистка БД ридера: все статьи, кроме сохранённых, вместе с текстами и переводами. */
   rssUnloadModel: () => req<{ ok: boolean }>("POST", "/rss/translate/unload"),
   rssClear: () => req<{ removed: number }>("DELETE", "/rss/items"),
   rssItem: (id: string) => req<RssItem>("GET", `/rss/items/${id}`),
   rssPatchItem: (id: string, patch: { read?: boolean; saved?: boolean }) =>
     req<RssItem>("PATCH", `/rss/items/${id}`, patch),
-  rssReadAll: (feedId?: string) => req<{ marked: number }>("POST", "/rss/items/read-all", { feedId }),
+  rssReadAll: (feedId?: string) =>
+    req<{ marked: number }>("POST", "/rss/items/read-all", { feedId }),
   rssReadLater: (id: string) =>
     req<{ bookmarkId: string; note: string | null }>("POST", `/rss/items/${id}/read-later`),
-  rssLastDigest: () => req<(DigestResult & { createdAt: string; scope: string }) | null>("GET", "/rss/digest/last"),
+  rssLastDigest: () =>
+    req<(DigestResult & { createdAt: string; scope: string }) | null>("GET", "/rss/digest/last"),
   rssDigest: (scope: "unread" | "saved" | "all", language: string, feedId?: string) =>
     req<DigestResult>("POST", "/rss/digest", {
       scope,

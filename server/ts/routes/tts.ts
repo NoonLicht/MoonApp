@@ -34,6 +34,7 @@ import fs from "fs";
 import path from "path";
 import * as engine from "../tts";
 import * as pyEnv from "../pyEnv";
+import * as pyTool from "../photo/pyTool";
 import settings from "../settings";
 import __m____config from "../config";
 const { DIRS } = __m____config;
@@ -106,6 +107,35 @@ router.get("/env/install", async (req, res) => {
  * Настройках: пользователь выбирает найденный вариант, и он сохраняется в
  * voice.pythonCmd (POST /env/python).
  */
+// Chatterbox ставится в собственный изолированный Python (см. server/ts/photo/pyTool.ts).
+router.get("/chatterbox", async (_req, res) => {
+  res.json({
+    tools: [await pyTool.describe("chatterbox")],
+    install: pyTool.snapshot(),
+    liveRunning: false,
+  });
+});
+
+router.post("/chatterbox/install", (req, res) => {
+  try {
+    res.json(pyTool.install("chatterbox", req.body?.device === "cpu" ? "cpu" : "cuda"));
+  } catch (e) {
+    const msg = String((e as Error).message || e);
+    res.status(msg === "busy" ? 409 : 400).json({ error: msg });
+  }
+});
+
+router.post("/chatterbox/cancel", (_req, res) => res.json(pyTool.cancel()));
+
+router.delete("/chatterbox", (_req, res) => {
+  try {
+    pyTool.remove("chatterbox");
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(409).json({ error: String((e as Error).message || e) });
+  }
+});
+
 router.get("/env/interpreters", async (req, res) => {
   try {
     res.json({ list: await pyEnv.interpreters() });

@@ -148,10 +148,8 @@ export interface TtsPythonEnv {
   modules: Record<string, boolean>;
   missingF5: string[];
   missingXtts: string[];
-  missingChatterbox: string[];
   installF5: string;
   installXtts: string;
-  installChatterbox: string;
   checkedAt: number;
   cached: boolean;
   /** Прогресс фоновой установки окружения (см. server/ts/pyEnv.ts). */
@@ -232,7 +230,6 @@ export interface PyInterpreter {
   modules: Record<string, boolean>;
   missingF5: string[];
   missingXtts: string[];
-  missingChatterbox: string[];
 }
 export interface SitebakJob {
   id: string;

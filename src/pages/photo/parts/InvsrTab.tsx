@@ -7,13 +7,14 @@ import { saveBlob } from "@/lib/download";
 import { usePageBusy } from "@/components/Toolbar";
 import CompareSlider from "@/components/upscale/CompareSlider";
 import FilePick, { useObjectUrl } from "@/pages/photo/parts/FilePick";
-import ToolInstall, { usePhotoTools } from "@/pages/photo/parts/ToolInstall";
+import ToolInstall, { useToolsState } from "@/components/ToolInstall";
+import { fetchPhotoTools, photoToolActions } from "@/pages/photo/parts/photoTools";
 import { useJob } from "@/pages/photo/parts/useJob";
 
 /** Диффузионный апскейл ×4 (InvSR на SD-Turbo): 1–5 шагов, тайлы для больших снимков. */
 export default function InvsrTab({ active }: { active: boolean }) {
   const { t } = useI18n();
-  const { state, reload, tool } = usePhotoTools();
+  const { state, reload, tool } = useToolsState(fetchPhotoTools);
   const [file, setFile] = useState<File | null>(null);
   const [steps, setSteps] = useState(1);
   const [tile, setTile] = useState(256);
@@ -27,7 +28,7 @@ export default function InvsrTab({ active }: { active: boolean }) {
 
   return (
     <div className="ph-tab">
-      <ToolInstall id="invsr" state={state} reload={reload} />
+      <ToolInstall id="invsr" state={state} reload={reload} actions={photoToolActions} />
 
       <Glass className="ph-card">
         <FilePick file={file} accept="image/*" onPick={(f) => (setFile(f), j.reset())} />

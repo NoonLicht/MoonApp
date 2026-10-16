@@ -80,7 +80,7 @@ export function useWordDocs() {
   }, []);
 
   const create = useCallback(
-    async (template = "blank", name = "Документ") => {
+    async (template: string, name: string) => {
       setBusy(true);
       setError("");
       try {

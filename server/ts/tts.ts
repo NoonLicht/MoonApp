@@ -24,6 +24,7 @@ import crypto from "crypto";
 import os from "os";
 import settings from "./settings";
 import logger from "./logger";
+import * as pyTool from "./photo/pyTool";
 import config from "./config";
 import { detectFfmpeg } from "./convertEngine";
 import * as ruNlp from "./ruNlp";
@@ -600,7 +601,11 @@ class JsonSidecar {
   /** Ошибка запуска интерпретатора (ENOENT и т.п.) — «залипает» до конца жизни. */
   spawnError: string;
 
-  constructor(script: string, tag: string) {
+  /** Интерпретатор, если он не из настроек озвучки (у Chatterbox свой изолированный Python). */
+  python = "";
+
+  constructor(script: string, tag: string, python = "") {
+    this.python = python;
     this.script = script;
     this.tag = tag;
     this.child = null;
@@ -611,7 +616,7 @@ class JsonSidecar {
   }
 
   _start(): this {
-    const python = pythonCmd();
+    const python = this.python || pythonCmd();
     const child = spawn(python, [this.script], {
       windowsHide: true,
       stdio: ["pipe", "pipe", "pipe"],
@@ -762,7 +767,12 @@ class JsonSidecar {
   }
 }
 
-/** Сайдкар движка озвучки: F5-TTS либо Coqui XTTS v2. */
+/** Python окружения Chatterbox (пусто, пока не установлено — тогда задание не стартует). */
+function chatterboxPython(): string {
+  return pyTool.pyInstalled("chatterbox") ? pyTool.pythonExe("chatterbox") : "";
+}
+
+/** Сайдкар движка озвучки: F5-TTS, Coqui XTTS v2 или Chatterbox. */
 class EngineSidecar extends JsonSidecar {
   engine: "f5" | "xtts" | "chatterbox";
 
@@ -778,6 +788,7 @@ class EngineSidecar extends JsonSidecar {
         ],
       ),
       engine,
+      engine === "chatterbox" ? chatterboxPython() : "",
     );
     this.engine = engine;
   }
@@ -974,7 +985,7 @@ async function accentItems(job: TtsJob): Promise<string[] | null> {
 const ENGINE_REQUIRED: Record<TtsEngine, string[]> = {
   f5: ["torch", "torchaudio", "f5_tts"],
   xtts: ["torch", "torchaudio", "TTS"],
-  chatterbox: ["torch", "torchaudio", "chatterbox"],
+  chatterbox: [], // свой изолированный Python: проверяется через photo/pyTool
   llama: [], // встроенный llama.cpp обходится без Python
 };
 
@@ -997,7 +1008,6 @@ const PIP_HINT: Record<string, string> = {
     "pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128",
   f5_tts: "pip install f5-tts",
   TTS: "pip install coqui-tts",
-  chatterbox: "pip install chatterbox-tts",
   ruaccent: "pip install ruaccent",
   pynvml: "pip install nvidia-ml-py",
 };
@@ -1018,12 +1028,9 @@ export interface PythonEnv {
   missingF5: string[];
   /** Чего не хватает для Coqui XTTS v2. */
   missingXtts: string[];
-  /** Чего не хватает для Chatterbox. */
-  missingChatterbox: string[];
   /** Команды установки для F5-TTS / XTTS (пустая строка — всё на месте). */
   installF5: string;
   installXtts: string;
-  installChatterbox: string;
   checkedAt: number;
   cached: boolean;
 }
@@ -1043,12 +1050,11 @@ function hintFor(missing: string[]): string {
 }
 
 function engineMissing(env: PythonEnv, engine: TtsEngine): string[] {
-  if (engine === "chatterbox") return env.missingChatterbox;
+  if (engine === "chatterbox") return [];
   return engine === "xtts" ? env.missingXtts : env.missingF5;
 }
 
 function installHintFor(env: PythonEnv, engine: TtsEngine): string {
-  if (engine === "chatterbox") return env.installChatterbox;
   return engine === "xtts" ? env.installXtts : env.installF5;
 }
 
@@ -1063,10 +1069,8 @@ function envFail(cmd: string, error: string, detail: string): PythonEnv {
     modules: {},
     missingF5: [...ENGINE_REQUIRED.f5],
     missingXtts: [...ENGINE_REQUIRED.xtts],
-    missingChatterbox: [...ENGINE_REQUIRED.chatterbox],
     installF5: hintFor(ENGINE_REQUIRED.f5),
     installXtts: hintFor(ENGINE_REQUIRED.xtts),
-    installChatterbox: hintFor(ENGINE_REQUIRED.chatterbox),
     checkedAt: Date.now(),
     cached: false,
   };
@@ -1097,7 +1101,6 @@ function parseEnv(cmd: string, out: string, code: number | null, errTail: string
   const miss = (need: string[]) => need.filter((m) => !modules[m]);
   const missingF5 = miss(ENGINE_REQUIRED.f5);
   const missingXtts = miss(ENGINE_REQUIRED.xtts);
-  const missingChatterbox = miss(ENGINE_REQUIRED.chatterbox);
   return {
     ok: true,
     error: "",
@@ -1108,10 +1111,8 @@ function parseEnv(cmd: string, out: string, code: number | null, errTail: string
     modules,
     missingF5,
     missingXtts,
-    missingChatterbox,
     installF5: hintFor(missingF5),
     installXtts: hintFor(missingXtts),
-    installChatterbox: hintFor(missingChatterbox),
     checkedAt: Date.now(),
     cached: false,
   };
@@ -1175,6 +1176,23 @@ function pythonEnv(force = false): Promise<PythonEnv> {
  * «No module named 'torch'» после многоминутного ожидания загрузки модели.
  */
 async function assertPythonEnv(job: TtsJob): Promise<void> {
+  if (job.engine === "chatterbox") {
+    // Chatterbox живёт в собственном окружении (torch и transformers у него другие, чем у F5/XTTS)
+    const st = await pyTool.check("chatterbox");
+    if (!st.ready) {
+      job.envError = {
+        code: "python_env_missing",
+        cmd: chatterboxPython(),
+        detail: "",
+        python: "",
+        executable: "",
+        missing: st.missing,
+        installHint: "chatterbox",
+      };
+      throw new Error(`python_env_missing: ${st.missing.join(",")}`);
+    }
+    return;
+  }
   const env = await pythonEnv();
   if (!env.ok) {
     const code = String(env.error || "probe_failed").split(":")[0];
@@ -1542,7 +1560,8 @@ async function runPipeline(job: TtsJob): Promise<void> {
           exaggeration:
             job.engine === "chatterbox" ? Math.min(1.2, cfg.exaggeration * 0.5) : cfg.exaggeration,
           sentencePauseMs: cfg.sentencePauseMs,
-          temperature: job.engine === "chatterbox" ? Math.max(0.5, cfg.temperature) : cfg.temperature,
+          temperature:
+            job.engine === "chatterbox" ? Math.max(0.5, cfg.temperature) : cfg.temperature,
           repetitionPenalty: cfg.repetitionPenalty,
           topK: cfg.topK,
           topP: cfg.topP,

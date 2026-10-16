@@ -104,27 +104,13 @@ router.post("/bg-remove", upload.single("file"), async (req, res) => {
 });
 
 const toolId = (v: unknown): py.ToolId => {
-  if (v === "invsr" || v === "faceswap") return v;
+  if (v === "invsr" || v === "faceswap" || v === "chatterbox") return v;
   throw new Error("unknown_tool");
 };
 
 router.get("/tools", async (_req, res) => {
   const out = [];
-  for (const id of ["invsr", "faceswap"] as const) {
-    const def = py.TOOLS[id];
-    const st = await py.check(id);
-    out.push({
-      id,
-      title: def.title,
-      license: def.license,
-      note: def.note,
-      python: def.python,
-      sizeMb: { cuda: def.sizeMb("cuda"), cpu: def.sizeMb("cpu") },
-      ready: st.ready,
-      missing: st.missing,
-      installed: py.pyInstalled(id),
-    });
-  }
+  for (const id of ["invsr", "faceswap"] as const) out.push(await py.describe(id));
   res.json({ tools: out, install: py.snapshot(), liveRunning: swap.liveRunning() });
 });
 

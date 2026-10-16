@@ -72,7 +72,14 @@ export const semanticApi = {
   semFiles: () =>
     req<{
       folders: string[];
-      scan: { running: boolean; total: number; done: number; indexed: number; failed: number; error: string };
+      scan: {
+        running: boolean;
+        total: number;
+        done: number;
+        indexed: number;
+        failed: number;
+        error: string;
+      };
     }>("GET", "/semantic/files"),
   semFilesSetFolders: (folders: string[]) =>
     req<{ folders: string[] }>("POST", "/semantic/files/folders", { folders }),

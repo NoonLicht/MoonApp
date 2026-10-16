@@ -12,7 +12,6 @@ import type {
 
 export type { DiaryEntry, DiaryListItem, DiaryLabels, DiaryWeekSummary, DiarySavedSummary };
 
-
 export const diaryApi = {
   diaryEntries: (from?: string, to?: string) =>
     req<{ items: DiaryListItem[]; streak: number }>(
@@ -34,7 +33,8 @@ export const diaryApi = {
     markdown: string,
     meta: { ai?: boolean; provider?: string; model?: string } = {},
   ) => req<DiarySavedSummary>("PUT", `/diary/day-summary/${date}`, { markdown, ...meta }),
-  diaryDeleteDaySummary: (date: string) => req<{ ok: boolean }>("DELETE", `/diary/day-summary/${date}`),
+  diaryDeleteDaySummary: (date: string) =>
+    req<{ ok: boolean }>("DELETE", `/diary/day-summary/${date}`),
   diaryWeekSummary: (date: string, language: string, labels: DiaryLabels) =>
     req<DiaryWeekSummary>("POST", "/diary/week-summary", { date, language, labels }),
 };

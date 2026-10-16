@@ -153,8 +153,7 @@ export const systemApi = {
         params: Record<string, string>;
       }[];
     }>("POST", "/automation-rules", rule),
-  automationRuleDelete: (id: string) =>
-    req<{ ok: boolean }>("DELETE", `/automation-rules/${id}`),
+  automationRuleDelete: (id: string) => req<{ ok: boolean }>("DELETE", `/automation-rules/${id}`),
   automationLaunchers: () => req<LauncherEntry[]>("GET", "/automation/launchers"),
   automationCreateLauncher: (payload: LauncherInput) =>
     req<LauncherEntry>("POST", "/automation/launchers", payload),
@@ -187,7 +186,13 @@ export const systemApi = {
       "GET",
       `/budget/summary?period=${period}&count=${count}&currency=${currency}`,
     ),
-  budgetInsights: (q: { currency?: string; payday?: string; available?: number; monthA?: string; monthB?: string }) => {
+  budgetInsights: (q: {
+    currency?: string;
+    payday?: string;
+    available?: number;
+    monthA?: string;
+    monthB?: string;
+  }) => {
     const p = new URLSearchParams();
     for (const [k, v] of Object.entries(q)) if (v !== undefined && v !== "") p.set(k, String(v));
     return req<BudgetInsights>("GET", `/budget/insights?${p.toString()}`);
@@ -217,16 +222,14 @@ export const systemApi = {
     req<{ active: string | null; settings: unknown }>("POST", "/app-modes/activate", { id }),
   appModeDeactivate: () =>
     req<{ active: string | null; settings: unknown }>("POST", "/app-modes/deactivate", {}),
-  contextMenuStatus: () =>
-    req<{ supported: boolean; installed: boolean }>("GET", "/context-menu"),
+  contextMenuStatus: () => req<{ supported: boolean; installed: boolean }>("GET", "/context-menu"),
   contextMenuInstall: (labels: { note: string; folder: string }) =>
     req<{ installed: boolean }>("POST", "/context-menu/install", { labels }),
   contextMenuRemove: () => req<{ installed: boolean }>("DELETE", "/context-menu"),
   plugins: () =>
-    req<{ items: { id: string; name: string; version: string; skills: number; templates: number }[] }>(
-      "GET",
-      "/plugins",
-    ),
+    req<{
+      items: { id: string; name: string; version: string; skills: number; templates: number }[];
+    }>("GET", "/plugins"),
   pluginInstall: (manifest: unknown) =>
     req<{ id: string; name: string }>("POST", "/plugins", { manifest }),
   pluginRemove: (id: string) => req("DELETE", `/plugins/${encodeURIComponent(id)}`),
@@ -278,13 +281,17 @@ export const systemApi = {
       missing: { text: string }[];
     }>("POST", "/canvas-ai/analyze", { objs }),
   pcPassportFile: async (anonymize: boolean): Promise<Blob> => {
-    const res = await fetch(`${BASE}/api/diagnostics/passport.md${anonymize ? "?anonymize=1" : ""}`, {
-      headers: { ...tokenHeaders(), ...pageHeaders() },
-    });
+    const res = await fetch(
+      `${BASE}/api/diagnostics/passport.md${anonymize ? "?anonymize=1" : ""}`,
+      {
+        headers: { ...tokenHeaders(), ...pageHeaders() },
+      },
+    );
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return res.blob();
   },
-  slowdownStart: (seconds = 30) => req<{ id: string }>("POST", "/diagnostics/slowdown", { seconds }),
+  slowdownStart: (seconds = 30) =>
+    req<{ id: string }>("POST", "/diagnostics/slowdown", { seconds }),
   slowdownStatus: (id: string) =>
     req<{
       running: boolean;
@@ -294,8 +301,20 @@ export const systemApi = {
       error: string;
       verdict: {
         main: "cpu" | "disk" | "memory" | "none";
-        findings: { cause: "cpu" | "disk" | "memory"; severity: "low" | "medium" | "high"; value: number; why: string | null }[];
-        culprits: { name: string; avgCpu: number; peakCpu: number; avgIoMbs: number; memMb: number; peakAt: number }[];
+        findings: {
+          cause: "cpu" | "disk" | "memory";
+          severity: "low" | "medium" | "high";
+          value: number;
+          why: string | null;
+        }[];
+        culprits: {
+          name: string;
+          avgCpu: number;
+          peakCpu: number;
+          avgIoMbs: number;
+          memMb: number;
+          peakAt: number;
+        }[];
         avg: { cpu: number; diskPct: number; memAvailMb: number; diskQueue: number };
         peak: { cpu: number; cpuAt: number; diskPct: number; diskAt: number };
         samples: number;
@@ -309,7 +328,11 @@ export const systemApi = {
       stale: { cls: string; name: string; version: string; date: string }[];
       markdown: string;
     }>("GET", "/diagnostics/passport"),
-  montageBuild: (query: string, maxSeconds = 600, order: "relevance" | "chronological" = "relevance") =>
+  montageBuild: (
+    query: string,
+    maxSeconds = 600,
+    order: "relevance" | "chronological" = "relevance",
+  ) =>
     req<{
       id: string | null;
       seconds: number;
@@ -324,7 +347,11 @@ export const systemApi = {
       imageUrl: string;
       text: string;
       confidence: number;
-      checklist: { title: string; items: { text: string; done: boolean; important: boolean }[]; dropped: number };
+      checklist: {
+        title: string;
+        items: { text: string; done: boolean; important: boolean }[];
+        dropped: number;
+      };
       note: string;
       tasks: number;
     }>("/scan/photo-tasks", fd);
@@ -333,7 +360,10 @@ export const systemApi = {
     const fd = new FormData();
     for (const f of files) fd.append("files", f);
     if (title) fd.append("title", title);
-    return multipart<{ file: string; pages: number; chars: number; note: string | null }>("/scan/pdf", fd);
+    return multipart<{ file: string; pages: number; chars: number; note: string | null }>(
+      "/scan/pdf",
+      fd,
+    );
   },
   scanList: () => req<{ items: { name: string; size: number; at: number }[] }>("GET", "/scan/list"),
   selfContracts: () =>
@@ -348,21 +378,46 @@ export const systemApi = {
     }>("GET", "/self-contracts"),
   selfContractCreate: (b: { label: string; metric: string; target: string; limit: number }) =>
     req<{ id: string }>("POST", "/self-contracts", b),
-  selfContractDelete: (id: string) => req<{ ok: boolean }>("DELETE", `/self-contracts/${encodeURIComponent(id)}`),
+  selfContractDelete: (id: string) =>
+    req<{ ok: boolean }>("DELETE", `/self-contracts/${encodeURIComponent(id)}`),
   mindContradictions: (path: string, text: string) =>
     req<{
       claims: number;
       model: "ok" | "failed" | "skipped";
-      findings: { claim: string; source: string; ref: string; passage: string; why: string; by: "model" | "heuristic" }[];
+      findings: {
+        claim: string;
+        source: string;
+        ref: string;
+        passage: string;
+        why: string;
+        by: "model" | "heuristic";
+      }[];
     }>("POST", "/mind/contradictions", { path, text }),
   mindReview: (text: string, focus: "general" | "evidence" | "audience" | "logic" = "general") =>
-    req<{ questions: { quote: string; question: string }[] }>("POST", "/mind/review", { text, focus }),
+    req<{ questions: { quote: string; question: string }[] }>("POST", "/mind/review", {
+      text,
+      focus,
+    }),
   mindConfidenceSync: (path?: string, text?: string) =>
     req<{ added: number; total: number }>("POST", "/mind/confidence/sync", { path, text }),
   mindConfidence: () =>
     req<{
-      entries: { id: string; path: string; claim: string; pct: number; due: string; outcome: boolean | null }[];
-      due: { id: string; path: string; claim: string; pct: number; due: string; outcome: boolean | null }[];
+      entries: {
+        id: string;
+        path: string;
+        claim: string;
+        pct: number;
+        due: string;
+        outcome: boolean | null;
+      }[];
+      due: {
+        id: string;
+        path: string;
+        claim: string;
+        pct: number;
+        due: string;
+        outcome: boolean | null;
+      }[];
       calibration: {
         resolved: number;
         brier: number | null;
@@ -377,13 +432,24 @@ export const systemApi = {
   mindProvenanceClassify: (path: string, text: string) =>
     req<{
       paragraphs: { start: number; end: number; words: number; origin: "own" | "copied" | "ai" }[];
-      summary: { own: number; copied: number; ai: number; pct: { own: number; copied: number; ai: number } };
+      summary: {
+        own: number;
+        copied: number;
+        ai: number;
+        pct: { own: number; copied: number; ai: number };
+      };
     }>("POST", "/mind/provenance/classify", { path, text }),
   mindTraces: () =>
     req<{
       items: MindTrace[];
       due: MindTrace[];
-      track: { reviewed: number; right: number; partly: number; wrong: number; score: number | null };
+      track: {
+        reviewed: number;
+        right: number;
+        partly: number;
+        wrong: number;
+        score: number | null;
+      };
     }>("GET", "/mind/traces"),
   mindTraceCreate: (b: {
     kind: "note" | "expense";
@@ -396,8 +462,12 @@ export const systemApi = {
   mindTraceUpdate: (id: string, patch: { reason?: string; reviewInDays?: number }) =>
     req<{ ok: boolean }>("PATCH", `/mind/traces/${encodeURIComponent(id)}`, patch),
   mindTraceReview: (id: string, verdict: "right" | "partly" | "wrong", note = "") =>
-    req<{ ok: boolean }>("POST", `/mind/traces/${encodeURIComponent(id)}/review`, { verdict, note }),
-  mindTraceDelete: (id: string) => req<{ ok: boolean }>("DELETE", `/mind/traces/${encodeURIComponent(id)}`),
+    req<{ ok: boolean }>("POST", `/mind/traces/${encodeURIComponent(id)}/review`, {
+      verdict,
+      note,
+    }),
+  mindTraceDelete: (id: string) =>
+    req<{ ok: boolean }>("DELETE", `/mind/traces/${encodeURIComponent(id)}`),
   gaps: () =>
     req<{
       notes: number;
@@ -495,7 +565,10 @@ export const systemApi = {
         ms: number;
         intervals: Record<1 | 2 | 3 | 4, number>;
       }[];
-    }>("GET", `/exam/due?limit=${limit}${lectureId !== undefined ? `&lectureId=${lectureId}` : ""}`),
+    }>(
+      "GET",
+      `/exam/due?limit=${limit}${lectureId !== undefined ? `&lectureId=${lectureId}` : ""}`,
+    ),
   examReview: (cardId: string, grade: 1 | 2 | 3 | 4) =>
     req<{ card: { id: string; due: number } }>("POST", "/exam/review", { cardId, grade }),
   examSubmitQuiz: (lectureId: number, answers: number[]) =>
@@ -520,7 +593,15 @@ export const systemApi = {
       query: string;
       groups: {
         source: string;
-        items: { source: string; ref: string; title: string; snippet: string; score: number; at?: number; why?: string }[];
+        items: {
+          source: string;
+          ref: string;
+          title: string;
+          snippet: string;
+          score: number;
+          at?: number;
+          why?: string;
+        }[];
       }[];
     }>("POST", "/ghost/context", { title, text, exclude }),
   aiShieldAudit: (limit = 100) =>
@@ -542,13 +623,24 @@ export const systemApi = {
         local: number;
         chars: number;
         hidden: number;
-        byProvider: { provider: string; requests: number; chars: number; hidden: number; local: boolean }[];
+        byProvider: {
+          provider: string;
+          requests: number;
+          chars: number;
+          hidden: number;
+          local: boolean;
+        }[];
       };
     }>("GET", `/ai-shield/audit?limit=${limit}`),
   aiShieldClear: () => req<{ ok: boolean }>("DELETE", "/ai-shield/audit"),
   aiShieldPreview: (text: string) =>
     req<{ text: string; found: Record<string, number> }>("POST", "/ai-shield/preview", { text }),
-  budgetHours: (o: { currency?: string; month?: string; monthlyIncome?: number; workHours?: number }) =>
+  budgetHours: (o: {
+    currency?: string;
+    month?: string;
+    monthlyIncome?: number;
+    workHours?: number;
+  }) =>
     req<{
       rates: {
         monthlyIncome: number;
@@ -607,11 +699,11 @@ export const systemApi = {
       }[];
     }>("GET", `/budget/tax-deductions?currency=${encodeURIComponent(currency)}`),
   budgetWhatIf: (cut: Record<string, number>, currency = "RUB") =>
-    req<{ perMonth: number; perYear: number; byCategory: { category: string; perMonth: number }[] }>(
-      "POST",
-      "/budget/what-if",
-      { cut, currency },
-    ),
+    req<{
+      perMonth: number;
+      perYear: number;
+      byCategory: { category: string; perMonth: number }[];
+    }>("POST", "/budget/what-if", { cut, currency }),
   budgetParseReceipt: (text: string) =>
     req<{
       merchant: string;
@@ -629,8 +721,7 @@ export const systemApi = {
     req<RecurringPayment>("POST", "/budget/recurring", payload),
   budgetRecurringToggle: (id: string, active: boolean) =>
     req<RecurringPayment>("PATCH", `/budget/recurring/${id}`, { active }),
-  budgetRecurringDelete: (id: string) =>
-    req<{ ok: boolean }>("DELETE", `/budget/recurring/${id}`),
+  budgetRecurringDelete: (id: string) => req<{ ok: boolean }>("DELETE", `/budget/recurring/${id}`),
   budgetUpcoming: (days = 30) =>
     req<UpcomingPayment[]>("GET", `/budget/recurring/upcoming?days=${days}`),
   budgetRecurringPay: (id: string) => req<Transaction>("POST", `/budget/recurring/${id}/pay`),

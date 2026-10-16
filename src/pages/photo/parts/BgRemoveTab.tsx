@@ -131,7 +131,9 @@ export default function BgRemoveTab() {
           {result && (
             <Btn
               icon={Download}
-              onClick={() => saveBlob(result.blob, `${file?.name.replace(/\.[^.]+$/, "") || "image"}-nobg.png`)}
+              onClick={() =>
+                saveBlob(result.blob, `${file?.name.replace(/\.[^.]+$/, "") || "image"}-nobg.png`)
+              }
             >
               {t("photo.save")}
             </Btn>

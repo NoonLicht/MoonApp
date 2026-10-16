@@ -5,11 +5,23 @@ import path from "path";
 const ENGINES = path.resolve(__dirname, "..", "server", "engines");
 
 describe("Chatterbox как движок озвучки", () => {
-  it("установщик окружения знает движок и его модули", async () => {
-    const py = await import("../server/pyEnv");
-    expect(py.engineOf("chatterbox")).toBe("chatterbox");
-    expect(py.engineOf("xtts")).toBe("xtts");
-    expect(py.engineOf("что-то")).toBe("f5");
+  it("Chatterbox — отдельный инструмент со своим окружением, а не часть общего Python озвучки", async () => {
+    const py = await import("../server/photo/pyTool");
+    const def = py.TOOLS.chatterbox;
+    expect(def.repo).toBe(false);
+    expect(def.modules).toContain("chatterbox");
+    const steps = def.steps("cuda");
+    // torch ставится отдельно (cu128), сам пакет — без зависимостей: у него torch==2.6.0
+    const pkg = steps.find((s) => s.id === "package");
+    expect(pkg?.pip).toContain("--no-deps");
+    const torch = steps.find((s) => s.id === "torch");
+    expect(torch?.pip?.join(" ")).toContain("cu128");
+    expect(
+      def
+        .steps("cpu")
+        .find((s) => s.id === "torch")
+        ?.pip?.join(" "),
+    ).toContain("/cpu");
   });
 
   it("сайдкар режет длинный текст по предложениям и снимает ударения", () => {

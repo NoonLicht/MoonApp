@@ -51,6 +51,7 @@ import {
 } from "lucide-react";
 import AudioPlayer from "@/pages/voice/parts/AudioPlayer";
 import { PyEnvPanel } from "@/pages/voice/parts/PyEnvPanel";
+import ChatterboxPanel from "@/pages/voice/parts/ChatterboxPanel";
 import LlamaPanel from "@/components/LlamaPanel";
 import {
   ACCEPT,
@@ -1080,6 +1081,8 @@ export default function AudiobookTTSPage() {
             <Glass style={{ padding: 14 }}>
               <LlamaPanel kind="tts" />
             </Glass>
+          ) : engine === "chatterbox" ? (
+            <ChatterboxPanel />
           ) : (
             <PyEnvPanel engine={engine} env={pyEnv} onChanged={onEnvChanged} />
           )}

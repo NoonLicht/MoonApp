@@ -6,7 +6,8 @@ import { api } from "@/api/client";
 import { saveBlob } from "@/lib/download";
 import { usePageBusy } from "@/components/Toolbar";
 import FilePick, { useObjectUrl } from "@/pages/photo/parts/FilePick";
-import ToolInstall, { usePhotoTools } from "@/pages/photo/parts/ToolInstall";
+import ToolInstall, { useToolsState } from "@/components/ToolInstall";
+import { fetchPhotoTools, photoToolActions } from "@/pages/photo/parts/photoTools";
 import { useJob } from "@/pages/photo/parts/useJob";
 
 const isVideo = (f: File | null): boolean => !!f && /^video\//.test(f.type || "");
@@ -14,7 +15,7 @@ const isVideo = (f: File | null): boolean => !!f && /^video\//.test(f.type || ""
 /** Замена лица (Deep-Live-Cam): фото или видео по одному снимку лица, живая камера — отдельным окном. */
 export default function FaceSwapTab() {
   const { t } = useI18n();
-  const { state, reload, tool } = usePhotoTools();
+  const { state, reload, tool } = useToolsState(fetchPhotoTools);
   const [source, setSource] = useState<File | null>(null);
   const [target, setTarget] = useState<File | null>(null);
   const [device, setDevice] = useState<"cuda" | "cpu">("cuda");
@@ -45,7 +46,7 @@ export default function FaceSwapTab() {
 
   return (
     <div className="ph-tab">
-      <ToolInstall id="faceswap" state={state} reload={reload} />
+      <ToolInstall id="faceswap" state={state} reload={reload} actions={photoToolActions} />
 
       <Glass className="ph-card">
         <div className="muted-sm">{t("photo.face.consent")}</div>
@@ -98,7 +99,11 @@ export default function FaceSwapTab() {
         </div>
         <div className="ph-checks">
           <label>
-            <input type="checkbox" checked={enhance} onChange={(e) => setEnhance(e.target.checked)} />
+            <input
+              type="checkbox"
+              checked={enhance}
+              onChange={(e) => setEnhance(e.target.checked)}
+            />
             {t("photo.face.enhance")}
           </label>
           <label>
@@ -128,7 +133,13 @@ export default function FaceSwapTab() {
               source &&
               target &&
               void j.start(() =>
-                api.photoFaceSwap(source, target, { device, enhance, manyFaces, mouthMask, quality }),
+                api.photoFaceSwap(source, target, {
+                  device,
+                  enhance,
+                  manyFaces,
+                  mouthMask,
+                  quality,
+                }),
               )
             }
           >
@@ -168,11 +179,7 @@ export default function FaceSwapTab() {
       {resUrl && (
         <Glass className="ph-view">
           <div className="muted-sm">{t("photo.after")}</div>
-          {video ? (
-            <video src={resUrl} controls />
-          ) : (
-            <img src={resUrl} alt={t("photo.after")} />
-          )}
+          {video ? <video src={resUrl} controls /> : <img src={resUrl} alt={t("photo.after")} />}
         </Glass>
       )}
     </div>

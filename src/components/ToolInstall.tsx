@@ -2,14 +2,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Download, Trash2, X, Check } from "lucide-react";
 import { Glass, Btn, Badge, ProgressBar, Select } from "@/components/ui";
 import { useI18n } from "@/app/i18n";
-import { api } from "@/api/client";
 import type { PhotoTool, PhotoToolsState } from "@/api/apiPhoto";
 
 /**
  * Состояние внешних инструментов (InvSR, Deep-Live-Cam): установлены ли, идёт ли установка.
  * Пока установка идёт — опрашиваем сервер раз в 1.5 с, иначе один раз при входе.
  */
-export function usePhotoTools(): {
+export function useToolsState(fetcher: () => Promise<PhotoToolsState>): {
   state: PhotoToolsState | null;
   reload: () => Promise<void>;
   tool: (id: PhotoTool["id"]) => PhotoTool | undefined;
@@ -19,12 +18,12 @@ export function usePhotoTools(): {
 
   const reload = useCallback(async () => {
     try {
-      const s = await api.photoTools();
+      const s = await fetcher();
       if (alive.current) setState(s);
     } catch {
       /* сервер перезапускается — следующий опрос повторит */
     }
-  }, []);
+  }, [fetcher]);
 
   useEffect(() => {
     alive.current = true;
@@ -45,14 +44,23 @@ export function usePhotoTools(): {
 }
 
 /** Карточка установки инструмента: устройство, размер, прогресс, лог, удаление. */
+/** Действия над окружением инструмента (свои маршруты у каждой страницы). */
+export interface ToolActions {
+  install(id: string, device: "cuda" | "cpu"): Promise<unknown>;
+  cancel(): Promise<unknown>;
+  remove(id: string): Promise<unknown>;
+}
+
 export default function ToolInstall({
   id,
   state,
   reload,
+  actions,
 }: {
   id: PhotoTool["id"];
   state: PhotoToolsState | null;
   reload: () => Promise<void>;
+  actions: ToolActions;
 }) {
   const { t } = useI18n();
   const [device, setDevice] = useState<"cuda" | "cpu">("cuda");
@@ -68,7 +76,7 @@ export default function ToolInstall({
   const start = async (): Promise<void> => {
     setErr("");
     try {
-      await api.photoToolInstall(id, device);
+      await actions.install(id, device);
     } catch (e) {
       setErr(String((e as Error).message));
     }
@@ -76,14 +84,14 @@ export default function ToolInstall({
   };
 
   const stop = async (): Promise<void> => {
-    await api.photoToolCancel().catch(() => undefined);
+    await actions.cancel().catch(() => undefined);
     void reload();
   };
 
   const remove = async (): Promise<void> => {
     setErr("");
     try {
-      await api.photoToolRemove(id);
+      await actions.remove(id);
     } catch (e) {
       setErr(String((e as Error).message));
     }

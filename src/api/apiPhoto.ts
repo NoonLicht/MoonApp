@@ -28,7 +28,7 @@ export interface PhotoModelsState {
 }
 
 export interface PhotoTool {
-  id: "invsr" | "faceswap";
+  id: "invsr" | "faceswap" | "chatterbox";
   title: string;
   license: string;
   note: string;
