@@ -2740,7 +2740,8 @@
     "noPython": "无 Python",
     "defaultPreset": "我的预设",
     "fmtM4b": "M4B（章节）",
-    "fmtMp3": "MP3（章节）"
+    "fmtMp3": "MP3（章节）",
+    "chatterboxDesc": "Resemble AI 多语言模型：声音克隆，表现力可调。MIT 许可。"
   },
   "lecture": {
     "defaultTitle": "讲座",

@@ -2744,7 +2744,8 @@
     "noPython": "без Python",
     "defaultPreset": "Мой пресет",
     "fmtM4b": "M4B (главы)",
-    "fmtMp3": "MP3 (главы)"
+    "fmtMp3": "MP3 (главы)",
+    "chatterboxDesc": "Многоязычная модель Resemble AI: клонирование голоса, регулируемая эмоциональность. Лицензия MIT."
   },
   "lecture": {
     "defaultTitle": "Лекция",

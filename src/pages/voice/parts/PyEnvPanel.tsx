@@ -99,11 +99,22 @@ function doneText(t: TranslateFn, mode?: string): string {
 }
 
 /** Модули движка: что на месте, чего нет (бейджи со статусом). */
-function moduleBadges(env: TtsPythonEnv | null, engine: "f5" | "xtts") {
+const MODULES_OF = {
+  f5: ["torch", "torchaudio", "f5_tts"],
+  xtts: ["torch", "torchaudio", "TTS"],
+  chatterbox: ["torch", "torchaudio", "chatterbox"],
+};
+const missingOf = (
+  e: { missingF5?: string[]; missingXtts?: string[]; missingChatterbox?: string[] },
+  engine: "f5" | "xtts" | "chatterbox",
+): string[] =>
+  (engine === "xtts" ? e.missingXtts : engine === "chatterbox" ? e.missingChatterbox : e.missingF5) ||
+  [];
+
+function moduleBadges(env: TtsPythonEnv | null, engine: "f5" | "xtts" | "chatterbox") {
   if (!env?.ok) return null;
-  const missing = engine === "xtts" ? env.missingXtts || [] : env.missingF5 || [];
-  const required =
-    engine === "xtts" ? ["torch", "torchaudio", "TTS"] : ["torch", "torchaudio", "f5_tts"];
+  const missing = missingOf(env, engine);
+  const required = MODULES_OF[engine];
   return (
     <div className="ab-py-modules">
       {required.map((m) => {
@@ -123,7 +134,7 @@ export function PyEnvPanel({
   env,
   onChanged,
 }: {
-  engine: "f5" | "xtts";
+  engine: "f5" | "xtts" | "chatterbox";
   env: TtsPythonEnv | null;
   onChanged: () => void;
 }) {
@@ -324,7 +335,7 @@ export function PyEnvPanel({
 
   const working = snap?.state.state === "working";
   const failed = snap?.state.state === "error";
-  const missing = env?.ok ? (engine === "xtts" ? env.missingXtts : env.missingF5) || [] : [];
+  const missing = env?.ok ? missingOf(env, engine) : [];
   const ready = !!env?.ok && missing.length === 0;
   // Портативный Python 3.11 и наличие torch: по ним видно, каким кнопкам быть
   // активными (удалять нечего — кнопка выключена, а не «молча ничего не делает»).
@@ -347,7 +358,7 @@ export function PyEnvPanel({
   const pyOptions = (interpreters || [])
     .filter((p) => p.ok)
     .map((p) => {
-      const lack = (engine === "xtts" ? p.missingXtts : p.missingF5) || [];
+      const lack = missingOf(p, engine);
       return {
         value: p.executable || p.cmd,
         label: `${p.label} · Python ${p.python}${lack.length ? ` · −${lack.join(",")}` : ""}`,

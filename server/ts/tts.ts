@@ -48,10 +48,11 @@ const { DIRS } = config;
 /* ------------------------------- Типы ------------------------------- */
 
 /** Движок синтеза: F5-TTS, Coqui XTTS v2 или встроенный llama.cpp (Qwen3-TTS). */
-type TtsEngine = "f5" | "xtts" | "llama";
+type TtsEngine = "f5" | "xtts" | "chatterbox" | "llama";
 
 /** Движок из тела запроса; неизвестное значение — F5. */
-const normEngine = (e: unknown): TtsEngine => (e === "xtts" || e === "llama" ? e : "f5");
+const normEngine = (e: unknown): TtsEngine =>
+  e === "xtts" || e === "llama" || e === "chatterbox" ? e : "f5";
 
 /** Рекомендации под конкретный GPU для бейджей «Optimal for Your PC». */
 interface OptimalParams {
@@ -763,12 +764,19 @@ class JsonSidecar {
 
 /** Сайдкар движка озвучки: F5-TTS либо Coqui XTTS v2. */
 class EngineSidecar extends JsonSidecar {
-  engine: "f5" | "xtts";
+  engine: "f5" | "xtts" | "chatterbox";
 
   constructor(engineName: unknown) {
-    const engine: "f5" | "xtts" = engineName === "xtts" ? "xtts" : "f5";
+    const engine: "f5" | "xtts" | "chatterbox" =
+      engineName === "xtts" || engineName === "chatterbox" ? engineName : "f5";
     super(
-      path.join(__dirname, "engines", engine === "f5" ? "f5_wrapper.py" : "xtts_wrapper.py"),
+      path.join(
+        __dirname,
+        "engines",
+        { f5: "f5_wrapper.py", xtts: "xtts_wrapper.py", chatterbox: "chatterbox_wrapper.py" }[
+          engine
+        ],
+      ),
       engine,
     );
     this.engine = engine;
@@ -966,6 +974,7 @@ async function accentItems(job: TtsJob): Promise<string[] | null> {
 const ENGINE_REQUIRED: Record<TtsEngine, string[]> = {
   f5: ["torch", "torchaudio", "f5_tts"],
   xtts: ["torch", "torchaudio", "TTS"],
+  chatterbox: ["torch", "torchaudio", "chatterbox"],
   llama: [], // встроенный llama.cpp обходится без Python
 };
 
@@ -988,6 +997,7 @@ const PIP_HINT: Record<string, string> = {
     "pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128",
   f5_tts: "pip install f5-tts",
   TTS: "pip install coqui-tts",
+  chatterbox: "pip install chatterbox-tts",
   ruaccent: "pip install ruaccent",
   pynvml: "pip install nvidia-ml-py",
 };
@@ -1008,9 +1018,12 @@ export interface PythonEnv {
   missingF5: string[];
   /** Чего не хватает для Coqui XTTS v2. */
   missingXtts: string[];
+  /** Чего не хватает для Chatterbox. */
+  missingChatterbox: string[];
   /** Команды установки для F5-TTS / XTTS (пустая строка — всё на месте). */
   installF5: string;
   installXtts: string;
+  installChatterbox: string;
   checkedAt: number;
   cached: boolean;
 }
@@ -1030,7 +1043,13 @@ function hintFor(missing: string[]): string {
 }
 
 function engineMissing(env: PythonEnv, engine: TtsEngine): string[] {
+  if (engine === "chatterbox") return env.missingChatterbox;
   return engine === "xtts" ? env.missingXtts : env.missingF5;
+}
+
+function installHintFor(env: PythonEnv, engine: TtsEngine): string {
+  if (engine === "chatterbox") return env.installChatterbox;
+  return engine === "xtts" ? env.installXtts : env.installF5;
 }
 
 function envFail(cmd: string, error: string, detail: string): PythonEnv {
@@ -1044,8 +1063,10 @@ function envFail(cmd: string, error: string, detail: string): PythonEnv {
     modules: {},
     missingF5: [...ENGINE_REQUIRED.f5],
     missingXtts: [...ENGINE_REQUIRED.xtts],
+    missingChatterbox: [...ENGINE_REQUIRED.chatterbox],
     installF5: hintFor(ENGINE_REQUIRED.f5),
     installXtts: hintFor(ENGINE_REQUIRED.xtts),
+    installChatterbox: hintFor(ENGINE_REQUIRED.chatterbox),
     checkedAt: Date.now(),
     cached: false,
   };
@@ -1076,6 +1097,7 @@ function parseEnv(cmd: string, out: string, code: number | null, errTail: string
   const miss = (need: string[]) => need.filter((m) => !modules[m]);
   const missingF5 = miss(ENGINE_REQUIRED.f5);
   const missingXtts = miss(ENGINE_REQUIRED.xtts);
+  const missingChatterbox = miss(ENGINE_REQUIRED.chatterbox);
   return {
     ok: true,
     error: "",
@@ -1086,8 +1108,10 @@ function parseEnv(cmd: string, out: string, code: number | null, errTail: string
     modules,
     missingF5,
     missingXtts,
+    missingChatterbox,
     installF5: hintFor(missingF5),
     installXtts: hintFor(missingXtts),
+    installChatterbox: hintFor(missingChatterbox),
     checkedAt: Date.now(),
     cached: false,
   };
@@ -1161,7 +1185,7 @@ async function assertPythonEnv(job: TtsJob): Promise<void> {
       python: env.python,
       executable: env.executable,
       missing: engineMissing(env, job.engine),
-      installHint: job.engine === "xtts" ? env.installXtts : env.installF5,
+      installHint: installHintFor(env, job.engine),
     };
     throw new Error(code === "python_not_found" ? `python_not_found: ${env.cmd}` : code);
   }
@@ -1174,7 +1198,7 @@ async function assertPythonEnv(job: TtsJob): Promise<void> {
       python: env.python,
       executable: env.executable,
       missing,
-      installHint: job.engine === "xtts" ? env.installXtts : env.installF5,
+      installHint: installHintFor(env, job.engine),
     };
     throw new Error(`python_env_missing: ${missing.join(",")}`);
   }
@@ -1219,7 +1243,7 @@ function envAwareError(job: TtsJob, msg: unknown): Error {
 
 /* ------------------------- Задание ------------------------- */
 
-const ENGINE_CHUNK_LIMIT = { f5: 380, xtts: 220, llama: 300 };
+const ENGINE_CHUNK_LIMIT = { f5: 380, xtts: 220, chatterbox: 280, llama: 300 };
 
 /**
  * Разрезать чанк, который длиннее лимита движка, — готовые чанки тоже.
@@ -1512,10 +1536,13 @@ async function runPipeline(job: TtsJob): Promise<void> {
           // F5 отдаёт их русской модели как есть.
           text: accented ? accented[i] : item.text,
           out: wav,
-          cfg: cfg.cfg,
+          cfg: job.engine === "chatterbox" ? 0.5 : cfg.cfg,
           nfe: cfg.nfe,
-          exaggeration: cfg.exaggeration,
-          temperature: cfg.temperature,
+          // Chatterbox: «эмоциональность» 0.25–2, по умолчанию 0.5 (общая шкала 0.5–2 → вдвое ниже)
+          exaggeration:
+            job.engine === "chatterbox" ? Math.min(1.2, cfg.exaggeration * 0.5) : cfg.exaggeration,
+          sentencePauseMs: cfg.sentencePauseMs,
+          temperature: job.engine === "chatterbox" ? Math.max(0.5, cfg.temperature) : cfg.temperature,
           repetitionPenalty: cfg.repetitionPenalty,
           topK: cfg.topK,
           topP: cfg.topP,

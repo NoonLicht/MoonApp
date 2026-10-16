@@ -2740,7 +2740,8 @@
     "noPython": "بدون Python",
     "defaultPreset": "إعدادي المسبق",
     "fmtM4b": "M4B (فصول)",
-    "fmtMp3": "MP3 (فصول)"
+    "fmtMp3": "MP3 (فصول)",
+    "chatterboxDesc": "نموذج Resemble AI متعدد اللغات: استنساخ الصوت وتعبيرية قابلة للضبط. ترخيص MIT."
   },
   "lecture": {
     "defaultTitle": "محاضرة",

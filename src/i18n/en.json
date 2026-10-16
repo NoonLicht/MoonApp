@@ -2744,7 +2744,8 @@
     "noPython": "no Python",
     "defaultPreset": "My preset",
     "fmtM4b": "M4B (chapters)",
-    "fmtMp3": "MP3 (chapters)"
+    "fmtMp3": "MP3 (chapters)",
+    "chatterboxDesc": "Resemble AI multilingual model: voice cloning, adjustable expressiveness. MIT license."
   },
   "lecture": {
     "defaultTitle": "Lecture",

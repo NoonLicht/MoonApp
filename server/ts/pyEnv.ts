@@ -66,7 +66,7 @@ import { pythonEnv, detectHardware, type PythonEnv } from "./tts";
 const PY_ENV = { ...process.env, PYTHONIOENCODING: "utf-8", PYTHONUTF8: "1" };
 
 /** Движок синтеза: F5-TTS или Coqui XTTS v2 (см. server/ts/tts.ts). */
-export type PyEngineId = "f5" | "xtts";
+export type PyEngineId = "f5" | "xtts" | "chatterbox";
 /**
  * Куда ставим torch:
  *   cuda — CUDA 12.8 (индекс cu128): карты NVIDIA от Turing/7.5 и новее;
@@ -87,7 +87,11 @@ const TORCH_INDEX: Record<PyDevice, string> = {
 };
 
 /** Пакет движка: f5-tts тянет torch сам, но у нас он уже стоит (шаг 1). */
-const ENGINE_PKG: Record<PyEngineId, string> = { f5: "f5-tts", xtts: "TTS" };
+const ENGINE_PKG: Record<PyEngineId, string> = {
+  f5: "f5-tts",
+  xtts: "TTS",
+  chatterbox: "chatterbox-tts",
+};
 
 /**
  * Верхняя граница по transformers — ставится вместе с пакетом движка.
@@ -109,6 +113,8 @@ const ENGINE_PKG: Record<PyEngineId, string> = { f5: "f5-tts", xtts: "TTS" };
 const ENGINE_PIN: Record<PyEngineId, string[]> = {
   f5: ["transformers<5"],
   xtts: ["transformers<5"],
+  // chatterbox-tts сам фиксирует нужные ему версии torch/transformers — не мешаем pip
+  chatterbox: [],
 };
 
 /**
@@ -119,6 +125,7 @@ const ENGINE_PIN: Record<PyEngineId, string[]> = {
 const ENGINE_MODULES: Record<PyEngineId, string[]> = {
   f5: ["torch", "torchaudio", "f5_tts"],
   xtts: ["torch", "torchaudio", "TTS"],
+  chatterbox: ["torch", "torchaudio", "chatterbox"],
 };
 
 /** Один шаг установки: id (для UI) и аргументы pip. */
@@ -146,6 +153,7 @@ const TORCH_PKGS = ["torch", "torchvision", "torchaudio"];
  * себя подсказка для консоли, когда интерпретатор ещё не опрошен.
  */
 function enginePkg(engine: PyEngineId, pyVersion = ""): string {
+  if (engine === "chatterbox") return ENGINE_PKG.chatterbox;
   if (engine !== "xtts") return ENGINE_PKG.f5;
   const minor = /^3\.(\d+)/.exec(pyVersion.trim());
   return minor && Number(minor[1]) < 10 ? ENGINE_PKG.xtts : "coqui-tts";
@@ -194,7 +202,7 @@ function engineStep(engine: PyEngineId, pyVersion = ""): PyStep {
   return {
     id: "engine",
     args: [...base, ...ENGINE_PIN[engine]],
-    approxMb: pkg === "f5-tts" ? 120 : 30,
+    approxMb: pkg === "f5-tts" ? 120 : pkg === "chatterbox-tts" ? 400 : 30,
   };
 }
 
@@ -464,7 +472,7 @@ async function runSteps(py: string, steps: PyStep[]): Promise<void> {
  */
 export function install(engine: PyEngineId, device: PyDevice, python?: string): PyInstallSnapshot {
   if (task.state === "working") throw new Error("busy");
-  const eng: PyEngineId = engine === "xtts" ? "xtts" : "f5";
+  const eng: PyEngineId = engineOf(engine);
   const dev: PyDevice = deviceOf(device);
   const py = pythonFor(python);
   // Пакет XTTS зависит от версии интерпретатора: на Python 3.12+ классический
@@ -820,6 +828,7 @@ export interface PyInterpreter {
   modules: Record<string, boolean>;
   missingF5: string[];
   missingXtts: string[];
+  missingChatterbox: string[];
 }
 
 /** Запустить вспомогательную команду и вернуть её stdout (ошибки — пустая строка). */
@@ -872,6 +881,7 @@ function probe(cmd: string, args: string[], label: string): Promise<PyInterprete
       modules: {},
       missingF5: [...ENGINE_MODULES.f5],
       missingXtts: [...ENGINE_MODULES.xtts],
+      missingChatterbox: [...ENGINE_MODULES.chatterbox],
     });
     let out = "";
     let errTail = "";
@@ -937,6 +947,7 @@ function probe(cmd: string, args: string[], label: string): Promise<PyInterprete
         modules,
         missingF5: miss(ENGINE_MODULES.f5),
         missingXtts: miss(ENGINE_MODULES.xtts),
+        missingChatterbox: miss(ENGINE_MODULES.chatterbox),
       });
     });
   });
@@ -1004,7 +1015,7 @@ export interface PyInstallState {
 
 /** Нормализация движка из недоверенного ввода (роут). */
 export function engineOf(value: unknown): PyEngineId {
-  return value === "xtts" ? "xtts" : "f5";
+  return value === "xtts" || value === "chatterbox" ? value : "f5";
 }
 
 /** Нормализация устройства из недоверенного ввода (роут). */

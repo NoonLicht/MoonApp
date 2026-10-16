@@ -2740,7 +2740,8 @@
     "noPython": "sans Python",
     "defaultPreset": "Mon préréglage",
     "fmtM4b": "M4B (chapitres)",
-    "fmtMp3": "MP3 (chapitres)"
+    "fmtMp3": "MP3 (chapitres)",
+    "chatterboxDesc": "Modèle multilingue de Resemble AI : clonage de voix, expressivité réglable. Licence MIT."
   },
   "lecture": {
     "defaultTitle": "Cours",

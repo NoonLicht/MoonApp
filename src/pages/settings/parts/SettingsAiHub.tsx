@@ -119,7 +119,7 @@ function ChatProviders({ onChanged }: { onChanged: () => void }) {
 }
 
 function TtsManager() {
-  const [engine, setEngine] = useState<"f5" | "xtts">("f5");
+  const [engine, setEngine] = useState<"f5" | "xtts" | "chatterbox">("f5");
   const [env, setEnv] = useState<TtsPythonEnv | null>(null);
   const load = useCallback((force = false) => {
     api
@@ -132,10 +132,11 @@ function TtsManager() {
     <div className="aihub-stack">
       <Select
         value={engine}
-        onChange={(e) => setEngine(e.target.value as "f5" | "xtts")}
+        onChange={(e) => setEngine(e.target.value as "f5" | "xtts" | "chatterbox")}
         options={[
           { value: "f5", label: "F5-TTS" },
           { value: "xtts", label: "XTTS v2" },
+          { value: "chatterbox", label: "Chatterbox" },
         ]}
       />
       <PyEnvPanel engine={engine} env={env} onChanged={() => load(true)} />

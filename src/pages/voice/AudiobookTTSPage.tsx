@@ -31,6 +31,7 @@ import {
   Trash2,
   Zap,
   Heart,
+  Mic,
   Save,
   Upload,
   BookOpen,
@@ -559,6 +560,8 @@ export default function AudiobookTTSPage() {
           >
             {p.engine === "f5" ? (
               <Zap size={13} />
+            ) : p.engine === "chatterbox" ? (
+              <Mic size={13} />
             ) : p.engine === "llama" ? (
               <Cpu size={13} />
             ) : (
@@ -725,7 +728,13 @@ export default function AudiobookTTSPage() {
                     <Heart size={13} />
                     <span className="task-text">{p.name}</span>
                     <span className="muted-sm">
-                      {p.engine === "xtts" ? "XTTS" : p.engine === "llama" ? "llama.cpp" : "F5"}
+                      {p.engine === "xtts"
+                        ? "XTTS"
+                        : p.engine === "chatterbox"
+                          ? "Chatterbox"
+                          : p.engine === "llama"
+                            ? "llama.cpp"
+                            : "F5"}
                     </span>
                     <IconBtn
                       icon={Trash2}
@@ -771,6 +780,18 @@ export default function AudiobookTTSPage() {
                 <b>Coqui XTTS v2</b>
                 <span className="muted-sm">{t("ab.xttsDesc")}</span>
                 <span className="ab-tab-badge ab-tab-badge-amber">~4.5 GB · {t("ab.fiction")}</span>
+              </div>
+              <div
+                className={`ab-engine ${engine === "chatterbox" ? "is-active" : ""}`}
+                role="button"
+                tabIndex={0}
+                onClick={() => setEngine("chatterbox")}
+                onKeyDown={(e) => e.key === "Enter" && setEngine("chatterbox")}
+              >
+                <Mic size={15} />
+                <b>Chatterbox</b>
+                <span className="muted-sm">{t("ab.chatterboxDesc")}</span>
+                <span className="ab-tab-badge ab-tab-badge-amber">~6 GB · MIT</span>
               </div>
               <div
                 className={`ab-engine ${engine === "llama" ? "is-active" : ""}`}
@@ -909,7 +930,7 @@ export default function AudiobookTTSPage() {
                     </Accordion>
                   )}
 
-                  {engine === "xtts" && (
+                  {(engine === "xtts" || engine === "chatterbox") && (
                     <Accordion {...proPanel} id="xtts" title={t("ab.accXtts")}>
                       <ProSlider
                         {...proPanel}
@@ -1224,7 +1245,7 @@ export default function AudiobookTTSPage() {
                         {chunks.length > 0
                           ? t("ab.chunkHint", {
                               n: chunks.length,
-                              limit: engine === "xtts" ? 220 : engine === "llama" ? 300 : 380,
+                              limit: engine === "xtts" ? 220 : engine === "chatterbox" ? 280 : engine === "llama" ? 300 : 380,
                             })
                           : t("ab.batchEmpty")}
                       </span>

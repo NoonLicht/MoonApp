@@ -24,7 +24,7 @@ import sys
 #   xtts_wrapper.py-> torch, torchaudio, TTS
 #   ruaccent_worker.py -> ruaccent (расстановка ударений; тоже опционально —
 #   без него озвучка идёт без ударений, но с ним качество русской речи выше).
-MODULES = ["torch", "torchaudio", "f5_tts", "TTS", "pynvml", "ruaccent"]
+MODULES = ["torch", "torchaudio", "f5_tts", "TTS", "pynvml", "ruaccent", "chatterbox"]
 
 
 def probe(name):
