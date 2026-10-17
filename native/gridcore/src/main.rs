@@ -43,6 +43,17 @@ fn handle(h: &mut Headless, method: &str, params: Value) -> Result<Value, String
             let result = run(h, &id, p)?;
             Ok(json!({"result": result, "state": grid::state(h)}))
         }
+        // Настройки приложения (параметры Excel): `{userName?, autocomplete?, enterDirection?, defaultFont?, …}`.
+        "view.prefs" => {
+            let mut cur = serde_json::to_value(&h.session.prefs).map_err(|e| e.to_string())?;
+            if let (Some(c), Some(p)) = (cur.as_object_mut(), params.as_object()) {
+                for (k, v) in p {
+                    c.insert(k.clone(), v.clone());
+                }
+            }
+            h.session.prefs = serde_json::from_value(cur).map_err(|e| e.to_string())?;
+            Ok(json!(h.session.prefs))
+        }
         "view.requests" => Ok(json!(drain_requests(h))),
         // Сеанс держит ровно одну книгу: пустую «Book1», созданную при запуске, закрываем, когда открыта другая.
         "view.init" => {

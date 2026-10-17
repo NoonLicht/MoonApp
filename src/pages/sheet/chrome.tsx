@@ -460,7 +460,7 @@ export function SheetTabs({ cx }: { cx: SheetCx }) {
 const fmt = (n: number): string => {
   if (!Number.isFinite(n)) return String(n);
   const abs = Math.abs(n);
-  const s = abs >= 1e12 || (abs > 0 && abs < 1e-6) ? n.toExponential(4) : String(Math.round(n * 1e8) / 1e8);
+  const s = abs >= 1e12 || (abs > 0 && abs < 1e-6) ? n.toExponential(4) : String(Math.round(n * 1e6) / 1e6);
   const [i, f] = s.split(".");
   return /e/.test(s) ? s : `${i.replace(/\B(?=(\d{3})+(?!\d))/g, " ")}${f ? `.${f}` : ""}`;
 };

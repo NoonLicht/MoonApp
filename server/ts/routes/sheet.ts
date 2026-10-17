@@ -117,6 +117,7 @@ const QUERY_METHODS = new Set([
   "view.pos",
   "view.filterInfo",
   "view.state",
+  "view.prefs",
   "engine.commands",
 ]);
 router.post("/:id/call", async (req, res) => {

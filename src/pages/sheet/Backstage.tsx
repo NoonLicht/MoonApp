@@ -103,6 +103,10 @@ function InfoPage({ cx }: { cx: SheetCx }) {
 }
 
 function OptionsPage({ cx }: { cx: SheetCx }) {
+  /** Настройки приложения лежат в сеансе ядра; после записи обновляем состояние. */
+  const setPref = (p: Record<string, unknown>): void => {
+    void cx.query("view.prefs", p).then(() => cx.run("file.options", {}));
+  };
   const s = cx.s;
   return (
     <>
@@ -138,7 +142,7 @@ function OptionsPage({ cx }: { cx: SheetCx }) {
       <Row title={cx.tw("User name")}>
         <input
           defaultValue={s.prefs.userName}
-          onBlur={(e) => cx.run("file.options", { userName: e.target.value })}
+          onBlur={(e) => setPref({ userName: e.target.value })}
         />
       </Row>
       <Row title={cx.tw("Autocomplete")}>
@@ -146,7 +150,7 @@ function OptionsPage({ cx }: { cx: SheetCx }) {
           <input
             type="checkbox"
             checked={s.prefs.autocomplete}
-            onChange={(e) => cx.run("file.options", { autocomplete: e.target.checked })}
+            onChange={(e) => setPref({ autocomplete: e.target.checked })}
           />
           <span>{cx.tw("Enable AutoComplete for cell values")}</span>
         </label>
