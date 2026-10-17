@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "@/api/client";
-import type { WordState, WordStatus } from "@/api/apiWord";
+import type { WordRequest, WordState, WordStatus } from "@/api/apiWord";
 import { saveBlob } from "@/lib/download";
 
 export interface WordDoc {
@@ -20,6 +20,14 @@ const KEY_NAMES: Record<string, string> = {
 
 export const coreKey = (k: string): string => KEY_NAMES[k] ?? k;
 
+const toBase64 = (blob: Blob): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result).split(",")[1] || "");
+    r.onerror = () => reject(r.error);
+    r.readAsDataURL(blob);
+  });
+
 /**
  * Открытые документы страницы «Документы» и все действия над ними.
  * Вызовы к серверу идут строго по очереди: каждое действие возвращает свежее состояние,
@@ -34,6 +42,10 @@ export function useWordDocs() {
   const chain = useRef<Promise<unknown>>(Promise.resolve());
   const docsRef = useRef<WordDoc[]>([]);
   docsRef.current = docs;
+  /** Что ядро просило показать (диалог, прокрутка…): обработчик ставит страница. */
+  const onRequests = useRef<(reqs: WordRequest[], docId: string) => void>(() => undefined);
+  /** Текст, который мы сами положили в системный буфер: тогда вставка идёт из буфера ядра (с форматированием). */
+  const ownClip = useRef("");
 
   useEffect(() => {
     let alive = true;
@@ -58,6 +70,7 @@ export function useWordDocs() {
 
   const patch = useCallback((id: string, state: WordState) => {
     setDocs((list) => list.map((d) => (d.id === id ? { ...d, state } : d)));
+    if (state.requests?.length) onRequests.current(state.requests, id);
   }, []);
 
   /** Поставить действие над документом в очередь; ошибка показывается и не рвёт очередь. */
@@ -77,14 +90,15 @@ export function useWordDocs() {
   const add = useCallback((id: string, name: string, state: WordState) => {
     setDocs((list) => [...list, { id, name, state }]);
     setActiveId(id);
+    if (state.requests?.length) onRequests.current(state.requests, id);
   }, []);
 
   const create = useCallback(
-    async (template: string, name: string) => {
+    async (template: string, name: string, locale?: { region?: string; lang?: string }) => {
       setBusy(true);
       setError("");
       try {
-        const r = await api.wordNew(template);
+        const r = await api.wordNew(template, locale);
         add(r.id, name, r.state);
       } catch (e) {
         setError(String((e as Error).message));
@@ -147,32 +161,129 @@ export function useWordDocs() {
       wrap((id) => api.wordClick(id, { page, x, y, extend, count })),
     [wrap],
   );
+  /**
+   * Команда ядра → её результат (состояние обновляется само).
+   * `quiet` — запрос данных: просьбы ядра к интерфейсу (открыть диалог, панель) игнорируются.
+   */
   const run = useCallback(
-    (command: string, params: Record<string, unknown> = {}) => {
+    (command: string, params: Record<string, unknown> = {}, quiet = false) => {
       const id = activeId;
       if (!id) return Promise.resolve(undefined);
       return enqueue(id, async () => {
         const r = await api.wordRun(id, command, params);
-        patch(id, r.state);
+        patch(id, quiet ? { ...r.state, requests: [] } : r.state);
         return r.result;
       });
     },
     [activeId, enqueue, patch],
   );
+  /** Данные от ядра (структура документа и т. п.) без обновления состояния. */
+  const query = useCallback(
+    <T = unknown>(method: string, params: unknown = {}): Promise<T | undefined> => {
+      const id = activeId;
+      if (!id) return Promise.resolve(undefined);
+      return enqueue(id, () => api.wordQuery(id, method, params) as Promise<T>);
+    },
+    [activeId, enqueue],
+  );
 
+  const copyToSystem = useCallback(async (id: string): Promise<void> => {
+    const clip = await api.wordClip(id);
+    ownClip.current = clip.text;
+    try {
+      if (clip.html && typeof ClipboardItem !== "undefined") {
+        await navigator.clipboard.write([
+          new ClipboardItem({
+            "text/plain": new Blob([clip.text], { type: "text/plain" }),
+            "text/html": new Blob([clip.html], { type: "text/html" }),
+          }),
+        ]);
+      } else {
+        await navigator.clipboard.writeText(clip.text);
+      }
+    } catch {
+      /* системный буфер недоступен: вставка внутри документа всё равно работает */
+    }
+  }, []);
+
+  /** Копировать/вырезать выделенное: ядро запоминает фрагмент с форматированием, текст и HTML — в системный буфер. */
+  const copy = useCallback(
+    (cut = false) => {
+      const id = activeId;
+      if (!id) return Promise.resolve(undefined);
+      return enqueue(id, async () => {
+        const r = await api.wordRun(id, cut ? "edit.cut" : "edit.copy", {});
+        patch(id, r.state);
+        await copyToSystem(id);
+      });
+    },
+    [activeId, enqueue, patch, copyToSystem],
+  );
+
+  /** Вставить из системного буфера: картинка → рисунок; свой же фрагмент → с форматированием; иначе HTML/текст. */
+  const paste = useCallback(
+    (as: "default" | "text" | "merge" = "default") => {
+      const id = activeId;
+      if (!id) return Promise.resolve(undefined);
+      return enqueue(id, async () => {
+        let text = "";
+        let html = "";
+        let picture = "";
+        try {
+          const items = await navigator.clipboard.read();
+          for (const it of items) {
+            const img = it.types.find((t) => t.startsWith("image/"));
+            if (img) picture = await toBase64(await it.getType(img));
+            if (it.types.includes("text/html")) html = await (await it.getType("text/html")).text();
+            if (it.types.includes("text/plain"))
+              text = await (await it.getType("text/plain")).text();
+          }
+        } catch {
+          try {
+            text = await navigator.clipboard.readText();
+          } catch {
+            /* нет доступа к буферу */
+          }
+        }
+        let r;
+        if (picture && !text && !html) {
+          r = await api.wordRun(id, "edit.pasteSpecial", { as: "picture", picture });
+        } else if (as === "text") {
+          r = await api.wordRun(id, "edit.pasteText", { text });
+        } else if (text && text === ownClip.current && as === "default") {
+          r = await api.wordRun(id, "edit.paste", {});
+        } else if (as === "merge") {
+          r = await api.wordRun(id, "edit.pasteMerge", { text, html });
+        } else if (text || html) {
+          r = await api.wordRun(id, "edit.paste", { text, html });
+        } else {
+          r = await api.wordRun(id, "edit.paste", {});
+        }
+        patch(id, r.state);
+      });
+    },
+    [activeId, enqueue, patch],
+  );
+
+  /** Скачать документ в формате (docx, pdf, odt, rtf, html, md, txt). */
   const exportAs = useCallback(
-    async (format: string) => {
+    async (format: string, name?: string) => {
       if (!active) return;
       setBusy(true);
       try {
-        const blob = await enqueue(active.id, () => api.wordExport(active.id, format, active.name));
-        if (blob) saveBlob(blob, `${active.name.replace(/\.[^.]+$/, "")}.${format}`);
+        const base = (name ?? active.name).replace(/\.[^.]+$/, "");
+        const blob = await enqueue(active.id, () => api.wordExport(active.id, format, base));
+        if (blob) saveBlob(blob, `${base}.${format}`);
       } finally {
         setBusy(false);
       }
     },
     [active, enqueue],
   );
+
+  const rename = useCallback((id: string, name: string) => {
+    setDocs((list) => list.map((d) => (d.id === id ? { ...d, name } : d)));
+  }, []);
 
   return {
     status,
@@ -190,7 +301,12 @@ export function useWordDocs() {
     key,
     click,
     run,
+    query,
+    copy,
+    paste,
     exportAs,
+    rename,
+    onRequests,
   };
 }
 
