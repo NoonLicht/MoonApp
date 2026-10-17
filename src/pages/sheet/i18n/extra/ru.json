@@ -807,5 +807,9 @@
   "Insert Paste": "Вставка скопированных ячеек",
   "Open Hyperlink": "Открытие гиперссылки",
   "This workbook asks to open the address below. Links can lead to harmful sites or start other programs: open it only if you trust the workbook.": "Книга просит открыть адрес, указанный ниже. Ссылки могут вести на опасные сайты или запускать другие программы: открывайте её, только если доверяете книге.",
-  "Solver Results": "Результаты поиска решения"
+  "Solver Results": "Результаты поиска решения",
+  "Zero Values": "Нулевые значения",
+  "Right-to-Left": "Справа налево",
+  "Bring to Front": "На передний план",
+  "Send to Back": "На задний план"
 }

@@ -78,6 +78,7 @@ export const FORMS2: Record<string, S> = {
   formatCells: {
     title: "Format Cells",
     tabs: ["Number", "Alignment", "Font", "Border", "Fill", "Protection"],
+    startTab: (p) => Math.max(0, ["Number", "Alignment", "Font", "Border", "Fill", "Protection"].indexOf(String(p.tab ?? "Number"))),
     size: "wide",
     fields: [
       // Число

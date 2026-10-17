@@ -82,6 +82,8 @@ export interface FormSpec<C extends BaseCx = Cx> {
   size?: "normal" | "wide" | "xwide";
   /** Без кнопки OK (диалог-справка). */
   noOk?: boolean;
+  /** Вкладка, открываемая первой (по параметрам вызова). */
+  startTab?: (props: Params) => number;
 }
 
 /** Оболочка диалога: затемнение, заголовок, закрытие по Escape и клику на фон. */
@@ -309,7 +311,7 @@ export default function FormDialog<C extends BaseCx>({
   onClose: () => void;
 }) {
   const [v, setV] = useState<Vals>(() => spec.init?.(cx, props) ?? {});
-  const [tab, setTab] = useState(0);
+  const [tab, setTab] = useState(spec.startTab?.(props) ?? 0);
   const [busy, setBusy] = useState(false);
   const set = (k: string, x: string | number | boolean): void => setV((o) => ({ ...o, [k]: x }));
   const ok = async (): Promise<void> => {

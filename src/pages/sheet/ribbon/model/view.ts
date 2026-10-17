@@ -22,6 +22,10 @@ export const view: Tab<SheetCx> = {
         check("Gridlines", (c) => c.s.view.gridlines, (c, v) => c.run("view.gridlines", { on: v })),
         check("Headings", (c) => c.s.view.headings, (c, v) => c.run("view.headings", { on: v })),
       ),
+      stack(
+        check("Zero Values", (c) => c.s.view.zeros, (c, v) => c.run("view.showZeros", { on: v })),
+        check("Right-to-Left", (c) => c.s.view.rtl, (c, v) => c.run("view.rightToLeft", { on: v })),
+      ),
     ]),
     group("zoom", "Zoom", [
       big("zoom", "Zoom", dlg("zoom")),

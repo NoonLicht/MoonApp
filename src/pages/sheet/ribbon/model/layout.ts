@@ -136,6 +136,10 @@ export const pageLayout: Tab<SheetCx> = {
         small("backward", "Send Backward", fn((c) => arrangeSel(c, "arrange.sendBackward")), { enabled: (c) => !!c.ui.selObj }),
         small("selectionPane", "Selection Pane", fn((c) => c.ui.togglePane("selection")), { on: (c) => c.ui.pane === "selection" }),
       ),
+      stack(
+        small("forward", "Bring to Front", fn((c) => arrangeSel(c, "arrange.bringForward", { toFront: true })), { enabled: (c) => !!c.ui.selObj }),
+        small("backward", "Send to Back", fn((c) => arrangeSel(c, "arrange.sendBackward", { toBack: true })), { enabled: (c) => !!c.ui.selObj }),
+      ),
     ]),
   ],
 };
