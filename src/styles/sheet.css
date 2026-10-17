@@ -488,3 +488,17 @@
   color: var(--text-primary);
   font-size: 12px;
 }
+
+/* Диалоги-списки (менеджеры, отчёты) */
+.sh-dlg-col { display: flex; flex-direction: column; gap: 8px; min-width: 460px; }
+.sh-dlg-col input.full, .sh-dlg-form input, .sh-dlg-form textarea { width: 100%; box-sizing: border-box; }
+.sh-dlg-empty { padding: 18px; text-align: center; opacity: 0.7; }
+.sh-dlg-grid { max-height: 300px; overflow: auto; border: 1px solid var(--line, rgba(128,128,128,0.35)); border-radius: 6px; }
+.sh-dlg-grid table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.sh-dlg-grid th { position: sticky; top: 0; text-align: left; padding: 5px 8px; background: rgba(128,128,128,0.18); font-weight: 600; }
+.sh-dlg-grid td { padding: 4px 8px; border-top: 1px solid rgba(128,128,128,0.18); max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sh-dlg-grid tbody tr { cursor: default; }
+.sh-dlg-grid tbody tr:hover { background: rgba(128,128,128,0.12); }
+.sh-dlg-grid tbody tr.on { background: rgba(120,140,255,0.28); }
+.sh-dlg-form { display: grid; gap: 6px; }
+.sh-dlg-form label { display: grid; gap: 3px; }

@@ -412,7 +412,7 @@ export const FORMS2: Record<string, S> = {
     ],
     init: (cx) => ({ set: cx.s.sel.a1.split(":")[0], to: "", changing: "" }),
     submit: async (v, cx) => {
-      const r = (await cx.call("engine.execute", { command: "data.goalSeek", params: { set: String(v.set), to: num(v.to), changing: String(v.changing) } })) as { result?: unknown; converged?: boolean; value?: unknown } | undefined;
+      const r = (await cx.call("data.goalSeek", { set: String(v.set), to: num(v.to), changing: String(v.changing) })) as { result?: unknown; converged?: boolean; value?: unknown } | undefined;
       cx.ui.status(r?.converged ? `${cx.tw("Goal Seeking found a solution.")} ${String(r.value ?? "")}` : cx.tw("Goal Seeking may not have found a solution."));
     },
   },
@@ -550,44 +550,6 @@ export const FORMS2: Record<string, S> = {
       const name = String(v.name || v.q).trim().toUpperCase();
       if (name) cx.ui.edit.type(`=${name}(`);
     },
-  },
-  evaluateFormula: {
-    title: "Evaluate Formula",
-    noOk: true,
-    submit: () => undefined,
-    fields: [{ k: "pre", render: (_v, cx) => <span>{cx.s.bar.text}</span> }],
-  },
-  spelling: {
-    title: "Spelling",
-    noOk: true,
-    submit: () => undefined,
-    fields: [{ k: "note", text: "Spelling check runs on the current sheet. Misspelled words are listed in the status bar." }],
-  },
-  workbookStats: {
-    title: "Workbook Statistics",
-    noOk: true,
-    submit: () => undefined,
-    fields: [
-      {
-        k: "pre",
-        render: (_v, cx) => (
-          <div>
-            {cx.s.sheets.map((t) => (
-              <div key={t.i}>{t.name}</div>
-            ))}
-            <div>
-              {cx.tw("Used range")}: {JSON.stringify(cx.s.used)}
-            </div>
-          </div>
-        ),
-      },
-    ],
-  },
-  about: {
-    title: "About GridCraft Engine",
-    noOk: true,
-    submit: () => undefined,
-    fields: [{ k: "note", text: "MoonApp Sheets runs on the GridCraft spreadsheet engine.", raw: false }],
   },
 };
 

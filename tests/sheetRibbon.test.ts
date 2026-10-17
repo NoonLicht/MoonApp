@@ -20,6 +20,7 @@ import {
 } from "../src/pages/sheet/ribbon/model/context";
 import { FORMS1 } from "../src/pages/sheet/dialogs/specs1";
 import { FORMS2 } from "../src/pages/sheet/dialogs/specs2";
+import { FORMS3 } from "../src/pages/sheet/dialogs/specs3";
 import type { Act, Ctl, Item, Tab } from "../src/pages/word/ribbon/types";
 import type { SheetCx as Cx } from "../src/pages/sheet/types";
 import wordRu from "../src/pages/word/i18n/cat/ru.json";
@@ -116,7 +117,7 @@ const TABS = [
 for (const t of TABS) tab(t);
 
 /** Подписи диалогов: названия, вкладки, поля и их варианты. */
-for (const f of [...Object.values(FORMS1), ...Object.values(FORMS2)]) {
+for (const f of [...Object.values(FORMS1), ...Object.values(FORMS2), ...Object.values(FORMS3)]) {
   labels.add(f.title);
   f.tabs?.forEach((x) => labels.add(x));
   for (const fl of f.fields) {
@@ -124,7 +125,6 @@ for (const f of [...Object.values(FORMS1), ...Object.values(FORMS2)]) {
     if ("unit" in fl && fl.unit) labels.add(fl.unit);
     if (fl.k === "note" && !fl.raw) labels.add(fl.text);
     if ((fl.k === "select" || fl.k === "radio") && !fl.raw && Array.isArray(fl.options)) fl.options.forEach(([, l]) => labels.add(l));
-    if (fl.k === "select" && fl.raw && Array.isArray(fl.options)) fl.options.forEach(([, l]) => labels.add(l));
   }
 }
 
@@ -148,6 +148,20 @@ function engineCommands(): Set<string> | null {
   if (!line) return null;
   const res = (JSON.parse(line) as { result?: { id: string }[] }).result ?? [];
   return new Set(res.map((c) => c.id));
+}
+
+/** Строки, переведённые прямо в коде: tw("…") и empty="…" в исходниках страницы. */
+function walk(dir: string): string[] {
+  return fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
+    const f = path.join(dir, e.name);
+    return e.isDirectory() ? (e.name === "i18n" ? [] : walk(f)) : /\.tsx?$/.test(e.name) ? [f] : [];
+  });
+}
+for (const f of walk(path.join(__dirname, "..", "src", "pages", "sheet"))) {
+  const src = fs.readFileSync(f, "utf8");
+  for (const m of src.matchAll(/\btw\(\s*"([^"$]+)"/g)) labels.add(m[1]);
+  for (const m of src.matchAll(/\bempty="([^"]+)"/g)) labels.add(m[1]);
+  for (const m of src.matchAll(/\btitle="([^"]+)"/g)) labels.add(m[1]);
 }
 
 describe("лента «Таблиц»", () => {
