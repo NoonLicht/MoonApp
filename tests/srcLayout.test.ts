@@ -78,8 +78,10 @@ describe("раскладка src: домены, общее и стили", () =>
         .filter((f) => f.split("/").length > 3);
       // Разрешён максимум один уровень вложенности: parts/, lib/ и под-приложения домена
       // со своей раскладкой: canvas/ (холст заметок), m3e/ (портированный редактор M3E Canvas).
+      // Редакторы «Документы» и «Таблицы» устроены как офисные приложения: лента, диалоги, холст, панели, подписи.
+      const own = domain === "word" || domain === "sheet" ? ["ribbon", "dialogs", "grid", "panes", "i18n"] : [];
       for (const f of nested) {
-        expect(["parts", "lib", "canvas", "m3e"], `${f}: лишний уровень вложенности`).toContain(
+        expect(["parts", "lib", "canvas", "m3e", ...own], `${f}: лишний уровень вложенности`).toContain(
           f.split("/")[2],
         );
       }

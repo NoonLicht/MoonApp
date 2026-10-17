@@ -37,12 +37,13 @@ function render(lang: string): string {
 describe("набор страниц", () => {
   it("отключённая страница пропадает из списка дока, «Настройки» остаются", () => {
     expect(enabledPages().some((p) => p.id === "mail")).toBe(true);
+    const total = enabledPages().length;
     feat.setDisabledPages(["mail", "games"]);
     applyFeatures(feat.summary() as FeaturesState);
     expect(enabledPages().some((p) => p.id === "mail")).toBe(false);
     expect(isPageEnabled("mail")).toBe(false);
     expect(isPageEnabled("settings")).toBe(true);
-    expect(enabledPages().length).toBeLessThan(26);
+    expect(enabledPages().length).toBeLessThan(total);
   });
 });
 

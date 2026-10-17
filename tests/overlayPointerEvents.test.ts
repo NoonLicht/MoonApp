@@ -110,7 +110,29 @@ const PORTALED = [
   },
 ];
 
+/**
+ * Меню и диалоги редакторов («Документы», «Таблицы») рисуются порталом общими классами
+ * .wd-menu / .wd-search-list / .wd-dlg-back из word.css — каждый из них включает клики себе.
+ */
+const EDITOR_PORTALS = [
+  "src/pages/word/chrome.tsx",
+  "src/pages/word/dialogs/custom1.tsx",
+  "src/pages/word/dialogs/form.tsx",
+  "src/pages/word/parts/contextMenu.tsx",
+  "src/pages/word/ribbon/Combo.tsx",
+  "src/pages/word/ribbon/Menu.tsx",
+  "src/pages/sheet/chrome.tsx",
+  "src/pages/sheet/parts/FilterMenu.tsx",
+  "src/pages/sheet/parts/ListPicker.tsx",
+];
+
 describe("портальные окна: клики не проходят сквозь окно", () => {
+  it.each(["wd-menu", "wd-search-list", "wd-dlg-back"])("редакторы: .%s включает клики себе", (cls) => {
+    const bodies = bodyOf("src/styles/word.css", cls);
+    expect(bodies.length, `.${cls} не найден`).toBeGreaterThan(0);
+    expect(bodies.join(" ")).toMatch(/pointer-events:\s*auto/);
+  });
+
   it("хост #overlay-root сам клики не перехватывает", () => {
     const bodies = bodyOf("src/styles/theme.css", "overlay-root");
     expect(bodies.length).toBeGreaterThan(0);
@@ -135,7 +157,7 @@ describe("портальные окна: клики не проходят скв
   });
 
   it("новых порталов в #overlay-root без проверки не появилось", () => {
-    const covered = new Set(PORTALED.map((p) => p.src));
+    const covered = new Set([...PORTALED.map((p) => p.src), ...EDITOR_PORTALS]);
     const users: string[] = [];
     const walk = (dir: string) => {
       for (const e of fs.readdirSync(path.join(root, dir), { withFileTypes: true })) {
