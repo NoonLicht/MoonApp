@@ -450,6 +450,54 @@ interface StyleRow {
   kind: string;
 }
 
+const ACCENTS: Record<string, string> = {
+  Blue: "4472C4",
+  Orange: "ED7D31",
+  Green: "70AD47",
+  Purple: "7030A0",
+};
+
+/** Миниатюра встроенного стиля таблицы: вид выводится из идентификатора (Plain/Grid/List, уровень, акцент). */
+function TableThumb({ id }: { id: string }) {
+  const accent = Object.entries(ACCENTS).find(([k]) => id.endsWith(k))?.[1];
+  const col = `#${accent ?? "7f7f7f"}`;
+  const pale = `#${accent ?? "bfbfbf"}`;
+  const grid = id.startsWith("Grid") || id === "TableGrid";
+  const list = id.startsWith("List");
+  const plain = id.startsWith("Plain");
+  const filled = !!accent && (grid || list); // «Grid Table 4», «List Table 3»: заливка шапки акцентом
+  const lines: string[] = [];
+  for (let y = 1; y < 4; y++) lines.push(`M0 ${y * 5 + 0.5}H30`);
+  const vlines = "M10 0V20M20 0V20";
+  return (
+    <svg viewBox="0 0 30 20" width="34" height="23" aria-hidden>
+      <rect width="30" height="20" fill="#fff" />
+      {filled ? <rect width="30" height="5" fill={col} /> : null}
+      {grid && filled ? <rect y="10" width="30" height="5" fill={pale} opacity=".25" /> : null}
+      {plain ? <rect y="5" width="30" height="5" fill="#000" opacity=".08" /> : null}
+      {id === "GridTable1Light" ? <rect width="30" height="5" fill="#000" opacity=".06" /> : null}
+      <path
+        d={lines.join("") + (grid ? vlines : "")}
+        stroke={id === "TableGrid" ? "#000" : pale}
+        strokeWidth=".7"
+        opacity={id === "TableNormal" ? 0 : list ? 0.7 : 0.9}
+        fill="none"
+      />
+      <rect
+        x=".5"
+        y=".5"
+        width="29"
+        height="19"
+        fill="none"
+        stroke={id === "TableGrid" ? "#000" : col}
+        strokeWidth=".8"
+        opacity={id === "TableNormal" || plain ? 0 : 1}
+      />
+      {plain ? <path d="M0 .5H30M0 19.5H30" stroke="#000" strokeWidth=".8" /> : null}
+    </svg>
+  );
+}
+
 /** Стили таблиц: плитки с миниатюрой и названием, остальные — в выпадающем списке. */
 function TableStyles({ cx }: { cx: Cx }) {
   const [list, setList] = useState<StyleRow[]>([]);
@@ -476,24 +524,7 @@ function TableStyles({ cx }: { cx: Cx }) {
         close?.();
       }}
     >
-      <svg viewBox="0 0 30 20" width="34" height="23" aria-hidden>
-        <rect
-          x="0.5"
-          y="0.5"
-          width="29"
-          height="19"
-          fill="none"
-          stroke="currentColor"
-          opacity=".7"
-        />
-        <rect x="0.5" y="0.5" width="29" height="5" fill="currentColor" opacity=".35" />
-        <path
-          d="M0 10.5H30M0 15.5H30M10 0V20M20 0V20"
-          stroke="currentColor"
-          opacity=".5"
-          fill="none"
-        />
-      </svg>
+      <TableThumb id={s.id} />
     </button>
   );
   const items: Item[] = [
