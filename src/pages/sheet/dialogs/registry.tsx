@@ -3,6 +3,7 @@ import FormDialog from "@/pages/word/dialogs/form";
 import type { Params, SheetCx } from "@/pages/sheet/types";
 import type { SheetDocs } from "@/pages/sheet/useSheetDocs";
 import { FORMS1 } from "@/pages/sheet/dialogs/specs1";
+import { FORMS2 } from "@/pages/sheet/dialogs/specs2";
 
 export interface OpenDialog {
   name: string;
@@ -19,7 +20,7 @@ export interface DialogProps {
 /** Диалоги со своим устройством (не сводятся к списку полей). */
 const COMPONENTS: Record<string, ComponentType<DialogProps>> = {};
 
-const FORMS = { ...FORMS1 };
+const FORMS = { ...FORMS1, ...FORMS2 };
 
 /** Находит диалог по имени: форма из данных либо отдельный компонент. */
 export default function DialogHost({
