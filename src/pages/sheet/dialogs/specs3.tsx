@@ -164,6 +164,28 @@ const ruleFields = (quick: boolean): S["fields"] => {
 };
 
 export const FORMS3: Record<string, S> = {
+  insertPaste: {
+    title: "Insert Paste",
+    fields: [{ k: "radio", key: "shift", label: "Insert", options: opts(["right", "Shift cells right"], ["down", "Shift cells down"]) }],
+    init: () => ({ shift: "down" }),
+    submit: (v, cx) => cx.run("home.insertCopiedCells", { shift: v.shift }),
+  },
+  openLink: {
+    title: "Open Hyperlink",
+    fields: [
+      { k: "note", text: "This workbook asks to open the address below. Links can lead to harmful sites or start other programs: open it only if you trust the workbook." },
+      { k: "pre", render: (v) => <code>{str(v.url)}</code> },
+    ],
+    init: (_cx, p) => ({ url: str(p.url) }),
+    submit: (v, cx) => cx.run("link.open", { url: str(v.url) }),
+  },
+  solverResults: {
+    title: "Solver Results",
+    noOk: true,
+    fields: [{ k: "pre", render: (v) => <span>{str(v.message)}</span> }],
+    init: (_cx, p) => ({ message: str(p.message ?? p.status) }),
+    submit: () => undefined,
+  },
   cfRule: {
     title: "Conditional Formatting",
     fields: ruleFields(true),

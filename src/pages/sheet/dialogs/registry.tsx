@@ -1,5 +1,6 @@
 import type { ComponentType } from "react";
 import FormDialog from "@/pages/word/dialogs/form";
+import type { FormSpec } from "@/pages/word/dialogs/form";
 import type { Params, SheetCx } from "@/pages/sheet/types";
 import type { SheetDocs } from "@/pages/sheet/useSheetDocs";
 import { FORMS1 } from "@/pages/sheet/dialogs/specs1";
@@ -45,7 +46,15 @@ const COMPONENTS: Record<string, ComponentType<DialogProps>> = {
   about: C.About,
 };
 
-const FORMS = { ...FORMS1, ...FORMS2, ...FORMS3 };
+const FORMS: Record<string, FormSpec<SheetCx>> = {
+  ...FORMS1,
+  ...FORMS2,
+  ...FORMS3,
+  // Запросы ядра с другими именами: тот же диалог.
+  cfQuick: FORMS3.cfRule,
+  newFormattingRule: FORMS3.newRule,
+  allowEditRanges: FORMS3.editRanges,
+};
 
 /** Находит диалог по имени: форма из данных либо отдельный компонент. */
 export default function DialogHost({
