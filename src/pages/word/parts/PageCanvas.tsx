@@ -146,6 +146,14 @@ export default function PageCanvas({
   const composing = useRef(false);
   const [objDrag, setObjDrag] = useState<ObjDrag | null>(null);
   const [ink, setInk] = useState<{ page: number; pts: [number, number][] } | null>(null);
+  const [tdrag, setTdrag] = useState<{
+    page: number;
+    axis: "col" | "row";
+    pos: number;
+    start: number;
+    cur: number;
+    from: number;
+  } | null>(null);
   const [band, setBand] = useState<{
     page: number;
     x0: number;
@@ -432,6 +440,36 @@ export default function PageCanvas({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [objDrag?.mode, objDrag?.page, objDrag?.startX, objDrag?.startY, k, areaRef]);
 
+  /** Перетаскивание границы таблицы: линия-подсказка, по отпусканию — команда ядра. */
+  useEffect(() => {
+    if (!tdrag) return;
+    const move = (e: PointerEvent): void => {
+      const pageEl = areaRef.current?.querySelectorAll<HTMLElement>(".wd-page")[tdrag.page];
+      if (!pageEl) return;
+      const r = pageEl.getBoundingClientRect();
+      const cur = tdrag.axis === "col" ? (e.clientX - r.left) / k : (e.clientY - r.top) / k;
+      setTdrag((d) => (d ? { ...d, cur } : d));
+    };
+    const up = (): void => {
+      const t = state.ctx.table?.borders.find((b) => b.page === tdrag.page);
+      if (t && Math.abs(tdrag.cur - tdrag.start) > 1) {
+        const mid = tdrag.axis === "col" ? (t.y0 + t.y1) / 2 : (t.x0 + t.x1) / 2;
+        const p =
+          tdrag.axis === "col"
+            ? { page: tdrag.page, x: tdrag.start, y: mid, toX: tdrag.cur, toY: mid, reach: 4 }
+            : { page: tdrag.page, x: mid, y: tdrag.start, toX: mid, toY: tdrag.cur, reach: 4 };
+        void docs.run("table.resizeDrag", p);
+      }
+      setTdrag(null);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    return () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+    };
+  }, [tdrag, k, areaRef, docs, state.ctx.table]);
+
   const onKeyDown = async (e: React.KeyboardEvent<HTMLTextAreaElement>): Promise<void> => {
     if (composing.current || e.nativeEvent.isComposing || e.key === "Process") return;
     const mod = e.ctrlKey || e.metaKey;
@@ -554,6 +592,7 @@ export default function PageCanvas({
                 ? objDrag.cur
                 : { x: o.rect.x, y: o.rect.y, w: o.rect.w, h: o.rect.h, deg: o.deg }
               : null;
+          const tb = state.ctx.table?.borders.find((b) => b.page === i) ?? null;
           const penColor =
             draw.mode === "highlighter"
               ? draw.highlighter
@@ -625,6 +664,44 @@ export default function PageCanvas({
                     />
                   ) : null}
                 </div>
+              ) : null}
+              {tb && !cx.ui.tool && !drawing
+                ? [
+                    ...tb.cols.map((x) => (
+                      <i
+                        key={`c${x}`}
+                        className="wd-tzone col"
+                        style={{ left: x * k - 4, top: tb.y0 * k, height: (tb.y1 - tb.y0) * k }}
+                        onPointerDown={(e) => {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          setTdrag({ page: i, axis: "col", pos: x, start: x, cur: x, from: x });
+                        }}
+                      />
+                    )),
+                    ...tb.rows.map((y) => (
+                      <i
+                        key={`r${y}`}
+                        className="wd-tzone row"
+                        style={{ top: y * k - 4, left: tb.x0 * k, width: (tb.x1 - tb.x0) * k }}
+                        onPointerDown={(e) => {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          setTdrag({ page: i, axis: "row", pos: y, start: y, cur: y, from: y });
+                        }}
+                      />
+                    )),
+                  ]
+                : null}
+              {tdrag && tdrag.page === i ? (
+                <i
+                  className={`wd-tguide ${tdrag.axis}`}
+                  style={
+                    tdrag.axis === "col"
+                      ? { left: tdrag.cur * k, top: 0, height: h }
+                      : { top: tdrag.cur * k, left: 0, width: w }
+                  }
+                />
               ) : null}
               {band && band.page === i && cx.ui.tool === "drawTable" ? (
                 <div

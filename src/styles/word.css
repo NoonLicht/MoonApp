@@ -954,6 +954,30 @@
 .wd-handle.rot {
   cursor: grab;
 }
+.wd-tzone {
+  position: absolute;
+  z-index: 2;
+}
+.wd-tzone.col {
+  width: 8px;
+  cursor: col-resize;
+}
+.wd-tzone.row {
+  height: 8px;
+  cursor: row-resize;
+}
+.wd-tguide {
+  position: absolute;
+  background: #2f7cf6;
+  pointer-events: none;
+  z-index: 3;
+}
+.wd-tguide.col {
+  width: 1px;
+}
+.wd-tguide.row {
+  height: 1px;
+}
 .wd-band {
   position: absolute;
   border: 1.5px dashed #2f7cf6;

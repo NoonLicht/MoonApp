@@ -93,6 +93,16 @@ export interface WordTableCtx {
   height: number;
   width: number;
   heightExact: boolean;
+  /** Границы таблицы на страницах (пункты): по ним интерфейс ставит зоны перетаскивания. */
+  borders: {
+    page: number;
+    cols: number[];
+    rows: number[];
+    x0: number;
+    y0: number;
+    x1: number;
+    y1: number;
+  }[];
 }
 
 /** Свойства раздела под кареткой (SectionProps ядра). */

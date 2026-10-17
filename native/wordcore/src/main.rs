@@ -95,10 +95,40 @@ fn table_ctx(s: &mut Session) -> Value {
             }
         }
     }
+    // Границы таблицы на страницах: интерфейс ставит на них зоны для перетаскивания мышью.
+    let mut borders: Vec<Value> = Vec::new();
+    for (pi, pg) in s.layout().pages.iter().enumerate() {
+        let (mut xs, mut ys): (Vec<f32>, Vec<f32>) = (Vec::new(), Vec::new());
+        let (mut x0, mut y0, mut x1, mut y1) = (f32::MAX, f32::MAX, f32::MIN, f32::MIN);
+        for it in pg.items.iter() {
+            if let wordcraft_layout::Placed::Cell { rect, table, story: st, .. } = it
+                && *table == tp
+                && *st == story
+            {
+                xs.push(rect.x);
+                xs.push(rect.x + rect.w);
+                ys.push(rect.y);
+                ys.push(rect.y + rect.h);
+                x0 = x0.min(rect.x);
+                y0 = y0.min(rect.y);
+                x1 = x1.max(rect.x + rect.w);
+                y1 = y1.max(rect.y + rect.h);
+            }
+        }
+        if xs.is_empty() {
+            continue;
+        }
+        let dedup = |mut v: Vec<f32>| {
+            v.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+            v.dedup_by(|a, b| (*a - *b).abs() < 0.6);
+            v
+        };
+        borders.push(json!({"page": pi, "cols": dedup(xs), "rows": dedup(ys), "x0": x0, "y0": y0, "x1": x1, "y1": y1}));
+    }
     let exact = row.height_rule == wordcraft_doc::props::HeightRule::Exact;
     let height = row.height.or(row_h).unwrap_or(0.0);
     let width = laid_w.or(stored_w).unwrap_or(0.0);
-    json!({"rows": rows, "cols": cols, "row": r, "col": c, "look": look, "style": style, "height": height, "width": width, "heightExact": exact})
+    json!({"rows": rows, "cols": cols, "row": r, "col": c, "look": look, "style": style, "height": height, "width": width, "heightExact": exact, "borders": borders})
 }
 
 /// Где сейчас каретка и какие контекстные вкладки нужны.
