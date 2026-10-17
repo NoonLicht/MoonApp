@@ -29,7 +29,8 @@
     "expand": "Développer le menu",
     "mail": "Messagerie",
     "photo": "Photo et vidéo",
-    "word": "Documents"
+    "word": "Documents",
+    "sheet": "Tableurs"
   },
   "common": {
     "saved": "enregistré",
@@ -6918,5 +6919,12 @@
     "emptyHint": "Créez un document ou ouvrez un fichier (docx, odt, rtf, doc, html, md, txt).",
     "close": "Fermer",
     "editorLabel": "Éditeur de document"
+  },
+  "sheet": {
+    "eyebrow": "Éditeur de feuilles de calcul",
+    "title": "Tableurs",
+    "coreMissing": "Moteur de tableur introuvable",
+    "coreMissingHint": "Compilez-le une fois avec cette commande (Rust requis) :",
+    "emptyHint": "Créez un classeur ou ouvrez un fichier (xlsx, xls, ods, csv, tsv, json)."
   }
 }

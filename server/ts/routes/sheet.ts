@@ -115,6 +115,7 @@ const QUERY_METHODS = new Set([
   "cell.get",
   "view.image",
   "view.pos",
+  "view.filterInfo",
   "view.state",
   "engine.commands",
 ]);

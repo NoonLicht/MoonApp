@@ -110,6 +110,17 @@ export interface SheetObjects {
   images: { id: number; alt: string }[];
   shapes: { id: number; kind: string; text: string }[];
   slicers: { id: number; caption: string }[];
+  comments: {
+    cell: string;
+    r: number;
+    c: number;
+    author: string;
+    text: string;
+    threaded: boolean;
+    replies: [string, string][];
+    resolved: boolean;
+    visible: boolean;
+  }[];
 }
 
 export type SheetRequest =

@@ -35,6 +35,7 @@ fn handle(h: &mut Headless, method: &str, params: Value) -> Result<Value, String
         "view.state" => Ok(grid::state(h)),
         "view.grid" => Ok(grid::window(h, &params)),
         "view.pos" => Ok(grid::pos(h, &params)),
+        "view.filterInfo" => grid::filter_info(h, &params),
         "view.image" => grid::image(h, &params),
         "view.run" => {
             let id = params.get("command").and_then(Value::as_str).ok_or("missing `command`")?.to_string();

@@ -4,11 +4,11 @@ import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { getOverlayRoot } from "@/components/overlayHost";
 import { Btn } from "@/components/ui";
-import type { Cx, Params } from "@/pages/word/ribbon/types";
+import type { BaseCx, Cx, Params } from "@/pages/word/ribbon/types";
 
 export type Vals = Record<string, string | number | boolean>;
 
-export type Field =
+export type Field<C extends BaseCx = Cx> =
   | {
       k: "text";
       key: string;
@@ -43,7 +43,7 @@ export type Field =
       k: "select";
       key: string;
       label?: string;
-      options: [string, string][];
+      options: [string, string][] | ((cx: C) => [string, string][]);
       raw?: boolean;
       tab?: number;
       show?: (v: Vals) => boolean;
@@ -62,22 +62,22 @@ export type Field =
       k: "radio";
       key: string;
       label?: string;
-      options: [string, string][];
+      options: [string, string][] | ((cx: C) => [string, string][]);
       raw?: boolean;
       tab?: number;
       show?: (v: Vals) => boolean;
     }
   | { k: "note"; text: string; tab?: number; show?: (v: Vals) => boolean; raw?: boolean }
-  | { k: "pre"; render: (v: Vals, cx: Cx) => ReactNode; tab?: number; show?: (v: Vals) => boolean }
+  | { k: "pre"; render: (v: Vals, cx: C) => ReactNode; tab?: number; show?: (v: Vals) => boolean }
   | { k: "sep"; tab?: number };
 
-export interface FormSpec {
+export interface FormSpec<C extends BaseCx = Cx> {
   /** Английское название (ключ перевода). */
   title: string;
   tabs?: string[];
-  fields: Field[];
-  init?: (cx: Cx, props: Params) => Vals;
-  submit: (v: Vals, cx: Cx, props: Params) => void | Promise<void>;
+  fields: Field<C>[];
+  init?: (cx: C, props: Params) => Vals;
+  submit: (v: Vals, cx: C, props: Params) => void | Promise<void>;
   ok?: string;
   size?: "normal" | "wide" | "xwide";
   /** Без кнопки OK (диалог-справка). */
@@ -160,16 +160,16 @@ export function Shell({
   );
 }
 
-function FieldView({
+function FieldView<C extends BaseCx>({
   f,
   v,
   set,
   cx,
 }: {
-  f: Field;
+  f: Field<C>;
   v: Vals;
   set: (k: string, x: string | number | boolean) => void;
-  cx: Cx;
+  cx: C;
 }) {
   const lbl = (text?: string) => (text ? <span className="lbl">{cx.tw(text)}</span> : <span />);
   switch (f.k) {
@@ -221,7 +221,7 @@ function FieldView({
         <>
           {lbl(f.label)}
           <select value={String(v[f.key] ?? "")} onChange={(e) => set(f.key, e.target.value)}>
-            {f.options.map(([val, label]) => (
+            {(typeof f.options === "function" ? f.options(cx) : f.options).map(([val, label]) => (
               <option key={val} value={val}>
                 {f.raw ? label : cx.tw(label)}
               </option>
@@ -268,7 +268,7 @@ function FieldView({
         <>
           {lbl(f.label)}
           <span className="wd-radios">
-            {f.options.map(([val, label]) => (
+            {(typeof f.options === "function" ? f.options(cx) : f.options).map(([val, label]) => (
               <label key={val}>
                 <input
                   type="radio"
@@ -297,14 +297,14 @@ function FieldView({
 }
 
 /** Диалог, описанный данными: поля, вкладки, предпросмотр; OK выполняет `submit`. */
-export default function FormDialog({
+export default function FormDialog<C extends BaseCx>({
   spec,
   cx,
   props,
   onClose,
 }: {
-  spec: FormSpec;
-  cx: Cx;
+  spec: FormSpec<C>;
+  cx: C;
   props: Params;
   onClose: () => void;
 }) {

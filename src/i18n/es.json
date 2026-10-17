@@ -29,7 +29,8 @@
     "expand": "Expandir menú",
     "mail": "Correo",
     "photo": "Foto y vídeo",
-    "word": "Documentos"
+    "word": "Documentos",
+    "sheet": "Hojas de cálculo"
   },
   "common": {
     "saved": "guardado",
@@ -6918,5 +6919,12 @@
     "emptyHint": "Crea un documento o abre un archivo (docx, odt, rtf, doc, html, md, txt).",
     "close": "Cerrar",
     "editorLabel": "Editor de documentos"
+  },
+  "sheet": {
+    "eyebrow": "Editor de hojas de cálculo",
+    "title": "Hojas de cálculo",
+    "coreMissing": "No se encontró el motor de hojas de cálculo",
+    "coreMissingHint": "Compílelo una vez con este comando (requiere Rust):",
+    "emptyHint": "Cree un libro o abra un archivo (xlsx, xls, ods, csv, tsv, json)."
   }
 }

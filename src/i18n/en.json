@@ -29,7 +29,8 @@
     "expand": "Expand menu",
     "mail": "Mail",
     "photo": "Photo & Video",
-    "word": "Documents"
+    "word": "Documents",
+    "sheet": "Spreadsheets"
   },
   "common": {
     "saved": "saved",
@@ -6918,5 +6919,12 @@
     "emptyHint": "Create a document or open a file (docx, odt, rtf, doc, html, md, txt).",
     "close": "Close",
     "editorLabel": "Document editor"
+  },
+  "sheet": {
+    "eyebrow": "Spreadsheet editor",
+    "title": "Spreadsheets",
+    "coreMissing": "Spreadsheet engine not found",
+    "coreMissingHint": "Build it once with this command (Rust required):",
+    "emptyHint": "Create a workbook or open a file (xlsx, xls, ods, csv, tsv, json)."
   }
 }

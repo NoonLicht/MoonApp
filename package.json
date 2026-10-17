@@ -49,7 +49,9 @@
     "check:i18n": "npm run compile:scripts && node scripts/checkI18n.mjs",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "gen:sheetcatalog": "npm run compile:scripts && node scripts/genSheetCatalog.mjs",
+    "build:gridcore": "npm run compile:scripts && node scripts/build-gridcore.mjs"
   },
   "keywords": [],
   "license": "MIT",

@@ -43,6 +43,9 @@ export const FEATURE_MAP: {
     "word": [
       "word"
     ],
+    "sheet": [
+      "sheet"
+    ],
     "video": [
       "video"
     ],

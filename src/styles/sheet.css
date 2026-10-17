@@ -1,0 +1,490 @@
+/* Страница «Таблицы»: лента, меню и диалоги общие с «Документами» (word.css, классы wd-*), здесь — сетка и своё. */
+
+.sh-root > .wd-main {
+  border-radius: 0;
+  background: #fff;
+}
+.sh-center {
+  position: relative;
+  background: #fff;
+  color: #000;
+}
+
+/* ---- сетка ---- */
+.sh-grid-wrap {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  background: #fff;
+  color: #000;
+  color-scheme: light;
+}
+.sh-scroll {
+  position: relative;
+  flex: 1;
+  overflow: scroll;
+  background: #fff;
+  user-select: none;
+  outline: none;
+  overscroll-behavior: contain;
+}
+.sh-kb {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  border: 0;
+  padding: 0;
+  resize: none;
+  pointer-events: none;
+}
+.sh-objects {
+  position: absolute;
+  overflow: hidden;
+  pointer-events: none;
+}
+.sh-objects > div {
+  pointer-events: none;
+}
+.sh-obj {
+  position: absolute;
+  pointer-events: auto;
+  box-sizing: border-box;
+  cursor: default;
+}
+.sh-obj.on {
+  outline: 2px solid #107c41;
+  cursor: move;
+}
+.sh-obj .sh-pic {
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  display: block;
+  user-select: none;
+}
+.sh-chart {
+  width: 100%;
+  height: 100%;
+  background: #fff;
+  border: 1px solid #d0d0d0;
+  box-sizing: border-box;
+}
+.sh-chart svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.sh-shape-text {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 2px 4px;
+  overflow: hidden;
+  white-space: pre-wrap;
+  line-height: 1.2;
+  pointer-events: none;
+}
+.sh-slicer {
+  width: 100%;
+  height: 100%;
+  background: #fff;
+  border: 1px solid #b4b4b4;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  font-size: 12px;
+  overflow: hidden;
+}
+.sh-slicer-head {
+  padding: 4px 8px;
+  font-weight: 600;
+  background: #f0f0f0;
+  border-bottom: 1px solid #d0d0d0;
+}
+.sh-slicer-note {
+  padding: 6px 8px;
+  color: #666;
+}
+.sh-h {
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  background: #fff;
+  border: 1.5px solid #107c41;
+  border-radius: 50%;
+  box-sizing: border-box;
+}
+.sh-h-nw {
+  left: -5px;
+  top: -5px;
+  cursor: nwse-resize;
+}
+.sh-h-n {
+  left: calc(50% - 5px);
+  top: -5px;
+  cursor: ns-resize;
+}
+.sh-h-ne {
+  right: -5px;
+  top: -5px;
+  cursor: nesw-resize;
+}
+.sh-h-e {
+  right: -5px;
+  top: calc(50% - 5px);
+  cursor: ew-resize;
+}
+.sh-h-se {
+  right: -5px;
+  bottom: -5px;
+  cursor: nwse-resize;
+}
+.sh-h-s {
+  left: calc(50% - 5px);
+  bottom: -5px;
+  cursor: ns-resize;
+}
+.sh-h-sw {
+  left: -5px;
+  bottom: -5px;
+  cursor: nesw-resize;
+}
+.sh-h-w {
+  left: -5px;
+  top: calc(50% - 5px);
+  cursor: ew-resize;
+}
+
+/* ---- редактор ячейки ---- */
+.sh-editor {
+  position: absolute;
+  z-index: 6;
+  box-sizing: border-box;
+  border: 2px solid #107c41;
+  background: #fff;
+  color: #000;
+  padding: 0 3px;
+  margin: 0;
+  resize: none;
+  outline: none;
+  overflow: hidden;
+  line-height: 1.25;
+  white-space: pre;
+  user-select: text;
+}
+.sh-hints {
+  position: absolute;
+  z-index: 40;
+  background: var(--surface-solid, #fff);
+  color: var(--text-primary, #111);
+  border: 1px solid var(--glass-border, #bbb);
+  border-radius: 6px;
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.3);
+  font-size: 12px;
+  min-width: 220px;
+  max-width: 420px;
+}
+.sh-hints ul {
+  list-style: none;
+  margin: 0;
+  padding: 3px;
+}
+.sh-hints li {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  padding: 3px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.sh-hints li.on {
+  background: var(--wd-on, rgba(255, 180, 0, 0.25));
+}
+.sh-hints li span {
+  opacity: 0.65;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sh-sig {
+  padding: 6px 8px;
+}
+.sh-sig .cur {
+  font-weight: 700;
+  text-decoration: underline;
+}
+
+/* ---- строка формул ---- */
+.sh-fbar {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  flex-shrink: 0;
+  border: 1px solid var(--wd-line);
+  border-top: none;
+  border-bottom: none;
+  background: var(--glass);
+  padding: 3px 6px;
+  gap: 6px;
+}
+.sh-namebox {
+  display: flex;
+  align-items: center;
+  width: 120px;
+  flex-shrink: 0;
+  border: 1px solid var(--wd-line);
+  border-radius: 6px;
+  background: var(--surface-solid, #fff);
+}
+.sh-namebox input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-primary);
+  padding: 3px 6px;
+  font-size: 12.5px;
+  outline: none;
+}
+.sh-namebox button,
+.sh-fbtns button,
+.sh-expand {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 0 5px;
+  display: inline-flex;
+  align-items: center;
+}
+.sh-fbtns {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+}
+.sh-fbtns button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.sh-fbtns button:not(:disabled):hover,
+.sh-namebox button:hover,
+.sh-expand:hover {
+  background: var(--wd-hover);
+  border-radius: 4px;
+}
+.sh-fx {
+  flex: 1;
+  min-width: 0;
+  resize: none;
+  border: 1px solid var(--wd-line);
+  border-radius: 6px;
+  background: var(--surface-solid, #fff);
+  color: var(--text-primary);
+  padding: 3px 8px;
+  font-size: 13px;
+  font-family: inherit;
+  line-height: 1.3;
+  outline: none;
+  overflow: auto;
+}
+.sh-fx:focus {
+  border-color: #107c41;
+}
+
+/* ---- вкладки листов ---- */
+.sh-tabs {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  flex-shrink: 0;
+  padding: 0 6px;
+  border: 1px solid var(--wd-line);
+  border-top: none;
+  border-bottom: none;
+  background: var(--glass);
+  min-height: 28px;
+}
+.sh-tabnav,
+.sh-tabadd {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 5px;
+}
+.sh-tabnav:hover,
+.sh-tabadd:hover {
+  background: var(--wd-hover);
+}
+.sh-tabstrip {
+  display: flex;
+  align-items: stretch;
+  overflow-x: auto;
+  flex: 0 1 auto;
+  min-width: 0;
+  scrollbar-width: none;
+}
+.sh-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 14px;
+  font-size: 12.5px;
+  cursor: pointer;
+  white-space: nowrap;
+  border-bottom: 3px solid var(--tab, transparent);
+  color: var(--text-secondary);
+  border-radius: 0 0 6px 6px;
+}
+.sh-tab:hover {
+  background: var(--wd-hover);
+}
+.sh-tab.on {
+  background: #fff;
+  color: #107c41;
+  font-weight: 600;
+  border-bottom-color: var(--tab, #107c41);
+}
+.sh-tab.over {
+  box-shadow: inset 2px 0 0 #107c41;
+}
+.sh-tab input {
+  background: transparent;
+  border: 0;
+  outline: 1px solid #107c41;
+  color: inherit;
+  font: inherit;
+  padding: 0 2px;
+}
+.sh-lock {
+  font-size: 10px;
+  font-style: normal;
+}
+
+/* ---- фильтр, список, панели ---- */
+.sh-filter {
+  width: 260px;
+}
+.sh-filter-body {
+  padding: 4px 8px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.sh-filter-body input[type="search"] {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--wd-line);
+  background: var(--surface-solid);
+  color: var(--text-primary);
+}
+.sh-filter-list {
+  max-height: 220px;
+  overflow: auto;
+  border: 1px solid var(--wd-line);
+  border-radius: 6px;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+}
+.sh-filter-list label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 4px;
+  font-size: 12.5px;
+}
+.sh-filter-list label span {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sh-filter-list label i {
+  opacity: 0.5;
+  font-style: normal;
+  font-size: 11px;
+}
+.sh-filter-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+.sh-listpick {
+  max-height: 260px;
+  overflow: auto;
+}
+.sh-find,
+.sh-comments {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.sh-find label:not(.wd-chk) {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12px;
+}
+.sh-find input:not([type="checkbox"]),
+.sh-find select {
+  padding: 4px 6px;
+  border-radius: 6px;
+  border: 1px solid var(--wd-line);
+  background: var(--surface-solid);
+  color: var(--text-primary);
+}
+.sh-find-btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.sh-find-list {
+  display: flex;
+  flex-direction: column;
+}
+.sh-comment {
+  border: 1px solid var(--wd-line);
+  border-radius: 8px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.sh-comment.done {
+  opacity: 0.6;
+}
+.sh-reply {
+  margin-left: 12px;
+  font-size: 12px;
+}
+.sh-reply-box {
+  display: flex;
+  gap: 4px;
+}
+.sh-reply-box input {
+  flex: 1;
+  min-width: 0;
+}
+.sh-numfmt {
+  width: 150px;
+  padding: 3px 4px;
+  border-radius: 6px;
+  border: 1px solid var(--wd-line);
+  background: var(--surface-solid);
+  color: var(--text-primary);
+  font-size: 12px;
+}

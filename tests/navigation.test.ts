@@ -23,6 +23,7 @@ const ALL_IDS = [
   "compress",
   "photo",
   "word",
+  "sheet",
   "video",
   "movies",
   "music",

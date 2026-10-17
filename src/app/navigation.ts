@@ -26,6 +26,7 @@ import {
   Rss,
   Mail,
   FileText,
+  Table2,
 } from "lucide-react";
 import type { ElementType } from "react";
 import type { TranslateFn } from "@/app/i18n";
@@ -37,6 +38,7 @@ export type PageId =
   | "compress"
   | "photo"
   | "word"
+  | "sheet"
   | "video"
   | "movies"
   | "music"
@@ -83,6 +85,7 @@ const ALL_PAGES: readonly PageMeta[] = [
   { id: "compress", i18n: "nav.compress", icon: Gauge },
   { id: "photo", i18n: "nav.photo", icon: Sparkles },
   { id: "word", i18n: "nav.word", icon: FileText },
+  { id: "sheet", i18n: "nav.sheet", icon: Table2 },
   { id: "video", i18n: "nav.video", icon: Video },
   { id: "movies", i18n: "nav.movies", icon: Clapperboard },
   { id: "music", i18n: "nav.music", icon: Music2 },

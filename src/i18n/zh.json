@@ -29,7 +29,8 @@
     "expand": "展开菜单",
     "mail": "邮件",
     "photo": "照片与视频",
-    "word": "文档"
+    "word": "文档",
+    "sheet": "电子表格"
   },
   "common": {
     "saved": "已保存",
@@ -6918,5 +6919,12 @@
     "emptyHint": "新建文档或打开文件（docx、odt、rtf、doc、html、md、txt）。",
     "close": "关闭",
     "editorLabel": "文档编辑器"
+  },
+  "sheet": {
+    "eyebrow": "电子表格编辑器",
+    "title": "电子表格",
+    "coreMissing": "未找到电子表格引擎",
+    "coreMissingHint": "请用此命令构建一次（需要 Rust）：",
+    "emptyHint": "新建工作簿或打开文件（xlsx、xls、ods、csv、tsv、json）。"
   }
 }

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import type { Cx, Item, Params } from "@/pages/word/ribbon/types";
+import type { BaseCx, Item, Params } from "@/pages/word/ribbon/types";
 
 const STANDARD = [
   "C00000",
@@ -71,7 +71,7 @@ function Swatch({
   );
 }
 
-function Palette({ cx, pick }: { cx: Cx; pick: (hex: string) => void }) {
+function Palette({ cx, pick }: { cx: BaseCx; pick: (hex: string) => void }) {
   const theme = cx.themeColors;
   // Порядок Word: светлый 1, тёмный 1, светлый 2, тёмный 2, акценты 1–6.
   const top =
@@ -98,7 +98,7 @@ function Palette({ cx, pick }: { cx: Cx; pick: (hex: string) => void }) {
   );
 }
 
-function Custom({ cx, pick, close }: { cx: Cx; pick: (hex: string) => void; close: () => void }) {
+function Custom({ cx, pick, close }: { cx: BaseCx; pick: (hex: string) => void; close: () => void }) {
   const ref = useRef<HTMLInputElement>(null);
   // Системный выбор цвета шлёт «input» на каждый сдвиг; применяем только итог («change»).
   useEffect(() => {
@@ -129,7 +129,7 @@ function Custom({ cx, pick, close }: { cx: Cx; pick: (hex: string) => void; clos
  * Пункты меню выбора цвета: «Авто», палитра темы документа, стандартные цвета, «Другие цвета…».
  * `key` — имя параметра команды (`color` у шрифта, `fill` у WordArt…), `memo` — ключ запоминания последнего цвета.
  */
-export function colorMenu(
+export function colorMenu<C extends BaseCx = import("@/pages/word/ribbon/types").Cx>(
   cmd: string,
   o: {
     key?: string;
@@ -139,10 +139,10 @@ export function colorMenu(
     memo?: string;
     noneValue?: unknown;
   } = {},
-): Item[] {
+): Item<C>[] {
   const key = o.key ?? "color";
-  const apply = (cx: Cx, v: unknown): void => cx.run(cmd, { ...o.extra, [key]: v });
-  const items: Item[] = [];
+  const apply = (cx: C, v: unknown): void => cx.run(cmd, { ...o.extra, [key]: v });
+  const items: Item<C>[] = [];
   if (o.auto) items.push({ label: o.auto, act: { fn: (cx) => apply(cx, "auto") } });
   if (o.none) items.push({ label: o.none, act: { fn: (cx) => apply(cx, o.noneValue ?? null) } });
   items.push({

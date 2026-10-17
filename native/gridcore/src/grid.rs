@@ -253,8 +253,8 @@ pub fn window(h: &mut Headless, p: &Json) -> Json {
     // Заморожённые строки и столбцы занимают левый верхний угол: прокручиваемая часть начинается за ними.
     let fx = if fc > 0 { col_x(sh, fc) } else { 0.0 };
     let fy = if fr > 0 { row_y(sh, fr) } else { 0.0 };
-    let (c0, c1) = visible_cols(sh, x + fx, x + w, 8);
-    let (r0, r1) = visible_rows(sh, y + fy, y + hh, 3);
+    let (c0, c1) = visible_cols(sh, x + fx, x + fx + w, 8);
+    let (r0, r1) = visible_rows(sh, y + fy, y + fy + hh, 3);
     let (c0, r0) = (c0.max(fc), r0.max(fr));
     let mut cols: Vec<u32> = Vec::new();
     let mut rows: Vec<u32> = Vec::new();
@@ -554,6 +554,7 @@ fn objects_summary(sh: &Sheet) -> Json {
         "images": sh.images.iter().map(|c| json!({"id": c.id, "alt": c.alt})).collect::<Vec<_>>(),
         "shapes": sh.shapes.iter().map(|c| json!({"id": c.id, "kind": enum_str(&c.kind), "text": c.text})).collect::<Vec<_>>(),
         "slicers": sh.slicers.iter().map(|c| json!({"id": c.id, "caption": c.caption})).collect::<Vec<_>>(),
+        "comments": sh.comments.iter().map(|(c, cm)| json!({"cell": c.a1(), "r": c.row, "c": c.col, "author": cm.author, "text": cm.text, "threaded": cm.threaded, "replies": cm.replies, "resolved": cm.resolved, "visible": cm.visible})).collect::<Vec<_>>(),
     })
 }
 
@@ -662,4 +663,62 @@ pub fn state(h: &mut Headless) -> Json {
         "docs": s.documents().iter().map(|d| json!({"title": d.display_title(), "dirty": d.is_dirty()})).collect::<Vec<_>>(),
         "requests": requests,
     })
+}
+
+/// Данные для выпадающего меню фильтра в ячейке заголовка: диапазон, значения столбца и их состояние.
+pub fn filter_info(h: &Headless, p: &Json) -> Result<Json, String> {
+    let d = doc(h).ok_or("no document")?;
+    let wb = &d.wb;
+    let sh = wb.active().ok_or("no sheet")?;
+    let r = num(p, "r").ok_or("missing `r`")? as u32;
+    let c = num(p, "c").ok_or("missing `c`")? as u32;
+    let at = CellRef::new(r, c);
+    let (range, criteria, header) = if let Some(af) = sh.autofilter.as_ref().filter(|af| af.range.start.row == r && af.range.contains(at)) {
+        (af.range, af.criteria.clone(), true)
+    } else if let Some(t) = sh.tables.iter().find(|t| t.header_row && t.range.start.row == r && t.range.contains(at)) {
+        let mut rg = t.range;
+        if t.totals_row && rg.end.row > rg.start.row {
+            rg.end.row -= 1;
+        }
+        (rg, t.filter.clone(), true)
+    } else {
+        return Err("no filter button here".into());
+    };
+    let _ = header;
+    let off = c - range.start.col;
+    let crit = criteria.iter().find(|(o, _)| *o == off).map(|(_, k)| k.clone());
+    let (selected_vals, sel_blanks): (Option<Vec<String>>, bool) = match &crit {
+        Some(gridcraft_engine::model::FilterCriterion::Values { values, blanks }) => (Some(values.iter().map(|v| v.to_lowercase()).collect()), *blanks),
+        _ => (None, true),
+    };
+    let mut counts: Vec<(String, u32)> = Vec::new();
+    let mut index: HashMap<String, usize> = HashMap::new();
+    let mut blanks = 0u32;
+    for row in (range.start.row + 1)..=range.end.row {
+        let cell = CellRef::new(row, c);
+        let v = sh.value(cell);
+        if v.is_empty() {
+            blanks += 1;
+            continue;
+        }
+        let text = display::value_text(wb, sh, cell);
+        if let Some(&i) = index.get(&text) {
+            counts[i].1 += 1;
+        } else if counts.len() < 5000 {
+            index.insert(text.clone(), counts.len());
+            counts.push((text, 1));
+        }
+    }
+    counts.sort_by(|a, b| gridcraft_engine::core::value::compare_text(&a.0, &b.0));
+    let custom = !matches!(crit, None | Some(gridcraft_engine::model::FilterCriterion::Values { .. }));
+    Ok(json!({
+        "range": range_json(range),
+        "column": c,
+        "offset": off,
+        "values": counts.iter().map(|(t, n)| json!({"text": t, "count": n, "selected": selected_vals.as_ref().is_none_or(|s| s.contains(&t.to_lowercase()))})).collect::<Vec<_>>(),
+        "blanks": {"count": blanks, "selected": sel_blanks},
+        "active": crit.is_some(),
+        "custom": custom,
+        "criterion": crit.map(|k| serde_json::to_value(&k).unwrap_or(Json::Null)),
+    }))
 }
