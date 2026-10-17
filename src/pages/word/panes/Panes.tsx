@@ -59,7 +59,12 @@ const pos = (path: number[], off = 0) => ({ story: "body", path, off });
 /** Фрагмент строки по байтовым смещениям UTF-8, как их отдаёт ядро. */
 function byteSlice(text: string, a: number, b: number): string {
   const bytes = new TextEncoder().encode(text);
-  return new TextDecoder().decode(bytes.slice(Math.max(0, a), Math.max(a, b)));
+  const cont = (i: number) => i < bytes.length && (bytes[i] & 0xc0) === 0x80;
+  let from = Math.max(0, a);
+  let to = Math.max(from, b);
+  while (cont(from)) from++; // границы окна не должны резать многобайтовый символ
+  while (to > from && cont(to)) to--;
+  return new TextDecoder().decode(bytes.slice(from, to));
 }
 
 /* ---------------- Навигация ---------------- */

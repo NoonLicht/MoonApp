@@ -481,8 +481,8 @@ export default function PageCanvas({
       return;
     }
     if (mod && !e.altKey && lower === "v") {
-      e.preventDefault();
-      void docs.paste(e.shiftKey ? "text" : "default");
+      // Вставку выполнит событие paste: оно отдаёт буфер без запроса разрешения.
+      pasteAs.current = e.shiftKey ? "text" : "default";
       return;
     }
     if (e.key === "Escape" && cx.ui.tool) {
@@ -519,6 +519,7 @@ export default function PageCanvas({
     }
   };
 
+  const pasteAs = useRef<"default" | "text">("default");
   const pasteText = async (text: string): Promise<void> => {
     const lines = text.replace(/\r\n?/g, "\n").split("\n");
     for (let i = 0; i < lines.length; i++) {
@@ -577,7 +578,9 @@ export default function PageCanvas({
         }}
         onPaste={(e) => {
           e.preventDefault();
-          void docs.paste();
+          const as = pasteAs.current;
+          pasteAs.current = "default";
+          void docs.paste(as, e.clipboardData);
         }}
       />
       <div className={`wd-pages${multi ? " multi" : ""}`}>

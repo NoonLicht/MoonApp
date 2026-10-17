@@ -222,29 +222,37 @@ export function useWordDocs() {
 
   /** Вставить из системного буфера: картинка → рисунок; свой же фрагмент → с форматированием; иначе HTML/текст. */
   const paste = useCallback(
-    (as: "default" | "text" | "merge" = "default") => {
+    (as: "default" | "text" | "merge" = "default", data?: DataTransfer | null) => {
       const id = activeId;
       if (!id) return Promise.resolve(undefined);
       return enqueue(id, async () => {
         let text = "";
         let html = "";
         let picture = "";
-        try {
-          const items = await navigator.clipboard.read();
-          for (const it of items) {
-            const img = it.types.find((t) => t.startsWith("image/"));
-            if (img) picture = await toBase64(await it.getType(img));
-            if (it.types.includes("text/html")) html = await (await it.getType("text/html")).text();
-            if (it.types.includes("text/plain"))
-              text = await (await it.getType("text/plain")).text();
-          }
-        } catch {
+        // Событие paste отдаёт содержимое буфера без запроса разрешения у браузера.
+        const file = data ? [...data.files].find((f) => f.type.startsWith("image/")) : undefined;
+        if (data && (file || data.types.length)) {
+          if (file) picture = await toBase64(file);
+          html = data.getData("text/html");
+          text = data.getData("text/plain");
+        } else
           try {
-            text = await navigator.clipboard.readText();
+            const items = await navigator.clipboard.read();
+            for (const it of items) {
+              const img = it.types.find((t) => t.startsWith("image/"));
+              if (img) picture = await toBase64(await it.getType(img));
+              if (it.types.includes("text/html"))
+                html = await (await it.getType("text/html")).text();
+              if (it.types.includes("text/plain"))
+                text = await (await it.getType("text/plain")).text();
+            }
           } catch {
-            /* нет доступа к буферу */
+            try {
+              text = await navigator.clipboard.readText();
+            } catch {
+              /* нет доступа к буферу */
+            }
           }
-        }
         let r;
         if (picture && !text && !html) {
           r = await api.wordRun(id, "edit.pasteSpecial", { as: "picture", picture });
