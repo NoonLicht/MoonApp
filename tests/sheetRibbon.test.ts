@@ -21,6 +21,7 @@ import {
 import { FORMS1 } from "../src/pages/sheet/dialogs/specs1";
 import { FORMS2 } from "../src/pages/sheet/dialogs/specs2";
 import { FORMS3 } from "../src/pages/sheet/dialogs/specs3";
+import { ICONS } from "../src/pages/word/ribbon/icons";
 import type { Act, Ctl, Item, Tab } from "../src/pages/word/ribbon/types";
 import type { SheetCx as Cx } from "../src/pages/sheet/types";
 import wordRu from "../src/pages/word/i18n/cat/ru.json";
@@ -43,6 +44,7 @@ const cx = deep() as Cx;
 
 const cmds = new Set<string>();
 const labels = new Set<string>();
+const icons = new Set<string>();
 
 function item(it: Item): void {
   if (it.label && !it.raw) labels.add(it.label);
@@ -66,11 +68,13 @@ function ctl(c: Ctl): void {
   switch (c.k) {
     case "big":
     case "small":
+      icons.add(String(c.icon));
       if (c.label) labels.add(c.label);
       if (c.tip) labels.add(c.tip);
       act(c.act);
       break;
     case "menu": {
+      icons.add(String(c.icon));
       if (c.label) labels.add(c.label);
       if (c.tip) labels.add(c.tip);
       const sp =
@@ -182,7 +186,12 @@ describe("лента «Таблиц»", () => {
     const miss = [...labels].filter(
       (l) => l && /[A-Za-z]/.test(l) && !(l in ru) && !(l in extraRu),
     );
+    if (process.env.DUMP_ALL) fs.writeFileSync(process.env.DUMP_ALL, JSON.stringify([...labels]));
     if (process.env.DUMP_MISS) fs.writeFileSync(process.env.DUMP_MISS, JSON.stringify(miss, null, 1));
     expect(miss).toEqual([]);
+  });
+
+  it("у каждой кнопки ленты есть значок", () => {
+    expect([...icons].filter((i) => !(i in ICONS))).toEqual([]);
   });
 });

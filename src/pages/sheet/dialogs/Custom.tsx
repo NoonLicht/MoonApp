@@ -90,6 +90,20 @@ function Frame({ cx, title, onClose, children, actions, size }: { cx: SheetCx; t
   );
 }
 
+const keys = (sc: unknown): string => String(sc ?? "").replace(/Cmd/g, "Ctrl");
+
+const STAT_NAMES: Record<string, string> = {
+  cellsWithData: "Cells with data",
+  charts: "Number of charts",
+  names: "Number of names",
+  sheets: "Number of sheets",
+  tables: "Number of tables",
+  formulas: "Number of formulas",
+  comments: "Number of comments",
+  endOfSheet: "End of sheet",
+  name: "Sheet name",
+};
+
 const asRows = (d: unknown): Row[] => (Array.isArray(d) ? (d as Row[]) : []);
 
 /** Не удаётся ли ядру выполнить: показываем сообщение, диалог остаётся. */
@@ -350,9 +364,9 @@ export function CommandSearch({ cx, onClose }: Props) {
                   cx.run(cell(r.id), {});
                 }}
               >
-                <td>{cell(r.label)}</td>
-                <td>{Array.isArray(r.menu) ? (r.menu as string[]).join(" › ") : ""}</td>
-                <td>{cell(r.shortcut ?? "")}</td>
+                <td>{cx.tw(cell(r.label))}</td>
+                <td>{Array.isArray(r.menu) ? (r.menu as string[]).map((m) => cx.tw(m)).join(" › ") : ""}</td>
+                <td>{keys(r.shortcut)}</td>
               </tr>
             ))}
           </tbody>
@@ -367,14 +381,14 @@ export function Shortcuts({ cx, onClose }: Props) {
   const rows = asRows(data).filter((r) => r.shortcut);
   return (
     <Frame cx={cx} title="Keyboard Shortcuts" onClose={onClose}>
-      <Grid cx={cx} rows={rows.map((r) => ({ Command: r.label, Shortcut: r.shortcut }))} empty="No shortcuts" />
+      <Grid cx={cx} rows={rows.map((r) => ({ Command: cx.tw(cell(r.label)), Shortcut: keys(r.shortcut) }))} empty="No shortcuts" />
     </Frame>
   );
 }
 
 export function Statistics({ cx, onClose }: Props) {
   const [d] = useCommand<{ sheet?: Row; workbook?: Row }>(cx, "review.workbookStatistics");
-  const kv = (o?: Row): Row[] => Object.entries(o ?? {}).map(([k, v]) => ({ Statistic: k, Value: v }));
+  const kv = (o?: Row): Row[] => Object.entries(o ?? {}).map(([k, v]) => ({ Metric: cx.tw(STAT_NAMES[k] ?? k), Value: v }));
   return (
     <Frame cx={cx} title="Workbook Statistics" onClose={onClose}>
       <h4>{cx.tw("Workbook")}</h4>
@@ -420,7 +434,9 @@ export function EvaluateFormula({ cx, onClose }: Props) {
     return () => {
       alive = false;
     };
-  }, [f, cx]);
+    // cx меняется после каждой команды: зависеть от него нельзя, иначе запросы пойдут по кругу.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [f]);
   return (
     <Frame cx={cx} title="Evaluate Formula" onClose={onClose}>
       <input className="full" value={f} onChange={(e) => setF(e.target.value)} placeholder="=SUM(A1:A3)" />
@@ -475,7 +491,8 @@ export function Thesaurus({ cx, onClose }: Props) {
       alive = false;
       clearTimeout(t);
     };
-  }, [w, cx]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [w]);
   const words = Array.isArray(d) ? (d as unknown[]).map((x) => ({ Word: cell(x) })) : [];
   return (
     <Frame cx={cx} title="Thesaurus" onClose={onClose}>

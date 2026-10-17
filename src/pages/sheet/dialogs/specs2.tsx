@@ -326,7 +326,7 @@ export const FORMS2: Record<string, S> = {
     fields: [
       { k: "check", key: "tab", label: "Tab" },
       { k: "check", key: "semicolon", label: "Semicolon" },
-      { k: "check", key: "comma", label: "Comma" },
+      { k: "check", key: "comma", label: "Comma delimiter" },
       { k: "check", key: "space", label: "Space" },
       { k: "text", key: "other", label: "Other:" },
       { k: "check", key: "treatConsecutive", label: "Treat consecutive delimiters as one" },

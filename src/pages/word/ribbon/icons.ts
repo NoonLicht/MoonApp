@@ -257,6 +257,9 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import {
+  Pi as XPi,
+} from "lucide-react";
+import {
   Calculator as XCalculator,
   Globe as XGlobe,
   Layers as XLayers,
@@ -726,6 +729,7 @@ export const ICONS = {
   stopIc: XSquare,
   search: XSearch,
   lock: XLock,
+  pi: XPi,
 } satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof ICONS;
