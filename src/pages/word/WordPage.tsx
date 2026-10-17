@@ -17,7 +17,7 @@ import { StatusBar, TitleBar } from "@/pages/word/chrome";
 import { STYLES_CHANGED } from "@/pages/word/ribbon/custom";
 import { LANGUAGES } from "@/pages/word/ribbon/model/review";
 import { fileToBase64 } from "@/pages/word/lib";
-import type { TabPrefs } from "@/pages/word/ribbon/model";
+import { baseTabs, contextTabs, type TabPrefs } from "@/pages/word/ribbon/model";
 import type { Cx, PaneName, Params } from "@/pages/word/ribbon/types";
 import type { WordRequest } from "@/api/apiWord";
 
@@ -465,6 +465,7 @@ export default function WordPage() {
     return {
       s: state,
       docId: active.id,
+      themeColors: state.settings.themeColors,
       lang,
       tw,
       run,
@@ -690,7 +691,8 @@ export default function WordPage() {
       {!readMode && !focusMode ? (
         <Ribbon
           cx={cx}
-          prefs={prefs}
+          base={baseTabs(prefs)}
+          context={contextTabs(cx)}
           tab={tab}
           setTab={setTab}
           collapsed={collapsed}

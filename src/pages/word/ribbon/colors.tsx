@@ -72,7 +72,7 @@ function Swatch({
 }
 
 function Palette({ cx, pick }: { cx: Cx; pick: (hex: string) => void }) {
-  const theme = cx.s.settings.themeColors;
+  const theme = cx.themeColors;
   // Порядок Word: светлый 1, тёмный 1, светлый 2, тёмный 2, акценты 1–6.
   const top =
     theme.length >= 10 ? [theme[1], theme[0], theme[3], theme[2], ...theme.slice(4, 10)] : [];

@@ -1,12 +1,20 @@
-import { useState } from "react";
+import { createContext, useContext, useState, type ComponentType } from "react";
 import { ChevronDown } from "lucide-react";
 import { ICONS } from "@/pages/word/ribbon/icons";
 import { MenuPopup, doAct } from "@/pages/word/ribbon/Menu";
 import { CUSTOM } from "@/pages/word/ribbon/custom";
-import type { Ctl, Cx, Item } from "@/pages/word/ribbon/types";
+import type { BaseCx, Ctl, Item } from "@/pages/word/ribbon/types";
+
+/**
+ * Собственные (нестандартные) элементы ленты по идентификатору: у каждой страницы свои.
+ * По умолчанию — элементы «Документов»; «Таблицы» подставляют свои через провайдер.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type CustomMap = Record<string, ComponentType<{ cx: any }>>;
+export const CustomCtx = createContext<CustomMap>(CUSTOM);
 
 /** Подпись: английский ключ → перевод; «\n» делит на две строки под значком. */
-function Label({ text, cx }: { text: string; cx: Cx }) {
+function Label({ text, cx }: { text: string; cx: BaseCx }) {
   const lines = cx.tw(text).split("\n");
   return (
     <span className="wd-lbl2">
@@ -17,7 +25,7 @@ function Label({ text, cx }: { text: string; cx: Cx }) {
   );
 }
 
-function Btn({ c, cx }: { c: Extract<Ctl, { k: "big" | "small" }>; cx: Cx }) {
+function Btn<C extends BaseCx>({ c, cx }: { c: Extract<Ctl<C>, { k: "big" | "small" }>; cx: C }) {
   const Icon = ICONS[c.icon];
   const on = c.on?.(cx) ?? false;
   const enabled = c.enabled ? c.enabled(cx) : true;
@@ -40,13 +48,13 @@ function Btn({ c, cx }: { c: Extract<Ctl, { k: "big" | "small" }>; cx: Cx }) {
   );
 }
 
-function MenuBtn({ c, cx }: { c: Extract<Ctl, { k: "menu" }>; cx: Cx }) {
+function MenuBtn<C extends BaseCx>({ c, cx }: { c: Extract<Ctl<C>, { k: "menu" }>; cx: C }) {
   const [anchor, setAnchor] = useState<DOMRect | null>(null);
   const Icon = ICONS[c.icon];
   const on = c.on?.(cx) ?? false;
   const enabled = c.enabled ? c.enabled(cx) : true;
   const title = cx.tw(c.tip ?? c.label ?? "").replace(/\n/g, " ");
-  const items: Item[] = typeof c.items === "function" ? c.items(cx) : c.items;
+  const items: Item<C>[] = typeof c.items === "function" ? c.items(cx) : c.items;
   const swatch = c.swatch?.(cx);
   const split = typeof c.split === "function" ? c.split(cx) : c.split;
   const big = !!c.big;
@@ -121,7 +129,8 @@ function MenuBtn({ c, cx }: { c: Extract<Ctl, { k: "menu" }>; cx: Cx }) {
   );
 }
 
-export function Control({ c, cx }: { c: Ctl; cx: Cx }) {
+export function Control<C extends BaseCx>({ c, cx }: { c: Ctl<C>; cx: C }) {
+  const customs = useContext(CustomCtx);
   switch (c.k) {
     case "big":
     case "small":
@@ -160,7 +169,7 @@ export function Control({ c, cx }: { c: Ctl; cx: Cx }) {
       );
     }
     case "custom": {
-      const Cmp = CUSTOM[c.id];
+      const Cmp = customs[c.id];
       return Cmp ? <Cmp cx={cx} /> : null;
     }
     case "gap":

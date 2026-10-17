@@ -2,10 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, ChevronUp } from "lucide-react";
 import { Control } from "@/pages/word/ribbon/controls";
 import { doAct } from "@/pages/word/ribbon/Menu";
-import { baseTabs, contextTabs, type TabPrefs } from "@/pages/word/ribbon/model";
-import type { Cx, Group, Tab } from "@/pages/word/ribbon/types";
+import type { BaseCx, Group, Tab } from "@/pages/word/ribbon/types";
 
-function GroupView({ g, cx }: { g: Group; cx: Cx }) {
+function GroupView<C extends BaseCx>({ g, cx }: { g: Group<C>; cx: C }) {
   return (
     <div className="wd-group" data-group={g.id}>
       <div className="wd-group-body">
@@ -43,24 +42,26 @@ function GroupView({ g, cx }: { g: Group; cx: Cx }) {
  * Лента: вкладки (постоянные + контекстные по выделению) и группы выбранной вкладки.
  * Содержимое задаёт модель в ribbon/model; здесь только раскладка.
  */
-export default function Ribbon({
+export default function Ribbon<C extends BaseCx>({
   cx,
-  prefs,
+  base,
+  context,
   tab,
   setTab,
   collapsed,
   setCollapsed,
 }: {
-  cx: Cx;
-  prefs: TabPrefs;
+  cx: C;
+  /** Постоянные вкладки. */
+  base: Tab<C>[];
+  /** Вкладки, которые появляются по выделению (подсвечены). */
+  context: Tab<C>[];
   tab: string;
   setTab: (t: string) => void;
   collapsed: boolean;
   setCollapsed: (c: boolean) => void;
 }) {
-  const base = baseTabs(prefs);
-  const ctxTabs = contextTabs(cx);
-  const all: Tab[] = [...base, ...ctxTabs];
+  const all: Tab<C>[] = [...base, ...context];
   const current = all.find((t) => t.id === tab) ?? base[0];
   const [peek, setPeek] = useState(false);
   const root = useRef<HTMLDivElement>(null);

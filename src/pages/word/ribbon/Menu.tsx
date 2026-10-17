@@ -1,18 +1,18 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Check, ChevronRight } from "lucide-react";
-import type { Act, Cx, Item } from "@/pages/word/ribbon/types";
+import type { Act, BaseCx, Item } from "@/pages/word/ribbon/types";
 import { ICONS } from "@/pages/word/ribbon/icons";
 import { getOverlayRoot } from "@/components/overlayHost";
 
 /** Выполнить действие пункта или кнопки. */
-export function doAct(cx: Cx, act: Act | undefined): void {
+export function doAct<C extends BaseCx>(cx: C, act: Act<C> | undefined): void {
   if (!act) return;
   if ("cmd" in act) cx.run(act.cmd, act.p);
   else act.fn(cx);
 }
 
-const resolve = (cx: Cx, v: Item[] | ((cx: Cx) => Item[])): Item[] =>
+const resolve = <C extends BaseCx>(cx: C, v: Item<C>[] | ((cx: C) => Item<C>[])): Item<C>[] =>
   typeof v === "function" ? v(cx) : v;
 
 /** Положение выпадающего списка у якоря с учётом краёв окна. */
@@ -30,15 +30,15 @@ function place(
   return { left: Math.max(6, left), top: Math.max(6, top) };
 }
 
-function Row({
+function Row<C extends BaseCx>({
   item,
   cx,
   close,
   onOpenSub,
   subOpen,
 }: {
-  item: Item;
-  cx: Cx;
+  item: Item<C>;
+  cx: C;
   close: () => void;
   onOpenSub: (el: HTMLElement | null) => void;
   subOpen: boolean;
@@ -78,15 +78,15 @@ function Row({
   );
 }
 
-function List({
+function List<C extends BaseCx>({
   items,
   cx,
   anchor,
   side,
   close,
 }: {
-  items: Item[];
-  cx: Cx;
+  items: Item<C>[];
+  cx: C;
   anchor: DOMRect;
   side: "below" | "right";
   close: () => void;
@@ -123,7 +123,7 @@ function List({
       </div>
       {sub && items[sub.idx]?.sub ? (
         <List
-          items={resolve(cx, items[sub.idx].sub as Item[] | ((cx: Cx) => Item[]))}
+          items={resolve(cx, items[sub.idx].sub as Item<C>[] | ((cx: C) => Item<C>[]))}
           cx={cx}
           anchor={sub.rect}
           side="right"
@@ -135,14 +135,14 @@ function List({
 }
 
 /** Выпадающее меню у якоря; закрывается кликом вне меню, Escape и прокруткой. */
-export function MenuPopup({
+export function MenuPopup<C extends BaseCx>({
   items,
   cx,
   anchor,
   onClose,
 }: {
-  items: Item[];
-  cx: Cx;
+  items: Item<C>[];
+  cx: C;
   anchor: DOMRect;
   onClose: () => void;
 }) {
@@ -173,15 +173,15 @@ export function MenuPopup({
 }
 
 /** Меню в точке (правая кнопка). */
-export function ContextPopup({
+export function ContextPopup<C extends BaseCx>({
   items,
   cx,
   x,
   y,
   onClose,
 }: {
-  items: Item[];
-  cx: Cx;
+  items: Item<C>[];
+  cx: C;
   x: number;
   y: number;
   onClose: () => void;
