@@ -45,6 +45,7 @@ import { moviesApi } from "@/api/apiMovies";
 import { upscaleApi } from "@/api/apiUpscale";
 import { photoApi } from "@/api/apiPhoto";
 import { wordApi } from "@/api/apiWord";
+import { sheetApi } from "@/api/apiSheet";
 import { ttsApi } from "@/api/apiTts";
 import { myspaceApi } from "@/api/apiMyspace";
 import { m3eApi } from "@/api/apiM3e";
@@ -372,6 +373,7 @@ export const api = {
   ...upscaleApi,
   ...photoApi,
   ...wordApi,
+  ...sheetApi,
   ...ttsApi,
   ...myspaceApi,
   ...m3eApi,

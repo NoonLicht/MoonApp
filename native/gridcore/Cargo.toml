@@ -1,0 +1,28 @@
+[package]
+name = "moon-gridcore"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.95"
+license = "MIT"
+description = "Headless GridCraft core for MoonApp: JSON lines over stdin/stdout"
+
+[[bin]]
+name = "gridcore"
+path = "src/main.rs"
+
+[dependencies]
+# ядро GridCraft (MIT OR Apache-2.0): модель книги, формулы (500+ функций), команды, диаграммы, xlsx
+gridcraft-engine = { git = "https://github.com/storytold/gridcraft", rev = "8ffff19dda63d85348d4b4ec552b8857b82109b1" }
+gridcraft-mcp = { git = "https://github.com/storytold/gridcraft", rev = "8ffff19dda63d85348d4b4ec552b8857b82109b1" }
+gridcraft-model = { git = "https://github.com/storytold/gridcraft", rev = "8ffff19dda63d85348d4b4ec552b8857b82109b1" }
+gridcraft-core = { git = "https://github.com/storytold/gridcraft", rev = "8ffff19dda63d85348d4b4ec552b8857b82109b1" }
+gridcraft-chart = { git = "https://github.com/storytold/gridcraft", rev = "8ffff19dda63d85348d4b4ec552b8857b82109b1" }
+gridcraft-numfmt = { git = "https://github.com/storytold/gridcraft", rev = "8ffff19dda63d85348d4b4ec552b8857b82109b1" }
+serde = "1"
+serde_json = "1"
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 8
+strip = true

@@ -27,6 +27,7 @@ export const ROUTE_JSON_LIMITS: ReadonlyArray<{ prefix: string; limit: string }>
   { prefix: "/api/mail", limit: "40mb" },
   // картинки в документ идут base64 в теле команды insert.picture
   { prefix: "/api/word", limit: "40mb" },
+  { prefix: "/api/sheet", limit: "40mb" },
   { prefix: "/api/diary", limit: "8mb" },
   { prefix: "/api/quicknotes", limit: "8mb" },
 ];

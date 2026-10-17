@@ -319,3 +319,4 @@ server/canvasAi.js
 server/internalKey.js
 # ядро редактора (Rust): артефакты сборки
 native/wordcore/target/
+native/gridcore/target/
