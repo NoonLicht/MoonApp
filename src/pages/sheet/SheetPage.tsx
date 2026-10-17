@@ -593,6 +593,7 @@ export default function SheetPage() {
             refs={refs}
             onPoint={onPoint}
             focusKey={focusKey}
+            tw={tw}
           />
         </div>
         {pane ? <PaneHost name={pane} cx={cx} docs={docs} onClose={() => setPane(null)} /> : null}

@@ -6,6 +6,8 @@ import type { EditApi, EditState, ObjSel } from "@/pages/sheet/edit";
 import { Geo, HEADER_H, HEADER_W_MIN, a1, colName, rangeA1 } from "@/pages/sheet/grid/geometry";
 import { paintGrid, type Selection } from "@/pages/sheet/grid/paint";
 import CellEditor from "@/pages/sheet/grid/CellEditor";
+import PageOverlay from "@/pages/sheet/grid/PageOverlay";
+import type { PagePart } from "@/pages/sheet/grid/PageOverlay";
 import Objects from "@/pages/sheet/grid/Objects";
 
 const BLOCK_X = 160;
@@ -41,6 +43,7 @@ export interface GridViewProps {
   onPoint: (ref: string, extend: boolean) => boolean;
   /** Режим мыши, выбранный на ленте (формат по образцу и т. п.). */
   focusKey?: number;
+  tw: (en: string) => string;
 }
 
 const sameRange = (a: SheetRange, b: SheetRange): boolean =>
@@ -216,6 +219,25 @@ export default function GridView(p: GridViewProps) {
 
   const redraw = useCallback(() => setTick((t) => t + 1), []);
   const [ink, setInk] = useState<[number, number][] | null>(null);
+  // Страницы печати для страничного режима и разметки страницы.
+  const [pages, setPages] = useState<PagePart[]>([]);
+  const mode = state.view.mode;
+  const revision = state.doc.revision;
+  useEffect(() => {
+    if (mode === "normal") {
+      setPages([]);
+      return;
+    }
+    let alive = true;
+    void (docs.run("file.printPreview", { sheets: "active" }, true) as Promise<unknown>).then((r) => {
+      const list = (r as { pageList?: { page: number; range: string }[] } | undefined)?.pageList;
+      if (alive && list) setPages(list.map((x) => ({ page: x.page, range: x.range })));
+    });
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, revision, state.active]);
 
   // Рисуем.
   useLayoutEffect(() => {
@@ -886,6 +908,9 @@ export default function GridView(p: GridViewProps) {
               size={size}
               focusGrid={focusKb}
             />
+          ) : null}
+          {pages.length && geo ? (
+            <PageOverlay pages={pages} geo={geo} zoom={Z} scroll={scroll} headerW={headerW} headerH={headerH} size={size} label={(n) => `${p.tw("Page")} ${n}`} />
           ) : null}
           {ink && ink.length > 1 ? (
             <svg style={{ position: "absolute", left: 0, top: 0, width: size.w, height: size.h, pointerEvents: "none" }}>
