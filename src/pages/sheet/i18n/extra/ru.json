@@ -787,5 +787,11 @@
   "No cells are being watched.": "Контрольных значений нет.",
   "Select Data…": "Выбрать данные…",
   "Options": "Параметры",
-  "Columns": "Столбцы"
+  "Columns": "Столбцы",
+  "PivotTable Fields": "Поля сводной таблицы",
+  "Format Chart Area": "Формат области диаграммы",
+  "Watch Window": "Окно контрольного значения",
+  "Selection Pane": "Область выделения",
+  "Find and Replace": "Найти и заменить",
+  "Comments": "Примечания"
 }
