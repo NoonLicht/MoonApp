@@ -90,7 +90,7 @@ function Frame({ cx, title, onClose, children, actions, size }: { cx: SheetCx; t
   );
 }
 
-const keys = (sc: unknown): string => String(sc ?? "").replace(/Cmd/g, "Ctrl");
+const keys = (sc: unknown): string => String(sc ?? "").split("Cmd").join("Ctrl");
 
 const STAT_NAMES: Record<string, string> = {
   cellsWithData: "Cells with data",
