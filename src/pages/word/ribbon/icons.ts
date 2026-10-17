@@ -257,6 +257,19 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import {
+  Calculator as XCalculator,
+  Globe as XGlobe,
+  Layers as XLayers,
+  List as XList,
+  Lock as XLock,
+  Move as XMove,
+  Network as XNetwork,
+  Palette as XPalette,
+  RefreshCw as XRefreshCw,
+  Search as XSearch,
+  Square as XSquare,
+} from "lucide-react";
+import {
   Blend as XBlend,
   Brush as XBrush,
   Eraser as XEraser,
@@ -700,6 +713,19 @@ export const ICONS = {
   condFmt: XBlend,
   cellStyles: XBrush,
   eraser: XEraser,
+  palette: XPalette,
+  move: XMove,
+  slidersH: XSlidersHorizontal,
+  refresh: XRefreshCw,
+  calculator: XCalculator,
+  list: XList,
+  globe: XGlobe,
+  layers: XLayers,
+  network: XNetwork,
+  tocUpdate: XRefreshCw,
+  stopIc: XSquare,
+  search: XSearch,
+  lock: XLock,
 } satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof ICONS;

@@ -161,6 +161,8 @@ export interface SheetState {
     formulaBar: boolean;
     ruler: boolean;
     tabColor: string | null;
+    printGridlines: boolean;
+    printHeadings: boolean;
   };
   used: SheetRange | null;
   maxRows: number;
@@ -178,6 +180,7 @@ export interface SheetState {
   objects: SheetObjects;
   mode: string;
   painter: boolean;
+  draw: { tool: string; color: string; width: number };
   recording: boolean;
   clipboard: { range: SheetRange; sheet: number; cut: boolean; areas: SheetRange[] } | null;
   theme: { colors: string[]; name: string; major: string; minor: string };
