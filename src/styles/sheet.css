@@ -515,3 +515,12 @@
 .sh-pv-item select { width: 30px; font-size: 11px; }
 .sh-pv-foot { display: flex; gap: 6px; margin-bottom: 8px; }
 .sh-inking [data-obj] { pointer-events: none !important; }
+
+/* Редактор ячейки не должен сжиматься глобальным max-width у textarea */
+.sh-editor { max-width: none !important; min-height: 0 !important; }
+/* Компактная строка формул */
+.sh-fbar { align-items: flex-start; padding: 3px 6px; }
+.sh-namebox { width: 104px; height: 26px; box-sizing: border-box; }
+.sh-fx { min-height: 26px; height: auto; box-sizing: border-box; padding: 3px 8px; }
+.sh-fx[rows="1"] { height: 26px; overflow: hidden; }
+.sh-fbtns, .sh-expand { height: 26px; }
