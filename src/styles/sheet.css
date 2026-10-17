@@ -502,3 +502,15 @@
 .sh-dlg-grid tbody tr.on { background: rgba(120,140,255,0.28); }
 .sh-dlg-form { display: grid; gap: 6px; }
 .sh-dlg-form label { display: grid; gap: 3px; }
+
+/* Панель полей сводной таблицы */
+.sh-pv { display: flex; flex-direction: column; gap: 8px; font-size: 12.5px; }
+.sh-pv-title { font-weight: 600; opacity: 0.85; }
+.sh-pv-fields { display: flex; flex-direction: column; gap: 3px; max-height: 190px; overflow: auto; }
+.sh-pv-fields label, .sh-chk { display: flex; align-items: center; gap: 6px; }
+.sh-pv-areas { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.sh-pv-area { border: 1px solid rgba(128,128,128,0.35); border-radius: 6px; padding: 4px; min-height: 64px; }
+.sh-pv-area-title { font-size: 11px; opacity: 0.75; margin-bottom: 3px; }
+.sh-pv-item { display: flex; align-items: center; gap: 4px; padding: 2px 4px; border-radius: 4px; background: rgba(128,128,128,0.15); margin-bottom: 3px; }
+.sh-pv-item select { width: 30px; font-size: 11px; }
+.sh-pv-foot { display: flex; gap: 6px; margin-bottom: 8px; }

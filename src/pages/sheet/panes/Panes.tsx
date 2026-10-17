@@ -4,6 +4,7 @@ import { X } from "lucide-react";
 import { Btn } from "@/components/ui";
 import type { SheetCx, SheetPane } from "@/pages/sheet/types";
 import type { SheetDocs } from "@/pages/sheet/useSheetDocs";
+import { FormatChartPane, NamesPane, PivotFieldsPane, WatchPane } from "@/pages/sheet/panes/Panes2";
 
 const TITLES: Record<SheetPane, string> = {
   pivotFields: "PivotTable Fields",
@@ -220,9 +221,10 @@ export function PaneHost({
       {name === "find" ? <FindPane cx={cx} docs={docs} /> : null}
       {name === "comments" ? <CommentsPane cx={cx} /> : null}
       {name === "selection" ? <SelectionPane cx={cx} /> : null}
-      {name === "pivotFields" ? <div className="wd-muted">{cx.tw("Select a cell in a PivotTable.")}</div> : null}
-      {name === "formatChart" ? <div className="wd-muted">{cx.tw("Select a chart.")}</div> : null}
-      {name === "watch" || name === "names" ? <div className="wd-muted">…</div> : null}
+      {name === "pivotFields" ? <PivotFieldsPane cx={cx} /> : null}
+      {name === "formatChart" ? <FormatChartPane cx={cx} /> : null}
+      {name === "watch" ? <WatchPane cx={cx} /> : null}
+      {name === "names" ? <NamesPane cx={cx} /> : null}
     </Shell>
   );
 }

@@ -332,7 +332,7 @@
   "Divide": "Разделить",
   "Skip blanks": "Пропускать пустые ячейки",
   "Series in": "Расположение",
-  "Rows": "по строкам",
+  "Rows": "Строки",
   "Growth": "Геометрическая",
   "AutoFill": "Автозаполнение",
   "Date unit": "Единицы",
@@ -777,5 +777,15 @@
   "Number of tables": "Таблиц",
   "Number of formulas": "Формул",
   "Number of comments": "Примечаний",
-  "Names": "Имена"
+  "Names": "Имена",
+  "Choose fields to add to report:": "Выберите поля для добавления в отчёт:",
+  "Drag fields between areas below:": "Перетащите поля в нужные области:",
+  "Move to": "Переместить в",
+  "Legend": "Легенда",
+  "Gridlines": "Линии сетки",
+  "Add Watch…": "Добавить контрольное значение…",
+  "No cells are being watched.": "Контрольных значений нет.",
+  "Select Data…": "Выбрать данные…",
+  "Options": "Параметры",
+  "Columns": "Столбцы"
 }
