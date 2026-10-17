@@ -5,12 +5,15 @@
  *  GET    /api/word/sessions               — открытые документы
  *  POST   /api/word/sessions               — { template? } новый документ
  *  POST   /api/word/open                   — multipart { file } открыть файл (docx, doc, odt, rtf, html, md, txt…)
+ *  POST   /api/word/upload                 — multipart { file } → { path }: файл для команд ядра с параметром path
  *  DELETE /api/word/sessions/:id           — закрыть документ
  *  GET    /api/word/:id/state              — страницы, каретка, выделение, форматирование под кареткой
  *  POST   /api/word/:id/click              — { page, x, y, extend?, count? } клик по странице (пункты)
  *  POST   /api/word/:id/key                — { key, ctrl?, alt?, shift? }
  *  POST   /api/word/:id/type               — { text }
  *  POST   /api/word/:id/run                — { command, params? } любая команда ядра → { result, state }
+ *  GET    /api/word/:id/clip               — буфер обмена ядра { text, html } после Копировать/Вырезать
+ *  POST   /api/word/:id/call               — { method, params } безопасные запросы данных (структура документа…)
  *  GET    /api/word/:id/commands           — список команд ядра
  *  GET    /api/word/:id/page/:n            — страница как PNG (?scale=1.5)
  *  GET    /api/word/:id/export?format=     — сохранить и скачать (docx, pdf, odt, rtf, html, md, txt)
@@ -55,7 +58,13 @@ router.get("/sessions", (_req, res) => res.json({ sessions: core.list() }));
 
 router.post("/sessions", async (req, res) => {
   try {
-    res.json(await core.open({ template: String(req.body?.template || "blank") }));
+    res.json(
+      await core.open({
+        template: String(req.body?.template || "blank"),
+        region: req.body?.region ? String(req.body.region) : undefined,
+        lang: req.body?.lang ? String(req.body.lang) : undefined,
+      }),
+    );
   } catch (e) {
     fail(res, e);
   }
@@ -71,6 +80,13 @@ router.post("/open", upload.single("file"), async (req, res) => {
     removePath(f.path);
     fail(res, e);
   }
+});
+
+/** Загрузить файл на сервер и вернуть его путь: команды ядра с параметром `path` (объект, текст из файла, шрифт, список получателей…). */
+router.post("/upload", upload.single("file"), (req, res) => {
+  const f = req.file;
+  if (!f) return void res.status(400).json({ error: "no_file" });
+  res.json({ path: f.path, name: String(f.originalname || path.basename(f.path)) });
 });
 
 router.delete("/sessions/:id", (req, res) => res.json({ ok: core.close(req.params.id) }));
@@ -109,6 +125,31 @@ router.post(
   "/:id/run",
   forward("view.run", (b) => ({ command: String(b.command || ""), params: b.params ?? {} })),
 );
+
+router.get(
+  "/:id/clip",
+  forward("view.clip", () => ({})),
+);
+
+/** Метод ядра напрямую (данные для панелей). Только чтение/служебные: правки идут через /run. */
+const QUERY_METHODS = new Set([
+  "document.inspect",
+  "document.text",
+  "document.layout",
+  "view.clip",
+  "view.state",
+  "engine.commands",
+]);
+router.post("/:id/call", async (req, res) => {
+  try {
+    const method = String(req.body?.method || "");
+    if (!QUERY_METHODS.has(method))
+      return void res.status(400).json({ error: "method_not_allowed" });
+    res.json(await core.call(req.params.id, method, req.body?.params ?? {}));
+  } catch (e) {
+    fail(res, e);
+  }
+});
 
 let commandsCache: unknown = null;
 router.get("/:id/commands", async (req, res) => {

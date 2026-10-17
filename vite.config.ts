@@ -17,7 +17,7 @@ const DEV_TOKEN_FILE = path.join(
 );
 function apiProxy(): ProxyOptions {
   return {
-    target: "http://127.0.0.1:4000",
+    target: `http://127.0.0.1:${process.env.MOONAPP_PORT || 4000}`,
     configure(proxy) {
       proxy.on("proxyReq", (req) => {
         try {
@@ -78,7 +78,12 @@ export default defineConfig({
           )
             return "vendor-codemirror";
           if (pkg === "katex") return "vendor-katex";
-          if (pkg === "@xyflow/react" || pkg === "@xyflow/system" || pkg === "dagre" || pkg === "graphlib")
+          if (
+            pkg === "@xyflow/react" ||
+            pkg === "@xyflow/system" ||
+            pkg === "dagre" ||
+            pkg === "graphlib"
+          )
             return "vendor-flow";
           if (pkg === "highlight.js") return "vendor-highlight";
           if (pkg === "react" || pkg === "react-dom" || pkg === "scheduler") return "vendor-react";

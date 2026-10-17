@@ -129,8 +129,8 @@ const FILES = {
   log: path.join(DIRS.logs, "app.log"),
 };
 
-/** Порт локального API-сервера. */
-const PORT = 4000;
+/** Порт локального API-сервера (MOONAPP_PORT нужен второму экземпляру для проверок). */
+const PORT = Number(process.env.MOONAPP_PORT) || 4000;
 
 /**
  * Путь к бинарю в server/vendor/<...>, который кладётся в комплект инсталлятора

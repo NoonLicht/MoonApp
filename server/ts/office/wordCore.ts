@@ -147,12 +147,27 @@ export const list = (): { id: string; name: string; path: string }[] =>
 export const get = (id: string): WordSession | undefined => sessions.get(id);
 
 const TEMPLATES = ["blank", "sample", "letter", "resume", "report"];
+/** Языки, для которых у ядра есть правописание «из коробки». */
+const PROOF_LANGS = new Set([
+  "ru-RU",
+  "pl-PL",
+  "pt-BR",
+  "it-IT",
+  "hr-HR",
+  "tr-TR",
+  "cs-CZ",
+  "en-GB",
+]);
 
 /** Открыть новый сеанс: пустой документ/шаблон либо файл с диска. */
 export async function open(o: {
   file?: string;
   template?: string;
   name?: string;
+  /** Региональные настройки нового документа (формат бумаги и единицы): ru-RU, en-US… */
+  region?: string;
+  /** Язык проверки правописания нового документа (BCP 47), если ядро его знает. */
+  lang?: string;
 }): Promise<{ id: string; state: unknown }> {
   const bin = binPath();
   if (!bin) throw new Error("core_not_installed");
@@ -160,10 +175,24 @@ export async function open(o: {
   const proc = new CoreProc(bin);
   const id = `d${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
   try {
+    if (o.region && /^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$/.test(o.region)) {
+      await proc
+        .call("engine.execute", { command: "file.options", params: { region: o.region } })
+        .catch(() => undefined);
+    }
     if (o.file) {
       await proc.call("engine.execute", { command: "file.open", params: { path: o.file } });
-    } else if (o.template && TEMPLATES.includes(o.template) && o.template !== "blank") {
+    } else if (o.template && TEMPLATES.includes(o.template)) {
+      // Новый документ создаётся уже с учётом региона (формат бумаги), в том числе пустой.
       await proc.call("engine.execute", { command: "file.new", params: { template: o.template } });
+      if (o.lang && PROOF_LANGS.has(o.lang)) {
+        await proc
+          .call("engine.execute", {
+            command: "review.language",
+            params: { lang: o.lang, default: true },
+          })
+          .catch(() => undefined);
+      }
     }
     const state = await proc.call("view.state");
     sessions.set(id, {
