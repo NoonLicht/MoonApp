@@ -514,3 +514,4 @@
 .sh-pv-item { display: flex; align-items: center; gap: 4px; padding: 2px 4px; border-radius: 4px; background: rgba(128,128,128,0.15); margin-bottom: 3px; }
 .sh-pv-item select { width: 30px; font-size: 11px; }
 .sh-pv-foot { display: flex; gap: 6px; margin-bottom: 8px; }
+.sh-inking [data-obj] { pointer-events: none !important; }

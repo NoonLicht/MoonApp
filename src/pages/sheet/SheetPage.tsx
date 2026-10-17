@@ -517,7 +517,7 @@ export default function SheetPage() {
     );
   }
 
-  const base = baseTabs({ draw: false });
+  const base = baseTabs({ draw: true });
   const showPane = pane !== null;
 
   return (

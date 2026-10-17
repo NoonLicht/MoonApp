@@ -215,6 +215,7 @@ export default function GridView(p: GridViewProps) {
   );
 
   const redraw = useCallback(() => setTick((t) => t + 1), []);
+  const [ink, setInk] = useState<[number, number][] | null>(null);
 
   // Рисуем.
   useLayoutEffect(() => {
@@ -504,9 +505,60 @@ export default function GridView(p: GridViewProps) {
     window.addEventListener("mouseup", finishDrag);
   };
 
+  /** Перо и ластик: штрих собирается в точках листа и отправляется ядру целиком. */
+  const startInk = (e: React.MouseEvent, tool: "pen" | "eraser"): void => {
+    const first = eventPos(e);
+    const gone = new Set<number>();
+    const erase = (px: number, py: number): void => {
+      const t = toSheet(px, py);
+      const hit = grid?.shapes
+        .filter((s) => s.kind === "Ink" && !gone.has(s.id) && t.xs >= s.x - 4 && t.xs <= s.x + s.w + 4 && t.ys >= s.y - 4 && t.ys <= s.y + s.h + 4)
+        .pop();
+      if (!hit) return;
+      gone.add(hit.id);
+      void docs.run("object.delete", { kind: "shape", id: hit.id });
+    };
+    const pts: [number, number][] = [];
+    const add = (px: number, py: number): void => {
+      if (tool === "eraser") return erase(px, py);
+      const t = toSheet(px, py);
+      pts.push([Math.round(t.xs * 10) / 10, Math.round(t.ys * 10) / 10]);
+      setInk([...pts]);
+    };
+    add(first.x, first.y);
+    const move = (ev: MouseEvent): void => {
+      const q = eventPos(ev);
+      add(Math.min(Math.max(q.x, headerW + 1), size.w - 1), Math.min(Math.max(q.y, headerH + 1), size.h - 1));
+    };
+    const up = (): void => {
+      window.removeEventListener("mousemove", move);
+      window.removeEventListener("mouseup", up);
+      setInk(null);
+      if (tool === "pen" && pts.length) {
+        const line = pts.length === 1 ? [pts[0], [pts[0][0] + 0.5, pts[0][1] + 0.5]] : pts;
+        void docs.run("draw.stroke", {
+          points: line,
+          ...(state.draw.color ? { color: state.draw.color } : {}),
+          ...(state.draw.width ? { width: state.draw.width } : {}),
+        });
+      }
+    };
+    window.addEventListener("mousemove", move);
+    window.addEventListener("mouseup", up);
+  };
+
   const onMouseDown = (e: React.MouseEvent): void => {
     if (e.button !== 0 || !geo) return;
     const tgt = e.target as HTMLElement;
+    const tool = state.draw.tool;
+    if ((tool === "pen" || tool === "eraser") && !tgt.closest(".sh-editor")) {
+      const q = eventPos(e);
+      if (q.x > headerW && q.y > headerH && q.x < size.w && q.y < size.h) {
+        e.preventDefault();
+        startInk(e, tool);
+        return;
+      }
+    }
     if (tgt.closest("[data-obj]") || tgt.closest(".sh-editor")) return;
     const { x, y } = eventPos(e);
     if (x > size.w || y > size.h) return; // полосы прокрутки
@@ -803,7 +855,10 @@ export default function GridView(p: GridViewProps) {
   const active = state.sel.active;
 
   return (
-    <div className="sh-grid-wrap" style={{ cursor }}>
+    <div
+      className={`sh-grid-wrap${state.draw.tool ? " sh-inking" : ""}`}
+      style={{ cursor: state.draw.tool === "pen" ? "crosshair" : state.draw.tool === "eraser" ? "cell" : cursor }}
+    >
       <div
         ref={scroller}
         className="sh-scroll"
@@ -831,6 +886,18 @@ export default function GridView(p: GridViewProps) {
               size={size}
               focusGrid={focusKb}
             />
+          ) : null}
+          {ink && ink.length > 1 ? (
+            <svg style={{ position: "absolute", left: 0, top: 0, width: size.w, height: size.h, pointerEvents: "none" }}>
+              <polyline
+                points={ink.map(([a, b]) => `${screenOf(a, b, false, false).x},${screenOf(a, b, false, false).y}`).join(" ")}
+                fill="none"
+                stroke={state.draw.color || "#000000"}
+                strokeWidth={(state.draw.width || 2) * Z}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
           ) : null}
           {edit && geo ? (
             <CellEditor
