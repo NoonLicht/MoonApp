@@ -793,5 +793,15 @@
   "Watch Window": "Окно контрольного значения",
   "Selection Pane": "Область выделения",
   "Find and Replace": "Найти и заменить",
-  "Comments": "Примечания"
+  "Comments": "Примечания",
+  "(no names defined)": "(имена не заданы)",
+  "Name Manager…": "Диспетчер имён…",
+  "Insert…": "Вставить…",
+  "Move or Copy…": "Переместить или скопировать…",
+  "Unhide…": "Отобразить…",
+  "Paste Options": "Параметры вставки",
+  "Delete…": "Удалить…",
+  "Clear Filter": "Снять фильтр",
+  "Define Name…": "Присвоить имя…",
+  "Resize Table…": "Изменить размер таблицы…"
 }

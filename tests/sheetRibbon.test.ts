@@ -166,6 +166,12 @@ for (const f of walk(path.join(__dirname, "..", "src", "pages", "sheet"))) {
   for (const m of src.matchAll(/\btw\(\s*"([^"$]+)"/g)) labels.add(m[1]);
   for (const m of src.matchAll(/\bempty="([^"]+)"/g)) labels.add(m[1]);
   for (const m of src.matchAll(/\btitle="([^"]+)"/g)) labels.add(m[1]);
+  if (/(contextMenu|chrome|Backstage|FilterMenu|ListPicker|Panes2?)\.tsx$/.test(f)) {
+    for (const m of src.matchAll(/\blabel: "([^"$]+)"/g)) labels.add(m[1]);
+    for (const m of src.matchAll(/\bit[df]?\(\s*"([^"$]+)"/g)) labels.add(m[1]);
+    for (const m of src.matchAll(/\b(?:title|label|placeholder|aria-label)="([^"{]+)"/g)) labels.add(m[1]);
+    for (const m of src.matchAll(/>\s*([A-Z][^<>{}"]{2,60}?)\s*</g)) labels.add(m[1]);
+  }
 }
 
 describe("лента «Таблиц»", () => {
