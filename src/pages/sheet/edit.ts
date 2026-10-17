@@ -16,6 +16,10 @@ export type MoveDir = "down" | "right" | "up" | "left" | "none";
 export interface EditApi {
   /** Положение курсора в редакторе (обновляют сами редакторы): нужно, чтобы вставить ссылку при указании мышью. */
   caret: { current: number };
+  /** Набран символ без открытой правки: правка начнётся с него, когда выделение будет актуальным. */
+  type: (ch: string) => void;
+  /** Enter/Tab нажаты сразу за набранными символами, пока правка не началась: true, если клавиша встала в очередь. */
+  typeEnd: (dir: MoveDir) => boolean;
   /** Начать правку активной ячейки; `text` — с чего начать (null — текущее содержимое). */
   begin: (text?: string | null, origin?: "cell" | "bar", mode?: "enter" | "edit") => void;
   set: (text: string, caret?: number) => void;

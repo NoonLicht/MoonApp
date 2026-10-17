@@ -24,6 +24,8 @@ export function useSheetDocs() {
   const chain = useRef<Promise<unknown>>(Promise.resolve());
   const docsRef = useRef<SheetDoc[]>([]);
   docsRef.current = docs;
+  /** Последнее состояние каждой книги: обновляется сразу, а не после отрисовки (нужно для ввода «на лету»). */
+  const latest = useRef(new Map<string, SheetState>());
   /** Что ядро просило показать (диалог, правка ячейки…): обработчик ставит страница. */
   const onRequests = useRef<(reqs: SheetRequest[], docId: string) => void>(() => undefined);
 
@@ -49,6 +51,7 @@ export function useSheetDocs() {
   const active = docs.find((d) => d.id === activeId) ?? null;
 
   const patch = useCallback((id: string, state: SheetState) => {
+    latest.current.set(id, state);
     setDocs((list) => list.map((d) => (d.id === id ? { ...d, state } : d)));
     if (state.requests?.length) onRequests.current(state.requests, id);
   }, []);
@@ -67,6 +70,7 @@ export function useSheetDocs() {
   }, []);
 
   const add = useCallback((id: string, name: string, state: SheetState) => {
+    latest.current.set(id, state);
     setDocs((list) => [...list, { id, name, state }]);
     setActiveId(id);
     if (state.requests?.length) onRequests.current(state.requests, id);
@@ -145,6 +149,10 @@ export function useSheetDocs() {
     [activeId, enqueue],
   );
 
+  /** Все поставленные в очередь действия выполнены (состояние уже свежее). */
+  const idle = useCallback(() => chain.current.then(() => undefined), []);
+  const getState = useCallback((id: string) => latest.current.get(id), []);
+
   const refresh = useCallback(() => {
     const id = activeId;
     if (!id) return Promise.resolve(undefined);
@@ -180,6 +188,8 @@ export function useSheetDocs() {
     run,
     query,
     refresh,
+    idle,
+    getState,
     exportAs,
   };
 }

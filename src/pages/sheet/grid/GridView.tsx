@@ -728,10 +728,12 @@ export default function GridView(p: GridViewProps) {
         return;
       case "Tab":
         e.preventDefault();
+        if (editApi.typeEnd(e.shiftKey ? "left" : "right")) return;
         void docs.run("selection.next", { forward: !e.shiftKey, byRow: true });
         return;
       case "Enter":
         e.preventDefault();
+        if (editApi.typeEnd(e.shiftKey ? "up" : "down")) return;
         if (state.sel.ranges.length > 1 || !state.sel.ranges[0] || state.sel.ranges[0].a1.includes(":")) {
           void docs.run("selection.next", { forward: !e.shiftKey, byRow: false });
         } else {
@@ -752,7 +754,7 @@ export default function GridView(p: GridViewProps) {
         return;
       case "Backspace":
         e.preventDefault();
-        editApi.begin("", "cell", "enter");
+        editApi.type("");
         return;
       case "Escape":
         void docs.run("edit.clearClipboard", {});
@@ -792,7 +794,7 @@ export default function GridView(p: GridViewProps) {
     // Печатный символ начинает ввод поверх ячейки.
     if (k.length === 1) {
       e.preventDefault();
-      editApi.begin(k, "cell", "enter");
+      editApi.type(k);
     }
   };
 
@@ -875,7 +877,7 @@ export default function GridView(p: GridViewProps) {
           const el = e.currentTarget;
           const text = el.value;
           el.value = "";
-          if (text && !edit) editApi.begin(text, "cell", "enter");
+          if (text && !edit) editApi.type(text);
         }}
         data-active={`${active.a1}`}
       />

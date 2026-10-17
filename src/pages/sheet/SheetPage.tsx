@@ -16,7 +16,7 @@ import { a1, colName } from "@/pages/sheet/grid/geometry";
 import { findRefs, REF_COLORS } from "@/pages/sheet/functions";
 import type { EditApi, EditState, MoveDir, ObjSel } from "@/pages/sheet/edit";
 import type { SheetCx, SheetPane } from "@/pages/sheet/types";
-import type { SheetCommand, SheetRange, SheetRequest } from "@/api/apiSheet";
+import type { SheetCommand, SheetRange, SheetRequest, SheetState } from "@/api/apiSheet";
 import Backstage, { type BackstagePage } from "@/pages/sheet/Backstage";
 import DialogHost, { type OpenDialog } from "@/pages/sheet/dialogs/registry";
 import ContextLayer, { type ContextState } from "@/pages/sheet/parts/contextMenu";
@@ -97,28 +97,103 @@ export default function SheetPage() {
   const focusGrid = useCallback(() => setFocusKey((n) => n + 1), []);
 
   /* ---------------- правка ячейки ---------------- */
+  const docIdRef = useRef("");
+  docIdRef.current = active?.id ?? "";
+  const getState = docs.getState;
+  const idle = docs.idle;
   const begin = useCallback(
     (text?: string | null, origin: "cell" | "bar" = "cell", mode: "enter" | "edit" = "edit") => {
-      const st = stateRef.current;
+      const st = getState(docIdRef.current) ?? stateRef.current;
       if (!st) return;
       pointRef.current = null;
       const base = text === undefined || text === null ? st.bar.text : text;
-      setEdit({ r: st.sel.active.r, c: st.sel.active.c, text: base, mode, origin });
+      const next: EditState = { r: st.sel.active.r, c: st.sel.active.c, text: base, mode, origin };
+      editRef.current = next; // сразу: следующий символ должен увидеть открытую правку, не дожидаясь отрисовки
+      setEdit(next);
     },
-    [],
+    [getState],
   );
+  // Символы, набранные пока ядро ещё отвечает на клик/стрелку: копим и начинаем правку с актуальной ячейки.
+  // Завершающая клавиша (Enter, Tab), нажатая сразу за ними, тоже ждёт своей очереди.
+  const typing = useRef<{ text: string; end: MoveDir | null }[]>([]);
+  const flushing = useRef(false);
+  const afterMove = useCallback(
+    async (dir: MoveDir, st: SheetState): Promise<void> => {
+      if (dir === "none") return;
+      const single = st.sel.ranges.length === 1 && !st.sel.ranges[0].a1.includes(":");
+      if (!single) {
+        await docsRun("selection.next", { forward: dir === "down" || dir === "right", byRow: dir === "right" || dir === "left" });
+        return;
+      }
+      const [dr, dc] = dir === "down" ? [1, 0] : dir === "up" ? [-1, 0] : dir === "right" ? [0, 1] : [0, -1];
+      await docsRun("selection.move", { dr, dc });
+    },
+    [docsRun],
+  );
+  const flushTyping = useCallback(async () => {
+    if (flushing.current) return;
+    flushing.current = true;
+    try {
+      // Записи обрабатываются по порядку: каждая видит выделение, оставленное предыдущей.
+      while (typing.current.length) {
+        await commitDone.current;
+        await idle();
+        const q = typing.current.shift();
+        const st = getState(docIdRef.current) ?? stateRef.current;
+        if (!q || !st) continue;
+        if (!q.end) {
+          const open = editRef.current;
+          if (open) {
+            const next = { ...open, text: open.text + q.text, caret: undefined };
+            editRef.current = next;
+            setEdit(next);
+          } else begin(q.text, "cell", "enter");
+          continue;
+        }
+        const res = await docsRun("cell.set", { cell: a1(st.sel.active.r, st.sel.active.c), input: q.text });
+        if (res === undefined) {
+          begin(q.text, "cell", "edit");
+          typing.current = [];
+        } else await afterMove(q.end, getState(docIdRef.current) ?? st);
+      }
+    } finally {
+      flushing.current = false;
+    }
+  }, [idle, getState, begin, docsRun, afterMove]);
+  const typeChar = useCallback(
+    (ch: string) => {
+      const q = typing.current;
+      const last = q[q.length - 1];
+      if (last && !last.end) last.text += ch;
+      else q.push({ text: ch, end: null });
+      void flushTyping();
+    },
+    [flushTyping],
+  );
+  const typeEnd = useCallback((dir: MoveDir): boolean => {
+    const q = typing.current;
+    const last = q[q.length - 1];
+    if (!last || last.end) return false;
+    last.end = dir;
+    return true;
+  }, []);
   const setText = useCallback((text: string, c?: number) => {
+    const cur = editRef.current;
+    if (cur) editRef.current = { ...cur, text, caret: c };
     setEdit((e) => (e ? { ...e, text, caret: c } : e));
   }, []);
-  const commit = useCallback(
-    async (dir: MoveDir = "down", opts: { fill?: boolean; array?: boolean } = {}): Promise<void> => {
+  /** Завершение правки идёт в несколько запросов; ввод следующей ячейки ждёт, пока оно закончится целиком. */
+  const commitDone = useRef<Promise<void>>(Promise.resolve());
+  const doCommit = useCallback(
+    async (dir: MoveDir, opts: { fill?: boolean; array?: boolean }): Promise<void> => {
       const e = editRef.current;
-      const st = stateRef.current;
+      const st = getState(docIdRef.current) ?? stateRef.current;
       if (!e || !st) return;
+      editRef.current = null;
       setEdit(null);
       pointRef.current = null;
       const cell = a1(e.r, e.c);
-      const same = e.text === st.bar.text;
+      const same = e.text === st.bar.text && e.r === st.sel.active.r && e.c === st.sel.active.c;
       if (!same || opts.fill || opts.array) {
         const res = opts.fill
           ? await docsRun("range.fill", { input: e.text })
@@ -129,28 +204,30 @@ export default function SheetPage() {
           return;
         }
       }
-      const single = st.sel.ranges.length === 1 && !st.sel.ranges[0].a1.includes(":");
-      if (dir === "none") return;
-      if (!single) {
-        await docsRun("selection.next", {
-          forward: dir === "down" || dir === "right",
-          byRow: dir === "right" || dir === "left",
-        });
-        return;
-      }
-      const [dr, dc] = dir === "down" ? [1, 0] : dir === "up" ? [-1, 0] : dir === "right" ? [0, 1] : [0, -1];
-      await docsRun("selection.move", { dr, dc });
+      await afterMove(dir, st);
     },
-    [docsRun],
+    [docsRun, afterMove, getState],
+  );
+  const commit = useCallback(
+    (dir: MoveDir = "down", opts: { fill?: boolean; array?: boolean } = {}): Promise<void> => {
+      const p = doCommit(dir, opts);
+      commitDone.current = p.then(
+        () => undefined,
+        () => undefined,
+      );
+      return p;
+    },
+    [doCommit],
   );
   const cancel = useCallback(() => {
+    editRef.current = null;
     setEdit(null);
     pointRef.current = null;
     focusGrid();
   }, [focusGrid]);
   const editApi: EditApi = useMemo(
-    () => ({ caret, begin, set: setText, commit, cancel }),
-    [begin, setText, commit, cancel],
+    () => ({ caret, begin, type: typeChar, typeEnd, set: setText, commit, cancel }),
+    [begin, typeChar, typeEnd, setText, commit, cancel],
   );
 
   // Указание ячейки мышью при правке формулы вставляет ссылку.
