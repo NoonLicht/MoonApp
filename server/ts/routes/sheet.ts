@@ -22,6 +22,13 @@ import logger from "../logger";
 import { removePath } from "../fsUtil";
 import * as core from "../office/sheetCore";
 
+/** multer отдаёт имя файла как latin1: «Книга1» приходит «ÐÐ½Ð¸Ð³Ð°1». Возвращаем UTF-8. */
+function fixName(n: string): string {
+  if (/[^\u0000-\u00ff]/.test(n)) return n;
+  const u = Buffer.from(n, "latin1").toString("utf8");
+  return u.includes("\ufffd") ? n : u;
+}
+
 const router = express.Router();
 const IN_DIR = path.join(core.OFFICE_DIR, "sheet-in");
 const OUT_DIR = path.join(core.OFFICE_DIR, "sheet-out");
@@ -33,7 +40,7 @@ const upload = multer({
       cb(null, IN_DIR);
     },
     filename: (_req, file, cb) => {
-      const base = path.basename(String(file.originalname || "book")).replace(/[\\/:*?"<>|]+/g, "_");
+      const base = path.basename(fixName(String(file.originalname || "book"))).replace(/[\\/:*?"<>|]+/g, "_");
       cb(null, `${Date.now()}_${base}`);
     },
   }),
@@ -64,7 +71,7 @@ router.post("/open", upload.single("file"), async (req, res) => {
   const f = req.file;
   if (!f) return void res.status(400).json({ error: "no_file" });
   try {
-    const name = String(f.originalname || path.basename(f.path)).replace(/^\d+_/, "");
+    const name = fixName(String(f.originalname || path.basename(f.path))).replace(/^\d+_/, "");
     const password = req.body?.password ? String(req.body.password) : undefined;
     res.json({ ...(await core.open({ file: f.path, name, password })), name });
   } catch (e) {
@@ -76,7 +83,7 @@ router.post("/open", upload.single("file"), async (req, res) => {
 router.post("/upload", upload.single("file"), (req, res) => {
   const f = req.file;
   if (!f) return void res.status(400).json({ error: "no_file" });
-  res.json({ path: f.path, name: String(f.originalname || path.basename(f.path)) });
+  res.json({ path: f.path, name: fixName(String(f.originalname || path.basename(f.path))) });
 });
 
 router.delete("/sessions/:id", (req, res) => res.json({ ok: core.close(req.params.id) }));
