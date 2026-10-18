@@ -542,3 +542,10 @@
 .sh-tsg-tile { padding: 2px; border: 1px solid transparent; border-radius: 4px; background: none; cursor: pointer; display: flex; justify-content: center; }
 .sh-tsg-tile:hover { border-color: #f0a030; background: rgba(240,160,48,0.12); }
 .sh-tsg-tile.on { border-color: #107c41; }
+
+/* Галерея стилей ячеек */
+.sh-csg { width: 440px; max-height: 460px; overflow: auto; padding: 4px 6px; }
+.sh-csg-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; }
+.sh-csg-tile { padding: 2px; border: 1px solid transparent; border-radius: 3px; background: none; cursor: pointer; }
+.sh-csg-tile:hover { border-color: #f0a030; }
+.sh-csg-sample { display: block; height: 24px; line-height: 22px; padding: 0 4px; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; box-sizing: border-box; text-align: left; }

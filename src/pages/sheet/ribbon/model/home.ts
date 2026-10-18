@@ -1,3 +1,4 @@
+import { cellStyleGallery } from "@/pages/sheet/ribbon/CellStyleGallery";
 import { galleryItem } from "@/pages/sheet/ribbon/TableStyleGallery";
 import { colorMenu, lastColor } from "@/pages/word/ribbon/colors";
 import type { Item, Tab } from "@/pages/word/ribbon/types";
@@ -220,18 +221,8 @@ const tableMenu: Item<SheetCx>[] = [
   itd("New Table Style…", "newTableStyle"),
 ];
 
-const cellStyles: [string, string[]][] = [
-  ["Good, Bad and Neutral", ["Normal", "Bad", "Good", "Neutral"]],
-  ["Data and Model", ["Calculation", "Check Cell", "Explanatory Text", "Input", "Linked Cell", "Note", "Output", "Warning Text"]],
-  ["Titles and Headings", ["Heading 1", "Heading 2", "Heading 3", "Heading 4", "Title", "Total"]],
-  ["Themed Cell Styles", ["Accent1", "Accent2", "Accent3", "Accent4", "Accent5", "Accent6"]],
-  ["Number Format", ["Comma", "Comma [0]", "Currency", "Currency [0]", "Percent"]],
-];
 const cellStyleMenu: Item<SheetCx>[] = [
-  ...cellStyles.flatMap(([h, names]): Item<SheetCx>[] => [
-    head(h),
-    ...names.map((n) => it(n, "home.cellStyle", { name: n })),
-  ]),
+  cellStyleGallery,
   sep,
   itd("New Cell Style…", "newCellStyle"),
 ];
