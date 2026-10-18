@@ -524,3 +524,7 @@
 .sh-fx { min-height: 26px; height: auto; box-sizing: border-box; padding: 3px 8px; }
 .sh-fx[rows="1"] { height: 26px; overflow: hidden; }
 .sh-fbtns, .sh-expand { height: 26px; }
+
+/* Без общей рамки/свечения полей ввода вокруг редактора ячейки */
+.sh-editor, .sh-editor:focus, .sh-editor:focus-visible { border-radius: 0 !important; box-shadow: none !important; outline: none !important; }
+.sh-editor:focus { border-color: #107c41 !important; }
