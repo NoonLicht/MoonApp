@@ -9,7 +9,7 @@
   --wd-hover: color-mix(in srgb, var(--text-primary) 9%, transparent);
   --wd-on: color-mix(in srgb, var(--amber) 24%, transparent);
   --wd-line: var(--glass-border);
-  --wd-bar-h: 98px;
+  --wd-bar-h: 92px;
 }
 .wd-grow {
   flex: 1;
@@ -27,13 +27,13 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 4px 8px;
+  padding: 2px 8px;
   flex-shrink: 0;
   border: 1px solid var(--wd-line);
   border-bottom: none;
-  border-radius: 12px 12px 0 0;
+  border-radius: 10px 10px 0 0;
   background: var(--glass);
-  min-height: 34px;
+  min-height: 30px;
 }
 .wd-qat {
   display: flex;
@@ -60,15 +60,18 @@
 }
 .wd-search input {
   width: 100%;
-  height: 26px;
+  height: 24px !important;
+  min-height: 0 !important;
+  box-sizing: border-box;
   padding: 0 10px 0 28px;
-  border-radius: 13px;
+  border-radius: 12px;
   font-size: 12.5px;
 }
 .wd-search svg {
   position: absolute;
   left: 9px;
-  top: 6px;
+  top: 50%;
+  transform: translateY(-50%);
   color: var(--text-tertiary);
   pointer-events: none;
 }
@@ -84,8 +87,8 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  height: 26px;
-  padding: 0 10px;
+  height: 24px;
+  padding: 0 9px;
   border: 1px solid var(--wd-line);
   border-radius: 7px;
   background: transparent;
@@ -107,8 +110,9 @@
 .wd-doctabs {
   display: flex;
   gap: 4px;
-  padding: 4px 8px 0;
+  padding: 3px 8px 0;
   overflow-x: auto;
+  overflow-y: hidden;
   flex-shrink: 0;
   border: 1px solid var(--wd-line);
   border-top: none;
@@ -121,8 +125,8 @@
   border: 1px solid var(--wd-line);
   border-bottom: none;
   border-radius: 8px 8px 0 0;
-  padding: 3px 4px 3px 12px;
-  font-size: 12.5px;
+  padding: 1px 3px 1px 10px;
+  font-size: 12px;
   white-space: nowrap;
 }
 .wd-doctab.active {
@@ -178,10 +182,11 @@
   gap: 1px;
   padding: 0 6px;
   border-bottom: 1px solid var(--wd-line);
-  min-height: 30px;
+  height: 26px;
+  box-sizing: border-box;
 }
 .wd-tab {
-  padding: 0 13px;
+  padding: 0 10px;
   background: none;
   border: none;
   border-bottom: 2px solid transparent;
@@ -226,8 +231,9 @@
   display: flex;
   align-items: stretch;
   gap: 0;
-  padding: 4px 4px 0;
-  min-height: var(--wd-bar-h);
+  padding: 3px 4px 0;
+  height: var(--wd-bar-h);
+  box-sizing: border-box;
   overflow-x: auto;
   overflow-y: hidden;
 }
@@ -268,7 +274,7 @@
   box-shadow: var(--shadow);
 }
 .wd-ribbon.collapsed .wd-bar-wrap.peek .wd-bar2 {
-  min-height: var(--wd-bar-h);
+  height: var(--wd-bar-h);
 }
 .wd-group {
   display: flex;
@@ -285,7 +291,7 @@
   align-items: stretch;
   gap: 2px;
   flex: 1;
-  min-height: 74px;
+  min-height: 70px;
 }
 .wd-group-name {
   display: flex;
