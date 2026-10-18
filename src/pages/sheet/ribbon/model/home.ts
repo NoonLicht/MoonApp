@@ -1,3 +1,4 @@
+import { galleryItem } from "@/pages/sheet/ribbon/TableStyleGallery";
 import { colorMenu, lastColor } from "@/pages/word/ribbon/colors";
 import type { Item, Tab } from "@/pages/word/ribbon/types";
 import {
@@ -213,18 +214,8 @@ const cfMenu: Item<SheetCx>[] = [
   itd("Manage Rules…", "manageRules"),
 ];
 
-const tableGroups: [string, string, number][] = [
-  ["Light", "TableStyleLight", 21],
-  ["Medium", "TableStyleMedium", 28],
-  ["Dark", "TableStyleDark", 11],
-];
 const tableMenu: Item<SheetCx>[] = [
-  ...tableGroups.flatMap(([l, prefix, n]): Item<SheetCx>[] => [
-    head(l),
-    ...Array.from({ length: n }, (_, i) =>
-      itf(`${prefix}${i + 1}`, (c) => c.dialog("createTable", { style: `${prefix}${i + 1}` }), { raw: true }),
-    ),
-  ]),
+  galleryItem((c, style) => c.dialog("createTable", { style })),
   sep,
   itd("New Table Style…", "newTableStyle"),
 ];

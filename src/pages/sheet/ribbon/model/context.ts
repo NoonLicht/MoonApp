@@ -1,3 +1,4 @@
+import { galleryItem } from "@/pages/sheet/ribbon/TableStyleGallery";
 import { colorMenu } from "@/pages/word/ribbon/colors";
 import type { Item, Tab } from "@/pages/word/ribbon/types";
 import { arrangeSel } from "@/pages/sheet/ribbon/model/layout";
@@ -12,15 +13,7 @@ const onObj = (command: string, extra: Record<string, unknown> = {}) =>
 const onChart = (command: string, extra: Record<string, unknown> = {}) =>
   fn((c: SheetCx) => c.run(command, { chart: idOf(c), ...extra }));
 
-const tableStyles: [string, string, number][] = [
-  ["Light", "TableStyleLight", 21],
-  ["Medium", "TableStyleMedium", 28],
-  ["Dark", "TableStyleDark", 11],
-];
-const tableStyleItems: Item<SheetCx>[] = tableStyles.flatMap(([l, p, n]): Item<SheetCx>[] => [
-  { head: l },
-  ...Array.from({ length: n }, (_, i) => it(`${p}${i + 1}`, "table.style", { style: `${p}${i + 1}` }, { raw: true, check: (c: SheetCx) => c.s.ctx.table?.style === `${p}${i + 1}` })),
-]);
+const tableStyleItems: Item<SheetCx>[] = [galleryItem((c, style) => c.run("table.style", { style }), (c) => c.s.ctx.table?.style)];
 
 export const tableDesign: Tab<SheetCx> = {
   id: "tableDesign",
