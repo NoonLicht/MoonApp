@@ -549,3 +549,6 @@
 .sh-csg-tile { padding: 2px; border: 1px solid transparent; border-radius: 3px; background: none; cursor: pointer; }
 .sh-csg-tile:hover { border-color: #f0a030; }
 .sh-csg-sample { display: block; height: 24px; line-height: 22px; padding: 0 4px; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; box-sizing: border-box; text-align: left; }
+.sh-csg { width: min(440px, calc(100vw - 48px)); }
+.sh-csg-grid { grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); }
+.sh-tsg { width: min(408px, calc(100vw - 48px)); }
