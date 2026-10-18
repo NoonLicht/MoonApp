@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FilePlus2, FolderOpen, X } from "lucide-react";
 import { api } from "@/api/client";
 import { Glass, EmptyHint } from "@/components/ui";
+import { RecoverList } from "@/components/DocAutosaveUi";
+import { useDocAutosave } from "@/lib/docAutosave";
 import { useI18n } from "@/app/i18n";
 import { saveBlob } from "@/lib/download";
 import { useTw } from "@/pages/sheet/i18n/useTw";
@@ -43,6 +45,13 @@ export default function SheetPage() {
   const docs = useSheetDocs();
   const { active } = docs;
   const state = active?.state ?? null;
+  const auto = useDocAutosave({
+    kind: "sheet",
+    ext: "xlsx",
+    items: docs.docs.map((d) => ({ id: d.id, name: d.name, dirty: d.state.doc.dirty, version: d.state })),
+    exportBlob: (id, name) => api.sheetExport(id, "xlsx", name),
+    openFile: (f) => docs.openFile(f),
+  });
 
   const [tab, setTab] = useState("home");
   const [collapsed, setCollapsed] = useState(false);
@@ -510,6 +519,7 @@ export default function SheetPage() {
               <span>{tw("Open")}</span>
             </button>
           </div>
+          <RecoverList auto={auto} tw={tw} />
           {docs.error ? <div className="ph-error">{docs.error}</div> : null}
         </Glass>
         {hiddenInputs}
@@ -522,7 +532,7 @@ export default function SheetPage() {
 
   return (
     <div className="page wd-page-root sh-root">
-      <TitleBar cx={cx} name={active.name} commands={commands} />
+      <TitleBar cx={cx} name={active.name} commands={commands} auto={auto} />
 
       <div className="wd-doctabs">
         {docs.docs.map((d) => (

@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FilePlus2, FolderOpen, Pause, Play, Square, X } from "lucide-react";
 import { api } from "@/api/client";
 import { Glass, Btn, EmptyHint, SectionHead } from "@/components/ui";
+import { RecoverList } from "@/components/DocAutosaveUi";
+import { useDocAutosave } from "@/lib/docAutosave";
 import { usePageBusy } from "@/components/Toolbar";
 import { useI18n } from "@/app/i18n";
 import { useTw } from "@/pages/word/i18n/useTw";
@@ -134,6 +136,13 @@ export default function WordPage() {
   const tw = useTw();
   const docs = useWordDocs();
   const { active, status } = docs;
+  const auto = useDocAutosave({
+    kind: "word",
+    ext: "docx",
+    items: docs.docs.map((d) => ({ id: d.id, name: d.name, dirty: d.state.dirty, version: d.state })),
+    exportBlob: (id, name) => api.wordExport(id, "docx", name),
+    openFile: (f) => docs.openFile(f),
+  });
   // Функции хука с постоянной ссылкой (меняются только со сменой документа): от них зависят эффекты панелей.
   const {
     run: docsRun,
@@ -619,6 +628,7 @@ export default function WordPage() {
               <span>{tw("Open")}</span>
             </button>
           </div>
+          <RecoverList auto={auto} tw={tw} />
         </Glass>
         {hiddenInputs}
       </div>
@@ -641,7 +651,7 @@ export default function WordPage() {
 
   return (
     <div className="page wd-page-root">
-      {!focusMode ? <TitleBar cx={cx} name={active.name} /> : null}
+      {!focusMode ? <TitleBar cx={cx} name={active.name} auto={auto} /> : null}
 
       {!focusMode && docs.docs.length > 0 ? (
         <div className="wd-doctabs">

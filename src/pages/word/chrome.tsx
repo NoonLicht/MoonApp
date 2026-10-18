@@ -15,9 +15,11 @@ import { getOverlayRoot } from "@/components/overlayHost";
 import { locationLabel, useCommandSearch } from "@/pages/word/dialogs/custom2";
 import { MenuPopup } from "@/pages/word/ribbon/Menu";
 import type { Cx, Item } from "@/pages/word/ribbon/types";
+import { AutosaveSwitch } from "@/components/DocAutosaveUi";
+import type { DocAutosave } from "@/lib/docAutosave";
 
 /** Строка заголовка документа: быстрый доступ, название, поиск команд, режим правки, примечания. */
-export function TitleBar({ cx, name }: { cx: Cx; name: string }) {
+export function TitleBar({ cx, name, auto }: { cx: Cx; name: string; auto: DocAutosave }) {
   const s = cx.s;
   const [q, setQ] = useState("");
   const [focus, setFocus] = useState(false);
@@ -75,6 +77,7 @@ export function TitleBar({ cx, name }: { cx: Cx; name: string }) {
         {name}
         {s.dirty ? <i> •</i> : null}
       </span>
+      <AutosaveSwitch auto={auto} tw={cx.tw} />
       <div className="wd-search" ref={box}>
         <Search size={13} />
         <input

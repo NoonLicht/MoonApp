@@ -25,9 +25,11 @@ import type { EditState } from "@/pages/sheet/edit";
 import { FormulaHints } from "@/pages/sheet/grid/CellEditor";
 import type { SheetDocs } from "@/pages/sheet/useSheetDocs";
 import type { SheetCommand } from "@/api/apiSheet";
+import { AutosaveSwitch } from "@/components/DocAutosaveUi";
+import type { DocAutosave } from "@/lib/docAutosave";
 
 /** Строка заголовка книги: быстрый доступ, название, поиск команд, примечания. */
-export function TitleBar({ cx, name, commands }: { cx: SheetCx; name: string; commands: SheetCommand[] }) {
+export function TitleBar({ cx, name, commands, auto }: { cx: SheetCx; name: string; commands: SheetCommand[]; auto: DocAutosave }) {
   const s = cx.s;
   const [q, setQ] = useState("");
   const [focus, setFocus] = useState(false);
@@ -81,6 +83,7 @@ export function TitleBar({ cx, name, commands }: { cx: SheetCx; name: string; co
         {name}
         {s.doc.dirty ? <i> •</i> : null}
       </span>
+      <AutosaveSwitch auto={auto} tw={cx.tw} />
       <div className="wd-search" ref={box}>
         <Search size={13} />
         <input
