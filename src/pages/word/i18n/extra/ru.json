@@ -226,5 +226,10 @@
   "Middle Right": "Посередине справа",
   "Bottom Left": "Внизу слева",
   "Bottom Center": "Внизу по центру",
-  "Bottom Right": "Внизу справа"
+  "Bottom Right": "Внизу справа",
+  "Autosave": "Автосохранение",
+  "Autosave keeps a recovery copy of every changed document": "Автосохранение хранит копию для восстановления каждого изменённого документа",
+  "Recover unsaved documents": "Восстановить несохранённые документы",
+  "Restore": "Восстановить",
+  "Discard": "Отбросить"
 }
