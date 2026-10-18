@@ -628,7 +628,7 @@ function drawContent(
     const maxW = Math.max(4, avail - 2 * pad - indent);
     const lines = wrapLines(ctx, text, maxW);
     const block = lines.length * lineH;
-    const y0 = placeY(block) - (block - lineH);
+    const y0 = placeY(block);
     const align = halign === "Justify" || halign === "Distributed" ? "Left" : halign;
     lines.forEach((ln, i) => {
       const x =
