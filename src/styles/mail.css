@@ -1400,7 +1400,7 @@
   max-width: none;
   margin-inline: 0;
   width: calc(
-    100% + max(24px, calc(var(--ghost-w, 0px) + 4px)) - max(8px, calc(var(--ghost-w, 0px) + 4px))
+    100% + max(var(--tbar-gap), calc(var(--ghost-w, 0px) + 4px)) - max(var(--tbar-gap), calc(var(--ghost-w, 0px) + 4px))
   );
 }
 

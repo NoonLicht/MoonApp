@@ -541,7 +541,7 @@ body {
 .content-area {
   position: relative;
   z-index: 1;
-  padding: var(--content-top) 24px var(--content-bottom)
+  padding: var(--content-top) var(--tbar-gap) var(--content-bottom)
     calc(var(--rail-gap) + var(--rail-w) + 12px);
   display: flex;
   flex-direction: column;
@@ -761,7 +761,7 @@ textarea.input {
   right: var(--tbar-gap);
 }
 .app-shell[dir="rtl"] .content-area {
-  padding-left: 24px;
+  padding-left: var(--tbar-gap);
   padding-right: calc(var(--rail-gap) + var(--rail-w) + 12px);
 }
 /* --- Внешний вид из настроек: акцент, анимации, плотность --- */
@@ -1300,7 +1300,7 @@ html.a11y-focus *:focus-visible {
 .content-area {
   /* зазор до панели «Контекст» — 12px, как между меню страниц и контентом.
      --ghost-w = ширина панели + 16px (отступы), панель стоит в 8px от края окна. */
-  padding-right: max(24px, calc(var(--ghost-w, 0px) + 4px));
+  padding-right: max(var(--tbar-gap), calc(var(--ghost-w, 0px) + 4px));
 }
 .app-shell[dir="rtl"] .content-area {
   padding-right: calc(var(--rail-gap) + var(--rail-w) + 12px);
