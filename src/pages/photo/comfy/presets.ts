@@ -27,8 +27,21 @@ export interface PresetParams {
   clip: string;
   vae: string;
   upscaler: string;
-  lora: string;
-  loraStrength: number;
+  /** Стопка LoRA/DoRA/LyCORIS: применяются по порядку. */
+  loras: LoraSel[];
+  /** Пропуск последних слоёв CLIP (1 — выключено, 2 — типично для аниме-моделей SD 1.5). */
+  clipSkip: number;
+  /** Декодировать VAE по плиткам: меньше видеопамяти на больших картинках. */
+  vaeTiled: boolean;
+  /** Где считать текстовый энкодер: видеокарта или процессор (оперативная память). */
+  clipDevice: "default" | "cpu";
+}
+
+export interface LoraSel {
+  name: string;
+  /** Сила для модели и для CLIP. */
+  strength: number;
+  clip: number;
 }
 
 export const DEFAULTS: PresetParams = {
@@ -49,8 +62,10 @@ export const DEFAULTS: PresetParams = {
   clip: "",
   vae: "",
   upscaler: "",
-  lora: "",
-  loraStrength: 1,
+  loras: [],
+  clipSkip: 1,
+  vaeTiled: false,
+  clipDevice: "default",
 };
 
 export interface PresetDef {
@@ -68,27 +83,27 @@ export interface PresetDef {
 export const PRESETS: PresetDef[] = [
   {
     id: "txt2img",
-    fields: ["ckpt", "prompt", "negative", "width", "height", "steps", "cfg", "sampler", "scheduler", "seed", "batch", "lora", "loraStrength"],
+    fields: ["ckpt", "vae", "prompt", "negative", "width", "height", "steps", "cfg", "sampler", "scheduler", "seed", "batch", "clipSkip", "vaeTiled", "loras"],
     needs: ["CheckpointLoaderSimple", "KSampler"],
     models: ["ckpt"],
   },
   {
     id: "img2img",
-    fields: ["ckpt", "image", "prompt", "negative", "steps", "cfg", "denoise", "sampler", "scheduler", "seed"],
+    fields: ["ckpt", "vae", "image", "prompt", "negative", "steps", "cfg", "denoise", "sampler", "scheduler", "seed", "clipSkip", "vaeTiled", "loras"],
     defaults: { steps: 25, cfg: 7, denoise: 0.6 },
     needs: ["CheckpointLoaderSimple", "KSampler", "LoadImage", "VAEEncode"],
     models: ["ckpt"],
   },
   {
     id: "qwen",
-    fields: ["unet", "clip", "vae", "prompt", "negative", "width", "height", "steps", "cfg", "sampler", "seed"],
+    fields: ["unet", "clip", "vae", "prompt", "negative", "width", "height", "steps", "cfg", "sampler", "seed", "clipDevice", "vaeTiled", "loras"],
     defaults: { steps: 24, cfg: 4, width: 1024, height: 1024 },
     needs: ["UnetLoaderGGUF", "CLIPLoader", "VAELoader", "TextEncodeQwenImage21", "KSampler"],
     models: ["unet", "clip", "vae"],
   },
   {
     id: "qwenTurbo",
-    fields: ["unet", "clip", "vae", "prompt", "width", "height", "seed"],
+    fields: ["unet", "clip", "vae", "prompt", "width", "height", "seed", "clipDevice", "vaeTiled", "loras"],
     defaults: { steps: 8, cfg: 1, width: 1024, height: 1024 },
     needs: ["UnetLoaderGGUF", "CLIPLoader", "VAELoader", "TextEncodeQwenImage21", "SamplerCustomAdvanced", "ManualSigmas"],
     models: ["unet", "clip", "vae"],
@@ -130,6 +145,17 @@ function fillByType(
   return out;
 }
 
+/** Первый вход с числовым значением по умолчанию из описания узла (для узлов, у которых набор входов менялся). */
+function defaultsOf(info: ComfyNodeInfo | undefined, skip: string[]): Inp {
+  const out: Inp = {};
+  for (const [key, def] of Object.entries(info?.input?.required ?? {})) {
+    if (skip.includes(key)) continue;
+    const d = Array.isArray(def) ? (def[1] as { default?: unknown } | undefined)?.default : undefined;
+    if (d !== undefined) out[key] = d;
+  }
+  return out;
+}
+
 export function buildGraph(id: PresetId, p: PresetParams, info: Record<string, ComfyNodeInfo>): ComfyGraph {
   const seed = seedOf(p);
   const g: ComfyGraph = {};
@@ -138,15 +164,39 @@ export function buildGraph(id: PresetId, p: PresetParams, info: Record<string, C
     return [n, 0];
   };
 
+  /** Подключает стопку LoRA/DoRA: с CLIP, когда он есть, иначе только к модели. */
+  const applyLoras = (model: [string, number], clip: [string, number] | null): { model: [string, number]; clip: [string, number] | null } => {
+    let m = model;
+    let c = clip;
+    p.loras
+      .filter((l) => l.name)
+      .forEach((l, i) => {
+        if (c && info.LoraLoader) {
+          const n = add(`lora${i}`, "LoraLoader", { model: m, clip: c, lora_name: l.name, strength_model: l.strength, strength_clip: l.clip });
+          m = n;
+          c = [`lora${i}`, 1];
+        } else if (info.LoraLoaderModelOnly) {
+          m = add(`lora${i}`, "LoraLoaderModelOnly", { model: m, lora_name: l.name, strength: l.strength });
+        }
+      });
+    return { model: m, clip: c };
+  };
+  /** Декодирование картинки: обычное или по плиткам (экономит видеопамять). */
+  const decode = (n: string, samples: [string, number], vae: [string, number]): [string, number] => {
+    if (p.vaeTiled && info.VAEDecodeTiled) {
+      return add(n, "VAEDecodeTiled", { samples, vae, ...defaultsOf(info.VAEDecodeTiled, ["samples", "vae"]), tile_size: 512 });
+    }
+    return add(n, "VAEDecode", { samples, vae });
+  };
+
   if (id === "txt2img" || id === "img2img") {
     const ck = add("1", "CheckpointLoaderSimple", { ckpt_name: p.ckpt });
-    let model: [string, number] = ck;
-    let clip: [string, number] = ["1", 1];
-    if (p.lora && info.LoraLoader) {
-      add("10", "LoraLoader", { model: ck, clip: ["1", 1], lora_name: p.lora, strength_model: p.loraStrength, strength_clip: p.loraStrength });
-      model = ["10", 0];
-      clip = ["10", 1];
-    }
+    // Свой VAE вместо вшитого в чекпоинт.
+    const vae: [string, number] = p.vae ? add("11", "VAELoader", { vae_name: p.vae }) : ["1", 2];
+    const lo = applyLoras(ck, ["1", 1]);
+    const model = lo.model;
+    let clip = lo.clip as [string, number];
+    if (p.clipSkip > 1 && info.CLIPSetLastLayer) clip = add("12", "CLIPSetLastLayer", { clip, stop_at_clip_layer: -Math.round(p.clipSkip) });
     const pos = add("2", "CLIPTextEncode", { text: p.prompt, clip });
     const neg = add("3", "CLIPTextEncode", { text: p.negative, clip });
     let latent: [string, number];
@@ -154,7 +204,7 @@ export function buildGraph(id: PresetId, p: PresetParams, info: Record<string, C
       latent = add("4", "EmptyLatentImage", { width: p.width, height: p.height, batch_size: p.batch });
     } else {
       const img = add("4", "LoadImage", { image: p.image });
-      latent = add("5", "VAEEncode", { pixels: img, vae: ["1", 2] });
+      latent = add("5", "VAEEncode", { pixels: img, vae });
     }
     const ks = add("6", "KSampler", {
       model,
@@ -168,7 +218,7 @@ export function buildGraph(id: PresetId, p: PresetParams, info: Record<string, C
       scheduler: p.scheduler,
       denoise: id === "txt2img" ? 1 : p.denoise,
     });
-    const dec = add("7", "VAEDecode", { samples: ks, vae: ["1", 2] });
+    const dec = decode("7", ks, vae);
     add("8", "SaveImage", { images: dec, filename_prefix: "MoonApp" });
     return g;
   }
@@ -182,11 +232,12 @@ export function buildGraph(id: PresetId, p: PresetParams, info: Record<string, C
   }
 
   // Qwen-Image 2.1: GGUF-денойзер, энкодер Qwen3-VL (.gguf — через CLIPLoaderGGUF), VAE.
-  const unet = add("1", "UnetLoaderGGUF", { unet_name: p.unet });
+  const unet0 = add("1", "UnetLoaderGGUF", { unet_name: p.unet });
+  const unet = applyLoras(unet0, null).model;
   const gguf = /\.gguf$/i.test(p.clip) && !!info.CLIPLoaderGGUF;
   const clipNode = gguf
     ? add("2", "CLIPLoaderGGUF", { clip_name: p.clip, type: "qwen_image" })
-    : add("2", "CLIPLoader", { clip_name: p.clip, type: "qwen_image", device: "default" });
+    : add("2", "CLIPLoader", { clip_name: p.clip, type: "qwen_image", device: p.clipDevice });
   const vae = add("3", "VAELoader", { vae_name: p.vae });
   const enc = (n: string, text: string): [string, number] =>
     add(n, "TextEncodeQwenImage21", fillByType(info.TextEncodeQwenImage21, { CLIP: clipNode }, [text, ""], []));
@@ -210,7 +261,7 @@ export function buildGraph(id: PresetId, p: PresetParams, info: Record<string, C
       scheduler: "simple",
       denoise: 1,
     });
-    const dec = add("8", "VAEDecode", { samples: ks, vae });
+    const dec = decode("8", ks, vae);
     add("9", "SaveImage", { images: dec, filename_prefix: "MoonApp-qwen" });
     return g;
   }
@@ -220,7 +271,7 @@ export function buildGraph(id: PresetId, p: PresetParams, info: Record<string, C
   const noise = add("8", "RandomNoise", { noise_seed: seed });
   const guider = add("9", "CFGGuider", { model: unet, positive: pos, negative: pos, cfg: 1 });
   const sm = add("10", "SamplerCustomAdvanced", { noise, guider, sampler: sel, sigmas: sig, latent_image: latent });
-  const dec = add("11", "VAEDecode", { samples: sm, vae });
+  const dec = decode("11", sm, vae);
   add("12", "SaveImage", { images: dec, filename_prefix: "MoonApp-turbo" });
   return g;
 }

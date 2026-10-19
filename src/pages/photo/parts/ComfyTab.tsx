@@ -6,6 +6,7 @@ import { api } from "@/api/client";
 import { saveBlob } from "@/lib/download";
 import type { ComfyGraph, ComfyNodeInfo, ComfyStatus } from "@/api/apiComfy";
 import ComfySetup from "@/pages/photo/comfy/ComfySetup";
+import ComfyAdmin from "@/pages/photo/comfy/ComfyAdmin";
 import GenerateView from "@/pages/photo/comfy/GenerateView";
 import ModelsView from "@/pages/photo/comfy/ModelsView";
 import LibraryView from "@/pages/photo/comfy/LibraryView";
@@ -114,6 +115,7 @@ export default function ComfyTab({ active }: { active: boolean }) {
   return (
     <div className="ph-tab cf-tab">
       <ComfySetup st={st} act={act} />
+      {st.installed && <ComfyAdmin st={st} act={act} />}
       {msg && <div className="ph-error">{msg}</div>}
       {showWork && (
         <>

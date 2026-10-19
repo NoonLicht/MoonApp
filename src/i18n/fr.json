@@ -6966,7 +6966,8 @@
       "phase": {
         "download": "Téléchargement",
         "extract": "Extraction",
-        "pip": "Installation des paquets"
+        "pip": "Installation des paquets",
+        "update": "Mise à jour"
       },
       "running": "En cours",
       "starting": "Démarrage…",
@@ -7009,7 +7010,7 @@
         "vae": "VAE",
         "upscaler": "Modèle d'upscale",
         "lora": "LoRA",
-        "loraStrength": "Force de la LoRA",
+        "loraStrength": "Force sur le modèle",
         "prompt": "Description",
         "negative": "Prompt négatif",
         "width": "Largeur",
@@ -7021,7 +7022,13 @@
         "scheduler": "Planificateur",
         "seed": "Seed (−1 = aléatoire)",
         "batch": "Images par exécution",
-        "image": "Image source"
+        "image": "Image source",
+        "loras": "LoRA / DoRA et autres adaptateurs",
+        "loraClip": "Force sur l'encodeur de texte",
+        "clipSkip": "CLIP skip",
+        "vaeTiled": "VAE par tuiles (moins de VRAM)",
+        "vaeTiledHint": "L'image est décodée par morceaux : utile pour les grandes tailles sur un petit GPU",
+        "clipDevice": "Encodeur de texte"
       },
       "pickImage": "Choisir une image",
       "generate": "Générer",
@@ -7060,7 +7067,120 @@
       "saveLibrary": "Enregistrer dans la bibliothèque",
       "exportWorkflow": "Télécharger le workflow",
       "exportApi": "Télécharger le format API",
-      "pathTooLong": "Le chemin d'installation est trop long pour le Python intégré (Windows limite les chemins à 260 caractères). Rapprochez le dossier de données de la racine du disque."
+      "pathTooLong": "Le chemin d'installation est trop long pour le Python intégré (Windows limite les chemins à 260 caractères). Rapprochez le dossier de données de la racine du disque.",
+      "admin": {
+        "memoryTitle": "Mémoire et performances",
+        "memoryHint": "Où placer chaque partie du modèle : le débruiteur en VRAM, le VAE et l'encodeur de texte en RAM / sur le CPU. S'applique au prochain démarrage de ComfyUI.",
+        "quick": {
+          "auto": "Auto",
+          "saver": "Économiser la VRAM",
+          "extreme": "VRAM minimale",
+          "fast": "Vitesse maximale"
+        },
+        "quickHint": {
+          "auto": "ComfyUI décide",
+          "saver": "Débruiteur en VRAM, encodeur de texte et VAE sur le CPU, poids chargés par morceaux (pour 6–8 Go)",
+          "extreme": "Presque tout en RAM, le GPU ne fait que calculer ; plus lent mais tout rentre",
+          "fast": "Les modèles restent en VRAM entre les exécutions (carte puissante requise)"
+        },
+        "memory": "Mode mémoire",
+        "memoryMode": {
+          "auto": "Auto",
+          "gpu": "Tout sur le GPU",
+          "high": "Garder les modèles en VRAM",
+          "low": "VRAM faible (encodeurs sur le CPU)",
+          "none": "Presque sans VRAM",
+          "cpu": "CPU uniquement"
+        },
+        "reserve": "VRAM réservée au système, Go",
+        "asyncOffload": "Déchargement asynchrone des poids",
+        "tri": {
+          "auto": "Auto",
+          "on": "Activé",
+          "off": "Désactivé"
+        },
+        "dynamicVram": "VRAM dynamique",
+        "cache": "Cache des résultats",
+        "cacheMode": {
+          "auto": "Selon la pression mémoire",
+          "classic": "Classique",
+          "lru": "LRU (limité)",
+          "none": "Sans cache (économise la mémoire)"
+        },
+        "cacheLru": "Résultats en cache",
+        "unet": "Précision du débruiteur",
+        "prec": {
+          "auto": "Auto",
+          "fp32": "fp32 (précis, lourd)",
+          "fp16": "fp16",
+          "bf16": "bf16",
+          "fp8_e4m3fn": "fp8 e4m3 (moitié moins lourd)",
+          "fp8_e5m2": "fp8 e5m2 (moitié moins lourd)"
+        },
+        "vaePrec": "Précision du VAE",
+        "textEnc": "Précision de l'encodeur de texte",
+        "attention": "Attention",
+        "attn": {
+          "auto": "Auto",
+          "pytorch": "PyTorch",
+          "split": "Split",
+          "quad": "Sub-quadratic",
+          "sage": "SageAttention",
+          "flash": "FlashAttention"
+        },
+        "preview": "Aperçu des étapes",
+        "previewMode": {
+          "auto": "Auto",
+          "none": "Désactivé",
+          "latent2rgb": "Rapide (latent2rgb)",
+          "taesd": "Précis (TAESD)"
+        },
+        "cudaDevice": "Numéros de GPU",
+        "cpuVae": "VAE sur le CPU (en RAM)",
+        "cpuVaeHint": "Libère la VRAM en fin de génération ; le décodage est plus lent",
+        "smartMemory": "Mémoire intelligente (garder les modèles en VRAM)",
+        "smartMemoryHint": "Désactivez pour envoyer les modèles en RAM après usage",
+        "highRam": "Mode grande RAM",
+        "fast": "Accélérations expérimentales (--fast)",
+        "fastHint": "Peut réduire la qualité ou faire planter ComfyUI",
+        "noCudaMalloc": "Désactiver cudaMallocAsync",
+        "noPartner": "Désactiver les nœuds API payants",
+        "noPartnerHint": "Nœuds qui appellent des services cloud payants ; inutiles en local",
+        "extraArgs": "Options de lancement personnalisées",
+        "extraHint": "N'importe quelle option de l'aide de ComfyUI. Les options réseau et chemins (--listen, --port, --*-directory) sont fixées par l'application et ignorées.",
+        "save": "Enregistrer",
+        "saved": "Enregistré",
+        "savedRestart": "Enregistré — appliqué au redémarrage de ComfyUI",
+        "updateTitle": "Mettre à jour ComfyUI",
+        "current": "Installée",
+        "latest": "Sur GitHub",
+        "newer": "Mise à jour disponible",
+        "upToDate": "À jour",
+        "check": "Vérifier",
+        "updateStable": "Passer à la dernière version",
+        "updateLatest": "Passer à la version de développement",
+        "updateHint": "Le code de ComfyUI est mis à jour depuis GitHub avec le script de la build et les dépendances sont installées. Modèles, workflows et nœuds sont conservés. La version stable est plus sûre, celle de développement plus récente.",
+        "stopFirst": "Arrêtez d'abord ComfyUI.",
+        "managerOn": "ComfyUI Manager installé",
+        "managerOff": "ComfyUI Manager non installé",
+        "managerInstall": "Installer le gestionnaire",
+        "managerHint": "Le gestionnaire ajoute à l'éditeur un catalogue de nœuds et de modèles : recherche, installation et mise à jour dans ComfyUI.",
+        "nodesTitle": "Nœuds personnalisés",
+        "nodesHint": "Les nœuds s'installent depuis un dépôt GitHub avec leurs dépendances. Un nœud exécute son propre code dans ComfyUI : n'installez que ce qui est fiable.",
+        "nodeInstall": "Installer",
+        "nodesEmpty": "Aucun nœud",
+        "disabled": "désactivé",
+        "disable": "Désactiver",
+        "enable": "Activer",
+        "nodeUpdate": "Mettre à jour",
+        "nodeRemoveConfirm": "Supprimer le nœud {name} ?"
+      },
+      "deviceGpu": "Sur le GPU",
+      "deviceCpu": "Sur le CPU (en RAM)",
+      "vaeFromCkpt": "Du checkpoint",
+      "addLora": "Ajouter une LoRA",
+      "noLoras": "Aucun fichier : ajoutez-en dans l'onglet Modèles (dossier loras).",
+      "loraHint": "LoRA, DoRA, LoCon, LoHa et LoKr fonctionnent : ComfyUI détecte le type. Le premier nombre est la force sur le modèle, le second sur l'encodeur de texte."
     }
   },
   "word": {

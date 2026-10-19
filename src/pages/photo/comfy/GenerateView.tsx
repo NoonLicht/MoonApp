@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Download, Sparkles, X, Wand2, Pencil, Upload } from "lucide-react";
+import { Download, Sparkles, X, Wand2, Pencil, Upload, Plus, Trash2 } from "lucide-react";
 import { Glass, Btn, ProgressBar, Select } from "@/components/ui";
 import { useI18n } from "@/app/i18n";
 import { api } from "@/api/client";
@@ -25,7 +25,6 @@ const SOURCES: Partial<Record<keyof PresetParams, [string, string][]>> = {
   clip: [["CLIPLoader", "clip_name"], ["CLIPLoaderGGUF", "clip_name"]],
   vae: [["VAELoader", "vae_name"]],
   upscaler: [["UpscaleModelLoader", "model_name"]],
-  lora: [["LoraLoader", "lora_name"]],
   sampler: [["KSampler", "sampler_name"]],
   scheduler: [["KSampler", "scheduler"]],
 };
@@ -38,7 +37,7 @@ const NUMBERS: Partial<Record<keyof PresetParams, { min: number; max: number; st
   denoise: { min: 0, max: 1, step: 0.05 },
   batch: { min: 1, max: 8, step: 1 },
   seed: { min: -1, max: 2147483647, step: 1 },
-  loraStrength: { min: 0, max: 2, step: 0.05 },
+  clipSkip: { min: 1, max: 12, step: 1 },
 };
 
 /** Файлы для поля формы из списков ComfyUI, без служебных (VAE в папке денойзеров, проекторы, встроенные taesd). */
@@ -109,7 +108,23 @@ export default function GenerateView({ info, openInEditor, editorToApi, pending,
   const pick = (id: PresetId): void => {
     const def = PRESETS.find((p) => p.id === id) ?? PRESETS[0];
     setPresetId(id);
-    setParams((p) => ({ ...p, ...DEFAULTS, prompt: p.prompt, negative: p.negative, ...def.defaults, ckpt: p.ckpt, unet: p.unet, clip: p.clip, vae: p.vae, upscaler: p.upscaler }));
+    const ckptBased = def.id === "txt2img" || def.id === "img2img";
+    setParams((p) => ({
+      ...p,
+      ...DEFAULTS,
+      prompt: p.prompt,
+      negative: p.negative,
+      ...def.defaults,
+      ckpt: p.ckpt,
+      unet: p.unet,
+      clip: p.clip,
+      // У чекпоинта свой VAE: «из чекпоинта» (пусто) по умолчанию; у остальных нужен файл.
+      vae: ckptBased ? "" : p.vae,
+      upscaler: p.upscaler,
+      loras: p.loras,
+      clipDevice: p.clipDevice,
+      vaeTiled: p.vaeTiled,
+    }));
   };
 
   // Подставляем первый подходящий файл в пустые поля моделей и сэмплеров.
@@ -117,6 +132,8 @@ export default function GenerateView({ info, openInEditor, editorToApi, pending,
     setParams((p) => {
       const next = { ...p };
       for (const field of Object.keys(SOURCES) as (keyof PresetParams)[]) {
+        // VAE у чекпоинтовых пресетов необязателен: пусто = встроенный в чекпоинт.
+        if (field === "vae" && (presetId === "txt2img" || presetId === "img2img")) continue;
         const list = fieldOptions(info, field);
         const cur = String(next[field]);
         if (list.length && !list.includes(cur)) (next as Record<string, unknown>)[field] = pickDefault(field, list, p);
@@ -126,6 +143,12 @@ export default function GenerateView({ info, openInEditor, editorToApi, pending,
   }, [info, presetId]);
 
   const options = (field: keyof PresetParams): string[] => fieldOptions(info, field);
+  const loraOptions = useMemo(
+    () => [...new Set([...choices(info, "LoraLoader", "lora_name"), ...choices(info, "LoraLoaderModelOnly", "lora_name")])],
+    [info],
+  );
+  const setLora = (i: number, patch: Partial<PresetParams["loras"][number]>): void =>
+    setParams((p) => ({ ...p, loras: p.loras.map((l, j) => (j === i ? { ...l, ...patch } : l)) }));
 
   const lacking = useMemo(() => missingNodes(preset, info), [preset, info]);
   const needModels = preset.models.filter((m) => options(m).length === 0);
@@ -294,6 +317,76 @@ export default function GenerateView({ info, openInEditor, editorToApi, pending,
                   </Btn>
                 </div>
               );
+            if (f === "vaeTiled")
+              return (
+                <label className="cf-check" key={f} title={t("photo.comfy.f.vaeTiledHint")}>
+                  <input type="checkbox" checked={params.vaeTiled} onChange={(e) => set("vaeTiled", e.target.checked)} />
+                  <span>{t("photo.comfy.f.vaeTiled")}</span>
+                </label>
+              );
+            if (f === "clipDevice")
+              return (
+                <label className="field" key={f}>
+                  <span className="field-label">{t("photo.comfy.f.clipDevice")}</span>
+                  <Select
+                    value={params.clipDevice}
+                    onChange={(e) => set("clipDevice", e.target.value as PresetParams["clipDevice"])}
+                    options={[
+                      { value: "default", label: t("photo.comfy.deviceGpu") },
+                      { value: "cpu", label: t("photo.comfy.deviceCpu") },
+                    ]}
+                  />
+                </label>
+              );
+            if (f === "loras") {
+              const list = loraOptions;
+              return (
+                <div className="field" key={f} style={{ gridColumn: "1 / -1" }}>
+                  <span className="field-label">{t("photo.comfy.f.loras")}</span>
+                  {params.loras.map((l, i) => (
+                    <div className="ph-row" key={i}>
+                      <Select
+                        value={l.name}
+                        onChange={(e) => setLora(i, { name: e.target.value })}
+                        options={[{ value: "", label: "—" }, ...list]}
+                      />
+                      <input
+                        type="number"
+                        title={t("photo.comfy.f.loraStrength")}
+                        value={l.strength}
+                        min={-2}
+                        max={3}
+                        step={0.05}
+                        style={{ width: 90 }}
+                        onChange={(e) => setLora(i, { strength: Number(e.target.value) })}
+                      />
+                      <input
+                        type="number"
+                        title={t("photo.comfy.f.loraClip")}
+                        value={l.clip}
+                        min={-2}
+                        max={3}
+                        step={0.05}
+                        style={{ width: 90 }}
+                        onChange={(e) => setLora(i, { clip: Number(e.target.value) })}
+                      />
+                      <Btn icon={Trash2} onClick={() => set("loras", params.loras.filter((_, j) => j !== i))} />
+                    </div>
+                  ))}
+                  <div className="ph-row">
+                    <Btn
+                      icon={Plus}
+                      disabled={list.length === 0}
+                      onClick={() => set("loras", [...params.loras, { name: list[0] ?? "", strength: 1, clip: 1 }])}
+                    >
+                      {t("photo.comfy.addLora")}
+                    </Btn>
+                    {list.length === 0 && <span className="muted-sm">{t("photo.comfy.noLoras")}</span>}
+                  </div>
+                  <div className="muted-sm">{t("photo.comfy.loraHint")}</div>
+                </div>
+              );
+            }
             if (SOURCES[f]) {
               const list = options(f);
               return (
@@ -302,7 +395,13 @@ export default function GenerateView({ info, openInEditor, editorToApi, pending,
                   <Select
                     value={String(params[f])}
                     onChange={(e) => set(f, e.target.value as never)}
-                    options={f === "lora" ? ["", ...list] : list.length ? list : [""]}
+                    options={
+                      f === "vae" && (preset.id === "txt2img" || preset.id === "img2img")
+                        ? [{ value: "", label: t("photo.comfy.vaeFromCkpt") }, ...list]
+                        : list.length
+                          ? list
+                          : [""]
+                    }
                   />
                 </label>
               );
@@ -430,7 +529,6 @@ export default function GenerateView({ info, openInEditor, editorToApi, pending,
 function pickDefault(field: keyof PresetParams, list: string[], p: PresetParams): string {
   if (field === "sampler") return list.includes("euler") ? "euler" : list[0];
   if (field === "scheduler") return list.includes("normal") ? "normal" : list[0];
-  if (field === "lora") return "";
   if (field === "unet") return list.find((f) => /turbo/i.test(f)) ?? list.find((f) => /qwen/i.test(f)) ?? list[0];
   if (field === "clip") return list.find((f) => /qwen3-?vl/i.test(f)) ?? list[0];
   if (field === "vae") return list.find((f) => /qwen/i.test(f)) ?? list[0];

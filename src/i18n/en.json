@@ -6966,7 +6966,8 @@
       "phase": {
         "download": "Downloading",
         "extract": "Extracting",
-        "pip": "Installing packages"
+        "pip": "Installing packages",
+        "update": "Updating"
       },
       "running": "Running",
       "starting": "Starting…",
@@ -7009,7 +7010,7 @@
         "vae": "VAE",
         "upscaler": "Upscale model",
         "lora": "LoRA",
-        "loraStrength": "LoRA strength",
+        "loraStrength": "Model strength",
         "prompt": "Prompt",
         "negative": "Negative prompt",
         "width": "Width",
@@ -7021,7 +7022,13 @@
         "scheduler": "Scheduler",
         "seed": "Seed (−1 = random)",
         "batch": "Images per run",
-        "image": "Source image"
+        "image": "Source image",
+        "loras": "LoRA / DoRA and other adapters",
+        "loraClip": "Text encoder strength",
+        "clipSkip": "CLIP skip",
+        "vaeTiled": "Tiled VAE (less VRAM)",
+        "vaeTiledHint": "The image is decoded in pieces: good for big sizes on a small GPU",
+        "clipDevice": "Text encoder"
       },
       "pickImage": "Choose an image",
       "generate": "Generate",
@@ -7060,7 +7067,120 @@
       "saveLibrary": "Save to library",
       "exportWorkflow": "Download workflow",
       "exportApi": "Download API format",
-      "pathTooLong": "The install path is too long for the embedded Python (Windows limits paths to 260 characters). Move the data folder closer to the drive root."
+      "pathTooLong": "The install path is too long for the embedded Python (Windows limits paths to 260 characters). Move the data folder closer to the drive root.",
+      "admin": {
+        "memoryTitle": "Memory and performance",
+        "memoryHint": "Where to put the parts of a model: keep the denoiser in VRAM and the VAE and text encoder in system RAM / on the CPU. Applies the next time ComfyUI starts.",
+        "quick": {
+          "auto": "Auto",
+          "saver": "Save VRAM",
+          "extreme": "Minimal VRAM",
+          "fast": "Max speed"
+        },
+        "quickHint": {
+          "auto": "ComfyUI decides",
+          "saver": "Denoiser in VRAM, text encoder and VAE on the CPU, weights streamed in parts (for 6–8 GB)",
+          "extreme": "Almost everything in system RAM, the GPU only computes; slower but fits nearly anything",
+          "fast": "Models stay in VRAM between runs (needs a big card)"
+        },
+        "memory": "Memory mode",
+        "memoryMode": {
+          "auto": "Auto",
+          "gpu": "Everything on the GPU",
+          "high": "Keep models in VRAM",
+          "low": "Low VRAM (encoders on the CPU)",
+          "none": "Almost no VRAM",
+          "cpu": "CPU only"
+        },
+        "reserve": "VRAM reserved for the system, GB",
+        "asyncOffload": "Async weight offloading",
+        "tri": {
+          "auto": "Auto",
+          "on": "On",
+          "off": "Off"
+        },
+        "dynamicVram": "Dynamic VRAM",
+        "cache": "Node result cache",
+        "cacheMode": {
+          "auto": "By memory pressure",
+          "classic": "Classic",
+          "lru": "LRU (limited)",
+          "none": "No cache (saves memory)"
+        },
+        "cacheLru": "Cached results",
+        "unet": "Denoiser precision",
+        "prec": {
+          "auto": "Auto",
+          "fp32": "fp32 (accurate, heavy)",
+          "fp16": "fp16",
+          "bf16": "bf16",
+          "fp8_e4m3fn": "fp8 e4m3 (half the size)",
+          "fp8_e5m2": "fp8 e5m2 (half the size)"
+        },
+        "vaePrec": "VAE precision",
+        "textEnc": "Text encoder precision",
+        "attention": "Attention",
+        "attn": {
+          "auto": "Auto",
+          "pytorch": "PyTorch",
+          "split": "Split",
+          "quad": "Sub-quadratic",
+          "sage": "SageAttention",
+          "flash": "FlashAttention"
+        },
+        "preview": "Step preview",
+        "previewMode": {
+          "auto": "Auto",
+          "none": "Off",
+          "latent2rgb": "Fast (latent2rgb)",
+          "taesd": "Accurate (TAESD)"
+        },
+        "cudaDevice": "GPU numbers",
+        "cpuVae": "VAE on the CPU (in system RAM)",
+        "cpuVaeHint": "Frees VRAM at the end of generation; decoding is slower",
+        "smartMemory": "Smart memory (keep models in VRAM)",
+        "smartMemoryHint": "Turn off so models move to system RAM right after use",
+        "highRam": "High RAM mode",
+        "fast": "Experimental speedups (--fast)",
+        "fastHint": "May reduce quality or crash ComfyUI",
+        "noCudaMalloc": "Disable cudaMallocAsync",
+        "noPartner": "Disable paid API nodes",
+        "noPartnerHint": "Nodes that call paid cloud services; not needed for local work",
+        "extraArgs": "Custom launch flags",
+        "extraHint": "Any ComfyUI flags from its help. Network and path flags (--listen, --port, --*-directory) are set by the app and ignored.",
+        "save": "Save",
+        "saved": "Saved",
+        "savedRestart": "Saved — applies after ComfyUI restarts",
+        "updateTitle": "Update ComfyUI",
+        "current": "Installed",
+        "latest": "On GitHub",
+        "newer": "Update available",
+        "upToDate": "Up to date",
+        "check": "Check",
+        "updateStable": "Update to the latest release",
+        "updateLatest": "Update to the newest development build",
+        "updateHint": "ComfyUI code is updated from GitHub with the build's own script and dependencies are installed. Models, workflows and nodes are kept. The release is steadier, the development build is newer.",
+        "stopFirst": "Stop ComfyUI first.",
+        "managerOn": "ComfyUI Manager installed",
+        "managerOff": "ComfyUI Manager not installed",
+        "managerInstall": "Install the manager",
+        "managerHint": "The manager adds a node and model catalogue to the editor: search, install and update right inside ComfyUI.",
+        "nodesTitle": "Custom nodes",
+        "nodesHint": "Nodes are installed from a GitHub repository with their dependencies. A node runs its own code inside ComfyUI, so install only what you trust.",
+        "nodeInstall": "Install",
+        "nodesEmpty": "No nodes",
+        "disabled": "disabled",
+        "disable": "Disable",
+        "enable": "Enable",
+        "nodeUpdate": "Update",
+        "nodeRemoveConfirm": "Remove the node {name}?"
+      },
+      "deviceGpu": "On the GPU",
+      "deviceCpu": "On the CPU (in system RAM)",
+      "vaeFromCkpt": "From the checkpoint",
+      "addLora": "Add LoRA",
+      "noLoras": "No files: add them in the Models tab (loras folder).",
+      "loraHint": "LoRA, DoRA, LoCon, LoHa and LoKr all work: ComfyUI detects the type itself. The first number is the model strength, the second is the text encoder strength."
     }
   },
   "word": {

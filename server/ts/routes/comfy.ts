@@ -11,6 +11,10 @@
  *  GET  /hf?url=                        — файлы репозитория Hugging Face
  *  GET/PUT/DELETE /workflows[/:id]      — свои воркфлоу (любой JSON ComfyUI: граф или API-формат)
  *  POST /assist {request, current?}     — локальная модель собирает воркфлоу
+ *  GET/PUT /settings                    — режим памяти, точность, внимание, кэш, менеджер (применяется при запуске)
+ *  GET  /update/check · POST /update    — версия и обновление ComfyUI с GitHub (stable | latest)
+ *  POST /manager                        — встроенный менеджер ComfyUI (поиск узлов и моделей в редакторе)
+ *  GET/POST/DELETE /nodes · POST /nodes/update · POST /nodes/toggle — пользовательские узлы с GitHub
  *  ALL  /ui/*                           — прокси к ComfyUI (редактор и API)
  */
 import express from "express";
@@ -25,6 +29,8 @@ import {
   installGgufNode,
   isFlavor,
   isInstalled,
+  managerInstalled,
+  running,
   removeComfy,
   startComfy,
   stopComfy,
@@ -41,6 +47,20 @@ import {
   type DlJob,
 } from "../comfy/models";
 import { assistWorkflow, type ApiGraph } from "../comfy/assist";
+import {
+  installManager,
+  installNode,
+  isChannel,
+  isNewer,
+  latestVersion,
+  listNodes,
+  readVersion,
+  removeNode,
+  toggleNode,
+  updateComfy,
+  updateNode,
+} from "../comfy/maintenance";
+import { DEFAULT_RUN, readRunSettings, writeRunSettings } from "../comfy/runtime";
 import { uiProxy } from "../comfy/proxy";
 
 const router = express.Router();
@@ -48,7 +68,63 @@ const fail = (res: express.Response, e: unknown, code = 400): void => {
   res.status(code).json({ error: String((e as Error).message || e).slice(0, 300) });
 };
 
-router.get("/status", (_req, res) => res.json(comfyStatus()));
+router.get("/status", (_req, res) =>
+  res.json({ ...comfyStatus(), version: isInstalled() ? readVersion() : "", manager: isInstalled() && managerInstalled() }),
+);
+
+const busyCode = (e?: string): number => (e === "busy" || e === "running" ? 409 : 400);
+
+// ───────────── настройки запуска ─────────────
+
+router.get("/settings", (_req, res) => res.json({ settings: readRunSettings(), defaults: DEFAULT_RUN, running: running() }));
+router.put("/settings", (req, res) => {
+  const settings = writeRunSettings(req.body);
+  res.json({ settings, defaults: DEFAULT_RUN, running: running() });
+});
+
+// ───────────── обновление ─────────────
+
+router.get("/update/check", async (req, res) => {
+  const current = isInstalled() ? readVersion() : "";
+  const latest = await latestVersion(req.query.force === "1");
+  res.json({ current, latest, newer: !!current && !!latest && isNewer(latest, current) });
+});
+router.post("/update", (req, res) => {
+  const channel = req.body?.channel ?? "stable";
+  if (!isChannel(channel)) return void res.status(400).json({ error: "bad_channel" });
+  const r = updateComfy(channel);
+  if (!r.ok) return void res.status(busyCode(r.error)).json({ error: r.error });
+  res.json(comfySetup.snapshot());
+});
+router.post("/manager", (_req, res) => {
+  const r = installManager();
+  if (!r.ok) return void res.status(busyCode(r.error)).json({ error: r.error });
+  res.json(comfySetup.snapshot());
+});
+
+// ───────────── пользовательские узлы ─────────────
+
+router.get("/nodes", (_req, res) => res.json({ nodes: isInstalled() ? listNodes() : [] }));
+router.post("/nodes", (req, res) => {
+  const r = installNode(String(req.body?.url ?? ""));
+  if (!r.ok) return void res.status(busyCode(r.error)).json({ error: r.error });
+  res.json(comfySetup.snapshot());
+});
+router.post("/nodes/update", (req, res) => {
+  const r = updateNode(String(req.body?.name ?? ""));
+  if (!r.ok) return void res.status(busyCode(r.error)).json({ error: r.error });
+  res.json(comfySetup.snapshot());
+});
+router.post("/nodes/toggle", (req, res) => {
+  if (!toggleNode(String(req.body?.name ?? ""), !!req.body?.enabled))
+    return void res.status(409).json({ error: running() ? "running" : "node_not_found" });
+  res.json({ nodes: listNodes() });
+});
+router.delete("/nodes", (req, res) => {
+  if (!removeNode(String(req.query.name ?? "")))
+    return void res.status(409).json({ error: running() ? "running" : "node_not_found" });
+  res.json({ nodes: listNodes() });
+});
 
 router.post("/install", (req, res) => {
   const flavor = String(req.body?.flavor ?? "nvidia");

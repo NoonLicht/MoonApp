@@ -29,6 +29,50 @@ export interface ComfyStatus {
   log: string[];
   setup: ComfySetupState;
   flavors: { id: ComfyFlavor; sizeMb: number }[];
+  /** Установленная версия ComfyUI и наличие встроенного менеджера. */
+  version?: string;
+  manager?: boolean;
+}
+
+/** Настройки запуска ComfyUI (см. server/ts/comfy/runtime.ts). */
+export interface ComfyRunSettings {
+  memory: "auto" | "gpu" | "high" | "low" | "none" | "cpu";
+  cpuVae: boolean;
+  reserveVramGb: number;
+  smartMemory: boolean;
+  asyncOffload: "auto" | "on" | "off";
+  dynamicVram: "auto" | "on" | "off";
+  cache: "auto" | "classic" | "lru" | "none";
+  cacheLru: number;
+  highRam: boolean;
+  unet: "auto" | "fp32" | "fp16" | "bf16" | "fp8_e4m3fn" | "fp8_e5m2";
+  vae: "auto" | "fp32" | "fp16" | "bf16";
+  textEnc: "auto" | "fp32" | "fp16" | "bf16" | "fp8_e4m3fn" | "fp8_e5m2";
+  attention: "auto" | "pytorch" | "split" | "quad" | "sage" | "flash";
+  fast: boolean;
+  preview: "auto" | "none" | "latent2rgb" | "taesd";
+  cudaDevice: string;
+  manager: boolean;
+  disableCudaMalloc: boolean;
+  disablePartnerNodes: boolean;
+  extraArgs: string;
+}
+export interface ComfySettingsReply {
+  settings: ComfyRunSettings;
+  defaults: ComfyRunSettings;
+  running: boolean;
+}
+export interface ComfyUpdateCheck {
+  current: string;
+  latest: string;
+  newer: boolean;
+}
+export interface ComfyNodePack {
+  name: string;
+  enabled: boolean;
+  source: string;
+  hasRequirements: boolean;
+  builtin: boolean;
 }
 
 export interface ComfyModelFile {
@@ -109,6 +153,17 @@ export const comfyApi = {
   comfyInstallCancel: () => req<ComfySetupState>("POST", "/comfy/install/cancel"),
   comfyGgufNode: () => req<ComfySetupState>("POST", "/comfy/gguf-node"),
   comfyRemove: () => req<{ ok: boolean }>("DELETE", "/comfy/install"),
+  comfySettings: () => req<ComfySettingsReply>("GET", "/comfy/settings"),
+  comfySettingsSave: (patch: Partial<ComfyRunSettings>) => req<ComfySettingsReply>("PUT", "/comfy/settings", patch),
+  comfyUpdateCheck: (force = false) => req<ComfyUpdateCheck>("GET", `/comfy/update/check${force ? "?force=1" : ""}`),
+  comfyUpdate: (channel: "stable" | "latest") => req<ComfySetupState>("POST", "/comfy/update", { channel }),
+  comfyManagerInstall: () => req<ComfySetupState>("POST", "/comfy/manager"),
+  comfyNodes: () => req<{ nodes: ComfyNodePack[] }>("GET", "/comfy/nodes"),
+  comfyNodeInstall: (url: string) => req<ComfySetupState>("POST", "/comfy/nodes", { url }),
+  comfyNodeUpdate: (name: string) => req<ComfySetupState>("POST", "/comfy/nodes/update", { name }),
+  comfyNodeToggle: (name: string, enabled: boolean) =>
+    req<{ nodes: ComfyNodePack[] }>("POST", "/comfy/nodes/toggle", { name, enabled }),
+  comfyNodeRemove: (name: string) => req<{ nodes: ComfyNodePack[] }>("DELETE", `/comfy/nodes?name=${encodeURIComponent(name)}`),
   comfyStart: (cpu = false) => req<ComfyStatus>("POST", "/comfy/start", { cpu }),
   comfyPrepare: () => req<{ ok: boolean }>("POST", "/comfy/prepare"),
   comfyStop: () => req<{ ok: boolean }>("POST", "/comfy/stop"),

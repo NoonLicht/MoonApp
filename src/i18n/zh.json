@@ -6966,7 +6966,8 @@
       "phase": {
         "download": "下载中",
         "extract": "解压中",
-        "pip": "安装依赖包"
+        "pip": "安装依赖包",
+        "update": "更新中"
       },
       "running": "运行中",
       "starting": "启动中…",
@@ -7009,7 +7010,7 @@
         "vae": "VAE",
         "upscaler": "放大模型",
         "lora": "LoRA",
-        "loraStrength": "LoRA 强度",
+        "loraStrength": "模型强度",
         "prompt": "提示词",
         "negative": "负面提示词",
         "width": "宽度",
@@ -7021,7 +7022,13 @@
         "scheduler": "调度器",
         "seed": "种子（−1 为随机）",
         "batch": "每次张数",
-        "image": "源图片"
+        "image": "源图片",
+        "loras": "LoRA / DoRA 及其他适配器",
+        "loraClip": "文本编码器强度",
+        "clipSkip": "CLIP 跳过层数",
+        "vaeTiled": "VAE 分块（更省显存）",
+        "vaeTiledHint": "分块解码图片：适合在小显存上生成大图",
+        "clipDevice": "文本编码器"
       },
       "pickImage": "选择图片",
       "generate": "生成",
@@ -7060,7 +7067,120 @@
       "saveLibrary": "存入库",
       "exportWorkflow": "下载工作流",
       "exportApi": "下载 API 格式",
-      "pathTooLong": "安装路径对内置 Python 来说太长（Windows 路径上限为 260 个字符）。请把数据文件夹移到更靠近磁盘根目录的位置。"
+      "pathTooLong": "安装路径对内置 Python 来说太长（Windows 路径上限为 260 个字符）。请把数据文件夹移到更靠近磁盘根目录的位置。",
+      "admin": {
+        "memoryTitle": "内存与性能",
+        "memoryHint": "决定模型各部分放在哪里：去噪器放显存，VAE 和文本编码器放内存 / 处理器。下次启动 ComfyUI 时生效。",
+        "quick": {
+          "auto": "自动",
+          "saver": "节省显存",
+          "extreme": "最低显存",
+          "fast": "最高速度"
+        },
+        "quickHint": {
+          "auto": "由 ComfyUI 自行决定",
+          "saver": "去噪器在显存，文本编码器和 VAE 在处理器，权重分段加载（适合 6–8 GB）",
+          "extreme": "几乎全部放内存，显卡只负责计算；较慢但几乎都能装下",
+          "fast": "模型在两次运行之间保留在显存（需要大显存）"
+        },
+        "memory": "内存模式",
+        "memoryMode": {
+          "auto": "自动",
+          "gpu": "全部在显卡",
+          "high": "模型常驻显存",
+          "low": "低显存（编码器在处理器）",
+          "none": "几乎不占显存",
+          "cpu": "仅处理器"
+        },
+        "reserve": "为系统保留显存（GB）",
+        "asyncOffload": "异步权重卸载",
+        "tri": {
+          "auto": "自动",
+          "on": "开启",
+          "off": "关闭"
+        },
+        "dynamicVram": "动态显存",
+        "cache": "节点结果缓存",
+        "cacheMode": {
+          "auto": "按内存压力",
+          "classic": "经典",
+          "lru": "LRU（限量）",
+          "none": "无缓存（省内存）"
+        },
+        "cacheLru": "缓存结果数",
+        "unet": "去噪器精度",
+        "prec": {
+          "auto": "自动",
+          "fp32": "fp32（精确，较重）",
+          "fp16": "fp16",
+          "bf16": "bf16",
+          "fp8_e4m3fn": "fp8 e4m3（体积减半）",
+          "fp8_e5m2": "fp8 e5m2（体积减半）"
+        },
+        "vaePrec": "VAE 精度",
+        "textEnc": "文本编码器精度",
+        "attention": "注意力实现",
+        "attn": {
+          "auto": "自动",
+          "pytorch": "PyTorch",
+          "split": "Split",
+          "quad": "Sub-quadratic",
+          "sage": "SageAttention",
+          "flash": "FlashAttention"
+        },
+        "preview": "步骤预览",
+        "previewMode": {
+          "auto": "自动",
+          "none": "关闭",
+          "latent2rgb": "快速 (latent2rgb)",
+          "taesd": "精确 (TAESD)"
+        },
+        "cudaDevice": "显卡编号",
+        "cpuVae": "VAE 在处理器（内存）运行",
+        "cpuVaeHint": "生成结束时释放显存；解码较慢",
+        "smartMemory": "智能内存（模型留在显存）",
+        "smartMemoryHint": "关闭后模型用完立即转入内存",
+        "highRam": "大内存模式",
+        "fast": "实验性加速 (--fast)",
+        "fastHint": "可能降低质量或导致崩溃",
+        "noCudaMalloc": "禁用 cudaMallocAsync",
+        "noPartner": "禁用付费 API 节点",
+        "noPartnerHint": "调用付费云服务的节点；本地使用不需要",
+        "extraArgs": "自定义启动参数",
+        "extraHint": "可填写 ComfyUI 帮助中的任意参数。网络与路径参数（--listen、--port、--*-directory）由应用设定，会被忽略。",
+        "save": "保存",
+        "saved": "已保存",
+        "savedRestart": "已保存，重启 ComfyUI 后生效",
+        "updateTitle": "更新 ComfyUI",
+        "current": "已安装",
+        "latest": "GitHub 上",
+        "newer": "有新版本",
+        "upToDate": "已是最新",
+        "check": "检查",
+        "updateStable": "更新到最新发行版",
+        "updateLatest": "更新到最新开发版",
+        "updateHint": "使用构建自带脚本从 GitHub 更新 ComfyUI 代码并补装依赖。模型、工作流和节点会保留。发行版更稳定，开发版更新。",
+        "stopFirst": "请先停止 ComfyUI。",
+        "managerOn": "已安装 ComfyUI 管理器",
+        "managerOff": "未安装 ComfyUI 管理器",
+        "managerInstall": "安装管理器",
+        "managerHint": "管理器为编辑器添加节点与模型目录：可在 ComfyUI 内搜索、安装和更新。",
+        "nodesTitle": "自定义节点",
+        "nodesHint": "节点从 GitHub 仓库连同依赖一起安装。节点会在 ComfyUI 内运行自己的代码，请只安装信任的节点。",
+        "nodeInstall": "安装",
+        "nodesEmpty": "暂无节点",
+        "disabled": "已禁用",
+        "disable": "禁用",
+        "enable": "启用",
+        "nodeUpdate": "更新",
+        "nodeRemoveConfirm": "删除节点 {name}？"
+      },
+      "deviceGpu": "显卡",
+      "deviceCpu": "处理器（内存）",
+      "vaeFromCkpt": "使用检查点自带",
+      "addLora": "添加 LoRA",
+      "noLoras": "没有文件：请在“模型”标签（loras 文件夹）中添加。",
+      "loraHint": "支持 LoRA、DoRA、LoCon、LoHa 和 LoKr，ComfyUI 会自动识别。第一个数是模型强度，第二个是文本编码器强度。"
     }
   },
   "word": {

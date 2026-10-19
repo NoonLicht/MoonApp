@@ -22,6 +22,7 @@ import { createSetupTask } from "../setupTask";
 import { removePath } from "../fsUtil";
 import { modelsDir, settled, stopServer } from "../llamacpp/engine";
 import { sdModelsDir } from "../llamacpp/models";
+import { buildRunArgs, readRunSettings } from "./runtime";
 
 const { DIRS } = config;
 const UA = "MoonApp/1.0 (+ComfyUI)";
@@ -57,10 +58,11 @@ const installDir = (): string => path.join(comfyRoot(), "app");
 export const comfyModelsDir = (): string => path.join(comfyRoot(), "models");
 const dataDir = (k: "user" | "input" | "output" | "temp"): string => path.join(comfyRoot(), k);
 export const outputDir = (): string => dataDir("output");
-const dlDir = (): string => path.join(comfyRoot(), "_dl");
+export const dlDir = (): string => path.join(comfyRoot(), "_dl");
 const metaFile = (): string => path.join(installDir(), "moonapp-install.json");
 
 export const comfySetup = createSetupTask("comfy");
+export const comfyUserDir = (k: "user" | "input" | "output" | "temp"): string => dataDir(k);
 
 export const supported = (): boolean => process.platform === "win32" && process.arch === "x64";
 
@@ -69,7 +71,7 @@ export const supported = (): boolean => process.platform === "win32" && process.
  * длинные пути внутри torch достигают ≈165 знаков, а встроенный Python не открывает пути длиннее
  * 260 символов, поэтому каждый лишний сегмент пути важен (см. checkPathLength).
  */
-function portableRoot(): string | null {
+export function portableRoot(): string | null {
   const d = installDir();
   return fs.existsSync(path.join(d, "python_embeded", "python.exe")) && fs.existsSync(path.join(d, "ComfyUI", "main.py"))
     ? d
@@ -95,8 +97,11 @@ function readMeta(): InstallMeta | null {
 }
 
 export const isInstalled = (): boolean => !!portableRoot() && !!readMeta();
-const pythonExe = (): string => path.join(portableRoot() ?? "", "python_embeded", "python.exe");
-const customNodes = (): string => path.join(portableRoot() ?? "", "ComfyUI", "custom_nodes");
+export const pythonExe = (): string => path.join(portableRoot() ?? "", "python_embeded", "python.exe");
+export const customNodes = (): string => path.join(portableRoot() ?? "", "ComfyUI", "custom_nodes");
+/** Встроенный менеджер ComfyUI: пакет comfyui_manager поставлен в Python сборки. */
+export const managerInstalled = (): boolean =>
+  fs.existsSync(path.join(portableRoot() ?? "", "python_embeded", "Lib", "site-packages", "comfyui_manager"));
 export const ggufNodeInstalled = (): boolean =>
   fs.existsSync(path.join(customNodes(), "ComfyUI-GGUF", "nodes.py"));
 
@@ -110,12 +115,12 @@ function extract(archive: string, dest: string, strip = 0): Promise<void> {
   });
 }
 
-function run(exe: string, args: string[], cwd: string): Promise<string> {
+export function run(exe: string, args: string[], cwd: string, timeout = 0): Promise<string> {
   return new Promise((resolve, reject) => {
     execFile(
       exe,
       args,
-      { cwd, windowsHide: true, maxBuffer: 16 << 20, env: { ...process.env, PYTHONIOENCODING: "utf-8" } },
+      { cwd, timeout, windowsHide: true, maxBuffer: 16 << 20, env: { ...process.env, PYTHONIOENCODING: "utf-8" } },
       (err, out, stderr) => (err ? reject(new Error(String(stderr || err.message).slice(-400))) : resolve(String(out))),
     );
   });
@@ -322,7 +327,7 @@ export async function startComfy(opts: { cpu?: boolean } = {}): Promise<{ ok: bo
     dataDir("output"),
     "--temp-directory",
     dataDir("temp"),
-    ...(opts.cpu ? ["--cpu"] : []),
+    ...buildRunArgs(readRunSettings(), { cpu: opts.cpu, managerReady: managerInstalled() }),
   ];
   const p = spawn(pythonExe(), args, {
     cwd: root,
