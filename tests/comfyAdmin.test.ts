@@ -3,7 +3,7 @@ import { createRequire } from "node:module";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { buildGraph, DEFAULTS } from "../src/pages/photo/comfy/presets";
+import { buildGraph, DEFAULTS } from "../src/pages/photo/lib/comfyPresets";
 
 /** Настройки запуска ComfyUI, обновление, узлы с GitHub и расширения пресетов (LoRA, свой VAE, плитки). */
 const STORAGE = fs.mkdtempSync(path.join(os.tmpdir(), "moonapp-comfyadm-"));

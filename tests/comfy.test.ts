@@ -3,7 +3,7 @@ import { createRequire } from "node:module";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { buildGraph, DEFAULTS, isApiGraph, isEditorGraph, missingNodes, PRESETS, TURBO_SIGMAS } from "../src/pages/photo/comfy/presets";
+import { buildGraph, DEFAULTS, isApiGraph, isEditorGraph, missingNodes, PRESETS, TURBO_SIGMAS } from "../src/pages/photo/lib/comfyPresets";
 
 /** ComfyUI во «Фото и видео»: проверка графов, список моделей, безопасность удаления и пресеты. */
 const STORAGE = fs.mkdtempSync(path.join(os.tmpdir(), "moonapp-comfy-"));

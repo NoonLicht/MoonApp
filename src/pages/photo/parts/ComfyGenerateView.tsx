@@ -16,7 +16,7 @@ import {
   type PresetDef,
   type PresetId,
   type PresetParams,
-} from "@/pages/photo/comfy/presets";
+} from "@/pages/photo/lib/comfyPresets";
 
 /** Какой узел и вход дают список файлов для поля формы. */
 const SOURCES: Partial<Record<keyof PresetParams, [string, string][]>> = {

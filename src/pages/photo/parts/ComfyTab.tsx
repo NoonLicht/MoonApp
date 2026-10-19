@@ -5,12 +5,12 @@ import { useI18n } from "@/app/i18n";
 import { api } from "@/api/client";
 import { saveBlob } from "@/lib/download";
 import type { ComfyGraph, ComfyNodeInfo, ComfyStatus } from "@/api/apiComfy";
-import ComfySetup from "@/pages/photo/comfy/ComfySetup";
-import ComfyAdmin from "@/pages/photo/comfy/ComfyAdmin";
-import GenerateView from "@/pages/photo/comfy/GenerateView";
-import ModelsView from "@/pages/photo/comfy/ModelsView";
-import LibraryView from "@/pages/photo/comfy/LibraryView";
-import { loadFile, loadWorkflow, readWorkflow } from "@/pages/photo/comfy/editorBridge";
+import ComfySetup from "@/pages/photo/parts/ComfySetup";
+import ComfyAdmin from "@/pages/photo/parts/ComfyAdmin";
+import GenerateView from "@/pages/photo/parts/ComfyGenerateView";
+import ModelsView from "@/pages/photo/parts/ComfyModelsView";
+import LibraryView from "@/pages/photo/parts/ComfyLibraryView";
+import { loadFile, loadWorkflow, readWorkflow } from "@/pages/photo/lib/comfyEditorBridge";
 
 type View = "gen" | "editor" | "models" | "library";
 const VIEWS: View[] = ["gen", "editor", "models", "library"];

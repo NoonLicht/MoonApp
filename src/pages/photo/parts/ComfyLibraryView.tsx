@@ -4,7 +4,7 @@ import { Glass, Btn } from "@/components/ui";
 import { useI18n } from "@/app/i18n";
 import { api } from "@/api/client";
 import type { ComfyGraph } from "@/api/apiComfy";
-import { isApiGraph } from "@/pages/photo/comfy/presets";
+import { isApiGraph } from "@/pages/photo/lib/comfyPresets";
 
 /** Свои воркфлоу: сохранённые из редактора, от помощника или импортированные. */
 export default function LibraryView({
