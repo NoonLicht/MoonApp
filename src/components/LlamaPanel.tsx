@@ -237,6 +237,20 @@ export default function LlamaPanel({
                 ]}
               />
             </label>
+            <label className="field" title={t("llama.ctxHint")}>
+              <span className="field-label">{t("llama.ctxLabel")}</span>
+              <Select
+                value={String(router.ctx ?? 16384)}
+                onChange={(e) =>
+                  void act(() => api.llamaSetRouter({ ctx: Number(e.target.value) }))
+                }
+                options={[4096, 8192, 16384, 32768, 65536, 131072].map((n) => ({
+                  value: String(n),
+                  label: `${n / 1024}k`,
+                }))}
+              />
+              <span className="muted-sm">{t("llama.ctxHint")}</span>
+            </label>
             <label className="llama-check">
               <input
                 type="checkbox"

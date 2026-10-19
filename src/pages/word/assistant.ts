@@ -55,6 +55,13 @@ async function typeLines(cx: Cx, text: string): Promise<void> {
   }
 }
 
+/** Глубина истории отмены: по ней «Повторить» откатывает ровно то, что сделал запрос. */
+async function depth(cx: Cx): Promise<number> {
+  const r = await cx.exec("edit.undoHistory");
+  const d = (r.result as { depth?: number } | undefined)?.depth;
+  return typeof d === "number" ? d : 0;
+}
+
 /** Абзац, в котором стоит каретка (по свежему снимку ядра, а не по состоянию страницы). */
 async function caretBlock(cx: Cx): Promise<Block> {
   const r = await cx.query<{ blocks: Block[]; selection: { focus: { path: number[] } } }>(
@@ -438,6 +445,11 @@ export function wordAdapter(getCx: () => Cx, lang: string): DocAdapter {
           : `Caret in paragraph ${sel?.focus.path[0] ?? 0}.`,
       );
       return parts.join("\n");
+    },
+    undoMark: async () => depth(cx),
+    undoTo: async (mark) => {
+      const n = (await depth(cx)) - mark;
+      if (n > 0) describeResult(await cx.exec("edit.undoTo", { count: n }));
     },
     snapshot: (max) => read(0, 1e9, max),
     setPictureSink: (fn) => {

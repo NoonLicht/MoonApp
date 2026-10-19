@@ -291,5 +291,9 @@
   "Find the largest and smallest values": "Найди наибольшие и наименьшие значения",
   "Create a chart from this data": "Построй диаграмму по этим данным",
   "Sort the table by the first column": "Отсортируй таблицу по первому столбцу",
-  "Generating an image": "Рисую картинку"
+  "Generating an image": "Рисую картинку",
+  "Context length": "Длина контекста",
+  "How much text the model sees at once. Longer needs more memory; applies when the model is loaded again.": "Сколько текста модель видит за раз. Больше — больше памяти; применяется при следующей загрузке модели.",
+  "Regenerate": "Повторить",
+  "Undo the changes and try again": "Отменить изменения и сделать заново"
 }

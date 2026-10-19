@@ -2720,5 +2720,9 @@
   "Find the largest and smallest values": "ابحث عن أكبر القيم وأصغرها",
   "Create a chart from this data": "أنشئ مخططاً من هذه البيانات",
   "Sort the table by the first column": "رتّب الجدول حسب العمود الأول",
-  "Generating an image": "توليد صورة"
+  "Generating an image": "توليد صورة",
+  "Context length": "طول السياق",
+  "How much text the model sees at once. Longer needs more memory; applies when the model is loaded again.": "مقدار النص الذي يراه النموذج دفعة واحدة. الأطول يحتاج ذاكرة أكبر؛ يُطبَّق عند إعادة تحميل النموذج.",
+  "Regenerate": "إعادة التوليد",
+  "Undo the changes and try again": "تراجع عن التغييرات وأعد المحاولة"
 }

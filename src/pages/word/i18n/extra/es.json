@@ -346,5 +346,9 @@
   "Find the largest and smallest values": "Encuentra los valores mayor y menor",
   "Create a chart from this data": "Crea un gráfico con estos datos",
   "Sort the table by the first column": "Ordena la tabla por la primera columna",
-  "Generating an image": "Generando una imagen"
+  "Generating an image": "Generando una imagen",
+  "Context length": "Longitud del contexto",
+  "How much text the model sees at once. Longer needs more memory; applies when the model is loaded again.": "Cuánto texto ve el modelo a la vez. Más largo necesita más memoria; se aplica al volver a cargar el modelo.",
+  "Regenerate": "Repetir",
+  "Undo the changes and try again": "Deshacer los cambios y volver a intentarlo"
 }

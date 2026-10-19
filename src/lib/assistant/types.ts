@@ -62,6 +62,10 @@ export interface DocAdapter {
   snapshot: (maxChars: number) => Promise<string>;
   /** Куда показывать сгенерированные картинки в чате (ставит хук на время запроса). */
   setPictureSink: (fn: ((dataUrl: string) => void) | null) => void;
+  /** Метка состояния документа перед запросом (глубина истории отмены) — для «Повторить». */
+  undoMark?: () => Promise<number>;
+  /** Откатить всё, что запрос изменил после метки; `edits` — сколько правок сделал сам помощник. */
+  undoTo?: (mark: number, edits: number) => Promise<void>;
   /** Вставить готовый текст в документ (кнопка «Вставить» у ответа). */
   insert: (text: string) => Promise<void>;
 }

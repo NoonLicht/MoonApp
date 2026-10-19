@@ -688,5 +688,9 @@
   "Find the largest and smallest values": "Trouve les valeurs maximale et minimale",
   "Create a chart from this data": "Crée un graphique à partir de ces données",
   "Sort the table by the first column": "Trie le tableau selon la première colonne",
-  "Generating an image": "Génération d'une image"
+  "Generating an image": "Génération d'une image",
+  "Context length": "Longueur du contexte",
+  "How much text the model sees at once. Longer needs more memory; applies when the model is loaded again.": "Quantité de texte vue par le modèle à la fois. Plus long = plus de mémoire ; appliqué au prochain chargement du modèle.",
+  "Regenerate": "Régénérer",
+  "Undo the changes and try again": "Annuler les modifications et réessayer"
 }

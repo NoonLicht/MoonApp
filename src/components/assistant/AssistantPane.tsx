@@ -6,6 +6,7 @@ import {
   Copy,
   Image as ImageIcon,
   Loader2,
+  RotateCcw,
   Send,
   SlidersHorizontal,
   Sparkles,
@@ -129,6 +130,25 @@ function Settings({ state, tw }: { state: ReturnType<typeof useAssistant>; tw: T
 
   return (
     <div className="as-settings">
+      <div className="as-sec">{tw("Context length")}</div>
+      <select
+        className="as-select"
+        value={String(st?.router.ctx ?? 16384)}
+        onChange={(e) => void api.llamaSetRouter({ ctx: Number(e.target.value) }).then(refresh)}
+        aria-label={tw("Context length")}
+      >
+        {[4096, 8192, 16384, 32768, 65536, 131072].map((n) => (
+          <option key={n} value={n}>
+            {n / 1024}k
+          </option>
+        ))}
+      </select>
+      <div className="as-note">
+        {tw(
+          "How much text the model sees at once. Longer needs more memory; applies when the model is loaded again.",
+        )}
+      </div>
+
       <div className="as-sec">{tw("Model")}</div>
       <select
         className="as-select"
@@ -243,12 +263,15 @@ function Bubble({
   tw,
   canInsert,
   onInsert,
+  onRegenerate,
   busy,
 }: {
   it: ChatItem;
   tw: Tw;
   canInsert: boolean;
   onInsert: (t: string) => void;
+  /** Только у последнего ответа: откатить его правки и ответить заново. */
+  onRegenerate?: () => void;
   busy: boolean;
 }) {
   const [copied, setCopied] = useState(false);
@@ -285,6 +308,18 @@ function Bubble({
       {it.error ? (
         <div className="as-err">
           <AlertCircle size={13} /> {it.error}
+        </div>
+      ) : null}
+      {(it.text || it.error || it.steps?.length) && !busy && onRegenerate ? (
+        <div className="as-actions">
+          <button
+            type="button"
+            className="as-link"
+            title={tw("Undo the changes and try again")}
+            onClick={onRegenerate}
+          >
+            <RotateCcw size={12} /> {tw("Regenerate")}
+          </button>
         </div>
       ) : null}
       {it.text && !busy ? (
@@ -339,7 +374,7 @@ export default function AssistantPane({
   onClose: () => void;
 }) {
   const state = useAssistant(getAdapter, docId);
-  const { items, busy, send, stop, clear, settings } = state;
+  const { items, busy, send, regenerate, stop, clear, settings } = state;
   const [showSettings, setShowSettings] = useState(false);
   const [text, setText] = useState("");
   const [images, setImages] = useState<string[]>([]);
@@ -440,6 +475,9 @@ export default function AssistantPane({
                   busy={busy && i === items.length - 1}
                   canInsert={!settings.agent || !settings.edit}
                   onInsert={(t) => void getAdapter()?.insert(t)}
+                  onRegenerate={
+                    i === items.length - 1 && i > 0 ? () => void regenerate() : undefined
+                  }
                 />
               ))
             )}

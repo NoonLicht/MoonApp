@@ -1,4 +1,10 @@
-import { commandTools, describeResult, imageTool, str, webTools } from "@/lib/assistant/sharedTools";
+import {
+  commandTools,
+  describeResult,
+  imageTool,
+  str,
+  webTools,
+} from "@/lib/assistant/sharedTools";
 import type { AssistantTool, DocAdapter } from "@/lib/assistant/types";
 import type { SheetCx } from "@/pages/sheet/types";
 
@@ -25,10 +31,12 @@ interface Inspect {
 
 const colName = (i: number): string => {
   let s = "";
-  for (let n = i + 1; n > 0; n = Math.floor((n - 1) / 26)) s = String.fromCharCode(65 + ((n - 1) % 26)) + s;
+  for (let n = i + 1; n > 0; n = Math.floor((n - 1) / 26))
+    s = String.fromCharCode(65 + ((n - 1) % 26)) + s;
   return s;
 };
-const colIndex = (s: string): number => [...s.toUpperCase()].reduce((n, c) => n * 26 + c.charCodeAt(0) - 64, 0) - 1;
+const colIndex = (s: string): number =>
+  [...s.toUpperCase()].reduce((n, c) => n * 26 + c.charCodeAt(0) - 64, 0) - 1;
 
 /** «B2:F15» → строка и столбец левого верхнего угла (нумерация с нуля). */
 function origin(range: string): { row: number; col: number } {
@@ -43,7 +51,13 @@ function table(r: SheetRead, maxChars: number): string {
   const lines: string[] = [];
   let size = head.length;
   for (let i = 0; i < r.values.length; i++) {
-    const line = `${o.row + i + 1}: ${r.values[i].map((v) => str(v).replace(/[\t\r\n]+/g, " ").trim()).join(" | ")}`;
+    const line = `${o.row + i + 1}: ${r.values[i]
+      .map((v) =>
+        str(v)
+          .replace(/[\t\r\n]+/g, " ")
+          .trim(),
+      )
+      .join(" | ")}`;
     if (size + line.length > maxChars) {
       lines.push(`[cut after row ${o.row + i}; read the next part with a narrower range]`);
       break;
@@ -75,7 +89,12 @@ export function sheetAdapter(getCx: () => SheetCx, lang: string): DocAdapter {
   const sink: { fn: ((url: string) => void) | null } = { fn: null };
   const activeName = (): string => cx.s.sheets[cx.s.active]?.name ?? "";
 
-  const read = async (range?: string, sheet?: string, formulas = false, max = 9000): Promise<string> => {
+  const read = async (
+    range?: string,
+    sheet?: string,
+    formulas = false,
+    max = 9000,
+  ): Promise<string> => {
     const r = await cx.query<SheetRead>("sheet.read", {
       ...(range ? { range } : {}),
       ...(sheet ? { sheet } : {}),
@@ -90,7 +109,8 @@ export function sheetAdapter(getCx: () => SheetCx, lang: string): DocAdapter {
     {
       group: "read",
       name: "workbook_info",
-      description: "List the sheets of the workbook with their used ranges, charts and tables, and the active cell.",
+      description:
+        "List the sheets of the workbook with their used ranges, charts and tables, and the active cell.",
       parameters: { type: "object", properties: {} },
       label: () => "Looking at the workbook",
       run: async () => {
@@ -101,7 +121,9 @@ export function sheetAdapter(getCx: () => SheetCx, lang: string): DocAdapter {
           ...i.sheets.map(
             (s) =>
               `- "${s.name}": used range ${s.usedRange ?? "empty"}, ${s.cells} cells` +
-              (s.charts.length ? `, charts: ${s.charts.map((c) => `${c.title ?? c.kind} at ${c.at}`).join("; ")}` : "") +
+              (s.charts.length
+                ? `, charts: ${s.charts.map((c) => `${c.title ?? c.kind} at ${c.at}`).join("; ")}`
+                : "") +
               (s.tables.length ? `, ${s.tables.length} table(s)` : ""),
           ),
         ].join("\n");
@@ -129,7 +151,8 @@ export function sheetAdapter(getCx: () => SheetCx, lang: string): DocAdapter {
       description: "Get the currently selected range and the value of the active cell.",
       parameters: { type: "object", properties: {} },
       label: () => "Reading the selection",
-      run: async () => `Selection ${cx.s.sel.a1} on sheet "${activeName()}".\n${await read(cx.s.sel.a1, undefined, true, 1500)}`,
+      run: async () =>
+        `Selection ${cx.s.sel.a1} on sheet "${activeName()}".\n${await read(cx.s.sel.a1, undefined, true, 1500)}`,
     },
     {
       group: "edit",
@@ -140,15 +163,22 @@ export function sheetAdapter(getCx: () => SheetCx, lang: string): DocAdapter {
         type: "object",
         properties: {
           range: { type: "string", description: 'top-left cell or range, e.g. "A1"' },
-          values: { type: "array", description: "rows of values, e.g. [[\"Name\",\"Qty\"],[\"Apples\",3]]", items: { type: "array", items: {} } },
+          values: {
+            type: "array",
+            description: 'rows of values, e.g. [["Name","Qty"],["Apples",3]]',
+            items: { type: "array", items: {} },
+          },
           sheet: { type: "string", description: "sheet name (default: active)" },
         },
         required: ["range", "values"],
       },
       label: (a) => `Writing to: ${str(a.range)}`,
       run: async (a) => {
-        if (a.sheet && str(a.sheet) !== activeName()) describeResult(await cx.exec("sheet.activate", { sheet: str(a.sheet) }));
-        return describeResult(await cx.exec("range.setValues", { range: str(a.range), values: matrix(a.values) }));
+        if (a.sheet && str(a.sheet) !== activeName())
+          describeResult(await cx.exec("sheet.activate", { sheet: str(a.sheet) }));
+        return describeResult(
+          await cx.exec("range.setValues", { range: str(a.range), values: matrix(a.values) }),
+        );
       },
     },
     {
@@ -164,9 +194,14 @@ export function sheetAdapter(getCx: () => SheetCx, lang: string): DocAdapter {
         required: ["cell", "formula"],
       },
       label: (a) => `Setting cell: ${str(a.cell)}`,
-      run: async (a) => describeResult(await cx.exec("cell.set", { cell: str(a.cell), input: str(a.formula) })),
+      run: async (a) =>
+        describeResult(await cx.exec("cell.set", { cell: str(a.cell), input: str(a.formula) })),
     },
-    ...commandTools("sheet", () => cx.docId, (c, p) => cx.exec(c, p)),
+    ...commandTools(
+      "sheet",
+      () => cx.docId,
+      (c, p) => cx.exec(c, p),
+    ),
     ...webTools(lang),
     imageTool({
       sink,
@@ -175,7 +210,9 @@ export function sheetAdapter(getCx: () => SheetCx, lang: string): DocAdapter {
           await cx.exec("insert.picture", {
             base64,
             mime: "image/png",
-            at: /^[A-Za-z]{1,3}\d{1,7}$/.test(place) ? place.toUpperCase() : cx.s.sel.a1.split(":")[0],
+            at: /^[A-Za-z]{1,3}\d{1,7}$/.test(place)
+              ? place.toUpperCase()
+              : cx.s.sel.a1.split(":")[0],
             width: 320,
             alt,
           }),
@@ -197,6 +234,10 @@ export function sheetAdapter(getCx: () => SheetCx, lang: string): DocAdapter {
       const s = cx.s;
       return `Workbook: ${cx.ui.docName}. Active sheet: "${activeName()}". Selection: ${s.sel.a1}. Sheets: ${s.sheets.map((x) => x.name).join(", ")}.`;
     },
+    undoMark: async () => 0,
+    undoTo: async (_mark, edits) => {
+      if (edits > 0) describeResult(await cx.exec("edit.undo", { steps: edits }));
+    },
     snapshot: (max) => read(undefined, undefined, false, max),
     setPictureSink: (fn) => {
       sink.fn = fn;
@@ -206,7 +247,9 @@ export function sheetAdapter(getCx: () => SheetCx, lang: string): DocAdapter {
         .replace(/\r\n?/g, "\n")
         .split("\n")
         .map((l) => l.split("\t"));
-      describeResult(await cx.exec("range.setValues", { range: cx.s.sel.a1.split(":")[0], values: rows }));
+      describeResult(
+        await cx.exec("range.setValues", { range: cx.s.sel.a1.split(":")[0], values: rows }),
+      );
     },
   };
 }

@@ -100,12 +100,16 @@ export function useAssistant(getAdapter: () => DocAdapter | null, docId: string)
     [docId],
   );
 
-  const send = useCallback(
-    async (text: string, images: string[] = []): Promise<void> => {
+  /** Что запрос изменил в документе: метка истории отмены и число правок помощника (в памяти, не в хранилище). */
+  const marks = useRef(new Map<string, { mark: number; edits: number }>());
+
+  /** Запрос поверх беседы `base` (при «Повторить» — без прошлой пары вопрос-ответ). */
+  const run = useCallback(
+    async (text: string, images: string[], base: ChatItem[]): Promise<void> => {
       const adapter = getAdapter();
       const q = text.trim();
       if (!adapter || !q || abort.current) return;
-      const history = (chatsRef.current[docId] ?? [])
+      const history = base
         .filter((it) => it.text && !it.error)
         .slice(-HISTORY)
         .map((it) => ({ role: it.role, text: it.text }));
@@ -116,7 +120,10 @@ export function useAssistant(getAdapter: () => DocAdapter | null, docId: string)
         ...(images.length ? { images } : {}),
       };
       const bot: ChatItem = { id: uid(), role: "assistant", text: "", steps: [] };
-      setChats((all) => ({ ...all, [docId]: [...(all[docId] ?? []), user, bot] }));
+      setChats((all) => ({ ...all, [docId]: [...base, user, bot] }));
+      const rec = { mark: (await adapter.undoMark?.().catch(() => undefined)) ?? -1, edits: 0 };
+      marks.current.set(bot.id, rec);
+      const counted = new Set<string>();
       const ac = new AbortController();
       abort.current = ac;
       setBusy(true);
@@ -135,7 +142,15 @@ export function useAssistant(getAdapter: () => DocAdapter | null, docId: string)
           signal: ac.signal,
           events: {
             onText: (d) => patchItem(bot.id, (it) => ({ ...it, text: it.text + d })),
-            onStep: (step: ChatStep) =>
+            onStep: (step: ChatStep) => {
+              const t = adapter.tools.find((x) => x.name === step.tool);
+              if (
+                step.state === "ok" &&
+                t &&
+                (t.group === "edit" || t.group === "images" || t.name === "run_command")
+              )
+                counted.add(step.id);
+              rec.edits = counted.size;
               patchItem(bot.id, (it) => {
                 const steps = it.steps ?? [];
                 return {
@@ -144,7 +159,8 @@ export function useAssistant(getAdapter: () => DocAdapter | null, docId: string)
                     ? steps.map((x) => (x.id === step.id ? step : x))
                     : [...steps, step],
                 };
-              }),
+              });
+            },
           },
         });
       } catch (e) {
@@ -164,13 +180,40 @@ export function useAssistant(getAdapter: () => DocAdapter | null, docId: string)
     [docId, getAdapter, patchItem],
   );
 
+  const send = useCallback(
+    (text: string, images: string[] = []): Promise<void> =>
+      run(text, images, chatsRef.current[docId] ?? []),
+    [docId, run],
+  );
+
+  /** «Повторить»: откатить изменения последнего ответа в документе и задать тот же вопрос заново. */
+  const regenerate = useCallback(async (): Promise<void> => {
+    const all = chatsRef.current[docId] ?? [];
+    const botIdx = all.length - 1;
+    const bot = all[botIdx];
+    const user = all[botIdx - 1];
+    const adapter = getAdapter();
+    if (abort.current || !adapter || bot?.role !== "assistant" || user?.role !== "user") return;
+    const rec = marks.current.get(bot.id);
+    // Без метки (беседа восстановлена после перезапуска) откатывать нечем: просто задаём вопрос заново.
+    if (rec && rec.mark >= 0 && adapter.undoTo) {
+      try {
+        await adapter.undoTo(rec.mark, rec.edits);
+      } catch (e) {
+        patchItem(bot.id, (it) => ({ ...it, error: String((e as Error).message || e) }));
+        return;
+      }
+    }
+    await run(user.text, user.images ?? [], all.slice(0, botIdx - 1));
+  }, [docId, getAdapter, patchItem, run]);
+
   const stop = useCallback(() => abort.current?.abort(), []);
   const clear = useCallback(() => {
     abort.current?.abort();
     setChats((all) => ({ ...all, [docId]: [] }));
   }, [docId]);
 
-  return { settings, setSettings, items, busy, send, stop, clear };
+  return { settings, setSettings, items, busy, send, regenerate, stop, clear };
 }
 
 export type AssistantState = ReturnType<typeof useAssistant>;
