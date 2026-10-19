@@ -164,7 +164,7 @@ export async function ocrImage(o: {
 
 const MAX_REMOTE = 25 * 1024 * 1024;
 
-const privateIp = (ip: string): boolean => {
+export const privateIp = (ip: string): boolean => {
   if (net.isIPv6(ip)) return ip === "::1" || /^f[cd]/i.test(ip) || /^fe80/i.test(ip);
   const [a, b] = ip.split(".").map(Number);
   return (

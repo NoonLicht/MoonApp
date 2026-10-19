@@ -4,6 +4,7 @@ import { X } from "lucide-react";
 import { Btn } from "@/components/ui";
 import type { SheetCx, SheetPane } from "@/pages/sheet/types";
 import type { SheetDocs } from "@/pages/sheet/useSheetDocs";
+import { SheetAssistant } from "@/components/assistant/DocAssistant";
 import { FormatChartPane, NamesPane, PivotFieldsPane, WatchPane } from "@/pages/sheet/panes/Panes2";
 
 const TITLES: Record<SheetPane, string> = {
@@ -14,6 +15,7 @@ const TITLES: Record<SheetPane, string> = {
   watch: "Watch Window",
   names: "Names",
   find: "Find and Replace",
+  assistant: "Assistant",
 };
 
 function Shell({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
@@ -216,6 +218,7 @@ export function PaneHost({
   docs: SheetDocs;
   onClose: () => void;
 }) {
+  if (name === "assistant") return <SheetAssistant cx={cx} onClose={onClose} />;
   return (
     <Shell title={cx.tw(TITLES[name])} onClose={onClose}>
       {name === "find" ? <FindPane cx={cx} docs={docs} /> : null}

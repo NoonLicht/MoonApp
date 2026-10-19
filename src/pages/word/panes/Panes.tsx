@@ -4,6 +4,7 @@ import { X } from "lucide-react";
 import { api } from "@/api/client";
 import { useStyles } from "@/pages/word/ribbon/custom";
 import type { Cx, PaneName, Params } from "@/pages/word/ribbon/types";
+import { WordAssistant } from "@/components/assistant/DocAssistant";
 
 /** Данные панели: перечитываются при правках документа (с задержкой, чтобы не мешать набору). */
 function useLoad<T>(cx: Cx, cmd: string, params: Params, live = true): [T | undefined, () => void] {
@@ -830,5 +831,7 @@ export function PaneHost({
       return <SelectionPane cx={cx} onClose={onClose} />;
     case "smartArt":
       return <SmartArtPane cx={cx} onClose={onClose} />;
+    case "assistant":
+      return <WordAssistant cx={cx} onClose={onClose} />;
   }
 }

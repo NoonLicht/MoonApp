@@ -59,6 +59,9 @@ import {
 
 const router = express.Router();
 
+// Помощник для «Документов» и «Таблиц»: ход модели с инструментами и интернет (см. server/ts/assistant).
+router.use("/assistant", require("../assistant/routes") as express.Router);
+
 router.get("/status", (_req, res) => {
   res.json({
     tag: LLAMA_TAG,

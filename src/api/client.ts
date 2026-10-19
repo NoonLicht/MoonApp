@@ -62,6 +62,7 @@ import { companionApi } from "@/api/apiCompanion";
 import { linutilApi } from "@/api/apiLinutil";
 import { translateApi } from "@/api/apiTranslate";
 import { llamaApi } from "@/api/apiLlama";
+import { assistantApi } from "@/api/apiAssistant";
 
 export type {
   CompressorJob,
@@ -397,4 +398,5 @@ export const api = {
   ...linutilApi,
   ...translateApi,
   ...llamaApi,
+  ...assistantApi,
 };

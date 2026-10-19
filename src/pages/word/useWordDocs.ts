@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "@/api/client";
 import type { WordRequest, WordState, WordStatus } from "@/api/apiWord";
+import type { ExecResult } from "@/lib/assistant/types";
 import { saveBlob } from "@/lib/download";
 
 export interface WordDoc {
@@ -177,6 +178,28 @@ export function useWordDocs() {
     },
     [activeId, enqueue, patch],
   );
+  /** Как `run`, но ошибка ядра возвращается текстом (для помощника), а не уходит в общий баннер. */
+  const exec = useCallback(
+    (command: string, params: Record<string, unknown> = {}): Promise<ExecResult> => {
+      const id = activeId;
+      if (!id) return Promise.resolve({ ok: false, error: "no_document" });
+      const next = chain.current.then(async (): Promise<ExecResult> => {
+        try {
+          const r = await api.wordRun(id, command, params);
+          patch(id, { ...r.state, requests: [] });
+          return { ok: true, result: r.result };
+        } catch (e) {
+          return { ok: false, error: String((e as Error).message || e) };
+        }
+      });
+      chain.current = next.then(
+        () => undefined,
+        () => undefined,
+      );
+      return next;
+    },
+    [activeId, patch],
+  );
   /** Данные от ядра (структура документа и т. п.) без обновления состояния. */
   const query = useCallback(
     <T = unknown>(method: string, params: unknown = {}): Promise<T | undefined> => {
@@ -309,6 +332,7 @@ export function useWordDocs() {
     key,
     click,
     run,
+    exec,
     query,
     copy,
     paste,

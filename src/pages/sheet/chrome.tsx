@@ -14,6 +14,7 @@ import {
   Save,
   Search,
   Share2,
+  Sparkles,
   Undo2,
   X,
 } from "lucide-react";
@@ -140,6 +141,14 @@ export function TitleBar({ cx, name, commands, auto }: { cx: SheetCx; name: stri
       >
         <Share2 size={13} />
         {cx.tw("Share")}
+      </button>
+      <button
+        type="button"
+        className={`wd-title-btn${cx.ui.pane === "assistant" ? " accent" : ""}`}
+        onClick={() => cx.ui.togglePane("assistant")}
+      >
+        <Sparkles size={13} />
+        {cx.tw("Assistant")}
       </button>
       <button
         type="button"

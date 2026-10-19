@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "@/api/client";
 import type { SheetRequest, SheetState, SheetStatus } from "@/api/apiSheet";
+import type { ExecResult } from "@/lib/assistant/types";
 
 export interface SheetDoc {
   id: string;
@@ -139,6 +140,29 @@ export function useSheetDocs() {
     [activeId, enqueue, patch],
   );
 
+  /** Как `run`, но ошибка ядра возвращается текстом (для помощника), а не уходит в общий баннер. */
+  const exec = useCallback(
+    (command: string, params: Params = {}): Promise<ExecResult> => {
+      const id = activeId;
+      if (!id) return Promise.resolve({ ok: false, error: "no_document" });
+      const next = chain.current.then(async (): Promise<ExecResult> => {
+        try {
+          const r = await api.sheetRun(id, command, params);
+          patch(id, { ...r.state, requests: [] });
+          return { ok: true, result: r.result };
+        } catch (e) {
+          return { ok: false, error: String((e as Error).message || e) };
+        }
+      });
+      chain.current = next.then(
+        () => undefined,
+        () => undefined,
+      );
+      return next;
+    },
+    [activeId, patch],
+  );
+
   /** Данные от ядра (значения диапазона, структура книги…) без обновления состояния. */
   const query = useCallback(
     <T = unknown>(method: string, params: unknown = {}): Promise<T | undefined> => {
@@ -186,6 +210,7 @@ export function useSheetDocs() {
     openFile,
     close,
     run,
+    exec,
     query,
     refresh,
     idle,

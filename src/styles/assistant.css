@@ -1,0 +1,379 @@
+/* Помощник в «Документах» и «Таблицах»: чат, шаги агента, настройки */
+.wd-pane.as-pane {
+  width: 380px;
+}
+.as-pane .wd-x-btn.on {
+  background: var(--wd-on);
+  color: var(--text-primary);
+}
+.as-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 12.5px;
+}
+.as-empty {
+  margin: auto 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+  color: var(--text-secondary);
+}
+.as-empty p {
+  margin: 0;
+  max-width: 260px;
+  line-height: 1.45;
+}
+.as-quick {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  margin-top: 6px;
+}
+.as-quick button {
+  text-align: left;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--wd-line);
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  cursor: pointer;
+}
+.as-quick button:hover:not(:disabled) {
+  background: var(--glass);
+}
+.as-msg {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 100%;
+}
+.as-msg.user {
+  align-self: flex-end;
+  max-width: 92%;
+}
+.as-msg.user .as-text {
+  background: var(--wd-on);
+  border-radius: 12px 12px 3px 12px;
+  padding: 7px 10px;
+}
+.as-msg.bot .as-text {
+  line-height: 1.5;
+}
+.as-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+.as-text a {
+  color: var(--amber);
+  text-decoration: underline;
+}
+.as-thumb {
+  max-width: 120px;
+  max-height: 90px;
+  border-radius: 8px;
+  align-self: flex-end;
+}
+.as-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.as-step {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  border-radius: 8px;
+  background: var(--glass);
+  color: var(--text-secondary);
+  font-size: 11.5px;
+  min-width: 0;
+}
+.as-step span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.as-step em {
+  font-style: normal;
+  opacity: 0.8;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.as-step.ok svg {
+  color: var(--teal, #4fd1a5);
+}
+.as-step.err svg,
+.as-err {
+  color: var(--red, #ff6b6b);
+}
+.as-err {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+  line-height: 1.4;
+}
+.as-wait {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  color: var(--text-secondary);
+}
+.as-spin {
+  animation: as-rot 1s linear infinite;
+}
+@keyframes as-rot {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.as-actions {
+  display: flex;
+  gap: 12px;
+}
+.as-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 11.5px;
+  cursor: pointer;
+}
+.as-link:hover {
+  color: var(--text-primary);
+}
+.as-composer {
+  border-top: 1px solid var(--wd-line);
+  padding: 8px 10px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.as-composer textarea {
+  width: 100%;
+  resize: none;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--wd-line);
+  background: var(--glass);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 12.5px;
+  line-height: 1.4;
+  max-height: 140px;
+}
+.as-composer textarea:focus {
+  outline: 1px solid var(--amber);
+}
+.as-composer-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.as-mode {
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+.as-send {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: none;
+  background: var(--amber);
+  color: #1a1a1a;
+  cursor: pointer;
+}
+.as-send:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.as-send.stop {
+  background: var(--red, #ff6b6b);
+}
+.as-attached {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.as-att {
+  position: relative;
+}
+.as-att img {
+  width: 44px;
+  height: 44px;
+  object-fit: cover;
+  border-radius: 8px;
+  display: block;
+}
+.as-att button {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: none;
+  background: var(--surface-solid);
+  color: var(--text-primary);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+/* Настройки */
+.as-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.as-sec {
+  margin-top: 6px;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+.as-note {
+  color: var(--text-secondary);
+  font-size: 11.5px;
+  line-height: 1.4;
+}
+.as-select,
+.as-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 7px 9px;
+  border-radius: 9px;
+  border: 1px solid var(--wd-line);
+  background: var(--glass);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 12.5px;
+}
+.as-btn {
+  padding: 6px 12px;
+  border-radius: 9px;
+  border: 1px solid var(--wd-line);
+  background: var(--glass);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.as-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.as-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.as-ok {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--teal, #4fd1a5);
+  font-size: 11.5px;
+}
+.as-rec {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.as-rec-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 9px;
+  border-radius: 9px;
+  border: 1px solid var(--wd-line);
+}
+.as-rec-row div {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.as-rec-row small {
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+.as-switch {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 2px;
+  cursor: pointer;
+}
+.as-switch.off {
+  opacity: 0.45;
+  cursor: default;
+}
+.as-switch-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.as-switch-text small {
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 1.35;
+}
+.as-switch input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.as-switch i {
+  flex: none;
+  position: relative;
+  width: 34px;
+  height: 20px;
+  border-radius: 10px;
+  background: var(--glass-border);
+  transition: background 0.15s;
+}
+.as-switch i::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--text-primary);
+  transition: transform 0.15s;
+}
+.as-switch input:checked + i {
+  background: var(--amber);
+}
+.as-switch input:checked + i::after {
+  transform: translateX(14px);
+  background: #1a1a1a;
+}
+.as-switch input:focus-visible + i {
+  outline: 2px solid var(--amber);
+  outline-offset: 2px;
+}

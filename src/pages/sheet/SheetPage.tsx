@@ -434,6 +434,7 @@ export default function SheetPage() {
       dialog: openDialog,
       query: docsQuery,
       call: (c, p) => docsRun(c, p ?? {}, true),
+      exec: docs.exec,
       ui: {
         backstage: (page?: string) => setBackstage((page as BackstagePage) ?? "info"),
         pane,

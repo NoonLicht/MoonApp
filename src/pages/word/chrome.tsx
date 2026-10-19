@@ -9,6 +9,7 @@ import {
   Save,
   Search,
   Share2,
+  Sparkles,
   Undo2,
 } from "lucide-react";
 import { getOverlayRoot } from "@/components/overlayHost";
@@ -145,6 +146,14 @@ export function TitleBar({ cx, name, auto }: { cx: Cx; name: string; auto: DocAu
       {mode ? (
         <MenuPopup items={modeItems} cx={cx} anchor={mode} onClose={() => setMode(null)} />
       ) : null}
+      <button
+        type="button"
+        className={`wd-title-btn${cx.ui.pane === "assistant" ? " accent" : ""}`}
+        onClick={() => cx.ui.togglePane("assistant")}
+      >
+        <Sparkles size={13} />
+        {cx.tw("Assistant")}
+      </button>
       <button
         type="button"
         className={`wd-title-btn${cx.ui.pane === "comments" ? " accent" : ""}`}

@@ -62,6 +62,7 @@ import "@/styles/movies.css";
 import "@/styles/upscale.css";
 import "@/styles/photo.css";
 import "@/styles/word.css";
+import "@/styles/assistant.css";
 import "@/styles/sheet.css";
 import "@/styles/screenshots.css";
 import "@/styles/fluent.css";

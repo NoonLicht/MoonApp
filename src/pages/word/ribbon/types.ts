@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import type { WordState } from "@/api/apiWord";
 import type { Tw } from "@/pages/word/i18n/useTw";
 import type { IconName } from "@/pages/word/ribbon/icons";
+import type { ExecResult } from "@/lib/assistant/types";
 
 export type Params = Record<string, unknown>;
 
@@ -23,6 +24,8 @@ export interface BaseCx {
   query: <T = unknown>(method: string, p?: unknown) => Promise<T | undefined>;
   /** Команда ядра с результатом (списки стилей, источников…). */
   call: (cmd: string, p?: Params) => Promise<unknown>;
+  /** Команда ядра с текстом ошибки вместо тихого сбоя: нужна помощнику. */
+  exec: (cmd: string, p?: Params) => Promise<ExecResult>;
   /** Цвета темы документа (RRGGBB без «#»): светлый 1, тёмный 1, светлый 2, тёмный 2, акценты 1–6, ссылки. */
   themeColors: string[];
   ui: { backstage: (page?: string) => void };
@@ -67,7 +70,8 @@ export type PaneName =
   | "selection"
   | "smartArt"
   | "find"
-  | "proofing";
+  | "proofing"
+  | "assistant";
 
 export type Act<C extends BaseCx = Cx> = { cmd: string; p?: Params } | { fn: (cx: C) => void };
 

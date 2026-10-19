@@ -115,6 +115,7 @@ server/foresight.js
 server/translate/
 server/mail/
 server/llamacpp/
+server/assistant/
 server/upscalePipeline.js
 server/ortPack.js
 server/zipRange.js

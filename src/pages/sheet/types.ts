@@ -4,7 +4,7 @@ import type { EditApi, ObjSel } from "@/pages/sheet/edit";
 
 export type { Params };
 
-export type SheetPane = "pivotFields" | "formatChart" | "comments" | "selection" | "watch" | "names" | "find";
+export type SheetPane = "pivotFields" | "formatChart" | "comments" | "selection" | "watch" | "names" | "find" | "assistant";
 
 /** Всё, что нужно кнопке ленты «Таблиц»: состояние книги и способы действовать. */
 export interface SheetCx extends BaseCx {

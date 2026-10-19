@@ -481,6 +481,7 @@ export default function WordPage() {
       dialog: openDialog,
       query,
       call,
+      exec: docs.exec,
       ui: {
         zoom,
         setZoom,
