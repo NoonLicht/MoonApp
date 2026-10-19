@@ -5688,7 +5688,18 @@
     "repoLook": "Show files",
     "repoPick": "pick the files to download",
     "repoEmpty": "No GGUF files found on that page",
-    "repoImageNote": "VAE and text encoder are added automatically"
+    "repoImageNote": "VAE and text encoder are added automatically",
+    "sdTitle": "Image engine (stable-diffusion.cpp)",
+    "sdReady": "ready",
+    "sdNotReady": "not ready",
+    "sdHint": "Draws pictures with Qwen-Image. Needs a build, a Qwen-Image model (it brings the VAE and the Qwen3-VL 8B text encoder along). Vulkan fits any GPU, CUDA is faster on NVIDIA.",
+    "sdMissing": "Still needed: {list}",
+    "sdPart": {
+      "build": "engine build",
+      "model": "Qwen-Image model",
+      "vae": "VAE",
+      "encoder": "text encoder Qwen3-VL 8B"
+    }
   },
   "canvas": {
     "select": "Select",

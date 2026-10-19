@@ -82,7 +82,7 @@ export function describeResult(r: ExecResult): string {
 /** «Найти команду» и «Выполнить команду»: через них помощнику доступно всё, что есть на ленте. */
 export function commandTools(
   kind: "word" | "sheet",
-  docId: string,
+  docId: () => string,
   exec: (cmd: string, p?: Record<string, unknown>) => Promise<ExecResult>,
 ): AssistantTool[] {
   return [
@@ -99,7 +99,7 @@ export function commandTools(
       },
       label: (a) => `Finding commands: ${str(a.query)}`,
       run: async (a) => {
-        const hits = searchCommands(await commands(kind, docId), str(a.query));
+        const hits = searchCommands(await commands(kind, docId()), str(a.query));
         if (!hits.length) return "No commands found; try other words.";
         return hits
           .map((c) => `${c.id} — ${c.label ?? ""}${c.params ? ` — params: ${c.params.slice(0, 220)}` : ""}`)
@@ -124,6 +124,54 @@ export function commandTools(
       run: async (a) => describeResult(await exec(str(a.command), objectArg(a.params))),
     },
   ];
+}
+
+const toDataUrl = (b: Blob): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result));
+    r.onerror = () => reject(r.error);
+    r.readAsDataURL(b);
+  });
+
+/**
+ * «Нарисовать картинку»: Qwen-Image через stable-diffusion.cpp, результат показывается в чате и
+ * вставляется в документ (`insert` знает, как это делает именно Word или Excel).
+ */
+export function imageTool(o: {
+  insert: (base64: string, alt: string) => Promise<void>;
+  sink: { fn: ((url: string) => void) | null };
+}): AssistantTool {
+  return {
+    group: "images",
+    name: "generate_image",
+    description:
+      "Draw a picture from a text description and insert it into the document at the caret / active cell. Takes minutes: use it once, only when the user asked for an image. Describe the picture in English in detail.",
+    parameters: {
+      type: "object",
+      properties: {
+        prompt: { type: "string", description: "detailed description of the picture, in English" },
+        size: { type: "string", enum: ["square", "landscape", "portrait"], description: "default square" },
+      },
+      required: ["prompt"],
+    },
+    label: () => "Generating an image",
+    run: async (a, signal) => {
+      const size = str(a.size);
+      const blob = await api.assistantImage(
+        {
+          prompt: str(a.prompt),
+          width: size === "landscape" ? 896 : 768,
+          height: size === "portrait" ? 896 : 768,
+        },
+        signal,
+      );
+      const url = await toDataUrl(blob);
+      o.sink.fn?.(url);
+      await o.insert(url.split(",")[1] ?? "", str(a.prompt).slice(0, 120));
+      return "Image generated and inserted into the document.";
+    },
+  };
 }
 
 /** Поиск в интернете и чтение страниц (сервер: server/ts/assistant/web.ts). */

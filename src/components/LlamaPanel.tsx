@@ -429,6 +429,77 @@ export default function LlamaPanel({
                   </Fold>
                 );
               })}
+              {sec === "image" && st.sd && (
+                <Fold
+                  title={t("llama.sdTitle")}
+                  badges={
+                    st.sd.ready ? (
+                      <Badge tone="teal">{t("llama.sdReady")}</Badge>
+                    ) : (
+                      <Badge tone="amber">{t("llama.sdNotReady")}</Badge>
+                    )
+                  }
+                  meta={st.sd.builds
+                    .filter((b) => b.installed)
+                    .map((b) => t(`llama.build.${b.id}`).split(" ")[0])
+                    .join(", ")}
+                  open={!!open.sd || !st.sd.builds.some((b) => b.installed)}
+                  onToggle={() => flip("sd")}
+                >
+                  <div className="muted-sm">{t("llama.sdHint")}</div>
+                  <div className="tn-list">
+                    {st.sd.builds.map((b) => {
+                      const sdActive = st.sd.install.state === "working" && st.sd.install.id === b.id;
+                      const sdBusy = st.sd.install.state === "working";
+                      return (
+                        <div key={b.id} className="tn-row">
+                          <div className="tn-row-main">
+                            <div className="tn-row-title">
+                              {t(`llama.build.${b.id}`)} · {gb(b.sizeMb)}
+                            </div>
+                            <div className="muted-sm">{t(`llama.buildHint.${b.id}`)}</div>
+                            {sdActive && <ProgressBar value={st.sd.install.progress} />}
+                            {st.sd.install.state === "error" && st.sd.install.id === b.id && (
+                              <div className="muted-sm">
+                                {t("tuning.error")}: {st.sd.install.error}
+                              </div>
+                            )}
+                          </div>
+                          {b.installed && <Badge tone="teal">{t("translate.installed")}</Badge>}
+                          {sdActive ? (
+                            <Btn icon={X} onClick={() => void act(() => api.sdBuildCancel())}>
+                              {t("translate.cancel")}
+                            </Btn>
+                          ) : b.installed ? (
+                            <Btn
+                              icon={Trash2}
+                              disabled={sdBusy}
+                              onClick={() => void act(() => api.sdBuildRemove(b.id))}
+                            >
+                              {t("translate.delete")}
+                            </Btn>
+                          ) : (
+                            <Btn
+                              icon={Download}
+                              disabled={sdBusy}
+                              onClick={() => void act(() => api.sdBuildInstall(b.id))}
+                            >
+                              {t("translate.download")}
+                            </Btn>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {!st.sd.ready && st.sd.missing.length > 0 && (
+                    <div className="muted-sm">
+                      {t("llama.sdMissing", {
+                        list: st.sd.missing.map((m) => t(`llama.sdPart.${m}`)).join(", "),
+                      })}
+                    </div>
+                  )}
+                </Fold>
+              )}
               {mine.length > 0 && (
                 <Fold
                   title={t("llama.custom")}

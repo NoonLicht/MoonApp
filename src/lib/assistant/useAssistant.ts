@@ -80,6 +80,9 @@ export function useAssistant(getAdapter: () => DocAdapter | null, docId: string)
       abort.current = ac;
       setBusy(true);
       const s = settingsRef.current;
+      adapter.setPictureSink((url) =>
+        patchItem(bot.id, (it) => ({ ...it, pictures: [...(it.pictures ?? []), url] })),
+      );
       try {
         await runAgent({
           adapter,
@@ -107,6 +110,7 @@ export function useAssistant(getAdapter: () => DocAdapter | null, docId: string)
         if ((e as Error).name !== "AbortError" && !ac.signal.aborted)
           patchItem(bot.id, (it) => ({ ...it, error: String((e as Error).message || e) }));
       } finally {
+        adapter.setPictureSink(null);
         abort.current = null;
         setBusy(false);
         patchItem(bot.id, (it) => ({

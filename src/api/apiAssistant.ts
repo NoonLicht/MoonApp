@@ -110,6 +110,28 @@ export const assistantApi = {
     if (!result) throw new Error("assistant_no_answer");
     return result;
   },
+  /** Нарисовать картинку моделью Qwen-Image (минуты на 8 ГБ видеокарте); ответ — PNG. */
+  assistantImage: async (
+    body: { prompt: string; width?: number; height?: number; model?: string },
+    signal?: AbortSignal,
+  ): Promise<Blob> => {
+    const res = await fetch(`${BASE}/api/llamacpp/sd/generate`, {
+      method: "POST",
+      headers: { ...tokenHeaders(), ...pageHeaders(), "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      signal,
+    });
+    if (!res.ok) {
+      let msg = `HTTP ${res.status}`;
+      try {
+        msg = ((await res.json()) as { error?: string }).error || msg;
+      } catch {
+        /* оставляем код */
+      }
+      throw new Error(msg);
+    }
+    return res.blob();
+  },
   assistantWebSearch: (q: string, lang: string, limit = 6) =>
     req<{ provider: string; hits: WebSearchHit[] }>("POST", "/llamacpp/assistant/web/search", {
       q,

@@ -1,4 +1,4 @@
-import { useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import AssistantPane from "@/components/assistant/AssistantPane";
 import type { DocAdapter } from "@/lib/assistant/types";
 import { sheetAdapter } from "@/pages/sheet/assistant";
@@ -28,14 +28,20 @@ const SHEET_QUICK = [
  */
 export function WordAssistant({ cx, onClose }: { cx: Cx; onClose: () => void }) {
   const ref = useRef(cx);
-  ref.current = cx;
-  const adapter = useMemo<DocAdapter>(() => wordAdapter(() => ref.current, cx.lang), [cx.docId, cx.lang]);
+  useEffect(() => {
+    ref.current = cx;
+  });
+  const getCx = useCallback(() => ref.current, []);
+  const adapter = useMemo<DocAdapter>(() => wordAdapter(getCx, cx.lang), [getCx, cx.lang]);
   return <AssistantPane getAdapter={() => adapter} docId={cx.docId} tw={cx.tw} quick={WORD_QUICK} onClose={onClose} />;
 }
 
 export function SheetAssistant({ cx, onClose }: { cx: SheetCx; onClose: () => void }) {
   const ref = useRef(cx);
-  ref.current = cx;
-  const adapter = useMemo<DocAdapter>(() => sheetAdapter(() => ref.current, cx.lang), [cx.docId, cx.lang]);
+  useEffect(() => {
+    ref.current = cx;
+  });
+  const getCx = useCallback(() => ref.current, []);
+  const adapter = useMemo<DocAdapter>(() => sheetAdapter(getCx, cx.lang), [getCx, cx.lang]);
   return <AssistantPane getAdapter={() => adapter} docId={cx.docId} tw={cx.tw} quick={SHEET_QUICK} onClose={onClose} />;
 }

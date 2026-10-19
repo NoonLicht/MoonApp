@@ -104,15 +104,7 @@ function Switch({
 }
 
 /** Настройки помощника: модель и то, что ему разрешено. */
-function Settings({
-  state,
-  tw,
-  imageReady,
-}: {
-  state: ReturnType<typeof useAssistant>;
-  tw: Tw;
-  imageReady: boolean;
-}) {
+function Settings({ state, tw }: { state: ReturnType<typeof useAssistant>; tw: Tw }) {
   const { settings: s, setSettings } = state;
   const [st, setSt] = useState<LlamaStatus | null>(null);
   const [web, setWeb] = useState<WebSettings | null>(null);
@@ -146,6 +138,7 @@ function Settings({
   );
   const dl = st?.download;
   const downloading = dl?.status === "downloading";
+  const imageReady = !!st?.sd?.ready;
 
   const saveWeb = async (): Promise<void> => {
     setErr("");
@@ -319,6 +312,7 @@ function Bubble({
           ))}
         </div>
       ) : null}
+      {it.pictures?.map((src, i) => <img key={i} src={src} alt="" className="as-pic" />)}
       {it.text ? (
         <div className="as-text">
           <Linkified text={it.text} />
@@ -376,7 +370,6 @@ export default function AssistantPane({
   tw,
   quick,
   onClose,
-  imageReady = false,
 }: {
   getAdapter: () => DocAdapter | null;
   docId: string;
@@ -384,7 +377,6 @@ export default function AssistantPane({
   /** Готовые запросы для пустой беседы (английский текст — он же ключ перевода). */
   quick: string[];
   onClose: () => void;
-  imageReady?: boolean;
 }) {
   const state = useAssistant(getAdapter, docId);
   const { items, busy, send, stop, clear, settings } = state;
@@ -451,7 +443,7 @@ export default function AssistantPane({
 
       {showSettings ? (
         <div className="as-scroll">
-          <Settings state={state} tw={tw} imageReady={imageReady} />
+          <Settings state={state} tw={tw} />
         </div>
       ) : (
         <>

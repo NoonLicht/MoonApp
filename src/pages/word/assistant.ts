@@ -1,4 +1,4 @@
-import { commandTools, describeResult, str, webTools } from "@/lib/assistant/sharedTools";
+import { commandTools, describeResult, imageTool, str, webTools } from "@/lib/assistant/sharedTools";
 import type { AssistantTool, DocAdapter } from "@/lib/assistant/types";
 import type { Cx } from "@/pages/word/ribbon/types";
 
@@ -54,6 +54,7 @@ export function wordAdapter(getCx: () => Cx, lang: string): DocAdapter {
   const cx = new Proxy({} as Cx, {
     get: (_t, k) => (getCx() as unknown as Record<string | symbol, unknown>)[k],
   });
+  const sink: { fn: ((url: string) => void) | null } = { fn: null };
   const read = async (from = 0, to = 1e9, limit = 9000): Promise<string> => {
     const list = await blocks(cx);
     if (!list.length) return "(the document is empty)";
@@ -189,14 +190,18 @@ export function wordAdapter(getCx: () => Cx, lang: string): DocAdapter {
           await cx.exec("edit.replaceAll", { text: str(a.find), with: str(a.replace), matchCase: !!a.match_case }),
         ),
     },
-    ...commandTools("word", cx.docId, cx.exec),
+    ...commandTools("word", () => cx.docId, (c, p) => cx.exec(c, p)),
     ...webTools(lang),
+    imageTool({
+      sink,
+      insert: async (data, alt) => {
+        describeResult(await cx.exec("insert.picture", { data, width: 324, alt }));
+      },
+    }),
   ];
 
   return {
     kind: "word",
-    docId: cx.docId,
-    docName: cx.ui.docName,
     system:
       "You are an assistant built into a word processor. You work on the open document through tools. " +
       "Paragraphs are numbered from 0 as shown by read_document; never invent numbers: read first. " +
@@ -216,6 +221,9 @@ export function wordAdapter(getCx: () => Cx, lang: string): DocAdapter {
       return parts.join("\n");
     },
     snapshot: (max) => read(0, 1e9, max),
+    setPictureSink: (fn) => {
+      sink.fn = fn;
+    },
     insert: async (text) => {
       await typeLines(cx, text);
     },

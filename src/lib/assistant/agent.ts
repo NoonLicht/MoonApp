@@ -135,7 +135,7 @@ export async function runAgent(run: AgentRun): Promise<string> {
       messages.push({
         role: "tool",
         tool_call_id: call.id,
-        content: await execCall(call, tools, seen, used, events),
+        content: await execCall(call, tools, seen, used, events, run.signal),
       });
       if (run.signal.aborted) throw new DOMException("aborted", "AbortError");
     }
@@ -150,6 +150,7 @@ async function execCall(
   seen: Map<string, number>,
   used: Map<string, number>,
   events: AgentEvents,
+  signal: AbortSignal,
 ): Promise<string> {
   const tool = tools.find((t) => t.name === call.name);
   const args = parseArgs(call.arguments);
@@ -177,7 +178,7 @@ async function execCall(
   if (total > (tool.group === "read" ? 10 : 8))
     return fail(`${tool.name} was called too many times in one request; stop and answer the user`);
   try {
-    const out = trim(await tool.run(args));
+    const out = trim(await tool.run(args, signal));
     events.onStep({ ...step, state: "ok", detail: out.slice(0, 240) });
     return out;
   } catch (e) {

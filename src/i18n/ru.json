@@ -5688,7 +5688,18 @@
     "repoLook": "Показать файлы",
     "repoPick": "выберите файлы для загрузки",
     "repoEmpty": "На этой странице нет GGUF-файлов",
-    "repoImageNote": "VAE и текстовый энкодер докачаются сами"
+    "repoImageNote": "VAE и текстовый энкодер докачаются сами",
+    "sdTitle": "Движок картинок (stable-diffusion.cpp)",
+    "sdReady": "готов",
+    "sdNotReady": "не готов",
+    "sdHint": "Рисует картинки моделью Qwen-Image. Нужны сборка и модель Qwen-Image (VAE и текстовый энкодер Qwen3-VL 8B докачиваются вместе с ней). Vulkan подходит любой видеокарте, CUDA быстрее на NVIDIA.",
+    "sdMissing": "Ещё нужно: {list}",
+    "sdPart": {
+      "build": "сборка движка",
+      "model": "модель Qwen-Image",
+      "vae": "VAE",
+      "encoder": "текстовый энкодер Qwen3-VL 8B"
+    }
   },
   "canvas": {
     "select": "Выбор",

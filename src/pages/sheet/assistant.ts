@@ -1,4 +1,4 @@
-import { commandTools, describeResult, str, webTools } from "@/lib/assistant/sharedTools";
+import { commandTools, describeResult, imageTool, str, webTools } from "@/lib/assistant/sharedTools";
 import type { AssistantTool, DocAdapter } from "@/lib/assistant/types";
 import type { SheetCx } from "@/pages/sheet/types";
 
@@ -72,6 +72,7 @@ export function sheetAdapter(getCx: () => SheetCx, lang: string): DocAdapter {
   const cx = new Proxy({} as SheetCx, {
     get: (_t, k) => (getCx() as unknown as Record<string | symbol, unknown>)[k],
   });
+  const sink: { fn: ((url: string) => void) | null } = { fn: null };
   const activeName = (): string => cx.s.sheets[cx.s.active]?.name ?? "";
 
   const read = async (range?: string, sheet?: string, formulas = false, max = 9000): Promise<string> => {
@@ -165,14 +166,26 @@ export function sheetAdapter(getCx: () => SheetCx, lang: string): DocAdapter {
       label: (a) => `Setting cell: ${str(a.cell)}`,
       run: async (a) => describeResult(await cx.exec("cell.set", { cell: str(a.cell), input: str(a.formula) })),
     },
-    ...commandTools("sheet", cx.docId, cx.exec),
+    ...commandTools("sheet", () => cx.docId, (c, p) => cx.exec(c, p)),
     ...webTools(lang),
+    imageTool({
+      sink,
+      insert: async (base64, alt) => {
+        describeResult(
+          await cx.exec("insert.picture", {
+            base64,
+            mime: "image/png",
+            at: cx.s.sel.a1.split(":")[0],
+            width: 320,
+            alt,
+          }),
+        );
+      },
+    }),
   ];
 
   return {
     kind: "sheet",
-    docId: cx.docId,
-    docName: cx.ui.docName,
     system:
       "You are an assistant built into a spreadsheet application. You work on the open workbook through tools. " +
       "Look first: workbook_info, then read_range. Cells are addressed in A1 style. " +
@@ -185,6 +198,9 @@ export function sheetAdapter(getCx: () => SheetCx, lang: string): DocAdapter {
       return `Workbook: ${cx.ui.docName}. Active sheet: "${activeName()}". Selection: ${s.sel.a1}. Sheets: ${s.sheets.map((x) => x.name).join(", ")}.`;
     },
     snapshot: (max) => read(undefined, undefined, false, max),
+    setPictureSink: (fn) => {
+      sink.fn = fn;
+    },
     insert: async (text) => {
       const rows = text
         .replace(/\r\n?/g, "\n")

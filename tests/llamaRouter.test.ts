@@ -55,6 +55,8 @@ describe("каталог моделей", () => {
     const byName = new Map<string, string>();
     for (const m of models.CATALOG)
       for (const e of m.extra ?? []) {
+        // Файлы из чужих репозиториев (VAE и энкодер картинок) — общие по замыслу, это не проекторы.
+        if (e.repo) continue;
         const local = e.as ?? e.file;
         const owner = byName.get(local);
         expect(owner === undefined || owner === m.group).toBe(true);

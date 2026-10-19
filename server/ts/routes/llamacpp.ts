@@ -29,6 +29,14 @@ import {
 } from "../llamacpp/engine";
 import { ttsProblem } from "../llamacpp/tts";
 import {
+  generateImage,
+  installSdBuild,
+  isSdBuildId,
+  removeSdBuild,
+  sdSetup,
+  sdStatus,
+} from "../sdcpp/engine";
+import {
   activity,
   routerSettings,
   setRouterSettings,
@@ -83,6 +91,7 @@ router.get("/status", (_req, res) => {
     router: routerSettings(),
     ttsProblem: ttsProblem(),
     ocrModels: ocrModels(),
+    sd: sdStatus(),
   });
 });
 
@@ -96,6 +105,46 @@ router.post("/build", (req, res) => {
 });
 
 router.post("/build/cancel", (_req, res) => res.json(setup.cancel()));
+
+// Генерация картинок (stable-diffusion.cpp, модели Qwen-Image): сборки и сам запуск.
+router.post("/sd/build", (req, res) => {
+  const id = String(req.body?.id ?? "");
+  if (!isSdBuildId(id)) return res.status(400).json({ error: "bad_build" });
+  const r = installSdBuild(id);
+  if (!r.ok) return res.status(r.error === "busy" ? 409 : 400).json({ error: r.error });
+  res.json(sdSetup.snapshot());
+});
+router.post("/sd/build/cancel", (_req, res) => res.json(sdSetup.cancel()));
+router.delete("/sd/build/:id", (req, res) => {
+  if (!isSdBuildId(req.params.id)) return res.status(400).json({ error: "bad_build" });
+  removeSdBuild(req.params.id);
+  res.json({ ok: true });
+});
+router.post("/sd/generate", async (req, res) => {
+  const b = (req.body ?? {}) as Record<string, unknown>;
+  const ac = new AbortController();
+  res.on("close", () => {
+    if (!res.writableEnded) ac.abort();
+  });
+  try {
+    const png = await generateImage({
+      prompt: String(b.prompt ?? ""),
+      model: typeof b.model === "string" ? b.model : undefined,
+      width: Number(b.width) || undefined,
+      height: Number(b.height) || undefined,
+      steps: Number(b.steps) || undefined,
+      seed: b.seed === undefined ? undefined : Number(b.seed),
+      device: b.device === "cpu" ? "cpu" : "auto",
+      signal: ac.signal,
+    });
+    res.setHeader("Content-Type", "image/png");
+    res.send(png);
+  } catch (e) {
+    if (ac.signal.aborted) return;
+    const msg = String((e as Error).message || e);
+    res.status(msg.startsWith("sd_") && msg.endsWith("_missing") ? 409 : 500).json({ error: msg.slice(0, 500) });
+  }
+});
 
 // Вернуть сборки, отключённые после сбоя, и забыть прошлые ошибки загрузки.
 router.post("/reset-builds", (_req, res) => {

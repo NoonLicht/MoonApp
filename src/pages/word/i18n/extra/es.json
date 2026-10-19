@@ -345,5 +345,6 @@
   "Add a Total row with formulas": "Añade una fila de total con fórmulas",
   "Find the largest and smallest values": "Encuentra los valores mayor y menor",
   "Create a chart from this data": "Crea un gráfico con estos datos",
-  "Sort the table by the first column": "Ordena la tabla por la primera columna"
+  "Sort the table by the first column": "Ordena la tabla por la primera columna",
+  "Generating an image": "Generando una imagen"
 }

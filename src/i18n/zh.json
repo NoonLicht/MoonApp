@@ -5684,7 +5684,18 @@
     "repoLook": "显示文件",
     "repoPick": "选择要下载的文件",
     "repoEmpty": "该页面没有 GGUF 文件",
-    "repoImageNote": "VAE 和文本编码器会自动下载"
+    "repoImageNote": "VAE 和文本编码器会自动下载",
+    "sdTitle": "图像引擎（stable-diffusion.cpp）",
+    "sdReady": "就绪",
+    "sdNotReady": "未就绪",
+    "sdHint": "使用 Qwen-Image 生成图片。需要引擎构建和 Qwen-Image 模型（会一并下载 VAE 和 Qwen3-VL 8B 文本编码器）。Vulkan 适用于任何显卡，NVIDIA 上 CUDA 更快。",
+    "sdMissing": "还需要：{list}",
+    "sdPart": {
+      "build": "引擎构建",
+      "model": "Qwen-Image 模型",
+      "vae": "VAE",
+      "encoder": "Qwen3-VL 8B 文本编码器"
+    }
   },
   "canvas": {
     "select": "选择",

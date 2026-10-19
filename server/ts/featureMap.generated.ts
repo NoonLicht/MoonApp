@@ -41,10 +41,14 @@ export const FEATURE_MAP: {
       "upscale"
     ],
     "word": [
+      "llamacpp",
+      "sheet",
       "word"
     ],
     "sheet": [
-      "sheet"
+      "llamacpp",
+      "sheet",
+      "word"
     ],
     "video": [
       "video"

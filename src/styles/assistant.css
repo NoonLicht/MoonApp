@@ -83,6 +83,11 @@
   border-radius: 8px;
   align-self: flex-end;
 }
+.as-pic {
+  max-width: 100%;
+  border-radius: 10px;
+  align-self: flex-start;
+}
 .as-steps {
   display: flex;
   flex-direction: column;

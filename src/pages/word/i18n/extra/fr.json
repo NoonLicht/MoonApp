@@ -687,5 +687,6 @@
   "Add a Total row with formulas": "Ajoute une ligne Total avec des formules",
   "Find the largest and smallest values": "Trouve les valeurs maximale et minimale",
   "Create a chart from this data": "Crée un graphique à partir de ces données",
-  "Sort the table by the first column": "Trie le tableau selon la première colonne"
+  "Sort the table by the first column": "Trie le tableau selon la première colonne",
+  "Generating an image": "Génération d'une image"
 }

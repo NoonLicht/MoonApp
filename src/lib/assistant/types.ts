@@ -32,14 +32,12 @@ export interface AssistantTool extends AssistantToolSpec {
   group: ToolGroup;
   /** Короткая подпись шага для чата («Читаю документ», «Ищу в интернете»). */
   label: (args: Record<string, unknown>) => string;
-  run: (args: Record<string, unknown>) => Promise<string>;
+  run: (args: Record<string, unknown>, signal?: AbortSignal) => Promise<string>;
 }
 
 /** Приложение, в котором работает помощник: Word-страница или Excel-страница. */
 export interface DocAdapter {
   kind: "word" | "sheet";
-  docId: string;
-  docName: string;
   /** Описание приложения и правил работы для системного сообщения. */
   system: string;
   tools: AssistantTool[];
@@ -47,6 +45,8 @@ export interface DocAdapter {
   context: () => string;
   /** Документ или лист как текст (для режима без агента, где модель сама читать не умеет). */
   snapshot: (maxChars: number) => Promise<string>;
+  /** Куда показывать сгенерированные картинки в чате (ставит хук на время запроса). */
+  setPictureSink: (fn: ((dataUrl: string) => void) | null) => void;
   /** Вставить готовый текст в документ (кнопка «Вставить» у ответа). */
   insert: (text: string) => Promise<void>;
 }

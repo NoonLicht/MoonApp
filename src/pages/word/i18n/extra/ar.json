@@ -2719,5 +2719,6 @@
   "Add a Total row with formulas": "أضف صف إجمالي بالصيغ",
   "Find the largest and smallest values": "ابحث عن أكبر القيم وأصغرها",
   "Create a chart from this data": "أنشئ مخططاً من هذه البيانات",
-  "Sort the table by the first column": "رتّب الجدول حسب العمود الأول"
+  "Sort the table by the first column": "رتّب الجدول حسب العمود الأول",
+  "Generating an image": "توليد صورة"
 }

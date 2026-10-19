@@ -5684,7 +5684,18 @@
     "repoLook": "Afficher les fichiers",
     "repoPick": "choisissez les fichiers à télécharger",
     "repoEmpty": "Aucun fichier GGUF sur cette page",
-    "repoImageNote": "le VAE et l'encodeur de texte sont ajoutés automatiquement"
+    "repoImageNote": "le VAE et l'encodeur de texte sont ajoutés automatiquement",
+    "sdTitle": "Moteur d'images (stable-diffusion.cpp)",
+    "sdReady": "prêt",
+    "sdNotReady": "pas prêt",
+    "sdHint": "Dessine des images avec Qwen-Image. Nécessite une build et un modèle Qwen-Image (qui apporte le VAE et l'encodeur de texte Qwen3-VL 8B). Vulkan convient à tout GPU, CUDA est plus rapide sur NVIDIA.",
+    "sdMissing": "Il manque : {list}",
+    "sdPart": {
+      "build": "build du moteur",
+      "model": "modèle Qwen-Image",
+      "vae": "VAE",
+      "encoder": "encodeur de texte Qwen3-VL 8B"
+    }
   },
   "canvas": {
     "select": "Sélectionner",

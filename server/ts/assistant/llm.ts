@@ -47,7 +47,7 @@ const cost = (m: TurnMessage): number =>
 export function fit(msgs: TurnMessage[], budget: number): TurnMessage[] {
   const out = [...msgs];
   let total = out.reduce((n, m) => n + cost(m), 0);
-  let i = out[0]?.role === "system" ? 1 : 0;
+  const i = out[0]?.role === "system" ? 1 : 0;
   while (total > budget && out.length - i > 1) {
     total -= cost(out[i]);
     out.splice(i, 1);

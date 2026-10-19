@@ -5684,7 +5684,18 @@
     "repoLook": "عرض الملفات",
     "repoPick": "اختر الملفات للتنزيل",
     "repoEmpty": "لا توجد ملفات GGUF في هذه الصفحة",
-    "repoImageNote": "تتم إضافة VAE ومشفّر النص تلقائياً"
+    "repoImageNote": "تتم إضافة VAE ومشفّر النص تلقائياً",
+    "sdTitle": "محرك الصور (stable-diffusion.cpp)",
+    "sdReady": "جاهز",
+    "sdNotReady": "غير جاهز",
+    "sdHint": "يرسم الصور بواسطة Qwen-Image. يحتاج إلى إصدار المحرك ونموذج Qwen-Image (ويُنزَّل معه VAE ومشفّر النص Qwen3-VL 8B). Vulkan يناسب أي بطاقة رسوميات، وCUDA أسرع على NVIDIA.",
+    "sdMissing": "ما زال مطلوباً: {list}",
+    "sdPart": {
+      "build": "إصدار المحرك",
+      "model": "نموذج Qwen-Image",
+      "vae": "VAE",
+      "encoder": "مشفّر النص Qwen3-VL 8B"
+    }
   },
   "canvas": {
     "select": "تحديد",

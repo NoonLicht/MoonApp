@@ -118,6 +118,16 @@ export interface LlamaStatus {
   router: LlamaRouterSettings;
   /** Установленные модели Chandra OCR 2 (без проекторов). */
   ocrModels: { file: string; sizeMb: number }[];
+  /** Движок генерации картинок (stable-diffusion.cpp) и готовность Qwen-Image. */
+  sd: {
+    tag: string;
+    builds: { id: LlamaBuildId; sizeMb: number; installed: boolean }[];
+    install: LlamaStatus["install"];
+    models: string[];
+    ready: boolean;
+    missing: ("build" | "model" | "vae" | "encoder")[];
+    busy: boolean;
+  };
 }
 
 export interface LlamaOcrResult {
@@ -161,6 +171,9 @@ export const llamaApi = {
   /** Вернуть сборки, отключённые после сбоя, и сбросить ошибки загрузки. */
   llamaResetBuilds: () => req<{ ok: boolean }>("POST", "/llamacpp/reset-builds"),
   llamaBuildRemove: (id: LlamaBuildId) => req<{ ok: boolean }>("DELETE", `/llamacpp/build/${id}`),
+  sdBuildInstall: (id: LlamaBuildId) => req<unknown>("POST", "/llamacpp/sd/build", { id }),
+  sdBuildCancel: () => req<unknown>("POST", "/llamacpp/sd/build/cancel"),
+  sdBuildRemove: (id: LlamaBuildId) => req<{ ok: boolean }>("DELETE", `/llamacpp/sd/build/${id}`),
   llamaModelDownload: (body: {
     id?: string;
     url?: string;
