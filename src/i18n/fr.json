@@ -7051,15 +7051,23 @@
         "sdxl": "Stable Diffusion XL 1.0 (checkpoint)",
         "sd15": "Stable Diffusion 1.5 (checkpoint, plus léger)",
         "qwen-te": "Encodeur Qwen3-VL 8B (w4a8) pour Qwen-Image",
-        "qwen-vae": "VAE Qwen-Image 2.1"
+        "qwen-vae": "VAE Qwen-Image 2.1",
+        "sdxl-turbo": "SDXL Turbo (fp16, rapide : 1–4 étapes)",
+        "flux-schnell": "FLUX.1 schnell (fp8, checkpoint)",
+        "sd35-medium": "Stable Diffusion 3.5 Medium (fp8, avec tous les encodeurs)",
+        "sdxl-vae": "VAE pour SDXL (fp16-fix, sans images noires)",
+        "zimage": "Z-Image Turbo (modèle bf16)",
+        "zimage-te": "Encodeur Qwen3 4B (fp8) pour Z-Image",
+        "zimage-vae": "VAE pour Z-Image et FLUX (ae)",
+        "esrgan": "Agrandisseur ×4 : Real-ESRGAN x4plus"
       },
       "sharedHint": "Les modèles GGUF Qwen-Image et les encodeurs téléchargés dans la section des modèles locaux llama.cpp apparaissent ici sans nouveau téléchargement.",
       "addByLink": "Ajouter un modèle par lien Hugging Face",
       "installedModels": "Modèles installés",
       "noModels": "Rien pour l'instant.",
       "library": "Mes workflows",
-      "libraryHint": "Graphes ComfyUI enregistrés. Les workflows de toute provenance conviennent : graphes de l'éditeur et format API.",
-      "libraryEmpty": "Aucun workflow enregistré. Ouvrez l'éditeur et appuyez sur « Enregistrer dans la bibliothèque ».",
+      "libraryHint": "Graphes ComfyUI depuis des fichiers .json : le graphe de l'éditeur comme le format API conviennent. Ouvrez-le dans l'éditeur ou lancez-le d'ici.",
+      "libraryEmpty": "Rien pour l'instant. Appuyez sur « Importer un workflow » et choisissez un fichier .json.",
       "open": "Ouvrir",
       "run": "Lancer",
       "editorNotReady": "L'éditeur n'est pas encore chargé. Attendez quelques secondes et réessayez.",
@@ -7182,7 +7190,11 @@
       "addLora": "Ajouter une LoRA",
       "noLoras": "Aucun fichier : ajoutez-en dans l'onglet Modèles (dossier loras).",
       "loraHint": "LoRA, DoRA, LoCon, LoHa et LoKr fonctionnent : ComfyUI détecte le type. Le premier nombre est la force sur le modèle, le second sur l'encodeur de texte.",
-      "openWindow": "Dans une fenêtre séparée"
+      "openWindow": "Dans une fenêtre séparée",
+      "addLocal": "Ajouter votre propre modèle",
+      "addLocalHint": "Choisissez un fichier déjà téléchargé (.safetensors, .ckpt, .gguf…) et un dossier : sur le même disque il est lié sans copie.",
+      "browse": "Parcourir…",
+      "addLocalBtn": "Ajouter"
     }
   },
   "word": {

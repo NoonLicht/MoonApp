@@ -7051,15 +7051,23 @@
         "sdxl": "Stable Diffusion XL 1.0 (نقطة حفظ)",
         "sd15": "Stable Diffusion 1.5 (نقطة حفظ، أخف)",
         "qwen-te": "مشفّر Qwen3-VL 8B (w4a8) لـ Qwen-Image",
-        "qwen-vae": "VAE لـ Qwen-Image 2.1"
+        "qwen-vae": "VAE لـ Qwen-Image 2.1",
+        "sdxl-turbo": "SDXL Turbo (fp16، سريع: 1–4 خطوات)",
+        "flux-schnell": "FLUX.1 schnell (fp8، نقطة حفظ)",
+        "sd35-medium": "Stable Diffusion 3.5 Medium (fp8 مع كل المشفّرات)",
+        "sdxl-vae": "VAE لـ SDXL (fp16-fix، بلا صور سوداء)",
+        "zimage": "Z-Image Turbo (نموذج bf16)",
+        "zimage-te": "مشفّر Qwen3 4B (fp8) لـ Z-Image",
+        "zimage-vae": "VAE لـ Z-Image وFLUX (ae)",
+        "esrgan": "تكبير ×4: Real-ESRGAN x4plus"
       },
       "sharedHint": "تظهر هنا نماذج Qwen-Image بصيغة GGUF والمشفّرات التي نُزّلت في قسم نماذج llama.cpp المحلية دون تنزيل ثانٍ.",
       "addByLink": "إضافة نموذج برابط Hugging Face",
       "installedModels": "النماذج المثبتة",
       "noModels": "لا شيء بعد.",
       "library": "سير العمل الخاص بي",
-      "libraryHint": "مخططات ComfyUI المحفوظة. تصلح سير العمل من أي مصدر: مخططات المحرر وصيغة API.",
-      "libraryEmpty": "لا توجد سير عمل محفوظة. افتح المحرر واضغط «حفظ في المكتبة».",
+      "libraryHint": "رسوم ComfyUI من ملفات .json: يصلح رسم المحرر وصيغة API. افتحه في المحرر أو شغّله من هنا.",
+      "libraryEmpty": "لا شيء بعد. اضغط «استيراد سير عمل» واختر ملف .json.",
       "open": "فتح",
       "run": "تشغيل",
       "editorNotReady": "لم يكتمل تحميل المحرر بعد. انتظر بضع ثوانٍ وأعد المحاولة.",
@@ -7182,7 +7190,11 @@
       "addLora": "إضافة LoRA",
       "noLoras": "لا ملفات: أضفها من تبويب النماذج (مجلد loras).",
       "loraHint": "تعمل LoRA وDoRA وLoCon وLoHa وLoKr ويكتشف ComfyUI النوع تلقائيًا. الرقم الأول قوة النموذج والثاني قوة مشفّر النص.",
-      "openWindow": "في نافذة منفصلة"
+      "openWindow": "في نافذة منفصلة",
+      "addLocal": "إضافة ملف نموذج خاص بك",
+      "addLocalHint": "اختر ملفًا حمّلته مسبقًا (.safetensors و.ckpt و.gguf…) ومجلدًا: على القرص نفسه يُربط دون نسخ.",
+      "browse": "استعراض…",
+      "addLocalBtn": "إضافة"
     }
   },
   "word": {

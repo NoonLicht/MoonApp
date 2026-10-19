@@ -135,4 +135,45 @@ describe("Word: живая запись текста в документ", () =>
     expect(log).toContain("text.delete");
     expect(tool("delete_paragraph").limit).toBe(3);
   });
+
+  it("таблица: строки набираются через табы и превращаются в настоящую таблицу Word", async () => {
+    const { wordAdapter } = await import("../src/pages/word/assistant");
+    const log: string[] = [];
+    const cx: any = {
+      docId: "d",
+      lang: "ru",
+      tw: (s: string) => s,
+      s: { selection: { collapsed: true, focus: { path: [0] }, text: "" } },
+      ui: { docName: "t" },
+      query: async () => ({
+        blocks: [{ index: 0, type: "paragraph", text: "", len: 0 }],
+        selection: { focus: { path: [0] } },
+      }),
+      exec: async (c: string, p?: any) => {
+        log.push(
+          c === "select.range"
+            ? `sel:${p.anchor.path[0]}-${p.focus.path[0]}:${p.focus.off}`
+            : p?.text !== undefined
+              ? `${c}:${p.text}`
+              : `${c}${p?.separator ? ":" + p.separator : ""}`,
+        );
+        return { ok: true };
+      },
+    };
+    const t = wordAdapter(() => cx, "ru").tools.find((x) => x.name === "insert_table")!;
+    const out = await t.run({
+      where: "end",
+      rows: [
+        ["Модель", "Контекст"],
+        ["Qwen3", "32K"],
+      ],
+    });
+    expect(out).toMatch(/2x2/);
+    expect(log).toContain("text.insert:Модель	Контекст");
+    expect(log).toContain("text.insert:Qwen3	32K");
+    // выделены обе строки, последняя — в байтах UTF-8
+    expect(log).toContain("sel:0-1:" + new TextEncoder().encode("Qwen3	32K").length);
+    expect(log[log.length - 1]).toBe("table.fromText:tab");
+    await expect(t.run({ where: "end", rows: [] })).rejects.toThrow();
+  });
 });

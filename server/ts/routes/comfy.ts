@@ -38,6 +38,7 @@ import {
 import {
   cancelDownload,
   downloadState,
+  importModel,
   listModels,
   parseHfUrl,
   RECOMMENDED,
@@ -69,14 +70,20 @@ const fail = (res: express.Response, e: unknown, code = 400): void => {
 };
 
 router.get("/status", (_req, res) =>
-  res.json({ ...comfyStatus(), version: isInstalled() ? readVersion() : "", manager: isInstalled() && managerInstalled() }),
+  res.json({
+    ...comfyStatus(),
+    version: isInstalled() ? readVersion() : "",
+    manager: isInstalled() && managerInstalled(),
+  }),
 );
 
 const busyCode = (e?: string): number => (e === "busy" || e === "running" ? 409 : 400);
 
 // ───────────── настройки запуска ─────────────
 
-router.get("/settings", (_req, res) => res.json({ settings: readRunSettings(), defaults: DEFAULT_RUN, running: running() }));
+router.get("/settings", (_req, res) =>
+  res.json({ settings: readRunSettings(), defaults: DEFAULT_RUN, running: running() }),
+);
 router.put("/settings", (req, res) => {
   const settings = writeRunSettings(req.body);
   res.json({ settings, defaults: DEFAULT_RUN, running: running() });
@@ -130,13 +137,19 @@ router.post("/install", (req, res) => {
   const flavor = String(req.body?.flavor ?? "nvidia");
   if (!isFlavor(flavor)) return void res.status(400).json({ error: "bad_flavor" });
   const r = installComfy(flavor);
-  if (!r.ok) return void res.status(r.error === "busy" || r.error === "running" ? 409 : 400).json({ error: r.error });
+  if (!r.ok)
+    return void res
+      .status(r.error === "busy" || r.error === "running" ? 409 : 400)
+      .json({ error: r.error });
   res.json(comfySetup.snapshot());
 });
 router.post("/install/cancel", (_req, res) => res.json(comfySetup.cancel()));
 router.post("/gguf-node", (_req, res) => {
   const r = installGgufNode();
-  if (!r.ok) return void res.status(r.error === "busy" || r.error === "running" ? 409 : 400).json({ error: r.error });
+  if (!r.ok)
+    return void res
+      .status(r.error === "busy" || r.error === "running" ? 409 : 400)
+      .json({ error: r.error });
   res.json(comfySetup.snapshot());
 });
 router.delete("/install", (_req, res) => {
@@ -164,7 +177,12 @@ router.get("/hf", async (req, res) => {
   const p = parseHfUrl(String(req.query.url ?? ""));
   if (!p) return void res.status(400).json({ error: "bad_hf_url" });
   try {
-    res.json({ repo: p.repo, rev: p.rev, file: p.file ?? null, files: await repoModelFiles(p.repo, p.rev) });
+    res.json({
+      repo: p.repo,
+      rev: p.rev,
+      file: p.file ?? null,
+      files: await repoModelFiles(p.repo, p.rev),
+    });
   } catch (e) {
     fail(res, e, 502);
   }
@@ -189,6 +207,10 @@ router.post("/models/download", (req, res) => {
   if (!r.ok) return void res.status(r.error === "busy" ? 409 : 400).json({ error: r.error });
   res.json(downloadState());
 });
+router.post("/models/import", async (req, res) => {
+  const r = await importModel(String(req.body?.path ?? ""), String(req.body?.folder ?? ""));
+  res.status(r.ok ? 200 : 400).json(r);
+});
 router.post("/models/cancel", (_req, res) => {
   cancelDownload();
   res.json({ ok: true });
@@ -202,7 +224,8 @@ router.delete("/models", (req, res) => {
 // ───────────── свои воркфлоу ─────────────
 
 const wfDir = (): string => path.join(comfyRoot(), "workflows");
-const wfId = (v: string): string | null => (/^[\w.\- ]{1,80}$/.test(v) && !v.startsWith(".") ? v : null);
+const wfId = (v: string): string | null =>
+  /^[\w.\- ]{1,80}$/.test(v) && !v.startsWith(".") ? v : null;
 
 router.get("/workflows", (_req, res) => {
   try {
@@ -228,7 +251,8 @@ router.get("/workflows/:id", (req, res) => {
 router.put("/workflows/:id", (req, res) => {
   const id = wfId(req.params.id);
   if (!id) return void res.status(400).json({ error: "bad_id" });
-  if (!req.body || typeof req.body !== "object") return void res.status(400).json({ error: "bad_workflow" });
+  if (!req.body || typeof req.body !== "object")
+    return void res.status(400).json({ error: "bad_workflow" });
   fs.mkdirSync(wfDir(), { recursive: true });
   fs.writeFileSync(path.join(wfDir(), `${id}.json`), JSON.stringify(req.body), "utf8");
   res.json({ ok: true });
@@ -252,7 +276,9 @@ router.post("/assist", async (req, res) => {
     if (!res.writableEnded) ac.abort();
   });
   try {
-    res.json(await assistWorkflow({ request, current: b.current, model: b.model, signal: ac.signal }));
+    res.json(
+      await assistWorkflow({ request, current: b.current, model: b.model, signal: ac.signal }),
+    );
   } catch (e) {
     if (!ac.signal.aborted) fail(res, e, 502);
   }

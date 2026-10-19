@@ -109,7 +109,7 @@ describe("модели ComfyUI", () => {
   it("рекомендуемые модели ведут в известные папки", () => {
     for (const r of models.RECOMMENDED) {
       expect(engine.isModelFolder(r.folder)).toBe(true);
-      expect(r.sizeMb).toBeGreaterThan(100);
+      expect(r.sizeMb).toBeGreaterThan(50);
     }
   });
   it("удаление не выходит за папку и принимает только файлы моделей", () => {

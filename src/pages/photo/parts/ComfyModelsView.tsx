@@ -1,13 +1,24 @@
 import { useCallback, useEffect, useState } from "react";
-import { Download, Search, Trash2, X } from "lucide-react";
+import { Download, FolderOpen, Plus, Search, Trash2, X } from "lucide-react";
 import { Glass, Btn, ProgressBar, Select, Badge } from "@/components/ui";
 import { useI18n } from "@/app/i18n";
 import { api } from "@/api/client";
 import type { ComfyHf, ComfyModels } from "@/api/apiComfy";
 
-const mb = (n: number): string => (n < 1024 ? `${Math.round(n)} MB` : `${(n / 1024).toFixed(1)} GB`);
+const mb = (n: number): string =>
+  n < 1024 ? `${Math.round(n)} MB` : `${(n / 1024).toFixed(1)} GB`;
 
-const FOLDERS = ["checkpoints", "diffusion_models", "text_encoders", "vae", "loras", "controlnet", "upscale_models", "clip_vision", "embeddings"];
+const FOLDERS = [
+  "checkpoints",
+  "diffusion_models",
+  "text_encoders",
+  "vae",
+  "loras",
+  "controlnet",
+  "upscale_models",
+  "clip_vision",
+  "embeddings",
+];
 
 /** Модели ComfyUI: установленные, рекомендуемые и добавление по ссылке Hugging Face. */
 export default function ModelsView() {
@@ -18,6 +29,9 @@ export default function ModelsView() {
   const [repo, setRepo] = useState<ComfyHf | null>(null);
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [err, setErr] = useState("");
+  const [local, setLocal] = useState("");
+  const [localFolder, setLocalFolder] = useState("checkpoints");
+  const [importing, setImporting] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -35,7 +49,9 @@ export default function ModelsView() {
   const dl = data?.download;
   const downloading = dl?.status === "downloading";
   const have = (folderName: string, file: string): boolean =>
-    !!data?.models.some((m) => m.folder === folderName && m.file === (file.split("/").pop() ?? file));
+    !!data?.models.some(
+      (m) => m.folder === folderName && m.file === (file.split("/").pop() ?? file),
+    );
   const guard = async (fn: () => Promise<unknown>): Promise<void> => {
     setErr("");
     try {
@@ -44,6 +60,23 @@ export default function ModelsView() {
       setErr((e as Error).message);
     }
     void load();
+  };
+
+  const browse = async (): Promise<void> => {
+    const r = await window.appBridge?.pickFile?.({
+      filters: [
+        { name: "Models", extensions: ["safetensors", "ckpt", "pt", "pth", "bin", "gguf", "sft"] },
+      ],
+    });
+    if (r?.ok && r.path) setLocal(r.path);
+  };
+  const importLocal = async (): Promise<void> => {
+    setImporting(true);
+    await guard(async () => {
+      await api.comfyModelImport(local.trim().replace(/^"|"$/g, ""), localFolder);
+      setLocal("");
+    });
+    setImporting(false);
   };
 
   const look = async (): Promise<void> => {
@@ -100,7 +133,41 @@ export default function ModelsView() {
             </div>
           </>
         )}
-        {dl?.status === "error" && dl.error !== "cancelled" && <div className="ph-error">{dl.error}</div>}
+        {dl?.status === "error" && dl.error !== "cancelled" && (
+          <div className="ph-error">{dl.error}</div>
+        )}
+      </Glass>
+
+      <Glass className="ph-card">
+        <b>{t("photo.comfy.addLocal")}</b>
+        <div className="muted-sm">{t("photo.comfy.addLocalHint")}</div>
+        <div className="ph-row">
+          <input
+            style={{ flex: 1, minWidth: 220 }}
+            value={local}
+            placeholder="D:\models\my_model.safetensors"
+            onChange={(e) => setLocal(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && local.trim() && void importLocal()}
+          />
+          {window.appBridge?.pickFile && (
+            <Btn icon={FolderOpen} onClick={() => void browse()}>
+              {t("photo.comfy.browse")}
+            </Btn>
+          )}
+          <Select
+            value={localFolder}
+            onChange={(e) => setLocalFolder(e.target.value)}
+            options={FOLDERS}
+          />
+          <Btn
+            icon={Plus}
+            variant="primary"
+            disabled={!local.trim() || importing}
+            onClick={() => void importLocal()}
+          >
+            {importing ? t("photo.working") : t("photo.comfy.addLocalBtn")}
+          </Btn>
+        </div>
       </Glass>
 
       <Glass className="ph-card">
@@ -146,7 +213,12 @@ export default function ModelsView() {
               disabled={!picked.size || downloading}
               onClick={() =>
                 void guard(async () => {
-                  await api.comfyModelDownload({ repo: repo.repo, rev: repo.rev, folder, files: [...picked] });
+                  await api.comfyModelDownload({
+                    repo: repo.repo,
+                    rev: repo.rev,
+                    folder,
+                    files: [...picked],
+                  });
                   setRepo(null);
                   setUrl("");
                 })
@@ -172,7 +244,10 @@ export default function ModelsView() {
                 <div key={m.file} className="ph-row">
                   <span style={{ flex: 1 }}>{m.file}</span>
                   <span className="muted-sm">{mb(m.sizeMb)}</span>
-                  <Btn icon={Trash2} onClick={() => void guard(() => api.comfyModelRemove(m.folder, m.file))}>
+                  <Btn
+                    icon={Trash2}
+                    onClick={() => void guard(() => api.comfyModelRemove(m.folder, m.file))}
+                  >
                     {t("translate.delete")}
                   </Btn>
                 </div>

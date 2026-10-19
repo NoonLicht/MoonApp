@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Download, ExternalLink, FolderOpen, Play, Save } from "lucide-react";
-import { Glass, Btn } from "@/components/ui";
+import { ExternalLink, Square } from "lucide-react";
+import { Glass } from "@/components/ui";
 import { useI18n } from "@/app/i18n";
 import { api } from "@/api/client";
-import { saveBlob } from "@/lib/download";
 import type { ComfyGraph, ComfyNodeInfo, ComfyStatus } from "@/api/apiComfy";
 import ComfySetup from "@/pages/photo/parts/ComfySetup";
 import ComfyAdmin from "@/pages/photo/parts/ComfyAdmin";
@@ -15,9 +14,6 @@ import { loadFile, loadWorkflow, readWorkflow } from "@/pages/photo/lib/comfyEdi
 type View = "editor" | "gen" | "models" | "library" | "settings";
 /** Родной интерфейс ComfyUI — первый и открывается сразу; остальное — удобства приложения. */
 const VIEWS: View[] = ["editor", "gen", "models", "library", "settings"];
-
-const saveJson = (data: unknown, name: string): void =>
-  saveBlob(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }), name);
 
 /**
  * ComfyUI во вкладке «Фото и видео»: настоящий интерфейс ComfyUI (граф, менеджер узлов и моделей,
@@ -32,7 +28,6 @@ export default function ComfyTab({ active }: { active: boolean }) {
   const [editorSeen, setEditorSeen] = useState(true);
   const [info, setInfo] = useState<Record<string, ComfyNodeInfo>>({});
   const [pending, setPending] = useState<ComfyGraph | null>(null);
-  const [libKey, setLibKey] = useState(0);
   const [msg, setMsg] = useState("");
   const frame = useRef<HTMLIFrameElement>(null);
 
@@ -93,27 +88,6 @@ export default function ComfyTab({ active }: { active: boolean }) {
     return r?.output ?? null;
   }, []);
 
-  const saveToLibrary = async (): Promise<void> => {
-    const r = await readWorkflow(frame.current);
-    if (!r) return void setMsg(t("photo.comfy.editorNotReady"));
-    const name = window.prompt(
-      t("photo.comfy.saveName"),
-      `workflow-${new Date().toISOString().slice(0, 10)}`,
-    );
-    if (!name) return;
-    await act(() =>
-      api.comfyWorkflowSave(name.replace(/[^\w.\- ]/g, "_").slice(0, 80), r.workflow),
-    );
-    setLibKey((k) => k + 1);
-  };
-
-  const runFromEditor = async (): Promise<void> => {
-    const g = await editorToApi();
-    if (!g) return void setMsg(t("photo.comfy.editorNotReady"));
-    setView("gen");
-    setPending(g);
-  };
-
   if (!st)
     return (
       <div className="ph-tab">
@@ -126,28 +100,59 @@ export default function ComfyTab({ active }: { active: boolean }) {
   const showWork = st.installed && st.running;
 
   return (
-    <div className="ph-tab cf-tab">
-      <ComfySetup st={st} act={act} />
+    <div className="cf-tab cf-root">
+      {showWork ? (
+        <div className="cf-bar">
+          {VIEWS.map((v) => (
+            <button
+              key={v}
+              type="button"
+              className={`cf-bar-tab${view === v ? " active" : ""}`}
+              onClick={() => setView(v)}
+            >
+              {t(`photo.comfy.view.${v}`)}
+            </button>
+          ))}
+          <span style={{ flex: 1 }} />
+          {!st.ready && <span className="muted-sm">{t("photo.comfy.startingHint")}</span>}
+          <button
+            type="button"
+            className="cf-bar-ico"
+            title={t("photo.comfy.openWindow")}
+            aria-label={t("photo.comfy.openWindow")}
+            onClick={() => window.open("/api/comfy/ui/", "_blank", "noopener")}
+          >
+            <ExternalLink size={14} />
+          </button>
+          <button
+            type="button"
+            className="cf-bar-ico stop"
+            title={t("photo.comfy.stop")}
+            aria-label={t("photo.comfy.stop")}
+            onClick={() => void act(() => api.comfyStop())}
+          >
+            <Square size={13} />
+          </button>
+        </div>
+      ) : null}
       {msg && <div className="ph-error">{msg}</div>}
-      {st.installed && !showWork && <ComfyAdmin st={st} act={act} />}
-      {showWork && (
-        <>
-          <div className="page-tabs">
-            {VIEWS.map((v) => (
-              <button
-                key={v}
-                type="button"
-                className={`page-tab${view === v ? " active" : ""}`}
-                onClick={() => {
-                  if (v === "editor") setEditorSeen(true);
-                  setView(v);
-                }}
-              >
-                {t(`photo.comfy.view.${v}`)}
-              </button>
-            ))}
-          </div>
-          {!st.ready && <div className="muted-sm">{t("photo.comfy.startingHint")}</div>}
+      {!showWork && (
+        <div className="cf-scroll">
+          <ComfySetup st={st} act={act} />
+          {st.installed && <ComfyAdmin st={st} act={act} />}
+        </div>
+      )}
+      {showWork && st.ready && editorSeen && (
+        <iframe
+          ref={frame}
+          className="cf-frame"
+          title="ComfyUI"
+          src="/api/comfy/ui/"
+          style={view === "editor" ? undefined : { display: "none" }}
+        />
+      )}
+      {showWork && view !== "editor" && (
+        <div className="cf-scroll">
           {st.ready && view === "gen" && (
             <GenerateView
               info={info}
@@ -166,57 +171,10 @@ export default function ComfyTab({ active }: { active: boolean }) {
                 setView("gen");
                 setPending(g);
               }}
-              reloadKey={libKey}
+              reloadKey={0}
             />
           )}
-          {st.ready && editorSeen && (
-            <div
-              className="cf-editor cf-native"
-              style={view === "editor" ? undefined : { display: "none" }}
-            >
-              <div className="ph-row">
-                <Btn icon={Play} variant="primary" onClick={() => void runFromEditor()}>
-                  {t("photo.comfy.runInApp")}
-                </Btn>
-                <Btn icon={Save} onClick={() => void saveToLibrary()}>
-                  {t("photo.comfy.saveLibrary")}
-                </Btn>
-                <Btn
-                  icon={Download}
-                  onClick={() =>
-                    void readWorkflow(frame.current).then((r) =>
-                      r
-                        ? saveJson(r.workflow, "workflow.json")
-                        : setMsg(t("photo.comfy.editorNotReady")),
-                    )
-                  }
-                >
-                  {t("photo.comfy.exportWorkflow")}
-                </Btn>
-                <Btn
-                  icon={FolderOpen}
-                  onClick={() =>
-                    void readWorkflow(frame.current).then((r) =>
-                      r
-                        ? saveJson(r.output, "workflow_api.json")
-                        : setMsg(t("photo.comfy.editorNotReady")),
-                    )
-                  }
-                >
-                  {t("photo.comfy.exportApi")}
-                </Btn>
-                <span style={{ flex: 1 }} />
-                <Btn
-                  icon={ExternalLink}
-                  onClick={() => window.open("/api/comfy/ui/", "_blank", "noopener")}
-                >
-                  {t("photo.comfy.openWindow")}
-                </Btn>
-              </div>
-              <iframe ref={frame} className="cf-frame" title="ComfyUI" src="/api/comfy/ui/" />
-            </div>
-          )}
-        </>
+        </div>
       )}
     </div>
   );

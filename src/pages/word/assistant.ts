@@ -55,6 +55,23 @@ async function typeLines(cx: Cx, text: string): Promise<void> {
   }
 }
 
+/** Абзац, в котором стоит каретка (по свежему снимку ядра, а не по состоянию страницы). */
+async function caretBlock(cx: Cx): Promise<Block> {
+  const r = await cx.query<{ blocks: Block[]; selection: { focus: { path: number[] } } }>(
+    "document.inspect",
+    {},
+  );
+  const idx = r?.selection?.focus.path[0] ?? 0;
+  return (
+    (r?.blocks ?? []).find((b) => b.index === idx) ?? {
+      index: idx,
+      type: "paragraph",
+      text: "",
+      len: 0,
+    }
+  );
+}
+
 async function paragraph(cx: Cx, n: unknown): Promise<Block> {
   const idx = Number(n);
   const b = (await blocks(cx)).find((x) => x.index === idx);
@@ -242,6 +259,56 @@ export function wordAdapter(getCx: () => Cx, lang: string): DocAdapter {
     },
     {
       group: "edit",
+      name: "insert_table",
+      description:
+        "Insert a real table (Word table element, not text with | signs). `rows` is a list of rows, each row a list of cell texts; the first row is the header. All rows get the same number of cells. `where` as in insert_text. Write `where` BEFORE `rows`.",
+      parameters: {
+        type: "object",
+        properties: {
+          where: { type: "string", enum: ["cursor", "end", "start", "after_paragraph"] },
+          paragraph: { type: "number", description: "paragraph number for after_paragraph" },
+          rows: {
+            type: "array",
+            description: 'rows of cells, e.g. [["Name","Size"],["A","7B"]]',
+            items: { type: "array", items: { type: "string" } },
+          },
+        },
+        required: ["where", "rows"],
+      },
+      label: () => "Inserting a table",
+      run: async (a) => {
+        const grid = (Array.isArray(a.rows) ? a.rows : []).slice(0, 60).map((r) =>
+          (Array.isArray(r) ? r : [r]).slice(0, 12).map((c) =>
+            str(c)
+              .replace(/[\t\r\n]+/g, " ")
+              .trim(),
+          ),
+        );
+        const cols = Math.max(0, ...grid.map((r) => r.length));
+        if (!grid.length || !cols)
+          throw new Error("rows must be a non-empty list of lists of strings");
+        const lines = grid.map((r) => [...r, ...Array(cols - r.length).fill("")].join("\t"));
+        await placeCaret(cx, str(a.where) || "cursor", a.paragraph);
+        // Таблица собирается из набранных строк (ячейки разделены табами): так получается настоящая таблица Word.
+        let at = await caretBlock(cx);
+        if (at.text) {
+          describeResult(await cx.exec("text.newParagraph"));
+          at = await caretBlock(cx);
+        }
+        await typeLines(cx, lines.join("\n"));
+        const last = new TextEncoder().encode(lines[lines.length - 1]).length;
+        describeResult(
+          await cx.exec("select.range", {
+            anchor: body(at.index, 0),
+            focus: body(at.index + lines.length - 1, last),
+          }),
+        );
+        describeResult(await cx.exec("table.fromText", { separator: "tab" }));
+        return `Table ${grid.length}x${cols} inserted.`;
+      },
+    },
+    {
+      group: "edit",
       name: "replace_paragraph",
       description:
         "Replace the whole text of one paragraph (keeps its style). Empty text deletes the text, not the paragraph.",
@@ -357,7 +424,7 @@ export function wordAdapter(getCx: () => Cx, lang: string): DocAdapter {
     system:
       "You are an assistant built into a word processor. You work on the open document through tools. " +
       "Paragraphs are numbered from 0 as shown by read_document; never invent numbers: read first. " +
-      "Use insert_text, replace_paragraph, delete_paragraph and replace_text for text. " +
+      "Use insert_text, replace_paragraph, delete_paragraph and replace_text for text, and insert_table for tables (never draw a table with | characters). " +
       "For formatting, styles, tables, lists, headers, page setup and anything else use find_commands, then run_command (it acts on the current selection: select the text first with run_command select.text {text} or select.paragraph). " +
       "When the user asks for facts, use web_search and open_page and mention the source links; write found facts into the document only when asked.",
     tools,

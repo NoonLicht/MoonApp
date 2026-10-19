@@ -5,7 +5,8 @@ import { useI18n } from "@/app/i18n";
 import { api } from "@/api/client";
 import type { ComfyFlavor, ComfyStatus } from "@/api/apiComfy";
 
-const size = (mb: number): string => (mb < 1024 ? `${Math.round(mb)} MB` : `${(mb / 1024).toFixed(1)} GB`);
+const size = (mb: number): string =>
+  mb < 1024 ? `${Math.round(mb)} MB` : `${(mb / 1024).toFixed(1)} GB`;
 
 /** Установка, запуск и остановка ComfyUI: всё, что нужно до того, как откроется рабочая область. */
 export default function ComfySetup({
@@ -32,16 +33,16 @@ export default function ComfySetup({
       <ProgressBar value={st.setup.progress} />
       <div className="muted-sm">
         {t(`photo.comfy.phase.${st.setup.phase || "download"}`)} · {st.setup.progress}%
-        {st.setup.total > 0 && ` · ${size(st.setup.received / 1048576)} / ${size(st.setup.total / 1048576)}`}
+        {st.setup.total > 0 &&
+          ` · ${size(st.setup.received / 1048576)} / ${size(st.setup.total / 1048576)}`}
       </div>
     </>
   );
-  const err =
-    st.setup.state === "error" && (
-      <div className="ph-error">
-        {st.setup.error.includes("path_too_long") ? t("photo.comfy.pathTooLong") : st.setup.error}
-      </div>
-    );
+  const err = st.setup.state === "error" && (
+    <div className="ph-error">
+      {st.setup.error.includes("path_too_long") ? t("photo.comfy.pathTooLong") : st.setup.error}
+    </div>
+  );
 
   if (!st.installed)
     return (
@@ -104,7 +105,12 @@ export default function ComfySetup({
                 {t("photo.comfy.cpuMode")}
               </label>
             </label>
-            <Btn variant="primary" icon={Play} disabled={working} onClick={() => void act(() => api.comfyStart(cpu))}>
+            <Btn
+              variant="primary"
+              icon={Play}
+              disabled={working}
+              onClick={() => void act(() => api.comfyStart(cpu))}
+            >
               {t("photo.comfy.start")}
             </Btn>
           </>
@@ -116,7 +122,11 @@ export default function ComfySetup({
             {st.gguf ? t("photo.comfy.ggufOn") : t("photo.comfy.ggufOff")}
           </Badge>
           {!st.gguf && (
-            <Btn icon={Download} disabled={working} onClick={() => void act(() => api.comfyGgufNode())}>
+            <Btn
+              icon={Download}
+              disabled={working}
+              onClick={() => void act(() => api.comfyGgufNode())}
+            >
               {t("photo.comfy.ggufInstall")}
             </Btn>
           )}
@@ -136,8 +146,12 @@ export default function ComfySetup({
       {err}
       {st.running && !st.ready && <div className="muted-sm">{t("photo.comfy.startingHint")}</div>}
       {st.error && !st.running && <div className="ph-error">{st.error}</div>}
-      {!st.ready && st.log.length > 0 && st.running && <pre className="ph-log">{st.log.slice(-8).join("\n")}</pre>}
-      {!st.running && st.error && st.log.length > 0 && <pre className="ph-log">{st.log.slice(-12).join("\n")}</pre>}
+      {!st.ready && st.log.length > 0 && st.running && (
+        <pre className="ph-log">{st.log.slice(-8).join("\n")}</pre>
+      )}
+      {!st.running && st.error && st.log.length > 0 && (
+        <pre className="ph-log">{st.log.slice(-12).join("\n")}</pre>
+      )}
     </Glass>
   );
 }

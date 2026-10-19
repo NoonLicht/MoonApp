@@ -7051,15 +7051,23 @@
         "sdxl": "Stable Diffusion XL 1.0 (чекпоинт)",
         "sd15": "Stable Diffusion 1.5 (чекпоинт, легче)",
         "qwen-te": "Энкодер Qwen3-VL 8B (w4a8) для Qwen-Image",
-        "qwen-vae": "VAE Qwen-Image 2.1"
+        "qwen-vae": "VAE Qwen-Image 2.1",
+        "sdxl-turbo": "SDXL Turbo (fp16, быстрый: 1–4 шага)",
+        "flux-schnell": "FLUX.1 schnell (fp8, чекпоинт)",
+        "sd35-medium": "Stable Diffusion 3.5 Medium (fp8, со всеми энкодерами)",
+        "sdxl-vae": "VAE для SDXL (fp16-fix, без чёрных картинок)",
+        "zimage": "Z-Image Turbo (денойзер bf16)",
+        "zimage-te": "Энкодер Qwen3 4B (fp8) для Z-Image",
+        "zimage-vae": "VAE для Z-Image и FLUX (ae)",
+        "esrgan": "Увеличение ×4: Real-ESRGAN x4plus"
       },
       "sharedHint": "GGUF-модели Qwen-Image и энкодеры, скачанные в разделе «Локальные модели llama.cpp», видны здесь без повторной загрузки.",
       "addByLink": "Добавить модель по ссылке Hugging Face",
       "installedModels": "Установленные модели",
       "noModels": "Пока пусто.",
       "library": "Мои воркфлоу",
-      "libraryHint": "Сохранённые графы ComfyUI. Подходят воркфлоу из любых источников: граф редактора и API-формат.",
-      "libraryEmpty": "Пока нет сохранённых воркфлоу. Откройте редактор и нажмите «В библиотеку».",
+      "libraryHint": "Графы ComfyUI из файлов .json: подходят и граф редактора, и API-формат. Откройте воркфлоу в редакторе или запустите прямо отсюда.",
+      "libraryEmpty": "Пока пусто. Нажмите «Импорт воркфлоу» и выберите файл .json.",
       "open": "Открыть",
       "run": "Запустить",
       "editorNotReady": "Редактор ещё не загрузился. Подождите несколько секунд и повторите.",
@@ -7182,7 +7190,11 @@
       "addLora": "Добавить LoRA",
       "noLoras": "Нет файлов: добавьте их во вкладке «Модели» (папка loras).",
       "loraHint": "Подходят LoRA, DoRA, LoCon, LoHa и LoKr: ComfyUI определяет тип сам. Первое число — сила для модели, второе — для текстового энкодера.",
-      "openWindow": "В отдельном окне"
+      "openWindow": "В отдельном окне",
+      "addLocal": "Добавить свой файл модели",
+      "addLocalHint": "Укажите файл, скачанный заранее (.safetensors, .ckpt, .gguf…) и папку: на одном диске файл подключается ссылкой без копирования.",
+      "browse": "Обзор…",
+      "addLocalBtn": "Добавить"
     }
   },
   "word": {

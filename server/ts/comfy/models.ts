@@ -36,12 +36,51 @@ export function listModels(): ComfyModel[] {
         const r = rel ? `${rel}/${e.name}` : e.name;
         if (e.isDirectory() && depth < 3) walk(path.join(dir, e.name), r, depth + 1);
         else if (e.isFile() && EXT.test(e.name))
-          out.push({ folder, file: r, sizeMb: Math.round(fs.statSync(path.join(dir, e.name)).size / 1048576) });
+          out.push({
+            folder,
+            file: r,
+            sizeMb: Math.round(fs.statSync(path.join(dir, e.name)).size / 1048576),
+          });
       }
     };
     walk(base, "", 0);
   }
   return out;
+}
+
+/**
+ * Подключить скачанный заранее файл: жёсткая ссылка (мгновенно и без второй копии на том же диске),
+ * иначе обычное копирование. Принимаются только файлы моделей.
+ */
+export async function importModel(
+  src: string,
+  folder: string,
+): Promise<{ ok: boolean; error?: string; file?: string }> {
+  if (!isModelFolder(folder)) return { ok: false, error: "bad_folder" };
+  const from = path.resolve(src);
+  if (!EXT.test(from)) return { ok: false, error: "bad_extension" };
+  let st: fs.Stats;
+  try {
+    st = fs.statSync(from);
+  } catch {
+    return { ok: false, error: "file_not_found" };
+  }
+  if (!st.isFile()) return { ok: false, error: "file_not_found" };
+  const dir = path.join(comfyModelsDir(), folder);
+  const to = path.join(dir, path.basename(from));
+  if (fs.existsSync(to)) return { ok: false, error: "already_exists" };
+  fs.mkdirSync(dir, { recursive: true });
+  try {
+    fs.linkSync(from, to);
+  } catch {
+    try {
+      await fs.promises.copyFile(from, to, fs.constants.COPYFILE_EXCL);
+    } catch (e) {
+      logger.warn("comfy.import_failed", { error: (e as Error).message });
+      return { ok: false, error: "copy_failed" };
+    }
+  }
+  return { ok: true, file: path.basename(from) };
 }
 
 export function removeModel(folder: string, file: string): boolean {
@@ -75,12 +114,71 @@ export const RECOMMENDED: Recommended[] = [
     for: ["txt2img", "img2img"],
   },
   {
+    id: "sdxl-turbo",
+    folder: "checkpoints",
+    repo: "stabilityai/sdxl-turbo",
+    file: "sd_xl_turbo_1.0_fp16.safetensors",
+    sizeMb: 6617,
+    for: ["txt2img", "img2img"],
+  },
+  {
     id: "sd15",
     folder: "checkpoints",
     repo: "stable-diffusion-v1-5/stable-diffusion-v1-5",
     file: "v1-5-pruned-emaonly.safetensors",
     sizeMb: 4072,
     for: ["txt2img", "img2img"],
+  },
+  {
+    id: "flux-schnell",
+    folder: "checkpoints",
+    repo: "Comfy-Org/flux1-schnell",
+    file: "flux1-schnell-fp8.safetensors",
+    sizeMb: 16438,
+    for: ["txt2img"],
+  },
+  {
+    id: "sd35-medium",
+    folder: "checkpoints",
+    repo: "Comfy-Org/stable-diffusion-3.5-fp8",
+    file: "sd3.5_medium_incl_clips_t5xxlfp8scaled.safetensors",
+    sizeMb: 11099,
+    for: ["txt2img"],
+  },
+  {
+    id: "sdxl-vae",
+    folder: "vae",
+    repo: "madebyollin/sdxl-vae-fp16-fix",
+    file: "sdxl_vae.safetensors",
+    sizeMb: 319,
+    for: ["txt2img", "img2img"],
+  },
+  {
+    id: "zimage",
+    folder: "diffusion_models",
+    repo: "Comfy-Org/z_image_turbo",
+    file: "split_files/diffusion_models/z_image_turbo_bf16.safetensors",
+    as: "z_image_turbo_bf16.safetensors",
+    sizeMb: 11740,
+    for: ["z-image"],
+  },
+  {
+    id: "zimage-te",
+    folder: "text_encoders",
+    repo: "Comfy-Org/z_image_turbo",
+    file: "split_files/text_encoders/qwen_3_4b_fp8_mixed.safetensors",
+    as: "qwen_3_4b_fp8_mixed.safetensors",
+    sizeMb: 5371,
+    for: ["z-image"],
+  },
+  {
+    id: "zimage-vae",
+    folder: "vae",
+    repo: "Comfy-Org/z_image_turbo",
+    file: "split_files/vae/ae.safetensors",
+    as: "ae.safetensors",
+    sizeMb: 320,
+    for: ["z-image"],
   },
   {
     id: "qwen-te",
@@ -100,6 +198,14 @@ export const RECOMMENDED: Recommended[] = [
     sizeMb: 644,
     for: ["qwen-image"],
   },
+  {
+    id: "esrgan",
+    folder: "upscale_models",
+    repo: "lllyasviel/Annotators",
+    file: "RealESRGAN_x4plus.pth",
+    sizeMb: 64,
+    for: [],
+  },
 ];
 
 export interface HfFile {
@@ -112,10 +218,15 @@ export async function repoModelFiles(repo: string, rev: string): Promise<HfFile[
     redirect: "follow",
   });
   if (!r.ok) throw new Error(`hf_list_${r.status}`);
-  const j = (await r.json()) as { siblings?: { rfilename: string; size?: number; lfs?: { size?: number } }[] };
+  const j = (await r.json()) as {
+    siblings?: { rfilename: string; size?: number; lfs?: { size?: number } }[];
+  };
   return (j.siblings ?? [])
     .filter((x) => EXT.test(x.rfilename))
-    .map((x) => ({ file: x.rfilename, sizeMb: Math.round((x.lfs?.size ?? x.size ?? 0) / 1048576) }));
+    .map((x) => ({
+      file: x.rfilename,
+      sizeMb: Math.round((x.lfs?.size ?? x.size ?? 0) / 1048576),
+    }));
 }
 
 export { parseHfUrl };
@@ -140,7 +251,15 @@ export interface DlState {
   error: string;
 }
 
-let state: DlState = { status: "idle", file: "", index: 0, count: 0, bytes: 0, total: 0, error: "" };
+let state: DlState = {
+  status: "idle",
+  file: "",
+  index: 0,
+  count: 0,
+  bytes: 0,
+  total: 0,
+  error: "",
+};
 let abort: AbortController | null = null;
 
 export const downloadState = (): DlState => ({ ...state });
@@ -150,12 +269,25 @@ export function startDownload(jobs: DlJob[]): { ok: boolean; error?: string } {
   if (state.status === "downloading") return { ok: false, error: "busy" };
   if (!jobs.length) return { ok: false, error: "empty" };
   for (const j of jobs) {
-    if (!/^[\w.-]+\/[\w.-]+$/.test(j.repo) || !EXT.test(j.file) || j.file.includes("..") || !isModelFolder(j.folder))
+    if (
+      !/^[\w.-]+\/[\w.-]+$/.test(j.repo) ||
+      !EXT.test(j.file) ||
+      j.file.includes("..") ||
+      !isModelFolder(j.folder)
+    )
       return { ok: false, error: "bad_item" };
   }
   abort = new AbortController();
   const ac = abort;
-  state = { status: "downloading", file: "", index: 0, count: jobs.length, bytes: 0, total: 0, error: "" };
+  state = {
+    status: "downloading",
+    file: "",
+    index: 0,
+    count: jobs.length,
+    bytes: 0,
+    total: 0,
+    error: "",
+  };
   void (async () => {
     try {
       for (let i = 0; i < jobs.length; i++) {
@@ -182,7 +314,11 @@ export function startDownload(jobs: DlJob[]): { ok: boolean; error?: string } {
       state = { ...state, status: "done" };
       logger.info("comfy.models_downloaded", { count: jobs.length });
     } catch (e) {
-      state = { ...state, status: "error", error: ac.signal.aborted ? "cancelled" : (e as Error).message };
+      state = {
+        ...state,
+        status: "error",
+        error: ac.signal.aborted ? "cancelled" : (e as Error).message,
+      };
     }
   })();
   return { ok: true };

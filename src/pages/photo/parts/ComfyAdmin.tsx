@@ -15,14 +15,47 @@ type Section = "memory" | "update" | "nodes";
 
 /** Быстрые наборы памяти: что куда класть, чтобы модель целиком влезала в видеопамять. */
 const QUICK: { id: string; patch: Partial<ComfyRunSettings> }[] = [
-  { id: "auto", patch: { memory: "auto", cpuVae: false, reserveVramGb: 0, smartMemory: true, asyncOffload: "auto", dynamicVram: "auto" } },
+  {
+    id: "auto",
+    patch: {
+      memory: "auto",
+      cpuVae: false,
+      reserveVramGb: 0,
+      smartMemory: true,
+      asyncOffload: "auto",
+      dynamicVram: "auto",
+    },
+  },
   // Денойзер в видеопамяти, энкодеры текста и VAE — в оперативной памяти и на процессоре.
-  { id: "saver", patch: { memory: "low", cpuVae: true, reserveVramGb: 0.6, smartMemory: false, asyncOffload: "on" } },
-  { id: "extreme", patch: { memory: "none", cpuVae: true, reserveVramGb: 0.4, smartMemory: false, asyncOffload: "on", cache: "none" } },
+  {
+    id: "saver",
+    patch: {
+      memory: "low",
+      cpuVae: true,
+      reserveVramGb: 0.6,
+      smartMemory: false,
+      asyncOffload: "on",
+    },
+  },
+  {
+    id: "extreme",
+    patch: {
+      memory: "none",
+      cpuVae: true,
+      reserveVramGb: 0.4,
+      smartMemory: false,
+      asyncOffload: "on",
+      cache: "none",
+    },
+  },
   { id: "fast", patch: { memory: "high", cpuVae: false, smartMemory: true } },
 ];
 
-const opt = (t: (k: string) => string, group: string, values: string[]): { value: string; label: string }[] =>
+const opt = (
+  t: (k: string) => string,
+  group: string,
+  values: string[],
+): { value: string; label: string }[] =>
   values.map((v) => ({ value: v, label: t(`photo.comfy.admin.${group}.${v}`) }));
 
 /** Настройки ComfyUI: память и точность, обновление с GitHub и пользовательские узлы. */
@@ -102,7 +135,11 @@ export default function ComfyAdmin({
   const bool = (k: keyof ComfyRunSettings, label: string, hint?: string): React.ReactNode =>
     cfg && (
       <label className="cf-check" title={hint}>
-        <input type="checkbox" checked={Boolean(cfg[k])} onChange={(e) => patch({ [k]: e.target.checked } as Partial<ComfyRunSettings>)} />
+        <input
+          type="checkbox"
+          checked={Boolean(cfg[k])}
+          onChange={(e) => patch({ [k]: e.target.checked } as Partial<ComfyRunSettings>)}
+        />
         <span>{label}</span>
       </label>
     );
@@ -115,7 +152,11 @@ export default function ComfyAdmin({
           <div className="muted-sm">{t("photo.comfy.admin.memoryHint")}</div>
           <div className="ph-row">
             {QUICK.map((q) => (
-              <Btn key={q.id} onClick={() => patch(q.patch)} title={t(`photo.comfy.admin.quickHint.${q.id}`)}>
+              <Btn
+                key={q.id}
+                onClick={() => patch(q.patch)}
+                title={t(`photo.comfy.admin.quickHint.${q.id}`)}
+              >
                 {t(`photo.comfy.admin.quick.${q.id}`)}
               </Btn>
             ))}
@@ -123,78 +164,159 @@ export default function ComfyAdmin({
           <div className="ph-grid">
             <label className="field">
               <span className="field-label">{t("photo.comfy.admin.memory")}</span>
-              <Select value={cfg.memory} onChange={(e) => patch({ memory: e.target.value as ComfyRunSettings["memory"] })} options={opt(t, "memoryMode", ["auto", "gpu", "high", "low", "none", "cpu"])} />
+              <Select
+                value={cfg.memory}
+                onChange={(e) => patch({ memory: e.target.value as ComfyRunSettings["memory"] })}
+                options={opt(t, "memoryMode", ["auto", "gpu", "high", "low", "none", "cpu"])}
+              />
             </label>
             <label className="field">
               <span className="field-label">{t("photo.comfy.admin.reserve")}</span>
-              <input type="number" min={0} max={64} step={0.1} value={cfg.reserveVramGb} onChange={(e) => patch({ reserveVramGb: Number(e.target.value) })} />
+              <input
+                type="number"
+                min={0}
+                max={64}
+                step={0.1}
+                value={cfg.reserveVramGb}
+                onChange={(e) => patch({ reserveVramGb: Number(e.target.value) })}
+              />
             </label>
             <label className="field">
               <span className="field-label">{t("photo.comfy.admin.asyncOffload")}</span>
-              <Select value={cfg.asyncOffload} onChange={(e) => patch({ asyncOffload: e.target.value as ComfyRunSettings["asyncOffload"] })} options={opt(t, "tri", ["auto", "on", "off"])} />
+              <Select
+                value={cfg.asyncOffload}
+                onChange={(e) =>
+                  patch({ asyncOffload: e.target.value as ComfyRunSettings["asyncOffload"] })
+                }
+                options={opt(t, "tri", ["auto", "on", "off"])}
+              />
             </label>
             <label className="field">
               <span className="field-label">{t("photo.comfy.admin.dynamicVram")}</span>
-              <Select value={cfg.dynamicVram} onChange={(e) => patch({ dynamicVram: e.target.value as ComfyRunSettings["dynamicVram"] })} options={opt(t, "tri", ["auto", "on", "off"])} />
+              <Select
+                value={cfg.dynamicVram}
+                onChange={(e) =>
+                  patch({ dynamicVram: e.target.value as ComfyRunSettings["dynamicVram"] })
+                }
+                options={opt(t, "tri", ["auto", "on", "off"])}
+              />
             </label>
             <label className="field">
               <span className="field-label">{t("photo.comfy.admin.cache")}</span>
-              <Select value={cfg.cache} onChange={(e) => patch({ cache: e.target.value as ComfyRunSettings["cache"] })} options={opt(t, "cacheMode", ["auto", "classic", "lru", "none"])} />
+              <Select
+                value={cfg.cache}
+                onChange={(e) => patch({ cache: e.target.value as ComfyRunSettings["cache"] })}
+                options={opt(t, "cacheMode", ["auto", "classic", "lru", "none"])}
+              />
             </label>
             {cfg.cache === "lru" && (
               <label className="field">
                 <span className="field-label">{t("photo.comfy.admin.cacheLru")}</span>
-                <input type="number" min={1} max={256} value={cfg.cacheLru} onChange={(e) => patch({ cacheLru: Number(e.target.value) })} />
+                <input
+                  type="number"
+                  min={1}
+                  max={256}
+                  value={cfg.cacheLru}
+                  onChange={(e) => patch({ cacheLru: Number(e.target.value) })}
+                />
               </label>
             )}
             <label className="field">
               <span className="field-label">{t("photo.comfy.admin.unet")}</span>
-              <Select value={cfg.unet} onChange={(e) => patch({ unet: e.target.value as ComfyRunSettings["unet"] })} options={opt(t, "prec", ["auto", "fp32", "fp16", "bf16", "fp8_e4m3fn", "fp8_e5m2"])} />
+              <Select
+                value={cfg.unet}
+                onChange={(e) => patch({ unet: e.target.value as ComfyRunSettings["unet"] })}
+                options={opt(t, "prec", ["auto", "fp32", "fp16", "bf16", "fp8_e4m3fn", "fp8_e5m2"])}
+              />
             </label>
             <label className="field">
               <span className="field-label">{t("photo.comfy.admin.vaePrec")}</span>
-              <Select value={cfg.vae} onChange={(e) => patch({ vae: e.target.value as ComfyRunSettings["vae"] })} options={opt(t, "prec", ["auto", "fp32", "fp16", "bf16"])} />
+              <Select
+                value={cfg.vae}
+                onChange={(e) => patch({ vae: e.target.value as ComfyRunSettings["vae"] })}
+                options={opt(t, "prec", ["auto", "fp32", "fp16", "bf16"])}
+              />
             </label>
             <label className="field">
               <span className="field-label">{t("photo.comfy.admin.textEnc")}</span>
-              <Select value={cfg.textEnc} onChange={(e) => patch({ textEnc: e.target.value as ComfyRunSettings["textEnc"] })} options={opt(t, "prec", ["auto", "fp32", "fp16", "bf16", "fp8_e4m3fn", "fp8_e5m2"])} />
+              <Select
+                value={cfg.textEnc}
+                onChange={(e) => patch({ textEnc: e.target.value as ComfyRunSettings["textEnc"] })}
+                options={opt(t, "prec", ["auto", "fp32", "fp16", "bf16", "fp8_e4m3fn", "fp8_e5m2"])}
+              />
             </label>
             <label className="field">
               <span className="field-label">{t("photo.comfy.admin.attention")}</span>
-              <Select value={cfg.attention} onChange={(e) => patch({ attention: e.target.value as ComfyRunSettings["attention"] })} options={opt(t, "attn", ["auto", "pytorch", "split", "quad", "sage", "flash"])} />
+              <Select
+                value={cfg.attention}
+                onChange={(e) =>
+                  patch({ attention: e.target.value as ComfyRunSettings["attention"] })
+                }
+                options={opt(t, "attn", ["auto", "pytorch", "split", "quad", "sage", "flash"])}
+              />
             </label>
             <label className="field">
               <span className="field-label">{t("photo.comfy.admin.preview")}</span>
-              <Select value={cfg.preview} onChange={(e) => patch({ preview: e.target.value as ComfyRunSettings["preview"] })} options={opt(t, "previewMode", ["auto", "none", "latent2rgb", "taesd"])} />
+              <Select
+                value={cfg.preview}
+                onChange={(e) => patch({ preview: e.target.value as ComfyRunSettings["preview"] })}
+                options={opt(t, "previewMode", ["auto", "none", "latent2rgb", "taesd"])}
+              />
             </label>
             <label className="field">
               <span className="field-label">{t("photo.comfy.admin.cudaDevice")}</span>
-              <input type="text" value={cfg.cudaDevice} placeholder="0,1" onChange={(e) => patch({ cudaDevice: e.target.value })} />
+              <input
+                type="text"
+                value={cfg.cudaDevice}
+                placeholder="0,1"
+                onChange={(e) => patch({ cudaDevice: e.target.value })}
+              />
             </label>
           </div>
           <div className="cf-checks">
             {bool("cpuVae", t("photo.comfy.admin.cpuVae"), t("photo.comfy.admin.cpuVaeHint"))}
-            {bool("smartMemory", t("photo.comfy.admin.smartMemory"), t("photo.comfy.admin.smartMemoryHint"))}
+            {bool(
+              "smartMemory",
+              t("photo.comfy.admin.smartMemory"),
+              t("photo.comfy.admin.smartMemoryHint"),
+            )}
             {bool("highRam", t("photo.comfy.admin.highRam"))}
             {bool("fast", t("photo.comfy.admin.fast"), t("photo.comfy.admin.fastHint"))}
             {bool("disableCudaMalloc", t("photo.comfy.admin.noCudaMalloc"))}
-            {bool("disablePartnerNodes", t("photo.comfy.admin.noPartner"), t("photo.comfy.admin.noPartnerHint"))}
+            {bool(
+              "disablePartnerNodes",
+              t("photo.comfy.admin.noPartner"),
+              t("photo.comfy.admin.noPartnerHint"),
+            )}
           </div>
           <label className="field">
             <span className="field-label">{t("photo.comfy.admin.extraArgs")}</span>
-            <input type="text" value={cfg.extraArgs} placeholder="--use-sage-attention --reserve-vram 1" onChange={(e) => patch({ extraArgs: e.target.value })} />
+            <input
+              type="text"
+              value={cfg.extraArgs}
+              placeholder="--use-sage-attention --reserve-vram 1"
+              onChange={(e) => patch({ extraArgs: e.target.value })}
+            />
           </label>
           <div className="muted-sm">{t("photo.comfy.admin.extraHint")}</div>
           <div className="ph-row">
             <Btn variant="primary" icon={Check} onClick={() => void save()}>
               {t("photo.comfy.admin.save")}
             </Btn>
-            {saved && <Badge tone="teal">{st.running ? t("photo.comfy.admin.savedRestart") : t("photo.comfy.admin.saved")}</Badge>}
+            {saved && (
+              <Badge tone="teal">
+                {st.running ? t("photo.comfy.admin.savedRestart") : t("photo.comfy.admin.saved")}
+              </Badge>
+            )}
           </div>
         </div>
       )}
 
-      {head("update", t("photo.comfy.admin.updateTitle"), st.version ? <Badge>{st.version}</Badge> : null)}
+      {head(
+        "update",
+        t("photo.comfy.admin.updateTitle"),
+        st.version ? <Badge>{st.version}</Badge> : null,
+      )}
       {open === "update" && (
         <div className="cf-section">
           <div className="ph-row">
@@ -204,25 +326,44 @@ export default function ComfyAdmin({
             <span>
               {t("photo.comfy.admin.latest")}: <b>{upd?.latest || "—"}</b>
             </span>
-            {upd?.newer ? <Badge tone="teal">{t("photo.comfy.admin.newer")}</Badge> : upd?.latest ? <Badge>{t("photo.comfy.admin.upToDate")}</Badge> : null}
+            {upd?.newer ? (
+              <Badge tone="teal">{t("photo.comfy.admin.newer")}</Badge>
+            ) : upd?.latest ? (
+              <Badge>{t("photo.comfy.admin.upToDate")}</Badge>
+            ) : null}
             <Btn icon={RefreshCw} onClick={() => void check(true)}>
               {t("photo.comfy.admin.check")}
             </Btn>
           </div>
           <div className="ph-row">
-            <Btn variant="primary" icon={Download} disabled={working || !stopped} onClick={() => void act(() => api.comfyUpdate("stable"))}>
+            <Btn
+              variant="primary"
+              icon={Download}
+              disabled={working || !stopped}
+              onClick={() => void act(() => api.comfyUpdate("stable"))}
+            >
               {t("photo.comfy.admin.updateStable")}
             </Btn>
-            <Btn icon={Download} disabled={working || !stopped} onClick={() => void act(() => api.comfyUpdate("latest"))}>
+            <Btn
+              icon={Download}
+              disabled={working || !stopped}
+              onClick={() => void act(() => api.comfyUpdate("latest"))}
+            >
               {t("photo.comfy.admin.updateLatest")}
             </Btn>
           </div>
           <div className="muted-sm">{t("photo.comfy.admin.updateHint")}</div>
           {!stopped && <div className="muted-sm">{t("photo.comfy.admin.stopFirst")}</div>}
           <div className="ph-row">
-            <Badge tone={st.manager ? "teal" : undefined}>{st.manager ? t("photo.comfy.admin.managerOn") : t("photo.comfy.admin.managerOff")}</Badge>
+            <Badge tone={st.manager ? "teal" : undefined}>
+              {st.manager ? t("photo.comfy.admin.managerOn") : t("photo.comfy.admin.managerOff")}
+            </Badge>
             {!st.manager && (
-              <Btn icon={Download} disabled={working || !stopped} onClick={() => void act(() => api.comfyManagerInstall())}>
+              <Btn
+                icon={Download}
+                disabled={working || !stopped}
+                onClick={() => void act(() => api.comfyManagerInstall())}
+              >
                 {t("photo.comfy.admin.managerInstall")}
               </Btn>
             )}
@@ -247,7 +388,12 @@ export default function ComfyAdmin({
               variant="primary"
               icon={Download}
               disabled={working || !stopped || !url.trim()}
-              onClick={() => void act(async () => { await api.comfyNodeInstall(url.trim()); setUrl(""); })}
+              onClick={() =>
+                void act(async () => {
+                  await api.comfyNodeInstall(url.trim());
+                  setUrl("");
+                })
+              }
             >
               {t("photo.comfy.admin.nodeInstall")}
             </Btn>
@@ -261,11 +407,22 @@ export default function ComfyAdmin({
                   {!n.enabled && <Badge>{t("photo.comfy.admin.disabled")}</Badge>}
                   {n.source && <div className="muted-sm">{n.source}</div>}
                 </span>
-                <Btn disabled={!stopped} onClick={() => void act(async () => setNodes((await api.comfyNodeToggle(n.name, !n.enabled)).nodes))}>
+                <Btn
+                  disabled={!stopped}
+                  onClick={() =>
+                    void act(async () =>
+                      setNodes((await api.comfyNodeToggle(n.name, !n.enabled)).nodes),
+                    )
+                  }
+                >
                   {n.enabled ? t("photo.comfy.admin.disable") : t("photo.comfy.admin.enable")}
                 </Btn>
                 {n.source && (
-                  <Btn icon={RefreshCw} disabled={working || !stopped} onClick={() => void act(() => api.comfyNodeUpdate(n.name))}>
+                  <Btn
+                    icon={RefreshCw}
+                    disabled={working || !stopped}
+                    onClick={() => void act(() => api.comfyNodeUpdate(n.name))}
+                  >
                     {t("photo.comfy.admin.nodeUpdate")}
                   </Btn>
                 )}
@@ -274,14 +431,18 @@ export default function ComfyAdmin({
                     icon={Trash2}
                     disabled={!stopped}
                     onClick={() => {
-                      if (window.confirm(t("photo.comfy.admin.nodeRemoveConfirm", { name: n.name })))
+                      if (
+                        window.confirm(t("photo.comfy.admin.nodeRemoveConfirm", { name: n.name }))
+                      )
                         void act(async () => setNodes((await api.comfyNodeRemove(n.name)).nodes));
                     }}
                   />
                 )}
               </div>
             ))}
-            {nodes.length === 0 && <div className="muted-sm">{t("photo.comfy.admin.nodesEmpty")}</div>}
+            {nodes.length === 0 && (
+              <div className="muted-sm">{t("photo.comfy.admin.nodesEmpty")}</div>
+            )}
           </div>
         </div>
       )}

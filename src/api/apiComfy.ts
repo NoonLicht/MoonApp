@@ -110,7 +110,10 @@ export interface ComfyHf {
 }
 
 /** Воркфлоу в API-формате: id узла → класс и входы. */
-export type ComfyGraph = Record<string, { class_type: string; inputs: Record<string, unknown>; _meta?: unknown }>;
+export type ComfyGraph = Record<
+  string,
+  { class_type: string; inputs: Record<string, unknown>; _meta?: unknown }
+>;
 
 export interface ComfyImageRef {
   filename: string;
@@ -130,15 +133,23 @@ const UI = "/api/comfy/ui";
 async function ui<T>(method: string, path: string, body?: unknown): Promise<T> {
   const r = await fetch(`${BASE}${UI}${path}`, {
     method,
-    headers: { ...tokenHeaders(), ...pageHeaders(), ...(body === undefined ? {} : { "Content-Type": "application/json" }) },
+    headers: {
+      ...tokenHeaders(),
+      ...pageHeaders(),
+      ...(body === undefined ? {} : { "Content-Type": "application/json" }),
+    },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
   if (!r.ok) {
     let msg = `${r.status}`;
     try {
-      const j = (await r.json()) as { error?: string | { message?: string }; node_errors?: Record<string, unknown> };
+      const j = (await r.json()) as {
+        error?: string | { message?: string };
+        node_errors?: Record<string, unknown>;
+      };
       msg = typeof j.error === "string" ? j.error : (j.error?.message ?? msg);
-      if (j.node_errors && Object.keys(j.node_errors).length) msg += `: ${JSON.stringify(j.node_errors).slice(0, 300)}`;
+      if (j.node_errors && Object.keys(j.node_errors).length)
+        msg += `: ${JSON.stringify(j.node_errors).slice(0, 300)}`;
     } catch {
       /* не JSON */
     }
@@ -154,30 +165,47 @@ export const comfyApi = {
   comfyGgufNode: () => req<ComfySetupState>("POST", "/comfy/gguf-node"),
   comfyRemove: () => req<{ ok: boolean }>("DELETE", "/comfy/install"),
   comfySettings: () => req<ComfySettingsReply>("GET", "/comfy/settings"),
-  comfySettingsSave: (patch: Partial<ComfyRunSettings>) => req<ComfySettingsReply>("PUT", "/comfy/settings", patch),
-  comfyUpdateCheck: (force = false) => req<ComfyUpdateCheck>("GET", `/comfy/update/check${force ? "?force=1" : ""}`),
-  comfyUpdate: (channel: "stable" | "latest") => req<ComfySetupState>("POST", "/comfy/update", { channel }),
+  comfySettingsSave: (patch: Partial<ComfyRunSettings>) =>
+    req<ComfySettingsReply>("PUT", "/comfy/settings", patch),
+  comfyUpdateCheck: (force = false) =>
+    req<ComfyUpdateCheck>("GET", `/comfy/update/check${force ? "?force=1" : ""}`),
+  comfyUpdate: (channel: "stable" | "latest") =>
+    req<ComfySetupState>("POST", "/comfy/update", { channel }),
   comfyManagerInstall: () => req<ComfySetupState>("POST", "/comfy/manager"),
   comfyNodes: () => req<{ nodes: ComfyNodePack[] }>("GET", "/comfy/nodes"),
   comfyNodeInstall: (url: string) => req<ComfySetupState>("POST", "/comfy/nodes", { url }),
   comfyNodeUpdate: (name: string) => req<ComfySetupState>("POST", "/comfy/nodes/update", { name }),
   comfyNodeToggle: (name: string, enabled: boolean) =>
     req<{ nodes: ComfyNodePack[] }>("POST", "/comfy/nodes/toggle", { name, enabled }),
-  comfyNodeRemove: (name: string) => req<{ nodes: ComfyNodePack[] }>("DELETE", `/comfy/nodes?name=${encodeURIComponent(name)}`),
+  comfyNodeRemove: (name: string) =>
+    req<{ nodes: ComfyNodePack[] }>("DELETE", `/comfy/nodes?name=${encodeURIComponent(name)}`),
   comfyStart: (cpu = false) => req<ComfyStatus>("POST", "/comfy/start", { cpu }),
   comfyPrepare: () => req<{ ok: boolean }>("POST", "/comfy/prepare"),
   comfyStop: () => req<{ ok: boolean }>("POST", "/comfy/stop"),
   comfyModels: () => req<ComfyModels>("GET", "/comfy/models"),
   comfyHf: (url: string) => req<ComfyHf>("GET", `/comfy/hf?url=${encodeURIComponent(url)}`),
-  comfyModelDownload: (body: { recommended?: string; repo?: string; rev?: string; folder?: string; files?: string[] }) =>
-    req<ComfyDownload>("POST", "/comfy/models/download", body),
+  comfyModelDownload: (body: {
+    recommended?: string;
+    repo?: string;
+    rev?: string;
+    folder?: string;
+    files?: string[];
+  }) => req<ComfyDownload>("POST", "/comfy/models/download", body),
   comfyModelCancel: () => req<{ ok: boolean }>("POST", "/comfy/models/cancel"),
   comfyModelRemove: (folder: string, file: string) =>
-    req<{ ok: boolean }>("DELETE", `/comfy/models?folder=${encodeURIComponent(folder)}&file=${encodeURIComponent(file)}`),
+    req<{ ok: boolean }>(
+      "DELETE",
+      `/comfy/models?folder=${encodeURIComponent(folder)}&file=${encodeURIComponent(file)}`,
+    ),
+  comfyModelImport: (path: string, folder: string) =>
+    req<{ ok: boolean; file?: string }>("POST", "/comfy/models/import", { path, folder }),
   comfyWorkflows: () => req<{ workflows: { id: string; at: number }[] }>("GET", "/comfy/workflows"),
-  comfyWorkflowGet: (id: string) => req<unknown>("GET", `/comfy/workflows/${encodeURIComponent(id)}`),
-  comfyWorkflowSave: (id: string, wf: unknown) => req<{ ok: boolean }>("PUT", `/comfy/workflows/${encodeURIComponent(id)}`, wf),
-  comfyWorkflowDelete: (id: string) => req<{ ok: boolean }>("DELETE", `/comfy/workflows/${encodeURIComponent(id)}`),
+  comfyWorkflowGet: (id: string) =>
+    req<unknown>("GET", `/comfy/workflows/${encodeURIComponent(id)}`),
+  comfyWorkflowSave: (id: string, wf: unknown) =>
+    req<{ ok: boolean }>("PUT", `/comfy/workflows/${encodeURIComponent(id)}`, wf),
+  comfyWorkflowDelete: (id: string) =>
+    req<{ ok: boolean }>("DELETE", `/comfy/workflows/${encodeURIComponent(id)}`),
   comfyAssist: (body: { request: string; current?: ComfyGraph; model?: string }) =>
     req<{ workflow: ComfyGraph; notes: string[]; attempts: number }>("POST", "/comfy/assist", body),
 
@@ -185,7 +213,10 @@ export const comfyApi = {
   comfyObjectInfo: () => ui<Record<string, ComfyNodeInfo>>("GET", "/object_info"),
   /** Ставит граф в очередь, возвращает id задания. */
   comfySubmit: async (graph: ComfyGraph, clientId: string): Promise<string> => {
-    const r = await ui<{ prompt_id: string }>("POST", "/prompt", { prompt: graph, client_id: clientId });
+    const r = await ui<{ prompt_id: string }>("POST", "/prompt", {
+      prompt: graph,
+      client_id: clientId,
+    });
     return r.prompt_id;
   },
   comfyInterrupt: () => ui<unknown>("POST", "/interrupt", {}),
@@ -197,15 +228,21 @@ export const comfyApi = {
       .reverse();
   },
   comfyHistoryOne: async (id: string): Promise<ComfyHistoryItem | null> => {
-    const h = await ui<Record<string, ComfyRawHistory>>("GET", `/history/${encodeURIComponent(id)}`);
+    const h = await ui<Record<string, ComfyRawHistory>>(
+      "GET",
+      `/history/${encodeURIComponent(id)}`,
+    );
     return h[id] ? toHistory(id, h[id]) : null;
   },
   comfyImageUrl: (r: ComfyImageRef): string =>
     `${BASE}${UI}/view?${new URLSearchParams({ filename: r.filename, subfolder: r.subfolder, type: r.type })}`,
   comfyImageBlob: async (r: ComfyImageRef): Promise<Blob> => {
-    const res = await fetch(`${BASE}${UI}/view?${new URLSearchParams({ filename: r.filename, subfolder: r.subfolder, type: r.type })}`, {
-      headers: { ...tokenHeaders() },
-    });
+    const res = await fetch(
+      `${BASE}${UI}/view?${new URLSearchParams({ filename: r.filename, subfolder: r.subfolder, type: r.type })}`,
+      {
+        headers: { ...tokenHeaders() },
+      },
+    );
     if (!res.ok) throw new Error(`view_${res.status}`);
     return res.blob();
   },
@@ -213,7 +250,11 @@ export const comfyApi = {
     const fd = new FormData();
     fd.append("image", file, file.name);
     fd.append("overwrite", "true");
-    const res = await fetch(`${BASE}${UI}/upload/image`, { method: "POST", headers: { ...tokenHeaders() }, body: fd });
+    const res = await fetch(`${BASE}${UI}/upload/image`, {
+      method: "POST",
+      headers: { ...tokenHeaders() },
+      body: fd,
+    });
     if (!res.ok) throw new Error(`upload_${res.status}`);
     const j = (await res.json()) as { name: string; subfolder?: string };
     return j.subfolder ? `${j.subfolder}/${j.name}` : j.name;
@@ -253,7 +294,9 @@ export function comfyWatch(
   let ws: WebSocket | null = null;
   try {
     const proto = location.protocol === "https:" ? "wss:" : "ws:";
-    ws = new WebSocket(`${proto}//${location.host}${UI}/ws?clientId=${encodeURIComponent(clientId)}`);
+    ws = new WebSocket(
+      `${proto}//${location.host}${UI}/ws?clientId=${encodeURIComponent(clientId)}`,
+    );
     ws.onmessage = (m) => {
       if (typeof m.data !== "string") return;
       try {

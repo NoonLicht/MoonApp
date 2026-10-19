@@ -7051,15 +7051,23 @@
         "sdxl": "Stable Diffusion XL 1.0 (checkpoint)",
         "sd15": "Stable Diffusion 1.5 (checkpoint, lighter)",
         "qwen-te": "Qwen3-VL 8B encoder (w4a8) for Qwen-Image",
-        "qwen-vae": "Qwen-Image 2.1 VAE"
+        "qwen-vae": "Qwen-Image 2.1 VAE",
+        "sdxl-turbo": "SDXL Turbo (fp16, fast: 1–4 steps)",
+        "flux-schnell": "FLUX.1 schnell (fp8, checkpoint)",
+        "sd35-medium": "Stable Diffusion 3.5 Medium (fp8, with all encoders)",
+        "sdxl-vae": "VAE for SDXL (fp16-fix, no black images)",
+        "zimage": "Z-Image Turbo (bf16 diffusion model)",
+        "zimage-te": "Qwen3 4B encoder (fp8) for Z-Image",
+        "zimage-vae": "VAE for Z-Image and FLUX (ae)",
+        "esrgan": "×4 upscaler: Real-ESRGAN x4plus"
       },
       "sharedHint": "Qwen-Image GGUF models and encoders downloaded in the llama.cpp local models section show up here with no second download.",
       "addByLink": "Add a model by Hugging Face link",
       "installedModels": "Installed models",
       "noModels": "Nothing yet.",
       "library": "My workflows",
-      "libraryHint": "Saved ComfyUI graphs. Workflows from any source work: editor graphs and API format.",
-      "libraryEmpty": "No saved workflows yet. Open the editor and press “Save to library”.",
+      "libraryHint": "ComfyUI graphs from .json files: both the editor graph and the API format work. Open a workflow in the editor or run it from here.",
+      "libraryEmpty": "Nothing yet. Press “Import workflow” and pick a .json file.",
       "open": "Open",
       "run": "Run",
       "editorNotReady": "The editor is not loaded yet. Wait a few seconds and try again.",
@@ -7182,7 +7190,11 @@
       "addLora": "Add LoRA",
       "noLoras": "No files: add them in the Models tab (loras folder).",
       "loraHint": "LoRA, DoRA, LoCon, LoHa and LoKr all work: ComfyUI detects the type itself. The first number is the model strength, the second is the text encoder strength.",
-      "openWindow": "In a separate window"
+      "openWindow": "In a separate window",
+      "addLocal": "Add your own model file",
+      "addLocalHint": "Pick a file you already downloaded (.safetensors, .ckpt, .gguf…) and a folder: on the same drive it is linked without copying.",
+      "browse": "Browse…",
+      "addLocalBtn": "Add"
     }
   },
   "word": {

@@ -7051,15 +7051,23 @@
         "sdxl": "Stable Diffusion XL 1.0（检查点）",
         "sd15": "Stable Diffusion 1.5（检查点，更轻量）",
         "qwen-te": "用于 Qwen-Image 的 Qwen3-VL 8B 编码器 (w4a8)",
-        "qwen-vae": "Qwen-Image 2.1 VAE"
+        "qwen-vae": "Qwen-Image 2.1 VAE",
+        "sdxl-turbo": "SDXL Turbo（fp16，快速：1–4 步）",
+        "flux-schnell": "FLUX.1 schnell（fp8 检查点）",
+        "sd35-medium": "Stable Diffusion 3.5 Medium（fp8，含全部编码器）",
+        "sdxl-vae": "SDXL 用 VAE（fp16-fix，避免黑图）",
+        "zimage": "Z-Image Turbo（bf16 扩散模型）",
+        "zimage-te": "Z-Image 用 Qwen3 4B 编码器（fp8）",
+        "zimage-vae": "Z-Image 与 FLUX 用 VAE（ae）",
+        "esrgan": "×4 放大：Real-ESRGAN x4plus"
       },
       "sharedHint": "在 llama.cpp 本地模型中下载的 Qwen-Image GGUF 模型和编码器会直接显示在此，无需重复下载。",
       "addByLink": "通过 Hugging Face 链接添加模型",
       "installedModels": "已安装的模型",
       "noModels": "暂无。",
       "library": "我的工作流",
-      "libraryHint": "已保存的 ComfyUI 节点图。任何来源的工作流都可用：编辑器图和 API 格式。",
-      "libraryEmpty": "尚无已保存的工作流。打开编辑器并点击“存入库”。",
+      "libraryHint": "来自 .json 文件的 ComfyUI 工作流：编辑器图和 API 格式均可。可在编辑器中打开或直接运行。",
+      "libraryEmpty": "暂无内容。点击“导入工作流”并选择 .json 文件。",
       "open": "打开",
       "run": "运行",
       "editorNotReady": "编辑器尚未加载完成，请稍候重试。",
@@ -7182,7 +7190,11 @@
       "addLora": "添加 LoRA",
       "noLoras": "没有文件：请在“模型”标签（loras 文件夹）中添加。",
       "loraHint": "支持 LoRA、DoRA、LoCon、LoHa 和 LoKr，ComfyUI 会自动识别。第一个数是模型强度，第二个是文本编码器强度。",
-      "openWindow": "在独立窗口中打开"
+      "openWindow": "在独立窗口中打开",
+      "addLocal": "添加自己的模型文件",
+      "addLocalHint": "选择已下载的文件（.safetensors、.ckpt、.gguf…）和文件夹：在同一磁盘上会以链接方式添加，无需复制。",
+      "browse": "浏览…",
+      "addLocalBtn": "添加"
     }
   },
   "word": {

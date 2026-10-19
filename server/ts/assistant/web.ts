@@ -13,6 +13,7 @@ import path from "path";
 import config from "../config";
 import { getSecret, setSecret } from "../security";
 import { privateIp } from "../llamacpp/ocr";
+import { browserSearch } from "./browserSearch";
 
 const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) MoonApp/1.0";
 /** Поисковые страницы без ключа отвечают только на «браузерный» User-Agent. */
@@ -276,6 +277,12 @@ async function searchUncached(
   if (s.searxng) tries.push(["searxng", () => searxng(s.searxng, q, lang, limit)]);
   const key = getSecret("brave");
   if (key) tries.push(["brave", () => brave(key, q, lang, limit)]);
+  tries.push([
+    "browser-duckduckgo",
+    () => spaced(() => browserSearch("duckduckgo", q, lang, limit)),
+  ]);
+  tries.push(["browser-brave", () => spaced(() => browserSearch("brave", q, lang, limit))]);
+  tries.push(["browser-bing", () => spaced(() => browserSearch("bing", q, lang, limit))]);
   tries.push(["duckduckgo", () => spaced(() => duckduckgo(q, lang, limit))]);
   tries.push(["brave-web", () => spaced(() => braveHtml(q, lang, limit))]);
   tries.push(["wikipedia", () => wikipedia(q, lang, limit)]);

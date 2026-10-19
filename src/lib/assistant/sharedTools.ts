@@ -198,13 +198,14 @@ export function webTools(lang: string): AssistantTool[] {
       group: "web",
       name: "web_search",
       description:
-        "Search the internet. Returns titles, links and short snippets; open_page reads a result in full. Always cite the links you used.",
+        "Search the internet. Returns titles, links and short snippets; open_page reads a result in full. Search at most 3 times, then open the best pages and answer. Always cite the links you used.",
       parameters: {
         type: "object",
         properties: { query: { type: "string", description: "search query" } },
         required: ["query"],
       },
       label: (a) => `Searching the web: ${str(a.query)}`,
+      limit: 4,
       run: async (a) => {
         const r = await api.assistantWebSearch(str(a.query), lang);
         if (!r.hits.length)
@@ -228,6 +229,7 @@ export function webTools(lang: string): AssistantTool[] {
         required: ["url"],
       },
       label: (a) => `Opening page: ${str(a.url)}`,
+      limit: 6,
       run: async (a) => {
         const r = await api.assistantWebFetch(str(a.url), Number(a.offset) || 0, 7000);
         return `${r.title ? `Title: ${r.title}\n` : ""}URL: ${r.url}\n\n${r.text}${r.next ? `\n\n[continues: offset=${r.next}, total ${r.total} chars]` : ""}`;

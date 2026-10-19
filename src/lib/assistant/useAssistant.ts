@@ -23,6 +23,33 @@ function load(): AssistantSettings {
   }
 }
 
+const CHATS_KEY = "moonapp.assistant.chats.v1";
+/** Сколько реплик и документов хранится: хватает на прошлые беседы, не раздувая хранилище. */
+const KEEP_ITEMS = 60;
+const KEEP_DOCS = 40;
+
+/** Беседы по документам из браузерного хранилища: картинки не сохраняем (они тяжёлые), шаги — да. */
+function loadChats(): Record<string, ChatItem[]> {
+  try {
+    const v = JSON.parse(localStorage.getItem(CHATS_KEY) || "{}") as Record<string, ChatItem[]>;
+    return v && typeof v === "object" ? v : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveChats(all: Record<string, ChatItem[]>): void {
+  try {
+    const keys = Object.keys(all).filter((k) => all[k]?.length);
+    const out: Record<string, ChatItem[]> = {};
+    for (const k of keys.slice(-KEEP_DOCS))
+      out[k] = all[k].slice(-KEEP_ITEMS).map(({ images: _i, pictures: _p, ...rest }) => rest);
+    localStorage.setItem(CHATS_KEY, JSON.stringify(out));
+  } catch {
+    /* без хранилища история живёт до перезагрузки */
+  }
+}
+
 const uid = (): string => Math.random().toString(36).slice(2, 10);
 
 /** Сколько предыдущих реплик беседы уходит модели вместе с новым запросом. */
@@ -30,11 +57,12 @@ const HISTORY = 8;
 
 /**
  * Состояние помощника: настройки (общие для Word и Excel, живут в браузере) и беседы по документам.
- * `getAdapter` отдаёт актуальный адаптер страницы; `docId` разделяет беседы разных документов.
+ * `getAdapter` отдаёт актуальный адаптер страницы; `docId` — ключ беседы: у документа он постоянный
+ * (имя файла), поэтому история возвращается при повторном открытии.
  */
 export function useAssistant(getAdapter: () => DocAdapter | null, docId: string) {
   const [settings, setSettingsState] = useState<AssistantSettings>(load);
-  const [chats, setChats] = useState<Record<string, ChatItem[]>>({});
+  const [chats, setChats] = useState<Record<string, ChatItem[]>>(loadChats);
   const [busy, setBusy] = useState(false);
   const abort = useRef<AbortController | null>(null);
   const chatsRef = useRef(chats);
@@ -55,6 +83,11 @@ export function useAssistant(getAdapter: () => DocAdapter | null, docId: string)
   }, []);
 
   useEffect(() => () => abort.current?.abort(), []);
+
+  // История сохраняется, когда ответ закончен: потоковые обновления не пишем в хранилище на каждый токен.
+  useEffect(() => {
+    if (!busy) saveChats(chats);
+  }, [busy, chats]);
 
   const items = chats[docId] ?? [];
 

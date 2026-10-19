@@ -269,16 +269,77 @@
   padding-block: 0;
 }
 
-/* Родной интерфейс ComfyUI на всю высоту страницы */
-.cf-native {
+/* ComfyUI: вся вкладка — одна колонка; родной интерфейс занимает остаток высоты без прокрутки страницы */
+.cf-root {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  gap: 6px;
+}
+.cf-root > * {
+  flex-shrink: 0;
+}
+.cf-root > .cf-frame,
+.cf-root > .cf-scroll {
+  flex: 1 1 0;
   min-height: 0;
 }
-.cf-native .cf-frame {
-  height: calc(100vh - 210px);
-  min-height: 560px;
+.cf-root > .cf-frame {
+  height: auto;
+  width: 100%;
+}
+.cf-scroll {
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ph-gap);
+  padding: 2px;
+}
+.cf-scroll > * {
+  flex-shrink: 0;
+}
+.cf-bar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  border-bottom: 1px solid var(--glass-border);
+}
+.cf-bar-tab {
+  padding: 6px 12px;
+  background: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.cf-bar-tab.active {
+  color: var(--text-primary);
+  border-bottom-color: var(--amber);
+}
+.cf-bar-ico {
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  margin-left: 2px;
+  border: 0;
+  border-radius: 7px;
+  background: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.cf-bar-ico:hover {
+  background: var(--glass);
+  color: var(--text-primary);
+}
+.cf-bar-ico.stop:hover {
+  color: var(--coral);
 }
 .app-shell .cf-tab .field input[type="number"],
 .app-shell .cf-tab .field input[type="text"],

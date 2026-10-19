@@ -33,7 +33,15 @@ export function WordAssistant({ cx, onClose }: { cx: Cx; onClose: () => void }) 
   });
   const getCx = useCallback(() => ref.current, []);
   const adapter = useMemo<DocAdapter>(() => wordAdapter(getCx, cx.lang), [getCx, cx.lang]);
-  return <AssistantPane getAdapter={() => adapter} docId={cx.docId} tw={cx.tw} quick={WORD_QUICK} onClose={onClose} />;
+  return (
+    <AssistantPane
+      getAdapter={() => adapter}
+      docId={`word:${cx.ui.docName || cx.docId}`}
+      tw={cx.tw}
+      quick={WORD_QUICK}
+      onClose={onClose}
+    />
+  );
 }
 
 export function SheetAssistant({ cx, onClose }: { cx: SheetCx; onClose: () => void }) {
@@ -43,5 +51,13 @@ export function SheetAssistant({ cx, onClose }: { cx: SheetCx; onClose: () => vo
   });
   const getCx = useCallback(() => ref.current, []);
   const adapter = useMemo<DocAdapter>(() => sheetAdapter(getCx, cx.lang), [getCx, cx.lang]);
-  return <AssistantPane getAdapter={() => adapter} docId={cx.docId} tw={cx.tw} quick={SHEET_QUICK} onClose={onClose} />;
+  return (
+    <AssistantPane
+      getAdapter={() => adapter}
+      docId={`sheet:${cx.ui.docName || cx.docId}`}
+      tw={cx.tw}
+      quick={SHEET_QUICK}
+      onClose={onClose}
+    />
+  );
 }

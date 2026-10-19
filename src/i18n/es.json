@@ -7051,15 +7051,23 @@
         "sdxl": "Stable Diffusion XL 1.0 (checkpoint)",
         "sd15": "Stable Diffusion 1.5 (checkpoint, más ligero)",
         "qwen-te": "Codificador Qwen3-VL 8B (w4a8) para Qwen-Image",
-        "qwen-vae": "VAE de Qwen-Image 2.1"
+        "qwen-vae": "VAE de Qwen-Image 2.1",
+        "sdxl-turbo": "SDXL Turbo (fp16, rápido: 1–4 pasos)",
+        "flux-schnell": "FLUX.1 schnell (fp8, checkpoint)",
+        "sd35-medium": "Stable Diffusion 3.5 Medium (fp8, con todos los codificadores)",
+        "sdxl-vae": "VAE para SDXL (fp16-fix, sin imágenes negras)",
+        "zimage": "Z-Image Turbo (modelo bf16)",
+        "zimage-te": "Codificador Qwen3 4B (fp8) para Z-Image",
+        "zimage-vae": "VAE para Z-Image y FLUX (ae)",
+        "esrgan": "Ampliador ×4: Real-ESRGAN x4plus"
       },
       "sharedHint": "Los modelos GGUF de Qwen-Image y los codificadores descargados en la sección de modelos locales de llama.cpp aparecen aquí sin descargarse de nuevo.",
       "addByLink": "Añadir un modelo por enlace de Hugging Face",
       "installedModels": "Modelos instalados",
       "noModels": "Aún no hay nada.",
       "library": "Mis flujos",
-      "libraryHint": "Grafos de ComfyUI guardados. Sirven flujos de cualquier origen: grafos del editor y formato API.",
-      "libraryEmpty": "Aún no hay flujos guardados. Abre el editor y pulsa «Guardar en la biblioteca».",
+      "libraryHint": "Grafos de ComfyUI desde archivos .json: sirven el grafo del editor y el formato API. Ábrelo en el editor o ejecútalo desde aquí.",
+      "libraryEmpty": "Aún no hay nada. Pulsa «Importar flujo» y elige un archivo .json.",
       "open": "Abrir",
       "run": "Ejecutar",
       "editorNotReady": "El editor aún no ha cargado. Espera unos segundos e inténtalo de nuevo.",
@@ -7182,7 +7190,11 @@
       "addLora": "Añadir LoRA",
       "noLoras": "No hay archivos: añádalos en la pestaña Modelos (carpeta loras).",
       "loraHint": "Sirven LoRA, DoRA, LoCon, LoHa y LoKr: ComfyUI detecta el tipo. El primer número es la fuerza en el modelo; el segundo, en el codificador de texto.",
-      "openWindow": "En una ventana aparte"
+      "openWindow": "En una ventana aparte",
+      "addLocal": "Añadir tu propio modelo",
+      "addLocalHint": "Elige un archivo ya descargado (.safetensors, .ckpt, .gguf…) y una carpeta: en el mismo disco se enlaza sin copiar.",
+      "browse": "Examinar…",
+      "addLocalBtn": "Añadir"
     }
   },
   "word": {

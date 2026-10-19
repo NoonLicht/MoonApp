@@ -65,7 +65,7 @@ export default function PhotoPage() {
           </div>
         )}
         {seen.has("comfy") && (
-          <div className="ph-pane" style={show("comfy")}>
+          <div className="ph-pane ph-pane-fill" style={show("comfy")}>
             <ComfyTab active={active && tab === "comfy"} />
           </div>
         )}

@@ -4,7 +4,12 @@ import { Glass, Btn, ProgressBar, Select } from "@/components/ui";
 import { useI18n } from "@/app/i18n";
 import { api } from "@/api/client";
 import { saveBlob } from "@/lib/download";
-import { comfyWatch, type ComfyGraph, type ComfyHistoryItem, type ComfyNodeInfo } from "@/api/apiComfy";
+import {
+  comfyWatch,
+  type ComfyGraph,
+  type ComfyHistoryItem,
+  type ComfyNodeInfo,
+} from "@/api/apiComfy";
 import {
   buildGraph,
   choices,
@@ -21,8 +26,14 @@ import {
 /** Какой узел и вход дают список файлов для поля формы. */
 const SOURCES: Partial<Record<keyof PresetParams, [string, string][]>> = {
   ckpt: [["CheckpointLoaderSimple", "ckpt_name"]],
-  unet: [["UnetLoaderGGUF", "unet_name"], ["UNETLoader", "unet_name"]],
-  clip: [["CLIPLoader", "clip_name"], ["CLIPLoaderGGUF", "clip_name"]],
+  unet: [
+    ["UnetLoaderGGUF", "unet_name"],
+    ["UNETLoader", "unet_name"],
+  ],
+  clip: [
+    ["CLIPLoader", "clip_name"],
+    ["CLIPLoaderGGUF", "clip_name"],
+  ],
   vae: [["VAELoader", "vae_name"]],
   upscaler: [["UpscaleModelLoader", "model_name"]],
   sampler: [["KSampler", "sampler_name"]],
@@ -63,7 +74,13 @@ export interface GenerateProps {
 }
 
 /** Быстрая генерация по пресетам, запуск готовых воркфлоу и история результатов. */
-export default function GenerateView({ info, openInEditor, editorToApi, pending, onPendingUsed }: GenerateProps) {
+export default function GenerateView({
+  info,
+  openInEditor,
+  editorToApi,
+  pending,
+  onPendingUsed,
+}: GenerateProps) {
   const { t } = useI18n();
   const [presetId, setPresetId] = useState<PresetId>("txt2img");
   const preset: PresetDef = PRESETS.find((p) => p.id === presetId) ?? PRESETS[0];
@@ -71,7 +88,9 @@ export default function GenerateView({ info, openInEditor, editorToApi, pending,
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [progress, setProgress] = useState<{ value: number; max: number; node: string } | null>(null);
+  const [progress, setProgress] = useState<{ value: number; max: number; node: string } | null>(
+    null,
+  );
   const [history, setHistory] = useState<ComfyHistoryItem[]>([]);
   const [view, setView] = useState<ComfyHistoryItem | null>(null);
   const [ask, setAsk] = useState("");
@@ -136,7 +155,8 @@ export default function GenerateView({ info, openInEditor, editorToApi, pending,
         if (field === "vae" && (presetId === "txt2img" || presetId === "img2img")) continue;
         const list = fieldOptions(info, field);
         const cur = String(next[field]);
-        if (list.length && !list.includes(cur)) (next as Record<string, unknown>)[field] = pickDefault(field, list, p);
+        if (list.length && !list.includes(cur))
+          (next as Record<string, unknown>)[field] = pickDefault(field, list, p);
       }
       return next;
     });
@@ -144,7 +164,12 @@ export default function GenerateView({ info, openInEditor, editorToApi, pending,
 
   const options = (field: keyof PresetParams): string[] => fieldOptions(info, field);
   const loraOptions = useMemo(
-    () => [...new Set([...choices(info, "LoraLoader", "lora_name"), ...choices(info, "LoraLoaderModelOnly", "lora_name")])],
+    () => [
+      ...new Set([
+        ...choices(info, "LoraLoader", "lora_name"),
+        ...choices(info, "LoraLoaderModelOnly", "lora_name"),
+      ]),
+    ],
     [info],
   );
   const setLora = (i: number, patch: Partial<PresetParams["loras"][number]>): void =>
@@ -153,7 +178,8 @@ export default function GenerateView({ info, openInEditor, editorToApi, pending,
   const lacking = useMemo(() => missingNodes(preset, info), [preset, info]);
   const needModels = preset.models.filter((m) => options(m).length === 0);
 
-  const set = <K extends keyof PresetParams>(k: K, v: PresetParams[K]): void => setParams((p) => ({ ...p, [k]: v }));
+  const set = <K extends keyof PresetParams>(k: K, v: PresetParams[K]): void =>
+    setParams((p) => ({ ...p, [k]: v }));
 
   /** Запуск графа: очередь → прогресс по WebSocket → результат из истории. */
   const runGraph = useCallback(
@@ -164,7 +190,12 @@ export default function GenerateView({ info, openInEditor, editorToApi, pending,
       cancelled.current = false;
       const clientId = newClientId();
       const stop = comfyWatch(clientId, (e) => {
-        if (e.type === "progress") setProgress({ value: Number(e.data.value), max: Number(e.data.max), node: String(e.data.node ?? "") });
+        if (e.type === "progress")
+          setProgress({
+            value: Number(e.data.value),
+            max: Number(e.data.max),
+            node: String(e.data.node ?? ""),
+          });
       });
       try {
         await api.comfyPrepare().catch(() => undefined);
@@ -195,7 +226,8 @@ export default function GenerateView({ info, openInEditor, editorToApi, pending,
     setError("");
     try {
       const p = { ...params };
-      if (file && (preset.fields as string[]).includes("image")) p.image = await api.comfyUpload(file);
+      if (file && (preset.fields as string[]).includes("image"))
+        p.image = await api.comfyUpload(file);
       await runGraph(buildGraph(preset.id, p, info));
     } catch (e) {
       setError((e as Error).message);
@@ -285,7 +317,9 @@ export default function GenerateView({ info, openInEditor, editorToApi, pending,
         )}
         {needModels.length > 0 && lacking.length === 0 && (
           <div className="ph-error">
-            {t("photo.comfy.lackModels", { list: needModels.map((m) => t(`photo.comfy.f.${m}`)).join(", ") })}
+            {t("photo.comfy.lackModels", {
+              list: needModels.map((m) => t(`photo.comfy.f.${m}`)).join(", "),
+            })}
           </div>
         )}
         <div className="ph-grid">
@@ -320,7 +354,11 @@ export default function GenerateView({ info, openInEditor, editorToApi, pending,
             if (f === "vaeTiled")
               return (
                 <label className="cf-check" key={f} title={t("photo.comfy.f.vaeTiledHint")}>
-                  <input type="checkbox" checked={params.vaeTiled} onChange={(e) => set("vaeTiled", e.target.checked)} />
+                  <input
+                    type="checkbox"
+                    checked={params.vaeTiled}
+                    onChange={(e) => set("vaeTiled", e.target.checked)}
+                  />
                   <span>{t("photo.comfy.f.vaeTiled")}</span>
                 </label>
               );
@@ -330,7 +368,9 @@ export default function GenerateView({ info, openInEditor, editorToApi, pending,
                   <span className="field-label">{t("photo.comfy.f.clipDevice")}</span>
                   <Select
                     value={params.clipDevice}
-                    onChange={(e) => set("clipDevice", e.target.value as PresetParams["clipDevice"])}
+                    onChange={(e) =>
+                      set("clipDevice", e.target.value as PresetParams["clipDevice"])
+                    }
                     options={[
                       { value: "default", label: t("photo.comfy.deviceGpu") },
                       { value: "cpu", label: t("photo.comfy.deviceCpu") },
@@ -370,18 +410,33 @@ export default function GenerateView({ info, openInEditor, editorToApi, pending,
                         style={{ width: 90 }}
                         onChange={(e) => setLora(i, { clip: Number(e.target.value) })}
                       />
-                      <Btn icon={Trash2} onClick={() => set("loras", params.loras.filter((_, j) => j !== i))} />
+                      <Btn
+                        icon={Trash2}
+                        onClick={() =>
+                          set(
+                            "loras",
+                            params.loras.filter((_, j) => j !== i),
+                          )
+                        }
+                      />
                     </div>
                   ))}
                   <div className="ph-row">
                     <Btn
                       icon={Plus}
                       disabled={list.length === 0}
-                      onClick={() => set("loras", [...params.loras, { name: list[0] ?? "", strength: 1, clip: 1 }])}
+                      onClick={() =>
+                        set("loras", [
+                          ...params.loras,
+                          { name: list[0] ?? "", strength: 1, clip: 1 },
+                        ])
+                      }
                     >
                       {t("photo.comfy.addLora")}
                     </Btn>
-                    {list.length === 0 && <span className="muted-sm">{t("photo.comfy.noLoras")}</span>}
+                    {list.length === 0 && (
+                      <span className="muted-sm">{t("photo.comfy.noLoras")}</span>
+                    )}
                   </div>
                   <div className="muted-sm">{t("photo.comfy.loraHint")}</div>
                 </div>
@@ -413,7 +468,12 @@ export default function GenerateView({ info, openInEditor, editorToApi, pending,
           <Btn
             variant="primary"
             icon={Sparkles}
-            disabled={busy || lacking.length > 0 || needModels.length > 0 || (!params.prompt.trim() && preset.fields.includes("prompt"))}
+            disabled={
+              busy ||
+              lacking.length > 0 ||
+              needModels.length > 0 ||
+              (!params.prompt.trim() && preset.fields.includes("prompt"))
+            }
             onClick={() => void generate()}
           >
             {busy ? t("photo.working") : t("photo.comfy.generate")}
@@ -429,7 +489,10 @@ export default function GenerateView({ info, openInEditor, editorToApi, pending,
               {t("photo.cancel")}
             </Btn>
           )}
-          <Btn icon={Pencil} onClick={() => openInEditor(buildGraph(preset.id, params, info), preset.id)}>
+          <Btn
+            icon={Pencil}
+            onClick={() => openInEditor(buildGraph(preset.id, params, info), preset.id)}
+          >
             {t("photo.comfy.toEditor")}
           </Btn>
           <label className="btn btn-ghost" style={{ cursor: "pointer" }}>
@@ -449,9 +512,13 @@ export default function GenerateView({ info, openInEditor, editorToApi, pending,
         </div>
         {busy && (
           <>
-            <ProgressBar value={progress && progress.max ? (progress.value / progress.max) * 100 : 3} />
+            <ProgressBar
+              value={progress && progress.max ? (progress.value / progress.max) * 100 : 3}
+            />
             <div className="muted-sm">
-              {progress && progress.max ? `${progress.value} / ${progress.max}` : t("photo.comfy.queued")}
+              {progress && progress.max
+                ? `${progress.value} / ${progress.max}`
+                : t("photo.comfy.queued")}
             </div>
           </>
         )}
@@ -473,9 +540,17 @@ export default function GenerateView({ info, openInEditor, editorToApi, pending,
           <Select
             value={assistModel}
             onChange={(e) => setAssistModel(e.target.value)}
-            options={[{ value: "", label: t("photo.comfy.assistAuto") }, ...chatModels.map((m) => ({ value: m, label: m }))]}
+            options={[
+              { value: "", label: t("photo.comfy.assistAuto") },
+              ...chatModels.map((m) => ({ value: m, label: m })),
+            ]}
           />
-          <Btn variant="primary" icon={Wand2} disabled={asking || !ask.trim()} onClick={() => void assist()}>
+          <Btn
+            variant="primary"
+            icon={Wand2}
+            disabled={asking || !ask.trim()}
+            onClick={() => void assist()}
+          >
             {asking ? t("photo.working") : t("photo.comfy.assistBuild")}
           </Btn>
         </div>
@@ -496,7 +571,9 @@ export default function GenerateView({ info, openInEditor, editorToApi, pending,
                 <figcaption className="ph-row">
                   <Btn
                     icon={Download}
-                    onClick={() => void api.comfyImageBlob(im).then((b) => saveBlob(b, im.filename))}
+                    onClick={() =>
+                      void api.comfyImageBlob(im).then((b) => saveBlob(b, im.filename))
+                    }
                   >
                     {t("photo.save")}
                   </Btn>
@@ -529,7 +606,8 @@ export default function GenerateView({ info, openInEditor, editorToApi, pending,
 function pickDefault(field: keyof PresetParams, list: string[], p: PresetParams): string {
   if (field === "sampler") return list.includes("euler") ? "euler" : list[0];
   if (field === "scheduler") return list.includes("normal") ? "normal" : list[0];
-  if (field === "unet") return list.find((f) => /turbo/i.test(f)) ?? list.find((f) => /qwen/i.test(f)) ?? list[0];
+  if (field === "unet")
+    return list.find((f) => /turbo/i.test(f)) ?? list.find((f) => /qwen/i.test(f)) ?? list[0];
   if (field === "clip") return list.find((f) => /qwen3-?vl/i.test(f)) ?? list[0];
   if (field === "vae") return list.find((f) => /qwen/i.test(f)) ?? list[0];
   void p;
