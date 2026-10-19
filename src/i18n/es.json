@@ -5708,7 +5708,12 @@
       "model": "modelo Qwen-Image",
       "vae": "VAE",
       "encoder": "codificador de texto Qwen3-VL 8B"
-    }
+    },
+    "version": "Versión de llama.cpp",
+    "versionPinned": "recomendada",
+    "reinstall": "Reinstalar",
+    "versionHint": "Puede elegir la versión de cada compilación por separado: algunas versiones son más rápidas en la GPU y otras en la CPU. Si una versión nueva va peor, instale una anterior encima. CUDA 12.4 es para controladores antiguos.",
+    "versionsFailed": "No se pudo cargar la lista de versiones de GitHub; está disponible la recomendada."
   },
   "canvas": {
     "select": "Seleccionar",

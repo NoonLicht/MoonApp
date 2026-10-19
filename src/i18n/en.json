@@ -5712,7 +5712,12 @@
       "model": "Qwen-Image model",
       "vae": "VAE",
       "encoder": "text encoder Qwen3-VL 8B"
-    }
+    },
+    "version": "llama.cpp version",
+    "versionPinned": "recommended",
+    "reinstall": "Reinstall",
+    "versionHint": "You can pick the version for each build separately: some releases are faster on the GPU, others on the CPU. If a new version runs worse, install an older one over it. CUDA 12.4 is for older drivers.",
+    "versionsFailed": "Could not load the version list from GitHub; the recommended one is available."
   },
   "canvas": {
     "select": "Select",

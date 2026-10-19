@@ -5708,7 +5708,12 @@
       "model": "Qwen-Image 模型",
       "vae": "VAE",
       "encoder": "Qwen3-VL 8B 文本编码器"
-    }
+    },
+    "version": "llama.cpp 版本",
+    "versionPinned": "推荐",
+    "reinstall": "重新安装",
+    "versionHint": "可为每个构建单独选择版本：有些版本在显卡上更快，有些在处理器上更快。新版本表现更差时，可覆盖安装旧版本。CUDA 12.4 适用于较旧的驱动。",
+    "versionsFailed": "无法从 GitHub 获取版本列表，仍可使用推荐版本。"
   },
   "canvas": {
     "select": "选择",

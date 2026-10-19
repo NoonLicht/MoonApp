@@ -678,3 +678,14 @@
   max-height: 260px;
   overflow: auto;
 }
+
+/* Выбор версии/варианта сборки рядом с кнопкой установки (панель llama.cpp) */
+.tn-select {
+  background: var(--track);
+  color: var(--text-primary);
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  padding: 4px 8px;
+  font-size: 12px;
+  max-width: 190px;
+}

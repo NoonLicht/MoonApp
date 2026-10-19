@@ -69,6 +69,25 @@ export default function LlamaPanel({
   const [st, setSt] = useState<LlamaStatus | null>(null);
   const [open, setOpen] = useState<Record<string, boolean>>({});
   const flip = (k: string) => setOpen((o) => ({ ...o, [k]: !o[k] }));
+  // Выбор версии llama.cpp: список релизов подгружаем при раскрытии секции сборок.
+  const [releases, setReleases] = useState<{ tag: string; date: string }[]>([]);
+  const [pinned, setPinned] = useState("");
+  const [relError, setRelError] = useState("");
+  const [pick, setPick] = useState<Record<string, { tag?: string; cuda?: string }>>({});
+  const loadReleases = useCallback(async (refresh = false) => {
+    try {
+      const r = await api.llamaReleases(refresh);
+      setReleases(r.releases);
+      setPinned(r.pinned);
+      setRelError(r.error ?? "");
+    } catch (e) {
+      setRelError((e as Error).message);
+    }
+  }, []);
+  const buildsOpen = !!open.builds;
+  useEffect(() => {
+    if (buildsOpen && releases.length === 0) void loadReleases();
+  }, [buildsOpen, releases.length, loadReleases]);
 
   const refresh = useCallback(async () => {
     try {
@@ -270,6 +289,8 @@ export default function LlamaPanel({
         onToggle={() => flip("builds")}
       >
         {st.builds.length === 0 && <div className="tn-note">{t("llama.unsupported")}</div>}
+        {st.builds.length > 0 && <div className="muted-sm">{t("llama.versionHint")}</div>}
+        {!!relError && <div className="muted-sm">{t("llama.versionsFailed")}</div>}
         <div className="tn-list">
           {st.builds.map((b) => {
             const active = installing && st.install.id === b.id;
@@ -295,27 +316,82 @@ export default function LlamaPanel({
                     </div>
                   )}
                 </div>
-                {b.installed && <Badge tone="teal">{t("translate.installed")}</Badge>}
+                {b.installed && (
+                  <Badge tone="teal">
+                    {t("translate.installed")}
+                    {b.tag ? ` · ${b.tag}` : ""}
+                    {b.cuda ? ` · CUDA ${b.cuda}` : ""}
+                  </Badge>
+                )}
+                {!active && (
+                  <select
+                    className="tn-select"
+                    value={pick[b.id]?.tag ?? pinned}
+                    disabled={installing}
+                    title={t("llama.version")}
+                    onChange={(e) =>
+                      setPick((m) => ({ ...m, [b.id]: { ...m[b.id], tag: e.target.value } }))
+                    }
+                  >
+                    {[...new Set([pinned, ...releases.map((r) => r.tag)])]
+                      .filter(Boolean)
+                      .map((tag) => {
+                        const rel = releases.find((r) => r.tag === tag);
+                        return (
+                          <option key={tag} value={tag}>
+                            {tag}
+                            {tag === pinned ? ` · ${t("llama.versionPinned")}` : ""}
+                            {rel?.date ? ` · ${rel.date}` : ""}
+                          </option>
+                        );
+                      })}
+                  </select>
+                )}
+                {!active && b.id === "cuda" && (
+                  <select
+                    className="tn-select"
+                    value={pick[b.id]?.cuda ?? "13.4"}
+                    disabled={installing}
+                    title="CUDA"
+                    onChange={(e) =>
+                      setPick((m) => ({ ...m, [b.id]: { ...m[b.id], cuda: e.target.value } }))
+                    }
+                  >
+                    <option value="13.4">CUDA 13.4</option>
+                    <option value="12.4">CUDA 12.4</option>
+                  </select>
+                )}
                 {active ? (
                   <Btn icon={X} onClick={() => void act(() => api.llamaBuildCancel())}>
                     {t("translate.cancel")}
                   </Btn>
-                ) : b.installed ? (
-                  <Btn
-                    icon={Trash2}
-                    disabled={installing}
-                    onClick={() => void act(() => api.llamaBuildRemove(b.id))}
-                  >
-                    {t("translate.delete")}
-                  </Btn>
                 ) : (
-                  <Btn
-                    icon={Download}
-                    disabled={installing}
-                    onClick={() => void act(() => api.llamaBuildInstall(b.id))}
-                  >
-                    {t("translate.download")}
-                  </Btn>
+                  <>
+                    <Btn
+                      icon={Download}
+                      disabled={installing}
+                      onClick={() =>
+                        void act(() =>
+                          api.llamaBuildInstall(
+                            b.id,
+                            pick[b.id]?.tag ?? pinned,
+                            b.id === "cuda" ? (pick[b.id]?.cuda ?? "13.4") : undefined,
+                          ),
+                        )
+                      }
+                    >
+                      {b.installed ? t("llama.reinstall") : t("translate.download")}
+                    </Btn>
+                    {b.installed && (
+                      <Btn
+                        icon={Trash2}
+                        disabled={installing}
+                        onClick={() => void act(() => api.llamaBuildRemove(b.id))}
+                      >
+                        {t("translate.delete")}
+                      </Btn>
+                    )}
+                  </>
                 )}
               </div>
             );

@@ -23,7 +23,12 @@ const { DIRS } = config;
 
 /** Закреплённая версия: сборки llama.cpp выходят по несколько раз в день. */
 export const LLAMA_TAG = "b11476";
-const RELEASE = `https://github.com/ggml-org/llama.cpp/releases/download/${LLAMA_TAG}`;
+const releaseUrl = (tag: string): string =>
+  `https://github.com/ggml-org/llama.cpp/releases/download/${tag}`;
+/** Тег релиза llama.cpp: bNNNN. Проверяем всё, что приходит от пользователя. */
+export const isTag = (v: unknown): v is string => typeof v === "string" && /^b\d{3,6}$/.test(v);
+export type CudaVer = "13.4" | "12.4";
+export const isCudaVer = (v: unknown): v is CudaVer => v === "13.4" || v === "12.4";
 const UA = "MoonApp/1.0 (+llama.cpp)";
 
 export type BuildId = "cpu" | "vulkan" | "cuda";
@@ -112,23 +117,118 @@ export function installedBuilds(): BuildId[] {
 
 export const setup = createSetupTask("llamacpp");
 
-async function assetDigests(): Promise<Record<string, string>> {
+interface ReleaseAsset {
+  name: string;
+  digest?: string;
+  size?: number;
+}
+const releaseCache = new Map<string, ReleaseAsset[]>();
+
+async function releaseAssets(tag: string): Promise<ReleaseAsset[]> {
+  const hit = releaseCache.get(tag);
+  if (hit) return hit;
   try {
-    const r = await fetch(
-      `https://api.github.com/repos/ggml-org/llama.cpp/releases/tags/${LLAMA_TAG}`,
-      {
-        headers: { "User-Agent": UA, Accept: "application/vnd.github+json" },
-        signal: AbortSignal.timeout(15000),
-      },
-    );
-    if (!r.ok) return {};
-    const j = (await r.json()) as { assets?: { name: string; digest?: string }[] };
-    const out: Record<string, string> = {};
-    for (const a of j.assets ?? [])
-      if (a.digest?.startsWith("sha256:")) out[a.name] = a.digest.slice(7);
-    return out;
+    const r = await fetch(`https://api.github.com/repos/ggml-org/llama.cpp/releases/tags/${tag}`, {
+      headers: { "User-Agent": UA, Accept: "application/vnd.github+json" },
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!r.ok) return [];
+    const j = (await r.json()) as { assets?: ReleaseAsset[] };
+    const list = j.assets ?? [];
+    if (list.length) releaseCache.set(tag, list);
+    return list;
   } catch {
-    return {};
+    return [];
+  }
+}
+
+async function assetDigests(tag: string): Promise<Record<string, string>> {
+  const out: Record<string, string> = {};
+  for (const a of await releaseAssets(tag))
+    if (a.digest?.startsWith("sha256:")) out[a.name] = a.digest.slice(7);
+  return out;
+}
+
+/**
+ * Имена архивов нужной версии. Названия у релизов меняются (сборки CUDA выходят
+ * с разными версиями набора), поэтому смотрим список файлов релиза; если GitHub API
+ * недоступен, а тег закреплённый — берём заранее известные имена.
+ */
+export async function resolveAssets(id: BuildId, tag: string, cuda?: CudaVer): Promise<string[]> {
+  const spec = catalog().find((b) => b.id === id);
+  if (!spec) return [];
+  const names = (await releaseAssets(tag)).map((a) => a.name);
+  if (!names.length) {
+    if (tag === LLAMA_TAG && (!cuda || cuda === "13.4")) return spec.assets;
+    throw new Error("release_unavailable");
+  }
+  const win = process.platform === "win32";
+  const kind = win ? "win" : "ubuntu";
+  const ext = win ? "zip" : "tar.gz";
+  const main = (mid: string): string | undefined =>
+    names.find((n) => n === `llama-${tag}-bin-${kind}-${mid}.${ext}`);
+  if (id === "cpu") {
+    const f = main(win ? "cpu-x64" : "x64");
+    if (!f) throw new Error("build_not_in_release");
+    return [f];
+  }
+  if (id === "vulkan") {
+    const f = main("vulkan-x64");
+    if (!f) throw new Error("build_not_in_release");
+    return [f];
+  }
+  const re = new RegExp(`^llama-${tag}-bin-${kind}-cuda-(\\d+\\.\\d+)-x64\\.${win ? "zip" : "tar\\.gz"}$`);
+  const found = names
+    .map((n) => re.exec(n))
+    .filter((m): m is RegExpExecArray => !!m)
+    .map((m) => m[1])
+    .sort((x, y) => parseFloat(y) - parseFloat(x));
+  const ver = cuda && found.includes(cuda) ? cuda : found[0];
+  if (!ver) throw new Error("build_not_in_release");
+  const lib = names.find(
+    (n) =>
+      n.startsWith("cudart-llama-") &&
+      n.includes(`-cuda-${ver}-x64.`) &&
+      (win ? !n.includes("ubuntu") : n.includes("ubuntu")),
+  );
+  const out = [`llama-${tag}-bin-${kind}-cuda-${ver}-x64.${ext}`];
+  if (lib) out.push(lib);
+  return out;
+}
+
+export interface ReleaseInfo {
+  tag: string;
+  date: string;
+}
+let releasesCache: { at: number; list: ReleaseInfo[] } | null = null;
+
+/** Последние релизы llama.cpp для выбора версии (кэш на 10 минут). */
+export async function listReleases(force = false): Promise<ReleaseInfo[]> {
+  if (!force && releasesCache && Date.now() - releasesCache.at < 10 * 60 * 1000)
+    return releasesCache.list;
+  const r = await fetch("https://api.github.com/repos/ggml-org/llama.cpp/releases?per_page=60", {
+    headers: { "User-Agent": UA, Accept: "application/vnd.github+json" },
+    signal: AbortSignal.timeout(15000),
+  });
+  if (!r.ok) throw new Error(`github_http_${r.status}`);
+  const j = (await r.json()) as { tag_name?: string; published_at?: string; draft?: boolean }[];
+  const list = j
+    .filter((x) => !x.draft && isTag(x.tag_name))
+    .map((x) => ({ tag: String(x.tag_name), date: String(x.published_at ?? "").slice(0, 10) }));
+  releasesCache = { at: Date.now(), list };
+  return list;
+}
+
+/** Что записано в installed.json установленной сборки (версия и вариант CUDA). */
+export function installedInfo(id: BuildId): { tag: string; cuda?: string } | null {
+  try {
+    const j = JSON.parse(fs.readFileSync(path.join(buildDir(id), "installed.json"), "utf8")) as {
+      tag?: string;
+      cuda?: string;
+    };
+    return { tag: String(j.tag ?? ""), cuda: j.cuda };
+  } catch {
+    return null;
   }
 }
 
@@ -162,9 +262,14 @@ function extract(archive: string, dest: string): Promise<void> {
   });
 }
 
-export function installBuild(id: BuildId): { ok: boolean; error?: string } {
+export function installBuild(
+  id: BuildId,
+  tag: string = LLAMA_TAG,
+  cuda?: CudaVer,
+): { ok: boolean; error?: string } {
   const spec = catalog().find((b) => b.id === id);
   if (!spec) return { ok: false, error: "unsupported_platform" };
+  if (!isTag(tag)) return { ok: false, error: "bad_tag" };
   if (setup.state.state === "working") return { ok: false, error: "busy" };
   setup.reset("build", id);
   void (async () => {
@@ -172,21 +277,22 @@ export function installBuild(id: BuildId): { ok: boolean; error?: string } {
     try {
       removePath(tmp);
       fs.mkdirSync(tmp, { recursive: true });
-      const digests = await assetDigests();
+      const assets = await resolveAssets(id, tag, cuda);
+      const digests = await assetDigests(tag);
       const dest = buildDir(id);
       removePath(dest);
       fs.mkdirSync(dest, { recursive: true });
-      for (let i = 0; i < spec.assets.length; i++) {
-        const name = spec.assets[i];
+      for (let i = 0; i < assets.length; i++) {
+        const name = assets[i];
         const file = path.join(tmp, name);
         setup.state.phase = "download";
-        await downloadToFile(`${RELEASE}/${name}`, file, {
+        await downloadToFile(`${releaseUrl(tag)}/${name}`, file, {
           userAgent: UA,
           timeoutMs: 60 * 60 * 1000,
           shouldCancel: setup.shouldCancel,
           onProgress: (p) => {
             // Прогресс считаем по всем архивам сборки вместе.
-            const share = 1 / spec.assets.length;
+            const share = 1 / assets.length;
             const frac = p.total ? p.received / p.total : 0;
             setup.state.received = p.received;
             setup.state.total = p.total;
@@ -202,11 +308,16 @@ export function installBuild(id: BuildId): { ok: boolean; error?: string } {
       if (!findExe(dest)) throw new Error("llama_server_missing");
       fs.writeFileSync(
         path.join(dest, "installed.json"),
-        JSON.stringify({ tag: LLAMA_TAG, id, at: Date.now() }),
+        JSON.stringify({
+          tag,
+          id,
+          cuda: assets.map((n) => /-cuda-(\d+\.\d+)-/.exec(n)?.[1]).find(Boolean),
+          at: Date.now(),
+        }),
         "utf8",
       );
       removePath(tmp);
-      logger.info("llamacpp.build_installed", { id, tag: LLAMA_TAG });
+      logger.info("llamacpp.build_installed", { id, tag });
       setup.done();
     } catch (e) {
       removePath(tmp);

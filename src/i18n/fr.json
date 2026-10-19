@@ -5708,7 +5708,12 @@
       "model": "modèle Qwen-Image",
       "vae": "VAE",
       "encoder": "encodeur de texte Qwen3-VL 8B"
-    }
+    },
+    "version": "Version de llama.cpp",
+    "versionPinned": "recommandée",
+    "reinstall": "Réinstaller",
+    "versionHint": "Vous pouvez choisir la version de chaque build séparément : certaines versions sont plus rapides sur GPU, d'autres sur CPU. Si une nouvelle version est moins bonne, installez-en une plus ancienne par-dessus. CUDA 12.4 est pour les anciens pilotes.",
+    "versionsFailed": "Impossible de charger la liste des versions depuis GitHub ; la version recommandée reste disponible."
   },
   "canvas": {
     "select": "Sélectionner",

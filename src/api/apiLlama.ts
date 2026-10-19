@@ -91,7 +91,14 @@ export interface LlamaActivity {
 export interface LlamaStatus {
   tag: string;
   platform: string;
-  builds: { id: LlamaBuildId; sizeMb: number; installed: boolean }[];
+  builds: {
+    id: LlamaBuildId;
+    sizeMb: number;
+    installed: boolean;
+    /** Установленная версия (bNNNN) и вариант CUDA; null, если не установлена. */
+    tag?: string | null;
+    cuda?: string | null;
+  }[];
   failedBuilds: LlamaBuildId[];
   install: {
     state: "idle" | "working" | "done" | "error";
@@ -166,7 +173,14 @@ export const llamaApi = {
     req<AiBinding>("PUT", `/ai-bindings/${encodeURIComponent(id)}`, patch),
   aiBindingsReset: () => req<{ ok: boolean }>("POST", "/ai-bindings/reset"),
   llamaStatus: () => req<LlamaStatus>("GET", "/llamacpp/status"),
-  llamaBuildInstall: (id: LlamaBuildId) => req<unknown>("POST", "/llamacpp/build", { id }),
+  llamaBuildInstall: (id: LlamaBuildId, tag?: string, cuda?: string) =>
+    req<unknown>("POST", "/llamacpp/build", { id, tag, cuda }),
+  /** Последние релизы llama.cpp на GitHub (для выбора версии). */
+  llamaReleases: (refresh = false) =>
+    req<{ pinned: string; releases: { tag: string; date: string }[]; error?: string }>(
+      "GET",
+      `/llamacpp/releases${refresh ? "?refresh=1" : ""}`,
+    ),
   llamaBuildCancel: () => req<unknown>("POST", "/llamacpp/build/cancel"),
   /** Вернуть сборки, отключённые после сбоя, и сбросить ошибки загрузки. */
   llamaResetBuilds: () => req<{ ok: boolean }>("POST", "/llamacpp/reset-builds"),

@@ -20,6 +20,10 @@ import {
   clearFailure,
   catalog,
   installBuild,
+  installedInfo,
+  listReleases,
+  isTag,
+  isCudaVer,
   installedBuilds,
   isBuildId,
   removeBuild,
@@ -78,6 +82,8 @@ router.get("/status", (_req, res) => {
       id: b.id,
       sizeMb: b.sizeMb,
       installed: installedBuilds().includes(b.id),
+      tag: installedInfo(b.id)?.tag ?? null,
+      cuda: installedInfo(b.id)?.cuda ?? null,
     })),
     failedBuilds: badBuilds(),
     install: setup.snapshot(),
@@ -99,9 +105,26 @@ router.post("/build", (req, res) => {
   const id = String(req.body?.id ?? "");
   if (!isBuildId(id) || !BUILD_IDS.includes(id))
     return res.status(400).json({ error: "bad_build" });
-  const r = installBuild(id);
+  const rawTag = req.body?.tag;
+  if (rawTag !== undefined && rawTag !== "" && !isTag(rawTag))
+    return res.status(400).json({ error: "bad_tag" });
+  const cuda = req.body?.cuda;
+  if (cuda !== undefined && cuda !== "" && !isCudaVer(cuda))
+    return res.status(400).json({ error: "bad_cuda" });
+  const r = installBuild(id, rawTag ? String(rawTag) : LLAMA_TAG, cuda ? (cuda as "13.4" | "12.4") : undefined);
   if (!r.ok) return res.status(r.error === "busy" ? 409 : 400).json({ error: r.error });
   res.json(setup.snapshot());
+});
+
+// Версии llama.cpp для выбора (последние релизы с GitHub).
+router.get("/releases", async (req, res) => {
+  try {
+    res.json({ pinned: LLAMA_TAG, releases: await listReleases(req.query.refresh === "1") });
+  } catch (e) {
+    res
+      .status(502)
+      .json({ error: String((e as Error).message || e).slice(0, 200), pinned: LLAMA_TAG, releases: [] });
+  }
 });
 
 router.post("/build/cancel", (_req, res) => res.json(setup.cancel()));
