@@ -16,6 +16,8 @@ export const DEFAULT_JSON_LIMIT = "2mb";
 export const ROUTE_JSON_LIMITS: ReadonlyArray<{ prefix: string; limit: string }> = [
   // помощник документов: история чата, текст документа и картинки для модели
   { prefix: "/api/llamacpp/assistant", limit: "24mb" },
+  // воркфлоу ComfyUI и их проверка
+  { prefix: "/api/comfy", limit: "24mb" },
   // доски Canvas хранят вставленные картинки прямо в JSON
   { prefix: "/api/myspace/holst", limit: "40mb" },
   // заметки, документы и импорт хранилища

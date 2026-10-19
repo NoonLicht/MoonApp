@@ -119,7 +119,7 @@ function createApp(): express.Express {
           // frame-src: трейлеры — официальные YouTube-ролики TMDB (iframe плеера).
           // Картинки TMDB приходят через /api/movies/image (img-src 'self'), поэтому
           // внешние image.tmdb.org в CSP не нужны.
-          "frame-src https://www.youtube.com https://www.youtube-nocookie.com; base-uri 'self'",
+          "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com; base-uri 'self'",
       );
     }
     next();
@@ -156,6 +156,7 @@ function createApp(): express.Express {
     ["/api/compressor", "compressor"],
     ["/api/upscale", "upscale"],
     ["/api/photo", "photo"],
+    ["/api/comfy", "comfy"],
     ["/api/word", "word"],
     ["/api/sheet", "sheet"],
     ["/api/tts", "tts"],
@@ -330,6 +331,17 @@ function startServer(port: number = config.PORT, opts: { token?: string } = {}):
     // предыдущего (аварийно завершённого) запуска — см. killSwitch.ts.
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     void (require("./killSwitch") as { startupCleanup(): Promise<void> }).startupCleanup();
+  });
+  // WebSocket редактора ComfyUI (/api/comfy/ui/ws): туннель к своему процессу, токен проверяем здесь.
+  server.on("upgrade", (req, socket, head) => {
+    if (!req.url?.startsWith("/api/comfy/ui/")) return void socket.destroy();
+    const tok = req.headers["x-moonapp-token"];
+    if (AUTH_TOKEN && !tokenMatches(Array.isArray(tok) ? tok[0] : tok)) {
+      socket.end(["HTTP/1.1 401 Unauthorized", "", ""].join(String.fromCharCode(13, 10)));
+      return;
+    }
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    (require("./comfy/proxy") as typeof import("./comfy/proxy")).uiUpgrade(req, socket, head);
   });
   server.on("error", (e) => {
     logger.error("server.error", { error: e.message });

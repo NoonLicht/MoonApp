@@ -363,6 +363,12 @@ async function createWindow() {
   // CSP: даже если чужой HTML/Markdown пробьёт санитайзер — инлайн-скрипты
   // и внешние загрузки запрещены. Собственный бандл — 'self'.
   win.webContents.session.webRequest.onHeadersReceived((details: any, cb: any) => {
+    // Редактор ComfyUI (рамка на /api/comfy/ui/) — готовое приложение со своими модулями, воркерами и
+    // динамическим кодом узлов: наш CSP его бы сломал. Это локальный процесс самого приложения.
+    if (details.url.startsWith(`http://127.0.0.1:${port}/api/comfy/ui/`)) {
+      cb({ responseHeaders: details.responseHeaders });
+      return;
+    }
     cb({
       responseHeaders: {
         ...details.responseHeaders,

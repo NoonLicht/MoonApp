@@ -6,13 +6,14 @@ import UpscalePage from "@/pages/upscale/UpscalePage";
 import BgRemoveTab from "@/pages/photo/parts/BgRemoveTab";
 import InvsrTab from "@/pages/photo/parts/InvsrTab";
 import FaceSwapTab from "@/pages/photo/parts/FaceSwapTab";
+import ComfyTab from "@/pages/photo/parts/ComfyTab";
 
-const TABS = ["upscale", "bg", "invsr", "face"] as const;
+const TABS = ["upscale", "bg", "invsr", "face", "comfy"] as const;
 type Tab = (typeof TABS)[number];
 
 /**
  * «Фото и видео»: одно место для обработки изображений и видео. Вкладки: быстрый апскейл на ONNX
- * (бывшая страница «Апскейл»), удаление фона, диффузионный апскейл InvSR, замена лица.
+ * (бывшая страница «Апскейл»), удаление фона, диффузионный апскейл InvSR, замена лица, ComfyUI (пресеты, редактор графов, помощник).
  * Открытые вкладки остаются смонтированными: идущее задание не теряется при переключении.
  */
 export default function PhotoPage() {
@@ -61,6 +62,11 @@ export default function PhotoPage() {
         {seen.has("face") && (
           <div className="ph-pane" style={show("face")}>
             <FaceSwapTab />
+          </div>
+        )}
+        {seen.has("comfy") && (
+          <div className="ph-pane" style={show("comfy")}>
+            <ComfyTab active={active && tab === "comfy"} />
           </div>
         )}
       </div>

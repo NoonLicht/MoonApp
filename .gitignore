@@ -117,6 +117,7 @@ server/mail/
 server/llamacpp/
 server/assistant/
 server/sdcpp/
+server/comfy/
 server/upscalePipeline.js
 server/ortPack.js
 server/zipRange.js
