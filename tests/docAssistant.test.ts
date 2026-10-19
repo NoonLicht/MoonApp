@@ -129,4 +129,23 @@ describe("подрезка истории под окно контекста", (
     expect(out.some((m: any) => m.role === "tool")).toBe(false);
     expect(out.map((m: any) => m.role)).toEqual(["system", "user"]);
   });
+
+  it("запрос пользователя не выбрасывается, даже когда результаты инструментов не влезают (иначе Jinja: No user query)", () => {
+    const calls = [{ id: "c1", name: "open_page", arguments: "{}" }];
+    const out = llm.fit(
+      [
+        msg("system", 50),
+        msg("user", 80),
+        msg("assistant", 0, { tool_calls: calls }),
+        msg("tool", 9000, { tool_call_id: "c1" }),
+        msg("assistant", 0, { tool_calls: [{ id: "c2", name: "open_page", arguments: "{}" }] }),
+        msg("tool", 9000, { tool_call_id: "c2" }),
+      ],
+      1500,
+    );
+    expect(out.map((m: any) => m.role)).toContain("user");
+    expect(out.reduce((n: number, m: any) => n + m.content.length, 0)).toBeLessThan(5000);
+    // каждый вызов по-прежнему идёт со своим результатом
+    expect(out.filter((m: any) => m.role === "tool")).toHaveLength(2);
+  });
 });

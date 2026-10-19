@@ -43,20 +43,43 @@ const cost = (m: TurnMessage): number =>
   approx(m.content) + (m.tool_calls ?? []).reduce((n, c) => n + approx(c.name + c.arguments), 0);
 
 /**
- * Историю подрезаем с начала, пока она не влезет в окно: system и последнее сообщение остаются.
- * Вызов инструмента и его результат уходят вместе, иначе шаблон модели ругается на сироту.
+ * Историю подрезаем с начала, пока она не влезет в окно: system и последний запрос пользователя
+ * остаются всегда (шаблоны Qwen/Gemma падают с «No user query found», если пользовательского
+ * сообщения нет). Вызов инструмента и его результат уходят вместе. Если и после этого не влезает —
+ * сжимаем самые длинные результаты инструментов текущего хода, а не выбрасываем сообщения.
  */
 export function fit(msgs: TurnMessage[], budget: number): TurnMessage[] {
-  const out = [...msgs];
+  const out = msgs.map((m) => ({ ...m }));
   let total = out.reduce((n, m) => n + cost(m), 0);
   const i = out[0]?.role === "system" ? 1 : 0;
-  while (total > budget && out.length - i > 1) {
+  const lastUser = (): number => {
+    for (let k = out.length - 1; k >= i; k--) if (out[k].role === "user") return k;
+    return out.length - 1;
+  };
+  while (total > budget && lastUser() > i) {
     total -= cost(out[i]);
     out.splice(i, 1);
-    while (out.length - i > 1 && out[i].role === "tool") {
+    while (lastUser() > i && out[i].role !== "user" && out[i].role !== "assistant") {
       total -= cost(out[i]);
       out.splice(i, 1);
     }
+  }
+  // Осталось: system, запрос пользователя и свежие вызовы с результатами. Сжимаем самые тяжёлые.
+  for (let guard = 0; total > budget && guard < 200; guard++) {
+    let big = -1;
+    for (let k = lastUser() + 1; k < out.length; k++)
+      if (
+        out[k].role === "tool" &&
+        out[k].content.length > 400 &&
+        (big < 0 || out[k].content.length > out[big].content.length)
+      )
+        big = k;
+    if (big < 0) break;
+    const before = cost(out[big]);
+    out[big].content =
+      `${out[big].content.slice(0, Math.max(300, Math.floor(out[big].content.length / 2)))}
+…[shortened]`;
+    total -= before - cost(out[big]);
   }
   return out;
 }
