@@ -140,7 +140,9 @@ export default function Ruler({ cx, k, area }: { cx: Cx; k: number; area: HTMLDi
       />
       {ticks.map((t, i) => (
         <span key={i}>
-          <i className={`wd-r-tick${t.big ? " big" : ""}`} style={{ left: t.x }} />
+          {t.big && t.n !== 0 ? null : (
+            <i className={`wd-r-tick${t.big ? " big" : ""}`} style={{ left: t.x }} />
+          )}
           {t.big && t.n !== 0 ? (
             <span className="wd-r-num" style={{ left: t.x }}>
               {Math.abs(t.n)}

@@ -1042,6 +1042,7 @@
   transform: translateX(-50%);
   color: #444;
   font-size: 9px;
+  line-height: 14px;
 }
 .wd-ruler .wd-r-ind {
   position: absolute;
@@ -1061,13 +1062,15 @@
 }
 .wd-ruler .wd-r-tab {
   position: absolute;
-  top: 8px;
+  top: 12px;
   width: 8px;
-  height: 11px;
-  font-size: 10px;
-  line-height: 11px;
+  height: 8px;
+  font-size: 8px;
+  line-height: 8px;
   font-weight: 700;
-  color: #333;
+  text-align: center;
+  color: #2a2a2a;
+  background: #fff;
   transform: translateX(-50%);
   cursor: ew-resize;
 }
