@@ -161,7 +161,14 @@ export type {
   TrVariant,
   TrDownload,
 } from "@/api/apiTranslate";
-export type { LlamaStatus, LlamaBuildId, LlamaCatalogModel } from "@/api/apiLlama";
+export type {
+  LlamaStatus,
+  LlamaBuildId,
+  LlamaCatalogModel,
+  LlamaSection,
+  LlamaRepoFiles,
+  LlamaCustomEntry,
+} from "@/api/apiLlama";
 export type {
   ZapretEngine,
   ZapretStrategy,

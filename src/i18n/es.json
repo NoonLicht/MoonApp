@@ -5613,7 +5613,8 @@
       "chat": "chat",
       "translate": "traducción",
       "ocr": "OCR",
-      "tts": "voz"
+      "tts": "voz",
+      "image": "imágenes"
     },
     "vision": "Entiende imágenes",
     "visionShort": "imágenes",
@@ -5672,7 +5673,18 @@
       "gpu_build_missing": "No hay compilación para GPU: instala Vulkan o CUDA en la sección de compilaciones.",
       "gpu_build_failed": "Las compilaciones de GPU se desactivaron tras un fallo: pulsa «Activar de nuevo».",
       "build_missing": "No hay ninguna compilación de llama.cpp instalada."
-    }
+    },
+    "section": {
+      "qwen": "Qwen",
+      "gemma": "Gemma",
+      "other": "Otros (especializados y de terceros)",
+      "image": "Imágenes (Qwen-Image)"
+    },
+    "repoPlaceholder": "Página o archivo de Hugging Face (huggingface.co/autor/repo)",
+    "repoLook": "Mostrar archivos",
+    "repoPick": "elige los archivos a descargar",
+    "repoEmpty": "No hay archivos GGUF en esa página",
+    "repoImageNote": "el VAE y el codificador de texto se añaden solos"
   },
   "canvas": {
     "select": "Seleccionar",

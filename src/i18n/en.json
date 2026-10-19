@@ -5617,7 +5617,8 @@
       "chat": "chat",
       "translate": "translation",
       "ocr": "OCR",
-      "tts": "speech"
+      "tts": "speech",
+      "image": "images"
     },
     "vision": "Understands images",
     "visionShort": "images",
@@ -5676,7 +5677,18 @@
       "gpu_build_missing": "No GPU build is installed — install Vulkan or CUDA in the builds section.",
       "gpu_build_failed": "GPU builds were disabled after a failure — press “Enable again”.",
       "build_missing": "No llama.cpp build is installed."
-    }
+    },
+    "section": {
+      "qwen": "Qwen",
+      "gemma": "Gemma",
+      "other": "Other (specialised and third-party)",
+      "image": "Images (Qwen-Image)"
+    },
+    "repoPlaceholder": "Hugging Face page or file link (huggingface.co/owner/repo)",
+    "repoLook": "Show files",
+    "repoPick": "pick the files to download",
+    "repoEmpty": "No GGUF files found on that page",
+    "repoImageNote": "VAE and text encoder are added automatically"
   },
   "canvas": {
     "select": "Select",

@@ -11,7 +11,23 @@ import { modelsDir } from "./engine";
 
 const HF = "https://huggingface.co";
 
-export type ModelKind = "translate" | "chat" | "tts" | "ocr" | "embed";
+export type ModelKind = "translate" | "chat" | "tts" | "ocr" | "embed" | "image";
+
+/** Раздел списка моделей: Qwen, Gemma, «прочие» (узкие и сторонние) и генерация картинок. */
+export type Section = "qwen" | "gemma" | "other" | "image";
+export const SECTIONS: Section[] = ["qwen", "gemma", "other", "image"];
+
+/** Куда ложится файл: GGUF для llama.cpp или файлы для stable-diffusion.cpp. */
+export type Dir = "llama" | "sd";
+
+/** Раздел по ID семейства: translategemma/chandra/gpt-oss/glm/granite попадают в «прочие». */
+export function sectionOf(group: string): Section {
+  if (/^qwen-image/i.test(group)) return "image";
+  if (/^(translategemma|chandra)/i.test(group)) return "other";
+  if (/^(gemma|embeddinggemma)/i.test(group)) return "gemma";
+  if (/^qwen/i.test(group)) return "qwen";
+  return "other";
+}
 
 export interface CatalogModel {
   id: string;
@@ -28,8 +44,15 @@ export interface CatalogModel {
   title: string;
   /** Понимает картинки (есть проектор). */
   vision?: boolean;
-  /** Дополнительные файлы того же репозитория (проектор); `as` — имя на диске. */
-  extra?: { file: string; sizeMb: number; as?: string }[];
+  /** Раздел списка в интерфейсе. */
+  section: Section;
+  /** Папка основного файла. */
+  dir: Dir;
+  /**
+   * Дополнительные файлы: проектор того же репозитория или (у картинок) VAE и текстовый
+   * энкодер из других репозиториев; `as` — имя на диске.
+   */
+  extra?: { file: string; sizeMb: number; as?: string; repo?: string; dir?: Dir }[];
 }
 
 interface Quant {
@@ -54,6 +77,9 @@ function family(o: {
   mmproj?: { file: string; mb: number };
   /** Локальное имя проектора (в плоской папке имена `mmproj-F16.gguf` разных моделей совпали бы). */
   stem?: string;
+  /** Файлы из других репозиториев (VAE и энкодер картинок). */
+  companions?: { repo: string; file: string; mb: number; as?: string; dir?: Dir }[];
+  dir?: Dir;
 }): CatalogModel[] {
   return o.quants.map((x) => ({
     id: `${o.group}-${quantKey(x.q)}`,
@@ -64,18 +90,31 @@ function family(o: {
     note: quantKey(x.q),
     group: o.group,
     title: o.title,
-    ...(o.mmproj
+    section: sectionOf(o.group),
+    dir: o.dir ?? "llama",
+    ...(o.mmproj || o.companions
       ? {
-          vision: true,
+          ...(o.mmproj ? { vision: true } : {}),
           extra: [
-            {
-              file: o.mmproj.file,
-              sizeMb: o.mmproj.mb,
-              // Общие имена `mmproj-F16.gguf` в плоской папке разных моделей совпали бы.
-              ...(/^mmproj-(?:f16|bf16|f32|q8_0)\.gguf$/i.test(o.mmproj.file)
-                ? { as: `${o.stem ?? o.group}.${o.mmproj.file}` }
-                : {}),
-            },
+            ...(o.mmproj
+              ? [
+                  {
+                    file: o.mmproj.file,
+                    sizeMb: o.mmproj.mb,
+                    // Общие имена `mmproj-F16.gguf` в плоской папке разных моделей совпали бы.
+                    ...(/^mmproj-(?:f16|bf16|f32|q8_0)\.gguf$/i.test(o.mmproj.file)
+                      ? { as: `${o.stem ?? o.group}.${o.mmproj.file}` }
+                      : {}),
+                  },
+                ]
+              : []),
+            ...(o.companions ?? []).map((c) => ({
+              file: c.file,
+              sizeMb: c.mb,
+              repo: c.repo,
+              dir: c.dir ?? ("llama" as Dir),
+              ...(c.as ? { as: c.as } : {}),
+            })),
           ],
         }
       : {}),
@@ -85,6 +124,24 @@ function family(o: {
 const Q3 = "Q3_K_M";
 const Q4 = "Q4_K_M";
 const Q5 = "Q5_K_M";
+const Q6 = "Q6_K";
+
+/** VAE и текстовый энкодер Qwen-Image 2.1 (общие для обычной и Turbo-версии). */
+export const IMAGE_COMPANIONS = [
+  {
+    repo: "unsloth/Qwen-Image-2.1-FP8",
+    file: "vae/qwen_image_2.1_vae_bf16.safetensors",
+    mb: 644,
+    as: "qwen_image_2.1_vae_bf16.safetensors",
+    dir: "sd" as Dir,
+  },
+  {
+    repo: "unsloth/Qwen3-VL-8B-Instruct-GGUF",
+    file: "Qwen3-VL-8B-Instruct-Q4_K_M.gguf",
+    mb: 4795,
+    dir: "llama" as Dir,
+  },
+];
 
 export const CATALOG: CatalogModel[] = [
   // Эмбеддинги: тут допустимы и Q6 — файлы крошечные, качество поиска растёт.
@@ -140,6 +197,20 @@ export const CATALOG: CatalogModel[] = [
     mmproj: { file: "mmproj-F16.gguf", mb: 641 },
   }),
   ...family({
+    group: "qwen35-9b",
+    title: "Qwen3.5 9B",
+    kind: "chat",
+    repo: "unsloth/Qwen3.5-9B-GGUF",
+    stem: "Qwen3.5-9B",
+    quants: [
+      { q: Q3, file: "Qwen3.5-9B-Q3_K_M.gguf", mb: 4457 },
+      { q: Q4, file: "Qwen3.5-9B-Q4_K_M.gguf", mb: 5417 },
+      { q: Q5, file: "Qwen3.5-9B-Q5_K_M.gguf", mb: 6273 },
+      { q: Q6, file: "Qwen3.5-9B-Q6_K.gguf", mb: 7113 },
+    ],
+    mmproj: { file: "mmproj-F16.gguf", mb: 876 },
+  }),
+  ...family({
     group: "gemma4-e2b",
     title: "Gemma 4 E2B",
     kind: "chat",
@@ -177,6 +248,20 @@ export const CATALOG: CatalogModel[] = [
       { q: Q5, file: "Qwen3-VL-2B-Thinking-Q5_K_M.gguf", mb: 1200 },
     ],
     mmproj: { file: "mmproj-F16.gguf", mb: 781 },
+  }),
+  ...family({
+    group: "qwen3vl-8b-instruct",
+    title: "Qwen3-VL 8B Instruct",
+    kind: "chat",
+    repo: "unsloth/Qwen3-VL-8B-Instruct-GGUF",
+    stem: "Qwen3-VL-8B-Instruct",
+    quants: [
+      { q: Q3, file: "Qwen3-VL-8B-Instruct-Q3_K_M.gguf", mb: 3933 },
+      { q: Q4, file: "Qwen3-VL-8B-Instruct-Q4_K_M.gguf", mb: 4795 },
+      { q: Q5, file: "Qwen3-VL-8B-Instruct-Q5_K_M.gguf", mb: 5580 },
+      { q: Q6, file: "Qwen3-VL-8B-Instruct-Q6_K.gguf", mb: 6414 },
+    ],
+    mmproj: { file: "mmproj-F16.gguf", mb: 1105 },
   }),
   ...family({
     group: "gemma4-e4b",
@@ -371,6 +456,36 @@ export const CATALOG: CatalogModel[] = [
     quants: [{ q: Q4, file: "Qwen3-TTS-12Hz-1.7B-Base-Q4_K_M.gguf", mb: 1036 }],
     mmproj: { file: "mmproj-Qwen3-TTS-12Hz-1.7B-Base-Q8_0.gguf", mb: 446 },
   }),
+  // Генерация картинок (stable-diffusion.cpp): GGUF — только «денойзер», рядом нужны VAE и текстовый
+  // энкодер Qwen3-VL 8B. Энкодер — тот же файл, что и у чат-модели Qwen3-VL 8B Q4, и качается один раз.
+  ...family({
+    group: "qwen-image-21",
+    title: "Qwen-Image 2.1",
+    kind: "image",
+    repo: "unsloth/Qwen-Image-2.1-GGUF",
+    dir: "sd",
+    quants: [
+      { q: Q3, file: "qwen-image-2.1-Q3_K_M.gguf", mb: 3022 },
+      { q: Q4, file: "qwen-image-2.1-Q4_K_M.gguf", mb: 4005 },
+      { q: Q5, file: "qwen-image-2.1-Q5_K_M.gguf", mb: 5141 },
+      { q: Q6, file: "qwen-image-2.1-Q6_K.gguf", mb: 5981 },
+    ],
+    companions: IMAGE_COMPANIONS,
+  }),
+  ...family({
+    group: "qwen-image-21-turbo",
+    title: "Qwen-Image 2.1 Turbo (8 шагов)",
+    kind: "image",
+    repo: "unsloth/Qwen-Image-2.1-Turbo-GGUF",
+    dir: "sd",
+    quants: [
+      { q: Q3, file: "qwen-image-2.1-turbo-Q3_K_M.gguf", mb: 3022 },
+      { q: Q4, file: "qwen-image-2.1-turbo-Q4_K_M.gguf", mb: 4005 },
+      { q: Q5, file: "qwen-image-2.1-turbo-Q5_K_M.gguf", mb: 5141 },
+      { q: Q6, file: "qwen-image-2.1-turbo-Q6_K.gguf", mb: 5981 },
+    ],
+    companions: IMAGE_COMPANIONS,
+  }),
 ];
 
 export interface InstalledModel {
@@ -378,19 +493,23 @@ export interface InstalledModel {
   sizeMb: number;
 }
 
-export function installed(): InstalledModel[] {
+/** Файлы для stable-diffusion.cpp: диффузионные GGUF и VAE. */
+export const sdModelsDir = (): string => path.join(path.dirname(modelsDir()), "sd");
+const customFile = (): string => path.join(path.dirname(modelsDir()), "custom.json");
+
+function list(dir: string, ext: RegExp): InstalledModel[] {
   try {
     return fs
-      .readdirSync(modelsDir())
-      .filter((f) => f.toLowerCase().endsWith(".gguf"))
-      .map((f) => ({
-        file: f,
-        sizeMb: Math.round(fs.statSync(path.join(modelsDir(), f)).size / 1048576),
-      }));
+      .readdirSync(dir)
+      .filter((f) => ext.test(f))
+      .map((f) => ({ file: f, sizeMb: Math.round(fs.statSync(path.join(dir, f)).size / 1048576) }));
   } catch {
     return [];
   }
 }
+
+export const installed = (): InstalledModel[] => list(modelsDir(), /\.gguf$/i);
+export const installedSd = (): InstalledModel[] => list(sdModelsDir(), /\.(gguf|safetensors)$/i);
 
 /** Проектор изображений рядом с моделью (`<имя>.mmproj-*.gguf`), если он скачан. */
 export function siblingMmproj(file: string): string | null {
@@ -403,13 +522,52 @@ export function siblingMmproj(file: string): string | null {
 }
 
 export const modelPath = (file: string): string => path.join(modelsDir(), path.basename(file));
+export const sdPath = (file: string): string => path.join(sdModelsDir(), path.basename(file));
 export const hasModel = (file: string): boolean => fs.existsSync(modelPath(file));
+const dirPath = (dir: Dir, file: string): string => (dir === "sd" ? sdPath(file) : modelPath(file));
+
+// ───────────────────────── свои модели: к какому разделу относятся ─────────────────────────
+
+export interface CustomEntry {
+  section: Section;
+  repo: string;
+  dir: Dir;
+  /** Что это за файл: основная модель, проектор, VAE или текстовый энкодер. */
+  role: "model" | "mmproj" | "vae" | "encoder";
+}
+
+export function customModels(): Record<string, CustomEntry> {
+  try {
+    return JSON.parse(fs.readFileSync(customFile(), "utf8")) as Record<string, CustomEntry>;
+  } catch {
+    return {};
+  }
+}
+
+function saveCustom(all: Record<string, CustomEntry>): void {
+  fs.mkdirSync(path.dirname(customFile()), { recursive: true });
+  fs.writeFileSync(customFile(), JSON.stringify(all, null, 1), "utf8");
+}
+
+function noteCustom(file: string, e: CustomEntry): void {
+  const all = customModels();
+  all[file] = e;
+  saveCustom(all);
+}
 
 export function removeModel(file: string): void {
-  const p = modelPath(file);
-  removePath(p);
-  removePath(`${p}.part`);
+  const name = path.basename(file);
+  for (const p of [modelPath(name), sdPath(name)]) {
+    removePath(p);
+    removePath(`${p}.part`);
+  }
+  const all = customModels();
+  if (all[name]) {
+    delete all[name];
+    saveCustom(all);
+  }
   pruneProjectors();
+  pruneVae();
 }
 
 /** Проектор без единой модели своего семейства занимает место зря — удаляем. */
@@ -424,6 +582,13 @@ function pruneProjectors(): void {
     );
     if (!owned) removePath(modelPath(f));
   }
+}
+
+/** VAE нужен, пока есть хоть одна диффузионная модель; без неё — удаляем. */
+function pruneVae(): void {
+  const have = installedSd();
+  if (have.some((m) => /\.gguf$/i.test(m.file))) return;
+  for (const m of have) removePath(sdPath(m.file));
 }
 
 export interface DownloadState {
@@ -449,13 +614,57 @@ function sha256File(file: string): Promise<string> {
   });
 }
 
-/** Разбор ссылки вида https://huggingface.co/<owner>/<repo>/resolve/<rev>/<file>.gguf. */
-export function parseHfUrl(url: string): { repo: string; rev: string; file: string } | null {
-  const m =
-    /^https:\/\/huggingface\.co\/([^/]+\/[^/]+)\/(?:resolve|blob)\/([^/]+)\/(.+\.gguf)(?:\?.*)?$/i.exec(
-      url.trim(),
+/**
+ * Разбор ссылки на Hugging Face: файл (`…/resolve|blob/<rev>/<файл>`) или страница репозитория
+ * (`https://huggingface.co/<owner>/<repo>`, можно с `/tree/<rev>`).
+ */
+export function parseHfUrl(url: string): { repo: string; rev: string; file?: string } | null {
+  const u = url.trim();
+  const f =
+    /^https:\/\/huggingface\.co\/([^/]+\/[^/]+)\/(?:resolve|blob)\/([^/]+)\/(.+\.(?:gguf|safetensors))(?:\?.*)?$/i.exec(
+      u,
     );
-  return m ? { repo: m[1], rev: m[2], file: m[3] } : null;
+  if (f) return { repo: f[1], rev: f[2], file: f[3] };
+  const r = /^https:\/\/huggingface\.co\/([\w.-]+\/[\w.-]+)(?:\/tree\/([^/?#]+))?\/?(?:[?#].*)?$/i.exec(
+    u,
+  );
+  return r ? { repo: r[1], rev: r[2] ?? "main" } : null;
+}
+
+export interface RepoFile {
+  file: string;
+  sizeMb: number;
+  role: CustomEntry["role"];
+}
+
+interface HfSibling {
+  rfilename: string;
+  size?: number;
+  lfs?: { sha256?: string; size?: number };
+}
+
+async function hfSiblings(repo: string, rev: string): Promise<HfSibling[]> {
+  const r = await fetch(`${HF}/api/models/${repo}/revision/${encodeURIComponent(rev)}?blobs=true`, {
+    redirect: "follow",
+  });
+  if (!r.ok) throw new Error(`hf_list_${r.status}`);
+  return ((await r.json()) as { siblings?: HfSibling[] }).siblings ?? [];
+}
+
+/** Файлы репозитория, которые можно скачать: модели, проекторы и (у картинок) VAE. */
+export async function repoFiles(repo: string, rev: string): Promise<RepoFile[]> {
+  const out: RepoFile[] = [];
+  for (const x of await hfSiblings(repo, rev)) {
+    const name = x.rfilename;
+    const isVae = /vae.*\.safetensors$/i.test(name);
+    if (!/\.gguf$/i.test(name) && !isVae) continue;
+    out.push({
+      file: name,
+      sizeMb: Math.round((x.lfs?.size ?? x.size ?? 0) / 1048576),
+      role: isVae ? "vae" : /mmproj/i.test(name) ? "mmproj" : "model",
+    });
+  }
+  return out;
 }
 
 async function remoteInfo(
@@ -463,35 +672,34 @@ async function remoteInfo(
   rev: string,
   file: string,
 ): Promise<{ size: number; sha256: string }> {
-  const r = await fetch(`${HF}/api/models/${repo}/revision/${rev}?blobs=true`, {
-    redirect: "follow",
-  });
-  if (!r.ok) throw new Error(`hf_list_${r.status}`);
-  const j = (await r.json()) as {
-    siblings: { rfilename: string; size?: number; lfs?: { sha256?: string; size?: number } }[];
-  };
-  const s = j.siblings.find((x) => x.rfilename === file);
+  const s = (await hfSiblings(repo, rev)).find((x) => x.rfilename === file);
   if (!s) throw new Error("hf_file_missing");
   return { size: s.lfs?.size ?? s.size ?? 0, sha256: s.lfs?.sha256 ?? "" };
 }
 
-/** Файл репозитория и (необязательно) имя, под которым он ляжет на диск. */
-export type Remote = string | { remote: string; as?: string };
+/** Один файл очереди загрузки: репозиторий, имя в нём, имя и папка на диске. */
+export interface DlItem {
+  repo: string;
+  rev?: string;
+  remote: string;
+  as?: string;
+  dir?: Dir;
+  /** Для «своих» моделей: к какому разделу отнести файл. */
+  custom?: { section: Section; role: CustomEntry["role"] };
+}
 
-export function startDownload(
-  repo: string,
-  rev: string,
-  remotes: Remote | Remote[],
-): DownloadState {
+export function startDownload(items: DlItem[]): DownloadState {
   if (current?.status === "downloading") return current;
   fs.mkdirSync(modelsDir(), { recursive: true });
-  const list = ([] as Remote[])
-    .concat(remotes)
-    .map((r) =>
-      typeof r === "string" ? { remote: r, as: "" } : { remote: r.remote, as: r.as ?? "" },
-    );
+  const queue = items.map((i) => ({
+    ...i,
+    rev: i.rev ?? "main",
+    dir: i.dir ?? ("llama" as Dir),
+    name: path.basename(i.as || i.remote),
+  }));
+  if (queue.some((i) => i.dir === "sd")) fs.mkdirSync(sdModelsDir(), { recursive: true });
   const st: DownloadState = {
-    file: path.basename(list[0].as || list[0].remote),
+    file: queue[0].name,
     status: "downloading",
     bytes: 0,
     total: 0,
@@ -503,29 +711,38 @@ export function startDownload(
   void (async () => {
     let name = st.file;
     try {
-      for (const { remote, as } of list) {
-        name = path.basename(as || remote);
-        const dest = modelPath(name);
+      for (const it of queue) {
+        name = it.name;
+        const dest = dirPath(it.dir, name);
         const part = `${dest}.part`;
         // Прогресс — по текущему файлу.
         st.file = name;
         st.bytes = 0;
         st.total = 0;
-        const info = await remoteInfo(repo, rev, remote);
+        const info = await remoteInfo(it.repo, it.rev, it.remote);
         st.total = info.size;
-        // Общий файл (проектор для нескольких квантов) уже скачан — повторно не тянем.
-        if (info.size && fs.existsSync(dest) && fs.statSync(dest).size === info.size) continue;
+        const note = (): void => {
+          if (it.custom) noteCustom(name, { ...it.custom, repo: it.repo, dir: it.dir });
+        };
+        // Общий файл (проектор, VAE, энкодер для нескольких моделей) уже скачан — повторно не тянем.
+        if (info.size && fs.existsSync(dest) && fs.statSync(dest).size === info.size) {
+          note();
+          continue;
+        }
         let have = fs.existsSync(part) ? fs.statSync(part).size : 0;
         if (have > info.size) {
           removePath(part);
           have = 0;
         }
         if (have < info.size) {
-          const res = await fetch(`${HF}/${repo}/resolve/${rev}/${remote}`, {
-            redirect: "follow",
-            signal,
-            headers: have ? { Range: `bytes=${have}-` } : {},
-          });
+          const res = await fetch(
+            `${HF}/${it.repo}/resolve/${encodeURIComponent(it.rev)}/${it.remote}`,
+            {
+              redirect: "follow",
+              signal,
+              headers: have ? { Range: `bytes=${have}-` } : {},
+            },
+          );
           if (!(res.status === 200 || res.status === 206) || !res.body)
             throw new Error(`hf_download_${res.status}`);
           const append = res.status === 206;
@@ -549,6 +766,7 @@ export function startDownload(
           throw new Error("sha256_mismatch");
         }
         fs.renameSync(part, dest);
+        note();
       }
       st.status = "done";
       logger.info("llamacpp.model_downloaded", { file: name, bytes: st.bytes });

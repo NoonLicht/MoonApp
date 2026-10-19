@@ -42,13 +42,19 @@ import { closePdf, openPdf, renderPdfPage } from "../llamacpp/ocrPdf";
 import type { Device } from "../llamacpp/engine";
 import {
   CATALOG,
+  IMAGE_COMPANIONS,
+  SECTIONS,
   cancelDownload,
+  customModels,
   downloadState,
   installed,
+  installedSd,
   parseHfUrl,
   removeModel,
+  repoFiles,
   startDownload,
-  type Remote,
+  type DlItem,
+  type Section,
 } from "../llamacpp/models";
 
 const router = express.Router();
@@ -66,6 +72,8 @@ router.get("/status", (_req, res) => {
     install: setup.snapshot(),
     catalog: CATALOG,
     models: installed(),
+    sdModels: installedSd(),
+    custom: customModels(),
     download: downloadState(),
     server: serverInfo(),
     activity: activity(),
@@ -99,23 +107,96 @@ router.delete("/build/:id", (req, res) => {
   res.json({ ok: true });
 });
 
-router.post("/model", (req, res) => {
-  const { id, url } = (req.body ?? {}) as { id?: string; url?: string };
-  let src: { repo: string; rev: string; file: string; extra?: Remote[] } | null = null;
-  if (id) {
-    const m = CATALOG.find((c) => c.id === id);
-    if (m)
-      src = {
-        repo: m.repo,
-        rev: "main",
-        file: m.file,
-        extra: m.extra?.map((e) => ({ remote: e.file, as: e.as })),
-      };
-  } else if (url) {
-    src = parseHfUrl(String(url));
+/** Файлы страницы Hugging Face: клиент показывает их списком, пользователь выбирает кванты. */
+router.get("/hf", async (req, res) => {
+  const p = parseHfUrl(String(req.query.url ?? ""));
+  if (!p) return res.status(400).json({ error: "bad_url" });
+  try {
+    res.json({ repo: p.repo, rev: p.rev, file: p.file ?? "", files: await repoFiles(p.repo, p.rev) });
+  } catch (e) {
+    res.status(502).json({ error: String((e as Error).message || e).slice(0, 200) });
   }
-  if (!src) return res.status(400).json({ error: "bad_model" });
-  res.json(startDownload(src.repo, src.rev, [src.file, ...(src.extra ?? [])]));
+});
+
+/**
+ * Скачать модель. Три формы:
+ *  {id}                              — из каталога (вместе с проектором, VAE и энкодером);
+ *  {url, section?}                   — ссылка на файл `…/resolve/…/x.gguf`;
+ *  {repo, rev?, files:[{file,role}], section} — выбранные файлы со страницы репозитория.
+ * Файлы «своей» модели запоминаются вместе с разделом, чтобы лечь в нужную группу списка.
+ */
+router.post("/model", (req, res) => {
+  const b = (req.body ?? {}) as {
+    id?: string;
+    url?: string;
+    section?: string;
+    repo?: string;
+    rev?: string;
+    files?: { file?: string; role?: string }[];
+  };
+  const section: Section = SECTIONS.includes(b.section as Section) ? (b.section as Section) : "other";
+  const image = section === "image";
+  let items: DlItem[] = [];
+  if (b.id) {
+    const m = CATALOG.find((c) => c.id === b.id);
+    if (!m) return res.status(400).json({ error: "bad_model" });
+    items = [
+      { repo: m.repo, remote: m.file, dir: m.dir },
+      ...(m.extra ?? []).map((e) => ({
+        repo: e.repo ?? m.repo,
+        remote: e.file,
+        as: e.as,
+        dir: e.dir ?? ("llama" as const),
+      })),
+    ];
+  } else {
+    let repo = "";
+    let rev = "main";
+    let picks: { file: string; role: string }[] = [];
+    if (b.url) {
+      const p = parseHfUrl(String(b.url));
+      if (!p?.file) return res.status(400).json({ error: "bad_model" });
+      repo = p.repo;
+      rev = p.rev;
+      picks = [{ file: p.file, role: /mmproj/i.test(p.file) ? "mmproj" : "model" }];
+    } else if (b.repo && Array.isArray(b.files) && /^[\w.-]+\/[\w.-]+$/.test(b.repo)) {
+      repo = b.repo;
+      rev = b.rev || "main";
+      picks = b.files
+        .filter((f) => typeof f.file === "string" && /\.(gguf|safetensors)$/i.test(f.file))
+        .map((f) => ({ file: String(f.file), role: String(f.role || "model") }));
+    }
+    if (!repo || !picks.length) return res.status(400).json({ error: "bad_model" });
+    const base = repo.split("/")[1];
+    for (const f of picks) {
+      const name = f.file.split("/").pop() as string;
+      const role = (["model", "mmproj", "vae", "encoder"].includes(f.role) ? f.role : "model") as
+        | "model"
+        | "mmproj"
+        | "vae"
+        | "encoder";
+      // Проекторы с общими именами получают имя репозитория, как у каталожных моделей.
+      const as =
+        role === "mmproj" && /^mmproj-(?:f16|bf16|f32|q8_0)\.gguf$/i.test(name)
+          ? `${base}.${name}`
+          : undefined;
+      items.push({
+        repo,
+        rev,
+        remote: f.file,
+        as,
+        dir: image && role !== "encoder" ? "sd" : "llama",
+        custom: { section, role },
+      });
+    }
+    // Картинке нужны VAE и текстовый энкодер: если их нет среди выбранных — докачиваем стандартные.
+    if (image)
+      for (const c of IMAGE_COMPANIONS) {
+        if (c.dir === "sd" && picks.some((f) => f.role === "vae")) continue;
+        items.push({ repo: c.repo, remote: c.file, as: c.as, dir: c.dir });
+      }
+  }
+  res.json(startDownload(items));
 });
 
 router.post("/model/cancel", (_req, res) => {
@@ -124,7 +205,8 @@ router.post("/model/cancel", (_req, res) => {
 });
 
 router.delete("/model/:file", (req, res) => {
-  if (!/\.gguf$/i.test(req.params.file)) return res.status(400).json({ error: "bad_file" });
+  if (!/\.(gguf|safetensors)$/i.test(req.params.file))
+    return res.status(400).json({ error: "bad_file" });
   if (serverInfo()?.file === req.params.file) stopServer();
   removeModel(req.params.file);
   res.json({ ok: true });

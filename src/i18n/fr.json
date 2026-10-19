@@ -5613,7 +5613,8 @@
       "chat": "chat",
       "translate": "traduction",
       "ocr": "OCR",
-      "tts": "voix"
+      "tts": "voix",
+      "image": "images"
     },
     "vision": "Comprend les images",
     "visionShort": "images",
@@ -5672,7 +5673,18 @@
       "gpu_build_missing": "Aucune build GPU installée — installez Vulkan ou CUDA dans la section des builds.",
       "gpu_build_failed": "Les builds GPU ont été désactivées après un échec — appuyez sur « Réactiver ».",
       "build_missing": "Aucune build llama.cpp n'est installée."
-    }
+    },
+    "section": {
+      "qwen": "Qwen",
+      "gemma": "Gemma",
+      "other": "Autres (spécialisés et tiers)",
+      "image": "Images (Qwen-Image)"
+    },
+    "repoPlaceholder": "Page ou fichier Hugging Face (huggingface.co/auteur/depot)",
+    "repoLook": "Afficher les fichiers",
+    "repoPick": "choisissez les fichiers à télécharger",
+    "repoEmpty": "Aucun fichier GGUF sur cette page",
+    "repoImageNote": "le VAE et l'encodeur de texte sont ajoutés automatiquement"
   },
   "canvas": {
     "select": "Sélectionner",

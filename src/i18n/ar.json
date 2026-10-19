@@ -5613,7 +5613,8 @@
       "chat": "دردشة",
       "translate": "ترجمة",
       "ocr": "OCR",
-      "tts": "صوت"
+      "tts": "صوت",
+      "image": "صور"
     },
     "vision": "يفهم الصور",
     "visionShort": "صور",
@@ -5672,7 +5673,18 @@
       "gpu_build_missing": "لا يوجد إصدار لبطاقة الرسوم — ثبّت Vulkan أو CUDA من قسم الإصدارات.",
       "gpu_build_failed": "تم تعطيل إصدارات بطاقة الرسوم بعد عطل — اضغط «تفعيل مجددًا».",
       "build_missing": "لا يوجد أي إصدار من llama.cpp مثبّت."
-    }
+    },
+    "section": {
+      "qwen": "Qwen",
+      "gemma": "Gemma",
+      "other": "أخرى (متخصصة وخارجية)",
+      "image": "الصور (Qwen-Image)"
+    },
+    "repoPlaceholder": "صفحة أو ملف على Hugging Face (huggingface.co/المؤلف/المستودع)",
+    "repoLook": "عرض الملفات",
+    "repoPick": "اختر الملفات للتنزيل",
+    "repoEmpty": "لا توجد ملفات GGUF في هذه الصفحة",
+    "repoImageNote": "تتم إضافة VAE ومشفّر النص تلقائياً"
   },
   "canvas": {
     "select": "تحديد",

@@ -3,7 +3,21 @@ import { ChevronRight, Cpu, Download, Eye, Power, Trash2, X } from "lucide-react
 import { Badge, Btn, ProgressBar, Select } from "@/components/ui";
 import { useI18n } from "@/app/i18n";
 import { api } from "@/api/client";
-import type { LlamaCatalogModel, LlamaStatus } from "@/api/client";
+import type { LlamaCatalogModel, LlamaSection, LlamaStatus } from "@/api/client";
+import LlamaAddLink from "@/components/LlamaAddLink";
+
+/** Порядок разделов: Qwen, Gemma, прочие (узкие и сторонние), картинки. */
+const SECTIONS: LlamaSection[] = ["qwen", "gemma", "other", "image"];
+
+/** Раздел своего файла без записи: по имени (Qwen/Gemma), иначе в прочие. */
+const guessSection = (file: string): LlamaSection =>
+  /qwen[-_ ]?image/i.test(file)
+    ? "image"
+    : /qwen/i.test(file)
+      ? "qwen"
+      : /gemma/i.test(file)
+        ? "gemma"
+        : "other";
 
 const gb = (mb: number): string => `${(mb / 1024).toFixed(1)} GB`;
 const size = (mb: number): string => (mb < 1024 ? `${Math.round(mb)} MB` : gb(mb));
@@ -53,7 +67,6 @@ export default function LlamaPanel({
 }) {
   const { t } = useI18n();
   const [st, setSt] = useState<LlamaStatus | null>(null);
-  const [url, setUrl] = useState("");
   const [open, setOpen] = useState<Record<string, boolean>>({});
   const flip = (k: string) => setOpen((o) => ({ ...o, [k]: !o[k] }));
 
@@ -84,11 +97,18 @@ export default function LlamaPanel({
   };
 
   const groups = useMemo(() => {
-    const out: { id: string; title: string; kind: string; items: LlamaCatalogModel[] }[] = [];
+    const out: {
+      id: string;
+      title: string;
+      kind: string;
+      section: LlamaSection;
+      items: LlamaCatalogModel[];
+    }[] = [];
     for (const m of st?.catalog ?? []) {
       if (kind && m.kind !== kind) continue;
       let g = out.find((x) => x.id === m.group);
-      if (!g) out.push((g = { id: m.group, title: m.title, kind: m.kind, items: [] }));
+      if (!g)
+        out.push((g = { id: m.group, title: m.title, kind: m.kind, section: m.section, items: [] }));
       g.items.push(m);
     }
     return out;
@@ -100,18 +120,26 @@ export default function LlamaPanel({
   const installing = st.install.state === "working";
   const anyBuild = st.builds.some((b) => b.installed);
   const act2 = st.activity;
-  const files = new Set(st.models.map((x) => x.file));
+  const files = new Set([...st.models, ...(st.sdModels ?? [])].map((x) => x.file));
   const haveModel = (m: LlamaCatalogModel): boolean =>
-    files.has(m.file) && (m.extra ?? []).every((e) => files.has(e.as ?? e.file));
+    files.has(m.file) && (m.extra ?? []).every((e) => files.has(e.as ?? e.file.split("/").pop() ?? e.file));
   const chatFiles = st.models
     .map((x) => x.file)
     .filter((f) => !/embedding|mmproj|chandra|tts|translategemma/i.test(f));
-  const custom = st.models.filter(
-    (x) =>
-      !st.catalog.some(
-        (m) => m.file === x.file || m.extra?.some((e) => (e.as ?? e.file) === x.file),
-      ),
-  );
+  // Свои модели: всё, чего нет в каталоге. Проекторы, VAE и энкодеры не показываем: они едут вместе с моделью.
+  const customs = [...st.models, ...(st.sdModels ?? [])]
+    .filter(
+      (x) =>
+        !st.catalog.some(
+          (m) =>
+            m.file === x.file ||
+            m.extra?.some((e) => (e.as ?? e.file.split("/").pop()) === x.file),
+        ) &&
+        !/mmproj/i.test(x.file) &&
+        !/vae.*\.safetensors$/i.test(x.file) &&
+        (st.custom?.[x.file]?.role ?? "model") === "model",
+    )
+    .map((x) => ({ ...x, section: st.custom?.[x.file]?.section ?? guessSection(x.file) }));
   const router = st.router;
 
   return (
@@ -298,139 +326,155 @@ export default function LlamaPanel({
       <b className="tn-card-title" style={{ display: "block", marginTop: 12 }}>
         {t("llama.modelsTitle")}
       </b>
-      <div className="llama-groups">
-        {groups.map((g) => {
-          const have = g.items.filter(haveModel).length;
-          const vision = g.items.some((m) => m.vision);
-          const lo = Math.min(...g.items.map((m) => m.sizeMb));
-          const hi = Math.max(...g.items.map((m) => m.sizeMb));
-          return (
-            <Fold
-              key={g.id}
-              title={g.title}
-              badges={
-                <>
-                  <span className="llama-kind">{t(`llama.kind.${g.kind}`)}</span>
-                  {vision && (
-                    <span className="llama-kind llama-kind-vis" title={t("llama.vision")}>
-                      <Eye size={11} /> {t("llama.visionShort")}
-                    </span>
-                  )}
-                </>
-              }
-              meta={
-                <>
-                  {have > 0 && <b className="llama-have">{t("llama.haveCount", { n: have })}</b>}
-                  {lo === hi ? size(lo) : `${size(lo)}–${size(hi)}`}
-                </>
-              }
-              open={!!open[`g-${g.id}`]}
-              onToggle={() => flip(`g-${g.id}`)}
-            >
-              <div className="tn-list">
-                {g.items.map((m) => {
-                  const ok = haveModel(m);
-                  const active =
-                    downloading &&
-                    (dl?.file === m.file || m.extra?.some((e) => (e.as ?? e.file) === dl?.file));
-                  const total = m.sizeMb + (m.extra ?? []).reduce((a, e) => a + e.sizeMb, 0);
-                  return (
-                    <div key={m.id} className="tn-row">
-                      <div className="tn-row-main">
-                        <div className="tn-row-title">
-                          {m.note.toUpperCase()} · {size(total)}
-                        </div>
-                        <div className="muted-sm">{t(`llama.quant.${m.note}`)}</div>
-                        {active && dl && (
-                          <>
-                            <ProgressBar value={dl.total ? (dl.bytes / dl.total) * 100 : 0} />
-                            <div className="muted-sm">
-                              {dl.file} · {size(dl.bytes / 1048576)} / {size(dl.total / 1048576)}
-                            </div>
-                          </>
+      {SECTIONS.map((sec) => {
+        const gs = groups.filter((g) => g.section === sec);
+        const mine = kind ? [] : customs.filter((c) => c.section === sec);
+        if (!gs.length && !mine.length && (kind || sec === "image")) return null;
+        const haveAll = gs.reduce((n, g) => n + g.items.filter(haveModel).length, 0) + mine.length;
+        return (
+          <div key={sec} className="llama-section">
+            <div className="llama-section-head">
+              <b>{t(`llama.section.${sec}`)}</b>
+              <span className="muted-sm">
+                {gs.length + (mine.length ? 1 : 0)}
+                {haveAll > 0 ? ` · ${t("llama.haveCount", { n: haveAll })}` : ""}
+              </span>
+            </div>
+            <div className="llama-groups">
+              {gs.map((g) => {
+                const have = g.items.filter(haveModel).length;
+                const vision = g.items.some((m) => m.vision);
+                const lo = Math.min(...g.items.map((m) => m.sizeMb));
+                const hi = Math.max(...g.items.map((m) => m.sizeMb));
+                return (
+                  <Fold
+                    key={g.id}
+                    title={g.title}
+                    badges={
+                      <>
+                        <span className="llama-kind">{t(`llama.kind.${g.kind}`)}</span>
+                        {vision && (
+                          <span className="llama-kind llama-kind-vis" title={t("llama.vision")}>
+                            <Eye size={11} /> {t("llama.visionShort")}
+                          </span>
                         )}
-                      </div>
-                      {ok && <Badge tone="teal">{t("translate.installed")}</Badge>}
-                      {active ? (
-                        <Btn icon={X} onClick={() => void act(() => api.llamaModelCancel())}>
-                          {t("translate.cancel")}
-                        </Btn>
-                      ) : ok ? (
+                      </>
+                    }
+                    meta={
+                      <>
+                        {have > 0 && (
+                          <b className="llama-have">{t("llama.haveCount", { n: have })}</b>
+                        )}
+                        {lo === hi ? size(lo) : `${size(lo)}–${size(hi)}`}
+                      </>
+                    }
+                    open={!!open[`g-${g.id}`]}
+                    onToggle={() => flip(`g-${g.id}`)}
+                  >
+                    <div className="tn-list">
+                      {g.items.map((m) => {
+                        const ok = haveModel(m);
+                        const active =
+                          downloading &&
+                          (dl?.file === m.file ||
+                            m.extra?.some((e) => (e.as ?? e.file.split("/").pop()) === dl?.file));
+                        const total = m.sizeMb + (m.extra ?? []).reduce((a, e) => a + e.sizeMb, 0);
+                        return (
+                          <div key={m.id} className="tn-row">
+                            <div className="tn-row-main">
+                              <div className="tn-row-title">
+                                {m.note.toUpperCase()} · {size(total)}
+                              </div>
+                              <div className="muted-sm">{t(`llama.quant.${m.note}`)}</div>
+                              {active && dl && (
+                                <>
+                                  <ProgressBar value={dl.total ? (dl.bytes / dl.total) * 100 : 0} />
+                                  <div className="muted-sm">
+                                    {dl.file} · {size(dl.bytes / 1048576)} /{" "}
+                                    {size(dl.total / 1048576)}
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                            {ok && <Badge tone="teal">{t("translate.installed")}</Badge>}
+                            {active ? (
+                              <Btn icon={X} onClick={() => void act(() => api.llamaModelCancel())}>
+                                {t("translate.cancel")}
+                              </Btn>
+                            ) : ok ? (
+                              <Btn
+                                icon={Trash2}
+                                disabled={downloading}
+                                onClick={() =>
+                                  void act(async () => {
+                                    await api.llamaModelRemove(m.file);
+                                  })
+                                }
+                              >
+                                {t("translate.delete")}
+                              </Btn>
+                            ) : (
+                              <Btn
+                                icon={Download}
+                                disabled={downloading}
+                                onClick={() => void act(() => api.llamaModelDownload({ id: m.id }))}
+                              >
+                                {t("translate.download")}
+                              </Btn>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </Fold>
+                );
+              })}
+              {mine.length > 0 && (
+                <Fold
+                  title={t("llama.custom")}
+                  meta={String(mine.length)}
+                  open={!!open[`c-${sec}`]}
+                  onToggle={() => flip(`c-${sec}`)}
+                >
+                  <div className="tn-list">
+                    {mine.map((x) => (
+                      <div key={x.file} className="tn-row">
+                        <div className="tn-row-main">
+                          <div className="tn-row-title">
+                            {x.file} · {size(x.sizeMb)}
+                          </div>
+                        </div>
                         <Btn
                           icon={Trash2}
-                          disabled={downloading}
-                          onClick={() =>
-                            void act(async () => {
-                              await api.llamaModelRemove(m.file);
-                            })
-                          }
+                          onClick={() => void act(() => api.llamaModelRemove(x.file))}
                         >
                           {t("translate.delete")}
                         </Btn>
-                      ) : (
-                        <Btn
-                          icon={Download}
-                          disabled={downloading}
-                          onClick={() => void act(() => api.llamaModelDownload({ id: m.id }))}
-                        >
-                          {t("translate.download")}
-                        </Btn>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </Fold>
-          );
-        })}
-        {custom.length > 0 && (
-          <Fold
-            title={t("llama.custom")}
-            meta={String(custom.length)}
-            open={!!open.custom}
-            onToggle={() => flip("custom")}
-          >
-            <div className="tn-list">
-              {custom.map((x) => (
-                <div key={x.file} className="tn-row">
-                  <div className="tn-row-main">
-                    <div className="tn-row-title">
-                      {x.file} · {size(x.sizeMb)}
-                    </div>
+                      </div>
+                    ))}
                   </div>
-                  <Btn icon={Trash2} onClick={() => void act(() => api.llamaModelRemove(x.file))}>
-                    {t("translate.delete")}
-                  </Btn>
-                </div>
-              ))}
+                </Fold>
+              )}
             </div>
-          </Fold>
-        )}
-      </div>
+            {!kind && (
+              <LlamaAddLink
+                section={sec}
+                busy={!!downloading}
+                onDone={() => void refresh()}
+                notify={notify}
+              />
+            )}
+          </div>
+        );
+      })}
+      {downloading && (
+        <div className="muted-sm">
+          {dl?.file} · {size((dl?.bytes ?? 0) / 1048576)} / {size((dl?.total ?? 0) / 1048576)}
+        </div>
+      )}
       {dl?.status === "error" && (
         <div className="muted-sm">
           {t("tuning.error")}: {dl.error}
-        </div>
-      )}
-      {kind !== "translate" && kind !== "tts" && kind !== "ocr" && (
-        <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-          <input
-            className="text-input"
-            style={{ flex: 1 }}
-            value={url}
-            placeholder={t("llama.urlPlaceholder")}
-            onChange={(e) => setUrl(e.target.value)}
-          />
-          <Btn
-            icon={Download}
-            disabled={downloading || !url.trim()}
-            onClick={() => {
-              void act(() => api.llamaModelDownload({ url: url.trim() }));
-              setUrl("");
-            }}
-          >
-            {t("translate.download")}
-          </Btn>
         </div>
       )}
       {!anyBuild && <div className="muted-sm">{t("llama.needBuild")}</div>}

@@ -5613,7 +5613,8 @@
       "chat": "聊天",
       "translate": "翻译",
       "ocr": "OCR",
-      "tts": "语音"
+      "tts": "语音",
+      "image": "图像"
     },
     "vision": "支持图像理解",
     "visionShort": "图像",
@@ -5672,7 +5673,18 @@
       "gpu_build_missing": "未安装 GPU 构建 — 请在构建部分安装 Vulkan 或 CUDA。",
       "gpu_build_failed": "GPU 构建因故障被禁用 — 请点击“重新启用”。",
       "build_missing": "未安装任何 llama.cpp 构建。"
-    }
+    },
+    "section": {
+      "qwen": "Qwen",
+      "gemma": "Gemma",
+      "other": "其他（专用和第三方）",
+      "image": "图像（Qwen-Image）"
+    },
+    "repoPlaceholder": "Hugging Face 页面或文件链接（huggingface.co/作者/仓库）",
+    "repoLook": "显示文件",
+    "repoPick": "选择要下载的文件",
+    "repoEmpty": "该页面没有 GGUF 文件",
+    "repoImageNote": "VAE 和文本编码器会自动下载"
   },
   "canvas": {
     "select": "选择",

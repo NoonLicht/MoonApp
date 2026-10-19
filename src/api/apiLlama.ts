@@ -5,9 +5,14 @@ import { BASE, pageHeaders, req, tokenHeaders } from "@/api/apiHttp";
 
 export type LlamaBuildId = "cpu" | "vulkan" | "cuda";
 
+export type LlamaSection = "qwen" | "gemma" | "other" | "image";
+
 export interface LlamaCatalogModel {
   id: string;
-  kind: "translate" | "chat" | "tts" | "ocr" | "embed";
+  kind: "translate" | "chat" | "tts" | "ocr" | "embed" | "image";
+  /** Раздел списка: Qwen, Gemma, прочие, картинки. */
+  section: LlamaSection;
+  dir: "llama" | "sd";
   repo: string;
   file: string;
   sizeMb: number;
@@ -17,7 +22,22 @@ export interface LlamaCatalogModel {
   group: string;
   title: string;
   vision?: boolean;
-  extra?: { file: string; sizeMb: number; as?: string }[];
+  extra?: { file: string; sizeMb: number; as?: string; repo?: string; dir?: "llama" | "sd" }[];
+}
+
+export interface LlamaCustomEntry {
+  section: LlamaSection;
+  repo: string;
+  dir: "llama" | "sd";
+  role: "model" | "mmproj" | "vae" | "encoder";
+}
+
+export interface LlamaRepoFiles {
+  repo: string;
+  rev: string;
+  /** Если ссылка вела на конкретный файл — его путь в репозитории. */
+  file: string;
+  files: { file: string; sizeMb: number; role: LlamaCustomEntry["role"] }[];
 }
 
 export interface LlamaPlacement {
@@ -82,6 +102,10 @@ export interface LlamaStatus {
   };
   catalog: LlamaCatalogModel[];
   models: { file: string; sizeMb: number }[];
+  /** Файлы stable-diffusion.cpp (диффузионные GGUF и VAE). */
+  sdModels: { file: string; sizeMb: number }[];
+  /** Свои модели: к какому разделу списка относятся. */
+  custom: Record<string, LlamaCustomEntry>;
   download: {
     file: string;
     status: "downloading" | "done" | "error" | "cancelled";
@@ -137,8 +161,17 @@ export const llamaApi = {
   /** Вернуть сборки, отключённые после сбоя, и сбросить ошибки загрузки. */
   llamaResetBuilds: () => req<{ ok: boolean }>("POST", "/llamacpp/reset-builds"),
   llamaBuildRemove: (id: LlamaBuildId) => req<{ ok: boolean }>("DELETE", `/llamacpp/build/${id}`),
-  llamaModelDownload: (body: { id?: string; url?: string }) =>
-    req<unknown>("POST", "/llamacpp/model", body),
+  llamaModelDownload: (body: {
+    id?: string;
+    url?: string;
+    section?: LlamaSection;
+    repo?: string;
+    rev?: string;
+    files?: { file: string; role: string }[];
+  }) => req<unknown>("POST", "/llamacpp/model", body),
+  /** Файлы страницы Hugging Face (для выбора квантов у своей модели). */
+  llamaHf: (url: string) =>
+    req<LlamaRepoFiles>("GET", `/llamacpp/hf?url=${encodeURIComponent(url)}`),
   llamaModelCancel: () => req<{ ok: boolean }>("POST", "/llamacpp/model/cancel"),
   llamaModelRemove: (file: string) =>
     req<{ ok: boolean }>("DELETE", `/llamacpp/model/${encodeURIComponent(file)}`),
