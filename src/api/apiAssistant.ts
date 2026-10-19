@@ -9,6 +9,8 @@ export interface AssistantToolCall {
   name: string;
   /** JSON-строка аргументов, как её выдала модель. */
   arguments: string;
+  /** Номер вызова в ответе модели. */
+  index?: number;
 }
 
 export interface AssistantMessage {
@@ -36,6 +38,8 @@ export interface AssistantTurnResult {
 export interface AssistantTurnHandlers {
   onToken?: (d: string) => void;
   onThinking?: (d: string) => void;
+  /** Аргументы вызова инструмента растут: очередной кусок JSON. */
+  onToolArgs?: (index: number, name: string, args: string) => void;
 }
 
 export interface WebSearchHit {
@@ -93,10 +97,13 @@ export const assistantApi = {
         const e = JSON.parse(line) as {
           t: string;
           d?: string;
+          i?: number;
+          name?: string;
           error?: string;
         } & Partial<AssistantTurnResult>;
         if (e.t === "token" && e.d) h.onToken?.(e.d);
         else if (e.t === "thinking" && e.d) h.onThinking?.(e.d);
+        else if (e.t === "toolArgs" && e.name && e.d) h.onToolArgs?.(e.i ?? 0, e.name, e.d ?? "");
         else if (e.t === "error") throw new Error(e.error || "assistant_error");
         else if (e.t === "done")
           result = {

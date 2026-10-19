@@ -313,7 +313,7 @@
   "App commands": "Comandos de la aplicación",
   "Any ribbon command: formatting, tables, charts, styles…": "Cualquier comando de la cinta: formato, tablas, gráficos, estilos…",
   "Web access": "Acceso a internet",
-  "Search the internet and read pages, with source links": "Buscar en internet y leer páginas, con enlaces a las fuentes",
+  "Searches the internet by itself, no keys or setup; answers with source links": "Busca en internet por sí solo, sin claves ni ajustes; responde con enlaces a las fuentes",
   "Image generation": "Generación de imágenes",
   "Create pictures with Qwen-Image and insert them": "Crear imágenes con Qwen-Image e insertarlas",
   "Install a Qwen-Image model in Settings first": "Primero instala un modelo Qwen-Image en Ajustes",

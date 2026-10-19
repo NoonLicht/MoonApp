@@ -147,19 +147,22 @@ export function MenuPopup<C extends BaseCx>({
   onClose: () => void;
 }) {
   useEffect(() => {
-    const down = (e: MouseEvent): void => {
+    // Страница гасит mousedown через preventDefault на pointerdown, поэтому слушаем оба события.
+    const down = (e: Event): void => {
       const t = e.target as HTMLElement | null;
-      if (t?.closest(".wd-menu, .wd-minitb")) return;
+      if (t?.closest?.(".wd-menu, .wd-minitb")) return;
       onClose();
     };
     const key = (e: KeyboardEvent): void => {
       if (e.key === "Escape") onClose();
     };
+    document.addEventListener("pointerdown", down, true);
     document.addEventListener("mousedown", down, true);
     document.addEventListener("keydown", key, true);
     window.addEventListener("blur", onClose);
     window.addEventListener("resize", onClose);
     return () => {
+      document.removeEventListener("pointerdown", down, true);
       document.removeEventListener("mousedown", down, true);
       document.removeEventListener("keydown", key, true);
       window.removeEventListener("blur", onClose);

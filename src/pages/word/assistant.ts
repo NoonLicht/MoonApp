@@ -1,5 +1,13 @@
-import { commandTools, describeResult, imageTool, str, webTools } from "@/lib/assistant/sharedTools";
-import type { AssistantTool, DocAdapter } from "@/lib/assistant/types";
+import {
+  commandTools,
+  describeResult,
+  imageTool,
+  partialNumber,
+  partialString,
+  str,
+  webTools,
+} from "@/lib/assistant/sharedTools";
+import type { AssistantTool, DocAdapter, LiveWrite } from "@/lib/assistant/types";
 import type { Cx } from "@/pages/word/ribbon/types";
 
 interface Block {
@@ -20,7 +28,12 @@ async function blocks(cx: Cx): Promise<Block[]> {
 
 const HEADING = /^(title|subtitle|heading|заголовок)/i;
 
-function render(list: Block[], from: number, to: number, limit: number): { text: string; next: number | null } {
+function render(
+  list: Block[],
+  from: number,
+  to: number,
+  limit: number,
+): { text: string; next: number | null } {
   const out: string[] = [];
   let size = 0;
   for (const b of list) {
@@ -45,8 +58,102 @@ async function typeLines(cx: Cx, text: string): Promise<void> {
 async function paragraph(cx: Cx, n: unknown): Promise<Block> {
   const idx = Number(n);
   const b = (await blocks(cx)).find((x) => x.index === idx);
-  if (!Number.isInteger(idx) || !b) throw new Error(`no paragraph ${str(n)} (read the document to see numbers)`);
+  if (!Number.isInteger(idx) || !b)
+    throw new Error(`no paragraph ${str(n)} (read the document to see numbers)`);
   return b;
+}
+
+/**
+ * Куда ставить каретку перед вводом текста. Возвращает «хвост», который нужно набрать после текста
+ * (для вставки в начало — перенос строки, чтобы прежний первый абзац не склеился с новым).
+ */
+async function placeCaret(cx: Cx, where: string, para: unknown): Promise<string> {
+  if (where === "end") {
+    describeResult(await cx.exec("caret.docEnd"));
+    const list = await blocks(cx);
+    if (list.length && list[list.length - 1].text)
+      describeResult(await cx.exec("text.newParagraph"));
+  } else if (where === "start") {
+    describeResult(await cx.exec("caret.docStart"));
+    return "\n";
+  } else if (where === "after_paragraph") {
+    const b = await paragraph(cx, para);
+    describeResult(
+      await cx.exec("select.range", { anchor: body(b.index, b.len), focus: body(b.index, b.len) }),
+    );
+    describeResult(await cx.exec("text.newParagraph"));
+  }
+  return "";
+}
+
+/**
+ * Живая запись текста: пока модель пишет аргументы вызова, текст уже набирается в документе.
+ * `locate` вызывается один раз, когда из аргументов известно место; возвращает хвост для конца.
+ * Пока место неизвестно (модель ещё не написала `where`), документ не трогаем: обычный `run` сделает всё сам.
+ */
+function liveWriter(
+  cx: Cx,
+  ready: (raw: string) => boolean,
+  locate: (raw: string) => Promise<string>,
+  signal?: AbortSignal,
+  /** Модель прислала пустой текст: например, замена абзаца на «ничего» должна стереть выделенное. */
+  onEmpty?: () => Promise<void>,
+): LiveWrite {
+  let state: "idle" | "placing" | "on" = "idle";
+  let typed = "";
+  let target = "";
+  let tail = "";
+  let failure: Error | null = null;
+  let chain: Promise<void> = Promise.resolve();
+  const pump = (): void => {
+    chain = chain.then(async () => {
+      if (failure || signal?.aborted || state !== "on") return;
+      const want = target;
+      if (want.length <= typed.length || !want.startsWith(typed)) return;
+      const chunk = want.slice(typed.length);
+      typed = want;
+      try {
+        await typeLines(cx, chunk);
+      } catch (e) {
+        failure = e as Error;
+      }
+    });
+  };
+  return {
+    push: (raw) => {
+      const t = partialString(raw, "text");
+      if (!t) return;
+      target = t.text;
+      if (state === "idle" && ready(raw)) {
+        state = "placing";
+        chain = chain.then(async () => {
+          try {
+            tail = await locate(raw);
+            state = "on";
+          } catch (e) {
+            failure = e as Error;
+            state = "idle";
+          }
+        });
+      }
+      pump();
+    },
+    started: () => state !== "idle",
+    finish: async (args) => {
+      const full = str(args.text);
+      target = full;
+      pump();
+      await chain;
+      if (failure) throw failure;
+      if (full.length > typed.length && full.startsWith(typed)) {
+        await typeLines(cx, full.slice(typed.length));
+        typed = full;
+      }
+      if (!full && onEmpty) await onEmpty();
+      if (tail) await typeLines(cx, tail);
+      return `Wrote ${full.split("\n").length} paragraph(s).`;
+    },
+  };
 }
 
 /** `getCx` отдаёт актуальный контекст страницы: пока агент работает, состояние документа меняется. */
@@ -97,43 +204,47 @@ export function wordAdapter(getCx: () => Cx, lang: string): DocAdapter {
       group: "edit",
       name: "insert_text",
       description:
-        "Insert new text. Each line becomes its own paragraph. `where`: cursor (at the caret, replaces a selection), end (after the last paragraph), start (before the first), after_paragraph (needs `paragraph`).",
+        "Insert new text. Each line becomes its own paragraph. `where`: cursor (at the caret, replaces a selection), end (after the last paragraph), start (before the first), after_paragraph (needs `paragraph`). To add paragraphs after the existing text use where=end (cursor glues the text to the caret). Put ALL the text in ONE call and write `where` (and `paragraph`) BEFORE `text`.",
       parameters: {
         type: "object",
         properties: {
-          text: { type: "string", description: "text to insert; use \\n between paragraphs" },
           where: { type: "string", enum: ["cursor", "end", "start", "after_paragraph"] },
           paragraph: { type: "number", description: "paragraph number for after_paragraph" },
+          text: { type: "string", description: "text to insert; use \\n between paragraphs" },
         },
-        required: ["text"],
+        required: ["where", "text"],
       },
       label: () => "Writing to the document",
+      live: (signal) =>
+        liveWriter(
+          cx,
+          (raw) => {
+            const w = partialString(raw, "where");
+            return (
+              !!w?.done &&
+              (w.text !== "after_paragraph" || partialNumber(raw, "paragraph") !== null)
+            );
+          },
+          (raw) =>
+            placeCaret(
+              cx,
+              partialString(raw, "where")?.text ?? "cursor",
+              partialNumber(raw, "paragraph"),
+            ),
+          signal,
+        ),
       run: async (a) => {
         const text = str(a.text);
-        const where = str(a.where) || "cursor";
-        if (where === "end") {
-          describeResult(await cx.exec("caret.docEnd"));
-          const list = await blocks(cx);
-          if (list.length && list[list.length - 1].text) describeResult(await cx.exec("text.newParagraph"));
-        } else if (where === "start") {
-          describeResult(await cx.exec("caret.docStart"));
-          await typeLines(cx, `${text}\n`);
-          return "Inserted at the start.";
-        } else if (where === "after_paragraph") {
-          const b = await paragraph(cx, a.paragraph);
-          describeResult(
-            await cx.exec("select.range", { anchor: body(b.index, b.len), focus: body(b.index, b.len) }),
-          );
-          describeResult(await cx.exec("text.newParagraph"));
-        }
-        await typeLines(cx, text);
+        const tail = await placeCaret(cx, str(a.where) || "cursor", a.paragraph);
+        await typeLines(cx, text + tail);
         return `Inserted ${text.split("\n").length} paragraph(s).`;
       },
     },
     {
       group: "edit",
       name: "replace_paragraph",
-      description: "Replace the whole text of one paragraph (keeps its style). Empty text deletes the text, not the paragraph.",
+      description:
+        "Replace the whole text of one paragraph (keeps its style). Empty text deletes the text, not the paragraph.",
       parameters: {
         type: "object",
         properties: {
@@ -143,9 +254,33 @@ export function wordAdapter(getCx: () => Cx, lang: string): DocAdapter {
         required: ["paragraph", "text"],
       },
       label: (a) => `Rewriting paragraph: ${str(a.paragraph)}`,
+      live: (signal) => {
+        let len = 0;
+        return liveWriter(
+          cx,
+          (raw) => partialNumber(raw, "paragraph") !== null,
+          async (raw) => {
+            const b = await paragraph(cx, partialNumber(raw, "paragraph"));
+            len = b.len;
+            describeResult(
+              await cx.exec("select.range", {
+                anchor: body(b.index, 0),
+                focus: body(b.index, b.len),
+              }),
+            );
+            return "";
+          },
+          signal,
+          async () => {
+            if (len) describeResult(await cx.exec("text.delete"));
+          },
+        );
+      },
       run: async (a) => {
         const b = await paragraph(cx, a.paragraph);
-        describeResult(await cx.exec("select.range", { anchor: body(b.index, 0), focus: body(b.index, b.len) }));
+        describeResult(
+          await cx.exec("select.range", { anchor: body(b.index, 0), focus: body(b.index, b.len) }),
+        );
         const text = str(a.text);
         if (!text) {
           if (b.len) describeResult(await cx.exec("text.delete"));
@@ -163,12 +298,15 @@ export function wordAdapter(getCx: () => Cx, lang: string): DocAdapter {
         required: ["paragraph"],
       },
       label: (a) => `Deleting paragraph: ${str(a.paragraph)}`,
+      limit: 3,
       run: async (a) => {
         const b = await paragraph(cx, a.paragraph);
-        describeResult(await cx.exec("select.range", { anchor: body(b.index, 0), focus: body(b.index, 0) }));
+        describeResult(
+          await cx.exec("select.range", { anchor: body(b.index, 0), focus: body(b.index, 0) }),
+        );
         describeResult(await cx.exec("select.paragraph"));
         describeResult(await cx.exec("text.delete"));
-        return `Paragraph ${b.index} deleted. Later paragraphs shift up by one.`;
+        return `Paragraph ${b.index} deleted. Later paragraphs moved up by one (the old ${b.index + 1} is now ${b.index}). Do not delete again unless the user asked for several paragraphs: read the document first.`;
       },
     },
     {
@@ -187,10 +325,18 @@ export function wordAdapter(getCx: () => Cx, lang: string): DocAdapter {
       label: (a) => `Replacing: ${str(a.find)}`,
       run: async (a) =>
         describeResult(
-          await cx.exec("edit.replaceAll", { text: str(a.find), with: str(a.replace), matchCase: !!a.match_case }),
+          await cx.exec("edit.replaceAll", {
+            text: str(a.find),
+            with: str(a.replace),
+            matchCase: !!a.match_case,
+          }),
         ),
     },
-    ...commandTools("word", () => cx.docId, (c, p) => cx.exec(c, p)),
+    ...commandTools(
+      "word",
+      () => cx.docId,
+      (c, p) => cx.exec(c, p),
+    ),
     ...webTools(lang),
     imageTool({
       sink,
@@ -198,7 +344,8 @@ export function wordAdapter(getCx: () => Cx, lang: string): DocAdapter {
         if (place === "end") {
           describeResult(await cx.exec("caret.docEnd"));
           const list = await blocks(cx);
-          if (list.length && list[list.length - 1].text) describeResult(await cx.exec("text.newParagraph"));
+          if (list.length && list[list.length - 1].text)
+            describeResult(await cx.exec("text.newParagraph"));
         }
         describeResult(await cx.exec("insert.picture", { data, width: 324, alt }));
       },

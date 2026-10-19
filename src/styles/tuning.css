@@ -689,3 +689,20 @@
   font-size: 12px;
   max-width: 190px;
 }
+
+/* Группа управления в строке сборки: всё в один ряд и по правому краю */
+.tn-row-ctl {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+  flex: none;
+  max-width: 100%;
+}
+.tn-row-ctl .tn-select {
+  width: 176px;
+}
+.tn-row-ctl .tn-select[title="CUDA"] {
+  width: 112px;
+}

@@ -6982,10 +6982,11 @@
       "removeConfirm": "Remove the ComfyUI build? Models, results and workflows stay.",
       "startingHint": "ComfyUI is loading; the first start can take up to a minute.",
       "view": {
-        "gen": "Generate",
-        "editor": "Graph editor",
+        "gen": "Presets",
+        "editor": "ComfyUI",
         "models": "Models",
-        "library": "My workflows"
+        "library": "My workflows",
+        "settings": "Settings"
       },
       "preset": {
         "txt2img": "Text → image",
@@ -7180,7 +7181,8 @@
       "vaeFromCkpt": "From the checkpoint",
       "addLora": "Add LoRA",
       "noLoras": "No files: add them in the Models tab (loras folder).",
-      "loraHint": "LoRA, DoRA, LoCon, LoHa and LoKr all work: ComfyUI detects the type itself. The first number is the model strength, the second is the text encoder strength."
+      "loraHint": "LoRA, DoRA, LoCon, LoHa and LoKr all work: ComfyUI detects the type itself. The first number is the model strength, the second is the text encoder strength.",
+      "openWindow": "In a separate window"
     }
   },
   "word": {

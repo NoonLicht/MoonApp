@@ -94,7 +94,12 @@ export function commandTools(
         "Returns command ids with their parameter format. Call it before run_command if you are not sure of an id.",
       parameters: {
         type: "object",
-        properties: { query: { type: "string", description: "what you want to do, in English, e.g. 'bold', 'insert table', 'sort'" } },
+        properties: {
+          query: {
+            type: "string",
+            description: "what you want to do, in English, e.g. 'bold', 'insert table', 'sort'",
+          },
+        },
         required: ["query"],
       },
       label: (a) => `Finding commands: ${str(a.query)}`,
@@ -102,7 +107,10 @@ export function commandTools(
         const hits = searchCommands(await commands(kind, docId()), str(a.query));
         if (!hits.length) return "No commands found; try other words.";
         return hits
-          .map((c) => `${c.id} — ${c.label ?? ""}${c.params ? ` — params: ${c.params.slice(0, 220)}` : ""}`)
+          .map(
+            (c) =>
+              `${c.id} — ${c.label ?? ""}${c.params ? ` — params: ${c.params.slice(0, 220)}` : ""}`,
+          )
           .join("\n");
       },
     },
@@ -151,7 +159,11 @@ export function imageTool(o: {
       type: "object",
       properties: {
         prompt: { type: "string", description: "detailed description of the picture, in English" },
-        size: { type: "string", enum: ["square", "landscape", "portrait"], description: "default square" },
+        size: {
+          type: "string",
+          enum: ["square", "landscape", "portrait"],
+          description: "default square",
+        },
         place: {
           type: "string",
           description:
@@ -196,8 +208,10 @@ export function webTools(lang: string): AssistantTool[] {
       run: async (a) => {
         const r = await api.assistantWebSearch(str(a.query), lang);
         if (!r.hits.length)
-          return "No results. Configure a search source (SearXNG or Brave) in the assistant settings, or open a known page with open_page.";
-        return r.hits.map((h, i) => `${i + 1}. ${h.title}\n   ${h.url}\n   ${h.snippet}`).join("\n");
+          return "No results for this query. Try different or shorter words, another language, or open a known page with open_page.";
+        return r.hits
+          .map((h, i) => `${i + 1}. ${h.title}\n   ${h.url}\n   ${h.snippet}`)
+          .join("\n");
       },
     },
     {
@@ -220,4 +234,41 @@ export function webTools(lang: string): AssistantTool[] {
       },
     },
   ];
+}
+
+/**
+ * Значение строкового поля из НЕПОЛНОГО JSON аргументов: то, что модель успела написать.
+ * Незавершённая escape-последовательность в конце не включается (дойдёт со следующим куском).
+ * `null` — поле ещё не началось; `done` — строка закрыта.
+ */
+export function partialString(raw: string, key: string): { text: string; done: boolean } | null {
+  const m = new RegExp(String.raw`"${key}"\s*:\s*"`).exec(raw);
+  if (!m) return null;
+  let out = "";
+  for (let i = m.index + m[0].length; i < raw.length; i++) {
+    const c = raw[i];
+    if (c === '"') return { text: out, done: true };
+    if (c !== "\\") {
+      out += c;
+      continue;
+    }
+    const n = raw[i + 1];
+    if (n === undefined) break;
+    if (n === "u") {
+      const hex = raw.slice(i + 2, i + 6);
+      if (hex.length < 4 || !/^[0-9a-fA-F]{4}$/.test(hex)) break;
+      out += String.fromCharCode(parseInt(hex, 16));
+      i += 5;
+      continue;
+    }
+    out += n === "n" ? "\n" : n === "t" ? "\t" : n === "r" ? "" : n;
+    i += 1;
+  }
+  return { text: out, done: false };
+}
+
+/** Число из неполного JSON (поле должно быть уже завершено следующим знаком). */
+export function partialNumber(raw: string, key: string): number | null {
+  const m = new RegExp(String.raw`"${key}"\s*:\s*(-?\d+)\s*[,}]`).exec(raw);
+  return m ? Number(m[1]) : null;
 }

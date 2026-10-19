@@ -2687,7 +2687,7 @@
   "App commands": "أوامر التطبيق",
   "Any ribbon command: formatting, tables, charts, styles…": "أي أمر في الشريط: التنسيق والجداول والمخططات والأنماط…",
   "Web access": "الوصول إلى الإنترنت",
-  "Search the internet and read pages, with source links": "البحث في الإنترنت وقراءة الصفحات مع روابط المصادر",
+  "Searches the internet by itself, no keys or setup; answers with source links": "يبحث في الإنترنت بنفسه دون مفاتيح أو إعدادات؛ ويجيب مع روابط المصادر",
   "Image generation": "توليد الصور",
   "Create pictures with Qwen-Image and insert them": "إنشاء صور بواسطة Qwen-Image وإدراجها",
   "Install a Qwen-Image model in Settings first": "ثبّت نموذج Qwen-Image من الإعدادات أولاً",

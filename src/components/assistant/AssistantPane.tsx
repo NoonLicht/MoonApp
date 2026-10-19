@@ -10,12 +10,11 @@ import {
   SlidersHorizontal,
   Sparkles,
   Square,
-  Trash2,
+  SquarePen,
   X,
 } from "lucide-react";
 import { api } from "@/api/client";
 import type { LlamaStatus } from "@/api/client";
-import type { WebSettings } from "@/api/apiAssistant";
 import type { ChatItem, ChatStep, DocAdapter } from "@/lib/assistant/types";
 import { useAssistant } from "@/lib/assistant/useAssistant";
 
@@ -107,11 +106,6 @@ function Switch({
 function Settings({ state, tw }: { state: ReturnType<typeof useAssistant>; tw: Tw }) {
   const { settings: s, setSettings } = state;
   const [st, setSt] = useState<LlamaStatus | null>(null);
-  const [web, setWeb] = useState<WebSettings | null>(null);
-  const [searx, setSearx] = useState("");
-  const [brave, setBrave] = useState("");
-  const [saved, setSaved] = useState(false);
-  const [err, setErr] = useState("");
 
   const refresh = useCallback(() => {
     api
@@ -122,13 +116,6 @@ function Settings({ state, tw }: { state: ReturnType<typeof useAssistant>; tw: T
   useEffect(() => {
     refresh();
     const t = window.setInterval(refresh, 3000);
-    api
-      .assistantWebSettings()
-      .then((w) => {
-        setWeb(w);
-        setSearx(w.searxng);
-      })
-      .catch(() => undefined);
     return () => window.clearInterval(t);
   }, [refresh]);
 
@@ -139,22 +126,6 @@ function Settings({ state, tw }: { state: ReturnType<typeof useAssistant>; tw: T
   const dl = st?.download;
   const downloading = dl?.status === "downloading";
   const imageReady = !!st?.sd?.ready;
-
-  const saveWeb = async (): Promise<void> => {
-    setErr("");
-    try {
-      const w = await api.assistantSetWebSettings({
-        searxng: searx,
-        ...(brave.trim() ? { braveKey: brave.trim() } : {}),
-      });
-      setWeb(w);
-      setBrave("");
-      setSaved(true);
-      window.setTimeout(() => setSaved(false), 1800);
-    } catch (e) {
-      setErr(String((e as Error).message || e));
-    }
-  };
 
   return (
     <div className="as-settings">
@@ -180,7 +151,11 @@ function Settings({ state, tw }: { state: ReturnType<typeof useAssistant>; tw: T
           const items = (st?.catalog ?? []).filter((m) => m.group === r.group);
           const q4 = items.find((m) => m.note === "q4km") ?? items[0];
           const have = items.some((m) => st?.models.some((x) => x.file === m.file));
-          const active = downloading && items.some((m) => m.file === dl?.file || m.extra?.some((e) => (e.as ?? e.file) === dl?.file));
+          const active =
+            downloading &&
+            items.some(
+              (m) => m.file === dl?.file || m.extra?.some((e) => (e.as ?? e.file) === dl?.file),
+            );
           return (
             <div key={r.group} className="as-rec-row">
               <div>
@@ -217,7 +192,9 @@ function Settings({ state, tw }: { state: ReturnType<typeof useAssistant>; tw: T
         on={s.agent}
         onChange={(v) => setSettings({ agent: v })}
         title={tw("Agent mode")}
-        hint={tw("Works in several steps on its own: reads the document, edits it, looks things up")}
+        hint={tw(
+          "Works in several steps on its own: reads the document, edits it, looks things up",
+        )}
       />
       <Switch
         on={s.edit}
@@ -238,14 +215,18 @@ function Settings({ state, tw }: { state: ReturnType<typeof useAssistant>; tw: T
         disabled={!s.agent}
         onChange={(v) => setSettings({ web: v })}
         title={tw("Web access")}
-        hint={tw("Search the internet and read pages, with source links")}
+        hint={tw("Searches the internet by itself, no keys or setup; answers with source links")}
       />
       <Switch
         on={s.images}
         disabled={!s.agent || !imageReady}
         onChange={(v) => setSettings({ images: v })}
         title={tw("Image generation")}
-        hint={imageReady ? tw("Create pictures with Qwen-Image and insert them") : tw("Install a Qwen-Image model in Settings first")}
+        hint={
+          imageReady
+            ? tw("Create pictures with Qwen-Image and insert them")
+            : tw("Install a Qwen-Image model in Settings first")
+        }
       />
       <Switch
         on={s.think}
@@ -253,31 +234,6 @@ function Settings({ state, tw }: { state: ReturnType<typeof useAssistant>; tw: T
         title={tw("Thinking mode")}
         hint={tw("Slower, but more careful on hard tasks")}
       />
-
-      <div className="as-sec">{tw("Web search sources")}</div>
-      <div className="as-note">
-        {tw("Wikipedia works without setup. For full web search add your own SearXNG address or a Brave Search key.")}
-      </div>
-      <input
-        className="as-input"
-        value={searx}
-        placeholder="SearXNG: https://…"
-        onChange={(e) => setSearx(e.target.value)}
-      />
-      <input
-        className="as-input"
-        type="password"
-        value={brave}
-        placeholder={web?.hasBrave ? `Brave API key: ${tw("saved")}` : "Brave Search API key"}
-        onChange={(e) => setBrave(e.target.value)}
-      />
-      <div className="as-row">
-        <button type="button" className="as-btn" onClick={() => void saveWeb()}>
-          {tw("Save")}
-        </button>
-        {saved && <span className="as-ok">{tw("Saved")}</span>}
-        {err && <span className="as-err">{err}</span>}
-      </div>
     </div>
   );
 }
@@ -299,7 +255,9 @@ function Bubble({
   if (it.role === "user")
     return (
       <div className="as-msg user">
-        {it.images?.map((src, i) => <img key={i} src={src} alt="" className="as-thumb" />)}
+        {it.images?.map((src, i) => (
+          <img key={i} src={src} alt="" className="as-thumb" />
+        ))}
         <div className="as-text">{it.text}</div>
       </div>
     );
@@ -312,9 +270,11 @@ function Bubble({
           ))}
         </div>
       ) : null}
-      {it.pictures?.map((src, i) => <img key={i} src={src} alt="" className="as-pic" />)}
+      {it.pictures?.map((src, i) => (
+        <img key={i} src={src} alt="" className="as-pic" />
+      ))}
       {it.text ? (
-        <div className="as-text">
+        <div className={`as-text${busy && !it.error ? " as-caret" : ""}`}>
           <Linkified text={it.text} />
         </div>
       ) : busy && !it.error ? (
@@ -416,28 +376,34 @@ export default function AssistantPane({
     <aside className="wd-pane right as-pane">
       <div className="wd-pane-head">
         <Sparkles size={14} />
-        <span style={{ flex: 1 }}>{tw("Assistant")}</span>
+        <span className="as-pane-title">{tw("Assistant")}</span>
         <button
           type="button"
-          className={`wd-x-btn${showSettings ? " on" : ""}`}
+          className={`as-head-btn${showSettings ? " on" : ""}`}
           aria-label={tw("Assistant settings")}
           title={tw("Assistant settings")}
           onClick={() => setShowSettings((v) => !v)}
         >
-          <SlidersHorizontal size={14} />
+          <SlidersHorizontal size={15} />
         </button>
         <button
           type="button"
-          className="wd-x-btn"
+          className="as-head-btn"
           aria-label={tw("New chat")}
           title={tw("New chat")}
           disabled={!items.length}
           onClick={clear}
         >
-          <Trash2 size={14} />
+          <SquarePen size={15} />
         </button>
-        <button type="button" className="wd-x-btn" aria-label={tw("Close")} onClick={onClose}>
-          <X size={14} />
+        <button
+          type="button"
+          className="as-head-btn"
+          aria-label={tw("Close")}
+          title={tw("Close")}
+          onClick={onClose}
+        >
+          <X size={15} />
         </button>
       </div>
 
@@ -485,7 +451,11 @@ export default function AssistantPane({
                 {images.map((src, i) => (
                   <span key={i} className="as-att">
                     <img src={src} alt="" />
-                    <button type="button" aria-label={tw("Remove")} onClick={() => setImages((c) => c.filter((_, j) => j !== i))}>
+                    <button
+                      type="button"
+                      aria-label={tw("Remove")}
+                      onClick={() => setImages((c) => c.filter((_, j) => j !== i))}
+                    >
                       <X size={10} />
                     </button>
                   </span>
@@ -511,7 +481,13 @@ export default function AssistantPane({
               }}
             />
             <div className="as-composer-bar">
-              <button type="button" className="wd-x-btn" title={tw("Attach image")} aria-label={tw("Attach image")} onClick={() => file.current?.click()}>
+              <button
+                type="button"
+                className="as-icon-btn"
+                title={tw("Attach image")}
+                aria-label={tw("Attach image")}
+                onClick={() => file.current?.click()}
+              >
                 <ImageIcon size={15} />
               </button>
               <input
@@ -531,11 +507,22 @@ export default function AssistantPane({
               </span>
               <span style={{ flex: 1 }} />
               {busy ? (
-                <button type="button" className="as-send stop" onClick={stop} aria-label={tw("Stop")}>
+                <button
+                  type="button"
+                  className="as-send stop"
+                  onClick={stop}
+                  aria-label={tw("Stop")}
+                >
                   <Square size={13} />
                 </button>
               ) : (
-                <button type="button" className="as-send" disabled={!text.trim()} onClick={() => submit()} aria-label={tw("Send")}>
+                <button
+                  type="button"
+                  className="as-send"
+                  disabled={!text.trim()}
+                  onClick={() => submit()}
+                  aria-label={tw("Send")}
+                >
                   <Send size={14} />
                 </button>
               )}

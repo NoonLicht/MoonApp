@@ -655,7 +655,7 @@
   "App commands": "Commandes de l'application",
   "Any ribbon command: formatting, tables, charts, styles…": "Toute commande du ruban : mise en forme, tableaux, graphiques, styles…",
   "Web access": "Accès à internet",
-  "Search the internet and read pages, with source links": "Rechercher sur internet et lire des pages, avec liens vers les sources",
+  "Searches the internet by itself, no keys or setup; answers with source links": "Cherche tout seul sur internet, sans clé ni réglage ; répond avec des liens vers les sources",
   "Image generation": "Génération d'images",
   "Create pictures with Qwen-Image and insert them": "Créer des images avec Qwen-Image et les insérer",
   "Install a Qwen-Image model in Settings first": "Installez d'abord un modèle Qwen-Image dans les réglages",

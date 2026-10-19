@@ -2,7 +2,7 @@
  * API помощника для «Документов» и «Таблиц» (подключён к /api/llamacpp/assistant):
  *
  *  POST /turn         — {model?, messages, tools?, maxTokens?, think?} → поток NDJSON:
- *                       {t:"token",d} | {t:"thinking",d} | {t:"done",content,toolCalls,finish,model} | {t:"error",error}
+ *                       {t:"token",d} | {t:"thinking",d} | {t:"toolArgs",i,name,d} | {t:"done",content,toolCalls,finish,model} | {t:"error",error}
  *  POST /web/search   — {q, lang?, limit?} → {provider, hits:[{title,url,snippet}]}
  *  POST /web/fetch    — {url, offset?, maxChars?} → {url, title, text, total, next}
  *  GET  /web/settings — {searxng, hasBrave};  POST /web/settings — {searxng?, braveKey?}
@@ -25,7 +25,9 @@ router.post("/turn", async (req, res) => {
   if (!Array.isArray(b.messages) || !b.messages.length)
     return void res.status(400).json({ error: "messages_required" });
   res.setHeader("Content-Type", "application/x-ndjson; charset=utf-8");
-  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Cache-Control", "no-cache, no-transform");
+  res.setHeader("X-Accel-Buffering", "no");
+  res.socket?.setNoDelay(true);
   res.flushHeaders?.();
   const ac = new AbortController();
   res.on("close", () => {
@@ -37,11 +39,16 @@ router.post("/turn", async (req, res) => {
   try {
     const r = await runTurn(
       { ...b, messages: b.messages, signal: ac.signal },
-      { token: (d) => send({ t: "token", d }), thinking: (d) => send({ t: "thinking", d }) },
+      {
+        token: (d) => send({ t: "token", d }),
+        thinking: (d) => send({ t: "thinking", d }),
+        toolArgs: (i, name, d) => send({ t: "toolArgs", i, name, d }),
+      },
     );
     send({ t: "done", ...r });
   } catch (e) {
-    if (!ac.signal.aborted) send({ t: "error", error: String((e as Error).message || e).slice(0, 400) });
+    if (!ac.signal.aborted)
+      send({ t: "error", error: String((e as Error).message || e).slice(0, 400) });
   }
   res.end();
 });
@@ -55,7 +62,11 @@ router.post("/web/search", async (req, res) => {
     const q = String(req.body?.q ?? "").trim();
     if (!q) return void res.status(400).json({ error: "q_required" });
     res.json(
-      await webSearch(q, String(req.body?.lang ?? "en"), Math.min(10, Number(req.body?.limit) || 6)),
+      await webSearch(
+        q,
+        String(req.body?.lang ?? "en"),
+        Math.min(10, Number(req.body?.limit) || 6),
+      ),
     );
   } catch (e) {
     fail(res, e);

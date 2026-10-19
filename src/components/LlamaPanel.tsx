@@ -127,7 +127,9 @@ export default function LlamaPanel({
       if (kind && m.kind !== kind) continue;
       let g = out.find((x) => x.id === m.group);
       if (!g)
-        out.push((g = { id: m.group, title: m.title, kind: m.kind, section: m.section, items: [] }));
+        out.push(
+          (g = { id: m.group, title: m.title, kind: m.kind, section: m.section, items: [] }),
+        );
       g.items.push(m);
     }
     return out;
@@ -141,7 +143,8 @@ export default function LlamaPanel({
   const act2 = st.activity;
   const files = new Set([...st.models, ...(st.sdModels ?? [])].map((x) => x.file));
   const haveModel = (m: LlamaCatalogModel): boolean =>
-    files.has(m.file) && (m.extra ?? []).every((e) => files.has(e.as ?? e.file.split("/").pop() ?? e.file));
+    files.has(m.file) &&
+    (m.extra ?? []).every((e) => files.has(e.as ?? e.file.split("/").pop() ?? e.file));
   const chatFiles = st.models
     .map((x) => x.file)
     .filter((f) => !/embedding|mmproj|chandra|tts|translategemma/i.test(f));
@@ -151,8 +154,7 @@ export default function LlamaPanel({
       (x) =>
         !st.catalog.some(
           (m) =>
-            m.file === x.file ||
-            m.extra?.some((e) => (e.as ?? e.file.split("/").pop()) === x.file),
+            m.file === x.file || m.extra?.some((e) => (e.as ?? e.file.split("/").pop()) === x.file),
         ) &&
         !/mmproj/i.test(x.file) &&
         !/vae.*\.safetensors$/i.test(x.file) &&
@@ -316,83 +318,85 @@ export default function LlamaPanel({
                     </div>
                   )}
                 </div>
-                {b.installed && (
-                  <Badge tone="teal">
-                    {t("translate.installed")}
-                    {b.tag ? ` · ${b.tag}` : ""}
-                    {b.cuda ? ` · CUDA ${b.cuda}` : ""}
-                  </Badge>
-                )}
-                {!active && (
-                  <select
-                    className="tn-select"
-                    value={pick[b.id]?.tag ?? pinned}
-                    disabled={installing}
-                    title={t("llama.version")}
-                    onChange={(e) =>
-                      setPick((m) => ({ ...m, [b.id]: { ...m[b.id], tag: e.target.value } }))
-                    }
-                  >
-                    {[...new Set([pinned, ...releases.map((r) => r.tag)])]
-                      .filter(Boolean)
-                      .map((tag) => {
-                        const rel = releases.find((r) => r.tag === tag);
-                        return (
-                          <option key={tag} value={tag}>
-                            {tag}
-                            {tag === pinned ? ` · ${t("llama.versionPinned")}` : ""}
-                            {rel?.date ? ` · ${rel.date}` : ""}
-                          </option>
-                        );
-                      })}
-                  </select>
-                )}
-                {!active && b.id === "cuda" && (
-                  <select
-                    className="tn-select"
-                    value={pick[b.id]?.cuda ?? "13.4"}
-                    disabled={installing}
-                    title="CUDA"
-                    onChange={(e) =>
-                      setPick((m) => ({ ...m, [b.id]: { ...m[b.id], cuda: e.target.value } }))
-                    }
-                  >
-                    <option value="13.4">CUDA 13.4</option>
-                    <option value="12.4">CUDA 12.4</option>
-                  </select>
-                )}
-                {active ? (
-                  <Btn icon={X} onClick={() => void act(() => api.llamaBuildCancel())}>
-                    {t("translate.cancel")}
-                  </Btn>
-                ) : (
-                  <>
-                    <Btn
-                      icon={Download}
+                <div className="tn-row-ctl">
+                  {b.installed && (
+                    <Badge tone="teal">
+                      {t("translate.installed")}
+                      {b.tag ? ` · ${b.tag}` : ""}
+                      {b.cuda ? ` · CUDA ${b.cuda}` : ""}
+                    </Badge>
+                  )}
+                  {!active && (
+                    <select
+                      className="tn-select compact-select"
+                      value={pick[b.id]?.tag ?? pinned}
                       disabled={installing}
-                      onClick={() =>
-                        void act(() =>
-                          api.llamaBuildInstall(
-                            b.id,
-                            pick[b.id]?.tag ?? pinned,
-                            b.id === "cuda" ? (pick[b.id]?.cuda ?? "13.4") : undefined,
-                          ),
-                        )
+                      title={t("llama.version")}
+                      onChange={(e) =>
+                        setPick((m) => ({ ...m, [b.id]: { ...m[b.id], tag: e.target.value } }))
                       }
                     >
-                      {b.installed ? t("llama.reinstall") : t("translate.download")}
+                      {[...new Set([pinned, ...releases.map((r) => r.tag)])]
+                        .filter(Boolean)
+                        .map((tag) => {
+                          const rel = releases.find((r) => r.tag === tag);
+                          return (
+                            <option key={tag} value={tag}>
+                              {tag}
+                              {tag === pinned ? ` · ${t("llama.versionPinned")}` : ""}
+                              {rel?.date ? ` · ${rel.date}` : ""}
+                            </option>
+                          );
+                        })}
+                    </select>
+                  )}
+                  {!active && b.id === "cuda" && (
+                    <select
+                      className="tn-select compact-select"
+                      value={pick[b.id]?.cuda ?? "13.4"}
+                      disabled={installing}
+                      title="CUDA"
+                      onChange={(e) =>
+                        setPick((m) => ({ ...m, [b.id]: { ...m[b.id], cuda: e.target.value } }))
+                      }
+                    >
+                      <option value="13.4">CUDA 13.4</option>
+                      <option value="12.4">CUDA 12.4</option>
+                    </select>
+                  )}
+                  {active ? (
+                    <Btn icon={X} onClick={() => void act(() => api.llamaBuildCancel())}>
+                      {t("translate.cancel")}
                     </Btn>
-                    {b.installed && (
+                  ) : (
+                    <>
                       <Btn
-                        icon={Trash2}
+                        icon={Download}
                         disabled={installing}
-                        onClick={() => void act(() => api.llamaBuildRemove(b.id))}
+                        onClick={() =>
+                          void act(() =>
+                            api.llamaBuildInstall(
+                              b.id,
+                              pick[b.id]?.tag ?? pinned,
+                              b.id === "cuda" ? (pick[b.id]?.cuda ?? "13.4") : undefined,
+                            ),
+                          )
+                        }
                       >
-                        {t("translate.delete")}
+                        {b.installed ? t("llama.reinstall") : t("translate.download")}
                       </Btn>
-                    )}
-                  </>
-                )}
+                      {b.installed && (
+                        <Btn
+                          icon={Trash2}
+                          disabled={installing}
+                          onClick={() => void act(() => api.llamaBuildRemove(b.id))}
+                        >
+                          {t("translate.delete")}
+                        </Btn>
+                      )}
+                    </>
+                  )}
+                </div>
               </div>
             );
           })}
@@ -454,7 +458,9 @@ export default function LlamaPanel({
                           downloading &&
                           (dl?.file === m.file ||
                             m.extra?.some((e) => (e.as ?? e.file.split("/").pop()) === dl?.file));
-                        const rest = (m.extra ?? []).filter((e) => !files.has(e.as ?? e.file.split("/").pop() ?? e.file));
+                        const rest = (m.extra ?? []).filter(
+                          (e) => !files.has(e.as ?? e.file.split("/").pop() ?? e.file),
+                        );
                         const restMb = rest.reduce((a, e) => a + e.sizeMb, 0);
                         return (
                           <div key={m.id} className="tn-row">
@@ -525,13 +531,14 @@ export default function LlamaPanel({
                     .filter((b) => b.installed)
                     .map((b) => t(`llama.build.${b.id}`).split(" ")[0])
                     .join(", ")}
-                  open={!!open.sd || !st.sd.builds.some((b) => b.installed)}
+                  open={!!open.sd}
                   onToggle={() => flip("sd")}
                 >
                   <div className="muted-sm">{t("llama.sdHint")}</div>
                   <div className="tn-list">
                     {st.sd.builds.map((b) => {
-                      const sdActive = st.sd.install.state === "working" && st.sd.install.id === b.id;
+                      const sdActive =
+                        st.sd.install.state === "working" && st.sd.install.id === b.id;
                       const sdBusy = st.sd.install.state === "working";
                       return (
                         <div key={b.id} className="tn-row">

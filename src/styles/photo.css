@@ -236,3 +236,55 @@
   gap: 8px;
   padding: 4px 0;
 }
+
+/* ComfyUI: ровные поля и кнопки в строках */
+.cf-tab .ph-grid {
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  align-items: end;
+}
+.cf-tab .field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.cf-tab .field-label {
+  white-space: normal;
+}
+.cf-tab input[type="number"],
+.cf-tab input[type="text"],
+.cf-tab input:not([type]) {
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 9px;
+}
+.cf-tab .ph-row:has(> .field) {
+  align-items: flex-end;
+}
+.cf-tab .ph-row .select-wrap {
+  min-width: 200px;
+}
+.cf-tab .btn {
+  height: 30px;
+  padding-block: 0;
+}
+
+/* Родной интерфейс ComfyUI на всю высоту страницы */
+.cf-native {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+}
+.cf-native .cf-frame {
+  height: calc(100vh - 210px);
+  min-height: 560px;
+}
+.app-shell .cf-tab .field input[type="number"],
+.app-shell .cf-tab .field input[type="text"],
+.app-shell .cf-tab .field input:not([type]) {
+  height: 30px;
+  min-height: 0;
+  padding: 0 10px;
+  box-sizing: border-box;
+}

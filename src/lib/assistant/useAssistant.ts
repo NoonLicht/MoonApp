@@ -2,14 +2,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { runAgent } from "@/lib/assistant/agent";
 import type { AssistantSettings, ChatItem, ChatStep, DocAdapter } from "@/lib/assistant/types";
 
-const KEY = "moonapp.assistant.v1";
+const KEY = "moonapp.assistant.v2";
 
 export const DEFAULT_SETTINGS: AssistantSettings = {
   model: "",
   agent: true,
   edit: true,
   commands: true,
-  web: false,
+  web: true,
   images: false,
   think: false,
 };
@@ -60,7 +60,10 @@ export function useAssistant(getAdapter: () => DocAdapter | null, docId: string)
 
   const patchItem = useCallback(
     (id: string, fn: (it: ChatItem) => ChatItem) =>
-      setChats((all) => ({ ...all, [docId]: (all[docId] ?? []).map((it) => (it.id === id ? fn(it) : it)) })),
+      setChats((all) => ({
+        ...all,
+        [docId]: (all[docId] ?? []).map((it) => (it.id === id ? fn(it) : it)),
+      })),
     [docId],
   );
 
@@ -73,7 +76,12 @@ export function useAssistant(getAdapter: () => DocAdapter | null, docId: string)
         .filter((it) => it.text && !it.error)
         .slice(-HISTORY)
         .map((it) => ({ role: it.role, text: it.text }));
-      const user: ChatItem = { id: uid(), role: "user", text: q, ...(images.length ? { images } : {}) };
+      const user: ChatItem = {
+        id: uid(),
+        role: "user",
+        text: q,
+        ...(images.length ? { images } : {}),
+      };
       const bot: ChatItem = { id: uid(), role: "assistant", text: "", steps: [] };
       setChats((all) => ({ ...all, [docId]: [...(all[docId] ?? []), user, bot] }));
       const ac = new AbortController();

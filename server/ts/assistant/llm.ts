@@ -12,6 +12,8 @@ export interface ToolCall {
   name: string;
   /** JSON-строка аргументов, как её отдала модель. */
   arguments: string;
+  /** Номер вызова в ответе модели (связывает потоковые аргументы с итоговым вызовом). */
+  index?: number;
 }
 
 export interface TurnMessage {
@@ -69,7 +71,12 @@ export async function runTurn(
     think?: boolean;
     signal?: AbortSignal;
   },
-  on: { token?: (d: string) => void; thinking?: (d: string) => void } = {},
+  on: {
+    token?: (d: string) => void;
+    thinking?: (d: string) => void;
+    /** Аргументы вызова растут: имя и очередной кусок JSON (для записи в документ по ходу набора). */
+    toolArgs?: (index: number, name: string, args: string) => void;
+  } = {},
 ): Promise<TurnResult> {
   const wantImages = o.messages.some((m) => m.images?.length);
   const r = resolve("chat", o.model || "", wantImages);
@@ -83,7 +90,8 @@ export async function runTurn(
     async (s) => {
       const body: Record<string, unknown> = {
         messages: messages.map((m) => {
-          if (m.role === "tool") return { role: "tool", tool_call_id: m.tool_call_id, content: m.content };
+          if (m.role === "tool")
+            return { role: "tool", tool_call_id: m.tool_call_id, content: m.content };
           if (m.role === "assistant" && m.tool_calls?.length)
             return {
               role: "assistant",
@@ -165,13 +173,14 @@ export async function runTurn(
             if (t.function?.name) cur.name += t.function.name;
             if (t.function?.arguments) cur.arguments += t.function.arguments;
             calls.set(i, cur);
+            if (cur.name && t.function?.arguments) on.toolArgs?.(i, cur.name, t.function.arguments);
           }
         },
       );
       if (streamError) throw new Error(`llamacpp error: ${streamError.slice(0, 300)}`);
       const toolCalls = [...calls.entries()]
         .sort((a, b) => a[0] - b[0])
-        .map(([i, c]) => ({ ...c, id: c.id || `call_${Date.now().toString(36)}_${i}` }))
+        .map(([i, c]) => ({ ...c, id: c.id || `call_${Date.now().toString(36)}_${i}`, index: i }))
         .filter((c) => c.name);
       return { content, toolCalls, finish, model: r.file };
     },

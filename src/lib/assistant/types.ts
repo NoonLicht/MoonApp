@@ -27,12 +27,27 @@ export interface AssistantSettings {
 
 export type ToolGroup = "read" | "edit" | "commands" | "web" | "images";
 
+/**
+ * Живая запись: пока модель ещё пишет аргументы вызова, инструмент уже вносит текст в документ.
+ * `push` получает JSON аргументов как есть (неполный); `finish` — готовые аргументы после хода.
+ */
+export interface LiveWrite {
+  push: (rawArgs: string) => void;
+  /** Начал ли инструмент менять документ: если нет, вызов выполняется обычным `run`. */
+  started: () => boolean;
+  finish: (args: Record<string, unknown>) => Promise<string>;
+}
+
 /** Инструмент, который помощник может вызвать: описание для модели и исполнитель. */
 export interface AssistantTool extends AssistantToolSpec {
   group: ToolGroup;
   /** Короткая подпись шага для чата («Читаю документ», «Ищу в интернете»). */
   label: (args: Record<string, unknown>) => string;
   run: (args: Record<string, unknown>, signal?: AbortSignal) => Promise<string>;
+  /** Потоковая запись в документ по мере генерации (только для правок текста). */
+  live?: (signal?: AbortSignal) => LiveWrite;
+  /** Сколько раз инструмент можно вызвать за один запрос пользователя (защита от лишних правок). */
+  limit?: number;
 }
 
 /** Приложение, в котором работает помощник: Word-страница или Excel-страница. */

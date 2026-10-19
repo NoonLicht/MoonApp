@@ -6982,10 +6982,11 @@
       "removeConfirm": "Supprimer ComfyUI ? Les modèles, résultats et workflows sont conservés.",
       "startingHint": "ComfyUI se charge ; le premier démarrage peut prendre jusqu'à une minute.",
       "view": {
-        "gen": "Générer",
-        "editor": "Éditeur de graphes",
+        "gen": "Préréglages",
+        "editor": "ComfyUI",
         "models": "Modèles",
-        "library": "Mes workflows"
+        "library": "Mes workflows",
+        "settings": "Réglages"
       },
       "preset": {
         "txt2img": "Texte → image",
@@ -7180,7 +7181,8 @@
       "vaeFromCkpt": "Du checkpoint",
       "addLora": "Ajouter une LoRA",
       "noLoras": "Aucun fichier : ajoutez-en dans l'onglet Modèles (dossier loras).",
-      "loraHint": "LoRA, DoRA, LoCon, LoHa et LoKr fonctionnent : ComfyUI détecte le type. Le premier nombre est la force sur le modèle, le second sur l'encodeur de texte."
+      "loraHint": "LoRA, DoRA, LoCon, LoHa et LoKr fonctionnent : ComfyUI détecte le type. Le premier nombre est la force sur le modèle, le second sur l'encodeur de texte.",
+      "openWindow": "Dans une fenêtre séparée"
     }
   },
   "word": {

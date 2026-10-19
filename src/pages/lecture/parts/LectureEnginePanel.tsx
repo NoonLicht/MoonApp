@@ -279,7 +279,7 @@ export default function LectureEnginePanel({
                 </div>
                 <div className="lecs-row-actions">
                   <select
-                    className="lecs-select"
+                    className="lecs-select compact-select"
                     value={q}
                     onChange={(e) =>
                       setQuants((m) => ({ ...m, [f.family]: e.target.value as WhisperQuant }))

@@ -6982,10 +6982,11 @@
       "removeConfirm": "¿Eliminar ComfyUI? Los modelos, resultados y flujos se conservan.",
       "startingHint": "ComfyUI se está cargando; el primer inicio puede tardar hasta un minuto.",
       "view": {
-        "gen": "Generar",
-        "editor": "Editor de grafos",
+        "gen": "Preajustes",
+        "editor": "ComfyUI",
         "models": "Modelos",
-        "library": "Mis flujos"
+        "library": "Mis flujos",
+        "settings": "Ajustes"
       },
       "preset": {
         "txt2img": "Texto → imagen",
@@ -7180,7 +7181,8 @@
       "vaeFromCkpt": "Del checkpoint",
       "addLora": "Añadir LoRA",
       "noLoras": "No hay archivos: añádalos en la pestaña Modelos (carpeta loras).",
-      "loraHint": "Sirven LoRA, DoRA, LoCon, LoHa y LoKr: ComfyUI detecta el tipo. El primer número es la fuerza en el modelo; el segundo, en el codificador de texto."
+      "loraHint": "Sirven LoRA, DoRA, LoCon, LoHa y LoKr: ComfyUI detecta el tipo. El primer número es la fuerza en el modelo; el segundo, en el codificador de texto.",
+      "openWindow": "En una ventana aparte"
     }
   },
   "word": {

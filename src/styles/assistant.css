@@ -324,6 +324,7 @@
   font-size: 11px;
 }
 .as-switch {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -348,6 +349,10 @@
 }
 .as-switch input {
   position: absolute;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 1px;
   opacity: 0;
   pointer-events: none;
 }
@@ -381,4 +386,74 @@
 .as-switch input:focus-visible + i {
   outline: 2px solid var(--amber);
   outline-offset: 2px;
+}
+
+/* Кнопки в шапке помощника: одинаковые, ровные, без «светящихся» кругов */
+.as-head-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  opacity: 1;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+.as-head-btn:hover:not(:disabled) {
+  background: var(--glass);
+  color: var(--text-primary);
+}
+.as-head-btn.on {
+  background: var(--wd-on);
+  color: var(--text-primary);
+}
+.as-head-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.as-head-btn:focus-visible {
+  outline: 2px solid var(--amber);
+  outline-offset: 1px;
+}
+.as-icon-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid var(--wd-line);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.as-icon-btn:hover {
+  background: var(--glass);
+  color: var(--text-primary);
+}
+.as-pane .as-pane-title {
+  flex: 1;
+  min-width: 0;
+}
+/* Потоковый текст: мигающий курсор в конце */
+.as-caret::after {
+  content: "";
+  display: inline-block;
+  width: 7px;
+  height: 1em;
+  margin-left: 2px;
+  vertical-align: -0.15em;
+  background: var(--amber);
+  animation: as-blink 1s steps(2, start) infinite;
+}
+@keyframes as-blink {
+  to {
+    visibility: hidden;
+  }
 }

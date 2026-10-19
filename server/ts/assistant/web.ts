@@ -1,9 +1,10 @@
 /**
  * Интернет для помощника в «Документах» и «Таблицах»: поиск и чтение страниц.
  *
- * Бесплатные поисковики без ключа (Bing, DuckDuckGo, Mojeek) отдают ботам капчу или подменённую
- * выдачу, поэтому поиск устроен так: SearXNG (свой адрес) → Brave Search (ключ) → Wikipedia
- * (всегда работает, без ключа). Чтение страницы по ссылке работает всегда.
+ * По умолчанию поиск идёт без ключей и настроек: DuckDuckGo (страница HTML) → Brave Search (страница
+ * HTML) → Wikipedia. Bing не годится: ботам он подсовывает подменённую выдачу. Свой SearXNG и ключ
+ * Brave API остаются необязательными и, если заданы, проверяются первыми. Чтение страницы по ссылке
+ * работает всегда.
  */
 import dns from "dns/promises";
 import fs from "fs";
@@ -14,6 +15,9 @@ import { getSecret, setSecret } from "../security";
 import { privateIp } from "../llamacpp/ocr";
 
 const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) MoonApp/1.0";
+/** Поисковые страницы без ключа отвечают только на «браузерный» User-Agent. */
+const BROWSER_UA =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36";
 const FILE = path.join(config.DIRS.storage, "llama", "assistant.json");
 
 export interface WebSettings {
@@ -34,10 +38,16 @@ export function webSettings(): WebSettings & { hasBrave: boolean } {
   } catch {
     /* первый запуск */
   }
-  return { searxng: typeof v.searxng === "string" ? v.searxng : "", hasBrave: !!getSecret("brave") };
+  return {
+    searxng: typeof v.searxng === "string" ? v.searxng : "",
+    hasBrave: !!getSecret("brave"),
+  };
 }
 
-export function setWebSettings(p: { searxng?: string; braveKey?: string }): ReturnType<typeof webSettings> {
+export function setWebSettings(p: {
+  searxng?: string;
+  braveKey?: string;
+}): ReturnType<typeof webSettings> {
   const cur = webSettings();
   let searxng = typeof p.searxng === "string" ? p.searxng.trim().replace(/\/+$/, "") : cur.searxng;
   if (searxng && !/^https?:\/\//i.test(searxng)) searxng = `https://${searxng}`;
@@ -55,6 +65,7 @@ const INLINE =
 
 const decode = (s: string): string =>
   s
+    .replace(/<!--[\s\S]*?-->/g, "")
     .replace(TAG, "")
     .replace(/&nbsp;/g, " ")
     .replace(/&quot;/g, '"')
@@ -82,18 +93,115 @@ async function searxng(base: string, q: string, lang: string, n: number): Promis
   return (j.results ?? [])
     .filter((x) => x.url)
     .slice(0, n)
-    .map((x) => ({ title: decode(x.title ?? ""), url: String(x.url), snippet: decode(x.content ?? "") }));
+    .map((x) => ({
+      title: decode(x.title ?? ""),
+      url: String(x.url),
+      snippet: decode(x.content ?? ""),
+    }));
 }
 
 async function brave(key: string, q: string, lang: string, n: number): Promise<SearchHit[]> {
   const j = await getJson<{
     web?: { results?: { title?: string; url?: string; description?: string }[] };
-  }>(`https://api.search.brave.com/res/v1/web/search?${new URLSearchParams({ q, count: String(n), search_lang: lang || "en" })}`, {
-    "X-Subscription-Token": key,
-  });
+  }>(
+    `https://api.search.brave.com/res/v1/web/search?${new URLSearchParams({ q, count: String(n), search_lang: lang || "en" })}`,
+    {
+      "X-Subscription-Token": key,
+    },
+  );
   return (j.web?.results ?? [])
     .filter((x) => x.url)
-    .map((x) => ({ title: decode(x.title ?? ""), url: String(x.url), snippet: decode(x.description ?? "") }));
+    .map((x) => ({
+      title: decode(x.title ?? ""),
+      url: String(x.url),
+      snippet: decode(x.description ?? ""),
+    }));
+}
+
+/** Ссылка DuckDuckGo-редиректа → настоящий адрес. */
+const ddgUrl = (href: string): string => {
+  const h = href.replace(/&amp;/g, "&");
+  const m = /[?&]uddg=([^&]+)/.exec(h);
+  if (m) {
+    try {
+      return decodeURIComponent(m[1]);
+    } catch {
+      return "";
+    }
+  }
+  return h.startsWith("//") ? `https:${h}` : h;
+};
+
+async function getHtml(url: string, init: RequestInit = {}, lang = "en"): Promise<string> {
+  const r = await fetch(url, {
+    ...init,
+    headers: {
+      "User-Agent": BROWSER_UA,
+      Accept: "text/html,application/xhtml+xml",
+      "Accept-Language": `${lang || "en"},en;q=0.7`,
+      ...((init.headers as Record<string, string>) ?? {}),
+    },
+    signal: AbortSignal.timeout(15000),
+  });
+  if (!r.ok) throw new Error(`search_http_${r.status}`);
+  return r.text();
+}
+
+/** Разбор страницы DuckDuckGo HTML. Страница «anomaly» (капча) — это ошибка, а не пустая выдача. */
+export function parseDuckduckgo(html: string, n: number): SearchHit[] {
+  if (/anomaly|captcha/i.test(html) && !/result__a/.test(html)) throw new Error("search_blocked");
+  const hits: SearchHit[] = [];
+  const re =
+    /<a[^>]*class="result__a"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>([\s\S]*?)(?=<a[^>]*class="result__a"|$)/g;
+  for (let m = re.exec(html); m && hits.length < n; m = re.exec(html)) {
+    const url = ddgUrl(m[1]);
+    if (!/^https?:\/\//.test(url) || /duckduckgo\.com\/y\.js/.test(url)) continue;
+    const sn = /class="result__snippet"[^>]*>([\s\S]*?)<\/a>/.exec(m[3]);
+    hits.push({ title: decode(m[2]), url, snippet: decode(sn?.[1] ?? "") });
+  }
+  return hits;
+}
+
+async function duckduckgo(q: string, lang: string, n: number): Promise<SearchHit[]> {
+  const kl = lang === "ru" ? "ru-ru" : lang === "en" ? "wt-wt" : `${lang}-${lang}`;
+  const html = await getHtml(
+    "https://html.duckduckgo.com/html/",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ q, kl }).toString(),
+    },
+    lang,
+  );
+  return parseDuckduckgo(html, n);
+}
+
+/** Разбор страницы Brave Search (HTML). */
+export function parseBrave(html: string, n: number): SearchHit[] {
+  const hits: SearchHit[] = [];
+  const re =
+    /<div[^>]*class="snippet[^"]*"[^>]*>([\s\S]*?)(?=<div[^>]*class="snippet[^"]*"|<\/main>|$)/g;
+  for (let m = re.exec(html); m && hits.length < n; m = re.exec(html)) {
+    const a = /<a[^>]*href="(https?:\/\/(?!search\.brave\.com)[^"]+)"/.exec(m[1]);
+    if (!a) continue;
+    const title = /class="[^"]*search-snippet-title[^"]*"[^>]*>([\s\S]*?)<\/div>/.exec(m[1]);
+    const desc = /class="generic-snippet[^"]*"[^>]*>\s*<div[^>]*>([\s\S]*?)<\/div>/.exec(m[1]);
+    hits.push({
+      title: decode(title?.[1] ?? a[1]),
+      url: a[1].replace(/&amp;/g, "&"),
+      snippet: decode(desc?.[1] ?? ""),
+    });
+  }
+  return hits;
+}
+
+async function braveHtml(q: string, lang: string, n: number): Promise<SearchHit[]> {
+  const html = await getHtml(
+    `https://search.brave.com/search?${new URLSearchParams({ q, source: "web" })}`,
+    {},
+    lang,
+  );
+  return parseBrave(html, n);
 }
 
 async function wikipedia(q: string, lang: string, n: number): Promise<SearchHit[]> {
@@ -120,11 +228,47 @@ async function wikipedia(q: string, lang: string, n: number): Promise<SearchHit[
   return [...hits, ...(await one("en").catch(() => []))].slice(0, n);
 }
 
+/** Свежие ответы хранятся недолго: агент часто повторяет один и тот же запрос, а поисковики режут частые обращения. */
+const CACHE_MS = 10 * 60 * 1000;
+const cache = new Map<string, { at: number; v: { provider: string; hits: SearchHit[] } }>();
+/** Между обращениями к поисковым страницам держим паузу: иначе DuckDuckGo и Brave отвечают «слишком часто». */
+let lastCall = 0;
+let queue: Promise<unknown> = Promise.resolve();
+const spaced = <T>(fn: () => Promise<T>): Promise<T> => {
+  const run = queue.then(async () => {
+    const wait = lastCall + 1200 - Date.now();
+    if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+    try {
+      return await fn();
+    } finally {
+      lastCall = Date.now();
+    }
+  });
+  queue = run.catch(() => undefined);
+  return run;
+};
+
 /** Поиск в интернете: первый настроенный источник, который ответил. */
 export async function webSearch(
   q: string,
   lang = "en",
   limit = 6,
+): Promise<{ provider: string; hits: SearchHit[] }> {
+  const key0 = `${lang}|${limit}|${q.toLowerCase()}`;
+  const hit = cache.get(key0);
+  if (hit && Date.now() - hit.at < CACHE_MS) return hit.v;
+  const found = await searchUncached(q, lang, limit);
+  if (found.hits.length) {
+    if (cache.size > 100) cache.clear();
+    cache.set(key0, { at: Date.now(), v: found });
+  }
+  return found;
+}
+
+async function searchUncached(
+  q: string,
+  lang: string,
+  limit: number,
 ): Promise<{ provider: string; hits: SearchHit[] }> {
   const s = webSettings();
   const errors: string[] = [];
@@ -132,6 +276,8 @@ export async function webSearch(
   if (s.searxng) tries.push(["searxng", () => searxng(s.searxng, q, lang, limit)]);
   const key = getSecret("brave");
   if (key) tries.push(["brave", () => brave(key, q, lang, limit)]);
+  tries.push(["duckduckgo", () => spaced(() => duckduckgo(q, lang, limit))]);
+  tries.push(["brave-web", () => spaced(() => braveHtml(q, lang, limit))]);
   tries.push(["wikipedia", () => wikipedia(q, lang, limit)]);
   for (const [provider, fn] of tries) {
     try {
@@ -149,7 +295,10 @@ export function htmlToText(html: string): { title: string; text: string } {
   const title = decode(/<title[^>]*>([\s\S]*?)<\/title>/i.exec(html)?.[1] ?? "");
   let h = html
     .replace(/<!--[\s\S]*?-->/g, " ")
-    .replace(/<(script|style|noscript|svg|nav|footer|header|head|form|iframe|template)[\s\S]*?<\/\1>/gi, " ");
+    .replace(
+      /<(script|style|noscript|svg|nav|footer|header|head|form|iframe|template)[\s\S]*?<\/\1>/gi,
+      " ",
+    );
   const main = /<(main|article)[\s\S]*?<\/\1>/i.exec(h);
   if (main && main[0].length > 800) h = main[0];
   h = h
@@ -189,7 +338,10 @@ export async function webFetch(
     const res = await fetch(u, {
       redirect: "manual",
       signal: AbortSignal.timeout(20000),
-      headers: { "User-Agent": UA, Accept: "text/html,application/xhtml+xml,application/json,text/plain,*/*;q=0.5" },
+      headers: {
+        "User-Agent": UA,
+        Accept: "text/html,application/xhtml+xml,application/json,text/plain,*/*;q=0.5",
+      },
     });
     const loc = res.headers.get("location");
     if (res.status >= 300 && res.status < 400 && loc) {

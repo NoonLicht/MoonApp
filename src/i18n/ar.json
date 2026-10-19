@@ -6982,10 +6982,11 @@
       "removeConfirm": "حذف ComfyUI؟ ستبقى النماذج والنتائج وسير العمل.",
       "startingHint": "يجري تحميل ComfyUI، وقد يستغرق التشغيل الأول حتى دقيقة.",
       "view": {
-        "gen": "توليد",
-        "editor": "محرر المخططات",
+        "gen": "الإعدادات المسبقة",
+        "editor": "ComfyUI",
         "models": "النماذج",
-        "library": "سير العمل الخاص بي"
+        "library": "سير العمل الخاص بي",
+        "settings": "الإعدادات"
       },
       "preset": {
         "txt2img": "نص ← صورة",
@@ -7180,7 +7181,8 @@
       "vaeFromCkpt": "من نقطة الحفظ",
       "addLora": "إضافة LoRA",
       "noLoras": "لا ملفات: أضفها من تبويب النماذج (مجلد loras).",
-      "loraHint": "تعمل LoRA وDoRA وLoCon وLoHa وLoKr ويكتشف ComfyUI النوع تلقائيًا. الرقم الأول قوة النموذج والثاني قوة مشفّر النص."
+      "loraHint": "تعمل LoRA وDoRA وLoCon وLoHa وLoKr ويكتشف ComfyUI النوع تلقائيًا. الرقم الأول قوة النموذج والثاني قوة مشفّر النص.",
+      "openWindow": "في نافذة منفصلة"
     }
   },
   "word": {

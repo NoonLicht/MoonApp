@@ -655,7 +655,7 @@
   "App commands": "应用命令",
   "Any ribbon command: formatting, tables, charts, styles…": "功能区的任何命令：格式、表格、图表、样式…",
   "Web access": "联网",
-  "Search the internet and read pages, with source links": "搜索互联网并阅读网页，附来源链接",
+  "Searches the internet by itself, no keys or setup; answers with source links": "自动搜索互联网，无需密钥或设置；回答附来源链接",
   "Image generation": "图像生成",
   "Create pictures with Qwen-Image and insert them": "用 Qwen-Image 生成图片并插入",
   "Install a Qwen-Image model in Settings first": "请先在设置中安装 Qwen-Image 模型",

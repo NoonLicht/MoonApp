@@ -6982,10 +6982,11 @@
       "removeConfirm": "删除 ComfyUI？模型、结果和工作流会保留。",
       "startingHint": "ComfyUI 正在加载，首次启动最多需要一分钟。",
       "view": {
-        "gen": "生成",
-        "editor": "节点编辑器",
+        "gen": "预设",
+        "editor": "ComfyUI",
         "models": "模型",
-        "library": "我的工作流"
+        "library": "我的工作流",
+        "settings": "设置"
       },
       "preset": {
         "txt2img": "文生图",
@@ -7180,7 +7181,8 @@
       "vaeFromCkpt": "使用检查点自带",
       "addLora": "添加 LoRA",
       "noLoras": "没有文件：请在“模型”标签（loras 文件夹）中添加。",
-      "loraHint": "支持 LoRA、DoRA、LoCon、LoHa 和 LoKr，ComfyUI 会自动识别。第一个数是模型强度，第二个是文本编码器强度。"
+      "loraHint": "支持 LoRA、DoRA、LoCon、LoHa 和 LoKr，ComfyUI 会自动识别。第一个数是模型强度，第二个是文本编码器强度。",
+      "openWindow": "在独立窗口中打开"
     }
   },
   "word": {

@@ -258,7 +258,7 @@
   "App commands": "Команды приложения",
   "Any ribbon command: formatting, tables, charts, styles…": "Любая команда ленты: форматирование, таблицы, диаграммы, стили…",
   "Web access": "Выход в интернет",
-  "Search the internet and read pages, with source links": "Искать в интернете и читать страницы, со ссылками на источники",
+  "Searches the internet by itself, no keys or setup; answers with source links": "Сам ищет в интернете, без ключей и настроек; отвечает со ссылками на источники",
   "Image generation": "Генерация картинок",
   "Create pictures with Qwen-Image and insert them": "Создавать картинки через Qwen-Image и вставлять их",
   "Install a Qwen-Image model in Settings first": "Сначала установите модель Qwen-Image в настройках",
