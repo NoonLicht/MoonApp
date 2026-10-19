@@ -98,6 +98,13 @@ export default function Ruler({ cx, k, area }: { cx: Cx; k: number; area: HTMLDi
     ticks.push({ x: x0 + i * tickPt * k, n: i / 2, big: i % 2 === 0 });
   }
   const at = (pt: number): number => x0 + pt * k;
+  // Ядро может отдавать и стандартные остановки через равные промежутки: на линейке рисуем только заданные вручную.
+  const allTabs = para?.tabs ?? [];
+  const step = s.settings.defaultTab || 36;
+  const onGrid = (pos: number): boolean => Math.abs(pos / step - Math.round(pos / step)) < 0.02;
+  const userTabs = allTabs.filter(
+    (t) => !/default|auto/i.test(t.kind ?? "") && !(allTabs.length > 4 && onGrid(t.pos)),
+  );
   const begin = (kind: "first" | "hang" | "right") => (e: React.PointerEvent) => {
     e.preventDefault();
     setDrag({
@@ -141,7 +148,7 @@ export default function Ruler({ cx, k, area }: { cx: Cx; k: number; area: HTMLDi
           ) : null}
         </span>
       ))}
-      {(para?.tabs ?? []).map((t, i) => (
+      {userTabs.map((t, i) => (
         <span
           key={i}
           className="wd-r-tab"
