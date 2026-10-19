@@ -32,6 +32,7 @@ function systemPrompt(adapter: DocAdapter, s: AssistantSettings, tools: Assistan
   return [
     adapter.system,
     "Always answer in the language the user writes in. Be concise; do not repeat the document back.",
+    "Do exactly what the user asked and nothing more. Never sort, delete, move or reformat anything the user did not mention. Do not repeat an action that already succeeded: when a result must go into a cell or paragraph, write it once, then answer.",
     ...can,
     tools.length ? `Available tools: ${tools.map((t) => t.name).join(", ")}.` : "",
     "After finishing, say in one or two sentences what you did or found.",
@@ -106,6 +107,7 @@ export async function runAgent(run: AgentRun): Promise<string> {
   const spec = tools.map((t) => ({ name: t.name, description: t.description, parameters: t.parameters }));
   let answer = "";
   const seen = new Map<string, number>();
+  const used = new Map<string, number>();
   for (let step = 0; step < MAX_STEPS; step++) {
     let turnText = "";
     const r = await api.assistantTurn(
@@ -133,7 +135,7 @@ export async function runAgent(run: AgentRun): Promise<string> {
       messages.push({
         role: "tool",
         tool_call_id: call.id,
-        content: await execCall(call, tools, seen, events),
+        content: await execCall(call, tools, seen, used, events),
       });
       if (run.signal.aborted) throw new DOMException("aborted", "AbortError");
     }
@@ -146,6 +148,7 @@ async function execCall(
   call: AssistantToolCall,
   tools: AssistantTool[],
   seen: Map<string, number>,
+  used: Map<string, number>,
   events: AgentEvents,
 ): Promise<string> {
   const tool = tools.find((t) => t.name === call.name);
@@ -168,6 +171,11 @@ async function execCall(
   const n = (seen.get(key) ?? 0) + 1;
   seen.set(key, n);
   if (n > 2) return fail("this exact call was already made; try something different or answer");
+  // Слабые модели иногда долбят один инструмент десятки раз: после лимита просим остановиться.
+  const total = (used.get(tool.name) ?? 0) + 1;
+  used.set(tool.name, total);
+  if (total > (tool.group === "read" ? 10 : 8))
+    return fail(`${tool.name} was called too many times in one request; stop and answer the user`);
   try {
     const out = trim(await tool.run(args));
     events.onStep({ ...step, state: "ok", detail: out.slice(0, 240) });
