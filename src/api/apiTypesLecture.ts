@@ -2,34 +2,26 @@
  * Выделено из client.ts при разбиении крупного файла (поведение не менялось).
  */
 
-/* ================= Lecture Recorder (whisper.cpp + VAD) ================= */
+/* ================= Lecture Recorder (GigaAM / Whisper GGUF + VAD) ================= */
 
 export interface LectureEngineStatus {
   ready: boolean;
-  bin: string | null;
+  /** Файл активной модели Whisper GGUF (null — не скачана). */
   model: string | null;
   backend: string | null;
   language: string;
   activeSession: boolean;
-  // --- Появилось вместе с панелью настройки движка (модель/сборка/GPU) ---
-  /** Активная сборка: legacy | cpu | blas | cuda118 | cuda124 | custom. */
-  build: string | null;
-  buildDir: string | null;
-  buildCustom: boolean;
-  /** id выбранной модели из каталога ("" — авто: small → base → tiny). */
-  modelId: string;
-  /** auto — считать на видеокарте (CUDA), off — всегда процессор (флаг -ng). */
+  /** auto — видеокарта/Vulkan, off — только процессор. */
   gpu: "auto" | "off";
-  deviceId: number;
   threads: number;
-  /** Предупреждения движка: cuda_without_nvidia, cuda_blackwell, prompt_unusable. */
-  warnings: string[];
-  /** Какой движок расшифрует речь сейчас: GigaAM v3, Whisper или никакой. */
+  /** Какой движок расшифрует речь сейчас: GigaAM v3, Whisper GGUF или никакой. */
   asr?: "gigaam" | "whisper" | null;
   /** Выбранный пользователем движок (по умолчанию gigaam). */
   asrPreferred?: "gigaam" | "whisper";
   /** Модель GigaAM v3 скачана и рантайм ONNX доступен. */
   gigaamInstalled?: boolean;
+  /** Скачана хотя бы одна модель Whisper GGUF. */
+  whisperInstalled?: boolean;
 }
 
 /** Состояние движка GigaAM v3 (GET/POST /api/lecture/engine/gigaam). */
@@ -45,64 +37,9 @@ export interface LectureGigaamInfo {
   dir: string;
 }
 
-/** Сборка whisper.cpp из каталога (CPU / OpenBLAS / CUDA 11.8 / CUDA 12.4). */
-/** Подсказка «лучше для вашего ПК» для модели или сборки (считает сервер). */
-export interface LectureFit {
-  /** best — рекомендуется именно вам, good — подойдёт, heavy — будет медленно,
-   *  unfit — не хватит памяти / нет подходящей видеокарты. */
-  level: "best" | "good" | "heavy" | "unfit";
-  /** Ключ причины для lecture.setup.fitWhy.* ("" — пояснять нечего). */
-  reason: string;
-  /** Сколько ГБ памяти нужно (для формулировки «нужно ~N ГБ ОЗУ»). */
-  gb: number;
-  best: boolean;
-}
-
-/** Сводка железа для строки «Ваш ПК» в панели движка. */
-export interface LectureSystemInfo {
-  cpu: string;
-  cores: number;
-  threads: number;
-  ramGb: number;
-  gpu: string;
-  gpuGb: number;
-  cuda: boolean;
-  blackwell: boolean;
-  detected: boolean;
-}
-
-export interface LectureEngineBuild {
-  id: string;
-  note: string;
-  gpu: boolean;
-  cuda: string;
-  sizeMb: number | null;
-  installed: boolean;
-  dir: string;
-  bin: string | null;
-  backend: string | null;
-  legacy?: boolean;
-  active?: boolean;
-  /** Появилось вместе с подсказками «ваш ПК». */
-  recommend?: LectureFit;
-}
-
-/** Модель Whisper из каталога (tiny … large-v3 + q5-кванты). */
-export interface LectureModelEntry {
-  id: string;
-  file: string;
-  sizeMb: number;
-  note: string;
-  url: string;
-  downloaded: boolean;
-  downloadedMb: number;
-  active: boolean;
-  recommend?: LectureFit;
-}
-
-/** Прогресс текущей задачи установки (одна за раз: модель ИЛИ сборка). */
+/** Прогресс текущего скачивания (одна задача за раз). */
 export interface LectureEngineTask {
-  kind: "model" | "build" | null;
+  kind: string | null;
   state: "idle" | "working" | "done" | "error";
   id: string | null;
   progress: number;
@@ -113,46 +50,32 @@ export interface LectureEngineTask {
   at: number;
 }
 
-/** Железо, на котором реально можно считать (детект через nvidia-smi/WMI). */
-export interface LectureGpuInfo {
-  devices: { vendor: string; name: string; driver: string; memoryMb: number; cuda: boolean }[];
-  cudaCapable: boolean;
-  name: string;
-  memoryMb: number;
-  driver: string;
-  cpu: string;
-  blackwell: boolean;
-  pending?: boolean;
+export type WhisperQuant = "Q4_K_M" | "Q5_K_M" | "Q6_K" | "Q8_0";
+
+/** Файл Whisper GGUF: семейство (small, large-v3…) × квантование. */
+export interface WhisperGgufModel {
+  id: string;
+  family: string;
+  quant: WhisperQuant;
+  note: "tiny" | "base" | "small" | "medium" | "turbo" | "large";
+  sizeMb: number;
+  downloaded: boolean;
+  downloadedMb: number;
+  active: boolean;
+  isDefault: boolean;
 }
 
-/** Итог self-test: прогон модели на тестовом WAV (что реально поднялось). */
-export interface LectureEngineVerify {
-  ok: boolean;
-  at: number;
-  bin: string | null;
-  model: string | null;
-  modelId: string;
-  build: string | null;
+/** GET/POST /api/lecture/engine/whisper: модели Whisper GGUF (transcribe.cpp). */
+export interface WhisperGgufInfo {
+  installed: boolean;
+  runtime: boolean;
+  activeModel: string;
+  gpu: "auto" | "off";
   backend: string | null;
-  gpuUsed: boolean;
-  computeCapability: string;
-  elapsedMs: number;
-  log: string;
-  error: string;
-}
-
-/** Полное состояние настройки движка (ответ всех /lecture/engine/* роутов). */
-export interface LectureEngineSetup {
-  engine: LectureEngineStatus;
-  gpu: LectureGpuInfo;
-  builds: LectureEngineBuild[];
-  models: LectureModelEntry[];
+  models: WhisperGgufModel[];
   task: LectureEngineTask;
-  verify: LectureEngineVerify | null;
-  tag: string;
-  dirs: { whisper: string; models: string; builds: string };
-  /** Появилось вместе с подсказками «лучше для вашего ПК». */
-  system?: LectureSystemInfo;
+  dir: string;
+  defaultQuant: WhisperQuant;
 }
 export interface LectureSession {
   id: number;

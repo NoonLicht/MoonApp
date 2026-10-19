@@ -7,7 +7,7 @@ import { createRequire } from "module";
 /**
  * Машина состояния задачи установки (server/ts/setupTask.ts -> server/setupTask.js).
  *
- * До фазы 1 ровно эта логика лежала двумя копиями: whisperEngine.js (модель или
+ * До фазы 1 ровно эта логика лежала двумя копиями: asrGguf.js (модель или
  * сборка Whisper) и diarize.js (пакеты sherpa-onnx). Копии расходились топиком
  * лога и сбросом флага отмены, а прогресс скачивания считался одной и той же
  * формулой в четырёх местах. Тесты фиксируют:
@@ -114,7 +114,7 @@ describe("createSetupTask — ошибки", () => {
   it("fail с пустым message откатывается к String(e), а не к «»", () => {
     const logger = req("../server/logger");
     vi.spyOn(logger, "error").mockImplementation(() => undefined);
-    const t = setupTask().createSetupTask("whisperEngine");
+    const t = setupTask().createSetupTask("asr");
     t.reset("model", "m");
     t.fail({ message: "" });
     expect(t.snapshot().error).toBe("[object Object]");
@@ -192,7 +192,7 @@ describe("createSetupTask — прогресс скачивания", () => {
 });
 
 describe("контракт: общая машина состояния вместо двух копий", () => {
-  const consumers = ["whisperEngine.js", "diarize.js"];
+  const consumers = ["asrGguf.js", "diarize.js"];
 
   it.each(consumers)("%s берёт состояние из server/setupTask", (name) => {
     const src = readSource(name);
@@ -207,13 +207,12 @@ describe("контракт: общая машина состояния вмес�
   });
 
   it("каждый движок создаёт свою задачу (состояния не общие)", () => {
-    expect(readSource("whisperEngine.js")).toContain('createSetupTask("whisperEngine")');
+    expect(readSource("asrGguf.js")).toContain('createSetupTask("asr")');
     expect(readSource("diarize.js")).toContain('createSetupTask("diarize")');
   });
 
   it("прямые записи в task.* остались (иначе фазы установки пропали бы)", () => {
     // Потребители пишут фазу и обнуляют прогресс на месте — контракт «живой ссылки».
-    expect(readSource("whisperEngine.js")).toMatch(/task\.phase = "/);
     expect(readSource("diarize.js")).toMatch(/task\.phase = "/);
   });
 

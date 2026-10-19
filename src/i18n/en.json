@@ -3024,7 +3024,19 @@
       "asrHint": "GigaAM v3 is the default engine for Russian speech: more accurate and faster than small Whisper models, runs on the CPU. For other lecture languages and on failure, Whisper is used.",
       "gigaamLang": "The lecture language is not Russian — Whisper will transcribe it.",
       "errGigaamMissing": "The GigaAM v3 model is not downloaded",
-      "errRuntimeMissing": "ONNX runtime (onnxruntime-node) not found — GigaAM v3 cannot run"
+      "errRuntimeMissing": "ONNX runtime (onnxruntime-node) not found — GigaAM v3 cannot run",
+      "whisperHint": "Whisper in GGUF format, run by the transcribe.cpp library. Q4_K_M is the default: compact with almost no accuracy loss; Q5–Q8 are more accurate but heavier. Large and Medium are more accurate; Base and Small are faster.",
+      "quantLabel": "Quantization",
+      "quantDefault": "default",
+      "gpuHintGguf": "The graphics card computes via Vulkan (any GPU); if the driver misbehaves or VRAM is busy, choose “CPU only”.",
+      "wnote": {
+        "tiny": "Smallest",
+        "base": "Fast",
+        "small": "Balanced",
+        "medium": "Accurate",
+        "turbo": "Turbo",
+        "large": "Maximum"
+      }
     },
     "audio": {
       "btn": "Audio",

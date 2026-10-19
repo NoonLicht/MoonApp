@@ -12,7 +12,7 @@
  * вырезаются типовые галлюцинации ("Спасибо за просмотр", "Subtitles by...").
  */
 import config from "./config";
-import * as whisperEngine from "./whisperEngine";
+import * as asrGguf from "./asrGguf";
 import settings from "./settings";
 import path from "path";
 import { stmts } from "./db";
@@ -20,7 +20,7 @@ import fs from "fs";
 import logger from "./logger";
 import { VadBufferManager } from "./vad";
 import { maybeAutoConspectus, maybeAutoDiarize } from "./lectureConspectus";
-import { transcribeFile, asrReady } from "./lectureAsr";
+import { transcribeFile, asrReady, activeAsr } from "./lectureAsr";
 import * as gigaam from "./gigaamEngine";
 import { recheckState } from "./lectureRecheck";
 import { fmtTs } from "./lectureExport";
@@ -45,21 +45,9 @@ export {
   sanitizeText,
   parseSrt,
   transcribeFile,
-  runWhisper,
-  readChunkResult,
-  transcribeViaServer,
-  httpInference,
-  resultFromSrtText,
 } from "./lectureAsr";
 
 const { DIRS } = config;
-
-// Прогреваем детект GPU в фоне: engineSummary() отдаёт предупреждения вида
-// «CUDA-сборка выбрана, но NVIDIA не найдена», а первый nvidia-smi занимает
-// ~50 мс — не хотим ждать его в запросе статуса.
-void whisperEngine.detectGpu().catch(() => {
-  /* детект не критичен */
-});
 
 /* ------------------------- WAV ------------------------- */
 
@@ -103,27 +91,25 @@ export function sessionDir(id: any) {
 }
 
 /**
- * Поиск бинарника и модели живёт в whisperEngine: там же выбор сборки
- * (CPU/BLAS/CUDA), выбранная модель и флаги GPU. Здесь только обёртка статуса,
- * потому что engineStatus() уходит в UI вместе со статусом сессии.
+ * Статус движка для шапки страницы и панели: какой движок расшифрует следующий
+ * чанк (GigaAM v3 или Whisper GGUF) и что установлено.
  */
 function engineStatus() {
-  const summary = whisperEngine.engineSummary();
   const gigaamReady = gigaam.isInstalled() && gigaam.runtimeAvailable();
-  // Наличие NVIDIA-устройства нужно для предупреждений в шапке; детект кэширован
-  // в whisperEngine, поэтому вызов дешёвый (первый — ~50 мс на nvidia-smi).
+  const whisperReady = asrGguf.isInstalled() && asrGguf.runtimeAvailable();
+  const asr = activeAsr();
+  const model = asrGguf.activeModelId();
   return {
-    ...summary,
-    // Движок готов, если есть Whisper ИЛИ скачанный GigaAM v3.
-    ready: summary.ready || gigaamReady,
-    // Какой движок реально расшифрует следующий чанк: gigaam | whisper | null.
-    asr: gigaamReady && (!summary.ready || (gigaam.preferred() === "gigaam" && gigaam.languageSupported()))
-      ? "gigaam"
-      : summary.ready
-        ? "whisper"
-        : null,
+    ready: asrReady(),
+    asr,
     asrPreferred: gigaam.preferred(),
     gigaamInstalled: gigaamReady,
+    whisperInstalled: whisperReady,
+    model: model || null,
+    backend: asr === "whisper" ? asrGguf.gpuMode() === "off" ? "cpu" : "auto" : "cpu",
+    gpu: asrGguf.gpuMode(),
+    language: String(cfg().language || "ru"),
+    threads: Number(cfg().threads) || 0,
     activeSession: sessions.size > 0,
   };
 }
@@ -365,16 +351,13 @@ function pumpQueue(id: any) {
 }
 
 export async function transcribeChunk(id: any, item: any) {
-  const bin = whisperEngine.findBin();
-  const model = whisperEngine.findModel();
-  if (!asrReady(bin, model)) {
-    const err = new Error(bin ? "whisper_model_missing" : "whisper_not_installed");
+  if (!asrReady()) {
+    const err = new Error("whisper_not_installed");
     if (item.chunkId) stmts.chunkUpdate.run(item.chunkId, { status: "error", error: err.message });
     throw err;
   }
   const wavPath = path.join(sessionDir(id), item.file);
-  const outBase = wavPath.replace(/\.wav$/i, "");
-  const result = await transcribeFile(bin, model, wavPath, outBase, {
+  const result = await transcribeFile(wavPath, {
     id,
     file: item.file,
     source: item.source,
@@ -443,14 +426,11 @@ function pumpDraft(id: any) {
  * ответе. Разница только в том, что результат никуда не пишется в БД.
  */
 async function draftTranscribe(id: any, track: any, samples: any, sampleRate: any) {
-  const bin = whisperEngine.findBin();
-  const model = whisperEngine.findModel();
-  if (!asrReady(bin, model)) return "";
+  if (!asrReady()) return "";
   const file = `_draft_${track}.wav`;
   const wavPath = path.join(sessionDir(id), file);
   fs.writeFileSync(wavPath, toWav(samples, sampleRate, 1));
-  const outBase = wavPath.replace(/\.wav$/i, "");
-  const result = await transcribeFile(bin, model, wavPath, outBase, { id, file, source: track });
+  const result = await transcribeFile(wavPath, { id, file, source: track });
   return result.text || "";
 }
 

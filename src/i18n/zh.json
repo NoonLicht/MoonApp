@@ -3020,7 +3020,19 @@
       "asrHint": "GigaAM v3 是俄语语音的默认引擎：比小型 Whisper 模型更准更快，在 CPU 上运行。其他语言或出错时使用 Whisper。",
       "gigaamLang": "讲座语言不是俄语 — 将使用 Whisper 转写。",
       "errGigaamMissing": "尚未下载 GigaAM v3 模型",
-      "errRuntimeMissing": "未找到 ONNX 运行时 (onnxruntime-node) — GigaAM v3 无法运行"
+      "errRuntimeMissing": "未找到 ONNX 运行时 (onnxruntime-node) — GigaAM v3 无法运行",
+      "whisperHint": "GGUF 格式的 Whisper，由 transcribe.cpp 库运行。默认量化为 Q4_K_M：体积小、几乎不损失精度；Q5–Q8 更准确但更大。Large 和 Medium 更准，Base 和 Small 更快。",
+      "quantLabel": "量化",
+      "quantDefault": "默认",
+      "gpuHintGguf": "显卡通过 Vulkan 计算（任意 GPU）；若驱动异常或显存被占用，请选择“仅处理器”。",
+      "wnote": {
+        "tiny": "最小",
+        "base": "快速",
+        "small": "均衡",
+        "medium": "精确",
+        "turbo": "Turbo",
+        "large": "最高"
+      }
     },
     "audio": {
       "btn": "音频",

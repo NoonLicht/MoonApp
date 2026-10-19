@@ -183,7 +183,7 @@ export function AiHub({ chatProvider, chatModel }: { chatProvider?: string; chat
           status: r.ready
             ? r.asr === "gigaam"
               ? "GigaAM v3 · cpu"
-              : `${r.model ?? r.modelId} · ${r.backend ?? "cpu"}`
+              : `${r.model ?? "Whisper"} · ${r.backend ?? "cpu"}`
             : t("aiHub.notInstalled"),
           ready: r.ready,
         });

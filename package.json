@@ -34,7 +34,6 @@
     "fetch:cuda": "npm run compile:scripts && node scripts/fetch-cuda-libs.js",
     "check:pack": "npm run compile:scripts && node scripts/check-pack.js",
     "gen:keys": "npm run compile:scripts && node scripts/gen-bundled-keys.mjs",
-    "fetch:whisper": "npm run compile:scripts && node scripts/fetch-whisper.js",
     "start": "npm run compile && npm run build:web && electron .",
     "dist": "npm run compile && npm run build:web && npm run gen:keys && npm run fetch:engines && electron-builder --win && npm run check:pack && npm run rebuild:node",
     "dist:linux": "npm run compile && npm run build:web && npm run gen:keys && electron-builder --linux && npm run rebuild:node",
@@ -68,6 +67,7 @@
     "@huggingface/tokenizers": "^0.2.0",
     "@lezer/highlight": "^1.2.4",
     "@lezer/markdown": "^1.7.2",
+    "@transcribe-cpp/win32-x64-cpu-vulkan": "^0.4.0",
     "@xyflow/react": "^12.11.6",
     "adm-zip": "^0.6.0",
     "better-sqlite3": "^13.0.3",
@@ -94,6 +94,7 @@
     "qrcode-generator": "^2.0.4",
     "socks-proxy-agent": "^10.1.0",
     "tesseract.js": "^7.0.0",
+    "transcribe-cpp": "^0.4.0",
     "undici": "^6.28.1",
     "webtorrent": "^1.9.7"
   },
@@ -166,6 +167,9 @@
       "server/engines/**",
       "node_modules/onnxruntime-node/**",
       "node_modules/onnxruntime-common/**",
+      "node_modules/transcribe-cpp/**",
+      "node_modules/@transcribe-cpp/**",
+      "node_modules/koffi/**",
       "storage_linux/**"
     ],
     "extraResources": [

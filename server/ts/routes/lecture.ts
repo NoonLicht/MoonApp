@@ -1,13 +1,13 @@
 /**
- * API Lecture Recorder (whisper.cpp + VAD).
+ * API Lecture Recorder (GigaAM / Whisper GGUF + VAD).
  *
- *  GET    /api/lecture/engine              — статус whisper.cpp (сборка, модель, GPU)
+ *  GET    /api/lecture/engine              — статус распознавания (GigaAM / Whisper GGUF)
+ *  GET/POST /api/lecture/engine/whisper    — модели Whisper GGUF (скачать, выбрать, GPU)
  *  GET/POST /api/lecture/engine/gigaam     — GigaAM v3 (скачать, выбрать движок)
  *  GET    /api/lecture/engine/setup        — каталог моделей/сборок + детект GPU + прогресс
  *  POST   /api/lecture/engine/model        — { id, action: select|download|remove }
  *  POST   /api/lecture/engine/build        — { id, action: select|download } (CPU/BLAS/CUDA)
  *  POST   /api/lecture/engine/gpu          — { mode: auto|off, deviceId }
- *  POST   /api/lecture/engine/bin          — { path } ручной путь к whisper-cli.exe
  *  POST   /api/lecture/engine/cancel       — отменить текущее скачивание
  *  POST   /api/lecture/engine/verify       — self-test: прогон модели на тестовом WAV
  *  GET    /api/lecture/sessions            — список лекций
@@ -47,7 +47,7 @@ import express from "express";
 import fs from "fs";
 import * as lecture from "../lecture";
 import * as diarize from "../diarize";
-import * as whisperEngine from "../whisperEngine";
+import * as asrGguf from "../asrGguf";
 import * as gigaamEngine from "../gigaamEngine";
 import logger from "../logger";
 
@@ -60,91 +60,28 @@ function rawParser(limitMb = 8) {
 
 router.get("/engine", (req, res) => res.json(lecture.engineStatus()));
 
-/* ------------------------- Настройка движка -------------------------
- * Модели (tiny … large-v3), сборки (CPU / OpenBLAS / CUDA) и устройство
- * (видеокарта или процессор).
- *
- * ВАЖНО: все роуты отвечают ОДНИМ И ТЕМ ЖЕ объектом setupInfo() — в нём есть
- * каталог моделей и сборок, активная сборка, детект GPU и прогресс текущего
- * скачивания (task). Поэтому UI после любого действия просто перезаписывает
- * состояние, а прогресс опрашивает GET /engine/setup, пока task.state = working.
+/* ------------------------- Whisper GGUF -------------------------
+ * GET  /engine/whisper — модели (Base/Small/Medium/Large × кванты), активная, прогресс
+ * POST /engine/whisper { action, id?, mode? } — download | cancel | remove | select | gpu
+ * Все ответы — один и тот же объект asrGguf.info(), UI просто перезаписывает состояние.
  */
-router.get("/engine/setup", async (req, res) => {
-  try {
-    // Детект GPU (nvidia-smi) кэширован в whisperEngine; ?gpu=0 — отдать кэш.
-    if (req.query.gpu !== "0") await whisperEngine.detectGpu();
-    res.json(whisperEngine.setupInfo());
-  } catch (e: any) {
-    res.status(500).json({ error: e.message });
-  }
-});
+router.get("/engine/whisper", (req, res) => res.json(asrGguf.info()));
 
-// Модель: action = select (по умолчанию) | download | remove
-router.post("/engine/model", (req, res) => {
+router.post("/engine/whisper", (req, res) => {
   try {
-    const { id, action } = req.body || {};
+    const { action, id, mode } = req.body || {};
     const key = String(id || "");
-    if (action === "download") whisperEngine.downloadModel(key);
-    else if (action === "remove") whisperEngine.removeModel(key);
-    else whisperEngine.selectModel(key);
-    res.json(whisperEngine.setupInfo());
+    if (action === "download") asrGguf.download(key);
+    else if (action === "cancel") asrGguf.cancelDownload();
+    else if (action === "remove") asrGguf.remove(key);
+    else if (action === "select") {
+      asrGguf.selectModel(key);
+      asrGguf.selectEngine("whisper");
+    } else if (action === "gpu") asrGguf.setGpuMode(mode);
+    else throw new Error("unknown_action");
+    res.json(asrGguf.info());
   } catch (e: any) {
     res.status(400).json({ error: e.message });
-  }
-});
-
-// Сборка движка: action = select (по умолчанию) | download
-router.post("/engine/build", (req, res) => {
-  try {
-    const { id, action } = req.body || {};
-    const key = String(id || "");
-    if (action === "download") whisperEngine.installBuild(key);
-    else whisperEngine.selectBuild(key || "auto");
-    res.json(whisperEngine.setupInfo());
-  } catch (e: any) {
-    res.status(400).json({ error: e.message });
-  }
-});
-
-// Устройство счёта: { mode: "auto" | "off", deviceId } (off = флаг -ng у CUDA)
-router.post("/engine/gpu", (req, res) => {
-  try {
-    res.json(whisperEngine.setGpuMode(req.body?.mode, req.body?.deviceId));
-  } catch (e: any) {
-    res.status(400).json({ error: e.message });
-  }
-});
-
-// Ручной путь к whisper-cli.exe (пустая строка = вернуться к автопоиску сборок)
-router.post("/engine/bin", (req, res) => {
-  try {
-    res.json(whisperEngine.setCustomBin(req.body?.path));
-  } catch (e: any) {
-    res.status(400).json({ error: e.message });
-  }
-});
-
-// Отмена скачивания: флаг читает поток загрузки в whisperEngine.
-router.post("/engine/cancel", (req, res) => {
-  try {
-    whisperEngine.cancelTask();
-    res.json(whisperEngine.setupInfo());
-  } catch (e: any) {
-    res.status(400).json({ error: e.message });
-  }
-});
-
-/**
- * Self-test: прогон активной модели на синтетическом WAV (до 3 минут).
- * Показывает РЕАЛЬНЫЙ итог: поднялся ли CUDA (или посчитал CPU) и что ответил
- * драйвер — наличие ggml-cuda.dll этого не гарантирует.
- */
-router.post("/engine/verify", async (req, res) => {
-  try {
-    await whisperEngine.verify();
-    res.json(whisperEngine.setupInfo());
-  } catch (e: any) {
-    res.status(500).json({ error: e.message });
   }
 });
 

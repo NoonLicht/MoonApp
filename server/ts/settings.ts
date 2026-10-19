@@ -341,31 +341,23 @@ const DEFAULTS: SettingsTree = {
     intervalHours: 24,
   },
 
-  // --- Lecture Recorder (whisper.cpp + VAD) ---
+  // --- Lecture Recorder (GigaAM / Whisper GGUF + VAD) ---
   lecture: {
-    whisperBin: "", // путь к whisper-cli/main.exe (пусто = автопоиск)
-    model: "", // путь к ggml-модели (пусто = автопоиск models/ggml-*.bin)
-    build: "auto", // auto | legacy | cpu | blas | cuda118 | cuda124 — сборка движка
-    // Экспериментально: резидентный whisper-server.exe вместо перезапуска
-    // whisper-cli.exe на каждый чанк (модель держится в памяти между чанками).
-    // По умолчанию выключено — включается только если пользователь захотел
-    // попробовать; при любой проблеме код сам откатывается на CLI (см. lecture.js).
-    useResidentWhisper: false,
     // Движок распознавания речи: gigaam (GigaAM v3, по умолчанию) | whisper.
     // GigaAM работает только когда модель скачана и язык лекции ru/auto;
     // иначе расшифровка идёт через Whisper (см. server/ts/gigaamEngine.ts).
     asrEngine: "gigaam",
+    // Whisper GGUF (server/ts/asrGguf.ts): файл модели из storage/asr и режим GPU.
+    asrModel: "", // пусто = любая скачанная
+    asrGpu: "auto", // auto — Vulkan/видеокарта, off — только процессор
     // Потоковая расшифровка (бета): пока сегмент речи ещё не закрылся паузой,
     // раз в ~2.2 с гоняется черновой прогон накопленного аудио (см. pumpDraft в
     // lecture.js) — текст появляется по ходу фразы и заменяется финальным,
     // когда VAD реально закрывает чанк. По умолчанию выключено: это ДОПОЛНИТЕЛЬНАЯ
     // нагрузка на CPU/GPU (черновой прогон идёт параллельно основной очереди).
     streaming: false,
-    modelId: "", // выбранная модель из каталога (пусто = авто: small → base → tiny)
-    gpu: "auto", // auto — считать на NVIDIA (CUDA-сборка), off — всегда CPU
-    deviceId: 0, // номер GPU для -dev (0 — первая видеокарта)
     language: "ru", // язык лекции для Whisper
-    // 0 = все логические потоки CPU (см. resolveThreads в whisperEngine.ts),
+    // 0 = все логические потоки CPU (см. resolveThreads в cpuThreads.ts),
     // положительное число — предел, заданный пользователем.
     threads: 0,
     initialPrompt:

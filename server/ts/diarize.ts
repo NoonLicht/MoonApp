@@ -33,7 +33,7 @@ import { createSetupTask } from "./setupTask";
 import type { SetupTaskState } from "./setupTask";
 // Потоки для sherpa считаем той же функцией, что и whisper: 0 в настройках —
 // это «все потоки процессора», а не «четыре».
-import { resolveThreads } from "./whisperEngine";
+import { resolveThreads } from "./cpuThreads";
 
 const { DIRS } = config;
 

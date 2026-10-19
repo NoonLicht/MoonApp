@@ -3020,7 +3020,19 @@
       "asrHint": "GigaAM v3 هو المحرك الافتراضي للكلام الروسي: أدق وأسرع من نماذج Whisper الصغيرة ويعمل على المعالج. للغات الأخرى وعند حدوث خطأ يُستخدم Whisper.",
       "gigaamLang": "لغة المحاضرة ليست الروسية — ستتم الكتابة عبر Whisper.",
       "errGigaamMissing": "لم يتم تنزيل نموذج GigaAM v3",
-      "errRuntimeMissing": "لم يتم العثور على ONNX runtime (onnxruntime-node) — لا يمكن تشغيل GigaAM v3"
+      "errRuntimeMissing": "لم يتم العثور على ONNX runtime (onnxruntime-node) — لا يمكن تشغيل GigaAM v3",
+      "whisperHint": "Whisper بصيغة GGUF تشغّله مكتبة transcribe.cpp. التكميم الافتراضي Q4_K_M: صغير دون فقدان دقة تقريبًا؛ Q5–Q8 أدق لكنها أثقل. Large وMedium أدق، وBase وSmall أسرع.",
+      "quantLabel": "التكميم",
+      "quantDefault": "افتراضي",
+      "gpuHintGguf": "تعمل بطاقة الرسوميات عبر Vulkan (أي معالج رسوميات)؛ إذا واجه المشغّل مشكلة أو كانت الذاكرة مشغولة فاختر «المعالج فقط».",
+      "wnote": {
+        "tiny": "الأصغر",
+        "base": "سريع",
+        "small": "متوازن",
+        "medium": "دقيق",
+        "turbo": "تيربو",
+        "large": "الأقصى"
+      }
     },
     "audio": {
       "btn": "الصوت",

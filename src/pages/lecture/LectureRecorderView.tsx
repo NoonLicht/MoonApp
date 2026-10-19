@@ -220,13 +220,11 @@ export default function LectureRecorderView({ c }: { c: useLectureRecorderResult
               ? engine.asr === "gigaam"
                 ? t("lecture.engineReadyGigaam")
                 : t("lecture.engineReady", { backend: engine.backend || "cpu" })
-              : engine?.bin
-                ? t("lecture.modelMissing")
-                : t("lecture.engineMissing")}
+              : t("lecture.engineMissing")}
           </span>
           {engine && !engine.ready && (
             <button type="button" className="lec-btn ghost" onClick={() => openAiHub(t("aiHub.title"))}>
-              {engine.bin ? t("lecture.downloadModel") : t("lecture.setupBtn")}
+              {t("lecture.setupBtn")}
             </button>
           )}
           <span className="lec-sep">·</span>

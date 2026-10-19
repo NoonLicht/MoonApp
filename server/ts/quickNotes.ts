@@ -2,17 +2,15 @@
  * Быстрые голосовые заметки: «наговорил идею → получил текст», без полного
  * пайплайна лекций (VAD-чанкование, диаризация, конспект). Переиспользует
  * УЖЕ существующую инфраструктуру распознавания:
- *   - server/whisperEngine.js — та же модель/сборка whisper.cpp, что и на
- *     странице «Лекторий» (findBin/findModel/transcribeArgs);
- *   - server/lecture.js → transcribeFile() — тот же прогон с откатом без
- *     --prompt, уже покрытый тестами лекций.
- * Если whisper не установлен — честная ошибка с указанием, что нужно зайти
+ *   - server/lectureAsr.js → transcribeFile() — тот же движок (GigaAM v3 или
+ *     Whisper GGUF), что и на странице «Лекторий», с откатом без подсказки.
+ * Если распознавание не установлено — честная ошибка с указанием, что нужно зайти
  * на страницу «Лекторий» и поставить движок/модель там (единая точка
  * настройки, дублировать её здесь не нужно).
  *
  * Запись пишется браузерным MediaRecorder в любой формат, который Chromium
  * отдаёт (обычно webm/opus) — на сервере ffmpeg конвертирует её в 16кГц моно
- * WAV, который принимает whisper.cpp.
+ * WAV для распознавания.
  */
 import { spawn } from "child_process";
 import crypto from "crypto";
@@ -23,22 +21,9 @@ import logger from "./logger";
 import { detectFfmpeg } from "./convertEngine";
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const whisperEngine = require("./whisperEngine") as {
-  findBin(): string | null;
-  findModel(): string | null;
-};
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const lectureAsr = require("./lectureAsr") as {
-  asrReady(bin: unknown, model: unknown): boolean;
-};
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const lecture = require("./lecture") as {
-  transcribeFile(
-    bin: string | null,
-    model: string | null,
-    wavPath: string,
-    outBase: string,
-  ): Promise<{ text: string; segments: unknown[] }>;
+  asrReady(): boolean;
+  transcribeFile(wavPath: string): Promise<{ text: string; segments: unknown[] }>;
 };
 
 const { DIRS, FILES } = config;
@@ -123,9 +108,7 @@ export async function transcribeAndSave(input: TranscribeInput): Promise<QuickNo
   const ff = await detectFfmpeg();
   if (!ff.found || !ff.ffmpeg) throw new Error("ffmpeg_not_found");
 
-  const bin = whisperEngine.findBin();
-  const model = whisperEngine.findModel();
-  if (!lectureAsr.asrReady(bin, model)) throw new Error("whisper_not_installed");
+  if (!lectureAsr.asrReady()) throw new Error("whisper_not_installed");
 
   const id = crypto.randomUUID();
   const wavPath = path.join(DIRS.quickNotesTmp, `${id}.wav`);
@@ -133,7 +116,7 @@ export async function transcribeAndSave(input: TranscribeInput): Promise<QuickNo
 
   try {
     await toWav16kMono(ff.ffmpeg, input.audioPath, wavPath);
-    const result = await lecture.transcribeFile(bin, model, wavPath, outBase);
+    const result = await lectureAsr.transcribeFile(wavPath);
 
     let audioFile: string | null = null;
     if (input.keepAudio) {
@@ -172,15 +155,13 @@ export async function transcribeAndSave(input: TranscribeInput): Promise<QuickNo
 export async function transcribeOnly(audioPath: string): Promise<{ text: string }> {
   const ff = await detectFfmpeg();
   if (!ff.found || !ff.ffmpeg) throw new Error("ffmpeg_not_found");
-  const bin = whisperEngine.findBin();
-  const model = whisperEngine.findModel();
-  if (!lectureAsr.asrReady(bin, model)) throw new Error("whisper_not_installed");
+  if (!lectureAsr.asrReady()) throw new Error("whisper_not_installed");
   const id = crypto.randomUUID();
   const wavPath = path.join(DIRS.quickNotesTmp, `${id}.wav`);
   const outBase = path.join(DIRS.quickNotesTmp, id);
   try {
     await toWav16kMono(ff.ffmpeg, audioPath, wavPath);
-    const result = await lecture.transcribeFile(bin, model, wavPath, outBase);
+    const result = await lectureAsr.transcribeFile(wavPath);
     return { text: String(result.text || "").trim() };
   } finally {
     fs.rmSync(wavPath, { force: true });

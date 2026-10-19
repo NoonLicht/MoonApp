@@ -323,3 +323,5 @@ server/internalKey.js
 # ядро редактора (Rust): артефакты сборки
 native/wordcore/target/
 native/gridcore/target/
+server/asrGguf.js
+server/cpuThreads.js

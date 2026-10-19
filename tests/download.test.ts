@@ -94,8 +94,8 @@ function download(): any {
  * случилось с копиями User-Agent), поэтому проверяем исходники.
  */
 describe("контракт: единый модуль скачивания вместо копий", () => {
-  it("diarize.js и whisperEngine.js берут потоковую запись из server/download", () => {
-    for (const name of ["diarize.js", "whisperEngine.js"]) {
+  it("diarize.js и asrGguf.js берут потоковую запись из server/download", () => {
+    for (const name of ["diarize.js", "asrGguf.js"]) {
       const src = readEngineSource(name);
       expect(src, `${name}: нет импорта server/download`).toMatch(
         /require\("\.\/download"\)|from "\.\/download"/,
@@ -107,9 +107,9 @@ describe("контракт: единый модуль скачивания вм�
     }
   });
 
-  it("User-Agent остался разным у двух движков (sherpa и whisper.cpp)", () => {
+  it("User-Agent остался разным у двух движков (sherpa и ASR)", () => {
     expect(readEngineSource("diarize.js")).toContain("sherpa-onnx diarization");
-    expect(readEngineSource("whisperEngine.js")).toContain("whisper.cpp");
+    expect(readEngineSource("asrGguf.js")).toContain("MoonApp/1.0 (+ASR)");
   });
 
   it("страницы не держат своих копий saveBlob", () => {

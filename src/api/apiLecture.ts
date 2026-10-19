@@ -20,7 +20,7 @@ import type {
   LectureDiarizeSetup,
   LectureDiarizeSettings,
   LectureDiarizeState,
-  LectureEngineSetup,
+  WhisperGgufInfo,
   LectureGigaamInfo,
   ForesightCard,
 } from "@/api/apiTypesLecture";
@@ -114,20 +114,12 @@ export const lectureApi = {
   lectureDiarizeRun: (id: number, track?: "sys" | "mic") =>
     req<LectureDiarizeState>("POST", `/lecture/${id}/diarize`, track ? { track } : {}),
   lectureDiarizeState: (id: number) => req<LectureDiarizeState>("GET", `/lecture/${id}/diarize`),
-  // --- Настройка движка распознавания: модель, сборка (CPU/CUDA), устройство ---
-  // Все методы возвращают один и тот же LectureEngineSetup, поэтому панель
-  // настроек после любого действия просто перезаписывает состояние целиком.
-  lectureEngineSetup: () => req<LectureEngineSetup>("GET", "/lecture/engine/setup"),
-  lectureEngineModel: (id: string, action: "select" | "download" | "remove" = "select") =>
-    req<LectureEngineSetup>("POST", "/lecture/engine/model", { id, action }),
-  lectureEngineBuild: (id: string, action: "select" | "download" = "select") =>
-    req<LectureEngineSetup>("POST", "/lecture/engine/build", { id, action }),
-  lectureEngineGpu: (mode: "auto" | "off", deviceId?: number) =>
-    req<LectureEngineSetup>("POST", "/lecture/engine/gpu", { mode, deviceId }),
-  lectureEngineBin: (path: string) =>
-    req<LectureEngineSetup>("POST", "/lecture/engine/bin", { path }),
-  lectureEngineCancel: () => req<LectureEngineSetup>("POST", "/lecture/engine/cancel", {}),
-  lectureEngineVerify: () => req<LectureEngineSetup>("POST", "/lecture/engine/verify", {}),
+  // --- Whisper GGUF: модели (Base/Small/Medium/Large × кванты), выбор, режим GPU ---
+  lectureWhisper: () => req<WhisperGgufInfo>("GET", "/lecture/engine/whisper"),
+  lectureWhisperAction: (
+    action: "download" | "cancel" | "remove" | "select" | "gpu",
+    extra: { id?: string; mode?: "auto" | "off" } = {},
+  ) => req<WhisperGgufInfo>("POST", "/lecture/engine/whisper", { action, ...extra }),
   // GigaAM v3 — движок распознавания речи по умолчанию.
   lectureGigaam: () => req<LectureGigaamInfo>("GET", "/lecture/engine/gigaam"),
   lectureGigaamAction: (action: "download" | "cancel" | "remove" | "use-gigaam" | "use-whisper") =>

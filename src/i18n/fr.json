@@ -3020,7 +3020,19 @@
       "asrHint": "GigaAM v3 est le moteur par défaut pour le russe : plus précis et plus rapide que les petits modèles Whisper, fonctionne sur CPU. Pour les autres langues et en cas d'échec, Whisper est utilisé.",
       "gigaamLang": "La langue du cours n'est pas le russe — la transcription passera par Whisper.",
       "errGigaamMissing": "Le modèle GigaAM v3 n'est pas téléchargé",
-      "errRuntimeMissing": "Runtime ONNX (onnxruntime-node) introuvable — GigaAM v3 ne peut pas démarrer"
+      "errRuntimeMissing": "Runtime ONNX (onnxruntime-node) introuvable — GigaAM v3 ne peut pas démarrer",
+      "whisperHint": "Whisper au format GGUF, exécuté par la bibliothèque transcribe.cpp. Q4_K_M est la valeur par défaut : compact et presque sans perte de précision ; Q5–Q8 sont plus précis mais plus lourds. Large et Medium sont plus précis ; Base et Small plus rapides.",
+      "quantLabel": "Quantification",
+      "quantDefault": "par défaut",
+      "gpuHintGguf": "La carte graphique calcule via Vulkan (tout GPU) ; si le pilote pose problème ou si la VRAM est occupée, choisissez « Processeur seul ».",
+      "wnote": {
+        "tiny": "Minimum",
+        "base": "Rapide",
+        "small": "Équilibrée",
+        "medium": "Précise",
+        "turbo": "Turbo",
+        "large": "Maximum"
+      }
     },
     "audio": {
       "btn": "Audio",

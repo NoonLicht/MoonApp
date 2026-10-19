@@ -94,14 +94,10 @@ export { streamChatSend, streamArena } from "@/api/apiStream";
 export type { StreamEvent } from "@/api/apiStream";
 export type {
   LectureEngineStatus,
-  LectureFit,
-  LectureSystemInfo,
-  LectureEngineBuild,
-  LectureModelEntry,
   LectureEngineTask,
-  LectureGpuInfo,
-  LectureEngineVerify,
-  LectureEngineSetup,
+  WhisperGgufModel,
+  WhisperGgufInfo,
+  WhisperQuant,
   LectureGigaamInfo,
   LectureSession,
   LectureChunk,

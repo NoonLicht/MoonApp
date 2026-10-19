@@ -32,11 +32,8 @@ const ffmpegBin: string | null = ffDetected.found ? ffDetected.ffmpeg : null;
 // распознаванием речи проверен вручную (см. итоговый отчёт по фиче) — здесь
 // автоматически покрывается путь "whisper не установлен", что тоже реальный
 // сценарий (у части пользователей движок ещё не настроен).
-const whisperEngineProbe = req("../server/whisperEngine") as {
-  findBin(): string | null;
-  findModel(): string | null;
-};
-const whisperReady = !!(whisperEngineProbe.findBin() && whisperEngineProbe.findModel());
+const asrProbe = req("../server/lectureAsr") as { asrReady(): boolean };
+const whisperReady = asrProbe.asrReady();
 
 function makeSilentWav(): string {
   if (!ffmpegBin) throw new Error("ffmpeg not found for test setup");

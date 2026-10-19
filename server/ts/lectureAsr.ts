@@ -1,28 +1,37 @@
 /**
- * Выделено из lecture.ts при разбиении крупного файла (поведение не менялось).
+ * Общая точка расшифровки для лекций и быстрых заметок: GigaAM v3 (ONNX) или
+ * Whisper GGUF (transcribe.cpp, см. asrGguf.ts) плюс чистка результата.
  */
-import fs from "fs";
-import { spawn } from "child_process";
 import path from "path";
 import settings from "./settings";
-import * as whisperEngine from "./whisperEngine";
+import * as asrGguf from "./asrGguf";
 import * as gigaam from "./gigaamEngine";
 import logger from "./logger";
 
 /**
- * Каким движком расшифровывать: GigaAM v3 или Whisper.
+ * Каким движком расшифровывать: GigaAM v3 или Whisper GGUF.
  * GigaAM — если модель скачана и (выбрана по умолчанию и язык русский) либо
- * Whisper вообще не установлен: пользователь без Whisper не остаётся без речи.
+ * Whisper-модели нет: пользователь без Whisper не остаётся без речи.
  */
-export function useGigaam(whisperReady: boolean): boolean {
+export function useGigaam(): boolean {
   if (!gigaam.isInstalled() || !gigaam.runtimeAvailable()) return false;
-  if (!whisperReady) return true;
+  if (!asrGguf.isInstalled()) return true;
   return gigaam.preferred() === "gigaam" && gigaam.languageSupported();
 }
 
-/** Есть ли чем расшифровывать: готовый Whisper (bin+model) или скачанный GigaAM. */
-export function asrReady(bin: unknown, model: unknown): boolean {
-  return !!(bin && model) || (gigaam.isInstalled() && gigaam.runtimeAvailable());
+/** Есть ли чем расшифровывать: скачанный GigaAM или Whisper GGUF. */
+export function asrReady(): boolean {
+  return (
+    (gigaam.isInstalled() && gigaam.runtimeAvailable()) ||
+    (asrGguf.isInstalled() && asrGguf.runtimeAvailable())
+  );
+}
+
+/** Какой движок расшифрует следующий чанк. */
+export function activeAsr(): "gigaam" | "whisper" | null {
+  if (!asrReady()) return null;
+  if (useGigaam()) return "gigaam";
+  return asrGguf.isInstalled() ? "whisper" : null;
 }
 
 /** Типовые галлюцинации Whisper на тишине/шуме — вырезаем из результата. */
@@ -45,220 +54,22 @@ const HALLUCINATION_CONTAINS = [
 ];
 
 /**
- * Один прогон whisper-cli: запуск, ожидание, разбор результата.
- *
- * Перед запуском удаляем прошлый .srt: whisper создаёт файл только когда нашёл
- * текст, поэтому иначе можно прочитать огрызок ПРЕДЫДУЩЕГО прогона (или пустой
- * файл) и решить, что расшифровывать нечего.
- */
-export function runWhisper(bin: any, args: any, outBase: any, timeoutMs = 120000) {
-  return new Promise<any>((resolve, reject) => {
-    const srtPath = outBase + ".srt";
-    try {
-      fs.rmSync(srtPath, { force: true });
-    } catch {
-      /* ignore */
-    }
-    const proc = spawn(bin, args, { windowsHide: true });
-    let stdout = "",
-      stderr = "";
-    const timer = setTimeout(() => {
-      try {
-        proc.kill();
-      } catch {
-        /* ignore */
-      }
-      reject(new Error("whisper_timeout"));
-    }, timeoutMs);
-    proc.stdout.on("data", (d) => {
-      stdout += d.toString("utf8");
-    });
-    proc.stderr.on("data", (d) => {
-      stderr += d.toString("utf8");
-    });
-    proc.on("error", (e) => {
-      clearTimeout(timer);
-      reject(e);
-    });
-    proc.on("close", (code) => {
-      clearTimeout(timer);
-      if (code !== 0 && !stdout.trim())
-        return reject(new Error(`whisper_exit_${code}: ${stderr.slice(-300)}`));
-      resolve(readChunkResult(outBase, stdout));
-    });
-  });
-}
-
-/**
- * Разбор результата прогона: сегменты из SRT, иначе текст из stdout, затем
- * вырезание галлюцинаций. Возвращает { text, segments }.
- */
-export function readChunkResult(outBase: any, stdout = "") {
-  let text = "";
-  let segments: any[] = [];
-  try {
-    const srtPath = outBase + ".srt";
-    if (fs.existsSync(srtPath)) {
-      segments = parseSrt(fs.readFileSync(srtPath, "utf8"));
-      text = segments
-        .map((x) => x.text)
-        .join(" ")
-        .trim();
-    }
-  } catch {
-    /* ignore */
-  }
-  if (!text)
-    text = String(stdout || "")
-      .replace(/\s+/g, " ")
-      .trim();
-  text = sanitizeText(text);
-  segments = segments.map((x) => ({ ...x, text: sanitizeText(x.text) })).filter((x) => x.text);
-  return { text, segments };
-}
-
-/**
- * HTTP-клиент резидентного whisper-server.exe: POST /inference с multipart
- * (file=WAV, response_format=srt, опционально language/prompt). Используем
- * глобальные fetch/FormData/Blob — есть в Node без зависимостей начиная с
- * версии, на которой собран проект (в package.json запрещённые движки не
- * заданы, а Electron/Node здесь современные).
- */
-export async function httpInference(port: any, wavPath: any, opts: Record<string, any> = {}) {
-  const buf = fs.readFileSync(wavPath);
-  const form = new FormData();
-  form.append("file", new Blob([buf], { type: "audio/wav" }), path.basename(wavPath));
-  form.append("response_format", "srt");
-  if (opts.language) form.append("language", String(opts.language));
-  if (opts.prompt) form.append("prompt", String(opts.prompt));
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 120000);
-  let res;
-  try {
-    res = await fetch(`http://127.0.0.1:${port}/inference`, {
-      method: "POST",
-      body: form,
-      signal: controller.signal,
-    });
-  } catch (e: any) {
-    throw new Error(`whisper_server_request_failed: ${String(e.message || e)}`, { cause: e });
-  } finally {
-    clearTimeout(timer);
-  }
-  if (!res.ok) throw new Error(`whisper_server_http_${res.status}`);
-  const body = await res.text();
-  return resultFromSrtText(body);
-}
-
-/** Разбор ответа резидента (SRT-текст, не файл) — та же логика, что readChunkResult. */
-export function resultFromSrtText(srtText: any) {
-  let segments: any[] = [];
-  let text = "";
-  try {
-    segments = parseSrt(srtText);
-    text = segments
-      .map((x) => x.text)
-      .join(" ")
-      .trim();
-  } catch {
-    /* ignore */
-  }
-  if (!text)
-    text = String(srtText || "")
-      .replace(/\s+/g, " ")
-      .trim();
-  text = sanitizeText(text);
-  segments = segments.map((x) => ({ ...x, text: sanitizeText(x.text) })).filter((x) => x.text);
-  return { text, segments };
-}
-
-/**
- * Прогон чанка через резидентный whisper-server (модель уже в памяти).
- * Тот же откат без --prompt, что и в CLI-пути. Если сервер не отвечает —
- * ОДНА попытка перезапуска, иначе исключение уходит наверх, и transcribeFile
- * откатывается на обычный whisper-cli для этого чанка (очередь не рвётся).
- */
-export async function transcribeViaServer(
-  model: any,
-  wavPath: any,
-  meta: any,
-  skipHint: any,
-  allowRetry = true,
-) {
-  const lc = settings.get("lecture");
-  const language = String(lc.language || "ru");
-  const hint = skipHint ? "" : whisperEngine.initialPrompt();
-
-  const request = async (withPrompt: any) => {
-    const handle = await whisperEngine.startWhisperServer(model);
-    return httpInference(handle.port, wavPath, { language, prompt: withPrompt ? hint : "" });
-  };
-
-  let result;
-  try {
-    result = await request(!!hint);
-  } catch (e: any) {
-    // Сервер мог упасть между чанками (или это первый запрос после сбоя) —
-    // одна попытка перезапустить и повторить именно этот чанк.
-    logger.warn("lecture.chunk.resident_restart", {
-      id: meta.id ?? null,
-      file: meta.file ?? path.basename(wavPath),
-      error: String(e.message || e),
-    });
-    whisperEngine.stopWhisperServer();
-    result = await request(!!hint);
-  }
-
-  if (!allowRetry || !whisperEngine.needsPromptlessRetry(result.text, hint))
-    return { ...result, promptless: skipHint };
-  logger.info("lecture.chunk.retry_no_prompt", {
-    id: meta.id ?? null,
-    file: meta.file ?? path.basename(wavPath),
-    source: meta.source ?? null,
-  });
-  result = await request(false);
-  return { ...result, promptless: true };
-}
-
-/**
- * Прогон чанка с откатом: сначала штатно (с подсказкой из настроек), а если
- * движок не нашёл текст — ещё раз БЕЗ --prompt (см. whisperEngine.
- * needsPromptlessRetry). Возвращает { text, segments, promptless }.
- *
- * Зачем отдельной функцией: откат — это правило, а не деталь очереди, и оно
- * проверяется тестом с подставным runner (без реального whisper-cli).
- * Аргументы собирает whisperEngine.transcribeArgs — там же флаги GPU (-ng для
- * CPU-сборки/выключенной видеокарты, -dev N для выбора устройства).
- *
- * Резидентный whisper-server — ОПЦИОНАЛЬНЫЙ путь (настройка useResidentWhisper +
- * whisperEngine.whisperServerAvailable()): если он выключен, недоступен или упал
- * даже после перезапуска — этот чанк уходит по обычному CLI-пути ниже, очередь
- * не останавливается и поведение идентично тому, что было до этой функции.
- *
- * allowRetry=false (черновой прогон streaming-режима, см. draftTranscribe):
- * откат без --prompt намеренно пропускается — черновик и так пересчитывается
- * каждые DRAFT_INTERVAL_MS, второй полный прогон модели на каждый тик удвоил
- * бы нагрузку CPU/GPU ради текста, который через пару секунд всё равно
- * перезапишется свежим тиком (а на закрытии сегмента финальный чанк идёт
- * с allowRetry=true как раньше).
+ * Расшифровка WAV: GigaAM или Whisper GGUF. Для Whisper подсказка из настроек
+ * (академический словарь) идёт в initial prompt; если с ней текст пустой, один
+ * раз повторяем без неё (на длинную подсказку часть моделей отвечает пустотой).
+ * Возвращает { text, segments, promptless }.
  */
 export async function transcribeFile(
-  bin: any,
-  model: any,
-  wavPath: any,
-  outBase: any,
+  wavPath: string,
   meta: Record<string, any> = {},
-  runner = runWhisper,
   allowRetry = true,
 ) {
-  // GigaAM v3 (ONNX, без внешних процессов): подсказки и откат без --prompt ей не нужны.
-  if (useGigaam(!!(bin && model))) {
+  if (useGigaam()) {
     try {
       const r = await gigaam.transcribeWav(wavPath);
-      return { text: r.text, segments: r.segments, promptless: true };
+      return { text: sanitizeText(r.text), segments: r.segments, promptless: true };
     } catch (e: any) {
-      // Whisper есть — этот чанк уходит на него, очередь не рвётся; иначе — ошибка.
-      if (!(bin && model)) throw e;
+      if (!asrGguf.isInstalled()) throw e;
       logger.warn("lecture.chunk.gigaam_fallback_whisper", {
         id: meta.id ?? null,
         file: meta.file ?? path.basename(wavPath),
@@ -266,45 +77,22 @@ export async function transcribeFile(
       });
     }
   }
-
-  // Если на этой модели подсказка уже выбила пустой ответ, дальше идём сразу без
-  // неё: повтор стоит полной загрузки модели, а чанков в лекции сотни.
-  const skipHint = whisperEngine.promptUnusableFor(model);
-
   const lc = settings.get("lecture");
-  if (lc.useResidentWhisper === true && whisperEngine.whisperServerAvailable()) {
-    try {
-      return await transcribeViaServer(model, wavPath, meta, skipHint, allowRetry);
-    } catch (e: any) {
-      logger.warn("lecture.chunk.resident_fallback_cli", {
-        id: meta.id ?? null,
-        file: meta.file ?? path.basename(wavPath),
-        error: String(e.message || e),
-      });
-      // падаем в обычный CLI-путь ниже для этого конкретного чанка
-    }
-  }
-
-  const args = whisperEngine.transcribeArgs(
-    model,
-    wavPath,
-    outBase,
-    skipHint ? { prompt: null } : {},
-  );
-  const result = await runner(bin, args, outBase);
-  const hint = skipHint ? "" : whisperEngine.initialPrompt();
-  if (!allowRetry || !whisperEngine.needsPromptlessRetry(result.text, hint))
-    return { ...result, promptless: skipHint };
-  // ОТКАТ БЕЗ ПОДСКАЗКИ. large-v3-turbo на длинную русскую подсказку отвечает
-  // пустым SRT: движок грузит модель и через пару секунд молча завершается, а
-  // пользователь видит «нечего расшифровывать». Повтор без --prompt даёт текст.
+  const language = String(lc.language || "ru");
+  const hint = String(lc.initialPrompt || "");
+  const clean = (r: { text: string; segments: any[] }) => ({
+    text: sanitizeText(r.text),
+    segments: r.segments.map((x) => ({ ...x, text: sanitizeText(x.text) })).filter((x) => x.text),
+  });
+  let res = clean(await asrGguf.transcribeWav(wavPath, { language, prompt: hint }));
+  if (res.text || !hint || !allowRetry) return { ...res, promptless: !hint };
   logger.info("lecture.chunk.retry_no_prompt", {
     id: meta.id ?? null,
     file: meta.file ?? path.basename(wavPath),
     source: meta.source ?? null,
   });
-  const retryArgs = whisperEngine.transcribeArgs(model, wavPath, outBase, { prompt: null });
-  return { ...(await runner(bin, retryArgs, outBase)), promptless: true };
+  res = clean(await asrGguf.transcribeWav(wavPath, { language }));
+  return { ...res, promptless: true };
 }
 
 /** Вырезание галлюцинаций и схлопывание зацикленных повторов. */

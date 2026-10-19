@@ -169,13 +169,13 @@ describe("gigaamEngine — выбор движка", () => {
     expect(i.task.state).toBe("idle");
   });
 
-  it("useGigaam: без модели — Whisper; модель есть, Whisper нет — GigaAM", async () => {
+  it("useGigaam: без обеих моделей расшифровывать нечем", async () => {
     if (LIVE_STORAGE) return;
     const asr = await import("../server/lectureAsr");
-    expect(asr.useGigaam(true)).toBe(false);
-    expect(asr.useGigaam(false)).toBe(false);
-    expect(asr.asrReady(null, null)).toBe(false);
-    expect(asr.asrReady("whisper-cli.exe", "model.bin")).toBe(true);
+    // Пустой storage: ни GigaAM, ни Whisper GGUF — расшифровывать нечем.
+    expect(asr.useGigaam()).toBe(false);
+    expect(asr.asrReady()).toBe(false);
+    expect(asr.activeAsr()).toBe(null);
   });
 });
 
@@ -194,7 +194,7 @@ describe.skipIf(!LIVE_STORAGE || !LIVE_WAV)("gigaamEngine — живой про�
 
   it("через transcribeFile (общая точка входа лекций/заметок) — тот же текст", async () => {
     const asr = await import("../server/lectureAsr");
-    const r: any = await asr.transcribeFile(null, null, LIVE_WAV, LIVE_WAV.replace(/\.wav$/i, ""));
+    const r: any = await asr.transcribeFile(LIVE_WAV);
     expect(r.text.length).toBeGreaterThan(20);
     expect(r.promptless).toBe(true);
   }, 120_000);
