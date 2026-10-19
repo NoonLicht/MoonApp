@@ -378,13 +378,19 @@ export default function LlamaPanel({
                           downloading &&
                           (dl?.file === m.file ||
                             m.extra?.some((e) => (e.as ?? e.file.split("/").pop()) === dl?.file));
-                        const total = m.sizeMb + (m.extra ?? []).reduce((a, e) => a + e.sizeMb, 0);
+                        const rest = (m.extra ?? []).filter((e) => !files.has(e.as ?? e.file.split("/").pop() ?? e.file));
+                        const restMb = rest.reduce((a, e) => a + e.sizeMb, 0);
                         return (
                           <div key={m.id} className="tn-row">
                             <div className="tn-row-main">
                               <div className="tn-row-title">
-                                {m.note.toUpperCase()} · {size(total)}
+                                {m.note.toUpperCase()} · {size(m.sizeMb)}
                               </div>
+                              {restMb > 0 && (
+                                <div className="muted-sm">
+                                  {t("llama.plusParts", { size: size(restMb) })}
+                                </div>
+                              )}
                               <div className="muted-sm">{t(`llama.quant.${m.note}`)}</div>
                               {active && dl && (
                                 <>

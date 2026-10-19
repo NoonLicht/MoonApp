@@ -141,6 +141,15 @@ export const IMAGE_COMPANIONS = [
     mb: 4795,
     dir: "llama" as Dir,
   },
+  // Проектор нужен загрузчику GGUF в ComfyUI (узел ComfyUI-GGUF ищет «*mmproj*» с именем энкодера);
+  // имя то же, что у чат-модели Qwen3-VL 8B, поэтому файл общий.
+  {
+    repo: "unsloth/Qwen3-VL-8B-Instruct-GGUF",
+    file: "mmproj-F16.gguf",
+    mb: 1105,
+    as: "Qwen3-VL-8B-Instruct.mmproj-F16.gguf",
+    dir: "llama" as Dir,
+  },
 ];
 
 export const CATALOG: CatalogModel[] = [
@@ -481,6 +490,34 @@ export const CATALOG: CatalogModel[] = [
       { q: Q4, file: "qwen-image-2.1-turbo-Q4_K_M.gguf", mb: 4005 },
       { q: Q5, file: "qwen-image-2.1-turbo-Q5_K_M.gguf", mb: 5141 },
       { q: Q6, file: "qwen-image-2.1-turbo-Q6_K.gguf", mb: 5981 },
+    ],
+    companions: IMAGE_COMPANIONS,
+  }),
+  ...family({
+    group: "qwen-image-21-uc",
+    title: "Qwen-Image 2.1 Uncensored",
+    kind: "image",
+    repo: "abenzerps/Qwen-Image-2.1-Uncensored-Quantized",
+    dir: "sd",
+    quants: [
+      { q: "Q4_0", file: "qwen-image-2.1-UC-Q4_0.gguf", mb: 3958 },
+      { q: Q4, file: "qwen-image-2.1-UC-Q4_K_M.gguf", mb: 4387 },
+      { q: Q5, file: "qwen-image-2.1-UC-Q5_K_M.gguf", mb: 4978 },
+      { q: Q6, file: "qwen-image-2.1-UC-Q6_K.gguf", mb: 5608 },
+      { q: "Q8_0", file: "qwen-image-2.1-UC-Q8_0.gguf", mb: 7238 },
+    ],
+    companions: IMAGE_COMPANIONS,
+  }),
+  ...family({
+    group: "qwen-image-21-sakura-turbo",
+    title: "Sakura Qwen-Image 2.1 Turbo Uncensored",
+    kind: "image",
+    repo: "webmp3/Sakura-Qwen-Image-2.1-Turbo-Uncensored-GGUF",
+    dir: "sd",
+    quants: [
+      { q: Q4, file: "Sakura-Image-2.1-Turbo-Q4_K_M-3.77GiB.gguf", mb: 3862 },
+      { q: Q5, file: "Sakura-Image-2.1-Turbo-Q5_K_M-4.60GiB.gguf", mb: 4711 },
+      { q: "Q8_0", file: "Sakura-Image-2.1-Turbo-Q8_0-7.07GiB.gguf", mb: 7238 },
     ],
     companions: IMAGE_COMPANIONS,
   }),
