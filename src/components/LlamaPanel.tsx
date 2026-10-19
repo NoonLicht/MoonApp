@@ -277,7 +277,7 @@ export default function LlamaPanel({
               <div key={b.id} className="tn-row">
                 <div className="tn-row-main">
                   <div className="tn-row-title">
-                    {t(`llama.build.${b.id}`)} · {gb(b.sizeMb)}
+                    {t(`llama.build.${b.id}`)} · {size(b.sizeMb)}
                     {st.failedBuilds.includes(b.id) ? ` · ${t("llama.failed")}` : ""}
                   </div>
                   <div className="muted-sm">{t(`llama.buildHint.${b.id}`)}</div>
@@ -455,7 +455,7 @@ export default function LlamaPanel({
                         <div key={b.id} className="tn-row">
                           <div className="tn-row-main">
                             <div className="tn-row-title">
-                              {t(`llama.build.${b.id}`)} · {gb(b.sizeMb)}
+                              {t(`llama.build.${b.id}`)} · {size(b.sizeMb)}
                             </div>
                             <div className="muted-sm">{t(`llama.buildHint.${b.id}`)}</div>
                             {sdActive && <ProgressBar value={st.sd.install.progress} />}

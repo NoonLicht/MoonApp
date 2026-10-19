@@ -50,6 +50,9 @@ export function setWebSettings(p: { searxng?: string; braveKey?: string }): Retu
 /** Тег целиком: значения атрибутов в кавычках могут содержать «>» (JSON в data-props). */
 const TAG = /<\/?[a-zA-Z][^\s>/]*(?:\s+(?:[^>"']|"[^"]*"|'[^']*')*)?\/?>/g;
 
+const INLINE =
+  /<\/?(?:b|i|u|s|em|strong|a|span|code|small|sup|sub|mark|abbr|font|cite|q)(?=[\s>/])(?:\s+(?:[^>"']|"[^"]*"|'[^']*')*)?\/?>/gi;
+
 const decode = (s: string): string =>
   s
     .replace(TAG, "")
@@ -146,15 +149,17 @@ export function htmlToText(html: string): { title: string; text: string } {
   const title = decode(/<title[^>]*>([\s\S]*?)<\/title>/i.exec(html)?.[1] ?? "");
   let h = html
     .replace(/<!--[\s\S]*?-->/g, " ")
-    .replace(/<(script|style|noscript|svg|nav|footer|header|form|iframe|template)[\s\S]*?<\/\1>/gi, " ");
+    .replace(/<(script|style|noscript|svg|nav|footer|header|head|form|iframe|template)[\s\S]*?<\/\1>/gi, " ");
   const main = /<(main|article)[\s\S]*?<\/\1>/i.exec(h);
   if (main && main[0].length > 800) h = main[0];
   h = h
-    .replace(/<\/(p|div|li|tr|h[1-6]|section|blockquote|pre|table|ul|ol)>/gi, "\n")
+    // Строчные теги склеивают слова («<b>абзац</b>.» → «абзац.»), остальные — разделяют.
+    .replace(INLINE, "")
+    .replace(/<\/(p|div|tr|h[1-6]|section|blockquote|pre|table|ul|ol)>/gi, "\n")
     .replace(/<(br|hr)\s*\/?>/gi, "\n")
     .replace(/<li[^>]*>/gi, "\n- ")
     .replace(/<h[1-6][^>]*>/gi, "\n## ")
-    .replace(/<[^>]+>/g, " ");
+    .replace(TAG, " ");
   const text = h
     .split("\n")
     .map((l) => decode(l))

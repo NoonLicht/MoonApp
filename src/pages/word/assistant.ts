@@ -194,7 +194,12 @@ export function wordAdapter(getCx: () => Cx, lang: string): DocAdapter {
     ...webTools(lang),
     imageTool({
       sink,
-      insert: async (data, alt) => {
+      insert: async (data, alt, place) => {
+        if (place === "end") {
+          describeResult(await cx.exec("caret.docEnd"));
+          const list = await blocks(cx);
+          if (list.length && list[list.length - 1].text) describeResult(await cx.exec("text.newParagraph"));
+        }
         describeResult(await cx.exec("insert.picture", { data, width: 324, alt }));
       },
     }),

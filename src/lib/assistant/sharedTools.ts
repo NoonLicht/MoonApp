@@ -139,7 +139,7 @@ const toDataUrl = (b: Blob): Promise<string> =>
  * вставляется в документ (`insert` знает, как это делает именно Word или Excel).
  */
 export function imageTool(o: {
-  insert: (base64: string, alt: string) => Promise<void>;
+  insert: (base64: string, alt: string, place: string) => Promise<void>;
   sink: { fn: ((url: string) => void) | null };
 }): AssistantTool {
   return {
@@ -152,6 +152,11 @@ export function imageTool(o: {
       properties: {
         prompt: { type: "string", description: "detailed description of the picture, in English" },
         size: { type: "string", enum: ["square", "landscape", "portrait"], description: "default square" },
+        place: {
+          type: "string",
+          description:
+            'where to put it: in a document "cursor" (default) or "end" (after the last paragraph); in a workbook a cell address such as "F2" (default: the active cell)',
+        },
       },
       required: ["prompt"],
     },
@@ -168,7 +173,7 @@ export function imageTool(o: {
       );
       const url = await toDataUrl(blob);
       o.sink.fn?.(url);
-      await o.insert(url.split(",")[1] ?? "", str(a.prompt).slice(0, 120));
+      await o.insert(url.split(",")[1] ?? "", str(a.prompt).slice(0, 120), str(a.place));
       return "Image generated and inserted into the document.";
     },
   };

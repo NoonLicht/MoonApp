@@ -170,12 +170,12 @@ export function sheetAdapter(getCx: () => SheetCx, lang: string): DocAdapter {
     ...webTools(lang),
     imageTool({
       sink,
-      insert: async (base64, alt) => {
+      insert: async (base64, alt, place) => {
         describeResult(
           await cx.exec("insert.picture", {
             base64,
             mime: "image/png",
-            at: cx.s.sel.a1.split(":")[0],
+            at: /^[A-Za-z]{1,3}\d{1,7}$/.test(place) ? place.toUpperCase() : cx.s.sel.a1.split(":")[0],
             width: 320,
             alt,
           }),
