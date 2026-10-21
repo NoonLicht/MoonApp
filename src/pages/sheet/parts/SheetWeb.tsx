@@ -15,8 +15,8 @@ import type { WcLink } from "@/lib/wcLink";
 const APP = "GridCraft";
 const XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 const ACCEPT = ".xlsx,.xlsm,.xls,.xlsb,.ods,.csv,.tsv,.txt,.json";
-/** Языки приложения → коды языка интерфейса GridCraft (в веб-сборке нет шрифтов китайского и арабского — английский). */
-const LANGS: Record<string, string> = { ru: "ru", en: "en", es: "es", fr: "fr", zh: "en", ar: "en" };
+/** Языки приложения → коды языка интерфейса GridCraft . */
+const LANGS: Record<string, string> = { ru: "ru", en: "en" };
 
 /** Состояние, которое присылает редактор (native/office-web: gridcraft embed.rs). */
 export interface SheetFrameState {

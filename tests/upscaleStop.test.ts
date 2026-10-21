@@ -289,7 +289,7 @@ describe("апскейл: процессы задания гасятся и не
       // Prettier может перенести `req<...>` на следующую строку — проверяем вызовы.
       expect(client).toMatch(/upscalePause: \(\) =>\s*\n?\s*req</);
       expect(client).toMatch(/upscaleResume: \(\) =>\s*\n?\s*req</);
-      for (const loc of ["ru", "en", "fr", "es", "zh", "ar"]) {
+      for (const loc of ["ru", "en"]) {
         const up = JSON.parse(
           fs.readFileSync(path.join(process.cwd(), "src", "i18n", `${loc}.json`), "utf8"),
         ).up;

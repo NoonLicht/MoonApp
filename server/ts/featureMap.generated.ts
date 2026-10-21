@@ -51,6 +51,11 @@ export const FEATURE_MAP: {
       "sheet",
       "word"
     ],
+    "deck": [
+      "llamacpp",
+      "sheet",
+      "word"
+    ],
     "video": [
       "video"
     ],

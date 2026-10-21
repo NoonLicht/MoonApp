@@ -830,5 +830,10 @@
   "Restore": "Восстановить",
   "Discard": "Отбросить",
   "Presentation": "Презентация",
-  "The presentation editor is not built: run npm run office:deck": "Редактор презентаций не собран: выполните npm run office:deck"
+  "The presentation editor is not built: run npm run office:deck": "Редактор презентаций не собран: выполните npm run office:deck",
+  "Summarize this presentation": "Кратко перескажи эту презентацию",
+  "Create a 5-slide presentation on a topic I will name": "Составь презентацию из 5 слайдов на тему, которую я назову",
+  "Add speaker notes to every slide": "Добавь заметки докладчика к каждому слайду",
+  "Shorten the text on the current slide": "Сократи текст на текущем слайде",
+  "Add a summary slide at the end": "Добавь итоговый слайд в конец"
 }

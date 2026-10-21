@@ -19,7 +19,7 @@ const read = (rel: string): string =>
   rel === "server/ts/upscale.ts"
     ? readUpscaleSrc(root)
     : fs.readFileSync(path.join(root, rel), "utf8");
-const LANG_CODES = ["ru", "en", "es", "fr", "zh", "ar"];
+const LANG_CODES = ["ru", "en"];
 
 let engine: any;
 beforeAll(() => {

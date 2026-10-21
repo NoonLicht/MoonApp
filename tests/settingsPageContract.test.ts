@@ -18,7 +18,7 @@ import path from "path";
  *  4) каждый статический ключ t("...") страницы существует во ВСЕХ 6 локалях:
  *     отсутствующий ключ печатает сам себя («settings.foo») прямо в интерфейсе.
  */
-const LANG_CODES = ["en", "ru", "es", "fr", "zh", "ar"];
+const LANG_CODES = ["en", "ru"];
 const settingsSrc = fs.readFileSync(
   path.resolve(__dirname, "..", "src", "pages", "settings", "SettingsPage.tsx"),
   "utf8",

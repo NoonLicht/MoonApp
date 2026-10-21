@@ -924,17 +924,7 @@ export default function AiChatPage() {
       return;
     }
     const rec = createRecognition(
-      lang === "ru"
-        ? "ru-RU"
-        : lang === "es"
-          ? "es-ES"
-          : lang === "fr"
-            ? "fr-FR"
-            : lang === "zh"
-              ? "zh-CN"
-              : lang === "ar"
-                ? "ar-SA"
-                : "en-US",
+      lang === "ru" ? "ru-RU" : "en-US",
     );
     if (!rec) return;
     recogRef.current = rec;

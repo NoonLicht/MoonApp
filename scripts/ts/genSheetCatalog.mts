@@ -10,7 +10,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-const LANGS: Record<string, string> = { ru: "ru", es: "es", fr: "fr", zh: "zh" };
+const LANGS: Record<string, string> = { ru: "ru" };
 
 function findSource(): string {
   const arg = process.argv[2];

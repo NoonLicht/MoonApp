@@ -316,7 +316,7 @@ describe("контракт UI: настройки пачки у моделей �
       "mdlBatchAutoHint",
       "mdlBatchMeasured",
     ];
-    for (const lang of ["ru", "en", "es", "fr", "zh", "ar"]) {
+    for (const lang of ["ru", "en"]) {
       const json = JSON.parse(
         fs.readFileSync(path.join(root, "src", "i18n", `${lang}.json`), "utf8"),
       );

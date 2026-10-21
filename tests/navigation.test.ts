@@ -6,17 +6,13 @@ import App from "@/app/App";
 import { PAGES, startPageOptions } from "@/app/navigation";
 import en from "@/i18n/en.json";
 import ru from "@/i18n/ru.json";
-import es from "@/i18n/es.json";
-import fr from "@/i18n/fr.json";
-import zh from "@/i18n/zh.json";
-import ar from "@/i18n/ar.json";
 
 /**
  * Страницы приложения описаны в одном месте (src/navigation.ts). Тест следит за
  * тем, чтобы перечень не разъезжался с доком и со списком «Стартовая страница»
  * в настройках: именно там не хватало movies, lecture и bypass.
  */
-const DICT: Record<string, typeof en> = { en, ru, es, fr, zh, ar };
+const DICT: Record<string, typeof en> = { en, ru };
 const ALL_IDS = [
   "store",
   "convert",

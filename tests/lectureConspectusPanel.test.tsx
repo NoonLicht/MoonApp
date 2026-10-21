@@ -6,10 +6,6 @@ import LectureConspectusPanel from "@/pages/lecture/parts/LectureConspectusPanel
 import { I18nProvider } from "@/app/i18n";
 import en from "@/i18n/en.json";
 import ru from "@/i18n/ru.json";
-import es from "@/i18n/es.json";
-import fr from "@/i18n/fr.json";
-import zh from "@/i18n/zh.json";
-import ar from "@/i18n/ar.json";
 
 /**
  * Блок «Нарезка расшифровки».
@@ -24,7 +20,7 @@ import ar from "@/i18n/ar.json";
  * поле склеены намертво (перенос возможен только перед единицей измерения),
  * плюс у поля есть единица измерения и доступное имя (aria-label).
  */
-const DICTS: Record<string, typeof en> = { en, ru, es, fr, zh, ar };
+const DICTS: Record<string, typeof en> = { en, ru };
 const LANGS = Object.keys(DICTS);
 
 /** Локаль блока «Нарезка» — по её тексту находим нужный блок в HTML. */

@@ -2,13 +2,13 @@
 """Добавить ключи локализации сразу во все словари src/i18n.
 
 Использование: python scripts/i18nAdd.py keys.json
-keys.json: {"ab.chatterboxDesc": ["ru", "en", "es", "fr", "zh", "ar"], ...}
+keys.json: {"ab.chatterboxDesc": ["ru", "en"], ...}
 Ключ — путь через точку; существующие значения перезаписываются.
 """
 import json
 import sys
 
-LANGS = ["ru", "en", "es", "fr", "zh", "ar"]
+LANGS = ["ru", "en"]
 
 
 def put(tree, path, value):

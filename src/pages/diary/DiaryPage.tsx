@@ -13,10 +13,6 @@ const ymd = (d: Date): string =>
 const LANG_NAME: Record<string, string> = {
   ru: "Russian",
   en: "English",
-  es: "Spanish",
-  fr: "French",
-  zh: "Chinese",
-  ar: "Arabic",
 };
 
 /** Ячейки месяца (с понедельника); null — пустые клетки до первого числа. */

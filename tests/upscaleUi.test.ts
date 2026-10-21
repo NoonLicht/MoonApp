@@ -27,7 +27,7 @@ const page = read("src/pages/upscale/UpscalePage.tsx");
 const dashboard = read("src/pages/upscale/parts/UpscaleDashboard.tsx");
 const proSettings = read("src/pages/upscale/parts/UpscaleProSettings.tsx");
 const css = read("src/styles/upscale.css");
-const LANG_CODES = ["en", "ru", "es", "fr", "zh", "ar"];
+const LANG_CODES = ["en", "ru"];
 
 let engine: any;
 let pipe: any;

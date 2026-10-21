@@ -4,11 +4,11 @@ import en from "@/i18n/en.json";
 
 /**
  * Локализация построена на отдельных JSON-файлах в папке src/i18n/<код>.json
- * (6 официальных языков ООН: en, ru, es, fr, zh, ar).
+ * (два языка: en и ru).
  *
  * В стартовый бандл входит только en (он же фолбэк для недостающих ключей).
  * Остальные словари — отдельные чанки и грузятся при выборе языка: раньше все
- * шесть JSON (~1 МБ) статически импортировались и парсились при каждом старте.
+ * словари статически импортировались и парсились при каждом старте.
  *
  * Чтобы добавить новый язык:
  *   1) скопируйте src/i18n/en.json как src/i18n/xx.json и переведите значения;
@@ -24,10 +24,6 @@ type Dict = Record<string, unknown>;
 export const LANGS: readonly { code: string; native: string }[] = [
   { code: "en", native: "English" },
   { code: "ru", native: "Русский" },
-  { code: "es", native: "Español" },
-  { code: "fr", native: "Français" },
-  { code: "zh", native: "中文" },
-  { code: "ar", native: "العربية" },
 ];
 
 const LOADERS = import.meta.glob<Dict>(["@/i18n/*.json", "!@/i18n/en.json"], {

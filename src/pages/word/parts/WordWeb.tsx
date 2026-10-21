@@ -14,7 +14,7 @@ import { useTw } from "@/pages/word/i18n/useTw";
 const DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 const ACCEPT = ".docx,.docm,.dotx,.dotm,.doc,.odt,.rtf,.txt,.md,.html,.htm";
 /** Языки приложения → коды языка интерфейса WordCraft (арабского и китайского шрифтов в веб-сборке нет — английский). */
-const LANGS: Record<string, string> = { ru: "ru", en: "en", es: "es", fr: "fr", zh: "en", ar: "en" };
+const LANGS: Record<string, string> = { ru: "ru", en: "en" };
 
 const ACCESS: OfficeAccess<WcState> = {
   dirty: (s) => !!s?.dirty,

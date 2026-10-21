@@ -320,7 +320,7 @@ function Shell({
   unloadIdleMinutes,
   welcomeOpen,
 }: ShellProps) {
-  const { t, lang } = useI18n();
+  const { t } = useI18n();
   const [modelPanelVisible, setModelPanelVisible] = useState(false);
   // Если активная страница была удалена или сохранена в настройках устаревшая
   // (например "todo"), откатываемся к первой доступной странице.
@@ -427,7 +427,7 @@ function Shell({
     .join(" ");
 
   return (
-    <div className={shellCls} dir={lang === "ar" ? "rtl" : "ltr"}>
+    <div className={shellCls} dir="ltr">
       <div className="mesh" aria-hidden="true">
         <span className="blob blob-a" />
         <span className="blob blob-b" />

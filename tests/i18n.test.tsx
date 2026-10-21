@@ -22,23 +22,19 @@ function renderFor(lang: string) {
   );
 }
 
-describe("i18n — 6 официальных языков ООН", () => {
+describe("i18n — русский и английский", () => {
   it("поддерживает все 6 языков", () => {
     expect(
       LANGS.map((l) => l.code)
         .sort()
         .join(","),
-    ).toBe("ar,en,es,fr,ru,zh");
+    ).toBe("en,ru");
   });
 
   it("переводит ключи на каждый язык", () => {
     const cases: Record<string, string[]> = {
       en: ["Store", "Performance", "New chat", "All"],
       ru: ["Магазин", "Производительность", "Новый чат", "Все"],
-      es: ["Tienda", "Rendimiento", "Nuevo chat", "Todos"],
-      fr: ["Boutique", "Performances", "Nouveau chat", "Tous"],
-      zh: ["商店", "性能", "新建聊天", "全部"],
-      ar: ["المتجر", "الأداء", "محادثة جديدة", "الكل"],
     };
     for (const [lang, expected] of Object.entries(cases)) {
       const html = renderFor(lang);
