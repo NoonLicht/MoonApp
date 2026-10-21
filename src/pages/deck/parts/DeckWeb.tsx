@@ -1,11 +1,15 @@
 import { useI18n } from "@/app/i18n";
-import OfficeWeb, { type OfficeAccess } from "@/components/office/OfficeWeb";
+import { useMemo } from "react";
+import OfficeWeb, { type AssistantHostProps, type OfficeAccess } from "@/components/office/OfficeWeb";
+import { DeckAssistant } from "@/components/assistant/DocAssistant";
+import type { WcLink } from "@/lib/wcLink";
+import type { AsstDeckCx } from "@/pages/deck/assistant";
 import { useShellDark } from "@/lib/useShellDark";
 import { useTw } from "@/pages/sheet/i18n/useTw";
 
 /**
  * «Презентации»: готовый DeckCraft (веб-сборка на wasm, см. native/office-web). Вкладки, файлы и автосохранение
- * в общем OfficeWeb; помощника для слайдов пока нет, язык интерфейса у редактора один (английский).
+ * в общем OfficeWeb; язык интерфейса у редактора один (английский).
  */
 /** Название приложения-редактора (имя продукта не переводится). */
 const APP = "DeckCraft";
@@ -17,6 +21,7 @@ export interface DeckFrameState {
   open: boolean;
   doc?: { title: string; path: string | null; dirty: boolean; revision: number };
   slides?: number;
+  undo?: number;
   sel?: { slide: number; shapes: number };
 }
 
@@ -27,6 +32,46 @@ const ACCESS: OfficeAccess<DeckFrameState> = {
   name: (s) => (s?.doc && !/^(Presentation|Untitled)\s*\d*$/i.test(s.doc.title) ? s.doc.title : undefined),
 };
 const THEME = (mode: "dark" | "light"): [string, unknown] => ["view.dark", { on: mode === "dark" }];
+
+function frameCx(
+  link: WcLink<DeckFrameState>,
+  docId: string,
+  docName: string,
+  lang: string,
+  tw: AsstDeckCx["tw"],
+): AsstDeckCx {
+  return {
+    docId,
+    lang,
+    tw,
+    get s() {
+      const st = link.state;
+      return { slides: st?.slides ?? 0, slide: st?.sel?.slide ?? 0 };
+    },
+    ui: { docName },
+    query: async <T = unknown,>(method: string, p?: unknown) => {
+      try {
+        return (await link.run(method, p ?? {})) as T;
+      } catch {
+        return undefined;
+      }
+    },
+    exec: async (cmd, p) => {
+      const r = await link.exec(cmd, p ?? {});
+      await link.refresh().catch(() => undefined);
+      return r;
+    },
+    undoDepth: async () => (await link.refresh()).undo ?? 0,
+  };
+}
+
+/** Помощник презентаций: команды идут в рамку активной презентации; номер слайда обновляется после каждой команды. */
+function DeckAssistantHost({ link, docId, docName, onClose }: AssistantHostProps<DeckFrameState>) {
+  const { lang } = useI18n();
+  const tw = useTw();
+  const cx = useMemo(() => frameCx(link, docId, docName, lang, tw), [link, docId, docName, lang, tw]);
+  return <DeckAssistant cx={cx} onClose={onClose} />;
+}
 
 export default function DeckWeb() {
   const { lang } = useI18n();
@@ -48,6 +93,7 @@ export default function DeckWeb() {
       untitled={tw("Presentation")}
       access={ACCESS}
       themeCmd={THEME}
+      Assistant={DeckAssistantHost}
       newTitle={tw("New")}
       openTitle={tw("Open")}
       confirmClose={tw("Unsaved changes will be lost. Close anyway?")}

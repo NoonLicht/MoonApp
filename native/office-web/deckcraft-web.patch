@@ -40,10 +40,10 @@ index b1834c3..8326b3d 100644
  </html>
 diff --git a/apps/deckcraft-web/src/embed.rs b/apps/deckcraft-web/src/embed.rs
 new file mode 100644
-index 0000000..1e3ecce
+index 0000000..ca5ae13
 --- /dev/null
 +++ b/apps/deckcraft-web/src/embed.rs
-@@ -0,0 +1,153 @@
+@@ -0,0 +1,154 @@
 +//! The host bridge for MoonApp (`?embed`): the page around the frame drives the editor.
 +//!
 +//! The same protocol as the WordCraft build: the host's glue script (index.html) calls
@@ -141,6 +141,7 @@ index 0000000..1e3ecce
 +        "open": true,
 +        "doc": {"title": d.title(), "path": d.path, "dirty": d.is_dirty(), "revision": d.revision},
 +        "slides": d.doc.slides.len(),
++        "undo": d.history.undo.len(),
 +        "sel": {"slide": d.selection.slide, "shapes": d.selection.shapes.len()},
 +    })
 +}
@@ -191,7 +192,7 @@ index 0000000..1e3ecce
 +        };
 +    }
 +    let now = state(app);
-+    let print = format!("{}|{}|{}|{}", now["doc"]["revision"], now["doc"]["dirty"], now["sel"]["slide"], now["slides"]);
++    let print = format!("{}|{}|{}|{}|{}", now["doc"]["revision"], now["doc"]["dirty"], now["sel"]["slide"], now["slides"], now["undo"]);
 +    if print != *seen {
 +        *seen = print;
 +        let _ = emit("state", &[("state", JsValue::from_str(&now.to_string()))]);

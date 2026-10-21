@@ -13,12 +13,18 @@ interface CoreCommand {
 
 const cache = new Map<string, Promise<CoreCommand[]>>();
 
-function commands(kind: "word" | "sheet", docId: string): Promise<CoreCommand[]> {
+/** Откуда брать список команд: у Word и Таблиц — сервер, у презентаций — сам редактор (команда commands.list). */
+export type CommandSource = (docId: string) => Promise<CoreCommand[]>;
+export type CommandKind = "word" | "sheet" | "deck";
+
+function commands(kind: CommandKind, docId: string, source?: CommandSource): Promise<CoreCommand[]> {
   let p = cache.get(kind);
   if (!p) {
-    p = (kind === "word" ? api.wordCommands(docId) : api.sheetCommands(docId)) as Promise<
-      CoreCommand[]
-    >;
+    p = source
+      ? source(docId)
+      : ((kind === "word" ? api.wordCommands(docId) : api.sheetCommands(docId)) as Promise<
+          CoreCommand[]
+        >);
     p.catch(() => cache.delete(kind));
     cache.set(kind, p);
   }
@@ -81,9 +87,10 @@ export function describeResult(r: ExecResult): string {
 
 /** «Найти команду» и «Выполнить команду»: через них помощнику доступно всё, что есть на ленте. */
 export function commandTools(
-  kind: "word" | "sheet",
+  kind: CommandKind,
   docId: () => string,
   exec: (cmd: string, p?: Record<string, unknown>) => Promise<ExecResult>,
+  source?: CommandSource,
 ): AssistantTool[] {
   return [
     {
@@ -104,7 +111,7 @@ export function commandTools(
       },
       label: (a) => `Finding commands: ${str(a.query)}`,
       run: async (a) => {
-        const hits = searchCommands(await commands(kind, docId()), str(a.query));
+        const hits = searchCommands(await commands(kind, docId(), source), str(a.query));
         if (!hits.length) return "No commands found; try other words.";
         return hits
           .map(
