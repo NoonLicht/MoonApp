@@ -10,6 +10,19 @@ import {
 import type { AssistantTool, DocAdapter, LiveWrite } from "@/lib/assistant/types";
 import type { Cx } from "@/pages/word/ribbon/types";
 
+/**
+ * Что помощнику нужно от страницы: команды ядра, текущее выделение и имя документа. Так помощник работает
+ * и с прежним редактором (Cx целиком), и с рамкой WordCraft, где состояние приходит от редактора.
+ */
+export interface AsstCx extends Pick<Cx, "docId" | "lang" | "tw" | "query" | "exec"> {
+  s: {
+    selection?: { collapsed: boolean; text: string; focus: { path: number[] } | null } | null;
+    pages: unknown[];
+    words: number;
+  };
+  ui: { docName: string };
+}
+
 interface Block {
   index: number;
   type: string;
@@ -21,7 +34,7 @@ interface Block {
 
 const body = (path: number, off: number) => ({ story: "body", path: [path], off });
 
-async function blocks(cx: Cx): Promise<Block[]> {
+async function blocks(cx: AsstCx): Promise<Block[]> {
   const r = await cx.query<{ blocks: Block[] }>("document.inspect", {});
   return (r?.blocks ?? []).filter((b) => b.type === "paragraph");
 }
@@ -47,7 +60,7 @@ function render(
 }
 
 /** Набрать текст в каретке: каждая строка — отдельный абзац (text.insert сам переносы строк не делит). */
-async function typeLines(cx: Cx, text: string): Promise<void> {
+async function typeLines(cx: AsstCx, text: string): Promise<void> {
   const lines = text.replace(/\r\n?/g, "\n").split("\n");
   for (let i = 0; i < lines.length; i++) {
     if (i > 0) describeResult(await cx.exec("text.newParagraph"));
@@ -56,14 +69,14 @@ async function typeLines(cx: Cx, text: string): Promise<void> {
 }
 
 /** Глубина истории отмены: по ней «Повторить» откатывает ровно то, что сделал запрос. */
-async function depth(cx: Cx): Promise<number> {
+async function depth(cx: AsstCx): Promise<number> {
   const r = await cx.exec("edit.undoHistory");
   const d = (r.result as { depth?: number } | undefined)?.depth;
   return typeof d === "number" ? d : 0;
 }
 
 /** Абзац, в котором стоит каретка (по свежему снимку ядра, а не по состоянию страницы). */
-async function caretBlock(cx: Cx): Promise<Block> {
+async function caretBlock(cx: AsstCx): Promise<Block> {
   const r = await cx.query<{ blocks: Block[]; selection: { focus: { path: number[] } } }>(
     "document.inspect",
     {},
@@ -79,7 +92,7 @@ async function caretBlock(cx: Cx): Promise<Block> {
   );
 }
 
-async function paragraph(cx: Cx, n: unknown): Promise<Block> {
+async function paragraph(cx: AsstCx, n: unknown): Promise<Block> {
   const idx = Number(n);
   const b = (await blocks(cx)).find((x) => x.index === idx);
   if (!Number.isInteger(idx) || !b)
@@ -91,7 +104,7 @@ async function paragraph(cx: Cx, n: unknown): Promise<Block> {
  * Куда ставить каретку перед вводом текста. Возвращает «хвост», который нужно набрать после текста
  * (для вставки в начало — перенос строки, чтобы прежний первый абзац не склеился с новым).
  */
-async function placeCaret(cx: Cx, where: string, para: unknown): Promise<string> {
+async function placeCaret(cx: AsstCx, where: string, para: unknown): Promise<string> {
   if (where === "end") {
     describeResult(await cx.exec("caret.docEnd"));
     const list = await blocks(cx);
@@ -116,7 +129,7 @@ async function placeCaret(cx: Cx, where: string, para: unknown): Promise<string>
  * Пока место неизвестно (модель ещё не написала `where`), документ не трогаем: обычный `run` сделает всё сам.
  */
 function liveWriter(
-  cx: Cx,
+  cx: AsstCx,
   ready: (raw: string) => boolean,
   locate: (raw: string) => Promise<string>,
   signal?: AbortSignal,
@@ -181,8 +194,8 @@ function liveWriter(
 }
 
 /** `getCx` отдаёт актуальный контекст страницы: пока агент работает, состояние документа меняется. */
-export function wordAdapter(getCx: () => Cx, lang: string): DocAdapter {
-  const cx = new Proxy({} as Cx, {
+export function wordAdapter(getCx: () => AsstCx, lang: string): DocAdapter {
+  const cx = new Proxy({} as AsstCx, {
     get: (_t, k) => (getCx() as unknown as Record<string | symbol, unknown>)[k],
   });
   const sink: { fn: ((url: string) => void) | null } = { fn: null };
@@ -218,7 +231,7 @@ export function wordAdapter(getCx: () => Cx, lang: string): DocAdapter {
       label: () => "Reading the selection",
       run: async () => {
         const sel = cx.s.selection;
-        const para = sel?.focus.path[0];
+        const para = sel?.focus?.path[0];
         return sel && !sel.collapsed
           ? `Selected text (paragraph ${para}):\n${sel.text}`
           : `Nothing is selected. Caret is in paragraph ${para ?? 0}.`;
@@ -441,8 +454,8 @@ export function wordAdapter(getCx: () => Cx, lang: string): DocAdapter {
       const parts = [`Document: ${cx.ui.docName}, ${s.pages.length} page(s), ${s.words} words.`];
       parts.push(
         sel && !sel.collapsed
-          ? `Selection (paragraph ${sel.focus.path[0]}): ${sel.text.slice(0, 600)}`
-          : `Caret in paragraph ${sel?.focus.path[0] ?? 0}.`,
+          ? `Selection (paragraph ${sel.focus?.path[0]}): ${sel.text.slice(0, 600)}`
+          : `Caret in paragraph ${sel?.focus?.path[0] ?? 0}.`,
       );
       return parts.join("\n");
     },

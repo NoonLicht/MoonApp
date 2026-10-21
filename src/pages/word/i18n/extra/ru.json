@@ -295,5 +295,8 @@
   "Context length": "Длина контекста",
   "How much text the model sees at once. Longer needs more memory; applies when the model is loaded again.": "Сколько текста модель видит за раз. Больше — больше памяти; применяется при следующей загрузке модели.",
   "Regenerate": "Повторить",
-  "Undo the changes and try again": "Отменить изменения и сделать заново"
+  "Undo the changes and try again": "Отменить изменения и сделать заново",
+  "Document": "Документ",
+  "Unsaved changes will be lost. Close anyway?": "Несохранённые изменения будут потеряны. Закрыть?",
+  "Open a document": "Открыть документ"
 }

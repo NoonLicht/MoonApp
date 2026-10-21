@@ -692,5 +692,8 @@
   "Context length": "上下文长度",
   "How much text the model sees at once. Longer needs more memory; applies when the model is loaded again.": "模型一次能看到的文本量。越长占用内存越多；下次加载模型时生效。",
   "Regenerate": "重新生成",
-  "Undo the changes and try again": "撤销更改并重试"
+  "Undo the changes and try again": "撤销更改并重试",
+  "Document": "文档",
+  "Unsaved changes will be lost. Close anyway?": "未保存的更改将丢失。仍要关闭吗？",
+  "Open a document": "打开文档"
 }

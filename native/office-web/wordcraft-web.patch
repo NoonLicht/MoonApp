@@ -1,0 +1,308 @@
+diff --git a/apps/wordcraft-web/index.html b/apps/wordcraft-web/index.html
+index ca6ad469..18367058 100644
+--- a/apps/wordcraft-web/index.html
++++ b/apps/wordcraft-web/index.html
+@@ -16,5 +16,35 @@
+ <body>
+   <canvas id="wordcraft_canvas"></canvas>
+   <div id="wordcraft_loading">Loading WordCraft&hellip;</div>
++  <script>
++    // MoonApp host glue (?embed): requests from the page around the frame -> window.__wc (see src/web/bridge.rs).
++    (function () {
++      var waiting = [];
++      function ready() { return window.__wc && window.__wc.call; }
++      function reply(id, msg) { msg.wc = 1; msg.id = id; parent.postMessage(msg, location.origin); }
++      function handle(m) {
++        try {
++          if (m.op === "open") { window.__wc.open(m.name, new Uint8Array(m.bytes)); reply(m.id, { ok: true }); return; }
++          window.__wc.call(m.op, JSON.stringify(m.params || {}), function (json, bytes) {
++            var r = JSON.parse(json);
++            var msg = { ok: r.ok, result: r.result, error: r.error };
++            if (bytes) msg.bytes = bytes;
++            reply(m.id, msg);
++          });
++        } catch (e) { reply(m.id, { ok: false, error: String(e) }); }
++      }
++      window.addEventListener("message", function (e) {
++        if (e.source !== parent || e.origin !== location.origin) return;
++        var m = e.data;
++        if (!m || m.wc !== 1 || !m.op) return;
++        if (ready()) handle(m); else waiting.push(m);
++      });
++      var timer = setInterval(function () {
++        if (!ready()) return;
++        clearInterval(timer);
++        waiting.splice(0).forEach(handle);
++      }, 50);
++    })();
++  </script>
+ </body>
+ </html>
+diff --git a/apps/wordcraft-web/src/web.rs b/apps/wordcraft-web/src/web.rs
+index 0e40099a..a9904d33 100644
+--- a/apps/wordcraft-web/src/web.rs
++++ b/apps/wordcraft-web/src/web.rs
+@@ -2,6 +2,7 @@
+ //! web runner.
+ 
+ use std::cell::{Cell, RefCell};
++use std::collections::VecDeque;
+ use std::rc::Rc;
+ 
+ use wasm_bindgen::JsCast as _;
+@@ -9,6 +10,8 @@ use wordcraft_engine::Session;
+ use wordcraft_ui_egui::async_saves::{AsyncSaves, SaveOutcome};
+ use wordcraft_ui_egui::{Inbox, Services, WordApp};
+ 
++mod bridge;
++
+ const DOC_EXTS: &[&str] = &["docx", "docm", "dotx", "dotm", "doc", "dot", "odt", "rtf", "txt", "md", "html", "htm", "tex", "json", "xml"];
+ const IMAGE_EXTS: &[&str] = &["png", "jpg", "jpeg", "gif", "webp", "bmp", "wmf", "emf"];
+ const RECIPIENT_EXTS: &[&str] = wordcraft_engine::cmd::mailings::RECIPIENT_EXTENSIONS;
+@@ -29,7 +32,9 @@ pub fn start() {
+         };
+         let dirty = Rc::new(Cell::new(false));
+         let saves = AsyncSaves::default();
+-        if let Err(e) = guard_unload(dirty.clone(), saves.clone()) {
++        // MoonApp embeds the editor in a frame (`?embed`): the host keeps the files and asks about unsaved changes.
++        let embed = bridge::param("embed").is_some();
++        if !embed && let Err(e) = guard_unload(dirty.clone(), saves.clone()) {
+             log::error!("no unsaved-changes guard: {e}");
+         }
+         let mut options = eframe::WebOptions::default();
+@@ -61,7 +66,7 @@ pub fn start() {
+                     let mut session = Session::new(doc);
+                     session.system_region = region;
+                     let messages = Rc::new(RefCell::new(Vec::new()));
+-                    let mut app = WordApp::new(session, services(inbox.clone(), cc.egui_ctx.clone(), dirty, saves.clone(), messages.clone()));
++                    let mut app = WordApp::new(session, services(inbox.clone(), cc.egui_ctx.clone(), dirty, saves.clone(), messages.clone(), embed));
+                     // Pasted pictures wait apart from dropped files: the app inserts one only when the page is the edit target (#1349).
+                     app.services.pasted = Some(pasted);
+                     app.autosave = false;
+@@ -69,7 +74,22 @@ pub fn start() {
+                     if !sample {
+                         app.start_screen();
+                     }
+-                    Ok(Box::new(WebShell { app, inbox, messages }))
++                    let jobs: bridge::Jobs = Rc::new(RefCell::new(VecDeque::new()));
++                    if embed {
++                        // Interface language and theme come from the host's settings.
++                        if let Some(theme) = bridge::param("theme") {
++                            let _ = app.run("ui.theme", serde_json::json!({"value": theme}));
++                        }
++                        if let Some(lang) = bridge::param("lang")
++                            && app.run("ui.language", serde_json::json!({"value": lang})).is_err()
++                        {
++                            let _ = app.run("ui.language", serde_json::json!({"value": "en"}));
++                        }
++                        if let Err(e) = bridge::install(jobs.clone(), inbox.clone(), cc.egui_ctx.clone()) {
++                            log::error!("no host bridge: {e}");
++                        }
++                    }
++                    Ok(Box::new(WebShell { app, inbox, messages, jobs, embed, seen: String::new() }))
+                 }),
+             )
+             .await;
+@@ -92,6 +112,11 @@ struct WebShell {
+     app: WordApp,
+     inbox: Inbox,
+     messages: Rc<RefCell<Vec<String>>>,
++    /// Calls from the host page (see `bridge`), answered between frames.
++    jobs: bridge::Jobs,
++    embed: bool,
++    /// Fingerprint of the state last reported to the host.
++    seen: String,
+ }
+ 
+ impl eframe::App for WebShell {
+@@ -116,6 +141,9 @@ impl eframe::App for WebShell {
+             self.app.status(msg);
+         }
+         self.app.logic(ctx);
++        if self.embed {
++            bridge::serve(&mut self.app, &self.jobs, &mut self.seen);
++        }
+     }
+ 
+     fn raw_input_hook(&mut self, _ctx: &egui::Context, raw: &mut egui::RawInput) {
+@@ -175,7 +203,7 @@ fn listen_for_pasted_pictures(inbox: Inbox, ctx: egui::Context) -> Result<(), St
+ }
+ 
+ /// `dirty` is the flag the `beforeunload` guard reads ([`guard_unload`]).
+-fn services(inbox: Inbox, ctx: egui::Context, dirty: Rc<Cell<bool>>, saves: AsyncSaves, messages: Rc<RefCell<Vec<String>>>) -> Services {
++fn services(inbox: Inbox, ctx: egui::Context, dirty: Rc<Cell<bool>>, saves: AsyncSaves, messages: Rc<RefCell<Vec<String>>>, embed: bool) -> Services {
+     let open_inbox = inbox.clone();
+     let save_ctx = ctx.clone();
+     let font_ctx = ctx.clone();
+@@ -205,7 +233,9 @@ fn services(inbox: Inbox, ctx: egui::Context, dirty: Rc<Cell<bool>>, saves: Asyn
+         // Exports ask for a name; the browser decides where the download goes.
+         pick_save: Some(Box::new(|name: &str| Some(name.to_string()))),
+         async_saves: Some(saves.clone()),
+-        download: Some(Box::new(move |path: &str, bytes: &[u8]| download(&saves, &save_ctx, path, bytes))),
++        download: Some(Box::new(move |path: &str, bytes: &[u8]| {
++            if embed { bridge::hand_to_host(path, bytes) } else { download(&saves, &save_ctx, path, bytes) }
++        })),
+         print: Some(Box::new(print_pdf)),
+         inbox: Some(inbox),
+         on_dirty: Some(Box::new(move |d| dirty.set(d))),
+diff --git a/apps/wordcraft-web/src/web/bridge.rs b/apps/wordcraft-web/src/web/bridge.rs
+new file mode 100644
+index 00000000..8ab79eed
+--- /dev/null
++++ b/apps/wordcraft-web/src/web/bridge.rs
+@@ -0,0 +1,155 @@
++//! The host bridge: MoonApp embeds this editor in a frame (`?embed`) and drives it from the page around it.
++//!
++//! The host's glue script (index.html) calls `window.__wc.call(op, paramsJson, callback)` and
++//! `window.__wc.open(name, bytes)`; calls wait in a queue and are answered between frames, so they never
++//! run while the app is in the middle of drawing. The editor reports back with `postMessage` to the parent:
++//! `ready`, `state` (revision, unsaved flag, selection) and `download` (a Save or an export, bytes included).
++//!
++//! Operations: `run` (`{command, params}` → the app's command result, UI commands included), `state`,
++//! `export` (the document as .docx bytes) and `clean` (the host stored the document: clear the unsaved flag).
++
++use std::cell::RefCell;
++use std::collections::VecDeque;
++use std::rc::Rc;
++
++use serde_json::{Value, json};
++use wasm_bindgen::JsValue;
++use wordcraft_ui_egui::{Inbox, WordApp};
++
++pub struct Job {
++    op: String,
++    params: Value,
++    callback: js_sys::Function,
++}
++
++pub type Jobs = Rc<RefCell<VecDeque<Job>>>;
++
++/// The value of `name` in the page's query string (`?embed&lang=ru`); `Some("")` for a bare flag.
++pub fn param(name: &str) -> Option<String> {
++    let search = web_sys::window().and_then(|w| w.location().search().ok()).unwrap_or_default();
++    search.trim_start_matches('?').split('&').find_map(|kv| {
++        let (k, v) = kv.split_once('=').unwrap_or((kv, ""));
++        (k == name).then(|| v.to_string())
++    })
++}
++
++fn set(obj: &js_sys::Object, key: &str, value: &JsValue) {
++    let _ = js_sys::Reflect::set(obj, &JsValue::from_str(key), value);
++}
++
++/// Tell the page around the frame something: `{wc: 1, evt, ...fields}`.
++fn emit(evt: &str, fields: &[(&str, JsValue)]) -> Result<(), String> {
++    let window = web_sys::window().ok_or("no window")?;
++    let parent = window.parent().map_err(|e| format!("{e:?}"))?.ok_or("no parent window")?;
++    let msg = js_sys::Object::new();
++    set(&msg, "wc", &JsValue::from_f64(1.0));
++    set(&msg, "evt", &JsValue::from_str(evt));
++    for (k, v) in fields {
++        set(&msg, k, v);
++    }
++    let origin = window.location().origin().map_err(|e| format!("{e:?}"))?;
++    parent.post_message(&msg, &origin).map_err(|e| format!("{e:?}"))
++}
++
++/// A Save or an export goes to the host (which keeps the files) instead of the browser's download.
++pub fn hand_to_host(path: &str, bytes: &[u8]) -> Result<(), String> {
++    let name = std::path::Path::new(path).file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_else(|| "document".into());
++    emit("download", &[("name", JsValue::from_str(&name)), ("bytes", js_sys::Uint8Array::from(bytes).into())])
++}
++
++pub fn install(jobs: Jobs, inbox: Inbox, ctx: egui::Context) -> Result<(), String> {
++    let window = web_sys::window().ok_or("no window")?;
++    let bridge = js_sys::Object::new();
++
++    let wake = ctx.clone();
++    let call = wasm_bindgen::closure::Closure::<dyn FnMut(String, String, js_sys::Function)>::new(move |op: String, params: String, callback: js_sys::Function| {
++        let params = serde_json::from_str(&params).unwrap_or(Value::Null);
++        jobs.borrow_mut().push_back(Job { op, params, callback });
++        wake.request_repaint();
++    });
++    set(&bridge, "call", call.as_ref());
++    call.forget();
++
++    let open = wasm_bindgen::closure::Closure::<dyn FnMut(String, js_sys::Uint8Array)>::new(move |name: String, bytes: js_sys::Uint8Array| {
++        inbox.lock().unwrap_or_else(|e| e.into_inner()).push((name, bytes.to_vec()));
++        ctx.request_repaint();
++    });
++    set(&bridge, "open", open.as_ref());
++    open.forget();
++
++    set(&window, "__wc", &bridge);
++    emit("ready", &[])
++}
++
++/// What the host needs to know about the document: the selection (for the assistant), size and save state.
++fn state(app: &mut WordApp) -> Value {
++    let s = &mut app.session;
++    let sel = s.sel.clone();
++    let mut text = s.selected_text();
++    if text.len() > 20_000 {
++        let mut end = 20_000;
++        while !text.is_char_boundary(end) {
++            end -= 1;
++        }
++        text.truncate(end);
++    }
++    let pages = s.layout().pages.len();
++    json!({
++        "selection": {
++            "collapsed": sel.is_collapsed(),
++            "anchor": serde_json::to_value(&sel.anchor).unwrap_or(Value::Null),
++            "focus": serde_json::to_value(&sel.focus).unwrap_or(Value::Null),
++            "text": text,
++        },
++        "pages": pages,
++        "words": s.word_count(),
++        "dirty": s.dirty,
++        "rev": s.rev(),
++        "fileName": s.file_name.clone(),
++        "canUndo": s.can_undo(),
++    })
++}
++
++fn answer(app: &mut WordApp, op: &str, params: &Value) -> Result<(Value, Option<Vec<u8>>), String> {
++    match op {
++        "run" => {
++            let id = params.get("command").and_then(Value::as_str).ok_or("missing `command`")?.to_string();
++            let p = params.get("params").cloned().filter(|v| !v.is_null()).unwrap_or(json!({}));
++            Ok((app.run(&id, p)?, None))
++        }
++        "state" => Ok((state(app), None)),
++        "export" => {
++            let name = params.get("name").and_then(Value::as_str).unwrap_or("document.docx");
++            let bytes = wordcraft_engine::io::save_bytes_opts(name, &app.session.doc, &Default::default())?;
++            Ok((json!({"name": name, "bytes": bytes.len()}), Some(bytes)))
++        }
++        "clean" => {
++            app.session.dirty = false;
++            Ok((json!({}), None))
++        }
++        other => Err(format!("unknown operation `{other}`")),
++    }
++}
++
++/// Answer the host's queued calls, then report a changed document state.
++pub fn serve(app: &mut WordApp, jobs: &Jobs, seen: &mut String) {
++    let queued: Vec<Job> = jobs.borrow_mut().drain(..).collect();
++    for job in queued {
++        let reply = match answer(app, &job.op, &job.params) {
++            Ok((v, bytes)) => (json!({"ok": true, "result": v}), bytes),
++            Err(e) => (json!({"ok": false, "error": e}), None),
++        };
++        let json = JsValue::from_str(&reply.0.to_string());
++        let _ = match reply.1 {
++            Some(b) => job.callback.call2(&JsValue::NULL, &json, &js_sys::Uint8Array::from(&b[..]).into()),
++            None => job.callback.call1(&JsValue::NULL, &json),
++        };
++    }
++    // A cheap fingerprint first: the full state (layout, word count) is built only when something changed.
++    let pos = |p: &wordcraft_doc::Pos| serde_json::to_string(p).unwrap_or_default();
++    let print = format!("{}|{}|{}|{}", app.session.rev(), app.session.dirty, pos(&app.session.sel.anchor), pos(&app.session.sel.focus));
++    if print != *seen {
++        *seen = print;
++        let _ = emit("state", &[("state", JsValue::from_str(&state(app).to_string()))]);
++    }
++}

@@ -1624,3 +1624,69 @@
   border-radius: 12px;
   background: var(--glass-bg, transparent);
 }
+
+/* Страница на веб-сборке WordCraft: вкладки, рамка на каждый документ, панель помощника */
+.wd-web-bar {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  flex-shrink: 0;
+  padding: 0 4px 6px;
+}
+.wd-web-tabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+}
+.wd-web-tabs .wd-doctab {
+  border-bottom: 1px solid var(--wd-line);
+  border-radius: 8px;
+  padding: 3px 3px 3px 10px;
+}
+.wd-web-tabs .wd-doctab.wd-web-add {
+  padding: 3px 8px;
+  cursor: pointer;
+  background: none;
+  color: inherit;
+}
+.wd-web-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  gap: 8px;
+}
+.wd-web-frames {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+/* Скрытые документы остаются на месте (visibility, не display): рамка с display:none перестаёт рисовать кадры и не отвечает на запросы */
+.wd-web-frames iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  border-radius: 12px;
+  background: var(--surface-solid);
+  visibility: hidden;
+  pointer-events: none;
+}
+.wd-web-frames iframe.on {
+  visibility: visible;
+  pointer-events: auto;
+  z-index: 1;
+}
+.wd-web-side {
+  width: 400px;
+  flex: none;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--surface-solid);
+}

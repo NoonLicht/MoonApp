@@ -692,5 +692,8 @@
   "Context length": "Longueur du contexte",
   "How much text the model sees at once. Longer needs more memory; applies when the model is loaded again.": "Quantité de texte vue par le modèle à la fois. Plus long = plus de mémoire ; appliqué au prochain chargement du modèle.",
   "Regenerate": "Régénérer",
-  "Undo the changes and try again": "Annuler les modifications et réessayer"
+  "Undo the changes and try again": "Annuler les modifications et réessayer",
+  "Document": "Document",
+  "Unsaved changes will be lost. Close anyway?": "Les modifications non enregistrées seront perdues. Fermer quand même ?",
+  "Open a document": "Ouvrir un document"
 }

@@ -1,11 +1,12 @@
 import { lazy, Suspense, useEffect, useState } from "react";
 
 /**
- * «Документы»: готовый WordCraft (веб-сборка, wasm) во весь экран страницы. Если сборки нет рядом
+ * «Документы»: готовый WordCraft (веб-сборка, wasm) с вкладками, файлами и помощником (WordWeb). Если сборки нет рядом
  * с приложением (`public/office/word`, см. scripts/buildOfficeWeb.mjs) — прежний редактор.
  */
 const WORD_URL = "/office/word/index.html";
 const Classic = lazy(() => import("@/pages/word/WordPage"));
+const Web = lazy(() => import("@/pages/word/parts/WordWeb"));
 
 type Mode = "check" | "web" | "classic";
 
@@ -30,5 +31,9 @@ export default function WordRoot() {
         <Classic />
       </Suspense>
     );
-  return <iframe className="wd-web" title="WordCraft" src={WORD_URL} allow="clipboard-read; clipboard-write; fullscreen" />;
+  return (
+    <Suspense fallback={<div className="wd-web" />}>
+      <Web />
+    </Suspense>
+  );
 }

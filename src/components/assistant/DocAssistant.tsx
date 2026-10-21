@@ -3,8 +3,7 @@ import AssistantPane from "@/components/assistant/AssistantPane";
 import type { DocAdapter } from "@/lib/assistant/types";
 import { sheetAdapter } from "@/pages/sheet/assistant";
 import type { SheetCx } from "@/pages/sheet/types";
-import { wordAdapter } from "@/pages/word/assistant";
-import type { Cx } from "@/pages/word/ribbon/types";
+import { wordAdapter, type AsstCx } from "@/pages/word/assistant";
 
 /** Запросы для пустой беседы; английский текст — ключ перевода. */
 const WORD_QUICK = [
@@ -26,7 +25,7 @@ const SHEET_QUICK = [
  * Панель помощника Word: адаптер собирается один раз на документ, а актуальный контекст страницы
  * берётся через ссылку — состояние документа меняется, пока агент работает.
  */
-export function WordAssistant({ cx, onClose }: { cx: Cx; onClose: () => void }) {
+export function WordAssistant({ cx, onClose }: { cx: AsstCx; onClose: () => void }) {
   const ref = useRef(cx);
   useEffect(() => {
     ref.current = cx;
