@@ -48,7 +48,7 @@ if (!fs.existsSync(path.join(src, ".git"))) {
 }
 run("git", ["checkout", "--quiet", "--force", app.rev], src);
 run("git", ["clean", "-fdq", app.dir], src);
-run("git", ["apply", path.join(root, "native", "office-web", app.patch)], src);
+run("git", ["apply", "--ignore-whitespace", path.join(root, "native", "office-web", app.patch)], src);
 
 run("rustup", ["target", "add", "wasm32-unknown-unknown"], root);
 run("trunk", ["build", "--release"], path.join(src, app.dir));

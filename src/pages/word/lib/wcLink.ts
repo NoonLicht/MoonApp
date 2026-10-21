@@ -92,7 +92,9 @@ export class WcLink {
         reject(new Error("timeout"));
       }, TIMEOUT_MS);
       this.pending.set(id, { resolve, reject, timer });
-      this.win.postMessage({ wc: 1, id, op, ...fields }, window.location.origin, transfer);
+      // Рамка той же страницы, поэтому адрес получателя — наш собственный (вне браузера, в тестах, адреса нет).
+      const origin = typeof window === "undefined" ? "*" : window.location.origin;
+      this.win.postMessage({ wc: 1, id, op, ...fields }, origin, transfer);
     });
   }
 
