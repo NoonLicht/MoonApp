@@ -1,3 +1,13 @@
+diff --git a/Cargo.toml b/Cargo.toml
+index 7c7c93c..3544f16 100644
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -95,4 +95,5 @@ codegen-units = 16
+ debug = 0
+ 
+ [patch.crates-io]
++epaint = { path = "../deck-epaint" }
+ krilla = { git = "https://github.com/storytold/craft-libs", rev = "c3487320b2d1de657b860b3c8abb44e1f2b32bd8", version = "=0.8.2" }
 diff --git a/apps/deckcraft-web/index.html b/apps/deckcraft-web/index.html
 index b1834c3..8326b3d 100644
 --- a/apps/deckcraft-web/index.html
@@ -212,7 +222,7 @@ index 6d2b7e9..779c0cb 100644
  mod web;
  
 diff --git a/apps/deckcraft-web/src/web.rs b/apps/deckcraft-web/src/web.rs
-index dabad8a..09acce9 100644
+index dabad8a..dd813ac 100644
 --- a/apps/deckcraft-web/src/web.rs
 +++ b/apps/deckcraft-web/src/web.rs
 @@ -1,5 +1,8 @@
@@ -245,14 +255,17 @@ index dabad8a..09acce9 100644
                          if let Err(e) = deckcraft_engine::sample::open_sample(&mut app.session) {
                              log::error!("sample deck: {e}");
                          }
-@@ -49,7 +54,17 @@ pub fn start() {
+@@ -49,7 +54,20 @@ pub fn start() {
                      if q.contains("show") {
                          app.start_show(0, false);
                      }
 -                    Ok(Box::new(WebShell { app, inbox }))
 +                    let jobs: crate::embed::Jobs = Rc::new(RefCell::new(Default::default()));
 +                    if embed {
-+                        // The theme comes from the host's settings (the interface has one language).
++                        // The theme and the interface language come from the host's settings.
++                        if let Some(lang) = crate::embed::param("lang") {
++                            let _ = app.run("ui.language", serde_json::json!({"language": lang}));
++                        }
 +                        if let Some(theme) = crate::embed::param("theme") {
 +                            let _ = app.run("view.dark", serde_json::json!({"on": theme == "dark"}));
 +                        }
@@ -264,7 +277,7 @@ index dabad8a..09acce9 100644
                  }),
              )
              .await;
-@@ -71,6 +86,11 @@ fn query() -> String {
+@@ -71,6 +89,11 @@ fn query() -> String {
  struct WebShell {
      app: SlideApp,
      inbox: Inbox,
@@ -276,7 +289,7 @@ index dabad8a..09acce9 100644
  }
  
  impl eframe::App for WebShell {
-@@ -98,6 +118,9 @@ impl eframe::App for WebShell {
+@@ -98,6 +121,9 @@ impl eframe::App for WebShell {
              });
          }
          self.app.logic(ctx);
@@ -286,7 +299,7 @@ index dabad8a..09acce9 100644
      }
  
      fn raw_input_hook(&mut self, _ctx: &egui::Context, raw: &mut egui::RawInput) {
-@@ -111,7 +134,7 @@ impl eframe::App for WebShell {
+@@ -111,7 +137,7 @@ impl eframe::App for WebShell {
  
  /// Web services: no file paths, so `pick_open`/`pick_save`/`read` stay `None` and the UI falls
  /// back to `open_async` (browser picker → inbox) and `download`.
@@ -295,7 +308,7 @@ index dabad8a..09acce9 100644
      let open_inbox = inbox.clone();
      Services {
          open_async: Some(Box::new(move |purpose: &str, request: u64| {
-@@ -134,9 +157,12 @@ fn services(inbox: Inbox, ctx: egui::Context) -> Services {
+@@ -134,9 +160,12 @@ fn services(inbox: Inbox, ctx: egui::Context) -> Services {
                  ctx.request_repaint();
              });
          })),
@@ -324,3 +337,1904 @@ index 6996cda..a212082 100644
          h.write_u32(std::process::id());
          #[cfg(not(target_arch = "wasm32"))]
          if let Ok(d) = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH) {
+diff --git a/crates/ui-egui/src/i18n.rs b/crates/ui-egui/src/i18n.rs
+new file mode 100644
+index 0000000..2c78a79
+--- /dev/null
++++ b/crates/ui-egui/src/i18n.rs
+@@ -0,0 +1,188 @@
++//! Interface language (MoonApp build). English is the language of the source; Russian is looked up
++//! by the exact text just before it is laid out (see `epaint::text::set_translator`), so the
++//! slides' own text, which the canvas draws itself, is never translated.
++//!
++//! The catalog is `ru.tsv`: `English<TAB>Russian` per line, `\n` for a line break. A `{}` in the
++//! English side matches any text (a number, a name) and `{}` or `{1}`, `{2}`… in the Russian side
++//! puts it back, for texts the interface builds with `format!`.
++
++use std::collections::{BTreeSet, HashMap};
++use std::borrow::Cow;
++use std::sync::atomic::{AtomicBool, Ordering};
++use std::sync::{Mutex, OnceLock};
++
++static RUSSIAN: AtomicBool = AtomicBool::new(false);
++
++const RU_TSV: &str = include_str!("ru.tsv");
++/// Texts looked at before the answer is cached again from scratch.
++const CACHE_CAP: usize = 8192;
++const MISSING_CAP: usize = 4000;
++
++struct Pattern {
++    /// The English literals between the placeholders.
++    parts: Vec<String>,
++    /// The Russian side split at its placeholders: (literal, index of the capture that follows).
++    out: Vec<(String, Option<usize>)>,
++}
++
++struct Catalog {
++    exact: HashMap<String, String>,
++    patterns: Vec<Pattern>,
++}
++
++#[derive(Default)]
++struct State {
++    cache: HashMap<String, Option<String>>,
++    missing: BTreeSet<String>,
++}
++
++fn catalog() -> &'static Catalog {
++    static CATALOG: OnceLock<Catalog> = OnceLock::new();
++    CATALOG.get_or_init(|| {
++        let mut exact = HashMap::new();
++        let mut patterns = Vec::new();
++        for line in RU_TSV.lines() {
++            let line = line.trim_end_matches('\r');
++            if line.is_empty() || line.starts_with('#') {
++                continue;
++            }
++            let Some((en, ru)) = line.split_once('\t') else { continue };
++            let (en, ru) = (en.replace("\\n", "\n"), ru.replace("\\n", "\n"));
++            if en.contains("{}") {
++                patterns.push(pattern(&en, &ru));
++            } else {
++                exact.entry(en).or_insert(ru);
++            }
++        }
++        // The most specific (longest literals) first.
++        patterns.sort_by_key(|p| std::cmp::Reverse(p.parts.iter().map(String::len).sum::<usize>()));
++        Catalog { exact, patterns }
++    })
++}
++
++fn pattern(en: &str, ru: &str) -> Pattern {
++    let parts = en.split("{}").map(str::to_string).collect();
++    let mut out = Vec::new();
++    let mut next = 0;
++    let mut rest = ru;
++    while let Some(open) = rest.find('{') {
++        let Some(close) = rest[open..].find('}') else { break };
++        let tag = &rest[open + 1..open + close];
++        if tag.is_empty() || tag.parse::<usize>().is_ok() {
++            let index = match tag.parse::<usize>() {
++                Ok(n) if n >= 1 => n - 1,
++                _ => {
++                    next += 1;
++                    next - 1
++                }
++            };
++            out.push((rest[..open].to_string(), Some(index)));
++            rest = &rest[open + close + 1..];
++        } else {
++            // Not a placeholder: keep the brace as text.
++            out.push((rest[..=open].to_string(), None));
++            rest = &rest[open + 1..];
++        }
++    }
++    out.push((rest.to_string(), None));
++    Pattern { parts, out }
++}
++
++fn match_pattern<'a>(p: &Pattern, text: &'a str) -> Option<Vec<&'a str>> {
++    let first = p.parts.first()?;
++    let last = p.parts.last()?;
++    if text.len() < first.len() + last.len() || !text.starts_with(first.as_str()) || !text.ends_with(last.as_str()) {
++        return None;
++    }
++    let end = text.len() - last.len();
++    let mut pos = first.len();
++    let mut caps = Vec::new();
++    for lit in &p.parts[1..p.parts.len() - 1] {
++        let at = if lit.is_empty() { pos } else { pos + text[pos..end].find(lit.as_str())? };
++        caps.push(&text[pos..at]);
++        pos = at + lit.len();
++    }
++    caps.push(&text[pos.min(end)..end]);
++    Some(caps)
++}
++
++fn lookup(text: &str) -> Option<String> {
++    let c = catalog();
++    if let Some(t) = c.exact.get(text) {
++        return Some(t.clone());
++    }
++    // Leading or trailing spaces belong to the layout, not to the words.
++    let core = text.trim();
++    if core.len() != text.len() && !core.is_empty() {
++        if let Some(t) = c.exact.get(core) {
++            let lead = &text[..text.len() - text.trim_start().len()];
++            let trail = &text[text.trim_end().len()..];
++            return Some(format!("{lead}{t}{trail}"));
++        }
++    }
++    for p in &c.patterns {
++        let Some(caps) = match_pattern(p, text) else { continue };
++        let mut s = String::new();
++        for (lit, idx) in &p.out {
++            s.push_str(lit);
++            if let Some(i) = idx {
++                let cap = caps.get(*i).copied().unwrap_or("");
++                s.push_str(c.exact.get(cap).map_or(cap, String::as_str));
++            }
++        }
++        return Some(s);
++    }
++    None
++}
++
++fn state() -> &'static Mutex<State> {
++    static STATE: OnceLock<Mutex<State>> = OnceLock::new();
++    STATE.get_or_init(Default::default)
++}
++
++fn translate(text: &str) -> Option<String> {
++    if text.len() < 2 || !text.bytes().any(|b| b.is_ascii_alphabetic()) {
++        return None;
++    }
++    let mut st = state().lock().unwrap_or_else(|e| e.into_inner());
++    if let Some(hit) = st.cache.get(text) {
++        return hit.clone();
++    }
++    if st.cache.len() >= CACHE_CAP {
++        st.cache.clear();
++    }
++    let found = lookup(text);
++    if found.is_none() && st.missing.len() < MISSING_CAP {
++        st.missing.insert(text.to_string());
++    }
++    st.cache.insert(text.to_string(), found.clone());
++    found
++}
++
++/// Switch the interface language: `"ru"` or `"en"` (anything else is English). Returns the code in effect.
++pub fn set_language(code: &str) -> &'static str {
++    RUSSIAN.store(code.eq_ignore_ascii_case("ru"), Ordering::Relaxed);
++    if code.eq_ignore_ascii_case("ru") {
++        egui::epaint::text::set_translator(Some(translate));
++        "ru"
++    } else {
++        egui::epaint::text::set_translator(None);
++        "en"
++    }
++}
++
++/// Texts the interface laid out that the Russian catalog doesn't know (for completing `ru.tsv`).
++pub fn missing() -> Vec<String> {
++    state().lock().unwrap_or_else(|e| e.into_inner()).missing.iter().cloned().collect()
++}
++
++/// `text` in the interface language, for the places that split a label before drawing it
++/// (the layout hook only ever sees the pieces).
++pub fn tr(text: &str) -> Cow<'_, str> {
++    if RUSSIAN.load(Ordering::Relaxed) {
++        if let Some(t) = translate(text) {
++            return Cow::Owned(t);
++        }
++    }
++    Cow::Borrowed(text)
++}
+diff --git a/crates/ui-egui/src/lib.rs b/crates/ui-egui/src/lib.rs
+index eef9b1b..9b4fc0c 100644
+--- a/crates/ui-egui/src/lib.rs
++++ b/crates/ui-egui/src/lib.rs
+@@ -15,6 +15,7 @@ pub mod dialogs;
+ pub mod doc_window;
+ pub mod eyedropper;
+ pub mod fillui;
++pub mod i18n;
+ pub mod icons;
+ pub mod media;
+ pub mod menus;
+@@ -378,6 +379,8 @@ pub const UI_COMMANDS: &[(&str, &str, Option<&str>, &str)] = &[
+     ("view.collapseRibbon", "Collapse the Ribbon", Some("Cmd+F1"), "{}"),
+     ("view.dark", "Dark Mode", None, "{on?: bool}"),
+     ("view.grayscale", "Grayscale", None, "{on?: bool}"),
++    ("ui.language", "Language", None, "{language: en|ru}"),
++    ("ui.i18n.missing", "Untranslated Texts", None, "{}"),
+     ("view.newWindow", "New Window", None, "{on?: bool, slide?: index, delta?: int}"),
+     ("show.start", "Slide Show", Some("F5"), "{from?: index, custom?: name}"),
+     ("show.presenter", "Presenter View", None, "{on?: bool}"),
+@@ -948,6 +951,11 @@ impl SlideApp {
+                 self.restyle = true;
+             }
+             "view.grayscale" => self.ui.grayscale = self.flag(p, self.ui.grayscale),
++            "ui.language" => {
++                let code = p.get("language").and_then(Value::as_str).ok_or("missing `language`")?;
++                return Ok(json!({"language": i18n::set_language(code)}));
++            }
++            "ui.i18n.missing" => return Ok(json!(i18n::missing())),
+             "view.newWindow" => return doc_window::command(self, p),
+             "show.start" => {
+                 if let Some(name) = p.get("custom").and_then(Value::as_str).filter(|s| !s.is_empty()) {
+diff --git a/crates/ui-egui/src/ru.tsv b/crates/ui-egui/src/ru.tsv
+new file mode 100644
+index 0000000..e56a04d
+--- /dev/null
++++ b/crates/ui-egui/src/ru.tsv
+@@ -0,0 +1,1656 @@
++# Файл / Backstage
++Home	Главная
++New	Создать
++Open	Открыть
++Info	Сведения
++Save As	Сохранить как
++Print	Печать
++Export	Экспорт
++Account	Учётная запись
++Save	Сохранить
++Close	Закрыть
++Options	Параметры
++PowerPoint Presentation (*.pptx)	Презентация PowerPoint (*.pptx)
++Opens in PowerPoint and other presentation apps	Открывается в PowerPoint и других программах для презентаций
++DeckCraft Presentation (*.deckcraft)	Презентация DeckCraft (*.deckcraft)
++DeckCraft's own format: everything is kept	Собственный формат DeckCraft: сохраняется всё
++PDF (*.pdf)	PDF (*.pdf)
++A fixed copy that keeps its layout on any device	Неизменяемая копия, сохраняющая вид на любом устройстве
++Outline (*.txt)	Структура (*.txt)
++The slide titles and bullet text as plain text	Заголовки слайдов и маркированный текст в виде обычного текста
++PNG Picture (*.png)	Рисунок PNG (*.png)
++The current slide as a picture	Текущий слайд в виде рисунка
++JPEG Picture (*.jpg)	Рисунок JPEG (*.jpg)
++The current slide as a compressed picture	Текущий слайд в виде сжатого рисунка
++Title	Название
++Add a title	Добавьте название
++Subject	Тема
++Specify the subject	Укажите тему
++Tags	Теги
++Add a tag	Добавьте тег
++Categories	Категории
++Add a category	Добавьте категорию
++Company	Организация
++Specify the company	Укажите организацию
++Comments	Примечания
++Add comments	Добавьте примечания
++Author	Автор
++Add an author	Добавьте автора
++Back	Назад
++Back (Esc)	Назад (Esc)
++Blank Presentation	Пустая презентация
++Sample deck: Northern Lights	Образец: северное сияние
++Presentations you open show up here. Use Open to browse for one.	Открытые презентации появятся здесь. Чтобы выбрать файл, нажмите «Открыть».
++No recent presentations match “{}”.	Среди недавних презентаций нет совпадений с «{}».
++(missing)	(не найден)
++Remove from Recent	Убрать из недавних
++More themes	Другие темы
++Templates	Шаблоны
++More templates	Другие шаблоны
++Recent	Недавние
++Search for a file	Поиск файла
++More presentations	Другие презентации
++Join the ArtCraft community on Discord	Присоединяйтесь к сообществу ArtCraft в Discord
++Search for themes and templates	Поиск тем и шаблонов
++No themes or templates match “{}”.	Нет тем и шаблонов, подходящих к «{}».
++Browse	Обзор
++Open a presentation from a folder (Ctrl+O)	Открыть презентацию из папки (Ctrl+O)
++Recover Unsaved Presentations	Восстановить несохранённые презентации
++There are no unsaved presentations to recover	Нет несохранённых презентаций для восстановления
++Presentations	Презентации
++No presentation is open.	Нет открытых презентаций.
++Not saved yet	Ещё не сохранена
++Copy path	Копировать путь
++Copied the path	Путь скопирован
++Open file location	Открыть папку с файлом
++Check for Issues	Поиск проблем
++Inspect Presentation	Инспектор документов
++Before you share it, check the presentation for things people with disabilities might find hard to read.	Перед отправкой проверьте, нет ли в презентации того, что людям с ограниченными возможностями трудно прочитать.
++There are no unsaved changes.	Несохранённых изменений нет.
++This presentation has unsaved changes. Revert goes back to the saved file.	В презентации есть несохранённые изменения. «Вернуть» откатит её к сохранённому файлу.
++This presentation has never been saved.	Эта презентация ещё ни разу не сохранялась.
++Revert	Вернуть
++Manage Presentation	Управление презентацией
++Properties	Свойства
++Size	Размер
++Slides	Слайды
++Hidden slides	Скрытые слайды
++Location	Расположение
++{} bytes	{} Б
++{} KB	{} КБ
++{} MB	{} МБ
++Download	Скачать
++Download the file	Скачать файл
++Choose where to save	Выбрать место сохранения
++Full Page Slides	Слайды на всю страницу
++Notes Pages	Страницы заметок
++Handouts (1 slide per page)	Выдачи (1 слайд на странице)
++Handouts (2 slides per page)	Выдачи (2 слайда на странице)
++Handouts (3 slides per page)	Выдачи (3 слайда на странице)
++Handouts (4 slides per page)	Выдачи (4 слайда на странице)
++Handouts (6 slides per page)	Выдачи (6 слайдов на странице)
++Handouts (9 slides per page)	Выдачи (9 слайдов на странице)
++DeckCraft prints through a PDF: it opens in your PDF viewer, where you choose the printer.	DeckCraft печатает через PDF: файл откроется в программе просмотра PDF, где можно выбрать принтер.
++DeckCraft prints through a PDF: it downloads, ready to print from your browser or PDF viewer.	DeckCraft печатает через PDF: файл скачивается, и его можно распечатать из браузера или программы просмотра PDF.
++Settings	Настройка
++Print All Slides	Напечатать все слайды
++Print Current Slide	Напечатать текущий слайд
++Custom Range	Указанный диапазон
++Slides:	Слайды:
++Letter	Letter
++Landscape Orientation	Альбомная ориентация
++Portrait Orientation	Книжная ориентация
++Print Hidden Slides	Печатать скрытые слайды
++Frame Slides	Рамка вокруг слайдов
++Edit Header & Footer	Изменить колонтитулы
++Nothing to print: every slide in the range is hidden.	Нечего печатать: все слайды диапазона скрыты.
++Previous Page	Предыдущая страница
++{} of {}	{} из {}
++Next Page	Следующая страница
++Create PDF Document	Создать документ PDF
++Create Handouts	Создать выдачи
++Change File Type	Изменить тип файла
++Create a PDF Document	Создание документа PDF
++Keeps the layout, fonts and pictures	Сохраняет разметку, шрифты и рисунки
++Opens on any device with a PDF viewer	Открывается на любом устройстве с программой просмотра PDF
++The presentation keeps its own file	Презентация остаётся в своём файле
++Include hidden slides	Включить скрытые слайды
++Create PDF	Создать PDF
++Several slides on each page of a PDF	Несколько слайдов на каждой странице PDF
++Three a page leaves lines for notes	При трёх слайдах на странице остаются строки для заметок
++Print them for your audience	Распечатайте их для слушателей
++{} slides per page	Слайдов на странице: {}
++Transparent background	Прозрачный фон
++Leave the slide background out: only what is on the slide is drawn	Без фона слайда: рисуется только то, что находится на слайде
++Appearance	Оформление
++Dark	Тёмное
++Light	Светлое
++User Information	Сведения о пользователе
++DeckCraft has no accounts: there is nothing to sign in to, and your presentations stay on your device.	В DeckCraft нет учётных записей: входить никуда не нужно, а презентации остаются на вашем устройстве.
++Product Information	О продукте
++Open source under MIT OR Apache-2.0. Not affiliated with Microsoft.	Открытый исходный код под лицензией MIT или Apache-2.0. Не связан с Microsoft.
++About DeckCraft	О программе DeckCraft
++The version, the people and models who built it, and where to find us.	Версия, люди и модели, которые её создали, и где нас найти.
++Join our community on Discord	Присоединяйтесь к нашему сообществу в Discord
++Source on GitHub	Исходный код на GitHub
++Click to add first slide	Нажмите, чтобы добавить первый слайд
++Left Tab	Табуляция по левому краю
++Center Tab	Табуляция по центру
++Right Tab	Табуляция по правому краю
++Decimal Tab	Табуляция по разделителю
++{} (click to change)	{} (нажмите, чтобы изменить)
++ left of centre	левее центра
++ right of centre	правее центра
++ above centre	выше центра
++ below centre	ниже центра
++ (centre)	(по центру)
++Smooth Point	Сглаженная точка
++Straight Point	Прямая точка
++Corner Point	Угловая точка
++Delete Point	Удалить точку
++Exit Edit Points	Выйти из изменения узлов
++Delete Repeated Word	Удалить повторяющееся слово
++(no spelling suggestions)	(нет вариантов исправления)
++Ignore All	Пропустить все
++Add to Dictionary	Добавить в словарь
++Cut	Вырезать
++Copy	Копировать
++Paste	Вставить
++Paragraph…	Абзац…
++Bullets	Маркеры
++Numbering	Нумерация
++Link…	Ссылка…
++Format Shape…	Формат фигуры…
++Edit Text	Изменить текст
++Edit Points	Изменить узлы
++Font…	Шрифт…
++Bring to Front	На передний план
++Bring Forward	Переместить вперёд
++Send to Back	На задний план
++Send Backward	Переместить назад
++Group	Группировать
++Ungroup	Разгруппировать
++Unlock	Разблокировать
++Lock	Заблокировать
++Change Picture…	Изменить рисунок…
++Edit Alt Text…	Изменить замещающий текст…
++Set as Default Shape	Назначить фигурой по умолчанию
++Size and Position…	Размер и положение…
++Layout	Макет
++Grid and Guides	Сетка и направляющие
++Guides	Направляющие
++Add Vertical Guide	Добавить вертикальную направляющую
++Add Horizontal Guide	Добавить горизонтальную направляющую
++Reset Slide	Сбросить слайд
++Format Background…	Формат фона…
++New Comment	Создать примечание
++# Диалоги: названия
++Insert Table	Вставка таблицы
++Slide Size	Размер слайда
++Size and Position	Размер и положение
++Header and Footer	Колонтитулы
++Insert Hyperlink	Вставка гиперссылки
++Set Up Slide Show	Настройка презентации
++Zoom	Масштаб
++Alt Text	Замещающий текст
++Slides from Outline	Слайды из структуры
++Rename Section	Переименование раздела
++Rename	Переименовать
++Rename Layout	Переименование макета
++Paragraph	Абзац
++Tabs	Табуляция
++Font	Шрифт
++Preferences	Параметры
++AutoCorrect	Автозамена
++Grid Options	Параметры сетки
++Symbol	Символ
++Photo Album	Фотоальбом
++Replace Font	Замена шрифта
++Equation	Формула
++Date and Time	Дата и время
++Spelling	Орфография
++Paste Special	Специальная вставка
++Find and Replace	Поиск и замена
++Accessibility Checker	Проверка читаемости
++Language	Язык
++Custom Shows	Произвольные показы
++Chart Data	Данные диаграммы
++Trim Media	Обрезка мультимедиа
++Choose a SmartArt Graphic	Выбор рисунка SmartArt
++Bullets and Numbering	Маркеры и нумерация
++Action Settings	Настройка действия
++Create New Theme Colors	Создание цветов темы
++Create New Theme Fonts	Создание шрифтов темы
++Cancel	Отмена
++Text Box	Надпись
++Text: {}	Текст: {}
++Picture	Рисунок
++Pass pictures to insert.photoAlbum	Передайте рисунки в insert.photoAlbum
++The web build inserts album pictures from data passed to insert.photoAlbum	В веб-версии рисунки альбома берутся из данных, переданных в insert.photoAlbum
++That file is empty	Этот файл пуст
++That picture is larger than 32 MB	Этот рисунок больше 32 МБ
++Harbor	Гавань
++Ember	Угли
++Meadow	Луг
++Nocturne	Ноктюрн
++Paper	Бумага
++Coral Reef	Коралловый риф
++Slate	Сланец
++Pictures in album	Рисунки в альбоме
++No pictures yet	Рисунков пока нет
++Add Pictures…	Добавить рисунки…
++A photo album holds at most 48 pictures or text boxes	В фотоальбоме может быть не больше 48 рисунков или надписей
++The picture list is invalid	Список рисунков неверен
++New Text Box	Новая надпись
++Type the text for the new text box	Введите текст новой надписи
++Text is longer than 400 characters	Текст длиннее 400 знаков
++Remove	Удалить
++Text box:	Надпись:
++Rotate Left	Повернуть влево
++Rotate Right	Повернуть вправо
++More Brightness	Увеличить яркость
++Less Brightness	Уменьшить яркость
++More Contrast	Увеличить контрастность
++Less Contrast	Уменьшить контрастность
++Picture layout	Макет рисунков
++Fit to slide	По размеру слайда
++1 picture	1 рисунок
++2 pictures	2 рисунка
++4 pictures	4 рисунка
++1 picture with title	1 рисунок с названием
++2 pictures with title	2 рисунка с названием
++4 pictures with title	4 рисунка с названием
++Frame shape	Форма рамки
++None	Нет
++Rectangle	Прямоугольник
++Rounded	Скруглённая
++Simple, white	Простая белая
++Captions under pictures	Подписи под рисунками
++ALL pictures black and white	Все рисунки чёрно-белые
++Album theme	Тема альбома
++Update	Обновить
++Create	Создать
++Add a picture or a text box first	Сначала добавьте рисунок или надпись
++Select a picture to rotate it or change brightness and contrast	Выберите рисунок, чтобы повернуть его или изменить яркость и контрастность
++Text boxes have no picture options	У надписей нет параметров рисунка
++Rotation {}°, brightness {}, contrast {}	Поворот {}°, яркость {}, контрастность {}
++Custom	Другой
++{} hex	{} (hex)
++Enter a scheme name.	Введите название схемы.
++{} needs a colour like #RRGGBB.	{}: нужен цвет вида #RRGGBB.
++Name:	Название:
++Scheme name	Название схемы
++Applies to this presentation's theme colours.	Применяется к цветам темы этой презентации.
++Choose a heading font.	Выберите шрифт заголовков.
++Choose a body font.	Выберите шрифт основного текста.
++Heading:	Заголовок:
++Heading font	Шрифт заголовков
++Body:	Основной текст:
++Body font	Шрифт основного текста
++Heading sample  {}	Образец заголовка  {}
++Body sample  {}	Образец текста  {}
++Heading and body fonts for this presentation.	Шрифты заголовков и основного текста этой презентации.
++Zoom to	Масштаб
++Fit	По размеру окна
++Percent:	Процентов:
++OK	ОК
++Enter a zoom percent	Введите масштаб в процентах
++Number of columns:	Число столбцов:
++Number of rows:	Число строк:
++Insert	Вставить
++Slides sized for:	Размер слайдов:
++Width (in):	Ширина (дюймы):
++Height (in):	Высота (дюймы):
++Orientation:	Ориентация:
++Portrait	Книжная
++Landscape	Альбомная
++Maximize content (else ensure fit)	Максимальный размер (иначе — по размеру слайда)
++Date and time	Дата и время
++  Fixed date (empty = update automatically):	  Фиксированная дата (пусто — обновлять автоматически):
++Slide number	Номер слайда
++Footer	Нижний колонтитул
++  Footer text:	  Текст колонтитула:
++Don't show on title slide	Не показывать на титульном слайде
++Apply to All	Применить ко всем
++Apply	Применить
++Web Page or File	Веб-страница или файл
++This Document	Место в документе
++Email Address	Адрес эл. почты
++Email address:	Адрес эл. почты:
++Address:	Адрес:
++ScreenTip:	Подсказка:
++Show type	Тип показа
++Presented by a speaker (full screen)	Управляемый докладчиком (полный экран)
++Browsed by an individual (window)	Управляемый пользователем (окно)
++Browsed at a kiosk (full screen)	Автоматический (полный экран)
++Loop continuously until 'Esc'	Непрерывный цикл до нажатия Esc
++Show without narration	Без речевого сопровождения
++Show without animation	Без анимации
++Use timings, if present	Использовать время показа, если оно есть
++All slides	Все слайды
++{} presentations	Презентаций: {}
++Do you want to save the changes you made to {}?	Сохранить изменения в «{}»?
++Your changes will be lost if you don't save them.	Если не сохранить, изменения будут потеряны.
++Don't Save	Не сохранять
++Do you want to save the changes you made to “{}”?	Сохранить изменения в «{}»?
++Start a conversation	Начните обсуждение
++Post	Отправить
++Bulleted	Маркированный
++Numbered	Нумерованный
++Custom character:	Другой знак:
++Start at:	Начать с:
++Size (% of text):	Размер (% от текста):
++Automatic	Автоматически
++Text	Текст
++Accent 1	Акцент 1
++Accent 2	Акцент 2
++Accent 3	Акцент 3
++Accent 4	Акцент 4
++Accent 5	Акцент 5
++Accent 6	Акцент 6
++Color:	Цвет:
++Remove bullets and numbering	Убрать маркеры и нумерацию
++Mouse Click	По щелчку мыши
++Mouse Over	При наведении мыши
++Action on mouse over	Действие при наведении мыши
++Action on click	Действие по щелчку
++Hyperlink to:	Гиперссылка на:
++Next Slide	Следующий слайд
++Previous Slide	Предыдущий слайд
++First Slide	Первый слайд
++Last Slide	Последний слайд
++Last Slide Viewed	Последний просмотренный слайд
++End Show	Завершить показ
++Custom Show…	Произвольный показ…
++Slide…	Слайд…
++URL…	URL…
++This presentation has no custom shows (Slide Show ▸ Custom Slide Show).	В презентации нет произвольных показов (Показ слайдов ▸ Произвольный показ).
++Run program:	Запуск программы:
++Program:	Программа:
++Play the shape's media	Воспроизвести мультимедиа фигуры
++Highlight click	Выделить щелчок
++How would you describe this object and its context to someone who is blind or has low vision?	Как бы вы описали этот объект и его назначение человеку с нарушением зрения?
++Mark as decorative	Пометить как декоративный
++Paste or type an outline. Unindented lines become slide titles; tab-indented lines become bullets.	Вставьте или введите структуру. Строки без отступа станут заголовками слайдов, строки с отступом табуляции — маркерами.
++Export the presentation as:	Экспортировать презентацию как:
++PDF document (.pdf)	Документ PDF (.pdf)
++PNG images (current slide)	Рисунки PNG (текущий слайд)
++PNG images (all slides)	Рисунки PNG (все слайды)
++JPEG image (current slide)	Рисунок JPEG (текущий слайд)
++PowerPoint Presentation (.pptx)	Презентация PowerPoint (.pptx)
++Outline (.txt)	Структура (.txt)
++Animated GIF (.gif)	Анимированный GIF (.gif)
++Print layout:	Макет печати:
++Replace:	Заменить:
++With:	На:
++Font name	Название шрифта
++Replace	Заменить
++“{}” isn't used explicitly.	Шрифт «{}» нигде не задан явно.
++Replaced “{}” with “{}”.	Шрифт «{1}» заменён на «{2}».
++Click a symbol to insert it at the insertion point.	Нажмите символ, чтобы вставить его в место ввода.
++Punctuation	Знаки препинания
++Currency	Валюты
++Math	Математика
++Greek	Греческие
++Arrows	Стрелки
++Shapes	Фигуры
++Type an equation in linear form (e.g. a^2+b^2=c^2, x=(-b±√(b^2-4ac))/2a).	Введите формулу в линейном виде (например, a^2+b^2=c^2, x=(-b±√(b^2-4ac))/2a).
++Use Destination Theme	Использовать тему назначения
++Keep Source Formatting	Сохранить исходное форматирование
++Picture (PNG)	Рисунок (PNG)
++Keep Text Only	Сохранить только текст
++As:	Как:
++Dictionary: {}	Словарь: {}
++No {} dictionary is installed, so only common misspellings are found. Put a Hunspell .aff/.dic pair in {}.	Словарь «{1}» не установлен, поэтому находятся только частые ошибки. Положите пару файлов Hunspell .aff/.dic в {2}.
++a dictionaries folder	папку dictionaries
++The spelling check is complete. No issues found.	Проверка орфографии завершена. Ошибок не найдено.
++Slide {}: “{}”	Слайд {1}: «{2}»
++Go to	Перейти
++Repeated word	Повторяющееся слово
++Change to:	Заменить на:
++Click to change this one; Shift-click to change all	Нажмите, чтобы заменить это слово; Shift+щелчок — заменить все
++No accessibility issues found. People with disabilities should not have difficulty reading this document.	Проблем с читаемостью не найдено. Людям с ограниченными возможностями не должно быть трудно читать этот документ.
++Slide {}: {}{}	Слайд {1}: {2}{3}
++Mark selected text as:	Пометить выделенный текст как:
++{}  (dictionary)	{}  (есть словарь)
++Spelling is checked for languages marked (dictionary).	Орфография проверяется для языков с пометкой «есть словарь».
++Do not check spelling or grammar	Не проверять орфографию и грамматику
++{} ({} slides)	{1} (слайдов: {2})
++Delete	Удалить
++New show name:	Название нового показа:
++Custom Show 1	Произвольный показ 1
++Slides (e.g. 1,3,5):	Слайды (например, 1,3,5):
++Custom Show	Произвольный показ
++Select a chart first.	Сначала выберите диаграмму.
++Edit the data: first row = series names, first column = categories.	Измените данные: первая строка — названия рядов, первый столбец — категории.
+++ Row	+ Строка
+++ Series	+ Ряд
++Start time (s):	Начало (с):
++End trim (s):	Обрезать с конца (с):
++Fade in (s):	Нарастание (с):
++Fade out (s):	Затухание (с):
++Pick a graphic; type one item per line.	Выберите рисунок; вводите по одному элементу в строке.
++Basic List	Простой список
++Basic Process	Простой процесс
++Basic Cycle	Простой цикл
++Hierarchy	Иерархия
++Pyramid	Пирамида
++Matrix	Матрица
++Plan\nBuild\nLaunch	План\nСоздание\nЗапуск
++About	О программе
++Contributors	Участники
++Models	Модели
++Username	Имя пользователя
++Display name	Отображаемое имя
++Real name	Настоящее имя
++Name (A–Z)	Имя (А–Я)
++Name	Имя
++Merged PRs	Принятые PR
++PRs	PR
++Commits	Коммиты
++Lines added	Добавлено строк
++Lines deleted	Удалено строк
++Line delta	Разница строк
++Binary assets added	Добавлено бинарных файлов
++Binary assets removed	Удалено бинарных файлов
++First commit	Первый коммит
++First	Первый
++Last commit	Последний коммит
++Last	Последний
++Show	Показать
++Sort	Сортировка
++Reverse the order	Обратный порядок
++Grab bag	Разное
++Table	Таблица
++{} contributors · {} commits	Участников: {1} · коммитов: {2}
++No contributor data was built into this copy.	В эту сборку не включены данные об участниках.
++No model credits were built into this copy.	В эту сборку не включены сведения о моделях.
++Model	Модель
++Version	Версия
++% of all commits	% от всех коммитов
++Lines +/−	Строки +/−
++# Параметры, шрифт, абзац, поиск
++Correct TWo INitial CApitals	Исправлять ДВе ПРописные буквы в начале слова
++Capitalize first letter of sentences	Делать первые буквы предложений прописными
++Capitalize names of days	Делать первые буквы названий дней недели прописными
++Correct accidental use of cAPS LOCK key	Устранять последствия случайного нажатия cAPS LOCK
++Replace fractions (1/2) with fraction characters (½)	Заменять дроби (1/2) символами дробей (½)
++Ordinals (1st) with superscript	Порядковые числительные (1st) надстрочными знаками
++Replace text as you type	Заменять при вводе
++With	На
++Add	Добавить
++General	Общие
++Dark appearance	Тёмное оформление
++Interface size	Размер интерфейса
++Editing	Правка
++Show smart guides	Показывать умные направляющие
++Snap objects to grid	Привязывать объекты к сетке
++Replace straight quotes with smart quotes	Заменять прямые кавычки парными
++AutoCorrect as you type	Автозамена при вводе
++AutoCorrect Options…	Параметры автозамены…
++Your name (comments):	Ваше имя (для примечаний):
++Done	Готово
++“{}” is not available yet.	«{}» пока недоступно.
++{} must be a number	{}: нужно число
++Horizontal	По горизонтали
++Vertical	По вертикали
++Rotation	Поворот
++Width	Ширина
++Scale width	Масштаб по ширине
++Height	Высота
++Scale height	Масштаб по высоте
++Rotation (°):	Поворот (°):
++Scale height (%):	Масштаб по высоте (%):
++Scale width (%):	Масштаб по ширине (%):
++Lock aspect ratio	Сохранять пропорции
++Position	Положение
++From the top-left corner of the slide	От левого верхнего угла слайда
++Horizontal (in):	По горизонтали (дюймы):
++Vertical (in):	По вертикали (дюймы):
++English (United States)	Английский (США)
++English (United Kingdom)	Английский (Великобритания)
++French (France)	Французский (Франция)
++Japanese	Японский
++Swedish	Шведский
++English (Australia)	Английский (Австралия)
++English (Canada)	Английский (Канада)
++Español (España)	Испанский (Испания)
++Español (México)	Испанский (Мексика)
++Français (Canada)	Французский (Канада)
++Deutsch (Deutschland)	Немецкий (Германия)
++Deutsch (Schweiz)	Немецкий (Швейцария)
++Italiano	Итальянский
++Nederlands	Нидерландский
++Português (Brasil)	Португальский (Бразилия)
++Português (Portugal)	Португальский (Португалия)
++Polski	Польский
++Svenska	Шведский
++Dansk	Датский
++Norsk bokmål	Норвежский (букмол)
++Suomi	Финский
++Türkçe	Турецкий
++ (not checked)	 (не проверяется)
++Available formats:	Доступные форматы:
++Language:	Язык:
++Month names and AM/PM are listed for English. Other languages list the numeric date and 24-hour time.	Названия месяцев и AM/PM приведены для английского языка. Для других языков показаны дата цифрами и 24-часовое время.
++Update automatically	Обновлять автоматически
++Snap	Привязка
++Snap objects to other objects	Привязывать объекты к другим объектам
++Spacing (pt):	Шаг (пт):
++Display	Отображение
++Display grid on screen	Показывать сетку на экране
++Display drawing guides on screen	Показывать направляющие на экране
++Presentations and slide shows, rebuilt from scratch in pure Rust.	Презентации и показы слайдов, написанные с нуля на чистом Rust.
++An open-source, clean-room project. Not affiliated with Microsoft.	Проект с открытым кодом, написанный независимо. Не связан с Microsoft.
++Version {}	Версия {}
++Bold	Полужирный
++Italic	Курсив
++Underline	Подчёркивание
++Single	Одинарное
++Double	Двойное
++Heavy	Жирное
++Dotted	Пунктирное
++Dash	Штриховое
++Wavy	Волнистое
++Color	Цвет
++Strikethrough	Зачёркивание
++Baseline	Базовая линия
++Superscript	Надстрочный
++Subscript	Подстрочный
++Caps	Регистр
++Small caps	Малые прописные
++All caps	Все прописные
++Spacing	Интервал
++Very tight	Очень плотный
++Tight	Плотный
++Normal	Обычный
++Loose	Разреженный
++Very loose	Очень разреженный
++Choose a font	Выберите шрифт
++Font size must be a number	Размер шрифта должен быть числом
++Character spacing must be a number	Интервал между знаками должен быть числом
++Exactly	Точно
++1.5 lines	1,5 строки
++Multiple	Множитель
++Alignment	Выравнивание
++Left	По левому краю
++Center	По центру
++Right	По правому краю
++Justify	По ширине
++Justify low	По ширине (мягко)
++Distributed	Распределённое
++Indentation	Отступы
++Before text	Перед текстом
++After text	После текста
++Special	Первая строка
++First line	Отступ
++Hanging	Выступ
++By	На
++Spacing before	Интервал перед
++Spacing after	Интервал после
++Line spacing	Междустрочный интервал
++At	Значение
++Tabs…	Табуляция…
++Indent before text must be a number of inches	Отступ перед текстом должен быть числом в дюймах
++Indent after text must be a number of inches	Отступ после текста должен быть числом в дюймах
++Special indent must be a number of inches	Отступ первой строки должен быть числом в дюймах
++Spacing before must be a number	Интервал перед должен быть числом
++Spacing after must be a number	Интервал после должен быть числом
++Line spacing must be a number	Междустрочный интервал должен быть числом
++Decimal	По разделителю
++Default tab stops (in):	Позиции табуляции по умолчанию (дюймы):
++Tab stops:	Позиции табуляции:
++(none)	(нет)
++Clear	Очистить
++Clear the tab at {}"	Убрать позицию табуляции {}"
++Tab stop position (in):	Позиция табуляции (дюймы):
++Alignment:	Выравнивание:
++Set	Задать
++Clear All	Очистить все
++Find what:	Найти:
++Replace with:	Заменить на:
++Match case	Учитывать регистр
++Find whole words only	Только слово целиком
++Find Next	Найти далее
++Replace All	Заменить все
++Replaced {} occurrence(s).	Выполнено замен: {}.
++DeckCraft can't find “{}”.	DeckCraft не может найти «{}».
++Replace…	Заменить…
++ (notes)	 (заметки)
++Match {} of {} on slide {}{}.	Совпадение {1} из {2} на слайде {3}{4}.
++Small (640 px wide)	Маленький (ширина 640 пикс.)
++Large (1280 px wide)	Большой (ширина 1280 пикс.)
++Extra Large (1920 px wide)	Очень большой (ширина 1920 пикс.)
++Custom width	Другая ширина
++Medium (960 px wide)	Средний (ширина 960 пикс.)
++Size:	Размер:
++Width (pixels):	Ширина (пикселей):
++Seconds per slide:	Секунд на слайд:
++From slide:	Со слайда:
++To slide:	По слайд:
++Loop forever	Повторять бесконечно
++Width: enter {} to {} pixels	Ширина: введите от {1} до {2} пикселей
++Seconds per slide: enter {} to {}	Секунд на слайд: введите от {1} до {2}
++Slides: choose a range from 1 to {}	Слайды: выберите диапазон от 1 до {}
++Slide {} of {}	Слайд {1} из {2}
++Next	Далее
++Previous	Назад
++Eyedropper: click the slide (Esc cancels)	Пипетка: щёлкните слайд (Esc — отмена)
++The Eyedropper takes colours from a slide	Пипетка берёт цвета со слайда
++From center	От центра
++From top left	От левого верхнего угла
++From top right	От правого верхнего угла
++From bottom left	От левого нижнего угла
++From bottom right	От правого нижнего угла
++Preset gradients	Готовые градиенты
++Linear	Линейный
++Rectangular	Прямоугольный
++Path	По контуру
++Radial	Радиальный
++Type	Тип
++Direction	Направление
++From 	Из
++Angle	Угол
++Gradient stops	Точки градиента
++Remove stop	Удалить точку
++Transparency	Прозрачность
++Outline View	Структура
++Slide Sorter	Сортировщик слайдов
++Notes Page	Страницы заметок
++Reading View	Режим чтения
++Notes	Заметки
++Ruler	Линейка
++Gridlines	Линии сетки
++Zoom In	Увеличить
++Zoom Out	Уменьшить
++Set Zoom	Задать масштаб
++Zoom…	Масштаб…
++Fit to Window	По размеру окна
++Task Pane	Область задач
++Thesaurus	Тезаурус
++Ribbon Tab	Вкладка ленты
++Collapse the Ribbon	Свернуть ленту
++Dark Mode	Тёмный режим
++Grayscale	Оттенки серого
++New Window	Новое окно
++Slide Show	Показ слайдов
++Presenter View	Режим докладчика
++Preview Animations	Просмотр анимации
++File	Файл
++Command Palette	Палитра команд
++Preferences…	Параметры…
++Open…	Открыть…
++Picture from File…	Рисунок из файла…
++Insert Picture in SmartArt…	Вставить рисунок в SmartArt…
++Audio from File…	Звук из файла…
++Reuse Slides…	Повторное использование слайдов…
++Video from File…	Видео из файла…
++Save As…	Сохранить как…
++Export…	Экспорт…
++Browse for Themes…	Поиск тем…
++Compare…	Сравнить…
++Open Dialog	Открыть диалог
++Paste Special…	Специальная вставка…
++Quick Access Toolbar	Панель быстрого доступа
++Find…	Найти…
++Community Links	Ссылки сообщества
++Presentation	Презентация
++DeckCraft can't export “{}”	DeckCraft не может экспортировать «{}»
++Exported {}	Экспортировано: {}
++Saving a copy needs a file picker, which this window doesn't have.	Для сохранения копии нужен выбор файла, которого в этом окне нет.
++Opened the presentation as a PDF to print	Презентация открыта как PDF для печати
++Browse for Themes needs the desktop app for now	Поиск тем пока работает только в настольной версии
++Compare needs the desktop app for now	Сравнение пока работает только в настольной версии
++This slide has no animations	На этом слайде нет анимации
++Previewing animations	Просмотр анимации
++Reuse Slides needs the desktop app	Повторное использование слайдов работает только в настольной версии
++Inserted {} slides from {}	Вставлено слайдов: {1} из {2}
++Saved {}	Сохранено: {}
++Saved	Сохранено
++Couldn't save AutoRecover information: {}	Не удалось сохранить данные автовосстановления: {}
++Selection Pane	Область выделения
++Format Shape	Формат фигуры
++Format Background	Формат фона
++Animation Pane	Область анимации
++Selection	Выделение
++Design Ideas	Идеи для оформления
++Text Pane	Область текста
++Revisions	Исправления
++Pane	Область
++Select a SmartArt graphic to edit its text.	Выберите рисунок SmartArt, чтобы изменить его текст.
++Type your text here	Введите текст здесь
+++ Add	+ Добавить
++Select a shape to format it.	Выберите фигуру, чтобы отформатировать её.
++Fill & Line	Заливка и линия
++Effects	Эффекты
++Size & Properties	Размер и свойства
++Text Options	Параметры текста
++Shadow	Тень
++Outer	Внешняя
++Bottom	Снизу
++Inner	Внутренняя
++Perspective	Перспектива
++Blur	Размытие
++ pt	 пт
++Distance	Расстояние
++Reflection	Отражение
++Half	Половина
++Full	Полное
++Glow	Свечение
++Soft Edges	Сглаживание
++size (pt)	размер (пт)
++Reset Effects	Сбросить эффекты
++Text Fill	Заливка текста
++Vertical alignment	Вертикальное выравнивание
++Top	Сверху
++Middle	По середине
++Do not Autofit	Не подгонять размер
++Shrink text on overflow	Сжимать текст при переполнении
++Resize shape to fit text	Подгонять размер фигуры под текст
++Wrap text in shape	Переносить текст в фигуре
++Margins (pt)	Поля (пт)
++Columns	Столбцы
++Brightness	Яркость
++Contrast	Контрастность
++Saturation	Насыщенность
++Reset Picture	Сбросить рисунок
++Fill	Заливка
++No fill	Нет заливки
++Solid fill	Сплошная заливка
++Gradient fill	Градиентная заливка
++Picture or texture fill	Рисунок или текстура
++Pattern fill	Узорная заливка
++No Fill	Нет заливки
++Rotate with shape	Поворачивать вместе с фигурой
++Line	Линия
++No line	Нет линии
++Solid line	Сплошная линия
++No Outline	Нет контура
++Compound type	Составной тип
++Thick Thin	Толстая-тонкая
++Thin Thick	Тонкая-толстая
++Triple	Тройная
++Cap type	Тип окончания
++Flat	Плоский
++Round	Круглый
++Square	Квадратный
++Join type	Тип соединения
++Bevel	Скос
++Miter	Остроугольное
++Arrow	Стрелка
++Open Arrow	Открытая стрелка
++Stealth	Стреловидная
++Diamond	Ромб
++Oval	Овал
++Small	Малый
++Medium	Средний
++Large	Большой
++Begin arrow	Начало: тип
++Begin size	Начало: размер
++End arrow	Конец: тип
++End size	Конец: размер
++Picture source	Источник рисунка
++Insert…	Вставить…
++Tile picture as texture	Рисунок как текстура (мозаика)
++Offset X	Смещение по X
++Offset Y	Смещение по Y
++Scale X	Масштаб по X
++Scale Y	Масштаб по Y
++Top left	Слева сверху
++Top right	Справа сверху
++Bottom left	Слева снизу
++Bottom right	Справа снизу
++Both	Оба
++Mirror type	Тип отражения
++Offset left	Смещение слева
++Offset top	Смещение сверху
++Offset right	Смещение справа
++Offset bottom	Смещение снизу
++3-D Format	Формат объёмной фигуры
++Top bevel	Верхний скос
++Bottom bevel	Нижний скос
++   Width	   Ширина
++   Height	   Высота
++Depth	Глубина
++Contour	Контур
++Material	Материал
++Lighting	Освещение
++3-D Rotation	Объёмный поворот
++Presets	Заготовки
++X Rotation	Поворот вокруг X
++Y Rotation	Поворот вокруг Y
++Z Rotation	Поворот вокруг Z
++Distance from ground	Расстояние от основания
++Reset 3-D	Сбросить объём
++Follow the layout	Как в макете
++Foreground	Передний план
++Background	Фон
++Insert picture from file…	Вставить рисунок из файла…
++Hide background graphics	Скрыть фоновые рисунки
++Reset Background	Сбросить фон
++Top Right	Справа сверху
++Bottom Left	Слева снизу
++Bottom Right	Справа снизу
++Top Left	Слева сверху
++Mirror	Зеркально
++■ Stop	■ Стоп
++▶ Play All	▶ Воспроизвести всё
++Select an object on the slide and add an animation from the Animations tab.	Выберите объект на слайде и добавьте анимацию на вкладке «Анимация».
++Shape {}	Фигура {}
++Timing bar {}	Полоса времени {}
++Duration handle {}	Маркер длительности {}
++Start On Click	Начало: по щелчку
++Start With Previous	Начало: вместе с предыдущим
++Start After Previous	Начало: после предыдущего
++Move Up	Вверх
++Move Down	Вниз
++Compare this presentation with a revised copy from Review › Compare.	Сравните эту презентацию с исправленной копией: Рецензирование › Сравнить.
++Compared with {}	Сравнение с {}
++Not a copy of this presentation: slides are matched by position.	Это не копия презентации: слайды сопоставляются по порядку.
++No differences left.	Различий не осталось.
++End Review	Завершить проверку
++Accept All ({})	Принять все ({})
++Slide inserted after {}	Слайд вставлен после {}
++Slide {} deleted	Слайд {} удалён
++Slide {} changed	Слайд {} изменён
++Accept	Принять
+++ New Comment	+ Создать примечание
++No comments.	Примечаний нет.
++Slide {}	Слайд {}
++{} · Resolved	{} · Решено
++Reply…	Ответить…
++Reopen	Открыть снова
++Resolve	Решить
++Pick a design for this slide. Ideas are generated on your device.	Выберите оформление для этого слайда. Идеи создаются на вашем устройстве.
++Add a title with a picture or some text to get layout ideas.	Добавьте название, рисунок или текст, чтобы получить идеи макета.
++Themes (whole presentation)	Темы (вся презентация)
++Search for a word	Поиск слова
++Select a word on the slide, or type one above.	Выделите слово на слайде или введите его выше.
++No synonyms for "{}".	Нет синонимов для «{}».
++Look up	Найти
++ — Edited	 — изменён
++Search commands (⇧⌘P)	Поиск команд (⇧⌘P)
++Search commands…	Поиск команд…
++  Present  	  Показ
++Light/Dark appearance	Светлое/тёмное оформление
++# Лента
++Shape Format	Формат фигуры
++Picture Format	Формат рисунка
++Table Design	Конструктор таблиц
++SmartArt Design	Конструктор SmartArt
++Chart Design	Конструктор диаграмм
++Playback	Воспроизведение
++Draw	Рисование
++Design	Конструктор
++Transitions	Переходы
++Animations	Анимация
++Record	Запись
++Review	Рецензирование
++View	Вид
++Insert	Вставка
++File (Alt+F)	Файл (Alt+F)
++Photo\nAlbum	Фото-\nальбом
++Photo Album options	Параметры фотоальбома
++New Photo Album…	Новый фотоальбом…
++{} ({})	{1} ({2})
++Paste (⌘V)	Вставить (⌘V)
++Paste Formatting	Вставить форматирование
++Format Painter (double-click to keep it on)	Формат по образцу (двойной щелчок — оставить включённым)
++New\nSlide	Создать\nслайд
++New Slide (⇧⌘N)	Создать слайд (⇧⌘N)
++Duplicate Selected Slides	Дублировать выбранные слайды
++Slides from Outline…	Слайды из структуры…
++Reuse Slides (Keep Source Formatting)…	Повторное использование слайдов (с исходным форматированием)…
++Choosing a presentation to reuse needs the desktop app	Выбор презентации для повторного использования работает только в настольной версии
++Reset	Сброс
++Add Section	Добавить раздел
++Remove All Sections	Удалить все разделы
++{} (Headings)	{} (заголовки)
++{} (Body)	{} (основной текст)
++Rescan Installed Fonts	Обновить список установленных шрифтов
++Increase Font Size	Увеличить размер шрифта
++Decrease Font Size	Уменьшить размер шрифта
++Clear All Formatting	Очистить всё форматирование
++Character Spacing	Интервал между знаками
++Very Tight	Очень плотный
++Very Loose	Очень разреженный
++Change Case	Регистр
++Sentence case.	Как в предложениях.
++UPPERCASE	ВСЕ ПРОПИСНЫЕ
++Capitalize Each Word	Начинать С Прописных
++tOGGLE cASE	иЗМЕНИТЬ рЕГИСТР
++Text Highlight Color	Цвет выделения текста
++No Color	Нет цвета
++Font Color	Цвет шрифта
++List	Список
++Process	Процесс
++Cycle	Цикл
++Relationship	Связь
++{}  Bullet	{}  Маркер
++Bullets and Numbering…	Маркеры и нумерация…
++Decrease List Level	Уменьшить уровень списка
++Increase List Level	Увеличить уровень списка
++Line Spacing	Междустрочный интервал
++Line Spacing Options…	Параметры междустрочного интервала…
++{} Column{}	Столбцов: {1}{2}
++Text Direction	Направление текста
++Rotate all text 90°	Повернуть весь текст на 90°
++Rotate all text 270°	Повернуть весь текст на 270°
++Stacked	Вертикальный
++Align Text	Выровнять текст
++Convert to SmartArt	Преобразовать в SmartArt
++Quick\nStyles	Экспресс-\nстили
++Shape Fill	Заливка фигуры
++Shape Outline	Контур фигуры
++Shape Effects	Эффекты фигуры
++Weight	Толщина
++Dashes	Штрихи
++Solid	Сплошная
++Round Dot	Круглые точки
++Square Dot	Квадратные точки
++Dash Dot	Штрих-пунктир
++Long Dash	Длинные штрихи
++Long Dash Dot	Длинный штрих-пунктир
++Arrow at end	Стрелка в конце
++Arrow at start	Стрелка в начале
++Arrows at both ends	Стрелки на обоих концах
++Stealth end	Стреловидный конец
++Oval ends	Овальные концы
++No Shadow	Нет тени
++Centered	По центру
++No Reflection	Нет отражения
++No Glow	Нет свечения
++{} pt glow	Свечение {} пт
++No Soft Edges	Нет сглаживания
++{} pt	{} пт
++Order Objects	Порядок объектов
++Group Objects	Группировка объектов
++Position Objects	Положение объектов
++Align	Выровнять
++Rotate	Повернуть
++Selection Pane…	Область выделения…
++Align Center	Выровнять по центру
++Align Top	Выровнять по верхнему краю
++Align Middle	Выровнять по середине
++Align Bottom	Выровнять по нижнему краю
++Distribute Horizontally	Распределить по горизонтали
++Distribute Vertically	Распределить по вертикали
++Align to Slide	Выровнять по слайду
++Align Selected Objects	Выровнять выбранные объекты
++Find	Найти
++Replace Fonts…	Заменить шрифты…
++Selection\nPane	Область\nвыделения
++Design\nIdeas	Идеи для\nоформления
++Insert Table…	Вставить таблицу…
++Draw Table	Нарисовать таблицу
++Pictures	Рисунки
++Screenshot	Снимок экрана
++Screenshot (not available yet)	Снимок экрана (пока недоступен)
++Icons	Значки
++SmartArt	SmartArt
++Link	Ссылка
++Action	Действие
++Action Button: {}	Управляющая кнопка: {}
++Action Settings…	Настройка действия…
++Comment	Примечание
++Text\nBox	Надпись
++Header &\nFooter	Колонтитулы
++WordArt style {}	Стиль WordArt {}
++Date &\nTime	Дата и\nвремя
++Slide\nNumber	Номер\nслайда
++Video	Видео
++Audio	Звук
++{}x{} Table	Таблица {1}×{2}
++Search icons	Поиск значков
++No icons match.	Подходящих значков нет.
++Select	Выделить
++Eraser	Ластик
++Black Pen	Чёрная ручка
++Red Pen	Красная ручка
++Blue Pen	Синяя ручка
++Pencil	Карандаш
++Highlighter	Маркер
++Ink to\nShape	Рукописный\nввод в фигуру
++Ink to Shape: turn drawn lines, rectangles, ovals and triangles into shapes	Рукописный ввод в фигуру: превращает нарисованные линии, прямоугольники, овалы и треугольники в фигуры
++Ink to\nText	Рукописный\nввод в текст
++Ink to Text (coming soon)	Рукописный ввод в текст (скоро)
++Ink to\nMath	Рукописный\nввод в формулу
++Ink to Math (coming soon)	Рукописный ввод в формулу (скоро)
++Colors	Цвета
++Customize Colors…	Настроить цвета…
++Fonts	Шрифты
++Customize Fonts…	Настроить шрифты…
++Background\nStyles	Стили\nфона
++Style {}	Стиль {}
++Reset Slide Background	Сбросить фон слайда
++Slide\nSize	Размер\nслайда
++Standard (4:3)	Обычный (4:3)
++Widescreen (16:9)	Широкоэкранный (16:9)
++Page Setup…	Параметры страницы…
++Format\nBackground	Формат\nфона
++Preview	Просмотр
++Subtle	Простые
++Exciting	Сложные
++Dynamic Content	Динамическое содержимое
++Effect\nOptions	Параметры\nэффектов
++Sound:	Звук:
++[Stop Previous Sound]	[Остановить предыдущий звук]
++[No Sound]	[Нет звука]
++Other Sound…	Другой звук…
++Choosing a sound file needs the desktop app	Выбор звукового файла работает только в настольной версии
++Loop Until Next Sound	Повторять до следующего звука
++Duration:	Длительность:
++On Mouse Click	По щелчку
++After:	Через:
++Apply\nTo All	Применить\nко всем
++From Left	Слева
++From Right	Справа
++From Top	Сверху
++From Bottom	Снизу
++In	Внутрь
++Out	Наружу
++Play this slide's animations on the canvas	Показать анимацию этого слайда на полотне
++Entrance	Вход
++Emphasis	Выделение
++Exit	Выход
++Motion Paths	Пути перемещения
++By Paragraph	По абзацам
++As One Object	Как один объект
++Add\nAnimation	Добавить\nанимацию
++Motion	Перемещение
++Animation\nPane	Область\nанимации
++Trigger	Триггер
++On Click of… (none)	По щелчку на… (нет)
++On Click of {}	По щелчку на {}
++Animation\nPainter	Анимация\nпо образцу
++Animation Painter (double-click to keep it on)	Анимация по образцу (двойной щелчок — оставить включённой)
++Start:	Начало:
++On Click	По щелчку
++With Previous	С предыдущим
++After Previous	После предыдущего
++Delay:	Задержка:
++Play from\nStart	С начала
++Play from\nCurrent Slide	С текущего\nслайда
++Presenter\nView	Режим\nдокладчика
++Custom\nShow	Произвольный\nпоказ
++Set Up\nSlide Show	Настройка\nпоказа
++Hide\nSlide	Скрыть\nслайд
++Rehearse\nTimings	Настройка\nвремени
++Recording narration needs audio capture (coming soon)	Для записи речи нужен захват звука (скоро)
++Use Timings	Использовать время
++Play Narrations	Воспроизводить речь
++Show Media Controls	Показывать элементы управления
++Cameo	Камео
++Camera capture is not available yet	Захват с камеры пока недоступен
++From\nBeginning	С\nначала
++From\nCurrent Slide	С текущего\nслайда
++Learn\nMore	Подробнее
++Check\nAccessibility	Проверка\nчитаемости
++Translate	Перевод
++Translation needs a language model (not bundled)	Для перевода нужна языковая модель (не входит в поставку)
++Compare	Сравнить
++Accept\nAll	Принять\nвсе
++End\nReview	Завершить\nпроверку
++New\nComment	Создать\nпримечание
++Show\nComments	Показать\nпримечания
++Outline\nView	Структура
++Slide\nSorter	Сортировщик\nслайдов
++Notes\nPage	Страницы\nзаметок
++Reading\nView	Режим\nчтения
++Slide\nMaster	Образец\nслайдов
++Handout\nMaster	Образец\nвыдач
++Notes\nMaster	Образец\nзаметок
++Grid\nOptions	Параметры\nсетки
++Fit to\nWindow	По размеру\nокна
++New\nWindow	Новое\nокно
++Open another window on this presentation	Открыть ещё одно окно с этой презентацией
++Dark\nMode	Тёмный\nрежим
++Transform	Трансформация
++Follow Path	По контуру
++Warp	Изгиб
++No Transform	Нет трансформации
++Edit\nShape	Изменить\nфигуру
++Change Shape	Изменить фигуру
++Merge\nShapes	Объединить\nфигуры
++Merge Shapes	Объединение фигур
++Shape\nStyles	Стили\nфигур
++Gradient…	Градиентная…
++Text Outline	Контур текста
++Text Effects	Текстовые эффекты
++Alt\nText	Замещающий\nтекст
++Format\nPane	Область\nформата
++Bring\nForward	Переместить\nвперёд
++Send\nBackward	Переместить\nназад
++Height:	Высота:
++Width:	Ширина:
++Remove\nBackground	Удалить\nфон
++Remove Background	Удалить фон
++Remove More (looser)	Удалить больше (свободнее)
++Remove Less (tighter)	Удалить меньше (строже)
++Corrections	Коррекция
++Brightness {}%	Яркость {}%
++Contrast {}%	Контрастность {}%
++Saturation {}%	Насыщенность {}%
++Recolor	Перекрасить
++Set Transparent Color	Установить прозрачный цвет
++Pixels of this colour become transparent:	Пиксели этого цвета станут прозрачными:
++Artistic\nEffects	Художественные\nэффекты
++Change Picture	Изменить рисунок
++Compress Pictures	Сжать рисунки
++Picture Border	Граница рисунка
++Reset Style	Сбросить стиль
++Remove the picture style	Убрать стиль рисунка
++Crop	Обрезка
++Crop to Shape	Обрезать по фигуре
++Crop 10% each side	Обрезать по 10% с каждой стороны
++Crop 20% each side	Обрезать по 20% с каждой стороны
++Reset Crop	Сбросить обрезку
++Header Row	Строка заголовка
++First Column	Первый столбец
++Total Row	Строка итогов
++Last Column	Последний столбец
++Banded Rows	Чередующиеся строки
++Banded Columns	Чередующиеся столбцы
++Shading	Заливка
++Borders	Границы
++No Border	Нет границы
++All Borders	Все границы
++Outside Borders	Внешние границы
++Inside Borders	Внутренние границы
++Top Border	Верхняя граница
++Bottom Border	Нижняя граница
++Left Border	Левая граница
++Right Border	Правая граница
++Inside Horizontal Border	Внутренняя горизонтальная граница
++Inside Vertical Border	Внутренняя вертикальная граница
++Diagonal Down Border	Диагональная граница сверху вниз
++Diagonal Up Border	Диагональная граница снизу вверх
++Pen Weight	Толщина пера
++Pen Style	Стиль пера
++Dot	Точки
++Pen Color	Цвет пера
++Table Eraser	Ластик таблицы
++Delete Columns	Удалить столбцы
++Delete Rows	Удалить строки
++Delete Table	Удалить таблицу
++Insert\nAbove	Вставить\nсверху
++Insert\nBelow	Вставить\nснизу
++Insert\nLeft	Вставить\nслева
++Insert\nRight	Вставить\nсправа
++Merge\nCells	Объединить\nячейки
++Split\nCells	Разбить\nячейки
++Distribute Rows	Выровнять высоту строк
++Distribute Columns	Выровнять ширину столбцов
++Align text to the {} of the cell	Выровнять текст: {} ячейки
++Cell Margins	Поля ячейки
++Narrow	Узкие
++Wide	Широкие
++Change\nChart Type	Изменить\nтип диаграммы
++Edit\nData	Изменить\nданные
++Text\nPane	Область\nтекста
++Type and organise the diagram's text	Ввод и упорядочение текста схемы
++Add Shape	Добавить фигуру
++Add Shape After	Добавить фигуру после
++Add Shape Before	Добавить фигуру перед
++Add Shape Above	Добавить фигуру выше
++Add Shape Below	Добавить фигуру ниже
++Add Assistant	Добавить помощника
++Promote	Повысить уровень
++Demote	Понизить уровень
++Insert Picture	Вставить рисунок
++Put a picture in the selected node's picture placeholder	Поместить рисунок в рисунок-заполнитель выбранного узла
++Layouts	Макеты
++Convert	Преобразовать
++Convert to Text	Преобразовать в текст
++Convert to Shapes	Преобразовать в фигуры
++Change Colors	Изменить цвета
++SmartArt Styles	Стили SmartArt
++Pause	Пауза
++Play	Воспроизвести
++Trim	Обрезать
++Start Automatically	Начинать автоматически
++Play Across Slides	Воспроизводить на всех слайдах
++Loop until Stopped	Повторять до остановки
++Hide During Show	Скрывать при показе
++Rewind after Playing	Перемотать после воспроизведения
++Play Full Screen	Во весь экран
++Volume	Громкость
++Low	Низкая
++High	Высокая
++Mute	Без звука
++Insert\nLayout	Вставить\nмакет
++Preserve	Сохранить
++Footers	Колонтитулы
++Insert\nPlaceholder	Вставить\nзаполнитель
++Content	Содержимое
++Media	Мультимедиа
++Themes	Темы
++Close\nMaster View	Закрыть\nобразец
++Header	Верхний колонтитул
++Slide Image	Изображение слайда
++Date	Дата
++Body	Основной текст
++Page Number	Номер страницы
++Slides Per\nPage: {}	Слайдов на\nстранице: {}
++{} Slide{}	Слайдов: {1}{2}
++Fade	Выцветание
++Appear	Появление
++Smooth Corners	Сглаженные углы
++For rectangles and rounded rectangles	Для прямоугольников и скруглённых прямоугольников
++Slide Zoom	Масштабирование слайда
++Section Zoom	Масштабирование раздела
++Summary Zoom	Сводное масштабирование
++The presentation has no sections. Add one with Home › Section.	В презентации нет разделов. Добавьте раздел: Главная › Раздел.
++No slides.	Слайдов нет.
++Compression options	Параметры сжатия
++Apply only to this picture	Применить только к этому рисунку
++Delete cropped areas of pictures	Удалить обрезанные области рисунков
++Resolution	Разрешение
++HD (330 ppi): good quality for high-definition displays	HD (330 ppi): хорошее качество для экранов высокой чёткости
++Print (220 ppi): excellent quality on most printers and screens	Печать (220 ppi): отличное качество на большинстве принтеров и экранов
++Web (150 ppi): good for web pages and projectors	Веб (150 ppi): подходит для веб-страниц и проекторов
++E-mail (96 ppi): minimise document size for sharing	Эл. почта (96 ppi): минимальный размер документа для отправки
++Compress	Сжать
++Pictures are already at or below that resolution	Рисунки уже имеют такое или меньшее разрешение
++Compressed {} picture(s): {} KB → {} KB	Сжато рисунков: {1}: {2} КБ → {3} КБ
++Show All	Показать все
++Hide All	Скрыть все
++Collapse	Свернуть
++Expand	Развернуть
++Hide	Скрыть
++Rename Section…	Переименовать раздел…
++Remove Section	Удалить раздел
++Remove Section & Slides	Удалить раздел и слайды
++Move Section Up	Переместить раздел вверх
++Move Section Down	Переместить раздел вниз
++Click to add text	Нажмите, чтобы добавить текст
++Fit slide to current window	Вписать слайд в окно
++Click to add notes	Нажмите, чтобы добавить заметки
+++ New Slide	+ Новый слайд
++Show Slide	Показать слайд
++{} Slide Master	Образец слайдов: {}
++Theme Colors	Цвета темы
++Standard Colors	Стандартные цвета
++More Colors… #	Другие цвета… #
++Eyedropper	Пипетка
++Click the slide to take the colour under the pointer	Щёлкните слайд, чтобы взять цвет под указателем
++Pick	Выбрать
++# Показ слайдов
++End of slide show, click to exit.	Показ слайдов окончен. Щёлкните, чтобы выйти.
++Go to slide {}	Перейти к слайду {}
++Click the slide to zoom in. Esc cancels.	Щёлкните слайд, чтобы увеличить. Esc — отмена.
++✏ on	✏ вкл.
++◉ on	◉ вкл.
++Black	Чёрный
++White	Белый
++All	Все
++Slide timings recorded.	Время слайдов записано.
++Zoom on	Масштаб вкл.
++{}  Hidden	{}  Скрыт
++Presenter View — DeckCraft	Режим докладчика — DeckCraft
++Next ▶	Далее ▶
++◀ Previous	◀ Назад
++Resume	Продолжить
++Black on	Чёрный экран вкл.
++White on	Белый экран вкл.
++All slides on	Все слайды вкл.
++End of slide show	Показ слайдов окончен
++No notes.	Заметок нет.
++Still opening {}	Файл «{}» всё ещё открывается
++Stopped opening {}	Открытие остановлено: {}
++Opening {}…	Открывается «{}»…
++Reading the file: {} s	Чтение файла: {} с
++Close\nMaster	Закрыть\nобразец
++# Список команд (меню и палитра команд)
++Edit	Правка
++Undo	Отменить
++Redo	Вернуть
++Paste and Match Formatting	Вставить по форматированию места назначения
++Select All	Выделить всё
++Duplicate	Дублировать
++Delete Slide	Удалить слайд
++Slide Master	Образец слайдов
++Handout Master	Образец выдач
++Notes Master	Образец заметок
++New Slide	Создать слайд
++Duplicate Slide	Дублировать слайд
++Section	Раздел
++WordArt	WordArt
++Slide Number	Номер слайда
++Table…	Таблица…
++Chart	Диаграмма
++Photo Album…	Фотоальбом…
++Edit Photo Album…	Изменить фотоальбом…
++Format	Формат
++Align Left	Выровнять по левому краю
++Align Right	Выровнять по правому краю
++Right-to-Left Text Direction	Направление текста справа налево
++Arrange	Упорядочить
++Regroup	Перегруппировать
++Rotate Left 90°	Повернуть влево на 90°
++Rotate Right 90°	Повернуть вправо на 90°
++Flip Horizontal	Отразить слева направо
++Flip Vertical	Отразить сверху вниз
++Play from Start	С начала
++Play from Current Slide	С текущего слайда
++Hide Slide	Скрыть слайд
++Set Up Show…	Настройка показа…
++Help	Справка
++New Presentation	Новая презентация
++Print…	Печать…
++Remove Animation	Удалить анимацию
++Reorder Animation	Изменить порядок анимации
++Timing	Время
++Remove All Animations	Удалить всю анимацию
++Apply Animation	Применить анимацию
++Animation Gallery	Коллекция анимации
++Animations on Slide	Анимация на слайде
++Move Guide	Переместить направляющую
++Delete Guide	Удалить направляющую
++Rotate or Flip	Повернуть или отразить
++Nudge	Сдвинуть
++Theme Gallery	Коллекция тем
++Variants	Варианты
++Variant Gallery	Коллекция вариантов
++Hide Background Graphics	Скрыть фоновые рисунки
++Master Views	Режимы образца
++Close Master View	Закрыть режим образца
++Insert Layout	Вставить макет
++Edit Master	Изменить образец
++Delete Layout	Удалить макет
++Clipboard	Буфер обмена
++Deselect	Снять выделение
++Select Objects	Выделить объекты
++Starter Templates	Готовые шаблоны
++Render Slide	Отрисовать слайд
++Recovered Presentations	Восстановленные презентации
++Open Recovered Presentations	Открыть восстановленные презентации
++Discard Recovered Presentations	Отклонить восстановленные презентации
++Next Window	Следующее окно
++Window	Окно
++Add Font	Добавить шрифт
++Font Size	Размер шрифта
++Text Shadow	Тень текста
++Autofit	Автоподбор размера
++Wrap Text in Shape	Перенос текста в фигуре
++Format Painter	Формат по образцу
++Apply Design Idea	Применить идею оформления
++Designer	Конструктор
++Icon Gallery	Коллекция значков
++Shape Gallery	Коллекция фигур
++Tables	Таблицы
++Symbols	Символы
++Change Chart Type	Изменить тип диаграммы
++Picture Style Gallery	Коллекция стилей рисунков
++Points	Узлы
++Move Point	Переместить узел
++Recolor Gallery	Коллекция перекраски
++Reply	Ответить
++Delete Comment	Удалить примечание
++Resolve Thread	Решить обсуждение
++Check Accessibility	Проверка читаемости
++Accessibility	Читаемость
++Proofing	Правописание
++Spelling Dictionary	Орфографический словарь
++Accept Revision	Принять исправление
++Start Slide Show	Начать показ слайдов
++Connection Sites	Точки соединения
++Position and Size	Положение и размер
++Flip	Отразить
++Adjust Shape	Настроить фигуру
++Insert Shapes	Вставка фигур
++Edit Shape	Изменить фигуру
++Show/Hide	Показать или скрыть
++Adjust	Настройка
++Move Slide	Переместить слайд
++Go to Slide	Перейти к слайду
++Select Slides	Выделить слайды
++Set Up	Настройка
++Rename Slide	Переименовать слайд
++Move Section	Переместить раздел
++Create Graphic	Создать рисунок
++Insert Above	Вставить сверху
++Table Layout	Макет таблицы
++Rows & Columns	Строки и столбцы
++Insert Below	Вставить снизу
++Insert Left	Вставить слева
++Insert Right	Вставить справа
++Merge Cells	Объединить ячейки
++Merge	Объединить
++Cell Size	Размер ячейки
++Select Cells	Выделить ячейки
++Fonts in Presentation	Шрифты в презентации
++Stop Editing Text	Завершить правку текста
++Type Text	Ввести текст
++Move Insertion Point	Переместить курсор
++Select Text	Выделить текст
++Select All Text	Выделить весь текст
++Select Word	Выделить слово
++Select Paragraph	Выделить абзац
++Get Text	Получить текст
++Effect Options	Параметры эффектов
++Transition to This Slide	Переход к этому слайду
++Apply To All	Применить ко всем
++Transition Gallery	Коллекция переходов
++Language…	Язык…
++Untranslated Texts	Непереведённые тексты
++Stop	Стоп
++Seek	Перемотка
++Play/Pause	Воспроизведение/пауза
++Inspect Slide	Проверить слайд
++Inspect Shape	Проверить фигуру
++Open Data	Открыть данные
++Save to Data	Сохранить в данные
++List Commands	Список команд
++# Стрелки-ссылки, шаблоны, макеты
++{}  →	{}  →
++Briefing	Доклад
++Lesson	Урок
++Pitch	Питч
++Field Notes	Полевые заметки
++Quarterly	Квартальный
++Evening Talk	Вечерний доклад
++Blank	Пустой слайд
++Comparison	Сравнение
++Content with Caption	Объект с подписью
++Picture with Caption	Рисунок с подписью
++Section Header	Заголовок раздела
++Title Only	Только заголовок
++Title Slide	Титульный слайд
++Title and Content	Заголовок и объект
++Title and Vertical Text	Заголовок и вертикальный текст
++Two Content	Два объекта
++Vertical Title and Text	Вертикальный заголовок и текст
++# Анимации и переходы
++4 Point Star	Четырёхконечная звезда
++5 Point Star	Пятиконечная звезда
++6 Point Star	Шестиконечная звезда
++8 Point Star	Восьмиконечная звезда
++Airplane	Самолёт
++Arcs	Дуги
++Bean	Боб
++Blinds	Жалюзи
++Bold Flash	Яркая вспышка
++Bounce	Подпрыгивание
++Bounce Left	Подпрыгивание влево
++Bounce Right	Подпрыгивание вправо
++Box	Прямоугольник
++Checkerboard	Шахматная доска
++Circle	Круг
++Clock	Часы
++Color Pulse	Цветовая пульсация
++Comb	Гребёнка
++Complementary Color	Дополнительный цвет
++Contract	Сжатие
++Conveyor	Конвейер
++Cover	Наплыв
++Crescent Moon	Полумесяц
++Crush	Раздавливание
++Cube	Куб
++Curtains	Занавес
++Curved Square	Изогнутый квадрат
++Custom Path	Произвольный путь
++Cut	Вырезание
++Darken	Затемнение
++Decaying Wave	Затухающая волна
++Desaturate	Обесцвечивание
++Diagonal Down Right	По диагонали вправо вниз
++Diagonal Up Right	По диагонали вправо вверх
++Disappear	Исчезновение
++Dissolve	Растворение
++Dissolve In	Растворение (вход)
++Dissolve Out	Растворение (выход)
++Doors	Двери
++Drape	Драпировка
++Expand	Расширение
++Fall Over	Падение
++Ferris Wheel	Колесо обозрения
++Fill Color	Цвет заливки
++Flash	Вспышка
++Flip	Переворот
++Float In	Плавное приближение
++Float Out	Плавное удаление
++Fly In	Вылет
++Fly Out	Вылет за край
++Fly Through	Пролёт
++Font Color	Цвет шрифта
++Football	Мяч
++Fracture	Разлом
++Funnel	Воронка
++Gallery	Галерея
++Glitter	Блеск
++Grow & Turn	Увеличение с поворотом
++Grow/Shrink	Увеличение/уменьшение
++Heart	Сердце
++Heartbeat	Сердцебиение
++Honeycomb	Соты
++Horizontal Figure 8	Горизонтальная восьмёрка
++Lighten	Осветление
++Line Color	Цвет линии
++Lines	Линии
++Loop de Loop	Петля
++Loops	Петли
++Morph	Трансформация
++Neutron	Нейтрон
++Object Color	Цвет объекта
++Orbit	Орбита
++Origami	Оригами
++Page Curl	Загиб страницы
++Pan	Панорама
++Peanut	Арахис
++Peek In	Выглядывание
++Peek Out	Скрытие выглядыванием
++Peel Off	Отслаивание
++Plus	Плюс
++Prestige	Престиж
++Pulse	Пульсация
++Push	Задвигание
++Random	Случайно
++Random Bars	Случайные полосы
++Reveal	Открытие
++Right Triangle	Прямоугольный треугольник
++Ripple	Рябь
++Rise Up	Подъём
++Rotate	Вращение
++S Curve 1	S-кривая 1
++S Curve 2	S-кривая 2
++Shred	Измельчение
++Shrink & Turn	Уменьшение с поворотом
++Sine Wave	Синусоида
++Sink Down	Опускание
++Spin	Вращение
++Spinner	Волчок
++Spiral Left	Спираль влево
++Spiral Right	Спираль вправо
++Split	Разделение
++Spring	Пружина
++Stairs Down	Лестница вниз
++Strips	Полосы
++Switch	Переключение
++Swivel	Поворот
++Swoosh	Взмах
++Teardrop	Капля
++Teeter	Качание
++Turns	Повороты
++Uncover	Открытие
++Underline	Подчёркивание
++Vertical Figure 8	Вертикальная восьмёрка
++Vortex	Вихрь
++Wave	Волна
++Wheel	Колесо
++Wind	Ветер
++Window	Окно
++Wipe	Появление
++Zigzag	Зигзаг
++Zoom	Масштабирование
++# Значки
++Icon gallery	Коллекция значков
++Alert	Предупреждение
++Arrow down	Стрелка вниз
++Arrow left	Стрелка влево
++Arrow right	Стрелка вправо
++Arrow up	Стрелка вверх
++Attachment	Вложение
++Award	Награда
++Bar chart	Линейчатая диаграмма
++Bell	Колокольчик
++Bolt	Молния
++Bookmark	Закладка
++Briefcase	Портфель
++Building	Здание
++Calendar	Календарь
++Camera	Камера
++Check	Галочка
++Check circle	Галочка в круге
++Chevron	Шеврон
++Clapperboard	Хлопушка
++Clipboard	Буфер обмена
++Cloud	Облако
++Column chart	Гистограмма
++Compass	Компас
++Document	Документ
++File	Файл
++Flag	Флаг
++Folder	Папка
++Globe	Глобус
++Hand	Рука
++Home	Домой
++Hourglass	Песочные часы
++Idea	Идея
++Info	Сведения
++Key	Ключ
++Lock	Замок
++Mail	Почта
++Megaphone	Мегафон
++Mention	Упоминание
++Message	Сообщение
++Minus	Минус
++Moon	Луна
++Move	Перемещение
++Music	Музыка
++Phone	Телефон
++Pin	Булавка
++Pie chart	Круговая диаграмма
++Refresh	Обновить
++Search	Поиск
++Share	Поделиться
++Star	Звезда
++Sun	Солнце
++Target	Цель
++Thumbs up	Нравится
++Timer	Таймер
++Trend	Тренд
++User	Пользователь
++Users	Пользователи
++Warning	Внимание
++Charts	Диаграммы
++Communication	Связь
++Files	Файлы
++Marks	Знаки
++Objects	Объекты
++People	Люди
++Places	Места
++Time	Время
++in	дюйм
++pt	пт
++MIT OR Apache-2.0 · © 2026 ArtCraft Team and the DeckCraft contributors	MIT или Apache-2.0 · © 2026 ArtCraft Team и участники DeckCraft
+diff --git a/crates/ui-egui/src/widgets.rs b/crates/ui-egui/src/widgets.rs
+index 67549ce..bc30cb3 100644
+--- a/crates/ui-egui/src/widgets.rs
++++ b/crates/ui-egui/src/widgets.rs
+@@ -33,6 +33,7 @@ pub fn big_button(ui: &mut Ui, icon: Icon, label: &str, enabled: bool) -> Respon
+ 
+ /// Large button; with `split`, the label row is a separate dropdown target (returns its response).
+ pub fn big_button_ex(ui: &mut Ui, icon: Icon, label: &str, enabled: bool, split: bool, selected: bool) -> (Response, Option<Response>) {
++    let label = &*crate::i18n::tr(label);
+     let t = Tokens::get(ui.ctx());
+     let font = theme::font(11.0);
+     let lines: Vec<&str> = wrap_label(label);

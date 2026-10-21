@@ -9,7 +9,7 @@ import { useTw } from "@/pages/sheet/i18n/useTw";
 
 /**
  * «Презентации»: готовый DeckCraft (веб-сборка на wasm, см. native/office-web). Вкладки, файлы и автосохранение
- * в общем OfficeWeb; язык интерфейса у редактора один (английский).
+ * в общем OfficeWeb; язык интерфейса редактора (русский или английский) задаётся в адресе рамки и меняется командой.
  */
 /** Название приложения-редактора (имя продукта не переводится). */
 const APP = "DeckCraft";
@@ -31,7 +31,10 @@ const ACCESS: OfficeAccess<DeckFrameState> = {
   // Безымянная презентация называется «Presentation N» — пусть вкладка будет «Презентация N».
   name: (s) => (s?.doc && !/^(Presentation|Untitled)\s*\d*$/i.test(s.doc.title) ? s.doc.title : undefined),
 };
+/** Языки приложения → коды языка интерфейса DeckCraft. */
+const LANGS: Record<string, string> = { ru: "ru", en: "en" };
 const THEME = (mode: "dark" | "light"): [string, unknown] => ["view.dark", { on: mode === "dark" }];
+const LANG = (code: string): [string, unknown] => ["ui.language", { language: code }];
 
 function frameCx(
   link: WcLink<DeckFrameState>,
@@ -86,13 +89,14 @@ export default function DeckWeb() {
       mime={PPTX}
       accept={ACCEPT}
       savedRe={/\.(pptx|deckcraft)$/i}
-      langMap={{}}
+      langMap={LANGS}
       lang={lang}
       dark={dark}
       tw={tw}
       untitled={tw("Presentation")}
       access={ACCESS}
       themeCmd={THEME}
+      langCmd={LANG}
       Assistant={DeckAssistantHost}
       newTitle={tw("New")}
       openTitle={tw("Open")}

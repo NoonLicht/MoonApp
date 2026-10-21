@@ -36,6 +36,8 @@ const APPS = {
     rev: "354087ecd56305842582e9e410cf24d595849789", // ревизия на 2026-10-22; ядра для слайдов в приложении пока нет
     dir: "apps/deckcraft-web",
     patch: "deckcraft-web.patch",
+    // epaint (раскладка текста egui) копируется рядом с исходниками и правится: хук перевода интерфейса
+    vendor: { crate: "epaint", patch: "deckcraft-epaint.patch" },
   },
 };
 
@@ -47,6 +49,22 @@ if (!app?.rev) {
 }
 const run = (cmd, args, cwd) => execFileSync(cmd, args, { cwd, stdio: "inherit", shell: process.platform === "win32" });
 
+/** Копия крейта из реестра cargo в `<src>-<крейт>` (корневой Cargo.toml патча берёт её через [patch.crates-io]) + правка. */
+function vendorCrate({ crate, patch }) {
+  const lock = fs.readFileSync(path.join(src, "Cargo.lock"), "utf8");
+  const version = new RegExp(`name = "${crate}"\r?\nversion = "([^"]+)"`).exec(lock)?.[1];
+  if (!version) throw new Error(`${crate} не найден в Cargo.lock`);
+  const registry = path.join(process.env.CARGO_HOME ?? path.join(os.homedir(), ".cargo"), "registry", "src");
+  const find = () => fs.existsSync(registry) && fs.readdirSync(registry).map((d) => path.join(registry, d, `${crate}-${version}`)).find((d) => fs.existsSync(d));
+  if (!find()) run("cargo", ["fetch"], src);
+  const from = find();
+  if (!from) throw new Error(`${crate}-${version} нет в ${registry}`);
+  const dest = `${src}-${crate}`;
+  fs.rmSync(dest, { recursive: true, force: true });
+  fs.cpSync(from, dest, { recursive: true });
+  run("git", ["apply", "--ignore-whitespace", path.join(root, "native", "office-web", patch)], dest);
+}
+
 const src = path.join(process.platform === "win32" ? "C:\\" : os.tmpdir(), "wcb", name);
 if (!fs.existsSync(path.join(src, ".git"))) {
   fs.mkdirSync(path.dirname(src), { recursive: true });
@@ -55,6 +73,7 @@ if (!fs.existsSync(path.join(src, ".git"))) {
 run("git", ["checkout", "--quiet", "--force", app.rev], src);
 run("git", ["clean", "-fdq", app.dir], src);
 run("git", ["apply", "--ignore-whitespace", path.join(root, "native", "office-web", app.patch)], src);
+if (app.vendor) vendorCrate(app.vendor);
 
 run("rustup", ["target", "add", "wasm32-unknown-unknown"], root);
 run("trunk", ["build", "--release"], path.join(src, app.dir));
