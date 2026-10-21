@@ -42,7 +42,15 @@ npm run office:deck     # DeckCraft («Презентации») → public/offi
 
 ## DeckCraft («Презентации»)
 
-Тот же мост (`src/embed.rs`), патч `deckcraft-web.patch`. Отличия: язык интерфейса у редактора один (английский, `?lang`
-и `ui.language` нет); тема — `view.dark {on}`; `export` отдаёт формат по расширению имени (`pptx`, `pdf`, `deckcraft`);
-`state` — `doc`, `slides`, `sel {slide, shapes}`. Помощника для слайдов пока нет. Патч заодно чинит дефект самого
+Тот же мост (`src/embed.rs`), патч `deckcraft-web.patch`. Отличия: тема — `view.dark {on}`, язык — `ui.language {language: "ru"|"en"}`
+(на старте `?lang=ru`); `export` отдаёт формат по расширению имени (`pptx`, `pdf`, `deckcraft`);
+`state` — `doc`, `slides`, `sel {slide, shapes}`. Патч заодно чинит дефект самого
 DeckCraft: `std::process::id()` в wasm паникует (`crates/engine/src/recovery.rs`), без этого любая презентация не открывается.
+
+Русский интерфейс: у DeckCraft он только английский, поэтому текст подменяется перед раскладкой. Второй патч
+`deckcraft-epaint.patch` правит крейт `epaint` (скрипт копирует его из реестра cargo в `C:\wcb\deck-epaint`, а `Cargo.toml` патча
+подключает копию через `[patch.crates-io]`): `Fonts::layout_job` вызывает хук `set_translator`. Хук ставит
+`crates/ui-egui/src/i18n.rs`, каталог — `ru.tsv` (`English<TAB>Русский`, `{}` — подстановка для строк из `format!`, `{1}`, `{2}` —
+порядок слов). Переводится только точное совпадение целого текста, поэтому текст слайдов (его рисует свой рендер) не
+затрагивается; подписи ленты, которые режутся на строки до рисования, переводятся в `widgets::big_button_ex`.
+Чего каталог не знает, показывает команда `ui.i18n.missing` (мост: `run`) — по ней дополняют `ru.tsv`.

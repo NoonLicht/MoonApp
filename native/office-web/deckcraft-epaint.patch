@@ -1,0 +1,89 @@
+diff --git a/src/text/fonts.rs b/src/text/fonts.rs
+index 28ab8bb..c6d2cba 100644
+--- a/src/text/fonts.rs
++++ b/src/text/fonts.rs
+@@ -888,6 +888,7 @@ impl FontsView<'_> {
+     /// The implementation uses memoization so repeated calls are cheap.
+     #[inline]
+     pub fn layout_job(&mut self, job: LayoutJob) -> Arc<Galley> {
++        let job = super::translate::apply(job);
+         let allow_split_paragraphs = true; // Optimization for editing text with many paragraphs.
+         self.galley_cache.layout(
+             self.fonts,
+diff --git a/src/text/mod.rs b/src/text/mod.rs
+index 9bae95a..e68913a 100644
+--- a/src/text/mod.rs
++++ b/src/text/mod.rs
+@@ -6,6 +6,7 @@ mod fonts;
+ mod index;
+ mod text_layout;
+ mod text_layout_types;
++mod translate;
+ 
+ pub use {
+     fonts::{
+@@ -15,6 +16,7 @@ pub use {
+     },
+     index::{ByteIndex, ByteRange, ByteRangeExt, CharIndex, CharRange, CharRangeExt},
+     text_layout::*,
++    translate::{Translator, set_translator},
+     text_layout_types::*,
+ };
+ 
+diff --git a/src/text/translate.rs b/src/text/translate.rs
+new file mode 100644
+index 0000000..21f22e9
+--- /dev/null
++++ b/src/text/translate.rs
+@@ -0,0 +1,51 @@
++//! A hook for translating interface text (MoonApp's DeckCraft build): every text goes through
++//! [`Fonts::layout_job`], so a host can swap a whole section's text for its translation before
++//! the galley cache is consulted. Texts the hook doesn't know are laid out unchanged.
++
++use std::sync::RwLock;
++
++use super::{ByteIndex, LayoutJob};
++
++/// Returns the translation of a whole text, or `None` to keep it as is.
++pub type Translator = fn(&str) -> Option<String>;
++
++static HOOK: RwLock<Option<Translator>> = RwLock::new(None);
++
++/// Install (or, with `None`, remove) the translator.
++pub fn set_translator(hook: Option<Translator>) {
++    *HOOK.write().unwrap_or_else(|e| e.into_inner()) = hook;
++}
++
++/// Translate each section of `job` on its own; sections the hook doesn't know are kept.
++pub(crate) fn apply(mut job: LayoutJob) -> LayoutJob {
++    let Some(hook) = *HOOK.read().unwrap_or_else(|e| e.into_inner()) else { return job };
++    let mut changed = false;
++    let mut text = String::with_capacity(job.text.len() + 16);
++    let mut ranges = Vec::with_capacity(job.sections.len());
++    let mut tail = 0;
++    for section in &job.sections {
++        let (start, end) = (section.byte_range.start.0, section.byte_range.end.0);
++        let Some(src) = job.text.get(start..end) else { return job };
++        // Text between sections (none, for jobs built from widget text) is carried over.
++        text.push_str(job.text.get(tail..start).unwrap_or(""));
++        let from = text.len();
++        match hook(src) {
++            Some(t) => {
++                text.push_str(&t);
++                changed = true;
++            }
++            None => text.push_str(src),
++        }
++        ranges.push(ByteIndex(from)..ByteIndex(text.len()));
++        tail = end;
++    }
++    if !changed {
++        return job;
++    }
++    text.push_str(job.text.get(tail..).unwrap_or(""));
++    job.text = text;
++    for (section, range) in job.sections.iter_mut().zip(ranges) {
++        section.byte_range = range;
++    }
++    job
++}
