@@ -1,8 +1,9 @@
 import type { ExecResult } from "@/lib/assistant/types";
 
 /**
- * Связь страницы с одной рамкой WordCraft (веб-сборка, wasm): запросы к редактору и его события.
- * Протокол — postMessage, с обеих сторон `wc: 1` (см. native/office-web: native/office-web/README.md).
+ * Связь страницы с одной рамкой WordCraft или GridCraft (веб-сборка, wasm): запросы к редактору и его события.
+ * Протокол — postMessage, с обеих сторон `wc: 1` (см. native/office-web/README.md). Состояние у редакторов
+ * разное: тип `S` задаёт страница.
  */
 export interface WcSelection {
   collapsed: boolean;
@@ -29,10 +30,10 @@ interface Pending {
 /** Сколько ждать ответа редактора (выгрузка большого документа — самый долгий запрос). */
 const TIMEOUT_MS = 60_000;
 
-export class WcLink {
+export class WcLink<S = WcState> {
   win: Window | null = null;
   ready = false;
-  state: WcState | null = null;
+  state: S | null = null;
   private seq = 0;
   private pending = new Map<number, Pending>();
   private onReady: Array<() => void> = [];
@@ -51,7 +52,7 @@ export class WcLink {
       for (const f of this.onReady.splice(0)) f();
     } else if (m.evt === "state") {
       try {
-        this.state = JSON.parse(String(m.state)) as WcState;
+        this.state = JSON.parse(String(m.state)) as S;
         this.events.changed();
       } catch {
         /* битое состояние пропускаем: придёт следующее */
@@ -112,20 +113,20 @@ export class WcLink {
     }
   }
 
-  async refresh(): Promise<WcState> {
+  async refresh(): Promise<S> {
     const r = await this.send("state", {});
-    this.state = r.result as WcState;
+    this.state = r.result as S;
     return this.state;
   }
 
-  /** Документ как файл .docx. */
-  async exportDocx(name = "document.docx"): Promise<Uint8Array> {
+  /** Документ как файл: формат по расширению имени (docx у Word, xlsx у Таблиц). */
+  async exportFile(name: string): Promise<Uint8Array> {
     const r = await this.send("export", { params: { name } });
     if (!r.bytes) throw new Error("no_bytes");
     return r.bytes;
   }
 
-  /** Открыть файл в документе рамки (рамка должна быть пустой: иначе она спросит про сохранение). */
+  /** Открыть файл в рамке (она должна быть пустой: иначе спросит про сохранение). */
   async open(name: string, bytes: ArrayBuffer): Promise<void> {
     await this.send("open", { name, bytes }, [bytes]);
   }

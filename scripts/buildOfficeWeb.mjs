@@ -27,7 +27,7 @@ const APPS = {
   },
   sheet: {
     repo: "https://github.com/storytold/gridcraft.git",
-    rev: "", // заполняется вместе с патчем GridCraft (ревизия из native/gridcore/Cargo.toml)
+    rev: "8ffff19dda63d85348d4b4ec552b8857b82109b1", // та же, что в native/gridcore/Cargo.toml
     dir: "apps/gridcraft-web",
     patch: "gridcraft-web.patch",
   },

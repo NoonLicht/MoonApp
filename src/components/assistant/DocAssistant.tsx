@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import AssistantPane from "@/components/assistant/AssistantPane";
 import type { DocAdapter } from "@/lib/assistant/types";
-import { sheetAdapter } from "@/pages/sheet/assistant";
-import type { SheetCx } from "@/pages/sheet/types";
+import { sheetAdapter, type AsstSheetCx } from "@/pages/sheet/assistant";
 import { wordAdapter, type AsstCx } from "@/pages/word/assistant";
 
 /** Запросы для пустой беседы; английский текст — ключ перевода. */
@@ -43,7 +42,7 @@ export function WordAssistant({ cx, onClose }: { cx: AsstCx; onClose: () => void
   );
 }
 
-export function SheetAssistant({ cx, onClose }: { cx: SheetCx; onClose: () => void }) {
+export function SheetAssistant({ cx, onClose }: { cx: AsstSheetCx; onClose: () => void }) {
   const ref = useRef(cx);
   useEffect(() => {
     ref.current = cx;

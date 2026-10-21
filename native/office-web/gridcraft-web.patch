@@ -1,0 +1,297 @@
+diff --git a/apps/gridcraft-web/index.html b/apps/gridcraft-web/index.html
+index 5fdd1ea..1c108a0 100644
+--- a/apps/gridcraft-web/index.html
++++ b/apps/gridcraft-web/index.html
+@@ -16,5 +16,35 @@
+ <body>
+   <canvas id="gridcraft_canvas"></canvas>
+   <div id="gridcraft_loading">Loading GridCraft&hellip;</div>
++  <script>
++    // MoonApp host glue (?embed): requests from the page around the frame -> window.__wc (see src/web/bridge.rs).
++    (function () {
++      var waiting = [];
++      function ready() { return window.__wc && window.__wc.call; }
++      function reply(id, msg) { msg.wc = 1; msg.id = id; parent.postMessage(msg, location.origin); }
++      function handle(m) {
++        try {
++          if (m.op === "open") { window.__wc.open(m.name, new Uint8Array(m.bytes)); reply(m.id, { ok: true }); return; }
++          window.__wc.call(m.op, JSON.stringify(m.params || {}), function (json, bytes) {
++            var r = JSON.parse(json);
++            var msg = { ok: r.ok, result: r.result, error: r.error };
++            if (bytes) msg.bytes = bytes;
++            reply(m.id, msg);
++          });
++        } catch (e) { reply(m.id, { ok: false, error: String(e) }); }
++      }
++      window.addEventListener("message", function (e) {
++        if (e.source !== parent || e.origin !== location.origin) return;
++        var m = e.data;
++        if (!m || m.wc !== 1 || !m.op) return;
++        if (ready()) handle(m); else waiting.push(m);
++      });
++      var timer = setInterval(function () {
++        if (!ready()) return;
++        clearInterval(timer);
++        waiting.splice(0).forEach(handle);
++      }, 50);
++    })();
++  </script>
+ </body>
+ </html>
+diff --git a/apps/gridcraft-web/src/embed.rs b/apps/gridcraft-web/src/embed.rs
+new file mode 100644
+index 0000000..65b9a78
+--- /dev/null
++++ b/apps/gridcraft-web/src/embed.rs
+@@ -0,0 +1,140 @@
++//! The host bridge for MoonApp (`?embed`): the page around the frame drives the editor.
++//!
++//! The same protocol as the WordCraft build: the host's glue script (index.html) calls
++//! `window.__wc.call(op, paramsJson, callback)` and `window.__wc.open(name, bytes)`; calls wait in a queue
++//! and are answered between frames. The editor reports back with `postMessage` to the parent:
++//! `ready`, `state` (revision, unsaved flag, active sheet, selection) and `download` (a Save or an export).
++//!
++//! Operations: `run` (`{command, params}` → the app's result, UI commands included), `state`,
++//! `export` (the workbook as .xlsx bytes) and `clean` (the host stored the workbook: clear the unsaved flag).
++
++use std::cell::RefCell;
++use std::collections::VecDeque;
++use std::rc::Rc;
++
++use gridcraft_ui_egui::{Inbox, SheetApp};
++use serde_json::{Value, json};
++use wasm_bindgen::JsValue;
++
++pub struct Job {
++    op: String,
++    params: Value,
++    callback: js_sys::Function,
++}
++
++pub type Jobs = Rc<RefCell<VecDeque<Job>>>;
++
++/// The value of `name` in the page's query string (`?embed&lang=ru`); `Some("")` for a bare flag.
++pub fn param(name: &str) -> Option<String> {
++    let search = web_sys::window().and_then(|w| w.location().search().ok()).unwrap_or_default();
++    search.trim_start_matches('?').split('&').find_map(|kv| {
++        let (k, v) = kv.split_once('=').unwrap_or((kv, ""));
++        (k == name).then(|| v.to_string())
++    })
++}
++
++fn set(obj: &js_sys::Object, key: &str, value: &JsValue) {
++    let _ = js_sys::Reflect::set(obj, &JsValue::from_str(key), value);
++}
++
++/// Tell the page around the frame something: `{wc: 1, evt, ...fields}`.
++fn emit(evt: &str, fields: &[(&str, JsValue)]) -> Result<(), String> {
++    let window = web_sys::window().ok_or("no window")?;
++    let parent = window.parent().map_err(|e| format!("{e:?}"))?.ok_or("no parent window")?;
++    let msg = js_sys::Object::new();
++    set(&msg, "wc", &JsValue::from_f64(1.0));
++    set(&msg, "evt", &JsValue::from_str(evt));
++    for (k, v) in fields {
++        set(&msg, k, v);
++    }
++    let origin = window.location().origin().map_err(|e| format!("{e:?}"))?;
++    parent.post_message(&msg, &origin).map_err(|e| format!("{e:?}"))
++}
++
++/// A Save or an export goes to the host (which keeps the files) instead of the browser's download.
++pub fn hand_to_host(path: &str, bytes: &[u8]) -> Result<(), String> {
++    let name = std::path::Path::new(path).file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_else(|| path.to_string());
++    emit("download", &[("name", JsValue::from_str(&name)), ("bytes", js_sys::Uint8Array::from(bytes).into())])
++}
++
++pub fn install(jobs: Jobs, inbox: Inbox, ctx: egui::Context) -> Result<(), String> {
++    let window = web_sys::window().ok_or("no window")?;
++    let bridge = js_sys::Object::new();
++
++    let wake = ctx.clone();
++    let call = wasm_bindgen::closure::Closure::<dyn FnMut(String, String, js_sys::Function)>::new(move |op: String, params: String, callback: js_sys::Function| {
++        let params = serde_json::from_str(&params).unwrap_or(Value::Null);
++        jobs.borrow_mut().push_back(Job { op, params, callback });
++        wake.request_repaint();
++    });
++    set(&bridge, "call", call.as_ref());
++    call.forget();
++
++    let open = wasm_bindgen::closure::Closure::<dyn FnMut(String, js_sys::Uint8Array)>::new(move |name: String, bytes: js_sys::Uint8Array| {
++        inbox.lock().unwrap_or_else(|e| e.into_inner()).push((name, bytes.to_vec()));
++        ctx.request_repaint();
++    });
++    set(&bridge, "open", open.as_ref());
++    open.forget();
++
++    set(&window, "__wc", &bridge);
++    emit("ready", &[])
++}
++
++/// What the host needs to know about the workbook: sheets, selection (for the assistant) and save state.
++fn state(app: &SheetApp) -> Value {
++    let Some(d) = app.session.active() else { return json!({"open": false}) };
++    let sheets: Vec<Value> = d.wb.sheets.iter().enumerate().map(|(i, s)| json!({"i": i, "name": s.name})).collect();
++    json!({
++        "open": true,
++        "doc": {"title": d.title, "path": d.path, "dirty": d.is_dirty(), "revision": d.revision},
++        "sheets": sheets,
++        "active": d.wb.active_sheet,
++        "sel": {"a1": d.selection.a1()},
++    })
++}
++
++fn answer(app: &mut SheetApp, op: &str, params: &Value) -> Result<(Value, Option<Vec<u8>>), String> {
++    match op {
++        "run" => {
++            let id = params.get("command").and_then(Value::as_str).ok_or("missing `command`")?.to_string();
++            let p = params.get("params").cloned().filter(|v| !v.is_null()).unwrap_or(json!({}));
++            Ok((app.run(&id, p)?, None))
++        }
++        "state" => Ok((state(app), None)),
++        "export" => {
++            let d = app.session.active().ok_or("no open workbook")?;
++            let bytes = gridcraft_engine::io::save_bytes(&d.wb, "book.xlsx").map_err(|e| e.to_string())?;
++            Ok((json!({"bytes": bytes.len()}), Some(bytes)))
++        }
++        "clean" => {
++            if let Some(doc) = app.session.active_mut() {
++                doc.saved = doc.wb.clone();
++            }
++            Ok((json!({}), None))
++        }
++        other => Err(format!("unknown operation `{other}`")),
++    }
++}
++
++/// Answer the host's queued calls, then report a changed workbook state.
++pub fn serve(app: &mut SheetApp, jobs: &Jobs, seen: &mut String) {
++    let queued: Vec<Job> = jobs.borrow_mut().drain(..).collect();
++    for job in queued {
++        let reply = match answer(app, &job.op, &job.params) {
++            Ok((v, bytes)) => (json!({"ok": true, "result": v}), bytes),
++            Err(e) => (json!({"ok": false, "error": e}), None),
++        };
++        let json = JsValue::from_str(&reply.0.to_string());
++        let _ = match reply.1 {
++            Some(b) => job.callback.call2(&JsValue::NULL, &json, &js_sys::Uint8Array::from(&b[..]).into()),
++            None => job.callback.call1(&JsValue::NULL, &json),
++        };
++    }
++    let now = state(app);
++    let print = format!("{}|{}|{}|{}", now["doc"]["revision"], now["doc"]["dirty"], now["sel"]["a1"], now["active"]);
++    if print != *seen {
++        *seen = print;
++        let _ = emit("state", &[("state", JsValue::from_str(&now.to_string()))]);
++    }
++}
+diff --git a/apps/gridcraft-web/src/main.rs b/apps/gridcraft-web/src/main.rs
+index 2920a87..8a9734e 100644
+--- a/apps/gridcraft-web/src/main.rs
++++ b/apps/gridcraft-web/src/main.rs
+@@ -14,6 +14,8 @@
+ //! notes and comments.
+ #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::unimplemented, clippy::todo, clippy::unreachable)]
+ 
++#[cfg(target_arch = "wasm32")]
++mod embed;
+ #[cfg(target_arch = "wasm32")]
+ mod host;
+ #[cfg(target_arch = "wasm32")]
+diff --git a/apps/gridcraft-web/src/web.rs b/apps/gridcraft-web/src/web.rs
+index c0fcb22..2f568fb 100644
+--- a/apps/gridcraft-web/src/web.rs
++++ b/apps/gridcraft-web/src/web.rs
+@@ -1,5 +1,9 @@
+ //! The browser shell: web `Services`, drag-and-drop, and the eframe web runner.
+ 
++use std::cell::RefCell;
++use std::collections::VecDeque;
++use std::rc::Rc;
++
+ use gridcraft_engine::Session;
+ use gridcraft_ui_egui::{Inbox, Services, SheetApp};
+ use wasm_bindgen::JsCast as _;
+@@ -27,6 +31,8 @@ pub fn start() {
+         }
+         // `?host=parent`: a same-origin page framing GridCraft (such as a Nextcloud app) opens
+         // workbooks in it and stores what it saves (`host`).
++        // MoonApp embeds the editor in a frame (`?embed`): the host keeps the files (see `embed`).
++        let embed = crate::embed::param("embed").is_some();
+         let bridge = if query_param("host").as_deref() == Some("parent") { crate::host::Bridge::new() } else { None };
+         let app_bridge = bridge.clone();
+         let result = eframe::WebRunner::new()
+@@ -43,7 +49,7 @@ pub fn start() {
+                     } else if q.contains("sample") {
+                         let _ = session.execute("file.new", serde_json::json!({"sample": "sales"}));
+                     }
+-                    let mut services = services(inbox.clone(), cc.egui_ctx.clone());
++                    let mut services = services(inbox.clone(), cc.egui_ctx.clone(), embed);
+                     if let Some(bridge) = &app_bridge {
+                         bridge.connect(&mut services, inbox.clone(), cc.egui_ctx.clone());
+                     }
+@@ -65,7 +71,21 @@ pub fn start() {
+                         }
+                         bridge.post_ready();
+                     }
+-                    Ok(Box::new(WebShell { app, inbox, bridge: app_bridge }))
++                    let jobs: crate::embed::Jobs = Rc::new(RefCell::new(VecDeque::new()));
++                    if embed {
++                        // Interface language and theme come from the host's settings.
++                        if let Some(theme) = crate::embed::param("theme") {
++                            let _ = app.run("view.theme", serde_json::json!({"mode": theme}));
++                        }
++                        if let Some(lang) = crate::embed::param("lang") {
++                            let _ = app.run("app.language.set", serde_json::json!({"language": lang}));
++                            SheetApp::setup_context_for_language(&cc.egui_ctx, false, app.ui.language);
++                        }
++                        if let Err(e) = crate::embed::install(jobs.clone(), inbox.clone(), cc.egui_ctx.clone()) {
++                            log::error!("no host bridge: {e}");
++                        }
++                    }
++                    Ok(Box::new(WebShell { app, inbox, bridge: app_bridge, jobs, embed, seen: String::new() }))
+                 }),
+             )
+             .await;
+@@ -93,6 +113,11 @@ struct WebShell {
+     app: SheetApp,
+     inbox: Inbox,
+     bridge: Option<crate::host::Bridge>,
++    /// Calls from the host page (see `embed`), answered between frames.
++    jobs: crate::embed::Jobs,
++    embed: bool,
++    /// Fingerprint of the state last reported to the host.
++    seen: String,
+ }
+ 
+ impl eframe::App for WebShell {
+@@ -113,6 +138,9 @@ impl eframe::App for WebShell {
+             });
+         }
+         self.app.logic(ctx);
++        if self.embed {
++            crate::embed::serve(&mut self.app, &self.jobs, &mut self.seen);
++        }
+     }
+ 
+     fn raw_input_hook(&mut self, _ctx: &egui::Context, raw: &mut egui::RawInput) {
+@@ -127,7 +155,7 @@ impl eframe::App for WebShell {
+     }
+ }
+ 
+-fn services(inbox: Inbox, ctx: egui::Context) -> Services {
++fn services(inbox: Inbox, ctx: egui::Context, embed: bool) -> Services {
+     let open_inbox = inbox.clone();
+     let picture_ctx = ctx.clone();
+     Services {
+@@ -159,8 +187,9 @@ fn services(inbox: Inbox, ctx: egui::Context) -> Services {
+                 ctx.request_repaint();
+             });
+         })),
+-        download: Some(Box::new(|name: &str, bytes: &[u8]| {
+-            if let Err(e) = download(name, bytes) {
++        download: Some(Box::new(move |name: &str, bytes: &[u8]| {
++            let done = if embed { crate::embed::hand_to_host(name, bytes) } else { download(name, bytes) };
++            if let Err(e) = done {
+                 log::error!("download of {name} failed: {e}");
+             }
+         })),

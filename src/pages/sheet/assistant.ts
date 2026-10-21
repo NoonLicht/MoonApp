@@ -8,6 +8,15 @@ import {
 import type { AssistantTool, DocAdapter } from "@/lib/assistant/types";
 import type { SheetCx } from "@/pages/sheet/types";
 
+/**
+ * Что помощнику нужно от страницы: команды ядра, листы, выделение и имя книги. Так он работает и с прежней
+ * страницей (SheetCx целиком), и с рамкой GridCraft, где состояние приходит от редактора.
+ */
+export interface AsstSheetCx extends Pick<SheetCx, "docId" | "lang" | "tw" | "query" | "exec"> {
+  s: { sheets: Array<{ name: string }>; active: number; sel: { a1: string } };
+  ui: { docName: string };
+}
+
 interface SheetRead {
   range: string;
   sheet: string;
@@ -82,8 +91,8 @@ function matrix(v: unknown): unknown[][] {
 }
 
 /** `getCx` отдаёт актуальный контекст страницы: пока агент работает, состояние документа меняется. */
-export function sheetAdapter(getCx: () => SheetCx, lang: string): DocAdapter {
-  const cx = new Proxy({} as SheetCx, {
+export function sheetAdapter(getCx: () => AsstSheetCx, lang: string): DocAdapter {
+  const cx = new Proxy({} as AsstSheetCx, {
     get: (_t, k) => (getCx() as unknown as Record<string | symbol, unknown>)[k],
   });
   const sink: { fn: ((url: string) => void) | null } = { fn: null };

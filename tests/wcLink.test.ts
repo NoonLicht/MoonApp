@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { WcLink } from "../src/pages/word/lib/wcLink";
+import { WcLink } from "../src/lib/wcLink";
 
 /** Связь страницы с рамкой WordCraft: запросы, ответы, ожидание готовности и события. */
 const make = () => {
@@ -31,7 +31,7 @@ describe("WcLink", () => {
 
   it("выгрузка документа возвращает байты, чужой номер запроса игнорируется", async () => {
     const { link, sent } = make();
-    const p = link.exportDocx("a.docx");
+    const p = link.exportFile("a.docx");
     link.handle({ wc: 1, id: 9999, ok: true, result: {}, bytes: new Uint8Array([1]) });
     const bytes = new Uint8Array([80, 75]);
     link.handle({ wc: 1, id: sent[0].id, ok: true, result: {}, bytes });
