@@ -14,6 +14,7 @@
     "build:web": "vite build",
     "office:word": "node scripts/buildOfficeWeb.mjs word",
     "office:sheet": "node scripts/buildOfficeWeb.mjs sheet",
+    "office:deck": "node scripts/buildOfficeWeb.mjs deck",
     "compile:server": "tsc -p tsconfig.server.json",
     "build:wordcore": "npm run compile:scripts && node scripts/build-wordcore.mjs",
     "gen:wordcatalog": "npm run compile:scripts && node scripts/genWordCatalog.mjs",

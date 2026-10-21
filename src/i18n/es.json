@@ -30,7 +30,8 @@
     "mail": "Correo",
     "photo": "Foto y vídeo",
     "word": "Documentos",
-    "sheet": "Hojas de cálculo"
+    "sheet": "Hojas de cálculo",
+    "deck": "Presentaciones"
   },
   "common": {
     "saved": "guardado",

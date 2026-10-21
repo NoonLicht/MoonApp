@@ -1,4 +1,4 @@
-# Веб-сборки WordCraft и GridCraft в MoonApp
+# Веб-сборки WordCraft, GridCraft и DeckCraft в MoonApp
 
 Страницы «Документы» и «Таблицы» открывают готовые приложения WordCraft и GridCraft: это их веб-версии
 (`apps/*-web`, Rust → wasm, интерфейс на egui) в `<iframe>`, по рамке на каждый документ. Собранные файлы
@@ -7,6 +7,7 @@
 ```
 npm run office:word     # собрать и положить в public/office/word (нужны rustup и trunk)
 npm run office:sheet    # то же для GridCraft → public/office/sheet
+npm run office:deck     # DeckCraft («Презентации») → public/office/deck
 ```
 
 Скрипт `scripts/buildOfficeWeb.mjs` клонирует исходники в `C:\wcb\<имя>` на ревизию, с которой собрано
@@ -38,3 +39,10 @@ npm run office:sheet    # то же для GridCraft → public/office/sheet
 
 Скрытые документы нельзя прятать через `display: none`: рамка перестаёт рисовать кадры и не отвечает.
 Страница использует `visibility: hidden`.
+
+## DeckCraft («Презентации»)
+
+Тот же мост (`src/embed.rs`), патч `deckcraft-web.patch`. Отличия: язык интерфейса у редактора один (английский, `?lang`
+и `ui.language` нет); тема — `view.dark {on}`; `export` отдаёт формат по расширению имени (`pptx`, `pdf`, `deckcraft`);
+`state` — `doc`, `slides`, `sel {slide, shapes}`. Помощника для слайдов пока нет. Патч заодно чинит дефект самого
+DeckCraft: `std::process::id()` в wasm паникует (`crates/engine/src/recovery.rs`), без этого любая презентация не открывается.

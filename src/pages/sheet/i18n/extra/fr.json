@@ -810,5 +810,7 @@
   "Field\nList": "Liste des\nchamps",
   "Grand\nTotals": "Totaux\ngénéraux",
   "Report\nLayout": "Disposition du\nrapport",
-  "PivotTable\nStyles": "Styles de tableau\ncroisé dynamique"
+  "PivotTable\nStyles": "Styles de tableau\ncroisé dynamique",
+  "Presentation": "Présentation",
+  "The presentation editor is not built: run npm run office:deck": "L’éditeur de présentations n’est pas compilé : exécutez npm run office:deck"
 }

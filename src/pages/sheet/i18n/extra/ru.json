@@ -828,5 +828,7 @@
   "Autosave keeps a recovery copy of every changed document": "Автосохранение хранит копию для восстановления каждого изменённого документа",
   "Recover unsaved documents": "Восстановить несохранённые документы",
   "Restore": "Восстановить",
-  "Discard": "Отбросить"
+  "Discard": "Отбросить",
+  "Presentation": "Презентация",
+  "The presentation editor is not built: run npm run office:deck": "Редактор презентаций не собран: выполните npm run office:deck"
 }

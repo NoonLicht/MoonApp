@@ -1,0 +1,325 @@
+diff --git a/apps/deckcraft-web/index.html b/apps/deckcraft-web/index.html
+index b1834c3..8326b3d 100644
+--- a/apps/deckcraft-web/index.html
++++ b/apps/deckcraft-web/index.html
+@@ -16,5 +16,35 @@
+ <body>
+   <canvas id="deckcraft_canvas"></canvas>
+   <div id="deckcraft_loading">Loading DeckCraft&hellip;</div>
++  <script>
++    // MoonApp host glue (?embed): requests from the page around the frame -> window.__wc (see src/web/bridge.rs).
++    (function () {
++      var waiting = [];
++      function ready() { return window.__wc && window.__wc.call; }
++      function reply(id, msg) { msg.wc = 1; msg.id = id; parent.postMessage(msg, location.origin); }
++      function handle(m) {
++        try {
++          if (m.op === "open") { window.__wc.open(m.name, new Uint8Array(m.bytes)); reply(m.id, { ok: true }); return; }
++          window.__wc.call(m.op, JSON.stringify(m.params || {}), function (json, bytes) {
++            var r = JSON.parse(json);
++            var msg = { ok: r.ok, result: r.result, error: r.error };
++            if (bytes) msg.bytes = bytes;
++            reply(m.id, msg);
++          });
++        } catch (e) { reply(m.id, { ok: false, error: String(e) }); }
++      }
++      window.addEventListener("message", function (e) {
++        if (e.source !== parent || e.origin !== location.origin) return;
++        var m = e.data;
++        if (!m || m.wc !== 1 || !m.op) return;
++        if (ready()) handle(m); else waiting.push(m);
++      });
++      var timer = setInterval(function () {
++        if (!ready()) return;
++        clearInterval(timer);
++        waiting.splice(0).forEach(handle);
++      }, 50);
++    })();
++  </script>
+ </body>
+ </html>
+diff --git a/apps/deckcraft-web/src/embed.rs b/apps/deckcraft-web/src/embed.rs
+new file mode 100644
+index 0000000..1e3ecce
+--- /dev/null
++++ b/apps/deckcraft-web/src/embed.rs
+@@ -0,0 +1,153 @@
++//! The host bridge for MoonApp (`?embed`): the page around the frame drives the editor.
++//!
++//! The same protocol as the WordCraft build: the host's glue script (index.html) calls
++//! `window.__wc.call(op, paramsJson, callback)` and `window.__wc.open(name, bytes)`; calls wait in a queue
++//! and are answered between frames. The editor reports back with `postMessage` to the parent:
++//! `ready`, `state` (revision, unsaved flag, slide, selection) and `download` (a Save or an export).
++//!
++//! Operations: `run` (`{command, params}` → the app's result, UI commands included), `state`,
++//! `export` (the presentation as pptx bytes) and `clean` (the host stored the presentation: clear the unsaved flag).
++
++use std::cell::RefCell;
++use std::collections::VecDeque;
++use std::rc::Rc;
++
++use deckcraft_ui_egui::SlideApp;
++use serde_json::{Value, json};
++use wasm_bindgen::JsValue;
++
++pub struct Job {
++    op: String,
++    params: Value,
++    callback: js_sys::Function,
++}
++
++#[derive(Default)]
++pub struct Queue {
++    jobs: VecDeque<Job>,
++    files: Vec<(String, Vec<u8>)>,
++}
++
++pub type Jobs = Rc<RefCell<Queue>>;
++
++/// The value of `name` in the page's query string (`?embed&lang=ru`); `Some("")` for a bare flag.
++pub fn param(name: &str) -> Option<String> {
++    let search = web_sys::window().and_then(|w| w.location().search().ok()).unwrap_or_default();
++    search.trim_start_matches('?').split('&').find_map(|kv| {
++        let (k, v) = kv.split_once('=').unwrap_or((kv, ""));
++        (k == name).then(|| v.to_string())
++    })
++}
++
++fn set(obj: &js_sys::Object, key: &str, value: &JsValue) {
++    let _ = js_sys::Reflect::set(obj, &JsValue::from_str(key), value);
++}
++
++/// Tell the page around the frame something: `{wc: 1, evt, ...fields}`.
++fn emit(evt: &str, fields: &[(&str, JsValue)]) -> Result<(), String> {
++    let window = web_sys::window().ok_or("no window")?;
++    let parent = window.parent().map_err(|e| format!("{e:?}"))?.ok_or("no parent window")?;
++    let msg = js_sys::Object::new();
++    set(&msg, "wc", &JsValue::from_f64(1.0));
++    set(&msg, "evt", &JsValue::from_str(evt));
++    for (k, v) in fields {
++        set(&msg, k, v);
++    }
++    let origin = window.location().origin().map_err(|e| format!("{e:?}"))?;
++    parent.post_message(&msg, &origin).map_err(|e| format!("{e:?}"))
++}
++
++/// A Save or an export goes to the host (which keeps the files) instead of the browser's download.
++pub fn hand_to_host(path: &str, bytes: &[u8]) -> Result<(), String> {
++    let name = std::path::Path::new(path).file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_else(|| path.to_string());
++    emit("download", &[("name", JsValue::from_str(&name)), ("bytes", js_sys::Uint8Array::from(bytes).into())])
++}
++
++pub fn install(jobs: Jobs, ctx: egui::Context) -> Result<(), String> {
++    let window = web_sys::window().ok_or("no window")?;
++    let bridge = js_sys::Object::new();
++
++    let wake = ctx.clone();
++    let files = jobs.clone();
++    let call = wasm_bindgen::closure::Closure::<dyn FnMut(String, String, js_sys::Function)>::new(move |op: String, params: String, callback: js_sys::Function| {
++        let params = serde_json::from_str(&params).unwrap_or(Value::Null);
++        jobs.borrow_mut().jobs.push_back(Job { op, params, callback });
++        wake.request_repaint();
++    });
++    set(&bridge, "call", call.as_ref());
++    call.forget();
++
++    let open = wasm_bindgen::closure::Closure::<dyn FnMut(String, js_sys::Uint8Array)>::new(move |name: String, bytes: js_sys::Uint8Array| {
++        files.borrow_mut().files.push((name, bytes.to_vec()));
++        ctx.request_repaint();
++    });
++    set(&bridge, "open", open.as_ref());
++    open.forget();
++
++    set(&window, "__wc", &bridge);
++    emit("ready", &[])
++}
++
++/// What the host needs to know about the presentation: slides, selection (for the assistant) and save state.
++fn state(app: &SlideApp) -> Value {
++    let Some(d) = app.session.active() else { return json!({"open": false}) };
++    json!({
++        "open": true,
++        "doc": {"title": d.title(), "path": d.path, "dirty": d.is_dirty(), "revision": d.revision},
++        "slides": d.doc.slides.len(),
++        "sel": {"slide": d.selection.slide, "shapes": d.selection.shapes.len()},
++    })
++}
++
++fn answer(app: &mut SlideApp, op: &str, params: &Value) -> Result<(Value, Option<Vec<u8>>), String> {
++    match op {
++        "run" => {
++            let id = params.get("command").and_then(Value::as_str).ok_or("missing `command`")?.to_string();
++            let p = params.get("params").cloned().filter(|v| !v.is_null()).unwrap_or(json!({}));
++            Ok((app.run(&id, p)?, None))
++        }
++        "state" => Ok((state(app), None)),
++        "export" => {
++            let d = app.session.active().ok_or("no open presentation")?;
++            let name = params.get("name").and_then(Value::as_str).unwrap_or("deck.pptx");
++            let format = name.rsplit('.').next().map(str::to_ascii_lowercase).unwrap_or_default();
++            let bytes = deckcraft_engine::cmd::file::save_bytes(&d.doc, &format).map_err(|e| e.to_string())?;
++            Ok((json!({"bytes": bytes.len()}), Some(bytes)))
++        }
++        "clean" => {
++            if let Some(doc) = app.session.active_mut() {
++                doc.saved_doc = doc.doc.clone();
++            }
++            Ok((json!({}), None))
++        }
++        other => Err(format!("unknown operation `{other}`")),
++    }
++}
++
++/// Answer the host's queued calls, then report a changed presentation state.
++pub fn serve(app: &mut SlideApp, jobs: &Jobs, seen: &mut String) {
++    let (queued, files): (Vec<Job>, Vec<(String, Vec<u8>)>) = {
++        let mut q = jobs.borrow_mut();
++        (q.jobs.drain(..).collect(), std::mem::take(&mut q.files))
++    };
++    for (name, bytes) in files {
++        app.open_or_insert_bytes(&name, &bytes);
++    }
++    for job in queued {
++        let reply = match answer(app, &job.op, &job.params) {
++            Ok((v, bytes)) => (json!({"ok": true, "result": v}), bytes),
++            Err(e) => (json!({"ok": false, "error": e}), None),
++        };
++        let json = JsValue::from_str(&reply.0.to_string());
++        let _ = match reply.1 {
++            Some(b) => job.callback.call2(&JsValue::NULL, &json, &js_sys::Uint8Array::from(&b[..]).into()),
++            None => job.callback.call1(&JsValue::NULL, &json),
++        };
++    }
++    let now = state(app);
++    let print = format!("{}|{}|{}|{}", now["doc"]["revision"], now["doc"]["dirty"], now["sel"]["slide"], now["slides"]);
++    if print != *seen {
++        *seen = print;
++        let _ = emit("state", &[("state", JsValue::from_str(&now.to_string()))]);
++    }
++}
+diff --git a/apps/deckcraft-web/src/main.rs b/apps/deckcraft-web/src/main.rs
+index 6d2b7e9..779c0cb 100644
+--- a/apps/deckcraft-web/src/main.rs
++++ b/apps/deckcraft-web/src/main.rs
+@@ -18,6 +18,8 @@
+ #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::unimplemented, clippy::todo, clippy::unreachable)]
+ #![forbid(unsafe_code)]
+ 
++#[cfg(target_arch = "wasm32")]
++mod embed;
+ #[cfg(target_arch = "wasm32")]
+ mod web;
+ 
+diff --git a/apps/deckcraft-web/src/web.rs b/apps/deckcraft-web/src/web.rs
+index dabad8a..09acce9 100644
+--- a/apps/deckcraft-web/src/web.rs
++++ b/apps/deckcraft-web/src/web.rs
+@@ -1,5 +1,8 @@
+ //! The browser shell: web `Services`, drag-and-drop, and the eframe web runner.
+ 
++use std::cell::RefCell;
++use std::rc::Rc;
++
+ use deckcraft_engine::Session;
+ use deckcraft_ui_egui::{Inbox, InboxEvent, InboxFile, Services, SlideApp};
+ use wasm_bindgen::JsCast as _;
+@@ -22,6 +25,8 @@ pub fn start() {
+             log::error!("missing <canvas id=\"{CANVAS_ID}\">");
+             return;
+         };
++        // MoonApp embeds the editor in a frame (`?embed`): the host keeps the files (see `embed`).
++        let embed = crate::embed::param("embed").is_some();
+         let mut options = eframe::WebOptions::default();
+         if query().contains("webgl")
+             && let eframe::egui_wgpu::WgpuSetup::CreateNew(create) = &mut options.wgpu_options.wgpu_setup
+@@ -37,9 +42,9 @@ pub fn start() {
+                         log::info!("deckcraft-web {}: wgpu backend {:?}", env!("CARGO_PKG_VERSION"), rs.adapter.get_info().backend);
+                     }
+                     let inbox: Inbox = Inbox::default();
+-                    let mut app = SlideApp::new(Session::new(), services(inbox.clone(), cc.egui_ctx.clone()));
++                    let mut app = SlideApp::new(Session::new(), services(inbox.clone(), cc.egui_ctx.clone(), embed));
+                     let q = query();
+-                    if !q.contains("blank") {
++                    if !q.contains("blank") && !embed {
+                         if let Err(e) = deckcraft_engine::sample::open_sample(&mut app.session) {
+                             log::error!("sample deck: {e}");
+                         }
+@@ -49,7 +54,17 @@ pub fn start() {
+                     if q.contains("show") {
+                         app.start_show(0, false);
+                     }
+-                    Ok(Box::new(WebShell { app, inbox }))
++                    let jobs: crate::embed::Jobs = Rc::new(RefCell::new(Default::default()));
++                    if embed {
++                        // The theme comes from the host's settings (the interface has one language).
++                        if let Some(theme) = crate::embed::param("theme") {
++                            let _ = app.run("view.dark", serde_json::json!({"on": theme == "dark"}));
++                        }
++                        if let Err(e) = crate::embed::install(jobs.clone(), cc.egui_ctx.clone()) {
++                            log::error!("no host bridge: {e}");
++                        }
++                    }
++                    Ok(Box::new(WebShell { app, inbox, jobs, embed, seen: String::new() }))
+                 }),
+             )
+             .await;
+@@ -71,6 +86,11 @@ fn query() -> String {
+ struct WebShell {
+     app: SlideApp,
+     inbox: Inbox,
++    /// Calls from the host page (see `embed`), answered between frames.
++    jobs: crate::embed::Jobs,
++    embed: bool,
++    /// Fingerprint of the state last reported to the host.
++    seen: String,
+ }
+ 
+ impl eframe::App for WebShell {
+@@ -98,6 +118,9 @@ impl eframe::App for WebShell {
+             });
+         }
+         self.app.logic(ctx);
++        if self.embed {
++            crate::embed::serve(&mut self.app, &self.jobs, &mut self.seen);
++        }
+     }
+ 
+     fn raw_input_hook(&mut self, _ctx: &egui::Context, raw: &mut egui::RawInput) {
+@@ -111,7 +134,7 @@ impl eframe::App for WebShell {
+ 
+ /// Web services: no file paths, so `pick_open`/`pick_save`/`read` stay `None` and the UI falls
+ /// back to `open_async` (browser picker → inbox) and `download`.
+-fn services(inbox: Inbox, ctx: egui::Context) -> Services {
++fn services(inbox: Inbox, ctx: egui::Context, embed: bool) -> Services {
+     let open_inbox = inbox.clone();
+     Services {
+         open_async: Some(Box::new(move |purpose: &str, request: u64| {
+@@ -134,9 +157,12 @@ fn services(inbox: Inbox, ctx: egui::Context) -> Services {
+                 ctx.request_repaint();
+             });
+         })),
+-        write: Some(Box::new(|name: &str, bytes: &[u8]| download(name, bytes))),
+-        download: Some(Box::new(|name: &str, bytes: &[u8]| {
+-            if let Err(e) = download(name, bytes) {
++        write: Some(Box::new(move |name: &str, bytes: &[u8]| {
++            if embed { crate::embed::hand_to_host(name, bytes) } else { download(name, bytes) }
++        })),
++        download: Some(Box::new(move |name: &str, bytes: &[u8]| {
++            let done = if embed { crate::embed::hand_to_host(name, bytes) } else { download(name, bytes) };
++            if let Err(e) = done {
+                 log::error!("download of {name} failed: {e}");
+             }
+         })),
+diff --git a/crates/engine/src/recovery.rs b/crates/engine/src/recovery.rs
+index 6996cda..a212082 100644
+--- a/crates/engine/src/recovery.rs
++++ b/crates/engine/src/recovery.rs
+@@ -44,6 +44,8 @@ pub fn instance_id() -> u64 {
+     *ID.get_or_init(|| {
+         use std::hash::{BuildHasher, Hasher};
+         let mut h = std::collections::hash_map::RandomState::new().build_hasher();
++        // wasm32 has no process ids (`process::id` panics there).
++        #[cfg(not(target_arch = "wasm32"))]
+         h.write_u32(std::process::id());
+         #[cfg(not(target_arch = "wasm32"))]
+         if let Ok(d) = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH) {

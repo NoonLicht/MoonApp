@@ -24,6 +24,7 @@ const ALL_IDS = [
   "photo",
   "word",
   "sheet",
+  "deck",
   "video",
   "movies",
   "music",

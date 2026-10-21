@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 /**
- * Собирает веб-версии WordCraft и GridCraft (wasm) и кладёт их в public/office/<имя>, откуда Vite
+ * Собирает веб-версии WordCraft, GridCraft и DeckCraft (wasm) и кладёт их в public/office/<имя>, откуда Vite
  * переносит их в dist. Сборки (~40 МБ) в git не хранятся. К исходникам применяется патч
  * native/office-web/<имя>-web.patch: мост со страницей MoonApp (см. native/office-web/README.md).
  *
  * Нужны rustup (цель wasm32-unknown-unknown) и trunk (`cargo install trunk --locked`).
  *
- *   node scripts/buildOfficeWeb.mjs word|sheet
+ *   node scripts/buildOfficeWeb.mjs word|sheet|deck
  *
  * Исходники клонируются в короткую папку (Windows MAX_PATH) на ревизию, с которой собрано ядро;
  * при каждом запуске папка возвращается к этой ревизии и патч накладывается заново.
@@ -30,6 +30,12 @@ const APPS = {
     rev: "8ffff19dda63d85348d4b4ec552b8857b82109b1", // та же, что в native/gridcore/Cargo.toml
     dir: "apps/gridcraft-web",
     patch: "gridcraft-web.patch",
+  },
+  deck: {
+    repo: "https://github.com/storytold/deckcraft.git",
+    rev: "354087ecd56305842582e9e410cf24d595849789", // ревизия на 2026-10-22; ядра для слайдов в приложении пока нет
+    dir: "apps/deckcraft-web",
+    patch: "deckcraft-web.patch",
   },
 };
 

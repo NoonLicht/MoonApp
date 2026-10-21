@@ -30,7 +30,8 @@
     "mail": "Mail",
     "photo": "Photo & Video",
     "word": "Documents",
-    "sheet": "Spreadsheets"
+    "sheet": "Spreadsheets",
+    "deck": "Presentations"
   },
   "common": {
     "saved": "saved",

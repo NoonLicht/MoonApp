@@ -30,7 +30,8 @@
     "mail": "Messagerie",
     "photo": "Photo et vidéo",
     "word": "Documents",
-    "sheet": "Tableurs"
+    "sheet": "Tableurs",
+    "deck": "Présentations"
   },
   "common": {
     "saved": "enregistré",

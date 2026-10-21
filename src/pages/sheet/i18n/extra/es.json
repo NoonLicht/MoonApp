@@ -802,5 +802,7 @@
   "Field\nList": "Lista de\ncampos",
   "Grand\nTotals": "Totales\ngenerales",
   "Report\nLayout": "Diseño de\ninforme",
-  "PivotTable\nStyles": "Estilos de tabla\ndinámica"
+  "PivotTable\nStyles": "Estilos de tabla\ndinámica",
+  "Presentation": "Presentación",
+  "The presentation editor is not built: run npm run office:deck": "El editor de presentaciones no está compilado: ejecute npm run office:deck"
 }

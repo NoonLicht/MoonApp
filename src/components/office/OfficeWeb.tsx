@@ -48,8 +48,10 @@ interface Props<S> {
   access: OfficeAccess<S>;
   /** Команды, которыми редактору меняют тему и язык на ходу. */
   themeCmd: (mode: "dark" | "light") => [string, unknown];
-  langCmd: (code: string) => [string, unknown];
-  Assistant: ComponentType<AssistantHostProps<S>>;
+  /** Смена языка интерфейса на ходу (нет — у редактора один язык). */
+  langCmd?: (code: string) => [string, unknown];
+  /** Помощник документа (нет — кнопки «Помощник» нет). */
+  Assistant?: ComponentType<AssistantHostProps<S>>;
   newTitle: string;
   openTitle: string;
   confirmClose: string;
@@ -141,9 +143,11 @@ export default function OfficeWeb<S>(p: Props<S>) {
     for (const l of links.values()) {
       l.whenReady(() => {
         const [tc, tp] = themeCmd(mode);
-        const [lc, lp] = langCmd(code);
         void l.run(tc, tp).catch(() => undefined);
-        void l.run(lc, lp).catch(() => undefined);
+        if (langCmd) {
+          const [lc, lp] = langCmd(code);
+          void l.run(lc, lp).catch(() => undefined);
+        }
       });
     }
   }, [code, mode, links, themeCmd, langCmd]);
@@ -231,6 +235,7 @@ export default function OfficeWeb<S>(p: Props<S>) {
           />
         </div>
         <AutosaveSwitch auto={auto} tw={p.tw} />
+        {Assistant ? (
         <button
           type="button"
           className={`wd-title-btn${asst ? " on" : ""}`}
@@ -240,6 +245,7 @@ export default function OfficeWeb<S>(p: Props<S>) {
           <Sparkles size={13} />
           {p.tw("Assistant")}
         </button>
+        ) : null}
       </div>
       <RecoverList auto={auto} tw={p.tw} />
       <div className="wd-web-body">
@@ -258,7 +264,7 @@ export default function OfficeWeb<S>(p: Props<S>) {
             />
           ))}
         </div>
-        {asst && active && activeLink ? (
+        {Assistant && asst && active && activeLink ? (
           <aside className="wd-web-side">
             <Assistant
               link={activeLink}

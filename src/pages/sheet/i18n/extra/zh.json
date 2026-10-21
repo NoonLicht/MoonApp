@@ -809,5 +809,7 @@
   "Field\nList": "字段\n列表",
   "Grand\nTotals": "总计",
   "Report\nLayout": "报表\n布局",
-  "PivotTable\nStyles": "数据透视表\n样式"
+  "PivotTable\nStyles": "数据透视表\n样式",
+  "Presentation": "演示文稿",
+  "The presentation editor is not built: run npm run office:deck": "演示文稿编辑器尚未构建：请运行 npm run office:deck"
 }

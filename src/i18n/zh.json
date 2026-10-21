@@ -30,7 +30,8 @@
     "mail": "邮件",
     "photo": "照片与视频",
     "word": "文档",
-    "sheet": "电子表格"
+    "sheet": "电子表格",
+    "deck": "演示文稿"
   },
   "common": {
     "saved": "已保存",

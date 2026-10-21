@@ -1217,5 +1217,7 @@
   "20% - Accent5": "20٪ - تمييز5",
   "40% - Accent5": "40٪ - تمييز5",
   "20% - Accent6": "20٪ - تمييز6",
-  "40% - Accent6": "40٪ - تمييز6"
+  "40% - Accent6": "40٪ - تمييز6",
+  "Presentation": "عرض تقديمي",
+  "The presentation editor is not built: run npm run office:deck": "لم يتم بناء محرر العروض التقديمية: شغّل npm run office:deck"
 }
