@@ -110,7 +110,16 @@ function createApp(): express.Express {
   // CSP на статику (API отвечает JSON — заголовок не нужен). Инлайн-скрипты
   // запрещены: бандл Vite — внешние файлы. Это второй рубеж после DOMPurify.
   app.use((req, res, next) => {
-    if (!req.path.startsWith("/api") && !req.path.startsWith("/events")) {
+    if (req.path.startsWith("/office/")) {
+      // Готовые офисные приложения (WordCraft/GridCraft, wasm): свой бандл приложения, ему нужны
+      // wasm и встроенный загрузчик trunk. Во внешний мир они не ходят (connect-src 'self').
+      res.setHeader(
+        "Content-Security-Policy",
+        "default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; " +
+          "img-src 'self' data: blob:; font-src 'self' data: blob:; connect-src 'self' data: blob:; " +
+          "worker-src 'self' blob:; object-src 'none'; base-uri 'self'; frame-ancestors 'self'",
+      );
+    } else if (!req.path.startsWith("/api") && !req.path.startsWith("/events")) {
       res.setHeader(
         "Content-Security-Policy",
         "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; " +

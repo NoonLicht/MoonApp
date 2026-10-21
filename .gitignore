@@ -325,3 +325,6 @@ native/wordcore/target/
 native/gridcore/target/
 server/asrGguf.js
 server/cpuThreads.js
+
+# Веб-сборки офисных приложений (WordCraft/GridCraft, ~40 МБ): собираются scripts/buildOfficeWeb.mjs
+public/office/

@@ -141,7 +141,7 @@ const PAGE_LOADERS: Record<PageId, () => Promise<PageModule>> = {
   convert: () => import("@/pages/convert/ConverterPage"),
   compress: () => import("@/pages/compressor/CompressorPage"),
   photo: () => import("@/pages/photo/PhotoPage"),
-  word: () => import("@/pages/word/WordPage"),
+  word: () => import("@/pages/word/WordRoot"),
   sheet: () => import("@/pages/sheet/SheetPage"),
   video: () => import("@/pages/video/VideoPage"),
   movies: () => import("@/pages/movies/MoviesPage"),

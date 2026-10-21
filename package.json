@@ -12,6 +12,7 @@
   "scripts": {
     "dev": "vite",
     "build:web": "vite build",
+    "office:word": "node scripts/buildOfficeWeb.mjs word",
     "compile:server": "tsc -p tsconfig.server.json",
     "build:wordcore": "npm run compile:scripts && node scripts/build-wordcore.mjs",
     "gen:wordcatalog": "npm run compile:scripts && node scripts/genWordCatalog.mjs",
