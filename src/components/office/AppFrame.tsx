@@ -17,11 +17,13 @@ interface Props {
   missing: string;
   /** Языки, на которых редактор может показать интерфейс; остальные — английский. */
   langs?: readonly string[];
+  /** Дополнительные параметры адреса рамки (`nosw` и т. п.). */
+  flags?: readonly string[];
 }
 
 type Mode = "check" | "web" | "missing";
 
-export default function AppFrame({ src, marker, title, missing, langs = ["ru", "en"] }: Props) {
+export default function AppFrame({ src, marker, title, missing, langs = ["ru", "en"], flags = [] }: Props) {
   const { lang } = useI18n();
   const tw = useTw();
   const [mode, setMode] = useState<Mode>("check");
@@ -45,7 +47,7 @@ export default function AppFrame({ src, marker, title, missing, langs = ["ru", "
         <iframe
           className="on"
           title={title}
-          src={`${src}?lang=${code}`}
+          src={`${src}?lang=${code}${flags.map((f) => `&${f}`).join("")}`}
           allow="clipboard-read; clipboard-write; fullscreen; autoplay; microphone"
         />
       </div>

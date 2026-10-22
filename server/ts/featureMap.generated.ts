@@ -60,6 +60,9 @@ export const FEATURE_MAP: {
     "photoedit": [],
     "sound": [],
     "fig": [],
+    "effect": [],
+    "film": [],
+    "light": [],
     "video": [
       "video"
     ],
