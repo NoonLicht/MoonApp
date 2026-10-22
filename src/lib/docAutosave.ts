@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
  * Автосохранение документов Word/Excel: копия каждого изменённого документа лежит в IndexedDB
  * браузера и переживает закрытие страницы, поэтому «Восстановить» находит её при следующем входе.
  */
-export type AutosaveKind = "word" | "sheet" | "deck" | "pdf";
+export type AutosaveKind = "word" | "sheet" | "deck" | "pdf" | "photoedit";
 
 export interface AutosaveEntry {
   key: string;

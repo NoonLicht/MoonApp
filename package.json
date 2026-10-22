@@ -16,6 +16,7 @@
     "office:sheet": "node scripts/buildOfficeWeb.mjs sheet",
     "office:deck": "node scripts/buildOfficeWeb.mjs deck",
     "office:pdf": "node scripts/buildOfficeWeb.mjs pdf",
+    "office:photo": "node scripts/buildOfficeWeb.mjs photo",
     "compile:server": "tsc -p tsconfig.server.json",
     "build:wordcore": "npm run compile:scripts && node scripts/build-wordcore.mjs",
     "gen:wordcatalog": "npm run compile:scripts && node scripts/genWordCatalog.mjs",
