@@ -29,6 +29,8 @@ import {
   Presentation,
   FileType,
   Layers,
+  PenTool,
+  AudioWaveform,
   Table2,
 } from "lucide-react";
 import type { ElementType } from "react";
@@ -45,6 +47,8 @@ export type PageId =
   | "deck"
   | "pdf"
   | "photoedit"
+  | "sound"
+  | "fig"
   | "video"
   | "movies"
   | "music"
@@ -95,6 +99,8 @@ const ALL_PAGES: readonly PageMeta[] = [
   { id: "deck", i18n: "nav.deck", icon: Presentation },
   { id: "pdf", i18n: "nav.pdf", icon: FileType },
   { id: "photoedit", i18n: "nav.photoedit", icon: Layers },
+  { id: "fig", i18n: "nav.fig", icon: PenTool },
+  { id: "sound", i18n: "nav.sound", icon: AudioWaveform },
   { id: "video", i18n: "nav.video", icon: Video },
   { id: "movies", i18n: "nav.movies", icon: Clapperboard },
   { id: "music", i18n: "nav.music", icon: Music2 },

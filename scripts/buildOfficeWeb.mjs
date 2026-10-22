@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 /**
- * Собирает веб-версии WordCraft, GridCraft, DeckCraft, PdfCraft и PhotoCraft (wasm) и кладёт их в public/office/<имя>, откуда Vite
+ * Собирает веб-версии WordCraft, GridCraft, DeckCraft, PdfCraft, PhotoCraft, SoundCraft и FigCraft (wasm) и кладёт их в public/office/<имя>, откуда Vite
  * переносит их в dist. Сборки (~40 МБ) в git не хранятся. К исходникам применяется патч
  * native/office-web/<имя>-web.patch: мост со страницей MoonApp (см. native/office-web/README.md).
  *
  * Нужны rustup (цель wasm32-unknown-unknown) и trunk (`cargo install trunk --locked`).
  *
- *   node scripts/buildOfficeWeb.mjs word|sheet|deck|pdf|photo
+ *   node scripts/buildOfficeWeb.mjs word|sheet|deck|pdf|photo|sound|fig
  *
  * Исходники клонируются в короткую папку (Windows MAX_PATH) на ревизию, с которой собрано ядро;
  * при каждом запуске папка возвращается к этой ревизии и патч накладывается заново.
@@ -51,6 +51,18 @@ const APPS = {
     dir: "apps/photocraft-web",
     patch: "photocraft-web.patch",
   },
+  // Без моста: страница показывает сборку как есть (src/components/office/AppFrame.tsx). Язык — `?lang=` (патч, если он есть).
+  sound: {
+    repo: "https://github.com/storytold/soundcraft.git",
+    rev: "e85a4801e9029c9a1f5ce536b11be65aea832ed8", // ревизия на 2026-10-22; интерфейс только на английском
+    dir: "apps/soundcraft-web",
+  },
+  fig: {
+    repo: "https://github.com/storytold/figcraft.git",
+    rev: "80f916326fb94f3a88cb24e64f396f564a0ebc06", // ревизия на 2026-10-22; русский интерфейс уже в ядре (locales/ru.toml)
+    dir: "apps/figcraft-web",
+    patch: "figcraft-web.patch",
+  },
 };
 
 const name = process.argv[2];
@@ -84,7 +96,7 @@ if (!fs.existsSync(path.join(src, ".git"))) {
 }
 run("git", ["checkout", "--quiet", "--force", app.rev], src);
 run("git", ["clean", "-fdq"], src); // весь клон: патч может добавлять файлы и вне папки приложения (ignored: target, dist — остаются)
-run("git", ["apply", "--ignore-whitespace", path.join(root, "native", "office-web", app.patch)], src);
+if (app.patch) run("git", ["apply", "--ignore-whitespace", path.join(root, "native", "office-web", app.patch)], src);
 if (app.vendor) vendorCrate(app.vendor);
 
 run("rustup", ["target", "add", "wasm32-unknown-unknown"], root);

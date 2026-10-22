@@ -33,7 +33,9 @@
     "sheet": "Spreadsheets",
     "deck": "Presentations",
     "pdf": "PDF",
-    "photoedit": "Photo editor"
+    "photoedit": "Photo editor",
+    "sound": "Sound",
+    "fig": "Design"
   },
   "common": {
     "saved": "saved",

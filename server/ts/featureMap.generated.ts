@@ -58,6 +58,8 @@ export const FEATURE_MAP: {
     ],
     "pdf": [],
     "photoedit": [],
+    "sound": [],
+    "fig": [],
     "video": [
       "video"
     ],
