@@ -71,7 +71,7 @@ if (!fs.existsSync(path.join(src, ".git"))) {
   run("git", ["clone", "--quiet", app.repo, src], root);
 }
 run("git", ["checkout", "--quiet", "--force", app.rev], src);
-run("git", ["clean", "-fdq", app.dir], src);
+run("git", ["clean", "-fdq"], src); // весь клон: патч может добавлять файлы и вне папки приложения (ignored: target, dist — остаются)
 run("git", ["apply", "--ignore-whitespace", path.join(root, "native", "office-web", app.patch)], src);
 if (app.vendor) vendorCrate(app.vendor);
 
