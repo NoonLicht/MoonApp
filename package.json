@@ -22,6 +22,7 @@
     "office:effect": "node scripts/buildOfficeWeb.mjs effect",
     "office:film": "node scripts/buildOfficeWeb.mjs film",
     "office:light": "node scripts/buildOfficeWeb.mjs light",
+    "office:cad": "node scripts/buildOfficeWeb.mjs cad",
     "compile:server": "tsc -p tsconfig.server.json",
     "build:wordcore": "npm run compile:scripts && node scripts/build-wordcore.mjs",
     "gen:wordcatalog": "npm run compile:scripts && node scripts/genWordCatalog.mjs",

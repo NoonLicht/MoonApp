@@ -89,3 +89,8 @@ DeckCraft: `std::process::id()` в wasm паникует (`crates/engine/src/rec
 сценарий, подменяющий `navigator.language(s)` по `?lang=` (так работают и SoundCraft, и FigCraft). Сжатые `.br` и `.gz` из сборки удаляются.
 LightCraft ждёт китайский шрифт `lightcraft_zh_hans.otf` (его кладёт `CRAFT_FONTS_DIR`); без файла сервер отдал бы страницу вместо шрифта
 и приложение остановилось бы, поэтому скрипт кладёт на его место Inter. EffectCraft открывается с `?nosw` (без service worker).
+
+## CadCraft (страница «Черчение (САПР)»)
+
+Как SoundCraft и FigCraft: рамка `AppFrame`, без моста `wc`. `npm run office:cad` — `apps/cadcraft-web` на ревизии `8f988f6`, русский интерфейс в ядре
+(`ui-egui/src/i18n/ru.tsv`), язык берётся из `navigator.languages`, которые подменяет вставка скрипта по `?lang=`.
