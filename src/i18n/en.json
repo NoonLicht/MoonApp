@@ -31,7 +31,8 @@
     "photo": "Photo & Video",
     "word": "Documents",
     "sheet": "Spreadsheets",
-    "deck": "Presentations"
+    "deck": "Presentations",
+    "pdf": "PDF"
   },
   "common": {
     "saved": "saved",

@@ -830,6 +830,7 @@
   "Restore": "Восстановить",
   "Discard": "Отбросить",
   "Presentation": "Презентация",
+  "The PDF editor is not built: run npm run office:pdf": "Редактор PDF не собран: выполните npm run office:pdf",
   "The presentation editor is not built: run npm run office:deck": "Редактор презентаций не собран: выполните npm run office:deck",
   "Summarize this presentation": "Кратко перескажи эту презентацию",
   "Create a 5-slide presentation on a topic I will name": "Составь презентацию из 5 слайдов на тему, которую я назову",
