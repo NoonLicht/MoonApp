@@ -104,6 +104,11 @@ export class WcLink<S = WcState> {
     return (await this.send("run", { params: { command, params } })).result;
   }
 
+  /** Операция самой рамки (не команда редактора): результат или исключение. */
+  async op(name: string, params: Record<string, unknown> = {}): Promise<unknown> {
+    return (await this.send(name, { params })).result;
+  }
+
   /** Команда с итогом в виде `{ok, result|error}` — так её ждёт помощник. */
   async exec(command: string, params: unknown = {}): Promise<ExecResult> {
     try {

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import AssistantPane from "@/components/assistant/AssistantPane";
 import type { DocAdapter } from "@/lib/assistant/types";
 import { deckAdapter, type AsstDeckCx } from "@/pages/deck/assistant";
+import { pdfAdapter, type AsstPdfCx } from "@/pages/pdf/assistant";
 import { sheetAdapter, type AsstSheetCx } from "@/pages/sheet/assistant";
 import { wordAdapter, type AsstCx } from "@/pages/word/assistant";
 

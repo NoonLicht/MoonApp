@@ -119,7 +119,7 @@ export async function runAgent(run: AgentRun): Promise<string> {
   messages.push({
     role: "user",
     content: extra
-      ? `${run.user}\n\n[${adapter.kind === "word" ? "Document" : adapter.kind === "deck" ? "Presentation" : "Workbook"} state]\n${extra}`
+      ? `${run.user}\n\n[${adapter.kind === "word" ? "Document" : adapter.kind === "deck" ? "Presentation" : adapter.kind === "pdf" ? "PDF" : "Workbook"} state]\n${extra}`
       : run.user,
     ...(run.images?.length ? { images: run.images } : {}),
   });

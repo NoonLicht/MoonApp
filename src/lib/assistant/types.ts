@@ -52,7 +52,7 @@ export interface AssistantTool extends AssistantToolSpec {
 
 /** Приложение, в котором работает помощник: Word-страница или Excel-страница. */
 export interface DocAdapter {
-  kind: "word" | "sheet" | "deck";
+  kind: "word" | "sheet" | "deck" | "pdf";
   /** Описание приложения и правил работы для системного сообщения. */
   system: string;
   tools: AssistantTool[];
