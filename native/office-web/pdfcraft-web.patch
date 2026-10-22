@@ -24,10 +24,10 @@ index a64d729d..840f5a13 100644
  
 diff --git a/apps/pdfcraft-web/src/embed.rs b/apps/pdfcraft-web/src/embed.rs
 new file mode 100644
-index 00000000..4350b8eb
+index 00000000..db9aee83
 --- /dev/null
 +++ b/apps/pdfcraft-web/src/embed.rs
-@@ -0,0 +1,201 @@
+@@ -0,0 +1,270 @@
 +//! The host bridge for MoonApp (`?embed`): the page around the frame drives the editor.
 +//!
 +//! The same protocol as the WordCraft, GridCraft and DeckCraft builds: the host's glue script (index.html)
@@ -116,6 +116,72 @@ index 00000000..4350b8eb
 +    Ok((json!({"bytes": bytes.len(), "name": name}), Some(bytes.to_vec())))
 +}
 +
++fn number(params: &Value, key: &str) -> Option<usize> {
++    params.get(key).and_then(Value::as_u64).map(|n| n as usize)
++}
++
++/// `text {from?, to?, max?}`: the text of pages `from..=to` (1-based), stopping once `max` characters are out.
++fn text(app: &PdfCraftApp, params: &Value) -> Result<(Value, Option<Vec<u8>>), String> {
++    let (_, id) = app.active_ids().ok_or("no open document")?;
++    let doc = app.session.get(id).ok_or("no open document")?;
++    let total = doc.info.pages.len();
++    let from = number(params, "from").unwrap_or(1).clamp(1, total.max(1));
++    let to = number(params, "to").unwrap_or(total).clamp(from, total.max(from));
++    let max = number(params, "max").unwrap_or(12_000);
++    // A line per row; empty for a page without text (a scan) or a document that can't be read.
++    let page_text = |page: usize| doc.text_lines(page).iter().map(|l| l.text.trim_end().to_string()).collect::<Vec<_>>().join("
++");
++    let (mut size, mut out, mut truncated) = (0, Vec::new(), false);
++    for page in from..=to.min(total) {
++        let t = page_text(page - 1);
++        if size + t.len() > max && !out.is_empty() {
++            truncated = true;
++            break;
++        }
++        size += t.len();
++        out.push(json!({"page": page, "text": t}));
++    }
++    Ok((json!({"pages": total, "chunks": out, "truncated": truncated}), None))
++}
++
++/// `find {query, limit?}`: lines containing `query` (case-insensitive), with their page.
++fn find(app: &PdfCraftApp, params: &Value) -> Result<(Value, Option<Vec<u8>>), String> {
++    let query = params.get("query").and_then(Value::as_str).unwrap_or_default().trim().to_lowercase();
++    if query.is_empty() {
++        return Err("missing `query`".into());
++    }
++    let (_, id) = app.active_ids().ok_or("no open document")?;
++    let doc = app.session.get(id).ok_or("no open document")?;
++    let limit = number(params, "limit").unwrap_or(30);
++    let mut hits = Vec::new();
++    'pages: for page in 0..doc.info.pages.len() {
++        for line in doc.text_lines(page) {
++            if line.text.to_lowercase().contains(&query) {
++                hits.push(json!({"page": page + 1, "line": line.text.trim()}));
++                if hits.len() >= limit {
++                    break 'pages;
++                }
++            }
++        }
++    }
++    Ok((json!({"matches": hits}), None))
++}
++
++/// `info`: what the document says about itself.
++fn info(app: &PdfCraftApp) -> Result<(Value, Option<Vec<u8>>), String> {
++    let (_, id) = app.active_ids().ok_or("no open document")?;
++    let doc = app.session.get(id).ok_or("no open document")?;
++    let i = &doc.info;
++    Ok((
++        json!({
++            "name": doc.name, "pages": i.pages.len(), "title": i.title, "author": i.author, "subject": i.subject,
++            "keywords": i.keywords, "pdf_version": i.pdf_version, "file_size": i.file_size, "encrypted": i.encrypted,
++            "read_only": doc.read_only_reason,
++        }),
++        None,
++    ))
++}
++
 +fn clean(app: &mut PdfCraftApp) -> Result<(Value, Option<Vec<u8>>), String> {
 +    let (_, id) = app.active_ids().ok_or("no open document")?;
 +    let bytes = app.session.save_bytes(id).map_err(|e| e.to_string())?;
@@ -196,6 +262,9 @@ index 00000000..4350b8eb
 +                }
 +                "state" => Ok((state(app), None)),
 +                "export" => export(app, &job.params),
++                "text" => text(app, &job.params),
++                "find" => find(app, &job.params),
++                "info" => info(app),
 +                "clean" => clean(app),
 +                other => Err(format!("unknown operation `{other}`")),
 +            };

@@ -15,7 +15,7 @@ const cache = new Map<string, Promise<CoreCommand[]>>();
 
 /** Откуда брать список команд: у Word и Таблиц — сервер, у презентаций — сам редактор (команда commands.list). */
 export type CommandSource = (docId: string) => Promise<CoreCommand[]>;
-export type CommandKind = "word" | "sheet" | "deck";
+export type CommandKind = "word" | "sheet" | "deck" | "pdf";
 
 function commands(kind: CommandKind, docId: string, source?: CommandSource): Promise<CoreCommand[]> {
   let p = cache.get(kind);
