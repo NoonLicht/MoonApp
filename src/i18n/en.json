@@ -35,7 +35,10 @@
     "pdf": "PDF",
     "photoedit": "Photo editor",
     "sound": "Sound",
-    "fig": "Design"
+    "fig": "Design",
+    "effect": "Effects",
+    "film": "Video editor",
+    "light": "Photo developer"
   },
   "common": {
     "saved": "saved",

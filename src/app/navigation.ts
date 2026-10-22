@@ -31,6 +31,9 @@ import {
   Layers,
   PenTool,
   AudioWaveform,
+  Wand2,
+  Film,
+  Sun,
   Table2,
 } from "lucide-react";
 import type { ElementType } from "react";
@@ -49,6 +52,9 @@ export type PageId =
   | "photoedit"
   | "sound"
   | "fig"
+  | "effect"
+  | "film"
+  | "light"
   | "video"
   | "movies"
   | "music"
@@ -101,6 +107,9 @@ const ALL_PAGES: readonly PageMeta[] = [
   { id: "photoedit", i18n: "nav.photoedit", icon: Layers },
   { id: "fig", i18n: "nav.fig", icon: PenTool },
   { id: "sound", i18n: "nav.sound", icon: AudioWaveform },
+  { id: "effect", i18n: "nav.effect", icon: Wand2 },
+  { id: "film", i18n: "nav.film", icon: Film },
+  { id: "light", i18n: "nav.light", icon: Sun },
   { id: "video", i18n: "nav.video", icon: Video },
   { id: "movies", i18n: "nav.movies", icon: Clapperboard },
   { id: "music", i18n: "nav.music", icon: Music2 },

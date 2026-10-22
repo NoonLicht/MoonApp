@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 /**
- * Собирает веб-версии WordCraft, GridCraft, DeckCraft, PdfCraft, PhotoCraft, SoundCraft и FigCraft (wasm) и кладёт их в public/office/<имя>, откуда Vite
+ * Собирает веб-версии WordCraft, GridCraft, DeckCraft, PdfCraft, PhotoCraft, SoundCraft, FigCraft, EffectCraft, FilmCraft и LightCraft (wasm) и кладёт их в public/office/<имя>, откуда Vite
  * переносит их в dist. Сборки (~40 МБ) в git не хранятся. К исходникам применяется патч
  * native/office-web/<имя>-web.patch: мост со страницей MoonApp (см. native/office-web/README.md).
  *
  * Нужны rustup (цель wasm32-unknown-unknown) и trunk (`cargo install trunk --locked`).
  *
- *   node scripts/buildOfficeWeb.mjs word|sheet|deck|pdf|photo|sound|fig
+ *   node scripts/buildOfficeWeb.mjs word|sheet|deck|pdf|photo|sound|fig|effect|film|light
  *
  * Исходники клонируются в короткую папку (Windows MAX_PATH) на ревизию, с которой собрано ядро;
  * при каждом запуске папка возвращается к этой ревизии и патч накладывается заново.
@@ -57,6 +57,23 @@ const APPS = {
     rev: "e85a4801e9029c9a1f5ce536b11be65aea832ed8", // ревизия на 2026-10-22; интерфейс только на английском
     dir: "apps/soundcraft-web",
   },
+  effect: {
+    repo: "https://github.com/storytold/effectcraft.git",
+    rev: "15b8a916c528e73d48f7a9cb4ff58276c7a2d3dd", // ревизия на 2026-10-22; wasm ~58 МБ
+    xtask: "target/web/dist", // cargo xtask web (нужен wasm-bindgen-cli той же версии, что в Cargo.lock)
+  },
+  film: {
+    repo: "https://github.com/storytold/filmcraft.git",
+    rev: "74242b51d675514da12d9bbf6b331ef2e6399211", // ревизия на 2026-10-22
+    xtask: "target/web/dist",
+  },
+  light: {
+    repo: "https://github.com/storytold/lightcraft.git",
+    rev: "479a05a0be4756be460859c4d42b4fbb7a60e99d", // ревизия на 2026-10-22
+    xtask: "target/web-site",
+    // Сборка ждёт китайский шрифт `lightcraft_zh_hans.otf` (его кладёт CRAFT_FONTS_DIR); без файла сервер отдал бы страницу вместо шрифта и приложение остановилось бы. Подойдёт любой корректный шрифт: берём Inter (есть кириллица).
+    extra: [["assets/fonts/Inter-Regular.ttf", "lightcraft_zh_hans.otf"]],
+  },
   fig: {
     repo: "https://github.com/storytold/figcraft.git",
     rev: "80f916326fb94f3a88cb24e64f396f564a0ebc06", // ревизия на 2026-10-22; русский интерфейс уже в ядре (locales/ru.toml)
@@ -64,6 +81,18 @@ const APPS = {
     patch: "figcraft-web.patch",
   },
 };
+
+/** Сборки с мостом `wc` язык получают от своего патча; остальные — подмена `navigator.language(s)` по `?lang=` в index.html. */
+const APP_BRIDGE = new Set(["word", "sheet", "deck", "pdf", "photo"]);
+function injectLanguage(file) {
+  const shim =
+    "<script>(function(){var m=/[?&]lang=([\w-]+)/.exec(location.search);if(!m)return;var l=m[1];" +
+    "try{Object.defineProperty(navigator,'language',{get:function(){return l}});" +
+    "Object.defineProperty(navigator,'languages',{get:function(){return [l]}})}catch(e){}})();</script>";
+  const html = fs.readFileSync(file, "utf8");
+  if (!html.includes("<head>") || html.includes("navigator,'language'")) return;
+  fs.writeFileSync(file, html.replace("<head>", `<head>${shim}`));
+}
 
 const name = process.argv[2];
 const app = APPS[name];
@@ -100,10 +129,15 @@ if (app.patch) run("git", ["apply", "--ignore-whitespace", path.join(root, "nati
 if (app.vendor) vendorCrate(app.vendor);
 
 run("rustup", ["target", "add", "wasm32-unknown-unknown"], root);
-run("trunk", ["build", "--release"], path.join(src, app.dir));
+if (app.xtask) run("cargo", ["xtask", "web"], src);
+else run("trunk", ["build", "--release"], path.join(src, app.dir));
 
 const out = path.join(root, "public", "office", name);
 fs.rmSync(out, { recursive: true, force: true });
-fs.cpSync(path.join(src, "dist", "web"), out, { recursive: true });
+fs.cpSync(path.join(src, app.xtask ?? path.join("dist", "web")), out, { recursive: true });
 fs.rmSync(path.join(out, ".trunk-lock"), { force: true });
+// Сжатые копии (.br, .gz) не нужны: статику отдаёт наш сервер, а копия index.html устарела бы после правки.
+for (const f of fs.readdirSync(out)) if (/\.(br|gz)$/.test(f)) fs.rmSync(path.join(out, f));
+for (const [from, to] of app.extra ?? []) fs.cpSync(path.join(src, from), path.join(out, to));
+if (!APP_BRIDGE.has(name)) injectLanguage(path.join(out, "index.html"));
 console.log(`Готово: ${path.relative(root, out)}`);

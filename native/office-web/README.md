@@ -80,3 +80,12 @@ DeckCraft: `std::process::id()` в wasm паникует (`crates/engine/src/rec
 скачивание). `npm run office:sound` — `apps/soundcraft-web` на ревизии `e85a480` (интерфейс только на английском).
 `npm run office:fig` — `apps/figcraft-web` на ревизии `80f9163`; русский интерфейс в ядре (`locales/ru.toml`), патч
 `figcraft-web.patch` лишь учитывает `?lang=` в `system_language()`.
+
+## EffectCraft, FilmCraft и LightCraft (страницы «Эффекты», «Видеоредактор», «Проявка фото»)
+
+Без моста `wc`, как SoundCraft и FigCraft (`AppFrame`). Собираются через `cargo xtask web` (нужен `wasm-bindgen-cli` той же версии, что в
+`Cargo.lock`: `cargo install wasm-bindgen-cli --version 0.2.129 --locked`): `npm run office:effect` (ревизия `15b8a91`, wasm ~58 МБ),
+`office:film` (`74242b5`), `office:light` (`479a05a`). Язык: у сборок нет параметра языка, поэтому скрипт вставляет в `index.html` короткий
+сценарий, подменяющий `navigator.language(s)` по `?lang=` (так работают и SoundCraft, и FigCraft). Сжатые `.br` и `.gz` из сборки удаляются.
+LightCraft ждёт китайский шрифт `lightcraft_zh_hans.otf` (его кладёт `CRAFT_FONTS_DIR`); без файла сервер отдал бы страницу вместо шрифта
+и приложение остановилось бы, поэтому скрипт кладёт на его место Inter. EffectCraft открывается с `?nosw` (без service worker).
