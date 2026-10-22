@@ -63,3 +63,13 @@ DeckCraft: `std::process::id()` в wasm паникует (`crates/engine/src/rec
 `clean`), хук `PdfCraftApp::embed_tick` (вызывается каждый кадр) и подключение в `main.rs` по `?embed`. Команды `run`
 идут в канал управления приложением (`ui.command`, `ui.set`, `ui.state`, `ui.click`, `ui.inspect`…), тема и язык —
 `ui.set {key: "theme"|"language"}`. Сохранение уходит странице событием `download`.
+
+## PhotoCraft (страница «Фоторедактор»)
+
+`npm run office:photo` собирает `apps/photocraft-web` на ревизии `ce2a1e3` (wasm около 26 МБ, нужен WebGPU или WebGL2).
+Русский интерфейс уже в ядре (`ui-egui/src/i18n/ru.tsv`). Патч `photocraft-web.patch`: `src/embed.rs` (операции `run`, `state`,
+`export`, `open`, `clean`) и подключение по `?embed` в `web.rs`: оболочка `WebShell` обслуживает мост каждый кадр, сервис записи
+отдаёт сохранение странице событием `download`, файлы со страницы идут в тот же `inbox`, что и перетащенные. Команды `run` идут в
+канал управления приложением (`engine.execute {command, params}`, `ui.set`, `ui.inspect`, `engine.commands`); язык меняется
+настройкой `interface.language` (`prefs.set`), тема — `ui.set {theme: "pro"|"proLightGray"}`. Родной формат — `.pcraft` (слои),
+экспорт в PNG, JPEG и т. д. выбирается расширением имени.

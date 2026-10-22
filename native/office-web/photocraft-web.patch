@@ -1,0 +1,316 @@
+diff --git a/apps/photocraft-web/Cargo.toml b/apps/photocraft-web/Cargo.toml
+index 4ecad80ae..d8b6f5be7 100644
+--- a/apps/photocraft-web/Cargo.toml
++++ b/apps/photocraft-web/Cargo.toml
+@@ -28,6 +28,7 @@ egui = { workspace = true }
+ log = { workspace = true }
+ 
+ [target.'cfg(target_arch = "wasm32")'.dependencies]
++serde_json = { workspace = true }
+ # `wgpu` pulls egui-wgpu's defaults: WebGPU plus the WebGL2 fallback.
+ eframe = { workspace = true, features = ["wgpu", "accesskit"] }
+ rfd = { workspace = true }
+diff --git a/apps/photocraft-web/src/embed.rs b/apps/photocraft-web/src/embed.rs
+new file mode 100644
+index 000000000..6642da856
+--- /dev/null
++++ b/apps/photocraft-web/src/embed.rs
+@@ -0,0 +1,208 @@
++//! The host bridge for MoonApp (`?embed`): the page around the frame drives the editor.
++//!
++//! The same protocol as the WordCraft, GridCraft, DeckCraft and PdfCraft builds: the host's glue script
++//! (index.html) calls `window.__wc.call(op, paramsJson, callback)` and `window.__wc.open(name, bytes)`; calls wait
++//! in a queue and are answered between frames (`Embed::serve`, called from the shell's `logic`). The editor
++//! reports back with `postMessage` to the parent: `ready`, `state` (revision, unsaved flag, size) and `download`
++//! (a Save or an export).
++//!
++//! Operations: `run` (`{command, params}` → a control method such as `engine.execute`, `ui.set`, `ui.inspect`),
++//! `state`, `export` (the active document as a file of the format the name's extension asks for) and `clean`
++//! (the host stored the document: clear the unsaved flag).
++
++use std::cell::RefCell;
++use std::collections::VecDeque;
++use std::rc::Rc;
++use std::sync::mpsc::{Receiver, Sender, channel};
++
++use photocraft_ui_egui::{ControlRequest, Inbox, PhotocraftApp};
++use serde_json::{Value, json};
++use wasm_bindgen::JsValue;
++use wasm_bindgen::closure::Closure;
++
++struct Job {
++    op: String,
++    params: Value,
++    callback: js_sys::Function,
++}
++
++#[derive(Default)]
++struct Queue {
++    jobs: VecDeque<Job>,
++}
++
++/// A control request whose reply is still on its way (answered over later frames).
++struct Waiting {
++    rx: Receiver<Value>,
++    callback: js_sys::Function,
++}
++
++pub struct Embed {
++    queue: Rc<RefCell<Queue>>,
++    control: Sender<ControlRequest>,
++    waiting: Vec<Waiting>,
++    seen: String,
++}
++
++/// The value of `name` in the page's query string (`?embed&lang=ru`); `Some("")` for a bare flag.
++pub fn param(name: &str) -> Option<String> {
++    let search = web_sys::window().and_then(|w| w.location().search().ok()).unwrap_or_default();
++    search.trim_start_matches('?').split('&').find_map(|kv| {
++        let (k, v) = kv.split_once('=').unwrap_or((kv, ""));
++        (k == name).then(|| v.to_string())
++    })
++}
++
++fn set(obj: &js_sys::Object, key: &str, value: &JsValue) {
++    let _ = js_sys::Reflect::set(obj, &JsValue::from_str(key), value);
++}
++
++/// Tell the page around the frame something: `{wc: 1, evt, ...fields}`.
++fn emit(evt: &str, fields: &[(&str, JsValue)]) -> Result<(), String> {
++    let window = web_sys::window().ok_or("no window")?;
++    let parent = window.parent().map_err(|e| format!("{e:?}"))?.ok_or("no parent window")?;
++    let msg = js_sys::Object::new();
++    set(&msg, "wc", &JsValue::from_f64(1.0));
++    set(&msg, "evt", &JsValue::from_str(evt));
++    for (k, v) in fields {
++        set(&msg, k, v);
++    }
++    let origin = window.location().origin().map_err(|e| format!("{e:?}"))?;
++    parent.post_message(&msg, &origin).map_err(|e| format!("{e:?}"))
++}
++
++/// A Save or an export goes to the host (which keeps the files) instead of the browser's download.
++pub fn hand_to_host(path: &str, bytes: &[u8]) -> Result<(), String> {
++    let name = std::path::Path::new(path).file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_else(|| path.to_string());
++    emit("download", &[("name", JsValue::from_str(&name)), ("bytes", js_sys::Uint8Array::from(bytes).into())])
++}
++
++/// What the host needs to know about the open document: name, unsaved flag, revision and size.
++fn state(app: &PhotocraftApp) -> Value {
++    let docs = app.session.documents().len();
++    let Some(d) = app.session.active() else { return json!({"open": false, "docs": docs}) };
++    json!({
++        "open": true,
++        "docs": docs,
++        "doc": {"name": d.doc.name, "path": d.path, "dirty": d.is_dirty(), "revision": d.revision},
++        "size": [d.doc.size.width, d.doc.size.height],
++    })
++}
++
++fn export(app: &PhotocraftApp, params: &Value) -> Result<(Value, Option<Vec<u8>>), String> {
++    let d = app.session.active().ok_or("no open document")?;
++    let name = params.get("name").and_then(Value::as_str).unwrap_or("document.pcraft");
++    let out = photocraft_io::export(&d.doc, name, &photocraft_io::ExportOptions::default()).map_err(|e| e.to_string())?;
++    Ok((json!({"bytes": out.bytes.len(), "name": name, "warnings": out.warnings}), Some(out.bytes)))
++}
++
++fn clean(app: &mut PhotocraftApp) -> Result<(Value, Option<Vec<u8>>), String> {
++    let d = app.session.active_mut().ok_or("no open document")?;
++    d.saved_revision = d.revision;
++    Ok((json!({}), None))
++}
++
++fn reply(callback: &js_sys::Function, reply: (Value, Option<Vec<u8>>)) {
++    let json = JsValue::from_str(&reply.0.to_string());
++    let _ = match reply.1 {
++        Some(b) => callback.call2(&JsValue::NULL, &json, &js_sys::Uint8Array::from(&b[..]).into()),
++        None => callback.call1(&JsValue::NULL, &json),
++    };
++}
++
++/// Wire the page to the app: `window.__wc` (files go to `inbox`, like dropped ones). Returns the half the shell
++/// serves every frame and the control channel to attach to the app.
++pub fn install(ctx: &egui::Context, inbox: Inbox) -> Result<(Embed, Receiver<ControlRequest>), String> {
++    let window = web_sys::window().ok_or("no window")?;
++    let queue = Rc::new(RefCell::new(Queue::default()));
++    let bridge = js_sys::Object::new();
++
++    let jobs = queue.clone();
++    let wake = ctx.clone();
++    let call = Closure::<dyn FnMut(String, String, js_sys::Function)>::new(move |op: String, params: String, callback: js_sys::Function| {
++        let params = serde_json::from_str(&params).unwrap_or(Value::Null);
++        jobs.borrow_mut().jobs.push_back(Job { op, params, callback });
++        wake.request_repaint();
++    });
++    set(&bridge, "call", call.as_ref());
++    call.forget();
++
++    let wake = ctx.clone();
++    let open = Closure::<dyn FnMut(String, js_sys::Uint8Array)>::new(move |name: String, bytes: js_sys::Uint8Array| {
++        if let Ok(mut q) = inbox.lock() {
++            q.push((name, bytes.to_vec()));
++        }
++        wake.request_repaint();
++    });
++    set(&bridge, "open", open.as_ref());
++    open.forget();
++    set(&window, "__wc", &bridge);
++
++    let (control, rx) = channel();
++    // Language from the page, through the same preference the Preferences dialog sets.
++    if let Some(lang) = param("lang").filter(|l| !l.is_empty()) {
++        let (req, _) = ControlRequest::new("engine.execute", json!({"command": "prefs.set", "params": {"path": "interface.language", "value": lang}}));
++        let _ = control.send(req);
++    }
++    emit("ready", &[])?;
++    Ok((Embed { queue, control, waiting: Vec::new(), seen: String::new() }, rx))
++}
++
++impl Embed {
++    /// Answer the host's queued calls and finished control requests, then report a changed document state.
++    pub fn serve(&mut self, app: &mut PhotocraftApp, ctx: &egui::Context) {
++        let queued: Vec<Job> = self.queue.borrow_mut().jobs.drain(..).collect();
++        for job in queued {
++            let done = match job.op.as_str() {
++                "run" => {
++                    let method = job.params.get("command").and_then(Value::as_str).unwrap_or_default().to_string();
++                    let params = job.params.get("params").cloned().filter(|v| !v.is_null()).unwrap_or(json!({}));
++                    if method.is_empty() {
++                        Err("missing `command`".to_string())
++                    } else {
++                        let (req, rx) = ControlRequest::new(method, params);
++                        if self.control.send(req).is_err() {
++                            Err("the app has closed".to_string())
++                        } else {
++                            self.waiting.push(Waiting { rx, callback: job.callback.clone() });
++                            ctx.request_repaint();
++                            continue;
++                        }
++                    }
++                }
++                "state" => Ok((state(app), None)),
++                "export" => export(app, &job.params),
++                "clean" => clean(app),
++                other => Err(format!("unknown operation `{other}`")),
++            };
++            let out = match done {
++                Ok((v, bytes)) => (json!({"ok": true, "result": v}), bytes),
++                Err(e) => (json!({"ok": false, "error": e}), None),
++            };
++            reply(&job.callback, out);
++        }
++        self.waiting.retain(|w| match w.rx.try_recv() {
++            Ok(v) => {
++                // `{ok: false, error}` is a failed command; anything else is its result.
++                let out = if v.get("ok") == Some(&Value::Bool(false)) {
++                    json!({"ok": false, "error": v.get("error").cloned().unwrap_or(Value::Null)})
++                } else {
++                    json!({"ok": true, "result": v})
++                };
++                reply(&w.callback, (out, None));
++                false
++            }
++            Err(std::sync::mpsc::TryRecvError::Empty) => true,
++            Err(_) => false,
++        });
++        if !self.waiting.is_empty() {
++            ctx.request_repaint();
++        }
++        let now = state(app);
++        let print = format!("{}|{}|{}|{}", now["doc"]["revision"], now["doc"]["dirty"], now["docs"], now["doc"]["name"]);
++        if print != self.seen {
++            self.seen = print;
++            let _ = emit("state", &[("state", JsValue::from_str(&now.to_string()))]);
++        }
++    }
++}
+diff --git a/apps/photocraft-web/src/main.rs b/apps/photocraft-web/src/main.rs
+index 0802a02eb..0ae355757 100644
+--- a/apps/photocraft-web/src/main.rs
++++ b/apps/photocraft-web/src/main.rs
+@@ -22,6 +22,9 @@ mod preset_bridge;
+ #[cfg(target_arch = "wasm32")]
+ mod indexed_presets;
+ 
++#[cfg(target_arch = "wasm32")]
++mod embed;
++
+ #[cfg(target_arch = "wasm32")]
+ mod web;
+ 
+diff --git a/apps/photocraft-web/src/web.rs b/apps/photocraft-web/src/web.rs
+index fc1761290..988fda730 100644
+--- a/apps/photocraft-web/src/web.rs
++++ b/apps/photocraft-web/src/web.rs
+@@ -88,7 +88,23 @@ pub fn start() {
+                     let (session, warnings) = crate::preset_bridge::session(presets.clone());
+                     preset_warnings.extend(warnings);
+                     let drag = listen_drag(&pen_target);
+-                    let mut app = PhotocraftApp::new(session, services(inbox.clone(), place_inbox.clone(), drag_pos_service(pen_target.clone(), drag)));
++                    let embedded = crate::embed::param("embed").is_some();
++                    let mut app = PhotocraftApp::new(session, services(inbox.clone(), place_inbox.clone(), drag_pos_service(pen_target.clone(), drag), embedded));
++                    // `?embed`: the MoonApp page drives the editor (src/embed.rs).
++                    let embed = if embedded {
++                        match crate::embed::install(&cc.egui_ctx, inbox.clone()) {
++                            Ok((embed, control)) => {
++                                app = app.with_control(control);
++                                Some(embed)
++                            }
++                            Err(e) => {
++                                log::error!("embed bridge: {e}");
++                                None
++                            }
++                        }
++                    } else {
++                        None
++                    };
+                     if !preset_warnings.is_empty() {
+                         photocraft_ui_egui::notices::post(&mut app, i18n::t("Some brush presets could not be loaded"), preset_warnings, true, None);
+                     }
+@@ -102,7 +118,7 @@ pub fn start() {
+                     }
+                     let unsaved = Arc::new(AtomicBool::new(false));
+                     guard_unload(unsaved.clone());
+-                    Ok(Box::new(WebShell { app, inbox, place_inbox, unsaved, served, database, presets }))
++                    Ok(Box::new(WebShell { app, inbox, place_inbox, unsaved, served, database, presets, embed }))
+                 }),
+             )
+             .await;
+@@ -268,6 +284,8 @@ struct WebShell {
+     served: Served,
+     database: Option<web_sys::IdbDatabase>,
+     presets: crate::preset_bridge::Bridge,
++    /// The bridge to the page around the frame (`?embed`).
++    embed: Option<crate::embed::Embed>,
+ }
+ 
+ impl WebShell {
+@@ -356,6 +374,9 @@ impl eframe::App for WebShell {
+         }
+         self.serve_fonts(ctx);
+         self.app.logic(ctx, frame);
++        if let Some(embed) = self.embed.as_mut() {
++            embed.serve(&mut self.app, ctx);
++        }
+         self.save_presets(ctx);
+     }
+ 
+@@ -388,7 +409,7 @@ impl eframe::App for WebShell {
+     }
+ }
+ 
+-fn services(inbox: Inbox, place_inbox: Inbox, cursor_pos: photocraft_ui_egui::CursorPosFn) -> Services {
++fn services(inbox: Inbox, place_inbox: Inbox, cursor_pos: photocraft_ui_egui::CursorPosFn, embedded: bool) -> Services {
+     Services {
+         screen_pick: screen_color_service(),
+         import: Some(Box::new(|name: &str, bytes: &[u8], opts: &photocraft_io::ImportOptions| {
+@@ -433,7 +454,8 @@ fn services(inbox: Inbox, place_inbox: Inbox, cursor_pos: photocraft_ui_egui::Cu
+                 reply.send(Some(FileDialogAnswer::SaveTo(name)));
+             }
+         })),
+-        write: Some(Box::new(|path: &str, bytes: &[u8]| download(path, bytes))),
++        // Embedded, a Save goes to the page around the frame, which keeps the files.
++        write: Some(if embedded { Box::new(crate::embed::hand_to_host) } else { Box::new(|path: &str, bytes: &[u8]| download(path, bytes)) }),
+         // A download may be cancelled and never reports back: it doesn't save the document.
+         write_unconfirmed: true,
+         encode_png: Some(Box::new(|w, h, rgba| {

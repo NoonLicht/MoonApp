@@ -32,7 +32,8 @@
     "word": "Documents",
     "sheet": "Spreadsheets",
     "deck": "Presentations",
-    "pdf": "PDF"
+    "pdf": "PDF",
+    "photoedit": "Photo editor"
   },
   "common": {
     "saved": "saved",
