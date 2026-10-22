@@ -20,7 +20,7 @@ const ALL_IDS = [
   "photo",
   "word",
   "sheet",
-  "deck", "pdf", "photoedit",
+  "deck", "pdf", "photoedit", "sound", "fig",
   "video",
   "movies",
   "music",

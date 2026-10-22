@@ -73,3 +73,10 @@ DeckCraft: `std::process::id()` в wasm паникует (`crates/engine/src/rec
 канал управления приложением (`engine.execute {command, params}`, `ui.set`, `ui.inspect`, `engine.commands`); язык меняется
 настройкой `interface.language` (`prefs.set`), тема — `ui.set {theme: "pro"|"proLightGray"}`. Родной формат — `.pcraft` (слои),
 экспорт в PNG, JPEG и т. д. выбирается расширением имени.
+
+## SoundCraft и FigCraft (страницы «Звук» и «Дизайн»)
+
+Без моста `wc`: страница `AppFrame` показывает сборку как есть, файлы редактор открывает и сохраняет сам (выбор файла и
+скачивание). `npm run office:sound` — `apps/soundcraft-web` на ревизии `e85a480` (интерфейс только на английском).
+`npm run office:fig` — `apps/figcraft-web` на ревизии `80f9163`; русский интерфейс в ядре (`locales/ru.toml`), патч
+`figcraft-web.patch` лишь учитывает `?lang=` в `system_language()`.

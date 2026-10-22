@@ -1,0 +1,25 @@
+diff --git a/apps/figcraft-web/Cargo.toml b/apps/figcraft-web/Cargo.toml
+index ffd44f3..bc91ca8 100644
+--- a/apps/figcraft-web/Cargo.toml
++++ b/apps/figcraft-web/Cargo.toml
+@@ -26,4 +26,4 @@ eframe = { workspace = true, features = ["default_fonts", "wgpu", "accesskit"] }
+ wasm-bindgen = "0.2"
+ js-sys = "0.3"
+ wasm-bindgen-futures = "0.4"
+-web-sys = { version = "0.3", features = ["Window", "Document", "Element", "HtmlCanvasElement", "HtmlElement", "HtmlAnchorElement", "Node", "Blob", "BlobPropertyBag", "File", "FileList", "HtmlInputElement", "EventTarget", "Url", "Location", "MediaQueryList", "Navigator", "Gamepad", "GamepadButton", "GamepadMappingType"] }
++web-sys = { version = "0.3", features = ["Window", "Document", "Element", "HtmlCanvasElement", "HtmlElement", "HtmlAnchorElement", "Node", "Blob", "BlobPropertyBag", "File", "FileList", "HtmlInputElement", "EventTarget", "Url", "Location", "MediaQueryList", "UrlSearchParams", "Navigator", "Gamepad", "GamepadButton", "GamepadMappingType"] }
+diff --git a/apps/figcraft-web/src/web.rs b/apps/figcraft-web/src/web.rs
+index f08ca90..2fbfabd 100644
+--- a/apps/figcraft-web/src/web.rs
++++ b/apps/figcraft-web/src/web.rs
+@@ -126,7 +126,9 @@ impl Services for WebServices {
+     }
+     /// The browser's language (`navigator.language`).
+     fn system_language(&self) -> Option<String> {
+-        web_sys::window().and_then(|w| w.navigator().language())
++        // `?lang=ru`: a page that frames FigCraft picks the language (MoonApp).
++        let asked = web_sys::window().and_then(|w| w.location().search().ok()).and_then(|q| web_sys::UrlSearchParams::new_with_str(&q).ok()?.get("lang")).filter(|l| !l.is_empty());
++        asked.or_else(|| web_sys::window().and_then(|w| w.navigator().language()))
+     }
+     /// The Gamepad API's controllers with the standard mapping (its button order is the layout's;
+     /// others are skipped). Browsers list controllers once one of their buttons is pressed.
