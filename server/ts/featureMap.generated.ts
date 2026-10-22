@@ -56,6 +56,7 @@ export const FEATURE_MAP: {
       "sheet",
       "word"
     ],
+    "pdf": [],
     "video": [
       "video"
     ],

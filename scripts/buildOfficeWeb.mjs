@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 /**
- * Собирает веб-версии WordCraft, GridCraft и DeckCraft (wasm) и кладёт их в public/office/<имя>, откуда Vite
+ * Собирает веб-версии WordCraft, GridCraft, DeckCraft и PdfCraft (wasm) и кладёт их в public/office/<имя>, откуда Vite
  * переносит их в dist. Сборки (~40 МБ) в git не хранятся. К исходникам применяется патч
  * native/office-web/<имя>-web.patch: мост со страницей MoonApp (см. native/office-web/README.md).
  *
  * Нужны rustup (цель wasm32-unknown-unknown) и trunk (`cargo install trunk --locked`).
  *
- *   node scripts/buildOfficeWeb.mjs word|sheet|deck
+ *   node scripts/buildOfficeWeb.mjs word|sheet|deck|pdf
  *
  * Исходники клонируются в короткую папку (Windows MAX_PATH) на ревизию, с которой собрано ядро;
  * при каждом запуске папка возвращается к этой ревизии и патч накладывается заново.
@@ -38,6 +38,12 @@ const APPS = {
     patch: "deckcraft-web.patch",
     // epaint (раскладка текста egui) копируется рядом с исходниками и правится: хук перевода интерфейса
     vendor: { crate: "epaint", patch: "deckcraft-epaint.patch" },
+  },
+  pdf: {
+    repo: "https://github.com/storytold/pdfcraft.git",
+    rev: "8555d6f159a7b2d7d420185642b8901719b457a6", // ревизия на 2026-10-22; русский интерфейс уже в ядре (ui-egui/src/i18n/ru.tsv)
+    dir: "apps/pdfcraft-web",
+    patch: "pdfcraft-web.patch",
   },
 };
 

@@ -144,6 +144,7 @@ const PAGE_LOADERS: Record<PageId, () => Promise<PageModule>> = {
   word: () => import("@/pages/word/WordRoot"),
   sheet: () => import("@/pages/sheet/SheetRoot"),
   deck: () => import("@/pages/deck/DeckPage"),
+  pdf: () => import("@/pages/pdf/PdfPage"),
   video: () => import("@/pages/video/VideoPage"),
   movies: () => import("@/pages/movies/MoviesPage"),
   music: () => import("@/pages/music/MusicPage"),

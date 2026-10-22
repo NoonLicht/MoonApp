@@ -27,6 +27,7 @@ import {
   Mail,
   FileText,
   Presentation,
+  FileType,
   Table2,
 } from "lucide-react";
 import type { ElementType } from "react";
@@ -41,6 +42,7 @@ export type PageId =
   | "word"
   | "sheet"
   | "deck"
+  | "pdf"
   | "video"
   | "movies"
   | "music"
@@ -89,6 +91,7 @@ const ALL_PAGES: readonly PageMeta[] = [
   { id: "word", i18n: "nav.word", icon: FileText },
   { id: "sheet", i18n: "nav.sheet", icon: Table2 },
   { id: "deck", i18n: "nav.deck", icon: Presentation },
+  { id: "pdf", i18n: "nav.pdf", icon: FileType },
   { id: "video", i18n: "nav.video", icon: Video },
   { id: "movies", i18n: "nav.movies", icon: Clapperboard },
   { id: "music", i18n: "nav.music", icon: Music2 },

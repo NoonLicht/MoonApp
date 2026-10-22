@@ -54,3 +54,12 @@ DeckCraft: `std::process::id()` в wasm паникует (`crates/engine/src/rec
 порядок слов). Переводится только точное совпадение целого текста, поэтому текст слайдов (его рисует свой рендер) не
 затрагивается; подписи ленты, которые режутся на строки до рисования, переводятся в `widgets::big_button_ex`.
 Чего каталог не знает, показывает команда `ui.i18n.missing` (мост: `run`) — по ней дополняют `ru.tsv`.
+
+## PdfCraft (страница «PDF»)
+
+`scripts/buildOfficeWeb.mjs pdf` (`npm run office:pdf`) собирает `apps/pdfcraft-web` на ревизии `8555d6f`. У апстрима
+уже есть русский интерфейс (`ui-egui/src/i18n/ru.tsv`) и мост `?host=parent`, но мы говорим на общем протоколе `wc`,
+чтобы работал тот же `OfficeWeb`. Патч `pdfcraft-web.patch`: `src/embed.rs` (операции `run`, `state`, `export`, `open`,
+`clean`), хук `PdfCraftApp::embed_tick` (вызывается каждый кадр) и подключение в `main.rs` по `?embed`. Команды `run`
+идут в канал управления приложением (`ui.command`, `ui.set`, `ui.state`, `ui.click`, `ui.inspect`…), тема и язык —
+`ui.set {key: "theme"|"language"}`. Сохранение уходит странице событием `download`.
