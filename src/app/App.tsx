@@ -151,6 +151,7 @@ const PAGE_LOADERS: Record<PageId, () => Promise<PageModule>> = {
   effect: () => import("@/pages/effect/EffectPage"),
   film: () => import("@/pages/film/FilmPage"),
   light: () => import("@/pages/light/LightPage"),
+  cad: () => import("@/pages/cad/CadPage"),
   video: () => import("@/pages/video/VideoPage"),
   movies: () => import("@/pages/movies/MoviesPage"),
   music: () => import("@/pages/music/MusicPage"),

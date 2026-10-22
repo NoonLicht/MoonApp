@@ -63,6 +63,7 @@ export const FEATURE_MAP: {
     "effect": [],
     "film": [],
     "light": [],
+    "cad": [],
     "video": [
       "video"
     ],
