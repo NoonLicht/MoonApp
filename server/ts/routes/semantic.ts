@@ -111,6 +111,7 @@ router.get("/links", async (req, res) => {
 
 router.get("/suggest", (req, res) => {
   const ref = String(req.query.ref || "");
+  if (!ref) return res.status(400).json({ error: "missing_ref" });
   const own = vault.readFile(ref);
   const near = semantic.related("note", ref, { sources: ["note"], limit: 8 });
   const have = new Set((own?.tags ?? []).map((t) => t.toLowerCase()));

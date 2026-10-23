@@ -32,7 +32,7 @@ import * as pdfProtect from "../pdfProtect";
 
 const router = express.Router();
 const MAX_BYTES = 200 * 1024 * 1024; // 200 МБ на файл — с запасом для PDF
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_BYTES } });
+const upload = multer({ defParamCharset: "utf8", storage: multer.memoryStorage(), limits: { fileSize: MAX_BYTES } });
 
 router.post("/merge", upload.array("files", 20), async (req, res) => {
   try {

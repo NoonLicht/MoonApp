@@ -26,6 +26,8 @@ router.post("/", async (req, res) => {
   try {
     const { title, url, notes, tags, folder, saveForLater } = req.body || {};
     if (!url) return res.status(400).json({ error: "missing_url" });
+    // Только веб-адреса: javascript:/data:/file: в закладке опасны при открытии.
+    if (!/^https?:\/\//i.test(String(url).trim())) return res.status(400).json({ error: "invalid_url" });
     const entry = await bookmarks.create({ title, url, notes, tags, folder, saveForLater });
     res.status(201).json(entry);
   } catch (e: any) {
@@ -57,7 +59,9 @@ router.post("/:id/reader-archive", (req, res) => {
 
 router.put("/:id", (req, res) => {
   try {
-    const entry = bookmarks.update(req.params.id, req.body || {});
+    const body = req.body || {};
+    if (body.url !== undefined && !/^https?:\/\//i.test(String(body.url).trim())) return res.status(400).json({ error: "invalid_url" });
+    const entry = bookmarks.update(req.params.id, body);
     if (!entry) return res.status(404).json({ error: "not_found" });
     res.json(entry);
   } catch (e: any) {

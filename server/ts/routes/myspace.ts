@@ -13,7 +13,7 @@ const router = express.Router();
 
 // Картинки, вставленные в заметку (кнопка "Вложить" в тулбаре: файл/буфер
 // обмена). Храним в памяти — файлы маленькие (превью-картинки), пишем сами.
-const assetUpload = multer({
+const assetUpload = multer({ defParamCharset: "utf8",
   storage: multer.memoryStorage(),
   limits: { fileSize: 20 * 1024 * 1024 },
 });
@@ -155,6 +155,7 @@ router.get("/holsts", (req, res) => {
 // GET /api/myspace/holst?name=... — read a .holst file
 router.get("/holst", (req, res) => {
   try {
+    if (typeof req.query.name !== "string" || !req.query.name) return res.status(400).json({ error: "missing_name" });
     const result = vault.readHolst(req.query.name as string);
     if (!result) return res.status(404).json({ error: "not found" });
     res.json(result);

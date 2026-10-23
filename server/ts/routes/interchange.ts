@@ -24,7 +24,7 @@ const MAX_ZIP = 200 * 1024 * 1024;
 const MAX_ENTRIES = 20_000;
 const MAX_ENTRY_BYTES = 5 * 1024 * 1024;
 
-const upload = multer({
+const upload = multer({ defParamCharset: "utf8",
   storage: multer.diskStorage({ destination: DIRS.tmp }),
   limits: { fileSize: MAX_ZIP },
 });

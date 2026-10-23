@@ -122,7 +122,7 @@ function createApp(): express.Express {
     } else if (!req.path.startsWith("/api") && !req.path.startsWith("/events")) {
       res.setHeader(
         "Content-Security-Policy",
-        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; " +
+        "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; " +
           "img-src 'self' data: blob:; media-src 'self' data: blob:; font-src 'self' data:; " +
           "connect-src 'self' ws://127.0.0.1:* http://127.0.0.1:*; object-src 'none'; " +
           // frame-src: трейлеры — официальные YouTube-ролики TMDB (iframe плеера).

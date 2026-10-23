@@ -66,6 +66,7 @@ const APPS = {
     repo: "https://github.com/storytold/effectcraft.git",
     rev: "15b8a916c528e73d48f7a9cb4ff58276c7a2d3dd", // ревизия на 2026-10-22; wasm ~58 МБ
     xtask: "target/web/dist", // cargo xtask web (нужен wasm-bindgen-cli той же версии, что в Cargo.lock)
+    patch: "effectcraft-web.patch", // ?webgl: только WebGL2 — вычисления WebGPU на этой связке подвешивают GPU-процесс Electron, устройство теряется
   },
   film: {
     repo: "https://github.com/storytold/filmcraft.git",

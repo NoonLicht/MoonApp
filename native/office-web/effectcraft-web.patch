@@ -1,0 +1,24 @@
+diff --git a/apps/effectcraft-web/src/app.rs b/apps/effectcraft-web/src/app.rs
+index 1a695240..24097098 100644
+--- a/apps/effectcraft-web/src/app.rs
++++ b/apps/effectcraft-web/src/app.rs
+@@ -203,11 +203,18 @@ pub async fn start(canvas_id: String) -> Result<(), JsValue> {
+     browse::restore();
+     diskcache::init();
+     storage::refresh();
++    let mut web_options = eframe::WebOptions::default();
++    // `?webgl`: WebGL2 only, when the browser loses its WebGPU device (the Electron shell passes it).
++    if query_flag("webgl")
++        && let eframe::egui_wgpu::WgpuSetup::CreateNew(c) = &mut web_options.wgpu_options.wgpu_setup
++    {
++        c.instance_descriptor.backends = eframe::wgpu::Backends::GL;
++    }
+     let runner = eframe::WebRunner::new();
+     runner
+         .start(
+             canvas,
+-            eframe::WebOptions::default(),
++            web_options,
+             Box::new(move |cc| {
+                 CTX.with(|c| *c.borrow_mut() = Some(cc.egui_ctx.clone()));
+                 // The page owns this shared presentation device; worker devices retain their
