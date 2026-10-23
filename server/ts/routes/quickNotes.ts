@@ -21,7 +21,7 @@ import { removePath } from "../fsUtil";
 const router = express.Router();
 const MAX_BYTES = 30 * 1024 * 1024;
 
-const upload = multer({ defParamCharset: "utf8",
+const upload = multer({
   storage: multer.diskStorage({
     destination: DIRS.quickNotesTmp,
     filename: (req: any, file: any, cb: any) => {

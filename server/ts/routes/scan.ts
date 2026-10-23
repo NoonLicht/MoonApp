@@ -13,7 +13,7 @@ import multer from "multer";
 import * as pt from "../photoTasks";
 
 const router = express.Router();
-const upload = multer({ defParamCharset: "utf8", storage: multer.memoryStorage(), limits: { fileSize: 25 * 1024 * 1024, files: 20 } });
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 25 * 1024 * 1024, files: 20 } });
 
 router.post("/photo-tasks", upload.single("file"), async (req, res) => {
   try {

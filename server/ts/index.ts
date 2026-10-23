@@ -17,7 +17,7 @@ import config from "./config";
 import logger from "./logger";
 import { db } from "./db";
 import * as backups from "./backup";
-import settings from "./settings";
+import "./settings";
 import * as security from "./security";
 import * as passwordVault from "./passwordVault";
 import * as proxySubs from "./proxySubscriptions";

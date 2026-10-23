@@ -95,7 +95,7 @@ export const font = (cx: Cx): FormSpec => {
               textTransform: v.allCaps ? "uppercase" : undefined,
             }}
           >
-            {cx.lang === "ru" ? "АаБбВвГгДд AaBbCc" : "AaBbYyZz"}
+            {cx.lang === "ru" ? "\u0410\u0430\u0411\u0431\u0412\u0432\u0413\u0433\u0414\u0434 AaBbCc" : "AaBbYyZz"}
           </div>
         ),
       },

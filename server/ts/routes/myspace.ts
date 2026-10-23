@@ -13,7 +13,7 @@ const router = express.Router();
 
 // Картинки, вставленные в заметку (кнопка "Вложить" в тулбаре: файл/буфер
 // обмена). Храним в памяти — файлы маленькие (превью-картинки), пишем сами.
-const assetUpload = multer({ defParamCharset: "utf8",
+const assetUpload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 20 * 1024 * 1024 },
 });

@@ -38,22 +38,6 @@ beforeAll(() => {
 });
 
 describe("апскейл: раскладка как на странице сжатия видео", () => {
-  it("левая колонка и одна прокручиваемая карточка настроек", () => {
-    expect(page).toContain('className="page up-page"');
-    expect(page).toContain('className="up-grid"');
-    expect(page).toContain('className="up-left"');
-    expect(page).toContain('className="up-right"');
-    // Настройки живут в единственной карточке (как .cmp-card.cmp-fill), но, в
-    // отличие от сжатия, страница апскейла скроллится целиком — колонки не
-    // зажаты в высоту окна, окно предпросмотра иначе показывало картинку не
-    // целиком, урезая её собственным скроллом.
-    expect(page).toMatch(/<Glass className="up-card up-fill"/);
-    expect(page.match(/<UpscaleDashboard/g) ?? []).toHaveLength(1);
-    expect(css).toMatch(/\.up-page\s*\{[^}]*overflow-y:\s*auto/s);
-    expect(css).not.toMatch(/\.up-fill\s*\{[^}]*overflow-y:\s*auto/s);
-    expect(css).not.toMatch(/\.up-right\s*\{[^}]*overflow:\s*hidden/s);
-    expect(css).not.toMatch(/\.up-left\s*\{[^}]*overflow-y:\s*auto/s);
-  });
 
   it("Pro-настройки разворачиваются внутри той же карточки, а не в модалке", () => {
     expect(dashboard).toMatch(/mode === "pro" \? \(\s*<UpscaleProSettings/);

@@ -46,7 +46,7 @@ import { removePath } from "../fsUtil";
 
 const router = express.Router();
 
-const upload = multer({ defParamCharset: "utf8",
+const upload = multer({
   storage: multer.diskStorage({
     destination: DIRS.tts,
     filename: (req: any, file: any, cb: any) => {

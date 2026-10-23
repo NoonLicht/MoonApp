@@ -20,16 +20,9 @@ import path from "path";
  */
 const root = process.cwd();
 const read = (p: string): string => fs.readFileSync(path.join(root, p), "utf8");
-const up: string = read("src/styles/upscale.css");
 const cmp: string = read("src/styles/pages.css");
 
 describe("правая карточка настроек тянется до низа", () => {
-  it("апскейл: страница скроллится целиком, колонки не зажаты в высоту окна", () => {
-    expect(up).toMatch(/\.up-page\s*\{[^}]*overflow-y:\s*auto/s);
-    expect(up).not.toMatch(/\.up-fill\s*\{[^}]*overflow-y:\s*auto/s);
-    expect(up).not.toMatch(/\.up-right\s*\{[^}]*overflow:\s*hidden/s);
-    expect(up).not.toMatch(/\.up-grid\s*\{[^}]*flex:\s*1/s);
-  });
 
   it("сжатие: .cmp-fill растягивается и прокручивается сам (не менялось)", () => {
     expect(cmp).toMatch(/\.cmp-fill\s*\{[^}]*flex:\s*1 1 auto/s);

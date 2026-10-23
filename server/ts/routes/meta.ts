@@ -1,5 +1,5 @@
 import express from "express";
-import settings from "../settings";
+import "../settings";
 import logger from "../logger";
 import { clearProblems, listProblems, reportProblem, summarize } from "../problemLog";
 

@@ -830,6 +830,7 @@ async function searchRaw(
 /** Убирает из отрывка мусор распознавания: символы замены, блоки, управляющие и пробелы подряд. */
 function cleanSnippet(text: string): string {
   return text
+    // eslint-disable-next-line no-irregular-whitespace
     .replace(/[ --�▀-▟■-◿]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();

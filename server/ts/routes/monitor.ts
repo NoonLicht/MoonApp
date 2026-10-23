@@ -15,6 +15,7 @@ const router = express.Router();
 router.get("/lhm", async (req, res) => {
   try {
     res.json(await monitor.lhmStatus());
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (e: any) {
     res.status(500).json({ error: e.message });
   }
@@ -24,6 +25,7 @@ router.get("/lhm", async (req, res) => {
 router.post("/lhm/start", async (req, res) => {
   try {
     res.json(await monitor.startLhm());
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (e: any) {
     res.status(500).json({ ok: false, error: e.message });
   }
@@ -33,6 +35,7 @@ router.post("/lhm/start", async (req, res) => {
 router.post("/lhm/download", async (req, res) => {
   try {
     res.json(await monitor.downloadAndStartEngine());
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (e: any) {
     res.status(500).json({ ok: false, error: e.message });
   }
@@ -84,6 +87,7 @@ router.get("/", async (req, res) => {
       fan2: s.fans[1]?.rpm ?? null,
       history: [],
     });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (e: any) {
     logger.error("monitor.error", { error: e.message });
     res.status(500).json({ error: e.message });

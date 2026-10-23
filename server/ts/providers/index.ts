@@ -42,7 +42,7 @@ async function localNames(texts: string[]): Promise<string[]> {
   // либо она выбрана в Настройках → «Привязка моделей ИИ» → «Щит для ИИ», либо берётся
   // уже загруженная чатовая модель. Если ничего не загружено — имена ищутся по шаблонам.
   const bound = boundOf("shield");
-  let model = "";
+  let model: string;
   if (bound && bound.provider === "llamacpp") {
     model = bound.model;
   } else {

@@ -15,7 +15,7 @@ export function setup(): void {
 
 export function teardown(): void {
   const tmp = os.tmpdir();
-  let names: string[] = [];
+  let names: string[];
   try {
     names = fs.readdirSync(tmp);
   } catch {

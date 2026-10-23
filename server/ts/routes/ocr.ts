@@ -15,7 +15,7 @@ import { findSecrets } from "../secretFinder";
 const router = express.Router();
 const MAX_BYTES = 20 * 1024 * 1024;
 
-const upload = multer({ defParamCharset: "utf8",
+const upload = multer({
   storage: multer.diskStorage({ destination: DIRS.tmp }),
   limits: { fileSize: MAX_BYTES },
 });

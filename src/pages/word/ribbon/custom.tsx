@@ -191,7 +191,7 @@ function StyleTile({
           textTransform: f.caps ? "uppercase" : undefined,
         }}
       >
-        {cx.lang === "ru" ? "АаБбВв" : "AaBbCc"}
+        {cx.lang === "ru" ? "\u0410\u0430\u0411\u0431\u0412\u0432" : "AaBbCc"}
       </span>
       <span className="wd-style-name">{cx.tw(st.name)}</span>
     </button>

@@ -775,8 +775,10 @@ async function fetchPlaylist(
       },
     );
   });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const data = JSON.parse(stdout) as any;
   // Одиночное видео приходит без entries — отдаём его одним элементом.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const list: any[] = Array.isArray(data.entries) ? data.entries : data.id ? [data] : [];
   const entries: Track[] = list
     .filter((e) => e && e.id)

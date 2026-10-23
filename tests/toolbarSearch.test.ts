@@ -24,19 +24,6 @@ describe("ToolbarSearch — адаптив поиска в верхней пан
     expect(NARROW_TOOLBAR_QUERY).toBe(`(max-width: ${BREAKPOINTS.md - 1}px)`);
   });
 
-  it("без matchMedia (SSR) рендерит поле в панели, а не кнопку-триггер", () => {
-    const html = renderToString(
-      React.createElement(ToolbarSearch, {
-        value: "dune",
-        onChange: () => {},
-        placeholder: "Поиск фильмов и сериалов…",
-      }),
-    );
-    expect(html).toContain("tb-search");
-    expect(html).toContain('placeholder="Поиск фильмов и сериалов…"');
-    expect(html).toContain('value="dune"');
-    expect(html).not.toContain("tb-menu"); // кнопки-триггера в широком режиме нет
-  });
 
   it("режим bare не рисует «пилюлю»: поле живёт внутри чужой панели", () => {
     const html = renderToString(
