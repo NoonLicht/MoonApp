@@ -31,7 +31,7 @@ import { removePath } from "../fsUtil";
 const router = express.Router();
 const MAX_BYTES = 2 * 1024 * 1024 * 1024; // 2 ГБ
 
-const upload = multer({
+const upload = multer({ defParamCharset: "utf8",
   storage: multer.diskStorage({
     destination: DIRS.compressorIn,
     filename: (req: any, file: any, cb: any) => {

@@ -33,7 +33,7 @@ const router = express.Router();
 const IN_DIR = path.join(core.OFFICE_DIR, "sheet-in");
 const OUT_DIR = path.join(core.OFFICE_DIR, "sheet-out");
 
-const upload = multer({
+const upload = multer({ defParamCharset: "utf8",
   storage: multer.diskStorage({
     destination: (_req, _file, cb) => {
       fs.mkdirSync(IN_DIR, { recursive: true });

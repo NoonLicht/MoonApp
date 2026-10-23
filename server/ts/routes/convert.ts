@@ -28,7 +28,7 @@ const results = new Map();
 
 const MAX_BYTES = 2 * 1024 * 1024 * 1024; // 2 ГБ — защита от переполнения диска
 
-const upload = multer({
+const upload = multer({ defParamCharset: "utf8",
   storage: multer.diskStorage({
     destination: DIRS.convertIn,
     filename: (req: any, file: any, cb: any) => {

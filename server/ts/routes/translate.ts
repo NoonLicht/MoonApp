@@ -42,7 +42,7 @@ import type { Req } from "../translate/jobs";
 const { DIRS } = config;
 const router = express.Router();
 
-const upload = multer({
+const upload = multer({ defParamCharset: "utf8",
   storage: multer.diskStorage({
     destination: DIRS.translateTmp,
     filename: (_req, file, cb) =>

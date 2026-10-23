@@ -188,7 +188,7 @@ router.post("/context", async (req, res) => {
   }
 });
 
-const explainUpload = multer({
+const explainUpload = multer({ defParamCharset: "utf8",
   storage: multer.diskStorage({ destination: config.DIRS.tmp }),
   limits: { fileSize: 20 * 1024 * 1024 },
 });

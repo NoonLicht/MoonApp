@@ -503,7 +503,7 @@ export function createCompanionApp(): express.Express {
     res.status(201).json({ ok: true });
   });
 
-  const upload = multer({
+  const upload = multer({ defParamCharset: "utf8",
     storage: multer.diskStorage({
       destination: (_req, _file, cb) => cb(null, inboxDir()),
       filename: (_req, file, cb) => {
@@ -531,7 +531,7 @@ export function createCompanionApp(): express.Express {
   });
 
   /* сканер документов: телефон снимает, ПК распознаёт и собирает PDF */
-  const scanUpload = multer({
+  const scanUpload = multer({ defParamCharset: "utf8",
     storage: multer.memoryStorage(),
     limits: { fileSize: 25 * 1024 * 1024, files: 20 },
   });

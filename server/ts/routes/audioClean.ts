@@ -15,7 +15,7 @@ import * as ac from "../audioClean";
 const router = express.Router();
 const MAX_BYTES = 300 * 1024 * 1024;
 
-const upload = multer({
+const upload = multer({ defParamCharset: "utf8",
   storage: multer.diskStorage({
     destination: config.DIRS.tmp,
     filename: (_req, file, cb) => {

@@ -38,7 +38,7 @@ function safeExtraAudioPath(raw: any) {
 const router = express.Router();
 const MAX_BYTES = 2 * 1024 * 1024 * 1024;
 
-const upload = multer({
+const upload = multer({ defParamCharset: "utf8",
   storage: multer.diskStorage({ destination: DIRS.tmp }),
   limits: { fileSize: MAX_BYTES },
 });

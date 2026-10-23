@@ -57,9 +57,11 @@ function applyHardwareAcceleration() {
   // заставляет Chromium использовать GPU-композитинг несмотря на блок-лист;
   // enable-gpu-rasterization/zero-copy — снижают CPU-часть конвейера отрисовки,
   // чтобы композитор реально успевал за высокой частотой обновления.
-  app.commandLine.appendSwitch("ignore-gpu-blocklist");
-  app.commandLine.appendSwitch("enable-gpu-rasterization");
-  app.commandLine.appendSwitch("enable-zero-copy");
+  if (process.env.MOONAPP_GPUFLAGS !== "off") {
+    app.commandLine.appendSwitch("ignore-gpu-blocklist");
+    app.commandLine.appendSwitch("enable-gpu-rasterization");
+    app.commandLine.appendSwitch("enable-zero-copy");
+  }
 }
 applyHardwareAcceleration();
 
@@ -161,12 +163,66 @@ function targetBounds(): Electron.Rectangle {
   return autoHide ? { x: a.x + 1, y: a.y + 1, width: a.width - 2, height: a.height - 2 } : a;
 }
 
+// Плавное изменение размера окна: без этого развёртка и возврат происходят одним кадром.
+let boundsAnim: ReturnType<typeof setInterval> | null = null;
+function animateBounds(to: Electron.Rectangle, ms = 190) {
+  if (boundsAnim) clearInterval(boundsAnim);
+  boundsAnim = null;
+  const from = win.getBounds();
+  const t0 = Date.now();
+  const ease = (t: number) => 1 - Math.pow(1 - t, 3);
+  boundsAnim = setInterval(() => {
+    if (!win || win.isDestroyed()) {
+      if (boundsAnim) clearInterval(boundsAnim);
+      boundsAnim = null;
+      return;
+    }
+    const t = Math.min(1, (Date.now() - t0) / ms);
+    const k = ease(t);
+    const lerp = (a: number, b: number) => Math.round(a + (b - a) * k);
+    win.setBounds({
+      x: lerp(from.x, to.x),
+      y: lerp(from.y, to.y),
+      width: lerp(from.width, to.width),
+      height: lerp(from.height, to.height),
+    });
+    if (t >= 1) {
+      if (boundsAnim) clearInterval(boundsAnim);
+      boundsAnim = null;
+    }
+  }, 8);
+}
+
+// Плавное появление/исчезновение (сворачивание и возврат из панели задач).
+let fadeAnim: ReturnType<typeof setInterval> | null = null;
+function fadeWindow(to: number, ms: number, done?: () => void) {
+  if (fadeAnim) clearInterval(fadeAnim);
+  fadeAnim = null;
+  if (!win || win.isDestroyed()) return;
+  const from = win.getOpacity();
+  const t0 = Date.now();
+  fadeAnim = setInterval(() => {
+    if (!win || win.isDestroyed()) {
+      if (fadeAnim) clearInterval(fadeAnim);
+      fadeAnim = null;
+      return;
+    }
+    const t = Math.min(1, (Date.now() - t0) / ms);
+    win.setOpacity(from + (to - from) * t);
+    if (t >= 1) {
+      if (fadeAnim) clearInterval(fadeAnim);
+      fadeAnim = null;
+      done?.();
+    }
+  }, 8);
+}
+
 function maximizeWindow() {
   if (!win || customMaximized) return;
   if (win.isMaximized()) win.unmaximize();
   normalBounds = win.getBounds();
   customMaximized = true;
-  win.setBounds(targetBounds());
+  animateBounds(targetBounds());
 }
 
 function restoreWindow(at?: { x: number; y: number }) {
@@ -184,7 +240,9 @@ function restoreWindow(at?: { x: number; y: number }) {
     x = Math.round(at.x - ratio * nb.width);
     y = Math.round(at.y - 16);
   }
-  win.setBounds({ x, y, width: nb.width, height: nb.height });
+  const to = { x, y, width: nb.width, height: nb.height };
+  if (at) win.setBounds(to);
+  else animateBounds(to);
 }
 
 function stopDrag() {
@@ -194,7 +252,13 @@ function stopDrag() {
 
 function registerWindowControls() {
   const { screen } = require("electron") as typeof import("electron");
-  ipcMain.on("win:minimize", () => win?.minimize());
+  ipcMain.on("win:minimize", () => {
+    if (!win || win.isDestroyed()) return;
+    fadeWindow(0, 110, () => {
+      if (!win || win.isDestroyed()) return;
+      win.minimize();
+    });
+  });
   ipcMain.on("win:toggle-maximize", () => {
     if (!win) return;
     if (customMaximized || win.isMaximized()) restoreWindow();
@@ -377,7 +441,7 @@ async function createWindow() {
       responseHeaders: {
         ...details.responseHeaders,
         "Content-Security-Policy": [
-          "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; " +
+          "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; " +
             "img-src 'self' data: blob:; media-src 'self' data: blob:; font-src 'self' data:; " +
             // frame-src 'self' нужен встроенному просмотру веб-архивов (.sitebak):
             // страницы отдаёт локальный API, скрипты в них вырезаны, CSP документа
@@ -422,6 +486,10 @@ async function createWindow() {
   });
 
   // general.minimizeToTray: сворачивание прячет окно в трей вместо таскбара.
+  win.on("restore", () => fadeWindow(1, 140));
+  win.on("show", () => {
+    if (win.getOpacity() < 1) fadeWindow(1, 140);
+  });
   win.on("minimize", () => {
     try {
       if (readSettings()?.general?.minimizeToTray !== true) return;

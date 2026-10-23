@@ -12,7 +12,7 @@ import * as officeConvert from "../officeConvert";
 
 const router = express.Router();
 const MAX_BYTES = 200 * 1024 * 1024;
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_BYTES } });
+const upload = multer({ defParamCharset: "utf8", storage: multer.memoryStorage(), limits: { fileSize: MAX_BYTES } });
 
 router.get("/status", async (_req, res) => {
   try {

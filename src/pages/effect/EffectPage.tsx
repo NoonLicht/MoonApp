@@ -8,7 +8,7 @@ export default function EffectPage() {
       marker="effectcraft"
       title="EffectCraft"
       missing="The effects editor is not built: run npm run office:effect"
-      flags={["nosw"]}
+      flags={["nosw", "webgl", "nogpuworkers"]}
     />
   );
 }
